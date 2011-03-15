@@ -1168,6 +1168,31 @@ static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
 }
 
+static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_cp_set_local_name *ev = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_local_name_changed event packet");
+		return;
+	}
+
+	DBG("hci%u local name changed: %s", index, (char *) ev->name);
+
+	if (index > max_index) {
+		error("Unexpected index %u in name_changed event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter)
+		adapter_update_local_name(adapter, (char *) ev->name);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1259,6 +1284,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_AUTH_FAILED:
 		mgmt_auth_failed(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_LOCAL_NAME_CHANGED:
+		mgmt_local_name_changed(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
