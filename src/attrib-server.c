@@ -627,7 +627,6 @@ static struct attribute *find_primary_range(uint16_t start, uint16_t *end)
 		return NULL;
 
 	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
-
 	if (!l)
 		return NULL;
 
@@ -1050,7 +1049,6 @@ static gboolean register_core_services(void)
 	attrib_db_add(appearance_handle, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 2);
 	gap_sdp_handle = attrib_create_sdp(0x0001, "Generic Access Profile");
-
 	if (gap_sdp_handle == 0) {
 		error("Failed to register GAP service record");
 		goto failed;
@@ -1088,7 +1086,6 @@ int attrib_server_init(void)
 					BT_IO_OPT_PSM, GATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
-
 	if (l2cap_io == NULL) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
@@ -1108,7 +1105,6 @@ int attrib_server_init(void)
 					BT_IO_OPT_CID, GATT_CID,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
-
 	if (le_io == NULL) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
@@ -1187,7 +1183,6 @@ uint32_t attrib_create_sdp(uint16_t handle, const char *name)
 		return 0;
 
 	record = server_record_new(&svc, handle, end);
-
 	if (record == NULL)
 		return 0;
 
