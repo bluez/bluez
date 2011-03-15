@@ -1007,14 +1007,14 @@ static void set_local_name_complete(int sk, uint16_t index, void *buf,
 	struct btd_adapter *adapter;
 
 	if (len < sizeof(*rp)) {
-		error("Too small pair_device complete event");
+		error("Too small set_local_name complete event");
 		return;
 	}
 
 	DBG("hci%d name %s", index, (char *) rp->name);
 
 	if (index > max_index) {
-		error("Unexpected index %u in pair_device complete", index);
+		error("Unexpected index %u in set_local_name complete", index);
 		return;
 	}
 
