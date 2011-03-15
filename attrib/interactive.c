@@ -353,8 +353,6 @@ static void cmd_connect(int argcp, char **argvp)
 						opt_mtu, connect_cb);
 	if (iochannel == NULL)
 		set_state(STATE_DISCONNECTED);
-
-	return;
 }
 
 static void cmd_disconnect(int argcp, char **argvp)
@@ -370,8 +368,6 @@ static void cmd_disconnect(int argcp, char **argvp)
 	iochannel = NULL;
 
 	set_state(STATE_DISCONNECTED);
-
-	return;
 }
 
 static void cmd_primary(int argcp, char **argvp)
