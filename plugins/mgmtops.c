@@ -780,6 +780,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	DBG("hci%u enabled %u discoverable %u pairable %u sec_mode %u", index,
 					info->enabled, info->discoverable,
 					info->pairable, info->sec_mode);
+	DBG("hci%u name %s", index, (char *) rp->name);
 
 	adapter = btd_manager_register_adapter(index);
 	if (adapter == NULL) {
@@ -797,6 +798,8 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		mgmt_update_powered(index, TRUE);
 	else
 		mgmt_set_powered(index, TRUE);
+
+	adapter_update_local_name(adapter, (char *) rp->name);
 
 	btd_adapter_unref(adapter);
 }

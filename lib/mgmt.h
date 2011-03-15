@@ -65,6 +65,7 @@ struct mgmt_rp_read_info {
 	uint16_t manufacturer;
 	uint8_t hci_ver;
 	uint16_t hci_rev;
+	uint8_t name[249];
 } __packed;
 
 struct mgmt_mode {

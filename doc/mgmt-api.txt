@@ -80,6 +80,7 @@ Read Controller Information Command
 				Manufacturer (2 Octets)
 				HCI_Version (1 Octet)
 				HCI_Revision (2 Octets)
+				Name (249 Octets)
 
 		Controller_Type:0x00 Reserved
 				0x01 Bluetooth (BR/EDR)
