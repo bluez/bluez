@@ -226,11 +226,6 @@ Management Interface
   Priority: High
   Complexity: C3
 
-- Local name setting. mgmt_set_local_name & mgmt_local_name_changed
-
-  Priority: High
-  Complexity: C1
-
 - EIR generation support
 
   Priority: High

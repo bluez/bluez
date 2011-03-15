@@ -999,6 +999,36 @@ static void get_connections_complete(int sk, uint16_t index, void *buf,
 	read_info(sk, index);
 }
 
+static void set_local_name_complete(int sk, uint16_t index, void *buf,
+								size_t len)
+{
+	struct mgmt_cp_set_local_name *rp = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+
+	if (len < sizeof(*rp)) {
+		error("Too small pair_device complete event");
+		return;
+	}
+
+	DBG("hci%d name %s", index, (char *) rp->name);
+
+	if (index > max_index) {
+		error("Unexpected index %u in pair_device complete", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter == NULL) {
+		DBG("Adapter not found");
+		return;
+	}
+
+	adapter_update_local_name(adapter, (char *) rp->name);
+}
+
 static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -1079,6 +1109,9 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		break;
 	case MGMT_OP_USER_CONFIRM_NEG_REPLY:
 		DBG("user_confirm_net_reply complete");
+		break;
+	case MGMT_OP_SET_LOCAL_NAME:
+		set_local_name_complete(sk, index, ev->data, len);
 		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
@@ -1362,8 +1395,23 @@ static int mgmt_resolve_name(int index, bdaddr_t *bdaddr)
 
 static int mgmt_set_name(int index, const char *name)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_local_name)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_local_name *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d, name %s", index, name);
-	return -ENOSYS;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_LOCAL_NAME);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	strncpy((char *) cp->name, name, sizeof(cp->name) - 1);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)

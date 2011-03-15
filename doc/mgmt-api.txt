@@ -266,6 +266,13 @@ User Confirmation Negative Reply Command
 	Return Paramters:	Address (6 Octets)
 				Status (1 Octet)
 
+Set Local Name Command
+======================
+
+	Command Code:		0x0017
+	Controller Index:	<controller id>
+	Command Parameters:	Name (249 Octets)
+	Return Paramters:	Name (249 Octets)
 
 Read Tracing Buffer Size Command
 ================================
@@ -448,3 +455,10 @@ Event Code		0x0010
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Status (1 Octet)
+
+Local Name Changed Event
+========================
+
+Event Code		0x0011
+Controller Index	<controller id>
+Event Parameters	Name (249 Octets)

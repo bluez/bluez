@@ -174,6 +174,11 @@ struct mgmt_rp_user_confirm_reply {
 
 #define MGMT_OP_USER_CONFIRM_NEG_REPLY	0x0016
 
+#define MGMT_OP_SET_LOCAL_NAME		0x0017
+struct mgmt_cp_set_local_name {
+	uint8_t name[249];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -240,4 +245,9 @@ struct mgmt_ev_user_confirm_request {
 struct mgmt_ev_auth_failed {
 	bdaddr_t bdaddr;
 	uint8_t status;
+} __packed;
+
+#define MGMT_EV_LOCAL_NAME_CHANGED	0x0011
+struct mgmt_ev_local_name_changed {
+	uint8_t name[249];
 } __packed;
