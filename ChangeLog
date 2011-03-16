@@ -1,3 +1,14 @@
+ver 4.90:
+	Fix issue with setting of global mode property.
+	Fix issue with handling of RequestSession responses.
+	Fix issue with TP_BNEP_CTRL_BV_01_C qualification test.
+	Fix issue with too short AVDTP request timeout.
+	Add support for SIM Access Profile manager.
+	Add support for new UUID utility functions.
+	Add support for attribute server notifications.
+	Add support for client characteristic configuration.
+	Update support for interactive GATT utility.
+
 ver 4.89:
 	Fix issue with name resolving when discovery is suspended.
 	Fix issue with parsing flags of advertising report.
