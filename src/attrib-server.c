@@ -1214,6 +1214,8 @@ struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 {
 	struct attribute *a;
 
+	DBG("handle=0x%04x", handle);
+
 	/* FIXME: handle conflicts */
 
 	a = g_malloc0(sizeof(struct attribute) + len);
@@ -1235,6 +1237,8 @@ int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 	struct attribute *a;
 	GSList *l;
 	guint h = handle;
+
+	DBG("handle=0x%04x", handle);
 
 	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
@@ -1261,6 +1265,8 @@ int attrib_db_del(uint16_t handle)
 	struct attribute *a;
 	GSList *l;
 	guint h = handle;
+
+	DBG("handle=0x%04x", handle);
 
 	l = g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp);
 	if (!l)
