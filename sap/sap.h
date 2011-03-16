@@ -143,7 +143,7 @@ enum sap_param_id {
 #define SAP_PARAM_ID_DISCONNECT_IND_LEN		0x01
 #define SAP_PARAM_ID_CARD_READER_STATUS_LEN	0x01
 #define SAP_PARAM_ID_STATUS_CHANGE_LEN		0x01
-#define SAP_PARAM_ID_TRANSPORT_PROTOCOL_LEN	0x01
+#define SAP_PARAM_ID_TRANSPORT_PROTO_LEN	0x01
 
 /* Transport Protocol - SAP v1.1 section 5.2.9 */
 enum sap_transport_protocol {
