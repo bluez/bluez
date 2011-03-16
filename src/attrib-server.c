@@ -741,7 +741,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 	if (client_attr)
 		a = client_attr;
 	else
-		attrib_db_update(a->handle, NULL, value, vlen);
+		attrib_db_update(a->handle, NULL, value, vlen, &a);
 
 	if (a->write_cb) {
 		status = a->write_cb(a, a->cb_user_data);
@@ -1232,7 +1232,7 @@ struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 }
 
 int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
-								int len)
+					int len, struct attribute **attr)
 {
 	struct attribute *a;
 	GSList *l;
@@ -1255,6 +1255,9 @@ int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 	memcpy(a->data, value, len);
 
 	attrib_notify_clients(a);
+
+	if (attr)
+		*attr = a;
 
 	return 0;
 }
@@ -1295,5 +1298,5 @@ int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 		return -ENOSYS;
 	}
 
-	return attrib_db_update(handle, NULL, value, len);
+	return attrib_db_update(handle, NULL, value, len, NULL);
 }
