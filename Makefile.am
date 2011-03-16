@@ -148,7 +148,13 @@ builtin_modules += sap
 builtin_sources += sap/main.c \
 			sap/manager.h sap/manager.c \
 			sap/server.h sap/server.c \
-			sap/sap.h sap/sap-dummy.c
+			sap/sap.h
+
+builtin_nodist += sap/sap.c
+
+noinst_LIBRARIES = sap/libsap.a
+
+sap_libsap_a_SOURCES = sap/sap.h sap/sap-dummy.c
 endif
 
 if INPUTPLUGIN
@@ -278,7 +284,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			input/input.conf serial/serial.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
-			audio/telephony-maemo6.c
+			audio/telephony-maemo6.c sap/sap-dummy.c
 
 
 if ALSA
@@ -401,6 +407,9 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
 audio/telephony.c: audio/@TELEPHONY_DRIVER@
+	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
+
+sap/sap.c: sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 scripts/%.rules:

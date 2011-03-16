@@ -205,6 +205,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	configfiles_enable=yes
 	telephony_driver=dummy
 	maemo6_enable=no
+	sap_driver=dummy
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
 		optimization_enable=${enableval}
@@ -225,6 +226,11 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(sap, AC_HELP_STRING([--enable-sap], [enable sap plugin]), [
 		sap_enable=${enableval}
 	])
+
+	AC_ARG_WITH(sap, AC_HELP_STRING([--with-sap=DRIVER], [select SAP driver]), [
+		sap_driver=${withval}
+	])
+	AC_SUBST([SAP_DRIVER], [sap-${sap_driver}.c])
 
 	AC_ARG_ENABLE(serial, AC_HELP_STRING([--disable-serial], [disable serial plugin]), [
 		serial_enable=${enableval}
