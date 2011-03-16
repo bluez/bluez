@@ -1249,7 +1249,6 @@ int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 		return -ENOMEM;
 
 	l->data = a;
-	a->handle = handle;
 	if (uuid != NULL)
 		memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
 	a->len = len;
