@@ -741,7 +741,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 	if (client_attr)
 		a = client_attr;
 	else
-		attrib_db_update(a->handle, &a->uuid, value, vlen);
+		attrib_db_update(a->handle, NULL, value, vlen);
 
 	if (a->write_cb) {
 		status = a->write_cb(a, a->cb_user_data);
@@ -1250,7 +1250,7 @@ int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 
 	l->data = a;
 	a->handle = handle;
-	if (uuid != &a->uuid)
+	if (uuid != NULL)
 		memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
 	a->len = len;
 	memcpy(a->data, value, len);
@@ -1281,12 +1281,9 @@ int attrib_db_del(uint16_t handle)
 
 int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 {
-	bt_uuid_t u16;
 	uint16_t handle;
 
 	/* FIXME: Missing Privacy and Reconnection Address */
-
-	bt_uuid16_create(&u16, uuid);
 
 	switch (uuid) {
 	case GATT_CHARAC_DEVICE_NAME:
@@ -1299,5 +1296,5 @@ int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 		return -ENOSYS;
 	}
 
-	return attrib_db_update(handle, &u16, value, len);
+	return attrib_db_update(handle, NULL, value, len);
 }
