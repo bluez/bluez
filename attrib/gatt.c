@@ -40,7 +40,7 @@ struct discover_primary {
 
 struct discover_char {
 	GAttrib *attrib;
-	bt_uuid_t uuid;
+	bt_uuid_t *uuid;
 	uint16_t end;
 	GSList *characteristics;
 	gatt_cb_t cb;
@@ -59,6 +59,7 @@ static void discover_char_free(struct discover_char *dc)
 	g_slist_foreach(dc->characteristics, (GFunc) g_free, NULL);
 	g_slist_free(dc->characteristics);
 	g_attrib_unref(dc->attrib);
+	g_free(dc->uuid);
 	g_free(dc);
 }
 
@@ -281,6 +282,9 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 			goto done;
 		}
 
+		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid))
+			break;
+
 		chars->handle = last;
 		chars->properties = value[2];
 		chars->value_handle = att_get_u16(&value[3]);
@@ -313,16 +317,17 @@ done:
 }
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
-					gatt_cb_t func, gpointer user_data)
+						bt_uuid_t *uuid, gatt_cb_t func,
+						gpointer user_data)
 {
 	uint8_t pdu[ATT_DEFAULT_LE_MTU];
 	struct discover_char *dc;
+	bt_uuid_t type_uuid;
 	guint16 plen;
-	bt_uuid_t uuid;
 
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
+	bt_uuid16_create(&type_uuid, GATT_CHARAC_UUID);
 
-	plen = enc_read_by_type_req(start, end, &uuid, pdu, sizeof(pdu));
+	plen = enc_read_by_type_req(start, end, &type_uuid, pdu, sizeof(pdu));
 	if (plen == 0)
 		return 0;
 
@@ -334,6 +339,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 	dc->cb = func;
 	dc->user_data = user_data;
 	dc->end = end;
+	dc->uuid = g_memdup(uuid, sizeof(bt_uuid_t));
 
 	return g_attrib_send(attrib, 0, pdu[0], pdu, plen, char_discovered_cb,
 								dc, NULL);

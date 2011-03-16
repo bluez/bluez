@@ -30,7 +30,8 @@ guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data);
 
 guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
-					gatt_cb_t func, gpointer user_data);
+					bt_uuid_t *uuid, gatt_cb_t func,
+					gpointer user_data);
 
 guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
 				GAttribResultFunc func, gpointer user_data);

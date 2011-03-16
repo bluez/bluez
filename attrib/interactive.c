@@ -431,7 +431,19 @@ static void cmd_char(int argcp, char **argvp)
 		}
 	}
 
-	gatt_discover_char(attrib, start, end, char_cb, NULL);
+	if (argcp > 3) {
+		bt_uuid_t uuid;
+
+		if (bt_string_to_uuid(&uuid, argvp[3]) < 0) {
+			printf("Invalid UUID\n");
+			return;
+		}
+
+		gatt_discover_char(attrib, start, end, &uuid, char_cb, NULL);
+		return;
+	}
+
+	gatt_discover_char(attrib, start, end, NULL, char_cb, NULL);
 }
 
 static void cmd_char_desc(int argcp, char **argvp)
@@ -658,7 +670,7 @@ static struct {
 		"Disconnect from a remote device" },
 	{ "primary",		cmd_primary,	"[UUID]",
 		"Primary Service Discovery" },
-	{ "characteristics",	cmd_char,	"[start hnd] [end hnd]",
+	{ "characteristics",	cmd_char,	"[start hnd [end hnd [UUID]]]",
 		"Characteristics Discovery" },
 	{ "char-desc",		cmd_char_desc,	"[start hnd] [end hnd]",
 		"Characteristics Descriptor Discovery" },

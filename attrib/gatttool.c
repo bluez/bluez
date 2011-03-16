@@ -206,7 +206,8 @@ static gboolean characteristics(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_discover_char(attrib, opt_start, opt_end, char_discovered_cb, NULL);
+	gatt_discover_char(attrib, opt_start, opt_end, opt_uuid,
+						char_discovered_cb, NULL);
 
 	return FALSE;
 }

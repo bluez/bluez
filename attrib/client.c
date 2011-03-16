@@ -960,7 +960,7 @@ static DBusMessage *discover_char(DBusConnection *conn, DBusMessage *msg,
 	qchr->prim = prim;
 	qchr->msg = dbus_message_ref(msg);
 
-	gatt_discover_char(gatt->attrib, att->start, att->end,
+	gatt_discover_char(gatt->attrib, att->start, att->end, NULL,
 						char_discovered_cb, qchr);
 
 	return NULL;
