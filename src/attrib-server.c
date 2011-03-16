@@ -1213,10 +1213,12 @@ struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 				int write_reqs, const uint8_t *value, int len)
 {
 	struct attribute *a;
+	guint h = handle;
 
 	DBG("handle=0x%04x", handle);
 
-	/* FIXME: handle conflicts */
+	if (g_slist_find_custom(database, GUINT_TO_POINTER(h), handle_cmp))
+		return NULL;
 
 	a = g_malloc0(sizeof(struct attribute) + len);
 	a->handle = handle;
