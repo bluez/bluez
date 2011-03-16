@@ -1058,8 +1058,15 @@ static gboolean a2dp_reconfigure(gpointer data)
 	struct a2dp_setup *setup = data;
 	struct a2dp_sep *sep = setup->sep;
 	int posix_err;
+	struct avdtp_media_codec_capability *rsep_codec;
+	struct avdtp_service_capability *cap;
 
-	if (!setup->rsep)
+	if (setup->rsep) {
+		cap = avdtp_get_codec(setup->rsep);
+		rsep_codec = (struct avdtp_media_codec_capability *) cap->data;
+	}
+
+	if (!setup->rsep || sep->codec != rsep_codec->media_codec_type)
 		setup->rsep = avdtp_find_remote_sep(setup->session, sep->lsep);
 
 	posix_err = avdtp_set_configuration(setup->session, setup->rsep,
