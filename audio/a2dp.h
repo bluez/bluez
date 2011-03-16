@@ -138,7 +138,7 @@ void a2dp_unregister(const bdaddr_t *src);
 
 struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 				uint8_t codec, gboolean delay_reporting,
-				struct media_endpoint *endpoint);
+				struct media_endpoint *endpoint, int *err);
 void a2dp_remove_sep(struct a2dp_sep *sep);
 
 struct a2dp_sep *a2dp_get(struct avdtp *session, struct avdtp_remote_sep *sep);

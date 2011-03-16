@@ -1486,22 +1486,23 @@ proceed:
 	if (source) {
 		for (i = 0; i < sbc_srcs; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SOURCE,
-					A2DP_CODEC_SBC, delay_reporting, NULL);
+				A2DP_CODEC_SBC, delay_reporting, NULL, NULL);
 
 		for (i = 0; i < mpeg12_srcs; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SOURCE,
-					A2DP_CODEC_MPEG12, delay_reporting, NULL);
+					A2DP_CODEC_MPEG12, delay_reporting,
+					NULL, NULL);
 	}
 	server->sink_enabled = sink;
 	if (sink) {
 		for (i = 0; i < sbc_sinks; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SINK,
-					A2DP_CODEC_SBC, delay_reporting, NULL);
+				A2DP_CODEC_SBC, delay_reporting, NULL, NULL);
 
 		for (i = 0; i < mpeg12_sinks; i++)
 			a2dp_add_sep(src, AVDTP_SEP_TYPE_SINK,
 					A2DP_CODEC_MPEG12, delay_reporting,
-					NULL);
+					NULL, NULL);
 	}
 
 	return 0;
@@ -1541,7 +1542,7 @@ void a2dp_unregister(const bdaddr_t *src)
 
 struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 				uint8_t codec, gboolean delay_reporting,
-				struct media_endpoint *endpoint)
+				struct media_endpoint *endpoint, int *err)
 {
 	struct a2dp_server *server;
 	struct a2dp_sep *sep;
@@ -1551,14 +1552,23 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 	struct avdtp_sep_ind *ind;
 
 	server = find_server(servers, src);
-	if (server == NULL)
+	if (server == NULL) {
+		if (err)
+			*err = -EINVAL;
 		return NULL;
+	}
 
-	if (type == AVDTP_SEP_TYPE_SINK && !server->sink_enabled)
+	if (type == AVDTP_SEP_TYPE_SINK && !server->sink_enabled) {
+		if (err)
+			*err = -EPROTONOSUPPORT;
 		return NULL;
+	}
 
-	if (type == AVDTP_SEP_TYPE_SOURCE && !server->source_enabled)
+	if (type == AVDTP_SEP_TYPE_SOURCE && !server->source_enabled) {
+		if (err)
+			*err = -EPROTONOSUPPORT;
 		return NULL;
+	}
 
 	sep = g_new0(struct a2dp_sep, 1);
 
@@ -1575,6 +1585,8 @@ proceed:
 					delay_reporting, ind, &cfm, sep);
 	if (sep->lsep == NULL) {
 		g_free(sep);
+		if (err)
+			*err = -EINVAL;
 		return NULL;
 	}
 
@@ -1600,6 +1612,8 @@ proceed:
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->lsep);
 		g_free(sep);
+		if (err)
+			*err = -EINVAL;
 		return NULL;
 	}
 
@@ -1608,6 +1622,8 @@ proceed:
 		sdp_record_free(record);
 		avdtp_unregister_sep(sep->lsep);
 		g_free(sep);
+		if (err)
+			*err = -EINVAL;
 		return NULL;
 	}
 	*record_id = record->handle;
@@ -1615,6 +1631,8 @@ proceed:
 add:
 	*l = g_slist_append(*l, sep);
 
+	if (err)
+		*err = 0;
 	return sep;
 }
 
