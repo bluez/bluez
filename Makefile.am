@@ -52,8 +52,8 @@ include_HEADERS += $(lib_headers)
 lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) \
-			      lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
-lib_libbluetooth_la_LDFLAGS = -version-info 13:5:10
+				lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
+lib_libbluetooth_la_LDFLAGS = -version-info 14:0:11
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 
 CLEANFILES += $(local_headers)
