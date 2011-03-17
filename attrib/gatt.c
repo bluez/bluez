@@ -534,6 +534,19 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 							user_data, NULL);
 }
 
+guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
+							gpointer user_data)
+{
+	uint8_t *buf;
+	int buflen;
+	guint16 plen;
+
+	buf = g_attrib_get_buffer(attrib, &buflen);
+	plen = enc_mtu_req(mtu, buf, buflen);
+	return g_attrib_send(attrib, 0, ATT_OP_MTU_REQ, buf, plen, func,
+							user_data, NULL);
+}
+
 guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
