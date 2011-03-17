@@ -1584,7 +1584,7 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
 					OCF_READ_LOCAL_VERSION, 0, NULL);
 
-	if (!dev->pending)
+	if (!dev->pending && dev->up)
 		init_adapter(index);
 }
 
