@@ -130,11 +130,6 @@ ATT/GATT
   Priority: Medium
   Complexity: C2
 
-- GATT server: fix MTU exchange
-
-  Priority: Medium
-  Complexity: C2
-
 - Implement ATT PDU validation. Malformed PDUs can cause division by zero
   when decoding PDUs. A proper error PDU should be returned for this case.
   See decoding function in att.c file.
