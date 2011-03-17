@@ -218,6 +218,7 @@ ATT/GATT
 
   Priority: Low
   Complexity: C2
+  Owner: Anderson Lizardo <anderson.lizardo@openbossa.org>
 
 Management Interface
 ====================
