@@ -40,6 +40,8 @@
 struct _GAttrib {
 	GIOChannel *io;
 	gint refs;
+	uint8_t *buf;
+	int buflen;
 	guint read_watch;
 	guint write_watch;
 	guint timeout_watch;
@@ -192,6 +194,8 @@ static void attrib_destroy(GAttrib *attrib)
 		g_source_remove(attrib->read_watch);
 		g_io_channel_unref(attrib->io);
 	}
+
+	g_free(attrib->buf);
 
 	if (attrib->destroy)
 		attrib->destroy(attrib->destroy_user_data);
@@ -386,6 +390,7 @@ done:
 GAttrib *g_attrib_new(GIOChannel *io)
 {
 	struct _GAttrib *attrib;
+	uint16_t omtu;
 
 	g_io_channel_set_encoding(io, NULL, NULL);
 	g_io_channel_set_buffered(io, FALSE);
@@ -400,6 +405,17 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	attrib->read_watch = g_io_add_watch(attrib->io,
 			G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			received_data, attrib);
+
+	if (bt_io_get(attrib->io, BT_IO_L2CAP, NULL,
+			BT_IO_OPT_OMTU, &omtu,
+			BT_IO_OPT_INVALID)) {
+		if (omtu > ATT_MAX_MTU)
+			omtu = ATT_MAX_MTU;
+	} else
+		omtu = ATT_DEFAULT_LE_MTU;
+
+	attrib->buf = g_malloc0(omtu);
+	attrib->buflen = omtu;
 
 	return g_attrib_ref(attrib);
 }
@@ -501,6 +517,36 @@ gboolean g_attrib_cancel_all(GAttrib *attrib)
 gboolean g_attrib_set_debug(GAttrib *attrib,
 		GAttribDebugFunc func, gpointer user_data)
 {
+	return TRUE;
+}
+
+uint8_t *g_attrib_get_buffer(GAttrib *attrib, int *len)
+{
+	if (len == NULL)
+		return NULL;
+
+	*len = attrib->buflen;
+
+	return attrib->buf;
+}
+
+gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
+{
+	if (mtu < ATT_DEFAULT_LE_MTU)
+		mtu = ATT_DEFAULT_LE_MTU;
+
+	if (mtu > ATT_MAX_MTU)
+		mtu = ATT_MAX_MTU;
+
+	if (!bt_io_set(attrib->io, BT_IO_L2CAP, NULL,
+			BT_IO_OPT_OMTU, mtu,
+			BT_IO_OPT_INVALID))
+		return FALSE;
+
+	attrib->buf = g_realloc(attrib->buf, mtu);
+
+	attrib->buflen = mtu;
+
 	return TRUE;
 }
 
