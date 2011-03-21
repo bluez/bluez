@@ -415,6 +415,26 @@ static void att_read_req_dump(int level, struct frame *frm)
 	printf("handle 0x%2.2x\n", handle);
 }
 
+static void att_read_blob_req_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+	uint16_t offset = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle 0x%4.4x offset 0x%4.4x\n", handle, offset);
+}
+
+static void att_read_blob_resp_dump(int level, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("value");
+
+	while (frm->len > 0) {
+		printf(" 0x%2.2x", get_u8(frm));
+	}
+	printf("\n");
+}
+
 static void att_handle_notify_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -472,6 +492,12 @@ void att_dump(int level, struct frame *frm)
 			break;
 		case ATT_OP_READ_RESP:
 			raw_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_BLOB_REQ:
+			att_read_blob_req_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_BLOB_RESP:
+			att_read_blob_resp_dump(level + 1, frm);
 			break;
 		case ATT_OP_HANDLE_NOTIFY:
 			att_handle_notify_dump(level + 1, frm);
