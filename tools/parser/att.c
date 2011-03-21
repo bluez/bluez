@@ -435,6 +435,28 @@ static void att_read_blob_resp_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static void att_read_multi_req_dump(int level, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("Handles\n");
+
+	while (frm->len > 0) {
+		p_indent(level, frm);
+		printf("handle 0x%4.4x\n", btohs(htons(get_u16(frm))));
+	}
+}
+
+static void att_read_multi_resp_dump(int level, struct frame *frm)
+{
+	p_indent(level, frm);
+	printf("values");
+
+	while (frm->len > 0) {
+		printf(" 0x%2.2x", get_u8(frm));
+	}
+	printf("\n");
+}
+
 static void att_read_by_group_resp_dump(int level, struct frame *frm)
 {
 	uint8_t length = get_u8(frm);
@@ -521,6 +543,12 @@ void att_dump(int level, struct frame *frm)
 			break;
 		case ATT_OP_READ_BLOB_RESP:
 			att_read_blob_resp_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_MULTI_REQ:
+			att_read_multi_req_dump(level + 1, frm);
+			break;
+		case ATT_OP_READ_MULTI_RESP:
+			att_read_multi_resp_dump(level + 1, frm);
 			break;
 		case ATT_OP_READ_BY_GROUP_RESP:
 			att_read_by_group_resp_dump(level + 1, frm);
