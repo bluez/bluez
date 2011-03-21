@@ -108,6 +108,9 @@ static void media_endpoint_remove(struct media_endpoint *endpoint)
 {
 	struct media_adapter *adapter = endpoint->adapter;
 
+	if (g_slist_find(adapter->endpoints, endpoint) == NULL)
+		return;
+
 	info("Endpoint unregistered: sender=%s path=%s", endpoint->sender,
 			endpoint->path);
 

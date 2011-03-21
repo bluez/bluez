@@ -1517,6 +1517,9 @@ proceed:
 
 static void a2dp_unregister_sep(struct a2dp_sep *sep)
 {
+	if (sep->endpoint)
+		media_endpoint_release(sep->endpoint);
+
 	avdtp_unregister_sep(sep->lsep);
 	g_free(sep);
 }
@@ -1648,12 +1651,16 @@ void a2dp_remove_sep(struct a2dp_sep *sep)
 	struct a2dp_server *server = sep->server;
 
 	if (sep->type == AVDTP_SEP_TYPE_SOURCE) {
+		if (g_slist_find(server->sources, sep) == NULL)
+			return;
 		server->sources = g_slist_remove(server->sources, sep);
 		if (server->sources == NULL && server->source_record_id) {
 			remove_record_from_server(server->source_record_id);
 			server->source_record_id = 0;
 		}
 	} else {
+		if (g_slist_find(server->sinks, sep) == NULL)
+			return;
 		server->sinks = g_slist_remove(server->sinks, sep);
 		if (server->sinks == NULL && server->sink_record_id) {
 			remove_record_from_server(server->sink_record_id);
