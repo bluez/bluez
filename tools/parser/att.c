@@ -330,6 +330,35 @@ static void att_find_info_resp_dump(int level, struct frame *frm)
 	}
 }
 
+static void att_find_by_type_req_dump(int level, struct frame *frm)
+{
+	uint16_t start = btohs(htons(get_u16(frm)));
+	uint16_t end = btohs(htons(get_u16(frm)));
+	uint16_t uuid = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("start 0x%4.4x, end 0x%4.4x, uuid 0x%4.4x\n", start, end, uuid);
+
+	p_indent(level, frm);
+	printf("value");
+	while (frm->len > 0) {
+		printf(" 0x%2.2x", get_u8(frm));
+	}
+	printf("\n");
+}
+
+static void att_find_by_type_resp_dump(int level, struct frame *frm)
+{
+	while (frm->len > 0) {
+		uint16_t uuid = btohs(htons(get_u16(frm)));
+		uint16_t end = btohs(htons(get_u16(frm)));
+
+		p_indent(level, frm);
+		printf("Found attr 0x%4.4x, group end handle 0x%4.4x\n",
+								uuid, end);
+	}
+}
+
 static void att_read_by_type_req_dump(int level, struct frame *frm)
 {
 	uint16_t start = btohs(htons(get_u16(frm)));
@@ -425,6 +454,12 @@ void att_dump(int level, struct frame *frm)
 			break;
 		case ATT_OP_FIND_INFO_RESP:
 			att_find_info_resp_dump(level + 1, frm);
+			break;
+		case ATT_OP_FIND_BY_TYPE_REQ:
+			att_find_by_type_req_dump(level + 1, frm);
+			break;
+		case ATT_OP_FIND_BY_TYPE_RESP:
+			att_find_by_type_resp_dump(level + 1, frm);
 			break;
 		case ATT_OP_READ_BY_TYPE_REQ:
 			att_read_by_type_req_dump(level + 1, frm);
