@@ -341,9 +341,8 @@ static void att_find_by_type_req_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("value");
-	while (frm->len > 0) {
+	while (frm->len > 0)
 		printf(" 0x%2.2x", get_u8(frm));
-	}
 	printf("\n");
 }
 
@@ -429,9 +428,8 @@ static void att_read_blob_resp_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("value");
 
-	while (frm->len > 0) {
+	while (frm->len > 0)
 		printf(" 0x%2.2x", get_u8(frm));
-	}
 	printf("\n");
 }
 
@@ -451,9 +449,8 @@ static void att_read_multi_resp_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	printf("values");
 
-	while (frm->len > 0) {
+	while (frm->len > 0)
 		printf(" 0x%2.2x", get_u8(frm));
-	}
 	printf("\n");
 }
 
@@ -488,9 +485,8 @@ static void att_handle_notify_dump(int level, struct frame *frm)
 
 	p_indent(level, frm);
 	printf("value ");
-	while (frm->len > 0) {
+	while (frm->len > 0)
 		printf("0x%.2x ", get_u8(frm));
-	}
 	printf("\n");
 }
 
