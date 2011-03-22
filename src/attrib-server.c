@@ -167,11 +167,12 @@ static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
 {
 	/* FIXME: currently, it is assumed an encrypted link is enough for
 	 * authentication. This will allow to enable the SMP negotiation once
-	 * it is on upstream kernel. */
+	 * it is on upstream kernel. High security level should be mapped
+	 * to authentication and medium to encryption permission. */
 	if (!channel->encrypted)
 		channel->encrypted = g_attrib_is_encrypted(channel->attrib);
 	if (reqs == ATT_AUTHENTICATION && !channel->encrypted)
-		return ATT_ECODE_INSUFF_ENC;
+		return ATT_ECODE_INSUFF_AUTHEN;
 
 	switch (opcode) {
 	case ATT_OP_READ_BY_GROUP_REQ:
