@@ -2507,6 +2507,15 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 	DBG("");
 
+	/*
+	 * g_slist_free is not called after g_slist_foreach because the list is
+	 * updated using g_slist_remove in session_remove which is called by
+         * session_free, which is called for each element by g_slist_foreach.
+	 */
+	if (adapter->mode == MODE_OFF)
+		g_slist_foreach(adapter->mode_sessions, (GFunc) session_free,
+									NULL);
+
 	if (adapter->pending_mode == NULL)
 		return;
 
