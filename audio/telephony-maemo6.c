@@ -66,10 +66,6 @@ enum net_registration_status {
 	NETWORK_REG_STATUS_UNKOWN
 };
 
-/* Driver definitions */
-#define TELEPHONY_MAEMO_PATH		"/com/nokia/MaemoTelephony"
-#define TELEPHONY_MAEMO_INTERFACE	"com.nokia.MaemoTelephony"
-
 /* CSD CALL plugin D-Bus definitions */
 #define CSD_CALL_BUS_NAME	"com.nokia.csd.Call"
 #define CSD_CALL_INTERFACE	"com.nokia.csd.Call"
@@ -1922,9 +1918,6 @@ void telephony_exit(void)
 	g_slist_foreach(watches, (GFunc) remove_watch, NULL);
 	g_slist_free(watches);
 	watches = NULL;
-
-	g_dbus_unregister_interface(connection, TELEPHONY_MAEMO_PATH,
-						TELEPHONY_MAEMO_INTERFACE);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
