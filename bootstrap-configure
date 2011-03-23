@@ -29,6 +29,7 @@ fi
 		--enable-dund \
 		--enable-test \
 		--enable-cups \
+		--enable-sap \
 		--disable-pcmcia \
 		--disable-udevrules \
 		--disable-configfiles $*
