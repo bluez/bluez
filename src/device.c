@@ -1111,8 +1111,7 @@ static GSList *device_match_driver(struct btd_device *device,
 
 		/* match pattern driver */
 		match = device_match_pattern(device, *uuid, profiles);
-		for (; match; match = match->next)
-			uuids = g_slist_append(uuids, match->data);
+		uuids = g_slist_concat(uuids, match);
 	}
 
 	return uuids;
