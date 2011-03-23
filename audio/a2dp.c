@@ -1517,8 +1517,10 @@ proceed:
 
 static void a2dp_unregister_sep(struct a2dp_sep *sep)
 {
-	if (sep->endpoint)
+	if (sep->endpoint) {
 		media_endpoint_release(sep->endpoint);
+		sep->endpoint = NULL;
+	}
 
 	avdtp_unregister_sep(sep->lsep);
 	g_free(sep);
