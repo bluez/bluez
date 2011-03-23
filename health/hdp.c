@@ -1329,7 +1329,7 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 		goto update;
 
 	adapter_get_address(hdp_adapter->btd_adapter, &addr);
-	hdp_adapter->mi = mcap_create_instance(&addr, BT_IO_SEC_HIGH, 0, 0,
+	hdp_adapter->mi = mcap_create_instance(&addr, BT_IO_SEC_MEDIUM, 0, 0,
 					mcl_connected, mcl_reconnected,
 					mcl_disconnected, mcl_uncached,
 					NULL, /* CSP is not used by now */
