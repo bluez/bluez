@@ -124,6 +124,15 @@ ATT/GATT
   Priority: Medium
   Complexity: C1
 
+- At the moment authentication and authorization is not supported at the
+  same time, read/write requirements in the attribute server needs to
+  be extended. According to Bluetooth Specification a server shall check
+  authentication and authorization requirements before any other check is
+  performed.
+
+  Priority: Medium
+  Complexity: C1
+
 - ATT/GATT parsing to hcidump. Partially implemented, missing to fix
   multiple advertises in the same event and RSSI.
 
