@@ -111,7 +111,7 @@ static struct dev_info {
 	uint16_t did_version;
 
 	gboolean up;
-	unsigned long pending;
+	uint32_t pending;
 
 	GIOChannel *io;
 	guint watch_id;
