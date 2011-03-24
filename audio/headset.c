@@ -1345,6 +1345,7 @@ static gboolean sco_cb(GIOChannel *chan, GIOCondition cond,
 
 	error("Audio connection got disconnected");
 
+	pending_connect_finalize(device);
 	headset_set_state(device, HEADSET_STATE_CONNECTED);
 
 	return FALSE;
@@ -2385,6 +2386,7 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 {
 	struct headset *hs = dev->headset;
 	unsigned int id;
+	int sock;
 
 	if (hs->state == HEADSET_STATE_DISCONNECTED ||
 				hs->state == HEADSET_STATE_CONNECTING)
@@ -2395,10 +2397,12 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	headset_set_state(dev, HEADSET_STATE_CONNECTED);
+	sock = g_io_channel_unix_get_fd(hs->sco);
+
+	/* shutdown but leave the socket open and wait for hup */
+	shutdown(sock, SHUT_RDWR);
 
 	id = connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb, user_data);
-	g_idle_add((GSourceFunc) dummy_connect_complete, dev);
 
 	return id;
 }
