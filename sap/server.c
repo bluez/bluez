@@ -1001,6 +1001,13 @@ int sap_status_ind(void *sap_device, uint8_t status_change)
 	return send_message(sap_device, buf, size);
 }
 
+int sap_disconnect_ind(void *sap_device, uint8_t disc_type)
+{
+	struct sap_connection *conn = sap_device;
+
+	return disconnect_req(conn, SAP_DISCONNECTION_TYPE_IMMEDIATE);
+}
+
 static int handle_cmd(void *data, void *buf, size_t size)
 {
 	struct sap_message *msg = buf;

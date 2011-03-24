@@ -184,3 +184,4 @@ int sap_transport_protocol_rsp(void *sap_device, uint8_t result);
 
 /* Event indication. Implemented by server.c*/
 int sap_status_ind(void *sap_device, uint8_t status_change);
+int sap_disconnect_ind(void *sap_device, uint8_t disc_type);

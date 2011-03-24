@@ -260,11 +260,15 @@ static DBusMessage *max_msg_size(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *disconnect_immediate(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
+	if (sim_card_conn_status == SIM_DISCONNECTED)
+		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
+				"Already disconnected.");
+
 	sim_card_conn_status = SIM_DISCONNECTED;
-	sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_NOT_ACCESSIBLE);
+	sap_disconnect_ind(sap_data, SAP_DISCONNECTION_TYPE_IMMEDIATE);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -284,15 +288,28 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 							DBUS_TYPE_INVALID))
 		return invalid_args(msg);
 
-	if (status) {
+	switch (status) {
+	case 0: /* card removed */
+		sim_card_conn_status = SIM_MISSING;
+		sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_REMOVED);
+		break;
+
+	case 1: /* card inserted */
 		if (sim_card_conn_status == SIM_MISSING) {
 			sim_card_conn_status = SIM_CONNECTED;
 			sap_status_ind(sap_data,
 					SAP_STATUS_CHANGE_CARD_INSERTED);
 		}
-	} else {
-		sim_card_conn_status = SIM_MISSING;
-		sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_REMOVED);
+		break;
+
+	case 2: /* card not longer available*/
+		sim_card_conn_status = SIM_POWERED_OFF;
+		sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_NOT_ACCESSIBLE);
+		break;
+
+	default:
+		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
+				"Unknown card status. Use 0, 1 or 2.");
 	}
 
 	DBG("Card status changed to %d", status);
@@ -303,7 +320,7 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 static GDBusMethodTable dummy_methods[] = {
 	{ "OngoingCall", "b", "", ongoing_call},
 	{ "MaxMessageSize", "u", "", max_msg_size},
-	{ "Disconnect", "", "", disconnect},
+	{ "DisconnectImmediate", "", "", disconnect_immediate},
 	{ "CardStatus", "u", "", card_status},
 	{ }
 };
