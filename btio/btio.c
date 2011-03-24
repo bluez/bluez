@@ -1020,14 +1020,14 @@ static gboolean sco_get(int sock, GError **err, BtIOOption opt1, va_list args)
 			break;
 		case BT_IO_OPT_HANDLE:
 			if (sco_get_info(sock, &handle, dev_class) < 0) {
-				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				ERROR_FAILED(err, "SCO_CONNINFO", errno);
 				return FALSE;
 			}
 			*(va_arg(args, uint16_t *)) = handle;
 			break;
 		case BT_IO_OPT_CLASS:
 			if (sco_get_info(sock, &handle, dev_class) < 0) {
-				ERROR_FAILED(err, "RFCOMM_CONNINFO", errno);
+				ERROR_FAILED(err, "SCO_CONNINFO", errno);
 				return FALSE;
 			}
 			memcpy(va_arg(args, uint8_t *), dev_class, 3);
