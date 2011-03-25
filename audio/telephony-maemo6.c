@@ -618,6 +618,28 @@ static void remove_pending(DBusPendingCall *call)
 	pending_req_finalize(req);
 }
 
+static void last_number_call_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError err;
+	DBusMessage *reply;
+	void *telephony_device = user_data;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("csd replied with an error: %s, %s",
+				err.name, err.message);
+		dbus_error_free(&err);
+		telephony_dial_number_rsp(telephony_device,
+							CME_ERROR_AG_FAILURE);
+	} else
+		telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
+
+	dbus_message_unref(reply);
+	remove_pending(call);
+}
+
 void telephony_last_dialed_number_req(void *telephony_device)
 {
 	int ret;
@@ -626,13 +648,11 @@ void telephony_last_dialed_number_req(void *telephony_device)
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "CreateFromLast",
-				NULL, NULL,
+				last_number_call_reply, telephony_device,
 				DBUS_TYPE_INVALID);
 	if (ret < 0)
 		telephony_dial_number_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
-	else
-		telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 static const char *memory_dial_lookup(int location)
