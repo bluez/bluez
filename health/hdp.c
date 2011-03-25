@@ -514,9 +514,9 @@ static void hdp_mdl_reconn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 		reply = g_dbus_create_error(dc_data->msg,
 						ERROR_INTERFACE ".HealthError",
 						"Cannot get file descriptor");
-
-	reply = g_dbus_create_reply(dc_data->msg, DBUS_TYPE_UNIX_FD, &fd,
-							DBUS_TYPE_INVALID);
+	else
+		reply = g_dbus_create_reply(dc_data->msg, DBUS_TYPE_UNIX_FD,
+							&fd, DBUS_TYPE_INVALID);
 	g_dbus_send_message(dc_data->conn, reply);
 }
 
