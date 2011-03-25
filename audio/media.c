@@ -126,7 +126,7 @@ static void media_endpoint_remove(struct media_endpoint *endpoint)
 		media_endpoint_cancel(endpoint);
 
 	if (endpoint->transport)
-		media_transport_remove(endpoint->transport);
+		media_transport_destroy(endpoint->transport);
 
 	g_dbus_remove_watch(adapter->conn, endpoint->watch);
 	g_free(endpoint->capabilities);
@@ -665,7 +665,7 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 							DBUS_TYPE_INVALID);
 	g_dbus_send_message(conn, msg);
 done:
-	media_transport_remove(endpoint->transport);
+	media_transport_destroy(endpoint->transport);
 	endpoint->transport = NULL;
 }
 

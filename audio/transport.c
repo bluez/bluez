@@ -95,7 +95,7 @@ struct media_transport {
 					DBusMessageIter *value);
 };
 
-void media_transport_remove(struct media_transport *transport)
+void media_transport_destroy(struct media_transport *transport)
 {
 	char *path;
 
@@ -167,30 +167,35 @@ static gboolean media_transport_release(struct media_transport *transport,
 	return TRUE;
 }
 
-static void media_owner_remove(struct media_owner *owner)
+static void media_owner_free(struct media_owner *owner)
 {
-	struct media_transport *transport = owner->transport;
-
-	media_transport_release(transport, owner->accesstype);
-
-	if (owner->watch)
-		g_dbus_remove_watch(transport->conn, owner->watch);
+	DBG("Owner %s", owner->name);
 
 	if (owner->pending)
 		media_request_free(owner->pending);
 
+	g_free(owner->name);
+	g_free(owner->accesstype);
+	g_free(owner);
+}
+
+static void media_transport_remove(struct media_transport *transport,
+						struct media_owner *owner)
+{
+	DBG("Transport %s Owner %s", transport->path, owner->name);
+
+	media_transport_release(transport, owner->accesstype);
+
 	transport->owners = g_slist_remove(transport->owners, owner);
+
+	if (owner->watch)
+		g_dbus_remove_watch(transport->conn, owner->watch);
+
+	media_owner_free(owner);
 
 	/* Suspend if there is no longer any owner */
 	if (transport->owners == NULL && transport->in_use)
 		transport->suspend(transport, NULL);
-
-	DBG("Owner removed: sender=%s accesstype=%s", owner->name,
-							owner->accesstype);
-
-	g_free(owner->name);
-	g_free(owner->accesstype);
-	g_free(owner);
 }
 
 static gboolean media_transport_set_fd(struct media_transport *transport,
@@ -210,7 +215,9 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 
 static gboolean remove_owner(gpointer data)
 {
-	media_owner_remove(data);
+	struct media_owner *owner = data;
+
+	media_transport_remove(owner->transport, owner);
 
 	return FALSE;
 }
@@ -305,7 +312,7 @@ static void a2dp_suspend_complete(struct avdtp *session,
 
 	a2dp_sep_unlock(sep, transport->session);
 	transport->in_use = FALSE;
-	media_owner_remove(owner);
+	media_transport_remove(transport, owner);
 }
 
 static guint suspend_a2dp(struct media_transport *transport,
@@ -371,7 +378,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	return;
 
 fail:
-	media_owner_remove(owner);
+	media_transport_remove(transport, owner);
 }
 
 static guint resume_headset(struct media_transport *transport,
@@ -405,7 +412,7 @@ static void headset_suspend_complete(struct audio_device *dev, void *user_data)
 
 	headset_unlock(dev, HEADSET_LOCK_READ | HEADSET_LOCK_WRITE);
 	transport->in_use = FALSE;
-	media_owner_remove(owner);
+	media_transport_remove(transport, owner);
 }
 
 static guint suspend_headset(struct media_transport *transport,
@@ -436,7 +443,7 @@ static void media_owner_exit(DBusConnection *connection, void *user_data)
 	if (owner->pending != NULL)
 		media_request_free(owner->pending);
 
-	media_owner_remove(owner);
+	media_transport_remove(owner->transport, owner);
 }
 
 static gboolean media_transport_acquire(struct media_transport *transport,
@@ -474,22 +481,26 @@ static gboolean media_transport_acquire(struct media_transport *transport,
 	return TRUE;
 }
 
-static struct media_owner *media_owner_create(
-					struct media_transport *transport,
-					DBusMessage *msg,
-					const char *accesstype)
+static void media_transport_add(struct media_transport *transport,
+					struct media_owner *owner)
+{
+	DBG("Transport %s Owner %s", transport->path, owner->name);
+	transport->owners = g_slist_append(transport->owners, owner);
+	owner->transport = transport;
+}
+
+static struct media_owner *media_owner_create(DBusConnection *conn,
+						DBusMessage *msg,
+						const char *accesstype)
 {
 	struct media_owner *owner;
 
 	owner = g_new0(struct media_owner, 1);
-	owner->transport = transport;
 	owner->name = g_strdup(dbus_message_get_sender(msg));
 	owner->accesstype = g_strdup(accesstype);
-	owner->watch = g_dbus_add_disconnect_watch(transport->conn,
-							owner->name,
+	owner->watch = g_dbus_add_disconnect_watch(conn, owner->name,
 							media_owner_exit,
 							owner, NULL);
-	transport->owners = g_slist_append(transport->owners, owner);
 
 	DBG("Owner created: sender=%s accesstype=%s", owner->name,
 			accesstype);
@@ -535,11 +546,15 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	if (media_transport_acquire(transport, accesstype) == FALSE)
 		return btd_error_not_authorized(msg);
 
-	owner = media_owner_create(transport, msg, accesstype);
+	owner = media_owner_create(conn, msg, accesstype);
 	req = media_request_new(owner, msg);
 	req->id = transport->resume(transport, owner);
-	if (req->id == 0)
-		media_owner_remove(owner);
+	if (req->id == 0) {
+		media_owner_free(owner);
+		return NULL;
+	}
+
+	media_transport_add(transport, owner);
 
 	return NULL;
 }
@@ -566,7 +581,7 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 	if (g_strcmp0(owner->accesstype, accesstype) == 0) {
 		/* Not the last owner, no need to suspend */
 		if (g_slist_length(transport->owners) != 1) {
-			media_owner_remove(owner);
+			media_transport_remove(transport, owner);
 			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 		}
 
@@ -584,7 +599,7 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 		req = media_request_new(owner, msg);
 		req->id = transport->suspend(transport, owner);
 		if (req->id == 0)
-			media_owner_remove(owner);
+			media_transport_remove(transport, owner);
 
 		return NULL;
 	} else if (g_strstr_len(owner->accesstype, -1, accesstype) != NULL) {
@@ -774,9 +789,11 @@ static GDBusSignalTable transport_signals[] = {
 static void media_transport_free(void *data)
 {
 	struct media_transport *transport = data;
+	GSList *l;
 
-	g_slist_foreach(transport->owners, (GFunc) media_owner_remove,
-				NULL);
+	for (l = transport->owners; l; l = l->next)
+		media_transport_remove(transport, l->data);
+
 	g_slist_free(transport->owners);
 
 	if (transport->session)
