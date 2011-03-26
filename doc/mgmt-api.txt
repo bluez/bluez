@@ -274,6 +274,36 @@ Set Local Name Command
 	Command Parameters:	Name (249 Octets)
 	Return Paramters:	Name (249 Octets)
 
+Read Local Out Of Band Data Command
+========================================
+
+	Command Code:		0x0018
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Paramters:	Hash (16 Octets)
+				Randomizer (16 Octets)
+
+
+Add Remote Out Of Band Data Command
+========================================
+
+	Command Code:		0x0019
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Hash (16 Octets)
+				Randomizer (16 Octets)
+	Return Paramters:
+
+
+Remove Remote Out Of Band Data Command
+========================================
+
+	Command Code:		0x001A
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Paramters:
+
+
 Read Tracing Buffer Size Command
 ================================
 
