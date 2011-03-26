@@ -1,0 +1,38 @@
+BlueZ D-Bus Out Of Band Pairing API description
+===============================================
+
+Copyright (C) 2011  Szymon Janc <szymon.janc@tieto.com> for ST-Ericsson
+
+Service		org.bluez
+Interface	org.bluez.Oob
+Object path	[variable prefix]/{hci0,hci1,...}
+
+Methods		array{byte} hash, array{byte} randomizer ReadLocalOobData()
+
+			This method reads local OOB data from adapter. Return
+			value is pair of arrays 16 bytes each.
+
+			Note: This method will generate and return new local
+			OOB data.
+
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InProgress
+
+		void AddRemoteOobData(string address, array{byte} hash,
+							array{byte} randomizer)
+
+			This method adds new Out Of Band data for
+			specified address. If data for specified address
+			already exists it will be overwritten with new one.
+
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
+
+		void RemoveRemoteOobData(string address)
+
+			This method removes Out Of Band data for specified
+			address. If data for specified address does not exist
+			nothing is removed.
+
+			Possible errors: org.bluez.Error.Failed
+					 org.bluez.Error.InvalidArguments
