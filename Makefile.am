@@ -237,6 +237,11 @@ builtin_modules += maemo6
 builtin_sources += plugins/maemo6.c
 endif
 
+if DBUSOOBPLUGIN
+builtin_modules += dbusoob
+builtin_sources += plugins/dbusoob.c
+endif
+
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
