@@ -3555,6 +3555,34 @@ static int hciops_cancel_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int hciops_read_local_oob_data(int index)
+{
+	DBG("hci%d", index);
+
+	return -ENOSYS;
+}
+
+static int hciops_add_remote_oob_data(int index, bdaddr_t *bdaddr,
+					uint8_t *hash, uint8_t *randomizer)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", index, addr);
+
+	return -ENOSYS;
+}
+
+static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", index, addr);
+
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3594,6 +3622,9 @@ static struct btd_adapter_ops hci_ops = {
 	.set_io_capability = hciops_set_io_capability,
 	.create_bonding = hciops_create_bonding,
 	.cancel_bonding = hciops_cancel_bonding,
+	.read_local_oob_data = hciops_read_local_oob_data,
+	.add_remote_oob_data = hciops_add_remote_oob_data,
+	.remove_remote_oob_data = hciops_remove_remote_oob_data,
 };
 
 static int hciops_init(void)

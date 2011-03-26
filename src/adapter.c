@@ -3729,3 +3729,21 @@ int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 {
 	return adapter_ops->cancel_bonding(adapter->dev_id, bdaddr);
 }
+
+int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)
+{
+	return adapter_ops->read_local_oob_data(adapter->dev_id);
+}
+
+int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
+			bdaddr_t *bdaddr, uint8_t *hash, uint8_t *randomizer)
+{
+	return adapter_ops->add_remote_oob_data(adapter->dev_id, bdaddr, hash,
+								randomizer);
+}
+
+int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
+							bdaddr_t *bdaddr)
+{
+	return adapter_ops->remove_remote_oob_data(adapter->dev_id, bdaddr);
+}

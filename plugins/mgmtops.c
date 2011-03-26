@@ -1748,6 +1748,34 @@ static int mgmt_cancel_bonding(int index, bdaddr_t *bdaddr)
 	return -ENOSYS;
 }
 
+static int mgmt_read_local_oob_data(int index)
+{
+	DBG("hci%d", index);
+
+	return -ENOSYS;
+}
+
+static int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
+					uint8_t *hash, uint8_t *randomizer)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", index, addr);
+
+	return -ENOSYS;
+}
+
+static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
+{
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", index, addr);
+
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -1787,6 +1815,9 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_io_capability = mgmt_set_io_capability,
 	.create_bonding = mgmt_create_bonding,
 	.cancel_bonding = mgmt_cancel_bonding,
+	.read_local_oob_data = mgmt_read_local_oob_data,
+	.add_remote_oob_data = mgmt_add_remote_oob_data,
+	.remove_remote_oob_data = mgmt_remove_remote_oob_data,
 };
 
 static int mgmt_init(void)

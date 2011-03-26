@@ -237,6 +237,10 @@ struct btd_adapter_ops {
 	int (*set_io_capability) (int index, uint8_t io_capability);
 	int (*create_bonding) (int index, bdaddr_t *bdaddr, uint8_t io_cap);
 	int (*cancel_bonding) (int index, bdaddr_t *bdaddr);
+	int (*read_local_oob_data) (int index);
+	int (*add_remote_oob_data) (int index, bdaddr_t *bdaddr, uint8_t *hash,
+							uint8_t *randomizer);
+	int (*remove_remote_oob_data) (int index, bdaddr_t *bdaddr);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
@@ -288,3 +292,11 @@ int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint8_t io_cap);
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+
+int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
+
+int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
+			bdaddr_t *bdaddr, uint8_t *hash, uint8_t *randomizer);
+
+int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
+							bdaddr_t *bdaddr);
