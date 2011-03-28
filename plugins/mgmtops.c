@@ -650,6 +650,7 @@ static int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_add_uuid *cp = (void *) &buf[sizeof(*hdr)];
 	uuid_t uuid128;
+	uint128_t uint128;
 
 	DBG("index %d", index);
 
@@ -660,7 +661,9 @@ static int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	memcpy(cp->uuid, uuid128.value.uuid128.data, 16);
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp->uuid);
+
 	cp->svc_hint = svc_hint;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
@@ -675,6 +678,7 @@ static int mgmt_remove_uuid(int index, uuid_t *uuid)
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_remove_uuid *cp = (void *) &buf[sizeof(*hdr)];
 	uuid_t uuid128;
+	uint128_t uint128;
 
 	DBG("index %d", index);
 
@@ -685,7 +689,8 @@ static int mgmt_remove_uuid(int index, uuid_t *uuid)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	memcpy(cp->uuid, uuid128.value.uuid128.data, 16);
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp->uuid);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
