@@ -1317,6 +1317,7 @@ static void server_free(struct sap_server *server)
 	sap_conn_remove(server->conn);
 	g_free(server->path);
 	g_free(server);
+	server = NULL;
 }
 
 static void destroy_sap_interface(void *data)
@@ -1395,7 +1396,6 @@ server_err:
 	remove_record_from_server(server->record_id);
 sdp_err:
 	server_free(server);
-	server = NULL;
 	sap_exit();
 
 	return -1;
@@ -1419,8 +1419,6 @@ int sap_server_unregister(const char *path)
 
 	g_dbus_unregister_interface(connection, path, SAP_SERVER_INTERFACE);
 
-	server_free(server);
-	server = NULL;
 	sap_exit();
 
 	return 0;
