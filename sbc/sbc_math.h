@@ -48,7 +48,7 @@ typedef int32_t sbc_fixed_t;
 
 #define SBC_FIXED_0(val) { val = 0; }
 #define MUL(a, b)        ((a) * (b))
-#ifdef __arm__
+#if defined(__arm__) && (!defined(__thumb__) || defined(__thumb2__))
 #define MULA(a, b, res) ({				\
 		int tmp = res;			\
 		__asm__(				\

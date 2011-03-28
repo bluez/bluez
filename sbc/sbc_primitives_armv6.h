@@ -40,8 +40,8 @@
 
 #if !defined(SBC_HIGH_PRECISION) && (SCALE_OUT_BITS == 15) && \
 	defined(__GNUC__) && defined(SBC_HAVE_ARMV6) && \
-	defined(__ARM_EABI__) && !defined(__thumb__) && \
-	!defined(__ARM_NEON__)
+	defined(__ARM_EABI__) && !defined(__ARM_NEON__) && \
+	(!defined(__thumb__) || defined(__thumb2__))
 
 #define SBC_BUILD_WITH_ARMV6_SUPPORT
 
