@@ -191,6 +191,10 @@ static void media_transport_remove(struct media_transport *transport,
 
 	media_transport_release(transport, owner->accesstype);
 
+	/* Reply if owner has a pending request */
+	if (owner->pending)
+		media_request_reply(owner->pending, transport->conn, EIO);
+
 	transport->owners = g_slist_remove(transport->owners, owner);
 
 	if (owner->watch)
@@ -313,6 +317,7 @@ static void a2dp_suspend_complete(struct avdtp *session,
 	if (owner->pending) {
 		owner->pending->id = 0;
 		media_request_reply(owner->pending, transport->conn, 0);
+		media_owner_remove(owner, owner->pending);
 	}
 
 	a2dp_sep_unlock(sep, transport->session);
@@ -413,6 +418,7 @@ static void headset_suspend_complete(struct audio_device *dev, void *user_data)
 	if (owner->pending) {
 		owner->pending->id = 0;
 		media_request_reply(owner->pending, transport->conn, 0);
+		media_owner_remove(owner, owner->pending);
 	}
 
 	headset_unlock(dev, HEADSET_LOCK_READ | HEADSET_LOCK_WRITE);
