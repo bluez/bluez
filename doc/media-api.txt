@@ -35,6 +35,11 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 					Capabilities blob, it is used as it is
 					so the size and byte order must match.
 
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported - emitted
+					 when interface for the end-point is
+					 disabled.
+
 		void UnregisterEndpoint(object endpoint)
 
 			Unregister sender end point.
