@@ -1548,7 +1548,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_probe_drivers(device, uuids);
 
 	/* FIXME: Need the correct psm */
-	attrib_client_register(req->conn, device, -1, services);
+	attrib_client_register(req->conn, device, -1, req->attrib, services);
 
 	g_slist_free(uuids);
 

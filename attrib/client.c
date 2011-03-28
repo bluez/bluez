@@ -1046,7 +1046,8 @@ static void register_primaries(struct gatt_service *gatt, GSList *primaries)
 }
 
 int attrib_client_register(DBusConnection *connection,
-		struct btd_device *device, int psm, GSList *primaries)
+					struct btd_device *device, int psm,
+					GAttrib *attrib, GSList *primaries)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const char *path = device_get_path(device);
@@ -1064,6 +1065,9 @@ int attrib_client_register(DBusConnection *connection,
 	bacpy(&gatt->sba, &sba);
 	bacpy(&gatt->dba, &dba);
 	gatt->psm = psm;
+
+	if (attrib)
+		gatt->attrib = g_attrib_ref(attrib);
 
 	register_primaries(gatt, primaries);
 
