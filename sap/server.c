@@ -201,6 +201,7 @@ static sdp_record_t *create_sap_record(uint8_t channel)
 	if (!record)
 		return NULL;
 
+	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(NULL, &root_uuid);
 	sdp_set_browse_groups(record, root);
 	sdp_list_free(root, NULL);
