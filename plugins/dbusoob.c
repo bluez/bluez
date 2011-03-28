@@ -45,7 +45,7 @@
 #include "oob.h"
 
 #define REQUEST_TIMEOUT	(60 * 1000)	/* 60 seconds */
-#define OOB_INTERFACE	"org.bluez.Oob"
+#define OOB_INTERFACE	"org.bluez.OutOfBand"
 
 struct oob_request {
 	struct btd_adapter *adapter;
@@ -177,9 +177,9 @@ static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
 }
 
 static GDBusMethodTable oob_methods[] = {
-	{"AddRemoteOobData",	"sayay",	"",	add_remote_data},
-	{"RemoveRemoteOobData",	"s",		"",	remove_remote_data},
-	{"ReadLocalOobData",	"",		"ayay",	read_local_data,
+	{"AddRemoteData",	"sayay",	"",	add_remote_data},
+	{"RemoveRemoteData",	"s",		"",	remove_remote_data},
+	{"ReadLocalData",	"",		"ayay",	read_local_data,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{}
 };
