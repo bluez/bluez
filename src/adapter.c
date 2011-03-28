@@ -2185,7 +2185,7 @@ static void create_stored_device_from_primary(char *key, char *value,
 	}
 
 	/* FIXME: Need the correct psm */
-	attrib_client_register(device, -1, services);
+	attrib_client_register(connection, device, -1, services);
 
 	device_probe_drivers(device, uuids);
 
