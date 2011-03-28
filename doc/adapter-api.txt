@@ -31,15 +31,25 @@ Methods		dict GetProperties()
 
 		void RequestSession()
 
-			This method will request a client session that
-			provides operational Bluetooth. A possible mode
-			change must be confirmed by the user via the agent.
+			This method requests a client session that provides
+			operational Bluetooth. A possible mode change must be
+			confirmed by the user via the agent.
+
+			Clients may request multiple sessions. All sessions
+			are released when adapter's mode is changed to off
+			state.
 
 			Possible Errors: org.bluez.Error.Rejected
 
 		void ReleaseSession()
 
-			Release a previous requested session.
+			Release a previously requested session. It sets
+			adapter to the mode in use on the moment of session
+			request.
+
+			SetProperty method call changes adapter's mode
+			persistently, such that session release will not
+			modify it.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
 
