@@ -252,6 +252,16 @@ static gboolean finalize_resume(struct a2dp_setup *s)
 	return FALSE;
 }
 
+static gboolean finalize_resume_errno(struct a2dp_setup *s, int err)
+{
+	struct avdtp_error avdtp_err;
+
+	avdtp_error_init(&avdtp_err, AVDTP_ERRNO, -err);
+	s->err = err ? &avdtp_err : NULL;
+
+	return finalize_resume(s);
+}
+
 static gboolean finalize_suspend(struct a2dp_setup *s)
 {
 	GSList *l;
@@ -1044,11 +1054,19 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		DBG("Sink %p: Close_Ind", sep);
 	else
 		DBG("Source %p: Close_Ind", sep);
+
+	setup = find_setup_by_session(session);
+	if (!setup)
+		return TRUE;
+
+	finalize_suspend_errno(setup, -ECONNRESET);
+	finalize_resume_errno(setup, -ECONNRESET);
 
 	return TRUE;
 }
