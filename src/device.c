@@ -60,6 +60,7 @@
 #include "sdp-xml.h"
 #include "storage.h"
 #include "btio.h"
+#include "attrib/client.h"
 
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
@@ -1029,6 +1030,8 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
 	g_slist_free(device->drivers);
 	device->drivers = NULL;
+
+	attrib_client_unregister(device);
 
 	btd_device_unref(device);
 }

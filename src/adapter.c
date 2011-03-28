@@ -58,6 +58,7 @@
 #include "storage.h"
 #include "attrib-server.h"
 #include "att.h"
+#include "attrib/client.h"
 
 /* Flags Descriptions */
 #define EIR_LIM_DISC                0x01 /* LE Limited Discoverable Mode */
@@ -2182,6 +2183,9 @@ static void create_stored_device_from_primary(char *key, char *value,
 
 		device_add_primary(device, prim);
 	}
+
+	/* FIXME: Need the correct psm */
+	attrib_client_register(device, -1, services);
 
 	device_probe_drivers(device, uuids);
 

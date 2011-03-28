@@ -1044,12 +1044,11 @@ static void register_primaries(struct gatt_service *gatt, GSList *primaries)
 	}
 }
 
-int attrib_client_register(struct btd_device *device, int psm)
+int attrib_client_register(struct btd_device *device, int psm, GSList *primaries)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const char *path = device_get_path(device);
 	struct gatt_service *gatt;
-	GSList *primaries = btd_device_get_primaries(device);
 	bdaddr_t sba, dba;
 
 	adapter_get_address(adapter, &sba);
