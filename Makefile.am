@@ -89,7 +89,8 @@ endif
 endif
 
 attrib_sources = attrib/att.h attrib/att.c attrib/gatt.h attrib/gatt.c \
-		attrib/gattrib.h attrib/gattrib.c
+		attrib/gattrib.h attrib/gattrib.c attrib/client.h \
+		attrib/client.c
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
@@ -204,7 +205,6 @@ endif
 builtin_modules += attrib
 builtin_sources += attrib/main.c \
 		attrib/manager.h attrib/manager.c \
-		attrib/client.h attrib/client.c \
 		attrib/example.h attrib/example.c
 endif
 

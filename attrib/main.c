@@ -28,23 +28,13 @@
 
 #include <errno.h>
 
-#include <gdbus.h>
-
 #include "plugin.h"
 #include "manager.h"
 
-static DBusConnection *connection;
-
 static int attrib_init(void)
 {
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
+	if (attrib_manager_init() < 0)
 		return -EIO;
-
-	if (attrib_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
 
 	return 0;
 }
@@ -52,8 +42,6 @@ static int attrib_init(void)
 static void attrib_exit(void)
 {
 	attrib_manager_exit();
-
-	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(attrib, VERSION,

@@ -22,5 +22,5 @@
  *
  */
 
-int attrib_manager_init(DBusConnection *conn);
+int attrib_manager_init(void);
 void attrib_manager_exit(void);
