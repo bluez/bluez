@@ -44,7 +44,6 @@
 #include "error.h"
 #include "oob.h"
 
-#define REQUEST_TIMEOUT	(60 * 1000)	/* 60 seconds */
 #define OOB_INTERFACE	"org.bluez.OutOfBand"
 
 struct oob_request {
