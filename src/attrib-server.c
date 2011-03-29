@@ -315,7 +315,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 					ATT_ECODE_UNSUPP_GRP_TYPE, pdu, len);
 
 	last_handle = end;
-	for (l = database, groups = NULL; l; l = l->next) {
+	for (l = database, groups = NULL, cur = NULL; l; l = l->next) {
 		struct attribute *client_attr;
 
 		a = l->data;
@@ -538,6 +538,9 @@ static int find_info(uint16_t start, uint16_t end, uint8_t *pdu, int len)
 	} else if (last_type == BT_UUID128) {
 		length = 16;
 		format = 0x02;
+	} else {
+		g_slist_free(info);
+		return 0;
 	}
 
 	adl = att_data_list_alloc(num, length + 2);
