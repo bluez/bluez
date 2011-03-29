@@ -2405,22 +2405,19 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 	if (mode) {
 		if (main_opts.remember_powered == FALSE)
 			*mode = main_opts.mode;
-		else if (read_device_mode(address, str, sizeof(str)) < 0)
-			*mode = main_opts.mode;
-		else
+		else if (read_device_mode(address, str, sizeof(str)) == 0)
 			*mode = get_mode(&adapter->bdaddr, str);
+		else
+			*mode = main_opts.mode;
 	}
 
 	if (on_mode) {
-		if (main_opts.remember_powered == FALSE) {
-			if (adapter->initialized)
-				*on_mode = get_mode(&adapter->bdaddr, "on");
-			else
-				*on_mode = main_opts.mode;
-		} else if (read_on_mode(address, str, sizeof(str)) < 0)
-			*on_mode = main_opts.mode;
-		else
+		if (main_opts.remember_powered == FALSE)
+			*on_mode = get_mode(&adapter->bdaddr, "on");
+		else if (read_on_mode(address, str, sizeof(str)) == 0)
 			*on_mode = get_mode(&adapter->bdaddr, str);
+		else
+			*on_mode = main_opts.mode;
 	}
 
 	if (pairable)
