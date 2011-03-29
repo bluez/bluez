@@ -172,9 +172,9 @@ static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
 	if (!channel->encrypted)
 		channel->encrypted = g_attrib_is_encrypted(channel->attrib);
 	if (reqs == ATT_AUTHENTICATION && !channel->encrypted)
-		return ATT_ECODE_INSUFF_AUTHEN;
+		return ATT_ECODE_AUTHENTICATION;
 	else if (reqs == ATT_AUTHORIZATION)
-		return ATT_ECODE_INSUFF_AUTHO;
+		return ATT_ECODE_AUTHORIZATION;
 
 	switch (opcode) {
 	case ATT_OP_READ_BY_GROUP_REQ:

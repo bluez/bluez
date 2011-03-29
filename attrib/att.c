@@ -44,13 +44,13 @@ const char *att_ecode2str(uint8_t status)
 		return "Attribute can't be written";
 	case ATT_ECODE_INVALID_PDU:
 		return "Attribute PDU was invalid";
-	case ATT_ECODE_INSUFF_AUTHEN:
+	case ATT_ECODE_AUTHENTICATION:
 		return "Attribute requires authentication before read/write";
 	case ATT_ECODE_REQ_NOT_SUPP:
 		return "Server doesn't support the request received";
 	case ATT_ECODE_INVALID_OFFSET:
 		return "Offset past the end of the attribute";
-	case ATT_ECODE_INSUFF_AUTHO:
+	case ATT_ECODE_AUTHORIZATION:
 		return "Attribute requires authorization before read/write";
 	case ATT_ECODE_PREP_QUEUE_FULL:
 		return "Too many prepare writes have been queued";
