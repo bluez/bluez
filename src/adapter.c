@@ -1025,6 +1025,9 @@ static void adapter_emit_uuids_updated(struct btd_adapter *adapter)
 	int i;
 	sdp_list_t *list;
 
+	if (!adapter->initialized)
+		return;
+
 	uuids = g_new0(char *, sdp_list_len(adapter->services) + 1);
 
 	for (i = 0, list = adapter->services; list; list = list->next) {
