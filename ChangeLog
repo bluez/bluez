@@ -1,3 +1,19 @@
+ver 4.91:
+	Fix issue with LMP version string and hciconfig.
+	Fix issue with missing discovery signal when scanning.
+	Fix issue with wrong state and canceling name resolving.
+	Fix issue with missing check during adapter initialization.
+	Fix issue with missing protocol not supported error and A2DP.
+	Fix issue with crash during driver unregistering and A2DP.
+	Fix issue with crash when receiving AVDTP close command.
+	Fix issue with remote SEP handling when A2DP codec changes.
+	Fix issue with SCO hangup handling and state changes.
+	Fix issue with security level and MCAP instances.
+	Fix issue with memory leak and HDP data channels.
+	Add support for discover characteristics by UUID to gatttool.
+	Add initial support for Out-of-Band association model.
+	Add initial support for SIM Access Profile.
+
 ver 4.90:
 	Fix issue with setting of global mode property.
 	Fix issue with handling of RequestSession responses.
