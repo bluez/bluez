@@ -2415,10 +2415,8 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 		if (main_opts.remember_powered == FALSE) {
 			if (adapter->initialized)
 				*on_mode = get_mode(&adapter->bdaddr, "on");
-			else {
+			else
 				*on_mode = main_opts.mode;
-				adapter->initialized = TRUE;
-			}
 		} else if (read_on_mode(address, str, sizeof(str)) < 0)
 			*on_mode = main_opts.mode;
 		else
@@ -2734,6 +2732,8 @@ gboolean adapter_init(struct btd_adapter *adapter)
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
 	load_connections(adapter);
+
+	adapter->initialized = TRUE;
 
 	return TRUE;
 }
