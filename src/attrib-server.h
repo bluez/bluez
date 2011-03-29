@@ -25,6 +25,7 @@
 int attrib_server_init(void);
 void attrib_server_exit(void);
 
+uint16_t attrib_db_find_avail(uint16_t nitems);
 struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 				int write_reqs, const uint8_t *value, int len);
 int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,

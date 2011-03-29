@@ -1215,6 +1215,34 @@ void attrib_free_sdp(uint32_t sdp_handle)
 	remove_record_from_server(sdp_handle);
 }
 
+uint16_t attrib_db_find_avail(uint16_t nitems)
+{
+	uint16_t handle;
+	GSList *l;
+
+	g_assert(nitems > 0);
+
+	for (l = database, handle = 0; l; l = l->next) {
+		struct attribute *a = l->data;
+
+		if (handle && (bt_uuid_cmp(&a->uuid, &prim_uuid) == 0 ||
+				bt_uuid_cmp(&a->uuid, &snd_uuid) == 0) &&
+				a->handle - handle >= nitems)
+			/* Note: the range above excludes the current handle */
+			return handle;
+
+		if (a->handle == 0xffff)
+			return 0;
+
+		handle = a->handle + 1;
+	}
+
+	if (0xffff - handle + 1 >= nitems)
+		return handle;
+
+	return 0;
+}
+
 struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 				int write_reqs, const uint8_t *value, int len)
 {
