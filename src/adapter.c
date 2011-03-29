@@ -2827,14 +2827,15 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		break;
 	case STATE_LE_SCAN:
 		/* Scanning enabled */
-		if (adapter->disc_sessions)
+		if (adapter->disc_sessions) {
 			adapter->stop_discov_id = g_timeout_add(5120,
 								stop_scanning,
 								adapter);
 
-		/* For dual mode: don't send "Discovering = TRUE"  */
-		if (bredr_capable(adapter) == TRUE)
-			return;
+			/* For dual mode: don't send "Discovering = TRUE"  */
+			if (bredr_capable(adapter) == TRUE)
+				return;
+		}
 
 		/* LE only */
 		discov_active = TRUE;
