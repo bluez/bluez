@@ -22,22 +22,18 @@
  *
  */
 
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
 
-#include <arpa/inet.h>
-
+#include <glib.h>
 #include <bluetooth/uuid.h>
 
-#include <glib.h>
-
+#include "plugin.h"
+#include "hcid.h"
 #include "log.h"
 #include "attrib-server.h"
-
 #include "att.h"
-#include "example.h"
 
 /* FIXME: Not defined by SIG? UUID128? */
 #define OPCODES_SUPPORTED_UUID          0xA001
@@ -325,13 +321,21 @@ static int register_attributes(void)
 	return 0;
 }
 
-int server_example_init(void)
+static int gatt_example_init(void)
 {
+	if (!main_opts.attrib_server) {
+		DBG("Attribute server is disabled");
+		return -1;
+	}
+
 	return register_attributes();
 }
 
-void server_example_exit(void)
+static void gatt_example_exit(void)
 {
+	if (!main_opts.attrib_server)
+		return;
+
 	while (sdp_handles) {
 		uint32_t handle = GPOINTER_TO_UINT(sdp_handles->data);
 
@@ -339,3 +343,6 @@ void server_example_exit(void)
 		sdp_handles = g_slist_remove(sdp_handles, sdp_handles->data);
 	}
 }
+
+BLUETOOTH_PLUGIN_DEFINE(gatt_example, VERSION, BLUETOOTH_PLUGIN_PRIORITY_LOW,
+					gatt_example_init, gatt_example_exit)

@@ -18,6 +18,7 @@ fi
 		--libexecdir=/lib \
 		--enable-capng \
 		--enable-attrib \
+		--enable-gatt-example \
 		--enable-health \
 		--enable-tracer \
 		--enable-tools \

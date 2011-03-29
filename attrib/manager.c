@@ -32,18 +32,12 @@
 #include "hcid.h"
 
 #include "manager.h"
-#include "example.h"
 
 int attrib_manager_init(void)
 {
-	if (main_opts.attrib_server)
-		return server_example_init();
-
 	return 0;
 }
 
 void attrib_manager_exit(void)
 {
-	if (main_opts.attrib_server)
-		server_example_exit();
 }

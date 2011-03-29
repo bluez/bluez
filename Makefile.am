@@ -204,8 +204,12 @@ endif
 
 builtin_modules += attrib
 builtin_sources += attrib/main.c \
-		attrib/manager.h attrib/manager.c \
-		attrib/example.h attrib/example.c
+		attrib/manager.h attrib/manager.c
+endif
+
+if GATT_EXAMPLE_PLUGIN
+builtin_modules += gatt_example
+builtin_sources += plugins/gatt-example.c
 endif
 
 if HEALTHPLUGIN
