@@ -1126,6 +1126,7 @@ static void process_md_abort_mdl_req(struct mcap_mcl *mcl, void *cmd,
 	req = cmd;
 	mdl_id = ntohs(req->mdl);
 	mcl->state = MCL_CONNECTED;
+	abrt = NULL;
 	for (l = mcl->mdls; l; l = l->next) {
 		mdl = l->data;
 		if (mdl_id == mdl->mdlid && mdl->state == MDL_WAITING) {
