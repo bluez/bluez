@@ -512,7 +512,7 @@ static void att_handle_notify_dump(int level, struct frame *frm)
 	uint16_t handle = btohs(htons(get_u16(frm)));
 
 	p_indent(level, frm);
-	printf("handle 0x%2.2x\n", handle);
+	printf("handle 0x%4.4x\n", handle);
 
 	p_indent(level, frm);
 	printf("value ");
