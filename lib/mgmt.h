@@ -281,3 +281,9 @@ struct mgmt_ev_device_found {
 	int8_t rssi;
 	uint8_t eir[HCI_MAX_EIR_LENGTH];
 } __packed;
+
+#define MGMT_EV_REMOTE_NAME		0x0013
+struct mgmt_ev_remote_name {
+	bdaddr_t bdaddr;
+	uint8_t name[MGMT_MAX_NAME_LENGTH];
+} __packed;
