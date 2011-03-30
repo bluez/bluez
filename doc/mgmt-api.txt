@@ -492,3 +492,21 @@ Local Name Changed Event
 Event Code		0x0011
 Controller Index	<controller id>
 Event Parameters	Name (249 Octets)
+
+Device Found Event
+==================
+
+Event Code		0x0012
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
+			Class_Of_Device (3 Octets)
+			RSSI (1 Octet)
+			EIR_Data (240 Octets)
+
+Remote Name Event
+=================
+
+Event Code		0x0013
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
+			Name (249 Octets)
