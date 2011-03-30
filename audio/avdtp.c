@@ -1050,11 +1050,6 @@ static void avdtp_sep_set_state(struct avdtp *session,
 	old_state = sep->state;
 	sep->state = state;
 
-	for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
-		struct stream_callback *cb = l->data;
-		cb->cb(stream, old_state, state, err_ptr, cb->user_data);
-	}
-
 	switch (state) {
 	case AVDTP_STATE_CONFIGURED:
 		if (sep->info.type == AVDTP_SEP_TYPE_SINK)
@@ -1086,11 +1081,18 @@ static void avdtp_sep_set_state(struct avdtp *session,
 			handle_unanswered_req(session, stream);
 		/* Remove pending commands for this stream from the queue */
 		cleanup_queue(session, stream);
-		stream_free(stream);
 		break;
 	default:
 		break;
 	}
+
+	for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
+		struct stream_callback *cb = l->data;
+		cb->cb(stream, old_state, state, err_ptr, cb->user_data);
+	}
+
+	if (state == AVDTP_STATE_IDLE)
+		stream_free(stream);
 }
 
 static void finalize_discovery(struct avdtp *session, int err)

@@ -224,15 +224,6 @@ static gboolean media_transport_set_fd(struct media_transport *transport,
 	return TRUE;
 }
 
-static gboolean remove_owner(gpointer data)
-{
-	struct media_owner *owner = data;
-
-	media_transport_remove(owner->transport, owner);
-
-	return FALSE;
-}
-
 static void a2dp_resume_complete(struct avdtp *session,
 				struct avdtp_error *err, void *user_data)
 {
@@ -279,8 +270,7 @@ static void a2dp_resume_complete(struct avdtp *session,
 	return;
 
 fail:
-	/* Let the stream state change before removing the owner */
-	g_idle_add(remove_owner, owner);
+	media_transport_remove(transport, owner);
 }
 
 static guint resume_a2dp(struct media_transport *transport,
