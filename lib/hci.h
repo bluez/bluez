@@ -791,16 +791,18 @@ typedef struct {
 } __attribute__ ((packed)) delete_stored_link_key_rp;
 #define DELETE_STORED_LINK_KEY_RP_SIZE 3
 
+#define HCI_MAX_NAME_LENGTH		248
+
 #define OCF_CHANGE_LOCAL_NAME		0x0013
 typedef struct {
-	uint8_t		name[248];
+	uint8_t		name[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) change_local_name_cp;
 #define CHANGE_LOCAL_NAME_CP_SIZE 248
 
 #define OCF_READ_LOCAL_NAME		0x0014
 typedef struct {
 	uint8_t		status;
-	uint8_t		name[248];
+	uint8_t		name[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) read_local_name_rp;
 #define READ_LOCAL_NAME_RP_SIZE 249
 
@@ -1388,7 +1390,7 @@ typedef struct {
 	uint8_t		status;
 	uint8_t		handle;
 	uint16_t	length;
-	uint8_t		fragment[248];
+	uint8_t		fragment[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) read_local_amp_assoc_rp;
 #define READ_LOCAL_AMP_ASSOC_RP_SIZE 252
 
@@ -1397,7 +1399,7 @@ typedef struct {
 	uint8_t		handle;
 	uint16_t	length_so_far;
 	uint16_t	assoc_length;
-	uint8_t		fragment[248];
+	uint8_t		fragment[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) write_remote_amp_assoc_cp;
 #define WRITE_REMOTE_AMP_ASSOC_CP_SIZE 253
 typedef struct {
@@ -1724,7 +1726,7 @@ typedef struct {
 typedef struct {
 	uint8_t		status;
 	bdaddr_t	bdaddr;
-	uint8_t		name[248];
+	uint8_t		name[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) evt_remote_name_req_complete;
 #define EVT_REMOTE_NAME_REQ_COMPLETE_SIZE 255
 
