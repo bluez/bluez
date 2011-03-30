@@ -232,11 +232,6 @@ Management Interface
   Priority: High
   Complexity: C3
 
-- EIR generation support
-
-  Priority: High
-  Complexity: C2
-
 - Blacklist support
 
   Priority: Medium
