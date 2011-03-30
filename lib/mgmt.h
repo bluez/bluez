@@ -51,6 +51,10 @@ struct mgmt_rp_read_index_list {
 	uint16_t index[0];
 } __packed;
 
+/* Reserve one extra byte for names in management messages so that they
+ * are always guaranteed to be nul-terminated */
+#define MGMT_MAX_NAME_LENGTH		(HCI_MAX_NAME_LENGTH + 1)
+
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
 	uint8_t type;
@@ -65,7 +69,7 @@ struct mgmt_rp_read_info {
 	uint16_t manufacturer;
 	uint8_t hci_ver;
 	uint16_t hci_rev;
-	uint8_t name[249];
+	uint8_t name[MGMT_MAX_NAME_LENGTH];
 } __packed;
 
 struct mgmt_mode {
@@ -176,7 +180,7 @@ struct mgmt_rp_user_confirm_reply {
 
 #define MGMT_OP_SET_LOCAL_NAME		0x0017
 struct mgmt_cp_set_local_name {
-	uint8_t name[249];
+	uint8_t name[MGMT_MAX_NAME_LENGTH];
 } __packed;
 
 #define MGMT_OP_READ_LOCAL_OOB_DATA	0x0018
@@ -267,7 +271,7 @@ struct mgmt_ev_auth_failed {
 
 #define MGMT_EV_LOCAL_NAME_CHANGED	0x0011
 struct mgmt_ev_local_name_changed {
-	uint8_t name[249];
+	uint8_t name[MGMT_MAX_NAME_LENGTH];
 } __packed;
 
 #define MGMT_EV_DEVICE_FOUND		0x0012
