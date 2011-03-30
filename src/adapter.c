@@ -61,6 +61,9 @@
 #include "gattrib.h"
 #include "attrib/client.h"
 
+/* Interleaved discovery window: 5.12 sec */
+#define GAP_INTER_DISCOV_WIN		5120
+
 /* Flags Descriptions */
 #define EIR_LIM_DISC                0x01 /* LE Limited Discoverable Mode */
 #define EIR_GEN_DISC                0x02 /* LE General Discoverable Mode */
@@ -2836,11 +2839,12 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		if (!adapter->disc_sessions)
 			break;
 
-		/* Scanning enabled */
-		adapter->stop_discov_id = g_timeout_add(5120, stop_scanning,
+		/* Stop scanning after TGAP(100)/2 */
+		adapter->stop_discov_id = g_timeout_add(GAP_INTER_DISCOV_WIN,
+							stop_scanning,
 							adapter);
 
-		/* For dual mode: don't send "Discovering = TRUE"  */
+		/* For dual mode: don't send "Discovering = TRUE" (twice) */
 		if (bredr_capable(adapter) == TRUE)
 			return;
 
