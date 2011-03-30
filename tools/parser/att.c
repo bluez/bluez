@@ -562,6 +562,7 @@ void att_dump(int level, struct frame *frm)
 			att_read_by_group_resp_dump(level + 1, frm);
 			break;
 		case ATT_OP_WRITE_REQ:
+		case ATT_OP_WRITE_CMD:
 			att_write_req_dump(level + 1, frm);
 			break;
 		case ATT_OP_HANDLE_NOTIFY:
