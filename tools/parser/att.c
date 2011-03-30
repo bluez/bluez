@@ -523,6 +523,19 @@ static void att_prep_write_dump(int level, struct frame *frm)
 	printf("\n");
 }
 
+static void att_exec_write_req_dump(int level, struct frame *frm)
+{
+	uint8_t flags = get_u8(frm);
+
+	p_indent(level, frm);
+	if (flags == 0x00)
+		printf("cancel all prepared writes ");
+	else
+		printf("immediatelly write all pending prepared values ");
+
+	printf("(0x%2.2x)\n", flags);
+}
+
 static void att_handle_notify_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -606,6 +619,9 @@ void att_dump(int level, struct frame *frm)
 		case ATT_OP_PREP_WRITE_REQ:
 		case ATT_OP_PREP_WRITE_RESP:
 			att_prep_write_dump(level + 1, frm);
+			break;
+		case ATT_OP_EXEC_WRITE_REQ:
+			att_exec_write_req_dump(level + 1, frm);
 			break;
 		case ATT_OP_HANDLE_NOTIFY:
 			att_handle_notify_dump(level + 1, frm);
