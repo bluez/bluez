@@ -1257,6 +1257,41 @@ static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t le
 		adapter_update_local_name(adapter, (char *) ev->name);
 }
 
+static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_ev_device_found *ev = buf;
+	struct controller_info *info;
+	char addr[18];
+	uint8_t *eir;
+	uint32_t cls;
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_device_found event packet");
+		return;
+	}
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_found event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	cls = ev->dev_class[0] | (ev->dev_class[1] << 8) |
+						(ev->dev_class[2] << 16);
+
+	if (ev->eir[0] == 0)
+		eir = NULL;
+	else
+		eir = ev->eir;
+
+	ba2str(&ev->bdaddr, addr);
+	DBG("hci%u addr %s, class %u rssi %d %s", index, addr, cls,
+						ev->rssi, eir ? "eir" : "");
+
+	btd_event_device_found(&info->bdaddr, &ev->bdaddr, cls, ev->rssi, eir);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1351,6 +1386,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_LOCAL_NAME_CHANGED:
 		mgmt_local_name_changed(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_FOUND:
+		mgmt_device_found(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
