@@ -1071,18 +1071,20 @@ typedef struct {
 } __attribute__ ((packed)) write_afh_mode_rp;
 #define WRITE_AFH_MODE_RP_SIZE 1
 
+#define HCI_MAX_EIR_LENGTH		240
+
 #define OCF_READ_EXT_INQUIRY_RESPONSE	0x0051
 typedef struct {
 	uint8_t		status;
 	uint8_t		fec;
-	uint8_t		data[240];
+	uint8_t		data[HCI_MAX_EIR_LENGTH];
 } __attribute__ ((packed)) read_ext_inquiry_response_rp;
 #define READ_EXT_INQUIRY_RESPONSE_RP_SIZE 242
 
 #define OCF_WRITE_EXT_INQUIRY_RESPONSE	0x0052
 typedef struct {
 	uint8_t		fec;
-	uint8_t		data[240];
+	uint8_t		data[HCI_MAX_EIR_LENGTH];
 } __attribute__ ((packed)) write_ext_inquiry_response_cp;
 #define WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE 241
 typedef struct {
@@ -1983,7 +1985,7 @@ typedef struct {
 	uint8_t		dev_class[3];
 	uint16_t	clock_offset;
 	int8_t		rssi;
-	uint8_t		data[240];
+	uint8_t		data[HCI_MAX_EIR_LENGTH];
 } __attribute__ ((packed)) extended_inquiry_info;
 #define EXTENDED_INQUIRY_INFO_SIZE 254
 
