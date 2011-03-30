@@ -476,6 +476,18 @@ static void att_read_by_group_resp_dump(int level, struct frame *frm)
 	}
 }
 
+static void att_write_req_dump(int level, struct frame *frm)
+{
+	uint16_t handle = btohs(htons(get_u16(frm)));
+
+	p_indent(level, frm);
+	printf("handle 0x%4.4x value ", handle);
+
+	while (frm->len > 0)
+		printf(" 0x%2.2x", get_u8(frm));
+	printf("\n");
+}
+
 static void att_handle_notify_dump(int level, struct frame *frm)
 {
 	uint16_t handle = btohs(htons(get_u16(frm)));
@@ -548,6 +560,9 @@ void att_dump(int level, struct frame *frm)
 			break;
 		case ATT_OP_READ_BY_GROUP_RESP:
 			att_read_by_group_resp_dump(level + 1, frm);
+			break;
+		case ATT_OP_WRITE_REQ:
+			att_write_req_dump(level + 1, frm);
 			break;
 		case ATT_OP_HANDLE_NOTIFY:
 			att_handle_notify_dump(level + 1, frm);
