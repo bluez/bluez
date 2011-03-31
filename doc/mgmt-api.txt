@@ -525,3 +525,11 @@ Event Code		0x0013
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Name (249 Octets)
+
+
+Discovering Event
+=================
+
+Event Code		0x00014
+Controller Index	<controller id>
+Event Parameters	Discovering (1 Octet)

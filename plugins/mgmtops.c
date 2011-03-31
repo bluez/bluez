@@ -1316,6 +1316,42 @@ static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_remote_name(&info->bdaddr, &ev->bdaddr, 0, (char *) ev->name);
 }
 
+static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_mode *ev = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+	int state;
+
+	if (len < sizeof(*ev)) {
+		error("Too small discovering event");
+		return;
+	}
+
+	DBG("Controller %u discovering %u", index, ev->val);
+
+	if (index > max_index) {
+		error("Unexpected index %u in discovering event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (!adapter)
+		return;
+
+	state = adapter_get_state(adapter);
+
+	if (ev->val) {
+		if (!(state & (STATE_STDINQ | STATE_LE_SCAN | STATE_PINQ)))
+			state |= STATE_PINQ;
+	} else
+		state &= ~(STATE_STDINQ | STATE_PINQ);
+
+	adapter_set_state(adapter, state);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1416,6 +1452,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_REMOTE_NAME:
 		mgmt_remote_name(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DISCOVERING:
+		mgmt_discovering(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
