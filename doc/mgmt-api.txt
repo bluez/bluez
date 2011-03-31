@@ -303,6 +303,21 @@ Remove Remote Out Of Band Data Command
 	Command Parameters:	Address (6 Octets)
 	Return Paramters:
 
+Start Discovery Command
+=======================
+
+	Command Code:		0x0001B
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:
+
+Stop Discovery Command
+======================
+
+	Command Code:		0x0001C
+	Controller Index:	<controller id>
+	Command Parameters:
+	Return Parameters:
 
 Read Tracing Buffer Size Command
 ================================
