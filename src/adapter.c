@@ -1220,7 +1220,7 @@ static gboolean stop_scanning(gpointer user_data)
 
 static int start_discovery(struct btd_adapter *adapter)
 {
-	int err, type;
+	int type;
 
 	/* Do not start if suspended */
 	if (adapter->state & STATE_SUSPENDED)
@@ -1228,7 +1228,7 @@ static int start_discovery(struct btd_adapter *adapter)
 
 	/* Postpone discovery if still resolving names */
 	if (adapter->state & STATE_RESOLVNAME)
-		return 1;
+		return -EINPROGRESS;
 
 	pending_remote_name_cancel(adapter);
 
@@ -1237,21 +1237,30 @@ static int start_discovery(struct btd_adapter *adapter)
 	switch (type) {
 	case DISC_STDINQ:
 	case DISC_INTERLEAVE:
-		err = adapter_ops->start_inquiry(adapter->dev_id,
+		return adapter_ops->start_inquiry(adapter->dev_id,
 							0x08, FALSE);
-		break;
 	case DISC_PINQ:
-		err = adapter_ops->start_inquiry(adapter->dev_id,
+		return adapter_ops->start_inquiry(adapter->dev_id,
 							0x08, TRUE);
-		break;
 	case DISC_LE:
-		err = adapter_ops->start_scanning(adapter->dev_id);
-		break;
+		return adapter_ops->start_scanning(adapter->dev_id);
 	default:
-		err = -EINVAL;
+		return -EINVAL;
 	}
+}
 
-	return err;
+static gboolean discovery_cb(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	int err;
+
+	err = start_discovery(adapter);
+	if (err == -EINPROGRESS)
+		return TRUE;
+	else if (err < 0)
+		error("start_discovery: %s (%d)", strerror(-err), -err);
+
+	return FALSE;
 }
 
 static DBusMessage *adapter_start_discovery(DBusConnection *conn,
@@ -1282,7 +1291,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	adapter->oor_devices = NULL;
 
 	err = start_discovery(adapter);
-	if (err < 0)
+	if (err < 0 && err != -EINPROGRESS)
 		return btd_error_failed(msg, strerror(-err));
 
 done:
@@ -2879,8 +2888,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 	} else if (adapter->disc_sessions && main_opts.discov_interval)
 			adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
-						(GSourceFunc) start_discovery,
-						adapter);
+						discovery_cb, adapter);
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discovering",
