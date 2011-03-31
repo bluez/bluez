@@ -37,7 +37,7 @@
 #include <mcap.h>
 #include <btio.h>
 #include <mcap_lib.h>
-#include <l2cap.h>
+#include <bluetooth/l2cap.h>
 #include <sdpd.h>
 #include "../src/dbus-common.h"
 #include <unistd.h>

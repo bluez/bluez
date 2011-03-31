@@ -34,7 +34,7 @@
 #include <hdp.h>
 
 #include <sdpd.h>
-#include <sdp_lib.h>
+#include <bluetooth/sdp_lib.h>
 #include <glib-helper.h>
 
 #include <btio.h>
