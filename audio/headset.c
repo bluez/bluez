@@ -2397,10 +2397,16 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 		hs->dc_timer = 0;
 	}
 
-	sock = g_io_channel_unix_get_fd(hs->sco);
+	if (hs->sco) {
+		sock = g_io_channel_unix_get_fd(hs->sco);
 
-	/* shutdown but leave the socket open and wait for hup */
-	shutdown(sock, SHUT_RDWR);
+		/* shutdown but leave the socket open and wait for hup */
+		shutdown(sock, SHUT_RDWR);
+	} else {
+		headset_set_state(dev, HEADSET_STATE_CONNECTED);
+
+		g_idle_add((GSourceFunc) dummy_connect_complete, dev);
+	}
 
 	id = connect_cb_new(hs, HEADSET_STATE_CONNECTED, cb, user_data);
 
