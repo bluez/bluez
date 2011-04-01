@@ -618,7 +618,7 @@ static void remove_pending(DBusPendingCall *call)
 	pending_req_finalize(req);
 }
 
-static void last_number_call_reply(DBusPendingCall *call, void *user_data)
+static void create_call_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError err;
 	DBusMessage *reply;
@@ -648,7 +648,7 @@ void telephony_last_dialed_number_req(void *telephony_device)
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "CreateFromLast",
-				last_number_call_reply, telephony_device,
+				create_call_reply, telephony_device,
 				DBUS_TYPE_INVALID);
 	if (ret < 0)
 		telephony_dial_number_rsp(telephony_device,
@@ -687,16 +687,12 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "Create",
-				NULL, NULL,
+				create_call_reply, telephony_device,
 				DBUS_TYPE_STRING, &number,
 				DBUS_TYPE_INVALID);
-	if (ret < 0) {
+	if (ret < 0)
 		telephony_dial_number_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
-		return;
-	}
-
-	telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 }
 
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
