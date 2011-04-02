@@ -79,6 +79,7 @@ test/lmptest
 test/ipctest
 test/btiotest
 test/test-textfile
+test/uuidtest
 compat/dund
 compat/hidd
 compat/pand
