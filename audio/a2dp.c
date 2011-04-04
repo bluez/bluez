@@ -82,6 +82,7 @@ struct a2dp_setup_cb {
 	a2dp_config_cb_t config_cb;
 	a2dp_stream_cb_t resume_cb;
 	a2dp_stream_cb_t suspend_cb;
+	guint source_id;
 	void *user_data;
 	unsigned int id;
 };
@@ -196,6 +197,9 @@ static struct a2dp_setup_cb *setup_cb_new(struct a2dp_setup *setup)
 static void setup_cb_free(struct a2dp_setup_cb *cb)
 {
 	struct a2dp_setup *setup = cb->setup;
+
+	if (cb->source_id)
+		g_source_remove(cb->source_id);
 
 	setup->cb = g_slist_remove(setup->cb, cb);
 	setup_unref(cb->setup);
@@ -2120,7 +2124,8 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 	case AVDTP_STATE_STREAMING:
 		if (avdtp_stream_has_capabilities(setup->stream, caps)) {
 			DBG("Configuration match: resuming");
-			g_idle_add(finalize_config, setup);
+			cb_data->source_id = g_idle_add(finalize_config,
+								setup);
 		} else if (!setup->reconfigure) {
 			setup->reconfigure = TRUE;
 			if (avdtp_close(session, sep->stream, FALSE) < 0) {
@@ -2178,7 +2183,8 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 		if (sep->suspending)
 			setup->start = TRUE;
 		else
-			g_idle_add(finalize_resume, setup);
+			cb_data->source_id = g_idle_add(finalize_resume,
+								setup);
 		break;
 	default:
 		error("SEP in bad state for resume");
@@ -2215,7 +2221,7 @@ unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 		goto failed;
 		break;
 	case AVDTP_STATE_OPEN:
-		g_idle_add(finalize_suspend, setup);
+		cb_data->source_id = g_idle_add(finalize_suspend, setup);
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (avdtp_suspend(session, sep->stream) < 0) {
