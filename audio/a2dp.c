@@ -1011,6 +1011,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_setup *setup;
 	gboolean start;
+	int perr;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		DBG("Sink %p: Suspend_Cfm", sep);
@@ -1029,23 +1030,22 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
-		finalize_suspend(setup);
 	}
-	else
-		finalize_suspend_errno(setup, 0);
+
+	finalize_suspend(setup);
 
 	if (!start)
 		return;
 
 	if (err) {
-		setup->err = err;
-		finalize_suspend(setup);
-	} else if (avdtp_start(session, a2dp_sep->stream) < 0) {
-		struct avdtp_error start_err;
-		error("avdtp_start failed");
-		avdtp_error_init(&start_err, AVDTP_ERRNO, EIO);
-		setup->err = err;
-		finalize_suspend(setup);
+		finalize_resume(setup);
+		return;
+	}
+
+	perr = avdtp_start(session, a2dp_sep->stream);
+	if (perr < 0) {
+		error("Error on avdtp_start %s (%d)", strerror(-perr), -perr);
+		finalize_resume_errno(setup, perr);
 	}
 }
 
