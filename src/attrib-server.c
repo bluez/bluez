@@ -431,7 +431,7 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 		if (a->handle < start)
 			continue;
 
-		if (a->handle >= end)
+		if (a->handle > end)
 			break;
 
 		if (bt_uuid_cmp(&a->uuid, uuid)  != 0)
