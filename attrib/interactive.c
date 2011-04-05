@@ -315,13 +315,7 @@ static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
 
 	att_data_list_free(list);
 
-	gatt_read_char_by_uuid(attrib, char_data->start, char_data->end,
-					&char_data->uuid, char_read_by_uuid_cb,
-					char_data);
-
 	rl_forced_update_display();
-
-	return;
 
 done:
 	g_free(char_data);

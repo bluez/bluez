@@ -273,12 +273,6 @@ static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
 
 	att_data_list_free(list);
 
-	gatt_read_char_by_uuid(char_data->attrib, char_data->start,
-					char_data->end, opt_uuid,
-					char_read_by_uuid_cb,
-					char_data);
-
-	return;
 done:
 	g_free(char_data);
 	g_main_loop_quit(event_loop);
