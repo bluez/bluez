@@ -409,7 +409,7 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	if (bt_io_get(attrib->io, BT_IO_L2CAP, NULL,
 			BT_IO_OPT_OMTU, &omtu,
 			BT_IO_OPT_INVALID)) {
-		if (omtu > ATT_MAX_MTU)
+		if (omtu == 0 || omtu > ATT_MAX_MTU)
 			omtu = ATT_MAX_MTU;
 	} else
 		omtu = ATT_DEFAULT_LE_MTU;
