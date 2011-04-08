@@ -1,0 +1,80 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus.mainloop.glib
+
+def create_device_reply(device):
+	print "Pairing succeed!"
+	mainloop.quit()
+
+def create_device_error(error):
+	print "Pairing failed."
+	mainloop.quit()
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	mainloop = gobject.MainLoop()
+
+	bus = dbus.SystemBus()
+	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+							"org.bluez.Manager")
+
+	adapter0_path = manager.FindAdapter("hci0")
+	adapter1_path = manager.FindAdapter("hci1")
+
+	adapter0 = dbus.Interface(bus.get_object("org.bluez", adapter0_path),
+							"org.bluez.Adapter")
+	adapter1 = dbus.Interface(bus.get_object("org.bluez", adapter1_path),
+							"org.bluez.Adapter")
+
+	adapter0_address = adapter0.GetProperties()["Address"]
+	adapter1_address = adapter1.GetProperties()["Address"]
+	print "Adapters:"
+	print "    hci0: " + adapter0_address
+	print "    hci1: " + adapter1_address
+	print
+
+	print "Removing any existing bond..."
+
+	try:
+		device = adapter0.FindDevice(adapter1_address)
+		adapter0.RemoveDevice(device)
+	except:
+		pass
+
+	try:
+		device = adapter1.FindDevice(adapter0_address)
+		adapter1.RemoveDevice(device)
+	except:
+		pass
+
+	print "Done."
+	print
+	print "Reading local Out of Band data..."
+
+	oob_adapter0 = dbus.Interface(bus.get_object("org.bluez",
+					adapter0_path), "org.bluez.OutOfBand")
+	oob_adapter1 = dbus.Interface(bus.get_object("org.bluez",
+					adapter1_path), "org.bluez.OutOfBand")
+
+	oob0 = oob_adapter0.ReadLocalData()
+	oob1 = oob_adapter1.ReadLocalData()
+
+	print "Done."
+	print
+	print "Exchanging Out of Band data..."
+
+	oob_adapter0.AddRemoteData(adapter1_address, oob1[0], oob1[1])
+	oob_adapter1.AddRemoteData(adapter0_address, oob0[0], oob0[1])
+
+	print "Done."
+	print
+	print "Starting to pair."
+	adapter1.CreatePairedDevice(adapter0_address, "/test/agent_oob",
+					"DisplayYesNo",
+					reply_handler=create_device_reply,
+					error_handler=create_device_error)
+
+	mainloop.run()
