@@ -105,7 +105,7 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 				const char *pincode, struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	int err;
 
 	device_get_address(device, &dba);
@@ -120,8 +120,6 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 	err = btd_adapter_pincode_reply(adapter, &dba, pincode);
 	if (err < 0)
 		goto fail;
-
-	adapter_get_address(adapter, &sba);
 
 	return;
 
