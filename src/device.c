@@ -1367,6 +1367,53 @@ static void create_device_reply(struct btd_device *device, struct browse_req *re
 	g_dbus_send_message(req->conn, reply);
 }
 
+static GSList *primary_from_record(struct btd_device *device, GSList *profiles)
+{
+	GSList *l, *prim_list = NULL;
+	char *att_uuid;
+	uuid_t proto_uuid;
+
+	sdp_uuid16_create(&proto_uuid, ATT_UUID);
+	att_uuid = bt_uuid2string(&proto_uuid);
+
+	for (l = profiles; l; l = l->next) {
+		const char *profile_uuid = l->data;
+		const sdp_record_t *rec;
+		struct att_primary *prim;
+		uint16_t start = 0, end = 0, psm = 0;
+		uuid_t prim_uuid;
+
+		rec = btd_device_get_record(device, profile_uuid);
+		if (!rec)
+			continue;
+
+		if (!record_has_uuid(rec, att_uuid))
+			continue;
+
+		if (!gatt_parse_record(rec, &prim_uuid, &psm, &start, &end))
+			continue;
+
+		prim = g_new0(struct att_primary, 1);
+		prim->start = start;
+		prim->end = end;
+		sdp_uuid2strn(&prim_uuid, prim->uuid, sizeof(prim->uuid));
+
+		prim_list = g_slist_append(prim_list, prim);
+	}
+
+	g_free(att_uuid);
+
+	return prim_list;
+}
+
+static void register_primary_services(DBusConnection *conn,
+				struct btd_device *device, GSList *prim_list)
+{
+	/* TODO: PSM is hardcoded */
+	attrib_client_register(conn, device, 31, NULL, prim_list);
+	device->primaries = g_slist_concat(device->primaries, prim_list);
+}
+
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
@@ -1396,8 +1443,15 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	}
 
 	/* Probe matching drivers for services added */
-	if (req->profiles_added)
+	if (req->profiles_added) {
+		GSList *list;
+
 		device_probe_drivers(device, req->profiles_added);
+
+		list = primary_from_record(device, req->profiles_added);
+		if (list)
+			register_primary_services(req->conn, device, list);
+	}
 
 	/* Remove drivers for services removed */
 	if (req->profiles_removed)

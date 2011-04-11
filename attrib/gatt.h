@@ -21,6 +21,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+#include <bluetooth/sdp.h>
 
 #define GATT_CID 4
 
@@ -51,3 +52,7 @@ guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
 
 guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
 							gpointer user_data);
+
+gboolean gatt_parse_record(const sdp_record_t *rec,
+					uuid_t *prim_uuid, uint16_t *psm,
+					uint16_t *start, uint16_t *end);
