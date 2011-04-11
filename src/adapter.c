@@ -2176,7 +2176,7 @@ static void create_stored_device_from_primary(char *key, char *value,
 	if (l)
 		device = l->data;
 	else {
-		device = device_create(connection, adapter, key, DEVICE_TYPE_BREDR);
+		device = device_create(connection, adapter, key, DEVICE_TYPE_LE);
 		if (!device)
 			return;
 
