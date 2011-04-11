@@ -114,16 +114,6 @@ Low Energy
 ATT/GATT
 ========
 
-- For BR/EDR, primary services can be registered based on the information
-  extracted from the service records. UUIDs, start and end handles information
-  are available in the record, Discover All Primary Services procedure is not
-  necessary. If a GATT service doesn't export a service record means that
-  it should not be used over BR/EDR. Don't start this task before to move the
-  attribute client code to the bluetoothd core.
-
-  Priority: Medium
-  Complexity: C1
-
 - At the moment authentication and authorization is not supported at the
   same time, read/write requirements in the attribute server needs to
   be extended. According to Bluetooth Specification a server shall check
