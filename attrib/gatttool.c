@@ -63,62 +63,13 @@ static gboolean opt_char_write_req = FALSE;
 static gboolean opt_interactive = FALSE;
 static GMainLoop *event_loop;
 static gboolean got_error = FALSE;
+static GSourceFunc operation;
 
 struct characteristic_data {
 	GAttrib *attrib;
 	uint16_t start;
 	uint16_t end;
 };
-
-static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
-{
-	if (err) {
-		g_printerr("%s\n", err->message);
-		got_error = TRUE;
-		g_main_loop_quit(event_loop);
-	}
-}
-
-static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
-{
-	GSList *l;
-
-	if (status) {
-		g_printerr("Discover all primary services failed: %s\n",
-							att_ecode2str(status));
-		goto done;
-	}
-
-	for (l = services; l; l = l->next) {
-		struct att_primary *prim = l->data;
-		g_print("attr handle = 0x%04x, end grp handle = 0x%04x "
-			"uuid: %s\n", prim->start, prim->end, prim->uuid);
-	}
-
-done:
-	g_main_loop_quit(event_loop);
-}
-
-static void primary_by_uuid_cb(GSList *ranges, guint8 status,
-							gpointer user_data)
-{
-	GSList *l;
-
-	if (status != 0) {
-		g_printerr("Discover primary services by UUID failed: %s\n",
-							att_ecode2str(status));
-		goto done;
-	}
-
-	for (l = ranges; l; l = l->next) {
-		struct att_range *range = l->data;
-		g_print("Starting handle: %04x Ending handle: %04x\n",
-						range->start, range->end);
-	}
-
-done:
-	g_main_loop_quit(event_loop);
-}
 
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
@@ -164,6 +115,65 @@ static gboolean listen_start(gpointer user_data)
 							attrib, NULL);
 
 	return FALSE;
+}
+
+static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+{
+	GAttrib *attrib;
+
+	if (err) {
+		g_printerr("%s\n", err->message);
+		got_error = TRUE;
+		g_main_loop_quit(event_loop);
+	}
+
+	attrib = g_attrib_new(io);
+
+	if (opt_listen)
+		g_idle_add(listen_start, attrib);
+
+	operation(attrib);
+}
+
+static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
+{
+	GSList *l;
+
+	if (status) {
+		g_printerr("Discover all primary services failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+
+	for (l = services; l; l = l->next) {
+		struct att_primary *prim = l->data;
+		g_print("attr handle = 0x%04x, end grp handle = 0x%04x "
+			"uuid: %s\n", prim->start, prim->end, prim->uuid);
+	}
+
+done:
+	g_main_loop_quit(event_loop);
+}
+
+static void primary_by_uuid_cb(GSList *ranges, guint8 status,
+							gpointer user_data)
+{
+	GSList *l;
+
+	if (status != 0) {
+		g_printerr("Discover primary services by UUID failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+
+	for (l = ranges; l; l = l->next) {
+		struct att_range *range = l->data;
+		g_print("Starting handle: %04x Ending handle: %04x\n",
+						range->start, range->end);
+	}
+
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static gboolean primary(gpointer user_data)
@@ -527,9 +537,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GOptionGroup *gatt_group, *params_group, *char_rw_group;
 	GError *gerr = NULL;
-	GAttrib *attrib;
 	GIOChannel *chan;
-	GSourceFunc callback;
 
 	opt_sec_level = g_strdup("low");
 
@@ -570,17 +578,17 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_primary)
-		callback = primary;
+		operation = primary;
 	else if (opt_characteristics)
-		callback = characteristics;
+		operation = characteristics;
 	else if (opt_char_read)
-		callback = characteristics_read;
+		operation = characteristics_read;
 	else if (opt_char_write)
-		callback = characteristics_write;
+		operation = characteristics_write;
 	else if (opt_char_write_req)
-		callback = characteristics_write_req;
+		operation = characteristics_write_req;
 	else if (opt_char_desc)
-		callback = characteristics_desc;
+		operation = characteristics_desc;
 	else {
 		gchar *help = g_option_context_get_help(context, TRUE, NULL);
 		g_print("%s\n", help);
@@ -596,23 +604,11 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	attrib = g_attrib_new(chan);
-	g_io_channel_unref(chan);
-
 	event_loop = g_main_loop_new(NULL, FALSE);
-
-	if (opt_listen)
-		g_idle_add(listen_start, attrib);
-
-	g_idle_add(callback, attrib);
 
 	g_main_loop_run(event_loop);
 
-	g_attrib_unregister_all(attrib);
-
 	g_main_loop_unref(event_loop);
-
-	g_attrib_unref(attrib);
 
 done:
 	g_option_context_free(context);
