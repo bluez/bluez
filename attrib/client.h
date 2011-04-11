@@ -22,7 +22,7 @@
  *
  */
 
-int attrib_client_register(DBusConnection *connection,
+GSList *attrib_client_register(DBusConnection *connection,
 					struct btd_device *device, int psm,
 					GAttrib *attrib, GSList *primaries);
 void attrib_client_unregister(struct btd_device *device);

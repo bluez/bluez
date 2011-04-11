@@ -2336,18 +2336,11 @@ void device_set_authorizing(struct btd_device *device, gboolean auth)
 	device->authorizing = auth;
 }
 
-void btd_device_add_service(struct btd_device *device, const char *path)
-{
-	if (g_slist_find_custom(device->services, path, (GCompareFunc) strcmp))
-		return;
-
-	device->services = g_slist_append(device->services, g_strdup(path));
-}
-
 void device_register_services(DBusConnection *conn, struct btd_device *device,
 						GSList *prim_list, int psm)
 {
-	attrib_client_register(conn, device, psm, NULL, prim_list);
+	device->services = attrib_client_register(conn, device, psm, NULL,
+								prim_list);
 	device->primaries = g_slist_concat(device->primaries, prim_list);
 }
 
