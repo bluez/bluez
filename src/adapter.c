@@ -2171,18 +2171,16 @@ static void create_stored_device_from_primary(char *key, char *value,
 	struct btd_device *device;
 	GSList *services, *uuids, *l;
 
-	l = g_slist_find_custom(adapter->devices,
-				key, (GCompareFunc) device_address_cmp);
-	if (l)
-		device = l->data;
-	else {
-		device = device_create(connection, adapter, key, DEVICE_TYPE_LE);
-		if (!device)
-			return;
+	if (g_slist_find_custom(adapter->devices,
+			key, (GCompareFunc) device_address_cmp))
+		return;
 
-		device_set_temporary(device, FALSE);
-		adapter->devices = g_slist_append(adapter->devices, device);
-	}
+	device = device_create(connection, adapter, key, DEVICE_TYPE_LE);
+	if (!device)
+		return;
+
+	device_set_temporary(device, FALSE);
+	adapter->devices = g_slist_append(adapter->devices, device);
 
 	services = string_to_primary_list(value);
 	if (services == NULL)
