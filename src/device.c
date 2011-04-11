@@ -1406,14 +1406,6 @@ static GSList *primary_from_record(struct btd_device *device, GSList *profiles)
 	return prim_list;
 }
 
-static void register_primary_services(DBusConnection *conn,
-				struct btd_device *device, GSList *prim_list)
-{
-	/* TODO: PSM is hardcoded */
-	attrib_client_register(conn, device, 31, NULL, prim_list);
-	device->primaries = g_slist_concat(device->primaries, prim_list);
-}
-
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
@@ -1450,7 +1442,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		list = primary_from_record(device, req->profiles_added);
 		if (list)
-			register_primary_services(req->conn, device, list);
+			device_register_services(req->conn, device, list, 31);
 	}
 
 	/* Remove drivers for services removed */
@@ -1592,13 +1584,11 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	for (l = services; l; l = l->next) {
 		struct att_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
-		device_add_primary(device, prim);
 	}
 
 	device_probe_drivers(device, uuids);
 
-	/* FIXME: Need the correct psm */
-	attrib_client_register(req->conn, device, -1, req->attrib, services);
+	device_register_services(req->conn, device, services, -1);
 
 	g_slist_free(uuids);
 
@@ -2354,9 +2344,11 @@ void btd_device_add_service(struct btd_device *device, const char *path)
 	device->services = g_slist_append(device->services, g_strdup(path));
 }
 
-void device_add_primary(struct btd_device *device, struct att_primary *prim)
+void device_register_services(DBusConnection *conn, struct btd_device *device,
+						GSList *prim_list, int psm)
 {
-	device->primaries = g_slist_append(device->primaries, prim);
+	attrib_client_register(conn, device, psm, NULL, prim_list);
+	device->primaries = g_slist_concat(device->primaries, prim_list);
 }
 
 GSList *btd_device_get_primaries(struct btd_device *device)

@@ -58,8 +58,6 @@
 #include "storage.h"
 #include "attrib-server.h"
 #include "att.h"
-#include "gattrib.h"
-#include "attrib/client.h"
 
 /* Interleaved discovery window: 5.12 sec */
 #define GAP_INTER_DISCOV_WIN		5120
@@ -2193,16 +2191,11 @@ static void create_stored_device_from_primary(char *key, char *value,
 	for (l = services, uuids = NULL; l; l = l->next) {
 		struct att_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
-
-		device_add_primary(device, prim);
 	}
 
-	/* FIXME: Need the correct psm */
-	attrib_client_register(connection, device, -1, NULL, services);
-
 	device_probe_drivers(device, uuids);
+	device_register_services(connection, device, services, -1);
 
-	g_slist_free(services);
 	g_slist_free(uuids);
 }
 
