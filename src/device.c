@@ -1562,14 +1562,26 @@ static char *primary_list_to_string(GSList *primary_list)
 	return g_string_free(services, FALSE);
 }
 
+static void store_services(struct btd_device *device)
+{
+	struct btd_adapter *adapter = device->adapter;
+	bdaddr_t dba, sba;
+	char *str = primary_list_to_string(device->services);
+
+	adapter_get_address(adapter, &sba);
+	device_get_address(device, &dba);
+
+	write_device_type(&sba, &dba, device->type);
+	write_device_services(&sba, &dba, str);
+
+	g_free(str);
+}
+
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
-	struct btd_adapter *adapter = device->adapter;
 	GSList *l, *uuids = NULL;
-	bdaddr_t dba, sba;
-	char *str;
 
 	if (status) {
 		DBusMessage *reply;
@@ -1594,14 +1606,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	create_device_reply(device, req);
 
-	str = primary_list_to_string(services);
-
-	adapter_get_address(adapter, &sba);
-	device_get_address(device, &dba);
-
-	write_device_type(&sba, &dba, device->type);
-	write_device_services(&sba, &dba, str);
-	g_free(str);
+	store_services(device);
 
 done:
 	device->browse = NULL;
