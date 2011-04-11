@@ -58,6 +58,8 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 GSList *btd_device_get_primaries(struct btd_device *device);
 void device_register_services(DBusConnection *conn, struct btd_device *device,
 						GSList *prim_list, int psm);
+GSList *device_services_from_record(struct btd_device *device,
+							GSList *profiles);
 void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
 void device_get_address(struct btd_device *device, bdaddr_t *bdaddr);

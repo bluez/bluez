@@ -2004,7 +2004,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	GSList *uuids = bt_string2list(value);
+	GSList *list, *uuids = bt_string2list(value);
 	struct btd_device *device;
 
 	if (g_slist_find_custom(adapter->devices,
@@ -2019,6 +2019,9 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	adapter->devices = g_slist_append(adapter->devices, device);
 
 	device_probe_drivers(device, uuids);
+	list = device_services_from_record(device, uuids);
+	if (list)
+		device_register_services(connection, device, list, 31);
 
 	g_slist_foreach(uuids, (GFunc) g_free, NULL);
 	g_slist_free(uuids);

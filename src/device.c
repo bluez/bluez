@@ -1367,7 +1367,7 @@ static void create_device_reply(struct btd_device *device, struct browse_req *re
 	g_dbus_send_message(req->conn, reply);
 }
 
-static GSList *primary_from_record(struct btd_device *device, GSList *profiles)
+GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
 {
 	GSList *l, *prim_list = NULL;
 	char *att_uuid;
@@ -1440,7 +1440,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		device_probe_drivers(device, req->profiles_added);
 
-		list = primary_from_record(device, req->profiles_added);
+		list = device_services_from_record(device, req->profiles_added);
 		if (list)
 			device_register_services(req->conn, device, list, 31);
 	}
