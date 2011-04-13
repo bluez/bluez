@@ -1686,6 +1686,9 @@ void a2dp_remove_sep(struct a2dp_sep *sep)
 		}
 	}
 
+	if (sep->locked)
+		return;
+
 	a2dp_unregister_sep(sep);
 }
 
@@ -2286,13 +2289,26 @@ gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session)
 
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 {
+	struct a2dp_server *server = sep->server;
 	avdtp_state_t state;
+	GSList *l;
 
 	state = avdtp_sep_get_state(sep->lsep);
 
 	sep->locked = FALSE;
 
 	DBG("SEP %p unlocked", sep->lsep);
+
+	if (sep->type == AVDTP_SEP_TYPE_SOURCE)
+		l = server->sources;
+	else
+		l = server->sinks;
+
+	/* Unregister sep if it was removed */
+	if (g_slist_find(l, sep) == NULL) {
+		a2dp_unregister_sep(sep);
+		return TRUE;
+	}
 
 	if (!sep->stream || state == AVDTP_STATE_IDLE)
 		return TRUE;
