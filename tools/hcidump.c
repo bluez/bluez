@@ -281,9 +281,11 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 
 		cmsg = CMSG_FIRSTHDR(&msg);
 		while (cmsg) {
+			int dir;
 			switch (cmsg->cmsg_type) {
 			case HCI_CMSG_DIR:
-				memcpy(&frm.in, CMSG_DATA(cmsg), sizeof(int));
+				memcpy(&dir, CMSG_DATA(cmsg), sizeof(int));
+				frm.in = (uint8_t) dir;
 				break;
 			case HCI_CMSG_TSTAMP:
 				memcpy(&frm.ts, CMSG_DATA(cmsg),
