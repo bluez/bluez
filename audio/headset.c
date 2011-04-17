@@ -687,14 +687,17 @@ static int telephony_generic_rsp(struct audio_device *device, cme_error_t err)
 	struct headset *hs = device->headset;
 	struct headset_slc *slc = hs->slc;
 
-	if (err != CME_ERROR_NONE) {
-		if (slc->cme_enabled)
-			return headset_send(hs, "\r\n+CME ERROR: %d\r\n", err);
-		else
-			return headset_send(hs, "\r\nERROR\r\n");
-	}
+	if ((err != CME_ERROR_NONE) && slc->cme_enabled)
+		return headset_send(hs, "\r\n+CME ERROR: %d\r\n", err);
 
-	return headset_send(hs, "\r\nOK\r\n");
+	switch (err) {
+	case CME_ERROR_NONE:
+		return headset_send(hs, "\r\nOK\r\n");
+	case CME_ERROR_NO_NETWORK_SERVICE:
+		return headset_send(hs, "\r\nNO CARRIER\r\n");
+	default:
+		return headset_send(hs, "\r\nERROR\r\n");
+	}
 }
 
 int telephony_event_reporting_rsp(void *telephony_device, cme_error_t err)
