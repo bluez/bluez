@@ -2394,7 +2394,7 @@ int adapter_get_discover_type(struct btd_adapter *adapter)
 	le = le_capable(adapter);
 	bredr = bredr_capable(adapter);
 
-	if (le)
+	if (main_opts.le && le)
 		type = bredr ? DISC_INTERLEAVE : DISC_LE;
 	else
 		type = main_opts.discov_interval ? DISC_STDINQ :
