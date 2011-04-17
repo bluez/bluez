@@ -630,9 +630,14 @@ static void create_call_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_set_error_from_message(&err, reply)) {
 		error("csd replied with an error: %s, %s",
 				err.name, err.message);
-		dbus_error_free(&err);
-		telephony_dial_number_rsp(telephony_device,
+		if (g_strcmp0(err.name,
+				"com.nokia.csd.Call.Error.CSInactive") == 0)
+			telephony_dial_number_rsp(telephony_device,
+						CME_ERROR_NO_NETWORK_SERVICE);
+		else
+			telephony_dial_number_rsp(telephony_device,
 							CME_ERROR_AG_FAILURE);
+		dbus_error_free(&err);
 	} else
 		telephony_dial_number_rsp(telephony_device, CME_ERROR_NONE);
 
