@@ -93,7 +93,6 @@ struct hci_dev {
 	uint8_t  features[8];
 	uint8_t  extfeatures[8];
 
-	char     name[MAX_NAME_LENGTH + 1];
 };
 
 void btd_adapter_start(struct btd_adapter *adapter);
