@@ -2675,7 +2675,6 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 gboolean adapter_init(struct btd_adapter *adapter)
 {
-	struct hci_version ver;
 	struct hci_dev *dev;
 	int err;
 
@@ -2690,19 +2689,7 @@ gboolean adapter_init(struct btd_adapter *adapter)
 		return FALSE;
 	}
 
-	err = adapter_ops->read_local_version(adapter->dev_id, &ver);
-	if (err < 0) {
-		error("Can't read version info for hci%d: %s (%d)",
-					adapter->dev_id, strerror(-err), -err);
-		return FALSE;
-	}
-
 	dev = &adapter->dev;
-
-	dev->hci_rev = ver.hci_rev;
-	dev->lmp_ver = ver.lmp_ver;
-	dev->lmp_subver = ver.lmp_subver;
-	dev->manufacturer = ver.manufacturer;
 
 	err = adapter_ops->read_local_features(adapter->dev_id, dev->features);
 	if (err < 0) {

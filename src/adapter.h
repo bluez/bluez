@@ -92,10 +92,6 @@ struct remote_dev_info {
 struct hci_dev {
 	uint8_t  features[8];
 	uint8_t  extfeatures[8];
-	uint8_t  lmp_ver;
-	uint16_t lmp_subver;
-	uint16_t hci_rev;
-	uint16_t manufacturer;
 
 	char     name[MAX_NAME_LENGTH + 1];
 };
