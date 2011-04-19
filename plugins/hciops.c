@@ -3231,17 +3231,6 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int hciops_read_local_version(int index, struct hci_version *ver)
-{
-	struct dev_info *dev = &devs[index];
-
-	DBG("hci%d", index);
-
-	memcpy(ver, &dev->ver, sizeof(*ver));
-
-	return 0;
-}
-
 static int hciops_read_local_features(int index, uint8_t *features)
 {
 	struct dev_info *dev = &devs[index];
@@ -3696,7 +3685,6 @@ static struct btd_adapter_ops hci_ops = {
 	.block_device = hciops_block_device,
 	.unblock_device = hciops_unblock_device,
 	.get_conn_list = hciops_get_conn_list,
-	.read_local_version = hciops_read_local_version,
 	.read_local_features = hciops_read_local_features,
 	.disconnect = hciops_disconnect,
 	.remove_bonding = hciops_remove_bonding,

@@ -1706,23 +1706,6 @@ static int mgmt_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int mgmt_read_local_version(int index, struct hci_version *ver)
-{
-	struct controller_info *info = &controllers[index];
-
-	DBG("index %d", index);
-
-	if (!info->valid)
-		return -ENODEV;
-
-	memset(ver, 0, sizeof(*ver));
-	ver->manufacturer = info->manufacturer;
-	ver->hci_ver = info->hci_ver;
-	ver->hci_rev = info->hci_rev;
-
-	return 0;
-}
-
 static int mgmt_read_local_features(int index, uint8_t *features)
 {
 	struct controller_info *info = &controllers[index];
@@ -2024,7 +2007,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.block_device = mgmt_block_device,
 	.unblock_device = mgmt_unblock_device,
 	.get_conn_list = mgmt_get_conn_list,
-	.read_local_version = mgmt_read_local_version,
 	.read_local_features = mgmt_read_local_features,
 	.disconnect = mgmt_disconnect,
 	.remove_bonding = mgmt_remove_bonding,
