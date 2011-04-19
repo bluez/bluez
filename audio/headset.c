@@ -2550,8 +2550,11 @@ void headset_set_state(struct audio_device *dev, headset_state_t state)
 		emit_property_changed(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
+
+		/* Do not watch HUP since we need to know when the link is
+		   really disconnected */
 		hs->sco_id = g_io_add_watch(hs->sco,
-					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+					G_IO_ERR | G_IO_NVAL,
 					(GIOFunc) sco_cb, dev);
 
 		g_dbus_emit_signal(dev->conn, dev->path,
