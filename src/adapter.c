@@ -2623,15 +2623,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
-int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode)
-{
-	struct hci_dev *dev = &adapter->dev;
-
-	dev->ssp_mode = mode;
-
-	return 0;
-}
-
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;

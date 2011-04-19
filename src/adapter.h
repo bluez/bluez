@@ -97,7 +97,6 @@ struct hci_dev {
 	uint16_t hci_rev;
 	uint16_t manufacturer;
 
-	uint8_t  ssp_mode;
 	char     name[MAX_NAME_LENGTH + 1];
 };
 
@@ -107,8 +106,6 @@ int btd_adapter_stop(struct btd_adapter *adapter);
 
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 					uint8_t *on_mode, gboolean *pairable);
-
-int adapter_update_ssp_mode(struct btd_adapter *adapter, uint8_t mode);
 
 struct btd_device *adapter_get_device(DBusConnection *conn,
 				struct btd_adapter *adapter, const char *address);
