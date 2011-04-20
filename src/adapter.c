@@ -138,7 +138,9 @@ struct btd_adapter {
 	guint scheduler_id;		/* Scheduler handle */
 	sdp_list_t *services;		/* Services associated to adapter */
 
-	struct hci_dev dev;		/* hci info */
+	uint8_t  features[8];
+	uint8_t  extfeatures[8];
+
 	gboolean pairable;		/* pairable state */
 	gboolean initialized;
 
@@ -2366,17 +2368,13 @@ static void update_oor_devices(struct btd_adapter *adapter)
 
 static gboolean bredr_capable(struct btd_adapter *adapter)
 {
-	struct hci_dev *dev = &adapter->dev;
-
-	return (dev->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
+	return (adapter->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
 }
 
 static gboolean le_capable(struct btd_adapter *adapter)
 {
-	struct hci_dev *dev = &adapter->dev;
-
-	return (dev->features[4] & LMP_LE &&
-			dev->extfeatures[0] & LMP_HOST_LE) ? TRUE : FALSE;
+	return (adapter->features[4] & LMP_LE &&
+			adapter->extfeatures[0] & LMP_HOST_LE) ? TRUE : FALSE;
 }
 
 int adapter_get_discover_type(struct btd_adapter *adapter)
@@ -2668,7 +2666,6 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 gboolean adapter_init(struct btd_adapter *adapter)
 {
-	struct hci_dev *dev;
 	int err;
 
 	/* adapter_ops makes sure that newly registered adapters always
@@ -2682,9 +2679,8 @@ gboolean adapter_init(struct btd_adapter *adapter)
 		return FALSE;
 	}
 
-	dev = &adapter->dev;
-
-	err = adapter_ops->read_local_features(adapter->dev_id, dev->features);
+	err = adapter_ops->read_local_features(adapter->dev_id,
+							adapter->features);
 	if (err < 0) {
 		error("Can't read features for hci%d: %s (%d)",
 					adapter->dev_id, strerror(-err), -err);
@@ -3686,9 +3682,7 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
 						const uint8_t *features)
 {
-	struct hci_dev *dev = &adapter->dev;
-
-	memcpy(dev->extfeatures, features, 8);
+	memcpy(adapter->extfeatures, features, 8);
 }
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,

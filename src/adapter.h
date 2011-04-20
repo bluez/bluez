@@ -89,12 +89,6 @@ struct remote_dev_info {
 	uint8_t flags;
 };
 
-struct hci_dev {
-	uint8_t  features[8];
-	uint8_t  extfeatures[8];
-
-};
-
 void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);
