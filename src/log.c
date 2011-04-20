@@ -98,23 +98,13 @@ void __btd_log_init(const char *debug, int detach)
 {
 	int option = LOG_NDELAY | LOG_PID;
 	struct btd_debug_desc *desc;
-	const char *name = NULL, *file = NULL;
 
 	if (debug != NULL)
 		enabled = g_strsplit_set(debug, ":, ", 0);
 
-	for (desc = __start___debug; desc < __stop___debug; desc++) {
-		if (file != NULL || name != NULL) {
-			if (g_strcmp0(desc->file, file) == 0) {
-				if (desc->name == NULL)
-					desc->name = name;
-			} else
-				file = NULL;
-		}
-
+	for (desc = __start___debug; desc < __stop___debug; desc++)
 		if (is_enabled(desc))
 			desc->flags |= BTD_DEBUG_FLAG_PRINT;
-	}
 
 	if (!detach)
 		option |= LOG_PERROR;
