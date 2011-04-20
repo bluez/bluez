@@ -1318,11 +1318,6 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-struct remote_device_list_t {
-	GSList *list;
-	time_t time;
-};
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
