@@ -31,7 +31,6 @@ void __btd_log_cleanup(void);
 void __btd_toggle_debug();
 
 struct btd_debug_desc {
-	const char *name;
 	const char *file;
 #define BTD_DEBUG_FLAG_DEFAULT (0)
 #define BTD_DEBUG_FLAG_PRINT   (1 << 0)
