@@ -878,6 +878,7 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	struct avdtp_stream *stream = session->pending_open;
 	struct avdtp_local_sep *sep = stream->lsep;
 	int sk, buf_size, min_buf_size;
+	GError *err = NULL;
 
 	session->pending_open = NULL;
 
@@ -905,6 +906,15 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	/* Apply special settings only if local SEP is of type SRC */
 	if (sep->info.type != AVDTP_SEP_TYPE_SOURCE)
 		goto proceed;
+
+	bt_io_set(stream->io, BT_IO_L2CAP, &err,
+					BT_IO_OPT_FLUSHABLE, TRUE,
+					BT_IO_OPT_INVALID);
+	if (err != NULL) {
+		error("Enabling flushable packets failed: %s", err->message);
+		g_error_free(err);
+	} else
+		DBG("Flushable packets enabled");
 
 	sk = g_io_channel_unix_get_fd(stream->io);
 	buf_size = get_send_buffer_size(sk);
