@@ -877,6 +877,7 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 {
 	struct avdtp_stream *stream = session->pending_open;
 	struct avdtp_local_sep *sep = stream->lsep;
+	int sk, buf_size, min_buf_size;
 
 	session->pending_open = NULL;
 
@@ -901,22 +902,21 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	stream->omtu = omtu;
 	stream->imtu = imtu;
 
-	/* only if local SEP is of type SRC */
-	if (sep->info.type == AVDTP_SEP_TYPE_SOURCE) {
-		int sk, buf_size, min_buf_size;
+	/* Apply special settings only if local SEP is of type SRC */
+	if (sep->info.type != AVDTP_SEP_TYPE_SOURCE)
+		goto proceed;
 
-		sk = g_io_channel_unix_get_fd(stream->io);
-		buf_size = get_send_buffer_size(sk);
-		if (buf_size < 0)
-			goto proceed;
+	sk = g_io_channel_unix_get_fd(stream->io);
+	buf_size = get_send_buffer_size(sk);
+	if (buf_size < 0)
+		goto proceed;
 
-		DBG("sk %d, omtu %d, send buffer size %d", sk, omtu, buf_size);
-		min_buf_size = omtu * 2;
-		if (buf_size < min_buf_size) {
-			DBG("send buffer size to be increassed to %d",
-								min_buf_size);
-			set_send_buffer_size(sk, min_buf_size);
-		}
+	DBG("sk %d, omtu %d, send buffer size %d", sk, omtu, buf_size);
+	min_buf_size = omtu * 2;
+	if (buf_size < min_buf_size) {
+		DBG("send buffer size to be increassed to %d",
+				min_buf_size);
+		set_send_buffer_size(sk, min_buf_size);
 	}
 
 proceed:
