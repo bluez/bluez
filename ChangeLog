@@ -1,3 +1,13 @@
+ver 4.92:
+	Fix issue with handling of A2DP suspend response.
+	Fix issue with crashing when acquiring A2DP stream.
+	Fix issue with missing check for valid SCO before shutdown.
+	Fix issue with waiting for POLLERR when disconnecting SCO.
+	Fix issue with disconnect after primary service discovery.
+	Fix issue with attribute interface registration.
+	Add support for primary services over BR/EDR.
+	Add support for flushable packets of A2DP media.
+
 ver 4.91:
 	Fix issue with LMP version string and hciconfig.
 	Fix issue with missing discovery signal when scanning.
