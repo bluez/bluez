@@ -1600,7 +1600,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	device_probe_drivers(device, uuids);
 
-	device_register_services(req->conn, device, services, -1);
+	device_register_services(req->conn, device, g_slist_copy(services), -1);
 
 	g_slist_free(uuids);
 
