@@ -601,6 +601,26 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	return 0;
 }
 
+struct confirm_data {
+	int index;
+	bdaddr_t bdaddr;
+};
+
+static gboolean confirm_accept(gpointer user_data)
+{
+	struct confirm_data *data = user_data;
+	struct controller_info *info = &controllers[data->index];
+
+	DBG("auto-accepting incoming pairing request");
+
+	if (data->index > max_index || !info->valid)
+		return FALSE;
+
+	mgmt_confirm_reply(data->index, &data->bdaddr, TRUE);
+
+	return FALSE;
+}
+
 static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 								size_t len)
 {
@@ -616,11 +636,23 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 
 	ba2str(&ev->bdaddr, addr);
 
-	DBG("hci%u %s", index, addr);
+	DBG("hci%u %s confirm_hint %u", index, addr, ev->confirm_hint);
 
 	if (index > max_index) {
 		error("Unexpected index %u in user_confirm_request event",
 									index);
+		return;
+	}
+
+	if (ev->confirm_hint) {
+		struct confirm_data *data;
+
+		data = g_new0(struct confirm_data, 1);
+		data->index = index;
+		bacpy(&data->bdaddr, &ev->bdaddr);
+
+		g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1,
+						confirm_accept, data, g_free);
 		return;
 	}
 

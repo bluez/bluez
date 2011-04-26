@@ -264,6 +264,7 @@ struct mgmt_ev_pin_code_request {
 #define MGMT_EV_USER_CONFIRM_REQUEST	0x000F
 struct mgmt_ev_user_confirm_request {
 	bdaddr_t bdaddr;
+	uint8_t confirm_hint;
 	uint32_t value;
 } __packed;
 
