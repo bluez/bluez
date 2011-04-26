@@ -30,6 +30,7 @@
 #include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 
+#include "att.h"
 #include "gattrib.h"
 #include "gatt.h"
 #include "btio.h"
@@ -84,7 +85,7 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
-				BT_IO_OPT_CID, GATT_CID,
+				BT_IO_OPT_CID, ATT_CID,
 				BT_IO_OPT_OMTU, mtu,
 				BT_IO_OPT_SEC_LEVEL, sec,
 				BT_IO_OPT_INVALID);

@@ -1442,7 +1442,8 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		list = device_services_from_record(device, req->profiles_added);
 		if (list)
-			device_register_services(req->conn, device, list, 31);
+			device_register_services(req->conn, device, list,
+								ATT_PSM);
 	}
 
 	/* Remove drivers for services removed */
@@ -1660,7 +1661,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 	io = bt_io_connect(BT_IO_L2CAP, gatt_connect_cb, req, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_CID, GATT_CID,
+				BT_IO_OPT_CID, ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 

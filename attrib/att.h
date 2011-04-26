@@ -110,6 +110,9 @@
 #define ATT_DEFAULT_L2CAP_MTU			48
 #define ATT_DEFAULT_LE_MTU			23
 
+#define ATT_CID					4
+#define ATT_PSM					31
+
 /* Requirements for read/write operations */
 enum {
 	ATT_NONE,		/* No restrictions */

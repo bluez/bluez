@@ -384,7 +384,7 @@ static int l2cap_connect(struct gatt_service *gatt, GError **gerr,
 		io = bt_io_connect(BT_IO_L2CAP, connect_cb, gatt, NULL, gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &gatt->sba,
 			BT_IO_OPT_DEST_BDADDR, &gatt->dba,
-			BT_IO_OPT_CID, GATT_CID,
+			BT_IO_OPT_CID, ATT_CID,
 			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 			BT_IO_OPT_INVALID);
 	else

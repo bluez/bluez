@@ -2016,7 +2016,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	device_probe_drivers(device, uuids);
 	list = device_services_from_record(device, uuids);
 	if (list)
-		device_register_services(connection, device, list, 31);
+		device_register_services(connection, device, list, ATT_PSM);
 
 	g_slist_foreach(uuids, (GFunc) g_free, NULL);
 	g_slist_free(uuids);

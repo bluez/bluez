@@ -23,8 +23,6 @@
  */
 #include <bluetooth/sdp.h>
 
-#define GATT_CID 4
-
 typedef void (*gatt_cb_t) (GSList *l, guint8 status, gpointer user_data);
 
 guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
