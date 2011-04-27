@@ -68,7 +68,7 @@ struct vhci_device {
 	uint8_t		dev_class[3];
 	uint8_t		inq_mode;
 	uint8_t		eir_fec;
-	uint8_t		eir_data[240];
+	uint8_t		eir_data[HCI_MAX_EIR_LENGTH];
 	uint16_t	acl_cnt;
 	bdaddr_t	bdaddr;
 	int		fd;
@@ -714,14 +714,14 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	case OCF_READ_EXT_INQUIRY_RESPONSE:
 		ir.status = 0x00;
 		ir.fec = vdev.eir_fec;
-		memcpy(ir.data, vdev.eir_data, 240);
+		memcpy(ir.data, vdev.eir_data, HCI_MAX_EIR_LENGTH);
 		command_complete(ogf, ocf, sizeof(ir), &ir);
 		break;
 
 	case OCF_WRITE_EXT_INQUIRY_RESPONSE:
 		status = 0x00;
 		vdev.eir_fec = data[0];
-		memcpy(vdev.eir_data, data + 1, 240);
+		memcpy(vdev.eir_data, data + 1, HCI_MAX_EIR_LENGTH);
 		command_complete(ogf, ocf, 1, &status);
 		break;
 

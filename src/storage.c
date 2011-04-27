@@ -368,7 +368,7 @@ int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
 	int i;
 
 	memset(str, 0, sizeof(str));
-	for (i = 0; i < 240; i++)
+	for (i = 0; i < HCI_MAX_EIR_LENGTH; i++)
 		sprintf(str + (i * 2), "%2.2X", data[i]);
 
 	create_filename(filename, PATH_MAX, local, "eir");
@@ -402,7 +402,7 @@ int read_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
 		return -EIO;
 	}
 
-	for (i = 0; i < 240; i++)
+	for (i = 0; i < HCI_MAX_EIR_LENGTH; i++)
 		sscanf(str + (i * 2), "%02hhX", &data[i]);
 
 	free(str);

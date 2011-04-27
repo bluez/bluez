@@ -96,7 +96,7 @@ static struct dev_info {
 	int sk;
 	bdaddr_t bdaddr;
 	char name[249];
-	uint8_t eir[240];
+	uint8_t eir[HCI_MAX_EIR_LENGTH];
 	uint8_t features[8];
 	uint8_t ssp_mode;
 

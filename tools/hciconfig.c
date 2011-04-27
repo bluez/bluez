@@ -1252,7 +1252,7 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 	}
 
 	if (opt) {
-		uint8_t fec = 0, data[240];
+		uint8_t fec = 0, data[HCI_MAX_EIR_LENGTH];
 		char tmp[3];
 		int i, size;
 
@@ -1260,8 +1260,8 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 
 		memset(tmp, 0, sizeof(tmp));
 		size = (strlen(opt) + 1) / 2;
-		if (size > 240)
-			size = 240;
+		if (size > HCI_MAX_EIR_LENGTH)
+			size = HCI_MAX_EIR_LENGTH;
 
 		for (i = 0; i < size; i++) {
 			memcpy(tmp, opt + (i * 2), 2);
@@ -1274,7 +1274,7 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 			exit(1);
 		}
 	} else {
-		uint8_t fec, data[240], len, type, *ptr;
+		uint8_t fec, data[HCI_MAX_EIR_LENGTH], len, type, *ptr;
 		char *str;
 
 		if (hci_read_ext_inquiry_response(dd, &fec, data, 1000) < 0) {
@@ -1285,7 +1285,7 @@ static void cmd_inq_data(int ctl, int hdev, char *opt)
 
 		print_dev_hdr(&di);
 		printf("\tFEC %s\n\t\t", fec ? "enabled" : "disabled");
-		for (i = 0; i < 240; i++)
+		for (i = 0; i < HCI_MAX_EIR_LENGTH; i++)
 			printf("%02x%s%s", data[i], (i + 1) % 8 ? "" : " ",
 				(i + 1) % 16 ? " " : (i < 239 ? "\n\t\t" : "\n"));
 
