@@ -318,7 +318,8 @@ static int headset_send_valist(struct headset *hs, char *format, va_list ap)
 	return 0;
 }
 
-static int headset_send(struct headset *hs, char *format, ...)
+static int __attribute__((format(printf, 2, 3)))
+			headset_send(struct headset *hs, char *format, ...)
 {
 	va_list ap;
 	int ret;
@@ -502,7 +503,8 @@ static unsigned int connect_cb_new(struct headset *hs,
 	return cb->id;
 }
 
-static void send_foreach_headset(GSList *devices,
+static void __attribute__((format(printf, 3, 4)))
+		send_foreach_headset(GSList *devices,
 					int (*cmp) (struct headset *hs),
 					char *format, ...)
 {
