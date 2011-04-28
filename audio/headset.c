@@ -412,7 +412,7 @@ static int report_indicators(struct audio_device *device, const char *buf)
 	else
 		str = indicator_values(ag.indicators);
 
-	err = headset_send(hs, str);
+	err = headset_send(hs, "%s", str);
 
 	g_free(str);
 
@@ -906,7 +906,7 @@ static int response_and_hold(struct audio_device *device, const char *buf)
 	if (ag.rh >= 0)
 		headset_send(hs, "\r\n+BTRH: %d\r\n", ag.rh);
 
-	return headset_send(hs, "\r\nOK\r\n", ag.rh);
+	return headset_send(hs, "\r\nOK\r\n");
 }
 
 int telephony_last_dialed_number_rsp(void *telephony_device, cme_error_t err)
