@@ -49,15 +49,14 @@ static int usb_switch_csr(struct usb_dev_handle *dev, enum mode mode)
 	int err;
 
 	err = usb_control_msg(dev,
-			      USB_ENDPOINT_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
-			      0, mode, 0, NULL, 0, 10000);
+			USB_ENDPOINT_OUT | USB_TYPE_VENDOR | USB_RECIP_DEVICE,
+			0, mode, 0, NULL, 0, 10000);
 	if (err == 0) {
 		err = -1;
 		errno = EALREADY;
-	} else {
-		if (errno == ETIMEDOUT)
-			err = 0;
-	}
+	} else if (errno == ETIMEDOUT)
+		err = 0;
+
 	return err;
 }
 
