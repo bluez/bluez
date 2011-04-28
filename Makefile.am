@@ -334,7 +334,7 @@ EXTRA_DIST += audio/bluetooth.conf
 include Makefile.tools
 
 if UDEVRULES
-rulesdir = @UDEV_DATADIR@
+rulesdir = @UDEV_DIR@/rules.d
 
 udev_files = scripts/bluetooth.rules
 

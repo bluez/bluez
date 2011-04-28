@@ -84,13 +84,11 @@ AC_DEFUN([AC_INIT_BLUEZ], [
 	AC_SUBST(CONFIGDIR, "${configdir}")
 	AC_SUBST(STORAGEDIR, "${storagedir}")
 
-	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
-	if (test -z "${UDEV_DATADIR}"); then
-		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
-	else
-		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
+	UDEV_DIR="`$PKG_CONFIG --variable=udevdir udev`"
+	if (test -z "${UDEV_DIR}"); then
+		UDEV_DIR="/lib/udev"
 	fi
-	AC_SUBST(UDEV_DATADIR)
+	AC_SUBST(UDEV_DIR)
 ])
 
 AC_DEFUN([AC_PATH_DBUS], [
