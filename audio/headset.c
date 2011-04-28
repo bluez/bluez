@@ -1198,6 +1198,13 @@ static int voice_dial(struct audio_device *device, const char *buf)
 	return 0;
 }
 
+static int apple_command(struct audio_device *device, const char *buf)
+{
+	DBG("Got Apple command: %s", buf);
+
+	return telephony_generic_rsp(device, CME_ERROR_NONE);
+}
+
 static struct event event_callbacks[] = {
 	{ "ATA", answer_call },
 	{ "ATD", dial_number },
@@ -1219,6 +1226,8 @@ static struct event event_callbacks[] = {
 	{ "AT+COPS", operator_selection },
 	{ "AT+NREC", nr_and_ec },
 	{ "AT+BVRA", voice_dial },
+	{ "AT+XAPL", apple_command },
+	{ "AT+IPHONEACCEV", apple_command },
 	{ 0 }
 };
 
