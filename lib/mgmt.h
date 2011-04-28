@@ -236,6 +236,7 @@ struct mgmt_ev_controller_error {
 
 #define MGMT_EV_NEW_KEY			0x000A
 struct mgmt_ev_new_key {
+	uint8_t store_hint;
 	struct mgmt_key_info key;
 } __packed;
 

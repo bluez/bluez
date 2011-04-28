@@ -407,9 +407,10 @@ static void mgmt_new_key(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
-					ev->key.val, ev->key.type,
-					ev->key.pin_len);
+	if (ev->store_hint)
+		btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
+						ev->key.val, ev->key.type,
+						ev->key.pin_len);
 
 	btd_event_bonding_complete(&info->bdaddr, &ev->key.bdaddr, 0);
 }
