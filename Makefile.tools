@@ -102,7 +102,7 @@ endif
 if HID2HCI
 sbin_PROGRAMS += tools/hid2hci
 
-tools_hid2hci_LDADD = @USB_LIBS@
+tools_hid2hci_LDADD = @USB_LIBS@ @UDEV_LIBS@
 
 dist_man_MANS += tools/hid2hci.8
 else
