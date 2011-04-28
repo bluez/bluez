@@ -482,6 +482,7 @@ PIN Code Request Event
 Event Code		0x000E
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Secure (1 Octet)
 
 
 User Confirmation Request Event

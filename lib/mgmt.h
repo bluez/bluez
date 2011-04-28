@@ -259,6 +259,7 @@ struct mgmt_ev_connect_failed {
 #define MGMT_EV_PIN_CODE_REQUEST	0x000E
 struct mgmt_ev_pin_code_request {
 	bdaddr_t bdaddr;
+	uint8_t secure;
 } __packed;
 
 #define MGMT_EV_USER_CONFIRM_REQUEST	0x000F
