@@ -2058,7 +2058,7 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 		path = g_strdup(device->fr->path);
 	else
 		path = g_strdup("");
-	dict_append_entry(&dict, "MainChannel", DBUS_TYPE_STRING, &path);
+	dict_append_entry(&dict, "MainChannel", DBUS_TYPE_OBJECT_PATH, &path);
 	g_free(path);
 	dbus_message_iter_close_container(&iter, &dict);
 
