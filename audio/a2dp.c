@@ -775,7 +775,7 @@ static void endpoint_open_cb(struct media_endpoint *endpoint, void *ret,
 
 	if (ret == NULL) {
 		setup->stream = NULL;
-		finalize_setup_errno(setup, -EPERM, finalize_config);
+		finalize_setup_errno(setup, -EPERM, finalize_config, NULL);
 		return;
 	}
 
@@ -785,7 +785,7 @@ static void endpoint_open_cb(struct media_endpoint *endpoint, void *ret,
 
 	error("Error on avdtp_open %s (%d)", strerror(-err), -err);
 	setup->stream = NULL;
-	finalize_setup_errno(setup, err, finalize_config);
+	finalize_setup_errno(setup, err, finalize_config, NULL);
 }
 
 static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -842,7 +842,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 			return;
 
 		setup->stream = NULL;
-		finalize_setup_errno(setup, -EPERM, finalize_config);
+		finalize_setup_errno(setup, -EPERM, finalize_config, NULL);
 		return;
 	}
 
@@ -850,7 +850,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (ret < 0) {
 		error("Error on avdtp_open %s (%d)", strerror(-ret), -ret);
 		setup->stream = NULL;
-		finalize_setup_errno(setup, ret, finalize_config);
+		finalize_setup_errno(setup, ret, finalize_config, NULL);
 	}
 }
 
@@ -1043,7 +1043,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	perr = avdtp_start(session, a2dp_sep->stream);
 	if (perr < 0) {
 		error("Error on avdtp_start %s (%d)", strerror(-perr), -perr);
-		finalize_setup_errno(setup, -EIO, finalize_suspend);
+		finalize_setup_errno(setup, -EIO, finalize_suspend, NULL);
 	}
 }
 
@@ -1064,7 +1064,7 @@ static gboolean close_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		return TRUE;
 
 	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
-							finalize_resume);
+							finalize_resume, NULL);
 
 	return TRUE;
 }
@@ -1097,7 +1097,7 @@ static gboolean a2dp_reconfigure(gpointer data)
 	return FALSE;
 
 failed:
-	finalize_setup_errno(setup, posix_err, finalize_config);
+	finalize_setup_errno(setup, posix_err, finalize_config, NULL);
 	return FALSE;
 }
 
