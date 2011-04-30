@@ -1374,13 +1374,10 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	if (!adapter)
 		return;
 
-	state = adapter_get_state(adapter);
-
-	if (ev->val) {
-		if (!(state & (STATE_STDINQ | STATE_LE_SCAN | STATE_PINQ)))
-			state |= STATE_PINQ;
-	} else
-		state &= ~(STATE_STDINQ | STATE_PINQ);
+	if (ev->val)
+		state = STATE_DISCOV;
+	else
+		state = STATE_IDLE;
 
 	adapter_set_state(adapter, state);
 }

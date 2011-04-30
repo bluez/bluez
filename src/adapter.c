@@ -59,9 +59,6 @@
 #include "attrib-server.h"
 #include "att.h"
 
-/* Interleaved discovery window: 5.12 sec */
-#define GAP_INTER_DISCOV_WIN		5120
-
 /* Flags Descriptions */
 #define EIR_LIM_DISC                0x01 /* LE Limited Discoverable Mode */
 #define EIR_GEN_DISC                0x02 /* LE General Discoverable Mode */
@@ -266,11 +263,13 @@ static int pending_remote_name_cancel(struct btd_adapter *adapter)
 	if (!dev) /* no pending request */
 		return -ENODATA;
 
-	adapter->state &= ~STATE_RESOLVNAME;
 	err = adapter_ops->cancel_resolve_name(adapter->dev_id, &dev->bdaddr);
 	if (err < 0)
 		error("Remote name cancel failed: %s(%d)",
 						strerror(errno), errno);
+
+	adapter_set_state(adapter, STATE_IDLE);
+
 	return err;
 }
 
@@ -280,7 +279,7 @@ int adapter_resolve_names(struct btd_adapter *adapter)
 	int err;
 
 	/* Do not attempt to resolve more names if on suspended state */
-	if (adapter->state & STATE_SUSPENDED)
+	if (adapter->state == STATE_SUSPENDED)
 		return 0;
 
 	memset(&match, 0, sizeof(struct remote_dev_info));
@@ -715,8 +714,8 @@ static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 
 	/* Reset if suspended, otherwise remove timer (software scheduler)
 	   or request inquiry to stop */
-	if (adapter->state & STATE_SUSPENDED) {
-		adapter->state &= ~STATE_SUSPENDED;
+	if (adapter->state == STATE_SUSPENDED) {
+		adapter_set_state(adapter, STATE_IDLE);
 		return;
 	}
 
@@ -1204,23 +1203,14 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 						DEVICE_TYPE_BREDR);
 }
 
-static gboolean stop_scanning(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	adapter_ops->stop_scanning(adapter->dev_id);
-
-	return FALSE;
-}
-
 static int start_discovery(struct btd_adapter *adapter)
 {
 	/* Do not start if suspended */
-	if (adapter->state & STATE_SUSPENDED)
+	if (adapter->state == STATE_SUSPENDED)
 		return 0;
 
 	/* Postpone discovery if still resolving names */
-	if (adapter->state & STATE_RESOLVNAME)
+	if (adapter->state == STATE_RESOLVNAME)
 		return -EINPROGRESS;
 
 	pending_remote_name_cancel(adapter);
@@ -1368,7 +1358,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &adapter->pairable_timeout);
 
 
-	if (adapter->state & (STATE_PINQ | STATE_STDINQ | STATE_LE_SCAN))
+	if (adapter->state == STATE_DISCOV)
 		value = TRUE;
 	else
 		value = FALSE;
@@ -2761,80 +2751,76 @@ void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	bacpy(bdaddr, &adapter->bdaddr);
 }
 
+static inline void suspend_discovery(struct btd_adapter *adapter)
+{
+	if (adapter->state != STATE_SUSPENDED)
+		return;
+
+	if (adapter->oor_devices) {
+		g_slist_free(adapter->oor_devices);
+		adapter->oor_devices = NULL;
+	}
+
+	if (adapter->scheduler_id) {
+		g_source_remove(adapter->scheduler_id);
+		adapter->scheduler_id = 0;
+	}
+
+	adapter_ops->stop_discovery(adapter->dev_id);
+}
+
+static inline void resolve_names(struct btd_adapter *adapter)
+{
+	int err;
+
+	if (adapter->state != STATE_RESOLVNAME)
+		return;
+
+	err = adapter_resolve_names(adapter);
+	if (err < 0)
+		adapter_set_state(adapter, STATE_IDLE);
+}
+
 void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	const char *path = adapter->path;
 	gboolean discov_active;
-	int previous, type;
 
 	if (adapter->state == state)
 		return;
 
-	previous = adapter->state;
 	adapter->state = state;
 
-	type = adapter_get_discover_type(adapter);
+	DBG("hci%d: new state %d", adapter->dev_id, adapter->state);
 
-	switch (state) {
-	case STATE_STDINQ:
-	case STATE_PINQ:
-		discov_active = TRUE;
-
-		/* Started a new session while resolving names ? */
-		if (previous & STATE_RESOLVNAME)
-			return;
-		break;
-	case STATE_LE_SCAN:
-		discov_active = TRUE;
-
-		if (!adapter->disc_sessions)
-			break;
-
-		/* Stop scanning after TGAP(100)/2 */
-		adapter->stop_discov_id = g_timeout_add(GAP_INTER_DISCOV_WIN,
-							stop_scanning,
-							adapter);
-
-		/* For dual mode: don't send "Discovering = TRUE" (twice) */
-		if (bredr_capable(adapter) == TRUE)
-			return;
-
-		break;
+	switch (adapter->state) {
 	case STATE_IDLE:
-		/*
-		 * Interleave: from inquiry to scanning. Interleave is not
-		 * applicable to requests triggered by external applications.
-		 */
-		if (adapter->disc_sessions && (type & DISC_INTERLEAVE) &&
-						(previous & STATE_STDINQ)) {
-			adapter_ops->start_scanning(adapter->dev_id, 0);
-			return;
-		}
-		/* BR/EDR only: inquiry finished */
-		discov_active = FALSE;
-		break;
-	default:
-		discov_active = FALSE;
-		break;
-	}
-
-	if (discov_active == FALSE) {
-		if (type & DISC_RESOLVNAME) {
-			if (adapter_resolve_names(adapter) == 0) {
-				adapter->state |= STATE_RESOLVNAME;
-				return;
-			}
-		}
-
 		update_oor_devices(adapter);
-	} else if (adapter->disc_sessions && main_opts.discov_interval)
+
+		discov_active = FALSE;
+		emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Discovering",
+					DBUS_TYPE_BOOLEAN, &discov_active);
+
+		if (adapter_has_discov_sessions(adapter)) {
 			adapter->scheduler_id = g_timeout_add_seconds(
 						main_opts.discov_interval,
 						discovery_cb, adapter);
-
-	emit_property_changed(connection, path,
-				ADAPTER_INTERFACE, "Discovering",
-				DBUS_TYPE_BOOLEAN, &discov_active);
+		}
+		break;
+	case STATE_DISCOV:
+		discov_active = TRUE;
+		emit_property_changed(connection, path,
+					ADAPTER_INTERFACE, "Discovering",
+					DBUS_TYPE_BOOLEAN, &discov_active);
+		break;
+	case STATE_RESOLVNAME:
+		resolve_names(adapter);
+		break;
+	case STATE_SUSPENDED:
+		suspend_discovery(adapter);
+		break;
+	}
 }
 
 int adapter_get_state(struct btd_adapter *adapter)
@@ -3274,24 +3260,19 @@ gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
 void adapter_suspend_discovery(struct btd_adapter *adapter)
 {
 	if (adapter->disc_sessions == NULL ||
-			adapter->state & STATE_SUSPENDED)
+			adapter->state == STATE_SUSPENDED)
 		return;
 
 	DBG("Suspending discovery");
 
-	stop_discovery(adapter, TRUE);
-	adapter->state |= STATE_SUSPENDED;
+	adapter_set_state(adapter, STATE_SUSPENDED);
 }
 
 void adapter_resume_discovery(struct btd_adapter *adapter)
 {
-	if (adapter->disc_sessions == NULL)
-		return;
-
 	DBG("Resuming discovery");
 
-	adapter->state &= ~STATE_SUSPENDED;
-	start_discovery(adapter);
+	adapter_set_state(adapter, STATE_IDLE);
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)

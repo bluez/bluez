@@ -559,7 +559,6 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
 {
 	struct btd_adapter *adapter;
 	char srcaddr[18], dstaddr[18];
-	int state;
 	struct btd_device *device;
 	struct remote_dev_info match, *dev_info;
 
@@ -604,9 +603,7 @@ proceed:
 	if (adapter_resolve_names(adapter) == 0)
 		return;
 
-	state = adapter_get_state(adapter);
-	state &= ~STATE_RESOLVNAME;
-	adapter_set_state(adapter, state);
+	adapter_set_state(adapter, STATE_IDLE);
 }
 
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,

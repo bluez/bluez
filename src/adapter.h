@@ -37,12 +37,10 @@
 #define MODE_UNKNOWN		0xff
 
 /* Discover states */
-#define STATE_IDLE		0x00
-#define STATE_LE_SCAN		0x01
-#define STATE_STDINQ		0x02
-#define STATE_PINQ		0x04
-#define STATE_RESOLVNAME	0x08
-#define STATE_SUSPENDED		0x10
+#define STATE_IDLE		0
+#define STATE_DISCOV		1
+#define STATE_RESOLVNAME	2
+#define STATE_SUSPENDED		3
 
 /* Supported host/controller discover type */
 #define DISC_LE			0x01
