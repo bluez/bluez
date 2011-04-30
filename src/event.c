@@ -690,33 +690,6 @@ void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 
 /* Section reserved to device HCI callbacks */
 
-void btd_event_le_set_scan_enable_complete(bdaddr_t *local, uint8_t status)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	if (status) {
-		error("Can't enable/disable LE scan");
-		return;
-	}
-
-	state = adapter_get_state(adapter);
-
-	/* Enabling or disabling ? */
-	if (state & STATE_LE_SCAN)
-		state &= ~STATE_LE_SCAN;
-	else
-		state |= STATE_LE_SCAN;
-
-	adapter_set_state(adapter, state);
-}
-
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
