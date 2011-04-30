@@ -2807,7 +2807,7 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		 */
 		if (adapter->disc_sessions && (type & DISC_INTERLEAVE) &&
 						(previous & STATE_STDINQ)) {
-			adapter_ops->start_scanning(adapter->dev_id);
+			adapter_ops->start_scanning(adapter->dev_id, 0);
 			return;
 		}
 		/* BR/EDR only: inquiry finished */

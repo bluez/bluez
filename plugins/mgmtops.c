@@ -1632,7 +1632,7 @@ static int mgmt_stop_inquiry(int index)
 	return 0;
 }
 
-static int mgmt_start_scanning(int index)
+static int mgmt_start_scanning(int index, int timeout)
 {
 	DBG("index %d", index);
 	return -ENOSYS;

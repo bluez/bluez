@@ -139,6 +139,8 @@ static struct dev_info {
 	GSList *uuids;
 
 	GSList *connections;
+
+	guint stop_scan_id;
 } *devs = NULL;
 
 static inline int get_state(int index)
@@ -2303,6 +2305,9 @@ static void stop_hci_dev(int index)
 	if (dev->watch_id > 0)
 		g_source_remove(dev->watch_id);
 
+	if (dev->stop_scan_id > 0)
+		g_source_remove(dev->stop_scan_id);
+
 	if (dev->io != NULL)
 		g_io_channel_unref(dev->io);
 
@@ -3031,10 +3036,25 @@ static int le_set_scan_enable(int index, uint8_t enable)
 	return 0;
 }
 
-static int hciops_start_scanning(int index)
+static gboolean stop_le_scan_cb(gpointer user_data)
+{
+	struct dev_info *dev = user_data;
+	int err;
+
+	err = le_set_scan_enable(dev->id, 0);
+	if (err < 0)
+		return TRUE;
+
+	dev->stop_scan_id = 0;
+
+	return FALSE;
+}
+
+static int hciops_start_scanning(int index, int timeout)
 {
 	struct dev_info *dev = &devs[index];
 	le_set_scan_parameters_cp cp;
+	int err;
 
 	DBG("hci%d", index);
 
@@ -3051,12 +3071,26 @@ static int hciops_start_scanning(int index)
 				LE_SET_SCAN_PARAMETERS_CP_SIZE, &cp) < 0)
 		return -errno;
 
-	return le_set_scan_enable(index, 1);
+	err = le_set_scan_enable(index, 1);
+	if (err < 0)
+		return err;
+
+	/* Schedule a le scan disable in 'timeout' milliseconds */
+	dev->stop_scan_id = g_timeout_add(timeout, stop_le_scan_cb, dev);
+
+	return 0;
 }
 
 static int hciops_stop_scanning(int index)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("hci%d", index);
+
+	if (dev->stop_scan_id > 0) {
+		g_source_remove(dev->stop_scan_id);
+		dev->stop_scan_id = 0;
+	}
 
 	return le_set_scan_enable(index, 0);
 }
