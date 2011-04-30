@@ -3247,8 +3247,18 @@ static int hciops_start_discovery(int index)
 
 static int hciops_stop_discovery(int index)
 {
+	struct dev_info *dev = &devs[index];
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	switch (dev->discov_state) {
+	case DISCOV_INQ:
+		return hciops_stop_inquiry(index);
+	case DISCOV_SCAN:
+		return hciops_stop_scanning(index);
+	default:
+		return -EINVAL;
+	}
 }
 
 static int hciops_fast_connectable(int index, gboolean enable)
