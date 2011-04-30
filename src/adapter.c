@@ -726,10 +726,7 @@ static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
 		return;
 	}
 
-	if (adapter->state & STATE_LE_SCAN)
-		adapter_ops->stop_scanning(adapter->dev_id);
-	else
-		adapter_ops->stop_inquiry(adapter->dev_id);
+	adapter_ops->stop_discovery(adapter->dev_id);
 }
 
 static void session_remove(struct session_req *req)
@@ -1218,8 +1215,6 @@ static gboolean stop_scanning(gpointer user_data)
 
 static int start_discovery(struct btd_adapter *adapter)
 {
-	int type;
-
 	/* Do not start if suspended */
 	if (adapter->state & STATE_SUSPENDED)
 		return 0;
@@ -1230,21 +1225,7 @@ static int start_discovery(struct btd_adapter *adapter)
 
 	pending_remote_name_cancel(adapter);
 
-	type = adapter_get_discover_type(adapter) & ~DISC_RESOLVNAME;
-
-	switch (type) {
-	case DISC_STDINQ:
-	case DISC_INTERLEAVE:
-		return adapter_ops->start_inquiry(adapter->dev_id,
-							0x08, FALSE);
-	case DISC_PINQ:
-		return adapter_ops->start_inquiry(adapter->dev_id,
-							0x08, TRUE);
-	case DISC_LE:
-		return adapter_ops->start_scanning(adapter->dev_id);
-	default:
-		return -EINVAL;
-	}
+	return adapter_ops->start_discovery(adapter->dev_id);
 }
 
 static gboolean discovery_cb(gpointer user_data)
