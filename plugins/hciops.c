@@ -3122,6 +3122,18 @@ static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int hciops_start_discovery(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int hciops_stop_discovery(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
 static int hciops_fast_connectable(int index, gboolean enable)
 {
 	struct dev_info *dev = &devs[index];
@@ -3671,6 +3683,8 @@ static struct btd_adapter_ops hci_ops = {
 	.set_discoverable = hciops_set_discoverable,
 	.set_pairable = hciops_set_pairable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
+	.start_discovery = hciops_start_discovery,
+	.stop_discovery = hciops_stop_discovery,
 	.start_inquiry = hciops_start_inquiry,
 	.stop_inquiry = hciops_stop_inquiry,
 	.start_scanning = hciops_start_scanning,

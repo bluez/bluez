@@ -1588,6 +1588,18 @@ static int mgmt_set_limited_discoverable(int index, gboolean limited)
 	return -ENOSYS;
 }
 
+static int mgmt_start_discovery(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
+static int mgmt_stop_discovery(int index)
+{
+	DBG("index %d", index);
+	return -ENOSYS;
+}
+
 static int mgmt_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	struct mgmt_hdr hdr;
@@ -2026,6 +2038,8 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_discoverable = mgmt_set_discoverable,
 	.set_pairable = mgmt_set_pairable,
 	.set_limited_discoverable = mgmt_set_limited_discoverable,
+	.start_discovery = mgmt_start_discovery,
+	.stop_discovery = mgmt_stop_discovery,
 	.start_inquiry = mgmt_start_inquiry,
 	.stop_inquiry = mgmt_stop_inquiry,
 	.start_scanning = mgmt_start_scanning,

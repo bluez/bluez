@@ -187,6 +187,8 @@ struct btd_adapter_ops {
 	int (*set_discoverable) (int index, gboolean discoverable);
 	int (*set_pairable) (int index, gboolean pairable);
 	int (*set_limited_discoverable) (int index, gboolean limited);
+	int (*start_discovery) (int index);
+	int (*stop_discovery) (int index);
 	int (*start_inquiry) (int index, uint8_t length, gboolean periodic);
 	int (*stop_inquiry) (int index);
 	int (*start_scanning) (int index);
