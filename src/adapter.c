@@ -700,12 +700,11 @@ static GSList *remove_bredr(GSList *all)
 	return le;
 }
 
-static void stop_discovery(struct btd_adapter *adapter, gboolean suspend)
+static void stop_discovery(struct btd_adapter *adapter)
 {
 	pending_remote_name_cancel(adapter);
 
-	if (suspend == FALSE)
-		adapter->found_devices = remove_bredr(adapter->found_devices);
+	adapter->found_devices = remove_bredr(adapter->found_devices);
 
 	if (adapter->oor_devices) {
 		g_slist_free(adapter->oor_devices);
@@ -762,7 +761,7 @@ static void session_remove(struct session_req *req)
 
 		DBG("Stopping discovery");
 
-		stop_discovery(adapter, FALSE);
+		stop_discovery(adapter);
 	}
 }
 
@@ -2537,7 +2536,7 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
-	stop_discovery(adapter, FALSE);
+	stop_discovery(adapter);
 
 	if (adapter->disc_sessions) {
 		g_slist_foreach(adapter->disc_sessions, (GFunc) session_free,
