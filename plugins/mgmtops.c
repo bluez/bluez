@@ -1587,14 +1587,34 @@ static int mgmt_set_limited_discoverable(int index, gboolean limited)
 
 static int mgmt_start_discovery(int index)
 {
+	struct mgmt_hdr hdr;
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.opcode = htobs(MGMT_OP_START_DISCOVERY);
+	hdr.index = htobs(index);
+
+	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_stop_discovery(int index)
 {
+	struct mgmt_hdr hdr;
+
 	DBG("index %d", index);
-	return -ENOSYS;
+
+	memset(&hdr, 0, sizeof(hdr));
+	hdr.opcode = htobs(MGMT_OP_STOP_DISCOVERY);
+	hdr.index = htobs(index);
+
+	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_start_inquiry(int index, uint8_t length, gboolean periodic)
