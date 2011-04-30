@@ -435,7 +435,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	char local_addr[18], peer_addr[18], *alias, *name;
 	name_status_t name_status;
 	struct eir_data eir_data;
-	int state, err;
+	int err;
 	dbus_bool_t legacy;
 	unsigned char features[8];
 	const char *dev_name;
@@ -454,17 +454,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 
 	if (data)
 		write_remote_eir(local, peer, data);
-
-	/*
-	 * Workaround to identify periodic inquiry: inquiry complete event is
-	 * sent after each window, however there isn't an event to indicate the
-	 * beginning of a new periodic inquiry window.
-	 */
-	state = adapter_get_state(adapter);
-	if (!(state & (STATE_STDINQ | STATE_LE_SCAN | STATE_PINQ))) {
-		state |= STATE_PINQ;
-		adapter_set_state(adapter, state);
-	}
 
 	/* the inquiry result can be triggered by NON D-Bus client */
 	if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME &&

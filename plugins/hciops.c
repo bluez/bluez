@@ -507,24 +507,13 @@ static void start_adapter(int index)
 static int hciops_stop_inquiry(int index)
 {
 	struct dev_info *dev = &devs[index];
-	struct hci_dev_info di;
-	int err;
 
 	DBG("hci%d", index);
 
-	if (hci_devinfo(index, &di) < 0)
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_INQUIRY_CANCEL, 0, 0) < 0)
 		return -errno;
 
-	if (hci_test_bit(HCI_INQUIRY, &di.flags))
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-						OCF_INQUIRY_CANCEL, 0, 0);
-	else
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-					OCF_EXIT_PERIODIC_INQUIRY, 0, 0);
-	if (err < 0)
-		err = -errno;
-
-	return err;
+	return 0;
 }
 
 static gboolean init_adapter(int index)
@@ -1306,56 +1295,6 @@ reject:
 	hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_PIN_CODE_NEG_REPLY, 6, dba);
 }
 
-static void start_inquiry(bdaddr_t *local, uint8_t status, gboolean periodic)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	/* Don't send the signal if the cmd failed */
-	if (status) {
-		error("Inquiry Failed with status 0x%02x", status);
-		return;
-	}
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	state = adapter_get_state(adapter);
-
-	if (periodic)
-		state |= STATE_PINQ;
-	else
-		state |= STATE_STDINQ;
-
-	adapter_set_state(adapter, state);
-}
-
-static void inquiry_complete(bdaddr_t *local, uint8_t status,
-							gboolean periodic)
-{
-	struct btd_adapter *adapter;
-	int state;
-
-	/* Don't send the signal if the cmd failed */
-	if (status) {
-		error("Inquiry Failed with status 0x%02x", status);
-		return;
-	}
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	state = adapter_get_state(adapter);
-	state &= ~(STATE_STDINQ | STATE_PINQ);
-	adapter_set_state(adapter, state);
-}
-
 static inline void remote_features_notify(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
@@ -1945,12 +1884,6 @@ static inline void cmd_complete(int index, void *ptr)
 		ptr += sizeof(evt_cmd_complete);
 		read_bd_addr_complete(index, ptr);
 		break;
-	case cmd_opcode_pack(OGF_LINK_CTL, OCF_PERIODIC_INQUIRY):
-		start_inquiry(&dev->bdaddr, status, TRUE);
-		break;
-	case cmd_opcode_pack(OGF_LINK_CTL, OCF_EXIT_PERIODIC_INQUIRY):
-		inquiry_complete(&dev->bdaddr, status, TRUE);
-		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		cc_inquiry_cancel(index, status);
 		break;
@@ -2042,6 +1975,10 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
+
+	/* Skip if it is not in Inquiry state */
+	if (get_state(index) != DISCOV_INQ)
+		return;
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = ptr;
@@ -3060,39 +2997,20 @@ static int hciops_start_inquiry(int index, uint8_t length, gboolean periodic)
 {
 	struct dev_info *dev = &devs[index];
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
-	int err;
+	inquiry_cp inq_cp;
 
 	DBG("hci%d length %u periodic %d", index, length, periodic);
 
-	if (periodic) {
-		periodic_inquiry_cp cp;
+	memset(&inq_cp, 0, sizeof(inq_cp));
+	memcpy(&inq_cp.lap, lap, 3);
+	inq_cp.length = length;
+	inq_cp.num_rsp = 0x00;
 
-		memset(&cp, 0, sizeof(cp));
-		memcpy(&cp.lap, lap, 3);
-		cp.max_period = htobs(24);
-		cp.min_period = htobs(16);
-		cp.length  = length;
-		cp.num_rsp = 0x00;
+	if (hci_send_cmd(dev->sk, OGF_LINK_CTL,
+			OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp) < 0)
+		return -errno;
 
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-						OCF_PERIODIC_INQUIRY,
-						PERIODIC_INQUIRY_CP_SIZE, &cp);
-	} else {
-		inquiry_cp inq_cp;
-
-		memset(&inq_cp, 0, sizeof(inq_cp));
-		memcpy(&inq_cp.lap, lap, 3);
-		inq_cp.length = length;
-		inq_cp.num_rsp = 0x00;
-
-		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
-					OCF_INQUIRY, INQUIRY_CP_SIZE, &inq_cp);
-	}
-
-	if (err < 0)
-		err = -errno;
-
-	return err;
+	return 0;
 }
 
 static int le_set_scan_enable(int index, uint8_t enable)
