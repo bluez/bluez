@@ -136,7 +136,6 @@ struct btd_adapter {
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	uint8_t  features[8];
-	uint8_t  extfeatures[8];
 
 	gboolean pairable;		/* pairable state */
 	gboolean initialized;
@@ -2336,37 +2335,6 @@ static void update_oor_devices(struct btd_adapter *adapter)
 	adapter->oor_devices =  g_slist_copy(adapter->found_devices);
 }
 
-static gboolean bredr_capable(struct btd_adapter *adapter)
-{
-	return (adapter->features[4] & LMP_NO_BREDR) == 0 ? TRUE : FALSE;
-}
-
-static gboolean le_capable(struct btd_adapter *adapter)
-{
-	return (adapter->features[4] & LMP_LE &&
-			adapter->extfeatures[0] & LMP_HOST_LE) ? TRUE : FALSE;
-}
-
-int adapter_get_discover_type(struct btd_adapter *adapter)
-{
-	gboolean le, bredr;
-	int type;
-
-	le = le_capable(adapter);
-	bredr = bredr_capable(adapter);
-
-	if (main_opts.le && le)
-		type = bredr ? DISC_INTERLEAVE : DISC_LE;
-	else
-		type = main_opts.discov_interval ? DISC_STDINQ :
-							DISC_PINQ;
-
-	if (main_opts.name_resolv)
-		type |= DISC_RESOLVNAME;
-
-	return type;
-}
-
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 					uint8_t *on_mode, gboolean *pairable)
 {
@@ -3638,12 +3606,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint32_t passkey)
 {
 	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
-}
-
-void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
-						const uint8_t *features)
-{
-	memcpy(adapter->extfeatures, features, 8);
 }
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,

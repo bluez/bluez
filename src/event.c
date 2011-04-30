@@ -456,8 +456,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 		write_remote_eir(local, peer, data);
 
 	/* the inquiry result can be triggered by NON D-Bus client */
-	if (adapter_get_discover_type(adapter) & DISC_RESOLVNAME &&
-				adapter_has_discov_sessions(adapter))
+	if (main_opts.name_resolv && adapter_has_discov_sessions(adapter))
 		name_status = NAME_REQUIRED;
 	else
 		name_status = NAME_NOT_REQUIRED;

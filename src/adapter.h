@@ -264,9 +264,6 @@ int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint32_t passkey);
 
-void btd_adapter_update_local_ext_features(struct btd_adapter *adapter,
-						const uint8_t *features);
-
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				bt_hci_result_t cb, gpointer user_data);
 

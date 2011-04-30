@@ -1710,7 +1710,6 @@ static void read_simple_pairing_mode_complete(int index, void *ptr)
 static void read_local_ext_features_complete(int index,
 				const read_local_ext_features_rp *rp)
 {
-	struct btd_adapter *adapter;
 	struct dev_info *dev = &devs[index];
 
 	DBG("hci%d status %u", index, rp->status);
@@ -1718,18 +1717,11 @@ static void read_local_ext_features_complete(int index,
 	if (rp->status)
 		return;
 
-	adapter = manager_find_adapter_by_id(index);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
 	/* Local Extended feature page number is 1 */
 	if (rp->page_num != 1)
 		return;
 
 	memcpy(dev->extfeatures, rp->features, sizeof(dev->extfeatures));
-	btd_adapter_update_local_ext_features(adapter, rp->features);
 }
 
 static void read_bd_addr_complete(int index, read_bd_addr_rp *rp)
