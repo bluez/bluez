@@ -1617,50 +1617,6 @@ static int mgmt_stop_discovery(int index)
 	return 0;
 }
 
-static int mgmt_start_inquiry(int index, uint8_t length, gboolean periodic)
-{
-	struct mgmt_hdr hdr;
-
-	DBG("index %d length %u periodic %d", index, length, periodic);
-
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_START_DISCOVERY);
-	hdr.index = htobs(index);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int mgmt_stop_inquiry(int index)
-{
-	struct mgmt_hdr hdr;
-
-	DBG("index %d", index);
-
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_STOP_DISCOVERY);
-	hdr.index = htobs(index);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int mgmt_start_scanning(int index, int timeout)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
-static int mgmt_stop_scanning(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_resolve_name(int index, bdaddr_t *bdaddr)
 {
 	char addr[18];
@@ -2057,10 +2013,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_limited_discoverable = mgmt_set_limited_discoverable,
 	.start_discovery = mgmt_start_discovery,
 	.stop_discovery = mgmt_stop_discovery,
-	.start_inquiry = mgmt_start_inquiry,
-	.stop_inquiry = mgmt_stop_inquiry,
-	.start_scanning = mgmt_start_scanning,
-	.stop_scanning = mgmt_stop_scanning,
 	.resolve_name = mgmt_resolve_name,
 	.cancel_resolve_name = mgmt_cancel_resolve_name,
 	.set_name = mgmt_set_name,
