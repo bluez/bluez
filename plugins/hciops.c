@@ -102,6 +102,7 @@ static struct dev_info {
 	char name[249];
 	uint8_t eir[HCI_MAX_EIR_LENGTH];
 	uint8_t features[8];
+	uint8_t extfeatures[8];
 	uint8_t ssp_mode;
 
 	int8_t tx_power;
@@ -1648,6 +1649,7 @@ static void read_local_ext_features_complete(int index,
 				const read_local_ext_features_rp *rp)
 {
 	struct btd_adapter *adapter;
+	struct dev_info *dev = &devs[index];
 
 	DBG("hci%d status %u", index, rp->status);
 
@@ -1664,6 +1666,7 @@ static void read_local_ext_features_complete(int index,
 	if (rp->page_num != 1)
 		return;
 
+	memcpy(dev->extfeatures, rp->features, sizeof(dev->extfeatures));
 	btd_adapter_update_local_ext_features(adapter, rp->features);
 }
 
