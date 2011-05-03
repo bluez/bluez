@@ -1,3 +1,8 @@
+ver 4.93:
+	Fix issue with property type and Health Main channel.
+	Fix issue with crash when removing devices.
+	Add support for hid2hci and udev integration.
+
 ver 4.92:
 	Fix issue with handling of A2DP suspend response.
 	Fix issue with crashing when acquiring A2DP stream.
