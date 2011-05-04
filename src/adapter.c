@@ -3189,8 +3189,6 @@ void adapter_add_connection(struct btd_adapter *adapter,
 void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device)
 {
-	bdaddr_t bdaddr;
-
 	DBG("");
 
 	if (!g_slist_find(adapter->connections, device)) {
@@ -3201,9 +3199,6 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 	device_remove_connection(device, connection);
 
 	adapter->connections = g_slist_remove(adapter->connections, device);
-
-	/* clean pending HCI cmds */
-	device_get_address(device, &bdaddr);
 
 	if (device_is_authenticating(device))
 		device_cancel_authentication(device, TRUE);
