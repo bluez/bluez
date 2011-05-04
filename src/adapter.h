@@ -82,7 +82,6 @@ struct remote_dev_info {
 	char **uuids;
 	size_t uuid_count;
 	GSList *services;
-	uint8_t evt_type;
 	uint8_t bdaddr_type;
 	uint8_t flags;
 };
@@ -118,8 +117,8 @@ struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter
 						struct remote_dev_info *match);
 void adapter_update_device_from_info(struct btd_adapter *adapter,
 					bdaddr_t bdaddr, int8_t rssi,
-					uint8_t evt_type, const char *name,
-					GSList *services, int flags);
+					const char *name, GSList *services,
+					int flags);
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int8_t rssi, uint32_t class, const char *name,
 				const char *alias, gboolean legacy,

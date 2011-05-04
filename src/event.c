@@ -399,8 +399,8 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 	rssi = *(info->data + info->length);
 
 	adapter_update_device_from_info(adapter, info->bdaddr, rssi,
-					info->evt_type, eir_data.name,
-					eir_data.services, eir_data.flags);
+					eir_data.name, eir_data.services,
+					eir_data.flags);
 
 	free_eir_data(&eir_data);
 }

@@ -2993,18 +2993,17 @@ static void dev_prepend_uuid(gpointer data, gpointer user_data)
 
 void adapter_update_device_from_info(struct btd_adapter *adapter,
 					bdaddr_t bdaddr, int8_t rssi,
-					uint8_t evt_type, const char *name,
-					GSList *services, int flags)
+					const char *name, GSList *services,
+					int flags)
 {
 	struct remote_dev_info *dev;
 	gboolean new_dev;
 
 	dev = get_found_dev(adapter, &bdaddr, &new_dev);
 
-	if (new_dev) {
+	if (new_dev)
 		dev->le = TRUE;
-		dev->evt_type = evt_type;
-	} else if (dev->rssi == rssi)
+	else if (dev->rssi == rssi)
 		return;
 
 	dev->rssi = rssi;
