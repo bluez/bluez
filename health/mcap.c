@@ -685,11 +685,10 @@ gboolean mcap_mdl_abort(struct mcap_mdl *mdl, mcap_mdl_notify_cb abort_cb,
 
 static struct mcap_mcl *find_mcl(GSList *list, const bdaddr_t *addr)
 {
-	GSList *l;
 	struct mcap_mcl *mcl;
 
-	for (l = list; l; l = l->next) {
-		mcl = l->data;
+	for (; list; list = list->next) {
+		mcl = list->data;
 
 		if (!bacmp(&mcl->addr, addr))
 			return mcl;

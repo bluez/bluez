@@ -459,10 +459,8 @@ static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 
 static struct session_req *find_session_by_msg(GSList *list, const DBusMessage *msg)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct session_req *req = l->data;
+	for (; list; list = list->next) {
+		struct session_req *req = list->data;
 
 		if (req->msg == msg)
 			return req;
@@ -648,10 +646,8 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 
 static struct session_req *find_session(GSList *list, const char *sender)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct session_req *req = l->data;
+	for (; list; list = list->next) {
+		struct session_req *req = list->data;
 
 		if (g_str_equal(req->owner, sender))
 			return req;
@@ -2834,7 +2830,6 @@ static void emit_device_found(const char *path, const char *address,
 
 static char **strlist2array(GSList *list)
 {
-	GSList *l;
 	unsigned int i, n;
 	char **array;
 
@@ -2844,8 +2839,8 @@ static char **strlist2array(GSList *list)
 	n = g_slist_length(list);
 	array = g_new0(char *, n + 1);
 
-	for (l = list, i = 0; l; l = l->next, i++)
-		array[i] = g_strdup((const gchar *) l->data);
+	for (i = 0; list; list = list->next, i++)
+		array[i] = g_strdup((const gchar *) list->data);
 
 	return array;
 }

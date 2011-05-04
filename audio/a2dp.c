@@ -1375,10 +1375,9 @@ static sdp_record_t *a2dp_record(uint8_t type, uint16_t avdtp_ver)
 
 static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 {
-	GSList *l;
 
-	for (l = list; l; l = l->next) {
-		struct a2dp_server *server = l->data;
+	for (; list; list = list->next) {
+		struct a2dp_server *server = list->data;
 
 		if (bacmp(&server->src, src) == 0)
 			return server;

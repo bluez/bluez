@@ -88,10 +88,8 @@ static gboolean security = TRUE;
 static struct network_adapter *find_adapter(GSList *list,
 					struct btd_adapter *adapter)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct network_adapter *na = l->data;
+	for (; list; list = list->next) {
+		struct network_adapter *na = list->data;
 
 		if (na->adapter == adapter)
 			return na;
@@ -102,10 +100,8 @@ static struct network_adapter *find_adapter(GSList *list,
 
 static struct network_server *find_server(GSList *list, uint16_t id)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct network_server *ns = l->data;
+	for (; list; list = list->next) {
+		struct network_server *ns = list->data;
 
 		if (ns->id == id)
 			return ns;

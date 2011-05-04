@@ -85,10 +85,8 @@ static GSList *peers = NULL;
 
 static struct network_peer *find_peer(GSList *list, const char *path)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct network_peer *peer = l->data;
+	for (; list; list = list->next) {
+		struct network_peer *peer = list->data;
 
 		if (!strcmp(peer->path, path))
 			return peer;
@@ -99,10 +97,8 @@ static struct network_peer *find_peer(GSList *list, const char *path)
 
 static struct network_conn *find_connection(GSList *list, uint16_t id)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct network_conn *nc = l->data;
+	for (; list; list = list->next) {
+		struct network_conn *nc = list->data;
 
 		if (nc->id == id)
 			return nc;

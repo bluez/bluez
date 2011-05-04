@@ -1147,10 +1147,8 @@ static GDBusSignalTable manager_signals[] = {
 static struct serial_adapter *find_adapter(GSList *list,
 					struct btd_adapter *btd_adapter)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct serial_adapter *adapter = l->data;
+	for (; list; list = list->next) {
+		struct serial_adapter *adapter = list->data;
 
 		if (adapter->btd_adapter == btd_adapter)
 			return adapter;

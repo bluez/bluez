@@ -453,10 +453,8 @@ static void auth_cb(DBusError *derr, void *user_data);
 
 static struct avdtp_server *find_server(GSList *list, const bdaddr_t *src)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct avdtp_server *server = l->data;
+	for (; list; list = list->next) {
+		struct avdtp_server *server = list->data;
 
 		if (bacmp(&server->src, src) == 0)
 			return server;
@@ -2217,10 +2215,8 @@ failed:
 
 static struct avdtp *find_session(GSList *list, const bdaddr_t *dst)
 {
-	GSList *l;
-
-	for (l = list; l != NULL; l = g_slist_next(l)) {
-		struct avdtp *s = l->data;
+	for (; list != NULL; list = g_slist_next(list)) {
+		struct avdtp *s = list->data;
 
 		if (bacmp(dst, &s->dst))
 			continue;
@@ -3189,10 +3185,8 @@ gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
 gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 					GSList *caps)
 {
-	GSList *l;
-
-	for (l = caps; l; l = g_slist_next(l)) {
-		struct avdtp_service_capability *cap = l->data;
+	for (; caps; caps = g_slist_next(caps)) {
+		struct avdtp_service_capability *cap = caps->data;
 
 		if (!avdtp_stream_has_capability(stream, cap))
 			return FALSE;

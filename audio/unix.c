@@ -629,7 +629,6 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_get_capabilities_rsp *rsp = (void *) buf;
 	struct a2dp_data *a2dp = &client->d.a2dp;
-	GSList *l;
 
 	if (!g_slist_find(clients, client)) {
 		DBG("Client disconnected during discovery");
@@ -649,8 +648,8 @@ static void a2dp_discovery_complete(struct avdtp *session, GSList *seps,
 	ba2str(&client->dev->dst, rsp->destination);
 	strncpy(rsp->object, client->dev->path, sizeof(rsp->object));
 
-	for (l = seps; l; l = g_slist_next(l)) {
-		struct avdtp_remote_sep *rsep = l->data;
+	for (; seps; seps = g_slist_next(seps)) {
+		struct avdtp_remote_sep *rsep = seps->data;
 		struct a2dp_sep *sep;
 		struct avdtp_service_capability *cap;
 		struct avdtp_stream *stream;

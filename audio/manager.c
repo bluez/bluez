@@ -124,10 +124,8 @@ static struct enabled_interfaces enabled = {
 static struct audio_adapter *find_adapter(GSList *list,
 					struct btd_adapter *btd_adapter)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct audio_adapter *adapter = l->data;
+	for (; list; list = list->next) {
+		struct audio_adapter *adapter = list->data;
 
 		if (adapter->btd_adapter == btd_adapter)
 			return adapter;

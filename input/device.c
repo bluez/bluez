@@ -94,10 +94,8 @@ GSList *devices = NULL;
 
 static struct input_device *find_device_by_path(GSList *list, const char *path)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct input_device *idev = l->data;
+	for (; list; list = list->next) {
+		struct input_device *idev = list->data;
 
 		if (!strcmp(idev->path, path))
 			return idev;
@@ -108,10 +106,8 @@ static struct input_device *find_device_by_path(GSList *list, const char *path)
 
 static struct input_conn *find_connection(GSList *list, const char *pattern)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct input_conn *iconn = l->data;
+	for (; list; list = list->next) {
+		struct input_conn *iconn = list->data;
 
 		if (!strcasecmp(iconn->uuid, pattern))
 			return iconn;

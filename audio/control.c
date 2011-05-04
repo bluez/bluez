@@ -910,10 +910,8 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 
 static struct avctp_server *find_server(GSList *list, const bdaddr_t *src)
 {
-	GSList *l;
-
-	for (l = list; l; l = l->next) {
-		struct avctp_server *server = l->data;
+	for (; list; list = list->next) {
+		struct avctp_server *server = list->data;
 
 		if (bacmp(&server->src, src) == 0)
 			return server;
