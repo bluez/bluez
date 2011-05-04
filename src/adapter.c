@@ -1600,24 +1600,6 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static device_type_t flags2type(uint8_t flags)
-{
-	/* Inferring the remote type based on the EIR Flags field */
-
-	/* For LE only and dual mode the following flags must be zero */
-	if (flags & (EIR_SIM_CONTROLLER | EIR_SIM_HOST))
-		return DEVICE_TYPE_UNKNOWN;
-
-	/* Limited or General discoverable mode bit must be enabled */
-	if (!(flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
-		return DEVICE_TYPE_UNKNOWN;
-
-	if (flags & EIR_BREDR_UNSUP)
-		return DEVICE_TYPE_LE;
-	else
-		return DEVICE_TYPE_DUALMODE;
-}
-
 static struct btd_device *create_device_internal(DBusConnection *conn,
 						struct btd_adapter *adapter,
 						const gchar *address, int *err)
@@ -1631,8 +1613,8 @@ static struct btd_device *create_device_internal(DBusConnection *conn,
 	match.name_status = NAME_ANY;
 
 	dev = adapter_search_found_devices(adapter, &match);
-	if (dev && dev->flags)
-		type = flags2type(dev->flags);
+	if (dev && dev->le)
+		type = DEVICE_TYPE_LE;
 	else
 		type = DEVICE_TYPE_BREDR;
 
