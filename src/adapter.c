@@ -3119,7 +3119,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
 {
-	if (!adapter || !adapter->agent)
+	if (!adapter)
 		return NULL;
 
 	return adapter->agent;
