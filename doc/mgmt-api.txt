@@ -484,6 +484,8 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Secure (1 Octet)
 
+	Secure: 0x01  secure PIN code required
+		0x00  secure PIN code not required
 
 User Confirmation Request Event
 ===============================
