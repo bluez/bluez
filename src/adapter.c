@@ -68,9 +68,6 @@
 #define EIR_SIM_HOST                0x10 /* Simultaneous LE and BR/EDR to Same
 					    Device Capable (Host) */
 
-#define ADV_TYPE_IND		0x00
-#define ADV_TYPE_DIRECT_IND	0x01
-
 #define IO_CAPABILITY_DISPLAYONLY	0x00
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
 #define IO_CAPABILITY_KEYBOARDONLY	0x02
@@ -1621,21 +1618,9 @@ static device_type_t flags2type(uint8_t flags)
 		return DEVICE_TYPE_DUALMODE;
 }
 
-static gboolean event_is_connectable(uint8_t type)
-{
-	switch (type) {
-	case ADV_TYPE_IND:
-	case ADV_TYPE_DIRECT_IND:
-		return TRUE;
-	default:
-		return FALSE;
-	}
-}
-
 static struct btd_device *create_device_internal(DBusConnection *conn,
 						struct btd_adapter *adapter,
-						const gchar *address,
-						gboolean force, int *err)
+						const gchar *address, int *err)
 {
 	struct remote_dev_info *dev, match;
 	struct btd_device *device;
@@ -1650,14 +1635,6 @@ static struct btd_device *create_device_internal(DBusConnection *conn,
 		type = flags2type(dev->flags);
 	else
 		type = DEVICE_TYPE_BREDR;
-
-	if (!force && type == DEVICE_TYPE_LE &&
-					!event_is_connectable(dev->evt_type)) {
-		if (err)
-			*err = -ENOTCONN;
-
-		return NULL;
-	}
 
 	device = adapter_create_device(conn, adapter, address, type);
 	if (!device && err)
@@ -1690,7 +1667,7 @@ static DBusMessage *create_device(DBusConnection *conn,
 
 	DBG("%s", address);
 
-	device = create_device_internal(conn, adapter, address, TRUE, &err);
+	device = create_device_internal(conn, adapter, address, &err);
 	if (!device)
 		goto failed;
 
@@ -1771,8 +1748,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 
 	device = adapter_find_device(adapter, address);
 	if (!device) {
-		device = create_device_internal(conn, adapter, address,
-								FALSE, &err);
+		device = create_device_internal(conn, adapter, address, &err);
 		if (!device)
 			return btd_error_failed(msg, strerror(-err));
 	}
