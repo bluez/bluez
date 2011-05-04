@@ -697,8 +697,11 @@ static int headset_server_init(struct audio_adapter *adapter)
 	return 0;
 
 failed:
-	error("%s", err->message);
-	g_error_free(err);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+	}
+
 	if (adapter->hsp_ag_server) {
 		g_io_channel_shutdown(adapter->hsp_ag_server, TRUE, NULL);
 		g_io_channel_unref(adapter->hsp_ag_server);
