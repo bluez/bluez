@@ -65,7 +65,7 @@ static const int sdpServerVnumEntries = 1;
  * seconds. Used for updating the service db state
  * attribute of the service record of the SDP server
  */
-uint32_t sdp_get_time()
+uint32_t sdp_get_time(void)
 {
 	/*
 	 * To handle failure in gettimeofday, so an old

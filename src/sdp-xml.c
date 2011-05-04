@@ -704,7 +704,7 @@ sdp_data_t *sdp_xml_parse_nil(const char *data)
 
 #define DEFAULT_XML_DATA_SIZE 1024
 
-struct sdp_xml_data *sdp_xml_data_alloc()
+struct sdp_xml_data *sdp_xml_data_alloc(void)
 {
 	struct sdp_xml_data *elem;
 

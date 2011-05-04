@@ -200,7 +200,7 @@ static GSList *avctp_callbacks = NULL;
 
 static void auth_cb(DBusError *derr, void *user_data);
 
-static sdp_record_t *avrcp_ct_record()
+static sdp_record_t *avrcp_ct_record(void)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrct;
@@ -264,7 +264,7 @@ static sdp_record_t *avrcp_ct_record()
 	return record;
 }
 
-static sdp_record_t *avrcp_tg_record()
+static sdp_record_t *avrcp_tg_record(void)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap, avctp, avrtg;

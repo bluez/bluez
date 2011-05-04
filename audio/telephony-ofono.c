@@ -259,7 +259,7 @@ static int release_call(struct voice_call *vc)
 						NULL, NULL, DBUS_TYPE_INVALID);
 }
 
-static int release_answer_calls()
+static int release_answer_calls(void)
 {
 	DBG("");
 	return send_method_call(OFONO_BUS_NAME, modem_obj_path,

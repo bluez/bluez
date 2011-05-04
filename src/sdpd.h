@@ -83,7 +83,7 @@ sdp_list_t *sdp_get_access_list(void);
 int sdp_check_access(uint32_t handle, bdaddr_t *device);
 uint32_t sdp_next_handle(void);
 
-uint32_t sdp_get_time();
+uint32_t sdp_get_time(void);
 
 #define SDP_SERVER_COMPAT (1 << 0)
 #define SDP_SERVER_MASTER (1 << 1)

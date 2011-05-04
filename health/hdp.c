@@ -260,7 +260,7 @@ static gint cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
 	return -1;
 }
 
-static uint8_t get_app_id()
+static uint8_t get_app_id(void)
 {
 	uint8_t id = next_app_id;
 
@@ -1288,7 +1288,7 @@ static void mcl_uncached(struct mcap_mcl *mcl, gpointer data)
 	DBG("Mcl uncached %s", path);
 }
 
-static void check_devices_mcl()
+static void check_devices_mcl(void)
 {
 	struct hdp_device *dev;
 	GSList *l, *to_delete = NULL;
@@ -1471,7 +1471,7 @@ static void destroy_create_dc_data(gpointer data)
 	hdp_create_data_unref(dc_data);
 }
 
-static void *generate_echo_packet()
+static void *generate_echo_packet(void)
 {
 	uint8_t *buf;
 	int i;
@@ -2193,7 +2193,7 @@ int hdp_manager_start(DBusConnection *conn)
 	return 0;
 }
 
-void hdp_manager_stop()
+void hdp_manager_stop(void)
 {
 	g_dbus_unregister_interface(connection, MANAGER_PATH, HEALTH_MANAGER);
 

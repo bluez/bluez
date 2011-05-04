@@ -49,7 +49,7 @@ struct sdp_xml_data {
 	/* TODO: What is it used for? */
 };
 
-struct sdp_xml_data *sdp_xml_data_alloc();
+struct sdp_xml_data *sdp_xml_data_alloc(void);
 void sdp_xml_data_free(struct sdp_xml_data *elem);
 struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem);
 
