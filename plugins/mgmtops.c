@@ -492,7 +492,8 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
 }
 
-static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
+static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
+								size_t pin_len)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pin_code_reply)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -500,7 +501,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 	char addr[18];
 
 	ba2str(bdaddr, addr);
-	DBG("index %d addr %s pin %s", index, addr, pin ? pin : "<none>");
+	DBG("index %d addr %s pinlen %lu", index, addr, pin_len);
 
 	memset(buf, 0, sizeof(buf));
 
@@ -517,9 +518,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
 		struct mgmt_cp_pin_code_reply *cp;
-		size_t pin_len;
 
-		pin_len = strlen(pin);
 		if (pin_len > 16)
 			return -EINVAL;
 
@@ -567,7 +566,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 	err = btd_event_request_pin(&info->bdaddr, &ev->bdaddr);
 	if (err < 0) {
 		error("btd_event_request_pin: %s", strerror(-err));
-		mgmt_pincode_reply(index, &ev->bdaddr, NULL);
+		mgmt_pincode_reply(index, &ev->bdaddr, NULL, 0);
 	}
 }
 

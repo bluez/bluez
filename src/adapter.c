@@ -3534,7 +3534,8 @@ int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							const char *pin)
 {
-	return adapter_ops->pincode_reply(adapter->dev_id, bdaddr, pin);
+	return adapter_ops->pincode_reply(adapter->dev_id, bdaddr, pin,
+							pin ? strlen(pin) : 0);
 }
 
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,

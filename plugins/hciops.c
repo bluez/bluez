@@ -3413,7 +3413,8 @@ static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
+static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
+								size_t pin_len)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
@@ -3424,14 +3425,13 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin)
 
 	if (pin) {
 		pin_code_reply_cp pr;
-		size_t len = strlen(pin);
 
-		dev->pin_length = len;
+		dev->pin_length = pin_len;
 
 		memset(&pr, 0, sizeof(pr));
 		bacpy(&pr.bdaddr, bdaddr);
-		memcpy(pr.pin_code, pin, len);
-		pr.pin_len = len;
+		memcpy(pr.pin_code, pin, pin_len);
+		pr.pin_len = pin_len;
 		err = hci_send_cmd(dev->sk, OGF_LINK_CTL,
 						OCF_PIN_CODE_REPLY,
 						PIN_CODE_REPLY_CP_SIZE, &pr);

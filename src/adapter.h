@@ -201,7 +201,8 @@ struct btd_adapter_ops {
 	int (*read_local_features) (int index, uint8_t *features);
 	int (*disconnect) (int index, bdaddr_t *bdaddr);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr);
-	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin);
+	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin,
+							size_t pin_len);
 	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
 	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
 	int (*enable_le) (int index);
