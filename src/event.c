@@ -102,24 +102,53 @@ static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
  *
  *****************************************************************/
 
+static size_t decode_hex(const char *pin, char *out)
+{
+	size_t i;
+
+	for (i = 0; i < 16 && pin[i * 2] && pin[i * 2 + 1]; i++)
+		sscanf(&pin[i * 2], "%02hhX", &out[i]);
+
+	return i;
+}
+
+static size_t decode_pin(const char *pin, char *out)
+{
+	size_t len;
+
+	if (!pin)
+		return 0;
+
+	if (pin[0] == '$') {
+		len = decode_hex(&pin[1], out);
+	} else {
+		len = strnlen(pin, 16);
+		memcpy(out, pin, len);
+	}
+
+	return len;
+}
+
 static void pincode_cb(struct agent *agent, DBusError *derr,
 				const char *pincode, struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	bdaddr_t dba;
 	int err;
+	size_t len;
+	char rawpin[16];
 
 	device_get_address(device, &dba);
 
-	if (derr) {
+	len = decode_pin(pincode, rawpin);
+	if (derr || !len) {
 		err = btd_adapter_pincode_reply(adapter, &dba, NULL, 0);
 		if (err < 0)
 			goto fail;
 		return;
 	}
 
-	err = btd_adapter_pincode_reply(adapter, &dba, pincode,
-						pincode ? strlen(pincode) : 0);
+	err = btd_adapter_pincode_reply(adapter, &dba, rawpin, len);
 	if (err < 0)
 		goto fail;
 
