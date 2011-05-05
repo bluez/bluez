@@ -237,15 +237,6 @@ static int request_encryption(bdaddr_t *src, bdaddr_t *dst)
 	return err;
 }
 
-static int enable_sixaxis(int csk)
-{
-	const unsigned char buf[] = {
-		0x53 /*HIDP_TRANS_SET_REPORT | HIDP_DATA_RTYPE_FEATURE*/,
-		0xf4,  0x42, 0x03, 0x00, 0x00 };
-
-	return write(csk, buf, sizeof(buf));
-}
-
 static int create_device(int ctl, int csk, int isk, uint8_t subclass, int nosdp, int nocheck, int bootonly, int encrypt, int timeout)
 {
 	struct hidp_connadd_req req;
@@ -333,9 +324,6 @@ create:
 		req.rd_size = 0;
 		req.flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
 	}
-
-	if (req.vendor == 0x054c && req.product == 0x0268)
-		enable_sixaxis(csk);
 
 	err = ioctl(ctl, HIDPCONNADD, &req);
 
