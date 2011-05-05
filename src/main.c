@@ -238,7 +238,6 @@ static void init_defaults(void)
 {
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.scan	= SCAN_PAGE;
 	main_opts.mode	= MODE_CONNECTABLE;
 	main_opts.name	= g_strdup("BlueZ");
 	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;

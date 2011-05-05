@@ -40,7 +40,6 @@ struct main_opts {
 	gboolean	attrib_server;
 	gboolean	le;
 
-	uint8_t		scan;
 	uint8_t		mode;
 	uint8_t		discov_interval;
 	char		deviceid[15]; /* FIXME: */
