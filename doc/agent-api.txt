@@ -26,7 +26,13 @@ Methods		void Release()
 			needs to get the passkey for an authentication.
 
 			The return value should be a string of 1-16 characters
-			length. The string can be alphanumeric.
+			length. Longer strings are truncated to 16 characters.
+			The string can be alphanumeric.
+
+			Strings starting with '$' are parsed as hex-encoded
+			pins. That is, each two following hex characters form
+			a single byte of the resulting pin. The parser is
+			case-insensitive.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
