@@ -33,10 +33,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
@@ -53,7 +51,6 @@
 #include "sdpd.h"
 #include "attrib-server.h"
 #include "adapter.h"
-#include "event.h"
 #include "dbus-common.h"
 #include "agent.h"
 #include "manager.h"
