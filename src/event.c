@@ -112,13 +112,14 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 	device_get_address(device, &dba);
 
 	if (derr) {
-		err = btd_adapter_pincode_reply(adapter, &dba, NULL);
+		err = btd_adapter_pincode_reply(adapter, &dba, NULL, 0);
 		if (err < 0)
 			goto fail;
 		return;
 	}
 
-	err = btd_adapter_pincode_reply(adapter, &dba, pincode);
+	err = btd_adapter_pincode_reply(adapter, &dba, pincode,
+						pincode ? strlen(pincode) : 0);
 	if (err < 0)
 		goto fail;
 
@@ -141,7 +142,7 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba)
 	memset(pin, 0, sizeof(pin));
 	pinlen = read_pin_code(sba, dba, pin);
 	if (pinlen > 0) {
-		btd_adapter_pincode_reply(adapter, dba, pin);
+		btd_adapter_pincode_reply(adapter, dba, pin, pinlen);
 		return 0;
 	}
 

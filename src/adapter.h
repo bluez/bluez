@@ -254,7 +254,7 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							const char *pin);
+					const char *pin, size_t pin_len);
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							gboolean success);
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
