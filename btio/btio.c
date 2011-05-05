@@ -800,7 +800,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 	uint8_t dev_class[3];
 	uint16_t handle;
 	socklen_t len;
-	gboolean flushable;
+	gboolean flushable = FALSE;
 
 	len = sizeof(l2o);
 	memset(&l2o, 0, len);
