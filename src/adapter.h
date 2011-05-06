@@ -42,13 +42,6 @@
 #define STATE_RESOLVNAME	2
 #define STATE_SUSPENDED		3
 
-/* Supported host/controller discover type */
-#define DISC_LE			0x01
-#define DISC_STDINQ		0x02
-#define DISC_INTERLEAVE		0x04
-#define DISC_PINQ		0x08
-#define DISC_RESOLVNAME		0x10
-
 #define MAX_NAME_LENGTH		248
 
 /* Invalid SSP passkey value used to indicate negative replies */
