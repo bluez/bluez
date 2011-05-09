@@ -2652,8 +2652,10 @@ static int send_req(struct avdtp *session, gboolean priority,
 
 	if (session->state == AVDTP_SESSION_STATE_DISCONNECTED) {
 		session->io = l2cap_connect(session);
-		if (!session->io)
+		if (!session->io) {
+			err = -EIO;
 			goto failed;
+		}
 		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTING);
 	}
 
