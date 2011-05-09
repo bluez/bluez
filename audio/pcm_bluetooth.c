@@ -44,7 +44,7 @@
 #include "sbc.h"
 #include "rtp.h"
 
-//#define ENABLE_DEBUG
+/* #define ENABLE_DEBUG */
 
 #define UINT_SECS_MAX (UINT_MAX / 1000000 - 1)
 

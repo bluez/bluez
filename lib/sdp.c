@@ -1798,7 +1798,7 @@ sdp_list_t *sdp_list_insert_sorted(sdp_list_t *list, void *d,
 	for (q = 0, p = list; p; q = p, p = p->next)
 		if (f(p->data, d) >= 0)
 			break;
-	// insert between q and p; if !q insert at head
+	/* insert between q and p; if !q insert at head */
 	if (q)
 		q->next = n;
 	else
@@ -3196,7 +3196,7 @@ static int gen_dataseq_pdu(uint8_t *dst, const sdp_list_t *seq, uint8_t dtd)
 	sdp_buf_t buf;
 	int i, seqlen = sdp_list_len(seq);
 
-	// Fill up the value and the dtd arrays
+	/* Fill up the value and the dtd arrays */
 	SDPDBG("");
 
 	SDPDBG("Seq length : %d\n", seqlen);
@@ -3338,16 +3338,16 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	pdata = reqbuf + sizeof(sdp_pdu_hdr_t);
 	reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add service class IDs for search
+	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
-	// set the length and increment the pointer
+	/* set the length and increment the pointer */
 	reqsize += seqlen;
 	pdata += seqlen;
 
-	// specify the maximum svc rec count that client expects
+	/* specify the maximum svc rec count that client expects */
 	bt_put_unaligned(htons(max_rec_num), (uint16_t *) pdata);
 	reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
@@ -3357,11 +3357,11 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	*rsp = NULL;
 
 	do {
-		// Add continuation state or NULL (first time)
+		/* Add continuation state or NULL (first time) */
 		reqsize = _reqsize + copy_cstate(_pdata,
 					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
-		// Set the request header's param length
+		/* Set the request header's param length */
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 
 		reqhdr->tid  = htons(sdp_gen_tid(session));
@@ -3397,7 +3397,7 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 			goto end;
 		}
 
-		// net service record match count
+		/* net service record match count */
 		total_rec_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		pdata += sizeof(uint16_t);
 		scanned += sizeof(uint16_t);
@@ -3511,17 +3511,17 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	pdata = reqbuf + sizeof(sdp_pdu_hdr_t);
 	reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add the service record handle
+	/* add the service record handle */
 	bt_put_unaligned(htonl(handle), (uint32_t *) pdata);
 	reqsize += sizeof(uint32_t);
 	pdata += sizeof(uint32_t);
 
-	// specify the response limit
+	/* specify the response limit */
 	bt_put_unaligned(htons(65535), (uint16_t *) pdata);
 	reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
 
-	// get attr seq PDU form
+	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrids,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
@@ -3532,18 +3532,18 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 	reqsize += seqlen;
 	SDPDBG("Attr list length : %d\n", seqlen);
 
-	// save before Continuation State
+	/* save before Continuation State */
 	_pdata = pdata;
 	_reqsize = reqsize;
 
 	do {
 		int status;
 
-		// add NULL continuation state
+		/* add NULL continuation state */
 		reqsize = _reqsize + copy_cstate(_pdata,
 					SDP_REQ_BUFFER_SIZE - _reqsize, cstate);
 
-		// set the request header's param length
+		/* set the request header's param length */
 		reqhdr->tid  = htons(sdp_gen_tid(session));
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 
@@ -3574,7 +3574,10 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 		pdata += sizeof(uint16_t);
 		pdata_len -= sizeof(uint16_t);
 
-		// if continuation state set need to re-issue request before parsing
+		/*
+		 * if continuation state set need to re-issue request before
+		 * parsing
+		 */
 		if (pdata_len < rsp_count + sizeof(uint8_t)) {
 			SDPERR("Unexpected end of packet: continuation state data missing");
 			goto end;
@@ -3594,7 +3597,7 @@ sdp_record_t *sdp_service_attr_req(sdp_session_t *session, uint32_t handle,
 
 			cstate = cstate_len > 0 ? (sdp_cstate_t *) (pdata + rsp_count) : 0;
 
-			// build concatenated response buffer
+			/* build concatenated response buffer */
 			rsp_concat_buf.data = realloc(rsp_concat_buf.data, rsp_concat_buf.data_size + rsp_count);
 			rsp_concat_buf.buf_size = rsp_concat_buf.data_size + rsp_count;
 			targetPtr = rsp_concat_buf.data + rsp_concat_buf.data_size;
@@ -3755,16 +3758,16 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	reqhdr->tid = htons(sdp_gen_tid(session));
 	reqhdr->pdu_id = SDP_SVC_SEARCH_REQ;
 
-	// generate PDU
+	/* generate PDU */
 	pdata = t->reqbuf + sizeof(sdp_pdu_hdr_t);
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add service class IDs for search
+	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
-	// now set the length and increment the pointer
+	/* now set the length and increment the pointer */
 	t->reqsize += seqlen;
 	pdata += seqlen;
 
@@ -3772,7 +3775,7 @@ int sdp_service_search_async(sdp_session_t *session, const sdp_list_t *search, u
 	t->reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
 
-	// set the request header's param length
+	/* set the request header's param length */
 	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
@@ -3856,21 +3859,21 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 	reqhdr->tid = htons(sdp_gen_tid(session));
 	reqhdr->pdu_id = SDP_SVC_ATTR_REQ;
 
-	// generate PDU
+	/* generate PDU */
 	pdata = t->reqbuf + sizeof(sdp_pdu_hdr_t);
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add the service record handle
+	/* add the service record handle */
 	bt_put_unaligned(htonl(handle), (uint32_t *) pdata);
 	t->reqsize += sizeof(uint32_t);
 	pdata += sizeof(uint32_t);
 
-	// specify the response limit
+	/* specify the response limit */
 	bt_put_unaligned(htons(65535), (uint16_t *) pdata);
 	t->reqsize += sizeof(uint16_t);
 	pdata += sizeof(uint16_t);
 
-	// get attr seq PDU form
+	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
@@ -3878,12 +3881,12 @@ int sdp_service_attr_async(sdp_session_t *session, uint32_t handle, sdp_attrreq_
 		goto end;
 	}
 
-	// now set the length and increment the pointer
+	/* now set the length and increment the pointer */
 	t->reqsize += seqlen;
 	pdata += seqlen;
 	SDPDBG("Attr list length : %d\n", seqlen);
 
-	// set the request header's param length
+	/* set the request header's param length */
 	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
@@ -3968,16 +3971,16 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	reqhdr->tid = htons(sdp_gen_tid(session));
 	reqhdr->pdu_id = SDP_SVC_SEARCH_ATTR_REQ;
 
-	// generate PDU
+	/* generate PDU */
 	pdata = t->reqbuf + sizeof(sdp_pdu_hdr_t);
 	t->reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add service class IDs for search
+	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
-	// now set the length and increment the pointer
+	/* now set the length and increment the pointer */
 	t->reqsize += seqlen;
 	pdata += seqlen;
 
@@ -3987,7 +3990,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 
 	SDPDBG("Max attr byte count : %d\n", SDP_MAX_ATTR_LEN);
 
-	// get attr seq PDU form
+	/* get attr seq PDU form */
 	seqlen = gen_attridseq_pdu(pdata, attrid_list,
 			reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
@@ -3999,7 +4002,7 @@ int sdp_service_search_attr_async(sdp_session_t *session, const sdp_list_t *sear
 	SDPDBG("Attr list length : %d\n", seqlen);
 	t->reqsize += seqlen;
 
-	// set the request header's param length
+	/* set the request header's param length */
 	cstate_len = copy_cstate(pdata, SDP_REQ_BUFFER_SIZE - t->reqsize, NULL);
 	reqhdr->plen = htons((t->reqsize + cstate_len) - sizeof(sdp_pdu_hdr_t));
 
@@ -4164,7 +4167,7 @@ int sdp_process(sdp_session_t *session)
 		 */
 		plen = sizeof(uint16_t) + rsp_count;
 
-		pdata += sizeof(uint16_t); // points to attribute list
+		pdata += sizeof(uint16_t); /* points to attribute list */
 		status = 0x0000;
 		break;
 	case SDP_ERROR_RSP:
@@ -4210,13 +4213,13 @@ int sdp_process(sdp_session_t *session)
 
 		reqhdr->tid = htons(sdp_gen_tid(session));
 
-		// add continuation state
+		/* add continuation state */
 		cstate_len = copy_cstate(t->reqbuf + t->reqsize,
 				SDP_REQ_BUFFER_SIZE - t->reqsize, pcstate);
 
 		reqsize = t->reqsize + cstate_len;
 
-		// set the request header's param length
+		/* set the request header's param length */
 		reqhdr->plen = htons(reqsize - sizeof(sdp_pdu_hdr_t));
 
 		if (sdp_send_req(session, t->reqbuf, reqsize) < 0) {
@@ -4318,11 +4321,11 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	reqhdr = (sdp_pdu_hdr_t *) reqbuf;
 	reqhdr->pdu_id = SDP_SVC_SEARCH_ATTR_REQ;
 
-	// generate PDU
+	/* generate PDU */
 	pdata = reqbuf + sizeof(sdp_pdu_hdr_t);
 	reqsize = sizeof(sdp_pdu_hdr_t);
 
-	// add service class IDs for search
+	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
 
 	SDPDBG("Data seq added : %d\n", seqlen);
@@ -4391,7 +4394,7 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 
 		rsp_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		attr_list_len += rsp_count;
-		pdata += sizeof(uint16_t);	// pdata points to attribute list
+		pdata += sizeof(uint16_t); /* pdata points to attribute list */
 		pdata_len -= sizeof(uint16_t);
 
 		if (pdata_len < rsp_count + sizeof(uint8_t)) {

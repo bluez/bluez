@@ -411,7 +411,7 @@ int service_register_req(sdp_req_t *req, sdp_buf_t *rsp)
 		bufsize -= sizeof(bdaddr_t);
 	}
 
-	// save image of PDU: we need it when clients request this attribute
+	/* save image of PDU: we need it when clients request this attribute */
 	rec = extract_pdu_server(&req->device, p, bufsize, 0xffffffff, &scanned);
 	if (!rec)
 		goto invalid;

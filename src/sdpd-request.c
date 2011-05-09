@@ -67,7 +67,7 @@ struct _sdp_cstate_list {
 
 static sdp_cstate_list_t *cstates;
 
-// FIXME: should probably remove it when it's found
+/* FIXME: should probably remove it when it's found */
 static sdp_buf_t *sdp_get_cached_rsp(sdp_cont_state_t *cstate)
 {
 	sdp_cstate_list_t *p;
@@ -262,7 +262,7 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 		memcpy(pdata, cstate, sizeof(sdp_cont_state_t));
 		length += sizeof(sdp_cont_state_t);
 	} else {
-		// set "null" continuation state
+		/* set "null" continuation state */
 		*pdata = 0;
 		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
@@ -335,7 +335,7 @@ static int sdp_match_uuid(sdp_list_t *search, sdp_list_t *pattern)
 		if (data == NULL)
 			return -1;
 
-		// create 128-bit form of the search UUID
+		/* create 128-bit form of the search UUID */
 		uuid128 = sdp_uuid_to_uuid128((uuid_t *)data);
 		list = sdp_list_find(pattern, uuid128, sdp_uuid128_cmp);
 		bt_free(uuid128);
@@ -375,7 +375,7 @@ static int service_search_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
 	mlen = scanned + sizeof(uint16_t) + 1;
-	// ensure we don't read past buffer
+	/* ensure we don't read past buffer */
 	if (plen < mlen || plen != mlen + *(uint8_t *)(pdata+sizeof(uint16_t))) {
 		status = SDP_INVALID_SYNTAX;
 		goto done;
@@ -671,7 +671,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 
 	plen = ntohs(((sdp_pdu_hdr_t *)(req->buf))->plen);
 	mlen = scanned + sizeof(uint32_t) + sizeof(uint16_t) + 1;
-	// ensure we don't read past buffer
+	/* ensure we don't read past buffer */
 	if (plen < mlen || plen != mlen + *(uint8_t *)pdata) {
 		status = SDP_INVALID_PDU_SIZE;
 		goto done;
@@ -754,7 +754,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 		}
 	}
 
-	// push header
+	/* push header */
 	buf->data -= sizeof(uint16_t);
 	buf->buf_size += sizeof(uint16_t);
 
@@ -880,7 +880,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 					break;
 				}
 				if (buf->data_size + tmpbuf.data_size < buf->buf_size) {
-					// to be sure no relocations
+					/* to be sure no relocations */
 					sdp_append_to_buf(buf, tmpbuf.data, tmpbuf.data_size);
 					tmpbuf.data_size = 0;
 					memset(tmpbuf.data, 0, USHRT_MAX);
@@ -925,13 +925,13 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	}
 
 	if (!rsp_count && !cstate) {
-		// found nothing
+		/* found nothing */
 		buf->data_size = 0;
 		sdp_append_to_buf(buf, tmpbuf.data, tmpbuf.data_size);
 		sdp_set_cstate_pdu(buf, NULL);
 	}
 
-	// push header
+	/* push header */
 	buf->data -= sizeof(uint16_t);
 	buf->buf_size += sizeof(uint16_t);
 

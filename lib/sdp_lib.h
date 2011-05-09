@@ -90,7 +90,7 @@ typedef struct {
 	int state;
 	int local;
 	int flags;
-	uint16_t tid;	// Current transaction ID
+	uint16_t tid;	/* Current transaction ID */
 	void *priv;
 } sdp_session_t;
 

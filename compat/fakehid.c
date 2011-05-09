@@ -125,9 +125,10 @@ static int uinput_create(char *name, int keyboard, int mouse)
 
 		for (aux = KEY_RESERVED; aux <= KEY_UNKNOWN; aux++)
 			ioctl(fd, UI_SET_KEYBIT, aux);
-
-		//for (aux = LED_NUML; aux <= LED_MISC; aux++)
-		//	ioctl(fd, UI_SET_LEDBIT, aux);
+		/*
+		 *for (aux = LED_NUML; aux <= LED_MISC; aux++)
+		 *	ioctl(fd, UI_SET_LEDBIT, aux);
+		 */
 	}
 
 	if (mouse) {
