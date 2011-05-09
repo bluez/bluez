@@ -785,7 +785,7 @@ static int service_search_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 	short cstate_size = 0;
 	uint8_t dtd = 0;
 	sdp_buf_t tmpbuf;
-	size_t data_left = req->len;
+	size_t data_left;
 
 	tmpbuf.data = NULL;
 	pdata = req->buf + sizeof(sdp_pdu_hdr_t);
