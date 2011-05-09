@@ -86,6 +86,7 @@ static void create_callback(struct session_data *session, GError *err,
 	if (session->target != NULL) {
 		session_register(session);
 		session_set_owner(session, data->sender, owner_exit);
+
 		g_dbus_send_reply(data->connection, data->message,
 				DBUS_TYPE_OBJECT_PATH, &session->path,
 				DBUS_TYPE_INVALID);
@@ -165,6 +166,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	GPtrArray *files;
 	struct send_data *data;
 	const char *agent, *source = NULL, *dest = NULL, *target = NULL;
+	const char *sender;
 	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
@@ -201,6 +203,8 @@ static DBusMessage *send_files(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 	}
 
+	sender = dbus_message_get_sender(message);
+
 	data = g_try_malloc0(sizeof(*data));
 	if (data == NULL) {
 		g_ptr_array_free(files, TRUE);
@@ -210,12 +214,12 @@ static DBusMessage *send_files(DBusConnection *connection,
 
 	data->connection = dbus_connection_ref(connection);
 	data->message = dbus_message_ref(message);
-	data->sender = g_strdup(dbus_message_get_sender(message));
+	data->sender = g_strdup(sender);
 	data->agent = g_strdup(agent);
 	data->files = files;
 
-	session = session_create(source, dest, "OPP", channel, create_callback,
-				data);
+	session = session_create(source, dest, "OPP", channel, sender,
+							create_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
 		return NULL;
@@ -269,8 +273,6 @@ static void pull_session_callback(struct session_data *session,
 		goto done;
 	}
 
-	session_set_owner(session, data->sender, owner_exit);
-
 	session_pull(session, "text/x-vcard", data->filename,
 						pull_complete_callback, data);
 
@@ -320,7 +322,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	data->sender = g_strdup(dbus_message_get_sender(message));
 	data->filename = g_strdup(name);
 
-	session = session_create(source, dest, "OPP", channel,
+	session = session_create(source, dest, "OPP", channel, data->sender,
 					pull_session_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
@@ -382,8 +384,8 @@ static DBusMessage *create_session(DBusConnection *connection,
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
 
-	session = session_create(source, dest, target, channel,
-					create_callback, data);
+	session = session_create(source, dest, target, channel, data->sender,
+							create_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
 		return NULL;
@@ -471,7 +473,6 @@ static void capability_session_callback(struct session_data *session,
 		goto done;
 	}
 
-	session_set_owner(session, data->sender, owner_exit);
 	session_pull(session, "x-obex/capability", NULL,
 				capabilities_complete_callback, data);
 
@@ -513,8 +514,8 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	if (!target)
 		target = "OPP";
 
-	session = session_create(source, dest, target, channel,
-				capability_session_callback, data);
+	session = session_create(source, dest, target, channel, data->sender,
+					capability_session_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
 		return NULL;

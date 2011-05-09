@@ -169,6 +169,9 @@ static void session_unregistered(struct session_data *session)
 					SESSION_INTERFACE);
 
 	DBG("Session(%p) unregistered %s", session, session->path);
+
+	g_free(session->path);
+	session->path = NULL;
 }
 
 static void session_free(struct session_data *session)
@@ -223,6 +226,8 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 	GwObex *obex;
 	int fd;
 
+	DBG("");
+
 	if (err != NULL) {
 		error("%s", err->message);
 		goto done;
@@ -255,6 +260,8 @@ static GIOChannel *rfcomm_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	GIOChannel *io;
 	GError *err = NULL;
 
+	DBG("");
+
 	io = bt_io_connect(BT_IO_RFCOMM, function, user_data, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
@@ -273,6 +280,7 @@ static void search_callback(uint8_t type, uint16_t status,
 			uint8_t *rsp, size_t size, void *user_data)
 {
 	struct callback_data *callback = user_data;
+	struct session_data *session = callback->session;
 	unsigned int scanned, bytesleft = size;
 	int seqlen = 0;
 	uint8_t dataType, channel = 0;
@@ -325,23 +333,26 @@ static void search_callback(uint8_t type, uint16_t status,
 	if (channel == 0)
 		goto failed;
 
-	callback->session->channel = channel;
+	session->channel = channel;
 
-	callback->session->io = rfcomm_connect(&callback->session->src,
-						&callback->session->dst,
-						channel, rfcomm_callback,
-						callback);
-	if (callback->session->io != NULL) {
+	g_io_channel_set_close_on_unref(session->io, FALSE);
+	g_io_channel_unref(session->io);
+
+	session->io = rfcomm_connect(&session->src, &session->dst, channel,
+					rfcomm_callback, callback);
+	if (session->io != NULL) {
 		sdp_close(callback->sdp);
 		return;
 	}
 
 failed:
-	sdp_close(callback->sdp);
+	g_io_channel_shutdown(session->io, TRUE, NULL);
+	g_io_channel_unref(session->io);
+	session->io = NULL;
 
 	g_set_error(&gerr, OBEX_IO_ERROR, -EIO,
 					"Unable to find service record");
-	callback->func(callback->session, gerr, callback->data);
+	callback->func(session, gerr, callback->data);
 	g_clear_error(&gerr);
 
 	session_unref(callback->session);
@@ -366,6 +377,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct callback_data *callback = user_data;
+	struct session_data *session = callback->session;
 	sdp_list_t *search, *attrid;
 	uint32_t range = 0x0000ffff;
 	GError *gerr = NULL;
@@ -395,7 +407,9 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 
 failed:
-	sdp_close(callback->sdp);
+	g_io_channel_shutdown(session->io, TRUE, NULL);
+	g_io_channel_unref(session->io);
+	session->io = NULL;
 
 	g_set_error(&gerr, OBEX_IO_ERROR, -EIO,
 					"Unable to find service record");
@@ -410,6 +424,7 @@ failed:
 static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 					GIOFunc function, gpointer user_data)
 {
+	struct callback_data *cb = user_data;
 	sdp_session_t *sdp;
 	GIOChannel *io;
 
@@ -426,15 +441,46 @@ static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	g_io_add_watch(io, G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 							function, user_data);
 
-	g_io_channel_unref(io);
+	cb->session->io = io;
 
 	return sdp;
 }
 
+static void owner_disconnected(DBusConnection *connection, void *user_data)
+{
+	struct session_data *session = user_data;
+
+	DBG("");
+
+	session_shutdown(session);
+}
+
+int session_set_owner(struct session_data *session, const char *name,
+			GDBusWatchFunction func)
+{
+	if (session == NULL)
+		return -EINVAL;
+
+	if (session->watch)
+		g_dbus_remove_watch(session->conn, session->watch);
+
+	session->watch = g_dbus_add_disconnect_watch(session->conn, name, func,
+							session, NULL);
+	if (session->watch == 0)
+		return -EINVAL;
+
+	session->owner = g_strdup(name);
+
+	return 0;
+}
+
 struct session_data *session_create(const char *source,
-			const char *destination, const char *target,
-			uint8_t channel, session_callback_t function,
-			void *user_data)
+						const char *destination,
+						const char *service,
+						uint8_t channel,
+						const char *owner,
+						session_callback_t function,
+						void *user_data)
 {
 	struct session_data *session;
 	struct callback_data *callback;
@@ -463,21 +509,21 @@ struct session_data *session_create(const char *source,
 
 	str2ba(destination, &session->dst);
 
-	if (!g_ascii_strncasecmp(target, "OPP", 3)) {
+	if (!g_ascii_strncasecmp(service, "OPP", 3)) {
 		sdp_uuid16_create(&session->uuid, OBEX_OBJPUSH_SVCLASS_ID);
-	} else if (!g_ascii_strncasecmp(target, "FTP", 3)) {
+	} else if (!g_ascii_strncasecmp(service, "FTP", 3)) {
 		sdp_uuid16_create(&session->uuid, OBEX_FILETRANS_SVCLASS_ID);
 		session->target = OBEX_FTP_UUID;
 		session->target_len = OBEX_FTP_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(target, "PBAP", 4)) {
+	} else if (!g_ascii_strncasecmp(service, "PBAP", 4)) {
 		sdp_uuid16_create(&session->uuid, PBAP_PSE_SVCLASS_ID);
 		session->target = OBEX_PBAP_UUID;
 		session->target_len = OBEX_PBAP_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(target, "SYNC", 4)) {
+	} else if (!g_ascii_strncasecmp(service, "SYNC", 4)) {
 		sdp_uuid16_create(&session->uuid, IRMC_SYNC_SVCLASS_ID);
 		session->target = OBEX_SYNC_UUID;
 		session->target_len = OBEX_SYNC_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(target, "PCSUITE", 7)) {
+	} else if (!g_ascii_strncasecmp(service, "PCSUITE", 7)) {
 		sdp_uuid128_create(&session->uuid, pcsuite_uuid);
 	} else {
 		return NULL;
@@ -511,6 +557,9 @@ struct session_data *session_create(const char *source,
 		return NULL;
 	}
 
+	if (owner)
+		session_set_owner(session, owner, owner_disconnected);
+
 	return session;
 }
 
@@ -522,6 +571,16 @@ void session_shutdown(struct session_data *session)
 
 	/* Unregister any pending transfer */
 	g_slist_foreach(session->pending, (GFunc) transfer_unregister, NULL);
+
+	/* Unregister interfaces */
+	if (session->path)
+		session_unregistered(session);
+
+	/* Shutdown io */
+	if (session->io) {
+		int fd = g_io_channel_unix_get_fd(session->io);
+		shutdown(fd, SHUT_RDWR);
+	}
 
 	session_unref(session);
 }
@@ -584,13 +643,6 @@ static DBusMessage *release_agent(DBusConnection *connection,
 	agent_free(session);
 
 	return dbus_message_new_method_return(message);
-}
-
-static void owner_disconnected(DBusConnection *connection, void *user_data)
-{
-	struct session_data *session = user_data;
-
-	session_shutdown(session);
 }
 
 static void append_entry(DBusMessageIter *dict,
@@ -1464,25 +1516,6 @@ const char *session_get_agent(struct session_data *session)
 		return NULL;
 
 	return agent->name;
-}
-
-int session_set_owner(struct session_data *session, const char *name,
-			GDBusWatchFunction func)
-{
-	if (session == NULL)
-		return -EINVAL;
-
-	if (session->watch != 0)
-		return -EALREADY;
-
-	session->watch = g_dbus_add_disconnect_watch(session->conn, name, func,
-							session, NULL);
-	if (session->watch == 0)
-		return -EINVAL;
-
-	session->owner = g_strdup(name);
-
-	return 0;
 }
 
 const char *session_get_owner(struct session_data *session)

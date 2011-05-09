@@ -56,9 +56,12 @@ typedef void (*session_callback_t) (struct session_data *session,
 					GError *err, void *user_data);
 
 struct session_data *session_create(const char *source,
-			const char *destination, const char *target,
-			uint8_t channel, session_callback_t function,
-			void *user_data);
+						const char *destination,
+						const char *service,
+						uint8_t channel,
+						const char *owner,
+						session_callback_t function,
+						void *user_data);
 
 struct session_data *session_ref(struct session_data *session);
 void session_unref(struct session_data *session);
