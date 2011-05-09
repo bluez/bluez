@@ -90,7 +90,7 @@ struct input_device {
 	GSList			*connections;
 };
 
-GSList *devices = NULL;
+static GSList *devices = NULL;
 
 static struct input_device *find_device_by_path(GSList *list, const char *path)
 {
