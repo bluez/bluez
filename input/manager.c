@@ -86,7 +86,7 @@ static int headset_probe(struct btd_device *device, GSList *uuids)
 	const gchar *path = device_get_path(device);
 	const sdp_record_t *record;
 	sdp_list_t *protos;
-	uint8_t ch;
+	int ch;
 	bdaddr_t src, dst;
 
 	DBG("path %s", path);
