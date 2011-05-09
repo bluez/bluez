@@ -587,7 +587,6 @@ static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
 	g_dbus_send_message(dc_data->conn, reply);
 	hdp_tmp_dc_data_unref(dc_data);
 	g_error_free(gerr);
-	gerr = NULL;
 
 	/* Send abort request because remote side is now in PENDING state */
 	if (!mcap_mdl_abort(mdl, abort_mdl_cb, NULL, NULL, &gerr)) {
@@ -1736,7 +1735,6 @@ static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
 
 	error("%s", gerr->message);
 	g_error_free(gerr);
-	gerr = NULL;
 
 	reply = g_dbus_create_reply(hdp_conn->msg,
 					DBUS_TYPE_OBJECT_PATH, &hdp_chan->path,
@@ -1758,7 +1756,6 @@ fail:
 						"%s", gerr->message);
 	g_dbus_send_message(user_data->conn, reply);
 	g_error_free(gerr);
-	gerr = NULL;
 
 	/* Send abort request because remote side is now in PENDING */
 	/* state. Then we have to delete it because we couldn't */
