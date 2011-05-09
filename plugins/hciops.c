@@ -962,7 +962,7 @@ static void link_key_notify(int index, void *ptr)
 		/* Some buggy controller combinations generate a changed
 		 * combination key for legacy pairing even when there's no
 		 * previous key */
-		if ((!conn || conn->rem_auth == 0xff) && old_key_type == 0xff)
+		if (conn->rem_auth == 0xff && old_key_type == 0xff)
 			key_type = 0x00;
 		else if (old_key_type != 0xff)
 			key_type = old_key_type;
