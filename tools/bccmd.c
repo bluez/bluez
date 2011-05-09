@@ -1226,8 +1226,7 @@ int main(int argc, char *argv[])
 	if (transport_open(transport, device, bcsp_rate) < 0)
 		exit(1);
 
-	if (device)
-		free(device);
+	free(device);
 
 	for (i = 0; commands[i].str; i++) {
 		if (strcasecmp(commands[i].str, argv[0]))

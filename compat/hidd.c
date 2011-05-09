@@ -341,8 +341,7 @@ create:
 	err = ioctl(ctl, HIDPCONNADD, &req);
 
 error:
-	if (req.rd_data)
-		free(req.rd_data);
+	free(req.rd_data);
 
 	return err;
 }
