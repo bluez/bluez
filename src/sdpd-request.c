@@ -256,14 +256,14 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 
 	if (cstate) {
 		SDPDBG("Non null sdp_cstate_t id : 0x%x", cstate->timestamp);
-		*(uint8_t *)pdata = sizeof(sdp_cont_state_t);
+		*pdata = sizeof(sdp_cont_state_t);
 		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
 		memcpy(pdata, cstate, sizeof(sdp_cont_state_t));
 		length += sizeof(sdp_cont_state_t);
 	} else {
 		// set "null" continuation state
-		*(uint8_t *)pdata = 0;
+		*pdata = 0;
 		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
 	}
