@@ -1567,7 +1567,7 @@ static void store_services(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
 	bdaddr_t dba, sba;
-	char *str = primary_list_to_string(device->services);
+	char *str = primary_list_to_string(device->primaries);
 
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
