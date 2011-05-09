@@ -516,10 +516,7 @@ struct session_data *session_create(const char *source,
 
 void session_shutdown(struct session_data *session)
 {
-	struct transfer_data *transfer;
-
 	DBG("%p", session);
-	transfer = session->pending ? session->pending->data : NULL;
 
 	session_ref(session);
 
