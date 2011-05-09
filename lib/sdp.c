@@ -2021,25 +2021,34 @@ int sdp_get_lang_attr(const sdp_record_t *rec, sdp_list_t **langSeq)
 	curr_data = sdpdata->val.dataseq;
 	while (curr_data) {
 		sdp_data_t *pCode = curr_data;
-		sdp_data_t *pEncoding = pCode->next;
-		sdp_data_t *pOffset = pEncoding->next;
-		if (pEncoding && pOffset) {
-			lang = malloc(sizeof(sdp_lang_attr_t));
-			if (!lang) {
-				sdp_list_free(*langSeq, free);
-				*langSeq = NULL;
-				return -1;
-			}
-			lang->code_ISO639 = pCode->val.uint16;
-			lang->encoding = pEncoding->val.uint16;
-			lang->base_offset = pOffset->val.uint16;
-			SDPDBG("code_ISO639 :  0x%02x\n", lang->code_ISO639);
-			SDPDBG("encoding :     0x%02x\n", lang->encoding);
-			SDPDBG("base_offfset : 0x%02x\n", lang->base_offset);
-			*langSeq = sdp_list_append(*langSeq, lang);
+		sdp_data_t *pEncoding;
+		sdp_data_t *pOffset;
+
+		pEncoding = pCode->next;
+		if (!pEncoding)
+			break;
+
+		pOffset = pEncoding->next;
+		if (!pOffset)
+			break;
+
+		lang = malloc(sizeof(sdp_lang_attr_t));
+		if (!lang) {
+			sdp_list_free(*langSeq, free);
+			*langSeq = NULL;
+			return -1;
 		}
+		lang->code_ISO639 = pCode->val.uint16;
+		lang->encoding = pEncoding->val.uint16;
+		lang->base_offset = pOffset->val.uint16;
+		SDPDBG("code_ISO639 :  0x%02x\n", lang->code_ISO639);
+		SDPDBG("encoding :     0x%02x\n", lang->encoding);
+		SDPDBG("base_offfset : 0x%02x\n", lang->base_offset);
+		*langSeq = sdp_list_append(*langSeq, lang);
+
 		curr_data = pOffset->next;
 	}
+
 	return 0;
 }
 
