@@ -899,7 +899,7 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	}
 
 	if (!is_seq && !is_alt) {
-		if (src && buf && buf->buf_size >= buf->data_size + data_size) {
+		if (src && buf->buf_size >= buf->data_size + data_size) {
 			memcpy(buf->data + buf->data_size, src, data_size);
 			buf->data_size += data_size;
 		} else if (dtd != SDP_DATA_NIL) {
