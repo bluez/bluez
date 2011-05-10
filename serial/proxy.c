@@ -311,8 +311,7 @@ static inline int unix_socket_connect(const char *address)
 static int tcp_socket_connect(const char *address)
 {
 	struct sockaddr_in addr;
-	int err, sk;
-	unsigned short int port;
+	int err, sk, port;
 
 	memset(&addr, 0, sizeof(addr));
 
