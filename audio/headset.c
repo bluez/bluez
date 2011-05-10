@@ -484,7 +484,7 @@ static unsigned int connect_cb_new(struct headset *hs,
 					void *user_data)
 {
 	struct connect_cb *cb;
-	unsigned int free_cb_id = 1;
+	static unsigned int free_cb_id = 1;
 
 	pending_connect_init(hs, target_state);
 
