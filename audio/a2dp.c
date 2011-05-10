@@ -2037,7 +2037,6 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 	struct avdtp_media_codec_capability *codec_cap = NULL;
 	int posix_err;
 	bdaddr_t src;
-	uint8_t remote_type;
 
 	avdtp_get_peers(session, &src, NULL);
 	server = find_server(servers, &src);
@@ -2082,13 +2081,10 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 
 	switch (avdtp_sep_get_state(sep->lsep)) {
 	case AVDTP_STATE_IDLE:
-		if (sep->type == AVDTP_SEP_TYPE_SOURCE) {
+		if (sep->type == AVDTP_SEP_TYPE_SOURCE)
 			l = server->sources;
-			remote_type = AVDTP_SEP_TYPE_SINK;
-		} else {
-			remote_type = AVDTP_SEP_TYPE_SOURCE;
+		else
 			l = server->sinks;
-		}
 
 		for (; l != NULL; l = l->next) {
 			tmp = l->data;
