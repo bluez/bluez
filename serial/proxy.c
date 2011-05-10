@@ -212,7 +212,7 @@ static int channel_write(GIOChannel *chan, char *buf, size_t size)
 	while (wbytes < size) {
 		written = write(fd, buf + wbytes, size - wbytes);
 
-		if (written)
+		if (written < 0)
 			return -errno;
 
 		wbytes += written;
