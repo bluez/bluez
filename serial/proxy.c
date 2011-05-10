@@ -208,7 +208,7 @@ static int channel_write(GIOChannel *chan, char *buf, size_t size)
 
 	fd = g_io_channel_unix_get_fd(chan);
 
-	wbytes = written = 0;
+	wbytes = 0;
 	while (wbytes < size) {
 		written = write(fd, buf + wbytes, size - wbytes);
 
