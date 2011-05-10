@@ -71,13 +71,11 @@ static guint16 encode_discover_primary(uint16_t start, uint16_t end,
 {
 	bt_uuid_t prim;
 	guint16 plen;
-	uint8_t op;
 
 	bt_uuid16_create(&prim, GATT_PRIM_SVC_UUID);
 
 	if (uuid == NULL) {
 		/* Discover all primary services */
-		op = ATT_OP_READ_BY_GROUP_REQ;
 		plen = enc_read_by_grp_req(start, end, &prim, pdu, len);
 	} else {
 		uint16_t u16;
@@ -86,7 +84,6 @@ static guint16 encode_discover_primary(uint16_t start, uint16_t end,
 		int vlen;
 
 		/* Discover primary service by service UUID */
-		op = ATT_OP_FIND_BY_TYPE_REQ;
 
 		if (uuid->type == BT_UUID16) {
 			u16 = htobs(uuid->value.u16);
