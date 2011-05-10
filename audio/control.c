@@ -574,6 +574,8 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 		avrcp->code = CTYPE_REJECTED;
 	}
 	ret = write(sock, buf, packet_size);
+	if (ret != packet_size)
+		goto failed;
 
 	return TRUE;
 
