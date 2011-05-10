@@ -2754,7 +2754,7 @@ static void init_conn_list(int index)
 	struct dev_info *dev = &devs[index];
 	struct hci_conn_list_req *cl;
 	struct hci_conn_info *ci;
-	int err, i;
+	int i;
 
 	DBG("hci%d", index);
 
@@ -2779,8 +2779,6 @@ static void init_conn_list(int index)
 		conn = get_connection(dev, &ci->bdaddr);
 		conn->handle = ci->handle;
 	}
-
-	err = 0;
 
 failed:
 	g_free(cl);
