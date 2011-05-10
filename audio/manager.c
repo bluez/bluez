@@ -560,7 +560,6 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	GError *err = NULL;
 	uint8_t ch;
 	const char *server_uuid, *remote_uuid;
-	uint16_t svclass;
 	struct audio_device *device;
 	int perr;
 
@@ -578,7 +577,6 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 
 	server_uuid = HFP_AG_UUID;
 	remote_uuid = HFP_HS_UUID;
-	svclass = HANDSFREE_AGW_SVCLASS_ID;
 
 	device = manager_get_device(&src, &dst, TRUE);
 	if (!device)
