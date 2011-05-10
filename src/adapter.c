@@ -474,12 +474,9 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
 {
 	int err;
 	const char *modestr;
-	gboolean discoverable;
 
 	if (adapter->pending_mode != NULL)
 		return -EALREADY;
-
-	discoverable = new_mode == MODE_DISCOVERABLE;
 
 	if (!adapter->up && new_mode != MODE_OFF) {
 		err = adapter_ops->set_powered(adapter->dev_id, TRUE);
@@ -3400,7 +3397,6 @@ gboolean adapter_powering_down(struct btd_adapter *adapter)
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
 	char mode[14], address[18];
-	gboolean discoverable;
 
 	if (!adapter_ops)
 		return -EINVAL;
@@ -3415,8 +3411,6 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	if (read_device_mode(address, mode, sizeof(mode)) == 0 &&
 						g_str_equal(mode, "off"))
 		return 0;
-
-	discoverable = get_mode(&adapter->bdaddr, mode) == MODE_DISCOVERABLE;
 
 	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
