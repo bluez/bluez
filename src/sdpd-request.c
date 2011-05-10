@@ -264,7 +264,6 @@ static int sdp_set_cstate_pdu(sdp_buf_t *buf, sdp_cont_state_t *cstate)
 	} else {
 		/* set "null" continuation state */
 		*pdata = 0;
-		pdata += sizeof(uint8_t);
 		length += sizeof(uint8_t);
 	}
 	buf->data_size += length;

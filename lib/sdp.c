@@ -673,7 +673,7 @@ static int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
 	int data_type = 0;
 	uint8_t *p = buf->data + buf->data_size;
 
-	*p++ = dtd;
+	*p = dtd;
 	data_type = sdp_get_data_type(buf, dtd);
 	buf->data_size += data_type;
 
@@ -688,7 +688,6 @@ void sdp_set_attrid(sdp_buf_t *buf, uint16_t attr)
 	*p++ = SDP_UINT16;
 	buf->data_size = sizeof(uint8_t);
 	bt_put_unaligned(htons(attr), (uint16_t *) p);
-	p += sizeof(uint16_t);
 	buf->data_size += sizeof(uint16_t);
 }
 
@@ -1021,7 +1020,6 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 		}
 		sdp_uuid16_create(uuid, ntohs(bt_get_unaligned((uint16_t *) p)));
 		*scanned += sizeof(uint16_t);
-		p += sizeof(uint16_t);
 	} else if (type == SDP_UUID32) {
 		if (bufsize < (int) sizeof(uint32_t)) {
 			SDPERR("Not enough room for 32-bit UUID");
@@ -1029,7 +1027,6 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 		}
 		sdp_uuid32_create(uuid, ntohl(bt_get_unaligned((uint32_t *) p)));
 		*scanned += sizeof(uint32_t);
-		p += sizeof(uint32_t);
 	} else {
 		if (bufsize < (int) sizeof(uint128_t)) {
 			SDPERR("Not enough room for 128-bit UUID");
@@ -1037,7 +1034,6 @@ int sdp_uuid_extract(const uint8_t *p, int bufsize, uuid_t *uuid, int *scanned)
 		}
 		sdp_uuid128_create(uuid, p);
 		*scanned += sizeof(uint128_t);
-		p += sizeof(uint128_t);
 	}
 	return 0;
 }
@@ -2766,10 +2762,8 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 	if (dst->data_size == 0 && dtd == 0) {
 		/* create initial sequence */
 		*p = SDP_SEQ8;
-		p += sizeof(uint8_t);
 		dst->data_size += sizeof(uint8_t);
 		/* reserve space for sequence size */
-		p += sizeof(uint8_t);
 		dst->data_size += sizeof(uint8_t);
 	}
 
@@ -2781,12 +2775,9 @@ void sdp_append_to_buf(sdp_buf_t *dst, uint8_t *data, uint32_t len)
 		short offset = sizeof(uint8_t) + sizeof(uint8_t);
 		memmove(dst->data + offset + 1, dst->data + offset,
 						dst->data_size - offset);
-		p = dst->data;
 		*p = SDP_SEQ16;
-		p += sizeof(uint8_t);
 		dst->data_size += 1;
 	}
-	p = dst->data;
 	dtd = *(uint8_t *) p;
 	p += sizeof(uint8_t);
 	switch (dtd) {
@@ -3328,7 +3319,7 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 	uint32_t reqsize = 0, _reqsize;
 	uint32_t rspsize = 0, rsplen;
 	int seqlen = 0;
-	int total_rec_count, rec_count;
+	int rec_count;
 	unsigned scanned, pdata_len;
 	uint8_t *pdata, *_pdata;
 	uint8_t *reqbuf, *rspbuf;
@@ -3407,7 +3398,6 @@ int sdp_service_search_req(sdp_session_t *session, const sdp_list_t *search,
 		}
 
 		/* net service record match count */
-		total_rec_count = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		pdata += sizeof(uint16_t);
 		scanned += sizeof(uint16_t);
 		pdata_len -= sizeof(uint16_t);
@@ -4183,8 +4173,6 @@ int sdp_process(sdp_session_t *session)
 		status = ntohs(bt_get_unaligned((uint16_t *) pdata));
 		size = ntohs(rsphdr->plen);
 
-		/* error code + error info */
-		plen = size;
 		goto end;
 	default:
 		t->err = EPROTO;

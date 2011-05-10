@@ -515,7 +515,6 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp)
 	int status = 0;
 
 	/* extract service record handle */
-	p += sizeof(uint32_t);
 
 	rec = sdp_record_find(handle);
 	if (rec) {
