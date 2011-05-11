@@ -207,7 +207,7 @@ static int mgmt_update_powered(int index, uint8_t powered)
 {
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	gboolean pairable, discoverable;
+	gboolean pairable;
 	uint8_t on_mode;
 
 	if (index > max_index) {
@@ -237,8 +237,6 @@ static int mgmt_update_powered(int index, uint8_t powered)
 	btd_adapter_start(adapter);
 
 	btd_adapter_get_mode(adapter, NULL, &on_mode, &pairable);
-
-	discoverable = (on_mode == MODE_DISCOVERABLE);
 
 	if (on_mode == MODE_DISCOVERABLE && !info->discoverable)
 		mgmt_set_discoverable(index, TRUE);
