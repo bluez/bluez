@@ -229,6 +229,11 @@ int bnep_if_down(const char *devname)
 
 	close(sk);
 
+	if (err < 0) {
+		error("Could not bring down %s", devname);
+		return err;
+	}
+
 	return 0;
 }
 
