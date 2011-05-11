@@ -820,7 +820,6 @@ static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
 					unsigned short *revents)
 {
 	static char buf[1];
-	int ret;
 
 	DBG("");
 
@@ -831,7 +830,8 @@ static int bluetooth_playback_poll_revents(snd_pcm_ioplug_t *io,
 	assert(pfds[1].fd >= 0);
 
 	if (io->state != SND_PCM_STATE_PREPARED)
-		ret = read(pfds[0].fd, buf, 1);
+		if (read(pfds[0].fd, buf, 1) < 0)
+			SYSERR("read error: %s (%d)", strerror(errno), errno);
 
 	if (pfds[1].revents & (POLLERR | POLLHUP | POLLNVAL))
 		io->state = SND_PCM_STATE_DISCONNECTED;
