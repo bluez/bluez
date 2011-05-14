@@ -417,13 +417,11 @@ static void recv_mode(int sk)
 	struct timeval tv_beg, tv_end, tv_diff;
 	char ts[30];
 	long total;
-	uint32_t seq;
 
 	syslog(LOG_INFO, "Receiving ...");
 
 	memset(ts, 0, sizeof(ts));
 
-	seq = 0;
 	while (1) {
 		gettimeofday(&tv_beg,NULL);
 		total = 0;

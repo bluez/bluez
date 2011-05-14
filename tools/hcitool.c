@@ -2351,7 +2351,6 @@ static int print_advertising_devices(int dd, uint8_t filter_type)
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
 	struct hci_filter nf, of;
 	socklen_t olen;
-	hci_event_hdr *hdr;
 	int num, len;
 
 	olen = sizeof(of);
@@ -2382,7 +2381,6 @@ static int print_advertising_devices(int dd, uint8_t filter_type)
 			goto done;
 		}
 
-		hdr = (void *) (buf + 1);
 		ptr = buf + (1 + HCI_EVENT_HDR_SIZE);
 		len -= (1 + HCI_EVENT_HDR_SIZE);
 

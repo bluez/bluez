@@ -243,17 +243,16 @@ static int decode_key(const char *str)
 	return key;
 }
 
-static void send_event(int fd, uint16_t type, uint16_t code, int32_t value)
+static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
 	struct uinput_event event;
-	int err;
 
 	memset(&event, 0, sizeof(event));
 	event.type	= type;
 	event.code	= code;
 	event.value	= value;
 
-	err = write(fd, &event, sizeof(event));
+	return write(fd, &event, sizeof(event));
 }
 
 static void send_key(int fd, uint16_t key)

@@ -351,12 +351,12 @@ static int bcsp_max_retries = 10;
 static void bcsp_tshy_sig_alarm(int sig)
 {
 	unsigned char bcsp_sync_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xda,0xdc,0xed,0xed,0xc0};
-	int len;
 	static int retries = 0;
 
 	if (retries < bcsp_max_retries) {
 		retries++;
-		len = write(serial_fd, &bcsp_sync_pkt, 10);
+		if (write(serial_fd, &bcsp_sync_pkt, 10) < 0)
+			return;
 		alarm(1);
 		return;
 	}
@@ -369,12 +369,12 @@ static void bcsp_tshy_sig_alarm(int sig)
 static void bcsp_tconf_sig_alarm(int sig)
 {
 	unsigned char bcsp_conf_pkt[10] = {0xc0,0x00,0x41,0x00,0xbe,0xad,0xef,0xac,0xed,0xc0};
-	int len;
 	static int retries = 0;
 
 	if (retries < bcsp_max_retries){
 		retries++;
-		len = write(serial_fd, &bcsp_conf_pkt, 10);
+		if (write(serial_fd, &bcsp_conf_pkt, 10) < 0)
+			return;
 		alarm(1);
 		return;
 	}
@@ -451,7 +451,8 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 		}
 
 		if (!memcmp(bcspp, bcspsync, 4)) {
-			len = write(fd, &bcsp_sync_resp_pkt,10);
+			if (write(fd, &bcsp_sync_resp_pkt,10) < 0)
+				return -1;
 		} else if (!memcmp(bcspp, bcspsyncresp, 4))
 			break;
 	}
@@ -500,6 +501,11 @@ static int bcsp(int fd, struct uart_t *u, struct termios *ti)
 			len = write(fd, &bcsp_conf_resp_pkt, 10);
 		else if (!memcmp(bcspp, bcspconfresp,  4))
 			break;
+		else
+			continue;
+
+		if (len < 0)
+			return -errno;
 	}
 
 	/* State = garrulous */

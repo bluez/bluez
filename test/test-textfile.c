@@ -44,25 +44,28 @@ int main(int argc, char *argv[])
 	char filename[] = "/tmp/textfile";
 	char key[18], value[512], *str;
 	unsigned int i, j, size, max = 10;
-	int fd, err;
+	int fd;
 
 	size = getpagesize();
 	printf("System uses a page size of %d bytes\n\n", size);
 
 	fd = creat(filename, 0644);
-	err = ftruncate(fd, 0);
+	if (ftruncate(fd, 0) < 0)
+		return -errno;
 
 	memset(value, 0, sizeof(value));
-	for (i = 0; i < (size / sizeof(value)); i++)
-		err = write(fd, value, sizeof(value));
+	for (i = 0; i < (size / sizeof(value)); i++) {
+		if (write(fd, value, sizeof(value)) < 0)
+			return -errno;
+	}
 
 	close(fd);
 
 	sprintf(key, "11:11:11:11:11:11");
 	str = textfile_get(filename, key);
 
-	err = truncate(filename, 0);
-
+	if (truncate(filename, 0) < 0)
+		return -errno;
 
 	sprintf(key, "00:00:00:00:00:00");
 	if (textfile_del(filename, key) < 0)

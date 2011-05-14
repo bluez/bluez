@@ -203,7 +203,6 @@ static int write_snoop(int fd, int type, int incoming, unsigned char *buf, int l
 	struct timeval tv;
 	uint32_t size = len;
 	uint64_t ts;
-	int err;
 
 	if (fd < 0)
 		return -1;
@@ -221,8 +220,11 @@ static int write_snoop(int fd, int type, int incoming, unsigned char *buf, int l
 	if (type == HCI_COMMAND_PKT || type == HCI_EVENT_PKT)
 		pkt.flags |= ntohl(0x02);
 
-	err = write(fd, &pkt, BTSNOOP_PKT_SIZE);
-	err = write(fd, buf, size);
+	if (write(fd, &pkt, BTSNOOP_PKT_SIZE) < 0)
+		return -errno;
+
+	if (write(fd, buf, size) < 0)
+		return -errno;
 
 	return 0;
 }
@@ -861,7 +863,7 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	hci_acl_hdr *ah;
 	uint16_t flags;
-	int fd, err, len;
+	int fd, len;
 
 	if (cond & G_IO_NVAL) {
 		g_io_channel_unref(chan);
@@ -898,7 +900,8 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	write_snoop(vdev.dd, HCI_ACLDATA_PKT, 1, buf, len);
 
-	err = write(vdev.fd, buf, len);
+	if (write(vdev.fd, buf, len) < 0)
+		return FALSE;
 
 	return TRUE;
 }

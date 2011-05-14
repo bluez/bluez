@@ -91,8 +91,9 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	/* Send unplug virtual cable to unknown devices */
 	if (ret == -ENOENT && psm == L2CAP_PSM_HIDP_CTRL) {
 		unsigned char unplug = 0x15;
-		int err, sk = g_io_channel_unix_get_fd(chan);
-		err = write(sk, &unplug, sizeof(unplug));
+		int sk = g_io_channel_unix_get_fd(chan);
+		if (write(sk, &unplug, sizeof(unplug)) < 0)
+			error("Unable to send virtual cable unplug");
 	}
 
 	g_io_channel_shutdown(chan, TRUE, NULL);

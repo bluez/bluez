@@ -47,7 +47,6 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 	int i, hex;
 	char buf[STRBUFSIZE];
 	char indent[MAXINDENT];
-	char next_indent[MAXINDENT];
 
 	if (!value)
 		return;
@@ -55,15 +54,10 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 	if (indent_level >= MAXINDENT)
 		indent_level = MAXINDENT - 2;
 
-	for (i = 0; i < indent_level; i++) {
+	for (i = 0; i < indent_level; i++)
 		indent[i] = '\t';
-		next_indent[i] = '\t';
-	}
 
 	indent[i] = '\0';
-	next_indent[i] = '\t';
-	next_indent[i + 1] = '\0';
-
 	buf[STRBUFSIZE - 1] = '\0';
 
 	switch (value->dtd) {

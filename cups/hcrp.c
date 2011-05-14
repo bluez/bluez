@@ -94,8 +94,13 @@ static int hcrp_credit_grant(int sk, uint16_t tid, uint32_t credit)
 	memcpy(buf, &hdr, HCRP_PDU_HDR_SIZE);
 	memcpy(buf + HCRP_PDU_HDR_SIZE, &cp, HCRP_CREDIT_GRANT_CP_SIZE);
 	len = write(sk, buf, HCRP_PDU_HDR_SIZE + HCRP_CREDIT_GRANT_CP_SIZE);
+	if (len < 0)
+		return len;
 
 	len = read(sk, buf, sizeof(buf));
+	if (len < 0)
+		return len;
+
 	memcpy(&hdr, buf, HCRP_PDU_HDR_SIZE);
 	memcpy(&rp, buf + HCRP_PDU_HDR_SIZE, HCRP_CREDIT_GRANT_RP_SIZE);
 
@@ -119,8 +124,13 @@ static int hcrp_credit_request(int sk, uint16_t tid, uint32_t *credit)
 	hdr.plen = htons(0);
 	memcpy(buf, &hdr, HCRP_PDU_HDR_SIZE);
 	len = write(sk, buf, HCRP_PDU_HDR_SIZE);
+	if (len < 0)
+		return len;
 
 	len = read(sk, buf, sizeof(buf));
+	if (len < 0)
+		return len;
+
 	memcpy(&hdr, buf, HCRP_PDU_HDR_SIZE);
 	memcpy(&rp, buf + HCRP_PDU_HDR_SIZE, HCRP_CREDIT_REQUEST_RP_SIZE);
 
@@ -147,8 +157,13 @@ static int hcrp_get_lpt_status(int sk, uint16_t tid, uint8_t *lpt_status)
 	hdr.plen = htons(0);
 	memcpy(buf, &hdr, HCRP_PDU_HDR_SIZE);
 	len = write(sk, buf, HCRP_PDU_HDR_SIZE);
+	if (len < 0)
+		return len;
 
 	len = read(sk, buf, sizeof(buf));
+	if (len < 0)
+		return len;
+
 	memcpy(&hdr, buf, HCRP_PDU_HDR_SIZE);
 	memcpy(&rp, buf + HCRP_PDU_HDR_SIZE, HCRP_GET_LPT_STATUS_RP_SIZE);
 

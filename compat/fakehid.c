@@ -60,20 +60,19 @@ static void sig_term(int sig)
 	__io_canceled = 1;
 }
 
-static void send_event(int fd, uint16_t type, uint16_t code, int32_t value)
+static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
 	struct uinput_event event;
-	int len;
 
 	if (fd <= fileno(stderr))
-		return;
+		return -EINVAL;
 
 	memset(&event, 0, sizeof(event));
 	event.type = type;
 	event.code = code;
 	event.value = value;
 
-	len = write(fd, &event, sizeof(event));
+	return write(fd, &event, sizeof(event));
 }
 
 static int uinput_create(char *name, int keyboard, int mouse)

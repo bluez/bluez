@@ -961,7 +961,6 @@ static void process_request(sdp_req_t *req)
 	sdp_pdu_hdr_t *rsphdr;
 	sdp_buf_t rsp;
 	uint8_t *buf = malloc(USHRT_MAX);
-	int sent = 0;
 	int status = SDP_INVALID_SYNTAX;
 
 	memset(buf, 0, USHRT_MAX);
@@ -1035,7 +1034,8 @@ send_rsp:
 	rsp.data = buf;
 
 	/* stream the rsp PDU */
-	sent = send(req->sock, rsp.data, rsp.data_size, 0);
+	if (send(req->sock, rsp.data, rsp.data_size, 0) < 0)
+		error("send: %s (%d)", strerror(errno), errno);
 
 	SDPDBG("Bytes Sent : %d", sent);
 
