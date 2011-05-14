@@ -174,7 +174,7 @@ static int analyze_file(char *filename)
 	unsigned char buf[64];
 	double rate;
 	int bitpool[SIZE], frame_len[SIZE];
-	int subbands, blocks, freq, mode, method;
+	int subbands, blocks, freq, method;
 	int n, p1, p2, fd, size, num;
 	ssize_t len;
 	unsigned int count;
@@ -199,7 +199,6 @@ static int analyze_file(char *filename)
 	subbands = (hdr.subbands + 1) * 4;
 	blocks = (hdr.blocks + 1) * 4;
 	freq = hdr.sampling_frequency;
-	mode = hdr.channel_mode;
 	method = hdr.allocation_method;
 
 	count = calc_frame_len(&hdr);
