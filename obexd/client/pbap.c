@@ -312,7 +312,7 @@ static void read_return_apparam(struct session_data *session,
 			if (hdr->len == PHONEBOOKSIZE_LEN) {
 				guint16 val;
 				memcpy(&val, hdr->val, sizeof(val));
-				*phone_book_size = val;
+				*phone_book_size = get_be16(&val);
 			}
 			break;
 		case NEWMISSEDCALLS_TAG:
