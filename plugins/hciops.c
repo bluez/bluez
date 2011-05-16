@@ -51,6 +51,7 @@
 #include "event.h"
 #include "manager.h"
 #include "oob.h"
+#include "eir.h"
 
 #define DISCOV_HALTED 0
 #define DISCOV_INQ 1
@@ -82,11 +83,6 @@ enum {
 	PENDING_VERSION,
 	PENDING_FEATURES,
 	PENDING_NAME,
-};
-
-struct uuid_info {
-	uuid_t uuid;
-	uint8_t svc_hint;
 };
 
 struct bt_conn {
@@ -1435,167 +1431,6 @@ static void read_local_features_complete(int index,
 		init_adapter(index);
 }
 
-#define SIZEOF_UUID128 16
-
-static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
-{
-	int i, k, uuid_count = 0;
-	uint16_t len = *eir_len;
-	uint8_t *uuid128;
-	gboolean truncated = FALSE;
-
-	/* Store UUIDs in place, skip 2 bytes to write type and length later */
-	uuid128 = ptr + 2;
-
-	for (; list; list = list->next) {
-		struct uuid_info *uuid = list->data;
-		uint8_t *uuid128_data = uuid->uuid.value.uuid128.data;
-
-		if (uuid->uuid.type != SDP_UUID128)
-			continue;
-
-		/* Stop if not enough space to put next UUID128 */
-		if ((len + 2 + SIZEOF_UUID128) > EIR_DATA_LENGTH) {
-			truncated = TRUE;
-			break;
-		}
-
-		/* Check for duplicates, EIR data is Little Endian */
-		for (i = 0; i < uuid_count; i++) {
-			for (k = 0; k < SIZEOF_UUID128; k++) {
-				if (uuid128[i * SIZEOF_UUID128 + k] !=
-					uuid128_data[SIZEOF_UUID128 - 1 - k])
-					break;
-			}
-			if (k == SIZEOF_UUID128)
-				break;
-		}
-
-		if (i < uuid_count)
-			continue;
-
-		/* EIR data is Little Endian */
-		for (k = 0; k < SIZEOF_UUID128; k++)
-			uuid128[uuid_count * SIZEOF_UUID128 + k] =
-				uuid128_data[SIZEOF_UUID128 - 1 - k];
-
-		len += SIZEOF_UUID128;
-		uuid_count++;
-	}
-
-	if (uuid_count > 0 || truncated) {
-		/* EIR Data length */
-		ptr[0] = (uuid_count * SIZEOF_UUID128) + 1;
-		/* EIR Data type */
-		ptr[1] = truncated ? EIR_UUID128_SOME : EIR_UUID128_ALL;
-		len += 2;
-		*eir_len = len;
-	}
-}
-
-static void create_ext_inquiry_response(int index, uint8_t *data)
-{
-	struct dev_info *dev = &devs[index];
-	GSList *l;
-	uint8_t *ptr = data;
-	uint16_t eir_len = 0;
-	uint16_t uuid16[EIR_DATA_LENGTH / 2];
-	int i, uuid_count = 0;
-	gboolean truncated = FALSE;
-	size_t name_len;
-
-	name_len = strlen(dev->name);
-
-	if (name_len > 0) {
-		/* EIR Data type */
-		if (name_len > 48) {
-			name_len = 48;
-			ptr[1] = EIR_NAME_SHORT;
-		} else
-			ptr[1] = EIR_NAME_COMPLETE;
-
-		/* EIR Data length */
-		ptr[0] = name_len + 1;
-
-		memcpy(ptr + 2, dev->name, name_len);
-
-		eir_len += (name_len + 2);
-		ptr += (name_len + 2);
-	}
-
-	if (dev->tx_power != 0) {
-		*ptr++ = 2;
-		*ptr++ = EIR_TX_POWER;
-		*ptr++ = (uint8_t) dev->tx_power;
-		eir_len += 3;
-	}
-
-	if (dev->did_vendor != 0x0000) {
-		uint16_t source = 0x0002;
-		*ptr++ = 9;
-		*ptr++ = EIR_DEVICE_ID;
-		*ptr++ = (source & 0x00ff);
-		*ptr++ = (source & 0xff00) >> 8;
-		*ptr++ = (dev->did_vendor & 0x00ff);
-		*ptr++ = (dev->did_vendor & 0xff00) >> 8;
-		*ptr++ = (dev->did_product & 0x00ff);
-		*ptr++ = (dev->did_product & 0xff00) >> 8;
-		*ptr++ = (dev->did_version & 0x00ff);
-		*ptr++ = (dev->did_version & 0xff00) >> 8;
-		eir_len += 10;
-	}
-
-	/* Group all UUID16 types */
-	for (l = dev->uuids; l != NULL; l = g_slist_next(l)) {
-		struct uuid_info *uuid = l->data;
-
-		if (uuid->uuid.type != SDP_UUID16)
-			continue;
-
-		if (uuid->uuid.value.uuid16 < 0x1100)
-			continue;
-
-		if (uuid->uuid.value.uuid16 == PNP_INFO_SVCLASS_ID)
-			continue;
-
-		/* Stop if not enough space to put next UUID16 */
-		if ((eir_len + 2 + sizeof(uint16_t)) > EIR_DATA_LENGTH) {
-			truncated = TRUE;
-			break;
-		}
-
-		/* Check for duplicates */
-		for (i = 0; i < uuid_count; i++)
-			if (uuid16[i] == uuid->uuid.value.uuid16)
-				break;
-
-		if (i < uuid_count)
-			continue;
-
-		uuid16[uuid_count++] = uuid->uuid.value.uuid16;
-		eir_len += sizeof(uint16_t);
-	}
-
-	if (uuid_count > 0) {
-		/* EIR Data length */
-		ptr[0] = (uuid_count * sizeof(uint16_t)) + 1;
-		/* EIR Data type */
-		ptr[1] = truncated ? EIR_UUID16_SOME : EIR_UUID16_ALL;
-
-		ptr += 2;
-		eir_len += 2;
-
-		for (i = 0; i < uuid_count; i++) {
-			*ptr++ = (uuid16[i] & 0x00ff);
-			*ptr++ = (uuid16[i] & 0xff00) >> 8;
-		}
-	}
-
-	/* Group all UUID128 types */
-	if (eir_len <= EIR_DATA_LENGTH - 2)
-		eir_generate_uuid128(dev->uuids, ptr, &eir_len);
-}
-
 static void update_ext_inquiry_response(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -1614,7 +1449,8 @@ static void update_ext_inquiry_response(int index)
 
 	memset(&cp, 0, sizeof(cp));
 
-	create_ext_inquiry_response(index, cp.data);
+	eir_create(dev->name, dev->tx_power, dev->did_vendor, dev->did_product,
+					dev->did_version, dev->uuids, cp.data);
 
 	if (memcmp(cp.data, dev->eir, sizeof(cp.data)) == 0)
 		return;
