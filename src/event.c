@@ -341,18 +341,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 				int8_t rssi, uint8_t *data)
 {
-	char filename[PATH_MAX + 1];
 	struct btd_adapter *adapter;
-	char local_addr[18], peer_addr[18], *alias, *name;
-	name_status_t name_status;
-	struct eir_data eir_data;
-	int err;
-	dbus_bool_t legacy;
-	unsigned char features[8];
-	const char *dev_name;
-
-	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
 
 	adapter = manager_find_adapter(local);
 	if (!adapter) {
@@ -366,54 +355,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (data)
 		write_remote_eir(local, peer, data);
 
-	/* the inquiry result can be triggered by NON D-Bus client */
-	if (main_opts.name_resolv && adapter_has_discov_sessions(adapter))
-		name_status = NAME_REQUIRED;
-	else
-		name_status = NAME_NOT_REQUIRED;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "aliases");
-	alias = textfile_get(filename, peer_addr);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, local_addr, "names");
-	name = textfile_get(filename, peer_addr);
-
-	if (data)
-		legacy = FALSE;
-	else if (name == NULL)
-		legacy = TRUE;
-	else if (read_remote_features(local, peer, NULL, features) == 0) {
-		if (features[0] & 0x01)
-			legacy = FALSE;
-		else
-			legacy = TRUE;
-	} else
-		legacy = TRUE;
-
-	memset(&eir_data, 0, sizeof(eir_data));
-	err = eir_parse(&eir_data, data, EIR_DATA_LENGTH);
-	if (err < 0)
-		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
-
-	/* Complete EIR names are always used. Shortened EIR names are only
-	 * used if there is no name already in storage. */
-	dev_name = name;
-	if (eir_data.name != NULL) {
-		if (eir_data.name_complete) {
-			write_device_name(local, peer, eir_data.name);
-			name_status = NAME_NOT_REQUIRED;
-			dev_name = eir_data.name;
-		} else if (name == NULL)
-			dev_name = eir_data.name;
-	}
-
-	adapter_update_found_devices(adapter, peer, rssi, class, dev_name,
-					alias, legacy, eir_data.services,
-					name_status);
-
-	free_eir_data(&eir_data);
-	free(name);
-	free(alias);
+	adapter_update_found_devices(adapter, peer, class, rssi, data);
 }
 
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
