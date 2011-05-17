@@ -501,7 +501,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 	char addr[18];
 
 	ba2str(bdaddr, addr);
-	DBG("index %d addr %s pinlen %lu", index, addr, pin_len);
+	DBG("index %d addr %s pinlen %zu", index, addr, pin_len);
 
 	memset(buf, 0, sizeof(buf));
 
