@@ -281,23 +281,6 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
-{
-	struct btd_adapter *adapter;
-	int8_t rssi;
-
-	adapter = manager_find_adapter(local);
-	if (adapter == NULL) {
-		error("No matching adapter found");
-		return;
-	}
-
-	rssi = *(info->data + info->length);
-
-	adapter_update_found_devices(adapter, &info->bdaddr, 0, rssi,
-						info->data, info->length);
-}
-
 static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
 {
 	time_t t;

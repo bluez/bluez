@@ -23,7 +23,6 @@
  */
 
 int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba);
-void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info);
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 						int8_t rssi, uint8_t *data);
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer, gboolean legacy);

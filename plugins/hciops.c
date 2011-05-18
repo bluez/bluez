@@ -2171,19 +2171,26 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 {
 	struct dev_info *dev = &devs[index];
 	le_advertising_info *info;
-	uint8_t num_reports;
+	uint8_t num_reports, rssi;
 	const uint8_t RSSI_SIZE = 1;
 
 	num_reports = meta->data[0];
 
 	info = (le_advertising_info *) &meta->data[1];
-	btd_event_advertising_report(&dev->bdaddr, info);
+	rssi = *(info->data + info->length);
+
+	btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
+								info->data);
+
 	num_reports--;
 
 	while (num_reports--) {
 		info = (le_advertising_info *) (info->data + info->length +
 								RSSI_SIZE);
-		btd_event_advertising_report(&dev->bdaddr, info);
+		rssi = *(info->data + info->length);
+
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
+								info->data);
 	}
 }
 
