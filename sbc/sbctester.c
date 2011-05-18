@@ -245,7 +245,7 @@ static int check_absolute_diff(SNDFILE * sndref, SF_INFO * infosref,
 	return verdict;
 }
 
-static void usage()
+static void usage(void)
 {
 	printf("SBC conformance test ver %s\n", VERSION);
 	printf("Copyright (c) 2007-2010  Marcel Holtmann\n");
