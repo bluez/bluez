@@ -36,6 +36,7 @@ struct eir_data {
 	gboolean name_complete;
 };
 
+void eir_data_free(struct eir_data *eir);
 int eir_parse(struct eir_data *eir, uint8_t *eir_data, size_t eir_length);
 void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			uint16_t did_product, uint16_t did_version,

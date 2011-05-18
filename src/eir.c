@@ -44,6 +44,13 @@
 #define EIR_TX_POWER                0x0A  /* transmit power level */
 #define EIR_DEVICE_ID               0x10  /* device ID */
 
+void eir_data_free(struct eir_data *eir)
+{
+	g_slist_foreach(eir->services, (GFunc) g_free, NULL);
+	g_slist_free(eir->services);
+	g_free(eir->name);
+}
+
 int eir_parse(struct eir_data *eir, uint8_t *eir_data, size_t eir_length)
 {
 	uint16_t len = 0;
