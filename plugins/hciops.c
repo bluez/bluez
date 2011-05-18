@@ -2171,7 +2171,7 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 {
 	struct dev_info *dev = &devs[index];
 	le_advertising_info *info;
-	uint8_t num_reports, rssi;
+	uint8_t num_reports, rssi, eir[HCI_MAX_EIR_LENGTH];
 	const uint8_t RSSI_SIZE = 1;
 
 	num_reports = meta->data[0];
@@ -2179,8 +2179,10 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	info = (le_advertising_info *) &meta->data[1];
 	rssi = *(info->data + info->length);
 
-	btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-								info->data);
+	memset(eir, 0, sizeof(eir));
+	memcpy(eir, info->data, info->length);
+
+	btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi, eir);
 
 	num_reports--;
 
@@ -2189,8 +2191,11 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 								RSSI_SIZE);
 		rssi = *(info->data + info->length);
 
+		memset(eir, 0, sizeof(eir));
+		memcpy(eir, info->data, info->length);
+
 		btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-								info->data);
+									eir);
 	}
 }
 

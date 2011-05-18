@@ -52,7 +52,7 @@ void eir_data_free(struct eir_data *eir)
 	g_free(eir->name);
 }
 
-int eir_parse(struct eir_data *eir, uint8_t *eir_data, size_t eir_length)
+int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 {
 	uint16_t len = 0;
 	size_t total;
@@ -69,10 +69,10 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, size_t eir_length)
 	eir->flags = -1;
 
 	/* No EIR data to parse */
-	if (eir_data == NULL || eir_length == 0)
+	if (eir_data == NULL)
 		return 0;
 
-	while (len < eir_length - 1) {
+	while (len < HCI_MAX_EIR_LENGTH - 1) {
 		uint8_t field_len = eir_data[0];
 
 		/* Check for the end of EIR */
@@ -115,7 +115,7 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, size_t eir_length)
 	}
 
 	/* Bail out if got incorrect length */
-	if (len > eir_length)
+	if (len > HCI_MAX_EIR_LENGTH)
 		return -EINVAL;
 
 	total = uuid16_count + uuid32_count + uuid128_count;

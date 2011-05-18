@@ -320,8 +320,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (data)
 		write_remote_eir(local, peer, data);
 
-	adapter_update_found_devices(adapter, peer, class, rssi,
-						data, HCI_MAX_EIR_LENGTH);
+	adapter_update_found_devices(adapter, peer, class, rssi, data);
 }
 
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
