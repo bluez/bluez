@@ -281,19 +281,10 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static void free_eir_data(struct eir_data *eir)
-{
-	g_slist_foreach(eir->services, (GFunc) g_free, NULL);
-	g_slist_free(eir->services);
-	g_free(eir->name);
-}
-
 void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 {
 	struct btd_adapter *adapter;
-	struct eir_data eir_data;
 	int8_t rssi;
-	int err;
 
 	adapter = manager_find_adapter(local);
 	if (adapter == NULL) {
@@ -301,19 +292,10 @@ void btd_event_advertising_report(bdaddr_t *local, le_advertising_info *info)
 		return;
 	}
 
-	memset(&eir_data, 0, sizeof(eir_data));
-	err = eir_parse(&eir_data, info->data, info->length);
-	if (err < 0)
-		error("Error parsing advertising data: %s (%d)",
-							strerror(-err), -err);
-
 	rssi = *(info->data + info->length);
 
-	adapter_update_device_from_info(adapter, info->bdaddr, rssi,
-					eir_data.name, eir_data.services,
-					eir_data.flags);
-
-	free_eir_data(&eir_data);
+	adapter_update_found_devices(adapter, &info->bdaddr, 0, rssi,
+						info->data, info->length);
 }
 
 static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
@@ -355,7 +337,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (data)
 		write_remote_eir(local, peer, data);
 
-	adapter_update_found_devices(adapter, peer, class, rssi, data);
+	adapter_update_found_devices(adapter, peer, class, rssi,
+						data, EIR_DATA_LENGTH);
 }
 
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,

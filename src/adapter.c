@@ -2966,42 +2966,6 @@ static void dev_prepend_uuid(gpointer data, gpointer user_data)
 	dev->services = g_slist_prepend(dev->services, g_strdup(new_uuid));
 }
 
-void adapter_update_device_from_info(struct btd_adapter *adapter,
-					bdaddr_t bdaddr, int8_t rssi,
-					const char *name, GSList *services,
-					int flags)
-{
-	struct remote_dev_info *dev;
-	gboolean new_dev;
-
-	dev = get_found_dev(adapter, &bdaddr, &new_dev);
-
-	if (new_dev)
-		dev->le = TRUE;
-	else if (dev->rssi == rssi)
-		return;
-
-	dev->rssi = rssi;
-
-	adapter->found_devices = g_slist_sort(adapter->found_devices,
-						(GCompareFunc) dev_rssi_cmp);
-
-	g_slist_foreach(services, remove_same_uuid, dev);
-	g_slist_foreach(services, dev_prepend_uuid, dev);
-
-	if (flags >= 0)
-		dev->flags = flags;
-
-	if (name) {
-		g_free(dev->name);
-		dev->name = g_strdup(name);
-	}
-
-	/* FIXME: check if other information was changed before emitting the
-	 * signal */
-	adapter_emit_device_found(adapter, dev);
-}
-
 static gboolean pairing_is_legacy(bdaddr_t *local, bdaddr_t *peer,
 					const uint8_t *eir, const char *name)
 {
@@ -3035,13 +2999,14 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				uint32_t class, int8_t rssi, uint8_t *data)
+					uint32_t class, int8_t rssi,
+					uint8_t *data, size_t eir_size)
 {
 	struct remote_dev_info *dev;
 	struct eir_data eir_data;
 	char *name;
-	gboolean new_dev, legacy;
-	name_status_t name_status;
+	gboolean new_dev, legacy, le;
+	name_status_t name_status = NAME_NOT_REQUIRED;
 	const char *dev_name;
 	int err;
 
@@ -3054,13 +3019,21 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 	name = read_stored_data(&adapter->bdaddr, bdaddr, "names");
 
-	legacy = pairing_is_legacy(&adapter->bdaddr, bdaddr, data, name);
+	if (eir_data.flags < 0) {
+		le = FALSE;
 
-	if (!name && main_opts.name_resolv &&
-			adapter_has_discov_sessions(adapter))
-		name_status = NAME_REQUIRED;
-	else
-		name_status = NAME_NOT_REQUIRED;
+		legacy = pairing_is_legacy(&adapter->bdaddr, bdaddr, data,
+									name);
+
+		if (!name && main_opts.name_resolv &&
+				adapter_has_discov_sessions(adapter))
+			name_status = NAME_REQUIRED;
+		else
+			name_status = NAME_NOT_REQUIRED;
+	} else {
+		le = TRUE;
+		legacy = FALSE;
+	}
 
 	/* Complete EIR names are always used. Shortened EIR names are only
 	 * used if there is no name already in storage. */
@@ -3088,10 +3061,14 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 			free(alias);
 		}
 
-		dev->le = FALSE;
+		dev->le = le;
 		dev->class = class;
 		dev->legacy = legacy;
 		dev->name_status = name_status;
+
+		if (eir_data.flags >= 0)
+			dev->flags = eir_data.flags;
+
 	} else if (dev->rssi == rssi)
 		goto done;
 
