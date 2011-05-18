@@ -49,6 +49,7 @@
 #define ADDR_FIELD_AMOUNT 7
 #define PULL_QUERY_COL_AMOUNT 23
 #define COUNT_QUERY_COL_AMOUNT 1
+#define NEW_MISSED_CALLS_COL_AMOUNT 3
 
 #define COL_PHONE_AFF 0 /* work/home phone numbers */
 #define COL_FULL_NAME 1
@@ -2029,7 +2030,7 @@ int phonebook_pull_read(void *request)
 
 	if (g_strcmp0(data->req_name, "/telecom/mch.vcf") == 0) {
 		query = NEW_MISSED_CALLS_LIST;
-		col_amount = PULL_QUERY_COL_AMOUNT;
+		col_amount = NEW_MISSED_CALLS_COL_AMOUNT;
 		pull_cb = pull_newmissedcalls;
 	} else if (data->params->maxlistcount == 0) {
 		query = name2count_query(data->req_name);
