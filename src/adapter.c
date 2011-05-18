@@ -3007,7 +3007,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	char *name;
 	gboolean new_dev, legacy, le;
 	name_status_t name_status = NAME_NOT_REQUIRED;
-	const char *dev_name;
 	int err;
 
 	memset(&eir_data, 0, sizeof(eir_data));
@@ -3016,6 +3015,9 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
 		return;
 	}
+
+	if (eir_data.name != NULL && eir_data.name_complete)
+		write_device_name(&adapter->bdaddr, bdaddr, eir_data.name);
 
 	name = read_stored_data(&adapter->bdaddr, bdaddr, "names");
 
@@ -3035,23 +3037,12 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		legacy = FALSE;
 	}
 
-	/* Complete EIR names are always used. Shortened EIR names are only
-	 * used if there is no name already in storage. */
-	dev_name = name;
-	if (eir_data.name != NULL) {
-		if (eir_data.name_complete) {
-			write_device_name(&adapter->bdaddr, bdaddr,
-							eir_data.name);
-			name_status = NAME_NOT_REQUIRED;
-			dev_name = eir_data.name;
-		} else if (name == NULL)
-			dev_name = eir_data.name;
-	}
-
 	dev = get_found_dev(adapter, bdaddr, &new_dev);
 
 	if (new_dev) {
+		const char *dev_name = (name ? name : eir_data.name);
 		char *alias;
+
 		if (dev_name)
 			dev->name = g_strdup(dev_name);
 
