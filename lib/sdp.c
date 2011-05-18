@@ -3111,7 +3111,7 @@ int sdp_record_update(sdp_session_t *session, const sdp_record_t *rec)
 	return sdp_device_record_update(session, BDADDR_ANY, rec);
 }
 
-sdp_record_t *sdp_record_alloc()
+sdp_record_t *sdp_record_alloc(void)
 {
 	sdp_record_t *rec = malloc(sizeof(sdp_record_t));
 

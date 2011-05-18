@@ -90,7 +90,7 @@ static void access_free(void *p)
 /*
  * Reset the service repository by deleting its contents
  */
-void sdp_svcdb_reset()
+void sdp_svcdb_reset(void)
 {
 	sdp_list_free(service_db, (sdp_free_func_t) sdp_record_free);
 	sdp_list_free(access_db, access_free);

@@ -714,7 +714,7 @@ static void do_avctp_send(int sk, int invalid)
 		dump_avctp_header(hdr);
 }
 
-static void usage()
+static void usage(void)
 {
 	printf("avtest - Audio/Video testing ver %s\n", VERSION);
 	printf("Usage:\n"

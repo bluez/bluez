@@ -86,7 +86,7 @@ static gboolean is_enabled(struct btd_debug_desc *desc)
 	return 0;
 }
 
-void __btd_toggle_debug()
+void __btd_toggle_debug(void)
 {
 	struct btd_debug_desc *desc;
 

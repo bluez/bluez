@@ -604,7 +604,7 @@ static int l2cap_connect(bdaddr_t *src, bdaddr_t *dst)
 	return sk;
 }
 
-static void usage()
+static void usage(void)
 {
 	printf("avinfo - Audio/Video Info Tool ver %s\n", VERSION);
 	printf("Usage:\n"
