@@ -22,8 +22,6 @@
  *
  */
 
-#define EIR_DATA_LENGTH  240
-
 struct uuid_info {
 	uuid_t uuid;
 	uint8_t svc_hint;

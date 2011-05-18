@@ -3005,7 +3005,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	int err;
 
 	memset(&eir_data, 0, sizeof(eir_data));
-	err = eir_parse(&eir_data, data, EIR_DATA_LENGTH);
+	err = eir_parse(&eir_data, data, HCI_MAX_EIR_LENGTH);
 	if (err < 0) {
 		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
 		return;

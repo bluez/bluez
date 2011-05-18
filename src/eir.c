@@ -27,6 +27,7 @@
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
 #include "glib-helper.h"
@@ -184,7 +185,7 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 			continue;
 
 		/* Stop if not enough space to put next UUID128 */
-		if ((len + 2 + SIZEOF_UUID128) > EIR_DATA_LENGTH) {
+		if ((len + 2 + SIZEOF_UUID128) > HCI_MAX_EIR_LENGTH) {
 			truncated = TRUE;
 			break;
 		}
@@ -229,7 +230,7 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 	GSList *l;
 	uint8_t *ptr = data;
 	uint16_t eir_len = 0;
-	uint16_t uuid16[EIR_DATA_LENGTH / 2];
+	uint16_t uuid16[HCI_MAX_EIR_LENGTH / 2];
 	int i, uuid_count = 0;
 	gboolean truncated = FALSE;
 	size_t name_len;
@@ -289,7 +290,7 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			continue;
 
 		/* Stop if not enough space to put next UUID16 */
-		if ((eir_len + 2 + sizeof(uint16_t)) > EIR_DATA_LENGTH) {
+		if ((eir_len + 2 + sizeof(uint16_t)) > HCI_MAX_EIR_LENGTH) {
 			truncated = TRUE;
 			break;
 		}
@@ -322,6 +323,6 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 	}
 
 	/* Group all UUID128 types */
-	if (eir_len <= EIR_DATA_LENGTH - 2)
+	if (eir_len <= HCI_MAX_EIR_LENGTH - 2)
 		eir_generate_uuid128(uuids, ptr, &eir_len);
 }
