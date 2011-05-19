@@ -99,6 +99,7 @@ guint device_add_disconnect_watch(struct btd_device *device,
 				disconnect_watch watch, void *user_data,
 				GDestroyNotify destroy);
 void device_remove_disconnect_watch(struct btd_device *device, guint id);
+void device_set_class(struct btd_device *device, uint32_t value);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

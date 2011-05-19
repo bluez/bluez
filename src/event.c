@@ -346,11 +346,9 @@ void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
 
 void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
-	uint32_t old_class = 0;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	const gchar *dev_path;
-	DBusConnection *conn = get_dbus_connection();
+	uint32_t old_class = 0;
 
 	read_remote_class(local, peer, &old_class);
 
@@ -365,10 +363,7 @@ void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 	if (!device)
 		return;
 
-	dev_path = device_get_path(device);
-
-	emit_property_changed(conn, dev_path, DEVICE_INTERFACE, "Class",
-				DBUS_TYPE_UINT32, &class);
+	device_set_class(device, class);
 }
 
 void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, uint8_t status,
