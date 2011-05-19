@@ -127,9 +127,6 @@ struct btd_device {
 
 	gboolean	connected;
 
-	/* Whether were creating a security mode 3 connection */
-	gboolean	secmode3;
-
 	sdp_list_t	*tmp_records;
 
 	gboolean	trusted;
