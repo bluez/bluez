@@ -1464,7 +1464,7 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 			data->newmissedcalls++;
 		else {
 			GString *number = g_string_new(reply[1]);
-			data->numbers = g_slist_append(data->numbers,
+			data->numbers = g_slist_prepend(data->numbers,
 								number);
 		}
 	}
