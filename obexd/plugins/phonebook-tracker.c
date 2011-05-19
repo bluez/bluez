@@ -1544,7 +1544,11 @@ int phonebook_pull_read(void *request)
 	if(!data)
 		return -ENOENT;
 
-	if (g_strcmp0(data->req_name, "/telecom/mch.vcf") == 0) {
+	if (g_strcmp0(data->req_name,"/telecom/mch.vcf") == 0 &&
+						data->tracker_index == 0) {
+		/* new missed calls amount should be counted only once - it
+		 * will be done during generating first part of results of
+		 * missed calls history */
 		query = NEW_MISSED_CALLS_LIST;
 		col_amount = NEW_MISSED_CALLS_COL_AMOUNT;
 		pull_cb = pull_newmissedcalls;
