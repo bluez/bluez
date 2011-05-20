@@ -1468,6 +1468,7 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 								number);
 		}
 	}
+
 	return 0;
 
 done:
@@ -1548,7 +1549,7 @@ int phonebook_pull_read(void *request)
 	int col_amount;
 	int ret;
 
-	if(!data)
+	if (!data)
 		return -ENOENT;
 
 	if (g_strcmp0(data->req_name,"/telecom/mch.vcf") == 0 &&
@@ -1585,9 +1586,7 @@ int phonebook_pull_read(void *request)
 		return ret;
 	}
 
-	ret = query_tracker(query, col_amount, pull_cb, data);
-
-	return ret;
+	return query_tracker(query, col_amount, pull_cb, data);
 }
 
 void *phonebook_get_entry(const char *folder, const char *id,
@@ -1643,6 +1642,7 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	data->entry_cb = entry_cb;
 	data->ready_cb = ready_cb;
 	data->user_data = user_data;
+
 	ret = query_tracker(query, 7, add_to_cache, data);
 	if (err)
 		*err = ret;
