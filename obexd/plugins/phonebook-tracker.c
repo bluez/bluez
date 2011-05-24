@@ -250,8 +250,7 @@ CALLS_CONSTRAINTS(CONSTRAINT)						\
 	"nmo:receivedDate(?_call) "					\
 	"nmo:isSent(?_call) "						\
 	"nmo:isAnswered(?_call) "					\
-	"fn:concat(tracker:coalesce(?_ncontact, \"\"),"			\
-	"tracker:coalesce(?_unb_contact, \"\"))"			\
+	"?_call "							\
 CALLS_CONSTRAINTS(CONSTRAINT)						\
 "ORDER BY DESC(nmo:sentDate(?_call)) "
 
