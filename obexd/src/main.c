@@ -75,16 +75,11 @@ static char *option_debug = NULL;
 static char *option_root = NULL;
 static char *option_root_setup = NULL;
 static char *option_capability = NULL;
+static char *option_plugin = NULL;
+static char *option_noplugin = NULL;
 
 static gboolean option_autoaccept = FALSE;
-static gboolean option_opp = FALSE;
-static gboolean option_ftp = FALSE;
-static gboolean option_pbap = FALSE;
-static gboolean option_irmc = FALSE;
-static gboolean option_pcsuite = FALSE;
 static gboolean option_symlinks = FALSE;
-static gboolean option_syncevolution = FALSE;
-static gboolean option_mas = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
 				gpointer user_data, GError **error)
@@ -114,20 +109,10 @@ static GOptionEntry options[] = {
 				"Specify capability file", "FILE" },
 	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
 				"Automatically accept push requests" },
-	{ "opp", 'o', 0, G_OPTION_ARG_NONE, &option_opp,
-				"Enable Object Push server" },
-	{ "ftp", 'f', 0, G_OPTION_ARG_NONE, &option_ftp,
-				"Enable File Transfer server" },
-	{ "pbap", 'p', 0, G_OPTION_ARG_NONE, &option_pbap,
-				"Enable Phonebook Access server" },
-	{ "irmc", 'i', 0, G_OPTION_ARG_NONE, &option_irmc,
-				"Enable IrMC Sync server" },
-	{ "pcsuite", 's', 0, G_OPTION_ARG_NONE, &option_pcsuite,
-				"Enable PC Suite Services server" },
-	{ "syncevolution", 'e', 0, G_OPTION_ARG_NONE, &option_syncevolution,
-				"Enable OBEX server for SyncEvolution" },
-        { "mas", 'm', 0, G_OPTION_ARG_NONE, &option_mas,
-				"Enable Message Access server" },
+	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
+				"Specify plugins to load", "NAME,..." },
+	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
+				"Specify plugins not to load", "NAME,..." },
 	{ NULL },
 };
 
@@ -212,16 +197,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (option_opp == FALSE && option_ftp == FALSE &&
-				option_pbap == FALSE &&
-				option_irmc == FALSE &&
-				option_syncevolution == FALSE &&
-				option_mas == FALSE) {
-		fprintf(stderr, "No server selected (use either "
-				"--opp, --ftp, --pbap, --irmc, --mas, or --syncevolution)\n");
-		exit(EXIT_FAILURE);
-	}
-
 	__obex_log_init("obexd", option_debug, option_detach);
 
 	DBG("Entering main loop");
@@ -251,39 +226,32 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	plugin_init();
-
 	if (option_capability == NULL)
 		option_capability = g_strdup(DEFAULT_CAP_FILE);
 
-	if (option_opp == TRUE)
-		obex_server_init(OBEX_OPP, option_root, FALSE,
+	plugin_init(option_plugin, option_noplugin);
+
+	obex_server_init(OBEX_OPP, option_root, FALSE,
 				option_autoaccept, option_symlinks,
 				NULL);
 
-	if (option_ftp == TRUE)
-		obex_server_init(OBEX_FTP, option_root, TRUE,
+	obex_server_init(OBEX_FTP, option_root, TRUE,
 				option_autoaccept, option_symlinks,
 				option_capability);
 
-	if (option_pbap == TRUE)
-		obex_server_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE, NULL);
-
-	if (option_pcsuite == TRUE)
-		obex_server_init(OBEX_PCSUITE, option_root, TRUE,
+	obex_server_init(OBEX_PCSUITE, option_root, TRUE,
 				option_autoaccept, option_symlinks,
 				option_capability);
 
-	if (option_irmc == TRUE)
-		obex_server_init(OBEX_IRMC, NULL, TRUE, FALSE, FALSE,
-				option_capability);
+	obex_server_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE,
+							option_capability);
 
-	if (option_syncevolution == TRUE)
-		obex_server_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE,
-							FALSE, NULL);
+	obex_server_init(OBEX_IRMC, NULL, TRUE, FALSE, FALSE,
+							option_capability);
 
-	if (option_mas == TRUE)
-		obex_server_init(OBEX_MAS, NULL, TRUE, FALSE, FALSE, NULL);
+	obex_server_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE, FALSE, NULL);
+
+	obex_server_init(OBEX_MAS, NULL, TRUE, FALSE, FALSE, NULL);
 
 	if (!root_folder_setup(option_root, option_root_setup)) {
 		error("Unable to setup root folder %s", option_root);

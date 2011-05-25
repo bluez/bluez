@@ -79,10 +79,39 @@ static gboolean add_plugin(void *handle, struct obex_plugin_desc *desc)
 	return TRUE;
 }
 
+static gboolean check_plugin(struct obex_plugin_desc *desc,
+				char **patterns, char **excludes)
+{
+	if (excludes) {
+		for (; *excludes; excludes++)
+			if (g_pattern_match_simple(*excludes, desc->name))
+				break;
+		if (*excludes) {
+			info("Excluding %s", desc->name);
+			return FALSE;
+		}
+	}
+
+	if (patterns) {
+		for (; *patterns; patterns++)
+			if (g_pattern_match_simple(*patterns, desc->name))
+				break;
+		if (*patterns == NULL) {
+			info("Ignoring %s", desc->name);
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+
 #include "builtin.h"
 
-gboolean plugin_init(void)
+gboolean plugin_init(const char *pattern, const char *exclude)
 {
+	gchar **patterns = NULL;
+	gchar **excludes = NULL;
 	GDir *dir;
 	const char *file;
 	unsigned int i;
@@ -90,10 +119,21 @@ gboolean plugin_init(void)
 	if (strlen(PLUGINDIR) == 0)
 		return FALSE;
 
+	if (pattern)
+		patterns = g_strsplit_set(pattern, ":, ", -1);
+
+	if (exclude)
+		excludes = g_strsplit_set(exclude, ":, ", -1);
+
 	DBG("Loading builtin plugins");
 
-	for (i = 0; __obex_builtin[i]; i++)
+	for (i = 0; __obex_builtin[i]; i++) {
+		if (check_plugin(__obex_builtin[i],
+					patterns, excludes) == FALSE)
+			continue;
+
 		add_plugin(NULL,  __obex_builtin[i]);
+	}
 
 	DBG("Loading plugins %s", PLUGINDIR);
 
@@ -129,11 +169,18 @@ gboolean plugin_init(void)
 			continue;
 		}
 
+		if (check_plugin(desc, patterns, excludes) == FALSE) {
+			dlclose(handle);
+			continue;
+		}
+
 		if (add_plugin(handle, desc) == FALSE)
 			dlclose(handle);
 	}
 
 	g_dir_close(dir);
+	g_strfreev(patterns);
+	g_strfreev(excludes);
 
 	return TRUE;
 }

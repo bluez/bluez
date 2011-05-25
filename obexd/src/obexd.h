@@ -21,7 +21,7 @@
  *
  */
 
-gboolean plugin_init(void);
+gboolean plugin_init(const char *pattern, const char *exclude);
 void plugin_cleanup(void);
 
 gboolean manager_init(void);
