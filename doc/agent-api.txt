@@ -63,6 +63,10 @@ Methods		void Release()
 			During the pairing process this method might be
 			called multiple times to update the entered value.
 
+			Note that the passkey will always be a 6-digit number,
+			so the display should be zero-padded at the start if
+			the value contains less than 6 digits.
+
 		void RequestConfirmation(object device, uint32 passkey)
 
 			This method gets called when the service daemon
@@ -70,6 +74,10 @@ Methods		void Release()
 
 			To confirm the value it should return an empty reply
 			or an error in case the passkey is invalid.
+
+			Note that the passkey will always be a 6-digit number,
+			so the display should be zero-padded at the start if
+			the value contains less than 6 digits.
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
