@@ -119,7 +119,7 @@ static FILE *bts_load_script(const char* file_name, uint32_t* version)
 	fp = fopen(file_name, "rb");
 	if (!fp) {
 		perror("can't open firmware file");
-		goto out;
+		return NULL;
 	}
 
 	if (1 != fread(&header, sizeof(struct bts_header), 1, fp)) {
@@ -135,13 +135,12 @@ static FILE *bts_load_script(const char* file_name, uint32_t* version)
 	if (NULL != version)
 		*version = header.version;
 
-	goto out;
+	return fp;
 
 errclose:
 	fclose(fp);
-	fp = NULL;
-out:
-	return fp;
+
+	return NULL;
 }
 
 static unsigned long bts_fetch_action(FILE* fp, unsigned char* action_buf,

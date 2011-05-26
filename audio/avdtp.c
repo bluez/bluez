@@ -2243,22 +2243,22 @@ static uint16_t get_version(struct avdtp *session)
 
 	adapter = manager_find_adapter(&session->server->src);
 	if (!adapter)
-		goto done;
+		return ver;
 
 	ba2str(&session->dst, addr);
 	device = adapter_find_device(adapter, addr);
 	if (!device)
-		goto done;
+		return ver;
 
 	rec = btd_device_get_record(device, A2DP_SINK_UUID);
 	if (!rec)
 		rec = btd_device_get_record(device, A2DP_SOURCE_UUID);
 
 	if (!rec)
-		goto done;
+		return ver;
 
 	if (sdp_get_access_protos(rec, &protos) < 0)
-		goto done;
+		return ver;
 
 	proto_desc = sdp_get_proto_desc(protos, AVDTP_UUID);
 	if (proto_desc && proto_desc->dtd == SDP_UINT16)
@@ -2267,7 +2267,6 @@ static uint16_t get_version(struct avdtp *session)
 	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
 	sdp_list_free(protos, NULL);
 
-done:
 	return ver;
 }
 

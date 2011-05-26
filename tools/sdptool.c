@@ -4116,10 +4116,9 @@ static int cmd_records(int argc, char **argv)
 			context.handle = base[i] + n;
 			err = get_service(&bdaddr, &context, 1);
 			if (err < 0)
-				goto done;
+				return 0;
 		}
 
-done:
 	return 0;
 }
 

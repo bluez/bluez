@@ -213,11 +213,9 @@ static int bluetooth_read_integer(snd_ctl_ext_t *ext, snd_ctl_ext_key_t key,
 	*value = 0;
 
 	ret = bluetooth_send_ctl(data, key, 0, rsp);
-	if (ret < 0)
-		goto done;
+	if (ret == 0)
+		*value = rsp->key;
 
-	*value = rsp->key;
-done:
 	return ret;
 }
 

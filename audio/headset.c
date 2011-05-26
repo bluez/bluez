@@ -1771,7 +1771,7 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 
 	if (ag.ring_timer) {
 		DBG("IndicateCall received when already indicating");
-		goto done;
+		return reply;
 	}
 
 	err = headset_send(hs, "\r\nRING\r\n");
@@ -1784,7 +1784,6 @@ static DBusMessage *hs_ring(DBusConnection *conn, DBusMessage *msg,
 	ag.ring_timer = g_timeout_add_seconds(RING_INTERVAL, ring_timer_cb,
 						NULL);
 
-done:
 	return reply;
 }
 
