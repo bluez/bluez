@@ -510,7 +510,7 @@ static int irmc_init(void)
 	DBG("");
 	err = phonebook_init();
 	if (err < 0)
-		goto fail_pb_init;
+		return err;
 
 	err = obex_mime_type_driver_register(&irmc_driver);
 	if (err < 0)
@@ -526,7 +526,7 @@ fail_irmc_reg:
 	obex_mime_type_driver_unregister(&irmc_driver);
 fail_mime_irmc:
 	phonebook_exit();
-fail_pb_init:
+
 	return err;
 }
 

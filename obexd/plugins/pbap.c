@@ -1090,7 +1090,7 @@ static int pbap_init(void)
 
 	err = phonebook_init();
 	if (err < 0)
-		goto fail_pb_init;
+		return err;
 
 	err = obex_mime_type_driver_register(&mime_pull);
 	if (err < 0)
@@ -1118,7 +1118,7 @@ fail_mime_list:
 	obex_mime_type_driver_unregister(&mime_pull);
 fail_mime_pull:
 	phonebook_exit();
-fail_pb_init:
+
 	return err;
 }
 
