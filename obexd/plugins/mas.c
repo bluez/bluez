@@ -88,6 +88,7 @@
 
 struct mas_session {
 	struct mas_request *request;
+	void *backend_data;
 };
 
 static const uint8_t MAS_TARGET[TARGET_SIZE] = {
@@ -105,13 +106,20 @@ static void *mas_connect(struct obex_session *os, int *err)
 
 	DBG("");
 
-	*err = 0;
-
 	mas = g_new0(struct mas_session, 1);
+
+	*err = messages_connect(&mas->backend_data);
+	if (*err < 0)
+		goto failed;
 
 	manager_register_session(os);
 
 	return mas;
+
+failed:
+	g_free(mas);
+
+	return NULL;
 }
 
 static void mas_disconnect(struct obex_session *os, void *user_data)
@@ -121,6 +129,7 @@ static void mas_disconnect(struct obex_session *os, void *user_data)
 	DBG("");
 
 	manager_unregister_session(os);
+	messages_disconnect(mas->backend_data);
 
 	mas_clean(mas);
 }
@@ -178,6 +187,7 @@ static int mas_setpath(struct obex_session *os, obex_object_t *obj,
 {
 	const char *name;
 	uint8_t *nonhdr;
+	struct mas_session *mas = user_data;
 
 	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
@@ -193,7 +203,7 @@ static int mas_setpath(struct obex_session *os, obex_object_t *obj,
 		return -EBADR;
 	}
 
-	return 0;
+	return messages_set_folder(mas->backend_data, name, nonhdr[0] & 0x01);
 }
 
 static void *any_open(const char *name, int oflag, mode_t mode,

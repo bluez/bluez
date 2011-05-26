@@ -27,10 +27,16 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "messages.h"
 
 static char *root_folder = NULL;
+
+struct session {
+	char *cwd;
+	char *cwd_absolute;
+};
 
 int messages_init(void)
 {
@@ -60,14 +66,26 @@ void messages_exit(void)
 	root_folder = NULL;
 }
 
-int messages_connect(void **session)
+int messages_connect(void **s)
 {
-	*session = 0;
+	struct session *session;
+
+	session = g_new0(struct session, 1);
+	session->cwd = g_strdup("");
+	session->cwd_absolute = g_strdup(root_folder);
+
+	*s = session;
+
 	return 0;
 }
 
-void messages_disconnect(void *session)
+void messages_disconnect(void *s)
 {
+	struct session *session = s;
+
+	g_free(session->cwd);
+	g_free(session->cwd_absolute);
+	g_free(session);
 }
 
 int messages_set_notification_registration(void *session,
@@ -78,9 +96,50 @@ int messages_set_notification_registration(void *session,
 	return -EINVAL;
 }
 
-int messages_set_folder(void *session, const char *name, gboolean cdup)
+int messages_set_folder(void *s, const char *name, gboolean cdup)
 {
-	return -EINVAL;
+	struct session *session = s;
+	char *newrel = NULL;
+	char *newabs;
+	char *tmp;
+
+	if (name && (strchr(name, '/') || strcmp(name, "..") == 0))
+		return -EBADR;
+
+	if (cdup) {
+		if (session->cwd[0] == 0)
+			return -ENOENT;
+
+		newrel = g_path_get_dirname(session->cwd);
+
+		/* We use empty string for indication of the root directory */
+		if (newrel[0] == '.' && newrel[1] == 0)
+			newrel[0] = 0;
+	}
+
+	tmp = newrel;
+	if (!cdup && (!name || name[0] == 0))
+		newrel = g_strdup("");
+	else
+		newrel = g_build_filename(newrel ? newrel : session->cwd, name,
+				NULL);
+	g_free(tmp);
+
+	newabs = g_build_filename(root_folder, newrel, NULL);
+
+	if (!g_file_test(newabs, G_FILE_TEST_IS_DIR)) {
+		g_free(newrel);
+		g_free(newabs);
+		return -ENOENT;
+	}
+
+	g_free(session->cwd);
+	session->cwd = newrel;
+
+	g_free(session->cwd_absolute);
+	session->cwd_absolute = newabs;
+
+	return 0;
 }
 
 int messages_get_folder_listing(void *session,
