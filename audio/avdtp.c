@@ -3861,9 +3861,15 @@ void avdtp_exit(const bdaddr_t *src)
 	if (!server)
 		return;
 
-	for (l = server->sessions; l; l = l->next) {
+	l = server->sessions;
+	while (l) {
 		struct avdtp *session = l->data;
 
+		l = l->next;
+		/* value of l pointer should be updated before invoking
+		 * connection_lost since it internally uses avdtp_unref
+		 * which operates on server->session list as well
+		 */
 		connection_lost(session, -ECONNABORTED);
 	}
 
