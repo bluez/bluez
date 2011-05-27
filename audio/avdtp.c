@@ -61,6 +61,10 @@
 
 #define MAX_SEID 0x3E
 
+#ifndef MAX
+# define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
+
 #define AVDTP_DISCOVER				0x01
 #define AVDTP_GET_CAPABILITIES			0x02
 #define AVDTP_SET_CONFIGURATION			0x03
@@ -2348,7 +2352,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (session->state == AVDTP_SESSION_STATE_CONNECTING) {
 		DBG("AVDTP imtu=%u, omtu=%u", session->imtu, session->omtu);
 
-		session->buf = g_malloc0(session->imtu);
+		session->buf = g_malloc0(MAX(session->imtu, session->omtu));
 		avdtp_set_state(session, AVDTP_SESSION_STATE_CONNECTED);
 
 		if (session->io_id)
