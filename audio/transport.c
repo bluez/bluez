@@ -808,10 +808,13 @@ static GDBusSignalTable transport_signals[] = {
 static void media_transport_free(void *data)
 {
 	struct media_transport *transport = data;
-	GSList *l;
+	GSList *l = transport->owners;
 
-	for (l = transport->owners; l; l = l->next)
-		media_transport_remove(transport, l->data);
+	while (l) {
+		struct media_owner *owner = l->data;
+		l = l->next;
+		media_transport_remove(transport, owner);
+	}
 
 	g_slist_free(transport->owners);
 
