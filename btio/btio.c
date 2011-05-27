@@ -40,6 +40,10 @@
 
 #include "btio.h"
 
+#ifndef BT_FLUSHABLE
+#define BT_FLUSHABLE	8
+#endif
+
 #define ERROR_FAILED(gerr, str, err) \
 		g_set_error(gerr, BT_IO_ERROR, BT_IO_ERROR_FAILED, \
 				str ": %s (%d)", strerror(err), err)
