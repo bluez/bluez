@@ -909,14 +909,14 @@ static int headset_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
+	btd_adapter_register_powered_callback(adapter, state_changed);
+	state_changed(adapter, TRUE);
+
 	err = headset_server_init(adp);
 	if (err < 0) {
 		audio_adapter_unref(adp);
 		return err;
 	}
-
-	btd_adapter_register_powered_callback(adapter, state_changed);
-	state_changed(adapter, TRUE);
 
 	return 0;
 }
