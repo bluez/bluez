@@ -26,16 +26,38 @@
 #endif
 
 #include <errno.h>
+#include <stdlib.h>
 
 #include "messages.h"
 
+static char *root_folder = NULL;
+
 int messages_init(void)
 {
+	char *tmp;
+
+	if (root_folder)
+		return 0;
+
+	tmp = getenv("MAP_ROOT");
+	if (tmp) {
+		root_folder = g_strdup(tmp);
+		return 0;
+	}
+
+	tmp = getenv("HOME");
+	if (!tmp)
+		return -ENOENT;
+
+	root_folder = g_build_filename(tmp, "map-messages", NULL);
+
 	return 0;
 }
 
 void messages_exit(void)
 {
+	g_free(root_folder);
+	root_folder = NULL;
 }
 
 int messages_connect(void **session)

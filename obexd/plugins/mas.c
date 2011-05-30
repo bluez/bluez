@@ -261,6 +261,10 @@ static int mas_init(void)
 {
 	int err;
 
+	err = messages_init();
+	if (err < 0)
+		return err;
+
 	err = obex_mime_type_driver_register(&mime_map);
 	if (err < 0)
 		goto failed_mime;
@@ -275,6 +279,8 @@ failed_mas_reg:
 	obex_mime_type_driver_unregister(&mime_map);
 
 failed_mime:
+	messages_exit();
+
 	return err;
 }
 
@@ -282,6 +288,7 @@ static void mas_exit(void)
 {
 	obex_service_driver_unregister(&mas);
 	obex_mime_type_driver_unregister(&mime_map);
+	messages_exit();
 }
 
 OBEX_PLUGIN_DEFINE(mas, mas_init, mas_exit)
