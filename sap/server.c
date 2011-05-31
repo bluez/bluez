@@ -349,11 +349,9 @@ static int disconnect_req(struct sap_connection *conn, uint8_t disc_type)
 
 	switch (disc_type) {
 	case SAP_DISCONNECTION_TYPE_GRACEFUL:
-		if (conn->state == SAP_STATE_DISCONNECTED)
-			goto error_req;
-
-		if (conn->state == SAP_STATE_CONNECT_IN_PROGRESS)
-			goto error_req;
+		if (conn->state == SAP_STATE_DISCONNECTED ||
+				conn->state == SAP_STATE_CONNECT_IN_PROGRESS)
+			return -EPERM;
 
 		if (conn->state == SAP_STATE_CONNECTED) {
 			conn->state = SAP_STATE_GRACEFUL_DISCONNECT;
@@ -367,11 +365,9 @@ static int disconnect_req(struct sap_connection *conn, uint8_t disc_type)
 		return 0;
 
 	case SAP_DISCONNECTION_TYPE_IMMEDIATE:
-		if (conn->state == SAP_STATE_DISCONNECTED)
-			goto error_req;
-
-		if (conn->state == SAP_STATE_CONNECT_IN_PROGRESS)
-			goto error_req;
+		if (conn->state == SAP_STATE_DISCONNECTED ||
+				conn->state == SAP_STATE_CONNECT_IN_PROGRESS)
+			return -EPERM;
 
 		if (conn->state == SAP_STATE_CONNECTED ||
 				conn->state == SAP_STATE_GRACEFUL_DISCONNECT) {
@@ -389,7 +385,7 @@ static int disconnect_req(struct sap_connection *conn, uint8_t disc_type)
 		if (conn->state != SAP_STATE_CONNECTED &&
 				conn->state != SAP_STATE_GRACEFUL_DISCONNECT) {
 			sap_error_rsp(conn);
-			goto error_req;
+			return -EPERM;
 		}
 
 		conn->state = SAP_STATE_CLIENT_DISCONNECT;
@@ -404,9 +400,6 @@ static int disconnect_req(struct sap_connection *conn, uint8_t disc_type)
 		error("Unknown disconnection type (0x%02x).", disc_type);
 		return -EINVAL;
 	}
-
-error_req:
-	return -EPERM;
 }
 
 static void transfer_apdu_req(struct sap_connection *conn,
