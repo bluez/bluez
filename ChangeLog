@@ -1,3 +1,12 @@
+ver 4.94:
+	Fix issue with invalid read of memory in various modules.
+	Fix issue with buffer overflow when sending AVDTP commands.
+	Fix issue with response to vendor dependent AVRCP commands.
+	Fix issue with headset when not able to reply with ERROR.
+	Fix issue with crash when creating a device from storage.
+	Fix issue with handling non UTF-8 devices names.
+	Add support for improved discovery procedure.
+
 ver 4.93:
 	Fix issue with property type and Health Main channel.
 	Fix issue with crash when removing devices.
