@@ -254,7 +254,7 @@ static int send_message(struct sap_connection *conn, void *buf, size_t size)
 	if (!conn || !buf)
 		return -EINVAL;
 
-	DBG("size %zu", size);
+	DBG("conn %p, size %zu", conn, size);
 
 	gstatus = g_io_channel_write_chars(conn->io, buf, size, &written,
 						&gerr);
@@ -263,13 +263,15 @@ static int send_message(struct sap_connection *conn, void *buf, size_t size)
 			g_error_free(gerr);
 
 		error("write error (0x%02x).", gstatus);
-		return -EINVAL;
+		return -EIO;
 	}
 
-	if (written != size)
-		error("write error.(written %zu size %zu)", written, size);
+	if (written != size) {
+		error("written %zu bytes out of %zu", written, size);
+		return -EIO;
+	}
 
-	return 0;
+	return written;
 }
 
 static int disconnect_ind(void *sap_device, uint8_t disc_type)
