@@ -355,8 +355,6 @@ EXTRA_DIST += scripts/bluetooth.rules \
 		scripts/bluetooth-hid2hci.rules scripts/bluetooth-serial.rules
 
 if PCMCIA
-udevdir = $(libexecdir)/udev
-
 dist_udev_SCRIPTS = scripts/bluetooth_serial
 endif
 
