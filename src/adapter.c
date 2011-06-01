@@ -77,6 +77,8 @@
 
 #define check_address(address) bachk(address)
 
+#define OFF_TIMER 3
+
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
 
@@ -141,6 +143,8 @@ struct btd_adapter {
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
 
 	gint ref;
+
+	guint off_timer;
 
 	GSList *powered_callbacks;
 
@@ -2331,6 +2335,7 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->pairable_timeout = get_pairable_timeout(address);
 	adapter->state = STATE_IDLE;
 	adapter->mode = MODE_CONNECTABLE;
+	adapter->off_timer = 0;
 
 	if (main_opts.le)
 		adapter_ops->enable_le(adapter->dev_id);
@@ -2504,6 +2509,12 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
+static void off_timer_remove(struct btd_adapter *adapter)
+{
+	g_source_remove(adapter->off_timer);
+	adapter->off_timer = 0;
+}
+
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -2515,6 +2526,9 @@ static void adapter_free(gpointer user_data)
 
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
+
+	if (adapter->off_timer)
+		off_timer_remove(adapter);
 
 	sdp_list_free(adapter->services, NULL);
 
@@ -3454,6 +3468,16 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
 
+static gboolean switch_off_timeout(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	adapter_ops->set_powered(adapter->dev_id, FALSE);
+	adapter->off_timer = 0;
+
+	return FALSE;
+}
+
 int btd_adapter_switch_online(struct btd_adapter *adapter)
 {
 	if (!adapter_ops)
@@ -3461,6 +3485,9 @@ int btd_adapter_switch_online(struct btd_adapter *adapter)
 
 	if (adapter->up)
 		return 0;
+
+	if (adapter->off_timer)
+		off_timer_remove(adapter);
 
 	return adapter_ops->set_powered(adapter->dev_id, TRUE);
 }
@@ -3473,7 +3500,19 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	if (!adapter->up)
 		return 0;
 
-	return adapter_ops->set_powered(adapter->dev_id, FALSE);
+	if (adapter->off_timer)
+		return 0;
+
+	if (adapter->connections == NULL)
+		return adapter_ops->set_powered(adapter->dev_id, FALSE);
+
+	g_slist_foreach(adapter->connections,
+				(GFunc) device_request_disconnect, NULL);
+
+	adapter->off_timer = g_timeout_add_seconds(OFF_TIMER,
+						switch_off_timeout, adapter);
+
+	return 0;
 }
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority)
