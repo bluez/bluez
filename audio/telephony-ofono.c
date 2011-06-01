@@ -926,13 +926,6 @@ static void handle_network_property(const char *property, DBusMessageIter *varia
 
 static int parse_network_properties(DBusMessageIter *properties)
 {
-	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
-				AG_FEATURE_INBAND_RINGTONE |
-				AG_FEATURE_REJECT_A_CALL |
-				AG_FEATURE_ENHANCED_CALL_STATUS |
-				AG_FEATURE_ENHANCED_CALL_CONTROL |
-				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
-				AG_FEATURE_THREE_WAY_CALLING;
 	int i;
 
 	/* Reset indicators */
@@ -958,9 +951,6 @@ static int parse_network_properties(DBusMessageIter *properties)
 
 		dbus_message_iter_next(properties);
 	}
-
-	telephony_ready_ind(features, ofono_indicators, BTRH_NOT_SUPPORTED,
-								chld_str);
 
 	return 0;
 }
@@ -1553,6 +1543,13 @@ static void handle_service_disconnect(DBusConnection *conn, void *user_data)
 
 int telephony_init(void)
 {
+	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
+				AG_FEATURE_INBAND_RINGTONE |
+				AG_FEATURE_REJECT_A_CALL |
+				AG_FEATURE_ENHANCED_CALL_STATUS |
+				AG_FEATURE_ENHANCED_CALL_CONTROL |
+				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
+				AG_FEATURE_THREE_WAY_CALLING;
 	const char *battery_cap = "battery";
 	int ret;
 	guint watch;
@@ -1592,6 +1589,9 @@ int telephony_init(void)
 		return ret;
 
 	DBG("telephony_init() successfully");
+
+	telephony_ready_ind(features, ofono_indicators, BTRH_NOT_SUPPORTED,
+								chld_str);
 
 	return ret;
 }
