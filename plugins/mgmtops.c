@@ -563,7 +563,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	err = btd_event_request_pin(&info->bdaddr, &ev->bdaddr);
+	err = btd_event_request_pin(&info->bdaddr, &ev->bdaddr, ev->secure);
 	if (err < 0) {
 		error("btd_event_request_pin: %s", strerror(-err));
 		mgmt_pincode_reply(index, &ev->bdaddr, NULL, 0);

@@ -46,8 +46,8 @@ int agent_authorize(struct agent *agent, const char *path,
 			GDestroyNotify destroy);
 
 int agent_request_pincode(struct agent *agent, struct btd_device *device,
-				agent_pincode_cb cb, void *user_data,
-				GDestroyNotify destroy);
+				agent_pincode_cb cb, gboolean secure,
+				void *user_data, GDestroyNotify destroy);
 
 int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
 				agent_cb cb, void *user_data,

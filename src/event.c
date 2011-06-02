@@ -123,7 +123,7 @@ fail:
 	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
 }
 
-int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba)
+int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -135,13 +135,13 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba)
 
 	memset(pin, 0, sizeof(pin));
 	pinlen = read_pin_code(sba, dba, pin);
-	if (pinlen > 0) {
+	if (pinlen > 0 && (!secure || pinlen == 16)) {
 		btd_adapter_pincode_reply(adapter, dba, pin, pinlen);
 		return 0;
 	}
 
 	return device_request_authentication(device, AUTH_TYPE_PINCODE, 0,
-								pincode_cb);
+							secure, pincode_cb);
 }
 
 static int confirm_reply(struct btd_adapter *adapter,
@@ -187,7 +187,7 @@ int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
-							passkey, confirm_cb);
+						passkey, FALSE, confirm_cb);
 }
 
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
@@ -199,7 +199,7 @@ int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_PASSKEY, 0,
-								passkey_cb);
+							FALSE, passkey_cb);
 }
 
 int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
@@ -210,8 +210,8 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_authentication(device, AUTH_TYPE_NOTIFY,
-								passkey, NULL);
+	return device_request_authentication(device, AUTH_TYPE_NOTIFY, passkey,
+								FALSE, NULL);
 }
 
 void btd_event_bonding_complete(bdaddr_t *local, bdaddr_t *peer,
