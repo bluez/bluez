@@ -365,7 +365,7 @@ static DBusMessage *register_endpoint(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 
 	if (media_endpoint_create(adapter, sender, path, uuid, delay_reporting,
-				codec, capabilities, size, &err) == FALSE) {
+				codec, capabilities, size, &err) == NULL) {
 		if (err == -EPROTONOSUPPORT)
 			return btd_error_not_supported(msg);
 		else
