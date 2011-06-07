@@ -803,6 +803,11 @@ static void l2cap_parse(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("L2CAP(c): len %d psm %d\n", dlen, psm);
 		raw_dump(level, frm);
+	} else if (cid == 0x04) {
+		if (!p_filter(FILT_ATT))
+			att_dump(level, frm);
+		else
+			raw_dump(level + 1, frm);
 	} else {
 		/* Connection oriented channel */
 
