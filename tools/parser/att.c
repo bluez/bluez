@@ -471,6 +471,7 @@ static void att_read_by_group_resp_dump(int level, struct frame *frm)
 		printf("value");
 		while (remaining > 0) {
 			printf(" 0x%2.2x", get_u8(frm));
+			remaining--;
 		}
 		printf("\n");
 	}
