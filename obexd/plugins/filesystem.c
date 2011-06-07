@@ -210,16 +210,13 @@ static int filesystem_close(void *object)
 }
 
 static ssize_t filesystem_read(void *object, void *buf, size_t count,
-					uint8_t *hi, unsigned int *flags)
+								uint8_t *hi)
 {
 	ssize_t ret;
 
 	ret = read(GPOINTER_TO_INT(object), buf, count);
 	if (ret < 0)
 		return -errno;
-
-	if (flags)
-		*flags = 0;
 
 	*hi = OBEX_HDR_BODY;
 
@@ -502,23 +499,16 @@ ssize_t string_read(void *object, void *buf, size_t count)
 	return len;
 }
 
-static ssize_t folder_read(void *object, void *buf, size_t count,
-					uint8_t *hi, unsigned int *flags)
+static ssize_t folder_read(void *object, void *buf, size_t count, uint8_t *hi)
 {
-	if (flags)
-		*flags = 0;
-
 	*hi = OBEX_HDR_BODY;
 	return string_read(object, buf, count);
 }
 
 static ssize_t capability_read(void *object, void *buf, size_t count,
-					uint8_t *hi, unsigned int *flags)
+								uint8_t *hi)
 {
 	struct capability_object *obj = object;
-
-	if (flags)
-		*flags = 0;
 
 	*hi = OBEX_HDR_BODY;
 

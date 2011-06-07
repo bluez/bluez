@@ -331,8 +331,7 @@ done:
 	return 0;
 }
 
-static ssize_t synce_read(void *object, void *buf, size_t count,
-					uint8_t *hi, unsigned int *flags)
+static ssize_t synce_read(void *object, void *buf, size_t count, uint8_t *hi)
 {
 	struct synce_context *context = object;
 	DBusConnection *conn;
@@ -342,9 +341,6 @@ static ssize_t synce_read(void *object, void *buf, size_t count,
 	DBusMessageIter iter, dict;
 	gboolean authenticate;
 	DBusPendingCall *call;
-
-	if (flags)
-		*flags = 0;
 
 	if (context->buffer) {
 		*hi = OBEX_HDR_BODY;

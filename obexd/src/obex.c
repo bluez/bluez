@@ -643,13 +643,10 @@ static int obex_write_stream(struct obex_session *os,
 
 		len = MIN(os->size - os->offset, os->tx_mtu);
 		ptr = os->buf + os->offset;
-		flags = 0;
 		goto add_header;
 	}
 
-	ptr = os->buf + os->write_offset;
-	len = os->driver->read(os->object, ptr, os->tx_mtu - os->write_offset,
-								&hi, &flags);
+	len = os->driver->read(os->object, os->buf, os->tx_mtu, &hi);
 	if (len < 0) {
 		error("read(): %s (%zd)", strerror(-len), -len);
 		if (len == -EAGAIN)
@@ -662,15 +659,18 @@ static int obex_write_stream(struct obex_session *os,
 		return len;
 	}
 
+	ptr = os->buf;
+
 add_header:
 
 	hd.bs = ptr;
 
 	switch (hi) {
 	case OBEX_HDR_BODY:
-		flags |= len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND;
+		flags = len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND;
 		break;
 	case OBEX_HDR_APPARAM:
+		flags =  0;
 		break;
 	default:
 		error("read(): unkown header type %u", hi);
@@ -683,11 +683,6 @@ add_header:
 		g_free(os->buf);
 		os->buf = NULL;
 	}
-
-	if (flags & OBEX_FL_FIT_ONE_PACKET)
-		os->write_offset += len;
-	else
-		os->write_offset = 0;
 
 	os->offset += len;
 

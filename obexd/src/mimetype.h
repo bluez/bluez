@@ -33,8 +33,7 @@ struct obex_mime_type_driver {
 	void *(*open) (const char *name, int oflag, mode_t mode,
 			void *driver_data, size_t *size, int *err);
 	int (*close) (void *object);
-	ssize_t (*read) (void *object, void *buf, size_t count, uint8_t *hi,
-							unsigned int *flags);
+	ssize_t (*read) (void *object, void *buf, size_t count, uint8_t *hi);
 	ssize_t (*write) (void *object, const void *buf, size_t count);
 	int (*flush) (void *object);
 	int (*remove) (const char *name);
