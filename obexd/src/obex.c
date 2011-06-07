@@ -310,7 +310,6 @@ static void os_reset_session(struct obex_session *os)
 	os->pending = 0;
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
-	os->finished = 0;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -625,7 +624,6 @@ static int obex_write_stream(struct obex_session *os,
 			obex_t *obex, obex_object_t *obj)
 {
 	obex_headerdata_t hd;
-	uint8_t *ptr;
 	ssize_t len;
 	unsigned int flags;
 	uint8_t hi;
@@ -637,14 +635,8 @@ static int obex_write_stream(struct obex_session *os,
 	if (os->aborted)
 		return -EPERM;
 
-	if (os->object == NULL) {
-		if (os->buf == NULL && os->finished == FALSE)
-			return -EIO;
-
-		len = MIN(os->size - os->offset, os->tx_mtu);
-		ptr = os->buf + os->offset;
-		goto add_header;
-	}
+	if (os->object == NULL)
+		return -EIO;
 
 	len = os->driver->read(os->object, os->buf, os->tx_mtu, &hi);
 	if (len < 0) {
@@ -659,11 +651,7 @@ static int obex_write_stream(struct obex_session *os,
 		return len;
 	}
 
-	ptr = os->buf;
-
-add_header:
-
-	hd.bs = ptr;
+	hd.bs = os->buf;
 
 	switch (hi) {
 	case OBEX_HDR_BODY:
@@ -683,8 +671,6 @@ add_header:
 		g_free(os->buf);
 		os->buf = NULL;
 	}
-
-	os->offset += len;
 
 	return 0;
 }
