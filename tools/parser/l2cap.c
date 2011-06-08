@@ -808,6 +808,11 @@ static void l2cap_parse(int level, struct frame *frm)
 			att_dump(level, frm);
 		else
 			raw_dump(level + 1, frm);
+	} else if (cid == 0x06) {
+		if (!p_filter(FILT_SMP))
+			smp_dump(level, frm);
+		else
+			raw_dump(level + 1, frm);
 	} else {
 		/* Connection oriented channel */
 

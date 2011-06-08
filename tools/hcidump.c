@@ -811,6 +811,7 @@ static struct {
 	{ "hidp",	FILT_HIDP	},
 	{ "hcrp",	FILT_HCRP	},
 	{ "att",	FILT_ATT	},
+	{ "smp",	FILT_SMP	},
 	{ "avdtp",	FILT_AVDTP	},
 	{ "avctp",	FILT_AVCTP	},
 	{ "obex",	FILT_OBEX	},
