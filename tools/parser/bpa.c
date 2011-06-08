@@ -58,8 +58,8 @@ void bpa_dump(int level, struct frame *frm)
 	channel = get_u8(frm);
 
 	p_indent(level, frm);
-	printf("BPA: id %d num %d status 0x%02x time %d channel %d\n",
-		id, num, status, time, channel);
+	printf("BPA: id %d num %d len %u status 0x%02x time %d channel %d\n",
+		id, num, len, status, time, channel);
 
 	raw_dump(level, frm);
 }

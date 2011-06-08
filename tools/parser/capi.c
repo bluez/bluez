@@ -693,7 +693,6 @@ static void cmd_disconnect_b3(int level, uint8_t subcmd, struct frame *frm)
 static void cmd_data_b3(int level, uint8_t subcmd, struct frame *frm)
 {
 	uint32_t data;
-	uint64_t data64;
 	uint16_t length, handle, flags, info;
 
 	cmd_common(level, 0x00, frm);
@@ -724,7 +723,7 @@ static void cmd_data_b3(int level, uint8_t subcmd, struct frame *frm)
 		printf("Flags: 0x%04x\n", flags);
 
 		if (data == 0)
-			data64 = get_u64(frm);
+			(void) get_u64(frm);
 
 		raw_dump(level, frm);
 	}

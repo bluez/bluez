@@ -3958,8 +3958,11 @@ static inline void sco_dump(int level, struct frame *frm)
 	uint8_t flags = acl_flags(handle);
 	int len;
 
-	if (frm->audio_fd > fileno(stderr))
+	if (frm->audio_fd > fileno(stderr)) {
 		len = write(frm->audio_fd, frm->ptr + HCI_SCO_HDR_SIZE, hdr->dlen);
+		if (len < 0)
+			return;
+	}
 
 	if (!p_filter(FILT_SCO)) {
 		p_indent(level, frm);

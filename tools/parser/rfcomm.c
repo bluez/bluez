@@ -55,11 +55,10 @@ static void print_rfcomm_hdr(long_frame_head* head, uint8_t *ptr, int len)
 	address_field addr = head->addr;
 	uint8_t ctr = head->control;
 	uint16_t ilen = head->length.bits.len;
-	uint8_t ctr_type,pf,dlci,fcs;
+	uint8_t pf, dlci, fcs;
 
 	dlci     = GET_DLCI(addr);
 	pf       = GET_PF(ctr);
-	ctr_type = CLR_PF(ctr);
 	fcs      = *(ptr + len - 1);
 
 	printf("cr %d dlci %d pf %d ilen %d fcs 0x%x ", addr.cr, dlci, pf, ilen, fcs); 

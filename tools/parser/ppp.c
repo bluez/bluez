@@ -176,12 +176,23 @@ void ppp_dump(int level, struct frame *frm)
 
 		id = 0x07;
 		err = write(frm->pppdump_fd, &id, 1);
+		if (err < 0)
+			return;
+
 		err = write(frm->pppdump_fd, &ts, 4);
+		if (err < 0)
+			return;
 
 		id = frm->in ? 0x02 : 0x01;
 		err = write(frm->pppdump_fd, &id, 1);
+		if (err < 0)
+			return;
 		err = write(frm->pppdump_fd, &len, 2);
+		if (err < 0)
+			return;
 		err = write(frm->pppdump_fd, frm->ptr, frm->len);
+		if (err < 0)
+			return;
 	}
 
 	if (!ppp_traffic) {
