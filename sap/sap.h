@@ -84,17 +84,6 @@ struct sap_message {
 	struct sap_parameter param[0];
 } __attribute__((packed));
 
-enum {
-	ICC_READER_UNSPECIFIED_ERROR, /* No further information available */
-	ICC_READER_NOT_PRESENT,       /* Card Reader removed or not present */
-	ICC_READER_BUSY,              /* Card Reader in use */
-	ICC_READER_CARD_POWERED_ON,   /* Card in reader and is powered on */
-	ICC_READER_DEACTIVATED,       /* Card Reader deactivated */
-	ICC_READER_CARD_POWERED_OFF,  /* Card in reader, but powered off */
-	ICC_READER_NO_CARD,           /* No card in reader */
-	ICC_READER_LAST
-};
-
 #define SAP_BUF_SIZE		512
 #define SAP_MSG_HEADER_SIZE	4
 
