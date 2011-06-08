@@ -262,6 +262,11 @@ static void manager_set_default_adapter(int id)
 			DBUS_TYPE_INVALID);
 }
 
+struct btd_adapter *manager_get_default_adapter(void)
+{
+	return manager_find_adapter_by_id(default_adapter_id);
+}
+
 static void manager_remove_adapter(struct btd_adapter *adapter)
 {
 	uint16_t dev_id = adapter_get_dev_id(adapter);
