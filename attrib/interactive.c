@@ -718,6 +718,8 @@ static struct {
 		"Show this help"},
 	{ "exit",		cmd_exit,	"",
 		"Exit interactive mode" },
+	{ "quit",		cmd_exit,	"",
+		"Exit interactive mode" },
 	{ "connect",		cmd_connect,	"[address]",
 		"Connect to a remote device" },
 	{ "disconnect",		cmd_disconnect,	"",
