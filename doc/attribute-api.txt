@@ -12,7 +12,7 @@ or service from attribute database.
 
 Local services are children of the adapter object path. Remote services
 are children of the remote device object path. This doesn't solve the
-problem where local atttributes can have different instances based on
+problem where local attributes can have different instances based on
 the remote device.
 
 In general the idea is to also represent SDP records as services so that
