@@ -417,7 +417,7 @@ static char *cmd_le_str[CMD_LE_NUM + 1] = {
 	"LE Test End",
 };
 
-#define ERROR_CODE_NUM 56
+#define ERROR_CODE_NUM 63
 static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Success",
 	"Unknown HCI Command",
@@ -476,6 +476,13 @@ static char *error_code_str[ERROR_CODE_NUM + 1] = {
 	"Extended Inquiry Response Too Large",
 	"Simple Pairing Not Supported by Host",
 	"Host Busy - Pairing",
+	"Connection Rejected due to No Suitable Channel Found",
+	"Controller Busy",
+	"Unacceptable Connection Interval",
+	"Directed Advertising Timeout",
+	"Connection Terminated Due to MIC Failure",
+	"Connection Failed to be Established",
+	"MAC Connection Failed",
 };
 
 static char *status2str(uint8_t status)
