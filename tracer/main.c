@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
 	openlog("hcitrace", LOG_PID | LOG_NDELAY | LOG_PERROR, LOG_DAEMON);
 
-	syslog(LOG_INFO, "HCI trace deamon %s", VERSION);
+	syslog(LOG_INFO, "HCI trace daemon %s", VERSION);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_flags = SA_NOCLDSTOP;
