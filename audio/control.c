@@ -566,7 +566,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 	} else if (avctp->pid != htons(AV_REMOTE_SVCLASS_ID)) {
 		avctp->ipid = 1;
 		avctp->cr = AVCTP_RESPONSE;
-		avrcp->code = CTYPE_REJECTED;
+		packet_size = sizeof(*avctp);
 	} else if (avctp->cr == AVCTP_COMMAND &&
 			avrcp->code == CTYPE_CONTROL &&
 			avrcp->subunit_type == SUBUNIT_PANEL &&
