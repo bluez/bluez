@@ -1086,7 +1086,6 @@ static void avdtp_sep_set_state(struct avdtp *session,
 			g_source_remove(stream->idle_timer);
 			stream->idle_timer = 0;
 		}
-		session->streams = g_slist_remove(session->streams, stream);
 		if (session->pending_open == stream)
 			handle_transport_connect(session, NULL, 0, 0);
 		if (session->req && session->req->stream == stream)
@@ -1105,8 +1104,11 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		cb->cb(stream, old_state, state, err_ptr, cb->user_data);
 	}
 
-	if (state == AVDTP_STATE_IDLE)
+	if (state == AVDTP_STATE_IDLE &&
+				g_slist_find(session->streams, stream)) {
+		session->streams = g_slist_remove(session->streams, stream);
 		stream_free(stream);
+	}
 }
 
 static void finalize_discovery(struct avdtp *session, int err)
