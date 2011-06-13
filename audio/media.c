@@ -643,6 +643,7 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 	DBusConnection *conn;
 	DBusMessage *msg;
 	const char *path;
+	struct media_transport *transport = endpoint->transport;
 
 	if (endpoint->transport == NULL)
 		return;
@@ -665,8 +666,8 @@ void media_endpoint_clear_configuration(struct media_endpoint *endpoint)
 							DBUS_TYPE_INVALID);
 	g_dbus_send_message(conn, msg);
 done:
-	media_transport_destroy(endpoint->transport);
 	endpoint->transport = NULL;
+	media_transport_destroy(transport);
 }
 
 void media_endpoint_release(struct media_endpoint *endpoint)
