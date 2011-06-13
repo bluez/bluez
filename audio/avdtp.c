@@ -1098,8 +1098,10 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		break;
 	}
 
-	for (l = stream->callbacks; l != NULL; l = g_slist_next(l)) {
+	l = stream->callbacks;
+	while (l != NULL) {
 		struct stream_callback *cb = l->data;
+		l = g_slist_next(l);
 		cb->cb(stream, old_state, state, err_ptr, cb->user_data);
 	}
 
