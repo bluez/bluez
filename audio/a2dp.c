@@ -371,11 +371,10 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		sep->session = NULL;
 	}
 
-	if (sep->endpoint)
-		media_endpoint_clear_configuration(sep->endpoint);
-
 	sep->stream = NULL;
 
+	if (sep->endpoint)
+		media_endpoint_clear_configuration(sep->endpoint);
 }
 
 static gboolean auto_config(gpointer data)
