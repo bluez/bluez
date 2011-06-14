@@ -965,6 +965,11 @@ void device_remove_bonding(struct btd_device *device)
 	/* Delete the link key from storage */
 	textfile_casedel(filename, dstaddr);
 
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr,
+						"aliases");
+	/* Remove alias when bonding is deleted */
+	textfile_casedel(filename, dstaddr);
+
 	btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
 }
 
