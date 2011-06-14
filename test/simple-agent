@@ -6,6 +6,7 @@ import sys
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+from optparse import OptionParser
 
 class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
@@ -88,8 +89,17 @@ if __name__ == '__main__':
 	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 							"org.bluez.Manager")
 
-	if len(sys.argv) > 1:
-		path = manager.FindAdapter(sys.argv[1])
+	capability = "DisplayYesNo"
+
+	parser = OptionParser()
+	parser.add_option("-c", "--capability", action="store",
+					type="string", dest="capability")
+	(options, args) = parser.parse_args()
+	if options.capability:
+		capability  = options.capability
+
+	if len(args) > 0:
+		path = manager.FindAdapter(args[0])
 	else:
 		path = manager.DefaultAdapter()
 
@@ -101,17 +111,17 @@ if __name__ == '__main__':
 
 	mainloop = gobject.MainLoop()
 
-	if len(sys.argv) > 2:
-		if len(sys.argv) > 3:
-			device = adapter.FindDevice(sys.argv[2])
+	if len(args) > 1:
+		if len(args) > 2:
+			device = adapter.FindDevice(args[1])
 			adapter.RemoveDevice(device)
 
 		agent.set_exit_on_release(False)
-		adapter.CreatePairedDevice(sys.argv[2], path, "DisplayYesNo",
+		adapter.CreatePairedDevice(args[1], path, capability,
 					reply_handler=create_device_reply,
 					error_handler=create_device_error)
 	else:
-		adapter.RegisterAgent(path, "DisplayYesNo")
+		adapter.RegisterAgent(path, capability)
 		print "Agent registered"
 
 	mainloop.run()
