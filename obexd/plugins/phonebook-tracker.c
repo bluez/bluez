@@ -161,6 +161,7 @@
 	"?_call a nmo:Call . "						\
 	"?_unb_contact a nco:Contact . "				\
 	"?_unb_contact nco:hasPhoneNumber ?_cpn . "			\
+CONSTRAINT								\
 	"OPTIONAL { "							\
 		"{ SELECT ?_contact ?_cpn ?_role ?_number "		\
 			"count(?_contact) as ?cnt "			\
@@ -177,7 +178,6 @@
 		"} GROUP BY ?_cpn } "					\
 		"FILTER(?cnt = 1) "					\
 	"} "								\
-CONSTRAINT								\
 "} "
 
 #define CALLS_LIST(CONSTRAINT)						\
