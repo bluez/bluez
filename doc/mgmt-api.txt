@@ -319,6 +319,22 @@ Stop Discovery Command
 	Command Parameters:
 	Return Parameters:
 
+Block Device Command
+====================
+
+	Command Code:		0x0001D
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Parameters:	Status (1 octet)
+
+Unblock Device Command
+======================
+
+	Command Code:		0x0001E
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Parameters:	Status (1 octet)
+
 Read Tracing Buffer Size Command
 ================================
 

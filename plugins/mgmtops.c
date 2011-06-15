@@ -1201,6 +1201,12 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_REMOVE_REMOTE_OOB_DATA:
 		DBG("remove_remote_oob_data complete");
 		break;
+	case MGMT_OP_BLOCK_DEVICE:
+		DBG("block_device complete");
+		break;
+	case MGMT_OP_UNBLOCK_DEVICE:
+		DBG("unblock_device complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -1691,22 +1697,58 @@ static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 
 static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_block_device *cp;
+	size_t buf_len;
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return -ENOSYS;
+	memset(buf, 0, sizeof(buf));
+
+	hdr->opcode = htobs(MGMT_OP_BLOCK_DEVICE);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp = (void *) &buf[sizeof(*hdr)];
+	bacpy(&cp->bdaddr, bdaddr);
+
+	buf_len = sizeof(*hdr) + sizeof(*cp);
+
+	if (write(mgmt_sock, buf, buf_len) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unblock_device)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_unblock_device *cp;
+	size_t buf_len;
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
-	return -ENOSYS;
+	memset(buf, 0, sizeof(buf));
+
+	hdr->opcode = htobs(MGMT_OP_UNBLOCK_DEVICE);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp = (void *) &buf[sizeof(*hdr)];
+	bacpy(&cp->bdaddr, bdaddr);
+
+	buf_len = sizeof(*hdr) + sizeof(*cp);
+
+	if (write(mgmt_sock, buf, buf_len) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_get_conn_list(int index, GSList **conns)
