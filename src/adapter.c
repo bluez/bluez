@@ -135,8 +135,6 @@ struct btd_adapter {
 	guint scheduler_id;		/* Scheduler handle */
 	sdp_list_t *services;		/* Services associated to adapter */
 
-	uint8_t  features[8];
-
 	gboolean pairable;		/* pairable state */
 	gboolean initialized;
 
@@ -2570,8 +2568,6 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 gboolean adapter_init(struct btd_adapter *adapter)
 {
-	int err;
-
 	/* adapter_ops makes sure that newly registered adapters always
 	 * start off as powered */
 	adapter->up = TRUE;
@@ -2580,14 +2576,6 @@ gboolean adapter_init(struct btd_adapter *adapter)
 
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
 		error("No address available for hci%d", adapter->dev_id);
-		return FALSE;
-	}
-
-	err = adapter_ops->read_local_features(adapter->dev_id,
-							adapter->features);
-	if (err < 0) {
-		error("Can't read features for hci%d: %s (%d)",
-					adapter->dev_id, strerror(-err), -err);
 		return FALSE;
 	}
 
