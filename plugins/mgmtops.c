@@ -1763,20 +1763,6 @@ static int mgmt_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int mgmt_read_local_features(int index, uint8_t *features)
-{
-	struct controller_info *info = &controllers[index];
-
-	DBG("index %d", index);
-
-	if (!info->valid)
-		return -ENODEV;
-
-	memcpy(features, info->features, 8);
-
-	return 0;
-}
-
 static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_disconnect)];
@@ -2062,7 +2048,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.block_device = mgmt_block_device,
 	.unblock_device = mgmt_unblock_device,
 	.get_conn_list = mgmt_get_conn_list,
-	.read_local_features = mgmt_read_local_features,
 	.disconnect = mgmt_disconnect,
 	.remove_bonding = mgmt_remove_bonding,
 	.pincode_reply = mgmt_pincode_reply,
