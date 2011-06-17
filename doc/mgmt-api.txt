@@ -335,6 +335,14 @@ Unblock Device Command
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Status (1 octet)
 
+Set Fast Connectable Command
+============================
+
+        Command Code:           0x0001F
+        Controller Index:       <controller id>
+        Command Parameters:     Enable (1 Octet)
+        Return Parameters:      Status (1 octet)
+
 Read Tracing Buffer Size Command
 ================================
 

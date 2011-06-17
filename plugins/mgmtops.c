@@ -1207,6 +1207,9 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_UNBLOCK_DEVICE:
 		DBG("unblock_device complete");
 		break;
+	case MGMT_OP_SET_FAST_CONNECTABLE:
+		DBG("set_fast_connectable complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
@@ -1715,10 +1718,25 @@ static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 	return -ENOSYS;
 }
 
-static int mgmt_fast_connectable(int index, gboolean enable)
+static int mgmt_set_fast_connectable(int index, gboolean enable)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_fast_connectable)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_fast_connectable *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d enable %d", index, enable);
-	return -ENOSYS;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_FAST_CONNECTABLE);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp->enable = enable;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_read_clock(int index, bdaddr_t *bdaddr, int which, int timeout,
@@ -2090,7 +2108,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.cancel_resolve_name = mgmt_cancel_resolve_name,
 	.set_name = mgmt_set_name,
 	.set_dev_class = mgmt_set_dev_class,
-	.set_fast_connectable = mgmt_fast_connectable,
+	.set_fast_connectable = mgmt_set_fast_connectable,
 	.read_clock = mgmt_read_clock,
 	.read_bdaddr = mgmt_read_bdaddr,
 	.block_device = mgmt_block_device,
