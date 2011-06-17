@@ -478,8 +478,7 @@ static int ftp_move(struct ftp_session *ftp, const char *name,
 	return ret;
 }
 
-static int ftp_action(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+int ftp_action(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name, *destname;
