@@ -403,6 +403,104 @@ done:
 	return err;
 }
 
+static char *ftp_build_filename(struct ftp_session *ftp, const char *destname)
+{
+	char *filename;
+
+	/* DestName can either be relative or absolute (FTP style) */
+	if (g_path_is_absolute(destname))
+		filename = g_build_filename(destname, NULL);
+	else
+		filename = g_build_filename(ftp->folder, destname, NULL);
+
+	/* Check if destination is inside root path */
+	if (g_str_has_prefix(filename, ftp->folder))
+		return filename;
+
+	g_free(filename);
+
+	return NULL;
+}
+
+static int ftp_copy(struct ftp_session *ftp, const char *name,
+							const char *destname)
+{
+	char *source, *destination;
+	int ret;
+
+	DBG("%p name %s destination %s", ftp, name, destname);
+
+	if (ftp->folder == NULL) {
+		error("No folder set");
+		return -ENOENT;
+	}
+
+	if (name == NULL || destname == NULL)
+		return -EINVAL;
+
+	destination = ftp_build_filename(ftp, destname);
+
+	source = g_build_filename(ftp->folder, name, NULL);
+
+	ret = obex_copy(ftp->os, source, destination);
+
+	g_free(source);
+	g_free(destination);
+
+	return ret;
+}
+
+static int ftp_move(struct ftp_session *ftp, const char *name,
+							const char *destname)
+{
+	char *source, *destination;
+	int ret;
+
+	DBG("%p name %s destname %s", ftp, name, destname);
+
+	if (ftp->folder == NULL) {
+		error("No folder set");
+		return -ENOENT;
+	}
+
+	if (name == NULL || destname == NULL)
+		return -EINVAL;
+
+	destination = ftp_build_filename(ftp, destname);
+
+	source = g_build_filename(ftp->folder, name, NULL);
+
+	ret = obex_move(ftp->os, source, destination);
+
+	g_free(source);
+	g_free(destination);
+
+	return ret;
+}
+
+static int ftp_action(struct obex_session *os, obex_object_t *obj,
+							void *user_data)
+{
+	struct ftp_session *ftp = user_data;
+	const char *name, *destname;
+	uint8_t action_id;
+
+	name = obex_get_name(os);
+	destname = obex_get_destname(os);
+	action_id = obex_get_action_id(os);
+
+	DBG("%p action 0x%x", ftp, action_id);
+
+	switch (action_id) {
+	case 0x00: /* Copy Object */
+		return ftp_copy(ftp, name, destname);
+	case 0x01: /* Move/Rename Object */
+		return ftp_move(ftp, name, destname);
+	default:
+		return -EINVAL;
+	}
+}
+
 void ftp_disconnect(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
@@ -427,6 +525,7 @@ static struct obex_service_driver ftp = {
 	.put = ftp_put,
 	.chkput = ftp_chkput,
 	.setpath = ftp_setpath,
+	.action = ftp_action,
 	.disconnect = ftp_disconnect
 };
 
