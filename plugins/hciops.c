@@ -3093,7 +3093,7 @@ static int hciops_stop_discovery(int index)
 	}
 }
 
-static int hciops_fast_connectable(int index, gboolean enable)
+static int hciops_set_fast_connectable(int index, gboolean enable)
 {
 	struct dev_info *dev = &devs[index];
 	write_page_activity_cp cp;
@@ -3616,7 +3616,7 @@ static struct btd_adapter_ops hci_ops = {
 	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
 	.set_dev_class = hciops_set_dev_class,
-	.set_fast_connectable = hciops_fast_connectable,
+	.set_fast_connectable = hciops_set_fast_connectable,
 	.read_clock = hciops_read_clock,
 	.read_bdaddr = hciops_read_bdaddr,
 	.block_device = hciops_block_device,
