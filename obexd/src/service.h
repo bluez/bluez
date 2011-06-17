@@ -39,6 +39,8 @@ struct obex_service_driver {
 	int (*chkput) (struct obex_session *os, void *user_data);
 	int (*setpath) (struct obex_session *os, obex_object_t *obj,
 							void *user_data);
+	int (*action) (struct obex_session *os, obex_object_t *obj,
+							void *user_data);
 	void (*disconnect) (struct obex_session *os, void *user_data);
 	void (*reset) (struct obex_session *os, void *user_data);
 };

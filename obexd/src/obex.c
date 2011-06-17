@@ -52,6 +52,13 @@
 #include "transport.h"
 #include "btio.h"
 
+#ifndef OBEX_CMD_ACTION
+#define OBEX_CMD_ACTION 0x06
+#define OBEX_HDR_ACTION_ID 0x94
+#define OBEX_HDR_DESTNAME 0x15
+#define OBEX_HDR_PERMISSIONS 0xD6
+#endif /* OBEX_CMD_ACTION */
+
 /* Default MTU's */
 #define DEFAULT_RX_MTU 32767
 #define DEFAULT_TX_MTU 32767
@@ -128,6 +135,7 @@ static struct {
 	{ OBEX_CMD_SETPATH,	"SETPATH"	},
 	{ OBEX_CMD_SESSION,	"SESSION"	},
 	{ OBEX_CMD_ABORT,	"ABORT"		},
+	{ OBEX_CMD_ACTION,	"ACTION"	},
 	{ OBEX_FINAL,		"FINAL"		},
 	{ 0xFF,			NULL		},
 };
@@ -1096,6 +1104,104 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	}
 }
 
+static void cmd_action(struct obex_session *os, obex_t *obex,
+							obex_object_t *obj)
+{
+	obex_headerdata_t hd;
+	unsigned int hlen;
+	uint8_t hi;
+	int err;
+
+	if (!os->service) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
+		return;
+	} else if (!os->service->action) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+				OBEX_RSP_NOT_IMPLEMENTED);
+		return;
+	}
+
+	g_return_if_fail(chk_cid(obex, obj, os->cid));
+
+	if (os->name) {
+		g_free(os->name);
+		os->name = NULL;
+	}
+
+	if (os->destname) {
+		g_free(os->destname);
+		os->destname = NULL;
+	}
+
+	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
+		switch (hi) {
+		case OBEX_HDR_NAME:
+			if (os->name) {
+				DBG("Ignoring multiple name headers");
+				break;
+			}
+
+			if (hlen == 0)
+				continue;
+
+			os->name = g_convert((const char *) hd.bs, hlen,
+					"UTF8", "UTF16BE", NULL, NULL, NULL);
+			DBG("OBEX_HDR_NAME: %s", os->name);
+			break;
+
+		case OBEX_HDR_DESTNAME:
+			if (os->destname) {
+				DBG("Ignoring multiple destination headers");
+				break;
+			}
+
+			if (hlen == 0)
+				continue;
+
+			os->destname = g_convert((const char *) hd.bs, hlen,
+					"UTF8", "UTF16BE", NULL, NULL, NULL);
+			DBG("OBEX_HDR_DESTNAME: %s", os->destname);
+			break;
+
+		case OBEX_HDR_ACTION_ID:
+			if (hlen == 0)
+				continue;
+
+			os->action_id = hd.bq1;
+
+			DBG("OBEX_HDR_ACTIONID: %u", os->action_id);
+			break;
+
+		case OBEX_HDR_PERMISSIONS:
+			if (hlen == 0)
+				continue;
+
+			DBG("OBEX_HDR_PERMISSIONS: %d", hd.bq4);
+			break;
+		}
+	}
+
+	os->driver = obex_mime_type_driver_find(os->service->target,
+						os->service->target_size,
+						NULL,
+						os->service->who,
+						os->service->who_size);
+
+	if (!os->driver || !os->service->action) {
+		OBEX_ObjectSetRsp(obj, OBEX_RSP_NOT_IMPLEMENTED,
+				OBEX_RSP_NOT_IMPLEMENTED);
+		return;
+	}
+
+	err = os->service->action(os, obj, os->service_data);
+	if (err < 0) {
+		os_set_response(obj, err);
+		return;
+	}
+
+	return;
+}
+
 static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 					int evt, int cmd, int rsp)
 {
@@ -1141,6 +1247,7 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 		case OBEX_CMD_SETPATH:
 		case OBEX_CMD_CONNECT:
 		case OBEX_CMD_DISCONNECT:
+		case OBEX_CMD_ACTION:
 			OBEX_ObjectSetRsp(obj, OBEX_RSP_CONTINUE,
 					OBEX_RSP_SUCCESS);
 			break;
@@ -1175,6 +1282,9 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 			break;
 		case OBEX_CMD_PUT:
 			cmd_put(os, obex, obj);
+			break;
+		case OBEX_CMD_ACTION:
+			cmd_action(os, obex, obj);
 			break;
 		default:
 			DBG("Unknown request: 0x%X", cmd);
@@ -1309,6 +1419,11 @@ const char *obex_get_name(struct obex_session *os)
 	return os->name;
 }
 
+const char *obex_get_destname(struct obex_session *os)
+{
+	return os->destname;
+}
+
 void obex_set_name(struct obex_session *os, const char *name)
 {
 	g_free(os->name);
@@ -1357,6 +1472,33 @@ int obex_remove(struct obex_session *os, const char *path)
 		return -EINVAL;
 
 	return os->driver->remove(path);
+}
+
+int obex_copy(struct obex_session *os, const char *source,
+						const char *destination)
+{
+	if (os->driver == NULL || os->driver->copy == NULL)
+		return -EINVAL;
+
+	DBG("%s %s", source, destination);
+
+	return os->driver->copy(source, destination);
+}
+
+int obex_move(struct obex_session *os, const char *source,
+						const char *destination)
+{
+	if (os->driver == NULL || os->driver->move == NULL)
+		return -EINVAL;
+
+	DBG("%s %s", source, destination);
+
+	return os->driver->move(source, destination);
+}
+
+uint8_t obex_get_action_id(struct obex_session *os)
+{
+	return os->action_id;
 }
 
 /* TODO: find a way to do this for tty or fix syncevolution */

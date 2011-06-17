@@ -47,6 +47,7 @@ void obex_connect_cb(GIOChannel *io, GError *err, void *user_data);
 int obex_get_stream_start(struct obex_session *os, const char *filename);
 int obex_put_stream_start(struct obex_session *os, const char *filename);
 const char *obex_get_name(struct obex_session *os);
+const char *obex_get_destname(struct obex_session *os);
 void obex_set_name(struct obex_session *os, const char *name);
 ssize_t obex_get_size(struct obex_session *os);
 const char *obex_get_type(struct obex_session *os);
@@ -56,6 +57,11 @@ gboolean obex_get_symlinks(struct obex_session *os);
 const char *obex_get_capability_path(struct obex_session *os);
 gboolean obex_get_auto_accept(struct obex_session *os);
 int obex_remove(struct obex_session *os, const char *path);
+int obex_copy(struct obex_session *os, const char *source,
+						const char *destination);
+int obex_move(struct obex_session *os, const char *source,
+						const char *destination);
+uint8_t obex_get_action_id(struct obex_session *os);
 char *obex_get_id(struct obex_session *os);
 ssize_t obex_aparam_read(struct obex_session *os, obex_object_t *obj,
 						const uint8_t **buffer);

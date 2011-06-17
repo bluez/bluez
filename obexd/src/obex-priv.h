@@ -28,7 +28,9 @@ struct obex_session {
 	uint16_t tx_mtu;
 	uint16_t rx_mtu;
 	uint8_t cmd;
+	uint8_t action_id;
 	char *name;
+	char *destname;
 	char *type;
 	char *path;
 	time_t time;
