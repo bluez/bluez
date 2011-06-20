@@ -23,15 +23,21 @@
 
 #include <gobex/gobex.h>
 
+static GObex *create_gobex(int fd)
+{
+	GIOChannel *io;
+
+	io = g_io_channel_unix_new(fd);
+	g_assert(io != NULL);
+
+	return g_obex_new(io);
+}
+
 static void test_ref_unref(void)
 {
 	GObex *obex;
-	GIOChannel *io;
 
-	io = g_io_channel_unix_new(STDIN_FILENO);
-	g_assert(io != NULL);
-
-	obex = g_obex_new(io);
+	obex = create_gobex(STDIN_FILENO);
 
 	g_assert(obex != NULL);
 
@@ -44,12 +50,8 @@ static void test_ref_unref(void)
 static void test_basic(void)
 {
 	GObex *obex;
-	GIOChannel *io;
 
-	io = g_io_channel_unix_new(STDIN_FILENO);
-	g_assert(io != NULL);
-
-	obex = g_obex_new(io);
+	obex = create_gobex(STDIN_FILENO);
 
 	g_assert(obex != NULL);
 
