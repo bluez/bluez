@@ -33,6 +33,17 @@ static GObex *create_gobex(int fd)
 	return g_obex_new(io);
 }
 
+static void test_req(void)
+{
+	GObexRequest *req;
+
+	req = g_obex_request_new(G_OBEX_OP_PUT);
+
+	g_assert(req != NULL);
+
+	g_obex_request_free(req);
+}
+
 static void test_ref_unref(void)
 {
 	GObex *obex;
@@ -74,6 +85,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/null_io", test_null_io);
 	g_test_add_func("/gobex/basic", test_basic);
 	g_test_add_func("/gobex/ref_unref", test_ref_unref);
+
+	g_test_add_func("/gobex/test_req", test_req);
 
 	g_test_run();
 

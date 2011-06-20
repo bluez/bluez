@@ -21,10 +21,43 @@
 
 #include "gobex.h"
 
+struct _GObexRequest {
+	uint8_t opcode;
+	GSList *headers;
+};
+
 struct _GObex {
 	gint ref_count;
 	GIOChannel *io;
+
+	GQueue *req_queue;
 };
+
+GObexRequest *g_obex_request_new(uint8_t opcode)
+{
+	GObexRequest *req;
+
+	req = g_new0(GObexRequest, 1);
+
+	req->opcode = opcode;
+
+	return req;
+}
+
+void g_obex_request_free(GObexRequest *req)
+{
+	g_free(req);
+}
+
+gboolean g_obex_send(GObex *obex, GObexRequest *req)
+{
+	if (obex == NULL || req == NULL)
+		return FALSE;
+
+	g_queue_push_tail(obex->req_queue, req);
+
+	return TRUE;
+}
 
 GObex *g_obex_new(GIOChannel *io)
 {
@@ -37,6 +70,7 @@ GObex *g_obex_new(GIOChannel *io)
 
 	obex->io = io;
 	obex->ref_count = 1;
+	obex->req_queue = g_queue_new();
 
 	return obex;
 }
@@ -59,6 +93,9 @@ void g_obex_unref(GObex *obex)
 
 	if (!last_ref)
 		return;
+
+	g_queue_foreach(obex->req_queue, (GFunc) g_obex_request_free, NULL);
+	g_queue_free(obex->req_queue);
 
 	g_io_channel_unref(obex->io);
 

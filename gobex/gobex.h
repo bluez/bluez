@@ -25,7 +25,15 @@
 #include <stdint.h>
 #include <glib.h>
 
+#include <gobex/obex.h>
+
 typedef struct _GObex GObex;
+typedef struct _GObexRequest GObexRequest;
+
+GObexRequest *g_obex_request_new(uint8_t opcode);
+void g_obex_request_free(GObexRequest *req);
+
+gboolean g_obex_send(GObex *obex, GObexRequest *req);
 
 GObex *g_obex_new(GIOChannel *io);
 
