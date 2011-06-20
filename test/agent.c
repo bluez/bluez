@@ -41,6 +41,7 @@ static int do_reject = 0;
 
 static volatile sig_atomic_t __io_canceled = 0;
 static volatile sig_atomic_t __io_terminated = 0;
+static volatile sig_atomic_t exit_on_release = 1;
 
 static void sig_term(int sig)
 {
@@ -286,7 +287,8 @@ static DBusHandlerResult release_message(DBusConnection *conn,
 	if (!__io_canceled)
 		fprintf(stderr, "Agent has been released\n");
 
-	__io_terminated = 1;
+	if (exit_on_release)
+		__io_terminated = 1;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply) {
@@ -414,6 +416,13 @@ static int unregister_agent(DBusConnection *conn, const char *adapter_path,
 	return 0;
 }
 
+static void create_paired_device_reply(DBusPendingCall *pending,
+							void *user_data)
+{
+	__io_terminated = 1;
+	return;
+}
+
 static int create_paired_device(DBusConnection *conn, const char *adapter_path,
 						const char *agent_path,
 						const char *capabilities,
@@ -421,6 +430,7 @@ static int create_paired_device(DBusConnection *conn, const char *adapter_path,
 {
 	dbus_bool_t success;
 	DBusMessage *msg;
+	DBusPendingCall *pending;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter_path,
 						"org.bluez.Adapter",
@@ -435,7 +445,12 @@ static int create_paired_device(DBusConnection *conn, const char *adapter_path,
 					DBUS_TYPE_STRING, &capabilities,
 					DBUS_TYPE_INVALID);
 
-	success = dbus_connection_send(conn, msg, NULL);
+	exit_on_release = 0;
+	success = dbus_connection_send_with_reply(conn, msg, &pending, -1);
+	if (pending)
+		dbus_pending_call_set_notify(pending,
+						create_paired_device_reply,
+						NULL, NULL);
 
 	dbus_message_unref(msg);
 
