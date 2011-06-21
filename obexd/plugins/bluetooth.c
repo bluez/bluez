@@ -459,7 +459,7 @@ static int request_service_authorization(struct bluetooth_service *service,
 
 static void confirm_event(GIOChannel *io, void *user_data)
 {
-	struct bluetooth_service *service;
+	struct bluetooth_service *service = user_data;
 	GError *err = NULL;
 	char address[18];
 	uint8_t channel;
@@ -476,12 +476,6 @@ static void confirm_event(GIOChannel *io, void *user_data)
 
 	info("bluetooth: New connection from: %s, channel %u", address,
 			channel);
-
-	service = find_service(NULL, channel);
-	if (service == NULL) {
-		error("bluetooth: Unable to find service");
-		goto drop;
-	}
 
 	if (service->driver->service != OBEX_OPP) {
 		if (request_service_authorization(service, io, address) < 0)
@@ -510,7 +504,7 @@ static GIOChannel *start(struct obex_server *server,
 	GError *err = NULL;
 
 	io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
-				server, NULL, &err,
+				service, NULL, &err,
 				BT_IO_OPT_CHANNEL, service->channel,
 				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
