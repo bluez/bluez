@@ -23,6 +23,12 @@
 
 #include <gobex/gobex.h>
 
+static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
+static uint8_t hdr_name[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+				0x00, 'f', 0x00, 'o', 0x00, 'o', 0x00, 0x00 };
+static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
+static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0x00 };
+
 static GObex *create_gobex(int fd)
 {
 	GIOChannel *io;
@@ -31,6 +37,119 @@ static GObex *create_gobex(int fd)
 	g_assert(io != NULL);
 
 	return g_obex_new(io);
+}
+
+static void test_parse_header_connid(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_connid, sizeof(hdr_connid),
+							FALSE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_connid));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_name(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_name, sizeof(hdr_name),
+							FALSE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_name));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_body(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_body, sizeof(hdr_body),
+							FALSE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_body_extdata(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_body, sizeof(hdr_body),
+							TRUE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_actionid(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_actionid, sizeof(hdr_actionid),
+							FALSE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_actionid));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_multi(void)
+{
+	GObexHeader *header;
+	GByteArray *buf;
+	size_t parsed;
+
+	buf = g_byte_array_sized_new(sizeof(hdr_connid) +
+					sizeof(hdr_name) +
+					sizeof(hdr_actionid) +
+					sizeof(hdr_body));
+
+	g_byte_array_append(buf, hdr_connid, sizeof(hdr_connid));
+	g_byte_array_append(buf, hdr_name, sizeof(hdr_name));
+	g_byte_array_append(buf, hdr_actionid, sizeof(hdr_actionid));
+	g_byte_array_append(buf, hdr_body, sizeof(hdr_body));
+
+	header = g_obex_header_parse(buf->data, buf->len, FALSE, &parsed);
+	g_assert(header != NULL);
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_connid));
+	g_byte_array_remove_range(buf, 0, parsed);
+	g_obex_header_free(header);
+
+	header = g_obex_header_parse(buf->data, buf->len, FALSE, &parsed);
+	g_assert(header != NULL);
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_name));
+	g_byte_array_remove_range(buf, 0, parsed);
+	g_obex_header_free(header);
+
+	header = g_obex_header_parse(buf->data, buf->len, FALSE, &parsed);
+	g_assert(header != NULL);
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_actionid));
+	g_byte_array_remove_range(buf, 0, parsed);
+	g_obex_header_free(header);
+
+	header = g_obex_header_parse(buf->data, buf->len, FALSE, &parsed);
+	g_assert(header != NULL);
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
+	g_byte_array_remove_range(buf, 0, parsed);
+	g_obex_header_free(header);
+
+	g_byte_array_unref(buf);
 }
 
 static void test_req(void)
@@ -87,6 +206,19 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/ref_unref", test_ref_unref);
 
 	g_test_add_func("/gobex/test_req", test_req);
+
+	g_test_add_func("/gobex/test_parse_header_connid",
+						test_parse_header_connid);
+	g_test_add_func("/gobex/test_parse_header_name",
+						test_parse_header_name);
+	g_test_add_func("/gobex/test_parse_header_body",
+						test_parse_header_body);
+	g_test_add_func("/gobex/test_parse_header_body_extdata",
+					test_parse_header_body_extdata);
+	g_test_add_func("/gobex/test_parse_header_actionid",
+						test_parse_header_actionid);
+	g_test_add_func("/gobex/test_parse_header_multi",
+						test_parse_header_multi);
 
 	g_test_run();
 

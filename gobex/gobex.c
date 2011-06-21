@@ -19,7 +19,30 @@
  *
  */
 
+#include <string.h>
+
 #include "gobex.h"
+
+/* Header types */
+#define G_OBEX_HDR_TYPE_UNICODE	(0 << 6)
+#define G_OBEX_HDR_TYPE_BYTES	(1 << 6)
+#define G_OBEX_HDR_TYPE_UINT8	(2 << 6)
+#define G_OBEX_HDR_TYPE_UINT32	(3 << 6)
+
+#define G_OBEX_HDR_TYPE(id)	((id) & 0xc0)
+
+struct _GObexHeader {
+	uint8_t id;
+	size_t len;
+	gboolean extdata;
+	union {
+		char *string;		/* UTF-8 converted from UTF-16 */
+		uint8_t *data;		/* Own buffer */
+		const uint8_t *extdata;	/* Reference to external buffer */
+		uint8_t u8;
+		uint32_t u32;
+	} v;
+};
 
 struct _GObexRequest {
 	uint8_t opcode;
@@ -32,6 +55,106 @@ struct _GObex {
 
 	GQueue *req_queue;
 };
+
+GObexHeader *g_obex_header_parse(const void *data, size_t len,
+						gboolean copy, size_t *parsed)
+{
+	GObexHeader *header;
+	const char *buf = data;
+	uint16_t hdr_len;
+	size_t str_len;
+
+	if (len < 2)
+		return NULL;
+
+	header = g_new0(GObexHeader, 1);
+
+	header->id = buf[0];
+
+	switch (G_OBEX_HDR_TYPE(header->id)) {
+	case G_OBEX_HDR_TYPE_UNICODE:
+		if (len < 3)
+			goto failed;
+		memcpy(&hdr_len, &buf[1], 2);
+		hdr_len = be16toh(hdr_len);
+		if (hdr_len > len || hdr_len < 5)
+			goto failed;
+
+		header->v.string = g_convert(&buf[3], hdr_len - 5,
+						"UTF8", "UTF16BE",
+						NULL, &str_len, NULL);
+		if (header->v.string == NULL)
+			goto failed;
+
+		header->len = (size_t) str_len;
+
+		*parsed = hdr_len;
+
+		break;
+	case G_OBEX_HDR_TYPE_BYTES:
+		if (len < 3)
+			goto failed;
+		memcpy(&hdr_len, &buf[1], 2);
+		hdr_len = be16toh(hdr_len);
+		if (hdr_len > len)
+			goto failed;
+
+		header->len = hdr_len - 3;
+
+		if (copy) {
+			header->v.data = g_malloc(hdr_len);
+			memcpy(header->v.data, &buf[3], header->len);
+		} else {
+			header->extdata = TRUE;
+			header->v.extdata = (const uint8_t *) &buf[3];
+		}
+
+		*parsed = hdr_len;
+
+		break;
+	case G_OBEX_HDR_TYPE_UINT8:
+		header->len = 1;
+		header->v.u8 = buf[1];
+		*parsed = 2;
+		break;
+	case G_OBEX_HDR_TYPE_UINT32:
+		if (len < 5)
+			goto failed;
+		header->len = 4;
+		memcpy(&header->v.u32, &buf[1], 4);
+		header->v.u32 = be32toh(header->v.u32);
+		*parsed = 5;
+		break;
+	default:
+		g_assert_not_reached();
+	}
+
+	return header;
+
+failed:
+	g_obex_header_free(header);
+	return NULL;
+}
+
+void g_obex_header_free(GObexHeader *header)
+{
+	switch (G_OBEX_HDR_TYPE(header->id)) {
+	case G_OBEX_HDR_TYPE_UNICODE:
+		g_free(header->v.string);
+		break;
+	case G_OBEX_HDR_TYPE_BYTES:
+		if (!header->extdata)
+			g_free(header->v.data);
+		break;
+	case G_OBEX_HDR_TYPE_UINT8:
+	case G_OBEX_HDR_TYPE_UINT32:
+		break;
+	default:
+		g_assert_not_reached();
+	}
+
+	g_free(header);
+}
 
 GObexRequest *g_obex_request_new(uint8_t opcode)
 {

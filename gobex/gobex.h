@@ -29,6 +29,11 @@
 
 typedef struct _GObex GObex;
 typedef struct _GObexRequest GObexRequest;
+typedef struct _GObexHeader GObexHeader;
+
+GObexHeader *g_obex_header_parse(const void *data, size_t len,
+						gboolean copy, size_t *parsed);
+void g_obex_header_free(GObexHeader *header);
 
 GObexRequest *g_obex_request_new(uint8_t opcode);
 void g_obex_request_free(GObexRequest *req);
