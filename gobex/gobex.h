@@ -66,6 +66,12 @@ typedef struct _GObex GObex;
 typedef struct _GObexRequest GObexRequest;
 typedef struct _GObexHeader GObexHeader;
 
+GObexHeader *g_obex_header_unicode(uint8_t id, const char *str);
+GObexHeader *g_obex_header_bytes(uint8_t id, void *data, size_t len,
+							gboolean copy_data);
+GObexHeader *g_obex_header_uint8(uint8_t id, uint8_t val);
+GObexHeader *g_obex_header_uint32(uint8_t id, uint32_t val);
+
 size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len);
 GObexHeader *g_obex_header_parse(const void *data, size_t len,
 						gboolean copy, size_t *parsed);

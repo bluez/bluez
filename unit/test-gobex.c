@@ -25,8 +25,10 @@
 #include <gobex/gobex.h>
 
 static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
-static uint8_t hdr_name[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+static uint8_t hdr_name_ascii[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
 				0x00, 'f', 0x00, 'o', 0x00, 'o', 0x00, 0x00 };
+static uint8_t hdr_name_umlaut[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+				0x00, 0xe5, 0x00, 0xe4, 0x00, 0xf6, 0x00, 0x00 };
 static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
 static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0x00 };
 
@@ -45,9 +47,106 @@ static void dump_bytes(uint8_t *buf, size_t buf_len)
 	size_t i;
 
 	for (i = 0; i < buf_len; i++)
-		g_print("%02x ", buf[i]);
+		g_printerr("%02x ", buf[i]);
 
-	g_print("\n");
+	g_printerr("\n");
+}
+
+static void assert_memequal(void *mem1, size_t len1, void *mem2, size_t len2)
+{
+	if (len1 == len2 && memcmp(mem1, mem2, len1) == 0)
+		return;
+
+	g_printerr("\nExpected: ");
+	dump_bytes(mem1, len1);
+	g_printerr("Got:      ");
+	dump_bytes(mem2, len2);
+
+	g_assert(0);
+}
+
+static void test_header_name_ascii(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024];
+	size_t len;
+
+	header = g_obex_header_unicode(G_OBEX_HDR_ID_NAME, "foo");
+
+	g_assert(header != NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_name_ascii, sizeof(hdr_name_ascii), buf, len);
+
+	g_obex_header_free(header);
+}
+
+static void test_header_name_umlaut(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024];
+	size_t len;
+
+	header = g_obex_header_unicode(G_OBEX_HDR_ID_NAME, "åäö");
+
+	g_assert(header != NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_name_umlaut, sizeof(hdr_name_umlaut), buf, len);
+
+	g_obex_header_free(header);
+}
+
+static void test_header_bytes(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024], data[] = { 1, 2, 3, 4 };
+	size_t len;
+
+	header = g_obex_header_bytes(G_OBEX_HDR_ID_BODY, data, sizeof(data),
+									FALSE);
+
+	g_assert(header != NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_body, sizeof(hdr_body), buf, len);
+
+	g_obex_header_free(header);
+}
+
+static void test_header_uint8(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024];
+	size_t len;
+
+	header = g_obex_header_uint8(G_OBEX_HDR_ID_ACTION, 0x00);
+
+	g_assert(header != NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_actionid, sizeof(hdr_actionid), buf, len);
+
+	g_obex_header_free(header);
+}
+
+static void test_header_uint32(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024];
+	size_t len;
+
+	header = g_obex_header_uint32(G_OBEX_HDR_ID_CONNECTION, 0x01020304);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_connid, sizeof(hdr_connid), buf, len);
+
+	g_obex_header_free(header);
 }
 
 static void parse_and_decode(uint8_t *buf, size_t buf_len)
@@ -62,22 +161,9 @@ static void parse_and_decode(uint8_t *buf, size_t buf_len)
 
 	len = g_obex_header_encode(header, encoded, sizeof(encoded));
 
+	assert_memequal(buf, buf_len, encoded, len);
+
 	g_obex_header_free(header);
-
-	if (len != buf_len)
-		goto failed;
-
-	if (memcmp(encoded, buf, len) != 0)
-		goto failed;
-
-	return;
-
-failed:
-	g_print("\nIn:  ");
-	dump_bytes(buf, buf_len);
-	g_print("Out: ");
-	dump_bytes(encoded, len);
-	g_assert(0);
 }
 
 static void test_header_encode_connid(void)
@@ -85,9 +171,14 @@ static void test_header_encode_connid(void)
 	parse_and_decode(hdr_connid, sizeof(hdr_connid));
 }
 
-static void test_header_encode_name(void)
+static void test_header_encode_name_ascii(void)
 {
-	parse_and_decode(hdr_name, sizeof(hdr_name));
+	parse_and_decode(hdr_name_ascii, sizeof(hdr_name_ascii));
+}
+
+static void test_header_encode_name_umlaut(void)
+{
+	parse_and_decode(hdr_name_umlaut, sizeof(hdr_name_umlaut));
 }
 
 static void test_header_encode_body(void)
@@ -114,16 +205,30 @@ static void test_parse_header_connid(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_name(void)
+static void test_parse_header_name_ascii(void)
 {
 	GObexHeader *header;
 	size_t parsed;
 
-	header = g_obex_header_parse(hdr_name, sizeof(hdr_name),
+	header = g_obex_header_parse(hdr_name_ascii, sizeof(hdr_name_ascii),
 							FALSE, &parsed);
 	g_assert(header != NULL);
 
-	g_assert_cmpuint(parsed, ==, sizeof(hdr_name));
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_ascii));
+
+	g_obex_header_free(header);
+}
+
+static void test_parse_header_name_umlaut(void)
+{
+	GObexHeader *header;
+	size_t parsed;
+
+	header = g_obex_header_parse(hdr_name_umlaut, sizeof(hdr_name_umlaut),
+							FALSE, &parsed);
+	g_assert(header != NULL);
+
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_umlaut));
 
 	g_obex_header_free(header);
 }
@@ -177,12 +282,12 @@ static void test_parse_header_multi(void)
 	size_t parsed;
 
 	buf = g_byte_array_sized_new(sizeof(hdr_connid) +
-					sizeof(hdr_name) +
+					sizeof(hdr_name_ascii) +
 					sizeof(hdr_actionid) +
 					sizeof(hdr_body));
 
 	g_byte_array_append(buf, hdr_connid, sizeof(hdr_connid));
-	g_byte_array_append(buf, hdr_name, sizeof(hdr_name));
+	g_byte_array_append(buf, hdr_name_ascii, sizeof(hdr_name_ascii));
 	g_byte_array_append(buf, hdr_actionid, sizeof(hdr_actionid));
 	g_byte_array_append(buf, hdr_body, sizeof(hdr_body));
 
@@ -194,7 +299,7 @@ static void test_parse_header_multi(void)
 
 	header = g_obex_header_parse(buf->data, buf->len, FALSE, &parsed);
 	g_assert(header != NULL);
-	g_assert_cmpuint(parsed, ==, sizeof(hdr_name));
+	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_ascii));
 	g_byte_array_remove_range(buf, 0, parsed);
 	g_obex_header_free(header);
 
@@ -270,8 +375,10 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_parse_header_connid",
 						test_parse_header_connid);
-	g_test_add_func("/gobex/test_parse_header_name",
-						test_parse_header_name);
+	g_test_add_func("/gobex/test_parse_header_name_ascii",
+						test_parse_header_name_ascii);
+	g_test_add_func("/gobex/test_parse_header_name_umlaut",
+						test_parse_header_name_umlaut);
 	g_test_add_func("/gobex/test_parse_header_body",
 						test_parse_header_body);
 	g_test_add_func("/gobex/test_parse_header_body_extdata",
@@ -283,12 +390,23 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_connid);
-	g_test_add_func("/gobex/test_header_encode_name",
-						test_header_encode_name);
+	g_test_add_func("/gobex/test_header_encode_name_ascii",
+					test_header_encode_name_ascii);
+	g_test_add_func("/gobex/test_header_encode_name_umlaut",
+					test_header_encode_name_umlaut);
 	g_test_add_func("/gobex/test_header_encode_body",
 						test_header_encode_body);
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_actionid);
+
+	g_test_add_func("/gobex/test_header_name_ascii",
+						test_header_name_ascii);
+	g_test_add_func("/gobex/test_header_name_umlaut",
+						test_header_name_umlaut);
+	g_test_add_func("/gobex/test_header_bytes", test_header_bytes);
+	g_test_add_func("/gobex/test_header_uint8", test_header_uint8);
+	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
+
 	g_test_run();
 
 	return 0;

@@ -230,6 +230,85 @@ void g_obex_header_free(GObexHeader *header)
 	g_free(header);
 }
 
+GObexHeader *g_obex_header_unicode(uint8_t id, const char *str)
+{
+	GObexHeader *header;
+	size_t len;
+
+	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UNICODE)
+		return NULL;
+
+	header = g_new0(GObexHeader, 1);
+
+	header->id = id;
+
+	len = g_utf8_strlen(str, -1);
+
+	header->vlen = len;
+	header->hlen = 3 + ((len + 1) * 2);
+	header->v.string = g_strdup(str);
+
+	return header;
+}
+
+GObexHeader *g_obex_header_bytes(uint8_t id, void *data, size_t len,
+							gboolean copy_data)
+{
+	GObexHeader *header;
+
+	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_BYTES)
+		return NULL;
+
+	header = g_new0(GObexHeader, 1);
+
+	header->id = id;
+	header->vlen = len;
+	header->hlen = len + 3;
+
+	if (copy_data)
+		header->v.data = g_memdup(data, len);
+	else {
+		header->extdata = TRUE;
+		header->v.extdata = data;
+	}
+
+	return header;
+}
+
+GObexHeader *g_obex_header_uint8(uint8_t id, uint8_t val)
+{
+	GObexHeader *header;
+
+	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UINT8)
+		return NULL;
+
+	header = g_new0(GObexHeader, 1);
+
+	header->id = id;
+	header->vlen = 1;
+	header->hlen = 2;
+	header->v.u8 = val;
+
+	return header;
+}
+
+GObexHeader *g_obex_header_uint32(uint8_t id, uint32_t val)
+{
+	GObexHeader *header;
+
+	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UINT32)
+		return NULL;
+
+	header = g_new0(GObexHeader, 1);
+
+	header->id = id;
+	header->vlen = 4;
+	header->hlen = 5;
+	header->v.u32 = val;
+
+	return header;
+}
+
 gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header)
 {
 	req->headers = g_slist_append(req->headers, header);
