@@ -156,6 +156,13 @@ void g_obex_header_free(GObexHeader *header)
 	g_free(header);
 }
 
+gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header)
+{
+	req->headers = g_slist_append(req->headers, header);
+
+	return TRUE;
+}
+
 GObexRequest *g_obex_request_new(uint8_t opcode)
 {
 	GObexRequest *req;
@@ -169,6 +176,8 @@ GObexRequest *g_obex_request_new(uint8_t opcode)
 
 void g_obex_request_free(GObexRequest *req)
 {
+	g_slist_foreach(req->headers, (GFunc) g_obex_header_free, NULL);
+	g_slist_free(req->headers);
 	g_free(req);
 }
 

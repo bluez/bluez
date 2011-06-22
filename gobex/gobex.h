@@ -70,6 +70,8 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 						gboolean copy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
+gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header);
+
 GObexRequest *g_obex_request_new(uint8_t opcode);
 void g_obex_request_free(GObexRequest *req);
 
