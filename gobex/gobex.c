@@ -33,8 +33,8 @@
 
 struct _GObexHeader {
 	uint8_t id;
-	size_t len;
 	gboolean extdata;
+	size_t vlen;
 	union {
 		char *string;		/* UTF-8 converted from UTF-16 */
 		uint8_t *data;		/* Own buffer */
@@ -86,7 +86,7 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 		if (header->v.string == NULL)
 			goto failed;
 
-		header->len = (size_t) str_len;
+		header->vlen = (size_t) str_len;
 
 		*parsed = hdr_len;
 
@@ -99,11 +99,11 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 		if (hdr_len > len)
 			goto failed;
 
-		header->len = hdr_len - 3;
+		header->vlen = hdr_len - 3;
 
 		if (copy) {
 			header->v.data = g_malloc(hdr_len);
-			memcpy(header->v.data, &buf[3], header->len);
+			memcpy(header->v.data, &buf[3], header->vlen);
 		} else {
 			header->extdata = TRUE;
 			header->v.extdata = (const uint8_t *) &buf[3];
@@ -113,14 +113,14 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 
 		break;
 	case G_OBEX_HDR_TYPE_UINT8:
-		header->len = 1;
+		header->vlen = 1;
 		header->v.u8 = buf[1];
 		*parsed = 2;
 		break;
 	case G_OBEX_HDR_TYPE_UINT32:
 		if (len < 5)
 			goto failed;
-		header->len = 4;
+		header->vlen = 4;
 		memcpy(&header->v.u32, &buf[1], 4);
 		header->v.u32 = be32toh(header->v.u32);
 		*parsed = 5;
