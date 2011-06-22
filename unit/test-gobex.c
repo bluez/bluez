@@ -149,7 +149,7 @@ static void test_header_uint32(void)
 	g_obex_header_free(header);
 }
 
-static void parse_and_decode(uint8_t *buf, size_t buf_len)
+static void parse_and_encode(uint8_t *buf, size_t buf_len)
 {
 	GObexHeader *header;
 	uint8_t encoded[1024];
@@ -168,27 +168,27 @@ static void parse_and_decode(uint8_t *buf, size_t buf_len)
 
 static void test_header_encode_connid(void)
 {
-	parse_and_decode(hdr_connid, sizeof(hdr_connid));
+	parse_and_encode(hdr_connid, sizeof(hdr_connid));
 }
 
 static void test_header_encode_name_ascii(void)
 {
-	parse_and_decode(hdr_name_ascii, sizeof(hdr_name_ascii));
+	parse_and_encode(hdr_name_ascii, sizeof(hdr_name_ascii));
 }
 
 static void test_header_encode_name_umlaut(void)
 {
-	parse_and_decode(hdr_name_umlaut, sizeof(hdr_name_umlaut));
+	parse_and_encode(hdr_name_umlaut, sizeof(hdr_name_umlaut));
 }
 
 static void test_header_encode_body(void)
 {
-	parse_and_decode(hdr_body, sizeof(hdr_body));
+	parse_and_encode(hdr_body, sizeof(hdr_body));
 }
 
 static void test_header_encode_actionid(void)
 {
-	parse_and_decode(hdr_actionid, sizeof(hdr_actionid));
+	parse_and_encode(hdr_actionid, sizeof(hdr_actionid));
 }
 
 static void test_parse_header_connid(void)
