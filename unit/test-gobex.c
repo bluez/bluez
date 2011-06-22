@@ -20,6 +20,7 @@
  */
 
 #include <unistd.h>
+#include <string.h>
 
 #include <gobex/gobex.h>
 
@@ -37,6 +38,66 @@ static GObex *create_gobex(int fd)
 	g_assert(io != NULL);
 
 	return g_obex_new(io);
+}
+
+static void dump_bytes(uint8_t *buf, size_t buf_len)
+{
+	size_t i;
+
+	for (i = 0; i < buf_len; i++)
+		g_print("%02x ", buf[i]);
+
+	g_print("\n");
+}
+
+static void parse_and_decode(uint8_t *buf, size_t buf_len)
+{
+	GObexHeader *header;
+	uint8_t encoded[1024];
+	size_t len;
+
+	header = g_obex_header_parse(buf, buf_len, FALSE, &len);
+	g_assert(header != NULL);
+	g_assert_cmpuint(len, ==, buf_len);
+
+	len = g_obex_header_encode(header, encoded, sizeof(encoded));
+
+	g_obex_header_free(header);
+
+	if (len != buf_len)
+		goto failed;
+
+	if (memcmp(encoded, buf, len) != 0)
+		goto failed;
+
+	return;
+
+failed:
+	g_print("\nIn:  ");
+	dump_bytes(buf, buf_len);
+	g_print("Out: ");
+	dump_bytes(encoded, len);
+	g_assert(0);
+}
+
+static void test_header_encode_connid(void)
+{
+	parse_and_decode(hdr_connid, sizeof(hdr_connid));
+}
+
+static void test_header_encode_name(void)
+{
+	parse_and_decode(hdr_name, sizeof(hdr_name));
+}
+
+static void test_header_encode_body(void)
+{
+	parse_and_decode(hdr_body, sizeof(hdr_body));
+}
+
+static void test_header_encode_actionid(void)
+{
+	parse_and_decode(hdr_actionid, sizeof(hdr_actionid));
 }
 
 static void test_parse_header_connid(void)
@@ -220,6 +281,14 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_parse_header_multi",
 						test_parse_header_multi);
 
+	g_test_add_func("/gobex/test_header_encode_connid",
+						test_header_encode_connid);
+	g_test_add_func("/gobex/test_header_encode_name",
+						test_header_encode_name);
+	g_test_add_func("/gobex/test_header_encode_body",
+						test_header_encode_body);
+	g_test_add_func("/gobex/test_header_encode_connid",
+						test_header_encode_actionid);
 	g_test_run();
 
 	return 0;
