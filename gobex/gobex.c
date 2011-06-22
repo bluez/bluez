@@ -81,9 +81,21 @@ static glong utf8_to_utf16(gunichar2 **utf16, const char *utf8) {
 	return utf16_len;
 }
 
-size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len)
+static uint8_t *put_bytes(uint8_t *to, const void *from, size_t count)
 {
-	uint8_t *buf = hdr_ptr;
+	memcpy(to, from, count);
+	return (to + count);
+}
+
+static const uint8_t *get_bytes(void *to, const uint8_t *from, size_t count)
+{
+	memcpy(to, from, count);
+	return (from + count);
+}
+
+size_t g_obex_header_encode(GObexHeader *header, void *buf, size_t buf_len)
+{
+	uint8_t *ptr = buf;
 	uint16_t u16;
 	uint32_t u32;
 	gunichar2 *utf16;
@@ -92,32 +104,33 @@ size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len)
 	if (buf_len < header->hlen)
 		return 0;
 
-	buf[0] = header->id;
+	ptr = put_bytes(ptr, &header->id, sizeof(header->id));
 
 	switch (G_OBEX_HDR_TYPE(header->id)) {
 	case G_OBEX_HDR_TYPE_UNICODE:
 		utf16_len = utf8_to_utf16(&utf16, header->v.string);
 		if (utf16_len < 0 || (uint16_t) utf16_len > buf_len)
 			return 0;
+		g_assert_cmpuint(utf16_len + 3, ==, header->hlen);
 		u16 = htobe16(utf16_len + 3);
-		memcpy(&buf[1], &u16, sizeof(u16));
-		memcpy(&buf[3], utf16, utf16_len);
+		ptr = put_bytes(ptr, &u16, sizeof(u16));
+		ptr = put_bytes(ptr, utf16, utf16_len);
 		g_free(utf16);
 		break;
 	case G_OBEX_HDR_TYPE_BYTES:
 		u16 = htobe16(header->hlen);
-		memcpy(&buf[1], &u16, sizeof(u16));
+		ptr = put_bytes(ptr, &u16, sizeof(u16));
 		if (header->extdata)
-			memcpy(&buf[3], header->v.extdata, header->vlen);
+			ptr = put_bytes(ptr, header->v.extdata, header->vlen);
 		else
-			memcpy(&buf[3], header->v.data, header->vlen);
+			ptr = put_bytes(ptr, header->v.data, header->vlen);
 		break;
 	case G_OBEX_HDR_TYPE_UINT8:
-		buf[1] = header->v.u8;
+		*ptr = header->v.u8;
 		break;
 	case G_OBEX_HDR_TYPE_UINT32:
 		u32 = htobe32(header->v.u32);
-		memcpy(&buf[1], &u32, sizeof(u32));
+		ptr = put_bytes(ptr, &u32, sizeof(u32));
 		break;
 	default:
 		g_assert_not_reached();
@@ -130,7 +143,7 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 						gboolean copy, size_t *parsed)
 {
 	GObexHeader *header;
-	const char *buf = data;
+	const uint8_t *ptr = data;
 	uint16_t hdr_len;
 	size_t str_len;
 
@@ -139,18 +152,18 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 
 	header = g_new0(GObexHeader, 1);
 
-	header->id = buf[0];
+	ptr = get_bytes(&header->id, ptr, sizeof(header->id));
 
 	switch (G_OBEX_HDR_TYPE(header->id)) {
 	case G_OBEX_HDR_TYPE_UNICODE:
 		if (len < 3)
 			goto failed;
-		memcpy(&hdr_len, &buf[1], 2);
+		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = be16toh(hdr_len);
 		if (hdr_len > len || hdr_len < 5)
 			goto failed;
 
-		header->v.string = g_convert(&buf[3], hdr_len - 5,
+		header->v.string = g_convert((const char *) ptr, hdr_len - 5,
 						"UTF8", "UTF16BE",
 						NULL, &str_len, NULL);
 		if (header->v.string == NULL)
@@ -165,7 +178,7 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 	case G_OBEX_HDR_TYPE_BYTES:
 		if (len < 3)
 			goto failed;
-		memcpy(&hdr_len, &buf[1], 2);
+		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = be16toh(hdr_len);
 		if (hdr_len > len)
 			goto failed;
@@ -173,12 +186,11 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 		header->vlen = hdr_len - 3;
 		header->hlen = hdr_len;
 
-		if (copy) {
-			header->v.data = g_malloc(hdr_len);
-			memcpy(header->v.data, &buf[3], header->vlen);
-		} else {
+		if (copy)
+			header->v.data = g_memdup(ptr, header->vlen);
+		else {
 			header->extdata = TRUE;
-			header->v.extdata = (const uint8_t *) &buf[3];
+			header->v.extdata = ptr;
 		}
 
 		*parsed = hdr_len;
@@ -187,7 +199,7 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 	case G_OBEX_HDR_TYPE_UINT8:
 		header->vlen = 1;
 		header->hlen = 2;
-		header->v.u8 = buf[1];
+		header->v.u8 = *ptr;
 		*parsed = 2;
 		break;
 	case G_OBEX_HDR_TYPE_UINT32:
@@ -195,7 +207,7 @@ GObexHeader *g_obex_header_parse(const void *data, size_t len,
 			goto failed;
 		header->vlen = 4;
 		header->hlen = 5;
-		memcpy(&header->v.u32, &buf[1], 4);
+		ptr = get_bytes(&header->v.u32, ptr, sizeof(header->v.u32));
 		header->v.u32 = be32toh(header->v.u32);
 		*parsed = 5;
 		break;
