@@ -2723,6 +2723,8 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 {
 	int sep_count, i;
 	uint8_t getcap_cmd;
+	int ret = 0;
+	gboolean getcap_pending = FALSE;
 
 	if (session->version >= 0x0103 && session->server->version >= 0x0103)
 		getcap_cmd = AVDTP_GET_ALL_CAPABILITIES;
@@ -2735,7 +2737,6 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 		struct avdtp_remote_sep *sep;
 		struct avdtp_stream *stream;
 		struct seid_req req;
-		int ret;
 
 		DBG("seid %d type %d media %d in use %d",
 				resp->seps[i].seid, resp->seps[i].type,
@@ -2761,11 +2762,13 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 
 		ret = send_request(session, TRUE, NULL, getcap_cmd,
 							&req, sizeof(req));
-		if (ret < 0) {
-			finalize_discovery(session, -ret);
+		if (ret < 0)
 			break;
-		}
+		getcap_pending = TRUE;
 	}
+
+	if (!getcap_pending)
+		finalize_discovery(session, -ret);
 
 	return TRUE;
 }
