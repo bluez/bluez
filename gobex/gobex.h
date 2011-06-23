@@ -66,11 +66,11 @@ typedef struct _GObex GObex;
 typedef struct _GObexRequest GObexRequest;
 typedef struct _GObexHeader GObexHeader;
 
-GObexHeader *g_obex_header_unicode(uint8_t id, const char *str);
-GObexHeader *g_obex_header_bytes(uint8_t id, void *data, size_t len,
+GObexHeader *g_obex_header_unicode(guint8 id, const char *str);
+GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
 							gboolean copy_data);
-GObexHeader *g_obex_header_uint8(uint8_t id, uint8_t val);
-GObexHeader *g_obex_header_uint32(uint8_t id, uint32_t val);
+GObexHeader *g_obex_header_uint8(guint8 id, guint8 val);
+GObexHeader *g_obex_header_uint32(guint8 id, guint32 val);
 
 size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len);
 GObexHeader *g_obex_header_parse(const void *data, size_t len,
@@ -79,7 +79,7 @@ void g_obex_header_free(GObexHeader *header);
 
 gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header);
 
-GObexRequest *g_obex_request_new(uint8_t opcode);
+GObexRequest *g_obex_request_new(guint8 opcode);
 void g_obex_request_free(GObexRequest *req);
 
 gboolean g_obex_send(GObex *obex, GObexRequest *req);
