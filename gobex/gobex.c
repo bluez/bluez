@@ -139,7 +139,7 @@ size_t g_obex_header_encode(GObexHeader *header, void *buf, size_t buf_len)
 	return header->hlen;
 }
 
-GObexHeader *g_obex_header_parse(const void *data, size_t len,
+GObexHeader *g_obex_header_decode(const void *data, size_t len,
 						gboolean copy, size_t *parsed)
 {
 	GObexHeader *header;
