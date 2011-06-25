@@ -106,7 +106,7 @@ static void test_header_bytes(void)
 	size_t len;
 
 	header = g_obex_header_bytes(G_OBEX_HDR_ID_BODY, data, sizeof(data),
-									FALSE);
+							G_OBEX_DATA_REF);
 
 	g_assert(header != NULL);
 
@@ -155,7 +155,7 @@ static void parse_and_encode(uint8_t *buf, size_t buf_len)
 	uint8_t encoded[1024];
 	size_t len;
 
-	header = g_obex_header_decode(buf, buf_len, FALSE, &len);
+	header = g_obex_header_decode(buf, buf_len, G_OBEX_DATA_REF, &len);
 	g_assert(header != NULL);
 	g_assert_cmpuint(len, ==, buf_len);
 
@@ -197,7 +197,7 @@ static void test_parse_header_connid(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_connid, sizeof(hdr_connid),
-							FALSE, &parsed);
+						G_OBEX_DATA_REF, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_connid));
@@ -211,7 +211,7 @@ static void test_parse_header_name_ascii(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_name_ascii, sizeof(hdr_name_ascii),
-							FALSE, &parsed);
+						G_OBEX_DATA_REF, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_ascii));
@@ -225,7 +225,7 @@ static void test_parse_header_name_umlaut(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_name_umlaut, sizeof(hdr_name_umlaut),
-							FALSE, &parsed);
+						G_OBEX_DATA_REF, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_umlaut));
@@ -239,7 +239,7 @@ static void test_parse_header_body(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_body, sizeof(hdr_body),
-							FALSE, &parsed);
+						G_OBEX_DATA_COPY, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
@@ -253,7 +253,7 @@ static void test_parse_header_body_extdata(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_body, sizeof(hdr_body),
-							TRUE, &parsed);
+						G_OBEX_DATA_REF, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
@@ -267,7 +267,7 @@ static void test_parse_header_actionid(void)
 	size_t parsed;
 
 	header = g_obex_header_decode(hdr_actionid, sizeof(hdr_actionid),
-							FALSE, &parsed);
+						G_OBEX_DATA_REF, &parsed);
 	g_assert(header != NULL);
 
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_actionid));
@@ -291,25 +291,29 @@ static void test_parse_header_multi(void)
 	g_byte_array_append(buf, hdr_actionid, sizeof(hdr_actionid));
 	g_byte_array_append(buf, hdr_body, sizeof(hdr_body));
 
-	header = g_obex_header_decode(buf->data, buf->len, FALSE, &parsed);
+	header = g_obex_header_decode(buf->data, buf->len, G_OBEX_DATA_REF,
+								&parsed);
 	g_assert(header != NULL);
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_connid));
 	g_byte_array_remove_range(buf, 0, parsed);
 	g_obex_header_free(header);
 
-	header = g_obex_header_decode(buf->data, buf->len, FALSE, &parsed);
+	header = g_obex_header_decode(buf->data, buf->len, G_OBEX_DATA_REF,
+								&parsed);
 	g_assert(header != NULL);
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_name_ascii));
 	g_byte_array_remove_range(buf, 0, parsed);
 	g_obex_header_free(header);
 
-	header = g_obex_header_decode(buf->data, buf->len, FALSE, &parsed);
+	header = g_obex_header_decode(buf->data, buf->len, G_OBEX_DATA_REF,
+								&parsed);
 	g_assert(header != NULL);
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_actionid));
 	g_byte_array_remove_range(buf, 0, parsed);
 	g_obex_header_free(header);
 
-	header = g_obex_header_decode(buf->data, buf->len, FALSE, &parsed);
+	header = g_obex_header_decode(buf->data, buf->len, G_OBEX_DATA_REF,
+								&parsed);
 	g_assert(header != NULL);
 	g_assert_cmpuint(parsed, ==, sizeof(hdr_body));
 	g_byte_array_remove_range(buf, 0, parsed);

@@ -140,7 +140,7 @@ size_t g_obex_header_encode(GObexHeader *header, void *buf, size_t buf_len)
 }
 
 GObexHeader *g_obex_header_decode(const void *data, size_t len,
-						gboolean copy, size_t *parsed)
+				GObexDataPolicy data_policy, size_t *parsed)
 {
 	GObexHeader *header;
 	const guint8 *ptr = data;
@@ -186,11 +186,16 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 		header->vlen = hdr_len - 3;
 		header->hlen = hdr_len;
 
-		if (copy)
+		switch (data_policy) {
+		case G_OBEX_DATA_COPY:
 			header->v.data = g_memdup(ptr, header->vlen);
-		else {
+			break;
+		case G_OBEX_DATA_REF:
 			header->extdata = TRUE;
 			header->v.extdata = ptr;
+			break;
+		default:
+			goto failed;
 		}
 
 		*parsed = hdr_len;
@@ -264,7 +269,7 @@ GObexHeader *g_obex_header_unicode(guint8 id, const char *str)
 }
 
 GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
-							gboolean copy_data)
+						GObexDataPolicy data_policy)
 {
 	GObexHeader *header;
 
@@ -277,11 +282,17 @@ GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
 	header->vlen = len;
 	header->hlen = len + 3;
 
-	if (copy_data)
+	switch (data_policy) {
+	case G_OBEX_DATA_INHERIT:
+		header->v.data = data;
+		break;
+	case G_OBEX_DATA_COPY:
 		header->v.data = g_memdup(data, len);
-	else {
+		break;
+	case G_OBEX_DATA_REF:
 		header->extdata = TRUE;
 		header->v.extdata = data;
+		break;
 	}
 
 	return header;

@@ -62,19 +62,25 @@
 #define G_OBEX_HDR_ID_SRM		0x97
 #define G_OBEX_HDR_ID_SRM_FLAGS		0x98
 
+typedef enum {
+	G_OBEX_DATA_INHERIT,
+	G_OBEX_DATA_COPY,
+	G_OBEX_DATA_REF,
+} GObexDataPolicy;
+
 typedef struct _GObex GObex;
 typedef struct _GObexRequest GObexRequest;
 typedef struct _GObexHeader GObexHeader;
 
 GObexHeader *g_obex_header_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
-							gboolean copy_data);
+						GObexDataPolicy data_policy);
 GObexHeader *g_obex_header_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_uint32(guint8 id, guint32 val);
 
 size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len);
 GObexHeader *g_obex_header_decode(const void *data, size_t len,
-						gboolean copy, size_t *parsed);
+				GObexDataPolicy data_policy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
 gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header);
