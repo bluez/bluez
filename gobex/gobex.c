@@ -423,7 +423,7 @@ void g_obex_packet_free(GObexPacket *pkt)
 
 static ssize_t get_header_offset(guint8 opcode)
 {
-	switch (opcode) {
+	switch (opcode & ~G_OBEX_FINAL) {
 	case G_OBEX_OP_CONNECT:
 		return sizeof(struct connect_data);
 	case G_OBEX_OP_SETPATH:
