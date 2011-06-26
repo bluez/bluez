@@ -85,7 +85,7 @@ static const uint8_t FTP_TARGET[TARGET_SIZE] = {
 #define PCSUITE_WHO_SIZE 8
 
 static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
-			'P','C',' ','S','u','i','t','e' };
+			'P', 'C', ' ', 'S', 'u', 'i', 't', 'e' };
 
 
 static char *file_stat_line(char *filename, struct stat *fstat,

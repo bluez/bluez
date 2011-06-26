@@ -1020,7 +1020,7 @@ static void contact_add_numbers(struct phonebook_contact *contact,
 	aff_numbers = g_strsplit(reply[COL_PHONE_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_numbers)
-		for(i = 0;aff_numbers[i]; ++i)
+		for (i = 0; aff_numbers[i]; ++i)
 			add_aff_number(contact, aff_numbers[i],
 							reply[COL_AFF_TYPE]);
 
@@ -1077,7 +1077,7 @@ static void contact_add_emails(struct phonebook_contact *contact,
 	aff_emails = g_strsplit(reply[COL_EMAIL_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_emails)
-		for(i = 0; aff_emails[i] != NULL; ++i)
+		for (i = 0; aff_emails[i] != NULL; ++i)
 			add_aff_field(contact, aff_emails[i], add_email);
 
 	g_strfreev(aff_emails);
@@ -1094,7 +1094,7 @@ static void contact_add_addresses(struct phonebook_contact *contact,
 								MAX_FIELDS);
 
 	if (aff_addr)
-		for(i = 0; aff_addr[i] != NULL; ++i)
+		for (i = 0; aff_addr[i] != NULL; ++i)
 			add_aff_field(contact, aff_addr[i], add_address);
 
 	g_strfreev(aff_addr);
@@ -1110,7 +1110,7 @@ static void contact_add_urls(struct phonebook_contact *contact,
 	aff_url = g_strsplit(reply[COL_URL], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_url)
-		for(i = 0; aff_url[i] != NULL; ++i)
+		for (i = 0; aff_url[i] != NULL; ++i)
 			add_aff_field(contact, aff_url[i], add_url);
 
 	g_strfreev(aff_url);
@@ -1553,7 +1553,7 @@ int phonebook_pull_read(void *request)
 
 	data->newmissedcalls = 0;
 
-	if (g_strcmp0(data->req_name,"/telecom/mch.vcf") == 0 &&
+	if (g_strcmp0(data->req_name, "/telecom/mch.vcf") == 0 &&
 						data->tracker_index == 0) {
 		/* new missed calls amount should be counted only once - it
 		 * will be done during generating first part of results of

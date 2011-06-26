@@ -265,7 +265,7 @@ static void vcard_printf_tag(GString *vcards, uint8_t format, const char *tag,
 	if (tag == NULL || strlen(tag) == 0)
 		return;
 
-	if (fld == NULL || strlen(fld) == 0){
+	if (fld == NULL || strlen(fld) == 0) {
 		vcard_printf(vcards, "%s:", tag);
 		return;
 	}
@@ -294,7 +294,7 @@ static void vcard_printf_slash_tag(GString *vcards, uint8_t format,
 	if (tag == NULL || strlen(tag) == 0)
 		return;
 
-	if (fld == NULL || (len = strlen(fld)) == 0){
+	if (fld == NULL || (len = strlen(fld)) == 0) {
 		vcard_printf(vcards, "%s:", tag);
 		return;
 	}
@@ -321,11 +321,11 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 	char field[LEN_MAX];
 	int len = 0;
 
-	if (!address || !(len = strlen(address))){
+	if (!address || !(len = strlen(address))) {
 		vcard_printf(vcards, "EMAIL:");
 		return;
 	}
-	switch (category){
+	switch (category) {
 	case FIELD_TYPE_HOME:
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET;HOME";
@@ -346,7 +346,7 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 	}
 
 	add_slash(field, address, LEN_MAX, len);
-	vcard_printf(vcards,"EMAIL;%s:%s", category_string, field);
+	vcard_printf(vcards, "EMAIL;%s:%s", category_string, field);
 }
 
 static void vcard_printf_url(GString *vcards, uint8_t format,
@@ -398,7 +398,7 @@ static gboolean org_fields_present(struct phonebook_contact *contact)
 static void vcard_printf_org(GString *vcards,
 					struct phonebook_contact *contact)
 {
-	if (org_fields_present(contact) == FALSE){
+	if (org_fields_present(contact) == FALSE) {
 		vcard_printf(vcards, "ORG:");
 		return;
 	}
@@ -536,7 +536,7 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 			vcard_printf_email(vcards, format, NULL,
 							FIELD_TYPE_OTHER);
 
-		for (; l; l = l->next){
+		for (; l; l = l->next) {
 			struct phonebook_field *email = l->data;
 			vcard_printf_email(vcards, format, email->text,
 								email->type);

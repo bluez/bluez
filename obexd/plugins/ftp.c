@@ -144,7 +144,7 @@ static const uint8_t FTP_TARGET[TARGET_SIZE] = {
 			0x98, 0x4E, 0x52, 0x54, 0x00, 0xDC, 0x9E, 0x09 };
 
 static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
-			'P','C',' ','S','u','i','t','e' };
+			'P', 'C', ' ', 'S', 'u', 'i', 't', 'e' };
 
 struct ftp_session {
 	struct obex_session *os;
