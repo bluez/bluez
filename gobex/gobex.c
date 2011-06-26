@@ -24,6 +24,10 @@
 
 #include "gobex.h"
 
+#define G_OBEX_DEFAULT_MTU	4096
+#define G_OBEX_MINIMUM_MTU	255
+#define G_OBEX_MAXIMUM_MTU	65535
+
 /* Header types */
 #define G_OBEX_HDR_TYPE_UNICODE	(0 << 6)
 #define G_OBEX_HDR_TYPE_BYTES	(1 << 6)
@@ -64,6 +68,9 @@ struct _GObexRequest {
 struct _GObex {
 	gint ref_count;
 	GIOChannel *io;
+
+	guint16 rx_mtu;
+	guint16 tx_mtu;
 
 	GQueue *req_queue;
 };
@@ -510,6 +517,8 @@ GObex *g_obex_new(GIOChannel *io)
 
 	obex->io = io;
 	obex->ref_count = 1;
+	obex->rx_mtu = G_OBEX_DEFAULT_MTU;
+	obex->tx_mtu = G_OBEX_MINIMUM_MTU;
 	obex->req_queue = g_queue_new();
 
 	return obex;
