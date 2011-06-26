@@ -76,7 +76,7 @@ static void print_arguments(GString *gstr, const char *sig,
 
 		/* Gather enough data to have a single complete type */
 		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
-			switch (sig[i]){
+			switch (sig[i]) {
 			case '(':
 				struct_level++;
 				break;
