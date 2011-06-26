@@ -202,7 +202,7 @@ static void test_header_encode_actionid(void)
 	parse_and_encode(hdr_actionid, sizeof(hdr_actionid));
 }
 
-static void test_parse_header_connid(void)
+static void test_decode_header_connid(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -216,7 +216,7 @@ static void test_parse_header_connid(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_name_ascii(void)
+static void test_decode_header_name_ascii(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -230,7 +230,7 @@ static void test_parse_header_name_ascii(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_name_umlaut(void)
+static void test_decode_header_name_umlaut(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -244,7 +244,7 @@ static void test_parse_header_name_umlaut(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_body(void)
+static void test_decode_header_body(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -258,7 +258,7 @@ static void test_parse_header_body(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_body_extdata(void)
+static void test_decode_header_body_extdata(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -272,7 +272,7 @@ static void test_parse_header_body_extdata(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_actionid(void)
+static void test_decode_header_actionid(void)
 {
 	GObexHeader *header;
 	size_t parsed;
@@ -286,7 +286,7 @@ static void test_parse_header_actionid(void)
 	g_obex_header_free(header);
 }
 
-static void test_parse_header_multi(void)
+static void test_decode_header_multi(void)
 {
 	GObexHeader *header;
 	GByteArray *buf;
@@ -388,20 +388,20 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_pkt", test_pkt);
 
-	g_test_add_func("/gobex/test_parse_header_connid",
-						test_parse_header_connid);
-	g_test_add_func("/gobex/test_parse_header_name_ascii",
-						test_parse_header_name_ascii);
-	g_test_add_func("/gobex/test_parse_header_name_umlaut",
-						test_parse_header_name_umlaut);
-	g_test_add_func("/gobex/test_parse_header_body",
-						test_parse_header_body);
-	g_test_add_func("/gobex/test_parse_header_body_extdata",
-					test_parse_header_body_extdata);
-	g_test_add_func("/gobex/test_parse_header_actionid",
-						test_parse_header_actionid);
-	g_test_add_func("/gobex/test_parse_header_multi",
-						test_parse_header_multi);
+	g_test_add_func("/gobex/test_decode_header_connid",
+						test_decode_header_connid);
+	g_test_add_func("/gobex/test_decode_header_name_ascii",
+						test_decode_header_name_ascii);
+	g_test_add_func("/gobex/test_decode_header_name_umlaut",
+						test_decode_header_name_umlaut);
+	g_test_add_func("/gobex/test_decode_header_body",
+						test_decode_header_body);
+	g_test_add_func("/gobex/test_decode_header_body_extdata",
+					test_decode_header_body_extdata);
+	g_test_add_func("/gobex/test_decode_header_actionid",
+						test_decode_header_actionid);
+	g_test_add_func("/gobex/test_decode_header_multi",
+						test_decode_header_multi);
 
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_connid);
