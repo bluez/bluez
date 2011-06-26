@@ -149,15 +149,15 @@ static void test_header_uint32(void)
 	g_obex_header_free(header);
 }
 
-static void test_decode_req(void)
+static void test_decode_pkt(void)
 {
-	GObexRequest *req;
+	GObexPacket *pkt;
 	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
-	req = g_obex_request_decode(buf, sizeof(buf), G_OBEX_DATA_REF);
-	g_assert(req != NULL);
+	pkt = g_obex_packet_decode(buf, sizeof(buf), G_OBEX_DATA_REF);
+	g_assert(pkt != NULL);
 
-	g_obex_request_free(req);
+	g_obex_packet_free(pkt);
 }
 
 static void parse_and_encode(uint8_t *buf, size_t buf_len)
@@ -333,15 +333,15 @@ static void test_parse_header_multi(void)
 	g_byte_array_unref(buf);
 }
 
-static void test_req(void)
+static void test_pkt(void)
 {
-	GObexRequest *req;
+	GObexPacket *pkt;
 
-	req = g_obex_request_new(G_OBEX_OP_PUT);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT);
 
-	g_assert(req != NULL);
+	g_assert(pkt != NULL);
 
-	g_obex_request_free(req);
+	g_obex_packet_free(pkt);
 }
 
 static void test_ref_unref(void)
@@ -386,7 +386,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/basic", test_basic);
 	g_test_add_func("/gobex/ref_unref", test_ref_unref);
 
-	g_test_add_func("/gobex/test_req", test_req);
+	g_test_add_func("/gobex/test_pkt", test_pkt);
 
 	g_test_add_func("/gobex/test_parse_header_connid",
 						test_parse_header_connid);
@@ -422,7 +422,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_uint8", test_header_uint8);
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
 
-	g_test_add_func("/gobex/test_decode_req", test_decode_req);
+	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
 
 	g_test_run();
 

@@ -69,7 +69,7 @@ typedef enum {
 } GObexDataPolicy;
 
 typedef struct _GObex GObex;
-typedef struct _GObexRequest GObexRequest;
+typedef struct _GObexPacket GObexPacket;
 typedef struct _GObexHeader GObexHeader;
 
 GObexHeader *g_obex_header_unicode(guint8 id, const char *str);
@@ -83,15 +83,15 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 				GObexDataPolicy data_policy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
-gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header);
+gboolean g_obex_packet_add_header(GObexPacket *req, GObexHeader *header);
 
-GObexRequest *g_obex_request_new(guint8 opcode);
-void g_obex_request_free(GObexRequest *req);
+GObexPacket *g_obex_packet_new(guint8 opcode);
+void g_obex_packet_free(GObexPacket *req);
 
-GObexRequest *g_obex_request_decode(const void *data, size_t len,
+GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 						GObexDataPolicy data_policy);
 
-gboolean g_obex_send(GObex *obex, GObexRequest *req);
+gboolean g_obex_send(GObex *obex, GObexPacket *req);
 
 GObex *g_obex_new(GIOChannel *io);
 

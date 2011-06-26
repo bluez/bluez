@@ -50,16 +50,16 @@ struct _GObexHeader {
 	} v;
 };
 
-struct _GObexRequest {
+struct _GObexPacket {
 	guint8 opcode;
 
 	GObexDataPolicy data_policy;
 
 	union {
-		void *data;		/* Non-header data */
-		const void *data_ref;	/* Reference to non-header data */
-	} req;
-	size_t req_data_len;
+		void *buf;		/* Non-header data */
+		const void *buf_ref;	/* Reference to non-header data */
+	} data;
+	size_t data_len;
 
 	size_t hlen;		/* Length of all encoded headers */
 	GSList *headers;
@@ -360,41 +360,41 @@ GObexHeader *g_obex_header_uint32(guint8 id, guint32 val)
 	return header;
 }
 
-gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header)
+gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 {
-	req->headers = g_slist_append(req->headers, header);
-	req->hlen += header->hlen;
+	pkt->headers = g_slist_append(pkt->headers, header);
+	pkt->hlen += header->hlen;
 
 	return TRUE;
 }
 
-GObexRequest *g_obex_request_new(guint8 opcode)
+GObexPacket *g_obex_packet_new(guint8 opcode)
 {
-	GObexRequest *req;
+	GObexPacket *pkt;
 
-	req = g_new0(GObexRequest, 1);
+	pkt = g_new0(GObexPacket, 1);
 
-	req->opcode = opcode;
+	pkt->opcode = opcode;
 
-	req->data_policy = G_OBEX_DATA_COPY;
+	pkt->data_policy = G_OBEX_DATA_COPY;
 
-	return req;
+	return pkt;
 }
 
-void g_obex_request_free(GObexRequest *req)
+void g_obex_packet_free(GObexPacket *pkt)
 {
-	switch (req->data_policy) {
+	switch (pkt->data_policy) {
 	case G_OBEX_DATA_INHERIT:
 	case G_OBEX_DATA_COPY:
-		g_free(req->req.data);
+		g_free(pkt->data.buf);
 		break;
 	case G_OBEX_DATA_REF:
 		break;
 	}
 
-	g_slist_foreach(req->headers, (GFunc) g_obex_header_free, NULL);
-	g_slist_free(req->headers);
-	g_free(req);
+	g_slist_foreach(pkt->headers, (GFunc) g_obex_header_free, NULL);
+	g_slist_free(pkt->headers);
+	g_free(pkt);
 }
 
 static ssize_t get_header_offset(guint8 opcode)
@@ -415,7 +415,7 @@ static ssize_t get_header_offset(guint8 opcode)
 	}
 }
 
-static gboolean parse_headers(GObexRequest *req, const void *data, size_t len,
+static gboolean parse_headers(GObexPacket *pkt, const void *data, size_t len,
 						GObexDataPolicy data_policy)
 {
 	const guint8 *buf = data;
@@ -428,7 +428,7 @@ static gboolean parse_headers(GObexRequest *req, const void *data, size_t len,
 		if (header == NULL)
 			return FALSE;
 
-		req->headers = g_slist_append(req->headers, header);
+		pkt->headers = g_slist_append(pkt->headers, header);
 
 		len -= parsed;
 		buf += parsed;
@@ -437,14 +437,14 @@ static gboolean parse_headers(GObexRequest *req, const void *data, size_t len,
 	return TRUE;
 }
 
-GObexRequest *g_obex_request_decode(const void *data, size_t len,
+GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 						GObexDataPolicy data_policy)
 {
 	const guint8 *buf = data;
 	guint16 packet_len;
 	guint8 opcode;
 	ssize_t header_offset;
-	GObexRequest *req;
+	GObexPacket *pkt;
 
 	if (len < 3)
 		return NULL;
@@ -460,9 +460,9 @@ GObexRequest *g_obex_request_decode(const void *data, size_t len,
 	if (header_offset < 0)
 		return NULL;
 
-	req = g_obex_request_new(opcode);
+	pkt = g_obex_packet_new(opcode);
 
-	req->data_policy = data_policy;
+	pkt->data_policy = data_policy;
 
 	if (header_offset == 0)
 		goto headers;
@@ -470,14 +470,14 @@ GObexRequest *g_obex_request_decode(const void *data, size_t len,
 	if (3 + header_offset < (ssize_t) len)
 		goto failed;
 
-	req->req_data_len = header_offset;
+	pkt->data_len = header_offset;
 	switch (data_policy) {
 	case G_OBEX_DATA_COPY:
-		req->req.data = g_malloc(header_offset);
-		buf = get_bytes(req->req.data, buf, header_offset);
+		pkt->data.buf = g_malloc(header_offset);
+		buf = get_bytes(pkt->data.buf, buf, header_offset);
 		break;
 	case G_OBEX_DATA_REF:
-		req->req.data_ref = buf;
+		pkt->data.buf_ref = buf;
 		buf += header_offset;
 		break;
 	default:
@@ -485,23 +485,23 @@ GObexRequest *g_obex_request_decode(const void *data, size_t len,
 	}
 
 headers:
-	if (!parse_headers(req, buf, len - (buf - (guint8 *) data),
+	if (!parse_headers(pkt, buf, len - (buf - (guint8 *) data),
 								data_policy))
 		goto failed;
 
-	return req;
+	return pkt;
 
 failed:
-	g_obex_request_free(req);
+	g_obex_packet_free(pkt);
 	return NULL;
 }
 
-gboolean g_obex_send(GObex *obex, GObexRequest *req)
+gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
 {
-	if (obex == NULL || req == NULL)
+	if (obex == NULL || pkt == NULL)
 		return FALSE;
 
-	g_queue_push_tail(obex->req_queue, req);
+	g_queue_push_tail(obex->req_queue, pkt);
 
 	return TRUE;
 }
@@ -543,7 +543,7 @@ void g_obex_unref(GObex *obex)
 	if (!last_ref)
 		return;
 
-	g_queue_foreach(obex->req_queue, (GFunc) g_obex_request_free, NULL);
+	g_queue_foreach(obex->req_queue, (GFunc) g_obex_packet_free, NULL);
 	g_queue_free(obex->req_queue);
 
 	g_io_channel_unref(obex->io);
