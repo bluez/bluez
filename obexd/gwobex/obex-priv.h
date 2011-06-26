@@ -37,7 +37,7 @@
 #include "gw-obex.h"
 #include "obex-xfer.h"
 
-#define CHECK_DISCONNECT(ret,err,ctx) do { \
+#define CHECK_DISCONNECT(ret, err, ctx) do { \
                                           if ((ctx)->conn_fd < 0) { \
                                               if (err) \
                                                   *(err) = GW_OBEX_ERROR_DISCONNECT; \

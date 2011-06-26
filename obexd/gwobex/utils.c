@@ -50,7 +50,7 @@ char *bytestr(const uint8_t *uuid, int len) {
 gboolean fd_raw_mode(int fd) {
     struct termios mode;
 
-    memset(&mode, 0, sizeof (mode));
+    memset(&mode, 0, sizeof(mode));
     if (tcgetattr(fd, &mode) < 0) {
         debug("tcgetattr(%d, &mode): %s", fd, strerror(errno));
         return FALSE;
@@ -134,7 +134,7 @@ time_t parse_iso8601(const gchar *str, int len) {
     time_t    time;
     time_t    tz_offset = 0;
 
-    memset (&tm, 0, sizeof (struct tm));
+    memset(&tm, 0, sizeof(struct tm));
 
     /* According to spec the time doesn't have to be null terminated */
     if (str[len - 1] != '\0') {
@@ -145,7 +145,7 @@ time_t parse_iso8601(const gchar *str, int len) {
     else
         tstr = g_strdup(str);
 
-    nr = sscanf (tstr, "%04u%02u%02uT%02u%02u%02u%c",
+    nr = sscanf(tstr, "%04u%02u%02uT%02u%02u%02u%c",
             &tm.tm_year, &tm.tm_mon, &tm.tm_mday,
             &tm.tm_hour, &tm.tm_min, &tm.tm_sec,
             &tz);
@@ -162,7 +162,7 @@ time_t parse_iso8601(const gchar *str, int len) {
         return -1;
     }
 
-    time = mktime (&tm);
+    time = mktime(&tm);
 
 #if defined(HAVE_TM_GMTOFF)
     tz_offset = tm.tm_gmtoff;
