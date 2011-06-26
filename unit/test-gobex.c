@@ -26,9 +26,11 @@
 
 static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
 static uint8_t hdr_name_ascii[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
-				0x00, 'f', 0x00, 'o', 0x00, 'o', 0x00, 0x00 };
+				0x00, 'f', 0x00, 'o', 0x00, 'o',
+				0x00, 0x00 };
 static uint8_t hdr_name_umlaut[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
-				0x00, 0xe5, 0x00, 0xe4, 0x00, 0xf6, 0x00, 0x00 };
+				0x00, 0xe5, 0x00, 0xe4, 0x00, 0xf6,
+				0x00, 0x00 };
 static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
 static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0x00 };
 
@@ -391,9 +393,9 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_decode_header_connid",
 						test_decode_header_connid);
 	g_test_add_func("/gobex/test_decode_header_name_ascii",
-						test_decode_header_name_ascii);
+					test_decode_header_name_ascii);
 	g_test_add_func("/gobex/test_decode_header_name_umlaut",
-						test_decode_header_name_umlaut);
+					test_decode_header_name_umlaut);
 	g_test_add_func("/gobex/test_decode_header_body",
 						test_decode_header_body);
 	g_test_add_func("/gobex/test_decode_header_body_extdata",
