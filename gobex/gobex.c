@@ -19,6 +19,7 @@
  *
  */
 
+#include <unistd.h>
 #include <string.h>
 
 #include "gobex.h"
@@ -47,6 +48,15 @@ struct _GObexHeader {
 
 struct _GObexRequest {
 	guint8 opcode;
+
+	GObexDataPolicy data_policy;
+
+	union {
+		void *data;		/* Non-header data */
+		const void *data_ref;	/* Reference to non-header data */
+	} req;
+	size_t req_data_len;
+
 	size_t hlen;		/* Length of all encoded headers */
 	GSList *headers;
 };
@@ -57,6 +67,17 @@ struct _GObex {
 
 	GQueue *req_queue;
 };
+
+struct connect_data {
+	guint8 version;
+	guint8 flags;
+	guint16 mtu;
+} __attribute__ ((packed));
+
+struct setpath_data {
+	guint8 flags;
+	guint8 constants;
+} __attribute__ ((packed));
 
 static glong utf8_to_utf16(gunichar2 **utf16, const char *utf8) {
 	glong utf16_len;
@@ -348,14 +369,124 @@ GObexRequest *g_obex_request_new(guint8 opcode)
 
 	req->opcode = opcode;
 
+	req->data_policy = G_OBEX_DATA_COPY;
+
 	return req;
 }
 
 void g_obex_request_free(GObexRequest *req)
 {
+	switch (req->data_policy) {
+	case G_OBEX_DATA_INHERIT:
+	case G_OBEX_DATA_COPY:
+		g_free(req->req.data);
+		break;
+	case G_OBEX_DATA_REF:
+		break;
+	}
+
 	g_slist_foreach(req->headers, (GFunc) g_obex_header_free, NULL);
 	g_slist_free(req->headers);
 	g_free(req);
+}
+
+static ssize_t get_header_offset(guint8 opcode)
+{
+	switch (opcode) {
+	case G_OBEX_OP_CONNECT:
+		return sizeof(struct connect_data);
+	case G_OBEX_OP_SETPATH:
+		return sizeof(struct setpath_data);
+	case G_OBEX_OP_DISCONNECT:
+	case G_OBEX_OP_PUT:
+	case G_OBEX_OP_GET:
+	case G_OBEX_OP_SESSION:
+	case G_OBEX_OP_ABORT:
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+static gboolean parse_headers(GObexRequest *req, const void *data, size_t len,
+						GObexDataPolicy data_policy)
+{
+	const guint8 *buf = data;
+
+	while (len > 0) {
+		GObexHeader *header;
+		size_t parsed;
+
+		header = g_obex_header_decode(buf, len, data_policy, &parsed);
+		if (header == NULL)
+			return FALSE;
+
+		req->headers = g_slist_append(req->headers, header);
+
+		len -= parsed;
+		buf += parsed;
+	}
+
+	return TRUE;
+}
+
+GObexRequest *g_obex_request_decode(const void *data, size_t len,
+						GObexDataPolicy data_policy)
+{
+	const guint8 *buf = data;
+	guint16 packet_len;
+	guint8 opcode;
+	ssize_t header_offset;
+	GObexRequest *req;
+
+	if (len < 3)
+		return NULL;
+
+	buf = get_bytes(&opcode, buf, sizeof(opcode));
+	buf = get_bytes(&packet_len, buf, sizeof(packet_len));
+
+	packet_len = g_ntohs(packet_len);
+	if (packet_len < len)
+		return NULL;
+
+	header_offset = get_header_offset(opcode);
+	if (header_offset < 0)
+		return NULL;
+
+	req = g_obex_request_new(opcode);
+
+	req->data_policy = data_policy;
+
+	if (header_offset == 0)
+		goto headers;
+
+	if (3 + header_offset < (ssize_t) len)
+		goto failed;
+
+	req->req_data_len = header_offset;
+	switch (data_policy) {
+	case G_OBEX_DATA_COPY:
+		req->req.data = g_malloc(header_offset);
+		buf = get_bytes(req->req.data, buf, header_offset);
+		break;
+	case G_OBEX_DATA_REF:
+		req->req.data_ref = buf;
+		buf += header_offset;
+		break;
+	default:
+		goto failed;
+	}
+
+headers:
+	if (!parse_headers(req, buf, len - (buf - (guint8 *) data),
+								data_policy))
+		goto failed;
+
+	return req;
+
+failed:
+	g_obex_request_free(req);
+	return NULL;
 }
 
 gboolean g_obex_send(GObex *obex, GObexRequest *req)

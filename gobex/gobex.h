@@ -88,6 +88,9 @@ gboolean g_obex_request_add_header(GObexRequest *req, GObexHeader *header);
 GObexRequest *g_obex_request_new(guint8 opcode);
 void g_obex_request_free(GObexRequest *req);
 
+GObexRequest *g_obex_request_decode(const void *data, size_t len,
+						GObexDataPolicy data_policy);
+
 gboolean g_obex_send(GObex *obex, GObexRequest *req);
 
 GObex *g_obex_new(GIOChannel *io);
