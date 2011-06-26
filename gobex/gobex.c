@@ -368,6 +368,30 @@ gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 	return TRUE;
 }
 
+gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
+						GObexDataPolicy data_policy)
+{
+	if (pkt->data.buf || pkt->data.buf_ref)
+		return FALSE;
+
+	pkt->data_policy = data_policy;
+	pkt->data_len = len;
+
+	switch (data_policy) {
+	case G_OBEX_DATA_COPY:
+		pkt->data.buf = g_memdup(data, len);
+		break;
+	case G_OBEX_DATA_REF:
+		pkt->data.buf_ref = data;
+		break;
+	case G_OBEX_DATA_INHERIT:
+		pkt->data.buf = (void *) data;
+		break;
+	}
+
+	return TRUE;
+}
+
 GObexPacket *g_obex_packet_new(guint8 opcode)
 {
 	GObexPacket *pkt;
@@ -462,27 +486,19 @@ GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 
 	pkt = g_obex_packet_new(opcode);
 
-	pkt->data_policy = data_policy;
-
 	if (header_offset == 0)
 		goto headers;
 
 	if (3 + header_offset < (ssize_t) len)
 		goto failed;
 
-	pkt->data_len = header_offset;
-	switch (data_policy) {
-	case G_OBEX_DATA_COPY:
-		pkt->data.buf = g_malloc(header_offset);
-		buf = get_bytes(pkt->data.buf, buf, header_offset);
-		break;
-	case G_OBEX_DATA_REF:
-		pkt->data.buf_ref = buf;
-		buf += header_offset;
-		break;
-	default:
+	if (data_policy == G_OBEX_DATA_INHERIT)
 		goto failed;
-	}
+
+	if (!g_obex_packet_set_data(pkt, buf, header_offset, data_policy))
+		goto failed;
+
+	buf += header_offset;
 
 headers:
 	if (!parse_headers(pkt, buf, len - (buf - (guint8 *) data),
