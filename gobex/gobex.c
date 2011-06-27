@@ -36,6 +36,8 @@
 
 #define G_OBEX_HDR_TYPE(id)	((id) & 0xc0)
 
+#define G_OBEX_FINAL		0x80
+
 struct _GObexHeader {
 	guint8 id;
 	gboolean extdata;

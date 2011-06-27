@@ -33,7 +33,6 @@
 #define G_OBEX_OP_SETPATH		0x05
 #define G_OBEX_OP_SESSION		0x07
 #define G_OBEX_OP_ABORT			0x7f
-#define G_OBEX_FINAL			0x80
 
 /* Header ID's */
 #define G_OBEX_HDR_ID_COUNT		0xc0
