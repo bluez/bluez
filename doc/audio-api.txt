@@ -81,7 +81,7 @@ Methods		void Connect()
 
 			Cancel the incoming call indication.
 
-		void Play()
+		void Play() {deprecated}
 
 			Open the audio connection to the headset.
 

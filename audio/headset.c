@@ -2059,7 +2059,8 @@ static GDBusMethodTable headset_methods[] = {
 	{ "IndicateCall",	"",	"",	hs_ring },
 	{ "CancelCall",		"",	"",	hs_cancel_call },
 	{ "Play",		"",	"",	hs_play,
-						G_DBUS_METHOD_FLAG_ASYNC },
+						G_DBUS_METHOD_FLAG_ASYNC |
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "Stop",		"",	"",	hs_stop },
 	{ "IsPlaying",		"",	"b",	hs_is_playing,
 						G_DBUS_METHOD_FLAG_DEPRECATED },
