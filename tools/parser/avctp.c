@@ -36,10 +36,35 @@
 
 #include "parser.h"
 
+static char *pt2str(uint8_t hdr)
+{
+	switch (hdr & 0x0c) {
+	case 0x00:
+		return "";
+	case 0x04:
+		return "Start";
+	case 0x08:
+		return "Cont";
+	case 0x0c:
+		return "End";
+	default:
+		return "Unk";
+	}
+}
+
 void avctp_dump(int level, struct frame *frm)
 {
-	p_indent(level, frm);
-	printf("AVCTP:\n");
+	uint8_t hdr;
+	uint16_t pid;
 
-	raw_dump(level, frm);
+	p_indent(level, frm);
+
+	hdr = get_u8(frm);
+	pid = get_u16(frm);
+
+	printf("AVCTP: %s %s: pt 0x%02x transaction %d pid 0x%04x \n",
+				hdr & 0x02 ? "Response" : "Command",
+				pt2str(hdr), hdr & 0x0c, hdr >> 4, pid);
+
+	raw_dump(level + 1, frm);
 }
