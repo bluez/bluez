@@ -19,10 +19,19 @@
  *
  */
 
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 
 #include <gobex/gobex.h>
+
+static GMainLoop *mainloop = NULL;
+
+static uint8_t pkt_connect_req[] = { G_OBEX_OP_CONNECT | G_OBEX_FINAL,
+					0x00, 0x07, 0x01, 0x00, 0x10, 0x00 };
 
 static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
 static uint8_t hdr_name_ascii[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
@@ -33,6 +42,17 @@ static uint8_t hdr_name_umlaut[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
 				0x00, 0x00 };
 static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
 static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0x00 };
+
+enum {
+	TEST_ERROR_TIMEOUT,
+	TEST_ERROR_UNEXPECTED,
+};
+
+static GQuark test_error_quark(void)
+{
+	return g_quark_from_static_string("test-error-quark");
+}
+#define TEST_ERROR test_error_quark()
 
 static GObex *create_gobex(int fd)
 {
@@ -65,6 +85,65 @@ static void assert_memequal(void *mem1, size_t len1, void *mem2, size_t len2)
 	dump_bytes(mem2, len2);
 
 	g_assert(0);
+}
+
+static gboolean test_timeout(gpointer user_data)
+{
+	GError **err = user_data;
+
+	if (!g_main_loop_is_running(mainloop))
+		return FALSE;
+
+	g_set_error(err, TEST_ERROR, TEST_ERROR_TIMEOUT, "Timed out");
+
+	g_main_loop_quit(mainloop);
+
+	return FALSE;
+}
+
+static void handle_request(GObex *obex, GObexPacket *pkt, gpointer user_data)
+{
+	GError **err = user_data;
+
+	switch (g_obex_packet_get_operation(pkt, NULL)) {
+	case G_OBEX_OP_CONNECT:
+		break;
+	default:
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+						"Unexpected operation");
+		break;
+	}
+
+	g_main_loop_quit(mainloop);
+}
+
+static void test_connect_stream(void)
+{
+	GError *gerr = NULL;
+	GObex *obex;
+	ssize_t err;
+	int sv[2];
+
+	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) < 0) {
+		g_printerr("socketpair: %s", strerror(errno));
+		abort();
+	}
+
+	obex = create_gobex(sv[0]);
+	g_assert(obex != NULL);
+
+	g_obex_set_request_function(obex, handle_request, &gerr);
+
+	err = write(sv[1], pkt_connect_req, sizeof(pkt_connect_req));
+	g_assert_cmpint(err, ==, sizeof(pkt_connect_req));
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	g_timeout_add_seconds(1, test_timeout, &gerr);
+
+	g_main_loop_run(mainloop);
+
+	g_assert_no_error(gerr);
 }
 
 static void test_header_name_ascii(void)
@@ -425,6 +504,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
 
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
+
+	g_test_add_func("/gobex/test_connect_stream", test_connect_stream);
 
 	g_test_run();
 

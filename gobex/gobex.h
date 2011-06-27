@@ -72,6 +72,9 @@ typedef struct _GObex GObex;
 typedef struct _GObexPacket GObexPacket;
 typedef struct _GObexHeader GObexHeader;
 
+typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
+							gpointer user_data);
+
 GObexHeader *g_obex_header_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
 						GObexDataPolicy data_policy);
@@ -93,7 +96,10 @@ void g_obex_packet_free(GObexPacket *req);
 GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 						GObexDataPolicy data_policy);
 
-gboolean g_obex_send(GObex *obex, GObexPacket *req);
+gboolean g_obex_send(GObex *obex, GObexPacket *pkt);
+
+void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
+							gpointer user_data);
 
 GObex *g_obex_new(GIOChannel *io);
 

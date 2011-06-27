@@ -79,6 +79,9 @@ struct _GObex {
 	guint16 tx_mtu;
 
 	GQueue *req_queue;
+
+	GObexRequestFunc req_func;
+	gpointer req_func_data;
 };
 
 struct connect_data {
@@ -541,8 +544,18 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
 	return TRUE;
 }
 
+void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
+							gpointer user_data)
+{
+	obex->req_func = func;
+	obex->req_func_data = user_data;
+}
+
 static gboolean g_obex_handle_packet(GObex *obex, GObexPacket *pkt)
 {
+	if (obex->req_func)
+		obex->req_func(obex, pkt, obex->req_func_data);
+
 	return TRUE;
 }
 
