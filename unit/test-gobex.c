@@ -33,7 +33,7 @@
 static GMainLoop *mainloop = NULL;
 
 static uint8_t pkt_connect_req[] = { G_OBEX_OP_CONNECT | FINAL_BIT,
-					0x00, 0x07, 0x01, 0x00, 0x10, 0x00 };
+					0x00, 0x07, 0x10, 0x00, 0x10, 0x00 };
 
 static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
 static uint8_t hdr_name_ascii[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
