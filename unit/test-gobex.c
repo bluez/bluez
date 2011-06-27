@@ -56,12 +56,14 @@ static GQuark test_error_quark(void)
 }
 #define TEST_ERROR test_error_quark()
 
-static GObex *create_gobex(int fd)
+static GObex *create_gobex(int fd, gboolean close_on_unref)
 {
 	GIOChannel *io;
 
 	io = g_io_channel_unix_new(fd);
 	g_assert(io != NULL);
+
+	g_io_channel_set_close_on_unref(io, close_on_unref);
 
 	return g_obex_new(io);
 }
@@ -151,6 +153,26 @@ done:
 	return FALSE;
 }
 
+static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
+{
+	int sv[2];
+
+	if (socketpair(AF_UNIX, sock_type | SOCK_NONBLOCK, 0, sv) < 0) {
+		g_printerr("socketpair: %s", strerror(errno));
+		abort();
+	}
+
+	*obex = create_gobex(sv[0], TRUE);
+	g_assert(*obex != NULL);
+
+	*io = g_io_channel_unix_new(sv[1]);
+	g_assert(*io != NULL);
+
+	g_io_channel_set_encoding(*io, NULL, NULL);
+	g_io_channel_set_buffered(*io, FALSE);
+	g_io_channel_set_close_on_unref(*io, TRUE);
+}
+
 static void test_send_connect_stream(void)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
@@ -160,15 +182,8 @@ static void test_send_connect_stream(void)
 	GObexPacket *req;
 	guint io_id, timer_id;
 	GObex *obex;
-	int sv[2];
 
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) < 0) {
-		g_printerr("socketpair: %s", strerror(errno));
-		abort();
-	}
-
-	obex = create_gobex(sv[0]);
-	g_assert(obex != NULL);
+	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
 	g_assert(req != NULL);
@@ -177,9 +192,6 @@ static void test_send_connect_stream(void)
 							G_OBEX_DATA_REF);
 	g_obex_send(obex, req);
 
-	io = g_io_channel_unix_new(sv[1]);
-	g_io_channel_set_encoding(io, NULL, NULL);
-	g_io_channel_set_buffered(io, FALSE);
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	io_id = g_io_add_watch(io, cond, handle_connect_data, &gerr);
 
@@ -222,21 +234,19 @@ static void test_recv_connect_stream(void)
 	GError *gerr = NULL;
 	guint timer_id;
 	GObex *obex;
-	ssize_t err;
-	int sv[2];
+	GIOChannel *io;
+	GIOStatus status;
+	gsize bytes_written;
 
-	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) < 0) {
-		g_printerr("socketpair: %s", strerror(errno));
-		abort();
-	}
-
-	obex = create_gobex(sv[0]);
-	g_assert(obex != NULL);
+	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	g_obex_set_request_function(obex, handle_connect_request, &gerr);
 
-	err = write(sv[1], pkt_connect_req, sizeof(pkt_connect_req));
-	g_assert_cmpint(err, ==, sizeof(pkt_connect_req));
+	status = g_io_channel_write_chars(io, (gchar *) pkt_connect_req,
+						sizeof(pkt_connect_req),
+						&bytes_written, NULL);
+	g_assert_cmpint(status, ==, G_IO_STATUS_NORMAL);
+	g_assert_cmpuint(bytes_written, ==, sizeof(pkt_connect_req));
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -537,7 +547,7 @@ static void test_ref_unref(void)
 {
 	GObex *obex;
 
-	obex = create_gobex(STDIN_FILENO);
+	obex = create_gobex(STDIN_FILENO, FALSE);
 
 	g_assert(obex != NULL);
 
@@ -551,7 +561,7 @@ static void test_basic(void)
 {
 	GObex *obex;
 
-	obex = create_gobex(STDIN_FILENO);
+	obex = create_gobex(STDIN_FILENO, FALSE);
 
 	g_assert(obex != NULL);
 
