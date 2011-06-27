@@ -87,11 +87,11 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 void g_obex_header_free(GObexHeader *header);
 
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
-gboolean g_obex_packet_add_header(GObexPacket *req, GObexHeader *header);
+gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
 						GObexDataPolicy data_policy);
 GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final);
-void g_obex_packet_free(GObexPacket *req);
+void g_obex_packet_free(GObexPacket *pkt);
 
 GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 						GObexDataPolicy data_policy);
