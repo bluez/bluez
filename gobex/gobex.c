@@ -366,6 +366,14 @@ GObexHeader *g_obex_header_uint32(guint8 id, guint32 val)
 	return header;
 }
 
+guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final)
+{
+	if (final)
+		*final = pkt->final;
+
+	return pkt->opcode;
+}
+
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 {
 	pkt->headers = g_slist_append(pkt->headers, header);

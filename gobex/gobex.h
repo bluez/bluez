@@ -83,6 +83,7 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 				GObexDataPolicy data_policy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
+guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
 gboolean g_obex_packet_add_header(GObexPacket *req, GObexHeader *header);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
 						GObexDataPolicy data_policy);
