@@ -246,10 +246,10 @@ static void test_recv_connect_stream(void)
 
 	g_source_remove(timer_id);
 	g_obex_unref(obex);
+	g_io_channel_unref(io);
 
 	g_main_loop_unref(mainloop);
 	mainloop = NULL;
-
 
 	g_assert_no_error(gerr);
 }
