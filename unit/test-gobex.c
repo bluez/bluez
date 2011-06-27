@@ -103,7 +103,8 @@ static gboolean test_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static void handle_request(GObex *obex, GObexPacket *pkt, gpointer user_data)
+static void handle_connect_request(GObex *obex, GObexPacket *pkt,
+							gpointer user_data)
 {
 	GError **err = user_data;
 
@@ -119,7 +120,7 @@ static void handle_request(GObex *obex, GObexPacket *pkt, gpointer user_data)
 	g_main_loop_quit(mainloop);
 }
 
-static void test_connect_stream(void)
+static void test_recv_connect_stream(void)
 {
 	GError *gerr = NULL;
 	GObex *obex;
@@ -134,7 +135,7 @@ static void test_connect_stream(void)
 	obex = create_gobex(sv[0]);
 	g_assert(obex != NULL);
 
-	g_obex_set_request_function(obex, handle_request, &gerr);
+	g_obex_set_request_function(obex, handle_connect_request, &gerr);
 
 	err = write(sv[1], pkt_connect_req, sizeof(pkt_connect_req));
 	g_assert_cmpint(err, ==, sizeof(pkt_connect_req));
@@ -507,7 +508,8 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
 
-	g_test_add_func("/gobex/test_connect_stream", test_connect_stream);
+	g_test_add_func("/gobex/test_recv_connect_stream",
+						test_recv_connect_stream);
 
 	g_test_run();
 
