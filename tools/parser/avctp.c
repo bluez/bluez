@@ -35,6 +35,7 @@
 #include <netinet/in.h>
 
 #include "parser.h"
+#include "sdp.h"
 
 static char *pt2str(uint8_t hdr)
 {
@@ -66,5 +67,8 @@ void avctp_dump(int level, struct frame *frm)
 				hdr & 0x02 ? "Response" : "Command",
 				pt2str(hdr), hdr & 0x0c, hdr >> 4, pid);
 
-	raw_dump(level + 1, frm);
+	if (pid == SDP_UUID_AV_REMOTE || pid == SDP_UUID_AV_REMOTE_TARGET)
+		avrcp_dump(level + 1, frm);
+	else
+		raw_dump(level + 1, frm);
 }
