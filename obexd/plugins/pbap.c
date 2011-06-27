@@ -620,7 +620,7 @@ static void *pbap_connect(struct obex_session *os, int *err)
 }
 
 static int pbap_get(struct obex_session *os, obex_object_t *obj,
-					gboolean *stream, void *user_data)
+							void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const char *type = obex_get_type(os);
@@ -658,7 +658,6 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 		else
 			path = g_build_filename("/", name, NULL);
 
-		*stream = (params->maxlistcount == 0 ? FALSE : TRUE);
 	} else if (strcmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */
 		if (!name || strlen(name) == 0)
@@ -668,11 +667,9 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 			/* Current folder + relative path */
 			path = g_build_filename(pbap->folder, name, NULL);
 
-		*stream = (params->maxlistcount == 0 ? FALSE : TRUE);
 	} else if (strcmp(type, VCARDENTRY_TYPE) == 0) {
 		/* File name only */
 		path = g_strdup(name);
-		*stream = TRUE;
 	} else
 		return -EBADR;
 
@@ -976,11 +973,11 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 
 	if (pbap->params->maxlistcount == 0) {
 		/* PhoneBookSize */
-		*hi = OBEX_HDR_APPARAM;
+		*hi = obj->aparams->len ? OBEX_HDR_APPARAM : OBEX_HDR_BODY;
 		return array_read(obj->aparams, buf, count);
 	} else if (obj->firstpacket) {
 		/* NewMissedCalls */
-		*hi = OBEX_HDR_APPARAM;
+		*hi = obj->aparams->len ? OBEX_HDR_APPARAM : OBEX_HDR_BODY;
 		obj->firstpacket = FALSE;
 		return array_read(obj->aparams, buf, count);
 	} else {
@@ -1017,7 +1014,7 @@ static ssize_t vobject_list_read(void *object, void *buf, size_t count,
 		return -EAGAIN;
 
 	if (pbap->params->maxlistcount == 0) {
-		*hi = OBEX_HDR_APPARAM;
+		*hi = obj->aparams->len ? OBEX_HDR_APPARAM : OBEX_HDR_BODY;
 		return array_read(obj->aparams, buf, count);
 	} else {
 		*hi = OBEX_HDR_BODY;

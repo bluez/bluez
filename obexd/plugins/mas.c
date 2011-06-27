@@ -134,8 +134,7 @@ static void mas_disconnect(struct obex_session *os, void *user_data)
 	mas_clean(mas);
 }
 
-static int mas_get(struct obex_session *os, obex_object_t *obj,
-					gboolean *stream, void *user_data)
+static int mas_get(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct mas_session *mas = user_data;
 	const char *type = obex_get_type(os);
@@ -147,8 +146,6 @@ static int mas_get(struct obex_session *os, obex_object_t *obj,
 
 	if (type == NULL)
 		return -EBADR;
-
-	*stream = FALSE;
 
 	ret = obex_get_stream_start(os, name);
 	if (ret < 0)

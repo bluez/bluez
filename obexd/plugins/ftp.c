@@ -213,8 +213,7 @@ void *ftp_connect(struct obex_session *os, int *err)
 	return ftp;
 }
 
-int ftp_get(struct obex_session *os, obex_object_t *obj, gboolean *stream,
-							void *user_data)
+int ftp_get(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
@@ -228,9 +227,6 @@ int ftp_get(struct obex_session *os, obex_object_t *obj, gboolean *stream,
 	ret = get_by_type(ftp, type);
 	if (ret < 0)
 		return ret;
-
-	if (stream)
-		*stream = TRUE;
 
 	return 0;
 }

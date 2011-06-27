@@ -181,13 +181,13 @@ fail:
 }
 
 static int pcsuite_get(struct obex_session *os, obex_object_t *obj,
-					gboolean *stream, void *user_data)
+							void *user_data)
 {
 	struct pcsuite_session *pcsuite = user_data;
 
 	DBG("%p", pcsuite);
 
-	return ftp_get(os, obj, stream, pcsuite->ftp);
+	return ftp_get(os, obj, pcsuite->ftp);
 }
 
 static int pcsuite_chkput(struct obex_session *os, void *user_data)
