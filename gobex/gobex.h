@@ -99,6 +99,7 @@ guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
 						GObexDataPolicy data_policy);
+const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len);
 GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final);
 void g_obex_packet_free(GObexPacket *pkt);
 

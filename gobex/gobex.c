@@ -423,6 +423,26 @@ gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 	return TRUE;
 }
 
+const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len)
+{
+	if (pkt->data_len == 0) {
+		*len = 0;
+		return NULL;
+	}
+
+	*len = pkt->data_len;
+
+	switch (pkt->data_policy) {
+	case G_OBEX_DATA_INHERIT:
+	case G_OBEX_DATA_COPY:
+		return pkt->data.buf;
+	case G_OBEX_DATA_REF:
+		return pkt->data.buf_ref;
+	}
+
+	g_assert_not_reached();
+}
+
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
 						GObexDataPolicy data_policy)
 {
@@ -767,8 +787,29 @@ static void handle_response(GObex *obex, GObexPacket *rsp)
 	obex->pending_req = NULL;
 }
 
+static gboolean handle_connect_req(GObex *obex, GObexPacket *req)
+{
+	const struct connect_data *data;
+	guint16 u16;
+	size_t data_len;
+
+	data = g_obex_packet_get_data(req, &data_len);
+	if (data == NULL || data_len != sizeof(*data))
+		return FALSE;
+
+	memcpy(&u16, &data->mtu, sizeof(u16));
+
+	obex->tx_mtu = g_ntohs(u16);
+	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
+
+	return TRUE;
+}
+
 static void handle_request(GObex *obex, GObexPacket *req)
 {
+	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
+		handle_connect_req(obex, req);
+
 	if (obex->req_func)
 		obex->req_func(obex, req, obex->req_func_data);
 }
