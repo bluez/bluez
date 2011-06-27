@@ -67,6 +67,10 @@ struct _GObexPacket {
 
 	size_t hlen;		/* Length of all encoded headers */
 	GSList *headers;
+
+	guint id;
+	GObexResponseFunc rsp_func;
+	gpointer rsp_data;
 };
 
 struct _GObex {
@@ -91,6 +95,15 @@ struct _GObex {
 
 	GObexRequestFunc req_func;
 	gpointer req_func_data;
+
+	struct pending_req *pending_req;
+};
+
+struct pending_req {
+	guint id;
+	guint8 opcode;
+	GObexResponseFunc rsp_func;
+	gpointer rsp_data;
 };
 
 struct connect_data {
@@ -378,6 +391,19 @@ GObexHeader *g_obex_header_uint32(guint8 id, guint32 val)
 	return header;
 }
 
+guint g_obex_packet_set_response_function(GObexPacket *pkt,
+							GObexResponseFunc func,
+							gpointer user_data)
+{
+	static guint next_id = 1;
+
+	pkt->rsp_func = func;
+	pkt->rsp_data = user_data;
+	pkt->id = next_id++;
+
+	return pkt->id;
+}
+
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final)
 {
 	if (final)
@@ -448,13 +474,30 @@ void g_obex_packet_free(GObexPacket *pkt)
 	g_free(pkt);
 }
 
-static ssize_t get_header_offset(guint8 opcode)
+static ssize_t req_header_offset(guint8 opcode)
 {
 	switch (opcode) {
 	case G_OBEX_OP_CONNECT:
 		return sizeof(struct connect_data);
 	case G_OBEX_OP_SETPATH:
 		return sizeof(struct setpath_data);
+	case G_OBEX_OP_DISCONNECT:
+	case G_OBEX_OP_PUT:
+	case G_OBEX_OP_GET:
+	case G_OBEX_OP_SESSION:
+	case G_OBEX_OP_ABORT:
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+static ssize_t rsp_header_offset(guint8 opcode)
+{
+	switch (opcode) {
+	case G_OBEX_OP_CONNECT:
+		return sizeof(struct connect_data);
+	case G_OBEX_OP_SETPATH:
 	case G_OBEX_OP_DISCONNECT:
 	case G_OBEX_OP_PUT:
 	case G_OBEX_OP_GET:
@@ -489,12 +532,12 @@ static gboolean parse_headers(GObexPacket *pkt, const void *data, size_t len,
 }
 
 GObexPacket *g_obex_packet_decode(const void *data, size_t len,
+						size_t header_offset,
 						GObexDataPolicy data_policy)
 {
 	const guint8 *buf = data;
 	guint16 packet_len;
 	guint8 opcode;
-	ssize_t header_offset;
 	GObexPacket *pkt;
 	gboolean final;
 
@@ -511,16 +554,12 @@ GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 	final = (opcode & G_OBEX_FINAL) ? TRUE : FALSE;
 	opcode &= ~G_OBEX_FINAL;
 
-	header_offset = get_header_offset(opcode);
-	if (header_offset < 0)
-		return NULL;
-
 	pkt = g_obex_packet_new(opcode, final);
 
 	if (header_offset == 0)
 		goto headers;
 
-	if (3 + header_offset < (ssize_t) len)
+	if (3 + header_offset < len)
 		goto failed;
 
 	if (data_policy == G_OBEX_DATA_INHERIT)
@@ -580,6 +619,25 @@ static ssize_t g_obex_packet_encode(GObexPacket *pkt, uint8_t *buf, size_t len)
 	return count;
 }
 
+static void pending_req_free(struct pending_req *req)
+{
+	g_free(req);
+}
+
+static struct pending_req *pending_req_new(GObexPacket *pkt)
+{
+	struct pending_req *req;
+
+	req = g_new0(struct pending_req, 1);
+
+	req->id = pkt->id;
+	req->rsp_func = pkt->rsp_func;
+	req->rsp_data = pkt->rsp_data;
+	req->opcode = pkt->opcode;
+
+	return req;
+}
+
 static gboolean write_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -601,12 +659,20 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		if (pkt == NULL)
 			goto done;
 
+		/* Can't send a request while there's a pending one */
+		if (obex->pending_req && pkt->id > 0)
+			goto done;
+
 		len = g_obex_packet_encode(pkt, obex->tx_buf, obex->tx_mtu);
+		if (len < 0) {
+			g_obex_packet_free(pkt);
+			goto done;
+		}
+
+		if (pkt->id > 0)
+			obex->pending_req = pending_req_new(pkt);
 
 		g_obex_packet_free(pkt);
-
-		if (len < 0)
-			goto done;
 
 		obex->tx_data = len;
 		obex->tx_sent = 0;
@@ -648,6 +714,24 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
 	return TRUE;
 }
 
+guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
+							gpointer user_data)
+{
+	guint id;
+
+	id = g_obex_packet_set_response_function(req, func, user_data);
+
+	if (!g_obex_send(obex, req))
+		return 0;
+
+	return id;
+}
+
+gboolean g_obex_cancel_req(GObex *obex, guint req_id)
+{
+	return TRUE;
+}
+
 void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 							gpointer user_data)
 {
@@ -655,10 +739,29 @@ void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 	obex->req_func_data = user_data;
 }
 
-static gboolean g_obex_handle_packet(GObex *obex, GObexPacket *pkt)
+static void handle_response(GObex *obex, GObexPacket *rsp)
+{
+	struct pending_req *req = obex->pending_req;
+
+	if (req->rsp_func)
+		req->rsp_func(obex, NULL, rsp, req->rsp_data);
+
+	pending_req_free(req);
+	obex->pending_req = NULL;
+}
+
+static void handle_request(GObex *obex, GObexPacket *req)
 {
 	if (obex->req_func)
-		obex->req_func(obex, pkt, obex->req_func_data);
+		obex->req_func(obex, req, obex->req_func_data);
+}
+
+static gboolean g_obex_handle_packet(GObex *obex, GObexPacket *pkt)
+{
+	if (obex->pending_req)
+		handle_response(obex, pkt);
+	else
+		handle_request(obex, pkt);
 
 	return TRUE;
 }
@@ -712,6 +815,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 {
 	GObex *obex = user_data;
 	GObexPacket *pkt;
+	ssize_t header_offset;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -724,7 +828,17 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (obex->rx_data < 3 || obex->rx_data < obex->rx_pkt_len)
 		return TRUE;
 
-	pkt = g_obex_packet_decode(obex->rx_buf, obex->rx_data,
+	if (obex->pending_req)
+		header_offset = rsp_header_offset(obex->pending_req->opcode);
+	else {
+		guint8 opcode = obex->rx_buf[0] & ~G_OBEX_FINAL;
+		header_offset = req_header_offset(opcode);
+	}
+
+	if (header_offset < 0)
+		goto failed;
+
+	pkt = g_obex_packet_decode(obex->rx_buf, obex->rx_data, header_offset,
 							G_OBEX_DATA_REF);
 	if (pkt == NULL) {
 		/* FIXME: Handle decoding error */
@@ -799,6 +913,9 @@ void g_obex_unref(GObex *obex)
 
 	g_free(obex->rx_buf);
 	g_free(obex->tx_buf);
+
+	if (obex->pending_req)
+		pending_req_free(obex->pending_req);
 
 	g_free(obex);
 }

@@ -34,6 +34,8 @@ static GMainLoop *mainloop = NULL;
 
 static uint8_t pkt_connect_req[] = { G_OBEX_OP_CONNECT | FINAL_BIT,
 					0x00, 0x07, 0x10, 0x00, 0x10, 0x00 };
+static uint8_t pkt_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x07,
+					0x10, 0x00, 0x10, 0x00 };
 
 static uint8_t hdr_connid[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2, 3, 4 };
 static uint8_t hdr_name_ascii[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
@@ -171,6 +173,107 @@ static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
 	g_io_channel_set_encoding(*io, NULL, NULL);
 	g_io_channel_set_buffered(*io, FALSE);
 	g_io_channel_set_close_on_unref(*io, TRUE);
+}
+
+static void connect_rsp(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	guint8 rsp_code;
+	gboolean final;
+	GError **test_err = user_data;
+
+	if (err != NULL) {
+		g_assert(*test_err == NULL);
+		*test_err = g_error_copy(err);
+		goto done;
+	}
+
+	rsp_code = g_obex_packet_get_operation(rsp, &final);
+	if (rsp_code != 0x10) {
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Unexpected response 0x%02x", rsp_code);
+		goto done;
+	}
+
+	if (!final) {
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Connect response didn't have final bit");
+		goto done;
+	}
+
+done:
+	g_main_loop_quit(mainloop);
+}
+
+static gboolean send_connect_rsp(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+	gsize bytes_written, rbytes;
+	char buf[255];
+	GIOStatus status;
+
+	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
+	if (status != G_IO_STATUS_NORMAL) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"read failed with status %d", status);
+		goto failed;
+	}
+
+	g_io_channel_write_chars(io, (gchar *) pkt_connect_rsp,
+					sizeof(pkt_connect_rsp),
+					&bytes_written, NULL);
+	if (bytes_written != sizeof(pkt_connect_rsp)) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+						"Unable to write to socket");
+		goto failed;
+	}
+
+	return FALSE;
+
+failed:
+	g_main_loop_quit(mainloop);
+	return FALSE;
+}
+
+static void test_send_req_stream(void)
+{
+	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
+	GError *gerr = NULL;
+	GIOChannel *io;
+	GIOCondition cond;
+	GObexPacket *req;
+	guint io_id, timer_id;
+	GObex *obex;
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	g_assert(req != NULL);
+
+	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
+							G_OBEX_DATA_REF);
+
+	g_obex_send_req(obex, req, connect_rsp, &gerr);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, send_connect_rsp, &gerr);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+
+	g_main_loop_run(mainloop);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(gerr);
 }
 
 static void test_send_connect_stream(void)
@@ -353,7 +456,7 @@ static void test_decode_pkt(void)
 	GObexPacket *pkt;
 	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
-	pkt = g_obex_packet_decode(buf, sizeof(buf), G_OBEX_DATA_REF);
+	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF);
 	g_assert(pkt != NULL);
 
 	g_obex_packet_free(pkt);
@@ -627,6 +730,8 @@ int main(int argc, char *argv[])
 						test_recv_connect_stream);
 	g_test_add_func("/gobex/test_send_connect_stream",
 						test_send_connect_stream);
+	g_test_add_func("/gobex/test_send_req_stream",
+						test_send_req_stream);
 
 	g_test_run();
 

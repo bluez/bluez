@@ -73,6 +73,8 @@ typedef struct _GObexHeader GObexHeader;
 
 typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
 							gpointer user_data);
+typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data);
 
 GObexHeader *g_obex_header_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
@@ -85,6 +87,9 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 				GObexDataPolicy data_policy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
+guint g_obex_packet_set_response_function(GObexPacket *pkt,
+							GObexResponseFunc func,
+							gpointer user_data);
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
@@ -93,9 +98,14 @@ GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final);
 void g_obex_packet_free(GObexPacket *pkt);
 
 GObexPacket *g_obex_packet_decode(const void *data, size_t len,
+						size_t header_offset,
 						GObexDataPolicy data_policy);
 
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt);
+
+guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
+							gpointer user_data);
+gboolean g_obex_cancel_req(GObex *obex, guint req_id);
 
 void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 							gpointer user_data);
