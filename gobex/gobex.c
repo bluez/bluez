@@ -52,6 +52,7 @@ struct _GObexHeader {
 
 struct _GObexPacket {
 	guint8 opcode;
+	gboolean final;
 
 	GObexDataPolicy data_policy;
 
@@ -397,13 +398,14 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
 	return TRUE;
 }
 
-GObexPacket *g_obex_packet_new(guint8 opcode)
+GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final)
 {
 	GObexPacket *pkt;
 
 	pkt = g_new0(GObexPacket, 1);
 
 	pkt->opcode = opcode;
+	pkt->final = final;
 
 	pkt->data_policy = G_OBEX_DATA_COPY;
 
@@ -428,7 +430,7 @@ void g_obex_packet_free(GObexPacket *pkt)
 
 static ssize_t get_header_offset(guint8 opcode)
 {
-	switch (opcode & ~G_OBEX_FINAL) {
+	switch (opcode) {
 	case G_OBEX_OP_CONNECT:
 		return sizeof(struct connect_data);
 	case G_OBEX_OP_SETPATH:
@@ -474,6 +476,7 @@ GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 	guint8 opcode;
 	ssize_t header_offset;
 	GObexPacket *pkt;
+	gboolean final;
 
 	if (len < 3)
 		return NULL;
@@ -485,11 +488,14 @@ GObexPacket *g_obex_packet_decode(const void *data, size_t len,
 	if (packet_len < len)
 		return NULL;
 
+	final = (opcode & G_OBEX_FINAL) ? TRUE : FALSE;
+	opcode &= ~G_OBEX_FINAL;
+
 	header_offset = get_header_offset(opcode);
 	if (header_offset < 0)
 		return NULL;
 
-	pkt = g_obex_packet_new(opcode);
+	pkt = g_obex_packet_new(opcode, final);
 
 	if (header_offset == 0)
 		goto headers;

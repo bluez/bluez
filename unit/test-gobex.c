@@ -339,7 +339,7 @@ static void test_pkt(void)
 {
 	GObexPacket *pkt;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE);
 
 	g_assert(pkt != NULL);
 
