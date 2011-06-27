@@ -21,6 +21,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #include "gobex.h"
 
@@ -76,6 +77,12 @@ struct _GObex {
 	guint8 *rx_buf;
 	size_t rx_data;
 	guint16 rx_pkt_len;
+
+	guint8 *tx_buf;
+	size_t tx_data;
+	size_t tx_sent;
+
+	guint write_source;
 
 	guint16 rx_mtu;
 	guint16 tx_mtu;
@@ -536,12 +543,107 @@ failed:
 	return NULL;
 }
 
+static ssize_t g_obex_packet_encode(GObexPacket *pkt, uint8_t *buf, size_t len)
+{
+	size_t count;
+	guint16 pkt_len, u16;
+	GSList *l;
+
+	pkt_len = 3 + pkt->data_len + pkt->hlen;
+
+	if (pkt_len > len)
+		return -ENOBUFS;
+
+	buf[0] = pkt->opcode;
+	if (pkt->final)
+		buf[0] |= G_OBEX_FINAL;
+
+	u16 = g_htons(pkt_len);
+	memcpy(&buf[1], &u16, sizeof(u16));
+
+	if (pkt->data_len > 0) {
+		if (pkt->data_policy == G_OBEX_DATA_REF)
+			memcpy(&buf[3], pkt->data.buf_ref, pkt->data_len);
+		else
+			memcpy(&buf[3], pkt->data.buf, pkt->data_len);
+	}
+
+	count = 3 + pkt->data_len;
+
+	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
+		GObexHeader *hdr = l->data;
+		count += g_obex_header_encode(hdr, buf + count, len - count);
+	}
+
+	g_assert_cmpuint(count, ==, pkt_len);
+
+	return count;
+}
+
+static gboolean write_data(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GObex *obex = user_data;
+	GIOStatus status;
+	gsize bytes_written;
+	gchar *buf;
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	if (cond & (G_IO_HUP | G_IO_ERR))
+		goto done;
+
+	if (obex->tx_data == 0) {
+		GObexPacket *pkt = g_queue_pop_head(obex->req_queue);
+		ssize_t len;
+
+		if (pkt == NULL)
+			goto done;
+
+		len = g_obex_packet_encode(pkt, obex->tx_buf, obex->tx_mtu);
+
+		g_obex_packet_free(pkt);
+
+		if (len < 0)
+			goto done;
+
+		obex->tx_data = len;
+		obex->tx_sent = 0;
+	}
+
+	buf = (gchar *) &obex->tx_buf[obex->tx_sent];
+	status = g_io_channel_write_chars(io, buf, obex->tx_data,
+							&bytes_written, NULL);
+	if (status != G_IO_STATUS_NORMAL)
+		goto done;
+
+	obex->tx_sent += bytes_written;
+	obex->tx_data -= bytes_written;
+
+	if (obex->tx_data > 0 || g_queue_get_length(obex->req_queue) > 0)
+		return TRUE;
+
+done:
+	obex->tx_data = 0;
+	obex->write_source = 0;
+	return FALSE;
+}
+
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
 {
+	GIOCondition cond;
+
 	if (obex == NULL || pkt == NULL)
 		return FALSE;
 
 	g_queue_push_tail(obex->req_queue, pkt);
+
+	if (g_queue_get_length(obex->req_queue) > 1)
+		return TRUE;
+
+	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	obex->write_source = g_io_add_watch(obex->io, cond, write_data, obex);
 
 	return TRUE;
 }
@@ -658,8 +760,10 @@ GObex *g_obex_new(GIOChannel *io)
 	obex->tx_mtu = G_OBEX_MINIMUM_MTU;
 	obex->req_queue = g_queue_new();
 	obex->rx_buf = g_malloc(obex->rx_mtu);
+	obex->tx_buf = g_malloc(obex->tx_mtu);
 
 	g_io_channel_set_encoding(io, NULL, NULL);
+	g_io_channel_set_buffered(io, FALSE);
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	obex->io_source = g_io_add_watch(io, cond, incoming_data, obex);
 
@@ -694,6 +798,7 @@ void g_obex_unref(GObex *obex)
 		g_source_remove(obex->io_source);
 
 	g_free(obex->rx_buf);
+	g_free(obex->tx_buf);
 
 	g_free(obex);
 }

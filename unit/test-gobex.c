@@ -76,15 +76,20 @@ static void dump_bytes(uint8_t *buf, size_t buf_len)
 	g_printerr("\n");
 }
 
+static void dump_bufs(void *mem1, size_t len1, void *mem2, size_t len2)
+{
+	g_printerr("\nExpected: ");
+	dump_bytes(mem1, len1);
+	g_printerr("Got:      ");
+	dump_bytes(mem2, len2);
+}
+
 static void assert_memequal(void *mem1, size_t len1, void *mem2, size_t len2)
 {
 	if (len1 == len2 && memcmp(mem1, mem2, len1) == 0)
 		return;
 
-	g_printerr("\nExpected: ");
-	dump_bytes(mem1, len1);
-	g_printerr("Got:      ");
-	dump_bytes(mem2, len2);
+	dump_bufs(mem1, len1, mem2, len2);
 
 	g_assert(0);
 }
@@ -101,6 +106,98 @@ static gboolean test_timeout(gpointer user_data)
 	g_main_loop_quit(mainloop);
 
 	return FALSE;
+}
+
+static gboolean handle_connect_data(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+	GIOStatus status;
+	gsize rbytes;
+	char buf[255];
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Unexpected condition %d on socket", cond);
+		goto done;
+	}
+
+	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
+	if (status != G_IO_STATUS_NORMAL) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Reading data failed with status %d", status);
+		goto done;
+	}
+
+	if (rbytes != sizeof(pkt_connect_req)) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Got %zu bytes instead of %zu",
+				rbytes, sizeof(pkt_connect_req));
+		dump_bufs(pkt_connect_req, sizeof(pkt_connect_req),
+								buf, rbytes);
+		goto done;
+	}
+
+	if (memcmp(buf, pkt_connect_req, rbytes) != 0) {
+		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Mismatch with received data");
+		dump_bufs(pkt_connect_req, sizeof(pkt_connect_req),
+								buf, rbytes);
+		goto done;
+	}
+
+done:
+	g_main_loop_quit(mainloop);
+	return FALSE;
+}
+
+static void test_send_connect_stream(void)
+{
+	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
+	GError *gerr = NULL;
+	GIOChannel *io;
+	GIOCondition cond;
+	GObexPacket *req;
+	guint io_id, timer_id;
+	GObex *obex;
+	int sv[2];
+
+	if (socketpair(AF_UNIX, SOCK_STREAM | SOCK_NONBLOCK, 0, sv) < 0) {
+		g_printerr("socketpair: %s", strerror(errno));
+		abort();
+	}
+
+	obex = create_gobex(sv[0]);
+	g_assert(obex != NULL);
+
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	g_assert(req != NULL);
+
+	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
+							G_OBEX_DATA_REF);
+	g_obex_send(obex, req);
+
+	io = g_io_channel_unix_new(sv[1]);
+	g_io_channel_set_encoding(io, NULL, NULL);
+	g_io_channel_set_buffered(io, FALSE);
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, handle_connect_data, &gerr);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+
+	g_main_loop_run(mainloop);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(gerr);
 }
 
 static void handle_connect_request(GObex *obex, GObexPacket *pkt,
@@ -123,6 +220,7 @@ static void handle_connect_request(GObex *obex, GObexPacket *pkt,
 static void test_recv_connect_stream(void)
 {
 	GError *gerr = NULL;
+	guint timer_id;
 	GObex *obex;
 	ssize_t err;
 	int sv[2];
@@ -142,9 +240,16 @@ static void test_recv_connect_stream(void)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	g_timeout_add_seconds(1, test_timeout, &gerr);
+	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
 
 	g_main_loop_run(mainloop);
+
+	g_source_remove(timer_id);
+	g_obex_unref(obex);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
 
 	g_assert_no_error(gerr);
 }
@@ -510,6 +615,8 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_recv_connect_stream",
 						test_recv_connect_stream);
+	g_test_add_func("/gobex/test_send_connect_stream",
+						test_send_connect_stream);
 
 	g_test_run();
 
