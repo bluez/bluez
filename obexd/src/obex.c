@@ -318,6 +318,7 @@ static void os_reset_session(struct obex_session *os)
 	os->pending = 0;
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
+	os->headers_sent = FALSE;
 	os->streaming = FALSE;
 }
 
@@ -693,6 +694,53 @@ static int obex_write_stream(struct obex_session *os,
 	return 0;
 }
 
+static int obex_write(struct obex_session *os, obex_t *obex, obex_object_t *obj)
+{
+	obex_headerdata_t hd;
+	ssize_t len;
+	uint8_t hi;
+
+	DBG("name=%s type=%s tx_mtu=%d file=%p",
+		os->name ? os->name : "", os->type ? os->type : "",
+		os->tx_mtu, os->object);
+
+	if (os->aborted)
+		return -EPERM;
+
+	if (os->object == NULL)
+		return -EIO;
+
+	if (os->headers_sent)
+		return obex_write_stream(os, obex, obj);
+
+	if (!os->driver->get_next_header)
+		goto skip;
+
+	while ((len = os->driver->get_next_header(os->object, os->buf,
+					os->tx_mtu, &hi)) != 0) {
+		if (len < 0) {
+			error("get_next_header(): %s (%zd)", strerror(-len),
+								-len);
+
+			if (len == -EAGAIN)
+				return len;
+
+			g_free(os->buf);
+			os->buf = NULL;
+
+			return len;
+		}
+
+		hd.bs = os->buf;
+		OBEX_ObjectAddHeader(obex, obj, hi, hd, len, 0);
+	}
+
+skip:
+	os->headers_sent = TRUE;
+
+	return obex_write_stream(os, obex, obj);
+}
+
 static gboolean handle_async_io(void *object, int flags, int err,
 						void *user_data)
 {
@@ -705,16 +753,19 @@ static gboolean handle_async_io(void *object, int flags, int err,
 	}
 
 	if (flags & (G_IO_IN | G_IO_PRI))
-		ret = obex_write_stream(os, os->obex, os->obj);
+		ret = obex_write(os, os->obex, os->obj);
 	else if ((flags & G_IO_OUT) && os->pending > 0)
 		ret = obex_read_stream(os, os->obex, os->obj);
 
 proceed:
-	if (ret < 0) {
+	if (ret == -EAGAIN) {
+		return TRUE;
+	} else if (ret < 0) {
 		os_set_response(os->obj, ret);
 		OBEX_CancelRequest(os->obex, TRUE);
-	} else
+	} else {
 		OBEX_ResumeRequest(os->obex);
+	}
 
 	return FALSE;
 }
@@ -737,6 +788,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 	g_return_if_fail(chk_cid(obex, obj, os->cid));
 
+	os->headers_sent = FALSE;
 	os->streaming = FALSE;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
@@ -821,7 +873,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 
 	/* Try to write to stream and suspend the stream immediately
 	 * if no data available to send. */
-	err = obex_write_stream(os, obex, obj);
+	err = obex_write(os, obex, obj);
 	if (err == -EAGAIN) {
 		OBEX_SuspendRequest(obex, obj);
 		os->obj = obj;
