@@ -58,7 +58,8 @@ static GQuark test_error_quark(void)
 }
 #define TEST_ERROR test_error_quark()
 
-static GObex *create_gobex(int fd, gboolean close_on_unref)
+static GObex *create_gobex(int fd, GObexTransportType transport_type,
+						gboolean close_on_unref)
 {
 	GIOChannel *io;
 
@@ -67,7 +68,7 @@ static GObex *create_gobex(int fd, gboolean close_on_unref)
 
 	g_io_channel_set_close_on_unref(io, close_on_unref);
 
-	return g_obex_new(io);
+	return g_obex_new(io, transport_type);
 }
 
 static void dump_bytes(uint8_t *buf, size_t buf_len)
@@ -157,6 +158,7 @@ done:
 
 static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
 {
+	GObexTransportType transport_type;
 	int sv[2];
 
 	if (socketpair(AF_UNIX, sock_type | SOCK_NONBLOCK, 0, sv) < 0) {
@@ -164,7 +166,12 @@ static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
 		abort();
 	}
 
-	*obex = create_gobex(sv[0], TRUE);
+	if (sock_type == SOCK_STREAM)
+		transport_type = G_OBEX_TRANSPORT_STREAM;
+	else
+		transport_type = G_OBEX_TRANSPORT_PACKET;
+
+	*obex = create_gobex(sv[0], transport_type, TRUE);
 	g_assert(*obex != NULL);
 
 	*io = g_io_channel_unix_new(sv[1]);
@@ -650,7 +657,7 @@ static void test_ref_unref(void)
 {
 	GObex *obex;
 
-	obex = create_gobex(STDIN_FILENO, FALSE);
+	obex = create_gobex(STDIN_FILENO, G_OBEX_TRANSPORT_STREAM, FALSE);
 
 	g_assert(obex != NULL);
 
@@ -664,7 +671,7 @@ static void test_basic(void)
 {
 	GObex *obex;
 
-	obex = create_gobex(STDIN_FILENO, FALSE);
+	obex = create_gobex(STDIN_FILENO, G_OBEX_TRANSPORT_STREAM, FALSE);
 
 	g_assert(obex != NULL);
 
@@ -675,7 +682,7 @@ static void test_null_io(void)
 {
 	GObex *obex;
 
-	obex = g_obex_new(NULL);
+	obex = g_obex_new(NULL, 0);
 
 	g_assert(obex == NULL);
 }

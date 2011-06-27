@@ -78,6 +78,9 @@ struct _GObex {
 	GIOChannel *io;
 	guint io_source;
 
+	gboolean (*read) (GObex *obex);
+	gboolean (*write) (GObex *obex);
+
 	guint8 *rx_buf;
 	size_t rx_data;
 	guint16 rx_pkt_len;
@@ -638,13 +641,33 @@ static struct pending_req *pending_req_new(GObexPacket *pkt)
 	return req;
 }
 
+static gboolean write_stream(GObex *obex)
+{
+	GIOStatus status;
+	gsize bytes_written;
+	gchar *buf;
+
+	buf = (gchar *) &obex->tx_buf[obex->tx_sent];
+	status = g_io_channel_write_chars(obex->io, buf, obex->tx_data,
+							&bytes_written, NULL);
+	if (status != G_IO_STATUS_NORMAL)
+		return FALSE;
+
+	obex->tx_sent += bytes_written;
+	obex->tx_data -= bytes_written;
+
+	return TRUE;
+}
+
+static gboolean write_packet(GObex *obex)
+{
+	return FALSE;
+}
+
 static gboolean write_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	GObex *obex = user_data;
-	GIOStatus status;
-	gsize bytes_written;
-	gchar *buf;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -678,14 +701,8 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		obex->tx_sent = 0;
 	}
 
-	buf = (gchar *) &obex->tx_buf[obex->tx_sent];
-	status = g_io_channel_write_chars(io, buf, obex->tx_data,
-							&bytes_written, NULL);
-	if (status != G_IO_STATUS_NORMAL)
+	if (!obex->write(obex))
 		goto done;
-
-	obex->tx_sent += bytes_written;
-	obex->tx_data -= bytes_written;
 
 	if (obex->tx_data > 0 || g_queue_get_length(obex->req_queue) > 0)
 		return TRUE;
@@ -810,6 +827,11 @@ read_body:
 	return TRUE;
 }
 
+static gboolean read_packet(GObex *obex)
+{
+	return FALSE;
+}
+
 static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -823,7 +845,8 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (cond & (G_IO_HUP | G_IO_ERR))
 		goto failed;
 
-	read_stream(obex);
+	if (!obex->read(obex))
+		goto failed;
 
 	if (obex->rx_data < 3 || obex->rx_data < obex->rx_pkt_len)
 		return TRUE;
@@ -858,7 +881,7 @@ failed:
 	return FALSE;
 }
 
-GObex *g_obex_new(GIOChannel *io)
+GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type)
 {
 	GObex *obex;
 	GIOCondition cond;
@@ -875,6 +898,17 @@ GObex *g_obex_new(GIOChannel *io)
 	obex->req_queue = g_queue_new();
 	obex->rx_buf = g_malloc(obex->rx_mtu);
 	obex->tx_buf = g_malloc(obex->tx_mtu);
+
+	switch (transport_type) {
+	case G_OBEX_TRANSPORT_STREAM:
+		obex->read = read_stream;
+		obex->write = write_stream;
+		break;
+	case G_OBEX_TRANSPORT_PACKET:
+		obex->read = read_packet;
+		obex->write = write_packet;
+		break;
+	}
 
 	g_io_channel_set_encoding(io, NULL, NULL);
 	g_io_channel_set_buffered(io, FALSE);

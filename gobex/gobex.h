@@ -67,6 +67,11 @@ typedef enum {
 	G_OBEX_DATA_REF,
 } GObexDataPolicy;
 
+typedef enum {
+	G_OBEX_TRANSPORT_STREAM,
+	G_OBEX_TRANSPORT_PACKET,
+} GObexTransportType;
+
 typedef struct _GObex GObex;
 typedef struct _GObexPacket GObexPacket;
 typedef struct _GObexHeader GObexHeader;
@@ -110,7 +115,7 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id);
 void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 							gpointer user_data);
 
-GObex *g_obex_new(GIOChannel *io);
+GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type);
 
 GObex *g_obex_ref(GObex *obex);
 void g_obex_unref(GObex *obex);
