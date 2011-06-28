@@ -533,6 +533,29 @@ static struct session_data *session_find(const char *source,
 	return NULL;
 }
 
+static int session_connect(struct session_data *session,
+						struct callback_data *callback)
+{
+	int err;
+
+	if (session->obex) {
+		g_idle_add(connection_complete, callback);
+		err = 0;
+	} else if (session->channel > 0) {
+		session->io = rfcomm_connect(&session->src, &session->dst,
+							session->channel,
+							rfcomm_callback,
+							callback);
+		err = (session->io == NULL) ? -EINVAL : 0;
+	} else {
+		callback->sdp = service_connect(&session->src, &session->dst,
+						service_callback, callback);
+		err = (callback->sdp == NULL) ? -ENOMEM : 0;
+	}
+
+	return err;
+}
+
 struct session_data *session_create(const char *source,
 						const char *destination,
 						const char *service,
@@ -543,7 +566,6 @@ struct session_data *session_create(const char *source,
 {
 	struct session_data *session;
 	struct callback_data *callback;
-	int err;
 
 	if (destination == NULL)
 		return NULL;
@@ -612,22 +634,7 @@ proceed:
 	callback->func = function;
 	callback->data = user_data;
 
-	if (session->obex) {
-		g_idle_add(connection_complete, callback);
-		err = 0;
-	} else if (session->channel > 0) {
-		session->io = rfcomm_connect(&session->src, &session->dst,
-							session->channel,
-							rfcomm_callback,
-							callback);
-		err = (session->io == NULL) ? -EINVAL : 0;
-	} else {
-		callback->sdp = service_connect(&session->src, &session->dst,
-						service_callback, callback);
-		err = (callback->sdp == NULL) ? -ENOMEM : 0;
-	}
-
-	if (err < 0) {
+	if (session_connect(session, callback) < 0) {
 		session_unref(session);
 		g_free(callback);
 		return NULL;
