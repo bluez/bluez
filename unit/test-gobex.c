@@ -45,7 +45,7 @@ static uint8_t hdr_name_umlaut[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
 				0x00, 0xe5, 0x00, 0xe4, 0x00, 0xf6,
 				0x00, 0x00 };
 static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
-static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0x00 };
+static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0xab };
 
 enum {
 	TEST_ERROR_TIMEOUT,
@@ -433,7 +433,7 @@ static void test_header_uint8(void)
 	uint8_t buf[1024];
 	size_t len;
 
-	header = g_obex_header_new_uint8(G_OBEX_HDR_ID_ACTION, 0x00);
+	header = g_obex_header_new_uint8(G_OBEX_HDR_ID_ACTION, 0xab);
 
 	g_assert(header != NULL);
 
@@ -477,7 +477,7 @@ static void test_decode_pkt_header(void)
 	GObexHeader *header;
 	gboolean ret;
 	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x05,
-					G_OBEX_HDR_ID_ACTION, 0x00 };
+					G_OBEX_HDR_ID_ACTION, 0xab };
 	guint8 val;
 
 	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF);
@@ -488,7 +488,7 @@ static void test_decode_pkt_header(void)
 
 	ret = g_obex_header_get_uint8(header, &val);
 	g_assert(ret == TRUE);
-	g_assert(val == 0x00);
+	g_assert(val == 0xab);
 
 	g_obex_packet_free(pkt);
 }
@@ -587,7 +587,7 @@ static void test_header_encode_actionid(void)
 	ret = g_obex_header_get_uint8(header, &val);
 
 	g_assert(ret == TRUE);
-	g_assert_cmpuint(val, ==, 0x00);
+	g_assert_cmpuint(val, ==, 0xab);
 
 	g_obex_header_free(header);
 }
