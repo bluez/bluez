@@ -309,7 +309,7 @@ void g_obex_header_free(GObexHeader *header)
 	g_free(header);
 }
 
-GObexHeader *g_obex_header_unicode(guint8 id, const char *str)
+GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 {
 	GObexHeader *header;
 	size_t len;
@@ -330,7 +330,7 @@ GObexHeader *g_obex_header_unicode(guint8 id, const char *str)
 	return header;
 }
 
-GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
+GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, size_t len,
 						GObexDataPolicy data_policy)
 {
 	GObexHeader *header;
@@ -360,7 +360,7 @@ GObexHeader *g_obex_header_bytes(guint8 id, void *data, size_t len,
 	return header;
 }
 
-GObexHeader *g_obex_header_uint8(guint8 id, guint8 val)
+GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val)
 {
 	GObexHeader *header;
 
@@ -377,7 +377,7 @@ GObexHeader *g_obex_header_uint8(guint8 id, guint8 val)
 	return header;
 }
 
-GObexHeader *g_obex_header_uint32(guint8 id, guint32 val)
+GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val)
 {
 	GObexHeader *header;
 

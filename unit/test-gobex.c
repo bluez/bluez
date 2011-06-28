@@ -380,7 +380,7 @@ static void test_header_name_ascii(void)
 	uint8_t buf[1024];
 	size_t len;
 
-	header = g_obex_header_unicode(G_OBEX_HDR_ID_NAME, "foo");
+	header = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, "foo");
 
 	g_assert(header != NULL);
 
@@ -397,7 +397,7 @@ static void test_header_name_umlaut(void)
 	uint8_t buf[1024];
 	size_t len;
 
-	header = g_obex_header_unicode(G_OBEX_HDR_ID_NAME, "åäö");
+	header = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, "åäö");
 
 	g_assert(header != NULL);
 
@@ -414,9 +414,8 @@ static void test_header_bytes(void)
 	uint8_t buf[1024], data[] = { 1, 2, 3, 4 };
 	size_t len;
 
-	header = g_obex_header_bytes(G_OBEX_HDR_ID_BODY, data, sizeof(data),
-							G_OBEX_DATA_REF);
-
+	header = g_obex_header_new_bytes(G_OBEX_HDR_ID_BODY, data,
+						sizeof(data), G_OBEX_DATA_REF);
 	g_assert(header != NULL);
 
 	len = g_obex_header_encode(header, buf, sizeof(buf));
@@ -432,7 +431,7 @@ static void test_header_uint8(void)
 	uint8_t buf[1024];
 	size_t len;
 
-	header = g_obex_header_uint8(G_OBEX_HDR_ID_ACTION, 0x00);
+	header = g_obex_header_new_uint8(G_OBEX_HDR_ID_ACTION, 0x00);
 
 	g_assert(header != NULL);
 
@@ -449,7 +448,8 @@ static void test_header_uint32(void)
 	uint8_t buf[1024];
 	size_t len;
 
-	header = g_obex_header_uint32(G_OBEX_HDR_ID_CONNECTION, 0x01020304);
+	header = g_obex_header_new_uint32(G_OBEX_HDR_ID_CONNECTION,
+								0x01020304);
 
 	len = g_obex_header_encode(header, buf, sizeof(buf));
 
