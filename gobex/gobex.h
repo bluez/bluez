@@ -99,9 +99,6 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 void g_obex_header_free(GObexHeader *header);
 
 GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);
-guint g_obex_packet_set_response_function(GObexPacket *pkt,
-							GObexResponseFunc func,
-							gpointer user_data);
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,

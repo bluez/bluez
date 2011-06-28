@@ -67,10 +67,6 @@ struct _GObexPacket {
 
 	size_t hlen;		/* Length of all encoded headers */
 	GSList *headers;
-
-	guint id;
-	GObexResponseFunc rsp_func;
-	gpointer rsp_data;
 };
 
 struct _GObex {
@@ -94,17 +90,17 @@ struct _GObex {
 	guint16 rx_mtu;
 	guint16 tx_mtu;
 
-	GQueue *req_queue;
+	GQueue *tx_queue;
 
 	GObexRequestFunc req_func;
 	gpointer req_func_data;
 
-	struct pending_req *pending_req;
+	struct pending_pkt *pending_req;
 };
 
-struct pending_req {
+struct pending_pkt {
 	guint id;
-	guint8 opcode;
+	GObexPacket *pkt;
 	GObexResponseFunc rsp_func;
 	gpointer rsp_data;
 };
@@ -454,19 +450,6 @@ GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id)
 	return NULL;
 }
 
-guint g_obex_packet_set_response_function(GObexPacket *pkt,
-							GObexResponseFunc func,
-							gpointer user_data)
-{
-	static guint next_id = 1;
-
-	pkt->rsp_func = func;
-	pkt->rsp_data = user_data;
-	pkt->id = next_id++;
-
-	return pkt->id;
-}
-
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final)
 {
 	if (final)
@@ -702,23 +685,10 @@ static ssize_t g_obex_packet_encode(GObexPacket *pkt, uint8_t *buf, size_t len)
 	return count;
 }
 
-static void pending_req_free(struct pending_req *req)
+static void pending_pkt_free(struct pending_pkt *p)
 {
-	g_free(req);
-}
-
-static struct pending_req *pending_req_new(GObexPacket *pkt)
-{
-	struct pending_req *req;
-
-	req = g_new0(struct pending_req, 1);
-
-	req->id = pkt->id;
-	req->rsp_func = pkt->rsp_func;
-	req->rsp_data = pkt->rsp_data;
-	req->opcode = pkt->opcode;
-
-	return req;
+	g_obex_packet_free(p->pkt);
+	g_free(p);
 }
 
 static gboolean write_stream(GObex *obex)
@@ -756,26 +726,26 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		goto done;
 
 	if (obex->tx_data == 0) {
-		GObexPacket *pkt = g_queue_pop_head(obex->req_queue);
+		struct pending_pkt *p = g_queue_pop_head(obex->tx_queue);
 		ssize_t len;
 
-		if (pkt == NULL)
+		if (p == NULL)
 			goto done;
 
 		/* Can't send a request while there's a pending one */
-		if (obex->pending_req && pkt->id > 0)
+		if (obex->pending_req && p->id > 0)
 			goto done;
 
-		len = g_obex_packet_encode(pkt, obex->tx_buf, obex->tx_mtu);
+		len = g_obex_packet_encode(p->pkt, obex->tx_buf, obex->tx_mtu);
 		if (len < 0) {
-			g_obex_packet_free(pkt);
+			pending_pkt_free(p);
 			goto done;
 		}
 
-		if (pkt->id > 0)
-			obex->pending_req = pending_req_new(pkt);
-
-		g_obex_packet_free(pkt);
+		if (p->id > 0)
+			obex->pending_req = p;
+		else
+			pending_pkt_free(p);
 
 		obex->tx_data = len;
 		obex->tx_sent = 0;
@@ -784,7 +754,7 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 	if (!obex->write(obex))
 		goto done;
 
-	if (obex->tx_data > 0 || g_queue_get_length(obex->req_queue) > 0)
+	if (obex->tx_data > 0 || g_queue_get_length(obex->tx_queue) > 0)
 		return TRUE;
 
 done:
@@ -793,16 +763,13 @@ done:
 	return FALSE;
 }
 
-gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
+static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p)
 {
 	GIOCondition cond;
 
-	if (obex == NULL || pkt == NULL)
-		return FALSE;
+	g_queue_push_tail(obex->tx_queue, p);
 
-	g_queue_push_tail(obex->req_queue, pkt);
-
-	if (g_queue_get_length(obex->req_queue) > 1)
+	if (g_queue_get_length(obex->tx_queue) > 1)
 		return TRUE;
 
 	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
@@ -811,17 +778,36 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
 	return TRUE;
 }
 
+gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
+{
+	struct pending_pkt *p;
+
+	if (obex == NULL || pkt == NULL)
+		return FALSE;
+
+	p = g_new0(struct pending_pkt, 1);
+	p->pkt = pkt;
+
+	return g_obex_send_internal(obex, p);
+}
+
 guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
 							gpointer user_data)
 {
-	guint id;
+	struct pending_pkt *p;
+	static guint id = 1;
 
-	id = g_obex_packet_set_response_function(req, func, user_data);
+	p = g_new0(struct pending_pkt, 1);
 
-	if (!g_obex_send(obex, req))
+	p->pkt = req;
+	p->id = id++;
+	p->rsp_func = func;
+	p->rsp_data = user_data;
+
+	if (!g_obex_send_internal(obex, p))
 		return 0;
 
-	return id;
+	return p->id;
 }
 
 gboolean g_obex_cancel_req(GObex *obex, guint req_id)
@@ -854,15 +840,15 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 
 static void handle_response(GObex *obex, GObexPacket *rsp)
 {
-	struct pending_req *req = obex->pending_req;
+	struct pending_pkt *p = obex->pending_req;
 
-	if (req->opcode == G_OBEX_OP_CONNECT)
+	if (g_obex_packet_get_operation(p->pkt, NULL) == G_OBEX_OP_CONNECT)
 		parse_connect_data(obex, rsp);
 
-	if (req->rsp_func)
-		req->rsp_func(obex, NULL, rsp, req->rsp_data);
+	if (p->rsp_func)
+		p->rsp_func(obex, NULL, rsp, p->rsp_data);
 
-	pending_req_free(req);
+	pending_pkt_free(p);
 	obex->pending_req = NULL;
 }
 
@@ -953,11 +939,13 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (obex->rx_data < 3 || obex->rx_data < obex->rx_pkt_len)
 		return TRUE;
 
-	if (obex->pending_req)
-		header_offset = rsp_header_offset(obex->pending_req->opcode);
-	else {
-		guint8 opcode = obex->rx_buf[0] & ~G_OBEX_FINAL;
+	if (obex->pending_req) {
+		struct pending_pkt *p = obex->pending_req;
+		guint8 opcode = g_obex_packet_get_operation(p->pkt, NULL);
 		header_offset = req_header_offset(opcode);
+	} else {
+		guint8 opcode = obex->rx_buf[0] & ~G_OBEX_FINAL;
+		header_offset = rsp_header_offset(opcode);
 	}
 
 	if (header_offset < 0)
@@ -997,7 +985,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type)
 	obex->ref_count = 1;
 	obex->rx_mtu = G_OBEX_DEFAULT_MTU;
 	obex->tx_mtu = G_OBEX_MINIMUM_MTU;
-	obex->req_queue = g_queue_new();
+	obex->tx_queue = g_queue_new();
 	obex->rx_buf = g_malloc(obex->rx_mtu);
 	obex->tx_buf = g_malloc(obex->tx_mtu);
 
@@ -1039,8 +1027,8 @@ void g_obex_unref(GObex *obex)
 	if (!last_ref)
 		return;
 
-	g_queue_foreach(obex->req_queue, (GFunc) g_obex_packet_free, NULL);
-	g_queue_free(obex->req_queue);
+	g_queue_foreach(obex->tx_queue, (GFunc) pending_pkt_free, NULL);
+	g_queue_free(obex->tx_queue);
 
 	g_io_channel_unref(obex->io);
 
@@ -1051,7 +1039,7 @@ void g_obex_unref(GObex *obex)
 	g_free(obex->tx_buf);
 
 	if (obex->pending_req)
-		pending_req_free(obex->pending_req);
+		pending_pkt_free(obex->pending_req);
 
 	g_free(obex);
 }
