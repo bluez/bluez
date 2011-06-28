@@ -71,7 +71,7 @@ static GObex *create_gobex(int fd, GObexTransportType transport_type,
 	return g_obex_new(io, transport_type);
 }
 
-static void dump_bytes(uint8_t *buf, size_t buf_len)
+static void dump_bytes(const uint8_t *buf, size_t buf_len)
 {
 	size_t i;
 
@@ -81,7 +81,8 @@ static void dump_bytes(uint8_t *buf, size_t buf_len)
 	g_printerr("\n");
 }
 
-static void dump_bufs(void *mem1, size_t len1, void *mem2, size_t len2)
+static void dump_bufs(const void *mem1, size_t len1,
+						const void *mem2, size_t len2)
 {
 	g_printerr("\nExpected: ");
 	dump_bytes(mem1, len1);
@@ -89,7 +90,8 @@ static void dump_bufs(void *mem1, size_t len1, void *mem2, size_t len2)
 	dump_bytes(mem2, len2);
 }
 
-static void assert_memequal(void *mem1, size_t len1, void *mem2, size_t len2)
+static void assert_memequal(const void *mem1, size_t len1,
+						const void *mem2, size_t len2)
 {
 	if (len1 == len2 && memcmp(mem1, mem2, len1) == 0)
 		return;
@@ -469,7 +471,29 @@ static void test_decode_pkt(void)
 	g_obex_packet_free(pkt);
 }
 
-static void parse_and_encode(uint8_t *buf, size_t buf_len)
+static void test_decode_pkt_header(void)
+{
+	GObexPacket *pkt;
+	GObexHeader *header;
+	gboolean ret;
+	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x05,
+					G_OBEX_HDR_ID_ACTION, 0x00 };
+	guint8 val;
+
+	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF);
+	g_assert(pkt != NULL);
+
+	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_ACTION);
+	g_assert(header != NULL);
+
+	ret = g_obex_header_get_uint8(header, &val);
+	g_assert(ret == TRUE);
+	g_assert(val == 0x00);
+
+	g_obex_packet_free(pkt);
+}
+
+static GObexHeader *parse_and_encode(uint8_t *buf, size_t buf_len)
 {
 	GObexHeader *header;
 	uint8_t encoded[1024];
@@ -483,32 +507,89 @@ static void parse_and_encode(uint8_t *buf, size_t buf_len)
 
 	assert_memequal(buf, buf_len, encoded, len);
 
-	g_obex_header_free(header);
+	return header;
 }
 
 static void test_header_encode_connid(void)
 {
-	parse_and_encode(hdr_connid, sizeof(hdr_connid));
+	GObexHeader *header;
+	gboolean ret;
+	guint32 val;
+
+	header = parse_and_encode(hdr_connid, sizeof(hdr_connid));
+
+	ret = g_obex_header_get_uint32(header, &val);
+
+	g_assert(ret == TRUE);
+	g_assert(val == 0x01020304);
+
+	g_obex_header_free(header);
 }
 
 static void test_header_encode_name_ascii(void)
 {
-	parse_and_encode(hdr_name_ascii, sizeof(hdr_name_ascii));
+	GObexHeader *header;
+	const char *str;
+	gboolean ret;
+
+	header = parse_and_encode(hdr_name_ascii, sizeof(hdr_name_ascii));
+
+	ret = g_obex_header_get_unicode(header, &str);
+
+	g_assert(ret == TRUE);
+	g_assert_cmpstr(str, ==, "foo");
+
+	g_obex_header_free(header);
 }
 
 static void test_header_encode_name_umlaut(void)
 {
-	parse_and_encode(hdr_name_umlaut, sizeof(hdr_name_umlaut));
+	GObexHeader *header;
+	const char *str;
+	gboolean ret;
+
+	header = parse_and_encode(hdr_name_umlaut, sizeof(hdr_name_umlaut));
+
+	ret = g_obex_header_get_unicode(header, &str);
+
+	g_assert(ret == TRUE);
+	g_assert_cmpstr(str, ==, "åäö");
+
+	g_obex_header_free(header);
 }
 
 static void test_header_encode_body(void)
 {
-	parse_and_encode(hdr_body, sizeof(hdr_body));
+	GObexHeader *header;
+	guint8 expected[] = { 1, 2, 3, 4};
+	const guint8 *buf;
+	size_t len;
+	gboolean ret;
+
+	header = parse_and_encode(hdr_body, sizeof(hdr_body));
+
+	ret = g_obex_header_get_bytes(header, &buf, &len);
+
+	g_assert(ret == TRUE);
+	assert_memequal(expected, sizeof(expected), buf, len);
+
+	g_obex_header_free(header);
 }
 
 static void test_header_encode_actionid(void)
 {
-	parse_and_encode(hdr_actionid, sizeof(hdr_actionid));
+	GObexHeader *header;
+	gboolean ret;
+	guint8 val;
+
+	header = parse_and_encode(hdr_actionid, sizeof(hdr_actionid));
+
+	ret = g_obex_header_get_uint8(header, &val);
+
+	g_assert(ret == TRUE);
+	g_assert_cmpuint(val, ==, 0x00);
+
+	g_obex_header_free(header);
 }
 
 static void test_decode_header_connid(void)
@@ -732,6 +813,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
 
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
+	g_test_add_func("/gobex/test_decode_pkt_header",
+						test_decode_pkt_header);
 
 	g_test_add_func("/gobex/test_recv_connect_stream",
 						test_recv_connect_stream);

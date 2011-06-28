@@ -81,6 +81,12 @@ typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
 typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data);
 
+gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
+gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
+								size_t *len);
+gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val);
+gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
+
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, size_t len,
 						GObexDataPolicy data_policy);
@@ -92,6 +98,7 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 				GObexDataPolicy data_policy, size_t *parsed);
 void g_obex_header_free(GObexHeader *header);
 
+GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);
 guint g_obex_packet_set_response_function(GObexPacket *pkt,
 							GObexResponseFunc func,
 							gpointer user_data);

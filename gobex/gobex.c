@@ -309,6 +309,52 @@ void g_obex_header_free(GObexHeader *header)
 	g_free(header);
 }
 
+gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
+{
+	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UNICODE)
+		return FALSE;
+
+	*str = header->v.string;
+
+	return TRUE;
+}
+
+gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
+								size_t *len)
+{
+	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_BYTES)
+		return FALSE;
+
+	*len = header->vlen;
+
+	if (header->extdata)
+		*val = header->v.extdata;
+	else
+		*val = header->v.data;
+
+	return TRUE;
+}
+
+gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val)
+{
+	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UINT8)
+		return FALSE;
+
+	*val = header->v.u8;
+
+	return TRUE;
+}
+
+gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val)
+{
+	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UINT32)
+		return FALSE;
+
+	*val = header->v.u32;
+
+	return TRUE;
+}
+
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 {
 	GObexHeader *header;
@@ -392,6 +438,20 @@ GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val)
 	header->v.u32 = val;
 
 	return header;
+}
+
+GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id)
+{
+	GSList *l;
+
+	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
+		GObexHeader *hdr = l->data;
+
+		if (hdr->id == id)
+			return hdr;
+	}
+
+	return NULL;
 }
 
 guint g_obex_packet_set_response_function(GObexPacket *pkt,
