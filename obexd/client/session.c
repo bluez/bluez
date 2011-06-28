@@ -197,9 +197,8 @@ static void session_free(struct session_data *session)
 	if (session->path)
 		session_unregistered(session);
 
-	if (session->conn) {
+	if (session->conn)
 		dbus_connection_unref(session->conn);
-	}
 
 	sessions = g_slist_remove(sessions, session);
 
