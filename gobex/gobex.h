@@ -22,50 +22,9 @@
 #ifndef __GOBEX_H
 #define __GOBEX_H
 
-#include <stdint.h>
 #include <glib.h>
 
-/* Opcodes */
-#define G_OBEX_OP_CONNECT		0x00
-#define G_OBEX_OP_DISCONNECT		0x01
-#define G_OBEX_OP_PUT			0x02
-#define G_OBEX_OP_GET			0x03
-#define G_OBEX_OP_SETPATH		0x05
-#define G_OBEX_OP_SESSION		0x07
-#define G_OBEX_OP_ABORT			0x7f
-
-/* Header ID's */
-#define G_OBEX_HDR_ID_COUNT		0xc0
-#define G_OBEX_HDR_ID_NAME		0x01
-#define G_OBEX_HDR_ID_TYPE		0x42
-#define G_OBEX_HDR_ID_LENGTH		0xc3
-#define G_OBEX_HDR_ID_TIME		0x44
-#define G_OBEX_HDR_ID_DESCRIPTION	0x05
-#define G_OBEX_HDR_ID_TARGET		0x46
-#define G_OBEX_HDR_ID_HTTP		0x47
-#define G_OBEX_HDR_ID_BODY		0x48
-#define G_OBEX_HDR_ID_BODY_END		0x49
-#define G_OBEX_HDR_ID_WHO		0x4a
-#define G_OBEX_HDR_ID_CONNECTION	0xcb
-#define G_OBEX_HDR_ID_APPARAM		0x4c
-#define G_OBEX_HDR_ID_AUTHCHAL		0x4d
-#define G_OBEX_HDR_ID_AUTHRESP		0x4e
-#define G_OBEX_HDR_ID_CREATOR		0xcf
-#define G_OBEX_HDR_ID_WANUUID		0x50
-#define G_OBEX_HDR_ID_OBJECTCLASS	0x51
-#define G_OBEX_HDR_ID_SESSIONPARAM	0x52
-#define G_OBEX_HDR_ID_SESSIONSEQ	0x93
-#define G_OBEX_HDR_ID_ACTION		0x94
-#define G_OBEX_HDR_ID_DESTNAME		0x15
-#define G_OBEX_HDR_ID_PERMISSIONS	0xd6
-#define G_OBEX_HDR_ID_SRM		0x97
-#define G_OBEX_HDR_ID_SRM_FLAGS		0x98
-
-typedef enum {
-	G_OBEX_DATA_INHERIT,
-	G_OBEX_DATA_COPY,
-	G_OBEX_DATA_REF,
-} GObexDataPolicy;
+#include <gobex/gobex-packet.h>
 
 typedef enum {
 	G_OBEX_TRANSPORT_STREAM,
@@ -73,43 +32,11 @@ typedef enum {
 } GObexTransportType;
 
 typedef struct _GObex GObex;
-typedef struct _GObexPacket GObexPacket;
-typedef struct _GObexHeader GObexHeader;
 
 typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
 							gpointer user_data);
 typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data);
-
-gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
-gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
-								size_t *len);
-gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val);
-gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
-
-GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, size_t len,
-						GObexDataPolicy data_policy);
-GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
-GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
-
-size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len);
-GObexHeader *g_obex_header_decode(const void *data, size_t len,
-				GObexDataPolicy data_policy, size_t *parsed);
-void g_obex_header_free(GObexHeader *header);
-
-GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);
-guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
-gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
-gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
-						GObexDataPolicy data_policy);
-const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len);
-GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final);
-void g_obex_packet_free(GObexPacket *pkt);
-
-GObexPacket *g_obex_packet_decode(const void *data, size_t len,
-						size_t header_offset,
-						GObexDataPolicy data_policy);
 
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt);
 

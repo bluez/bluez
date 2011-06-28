@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 #include <gobex/gobex.h>
 
