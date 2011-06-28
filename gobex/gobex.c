@@ -836,9 +836,28 @@ void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 	obex->req_func_data = user_data;
 }
 
+static void parse_connect_data(GObex *obex, GObexPacket *pkt)
+{
+	const struct connect_data *data;
+	guint16 u16;
+	size_t data_len;
+
+	data = g_obex_packet_get_data(pkt, &data_len);
+	if (data == NULL || data_len != sizeof(*data))
+		return;
+
+	memcpy(&u16, &data->mtu, sizeof(u16));
+
+	obex->tx_mtu = g_ntohs(u16);
+	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
+}
+
 static void handle_response(GObex *obex, GObexPacket *rsp)
 {
 	struct pending_req *req = obex->pending_req;
+
+	if (req->opcode == G_OBEX_OP_CONNECT)
+		parse_connect_data(obex, rsp);
 
 	if (req->rsp_func)
 		req->rsp_func(obex, NULL, rsp, req->rsp_data);
@@ -847,28 +866,10 @@ static void handle_response(GObex *obex, GObexPacket *rsp)
 	obex->pending_req = NULL;
 }
 
-static gboolean handle_connect_req(GObex *obex, GObexPacket *req)
-{
-	const struct connect_data *data;
-	guint16 u16;
-	size_t data_len;
-
-	data = g_obex_packet_get_data(req, &data_len);
-	if (data == NULL || data_len != sizeof(*data))
-		return FALSE;
-
-	memcpy(&u16, &data->mtu, sizeof(u16));
-
-	obex->tx_mtu = g_ntohs(u16);
-	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
-
-	return TRUE;
-}
-
 static void handle_request(GObex *obex, GObexPacket *req)
 {
 	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
-		handle_connect_req(obex, req);
+		parse_connect_data(obex, req);
 
 	if (obex->req_func)
 		obex->req_func(obex, req, obex->req_func_data);
