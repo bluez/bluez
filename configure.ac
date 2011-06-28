@@ -35,6 +35,10 @@ AC_FUNC_PPOLL
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
+AC_CHECK_HEADER([sys/inotify.h],
+		[AC_DEFINE([HAVE_SYS_INOTIFY_H], 1,
+			[Define to 1 if you have <sys/inotify.h>.])],
+			[AC_MSG_ERROR(inotify headers are required and missing)])
 AC_PATH_DBUS
 AC_PATH_GLIB
 AC_PATH_ALSA

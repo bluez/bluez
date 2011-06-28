@@ -183,64 +183,6 @@ static void dev_info_free(struct remote_dev_info *dev)
 	g_free(dev);
 }
 
-/*
- * Device name expansion
- *   %d - device id
- */
-static char *expand_name(char *dst, int size, char *str, int dev_id)
-{
-	register int sp, np, olen;
-	char *opt, buf[10];
-
-	if (!str || !dst)
-		return NULL;
-
-	sp = np = 0;
-	while (np < size - 1 && str[sp]) {
-		switch (str[sp]) {
-		case '%':
-			opt = NULL;
-
-			switch (str[sp+1]) {
-			case 'd':
-				sprintf(buf, "%d", dev_id);
-				opt = buf;
-				break;
-
-			case 'h':
-				opt = main_opts.host_name;
-				break;
-
-			case '%':
-				dst[np++] = str[sp++];
-				/* fall through */
-			default:
-				sp++;
-				continue;
-			}
-
-			if (opt) {
-				/* substitute */
-				olen = strlen(opt);
-				if (np + olen < size - 1)
-					memcpy(dst + np, opt, olen);
-				np += olen;
-			}
-			sp += 2;
-			continue;
-
-		case '\\':
-			sp++;
-			/* fall through */
-		default:
-			dst[np++] = str[sp++];
-			break;
-		}
-	}
-	dst[np] = '\0';
-	return dst;
-}
-
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 								uint8_t minor)
 {
@@ -2575,14 +2517,6 @@ gboolean adapter_init(struct btd_adapter *adapter)
 		error("No address available for hci%d", adapter->dev_id);
 		return FALSE;
 	}
-
-	if (read_local_name(&adapter->bdaddr, adapter->name) < 0)
-		expand_name(adapter->name, MAX_NAME_LENGTH, main_opts.name,
-							adapter->dev_id);
-
-	if (main_opts.attrib_server)
-		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
-			(const uint8_t *) adapter->name, strlen(adapter->name));
 
 	sdp_init_services_list(&adapter->bdaddr);
 	load_drivers(adapter);

@@ -218,6 +218,9 @@ EXTRA_DIST += plugins/hal.c plugins/formfactor.c
 builtin_modules += storage
 builtin_sources += plugins/storage.c
 
+builtin_modules += adaptername
+builtin_sources += plugins/adaptername.c
+
 if MAEMO6PLUGIN
 builtin_modules += maemo6
 builtin_sources += plugins/maemo6.c
