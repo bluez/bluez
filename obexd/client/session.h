@@ -42,6 +42,7 @@ struct session_data {
 	uuid_t uuid;		/* Bluetooth Service Class */
 	gchar *path;		/* Session path */
 	DBusConnection *conn;
+	DBusConnection *conn_system; /* system bus connection */
 	DBusMessage *msg;
 	GwObex *obex;
 	GIOChannel *io;

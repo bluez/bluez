@@ -200,6 +200,9 @@ static void session_free(struct session_data *session)
 	if (session->conn)
 		dbus_connection_unref(session->conn);
 
+	if (session->conn_system)
+		dbus_connection_unref(session->conn_system);
+
 	sessions = g_slist_remove(sessions, session);
 
 	g_free(session->callback);
@@ -560,6 +563,12 @@ struct session_data *session_create(const char *source,
 
 	session->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
 	if (session->conn == NULL) {
+		session_free(session);
+		return NULL;
+	}
+
+	session->conn_system = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	if (session->conn_system == NULL) {
 		session_free(session);
 		return NULL;
 	}
