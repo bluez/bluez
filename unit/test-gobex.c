@@ -166,10 +166,9 @@ done:
 	g_main_loop_quit(mainloop);
 }
 
-static gboolean send_connect_rsp(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
+static gboolean recv_and_send(GIOChannel *io, void *data, gsize len,
+								GError **err)
 {
-	GError **err = user_data;
 	gsize bytes_written, rbytes;
 	char buf[255];
 	GIOStatus status;
@@ -178,22 +177,27 @@ static gboolean send_connect_rsp(GIOChannel *io, GIOCondition cond,
 	if (status != G_IO_STATUS_NORMAL) {
 		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 					"read failed with status %d", status);
-		goto failed;
+		return FALSE;
 	}
 
-	g_io_channel_write_chars(io, (gchar *) pkt_connect_rsp,
-					sizeof(pkt_connect_rsp),
-					&bytes_written, NULL);
-	if (bytes_written != sizeof(pkt_connect_rsp)) {
+	g_io_channel_write_chars(io, data, len, &bytes_written, NULL);
+	if (bytes_written != len) {
 		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 						"Unable to write to socket");
-		goto failed;
+		return FALSE;
 	}
 
-	return FALSE;
+	return TRUE;
+}
 
-failed:
-	g_main_loop_quit(mainloop);
+static gboolean send_connect_rsp(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+
+	if (!recv_and_send(io, pkt_connect_rsp, sizeof(pkt_connect_rsp), err))
+		g_main_loop_quit(mainloop);
+
 	return FALSE;
 }
 
