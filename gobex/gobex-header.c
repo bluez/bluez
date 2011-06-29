@@ -127,15 +127,20 @@ gsize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 }
 
 GObexHeader *g_obex_header_decode(const void *data, gsize len,
-				GObexDataPolicy data_policy, gsize *parsed)
+				GObexDataPolicy data_policy, gsize *parsed,
+				GError **err)
 {
 	GObexHeader *header;
 	const guint8 *ptr = data;
 	guint16 hdr_len;
 	gsize str_len;
+	GError *conv_err = NULL;
 
-	if (len < 2)
+	if (len < 2) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+						"Too short header in packet");
 		return NULL;
+	}
 
 	header = g_new0(GObexHeader, 1);
 
@@ -147,14 +152,24 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 			goto failed;
 		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = g_ntohs(hdr_len);
-		if (hdr_len > len || hdr_len < 5)
+		if (hdr_len > len || hdr_len < 5) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Invalid unicode header length");
 			goto failed;
+		}
 
 		header->v.string = g_convert((const char *) ptr, hdr_len - 5,
 						"UTF8", "UTF16BE",
-						NULL, &str_len, NULL);
-		if (header->v.string == NULL)
+						NULL, &str_len, &conv_err);
+		if (header->v.string == NULL) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Unicode conversion failed: %s",
+					conv_err->message);
+			g_error_free(conv_err);
 			goto failed;
+		}
 
 		header->vlen = (gsize) str_len;
 		header->hlen = hdr_len;
@@ -163,12 +178,20 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 
 		break;
 	case G_OBEX_HDR_TYPE_BYTES:
-		if (len < 3)
+		if (len < 3) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Too short byte array header");
 			goto failed;
+		}
 		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = g_ntohs(hdr_len);
-		if (hdr_len > len)
+		if (hdr_len > len) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Too long byte array header");
 			goto failed;
+		}
 
 		header->vlen = hdr_len - 3;
 		header->hlen = hdr_len;
@@ -182,6 +205,9 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 			header->v.extdata = ptr;
 			break;
 		default:
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_INVALID_ARGS,
+					"Invalid data policy");
 			goto failed;
 		}
 
@@ -195,8 +221,12 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		*parsed = 2;
 		break;
 	case G_OBEX_HDR_TYPE_UINT32:
-		if (len < 5)
+		if (len < 5) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Too short uint32 header");
 			goto failed;
+		}
 		header->vlen = 4;
 		header->hlen = 5;
 		ptr = get_bytes(&header->v.u32, ptr, sizeof(header->v.u32));

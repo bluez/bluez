@@ -51,7 +51,8 @@ void g_obex_packet_free(GObexPacket *pkt);
 
 GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 						gsize header_offset,
-						GObexDataPolicy data_policy);
+						GObexDataPolicy data_policy,
+						GError **err);
 gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len);
 
 #endif /* __GOBEX_PACKET_H */

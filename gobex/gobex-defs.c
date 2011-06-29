@@ -19,23 +19,11 @@
  *
  */
 
-#ifndef __GOBEX_DEFS_H
-#define __GOBEX_DEFS_H
-
 #include <glib.h>
 
-typedef enum {
-	G_OBEX_DATA_INHERIT,
-	G_OBEX_DATA_COPY,
-	G_OBEX_DATA_REF,
-} GObexDataPolicy;
+#include "gobex-defs.h"
 
-typedef enum {
-	G_OBEX_ERROR_PARSE_ERROR,
-	G_OBEX_ERROR_INVALID_ARGS,
-} GObexError;
-
-#define G_OBEX_ERROR g_obex_error_quark()
-GQuark g_obex_error_quark(void);
-
-#endif /* __GOBEX_DEFS_H */
+GQuark g_obex_error_quark(void)
+{
+	return g_quark_from_static_string("g-obex-error-quark");
+}

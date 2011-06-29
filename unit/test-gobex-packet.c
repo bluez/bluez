@@ -40,9 +40,10 @@ static void test_decode_pkt(void)
 {
 	GObexPacket *pkt;
 	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
+	GError *err = NULL;
 
-	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF);
-	g_assert(pkt != NULL);
+	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF, &err);
+	g_assert_no_error(err);
 
 	g_obex_packet_free(pkt);
 }
@@ -51,13 +52,14 @@ static void test_decode_pkt_header(void)
 {
 	GObexPacket *pkt;
 	GObexHeader *header;
+	GError *err = NULL;
 	gboolean ret;
 	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x05,
 					G_OBEX_HDR_ID_ACTION, 0xab };
 	guint8 val;
 
-	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF);
-	g_assert(pkt != NULL);
+	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF, &err);
+	g_assert_no_error(err);
 
 	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_ACTION);
 	g_assert(header != NULL);

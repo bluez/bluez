@@ -145,7 +145,8 @@ void g_obex_packet_free(GObexPacket *pkt)
 }
 
 static gboolean parse_headers(GObexPacket *pkt, const void *data, gsize len,
-						GObexDataPolicy data_policy)
+						GObexDataPolicy data_policy,
+						GError **err)
 {
 	const guint8 *buf = data;
 
@@ -153,7 +154,8 @@ static gboolean parse_headers(GObexPacket *pkt, const void *data, gsize len,
 		GObexHeader *header;
 		gsize parsed;
 
-		header = g_obex_header_decode(buf, len, data_policy, &parsed);
+		header = g_obex_header_decode(buf, len, data_policy, &parsed,
+									err);
 		if (header == NULL)
 			return FALSE;
 
@@ -174,7 +176,8 @@ static const guint8 *get_bytes(void *to, const guint8 *from, gsize count)
 
 GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 						gsize header_offset,
-						GObexDataPolicy data_policy)
+						GObexDataPolicy data_policy,
+						GError **err)
 {
 	const guint8 *buf = data;
 	guint16 packet_len;
@@ -182,15 +185,28 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	GObexPacket *pkt;
 	gboolean final;
 
-	if (len < 3)
+	if (data_policy == G_OBEX_DATA_INHERIT) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
+							"Invalid data policy");
 		return NULL;
+	}
+
+	if (len < 3) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+					"Not enough data to decode packet");
+		return NULL;
+	}
 
 	buf = get_bytes(&opcode, buf, sizeof(opcode));
 	buf = get_bytes(&packet_len, buf, sizeof(packet_len));
 
 	packet_len = g_ntohs(packet_len);
-	if (packet_len < len)
+	if (packet_len != len) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"Incorrect packet length (%u != %zu)",
+				packet_len, len);
 		return NULL;
+	}
 
 	final = (opcode & G_OBEX_PACKET_FINAL) ? TRUE : FALSE;
 	opcode &= ~G_OBEX_PACKET_FINAL;
@@ -200,20 +216,18 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	if (header_offset == 0)
 		goto headers;
 
-	if (3 + header_offset < len)
+	if (3 + header_offset < len) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+					"Too short packet");
 		goto failed;
+	}
 
-	if (data_policy == G_OBEX_DATA_INHERIT)
-		goto failed;
-
-	if (!g_obex_packet_set_data(pkt, buf, header_offset, data_policy))
-		goto failed;
-
+	g_obex_packet_set_data(pkt, buf, header_offset, data_policy);
 	buf += header_offset;
 
 headers:
 	if (!parse_headers(pkt, buf, len - (buf - (guint8 *) data),
-								data_policy))
+							data_policy, err))
 		goto failed;
 
 	return pkt;

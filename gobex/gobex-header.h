@@ -72,7 +72,8 @@ guint16 g_obex_header_get_length(GObexHeader *header);
 
 gsize g_obex_header_encode(GObexHeader *header, void *hdr_ptr, gsize buf_len);
 GObexHeader *g_obex_header_decode(const void *data, gsize len,
-				GObexDataPolicy data_policy, gsize *parsed);
+				GObexDataPolicy data_policy, gsize *parsed,
+				GError **err);
 void g_obex_header_free(GObexHeader *header);
 
 #endif /* __GOBEX_HEADER_H */

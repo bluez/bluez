@@ -273,21 +273,24 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
 }
 
-static void handle_response(GObex *obex, GObexPacket *rsp)
+static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 {
 	struct pending_pkt *p = obex->pending_req;
 
-	if (g_obex_packet_get_operation(p->pkt, NULL) == G_OBEX_OP_CONNECT)
-		parse_connect_data(obex, rsp);
+	if (rsp != NULL) {
+		guint8 op = g_obex_packet_get_operation(p->pkt, NULL);
+		if (op == G_OBEX_OP_CONNECT)
+			parse_connect_data(obex, rsp);
+	}
 
 	if (p->rsp_func)
-		p->rsp_func(obex, NULL, rsp, p->rsp_data);
+		p->rsp_func(obex, err, rsp, p->rsp_data);
 
 	pending_pkt_free(p);
 	obex->pending_req = NULL;
 }
 
-static void handle_request(GObex *obex, GObexPacket *req)
+static void handle_request(GObex *obex, GError *err, GObexPacket *req)
 {
 	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
 		parse_connect_data(obex, req);
@@ -296,12 +299,14 @@ static void handle_request(GObex *obex, GObexPacket *req)
 		obex->req_func(obex, req, obex->req_func_data);
 }
 
-static gboolean g_obex_handle_packet(GObex *obex, GObexPacket *pkt)
+static gboolean g_obex_handle_packet(GObex *obex, GError *err, GObexPacket *pkt)
 {
 	if (obex->pending_req)
-		handle_response(obex, pkt);
-	else
-		handle_request(obex, pkt);
+		handle_response(obex, err, pkt);
+	else if (pkt != NULL)
+		handle_request(obex, err, pkt);
+
+	/* FIXME: Application callback needed for err != NULL? */
 
 	return TRUE;
 }
@@ -361,6 +366,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	GObex *obex = user_data;
 	GObexPacket *pkt;
 	ssize_t header_offset;
+	GError *err = NULL;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -387,13 +393,12 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 		goto failed;
 
 	pkt = g_obex_packet_decode(obex->rx_buf, obex->rx_data, header_offset,
-							G_OBEX_DATA_REF);
-	if (pkt == NULL) {
-		/* FIXME: Handle decoding error */
-	} else {
-		g_obex_handle_packet(obex, pkt);
+							G_OBEX_DATA_REF, &err);
+
+	g_obex_handle_packet(obex, err, pkt);
+
+	if (pkt != NULL)
 		g_obex_packet_free(pkt);
-	}
 
 	obex->rx_data = 0;
 
