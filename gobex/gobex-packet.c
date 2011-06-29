@@ -160,6 +160,7 @@ static gboolean parse_headers(GObexPacket *pkt, const void *data, gsize len,
 			return FALSE;
 
 		pkt->headers = g_slist_append(pkt->headers, header);
+		pkt->hlen += parsed;
 
 		len -= parsed;
 		buf += parsed;
