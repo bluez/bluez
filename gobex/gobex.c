@@ -54,6 +54,9 @@ struct _GObex {
 	GObexRequestFunc req_func;
 	gpointer req_func_data;
 
+	GObexDisconnectFunc disconn_func;
+	gpointer disconn_func_data;
+
 	struct pending_pkt *pending_req;
 };
 
@@ -247,6 +250,13 @@ void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 	obex->req_func_data = user_data;
 }
 
+void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
+							gpointer user_data)
+{
+	obex->disconn_func = func;
+	obex->disconn_func_data = user_data;
+}
+
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 {
 	const struct connect_data *data;
@@ -393,6 +403,10 @@ failed:
 	g_io_channel_unref(obex->io);
 	obex->io = NULL;
 	obex->io_source = 0;
+
+	if (obex->disconn_func)
+		obex->disconn_func(obex, obex->disconn_func_data);
+
 	return FALSE;
 }
 
@@ -455,7 +469,8 @@ void g_obex_unref(GObex *obex)
 	g_queue_foreach(obex->tx_queue, (GFunc) pending_pkt_free, NULL);
 	g_queue_free(obex->tx_queue);
 
-	g_io_channel_unref(obex->io);
+	if (obex->io != NULL)
+		g_io_channel_unref(obex->io);
 
 	if (obex->io_source > 0)
 		g_source_remove(obex->io_source);

@@ -37,6 +37,7 @@ typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
 							gpointer user_data);
 typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data);
+typedef void (*GObexDisconnectFunc) (GObex *obex, gpointer user_data);
 
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt);
 
@@ -45,6 +46,9 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
 gboolean g_obex_cancel_req(GObex *obex, guint req_id);
 
 void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
+							gpointer user_data);
+
+void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
 							gpointer user_data);
 
 GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type);

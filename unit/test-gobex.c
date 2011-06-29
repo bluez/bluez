@@ -328,6 +328,40 @@ static void test_recv_connect_stream(void)
 	g_assert_no_error(gerr);
 }
 
+static void disconnected(GObex *obex, gpointer user_data)
+{
+	g_main_loop_quit(mainloop);
+}
+
+static void test_disconnect(void)
+{
+	GError *gerr = NULL;
+	guint timer_id;
+	GObex *obex;
+	GIOChannel *io;
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	g_obex_set_disconnect_function(obex, disconnected, NULL);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	g_io_channel_shutdown(io, FALSE, NULL);
+
+	g_main_loop_run(mainloop);
+
+	g_assert_no_error(gerr);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_obex_unref(obex);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+}
+
 static void test_ref_unref(void)
 {
 	GObex *obex;
@@ -369,6 +403,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/null_io", test_null_io);
 	g_test_add_func("/gobex/basic", test_basic);
 	g_test_add_func("/gobex/ref_unref", test_ref_unref);
+
+	g_test_add_func("/gobex/test_disconnect", test_disconnect);
 
 	g_test_add_func("/gobex/test_recv_connect_stream",
 						test_recv_connect_stream);
