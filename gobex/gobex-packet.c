@@ -194,7 +194,7 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 		return NULL;
 	}
 
-	if (len < 3) {
+	if (len < 3 + header_offset) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 					"Not enough data to decode packet");
 		return NULL;
@@ -219,17 +219,11 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	if (header_offset == 0)
 		goto headers;
 
-	if (3 + header_offset < len) {
-		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
-					"Too short packet");
-		goto failed;
-	}
-
 	g_obex_packet_set_data(pkt, buf, header_offset, data_policy);
 	buf += header_offset;
 
 headers:
-	if (!parse_headers(pkt, buf, len - (buf - (guint8 *) data),
+	if (!parse_headers(pkt, buf, len - (3 + header_offset),
 							data_policy, err))
 		goto failed;
 
