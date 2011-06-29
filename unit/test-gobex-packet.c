@@ -25,6 +25,10 @@
 
 #include "util.h"
 
+static uint8_t pkt_put_action[] = { G_OBEX_OP_PUT, 0x00, 0x05,
+					G_OBEX_HDR_ID_ACTION, 0xab };
+static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
+
 static void test_pkt(void)
 {
 	GObexPacket *pkt;
@@ -39,10 +43,10 @@ static void test_pkt(void)
 static void test_decode_pkt(void)
 {
 	GObexPacket *pkt;
-	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 	GError *err = NULL;
 
-	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF, &err);
+	pkt = g_obex_packet_decode(pkt_put, sizeof(pkt_put), 0,
+						G_OBEX_DATA_REF, &err);
 	g_assert_no_error(err);
 
 	g_obex_packet_free(pkt);
@@ -54,11 +58,10 @@ static void test_decode_pkt_header(void)
 	GObexHeader *header;
 	GError *err = NULL;
 	gboolean ret;
-	uint8_t buf[] = { G_OBEX_OP_PUT, 0x00, 0x05,
-					G_OBEX_HDR_ID_ACTION, 0xab };
 	guint8 val;
 
-	pkt = g_obex_packet_decode(buf, sizeof(buf), 0, G_OBEX_DATA_REF, &err);
+	pkt = g_obex_packet_decode(pkt_put_action, sizeof(pkt_put_action),
+						0, G_OBEX_DATA_REF, &err);
 	g_assert_no_error(err);
 
 	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_ACTION);
@@ -71,6 +74,28 @@ static void test_decode_pkt_header(void)
 	g_obex_packet_free(pkt);
 }
 
+static void test_decode_encode(void)
+{
+	GObexPacket *pkt;
+	GError *err = NULL;
+	uint8_t buf[255];
+	gssize len;
+
+	pkt = g_obex_packet_decode(pkt_put_action, sizeof(pkt_put_action),
+						0, G_OBEX_DATA_REF, &err);
+	g_assert_no_error(err);
+
+	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
+	if (len < 0) {
+		g_printerr("Encoding failed: %s\n", g_strerror(-len));
+		g_assert_not_reached();
+	}
+
+	assert_memequal(pkt_put_action, sizeof(pkt_put_action), buf, len);
+
+	g_obex_packet_free(pkt);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -79,6 +104,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
 	g_test_add_func("/gobex/test_decode_pkt_header",
 						test_decode_pkt_header);
+
+	g_test_add_func("/gobex/test_encode_pkt", test_decode_encode);
 
 	g_test_run();
 
