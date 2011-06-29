@@ -156,8 +156,7 @@ static void browse_request_free(struct browse_req *req)
 		dbus_connection_unref(req->conn);
 	if (req->device)
 		btd_device_unref(req->device);
-	g_slist_foreach(req->profiles_added, (GFunc) g_free, NULL);
-	g_slist_free(req->profiles_added);
+	g_slist_free_full(req->profiles_added, g_free);
 	g_slist_free(req->profiles_removed);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
@@ -198,14 +197,9 @@ static void device_free(gpointer user_data)
 				agent_is_busy(agent, device->authr)))
 		agent_cancel(agent);
 
-	g_slist_foreach(device->services, (GFunc) g_free, NULL);
-	g_slist_free(device->services);
-
-	g_slist_foreach(device->uuids, (GFunc) g_free, NULL);
-	g_slist_free(device->uuids);
-
-	g_slist_foreach(device->primaries, (GFunc) g_free, NULL);
-	g_slist_free(device->primaries);
+	g_slist_free_full(device->services, g_free);
+	g_slist_free_full(device->uuids, g_free);
+	g_slist_free_full(device->primaries, g_free);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,

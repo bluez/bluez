@@ -351,8 +351,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 			status = a->read_cb(a, a->cb_user_data);
 
 		if (status) {
-			g_slist_foreach(groups, (GFunc) g_free, NULL);
-			g_slist_free(groups);
+			g_slist_free_full(groups, g_free);
 			return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ,
 						a->handle, status, pdu, len);
 		}
@@ -399,8 +398,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 	length = enc_read_by_grp_resp(adl, pdu, len);
 
 	att_data_list_free(adl);
-	g_slist_foreach(groups, (GFunc) g_free, NULL);
-	g_slist_free(groups);
+	g_slist_free_full(groups, g_free);
 
 	return length;
 }
@@ -614,8 +612,7 @@ static int find_by_type(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 
 	len = enc_find_by_type_resp(matches, opdu, mtu);
 
-	g_slist_foreach(matches, (GFunc) g_free, NULL);
-	g_slist_free(matches);
+	g_slist_free_full(matches, g_free);
 
 	return len;
 }
@@ -786,8 +783,7 @@ static void channel_disconnect(void *user_data)
 
 	g_slist_free(channel->notify);
 	g_slist_free(channel->indicate);
-	g_slist_foreach(channel->configs, (GFunc) g_free, NULL);
-	g_slist_free(channel->configs);
+	g_slist_free_full(channel->configs, g_free);
 
 	g_free(channel);
 }
@@ -1132,8 +1128,7 @@ void attrib_server_exit(void)
 {
 	GSList *l;
 
-	g_slist_foreach(database, (GFunc) g_free, NULL);
-	g_slist_free(database);
+	g_slist_free_full(database, g_free);
 
 	if (l2cap_io) {
 		g_io_channel_unref(l2cap_io);
@@ -1150,8 +1145,7 @@ void attrib_server_exit(void)
 
 		g_slist_free(channel->notify);
 		g_slist_free(channel->indicate);
-		g_slist_foreach(channel->configs, (GFunc) g_free, NULL);
-		g_slist_free(channel->configs);
+		g_slist_free_full(channel->configs, g_free);
 
 		g_attrib_unref(channel->attrib);
 		g_free(channel);

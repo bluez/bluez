@@ -295,8 +295,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 
 void manager_cleanup(DBusConnection *conn, const char *path)
 {
-	g_slist_foreach(adapters, (GFunc) manager_remove_adapter, NULL);
-	g_slist_free(adapters);
+	g_slist_free_full(adapters, (GDestroyNotify) manager_remove_adapter);
 
 	g_dbus_unregister_interface(conn, "/", MANAGER_INTERFACE);
 }

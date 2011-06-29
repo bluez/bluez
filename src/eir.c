@@ -47,8 +47,7 @@
 
 void eir_data_free(struct eir_data *eir)
 {
-	g_slist_foreach(eir->services, (GFunc) g_free, NULL);
-	g_slist_free(eir->services);
+	g_slist_free_full(eir->services, g_free);
 	g_free(eir->name);
 }
 

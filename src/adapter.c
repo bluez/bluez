@@ -173,12 +173,13 @@ static int found_device_cmp(const struct remote_dev_info *d1,
 	return 0;
 }
 
-static void dev_info_free(struct remote_dev_info *dev)
+static void dev_info_free(void *data)
 {
+	struct remote_dev_info *dev = data;
+
 	g_free(dev->name);
 	g_free(dev->alias);
-	g_slist_foreach(dev->services, (GFunc) g_free, NULL);
-	g_slist_free(dev->services);
+	g_slist_free_full(dev->services, g_free);
 	g_strfreev(dev->uuids);
 	g_free(dev);
 }
@@ -698,8 +699,10 @@ static void session_remove(struct session_req *req)
 	}
 }
 
-static void session_free(struct session_req *req)
+static void session_free(void *data)
 {
+	struct session_req *req = data;
+
 	if (req->id)
 		g_dbus_remove_watch(req->conn, req->id);
 
@@ -1181,8 +1184,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	if (adapter->disc_sessions)
 		goto done;
 
-	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
-	g_slist_free(adapter->found_devices);
+	g_slist_free_full(adapter->found_devices, dev_info_free);
 	adapter->found_devices = NULL;
 
 	g_slist_free(adapter->oor_devices);
@@ -1879,8 +1881,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	if (list)
 		device_register_services(connection, device, list, ATT_PSM);
 
-	g_slist_foreach(uuids, (GFunc) g_free, NULL);
-	g_slist_free(uuids);
+	g_slist_free_full(uuids, g_free);
 }
 
 struct adapter_keys {
@@ -2081,8 +2082,7 @@ static void load_devices(struct btd_adapter *adapter)
 	if (err < 0) {
 		error("Unable to load keys to adapter_ops: %s (%d)",
 							strerror(-err), -err);
-		g_slist_foreach(keys.keys, (GFunc) g_free, NULL);
-		g_slist_free(keys.keys);
+		g_slist_free_full(keys.keys, g_free);
 	}
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "blocked");
@@ -2166,8 +2166,7 @@ static void load_connections(struct btd_adapter *adapter)
 			adapter_add_connection(adapter, device);
 	}
 
-	g_slist_foreach(conns, (GFunc) g_free, NULL);
-	g_slist_free(conns);
+	g_slist_free_full(conns, g_free);
 }
 
 static int get_discoverable_timeout(const char *src)
@@ -2222,8 +2221,7 @@ static void emit_device_disappeared(gpointer data, gpointer user_data)
 static void update_oor_devices(struct btd_adapter *adapter)
 {
 	g_slist_foreach(adapter->oor_devices, emit_device_disappeared, adapter);
-	g_slist_foreach(adapter->oor_devices, (GFunc) dev_info_free, NULL);
-	g_slist_free(adapter->oor_devices);
+	g_slist_free_full(adapter->oor_devices, dev_info_free);
 	adapter->oor_devices =  g_slist_copy(adapter->found_devices);
 }
 
@@ -2400,9 +2398,7 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	stop_discovery(adapter);
 
 	if (adapter->disc_sessions) {
-		g_slist_foreach(adapter->disc_sessions, (GFunc) session_free,
-				NULL);
-		g_slist_free(adapter->disc_sessions);
+		g_slist_free_full(adapter->disc_sessions, session_free);
 		adapter->disc_sessions = NULL;
 	}
 
@@ -2467,8 +2463,7 @@ static void adapter_free(gpointer user_data)
 
 	sdp_list_free(adapter->services, NULL);
 
-	g_slist_foreach(adapter->found_devices, (GFunc) dev_info_free, NULL);
-	g_slist_free(adapter->found_devices);
+	g_slist_free_full(adapter->found_devices, dev_info_free);
 
 	g_slist_free(adapter->oor_devices);
 
