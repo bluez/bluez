@@ -163,8 +163,10 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 			goto done;
 
 		/* Can't send a request while there's a pending one */
-		if (obex->pending_req && p->id > 0)
+		if (obex->pending_req && p->id > 0) {
+			g_queue_push_head(obex->tx_queue, p);
 			goto done;
+		}
 
 		len = g_obex_packet_encode(p->pkt, obex->tx_buf, obex->tx_mtu);
 		if (len < 0) {
@@ -193,10 +195,22 @@ done:
 	return FALSE;
 }
 
+static void enable_tx(GObex *obex)
+{
+	GIOCondition cond;
+
+	if (obex->write_source > 0)
+		return;
+
+	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	obex->write_source = g_io_add_watch(obex->io, cond, write_data, obex);
+
+	return;
+}
+
 static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
 								GError **err)
 {
-	GIOCondition cond;
 
 	if (obex->io == NULL) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
@@ -209,8 +223,10 @@ static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
 	if (g_queue_get_length(obex->tx_queue) > 1)
 		return TRUE;
 
-	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	obex->write_source = g_io_add_watch(obex->io, cond, write_data, obex);
+	if (p->id > 0 && obex->pending_req != NULL)
+		return TRUE;
+
+	enable_tx(obex);
 
 	return TRUE;
 }
@@ -307,6 +323,9 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 
 	pending_pkt_free(p);
 	obex->pending_req = NULL;
+
+	if (g_queue_get_length(obex->tx_queue) > 0)
+		enable_tx(obex);
 }
 
 static void handle_request(GObex *obex, GError *err, GObexPacket *req)
