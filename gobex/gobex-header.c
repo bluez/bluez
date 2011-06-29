@@ -34,8 +34,8 @@
 struct _GObexHeader {
 	guint8 id;
 	gboolean extdata;
-	size_t vlen;			/* Length of value */
-	size_t hlen;			/* Length of full encoded header */
+	gsize vlen;			/* Length of value */
+	gsize hlen;			/* Length of full encoded header */
 	union {
 		char *string;		/* UTF-8 converted from UTF-16 */
 		guint8 *data;		/* Own buffer */
@@ -68,19 +68,19 @@ static glong utf8_to_utf16(gunichar2 **utf16, const char *utf8) {
 	return utf16_len;
 }
 
-static guint8 *put_bytes(guint8 *to, const void *from, size_t count)
+static guint8 *put_bytes(guint8 *to, const void *from, gsize count)
 {
 	memcpy(to, from, count);
 	return (to + count);
 }
 
-static const guint8 *get_bytes(void *to, const guint8 *from, size_t count)
+static const guint8 *get_bytes(void *to, const guint8 *from, gsize count)
 {
 	memcpy(to, from, count);
 	return (from + count);
 }
 
-size_t g_obex_header_encode(GObexHeader *header, void *buf, size_t buf_len)
+gsize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 {
 	guint8 *ptr = buf;
 	guint16 u16;
@@ -126,13 +126,13 @@ size_t g_obex_header_encode(GObexHeader *header, void *buf, size_t buf_len)
 	return header->hlen;
 }
 
-GObexHeader *g_obex_header_decode(const void *data, size_t len,
-				GObexDataPolicy data_policy, size_t *parsed)
+GObexHeader *g_obex_header_decode(const void *data, gsize len,
+				GObexDataPolicy data_policy, gsize *parsed)
 {
 	GObexHeader *header;
 	const guint8 *ptr = data;
 	guint16 hdr_len;
-	size_t str_len;
+	gsize str_len;
 
 	if (len < 2)
 		return NULL;
@@ -156,7 +156,7 @@ GObexHeader *g_obex_header_decode(const void *data, size_t len,
 		if (header->v.string == NULL)
 			goto failed;
 
-		header->vlen = (size_t) str_len;
+		header->vlen = (gsize) str_len;
 		header->hlen = hdr_len;
 
 		*parsed = hdr_len;
@@ -245,7 +245,7 @@ gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
 }
 
 gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
-								size_t *len)
+								gsize *len)
 {
 	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_BYTES)
 		return FALSE;
@@ -283,7 +283,7 @@ gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val)
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 {
 	GObexHeader *header;
-	size_t len;
+	gsize len;
 
 	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UNICODE)
 		return NULL;
@@ -301,7 +301,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	return header;
 }
 
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, size_t len,
+GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
 						GObexDataPolicy data_policy)
 {
 	GObexHeader *header;

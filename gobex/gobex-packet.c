@@ -34,9 +34,9 @@ struct _GObexPacket {
 		void *buf;		/* Non-header data */
 		const void *buf_ref;	/* Reference to non-header data */
 	} data;
-	size_t data_len;
+	gsize data_len;
 
-	size_t hlen;		/* Length of all encoded headers */
+	gsize hlen;		/* Length of all encoded headers */
 	GSList *headers;
 };
 
@@ -70,7 +70,7 @@ gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 	return TRUE;
 }
 
-const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len)
+const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len)
 {
 	if (pkt->data_len == 0) {
 		*len = 0;
@@ -90,7 +90,7 @@ const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len)
 	g_assert_not_reached();
 }
 
-gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
+gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy)
 {
 	if (pkt->data.buf || pkt->data.buf_ref)
@@ -144,14 +144,14 @@ void g_obex_packet_free(GObexPacket *pkt)
 	g_free(pkt);
 }
 
-static gboolean parse_headers(GObexPacket *pkt, const void *data, size_t len,
+static gboolean parse_headers(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy)
 {
 	const guint8 *buf = data;
 
 	while (len > 0) {
 		GObexHeader *header;
-		size_t parsed;
+		gsize parsed;
 
 		header = g_obex_header_decode(buf, len, data_policy, &parsed);
 		if (header == NULL)
@@ -166,14 +166,14 @@ static gboolean parse_headers(GObexPacket *pkt, const void *data, size_t len,
 	return TRUE;
 }
 
-static const guint8 *get_bytes(void *to, const guint8 *from, size_t count)
+static const guint8 *get_bytes(void *to, const guint8 *from, gsize count)
 {
 	memcpy(to, from, count);
 	return (from + count);
 }
 
-GObexPacket *g_obex_packet_decode(const void *data, size_t len,
-						size_t header_offset,
+GObexPacket *g_obex_packet_decode(const void *data, gsize len,
+						gsize header_offset,
 						GObexDataPolicy data_policy)
 {
 	const guint8 *buf = data;
@@ -223,9 +223,9 @@ failed:
 	return NULL;
 }
 
-ssize_t g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, size_t len)
+gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 {
-	size_t count;
+	gsize count;
 	guint16 pkt_len, u16;
 	GSList *l;
 

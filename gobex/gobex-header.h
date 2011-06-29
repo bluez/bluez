@@ -57,12 +57,12 @@ typedef struct _GObexHeader GObexHeader;
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
 gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
-								size_t *len);
+								gsize *len);
 gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val);
 gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
 
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, size_t len,
+GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
 						GObexDataPolicy data_policy);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
@@ -70,9 +70,9 @@ GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
 guint8 g_obex_header_get_id(GObexHeader *header);
 guint16 g_obex_header_get_length(GObexHeader *header);
 
-size_t g_obex_header_encode(GObexHeader *header, void *hdr_ptr, size_t buf_len);
-GObexHeader *g_obex_header_decode(const void *data, size_t len,
-				GObexDataPolicy data_policy, size_t *parsed);
+gsize g_obex_header_encode(GObexHeader *header, void *hdr_ptr, gsize buf_len);
+GObexHeader *g_obex_header_decode(const void *data, gsize len,
+				GObexDataPolicy data_policy, gsize *parsed);
 void g_obex_header_free(GObexHeader *header);
 
 #endif /* __GOBEX_HEADER_H */

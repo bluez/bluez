@@ -22,8 +22,6 @@
 #ifndef __GOBEX_PACKET_H
 #define __GOBEX_PACKET_H
 
-#include <unistd.h>
-
 #include <glib.h>
 
 #include <gobex/gobex-defs.h>
@@ -45,15 +43,15 @@ typedef struct _GObexPacket GObexPacket;
 GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
-gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, size_t len,
+gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy);
-const void *g_obex_packet_get_data(GObexPacket *pkt, size_t *len);
+const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len);
 GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final);
 void g_obex_packet_free(GObexPacket *pkt);
 
-GObexPacket *g_obex_packet_decode(const void *data, size_t len,
-						size_t header_offset,
+GObexPacket *g_obex_packet_decode(const void *data, gsize len,
+						gsize header_offset,
 						GObexDataPolicy data_policy);
-ssize_t g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, size_t len);
+gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len);
 
 #endif /* __GOBEX_PACKET_H */
