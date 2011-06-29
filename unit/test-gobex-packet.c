@@ -25,6 +25,10 @@
 
 #include "util.h"
 
+static uint8_t pkt_connect[] = { G_OBEX_OP_CONNECT, 0x00, 0x0c,
+					0x10, 0x00, 0x10, 0x00,
+					G_OBEX_HDR_ID_TARGET,
+						0x00, 0x05, 0xab, 0xcd };
 static uint8_t pkt_put_action[] = { G_OBEX_OP_PUT, 0x00, 0x05,
 					G_OBEX_HDR_ID_ACTION, 0xab };
 static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
@@ -76,6 +80,31 @@ static void test_decode_pkt_header(void)
 	g_obex_packet_free(pkt);
 }
 
+static void test_decode_connect(void)
+{
+	GObexPacket *pkt;
+	GObexHeader *header;
+	GError *err = NULL;
+	gboolean ret;
+	const guint8 *buf;
+	guint8 target[] = { 0xab, 0xcd };
+	gsize len;
+
+	pkt = g_obex_packet_decode(pkt_connect, sizeof(pkt_connect),
+						4, G_OBEX_DATA_REF, &err);
+	g_assert_no_error(err);
+	g_assert(pkt != NULL);
+
+	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_TARGET);
+	g_assert(header != NULL);
+
+	ret = g_obex_header_get_bytes(header, &buf, &len);
+	g_assert(ret == TRUE);
+	assert_memequal(target, sizeof(target), buf, len);
+
+	g_obex_packet_free(pkt);
+}
+
 static void test_decode_nval(void)
 {
 	GObexPacket *pkt;
@@ -119,6 +148,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
 	g_test_add_func("/gobex/test_decode_pkt_header",
 						test_decode_pkt_header);
+	g_test_add_func("/gobex/test_decode_connect",
+						test_decode_connect);
 
 	g_test_add_func("/gobex/test_decode_nval", test_decode_nval);
 
