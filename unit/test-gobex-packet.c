@@ -29,6 +29,8 @@ static uint8_t pkt_put_action[] = { G_OBEX_OP_PUT, 0x00, 0x05,
 					G_OBEX_HDR_ID_ACTION, 0xab };
 static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
+static uint8_t pkt_nval_len[] = { G_OBEX_OP_PUT, 0xab, 0xcd, 0x12 };
+
 static void test_pkt(void)
 {
 	GObexPacket *pkt;
@@ -74,6 +76,19 @@ static void test_decode_pkt_header(void)
 	g_obex_packet_free(pkt);
 }
 
+static void test_decode_nval(void)
+{
+	GObexPacket *pkt;
+	GError *err = NULL;
+
+	pkt = g_obex_packet_decode(pkt_nval_len, sizeof(pkt_nval_len), 0,
+						G_OBEX_DATA_REF, &err);
+	g_assert_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR);
+	g_assert(pkt == NULL);
+
+	g_error_free(err);
+}
+
 static void test_decode_encode(void)
 {
 	GObexPacket *pkt;
@@ -104,6 +119,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_decode_pkt", test_decode_pkt);
 	g_test_add_func("/gobex/test_decode_pkt_header",
 						test_decode_pkt_header);
+
+	g_test_add_func("/gobex/test_decode_nval", test_decode_nval);
 
 	g_test_add_func("/gobex/test_encode_pkt", test_decode_encode);
 
