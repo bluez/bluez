@@ -59,8 +59,7 @@ static void discover_primary_free(struct discover_primary *dp)
 
 static void discover_char_free(struct discover_char *dc)
 {
-	g_slist_foreach(dc->characteristics, (GFunc) g_free, NULL);
-	g_slist_free(dc->characteristics);
+	g_slist_free_full(dc->characteristics, g_free);
 	g_attrib_unref(dc->attrib);
 	g_free(dc->uuid);
 	g_free(dc);

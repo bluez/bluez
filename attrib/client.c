@@ -140,8 +140,7 @@ static void primary_free(void *user_data)
 		g_dbus_remove_watch(prim->gatt->conn, watcher->id);
 	}
 
-	g_slist_foreach(prim->chars, (GFunc) characteristic_free, NULL);
-	g_slist_free(prim->chars);
+	g_slist_free_full(prim->chars, characteristic_free);
 	g_free(prim->path);
 	g_free(prim);
 }
@@ -150,8 +149,7 @@ static void gatt_service_free(void *user_data)
 {
 	struct gatt_service *gatt = user_data;
 
-	g_slist_foreach(gatt->primary, (GFunc) primary_free, NULL);
-	g_slist_free(gatt->primary);
+	g_slist_free_full(gatt->primary, primary_free);
 	g_attrib_unref(gatt->attrib);
 	g_free(gatt->path);
 	btd_device_unref(gatt->dev);
