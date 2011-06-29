@@ -556,6 +556,9 @@ void g_obex_unref(GObex *obex)
 	if (obex->io_source > 0)
 		g_source_remove(obex->io_source);
 
+	if (obex->write_source > 0)
+		g_source_remove(obex->write_source);
+
 	g_free(obex->rx_buf);
 	g_free(obex->tx_buf);
 
