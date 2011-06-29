@@ -39,6 +39,8 @@ static uint8_t pkt_connect_req[] = { G_OBEX_OP_CONNECT | FINAL_BIT,
 					0x00, 0x07, 0x10, 0x00, 0x10, 0x00 };
 static uint8_t pkt_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x07,
 					0x10, 0x00, 0x10, 0x00 };
+static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
+					0x10, 0x00, };
 
 static gboolean test_timeout(gpointer user_data)
 {
@@ -166,6 +168,18 @@ done:
 	g_main_loop_quit(mainloop);
 }
 
+static void nval_connect_rsp(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	GError **test_err = user_data;
+
+	if (!g_error_matches(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR))
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Did not get expected parse error");
+
+	g_main_loop_quit(mainloop);
+}
+
 static gboolean recv_and_send(GIOChannel *io, void *data, gsize len,
 								GError **err)
 {
@@ -201,7 +215,19 @@ static gboolean send_connect_rsp(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void test_send_req_stream(void)
+static gboolean send_nval_connect_rsp(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+
+	if (!recv_and_send(io, pkt_nval_connect_rsp,
+					sizeof(pkt_nval_connect_rsp), err))
+		g_main_loop_quit(mainloop);
+
+	return FALSE;
+}
+
+static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 	GError *gerr = NULL;
@@ -219,11 +245,11 @@ static void test_send_req_stream(void)
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
 							G_OBEX_DATA_REF);
 
-	g_obex_send_req(obex, req, connect_rsp, &gerr, &gerr);
+	g_obex_send_req(obex, req, rsp_func, &gerr, &gerr);
 	g_assert_no_error(gerr);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, send_connect_rsp, &gerr);
+	io_id = g_io_add_watch(io, cond, send_rsp_func, &gerr);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -240,6 +266,16 @@ static void test_send_req_stream(void)
 	g_obex_unref(obex);
 
 	g_assert_no_error(gerr);
+}
+
+static void test_send_connect_req_stream(void)
+{
+	send_connect(connect_rsp, send_connect_rsp);
+}
+
+static void test_send_nval_connect_req_stream(void)
+{
+	send_connect(nval_connect_rsp, send_nval_connect_rsp);
 }
 
 static void test_send_connect_stream(void)
@@ -416,8 +452,10 @@ int main(int argc, char *argv[])
 						test_recv_connect_stream);
 	g_test_add_func("/gobex/test_send_connect_stream",
 						test_send_connect_stream);
-	g_test_add_func("/gobex/test_send_req_stream",
-						test_send_req_stream);
+	g_test_add_func("/gobex/test_send_connect_req_stream",
+					test_send_connect_req_stream);
+	g_test_add_func("/gobex/test_send_nval_connect_req_stream",
+					test_send_nval_connect_req_stream);
 
 	g_test_run();
 
