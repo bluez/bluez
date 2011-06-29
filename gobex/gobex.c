@@ -63,11 +63,13 @@ struct _GObex {
 
 struct pending_pkt {
 	guint id;
+	GObex *obex;
 	GObexPacket *pkt;
 	guint timeout;
 	guint timeout_id;
 	GObexResponseFunc rsp_func;
 	gpointer rsp_data;
+	gboolean cancelled;
 };
 
 struct connect_data {
@@ -118,6 +120,8 @@ static ssize_t rsp_header_offset(guint8 opcode)
 
 static void pending_pkt_free(struct pending_pkt *p)
 {
+	if (p->obex != NULL)
+		g_obex_unref(p->obex);
 	g_obex_packet_free(p->pkt);
 	g_free(p);
 }
@@ -244,15 +248,13 @@ static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
 		return FALSE;
 	}
 
-	g_queue_push_tail(obex->tx_queue, p);
+	if (g_obex_packet_get_operation(p->pkt, NULL) == G_OBEX_OP_ABORT)
+		g_queue_push_head(obex->tx_queue, p);
+	else
+		g_queue_push_tail(obex->tx_queue, p);
 
-	if (g_queue_get_length(obex->tx_queue) > 1)
-		return TRUE;
-
-	if (p->id > 0 && obex->pending_req != NULL)
-		return TRUE;
-
-	enable_tx(obex);
+	if (obex->pending_req == NULL || p->id == 0)
+		enable_tx(obex);
 
 	return TRUE;
 }
@@ -305,8 +307,80 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	return p->id;
 }
 
-gboolean g_obex_cancel_req(GObex *obex, guint req_id)
+static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
 {
+	const struct pending_pkt *p = a;
+	guint id = GPOINTER_TO_INT(b);
+
+	return (p->id - id);
+}
+
+static gboolean pending_req_abort(GObex *obex, GError **err)
+{
+	GObexPacket *pkt;
+
+	if (obex->pending_req->cancelled)
+		return TRUE;
+
+	obex->pending_req->cancelled = TRUE;
+
+	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE);
+
+	return g_obex_send(obex, pkt, err);
+}
+
+static gboolean cancel_complete(gpointer user_data)
+{
+	struct pending_pkt *p = user_data;
+	GObex *obex = p->obex;
+	GError *err;
+
+	g_assert(p->rsp_func != NULL);
+
+	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
+					"The request was cancelled");
+	p->rsp_func(obex, err, NULL, p->rsp_data);
+
+	g_error_free(err);
+
+	pending_pkt_free(p);
+
+	return FALSE;
+}
+
+gboolean g_obex_cancel_req(GObex *obex, guint req_id, gboolean remove_callback)
+{
+	GList *match;
+	struct pending_pkt *p;
+
+	if (obex->pending_req && obex->pending_req->id == req_id) {
+		if (!pending_req_abort(obex, NULL)) {
+			p = obex->pending_req;
+			obex->pending_req = NULL;
+			goto immediate_completion;
+		}
+
+		return TRUE;
+	}
+
+	match = g_queue_find_custom(obex->tx_queue, GINT_TO_POINTER(req_id),
+							pending_pkt_cmp);
+	if (match == NULL)
+		return FALSE;
+
+	p = match->data;
+
+	g_queue_delete_link(obex->tx_queue, match);
+
+immediate_completion:
+	p->cancelled = TRUE;
+	p->obex = g_obex_ref(obex);
+
+	if (remove_callback || p->rsp_func == NULL)
+		pending_pkt_free(p);
+	else
+		g_idle_add(cancel_complete, p);
+
 	return TRUE;
 }
 
@@ -343,8 +417,15 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 			parse_connect_data(obex, rsp);
 	}
 
+	if (p->cancelled)
+		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
+					"The operation was cancelled");
+
 	if (p->rsp_func)
 		p->rsp_func(obex, err, rsp, p->rsp_data);
+
+	if (p->cancelled)
+		g_error_free(err);
 
 	pending_pkt_free(p);
 	obex->pending_req = NULL;

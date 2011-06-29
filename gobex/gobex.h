@@ -43,7 +43,8 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err);
 guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err);
-gboolean g_obex_cancel_req(GObex *obex, guint req_id);
+gboolean g_obex_cancel_req(GObex *obex, guint req_id,
+						gboolean remove_callback);
 
 void g_obex_set_event_function(GObex *obex, GObexEventFunc func,
 							gpointer user_data);
