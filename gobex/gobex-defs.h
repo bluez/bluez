@@ -33,6 +33,7 @@ typedef enum {
 typedef enum {
 	G_OBEX_ERROR_PARSE_ERROR,
 	G_OBEX_ERROR_INVALID_ARGS,
+	G_OBEX_ERROR_DISCONNECTED,
 } GObexError;
 
 #define G_OBEX_ERROR g_obex_error_quark()

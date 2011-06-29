@@ -215,7 +215,8 @@ static void test_send_req_stream(void)
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
 							G_OBEX_DATA_REF);
 
-	g_obex_send_req(obex, req, connect_rsp, &gerr);
+	g_obex_send_req(obex, req, connect_rsp, &gerr, &gerr);
+	g_assert_no_error(gerr);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	io_id = g_io_add_watch(io, cond, send_connect_rsp, &gerr);
@@ -254,7 +255,8 @@ static void test_send_connect_stream(void)
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
 							G_OBEX_DATA_REF);
-	g_obex_send(obex, req);
+	g_obex_send(obex, req, &gerr);
+	g_assert_no_error(gerr);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	io_id = g_io_add_watch(io, cond, handle_connect_data, &gerr);

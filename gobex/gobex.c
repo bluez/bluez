@@ -191,9 +191,16 @@ done:
 	return FALSE;
 }
 
-static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p)
+static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
+								GError **err)
 {
 	GIOCondition cond;
+
+	if (obex->io == NULL) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
+					"The transport is not connected");
+		return FALSE;
+	}
 
 	g_queue_push_tail(obex->tx_queue, p);
 
@@ -206,21 +213,29 @@ static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p)
 	return TRUE;
 }
 
-gboolean g_obex_send(GObex *obex, GObexPacket *pkt)
+gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 {
 	struct pending_pkt *p;
+	gboolean ret;
 
-	if (obex == NULL || pkt == NULL)
+	if (obex == NULL || pkt == NULL) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
+				"Invalid arguments");
 		return FALSE;
+	}
 
 	p = g_new0(struct pending_pkt, 1);
 	p->pkt = pkt;
 
-	return g_obex_send_internal(obex, p);
+	ret = g_obex_send_internal(obex, p, err);
+	if (ret == FALSE)
+		pending_pkt_free(p);
+
+	return ret;
 }
 
 guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
-							gpointer user_data)
+					gpointer user_data, GError **err)
 {
 	struct pending_pkt *p;
 	static guint id = 1;
@@ -232,8 +247,10 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
 	p->rsp_func = func;
 	p->rsp_data = user_data;
 
-	if (!g_obex_send_internal(obex, p))
+	if (!g_obex_send_internal(obex, p, err)) {
+		pending_pkt_free(p);
 		return 0;
+	}
 
 	return p->id;
 }
