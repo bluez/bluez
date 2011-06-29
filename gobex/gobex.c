@@ -28,6 +28,8 @@
 #define G_OBEX_MINIMUM_MTU	255
 #define G_OBEX_MAXIMUM_MTU	65535
 
+#define G_OBEX_DEFAULT_TIMEOUT	5
+
 #define FINAL_BIT		0x80
 
 struct _GObex {
@@ -65,6 +67,8 @@ struct _GObex {
 struct pending_pkt {
 	guint id;
 	GObexPacket *pkt;
+	guint timeout;
+	guint timeout_id;
 	GObexResponseFunc rsp_func;
 	gpointer rsp_data;
 };
@@ -121,6 +125,27 @@ static void pending_pkt_free(struct pending_pkt *p)
 	g_free(p);
 }
 
+static gboolean req_timeout(gpointer user_data)
+{
+	GObex *obex = user_data;
+	struct pending_pkt *p = obex->pending_req;
+
+	g_assert(p != NULL);
+
+	obex->pending_req = NULL;
+
+	if (p->rsp_func) {
+		GError *err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_TIMEOUT,
+					"Timed out waiting for response");
+		p->rsp_func(obex, err, NULL, p->rsp_data);
+		g_error_free(err);
+	}
+
+	pending_pkt_free(p);
+
+	return FALSE;
+}
+
 static gboolean write_stream(GObex *obex)
 {
 	GIOStatus status;
@@ -174,9 +199,11 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 			goto done;
 		}
 
-		if (p->id > 0)
+		if (p->id > 0) {
 			obex->pending_req = p;
-		else
+			p->timeout_id = g_timeout_add_seconds(p->timeout,
+							req_timeout, obex);
+		} else
 			pending_pkt_free(p);
 
 		obex->tx_data = len;
@@ -252,8 +279,9 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	return ret;
 }
 
-guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
-					gpointer user_data, GError **err)
+guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
+			GObexResponseFunc func, gpointer user_data,
+			GError **err)
 {
 	struct pending_pkt *p;
 	static guint id = 1;
@@ -264,6 +292,11 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, GObexResponseFunc func,
 	p->id = id++;
 	p->rsp_func = func;
 	p->rsp_data = user_data;
+
+	if (timeout < 0)
+		p->timeout = G_OBEX_DEFAULT_TIMEOUT;
+	else
+		p->timeout = timeout;
 
 	if (!g_obex_send_internal(obex, p, err)) {
 		pending_pkt_free(p);

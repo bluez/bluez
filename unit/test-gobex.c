@@ -180,6 +180,18 @@ static void nval_connect_rsp(GObex *obex, GError *err, GObexPacket *rsp,
 	g_main_loop_quit(mainloop);
 }
 
+static void timeout_rsp(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	GError **test_err = user_data;
+
+	if (!g_error_matches(err, G_OBEX_ERROR, G_OBEX_ERROR_TIMEOUT))
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Did not get expected timeout error");
+
+	g_main_loop_quit(mainloop);
+}
+
 static gboolean recv_and_send(GIOChannel *io, void *data, gsize len,
 								GError **err)
 {
@@ -193,6 +205,9 @@ static gboolean recv_and_send(GIOChannel *io, void *data, gsize len,
 					"read failed with status %d", status);
 		return FALSE;
 	}
+
+	if (data == NULL)
+		return TRUE;
 
 	g_io_channel_write_chars(io, data, len, &bytes_written, NULL);
 	if (bytes_written != len) {
@@ -227,14 +242,26 @@ static gboolean send_nval_connect_rsp(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func)
+static gboolean send_nothing(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+
+	if (!recv_and_send(io, NULL, 0, err))
+		g_main_loop_quit(mainloop);
+
+	return FALSE;
+}
+
+static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
+							gint req_timeout)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 	GError *gerr = NULL;
 	GIOChannel *io;
 	GIOCondition cond;
 	GObexPacket *req;
-	guint io_id, timer_id;
+	guint io_id, timer_id, test_time;
 	GObex *obex;
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
@@ -245,7 +272,7 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func)
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
 							G_OBEX_DATA_REF);
 
-	g_obex_send_req(obex, req, rsp_func, &gerr, &gerr);
+	g_obex_send_req(obex, req, req_timeout, rsp_func, &gerr, &gerr);
 	g_assert_no_error(gerr);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
@@ -253,7 +280,12 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+	if (req_timeout > 0)
+		test_time = req_timeout + 1;
+	else
+		test_time = 1;
+
+	timer_id = g_timeout_add_seconds(test_time, test_timeout, &gerr);
 
 	g_main_loop_run(mainloop);
 
@@ -270,12 +302,17 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func)
 
 static void test_send_connect_req_stream(void)
 {
-	send_connect(connect_rsp, send_connect_rsp);
+	send_connect(connect_rsp, send_connect_rsp, -1);
 }
 
 static void test_send_nval_connect_req_stream(void)
 {
-	send_connect(nval_connect_rsp, send_nval_connect_rsp);
+	send_connect(nval_connect_rsp, send_nval_connect_rsp, -1);
+}
+
+static void test_send_connect_req_timeout_stream(void)
+{
+	send_connect(timeout_rsp, send_nothing, 1);
 }
 
 static void test_send_connect_stream(void)
@@ -456,6 +493,8 @@ int main(int argc, char *argv[])
 					test_send_connect_req_stream);
 	g_test_add_func("/gobex/test_send_nval_connect_req_stream",
 					test_send_nval_connect_req_stream);
+	g_test_add_func("/gobex/test_send_connect_req_timeout_stream",
+					test_send_connect_req_timeout_stream);
 
 	g_test_run();
 
