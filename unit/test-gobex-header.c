@@ -35,6 +35,16 @@ static uint8_t hdr_name_umlaut[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
 static uint8_t hdr_body[] = { G_OBEX_HDR_ID_BODY, 0x00, 0x07, 1, 2, 3, 4 };
 static uint8_t hdr_actionid[] = { G_OBEX_HDR_ID_ACTION, 0xab };
 
+static uint8_t hdr_uint32_nval[] = { G_OBEX_HDR_ID_CONNECTION, 1, 2 };
+static uint8_t hdr_unicode_nval_short[] = { G_OBEX_HDR_ID_NAME, 0x12, 0x34,
+						0x00, 'a', 0x00, 'b',
+						0x00, 0x00 };
+static uint8_t hdr_unicode_nval_data[] = { G_OBEX_HDR_ID_NAME, 0x00, 0x01,
+						0x00, 'a', 0x00, 'b' };
+static uint8_t hdr_bytes_nval_short[] = { G_OBEX_HDR_ID_BODY, 0xab, 0xcd,
+						0x01, 0x02, 0x03 };
+static uint8_t hdr_bytes_nval_data[] = { G_OBEX_HDR_ID_BODY, 0xab };
+
 static void test_header_name_ascii(void)
 {
 	GObexHeader *header;
@@ -310,6 +320,46 @@ static void test_decode_header_actionid(void)
 	g_obex_header_free(header);
 }
 
+static void decode_header_nval(uint8_t *buf, size_t len)
+{
+	GObexHeader *header;
+	size_t parsed;
+	GError *err = NULL;
+
+	header = g_obex_header_decode(buf, len, G_OBEX_DATA_REF, &parsed,
+									&err);
+	g_assert_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR);
+	g_assert(header == NULL);
+	g_error_free(err);
+}
+
+static void test_decode_header_uint32_nval(void)
+{
+	decode_header_nval(hdr_uint32_nval, sizeof(hdr_uint32_nval));
+}
+
+static void test_decode_header_unicode_nval_short(void)
+{
+	decode_header_nval(hdr_unicode_nval_short,
+					sizeof(hdr_unicode_nval_short));
+}
+
+static void test_decode_header_unicode_nval_data(void)
+{
+	decode_header_nval(hdr_unicode_nval_data,
+					sizeof(hdr_unicode_nval_data));
+}
+
+static void test_decode_header_bytes_nval_short(void)
+{
+	decode_header_nval(hdr_bytes_nval_short, sizeof(hdr_bytes_nval_short));
+}
+
+static void test_decode_header_bytes_nval_data(void)
+{
+	decode_header_nval(hdr_bytes_nval_data, sizeof(hdr_bytes_nval_data));
+}
+
 static void test_decode_header_multi(void)
 {
 	GObexHeader *header;
@@ -376,6 +426,17 @@ int main(int argc, char *argv[])
 						test_decode_header_actionid);
 	g_test_add_func("/gobex/test_decode_header_multi",
 						test_decode_header_multi);
+
+	g_test_add_func("/gobex/test_decode_header_uint32_nval",
+					test_decode_header_uint32_nval);
+	g_test_add_func("/gobex/test_decode_header_unicode_nval_short",
+					test_decode_header_unicode_nval_short);
+	g_test_add_func("/gobex/test_decode_header_unicode_nval_data",
+					test_decode_header_unicode_nval_data);
+	g_test_add_func("/gobex/test_decode_header_bytes_nval_short",
+					test_decode_header_bytes_nval_short);
+	g_test_add_func("/gobex/test_decode_header_bytes_nval_data",
+					test_decode_header_bytes_nval_data);
 
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_connid);
