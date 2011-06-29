@@ -677,10 +677,7 @@ static void server_free(struct network_server *ns)
 	g_free(ns->name);
 	g_free(ns->bridge);
 
-	if (ns->sessions) {
-		g_slist_foreach(ns->sessions, (GFunc) session_free, NULL);
-		g_slist_free(ns->sessions);
-	}
+	g_slist_free_full(ns->sessions, session_free);
 
 	g_free(ns);
 }

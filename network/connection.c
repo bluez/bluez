@@ -477,8 +477,10 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 	return reply;
 }
 
-static void connection_free(struct network_conn *nc)
+static void connection_free(void *data)
 {
+	struct network_conn *nc = data;
+
 	if (nc->dc_id)
 		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 
@@ -490,8 +492,7 @@ static void connection_free(struct network_conn *nc)
 
 static void peer_free(struct network_peer *peer)
 {
-	g_slist_foreach(peer->connections, (GFunc) connection_free, NULL);
-	g_slist_free(peer->connections);
+	g_slist_free_full(peer->connections, connection_free);
 	btd_device_unref(peer->device);
 	g_free(peer->path);
 	g_free(peer);
