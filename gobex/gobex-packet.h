@@ -36,8 +36,6 @@
 #define G_OBEX_OP_SESSION	0x07
 #define G_OBEX_OP_ABORT		0x7f
 
-#define G_OBEX_PACKET_FINAL	0x80
-
 typedef struct _GObexPacket GObexPacket;
 
 GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);

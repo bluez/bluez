@@ -28,6 +28,8 @@
 #define G_OBEX_MINIMUM_MTU	255
 #define G_OBEX_MAXIMUM_MTU	65535
 
+#define FINAL_BIT		0x80
+
 struct _GObex {
 	gint ref_count;
 	GIOChannel *io;
@@ -402,7 +404,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 		guint8 opcode = g_obex_packet_get_operation(p->pkt, NULL);
 		header_offset = req_header_offset(opcode);
 	} else {
-		guint8 opcode = obex->rx_buf[0] & ~G_OBEX_PACKET_FINAL;
+		guint8 opcode = obex->rx_buf[0] & ~FINAL_BIT;
 		header_offset = rsp_header_offset(opcode);
 	}
 

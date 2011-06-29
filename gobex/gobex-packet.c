@@ -24,6 +24,8 @@
 
 #include "gobex-packet.h"
 
+#define FINAL_BIT 0x80
+
 struct _GObexPacket {
 	guint8 opcode;
 	gboolean final;
@@ -209,8 +211,8 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 		return NULL;
 	}
 
-	final = (opcode & G_OBEX_PACKET_FINAL) ? TRUE : FALSE;
-	opcode &= ~G_OBEX_PACKET_FINAL;
+	final = (opcode & FINAL_BIT) ? TRUE : FALSE;
+	opcode &= ~FINAL_BIT;
 
 	pkt = g_obex_packet_new(opcode, final);
 
@@ -251,7 +253,7 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 
 	buf[0] = pkt->opcode;
 	if (pkt->final)
-		buf[0] |= G_OBEX_PACKET_FINAL;
+		buf[0] |= FINAL_BIT;
 
 	u16 = g_htons(pkt_len);
 	memcpy(&buf[1], &u16, sizeof(u16));
