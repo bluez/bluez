@@ -154,8 +154,9 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		hdr_len = g_ntohs(hdr_len);
 		if (hdr_len > len || hdr_len < 5) {
 			g_set_error(err, G_OBEX_ERROR,
-					G_OBEX_ERROR_PARSE_ERROR,
-					"Invalid unicode header length");
+				G_OBEX_ERROR_PARSE_ERROR,
+				"Invalid unicode header (0x%02x) length (%u)",
+				header->id, hdr_len);
 			goto failed;
 		}
 
