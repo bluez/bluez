@@ -416,6 +416,9 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 
 	g_obex_handle_packet(obex, err, pkt);
 
+	if (err != NULL)
+		g_error_free(err);
+
 	if (pkt != NULL)
 		g_obex_packet_free(pkt);
 
