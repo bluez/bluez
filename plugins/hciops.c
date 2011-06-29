@@ -2236,14 +2236,9 @@ static void stop_hci_dev(int index)
 
 	hci_close_dev(dev->sk);
 
-	g_slist_foreach(dev->keys, (GFunc) g_free, NULL);
-	g_slist_free(dev->keys);
-
-	g_slist_foreach(dev->uuids, (GFunc) g_free, NULL);
-	g_slist_free(dev->uuids);
-
-	g_slist_foreach(dev->connections, (GFunc) conn_free, NULL);
-	g_slist_free(dev->connections);
+	g_slist_free_full(dev->keys, g_free);
+	g_slist_free_full(dev->uuids, g_free);
+	g_slist_free_full(dev->connections, g_free);
 
 	init_dev_info(index, -1, dev->registered, dev->already_up);
 }
