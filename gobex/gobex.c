@@ -37,8 +37,8 @@ struct _GObex {
 	GIOChannel *io;
 	guint io_source;
 
-	gboolean (*read) (GObex *obex);
-	gboolean (*write) (GObex *obex);
+	gboolean (*read) (GObex *obex, GError **err);
+	gboolean (*write) (GObex *obex, GError **err);
 
 	guint8 *rx_buf;
 	size_t rx_data;
@@ -55,11 +55,8 @@ struct _GObex {
 
 	GQueue *tx_queue;
 
-	GObexRequestFunc req_func;
-	gpointer req_func_data;
-
-	GObexDisconnectFunc disconn_func;
-	gpointer disconn_func_data;
+	GObexEventFunc ev_func;
+	gpointer ev_func_data;
 
 	struct pending_pkt *pending_req;
 };
@@ -146,7 +143,7 @@ static gboolean req_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static gboolean write_stream(GObex *obex)
+static gboolean write_stream(GObex *obex, GError **err)
 {
 	GIOStatus status;
 	gsize bytes_written;
@@ -154,7 +151,7 @@ static gboolean write_stream(GObex *obex)
 
 	buf = (gchar *) &obex->tx_buf[obex->tx_sent];
 	status = g_io_channel_write_chars(obex->io, buf, obex->tx_data,
-							&bytes_written, NULL);
+							&bytes_written, err);
 	if (status != G_IO_STATUS_NORMAL)
 		return FALSE;
 
@@ -164,8 +161,10 @@ static gboolean write_stream(GObex *obex)
 	return TRUE;
 }
 
-static gboolean write_packet(GObex *obex)
+static gboolean write_packet(GObex *obex, GError **err)
 {
+	g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_FAILED,
+				"Packet based writing not implemented");
 	return FALSE;
 }
 
@@ -210,7 +209,7 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		obex->tx_sent = 0;
 	}
 
-	if (!obex->write(obex))
+	if (!obex->write(obex, NULL))
 		goto done;
 
 	if (obex->tx_data > 0 || g_queue_get_length(obex->tx_queue) > 0)
@@ -311,18 +310,11 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id)
 	return TRUE;
 }
 
-void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
+void g_obex_set_event_function(GObex *obex, GObexEventFunc func,
 							gpointer user_data)
 {
-	obex->req_func = func;
-	obex->req_func_data = user_data;
-}
-
-void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
-							gpointer user_data)
-{
-	obex->disconn_func = func;
-	obex->disconn_func_data = user_data;
+	obex->ev_func = func;
+	obex->ev_func_data = user_data;
 }
 
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
@@ -363,18 +355,21 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 
 static void handle_request(GObex *obex, GError *err, GObexPacket *req)
 {
-	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
-		parse_connect_data(obex, req);
+	if (req != NULL) {
+		guint8 op = g_obex_packet_get_operation(req, NULL);
+		if (op == G_OBEX_OP_CONNECT)
+			parse_connect_data(obex, req);
+	}
 
-	if (obex->req_func)
-		obex->req_func(obex, req, obex->req_func_data);
+	if (obex->ev_func)
+		obex->ev_func(obex, err, req, obex->ev_func_data);
 }
 
 static gboolean g_obex_handle_packet(GObex *obex, GError *err, GObexPacket *pkt)
 {
 	if (obex->pending_req)
 		handle_response(obex, err, pkt);
-	else if (pkt != NULL)
+	else
 		handle_request(obex, err, pkt);
 
 	/* FIXME: Application callback needed for err != NULL? */
@@ -382,7 +377,7 @@ static gboolean g_obex_handle_packet(GObex *obex, GError *err, GObexPacket *pkt)
 	return TRUE;
 }
 
-static gboolean read_stream(GObex *obex)
+static gboolean read_stream(GObex *obex, GError **err)
 {
 	GIOChannel *io = obex->io;
 	GIOStatus status;
@@ -426,8 +421,10 @@ read_body:
 	return TRUE;
 }
 
-static gboolean read_packet(GObex *obex)
+static gboolean read_packet(GObex *obex, GError **err)
 {
+	g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
+			"Packet reading not implemented");
 	return FALSE;
 }
 
@@ -442,10 +439,13 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_HUP | G_IO_ERR))
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
+					"Transport got disconnected");
 		goto failed;
+	}
 
-	if (!obex->read(obex))
+	if (!obex->read(obex, &err))
 		goto failed;
 
 	if (obex->rx_data < 3 || obex->rx_data < obex->rx_pkt_len)
@@ -483,8 +483,10 @@ failed:
 	obex->io = NULL;
 	obex->io_source = 0;
 
-	if (obex->disconn_func)
-		obex->disconn_func(obex, obex->disconn_func_data);
+	if (obex->ev_func)
+		obex->ev_func(obex, err, NULL, obex->ev_func_data);
+
+	g_error_free(err);
 
 	return FALSE;
 }

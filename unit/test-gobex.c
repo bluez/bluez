@@ -355,21 +355,21 @@ static void test_send_connect_stream(void)
 	g_assert_no_error(gerr);
 }
 
-static void handle_connect_request(GObex *obex, GObexPacket *pkt,
+static void handle_connect_event(GObex *obex, GError *err, GObexPacket *pkt,
 							gpointer user_data)
 {
-	GError **err = user_data;
-
-	switch (g_obex_packet_get_operation(pkt, NULL)) {
-	case G_OBEX_OP_CONNECT:
-		break;
-	default:
-		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-						"Unexpected operation");
-		break;
-	}
+	GError **test_err = user_data;
 
 	g_main_loop_quit(mainloop);
+
+	if (err != NULL) {
+		*test_err = g_error_copy(err);
+		return;
+	}
+
+	if (g_obex_packet_get_operation(pkt, NULL) != G_OBEX_OP_CONNECT)
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+						"Unexpected operation");
 }
 
 static void test_recv_connect_stream(void)
@@ -383,7 +383,7 @@ static void test_recv_connect_stream(void)
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
-	g_obex_set_request_function(obex, handle_connect_request, &gerr);
+	g_obex_set_event_function(obex, handle_connect_event, &gerr);
 
 	status = g_io_channel_write_chars(io, (gchar *) pkt_connect_req,
 						sizeof(pkt_connect_req),
@@ -407,8 +407,15 @@ static void test_recv_connect_stream(void)
 	g_assert_no_error(gerr);
 }
 
-static void disconnected(GObex *obex, gpointer user_data)
+static void disconn_ev(GObex *obex, GError *err, GObexPacket *req,
+							gpointer user_data)
 {
+	GError **test_err = user_data;
+
+	if (!g_error_matches(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED))
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Did not get expected disconnect error");
+
 	g_main_loop_quit(mainloop);
 }
 
@@ -421,7 +428,7 @@ static void test_disconnect(void)
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
-	g_obex_set_disconnect_function(obex, disconnected, NULL);
+	g_obex_set_event_function(obex, disconn_ev, &gerr);
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
 
