@@ -590,7 +590,8 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 			operands[1] = SUBUNIT_PANEL << 3;
 		DBG("reply to %s", avrcp->opcode == OP_UNITINFO ?
 				"OP_UNITINFO" : "OP_SUBUNITINFO");
-	} else if (avrcp->opcode == OP_VENDORDEP) {
+	} else if (avctp->cr == AVCTP_COMMAND &&
+			avrcp->opcode == OP_VENDORDEP) {
 		/* Reply with REJECT msg with error code 0x0
 		 * (Invalid Command) as defined in AVRCP spec (6.15.1) */
 		struct avrcp_spec_avc_pdu *pdu = (void *) operands;
