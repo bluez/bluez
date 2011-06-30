@@ -237,20 +237,15 @@ failed:
 gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 {
 	gsize count;
-	guint16 pkt_len, u16;
+	guint16 u16;
 	GSList *l;
 
-	pkt_len = 3 + pkt->data_len + pkt->hlen;
-
-	if (pkt_len > len)
+	if (3 + pkt->data_len + pkt->hlen > len)
 		return -ENOBUFS;
 
 	buf[0] = pkt->opcode;
 	if (pkt->final)
 		buf[0] |= FINAL_BIT;
-
-	u16 = g_htons(pkt_len);
-	memcpy(&buf[1], &u16, sizeof(u16));
 
 	if (pkt->data_len > 0) {
 		if (pkt->data_policy == G_OBEX_DATA_REF)
@@ -263,10 +258,13 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 
 	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
 		GObexHeader *hdr = l->data;
+		if (count >= len)
+			return -ENOBUFS;
 		count += g_obex_header_encode(hdr, buf + count, len - count);
 	}
 
-	g_assert_cmpuint(count, ==, pkt_len);
+	u16 = g_htons(count);
+	memcpy(&buf[1], &u16, sizeof(u16));
 
 	return count;
 }

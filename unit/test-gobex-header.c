@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include <gobex/gobex-header.h>
 
@@ -125,6 +126,32 @@ static void test_header_uint32(void)
 	len = g_obex_header_encode(header, buf, sizeof(buf));
 
 	assert_memequal(hdr_connid, sizeof(hdr_connid), buf, len);
+
+	g_obex_header_free(header);
+}
+
+static guint16 get_body_data(GObexHeader *header, void *buf, gsize len,
+							gpointer user_data)
+{
+	uint8_t body_data[] = { 1, 2, 3, 4 };
+
+	memcpy(buf, body_data, sizeof(body_data));
+
+	return sizeof(body_data);
+}
+
+static void test_header_on_demand(void)
+{
+	GObexHeader *header;
+	uint8_t buf[1024];
+	size_t len;
+
+	header = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
+						get_body_data, NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_body, sizeof(hdr_body), buf, len);
 
 	g_obex_header_free(header);
 }
@@ -456,6 +483,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_bytes", test_header_bytes);
 	g_test_add_func("/gobex/test_header_uint8", test_header_uint8);
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
+
+	g_test_add_func("/gobex/test_header_on_demand", test_header_on_demand);
 
 	g_test_run();
 

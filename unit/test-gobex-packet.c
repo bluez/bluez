@@ -20,6 +20,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include <gobex/gobex-packet.h>
 
@@ -31,6 +32,9 @@ static uint8_t pkt_connect[] = { G_OBEX_OP_CONNECT, 0x00, 0x0c,
 						0x00, 0x05, 0xab, 0xcd };
 static uint8_t pkt_put_action[] = { G_OBEX_OP_PUT, 0x00, 0x05,
 					G_OBEX_HDR_ID_ACTION, 0xab };
+static uint8_t pkt_put_body[] = { G_OBEX_OP_PUT, 0x00, 0x0a,
+					G_OBEX_HDR_ID_BODY, 0x00, 0x07,
+					1, 2, 3, 4 };
 static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
 static uint8_t pkt_nval_len[] = { G_OBEX_OP_PUT, 0xab, 0xcd, 0x12 };
@@ -140,6 +144,40 @@ static void test_decode_encode(void)
 	g_obex_packet_free(pkt);
 }
 
+static guint16 get_body_data(GObexHeader *header, void *buf, gsize len,
+							gpointer user_data)
+{
+	uint8_t data[] = { 1, 2, 3, 4 };
+
+	memcpy(buf, data, sizeof(data));
+
+	return sizeof(data);
+}
+
+static void test_encode_on_demand(void)
+{
+	GObexPacket *pkt;
+	GObexHeader *hdr;
+	uint8_t buf[255];
+	gssize len;
+
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE);
+
+	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
+						get_body_data, NULL);
+	g_obex_packet_add_header(pkt, hdr);
+
+	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
+	if (len < 0) {
+		g_printerr("Encoding failed: %s\n", g_strerror(-len));
+		g_assert_not_reached();
+	}
+
+	assert_memequal(pkt_put_body, sizeof(pkt_put_body), buf, len);
+
+	g_obex_packet_free(pkt);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -154,6 +192,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_decode_nval", test_decode_nval);
 
 	g_test_add_func("/gobex/test_encode_pkt", test_decode_encode);
+
+	g_test_add_func("/gobex/test_encode_on_demand", test_encode_on_demand);
 
 	g_test_run();
 

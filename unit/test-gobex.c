@@ -43,6 +43,9 @@ static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
 					0x10, 0x00, };
 static uint8_t pkt_abort_rsp[] = { 0x90, 0x00, 0x03 };
 static uint8_t pkt_nval_short_rsp[] = { 0x10 | FINAL_BIT, 0x12 };
+static uint8_t pkt_put_body[] = { G_OBEX_OP_PUT, 0x00, 0x0a,
+					G_OBEX_HDR_ID_BODY, 0x00, 0x07,
+					1, 2, 3, 4 };
 
 static gboolean test_timeout(gpointer user_data)
 {
@@ -55,49 +58,6 @@ static gboolean test_timeout(gpointer user_data)
 
 	g_main_loop_quit(mainloop);
 
-	return FALSE;
-}
-
-static gboolean handle_connect_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	GError **err = user_data;
-	GIOStatus status;
-	gsize rbytes;
-	char buf[255];
-
-	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
-		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Unexpected condition %d on socket", cond);
-		goto done;
-	}
-
-	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
-	if (status != G_IO_STATUS_NORMAL) {
-		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Reading data failed with status %d", status);
-		goto done;
-	}
-
-	if (rbytes != sizeof(pkt_connect_req)) {
-		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Got %zu bytes instead of %zu",
-				rbytes, sizeof(pkt_connect_req));
-		dump_bufs(pkt_connect_req, sizeof(pkt_connect_req),
-								buf, rbytes);
-		goto done;
-	}
-
-	if (memcmp(buf, pkt_connect_req, rbytes) != 0) {
-		g_set_error(err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Mismatch with received data");
-		dump_bufs(pkt_connect_req, sizeof(pkt_connect_req),
-								buf, rbytes);
-		goto done;
-	}
-
-done:
-	g_main_loop_quit(mainloop);
 	return FALSE;
 }
 
@@ -272,24 +232,17 @@ static gboolean send_nothing(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
-					gint req_timeout, int transport_type)
+static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
+				GIOFunc send_rsp_func, gint req_timeout,
+				int transport_type)
 {
-	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 	GError *gerr = NULL;
 	GIOChannel *io;
 	GIOCondition cond;
-	GObexPacket *req;
 	guint io_id, timer_id, test_time;
 	GObex *obex;
 
 	create_endpoints(&obex, &io, transport_type);
-
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
-	g_assert(req != NULL);
-
-	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
-							G_OBEX_DATA_REF);
 
 	g_obex_send_req(obex, req, req_timeout, rsp_func, &gerr, &gerr);
 	g_assert_no_error(gerr);
@@ -317,6 +270,21 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
 	g_obex_unref(obex);
 
 	g_assert_no_error(gerr);
+}
+
+static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
+					gint req_timeout, int transport_type)
+{
+	GObexPacket *req;
+	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
+
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	g_assert(req != NULL);
+
+	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
+							G_OBEX_DATA_REF);
+
+	send_req(req, rsp_func, send_rsp_func, req_timeout, transport_type);
 }
 
 static void test_send_connect_req_stream(void)
@@ -498,10 +466,56 @@ static void test_cancel_req_delay_pkt(void)
 	test_cancel_req_delay(SOCK_SEQPACKET);
 }
 
+struct rcv_buf_info {
+	GError *err;
+	const guint8 *buf;
+	gsize len;
+};
+
+static gboolean rcv_data(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	struct rcv_buf_info *r = user_data;
+	GIOStatus status;
+	gsize rbytes;
+	char buf[255];
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		g_set_error(&r->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Unexpected condition %d on socket", cond);
+		goto done;
+	}
+
+	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
+	if (status != G_IO_STATUS_NORMAL) {
+		g_set_error(&r->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Reading data failed with status %d", status);
+		goto done;
+	}
+
+	if (rbytes != r->len) {
+		g_set_error(&r->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Got %zu bytes instead of %zu",
+				rbytes, sizeof(pkt_connect_req));
+		dump_bufs(r->buf, r->len, buf, rbytes);
+		goto done;
+	}
+
+	if (memcmp(buf, r->buf, rbytes) != 0) {
+		g_set_error(&r->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Mismatch with received data");
+		dump_bufs(r->buf, r->len, buf, rbytes);
+		goto done;
+	}
+
+done:
+	g_main_loop_quit(mainloop);
+	return FALSE;
+}
+
 static void test_send_connect(int transport_type)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
-	GError *gerr = NULL;
+	struct rcv_buf_info r;
 	GIOChannel *io;
 	GIOCondition cond;
 	GObexPacket *req;
@@ -510,20 +524,24 @@ static void test_send_connect(int transport_type)
 
 	create_endpoints(&obex, &io, transport_type);
 
+	r.err = NULL;
+	r.buf = pkt_connect_req;
+	r.len = sizeof(pkt_connect_req);
+
 	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
 	g_assert(req != NULL);
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
 							G_OBEX_DATA_REF);
-	g_obex_send(obex, req, &gerr);
-	g_assert_no_error(gerr);
+	g_obex_send(obex, req, &r.err);
+	g_assert_no_error(r.err);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, handle_connect_data, &gerr);
+	io_id = g_io_add_watch(io, cond, rcv_data, &r);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+	timer_id = g_timeout_add_seconds(1, test_timeout, &r.err);
 
 	g_main_loop_run(mainloop);
 
@@ -535,7 +553,7 @@ static void test_send_connect(int transport_type)
 	g_source_remove(io_id);
 	g_obex_unref(obex);
 
-	g_assert_no_error(gerr);
+	g_assert_no_error(r.err);
 }
 
 static void test_send_connect_stream(void)
@@ -546,6 +564,71 @@ static void test_send_connect_stream(void)
 static void test_send_connect_pkt(void)
 {
 	test_send_connect(SOCK_SEQPACKET);
+}
+
+static guint16 get_body_data(GObexHeader *header, void *buf, gsize len,
+							gpointer user_data)
+{
+	uint8_t data[] = { 1, 2, 3, 4 };
+
+	memcpy(buf, data, sizeof(data));
+
+	return sizeof(data);
+}
+
+static void test_send_on_demand(int transport_type)
+{
+	struct rcv_buf_info r;
+	GIOChannel *io;
+	GIOCondition cond;
+	GObexPacket *req;
+	GObexHeader *hdr;
+	guint io_id, timer_id;
+	GObex *obex;
+
+	create_endpoints(&obex, &io, transport_type);
+
+	r.err = NULL;
+	r.buf = pkt_put_body;
+	r.len = sizeof(pkt_put_body);
+
+	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE);
+
+	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
+						get_body_data, NULL);
+	g_obex_packet_add_header(req, hdr);
+
+	g_obex_send(obex, req, &r.err);
+	g_assert_no_error(r.err);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, rcv_data, &r);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &r.err);
+
+	g_main_loop_run(mainloop);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(r.err);
+}
+
+static void test_send_on_demand_stream(void)
+{
+	test_send_on_demand(SOCK_STREAM);
+}
+
+static void test_send_on_demand_pkt(void)
+{
+	test_send_on_demand(SOCK_SEQPACKET);
 }
 
 static void handle_connect_event(GObex *obex, GError *err, GObexPacket *pkt,
@@ -703,6 +786,10 @@ int main(int argc, char *argv[])
 						test_send_connect_stream);
 	g_test_add_func("/gobex/test_send_connect_pkt",
 						test_send_connect_pkt);
+	g_test_add_func("/gobex/test_send_on_demand_stream",
+						test_send_on_demand_stream);
+	g_test_add_func("/gobex/test_send_on_demand_pkt",
+						test_send_on_demand_pkt);
 	g_test_add_func("/gobex/test_send_connect_req_stream",
 					test_send_connect_req_stream);
 	g_test_add_func("/gobex/test_send_connect_req_pkt",
@@ -717,6 +804,7 @@ int main(int argc, char *argv[])
 					test_send_connect_req_timeout_stream);
 	g_test_add_func("/gobex/test_send_connect_req_timeout_pkt",
 					test_send_connect_req_timeout_pkt);
+
 
 	g_test_add_func("/gobex/test_cancel_req_immediate",
 					test_cancel_req_immediate);
