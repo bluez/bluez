@@ -167,9 +167,23 @@ static gboolean write_stream(GObex *obex, GError **err)
 
 static gboolean write_packet(GObex *obex, GError **err)
 {
-	g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_FAILED,
-				"Packet based writing not implemented");
-	return FALSE;
+	GIOStatus status;
+	gsize bytes_written;
+	gchar *buf;
+
+	buf = (gchar *) &obex->tx_buf[obex->tx_sent];
+	status = g_io_channel_write_chars(obex->io, buf, obex->tx_data,
+							&bytes_written, err);
+	if (status != G_IO_STATUS_NORMAL)
+		return FALSE;
+
+	if (bytes_written != obex->tx_data)
+		return FALSE;
+
+	obex->tx_sent += bytes_written;
+	obex->tx_data -= bytes_written;
+
+	return TRUE;
 }
 
 static gboolean write_data(GIOChannel *io, GIOCondition cond,
@@ -446,18 +460,6 @@ static void handle_request(GObex *obex, GError *err, GObexPacket *req)
 		obex->ev_func(obex, err, req, obex->ev_func_data);
 }
 
-static gboolean g_obex_handle_packet(GObex *obex, GError *err, GObexPacket *pkt)
-{
-	if (obex->pending_req)
-		handle_response(obex, err, pkt);
-	else
-		handle_request(obex, err, pkt);
-
-	/* FIXME: Application callback needed for err != NULL? */
-
-	return TRUE;
-}
-
 static gboolean read_stream(GObex *obex, GError **err)
 {
 	GIOChannel *io = obex->io;
@@ -504,9 +506,46 @@ read_body:
 
 static gboolean read_packet(GObex *obex, GError **err)
 {
-	g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
-			"Packet reading not implemented");
-	return FALSE;
+	GIOChannel *io = obex->io;
+	GError *read_err = NULL;
+	GIOStatus status;
+	gsize rbytes;
+	guint16 u16;
+
+	if (obex->rx_data > 0) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"RX buffer not empty before reading packet");
+		return FALSE;
+	}
+
+	status = g_io_channel_read_chars(io, (gchar *) obex->rx_buf,
+					obex->rx_mtu, &rbytes, &read_err);
+	if (status != G_IO_STATUS_NORMAL) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"Unable to read data: %s", read_err->message);
+		g_error_free(read_err);
+		return FALSE;
+	}
+
+	obex->rx_data += rbytes;
+
+	if (rbytes < 3) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"Incomplete packet received");
+		return FALSE;
+	}
+
+	memcpy(&u16, &obex->rx_buf[1], sizeof(u16));
+	obex->rx_pkt_len = g_ntohs(u16);
+
+	if (obex->rx_pkt_len != rbytes) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+			"Data size doesn't match packet size (%zu != %u)",
+			rbytes, obex->rx_pkt_len);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
@@ -516,6 +555,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	GObexPacket *pkt;
 	ssize_t header_offset;
 	GError *err = NULL;
+	guint8 opcode;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -534,20 +574,27 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 
 	if (obex->pending_req) {
 		struct pending_pkt *p = obex->pending_req;
-		guint8 opcode = g_obex_packet_get_operation(p->pkt, NULL);
+		opcode = g_obex_packet_get_operation(p->pkt, NULL);
 		header_offset = req_header_offset(opcode);
 	} else {
-		guint8 opcode = obex->rx_buf[0] & ~FINAL_BIT;
+		opcode = obex->rx_buf[0] & ~FINAL_BIT;
 		header_offset = rsp_header_offset(opcode);
 	}
 
-	if (header_offset < 0)
+	if (header_offset < 0) {
+		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"Unkown header offset for opcode 0x%02x",
+				opcode);
 		goto failed;
+	}
 
 	pkt = g_obex_packet_decode(obex->rx_buf, obex->rx_data, header_offset,
 							G_OBEX_DATA_REF, &err);
 
-	g_obex_handle_packet(obex, err, pkt);
+	if (obex->pending_req)
+		handle_response(obex, err, pkt);
+	else
+		handle_request(obex, err, pkt);
 
 	if (err != NULL)
 		g_error_free(err);
@@ -563,6 +610,9 @@ failed:
 	g_io_channel_unref(obex->io);
 	obex->io = NULL;
 	obex->io_source = 0;
+
+	if (obex->pending_req)
+		handle_response(obex, err, NULL);
 
 	if (obex->ev_func)
 		obex->ev_func(obex, err, NULL, obex->ev_func_data);

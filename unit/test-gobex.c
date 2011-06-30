@@ -42,6 +42,7 @@ static uint8_t pkt_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x07,
 static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
 					0x10, 0x00, };
 static uint8_t pkt_abort_rsp[] = { 0x90, 0x00, 0x03 };
+static uint8_t pkt_nval_short_rsp[] = { 0x10 | FINAL_BIT, 0x12 };
 
 static gboolean test_timeout(gpointer user_data)
 {
@@ -248,6 +249,18 @@ static gboolean send_nval_connect_rsp(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static gboolean send_nval_short_rsp(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	GError **err = user_data;
+
+	if (!recv_and_send(io, pkt_nval_short_rsp,
+					sizeof(pkt_nval_short_rsp), err))
+		g_main_loop_quit(mainloop);
+
+	return FALSE;
+}
+
 static gboolean send_nothing(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -260,7 +273,7 @@ static gboolean send_nothing(GIOChannel *io, GIOCondition cond,
 }
 
 static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
-							gint req_timeout)
+					gint req_timeout, int transport_type)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 	GError *gerr = NULL;
@@ -270,7 +283,7 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
 	guint io_id, timer_id, test_time;
 	GObex *obex;
 
-	create_endpoints(&obex, &io, SOCK_STREAM);
+	create_endpoints(&obex, &io, transport_type);
 
 	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
 	g_assert(req != NULL);
@@ -308,17 +321,39 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
 
 static void test_send_connect_req_stream(void)
 {
-	send_connect(connect_rsp, send_connect_rsp, -1);
+	send_connect(connect_rsp, send_connect_rsp, -1, SOCK_STREAM);
+}
+
+static void test_send_connect_req_pkt(void)
+{
+	send_connect(connect_rsp, send_connect_rsp, -1, SOCK_SEQPACKET);
 }
 
 static void test_send_nval_connect_req_stream(void)
 {
-	send_connect(nval_connect_rsp, send_nval_connect_rsp, -1);
+	send_connect(nval_connect_rsp, send_nval_connect_rsp, -1, SOCK_STREAM);
+}
+
+static void test_send_nval_connect_req_pkt(void)
+{
+	send_connect(nval_connect_rsp, send_nval_connect_rsp, -1,
+							SOCK_SEQPACKET);
+}
+
+static void test_send_nval_connect_req_short_pkt(void)
+{
+	send_connect(nval_connect_rsp, send_nval_short_rsp, -1,
+							SOCK_SEQPACKET);
 }
 
 static void test_send_connect_req_timeout_stream(void)
 {
-	send_connect(timeout_rsp, send_nothing, 1);
+	send_connect(timeout_rsp, send_nothing, 1, SOCK_STREAM);
+}
+
+static void test_send_connect_req_timeout_pkt(void)
+{
+	send_connect(timeout_rsp, send_nothing, 1, SOCK_SEQPACKET);
 }
 
 struct req_info {
@@ -418,7 +453,7 @@ failed:
 	return FALSE;
 }
 
-static void test_cancel_req_delay(void)
+static void test_cancel_req_delay(int transport_type)
 {
 	GIOChannel *io;
 	guint io_id, timer_id;
@@ -426,7 +461,7 @@ static void test_cancel_req_delay(void)
 	GObexPacket *req;
 	GIOCondition cond;
 
-	create_endpoints(&r.obex, &io, SOCK_STREAM);
+	create_endpoints(&r.obex, &io, transport_type);
 
 	r.err = NULL;
 
@@ -453,7 +488,17 @@ static void test_cancel_req_delay(void)
 	g_main_loop_unref(mainloop);
 }
 
-static void test_send_connect_stream(void)
+static void test_cancel_req_delay_stream(void)
+{
+	test_cancel_req_delay(SOCK_STREAM);
+}
+
+static void test_cancel_req_delay_pkt(void)
+{
+	test_cancel_req_delay(SOCK_SEQPACKET);
+}
+
+static void test_send_connect(int transport_type)
 {
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 	GError *gerr = NULL;
@@ -463,7 +508,7 @@ static void test_send_connect_stream(void)
 	guint io_id, timer_id;
 	GObex *obex;
 
-	create_endpoints(&obex, &io, SOCK_STREAM);
+	create_endpoints(&obex, &io, transport_type);
 
 	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
 	g_assert(req != NULL);
@@ -493,6 +538,16 @@ static void test_send_connect_stream(void)
 	g_assert_no_error(gerr);
 }
 
+static void test_send_connect_stream(void)
+{
+	test_send_connect(SOCK_STREAM);
+}
+
+static void test_send_connect_pkt(void)
+{
+	test_send_connect(SOCK_SEQPACKET);
+}
+
 static void handle_connect_event(GObex *obex, GError *err, GObexPacket *pkt,
 							gpointer user_data)
 {
@@ -510,7 +565,7 @@ static void handle_connect_event(GObex *obex, GError *err, GObexPacket *pkt,
 						"Unexpected operation");
 }
 
-static void test_recv_connect_stream(void)
+static void recv_connect(int transport_type)
 {
 	GError *gerr = NULL;
 	guint timer_id;
@@ -519,7 +574,7 @@ static void test_recv_connect_stream(void)
 	GIOStatus status;
 	gsize bytes_written;
 
-	create_endpoints(&obex, &io, SOCK_STREAM);
+	create_endpoints(&obex, &io, transport_type);
 
 	g_obex_set_event_function(obex, handle_connect_event, &gerr);
 
@@ -543,6 +598,16 @@ static void test_recv_connect_stream(void)
 	mainloop = NULL;
 
 	g_assert_no_error(gerr);
+}
+
+static void test_recv_connect_stream(void)
+{
+	recv_connect(SOCK_STREAM);
+}
+
+static void test_recv_connect_pkt(void)
+{
+	recv_connect(SOCK_SEQPACKET);
 }
 
 static void disconn_ev(GObex *obex, GError *err, GObexPacket *req,
@@ -632,19 +697,33 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_recv_connect_stream",
 						test_recv_connect_stream);
+	g_test_add_func("/gobex/test_recv_connect_pkt",
+						test_recv_connect_pkt);
 	g_test_add_func("/gobex/test_send_connect_stream",
 						test_send_connect_stream);
+	g_test_add_func("/gobex/test_send_connect_pkt",
+						test_send_connect_pkt);
 	g_test_add_func("/gobex/test_send_connect_req_stream",
 					test_send_connect_req_stream);
+	g_test_add_func("/gobex/test_send_connect_req_pkt",
+					test_send_connect_req_pkt);
 	g_test_add_func("/gobex/test_send_nval_connect_req_stream",
 					test_send_nval_connect_req_stream);
+	g_test_add_func("/gobex/test_send_nval_connect_req_pkt",
+					test_send_nval_connect_req_pkt);
+	g_test_add_func("/gobex/test_send_nval_connect_req_short_pkt",
+					test_send_nval_connect_req_short_pkt);
 	g_test_add_func("/gobex/test_send_connect_req_timeout_stream",
 					test_send_connect_req_timeout_stream);
+	g_test_add_func("/gobex/test_send_connect_req_timeout_pkt",
+					test_send_connect_req_timeout_pkt);
 
 	g_test_add_func("/gobex/test_cancel_req_immediate",
 					test_cancel_req_immediate);
-	g_test_add_func("/gobex/test_cancel_req_delay",
-					test_cancel_req_delay);
+	g_test_add_func("/gobex/test_cancel_req_delay_stream",
+					test_cancel_req_delay_stream);
+	g_test_add_func("/gobex/test_cancel_req_delay_pkt",
+					test_cancel_req_delay_pkt);
 
 	g_test_run();
 
