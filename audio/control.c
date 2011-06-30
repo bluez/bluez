@@ -424,19 +424,8 @@ static int handle_vendordep_pdu(struct control *control,
 					struct avrcp_header *avrcp,
 					int operand_count)
 {
-	struct avrcp_spec_avc_pdu *pdu = (void *)(avrcp) +
-						AVRCP_SPECAVCPDU_HEADER_LENGTH;
-
-	/* Reply with REJECT msg with error code 0x0
-	 * (Invalid Command) as defined in AVRCP spec (6.15.1) */
-	avrcp->code = CTYPE_REJECTED;
-
-	pdu->packet_type = 0;
-	pdu->rsvd = 0;
-	pdu->params[0] = 0; /* invalid command */
-	pdu->params_len = htons(1);
-
-	return AVRCP_HEADER_LENGTH + AVRCP_SPECAVCPDU_HEADER_LENGTH + 1;
+	avrcp->code = CTYPE_NOT_IMPLEMENTED;
+	return AVRCP_HEADER_LENGTH;
 }
 
 static void avctp_disconnected(struct audio_device *dev)
