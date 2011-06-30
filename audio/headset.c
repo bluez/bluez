@@ -445,8 +445,7 @@ static void pending_connect_finalize(struct audio_device *dev)
 
 	g_slist_foreach(p->callbacks, (GFunc) pending_connect_complete, dev);
 
-	g_slist_foreach(p->callbacks, (GFunc) g_free, NULL);
-	g_slist_free(p->callbacks);
+	g_slist_free_full(p->callbacks, g_free);
 
 	if (p->io) {
 		g_io_channel_shutdown(p->io, TRUE, NULL);
@@ -2051,6 +2050,7 @@ static DBusMessage *hs_set_property(DBusConnection *conn,
 
 	return btd_error_invalid_args(msg);
 }
+
 static GDBusMethodTable headset_methods[] = {
 	{ "Connect",		"",	"",	hs_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
@@ -2163,8 +2163,7 @@ static void headset_free(struct audio_device *dev)
 
 	headset_close_rfcomm(dev);
 
-	g_slist_foreach(hs->nrec_cbs, (GFunc) g_free, NULL);
-	g_slist_free(hs->nrec_cbs);
+	g_slist_free_full(hs->nrec_cbs, g_free);
 
 	g_free(hs);
 	dev->headset = NULL;

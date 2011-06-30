@@ -97,8 +97,10 @@ static GSList *clients = NULL;
 
 static int unix_sock = -1;
 
-static void client_free(struct unix_client *client)
+static void client_free(void *data)
 {
+	struct unix_client *client = data;
+
 	DBG("client_free(%p)", client);
 
 	if (client->cancel && client->dev && client->req_id > 0)
@@ -107,10 +109,7 @@ static void client_free(struct unix_client *client)
 	if (client->sock >= 0)
 		close(client->sock);
 
-	if (client->caps) {
-		g_slist_foreach(client->caps, (GFunc) g_free, NULL);
-		g_slist_free(client->caps);
-	}
+	g_slist_free_full(client->caps, g_free);
 
 	g_free(client->interface);
 	g_free(client);
@@ -1493,11 +1492,8 @@ static int handle_a2dp_transport(struct unix_client *client,
 			!g_str_equal(client->interface, AUDIO_SOURCE_INTERFACE))
 		return -EIO;
 
-	if (client->caps) {
-		g_slist_foreach(client->caps, (GFunc) g_free, NULL);
-		g_slist_free(client->caps);
-		client->caps = NULL;
-	}
+	g_slist_free_full(client->caps, g_free);
+	client->caps = NULL;
 
 	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
 						NULL, 0);
@@ -1907,8 +1903,7 @@ int unix_init(void)
 
 void unix_exit(void)
 {
-	g_slist_foreach(clients, (GFunc) client_free, NULL);
-	g_slist_free(clients);
+	g_slist_free_full(clients, client_free);
 	if (unix_sock >= 0) {
 		close(unix_sock);
 		unix_sock = -1;

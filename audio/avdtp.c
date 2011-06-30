@@ -797,11 +797,8 @@ static void stream_free(struct avdtp_stream *stream)
 	if (stream->io_id)
 		g_source_remove(stream->io_id);
 
-	g_slist_foreach(stream->callbacks, (GFunc) g_free, NULL);
-	g_slist_free(stream->callbacks);
-
-	g_slist_foreach(stream->caps, (GFunc) g_free, NULL);
-	g_slist_free(stream->caps);
+	g_slist_free_full(stream->callbacks, g_free);
+	g_slist_free_full(stream->caps, g_free);
 
 	g_free(stream);
 }
@@ -1235,8 +1232,7 @@ void avdtp_unref(struct avdtp *session)
 	if (session->req)
 		pending_req_free(session->req);
 
-	g_slist_foreach(session->seps, (GFunc) g_free, NULL);
-	g_slist_free(session->seps);
+	g_slist_free_full(session->seps, g_free);
 
 	g_free(session->buf);
 
@@ -2800,8 +2796,7 @@ static gboolean avdtp_get_capabilities_resp(struct avdtp *session,
 					sep->type, sep->media_type);
 
 	if (sep->caps) {
-		g_slist_foreach(sep->caps, (GFunc) g_free, NULL);
-		g_slist_free(sep->caps);
+		g_slist_free_full(sep->caps, g_free);
 		sep->caps = NULL;
 		sep->codec = NULL;
 		sep->delay_reporting = FALSE;

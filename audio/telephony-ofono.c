@@ -638,8 +638,10 @@ static gboolean iter_get_basic_args(DBusMessageIter *iter,
 	return type == DBUS_TYPE_INVALID ? TRUE : FALSE;
 }
 
-static void call_free(struct voice_call *vc)
+static void call_free(void *data)
 {
+	struct voice_call *vc = data;
+
 	DBG("%s", vc->obj_path);
 
 	if (vc->status == CALL_STATUS_ACTIVE)
@@ -1024,8 +1026,7 @@ static void modem_removed(const char *path)
 
 	DBG("%s", path);
 
-	g_slist_foreach(calls, (GFunc) call_free, NULL);
-	g_slist_free(calls);
+	g_slist_free_full(calls, call_free);
 	calls = NULL;
 
 	g_free(net.operator_name);
@@ -1601,6 +1602,16 @@ static void remove_watch(gpointer data)
 	g_dbus_remove_watch(connection, GPOINTER_TO_UINT(data));
 }
 
+static void pending_free(void *data)
+{
+	DBusPendingCall *call = data;
+
+	if (!dbus_pending_call_get_completed(call))
+		dbus_pending_call_cancel(call);
+
+	dbus_pending_call_unref(call);
+}
+
 void telephony_exit(void)
 {
 	DBG("");
@@ -1611,13 +1622,10 @@ void telephony_exit(void)
 	if (modem_obj_path)
 		modem_removed(modem_obj_path);
 
-	g_slist_foreach(watches, (GFunc) remove_watch, NULL);
-	g_slist_free(watches);
+	g_slist_free_full(watches, remove_watch);
 	watches = NULL;
 
-	g_slist_foreach(pending, (GFunc) dbus_pending_call_cancel, NULL);
-	g_slist_foreach(pending, (GFunc) dbus_pending_call_unref, NULL);
-	g_slist_free(pending);
+	g_slist_free_full(pending, pending_free);
 	pending = NULL;
 
 	dbus_connection_unref(connection);

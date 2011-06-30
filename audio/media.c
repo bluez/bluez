@@ -408,9 +408,8 @@ static void path_free(void *data)
 {
 	struct media_adapter *adapter = data;
 
-	g_slist_foreach(adapter->endpoints, (GFunc) media_endpoint_release,
-									NULL);
-	g_slist_free(adapter->endpoints);
+	g_slist_free_full(adapter->endpoints,
+				(GDestroyNotify) media_endpoint_release);
 
 	dbus_connection_unref(adapter->conn);
 

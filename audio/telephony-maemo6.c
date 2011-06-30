@@ -448,8 +448,10 @@ void telephony_device_connected(void *telephony_device)
 	}
 }
 
-static void pending_req_finalize(struct pending_req *req)
+static void pending_req_finalize(void *data)
 {
+	struct pending_req *req = data;
+
 	if (!dbus_pending_call_get_completed(req->call))
 		dbus_pending_call_cancel(req->call);
 
@@ -1486,8 +1488,10 @@ static void handle_hal_property_modified(DBusMessage *msg)
 	}
 }
 
-static void csd_call_free(struct csd_call *call)
+static void csd_call_free(void *data)
 {
+	struct csd_call *call = data;
+
 	if (!call)
 		return;
 
@@ -1975,16 +1979,13 @@ void telephony_exit(void)
 	g_slist_free(active_calls);
 	active_calls = NULL;
 
-	g_slist_foreach(calls, (GFunc) csd_call_free, NULL);
-	g_slist_free(calls);
+	g_slist_free_full(calls, csd_call_free);
 	calls = NULL;
 
-	g_slist_foreach(pending, (GFunc) pending_req_finalize, NULL);
-	g_slist_free(pending);
+	g_slist_free_full(pending, pending_req_finalize);
 	pending = NULL;
 
-	g_slist_foreach(watches, (GFunc) remove_watch, NULL);
-	g_slist_free(watches);
+	g_slist_free_full(pending, remove_watch);
 	watches = NULL;
 
 	dbus_connection_unref(connection);

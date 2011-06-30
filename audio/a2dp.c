@@ -163,10 +163,8 @@ static void setup_free(struct a2dp_setup *s)
 	setups = g_slist_remove(setups, s);
 	if (s->session)
 		avdtp_unref(s->session);
-	g_slist_foreach(s->cb, (GFunc) g_free, NULL);
-	g_slist_free(s->cb);
-	g_slist_foreach(s->caps, (GFunc) g_free, NULL);
-	g_slist_free(s->caps);
+	g_slist_free_full(s->cb, g_free);
+	g_slist_free_full(s->caps, g_free);
 	g_free(s);
 }
 
@@ -1548,11 +1546,8 @@ void a2dp_unregister(const bdaddr_t *src)
 	if (!server)
 		return;
 
-	g_slist_foreach(server->sinks, (GFunc) a2dp_remove_sep, NULL);
-	g_slist_free(server->sinks);
-
-	g_slist_foreach(server->sources, (GFunc) a2dp_remove_sep, NULL);
-	g_slist_free(server->sources);
+	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_remove_sep);
+	g_slist_free_full(server->sources, (GDestroyNotify) a2dp_remove_sep);
 
 	avdtp_exit(src);
 
@@ -2073,8 +2068,7 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 
 	/* Copy given caps if they are different than current caps */
 	if (setup->caps != caps) {
-		g_slist_foreach(setup->caps, (GFunc) g_free, NULL);
-		g_slist_free(setup->caps);
+		g_slist_free_full(setup->caps, g_free);
 		setup->caps = g_slist_copy(caps);
 	}
 
