@@ -50,6 +50,9 @@ struct _GObex {
 
 	guint write_source;
 
+	gssize io_rx_mtu;
+	gssize io_tx_mtu;
+
 	guint16 rx_mtu;
 	guint16 tx_mtu;
 
@@ -428,6 +431,8 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 	memcpy(&u16, &data->mtu, sizeof(u16));
 
 	obex->tx_mtu = g_ntohs(u16);
+	if (obex->io_tx_mtu > 0 && obex->tx_mtu > obex->io_tx_mtu)
+		obex->tx_mtu = obex->io_tx_mtu;
 	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
 }
 
@@ -632,7 +637,8 @@ failed:
 	return FALSE;
 }
 
-GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type)
+GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
+					gssize io_rx_mtu, gssize io_tx_mtu)
 {
 	GObex *obex;
 	GIOCondition cond;
@@ -640,12 +646,27 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type)
 	if (io == NULL)
 		return NULL;
 
+	if (io_rx_mtu >= 0 && io_rx_mtu < G_OBEX_MINIMUM_MTU)
+		return NULL;
+
+	if (io_tx_mtu >= 0 && io_tx_mtu < G_OBEX_MINIMUM_MTU)
+		return NULL;
+
 	obex = g_new0(GObex, 1);
 
 	obex->io = io;
 	obex->ref_count = 1;
-	obex->rx_mtu = G_OBEX_DEFAULT_MTU;
+
+	obex->io_rx_mtu = io_rx_mtu;
+	obex->io_tx_mtu = io_tx_mtu;
+
+	if (io_rx_mtu > G_OBEX_MAXIMUM_MTU)
+		obex->rx_mtu = G_OBEX_MAXIMUM_MTU;
+	else
+		obex->rx_mtu = io_rx_mtu;
+
 	obex->tx_mtu = G_OBEX_MINIMUM_MTU;
+
 	obex->tx_queue = g_queue_new();
 	obex->rx_buf = g_malloc(obex->rx_mtu);
 	obex->tx_buf = g_malloc(obex->tx_mtu);

@@ -71,7 +71,7 @@ static GObex *create_gobex(int fd, GObexTransportType transport_type,
 
 	g_io_channel_set_close_on_unref(io, close_on_unref);
 
-	return g_obex_new(io, transport_type);
+	return g_obex_new(io, transport_type, -1, -1);
 }
 
 static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
@@ -771,7 +771,7 @@ static void test_null_io(void)
 {
 	GObex *obex;
 
-	obex = g_obex_new(NULL, 0);
+	obex = g_obex_new(NULL, 0, -1, -1);
 
 	g_assert(obex == NULL);
 }
