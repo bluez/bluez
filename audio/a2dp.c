@@ -1547,12 +1547,20 @@ void a2dp_unregister(const bdaddr_t *src)
 	if (!server)
 		return;
 
-	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_remove_sep);
-	g_slist_free_full(server->sources, (GDestroyNotify) a2dp_remove_sep);
+	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_unregister_sep);
+	g_slist_free_full(server->sources,
+					(GDestroyNotify) a2dp_unregister_sep);
 
 	avdtp_exit(src);
 
 	servers = g_slist_remove(servers, server);
+
+	if (server->source_record_id)
+		remove_record_from_server(server->source_record_id);
+
+	if (server->sink_record_id)
+		remove_record_from_server(server->sink_record_id);
+
 	g_free(server);
 
 	if (servers)
