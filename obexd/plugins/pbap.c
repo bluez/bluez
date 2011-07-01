@@ -301,7 +301,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 
 	pbap->obj->lastpart = lastpart;
 
-	if (vcards <= 0) {
+	if (vcards < 0) {
 		obex_object_set_io_flags(pbap->obj, G_IO_ERR, -ENOENT);
 		return;
 	}
