@@ -55,8 +55,11 @@ struct _GObex {
 
 	GQueue *tx_queue;
 
-	GObexEventFunc ev_func;
-	gpointer ev_func_data;
+	GObexRequestFunc req_func;
+	gpointer req_func_data;
+
+	GObexDisconnectFunc disconn_func;
+	gpointer disconn_func_data;
 
 	struct pending_pkt *pending_req;
 };
@@ -398,11 +401,18 @@ immediate_completion:
 	return TRUE;
 }
 
-void g_obex_set_event_function(GObex *obex, GObexEventFunc func,
+void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 							gpointer user_data)
 {
-	obex->ev_func = func;
-	obex->ev_func_data = user_data;
+	obex->req_func = func;
+	obex->req_func_data = user_data;
+}
+
+void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
+							gpointer user_data)
+{
+	obex->disconn_func = func;
+	obex->disconn_func_data = user_data;
 }
 
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
@@ -424,6 +434,7 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 {
 	struct pending_pkt *p = obex->pending_req;
+	gboolean disconn = err ? TRUE : FALSE;
 
 	if (rsp != NULL) {
 		guint8 op = g_obex_packet_get_operation(p->pkt, NULL);
@@ -444,20 +455,17 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 	pending_pkt_free(p);
 	obex->pending_req = NULL;
 
-	if (g_queue_get_length(obex->tx_queue) > 0)
+	if (!disconn && g_queue_get_length(obex->tx_queue) > 0)
 		enable_tx(obex);
 }
 
-static void handle_request(GObex *obex, GError *err, GObexPacket *req)
+static void handle_request(GObex *obex, GObexPacket *req)
 {
-	if (req != NULL) {
-		guint8 op = g_obex_packet_get_operation(req, NULL);
-		if (op == G_OBEX_OP_CONNECT)
-			parse_connect_data(obex, req);
-	}
+	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
+		parse_connect_data(obex, req);
 
-	if (obex->ev_func)
-		obex->ev_func(obex, err, req, obex->ev_func_data);
+	if (obex->req_func)
+		obex->req_func(obex, req, obex->req_func_data);
 }
 
 static gboolean read_stream(GObex *obex, GError **err)
@@ -590,11 +598,13 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 
 	pkt = g_obex_packet_decode(obex->rx_buf, obex->rx_data, header_offset,
 							G_OBEX_DATA_REF, &err);
+	if (pkt == NULL)
+		goto failed;
 
 	if (obex->pending_req)
-		handle_response(obex, err, pkt);
+		handle_response(obex, NULL, pkt);
 	else
-		handle_request(obex, err, pkt);
+		handle_request(obex, pkt);
 
 	if (err != NULL)
 		g_error_free(err);
@@ -614,8 +624,8 @@ failed:
 	if (obex->pending_req)
 		handle_response(obex, err, NULL);
 
-	if (obex->ev_func)
-		obex->ev_func(obex, err, NULL, obex->ev_func_data);
+	if (obex->disconn_func)
+		obex->disconn_func(obex, err, obex->disconn_func_data);
 
 	g_error_free(err);
 

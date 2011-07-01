@@ -33,7 +33,9 @@ typedef enum {
 
 typedef struct _GObex GObex;
 
-typedef void (*GObexEventFunc) (GObex *obex, GError *err, GObexPacket *req,
+typedef void (*GObexRequestFunc) (GObex *obex, GObexPacket *req,
+							gpointer user_data);
+typedef void (*GObexDisconnectFunc) (GObex *obex, GError *err,
 							gpointer user_data);
 typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data);
@@ -46,7 +48,9 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 gboolean g_obex_cancel_req(GObex *obex, guint req_id,
 						gboolean remove_callback);
 
-void g_obex_set_event_function(GObex *obex, GObexEventFunc func,
+void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
+							gpointer user_data);
+void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
 							gpointer user_data);
 
 GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type);
