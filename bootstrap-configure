@@ -31,5 +31,4 @@ fi
 		--enable-cups \
 		--enable-sap \
 		--disable-pcmcia \
-		--disable-udevrules \
-		--disable-configfiles $*
+		--disable-datafiles $*
