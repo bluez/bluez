@@ -61,5 +61,14 @@ if (test "${enable_capng}" = "yes"); then
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 fi
 
+AC_ARG_WITH([systemdunitdir], AC_HELP_STRING([--with-systemdunitdir=DIR],
+	[path to systemd system service directory]), [path_systemdunit=${withval}],
+		[path_systemdunit="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"])
+if (test -n "${path_systemdunit}"); then
+	SYSTEMD_UNITDIR="${path_systemdunit}"
+	AC_SUBST(SYSTEMD_UNITDIR)
+fi
+AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
+
 AC_OUTPUT(Makefile scripts/bluetooth.rules doc/version.xml
-					src/bluetoothd.8 bluez.pc)
+			src/bluetoothd.8 src/bluetooth.service bluez.pc)

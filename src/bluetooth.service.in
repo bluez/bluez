@@ -1,0 +1,12 @@
+[Unit]
+Description=Bluetooth service
+After=syslog.target
+
+[Service]
+Type=dbus
+BusName=org.bluez
+ExecStart=@prefix@/sbin/bluetoothd -n
+StandardOutput=syslog
+
+[Install]
+WantedBy=bluetooth.target

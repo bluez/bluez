@@ -35,6 +35,12 @@ conf_DATA =
 statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
+
+if SYSTEMD
+systemdunitdir = @SYSTEMD_UNITDIR@
+
+systemdunit_DATA = src/bluetooth.service
+endif
 endif
 
 plugindir = $(libdir)/bluetooth/plugins
