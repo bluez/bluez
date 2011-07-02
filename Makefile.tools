@@ -1,6 +1,6 @@
 
 if TOOLS
-if CONFIGFILES
+if DATAFILES
 conf_DATA += tools/rfcomm.conf
 endif
 

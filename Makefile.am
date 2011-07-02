@@ -23,7 +23,7 @@ includedir = @includedir@/bluetooth
 
 include_HEADERS =
 
-if CONFIGFILES
+if DATAFILES
 dbusdir = $(sysconfdir)/dbus-1/system.d
 
 dbus_DATA = src/bluetooth.conf
@@ -270,7 +270,7 @@ CLEANFILES += $(builtin_files)
 
 man_MANS = src/bluetoothd.8
 
-if CONFIGFILES
+if DATAFILES
 conf_DATA += src/main.conf
 endif
 
@@ -301,7 +301,7 @@ audio_libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-expor
 audio_libasound_module_ctl_bluetooth_la_LIBADD = lib/libbluetooth.la @ALSA_LIBS@
 audio_libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 
-if CONFIGFILES
+if DATAFILES
 alsaconfdir = $(datadir)/alsa
 
 alsaconf_DATA = audio/bluetooth.conf
