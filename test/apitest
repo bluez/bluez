@@ -403,7 +403,7 @@ class Tester:
                    print 'Usage: %s -i <dev> ListRecentRemoteDevices date' % self.name
            else:
                 # FIXME: remove at future version
-                print 'Script Error: Method %s not found. Maybe a mispelled word.' % (self.cmd_args)
+                print 'Script Error: Method %s not found. Maybe a misspelled word.' % (self.cmd_args)
        except dbus.DBusException, e:
            print '%s failed: %s' % (self.cmd, e)
            sys.exit(1)

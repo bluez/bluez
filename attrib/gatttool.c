@@ -370,7 +370,7 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		goto done;
 	}
 
-	g_print("Characteristic value was written sucessfully\n");
+	g_print("Characteristic value was written successfully\n");
 
 done:
 	if (opt_listen == FALSE)

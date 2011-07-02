@@ -791,7 +791,7 @@ static void mcap_cache_mcl(struct mcap_mcl *mcl)
 		last->ctrl &= ~MCAP_CTRL_CACHED;
 		if (last->ctrl & MCAP_CTRL_CONN) {
 			/* We have to release this MCL if */
-			/* connection is not succesful    */
+			/* connection is not successful    */
 			last->ctrl |= MCAP_CTRL_FREE;
 		} else {
 			mcap_mcl_release(last);

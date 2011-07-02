@@ -829,7 +829,7 @@ class SAPClient:
         try:
             params = self.__rcvMsg(SAPMessage_DISCONNECT_IND()).getParams()
 
-            """gracefull"""
+            """graceful"""
             if params[0].getValue() == 0x00:
                 if not self.proc_transferAPDU():
                     return False

@@ -2168,7 +2168,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	if (session->in.signal_id != session->req->signal_id) {
-		error("Reponse signal doesn't match");
+		error("Response signal doesn't match");
 		return TRUE;
 	}
 
@@ -3753,7 +3753,7 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	case AVDTP_BAD_HEADER_FORMAT:
 		return "Bad Header Format";
 	case AVDTP_BAD_LENGTH:
-		return "Bad Packet Lenght";
+		return "Bad Packet Length";
 	case AVDTP_BAD_ACP_SEID:
 		return "Bad Acceptor SEID";
 	case AVDTP_SEP_IN_USE:

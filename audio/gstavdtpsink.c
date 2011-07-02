@@ -1491,7 +1491,7 @@ static gboolean gst_avdtp_sink_stream_start(GstAvdtpSink *self)
 
 	err = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (err < 0) {
-		GST_ERROR_OBJECT(self, "Error ocurred while sending "
+		GST_ERROR_OBJECT(self, "Error occurred while sending "
 					"start packet");
 		return FALSE;
 	}
@@ -1643,7 +1643,7 @@ static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 
 	err = gst_avdtp_sink_audioservice_send(self, &open_req->h);
 	if (err < 0) {
-		GST_ERROR_OBJECT(self, "Error ocurred while sending "
+		GST_ERROR_OBJECT(self, "Error occurred while sending "
 					"open packet");
 		return FALSE;
 	}
@@ -1679,7 +1679,7 @@ static gboolean gst_avdtp_sink_configure(GstAvdtpSink *self,
 	req->h.length += req->codec.length - sizeof(req->codec);
 	err = gst_avdtp_sink_audioservice_send(self, &req->h);
 	if (err < 0) {
-		GST_ERROR_OBJECT(self, "Error ocurred while sending "
+		GST_ERROR_OBJECT(self, "Error occurred while sending "
 					"configurarion packet");
 		return FALSE;
 	}

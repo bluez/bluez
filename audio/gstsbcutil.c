@@ -311,7 +311,7 @@ GstCaps *gst_sbc_parse_caps_from_sbc(sbc_t *sbc)
 }
 
 /*
- * Given a GstCaps, this will return a fixed GstCaps on sucessfull conversion.
+ * Given a GstCaps, this will return a fixed GstCaps on successful conversion.
  * If an error occurs, it will return NULL and error_message will contain the
  * error message.
  *

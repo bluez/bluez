@@ -83,7 +83,7 @@ pref = None
 if role == "Source":
 	while pref == None:
 		try:
-			print "Select a prefered data channel type 1.",
+			print "Select a preferred data channel type 1.",
 			print "reliable 2. streaming: ",
 			sel = int(sys.stdin.readline())
 			if sel == 1:

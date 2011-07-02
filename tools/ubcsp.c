@@ -723,7 +723,7 @@ static uint8 ubcsp_recevied_packet (void)
 		}
 	}
 
-	/* Just return any activity that occured */
+	/* Just return any activity that occurred */
 
 	return activity;
 }
@@ -1146,7 +1146,7 @@ uint8 ubcsp_poll (uint8 *activity)
 		else if (ubcsp_config.receive_index < ubcsp_config.receive_packet->length)
 		{
 			/* We are receiving the payload */
-			/* We might stop comming here if we are receiving a
+			/* We might stop coming here if we are receiving a
 			   packet which is longer than the receive_packet->length
 			   given by the host */
 

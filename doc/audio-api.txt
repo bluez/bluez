@@ -430,7 +430,7 @@ properties	boolean Connected [readonly]
 
 			Service availability indicatior of AG, where:
 			0 implies no service. No Home/Roam network available.
-			1 implies presense of service. Home/Roam network
+			1 implies presence of service. Home/Roam network
 			available.
 
 		uint16 SignalStrength [readonly]

@@ -810,7 +810,7 @@ static int proxy_tty_register(struct serial_adapter *adapter,
 
 	sk = open(address, O_RDONLY | O_NOCTTY);
 	if (sk < 0) {
-		error("Cant open TTY: %s(%d)", strerror(errno), errno);
+		error("Can't open TTY: %s(%d)", strerror(errno), errno);
 		return -EINVAL;
 	}
 

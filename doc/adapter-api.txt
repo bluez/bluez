@@ -228,7 +228,7 @@ Properties	string Address [readonly]
 		boolean Powered [readwrite]
 
 			Switch an adapter on or off. This will also set the
-			appropiate connectable state.
+			appropriate connectable state.
 
 		boolean Discoverable [readwrite]
 
