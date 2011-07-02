@@ -62,6 +62,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	uint16_t psm;
 	bdaddr_t src, dst;
+	char address[18];
 	GError *gerr = NULL;
 	int ret;
 
@@ -82,11 +83,14 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	DBG("Incoming connection on PSM %d", psm);
+	ba2str(&dst, address);
+	DBG("Incoming connection from %s on PSM %d", address, psm);
 
 	ret = input_device_set_channel(&src, &dst, psm, chan);
 	if (ret == 0)
 		return;
+
+	error("Refusing input device connect: %s (%d)", strerror(-ret), -ret);
 
 	/* Send unplug virtual cable to unknown devices */
 	if (ret == -ENOENT && psm == L2CAP_PSM_HIDP_CTRL) {
@@ -157,7 +161,11 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	}
 
 	if (server->confirm) {
-		error("Refusing connection: setup in progress");
+		char address[18];
+
+		ba2str(&dst, address);
+		error("Refusing connection from %s: setup in progress",
+								address);
 		goto drop;
 	}
 
