@@ -336,7 +336,7 @@ EXTRA_DIST += audio/bluetooth.conf
 
 include Makefile.tools
 
-if UDEVRULES
+if DATAFILES
 rulesdir = @UDEV_DIR@/rules.d
 
 udev_files = scripts/bluetooth.rules
@@ -346,7 +346,11 @@ udev_files += scripts/bluetooth-hid2hci.rules
 endif
 
 if PCMCIA
+udevdir = @UDEV_DIR@
+
 udev_files += scripts/bluetooth-serial.rules
+
+dist_udev_SCRIPTS = scripts/bluetooth_serial
 endif
 
 rules_DATA = $(foreach file,$(udev_files), scripts/97-$(notdir $(file)))
@@ -356,12 +360,6 @@ CLEANFILES += $(rules_DATA)
 
 EXTRA_DIST += scripts/bluetooth.rules \
 		scripts/bluetooth-hid2hci.rules scripts/bluetooth-serial.rules
-
-if PCMCIA
-udevdir = @UDEV_DIR@
-
-dist_udev_SCRIPTS = scripts/bluetooth_serial
-endif
 
 EXTRA_DIST += doc/manager-api.txt \
 		doc/adapter-api.txt doc/device-api.txt \
@@ -388,7 +386,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-udevrules
+DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
