@@ -51,7 +51,7 @@
 #define G_OBEX_HDR_ID_DESTNAME		0x15
 #define G_OBEX_HDR_ID_PERMISSIONS	0xd6
 #define G_OBEX_HDR_ID_SRM		0x97
-#define G_OBEX_HDR_ID_SRM_FLAGS		0x98
+#define G_OBEX_HDR_ID_SRM_PARAMETERS	0x98
 
 typedef struct _GObexHeader GObexHeader;
 
