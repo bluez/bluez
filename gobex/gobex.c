@@ -439,11 +439,15 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 {
 	struct pending_pkt *p = obex->pending_req;
-	gboolean disconn = err ? TRUE : FALSE;
+	gboolean disconn = err ? TRUE : FALSE, final_rsp = TRUE;
 
 	if (rsp != NULL) {
-		guint8 op = g_obex_packet_get_operation(p->pkt, NULL);
-		if (op == G_OBEX_OP_CONNECT)
+		guint8 opcode;
+
+		g_obex_packet_get_operation(rsp, &final_rsp);
+
+	        opcode = g_obex_packet_get_operation(p->pkt, NULL);
+		if (opcode == G_OBEX_OP_CONNECT)
 			parse_connect_data(obex, rsp);
 	}
 
@@ -457,8 +461,10 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 	if (p->cancelled)
 		g_error_free(err);
 
-	pending_pkt_free(p);
-	obex->pending_req = NULL;
+	if (final_rsp) {
+		pending_pkt_free(p);
+		obex->pending_req = NULL;
+	}
 
 	if (!disconn && g_queue_get_length(obex->tx_queue) > 0)
 		enable_tx(obex);
