@@ -740,3 +740,34 @@ void g_obex_unref(GObex *obex)
 
 	g_free(obex);
 }
+
+/* Higher level functions */
+
+guint g_obex_connect(GObex *obex, void *target, gsize target_len,
+				GObexResponseFunc func, gpointer user_data,
+				GError **err)
+{
+	GObexPacket *req;
+	struct connect_data data;
+	guint16 u16;
+
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+
+	memset(&data, 0, sizeof(data));
+	data.version = 0x10;
+	data.flags = 0;
+	u16 = g_htons(obex->rx_mtu);
+	memcpy(&data.mtu, &u16, sizeof(u16));
+
+	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
+
+	if (target != NULL) {
+		GObexHeader *hdr;
+		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TARGET,
+						target, target_len,
+						G_OBEX_DATA_COPY);
+		g_obex_packet_add_header(req, hdr);
+	}
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}
