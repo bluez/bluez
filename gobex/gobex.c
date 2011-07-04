@@ -801,14 +801,14 @@ static void prepare_connect_rsp(GObex *obex, GObexPacket *rsp)
 	g_obex_packet_prepend_header(rsp, connid);
 }
 
-gboolean g_obex_response(GObex *obex, GObexPacket *req, guint8 rspcode,
+gboolean g_obex_response(GObex *obex, guint8 opcode, guint8 rspcode,
 						GSList *headers, GError **err)
 {
 	GObexPacket *rsp;
 
 	rsp = g_obex_packet_new(rspcode, TRUE, headers);
 
-	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
+	if (opcode == G_OBEX_OP_CONNECT)
 		prepare_connect_rsp(obex, rsp);
 
 	return g_obex_send(obex, rsp, err);
