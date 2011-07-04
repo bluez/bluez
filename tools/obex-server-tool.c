@@ -110,13 +110,14 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-static GIOChannel *unix_listen(void)
+static guint unix_listen(void)
 {
 	GIOChannel *io;
 	struct sockaddr_un addr = {
 		AF_UNIX, "\0/gobex/server"
 	};
 	int sk, err, sock_type;
+	guint id;
 
 	if (option_packet)
 		sock_type = SOCK_SEQPACKET;
@@ -128,33 +129,34 @@ static GIOChannel *unix_listen(void)
 		err = errno;
 		g_printerr("Can't create unix socket: %s (%d)\n",
 						strerror(err), err);
-		return NULL;
+		return 0;
 	}
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		g_printerr("Can't bind unix socket: %s (%d)\n",
 						strerror(errno), errno);
 		close(sk);
-		return NULL;
+		return 0;
 	}
 
 	if (listen(sk, 1) < 0) {
 		g_printerr("Can't listen on unix socket: %s (%d)\n",
 						strerror(errno), errno);
 		close(sk);
-		return NULL;
+		return 0;
 	}
 
+	g_print("Unix socket created: %d\n", sk);
+
 	io = g_io_channel_unix_new(sk);
-	g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+	id = g_io_add_watch(io, G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 							unix_accept, NULL);
 
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 	g_io_channel_set_close_on_unref(io, TRUE);
+	g_io_channel_unref(io);
 
-	g_print("Unix socket created: %d\n", sk);
-
-	return io;
+	return id;
 }
 
 int main(int argc, char *argv[])
@@ -162,7 +164,7 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
-	GIOChannel *io;
+	guint server_id;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -174,8 +176,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	io = unix_listen();
-	if (io == NULL)
+	server_id = unix_listen();
+	if (server_id == 0)
 		exit(EXIT_FAILURE);
 
 	memset(&sa, 0, sizeof(sa));
@@ -187,7 +189,7 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	g_io_channel_unref(io);
+	g_source_remove(server_id);
 	g_slist_free_full(clients, (GDestroyNotify) g_obex_unref);
 	g_option_context_free(context);
 	g_main_loop_unref(main_loop);
