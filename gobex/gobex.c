@@ -449,7 +449,7 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 
 		g_obex_packet_get_operation(rsp, &final_rsp);
 
-	        opcode = g_obex_packet_get_operation(p->pkt, NULL);
+		opcode = g_obex_packet_get_operation(p->pkt, NULL);
 		if (opcode == G_OBEX_OP_CONNECT)
 			parse_connect_data(obex, rsp);
 	}
