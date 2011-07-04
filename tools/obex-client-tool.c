@@ -26,10 +26,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
+
+#include <readline/readline.h>
+#include <readline/history.h>
 
 #include <gobex/gobex.h>
 
 static GMainLoop *main_loop = NULL;
+static GObex *obex = NULL;
 
 static gboolean option_packet = FALSE;
 static gboolean option_bluetooth = FALSE;
@@ -94,14 +99,97 @@ static GIOChannel *unix_connect(void)
 	return io;
 }
 
+static void cmd_connect(int argc, char **argv)
+{
+}
+
+static void cmd_help(int argc, char **argv);
+
+static void cmd_exit(int argc, char **argv)
+{
+	g_main_loop_quit(main_loop);
+}
+
+static struct {
+	const char *cmd;
+	void (*func)(int argc, char **argv);
+	const char *params;
+	const char *desc;
+} commands[] = {
+	{ "help",	cmd_help,	"",		"Show this help"},
+	{ "exit",	cmd_exit,	"",		"Exit application" },
+	{ "quit",	cmd_exit,	"",		"Exit application" },
+	{ "connect",	cmd_connect,	"[target]",	"OBEX Connect" },
+	{ NULL },
+};
+
+static void cmd_help(int argc, char **argv)
+{
+	int i;
+
+	for (i = 0; commands[i].cmd; i++)
+		printf("%-15s %-30s %s\n", commands[i].cmd,
+				commands[i].params, commands[i].desc);
+}
+
+static void parse_line(char *line_read)
+{
+	gchar **argvp;
+	int argcp;
+	int i;
+
+	if (line_read == NULL) {
+		g_print("\n");
+		g_main_loop_quit(main_loop);
+		return;
+	}
+
+	line_read = g_strstrip(line_read);
+
+	if (*line_read == '\0') {
+		free(line_read);
+		return;
+	}
+
+	add_history(line_read);
+
+	g_shell_parse_argv(line_read, &argcp, &argvp, NULL);
+
+	free(line_read);
+
+	for (i = 0; commands[i].cmd; i++)
+		if (strcasecmp(commands[i].cmd, argvp[0]) == 0)
+			break;
+
+	if (commands[i].cmd)
+		commands[i].func(argcp, argvp);
+	else
+		g_print("%s: command not found\n", argvp[0]);
+
+	g_strfreev(argvp);
+}
+
+static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
+		g_main_loop_quit(main_loop);
+		return FALSE;
+	}
+
+	rl_callback_read_char();
+
+	return TRUE;
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
 	struct sigaction sa;
 	GIOChannel *io;
+	GIOCondition events;
 	GObexTransportType transport;
-	GObex *obex;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -134,8 +222,17 @@ int main(int argc, char *argv[])
 
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
 
+	io = g_io_channel_unix_new(STDIN_FILENO);
+	g_io_channel_set_close_on_unref(io, TRUE);
+	events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	g_io_add_watch(io, events, prompt_read, NULL);
+	g_io_channel_unref(io);
+	rl_callback_handler_install("client> ", parse_line);
+
 	g_main_loop_run(main_loop);
 
+	rl_callback_handler_remove();
+	clear_history();
 	g_obex_unref(obex);
 	g_option_context_free(context);
 	g_main_loop_unref(main_loop);
