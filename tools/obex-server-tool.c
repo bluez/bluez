@@ -29,9 +29,9 @@
 
 #include <gobex/gobex.h>
 
-static GObex *obex = NULL;
-
 static GMainLoop *main_loop = NULL;
+
+static GSList *clients = NULL;
 
 static void sig_term(int sig)
 {
@@ -43,12 +43,19 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
+static void disconn_func(GObex *obex, GError *err, gpointer user_data)
+{
+	clients = g_slist_remove(clients, obex);
+	g_obex_unref(obex);
+}
+
 static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 {
 	struct sockaddr_un addr;
 	socklen_t addrlen;
 	int sk, cli_sk;
 	GIOChannel *io;
+	GObex *obex;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -76,6 +83,8 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 
 	obex = g_obex_new(io, G_OBEX_TRANSPORT_STREAM, -1, -1);
+	g_obex_set_disconnect_function(obex, disconn_func, NULL);
+	clients = g_slist_append(clients, obex);;
 
 	return TRUE;
 }
@@ -153,6 +162,7 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	g_io_channel_unref(io);
+	g_slist_free_full(clients, (GDestroyNotify) g_obex_unref);
 	g_option_context_free(context);
 	g_main_loop_unref(main_loop);
 
