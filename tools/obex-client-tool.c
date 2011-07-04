@@ -99,8 +99,18 @@ static GIOChannel *unix_connect(void)
 	return io;
 }
 
+static void conn_complete(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	if (err != NULL)
+		g_print("Connect failed: %s\n", err->message);
+	else
+		g_print("Connect succeeded\n");
+}
+
 static void cmd_connect(int argc, char **argv)
 {
+	g_obex_connect(obex, NULL, 0, conn_complete, NULL, NULL);
 }
 
 static void cmd_help(int argc, char **argv);
