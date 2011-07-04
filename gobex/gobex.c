@@ -254,8 +254,6 @@ static void enable_tx(GObex *obex)
 
 	cond = G_IO_OUT | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	obex->write_source = g_io_add_watch(obex->io, cond, write_data, obex);
-
-	return;
 }
 
 static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
