@@ -168,8 +168,13 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 
 	switch (G_OBEX_HDR_TYPE(header->id)) {
 	case G_OBEX_HDR_TYPE_UNICODE:
-		if (len < 3)
+		if (len < 3) {
+			g_set_error(err, G_OBEX_ERROR,
+				G_OBEX_ERROR_PARSE_ERROR,
+				"Not enough data for unicode header (0x%02x)",
+				header->id);
 			goto failed;
+		}
 		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = g_ntohs(hdr_len);
 		if (hdr_len > len || hdr_len < 5) {
