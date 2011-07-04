@@ -64,6 +64,8 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
 {
 	g_print("Request 0x%02x\n", g_obex_packet_get_operation(req, NULL));
+
+	g_obex_response(obex, req, G_OBEX_RSP_SUCCESS, NULL, NULL);
 }
 
 static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
