@@ -64,6 +64,28 @@ guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final)
 	return pkt->opcode;
 }
 
+GObexHeader *g_obex_packet_find_header(GObexPacket *pkt, guint8 id)
+{
+	GSList *l;
+
+	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
+		GObexHeader *hdr = l->data;
+
+		if (g_obex_header_get_id(hdr) == id)
+			return hdr;
+	}
+
+	return NULL;
+}
+
+gboolean g_obex_packet_prepend_header(GObexPacket *pkt, GObexHeader *header)
+{
+	pkt->headers = g_slist_prepend(pkt->headers, header);
+	pkt->hlen += g_obex_header_get_length(header);
+
+	return TRUE;
+}
+
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 {
 	pkt->headers = g_slist_append(pkt->headers, header);
