@@ -64,5 +64,7 @@ void g_obex_unref(GObex *obex);
 guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 				GObexResponseFunc func, gpointer user_data,
 				GError **err);
+gboolean g_obex_response(GObex *obex, GObexPacket *req, guint8 rspcode,
+						GSList *headers, GError **err);
 
 #endif /* __GOBEX_H */

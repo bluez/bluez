@@ -43,7 +43,7 @@ static void test_pkt(void)
 {
 	GObexPacket *pkt;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
 
 	g_assert(pkt != NULL);
 
@@ -161,7 +161,7 @@ static void test_encode_on_demand(void)
 	uint8_t buf[255];
 	gssize len;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
 
 	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
 						get_body_data, NULL);

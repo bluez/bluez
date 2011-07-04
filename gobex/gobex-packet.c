@@ -116,7 +116,7 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 	return TRUE;
 }
 
-GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final)
+GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final, GSList *headers)
 {
 	GObexPacket *pkt;
 
@@ -124,6 +124,7 @@ GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final)
 
 	pkt->opcode = opcode;
 	pkt->final = final;
+	pkt->headers = headers;
 
 	pkt->data_policy = G_OBEX_DATA_COPY;
 
@@ -214,7 +215,7 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	final = (opcode & FINAL_BIT) ? TRUE : FALSE;
 	opcode &= ~FINAL_BIT;
 
-	pkt = g_obex_packet_new(opcode, final);
+	pkt = g_obex_packet_new(opcode, final, NULL);
 
 	if (header_offset == 0)
 		goto headers;

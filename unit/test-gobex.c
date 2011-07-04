@@ -282,7 +282,7 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
 	GObexPacket *req;
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, NULL);
 	g_assert(req != NULL);
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
@@ -356,7 +356,7 @@ static void test_cancel_req_immediate(void)
 
 	r.err = NULL;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
 	r.id = g_obex_send_req(r.obex, req, -1, req_done, &r, &r.err);
 	g_assert_no_error(r.err);
 	g_assert(r.id != 0);
@@ -437,7 +437,7 @@ static void test_cancel_req_delay(int transport_type)
 
 	r.err = NULL;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
 	r.id = g_obex_send_req(r.obex, req, -1, req_done, &r, &r.err);
 	g_assert_no_error(r.err);
 	g_assert(r.id != 0);
@@ -532,7 +532,7 @@ static void test_send_connect(int transport_type)
 	r.buf = pkt_connect_req;
 	r.len = sizeof(pkt_connect_req);
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, NULL);
 	g_assert(req != NULL);
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
@@ -596,7 +596,7 @@ static void test_send_on_demand(int transport_type)
 	r.buf = pkt_put_body;
 	r.len = sizeof(pkt_put_body);
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
 
 	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
 						get_body_data, NULL);

@@ -347,7 +347,7 @@ static gboolean pending_req_abort(GObex *obex, GError **err)
 
 	obex->pending_req->cancelled = TRUE;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE);
+	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, NULL);
 
 	return g_obex_send(obex, pkt, err);
 }
@@ -419,6 +419,19 @@ void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
 {
 	obex->disconn_func = func;
 	obex->disconn_func_data = user_data;
+}
+
+static void init_connect_data(GObex *obex, struct connect_data *data)
+{
+	guint16 u16;
+
+	memset(data, 0, sizeof(*data));
+
+	data->version = 0x10;
+	data->flags = 0;
+
+	u16 = g_htons(obex->rx_mtu);
+	memcpy(&data->mtu, &u16, sizeof(u16));
 }
 
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
@@ -743,22 +756,33 @@ void g_obex_unref(GObex *obex)
 
 /* Higher level functions */
 
+gboolean g_obex_response(GObex *obex, GObexPacket *req, guint8 rspcode,
+						GSList *headers, GError **err)
+{
+	GObexPacket *rsp;
+
+	rsp = g_obex_packet_new(rspcode, TRUE, headers);
+
+	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT) {
+		struct connect_data data;
+		init_connect_data(obex, &data);
+		g_obex_packet_set_data(rsp, &data, sizeof(data),
+							G_OBEX_DATA_COPY);
+	}
+
+	return g_obex_send(obex, rsp, err);
+}
+
 guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 				GObexResponseFunc func, gpointer user_data,
 				GError **err)
 {
 	GObexPacket *req;
 	struct connect_data data;
-	guint16 u16;
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, NULL);
 
-	memset(&data, 0, sizeof(data));
-	data.version = 0x10;
-	data.flags = 0;
-	u16 = g_htons(obex->rx_mtu);
-	memcpy(&data.mtu, &u16, sizeof(u16));
-
+	init_connect_data(obex, &data);
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
 
 	if (target != NULL) {
