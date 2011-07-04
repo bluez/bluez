@@ -33,6 +33,9 @@ static GMainLoop *main_loop = NULL;
 
 static GSList *clients = NULL;
 
+static gboolean option_packet = FALSE;
+static gboolean option_bluetooth = FALSE;
+
 static void sig_term(int sig)
 {
 	g_print("Terminating due to signal %d\n", sig);
@@ -40,11 +43,20 @@ static void sig_term(int sig)
 }
 
 static GOptionEntry options[] = {
+	{ "unix", 'u', G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,
+			&option_bluetooth, "Use a UNIX socket" },
+	{ "bluetooth", 'b', 0, G_OPTION_ARG_NONE,
+			&option_bluetooth, "Use Bluetooth" },
+	{ "packet", 'p', 0, G_OPTION_ARG_NONE,
+			&option_packet, "Packet based transport" },
+	{ "stream", 's', G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,
+			&option_packet, "Stream based transport" },
 	{ NULL },
 };
 
 static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 {
+	g_print("Client disconnected\n");
 	clients = g_slist_remove(clients, obex);
 	g_obex_unref(obex);
 }
@@ -56,6 +68,7 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	int sk, cli_sk;
 	GIOChannel *io;
 	GObex *obex;
+	GObexTransportType transport;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -84,7 +97,12 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
 	g_io_channel_set_close_on_unref(io, TRUE);
 
-	obex = g_obex_new(io, G_OBEX_TRANSPORT_STREAM, -1, -1);
+	if (option_packet)
+		transport = G_OBEX_TRANSPORT_PACKET;
+	else
+		transport = G_OBEX_TRANSPORT_STREAM;
+
+	obex = g_obex_new(io, transport, -1, -1);
 	g_io_channel_unref(io);
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
 	clients = g_slist_append(clients, obex);;
@@ -92,13 +110,18 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-static GIOChannel *unix_listen(int sock_type)
+static GIOChannel *unix_listen(void)
 {
 	GIOChannel *io;
 	struct sockaddr_un addr = {
 		AF_UNIX, "\0/gobex/server"
 	};
-	int sk, err;
+	int sk, err, sock_type;
+
+	if (option_packet)
+		sock_type = SOCK_SEQPACKET;
+	else
+		sock_type = SOCK_STREAM;
 
 	sk = socket(PF_LOCAL, sock_type, 0);
 	if (sk < 0) {
@@ -151,7 +174,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	io = unix_listen(SOCK_STREAM);
+	io = unix_listen();
 	if (io == NULL)
 		exit(EXIT_FAILURE);
 
