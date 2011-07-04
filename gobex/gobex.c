@@ -671,6 +671,8 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 
 	if (io_rx_mtu > G_OBEX_MAXIMUM_MTU)
 		obex->rx_mtu = G_OBEX_MAXIMUM_MTU;
+	else if (io_rx_mtu < G_OBEX_MINIMUM_MTU)
+		obex->rx_mtu = G_OBEX_DEFAULT_MTU;
 	else
 		obex->rx_mtu = io_rx_mtu;
 
