@@ -1,3 +1,14 @@
+ver 4.95:
+	Fix issue with AVCTP replies with invalid PID.
+	Fix issue with AVRCP and unknown packet types.
+	Fix issue with AVRCP not using NOT_IMPLEMENTED correctly.
+	Fix issue with AVDTP discovery if all endpoints are in use.
+	Fix issue with invalid memory writes and media support.
+	Fix issue with not removing device alias and unbonding.
+	Fix issue with device disconnects and offline mode handling.
+	Add support for setting adapter name based on machine-info.
+	Add support for systemd service configuration.
+
 ver 4.94:
 	Fix issue with invalid read of memory in various modules.
 	Fix issue with buffer overflow when sending AVDTP commands.
