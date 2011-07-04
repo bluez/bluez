@@ -32,6 +32,8 @@
 
 #define FINAL_BIT		0x80
 
+#define CONNID_INVALID		0xffffffff
+
 struct _GObex {
 	gint ref_count;
 	GIOChannel *io;
@@ -55,6 +57,8 @@ struct _GObex {
 
 	guint16 rx_mtu;
 	guint16 tx_mtu;
+
+	guint32 conn_id;
 
 	GQueue *tx_queue;
 
@@ -307,9 +311,22 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err)
 {
+	GObexHeader *connid;
 	struct pending_pkt *p;
 	static guint id = 1;
 
+	if (obex->conn_id == CONNID_INVALID)
+		goto create_pending;
+
+	connid = g_obex_packet_find_header(req, G_OBEX_HDR_ID_CONNECTION);
+	if (connid != NULL)
+		goto create_pending;
+
+	connid = g_obex_header_new_uint32(G_OBEX_HDR_ID_CONNECTION,
+							obex->conn_id);
+	g_obex_packet_prepend_header(req, connid);
+
+create_pending:
 	p = g_new0(struct pending_pkt, 1);
 
 	p->pkt = req;
@@ -437,6 +454,7 @@ static void init_connect_data(GObex *obex, struct connect_data *data)
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 {
 	const struct connect_data *data;
+	GObexHeader *connid;
 	guint16 u16;
 	size_t data_len;
 
@@ -450,6 +468,10 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 	if (obex->io_tx_mtu > 0 && obex->tx_mtu > obex->io_tx_mtu)
 		obex->tx_mtu = obex->io_tx_mtu;
 	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
+
+	connid = g_obex_packet_find_header(pkt, G_OBEX_HDR_ID_CONNECTION);
+	if (connid != NULL)
+		g_obex_header_get_uint32(connid, &obex->conn_id);
 }
 
 static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
@@ -678,6 +700,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 
 	obex->io = g_io_channel_ref(io);
 	obex->ref_count = 1;
+	obex->conn_id = CONNID_INVALID;
 
 	obex->io_rx_mtu = io_rx_mtu;
 	obex->io_tx_mtu = io_tx_mtu;
@@ -756,6 +779,28 @@ void g_obex_unref(GObex *obex)
 
 /* Higher level functions */
 
+static void prepare_connect_rsp(GObex *obex, GObexPacket *rsp)
+{
+	GObexHeader *connid;
+	struct connect_data data;
+	static guint32 next_connid = 1;
+
+	init_connect_data(obex, &data);
+	g_obex_packet_set_data(rsp, &data, sizeof(data), G_OBEX_DATA_COPY);
+
+	connid = g_obex_packet_find_header(rsp, G_OBEX_HDR_ID_CONNECTION);
+	if (connid != NULL) {
+		g_obex_header_get_uint32(connid, &obex->conn_id);
+		return;
+	}
+
+	obex->conn_id = next_connid++;
+
+	connid = g_obex_header_new_uint32(G_OBEX_HDR_ID_CONNECTION,
+							obex->conn_id);
+	g_obex_packet_prepend_header(rsp, connid);
+}
+
 gboolean g_obex_response(GObex *obex, GObexPacket *req, guint8 rspcode,
 						GSList *headers, GError **err)
 {
@@ -763,12 +808,8 @@ gboolean g_obex_response(GObex *obex, GObexPacket *req, guint8 rspcode,
 
 	rsp = g_obex_packet_new(rspcode, TRUE, headers);
 
-	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT) {
-		struct connect_data data;
-		init_connect_data(obex, &data);
-		g_obex_packet_set_data(rsp, &data, sizeof(data),
-							G_OBEX_DATA_COPY);
-	}
+	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
+		prepare_connect_rsp(obex, rsp);
 
 	return g_obex_send(obex, rsp, err);
 }
