@@ -128,7 +128,12 @@ static void pending_pkt_free(struct pending_pkt *p)
 {
 	if (p->obex != NULL)
 		g_obex_unref(p->obex);
+
+	if (p->timeout_id > 0)
+		g_source_remove(p->timeout_id);
+
 	g_obex_packet_free(p->pkt);
+
 	g_free(p);
 }
 
