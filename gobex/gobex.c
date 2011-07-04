@@ -663,7 +663,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 
 	obex = g_new0(GObex, 1);
 
-	obex->io = io;
+	obex->io = g_io_channel_ref(io);
 	obex->ref_count = 1;
 
 	obex->io_rx_mtu = io_rx_mtu;

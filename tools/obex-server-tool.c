@@ -80,9 +80,12 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 								cli_sk);
 
 	io = g_io_channel_unix_new(cli_sk);
+
 	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
+	g_io_channel_set_close_on_unref(io, TRUE);
 
 	obex = g_obex_new(io, G_OBEX_TRANSPORT_STREAM, -1, -1);
+	g_io_channel_unref(io);
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
 	clients = g_slist_append(clients, obex);;
 
