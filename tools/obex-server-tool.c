@@ -56,9 +56,14 @@ static GOptionEntry options[] = {
 
 static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 {
-	g_print("Client disconnected\n");
+	g_print("Client disconnected: %s\n", err ? err->message : "<no err>");
 	clients = g_slist_remove(clients, obex);
 	g_obex_unref(obex);
+}
+
+static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
+{
+	g_print("Request 0x%02x\n", g_obex_packet_get_operation(req, NULL));
 }
 
 static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -105,6 +110,7 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	obex = g_obex_new(io, transport, -1, -1);
 	g_io_channel_unref(io);
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
+	g_obex_set_request_function(obex, req_func, NULL);
 	clients = g_slist_append(clients, obex);;
 
 	return TRUE;
