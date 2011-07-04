@@ -34,6 +34,8 @@
 #include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
 
@@ -41,6 +43,7 @@
 
 #include <gdbus.h>
 
+#include "glib-helper.h"
 #include "hcid.h"
 #include "dbus-common.h"
 #include "log.h"

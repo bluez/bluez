@@ -40,6 +40,7 @@
 
 #include <glib.h>
 
+#include "glib-helper.h"
 #include "hcid.h"
 #include "sdpd.h"
 #include "btio.h"

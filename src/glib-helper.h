@@ -34,3 +34,11 @@ char *bt_name2string(const char *string);
 int bt_string2uuid(uuid_t *uuid, const char *string);
 gchar *bt_list2string(GSList *list);
 GSList *bt_string2list(const gchar *str);
+
+#ifdef NEED_G_SLIST_FREE_FULL
+static inline void g_slist_free_full(GSList *list, GDestroyNotify free_func)
+{
+	g_slist_foreach(list, (GFunc) free_func, NULL);
+	g_slist_free(list);
+}
+#endif

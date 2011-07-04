@@ -34,6 +34,7 @@
 #include "../src/adapter.h"
 #include "../src/dbus-common.h"
 
+#include "glib-helper.h"
 #include "log.h"
 #include "error.h"
 #include "device.h"
