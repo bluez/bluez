@@ -730,7 +730,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 
 	if (header_offset < 0) {
 		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
-				"Unkown header offset for opcode 0x%02x",
+				"Unknown header offset for opcode 0x%02x",
 				opcode);
 		goto failed;
 	}
