@@ -39,6 +39,10 @@ typedef enum {
 	G_OBEX_ERROR_FAILED,
 } GObexError;
 
+typedef gssize (*GObexDataProducer) (void *buf, gsize len, gpointer user_data);
+typedef gboolean (*GObexDataConsumer) (const void *buf, gsize len,
+							gpointer user_data);
+
 #define G_OBEX_ERROR g_obex_error_quark()
 GQuark g_obex_error_quark(void);
 

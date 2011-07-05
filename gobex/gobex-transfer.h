@@ -25,10 +25,7 @@
 #include <glib.h>
 
 #include <gobex/gobex.h>
-
-typedef gssize (*GObexDataProducer) (void *buf, gsize len, gpointer user_data);
-typedef gboolean (*GObexDataConsumer) (const void *buf, gsize len,
-							gpointer user_data);
+#include <gobex/gobex-defs.h>
 
 guint g_obex_put(GObex *obex, const char *type, const char *name,
 			GObexDataProducer data_func, GObexFunc complete_func,

@@ -65,8 +65,7 @@ static void transfer_abort_response(GObex *obex, GError *err, GObexPacket *rsp,
 }
 
 
-static gssize put_get_data(GObexPacket *pkt, void *buf, gsize len,
-							gpointer user_data)
+static gssize put_get_data(void *buf, gsize len, gpointer user_data)
 {
 	struct transfer *transfer = user_data;
 	GObexPacket *req;

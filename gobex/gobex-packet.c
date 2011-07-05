@@ -22,6 +22,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "gobex-defs.h"
 #include "gobex-packet.h"
 
 #define FINAL_BIT 0x80
@@ -41,7 +42,7 @@ struct _GObexPacket {
 	gsize hlen;		/* Length of all encoded headers */
 	GSList *headers;
 
-	GObexPacketDataFunc get_body;
+	GObexDataProducer get_body;
 	gpointer get_body_data;
 };
 
@@ -97,7 +98,7 @@ gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 	return TRUE;
 }
 
-gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexPacketDataFunc func,
+gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexDataProducer func,
 							gpointer user_data)
 {
 	if (pkt->get_body != NULL)
@@ -280,7 +281,7 @@ static gssize get_body(GObexPacket *pkt, guint8 *buf, gsize len)
 	if (len < 3)
 		return -ENOBUFS;
 
-	ret = pkt->get_body(pkt, buf + 3, len - 3, pkt->get_body_data);
+	ret = pkt->get_body(buf + 3, len - 3, pkt->get_body_data);
 	if (ret < 0)
 		return ret;
 

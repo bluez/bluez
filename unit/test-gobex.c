@@ -570,8 +570,7 @@ static void test_send_connect_pkt(void)
 	test_send_connect(SOCK_SEQPACKET);
 }
 
-static gssize get_body_data(GObexPacket *pkt, void *buf, gsize len,
-							gpointer user_data)
+static gssize get_body_data(void *buf, gsize len, gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
 
@@ -580,14 +579,13 @@ static gssize get_body_data(GObexPacket *pkt, void *buf, gsize len,
 	return sizeof(data);
 }
 
-static gssize get_body_data_fail(GObexPacket *pkt, void *buf, gsize len,
-							gpointer user_data)
+static gssize get_body_data_fail(void *buf, gsize len, gpointer user_data)
 {
 	g_main_loop_quit(mainloop);
 	return -1;
 }
 
-static void test_send_on_demand(int transport_type, GObexPacketDataFunc func)
+static void test_send_on_demand(int transport_type, GObexDataProducer func)
 {
 	struct rcv_buf_info r;
 	GIOChannel *io;

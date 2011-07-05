@@ -144,8 +144,7 @@ static void test_decode_encode(void)
 	g_obex_packet_free(pkt);
 }
 
-static gssize get_body_data(GObexPacket *pkt, void *buf, gsize len,
-							gpointer user_data)
+static gssize get_body_data(void *buf, gsize len, gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
 
@@ -174,8 +173,7 @@ static void test_encode_on_demand(void)
 	g_obex_packet_free(pkt);
 }
 
-static gssize get_body_data_fail(GObexPacket *pkt, void *buf, gsize len,
-							gpointer user_data)
+static gssize get_body_data_fail(void *buf, gsize len, gpointer user_data)
 {
 	return -1;
 }
