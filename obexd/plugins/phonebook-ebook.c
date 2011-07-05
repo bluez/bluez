@@ -561,10 +561,12 @@ int phonebook_pull_read(void *request)
 
 	ebook = ebooks;
 	while (ebook != NULL) {
-		ret = e_book_get_contacts_async(ebook->data, data->query,
-							ebookpull_cb, data);
-		if (ret == TRUE)
-			data->queued_calls++;
+		if (e_book_is_opened(ebook->data) == TRUE) {
+			ret = e_book_get_contacts_async(ebook->data,
+					data->query, ebookpull_cb, data);
+			if (ret == TRUE)
+				data->queued_calls++;
+		}
 
 		ebook = ebook->next;
 	}
@@ -591,10 +593,12 @@ void *phonebook_get_entry(const char *folder, const char *id,
 
 	ebook = ebooks;
 	while (ebook != NULL) {
-		ret = e_book_get_contact_async(ebook->data, data->id,
+		if (e_book_is_opened(ebook->data) == TRUE) {
+			ret = e_book_get_contact_async(ebook->data, data->id,
 							ebook_entry_cb, data);
-		if (ret == TRUE)
-			data->queued_calls++;
+			if (ret == TRUE)
+				data->queued_calls++;
+		}
 
 		ebook = ebook->next;
 	}
@@ -632,10 +636,12 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 
 	ebook = ebooks;
 	while (ebook != NULL) {
-		ret = e_book_get_contacts_async(ebook->data, query,
-							cache_cb, data);
-		if (ret == TRUE)
-			data->queued_calls++;
+		if (e_book_is_opened(ebook->data) == TRUE) {
+			ret = e_book_get_contacts_async(ebook->data, query,
+								cache_cb, data);
+			if (ret == TRUE)
+				data->queued_calls++;
+		}
 
 		ebook = ebook->next;
 	}
