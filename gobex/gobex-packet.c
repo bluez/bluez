@@ -290,6 +290,15 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 		if (ret < 0)
 			return ret;
 
+		/* Fix-up on-demand body header type and final bit. This
+		 * breaks the layers of abstraction a bit but it's the
+		 * simplest way to avoid two consecutive empty packets */
+		if (g_obex_header_get_id(hdr) == G_OBEX_HDR_ID_BODY &&
+								ret == 3) {
+			buf[0] |= FINAL_BIT;
+			buf[count] = G_OBEX_HDR_ID_BODY_END;
+		}
+
 		count += ret;
 	}
 
