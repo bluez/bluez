@@ -61,6 +61,38 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 	g_obex_unref(obex);
 }
 
+static guint8 handle_put(GObex *obex, GObexPacket *req)
+{
+	GObexHeader *hdr;
+	const char *type, *name;
+	gsize type_len;
+
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_ID_TYPE);
+	if (hdr != NULL) {
+		g_obex_header_get_bytes(hdr, (const guint8 **) &type,
+								&type_len);
+		if (type[type_len - 1] != '\0') {
+			g_printerr("non-nul terminated type header\n");
+			type = NULL;
+		}
+	} else
+		type = NULL;
+
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_ID_NAME);
+	if (hdr != NULL)
+		g_obex_header_get_unicode(hdr, &name);
+	else
+		name = NULL;
+
+	g_print("put type \"%s\" name \"%s\"\n", type ? type : "",
+							name ? name : "");
+
+	if (g_obex_packet_find_header(req, G_OBEX_HDR_ID_BODY))
+		return G_OBEX_RSP_CONTINUE;
+	else
+		return G_OBEX_RSP_SUCCESS;
+}
+
 static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
 {
 	gboolean final;
@@ -74,10 +106,7 @@ static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
 		rspcode = G_OBEX_RSP_SUCCESS;
 		break;
 	case G_OBEX_OP_PUT:
-		if (g_obex_packet_find_header(req, G_OBEX_HDR_ID_BODY))
-			rspcode = G_OBEX_RSP_CONTINUE;
-		else
-			rspcode = G_OBEX_RSP_SUCCESS;
+		rspcode = handle_put(obex, req);
 		break;
 	default:
 		rspcode = G_OBEX_RSP_NOT_IMPLEMENTED;
