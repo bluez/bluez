@@ -570,6 +570,54 @@ static void test_send_connect_pkt(void)
 	test_send_connect(SOCK_SEQPACKET);
 }
 
+static void unexpected_disconn(GObex *obex, GError *err, gpointer user_data)
+{
+	GError **test_err = user_data;
+
+	if (!g_error_matches(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR))
+		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Didn't get parse error as expected");
+
+	g_main_loop_quit(mainloop);
+}
+
+static void test_recv_unexpected(void)
+{
+	GError *err = NULL;
+	GObexPacket *req;
+	GIOChannel *io;
+	guint timer_id;
+	GObex *obex;
+	guint8 buf[255];
+	gssize len;
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	g_obex_set_disconnect_function(obex, unexpected_disconn, &err);
+
+	req = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
+	len = g_obex_packet_encode(req, buf, sizeof(buf));
+	g_assert_cmpint(len, >=, 0);
+
+	g_io_channel_write_chars(io, (gchar *) buf, len, NULL, &err);
+	g_assert_no_error(err);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &err);
+
+	g_main_loop_run(mainloop);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_obex_unref(obex);
+
+	g_assert_no_error(err);
+}
+
 static gssize get_body_data(void *buf, gsize len, gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
@@ -810,6 +858,8 @@ int main(int argc, char *argv[])
 						test_send_connect_stream);
 	g_test_add_func("/gobex/test_send_connect_pkt",
 						test_send_connect_pkt);
+	g_test_add_func("/gobex/test_recv_unexpected",
+						test_recv_unexpected);
 	g_test_add_func("/gobex/test_send_on_demand_stream",
 						test_send_on_demand_stream);
 	g_test_add_func("/gobex/test_send_on_demand_pkt",
