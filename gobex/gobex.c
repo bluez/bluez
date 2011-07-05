@@ -210,19 +210,19 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR))
-		goto done;
+		goto stop_tx;
 
 	if (obex->tx_data == 0) {
 		struct pending_pkt *p = g_queue_pop_head(obex->tx_queue);
 		ssize_t len;
 
 		if (p == NULL)
-			goto done;
+			goto stop_tx;
 
 		/* Can't send a request while there's a pending one */
 		if (obex->pending_req && p->id > 0) {
 			g_queue_push_head(obex->tx_queue, p);
-			goto done;
+			goto stop_tx;
 		}
 
 		len = g_obex_packet_encode(p->pkt, obex->tx_buf, obex->tx_mtu);
@@ -243,12 +243,13 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 	}
 
 	if (!obex->write(obex, NULL))
-		goto done;
+		goto stop_tx;
 
+done:
 	if (obex->tx_data > 0 || g_queue_get_length(obex->tx_queue) > 0)
 		return TRUE;
 
-done:
+stop_tx:
 	obex->tx_data = 0;
 	obex->write_source = 0;
 	return FALSE;
