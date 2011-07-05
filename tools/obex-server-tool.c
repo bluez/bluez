@@ -28,6 +28,7 @@
 #include <errno.h>
 
 #include <gobex/gobex.h>
+#include <gobex/gobex-transfer.h>
 
 static GMainLoop *main_loop = NULL;
 
@@ -61,9 +62,23 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 	g_obex_unref(obex);
 }
 
+static void put_complete(GObex *obex, GError *err, gpointer user_data)
+{
+	if (err != NULL)
+		g_printerr("put failed: %s\n", err->message);
+	else
+		g_print("put succeeded\n");
+}
+
+static gboolean recv_data(const void *buf, gsize len, gpointer user_data)
+{
+	g_print("received %zu bytes of data\n", len);
+	return TRUE;
+}
+
 static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 {
-	GObexPacket *rsp;
+	GError *err = NULL;
 	GObexHeader *hdr;
 	const char *type, *name;
 	gsize type_len;
@@ -88,12 +103,11 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	g_print("put type \"%s\" name \"%s\"\n", type ? type : "",
 							name ? name : "");
 
-	if (g_obex_packet_find_header(req, G_OBEX_HDR_ID_BODY))
-		rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
-	else
-		rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
-
-	g_obex_send(obex, rsp, NULL);
+	g_obex_put_rsp(obex, req, recv_data, put_complete, NULL, &err);
+	if (err != NULL) {
+		g_printerr("Unable to send response: %s\n", err->message);
+		g_error_free(err);
+	}
 }
 
 static void handle_connect(GObex *obex, GObexPacket *req, gpointer user_data)
