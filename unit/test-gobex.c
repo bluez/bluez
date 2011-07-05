@@ -570,7 +570,7 @@ static void test_send_connect_pkt(void)
 	test_send_connect(SOCK_SEQPACKET);
 }
 
-static gssize get_body_data(GObexHeader *header, void *buf, gsize len,
+static gssize get_body_data(GObexPacket *pkt, void *buf, gsize len,
 							gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
@@ -580,20 +580,19 @@ static gssize get_body_data(GObexHeader *header, void *buf, gsize len,
 	return sizeof(data);
 }
 
-static gssize get_body_data_fail(GObexHeader *header, void *buf, gsize len,
+static gssize get_body_data_fail(GObexPacket *pkt, void *buf, gsize len,
 							gpointer user_data)
 {
 	g_main_loop_quit(mainloop);
 	return -1;
 }
 
-static void test_send_on_demand(int transport_type, GObexHeaderDataFunc func)
+static void test_send_on_demand(int transport_type, GObexPacketDataFunc func)
 {
 	struct rcv_buf_info r;
 	GIOChannel *io;
 	GIOCondition cond;
 	GObexPacket *req;
-	GObexHeader *hdr;
 	guint io_id, timer_id;
 	GObex *obex;
 
@@ -604,9 +603,7 @@ static void test_send_on_demand(int transport_type, GObexHeaderDataFunc func)
 	r.len = sizeof(pkt_put_body);
 
 	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
-
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY, func, &r);
-	g_obex_packet_add_header(req, hdr);
+	g_obex_packet_add_body(req, func, &r);
 
 	g_obex_send(obex, req, &r.err);
 	g_assert_no_error(r.err);

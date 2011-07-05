@@ -40,6 +40,9 @@ struct _GObexPacket {
 
 	gsize hlen;		/* Length of all encoded headers */
 	GSList *headers;
+
+	GObexPacketDataFunc get_body;
+	gpointer get_body_data;
 };
 
 GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id)
@@ -90,6 +93,18 @@ gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header)
 {
 	pkt->headers = g_slist_append(pkt->headers, header);
 	pkt->hlen += g_obex_header_get_length(header);
+
+	return TRUE;
+}
+
+gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexPacketDataFunc func,
+							gpointer user_data)
+{
+	if (pkt->get_body != NULL)
+		return FALSE;
+
+	pkt->get_body = func;
+	pkt->get_body_data = user_data;
 
 	return TRUE;
 }
@@ -257,8 +272,32 @@ failed:
 	return NULL;
 }
 
+static gssize get_body(GObexPacket *pkt, guint8 *buf, gsize len)
+{
+	guint16 u16;
+	gssize ret;
+
+	if (len < 3)
+		return -ENOBUFS;
+
+	ret = pkt->get_body(pkt, buf + 3, len - 3, pkt->get_body_data);
+	if (ret < 0)
+		return ret;
+
+	if (ret > 0)
+		buf[0] = G_OBEX_HDR_ID_BODY;
+	else
+		buf[0] = G_OBEX_HDR_ID_BODY_END;
+
+	u16 = g_htons(ret + 3);
+	memcpy(&buf[1], &u16, sizeof(u16));
+
+	return ret;
+}
+
 gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 {
+	gssize ret;
 	gsize count;
 	guint16 u16;
 	GSList *l;
@@ -281,7 +320,6 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 
 	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
 		GObexHeader *hdr = l->data;
-		gssize ret;
 
 		if (count >= len)
 			return -ENOBUFS;
@@ -290,16 +328,16 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 		if (ret < 0)
 			return ret;
 
-		/* Fix-up on-demand body header type and final bit. This
-		 * breaks the layers of abstraction a bit but it's the
-		 * simplest way to avoid two consecutive empty packets */
-		if (g_obex_header_get_id(hdr) == G_OBEX_HDR_ID_BODY &&
-								ret == 3) {
-			buf[0] |= FINAL_BIT;
-			buf[count] = G_OBEX_HDR_ID_BODY_END;
-		}
-
 		count += ret;
+	}
+
+	if (pkt->get_body) {
+		ret = get_body(pkt, buf + count, len - count);
+		if (ret < 0)
+			return ret;
+		if (ret == 0)
+			buf[0] |= FINAL_BIT;
+		count += ret + 3;
 	}
 
 	u16 = g_htons(count);

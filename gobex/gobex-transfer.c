@@ -65,7 +65,7 @@ static void transfer_abort_response(GObex *obex, GError *err, GObexPacket *rsp,
 }
 
 
-static gssize put_get_data(GObexHeader *header, void *buf, gsize len,
+static gssize put_get_data(GObexPacket *pkt, void *buf, gsize len,
 							gpointer user_data)
 {
 	struct transfer *transfer = user_data;
@@ -94,7 +94,6 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 {
 	struct transfer *transfer = user_data;
 	GObexPacket *req;
-	GObexHeader *hdr;
 	gboolean rspcode, final;
 
 	if (err != NULL) {
@@ -119,10 +118,7 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 	}
 
 	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
-
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY, put_get_data,
-								transfer);
-	g_obex_packet_add_header(req, hdr);
+	g_obex_packet_add_body(req, put_get_data, transfer);
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
@@ -155,16 +151,13 @@ guint g_obex_put(GObex *obex, const char *type, const char *name,
 			GError **err)
 {
 	GObexPacket *req;
-	GObexHeader *hdr;
 	struct transfer *transfer;
 
 	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
 	transfer->data_producer = data_func;
 
 	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
-						put_get_data, transfer);
-	g_obex_packet_add_header(req, hdr);
+	g_obex_packet_add_body(req, put_get_data, transfer);
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 								transfer, err);

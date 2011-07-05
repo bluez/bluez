@@ -144,7 +144,7 @@ static void test_decode_encode(void)
 	g_obex_packet_free(pkt);
 }
 
-static gssize get_body_data(GObexHeader *header, void *buf, gsize len,
+static gssize get_body_data(GObexPacket *pkt, void *buf, gsize len,
 							gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
@@ -157,15 +157,11 @@ static gssize get_body_data(GObexHeader *header, void *buf, gsize len,
 static void test_encode_on_demand(void)
 {
 	GObexPacket *pkt;
-	GObexHeader *hdr;
 	uint8_t buf[255];
 	gssize len;
 
 	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
-
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
-						get_body_data, NULL);
-	g_obex_packet_add_header(pkt, hdr);
+	g_obex_packet_add_body(pkt, get_body_data, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
 	if (len < 0) {
@@ -178,7 +174,7 @@ static void test_encode_on_demand(void)
 	g_obex_packet_free(pkt);
 }
 
-static gssize get_body_data_fail(GObexHeader *header, void *buf, gsize len,
+static gssize get_body_data_fail(GObexPacket *pkt, void *buf, gsize len,
 							gpointer user_data)
 {
 	return -1;
@@ -187,15 +183,11 @@ static gssize get_body_data_fail(GObexHeader *header, void *buf, gsize len,
 static void test_encode_on_demand_fail(void)
 {
 	GObexPacket *pkt;
-	GObexHeader *hdr;
 	uint8_t buf[255];
 	gssize len;
 
 	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
-
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
-						get_body_data_fail, NULL);
-	g_obex_packet_add_header(pkt, hdr);
+	g_obex_packet_add_body(pkt, get_body_data_fail, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
 

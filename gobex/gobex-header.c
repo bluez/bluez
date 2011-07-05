@@ -43,9 +43,6 @@ struct _GObexHeader {
 		guint8 u8;
 		guint32 u32;
 	} v;
-
-	GObexHeaderDataFunc get_data;
-	gpointer get_data_data;
 };
 
 static glong utf8_to_utf16(gunichar2 **utf16, const char *utf8) {
@@ -83,24 +80,6 @@ static const guint8 *get_bytes(void *to, const guint8 *from, gsize count)
 	return (from + count);
 }
 
-static gssize get_data(GObexHeader *header, guint8 *buf, gsize len)
-{
-	guint16 u16;
-	gssize ret;
-
-	ret = header->get_data(header, buf + 2, len - 2,
-						header->get_data_data);
-	if (ret < 0)
-		return ret;
-
-	header->vlen = ret;
-	header->hlen = header->vlen + 3;
-	u16 = g_htons(header->hlen);
-	memcpy(buf, &u16, sizeof(u16));
-
-	return header->hlen;
-}
-
 gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 {
 	guint8 *ptr = buf;
@@ -126,9 +105,6 @@ gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 		g_free(utf16);
 		break;
 	case G_OBEX_HDR_TYPE_BYTES:
-		if (header->get_data)
-			return get_data(header, ptr, buf_len - 1);
-
 		u16 = g_htons(header->hlen);
 		ptr = put_bytes(ptr, &u16, sizeof(u16));
 		if (header->extdata)
@@ -387,24 +363,6 @@ GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
 		header->v.extdata = data;
 		break;
 	}
-
-	return header;
-}
-
-GObexHeader *g_obex_header_new_on_demand(guint8 id, GObexHeaderDataFunc func,
-							gpointer user_data)
-{
-	GObexHeader *header;
-
-	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_BYTES)
-		return NULL;
-
-	header = g_new0(GObexHeader, 1);
-
-	header->id = id;
-	header->hlen = 3;
-	header->get_data = func;
-	header->get_data_data = user_data;
 
 	return header;
 }

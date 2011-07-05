@@ -55,9 +55,6 @@
 
 typedef struct _GObexHeader GObexHeader;
 
-typedef gssize (*GObexHeaderDataFunc) (GObexHeader *header, void *buf,
-						gsize len, gpointer user_data);
-
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
 gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 								gsize *len);
@@ -67,9 +64,6 @@ gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
 						GObexDataPolicy data_policy);
-GObexHeader *g_obex_header_new_on_demand(guint8 id,
-						GObexHeaderDataFunc func,
-						gpointer user_data);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
 
