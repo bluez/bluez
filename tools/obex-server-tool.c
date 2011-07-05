@@ -61,8 +61,9 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 	g_obex_unref(obex);
 }
 
-static guint8 handle_put(GObex *obex, GObexPacket *req)
+static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 {
+	GObexPacket *rsp;
 	GObexHeader *hdr;
 	const char *type, *name;
 	gsize type_len;
@@ -88,32 +89,20 @@ static guint8 handle_put(GObex *obex, GObexPacket *req)
 							name ? name : "");
 
 	if (g_obex_packet_find_header(req, G_OBEX_HDR_ID_BODY))
-		return G_OBEX_RSP_CONTINUE;
+		rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
 	else
-		return G_OBEX_RSP_SUCCESS;
+		rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
+
+	g_obex_send(obex, rsp, NULL);
 }
 
-static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
+static void handle_connect(GObex *obex, GObexPacket *req, gpointer user_data)
 {
-	gboolean final;
-	guint8 rspcode, op = g_obex_packet_get_operation(req, &final);
 	GObexPacket *rsp;
 
-	g_print("Request 0x%02x%s\n", op, final ? " (final)" : "");
+	g_print("connect\n");
 
-	switch (op) {
-	case G_OBEX_OP_CONNECT:
-		rspcode = G_OBEX_RSP_SUCCESS;
-		break;
-	case G_OBEX_OP_PUT:
-		rspcode = handle_put(obex, req);
-		break;
-	default:
-		rspcode = G_OBEX_RSP_NOT_IMPLEMENTED;
-		break;
-	}
-
-	rsp = g_obex_packet_new(rspcode, TRUE, NULL);
+	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
 	g_obex_send(obex, rsp, NULL);
 }
 
@@ -161,7 +150,9 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	obex = g_obex_new(io, transport, -1, -1);
 	g_io_channel_unref(io);
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
-	g_obex_set_request_function(obex, req_func, NULL);
+	g_obex_add_request_function(obex, G_OBEX_OP_PUT, handle_put, NULL);
+	g_obex_add_request_function(obex, G_OBEX_OP_CONNECT, handle_connect,
+									NULL);
 	clients = g_slist_append(clients, obex);;
 
 	return TRUE;
