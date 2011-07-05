@@ -517,8 +517,16 @@ done:
 void phonebook_req_finalize(void *request)
 {
 	struct query_context *data = request;
+	GSList *ebook = ebooks;
 
 	DBG("");
+
+	while (ebook != NULL) {
+		if (e_book_cancel(ebook->data, NULL) == TRUE)
+			data->queued_calls--;
+
+		ebook = ebook->next;
+	}
 
 	if (data != NULL && data->queued_calls == 0)
 		free_query_context(data);
