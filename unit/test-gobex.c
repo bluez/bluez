@@ -528,7 +528,7 @@ static void test_send_connect(int transport_type)
 
 	create_endpoints(&obex, &io, transport_type);
 
-	r.err = NULL;
+	memset(&r, 0, sizeof(r));
 	r.buf = pkt_connect_req;
 	r.len = sizeof(pkt_connect_req);
 
@@ -570,7 +570,7 @@ static void test_send_connect_pkt(void)
 	test_send_connect(SOCK_SEQPACKET);
 }
 
-static guint16 get_body_data(GObexHeader *header, void *buf, gsize len,
+static gssize get_body_data(GObexHeader *header, void *buf, gsize len,
 							gpointer user_data)
 {
 	uint8_t data[] = { 1, 2, 3, 4 };
@@ -580,7 +580,14 @@ static guint16 get_body_data(GObexHeader *header, void *buf, gsize len,
 	return sizeof(data);
 }
 
-static void test_send_on_demand(int transport_type)
+static gssize get_body_data_fail(GObexHeader *header, void *buf, gsize len,
+							gpointer user_data)
+{
+	g_main_loop_quit(mainloop);
+	return -1;
+}
+
+static void test_send_on_demand(int transport_type, GObexHeaderDataFunc func)
 {
 	struct rcv_buf_info r;
 	GIOChannel *io;
@@ -592,14 +599,13 @@ static void test_send_on_demand(int transport_type)
 
 	create_endpoints(&obex, &io, transport_type);
 
-	r.err = NULL;
+	memset(&r, 0, sizeof(r));
 	r.buf = pkt_put_body;
 	r.len = sizeof(pkt_put_body);
 
 	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
 
-	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY,
-						get_body_data, NULL);
+	hdr = g_obex_header_new_on_demand(G_OBEX_HDR_ID_BODY, func, &r);
 	g_obex_packet_add_header(req, hdr);
 
 	g_obex_send(obex, req, &r.err);
@@ -627,12 +633,22 @@ static void test_send_on_demand(int transport_type)
 
 static void test_send_on_demand_stream(void)
 {
-	test_send_on_demand(SOCK_STREAM);
+	test_send_on_demand(SOCK_STREAM, get_body_data);
 }
 
 static void test_send_on_demand_pkt(void)
 {
-	test_send_on_demand(SOCK_SEQPACKET);
+	test_send_on_demand(SOCK_SEQPACKET, get_body_data);
+}
+
+static void test_send_on_demand_fail_stream(void)
+{
+	test_send_on_demand(SOCK_STREAM, get_body_data_fail);
+}
+
+static void test_send_on_demand_fail_pkt(void)
+{
+	test_send_on_demand(SOCK_SEQPACKET, get_body_data_fail);
 }
 
 static void handle_connect_req(GObex *obex, GObexPacket *req,
@@ -802,6 +818,10 @@ int main(int argc, char *argv[])
 						test_send_on_demand_stream);
 	g_test_add_func("/gobex/test_send_on_demand_pkt",
 						test_send_on_demand_pkt);
+	g_test_add_func("/gobex/test_send_on_demand_fail_stream",
+					test_send_on_demand_fail_stream);
+	g_test_add_func("/gobex/test_send_on_demand_fail_pkt",
+					test_send_on_demand_fail_pkt);
 	g_test_add_func("/gobex/test_send_connect_req_stream",
 					test_send_connect_req_stream);
 	g_test_add_func("/gobex/test_send_connect_req_pkt",

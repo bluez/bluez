@@ -55,7 +55,7 @@
 
 typedef struct _GObexHeader GObexHeader;
 
-typedef guint16 (*GObexHeaderDataFunc) (GObexHeader *header, void *buf,
+typedef gssize (*GObexHeaderDataFunc) (GObexHeader *header, void *buf,
 						gsize len, gpointer user_data);
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
@@ -76,7 +76,7 @@ GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
 guint8 g_obex_header_get_id(GObexHeader *header);
 guint16 g_obex_header_get_length(GObexHeader *header);
 
-gsize g_obex_header_encode(GObexHeader *header, void *hdr_ptr, gsize buf_len);
+gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len);
 GObexHeader *g_obex_header_decode(const void *data, gsize len,
 				GObexDataPolicy data_policy, gsize *parsed,
 				GError **err);

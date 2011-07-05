@@ -281,9 +281,16 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 
 	for (l = pkt->headers; l != NULL; l = g_slist_next(l)) {
 		GObexHeader *hdr = l->data;
+		gssize ret;
+
 		if (count >= len)
 			return -ENOBUFS;
-		count += g_obex_header_encode(hdr, buf + count, len - count);
+
+		ret = g_obex_header_encode(hdr, buf + count, len - count);
+		if (ret < 0)
+			return ret;
+
+		count += ret;
 	}
 
 	u16 = g_htons(count);

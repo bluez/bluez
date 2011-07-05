@@ -83,13 +83,17 @@ static const guint8 *get_bytes(void *to, const guint8 *from, gsize count)
 	return (from + count);
 }
 
-static gsize get_data(GObexHeader *header, guint8 *buf, gsize len)
+static gssize get_data(GObexHeader *header, guint8 *buf, gsize len)
 {
 	guint16 u16;
+	gssize ret;
 
-	header->vlen = header->get_data(header, buf + 2, len - 2,
+	ret = header->get_data(header, buf + 2, len - 2,
 						header->get_data_data);
+	if (ret < 0)
+		return ret;
 
+	header->vlen = ret;
 	header->hlen = header->vlen + 3;
 	u16 = g_htons(header->hlen);
 	memcpy(buf, &u16, sizeof(u16));
@@ -97,7 +101,7 @@ static gsize get_data(GObexHeader *header, guint8 *buf, gsize len)
 	return header->hlen;
 }
 
-gsize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
+gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 {
 	guint8 *ptr = buf;
 	guint16 u16;
@@ -106,7 +110,7 @@ gsize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 	glong utf16_len;
 
 	if (buf_len < header->hlen)
-		return 0;
+		return -1;
 
 	ptr = put_bytes(ptr, &header->id, sizeof(header->id));
 
@@ -114,7 +118,7 @@ gsize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 	case G_OBEX_HDR_TYPE_UNICODE:
 		utf16_len = utf8_to_utf16(&utf16, header->v.string);
 		if (utf16_len < 0 || (guint16) utf16_len > buf_len)
-			return 0;
+			return -1;
 		g_assert_cmpuint(utf16_len + 3, ==, header->hlen);
 		u16 = g_htons(utf16_len + 3);
 		ptr = put_bytes(ptr, &u16, sizeof(u16));
