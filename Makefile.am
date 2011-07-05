@@ -161,7 +161,7 @@ builtin_nodist += sap/sap.c
 
 noinst_LIBRARIES = sap/libsap.a
 
-sap_libsap_a_SOURCES = sap/sap.h sap/sap-dummy.c
+sap_libsap_a_SOURCES = sap/sap.h sap/sap-dummy.c sap/sap-u8500.c
 endif
 
 if INPUTPLUGIN
@@ -285,7 +285,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			input/input.conf serial/serial.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
-			audio/telephony-maemo6.c sap/sap-dummy.c
+			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c
 
 
 if ALSA
