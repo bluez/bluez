@@ -67,9 +67,6 @@ struct _GObex {
 
 	GSList *req_handlers;
 
-	GObexRequestFunc req_func;
-	gpointer req_func_data;
-
 	GObexFunc disconn_func;
 	gpointer disconn_func_data;
 
@@ -475,13 +472,6 @@ immediate_completion:
 	return TRUE;
 }
 
-void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
-							gpointer user_data)
-{
-	obex->req_func = func;
-	obex->req_func_data = user_data;
-}
-
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data)
 {
@@ -589,6 +579,7 @@ static gint req_handler_cmp(gconstpointer a, gconstpointer b)
 
 static void handle_request(GObex *obex, GObexPacket *req)
 {
+	GObexPacket *rsp;
 	GSList *match;
 	guint8 opcode;
 
@@ -605,8 +596,8 @@ static void handle_request(GObex *obex, GObexPacket *req)
 		return;
 	}
 
-	if (obex->req_func)
-		obex->req_func(obex, req, obex->req_func_data);
+	rsp = g_obex_packet_new(G_OBEX_RSP_NOT_IMPLEMENTED, TRUE, NULL);
+	g_obex_send(obex, rsp, NULL);
 }
 
 static gboolean read_stream(GObex *obex, GError **err)

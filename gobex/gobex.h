@@ -47,8 +47,6 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 gboolean g_obex_cancel_req(GObex *obex, guint req_id,
 						gboolean remove_callback);
 
-void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
-							gpointer user_data);
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data);
 gint g_obex_add_request_function(GObex *obex, guint8 opcode,

@@ -682,7 +682,8 @@ static void recv_connect(int transport_type)
 
 	create_endpoints(&obex, &io, transport_type);
 
-	g_obex_set_request_function(obex, handle_connect_req, &gerr);
+	g_obex_add_request_function(obex, G_OBEX_OP_CONNECT,
+						handle_connect_req, &gerr);
 	g_obex_set_disconnect_function(obex, handle_connect_err, &gerr);
 
 	status = g_io_channel_write_chars(io, (gchar *) pkt_connect_req,
