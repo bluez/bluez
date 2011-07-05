@@ -529,6 +529,13 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 {
 	struct query_context *data;
 
+	if (g_strcmp0("/telecom/pb.vcf", name) != 0) {
+		if (err)
+			*err = -ENOENT;
+
+		return NULL;
+	}
+
 	data = g_new0(struct query_context, 1);
 	data->contacts_cb = cb;
 	data->params = params;
