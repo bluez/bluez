@@ -51,7 +51,10 @@ void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 							gpointer user_data);
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data);
-
+gint g_obex_add_request_function(GObex *obex, guint8 opcode,
+						GObexRequestFunc func,
+						gpointer user_data);
+gboolean g_obex_remove_request_function(GObex *obex, gint id);
 GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 						gssize rx_mtu, gssize tx_mtu);
 

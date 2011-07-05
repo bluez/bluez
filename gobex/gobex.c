@@ -65,6 +65,8 @@ struct _GObex {
 
 	GQueue *tx_queue;
 
+	GSList *req_handlers;
+
 	GObexRequestFunc req_func;
 	gpointer req_func_data;
 
@@ -83,6 +85,12 @@ struct pending_pkt {
 	GObexResponseFunc rsp_func;
 	gpointer rsp_data;
 	gboolean cancelled;
+};
+
+struct req_handler {
+	guint8 opcode;
+	GObexRequestFunc func;
+	gpointer user_data;
 };
 
 struct connect_data {
@@ -481,6 +489,39 @@ void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 	obex->disconn_func_data = user_data;
 }
 
+gint g_obex_add_request_function(GObex *obex, guint8 opcode,
+						GObexRequestFunc func,
+						gpointer user_data)
+{
+	struct req_handler *handler;
+
+	handler = g_new0(struct req_handler, 1);
+	handler->opcode = opcode;
+	handler->func = func;
+	handler->user_data = user_data;
+
+	obex->req_handlers = g_slist_prepend(obex->req_handlers, handler);
+
+	return GPOINTER_TO_INT(handler);
+}
+
+gboolean g_obex_remove_request_function(GObex *obex, gint id)
+{
+	struct req_handler *handler;
+	GSList *match;
+
+	match = g_slist_find(obex->req_handlers, GINT_TO_POINTER(id));
+	if (match == NULL)
+		return FALSE;
+
+	handler = match->data;
+
+	obex->req_handlers = g_slist_delete_link(obex->req_handlers, match);
+	g_free(handler);
+
+	return TRUE;
+}
+
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 {
 	const struct connect_data *data;
@@ -538,10 +579,31 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 		enable_tx(obex);
 }
 
+static gint req_handler_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct req_handler *handler = a;
+	const guint8 *opcode = b;
+
+	return (gint) handler->opcode - (gint) *opcode;
+}
+
 static void handle_request(GObex *obex, GObexPacket *req)
 {
+	GSList *match;
+	guint8 opcode;
+
 	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
 		parse_connect_data(obex, req);
+
+	opcode = g_obex_packet_get_operation(req, NULL);
+
+	match = g_slist_find_custom(obex->req_handlers, &opcode,
+							req_handler_cmp);
+	if (match) {
+		struct req_handler *handler = match->data;
+		handler->func(obex, req, handler->user_data);
+		return;
+	}
 
 	if (obex->req_func)
 		obex->req_func(obex, req, obex->req_func_data);
@@ -794,6 +856,8 @@ void g_obex_unref(GObex *obex)
 
 	if (!last_ref)
 		return;
+
+	g_slist_free_full(obex->req_handlers, g_free);
 
 	g_queue_foreach(obex->tx_queue, (GFunc) pending_pkt_free, NULL);
 	g_queue_free(obex->tx_queue);
