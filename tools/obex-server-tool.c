@@ -64,26 +64,28 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 static void req_func(GObex *obex, GObexPacket *req, gpointer user_data)
 {
 	gboolean final;
-	guint8 rsp, op = g_obex_packet_get_operation(req, &final);
+	guint8 rspcode, op = g_obex_packet_get_operation(req, &final);
+	GObexPacket *rsp;
 
 	g_print("Request 0x%02x%s\n", op, final ? " (final)" : "");
 
 	switch (op) {
 	case G_OBEX_OP_CONNECT:
-		rsp = G_OBEX_RSP_SUCCESS;
+		rspcode = G_OBEX_RSP_SUCCESS;
 		break;
 	case G_OBEX_OP_PUT:
 		if (g_obex_packet_find_header(req, G_OBEX_HDR_ID_BODY))
-			rsp = G_OBEX_RSP_CONTINUE;
+			rspcode = G_OBEX_RSP_CONTINUE;
 		else
-			rsp = G_OBEX_RSP_SUCCESS;
+			rspcode = G_OBEX_RSP_SUCCESS;
 		break;
 	default:
-		rsp = G_OBEX_RSP_NOT_IMPLEMENTED;
+		rspcode = G_OBEX_RSP_NOT_IMPLEMENTED;
 		break;
 	}
 
-	g_obex_response(obex, op, rsp, NULL, NULL);
+	rsp = g_obex_packet_new(rspcode, TRUE, NULL);
+	g_obex_send(obex, rsp, NULL);
 }
 
 static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
