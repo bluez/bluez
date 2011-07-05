@@ -21,6 +21,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -32,6 +33,7 @@
 #include <readline/history.h>
 
 #include <gobex/gobex.h>
+#include <gobex/gobex-transfer.h>
 
 static GMainLoop *main_loop = NULL;
 static GObex *obex = NULL;
@@ -113,6 +115,59 @@ static void cmd_connect(int argc, char **argv)
 	g_obex_connect(obex, NULL, 0, conn_complete, NULL, NULL);
 }
 
+struct put_data {
+	int fd;
+};
+
+static void put_complete(GObex *obex, GError *err, gpointer user_data)
+{
+	struct put_data *data = user_data;
+
+	if (err != NULL)
+		g_printerr("put failed: %s\n", err->message);
+	else
+		g_print("put succeeded\n");
+
+	close(data->fd);
+	g_free(data);
+}
+
+static gssize put_data_cb(void *buf, gsize len, gpointer user_data)
+{
+	struct put_data *data = user_data;
+
+	return read(data->fd, buf, len);
+}
+
+static void cmd_put(int argc, char **argv)
+{
+	struct put_data *data;
+	GError *err = NULL;
+	int fd;
+
+	if (argc < 2) {
+		g_printerr("Filename required\n");
+		return;
+	}
+
+	fd = open(argv[1], O_RDONLY | O_NOCTTY, 0);
+	if (fd < 0) {
+		g_printerr("open: %s", strerror(errno));
+		return;
+	}
+
+	data = g_new0(struct put_data, 1);
+	data->fd = fd;
+
+	g_obex_put(obex, NULL, argv[1], put_data_cb, put_complete, data, &err);
+	if (err != NULL) {
+		g_printerr("put failed: %s\n", err->message);
+		g_error_free(err);
+		close(data->fd);
+		g_free(data);
+	}
+}
+
 static void cmd_help(int argc, char **argv);
 
 static void cmd_exit(int argc, char **argv)
@@ -130,6 +185,7 @@ static struct {
 	{ "exit",	cmd_exit,	"",		"Exit application" },
 	{ "quit",	cmd_exit,	"",		"Exit application" },
 	{ "connect",	cmd_connect,	"[target]",	"OBEX Connect" },
+	{ "put",	cmd_put,	"<file>",	"Send a file" },
 	{ NULL },
 };
 
