@@ -61,7 +61,7 @@ static GOptionEntry options[] = {
 
 static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 {
-	g_printerr("Disconnected\n");
+	g_printerr("Disconnected: %s\n", err ? err->message : "(no error)");
 	g_main_loop_quit(main_loop);
 }
 
