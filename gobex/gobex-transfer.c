@@ -19,6 +19,8 @@
  *
  */
 
+#include <string.h>
+
 #include "gobex.h"
 #include "gobex-transfer.h"
 
@@ -150,12 +152,26 @@ guint g_obex_put(GObex *obex, const char *type, const char *name,
 			GError **err)
 {
 	GObexPacket *req;
+	GObexHeader *hdr;
 	struct transfer *transfer;
 
 	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
 	transfer->data_producer = data_func;
 
 	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
+
+	if (type) {
+		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TYPE,
+					(char *) type, strlen(type) + 1,
+					G_OBEX_DATA_COPY);
+		g_obex_packet_add_header(req, hdr);
+	}
+
+	if (name) {
+		hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, name);
+		g_obex_packet_add_header(req, hdr);
+	}
+
 	g_obex_packet_add_body(req, put_get_data, transfer);
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
