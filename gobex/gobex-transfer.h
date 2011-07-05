@@ -27,7 +27,7 @@
 #include <gobex/gobex.h>
 #include <gobex/gobex-defs.h>
 
-guint g_obex_put(GObex *obex, const char *type, const char *name,
+guint g_obex_put_req(GObex *obex, const char *type, const char *name,
 			GObexDataProducer data_func, GObexFunc complete_func,
 			gpointer user_data, GError **err);
 

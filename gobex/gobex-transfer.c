@@ -146,7 +146,7 @@ static struct transfer *transfer_new(GObex *obex, guint8 opcode,
 	return transfer;
 }
 
-guint g_obex_put(GObex *obex, const char *type, const char *name,
+guint g_obex_put_req(GObex *obex, const char *type, const char *name,
 			GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err)
