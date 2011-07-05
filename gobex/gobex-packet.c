@@ -336,8 +336,12 @@ gssize g_obex_packet_encode(GObexPacket *pkt, guint8 *buf, gsize len)
 		ret = get_body(pkt, buf + count, len - count);
 		if (ret < 0)
 			return ret;
-		if (ret == 0)
+		if (ret == 0) {
+			if (pkt->opcode == G_OBEX_RSP_CONTINUE)
+				buf[0] = G_OBEX_RSP_SUCCESS;
 			buf[0] |= FINAL_BIT;
+		}
+
 		count += ret + 3;
 	}
 
