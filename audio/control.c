@@ -1045,12 +1045,7 @@ static DBusMessage *volume_up(DBusConnection *conn, DBusMessage *msg,
 {
 	struct audio_device *device = data;
 	struct control *control = device->control;
-	DBusMessage *reply;
 	int err;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
 
 	if (control->state != AVCTP_STATE_CONNECTED)
 		return btd_error_not_connected(msg);
@@ -1070,12 +1065,7 @@ static DBusMessage *volume_down(DBusConnection *conn, DBusMessage *msg,
 {
 	struct audio_device *device = data;
 	struct control *control = device->control;
-	DBusMessage *reply;
 	int err;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
 
 	if (control->state != AVCTP_STATE_CONNECTED)
 		return btd_error_not_connected(msg);
