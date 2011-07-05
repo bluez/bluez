@@ -65,7 +65,7 @@ struct _GObex {
 	GObexRequestFunc req_func;
 	gpointer req_func_data;
 
-	GObexDisconnectFunc disconn_func;
+	GObexFunc disconn_func;
 	gpointer disconn_func_data;
 
 	struct pending_pkt *pending_req;
@@ -431,7 +431,7 @@ void g_obex_set_request_function(GObex *obex, GObexRequestFunc func,
 	obex->req_func_data = user_data;
 }
 
-void g_obex_set_disconnect_function(GObex *obex, GObexDisconnectFunc func,
+void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data)
 {
 	obex->disconn_func = func;
