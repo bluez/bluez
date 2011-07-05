@@ -543,6 +543,12 @@ static gboolean read_stream(GObex *obex, GError **err)
 	memcpy(&u16, &buf[1], sizeof(u16));
 	obex->rx_pkt_len = g_ntohs(u16);
 
+	if (obex->rx_pkt_len > obex->rx_mtu) {
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
+				"Too big incoming packet");
+		return FALSE;
+	}
+
 read_body:
 	if (obex->rx_data >= obex->rx_pkt_len)
 		return TRUE;
@@ -669,6 +675,7 @@ failed:
 	g_io_channel_unref(obex->io);
 	obex->io = NULL;
 	obex->io_source = 0;
+	obex->rx_data = 0;
 
 	if (obex->pending_req)
 		handle_response(obex, err, NULL);
