@@ -262,7 +262,7 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/error.h src/error.c \
 			src/manager.h src/manager.c \
 			src/adapter.h src/adapter.c \
-			src/device.h src/device.c \
+			src/device.h src/device.c src/attio.h \
 			src/dbus-common.c src/dbus-common.h \
 			src/event.h src/event.c \
 			src/oob.h src/oob.c src/eir.h src/eir.c

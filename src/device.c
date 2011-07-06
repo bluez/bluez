@@ -49,12 +49,13 @@
 #include "att.h"
 #include "hcid.h"
 #include "adapter.h"
+#include "gattrib.h"
+#include "attio.h"
 #include "device.h"
 #include "dbus-common.h"
 #include "event.h"
 #include "error.h"
 #include "glib-helper.h"
-#include "gattrib.h"
 #include "gatt.h"
 #include "agent.h"
 #include "sdp-xml.h"
@@ -104,6 +105,12 @@ struct browse_req {
 	guint listener_id;
 };
 
+struct attio_data {
+	guint id;
+	attio_connect_cb func;
+	gpointer user_data;
+};
+
 struct btd_device {
 	bdaddr_t	bdaddr;
 	device_type_t	type;
@@ -124,6 +131,7 @@ struct btd_device {
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
 	GSList		*disconnects;		/* disconnects message */
+	GSList		*attios;
 
 	gboolean	connected;
 
@@ -201,6 +209,7 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->services, g_free);
 	g_slist_free_full(device->uuids, g_free);
 	g_slist_free_full(device->primaries, g_free);
+	g_slist_free_full(device->attios, g_free);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,
@@ -2438,4 +2447,23 @@ void device_set_class(struct btd_device *device, uint32_t value)
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &value);
+}
+
+guint btd_device_add_attio_callback(struct btd_device *device,
+						attio_connect_cb func,
+						gpointer user_data)
+{
+	struct attio_data *attio;
+	static guint attio_id = 0;
+
+	DBG("%p registered ATT connection callback", device);
+
+	attio = g_new0(struct attio_data, 1);
+	attio->id = ++attio_id;
+	attio->func = func;
+	attio->user_data = user_data;
+
+	device->attios = g_slist_append(device->attios, attio);
+
+	return attio->id;
 }
