@@ -81,12 +81,19 @@ static gboolean test_timeout(gpointer user_data)
 	return FALSE;
 }
 
+struct test_buf {
+	const void *data;
+	gssize len;
+};
+
 struct test_data {
 	guint count;
 	GError *err;
+	struct test_buf recv[3];
+	struct test_buf send[3];
 };
 
-static gboolean put_srv(GIOChannel *io, GIOCondition cond, gpointer user_data)
+static gboolean io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	struct test_data *d = user_data;
 	GIOStatus status;
@@ -94,30 +101,23 @@ static gboolean put_srv(GIOChannel *io, GIOCondition cond, gpointer user_data)
 	char buf[255];
 	const char *send_buf, *expect;
 
-	d->count++;
+	expect = d->recv[d->count].data;
+	expect_len = d->recv[d->count].len;
+	send_buf = d->send[d->count].data;
+	send_buf_len = d->send[d->count].len;
 
-	if (d->count > 1) {
-		send_buf = (const char *) put_rsp_last;
-		send_buf_len = sizeof(put_rsp_last);
-		expect = (const char *) put_req_last;
-		expect_len = sizeof(put_req_last);
-	} else {
-		send_buf = (const char *) put_rsp_first;
-		send_buf_len = sizeof(put_rsp_first);
-		expect = (const char *) put_req_first;
-		expect_len = sizeof(put_req_first);
-	}
+	d->count++;
 
 	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
 	if (status != G_IO_STATUS_NORMAL) {
-		g_print("put_srv count %u\n", d->count);
+		g_print("io_cb count %u\n", d->count);
 		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 				"Reading data failed with status %d", status);
 		goto failed;
 	}
 
 	if (rbytes < expect_len) {
-		g_print("put_srv count %u\n", d->count);
+		g_print("io_cb count %u\n", d->count);
 		dump_bufs(expect, expect_len, buf, rbytes);
 		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 					"Not enough data from socket");
@@ -125,7 +125,7 @@ static gboolean put_srv(GIOChannel *io, GIOCondition cond, gpointer user_data)
 	}
 
 	if (memcmp(buf, expect, expect_len) != 0) {
-		g_print("put_srv count %u\n", d->count);
+		g_print("io_cb count %u\n", d->count);
 		dump_bufs(expect, expect_len, buf, rbytes);
 		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 					"Received data is not correct");
@@ -135,7 +135,7 @@ static gboolean put_srv(GIOChannel *io, GIOCondition cond, gpointer user_data)
 	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
 									NULL);
 	if (bytes_written != send_buf_len) {
-		g_print("put_srv count %u\n", d->count);
+		g_print("io_cb count %u\n", d->count);
 		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 						"Unable to write to socket");
 		goto failed;
@@ -183,12 +183,16 @@ static void test_put_req(void)
 	GIOCondition cond;
 	guint io_id, timer_id;
 	GObex *obex;
-	struct test_data d = { 0, NULL };
+	struct test_data d = { 0, NULL, {
+				{ put_req_first, sizeof(put_req_first) },
+				{ put_req_last, sizeof(put_req_last) } }, {
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_last, sizeof(put_rsp_last) } } };
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, put_srv, &d);
+	io_id = g_io_add_watch(io, cond, io_cb, &d);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -247,83 +251,22 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 		g_main_loop_quit(mainloop);
 }
 
-static gboolean put_cli(GIOChannel *io, GIOCondition cond, gpointer user_data)
-{
-	struct test_data *d = user_data;
-	GIOStatus status;
-	gsize bytes_written, rbytes, send_buf_len, expect_len;
-	char buf[255];
-	const char *send_buf, *expect;
-
-	d->count++;
-
-	if (d->count > 1) {
-		expect = (const char *) put_rsp_last;
-		expect_len = sizeof(put_rsp_last);
-		send_buf = NULL;
-		send_buf_len = 0;
-	} else {
-		expect = (const char *) put_rsp_first;
-		expect_len = sizeof(put_rsp_first);
-		send_buf = (const char *) put_req_last;
-		send_buf_len = sizeof(put_req_last);
-	}
-
-	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
-	if (status != G_IO_STATUS_NORMAL) {
-		g_print("put_cli count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Reading data failed with status %d", status);
-		goto failed;
-	}
-
-	if (rbytes < expect_len) {
-		g_print("put_cli count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Not enough data from socket");
-		goto failed;
-	}
-
-	if (memcmp(buf, expect, expect_len) != 0) {
-		g_print("put_cli count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Received data is not correct");
-		goto failed;
-	}
-
-	if (send_buf == NULL)
-		return TRUE;
-
-	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
-									NULL);
-	if (bytes_written != send_buf_len) {
-		g_print("put_cli count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-						"Unable to write to socket");
-		goto failed;
-	}
-
-	return TRUE;
-
-failed:
-	g_main_loop_quit(mainloop);
-	return FALSE;
-}
-
 static void test_put_rsp(void)
 {
 	GIOChannel *io;
 	GIOCondition cond;
 	guint io_id, timer_id;
 	GObex *obex;
-	struct test_data d = { 0, NULL };
+	struct test_data d = { 0, NULL, {
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_last, sizeof(put_rsp_last) } }, {
+				{ put_req_last, sizeof(put_req_last) },
+				{ NULL, 0 } } };
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, put_cli, &d);
+	io_id = g_io_add_watch(io, cond, io_cb, &d);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -348,80 +291,22 @@ static void test_put_rsp(void)
 	g_assert_no_error(d.err);
 }
 
-static gboolean get_srv(GIOChannel *io, GIOCondition cond, gpointer user_data)
-{
-	struct test_data *d = user_data;
-	GIOStatus status;
-	gsize bytes_written, rbytes, send_buf_len, expect_len;
-	char buf[255];
-	const char *send_buf, *expect;
-
-	d->count++;
-
-	if (d->count > 1) {
-		send_buf = (const char *) get_rsp_last;
-		send_buf_len = sizeof(get_rsp_last);
-		expect = (const char *) get_req_last;
-		expect_len = sizeof(get_req_last);
-	} else {
-		send_buf = (const char *) get_rsp_first;
-		send_buf_len = sizeof(get_rsp_first);
-		expect = (const char *) get_req_first;
-		expect_len = sizeof(get_req_first);
-	}
-
-	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
-	if (status != G_IO_STATUS_NORMAL) {
-		g_print("put_srv count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Reading data failed with status %d", status);
-		goto failed;
-	}
-
-	if (rbytes < expect_len) {
-		g_print("put_srv count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Not enough data from socket");
-		goto failed;
-	}
-
-	if (memcmp(buf, expect, expect_len) != 0) {
-		g_print("put_srv count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Received data is not correct");
-		goto failed;
-	}
-
-	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
-									NULL);
-	if (bytes_written != send_buf_len) {
-		g_print("put_srv count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-						"Unable to write to socket");
-		goto failed;
-	}
-
-	return TRUE;
-
-failed:
-	g_main_loop_quit(mainloop);
-	return FALSE;
-}
-
 static void test_get_req(void)
 {
 	GIOChannel *io;
 	GIOCondition cond;
 	guint io_id, timer_id;
 	GObex *obex;
-	struct test_data d = { 0, NULL };
+	struct test_data d = { 0, NULL, {
+				{ get_req_first, sizeof(get_req_first) },
+				{ get_req_last, sizeof(get_req_last) } }, {
+				{ get_rsp_first, sizeof(get_rsp_first) },
+				{ get_rsp_last, sizeof(get_rsp_last) } } };
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, get_srv, &d);
+	io_id = g_io_add_watch(io, cond, io_cb, &d);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
@@ -442,71 +327,6 @@ static void test_get_req(void)
 	g_obex_unref(obex);
 
 	g_assert_no_error(d.err);
-}
-
-static gboolean get_cli(GIOChannel *io, GIOCondition cond, gpointer user_data)
-{
-	struct test_data *d = user_data;
-	GIOStatus status;
-	gsize bytes_written, rbytes, send_buf_len, expect_len;
-	char buf[255];
-	const char *send_buf, *expect;
-
-	d->count++;
-
-	if (d->count > 1) {
-		expect = (const char *) get_rsp_last;
-		expect_len = sizeof(get_rsp_last);
-		send_buf = NULL;
-		send_buf_len = 0;
-	} else {
-		expect = (const char *) get_rsp_first;
-		expect_len = sizeof(get_rsp_first);
-		send_buf = (const char *) get_req_last;
-		send_buf_len = sizeof(get_req_last);
-	}
-
-	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
-	if (status != G_IO_STATUS_NORMAL) {
-		g_print("get_cli count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-				"Reading data failed with status %d", status);
-		goto failed;
-	}
-
-	if (rbytes < expect_len) {
-		g_print("get_cli count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Not enough data from socket");
-		goto failed;
-	}
-
-	if (memcmp(buf, expect, expect_len) != 0) {
-		g_print("get_cli count %u\n", d->count);
-		dump_bufs(expect, expect_len, buf, rbytes);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-					"Received data is not correct");
-		goto failed;
-	}
-
-	if (send_buf == NULL)
-		return TRUE;
-
-	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
-									NULL);
-	if (bytes_written != send_buf_len) {
-		g_print("get_cli count %u\n", d->count);
-		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
-						"Unable to write to socket");
-		goto failed;
-	}
-
-	return TRUE;
-
-failed:
-	g_main_loop_quit(mainloop);
-	return FALSE;
 }
 
 static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
@@ -534,12 +354,16 @@ static void test_get_rsp(void)
 	GIOCondition cond;
 	guint io_id, timer_id;
 	GObex *obex;
-	struct test_data d = { 0, NULL };
+	struct test_data d = { 0, NULL, {
+				{ get_rsp_first, sizeof(get_rsp_first) },
+				{ get_rsp_last, sizeof(get_rsp_last) } }, {
+				{ get_req_last, sizeof(get_req_last) },
+				{ NULL, 0 } } };
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, get_cli, &d);
+	io_id = g_io_add_watch(io, cond, io_cb, &d);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
