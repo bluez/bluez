@@ -19,6 +19,8 @@
  *
  */
 
+#include <gobex/gobex.h>
+
 enum {
 	TEST_ERROR_TIMEOUT,
 	TEST_ERROR_UNEXPECTED,
@@ -30,3 +32,7 @@ GQuark test_error_quark(void);
 void dump_bufs(const void *mem1, size_t len1, const void *mem2, size_t len2);
 void assert_memequal(const void *mem1, size_t len1,
 						const void *mem2, size_t len2);
+
+GObex *create_gobex(int fd, GObexTransportType transport_type,
+						gboolean close_on_unref);
+void create_endpoints(GObex **obex, GIOChannel **io, int sock_type);

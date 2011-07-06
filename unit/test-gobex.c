@@ -61,54 +61,6 @@ static gboolean test_timeout(gpointer user_data)
 	return FALSE;
 }
 
-static GObex *create_gobex(int fd, GObexTransportType transport_type,
-						gboolean close_on_unref)
-{
-	GIOChannel *io;
-	GObex *obex;
-
-	io = g_io_channel_unix_new(fd);
-	g_assert(io != NULL);
-
-	g_io_channel_set_close_on_unref(io, close_on_unref);
-
-	obex = g_obex_new(io, transport_type, -1, -1);
-	g_io_channel_unref(io);
-
-	return obex;
-}
-
-static void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
-{
-	GObexTransportType transport_type;
-	int sv[2];
-
-	if (socketpair(AF_UNIX, sock_type | SOCK_NONBLOCK, 0, sv) < 0) {
-		g_printerr("socketpair: %s", strerror(errno));
-		abort();
-	}
-
-	if (sock_type == SOCK_STREAM)
-		transport_type = G_OBEX_TRANSPORT_STREAM;
-	else
-		transport_type = G_OBEX_TRANSPORT_PACKET;
-
-	*obex = create_gobex(sv[0], transport_type, TRUE);
-	g_assert(*obex != NULL);
-
-	if (io == NULL) {
-		close(sv[1]);
-		return;
-	}
-
-	*io = g_io_channel_unix_new(sv[1]);
-	g_assert(*io != NULL);
-
-	g_io_channel_set_encoding(*io, NULL, NULL);
-	g_io_channel_set_buffered(*io, FALSE);
-	g_io_channel_set_close_on_unref(*io, TRUE);
-}
-
 static void connect_rsp(GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data)
 {
