@@ -2571,10 +2571,12 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	if (device->attrib && cfunc)
 		cfunc(device->attrib, user_data);
 
-	if (device->attioid == 0 && device->attrib == NULL)
+	if (device->attioid == 0 && device->attrib == NULL) {
+		att_auto_connect(device);
 		device->attioid = g_timeout_add_seconds(AUTOCONNECT_INTERVAL,
 							att_auto_connect,
 							device);
+	}
 
 	return attio->id;
 }
