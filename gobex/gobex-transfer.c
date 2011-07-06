@@ -269,11 +269,11 @@ static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data
 
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 						"Request was aborted");
-	transfer_complete(transfer, err);
-	g_error_free(err);
-
 	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
 	g_obex_send(obex, rsp, NULL);
+
+	transfer_complete(transfer, err);
+	g_error_free(err);
 }
 
 guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
@@ -332,6 +332,68 @@ guint g_obex_get_req(GObex *obex, const char *type, const char *name,
 		transfer_free(transfer);
 		return 0;
 	}
+
+	return transfer->id;
+}
+
+static gssize get_get_data(void *buf, gsize len, gpointer user_data)
+{
+	struct transfer *transfer = user_data;
+	GObexPacket *req;
+	GError *err = NULL;
+	gssize ret;
+
+	ret = transfer->data_producer(buf, len, transfer->user_data);
+	if (ret >= 0)
+		return ret;
+
+	req = g_obex_packet_new(G_OBEX_RSP_INTERNAL_SERVER_ERROR, TRUE, NULL);
+	g_obex_send(transfer->obex, req, NULL);
+
+	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
+				"Data producer function failed");
+	transfer_complete(transfer, err);
+	g_error_free(err);
+
+	return ret;
+}
+
+static void transfer_get_req(GObex *obex, GObexPacket *req, gpointer user_data)
+{
+	struct transfer *transfer = user_data;
+	GError *err = NULL;
+	GObexPacket *rsp;
+
+	rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
+	g_obex_packet_add_body(req, get_get_data, transfer);
+
+	if (!g_obex_send(obex, rsp, &err)) {
+		transfer_complete(transfer, err);
+		g_error_free(err);
+	}
+}
+
+guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
+			GObexDataProducer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err)
+{
+	struct transfer *transfer;
+	gint id;
+
+	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
+	transfer->data_producer = data_func;
+
+	transfer_put_req(obex, req, transfer);
+	if (!g_slist_find(transfers, transfer))
+		return 0;
+
+	id = g_obex_add_request_function(obex, G_OBEX_OP_GET, transfer_get_req,
+								transfer);
+	transfer->get_id = id;
+
+	id = g_obex_add_request_function(obex, G_OBEX_OP_ABORT,
+						transfer_abort_req, transfer);
+	transfer->abort_id = id;
 
 	return transfer->id;
 }
