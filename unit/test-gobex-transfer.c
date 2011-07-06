@@ -143,7 +143,7 @@ static void put_complete(GObex *obex, GError *err, gpointer user_data)
 	g_main_loop_quit(mainloop);
 }
 
-static gssize put_req_data(void *buf, gsize len, gpointer user_data)
+static gssize put_provide_data(void *buf, gsize len, gpointer user_data)
 {
 	struct test_data *d = user_data;
 
@@ -179,8 +179,81 @@ static void test_put_req(void)
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
-	g_obex_put_req(obex, "foo/bar", "file.txt", put_req_data,
+	g_obex_put_req(obex, "foo/bar", "file.txt", put_provide_data,
 						put_complete, &d, &d.err);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(mainloop);
+
+	g_main_loop_unref(mainloop);
+	mainloop = NULL;
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
+static gboolean put_rcv_data(const void *buf, gsize len, gpointer user_data)
+{
+	struct test_data *d = user_data;
+
+	if (len != sizeof(put_test_data))
+		d->err = g_error_new(TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"Unexpected byte count %zu", len);
+
+	if (memcmp(buf, put_test_data, sizeof(put_test_data)) != 0) {
+		dump_bufs(put_test_data, sizeof(put_test_data), buf, len);
+		d->err = g_error_new(TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"Unexpected byte count %zu", len);
+	}
+
+	g_main_loop_quit(mainloop);
+
+	return TRUE;
+}
+
+static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
+{
+	struct test_data *d = user_data;
+	guint8 op = g_obex_packet_get_operation(req, NULL);
+	guint id;
+
+	if (op != G_OBEX_OP_PUT) {
+		d->err = g_error_new(TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"Unexpected opcode 0x%02x", op);
+		g_main_loop_quit(mainloop);
+		return;
+	}
+
+	id = g_obex_put_rsp(obex, req, put_rcv_data, put_complete, d, &d->err);
+	if (id == 0)
+		g_main_loop_quit(mainloop);
+}
+
+static void test_put_rsp(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, put_srv, &d);
+
+	mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_add_request_function(obex, G_OBEX_OP_PUT, handle_put, &d);
+
+	g_io_channel_write_chars(io, (char *) pkt_put_first,
+					sizeof(pkt_put_first), NULL, &d.err);
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(mainloop);
@@ -201,6 +274,7 @@ int main(int argc, char *argv[])
 	g_test_init(&argc, &argv, NULL);
 
 	g_test_add_func("/gobex/test_put_req", test_put_req);
+	g_test_add_func("/gobex/test_put_rsp", test_put_rsp);
 
 	g_test_run();
 
