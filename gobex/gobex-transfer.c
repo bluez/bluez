@@ -227,7 +227,8 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 
 		g_obex_header_get_bytes(body, &buf, &len);
 
-		transfer->data_consumer(buf, len, transfer->user_data);
+		if (len > 0)
+			transfer->data_consumer(buf, len, transfer->user_data);
 	}
 
 	rsp = g_obex_packet_new(rspcode, TRUE, NULL);
