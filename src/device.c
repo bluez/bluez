@@ -95,6 +95,7 @@ struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
 	GAttrib *attrib;
+	GIOChannel *io;
 	struct btd_device *device;
 	GSList *match_uuids;
 	GSList *profiles_added;
@@ -155,10 +156,15 @@ static uint16_t uuid_list[] = {
 
 static GSList *device_drivers = NULL;
 
-static void browse_request_free(struct browse_req *req)
+static void browse_request_free(struct browse_req *req, gboolean shutdown)
 {
 	if (req->listener_id)
 		g_dbus_remove_watch(req->conn, req->listener_id);
+	if (req->io) {
+		if (shutdown)
+			g_io_channel_shutdown(req->io, FALSE, NULL);
+		g_io_channel_unref(req->io);
+	}
 	if (req->msg)
 		dbus_message_unref(req->msg);
 	if (req->conn)
@@ -190,7 +196,7 @@ static void browse_request_cancel(struct browse_req *req)
 	bt_cancel_discovery(&src, &device->bdaddr);
 
 	device->browse = NULL;
-	browse_request_free(req);
+	browse_request_free(req, TRUE);
 }
 
 static void device_free(gpointer user_data)
@@ -1485,7 +1491,7 @@ cleanup:
 	}
 
 	device->browse = NULL;
-	browse_request_free(req);
+	browse_request_free(req, FALSE);
 }
 
 static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
@@ -1580,11 +1586,13 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
 	GSList *l, *uuids = NULL;
+	gboolean shutdown;
 
 	if (status) {
 		DBusMessage *reply;
 		reply = btd_error_failed(req->msg, att_ecode2str(status));
 		g_dbus_send_message(req->conn, reply);
+		shutdown = TRUE;
 		goto done;
 	}
 
@@ -1604,10 +1612,11 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	create_device_reply(device, req);
 
 	store_services(device);
+	shutdown = FALSE;
 
 done:
 	device->browse = NULL;
-	browse_request_free(req);
+	browse_request_free(req, shutdown);
 }
 
 static void gatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
@@ -1624,7 +1633,7 @@ static void gatt_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		g_dbus_send_message(req->conn, reply);
 
 		device->browse = NULL;
-		browse_request_free(req);
+		browse_request_free(req, TRUE);
 
 		return;
 	}
@@ -1641,7 +1650,6 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
 	BtIOSecLevel sec_level;
-	GIOChannel *io;
 	bdaddr_t src;
 
 	if (device->browse)
@@ -1654,15 +1662,15 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 
 	sec_level = secure ? BT_IO_SEC_HIGH : BT_IO_SEC_LOW;
 
-	io = bt_io_connect(BT_IO_L2CAP, gatt_connect_cb, req, NULL, NULL,
+	req->io = bt_io_connect(BT_IO_L2CAP, gatt_connect_cb, req, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_CID, ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 
-	if (io == NULL ) {
-		browse_request_free(req);
+	if (req->io == NULL) {
+		browse_request_free(req, FALSE);
 		return -EIO;
 	}
 
@@ -1712,7 +1720,7 @@ int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
 
 	err = bt_search_service(&src, &device->bdaddr, &uuid, cb, req, NULL);
 	if (err < 0) {
-		browse_request_free(req);
+		browse_request_free(req, FALSE);
 		return err;
 	}
 
