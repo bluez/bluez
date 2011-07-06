@@ -132,6 +132,7 @@ struct btd_device {
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
 	GSList		*disconnects;		/* disconnects message */
+	GAttrib		*attrib;
 	GSList		*attios;
 
 	gboolean	connected;
@@ -2472,6 +2473,9 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	attio->user_data = user_data;
 
 	device->attios = g_slist_append(device->attios, attio);
+
+	if (device->attrib && func)
+		func(device->attrib, user_data);
 
 	return attio->id;
 }
