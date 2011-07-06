@@ -27,3 +27,5 @@ typedef void (*attio_connect_cb) (GAttrib *attrib, gpointer user_data);
 guint btd_device_add_attio_callback(struct btd_device *device,
 						attio_connect_cb func,
 						gpointer user_data);
+
+gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id);
