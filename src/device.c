@@ -108,7 +108,8 @@ struct browse_req {
 
 struct attio_data {
 	guint id;
-	attio_connect_cb func;
+	attio_connect_cb cfunc;
+	attio_disconnect_cb dcfunc;
 	gpointer user_data;
 };
 
@@ -1582,6 +1583,23 @@ static void store_services(struct btd_device *device)
 	g_free(str);
 }
 
+static void attio_disconnected(gpointer data, gpointer user_data)
+{
+	struct attio_data *attio = data;
+
+	if (attio->dcfunc)
+		attio->dcfunc(attio->user_data);
+}
+
+static void attrib_destroyed(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+
+	device->attrib = NULL;
+
+	g_slist_foreach(device->attios, attio_disconnected, NULL);
+}
+
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 {
 	struct browse_req *req = user_data;
@@ -1609,6 +1627,12 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_probe_drivers(device, uuids);
 
 	g_slist_free(uuids);
+
+	if (device->attios) {
+		device->attrib = g_attrib_ref(req->attrib);
+		g_attrib_set_destroy_function(device->attrib, attrib_destroyed,
+								device);
+	}
 
 	create_device_reply(device, req);
 
@@ -2459,7 +2483,8 @@ void device_set_class(struct btd_device *device, uint32_t value)
 }
 
 guint btd_device_add_attio_callback(struct btd_device *device,
-						attio_connect_cb func,
+						attio_connect_cb cfunc,
+						attio_disconnect_cb dcfunc,
 						gpointer user_data)
 {
 	struct attio_data *attio;
@@ -2469,13 +2494,14 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 
 	attio = g_new0(struct attio_data, 1);
 	attio->id = ++attio_id;
-	attio->func = func;
+	attio->cfunc = cfunc;
+	attio->dcfunc = dcfunc;
 	attio->user_data = user_data;
 
 	device->attios = g_slist_append(device->attios, attio);
 
-	if (device->attrib && func)
-		func(device->attrib, user_data);
+	if (device->attrib && cfunc)
+		cfunc(device->attrib, user_data);
 
 	return attio->id;
 }
