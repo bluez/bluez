@@ -272,12 +272,12 @@ static void test_send_nval_connect_req_short_pkt(void)
 
 static void test_send_connect_req_timeout_stream(void)
 {
-	send_connect(timeout_rsp, send_nothing, 1, SOCK_STREAM);
+	send_connect(timeout_rsp, send_nothing, 0, SOCK_STREAM);
 }
 
 static void test_send_connect_req_timeout_pkt(void)
 {
-	send_connect(timeout_rsp, send_nothing, 1, SOCK_SEQPACKET);
+	send_connect(timeout_rsp, send_nothing, 0, SOCK_SEQPACKET);
 }
 
 struct req_info {
