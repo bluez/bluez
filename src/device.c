@@ -1603,6 +1603,8 @@ static void attio_disconnected(gpointer data, gpointer user_data)
 		attio->dcfunc(attio->user_data);
 }
 
+static gboolean att_auto_connect(gpointer user_data);
+
 static void attrib_destroyed(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -1610,6 +1612,11 @@ static void attrib_destroyed(gpointer user_data)
 	device->attrib = NULL;
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
+
+	if (device->attioid == 0 && device->attios != NULL)
+		device->attioid = g_timeout_add_seconds(AUTOCONNECT_INTERVAL,
+							att_auto_connect,
+							device);
 }
 
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
@@ -1669,6 +1676,11 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		}
 
 		return;
+	}
+
+	if (device->attioid) {
+		g_source_remove(device->attioid);
+		device->attioid = 0;
 	}
 
 	device->attrib = g_attrib_new(io);
@@ -2559,7 +2571,7 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	if (device->attrib && cfunc)
 		cfunc(device->attrib, user_data);
 
-	if (device->attioid == 0)
+	if (device->attioid == 0 && device->attrib == NULL)
 		device->attioid = g_timeout_add_seconds(AUTOCONNECT_INTERVAL,
 							att_auto_connect,
 							device);
