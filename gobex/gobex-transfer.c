@@ -136,13 +136,33 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
+	if (transfer->opcode == G_OBEX_OP_GET) {
+		GObexHeader *body;
+		body = g_obex_packet_get_header(rsp, G_OBEX_HDR_ID_BODY);
+		if (body == NULL)
+			body = g_obex_packet_get_header(rsp,
+						G_OBEX_HDR_ID_BODY_END);
+		if (body != NULL) {
+			const guint8 *buf;
+			gsize len;
+
+			g_obex_header_get_bytes(body, &buf, &len);
+
+			if (len > 0)
+				transfer->data_consumer(buf, len,
+							transfer->user_data);
+		}
+	}
+
 	if (rspcode == G_OBEX_RSP_SUCCESS) {
 		transfer_complete(transfer, NULL);
 		return;
 	}
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
-	g_obex_packet_add_body(req, put_get_data, transfer);
+	req = g_obex_packet_new(transfer->opcode, TRUE, NULL);
+
+	if (transfer->opcode == G_OBEX_OP_PUT)
+		g_obex_packet_add_body(req, put_get_data, transfer);
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
@@ -277,6 +297,41 @@ guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 	id = g_obex_add_request_function(obex, G_OBEX_OP_ABORT,
 						transfer_abort_req, transfer);
 	transfer->abort_id = id;
+
+	return transfer->id;
+}
+
+guint g_obex_get_req(GObex *obex, const char *type, const char *name,
+			GObexDataConsumer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err)
+{
+	struct transfer *transfer;
+	GObexPacket *req;
+	GObexHeader *hdr;
+
+	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
+	transfer->data_consumer = data_func;
+
+	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, NULL);
+
+	if (type) {
+		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TYPE,
+					(char *) type, strlen(type) + 1,
+					G_OBEX_DATA_COPY);
+		g_obex_packet_add_header(req, hdr);
+	}
+
+	if (name) {
+		hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, name);
+		g_obex_packet_add_header(req, hdr);
+	}
+
+	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
+								transfer, err);
+	if (transfer->req_id == 0) {
+		transfer_free(transfer);
+		return 0;
+	}
 
 	return transfer->id;
 }

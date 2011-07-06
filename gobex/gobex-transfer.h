@@ -31,6 +31,10 @@ guint g_obex_put_req(GObex *obex, const char *type, const char *name,
 			GObexDataProducer data_func, GObexFunc complete_func,
 			gpointer user_data, GError **err);
 
+guint g_obex_get_req(GObex *obex, const char *type, const char *name,
+			GObexDataConsumer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err);
+
 guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 			GObexDataConsumer data_func, GObexFunc complete_func,
 			gpointer user_data, GError **err);
