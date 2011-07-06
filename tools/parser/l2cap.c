@@ -65,6 +65,24 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define SCID cid_table[0]
 #define DCID cid_table[1]
 
+/* Can we move this to l2cap.h? */
+static struct {
+	char	*name;
+	int	flag;
+} l2cap_features[] = {
+	{ "Flow control mode",			L2CAP_FEAT_FLOWCTL	},
+	{ "Retransmission mode",		L2CAP_FEAT_RETRANS	},
+	{ "Bi-directional QoS",			L2CAP_FEAT_BIDIR_QOS	},
+	{ "Enhanced Retransmission mode",	L2CAP_FEAT_ERTM		},
+	{ "Streaming mode",			L2CAP_FEAT_STREAMING	},
+	{ "FCS Option",				L2CAP_FEAT_FCS		},
+	{ "Extended Flow Specification",	L2CAP_FEAT_EXT_FLOW	},
+	{ "Fixed Channels",			L2CAP_FEAT_FIXED_CHAN	},
+	{ "Extended Window Size",		L2CAP_FEAT_EXT_WINDOW	},
+	{ "Unicast Connectless Data Reception",	L2CAP_FEAT_UCD		},
+	{ 0 }
+};
+
 static struct frame *add_handle(uint16_t handle)
 {
 	register handle_info *t = handle_table;
@@ -643,6 +661,7 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static void info_opt(int level, int type, void *ptr, int len)
 {
 	uint32_t mask;
+	int i;
 
 	p_indent(level, 0);
 
@@ -653,20 +672,12 @@ static void info_opt(int level, int type, void *ptr, int len)
 	case 0x0002:
 		mask = get_val(ptr, len);
 		printf("Extended feature mask 0x%4.4x\n", mask);
-		if (parser.flags & DUMP_VERBOSE) {
-			if (mask & 0x01) {
-				p_indent(level + 1, 0);
-				printf("Flow control mode\n");
-			}
-			if (mask & 0x02) {
-				p_indent(level + 1, 0);
-				printf("Retransmission mode\n");
-			}
-			if (mask & 0x04) {
-				p_indent(level + 1, 0);
-				printf("Bi-directional QoS\n");
-			}
-		}
+		if (parser.flags & DUMP_VERBOSE)
+			for (i=0; l2cap_features[i].name; i++)
+				if (mask & l2cap_features[i].flag) {
+					p_indent(level + 1, 0);
+					printf("%s\n", l2cap_features[i].name);
+				}
 		break;
 	case 0x0003:
 		printf("Fixed channel list\n");
