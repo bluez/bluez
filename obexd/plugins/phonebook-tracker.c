@@ -1154,7 +1154,8 @@ static void send_pull_part(struct phonebook_data *data,
 	data->cb(vcards->str, vcards->len, g_slist_length(data->contacts),
 			data->newmissedcalls, lastpart, data->user_data);
 
-	free_data_contacts(data);
+	if (!lastpart)
+		free_data_contacts(data);
 	g_string_free(vcards, TRUE);
 }
 
