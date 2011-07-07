@@ -378,6 +378,7 @@ struct avdtp_stream {
 	guint idle_timer;
 	gboolean delay_reporting;
 	uint16_t delay;		/* AVDTP 1.3 Delay Reporting feature */
+	gboolean starting;	/* only valid while sep state == OPEN */
 };
 
 /* Structure describing an AVDTP connection between two devices */
@@ -1065,6 +1066,7 @@ static void avdtp_sep_set_state(struct avdtp *session,
 			avdtp_delay_report(session, stream, stream->delay);
 		break;
 	case AVDTP_STATE_OPEN:
+		stream->starting = FALSE;
 		if (old_state > AVDTP_STATE_OPEN && session->auto_dc)
 			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
 								stream_timeout,
@@ -1708,10 +1710,13 @@ static gboolean avdtp_start_cmd(struct avdtp *session, uint8_t transaction,
 
 		stream = sep->stream;
 
-		if (sep->state != AVDTP_STATE_OPEN) {
+		/* Also reject start cmd if we already initiated start */
+		if (sep->state != AVDTP_STATE_OPEN ||
+						stream->starting == TRUE) {
 			err = AVDTP_BAD_STATE;
 			goto failed;
 		}
+		stream->starting = TRUE;
 
 		if (sep->ind && sep->ind->start) {
 			if (!sep->ind->start(session, sep, stream, &err,
@@ -1726,6 +1731,7 @@ static gboolean avdtp_start_cmd(struct avdtp *session, uint8_t transaction,
 						AVDTP_START, NULL, 0);
 
 failed:
+	DBG("Rejecting (%d)", err);
 	memset(&rej, 0, sizeof(rej));
 	rej.acp_seid = failed_seid;
 	rej.error = err;
@@ -2580,9 +2586,12 @@ static int cancel_request(struct avdtp *session, int err)
 		break;
 	case AVDTP_START:
 		error("Start: %s (%d)", strerror(err), err);
-		if (lsep && lsep->cfm && lsep->cfm->start)
+		if (lsep && lsep->cfm && lsep->cfm->start) {
 			lsep->cfm->start(session, lsep, stream, &averr,
 						lsep->user_data);
+			if (stream)
+				stream->starting = FALSE;
+		}
 		break;
 	case AVDTP_SUSPEND:
 		error("Suspend: %s (%d)", strerror(err), err);
@@ -3087,9 +3096,11 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 			return FALSE;
 		error("START request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
-		if (sep && sep->cfm && sep->cfm->start)
+		if (sep && sep->cfm && sep->cfm->start) {
 			sep->cfm->start(session, sep, stream, &err,
 					sep->user_data);
+			stream->starting = FALSE;
+		}
 		return TRUE;
 	case AVDTP_SUSPEND:
 		if (!stream_rej_to_err(buf, size, &err, &acp_seid))
@@ -3547,6 +3558,7 @@ int avdtp_open(struct avdtp *session, struct avdtp_stream *stream)
 int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 {
 	struct start_req req;
+	int ret;
 
 	if (!g_slist_find(session->streams, stream))
 		return -EINVAL;
@@ -3559,11 +3571,20 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 		return -EINVAL;
 	}
 
+	if (stream->starting == TRUE) {
+		DBG("stream already started");
+		return -EINVAL;
+	}
+
 	memset(&req, 0, sizeof(req));
 	req.first_seid.seid = stream->rseid;
 
-	return send_request(session, FALSE, stream, AVDTP_START,
+	ret = send_request(session, FALSE, stream, AVDTP_START,
 							&req, sizeof(req));
+	if (ret == 0)
+		stream->starting = TRUE;
+
+	return ret;
 }
 
 int avdtp_close(struct avdtp *session, struct avdtp_stream *stream,
