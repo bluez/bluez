@@ -53,6 +53,8 @@ struct _GObex {
 	size_t tx_data;
 	size_t tx_sent;
 
+	gboolean suspended;
+
 	guint write_source;
 
 	gssize io_rx_mtu;
@@ -250,6 +252,11 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		obex->tx_sent = 0;
 	}
 
+	if (obex->suspended) {
+		obex->write_source = 0;
+		return FALSE;
+	}
+
 	if (!obex->write(obex, NULL))
 		goto stop_tx;
 
@@ -267,6 +274,9 @@ stop_tx:
 static void enable_tx(GObex *obex)
 {
 	GIOCondition cond;
+
+	if (obex->suspended)
+		return;
 
 	if (obex->write_source > 0)
 		return;
@@ -510,6 +520,24 @@ gboolean g_obex_remove_request_function(GObex *obex, gint id)
 	g_free(handler);
 
 	return TRUE;
+}
+
+void g_obex_suspend(GObex *obex)
+{
+	if (obex->write_source > 0) {
+		g_source_remove(obex->write_source);
+		obex->write_source = 0;
+	}
+
+	obex->suspended = TRUE;
+}
+
+void g_obex_resume(GObex *obex)
+{
+	obex->suspended = FALSE;
+
+	if (g_queue_get_length(obex->tx_queue) > 0 || obex->tx_data > 0)
+		enable_tx(obex);
 }
 
 static void parse_connect_data(GObex *obex, GObexPacket *pkt)
