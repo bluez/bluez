@@ -918,3 +918,8 @@ void media_transport_update_delay(struct media_transport *transport,
 				MEDIA_TRANSPORT_INTERFACE, "Delay",
 				DBUS_TYPE_UINT16, &transport->delay);
 }
+
+struct audio_device *media_transport_get_dev(struct media_transport *transport)
+{
+	return transport->device;
+}

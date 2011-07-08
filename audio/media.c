@@ -167,7 +167,12 @@ static void headset_state_changed(struct audio_device *dev,
 
 	switch (new_state) {
 	case HEADSET_STATE_DISCONNECTED:
-		media_endpoint_clear_configuration(endpoint);
+		if (endpoint->transport &&
+			media_transport_get_dev(endpoint->transport) == dev) {
+
+			DBG("Clear endpoint %p", endpoint);
+			media_endpoint_clear_configuration(endpoint);
+		}
 		break;
 	case HEADSET_STATE_CONNECTING:
 		media_endpoint_set_configuration(endpoint, dev, NULL, 0,
