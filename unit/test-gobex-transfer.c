@@ -204,6 +204,8 @@ static void test_put_req(void)
 
 	g_main_loop_run(mainloop);
 
+	g_assert_cmpuint(d.count, ==, 2);
+
 	g_main_loop_unref(mainloop);
 	mainloop = NULL;
 
@@ -280,6 +282,8 @@ static void test_put_rsp(void)
 
 	g_main_loop_run(mainloop);
 
+	g_assert_cmpuint(d.count, ==, 1);
+
 	g_main_loop_unref(mainloop);
 	mainloop = NULL;
 
@@ -317,6 +321,8 @@ static void test_get_req(void)
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(mainloop);
+
+	g_assert_cmpuint(d.count, ==, 2);
 
 	g_main_loop_unref(mainloop);
 	mainloop = NULL;
@@ -376,6 +382,8 @@ static void test_get_rsp(void)
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(mainloop);
+
+	g_assert_cmpuint(d.count, ==, 1);
 
 	g_main_loop_unref(mainloop);
 	mainloop = NULL;
