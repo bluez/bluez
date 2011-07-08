@@ -402,3 +402,23 @@ guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
 
 	return transfer->id;
 }
+
+gboolean g_obex_cancel_transfer(guint id)
+{
+	struct transfer *transfer = NULL;
+	GSList *l;
+
+	for (l = transfers; l != NULL; l = g_slist_next(l)) {
+		struct transfer *t = l->data;
+		if (t->id == id) {
+			transfer = t;
+			break;
+		}
+	}
+
+	if (transfer == NULL)
+		return FALSE;
+
+	transfer_free(transfer);
+	return TRUE;
+}

@@ -43,4 +43,6 @@ guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
 			GObexDataProducer data_func, GObexFunc complete_func,
 			gpointer user_data, GError **err);
 
+gboolean g_obex_cancel_transfer(guint id);
+
 #endif /* __GOBEX_TRANSFER_H_ */
