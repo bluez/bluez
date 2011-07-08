@@ -344,8 +344,13 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 	gssize ret;
 
 	ret = transfer->data_producer(buf, len, transfer->user_data);
-	if (ret >= 0)
+	if (ret > 0)
 		return ret;
+
+	if (ret == 0) {
+		transfer_complete(transfer, NULL);
+		return ret;
+	}
 
 	req = g_obex_packet_new(G_OBEX_RSP_INTERNAL_SERVER_ERROR, TRUE, NULL);
 	g_obex_send(transfer->obex, req, NULL);
@@ -365,7 +370,7 @@ static void transfer_get_req(GObex *obex, GObexPacket *req, gpointer user_data)
 	GObexPacket *rsp;
 
 	rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
-	g_obex_packet_add_body(req, get_get_data, transfer);
+	g_obex_packet_add_body(rsp, get_get_data, transfer);
 
 	if (!g_obex_send(obex, rsp, &err)) {
 		transfer_complete(transfer, err);
@@ -383,7 +388,7 @@ guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_producer = data_func;
 
-	transfer_put_req(obex, req, transfer);
+	transfer_get_req(obex, req, transfer);
 	if (!g_slist_find(transfers, transfer))
 		return 0;
 
