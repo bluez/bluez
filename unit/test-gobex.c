@@ -37,7 +37,7 @@ static GMainLoop *mainloop = NULL;
 
 static uint8_t pkt_connect_req[] = { G_OBEX_OP_CONNECT | FINAL_BIT,
 					0x00, 0x07, 0x10, 0x00, 0x10, 0x00 };
-static uint8_t pkt_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x07,
+static uint8_t pkt_connect_rsp[] = { 0x20 | FINAL_BIT, 0x00, 0x07,
 					0x10, 0x00, 0x10, 0x00 };
 
 static uint8_t pkt_setpath_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT, 0x00, 0x10,
@@ -82,7 +82,7 @@ static void connect_rsp(GObex *obex, GError *err, GObexPacket *rsp,
 	}
 
 	rsp_code = g_obex_packet_get_operation(rsp, &final);
-	if (rsp_code != 0x10) {
+	if (rsp_code != 0x20) {
 		g_set_error(test_err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
 				"Unexpected response 0x%02x", rsp_code);
 		goto done;
