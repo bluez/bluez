@@ -792,6 +792,53 @@ static void test_null_io(void)
 	g_assert(obex == NULL);
 }
 
+static void req_complete(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	struct test_data *d = user_data;
+
+	if (err != NULL)
+		d->err = g_error_copy(err);
+
+	g_main_loop_quit(d->mainloop);
+}
+
+static void test_connect(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+				{ pkt_connect_req, sizeof(pkt_connect_req) } }, {
+				{ pkt_connect_rsp, sizeof(pkt_connect_rsp) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_connect(obex, NULL, 0, req_complete, &d, &d.err);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 1);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -842,6 +889,8 @@ int main(int argc, char *argv[])
 					test_cancel_req_delay_stream);
 	g_test_add_func("/gobex/test_cancel_req_delay_pkt",
 					test_cancel_req_delay_pkt);
+
+	g_test_add_func("/gobex/test_connect", test_connect);
 
 	g_test_run();
 
