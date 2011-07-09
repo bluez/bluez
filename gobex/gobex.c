@@ -749,10 +749,10 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (obex->pending_req) {
 		struct pending_pkt *p = obex->pending_req;
 		opcode = g_obex_packet_get_operation(p->pkt, NULL);
-		header_offset = req_header_offset(opcode);
+		header_offset = rsp_header_offset(opcode);
 	} else {
 		opcode = obex->rx_buf[0] & ~FINAL_BIT;
-		header_offset = rsp_header_offset(opcode);
+		header_offset = req_header_offset(opcode);
 		obex->rx_last_op = opcode;
 	}
 
