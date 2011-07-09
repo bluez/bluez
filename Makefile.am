@@ -53,6 +53,8 @@ lib_headers = lib/bluetooth.h lib/hci.h lib/hci_lib.h lib/mgmt.h \
 		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h
 local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 
+BUILT_SOURCES = $(local_headers)
+
 include_HEADERS += $(lib_headers)
 
 lib_LTLIBRARIES += lib/libbluetooth.la
@@ -61,9 +63,6 @@ lib_libbluetooth_la_SOURCES = $(lib_headers) \
 				lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
 lib_libbluetooth_la_LDFLAGS = -version-info 14:3:11
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
-
-CLEANFILES += $(local_headers)
-
 
 if SBC
 noinst_LTLIBRARIES += sbc/libsbc.la
