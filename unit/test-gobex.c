@@ -565,7 +565,7 @@ static void test_recv_unexpected(void)
 
 	g_obex_set_disconnect_function(obex, unexpected_disconn, &err);
 
-	req = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
+	req = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
 	len = g_obex_packet_encode(req, buf, sizeof(buf));
 	g_assert_cmpint(len, >=, 0);
 

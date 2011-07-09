@@ -752,6 +752,11 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 		header_offset = rsp_header_offset(opcode);
 	} else {
 		opcode = obex->rx_buf[0] & ~FINAL_BIT;
+		/* Unexpected response -- fail silently */
+		if (opcode > 0x1f && opcode < 0xff) {
+			obex->rx_data = 0;
+			return TRUE;
+		}
 		header_offset = req_header_offset(opcode);
 		obex->rx_last_op = opcode;
 	}
