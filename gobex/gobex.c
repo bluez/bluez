@@ -965,3 +965,17 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
+
+guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
+					gpointer user_data, GError **err)
+{
+	GObexPacket *req;
+	GObexHeader *hdr;
+
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
+
+	hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, name);
+	g_obex_packet_add_header(req, hdr);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}

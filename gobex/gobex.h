@@ -75,4 +75,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 					gpointer user_data, GError **err);
 
+guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
+					gpointer user_data, GError **err);
+
 #endif /* __GOBEX_H */
