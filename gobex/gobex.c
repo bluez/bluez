@@ -923,3 +923,27 @@ guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
+
+guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
+					gpointer user_data, GError **err)
+{
+	GObexPacket *req;
+	struct setpath_data data;
+
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, NULL);
+
+	memset(&data, 0, sizeof(data));
+
+	if (strcmp(path, "..") == 0)
+		data.flags = 0x03;
+	else {
+		GObexHeader *hdr;
+		data.flags = 0x02;
+		hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, path);
+		g_obex_packet_add_header(req, hdr);
+	}
+
+	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}

@@ -69,4 +69,7 @@ guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 				GObexResponseFunc func, gpointer user_data,
 				GError **err);
 
+guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
+					gpointer user_data, GError **err);
+
 #endif /* __GOBEX_H */
