@@ -47,7 +47,7 @@ static uint8_t pkt_put_body[] = { G_OBEX_OP_PUT, 0x00, 0x0a,
 					G_OBEX_HDR_ID_BODY, 0x00, 0x07,
 					1, 2, 3, 4 };
 
-static gboolean test_timeout(gpointer user_data)
+static gboolean timeout(gpointer user_data)
 {
 	GError **err = user_data;
 
@@ -213,7 +213,7 @@ static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
 	else
 		test_time = 1;
 
-	timer_id = g_timeout_add_seconds(test_time, test_timeout, &gerr);
+	timer_id = g_timeout_add_seconds(test_time, timeout, &gerr);
 
 	g_main_loop_run(mainloop);
 
@@ -399,7 +399,7 @@ static void test_cancel_req_delay(int transport_type)
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	io_id = g_io_add_watch(io, cond, cancel_server, &r);
 
-	timer_id = g_timeout_add_seconds(2, test_timeout, &r.err);
+	timer_id = g_timeout_add_seconds(2, timeout, &r.err);
 
 	g_main_loop_run(mainloop);
 
@@ -497,7 +497,7 @@ static void test_send_connect(int transport_type)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &r.err);
+	timer_id = g_timeout_add_seconds(1, timeout, &r.err);
 
 	g_main_loop_run(mainloop);
 
@@ -556,7 +556,7 @@ static void test_recv_unexpected(void)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &err);
+	timer_id = g_timeout_add_seconds(1, timeout, &err);
 
 	g_main_loop_run(mainloop);
 
@@ -611,7 +611,7 @@ static void test_send_on_demand(int transport_type, GObexDataProducer func)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &r.err);
+	timer_id = g_timeout_add_seconds(1, timeout, &r.err);
 
 	g_main_loop_run(mainloop);
 
@@ -694,7 +694,7 @@ static void recv_connect(int transport_type)
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+	timer_id = g_timeout_add_seconds(1, timeout, &gerr);
 
 	g_main_loop_run(mainloop);
 
@@ -740,7 +740,7 @@ static void test_disconnect(void)
 
 	g_obex_set_disconnect_function(obex, disconn_ev, &gerr);
 
-	timer_id = g_timeout_add_seconds(1, test_timeout, &gerr);
+	timer_id = g_timeout_add_seconds(1, timeout, &gerr);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 

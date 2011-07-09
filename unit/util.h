@@ -26,6 +26,21 @@ enum {
 	TEST_ERROR_UNEXPECTED,
 };
 
+struct test_buf {
+	const void *data;
+	gssize len;
+};
+
+struct test_data {
+	guint count;
+	GError *err;
+	struct test_buf recv[3];
+	struct test_buf send[3];
+	guint provide_delay;
+	GObex *obex;
+	GMainLoop *mainloop;
+};
+
 #define TEST_ERROR test_error_quark()
 GQuark test_error_quark(void);
 
@@ -36,3 +51,6 @@ void assert_memequal(const void *mem1, size_t len1,
 GObex *create_gobex(int fd, GObexTransportType transport_type,
 						gboolean close_on_unref);
 void create_endpoints(GObex **obex, GIOChannel **io, int sock_type);
+
+gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data);
+gboolean test_timeout(gpointer user_data);

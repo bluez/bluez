@@ -112,3 +112,72 @@ void create_endpoints(GObex **obex, GIOChannel **io, int sock_type)
 	g_io_channel_set_buffered(*io, FALSE);
 	g_io_channel_set_close_on_unref(*io, TRUE);
 }
+
+gboolean test_timeout(gpointer user_data)
+{
+	struct test_data *d = user_data;
+
+	if (!g_main_loop_is_running(d->mainloop))
+		return FALSE;
+
+	d->err = g_error_new(TEST_ERROR, TEST_ERROR_TIMEOUT, "Timed out");
+
+	g_main_loop_quit(d->mainloop);
+
+	return FALSE;
+}
+
+gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
+{
+	struct test_data *d = user_data;
+	GIOStatus status;
+	gsize bytes_written, rbytes, send_buf_len, expect_len;
+	char buf[255];
+	const char *send_buf, *expect;
+
+	expect = d->recv[d->count].data;
+	expect_len = d->recv[d->count].len;
+	send_buf = d->send[d->count].data;
+	send_buf_len = d->send[d->count].len;
+
+	d->count++;
+
+	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
+	if (status != G_IO_STATUS_NORMAL) {
+		g_print("io_cb count %u\n", d->count);
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"Reading data failed with status %d", status);
+		goto failed;
+	}
+
+	if (rbytes < expect_len) {
+		g_print("io_cb count %u\n", d->count);
+		dump_bufs(expect, expect_len, buf, rbytes);
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"Not enough data from socket");
+		goto failed;
+	}
+
+	if (memcmp(buf, expect, expect_len) != 0) {
+		g_print("io_cb count %u\n", d->count);
+		dump_bufs(expect, expect_len, buf, rbytes);
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+					"Received data is not correct");
+		goto failed;
+	}
+
+	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
+									NULL);
+	if (bytes_written != send_buf_len) {
+		g_print("io_cb count %u\n", d->count);
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+						"Unable to write to socket");
+		goto failed;
+	}
+
+	return TRUE;
+
+failed:
+	g_main_loop_quit(d->mainloop);
+	return FALSE;
+}
