@@ -48,6 +48,11 @@ static uint8_t pkt_setpath_up_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT,
 					0x00, 0x05, 0x03, 0x00 };
 static uint8_t pkt_setpath_rsp[] = { 0x20 | FINAL_BIT, 0x00, 0x03 };
 
+static uint8_t pkt_mkdir_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT, 0x00, 0x10,
+					0x00, 0x00,
+					G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+					0, 'd', 0, 'i', 0, 'r', 0, 0 };
+
 static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
 					0x10, 0x00, };
 static uint8_t pkt_abort_rsp[] = { 0x90, 0x00, 0x03 };
@@ -920,6 +925,42 @@ static void test_setpath_up(void)
 	g_assert_no_error(d.err);
 }
 
+static void test_mkdir(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+				{ pkt_mkdir_req, sizeof(pkt_mkdir_req) } }, {
+				{ pkt_setpath_rsp, sizeof(pkt_setpath_rsp) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_mkdir(obex, "dir", req_complete, &d, &d.err);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 1);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -975,6 +1016,8 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_setpath", test_setpath);
 	g_test_add_func("/gobex/test_setpath_up", test_setpath_up);
+
+	g_test_add_func("/gobex/test_mkdir", test_mkdir);
 
 	g_test_run();
 
