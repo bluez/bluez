@@ -567,6 +567,7 @@ static void test_recv_unexpected(void)
 
 	req = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, G_OBEX_HDR_INVALID);
 	len = g_obex_packet_encode(req, buf, sizeof(buf));
+	g_obex_packet_free(req);
 	g_assert_cmpint(len, >=, 0);
 
 	g_io_channel_write_chars(io, (gchar *) buf, len, NULL, &err);
