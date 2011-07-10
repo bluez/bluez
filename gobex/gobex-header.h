@@ -62,7 +62,7 @@ gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val);
 gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
 
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len);
+GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
 

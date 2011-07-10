@@ -337,7 +337,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	return header;
 }
 
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len)
+GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len)
 {
 	GObexHeader *header;
 
