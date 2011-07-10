@@ -115,18 +115,18 @@ static void cmd_connect(int argc, char **argv)
 	g_obex_connect(obex, conn_complete, NULL, NULL, G_OBEX_HDR_INVALID);
 }
 
-struct put_data {
+struct transfer_data {
 	int fd;
 };
 
-static void put_complete(GObex *obex, GError *err, gpointer user_data)
+static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 {
-	struct put_data *data = user_data;
+	struct transfer_data *data = user_data;
 
 	if (err != NULL)
-		g_printerr("put failed: %s\n", err->message);
+		g_printerr("failed: %s\n", err->message);
 	else
-		g_print("put succeeded\n");
+		g_print("transfer succeeded\n");
 
 	close(data->fd);
 	g_free(data);
@@ -134,14 +134,14 @@ static void put_complete(GObex *obex, GError *err, gpointer user_data)
 
 static gssize put_data_cb(void *buf, gsize len, gpointer user_data)
 {
-	struct put_data *data = user_data;
+	struct transfer_data *data = user_data;
 
 	return read(data->fd, buf, len);
 }
 
 static void cmd_put(int argc, char **argv)
 {
-	struct put_data *data;
+	struct transfer_data *data;
 	GError *err = NULL;
 	int fd;
 
@@ -152,14 +152,57 @@ static void cmd_put(int argc, char **argv)
 
 	fd = open(argv[1], O_RDONLY | O_NOCTTY, 0);
 	if (fd < 0) {
-		g_printerr("open: %s", strerror(errno));
+		g_printerr("open: %s\n", strerror(errno));
 		return;
 	}
 
-	data = g_new0(struct put_data, 1);
+	data = g_new0(struct transfer_data, 1);
 	data->fd = fd;
 
-	g_obex_put_req(obex, put_data_cb, put_complete, data, &err,
+	g_obex_put_req(obex, put_data_cb, transfer_complete, data, &err,
+						G_OBEX_HDR_NAME, argv[1],
+						G_OBEX_HDR_INVALID);
+	if (err != NULL) {
+		g_printerr("put failed: %s\n", err->message);
+		g_error_free(err);
+		close(data->fd);
+		g_free(data);
+	}
+}
+
+static gboolean get_data_cb(const void *buf, gsize len, gpointer user_data)
+{
+	struct transfer_data *data = user_data;
+
+	if (write(data->fd, buf, len) < 0) {
+		g_printerr("write: %s\n", strerror(errno));
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static void cmd_get(int argc, char **argv)
+{
+	struct transfer_data *data;
+	GError *err = NULL;
+	int fd;
+
+	if (argc < 2) {
+		g_printerr("Filename required\n");
+		return;
+	}
+
+	fd = open(argv[1], O_WRONLY | O_CREAT | O_NOCTTY, 0);
+	if (fd < 0) {
+		g_printerr("open: %s\n", strerror(errno));
+		return;
+	}
+
+	data = g_new0(struct transfer_data, 1);
+	data->fd = fd;
+
+	g_obex_get_req(obex, get_data_cb, transfer_complete, data, &err,
 						G_OBEX_HDR_NAME, argv[1],
 						G_OBEX_HDR_INVALID);
 	if (err != NULL) {
@@ -188,6 +231,7 @@ static struct {
 	{ "quit",	cmd_exit,	"",		"Exit application" },
 	{ "connect",	cmd_connect,	"[target]",	"OBEX Connect" },
 	{ "put",	cmd_put,	"<file>",	"Send a file" },
+	{ "get",	cmd_get,	"<file>",	"Receive a file" },
 	{ NULL },
 };
 

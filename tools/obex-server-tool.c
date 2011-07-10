@@ -21,6 +21,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <sys/un.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -62,17 +63,34 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 	g_obex_unref(obex);
 }
 
-static void put_complete(GObex *obex, GError *err, gpointer user_data)
+struct transfer_data {
+	int fd;
+};
+
+static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 {
+	struct transfer_data *data = user_data;
+
 	if (err != NULL)
-		g_printerr("put failed: %s\n", err->message);
+		g_printerr("transfer failed: %s\n", err->message);
 	else
-		g_print("put succeeded\n");
+		g_print("transfer succeeded\n");
+
+	close(data->fd);
+	g_free(data);
 }
 
 static gboolean recv_data(const void *buf, gsize len, gpointer user_data)
 {
+	struct transfer_data *data = user_data;
+
 	g_print("received %zu bytes of data\n", len);
+
+	if (write(data->fd, buf, len) < 0) {
+		g_printerr("write: %s\n", strerror(errno));
+		return FALSE;
+	}
+
 	return TRUE;
 }
 
@@ -81,6 +99,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	GError *err = NULL;
 	GObexHeader *hdr;
 	const char *type, *name;
+	struct transfer_data *data;
 	gsize type_len;
 
 	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_TYPE);
@@ -103,11 +122,74 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	g_print("put type \"%s\" name \"%s\"\n", type ? type : "",
 							name ? name : "");
 
-	g_obex_put_rsp(obex, req, recv_data, put_complete, NULL, &err,
+	data = g_new0(struct transfer_data, 1);
+
+	data->fd = open(name, O_WRONLY | O_CREAT | O_NOCTTY, 0);
+	if (data->fd < 0) {
+		g_printerr("open(%s): %s\n", name, strerror(errno));
+		g_free(data);
+		return;
+	}
+
+	g_obex_put_rsp(obex, req, recv_data, transfer_complete, data, &err,
 							G_OBEX_HDR_INVALID);
 	if (err != NULL) {
 		g_printerr("Unable to send response: %s\n", err->message);
 		g_error_free(err);
+		g_free(data);
+	}
+}
+
+static gssize send_data(void *buf, gsize len, gpointer user_data)
+{
+	struct transfer_data *data = user_data;
+
+	return read(data->fd, buf, len);
+}
+
+static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
+{
+	GError *err = NULL;
+	struct transfer_data *data;
+	const char *type, *name;
+	GObexHeader *hdr;
+	gsize type_len;
+
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_TYPE);
+	if (hdr != NULL) {
+		g_obex_header_get_bytes(hdr, (const guint8 **) &type,
+								&type_len);
+		if (type[type_len - 1] != '\0') {
+			g_printerr("non-nul terminated type header\n");
+			type = NULL;
+		}
+	} else
+		type = NULL;
+
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_NAME);
+	if (hdr != NULL)
+		g_obex_header_get_unicode(hdr, &name);
+	else
+		name = NULL;
+
+	g_print("get type \"%s\" name \"%s\"\n", type ? type : "",
+							name ? name : "");
+
+	data = g_new0(struct transfer_data, 1);
+
+	data->fd = open(name, O_RDONLY | O_NOCTTY, 0);
+	if (data->fd < 0) {
+		g_printerr("open(%s): %s", name, strerror(errno));
+		g_free(data);
+		return;
+	}
+
+	g_obex_get_rsp(obex, send_data, transfer_complete, data, &err,
+							G_OBEX_HDR_INVALID);
+	if (err != NULL) {
+		g_printerr("Unable to send response: %s\n", err->message);
+		g_error_free(err);
+		g_free(data);
 	}
 }
 
@@ -166,6 +248,7 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_io_channel_unref(io);
 	g_obex_set_disconnect_function(obex, disconn_func, NULL);
 	g_obex_add_request_function(obex, G_OBEX_OP_PUT, handle_put, NULL);
+	g_obex_add_request_function(obex, G_OBEX_OP_GET, handle_get, NULL);
 	g_obex_add_request_function(obex, G_OBEX_OP_CONNECT, handle_connect,
 									NULL);
 	clients = g_slist_append(clients, obex);;
