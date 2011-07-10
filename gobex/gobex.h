@@ -22,6 +22,7 @@
 #ifndef __GOBEX_H
 #define __GOBEX_H
 
+#include <stdarg.h>
 #include <glib.h>
 
 #include <gobex/gobex-packet.h>
@@ -65,9 +66,8 @@ void g_obex_unref(GObex *obex);
 
 /* Higher level functions */
 
-guint g_obex_connect(GObex *obex, void *target, gsize target_len,
-				GObexResponseFunc func, gpointer user_data,
-				GError **err);
+guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
+				GError **err, guint8 first_hdr_id, ...);
 
 guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 					gpointer user_data, GError **err);

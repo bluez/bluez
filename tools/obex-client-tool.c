@@ -112,7 +112,7 @@ static void conn_complete(GObex *obex, GError *err, GObexPacket *rsp,
 
 static void cmd_connect(int argc, char **argv)
 {
-	g_obex_connect(obex, NULL, 0, conn_complete, NULL, NULL);
+	g_obex_connect(obex, conn_complete, NULL, NULL, G_OBEX_HDR_INVALID);
 }
 
 struct put_data {

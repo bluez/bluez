@@ -841,7 +841,7 @@ static void test_connect(void)
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
-	g_obex_connect(obex, NULL, 0, req_complete, &d, &d.err);
+	g_obex_connect(obex, req_complete, &d, &d.err, G_OBEX_HDR_INVALID);
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(d.mainloop);

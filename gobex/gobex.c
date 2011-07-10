@@ -907,24 +907,20 @@ void g_obex_unref(GObex *obex)
 
 /* Higher level functions */
 
-guint g_obex_connect(GObex *obex, void *target, gsize target_len,
-				GObexResponseFunc func, gpointer user_data,
-				GError **err)
+guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
+					GError **err, guint8 first_hdr_id, ...)
 {
 	GObexPacket *req;
 	struct connect_data data;
+	va_list args;
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, G_OBEX_HDR_INVALID);
+	va_start(args, first_hdr_id);
+	req = g_obex_packet_new_valist(G_OBEX_OP_CONNECT, TRUE,
+							first_hdr_id, args);
+	va_end(args);
 
 	init_connect_data(obex, &data);
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
-
-	if (target != NULL) {
-		GObexHeader *hdr;
-		hdr = g_obex_header_new_bytes(G_OBEX_HDR_TARGET,
-							target, target_len);
-		g_obex_packet_add_header(req, hdr);
-	}
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
@@ -957,15 +953,13 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 					gpointer user_data, GError **err)
 {
 	GObexPacket *req;
-	GObexHeader *hdr;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE,
+						G_OBEX_HDR_NAME, path,
+						G_OBEX_HDR_INVALID);
 
 	memset(&data, 0, sizeof(data));
-	hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, path);
-	g_obex_packet_add_header(req, hdr);
-
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
@@ -975,12 +969,10 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 					gpointer user_data, GError **err)
 {
 	GObexPacket *req;
-	GObexHeader *hdr;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
-
-	hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, name);
-	g_obex_packet_add_header(req, hdr);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
+						G_OBEX_HDR_NAME, name,
+						G_OBEX_HDR_INVALID);
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
