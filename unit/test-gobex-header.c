@@ -87,7 +87,7 @@ static void test_header_bytes(void)
 	size_t len;
 
 	header = g_obex_header_new_bytes(G_OBEX_HDR_ID_BODY, data,
-						sizeof(data), G_OBEX_DATA_REF);
+							sizeof(data));
 	g_assert(header != NULL);
 
 	len = g_obex_header_encode(header, buf, sizeof(buf));

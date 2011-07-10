@@ -337,8 +337,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	return header;
 }
 
-GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
-						GObexDataPolicy data_policy)
+GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len)
 {
 	GObexHeader *header;
 
@@ -350,19 +349,7 @@ GObexHeader *g_obex_header_new_bytes(guint8 id, void *data, gsize len,
 	header->id = id;
 	header->vlen = len;
 	header->hlen = len + 3;
-
-	switch (data_policy) {
-	case G_OBEX_DATA_INHERIT:
-		header->v.data = data;
-		break;
-	case G_OBEX_DATA_COPY:
-		header->v.data = g_memdup(data, len);
-		break;
-	case G_OBEX_DATA_REF:
-		header->extdata = TRUE;
-		header->v.extdata = data;
-		break;
-	}
+	header->v.data = g_memdup(data, len);
 
 	return header;
 }

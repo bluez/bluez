@@ -207,8 +207,7 @@ guint g_obex_put_req(GObex *obex, const char *type, const char *name,
 
 	if (type) {
 		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TYPE,
-					(char *) type, strlen(type) + 1,
-					G_OBEX_DATA_COPY);
+					(char *) type, strlen(type) + 1);
 		g_obex_packet_add_header(req, hdr);
 	}
 
@@ -318,8 +317,7 @@ guint g_obex_get_req(GObex *obex, const char *type, const char *name,
 
 	if (type) {
 		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TYPE,
-					(char *) type, strlen(type) + 1,
-					G_OBEX_DATA_COPY);
+					(char *) type, strlen(type) + 1);
 		g_obex_packet_add_header(req, hdr);
 	}
 

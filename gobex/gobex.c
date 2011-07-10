@@ -921,8 +921,7 @@ guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 	if (target != NULL) {
 		GObexHeader *hdr;
 		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TARGET,
-						target, target_len,
-						G_OBEX_DATA_COPY);
+							target, target_len);
 		g_obex_packet_add_header(req, hdr);
 	}
 
