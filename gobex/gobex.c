@@ -964,9 +964,8 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexPacket *req;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE,
-						G_OBEX_HDR_NAME, path,
-						G_OBEX_HDR_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_NAME, path,
+							G_OBEX_HDR_INVALID);
 
 	memset(&data, 0, sizeof(data));
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
@@ -979,9 +978,8 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 {
 	GObexPacket *req;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
-						G_OBEX_HDR_NAME, name,
-						G_OBEX_HDR_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_NAME, name,
+							G_OBEX_HDR_INVALID);
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
