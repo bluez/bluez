@@ -42,7 +42,7 @@ static uint8_t pkt_connect_rsp[] = { 0x20 | FINAL_BIT, 0x00, 0x07,
 
 static uint8_t pkt_setpath_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT, 0x00, 0x10,
 					0x02, 0x00,
-					G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+					G_OBEX_HDR_NAME, 0x00, 0x0b,
 					0, 'd', 0, 'i', 0, 'r', 0, 0 };
 static uint8_t pkt_setpath_up_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT,
 					0x00, 0x05, 0x03, 0x00 };
@@ -50,11 +50,11 @@ static uint8_t pkt_success_rsp[] = { 0x20 | FINAL_BIT, 0x00, 0x03 };
 
 static uint8_t pkt_mkdir_req[] = { G_OBEX_OP_SETPATH | FINAL_BIT, 0x00, 0x10,
 					0x00, 0x00,
-					G_OBEX_HDR_ID_NAME, 0x00, 0x0b,
+					G_OBEX_HDR_NAME, 0x00, 0x0b,
 					0, 'd', 0, 'i', 0, 'r', 0, 0 };
 
 static uint8_t pkt_delete_req[] = { G_OBEX_OP_PUT | FINAL_BIT, 0x00, 0x16,
-		G_OBEX_HDR_ID_NAME, 0x00, 0x13,
+		G_OBEX_HDR_NAME, 0x00, 0x13,
 		0, 'f', 0, 'o', 0, 'o', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0 };
 
 static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
@@ -62,7 +62,7 @@ static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
 static uint8_t pkt_abort_rsp[] = { 0x90, 0x00, 0x03 };
 static uint8_t pkt_nval_short_rsp[] = { 0x10 | FINAL_BIT, 0x12 };
 static uint8_t pkt_put_body[] = { G_OBEX_OP_PUT, 0x00, 0x0a,
-					G_OBEX_HDR_ID_BODY, 0x00, 0x07,
+					G_OBEX_HDR_BODY, 0x00, 0x07,
 					1, 2, 3, 4 };
 
 static gboolean timeout(gpointer user_data)
@@ -252,8 +252,7 @@ static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
 	GObexPacket *req;
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, G_OBEX_HDR_INVALID);
 	g_assert(req != NULL);
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
@@ -327,7 +326,7 @@ static void test_cancel_req_immediate(void)
 
 	r.err = NULL;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
 	r.id = g_obex_send_req(r.obex, req, -1, req_done, &r, &r.err);
 	g_assert_no_error(r.err);
 	g_assert(r.id != 0);
@@ -408,7 +407,7 @@ static void test_cancel_req_delay(int transport_type)
 
 	r.err = NULL;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
 	r.id = g_obex_send_req(r.obex, req, -1, req_done, &r, &r.err);
 	g_assert_no_error(r.err);
 	g_assert(r.id != 0);
@@ -503,8 +502,7 @@ static void test_send_connect(int transport_type)
 	r.buf = pkt_connect_req;
 	r.len = sizeof(pkt_connect_req);
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, G_OBEX_HDR_INVALID);
 	g_assert(req != NULL);
 
 	g_obex_packet_set_data(req, connect_data, sizeof(connect_data),
@@ -567,8 +565,7 @@ static void test_recv_unexpected(void)
 
 	g_obex_set_disconnect_function(obex, unexpected_disconn, &err);
 
-	req = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, G_OBEX_HDR_INVALID);
 	len = g_obex_packet_encode(req, buf, sizeof(buf));
 	g_assert_cmpint(len, >=, 0);
 
@@ -621,7 +618,7 @@ static void test_send_on_demand(int transport_type, GObexDataProducer func)
 	r.buf = pkt_put_body;
 	r.len = sizeof(pkt_put_body);
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_INVALID);
 	g_obex_packet_add_body(req, func, &r);
 
 	g_obex_send(obex, req, &r.err);

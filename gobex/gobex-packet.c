@@ -267,7 +267,7 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	final = (opcode & FINAL_BIT) ? TRUE : FALSE;
 	opcode &= ~FINAL_BIT;
 
-	pkt = g_obex_packet_new(opcode, final, G_OBEX_HDR_ID_INVALID);
+	pkt = g_obex_packet_new(opcode, final, G_OBEX_HDR_INVALID);
 
 	if (header_offset == 0)
 		goto headers;
@@ -300,9 +300,9 @@ static gssize get_body(GObexPacket *pkt, guint8 *buf, gsize len)
 		return ret;
 
 	if (ret > 0)
-		buf[0] = G_OBEX_HDR_ID_BODY;
+		buf[0] = G_OBEX_HDR_BODY;
 	else
-		buf[0] = G_OBEX_HDR_ID_BODY_END;
+		buf[0] = G_OBEX_HDR_BODY_END;
 
 	u16 = g_htons(ret + 3);
 	memcpy(&buf[1], &u16, sizeof(u16));

@@ -35,33 +35,33 @@
 #define FINAL_BIT 0x80
 
 static guint8 put_req_first[] = { G_OBEX_OP_PUT | FINAL_BIT, 0x00, 0x30,
-	G_OBEX_HDR_ID_TYPE, 0x00, 0x0b,
+	G_OBEX_HDR_TYPE, 0x00, 0x0b,
 	'f', 'o', 'o', '/', 'b', 'a', 'r', '\0',
-	G_OBEX_HDR_ID_NAME, 0x00, 0x15,
+	G_OBEX_HDR_NAME, 0x00, 0x15,
 	0, 'f', 0, 'i', 0, 'l', 0, 'e', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0,
-	G_OBEX_HDR_ID_BODY, 0x00, 0x0d,
+	G_OBEX_HDR_BODY, 0x00, 0x0d,
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
 static guint8 put_req_last[] = { G_OBEX_OP_PUT | FINAL_BIT, 0x00, 0x06,
-					G_OBEX_HDR_ID_BODY_END, 0x00, 0x03 };
+					G_OBEX_HDR_BODY_END, 0x00, 0x03 };
 
 static guint8 put_rsp_first[] = { G_OBEX_RSP_CONTINUE | FINAL_BIT,
 								0x00, 0x03 };
 static guint8 put_rsp_last[] = { G_OBEX_RSP_SUCCESS | FINAL_BIT, 0x00, 0x03 };
 
 static guint8 get_req_first[] = { G_OBEX_OP_GET | FINAL_BIT, 0x00, 0x23,
-	G_OBEX_HDR_ID_TYPE, 0x00, 0x0b,
+	G_OBEX_HDR_TYPE, 0x00, 0x0b,
 	'f', 'o', 'o', '/', 'b', 'a', 'r', '\0',
-	G_OBEX_HDR_ID_NAME, 0x00, 0x15,
+	G_OBEX_HDR_NAME, 0x00, 0x15,
 	0, 'f', 0, 'i', 0, 'l', 0, 'e', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0 };
 
 static guint8 get_req_last[] = { G_OBEX_OP_GET | FINAL_BIT, 0x00, 0x03, };
 
 static guint8 get_rsp_first[] = { G_OBEX_RSP_CONTINUE | FINAL_BIT, 0x00, 0x10,
-					G_OBEX_HDR_ID_BODY, 0x00, 0x0d,
+					G_OBEX_HDR_BODY, 0x00, 0x0d,
 					0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 static guint8 get_rsp_last[] = { G_OBEX_RSP_SUCCESS | FINAL_BIT, 0x00, 0x06,
-					G_OBEX_HDR_ID_BODY_END, 0x00, 0x03 };
+					G_OBEX_HDR_BODY_END, 0x00, 0x03 };
 
 static guint8 body_data[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
@@ -274,7 +274,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 	}
 
 	id = g_obex_get_rsp(obex, provide_data, transfer_complete, d, &d->err,
-							G_OBEX_HDR_ID_INVALID);
+							G_OBEX_HDR_INVALID);
 	if (id == 0)
 		g_main_loop_quit(d->mainloop);
 }

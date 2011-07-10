@@ -83,7 +83,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	const char *type, *name;
 	gsize type_len;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_ID_TYPE);
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_TYPE);
 	if (hdr != NULL) {
 		g_obex_header_get_bytes(hdr, (const guint8 **) &type,
 								&type_len);
@@ -94,7 +94,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	} else
 		type = NULL;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_ID_NAME);
+	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_NAME);
 	if (hdr != NULL)
 		g_obex_header_get_unicode(hdr, &name);
 	else
@@ -116,8 +116,7 @@ static void handle_connect(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	g_print("connect\n");
 
-	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
 	g_obex_send(obex, rsp, NULL);
 }
 

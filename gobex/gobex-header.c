@@ -24,12 +24,12 @@
 #include "gobex-header.h"
 
 /* Header types */
-#define G_OBEX_HDR_TYPE_UNICODE	(0 << 6)
-#define G_OBEX_HDR_TYPE_BYTES	(1 << 6)
-#define G_OBEX_HDR_TYPE_UINT8	(2 << 6)
-#define G_OBEX_HDR_TYPE_UINT32	(3 << 6)
+#define G_OBEX_HDR_ENC_UNICODE	(0 << 6)
+#define G_OBEX_HDR_ENC_BYTES	(1 << 6)
+#define G_OBEX_HDR_ENC_UINT8	(2 << 6)
+#define G_OBEX_HDR_ENC_UINT32	(3 << 6)
 
-#define G_OBEX_HDR_TYPE(id)	((id) & 0xc0)
+#define G_OBEX_HDR_ENC(id)	((id) & 0xc0)
 
 struct _GObexHeader {
 	guint8 id;
@@ -93,8 +93,8 @@ gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 
 	ptr = put_bytes(ptr, &header->id, sizeof(header->id));
 
-	switch (G_OBEX_HDR_TYPE(header->id)) {
-	case G_OBEX_HDR_TYPE_UNICODE:
+	switch (G_OBEX_HDR_ENC(header->id)) {
+	case G_OBEX_HDR_ENC_UNICODE:
 		utf16_len = utf8_to_utf16(&utf16, header->v.string);
 		if (utf16_len < 0 || (guint16) utf16_len > buf_len)
 			return -1;
@@ -104,7 +104,7 @@ gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 		ptr = put_bytes(ptr, utf16, utf16_len);
 		g_free(utf16);
 		break;
-	case G_OBEX_HDR_TYPE_BYTES:
+	case G_OBEX_HDR_ENC_BYTES:
 		u16 = g_htons(header->hlen);
 		ptr = put_bytes(ptr, &u16, sizeof(u16));
 		if (header->extdata)
@@ -112,10 +112,10 @@ gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 		else
 			ptr = put_bytes(ptr, header->v.data, header->vlen);
 		break;
-	case G_OBEX_HDR_TYPE_UINT8:
+	case G_OBEX_HDR_ENC_UINT8:
 		*ptr = header->v.u8;
 		break;
-	case G_OBEX_HDR_TYPE_UINT32:
+	case G_OBEX_HDR_ENC_UINT32:
 		u32 = g_htonl(header->v.u32);
 		ptr = put_bytes(ptr, &u32, sizeof(u32));
 		break;
@@ -146,8 +146,8 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 
 	ptr = get_bytes(&header->id, ptr, sizeof(header->id));
 
-	switch (G_OBEX_HDR_TYPE(header->id)) {
-	case G_OBEX_HDR_TYPE_UNICODE:
+	switch (G_OBEX_HDR_ENC(header->id)) {
+	case G_OBEX_HDR_ENC_UNICODE:
 		if (len < 3) {
 			g_set_error(err, G_OBEX_ERROR,
 				G_OBEX_ERROR_PARSE_ERROR,
@@ -183,7 +183,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		*parsed = hdr_len;
 
 		break;
-	case G_OBEX_HDR_TYPE_BYTES:
+	case G_OBEX_HDR_ENC_BYTES:
 		if (len < 3) {
 			g_set_error(err, G_OBEX_ERROR,
 					G_OBEX_ERROR_PARSE_ERROR,
@@ -220,13 +220,13 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		*parsed = hdr_len;
 
 		break;
-	case G_OBEX_HDR_TYPE_UINT8:
+	case G_OBEX_HDR_ENC_UINT8:
 		header->vlen = 1;
 		header->hlen = 2;
 		header->v.u8 = *ptr;
 		*parsed = 2;
 		break;
-	case G_OBEX_HDR_TYPE_UINT32:
+	case G_OBEX_HDR_ENC_UINT32:
 		if (len < 5) {
 			g_set_error(err, G_OBEX_ERROR,
 					G_OBEX_ERROR_PARSE_ERROR,
@@ -252,16 +252,16 @@ failed:
 
 void g_obex_header_free(GObexHeader *header)
 {
-	switch (G_OBEX_HDR_TYPE(header->id)) {
-	case G_OBEX_HDR_TYPE_UNICODE:
+	switch (G_OBEX_HDR_ENC(header->id)) {
+	case G_OBEX_HDR_ENC_UNICODE:
 		g_free(header->v.string);
 		break;
-	case G_OBEX_HDR_TYPE_BYTES:
+	case G_OBEX_HDR_ENC_BYTES:
 		if (!header->extdata)
 			g_free(header->v.data);
 		break;
-	case G_OBEX_HDR_TYPE_UINT8:
-	case G_OBEX_HDR_TYPE_UINT32:
+	case G_OBEX_HDR_ENC_UINT8:
+	case G_OBEX_HDR_ENC_UINT32:
 		break;
 	default:
 		g_assert_not_reached();
@@ -272,7 +272,7 @@ void g_obex_header_free(GObexHeader *header)
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
 {
-	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UNICODE)
+	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UNICODE)
 		return FALSE;
 
 	*str = header->v.string;
@@ -283,7 +283,7 @@ gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
 gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 								gsize *len)
 {
-	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_BYTES)
+	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_BYTES)
 		return FALSE;
 
 	*len = header->vlen;
@@ -298,7 +298,7 @@ gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 
 gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val)
 {
-	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UINT8)
+	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UINT8)
 		return FALSE;
 
 	*val = header->v.u8;
@@ -308,7 +308,7 @@ gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val)
 
 gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val)
 {
-	if (G_OBEX_HDR_TYPE(header->id) != G_OBEX_HDR_TYPE_UINT32)
+	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UINT32)
 		return FALSE;
 
 	*val = header->v.u32;
@@ -321,7 +321,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	GObexHeader *header;
 	gsize len;
 
-	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UNICODE)
+	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UNICODE)
 		return NULL;
 
 	header = g_new0(GObexHeader, 1);
@@ -341,7 +341,7 @@ GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len)
 {
 	GObexHeader *header;
 
-	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_BYTES)
+	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_BYTES)
 		return NULL;
 
 	header = g_new0(GObexHeader, 1);
@@ -358,7 +358,7 @@ GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val)
 {
 	GObexHeader *header;
 
-	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UINT8)
+	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UINT8)
 		return NULL;
 
 	header = g_new0(GObexHeader, 1);
@@ -375,7 +375,7 @@ GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val)
 {
 	GObexHeader *header;
 
-	if (G_OBEX_HDR_TYPE(id) != G_OBEX_HDR_TYPE_UINT32)
+	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UINT32)
 		return NULL;
 
 	header = g_new0(GObexHeader, 1);
@@ -406,28 +406,28 @@ GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
 
 	*total_len = 0;
 
-	while (id != G_OBEX_HDR_ID_INVALID) {
+	while (id != G_OBEX_HDR_INVALID) {
 		GObexHeader *hdr;
 		const char *str;
 		const void *bytes;
 		unsigned int val;
 		gsize len;
 
-		switch (G_OBEX_HDR_TYPE(id)) {
-		case G_OBEX_HDR_TYPE_UNICODE:
+		switch (G_OBEX_HDR_ENC(id)) {
+		case G_OBEX_HDR_ENC_UNICODE:
 			str = va_arg(args, const char *);
 			hdr = g_obex_header_new_unicode(id, str);
 			break;
-		case G_OBEX_HDR_TYPE_BYTES:
+		case G_OBEX_HDR_ENC_BYTES:
 			bytes = va_arg(args, void *);
 			len = va_arg(args, gsize);
 			hdr = g_obex_header_new_bytes(id, bytes, len);
 			break;
-		case G_OBEX_HDR_TYPE_UINT8:
+		case G_OBEX_HDR_ENC_UINT8:
 			val = va_arg(args, unsigned int);
 			hdr = g_obex_header_new_uint8(id, val);
 			break;
-		case G_OBEX_HDR_TYPE_UINT32:
+		case G_OBEX_HDR_ENC_UINT32:
 			val = va_arg(args, unsigned int);
 			hdr = g_obex_header_new_uint32(id, val);
 			break;

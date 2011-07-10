@@ -328,7 +328,7 @@ static void prepare_connect_rsp(GObex *obex, GObexPacket *rsp)
 	init_connect_data(obex, &data);
 	g_obex_packet_set_data(rsp, &data, sizeof(data), G_OBEX_DATA_COPY);
 
-	connid = g_obex_packet_find_header(rsp, G_OBEX_HDR_ID_CONNECTION);
+	connid = g_obex_packet_find_header(rsp, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL) {
 		g_obex_header_get_uint32(connid, &obex->conn_id);
 		return;
@@ -336,7 +336,7 @@ static void prepare_connect_rsp(GObex *obex, GObexPacket *rsp)
 
 	obex->conn_id = next_connid++;
 
-	connid = g_obex_header_new_uint32(G_OBEX_HDR_ID_CONNECTION,
+	connid = g_obex_header_new_uint32(G_OBEX_HDR_CONNECTION,
 							obex->conn_id);
 	g_obex_packet_prepend_header(rsp, connid);
 }
@@ -376,11 +376,11 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	if (obex->conn_id == CONNID_INVALID)
 		goto create_pending;
 
-	connid = g_obex_packet_find_header(req, G_OBEX_HDR_ID_CONNECTION);
+	connid = g_obex_packet_find_header(req, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL)
 		goto create_pending;
 
-	connid = g_obex_header_new_uint32(G_OBEX_HDR_ID_CONNECTION,
+	connid = g_obex_header_new_uint32(G_OBEX_HDR_CONNECTION,
 							obex->conn_id);
 	g_obex_packet_prepend_header(req, connid);
 
@@ -422,7 +422,7 @@ static gboolean pending_req_abort(GObex *obex, GError **err)
 
 	obex->pending_req->cancelled = TRUE;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_ID_INVALID);
+	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
 
 	return g_obex_send(obex, pkt, err);
 }
@@ -558,7 +558,7 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 		obex->tx_mtu = obex->io_tx_mtu;
 	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
 
-	connid = g_obex_packet_find_header(pkt, G_OBEX_HDR_ID_CONNECTION);
+	connid = g_obex_packet_find_header(pkt, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL)
 		g_obex_header_get_uint32(connid, &obex->conn_id);
 }
@@ -625,7 +625,7 @@ static void handle_request(GObex *obex, GObexPacket *req)
 	}
 
 	rsp = g_obex_packet_new(G_OBEX_RSP_NOT_IMPLEMENTED, TRUE,
-							G_OBEX_HDR_ID_INVALID);
+							G_OBEX_HDR_INVALID);
 	g_obex_send(obex, rsp, NULL);
 }
 
@@ -914,15 +914,14 @@ guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 	GObexPacket *req;
 	struct connect_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, G_OBEX_HDR_INVALID);
 
 	init_connect_data(obex, &data);
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
 
 	if (target != NULL) {
 		GObexHeader *hdr;
-		hdr = g_obex_header_new_bytes(G_OBEX_HDR_ID_TARGET,
+		hdr = g_obex_header_new_bytes(G_OBEX_HDR_TARGET,
 							target, target_len);
 		g_obex_packet_add_header(req, hdr);
 	}
@@ -936,7 +935,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexPacket *req;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_INVALID);
 
 	memset(&data, 0, sizeof(data));
 
@@ -945,7 +944,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 	else {
 		GObexHeader *hdr;
 		data.flags = 0x02;
-		hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, path);
+		hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, path);
 		g_obex_packet_add_header(req, hdr);
 	}
 
@@ -961,11 +960,10 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexHeader *hdr;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE,
-						G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_INVALID);
 
 	memset(&data, 0, sizeof(data));
-	hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, path);
+	hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, path);
 	g_obex_packet_add_header(req, hdr);
 
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
@@ -979,9 +977,9 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 	GObexPacket *req;
 	GObexHeader *hdr;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
 
-	hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, name);
+	hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, name);
 	g_obex_packet_add_header(req, hdr);
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);

@@ -28,32 +28,32 @@
 
 static uint8_t pkt_connect[] = { G_OBEX_OP_CONNECT, 0x00, 0x0c,
 					0x10, 0x00, 0x10, 0x00,
-					G_OBEX_HDR_ID_TARGET,
+					G_OBEX_HDR_TARGET,
 						0x00, 0x05, 0xab, 0xcd };
 static uint8_t pkt_put_action[] = { G_OBEX_OP_PUT, 0x00, 0x05,
-					G_OBEX_HDR_ID_ACTION, 0xab };
+					G_OBEX_HDR_ACTION, 0xab };
 static uint8_t pkt_put_body[] = { G_OBEX_OP_PUT, 0x00, 0x0a,
-					G_OBEX_HDR_ID_BODY, 0x00, 0x07,
+					G_OBEX_HDR_BODY, 0x00, 0x07,
 					1, 2, 3, 4 };
 static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
 static uint8_t pkt_nval_len[] = { G_OBEX_OP_PUT, 0xab, 0xcd, 0x12 };
 
 static guint8 pkt_put_long[] = { G_OBEX_OP_PUT, 0x00, 0x32,
-	G_OBEX_HDR_ID_CONNECTION, 0x01, 0x02, 0x03, 0x04,
-	G_OBEX_HDR_ID_TYPE, 0x00, 0x0b,
+	G_OBEX_HDR_CONNECTION, 0x01, 0x02, 0x03, 0x04,
+	G_OBEX_HDR_TYPE, 0x00, 0x0b,
 	'f', 'o', 'o', '/', 'b', 'a', 'r', '\0',
-	G_OBEX_HDR_ID_NAME, 0x00, 0x15,
+	G_OBEX_HDR_NAME, 0x00, 0x15,
 	0, 'f', 0, 'i', 0, 'l', 0, 'e', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0,
-	G_OBEX_HDR_ID_ACTION, 0xab,
-	G_OBEX_HDR_ID_BODY, 0x00, 0x08,
+	G_OBEX_HDR_ACTION, 0xab,
+	G_OBEX_HDR_BODY, 0x00, 0x08,
 	0, 1, 2, 3, 4 };
 
 static void test_pkt(void)
 {
 	GObexPacket *pkt;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
 
 	g_assert(pkt != NULL);
 
@@ -84,7 +84,7 @@ static void test_decode_pkt_header(void)
 						0, G_OBEX_DATA_REF, &err);
 	g_assert_no_error(err);
 
-	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_ACTION);
+	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ACTION);
 	g_assert(header != NULL);
 
 	ret = g_obex_header_get_uint8(header, &val);
@@ -109,7 +109,7 @@ static void test_decode_connect(void)
 	g_assert_no_error(err);
 	g_assert(pkt != NULL);
 
-	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_ID_TARGET);
+	header = g_obex_packet_get_header(pkt, G_OBEX_HDR_TARGET);
 	g_assert(header != NULL);
 
 	ret = g_obex_header_get_bytes(header, &buf, &len);
@@ -169,7 +169,7 @@ static void test_encode_on_demand(void)
 	uint8_t buf[255];
 	gssize len;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_ID_INVALID);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_INVALID);
 	g_obex_packet_add_body(pkt, get_body_data, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
@@ -194,7 +194,7 @@ static void test_encode_on_demand_fail(void)
 	uint8_t buf[255];
 	gssize len;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_ID_INVALID);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_INVALID);
 	g_obex_packet_add_body(pkt, get_body_data_fail, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
@@ -211,12 +211,12 @@ static void test_create_args(void)
 	gssize len;
 
 	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE,
-			G_OBEX_HDR_ID_CONNECTION, 0x01020304,
-			G_OBEX_HDR_ID_TYPE, "foo/bar", strlen("foo/bar") + 1,
-			G_OBEX_HDR_ID_NAME, "file.txt",
-			G_OBEX_HDR_ID_ACTION, 0xab,
-			G_OBEX_HDR_ID_BODY, body, sizeof(body),
-			G_OBEX_HDR_ID_INVALID);
+			G_OBEX_HDR_CONNECTION, 0x01020304,
+			G_OBEX_HDR_TYPE, "foo/bar", strlen("foo/bar") + 1,
+			G_OBEX_HDR_NAME, "file.txt",
+			G_OBEX_HDR_ACTION, 0xab,
+			G_OBEX_HDR_BODY, body, sizeof(body),
+			G_OBEX_HDR_INVALID);
 
 	g_assert(pkt != NULL);
 
