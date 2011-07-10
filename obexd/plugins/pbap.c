@@ -487,6 +487,9 @@ static void cache_ready_notify(void *user_data)
 
 	DBG("");
 
+	phonebook_req_finalize(pbap->obj->request);
+	pbap->obj->request = NULL;
+
 	pbap->cache.valid = TRUE;
 
 	generate_response(pbap);
