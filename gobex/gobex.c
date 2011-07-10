@@ -422,7 +422,7 @@ static gboolean pending_req_abort(GObex *obex, GError **err)
 
 	obex->pending_req->cancelled = TRUE;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, NULL);
+	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_ID_INVALID);
 
 	return g_obex_send(obex, pkt, err);
 }
@@ -624,7 +624,8 @@ static void handle_request(GObex *obex, GObexPacket *req)
 		return;
 	}
 
-	rsp = g_obex_packet_new(G_OBEX_RSP_NOT_IMPLEMENTED, TRUE, NULL);
+	rsp = g_obex_packet_new(G_OBEX_RSP_NOT_IMPLEMENTED, TRUE,
+							G_OBEX_HDR_ID_INVALID);
 	g_obex_send(obex, rsp, NULL);
 }
 
@@ -913,7 +914,8 @@ guint g_obex_connect(GObex *obex, void *target, gsize target_len,
 	GObexPacket *req;
 	struct connect_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE, NULL);
+	req = g_obex_packet_new(G_OBEX_OP_CONNECT, TRUE,
+						G_OBEX_HDR_ID_INVALID);
 
 	init_connect_data(obex, &data);
 	g_obex_packet_set_data(req, &data, sizeof(data), G_OBEX_DATA_COPY);
@@ -934,7 +936,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexPacket *req;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, NULL);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_ID_INVALID);
 
 	memset(&data, 0, sizeof(data));
 
@@ -959,7 +961,8 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexHeader *hdr;
 	struct setpath_data data;
 
-	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, NULL);
+	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE,
+						G_OBEX_HDR_ID_INVALID);
 
 	memset(&data, 0, sizeof(data));
 	hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, path);
@@ -976,7 +979,7 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 	GObexPacket *req;
 	GObexHeader *hdr;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
 
 	hdr = g_obex_header_new_unicode(G_OBEX_HDR_ID_NAME, name);
 	g_obex_packet_add_header(req, hdr);

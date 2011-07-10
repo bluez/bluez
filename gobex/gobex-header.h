@@ -27,6 +27,8 @@
 #include <gobex/gobex-defs.h>
 
 /* Header ID's */
+#define G_OBEX_HDR_ID_INVALID		0x00
+
 #define G_OBEX_HDR_ID_COUNT		0xc0
 #define G_OBEX_HDR_ID_NAME		0x01
 #define G_OBEX_HDR_ID_TYPE		0x42
@@ -65,6 +67,9 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
+
+GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
+							gsize *total_len);
 
 guint8 g_obex_header_get_id(GObexHeader *header);
 guint16 g_obex_header_get_length(GObexHeader *header);

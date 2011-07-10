@@ -273,8 +273,8 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
-	id = g_obex_get_rsp(obex, NULL, provide_data, transfer_complete,
-								d, &d->err);
+	id = g_obex_get_rsp(obex, provide_data, transfer_complete, d, &d->err,
+							G_OBEX_HDR_ID_INVALID);
 	if (id == 0)
 		g_main_loop_quit(d->mainloop);
 }

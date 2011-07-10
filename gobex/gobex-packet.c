@@ -154,7 +154,8 @@ gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 	return TRUE;
 }
 
-GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final, GSList *headers)
+GObexPacket *g_obex_packet_new_valist(guint8 opcode, gboolean final,
+					guint8 first_hdr_id, va_list args)
 {
 	GObexPacket *pkt;
 
@@ -162,9 +163,22 @@ GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final, GSList *headers)
 
 	pkt->opcode = opcode;
 	pkt->final = final;
-	pkt->headers = headers;
-
+	pkt->headers = g_obex_header_create_list(first_hdr_id, args,
+								&pkt->hlen);
 	pkt->data_policy = G_OBEX_DATA_COPY;
+
+	return pkt;
+}
+
+GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final,
+						guint8 first_hdr_id, ...)
+{
+	GObexPacket *pkt;
+	va_list args;
+
+	va_start(args, first_hdr_id);
+	pkt = g_obex_packet_new_valist(opcode, final, first_hdr_id, args);
+	va_end(args);
 
 	return pkt;
 }
@@ -253,7 +267,7 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	final = (opcode & FINAL_BIT) ? TRUE : FALSE;
 	opcode &= ~FINAL_BIT;
 
-	pkt = g_obex_packet_new(opcode, final, NULL);
+	pkt = g_obex_packet_new(opcode, final, G_OBEX_HDR_ID_INVALID);
 
 	if (header_offset == 0)
 		goto headers;

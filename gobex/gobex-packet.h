@@ -22,6 +22,7 @@
 #ifndef __GOBEX_PACKET_H
 #define __GOBEX_PACKET_H
 
+#include <stdarg.h>
 #include <glib.h>
 
 #include <gobex/gobex-defs.h>
@@ -90,7 +91,10 @@ gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexDataProducer func,
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy);
 const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len);
-GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final, GSList *headers);
+GObexPacket *g_obex_packet_new(guint8 opcode, gboolean final,
+						guint8 first_hdr_id, ...);
+GObexPacket *g_obex_packet_new_valist(guint8 opcode, gboolean final,
+					guint8 first_hdr_id, va_list args);
 void g_obex_packet_free(GObexPacket *pkt);
 
 GObexPacket *g_obex_packet_decode(const void *data, gsize len,

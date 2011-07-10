@@ -116,7 +116,8 @@ static void handle_connect(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	g_print("connect\n");
 
-	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, NULL);
+	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE,
+						G_OBEX_HDR_ID_INVALID);
 	g_obex_send(obex, rsp, NULL);
 }
 

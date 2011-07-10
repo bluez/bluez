@@ -39,11 +39,21 @@ static uint8_t pkt_put[] = { G_OBEX_OP_PUT, 0x00, 0x03 };
 
 static uint8_t pkt_nval_len[] = { G_OBEX_OP_PUT, 0xab, 0xcd, 0x12 };
 
+static guint8 pkt_put_long[] = { G_OBEX_OP_PUT, 0x00, 0x32,
+	G_OBEX_HDR_ID_CONNECTION, 0x01, 0x02, 0x03, 0x04,
+	G_OBEX_HDR_ID_TYPE, 0x00, 0x0b,
+	'f', 'o', 'o', '/', 'b', 'a', 'r', '\0',
+	G_OBEX_HDR_ID_NAME, 0x00, 0x15,
+	0, 'f', 0, 'i', 0, 'l', 0, 'e', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0,
+	G_OBEX_HDR_ID_ACTION, 0xab,
+	G_OBEX_HDR_ID_BODY, 0x00, 0x08,
+	0, 1, 2, 3, 4 };
+
 static void test_pkt(void)
 {
 	GObexPacket *pkt;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, NULL);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_ID_INVALID);
 
 	g_assert(pkt != NULL);
 
@@ -159,7 +169,7 @@ static void test_encode_on_demand(void)
 	uint8_t buf[255];
 	gssize len;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_ID_INVALID);
 	g_obex_packet_add_body(pkt, get_body_data, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
@@ -184,12 +194,36 @@ static void test_encode_on_demand_fail(void)
 	uint8_t buf[255];
 	gssize len;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, NULL);
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_ID_INVALID);
 	g_obex_packet_add_body(pkt, get_body_data_fail, NULL);
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
 
 	g_assert_cmpint(len, ==, -1);
+
+	g_obex_packet_free(pkt);
+}
+
+static void test_create_args(void)
+{
+	GObexPacket *pkt;
+	guint8 buf[255], body[] = { 0x00, 0x01, 0x02, 0x03, 0x04 };
+	gssize len;
+
+	pkt = g_obex_packet_new(G_OBEX_OP_PUT, FALSE,
+			G_OBEX_HDR_ID_CONNECTION, 0x01020304,
+			G_OBEX_HDR_ID_TYPE, "foo/bar", strlen("foo/bar") + 1,
+			G_OBEX_HDR_ID_NAME, "file.txt",
+			G_OBEX_HDR_ID_ACTION, 0xab,
+			G_OBEX_HDR_ID_BODY, body, sizeof(body),
+			G_OBEX_HDR_ID_INVALID);
+
+	g_assert(pkt != NULL);
+
+	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
+	g_assert(len > 0);
+
+	assert_memequal(pkt_put_long, sizeof(pkt_put_long), buf, len);
 
 	g_obex_packet_free(pkt);
 }
@@ -212,6 +246,8 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_encode_on_demand", test_encode_on_demand);
 	g_test_add_func("/gobex/test_encode_on_demand_fail",
 						test_encode_on_demand_fail);
+
+	g_test_add_func("/gobex/test_create_args", test_create_args);
 
 	g_test_run();
 

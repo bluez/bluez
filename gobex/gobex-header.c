@@ -397,3 +397,48 @@ guint16 g_obex_header_get_length(GObexHeader *header)
 {
 	return header->hlen;
 }
+
+GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
+							gsize *total_len)
+{
+	unsigned int id = first_hdr_id;
+	GSList *l = NULL;
+
+	*total_len = 0;
+
+	while (id != G_OBEX_HDR_ID_INVALID) {
+		GObexHeader *hdr;
+		const char *str;
+		const void *bytes;
+		unsigned int val;
+		gsize len;
+
+		switch (G_OBEX_HDR_TYPE(id)) {
+		case G_OBEX_HDR_TYPE_UNICODE:
+			str = va_arg(args, const char *);
+			hdr = g_obex_header_new_unicode(id, str);
+			break;
+		case G_OBEX_HDR_TYPE_BYTES:
+			bytes = va_arg(args, void *);
+			len = va_arg(args, gsize);
+			hdr = g_obex_header_new_bytes(id, bytes, len);
+			break;
+		case G_OBEX_HDR_TYPE_UINT8:
+			val = va_arg(args, unsigned int);
+			hdr = g_obex_header_new_uint8(id, val);
+			break;
+		case G_OBEX_HDR_TYPE_UINT32:
+			val = va_arg(args, unsigned int);
+			hdr = g_obex_header_new_uint32(id, val);
+			break;
+		default:
+			g_assert_not_reached();
+		}
+
+		l = g_slist_append(l, hdr);
+		*total_len += hdr->hlen;
+		id = va_arg(args, int);
+	}
+
+	return l;
+}
