@@ -27,17 +27,18 @@
 #include <gobex/gobex.h>
 #include <gobex/gobex-defs.h>
 
-guint g_obex_put_req(GObex *obex, const char *type, const char *name,
-			GObexDataProducer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err);
+guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...);
 
-guint g_obex_get_req(GObex *obex, const char *type, const char *name,
-			GObexDataConsumer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err);
+guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...);
 
 guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 			GObexDataConsumer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err);
+			gpointer user_data, GError **err,
+			guint8 first_hdr_id, ...);
 
 guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,

@@ -63,6 +63,7 @@ static guint8 get_rsp_first[] = { G_OBEX_RSP_CONTINUE | FINAL_BIT, 0x00, 0x10,
 static guint8 get_rsp_last[] = { G_OBEX_RSP_SUCCESS | FINAL_BIT, 0x00, 0x06,
 					G_OBEX_HDR_BODY_END, 0x00, 0x03 };
 
+static guint8 hdr_type[] = "foo/bar";
 static guint8 body_data[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
 
 static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
@@ -126,8 +127,10 @@ static void test_put_req(void)
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
-	g_obex_put_req(obex, "foo/bar", "file.txt", provide_data,
-						transfer_complete, &d, &d.err);
+	g_obex_put_req(obex, provide_data, transfer_complete, &d, &d.err,
+				G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+				G_OBEX_HDR_NAME, "file.txt",
+				G_OBEX_HDR_INVALID);
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(d.mainloop);
@@ -174,8 +177,8 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
-	id = g_obex_put_rsp(obex, req, rcv_data, transfer_complete, d,
-								&d->err);
+	id = g_obex_put_rsp(obex, req, rcv_data, transfer_complete, d, &d->err,
+							G_OBEX_HDR_INVALID);
 	if (id == 0)
 		g_main_loop_quit(d->mainloop);
 }
@@ -242,8 +245,10 @@ static void test_get_req(void)
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
-	g_obex_get_req(obex, "foo/bar", "file.txt", rcv_data,
-						transfer_complete, &d, &d.err);
+	g_obex_get_req(obex, rcv_data, transfer_complete, &d, &d.err,
+				G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+				G_OBEX_HDR_NAME, "file.txt",
+				G_OBEX_HDR_INVALID);
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(d.mainloop);
@@ -343,8 +348,10 @@ static void test_put_req_delay(void)
 
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
-	g_obex_put_req(obex, "foo/bar", "file.txt", provide_data,
-						transfer_complete, &d, &d.err);
+	g_obex_put_req(obex, provide_data, transfer_complete, &d, &d.err,
+					G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+					G_OBEX_HDR_NAME, "file.txt",
+					G_OBEX_HDR_INVALID);
 	g_assert_no_error(d.err);
 
 	g_main_loop_run(d.mainloop);

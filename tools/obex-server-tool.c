@@ -103,7 +103,8 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	g_print("put type \"%s\" name \"%s\"\n", type ? type : "",
 							name ? name : "");
 
-	g_obex_put_rsp(obex, req, recv_data, put_complete, NULL, &err);
+	g_obex_put_rsp(obex, req, recv_data, put_complete, NULL, &err,
+							G_OBEX_HDR_INVALID);
 	if (err != NULL) {
 		g_printerr("Unable to send response: %s\n", err->message);
 		g_error_free(err);

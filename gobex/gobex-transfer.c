@@ -189,30 +189,21 @@ static struct transfer *transfer_new(GObex *obex, guint8 opcode,
 	return transfer;
 }
 
-guint g_obex_put_req(GObex *obex, const char *type, const char *name,
-			GObexDataProducer data_func,
+guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
-			GError **err)
+			GError **err, guint8 first_hdr_id, ...)
 {
-	GObexPacket *req;
-	GObexHeader *hdr;
 	struct transfer *transfer;
+	GObexPacket *req;
+	va_list args;
 
 	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
 	transfer->data_producer = data_func;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_INVALID);
-
-	if (type) {
-		hdr = g_obex_header_new_bytes(G_OBEX_HDR_TYPE,
-					(char *) type, strlen(type) + 1);
-		g_obex_packet_add_header(req, hdr);
-	}
-
-	if (name) {
-		hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, name);
-		g_obex_packet_add_header(req, hdr);
-	}
+	va_start(args, first_hdr_id);
+	req = g_obex_packet_new_valist(G_OBEX_OP_PUT, TRUE,
+							first_hdr_id, args);
+	va_end(args);
 
 	g_obex_packet_add_body(req, put_get_data, transfer);
 
@@ -226,12 +217,24 @@ guint g_obex_put_req(GObex *obex, const char *type, const char *name,
 	return transfer->id;
 }
 
-static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
+static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data)
 {
 	struct transfer *transfer = user_data;
-	guint8 rspcode = G_OBEX_RSP_CONTINUE;
-	GError *err = NULL;
 	GObexPacket *rsp;
+	GError *err;
+
+	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
+						"Request was aborted");
+	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
+	g_obex_send(obex, rsp, NULL);
+
+	transfer_complete(transfer, err);
+	g_error_free(err);
+}
+
+static guint8 put_get_bytes(struct transfer *transfer, GObexPacket *req)
+{
+	guint8 rspcode = G_OBEX_RSP_CONTINUE;
 	GObexHeader *body;
 
 	body = g_obex_packet_get_header(req, G_OBEX_HDR_BODY);
@@ -250,6 +253,37 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 			transfer->data_consumer(buf, len, transfer->user_data);
 	}
 
+	return rspcode;
+}
+
+static void transfer_put_req_first(struct transfer *transfer, GObexPacket *req,
+					guint8 first_hdr_id, va_list args)
+{
+	GError *err = NULL;
+	GObexPacket *rsp;
+	guint8 rspcode;
+
+	rspcode = put_get_bytes(transfer, req);
+
+	rsp = g_obex_packet_new_valist(rspcode, TRUE, first_hdr_id, args);
+	if (!g_obex_send(transfer->obex, rsp, &err)) {
+		transfer_complete(transfer, err);
+		g_error_free(err);
+	}
+
+	if (rspcode == G_OBEX_RSP_SUCCESS)
+		transfer_complete(transfer, NULL);
+}
+
+static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
+{
+	struct transfer *transfer = user_data;
+	GError *err = NULL;
+	GObexPacket *rsp;
+	guint8 rspcode;
+
+	rspcode = put_get_bytes(transfer, req);
+
 	rsp = g_obex_packet_new(rspcode, TRUE, G_OBEX_HDR_INVALID);
 	if (!g_obex_send(obex, rsp, &err)) {
 		transfer_complete(transfer, err);
@@ -260,32 +294,22 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 		transfer_complete(transfer, NULL);
 }
 
-static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data)
-{
-	struct transfer *transfer = user_data;
-	GObexPacket *rsp;
-	GError *err;
-
-	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
-						"Request was aborted");
-	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
-	g_obex_send(obex, rsp, NULL);
-
-	transfer_complete(transfer, err);
-	g_error_free(err);
-}
-
 guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 			GObexDataConsumer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err)
+			gpointer user_data, GError **err,
+			guint8 first_hdr_id, ...)
 {
 	struct transfer *transfer;
+	va_list args;
 	gint id;
 
 	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
 	transfer->data_consumer = data_func;
 
-	transfer_put_req(obex, req, transfer);
+
+	va_start(args, first_hdr_id);
+	transfer_put_req_first(transfer, req, first_hdr_id, args);
+	va_end(args);
 	if (!g_slist_find(transfers, transfer))
 		return 0;
 
@@ -300,29 +324,21 @@ guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 	return transfer->id;
 }
 
-guint g_obex_get_req(GObex *obex, const char *type, const char *name,
-			GObexDataConsumer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err)
+guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...)
 {
 	struct transfer *transfer;
 	GObexPacket *req;
-	GObexHeader *hdr;
+	va_list args;
 
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_consumer = data_func;
 
-	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
-
-	if (type) {
-		hdr = g_obex_header_new_bytes(G_OBEX_HDR_TYPE,
-					(char *) type, strlen(type) + 1);
-		g_obex_packet_add_header(req, hdr);
-	}
-
-	if (name) {
-		hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, name);
-		g_obex_packet_add_header(req, hdr);
-	}
+	va_start(args, first_hdr_id);
+	req = g_obex_packet_new_valist(G_OBEX_OP_GET, TRUE,
+							first_hdr_id, args);
+	va_end(args);
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 								transfer, err);

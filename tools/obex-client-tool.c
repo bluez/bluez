@@ -159,8 +159,9 @@ static void cmd_put(int argc, char **argv)
 	data = g_new0(struct put_data, 1);
 	data->fd = fd;
 
-	g_obex_put_req(obex, NULL, argv[1], put_data_cb, put_complete, data,
-									&err);
+	g_obex_put_req(obex, put_data_cb, put_complete, data, &err,
+						G_OBEX_HDR_NAME, argv[1],
+						G_OBEX_HDR_INVALID);
 	if (err != NULL) {
 		g_printerr("put failed: %s\n", err->message);
 		g_error_free(err);
