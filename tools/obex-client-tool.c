@@ -193,7 +193,7 @@ static void cmd_get(int argc, char **argv)
 		return;
 	}
 
-	fd = open(argv[1], O_WRONLY | O_CREAT | O_NOCTTY, 0);
+	fd = open(argv[1], O_WRONLY | O_CREAT | O_NOCTTY, 0600);
 	if (fd < 0) {
 		g_printerr("open: %s\n", strerror(errno));
 		return;

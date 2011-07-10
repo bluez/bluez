@@ -124,7 +124,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	data = g_new0(struct transfer_data, 1);
 
-	data->fd = open(name, O_WRONLY | O_CREAT | O_NOCTTY, 0);
+	data->fd = open(name, O_WRONLY | O_CREAT | O_NOCTTY, 0600);
 	if (data->fd < 0) {
 		g_printerr("open(%s): %s\n", name, strerror(errno));
 		g_free(data);
