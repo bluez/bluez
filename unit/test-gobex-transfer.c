@@ -273,7 +273,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
-	id = g_obex_get_rsp(obex, req, provide_data, transfer_complete,
+	id = g_obex_get_rsp(obex, NULL, provide_data, transfer_complete,
 								d, &d->err);
 	if (id == 0)
 		g_main_loop_quit(d->mainloop);

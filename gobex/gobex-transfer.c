@@ -32,6 +32,8 @@ struct transfer {
 
 	GObex *obex;
 
+	GSList *hdrs;
+
 	guint req_id;
 
 	gint put_id;
@@ -369,7 +371,8 @@ static void transfer_get_req(GObex *obex, GObexPacket *req, gpointer user_data)
 	GError *err = NULL;
 	GObexPacket *rsp;
 
-	rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, NULL);
+	rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE, transfer->hdrs);
+	transfer->hdrs = NULL;
 	g_obex_packet_add_body(rsp, get_get_data, transfer);
 
 	if (!g_obex_send(obex, rsp, &err)) {
@@ -378,17 +381,18 @@ static void transfer_get_req(GObex *obex, GObexPacket *req, gpointer user_data)
 	}
 }
 
-guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
-			GObexDataProducer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err)
+guint g_obex_get_rsp(GObex *obex, GSList *hdrs, GObexDataProducer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err)
 {
 	struct transfer *transfer;
 	gint id;
 
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_producer = data_func;
+	transfer->hdrs = hdrs;
 
-	transfer_get_req(obex, req, transfer);
+	transfer_get_req(obex, NULL, transfer);
 	if (!g_slist_find(transfers, transfer))
 		return 0;
 

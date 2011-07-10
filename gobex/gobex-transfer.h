@@ -39,9 +39,9 @@ guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 			GObexDataConsumer data_func, GObexFunc complete_func,
 			gpointer user_data, GError **err);
 
-guint g_obex_get_rsp(GObex *obex, GObexPacket *req,
-			GObexDataProducer data_func, GObexFunc complete_func,
-			gpointer user_data, GError **err);
+guint g_obex_get_rsp(GObex *obex, GSList *hdrs, GObexDataProducer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err);
 
 gboolean g_obex_cancel_transfer(guint id);
 
