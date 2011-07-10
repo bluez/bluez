@@ -48,6 +48,8 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 gboolean g_obex_cancel_req(GObex *obex, guint req_id,
 						gboolean remove_callback);
 
+gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err);
+
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data);
 gint g_obex_add_request_function(GObex *obex, guint8 opcode,
@@ -64,7 +66,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 GObex *g_obex_ref(GObex *obex);
 void g_obex_unref(GObex *obex);
 
-/* Higher level functions */
+/* High level client functions */
 
 guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
 				GError **err, guint8 first_hdr_id, ...);

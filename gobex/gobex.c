@@ -482,6 +482,15 @@ immediate_completion:
 	return TRUE;
 }
 
+gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err)
+{
+	GObexPacket *rsp;
+
+	rsp = g_obex_packet_new(rspcode, TRUE, G_OBEX_HDR_INVALID);
+
+	return g_obex_send(obex, rsp, err);
+}
+
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data)
 {
