@@ -180,7 +180,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	data->fd = open(name, O_RDONLY | O_NOCTTY, 0);
 	if (data->fd < 0) {
-		g_printerr("open(%s): %s", name, strerror(errno));
+		g_printerr("open(%s): %s\n", name, strerror(errno));
 		g_free(data);
 		g_obex_send_rsp(obex, G_OBEX_RSP_FORBIDDEN, NULL);
 		return;
