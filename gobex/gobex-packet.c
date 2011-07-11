@@ -60,6 +60,17 @@ GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id)
 	return NULL;
 }
 
+GObexHeader *g_obex_packet_get_body(GObexPacket *pkt)
+{
+	GObexHeader *body;
+
+	body = g_obex_packet_get_header(pkt, G_OBEX_HDR_BODY);
+	if (body != NULL)
+		return body;
+
+	return g_obex_packet_get_header(pkt, G_OBEX_HDR_BODY_END);
+}
+
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final)
 {
 	if (final)
