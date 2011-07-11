@@ -111,6 +111,29 @@ static gssize put_get_data(void *buf, gsize len, gpointer user_data)
 	return ret;
 }
 
+static gboolean handle_get_body(struct transfer *transfer, GObexPacket *rsp,
+								GError **err)
+{
+	GObexHeader *body = g_obex_packet_get_body(rsp);
+	gboolean ret;
+	const guint8 *buf;
+	gsize len;
+
+	if (body == NULL)
+		return TRUE;
+
+	g_obex_header_get_bytes(body, &buf, &len);
+	if (len == 0)
+		return TRUE;
+
+	ret = transfer->data_consumer(buf, len, transfer->user_data);
+	if (ret == FALSE)
+		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
+				"Data consumer callback failed");
+
+	return ret;
+}
+
 static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 							gpointer user_data)
 {
@@ -127,27 +150,17 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 
 	rspcode = g_obex_packet_get_operation(rsp, &final);
 	if (rspcode != G_OBEX_RSP_SUCCESS && rspcode != G_OBEX_RSP_CONTINUE) {
-		GError *rsp_err;
-		rsp_err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_FAILED,
+		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_FAILED,
 					"Transfer failed (0x%02x)", rspcode);
-		transfer_complete(transfer, rsp_err);
-		g_error_free(rsp_err);
-		return;
+		goto failed;
 	}
 
 	if (transfer->opcode == G_OBEX_OP_GET) {
-		GObexHeader *body = g_obex_packet_get_body(rsp);
-		if (body != NULL) {
-			const guint8 *buf;
-			gsize len;
-
-			g_obex_header_get_bytes(body, &buf, &len);
-
-			if (len > 0)
-				transfer->data_consumer(buf, len,
-							transfer->user_data);
-		}
+		handle_get_body(transfer, rsp, &err);
+		if (err != NULL)
+			goto failed;
 	}
+
 
 	if (rspcode == G_OBEX_RSP_SUCCESS) {
 		transfer_complete(transfer, NULL);
@@ -161,8 +174,11 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
-	if (err != NULL)
+failed:
+	if (err != NULL) {
 		transfer_complete(transfer, err);
+		g_error_free(err);
+	}
 }
 
 static struct transfer *transfer_new(GObex *obex, guint8 opcode,
