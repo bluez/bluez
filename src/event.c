@@ -410,8 +410,12 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	ret = write_link_key(local, peer, key, key_type, pin_length);
 
-	if (ret == 0 && device_is_temporary(device))
-		device_set_temporary(device, FALSE);
+	if (ret == 0) {
+		device_set_bonded(device, TRUE);
+
+		if (device_is_temporary(device))
+			device_set_temporary(device, FALSE);
+	}
 
 	return ret;
 }
