@@ -34,9 +34,9 @@ struct transfer {
 
 	guint req_id;
 
-	gint put_id;
-	gint get_id;
-	gint abort_id;
+	guint put_id;
+	guint get_id;
+	guint abort_id;
 
 	GObexDataProducer data_producer;
 	GObexDataConsumer data_consumer;
@@ -52,15 +52,15 @@ static void transfer_free(struct transfer *transfer)
 	if (transfer->req_id > 0)
 		g_obex_cancel_req(transfer->obex, transfer->req_id, TRUE);
 
-	if (transfer->put_id)
+	if (transfer->put_id > 0)
 		g_obex_remove_request_function(transfer->obex,
 							transfer->put_id);
 
-	if (transfer->get_id)
+	if (transfer->get_id > 0)
 		g_obex_remove_request_function(transfer->obex,
 							transfer->req_id);
 
-	if (transfer->abort_id)
+	if (transfer->abort_id > 0)
 		g_obex_remove_request_function(transfer->obex,
 							transfer->abort_id);
 
@@ -301,7 +301,7 @@ guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 {
 	struct transfer *transfer;
 	va_list args;
-	gint id;
+	guint id;
 
 	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
 	transfer->data_consumer = data_func;
@@ -415,7 +415,7 @@ guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
 {
 	struct transfer *transfer;
 	va_list args;
-	gint id;
+	guint id;
 
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_producer = data_func;

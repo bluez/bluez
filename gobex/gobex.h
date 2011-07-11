@@ -52,10 +52,10 @@ gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err);
 
 void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 							gpointer user_data);
-gint g_obex_add_request_function(GObex *obex, guint8 opcode,
+guint g_obex_add_request_function(GObex *obex, guint8 opcode,
 						GObexRequestFunc func,
 						gpointer user_data);
-gboolean g_obex_remove_request_function(GObex *obex, gint id);
+gboolean g_obex_remove_request_function(GObex *obex, guint id);
 
 void g_obex_suspend(GObex *obex);
 void g_obex_resume(GObex *obex);

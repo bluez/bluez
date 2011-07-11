@@ -87,6 +87,7 @@ struct pending_pkt {
 };
 
 struct req_handler {
+	guint id;
 	guint8 opcode;
 	GObexRequestFunc func;
 	gpointer user_data;
@@ -408,7 +409,7 @@ create_pending:
 static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct pending_pkt *p = a;
-	guint id = GPOINTER_TO_INT(b);
+	guint id = GPOINTER_TO_UINT(b);
 
 	return (p->id - id);
 }
@@ -461,7 +462,7 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id, gboolean remove_callback)
 		return TRUE;
 	}
 
-	match = g_queue_find_custom(obex->tx_queue, GINT_TO_POINTER(req_id),
+	match = g_queue_find_custom(obex->tx_queue, GUINT_TO_POINTER(req_id),
 							pending_pkt_cmp);
 	if (match == NULL)
 		return FALSE;
@@ -498,28 +499,47 @@ void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 	obex->disconn_func_data = user_data;
 }
 
-gint g_obex_add_request_function(GObex *obex, guint8 opcode,
+static gint req_handler_cmpop(gconstpointer a, gconstpointer b)
+{
+	const struct req_handler *handler = a;
+	guint8 opcode = GPOINTER_TO_UINT(b);
+
+	return (gint) handler->opcode - (gint) opcode;
+}
+
+static gint req_handler_cmpid(gconstpointer a, gconstpointer b)
+{
+	const struct req_handler *handler = a;
+	guint id = GPOINTER_TO_UINT(b);
+
+	return (gint) handler->id - (gint) id;
+}
+
+guint g_obex_add_request_function(GObex *obex, guint8 opcode,
 						GObexRequestFunc func,
 						gpointer user_data)
 {
 	struct req_handler *handler;
+	static guint next_id = 1;
 
 	handler = g_new0(struct req_handler, 1);
+	handler->id = next_id++;
 	handler->opcode = opcode;
 	handler->func = func;
 	handler->user_data = user_data;
 
 	obex->req_handlers = g_slist_prepend(obex->req_handlers, handler);
 
-	return GPOINTER_TO_INT(handler);
+	return handler->id;
 }
 
-gboolean g_obex_remove_request_function(GObex *obex, gint id)
+gboolean g_obex_remove_request_function(GObex *obex, guint id)
 {
 	struct req_handler *handler;
 	GSList *match;
 
-	match = g_slist_find(obex->req_handlers, GINT_TO_POINTER(id));
+	match = g_slist_find_custom(obex->req_handlers, GUINT_TO_POINTER(id),
+							req_handler_cmpid);
 	if (match == NULL)
 		return FALSE;
 
@@ -606,27 +626,19 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 		enable_tx(obex);
 }
 
-static gint req_handler_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct req_handler *handler = a;
-	const guint8 *opcode = b;
-
-	return (gint) handler->opcode - (gint) *opcode;
-}
-
 static void handle_request(GObex *obex, GObexPacket *req)
 {
 	GObexPacket *rsp;
 	GSList *match;
-	guint8 opcode;
+	guint8 op;
 
 	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
 		parse_connect_data(obex, req);
 
-	opcode = g_obex_packet_get_operation(req, NULL);
+	op = g_obex_packet_get_operation(req, NULL);
 
-	match = g_slist_find_custom(obex->req_handlers, &opcode,
-							req_handler_cmp);
+	match = g_slist_find_custom(obex->req_handlers, GUINT_TO_POINTER(op),
+							req_handler_cmpop);
 	if (match) {
 		struct req_handler *handler = match->data;
 		handler->func(obex, req, handler->user_data);
