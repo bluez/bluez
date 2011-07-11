@@ -127,7 +127,8 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	if (data->fd < 0) {
 		g_printerr("open(%s): %s\n", name, strerror(errno));
 		g_free(data);
-		g_obex_send_rsp(obex, G_OBEX_RSP_FORBIDDEN, NULL);
+		g_obex_send_rsp(obex, G_OBEX_RSP_FORBIDDEN, NULL,
+							G_OBEX_HDR_INVALID);
 		return;
 	}
 
@@ -181,7 +182,8 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 	if (data->fd < 0) {
 		g_printerr("open(%s): %s\n", name, strerror(errno));
 		g_free(data);
-		g_obex_send_rsp(obex, G_OBEX_RSP_FORBIDDEN, NULL);
+		g_obex_send_rsp(obex, G_OBEX_RSP_FORBIDDEN, NULL,
+							G_OBEX_HDR_INVALID);
 		return;
 	}
 

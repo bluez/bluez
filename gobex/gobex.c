@@ -483,11 +483,15 @@ immediate_completion:
 	return TRUE;
 }
 
-gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err)
+gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err,
+						guint8 first_hdr_type, ...)
 {
 	GObexPacket *rsp;
+	va_list args;
 
-	rsp = g_obex_packet_new(rspcode, TRUE, G_OBEX_HDR_INVALID);
+	va_start(args, first_hdr_type);
+	rsp = g_obex_packet_new_valist(rspcode, TRUE, first_hdr_type, args);
+	va_end(args);
 
 	return g_obex_send(obex, rsp, err);
 }
