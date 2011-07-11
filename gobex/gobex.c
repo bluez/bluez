@@ -416,16 +416,12 @@ static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
 
 static gboolean pending_req_abort(GObex *obex, GError **err)
 {
-	GObexPacket *pkt;
-
 	if (obex->pending_req->cancelled)
 		return TRUE;
 
 	obex->pending_req->cancelled = TRUE;
 
-	pkt = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
-
-	return g_obex_send(obex, pkt, err);
+	return g_obex_send_rsp(obex, G_OBEX_OP_ABORT, err, G_OBEX_HDR_INVALID);
 }
 
 static gboolean cancel_complete(gpointer user_data)
@@ -632,7 +628,6 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 
 static void handle_request(GObex *obex, GObexPacket *req)
 {
-	GObexPacket *rsp;
 	GSList *match;
 	guint8 op;
 
@@ -649,9 +644,8 @@ static void handle_request(GObex *obex, GObexPacket *req)
 		return;
 	}
 
-	rsp = g_obex_packet_new(G_OBEX_RSP_NOT_IMPLEMENTED, TRUE,
+	g_obex_send_rsp(obex, G_OBEX_RSP_NOT_IMPLEMENTED, NULL,
 							G_OBEX_HDR_INVALID);
-	g_obex_send(obex, rsp, NULL);
 }
 
 static gboolean read_stream(GObex *obex, GError **err)
