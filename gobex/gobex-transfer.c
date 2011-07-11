@@ -136,11 +136,7 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 	}
 
 	if (transfer->opcode == G_OBEX_OP_GET) {
-		GObexHeader *body;
-		body = g_obex_packet_get_header(rsp, G_OBEX_HDR_BODY);
-		if (body == NULL)
-			body = g_obex_packet_get_header(rsp,
-							G_OBEX_HDR_BODY_END);
+		GObexHeader *body = g_obex_packet_get_body(rsp);
 		if (body != NULL) {
 			const guint8 *buf;
 			gsize len;
@@ -200,7 +196,7 @@ guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 	transfer->data_producer = data_func;
 
 	va_start(args, first_hdr_id);
-	req = g_obex_packet_new_valist(G_OBEX_OP_PUT, TRUE,
+	req = g_obex_packet_new_valist(G_OBEX_OP_PUT, FALSE,
 							first_hdr_id, args);
 	va_end(args);
 
@@ -233,26 +229,30 @@ static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data
 
 static guint8 put_get_bytes(struct transfer *transfer, GObexPacket *req)
 {
-	guint8 rspcode = G_OBEX_RSP_CONTINUE;
 	GObexHeader *body;
+	gboolean final;
+	guint8 rsp;
+	const guint8 *buf;
+	gsize len;
 
-	body = g_obex_packet_get_header(req, G_OBEX_HDR_BODY);
-	if (body == NULL) {
-		body = g_obex_packet_get_header(req, G_OBEX_HDR_BODY_END);
-		rspcode = G_OBEX_RSP_SUCCESS;
-	}
+	g_obex_packet_get_operation(req, &final);
+	if (final)
+		rsp = G_OBEX_RSP_SUCCESS;
+	else
+		rsp = G_OBEX_RSP_CONTINUE;
 
-	if (body != NULL) {
-		const guint8 *buf;
-		gsize len;
+	body = g_obex_packet_get_body(req);
+	if (body == NULL)
+		return rsp;
 
-		g_obex_header_get_bytes(body, &buf, &len);
+	g_obex_header_get_bytes(body, &buf, &len);
+	if (len == 0)
+		return rsp;
 
-		if (len > 0)
-			transfer->data_consumer(buf, len, transfer->user_data);
-	}
+	if (transfer->data_consumer(buf, len, transfer->user_data) == FALSE)
+		rsp = G_OBEX_RSP_FORBIDDEN;
 
-	return rspcode;
+	return rsp;
 }
 
 static void transfer_put_req_first(struct transfer *transfer, GObexPacket *req,
@@ -270,7 +270,7 @@ static void transfer_put_req_first(struct transfer *transfer, GObexPacket *req,
 		g_error_free(err);
 	}
 
-	if (rspcode == G_OBEX_RSP_SUCCESS)
+	if (rspcode != G_OBEX_RSP_CONTINUE)
 		transfer_complete(transfer, NULL);
 }
 
@@ -289,7 +289,7 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 		g_error_free(err);
 	}
 
-	if (rspcode == G_OBEX_RSP_SUCCESS)
+	if (rspcode != G_OBEX_RSP_CONTINUE)
 		transfer_complete(transfer, NULL);
 }
 

@@ -33,7 +33,7 @@
 
 #define FINAL_BIT 0x80
 
-static guint8 put_req_first[] = { G_OBEX_OP_PUT | FINAL_BIT, 0x00, 0x30,
+static guint8 put_req_first[] = { G_OBEX_OP_PUT, 0x00, 0x30,
 	G_OBEX_HDR_TYPE, 0x00, 0x0b,
 	'f', 'o', 'o', '/', 'b', 'a', 'r', '\0',
 	G_OBEX_HDR_NAME, 0x00, 0x15,
