@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <glib.h>
 
+#include <gobex/gobex-defs.h>
 #include <gobex/gobex-packet.h>
 
 typedef enum {
@@ -79,5 +80,26 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 
 guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 					gpointer user_data, GError **err);
+
+/* Transfer related high-level functions */
+
+guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...);
+
+guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...);
+
+guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
+			GObexDataConsumer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err,
+			guint8 first_hdr_id, ...);
+
+guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
+			GObexFunc complete_func, gpointer user_data,
+			GError **err, guint8 first_hdr_id, ...);
+
+gboolean g_obex_cancel_transfer(guint id);
 
 #endif /* __GOBEX_H */

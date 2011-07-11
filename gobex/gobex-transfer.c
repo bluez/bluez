@@ -22,7 +22,6 @@
 #include <string.h>
 
 #include "gobex.h"
-#include "gobex-transfer.h"
 
 static GSList *transfers = NULL;
 

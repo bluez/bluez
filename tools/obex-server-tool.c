@@ -29,7 +29,6 @@
 #include <errno.h>
 
 #include <gobex/gobex.h>
-#include <gobex/gobex-transfer.h>
 
 static GMainLoop *main_loop = NULL;
 

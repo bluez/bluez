@@ -28,7 +28,6 @@
 #include <stdint.h>
 
 #include <gobex/gobex.h>
-#include <gobex/gobex-transfer.h>
 
 #include "util.h"
 
