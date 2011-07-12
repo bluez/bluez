@@ -1658,9 +1658,6 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 		return -EIO;
 	}
 
-	if (conn == NULL)
-		conn = get_dbus_connection();
-
 	req->conn = dbus_connection_ref(conn);
 	device->browse = req;
 
