@@ -20,6 +20,7 @@
  */
 
 #include <string.h>
+#include <errno.h>
 
 #include "gobex.h"
 
@@ -97,6 +98,9 @@ static gssize put_get_data(void *buf, gsize len, gpointer user_data)
 
 	ret = transfer->data_producer(buf, len, transfer->user_data);
 	if (ret >= 0)
+		return ret;
+
+	if (ret == -EAGAIN)
 		return ret;
 
 	req = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
@@ -374,6 +378,9 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 
 	ret = transfer->data_producer(buf, len, transfer->user_data);
 	if (ret > 0)
+		return ret;
+
+	if (ret == -EAGAIN)
 		return ret;
 
 	if (ret == 0) {

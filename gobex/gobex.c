@@ -21,6 +21,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 #include "gobex.h"
 
@@ -237,6 +238,12 @@ static gboolean write_data(GIOChannel *io, GIOCondition cond,
 		}
 
 		len = g_obex_packet_encode(p->pkt, obex->tx_buf, obex->tx_mtu);
+		if (len == -EAGAIN) {
+			g_queue_push_head(obex->tx_queue, p);
+			g_obex_suspend(obex);
+			goto stop_tx;
+		}
+
 		if (len < 0) {
 			pending_pkt_free(p);
 			goto done;

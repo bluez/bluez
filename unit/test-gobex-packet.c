@@ -21,6 +21,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <errno.h>
 
 #include <gobex/gobex-packet.h>
 
@@ -185,7 +186,7 @@ static void test_encode_on_demand(void)
 
 static gssize get_body_data_fail(void *buf, gsize len, gpointer user_data)
 {
-	return -1;
+	return -EIO;
 }
 
 static void test_encode_on_demand_fail(void)
@@ -199,7 +200,7 @@ static void test_encode_on_demand_fail(void)
 
 	len = g_obex_packet_encode(pkt, buf, sizeof(buf));
 
-	g_assert_cmpint(len, ==, -1);
+	g_assert_cmpint(len, ==, -EIO);
 
 	g_obex_packet_free(pkt);
 }
