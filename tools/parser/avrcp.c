@@ -226,6 +226,11 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 
 	printf("AVRCP: %s: pt 0x%02x len 0x%04x\n", pdu2str(pduid), pt, len);
 
+	if (len != frm->len) {
+		p_indent(level, frm);
+		printf("PDU Malformed\n");
+	}
+
 	raw_dump(level, frm);
 }
 
