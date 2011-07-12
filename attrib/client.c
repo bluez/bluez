@@ -285,6 +285,25 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	}
 }
 
+static void attio_connected(GAttrib *attrib, gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	gatt->attrib = attrib;
+
+	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_NOTIFY,
+					events_handler, gatt, NULL);
+	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_IND,
+					events_handler, gatt, NULL);
+}
+
+static void attio_disconnected(gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	gatt->attrib = NULL;
+}
+
 static DBusMessage *register_watcher(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -303,6 +322,12 @@ static DBusMessage *register_watcher(DBusConnection *conn,
 	watcher->path = g_strdup(path);
 	watcher->id = g_dbus_add_disconnect_watch(conn, sender, watcher_exit,
 							watcher, watcher_free);
+
+	if (gatt->attioid == 0)
+		gatt->attioid = btd_device_add_attio_callback(gatt->dev,
+							attio_connected,
+							attio_disconnected,
+							gatt);
 
 	gatt->watchers = g_slist_append(gatt->watchers, watcher);
 
@@ -334,6 +359,11 @@ static DBusMessage *unregister_watcher(DBusConnection *conn,
 	g_dbus_remove_watch(conn, watcher->id);
 	gatt->watchers = g_slist_remove(gatt->watchers, watcher);
 	watcher_free(watcher);
+
+	if (gatt->watchers == NULL && gatt->attioid) {
+		btd_device_remove_attio_callback(gatt->dev, gatt->attioid);
+		gatt->attioid = 0;
+	}
 
 	return dbus_message_new_method_return(msg);
 }
@@ -861,25 +891,6 @@ static GDBusMethodTable prim_methods[] = {
 	{ }
 };
 
-static void attio_connected(GAttrib *attrib, gpointer user_data)
-{
-	struct gatt_service *gatt = user_data;
-
-	gatt->attrib = attrib;
-
-	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_NOTIFY,
-					events_handler, gatt, NULL);
-	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_IND,
-					events_handler, gatt, NULL);
-}
-
-static void attio_disconnected(gpointer user_data)
-{
-	struct gatt_service *gatt = user_data;
-
-	gatt->attrib = NULL;
-}
-
 static struct gatt_service *primary_register(DBusConnection *conn,
 						struct btd_device *device,
 						struct att_primary *prim,
@@ -897,9 +908,6 @@ static struct gatt_service *primary_register(DBusConnection *conn,
 	gatt->conn = dbus_connection_ref(conn);
 	gatt->path = g_strdup_printf("%s/service%04x", device_path,
 								prim->start);
-
-	gatt->attioid = btd_device_add_attio_callback(device, attio_connected,
-						attio_disconnected, gatt);
 
 	g_dbus_register_interface(gatt->conn, gatt->path,
 					CHAR_INTERFACE, prim_methods,
@@ -936,7 +944,8 @@ static void primary_unregister(struct gatt_service *gatt)
 {
 	GSList *l;
 
-	btd_device_remove_attio_callback(gatt->dev, gatt->attioid);
+	if (gatt->attioid)
+		btd_device_remove_attio_callback(gatt->dev, gatt->attioid);
 
 	for (l = gatt->chars; l; l = l->next) {
 		struct characteristic *chr = l->data;
