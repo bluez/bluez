@@ -1426,12 +1426,12 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	if (req->profiles_added) {
 		GSList *list;
 
-		device_probe_drivers(device, req->profiles_added);
-
 		list = device_services_from_record(device, req->profiles_added);
 		if (list)
 			device_register_services(req->conn, device, list,
 								ATT_PSM);
+
+		device_probe_drivers(device, req->profiles_added);
 	}
 
 	/* Remove drivers for services removed */
@@ -1587,9 +1587,8 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 
-	device_probe_drivers(device, uuids);
-
 	device_register_services(req->conn, device, g_slist_copy(services), -1);
+	device_probe_drivers(device, uuids);
 
 	g_slist_free(uuids);
 
@@ -2340,9 +2339,9 @@ void device_set_authorizing(struct btd_device *device, gboolean auth)
 void device_register_services(DBusConnection *conn, struct btd_device *device,
 						GSList *prim_list, int psm)
 {
+	device->primaries = g_slist_concat(device->primaries, prim_list);
 	device->services = attrib_client_register(conn, device, psm, NULL,
 								prim_list);
-	device->primaries = g_slist_concat(device->primaries, prim_list);
 }
 
 GSList *btd_device_get_primaries(struct btd_device *device)

@@ -1877,10 +1877,11 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	device_set_temporary(device, FALSE);
 	adapter->devices = g_slist_append(adapter->devices, device);
 
-	device_probe_drivers(device, uuids);
 	list = device_services_from_record(device, uuids);
 	if (list)
 		device_register_services(connection, device, list, ATT_PSM);
+
+	device_probe_drivers(device, uuids);
 
 	g_slist_free_full(uuids, g_free);
 }
@@ -2052,8 +2053,9 @@ static void create_stored_device_from_primary(char *key, char *value,
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 
-	device_probe_drivers(device, uuids);
 	device_register_services(connection, device, services, -1);
+
+	device_probe_drivers(device, uuids);
 
 	g_slist_free(uuids);
 }
