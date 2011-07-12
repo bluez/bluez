@@ -48,6 +48,7 @@
 
 #include "att.h"
 #include "gattrib.h"
+#include "attio.h"
 #include "gatt.h"
 #include "client.h"
 
@@ -66,6 +67,7 @@ struct gatt_service {
 	struct att_primary *prim;
 	DBusConnection *conn;
 	GAttrib *attrib;
+	guint attioid;
 	int psm;
 	char *path;
 	GSList *chars;
@@ -976,6 +978,20 @@ static GDBusMethodTable prim_methods[] = {
 	{ }
 };
 
+static void attio_connected(GAttrib *attrib, gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	gatt->attrib = attrib;
+}
+
+static void attio_disconnected(gpointer user_data)
+{
+	struct gatt_service *gatt = user_data;
+
+	gatt->attrib = NULL;
+}
+
 static struct gatt_service *primary_register(DBusConnection *conn,
 						struct btd_device *device,
 						struct att_primary *prim,
@@ -994,6 +1010,9 @@ static struct gatt_service *primary_register(DBusConnection *conn,
 	gatt->conn = dbus_connection_ref(conn);
 	gatt->path = g_strdup_printf("%s/service%04x", device_path,
 								prim->start);
+
+	gatt->attioid = btd_device_add_attio_callback(device, attio_connected,
+						attio_disconnected, gatt);
 
 	g_dbus_register_interface(gatt->conn, gatt->path,
 					CHAR_INTERFACE, prim_methods,
@@ -1020,6 +1039,7 @@ GSList *attrib_client_register(DBusConnection *connection,
 
 		services = g_slist_append(services, g_strdup(gatt->path));
 		gatt_services = g_slist_append(gatt_services, gatt);
+
 	}
 
 	return services;
@@ -1028,6 +1048,8 @@ GSList *attrib_client_register(DBusConnection *connection,
 static void primary_unregister(struct gatt_service *gatt)
 {
 	GSList *l;
+
+	btd_device_remove_attio_callback(gatt->dev, gatt->attioid);
 
 	for (l = gatt->chars; l; l = l->next) {
 		struct characteristic *chr = l->data;
