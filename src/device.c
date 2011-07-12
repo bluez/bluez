@@ -1035,7 +1035,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	g_slist_free(device->drivers);
 	device->drivers = NULL;
 
-	attrib_client_unregister(device);
+	attrib_client_unregister(device->services);
 
 	btd_device_unref(device);
 }
