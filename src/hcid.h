@@ -63,3 +63,6 @@ void plugin_cleanup(void);
 
 void rfkill_init(void);
 void rfkill_exit(void);
+
+int attrib_server_init(void);
+void attrib_server_exit(void);

@@ -49,7 +49,6 @@
 
 #include "hcid.h"
 #include "sdpd.h"
-#include "attrib-server.h"
 #include "adapter.h"
 #include "dbus-common.h"
 #include "agent.h"
