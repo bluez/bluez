@@ -314,7 +314,7 @@ static void cache_cb(EBook *book, const GError *gerr, GList *contacts,
 			continue;
 
 		attrib = e_vcard_get_attribute(evcard, EVC_TEL);
-		if (!attrib)
+		if (attrib)
 			tel = e_vcard_attribute_get_value(attrib);
 		else
 			tel = g_strdup("");
