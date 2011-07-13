@@ -285,6 +285,11 @@ static struct pending_req *send_method_call(DBusConnection *connection,
 
 	va_end(args);
 
+	if (!cb) {
+		g_dbus_send_message(connection, msg);
+		return 0;
+	}
+
 	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
 		error("Sending %s failed", method);
 		dbus_message_unref(msg);
@@ -313,6 +318,11 @@ void session_unref(struct session_data *session)
 	if (ret == FALSE)
 		return;
 
+	send_method_call(session->conn_system,
+				BT_BUS_NAME, session->adapter,
+				BT_ADAPTER_IFACE, "ReleaseSession",
+				NULL, NULL,
+				DBUS_TYPE_INVALID);
 	session_free(session);
 }
 
