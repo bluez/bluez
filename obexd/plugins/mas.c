@@ -222,11 +222,9 @@ static ssize_t any_write(void *object, const void *buf, size_t count)
 	return count;
 }
 
-static ssize_t any_read(void *obj, void *buf, size_t count, uint8_t *hi)
+static ssize_t any_read(void *obj, void *buf, size_t count)
 {
 	DBG("");
-
-	*hi = OBEX_HDR_BODY;
 
 	return 0;
 }

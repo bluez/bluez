@@ -635,8 +635,6 @@ static int obex_write_stream(struct obex_session *os,
 {
 	obex_headerdata_t hd;
 	ssize_t len;
-	unsigned int flags;
-	uint8_t hi;
 
 	DBG("name=%s type=%s tx_mtu=%d file=%p",
 		os->name ? os->name : "", os->type ? os->type : "",
@@ -648,7 +646,7 @@ static int obex_write_stream(struct obex_session *os,
 	if (os->object == NULL)
 		return -EIO;
 
-	len = os->driver->read(os->object, os->buf, os->tx_mtu, &hi);
+	len = os->driver->read(os->object, os->buf, os->tx_mtu);
 	if (len < 0) {
 		error("read(): %s (%zd)", strerror(-len), -len);
 		if (len == -EAGAIN)
@@ -670,26 +668,17 @@ static int obex_write_stream(struct obex_session *os,
 		os->streaming = TRUE;
 	}
 
-	hd.bs = os->buf;
-
-	switch (hi) {
-	case OBEX_HDR_BODY:
-		flags = len ? OBEX_FL_STREAM_DATA : OBEX_FL_STREAM_DATAEND;
-		break;
-	case OBEX_HDR_APPARAM:
-		flags =  0;
-		break;
-	default:
-		error("read(): unkown header type %u", hi);
-		return -EIO;
-	}
-
-	OBEX_ObjectAddHeader(obex, obj, hi, hd, len, flags);
-
 	if (len == 0) {
+		hd.bs = NULL;
+		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
+						OBEX_FL_STREAM_DATAEND);
 		g_free(os->buf);
 		os->buf = NULL;
 	}
+
+	hd.bs = os->buf;
+	OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, len,
+						OBEX_FL_STREAM_DATA);
 
 	return 0;
 }

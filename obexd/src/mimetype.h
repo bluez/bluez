@@ -35,7 +35,7 @@ struct obex_mime_type_driver {
 	int (*close) (void *object);
 	ssize_t (*get_next_header)(void *object, void *buf, size_t mtu,
 								uint8_t *hi);
-	ssize_t (*read) (void *object, void *buf, size_t count, uint8_t *hi);
+	ssize_t (*read) (void *object, void *buf, size_t count);
 	ssize_t (*write) (void *object, const void *buf, size_t count);
 	int (*flush) (void *object);
 	int (*copy) (const char *name, const char *destname);

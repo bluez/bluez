@@ -978,8 +978,7 @@ static ssize_t vobject_pull_get_next_header(void *object, void *buf, size_t mtu,
 	return 0;
 }
 
-static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+static ssize_t vobject_pull_read(void *object, void *buf, size_t count)
 {
 	struct pbap_object *obj = object;
 	struct pbap_session *pbap = obj->session;
@@ -993,8 +992,6 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count,
 
 	if (pbap->params->maxlistcount == 0)
 		return -ENOSTR;
-
-	*hi = OBEX_HDR_BODY;
 
 	len = string_read(obj->buffer, buf, count);
 	if (len == 0 && !obj->lastpart) {
@@ -1030,8 +1027,7 @@ static ssize_t vobject_list_get_next_header(void *object, void *buf, size_t mtu,
 	return 0;
 }
 
-static ssize_t vobject_list_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+static ssize_t vobject_list_read(void *object, void *buf, size_t count)
 {
 	struct pbap_object *obj = object;
 	struct pbap_session *pbap = obj->session;
@@ -1042,13 +1038,10 @@ static ssize_t vobject_list_read(void *object, void *buf, size_t count,
 	if (pbap->params->maxlistcount == 0)
 		return -ENOSTR;
 
-	*hi = OBEX_HDR_BODY;
-
 	return string_read(obj->buffer, buf, count);
 }
 
-static ssize_t vobject_vcard_read(void *object, void *buf, size_t count,
-								uint8_t *hi)
+static ssize_t vobject_vcard_read(void *object, void *buf, size_t count)
 {
 	struct pbap_object *obj = object;
 
@@ -1057,7 +1050,6 @@ static ssize_t vobject_vcard_read(void *object, void *buf, size_t count,
 	if (!obj->buffer)
 		return -EAGAIN;
 
-	*hi = OBEX_HDR_BODY;
 	return string_read(obj->buffer, buf, count);
 }
 

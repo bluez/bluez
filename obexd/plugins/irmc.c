@@ -462,7 +462,7 @@ static int irmc_close(void *object)
 	return 0;
 }
 
-static ssize_t irmc_read(void *object, void *buf, size_t count, uint8_t *hi)
+static ssize_t irmc_read(void *object, void *buf, size_t count)
 {
 	struct irmc_session *irmc = object;
 	int len;
@@ -471,7 +471,6 @@ static ssize_t irmc_read(void *object, void *buf, size_t count, uint8_t *hi)
 	if (!irmc->buffer)
                 return -EAGAIN;
 
-	*hi = OBEX_HDR_BODY;
 	len = string_read(irmc->buffer, buf, count);
 	DBG("returning %d bytes", len);
 	return len;
