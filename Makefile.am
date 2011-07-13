@@ -227,6 +227,11 @@ builtin_sources += plugins/storage.c
 builtin_modules += adaptername
 builtin_sources += plugins/adaptername.c
 
+if WIIMOTEPLUGIN
+builtin_modules += wiimote
+builtin_sources += plugins/wiimote.c
+endif
+
 if MAEMO6PLUGIN
 builtin_modules += maemo6
 builtin_sources += plugins/maemo6.c
