@@ -22,39 +22,5 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <errno.h>
-
-#include <gdbus.h>
-
-#include "plugin.h"
-#include "manager.h"
-
-static DBusConnection *connection = NULL;
-
-static int proximity_init(void)
-{
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
-	if (proximity_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
-
-	return 0;
-}
-
-static void proximity_exit(void)
-{
-	proximity_manager_exit();
-	dbus_connection_unref(connection);
-}
-
-BLUETOOTH_PLUGIN_DEFINE(proximity, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-			proximity_init, proximity_exit)
+int monitor_register(DBusConnection *conn);
+void monitor_unregister(DBusConnection *conn);
