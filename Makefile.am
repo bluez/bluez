@@ -190,6 +190,11 @@ builtin_sources += network/main.c \
 			network/connection.h network/connection.c
 endif
 
+if PROXIMITYPLUGIN
+builtin_modules += proximity
+builtin_sources += proximity/main.c
+endif
+
 if SERVICEPLUGIN
 builtin_modules += service
 builtin_sources += plugins/service.c

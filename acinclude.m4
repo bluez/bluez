@@ -193,6 +193,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	serial_enable=yes
 	network_enable=yes
 	sap_enable=no
+	proximity_enable=no
 	service_enable=yes
 	health_enable=no
 	pnat_enable=no
@@ -239,6 +240,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		sap_driver=${withval}
 	])
 	AC_SUBST([SAP_DRIVER], [sap-${sap_driver}.c])
+
+	AC_ARG_ENABLE(proximity, AC_HELP_STRING([--enable-proximity], [enable proximity plugin]), [
+		proximity_enable=${enableval}
+	])
 
 	AC_ARG_ENABLE(serial, AC_HELP_STRING([--disable-serial], [disable serial plugin]), [
 		serial_enable=${enableval}
@@ -386,6 +391,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SERIALPLUGIN, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SAPPLUGIN, test "${sap_enable}" = "yes")
+	AM_CONDITIONAL(PROXIMITYPLUGIN, test "${proximity_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(HEALTHPLUGIN, test "${health_enable}" = "yes")
 	AM_CONDITIONAL(MCAP, test "${health_enable}" = "yes")
