@@ -165,6 +165,15 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter);
 int btd_adapter_switch_online(struct btd_adapter *adapter);
 int btd_adapter_switch_offline(struct btd_adapter *adapter);
 
+typedef ssize_t (*btd_adapter_pin_cb_t) (struct btd_adapter *adapter,
+					struct btd_device *dev, char *out);
+void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
+						btd_adapter_pin_cb_t cb);
+void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
+						btd_adapter_pin_cb_t cb);
+ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
+								char *pin_buf);
+
 typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
 
 struct btd_adapter_ops {

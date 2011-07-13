@@ -133,7 +133,7 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 		return -ENODEV;
 
 	memset(pin, 0, sizeof(pin));
-	pinlen = read_pin_code(sba, dba, pin);
+	pinlen = btd_adapter_get_pin(adapter, device, pin);
 	if (pinlen > 0 && (!secure || pinlen == 16)) {
 		btd_adapter_pincode_reply(adapter, dba, pin, pinlen);
 		return 0;

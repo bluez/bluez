@@ -146,6 +146,7 @@ struct btd_adapter {
 	guint off_timer;
 
 	GSList *powered_callbacks;
+	GSList *pin_callbacks;
 
 	GSList *loaded_drivers;
 };
@@ -2573,6 +2574,7 @@ void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 
 	unload_drivers(adapter);
+	g_slist_free(adapter->pin_callbacks);
 
 	/* Return adapter to down state if it was not up on init */
 	adapter_ops->restore_powered(adapter->dev_id);
@@ -3433,6 +3435,39 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 						switch_off_timeout, adapter);
 
 	return 0;
+}
+
+void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
+							btd_adapter_pin_cb_t cb)
+{
+	adapter->pin_callbacks = g_slist_prepend(adapter->pin_callbacks, cb);
+}
+
+void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
+							btd_adapter_pin_cb_t cb)
+{
+	adapter->pin_callbacks = g_slist_remove(adapter->pin_callbacks, cb);
+}
+
+ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
+								char *pin_buf)
+{
+	GSList *l;
+	btd_adapter_pin_cb_t cb;
+	bdaddr_t sba, dba;
+	ssize_t ret;
+
+	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
+		cb = l->data;
+		ret = cb(adapter, dev, pin_buf);
+		if (ret > 0)
+			return ret;
+	}
+
+	adapter_get_address(adapter, &sba);
+	device_get_address(dev, &dba);
+
+	return read_pin_code(&sba, &dba, pin_buf);
 }
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority)
