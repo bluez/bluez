@@ -51,7 +51,7 @@ struct query_context {
 	phonebook_entry_cb entry_cb;
 	phonebook_cache_ready_cb ready_cb;
 	EBookQuery *query;
-	int count;
+	unsigned int count;
 	GString *buf;
 	char *id;
 	unsigned queued_calls;
@@ -158,7 +158,7 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 {
 	struct query_context *data = user_data;
 	GList *l;
-	unsigned int count = data->count, maxcount;
+	unsigned int count = 0, maxcount;
 
 	if (gerr != NULL) {
 		error("E-Book query failed: %s", gerr->message);
@@ -180,9 +180,8 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 
 	l = g_list_nth(contacts, data->params->liststartoffset);
 
-	/* FIXME: Missing 0.vcf */
-
-	for (; l && count < maxcount; l = g_list_next(l), count++) {
+	for (; l && count + data->count < maxcount; l = g_list_next(l),
+								count++) {
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
 		char *vcard;
@@ -195,6 +194,8 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 		g_free(vcard);
 	}
 
+	data->count += count;
+
 done:
 	g_list_free_full(contacts, g_object_unref);
 
@@ -202,8 +203,8 @@ done:
 
 	data->queued_calls--;
 	if (data->queued_calls == 0)
-		data->contacts_cb(data->buf->str, data->buf->len, count, 0,
-							TRUE, data->user_data);
+		data->contacts_cb(data->buf->str, data->buf->len, data->count,
+						0, TRUE, data->user_data);
 }
 
 static void ebook_entry_cb(EBook *book, const GError *gerr,
