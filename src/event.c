@@ -127,7 +127,7 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char pin[17];
-	int pinlen;
+	ssize_t pinlen;
 
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;

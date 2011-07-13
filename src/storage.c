@@ -594,10 +594,10 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *
 	return 0;
 }
 
-int read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
+ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;
-	int len;
+	ssize_t len;
 
 	create_filename(filename, PATH_MAX, local, "pincodes");
 
