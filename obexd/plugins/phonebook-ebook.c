@@ -208,9 +208,15 @@ done:
 	DBG("collected %d vcards", count);
 
 	data->queued_calls--;
-	if (data->queued_calls == 0)
-		data->contacts_cb(data->buf->str, data->buf->len, data->count,
+	if (data->queued_calls == 0) {
+		GString *buf = data->buf;
+		data->buf = NULL;
+
+		data->contacts_cb(buf->str, buf->len, data->count,
 						0, TRUE, data->user_data);
+
+		g_string_free(buf, TRUE);
+	}
 }
 
 static void ebook_entry_cb(EBook *book, const GError *gerr,
