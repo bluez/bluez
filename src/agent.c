@@ -41,7 +41,6 @@
 
 #include "log.h"
 
-#include "hcid.h"
 #include "adapter.h"
 #include "device.h"
 #include "agent.h"

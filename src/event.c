@@ -47,7 +47,6 @@
 #include "log.h"
 #include "textfile.h"
 
-#include "hcid.h"
 #include "adapter.h"
 #include "manager.h"
 #include "device.h"
