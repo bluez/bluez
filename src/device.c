@@ -2603,9 +2603,17 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 
 	g_free(attio);
 
+	if (device->attios != NULL)
+		return TRUE;
+
 	if (device->attioid) {
 		g_source_remove(device->attioid);
 		device->attioid = 0;
+	}
+
+	if (device->attrib) {
+		g_attrib_unref(device->attrib);
+		device->attrib = NULL;
 	}
 
 	return TRUE;
