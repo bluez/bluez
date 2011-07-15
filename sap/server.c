@@ -1122,7 +1122,6 @@ static void sap_io_destroy(void *data)
 				conn->state == SAP_STATE_GRACEFUL_DISCONNECT)
 			sap_disconnect_req(NULL, 1);
 
-		conn->io = NULL;
 		sap_conn_remove(conn);
 	}
 }
