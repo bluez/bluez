@@ -2580,8 +2580,6 @@ void adapter_remove(struct btd_adapter *adapter)
 
 	/* Return adapter to down state if it was not up on init */
 	adapter_ops->restore_powered(adapter->dev_id);
-
-	btd_adapter_unref(adapter);
 }
 
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter)

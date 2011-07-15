@@ -291,6 +291,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 			DBUS_TYPE_INVALID);
 
 	adapter_remove(adapter);
+	btd_adapter_unref(adapter);
 
 	if (adapters == NULL)
 		btd_start_exit_timer();
@@ -298,9 +299,14 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 
 void manager_cleanup(DBusConnection *conn, const char *path)
 {
-	g_slist_free_full(adapters, (GDestroyNotify) adapter_remove);
+	while (adapters) {
+		struct btd_adapter *adapter = adapters->data;
 
-	adapters = NULL;
+		adapters = g_slist_remove(adapters, adapter);
+		adapter_remove(adapter);
+		btd_adapter_unref(adapter);
+	}
+
 	btd_start_exit_timer();
 
 	g_dbus_unregister_interface(conn, "/", MANAGER_INTERFACE);
