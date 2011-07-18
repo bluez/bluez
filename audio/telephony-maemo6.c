@@ -36,6 +36,9 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include <bluetooth/sdp.h>
+
+#include "glib-helper.h"
 #include "log.h"
 #include "telephony.h"
 #include "error.h"
