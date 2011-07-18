@@ -82,6 +82,7 @@ struct session_callback {
 struct pending_data {
 	DBusPendingCall *call;
 	session_callback_t cb;
+	struct session_data *session;
 	struct transfer_data *transfer;
 };
 
@@ -1118,19 +1119,20 @@ static void list_folder_callback(struct session_data *session,
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
-	int i;
+	const char *buf;
+	int size;
 
-	reply = dbus_message_new_method_return(session->msg);
-
-	if (transfer->filled == 0)
+	if (err != NULL) {
+		reply = g_dbus_create_error(session->msg,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
 		goto done;
+	} else
+		reply = dbus_message_new_method_return(session->msg);
 
-	for (i = transfer->filled - 1; i > 0; i--) {
-		if (transfer->buffer[i] != '\0')
-			break;
-
-		transfer->filled--;
-	}
+	buf = transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		buf = "";
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -1139,12 +1141,11 @@ static void list_folder_callback(struct session_data *session,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &array);
 	ctxt = g_markup_parse_context_new(&parser, 0, &array, NULL);
-	g_markup_parse_context_parse(ctxt, transfer->buffer,
-					transfer->filled, NULL);
+	g_markup_parse_context_parse(ctxt, buf, strlen(buf) - 1, NULL);
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	transfer->filled = 0;
+	transfer_clear_buffer(transfer);
 
 done:
 	g_dbus_send_message(session->conn, reply);
@@ -1190,10 +1191,8 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 
 	DBG("Agent.Request() reply: %s", name);
 
-	if (strlen(name)) {
-		g_free(pending->transfer->name);
-		pending->transfer->name = g_strdup(name);
-	}
+	if (strlen(name))
+		transfer_set_name(pending->transfer, name);
 
 	agent->pending = NULL;
 
@@ -1209,7 +1208,7 @@ static gboolean session_request_proceed(gpointer data)
 	struct pending_data *pending = data;
 	struct transfer_data *transfer = pending->transfer;
 
-	pending->cb(transfer->session, NULL, transfer);
+	pending->cb(pending->session, NULL, transfer);
 	free_pending(pending);
 
 	return FALSE;
@@ -1221,12 +1220,16 @@ static int session_request(struct session_data *session, session_callback_t cb,
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
 	struct pending_data *pending;
+	const char *path;
 
 	pending = g_new0(struct pending_data, 1);
 	pending->cb = cb;
+	pending->session = session;
 	pending->transfer = transfer;
 
-	if (agent == NULL || transfer->path == NULL) {
+	path = transfer_get_path(transfer);
+
+	if (agent == NULL || path == NULL) {
 		g_idle_add(session_request_proceed, pending);
 		return 0;
 	}
@@ -1235,7 +1238,7 @@ static int session_request(struct session_data *session, session_callback_t cb,
 			agent->path, AGENT_INTERFACE, "Request");
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(session->conn, message,
@@ -1251,7 +1254,7 @@ static int session_request(struct session_data *session, session_callback_t cb,
 	dbus_pending_call_set_notify(pending->call, session_request_reply,
 					session, NULL);
 
-	DBG("Agent.Request(\"%s\")", transfer->path);
+	DBG("Agent.Request(\"%s\")", path);
 
 	return 0;
 }
@@ -1283,8 +1286,11 @@ static void session_notify_complete(struct session_data *session,
 {
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
+	const char *path;
 
-	if (agent == NULL || transfer->path == NULL)
+	path = transfer_get_path(transfer);
+
+	if (agent == NULL || path == NULL)
 		goto done;
 
 	message = dbus_message_new_method_call(agent->name,
@@ -1295,7 +1301,7 @@ static void session_notify_complete(struct session_data *session,
 	dbus_message_set_no_reply(message, TRUE);
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(session->conn, message);
@@ -1313,6 +1319,7 @@ static void session_notify_error(struct session_data *session,
 {
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
+	const char *path;
 
 	if (session->msg) {
 		DBusMessage *reply;
@@ -1326,7 +1333,8 @@ static void session_notify_error(struct session_data *session,
 		session->msg = NULL;
 	}
 
-	if (agent == NULL || transfer->path == NULL)
+	path = transfer_get_path(transfer);
+	if (agent == NULL || path == NULL)
 		goto done;
 
 	message = dbus_message_new_method_call(agent->name,
@@ -1337,7 +1345,7 @@ static void session_notify_error(struct session_data *session,
 	dbus_message_set_no_reply(message, TRUE);
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_STRING, &err->message,
 			DBUS_TYPE_INVALID);
 
@@ -1355,9 +1363,11 @@ static void session_notify_progress(struct session_data *session,
 {
 	struct agent_data *agent = session->agent;
 	DBusMessage *message;
+	const char *path;
 
 	/* For GetFile reply on the first received stream */
-	if (transfer->fd > 0 && session->msg) {
+	if (session->msg &&
+			dbus_message_has_member(session->msg, "GetFile")) {
 		DBusMessage *reply;
 
 		reply = dbus_message_new_method_return(session->msg);
@@ -1367,7 +1377,8 @@ static void session_notify_progress(struct session_data *session,
 		session->msg = NULL;
 	}
 
-	if (agent == NULL || transfer->path == NULL)
+	path = transfer_get_path(transfer);
+	if (agent == NULL || path == NULL)
 		goto done;
 
 	message = dbus_message_new_method_call(agent->name,
@@ -1378,7 +1389,7 @@ static void session_notify_progress(struct session_data *session,
 	dbus_message_set_no_reply(message, TRUE);
 
 	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
+			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_UINT64, &transferred,
 			DBUS_TYPE_INVALID);
 
@@ -1388,7 +1399,7 @@ done:
 	DBG("Transfer(%p) progress: %ld bytes", transfer,
 			(long int ) transferred);
 
-	if (transferred == transfer->size)
+	if (transferred == transfer_get_size(transfer))
 		session_notify_complete(session, transfer);
 }
 
@@ -1450,8 +1461,8 @@ int session_get(struct session_data *session, const char *type,
 		params->size = apparam_size;
 	}
 
-	transfer = transfer_register(session, filename, targetname, type,
-					params);
+	transfer = transfer_register(session->conn, filename, targetname, type,
+					params, session);
 	if (transfer == NULL) {
 		if (params != NULL) {
 			g_free(params->data);
@@ -1647,8 +1658,8 @@ int session_send(struct session_data *session, const char *filename,
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = transfer_register(session, filename, targetname, NULL,
-					NULL);
+	transfer = transfer_register(session->conn, filename, targetname, NULL,
+					NULL, session);
 	if (transfer == NULL)
 		return -EINVAL;
 
@@ -1678,7 +1689,8 @@ int session_pull(struct session_data *session,
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = transfer_register(session, NULL, filename, type, NULL);
+	transfer = transfer_register(session->conn, NULL, filename, type, NULL,
+								session);
 	if (transfer == NULL) {
 		return -EIO;
 	}
@@ -1777,12 +1789,12 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 	if (session->pending != NULL)
 		return -EISCONN;
 
-	transfer = transfer_register(session, NULL, targetname, NULL, NULL);
+	transfer = transfer_register(session->conn, NULL, targetname, NULL,
+								NULL, session);
 	if (transfer == NULL)
 		return -EIO;
 
-	transfer->size = strlen(buf);
-	transfer->buffer = buf;
+	transfer_set_buffer(transfer, buf);
 
 	err = session_request(session, session_prepare_put, transfer);
 	if (err < 0)

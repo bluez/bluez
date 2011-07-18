@@ -79,18 +79,19 @@ static void sync_getphonebook_callback(struct session_data *session,
 	struct transfer_data *transfer = session_get_transfer(session);
 	struct sync_data *sync = user_data;
 	DBusMessage *reply;
-	char *buf = NULL;
+	const char *buf;
+	int size;
 
 	reply = dbus_message_new_method_return(sync->msg);
 
-	if (transfer->filled > 0)
-		buf = transfer->buffer;
+	buf = transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		buf = "";
 
 	dbus_message_append_args(reply,
 		DBUS_TYPE_STRING, &buf,
 		DBUS_TYPE_INVALID);
 
-	transfer->filled = 0;
 	g_dbus_send_message(sync->conn, reply);
 	dbus_message_unref(sync->msg);
 	sync->msg = NULL;

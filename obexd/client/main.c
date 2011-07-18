@@ -437,7 +437,8 @@ static void capabilities_complete_callback(struct session_data *session,
 {
 	struct transfer_data *transfer = session_get_transfer(session);
 	struct send_data *data = user_data;
-	char *capabilities;
+	const char *capabilities;
+	int size;
 
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
@@ -447,13 +448,13 @@ static void capabilities_complete_callback(struct session_data *session,
 		goto done;
 	}
 
-	capabilities = g_strndup(transfer->buffer, transfer->filled);
+	capabilities = transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		capabilities = "";
 
 	g_dbus_send_reply(data->connection, data->message,
 			DBUS_TYPE_STRING, &capabilities,
 			DBUS_TYPE_INVALID);
-
-	g_free(capabilities);
 
 done:
 

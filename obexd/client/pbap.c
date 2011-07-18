@@ -294,23 +294,21 @@ static void read_return_apparam(struct session_data *session,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
 	struct transfer_data *transfer = session_get_transfer(session);
-	GwObexXfer *xfer = transfer->xfer;
+	struct transfer_params params;
 	unsigned char *buf;
 	size_t size = 0;
 
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
 
-	if (xfer == NULL)
+	if (transfer_get_params(transfer, &params) < 0)
 		return;
 
-	buf = gw_obex_xfer_object_apparam(xfer, &size);
-
-	if (size < APPARAM_HDR_SIZE)
+	if (params.size < APPARAM_HDR_SIZE)
 		return;
 
 	while (size > APPARAM_HDR_SIZE) {
-		struct apparam_hdr *hdr = (struct apparam_hdr *) buf;
+		struct apparam_hdr *hdr = (struct apparam_hdr *) params.data;
 
 		if (hdr->len > size - APPARAM_HDR_SIZE) {
 			error("Unexpected PBAP pullphonebook app"
@@ -348,7 +346,8 @@ static void pull_phonebook_callback(struct session_data *session,
 	struct transfer_data *transfer = session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	DBusMessage *reply;
-	char *buf = "";
+	const char *buf;
+	int size;
 
 	if (pbap->msg == NULL)
 		goto done;
@@ -362,14 +361,15 @@ static void pull_phonebook_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	if (transfer->filled > 0)
-		buf = transfer->buffer;
+	buf = transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		buf = "";
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_STRING, &buf,
 			DBUS_TYPE_INVALID);
 
-	transfer->filled = 0;
+	transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);
@@ -407,7 +407,7 @@ static void phonebook_size_callback(struct session_data *session,
 			DBUS_TYPE_UINT16, &phone_book_size,
 			DBUS_TYPE_INVALID);
 
-	transfer->filled = 0;
+	transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);
@@ -426,7 +426,8 @@ static void pull_vcard_listing_callback(struct session_data *session,
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
-	int i;
+	const char *buf;
+	int size;
 
 	if (pbap->msg == NULL)
 		goto complete;
@@ -440,15 +441,9 @@ static void pull_vcard_listing_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	if (transfer->filled == 0)
-		goto send;
-
-	for (i = transfer->filled - 1; i > 0; i--) {
-		if (transfer->buffer[i] != '\0')
-			break;
-
-		transfer->filled--;
-	}
+	buf = transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		buf = "";
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -456,12 +451,11 @@ static void pull_vcard_listing_callback(struct session_data *session,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
 			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
 	ctxt = g_markup_parse_context_new(&listing_parser, 0, &array, NULL);
-	g_markup_parse_context_parse(ctxt, transfer->buffer,
-					transfer->filled, NULL);
+	g_markup_parse_context_parse(ctxt, buf, strlen(buf) - 1, NULL);
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	transfer->filled = 0;
+	transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);

@@ -25,39 +25,22 @@
 
 struct transfer_params {
 	guint8 *data;
-	gint size;
+	size_t size;
 };
 
 struct transfer_callback;
-
-struct transfer_data {
-	struct session_data *session;
-	struct transfer_params *params;
-	struct transfer_callback *callback;
-	DBusConnection *conn;
-	char *path;		/* Transfer path */
-	gchar *filename;	/* Transfer file location */
-	char *name;		/* Transfer object name */
-	char *type;		/* Transfer object type */
-	int fd;
-	GwObexXfer *xfer;
-	char *buffer;
-	size_t buffer_len;
-	int filled;
-	gint64 size;
-	gint64 transferred;
-	int err;
-};
+struct transfer_data;
 
 typedef void (*transfer_callback_t) (struct transfer_data *transfer,
 					gint64 transferred, gint err,
 					void *user_data);
 
-struct transfer_data *transfer_register(struct session_data *session,
+struct transfer_data *transfer_register(DBusConnection *conn,
 						const char *filename,
 						const char *name,
 						const char *type,
-						struct transfer_params *params);
+						struct transfer_params *params,
+						void *user_data);
 
 void transfer_unregister(struct transfer_data *transfer);
 
@@ -66,3 +49,13 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 			void *user_data);
 void transfer_abort(struct transfer_data *transfer);
+
+int transfer_get_params(struct transfer_data *transfer,
+					struct transfer_params *params);
+const char *transfer_get_buffer(struct transfer_data *transfer, int *size);
+void transfer_set_buffer(struct transfer_data *transfer, char *buffer);
+void transfer_clear_buffer(struct transfer_data *transfer);
+
+void transfer_set_name(struct transfer_data *transfer, const char *name);
+const char *transfer_get_path(struct transfer_data *transfer);
+gint64 transfer_get_size(struct transfer_data *transfer);

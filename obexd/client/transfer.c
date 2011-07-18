@@ -51,6 +51,25 @@ struct transfer_callback {
 	void *data;
 };
 
+struct transfer_data {
+	struct session_data *session;
+	struct transfer_params *params;
+	struct transfer_callback *callback;
+	DBusConnection *conn;
+	char *path;		/* Transfer path */
+	gchar *filename;	/* Transfer file location */
+	char *name;		/* Transfer object name */
+	char *type;		/* Transfer object type */
+	int fd;
+	GwObexXfer *xfer;
+	char *buffer;
+	size_t buffer_len;
+	int filled;
+	gint64 size;
+	gint64 transferred;
+	int err;
+};
+
 static void append_entry(DBusMessageIter *dict,
 				const char *key, int type, void *val)
 {
@@ -177,12 +196,14 @@ static void transfer_free(struct transfer_data *transfer)
 	g_free(transfer);
 }
 
-struct transfer_data *transfer_register(struct session_data *session,
+struct transfer_data *transfer_register(DBusConnection *conn,
 						const char *filename,
 						const char *name,
 						const char *type,
-						struct transfer_params *params)
+						struct transfer_params *params,
+						void *user_data)
 {
+	struct session_data *session = user_data;
 	struct transfer_data *transfer;
 
 	transfer = g_new0(struct transfer_data, 1);
@@ -538,4 +559,51 @@ void transfer_abort(struct transfer_data *transfer)
 	if (callback)
 		callback->func(transfer, transfer->transferred, -ECANCELED,
 				callback->data);
+}
+
+int transfer_get_params(struct transfer_data *transfer,
+					struct transfer_params *params)
+{
+	if (!transfer->xfer)
+		return -ENOTCONN;
+
+	params->data = gw_obex_xfer_object_apparam(transfer->xfer,
+								&params->size);
+
+	return 0;
+}
+
+void transfer_clear_buffer(struct transfer_data *transfer)
+{
+	transfer->filled = 0;
+}
+
+const char *transfer_get_buffer(struct transfer_data *transfer, int *size)
+{
+	if (size)
+		*size = transfer->filled;
+
+	return transfer->buffer;
+}
+
+void transfer_set_buffer(struct transfer_data *transfer, char *buffer)
+{
+	transfer->size = strlen(buffer);
+	transfer->buffer = buffer;
+}
+
+void transfer_set_name(struct transfer_data *transfer, const char *name)
+{
+	g_free(transfer->name);
+	transfer->name = g_strdup(name);
+}
+
+const char *transfer_get_path(struct transfer_data *transfer)
+{
+	return transfer->path;
+}
+
+gint64 transfer_get_size(struct transfer_data *transfer)
+{
+	return transfer->size;
 }
