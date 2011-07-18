@@ -509,7 +509,7 @@ void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 static gint req_handler_cmpop(gconstpointer a, gconstpointer b)
 {
 	const struct req_handler *handler = a;
-	guint8 opcode = GPOINTER_TO_UINT(b);
+	guint opcode = GPOINTER_TO_UINT(b);
 
 	return (gint) handler->opcode - (gint) opcode;
 }
@@ -636,7 +636,7 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 static void handle_request(GObex *obex, GObexPacket *req)
 {
 	GSList *match;
-	guint8 op;
+	guint op;
 
 	if (g_obex_packet_get_operation(req, NULL) == G_OBEX_OP_CONNECT)
 		parse_connect_data(obex, req);
