@@ -47,8 +47,7 @@
 #include "transfer.h"
 #include "session.h"
 #include "btio.h"
-
-#define AGENT_INTERFACE  "org.openobex.Agent"
+#include "agent.h"
 
 #define SESSION_INTERFACE  "org.openobex.Session"
 #define SESSION_BASEPATH   "/org/openobex"
@@ -79,17 +78,9 @@ struct session_callback {
 };
 
 struct pending_data {
-	DBusPendingCall *call;
 	session_callback_t cb;
 	struct session_data *session;
 	struct transfer_data *transfer;
-};
-
-struct agent_data {
-	char *name;
-	char *path;
-	guint watch;
-	struct pending_data *pending;
 };
 
 struct pending_req {
@@ -142,48 +133,6 @@ struct session_data *session_ref(struct session_data *session)
 	DBG("%p: ref=%d", session, session->refcount);
 
 	return session;
-}
-
-static void free_pending(struct pending_data *pending)
-{
-	if (pending->call)
-		dbus_pending_call_unref(pending->call);
-
-	g_free(pending);
-}
-
-static void agent_free(struct session_data *session)
-{
-	struct agent_data *agent = session->agent;
-
-	if (agent->watch)
-		g_dbus_remove_watch(session->conn, agent->watch);
-
-	if (agent->pending) {
-		dbus_pending_call_cancel(agent->pending->call);
-		free_pending(agent->pending);
-	}
-
-	session->agent = NULL;
-
-	g_free(agent->name);
-	g_free(agent->path);
-	g_free(agent);
-}
-
-static void agent_release(struct session_data *session)
-{
-	struct agent_data *agent = session->agent;
-	DBusMessage *message;
-
-	message = dbus_message_new_method_call(agent->name,
-			agent->path, AGENT_INTERFACE, "Release");
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	g_dbus_send_message(session->conn, message);
-
-	agent_free(session);
 }
 
 static void session_unregistered(struct session_data *session)
@@ -250,8 +199,10 @@ static void session_free(struct session_data *session)
 		pending_req_finalize(req);
 	}
 
-	if (session->agent)
-		agent_release(session);
+	if (session->agent) {
+		agent_release(session->agent);
+		agent_free(session->agent);
+	}
 
 	if (session->watch)
 		g_dbus_remove_watch(session->conn, session->watch);
@@ -898,15 +849,6 @@ void session_shutdown(struct session_data *session)
 	session_unref(session);
 }
 
-static void agent_disconnected(DBusConnection *connection, void *user_data)
-{
-	struct session_data *session = user_data;
-
-	session->agent->watch = 0;
-
-	agent_free(session);
-}
-
 static DBusMessage *assign_agent(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -947,13 +889,14 @@ static DBusMessage *release_agent(DBusConnection *connection,
 
 	sender = dbus_message_get_sender(message);
 
-	if (agent == NULL || g_str_equal(sender, agent->name) == FALSE ||
-				g_str_equal(path, agent->path) == FALSE)
+	if (agent == NULL ||
+			g_str_equal(sender, agent_get_name(agent)) == FALSE ||
+			g_str_equal(path, agent_get_path(agent)) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
 
-	agent_free(session);
+	agent_free(agent);
 
 	return dbus_message_new_method_return(message);
 }
@@ -1034,9 +977,8 @@ static GDBusMethodTable session_methods[] = {
 
 static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 {
-	struct session_data *session = user_data;
-	struct agent_data *agent = session->agent;
-	struct pending_data *pending = agent->pending;
+	struct pending_data *pending = user_data;
+	struct session_data *session = pending->session;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const char *name;
 	DBusError derr;
@@ -1067,11 +1009,8 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 	if (strlen(name))
 		transfer_set_name(pending->transfer, name);
 
-	agent->pending = NULL;
-
 	pending->cb(session, NULL, pending->transfer);
 	dbus_message_unref(reply);
-	free_pending(pending);
 
 	return;
 }
@@ -1082,7 +1021,7 @@ static gboolean session_request_proceed(gpointer data)
 	struct transfer_data *transfer = pending->transfer;
 
 	pending->cb(pending->session, NULL, transfer);
-	free_pending(pending);
+	g_free(pending);
 
 	return FALSE;
 }
@@ -1091,9 +1030,9 @@ static int session_request(struct session_data *session, session_callback_t cb,
 				struct transfer_data *transfer)
 {
 	struct agent_data *agent = session->agent;
-	DBusMessage *message;
 	struct pending_data *pending;
 	const char *path;
+	int err;
 
 	pending = g_new0(struct pending_data, 1);
 	pending->cb = cb;
@@ -1107,27 +1046,12 @@ static int session_request(struct session_data *session, session_callback_t cb,
 		return 0;
 	}
 
-	message = dbus_message_new_method_call(agent->name,
-			agent->path, AGENT_INTERFACE, "Request");
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	if (!dbus_connection_send_with_reply(session->conn, message,
-						&pending->call, -1)) {
-		dbus_message_unref(message);
-		return -ENOMEM;
+	err = agent_request(agent, path, session_request_reply, pending,
+								g_free);
+	if (err < 0) {
+		g_free(pending);
+		return err;
 	}
-
-	agent->pending = pending;
-
-	dbus_message_unref(message);
-
-	dbus_pending_call_set_notify(pending->call, session_request_reply,
-					session, NULL);
-
-	DBG("Agent.Request(\"%s\")", path);
 
 	return 0;
 }
@@ -1158,7 +1082,6 @@ static void session_notify_complete(struct session_data *session,
 				struct transfer_data *transfer)
 {
 	struct agent_data *agent = session->agent;
-	DBusMessage *message;
 	const char *path;
 
 	path = transfer_get_path(transfer);
@@ -1166,18 +1089,7 @@ static void session_notify_complete(struct session_data *session,
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	message = dbus_message_new_method_call(agent->name,
-			agent->path, AGENT_INTERFACE, "Complete");
-	if (message == NULL)
-		return;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
+	agent_notify_complete(agent, path);
 
 done:
 
@@ -1191,26 +1103,13 @@ static void session_notify_error(struct session_data *session,
 				GError *err)
 {
 	struct agent_data *agent = session->agent;
-	DBusMessage *message;
 	const char *path;
 
 	path = transfer_get_path(transfer);
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	message = dbus_message_new_method_call(agent->name,
-			agent->path, AGENT_INTERFACE, "Error");
-	if (message == NULL)
-		return;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_STRING, &err->message,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
+	agent_notify_error(agent, path, err->message);
 
 done:
 	error("Transfer(%p) Error: %s", transfer, err->message);
@@ -1223,26 +1122,13 @@ static void session_notify_progress(struct session_data *session,
 					gint64 transferred)
 {
 	struct agent_data *agent = session->agent;
-	DBusMessage *message;
 	const char *path;
 
 	path = transfer_get_path(transfer);
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	message = dbus_message_new_method_call(agent->name,
-			agent->path, AGENT_INTERFACE, "Progress");
-	if (message == NULL)
-		goto done;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	dbus_message_append_args(message,
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_UINT64, &transferred,
-			DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(session->conn, message);
+	agent_notify_progress(agent, path, transferred);
 
 done:
 	DBG("Transfer(%p) progress: %ld bytes", transfer,
@@ -1488,6 +1374,13 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 	return 0;
 }
 
+static void agent_destroy(gpointer data, gpointer user_data)
+{
+	struct session_data *session = user_data;
+
+	session->agent = NULL;
+}
+
 int session_set_agent(struct session_data *session, const char *name,
 							const char *path)
 {
@@ -1499,16 +1392,11 @@ int session_set_agent(struct session_data *session, const char *name,
 	if (session->agent)
 		return -EALREADY;
 
-	agent = g_new0(struct agent_data, 1);
-	agent->name = g_strdup(name);
-	agent->path = g_strdup(path);
+	agent = agent_create(session->conn, name, path, agent_destroy,
+								session);
 
 	if (session->watch == 0)
 		session_set_owner(session, name, owner_disconnected);
-
-	agent->watch = g_dbus_add_disconnect_watch(session->conn, name,
-							agent_disconnected,
-							session, NULL);
 
 	session->agent = agent;
 
@@ -1526,7 +1414,7 @@ const char *session_get_agent(struct session_data *session)
 	if (agent == NULL)
 		return NULL;
 
-	return agent->name;
+	return agent_get_name(session->agent);
 }
 
 const char *session_get_owner(struct session_data *session)
