@@ -34,6 +34,7 @@ struct transfer_data {
 	struct session_data *session;
 	struct transfer_params *params;
 	struct transfer_callback *callback;
+	DBusConnection *conn;
 	char *path;		/* Transfer path */
 	gchar *filename;	/* Transfer file location */
 	char *name;		/* Transfer object name */

@@ -61,11 +61,15 @@ static void shutdown_session(struct session_data *session)
 	session_unref(session);
 }
 
-static void owner_exit(DBusConnection *connection, void *user_data)
+static void unregister_session(void *data)
 {
-	struct session_data *session = user_data;
+	struct session_data *session = data;
 
-	shutdown_session(session);
+	if (g_slist_find(sessions, session) == NULL)
+		return;
+
+	sessions = g_slist_remove(sessions, session);
+	session_unref(session);
 }
 
 static void create_callback(struct session_data *session, GError *err,
@@ -83,12 +87,13 @@ static void create_callback(struct session_data *session, GError *err,
 		goto done;
 	}
 
-	if (session->target != NULL) {
-		session_register(session);
-		session_set_owner(session, data->sender, owner_exit);
+	if (session_get_target(session) != NULL) {
+		const char *path;
+
+		path = session_register(session, unregister_session);
 
 		g_dbus_send_reply(data->connection, data->message,
-				DBUS_TYPE_OBJECT_PATH, &session->path,
+				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
 		goto done;
 	}
@@ -351,7 +356,7 @@ static struct session_data *find_session(const char *path)
 	for (l = sessions; l; l = l->next) {
 		struct session_data *session = l->data;
 
-		if (g_str_equal(session->path, path) == TRUE)
+		if (g_str_equal(session_get_path(session), path) == TRUE)
 			return session;
 	}
 
@@ -417,7 +422,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 
 	sender = dbus_message_get_sender(message);
-	if (g_str_equal(sender, session->owner) == FALSE)
+	if (g_str_equal(sender, session_get_owner(session)) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
@@ -430,7 +435,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 static void capabilities_complete_callback(struct session_data *session,
 						GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session->pending->data;
+	struct transfer_data *transfer = session_get_transfer(session);
 	struct send_data *data = user_data;
 	char *capabilities;
 

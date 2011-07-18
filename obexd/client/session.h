@@ -28,33 +28,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 
-struct agent_data;
-struct session_callback;
-
-struct session_data {
-	gint refcount;
-	bdaddr_t src;
-	bdaddr_t dst;
-	uint8_t channel;
-	char *service;		/* Service friendly name */
-	const char *target;	/* OBEX Target UUID */
-	int target_len;
-	uuid_t uuid;		/* Bluetooth Service Class */
-	gchar *path;		/* Session path */
-	DBusConnection *conn;
-	DBusConnection *conn_system; /* system bus connection */
-	DBusMessage *msg;
-	GwObex *obex;
-	GIOChannel *io;
-	struct agent_data *agent;
-	struct session_callback *callback;
-	gchar *owner;		/* Session owner */
-	guint watch;
-	GSList *pending;
-	GSList *pending_calls;
-	void *priv;
-	char *adapter;
-};
+struct session_data;
 
 typedef void (*session_callback_t) (struct session_data *session,
 					GError *err, void *user_data);
@@ -79,17 +53,26 @@ int session_set_agent(struct session_data *session, const char *name,
 							const char *path);
 const char *session_get_agent(struct session_data *session);
 
+const char *session_get_path(struct session_data *session);
+const char *session_get_target(struct session_data *session);
+GwObex *session_get_obex(struct session_data *session);
+
+struct transfer_data *session_get_transfer(struct session_data *session);
+void session_add_transfer(struct session_data *session,
+					struct transfer_data *transfer);
+void session_remove_transfer(struct session_data *session,
+					struct transfer_data *transfer);
+
 int session_send(struct session_data *session, const char *filename,
 				const char *remotename);
 int session_get(struct session_data *session, const char *type,
 		const char *filename, const char *targetname,
 		const guint8  *apparam, gint apparam_size,
-		session_callback_t func);
+		session_callback_t func, void *user_data);
 int session_pull(struct session_data *session,
 				const char *type, const char *filename,
 				session_callback_t function, void *user_data);
-int session_register(struct session_data *session);
-void *session_get_data(struct session_data *session);
-void session_set_data(struct session_data *session, void *priv);
+const char *session_register(struct session_data *session,
+						GDBusDestroyFunction destroy);
 int session_put(struct session_data *session, char *buf,
 				const char *targetname);

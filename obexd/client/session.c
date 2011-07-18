@@ -97,6 +97,31 @@ struct pending_req {
 	void *user_data;
 };
 
+struct session_data {
+	gint refcount;
+	bdaddr_t src;
+	bdaddr_t dst;
+	uint8_t channel;
+	char *service;		/* Service friendly name */
+	const char *target;	/* OBEX Target UUID */
+	int target_len;
+	uuid_t uuid;		/* Bluetooth Service Class */
+	gchar *path;		/* Session path */
+	DBusConnection *conn;
+	DBusConnection *conn_system; /* system bus connection */
+	DBusMessage *msg;
+	GwObex *obex;
+	GIOChannel *io;
+	struct agent_data *agent;
+	struct session_callback *callback;
+	gchar *owner;		/* Session owner */
+	guint watch;
+	GSList *pending;
+	GSList *pending_calls;
+	void *priv;
+	char *adapter;
+};
+
 static GSList *sessions = NULL;
 
 static void session_prepare_put(struct session_data *session, GError *err,
@@ -163,27 +188,28 @@ static void agent_release(struct session_data *session)
 
 static void session_unregistered(struct session_data *session)
 {
+	char *path;
+
 	switch (session->uuid.value.uuid16) {
 	case OBEX_FILETRANS_SVCLASS_ID:
 		g_dbus_unregister_interface(session->conn, session->path,
 						FTP_INTERFACE);
 		break;
 	case PBAP_PSE_SVCLASS_ID:
-		pbap_unregister_interface(session->conn, session->path,
-						session);
+		pbap_unregister_interface(session->conn, session->path);
 		break;
 	case IRMC_SYNC_SVCLASS_ID:
-		sync_unregister_interface(session->conn, session->path,
-						session);
+		sync_unregister_interface(session->conn, session->path);
 	}
 
-	g_dbus_unregister_interface(session->conn, session->path,
-					SESSION_INTERFACE);
-
-	DBG("Session(%p) unregistered %s", session, session->path);
-
-	g_free(session->path);
+	path = session->path;
 	session->path = NULL;
+
+	g_dbus_unregister_interface(session->conn, path, SESSION_INTERFACE);
+
+	DBG("Session(%p) unregistered %s", session, path);
+
+	g_free(path);
 }
 
 static struct pending_req *find_session_request(
@@ -1408,7 +1434,7 @@ static void session_prepare_get(struct session_data *session,
 int session_get(struct session_data *session, const char *type,
 		const char *filename, const char *targetname,
 		const guint8 *apparam, gint apparam_size,
-		session_callback_t func)
+		session_callback_t func, void *user_data)
 {
 	struct transfer_data *transfer;
 	struct transfer_params *params = NULL;
@@ -1438,6 +1464,7 @@ int session_get(struct session_data *session, const char *type,
 		struct session_callback *callback;
 		callback = g_new0(struct session_callback, 1);
 		callback->func = func;
+		callback->data = user_data;
 		session->callback = callback;
 	}
 
@@ -1502,7 +1529,7 @@ static DBusMessage *list_folder(DBusConnection *connection,
 				"Transfer in progress");
 
 	if (session_get(session, "x-obex/folder-listing",
-				NULL, NULL, NULL, 0, list_folder_callback) < 0)
+			NULL, NULL, NULL, 0, list_folder_callback, NULL) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -1531,7 +1558,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 
 	if (session_get(session, NULL, source_file,
-				target_file, NULL, 0, get_file_callback) < 0)
+			target_file, NULL, 0, get_file_callback, NULL) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -1672,17 +1699,21 @@ int session_pull(struct session_data *session,
 	return err;
 }
 
-int session_register(struct session_data *session)
+const char *session_register(struct session_data *session,
+						GDBusDestroyFunction destroy)
 {
 	gboolean result = FALSE;
+
+	if (session->path)
+		return session->path;
 
 	session->path = g_strdup_printf("%s/session%ju",
 						SESSION_BASEPATH, counter++);
 
 	if (g_dbus_register_interface(session->conn, session->path,
 					SESSION_INTERFACE, session_methods,
-					NULL, NULL, session, NULL) == FALSE)
-		return -EIO;
+					NULL, NULL, session, destroy) == FALSE)
+		goto fail;
 
 	switch (session->uuid.value.uuid16) {
 	case OBEX_FILETRANS_SVCLASS_ID:
@@ -1691,33 +1722,28 @@ int session_register(struct session_data *session)
 					ftp_methods, NULL, NULL, session, NULL);
 		break;
 	case PBAP_PSE_SVCLASS_ID:
-		result = pbap_register_interface(session->conn,
-						session->path, session, NULL);
+		result = pbap_register_interface(session->conn, session->path,
+								session);
 		break;
 	case IRMC_SYNC_SVCLASS_ID:
-		result = sync_register_interface(session->conn,
-						session->path, session, NULL);
+		result = sync_register_interface(session->conn, session->path,
+								session);
 	}
 
 	if (result == FALSE) {
 		g_dbus_unregister_interface(session->conn,
 					session->path, SESSION_INTERFACE);
-		return -EIO;
+		goto fail;
 	}
 
 	DBG("Session(%p) registered %s", session, session->path);
 
-	return 0;
-}
+	return session->path;
 
-void *session_get_data(struct session_data *session)
-{
-	return session->priv;
-}
-
-void session_set_data(struct session_data *session, void *priv)
-{
-	session->priv = priv;
+fail:
+	g_free(session->path);
+	session->path = NULL;
+	return NULL;
 }
 
 static void session_prepare_put(struct session_data *session,
@@ -1812,4 +1838,36 @@ const char *session_get_owner(struct session_data *session)
 		return NULL;
 
 	return session->owner;
+}
+
+const char *session_get_path(struct session_data *session)
+{
+	return session->path;
+}
+
+const char *session_get_target(struct session_data *session)
+{
+	return session->target;
+}
+
+GwObex *session_get_obex(struct session_data *session)
+{
+	return session->obex;
+}
+
+struct transfer_data *session_get_transfer(struct session_data *session)
+{
+	return session->pending ? session->pending->data : NULL;
+}
+
+void session_add_transfer(struct session_data *session,
+					struct transfer_data *transfer)
+{
+	session->pending = g_slist_append(session->pending, transfer);
+}
+
+void session_remove_transfer(struct session_data *session,
+					struct transfer_data *transfer)
+{
+	session->pending = g_slist_remove(session->pending, transfer);
 }

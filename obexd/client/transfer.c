@@ -156,7 +156,7 @@ static void transfer_free(struct transfer_data *transfer)
 	if (transfer->fd > 0)
 		close(transfer->fd);
 
-	session->pending = g_slist_remove(session->pending, transfer);
+	session_remove_transfer(session, transfer);
 
 	session_unref(session);
 
@@ -164,6 +164,9 @@ static void transfer_free(struct transfer_data *transfer)
 		g_free(transfer->params->data);
 		g_free(transfer->params);
 	}
+
+	if (transfer->conn)
+		dbus_connection_unref(transfer->conn);
 
 	g_free(transfer->callback);
 	g_free(transfer->filename);
@@ -198,7 +201,13 @@ struct transfer_data *transfer_register(struct session_data *session,
 	transfer->path = g_strdup_printf("%s/transfer%ju",
 			TRANSFER_BASEPATH, counter++);
 
-	if (g_dbus_register_interface(session->conn, transfer->path,
+	transfer->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	if (transfer->conn == NULL) {
+		transfer_free(transfer);
+		return NULL;
+	}
+
+	if (g_dbus_register_interface(transfer->conn, transfer->path,
 				TRANSFER_INTERFACE,
 				transfer_methods, NULL, NULL,
 				transfer, NULL) == FALSE) {
@@ -209,17 +218,15 @@ struct transfer_data *transfer_register(struct session_data *session,
 done:
 	DBG("%p registered %s", transfer, transfer->path);
 
-	session->pending = g_slist_append(session->pending, transfer);
+	session_add_transfer(session, transfer);
 
 	return transfer;
 }
 
 void transfer_unregister(struct transfer_data *transfer)
 {
-	struct session_data *session = transfer->session;
-
 	if (transfer->path) {
-		g_dbus_unregister_interface(session->conn,
+		g_dbus_unregister_interface(transfer->conn,
 			transfer->path, TRANSFER_INTERFACE);
 	}
 
@@ -420,6 +427,7 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 			void *user_data)
 {
 	struct session_data *session = transfer->session;
+	GwObex *obex;
 	gw_obex_xfer_cb_t cb;
 
 	if (transfer->xfer != NULL)
@@ -441,15 +449,17 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 		cb = get_xfer_progress;
 	}
 
+	obex = session_get_obex(session);
+
 	if (transfer->params != NULL)
-		transfer->xfer = gw_obex_get_async_with_apparam(session->obex,
+		transfer->xfer = gw_obex_get_async_with_apparam(obex,
 							transfer->filename,
 							transfer->type,
 							transfer->params->data,
 							transfer->params->size,
 							NULL);
 	else
-		transfer->xfer = gw_obex_get_async(session->obex,
+		transfer->xfer = gw_obex_get_async(obex,
 							transfer->filename,
 							transfer->type,
 							NULL);
@@ -468,6 +478,7 @@ int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 			void *user_data)
 {
 	struct session_data *session = transfer->session;
+	GwObex *obex;
 	gw_obex_xfer_cb_t cb;
 	struct stat st;
 	int fd, size;
@@ -497,8 +508,9 @@ int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 	cb = put_xfer_progress;
 
 done:
+	obex = session_get_obex(session);
 	size = transfer->size < UINT32_MAX ? transfer->size : 0;
-	transfer->xfer = gw_obex_put_async(session->obex, transfer->name,
+	transfer->xfer = gw_obex_put_async(obex, transfer->name,
 						transfer->type, size,
 						-1, NULL);
 	if (transfer->xfer == NULL)

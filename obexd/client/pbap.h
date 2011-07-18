@@ -24,16 +24,6 @@
 
 #include <gdbus.h>
 
-#define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
-
-struct pbap_data {
-	char *path;
-	guint8 format;
-	guint8 order;
-	uint64_t filter;
-};
-
 gboolean pbap_register_interface(DBusConnection *connection, const char *path,
-				void *user_data, GDBusDestroyFunction destroy);
-void pbap_unregister_interface(DBusConnection *connection, const char *path,
-				void *user_data);
+							void *user_data);
+void pbap_unregister_interface(DBusConnection *connection, const char *path);

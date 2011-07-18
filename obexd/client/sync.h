@@ -25,6 +25,5 @@
 #include <gdbus.h>
 
 gboolean sync_register_interface(DBusConnection *connection, const char *path,
-				void *user_data, GDBusDestroyFunction destroy);
-void sync_unregister_interface(DBusConnection *connection, const char *path,
-				void *user_data);
+							void *user_data);
+void sync_unregister_interface(DBusConnection *connection, const char *path);
