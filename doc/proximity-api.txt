@@ -30,29 +30,11 @@ Signals		PropertyChanged(string name, variant value)
 			property.
 
 Properties
-		uint8 PathLoss[readonly]
 
-			If Tx Power Service is available, this property value
-			will be reported on regular intervals when the peer is
-			connected. Range: 0 - 100. The number is a relative
-			value to represent inaccurately the signal strength,
-			where 0 represents out of range and 100 close to the
-			reporter.
+		string SignalLevel[readonly]
 
-		string Threshold [readwrite]
-
-			Persistent property. Trigger for immediate alert.
-			Values: "low", "medium", "high". Enabled only if Tx
-			Power and Immediate Alert services are available in
-			the reporter. Controls when the immediate alert is
-			triggered in the reporter.
-
-		boolean ThresholdAlert[readonly]
-
-			Alert indicating that threshold has been reached or the
-			path loss returned to a value below the threshold. It is
-			up to the implementation catch this property value and
-			emit a sound in the proximity monitor.
+			Alert indicating that a threshold has been reached.
+			Possible values: "unknown", "good", "regular", "weak"
 
 		string LinkLossAlertLevel [readwrite]
 
@@ -60,16 +42,10 @@ Properties
 			proximity reporter for link loss scenario. Values:
 			"none", "mild", "high".
 
-		string PathLossAlertLevel [readwrite]
+		string ImmediateAlertLevel [readwrite]
 
-			Persistent property. Alert level for path loss scenario.
-			It's a LOCAL property value written in the Alert Level of
-			the Immediate Alert service when the threshold alert is
-			triggered. Values: "none", "mild", "high".
-
-		string FindMeAlertLevel [readwrite]
-
-			Alert level to be written in the Find Me Target.
+			Alert level to be written in the Immediate Alert Level.
+			Property shared between Path Loss and Find Me.
 			Values: "none", "mild", "high". Default value is
 			"none". Applications can disable the alert setting
 			the value to "none". If the "Target" is not found,
