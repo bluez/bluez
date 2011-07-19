@@ -165,7 +165,6 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 			goto failed;
 	}
 
-
 	if (rspcode == G_OBEX_RSP_SUCCESS) {
 		transfer_complete(transfer, NULL);
 		return;
