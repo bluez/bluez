@@ -262,10 +262,6 @@ static gboolean handle_inotify_cb(GIOChannel *channel, GIOCondition cond,
 
 static void adaptername_remove(struct btd_adapter *adapter)
 {
-	if (watch_fd >= 0)
-		close(watch_fd);
-	if (inotify != NULL)
-		g_io_channel_shutdown(inotify, FALSE, NULL);
 }
 
 static struct btd_adapter_driver adaptername_driver = {
@@ -314,6 +310,13 @@ static int adaptername_init(void)
 
 static void adaptername_exit(void)
 {
+	if (watch_fd >= 0)
+		close(watch_fd);
+	if (inotify != NULL) {
+		g_io_channel_shutdown(inotify, FALSE, NULL);
+		g_io_channel_unref(inotify);
+	}
+
 	btd_unregister_adapter_driver(&adaptername_driver);
 }
 
