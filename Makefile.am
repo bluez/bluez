@@ -3,6 +3,8 @@ AM_MAKEFLAGS = --no-print-directory
 
 lib_LTLIBRARIES =
 
+noinst_LIBRARIES =
+
 noinst_LTLIBRARIES =
 
 bin_PROGRAMS =
@@ -142,7 +144,7 @@ builtin_sources += audio/main.c \
 			audio/telephony.h audio/a2dp-codecs.h
 builtin_nodist += audio/telephony.c
 
-noinst_LIBRARIES = audio/libtelephony.a
+noinst_LIBRARIES += audio/libtelephony.a
 
 audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c \
 				audio/telephony-maemo5.c audio/telephony-ofono.c \
@@ -158,7 +160,7 @@ builtin_sources += sap/main.c \
 
 builtin_nodist += sap/sap.c
 
-noinst_LIBRARIES = sap/libsap.a
+noinst_LIBRARIES += sap/libsap.a
 
 sap_libsap_a_SOURCES = sap/sap.h sap/sap-dummy.c sap/sap-u8500.c
 endif
