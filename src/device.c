@@ -1610,7 +1610,7 @@ static void attio_disconnected(gpointer data, gpointer user_data)
 
 static gboolean att_auto_connect(gpointer user_data);
 
-static void attrib_destroyed(gpointer user_data)
+static void attrib_disconnected(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
@@ -1621,6 +1621,7 @@ static void attrib_destroyed(gpointer user_data)
 							att_auto_connect,
 							device);
 
+	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
 }
 
@@ -1705,8 +1706,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		gatt_discover_primary(req->attrib, NULL, primary_cb, req);
 	} else if (device->attios) {
 		device->attrib = g_attrib_new(io);
-		g_attrib_set_destroy_function(device->attrib, attrib_destroyed,
-								device);
+		g_attrib_set_disconnect_function(device->attrib,
+						attrib_disconnected, device);
 		g_slist_foreach(device->attios, attio_connected,
 							device->attrib);
 	}
