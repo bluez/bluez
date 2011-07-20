@@ -139,7 +139,6 @@
 "WHERE {"								\
 "	?_contact a nco:PersonContact ."				\
 "	OPTIONAL {?_contact nco:hasAffiliation ?_role .}"		\
-"	FILTER (regex(str(?_contact), \"urn:uuid:\"))"			\
 "}"									\
 "ORDER BY tracker:id(?_contact)"
 
@@ -361,7 +360,6 @@ COMBINED_CONSTRAINT		\
 	"SELECT COUNT(?c) "						\
 	"WHERE {"							\
 		"?c a nco:PersonContact ."				\
-		"FILTER (regex(str(?c), \"urn:uuid:\"))"		\
 	"}"
 
 #define MISSED_CALLS_COUNT_QUERY					\
