@@ -192,7 +192,7 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 		EVCard *evcard = E_VCARD(contact);
 		char *vcard;
 
-		vcard = evcard_to_string(evcard, data->params->format,
+		vcard = evcard_to_string(evcard, EVC_FORMAT_VCARD_30,
 						data->params->filter);
 
 		data->buf = g_string_append(data->buf, vcard);
@@ -236,7 +236,7 @@ static void ebook_entry_cb(EBook *book, const GError *gerr,
 
 	evcard = E_VCARD(contact);
 
-	vcard = evcard_to_string(evcard, data->params->format,
+	vcard = evcard_to_string(evcard, EVC_FORMAT_VCARD_30,
 					data->params->filter);
 
 	len = vcard ? strlen(vcard) : 0;
