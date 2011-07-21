@@ -135,7 +135,14 @@ static struct obex_mime_type_driver *find_driver(const uint8_t *target,
 		if (memncmp0(who, who_size, driver->who, driver->who_size))
 			continue;
 
-		if (g_strcmp0(mimetype, driver->mimetype) == 0)
+		if (mimetype == NULL || driver->mimetype == NULL) {
+			if (mimetype == driver->mimetype)
+				return driver;
+			else
+				continue;
+		}
+
+		if (g_ascii_strcasecmp(mimetype, driver->mimetype) == 0)
 			return driver;
 	}
 
