@@ -469,9 +469,12 @@ static int generate_response(void *user_data)
 	pbap->obj->buffer = g_string_new(VCARD_LISTING_BEGIN);
 	for (; l && max; l = l->next, max--) {
 		const struct cache_entry *entry = l->data;
+		char *escaped_name = g_markup_escape_text(entry->name, -1);
 
 		g_string_append_printf(pbap->obj->buffer,
-			VCARD_LISTING_ELEMENT, entry->handle, entry->name);
+			VCARD_LISTING_ELEMENT, entry->handle, escaped_name);
+
+		g_free(escaped_name);
 	}
 
 	pbap->obj->buffer = g_string_append(pbap->obj->buffer,
