@@ -31,6 +31,7 @@
 
 #include "log.h"
 
+#include "hcid.h"
 #include "att.h"
 #include "gattrib.h"
 #include "attrib-server.h"
@@ -170,10 +171,10 @@ static void register_immediate_alert(void)
 
 int reporter_init(void)
 {
-	/*
-	 * TODO: Create/Update Proximity Reporter Characteristics
-	 * for Path Loss and Immediate Alert Services.
-	 */
+	if (!main_opts.attrib_server) {
+		DBG("Attribute server is disabled");
+		return -1;
+	}
 
 	DBG("Proximity Reporter");
 
