@@ -195,7 +195,8 @@ if PROXIMITYPLUGIN
 builtin_modules += proximity
 builtin_sources += proximity/main.c \
 			proximity/manager.h proximity/manager.c \
-			proximity/monitor.h proximity/monitor.c
+			proximity/monitor.h proximity/monitor.c \
+			proximity/reporter.h proximity/reporter.c
 endif
 
 if SERVICEPLUGIN

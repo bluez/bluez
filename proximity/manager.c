@@ -32,6 +32,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "monitor.h"
+#include "reporter.h"
 #include "manager.h"
 
 #define LINK_LOSS_UUID "00001803-0000-1000-8000-00805f9b34fb"
@@ -73,11 +74,12 @@ int proximity_manager_init(DBusConnection *conn)
 		return ret;
 	}
 
-	return 0;
+	return reporter_init();
 }
 
 void proximity_manager_exit(void)
 {
+	reporter_exit();
 	monitor_unregister(connection);
 	btd_unregister_device_driver(&monitor_driver);
 	dbus_connection_unref(connection);
