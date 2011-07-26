@@ -22,5 +22,5 @@
  *
  */
 
-int monitor_register(DBusConnection *conn);
-void monitor_unregister(DBusConnection *conn);
+int monitor_register(DBusConnection *conn, struct btd_device *device);
+void monitor_unregister(DBusConnection *conn, struct btd_device *device);

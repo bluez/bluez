@@ -41,11 +41,12 @@ static DBusConnection *connection = NULL;
 
 static int attio_device_probe(struct btd_device *device, GSList *uuids)
 {
-	return 0;
+	return monitor_register(connection, device);
 }
 
 static void attio_device_remove(struct btd_device *device)
 {
+	monitor_unregister(connection, device);
 }
 
 static struct btd_device_driver monitor_driver = {
@@ -67,20 +68,12 @@ int proximity_manager_init(DBusConnection *conn)
 
 	connection = dbus_connection_ref(conn);
 
-	ret = monitor_register(connection);
-
-	if (ret < 0) {
-		dbus_connection_unref(connection);
-		return ret;
-	}
-
 	return reporter_init();
 }
 
 void proximity_manager_exit(void)
 {
 	reporter_exit();
-	monitor_unregister(connection);
 	btd_unregister_device_driver(&monitor_driver);
 	dbus_connection_unref(connection);
 }
