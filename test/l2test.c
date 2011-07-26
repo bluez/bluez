@@ -948,25 +948,25 @@ static void info_request(char *svr)
 	case 0x0000:
 		memcpy(&mask, rsp->data, sizeof(mask));
 		printf("Extended feature mask is 0x%04x\n", btohl(mask));
-		if (mask & 0x01)
+		if (mask & L2CAP_FEAT_FLOWCTL)
 			printf("  Flow control mode\n");
-		if (mask & 0x02)
+		if (mask & L2CAP_FEAT_RETRANS)
 			printf("  Retransmission mode\n");
-		if (mask & 0x04)
+		if (mask & L2CAP_FEAT_BIDIR_QOS)
 			printf("  Bi-directional QoS\n");
-		if (mask & 0x08)
+		if (mask & L2CAP_FEAT_ERTM)
 			printf("  Enhanced Retransmission mode\n");
-		if (mask & 0x10)
+		if (mask & L2CAP_FEAT_STREAMING)
 			printf("  Streaming mode\n");
-		if (mask & 0x20)
+		if (mask & L2CAP_FEAT_FCS)
 			printf("  FCS Option\n");
-		if (mask & 0x40)
+		if (mask & L2CAP_FEAT_EXT_FLOW)
 			printf("  Extended Flow Specification\n");
-		if (mask & 0x80)
+		if (mask & L2CAP_FEAT_FIXED_CHAN)
 			printf("  Fixed Channels\n");
-		if (mask & 0x0100)
+		if (mask & L2CAP_FEAT_EXT_WINDOW)
 			printf("  Extended Window Size\n");
-		if (mask & 0x0200)
+		if (mask & L2CAP_FEAT_UCD)
 			printf("  Unicast Connectionless Data Reception\n");
 		break;
 	case 0x0001:
