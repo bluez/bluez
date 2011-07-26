@@ -217,7 +217,8 @@ endif
 if THERMOMETERPLUGIN
 builtin_modules += thermometer
 builtin_sources += thermometer/main.c \
-			thermometer/manager.h thermometer/manager.c
+			thermometer/manager.h thermometer/manager.c \
+			thermometer/thermometer.h thermometer/thermometer.c
 endif
 
 builtin_modules += hciops mgmtops

@@ -28,45 +28,14 @@
 #include "adapter.h"
 #include "device.h"
 #include "thermometer.h"
-#include "manager.h"
 
-#define HEALTH_THERMOMETER_UUID		"00001809-0000-1000-8000-00805f9b34fb"
-
-static DBusConnection *connection = NULL;
-
-static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
+int thermometer_register(DBusConnection *connection, struct btd_device *device)
 {
-	return thermometer_register(connection, device);
-}
-
-static void thermometer_driver_remove(struct btd_device *device)
-{
-	thermometer_unregister(device);
-}
-
-static struct btd_device_driver thermometer_device_driver = {
-	.name	= "thermometer-device-driver",
-	.uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
-	.probe	= thermometer_driver_probe,
-	.remove	= thermometer_driver_remove
-};
-
-int thermometer_manager_init(DBusConnection *conn)
-{
-	int ret;
-
-	ret = btd_register_device_driver(&thermometer_device_driver);
-	if (ret < 0)
-                return ret;
-
-	connection = dbus_connection_ref(conn);
+	/* TODO: Register Health Thermometer Interface */
 	return 0;
 }
 
-void thermometer_manager_exit(void)
+void thermometer_unregister(struct btd_device *device)
 {
-	btd_unregister_device_driver(&thermometer_device_driver);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
+	/* TODO: Unregister Health Thermometer Interface */
 }
