@@ -164,7 +164,7 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 {
 	struct query_context *data = user_data;
 	GList *l;
-	unsigned int count = 0, maxcount;
+	unsigned int count, maxcount;
 
 	if (gerr != NULL) {
 		error("E-Book query failed: %s", gerr->message);
@@ -180,13 +180,13 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 	 */
 	maxcount = data->params->maxlistcount;
 	if (maxcount == 0) {
-		count += g_list_length(contacts);
+		data->count += g_list_length(contacts);
 		goto done;
 	}
 
 	l = g_list_nth(contacts, data->params->liststartoffset);
 
-	for (; l && count + data->count < maxcount; l = g_list_next(l),
+	for (count = 0; l && count + data->count < maxcount; l = g_list_next(l),
 								count++) {
 		EContact *contact = E_CONTACT(l->data);
 		EVCard *evcard = E_VCARD(contact);
@@ -200,12 +200,12 @@ static void ebookpull_cb(EBook *book, const GError *gerr, GList *contacts,
 		g_free(vcard);
 	}
 
+	DBG("collected %d vcards", count);
+
 	data->count += count;
 
 done:
 	g_list_free_full(contacts, g_object_unref);
-
-	DBG("collected %d vcards", count);
 
 	data->queued_calls--;
 	if (data->queued_calls == 0) {
