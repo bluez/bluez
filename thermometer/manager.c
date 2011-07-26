@@ -23,40 +23,16 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <glib.h>
-#include <errno.h>
 #include <gdbus.h>
-
-#include "plugin.h"
 #include "manager.h"
 
-static DBusConnection *connection = NULL;
-
-static int thermometer_init(void)
+int thermometer_manager_init(DBusConnection *conn)
 {
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
-	if (thermometer_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
-
+	/*TODO: */
 	return 0;
 }
 
-static void thermometer_exit(void)
+void thermometer_manager_exit(void)
 {
-	thermometer_manager_exit();
-
-	dbus_connection_unref(connection);
-	connection = NULL;
+	/*TODO: */
 }
-
-BLUETOOTH_PLUGIN_DEFINE(thermometer, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-					thermometer_init, thermometer_exit)
