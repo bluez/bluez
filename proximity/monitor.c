@@ -110,6 +110,10 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 	bacpy(&dba, BDADDR_ALL);
 	write_proximity_config(&sba, &dba, "LinkLossAlertLevel", level);
 
+	emit_property_changed(conn, PROXIMITY_PATH,
+				PROXIMITY_INTERFACE, "LinkLossAlertLevel",
+				DBUS_TYPE_STRING, &monitor->linklosslevel);
+
 	return dbus_message_new_method_return(msg);
 }
 
