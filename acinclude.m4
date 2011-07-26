@@ -215,6 +215,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	sap_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
+	thermometer_enable=no
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
 		optimization_enable=${enableval}
@@ -359,6 +360,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		hal_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(thermometer, AC_HELP_STRING([--enable-thermometer], [enable thermometer plugin]), [
+		thermometer_enable=${enableval}
+	])
+
 	if (test "${fortify_enable}" = "yes"); then
 		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
 	fi
@@ -415,4 +420,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(MAEMO6PLUGIN, test "${maemo6_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
+	AM_CONDITIONAL(THERMOMETERPLUGIN, test "${thermometer_enable}" = "yes")
 ])

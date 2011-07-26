@@ -214,6 +214,11 @@ builtin_sources += health/hdp_main.c health/hdp_types.h \
 			health/hdp_util.h health/hdp_util.c
 endif
 
+if THERMOMETERPLUGIN
+builtin_modules += thermometer
+builtin_sources += thermometer/main.c
+endif
+
 builtin_modules += hciops mgmtops
 builtin_sources += plugins/hciops.c plugins/mgmtops.c
 

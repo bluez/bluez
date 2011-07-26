@@ -31,5 +31,6 @@ fi
 		--enable-test \
 		--enable-cups \
 		--enable-sap \
+		--enable-thermometer \
 		--disable-pcmcia \
 		--disable-datafiles $*
