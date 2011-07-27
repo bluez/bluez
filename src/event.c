@@ -33,16 +33,11 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/param.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
-#include <gdbus.h>
 
 #include "log.h"
 
@@ -50,13 +45,10 @@
 #include "manager.h"
 #include "device.h"
 #include "error.h"
-#include "glib-helper.h"
 #include "dbus-common.h"
 #include "agent.h"
 #include "storage.h"
 #include "event.h"
-#include "sdpd.h"
-#include "eir.h"
 
 static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
