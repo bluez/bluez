@@ -182,7 +182,7 @@ static int opp_get(struct obex_session *os, obex_object_t *obj, void *user_data)
 	if (type == NULL)
 		return -EPERM;
 
-	if (g_str_equal(type, VCARD_TYPE)) {
+	if (g_ascii_strcasecmp(type, VCARD_TYPE) == 0) {
 		if (obex_get_stream_start(os, VCARD_FILE) < 0)
 			return -ENOENT;
 

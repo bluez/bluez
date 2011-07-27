@@ -179,7 +179,7 @@ static int get_by_type(struct ftp_session *ftp, const char *type)
 	if (type == NULL && name == NULL)
 		return -EBADR;
 
-	if (g_strcmp0(type, CAP_TYPE) == 0)
+	if (type != NULL && g_ascii_strcasecmp(type, CAP_TYPE) == 0)
 		return obex_get_stream_start(os, capability);
 
 	path = g_build_filename(ftp->folder, name, NULL);

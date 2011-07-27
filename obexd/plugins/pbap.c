@@ -654,14 +654,14 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 
 	pbap->params = params;
 
-	if (strcmp(type, PHONEBOOK_TYPE) == 0) {
+	if (g_ascii_strcasecmp(type, PHONEBOOK_TYPE) == 0) {
 		/* Always contains the absolute path */
 		if (g_path_is_absolute(name))
 			path = g_strdup(name);
 		else
 			path = g_build_filename("/", name, NULL);
 
-	} else if (strcmp(type, VCARDLISTING_TYPE) == 0) {
+	} else if (g_ascii_strcasecmp(type, VCARDLISTING_TYPE) == 0) {
 		/* Always relative */
 		if (!name || strlen(name) == 0)
 			/* Current folder */
@@ -670,7 +670,7 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 			/* Current folder + relative path */
 			path = g_build_filename(pbap->folder, name, NULL);
 
-	} else if (strcmp(type, VCARDENTRY_TYPE) == 0) {
+	} else if (g_ascii_strcasecmp(type, VCARDENTRY_TYPE) == 0) {
 		/* File name only */
 		path = g_strdup(name);
 	} else
