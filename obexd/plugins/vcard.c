@@ -101,25 +101,41 @@ static void add_slash(char *dest, const char *src, int len_max, int len)
 {
 	int i, j;
 
-	for (i = 0, j = 0; i < len && j < len_max; i++, j++) {
+	for (i = 0, j = 0; i < len && j + 1 < len_max; i++, j++) {
+		/* filling dest buffer - last field need to be reserved
+		 * for '\0'*/
 		switch (src[i]) {
 		case '\n':
+			if (j + 2 >= len_max)
+				/* not enough space in the buffer to put char
+				 * preceded with escaping sequence (and '\0' in
+				 * the end) */
+				goto done;
+
 			dest[j++] = '\\';
 			dest[j] = 'n';
 			break;
 		case '\r':
+			if (j + 2 >= len_max)
+				goto done;
+
 			dest[j++] = '\\';
 			dest[j] = 'r';
 			break;
 		case '\\':
 		case ';':
 		case ',':
+			if (j + 2 >= len_max)
+				goto done;
+
 			dest[j++] = '\\';
 		default:
 			dest[j] = src[i];
 			break;
 		}
 	}
+
+done:
 	dest[j] = 0;
 }
 
