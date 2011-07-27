@@ -121,7 +121,6 @@ static void add_slash(char *dest, const char *src, int len_max, int len)
 		}
 	}
 	dest[j] = 0;
-	return;
 }
 
 static void get_escaped_fields(char **fields, ...)
