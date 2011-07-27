@@ -167,6 +167,9 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	else
 		irmc->buffer = g_string_append(irmc->buffer, owner_vcard);
 
+	if (buffer == NULL)
+		goto done;
+
 	/* loop around buffer and add X-IRMC-LUID attribs */
 	s = buffer;
 	while ((t = strstr(s, "UID:")) != NULL) {
@@ -190,6 +193,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	/* add remaining bit of buffer */
 	irmc->buffer = g_string_append(irmc->buffer, s);
 
+done:
 	obex_object_set_io_flags(irmc, G_IO_IN, 0);
 }
 
