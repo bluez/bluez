@@ -53,7 +53,6 @@
 #include "../src/adapter.h"
 
 #include "log.h"
-#include "textfile.h"
 
 #include "error.h"
 #include "sdpd.h"

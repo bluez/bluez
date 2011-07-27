@@ -43,7 +43,6 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "textfile.h"
 #include "uinput.h"
 
 #include "../src/adapter.h"

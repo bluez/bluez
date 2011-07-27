@@ -54,7 +54,6 @@
 #include "device.h"
 
 #include "log.h"
-#include "textfile.h"
 
 #include "error.h"
 #include "port.h"

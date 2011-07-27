@@ -53,7 +53,6 @@
 #include "../src/device.h"
 
 #include "log.h"
-#include "textfile.h"
 #include "ipc.h"
 #include "device.h"
 #include "error.h"

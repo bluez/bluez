@@ -45,7 +45,6 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "textfile.h"
 
 #include "adapter.h"
 #include "manager.h"
