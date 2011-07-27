@@ -446,6 +446,9 @@ void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 	if (!device)
 		return;
 
+	if (device_is_bonding(device, NULL))
+		device_cancel_bonding(device, status);
+
 	if (device_is_temporary(device))
 		adapter_remove_device(conn, adapter, device, TRUE);
 }
