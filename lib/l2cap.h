@@ -159,6 +159,8 @@ typedef struct {
 #define L2CAP_CONF_UNACCEPT	0x0001
 #define L2CAP_CONF_REJECT	0x0002
 #define L2CAP_CONF_UNKNOWN	0x0003
+#define L2CAP_CONF_PENDING	0x0004
+#define L2CAP_CONF_EFS_REJECT	0x0005
 
 typedef struct {
 	uint8_t		type;
@@ -172,6 +174,7 @@ typedef struct {
 #define L2CAP_CONF_QOS		0x03
 #define L2CAP_CONF_RFC		0x04
 #define L2CAP_CONF_FCS		0x05
+#define L2CAP_CONF_EFS		0x06
 
 #define L2CAP_CONF_MAX_SIZE	22
 
@@ -180,6 +183,10 @@ typedef struct {
 #define L2CAP_MODE_FLOWCTL	0x02
 #define L2CAP_MODE_ERTM		0x03
 #define L2CAP_MODE_STREAMING	0x04
+
+#define L2CAP_SERVTYPE_NOTRAFFIC	0x00
+#define L2CAP_SERVTYPE_BESTEFFORT	0x01
+#define L2CAP_SERVTYPE_GUARANTEED	0x02
 
 typedef struct {
 	uint16_t	dcid;
