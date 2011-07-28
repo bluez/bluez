@@ -445,9 +445,10 @@ static gboolean do_disconnect(gpointer user_data)
 	return FALSE;
 }
 
-static int device_block(DBusConnection *conn, struct btd_device *device)
+int device_block(DBusConnection *conn, struct btd_device *device,
+						gboolean update_only)
 {
-	int err;
+	int err = 0;
 	bdaddr_t src;
 
 	if (device->blocked)
@@ -458,7 +459,9 @@ static int device_block(DBusConnection *conn, struct btd_device *device)
 
 	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
 
-	err = btd_adapter_block_address(device->adapter, &device->bdaddr);
+	if (!update_only)
+		err = btd_adapter_block_address(device->adapter, &device->bdaddr);
+
 	if (err < 0)
 		return err;
 
@@ -478,16 +481,18 @@ static int device_block(DBusConnection *conn, struct btd_device *device)
 	return 0;
 }
 
-static int device_unblock(DBusConnection *conn, struct btd_device *device,
-							gboolean silent)
+int device_unblock(DBusConnection *conn, struct btd_device *device,
+				gboolean silent, gboolean update_only)
 {
-	int err;
+	int err = 0;
 	bdaddr_t src;
 
 	if (!device->blocked)
 		return 0;
 
-	err = btd_adapter_unblock_address(device->adapter, &device->bdaddr);
+	if (!update_only)
+		err = btd_adapter_unblock_address(device->adapter, &device->bdaddr);
+
 	if (err < 0)
 		return err;
 
@@ -516,9 +521,9 @@ static DBusMessage *set_blocked(DBusConnection *conn, DBusMessage *msg,
 	int err;
 
 	if (value)
-		err = device_block(conn, device);
+		err = device_block(conn, device, FALSE);
 	else
-		err = device_unblock(conn, device, FALSE);
+		err = device_unblock(conn, device, FALSE, FALSE);
 
 	switch (-err) {
 	case 0:
@@ -938,7 +943,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
 
 	if (read_blocked(&src, &device->bdaddr))
-		device_block(conn, device);
+		device_block(conn, device, FALSE);
 
 	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0) {
 		device_set_paired(device, TRUE);
@@ -1002,7 +1007,7 @@ static void device_remove_stored(struct btd_device *device)
 	delete_device_service(&src, &device->bdaddr);
 
 	if (device->blocked)
-		device_unblock(conn, device, TRUE);
+		device_unblock(conn, device, TRUE, FALSE);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)

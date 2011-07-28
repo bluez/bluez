@@ -1385,6 +1385,54 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	adapter_set_state(adapter, state);
 }
 
+static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct controller_info *info;
+	struct mgmt_ev_device_blocked *ev = buf;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_device_blocked event packet");
+		return;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	DBG("Device blocked, index %u, addr %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_blocked event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_device_blocked(&info->bdaddr, &ev->bdaddr);
+}
+
+static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct controller_info *info;
+	struct mgmt_ev_device_unblocked *ev = buf;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_device_unblocked event packet");
+		return;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	DBG("Device unblocked, index %u, addr %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_unblocked event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_device_unblocked(&info->bdaddr, &ev->bdaddr);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1488,6 +1536,12 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DISCOVERING:
 		mgmt_discovering(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_BLOCKED:
+		mgmt_device_blocked(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_UNBLOCKED:
+		mgmt_device_unblocked(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);

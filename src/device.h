@@ -116,3 +116,8 @@ void btd_unregister_device_driver(struct btd_device_driver *driver);
 
 struct btd_device *btd_device_ref(struct btd_device *device);
 void btd_device_unref(struct btd_device *device);
+
+int device_block(DBusConnection *conn, struct btd_device *device,
+						gboolean update_only);
+int device_unblock(DBusConnection *conn, struct btd_device *device,
+					gboolean silent, gboolean update_only);
