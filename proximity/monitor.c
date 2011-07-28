@@ -230,8 +230,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	dict_append_entry(&dict, "LinkLossAlertLevel",
-			DBUS_TYPE_STRING, &monitor->linklosslevel);
+	if (monitor->enabled.linkloss)
+		dict_append_entry(&dict, "LinkLossAlertLevel",
+				DBUS_TYPE_STRING, &monitor->linklosslevel);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
