@@ -241,6 +241,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct monitor *monitor = data;
 	const char *property;
 	DBusMessageIter iter;
 	DBusMessageIter sub;
@@ -260,6 +261,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_recurse(&iter, &sub);
 
 	if (g_str_equal("LinkLossAlertLevel", property)) {
+		if (monitor->enabled.linkloss == FALSE)
+			return btd_error_not_available(msg);
+
 		if (dbus_message_iter_get_arg_type(&sub) != DBUS_TYPE_STRING)
 			return btd_error_invalid_args(msg);
 
