@@ -35,19 +35,28 @@
 #include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/uuid.h>
 
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 #include "error.h"
 #include "log.h"
+#include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
+#include "attio.h"
 #include "monitor.h"
 #include "textfile.h"
 
 #define PROXIMITY_INTERFACE "org.bluez.Proximity"
 
+#define LINK_LOSS_UUID "00001803-0000-1000-8000-00805f9b34fb"
+#define ALERT_LEVEL_CHR_UUID 0x2A06
+
 struct monitor {
 	struct btd_device *device;
+	GAttrib *attrib;
 	char *linklosslevel;		/* Link Loss Alert Level */
 };
 
@@ -88,6 +97,87 @@ static char *read_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
 	snprintf(key, sizeof(key), "%17s#%s", addr, alert);
 
 	return textfile_caseget(filename, key);
+}
+
+static void char_discovered_cb(GSList *characteristics, guint8 status,
+							gpointer user_data)
+{
+	struct monitor *monitor = user_data;
+	struct att_char *chr;
+	uint8_t value;
+
+	if (status) {
+		error("Discover Link Loss handle: %s", att_ecode2str(status));
+		return;
+	}
+
+	if (strcmp(monitor->linklosslevel, "none") == 0)
+		value = 0x00;
+	else if (strcmp(monitor->linklosslevel, "mild") == 0)
+		value = 0x01;
+	else if (strcmp(monitor->linklosslevel, "high") == 0)
+		value = 0x02;
+
+	DBG("Setting alert level \"%s\" on Reporter", monitor->linklosslevel);
+
+	/* Assume there is a single Alert Level characteristic */
+	chr = characteristics->data;
+
+	gatt_write_cmd(monitor->attrib, chr->value_handle, &value, 1, NULL, NULL);
+}
+
+static int write_alert_level(struct monitor *monitor)
+{
+	GSList *l, *primaries;
+	uint16_t start = 0, end = 0;
+	bt_uuid_t uuid;
+
+	primaries = btd_device_get_primaries(monitor->device);
+	if (primaries == NULL) {
+		DBG("No primary services found");
+		return -1;
+	}
+
+	for (l = primaries; l; l = l->next) {
+		struct att_primary *primary = l->data;
+
+		if (strcmp(primary->uuid, LINK_LOSS_UUID) == 0) {
+			start = primary->start;
+			end = primary->end;
+			break;
+		}
+	}
+
+	if (!start) {
+		DBG("Link Loss service not found");
+		return -1;
+	}
+
+	DBG("Link Loss service found at range 0x%04x-0x%04x", start, end);
+
+	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
+
+	/* FIXME: use cache (requires service changed support) ? */
+	gatt_discover_char(monitor->attrib, start, end, &uuid, char_discovered_cb,
+								monitor);
+
+	return 0;
+}
+
+static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
+{
+	struct monitor *monitor = user_data;
+
+	monitor->attrib = g_attrib_ref(attrib);
+	write_alert_level(monitor);
+}
+
+static void attio_disconnected_cb(gpointer user_data)
+{
+	struct monitor *monitor = user_data;
+
+	g_attrib_unref(monitor->attrib);
+	monitor->attrib = NULL;
 }
 
 static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
@@ -228,6 +318,9 @@ int monitor_register(DBusConnection *conn, struct btd_device *device)
 	}
 
 	DBG("Registered interface %s on path %s", PROXIMITY_INTERFACE, path);
+
+	btd_device_add_attio_callback(device, attio_connected_cb,
+					attio_disconnected_cb, monitor);
 
 	return 0;
 }
