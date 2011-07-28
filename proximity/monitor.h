@@ -22,5 +22,12 @@
  *
  */
 
-int monitor_register(DBusConnection *conn, struct btd_device *device);
+struct enabled {
+	gboolean linkloss;
+	gboolean pathloss;
+	gboolean findme;
+};
+
+int monitor_register(DBusConnection *conn, struct btd_device *device,
+			gboolean linkloss, gboolean pathloss, gboolean findme);
 void monitor_unregister(DBusConnection *conn, struct btd_device *device);

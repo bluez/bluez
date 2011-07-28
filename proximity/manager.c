@@ -41,11 +41,7 @@
 
 static DBusConnection *connection = NULL;
 
-static struct {
-	gboolean linkloss;
-	gboolean pathloss;
-	gboolean findme;
-} enabled  = {
+static struct enabled enabled  = {
 	.linkloss = TRUE,
 	.pathloss = TRUE,
 	.findme = TRUE,
@@ -53,7 +49,21 @@ static struct {
 
 static int attio_device_probe(struct btd_device *device, GSList *uuids)
 {
-	return monitor_register(connection, device);
+	gboolean linkloss = FALSE, pathloss = FALSE, findme = FALSE;
+
+	if (g_slist_find_custom(uuids, IMMEDIATE_ALERT_UUID,
+					(GCompareFunc) strcasecmp)) {
+		findme = enabled.findme;
+		if (g_slist_find_custom(uuids, TX_POWER_UUID,
+					(GCompareFunc) strcasecmp))
+			pathloss = enabled.pathloss;
+	}
+
+	if (g_slist_find_custom(uuids, LINK_LOSS_UUID,
+				(GCompareFunc) strcasecmp))
+		linkloss = enabled.linkloss;
+
+	return monitor_register(connection, device, linkloss, pathloss, findme);
 }
 
 static void attio_device_remove(struct btd_device *device)

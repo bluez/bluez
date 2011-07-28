@@ -57,6 +57,7 @@
 struct monitor {
 	struct btd_device *device;
 	GAttrib *attrib;
+	struct enabled enabled;
 	char *linklosslevel;		/* Link Loss Alert Level */
 };
 
@@ -291,7 +292,8 @@ static void monitor_destroy(gpointer user_data)
 	g_free(monitor);
 }
 
-int monitor_register(DBusConnection *conn, struct btd_device *device)
+int monitor_register(DBusConnection *conn, struct btd_device *device,
+			gboolean linkloss, gboolean pathloss, gboolean findme)
 {
 	const char *path = device_get_path(device);
 	struct monitor *monitor;
@@ -306,6 +308,9 @@ int monitor_register(DBusConnection *conn, struct btd_device *device)
 	monitor = g_new0(struct monitor, 1);
 	monitor->device = btd_device_ref(device);
 	monitor->linklosslevel = (level ? : g_strdup("none"));
+	monitor->enabled.linkloss = linkloss;
+	monitor->enabled.pathloss = pathloss;
+	monitor->enabled.findme = findme;
 
 	if (g_dbus_register_interface(conn, path,
 				PROXIMITY_INTERFACE,
