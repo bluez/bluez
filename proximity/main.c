@@ -28,20 +28,45 @@
 
 #include <errno.h>
 
+#include <glib.h>
 #include <gdbus.h>
 
+#include "log.h"
 #include "plugin.h"
 #include "manager.h"
 
 static DBusConnection *connection = NULL;
+static GKeyFile *config = NULL;
+
+static GKeyFile *open_config_file(const char *file)
+{
+	GError *gerr = NULL;
+	GKeyFile *keyfile;
+
+	keyfile = g_key_file_new();
+
+	g_key_file_set_list_separator(keyfile, ',');
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &gerr)) {
+		error("Parsing %s failed: %s", file, gerr->message);
+		g_error_free(gerr);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	return keyfile;
+}
 
 static int proximity_init(void)
 {
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
 		return -EIO;
 
-	if (proximity_manager_init(connection) < 0) {
+	config = open_config_file(CONFIGDIR "/proximity.conf");
+
+	if (proximity_manager_init(connection, config) < 0) {
 		dbus_connection_unref(connection);
 		return -EIO;
 	}
@@ -51,6 +76,9 @@ static int proximity_init(void)
 
 static void proximity_exit(void)
 {
+	if (config)
+		g_key_file_free(config);
+
 	proximity_manager_exit();
 	dbus_connection_unref(connection);
 }

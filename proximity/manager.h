@@ -22,5 +22,5 @@
  *
  */
 
-int proximity_manager_init(DBusConnection *conn);
+int proximity_manager_init(DBusConnection *conn, GKeyFile *conf);
 void proximity_manager_exit(void);

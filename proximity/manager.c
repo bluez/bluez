@@ -41,6 +41,16 @@
 
 static DBusConnection *connection = NULL;
 
+static struct {
+	gboolean linkloss;
+	gboolean pathloss;
+	gboolean findme;
+} enabled  = {
+	.linkloss = TRUE,
+	.pathloss = TRUE,
+	.findme = TRUE,
+};
+
 static int attio_device_probe(struct btd_device *device, GSList *uuids)
 {
 	return monitor_register(connection, device);
@@ -58,10 +68,30 @@ static struct btd_device_driver monitor_driver = {
 	.remove = attio_device_remove,
 };
 
-int proximity_manager_init(DBusConnection *conn)
+static void load_config_file(GKeyFile *config)
+{
+	char **list;
+	int i;
+
+	list = g_key_file_get_string_list(config, "General", "Disable",
+								NULL, NULL);
+	for (i = 0; list && list[i] != NULL; i++) {
+		if (g_str_equal(list[i], "FindMe"))
+			enabled.findme = FALSE;
+		else if (g_str_equal(list[i], "LinkLoss"))
+			enabled.linkloss = FALSE;
+		else if (g_str_equal(list[i], "PathLoss"))
+			enabled.pathloss = FALSE;
+	}
+
+	g_strfreev(list);
+}
+
+int proximity_manager_init(DBusConnection *conn, GKeyFile *config)
 {
 	int ret;
-	/* TODO: Add Proximity Monitor/Reporter config */
+
+	load_config_file(config);
 
 	/* TODO: Register Proximity Monitor/Reporter drivers */
 	ret = btd_register_device_driver(&monitor_driver);
