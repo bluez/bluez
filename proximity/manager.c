@@ -35,7 +35,9 @@
 #include "reporter.h"
 #include "manager.h"
 
-#define LINK_LOSS_UUID "00001803-0000-1000-8000-00805f9b34fb"
+#define IMMEDIATE_ALERT_UUID	"00001802-0000-1000-8000-00805f9b34fb"
+#define LINK_LOSS_UUID		"00001803-0000-1000-8000-00805f9b34fb"
+#define TX_POWER_UUID		"00001804-0000-1000-8000-00805f9b34fb"
 
 static DBusConnection *connection = NULL;
 
@@ -51,7 +53,7 @@ static void attio_device_remove(struct btd_device *device)
 
 static struct btd_device_driver monitor_driver = {
 	.name = "Proximity GATT Driver",
-	.uuids = BTD_UUIDS(LINK_LOSS_UUID),
+	.uuids = BTD_UUIDS(IMMEDIATE_ALERT_UUID, LINK_LOSS_UUID, TX_POWER_UUID),
 	.probe = attio_device_probe,
 	.remove = attio_device_remove,
 };
