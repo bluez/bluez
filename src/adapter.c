@@ -3425,6 +3425,8 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	if (adapter->off_timer)
 		return 0;
 
+	adapter->global_mode = MODE_OFF;
+
 	if (adapter->connections == NULL)
 		return adapter_ops->set_powered(adapter->dev_id, FALSE);
 
