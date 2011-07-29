@@ -4,10 +4,6 @@
  *
  *  Copyright (C) 2010 GSyC/LibreSoft, Universidad Rey Juan Carlos.
  *
- *  Authors:
- *  Santiago Carot-Nemesio <sancane at gmail.com>
- *  Jose Antonio Santos-Cadenas <santoscadenas at gmail.com>
- *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
