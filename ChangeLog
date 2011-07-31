@@ -1,3 +1,9 @@
+ver 4.96:
+	Fix issue with race condition in AVDTP stream start.
+	Fix issue with global adapter offline switching.
+	Fix issue with pairing and No Bonding devices.
+	Add support for Nintendo Wii Remote pairing.
+
 ver 4.95:
 	Fix issue with AVCTP replies with invalid PID.
 	Fix issue with AVRCP and unknown packet types.
