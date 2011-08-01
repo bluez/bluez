@@ -39,6 +39,7 @@
 #include "service.h"
 #include "log.h"
 #include "dbus.h"
+#include "filesystem.h"
 
 #define VCARD_TYPE "text/x-vcard"
 #define VCARD_FILE CONFIGDIR "/vcard.vcf"
@@ -114,9 +115,14 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	char *path;
 	int32_t time;
 	int ret;
+	const char *t;
 
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
+
+	t = obex_get_name(os);
+	if (t != NULL && !is_filename(t))
+		return -EBADR;
 
 	if (obex_get_auto_accept(os)) {
 		folder = g_strdup(obex_get_root_folder(os));

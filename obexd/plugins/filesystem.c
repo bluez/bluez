@@ -87,6 +87,19 @@ static const uint8_t FTP_TARGET[TARGET_SIZE] = {
 static const uint8_t PCSUITE_WHO[PCSUITE_WHO_SIZE] = {
 			'P', 'C', ' ', 'S', 'u', 'i', 't', 'e' };
 
+gboolean is_filename(const char *name)
+{
+	if (strchr(name, '/'))
+		return FALSE;
+
+	if (strcmp(name, ".") == 0)
+		return FALSE;
+
+	if (strcmp(name, "..") == 0)
+		return FALSE;
+
+	return TRUE;
+}
 
 static char *file_stat_line(char *filename, struct stat *fstat,
 					struct stat *dstat, gboolean root,
