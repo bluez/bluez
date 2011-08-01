@@ -847,6 +847,38 @@ static void avrcp_displayable_charset(int level, struct frame *frm,
 	}
 }
 
+static const char *status2str(uint8_t status)
+{
+	switch (status) {
+	case 0x0:
+		return "NORMAL";
+	case 0x1:
+		return "WARNING";
+	case 0x2:
+		return "CRITICAL";
+	case 0x3:
+		return "EXTERNAL";
+	case 0x4:
+		return "FULL_CHARGE";
+	default:
+		return "Reserved";
+	}
+}
+
+static void avrcp_ct_battery_status_dump(int level, struct frame *frm,
+						uint8_t ctype, uint16_t len)
+{
+	uint8_t status;
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		return;
+
+	p_indent(level, frm);
+
+	status = get_u8(frm);
+	printf("BatteryStatus: 0x%02x (%s)\n", status, status2str(status));
+}
+
 static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 {
 	uint8_t pduid, pt;
@@ -898,6 +930,9 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 		break;
 	case AVRCP_DISPLAYABLE_CHARSET:
 		avrcp_displayable_charset(level + 1, frm, ctype, len);
+		break;
+	case AVRCP_CT_BATTERY_STATUS:
+		avrcp_ct_battery_status_dump(level + 1, frm, ctype, len);
 		break;
 	default:
 		raw_dump(level, frm);
