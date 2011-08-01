@@ -817,6 +817,36 @@ response:
 	}
 }
 
+static void avrcp_displayable_charset(int level, struct frame *frm,
+						uint8_t ctype, uint16_t len)
+{
+	uint8_t num;
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		return;
+
+	p_indent(level, frm);
+
+	if (len < 2) {
+		printf("PDU Malformed\n");
+		raw_dump(level, frm);
+		return;
+	}
+
+	num = get_u8(frm);
+	printf("CharsetCount: 0x%02x\n", num);
+
+	for (; num > 0; num--) {
+		uint16_t charset;
+
+		p_indent(level, frm);
+
+		charset = get_u16(frm);
+		printf("CharsetID: 0x%04x (%s)\n", charset,
+							charset2str(charset));
+	}
+}
+
 static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 {
 	uint8_t pduid, pt;
@@ -865,6 +895,9 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 		break;
 	case AVRCP_GET_PLAYER_VALUE_TEXT:
 		avrcp_get_player_value_text_dump(level + 1, frm, ctype, len);
+		break;
+	case AVRCP_DISPLAYABLE_CHARSET:
+		avrcp_displayable_charset(level + 1, frm, ctype, len);
 		break;
 	default:
 		raw_dump(level, frm);
