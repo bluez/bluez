@@ -613,6 +613,41 @@ response:
 	}
 }
 
+static void avrcp_set_player_value_dump(int level, struct frame *frm,
+						uint8_t ctype, uint16_t len)
+{
+	uint8_t num;
+
+	p_indent(level, frm);
+
+	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+		return;
+
+	if (len < 1) {
+		printf("PDU Malformed\n");
+		raw_dump(level, frm);
+		return;
+	}
+
+	num = get_u8(frm);
+	printf("AttributeCount: 0x%02x\n", num);
+
+	for (; num > 0; num--) {
+		uint8_t attr, value;
+
+		p_indent(level, frm);
+
+		attr = get_u8(frm);
+		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
+
+		p_indent(level, frm);
+
+		value = get_u8(frm);
+		printf("ValueID: 0x%02x (%s)\n", value,
+						value2str(attr, value));
+	}
+}
+
 static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 {
 	uint8_t pduid, pt;
@@ -651,6 +686,9 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 	case AVRCP_GET_CURRENT_PLAYER_VALUE:
 		avrcp_get_current_player_value_dump(level + 1, frm, ctype,
 									len);
+		break;
+	case AVRCP_SET_PLAYER_VALUE:
+		avrcp_set_player_value_dump(level + 1, frm, ctype, len);
 		break;
 	default:
 		raw_dump(level, frm);
