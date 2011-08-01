@@ -473,6 +473,12 @@ void avrcp_dump(int level, struct frame *frm)
 		return;
 	}
 
+	/* Not implemented should not contain any operand */
+	if (ctype == AVC_CTYPE_NOT_IMPLEMENTED) {
+		raw_dump(level, frm);
+		return;
+	}
+
 	switch (opcode) {
 	case AVC_OP_PASSTHROUGH:
 		avrcp_passthrough_dump(level + 1, frm);
