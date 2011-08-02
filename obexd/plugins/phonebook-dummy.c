@@ -43,6 +43,7 @@
 
 #include "log.h"
 #include "phonebook.h"
+#include "glib-helper.h"
 
 typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);
 
@@ -186,8 +187,7 @@ static int foreach_vcard(DIR *dp, vcard_func_t func, uint16_t offset,
 		close(fd);
 	}
 
-	g_slist_foreach(sorted, (GFunc) g_free, NULL);
-	g_slist_free(sorted);
+	g_slist_free_full(sorted, g_free);
 
 	if (count)
 		*count = n;
