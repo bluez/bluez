@@ -69,6 +69,8 @@ struct monitor {
 	char *linklosslevel;		/* Link Loss Alert Level */
 	char *immediatelevel;		/* Immediate Alert Level */
 	char *signallevel;		/* Path Loss RSSI level */
+	uint16_t linklosshandle;	/* Link Loss Characteristic
+					 * Value Handle */
 	guint attioid;
 };
 
@@ -145,14 +147,24 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 
 	/* Assume there is a single Alert Level characteristic */
 	chr = characteristics->data;
+	monitor->linklosshandle = chr->value_handle;
 
-	gatt_write_cmd(monitor->attrib, chr->value_handle, &value, 1, NULL, NULL);
+	gatt_write_cmd(monitor->attrib, monitor->linklosshandle, &value, 1,
+								NULL, NULL);
 }
 
 static int write_alert_level(struct monitor *monitor)
 {
 	struct att_range *linkloss = monitor->linkloss;
 	bt_uuid_t uuid;
+
+	if (monitor->linklosshandle) {
+		uint8_t value = str2level(monitor->linklosslevel);
+
+		gatt_write_cmd(monitor->attrib, monitor->linklosshandle,
+							&value, 1, NULL, NULL);
+		return 0;
+	}
 
 	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
 
