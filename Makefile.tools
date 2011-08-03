@@ -206,9 +206,10 @@ EXTRA_DIST += test/apitest test/sap-client test/hsplay test/hsmicro \
 		test/test-device test/test-service test/test-serial \
 		test/test-telephony test/test-network test/simple-agent \
 		test/simple-service test/simple-endpoint test/test-audio \
-		test/test-input test/test-attrib test/test-sap-server \
-		test/test-oob test/service-record.dtd test/service-did.xml \
-		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
+		test/test-input test/test-attrib test/test-proximity \
+		test/test-sap-server test/test-oob test/service-record.dtd \
+		test/service-did.xml test/service-spp.xml \
+		test/service-opp.xml test/service-ftp.xml
 
 
 if HIDD
