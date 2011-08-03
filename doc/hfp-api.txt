@@ -62,7 +62,7 @@ Service         unique name
 Interface       org.bluez.HandsfreeAgent
 Object path     freely definable
 
-Methods		void NewConnection(filedescriptor fd)
+Methods		void NewConnection(filedescriptor fd, uint16 version)
 
 			This method gets called whenever a new handsfree
 			connection has been established.  The objectpath
