@@ -258,6 +258,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		dict_append_entry(&dict, "LinkLossAlertLevel",
 				DBUS_TYPE_STRING, &monitor->linklosslevel);
 
+	if (monitor->enabled.findme || monitor->enabled.pathloss)
+		dict_append_entry(&dict, "ImmediateAlertLevel",
+				DBUS_TYPE_STRING, &monitor->linklosslevel);
+
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;
