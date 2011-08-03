@@ -19,11 +19,16 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+# include "config.h"
+#endif
+
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
 
 #include "gobex.h"
+#include "glib-helper.h"
 
 #define G_OBEX_DEFAULT_MTU	4096
 #define G_OBEX_MINIMUM_MTU	255
