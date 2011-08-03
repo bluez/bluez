@@ -159,7 +159,9 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	struct monitor *monitor = user_data;
 
 	monitor->attrib = g_attrib_ref(attrib);
-	write_alert_level(monitor);
+
+	if (monitor->enabled.linkloss)
+		write_alert_level(monitor);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
