@@ -51,12 +51,14 @@
 
 #define PROXIMITY_INTERFACE "org.bluez.Proximity"
 
-#define LINK_LOSS_UUID "00001803-0000-1000-8000-00805f9b34fb"
 #define ALERT_LEVEL_CHR_UUID 0x2A06
 
 struct monitor {
 	struct btd_device *device;
 	GAttrib *attrib;
+	struct att_range *linkloss;
+	struct att_range *txpower;
+	struct att_range *immediate;
 	struct enabled enabled;
 	char *linklosslevel;		/* Link Loss Alert Level */
 	char *immediatelevel;		/* Immediate Alert Level */
@@ -139,38 +141,14 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 
 static int write_alert_level(struct monitor *monitor)
 {
-	GSList *l, *primaries;
-	uint16_t start = 0, end = 0;
+	struct att_range *linkloss = monitor->linkloss;
 	bt_uuid_t uuid;
-
-	primaries = btd_device_get_primaries(monitor->device);
-	if (primaries == NULL) {
-		DBG("No primary services found");
-		return -1;
-	}
-
-	for (l = primaries; l; l = l->next) {
-		struct att_primary *primary = l->data;
-
-		if (strcmp(primary->uuid, LINK_LOSS_UUID) == 0) {
-			start = primary->start;
-			end = primary->end;
-			break;
-		}
-	}
-
-	if (!start) {
-		DBG("Link Loss service not found");
-		return -1;
-	}
-
-	DBG("Link Loss service found at range 0x%04x-0x%04x", start, end);
 
 	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
 
 	/* FIXME: use cache (requires service changed support) ? */
-	gatt_discover_char(monitor->attrib, start, end, &uuid, char_discovered_cb,
-								monitor);
+	gatt_discover_char(monitor->attrib, linkloss->start, linkloss->end,
+			&uuid, char_discovered_cb, monitor);
 
 	return 0;
 }
@@ -341,6 +319,9 @@ static void monitor_destroy(gpointer user_data)
 	struct monitor *monitor = user_data;
 
 	btd_device_unref(monitor->device);
+	g_free(monitor->linkloss);
+	g_free(monitor->immediate);
+	g_free(monitor->txpower);
 	g_free(monitor->linklosslevel);
 	g_free(monitor->immediatelevel);
 	g_free(monitor->signallevel);
@@ -348,7 +329,8 @@ static void monitor_destroy(gpointer user_data)
 }
 
 int monitor_register(DBusConnection *conn, struct btd_device *device,
-			gboolean linkloss, gboolean pathloss, gboolean findme)
+		struct att_primary *linkloss, struct att_primary *txpower,
+		struct att_primary *immediate, struct enabled *enabled)
 {
 	const char *path = device_get_path(device);
 	struct monitor *monitor;
@@ -364,9 +346,6 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	monitor->device = btd_device_ref(device);
 	monitor->linklosslevel = (level ? : g_strdup("none"));
 	monitor->signallevel = g_strdup("unknown");
-	monitor->enabled.linkloss = linkloss;
-	monitor->enabled.pathloss = pathloss;
-	monitor->enabled.findme = findme;
 
 	if (g_dbus_register_interface(conn, path,
 				PROXIMITY_INTERFACE,
@@ -379,6 +358,37 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	}
 
 	DBG("Registered interface %s on path %s", PROXIMITY_INTERFACE, path);
+
+	if (linkloss && enabled->linkloss) {
+		monitor->linkloss = g_new0(struct att_range, 1);
+		monitor->linkloss->start = linkloss->start;
+		monitor->linkloss->end = linkloss->end;
+
+		monitor->enabled.linkloss = TRUE;
+	}
+
+	if (immediate) {
+		if (txpower && enabled->pathloss) {
+			monitor->txpower = g_new0(struct att_range, 1);
+			monitor->txpower->start = txpower->start;
+			monitor->txpower->end = txpower->end;
+
+			monitor->enabled.pathloss = TRUE;
+		}
+
+		if (enabled->pathloss || enabled->findme) {
+			monitor->immediate = g_new0(struct att_range, 1);
+			monitor->immediate->start = immediate->start;
+			monitor->immediate->end = immediate->end;
+		}
+
+		monitor->enabled.findme = enabled->findme;
+	}
+
+	DBG("Link Loss: %s, Path Loss: %s, FindMe: %s",
+				monitor->enabled.linkloss ? "TRUE" : "FALSE",
+				monitor->enabled.pathloss ? "TRUE" : "FALSE",
+				monitor->enabled.findme ? "TRUE" : "FALSE");
 
 	btd_device_add_attio_callback(device, attio_connected_cb,
 					attio_disconnected_cb, monitor);

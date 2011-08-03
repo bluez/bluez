@@ -28,9 +28,11 @@
 
 #include <glib.h>
 #include <gdbus.h>
+#include <bluetooth/uuid.h>
 
 #include "adapter.h"
 #include "device.h"
+#include "att.h"
 #include "monitor.h"
 #include "reporter.h"
 #include "manager.h"
@@ -47,23 +49,33 @@ static struct enabled enabled  = {
 	.findme = TRUE,
 };
 
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct att_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
+
 static int attio_device_probe(struct btd_device *device, GSList *uuids)
 {
-	gboolean linkloss = FALSE, pathloss = FALSE, findme = FALSE;
+	struct att_primary *linkloss, *txpower, *immediate;
+	GSList *l, *primaries;
 
-	if (g_slist_find_custom(uuids, IMMEDIATE_ALERT_UUID,
-					(GCompareFunc) strcasecmp)) {
-		findme = enabled.findme;
-		if (g_slist_find_custom(uuids, TX_POWER_UUID,
-					(GCompareFunc) strcasecmp))
-			pathloss = enabled.pathloss;
-	}
+	primaries = btd_device_get_primaries(device);
 
-	if (g_slist_find_custom(uuids, LINK_LOSS_UUID,
-				(GCompareFunc) strcasecmp))
-		linkloss = enabled.linkloss;
+	l = g_slist_find_custom(primaries, IMMEDIATE_ALERT_UUID,
+			primary_uuid_cmp);
+	immediate = (l ? l->data : NULL);
 
-	return monitor_register(connection, device, linkloss, pathloss, findme);
+	l = g_slist_find_custom(primaries, TX_POWER_UUID, primary_uuid_cmp);
+	txpower = (l ? l->data : NULL);
+
+	l = g_slist_find_custom(primaries, LINK_LOSS_UUID, primary_uuid_cmp);
+	linkloss = (l ? l->data : NULL);
+
+	return monitor_register(connection, device, linkloss, txpower,
+							immediate, &enabled);
 }
 
 static void attio_device_remove(struct btd_device *device)
