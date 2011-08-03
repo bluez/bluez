@@ -93,13 +93,21 @@ static char *read_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
 							const char *alert)
 {
 	char filename[PATH_MAX + 1], addr[18], key[38];
+	char *str, *strnew;
 
 	create_filename(filename, PATH_MAX, sba, "proximity");
 
 	ba2str(dba, addr);
 	snprintf(key, sizeof(key), "%17s#%s", addr, alert);
 
-	return textfile_caseget(filename, key);
+	str = textfile_caseget(filename, key);
+	if (str == NULL)
+		return NULL;
+
+	strnew = g_strdup(str);
+	free(str);
+
+	return strnew;
 }
 
 static void char_discovered_cb(GSList *characteristics, guint8 status,
