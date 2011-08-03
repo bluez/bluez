@@ -113,24 +113,27 @@ static char *read_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
 	return strnew;
 }
 
+static uint8_t str2level(const char *level)
+{
+	if (g_strcmp0("high", level) == 0)
+		return 0x02;
+	else if (g_strcmp0("mild", level) == 0)
+		return 0x01;
+
+	return 0x00;
+}
+
 static void char_discovered_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	struct monitor *monitor = user_data;
 	struct att_char *chr;
-	uint8_t value;
+	uint8_t value = str2level(monitor->linklosslevel);
 
 	if (status) {
 		error("Discover Link Loss handle: %s", att_ecode2str(status));
 		return;
 	}
-
-	if (strcmp(monitor->linklosslevel, "none") == 0)
-		value = 0x00;
-	else if (strcmp(monitor->linklosslevel, "mild") == 0)
-		value = 0x01;
-	else if (strcmp(monitor->linklosslevel, "high") == 0)
-		value = 0x02;
 
 	DBG("Setting alert level \"%s\" on Reporter", monitor->linklosslevel);
 
@@ -149,7 +152,7 @@ static int write_alert_level(struct monitor *monitor)
 
 	/* FIXME: use cache (requires service changed support) ? */
 	gatt_discover_char(monitor->attrib, linkloss->start, linkloss->end,
-			&uuid, char_discovered_cb, monitor);
+					&uuid, char_discovered_cb, monitor);
 
 	return 0;
 }
