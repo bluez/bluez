@@ -53,6 +53,12 @@
 
 #define ALERT_LEVEL_CHR_UUID 0x2A06
 
+enum {
+	ALERT_NONE = 0,
+	ALERT_MILD,
+	ALERT_HIGH,
+};
+
 struct monitor {
 	struct btd_device *device;
 	GAttrib *attrib;
@@ -116,11 +122,11 @@ static char *read_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
 static uint8_t str2level(const char *level)
 {
 	if (g_strcmp0("high", level) == 0)
-		return 0x02;
+		return ALERT_HIGH;
 	else if (g_strcmp0("mild", level) == 0)
-		return 0x01;
+		return ALERT_MILD;
 
-	return 0x00;
+	return ALERT_NONE;;
 }
 
 static void char_discovered_cb(GSList *characteristics, guint8 status,
