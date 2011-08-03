@@ -181,6 +181,13 @@ static void attio_disconnected_cb(gpointer user_data)
 	monitor->attrib = NULL;
 }
 
+static gboolean level_is_valid(const char *level)
+{
+	return (g_str_equal("none", level) ||
+			g_str_equal("mild", level) ||
+			g_str_equal("high", level));
+}
+
 static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 						const char *level, void *data)
 {
@@ -189,8 +196,7 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 	const char *path = device_get_path(device);
 	bdaddr_t sba, dba;
 
-	if (!g_str_equal("none", level) && !g_str_equal("mild", level) &&
-			!g_str_equal("high", level))
+	if (!level_is_valid(level))
 		return btd_error_invalid_args(msg);
 
 	if (g_strcmp0(monitor->linklosslevel, level) == 0)
@@ -217,8 +223,7 @@ static DBusMessage *set_immediate_alert(DBusConnection *conn, DBusMessage *msg,
 	struct monitor *monitor = data;
 	const gchar *path = device_get_path(monitor->device);
 
-	if (!g_str_equal("none", level) && !g_str_equal("mild", level) &&
-			!g_str_equal("high", level))
+	if (!level_is_valid(level))
 		return btd_error_invalid_args(msg);
 
 	if (g_strcmp0(monitor->immediatelevel, level) == 0)
