@@ -83,6 +83,9 @@ static void load_config_file(GKeyFile *config)
 	char **list;
 	int i;
 
+	if (config == NULL)
+		return;
+
 	list = g_key_file_get_string_list(config, "General", "Disable",
 								NULL, NULL);
 	for (i = 0; list && list[i] != NULL; i++) {
