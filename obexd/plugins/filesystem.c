@@ -101,6 +101,27 @@ gboolean is_filename(const char *name)
 	return TRUE;
 }
 
+int verify_path(const char *path)
+{
+	char *t;
+	int ret = 0;
+
+	if (obex_option_symlinks())
+		return 0;
+
+	t = realpath(path, NULL);
+
+	if (t == NULL)
+		return -errno;
+
+	if (!g_str_has_prefix(t, obex_option_root_folder()))
+		ret = -EPERM;
+
+	free(t);
+
+	return ret;
+}
+
 static char *file_stat_line(char *filename, struct stat *fstat,
 					struct stat *dstat, gboolean root,
 					gboolean pcsuite)
@@ -149,11 +170,9 @@ static void *filesystem_open(const char *name, int oflag, mode_t mode,
 {
 	struct stat stats;
 	struct statvfs buf;
-	const char *root_folder;
-	char *folder;
-	gboolean root;
 	int fd = open(name, oflag, mode);
 	uint64_t avail;
+	int ret;
 
 	if (fd < 0) {
 		if (err)
@@ -167,19 +186,11 @@ static void *filesystem_open(const char *name, int oflag, mode_t mode,
 		goto failed;
 	}
 
-	root_folder = obex_option_root_folder();
-	folder = g_path_get_dirname(name);
-	root = g_strcmp0(folder, root_folder);
-
-	g_free(folder);
-
-	if (!root || obex_option_symlinks()) {
-		if (S_ISLNK(stats.st_mode)) {
-			if (err)
-				*err = -EPERM;
-			goto failed;
-		}
-
+	ret = verify_path(name);
+	if (ret < 0) {
+		if (err)
+			*err = ret;
+		goto failed;
 	}
 
 	if (oflag == O_RDONLY) {
@@ -467,7 +478,7 @@ static GString *append_listing(GString *object, const char *name,
 	struct stat fstat, dstat;
 	struct dirent *ep;
 	DIR *dp;
-	gboolean root, symlinks;
+	gboolean root;
 	int ret;
 
 	root = g_str_equal(name, obex_option_root_folder());
@@ -479,13 +490,16 @@ static GString *append_listing(GString *object, const char *name,
 		goto failed;
 	}
 
-	symlinks = obex_option_symlinks();
-	if (root && symlinks)
-		ret = stat(name, &dstat);
-	else {
+	if (root)
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
-		ret = lstat(name, &dstat);
+
+	ret = verify_path(name);
+	if (ret < 0) {
+		*err = ret;
+		goto failed;
 	}
+
+	ret = stat(name, &dstat);
 
 	if (ret < 0) {
 		if (err)
@@ -509,14 +523,10 @@ static GString *append_listing(GString *object, const char *name,
 
 		fullname = g_build_filename(name, ep->d_name, NULL);
 
-		if (root && symlinks)
-			ret = stat(fullname, &fstat);
-		else
-			ret = lstat(fullname, &fstat);
+		ret = stat(fullname, &fstat);
 
 		if (ret < 0) {
-			DBG("%s: %s(%d)", root ? "stat" : "lstat",
-					strerror(errno), errno);
+			DBG("stat: %s(%d)", strerror(errno), errno);
 			g_free(filename);
 			g_free(fullname);
 			continue;

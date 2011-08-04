@@ -107,7 +107,8 @@ static GOptionEntry options[] = {
 	{ "root-setup", 'S', 0, G_OPTION_ARG_STRING, &option_root_setup,
 				"Root folder setup script", "SCRIPT" },
 	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
-				"Enable symlinks on root folder" },
+				"Allow symlinks leading outside of the root "
+				"folder" },
 	{ "capability", 'c', 0, G_OPTION_ARG_STRING, &option_capability,
 				"Specify capability file, use '!' mark for "
 				"scripts", "FILE" },

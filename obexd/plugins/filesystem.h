@@ -23,3 +23,4 @@
 
 ssize_t string_read(void *object, void *buf, size_t count);
 gboolean is_filename(const char *name);
+int verify_path(const char *path);

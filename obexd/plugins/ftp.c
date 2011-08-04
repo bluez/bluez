@@ -363,10 +363,12 @@ int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
 
 	DBG("Fullname: %s", fullname);
 
-	if (root && obex_get_symlinks(os))
-		err = stat(fullname, &dstat);
-	else
-		err = lstat(fullname, &dstat);
+	err = verify_path(fullname);
+
+	if (err < 0)
+		goto done;
+
+	err = stat(fullname, &dstat);
 
 	if (err < 0) {
 		err = -errno;
@@ -374,8 +376,7 @@ int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
 		if (err == -ENOENT)
 			goto not_found;
 
-		DBG("%s: %s(%d)", root ? "stat" : "lstat",
-				strerror(-err), -err);
+		DBG("stat: %s(%d)", strerror(-err), -err);
 
 		goto done;
 	}
