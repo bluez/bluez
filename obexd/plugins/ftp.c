@@ -267,6 +267,9 @@ int ftp_chkput(struct obex_session *os, void *user_data)
 	if (name == NULL)
 		return -EBADR;
 
+	if (!is_filename(name))
+		return -EBADR;
+
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return 0;
 
