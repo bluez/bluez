@@ -1684,7 +1684,7 @@ static void call_info_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusError err;
 	DBusMessage *reply;
-	DBusMessageIter iter, sub;;
+	DBusMessageIter iter, sub;
 
 	get_calls_active = FALSE;
 

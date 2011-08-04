@@ -3393,7 +3393,7 @@ unsigned int avdtp_stream_add_cb(struct avdtp *session,
 	stream_cb->user_data = data;
 	stream_cb->id = ++id;
 
-	stream->callbacks = g_slist_append(stream->callbacks, stream_cb);;
+	stream->callbacks = g_slist_append(stream->callbacks, stream_cb);
 
 	return stream_cb->id;
 }
@@ -3932,7 +3932,7 @@ unsigned int avdtp_add_state_cb(avdtp_session_state_cb cb, void *user_data)
 	state_cb->user_data = user_data;
 	state_cb->id = ++id;
 
-	avdtp_callbacks = g_slist_append(avdtp_callbacks, state_cb);;
+	avdtp_callbacks = g_slist_append(avdtp_callbacks, state_cb);
 
 	return state_cb->id;
 }

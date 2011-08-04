@@ -2058,7 +2058,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	/* Initialize random seed to generate mdlids for this instance */
 	srand(time(NULL));
 
-	return mcap_instance_ref(mi);;
+	return mcap_instance_ref(mi);
 }
 
 void mcap_release_instance(struct mcap_instance *mi)
