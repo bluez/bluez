@@ -158,16 +158,13 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	if (cond & (G_IO_ERR | G_IO_HUP)) {
-		DBG("sco connection is released");
-		g_io_channel_shutdown(gw->sco, TRUE, NULL);
-		g_io_channel_unref(gw->sco);
-		gw->sco = NULL;
-		change_state(dev, GATEWAY_STATE_CONNECTED);
-		return FALSE;
-	}
+	DBG("sco connection is released");
+	g_io_channel_shutdown(gw->sco, TRUE, NULL);
+	g_io_channel_unref(gw->sco);
+	gw->sco = NULL;
+	change_state(dev, GATEWAY_STATE_CONNECTED);
 
-	return TRUE;
+	return FALSE;
 }
 
 static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
