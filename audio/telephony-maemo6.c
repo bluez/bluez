@@ -113,6 +113,11 @@ enum net_registration_status {
 #define CSD_SIMPB_TYPE_EN			"EN"
 #define CSD_SIMPB_TYPE_MSISDN			"MSISDN"
 
+/* OHM plugin D-Bus definitions */
+#define OHM_BUS_NAME		"com.nokia.NonGraphicFeedback1"
+#define OHM_INTERFACE		"com.nokia.NonGraphicFeedback1"
+#define OHM_PATH		"/com/nokia/NonGraphicFeedback1"
+
 struct csd_call {
 	char *object_path;
 	int status;
@@ -143,6 +148,11 @@ struct pending_req {
 };
 
 static int get_property(const char *iface, const char *prop);
+static int send_method_call(const char *dest, const char *path,
+				const char *interface, const char *method,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data, int type, ...);
+static void remove_pending(DBusPendingCall *call);
 
 static DBusConnection *connection = NULL;
 
@@ -316,6 +326,28 @@ static int answer_call(struct csd_call *call)
 	}
 
 	g_dbus_send_message(connection, msg);
+
+	return 0;
+}
+
+static void stop_ringtone_reply(DBusPendingCall *call, void *user_data)
+{
+	struct csd_call *coming = user_data;
+
+	remove_pending(call);
+	answer_call(coming);
+}
+
+static int stop_ringtone_and_answer(struct csd_call *call)
+{
+	int ret;
+
+	ret = send_method_call(OHM_BUS_NAME, OHM_PATH,
+				OHM_INTERFACE, "StopRingtone",
+				stop_ringtone_reply, call,
+				DBUS_TYPE_INVALID);
+	if (ret < 0)
+		return answer_call(call);
 
 	return 0;
 }
@@ -545,7 +577,7 @@ void telephony_answer_call_req(void *telephony_device)
 		return;
 	}
 
-	if (answer_call(call) < 0)
+	if (stop_ringtone_and_answer(call) < 0)
 		telephony_answer_call_rsp(telephony_device,
 						CME_ERROR_AG_FAILURE);
 	else
