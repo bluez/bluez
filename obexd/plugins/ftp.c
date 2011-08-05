@@ -410,18 +410,47 @@ done:
 	return err;
 }
 
+static gboolean is_valid_path(const char *path)
+{
+        gchar **elements, **cur;
+        int depth = 0;
+
+        elements = g_strsplit(path, "/", 0);
+
+        for (cur = elements; *cur != NULL; cur++) {
+                if (**cur == '\0' || strcmp(*cur, ".") == 0)
+                        continue;
+
+                if (strcmp(*cur, "..") == 0) {
+                        depth--;
+                        if (depth < 0)
+                                break;
+                        continue;
+                }
+
+                depth++;
+        }
+
+        g_strfreev(elements);
+
+	if (depth < 0)
+		return FALSE;
+
+	return TRUE;
+}
+
 static char *ftp_build_filename(struct ftp_session *ftp, const char *destname)
 {
 	char *filename;
 
 	/* DestName can either be relative or absolute (FTP style) */
-	if (g_path_is_absolute(destname))
-		filename = g_build_filename(destname, NULL);
+	if (destname[0] == '/')
+		filename = g_build_filename(obex_get_root_folder(ftp->os),
+                                                                destname, NULL);
 	else
 		filename = g_build_filename(ftp->folder, destname, NULL);
 
-	/* Check if destination is inside root path */
-	if (g_str_has_prefix(filename, ftp->folder))
+	if (is_valid_path(filename + strlen(obex_get_root_folder(ftp->os))))
 		return filename;
 
 	g_free(filename);
@@ -432,7 +461,7 @@ static char *ftp_build_filename(struct ftp_session *ftp, const char *destname)
 static int ftp_copy(struct ftp_session *ftp, const char *name,
 							const char *destname)
 {
-	char *source, *destination;
+	char *source, *destination, *destdir;
 	int ret;
 
 	DBG("%p name %s destination %s", ftp, name, destname);
@@ -447,6 +476,16 @@ static int ftp_copy(struct ftp_session *ftp, const char *name,
 
 	destination = ftp_build_filename(ftp, destname);
 
+	if (destination == NULL)
+		return -EBADR;
+
+	destdir = g_path_get_dirname(destination);
+	ret = verify_path(destdir);
+	g_free(destdir);
+
+	if (ret < 0)
+		return ret;
+
 	source = g_build_filename(ftp->folder, name, NULL);
 
 	ret = obex_copy(ftp->os, source, destination);
@@ -460,7 +499,7 @@ static int ftp_copy(struct ftp_session *ftp, const char *name,
 static int ftp_move(struct ftp_session *ftp, const char *name,
 							const char *destname)
 {
-	char *source, *destination;
+	char *source, *destination, *destdir;
 	int ret;
 
 	DBG("%p name %s destname %s", ftp, name, destname);
@@ -474,6 +513,16 @@ static int ftp_move(struct ftp_session *ftp, const char *name,
 		return -EINVAL;
 
 	destination = ftp_build_filename(ftp, destname);
+
+	if (destination == NULL)
+		return -EBADR;
+
+	destdir = g_path_get_dirname(destination);
+	ret = verify_path(destdir);
+	g_free(destdir);
+
+	if (ret < 0)
+		return ret;
 
 	source = g_build_filename(ftp->folder, name, NULL);
 
