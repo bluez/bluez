@@ -148,11 +148,6 @@ struct pending_req {
 };
 
 static int get_property(const char *iface, const char *prop);
-static int send_method_call(const char *dest, const char *path,
-				const char *interface, const char *method,
-				DBusPendingCallNotifyFunction cb,
-				void *user_data, int type, ...);
-static void remove_pending(DBusPendingCall *call);
 
 static DBusConnection *connection = NULL;
 
@@ -214,6 +209,55 @@ static char *call_status_str[] = {
 	"SWAP_INITIATED",
 	"???"
 };
+
+static int send_method_call(const char *dest, const char *path,
+				const char *interface, const char *method,
+				DBusPendingCallNotifyFunction cb,
+				void *user_data, int type, ...)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	va_list args;
+	struct pending_req *req;
+
+	msg = dbus_message_new_method_call(dest, path, interface, method);
+	if (!msg) {
+		error("Unable to allocate new D-Bus %s message", method);
+		return -ENOMEM;
+	}
+
+	va_start(args, type);
+
+	if (!dbus_message_append_args_valist(msg, type, args)) {
+		dbus_message_unref(msg);
+		va_end(args);
+		return -EIO;
+	}
+
+	va_end(args);
+
+	if (!cb) {
+		g_dbus_send_message(connection, msg);
+		return 0;
+	}
+
+	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+		error("Sending %s failed", method);
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, cb, user_data, NULL);
+
+	req = g_new0(struct pending_req, 1);
+	req->call = call;
+	req->user_data = user_data;
+
+	pending = g_slist_prepend(pending, req);
+	dbus_message_unref(msg);
+
+	return 0;
+}
 
 static struct csd_call *find_call(const char *path)
 {
@@ -328,6 +372,39 @@ static int answer_call(struct csd_call *call)
 	g_dbus_send_message(connection, msg);
 
 	return 0;
+}
+
+static struct pending_req *find_request(const DBusPendingCall *call)
+{
+	GSList *l;
+
+	for (l = pending; l; l = l->next) {
+		struct pending_req *req = l->data;
+
+		if (req->call == call)
+			return req;
+	}
+
+	return NULL;
+}
+
+static void pending_req_finalize(void *data)
+{
+	struct pending_req *req = data;
+
+	if (!dbus_pending_call_get_completed(req->call))
+		dbus_pending_call_cancel(req->call);
+
+	dbus_pending_call_unref(req->call);
+	g_free(req);
+}
+
+static void remove_pending(DBusPendingCall *call)
+{
+	struct pending_req *req = find_request(call);
+
+	pending = g_slist_remove(pending, req);
+	pending_req_finalize(req);
 }
 
 static void stop_ringtone_reply(DBusPendingCall *call, void *user_data)
@@ -483,17 +560,6 @@ void telephony_device_connected(void *telephony_device)
 	}
 }
 
-static void pending_req_finalize(void *data)
-{
-	struct pending_req *req = data;
-
-	if (!dbus_pending_call_get_completed(req->call))
-		dbus_pending_call_cancel(req->call);
-
-	dbus_pending_call_unref(req->call);
-	g_free(req);
-}
-
 static void remove_pending_by_data(gpointer data, gpointer user_data)
 {
 	struct pending_req *req = data;
@@ -582,77 +648,6 @@ void telephony_answer_call_req(void *telephony_device)
 						CME_ERROR_AG_FAILURE);
 	else
 		telephony_answer_call_rsp(telephony_device, CME_ERROR_NONE);
-}
-
-static int send_method_call(const char *dest, const char *path,
-				const char *interface, const char *method,
-				DBusPendingCallNotifyFunction cb,
-				void *user_data, int type, ...)
-{
-	DBusMessage *msg;
-	DBusPendingCall *call;
-	va_list args;
-	struct pending_req *req;
-
-	msg = dbus_message_new_method_call(dest, path, interface, method);
-	if (!msg) {
-		error("Unable to allocate new D-Bus %s message", method);
-		return -ENOMEM;
-	}
-
-	va_start(args, type);
-
-	if (!dbus_message_append_args_valist(msg, type, args)) {
-		dbus_message_unref(msg);
-		va_end(args);
-		return -EIO;
-	}
-
-	va_end(args);
-
-	if (!cb) {
-		g_dbus_send_message(connection, msg);
-		return 0;
-	}
-
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
-		error("Sending %s failed", method);
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(call, cb, user_data, NULL);
-
-	req = g_new0(struct pending_req, 1);
-	req->call = call;
-	req->user_data = user_data;
-
-	pending = g_slist_prepend(pending, req);
-	dbus_message_unref(msg);
-
-	return 0;
-}
-
-static struct pending_req *find_request(const DBusPendingCall *call)
-{
-	GSList *l;
-
-	for (l = pending; l; l = l->next) {
-		struct pending_req *req = l->data;
-
-		if (req->call == call)
-			return req;
-	}
-
-	return NULL;
-}
-
-static void remove_pending(DBusPendingCall *call)
-{
-	struct pending_req *req = find_request(call);
-
-	pending = g_slist_remove(pending, req);
-	pending_req_finalize(req);
 }
 
 static void create_call_reply(DBusPendingCall *call, void *user_data)
