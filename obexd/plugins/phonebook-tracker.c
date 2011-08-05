@@ -129,7 +129,7 @@
 "nco:fullname(nco:org(?_role))"						\
 "nco:department(?_role) "						\
 "(SELECT GROUP_CONCAT(fn:concat(?emailaddress,\"\31\","			\
-	"rdfs:label(?_role)),"						\
+	"tracker:coalesce(rdfs:label(?_role), \"\")),"			\
 	"\"\30\") "							\
 	"WHERE { "							\
 	"?_role nco:hasEmailAddress "					\
@@ -241,7 +241,7 @@ CALLS_CONSTRAINTS(CONSTRAINT)						\
 	"nco:fullname(nco:org(?_role)) "				\
 	"nco:department(?_role) "					\
 "(SELECT GROUP_CONCAT(fn:concat(?emailaddress,\"\31\","			\
-	"rdfs:label(?c_role)),"						\
+	"tracker:coalesce(rdfs:label(?c_role), \"\")),"			\
 	"\"\30\") "							\
 	"WHERE { "							\
 	"?_contact nco:hasAffiliation ?c_role . "			\
@@ -334,7 +334,7 @@ COMBINED_CONSTRAINT		\
 "nco:fullname(nco:org(?_role))"						\
 "nco:department(?_role) "						\
 "(SELECT GROUP_CONCAT(fn:concat(?emailaddress,\"\31\","			\
-	"rdfs:label(?_role)),"						\
+	"tracker:coalesce(rdfs:label(?_role), \"\")),"			\
 	"\"\30\") "							\
 	"WHERE { "							\
 	"?_role nco:hasEmailAddress "					\

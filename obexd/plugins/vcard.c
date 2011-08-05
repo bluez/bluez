@@ -368,7 +368,7 @@ static void vcard_printf_email(GString *vcards, uint8_t format,
 		if (format == FORMAT_VCARD21)
 			category_string = "INTERNET";
 		else if (format == FORMAT_VCARD30)
-			category_string = "TYPE=INTERNET";
+			category_string = "TYPE=INTERNET;TYPE=OTHER";
 	}
 
 	add_slash(field, address, LEN_MAX, len);
