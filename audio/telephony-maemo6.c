@@ -1528,6 +1528,8 @@ static void csd_call_free(void *data)
 	g_free(call->object_path);
 	g_free(call->number);
 
+	g_slist_foreach(pending, remove_pending_by_data, call);
+
 	g_free(call);
 }
 
