@@ -463,7 +463,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	if (monitor->enabled.findme || monitor->enabled.pathloss)
 		dict_append_entry(&dict, "ImmediateAlertLevel",
-				DBUS_TYPE_STRING, &monitor->linklosslevel);
+				DBUS_TYPE_STRING, &monitor->immediatelevel);
 
 	if (monitor->enabled.pathloss)
 		dict_append_entry(&dict, "SignalLevel",
