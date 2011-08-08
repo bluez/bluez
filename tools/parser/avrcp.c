@@ -612,17 +612,12 @@ response:
 	printf("ValueCount: 0x%02x\n", num);
 
 	for (; num > 0; num--) {
-		uint8_t attr, player, value;
+		uint8_t attr, value;
 
 		p_indent(level, frm);
 
 		attr = get_u8(frm);
 		printf("AttributeID: 0x%02x (%s)\n", attr, attr2str(attr));
-
-		p_indent(level, frm);
-
-		player = get_u8(frm);
-		printf("Player: 0x%02x\n", player);
 
 		p_indent(level, frm);
 
