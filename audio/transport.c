@@ -99,7 +99,6 @@ void media_transport_destroy(struct media_transport *transport)
 	char *path;
 
 	path = g_strdup(transport->path);
-
 	g_dbus_unregister_interface(transport->conn, path,
 						MEDIA_TRANSPORT_INTERFACE);
 
