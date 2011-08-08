@@ -342,9 +342,25 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 static void attio_disconnected_cb(gpointer user_data)
 {
 	struct monitor *monitor = user_data;
+	const char *path = device_get_path(monitor->device);
 
 	g_attrib_unref(monitor->attrib);
 	monitor->attrib = NULL;
+
+	if (monitor->immediateto == 0)
+		return;
+
+	g_source_remove(monitor->immediateto);
+	monitor->immediateto = 0;
+
+	if (g_strcmp0(monitor->immediatelevel, "none") == 0)
+		return;
+
+	g_free(monitor->immediatelevel);
+	monitor->immediatelevel = g_strdup("none");
+	emit_property_changed(monitor->conn, path, PROXIMITY_INTERFACE,
+					"ImmediateAlertLevel", DBUS_TYPE_STRING,
+					&monitor->immediatelevel);
 }
 
 static gboolean level_is_valid(const char *level)
