@@ -128,7 +128,7 @@ static uint8_t str2level(const char *level)
 	else if (g_strcmp0("mild", level) == 0)
 		return ALERT_MILD;
 
-	return ALERT_NONE;;
+	return ALERT_NONE;
 }
 
 static void char_discovered_cb(GSList *characteristics, guint8 status,
