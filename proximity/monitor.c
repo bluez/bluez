@@ -273,6 +273,9 @@ static void immediate_handle_cb(GSList *characteristics, guint8 status,
 	monitor->immediatehandle = chr->value_handle;
 
 	DBG("Immediate Alert handle: 0x%04x", monitor->immediatehandle);
+
+	if (monitor->fallbacklevel)
+		write_immediate_alert(monitor);
 }
 
 static void discover_immediate_handle(struct monitor *monitor)
