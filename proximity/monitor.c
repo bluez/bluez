@@ -432,6 +432,8 @@ static DBusMessage *set_immediate_alert(DBusConnection *conn, DBusMessage *msg,
 							attio_connected_cb,
 							attio_disconnected_cb,
 							monitor);
+	else if (monitor->attrib)
+		write_immediate_alert(monitor);
 
 	return dbus_message_new_method_return(msg);
 }
