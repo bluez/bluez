@@ -571,6 +571,7 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	monitor->conn = dbus_connection_ref(conn);
 	monitor->linklosslevel = (level ? : g_strdup("none"));
 	monitor->signallevel = g_strdup("unknown");
+	monitor->immediatelevel = g_strdup("none");
 
 	if (g_dbus_register_interface(conn, path,
 				PROXIMITY_INTERFACE,
