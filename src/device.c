@@ -1665,7 +1665,9 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	if (device->attios == NULL && device->attios_offline == NULL) {
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
-	}
+	} else
+		g_attrib_set_disconnect_function(device->attrib,
+						attrib_disconnected, device);
 
 	g_slist_free(uuids);
 
