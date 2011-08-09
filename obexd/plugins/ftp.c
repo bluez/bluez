@@ -541,6 +541,9 @@ int ftp_action(struct obex_session *os, obex_object_t *obj, void *user_data)
 	uint8_t action_id;
 
 	name = obex_get_name(os);
+	if (name == NULL || !is_filename(name))
+		return -EBADR;
+
 	destname = obex_get_destname(os);
 	action_id = obex_get_action_id(os);
 
