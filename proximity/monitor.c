@@ -396,6 +396,9 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 				PROXIMITY_INTERFACE, "LinkLossAlertLevel",
 				DBUS_TYPE_STRING, &monitor->linklosslevel);
 
+	if (monitor->attrib)
+		write_alert_level(monitor);
+
 	return dbus_message_new_method_return(msg);
 }
 
