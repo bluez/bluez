@@ -98,18 +98,10 @@ gboolean gw_obex_xfer_do_abort(struct gw_obex_xfer *xfer) {
 
     xfer->abort = TRUE;
 
-#ifdef USE_NICE_ABORT
     debug("Performing nice abort\n");
     if (OBEX_CancelRequest(xfer->ctx->handle, TRUE) != 0)
         return FALSE;
     return TRUE;
-#else
-    debug("Performing abort through disconnection (without ABORT command)\n");
-    xfer->ctx->done = TRUE;
-    OBEX_CancelRequest(xfer->ctx->handle, FALSE);
-    obex_link_error(xfer->ctx);
-    return FALSE;
-#endif
 }
 
 GwObexXfer *gw_obex_put_async(GwObex *ctx, const char *name, const char *type,
