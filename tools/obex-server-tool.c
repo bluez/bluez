@@ -260,7 +260,7 @@ static gboolean unix_accept(GIOChannel *chan, GIOCondition cond, gpointer data)
 	g_obex_add_request_function(obex, G_OBEX_OP_GET, handle_get, NULL);
 	g_obex_add_request_function(obex, G_OBEX_OP_CONNECT, handle_connect,
 									NULL);
-	clients = g_slist_append(clients, obex);;
+	clients = g_slist_append(clients, obex);
 
 	return TRUE;
 }
