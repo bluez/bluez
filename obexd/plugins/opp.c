@@ -142,8 +142,10 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 		name = g_strdup(obex_get_name(os));
 
 skip_auth:
-	if (name == NULL || strlen(name) == 0)
-		return -EBADR;
+	if (name == NULL || strlen(name) == 0) {
+		ret = -EBADR;
+		goto failed;
+	}
 
 	if (g_strcmp0(name, obex_get_name(os)) != 0)
 		obex_set_name(os, name);
@@ -155,6 +157,8 @@ skip_auth:
 	ret = obex_put_stream_start(os, path);
 
 	g_free(path);
+
+failed:
 	g_free(folder);
 	g_free(name);
 
