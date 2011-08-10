@@ -690,7 +690,7 @@ static void set_disconnect_timer(struct avdtp *session)
 		remove_disconnect_timer(session);
 
 	if (session->device_disconnect) {
-		g_idle_add(disconnect_timeout, session);
+		session->dc_timer = g_idle_add(disconnect_timeout, session);
 		return;
 	}
 
