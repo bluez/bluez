@@ -187,6 +187,10 @@ static char *hi2str(uint8_t hi)
 		return "DestName";
 	case 0x16:
 		return "Permission";
+	case 0x17:
+		return "Single Response Mode";
+	case 0x18:
+		return "Single Response Mode Parameters";
 	default:
 		return "Unknown";
 	}
