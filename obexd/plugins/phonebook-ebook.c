@@ -372,25 +372,23 @@ canceled:
 
 static GSList *traverse_sources(GSList *ebooks, GSList *sources,
 							char **default_src) {
-	GError *gerr;
+	GError *gerr = NULL;
 
-	while (sources != NULL) {
+	for (; sources != NULL; sources = g_slist_next(sources)) {
 		char *uri;
-		EBook *ebook = e_book_new(E_SOURCE(sources->data), &gerr);
+		ESource *source = E_SOURCE(sources->data);
+		EBook *ebook = e_book_new(source, &gerr);
+
 		if (ebook == NULL) {
 			error("Can't create user's address book: %s",
 								gerr->message);
-			sources = sources->next;
-
-			g_error_free(gerr);
+			g_clear_error(&gerr);
 			continue;
 		}
 
-		uri = e_source_get_uri(E_SOURCE(sources->data));
+		uri = e_source_get_uri(source);
 		if (g_strcmp0(*default_src, uri) == 0) {
-			sources = sources->next;
 			g_free(uri);
-
 			continue;
 		}
 		g_free(uri);
@@ -398,23 +396,17 @@ static GSList *traverse_sources(GSList *ebooks, GSList *sources,
 		if (e_book_open(ebook, FALSE, &gerr) == FALSE) {
 			error("Can't open e-book address book: %s",
 							gerr->message);
-			sources = sources->next;
-
 			g_object_unref(ebook);
-			g_error_free(gerr);
+			g_clear_error(&gerr);
 			continue;
 		}
 
 		if (*default_src == NULL)
-			*default_src = e_source_get_uri(
-						E_SOURCE(sources->data));
+			*default_src = e_source_get_uri(source);
 
-		DBG("%s address book opened",
-					e_source_peek_name(sources->data));
+		DBG("%s address book opened", e_source_peek_name(source));
 
 		ebooks = g_slist_append(ebooks, ebook);
-
-		sources = sources->next;
 	}
 
 	return ebooks;
@@ -429,7 +421,7 @@ int phonebook_init(void)
 
 static GSList *open_ebooks(void)
 {
-	GError *gerr;
+	GError *gerr = NULL;
 	ESourceList *src_list;
 	GSList *list;
 	gchar *default_src = NULL;
@@ -438,14 +430,12 @@ static GSList *open_ebooks(void)
 	if (e_book_get_addressbooks(&src_list, &gerr) == FALSE) {
 		error("Can't list user's address books: %s", gerr->message);
 		g_error_free(gerr);
-
 		return NULL;
 	}
 
 	list = e_source_list_peek_groups(src_list);
-	while (list) {
+	while (list != NULL) {
 		ESourceGroup *group = E_SOURCE_GROUP(list->data);
-
 		GSList *sources = e_source_group_peek_sources(group);
 
 		ebooks = traverse_sources(ebooks, sources, &default_src);
@@ -586,22 +576,20 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 int phonebook_pull_read(void *request)
 {
 	struct query_context *data = request;
-	gboolean ret;
-	GSList *ebook;
+	GSList *l;
 
 	if (!data)
 		return -ENOENT;
 
-	ebook = data->ebooks;
-	while (ebook != NULL) {
-		if (e_book_is_opened(ebook->data) == TRUE) {
-			ret = e_book_get_contacts_async(ebook->data,
-					data->query, ebookpull_cb, data);
-			if (ret == TRUE)
-				data->queued_calls++;
-		}
+	for (l = data->ebooks; l != NULL; l = g_slist_next(l)) {
+		EBook *ebook = l->data;
 
-		ebook = ebook->next;
+		if (e_book_is_opened(ebook) == FALSE)
+			continue;
+
+		if (e_book_get_contacts_async(ebook, data->query,
+						ebookpull_cb, data) == TRUE)
+			data->queued_calls++;
 	}
 
 	if (data->queued_calls == 0)
@@ -614,9 +602,8 @@ void *phonebook_get_entry(const char *folder, const char *id,
 				const struct apparam_field *params,
 				phonebook_cb cb, void *user_data, int *err)
 {
-	gboolean ret;
 	struct query_context *data;
-	GSList *ebook;
+	GSList *l;
 
 	data = g_new0(struct query_context, 1);
 	data->contacts_cb = cb;
@@ -625,16 +612,15 @@ void *phonebook_get_entry(const char *folder, const char *id,
 	data->id = g_strdup(id);
 	data->ebooks = open_ebooks();
 
-	ebook = data->ebooks;
-	while (ebook != NULL) {
-		if (e_book_is_opened(ebook->data) == TRUE) {
-			ret = e_book_get_contact_async(ebook->data, data->id,
-							ebook_entry_cb, data);
-			if (ret == TRUE)
-				data->queued_calls++;
-		}
+	for (l = data->ebooks; l != NULL; l = g_slist_next(l)) {
+		EBook *ebook = l->data;
 
-		ebook = ebook->next;
+		if (e_book_is_opened(ebook) == FALSE)
+			continue;
+
+		if (e_book_get_contact_async(ebook, data->id,
+						ebook_entry_cb, data) == TRUE)
+			data->queued_calls++;
 	}
 
 	if (err)
@@ -648,11 +634,10 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 {
 	struct query_context *data;
 	EBookQuery *query;
-	gboolean ret;
-	GSList *ebook;
+	GSList *l;
 	EContact *me;
 	EVCard *evcard;
-	GError *gerr;
+	GError *gerr = NULL;
 	EBook *eb;
 	EVCardAttribute *attrib;
 	char *uid, *tel, *cname;
@@ -708,16 +693,15 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	g_object_unref(eb);
 
 next:
-	ebook = data->ebooks;
-	while (ebook != NULL) {
-		if (e_book_is_opened(ebook->data) == TRUE) {
-			ret = e_book_get_contacts_async(ebook->data, query,
-								cache_cb, data);
-			if (ret == TRUE)
-				data->queued_calls++;
-		}
+	for (l = data->ebooks; l != NULL; l = g_slist_next(l)) {
+		EBook *ebook = l->data;
 
-		ebook = ebook->next;
+		if (e_book_is_opened(ebook) == FALSE)
+			continue;
+
+		if (e_book_get_contacts_async(ebook, query,
+						cache_cb, data) == TRUE)
+			data->queued_calls++;
 	}
 
 	if (err)
