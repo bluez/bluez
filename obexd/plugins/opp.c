@@ -111,11 +111,10 @@ static void opp_progress(struct obex_session *os, void *user_data)
 
 static int opp_chkput(struct obex_session *os, void *user_data)
 {
-	char *folder, *name;
-	char *path;
+	char *folder, *name, *path;
 	int32_t time;
-	int ret;
 	const char *t;
+	int err;
 
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
 		return -EINVAL;
@@ -131,8 +130,8 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	}
 
 	time = 0;
-	ret = manager_request_authorization(os, time, &folder, &name);
-	if (ret < 0)
+	err = manager_request_authorization(os, time, &folder, &name);
+	if (err < 0)
 		return -EPERM;
 
 	if (folder == NULL)
@@ -143,7 +142,7 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 
 skip_auth:
 	if (name == NULL || strlen(name) == 0) {
-		ret = -EBADR;
+		err = -EBADR;
 		goto failed;
 	}
 
@@ -154,7 +153,7 @@ skip_auth:
 
 	manager_emit_transfer_started(os);
 
-	ret = obex_put_stream_start(os, path);
+	err = obex_put_stream_start(os, path);
 
 	g_free(path);
 
@@ -162,7 +161,7 @@ failed:
 	g_free(folder);
 	g_free(name);
 
-	return ret;
+	return err;
 }
 
 static int opp_put(struct obex_session *os, obex_object_t *obj,
