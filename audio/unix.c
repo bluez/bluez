@@ -49,6 +49,7 @@
 #include "a2dp.h"
 #include "headset.h"
 #include "sink.h"
+#include "source.h"
 #include "gateway.h"
 #include "unix.h"
 #include "glib-helper.h"
