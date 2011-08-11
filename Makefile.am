@@ -258,6 +258,13 @@ builtin_modules += dbusoob
 builtin_sources += plugins/dbusoob.c
 endif
 
+if MAINTAINER_MODE
+plugin_LTLIBRARIES += plugins/external-dummy.la
+plugins_external_dummy_la_SOURCES = plugins/external-dummy.c
+plugins_external_dummy_la_LDFLAGS = -module -avoid-version -no-undefined
+plugins_external_dummy_la_CFLAGS = -fvisibility=hidden
+endif
+
 sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
