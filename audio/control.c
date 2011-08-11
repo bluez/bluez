@@ -117,6 +117,8 @@
 #define AVRCP_LIST_PLAYER_VALUES	0x12
 #define AVRCP_GET_CURRENT_PLAYER_VALUE	0x13
 #define AVRCP_SET_PLAYER_VALUE		0x14
+#define AVRCP_GET_PLAYER_ATTRIBUTE_TEXT	0x15
+#define AVRCP_GET_PLAYER_VALUE_TEXT	0x16
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -1025,6 +1027,22 @@ static int handle_vendordep_pdu(struct control *control,
 		avrcp->code = CTYPE_STABLE;
 
 		break;
+	case AVRCP_GET_PLAYER_ATTRIBUTE_TEXT:
+	case AVRCP_GET_PLAYER_VALUE_TEXT:
+		if (avrcp->code != CTYPE_STATUS) {
+			pdu->params[0] = E_INVALID_COMMAND;
+			goto err_metadata;
+		}
+
+		/*
+		 * As per sec. 5.2.5 of AVRCP 1.3 spec, this command is
+		 * expected to be used only for extended attributes, i.e.
+		 * custom attributes defined by the application. As we
+		 * currently don't have any such attribute, we respond with
+		 * invalid param id.
+		 */
+		pdu->params[0] = E_INVALID_PARAM;
+		goto err_metadata;
 	default:
 		/* Invalid pdu_id */
 		pdu->params[0] = E_INVALID_COMMAND;
