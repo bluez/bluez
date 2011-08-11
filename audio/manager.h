@@ -31,6 +31,7 @@ struct enabled_interfaces {
 	gboolean control;
 	gboolean socket;
 	gboolean media;
+	gboolean media_player;
 };
 
 int audio_manager_init(DBusConnection *conn, GKeyFile *config,

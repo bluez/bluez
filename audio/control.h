@@ -23,6 +23,7 @@
  */
 
 #define AUDIO_CONTROL_INTERFACE "org.bluez.Control"
+#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer"
 
 typedef enum {
 	AVCTP_STATE_DISCONNECTED = 0,
@@ -44,7 +45,9 @@ void avrcp_unregister(const bdaddr_t *src);
 gboolean avrcp_connect(struct audio_device *dev);
 void avrcp_disconnect(struct audio_device *dev);
 
-struct control *control_init(struct audio_device *dev, uint16_t uuid16);
-void control_update(struct audio_device *dev, uint16_t uuid16);
+struct control *control_init(struct audio_device *dev, uint16_t uuid16,
+							gboolean media_player);
+void control_update(struct control *control, uint16_t uuid16,
+							gboolean media_player);
 void control_unregister(struct audio_device *dev);
 gboolean control_is_active(struct audio_device *dev);

@@ -185,8 +185,12 @@ struct avctp_server {
 	uint32_t ct_record_id;
 };
 
+struct media_player {
+};
+
 struct control {
 	struct audio_device *dev;
+	struct media_player *mp;
 
 	avctp_state_t state;
 
@@ -1125,6 +1129,14 @@ static GDBusSignalTable control_signals[] = {
 	{ NULL, NULL }
 };
 
+static GDBusMethodTable mp_methods[] = {
+	{ }
+};
+
+static GDBusSignalTable mp_signals[] = {
+	{ }
+};
+
 static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
@@ -1140,21 +1152,72 @@ static void path_unregister(void *data)
 	dev->control = NULL;
 }
 
-void control_unregister(struct audio_device *dev)
+static void mp_path_unregister(void *data)
 {
-	g_dbus_unregister_interface(dev->conn, dev->path,
-		AUDIO_CONTROL_INTERFACE);
+	struct audio_device *dev = data;
+	struct control *control = dev->control;
+	struct media_player *mp = control->mp;
+
+	DBG("Unregistered interface %s on path %s",
+		MEDIA_PLAYER_INTERFACE, dev->path);
+
+	g_free(mp);
+	control->mp = NULL;
 }
 
-void control_update(struct audio_device *dev, uint16_t uuid16)
+static void mp_unregister(struct control *control)
+{
+	struct audio_device *dev = control->dev;
+
+	g_dbus_unregister_interface(dev->conn, dev->path,
+						MEDIA_PLAYER_INTERFACE);
+}
+
+void control_unregister(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 
-	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
-		control->target = TRUE;
+	if (control->mp)
+		mp_unregister(control);
+
+	g_dbus_unregister_interface(dev->conn, dev->path,
+						AUDIO_CONTROL_INTERFACE);
 }
 
-struct control *control_init(struct audio_device *dev, uint16_t uuid16)
+static void mp_register(struct control *control)
+{
+	struct audio_device *dev = control->dev;
+	struct media_player *mp;
+
+	mp = g_new0(struct media_player, 1);
+
+	if (!g_dbus_register_interface(dev->conn, dev->path,
+						MEDIA_PLAYER_INTERFACE,
+						mp_methods, mp_signals, NULL,
+						dev, mp_path_unregister)) {
+		error("D-Bus failed do register %s on path %s",
+					MEDIA_PLAYER_INTERFACE, dev->path);
+		g_free(mp);
+		return;
+	}
+
+	DBG("Registered interface %s on path %s",
+					MEDIA_PLAYER_INTERFACE, dev->path);
+
+	control->mp = mp;
+}
+
+void control_update(struct control *control, uint16_t uuid16,
+							gboolean media_player)
+{
+	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
+		control->target = TRUE;
+	else if (media_player && !control->mp)
+		mp_register(control);
+}
+
+struct control *control_init(struct audio_device *dev, uint16_t uuid16,
+							gboolean media_player)
 {
 	struct control *control;
 
@@ -1172,8 +1235,7 @@ struct control *control_init(struct audio_device *dev, uint16_t uuid16)
 	control->state = AVCTP_STATE_DISCONNECTED;
 	control->uinput = -1;
 
-	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
-		control->target = TRUE;
+	control_update(control, uuid16, media_player);
 
 	return control;
 }
