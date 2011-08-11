@@ -132,6 +132,7 @@
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
+#define CAP_EVENTS_SUPPORTED	0x03
 
 #define QUIRK_NO_RELEASE	1 << 0
 
@@ -817,6 +818,13 @@ static int avrcp_handle_get_capabilities(struct control *control,
 		pdu->params[1] = G_N_ELEMENTS(company_ids);
 
 		return 2 + (3 * G_N_ELEMENTS(company_ids));
+	case CAP_EVENTS_SUPPORTED:
+		pdu->params_len = htons(4);
+		pdu->params[1] = 2;
+		pdu->params[2] = AVRCP_EVENT_PLAYBACK_STATUS_CHANGED;
+		pdu->params[3] = AVRCP_EVENT_TRACK_CHANGED;
+
+		return 4;
 	}
 
 err:
