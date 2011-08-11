@@ -120,6 +120,7 @@
 #define AVRCP_GET_PLAYER_ATTRIBUTE_TEXT	0x15
 #define AVRCP_GET_PLAYER_VALUE_TEXT	0x16
 #define AVRCP_DISPLAYABLE_CHARSET	0x17
+#define AVRCP_CT_BATTERY_STATUS		0x18
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -164,6 +165,14 @@ enum play_status {
 	PLAY_STATUS_FWD_SEEK =		0x03,
 	PLAY_STATUS_REV_SEEK =		0x04,
 	PLAY_STATUS_ERROR =		0xFF
+};
+
+enum battery_status {
+	BATTERY_STATUS_NORMAL =		0,
+	BATTERY_STATUS_WARNING =	1,
+	BATTERY_STATUS_CRITICAL =	2,
+	BATTERY_STATUS_EXTERNAL =	3,
+	BATTERY_STATUS_FULL_CHARGE =	4,
 };
 
 static DBusConnection *connection = NULL;
@@ -667,6 +676,24 @@ static int play_status_to_val(const char *status)
 	return -EINVAL;
 }
 
+static const char *battery_status_to_str(enum battery_status status)
+{
+	switch (status) {
+	case BATTERY_STATUS_NORMAL:
+		return "normal";
+	case BATTERY_STATUS_WARNING:
+		return "warning";
+	case BATTERY_STATUS_CRITICAL:
+		return "critical";
+	case BATTERY_STATUS_EXTERNAL:
+		return "external";
+	case BATTERY_STATUS_FULL_CHARGE:
+		return "fullcharge";
+	}
+
+	return NULL;
+}
+
 static void mp_set_playback_status(struct control *control, uint8_t status,
 							uint32_t elapsed)
 {
@@ -937,6 +964,31 @@ err:
 	return -EINVAL;
 }
 
+static int avrcp_handle_ct_battery_status(struct control *control,
+						struct avrcp_spec_avc_pdu *pdu)
+{
+	uint16_t len = ntohs(pdu->params_len);
+	const char *valstr;
+
+	if (len != 1)
+		goto err;
+
+	valstr = battery_status_to_str(pdu->params[0]);
+	if (valstr == NULL)
+		goto err;
+
+	emit_property_changed(control->dev->conn, control->dev->path,
+					MEDIA_PLAYER_INTERFACE, "Battery",
+					DBUS_TYPE_STRING, &valstr);
+	pdu->params_len = 0;
+
+	return 0;
+
+err:
+	pdu->params[0] = E_INVALID_PARAM;
+	return -EINVAL;
+}
+
 /* handle vendordep pdu inside an avctp packet */
 static int handle_vendordep_pdu(struct control *control,
 					struct avrcp_header *avrcp,
@@ -1062,6 +1114,19 @@ static int handle_vendordep_pdu(struct control *control,
 		pdu->params_len = 0;
 		avrcp->code = CTYPE_STABLE;
 		len = 0;
+
+		break;
+	case AVRCP_CT_BATTERY_STATUS:
+		if (avrcp->code != CTYPE_STATUS) {
+			pdu->params[0] = E_INVALID_COMMAND;
+			goto err_metadata;
+		}
+
+		len = avrcp_handle_ct_battery_status(control, pdu);
+		if (len < 0)
+			goto err_metadata;
+
+		avrcp->code = CTYPE_STABLE;
 
 		break;
 	default:
