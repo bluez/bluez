@@ -114,6 +114,7 @@
 /* PDU types for metadata transfer */
 #define AVRCP_GET_CAPABILITIES		0x10
 #define AVRCP_LIST_PLAYER_ATTRIBUTES	0X11
+#define AVRCP_LIST_PLAYER_VALUES	0x12
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -500,6 +501,22 @@ static void handle_panel_passthrough(struct control *control,
 						operands[0] & 0x7F, status);
 }
 
+static unsigned int attr_get_max_val(uint8_t attr)
+{
+	switch (attr) {
+	case PLAYER_SETTING_EQUALIZER:
+		return EQUALIZER_MODE_ON;
+	case PLAYER_SETTING_REPEAT:
+		return REPEAT_MODE_GROUP;
+	case PLAYER_SETTING_SHUFFLE:
+		return SHUFFLE_MODE_GROUP;
+	case PLAYER_SETTING_SCAN:
+		return SCAN_MODE_GROUP;
+	}
+
+	return 0;
+}
+
 static int attrval_to_val(uint8_t attr, const char *value)
 {
 	int ret;
@@ -714,6 +731,35 @@ done:
 	return len + 1;
 }
 
+static int avrcp_handle_list_player_values(struct control *control,
+						struct avrcp_spec_avc_pdu *pdu)
+{
+	uint16_t len = ntohs(pdu->params_len);
+	struct media_player *mp = control->mp;
+	unsigned int i;
+
+	if (len != 1 || !mp)
+		goto err;
+
+	len = attr_get_max_val(pdu->params[0]);
+	if (!len) {
+		error("Attribute is invalid: %u", pdu->params[0]);
+		goto err;
+	}
+
+	for (i = 1; i <= len; i++)
+		pdu->params[i] = i;
+
+	pdu->params[0] = len;
+	pdu->params_len = htons(len + 1);
+
+	return len + 1;
+
+err:
+	pdu->params[0] = E_INVALID_PARAM;
+	return -EINVAL;
+}
+
 /* handle vendordep pdu inside an avctp packet */
 static int handle_vendordep_pdu(struct control *control,
 					struct avrcp_header *avrcp,
@@ -760,6 +806,19 @@ static int handle_vendordep_pdu(struct control *control,
 		}
 
 		len = avrcp_handle_list_player_attributes(control, pdu);
+		if (len < 0)
+			goto err_metadata;
+
+		avrcp->code = CTYPE_STABLE;
+
+		break;
+	case AVRCP_LIST_PLAYER_VALUES:
+		if (avrcp->code != CTYPE_STATUS) {
+			pdu->params[0] = E_INVALID_COMMAND;
+			goto err_metadata;
+		}
+
+		len = avrcp_handle_list_player_values(control, pdu);
 		if (len < 0)
 			goto err_metadata;
 
