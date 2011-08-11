@@ -73,10 +73,10 @@ static const char *chassis_map[] = {
 	"Rack Mount Chassis",    "unknown",
 	"Sealed-case PC",        "unknown",
 	"Multi-system",          "unknown",
-	"CompactPCI",            "unknonw",
+	"CompactPCI",            "unknown",
 	"AdvancedTCA",           "unknown",
 	"Blade",                 "server",
-	"Blade Enclosure"        "unknown", /* 0x1D */
+	"Blade Enclosure",       "unknown", /* 0x1D */
 	NULL
 };
 
