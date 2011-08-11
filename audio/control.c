@@ -113,6 +113,7 @@
 
 /* PDU types for metadata transfer */
 #define AVRCP_GET_CAPABILITIES		0x10
+#define AVRCP_LIST_PLAYER_ATTRIBUTES	0X11
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -609,6 +610,13 @@ static void mp_set_attribute(struct media_player *mp,
 	mp->settings[attr] = val;
 }
 
+static int mp_get_attribute(struct media_player *mp, uint8_t attr)
+{
+	DBG("Get attribute: %u", attr);
+
+	return mp->settings[attr];
+}
+
 static void mp_set_media_attributes(struct control *control,
 							struct media_info *mi)
 {
@@ -674,6 +682,38 @@ err:
 	return -EINVAL;
 }
 
+static int avrcp_handle_list_player_attributes(struct control *control,
+						struct avrcp_spec_avc_pdu *pdu)
+{
+	uint16_t len = ntohs(pdu->params_len);
+	struct media_player *mp = control->mp;
+	unsigned int i;
+
+	if (len != 0) {
+		pdu->params[0] = E_INVALID_PARAM;
+		return -EINVAL;
+	}
+
+	if (!mp)
+		goto done;
+
+	for (i = 1; i <= PLAYER_SETTING_SCAN; i++) {
+		if (!mp_get_attribute(mp, i)) {
+			DBG("Ignoring setting %u: not supported by player", i);
+			continue;
+		}
+
+		len++;
+		pdu->params[len] = i;
+	}
+
+done:
+	pdu->params[0] = len;
+	pdu->params_len = htons(len + 1);
+
+	return len + 1;
+}
+
 /* handle vendordep pdu inside an avctp packet */
 static int handle_vendordep_pdu(struct control *control,
 					struct avrcp_header *avrcp,
@@ -707,6 +747,19 @@ static int handle_vendordep_pdu(struct control *control,
 		}
 
 		len = avrcp_handle_get_capabilities(control, pdu);
+		if (len < 0)
+			goto err_metadata;
+
+		avrcp->code = CTYPE_STABLE;
+
+		break;
+	case AVRCP_LIST_PLAYER_ATTRIBUTES:
+		if (avrcp->code != CTYPE_STATUS) {
+			pdu->params[0] = E_INVALID_COMMAND;
+			goto err_metadata;
+		}
+
+		len = avrcp_handle_list_player_attributes(control, pdu);
 		if (len < 0)
 			goto err_metadata;
 
