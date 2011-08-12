@@ -730,6 +730,12 @@ static int avctp_send_event(struct control *control, uint8_t id, void *data)
 	int sk = g_io_channel_unix_get_fd(control->io);
 	uint16_t size;
 
+	if (control->state != AVCTP_STATE_CONNECTED)
+		return -ENOTCONN;
+
+	if (!(control->registered_events & (1 << id)))
+		return 0;
+
 	memset(buf, 0, sizeof(buf));
 
 	avctp->transaction = control->transaction_events[id];
@@ -825,12 +831,8 @@ static void mp_set_playback_status(struct control *control, uint8_t status,
 
 	mp->status = status;
 
-	if (control->state == AVCTP_STATE_CONNECTED &&
-				(control->registered_events &
-				(1 << AVRCP_EVENT_PLAYBACK_STATUS_CHANGED))) {
-		avctp_send_event(control, AVRCP_EVENT_PLAYBACK_STATUS_CHANGED,
+	avctp_send_event(control, AVRCP_EVENT_PLAYBACK_STATUS_CHANGED,
 								&status);
-	}
 }
 
 /*
@@ -974,16 +976,12 @@ static void mp_set_media_attributes(struct control *control,
 	g_timer_start(mp->timer);
 
 	DBG("Track changed:\n\ttitle: %s\n\tartist: %s\n\talbum: %s\n"
-			   "\tgenre: %s\n\tNumber of tracks: %u\n"
-			   "\tTrack number: %u\n\tTrack duration: %u",
-			   mi->title, mi->artist, mi->album, mi->genre,
-			   mi->ntracks, mi->track, mi->track_len);
+			"\tgenre: %s\n\tNumber of tracks: %u\n"
+			"\tTrack number: %u\n\tTrack duration: %u",
+			mi->title, mi->artist, mi->album, mi->genre,
+			mi->ntracks, mi->track, mi->track_len);
 
-	if (control->state == AVCTP_STATE_CONNECTED &&
-					(control->registered_events &
-					 (1 << AVRCP_EVENT_TRACK_CHANGED))) {
-		avctp_send_event(control, AVRCP_EVENT_TRACK_CHANGED, NULL);
-	}
+	avctp_send_event(control, AVRCP_EVENT_TRACK_CHANGED, NULL);
 }
 
 static int avrcp_handle_get_capabilities(struct control *control,
@@ -1119,10 +1117,9 @@ static int avrcp_handle_get_element_attributes(struct control *control,
 			}
 		}
 	} else {
-		uint32_t *attr_ids = g_malloc(sizeof(uint32_t) * nattr);
+		uint32_t *attr_ids;
 
-		/* save a copy of requested attributes */
-		memcpy(&attr_ids[0], &pdu->params[9], nattr * 4);
+		attr_ids = g_memdup(&pdu->params[9], sizeof(uint32_t) * nattr);
 
 		for (i = 0; i < nattr; i++) {
 			uint32_t attr = ntohl(attr_ids[i]);
@@ -1180,7 +1177,7 @@ static int avrcp_handle_get_current_player_value(struct control *control,
 		uint8_t val;
 
 		if (settings[i] < PLAYER_SETTING_EQUALIZER ||
-				settings[i] > PLAYER_SETTING_SCAN) {
+					settings[i] > PLAYER_SETTING_SCAN) {
 			DBG("Ignoring %u", settings[i]);
 			continue;
 		}
@@ -1756,6 +1753,7 @@ static gboolean control_cb(GIOChannel *chan, GIOCondition cond,
 		avctp->cr = AVCTP_RESPONSE;
 		avrcp->code = CTYPE_REJECTED;
 	}
+
 	ret = write(sock, buf, packet_size);
 	if (ret != packet_size)
 		goto failed;
