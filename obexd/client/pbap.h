@@ -22,8 +22,5 @@
  *
  */
 
-#include <gdbus.h>
-
-gboolean pbap_register_interface(DBusConnection *connection, const char *path,
-							void *user_data);
-void pbap_unregister_interface(DBusConnection *connection, const char *path);
+int pbap_init(void);
+void pbap_exit(void);

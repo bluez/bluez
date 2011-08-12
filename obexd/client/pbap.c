@@ -32,9 +32,13 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "log.h"
+
 #include "transfer.h"
 #include "session.h"
+#include "driver.h"
 #include "pbap.h"
 
 #define ERROR_INF PBAP_INTERFACE ".Error"
@@ -115,11 +119,11 @@ static const char *filter_list[] = {
 #define FILTER_ALL	0xFFFFFFFFFFFFFFFFULL
 
 #define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
+#define PBAP_UUID "0000112f-0000-1000-8000-00805f9b34fb"
 
 struct pbap_data {
 	struct obc_session *session;
 	char *path;
-	DBusConnection *conn;
 	DBusMessage *msg;
 	guint8 format;
 	guint8 order;
@@ -157,6 +161,8 @@ struct apparam_hdr {
 } __attribute__ ((packed));
 
 #define APPARAM_HDR_SIZE 2
+
+static DBusConnection *conn = NULL;
 
 static void listing_element(GMarkupParseContext *ctxt,
 				const gchar *element,
@@ -374,7 +380,7 @@ static void pull_phonebook_callback(struct obc_session *session,
 	obc_transfer_clear_buffer(transfer);
 
 send:
-	g_dbus_send_message(pbap->conn, reply);
+	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
 
@@ -412,7 +418,7 @@ static void phonebook_size_callback(struct obc_session *session,
 	obc_transfer_clear_buffer(transfer);
 
 send:
-	g_dbus_send_message(pbap->conn, reply);
+	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
 
@@ -460,7 +466,7 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 	obc_transfer_clear_buffer(transfer);
 
 send:
-	g_dbus_send_message(pbap->conn, reply);
+	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
 complete:
@@ -986,33 +992,77 @@ static void pbap_free(void *data)
 	struct pbap_data *pbap = data;
 
 	obc_session_unref(pbap->session);
-	dbus_connection_unref(pbap->conn);
 	g_free(pbap);
 }
 
-gboolean pbap_register_interface(DBusConnection *connection, const char *path,
-							void *user_data)
+static int pbap_probe(struct obc_session *session)
 {
-	struct obc_session *session = user_data;
 	struct pbap_data *pbap;
+	const char *path;
+
+	path = obc_session_get_path(session);
+
+	DBG("%s", path);
 
 	pbap = g_try_new0(struct pbap_data, 1);
 	if (!pbap)
-		return FALSE;
+		return -ENOMEM;
 
 	pbap->session = obc_session_ref(session);
-	pbap->conn = dbus_connection_ref(connection);
 
-	if (g_dbus_register_interface(connection, path, PBAP_INTERFACE,
-			pbap_methods, NULL, NULL, pbap, pbap_free) == FALSE) {
+	if (!g_dbus_register_interface(conn, path, PBAP_INTERFACE, pbap_methods,
+						NULL, NULL, pbap, pbap_free)) {
 		pbap_free(pbap);
-		return FALSE;
+		return -ENOMEM;
 	}
 
-	return TRUE;
+	return 0;
 }
 
-void pbap_unregister_interface(DBusConnection *connection, const char *path)
+static void pbap_remove(struct obc_session *session)
 {
-	g_dbus_unregister_interface(connection, path, PBAP_INTERFACE);
+	const char *path = obc_session_get_path(session);
+
+	DBG("%s", path);
+
+	g_dbus_unregister_interface(conn, path, PBAP_INTERFACE);
+}
+
+static struct obc_driver pbap = {
+	.service = "PBAP",
+	.uuid = PBAP_UUID,
+	.target = OBEX_PBAP_UUID,
+	.target_len = OBEX_PBAP_UUID_LEN,
+	.probe = pbap_probe,
+	.remove = pbap_remove
+};
+
+int pbap_init(void)
+{
+	int err;
+
+	DBG("");
+
+	conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	if (!conn)
+		return -EIO;
+
+	err = obc_driver_register(&pbap);
+	if (err < 0) {
+		dbus_connection_unref(conn);
+		conn = NULL;
+		return err;
+	}
+
+	return 0;
+}
+
+void pbap_exit(void)
+{
+	DBG("");
+
+	dbus_connection_unref(conn);
+	conn = NULL;
+
+	obc_driver_unregister(&pbap);
 }
