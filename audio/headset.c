@@ -167,6 +167,7 @@ struct headset {
 
 	gboolean hfp_active;
 	gboolean search_hfp;
+	gboolean rfcomm_initiator;
 
 	headset_state_t state;
 	struct pending_connect *pending;
@@ -1633,6 +1634,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	}
 
 	hs->hfp_active = hs->hfp_handle != 0 ? TRUE : FALSE;
+	hs->rfcomm_initiator = FALSE;
 
 	headset_set_state(dev, HEADSET_STATE_CONNECTING);
 
@@ -2440,6 +2442,21 @@ void set_hfp_active(struct audio_device *dev, gboolean active)
 	struct headset *hs = dev->headset;
 
 	hs->hfp_active = active;
+}
+
+gboolean headset_get_rfcomm_initiator(struct audio_device *dev)
+{
+	struct headset *hs = dev->headset;
+
+	return hs->rfcomm_initiator;
+}
+
+void headset_set_rfcomm_initiator(struct audio_device *dev,
+					gboolean initiator)
+{
+	struct headset *hs = dev->headset;
+
+	hs->rfcomm_initiator = initiator;
 }
 
 GIOChannel *headset_get_rfcomm(struct audio_device *dev)

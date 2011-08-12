@@ -61,6 +61,7 @@
 
 #define CONTROL_CONNECT_TIMEOUT 2
 #define AVDTP_CONNECT_TIMEOUT 1
+#define AVDTP_CONNECT_TIMEOUT_BOOST 1
 #define HEADSET_CONNECT_TIMEOUT 1
 
 typedef enum {
@@ -305,6 +306,7 @@ static gboolean avdtp_connect_timeout(gpointer user_data)
 static gboolean device_set_avdtp_timer(struct audio_device *dev)
 {
 	struct dev_priv *priv = dev->priv;
+	guint timeout = AVDTP_CONNECT_TIMEOUT;
 
 	if (!dev->sink)
 		return FALSE;
@@ -312,7 +314,12 @@ static gboolean device_set_avdtp_timer(struct audio_device *dev)
 	if (priv->avdtp_timer)
 		return FALSE;
 
-	priv->avdtp_timer = g_timeout_add_seconds(AVDTP_CONNECT_TIMEOUT,
+	/* If the headset is the HSP/HFP RFCOMM initiator, give the headset
+	 * time to initiate AVDTP signalling (and avoid further racing) */
+	if (dev->headset && headset_get_rfcomm_initiator(dev))
+		timeout += AVDTP_CONNECT_TIMEOUT_BOOST;
+
+	priv->avdtp_timer = g_timeout_add_seconds(timeout,
 							avdtp_connect_timeout,
 							dev);
 

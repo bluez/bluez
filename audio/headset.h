@@ -82,6 +82,10 @@ gboolean headset_cancel_stream(struct audio_device *dev, unsigned int id);
 gboolean get_hfp_active(struct audio_device *dev);
 void set_hfp_active(struct audio_device *dev, gboolean active);
 
+gboolean headset_get_rfcomm_initiator(struct audio_device *dev);
+void headset_set_rfcomm_initiator(struct audio_device *dev,
+							gboolean initiator);
+
 void headset_set_authorized(struct audio_device *dev);
 int headset_connect_rfcomm(struct audio_device *dev, GIOChannel *chan);
 int headset_connect_sco(struct audio_device *dev, GIOChannel *io);
