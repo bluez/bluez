@@ -266,7 +266,7 @@ static gboolean async_get_folder_listing(void *s) {
 				folder_count++, dir = g_slist_next(dir)) {
 		struct message_folder *dir_data = dir->data;
 
-		if (count == FALSE && session->offset < folder_count)
+		if (count == FALSE && session->offset <= folder_count)
 			session->folder_list_cb(session, -EAGAIN, 0,
 					dir_data->name, session->user_data);
 	}
