@@ -63,7 +63,7 @@
 static guint64 counter = 0;
 
 struct callback_data {
-	struct session_data *session;
+	struct obc_session *session;
 	sdp_session_t *sdp;
 	session_callback_t func;
 	void *data;
@@ -76,8 +76,8 @@ struct session_callback {
 
 struct pending_data {
 	session_callback_t cb;
-	struct session_data *session;
-	struct transfer_data *transfer;
+	struct obc_session *session;
+	struct obc_transfer *transfer;
 };
 
 struct pending_req {
@@ -85,19 +85,19 @@ struct pending_req {
 	void *user_data;
 };
 
-struct session_data {
+struct obc_session {
 	gint refcount;
 	bdaddr_t src;
 	bdaddr_t dst;
 	uint8_t channel;
-	struct driver_data *driver;
+	struct obc_driver *driver;
 	gchar *path;		/* Session path */
 	DBusConnection *conn;
 	DBusConnection *conn_system; /* system bus connection */
 	DBusMessage *msg;
 	GwObex *obex;
 	GIOChannel *io;
-	struct agent_data *agent;
+	struct obc_agent *agent;
 	struct session_callback *callback;
 	gchar *owner;		/* Session owner */
 	guint watch;
@@ -109,10 +109,10 @@ struct session_data {
 
 static GSList *sessions = NULL;
 
-static void session_prepare_put(struct session_data *session, GError *err,
+static void session_prepare_put(struct obc_session *session, GError *err,
 								void *data);
-static void session_terminate_transfer(struct session_data *session,
-					struct transfer_data *transfer,
+static void session_terminate_transfer(struct obc_session *session,
+					struct obc_transfer *transfer,
 					GError *gerr);
 
 static GQuark obex_io_error_quark(void)
@@ -120,7 +120,7 @@ static GQuark obex_io_error_quark(void)
 	return g_quark_from_static_string("obex-io-error-quark");
 }
 
-struct session_data *session_ref(struct session_data *session)
+struct obc_session *obc_session_ref(struct obc_session *session)
 {
 	g_atomic_int_inc(&session->refcount);
 
@@ -129,7 +129,7 @@ struct session_data *session_ref(struct session_data *session)
 	return session;
 }
 
-static void session_unregistered(struct session_data *session)
+static void session_unregistered(struct obc_session *session)
 {
 	char *path;
 
@@ -147,7 +147,7 @@ static void session_unregistered(struct session_data *session)
 }
 
 static struct pending_req *find_session_request(
-				const struct session_data *session,
+				const struct obc_session *session,
 				const DBusPendingCall *call)
 {
 	GSList *l;
@@ -171,7 +171,7 @@ static void pending_req_finalize(struct pending_req *req)
 	g_free(req);
 }
 
-static void session_free(struct session_data *session)
+static void session_free(struct obc_session *session)
 {
 	GSList *l = session->pending_calls;
 
@@ -186,8 +186,8 @@ static void session_free(struct session_data *session)
 	}
 
 	if (session->agent) {
-		agent_release(session->agent);
-		agent_free(session->agent);
+		obc_agent_release(session->agent);
+		obc_agent_free(session->agent);
 	}
 
 	if (session->watch)
@@ -268,7 +268,7 @@ static struct pending_req *send_method_call(DBusConnection *connection,
 	return req;
 }
 
-void session_unref(struct session_data *session)
+void obc_session_unref(struct obc_session *session)
 {
 	gboolean ret;
 
@@ -290,8 +290,8 @@ void session_unref(struct session_data *session)
 static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
-	struct session_data *session = callback->session;
-	struct driver_data *driver = session->driver;
+	struct obc_session *session = callback->session;
+	struct obc_driver *driver = session->driver;
 	GwObex *obex;
 	int fd;
 
@@ -319,7 +319,7 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 done:
 	callback->func(callback->session, err, callback->data);
 
-	session_unref(callback->session);
+	obc_session_unref(callback->session);
 
 	g_free(callback);
 }
@@ -351,7 +351,7 @@ static void search_callback(uint8_t type, uint16_t status,
 			uint8_t *rsp, size_t size, void *user_data)
 {
 	struct callback_data *callback = user_data;
-	struct session_data *session = callback->session;
+	struct obc_session *session = callback->session;
 	unsigned int scanned, bytesleft = size;
 	int seqlen = 0;
 	uint8_t dataType, channel = 0;
@@ -426,7 +426,7 @@ failed:
 	callback->func(session, gerr, callback->data);
 	g_clear_error(&gerr);
 
-	session_unref(callback->session);
+	obc_session_unref(callback->session);
 	g_free(callback);
 }
 
@@ -479,7 +479,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct callback_data *callback = user_data;
-	struct session_data *session = callback->session;
+	struct obc_session *session = callback->session;
 	sdp_list_t *search, *attrid;
 	uint32_t range = 0x0000ffff;
 	GError *gerr = NULL;
@@ -522,7 +522,7 @@ failed:
 	callback->func(callback->session, gerr, callback->data);
 	g_clear_error(&gerr);
 
-	session_unref(callback->session);
+	obc_session_unref(callback->session);
 	g_free(callback);
 	return FALSE;
 }
@@ -558,7 +558,7 @@ static gboolean connection_complete(gpointer data)
 
 	cb->func(cb->session, 0, cb->data);
 
-	session_unref(cb->session);
+	obc_session_unref(cb->session);
 
 	g_free(cb);
 
@@ -567,14 +567,14 @@ static gboolean connection_complete(gpointer data)
 
 static void owner_disconnected(DBusConnection *connection, void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 
 	DBG("");
 
-	session_shutdown(session);
+	obc_session_shutdown(session);
 }
 
-int session_set_owner(struct session_data *session, const char *name,
+int obc_session_set_owner(struct obc_session *session, const char *name,
 			GDBusWatchFunction func)
 {
 	if (session == NULL)
@@ -593,7 +593,7 @@ int session_set_owner(struct session_data *session, const char *name,
 	return 0;
 }
 
-static struct session_data *session_find(const char *source,
+static struct obc_session *session_find(const char *source,
 						const char *destination,
 						const char *service,
 						uint8_t channel,
@@ -602,7 +602,7 @@ static struct session_data *session_find(const char *source,
 	GSList *l;
 
 	for (l = sessions; l; l = l->next) {
-		struct session_data *session = l->data;
+		struct obc_session *session = l->data;
 		bdaddr_t adr;
 
 		if (source) {
@@ -630,7 +630,7 @@ static struct session_data *session_find(const char *source,
 	return NULL;
 }
 
-static int session_connect(struct session_data *session,
+static int session_connect(struct obc_session *session,
 						struct callback_data *callback)
 {
 	int err;
@@ -658,7 +658,7 @@ static void adapter_reply(DBusPendingCall *call, void *user_data)
 	DBusError err;
 	DBusMessage *reply;
 	struct callback_data *callback = user_data;
-	struct session_data *session = callback->session;
+	struct obc_session *session = callback->session;
 	struct pending_req *req = find_session_request(session, call);
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -681,7 +681,7 @@ static void adapter_reply(DBusPendingCall *call, void *user_data)
 	goto proceed;
 
 failed:
-	session_unref(session);
+	obc_session_unref(session);
 	g_free(callback);
 
 proceed:
@@ -694,7 +694,7 @@ static void manager_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	char *adapter;
 	struct callback_data *callback = user_data;
-	struct session_data *session = callback->session;
+	struct obc_session *session = callback->session;
 	struct pending_req *req = find_session_request(session, call);
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -733,14 +733,14 @@ static void manager_reply(DBusPendingCall *call, void *user_data)
 	goto proceed;
 
 failed:
-	session_unref(session);
+	obc_session_unref(session);
 	g_free(callback);
 
 proceed:
 	dbus_message_unref(reply);
 }
 
-struct session_data *session_create(const char *source,
+struct obc_session *obc_session_create(const char *source,
 						const char *destination,
 						const char *service,
 						uint8_t channel,
@@ -748,21 +748,21 @@ struct session_data *session_create(const char *source,
 						session_callback_t function,
 						void *user_data)
 {
-	struct session_data *session;
+	struct obc_session *session;
 	struct callback_data *callback;
 	struct pending_req *req;
-	struct driver_data *driver;
+	struct obc_driver *driver;
 
 	if (destination == NULL)
 		return NULL;
 
 	session = session_find(source, destination, service, channel, owner);
 	if (session) {
-		session_ref(session);
+		obc_session_ref(session);
 		goto proceed;
 	}
 
-	driver = driver_find(service);
+	driver = obc_driver_find(service);
 	if (!driver)
 		return NULL;
 
@@ -798,11 +798,11 @@ struct session_data *session_create(const char *source,
 proceed:
 	callback = g_try_malloc0(sizeof(*callback));
 	if (callback == NULL) {
-		session_unref(session);
+		obc_session_unref(session);
 		return NULL;
 	}
 
-	callback->session = session_ref(session);
+	callback->session = obc_session_ref(session);
 	callback->func = function;
 	callback->data = user_data;
 
@@ -822,7 +822,7 @@ proceed:
 	}
 
 	if (!req) {
-		session_unref(session);
+		obc_session_unref(session);
 		g_free(callback);
 		return NULL;
 	}
@@ -830,19 +830,20 @@ proceed:
 	session->pending_calls = g_slist_prepend(session->pending_calls, req);
 
 	if (owner)
-		session_set_owner(session, owner, owner_disconnected);
+		obc_session_set_owner(session, owner, owner_disconnected);
 
 	return session;
 }
 
-void session_shutdown(struct session_data *session)
+void obc_session_shutdown(struct obc_session *session)
 {
 	DBG("%p", session);
 
-	session_ref(session);
+	obc_session_ref(session);
 
 	/* Unregister any pending transfer */
-	g_slist_foreach(session->pending, (GFunc) transfer_unregister, NULL);
+	g_slist_foreach(session->pending, (GFunc) obc_transfer_unregister,
+									NULL);
 
 	/* Unregister interfaces */
 	if (session->path)
@@ -854,13 +855,13 @@ void session_shutdown(struct session_data *session)
 		shutdown(fd, SHUT_RDWR);
 	}
 
-	session_unref(session);
+	obc_session_unref(session);
 }
 
 static DBusMessage *assign_agent(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	const gchar *sender, *path;
 
 	if (dbus_message_get_args(message, NULL,
@@ -872,7 +873,7 @@ static DBusMessage *assign_agent(DBusConnection *connection,
 
 	sender = dbus_message_get_sender(message);
 
-	if (session_set_agent(session, sender, path) < 0)
+	if (obc_session_set_agent(session, sender, path) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.AlreadyExists",
 				"Already exists");
@@ -883,8 +884,8 @@ static DBusMessage *assign_agent(DBusConnection *connection,
 static DBusMessage *release_agent(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	struct session_data *session = user_data;
-	struct agent_data *agent = session->agent;
+	struct obc_session *session = user_data;
+	struct obc_agent *agent = session->agent;
 	const gchar *sender;
 	gchar *path;
 
@@ -897,14 +898,16 @@ static DBusMessage *release_agent(DBusConnection *connection,
 
 	sender = dbus_message_get_sender(message);
 
-	if (agent == NULL ||
-			g_str_equal(sender, agent_get_name(agent)) == FALSE ||
-			g_str_equal(path, agent_get_path(agent)) == FALSE)
+	if (agent == NULL)
+		return dbus_message_new_method_return(message);
+
+	if (g_str_equal(sender, obc_agent_get_name(agent)) == FALSE ||
+			g_str_equal(path, obc_agent_get_path(agent)) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
 
-	agent_free(agent);
+	obc_agent_free(agent);
 
 	return dbus_message_new_method_return(message);
 }
@@ -946,7 +949,7 @@ static void append_entry(DBusMessageIter *dict,
 static DBusMessage *session_get_properties(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter, dict;
 	char addr[18];
@@ -986,7 +989,7 @@ static GDBusMethodTable session_methods[] = {
 static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 {
 	struct pending_data *pending = user_data;
-	struct session_data *session = pending->session;
+	struct obc_session *session = pending->session;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const char *name;
 	DBusError derr;
@@ -1015,7 +1018,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 	DBG("Agent.Request() reply: %s", name);
 
 	if (strlen(name))
-		transfer_set_name(pending->transfer, name);
+		obc_transfer_set_name(pending->transfer, name);
 
 	pending->cb(session, NULL, pending->transfer);
 	dbus_message_unref(reply);
@@ -1026,7 +1029,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 static gboolean session_request_proceed(gpointer data)
 {
 	struct pending_data *pending = data;
-	struct transfer_data *transfer = pending->transfer;
+	struct obc_transfer *transfer = pending->transfer;
 
 	pending->cb(pending->session, NULL, transfer);
 	g_free(pending);
@@ -1034,10 +1037,10 @@ static gboolean session_request_proceed(gpointer data)
 	return FALSE;
 }
 
-static int session_request(struct session_data *session, session_callback_t cb,
-				struct transfer_data *transfer)
+static int session_request(struct obc_session *session, session_callback_t cb,
+				struct obc_transfer *transfer)
 {
-	struct agent_data *agent = session->agent;
+	struct obc_agent *agent = session->agent;
 	struct pending_data *pending;
 	const char *path;
 	int err;
@@ -1047,14 +1050,14 @@ static int session_request(struct session_data *session, session_callback_t cb,
 	pending->session = session;
 	pending->transfer = transfer;
 
-	path = transfer_get_path(transfer);
+	path = obc_transfer_get_path(transfer);
 
 	if (agent == NULL || path == NULL) {
 		g_idle_add(session_request_proceed, pending);
 		return 0;
 	}
 
-	err = agent_request(agent, path, session_request_reply, pending,
+	err = obc_agent_request(agent, path, session_request_reply, pending,
 								g_free);
 	if (err < 0) {
 		g_free(pending);
@@ -1064,8 +1067,8 @@ static int session_request(struct session_data *session, session_callback_t cb,
 	return 0;
 }
 
-static void session_terminate_transfer(struct session_data *session,
-					struct transfer_data *transfer,
+static void session_terminate_transfer(struct obc_session *session,
+					struct obc_transfer *transfer,
 					GError *gerr)
 {
 	struct session_callback *callback = session->callback;
@@ -1075,29 +1078,29 @@ static void session_terminate_transfer(struct session_data *session,
 		return;
 	}
 
-	session_ref(session);
+	obc_session_ref(session);
 
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 
 	if (session->pending)
 		session_request(session, session_prepare_put,
 				session->pending->data);
 
-	session_unref(session);
+	obc_session_unref(session);
 }
 
-static void session_notify_complete(struct session_data *session,
-				struct transfer_data *transfer)
+static void session_notify_complete(struct obc_session *session,
+				struct obc_transfer *transfer)
 {
-	struct agent_data *agent = session->agent;
+	struct obc_agent *agent = session->agent;
 	const char *path;
 
-	path = transfer_get_path(transfer);
+	path = obc_transfer_get_path(transfer);
 
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	agent_notify_complete(agent, path);
+	obc_agent_notify_complete(agent, path);
 
 done:
 
@@ -1106,18 +1109,18 @@ done:
 	session_terminate_transfer(session, transfer, NULL);
 }
 
-static void session_notify_error(struct session_data *session,
-				struct transfer_data *transfer,
+static void session_notify_error(struct obc_session *session,
+				struct obc_transfer *transfer,
 				GError *err)
 {
-	struct agent_data *agent = session->agent;
+	struct obc_agent *agent = session->agent;
 	const char *path;
 
-	path = transfer_get_path(transfer);
+	path = obc_transfer_get_path(transfer);
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	agent_notify_error(agent, path, err->message);
+	obc_agent_notify_error(agent, path, err->message);
 
 done:
 	error("Transfer(%p) Error: %s", transfer, err->message);
@@ -1125,31 +1128,31 @@ done:
 	session_terminate_transfer(session, transfer, err);
 }
 
-static void session_notify_progress(struct session_data *session,
-					struct transfer_data *transfer,
+static void session_notify_progress(struct obc_session *session,
+					struct obc_transfer *transfer,
 					gint64 transferred)
 {
-	struct agent_data *agent = session->agent;
+	struct obc_agent *agent = session->agent;
 	const char *path;
 
-	path = transfer_get_path(transfer);
+	path = obc_transfer_get_path(transfer);
 	if (agent == NULL || path == NULL)
 		goto done;
 
-	agent_notify_progress(agent, path, transferred);
+	obc_agent_notify_progress(agent, path, transferred);
 
 done:
 	DBG("Transfer(%p) progress: %ld bytes", transfer,
 			(long int ) transferred);
 
-	if (transferred == transfer_get_size(transfer))
+	if (transferred == obc_transfer_get_size(transfer))
 		session_notify_complete(session, transfer);
 }
 
-static void transfer_progress(struct transfer_data *transfer, gint64 transferred,
+static void transfer_progress(struct obc_transfer *transfer, gint64 transferred,
 				int err, void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	GError *gerr = NULL;
 
 	if (err != 0)
@@ -1166,13 +1169,13 @@ fail:
 	g_clear_error(&gerr);
 }
 
-static void session_prepare_get(struct session_data *session,
+static void session_prepare_get(struct obc_session *session,
 				GError *err, void *data)
 {
-	struct transfer_data *transfer = data;
+	struct obc_transfer *transfer = data;
 	int ret;
 
-	ret = transfer_get(transfer, transfer_progress, session);
+	ret = obc_transfer_get(transfer, transfer_progress, session);
 	if (ret < 0) {
 		GError *gerr = NULL;
 
@@ -1185,27 +1188,27 @@ static void session_prepare_get(struct session_data *session,
 	DBG("Transfer(%p) started", transfer);
 }
 
-int session_get(struct session_data *session, const char *type,
+int obc_session_get(struct obc_session *session, const char *type,
 		const char *filename, const char *targetname,
 		const guint8 *apparam, gint apparam_size,
 		session_callback_t func, void *user_data)
 {
-	struct transfer_data *transfer;
-	struct transfer_params *params = NULL;
+	struct obc_transfer *transfer;
+	struct obc_transfer_params *params = NULL;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
 	if (apparam != NULL) {
-		params = g_new0(struct transfer_params, 1);
+		params = g_new0(struct obc_transfer_params, 1);
 		params->data = g_new(guint8, apparam_size);
 		memcpy(params->data, apparam, apparam_size);
 		params->size = apparam_size;
 	}
 
-	transfer = transfer_register(session->conn, filename, targetname, type,
-					params, session);
+	transfer = obc_transfer_register(session->conn, filename, targetname,
+							type, params, session);
 	if (transfer == NULL) {
 		if (params != NULL) {
 			g_free(params->data);
@@ -1229,17 +1232,17 @@ int session_get(struct session_data *session, const char *type,
 	return 0;
 }
 
-int session_send(struct session_data *session, const char *filename,
+int obc_session_send(struct obc_session *session, const char *filename,
 				const char *targetname)
 {
-	struct transfer_data *transfer;
+	struct obc_transfer *transfer;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = transfer_register(session->conn, filename, targetname, NULL,
-					NULL, session);
+	transfer = obc_transfer_register(session->conn, filename, targetname,
+							NULL, NULL, session);
 	if (transfer == NULL)
 		return -EINVAL;
 
@@ -1254,23 +1257,23 @@ int session_send(struct session_data *session, const char *filename,
 	return 0;
 
 fail:
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 
 	return err;
 }
 
-int session_pull(struct session_data *session,
+int obc_session_pull(struct obc_session *session,
 				const char *type, const char *filename,
 				session_callback_t function, void *user_data)
 {
-	struct transfer_data *transfer;
+	struct obc_transfer *transfer;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = transfer_register(session->conn, NULL, filename, type, NULL,
-								session);
+	transfer = obc_transfer_register(session->conn, NULL, filename, type,
+								NULL, session);
 	if (transfer == NULL) {
 		return -EIO;
 	}
@@ -1287,11 +1290,11 @@ int session_pull(struct session_data *session,
 	if (err == 0)
 		return 0;
 
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 	return err;
 }
 
-const char *session_register(struct session_data *session,
+const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy)
 {
 	if (session->path)
@@ -1321,13 +1324,13 @@ fail:
 	return NULL;
 }
 
-static void session_prepare_put(struct session_data *session,
+static void session_prepare_put(struct obc_session *session,
 				GError *err, void *data)
 {
-	struct transfer_data *transfer = data;
+	struct obc_transfer *transfer = data;
 	int ret;
 
-	ret = transfer_put(transfer, transfer_progress, session);
+	ret = obc_transfer_put(transfer, transfer_progress, session);
 	if (ret < 0) {
 		GError *gerr = NULL;
 
@@ -1341,9 +1344,9 @@ static void session_prepare_put(struct session_data *session,
 	DBG("Transfer(%p) started", transfer);
 }
 
-int session_put(struct session_data *session, char *buf, const char *targetname)
+int obc_session_put(struct obc_session *session, char *buf, const char *targetname)
 {
-	struct transfer_data *transfer;
+	struct obc_transfer *transfer;
 	int err;
 
 	if (session->obex == NULL)
@@ -1352,12 +1355,12 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 	if (session->pending != NULL)
 		return -EISCONN;
 
-	transfer = transfer_register(session->conn, NULL, targetname, NULL,
+	transfer = obc_transfer_register(session->conn, NULL, targetname, NULL,
 								NULL, session);
 	if (transfer == NULL)
 		return -EIO;
 
-	transfer_set_buffer(transfer, buf);
+	obc_transfer_set_buffer(transfer, buf);
 
 	err = session_request(session, session_prepare_put, transfer);
 	if (err < 0)
@@ -1368,15 +1371,15 @@ int session_put(struct session_data *session, char *buf, const char *targetname)
 
 static void agent_destroy(gpointer data, gpointer user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 
 	session->agent = NULL;
 }
 
-int session_set_agent(struct session_data *session, const char *name,
+int obc_session_set_agent(struct obc_session *session, const char *name,
 							const char *path)
 {
-	struct agent_data *agent;
+	struct obc_agent *agent;
 
 	if (session == NULL)
 		return -EINVAL;
@@ -1384,20 +1387,20 @@ int session_set_agent(struct session_data *session, const char *name,
 	if (session->agent)
 		return -EALREADY;
 
-	agent = agent_create(session->conn, name, path, agent_destroy,
+	agent = obc_agent_create(session->conn, name, path, agent_destroy,
 								session);
 
 	if (session->watch == 0)
-		session_set_owner(session, name, owner_disconnected);
+		obc_session_set_owner(session, name, owner_disconnected);
 
 	session->agent = agent;
 
 	return 0;
 }
 
-const char *session_get_agent(struct session_data *session)
+const char *obc_session_get_agent(struct obc_session *session)
 {
-	struct agent_data *agent;
+	struct obc_agent *agent;
 
 	if (session == NULL)
 		return NULL;
@@ -1406,10 +1409,10 @@ const char *session_get_agent(struct session_data *session)
 	if (agent == NULL)
 		return NULL;
 
-	return agent_get_name(session->agent);
+	return obc_agent_get_name(session->agent);
 }
 
-const char *session_get_owner(struct session_data *session)
+const char *obc_session_get_owner(struct obc_session *session)
 {
 	if (session == NULL)
 		return NULL;
@@ -1417,34 +1420,34 @@ const char *session_get_owner(struct session_data *session)
 	return session->owner;
 }
 
-const char *session_get_path(struct session_data *session)
+const char *obc_session_get_path(struct obc_session *session)
 {
 	return session->path;
 }
 
-const char *session_get_target(struct session_data *session)
+const char *obc_session_get_target(struct obc_session *session)
 {
 	return session->driver->target;
 }
 
-GwObex *session_get_obex(struct session_data *session)
+GwObex *obc_session_get_obex(struct obc_session *session)
 {
 	return session->obex;
 }
 
-struct transfer_data *session_get_transfer(struct session_data *session)
+struct obc_transfer *obc_session_get_transfer(struct obc_session *session)
 {
 	return session->pending ? session->pending->data : NULL;
 }
 
-void session_add_transfer(struct session_data *session,
-					struct transfer_data *transfer)
+void obc_session_add_transfer(struct obc_session *session,
+					struct obc_transfer *transfer)
 {
 	session->pending = g_slist_append(session->pending, transfer);
 }
 
-void session_remove_transfer(struct session_data *session,
-					struct transfer_data *transfer)
+void obc_session_remove_transfer(struct obc_session *session,
+					struct obc_transfer *transfer)
 {
 	session->pending = g_slist_remove(session->pending, transfer);
 }

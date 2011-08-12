@@ -37,7 +37,7 @@
 #define ERROR_INF SYNC_INTERFACE ".Error"
 
 struct sync_data {
-	struct session_data *session;
+	struct obc_session *session;
 	char *phonebook_path;
 	DBusConnection *conn;
 	DBusMessage *msg;
@@ -73,10 +73,10 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
-static void sync_getphonebook_callback(struct session_data *session,
+static void sync_getphonebook_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct sync_data *sync = user_data;
 	DBusMessage *reply;
 	const char *buf;
@@ -84,7 +84,7 @@ static void sync_getphonebook_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(sync->msg);
 
-	buf = transfer_get_buffer(transfer, &size);
+	buf = obc_transfer_get_buffer(transfer, &size);
 	if (size == 0)
 		buf = "";
 
@@ -110,7 +110,7 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 	if (!sync->phonebook_path)
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
-	if (session_get(sync->session, "phonebook", sync->phonebook_path, NULL,
+	if (obc_session_get(sync->session, "phonebook", sync->phonebook_path, NULL,
 				NULL, 0, sync_getphonebook_callback, sync) < 0)
 		return g_dbus_create_error(message,
 			ERROR_INF ".Failed", "Failed");
@@ -139,7 +139,7 @@ static DBusMessage *sync_putphonebook(DBusConnection *connection,
 
 	buffer = g_strdup(buf);
 
-	if (session_put(sync->session, buffer, sync->phonebook_path) < 0)
+	if (obc_session_put(sync->session, buffer, sync->phonebook_path) < 0)
 		return g_dbus_create_error(message,
 				ERROR_INF ".Failed", "Failed");
 
@@ -159,7 +159,7 @@ static void sync_free(void *data)
 {
 	struct sync_data *sync = data;
 
-	session_unref(sync->session);
+	obc_session_unref(sync->session);
 	dbus_connection_unref(sync->conn);
 	g_free(sync->phonebook_path);
 	g_free(sync);
@@ -168,14 +168,14 @@ static void sync_free(void *data)
 gboolean sync_register_interface(DBusConnection *connection, const char *path,
 							void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	struct sync_data *sync;
 
 	sync = g_try_new0(struct sync_data, 1);
 	if (!sync)
 		return FALSE;
 
-	sync->session = session_ref(session);
+	sync->session = obc_session_ref(session);
 	sync->conn = dbus_connection_ref(connection);
 
 	if (g_dbus_register_interface(connection, path, SYNC_INTERFACE,

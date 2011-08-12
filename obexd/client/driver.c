@@ -35,12 +35,12 @@
 
 static GSList *drivers = NULL;
 
-struct driver_data *driver_find(const char *pattern)
+struct obc_driver *obc_driver_find(const char *pattern)
 {
 	GSList *l;
 
 	for (l = drivers; l; l = l->next) {
-		struct driver_data *driver = l->data;
+		struct obc_driver *driver = l->data;
 
 		if (strcasecmp(pattern, driver->service) == 0)
 			return driver;
@@ -52,14 +52,14 @@ struct driver_data *driver_find(const char *pattern)
 	return NULL;
 }
 
-int driver_register(struct driver_data *driver)
+int obc_driver_register(struct obc_driver *driver)
 {
 	if (!driver) {
 		error("Invalid driver");
 		return -EINVAL;
 	}
 
-	if (driver_find(driver->service)) {
+	if (obc_driver_find(driver->service)) {
 		error("Permission denied: service %s already registered",
 			driver->service);
 		return -EPERM;
@@ -72,7 +72,7 @@ int driver_register(struct driver_data *driver)
 	return 0;
 }
 
-void driver_unregister(struct driver_data *driver)
+void obc_driver_unregister(struct obc_driver *driver)
 {
 	if (!g_slist_find(drivers, driver)) {
 		error("Unable to unregister: No such driver %p", driver);

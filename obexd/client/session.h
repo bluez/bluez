@@ -25,12 +25,12 @@
 #include <gdbus.h>
 #include <gw-obex.h>
 
-struct session_data;
+struct obc_session;
 
-typedef void (*session_callback_t) (struct session_data *session,
+typedef void (*session_callback_t) (struct obc_session *session,
 					GError *err, void *user_data);
 
-struct session_data *session_create(const char *source,
+struct obc_session *obc_session_create(const char *source,
 						const char *destination,
 						const char *service,
 						uint8_t channel,
@@ -38,38 +38,38 @@ struct session_data *session_create(const char *source,
 						session_callback_t function,
 						void *user_data);
 
-struct session_data *session_ref(struct session_data *session);
-void session_unref(struct session_data *session);
-void session_shutdown(struct session_data *session);
+struct obc_session *obc_session_ref(struct obc_session *session);
+void obc_session_unref(struct obc_session *session);
+void obc_session_shutdown(struct obc_session *session);
 
-int session_set_owner(struct session_data *session, const char *name,
+int obc_session_set_owner(struct obc_session *session, const char *name,
 			GDBusWatchFunction func);
-const char *session_get_owner(struct session_data *session);
+const char *obc_session_get_owner(struct obc_session *session);
 
-int session_set_agent(struct session_data *session, const char *name,
+int obc_session_set_agent(struct obc_session *session, const char *name,
 							const char *path);
-const char *session_get_agent(struct session_data *session);
+const char *obc_session_get_agent(struct obc_session *session);
 
-const char *session_get_path(struct session_data *session);
-const char *session_get_target(struct session_data *session);
-GwObex *session_get_obex(struct session_data *session);
+const char *obc_session_get_path(struct obc_session *session);
+const char *obc_session_get_target(struct obc_session *session);
+GwObex *obc_session_get_obex(struct obc_session *session);
 
-struct transfer_data *session_get_transfer(struct session_data *session);
-void session_add_transfer(struct session_data *session,
-					struct transfer_data *transfer);
-void session_remove_transfer(struct session_data *session,
-					struct transfer_data *transfer);
+struct obc_transfer *obc_session_get_transfer(struct obc_session *session);
+void obc_session_add_transfer(struct obc_session *session,
+					struct obc_transfer *transfer);
+void obc_session_remove_transfer(struct obc_session *session,
+					struct obc_transfer *transfer);
 
-int session_send(struct session_data *session, const char *filename,
+int obc_session_send(struct obc_session *session, const char *filename,
 				const char *remotename);
-int session_get(struct session_data *session, const char *type,
+int obc_session_get(struct obc_session *session, const char *type,
 		const char *filename, const char *targetname,
 		const guint8  *apparam, gint apparam_size,
 		session_callback_t func, void *user_data);
-int session_pull(struct session_data *session,
+int obc_session_pull(struct obc_session *session,
 				const char *type, const char *filename,
 				session_callback_t function, void *user_data);
-const char *session_register(struct session_data *session,
+const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy);
-int session_put(struct session_data *session, char *buf,
+int obc_session_put(struct obc_session *session, char *buf,
 				const char *targetname);

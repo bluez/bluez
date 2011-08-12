@@ -39,7 +39,7 @@ struct pending_request {
 	DBusFreeFunction destroy;
 };
 
-struct agent_data {
+struct obc_agent {
 	DBusConnection *conn;
 	char *name;
 	char *path;
@@ -60,7 +60,7 @@ static void pending_request_free(struct pending_request *req)
 	g_free(req);
 }
 
-void agent_free(struct agent_data *agent)
+void obc_agent_free(struct obc_agent *agent)
 {
 	if (agent->watch)
 		g_dbus_remove_watch(agent->conn, agent->watch);
@@ -79,23 +79,23 @@ void agent_free(struct agent_data *agent)
 
 static void agent_disconnected(DBusConnection *connection, void *user_data)
 {
-	struct agent_data *agent = user_data;
+	struct obc_agent *agent = user_data;
 
 	agent->watch = 0;
 
 	if (agent->destroy)
 		agent->destroy(agent, agent->data);
 
-	agent_free(agent);
+	obc_agent_free(agent);
 }
 
-struct agent_data *agent_create(DBusConnection *conn, const char *name,
+struct obc_agent *obc_agent_create(DBusConnection *conn, const char *name,
 					const char *path, GFunc destroy,
 					void *user_data)
 {
-	struct agent_data *agent;
+	struct obc_agent *agent;
 
-	agent = g_new0(struct agent_data, 1);
+	agent = g_new0(struct obc_agent, 1);
 	agent->conn = dbus_connection_ref(conn);
 	agent->name = g_strdup(name);
 	agent->path = g_strdup(path);
@@ -111,7 +111,7 @@ struct agent_data *agent_create(DBusConnection *conn, const char *name,
 
 static void agent_request_reply(DBusPendingCall *call, void *user_data)
 {
-	struct agent_data *agent = user_data;
+	struct obc_agent *agent = user_data;
 	struct pending_request *req = agent->pending;
 
 	if (req->function)
@@ -121,7 +121,7 @@ static void agent_request_reply(DBusPendingCall *call, void *user_data)
 	agent->pending = NULL;
 }
 
-int agent_request(struct agent_data *agent, const char *path,
+int obc_agent_request(struct obc_agent *agent, const char *path,
 				DBusPendingCallNotifyFunction function,
 				void *user_data, DBusFreeFunction destroy)
 {
@@ -162,7 +162,7 @@ int agent_request(struct agent_data *agent, const char *path,
 	return 0;
 }
 
-void agent_notify_progress(struct agent_data *agent, const char *path,
+void obc_agent_notify_progress(struct obc_agent *agent, const char *path,
 							guint64 transferred)
 {
 	DBusMessage *message;
@@ -184,7 +184,7 @@ void agent_notify_progress(struct agent_data *agent, const char *path,
 	g_dbus_send_message(agent->conn, message);
 }
 
-void agent_notify_complete(struct agent_data *agent, const char *path)
+void obc_agent_notify_complete(struct obc_agent *agent, const char *path)
 {
 	DBusMessage *message;
 
@@ -204,7 +204,7 @@ void agent_notify_complete(struct agent_data *agent, const char *path)
 	g_dbus_send_message(agent->conn, message);
 }
 
-void agent_notify_error(struct agent_data *agent, const char *path,
+void obc_agent_notify_error(struct obc_agent *agent, const char *path,
 							const char *err)
 {
 	DBusMessage *message;
@@ -226,7 +226,7 @@ void agent_notify_error(struct agent_data *agent, const char *path,
 	g_dbus_send_message(agent->conn, message);
 }
 
-void agent_release(struct agent_data *agent)
+void obc_agent_release(struct obc_agent *agent)
 {
 	DBusMessage *message;
 
@@ -240,12 +240,12 @@ void agent_release(struct agent_data *agent)
 	g_dbus_send_message(agent->conn, message);
 }
 
-const char *agent_get_name(struct agent_data *agent)
+const char *obc_agent_get_name(struct obc_agent *agent)
 {
 	return agent->name;
 }
 
-const char *agent_get_path(struct agent_data *agent)
+const char *obc_agent_get_path(struct obc_agent *agent)
 {
 	return agent->path;
 }

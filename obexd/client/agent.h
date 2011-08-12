@@ -24,20 +24,20 @@
 
 #include <gdbus.h>
 
-struct agent_data;
+struct obc_agent;
 
-struct agent_data *agent_create(DBusConnection *conn, const char *name,
+struct obc_agent *obc_agent_create(DBusConnection *conn, const char *name,
 					const char *path, GFunc destroy,
 					void *user_data);
-void agent_free(struct agent_data *agent);
-const char *agent_get_name(struct agent_data *agent);
-const char *agent_get_path(struct agent_data *agent);
-int agent_request(struct agent_data *agent, const char *path,
+void obc_agent_free(struct obc_agent *agent);
+const char *obc_agent_get_name(struct obc_agent *agent);
+const char *obc_agent_get_path(struct obc_agent *agent);
+int obc_agent_request(struct obc_agent *agent, const char *path,
 				DBusPendingCallNotifyFunction function,
 				void *user_data, DBusFreeFunction destroy);
-void agent_notify_progress(struct agent_data *agent, const char *path,
+void obc_agent_notify_progress(struct obc_agent *agent, const char *path,
 							guint64 transferred);
-void agent_notify_complete(struct agent_data *agent, const char *path);
-void agent_notify_error(struct agent_data *agent, const char *path,
+void obc_agent_notify_complete(struct obc_agent *agent, const char *path);
+void obc_agent_notify_error(struct obc_agent *agent, const char *path,
 							const char *err);
-void agent_release(struct agent_data *agent);
+void obc_agent_release(struct obc_agent *agent);

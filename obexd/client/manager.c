@@ -55,25 +55,25 @@ struct send_data {
 
 static GSList *sessions = NULL;
 
-static void shutdown_session(struct session_data *session)
+static void shutdown_session(struct obc_session *session)
 {
 	sessions = g_slist_remove(sessions, session);
-	session_shutdown(session);
-	session_unref(session);
+	obc_session_shutdown(session);
+	obc_session_unref(session);
 }
 
 static void unregister_session(void *data)
 {
-	struct session_data *session = data;
+	struct obc_session *session = data;
 
 	if (g_slist_find(sessions, session) == NULL)
 		return;
 
 	sessions = g_slist_remove(sessions, session);
-	session_unref(session);
+	obc_session_unref(session);
 }
 
-static void create_callback(struct session_data *session, GError *err,
+static void create_callback(struct obc_session *session, GError *err,
 							void *user_data)
 {
 	struct send_data *data = user_data;
@@ -88,10 +88,10 @@ static void create_callback(struct session_data *session, GError *err,
 		goto done;
 	}
 
-	if (session_get_target(session) != NULL) {
+	if (obc_session_get_target(session) != NULL) {
 		const char *path;
 
-		path = session_register(session, unregister_session);
+		path = obc_session_register(session, unregister_session);
 
 		g_dbus_send_reply(data->connection, data->message,
 				DBUS_TYPE_OBJECT_PATH, &path,
@@ -101,13 +101,13 @@ static void create_callback(struct session_data *session, GError *err,
 
 	g_dbus_send_reply(data->connection, data->message, DBUS_TYPE_INVALID);
 
-	session_set_agent(session, data->sender, data->agent);
+	obc_session_set_agent(session, data->sender, data->agent);
 
 	for (i = 0; i < data->files->len; i++) {
 		const gchar *filename = g_ptr_array_index(data->files, i);
 		gchar *basename = g_path_get_basename(filename);
 
-		if (session_send(session, filename, basename) < 0) {
+		if (obc_session_send(session, filename, basename) < 0) {
 			g_free(basename);
 			break;
 		}
@@ -117,7 +117,7 @@ static void create_callback(struct session_data *session, GError *err,
 
 	/* No need to keep a reference for SendFiles */
 	sessions = g_slist_remove(sessions, session);
-	session_unref(session);
+	obc_session_unref(session);
 
 done:
 	if (data->files)
@@ -168,7 +168,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, array;
-	struct session_data *session;
+	struct obc_session *session;
 	GPtrArray *files;
 	struct send_data *data;
 	const char *agent, *source = NULL, *dest = NULL, *target = NULL;
@@ -224,7 +224,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	data->agent = g_strdup(agent);
 	data->files = files;
 
-	session = session_create(source, dest, "OPP", channel, sender,
+	session = obc_session_create(source, dest, "OPP", channel, sender,
 							create_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
@@ -241,7 +241,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
-static void pull_complete_callback(struct session_data *session,
+static void pull_complete_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
@@ -265,7 +265,7 @@ done:
 	g_free(data);
 }
 
-static void pull_session_callback(struct session_data *session,
+static void pull_obc_session_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
@@ -279,7 +279,7 @@ static void pull_session_callback(struct session_data *session,
 		goto done;
 	}
 
-	session_pull(session, "text/x-vcard", data->filename,
+	obc_session_pull(session, "text/x-vcard", data->filename,
 						pull_complete_callback, data);
 
 	return;
@@ -296,7 +296,7 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, dict;
-	struct session_data *session;
+	struct obc_session *session;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
 	const char *name = NULL;
@@ -328,8 +328,8 @@ static DBusMessage *pull_business_card(DBusConnection *connection,
 	data->sender = g_strdup(dbus_message_get_sender(message));
 	data->filename = g_strdup(name);
 
-	session = session_create(source, dest, "OPP", channel, data->sender,
-					pull_session_callback, data);
+	session = obc_session_create(source, dest, "OPP", channel, data->sender,
+					pull_obc_session_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
 		return NULL;
@@ -350,14 +350,14 @@ static DBusMessage *exchange_business_cards(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
-static struct session_data *find_session(const char *path)
+static struct obc_session *find_session(const char *path)
 {
 	GSList *l;
 
 	for (l = sessions; l; l = l->next) {
-		struct session_data *session = l->data;
+		struct obc_session *session = l->data;
 
-		if (g_str_equal(session_get_path(session), path) == TRUE)
+		if (g_str_equal(obc_session_get_path(session), path) == TRUE)
 			return session;
 	}
 
@@ -368,7 +368,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, dict;
-	struct session_data *session;
+	struct obc_session *session;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
 	uint8_t channel = 0;
@@ -390,7 +390,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 	data->message = dbus_message_ref(message);
 	data->sender = g_strdup(dbus_message_get_sender(message));
 
-	session = session_create(source, dest, target, channel, data->sender,
+	session = obc_session_create(source, dest, target, channel, data->sender,
 							create_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
@@ -408,7 +408,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 static DBusMessage *remove_session(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	struct session_data *session;
+	struct obc_session *session;
 	const gchar *sender, *path;
 
 	if (dbus_message_get_args(message, NULL,
@@ -423,7 +423,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 
 	sender = dbus_message_get_sender(message);
-	if (g_str_equal(sender, session_get_owner(session)) == FALSE)
+	if (g_str_equal(sender, obc_session_get_owner(session)) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
@@ -433,10 +433,10 @@ static DBusMessage *remove_session(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
-static void capabilities_complete_callback(struct session_data *session,
+static void capabilities_complete_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct send_data *data = user_data;
 	const char *capabilities;
 	int size;
@@ -449,7 +449,7 @@ static void capabilities_complete_callback(struct session_data *session,
 		goto done;
 	}
 
-	capabilities = transfer_get_buffer(transfer, &size);
+	capabilities = obc_transfer_get_buffer(transfer, &size);
 	if (size == 0)
 		capabilities = "";
 
@@ -466,7 +466,7 @@ done:
 	g_free(data);
 }
 
-static void capability_session_callback(struct session_data *session,
+static void capability_obc_session_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
@@ -480,7 +480,7 @@ static void capability_session_callback(struct session_data *session,
 		goto done;
 	}
 
-	session_pull(session, "x-obex/capability", NULL,
+	obc_session_pull(session, "x-obex/capability", NULL,
 				capabilities_complete_callback, data);
 
 	return;
@@ -496,7 +496,7 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, dict;
-	struct session_data *session;
+	struct obc_session *session;
 	struct send_data *data;
 	const char *source = NULL, *dest = NULL, *target = NULL;
 	uint8_t channel = 0;
@@ -521,8 +521,8 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	if (!target)
 		target = "OPP";
 
-	session = session_create(source, dest, target, channel, data->sender,
-					capability_session_callback, data);
+	session = obc_session_create(source, dest, target, channel, data->sender,
+					capability_obc_session_callback, data);
 	if (session != NULL) {
 		sessions = g_slist_append(sessions, session);
 		return NULL;

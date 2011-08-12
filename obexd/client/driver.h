@@ -21,15 +21,15 @@
  *
  */
 
-struct driver_data {
+struct obc_driver {
 	const char *service;
 	const char *uuid;
 	void *target;
 	int target_len;
-	int (*probe) (struct session_data *session);
-	void (*remove) (struct session_data *session);
+	int (*probe) (struct obc_session *session);
+	void (*remove) (struct obc_session *session);
 };
 
-int driver_register(struct driver_data *driver);
-void driver_unregister(struct driver_data *driver);
-struct driver_data *driver_find(const char *pattern);
+int obc_driver_register(struct obc_driver *driver);
+void obc_driver_unregister(struct obc_driver *driver);
+struct obc_driver *obc_driver_find(const char *pattern);

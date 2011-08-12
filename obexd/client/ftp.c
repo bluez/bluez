@@ -34,7 +34,7 @@
 #define FTP_INTERFACE  "org.openobex.FileTransfer"
 
 struct ftp_data {
-	struct session_data *session;
+	struct obc_session *session;
 	DBusConnection *conn;
 	DBusMessage *msg;
 };
@@ -43,8 +43,8 @@ static DBusMessage *change_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
-	GwObex *obex = session_get_obex(session);
+	struct obc_session *session = ftp->session;
+	GwObex *obex = obc_session_get_obex(session);
 	const char *folder;
 	int err;
 
@@ -141,7 +141,7 @@ static const GMarkupParser parser = {
 	NULL
 };
 
-static void get_file_callback(struct session_data *session, GError *err,
+static void get_file_callback(struct obc_session *session, GError *err,
 							void *user_data)
 {
 	struct ftp_data *ftp = user_data;
@@ -163,11 +163,11 @@ static void get_file_callback(struct session_data *session, GError *err,
 	ftp->msg = NULL;
 }
 
-static void list_folder_callback(struct session_data *session,
+static void list_folder_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
@@ -176,7 +176,7 @@ static void list_folder_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(ftp->msg);
 
-	buf = transfer_get_buffer(transfer, &size);
+	buf = obc_transfer_get_buffer(transfer, &size);
 	if (size == 0)
 		goto done;
 
@@ -191,7 +191,7 @@ static void list_folder_callback(struct session_data *session,
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	transfer_clear_buffer(transfer);
+	obc_transfer_clear_buffer(transfer);
 
 done:
 	g_dbus_send_message(ftp->conn, reply);
@@ -203,8 +203,8 @@ static DBusMessage *create_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
-	GwObex *obex = session_get_obex(session);
+	struct obc_session *session = ftp->session;
+	GwObex *obex = obc_session_get_obex(session);
 	const char *folder;
 	int err;
 
@@ -226,14 +226,14 @@ static DBusMessage *list_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
+	struct obc_session *session = ftp->session;
 
 	if (ftp->msg)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InProgress",
 				"Transfer in progress");
 
-	if (session_get(session, "x-obex/folder-listing",
+	if (obc_session_get(session, "x-obex/folder-listing",
 			NULL, NULL, NULL, 0, list_folder_callback, ftp) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
@@ -248,7 +248,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
+	struct obc_session *session = ftp->session;
 	const char *target_file, *source_file;
 
 	if (ftp->msg)
@@ -263,7 +263,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (session_get(session, NULL, source_file,
+	if (obc_session_get(session, NULL, source_file,
 			target_file, NULL, 0, get_file_callback, NULL) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
@@ -278,7 +278,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
+	struct obc_session *session = ftp->session;
 	gchar *sourcefile, *targetfile;
 
 	if (dbus_message_get_args(message, NULL,
@@ -289,7 +289,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments",
 				"Invalid arguments in method call");
 
-	if (session_send(session, sourcefile, targetfile) < 0)
+	if (obc_session_send(session, sourcefile, targetfile) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
@@ -313,8 +313,8 @@ static DBusMessage *delete(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct session_data *session = ftp->session;
-	GwObex *obex = session_get_obex(session);
+	struct obc_session *session = ftp->session;
+	GwObex *obex = obc_session_get_obex(session);
 	const char *file;
 	int err;
 
@@ -351,7 +351,7 @@ static void ftp_free(void *data)
 {
 	struct ftp_data *ftp = data;
 
-	session_unref(ftp->session);
+	obc_session_unref(ftp->session);
 	dbus_connection_unref(ftp->conn);
 	g_free(ftp);
 }
@@ -359,14 +359,14 @@ static void ftp_free(void *data)
 gboolean ftp_register_interface(DBusConnection *connection, const char *path,
 							void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	struct ftp_data *ftp;
 
 	ftp = g_try_new0(struct ftp_data, 1);
 	if (!ftp)
 		return FALSE;
 
-	ftp->session = session_ref(session);
+	ftp->session = obc_session_ref(session);
 	ftp->conn = dbus_connection_ref(connection);
 
 	if (!g_dbus_register_interface(connection, path, FTP_INTERFACE,

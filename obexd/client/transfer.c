@@ -51,9 +51,9 @@ struct transfer_callback {
 	void *data;
 };
 
-struct transfer_data {
-	struct session_data *session;
-	struct transfer_params *params;
+struct obc_transfer {
+	struct obc_session *session;
+	struct obc_transfer_params *params;
 	struct transfer_callback *callback;
 	DBusConnection *conn;
 	char *path;		/* Transfer path */
@@ -104,10 +104,10 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static DBusMessage *transfer_get_properties(DBusConnection *connection,
+static DBusMessage *obc_transfer_get_properties(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	struct transfer_data *transfer = user_data;
+	struct obc_transfer *transfer = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter, dict;
 
@@ -131,16 +131,16 @@ static DBusMessage *transfer_get_properties(DBusConnection *connection,
 	return reply;
 }
 
-static DBusMessage *transfer_cancel(DBusConnection *connection,
+static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	struct transfer_data *transfer = user_data;
-	struct session_data *session = transfer->session;
+	struct obc_transfer *transfer = user_data;
+	struct obc_session *session = transfer->session;
 	const gchar *sender, *agent;
 	DBusMessage *reply;
 
 	sender = dbus_message_get_sender(message);
-	agent = session_get_agent(session);
+	agent = obc_session_get_agent(session);
 	if (g_str_equal(sender, agent) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
@@ -150,20 +150,20 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 	if (!reply)
 		return NULL;
 
-	transfer_abort(transfer);
+	obc_transfer_abort(transfer);
 
 	return reply;
 }
 
-static GDBusMethodTable transfer_methods[] = {
-	{ "GetProperties", "", "a{sv}", transfer_get_properties },
-	{ "Cancel", "", "", transfer_cancel },
+static GDBusMethodTable obc_transfer_methods[] = {
+	{ "GetProperties", "", "a{sv}", obc_transfer_get_properties },
+	{ "Cancel", "", "", obc_transfer_cancel },
 	{ }
 };
 
-static void transfer_free(struct transfer_data *transfer)
+static void obc_transfer_free(struct obc_transfer *transfer)
 {
-	struct session_data *session = transfer->session;
+	struct obc_session *session = transfer->session;
 
 	DBG("%p", transfer);
 
@@ -175,9 +175,9 @@ static void transfer_free(struct transfer_data *transfer)
 	if (transfer->fd > 0)
 		close(transfer->fd);
 
-	session_remove_transfer(session, transfer);
+	obc_session_remove_transfer(session, transfer);
 
-	session_unref(session);
+	obc_session_unref(session);
 
 	if (transfer->params != NULL) {
 		g_free(transfer->params->data);
@@ -196,18 +196,18 @@ static void transfer_free(struct transfer_data *transfer)
 	g_free(transfer);
 }
 
-struct transfer_data *transfer_register(DBusConnection *conn,
+struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 						const char *filename,
 						const char *name,
 						const char *type,
-						struct transfer_params *params,
+						struct obc_transfer_params *params,
 						void *user_data)
 {
-	struct session_data *session = user_data;
-	struct transfer_data *transfer;
+	struct obc_session *session = user_data;
+	struct obc_transfer *transfer;
 
-	transfer = g_new0(struct transfer_data, 1);
-	transfer->session = session_ref(session);
+	transfer = g_new0(struct obc_transfer, 1);
+	transfer->session = obc_session_ref(session);
 	transfer->filename = g_strdup(filename);
 	transfer->name = g_strdup(name);
 	transfer->type = g_strdup(type);
@@ -224,27 +224,27 @@ struct transfer_data *transfer_register(DBusConnection *conn,
 
 	transfer->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
 	if (transfer->conn == NULL) {
-		transfer_free(transfer);
+		obc_transfer_free(transfer);
 		return NULL;
 	}
 
 	if (g_dbus_register_interface(transfer->conn, transfer->path,
 				TRANSFER_INTERFACE,
-				transfer_methods, NULL, NULL,
+				obc_transfer_methods, NULL, NULL,
 				transfer, NULL) == FALSE) {
-		transfer_free(transfer);
+		obc_transfer_free(transfer);
 		return NULL;
 	}
 
 done:
 	DBG("%p registered %s", transfer, transfer->path);
 
-	session_add_transfer(session, transfer);
+	obc_session_add_transfer(session, transfer);
 
 	return transfer;
 }
 
-void transfer_unregister(struct transfer_data *transfer)
+void obc_transfer_unregister(struct obc_transfer *transfer)
 {
 	if (transfer->path) {
 		g_dbus_unregister_interface(transfer->conn,
@@ -253,10 +253,10 @@ void transfer_unregister(struct transfer_data *transfer)
 
 	DBG("%p unregistered %s", transfer, transfer->path);
 
-	transfer_free(transfer);
+	obc_transfer_free(transfer);
 }
 
-static gboolean transfer_read(struct transfer_data *transfer, GwObexXfer *xfer)
+static gboolean obc_transfer_read(struct obc_transfer *transfer, GwObexXfer *xfer)
 {
 	gint bsize, bread;
 
@@ -300,10 +300,10 @@ static gboolean transfer_read(struct transfer_data *transfer, GwObexXfer *xfer)
 static void get_buf_xfer_progress(GwObexXfer *xfer,
 					gpointer user_data)
 {
-	struct transfer_data *transfer = user_data;
+	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
 
-	if (transfer_read(transfer, xfer) == FALSE)
+	if (obc_transfer_read(transfer, xfer) == FALSE)
 		goto fail;
 
 	if (gw_obex_xfer_object_done(xfer)) {
@@ -335,10 +335,10 @@ fail:
 
 static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
-	struct transfer_data *transfer = user_data;
+	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
 
-	if (transfer_read(transfer, xfer) == FALSE)
+	if (obc_transfer_read(transfer, xfer) == FALSE)
 		goto done;
 
 	if (transfer->fd > 0) {
@@ -361,7 +361,7 @@ done:
 
 static void put_buf_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
-	struct transfer_data *transfer = user_data;
+	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
 	gint written;
 
@@ -386,7 +386,7 @@ done:
 
 static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 {
-	struct transfer_data *transfer = user_data;
+	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
 	gint written;
 
@@ -429,7 +429,7 @@ done:
 				callback->data);
 }
 
-static void transfer_set_callback(struct transfer_data *transfer,
+static void obc_transfer_set_callback(struct obc_transfer *transfer,
 					transfer_callback_t func,
 					void *user_data)
 {
@@ -444,10 +444,10 @@ static void transfer_set_callback(struct transfer_data *transfer,
 	transfer->callback = callback;
 }
 
-int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
+int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
-	struct session_data *session = transfer->session;
+	struct obc_session *session = transfer->session;
 	GwObex *obex;
 	gw_obex_xfer_cb_t cb;
 
@@ -470,7 +470,7 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 		cb = get_xfer_progress;
 	}
 
-	obex = session_get_obex(session);
+	obex = obc_session_get_obex(session);
 
 	if (transfer->params != NULL)
 		transfer->xfer = gw_obex_get_async_with_apparam(obex,
@@ -488,17 +488,17 @@ int transfer_get(struct transfer_data *transfer, transfer_callback_t func,
 		return -ENOTCONN;
 
 	if (func)
-		transfer_set_callback(transfer, func, user_data);
+		obc_transfer_set_callback(transfer, func, user_data);
 
 	gw_obex_xfer_set_callback(transfer->xfer, cb, transfer);
 
 	return 0;
 }
 
-int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
+int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
-	struct session_data *session = transfer->session;
+	struct obc_session *session = transfer->session;
 	GwObex *obex;
 	gw_obex_xfer_cb_t cb;
 	struct stat st;
@@ -529,7 +529,7 @@ int transfer_put(struct transfer_data *transfer, transfer_callback_t func,
 	cb = put_xfer_progress;
 
 done:
-	obex = session_get_obex(session);
+	obex = obc_session_get_obex(session);
 	size = transfer->size < UINT32_MAX ? transfer->size : 0;
 	transfer->xfer = gw_obex_put_async(obex, transfer->name,
 						transfer->type, size,
@@ -538,14 +538,14 @@ done:
 		return -ENOTCONN;
 
 	if (func)
-		transfer_set_callback(transfer, func, user_data);
+		obc_transfer_set_callback(transfer, func, user_data);
 
 	gw_obex_xfer_set_callback(transfer->xfer, cb, transfer);
 
 	return 0;
 }
 
-void transfer_abort(struct transfer_data *transfer)
+void obc_transfer_abort(struct obc_transfer *transfer)
 {
 	struct transfer_callback *callback = transfer->callback;
 
@@ -561,8 +561,8 @@ void transfer_abort(struct transfer_data *transfer)
 				callback->data);
 }
 
-int transfer_get_params(struct transfer_data *transfer,
-					struct transfer_params *params)
+int obc_transfer_get_params(struct obc_transfer *transfer,
+					struct obc_transfer_params *params)
 {
 	if (!transfer->xfer)
 		return -ENOTCONN;
@@ -573,12 +573,12 @@ int transfer_get_params(struct transfer_data *transfer,
 	return 0;
 }
 
-void transfer_clear_buffer(struct transfer_data *transfer)
+void obc_transfer_clear_buffer(struct obc_transfer *transfer)
 {
 	transfer->filled = 0;
 }
 
-const char *transfer_get_buffer(struct transfer_data *transfer, int *size)
+const char *obc_transfer_get_buffer(struct obc_transfer *transfer, int *size)
 {
 	if (size)
 		*size = transfer->filled;
@@ -586,24 +586,24 @@ const char *transfer_get_buffer(struct transfer_data *transfer, int *size)
 	return transfer->buffer;
 }
 
-void transfer_set_buffer(struct transfer_data *transfer, char *buffer)
+void obc_transfer_set_buffer(struct obc_transfer *transfer, char *buffer)
 {
 	transfer->size = strlen(buffer);
 	transfer->buffer = buffer;
 }
 
-void transfer_set_name(struct transfer_data *transfer, const char *name)
+void obc_transfer_set_name(struct obc_transfer *transfer, const char *name)
 {
 	g_free(transfer->name);
 	transfer->name = g_strdup(name);
 }
 
-const char *transfer_get_path(struct transfer_data *transfer)
+const char *obc_transfer_get_path(struct obc_transfer *transfer)
 {
 	return transfer->path;
 }
 
-gint64 transfer_get_size(struct transfer_data *transfer)
+gint64 obc_transfer_get_size(struct obc_transfer *transfer)
 {
 	return transfer->size;
 }

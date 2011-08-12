@@ -117,7 +117,7 @@ static const char *filter_list[] = {
 #define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
 
 struct pbap_data {
-	struct session_data *session;
+	struct obc_session *session;
 	char *path;
 	DBusConnection *conn;
 	DBusMessage *msg;
@@ -236,7 +236,7 @@ static void pbap_reset_path(struct pbap_data *pbap)
 {
 	int err = 0;
 	char **paths = NULL, **item;
-	GwObex *obex = session_get_obex(pbap->session);
+	GwObex *obex = obc_session_get_obex(pbap->session);
 
 	if (!pbap->path)
 		return;
@@ -255,7 +255,7 @@ static gint pbap_set_path(struct pbap_data *pbap, const char *path)
 {
 	int err = 0;
 	char **paths = NULL, **item;
-	GwObex *obex = session_get_obex(pbap->session);
+	GwObex *obex = obc_session_get_obex(pbap->session);
 
 	if (!path)
 		return OBEX_RSP_BAD_REQUEST;
@@ -292,18 +292,18 @@ fail:
 	return err;
 }
 
-static void read_return_apparam(struct session_data *session,
+static void read_return_apparam(struct obc_session *session,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
-	struct transfer_params params;
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
+	struct obc_transfer_params params;
 	unsigned char *buf;
 	size_t size = 0;
 
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
 
-	if (transfer_get_params(transfer, &params) < 0)
+	if (obc_transfer_get_params(transfer, &params) < 0)
 		return;
 
 	if (params.size < APPARAM_HDR_SIZE)
@@ -342,10 +342,10 @@ static void read_return_apparam(struct session_data *session,
 	}
 }
 
-static void pull_phonebook_callback(struct session_data *session,
+static void pull_phonebook_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	DBusMessage *reply;
 	const char *buf;
@@ -363,7 +363,7 @@ static void pull_phonebook_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	buf = transfer_get_buffer(transfer, &size);
+	buf = obc_transfer_get_buffer(transfer, &size);
 	if (size == 0)
 		buf = "";
 
@@ -371,7 +371,7 @@ static void pull_phonebook_callback(struct session_data *session,
 			DBUS_TYPE_STRING, &buf,
 			DBUS_TYPE_INVALID);
 
-	transfer_clear_buffer(transfer);
+	obc_transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);
@@ -379,13 +379,13 @@ send:
 	pbap->msg = NULL;
 
 done:
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 }
 
-static void phonebook_size_callback(struct session_data *session,
+static void phonebook_size_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	DBusMessage *reply;
 	guint16 phone_book_size;
@@ -409,7 +409,7 @@ static void phonebook_size_callback(struct session_data *session,
 			DBUS_TYPE_UINT16, &phone_book_size,
 			DBUS_TYPE_INVALID);
 
-	transfer_clear_buffer(transfer);
+	obc_transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);
@@ -417,13 +417,13 @@ send:
 	pbap->msg = NULL;
 
 done:
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 }
 
-static void pull_vcard_listing_callback(struct session_data *session,
+static void pull_vcard_listing_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct transfer_data *transfer = session_get_transfer(session);
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
@@ -443,7 +443,7 @@ static void pull_vcard_listing_callback(struct session_data *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	buf = transfer_get_buffer(transfer, &size);
+	buf = obc_transfer_get_buffer(transfer, &size);
 	if (size == 0)
 		buf = "";
 
@@ -457,14 +457,14 @@ static void pull_vcard_listing_callback(struct session_data *session,
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	transfer_clear_buffer(transfer);
+	obc_transfer_clear_buffer(transfer);
 
 send:
 	g_dbus_send_message(pbap->conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
 complete:
-	transfer_unregister(transfer);
+	obc_transfer_unregister(transfer);
 }
 
 static DBusMessage *pull_phonebook(struct pbap_data *pbap,
@@ -506,7 +506,7 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 		return NULL;
 	}
 
-	if (session_get(pbap->session, "x-bt/phonebook", name, NULL,
+	if (obc_session_get(pbap->session, "x-bt/phonebook", name, NULL,
 				(guint8 *) &apparam, sizeof(apparam),
 				func, pbap) < 0)
 		return g_dbus_create_error(message,
@@ -570,7 +570,7 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 	offset = GUINT16_TO_BE(offset);
 	p = fill_apparam(p, &offset, LISTSTARTOFFSET_TAG, LISTSTARTOFFSET_LEN);
 
-	err = session_get(pbap->session, "x-bt/vcard-listing", name, NULL,
+	err = obc_session_get(pbap->session, "x-bt/vcard-listing", name, NULL,
 				apparam, apparam_size,
 				pull_vcard_listing_callback, pbap);
 	g_free(apparam);
@@ -777,7 +777,7 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 	apparam.format_len = FORMAT_LEN;
 	apparam.format = pbap->format;
 
-	if (session_get(pbap->session, "x-bt/vcard", name, NULL,
+	if (obc_session_get(pbap->session, "x-bt/vcard", name, NULL,
 			(guint8 *)&apparam, sizeof(apparam),
 			pull_phonebook_callback, pbap) < 0)
 		return g_dbus_create_error(message,
@@ -985,7 +985,7 @@ static void pbap_free(void *data)
 {
 	struct pbap_data *pbap = data;
 
-	session_unref(pbap->session);
+	obc_session_unref(pbap->session);
 	dbus_connection_unref(pbap->conn);
 	g_free(pbap);
 }
@@ -993,14 +993,14 @@ static void pbap_free(void *data)
 gboolean pbap_register_interface(DBusConnection *connection, const char *path,
 							void *user_data)
 {
-	struct session_data *session = user_data;
+	struct obc_session *session = user_data;
 	struct pbap_data *pbap;
 
 	pbap = g_try_new0(struct pbap_data, 1);
 	if (!pbap)
 		return FALSE;
 
-	pbap->session = session_ref(session);
+	pbap->session = obc_session_ref(session);
 	pbap->conn = dbus_connection_ref(connection);
 
 	if (g_dbus_register_interface(connection, path, PBAP_INTERFACE,
