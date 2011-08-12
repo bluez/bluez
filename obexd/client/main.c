@@ -87,10 +87,10 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
+	__obex_log_init("obex-client", option_debug, !option_stderr);
+
 	if (manager_init() < 0)
 		exit(EXIT_FAILURE);
-
-	__obex_log_init("obex-client", option_debug, !option_stderr);
 
 	DBG("Entering main loop");
 

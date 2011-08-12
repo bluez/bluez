@@ -571,7 +571,7 @@ int manager_init(void)
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &derr);
 	if (dbus_error_is_set(&derr) == TRUE) {
-		g_printerr("%s: %s\n", derr.name, derr.message);
+		error("%s: %s", derr.name, derr.message);
 		dbus_error_free(&derr);
 		return -1;
 	}
@@ -579,7 +579,7 @@ int manager_init(void)
 	if (g_dbus_register_interface(conn, CLIENT_PATH, CLIENT_INTERFACE,
 						client_methods, NULL, NULL,
 							NULL, NULL) == FALSE) {
-		g_printerr("Can't register client interface\n");
+		error("Can't register client interface");
 		dbus_connection_unref(conn);
 		conn = NULL;
 		return -1;
