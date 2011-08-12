@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "session.h"
 #include "transfer.h"
 #include "ftp.h"

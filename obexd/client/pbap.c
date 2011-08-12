@@ -27,6 +27,8 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
+#include <stdio.h>
 #include <glib.h>
 #include <gdbus.h>
 

@@ -48,6 +48,7 @@
 #include "session.h"
 #include "btio.h"
 #include "agent.h"
+#include "driver.h"
 
 #define SESSION_INTERFACE  "org.openobex.Session"
 #define SESSION_BASEPATH   "/org/openobex"
@@ -60,10 +61,6 @@
 #define BT_MANAGER_IFACE	"org.bluez.Manager"
 
 static guint64 counter = 0;
-
-static unsigned char pcsuite_uuid[] = { 0x00, 0x00, 0x50, 0x05, 0x00, 0x00,
-					0x10, 0x00, 0x80, 0x00, 0x00, 0x02,
-					0xEE, 0x00, 0x00, 0x01 };
 
 struct callback_data {
 	struct session_data *session;
@@ -93,10 +90,7 @@ struct session_data {
 	bdaddr_t src;
 	bdaddr_t dst;
 	uint8_t channel;
-	char *service;		/* Service friendly name */
-	const char *target;	/* OBEX Target UUID */
-	int target_len;
-	uuid_t uuid;		/* Bluetooth Service Class */
+	struct driver_data *driver;
 	gchar *path;		/* Session path */
 	DBusConnection *conn;
 	DBusConnection *conn_system; /* system bus connection */
@@ -139,16 +133,8 @@ static void session_unregistered(struct session_data *session)
 {
 	char *path;
 
-	switch (session->uuid.value.uuid16) {
-	case OBEX_FILETRANS_SVCLASS_ID:
-		ftp_unregister_interface(session->conn, session->path);
-		break;
-	case PBAP_PSE_SVCLASS_ID:
-		pbap_unregister_interface(session->conn, session->path);
-		break;
-	case IRMC_SYNC_SVCLASS_ID:
-		sync_unregister_interface(session->conn, session->path);
-	}
+	if (session->driver && session->driver->remove)
+		session->driver->remove(session);
 
 	path = session->path;
 	session->path = NULL;
@@ -229,7 +215,6 @@ static void session_free(struct session_data *session)
 	g_free(session->adapter);
 	g_free(session->callback);
 	g_free(session->path);
-	g_free(session->service);
 	g_free(session->owner);
 	g_free(session);
 }
@@ -306,6 +291,7 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
 	struct session_data *session = callback->session;
+	struct driver_data *driver = session->driver;
 	GwObex *obex;
 	int fd;
 
@@ -323,8 +309,8 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 
 	fd = g_io_channel_unix_get_fd(io);
 
-	obex = gw_obex_setup_fd(fd, session->target,
-			session->target_len, NULL, NULL);
+	obex = gw_obex_setup_fd(fd, driver->target, driver->target_len,
+								NULL, NULL);
 
 	session->obex = obex;
 
@@ -458,6 +444,37 @@ static gboolean process_callback(GIOChannel *io, GIOCondition cond,
 	return TRUE;
 }
 
+static int bt_string2uuid(uuid_t *uuid, const char *string)
+{
+	uint32_t data0, data4;
+	uint16_t data1, data2, data3, data5;
+
+	if (sscanf(string, "%08x-%04hx-%04hx-%04hx-%08x%04hx",
+				&data0, &data1, &data2, &data3, &data4, &data5) == 6) {
+		uint8_t val[16];
+
+		data0 = g_htonl(data0);
+		data1 = g_htons(data1);
+		data2 = g_htons(data2);
+		data3 = g_htons(data3);
+		data4 = g_htonl(data4);
+		data5 = g_htons(data5);
+
+		memcpy(&val[0], &data0, 4);
+		memcpy(&val[4], &data1, 2);
+		memcpy(&val[6], &data2, 2);
+		memcpy(&val[8], &data3, 2);
+		memcpy(&val[10], &data4, 4);
+		memcpy(&val[14], &data5, 2);
+
+		sdp_uuid128_create(uuid, val);
+
+		return 0;
+	}
+
+	return -EINVAL;
+}
+
 static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -466,6 +483,7 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	sdp_list_t *search, *attrid;
 	uint32_t range = 0x0000ffff;
 	GError *gerr = NULL;
+	uuid_t uuid;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR))
 		goto failed;
@@ -473,7 +491,10 @@ static gboolean service_callback(GIOChannel *io, GIOCondition cond,
 	if (sdp_set_notify(callback->sdp, search_callback, callback) < 0)
 		goto failed;
 
-	search = sdp_list_append(NULL, &callback->session->uuid);
+	if (bt_string2uuid(&uuid, session->driver->uuid) < 0)
+		goto failed;
+
+	search = sdp_list_append(NULL, &uuid);
 	attrid = sdp_list_append(NULL, &range);
 
 	if (sdp_service_search_attr_async(callback->sdp,
@@ -594,7 +615,7 @@ static struct session_data *session_find(const char *source,
 		if (bacmp(&session->dst, &adr))
 			continue;
 
-		if (g_strcmp0(service, session->service))
+		if (g_strcmp0(service, session->driver->service))
 			continue;
 
 		if (channel && session->channel != channel)
@@ -730,6 +751,7 @@ struct session_data *session_create(const char *source,
 	struct session_data *session;
 	struct callback_data *callback;
 	struct pending_req *req;
+	struct driver_data *driver;
 
 	if (destination == NULL)
 		return NULL;
@@ -739,6 +761,10 @@ struct session_data *session_create(const char *source,
 		session_ref(session);
 		goto proceed;
 	}
+
+	driver = driver_find(service);
+	if (!driver)
+		return NULL;
 
 	session = g_try_malloc0(sizeof(*session));
 	if (session == NULL)
@@ -765,27 +791,9 @@ struct session_data *session_create(const char *source,
 		str2ba(source, &session->src);
 
 	str2ba(destination, &session->dst);
-	session->service = g_strdup(service);
+	session->driver = driver;
 
-	if (!g_ascii_strncasecmp(service, "OPP", 3)) {
-		sdp_uuid16_create(&session->uuid, OBEX_OBJPUSH_SVCLASS_ID);
-	} else if (!g_ascii_strncasecmp(service, "FTP", 3)) {
-		sdp_uuid16_create(&session->uuid, OBEX_FILETRANS_SVCLASS_ID);
-		session->target = OBEX_FTP_UUID;
-		session->target_len = OBEX_FTP_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(service, "PBAP", 4)) {
-		sdp_uuid16_create(&session->uuid, PBAP_PSE_SVCLASS_ID);
-		session->target = OBEX_PBAP_UUID;
-		session->target_len = OBEX_PBAP_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(service, "SYNC", 4)) {
-		sdp_uuid16_create(&session->uuid, IRMC_SYNC_SVCLASS_ID);
-		session->target = OBEX_SYNC_UUID;
-		session->target_len = OBEX_SYNC_UUID_LEN;
-	} else if (!g_ascii_strncasecmp(service, "PCSUITE", 7)) {
-		sdp_uuid128_create(&session->uuid, pcsuite_uuid);
-	} else {
-		return NULL;
-	}
+	DBG("driver %s", driver->service);
 
 proceed:
 	callback = g_try_malloc0(sizeof(*callback));
@@ -1286,8 +1294,6 @@ int session_pull(struct session_data *session,
 const char *session_register(struct session_data *session,
 						GDBusDestroyFunction destroy)
 {
-	gboolean result = FALSE;
-
 	if (session->path)
 		return session->path;
 
@@ -1299,23 +1305,9 @@ const char *session_register(struct session_data *session,
 					NULL, NULL, session, destroy) == FALSE)
 		goto fail;
 
-	switch (session->uuid.value.uuid16) {
-	case OBEX_FILETRANS_SVCLASS_ID:
-		result = ftp_register_interface(session->conn, session->path,
-								session);
-		break;
-	case PBAP_PSE_SVCLASS_ID:
-		result = pbap_register_interface(session->conn, session->path,
-								session);
-		break;
-	case IRMC_SYNC_SVCLASS_ID:
-		result = sync_register_interface(session->conn, session->path,
-								session);
-	}
-
-	if (result == FALSE) {
-		g_dbus_unregister_interface(session->conn,
-					session->path, SESSION_INTERFACE);
+	if (session->driver->probe && session->driver->probe(session) < 0) {
+		g_dbus_unregister_interface(session->conn, session->path,
+							SESSION_INTERFACE);
 		goto fail;
 	}
 
@@ -1432,7 +1424,7 @@ const char *session_get_path(struct session_data *session)
 
 const char *session_get_target(struct session_data *session)
 {
-	return session->target;
+	return session->driver->target;
 }
 
 GwObex *session_get_obex(struct session_data *session)

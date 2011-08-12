@@ -25,9 +25,6 @@
 #include <gdbus.h>
 #include <gw-obex.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/sdp.h>
-
 struct session_data;
 
 typedef void (*session_callback_t) (struct session_data *session,
