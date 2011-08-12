@@ -26,22 +26,29 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <glib.h>
 #include <gdbus.h>
 
+#include "log.h"
+
 #include "transfer.h"
 #include "session.h"
+#include "driver.h"
 #include "sync.h"
 
 #define SYNC_INTERFACE	"org.openobex.Synchronization"
 #define ERROR_INF SYNC_INTERFACE ".Error"
+#define SYNC_UUID "00001104-0000-1000-8000-00805f9b34fb"
 
 struct sync_data {
 	struct obc_session *session;
 	char *phonebook_path;
-	DBusConnection *conn;
 	DBusMessage *msg;
 };
+
+static DBusConnection *conn = NULL;
 
 static DBusMessage *sync_setlocation(DBusConnection *connection,
 			DBusMessage *message, void *user_data)
@@ -92,7 +99,7 @@ static void sync_getphonebook_callback(struct obc_session *session,
 		DBUS_TYPE_STRING, &buf,
 		DBUS_TYPE_INVALID);
 
-	g_dbus_send_message(sync->conn, reply);
+	g_dbus_send_message(conn, reply);
 	dbus_message_unref(sync->msg);
 	sync->msg = NULL;
 }
@@ -160,34 +167,78 @@ static void sync_free(void *data)
 	struct sync_data *sync = data;
 
 	obc_session_unref(sync->session);
-	dbus_connection_unref(sync->conn);
 	g_free(sync->phonebook_path);
 	g_free(sync);
 }
 
-gboolean sync_register_interface(DBusConnection *connection, const char *path,
-							void *user_data)
+static int sync_probe(struct obc_session *session)
 {
-	struct obc_session *session = user_data;
 	struct sync_data *sync;
+	const char *path;
+
+	path = obc_session_get_path(session);
+
+	DBG("%s", path);
 
 	sync = g_try_new0(struct sync_data, 1);
 	if (!sync)
-		return FALSE;
+		return -ENOMEM;
 
 	sync->session = obc_session_ref(session);
-	sync->conn = dbus_connection_ref(connection);
 
-	if (g_dbus_register_interface(connection, path, SYNC_INTERFACE,
-				sync_methods, NULL, NULL, sync, sync_free)) {
+	if (!g_dbus_register_interface(conn, path, SYNC_INTERFACE, sync_methods,
+						NULL, NULL, sync, sync_free)) {
 		sync_free(sync);
-		return FALSE;
+		return -ENOMEM;
 	}
 
-	return TRUE;
+	return 0;
 }
 
-void sync_unregister_interface(DBusConnection *connection, const char *path)
+static void sync_remove(struct obc_session *session)
 {
-	g_dbus_unregister_interface(connection, path, SYNC_INTERFACE);
+	const char *path = obc_session_get_path(session);
+
+	DBG("%s", path);
+
+	g_dbus_unregister_interface(conn, path, SYNC_INTERFACE);
+}
+
+static struct obc_driver sync = {
+	.service = "SYNC",
+	.uuid = SYNC_UUID,
+	.target = OBEX_SYNC_UUID,
+	.target_len = OBEX_SYNC_UUID_LEN,
+	.probe = sync_probe,
+	.remove = sync_remove
+};
+
+int sync_init(void)
+{
+	int err;
+
+	DBG("");
+
+	conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	if (!conn)
+		return -EIO;
+
+	err = obc_driver_register(&sync);
+	if (err < 0) {
+		dbus_connection_unref(conn);
+		conn = NULL;
+		return err;
+	}
+
+	return 0;
+}
+
+void sync_exit(void)
+{
+	DBG("");
+
+	dbus_connection_unref(conn);
+	conn = NULL;
+
+	obc_driver_unregister(&sync);
 }

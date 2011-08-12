@@ -22,8 +22,5 @@
  *
  */
 
-#include <gdbus.h>
-
-gboolean sync_register_interface(DBusConnection *connection, const char *path,
-							void *user_data);
-void sync_unregister_interface(DBusConnection *connection, const char *path);
+int sync_init(void);
+void sync_exit(void);
