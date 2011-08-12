@@ -554,9 +554,18 @@ static GDBusMethodTable client_methods[] = {
 
 static DBusConnection *conn = NULL;
 
+static struct target_module {
+	const char *name;
+	int (*init) (void);
+	void (*exit) (void);
+} targets[] = {
+	{ }
+};
+
 int manager_init(void)
 {
 	DBusError derr;
+	struct target_module *target;
 
 	dbus_error_init(&derr);
 
@@ -576,13 +585,25 @@ int manager_init(void)
 		return -1;
 	}
 
+	for (target = targets; target && target->init; target++) {
+		if (target->init() < 0)
+			continue;
+
+		DBG("Target %s loaded", target->name);
+	}
+
 	return 0;
 }
 
 void manager_exit(void)
 {
+	struct target_module *target;
+
 	if (conn == NULL)
 		return;
+
+	for (target = targets; target && target->exit; target++)
+		target->exit();
 
 	g_dbus_unregister_interface(conn, CLIENT_PATH, CLIENT_INTERFACE);
 	dbus_connection_unref(conn);
