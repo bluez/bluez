@@ -2,7 +2,6 @@
  *
  *  OBEX Client
  *
- *  Copyright (C) 2007-2010  Intel Corporation
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *
@@ -22,8 +21,5 @@
  *
  */
 
-#include <gdbus.h>
-
-gboolean ftp_register_interface(DBusConnection *connection, const char *path,
-							void *user_data);
-void ftp_unregister_interface(DBusConnection *connection, const char *path);
+int ftp_init(void);
+void ftp_exit(void);

@@ -43,7 +43,6 @@
 #include "log.h"
 #include "pbap.h"
 #include "sync.h"
-#include "ftp.h"
 #include "transfer.h"
 #include "session.h"
 #include "btio.h"

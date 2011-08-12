@@ -39,6 +39,7 @@
 #include "session.h"
 #include "manager.h"
 #include "opp.h"
+#include "ftp.h"
 
 #define CLIENT_SERVICE  "org.openobex.client"
 
@@ -561,6 +562,7 @@ static struct target_module {
 	void (*exit) (void);
 } targets[] = {
 	{ "opp", opp_init, opp_exit },
+	{ "ftp", ftp_init, ftp_exit },
 	{ }
 };
 
