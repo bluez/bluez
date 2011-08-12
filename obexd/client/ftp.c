@@ -316,6 +316,24 @@ static DBusMessage *copy_file(DBusConnection *connection,
 static DBusMessage *move_file(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	struct ftp_data *ftp = user_data;
+	struct obc_session *session = ftp->session;
+	GwObex *obex = obc_session_get_obex(session);
+	const char *filename, *destname;
+	int err;
+
+	if (dbus_message_get_args(message, NULL,
+				DBUS_TYPE_STRING, &filename,
+				DBUS_TYPE_STRING, &destname,
+				DBUS_TYPE_INVALID) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	if (gw_obex_move(obex, filename, destname, &err) == FALSE)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.Failed",
+				"%s", OBEX_ResponseToString(err));
+
 	return dbus_message_new_method_return(message);
 }
 
