@@ -206,13 +206,11 @@ static int mas_setpath(struct obex_session *os, obex_object_t *obj,
 static void *any_open(const char *name, int oflag, mode_t mode,
 				void *driver_data, size_t *size, int *err)
 {
-	struct mas_session *mas = driver_data;
-
 	DBG("");
 
-	*err = 0;
+	*err = -EINVAL;
 
-	return mas;
+	return NULL;
 }
 
 static ssize_t any_write(void *object, const void *buf, size_t count)
@@ -260,28 +258,102 @@ static struct obex_mime_type_driver mime_map = {
 	.write = any_write,
 };
 
+static struct obex_mime_type_driver mime_message = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-bt/message",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver mime_folder_listing = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-obex/folder-listing",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver mime_msg_listing = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-bt/MAP-msg-listing",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver mime_notification_registration = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-bt/MAP-NotificationRegistration",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver mime_message_status = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-bt/messageStatus",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver mime_message_update = {
+	.target = MAS_TARGET,
+	.target_size = TARGET_SIZE,
+	.mimetype = "x-bt/MAP-messageUpdate",
+	.open = any_open,
+	.close = any_close,
+	.read = any_read,
+	.write = any_write,
+};
+
+static struct obex_mime_type_driver *map_drivers[] = {
+	&mime_map,
+	&mime_message,
+	&mime_folder_listing,
+	&mime_msg_listing,
+	&mime_notification_registration,
+	&mime_message_status,
+	&mime_message_update,
+	NULL
+};
+
 static int mas_init(void)
 {
 	int err;
+	int i;
 
 	err = messages_init();
 	if (err < 0)
 		return err;
 
-	err = obex_mime_type_driver_register(&mime_map);
-	if (err < 0)
-		goto failed_mime;
+	for (i = 0; map_drivers[i] != NULL; ++i) {
+		err = obex_mime_type_driver_register(map_drivers[i]);
+		if (err < 0)
+			goto failed;
+	}
 
 	err = obex_service_driver_register(&mas);
 	if (err < 0)
-		goto failed_mas_reg;
+		goto failed;
 
 	return 0;
 
-failed_mas_reg:
-	obex_mime_type_driver_unregister(&mime_map);
+failed:
+	for (--i; i >= 0; --i)
+		obex_mime_type_driver_unregister(map_drivers[i]);
 
-failed_mime:
 	messages_exit();
 
 	return err;
@@ -289,8 +361,13 @@ failed_mime:
 
 static void mas_exit(void)
 {
+	int i;
+
 	obex_service_driver_unregister(&mas);
-	obex_mime_type_driver_unregister(&mime_map);
+
+	for (i = 0; map_drivers[i] != NULL; ++i)
+		obex_mime_type_driver_unregister(map_drivers[i]);
+
 	messages_exit();
 }
 
