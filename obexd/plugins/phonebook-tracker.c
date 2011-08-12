@@ -164,7 +164,7 @@
 	"?_unb_contact nco:hasPhoneNumber ?_cpn . "			\
 CONSTRAINT								\
 	"OPTIONAL { "							\
-		"{ SELECT ?_contact ?_cpn ?_role ?_number "		\
+		"{ SELECT ?_contact ?_no ?_role ?_number "		\
 			"count(?_contact) as ?cnt "			\
 		"WHERE { "						\
 			"?_contact a nco:PersonContact . "		\
@@ -175,9 +175,9 @@ CONSTRAINT								\
 				"?_contact nco:hasPhoneNumber ?_number" \
 			"} "						\
 			"?_number maemo:localPhoneNumber ?_no . "	\
-			"?_cpn maemo:localPhoneNumber ?_no . "		\
-		"} GROUP BY ?_cpn } "					\
+		"} GROUP BY ?_no } "					\
 		"FILTER(?cnt = 1) "					\
+		"?_cpn maemo:localPhoneNumber ?_no . "			\
 	"} "								\
 "} "
 
