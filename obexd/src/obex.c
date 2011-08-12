@@ -319,7 +319,8 @@ static void os_reset_session(struct obex_session *os)
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
 	os->headers_sent = FALSE;
-	os->streaming = FALSE;
+	os->stream_open = FALSE;
+	os->stream_suspended = FALSE;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -661,11 +662,11 @@ static int obex_write_stream(struct obex_session *os,
 		return len;
 	}
 
-	if (!os->streaming) {
+	if (!os->stream_open) {
 		hd.bs = NULL;
 		OBEX_ObjectAddHeader(obex, obj, OBEX_HDR_BODY, hd, 0,
 						OBEX_FL_STREAM_START);
-		os->streaming = TRUE;
+		os->stream_open = TRUE;
 	}
 
 	if (len == 0) {
@@ -747,6 +748,8 @@ static gboolean handle_async_io(void *object, int flags, int err,
 		ret = obex_read_stream(os, os->obex, os->obj);
 
 proceed:
+	os->stream_suspended = FALSE;
+
 	if (ret == -EAGAIN) {
 		return TRUE;
 	} else if (ret < 0) {
@@ -756,7 +759,7 @@ proceed:
 		OBEX_ResumeRequest(os->obex);
 	}
 
-	return FALSE;
+	return os->stream_suspended;
 }
 
 static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
@@ -778,7 +781,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 	g_return_if_fail(chk_cid(obex, obj, os->cid));
 
 	os->headers_sent = FALSE;
-	os->streaming = FALSE;
+	os->stream_open = FALSE;
 
 	while (OBEX_ObjectGetNextHeader(obex, obj, &hi, &hd, &hlen)) {
 		switch (hi) {
@@ -1355,6 +1358,7 @@ static void obex_event_cb(obex_t *obex, obex_object_t *obj, int mode,
 		err = obex_write_stream(os, obex, obj);
 		if (err == -EAGAIN) {
 			OBEX_SuspendRequest(obex, obj);
+			os->stream_suspended = TRUE;
 			os->obj = obj;
 			os->driver->set_io_watch(os->object, handle_async_io,
 									os);

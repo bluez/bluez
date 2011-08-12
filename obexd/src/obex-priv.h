@@ -47,7 +47,8 @@ struct obex_session {
 	obex_t *obex;
 	obex_object_t *obj;
 	struct obex_mime_type_driver *driver;
-	gboolean streaming;
+	gboolean stream_open;
+	gboolean stream_suspended;
 	gboolean headers_sent;
 };
 
