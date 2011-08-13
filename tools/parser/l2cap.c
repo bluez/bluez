@@ -172,45 +172,45 @@ static void del_handle(uint16_t handle)
 			}
 	}
 }
-static uint16_t get_psm(int in, uint16_t cid)
+static uint16_t get_psm(int in, uint16_t handle, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
 
 	for (i = 0; i < CID_TABLE_SIZE; i++)
-		if (table[i].cid == cid)
+		if (table[i].handle == handle && table[i].cid == cid)
 			return table[i].psm;
 	return parser.defpsm;
 }
 
-static uint16_t get_num(int in, uint16_t cid)
+static uint16_t get_num(int in, uint16_t handle, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
 
 	for (i = 0; i < CID_TABLE_SIZE; i++)
-		if (table[i].cid == cid)
+		if (table[i].handle == handle && table[i].cid == cid)
 			return table[i].num;
 	return 0;
 }
 
-static void set_mode(int in, uint16_t cid, uint8_t mode)
+static void set_mode(int in, uint16_t handle, uint16_t cid, uint8_t mode)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
 
 	for (i = 0; i < CID_TABLE_SIZE; i++)
-		if (table[i].cid == cid)
+		if (table[i].handle == handle && table[i].cid == cid)
 			table[i].mode = mode;
 }
 
-static uint8_t get_mode(int in, uint16_t cid)
+static uint8_t get_mode(int in, uint16_t handle, uint16_t cid)
 {
 	register cid_info *table = cid_table[in];
 	register int i;
 
 	for (i = 0; i < CID_TABLE_SIZE; i++)
-		if (table[i].cid == cid)
+		if (table[i].handle == handle && table[i].cid == cid)
 			return table[i].mode;
 	return 0;
 }
@@ -432,7 +432,7 @@ static inline void conn_rsp(int level, struct frame *frm)
 
 	switch (h->result) {
 	case L2CAP_CR_SUCCESS:
-		if ((psm = get_psm(!frm->in, scid)))
+		if ((psm = get_psm(!frm->in, frm->handle, scid)))
 			add_cid(frm->in, frm->handle, dcid, psm);
 		break;
 
@@ -459,12 +459,13 @@ static inline void conn_rsp(int level, struct frame *frm)
 		printf("\n");
 }
 
-static void conf_rfc(void *ptr, int len, int in, uint16_t cid)
+static void conf_rfc(void *ptr, int len, int in, uint16_t handle,
+								uint16_t cid)
 {
 	uint8_t mode;
 
 	mode = *((uint8_t *) ptr);
-	set_mode(in, cid, mode);
+	set_mode(in, handle, cid, mode);
 
 	printf("RFC 0x%02x (%s", mode, mode2str(mode));
 	if (mode >= 0x01 && mode <= 0x04) {
@@ -510,7 +511,8 @@ static void conf_fcs(void *ptr, int len)
 		printf(" 0x%2.2x (%s)", fcs, fcs2str(fcs));
 }
 
-static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
+static void conf_opt(int level, void *ptr, int len, int in, uint16_t handle,
+								uint16_t cid)
 {
 	int indent = 0;
 	p_indent(level, 0);
@@ -530,7 +532,7 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 
 		switch (h->type & 0x7f) {
 		case L2CAP_CONF_MTU:
-			set_mode(in, cid, 0x00);
+			set_mode(in, handle, cid, 0x00);
 			printf("MTU");
 			if (h->len > 0)
 				printf(" %d", get_val(h->val, h->len));
@@ -549,7 +551,7 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t cid)
 			break;
 
 		case L2CAP_CONF_RFC:
-			conf_rfc(h->val, h->len, in, cid);
+			conf_rfc(h->val, h->len, in, handle, cid);
 			break;
 
 		case L2CAP_CONF_FCS:
@@ -619,7 +621,8 @@ static inline void conf_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 			dcid, btohs(h->flags), clen);
 
 	if (clen > 0)
-		conf_opt(level + 1, h->data, clen, frm->in, dcid);
+		conf_opt(level + 1, h->data, clen, frm->in, frm->handle,
+									dcid);
 }
 
 static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -643,7 +646,8 @@ static inline void conf_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 		if (result == 0x0003)
 			conf_list(level + 1, h->data, clen);
 		else
-			conf_opt(level + 1, h->data, clen, frm->in, scid);
+			conf_opt(level + 1, h->data, clen, frm->in,
+							frm->handle, scid);
 	} else {
 		p_indent(level + 1, frm);
 		printf("%s\n", confresult2str(result));
@@ -863,13 +867,13 @@ static void l2cap_parse(int level, struct frame *frm)
 	} else {
 		/* Connection oriented channel */
 
-		uint8_t mode = get_mode(!frm->in, cid);
-		uint16_t psm = get_psm(!frm->in, cid);
+		uint8_t mode = get_mode(!frm->in, frm->handle, cid);
+		uint16_t psm = get_psm(!frm->in, frm->handle, cid);
 		uint16_t ctrl = 0, fcs = 0;
 		uint32_t proto;
 
 		frm->cid = cid;
-		frm->num = get_num(!frm->in, cid);
+		frm->num = get_num(!frm->in, frm->handle, cid);
 
 		if (mode > 0) {
 			ctrl = btohs(bt_get_unaligned((uint16_t *) frm->ptr));
