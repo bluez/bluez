@@ -105,7 +105,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 			goto drop;
 		}
 
-		if (!get_hfp_active(device)) {
+		if (!headset_get_hfp_active(device)) {
 			error("Refusing non-HFP SCO connect attempt from %s",
 									addr);
 			goto drop;

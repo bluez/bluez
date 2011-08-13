@@ -2430,14 +2430,14 @@ unsigned int headset_suspend_stream(struct audio_device *dev,
 	return id;
 }
 
-gboolean get_hfp_active(struct audio_device *dev)
+gboolean headset_get_hfp_active(struct audio_device *dev)
 {
 	struct headset *hs = dev->headset;
 
 	return hs->hfp_active;
 }
 
-void set_hfp_active(struct audio_device *dev, gboolean active)
+void headset_set_hfp_active(struct audio_device *dev, gboolean active)
 {
 	struct headset *hs = dev->headset;
 

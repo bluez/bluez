@@ -510,7 +510,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	set_hfp_active(device, hfp_active);
+	headset_set_hfp_active(device, hfp_active);
 	headset_set_rfcomm_initiator(device, TRUE);
 
 	if (headset_connect_rfcomm(device, chan) < 0) {
