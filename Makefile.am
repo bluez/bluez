@@ -45,7 +45,12 @@ systemdunit_DATA = src/bluetooth.service
 endif
 endif
 
+if MAINTAINER_MODE
+plugindir = $(abs_top_srcdir)/plugins/.libs
+else
 plugindir = $(libdir)/bluetooth/plugins
+endif
+
 
 plugin_LTLIBRARIES =
 
