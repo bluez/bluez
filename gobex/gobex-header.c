@@ -157,6 +157,15 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		}
 		ptr = get_bytes(&hdr_len, ptr, sizeof(hdr_len));
 		hdr_len = g_ntohs(hdr_len);
+
+		if (hdr_len == 3) {
+			header->v.string = g_strdup("");
+			header->vlen = 0;
+			header->hlen = hdr_len;
+			*parsed = hdr_len;
+			break;
+		}
+
 		if (hdr_len > len || hdr_len < 5) {
 			g_set_error(err, G_OBEX_ERROR,
 				G_OBEX_ERROR_PARSE_ERROR,
@@ -331,7 +340,7 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	len = g_utf8_strlen(str, -1);
 
 	header->vlen = len;
-	header->hlen = 3 + ((len + 1) * 2);
+	header->hlen = len == 0 ? 3 : 3 + ((len + 1) * 2);
 	header->v.string = g_strdup(str);
 
 	return header;
