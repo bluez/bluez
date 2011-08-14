@@ -77,6 +77,8 @@ static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 	plugin->active = FALSE;
 	plugin->desc = desc;
 
+	__btd_enable_debug(desc->debug_start, desc->debug_stop);
+
 	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
 
 	return TRUE;

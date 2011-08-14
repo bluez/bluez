@@ -86,6 +86,20 @@ static gboolean is_enabled(struct btd_debug_desc *desc)
 	return 0;
 }
 
+void __btd_enable_debug(struct btd_debug_desc *start,
+					struct btd_debug_desc *stop)
+{
+	struct btd_debug_desc *desc;
+
+	if (start == NULL || stop == NULL)
+		return;
+
+	for (desc = start; desc < stop; desc++) {
+		if (is_enabled(desc))
+			desc->flags |= BTD_DEBUG_FLAG_PRINT;
+	}
+}
+
 void __btd_toggle_debug(void)
 {
 	struct btd_debug_desc *desc;
@@ -97,14 +111,11 @@ void __btd_toggle_debug(void)
 void __btd_log_init(const char *debug, int detach)
 {
 	int option = LOG_NDELAY | LOG_PID;
-	struct btd_debug_desc *desc;
 
 	if (debug != NULL)
 		enabled = g_strsplit_set(debug, ":, ", 0);
 
-	for (desc = __start___debug; desc < __stop___debug; desc++)
-		if (is_enabled(desc))
-			desc->flags |= BTD_DEBUG_FLAG_PRINT;
+	__btd_enable_debug(__start___debug, __stop___debug);
 
 	if (!detach)
 		option |= LOG_PERROR;
