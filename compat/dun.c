@@ -104,7 +104,7 @@ static int uses_rfcomm(char *path, char *dev)
 
 	while ((de = readdir(dir)) != NULL) {
 		char link[PATH_MAX + 1];
-		int  len = readlink(de->d_name, link, sizeof(link));
+		int  len = readlink(de->d_name, link, PATH_MAX);
 		if (len > 0) {
 			link[len] = 0;
 			if (strstr(link, dev)) {
