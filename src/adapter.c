@@ -2782,7 +2782,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	struct btd_device *device;
 	char peer_addr[18], local_addr[18];
 	const char *icon, *paddr = peer_addr;
-	dbus_bool_t paired = FALSE;
+	dbus_bool_t paired = FALSE, trusted = FALSE;
 	dbus_int16_t rssi = dev->rssi;
 	char *alias;
 	size_t uuid_count;
@@ -2791,8 +2791,10 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	ba2str(&adapter->bdaddr, local_addr);
 
 	device = adapter_find_device(adapter, paddr);
-	if (device)
+	if (device) {
 		paired = device_is_paired(device);
+		trusted = device_is_trusted(device);
+	}
 
 	/* The uuids string array is updated only if necessary */
 	uuid_count = g_slist_length(dev->services);
@@ -2841,6 +2843,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 			"Alias", DBUS_TYPE_STRING, &alias,
 			"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
 			"Paired", DBUS_TYPE_BOOLEAN, &paired,
+			"Trusted", DBUS_TYPE_BOOLEAN, &trusted,
 			"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
 			NULL);
 
