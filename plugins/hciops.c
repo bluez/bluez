@@ -1372,20 +1372,6 @@ static inline void remote_features_notify(int index, void *ptr)
 	write_features_info(&dev->bdaddr, &evt->bdaddr, NULL, evt->features);
 }
 
-static void write_le_host_complete(int index, uint8_t status)
-{
-	struct dev_info *dev = &devs[index];
-	uint8_t page_num = 0x01;
-
-	if (status)
-		return;
-
-	if (hci_send_cmd(dev->sk, OGF_INFO_PARAM,
-				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num) < 0)
-		error("Unable to read extended local features: %s (%d)",
-						strerror(errno), errno);
-}
-
 static void read_local_version_complete(int index,
 				const read_local_version_rp *rp)
 {
@@ -1800,9 +1786,6 @@ static inline void cmd_complete(int index, void *ptr)
 		break;
 	case cmd_opcode_pack(OGF_LINK_CTL, OCF_INQUIRY_CANCEL):
 		cc_inquiry_cancel(index, status);
-		break;
-	case cmd_opcode_pack(OGF_HOST_CTL, OCF_WRITE_LE_HOST_SUPPORTED):
-		write_le_host_complete(index, status);
 		break;
 	case cmd_opcode_pack(OGF_LE_CTL, OCF_LE_SET_SCAN_ENABLE):
 		cc_le_set_scan_enable(index, status);
@@ -2497,6 +2480,13 @@ static void device_devup_setup(int index)
 
 	bacpy(&dev->bdaddr, &di.bdaddr);
 	memcpy(dev->features, di.features, 8);
+
+	if (dev->features[7] & LMP_EXT_FEAT) {
+		uint8_t page_num = 0x01;
+
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
+				OCF_READ_LOCAL_EXT_FEATURES, 1, &page_num);
+	}
 
 	/* Set page timeout */
 	if ((main_opts.flags & (1 << HCID_SET_PAGETO))) {
