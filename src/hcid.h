@@ -38,7 +38,6 @@ struct main_opts {
 	gboolean	name_resolv;
 	gboolean	debug_keys;
 	gboolean	attrib_server;
-	gboolean	le;
 
 	uint8_t		mode;
 	uint8_t		discov_interval;

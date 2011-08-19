@@ -1094,9 +1094,6 @@ int attrib_server_init(void)
 	if (!register_core_services())
 		goto failed;
 
-	if (!main_opts.le)
-		return 0;
-
 	/* LE socket */
 	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
 					&le_io, NULL, &gerr,

@@ -2274,9 +2274,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->mode = MODE_CONNECTABLE;
 	adapter->off_timer = 0;
 
-	if (main_opts.le)
-		adapter_ops->enable_le(adapter->dev_id);
-
 	adapter_ops->set_name(adapter->dev_id, adapter->name);
 
 	if (read_local_class(&adapter->bdaddr, cls) < 0) {

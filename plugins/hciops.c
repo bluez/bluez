@@ -208,7 +208,7 @@ static inline gboolean is_le_capable(int index)
 {
 	struct dev_info *dev = &devs[index];
 
-	return (main_opts.le && dev->features[4] & LMP_LE &&
+	return (dev->features[4] & LMP_LE &&
 			dev->extfeatures[0] & LMP_HOST_LE) ? TRUE : FALSE;
 }
 
@@ -3307,27 +3307,6 @@ static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 	return err;
 }
 
-static int hciops_enable_le(int index)
-{
-	struct dev_info *dev = &devs[index];
-	write_le_host_supported_cp cp;
-
-	DBG("hci%d", index);
-
-	if (!(dev->features[4] & LMP_LE))
-		return -ENOTSUP;
-
-	cp.le = 0x01;
-	cp.simul = (dev->features[6] & LMP_LE_BREDR) ? 0x01 : 0x00;
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
-				OCF_WRITE_LE_HOST_SUPPORTED,
-				WRITE_LE_HOST_SUPPORTED_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static uint8_t generate_service_class(int index)
 {
 	struct dev_info *dev = &devs[index];
@@ -3658,7 +3637,6 @@ static struct btd_adapter_ops hci_ops = {
 	.pincode_reply = hciops_pincode_reply,
 	.confirm_reply = hciops_confirm_reply,
 	.passkey_reply = hciops_passkey_reply,
-	.enable_le = hciops_enable_le,
 	.encrypt_link = hciops_encrypt_link,
 	.set_did = hciops_set_did,
 	.add_uuid = hciops_add_uuid,
