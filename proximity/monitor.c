@@ -571,7 +571,7 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	monitor = g_new0(struct monitor, 1);
 	monitor->device = btd_device_ref(device);
 	monitor->conn = dbus_connection_ref(conn);
-	monitor->linklosslevel = (level ? : g_strdup("none"));
+	monitor->linklosslevel = (level ? : g_strdup("high"));
 	monitor->signallevel = g_strdup("unknown");
 	monitor->immediatelevel = g_strdup("none");
 
