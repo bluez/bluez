@@ -811,7 +811,7 @@ int gateway_config_stream(struct audio_device *dev, gateway_stream_cb_t sco_cb,
 
 gboolean gateway_cancel_stream(struct audio_device *dev, unsigned int id)
 {
-	gateway_close(dev);
+	gateway_suspend_stream(dev);
 	return TRUE;
 }
 
