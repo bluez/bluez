@@ -81,6 +81,7 @@
 
 #define MAIN_DELIM "\30" /* Main delimiter between phones, addresses, emails*/
 #define SUB_DELIM "\31" /* Delimiter used in telephone number strings*/
+#define ADDR_DELIM "\37" /* Delimiter used for address data fields */
 #define MAX_FIELDS 100 /* Max amount of fields to be concatenated at once*/
 #define VCARDS_PART_COUNT 50 /* amount of vcards sent at once to PBAP core */
 #define QUERY_OFFSET_FORMAT "%s OFFSET %d"
@@ -99,12 +100,12 @@
 "nco:nameHonorificPrefix(?_contact) "					\
 "nco:nameHonorificSuffix(?_contact) "					\
 "(SELECT GROUP_CONCAT(fn:concat("					\
-"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \";\","			\
-"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \";\","	\
-"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","			\
-"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","		\
+"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \"\37\","	\
+"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \"\37\","	\
+"tracker:coalesce(nco:locality(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:region(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \"\37\","		\
 "tracker:coalesce(nco:country(?aff_addr), \"\"), "			\
 "\"\31\", rdfs:label(?_role) ), "					\
 "\"\30\") "								\
@@ -208,12 +209,12 @@ CALLS_CONSTRAINTS(CONSTRAINT)						\
 	"nco:nameHonorificPrefix(?_contact) "				\
 	"nco:nameHonorificSuffix(?_contact) "				\
 "(SELECT GROUP_CONCAT(fn:concat("					\
-	"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \";\","		\
-	"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \";\","\
-	"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","	\
-	"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","		\
-	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","	\
+	"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \"\37\","	\
+	"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \"\37\","\
+	"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \"\37\","\
+	"tracker:coalesce(nco:locality(?aff_addr), \"\"), \"\37\","	\
+	"tracker:coalesce(nco:region(?aff_addr), \"\"), \"\37\","	\
+	"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \"\37\","	\
 	"tracker:coalesce(nco:country(?aff_addr), \"\"), "		\
 	"\"\31\", rdfs:label(?c_role) ), "				\
 	"\"\30\") "							\
@@ -304,12 +305,12 @@ COMBINED_CONSTRAINT		\
 "nco:nameHonorificPrefix(<%s>) "					\
 "nco:nameHonorificSuffix(<%s>) "					\
 "(SELECT GROUP_CONCAT(fn:concat("					\
-"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \";\","			\
-"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \";\","	\
-"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:locality(?aff_addr), \"\"), \";\","		\
-"tracker:coalesce(nco:region(?aff_addr), \"\"), \";\","			\
-"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \";\","		\
+"tracker:coalesce(nco:pobox(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:extendedAddress(?aff_addr), \"\"), \"\37\","	\
+"tracker:coalesce(nco:streetAddress(?aff_addr), \"\"), \"\37\","	\
+"tracker:coalesce(nco:locality(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:region(?aff_addr), \"\"), \"\37\","		\
+"tracker:coalesce(nco:postalcode(?aff_addr), \"\"), \"\37\","		\
 "tracker:coalesce(nco:country(?aff_addr), \"\"), "			\
 "\"\31\", rdfs:label(?_role) ), "					\
 "\"\30\") "								\
@@ -857,7 +858,7 @@ static struct phonebook_addr *gen_addr(const char *address, int type)
 	if (address == NULL || strlen(address) < ADDR_FIELD_AMOUNT)
 		return NULL;
 
-	addr_parts = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
+	addr_parts = g_strsplit(address, ADDR_DELIM, ADDR_FIELD_AMOUNT);
 
 	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i)
 		fields = g_slist_append(fields, g_strdup(addr_parts[i]));
