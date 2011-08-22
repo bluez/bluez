@@ -45,6 +45,11 @@ struct phonebook_field {
 	int type;
 };
 
+struct phonebook_addr {
+	GSList *fields;
+	int type;
+};
+
 struct phonebook_contact {
 	char *uid;
 	char *fullname;
@@ -73,4 +78,4 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 
 void phonebook_contact_free(struct phonebook_contact *contact);
 
-gboolean address_fields_present(const char *address);
+void phonebook_addr_free(gpointer addr);

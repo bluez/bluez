@@ -823,22 +823,76 @@ static void add_email(struct phonebook_contact *contact, const char *address,
 	contact->emails = g_slist_append(contact->emails, email);
 }
 
+static gboolean addr_matches(struct phonebook_addr *a, struct phonebook_addr *b)
+{
+	GSList *la, *lb;
+
+	if (a->type != b->type)
+		return FALSE;
+
+	for (la = a->fields, lb = b->fields; la && lb;
+						la = la->next, lb = lb->next) {
+		char *field_a = la->data;
+		char *field_b = lb->data;
+
+		if (g_strcmp0(field_a, field_b) != 0)
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+/* generates phonebook_addr struct from tracker address data string. */
+static struct phonebook_addr *gen_addr(const char *address, int type)
+{
+	struct phonebook_addr *addr;
+	GSList *fields = NULL;
+	char **addr_parts;
+	int i;
+
+	/* This test handles cases when address points to empty string
+	 * (or address is NULL pointer) or string containing only six
+	 * separators. It indicates that none of address fields is present
+	 * and there is no sense to create dummy phonebook_addr struct */
+	if (address == NULL || strlen(address) < ADDR_FIELD_AMOUNT)
+		return NULL;
+
+	addr_parts = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
+
+	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i)
+		fields = g_slist_append(fields, g_strdup(addr_parts[i]));
+
+	g_strfreev(addr_parts);
+
+	addr = g_new0(struct phonebook_addr, 1);
+	addr->fields = fields;
+	addr->type = type;
+
+	return addr;
+}
+
 static void add_address(struct phonebook_contact *contact,
 					const char *address, int type)
 {
-	struct phonebook_field *addr;
+	struct phonebook_addr *addr;
+	GSList *l;
 
-	if (address == NULL || address_fields_present(address) == FALSE)
+	addr = gen_addr(address, type);
+	if (addr == NULL)
 		return;
 
-	/* Not adding address if there is already added with the same value */
-	if (find_field(contact->addresses, address, type))
-		return;
+	/* Not adding address if there is already added with the same value.
+	 * These type of checks have to be done because sometimes tracker
+	 * returns results for contact data in more than 1 row - then the same
+	 * address may be returned more than once in query results */
+	for (l = contact->addresses; l; l = l->next) {
+		struct phonebook_addr *tmp = l->data;
 
-	addr = g_new0(struct phonebook_field, 1);
-
-	addr->text = g_strdup(address);
-	addr->type = type;
+		if (addr_matches(tmp, addr)) {
+			phonebook_addr_free(addr);
+			return;
+		}
+	}
 
 	contact->addresses = g_slist_append(contact->addresses, addr);
 }

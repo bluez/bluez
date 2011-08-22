@@ -201,24 +201,6 @@ static gboolean contact_fields_present(struct phonebook_contact * contact)
 	return FALSE;
 }
 
-gboolean address_fields_present(const char *address)
-{
-	gchar **fields = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
-	int i;
-
-	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i) {
-
-		if (strlen(fields[i]) != 0) {
-			g_strfreev(fields);
-			return TRUE;
-		}
-	}
-
-	g_strfreev(fields);
-
-	return FALSE;
-}
-
 static void vcard_printf_name(GString *vcards,
 					struct phonebook_contact *contact)
 {
@@ -440,21 +422,19 @@ static void vcard_printf_org(GString *vcards,
 }
 
 static void vcard_printf_address(GString *vcards, uint8_t format,
-					const char *address,
-					enum phonebook_field_type category)
+					struct phonebook_addr *address)
 {
-	char buf[LEN_MAX];
-	char field[ADDR_FIELD_AMOUNT][LEN_MAX];
+	char *fields, field_esc[LEN_MAX];
 	const char *category_string = "";
-	int len, i;
-	gchar **address_fields;
+	size_t len;
+	GSList *l;
 
-	if (!address || address_fields_present(address) == FALSE) {
+	if (!address) {
 		vcard_printf(vcards, "ADR:");
 		return;
 	}
 
-	switch (category) {
+	switch (address->type) {
 	case FIELD_TYPE_HOME:
 		if (format == FORMAT_VCARD21)
 			category_string = "HOME";
@@ -475,18 +455,25 @@ static void vcard_printf_address(GString *vcards, uint8_t format,
 		break;
 	}
 
-	address_fields = g_strsplit(address, ";", ADDR_FIELD_AMOUNT);
+	/* allocate enough memory to insert address fields separated by ';'
+	 * and terminated by '\0' */
+	len = ADDR_FIELD_AMOUNT * LEN_MAX;
+	fields = g_malloc0(len);
 
-	for (i = 0; i < ADDR_FIELD_AMOUNT; ++i) {
-		len = strlen(address_fields[i]);
-		add_slash(field[i], address_fields[i], LEN_MAX, len);
+	for (l = address->fields; l; l = l->next) {
+		char *field = l->data;
+
+		add_slash(field_esc, field, LEN_MAX, strlen(field));
+		g_strlcat(fields, field_esc, len);
+
+		if (l->next)
+			/* not addding ';' after last addr field */
+			g_strlcat(fields, ";", len);
 	}
 
-	snprintf(buf, LEN_MAX, "%s;%s;%s;%s;%s;%s;%s",
-	field[0], field[1], field[2], field[3], field[4], field[5], field[6]);
-	g_strfreev(address_fields);
+	vcard_printf(vcards,"ADR;%s:%s", category_string, fields);
 
-	vcard_printf(vcards,"ADR;%s:%s", category_string, buf);
+	g_free(fields);
 }
 
 static void vcard_printf_datetime(GString *vcards,
@@ -576,9 +563,8 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 		GSList *l = contact->addresses;
 
 		for (; l; l = l->next) {
-			struct phonebook_field *addr = l->data;
-			vcard_printf_address(vcards, format, addr->text,
-								addr->type);
+			struct phonebook_addr *addr = l->data;
+			vcard_printf_address(vcards, format, addr);
 		}
 	}
 
@@ -627,6 +613,14 @@ static void field_free(gpointer data)
 	g_free(field);
 }
 
+void phonebook_addr_free(gpointer addr)
+{
+	struct phonebook_addr *address = addr;
+
+	g_slist_free_full(address->fields, g_free);
+	g_free(address);
+}
+
 void phonebook_contact_free(struct phonebook_contact *contact)
 {
 	if (contact == NULL)
@@ -634,7 +628,7 @@ void phonebook_contact_free(struct phonebook_contact *contact)
 
 	g_slist_free_full(contact->numbers, field_free);
 	g_slist_free_full(contact->emails, field_free);
-	g_slist_free_full(contact->addresses, field_free);
+	g_slist_free_full(contact->addresses, phonebook_addr_free);
 	g_slist_free_full(contact->urls, field_free);
 
 	g_free(contact->uid);
