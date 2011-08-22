@@ -33,6 +33,11 @@ typedef enum {
 	GATEWAY_STATE_PLAYING,
 } gateway_state_t;
 
+typedef enum {
+	GATEWAY_LOCK_READ = 1,
+	GATEWAY_LOCK_WRITE = 1 << 1,
+} gateway_lock_t;
+
 typedef void (*gateway_state_cb) (struct audio_device *dev,
 					gateway_state_t old_state,
 					gateway_state_t new_state,
@@ -56,3 +61,6 @@ int gateway_get_sco_fd(struct audio_device *dev);
 void gateway_suspend_stream(struct audio_device *dev);
 unsigned int gateway_add_state_cb(gateway_state_cb cb, void *user_data);
 gboolean gateway_remove_state_cb(unsigned int id);
+gateway_lock_t gateway_get_lock(struct audio_device *dev);
+gboolean gateway_lock(struct audio_device *dev, gateway_lock_t lock);
+gboolean gateway_unlock(struct audio_device *dev, gateway_lock_t lock);

@@ -70,6 +70,7 @@ struct gateway {
 	struct hf_agent *agent;
 	DBusMessage *msg;
 	int version;
+	gateway_lock_t lock;
 };
 
 struct gateway_state_callback {
@@ -872,4 +873,41 @@ gboolean gateway_remove_state_cb(unsigned int id)
 	}
 
 	return FALSE;
+}
+
+gateway_lock_t gateway_get_lock(struct audio_device *dev)
+{
+	struct gateway *gw = dev->gateway;
+
+	return gw->lock;
+}
+
+gboolean gateway_lock(struct audio_device *dev, gateway_lock_t lock)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (gw->lock & lock)
+		return FALSE;
+
+	gw->lock |= lock;
+
+	return TRUE;
+}
+
+gboolean gateway_unlock(struct audio_device *dev, gateway_lock_t lock)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (!(gw->lock & lock))
+		return FALSE;
+
+	gw->lock &= ~lock;
+
+	if (gw->lock)
+		return TRUE;
+
+	if (gw->state == GATEWAY_STATE_PLAYING)
+		gateway_suspend_stream(dev);
+
+	return TRUE;
 }
