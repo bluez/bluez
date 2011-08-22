@@ -72,6 +72,14 @@ struct gateway {
 	int version;
 };
 
+struct gateway_state_callback {
+	gateway_state_cb cb;
+	void *user_data;
+	unsigned int id;
+};
+
+static GSList *gateway_callbacks = NULL;
+
 int gateway_close(struct audio_device *device);
 
 static const char *state2str(gateway_state_t state)
@@ -104,16 +112,37 @@ static void change_state(struct audio_device *dev, gateway_state_t new_state)
 {
 	struct gateway *gw = dev->gateway;
 	const char *val;
+	GSList *l;
+	gateway_state_t old_state;
 
 	if (gw->state == new_state)
 		return;
 
 	val = state2str(new_state);
+	old_state = gw->state;
 	gw->state = new_state;
 
 	emit_property_changed(dev->conn, dev->path,
 			AUDIO_GATEWAY_INTERFACE, "State",
 			DBUS_TYPE_STRING, &val);
+
+	for (l = gateway_callbacks; l != NULL; l = l->next) {
+		struct gateway_state_callback *cb = l->data;
+		cb->cb(dev, old_state, new_state, cb->user_data);
+	}
+}
+
+void gateway_set_state(struct audio_device *dev, gateway_state_t new_state)
+{
+	switch (new_state) {
+	case GATEWAY_STATE_DISCONNECTED:
+		gateway_close(dev);
+		break;
+	case GATEWAY_STATE_CONNECTING:
+	case GATEWAY_STATE_CONNECTED:
+	case GATEWAY_STATE_PLAYING:
+		break;
+	}
 }
 
 static void agent_disconnect(struct audio_device *dev, struct hf_agent *agent)
@@ -809,4 +838,36 @@ void gateway_suspend_stream(struct audio_device *dev)
 	gw->sco_start_cb = NULL;
 	gw->sco_start_cb_data = NULL;
 	change_state(dev, GATEWAY_STATE_CONNECTED);
+}
+
+unsigned int gateway_add_state_cb(gateway_state_cb cb, void *user_data)
+{
+	struct gateway_state_callback *state_cb;
+	static unsigned int id = 0;
+
+	state_cb = g_new(struct gateway_state_callback, 1);
+	state_cb->cb = cb;
+	state_cb->user_data = user_data;
+	state_cb->id = ++id;
+
+	gateway_callbacks = g_slist_append(gateway_callbacks, state_cb);
+
+	return state_cb->id;
+}
+
+gboolean gateway_remove_state_cb(unsigned int id)
+{
+	GSList *l;
+
+	for (l = gateway_callbacks; l != NULL; l = l->next) {
+		struct gateway_state_callback *cb = l->data;
+		if (cb && cb->id == id) {
+			gateway_callbacks = g_slist_remove(gateway_callbacks,
+									cb);
+			g_free(cb);
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }
