@@ -284,6 +284,8 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 		goto fail;
 	}
 
+	change_state(dev, GATEWAY_STATE_CONNECTING);
+
 	sk = g_io_channel_unix_get_fd(chan);
 
 	gw->rfcomm = g_io_channel_ref(chan);
