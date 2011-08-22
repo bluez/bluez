@@ -786,11 +786,11 @@ static void l2cap_parse(int level, struct frame *frm)
 			case L2CAP_COMMAND_REJ:
 				command_rej(level, frm);
 				break;
-			
+
 			case L2CAP_CONN_REQ:
 				conn_req(level, frm);
 				break;
-	
+
 			case L2CAP_CONN_RSP:
 				conn_rsp(level, frm);
 				break;
@@ -810,7 +810,7 @@ static void l2cap_parse(int level, struct frame *frm)
 			case L2CAP_DISCONN_RSP:
 				disconn_rsp(level, frm);
 				break;
-	
+
 			case L2CAP_ECHO_REQ:
 				echo_req(level, hdr, frm);
 				break;
