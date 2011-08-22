@@ -45,10 +45,12 @@ systemdunit_DATA = src/bluetooth.service
 endif
 endif
 
-if MAINTAINER_MODE
-plugindir = $(abs_top_srcdir)/plugins/.libs
-else
 plugindir = $(libdir)/bluetooth/plugins
+
+if MAINTAINER_MODE
+build_plugindir = $(abs_top_srcdir)/plugins/.libs
+else
+build_plugindir = $(plugindir)
 endif
 
 
@@ -411,7 +413,7 @@ EXTRA_DIST += doc/manager-api.txt \
 AM_YFLAGS = -d
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ \
-		-DBLUETOOTH_PLUGIN_BUILTIN -DPLUGINDIR=\""$(plugindir)"\"
+		-DBLUETOOTH_PLUGIN_BUILTIN -DPLUGINDIR=\""$(build_plugindir)"\"
 
 INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
