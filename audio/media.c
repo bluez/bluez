@@ -264,7 +264,8 @@ done:
 	if (request->cb)
 		request->cb(endpoint, ret, size, request->user_data);
 
-	endpoint_request_free(request);
+	if (endpoint->request)
+		endpoint_request_free(endpoint->request);
 	endpoint->request = NULL;
 }
 
