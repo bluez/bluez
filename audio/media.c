@@ -639,7 +639,7 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 		if (endpoint->sep == NULL)
 			goto failed;
 	} else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
-					g_strcmp0(uuid, HSP_AG_UUID) == 0) {
+					strcasecmp(uuid, HSP_AG_UUID) == 0) {
 		struct audio_device *dev;
 
 		endpoint->hs_watch = headset_add_state_cb(headset_state_changed,
