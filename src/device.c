@@ -993,7 +993,6 @@ static void device_remove_stored(struct btd_device *device)
 		delete_entry(&src, "aliases", addr);
 		device_set_bonded(device, FALSE);
 		device_set_paired(device, FALSE);
-		btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
 	}
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
@@ -2037,6 +2036,9 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	if (device->paired == value)
 		return;
+
+	if (!value)
+		btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
 
 	device->paired = value;
 
