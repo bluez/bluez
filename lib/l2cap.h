@@ -175,6 +175,7 @@ typedef struct {
 #define L2CAP_CONF_RFC		0x04
 #define L2CAP_CONF_FCS		0x05
 #define L2CAP_CONF_EFS		0x06
+#define L2CAP_CONF_EWS		0x07
 
 #define L2CAP_CONF_MAX_SIZE	22
 
