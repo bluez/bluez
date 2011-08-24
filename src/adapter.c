@@ -151,9 +151,6 @@ struct btd_adapter {
 	GSList *loaded_drivers;
 };
 
-static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
-					guint interval);
-
 static int found_device_cmp(const struct remote_dev_info *d1,
 			const struct remote_dev_info *d2)
 {
@@ -522,22 +519,6 @@ static DBusMessage *set_powered(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-void btd_adapter_pairable_changed(struct btd_adapter *adapter,
-							gboolean pairable)
-{
-	adapter->pairable = pairable;
-
-	write_device_pairable(&adapter->bdaddr, pairable);
-
-	emit_property_changed(connection, adapter->path,
-				ADAPTER_INTERFACE, "Pairable",
-				DBUS_TYPE_BOOLEAN, &pairable);
-
-	if (pairable && adapter->pairable_timeout)
-		adapter_set_pairable_timeout(adapter,
-						adapter->pairable_timeout);
-}
-
 static DBusMessage *set_pairable(DBusConnection *conn, DBusMessage *msg,
 				gboolean pairable, void *data)
 {
@@ -585,6 +566,22 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 	adapter->pairable_timeout_id = g_timeout_add_seconds(interval,
 						pairable_timeout_handler,
 						adapter);
+}
+
+void btd_adapter_pairable_changed(struct btd_adapter *adapter,
+							gboolean pairable)
+{
+	adapter->pairable = pairable;
+
+	write_device_pairable(&adapter->bdaddr, pairable);
+
+	emit_property_changed(connection, adapter->path,
+				ADAPTER_INTERFACE, "Pairable",
+				DBUS_TYPE_BOOLEAN, &pairable);
+
+	if (pairable && adapter->pairable_timeout)
+		adapter_set_pairable_timeout(adapter,
+						adapter->pairable_timeout);
 }
 
 static struct session_req *find_session(GSList *list, const char *sender)
