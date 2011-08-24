@@ -28,13 +28,7 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-
-#include <bluetooth/bluetooth.h>
+#include <stdint.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -42,9 +36,6 @@
 
 #include "log.h"
 
-#include "adapter.h"
-#include "manager.h"
-#include "event.h"
 #include "dbus-common.h"
 
 static DBusConnection *connection = NULL;

@@ -51,7 +51,6 @@
 #include "manager.h"
 #include "device.h"
 #include "dbus-common.h"
-#include "event.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "agent.h"
