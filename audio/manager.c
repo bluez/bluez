@@ -578,8 +578,8 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 		return;
 	}
 
-	server_uuid = HFP_AG_UUID;
-	remote_uuid = HFP_HS_UUID;
+	server_uuid = HFP_HS_UUID;
+	remote_uuid = HFP_AG_UUID;
 
 	device = manager_get_device(&src, &dst, TRUE);
 	if (!device)
