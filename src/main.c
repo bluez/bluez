@@ -311,6 +311,7 @@ static int connect_dbus(void)
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, BLUEZ_NAME, &err);
 	if (!conn) {
 		if (dbus_error_is_set(&err)) {
+			g_printerr("D-Bus setup failed: %s\n", err.message);
 			dbus_error_free(&err);
 			return -EIO;
 		}
