@@ -45,6 +45,7 @@ static GSList *clients = NULL;
 static gboolean option_packet = FALSE;
 static gboolean option_bluetooth = FALSE;
 static int option_channel = -1;
+static char *option_root = NULL;
 
 static void sig_term(int sig)
 {
@@ -63,6 +64,8 @@ static GOptionEntry options[] = {
 			&option_packet, "Packet based transport" },
 	{ "stream", 's', G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE,
 			&option_packet, "Stream based transport" },
+	{ "root", 'r', 0, G_OPTION_ARG_STRING,
+			&option_root, "Root dir", "/..." },
 	{ NULL },
 };
 
@@ -408,6 +411,11 @@ int main(int argc, char *argv[])
 	if (err != NULL) {
 		g_printerr("%s\n", err->message);
 		g_error_free(err);
+		exit(EXIT_FAILURE);
+	}
+
+	if (option_root && chdir(option_root) > 0) {
+		perror("chdir:");
 		exit(EXIT_FAILURE);
 	}
 
