@@ -727,7 +727,7 @@ static int avctp_send_event(struct control *control, uint8_t id, void *data)
 	struct avrcp_header *avrcp = (void *) &buf[AVCTP_HEADER_LENGTH];
 	struct avrcp_spec_avc_pdu *pdu = (void *) &buf[AVCTP_HEADER_LENGTH +
 							AVRCP_HEADER_LENGTH];
-	int sk = g_io_channel_unix_get_fd(control->io);
+	int sk;
 	uint16_t size;
 
 	if (control->state != AVCTP_STATE_CONNECTED)
@@ -782,6 +782,8 @@ static int avctp_send_event(struct control *control, uint8_t id, void *data)
 	pdu->params_len = htons(size);
 	size += AVCTP_HEADER_LENGTH + AVRCP_HEADER_LENGTH +
 					AVRCP_SPECAVCPDU_HEADER_LENGTH;
+
+	sk = g_io_channel_unix_get_fd(control->io);
 
 	if (write(sk, buf, size) < 0)
 		return -errno;
