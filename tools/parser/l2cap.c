@@ -556,6 +556,12 @@ static void conf_opt(int level, void *ptr, int len, int in, uint16_t handle,
 			conf_efs(h->val);
 			break;
 
+		case L2CAP_CONF_EWS:
+			printf("EWS");
+			if (h->len > 0)
+				printf(" %d", get_val(h->val, h->len));
+			break;
+
 		default:
 			printf("Unknown (type %2.2x, len %d)", h->type & 0x7f, h->len);
 			break;
@@ -593,6 +599,9 @@ static void conf_list(int level, uint8_t *list, int len)
 			break;
 		case L2CAP_CONF_EFS:
 			printf("EFS ");
+			break;
+		case L2CAP_CONF_EWS:
+			printf("EWS ");
 			break;
 		default:
 			printf("%2.2x ", list[i] & 0x7f);
