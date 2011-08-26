@@ -22,16 +22,19 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 #include <gobex/gobex.h>
 
 #include "util.h"
 
 #define FINAL_BIT 0x80
+#define RANDOM_PACKETS 4
 
 static guint8 put_req_first[] = { G_OBEX_OP_PUT, 0x00, 0x30,
 	G_OBEX_HDR_TYPE, 0x00, 0x0b,
@@ -79,6 +82,28 @@ static gboolean resume_obex(gpointer user_data)
 {
 	g_obex_resume(user_data);
 	return FALSE;
+}
+
+static gssize provide_random(void *buf, gsize len, gpointer user_data)
+{
+	struct test_data *d = user_data;
+	int fd;
+	gssize ret;
+
+	if (d->count == RANDOM_PACKETS - 1)
+		return 0;
+
+	fd = open("/dev/urandom", O_RDONLY | O_NOCTTY, 0);
+	if (fd < 0) {
+		g_set_error(&d->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
+				"open(/dev/urandom): %s", strerror(errno));
+		g_main_loop_quit(d->mainloop);
+		return -1;
+	}
+
+	ret = read(fd, buf, len);
+	close(fd);
+	return ret;
 }
 
 static gssize provide_eagain(void *buf, gsize len, gpointer user_data)
@@ -328,6 +353,96 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 		g_main_loop_quit(d->mainloop);
 }
 
+static void test_put_req_random(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+				{ NULL, 0 },
+				{ NULL, 0 },
+				{ NULL, 0 },
+				{ put_req_last, sizeof(put_req_last) } }, {
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_last, sizeof(put_rsp_last) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+	d.obex = obex;
+	d.provide_delay = 200;
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_put_req(obex, provide_random, transfer_complete, &d, &d.err,
+					G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+					G_OBEX_HDR_NAME, "random.bin",
+					G_OBEX_HDR_INVALID);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, RANDOM_PACKETS);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
+static void test_put_req_eagain(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+				{ put_req_first, sizeof(put_req_first) },
+				{ put_req_last, sizeof(put_req_last) } }, {
+				{ put_rsp_first, sizeof(put_rsp_first) },
+				{ put_rsp_last, sizeof(put_rsp_last) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+	d.obex = obex;
+	d.provide_delay = 200;
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_put_req(obex, provide_eagain, transfer_complete, &d, &d.err,
+					G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
+					G_OBEX_HDR_NAME, "file.txt",
+					G_OBEX_HDR_INVALID);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 2);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 static void test_get_rsp(void)
 {
 	GIOChannel *io;
@@ -393,49 +508,6 @@ static void test_put_req_delay(void)
 	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
 
 	g_obex_put_req(obex, provide_data, transfer_complete, &d, &d.err,
-					G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
-					G_OBEX_HDR_NAME, "file.txt",
-					G_OBEX_HDR_INVALID);
-	g_assert_no_error(d.err);
-
-	g_main_loop_run(d.mainloop);
-
-	g_assert_cmpuint(d.count, ==, 2);
-
-	g_main_loop_unref(d.mainloop);
-
-	g_source_remove(timer_id);
-	g_io_channel_unref(io);
-	g_source_remove(io_id);
-	g_obex_unref(obex);
-
-	g_assert_no_error(d.err);
-}
-
-static void test_put_req_eagain(void)
-{
-	GIOChannel *io;
-	GIOCondition cond;
-	guint io_id, timer_id;
-	GObex *obex;
-	struct test_data d = { 0, NULL, {
-				{ put_req_first, sizeof(put_req_first) },
-				{ put_req_last, sizeof(put_req_last) } }, {
-				{ put_rsp_first, sizeof(put_rsp_first) },
-				{ put_rsp_last, sizeof(put_rsp_last) } } };
-
-	create_endpoints(&obex, &io, SOCK_STREAM);
-	d.obex = obex;
-	d.provide_delay = 200;
-
-	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
-	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
-
-	d.mainloop = g_main_loop_new(NULL, FALSE);
-
-	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
-
-	g_obex_put_req(obex, provide_eagain, transfer_complete, &d, &d.err,
 					G_OBEX_HDR_TYPE, hdr_type, sizeof(hdr_type),
 					G_OBEX_HDR_NAME, "file.txt",
 					G_OBEX_HDR_INVALID);
@@ -557,6 +629,8 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_put_req_eagain", test_put_req_eagain);
 	g_test_add_func("/gobex/test_put_req_eagain", test_get_rsp_eagain);
+
+	g_test_add_func("/gobex/test_put_req_random", test_put_req_random);
 
 	g_test_run();
 
