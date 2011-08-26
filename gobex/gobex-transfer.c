@@ -170,10 +170,14 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
-	req = g_obex_packet_new(transfer->opcode, TRUE, G_OBEX_HDR_INVALID);
-
-	if (transfer->opcode == G_OBEX_OP_PUT)
+	if (transfer->opcode == G_OBEX_OP_PUT) {
+		req = g_obex_packet_new(transfer->opcode, FALSE,
+							G_OBEX_HDR_INVALID);
 		g_obex_packet_add_body(req, put_get_data, transfer);
+	} else {
+		req = g_obex_packet_new(transfer->opcode, TRUE,
+							G_OBEX_HDR_INVALID);
+	}
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
