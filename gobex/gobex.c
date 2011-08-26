@@ -884,6 +884,9 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 		obex->read = read_packet;
 		obex->write = write_packet;
 		break;
+	default:
+		g_obex_unref(obex);
+		return NULL;
 	}
 
 	g_io_channel_set_encoding(io, NULL, NULL);
