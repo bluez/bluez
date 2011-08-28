@@ -73,6 +73,10 @@ lib_libbluetooth_la_SOURCES = $(lib_headers) \
 lib_libbluetooth_la_LDFLAGS = -version-info 14:4:11
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 
+noinst_LTLIBRARIES += lib/libbluetooth-private.la
+
+lib_libbluetooth_private_la_SOURCES = $(lib_libbluetooth_la_SOURCES)
+
 if SBC
 noinst_LTLIBRARIES += sbc/libsbc.la
 
@@ -296,12 +300,12 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/dbus-common.c src/dbus-common.h \
 			src/event.h src/event.c \
 			src/oob.h src/oob.c src/eir.h src/eir.c
-src_bluetoothd_LDADD = lib/libbluetooth.la @GLIB_LIBS@ @DBUS_LIBS@ \
+src_bluetoothd_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @DBUS_LIBS@ \
 							@CAPNG_LIBS@ -ldl -lrt
 src_bluetoothd_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
 
-src_bluetoothd_DEPENDENCIES = lib/libbluetooth.la
+src_bluetoothd_DEPENDENCIES = lib/libbluetooth-private.la
 
 builtin_files = src/builtin.h $(builtin_nodist)
 
