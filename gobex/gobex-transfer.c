@@ -207,6 +207,30 @@ static struct transfer *transfer_new(GObex *obex, guint8 opcode,
 	return transfer;
 }
 
+guint g_obex_put_req_pkt(GObex *obex, GObexPacket *req,
+			GObexDataProducer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err)
+{
+	struct transfer *transfer;
+
+	if (g_obex_packet_get_operation(req, NULL) != G_OBEX_OP_PUT)
+		return 0;
+
+	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
+	transfer->data_producer = data_func;
+
+	g_obex_packet_add_body(req, put_get_data, transfer);
+
+	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
+								transfer, err);
+	if (transfer->req_id == 0) {
+		transfer_free(transfer);
+		return 0;
+	}
+
+	return transfer->id;
+}
+
 guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err, guint8 first_hdr_id, ...)
@@ -342,6 +366,28 @@ guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 	id = g_obex_add_request_function(obex, G_OBEX_OP_ABORT,
 						transfer_abort_req, transfer);
 	transfer->abort_id = id;
+
+	return transfer->id;
+}
+
+guint g_obex_get_req_pkt(GObex *obex, GObexPacket *req,
+			GObexDataConsumer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err)
+{
+	struct transfer *transfer;
+
+	if (g_obex_packet_get_operation(req, NULL) != G_OBEX_OP_GET)
+		return 0;
+
+	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
+	transfer->data_consumer = data_func;
+
+	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
+								transfer, err);
+	if (transfer->req_id == 0) {
+		transfer_free(transfer);
+		return 0;
+	}
 
 	return transfer->id;
 }

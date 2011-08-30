@@ -96,9 +96,17 @@ guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err, guint8 first_hdr_id, ...);
 
+guint g_obex_put_req_pkt(GObex *obex, GObexPacket *req,
+			GObexDataProducer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err);
+
 guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err, guint8 first_hdr_id, ...);
+
+guint g_obex_get_req_pkt(GObex *obex, GObexPacket *req,
+			GObexDataConsumer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err);
 
 guint g_obex_put_rsp(GObex *obex, GObexPacket *req,
 			GObexDataConsumer data_func, GObexFunc complete_func,
