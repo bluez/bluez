@@ -71,6 +71,9 @@ static void transfer_free(struct transfer *transfer)
 static void transfer_complete(struct transfer *transfer, GError *err)
 {
 	transfer->complete_func(transfer->obex, err, transfer->user_data);
+	/* Check if the complete_func removed the transfer */
+	if (g_slist_find(transfers, transfer) == NULL)
+		return;
 	transfer_free(transfer);
 }
 
