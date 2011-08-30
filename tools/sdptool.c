@@ -2581,7 +2581,7 @@ static int add_cip(sdp_session_t *session, svc_info_t *si)
 	proto[0] = sdp_list_append(0, &l2cap);
 	apseq = sdp_list_append(0, proto[0]);
 	proto[0] = sdp_list_append(proto[0], sdp_data_alloc(SDP_UINT16, &psm));
-	apseq = sdp_list_append(0, proto[0]);
+	apseq = sdp_list_append(apseq, proto[0]);
 
 	sdp_uuid16_create(&cmtp, CMTP_UUID);
 	proto[1] = sdp_list_append(0, &cmtp);
