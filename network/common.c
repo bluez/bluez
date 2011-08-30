@@ -240,12 +240,14 @@ int bnep_if_down(const char *devname)
 
 int bnep_add_to_bridge(const char *devname, const char *bridge)
 {
-	int ifindex = if_nametoindex(devname);
+	int ifindex;
 	struct ifreq ifr;
 	int sk, err;
 
 	if (!devname || !bridge)
 		return -EINVAL;
+
+	ifindex = if_nametoindex(devname);
 
 	sk = socket(AF_INET, SOCK_STREAM, 0);
 	if (sk < 0)
