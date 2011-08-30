@@ -89,6 +89,12 @@ gboolean g_obex_packet_prepend_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexDataProducer func,
 							gpointer user_data);
+gboolean g_obex_packet_add_unicode(GObexPacket *pkt, guint8 id,
+							const char *str);
+gboolean g_obex_packet_add_bytes(GObexPacket *pkt, guint8 id,
+						const void *data, gsize len);
+gboolean g_obex_packet_add_uint8(GObexPacket *pkt, guint8 id, guint8 val);
+gboolean g_obex_packet_add_uint32(GObexPacket *pkt, guint8 id, guint32 val);
 gboolean g_obex_packet_set_data(GObexPacket *pkt, const void *data, gsize len,
 						GObexDataPolicy data_policy);
 const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len);

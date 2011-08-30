@@ -121,6 +121,52 @@ gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexDataProducer func,
 	return TRUE;
 }
 
+gboolean g_obex_packet_add_unicode(GObexPacket *pkt, guint8 id,
+							const char *str)
+{
+	GObexHeader *hdr;
+
+	hdr = g_obex_header_new_unicode(id, str);
+	if (hdr == NULL)
+		return FALSE;
+
+	return g_obex_packet_add_header(pkt, hdr);
+}
+
+gboolean g_obex_packet_add_bytes(GObexPacket *pkt, guint8 id,
+						const void *data, gsize len)
+{
+	GObexHeader *hdr;
+
+	hdr = g_obex_header_new_bytes(id, data, len);
+	if (hdr == NULL)
+		return FALSE;
+
+	return g_obex_packet_add_header(pkt, hdr);
+}
+
+gboolean g_obex_packet_add_uint8(GObexPacket *pkt, guint8 id, guint8 val)
+{
+	GObexHeader *hdr;
+
+	hdr = g_obex_header_new_uint8(id, val);
+	if (hdr == NULL)
+		return FALSE;
+
+	return g_obex_packet_add_header(pkt, hdr);
+}
+
+gboolean g_obex_packet_add_uint32(GObexPacket *pkt, guint8 id, guint32 val)
+{
+	GObexHeader *hdr;
+
+	hdr = g_obex_header_new_uint32(id, val);
+	if (hdr == NULL)
+		return FALSE;
+
+	return g_obex_packet_add_header(pkt, hdr);
+}
+
 const void *g_obex_packet_get_data(GObexPacket *pkt, gsize *len)
 {
 	if (pkt->data_len == 0) {
