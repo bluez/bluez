@@ -1017,7 +1017,7 @@ guint g_obex_copy(GObex *obex, const char *name, const char *dest,
 {
 	GObexPacket *req;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
+	req = g_obex_packet_new(G_OBEX_OP_ACTION, TRUE,
 					G_OBEX_HDR_ACTION, G_OBEX_ACTION_COPY,
 					G_OBEX_HDR_NAME, name,
 					G_OBEX_HDR_DESTNAME, dest,
@@ -1032,7 +1032,7 @@ guint g_obex_move(GObex *obex, const char *name, const char *dest,
 {
 	GObexPacket *req;
 
-	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
+	req = g_obex_packet_new(G_OBEX_OP_ACTION, TRUE,
 					G_OBEX_HDR_ACTION, G_OBEX_ACTION_MOVE,
 					G_OBEX_HDR_NAME, name,
 					G_OBEX_HDR_DESTNAME, dest,
