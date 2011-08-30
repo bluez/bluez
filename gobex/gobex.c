@@ -1008,3 +1008,33 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
+
+guint g_obex_copy(GObex *obex, const char *name, const char *dest,
+			GObexResponseFunc func, gpointer user_data,
+			GError **err)
+{
+	GObexPacket *req;
+
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
+					G_OBEX_HDR_ACTION, G_OBEX_ACTION_COPY,
+					G_OBEX_HDR_NAME, name,
+					G_OBEX_HDR_DESTNAME, dest,
+					G_OBEX_HDR_INVALID);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}
+
+guint g_obex_move(GObex *obex, const char *name, const char *dest,
+			GObexResponseFunc func, gpointer user_data,
+			GError **err)
+{
+	GObexPacket *req;
+
+	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE,
+					G_OBEX_HDR_ACTION, G_OBEX_ACTION_MOVE,
+					G_OBEX_HDR_NAME, name,
+					G_OBEX_HDR_DESTNAME, dest,
+					G_OBEX_HDR_INVALID);
+
+	return g_obex_send_req(obex, req, -1, func, user_data, err);
+}

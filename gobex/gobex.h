@@ -82,6 +82,14 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 					gpointer user_data, GError **err);
 
+guint g_obex_copy(GObex *obex, const char *name, const char *dest,
+			GObexResponseFunc func, gpointer user_data,
+			GError **err);
+
+guint g_obex_move(GObex *obex, const char *name, const char *dest,
+			GObexResponseFunc func, gpointer user_data,
+			GError **err);
+
 /* Transfer related high-level functions */
 
 guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,

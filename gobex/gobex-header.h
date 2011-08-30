@@ -55,6 +55,11 @@
 #define G_OBEX_HDR_SRM			0x97
 #define G_OBEX_HDR_SRM_PARAMETERS	0x98
 
+/* Action header values */
+#define G_OBEX_ACTION_COPY		0x00
+#define G_OBEX_ACTION_MOVE		0x01
+#define G_OBEX_ACTION_SETPERM		0x02
+
 typedef struct _GObexHeader GObexHeader;
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
