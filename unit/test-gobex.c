@@ -57,6 +57,19 @@ static uint8_t pkt_delete_req[] = { G_OBEX_OP_PUT | FINAL_BIT, 0x00, 0x16,
 		G_OBEX_HDR_NAME, 0x00, 0x13,
 		0, 'f', 0, 'o', 0, 'o', 0, '.', 0, 't', 0, 'x', 0, 't', 0, 0 };
 
+static uint8_t pkt_copy_req[] = { G_OBEX_OP_ACTION | FINAL_BIT, 0x00, 0x1b,
+					G_OBEX_HDR_ACTION, 0x00,
+					G_OBEX_HDR_NAME, 0x00, 0x0b,
+					0, 'f', 0, 'o', 0, 'o', 0, 0,
+					G_OBEX_HDR_DESTNAME, 0x00, 0x0b,
+					0, 'b', 0, 'a', 0, 'r', 0, 0 };
+static uint8_t pkt_move_req[] = { G_OBEX_OP_ACTION | FINAL_BIT, 0x00, 0x1b,
+					G_OBEX_HDR_ACTION, 0x01,
+					G_OBEX_HDR_NAME, 0x00, 0x0b,
+					0, 'f', 0, 'o', 0, 'o', 0, 0,
+					G_OBEX_HDR_DESTNAME, 0x00, 0x0b,
+					0, 'b', 0, 'a', 0, 'r', 0, 0 };
+
 static uint8_t pkt_nval_connect_rsp[] = { 0x10 | FINAL_BIT, 0x00, 0x05,
 					0x10, 0x00, };
 static uint8_t pkt_abort_rsp[] = { 0x90, 0x00, 0x03 };
@@ -1002,6 +1015,78 @@ static void test_delete(void)
 	g_assert_no_error(d.err);
 }
 
+static void test_copy(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+			{ pkt_copy_req, sizeof(pkt_copy_req) } }, {
+			{ pkt_success_rsp, sizeof(pkt_success_rsp) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_copy(obex, "foo", "bar", req_complete, &d, &d.err);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 1);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
+static void test_move(void)
+{
+	GIOChannel *io;
+	GIOCondition cond;
+	guint io_id, timer_id;
+	GObex *obex;
+	struct test_data d = { 0, NULL, {
+			{ pkt_move_req, sizeof(pkt_move_req) } }, {
+			{ pkt_success_rsp, sizeof(pkt_success_rsp) } } };
+
+	create_endpoints(&obex, &io, SOCK_STREAM);
+
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
+
+	d.mainloop = g_main_loop_new(NULL, FALSE);
+
+	timer_id = g_timeout_add_seconds(1, test_timeout, &d);
+
+	g_obex_move(obex, "foo", "bar", req_complete, &d, &d.err);
+	g_assert_no_error(d.err);
+
+	g_main_loop_run(d.mainloop);
+
+	g_assert_cmpuint(d.count, ==, 1);
+
+	g_main_loop_unref(d.mainloop);
+
+	g_source_remove(timer_id);
+	g_io_channel_unref(io);
+	g_source_remove(io_id);
+	g_obex_unref(obex);
+
+	g_assert_no_error(d.err);
+}
+
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
@@ -1061,6 +1146,9 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_mkdir", test_mkdir);
 
 	g_test_add_func("/gobex/test_delete", test_delete);
+
+	g_test_add_func("/gobex/test_copy", test_copy);
+	g_test_add_func("/gobex/test_move", test_move);
 
 	g_test_run();
 
