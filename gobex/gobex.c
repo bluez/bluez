@@ -122,6 +122,7 @@ static ssize_t req_header_offset(guint8 opcode)
 	case G_OBEX_OP_GET:
 	case G_OBEX_OP_SESSION:
 	case G_OBEX_OP_ABORT:
+	case G_OBEX_OP_ACTION:
 		return 0;
 	default:
 		return -1;
@@ -139,6 +140,7 @@ static ssize_t rsp_header_offset(guint8 opcode)
 	case G_OBEX_OP_GET:
 	case G_OBEX_OP_SESSION:
 	case G_OBEX_OP_ABORT:
+	case G_OBEX_OP_ACTION:
 		return 0;
 	default:
 		return -1;
