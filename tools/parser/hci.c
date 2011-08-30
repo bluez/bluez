@@ -3514,11 +3514,16 @@ static inline void remote_host_features_notify_dump(int level, struct frame *frm
 static inline void evt_le_conn_complete_dump(int level, struct frame *frm)
 {
 	evt_le_connection_complete *evt = frm->ptr;
+	char addr[18];
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle %d, role %s\n",
 					evt->status, btohs(evt->handle),
 					evt->role ? "slave" : "master");
+
+	p_indent(level, frm);
+	p_ba2str(&evt->peer_bdaddr, addr);
+	printf("bdaddr %s (%s)\n", addr, bdaddrtype2str(evt->peer_bdaddr_type));
 }
 
 static inline void evt_le_advertising_report_dump(int level, struct frame *frm)
