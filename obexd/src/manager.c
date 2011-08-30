@@ -452,6 +452,9 @@ static void agent_cancel()
 {
 	DBusMessage *msg;
 
+	if (agent == NULL)
+		return;
+
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 					"org.openobex.Agent", "Cancel");
 
