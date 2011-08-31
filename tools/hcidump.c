@@ -39,19 +39,17 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-
 #include <arpa/inet.h>
-#include <netinet/in.h>
 #include <netdb.h>
 
 #include "parser.h"
 #include "sdp.h"
 
-#define SNAP_LEN 	HCI_MAX_FRAME_SIZE
-#define DEFAULT_PORT	"10839";
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
+
+#define SNAP_LEN	HCI_MAX_FRAME_SIZE
+#define DEFAULT_PORT   "10839"
 
 /* Modes */
 enum {

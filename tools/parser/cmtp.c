@@ -31,9 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <netinet/in.h>
-
 #include "parser.h"
 
 #define TABLE_SIZE 10

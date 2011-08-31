@@ -32,16 +32,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/l2cap.h>
-
 #include "parser.h"
 #include "sdp.h"
+#include "lib/hci.h"
+#include "lib/l2cap.h"
 
 typedef struct {
 	uint16_t handle;

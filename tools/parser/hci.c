@@ -33,15 +33,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
-
 #include "parser.h"
+#include "lib/hci.h"
+#include "lib/hci_lib.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 

@@ -27,8 +27,9 @@
 
 #include <time.h>
 #include <sys/time.h>
-#include <bluetooth/bluetooth.h>
 #include <netinet/in.h>
+
+#include "lib/bluetooth.h"
 
 struct frame {
 	void		*data;
@@ -107,7 +108,7 @@ struct parser_t {
 
 extern struct parser_t parser;
 
-void init_parser(unsigned long flags, unsigned long filter, 
+void init_parser(unsigned long flags, unsigned long filter,
 		unsigned short defpsm, unsigned short defcompid,
 		int pppdump_fd, int audio_fd);
 

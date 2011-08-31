@@ -32,12 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-
-#include <bluetooth/bluetooth.h>
-
 #include "parser.h"
 #include "rfcomm.h"
 #include "sdp.h"

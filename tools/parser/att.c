@@ -31,9 +31,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <sys/types.h>
-#include <netinet/in.h>
-
 #include "parser.h"
 
 #define GATT_PRIM_SVC_UUID		0x2800
