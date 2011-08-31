@@ -625,8 +625,13 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 					"The operation was cancelled");
 
-	if (p->rsp_func)
+	if (p->rsp_func) {
 		p->rsp_func(obex, err, rsp, p->rsp_data);
+
+		/* Check if user callback removed the request */
+		if (p != obex->pending_req)
+			return;
+	}
 
 	if (p->cancelled)
 		g_error_free(err);
@@ -807,18 +812,23 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (pkt == NULL)
 		goto failed;
 
+	/* Protect against user callback freeing the object */
+	g_obex_ref(obex);
+
 	if (obex->pending_req)
 		handle_response(obex, NULL, pkt);
 	else
 		handle_request(obex, pkt);
+
+	obex->rx_data = 0;
+
+	g_obex_unref(obex);
 
 	if (err != NULL)
 		g_error_free(err);
 
 	if (pkt != NULL)
 		g_obex_packet_free(pkt);
-
-	obex->rx_data = 0;
 
 	return TRUE;
 
@@ -828,11 +838,16 @@ failed:
 	obex->io_source = 0;
 	obex->rx_data = 0;
 
+	/* Protect against user callback freeing the object */
+	g_obex_ref(obex);
+
 	if (obex->pending_req)
 		handle_response(obex, err, NULL);
 
 	if (obex->disconn_func)
 		obex->disconn_func(obex, err, obex->disconn_func_data);
+
+	g_obex_unref(obex);
 
 	g_error_free(err);
 
