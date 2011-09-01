@@ -24,6 +24,8 @@
 
 #include "gobex.h"
 
+#define FIRST_PACKET_TIMEOUT 60
+
 static GSList *transfers = NULL;
 
 struct transfer {
@@ -224,8 +226,8 @@ guint g_obex_put_req_pkt(GObex *obex, GObexPacket *req,
 
 	g_obex_packet_add_body(req, put_get_data, transfer);
 
-	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
-								transfer, err);
+	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
+					transfer_response, transfer, err);
 	if (transfer->req_id == 0) {
 		transfer_free(transfer);
 		return 0;
@@ -252,8 +254,8 @@ guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 
 	g_obex_packet_add_body(req, put_get_data, transfer);
 
-	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
-								transfer, err);
+	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
+					transfer_response, transfer, err);
 	if (transfer->req_id == 0) {
 		transfer_free(transfer);
 		return 0;
@@ -385,8 +387,8 @@ guint g_obex_get_req_pkt(GObex *obex, GObexPacket *req,
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_consumer = data_func;
 
-	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
-								transfer, err);
+	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
+					transfer_response, transfer, err);
 	if (transfer->req_id == 0) {
 		transfer_free(transfer);
 		return 0;
@@ -411,8 +413,8 @@ guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
 							first_hdr_id, args);
 	va_end(args);
 
-	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
-								transfer, err);
+	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
+					transfer_response, transfer, err);
 	if (transfer->req_id == 0) {
 		transfer_free(transfer);
 		return 0;
