@@ -21,11 +21,15 @@
  *
  */
 
+#include <stdint.h>
 #include <glib.h>
 #include <gdbus.h>
-#include <gw-obex.h>
+#include <gobex.h>
 
 struct obc_session;
+
+#define OBEX_IO_ERROR obex_io_error_quark()
+GQuark obex_io_error_quark(void);
 
 typedef void (*session_callback_t) (struct obc_session *session,
 					GError *err, void *user_data);
@@ -52,7 +56,7 @@ const char *obc_session_get_agent(struct obc_session *session);
 
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
-GwObex *obc_session_get_obex(struct obc_session *session);
+GObex *obc_session_get_obex(struct obc_session *session);
 
 struct obc_transfer *obc_session_get_transfer(struct obc_session *session);
 void obc_session_add_transfer(struct obc_session *session,

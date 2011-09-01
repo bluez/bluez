@@ -21,8 +21,6 @@
  *
  */
 
-#include <gw-obex.h>
-
 struct obc_transfer_params {
 	guint8 *data;
 	size_t size;
@@ -31,7 +29,7 @@ struct obc_transfer_params {
 struct obc_transfer;
 
 typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
-					gint64 transferred, gint err,
+					gint64 transferred, GError *err,
 					void *user_data);
 
 struct obc_transfer *obc_transfer_register(DBusConnection *conn,
@@ -47,7 +45,6 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data);
 int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data);
-void obc_transfer_abort(struct obc_transfer *transfer);
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params);

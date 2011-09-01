@@ -41,6 +41,10 @@
 #include "driver.h"
 #include "pbap.h"
 
+#define OBEX_PBAP_UUID \
+	"\x79\x61\x35\xF0\xF0\xC5\x11\xD8\x09\x66\x08\x00\x20\x0C\x9A\x66"
+#define OBEX_PBAP_UUID_LEN 16
+
 #define ERROR_INF PBAP_INTERFACE ".Error"
 
 #define FORMAT_VCARD21	0x0
@@ -237,65 +241,122 @@ static gchar *build_phonebook_path(const char *location, const char *item)
 	return path;
 }
 
+typedef void (*setpath_cb_t) (GError *err, gpointer user_data);
+
+struct setpath_data {
+	char **remaining;
+	int index;
+	setpath_cb_t func;
+	gpointer user_data;
+};
+
+static void setpath_complete(GError *err, struct setpath_data *data)
+{
+	if (data->func)
+		data->func(err, data->user_data);
+	g_strfreev(data->remaining);
+	g_free(data);
+}
+
+static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	struct setpath_data *data = user_data;
+	char *next;
+
+	if (err != NULL) {
+		setpath_complete(err, data);
+		return;
+	}
+
+	next = data->remaining[data->index];
+	if (next == NULL) {
+		setpath_complete(NULL, data);
+		return;
+	}
+
+	data->index++;
+
+	g_obex_setpath(obex, next, setpath_cb, data, &err);
+	if (err != NULL) {
+		setpath_complete(err, data);
+		g_error_free(err);
+	}
+}
+
+static gboolean setpath(GObex *obex, const char *path, size_t max_elem,
+					setpath_cb_t func, gpointer user_data)
+{
+	GError *err = NULL;
+	struct setpath_data *data;
+
+	data = g_new0(struct setpath_data, 1);
+
+	g_obex_setpath(obex, "", setpath_cb, data, &err);
+	if (err != NULL) {
+		error("set_path: %s", err->message);
+		g_error_free(err);
+		g_free(data);
+		return FALSE;
+	}
+
+	data->func = func;
+	data->user_data = user_data;
+	data->remaining = g_strsplit(path, "/", max_elem);
+
+	return TRUE;
+}
+
 /* should only be called inside pbap_set_path */
 static void pbap_reset_path(struct pbap_data *pbap)
 {
-	int err = 0;
-	char **paths = NULL, **item;
-	GwObex *obex = obc_session_get_obex(pbap->session);
+	GObex *obex = obc_session_get_obex(pbap->session);
 
 	if (!pbap->path)
 		return;
 
-	gw_obex_chdir(obex, "", &err);
-
-	paths = g_strsplit(pbap->path, "/", 3);
-
-	for (item = paths; *item; item++)
-		gw_obex_chdir(obex, *item, &err);
-
-	g_strfreev(paths);
+	setpath(obex, pbap->path, 3, NULL, NULL);
 }
 
-static gint pbap_set_path(struct pbap_data *pbap, const char *path)
+static void pbap_setpath_cb(GError *err, gpointer user_data)
 {
-	int err = 0;
-	char **paths = NULL, **item;
-	GwObex *obex = obc_session_get_obex(pbap->session);
+	struct pbap_data *pbap = user_data;
+
+	if (err != NULL)
+		pbap_reset_path(user_data);
+
+	if (pbap->msg == NULL)
+		return;
+
+	if (err) {
+		DBusMessage *reply= g_dbus_create_error(pbap->msg,
+							ERROR_INF ".Failed",
+							"%s", err->message);
+		g_dbus_send_message(conn, reply);
+	} else
+		g_dbus_send_reply(conn, pbap->msg, DBUS_TYPE_INVALID);
+
+	dbus_message_unref(pbap->msg);
+	pbap->msg = NULL;
+}
+
+static int pbap_set_path(struct pbap_data *pbap, const char *path)
+{
+	GObex *obex = obc_session_get_obex(pbap->session);
 
 	if (!path)
-		return OBEX_RSP_BAD_REQUEST;
+		return G_OBEX_RSP_BAD_REQUEST;
 
 	if (pbap->path != NULL && g_str_equal(pbap->path, path))
 		return 0;
 
-	if (gw_obex_chdir(obex, "", &err) == FALSE) {
-		if (err == OBEX_RSP_NOT_IMPLEMENTED)
-			goto done;
-		goto fail;
-	}
+	if (!setpath(obex, path, 3, pbap_setpath_cb, pbap))
+		return G_OBEX_RSP_INTERNAL_SERVER_ERROR;
 
-	paths = g_strsplit(path, "/", 3);
-	for (item = paths; *item; item++) {
-		if (gw_obex_chdir(obex, *item, &err) == FALSE) {
-			/* we need to reset the path to the saved one on fail*/
-			pbap_reset_path(pbap);
-			goto fail;
-		}
-	}
-
-	g_strfreev(paths);
-
-done:
 	g_free(pbap->path);
 	pbap->path = g_strdup(path);
-	return 0;
 
-fail:
-	if (paths)
-		g_strfreev(paths);
-
-	return err;
+	return G_OBEX_RSP_SUCCESS;
 }
 
 static void read_return_apparam(struct obc_session *session,
@@ -725,12 +786,14 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 
 	err = pbap_set_path(pbap, path);
 	g_free(path);
-	if (err)
+	if (err != G_OBEX_RSP_SUCCESS)
 		return g_dbus_create_error(message,
 				ERROR_INF ".Failed",
-				"%s", OBEX_ResponseToString(err));
+				"0x%02x", err);
 
-	return dbus_message_new_method_return(message);
+	pbap->msg = dbus_message_ref(message);
+
+	return NULL;
 }
 
 static DBusMessage *pbap_pull_all(DBusConnection *connection,
@@ -968,7 +1031,8 @@ static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 }
 
 static GDBusMethodTable pbap_methods[] = {
-	{ "Select",	"ss",	"",	pbap_select },
+	{ "Select",	"ss",	"",	pbap_select,
+					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "PullAll",	"",	"s",	pbap_pull_all,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Pull",	"s",	"s",	pbap_pull_vcard,

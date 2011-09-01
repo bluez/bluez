@@ -33,7 +33,6 @@
 
 #include <glib.h>
 #include <gdbus.h>
-#include <gw-obex.h>
 
 #include "log.h"
 #include "transfer.h"
@@ -61,7 +60,7 @@ struct obc_transfer {
 	char *name;		/* Transfer object name */
 	char *type;		/* Transfer object type */
 	int fd;
-	GwObexXfer *xfer;
+	guint xfer;
 	char *buffer;
 	size_t buffer_len;
 	int filled;
@@ -131,6 +130,27 @@ static DBusMessage *obc_transfer_get_properties(DBusConnection *connection,
 	return reply;
 }
 
+static void obc_transfer_abort(struct obc_transfer *transfer)
+{
+	struct transfer_callback *callback = transfer->callback;
+
+	if (transfer->xfer == 0)
+		return;
+
+	g_obex_cancel_transfer(transfer->xfer);
+	transfer->xfer = 0;
+
+	if (callback) {
+		GError *err;
+
+		err = g_error_new(OBEX_IO_ERROR, -ECANCELED,
+							strerror(ECANCELED));
+		callback->func(transfer, transfer->transferred, err,
+							callback->data);
+		g_error_free(err);
+	}
+}
+
 static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -167,10 +187,8 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 
 	DBG("%p", transfer);
 
-	if (transfer->xfer) {
-		gw_obex_xfer_close(transfer->xfer, NULL);
-		gw_obex_xfer_free(transfer->xfer);
-	}
+	if (transfer->xfer)
+		g_obex_cancel_transfer(transfer->xfer);
 
 	if (transfer->fd > 0)
 		close(transfer->fd);
@@ -256,90 +274,141 @@ void obc_transfer_unregister(struct obc_transfer *transfer)
 	obc_transfer_free(transfer);
 }
 
-static gboolean obc_transfer_read(struct obc_transfer *transfer, GwObexXfer *xfer)
+static void obc_transfer_read(struct obc_transfer *transfer,
+						const void *buf, gsize len)
 {
-	gint bsize, bread;
+	gsize bsize;
 
-	/* check if object size is available */
-	if (transfer->size == 0)
-		transfer->size = gw_obex_xfer_object_size(xfer);
+	/* copy all buffered data */
+	bsize = transfer->buffer_len - transfer->filled;
 
-	/* read all buffered data */
-	do {
-		bsize = transfer->buffer_len - transfer->filled;
-
-		if (bsize < DEFAULT_BUFFER_SIZE) {
-			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-			transfer->buffer = g_realloc(transfer->buffer,
+	if (bsize < len) {
+		transfer->buffer_len += len - bsize;
+		transfer->buffer = g_realloc(transfer->buffer,
 							transfer->buffer_len);
-			bsize += DEFAULT_BUFFER_SIZE;
-		}
+	}
 
-		if (gw_obex_xfer_read(xfer, transfer->buffer +
-				transfer->filled, bsize, &bread,
-				&transfer->err) == FALSE) {
-			if (transfer->err == GW_OBEX_ERROR_NO_DATA) {
-				transfer->err = 0;
-				return TRUE;
-			} else
-				return FALSE;
-		}
+	memcpy(transfer->buffer + transfer->filled, buf, len);
 
-		transfer->filled += bread;
-		transfer->transferred += bread;
-	} while (bread != 0);
-
-	/* set size to transferred if object is done and size is unknown */
-	if (gw_obex_xfer_object_done(xfer) == TRUE &&
-			transfer->size == GW_OBEX_UNKNOWN_LENGTH)
-		transfer->size = transfer->transferred;
-
-	return TRUE;
+	transfer->filled += len;
+	transfer->transferred += len;
 }
 
-static void get_buf_xfer_progress(GwObexXfer *xfer,
-					gpointer user_data)
+static void get_buf_xfer_complete(GObex *obex, GError *err, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
+	gsize bsize;
 
-	if (obc_transfer_read(transfer, xfer) == FALSE)
-		goto fail;
+	transfer->xfer = 0;
 
-	if (gw_obex_xfer_object_done(xfer)) {
-		int bsize;
-		if (transfer->filled > 0 &&
-				transfer->buffer[transfer->filled - 1] == '\0')
-			goto done;
-
-		bsize = transfer->buffer_len - transfer->filled;
-		if (bsize < 1) {
-			transfer->buffer_len += DEFAULT_BUFFER_SIZE;
-			transfer->buffer = g_realloc(transfer->buffer,
-						transfer->buffer_len);
-		}
-
-		transfer->buffer[transfer->filled] = '\0';
+	if (err) {
+		transfer->err = err->code;
 		goto done;
 	}
 
-	return;
+	if (transfer->filled > 0 &&
+			transfer->buffer[transfer->filled - 1] == '\0')
+		goto done;
+
+	bsize = transfer->buffer_len - transfer->filled;
+	if (bsize < 1) {
+		transfer->buffer_len += 1;
+		transfer->buffer = g_realloc(transfer->buffer,
+						transfer->buffer_len);
+	}
+
+	transfer->buffer[transfer->filled] = '\0';
+	transfer->size = strlen(transfer->buffer);
 
 done:
-	transfer->size = strlen(transfer->buffer);
-fail:
 	if (callback)
-		callback->func(transfer, transfer->size, transfer->err,
-				callback->data);
+		callback->func(transfer, transfer->size, err, callback->data);
 }
 
-static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	struct obc_transfer *transfer = user_data;
+	struct transfer_callback *callback = transfer->callback;
+	GObexPacket *req;
+	GObexHeader *hdr;
+	const guint8 *buf;
+	gsize len;
+	guint8 rspcode;
+	gboolean final;
+
+	if (err != NULL) {
+		get_buf_xfer_complete(obex, err, transfer);
+		return;
+	}
+
+	rspcode = g_obex_packet_get_operation(rsp, &final);
+	if (rspcode != G_OBEX_RSP_SUCCESS && rspcode != G_OBEX_RSP_CONTINUE) {
+		err = g_error_new(OBEX_IO_ERROR, rspcode,
+					"Transfer failed (0x%02x)", rspcode);
+		get_buf_xfer_complete(obex, err, transfer);
+		g_error_free(err);
+		return;
+	}
+
+	hdr = g_obex_packet_find_header(rsp, G_OBEX_HDR_APPARAM);
+	if (hdr) {
+		g_obex_header_get_bytes(hdr, &buf, &len);
+		if (len != 0) {
+			transfer->params->data = g_memdup(buf, len);
+			transfer->params->size = len;
+		}
+	}
+
+	hdr = g_obex_packet_get_body(rsp);
+	if (hdr) {
+		g_obex_header_get_bytes(hdr, &buf, &len);
+		if (len != 0)
+			obc_transfer_read(transfer, buf, len);
+	}
+
+	if (rspcode == G_OBEX_RSP_SUCCESS) {
+		get_buf_xfer_complete(obex, err, transfer);
+		return;
+	}
+
+	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
+
+	transfer->xfer = g_obex_send_req(obex, req, -1, get_buf_xfer_progress,
+							transfer, &err);
+
+	if (callback)
+		callback->func(transfer, transfer->transferred, err,
+							callback->data);
+}
+
+static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
 
-	if (obc_transfer_read(transfer, xfer) == FALSE)
+	transfer->xfer = 0;
+
+	if (err) {
+		transfer->err = err->code;
 		goto done;
+	}
+
+	transfer->size = transfer->transferred;
+
+done:
+	if (callback)
+		callback->func(transfer, transfer->size, err, callback->data);
+}
+
+static gboolean get_xfer_progress(const void *buf, gsize len,
+							gpointer user_data)
+{
+	struct obc_transfer *transfer = user_data;
+	struct transfer_callback *callback = transfer->callback;
+
+	obc_transfer_read(transfer, buf, len);
 
 	if (transfer->fd > 0) {
 		gint w;
@@ -347,86 +416,63 @@ static void get_xfer_progress(GwObexXfer *xfer, gpointer user_data)
 		w = write(transfer->fd, transfer->buffer, transfer->filled);
 		if (w < 0) {
 			transfer->err = -errno;
-			goto done;
+			return FALSE;
 		}
 
 		transfer->filled -= w;
 	}
 
-done:
 	if (callback)
-		callback->func(transfer, transfer->transferred, transfer->err,
-				callback->data);
+		callback->func(transfer, transfer->transferred, NULL,
+							callback->data);
+
+	return TRUE;
 }
 
-static void put_buf_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static gssize put_buf_xfer_progress(void *buf, gsize len, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
-	gint written;
+	gsize size;
 
 	if (transfer->transferred == transfer->size)
-		goto done;
+		return 0;
 
-	if (gw_obex_xfer_write(xfer, transfer->buffer + transfer->transferred,
-				transfer->size - transfer->transferred,
-				&written, &transfer->err) == FALSE)
-		goto done;
+	size = transfer->size - transfer->transferred;
+	size = len > size ? len : size;
+	if (size == 0)
+		return 0;
 
-	if (gw_obex_xfer_flush(xfer, &transfer->err) == FALSE)
-		goto done;
+	memcpy(buf, transfer->buffer + transfer->transferred, size);
 
-	transfer->transferred += written;
+	transfer->transferred += size;
 
-done:
 	if (callback)
-		callback->func(transfer, transfer->transferred, transfer->err,
-				callback->data);
+		callback->func(transfer, transfer->transferred, NULL,
+							callback->data);
+
+	return size;
 }
 
-static void put_xfer_progress(GwObexXfer *xfer, gpointer user_data)
+static gssize put_xfer_progress(void *buf, gsize len, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
 	struct transfer_callback *callback = transfer->callback;
-	gint written;
+	gssize size;
 
-	if (transfer->buffer_len == 0) {
-		transfer->buffer_len = DEFAULT_BUFFER_SIZE;
-		transfer->buffer = g_new0(char, DEFAULT_BUFFER_SIZE);
+	size = read(transfer->fd, buf, len);
+	if (size <= 0) {
+		transfer->err = -errno;
+		return size;
 	}
 
-	do {
-		ssize_t len;
+	transfer->transferred += size;
 
-		len = read(transfer->fd, transfer->buffer + transfer->filled,
-				transfer->buffer_len - transfer->filled);
-		if (len < 0) {
-			transfer->err = -errno;
-			goto done;
-		}
-
-		transfer->filled += len;
-
-		if (transfer->filled == 0) {
-			gw_obex_xfer_close(xfer, &transfer->err);
-			goto done;
-		}
-
-		if (gw_obex_xfer_write(xfer, transfer->buffer,
-					transfer->filled,
-					&written, &transfer->err) == FALSE)
-			goto done;
-
-		transfer->filled -= written;
-		transfer->transferred += written;
-	} while (transfer->filled == 0);
-
-	memmove(transfer->buffer, transfer->buffer + written, transfer->filled);
-
-done:
 	if (callback)
-		callback->func(transfer, transfer->transferred, transfer->err,
-				callback->data);
+		callback->func(transfer, transfer->transferred, NULL,
+							callback->data);
+
+	return size;
 }
 
 static void obc_transfer_set_callback(struct obc_transfer *transfer,
@@ -448,17 +494,21 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
 	struct obc_session *session = transfer->session;
-	GwObex *obex;
-	gw_obex_xfer_cb_t cb;
+	GError *err = NULL;
+	GObex *obex;
+	GObexPacket *req;
+	GObexDataConsumer data_cb;
+	GObexFunc complete_cb;
+	GObexResponseFunc rsp_cb = NULL;
 
-	if (transfer->xfer != NULL)
+	if (transfer->xfer != 0)
 		return -EALREADY;
 
 	if (transfer->type != NULL &&
 			(strncmp(transfer->type, "x-obex/", 7) == 0 ||
-			strncmp(transfer->type, "x-bt/", 5) == 0))
-		cb = get_buf_xfer_progress;
-	else {
+			strncmp(transfer->type, "x-bt/", 5) == 0)) {
+		rsp_cb = get_buf_xfer_progress;
+	} else {
 		int fd = open(transfer->name ? : transfer->filename,
 				O_WRONLY | O_CREAT, 0600);
 
@@ -467,30 +517,40 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 			return -errno;
 		}
 		transfer->fd = fd;
-		cb = get_xfer_progress;
+		data_cb = get_xfer_progress;
+		complete_cb = xfer_complete;
 	}
 
 	obex = obc_session_get_obex(session);
 
+	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
+
+	if (transfer->filename != NULL)
+		g_obex_packet_add_unicode(req, G_OBEX_HDR_NAME,
+							transfer->filename);
+
+	if (transfer->type != NULL)
+		g_obex_packet_add_bytes(req, G_OBEX_HDR_TYPE, transfer->type,
+						strlen(transfer->type) + 1);
+
 	if (transfer->params != NULL)
-		transfer->xfer = gw_obex_get_async_with_apparam(obex,
-							transfer->filename,
-							transfer->type,
-							transfer->params->data,
-							transfer->params->size,
-							NULL);
+		g_obex_packet_add_bytes(req, G_OBEX_HDR_APPARAM,
+						transfer->params->data,
+						transfer->params->size);
+
+	if (rsp_cb)
+		transfer->xfer = g_obex_send_req(obex, req, -1, rsp_cb,
+							transfer, &err);
 	else
-		transfer->xfer = gw_obex_get_async(obex,
-							transfer->filename,
-							transfer->type,
-							NULL);
-	if (transfer->xfer == NULL)
+		transfer->xfer = g_obex_get_req_pkt(obex, req, data_cb,
+							complete_cb, transfer,
+							&err);
+
+	if (transfer->xfer == 0)
 		return -ENOTCONN;
 
 	if (func)
 		obc_transfer_set_callback(transfer, func, user_data);
-
-	gw_obex_xfer_set_callback(transfer->xfer, cb, transfer);
 
 	return 0;
 }
@@ -499,16 +559,18 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
 	struct obc_session *session = transfer->session;
-	GwObex *obex;
-	gw_obex_xfer_cb_t cb;
+	GError *err = NULL;
+	GObex *obex;
+	GObexPacket *req;
+	GObexDataProducer data_cb;
 	struct stat st;
-	int fd, size;
+	int fd;
 
-	if (transfer->xfer != NULL)
+	if (transfer->xfer != 0)
 		return -EALREADY;
 
 	if (transfer->buffer) {
-		cb = put_buf_xfer_progress;
+		data_cb = put_buf_xfer_progress;
 		goto done;
 	}
 
@@ -526,49 +588,47 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 
 	transfer->fd = fd;
 	transfer->size = st.st_size;
-	cb = put_xfer_progress;
+	data_cb = put_xfer_progress;
 
 done:
 	obex = obc_session_get_obex(session);
-	size = transfer->size < UINT32_MAX ? transfer->size : 0;
-	transfer->xfer = gw_obex_put_async(obex, transfer->name,
-						transfer->type, size,
-						-1, NULL);
-	if (transfer->xfer == NULL)
+	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_INVALID);
+
+	if (transfer->name != NULL)
+		g_obex_packet_add_unicode(req, G_OBEX_HDR_NAME,
+							transfer->name);
+
+	if (transfer->type != NULL)
+		g_obex_packet_add_bytes(req, G_OBEX_HDR_TYPE, transfer->type,
+						strlen(transfer->type) + 1);
+
+	if (transfer->size < UINT32_MAX)
+		g_obex_packet_add_uint32(req, G_OBEX_HDR_LENGTH, transfer->size);
+
+	if (transfer->params != NULL)
+		g_obex_packet_add_bytes(req, G_OBEX_HDR_APPARAM,
+						transfer->params->data,
+						transfer->params->size);
+
+	transfer->xfer = g_obex_put_req_pkt(obex, req, data_cb, xfer_complete,
+							transfer, &err);
+	if (transfer->xfer == 0)
 		return -ENOTCONN;
 
 	if (func)
 		obc_transfer_set_callback(transfer, func, user_data);
 
-	gw_obex_xfer_set_callback(transfer->xfer, cb, transfer);
-
 	return 0;
-}
-
-void obc_transfer_abort(struct obc_transfer *transfer)
-{
-	struct transfer_callback *callback = transfer->callback;
-
-	if (transfer->xfer == NULL)
-		return;
-
-	gw_obex_xfer_abort(transfer->xfer, NULL);
-	gw_obex_xfer_free(transfer->xfer);
-	transfer->xfer = NULL;
-
-	if (callback)
-		callback->func(transfer, transfer->transferred, -ECANCELED,
-				callback->data);
 }
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params)
 {
-	if (!transfer->xfer)
+	if (transfer->xfer == 0)
 		return -ENOTCONN;
 
-	params->data = gw_obex_xfer_object_apparam(transfer->xfer,
-								&params->size);
+	params->data = transfer->params->data;
+	params->size = transfer->params->size;
 
 	return 0;
 }

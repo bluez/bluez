@@ -33,7 +33,7 @@
 
 #include <glib.h>
 #include <gdbus.h>
-#include <gw-obex.h>
+#include <gobex.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>
@@ -92,7 +92,7 @@ struct obc_session {
 	DBusConnection *conn;
 	DBusConnection *conn_system; /* system bus connection */
 	DBusMessage *msg;
-	GwObex *obex;
+	GObex *obex;
 	GIOChannel *io;
 	struct obc_agent *agent;
 	struct session_callback *callback;
@@ -112,7 +112,7 @@ static void session_terminate_transfer(struct obc_session *session,
 					struct obc_transfer *transfer,
 					GError *gerr);
 
-static GQuark obex_io_error_quark(void)
+GQuark obex_io_error_quark(void)
 {
 	return g_quark_from_static_string("obex-io-error-quark");
 }
@@ -191,7 +191,7 @@ static void session_free(struct obc_session *session)
 		g_dbus_remove_watch(session->conn, session->watch);
 
 	if (session->obex != NULL)
-		gw_obex_close(session->obex);
+		g_obex_unref(session->obex);
 
 	if (session->io != NULL) {
 		g_io_channel_shutdown(session->io, TRUE, NULL);
@@ -284,13 +284,38 @@ void obc_session_unref(struct obc_session *session)
 	session_free(session);
 }
 
+static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	struct callback_data *callback = user_data;
+	GError *gerr = NULL;
+	uint8_t rsp_code;
+
+	if (err != NULL) {
+		error("connect_cb: %s", err->message);
+		gerr = g_error_copy(err);
+		goto done;
+	}
+
+	rsp_code = g_obex_packet_get_operation(rsp, NULL);
+	if (rsp_code != G_OBEX_RSP_SUCCESS)
+		gerr = g_error_new(OBEX_IO_ERROR, -EIO,
+				"OBEX Connect failed with 0x%02x", rsp_code);
+
+done:
+	callback->func(callback->session, gerr, callback->data);
+	if (gerr != NULL)
+		g_error_free(gerr);
+	obc_session_unref(callback->session);
+	g_free(callback);
+}
+
 static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
 	struct obc_session *session = callback->session;
 	struct obc_driver *driver = session->driver;
-	GwObex *obex;
-	int fd;
+	GObex *obex;
 
 	DBG("");
 
@@ -299,25 +324,37 @@ static void rfcomm_callback(GIOChannel *io, GError *err, gpointer user_data)
 		goto done;
 	}
 
-	/* do not close when gw_obex is using the fd */
 	g_io_channel_set_close_on_unref(session->io, FALSE);
+
+	obex = g_obex_new(session->io, G_OBEX_TRANSPORT_STREAM, -1, -1);
+	if (obex == NULL)
+		goto done;
+
+	g_io_channel_set_close_on_unref(session->io, TRUE);
 	g_io_channel_unref(session->io);
 	session->io = NULL;
 
-	fd = g_io_channel_unix_get_fd(io);
+	if (driver->target != NULL)
+		g_obex_connect(obex, connect_cb, callback, &err,
+			G_OBEX_HDR_TARGET, driver->target, driver->target_len,
+			G_OBEX_HDR_INVALID);
+	else
+		g_obex_connect(obex, connect_cb, callback, &err,
+							G_OBEX_HDR_INVALID);
 
-	obex = gw_obex_setup_fd(fd, driver->target, driver->target_len,
-								NULL, NULL);
+	if (err != NULL) {
+		error("%s", err->message);
+		g_obex_unref(obex);
+		goto done;
+	}
 
 	session->obex = obex;
-
 	sessions = g_slist_prepend(sessions, session);
 
+	return;
 done:
 	callback->func(callback->session, err, callback->data);
-
 	obc_session_unref(callback->session);
-
 	g_free(callback);
 }
 
@@ -1146,11 +1183,11 @@ done:
 		session_notify_complete(session, transfer);
 }
 
-static void transfer_progress(struct obc_transfer *transfer, gint64 transferred,
-				int err, void *user_data)
+static void transfer_progress(struct obc_transfer *transfer,
+					gint64 transferred, GError *err,
+					void *user_data)
 {
 	struct obc_session *session = user_data;
-	GError *gerr = NULL;
 
 	if (err != 0)
 		goto fail;
@@ -1160,10 +1197,7 @@ static void transfer_progress(struct obc_transfer *transfer, gint64 transferred,
 	return;
 
 fail:
-	g_set_error(&gerr, OBEX_IO_ERROR, err, "%s",
-			err > 0 ? OBEX_ResponseToString(err) : strerror(-err));
-	session_notify_error(session, transfer, gerr);
-	g_clear_error(&gerr);
+	session_notify_error(session, transfer, err);
 }
 
 static void session_prepare_get(struct obc_session *session,
@@ -1427,7 +1461,7 @@ const char *obc_session_get_target(struct obc_session *session)
 	return session->driver->target;
 }
 
-GwObex *obc_session_get_obex(struct obc_session *session)
+GObex *obc_session_get_obex(struct obc_session *session)
 {
 	return session->obex;
 }

@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include <gw-obex.h>
 #include <gdbus.h>
 
 #include "log.h"
@@ -37,6 +36,10 @@
 #include "transfer.h"
 #include "driver.h"
 #include "ftp.h"
+
+#define OBEX_FTP_UUID \
+	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
+#define OBEX_FTP_UUID_LEN 16
 
 #define FTP_INTERFACE "org.openobex.FileTransfer"
 #define FTP_UUID "00001106-0000-1000-8000-00805f9b34fb"
@@ -49,14 +52,29 @@ struct ftp_data {
 	DBusMessage *msg;
 };
 
+static void async_cb(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data)
+{
+	DBusMessage *reply, *msg = user_data;
+
+	if (err != NULL)
+		reply = g_dbus_create_error(msg, "org.openobex.Error.Failed",
+						"%s", err->message);
+	else
+		reply = dbus_message_new_method_return(msg);
+
+	g_dbus_send_message(conn, reply);
+	dbus_message_unref(msg);
+}
+
 static DBusMessage *change_folder(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
-	GwObex *obex = obc_session_get_obex(session);
+	GObex *obex = obc_session_get_obex(session);
 	const char *folder;
-	int err;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &folder,
@@ -64,13 +82,19 @@ static DBusMessage *change_folder(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (gw_obex_chdir(obex, folder, &err) == FALSE) {
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"%s", OBEX_ResponseToString(err));
+	g_obex_setpath(obex, folder, async_cb, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply;
+		reply =  g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
 	}
 
-	return dbus_message_new_method_return(message);
+	dbus_message_ref(message);
+
+	return NULL;
 }
 
 static void append_variant(DBusMessageIter *iter, int type, void *val)
@@ -214,9 +238,9 @@ static DBusMessage *create_folder(DBusConnection *connection,
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
-	GwObex *obex = obc_session_get_obex(session);
+	GObex *obex = obc_session_get_obex(session);
 	const char *folder;
-	int err;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &folder,
@@ -224,12 +248,19 @@ static DBusMessage *create_folder(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (gw_obex_mkdir(obex, folder, &err) == FALSE)
-		return g_dbus_create_error(message,
+	g_obex_mkdir(obex, folder, async_cb, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
-				"%s", OBEX_ResponseToString(err));
+				"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
-	return dbus_message_new_method_return(message);
+	dbus_message_ref(message);
+
+	return NULL;
 }
 
 static DBusMessage *list_folder(DBusConnection *connection,
@@ -312,9 +343,9 @@ static DBusMessage *copy_file(DBusConnection *connection,
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
-	GwObex *obex = obc_session_get_obex(session);
+	GObex *obex = obc_session_get_obex(session);
 	const char *filename, *destname;
-	int err;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &filename,
@@ -323,12 +354,19 @@ static DBusMessage *copy_file(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (gw_obex_copy(obex, filename, destname, &err) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"%s", OBEX_ResponseToString(err));
+	g_obex_copy(obex, filename, destname, async_cb, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
-	return dbus_message_new_method_return(message);
+	dbus_message_ref(message);
+
+	return NULL;
 }
 
 static DBusMessage *move_file(DBusConnection *connection,
@@ -336,9 +374,9 @@ static DBusMessage *move_file(DBusConnection *connection,
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
-	GwObex *obex = obc_session_get_obex(session);
+	GObex *obex = obc_session_get_obex(session);
 	const char *filename, *destname;
-	int err;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &filename,
@@ -347,12 +385,19 @@ static DBusMessage *move_file(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (gw_obex_move(obex, filename, destname, &err) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"%s", OBEX_ResponseToString(err));
+	g_obex_move(obex, filename, destname, async_cb, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
-	return dbus_message_new_method_return(message);
+	dbus_message_ref(message);
+
+	return NULL;
 }
 
 static DBusMessage *delete(DBusConnection *connection,
@@ -360,9 +405,9 @@ static DBusMessage *delete(DBusConnection *connection,
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
-	GwObex *obex = obc_session_get_obex(session);
+	GObex *obex = obc_session_get_obex(session);
 	const char *file;
-	int err;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &file,
@@ -370,26 +415,38 @@ static DBusMessage *delete(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (gw_obex_delete(obex, file, &err) == FALSE) {
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"%s", OBEX_ResponseToString(err));
+	g_obex_delete(obex, file, async_cb, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply;
+		reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
 	}
 
-	return dbus_message_new_method_return(message);
+	dbus_message_ref(message);
+
+	return NULL;
 }
 
 static GDBusMethodTable ftp_methods[] = {
-	{ "ChangeFolder",	"s", "",	change_folder	},
-	{ "CreateFolder",	"s", "",	create_folder	},
+	{ "ChangeFolder",	"s", "",	change_folder,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CreateFolder",	"s", "",	create_folder,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ListFolder",		"", "aa{sv}",	list_folder,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetFile",		"ss", "",	get_file,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "PutFile",		"ss", "",	put_file	},
-	{ "CopyFile",		"ss", "",	copy_file	},
-	{ "MoveFile",		"ss", "",	move_file	},
-	{ "Delete",		"s", "",	delete		},
+	{ "PutFile",		"ss", "",	put_file,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "CopyFile",		"ss", "",	copy_file,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "MoveFile",		"ss", "",	move_file,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "Delete",		"s", "",	delete,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
 
