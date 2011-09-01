@@ -34,7 +34,8 @@
 #define G_OBEX_MINIMUM_MTU	255
 #define G_OBEX_MAXIMUM_MTU	65535
 
-#define G_OBEX_DEFAULT_TIMEOUT	5
+#define G_OBEX_DEFAULT_TIMEOUT	10
+#define G_OBEX_ABORT_TIMEOUT	5
 
 #define G_OBEX_OP_NONE		0xff
 
@@ -430,12 +431,21 @@ static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
 
 static gboolean pending_req_abort(GObex *obex, GError **err)
 {
-	if (obex->pending_req->cancelled)
+	struct pending_pkt *p = obex->pending_req;
+	GObexPacket *req;
+
+	if (p->cancelled)
 		return TRUE;
 
-	obex->pending_req->cancelled = TRUE;
+	p->cancelled = TRUE;
 
-	return g_obex_send_rsp(obex, G_OBEX_OP_ABORT, err, G_OBEX_HDR_INVALID);
+	g_source_remove(p->timeout_id);
+	p->timeout = G_OBEX_ABORT_TIMEOUT;
+	p->timeout_id = g_timeout_add_seconds(p->timeout, req_timeout, obex);
+
+	req = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
+
+	return g_obex_send(obex, req, err);
 }
 
 static gboolean cancel_complete(gpointer user_data)
