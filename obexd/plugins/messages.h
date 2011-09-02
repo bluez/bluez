@@ -258,11 +258,13 @@ int messages_get_messages_listing(void *session,
  *
  * Callback allows for returning bMessage in chunks.
  */
+typedef void (*messages_get_message_cb)(void *session, int err, gboolean fmore,
+	const char *chunk, void *user_data);
+
 int messages_get_message(void *session,
 		const char *handle,
 		unsigned long flags,
-		void (*callback)(void *session, int err, gboolean fmore,
-			const char *chunk, void *user_data),
+		messages_get_message_cb callback,
 		void *user_data);
 
 /* Aborts currently pending request.
