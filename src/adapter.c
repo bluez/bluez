@@ -109,7 +109,7 @@ struct btd_adapter {
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* Class of Device */
-	char name[MAX_NAME_LENGTH + 1]; /* adapter name */
+	char *name;			/* adapter name */
 	gboolean allow_name_changes;	/* whether the adapter name can be changed */
 	guint discov_timeout_id;	/* discoverable timeout id */
 	guint stop_discov_id;		/* stop inquiry/scanning id */
@@ -860,7 +860,8 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 	if (g_strcmp0(adapter->name, name) == 0)
 		return;
 
-	strncpy(adapter->name, name, MAX_NAME_LENGTH);
+	g_free(adapter->name);
+	adapter->name = g_strdup(name);
 
 	if (connection)
 		emit_property_changed(connection, adapter->path,
@@ -874,21 +875,25 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 
 int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
-	if (strncmp(name, adapter->name, MAX_NAME_LENGTH) == 0)
+	char maxname[MAX_NAME_LENGTH + 1];
+
+	if (g_strcmp0(adapter->name, name) == 0)
 		return 0;
 
-	if (!g_utf8_validate(name, -1, NULL)) {
+	memset(maxname, 0, sizeof(maxname));
+	strncpy(maxname, name, MAX_NAME_LENGTH);
+	if (!g_utf8_validate(maxname, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
 		return -EINVAL;
 	}
 
 	if (adapter->up) {
-		int err = adapter_ops->set_name(adapter->dev_id, name);
+		int err = adapter_ops->set_name(adapter->dev_id, maxname);
 		if (err < 0)
 			return err;
 	}
 
-	write_local_name(&adapter->bdaddr, name);
+	write_local_name(&adapter->bdaddr, maxname);
 
 	return 0;
 }
@@ -1229,7 +1234,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	char str[MAX_NAME_LENGTH + 1], srcaddr[18];
+	char srcaddr[18];
 	gboolean value;
 	char **devices, **uuids;
 	int i;
@@ -1257,9 +1262,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Address", DBUS_TYPE_STRING, &property);
 
 	/* Name */
-	memset(str, 0, sizeof(str));
-	strncpy(str, (char *) adapter->name, MAX_NAME_LENGTH);
-	property = str;
+	property = (adapter->name ? : "");
 
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
@@ -2273,7 +2276,8 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->off_timer = 0;
 
 	/* Forcing: Name is lost when adapter is powered off */
-	adapter_ops->set_name(adapter->dev_id, adapter->name);
+	if (adapter->name)
+		adapter_ops->set_name(adapter->dev_id, adapter->name);
 
 	if (read_local_class(&adapter->bdaddr, cls) < 0) {
 		uint32_t class = htobl(main_opts.class);
@@ -2467,6 +2471,7 @@ static void adapter_free(gpointer user_data)
 	g_slist_free(adapter->oor_devices);
 
 	g_free(adapter->path);
+	g_free(adapter->name);
 	g_free(adapter);
 }
 
