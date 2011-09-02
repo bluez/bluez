@@ -37,7 +37,7 @@
 #include "service.h"
 #include "mimetype.h"
 #include "filesystem.h"
-#include "dbus.h"
+#include "manager.h"
 
 #include "messages.h"
 

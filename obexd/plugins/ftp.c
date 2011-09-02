@@ -48,7 +48,7 @@
 #include "plugin.h"
 #include "log.h"
 #include "obex.h"
-#include "dbus.h"
+#include "manager.h"
 #include "mimetype.h"
 #include "service.h"
 #include "ftp.h"

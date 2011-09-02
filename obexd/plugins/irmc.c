@@ -46,7 +46,7 @@
 #include "phonebook.h"
 #include "mimetype.h"
 #include "filesystem.h"
-#include "dbus.h"
+#include "manager.h"
 
 #define IRMC_CHANNEL	14
 

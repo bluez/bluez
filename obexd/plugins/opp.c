@@ -39,7 +39,7 @@
 #include "obex.h"
 #include "service.h"
 #include "log.h"
-#include "dbus.h"
+#include "manager.h"
 #include "filesystem.h"
 
 #define VCARD_TYPE "text/x-vcard"

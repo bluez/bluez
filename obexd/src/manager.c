@@ -41,7 +41,7 @@
 #include "obex.h"
 #include "obex-priv.h"
 #include "server.h"
-#include "dbus.h"
+#include "manager.h"
 #include "log.h"
 #include "btio.h"
 #include "service.h"

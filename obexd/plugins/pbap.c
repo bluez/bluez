@@ -48,7 +48,7 @@
 #include "phonebook.h"
 #include "mimetype.h"
 #include "filesystem.h"
-#include "dbus.h"
+#include "manager.h"
 #include "glib-helper.h"
 
 #define PHONEBOOK_TYPE		"x-bt/phonebook"

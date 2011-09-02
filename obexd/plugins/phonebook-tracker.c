@@ -36,7 +36,6 @@
 #include "service.h"
 #include "mimetype.h"
 #include "phonebook.h"
-#include "dbus.h"
 #include "vcard.h"
 #include "glib-helper.h"
 

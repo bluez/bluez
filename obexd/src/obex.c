@@ -47,7 +47,7 @@
 #include "obex.h"
 #include "obex-priv.h"
 #include "server.h"
-#include "dbus.h"
+#include "manager.h"
 #include "mimetype.h"
 #include "service.h"
 #include "transport.h"

@@ -42,7 +42,7 @@
 #include "service.h"
 #include "mimetype.h"
 #include "log.h"
-#include "dbus.h"
+#include "manager.h"
 #include "btio.h"
 #include "obexd.h"
 #include "gdbus.h"
