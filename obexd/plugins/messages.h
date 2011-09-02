@@ -202,11 +202,13 @@ int messages_set_folder(void *session, const char *name, gboolean cdup);
  * Callback shall be called for every entry of the listing. 'name' is the
  * subdirectory name.
  */
+typedef void (*messages_folder_listing_cb)(void *session, int err,
+		uint16_t size, const char *name, void *user_data);
+
 int messages_get_folder_listing(void *session,
 		const char *name,
 		uint16_t max, uint16_t offset,
-		void (*callback)(void *session, int err, uint16_t size,
-			const char *name, void *user_data),
+		messages_folder_listing_cb callback,
 		void *user_data);
 
 /* Retrieves messages listing from a current directory.

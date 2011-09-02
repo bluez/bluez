@@ -145,8 +145,7 @@ int messages_set_folder(void *s, const char *name, gboolean cdup)
 int messages_get_folder_listing(void *session,
 		const char *name,
 		uint16_t max, uint16_t offset,
-		void (*callback)(void *session, int err, uint16_t size,
-			const char *name, void *user_data),
+		messages_folder_listing_cb callback,
 		void *user_data)
 {
 	return -EINVAL;
