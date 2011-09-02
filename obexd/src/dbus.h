@@ -35,4 +35,4 @@ void manager_emit_transfer_completed(struct obex_session *os);
 int manager_request_authorization(struct obex_session *os, int32_t time,
 		char **new_folder, char **new_name);
 
-DBusConnection *obex_dbus_get_connection(void);
+DBusConnection *manager_dbus_get_connection(void);

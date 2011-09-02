@@ -655,7 +655,7 @@ void manager_emit_transfer_completed(struct obex_session *os)
 		emit_transfer_completed(os->cid, !os->aborted);
 }
 
-DBusConnection *obex_dbus_get_connection(void)
+DBusConnection *manager_dbus_get_connection(void)
 {
 	if (connection == NULL)
 		return NULL;

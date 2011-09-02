@@ -222,7 +222,7 @@ static void *synce_connect(struct obex_session *os, int *err)
 
 	manager_register_session(os);
 
-	conn = obex_dbus_get_connection();
+	conn = manager_dbus_get_connection();
 	if (!conn)
 		goto failed;
 
@@ -342,7 +342,7 @@ static ssize_t synce_read(void *object, void *buf, size_t count)
 	if (context->buffer)
 		return string_read(context->buffer, buf, count);
 
-	conn = obex_dbus_get_connection();
+	conn = manager_dbus_get_connection();
 	if (conn == NULL)
 		return -EPERM;
 
