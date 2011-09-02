@@ -42,6 +42,7 @@
 
 #include <openobex/obex.h>
 
+#include "obexd.h"
 #include "log.h"
 #include "obex.h"
 #include "obex-priv.h"

@@ -34,6 +34,7 @@
 
 #include <glib.h>
 
+#include "obexd.h"
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"

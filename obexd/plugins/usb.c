@@ -41,6 +41,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include "obexd.h"
 #include "plugin.h"
 #include "server.h"
 #include "obex.h"

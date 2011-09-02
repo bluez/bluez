@@ -30,6 +30,7 @@
 #include <openobex/obex.h>
 #include <fcntl.h>
 
+#include "obexd.h"
 #include "plugin.h"
 #include "log.h"
 #include "obex.h"

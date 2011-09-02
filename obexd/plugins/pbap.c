@@ -40,6 +40,7 @@
 #include <openobex/obex.h>
 #include <openobex/obex_const.h>
 
+#include "obexd.h"
 #include "plugin.h"
 #include "log.h"
 #include "obex.h"

@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <stdint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
@@ -42,15 +43,9 @@
 
 #include <gdbus.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
-
 #include "log.h"
 #include "obexd.h"
-#include "obex.h"
-#include "obex-priv.h"
 #include "server.h"
-#include "service.h"
 
 #define DEFAULT_ROOT_PATH "/tmp"
 

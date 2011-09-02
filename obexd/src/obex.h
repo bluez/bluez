@@ -29,15 +29,6 @@
 #define OBJECT_SIZE_UNKNOWN -1
 #define OBJECT_SIZE_DELETE -2
 
-#define OBEX_OPP	(1 << 1)
-#define OBEX_FTP	(1 << 2)
-#define OBEX_BIP	(1 << 3)
-#define OBEX_PBAP	(1 << 4)
-#define OBEX_IRMC	(1 << 5)
-#define OBEX_PCSUITE	(1 << 6)
-#define OBEX_SYNCEVOLUTION	(1 << 7)
-#define OBEX_MAS	(1 << 8)
-
 #define TARGET_SIZE 16
 
 struct obex_session;
@@ -67,9 +58,6 @@ ssize_t obex_aparam_read(struct obex_session *os, obex_object_t *obj,
 						const uint8_t **buffer);
 int obex_aparam_write(struct obex_session *os, obex_object_t *obj,
 				const uint8_t *buffer, unsigned int size);
-
-const char *obex_option_root_folder(void);
-gboolean obex_option_symlinks(void);
 
 /* Just a thin wrapper around memcmp to deal with NULL values */
 int memncmp0(const void *a, size_t na, const void *b, size_t nb);
