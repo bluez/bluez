@@ -855,13 +855,25 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
 				DBUS_TYPE_UINT32, &new_class);
 }
 
-int adapter_update_local_name(struct btd_adapter *adapter, const char *name)
+void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 {
-	char *name_ptr;
+	if (g_strcmp0(adapter->name, name) == 0)
+		return;
 
-	if (adapter->allow_name_changes == FALSE)
-		return -EPERM;
+	strncpy(adapter->name, name, MAX_NAME_LENGTH);
 
+	if (connection)
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Name",
+					DBUS_TYPE_STRING, &name);
+
+	if (main_opts.attrib_server)
+		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
+				(const uint8_t *) name, strlen(name));
+}
+
+int adapter_set_name(struct btd_adapter *adapter, const char *name)
+{
 	if (strncmp(name, adapter->name, MAX_NAME_LENGTH) == 0)
 		return 0;
 
@@ -870,26 +882,13 @@ int adapter_update_local_name(struct btd_adapter *adapter, const char *name)
 		return -EINVAL;
 	}
 
-	strncpy(adapter->name, name, MAX_NAME_LENGTH);
-
-	if (main_opts.attrib_server)
-		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
-			(const uint8_t *) adapter->name, strlen(adapter->name));
-
-	name_ptr = adapter->name;
-
-	write_local_name(&adapter->bdaddr, adapter->name);
-
-	if (connection)
-		emit_property_changed(connection, adapter->path,
-					ADAPTER_INTERFACE, "Name",
-					DBUS_TYPE_STRING, &name_ptr);
-
 	if (adapter->up) {
 		int err = adapter_ops->set_name(adapter->dev_id, name);
 		if (err < 0)
 			return err;
 	}
+
+	write_local_name(&adapter->bdaddr, name);
 
 	return 0;
 }
@@ -900,7 +899,10 @@ static DBusMessage *set_name(DBusConnection *conn, DBusMessage *msg,
 	struct btd_adapter *adapter = data;
 	int ret;
 
-	ret = adapter_update_local_name(adapter, name);
+	if (adapter->allow_name_changes == FALSE)
+		return btd_error_failed(msg, strerror(EPERM));
+
+	ret = adapter_set_name(adapter, name);
 	if (ret == -EINVAL)
 		return btd_error_invalid_args(msg);
 	else if (ret < 0)
@@ -2270,6 +2272,7 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->mode = MODE_CONNECTABLE;
 	adapter->off_timer = 0;
 
+	/* Forcing: Name is lost when adapter is powered off */
 	adapter_ops->set_name(adapter->dev_id, adapter->name);
 
 	if (read_local_class(&adapter->bdaddr, cls) < 0) {

@@ -1457,7 +1457,7 @@ static void update_name(int index, const char *name)
 
 	adapter = manager_find_adapter_by_id(index);
 	if (adapter)
-		adapter_update_local_name(adapter, name);
+		adapter_name_changed(adapter, name);
 
 	update_ext_inquiry_response(index);
 }

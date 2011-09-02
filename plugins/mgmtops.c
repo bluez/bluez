@@ -835,7 +835,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	else
 		mgmt_set_powered(index, TRUE);
 
-	adapter_update_local_name(adapter, (char *) rp->name);
+	adapter_name_changed(adapter, (char *) rp->name);
 
 	btd_adapter_unref(adapter);
 }
@@ -1062,7 +1062,7 @@ static void set_local_name_complete(int sk, uint16_t index, void *buf,
 		return;
 	}
 
-	adapter_update_local_name(adapter, (char *) rp->name);
+	adapter_name_changed(adapter, (char *) rp->name);
 }
 
 static void read_local_oob_data_complete(int sk, uint16_t index, void *buf,
@@ -1290,7 +1290,7 @@ static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t le
 
 	adapter = manager_find_adapter(&info->bdaddr);
 	if (adapter)
-		adapter_update_local_name(adapter, (char *) ev->name);
+		adapter_name_changed(adapter, (char *) ev->name);
 }
 
 static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)

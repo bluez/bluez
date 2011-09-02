@@ -184,12 +184,12 @@ static void set_pretty_name(struct btd_adapter *adapter,
 							current_id + 1);
 		DBG("Setting name '%s' for device 'hci%d'", str, current_id);
 
-		adapter_update_local_name(adapter, str);
+		adapter_set_name(adapter, str);
 		g_free(str);
 	} else {
 		DBG("Setting name '%s' for device 'hci%d'", pretty_hostname,
 								current_id);
-		adapter_update_local_name(adapter, pretty_hostname);
+		adapter_set_name(adapter, pretty_hostname);
 	}
 
 	/* And disable the name change now */
@@ -218,7 +218,7 @@ static int adaptername_probe(struct btd_adapter *adapter)
 		expand_name(name, MAX_NAME_LENGTH, main_opts.name, current_id);
 
 	DBG("Setting name '%s' for device 'hci%d'", name, current_id);
-	adapter_update_local_name(adapter, name);
+	adapter_set_name(adapter, name);
 
 	return 0;
 }
