@@ -99,6 +99,9 @@
 #define FL_FOLDER_ELEMENT "<folder name=\"%s\"/>"
 #define FL_BODY_END "</folder-listing>"
 
+#define ML_BODY_BEGIN "<MAP-msg-listing version=\"1.0\">"
+#define ML_BODY_END "</MAP-msg-listing>"
+
 struct mas_session {
 	struct mas_request *request;
 	void *backend_data;
@@ -225,6 +228,121 @@ static void g_string_append_escaped_printf(GString *string, const gchar *format,
 	va_end(ap);
 }
 
+static const char *yesorno(gboolean a)
+{
+	if (a)
+		return "yes";
+
+	return "no";
+}
+
+static void get_messages_listing_cb(void *session, int err,
+		uint16_t size, gboolean newmsg,
+		const struct messages_message *entry,
+		void *user_data)
+{
+	struct mas_session *mas = user_data;
+
+	if (err < 0 && err != -EAGAIN) {
+		obex_object_set_io_flags(mas, G_IO_ERR, err);
+		return;
+	}
+
+	if (!mas->nth_call) {
+		g_string_append(mas->buffer, ML_BODY_BEGIN);
+		mas->nth_call = TRUE;
+	}
+
+	if (!entry) {
+		g_string_append(mas->buffer, ML_BODY_END);
+		mas->finished = TRUE;
+
+		goto proceed;
+	}
+
+	g_string_append(mas->buffer, "<msg");
+
+	g_string_append_escaped_printf(mas->buffer, " handle=\"%s\"",
+								entry->handle);
+
+	if (entry->mask & PMASK_SUBJECT)
+		g_string_append_escaped_printf(mas->buffer, " subject=\"%s\"",
+				entry->subject);
+
+	if (entry->mask & PMASK_DATETIME)
+		g_string_append_escaped_printf(mas->buffer, " datetime=\"%s\"",
+				entry->datetime);
+
+	if (entry->mask & PMASK_SENDER_NAME)
+		g_string_append_escaped_printf(mas->buffer,
+						" sender_name=\"%s\"",
+						entry->sender_name);
+
+	if (entry->mask & PMASK_SENDER_ADDRESSING)
+		g_string_append_escaped_printf(mas->buffer,
+						" sender_addressing=\"%s\"",
+						entry->sender_addressing);
+
+	if (entry->mask & PMASK_REPLYTO_ADDRESSING)
+		g_string_append_escaped_printf(mas->buffer,
+						" replyto_addressing=\"%s\"",
+						entry->replyto_addressing);
+
+	if (entry->mask & PMASK_RECIPIENT_NAME)
+		g_string_append_escaped_printf(mas->buffer,
+						" recipient_name=\"%s\"",
+						entry->recipient_name);
+
+	if (entry->mask & PMASK_RECIPIENT_ADDRESSING)
+		g_string_append_escaped_printf(mas->buffer,
+						" recipient_addressing=\"%s\"",
+						entry->recipient_addressing);
+
+	if (entry->mask & PMASK_TYPE)
+		g_string_append_escaped_printf(mas->buffer, " type=\"%s\"",
+				entry->type);
+
+	if (entry->mask & PMASK_RECEPTION_STATUS)
+		g_string_append_escaped_printf(mas->buffer,
+						" reception_status=\"%s\"",
+						entry->reception_status);
+
+	if (entry->mask & PMASK_SIZE)
+		g_string_append_escaped_printf(mas->buffer, " size=\"%s\"",
+				entry->size);
+
+	if (entry->mask & PMASK_ATTACHMENT_SIZE)
+		g_string_append_escaped_printf(mas->buffer,
+						" attachment_size=\"%s\"",
+						entry->attachment_size);
+
+	if (entry->mask & PMASK_TEXT)
+		g_string_append_escaped_printf(mas->buffer, " text=\"%s\"",
+				yesorno(entry->text));
+
+	if (entry->mask & PMASK_READ)
+		g_string_append_escaped_printf(mas->buffer, " read=\"%s\"",
+				yesorno(entry->read));
+
+	if (entry->mask & PMASK_SENT)
+		g_string_append_escaped_printf(mas->buffer, " sent=\"%s\"",
+				yesorno(entry->sent));
+
+	if (entry->mask & PMASK_PROTECTED)
+		g_string_append_escaped_printf(mas->buffer, " protected=\"%s\"",
+				yesorno(entry->protect));
+
+	if (entry->mask & PMASK_PRIORITY)
+		g_string_append_escaped_printf(mas->buffer, " priority=\"%s\"",
+				yesorno(entry->priority));
+
+	g_string_append(mas->buffer, "/>\n");
+
+proceed:
+	if (err != -EAGAIN)
+		obex_object_set_io_flags(mas, G_IO_IN, 0);
+}
+
 static void get_folder_listing_cb(void *session, int err, uint16_t size,
 					const char *name, void *user_data)
 {
@@ -303,6 +421,31 @@ static void *folder_listing_open(const char *name, int oflag, mode_t mode,
 	/* 1024 is the default when there was no MaxListCount sent */
 	*err = messages_get_folder_listing(mas->backend_data, name, 1024, 0,
 			get_folder_listing_cb, mas);
+
+	mas->buffer = g_string_new("");
+
+	if (*err < 0)
+		return NULL;
+	else
+		return mas;
+}
+
+static void *msg_listing_open(const char *name, int oflag, mode_t mode,
+				void *driver_data, size_t *size, int *err)
+{
+	struct mas_session *mas = driver_data;
+	struct messages_filter filter = { 0, };
+
+	DBG("");
+
+	if (oflag != O_RDONLY) {
+		*err = -EBADR;
+		return NULL;
+	}
+
+	*err = messages_get_messages_listing(mas->backend_data, name, 0xffff, 0,
+			&filter,
+			get_messages_listing_cb, mas);
 
 	mas->buffer = g_string_new("");
 
@@ -406,7 +549,7 @@ static struct obex_mime_type_driver mime_msg_listing = {
 	.target = MAS_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/MAP-msg-listing",
-	.open = any_open,
+	.open = msg_listing_open,
 	.close = any_close,
 	.read = any_read,
 	.write = any_write,

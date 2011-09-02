@@ -154,9 +154,7 @@ int messages_get_folder_listing(void *session,
 int messages_get_messages_listing(void *session,
 		const char *name,
 		uint16_t max, uint16_t offset, struct messages_filter *filter,
-		void (*callback)(void *session, int err, uint16_t size,
-			gboolean newmsg, const struct messages_message *message,
-			void *user_data),
+		messages_get_messages_listing_cb callback,
 		void *user_data)
 {
 	return -EINVAL;
