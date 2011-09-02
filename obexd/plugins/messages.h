@@ -179,7 +179,7 @@ void messages_disconnect(void *session);
  */
 int messages_set_notification_registration(void *session,
 		void (*send_event)(void *session,
-			struct messages_event *event, void *user_data),
+			const struct messages_event *event, void *user_data),
 		void *user_data);
 
 /* Changes current directory.
@@ -230,7 +230,8 @@ typedef void (*messages_get_messages_listing_cb)(void *session, int err,
 
 int messages_get_messages_listing(void *session,
 		const char *name,
-		uint16_t max, uint16_t offset, struct messages_filter *filter,
+		uint16_t max, uint16_t offset,
+		const struct messages_filter *filter,
 		messages_get_messages_listing_cb callback,
 		void *user_data);
 
