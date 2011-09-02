@@ -113,7 +113,7 @@ struct messages_filter {
 	uint8_t type;
 	char *period_begin;
 	char *period_end;
-	uint8_t *read_status;
+	uint8_t read_status;
 	char *recipient;
 	char *originator;
 	uint8_t priority;
