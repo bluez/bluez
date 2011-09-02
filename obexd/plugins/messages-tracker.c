@@ -40,7 +40,7 @@ struct message_folder {
 struct session {
 	char *cwd;
 	struct message_folder *folder;
-	const char *name;
+	char *name;
 	uint16_t max;
 	uint16_t offset;
 	void *user_data;
@@ -279,6 +279,7 @@ static gboolean async_get_folder_listing(void *s) {
 							session->user_data);
 
 	g_free(path);
+	g_free(session->name);
 
 	return FALSE;
 }
@@ -289,7 +290,7 @@ int messages_get_folder_listing(void *s, const char *name,
 					void *user_data)
 {
 	struct session *session = s;
-	session->name = name;
+	session->name = g_strdup(name);
 	session->max = max;
 	session->offset = offset;
 	session->folder_list_cb = callback;
