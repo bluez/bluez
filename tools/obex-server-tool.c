@@ -121,7 +121,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	struct transfer_data *data;
 	gsize type_len;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_TYPE);
+	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_TYPE);
 	if (hdr != NULL) {
 		g_obex_header_get_bytes(hdr, (const guint8 **) &type,
 								&type_len);
@@ -132,7 +132,7 @@ static void handle_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	} else
 		type = NULL;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_NAME);
+	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_NAME);
 	if (hdr != NULL)
 		g_obex_header_get_unicode(hdr, &name);
 	else
@@ -180,7 +180,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 	GObexHeader *hdr;
 	gsize type_len;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_TYPE);
+	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_TYPE);
 	if (hdr != NULL) {
 		g_obex_header_get_bytes(hdr, (const guint8 **) &type,
 								&type_len);
@@ -191,7 +191,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 	} else
 		type = NULL;
 
-	hdr = g_obex_packet_find_header(req, G_OBEX_HDR_NAME);
+	hdr = g_obex_packet_get_header(req, G_OBEX_HDR_NAME);
 	if (hdr != NULL)
 		g_obex_header_get_unicode(hdr, &name);
 	else

@@ -84,7 +84,6 @@ typedef struct _GObexPacket GObexPacket;
 GObexHeader *g_obex_packet_get_header(GObexPacket *pkt, guint8 id);
 GObexHeader *g_obex_packet_get_body(GObexPacket *pkt);
 guint8 g_obex_packet_get_operation(GObexPacket *pkt, gboolean *final);
-GObexHeader *g_obex_packet_find_header(GObexPacket *pkt, guint8 id);
 gboolean g_obex_packet_prepend_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_add_header(GObexPacket *pkt, GObexHeader *header);
 gboolean g_obex_packet_add_body(GObexPacket *pkt, GObexDataProducer func,

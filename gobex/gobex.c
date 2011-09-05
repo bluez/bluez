@@ -344,7 +344,7 @@ static void prepare_connect_rsp(GObex *obex, GObexPacket *rsp)
 	init_connect_data(obex, &data);
 	g_obex_packet_set_data(rsp, &data, sizeof(data), G_OBEX_DATA_COPY);
 
-	connid = g_obex_packet_find_header(rsp, G_OBEX_HDR_CONNECTION);
+	connid = g_obex_packet_get_header(rsp, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL) {
 		g_obex_header_get_uint32(connid, &obex->conn_id);
 		return;
@@ -392,7 +392,7 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	if (obex->conn_id == CONNID_INVALID)
 		goto create_pending;
 
-	connid = g_obex_packet_find_header(req, G_OBEX_HDR_CONNECTION);
+	connid = g_obex_packet_get_header(req, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL)
 		goto create_pending;
 
@@ -611,7 +611,7 @@ static void parse_connect_data(GObex *obex, GObexPacket *pkt)
 		obex->tx_mtu = obex->io_tx_mtu;
 	obex->tx_buf = g_realloc(obex->tx_buf, obex->tx_mtu);
 
-	connid = g_obex_packet_find_header(pkt, G_OBEX_HDR_CONNECTION);
+	connid = g_obex_packet_get_header(pkt, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL)
 		g_obex_header_get_uint32(connid, &obex->conn_id);
 }
