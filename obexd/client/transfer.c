@@ -352,7 +352,7 @@ static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
-	hdr = g_obex_packet_find_header(rsp, G_OBEX_HDR_APPARAM);
+	hdr = g_obex_packet_get_header(rsp, G_OBEX_HDR_APPARAM);
 	if (hdr) {
 		g_obex_header_get_bytes(hdr, &buf, &len);
 		if (len != 0) {
