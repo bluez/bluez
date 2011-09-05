@@ -45,7 +45,7 @@
 int read_hci_event(int fd, unsigned char* buf, int size);
 int set_speed(int fd, struct termios *ti, int speed);
 
-int texas_init(int fd, struct termios *ti);
+int texas_init(int fd, int *speed, struct termios *ti);
 int texas_post(int fd, struct termios *ti);
 int texasalt_init(int fd, int speed, struct termios *ti);
 int stlc2500_init(int fd, bdaddr_t *bdaddr);

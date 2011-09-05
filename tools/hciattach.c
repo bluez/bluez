@@ -296,7 +296,7 @@ static int digi(int fd, struct uart_t *u, struct termios *ti)
 
 static int texas(int fd, struct uart_t *u, struct termios *ti)
 {
-	return texas_init(fd, ti);
+	return texas_init(fd, &u->speed, ti);
 }
 
 static int texas2(int fd, struct uart_t *u, struct termios *ti)
