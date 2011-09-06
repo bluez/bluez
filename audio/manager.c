@@ -546,9 +546,10 @@ static void gateway_auth_cb(DBusError *derr, void *user_data)
 {
 	struct audio_device *device = user_data;
 
-	if (derr && dbus_error_is_set(derr))
+	if (derr && dbus_error_is_set(derr)) {
 		error("Access denied: %s", derr->message);
-	else {
+		gateway_set_state(device, GATEWAY_STATE_DISCONNECTED);
+	} else {
 		char ag_address[18];
 
 		ba2str(&device->dst, ag_address);
@@ -607,6 +608,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 						gateway_auth_cb, device);
 	if (perr < 0) {
 		DBG("Authorization denied!");
+		gateway_set_state(device, GATEWAY_STATE_DISCONNECTED);
 		goto drop;
 	}
 
