@@ -222,15 +222,10 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 static gboolean rfcomm_disconnect_cb(GIOChannel *chan, GIOCondition cond,
 			struct audio_device *dev)
 {
-	struct gateway *gw = dev->gateway;
-
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	g_io_channel_shutdown(gw->rfcomm, TRUE, NULL);
-	g_io_channel_unref(gw->rfcomm);
-	gw->rfcomm = NULL;
-	change_state(dev, GATEWAY_STATE_DISCONNECTED);
+	gateway_close(dev);
 
 	return FALSE;
 }
