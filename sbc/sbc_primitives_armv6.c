@@ -41,7 +41,7 @@
 static void __attribute__((naked)) sbc_analyze_four_armv6()
 {
 	/* r0 = in, r1 = out, r2 = consts */
-	asm volatile (
+	__asm__ volatile (
 		"push   {r1, r4-r7, lr}\n"
 		"push   {r8-r11}\n"
 		"ldrd   r4,  r5,  [r0, #0]\n"
@@ -112,7 +112,7 @@ static void __attribute__((naked)) sbc_analyze_four_armv6()
 static void __attribute__((naked)) sbc_analyze_eight_armv6()
 {
 	/* r0 = in, r1 = out, r2 = consts */
-	asm volatile (
+	__asm__ volatile (
 		"push   {r1, r4-r7, lr}\n"
 		"push   {r8-r11}\n"
 		"ldrd   r4,  r5,  [r0, #24]\n"

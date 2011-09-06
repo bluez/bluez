@@ -45,7 +45,7 @@ static inline void sbc_analyze_four_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED4_SCALE - 1),
 		1 << (SBC_PROTO_FIXED4_SCALE - 1),
 	};
-	asm volatile (
+	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"
 		"pmaddwd     (%1), %%mm0\n"
@@ -111,7 +111,7 @@ static inline void sbc_analyze_eight_mmx(const int16_t *in, int32_t *out,
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 		1 << (SBC_PROTO_FIXED8_SCALE - 1),
 	};
-	asm volatile (
+	__asm__ volatile (
 		"movq        (%0), %%mm0\n"
 		"movq       8(%0), %%mm1\n"
 		"movq      16(%0), %%mm2\n"
@@ -258,7 +258,7 @@ static inline void sbc_analyze_4b_4s_mmx(int16_t *x, int32_t *out,
 	out += out_stride;
 	sbc_analyze_four_mmx(x + 0, out, analysis_consts_fixed4_simd_even);
 
-	asm volatile ("emms\n");
+	__asm__ volatile ("emms\n");
 }
 
 static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
@@ -273,7 +273,7 @@ static inline void sbc_analyze_4b_8s_mmx(int16_t *x, int32_t *out,
 	out += out_stride;
 	sbc_analyze_eight_mmx(x + 0, out, analysis_consts_fixed8_simd_even);
 
-	asm volatile ("emms\n");
+	__asm__ volatile ("emms\n");
 }
 
 static void sbc_calc_scalefactors_mmx(
@@ -291,7 +291,7 @@ static void sbc_calc_scalefactors_mmx(
 		for (sb = 0; sb < subbands; sb += 2) {
 			blk = (blocks - 1) * (((char *) &sb_sample_f[1][0][0] -
 				(char *) &sb_sample_f[0][0][0]));
-			asm volatile (
+			__asm__ volatile (
 				"movq         (%4), %%mm0\n"
 			"1:\n"
 				"movq     (%1, %0), %%mm1\n"
@@ -326,7 +326,7 @@ static void sbc_calc_scalefactors_mmx(
 			: "cc", "memory");
 		}
 	}
-	asm volatile ("emms\n");
+	__asm__ volatile ("emms\n");
 }
 
 static int check_mmx_support(void)
@@ -335,7 +335,7 @@ static int check_mmx_support(void)
 	return 1; /* We assume that all 64-bit processors have MMX support */
 #else
 	int cpuid_feature_information;
-	asm volatile (
+	__asm__ volatile (
 		/* According to Intel manual, CPUID instruction is supported
 		 * if the value of ID bit (bit 21) in EFLAGS can be modified */
 		"pushf\n"

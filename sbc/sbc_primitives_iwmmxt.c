@@ -42,7 +42,7 @@
 static inline void sbc_analyze_four_iwmmxt(const int16_t *in, int32_t *out,
 					const FIXED_T *consts)
 {
-	asm volatile (
+	__asm__ volatile (
 		"wldrd        wr0, [%0]\n"
 		"tbcstw       wr4, %2\n"
 		"wldrd        wr2, [%1]\n"
@@ -115,7 +115,7 @@ static inline void sbc_analyze_four_iwmmxt(const int16_t *in, int32_t *out,
 static inline void sbc_analyze_eight_iwmmxt(const int16_t *in, int32_t *out,
 							const FIXED_T *consts)
 {
-	asm volatile (
+	__asm__ volatile (
 		"wldrd        wr0, [%0]\n"
 		"tbcstw       wr15, %2\n"
 		"wldrd        wr1, [%0, #8]\n"

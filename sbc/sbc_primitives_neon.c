@@ -44,7 +44,7 @@ static inline void _sbc_analyze_four_neon(const int16_t *in, int32_t *out,
 	/* TODO: merge even and odd cases (or even merge all four calls to this
 	 * function) in order to have only aligned reads from 'in' array
 	 * and reduce number of load instructions */
-	asm volatile (
+	__asm__ volatile (
 		"vld1.16    {d4, d5}, [%0, :64]!\n"
 		"vld1.16    {d8, d9}, [%1, :128]!\n"
 
@@ -104,7 +104,7 @@ static inline void _sbc_analyze_eight_neon(const int16_t *in, int32_t *out,
 	/* TODO: merge even and odd cases (or even merge all four calls to this
 	 * function) in order to have only aligned reads from 'in' array
 	 * and reduce number of load instructions */
-	asm volatile (
+	__asm__ volatile (
 		"vld1.16    {d4, d5}, [%0, :64]!\n"
 		"vld1.16    {d8, d9}, [%1, :128]!\n"
 
@@ -247,7 +247,7 @@ static void sbc_calc_scalefactors_neon(
 		for (sb = 0; sb < subbands; sb += 4) {
 			int blk = blocks;
 			int32_t *in = &sb_sample_f[0][ch][sb];
-			asm volatile (
+			__asm__ volatile (
 				"vmov.s32  q0, #0\n"
 				"vmov.s32  q1, %[c1]\n"
 				"vmov.s32  q14, #1\n"
@@ -306,7 +306,7 @@ int sbc_calc_scalefactors_j_neon(
 
 	i = subbands;
 
-	asm volatile (
+	__asm__ volatile (
 		/*
 		 * constants: q13 = (31 - SCALE_OUT_BITS), q14 = 1
 		 * input:     q0  = ((1 << SCALE_OUT_BITS) + 1)
@@ -561,7 +561,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 	if (position < nsamples) {
 		int16_t *dst = &X[0][SBC_X_BUFFER_SIZE - 40];
 		int16_t *src = &X[0][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 			"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
@@ -575,7 +575,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 		if (nchannels > 1) {
 			dst = &X[1][SBC_X_BUFFER_SIZE - 40];
 			src = &X[1][position];
-			asm volatile (
+			__asm__ volatile (
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 				"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
@@ -594,7 +594,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 		/* poor 'pcm' alignment */
 		int16_t *x = &X[0][position];
 		int16_t *y = &X[1][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #16\n"
@@ -628,7 +628,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 		/* proper 'pcm' alignment */
 		int16_t *x = &X[0][position];
 		int16_t *y = &X[1][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #16\n"
@@ -658,7 +658,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_4s_neon_internal(
 			  "d20", "d21", "d22", "d23");
 	} else {
 		int16_t *x = &X[0][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #16\n"
@@ -703,7 +703,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 	if (position < nsamples) {
 		int16_t *dst = &X[0][SBC_X_BUFFER_SIZE - 72];
 		int16_t *src = &X[0][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 			"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
 			"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
@@ -721,7 +721,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 		if (nchannels > 1) {
 			dst = &X[1][SBC_X_BUFFER_SIZE - 72];
 			src = &X[1][position];
-			asm volatile (
+			__asm__ volatile (
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
 				"vst1.16 {d0, d1, d2, d3}, [%[dst], :128]!\n"
 				"vld1.16 {d0, d1, d2, d3}, [%[src], :128]!\n"
@@ -744,7 +744,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 		/* poor 'pcm' alignment */
 		int16_t *x = &X[0][position];
 		int16_t *y = &X[1][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #32\n"
@@ -782,7 +782,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 		/* proper 'pcm' alignment */
 		int16_t *x = &X[0][position];
 		int16_t *y = &X[1][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #32\n"
@@ -816,7 +816,7 @@ static SBC_ALWAYS_INLINE int sbc_enc_process_input_8s_neon_internal(
 			  "d20", "d21", "d22", "d23");
 	} else {
 		int16_t *x = &X[0][position];
-		asm volatile (
+		__asm__ volatile (
 			"vld1.8  {d0, d1, d2, d3}, [%[perm], :128]\n"
 		"1:\n"
 			"sub     %[x], %[x], #32\n"
