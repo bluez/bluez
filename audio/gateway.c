@@ -325,7 +325,8 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 
 	sk = g_io_channel_unix_get_fd(chan);
 
-	gw->rfcomm = g_io_channel_ref(chan);
+	if (gw->rfcomm == NULL)
+		gw->rfcomm = g_io_channel_ref(chan);
 
 	ret = agent_sendfd(gw->agent, sk, newconnection_reply, dev);
 
