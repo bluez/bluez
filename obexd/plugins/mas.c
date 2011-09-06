@@ -215,8 +215,8 @@ failed:
 }
 
 /* FIXME: Preserve whitespaces */
-static void g_string_append_escaped_printf(GString *string, const gchar *format,
-		...)
+static void g_string_append_escaped_printf(GString *string,
+						const gchar *format, ...)
 {
 	va_list ap;
 	char *escaped;
@@ -236,10 +236,10 @@ static const char *yesorno(gboolean a)
 	return "no";
 }
 
-static void get_messages_listing_cb(void *session, int err,
-		uint16_t size, gboolean newmsg,
-		const struct messages_message *entry,
-		void *user_data)
+static void get_messages_listing_cb(void *session, int err, uint16_t size,
+					gboolean newmsg,
+					const struct messages_message *entry,
+					void *user_data)
 {
 	struct mas_session *mas = user_data;
 
@@ -344,7 +344,7 @@ proceed:
 }
 
 static void get_message_cb(void *session, int err, gboolean fmore,
-	const char *chunk, void *user_data)
+					const char *chunk, void *user_data)
 {
 	struct mas_session *mas = user_data;
 
@@ -407,7 +407,7 @@ proceed:
 }
 
 static int mas_setpath(struct obex_session *os, obex_object_t *obj,
-		void *user_data)
+							void *user_data)
 {
 	const char *name;
 	uint8_t *nonhdr;
