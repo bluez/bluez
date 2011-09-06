@@ -260,6 +260,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) sco_io_cb, dev);
 
+	change_state(dev, GATEWAY_STATE_PLAYING);
 	run_connect_cb(dev, NULL);
 }
 
