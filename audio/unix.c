@@ -1045,11 +1045,8 @@ static void start_config(struct audio_device *dev, struct unix_client *client)
 		client->cancel = headset_cancel_stream;
 		break;
 	case TYPE_GATEWAY:
-		if (gateway_config_stream(dev, gateway_setup_complete, client) >= 0) {
-			client->cancel = gateway_cancel_stream;
-			id = 1;
-		} else
-			id = 0;
+		id = gateway_config_stream(dev, gateway_setup_complete, client);
+		client->cancel = gateway_cancel_stream;
 		break;
 
 	default:
@@ -1118,10 +1115,8 @@ static void start_resume(struct audio_device *dev, struct unix_client *client)
 		break;
 
 	case TYPE_GATEWAY:
-		if (gateway_request_stream(dev, gateway_resume_complete, client))
-			id = 1;
-		else
-			id = 0;
+		id = gateway_request_stream(dev, gateway_resume_complete,
+						client);
 		client->cancel = gateway_cancel_stream;
 		break;
 

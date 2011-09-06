@@ -38,6 +38,15 @@ typedef enum {
 	GATEWAY_LOCK_WRITE = 1 << 1,
 } gateway_lock_t;
 
+typedef enum {
+	GATEWAY_ERROR_DISCONNECTED,
+	GATEWAY_ERROR_SUSPENDED,
+} gateway_error_t;
+
+#define GATEWAY_ERROR gateway_error_quark()
+
+GQuark gateway_error_quark(void);
+
 typedef void (*gateway_state_cb) (struct audio_device *dev,
 					gateway_state_t old_state,
 					gateway_state_t new_state,
@@ -52,7 +61,7 @@ gboolean gateway_is_connected(struct audio_device *dev);
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io);
 int gateway_connect_sco(struct audio_device *dev, GIOChannel *chan);
 void gateway_start_service(struct audio_device *device);
-gboolean gateway_request_stream(struct audio_device *dev,
+unsigned int gateway_request_stream(struct audio_device *dev,
 			gateway_stream_cb_t cb, void *user_data);
 int gateway_config_stream(struct audio_device *dev, gateway_stream_cb_t cb,
 			void *user_data);
