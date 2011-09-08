@@ -163,7 +163,7 @@
 #define AVRCP_MEDIA_ATTRIBUTE_TRACK	0x4
 #define AVRCP_MEDIA_ATTRIBUTE_TOTAL	0x5
 #define AVRCP_MEDIA_ATTRIBUTE_GENRE	0x6
-#define AVRCP_MEDIA_ATTRIBUTE_PROGRESS	0x7
+#define AVRCP_MEDIA_ATTRIBUTE_DURATION	0x7
 
 /* play status */
 #define AVRCP_PLAY_STATUS_STOPPED	0x00
@@ -906,8 +906,8 @@ static const char *mediattr2str(uint32_t attr)
 		return "Track Total";
 	case AVRCP_MEDIA_ATTRIBUTE_GENRE:
 		return "Genre";
-	case AVRCP_MEDIA_ATTRIBUTE_PROGRESS:
-		return "Progress";
+	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
+		return "Track duration";
 	default:
 		return "Reserved";
 	}
