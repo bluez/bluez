@@ -63,6 +63,7 @@
 #include "gateway.h"
 #include "sink.h"
 #include "source.h"
+#include "avrcp.h"
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
@@ -219,11 +220,12 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 		DBG("Found AV %s", uuid16 == AV_REMOTE_SVCLASS_ID ?
 							"Remote" : "Target");
 		if (device->control)
-			control_update(device->control, uuid16,
-							enabled.media_player);
+			control_update(device->control, uuid16);
 		else
-			device->control = control_init(device, uuid16,
-							enabled.media_player);
+			device->control = control_init(device, uuid16);
+
+		if (enabled.media_player && !device->media_player)
+			device->media_player = media_player_init(device);
 		if (device->sink && sink_is_active(device))
 			avrcp_connect(device);
 		break;

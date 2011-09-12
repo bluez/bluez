@@ -144,6 +144,7 @@ builtin_sources += audio/main.c \
 			audio/headset.h audio/headset.c \
 			audio/control.h audio/control.c \
 			audio/avctp.h audio/avctp.c \
+			audio/avrcp.h audio/avrcp.c \
 			audio/device.h audio/device.c \
 			audio/source.h audio/source.c \
 			audio/sink.h audio/sink.c \

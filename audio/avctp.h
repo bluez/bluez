@@ -83,6 +83,7 @@ int avctp_register(const bdaddr_t *src, gboolean master);
 void avctp_unregister(const bdaddr_t *src);
 
 struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst);
+struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst);
 void avctp_disconnect(struct avctp *session);
 
 unsigned int avctp_register_pdu_handler(uint8_t opcode, avctp_pdu_cb cb,

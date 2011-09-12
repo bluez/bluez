@@ -22,9 +22,13 @@
  *
  */
 
-#define AUDIO_CONTROL_INTERFACE "org.bluez.Control"
+#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer"
 
-struct control *control_init(struct audio_device *dev, uint16_t uuid16);
-void control_update(struct control *control, uint16_t uuid16);
-void control_unregister(struct audio_device *dev);
-gboolean control_is_active(struct audio_device *dev);
+int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config);
+void avrcp_unregister(const bdaddr_t *src);
+
+gboolean avrcp_connect(struct audio_device *dev);
+void avrcp_disconnect(struct audio_device *dev);
+
+struct media_player *media_player_init(struct audio_device *dev);
+void media_player_unregister(struct audio_device *dev);

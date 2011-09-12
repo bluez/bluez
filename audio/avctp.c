@@ -1028,3 +1028,8 @@ void avctp_disconnect(struct avctp *session)
 
 	avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
 }
+
+struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	return avctp_get_internal(src, dst);
+}
