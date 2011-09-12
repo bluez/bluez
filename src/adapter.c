@@ -1262,7 +1262,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Address", DBUS_TYPE_STRING, &property);
 
 	/* Name */
-	property = (adapter->name ? : "");
+	property = adapter->name ? : "";
 
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &property);
 
