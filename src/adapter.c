@@ -105,7 +105,7 @@ struct service_auth {
 
 struct btd_adapter {
 	uint16_t dev_id;
-	int up;
+	gboolean up;
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* Class of Device */
@@ -2428,7 +2428,7 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN, &powered);
 
-	adapter->up = 0;
+	adapter->up = FALSE;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
 	adapter->state = STATE_IDLE;
