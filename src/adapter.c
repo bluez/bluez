@@ -3405,7 +3405,7 @@ int btd_adapter_switch_online(struct btd_adapter *adapter)
 		return -EINVAL;
 
 	if (adapter->up)
-		return 0;
+		return -EALREADY;
 
 	if (adapter->off_timer)
 		off_timer_remove(adapter);
@@ -3419,7 +3419,7 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 		return -EINVAL;
 
 	if (!adapter->up)
-		return 0;
+		return -EALREADY;
 
 	if (adapter->off_timer)
 		return 0;
