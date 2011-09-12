@@ -52,6 +52,7 @@
 #include "unix.h"
 #include "avdtp.h"
 #include "control.h"
+#include "avctp.h"
 #include "headset.h"
 #include "gateway.h"
 #include "sink.h"
