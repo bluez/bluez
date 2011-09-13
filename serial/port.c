@@ -368,10 +368,8 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
-	if (!port->listener_id) {
-		reply = NULL;
-		goto failed;
-	}
+	if (!port->listener_id)
+		return;
 
 	if (err < 0) {
 		error("Unable to get service record: %s (%d)", strerror(-err),
