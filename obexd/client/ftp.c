@@ -305,7 +305,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments", NULL);
 
 	if (obc_session_get(session, NULL, source_file,
-			target_file, NULL, 0, get_file_callback, NULL) < 0)
+			target_file, NULL, 0, get_file_callback, ftp) < 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.Failed",
 				"Failed");
