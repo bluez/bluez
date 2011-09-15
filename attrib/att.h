@@ -130,7 +130,7 @@ struct attribute {
 	uint8_t (*write_cb)(struct attribute *a, gpointer user_data);
 	gpointer cb_user_data;
 	int len;
-	uint8_t data[0];
+	uint8_t *data;
 };
 
 struct att_data_list {
