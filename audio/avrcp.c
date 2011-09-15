@@ -141,7 +141,7 @@ enum media_info_id {
 	MEDIA_INFO_TRACK =		4,
 	MEDIA_INFO_N_TRACKS =		5,
 	MEDIA_INFO_GENRE =		6,
-	MEDIA_INFO_CURRENT_POSITION =	7,
+	MEDIA_INFO_PLAYING_TIME =	7,
 	MEDIA_INFO_LAST
 };
 
@@ -690,19 +690,13 @@ static int mp_get_media_attribute(struct media_player *mp,
 		len = strlen(valstr);
 		memcpy(elem->val, valstr, len);
 		break;
-	case MEDIA_INFO_CURRENT_POSITION:
-		if (mi->elapsed != 0xFFFFFFFF) {
-			uint32_t elapsed;
-
-			mp_get_playback_status(mp, NULL, &elapsed, NULL);
-
-			snprintf(valstr, 20, "%u", elapsed);
-			len = strlen(valstr);
-			memcpy(elem->val, valstr, len);
-		} else {
+	case MEDIA_INFO_PLAYING_TIME:
+		if (mi->track_len == 0xFFFFFFFF)
 			return -ENOENT;
-		}
 
+		snprintf(valstr, 20, "%u", mi->track_len);
+		len = strlen(valstr);
+		memcpy(elem->val, valstr, len);
 		break;
 	default:
 		return -EINVAL;
