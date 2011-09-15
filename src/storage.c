@@ -35,8 +35,6 @@
 #include <time.h>
 #include <sys/file.h>
 #include <sys/stat.h>
-#include <sys/param.h>
-#include <sys/socket.h>
 
 #include <glib.h>
 
@@ -45,8 +43,6 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
-#include "adapter.h"
-#include "device.h"
 #include "glib-helper.h"
 #include "storage.h"
 
