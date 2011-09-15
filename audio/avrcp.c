@@ -142,6 +142,7 @@ enum media_info_id {
 	MEDIA_INFO_N_TRACKS =		5,
 	MEDIA_INFO_GENRE =		6,
 	MEDIA_INFO_CURRENT_POSITION =	7,
+	MEDIA_INFO_LAST
 };
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -890,7 +891,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
 		 * Return all available information, at least
 		 * title must be returned.
 		 */
-		for (i = 1; i <= MEDIA_INFO_CURRENT_POSITION; i++) {
+		for (i = 1; i < MEDIA_INFO_LAST; i++) {
 			size = mp_get_media_attribute(mp, i,
 							&pdu->params[pos]);
 
