@@ -237,8 +237,8 @@ int read_local_name(bdaddr_t *bdaddr, char *name)
 		return -ENOENT;
 
 	len = strlen(str);
-	if (len > 248)
-		str[248] = '\0';
+	if (len > HCI_MAX_NAME_LENGTH)
+		str[HCI_MAX_NAME_LENGTH] = '\0';
 	strcpy(name, str);
 
 	free(str);
@@ -319,11 +319,11 @@ int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class)
 
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
-	char filename[PATH_MAX + 1], addr[18], str[249];
+	char filename[PATH_MAX + 1], addr[18], str[HCI_MAX_NAME_LENGTH + 1];
 	int i;
 
 	memset(str, 0, sizeof(str));
-	for (i = 0; i < 248 && name[i]; i++)
+	for (i = 0; i < HCI_MAX_NAME_LENGTH && name[i]; i++)
 		if ((unsigned char) name[i] < 32 || name[i] == 127)
 			str[i] = '.';
 		else
@@ -349,8 +349,8 @@ int read_device_name(const char *src, const char *dst, char *name)
 		return -ENOENT;
 
 	len = strlen(str);
-	if (len > 248)
-		str[248] = '\0';
+	if (len > HCI_MAX_NAME_LENGTH)
+		str[HCI_MAX_NAME_LENGTH] = '\0';
 	strcpy(name, str);
 
 	free(str);
