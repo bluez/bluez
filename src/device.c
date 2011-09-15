@@ -1500,7 +1500,6 @@ cleanup:
 		device_get_address(device, &dba);
 
 		store_profiles(device);
-		write_device_type(&sba, &dba, device->type);
 	}
 
 	device->browse = NULL;
@@ -1588,7 +1587,6 @@ static void store_services(struct btd_device *device)
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
 
-	write_device_type(&sba, &dba, device->type);
 	write_device_services(&sba, &dba, str);
 
 	g_free(str);
