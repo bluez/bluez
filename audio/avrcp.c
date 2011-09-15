@@ -947,8 +947,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct media_player *mp,
 	 * Save a copy of requested settings because we can override them
 	 * while responding
 	 */
-	settings = g_malloc(pdu->params[0]);
-	memcpy(settings, &pdu->params[1], pdu->params[0]);
+	settings = g_memdup(&pdu->params[1], pdu->params[0]);
 	len = 0;
 
 	/*
@@ -972,16 +971,15 @@ static uint8_t avrcp_handle_get_current_player_value(struct media_player *mp,
 			continue;
 		}
 
-		pdu->params[len] = settings[i];
-		pdu->params[len + 1] = val;
-		len += 2;
+		pdu->params[++len] = settings[i];
+		pdu->params[++len] = val;
 	}
 
 	g_free(settings);
 
 	if (len) {
-		pdu->params[0] = len;
-		pdu->params_len = htons(2 * len + 1);
+		pdu->params[0] = len / 2;
+		pdu->params_len = htons(len + 1);
 
 		return AVC_CTYPE_STABLE;
 	}
