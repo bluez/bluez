@@ -1110,8 +1110,6 @@ int read_device_pairable(bdaddr_t *bdaddr, gboolean *mode)
 
 	create_filename(filename, PATH_MAX, bdaddr, "config");
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
 	str = textfile_get(filename, "pairable");
 	if (!str)
 		return -ENOENT;
@@ -1238,8 +1236,6 @@ char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba)
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
 	ba2str(dba, addr);
 
 	return textfile_caseget(filename, addr);
@@ -1267,8 +1263,6 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 	char filename[PATH_MAX + 1], addr[18], key[23];
 
 	create_filename(filename, PATH_MAX, sba, "characteristic");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dba, addr);
 
@@ -1298,8 +1292,6 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
 	char filename[PATH_MAX + 1];
 
 	create_filename(filename, PATH_MAX, sba, "attributes");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	return textfile_foreach(filename, func, data);
 }
