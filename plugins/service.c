@@ -436,7 +436,6 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 	sdp_record = sdp_xml_parse_record(record, len);
 	if (!sdp_record) {
 		error("Parsing of XML service record failed");
-		sdp_record_free(sdp_record);
 		return btd_error_failed(msg,
 					"Parsing of XML service record failed");
 	}
