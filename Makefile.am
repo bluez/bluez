@@ -339,13 +339,14 @@ audio_libasound_module_pcm_bluetooth_la_SOURCES = audio/pcm_bluetooth.c \
 					audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libasound_module_pcm_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_pcm_.*
 audio_libasound_module_pcm_bluetooth_la_LIBADD = sbc/libsbc.la \
-						lib/libbluetooth.la @ALSA_LIBS@
+					lib/libbluetooth-private.la @ALSA_LIBS@
 audio_libasound_module_pcm_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 
 audio_libasound_module_ctl_bluetooth_la_SOURCES = audio/ctl_bluetooth.c \
 					audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_ctl_.*
-audio_libasound_module_ctl_bluetooth_la_LIBADD = lib/libbluetooth.la @ALSA_LIBS@
+audio_libasound_module_ctl_bluetooth_la_LIBADD = \
+					lib/libbluetooth-private.la @ALSA_LIBS@
 audio_libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
 
 if DATAFILES
@@ -371,7 +372,7 @@ audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/gstrtpsbcpay.h audio/gstrtpsbcpay.c \
 				audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libgstbluetooth_la_LDFLAGS = -module -avoid-version
-audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth.la \
+audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth-private.la \
 				@DBUS_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp-0.10
 audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
 						$(AM_CFLAGS) @DBUS_CFLAGS@ @GSTREAMER_CFLAGS@
