@@ -1645,7 +1645,6 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 		goto done;
 	}
 
-	services_changed(device);
 	device_set_temporary(device, FALSE);
 
 	for (l = services; l; l = l->next) {
@@ -1672,6 +1671,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	g_slist_free(uuids);
 
+	services_changed(device);
 	create_device_reply(device, req);
 
 	store_services(device);
