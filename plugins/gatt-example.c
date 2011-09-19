@@ -32,8 +32,9 @@
 #include "plugin.h"
 #include "hcid.h"
 #include "log.h"
-#include "attrib-server.h"
+#include "gattrib.h"
 #include "att.h"
+#include "attrib-server.h"
 
 /* FIXME: Not defined by SIG? UUID128? */
 #define OPCODES_SUPPORTED_UUID          0xA001

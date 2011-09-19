@@ -55,8 +55,9 @@
 #include "glib-helper.h"
 #include "agent.h"
 #include "storage.h"
-#include "attrib-server.h"
+#include "gattrib.h"
 #include "att.h"
+#include "attrib-server.h"
 #include "eir.h"
 
 /* Flags Descriptions */

@@ -60,6 +60,7 @@
 #include "sdp-xml.h"
 #include "storage.h"
 #include "btio.h"
+#include "attrib-server.h"
 #include "attrib/client.h"
 
 #define DISCONNECT_TIMER	2
@@ -1685,6 +1686,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	struct browse_req *req = device->browse;
+	GAttrib *attrib;
 
 	if (gerr) {
 		DBusMessage *reply;
@@ -1707,11 +1709,15 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		device->attioid = 0;
 	}
 
+	attrib = g_attrib_new(io);
+	if (attrib_channel_attach(attrib, TRUE) < 0)
+		error("Attribute server attach failure!");
+
 	if (req) {
-		req->attrib = g_attrib_new(io);
+		req->attrib = attrib;
 		gatt_discover_primary(req->attrib, NULL, primary_cb, req);
 	} else if (device->attios) {
-		device->attrib = g_attrib_new(io);
+		device->attrib = attrib;
 		g_attrib_set_disconnect_function(device->attrib,
 						attrib_disconnected, device);
 		g_slist_foreach(device->attios, attio_connected,

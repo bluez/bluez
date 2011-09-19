@@ -31,3 +31,4 @@ int attrib_db_del(uint16_t handle);
 int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len);
 uint32_t attrib_create_sdp(uint16_t handle, const char *name);
 void attrib_free_sdp(uint32_t sdp_handle);
+int attrib_channel_attach(GAttrib *attrib, gboolean out);

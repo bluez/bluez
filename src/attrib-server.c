@@ -787,7 +787,6 @@ static void channel_disconnect(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
 
-	g_attrib_unref(channel->attrib);
 	clients = g_slist_remove(clients, channel);
 
 	g_slist_free(channel->notify);
@@ -921,16 +920,14 @@ done:
 							NULL, NULL, NULL);
 }
 
-static void connect_event(GIOChannel *io, GError *err, void *user_data)
+int attrib_channel_attach(GAttrib *attrib, gboolean out)
 {
 	struct gatt_channel *channel;
-	uint16_t cid;
+	GIOChannel *io;
 	GError *gerr = NULL;
+	uint16_t cid;
 
-	if (err) {
-		error("%s", err->message);
-		return;
-	}
+	io = g_attrib_get_channel(attrib);
 
 	channel = g_new0(struct gatt_channel, 1);
 
@@ -944,8 +941,7 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 		error("bt_io_get: %s", gerr->message);
 		g_error_free(gerr);
 		g_free(channel);
-		g_io_channel_shutdown(io, TRUE, NULL);
-		return;
+		return -EIO;
 	}
 
 	if (channel->mtu > ATT_MAX_MTU)
@@ -956,16 +952,33 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	else
 		channel->le = TRUE;
 
-	channel->attrib = g_attrib_new(io);
-	g_io_channel_unref(io);
 
+	channel->attrib = g_attrib_ref(attrib);
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
-				channel_handler, channel, NULL);
+					channel_handler, channel, NULL);
 
-	g_attrib_set_disconnect_function(channel->attrib, channel_disconnect,
-								channel);
+	if (out == FALSE)
+		g_attrib_set_disconnect_function(channel->attrib,
+						channel_disconnect, channel);
 
 	clients = g_slist_append(clients, channel);
+
+	return 0;
+}
+
+static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
+{
+	GAttrib *attrib;
+
+	if (gerr) {
+		error("%s", gerr->message);
+		return;
+	}
+
+	attrib = g_attrib_new(io);
+	attrib_channel_attach(attrib, FALSE);
+	g_io_channel_unref(io);
+	g_attrib_unref(attrib);
 }
 
 static void confirm_event(GIOChannel *io, void *user_data)
