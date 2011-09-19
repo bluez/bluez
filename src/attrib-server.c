@@ -954,7 +954,7 @@ int attrib_channel_attach(GAttrib *attrib, gboolean out)
 
 
 	channel->attrib = g_attrib_ref(attrib);
-	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_EVENTS,
+	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_REQS,
 					channel_handler, channel, NULL);
 
 	if (out == FALSE)

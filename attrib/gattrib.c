@@ -346,7 +346,9 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 		struct event *evt = l->data;
 
 		if (evt->expected == buf[0] ||
-					evt->expected == GATTRIB_ALL_EVENTS)
+				evt->expected == GATTRIB_ALL_EVENTS ||
+				(is_response(buf[0]) == FALSE &&
+						evt->expected == GATTRIB_ALL_REQS))
 			evt->func(buf, len, evt->user_data);
 	}
 
