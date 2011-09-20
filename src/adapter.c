@@ -703,8 +703,6 @@ static void session_free(void *data)
 	if (req->id)
 		g_dbus_remove_watch(req->conn, req->id);
 
-	session_remove(req);
-
 	if (req->msg) {
 		dbus_message_unref(req->msg);
 		if (!req->got_reply && req->mode && req->adapter->agent)
@@ -723,6 +721,7 @@ static void session_owner_exit(DBusConnection *conn, void *user_data)
 
 	req->id = 0;
 
+	session_remove(req);
 	session_free(req);
 }
 
@@ -735,6 +734,7 @@ static void session_unref(struct session_req *req)
 	if (req->refcount)
 		return;
 
+	session_remove(req);
 	session_free(req);
 }
 
@@ -2313,12 +2313,18 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 	/*
 	 * g_slist_free is not called after g_slist_foreach because the list is
-	 * updated using g_slist_remove in session_remove which is called by
-         * session_free, which is called for each element by g_slist_foreach.
+	 * updated using g_slist_remove in session_remove.
 	 */
-	if (adapter->mode == MODE_OFF)
-		g_slist_foreach(adapter->mode_sessions, (GFunc) session_free,
-									NULL);
+	if (adapter->mode == MODE_OFF) {
+		GSList *l;
+
+		for (l = adapter->mode_sessions; l;) {
+			struct session_req *req = l->data;
+			l = g_slist_next(l);
+			session_remove(req);
+			session_free(req);
+		}
+	}
 
 	if (adapter->pending_mode == NULL)
 		return;
