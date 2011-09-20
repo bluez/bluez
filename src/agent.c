@@ -79,9 +79,6 @@ struct agent_request {
 
 static DBusConnection *connection = NULL;
 
-static int request_fallback(struct agent_request *req,
-				DBusPendingCallNotifyFunction function);
-
 static void agent_release(struct agent *agent)
 {
 	DBusMessage *message;
@@ -258,13 +255,6 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
-		if ((g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err.name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err.name)) &&
-				request_fallback(req, simple_agent_reply) == 0) {
-			dbus_error_free(&err);
-			return;
-		}
-
 		error("Agent replied with an error: %s, %s",
 				err.name, err.message);
 
@@ -374,15 +364,8 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
-		if ((g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err.name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err.name)) &&
-				request_fallback(req, pincode_reply) == 0) {
-			dbus_error_free(&err);
-			return;
-		}
-
-		error("Agent replied with an error: %s, %s",
-				err.name, err.message);
+		error("Agent %s replied with an error: %s, %s",
+				agent->path, err.name, err.message);
 
 		cb(agent, &err, NULL, req->user_data);
 		dbus_error_free(&err);
@@ -547,15 +530,8 @@ static void passkey_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
-		if ((g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err.name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err.name)) &&
-				request_fallback(req, passkey_reply) == 0) {
-			dbus_error_free(&err);
-			return;
-		}
-
 		error("Agent replied with an error: %s, %s",
-				err.name, err.message);
+						err.name, err.message);
 		cb(agent, &err, 0, req->user_data);
 		dbus_error_free(&err);
 		goto done;
@@ -694,43 +670,6 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 failed:
 	agent_request_free(req, FALSE);
 	return err;
-}
-
-static int request_fallback(struct agent_request *req,
-				DBusPendingCallNotifyFunction function)
-{
-	struct btd_adapter *adapter = req->agent->adapter;
-	struct agent *adapter_agent = adapter_get_agent(adapter);
-	DBusMessage *msg;
-
-	if (req->agent == adapter_agent || adapter_agent == NULL)
-		return -EINVAL;
-
-	dbus_pending_call_cancel(req->call);
-	dbus_pending_call_unref(req->call);
-
-	msg = dbus_message_copy(req->msg);
-
-	dbus_message_set_destination(msg, adapter_agent->name);
-	dbus_message_set_path(msg, adapter_agent->path);
-
-	if (dbus_connection_send_with_reply(connection, msg,
-					&req->call, REQUEST_TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
-		dbus_message_unref(msg);
-		return -EIO;
-	}
-
-	req->agent->request = NULL;
-	req->agent = adapter_agent;
-	req->agent->request = req;
-
-	dbus_message_unref(req->msg);
-	req->msg = msg;
-
-	dbus_pending_call_set_notify(req->call, function, req, NULL);
-
-	return 0;
 }
 
 int agent_display_passkey(struct agent *agent, struct btd_device *device,

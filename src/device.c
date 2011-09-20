@@ -89,6 +89,8 @@ struct authentication_req {
 	void *cb;
 	struct agent *agent;
 	struct btd_device *device;
+	uint32_t passkey;
+	gboolean secure;
 };
 
 struct browse_req {
@@ -2304,7 +2306,24 @@ static void pincode_cb(struct agent *agent, DBusError *err,
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct agent *adapter_agent = adapter_get_agent(adapter);
 
+	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
+				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
+
+		if (auth->agent == adapter_agent || adapter_agent == NULL)
+			goto done;
+
+		if (agent_request_pincode(adapter_agent, device, pincode_cb,
+						auth->secure, auth, NULL) < 0)
+			goto done;
+
+		auth->agent = adapter_agent;
+		return;
+	}
+
+done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->cb == NULL)
 		return;
@@ -2319,7 +2338,25 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct agent *adapter_agent = adapter_get_agent(adapter);
 
+	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
+				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
+
+		if (auth->agent == adapter_agent || adapter_agent == NULL)
+			goto done;
+
+		if (agent_request_confirmation(adapter_agent, device,
+						auth->passkey, confirm_cb,
+						auth, NULL) < 0)
+			goto done;
+
+		auth->agent = adapter_agent;
+		return;
+	}
+
+done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->cb == NULL)
 		return;
@@ -2335,7 +2372,24 @@ static void passkey_cb(struct agent *agent, DBusError *err,
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct agent *adapter_agent = adapter_get_agent(adapter);
 
+	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
+				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
+
+		if (auth->agent == adapter_agent || adapter_agent == NULL)
+			goto done;
+
+		if (agent_request_passkey(adapter_agent, device, passkey_cb,
+							auth, NULL) < 0)
+			goto done;
+
+		auth->agent = adapter_agent;
+		return;
+	}
+
+done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->cb == NULL)
 		return;
@@ -2373,6 +2427,8 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	auth->device = device;
 	auth->cb = cb;
 	auth->type = type;
+	auth->passkey = passkey;
+	auth->secure = secure;
 	device->authr = auth;
 
 	switch (type) {
