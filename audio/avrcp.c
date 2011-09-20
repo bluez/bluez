@@ -173,6 +173,9 @@ struct avrcp_header {
 #error "Unknown byte order"
 #endif
 
+#define AVRCP_MTU	(AVC_MTU - AVC_HEADER_LENGTH)
+#define AVRCP_PDU_MTU	(AVRCP_MTU - AVRCP_HEADER_LENGTH)
+
 struct avrcp_server {
 	bdaddr_t src;
 	uint32_t tg_record_id;
@@ -649,7 +652,8 @@ static void mp_set_playback_status(struct media_player *mp, uint8_t status,
  * attribute, -ENOENT is returned.
  */
 static int mp_get_media_attribute(struct media_player *mp,
-						uint32_t id, uint8_t *buf)
+						uint32_t id, uint8_t *buf,
+						uint16_t maxlen)
 {
 	struct media_info_elem {
 		uint32_t id;
@@ -661,65 +665,70 @@ static int mp_get_media_attribute(struct media_player *mp,
 	struct media_info_elem *elem = (void *)buf;
 	uint16_t len;
 	char valstr[20];
+	char *valp;
+
+	if (maxlen < sizeof(struct media_info_elem))
+		return -ENOBUFS;
+
+	/* Subtract the size of elem header from the available space */
+	maxlen -= sizeof(struct media_info_elem);
 
 	switch (id) {
 	case MEDIA_INFO_TITLE:
-		if (mi->title) {
-			len = strlen(mi->title);
-			memcpy(elem->val, mi->title, len);
-		} else {
-			len = 0;
-		}
-
+		valp = mi->title;
 		break;
 	case MEDIA_INFO_ARTIST:
 		if (mi->artist == NULL)
 			return -ENOENT;
 
-		len = strlen(mi->artist);
-		memcpy(elem->val, mi->artist, len);
+		valp = mi->artist;
 		break;
 	case MEDIA_INFO_ALBUM:
 		if (mi->album == NULL)
 			return -ENOENT;
 
-		len = strlen(mi->album);
-		memcpy(elem->val, mi->album, len);
+		valp = mi->album;
 		break;
 	case MEDIA_INFO_GENRE:
 		if (mi->genre == NULL)
 			return -ENOENT;
 
-		len = strlen(mi->genre);
-		memcpy(elem->val, mi->genre, len);
+		valp = mi->genre;
 		break;
-
 	case MEDIA_INFO_TRACK:
 		if (!mi->track)
 			return -ENOENT;
 
 		snprintf(valstr, 20, "%u", mi->track);
-		len = strlen(valstr);
-		memcpy(elem->val, valstr, len);
+		valp = valstr;
 		break;
 	case MEDIA_INFO_N_TRACKS:
 		if (!mi->ntracks)
 			return -ENOENT;
 
 		snprintf(valstr, 20, "%u", mi->ntracks);
-		len = strlen(valstr);
-		memcpy(elem->val, valstr, len);
+		valp = valstr;
 		break;
 	case MEDIA_INFO_PLAYING_TIME:
 		if (mi->track_len == 0xFFFFFFFF)
 			return -ENOENT;
 
 		snprintf(valstr, 20, "%u", mi->track_len);
-		len = strlen(valstr);
-		memcpy(elem->val, valstr, len);
+		valp = valstr;
 		break;
 	default:
 		return -EINVAL;
+	}
+
+	if (valp) {
+		len = strlen(valp);
+
+		if (len > maxlen)
+			return -ENOBUFS;
+
+		memcpy(elem->val, valp, len);
+	} else {
+		len = 0;
 	}
 
 	elem->id = htonl(id);
@@ -905,8 +914,8 @@ static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
 		 * title must be returned.
 		 */
 		for (i = 1; i < MEDIA_INFO_LAST; i++) {
-			size = mp_get_media_attribute(mp, i,
-							&pdu->params[pos]);
+			size = mp_get_media_attribute(mp, i, &pdu->params[pos],
+							AVRCP_PDU_MTU - pos);
 
 			if (size > 0) {
 				len++;
@@ -922,7 +931,8 @@ static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
 			uint32_t attr = ntohl(attr_ids[i]);
 
 			size = mp_get_media_attribute(mp, attr,
-							&pdu->params[pos]);
+							&pdu->params[pos],
+							AVRCP_PDU_MTU - pos);
 
 			if (size > 0) {
 				len++;

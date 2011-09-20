@@ -24,6 +24,9 @@
 
 #define AVCTP_PSM 23
 
+#define AVC_MTU 512
+#define AVC_HEADER_LENGTH 3
+
 /* ctype entries */
 #define AVC_CTYPE_CONTROL		0x0
 #define AVC_CTYPE_STATUS		0x1
