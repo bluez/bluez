@@ -504,7 +504,7 @@ static void cmd_connect(struct obex_session *os,
 	if (err == 0 && os->service->target) {
 		hd.bs = os->service->target;
 		OBEX_ObjectAddHeader(obex, obj,
-				OBEX_HDR_WHO, hd, 16,
+				OBEX_HDR_WHO, hd, os->service->target_size,
 				OBEX_FL_FIT_ONE_PACKET);
 		hd.bq4 = os->cid;
 		OBEX_ObjectAddHeader(obex, obj,
