@@ -241,7 +241,7 @@ guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 	dp->user_data = user_data;
 
 	if (uuid) {
-		memcpy(&dp->uuid, uuid, sizeof(bt_uuid_t));
+		dp->uuid = *uuid;
 		cb = primary_by_uuid_cb;
 	} else
 		cb = primary_all_cb;

@@ -1255,7 +1255,7 @@ struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 	a->len = len;
 	a->data = g_memdup(value, len);
 	a->handle = handle;
-	memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
+	a->uuid = *uuid;
 	a->read_reqs = read_reqs;
 	a->write_reqs = write_reqs;
 
@@ -1287,7 +1287,7 @@ int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
 	memcpy(a->data, value, len);
 
 	if (uuid != NULL)
-		memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
+		a->uuid = *uuid;
 
 	if (attr)
 		*attr = a;

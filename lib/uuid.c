@@ -74,7 +74,7 @@ void bt_uuid_to_uuid128(const bt_uuid_t *src, bt_uuid_t *dst)
 {
 	switch (src->type) {
 	case BT_UUID128:
-		memcpy(dst, src, sizeof(bt_uuid_t));
+		*dst = *src;
 		break;
 	case BT_UUID32:
 		bt_uuid32_to_uuid128(src, dst);
