@@ -19,6 +19,7 @@ fi
 		--enable-capng \
 		--enable-gatt-example \
 		--enable-proximity \
+		--enable-time \
 		--enable-health \
 		--enable-tracer \
 		--enable-tools \

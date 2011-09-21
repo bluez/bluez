@@ -222,6 +222,12 @@ builtin_modules += gatt_example
 builtin_sources += plugins/gatt-example.c
 endif
 
+if TIMEPLUGIN
+builtin_modules += time
+builtin_sources += time/main.c \
+		   time/server.h time/server.c
+endif
+
 if HEALTHPLUGIN
 builtin_modules += health
 builtin_sources += health/hdp_main.c health/hdp_types.h \
