@@ -857,7 +857,6 @@ uint16_t enc_indication(struct attribute *a, uint8_t *pdu, int len)
 struct attribute *dec_indication(const uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(uint16_t);
-
 	struct attribute *a;
 
 	if (pdu == NULL)
