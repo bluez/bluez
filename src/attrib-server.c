@@ -271,10 +271,9 @@ static struct attribute *client_cfg_attribute(struct gatt_channel *channel,
 		/* Create a private copy of the Client Characteristic
 		 * Configuration attribute */
 		a = g_new0(struct attribute, 1);
-		a->data = g_malloc0(vlen);
-
-		memcpy(a, orig_attr, sizeof(*a));
-		memcpy(a->data, value, vlen);
+		*a = *orig_attr;
+		a->len = vlen;
+		a->data = g_memdup(value, vlen);
 		a->write_cb = client_set_notifications;
 		a->cb_user_data = channel;
 
@@ -776,6 +775,14 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	return enc_mtu_resp(old_mtu, pdu, len);
 }
 
+static void attrib_free(void *data)
+{
+	struct attribute *a = data;
+
+	g_free(a->data);
+	g_free(a);
+}
+
 static void channel_disconnect(void *user_data)
 {
 	struct gatt_channel *channel = user_data;
@@ -785,7 +792,7 @@ static void channel_disconnect(void *user_data)
 
 	g_slist_free(channel->notify);
 	g_slist_free(channel->indicate);
-	g_slist_free_full(channel->configs, g_free);
+	g_slist_free_full(channel->configs, attrib_free);
 
 	g_free(channel);
 }
@@ -1123,14 +1130,6 @@ failed:
 	return -1;
 }
 
-static void attrib_free(void *data)
-{
-	struct attribute *a = data;
-
-	g_free(a->data);
-	g_free(a);
-}
-
 void attrib_server_exit(void)
 {
 	GSList *l;
@@ -1152,7 +1151,7 @@ void attrib_server_exit(void)
 
 		g_slist_free(channel->notify);
 		g_slist_free(channel->indicate);
-		g_slist_free_full(channel->configs, g_free);
+		g_slist_free_full(channel->configs, attrib_free);
 
 		g_attrib_unref(channel->attrib);
 		g_free(channel);
@@ -1253,14 +1252,12 @@ struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
 		return NULL;
 
 	a = g_new0(struct attribute, 1);
-	a->data = g_malloc0(len);
-
+	a->len = len;
+	a->data = g_memdup(value, len);
 	a->handle = handle;
 	memcpy(&a->uuid, uuid, sizeof(bt_uuid_t));
 	a->read_reqs = read_reqs;
 	a->write_reqs = write_reqs;
-	a->len = len;
-	memcpy(a->data, value, len);
 
 	database = g_slist_insert_sorted(database, a, attribute_cmp);
 

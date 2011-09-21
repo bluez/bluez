@@ -868,11 +868,10 @@ struct attribute *dec_indication(const uint8_t *pdu, int len)
 	if (len < min_len)
 		return NULL;
 
-	a = g_malloc0(sizeof(struct attribute) + len - min_len);
-	a->len = len - min_len;
-
+	a = g_new0(struct attribute, 1);
 	a->handle = att_get_u16(&pdu[1]);
-	memcpy(a->data, &pdu[3], a->len);
+	a->len = len - min_len;
+	a->data = g_memdup(&pdu[3], a->len);
 
 	return a;
 }
