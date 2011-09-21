@@ -2017,7 +2017,7 @@ void telephony_exit(void)
 	g_slist_free_full(pending, pending_req_finalize);
 	pending = NULL;
 
-	g_slist_free_full(pending, remove_watch);
+	g_slist_free_full(watches, remove_watch);
 	watches = NULL;
 
 	dbus_connection_unref(connection);
