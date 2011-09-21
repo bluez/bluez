@@ -517,7 +517,7 @@ static GString *append_listing(GString *object, const char *name,
 			continue;
 
 		filename = g_filename_to_utf8(ep->d_name, -1, NULL, NULL, NULL);
-		if (name == NULL) {
+		if (filename == NULL) {
 			error("g_filename_to_utf8: invalid filename");
 			continue;
 		}
