@@ -228,6 +228,12 @@ builtin_sources += time/main.c \
 		   time/server.h time/server.c
 endif
 
+if ALERTPLUGIN
+builtin_modules += alert
+builtin_sources += alert/main.c \
+		   alert/server.h alert/server.c
+endif
+
 if HEALTHPLUGIN
 builtin_modules += health
 builtin_sources += health/hdp_main.c health/hdp_types.h \
