@@ -2502,6 +2502,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	perr = audio_device_request_authorization(dev, ADVANCED_AUDIO_UUID,
 							auth_cb, session);
 	if (perr < 0) {
+		avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 		avdtp_unref(session);
 		goto drop;
 	}
