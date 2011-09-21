@@ -1514,7 +1514,6 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		sdp_list_free(classes, free);
 
-
 		if (sdp_uuid_cmp(&class, &uuid) == 0)
 			break;
 	}
