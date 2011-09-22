@@ -111,7 +111,6 @@ int verify_path(const char *path)
 		return 0;
 
 	t = realpath(path, NULL);
-
 	if (t == NULL)
 		return -errno;
 
@@ -171,10 +170,10 @@ static void *filesystem_open(const char *name, int oflag, mode_t mode,
 {
 	struct stat stats;
 	struct statvfs buf;
-	int fd = open(name, oflag, mode);
+	int fd, ret;
 	uint64_t avail;
-	int ret;
 
+	fd = open(name, oflag, mode);
 	if (fd < 0) {
 		if (err)
 			*err = -errno;
@@ -501,7 +500,6 @@ static GString *append_listing(GString *object, const char *name,
 	}
 
 	ret = stat(name, &dstat);
-
 	if (ret < 0) {
 		if (err)
 			*err = -errno;
@@ -525,7 +523,6 @@ static GString *append_listing(GString *object, const char *name,
 		fullname = g_build_filename(name, ep->d_name, NULL);
 
 		ret = stat(fullname, &fstat);
-
 		if (ret < 0) {
 			DBG("stat: %s(%d)", strerror(errno), errno);
 			g_free(filename);
