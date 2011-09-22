@@ -450,17 +450,15 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 	if ((type == TYPE_INTERNATIONAL) && (number[0] != '+'))
 		intl = "+";
 
+	snprintf(field, sizeof(field), "%s%s", intl, number);
+
 	if (select_qp_encoding(format, number, NULL)) {
 		snprintf(buf, sizeof(buf), "TEL;%s", category_string);
-		snprintf(field, sizeof(field), "%s%s", intl, number);
 		vcard_qp_print_encoded(vcards, buf, field, NULL);
 		return;
 	}
 
-	snprintf(buf, sizeof(buf), "TEL;%s:%s\%s", category_string,
-								intl, number);
-
-	vcard_printf(vcards, buf, number);
+	vcard_printf(vcards, "TEL;%s:%s", category_string, field);
 }
 
 static void vcard_printf_tag(GString *vcards, uint8_t format,
