@@ -974,7 +974,6 @@ static void add_affiliation(char **field, const char *value)
 static void contact_init(struct phonebook_contact *contact,
 							const char **reply)
 {
-
 	contact->fullname = g_strdup(reply[COL_FULL_NAME]);
 	contact->family = g_strdup(reply[COL_FAMILY_NAME]);
 	contact->given = g_strdup(reply[COL_GIVEN_NAME]);

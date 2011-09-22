@@ -825,7 +825,6 @@ void phonebook_add_contact(GString *vcards, struct phonebook_contact *contact,
 	vcard_printf_end(vcards);
 }
 
-
 static void field_free(gpointer data)
 {
 	struct phonebook_field *field = data;
