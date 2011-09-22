@@ -60,20 +60,21 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 {
 	uint16_t vendor, product;
 	bdaddr_t sba, dba;
-	char src_addr[18], dst_addr[18];
+	char addr[18];
 
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba);
-	ba2str(&sba, src_addr);
-	ba2str(&dba, dst_addr);
+	ba2str(&dba, addr);
 
-	if (0 == read_device_id(src_addr, dst_addr, NULL, &vendor, &product,
-									NULL)) {
-		if (vendor == 0x057e && product == 0x0306) {
-			DBG("Forcing fixed pin on detected wiimote %s", dst_addr);
-			memcpy(pinbuf, &sba, 6);
-			return 6;
-		}
+	vendor = btd_device_get_vendor(device);
+	if (vendor != 0x057e)
+		return 0;
+
+	product = btd_device_get_product(device);
+	if (product == 0x0306) {
+		DBG("Forcing fixed pin on detected wiimote %s", addr);
+		memcpy(pinbuf, &sba, 6);
+		return 6;
 	}
 
 	return 0;
