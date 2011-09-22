@@ -596,8 +596,9 @@ static int hidp_add_connection(const struct input_device *idev,
 	extract_hid_record(rec, req);
 	sdp_record_free(rec);
 
-	read_device_id(src_addr, dst_addr, NULL,
-				&req->vendor, &req->product, &req->version);
+	req->vendor = btd_device_get_vendor(idev->device);
+	req->product = btd_device_get_product(idev->device);
+	req->version = btd_device_get_version(idev->device);
 
 	fake_hid = get_fake_hid(req->vendor, req->product);
 	if (fake_hid) {
