@@ -681,7 +681,7 @@ static void vcard_printf_address(GString *vcards, uint8_t format,
 		g_strlcat(fields, field_esc, len);
 
 		if (l->next)
-			/* not addding ';' after last addr field */
+			/* not adding ';' after last addr field */
 			g_strlcat(fields, ";", len);
 	}
 
