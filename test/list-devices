@@ -67,6 +67,12 @@ for i in adapter_list:
 				print "        %s = %s" % (key, list)
 			elif (key == "Class"):
 				print "        %s = 0x%06x" % (key, value)
+			elif (key == "Vendor"):
+				print "        %s = 0x%04x" % (key, value)
+			elif (key == "Product"):
+				print "        %s = 0x%04x" % (key, value)
+			elif (key == "Version"):
+				print "        %s = 0x%04x" % (key, value)
 			else:
 				print "        %s = %s" % (key, value)
 
