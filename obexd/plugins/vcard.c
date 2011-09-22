@@ -406,7 +406,7 @@ static void vcard_printf_number(GString *vcards, uint8_t format,
 					enum phonebook_number_type category)
 {
 	const char *intl = "", *category_string = "";
-	char buf[128], field[LEN_MAX];
+	char buf[LEN_MAX], field[LEN_MAX];
 
 	/* TEL is a mandatory field, include even if empty */
 	if (!number || !strlen(number) || !type) {
