@@ -125,6 +125,18 @@ Properties	string Address [readonly]
 			The Bluetooth remote name. This value can not be
 			changed. Use the Alias property instead.
 
+		uint16 Vendor [readonly]
+
+			Vendor unique numeric identifier.
+
+		uint16 Product [readonly]
+
+			Product unique numeric identifier.
+
+		uint16 Version [readonly]
+
+			Version unique numeric identifier.
+
 		string Icon [readonly]
 
 			Proposed icon name according to the freedesktop.org

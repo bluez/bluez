@@ -46,6 +46,9 @@ struct btd_device *device_create(DBusConnection *conn,
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 device_type_t device_get_type(struct btd_device *device);
+uint16_t btd_device_get_vendor(struct btd_device *device);
+uint16_t btd_device_get_product(struct btd_device *device);
+uint16_t btd_device_get_version(struct btd_device *device);
 void device_remove(struct btd_device *device, gboolean remove_stored);
 gint device_address_cmp(struct btd_device *device, const gchar *address);
 int device_browse_primary(struct btd_device *device, DBusConnection *conn,

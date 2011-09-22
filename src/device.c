@@ -122,6 +122,9 @@ struct btd_device {
 	gchar		*path;
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
+	uint16_t	vendor;
+	uint16_t	product;
+	uint16_t	version;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*services;		/* Primary services path */
@@ -325,6 +328,21 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			dict_append_entry(&dict, "Icon",
 						DBUS_TYPE_STRING, &icon);
 	}
+
+	/* Vendor */
+	if (device->vendor)
+		dict_append_entry(&dict, "Vendor", DBUS_TYPE_UINT16,
+							&device->vendor);
+
+	/* Product */
+	if (device->product)
+		dict_append_entry(&dict, "Product", DBUS_TYPE_UINT16,
+							&device->product);
+
+	/* Version */
+	if (device->product)
+		dict_append_entry(&dict, "Version", DBUS_TYPE_UINT16,
+							&device->version);
 
 	/* Paired */
 	boolean = device_is_paired(device);
@@ -906,6 +924,45 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 	}
 }
 
+static void device_set_vendor(struct btd_device *device, uint16_t value)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (device->vendor == value)
+		return;
+
+	device->vendor = value;
+
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Vendor",
+				DBUS_TYPE_UINT16, &value);
+}
+
+static void device_set_product(struct btd_device *device, uint16_t value)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (device->product == value)
+		return;
+
+	device->product = value;
+
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Product",
+				DBUS_TYPE_UINT16, &value);
+}
+
+static void device_set_version(struct btd_device *device, uint16_t value)
+{
+	DBusConnection *conn = get_dbus_connection();
+
+	if (device->version == value)
+		return;
+
+	device->version = value;
+
+	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Version",
+				DBUS_TYPE_UINT16, &value);
+}
+
 struct btd_device *device_create(DBusConnection *conn,
 				struct btd_adapter *adapter,
 				const gchar *address, device_type_t type)
@@ -915,6 +972,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	const gchar *adapter_path = adapter_get_path(adapter);
 	bdaddr_t src;
 	char srcaddr[18], alias[MAX_NAME_LENGTH + 1];
+	uint16_t vendor, product, version;
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -952,6 +1010,13 @@ struct btd_device *device_create(DBusConnection *conn,
 		device_set_bonded(device, TRUE);
 	}
 
+	if (read_device_id(srcaddr, address, NULL, &vendor, &product, &version)
+									== 0) {
+		device_set_vendor(device, vendor);
+		device_set_product(device, product);
+		device_set_version(device, version);
+	}
+
 	return btd_device_ref(device);
 }
 
@@ -984,6 +1049,21 @@ void device_get_name(struct btd_device *device, char *name, size_t len)
 device_type_t device_get_type(struct btd_device *device)
 {
 	return device->type;
+}
+
+uint16_t btd_device_get_vendor(struct btd_device *device)
+{
+	return device->vendor;
+}
+
+uint16_t btd_device_get_product(struct btd_device *device)
+{
+	return device->product;
+}
+
+uint16_t btd_device_get_version(struct btd_device *device)
+{
+	return device->version;
 }
 
 static void device_remove_stored(struct btd_device *device)
@@ -1314,11 +1394,17 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			pdlist = sdp_data_get(rec, SDP_ATTR_VENDOR_ID);
 			vendor = pdlist ? pdlist->val.uint16 : 0x0000;
 
+			device_set_vendor(device, vendor);
+
 			pdlist = sdp_data_get(rec, SDP_ATTR_PRODUCT_ID);
 			product = pdlist ? pdlist->val.uint16 : 0x0000;
 
+			device_set_product(device, product);
+
 			pdlist = sdp_data_get(rec, SDP_ATTR_VERSION);
 			version = pdlist ? pdlist->val.uint16 : 0x0000;
+
+			device_set_version(device, version);
 
 			if (source || vendor || product || version)
 				store_device_id(srcaddr, dstaddr, source,
