@@ -755,7 +755,6 @@ struct gateway *gateway_init(struct audio_device *dev)
 		return NULL;
 
 	return g_new0(struct gateway, 1);
-
 }
 
 gboolean gateway_is_connected(struct audio_device *dev)
