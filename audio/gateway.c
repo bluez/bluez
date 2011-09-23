@@ -760,8 +760,12 @@ struct gateway *gateway_init(struct audio_device *dev)
 
 gboolean gateway_is_connected(struct audio_device *dev)
 {
-	return (dev && dev->gateway &&
-			dev->gateway->state == GATEWAY_STATE_CONNECTED);
+	struct gateway *gw = dev->gateway;
+
+	if (gw->state == GATEWAY_STATE_CONNECTED)
+		return TRUE;
+
+	return FALSE;
 }
 
 gboolean gateway_is_active(struct audio_device *dev)
