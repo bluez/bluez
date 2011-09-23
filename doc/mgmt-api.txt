@@ -552,3 +552,17 @@ Discovering Event
 Event Code		0x00014
 Controller Index	<controller id>
 Event Parameters	Discovering (1 Octet)
+
+Device Blocked Event
+====================
+
+Event Code		0x00015
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
+
+Device Unblocked Event
+======================
+
+Event Code		0x00016
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
