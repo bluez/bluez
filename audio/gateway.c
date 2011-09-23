@@ -764,6 +764,16 @@ gboolean gateway_is_connected(struct audio_device *dev)
 			dev->gateway->state == GATEWAY_STATE_CONNECTED);
 }
 
+gboolean gateway_is_active(struct audio_device *dev)
+{
+	struct gateway *gw = dev->gateway;
+
+	if (gw->state != GATEWAY_STATE_DISCONNECTED)
+		return TRUE;
+
+	return FALSE;
+}
+
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 {
 	if (!io)
