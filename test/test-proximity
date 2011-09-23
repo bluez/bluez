@@ -46,7 +46,8 @@ if __name__ == "__main__":
 	if (len(args) < 1):
 		print "Usage: %s <command>" % (sys.argv[0])
 		print ""
-		print "  LinkLossAlertLevel <none|mild|high>"
+		print "  -b MAC LinkLossAlertLevel <none|mild|high>"
+		print "  -b MAC ImmediateAlertLevel <none|mild|high>"
 		sys.exit(1)
 
 	device_path = adapter.FindDevice(options.address)
