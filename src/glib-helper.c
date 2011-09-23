@@ -333,9 +333,13 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 static gint find_by_bdaddr(gconstpointer data, gconstpointer user_data)
 {
 	const struct search_context *ctxt = data, *search = user_data;
+	int ret;
 
-	return (bacmp(&ctxt->dst, &search->dst) &&
-					bacmp(&ctxt->src, &search->src));
+	ret = bacmp(&ctxt->src, &search->src);
+	if (ret != 0)
+		return ret;
+
+	return bacmp(&ctxt->dst, &search->dst);
 }
 
 int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
