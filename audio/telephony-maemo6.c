@@ -1317,6 +1317,9 @@ static void call_set_status(struct csd_call *call, dbus_uint32_t status)
 		if (g_slist_length(active_calls) == 0)
 			telephony_update_indicator(maemo_indicators, "call",
 							EV_CALL_INACTIVE);
+
+		if (create_tones_timer)
+			g_source_remove(create_tones_timer);
 		break;
 	case CSD_CALL_STATUS_HOLD_INITIATED:
 		break;
