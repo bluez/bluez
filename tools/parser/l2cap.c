@@ -346,13 +346,13 @@ static char *fcs2str(uint8_t fcs)
 static char *sar2str(uint8_t sar)
 {
 	switch (sar) {
-	case 0x00:
+	case L2CAP_SAR_UNSEGMENTED:
 		return "Unsegmented";
-	case 0x01:
+	case L2CAP_SAR_START:
 		return "Start";
-	case 0x02:
+	case L2CAP_SAR_END:
 		return "End";
-	case 0x03:
+	case L2CAP_SAR_CONTINUE:
 		return "Continuation";
 	default:
 		return "Bad SAR";
@@ -363,13 +363,13 @@ static char *sar2str(uint8_t sar)
 static char *supervisory2str(uint8_t supervisory)
 {
 	switch (supervisory) {
-	case 0x00:
+	case L2CAP_SUPER_RR:
 		return "Receiver Ready (RR)";
-	case 0x01:
+	case L2CAP_SUPER_REJ:
 		return "Reject (REJ)";
-	case 0x02:
+	case L2CAP_SUPER_RNR:
 		return "Receiver Not Ready (RNR)";
-	case 0x03:
+	case L2CAP_SUPER_SREJ:
 		return "Select Reject (SREJ)";
 	default:
 		return "Bad Supervisory";
