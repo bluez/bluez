@@ -732,17 +732,26 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 						CME_ERROR_AG_FAILURE);
 }
 
-void telephony_transmit_dtmf_req(void *telephony_device, char tone)
+static void start_dtmf_reply(DBusPendingCall *call, void *user_data)
+{
+	send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+				CSD_CALL_INTERFACE, "StopDTMF",
+				NULL, NULL,
+				DBUS_TYPE_INVALID);
+}
+
+static void start_dtmf(void *telephony_device, char tone)
 {
 	int ret;
-	char buf[2] = { tone, '\0' }, *buf_ptr = buf;
 
-	DBG("telephony-maemo6: transmit dtmf: %s", buf);
-
+	/*
+	 * Stop tone immediately, modem will place it in queue and play
+	 * required time.
+	 */
 	ret = send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
-				CSD_CALL_INTERFACE, "SendDTMF",
-				NULL, NULL,
-				DBUS_TYPE_STRING, &buf_ptr,
+				CSD_CALL_INTERFACE, "StartDTMF",
+				start_dtmf_reply, NULL,
+				DBUS_TYPE_BYTE, &tone,
 				DBUS_TYPE_INVALID);
 	if (ret < 0) {
 		telephony_transmit_dtmf_rsp(telephony_device,
@@ -751,6 +760,13 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 	}
 
 	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
+}
+
+void telephony_transmit_dtmf_req(void *telephony_device, char tone)
+{
+	DBG("telephony-maemo6: transmit dtmf: %c", tone);
+
+	start_dtmf(telephony_device, tone);
 }
 
 void telephony_subscriber_number_req(void *telephony_device)
