@@ -734,10 +734,25 @@ void telephony_dial_number_req(void *telephony_device, const char *number)
 
 static void start_dtmf_reply(DBusPendingCall *call, void *user_data)
 {
-	send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
+	DBusError err;
+	DBusMessage *reply;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, reply)) {
+		error("csd replied with an error: %s, %s",
+				err.name, err.message);
+
+		dbus_error_free(&err);
+	} else
+		send_method_call(CSD_CALL_BUS_NAME, CSD_CALL_PATH,
 				CSD_CALL_INTERFACE, "StopDTMF",
 				NULL, NULL,
 				DBUS_TYPE_INVALID);
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
 }
 
 static void start_dtmf(void *telephony_device, char tone)
