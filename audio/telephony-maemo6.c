@@ -900,7 +900,10 @@ void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 
 	start_dtmf(telephony_device, tone);
 
-	start_feedback_tone(tone);
+	if (!find_call_with_status(CSD_CALL_STATUS_ACTIVE))
+		error("No active call");
+	else
+		start_feedback_tone(tone);
 }
 
 void telephony_subscriber_number_req(void *telephony_device)
