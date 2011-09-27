@@ -118,6 +118,21 @@ enum net_registration_status {
 #define OHM_INTERFACE		"com.nokia.NonGraphicFeedback1"
 #define OHM_PATH		"/com/nokia/NonGraphicFeedback1"
 
+/* tone-genenerator D-Bus definitions */
+#define TONEGEN_BUS_NAME	"com.Nokia.Telephony.Tones"
+#define TONEGEN_INTERFACE	"com.Nokia.Telephony.Tones"
+#define TONEGEN_PATH		"/com/Nokia/Telephony/Tones"
+
+/* tone-generator DTMF definitions */
+#define DTMF_ASTERISK   10
+#define DTMF_HASHMARK   11
+#define DTMF_A          12
+#define DTMF_B          13
+#define DTMF_C          14
+#define DTMF_D          15
+
+#define FEEDBACK_TONE_DURATION			200
+
 struct csd_call {
 	char *object_path;
 	int status;
@@ -157,6 +172,10 @@ static GSList *pending = NULL;
 
 /* Reference count for determining the call indicator status */
 static GSList *active_calls = NULL;
+
+/* Queue of DTMF tones to play */
+static GSList *tones = NULL;
+static guint create_tones_timer = 0;
 
 static char *msisdn = NULL;	/* Subscriber number */
 static char *vmbx = NULL;	/* Voice mailbox number */
@@ -777,11 +796,111 @@ static void start_dtmf(void *telephony_device, char tone)
 	telephony_transmit_dtmf_rsp(telephony_device, CME_ERROR_NONE);
 }
 
+static int tonegen_startevent(char tone)
+{
+	int ret;
+	dbus_uint32_t event_tone;
+	dbus_int32_t dbm0 = -15;
+	dbus_uint32_t duration = 150;
+
+	switch (tone) {
+	case '*':
+		event_tone = DTMF_ASTERISK;
+		break;
+	case '#':
+		event_tone = DTMF_HASHMARK;
+		break;
+	case 'A':
+		event_tone = DTMF_A;
+		break;
+	case 'B':
+		event_tone = DTMF_B;
+		break;
+	case 'C':
+		event_tone = DTMF_C;
+		break;
+	case 'D':
+		event_tone = DTMF_D;
+		break;
+	default:
+		event_tone = atoi(&tone);
+	}
+
+	ret = send_method_call(TONEGEN_BUS_NAME, TONEGEN_PATH,
+				TONEGEN_INTERFACE, "StartEventTone",
+				NULL, NULL,
+				DBUS_TYPE_UINT32, &event_tone,
+				DBUS_TYPE_INT32, &dbm0,
+				DBUS_TYPE_UINT32, &duration,
+				DBUS_TYPE_INVALID);
+	return ret;
+}
+
+static gboolean stop_feedback_tone(gpointer user_data)
+{
+	if (g_slist_length(tones) > 0) {
+		gpointer ptone;
+		int ret;
+
+		send_method_call(TONEGEN_BUS_NAME, TONEGEN_PATH,
+				TONEGEN_INTERFACE, "StopTone",
+				NULL, NULL,
+				DBUS_TYPE_INVALID);
+
+		ptone = g_slist_nth_data(tones, 0);
+		tones = g_slist_remove(tones, ptone);
+
+		ret = tonegen_startevent(GPOINTER_TO_UINT(ptone));
+		if (ret < 0)
+			goto done;
+
+		return TRUE;
+	}
+done:
+	return FALSE;
+}
+
+static void tones_timer_notify(gpointer data)
+{
+	send_method_call(TONEGEN_BUS_NAME, TONEGEN_PATH,
+				TONEGEN_INTERFACE, "StopTone",
+				NULL, NULL,
+				DBUS_TYPE_INVALID);
+	g_slist_free(tones);
+	tones = NULL;
+
+	create_tones_timer = 0;
+}
+
+static void start_feedback_tone(char tone)
+{
+	if (!create_tones_timer) {
+		int ret;
+
+		ret = tonegen_startevent(tone);
+		if (ret < 0)
+			return;
+
+		create_tones_timer = g_timeout_add_full(G_PRIORITY_DEFAULT,
+						FEEDBACK_TONE_DURATION,
+						stop_feedback_tone,
+						NULL,
+						tones_timer_notify);
+	} else {
+		glong dtmf_tone = tone;
+
+		DBG("add %c to queue", tone);
+		tones = g_slist_append(tones, GUINT_TO_POINTER(dtmf_tone));
+	}
+}
+
 void telephony_transmit_dtmf_req(void *telephony_device, char tone)
 {
 	DBG("telephony-maemo6: transmit dtmf: %c", tone);
 
 	start_dtmf(telephony_device, tone);
+
+	start_feedback_tone(tone);
 }
 
 void telephony_subscriber_number_req(void *telephony_device)
