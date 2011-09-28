@@ -678,46 +678,43 @@ static int mp_get_media_attribute(struct media_player *mp,
 		valp = mi->title;
 		break;
 	case MEDIA_INFO_ARTIST:
-		if (mi->artist == NULL)
-			return -ENOENT;
-
 		valp = mi->artist;
 		break;
 	case MEDIA_INFO_ALBUM:
-		if (mi->album == NULL)
-			return -ENOENT;
-
 		valp = mi->album;
 		break;
 	case MEDIA_INFO_GENRE:
-		if (mi->genre == NULL)
-			return -ENOENT;
-
 		valp = mi->genre;
 		break;
 	case MEDIA_INFO_TRACK:
-		if (!mi->track)
-			return -ENOENT;
+		if (mi->track) {
+			snprintf(valstr, 20, "%u", mi->track);
+			valp = valstr;
+		} else {
+			valp = NULL;
+		}
 
-		snprintf(valstr, 20, "%u", mi->track);
-		valp = valstr;
 		break;
 	case MEDIA_INFO_N_TRACKS:
-		if (!mi->ntracks)
-			return -ENOENT;
+		if (mi->ntracks) {
+			snprintf(valstr, 20, "%u", mi->ntracks);
+			valp = valstr;
+		} else {
+			valp = NULL;
+		}
 
-		snprintf(valstr, 20, "%u", mi->ntracks);
-		valp = valstr;
 		break;
 	case MEDIA_INFO_PLAYING_TIME:
-		if (mi->track_len == 0xFFFFFFFF)
-			return -ENOENT;
+		if (mi->track_len == 0xFFFFFFFF) {
+			snprintf(valstr, 20, "%u", mi->track_len);
+			valp = valstr;
+		} else {
+			valp = NULL;
+		}
 
-		snprintf(valstr, 20, "%u", mi->track_len);
-		valp = valstr;
 		break;
 	default:
-		return -EINVAL;
+		return -ENOENT;
 	}
 
 	if (valp) {
