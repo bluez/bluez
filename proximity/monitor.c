@@ -186,7 +186,7 @@ static int write_alert_level(struct monitor *monitor)
 static void tx_power_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	uint8_t value;
+	uint8_t value[ATT_MAX_MTU];
 	int vlen;
 
 	if (status != 0) {
@@ -194,12 +194,17 @@ static void tx_power_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 	}
 
-	if (!dec_read_resp(pdu, plen, &value, &vlen)) {
+	if (!dec_read_resp(pdu, plen, value, &vlen)) {
 		DBG("Protocol error");
 		return;
 	}
 
-	DBG("Tx Power Level: %02x", (int8_t) value);
+	if (vlen != 1) {
+		DBG("Invalid length for TX Power value: %d", vlen);
+		return;
+	}
+
+	DBG("Tx Power Level: %02x", (int8_t) value[0]);
 }
 
 static void tx_power_handle_cb(GSList *characteristics, guint8 status,
