@@ -1021,7 +1021,7 @@ static uint8_t avrcp_handle_set_player_value(struct media_player *mp,
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 
-	if (len < 3)
+	if (len <= 3)
 		goto err;
 
 	len = 0;
