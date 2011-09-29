@@ -591,7 +591,7 @@ static int avrcp_send_event(struct media_player *mp, uint8_t id, void *data)
 
 	err = avctp_send_vendordep(mp->session, mp->transaction_events[id],
 					AVC_CTYPE_CHANGED, AVC_SUBUNIT_PANEL,
-					buf, size);
+					buf, size + AVRCP_HEADER_LENGTH);
 	if (err < 0)
 		return err;
 
