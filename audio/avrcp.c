@@ -549,7 +549,7 @@ static int avrcp_send_event(struct media_player *mp, uint8_t id, void *data)
 	uint16_t size;
 	int err;
 
-	if (mp->session)
+	if (mp->session == NULL)
 		return -ENOTCONN;
 
 	if (!(mp->registered_events & (1 << id)))
