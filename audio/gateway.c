@@ -186,6 +186,7 @@ static gboolean agent_sendfd(struct hf_agent *agent, int fd,
 
 	dbus_pending_call_set_notify(call, notify, dev, NULL);
 	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
 
 	return TRUE;
 }
