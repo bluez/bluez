@@ -1021,7 +1021,7 @@ struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
 
 void avctp_disconnect(struct avctp *session)
 {
-	if (session->io)
+	if (!session->io)
 		return;
 
 	avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
