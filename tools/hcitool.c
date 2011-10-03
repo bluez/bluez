@@ -2411,6 +2411,7 @@ static struct option lescan_options[] = {
 	{ "privacy",	0, 0, 'p' },
 	{ "passive",	0, 0, 'P' },
 	{ "discovery",	1, 0, 'd' },
+	{ "duplicates",	0, 0, 'D' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -2419,7 +2420,8 @@ static const char *lescan_help =
 	"\tlescan [--privacy] enable privacy\n"
 	"\tlescan [--passive] set scan type passive (default active)\n"
 	"\tlescan [--discovery=g|l] enable general or limited discovery"
-		"procedure\n";
+		"procedure\n"
+	"\tlescan [--duplicates] don't filter duplicates\n";
 
 static void cmd_lescan(int dev_id, int argc, char **argv)
 {
@@ -2429,6 +2431,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 	uint8_t filter_type = 0;
 	uint16_t interval = htobs(0x0010);
 	uint16_t window = htobs(0x0010);
+	uint8_t filter_dup = 1;
 
 	for_each_opt(opt, lescan_options, NULL) {
 		switch (opt) {
@@ -2447,6 +2450,9 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 
 			interval = htobs(0x0012);
 			window = htobs(0x0012);
+			break;
+		case 'D':
+			filter_dup = 0x00;
 			break;
 		default:
 			printf("%s", lescan_help);
@@ -2471,7 +2477,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_enable(dd, 0x01, 0x00, 1000);
+	err = hci_le_set_scan_enable(dd, 0x01, filter_dup, 1000);
 	if (err < 0) {
 		perror("Enable scan failed");
 		exit(1);
@@ -2485,7 +2491,7 @@ static void cmd_lescan(int dev_id, int argc, char **argv)
 		exit(1);
 	}
 
-	err = hci_le_set_scan_enable(dd, 0x00, 0x00, 1000);
+	err = hci_le_set_scan_enable(dd, 0x00, filter_dup, 1000);
 	if (err < 0) {
 		perror("Disable scan failed");
 		exit(1);
