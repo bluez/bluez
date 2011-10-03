@@ -488,6 +488,16 @@ char *bt_compidtostr(int compid)
 		return "Summit Data Communications, Inc.";
 	case 111:
 		return "Sound ID";
+	case 112:
+		return "Monster, LLC";
+	case 113:
+		return "connectBlue AB";
+	case 114:
+		return "ShangHai Super Smart Electronics Co. Ltd.";
+	case 115:
+		return "Group Sense Ltd.";
+	case 116:
+		return "Zomm, LLC";
 	case 65535:
 		return "internal use";
 	default:
