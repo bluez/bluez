@@ -466,11 +466,11 @@ static gssize put_xfer_progress(void *buf, gsize len, gpointer user_data)
 		return size;
 	}
 
-	transfer->transferred += size;
-
 	if (callback)
 		callback->func(transfer, transfer->transferred, NULL,
 							callback->data);
+
+	transfer->transferred += size;
 
 	return size;
 }
