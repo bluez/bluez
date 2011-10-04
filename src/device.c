@@ -142,6 +142,7 @@ struct btd_device {
 	GAttrib		*attrib;
 	GSList		*attios;
 	GSList		*attios_offline;
+	guint		attachid;		/* Attrib server attach */
 	guint		attioid;
 
 	gboolean	connected;
@@ -1712,6 +1713,7 @@ static void attrib_disconnected(gpointer user_data)
 							att_auto_connect,
 							device);
 
+	attrib_channel_detach(device->attachid);
 	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
 }
@@ -1749,6 +1751,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_probe_drivers(device, uuids);
 
 	if (device->attios == NULL && device->attios_offline == NULL) {
+		attrib_channel_detach(device->attachid);
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
 	} else
@@ -1796,7 +1799,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	}
 
 	attrib = g_attrib_new(io);
-	if (attrib_channel_attach(attrib, TRUE) < 0)
+	device->attachid = attrib_channel_attach(attrib, TRUE);
+	if (device->attachid == 0)
 		error("Attribute server attach failure!");
 
 	if (req) {
@@ -2807,6 +2811,11 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	if (device->attioid) {
 		g_source_remove(device->attioid);
 		device->attioid = 0;
+	}
+
+	if (device->attachid) {
+		attrib_channel_detach(device->attachid);
+		device->attachid = 0;
 	}
 
 	if (device->attrib) {
