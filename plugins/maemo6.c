@@ -46,11 +46,32 @@
 #define MCE_RADIO_STATES_CHANGE_REQ	"req_radio_states_change"
 #define MCE_RADIO_STATES_GET		"get_radio_states"
 #define MCE_RADIO_STATES_SIG		"radio_states_ind"
+#define MCE_TKLOCK_MODE_SIG		"tklock_mode_ind"
 
 static guint watch_id;
+static guint tklock_watch_id;
 static DBusConnection *conn = NULL;
 static gboolean mce_bt_set = FALSE;
 static gboolean mce_bt_on = FALSE;
+
+static gboolean mce_tklock_mode_cb(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	DBusMessageIter args;
+	const char *sigvalue;
+
+	if (!dbus_message_iter_init(message, &args)) {
+		error("message has no arguments");
+	} else if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_STRING) {
+		error("argument is not string");
+	} else {
+
+		dbus_message_iter_get_basic(&args, &sigvalue);
+		DBG("got signal with value %s", sigvalue);
+	}
+
+	return TRUE;
+}
 
 static gboolean mce_signal_callback(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
@@ -204,6 +225,10 @@ static int mce_probe(struct btd_adapter *adapter)
 					MCE_SIGNAL_IF, MCE_RADIO_STATES_SIG,
 					mce_signal_callback, adapter, NULL);
 
+	tklock_watch_id = g_dbus_add_signal_watch(conn, NULL, MCE_SIGNAL_PATH,
+					MCE_SIGNAL_IF, MCE_TKLOCK_MODE_SIG,
+					mce_tklock_mode_cb, adapter, NULL);
+
 	btd_adapter_register_powered_callback(adapter, adapter_powered);
 
 	return 0;
@@ -215,6 +240,9 @@ static void mce_remove(struct btd_adapter *adapter)
 
 	if (watch_id > 0)
 		g_dbus_remove_watch(conn, watch_id);
+
+	if (tklock_watch_id > 0)
+		g_dbus_remove_watch(conn, tklock_watch_id);
 
 	btd_adapter_unregister_powered_callback(adapter, adapter_powered);
 }
