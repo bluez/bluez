@@ -151,6 +151,7 @@ struct btd_device {
 	gboolean	paired;
 	gboolean	blocked;
 	gboolean	bonded;
+	gboolean	auto_connect;
 
 	gboolean	authorizing;
 	gint		ref;
@@ -2003,6 +2004,20 @@ void device_set_bonded(struct btd_device *device, gboolean bonded)
 	DBG("bonded %d", bonded);
 
 	device->bonded = bonded;
+}
+
+void device_set_auto_connect(struct btd_device *device, gboolean enable)
+{
+	char addr[18];
+
+	if (!device)
+		return;
+
+	ba2str(&device->bdaddr, addr);
+
+	DBG("%s auto connect: %d", addr, enable);
+
+	device->auto_connect = enable;
 }
 
 void device_set_type(struct btd_device *device, device_type_t type)

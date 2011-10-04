@@ -3417,6 +3417,23 @@ int btd_adapter_switch_offline(struct btd_adapter *adapter)
 	return 0;
 }
 
+static void set_auto_connect(gpointer data, gpointer user_data)
+{
+	struct btd_device *device = data;
+
+	device_set_auto_connect(device, TRUE);
+}
+
+void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
+{
+	if (!adapter->up)
+		return;
+
+	DBG("Enabling automatic connections");
+
+	g_slist_foreach(adapter->devices, set_auto_connect, NULL);
+}
+
 void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 							btd_adapter_pin_cb_t cb)
 {
