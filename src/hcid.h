@@ -29,6 +29,7 @@ struct main_opts {
 	char		*name;
 	uint32_t	class;
 	uint16_t	pageto;
+	uint16_t	autoto;
 	uint32_t	discovto;
 	uint32_t	pairto;
 	uint16_t	link_mode;

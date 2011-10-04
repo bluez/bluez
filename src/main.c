@@ -63,6 +63,7 @@
 #define LAST_ADAPTER_EXIT_TIMEOUT 30
 
 #define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
+#define DEFAULT_AUTO_CONNECT_TIMEOUT  60 /* 60 seconds */
 
 struct main_opts main_opts;
 
@@ -126,6 +127,16 @@ static void parse_config(GKeyFile *config)
 		DBG("pageto=%d", val);
 		main_opts.pageto = val;
 		main_opts.flags |= 1 << HCID_SET_PAGETO;
+	}
+
+	val = g_key_file_get_integer(config, "General", "AutoConnectTimeout",
+									&err);
+	if (err) {
+		DBG("%s", err->message);
+		g_clear_error(&err);
+	} else {
+		DBG("auto_to=%d", val);
+		main_opts.autoto = val;
 	}
 
 	str = g_key_file_get_string(config, "General", "Name", &err);
@@ -230,6 +241,7 @@ static void init_defaults(void)
 	main_opts.mode	= MODE_CONNECTABLE;
 	main_opts.name	= g_strdup("BlueZ");
 	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;
+	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;
 	main_opts.remember_powered = TRUE;
 	main_opts.reverse_sdp = TRUE;
 	main_opts.name_resolv = TRUE;

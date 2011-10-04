@@ -78,7 +78,6 @@
 #define check_address(address) bachk(address)
 
 #define OFF_TIMER 3
-#define AUTO_TIMER	60
 
 static DBusConnection *connection = NULL;
 static GSList *adapter_drivers = NULL;
@@ -3454,7 +3453,7 @@ void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
 
 	g_slist_foreach(adapter->devices, set_auto_connect, NULL);
 
-	adapter->auto_timeout_id = g_timeout_add_seconds(AUTO_TIMER,
+	adapter->auto_timeout_id = g_timeout_add_seconds(main_opts.autoto,
 						disable_auto, adapter);
 }
 
