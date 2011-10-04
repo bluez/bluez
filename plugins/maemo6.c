@@ -57,6 +57,7 @@ static gboolean mce_bt_on = FALSE;
 static gboolean mce_tklock_mode_cb(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
+	struct btd_adapter *adapter = user_data;
 	DBusMessageIter args;
 	const char *sigvalue;
 
@@ -68,6 +69,9 @@ static gboolean mce_tklock_mode_cb(DBusConnection *connection,
 
 		dbus_message_iter_get_basic(&args, &sigvalue);
 		DBG("got signal with value %s", sigvalue);
+
+		if (g_strcmp0("unlocked", sigvalue) == 0 && mce_bt_on)
+			btd_adapter_enable_auto_connect(adapter);
 	}
 
 	return TRUE;
