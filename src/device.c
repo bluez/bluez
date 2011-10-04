@@ -1760,6 +1760,8 @@ done:
 	browse_request_free(req, shutdown);
 }
 
+static gboolean att_connect(gpointer user_data);
+
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -1777,7 +1779,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 
 			device->browse = NULL;
 			browse_request_free(req, TRUE);
-		}
+		} else if (device->auto_connect)
+			g_idle_add(att_connect, device);
 
 		return;
 	}
@@ -2018,6 +2021,13 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	DBG("%s auto connect: %d", addr, enable);
 
 	device->auto_connect = enable;
+
+	if (device->attrib) {
+		DBG("Already connected");
+		return;
+	}
+
+	g_idle_add(att_connect, device);
 }
 
 void device_set_type(struct btd_device *device, device_type_t type)
