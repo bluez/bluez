@@ -1709,15 +1709,36 @@ static void att_connect_dispatched(gpointer user_data)
 	device->auto_id = 0;
 }
 
+static gboolean att_connect(gpointer user_data);
+
 static void attrib_disconnected(gpointer user_data)
 {
 	struct btd_device *device = user_data;
+	GIOChannel *io;
+	int sock, err = 0;
+	socklen_t len;
+
+	io = g_attrib_get_channel(device->attrib);
+	sock = g_io_channel_unix_get_fd(io);
+	len = sizeof(err);
+	getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
 	attrib_channel_detach(device->attachid);
 	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
+
+	if (device->auto_connect == FALSE)
+		return;
+
+	if (err != ETIMEDOUT)
+		return;
+
+	device->auto_id = g_timeout_add_seconds_full(G_PRIORITY_DEFAULT_IDLE,
+						AUTO_CONNECTION_INTERVAL,
+						att_connect, device,
+						att_connect_dispatched);
 }
 
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
@@ -1772,8 +1793,6 @@ done:
 	device->browse = NULL;
 	browse_request_free(req, shutdown);
 }
-
-static gboolean att_connect(gpointer user_data);
 
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
