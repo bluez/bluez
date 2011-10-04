@@ -2036,6 +2036,14 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 	device->auto_connect = enable;
 
+	/* Disabling auto connect */
+	if (enable == FALSE) {
+		if (device->auto_id)
+			g_source_remove(device->auto_id);
+		return;
+	}
+
+	/* Enabling auto connect */
 	if (device->auto_id != 0)
 		return;
 
