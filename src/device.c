@@ -66,6 +66,8 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
+#define AUTO_CONNECTION_INTERVAL	5 /* Next connection attempt */
+
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
@@ -1791,8 +1793,9 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 			device->browse = NULL;
 			browse_request_free(req, TRUE);
 		} else if (device->auto_connect)
-			device->auto_id = g_idle_add_full(
+			device->auto_id = g_timeout_add_seconds_full(
 						G_PRIORITY_DEFAULT_IDLE,
+						AUTO_CONNECTION_INTERVAL,
 						att_connect, device,
 						att_connect_dispatched);
 
