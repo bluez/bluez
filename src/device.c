@@ -2027,6 +2027,9 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 		return;
 	}
 
+	if (device->attios == NULL && device->attios_offline == NULL)
+		return;
+
 	g_idle_add(att_connect, device);
 }
 
