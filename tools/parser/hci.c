@@ -3534,6 +3534,7 @@ static inline void evt_le_advertising_report_dump(int level, struct frame *frm)
 	while (num_reports--) {
 		char addr[18];
 		le_advertising_info *info = frm->ptr;
+		int offset = 0;
 
 		p_ba2str(&info->bdaddr, addr);
 
@@ -3544,9 +3545,12 @@ static inline void evt_le_advertising_report_dump(int level, struct frame *frm)
 		printf("bdaddr %s (%s)\n", addr,
 					bdaddrtype2str(info->bdaddr_type));
 
-		if (info->length > 0) {
-			ext_inquiry_data_dump(level, frm,
-					((uint8_t *) &info->length) + 1);
+		while (offset < info->length) {
+			int eir_data_len = info->data[offset];
+
+			ext_inquiry_data_dump(level, frm, &info->data[offset]);
+
+			offset += eir_data_len + 1;
 		}
 
 		frm->ptr += LE_ADVERTISING_INFO_SIZE + info->length;
