@@ -139,6 +139,23 @@ static uint8_t str2level(const char *level)
 	return ALERT_NONE;
 }
 
+static void linkloss_written(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	if (status != 0) {
+		error("Link Loss Write Request failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_write_resp(pdu, plen)) {
+		error("Link Loss Write Request: protocol error");
+		return;
+	}
+
+	DBG("Link Loss Alert Level written");
+}
+
 static void char_discovered_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
@@ -157,8 +174,8 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	chr = characteristics->data;
 	monitor->linklosshandle = chr->value_handle;
 
-	gatt_write_cmd(monitor->attrib, monitor->linklosshandle, &value, 1,
-								NULL, NULL);
+	gatt_write_char(monitor->attrib, monitor->linklosshandle, &value, 1,
+						linkloss_written, NULL);
 }
 
 static int write_alert_level(struct monitor *monitor)
@@ -169,8 +186,8 @@ static int write_alert_level(struct monitor *monitor)
 	if (monitor->linklosshandle) {
 		uint8_t value = str2level(monitor->linklosslevel);
 
-		gatt_write_cmd(monitor->attrib, monitor->linklosshandle,
-							&value, 1, NULL, NULL);
+		gatt_write_char(monitor->attrib, monitor->linklosshandle,
+					&value, 1, linkloss_written, NULL);
 		return 0;
 	}
 
