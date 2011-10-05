@@ -580,7 +580,7 @@ static int obex_read_stream(struct obex_session *os, obex_t *obex,
 		os->size = OBJECT_SIZE_UNKNOWN;
 
 	/* If there's something to write and we are able to write it */
-	if (os->pending > 0 && os->driver)
+	if (os->pending > 0 && os->driver && os->object)
 		goto write;
 
 	size = OBEX_ObjectReadStream(obex, obj, &buffer);
