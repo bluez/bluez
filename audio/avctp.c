@@ -722,7 +722,12 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 					address);
 			goto drop;
 		}
+	}
+
+	if (dev->control == NULL) {
 		btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
+		if (dev->control == NULL)
+			goto drop;
 	}
 
 	if (session->io) {
