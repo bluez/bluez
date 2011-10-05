@@ -119,7 +119,6 @@ static struct enabled_interfaces enabled = {
 	.control	= TRUE,
 	.socket		= TRUE,
 	.media		= FALSE,
-	.media_player	= FALSE,
 };
 
 static struct audio_adapter *find_adapter(GSList *list,
@@ -224,8 +223,6 @@ static void handle_uuid(const char *uuidstr, struct audio_device *device)
 		else
 			device->control = control_init(device, uuid16);
 
-		if (enabled.media_player && !device->media_player)
-			device->media_player = media_player_init(device);
 		if (device->sink && sink_is_active(device))
 			avrcp_connect(device);
 		break;
@@ -1177,8 +1174,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.socket = TRUE;
 		else if (g_str_equal(list[i], "Media"))
 			enabled.media = TRUE;
-		else if (g_str_equal(list[i], "MediaPlayer"))
-			enabled.media_player = TRUE;
 
 	}
 	g_strfreev(list);
@@ -1200,8 +1195,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.socket = FALSE;
 		else if (g_str_equal(list[i], "Media"))
 			enabled.media = FALSE;
-		else if (g_str_equal(list[i], "MediaPlayer"))
-			enabled.media_player = FALSE;
 	}
 	g_strfreev(list);
 

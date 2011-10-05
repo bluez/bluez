@@ -78,53 +78,9 @@
 #define AVRCP_GET_PLAY_STATUS		0x30
 #define AVRCP_REGISTER_NOTIFICATION	0x31
 
-/* Notification events */
-#define AVRCP_EVENT_PLAYBACK_STATUS_CHANGED		0x01
-#define AVRCP_EVENT_TRACK_CHANGED			0x02
-
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
 #define CAP_EVENTS_SUPPORTED	0x03
-
-enum player_setting {
-	PLAYER_SETTING_EQUALIZER =	1,
-	PLAYER_SETTING_REPEAT =		2,
-	PLAYER_SETTING_SHUFFLE =	3,
-	PLAYER_SETTING_SCAN =		4,
-};
-
-enum equalizer_mode {
-	EQUALIZER_MODE_OFF =	1,
-	EQUALIZER_MODE_ON =	2,
-};
-
-enum repeat_mode {
-	REPEAT_MODE_OFF =	1,
-	REPEAT_MODE_SINGLE =	2,
-	REPEAT_MODE_ALL =	3,
-	REPEAT_MODE_GROUP =	4,
-};
-
-enum shuffle_mode {
-	SHUFFLE_MODE_OFF =	1,
-	SHUFFLE_MODE_ALL =	2,
-	SHUFFLE_MODE_GROUP =	3,
-};
-
-enum scan_mode {
-	SCAN_MODE_OFF =		1,
-	SCAN_MODE_ALL =		2,
-	SCAN_MODE_GROUP =	3,
-};
-
-enum play_status {
-	PLAY_STATUS_STOPPED =		0x00,
-	PLAY_STATUS_PLAYING =		0x01,
-	PLAY_STATUS_PAUSED =		0x02,
-	PLAY_STATUS_FWD_SEEK =		0x03,
-	PLAY_STATUS_REV_SEEK =		0x04,
-	PLAY_STATUS_ERROR =		0xFF
-};
 
 enum battery_status {
 	BATTERY_STATUS_NORMAL =		0,
@@ -132,17 +88,6 @@ enum battery_status {
 	BATTERY_STATUS_CRITICAL =	2,
 	BATTERY_STATUS_EXTERNAL =	3,
 	BATTERY_STATUS_FULL_CHARGE =	4,
-};
-
-enum media_info_id {
-	MEDIA_INFO_TITLE =		1,
-	MEDIA_INFO_ARTIST =		2,
-	MEDIA_INFO_ALBUM =		3,
-	MEDIA_INFO_TRACK =		4,
-	MEDIA_INFO_N_TRACKS =		5,
-	MEDIA_INFO_GENRE =		6,
-	MEDIA_INFO_PLAYING_TIME =	7,
-	MEDIA_INFO_LAST
 };
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -180,33 +125,26 @@ struct avrcp_server {
 	bdaddr_t src;
 	uint32_t tg_record_id;
 	uint32_t ct_record_id;
+	GSList *players;
+	struct avrcp_player *active_player;
 };
 
-struct media_info {
-	char *title;
-	char *artist;
-	char *album;
-	char *genre;
-	uint32_t ntracks;
-	uint32_t track;
-	uint32_t track_len;
-	uint32_t elapsed;
-};
-
-struct media_player {
+struct avrcp_player {
+	struct avrcp_server *server;
 	struct avctp *session;
 	struct audio_device *dev;
-	uint8_t settings[PLAYER_SETTING_SCAN + 1];
-	enum play_status status;
 
-	struct media_info mi;
-	GTimer *timer;
 	unsigned int handler;
 	uint16_t registered_events;
 	uint8_t transaction_events[AVRCP_EVENT_TRACK_CHANGED + 1];
+
+	struct avrcp_player_cb *cb;
+	void *user_data;
+	GDestroyNotify destroy;
 };
 
 static GSList *servers = NULL;
+static unsigned int avctp_id = 0;
 
 /* Company IDs supported by this device */
 static uint32_t company_ids[] = {
@@ -344,162 +282,17 @@ static sdp_record_t *avrcp_tg_record(void)
 static unsigned int attr_get_max_val(uint8_t attr)
 {
 	switch (attr) {
-	case PLAYER_SETTING_EQUALIZER:
-		return EQUALIZER_MODE_ON;
-	case PLAYER_SETTING_REPEAT:
-		return REPEAT_MODE_GROUP;
-	case PLAYER_SETTING_SHUFFLE:
-		return SHUFFLE_MODE_GROUP;
-	case PLAYER_SETTING_SCAN:
-		return SCAN_MODE_GROUP;
+	case AVRCP_ATTRIBUTE_EQUALIZER:
+		return AVRCP_EQUALIZER_ON;
+	case AVRCP_ATTRIBUTE_REPEAT_MODE:
+		return AVRCP_REPEAT_MODE_GROUP;
+	case AVRCP_ATTRIBUTE_SHUFFLE:
+		return AVRCP_SHUFFLE_GROUP;
+	case AVRCP_ATTRIBUTE_SCAN:
+		return AVRCP_SCAN_GROUP;
 	}
 
 	return 0;
-}
-
-static const char *attrval_to_str(uint8_t attr, uint8_t value)
-{
-	switch (attr) {
-	case PLAYER_SETTING_EQUALIZER:
-		switch (value) {
-		case EQUALIZER_MODE_ON:
-			return "on";
-		case EQUALIZER_MODE_OFF:
-			return "off";
-		}
-
-		break;
-	case PLAYER_SETTING_REPEAT:
-		switch (value) {
-		case REPEAT_MODE_OFF:
-			return "off";
-		case REPEAT_MODE_SINGLE:
-			return "singletrack";
-		case REPEAT_MODE_ALL:
-			return "alltracks";
-		case REPEAT_MODE_GROUP:
-			return "group";
-		}
-
-		break;
-	/* Shuffle and scan have the same values */
-	case PLAYER_SETTING_SHUFFLE:
-	case PLAYER_SETTING_SCAN:
-		switch (value) {
-		case SCAN_MODE_OFF:
-			return "off";
-		case SCAN_MODE_ALL:
-			return "alltracks";
-		case SCAN_MODE_GROUP:
-			return "group";
-		}
-
-		break;
-	}
-
-	return NULL;
-}
-
-static int attrval_to_val(uint8_t attr, const char *value)
-{
-	int ret;
-
-	switch (attr) {
-	case PLAYER_SETTING_EQUALIZER:
-		if (!strcmp(value, "off"))
-			ret = EQUALIZER_MODE_OFF;
-		else if (!strcmp(value, "on"))
-			ret = EQUALIZER_MODE_ON;
-		else
-			ret = -EINVAL;
-
-		return ret;
-	case PLAYER_SETTING_REPEAT:
-		if (!strcmp(value, "off"))
-			ret = REPEAT_MODE_OFF;
-		else if (!strcmp(value, "singletrack"))
-			ret = REPEAT_MODE_SINGLE;
-		else if (!strcmp(value, "alltracks"))
-			ret = REPEAT_MODE_ALL;
-		else if (!strcmp(value, "group"))
-			ret = REPEAT_MODE_GROUP;
-		else
-			ret = -EINVAL;
-
-		return ret;
-	case PLAYER_SETTING_SHUFFLE:
-		if (!strcmp(value, "off"))
-			ret = SHUFFLE_MODE_OFF;
-		else if (!strcmp(value, "alltracks"))
-			ret = SHUFFLE_MODE_ALL;
-		else if (!strcmp(value, "group"))
-			ret = SHUFFLE_MODE_GROUP;
-		else
-			ret = -EINVAL;
-
-		return ret;
-	case PLAYER_SETTING_SCAN:
-		if (!strcmp(value, "off"))
-			ret = SCAN_MODE_OFF;
-		else if (!strcmp(value, "alltracks"))
-			ret = SCAN_MODE_ALL;
-		else if (!strcmp(value, "group"))
-			ret = SCAN_MODE_GROUP;
-		else
-			ret = -EINVAL;
-
-		return ret;
-	}
-
-	return -EINVAL;
-}
-
-static const char *attr_to_str(uint8_t attr)
-{
-	switch (attr) {
-	case PLAYER_SETTING_EQUALIZER:
-		return "Equalizer";
-	case PLAYER_SETTING_REPEAT:
-		return "Repeat";
-	case PLAYER_SETTING_SHUFFLE:
-		return "Shuffle";
-	case PLAYER_SETTING_SCAN:
-		return "Scan";
-	}
-
-	return NULL;
-}
-
-static int attr_to_val(const char *str)
-{
-	if (!strcmp(str, "Equalizer"))
-		return PLAYER_SETTING_EQUALIZER;
-	else if (!strcmp(str, "Repeat"))
-		return PLAYER_SETTING_REPEAT;
-	else if (!strcmp(str, "Shuffle"))
-		return PLAYER_SETTING_SHUFFLE;
-	else if (!strcmp(str, "Scan"))
-		return PLAYER_SETTING_SCAN;
-
-	return -EINVAL;
-}
-
-static int play_status_to_val(const char *status)
-{
-	if (!strcmp(status, "stopped"))
-		return PLAY_STATUS_STOPPED;
-	else if (!strcmp(status, "playing"))
-		return PLAY_STATUS_PLAYING;
-	else if (!strcmp(status, "paused"))
-		return PLAY_STATUS_PAUSED;
-	else if (!strcmp(status, "forward-seek"))
-		return PLAY_STATUS_FWD_SEEK;
-	else if (!strcmp(status, "reverse-seek"))
-		return PLAY_STATUS_REV_SEEK;
-	else if (!strcmp(status, "error"))
-		return PLAY_STATUS_ERROR;
-
-	return -EINVAL;
 }
 
 static const char *battery_status_to_str(enum battery_status status)
@@ -542,17 +335,17 @@ static void set_company_id(uint8_t cid[3], const uint32_t cid_in)
 	cid[2] = cid_in;
 }
 
-static int avrcp_send_event(struct media_player *mp, uint8_t id, void *data)
+int avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 {
 	uint8_t buf[AVRCP_HEADER_LENGTH + 9];
 	struct avrcp_header *pdu = (void *) buf;
 	uint16_t size;
 	int err;
 
-	if (mp->session == NULL)
+	if (player->session == NULL)
 		return -ENOTCONN;
 
-	if (!(mp->registered_events & (1 << id)))
+	if (!(player->registered_events & (1 << id)))
 		return 0;
 
 	memset(buf, 0, sizeof(buf));
@@ -565,7 +358,7 @@ static int avrcp_send_event(struct media_player *mp, uint8_t id, void *data)
 	DBG("id=%u", id);
 
 	switch (id) {
-	case AVRCP_EVENT_PLAYBACK_STATUS_CHANGED:
+	case AVRCP_EVENT_STATUS_CHANGED:
 		size = 2;
 		pdu->params[1] = *((uint8_t *)data);
 
@@ -589,56 +382,16 @@ static int avrcp_send_event(struct media_player *mp, uint8_t id, void *data)
 
 	pdu->params_len = htons(size);
 
-	err = avctp_send_vendordep(mp->session, mp->transaction_events[id],
+	err = avctp_send_vendordep(player->session, player->transaction_events[id],
 					AVC_CTYPE_CHANGED, AVC_SUBUNIT_PANEL,
 					buf, size + AVRCP_HEADER_LENGTH);
 	if (err < 0)
 		return err;
 
 	/* Unregister event as per AVRCP 1.3 spec, section 5.4.2 */
-	mp->registered_events ^= 1 << id;
+	player->registered_events ^= 1 << id;
 
 	return 0;
-}
-
-static void mp_get_playback_status(struct media_player *mp, uint8_t *status,
-					uint32_t *elapsed, uint32_t *track_len)
-{
-	if (status)
-		*status = mp->status;
-	if (track_len)
-		*track_len = mp->mi.track_len;
-
-	if (!elapsed)
-		return;
-
-	*elapsed = mp->mi.elapsed;
-
-	if (mp->status == PLAY_STATUS_PLAYING) {
-		double timedelta = g_timer_elapsed(mp->timer, NULL);
-		uint32_t sec, msec;
-
-		sec = (uint32_t) timedelta;
-		msec = (uint32_t)((timedelta - sec) * 1000);
-
-		*elapsed += sec * 1000 + msec;
-	}
-}
-
-static void mp_set_playback_status(struct media_player *mp, uint8_t status,
-							uint32_t elapsed)
-{
-	DBG("Change playback: %u %u", status, elapsed);
-
-	mp->mi.elapsed = elapsed;
-	g_timer_start(mp->timer);
-
-	if (status == mp->status)
-		return;
-
-	mp->status = status;
-
-	avrcp_send_event(mp, AVRCP_EVENT_PLAYBACK_STATUS_CHANGED, &status);
 }
 
 /*
@@ -648,10 +401,10 @@ static void mp_set_playback_status(struct media_player *mp, uint8_t status,
  * It assumes there's enough space in the buffer and on success it returns the
  * size written.
  *
- * If @param id is not valid, -EINVAL is returned. If there's no such media
- * attribute, -ENOENT is returned.
+ * If @param id is not valid, -EINVAL is returned. If there's no space left on
+ * the buffer -ENOBUFS is returned.
  */
-static int mp_get_media_attribute(struct media_player *mp,
+static int player_get_media_attribute(struct avrcp_player *player,
 						uint32_t id, uint8_t *buf,
 						uint16_t maxlen)
 {
@@ -661,11 +414,10 @@ static int mp_get_media_attribute(struct media_player *mp,
 		uint16_t len;
 		uint8_t val[];
 	};
-	const struct media_info *mi = &mp->mi;
 	struct media_info_elem *elem = (void *)buf;
 	uint16_t len;
 	char valstr[20];
-	char *valp;
+	void *value;
 
 	if (maxlen < sizeof(struct media_info_elem))
 		return -ENOBUFS;
@@ -673,61 +425,38 @@ static int mp_get_media_attribute(struct media_player *mp,
 	/* Subtract the size of elem header from the available space */
 	maxlen -= sizeof(struct media_info_elem);
 
+	DBG("Get media attribute: %u", id);
+
+	value = player->cb->get_metadata(id, player->user_data);
+	if (value == NULL) {
+		len = 0;
+		goto done;
+	}
+
 	switch (id) {
-	case MEDIA_INFO_TITLE:
-		valp = mi->title;
+	case AVRCP_MEDIA_ATTRIBUTE_TITLE:
+	case AVRCP_MEDIA_ATTRIBUTE_ARTIST:
+	case AVRCP_MEDIA_ATTRIBUTE_ALBUM:
+	case AVRCP_MEDIA_ATTRIBUTE_GENRE:
+		len = strlen((char *) value);
+		if (len > maxlen)
+			return -ENOBUFS;
+		memcpy(elem->val, value, len);
 		break;
-	case MEDIA_INFO_ARTIST:
-		valp = mi->artist;
-		break;
-	case MEDIA_INFO_ALBUM:
-		valp = mi->album;
-		break;
-	case MEDIA_INFO_GENRE:
-		valp = mi->genre;
-		break;
-	case MEDIA_INFO_TRACK:
-		if (mi->track) {
-			snprintf(valstr, 20, "%u", mi->track);
-			valp = valstr;
-		} else {
-			valp = NULL;
-		}
-
-		break;
-	case MEDIA_INFO_N_TRACKS:
-		if (mi->ntracks) {
-			snprintf(valstr, 20, "%u", mi->ntracks);
-			valp = valstr;
-		} else {
-			valp = NULL;
-		}
-
-		break;
-	case MEDIA_INFO_PLAYING_TIME:
-		if (mi->track_len == 0xFFFFFFFF) {
-			snprintf(valstr, 20, "%u", mi->track_len);
-			valp = valstr;
-		} else {
-			valp = NULL;
-		}
-
+	case AVRCP_MEDIA_ATTRIBUTE_TRACK:
+	case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
+	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
+		snprintf(valstr, 20, "%u", GPOINTER_TO_UINT(value));
+		len = strlen(valstr);
+		if (len > maxlen)
+			return -ENOBUFS;
+		memcpy(elem->val, valstr, len);
 		break;
 	default:
 		return -ENOENT;
 	}
 
-	if (valp) {
-		len = strlen(valp);
-
-		if (len > maxlen)
-			return -ENOBUFS;
-
-		memcpy(elem->val, valp, len);
-	} else {
-		len = 0;
-	}
-
+done:
 	elem->id = htonl(id);
 	elem->charset = htons(0x6A); /* Always use UTF-8 */
 	elem->len = htons(len);
@@ -735,57 +464,22 @@ static int mp_get_media_attribute(struct media_player *mp,
 	return sizeof(struct media_info_elem) + len;
 }
 
-static void mp_set_attribute(struct media_player *mp,
+static int player_set_attribute(struct avrcp_player *player,
 						uint8_t attr, uint8_t val)
 {
 	DBG("Change attribute: %u %u", attr, val);
 
-	mp->settings[attr] = val;
+	return player->cb->set_setting(attr, val, player->user_data);
 }
 
-static int mp_get_attribute(struct media_player *mp, uint8_t attr)
+static int player_get_attribute(struct avrcp_player *player, uint8_t attr)
 {
 	DBG("Get attribute: %u", attr);
 
-	return mp->settings[attr];
+	return player->cb->get_setting(attr, player->user_data);
 }
 
-static void mp_set_media_attributes(struct media_player *mp,
-							struct media_info *mi)
-{
-	g_free(mp->mi.title);
-	mp->mi.title = g_strdup(mi->title);
-
-	g_free(mp->mi.artist);
-	mp->mi.artist = g_strdup(mi->artist);
-
-	g_free(mp->mi.album);
-	mp->mi.album = g_strdup(mi->album);
-
-	g_free(mp->mi.genre);
-	mp->mi.genre = g_strdup(mi->genre);
-
-	mp->mi.ntracks = mi->ntracks;
-	mp->mi.track = mi->track;
-	mp->mi.track_len = mi->track_len;
-
-	/*
-	 * elapsed is special. Whenever the track changes, we reset it to 0,
-	 * so client doesn't have to make another call to change_playback
-	 */
-	mp->mi.elapsed = 0;
-	g_timer_start(mp->timer);
-
-	DBG("Track changed:\n\ttitle: %s\n\tartist: %s\n\talbum: %s\n"
-			"\tgenre: %s\n\tNumber of tracks: %u\n"
-			"\tTrack number: %u\n\tTrack duration: %u",
-			mi->title, mi->artist, mi->album, mi->genre,
-			mi->ntracks, mi->track, mi->track_len);
-
-	avrcp_send_event(mp, AVRCP_EVENT_TRACK_CHANGED, NULL);
-}
-
-static uint8_t avrcp_handle_get_capabilities(struct media_player *mp,
+static uint8_t avrcp_handle_get_capabilities(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -811,7 +505,7 @@ static uint8_t avrcp_handle_get_capabilities(struct media_player *mp,
 	case CAP_EVENTS_SUPPORTED:
 		pdu->params_len = htons(4);
 		pdu->params[1] = 2;
-		pdu->params[2] = AVRCP_EVENT_PLAYBACK_STATUS_CHANGED;
+		pdu->params[2] = AVRCP_EVENT_STATUS_CHANGED;
 		pdu->params[3] = AVRCP_EVENT_TRACK_CHANGED;
 
 		return AVC_CTYPE_STABLE;
@@ -824,7 +518,7 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_list_player_attributes(struct media_player *mp,
+static uint8_t avrcp_handle_list_player_attributes(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -837,11 +531,11 @@ static uint8_t avrcp_handle_list_player_attributes(struct media_player *mp,
 		return AVC_CTYPE_REJECTED;
 	}
 
-	if (!mp)
+	if (!player)
 		goto done;
 
-	for (i = 1; i <= PLAYER_SETTING_SCAN; i++) {
-		if (!mp_get_attribute(mp, i)) {
+	for (i = 1; i <= AVRCP_ATTRIBUTE_SCAN; i++) {
+		if (player_get_attribute(player, i) < 0) {
 			DBG("Ignoring setting %u: not supported by player", i);
 			continue;
 		}
@@ -857,14 +551,14 @@ done:
 	return AVC_CTYPE_STABLE;
 }
 
-static uint8_t avrcp_handle_list_player_values(struct media_player *mp,
+static uint8_t avrcp_handle_list_player_values(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 
-	if (len != 1 || !mp)
+	if (len != 1 || !player)
 		goto err;
 
 	len = attr_get_max_val(pdu->params[0]);
@@ -887,7 +581,7 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
+static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -910,8 +604,9 @@ static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
 		 * Return all available information, at least
 		 * title must be returned.
 		 */
-		for (i = 1; i < MEDIA_INFO_LAST; i++) {
-			size = mp_get_media_attribute(mp, i, &pdu->params[pos],
+		for (i = 1; i < AVRCP_MEDIA_ATTRIBUTE_LAST; i++) {
+			size = player_get_media_attribute(player, i,
+							&pdu->params[pos],
 							AVRCP_PDU_MTU - pos);
 
 			if (size > 0) {
@@ -927,7 +622,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct media_player *mp,
 		for (i = 0; i < nattr; i++) {
 			uint32_t attr = ntohl(attr_ids[i]);
 
-			size = mp_get_media_attribute(mp, attr,
+			size = player_get_media_attribute(player, attr,
 							&pdu->params[pos],
 							AVRCP_PDU_MTU - pos);
 
@@ -953,7 +648,7 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_get_current_player_value(struct media_player *mp,
+static uint8_t avrcp_handle_get_current_player_value(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -961,7 +656,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct media_player *mp,
 	uint8_t *settings;
 	unsigned int i;
 
-	if (mp == NULL || len <= 1 || pdu->params[0] != len - 1)
+	if (player == NULL || len <= 1 || pdu->params[0] != len - 1)
 		goto err;
 
 	/*
@@ -977,16 +672,16 @@ static uint8_t avrcp_handle_get_current_player_value(struct media_player *mp,
 	 * non-existent we should send an error.
 	 */
 	for (i = 0; i < pdu->params[0]; i++) {
-		uint8_t val;
+		int val;
 
-		if (settings[i] < PLAYER_SETTING_EQUALIZER ||
-					settings[i] > PLAYER_SETTING_SCAN) {
+		if (settings[i] < AVRCP_ATTRIBUTE_EQUALIZER ||
+					settings[i] > AVRCP_ATTRIBUTE_SCAN) {
 			DBG("Ignoring %u", settings[i]);
 			continue;
 		}
 
-		val = mp_get_attribute(mp, settings[i]);
-		if (!val) {
+		val = player_get_attribute(player, settings[i]);
+		if (val < 0) {
 			DBG("Ignoring %u: not supported by player",
 								settings[i]);
 			continue;
@@ -1014,14 +709,14 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_set_player_value(struct media_player *mp,
+static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
 
-	if (len <= 3)
+	if (len < 3)
 		goto err;
 
 	len = 0;
@@ -1033,26 +728,14 @@ static uint8_t avrcp_handle_set_player_value(struct media_player *mp,
 	 * attribute is valid, we respond with no parameters. Otherwise an
 	 * E_INVALID_PARAM is sent.
 	 */
-	for (i = 1; i < pdu->params[0]; i += 2) {
+	for (i = 1; i <= pdu->params[0]; i += 2) {
 		uint8_t attr = pdu->params[i];
 		uint8_t val = pdu->params[i + 1];
-		const char *attrstr;
-		const char *valstr;
 
-		attrstr = attr_to_str(attr);
-		if (!attrstr)
-			continue;
-
-		valstr = attrval_to_str(attr, val);
-		if (!valstr)
+		if (player_set_attribute(player, attr, val) < 0)
 			continue;
 
 		len++;
-
-		mp_set_attribute(mp, attr, val);
-		emit_property_changed(mp->dev->conn, mp->dev->path,
-					MEDIA_PLAYER_INTERFACE, attrstr,
-					DBUS_TYPE_STRING, &valstr);
 	}
 
 	if (len) {
@@ -1067,7 +750,7 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_displayable_charset(struct media_player *mp,
+static uint8_t avrcp_handle_displayable_charset(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -1087,7 +770,7 @@ static uint8_t avrcp_handle_displayable_charset(struct media_player *mp,
 	return AVC_CTYPE_STABLE;
 }
 
-static uint8_t avrcp_handle_ct_battery_status(struct media_player *mp,
+static uint8_t avrcp_handle_ct_battery_status(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
@@ -1101,9 +784,6 @@ static uint8_t avrcp_handle_ct_battery_status(struct media_player *mp,
 	if (valstr == NULL)
 		goto err;
 
-	emit_property_changed(mp->dev->conn, mp->dev->path,
-					MEDIA_PLAYER_INTERFACE, "Battery",
-					DBUS_TYPE_STRING, &valstr);
 	pdu->params_len = 0;
 
 	return AVC_CTYPE_STABLE;
@@ -1114,14 +794,13 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static uint8_t avrcp_handle_get_play_status(struct media_player *mp,
+static uint8_t avrcp_handle_get_play_status(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
-	uint32_t elapsed;
-	uint32_t track_len;
-	uint8_t status;
+	uint32_t position;
+	uint32_t duration;
 
 	if (len != 0) {
 		pdu->params_len = htons(1);
@@ -1129,25 +808,28 @@ static uint8_t avrcp_handle_get_play_status(struct media_player *mp,
 		return AVC_CTYPE_REJECTED;
 	}
 
-	mp_get_playback_status(mp, &status, &elapsed, &track_len);
-	track_len = htonl(track_len);
-	elapsed = htonl(elapsed);
+	position = player->cb->get_position(player->user_data);
+	duration = GPOINTER_TO_UINT(player->cb->get_metadata(
+						AVRCP_MEDIA_ATTRIBUTE_DURATION,
+						player->user_data));
 
-	memcpy(&pdu->params[0], &track_len, 4);
-	memcpy(&pdu->params[4], &elapsed, 4);
-	pdu->params[8] = status;
+	duration = htonl(duration);
+	position = htonl(position);
+
+	memcpy(&pdu->params[0], &duration, 4);
+	memcpy(&pdu->params[4], &position, 4);
+	pdu->params[8] = player->cb->get_status(player->user_data);;
 
 	pdu->params_len = htons(9);
 
 	return AVC_CTYPE_STABLE;
 }
 
-static uint8_t avrcp_handle_register_notification(struct media_player *mp,
+static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
-	uint8_t status;
 
 	/*
 	 * 1 byte for EventID, 4 bytes for Playback interval but the latest
@@ -1158,10 +840,9 @@ static uint8_t avrcp_handle_register_notification(struct media_player *mp,
 		goto err;
 
 	switch (pdu->params[0]) {
-	case AVRCP_EVENT_PLAYBACK_STATUS_CHANGED:
+	case AVRCP_EVENT_STATUS_CHANGED:
 		len = 2;
-		mp_get_playback_status(mp, &status, NULL, NULL);
-		pdu->params[1] = status;
+		pdu->params[1] = player->cb->get_status(player->user_data);
 
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
@@ -1176,8 +857,8 @@ static uint8_t avrcp_handle_register_notification(struct media_player *mp,
 	}
 
 	/* Register event and save the transaction used */
-	mp->registered_events |= (1 << pdu->params[0]);
-	mp->transaction_events[pdu->params[0]] = transaction;
+	player->registered_events |= (1 << pdu->params[0]);
+	player->transaction_events[pdu->params[0]] = transaction;
 
 	pdu->params_len = htons(len);
 
@@ -1192,7 +873,7 @@ err:
 static struct pdu_handler {
 	uint8_t pdu_id;
 	uint8_t code;
-	uint8_t (*func) (struct media_player *mp,
+	uint8_t (*func) (struct avrcp_player *player,
 					struct avrcp_header *pdu,
 					uint8_t transaction);
 } handlers[] = {
@@ -1229,7 +910,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
-	struct media_player *mp = user_data;
+	struct avrcp_player *player = user_data;
 	struct pdu_handler *handler;
 	struct avrcp_header *pdu = (void *) operands;
 	uint32_t company_id = get_company_id(pdu->company_id);
@@ -1265,7 +946,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 		goto err_metadata;
 	}
 
-	*code = handler->func(mp, pdu, transaction);
+	*code = handler->func(player, pdu, transaction);
 
 	return AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 
@@ -1276,50 +957,54 @@ err_metadata:
 	return AVRCP_HEADER_LENGTH + 1;
 }
 
+static struct avrcp_server *find_server(GSList *list, const bdaddr_t *src)
+{
+	for (; list; list = list->next) {
+		struct avrcp_server *server = list->data;
+
+		if (bacmp(&server->src, src) == 0)
+			return server;
+	}
+
+	return NULL;
+}
+
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 				avctp_state_t new_state, void *user_data)
 {
-	struct media_player *mp = dev->media_player;
+	struct avrcp_server *server;
+	struct avrcp_player *player;
 
+	server = find_server(servers, &dev->src);
+	if (!server)
+		return;
 
-	if (!mp)
+	player = server->active_player;
+	if (!player)
 		return;
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
-		mp->session = NULL;
+		player->session = NULL;
 
-		if (mp->handler) {
-			avctp_unregister_pdu_handler(mp->handler);
-			mp->handler = 0;
+		if (player->handler) {
+			avctp_unregister_pdu_handler(player->handler);
+			player->handler = 0;
 		}
 
 		break;
 	case AVCTP_STATE_CONNECTING:
-		mp->session = avctp_connect(&dev->src, &dev->dst);
+		player->session = avctp_connect(&dev->src, &dev->dst);
 
-		if (!mp->handler)
-			mp->handler = avctp_register_pdu_handler(
+		if (!player->handler)
+			player->handler = avctp_register_pdu_handler(
 							AVC_OP_VENDORDEP,
 							handle_vendordep_pdu,
-							mp);
+							player);
 		break;
 	default:
 		return;
 	}
-}
-
-static void media_info_init(struct media_info *mi)
-{
-	memset(mi, 0, sizeof(*mi));
-
-	/*
-	 * As per section 5.4.1 of AVRCP 1.3 spec, return 0xFFFFFFFF if TG
-	 * does not support these attributes (i.e. they were never set via
-	 * D-Bus)
-	 */
-	mi->track_len = 0xFFFFFFFF;
-	mi->elapsed = 0xFFFFFFFF;
 }
 
 gboolean avrcp_connect(struct audio_device *dev)
@@ -1343,8 +1028,6 @@ void avrcp_disconnect(struct audio_device *dev)
 
 	avctp_disconnect(session);
 }
-
-static unsigned int avctp_id = 0;
 
 int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
@@ -1390,7 +1073,7 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	}
 
 	if (add_record_to_server(src, record) < 0) {
-		error("Unable to register AVRCP mpler service record");
+		error("Unable to register AVRCP service record");
 		sdp_record_free(record);
 		g_free(server);
 		return -1;
@@ -1411,16 +1094,17 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	return 0;
 }
 
-static struct avrcp_server *find_server(GSList *list, const bdaddr_t *src)
+static void player_destroy(gpointer data)
 {
-	for (; list; list = list->next) {
-		struct avrcp_server *server = list->data;
+	struct avrcp_player *player = data;
 
-		if (bacmp(&server->src, src) == 0)
-			return server;
-	}
+	if (player->destroy)
+		player->destroy(player->user_data);
 
-	return NULL;
+	if (player->handler)
+		avctp_unregister_pdu_handler(player->handler);
+
+	g_free(player);
 }
 
 void avrcp_unregister(const bdaddr_t *src)
@@ -1430,6 +1114,8 @@ void avrcp_unregister(const bdaddr_t *src)
 	server = find_server(servers, src);
 	if (!server)
 		return;
+
+	g_slist_free_full(server->players, player_destroy);
 
 	servers = g_slist_remove(servers, server);
 
@@ -1442,239 +1128,49 @@ void avrcp_unregister(const bdaddr_t *src)
 	if (servers)
 		return;
 
-	if (avctp_id)
+	if (avctp_id) {
 		avctp_remove_state_cb(avctp_id);
-}
-
-static DBusMessage *mp_set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct audio_device *device = data;
-	struct media_player *mp = device->media_player;
-	DBusMessageIter iter;
-	DBusMessageIter var;
-	const char *attrstr, *valstr;
-	int attr, val;
-
-	if (!dbus_message_iter_init(msg, &iter))
-		return btd_error_invalid_args(msg);
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return btd_error_invalid_args(msg);
-
-	dbus_message_iter_get_basic(&iter, &attrstr);
-
-	attr = attr_to_val(attrstr);
-	if (attr < 0)
-		return btd_error_not_supported(msg);
-
-	dbus_message_iter_next(&iter);
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return btd_error_invalid_args(msg);
-
-	dbus_message_iter_recurse(&iter, &var);
-
-	/* Only string arguments are supported for now */
-	if (dbus_message_iter_get_arg_type(&var) != DBUS_TYPE_STRING)
-		return btd_error_invalid_args(msg);
-
-	dbus_message_iter_get_basic(&var, &valstr);
-
-	val = attrval_to_val(attr, valstr);
-	if (val < 0)
-		return btd_error_not_supported(msg);
-
-	mp_set_attribute(mp, attr, val);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static DBusMessage *mp_change_playback(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct audio_device *device = data;
-	struct media_player *mp = device->media_player;
-	const char *statusstr;
-	int status;
-	uint32_t elapsed;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &statusstr,
-						DBUS_TYPE_UINT32, &elapsed,
-						DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
-
-	status = play_status_to_val(statusstr);
-	if (status < 0)
-		return btd_error_invalid_args(msg);
-
-	mp_set_playback_status(mp, status, elapsed);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static gboolean media_info_parse(DBusMessageIter *iter, struct media_info *mi)
-{
-	DBusMessageIter dict;
-	DBusMessageIter var;
-	int ctype;
-
-	ctype = dbus_message_iter_get_arg_type(iter);
-	if (ctype != DBUS_TYPE_ARRAY)
-		return FALSE;
-
-	media_info_init(mi);
-	dbus_message_iter_recurse(iter, &dict);
-
-	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
-							DBUS_TYPE_INVALID) {
-		DBusMessageIter entry;
-		const char *key;
-
-		if (ctype != DBUS_TYPE_DICT_ENTRY)
-			return FALSE;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			return FALSE;
-
-		dbus_message_iter_get_basic(&entry, &key);
-		dbus_message_iter_next(&entry);
-
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
-			return FALSE;
-
-		dbus_message_iter_recurse(&entry, &var);
-
-		if (!strcmp(key, "Title")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_STRING)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->title);
-		} else if (!strcmp(key, "Artist")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_STRING)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->artist);
-		} else if (!strcmp(key, "Album")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_STRING)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->album);
-		} else if (!strcmp(key, "Genre")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_STRING)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->genre);
-		} else if (!strcmp(key, "NumberOfTracks")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_UINT32)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->ntracks);
-		} else if (!strcmp(key, "TrackNumber")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_UINT32)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->track);
-		} else if (!strcmp(key, "TrackDuration")) {
-			if (dbus_message_iter_get_arg_type(&var) !=
-							DBUS_TYPE_UINT32)
-				return FALSE;
-
-			dbus_message_iter_get_basic(&var, &mi->track_len);
-		} else {
-			return FALSE;
-		}
-
-		dbus_message_iter_next(&dict);
+		avctp_id = 0;
 	}
-
-	if (mi->title == NULL)
-		return FALSE;
-
-	return TRUE;
 }
 
-static DBusMessage *mp_change_track(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
+						struct avrcp_player_cb *cb,
+						void *user_data,
+						GDestroyNotify destroy)
 {
-	struct audio_device *device = data;
-	struct media_player *mp = device->media_player;
-	DBusMessageIter iter;
-	struct media_info mi;
+	struct avrcp_server *server;
+	struct avrcp_player *player;
 
-
-	dbus_message_iter_init(msg, &iter);
-	if (!media_info_parse(&iter, &mi))
-		return btd_error_invalid_args(msg);
-
-	mp_set_media_attributes(mp, &mi);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static GDBusMethodTable mp_methods[] = {
-	{ "SetProperty",	"sv",		"",	mp_set_property },
-	{ "ChangePlayback",	"su",		"",	mp_change_playback },
-	{ "ChangeTrack",	"a{sv}",	"",	mp_change_track },
-	{ }
-};
-
-static GDBusSignalTable mp_signals[] = {
-	{ "PropertyChanged",		"sv"	},
-	{ }
-};
-
-static void mp_path_unregister(void *data)
-{
-	struct audio_device *dev = data;
-	struct media_player *mp = dev->media_player;
-
-	DBG("Unregistered interface %s on path %s",
-		MEDIA_PLAYER_INTERFACE, dev->path);
-
-	if (mp->handler)
-		avctp_unregister_pdu_handler(mp->handler);
-
-	g_timer_destroy(mp->timer);
-	g_free(mp);
-}
-
-void media_player_unregister(struct audio_device *dev)
-{
-	g_dbus_unregister_interface(dev->conn, dev->path,
-						MEDIA_PLAYER_INTERFACE);
-}
-
-struct media_player *media_player_init(struct audio_device *dev)
-{
-	struct media_player *mp;
-
-	if (!g_dbus_register_interface(dev->conn, dev->path,
-						MEDIA_PLAYER_INTERFACE,
-						mp_methods, mp_signals, NULL,
-						dev, mp_path_unregister)) {
-		error("D-Bus failed do register %s on path %s",
-					MEDIA_PLAYER_INTERFACE, dev->path);
+	server = find_server(servers, src);
+	if (!server)
 		return NULL;
-	}
 
-	DBG("Registered interface %s on path %s",
-					MEDIA_PLAYER_INTERFACE, dev->path);
+	player = g_new0(struct avrcp_player, 1);
+	player->server = server;
+	player->cb = cb;
+	player->user_data = user_data;
+	player->destroy = destroy;
 
-	mp = g_new0(struct media_player, 1);
-	mp->timer = g_timer_new();
-	mp->dev = dev;
-	media_info_init(&mp->mi);
+	if (!server->players)
+		server->active_player = player;
 
 	if (!avctp_id)
 		avctp_id = avctp_add_state_cb(state_changed, NULL);
 
-	return mp;
+	server->players = g_slist_append(server->players, player);
+
+	return player;
+}
+
+void avrcp_unregister_player(struct avrcp_player *player)
+{
+	struct avrcp_server *server = player->server;
+
+	server->players = g_slist_remove(server->players, player);
+
+	if (server->active_player == player)
+		server->active_player = g_slist_nth_data(server->players, 0);
+
+	player_destroy(player);
 }

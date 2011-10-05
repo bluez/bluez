@@ -731,9 +731,6 @@ void audio_device_unregister(struct audio_device *device)
 	if (device->control)
 		control_unregister(device);
 
-	if (device->media_player)
-		media_player_unregister(device);
-
 	g_dbus_unregister_interface(device->conn, device->path,
 						AUDIO_INTERFACE);
 

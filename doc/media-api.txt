@@ -44,6 +44,169 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 			Unregister sender end point.
 
+		void RegisterPlayer(object player, dict properties,
+								dict metadata)
+
+			Register a media player object to sender, the sender
+			can register as many objets as it likes.
+
+			Note: If the sender disconnects its objects are
+			automatically unregistered.
+
+			Properties:
+
+				string Equalizer:
+
+					Possible values: "off" or "on"
+
+				string Repeat:
+
+					Possible values: "off", "singletrack",
+							"alltracks" or "group"
+
+				string Shuffle:
+
+					Possible values: "off", "alltracks" or
+							"group"
+
+				string Scan:
+
+					Possible values: "off", "alltracks" or
+							"group"
+
+				string Status:
+
+					Possible values: "playing", "stopped",
+							"paused",
+							"forward-seek",
+							"reverse-seek" or
+							"error"
+
+				uint32 Position
+
+					Playback position in milliseconds
+
+			Metadata:
+
+				string Title:
+
+					Track title name
+
+				string Artist:
+
+					Track artist name
+
+				string Album:
+
+					Track album name
+
+				string Genre:
+
+					Track genre name
+
+				uint32 NumberOfTracks:
+
+					Number of tracks in total
+
+				uint32 Number:
+
+					Track number
+
+				uint32 Duration:
+
+					Track duration in milliseconds
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported
+
+		void UnregisterPlayer(object player)
+
+			Unregister sender media player.
+
+MediaPlayer hierarchy
+=====================
+
+Service		unique name
+Interface	org.bluez.MediaPlayer
+Object path	freely definable
+
+Methods		void SetProperty(string property, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed a read-write can be changed.
+
+			On success this will emit a PropertyChanged signal.
+
+Signals		PropertyChanged(string setting, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+		TrackChanged(dict metadata)
+
+			Possible values:
+
+				string Title:
+
+					Track title name
+
+				string Artist:
+
+					Track artist name
+
+				string Album:
+
+					Track album name
+
+				string Genre:
+
+					Track genre name
+
+				uint32 NumberOfTracks:
+
+					Number of tracks in total
+
+				uint32 Number:
+
+					Track number
+
+				uint32 Duration:
+
+					Track duration in milliseconds
+
+		StatusChanged(string status, uint32 position)
+
+			Possible status: "playing", "stopped", "paused",
+					"forward-seek", "reverse-seek" or
+					"error"
+
+Properties	string Equalizer [readwrite]
+
+			Possible values: "off" or "on"
+
+		string Repeat [readwrite]
+
+			Possible values: "off", "singletrack", "alltracks" or
+					"group"
+
+		string Shuffle [readwrite]
+
+			Possible values: "off", "alltracks" or "group"
+
+		string Scan [readwrite]
+
+			Possible values: "off", "alltracks" or "group"
+
+		string Status [readonly]
+
+			Possible status: "playing", "stopped", "paused",
+					"forward-seek", "reverse-seek" or
+					"error"
+
+		uint32 Position [readonly]
+
+			Playback position in milliseconds
+
 MediaEndpoint hierarchy
 =======================
 

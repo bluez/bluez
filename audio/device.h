@@ -44,7 +44,6 @@ struct target;
 struct sink;
 struct headset;
 struct gateway;
-struct media_player;
 struct dev_priv;
 
 struct audio_device {
@@ -63,7 +62,6 @@ struct audio_device {
 	struct source *source;
 	struct control *control;
 	struct target *target;
-	struct media_player *media_player;
 
 	guint hs_preauth_id;
 
