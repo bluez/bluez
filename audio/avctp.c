@@ -463,6 +463,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	handler = find_handler(handlers, avc->opcode);
 	if (!handler) {
+		DBG("handler not found for 0x%02x", avc->opcode);
 		avc->code = AVC_CTYPE_REJECTED;
 		goto done;
 	}
@@ -824,14 +825,20 @@ void avctp_unregister(const bdaddr_t *src)
 	if (servers)
 		return;
 
-	if (passthrough_id)
+	if (passthrough_id) {
 		avctp_unregister_pdu_handler(passthrough_id);
+		passthrough_id = 0;
+	}
 
-	if (unit_id)
+	if (unit_id) {
 		avctp_unregister_pdu_handler(unit_id);
+		passthrough_id = 0;
+	}
 
-	if (subunit_id)
-		avctp_unregister_pdu_handler(unit_id);
+	if (subunit_id) {
+		avctp_unregister_pdu_handler(subunit_id);
+		subunit_id = 0;
+	}
 }
 
 int avctp_send_passthrough(struct avctp *session, uint8_t op)
