@@ -963,7 +963,7 @@ int obex_put_stream_start(struct obex_session *os, const char *filename)
 					(size_t *) &os->size : NULL, &err);
 	if (os->object == NULL) {
 		error("open(%s): %s (%d)", filename, strerror(-err), -err);
-		return -EPERM;
+		return err;
 	}
 
 	os->path = g_strdup(filename);
