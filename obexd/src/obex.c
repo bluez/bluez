@@ -284,8 +284,6 @@ static void os_session_mark_aborted(struct obex_session *os)
 static void os_reset_session(struct obex_session *os)
 {
 	os_session_mark_aborted(os);
-	if (os->service && os->service->reset)
-		os->service->reset(os, os->service_data);
 
 	if (os->object) {
 		os->driver->set_io_watch(os->object, NULL, NULL);
@@ -296,6 +294,9 @@ static void os_reset_session(struct obex_session *os)
 				os->driver->remove)
 			os->driver->remove(os->path);
 	}
+
+	if (os->service && os->service->reset)
+		os->service->reset(os, os->service_data);
 
 	if (os->name) {
 		g_free(os->name);
