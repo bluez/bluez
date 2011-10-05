@@ -1,0 +1,56 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+import gobject
+
+class Player(dbus.service.Object):
+	@dbus.service.method("org.bluez.MediaPlayer",
+					in_signature="sv", out_signature="")
+	def SetProperty(self, key, value):
+		print "SetProperty (%s, %s)" % (key, value)
+		return
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+						"org.bluez.Manager")
+
+	if len(sys.argv) > 1:
+		path = manager.FindAdapter(sys.argv[1])
+	else:
+		path = manager.DefaultAdapter()
+
+	media = dbus.Interface(bus.get_object("org.bluez", path),
+						"org.bluez.Media")
+
+	path = "/test/player"
+	player = Player(bus, path)
+	mainloop = gobject.MainLoop()
+
+	properties = dbus.Dictionary({ "Equalizer" : "off",
+					"Repeat" : "off",
+					"Shuffle" : "off",
+					"Scan" : "off",
+					"Status" : "playing",
+					"Position" : dbus.UInt32(0) })
+
+	print properties
+
+	metadata = dbus.Dictionary({ "Title" : "Title",
+					"Artist" : "Artist",
+					"Album" : "Album",
+					"Genre" : "Genre",
+					"NumberOfTracks" : dbus.UInt32(10),
+					"Number" : dbus.UInt32(1),
+					"Duration" : dbus.UInt32(10000) })
+
+	print metadata
+
+	media.RegisterPlayer(path, properties, metadata)
+
+	mainloop.run()
