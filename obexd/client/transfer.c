@@ -143,7 +143,7 @@ static void obc_transfer_abort(struct obc_transfer *transfer)
 	if (callback) {
 		GError *err;
 
-		err = g_error_new(OBEX_IO_ERROR, -ECANCELED,
+		err = g_error_new(OBEX_IO_ERROR, -ECANCELED, "%s",
 							strerror(ECANCELED));
 		callback->func(transfer, transfer->transferred, err,
 							callback->data);
