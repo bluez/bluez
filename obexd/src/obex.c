@@ -1081,22 +1081,13 @@ static gboolean check_put(obex_t *obex, obex_object_t *obj)
 	switch (ret) {
 	case 0:
 		break;
-	case -EPERM:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_FORBIDDEN, OBEX_RSP_FORBIDDEN);
-		return FALSE;
-	case -EBADR:
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_BAD_REQUEST,
-					OBEX_RSP_BAD_REQUEST);
-		return FALSE;
 	case -EAGAIN:
 		OBEX_SuspendRequest(obex, obj);
 		os->obj = obj;
 		os->driver->set_io_watch(os->object, handle_async_io, os);
 		return TRUE;
 	default:
-		DBG("Unhandled chkput error: %d", ret);
-		OBEX_ObjectSetRsp(obj, OBEX_RSP_INTERNAL_SERVER_ERROR,
-				OBEX_RSP_INTERNAL_SERVER_ERROR);
+		os_set_response(obj, ret);
 		return FALSE;
 
 	}
