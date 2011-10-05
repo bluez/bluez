@@ -710,6 +710,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 		if (ret == 0)
 			return TRUE;
 
+		setup->err = g_new(struct avdtp_error, 1);
 		avdtp_error_init(setup->err, AVDTP_MEDIA_CODEC,
 					AVDTP_UNSUPPORTED_CONFIGURATION);
 		break;
