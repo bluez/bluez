@@ -38,6 +38,7 @@
 #include <sys/param.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <signal.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -54,6 +55,8 @@
 #define FLAGS_GENERAL_MODE_BIT 0x02
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, NULL)) != -1)
+
+static volatile int signal_received = 0;
 
 static void usage(void);
 
@@ -2346,12 +2349,18 @@ static int check_report_filter(uint8_t procedure, le_advertising_info *info)
 	return 0;
 }
 
+static void sigint_handler(int sig)
+{
+	signal_received = sig;
+}
+
 static int print_advertising_devices(int dd, uint8_t filter_type)
 {
 	unsigned char buf[HCI_MAX_EVENT_SIZE], *ptr;
 	struct hci_filter nf, of;
+	struct sigaction sa;
 	socklen_t olen;
-	int num, len;
+	int len;
 
 	olen = sizeof(of);
 	if (getsockopt(dd, SOL_HCI, HCI_FILTER, &of, &olen) < 0) {
@@ -2368,14 +2377,22 @@ static int print_advertising_devices(int dd, uint8_t filter_type)
 		return -1;
 	}
 
-	/* Wait for 10 report events */
-	num = 10;
-	while (num--) {
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_flags = SA_NOCLDSTOP;
+	sa.sa_handler = sigint_handler;
+	sigaction(SIGINT, &sa, NULL);
+
+	while (1) {
 		evt_le_meta_event *meta;
 		le_advertising_info *info;
 		char addr[18];
 
 		while ((len = read(dd, buf, sizeof(buf))) < 0) {
+			if (errno == EINTR && signal_received == SIGINT) {
+				len = 0;
+				goto done;
+			}
+
 			if (errno == EAGAIN || errno == EINTR)
 				continue;
 			goto done;
