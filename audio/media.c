@@ -855,7 +855,7 @@ static struct media_player *media_adapter_find_player(
 {
 	GSList *l;
 
-	for (l = adapter->endpoints; l; l = l->next) {
+	for (l = adapter->players; l; l = l->next) {
 		struct media_player *mp = l->data;
 
 		if (sender && g_strcmp0(mp->sender, sender) != 0)
