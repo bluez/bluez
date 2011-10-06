@@ -820,60 +820,65 @@ struct att_data_list *dec_find_info_resp(const uint8_t *pdu, int len,
 	return list;
 }
 
-uint16_t enc_notification(struct attribute *a, uint8_t *pdu, int len)
+uint16_t enc_notification(uint16_t handle, uint8_t *value, int vlen,
+						uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(uint16_t);
 
 	if (pdu == NULL)
 		return 0;
 
-	if (len < (a->len + min_len))
+	if (len < (vlen + min_len))
 		return 0;
 
 	pdu[0] = ATT_OP_HANDLE_NOTIFY;
-	att_put_u16(a->handle, &pdu[1]);
-	memcpy(&pdu[3], a->data, a->len);
+	att_put_u16(handle, &pdu[1]);
+	memcpy(&pdu[3], value, vlen);
 
-	return a->len + min_len;
+	return vlen + min_len;
 }
 
-uint16_t enc_indication(struct attribute *a, uint8_t *pdu, int len)
+uint16_t enc_indication(uint16_t handle, uint8_t *value, int vlen,
+						uint8_t *pdu, int len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(uint16_t);
 
 	if (pdu == NULL)
 		return 0;
 
-	if (len < (a->len + min_len))
+	if (len < (vlen + min_len))
 		return 0;
 
 	pdu[0] = ATT_OP_HANDLE_IND;
-	att_put_u16(a->handle, &pdu[1]);
-	memcpy(&pdu[3], a->data, a->len);
+	att_put_u16(handle, &pdu[1]);
+	memcpy(&pdu[3], value, vlen);
 
-	return a->len + min_len;
+	return vlen + min_len;
 }
 
-struct attribute *dec_indication(const uint8_t *pdu, int len)
+uint16_t dec_indication(const uint8_t *pdu, int len, uint16_t *handle,
+						uint8_t *value, int vlen)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(uint16_t);
-	struct attribute *a;
+	uint16_t dlen;
 
 	if (pdu == NULL)
-		return NULL;
+		return 0;
 
 	if (pdu[0] != ATT_OP_HANDLE_IND)
-		return NULL;
+		return 0;
 
 	if (len < min_len)
-		return NULL;
+		return 0;
 
-	a = g_new0(struct attribute, 1);
-	a->handle = att_get_u16(&pdu[1]);
-	a->len = len - min_len;
-	a->data = g_memdup(&pdu[3], a->len);
+	dlen = MIN(len - min_len, vlen);
 
-	return a;
+	if (handle)
+		*handle = att_get_u16(&pdu[1]);
+
+	memcpy(value, &pdu[3], dlen);
+
+	return dlen;
 }
 
 uint16_t enc_confirmation(uint8_t *pdu, int len)

@@ -1040,7 +1040,8 @@ static void attrib_notify_clients(struct attribute *attr)
 			uint8_t pdu[ATT_MAX_MTU];
 			uint16_t len;
 
-			len = enc_notification(attr, pdu, channel->mtu);
+			len = enc_notification(attr->handle, attr->data,
+						attr->len, pdu, channel->mtu);
 			if (len == 0)
 				continue;
 
@@ -1054,7 +1055,8 @@ static void attrib_notify_clients(struct attribute *attr)
 			uint8_t pdu[ATT_MAX_MTU];
 			uint16_t len;
 
-			len = enc_indication(attr, pdu, channel->mtu);
+			len = enc_indication(attr->handle, attr->data,
+						attr->len, pdu, channel->mtu);
 			if (len == 0)
 				return;
 
