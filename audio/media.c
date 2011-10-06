@@ -892,9 +892,12 @@ static void media_player_free(gpointer data)
 
 static void media_player_destroy(struct media_player *mp)
 {
+	struct media_adapter *adapter = mp->adapter;
+
 	DBG("sender=%s path=%s", mp->sender, mp->path);
 
 	if (mp->player) {
+		adapter->players = g_slist_remove(adapter->players, mp);
 		avrcp_unregister_player(mp->player);
 		return;
 	}
