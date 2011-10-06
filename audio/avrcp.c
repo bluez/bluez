@@ -715,11 +715,10 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 {
 	uint16_t len = ntohs(pdu->params_len);
 	unsigned int i;
+	uint8_t *param;
 
-	if (len < 3)
+	if (len < 3 || len > 2 * pdu->params[0] + 1U)
 		goto err;
-
-	len = 0;
 
 	/*
 	 * From sec. 5.7 of AVRCP 1.3 spec, we should igore non-existent IDs
@@ -728,11 +727,9 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 	 * attribute is valid, we respond with no parameters. Otherwise an
 	 * E_INVALID_PARAM is sent.
 	 */
-	for (i = 1; i <= pdu->params[0]; i += 2) {
-		uint8_t attr = pdu->params[i];
-		uint8_t val = pdu->params[i + 1];
-
-		if (player_set_attribute(player, attr, val) < 0)
+	for (len = 0, i = 0, param = &pdu->params[1]; i < pdu->params[0];
+							i++, param += 2) {
+		if (player_set_attribute(player, param[0], param[1]) < 0)
 			continue;
 
 		len++;
