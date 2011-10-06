@@ -1126,6 +1126,9 @@ static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 	if (property == NULL || value == NULL)
 		return -EINVAL;
 
+	if (!g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr)))
+		return -EINVAL;
+
 	msg = dbus_message_new_method_call(mp->sender, mp->path,
 						MEDIA_PLAYER_INTERFACE,
 						"SetProperty");
