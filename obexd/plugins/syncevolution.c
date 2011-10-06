@@ -230,6 +230,7 @@ static void *synce_connect(struct obex_session *os, int *err)
 	context->dbus_conn = conn;
 	context->lasterr = -EAGAIN;
 	context->id = obex_get_id(os);
+	context->os = os;
 
 	if (err)
 		*err = 0;
@@ -281,8 +282,10 @@ static void synce_disconnect(struct obex_session *os, void *user_data)
 static void *synce_open(const char *name, int oflag, mode_t mode,
 				void *user_data, size_t *size, int *err)
 {
+	struct synce_context *context = user_data;
+
 	if (err)
-		*err = 0;
+		*err = context ? 0 : -EFAULT;
 
 	return user_data;
 }
