@@ -46,6 +46,7 @@ static uint8_t hdr_unicode_nval_data[] = { G_OBEX_HDR_NAME, 0x00, 0x01,
 static uint8_t hdr_bytes_nval_short[] = { G_OBEX_HDR_BODY, 0xab, 0xcd,
 						0x01, 0x02, 0x03 };
 static uint8_t hdr_bytes_nval_data[] = { G_OBEX_HDR_BODY, 0xab };
+static uint8_t hdr_bytes_nval_len[] = { G_OBEX_HDR_BODY, 0x00, 0x00 };
 
 static void test_header_name_empty(void)
 {
@@ -407,6 +408,11 @@ static void test_decode_header_bytes_nval_data(void)
 	decode_header_nval(hdr_bytes_nval_data, sizeof(hdr_bytes_nval_data));
 }
 
+static void test_decode_header_bytes_nval_len(void)
+{
+	decode_header_nval(hdr_bytes_nval_len, sizeof(hdr_bytes_nval_len));
+}
+
 static void test_decode_header_multi(void)
 {
 	GObexHeader *header;
@@ -486,6 +492,8 @@ int main(int argc, char *argv[])
 					test_decode_header_bytes_nval_short);
 	g_test_add_func("/gobex/test_decode_header_bytes_nval_data",
 					test_decode_header_bytes_nval_data);
+	g_test_add_func("/gobex/test_decode_header_bytes_nval_len",
+					test_decode_header_bytes_nval_len);
 
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_connid);

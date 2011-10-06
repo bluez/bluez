@@ -208,6 +208,13 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 			goto failed;
 		}
 
+		if (hdr_len < 3) {
+			g_set_error(err, G_OBEX_ERROR,
+					G_OBEX_ERROR_PARSE_ERROR,
+					"Too small byte array length");
+			goto failed;
+		}
+
 		header->vlen = hdr_len - 3;
 		header->hlen = hdr_len;
 
