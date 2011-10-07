@@ -288,8 +288,6 @@ static void os_reset_session(struct obex_session *os)
 	if (os->object) {
 		os->driver->set_io_watch(os->object, NULL, NULL);
 		os->driver->close(os->object);
-		os->object = NULL;
-		os->obj = NULL;
 		if (os->aborted && os->cmd == OBEX_CMD_PUT && os->path &&
 				os->driver->remove)
 			os->driver->remove(os->path);
@@ -315,6 +313,8 @@ static void os_reset_session(struct obex_session *os)
 		os->path = NULL;
 	}
 
+	os->object = NULL;
+	os->obj = NULL;
 	os->driver = NULL;
 	os->aborted = FALSE;
 	os->pending = 0;
