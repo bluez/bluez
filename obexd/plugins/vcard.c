@@ -680,8 +680,11 @@ static void vcard_printf_address(GString *vcards, uint8_t format,
 	for (l = address->fields; l; l = l->next) {
 		char *field = l->data;
 
-		set_escape(format, field_esc, field, LEN_MAX, strlen(field));
-		g_strlcat(fields, field_esc, len);
+		if (field) {
+			set_escape(format, field_esc, field, LEN_MAX,
+								strlen(field));
+			g_strlcat(fields, field_esc, len);
+		}
 
 		if (l->next)
 			/* not adding ';' after last addr field */
