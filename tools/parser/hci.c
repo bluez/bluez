@@ -44,7 +44,7 @@ static inline uint16_t get_manufacturer(void)
 	return (manufacturer == DEFAULT_COMPID ? parser.defcompid : manufacturer);
 }
 
-#define EVENT_NUM 76
+#define EVENT_NUM 77
 static char *event_str[EVENT_NUM + 1] = {
 	"Unknown",
 	"Inquiry Complete",
@@ -109,6 +109,7 @@ static char *event_str[EVENT_NUM + 1] = {
 	"Keypress Notification",
 	"Remote Host Supported Features Notification",
 	"LE Meta Event",
+	"Unknown",
 	"Physical Link Complete",
 	"Channel Selected",
 	"Disconnection Physical Link Complete",
