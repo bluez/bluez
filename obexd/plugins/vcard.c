@@ -392,6 +392,11 @@ static void vcard_printf_fullname(GString *vcards, uint8_t format,
 {
 	char field[LEN_MAX];
 
+	if (!text || strlen(text) == 0) {
+		vcard_printf(vcards, "FN:");
+		return;
+	}
+
 	if (select_qp_encoding(format, text, NULL)) {
 		vcard_qp_print_encoded(vcards, "FN", text, NULL);
 		return;
