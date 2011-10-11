@@ -1102,11 +1102,12 @@ static const char *metadata_to_str(uint32_t id)
 static int get_setting(uint8_t attr, void *user_data)
 {
 	struct media_player *mp = user_data;
+	guint attr_uint = attr;
 	void *value;
 
 	DBG("%s", attr_to_str(attr));
 
-	value = g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr));
+	value = g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr_uint));
 	if (!value)
 		return -EINVAL;
 
@@ -1118,6 +1119,7 @@ static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 	struct media_player *mp = user_data;
 	struct media_adapter *adapter = mp->adapter;
 	const char *property, *value;
+	guint attr_uint = attr;
 	DBusMessage *msg;
 	DBusMessageIter iter, var;
 
@@ -1129,7 +1131,7 @@ static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 	if (property == NULL || value == NULL)
 		return -EINVAL;
 
-	if (!g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr)))
+	if (!g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr_uint)))
 		return -EINVAL;
 
 	msg = dbus_message_new_method_call(mp->sender, mp->path,
