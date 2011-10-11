@@ -932,8 +932,16 @@ static int csd_status_to_hfp(struct csd_call *call)
 		/* PROCEEDING can happen in outgoing/incoming */
 		if (call->originating)
 			return CALL_STATUS_DIALING;
-		else
-			return CALL_STATUS_INCOMING;
+
+		/*
+		 * PROCEEDING is followed by WAITING CSD status, therefore
+		 * second incoming call status indication is set immediately
+		 * to waiting.
+		 */
+		if (g_slist_length(active_calls) > 0)
+			return CALL_STATUS_WAITING;
+
+		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_COMING:
 		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_MO_ALERTING:
