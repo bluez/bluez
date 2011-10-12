@@ -474,9 +474,15 @@ static int player_set_attribute(struct avrcp_player *player,
 
 static int player_get_attribute(struct avrcp_player *player, uint8_t attr)
 {
-	DBG("Get attribute: %u", attr);
+	int value;
 
-	return player->cb->get_setting(attr, player->user_data);
+	DBG("attr %u", attr);
+
+	value = player->cb->get_setting(attr, player->user_data);
+	if (value < 0)
+		DBG("attr %u not supported by player", attr);
+
+	return value;
 }
 
 static uint8_t avrcp_handle_get_capabilities(struct avrcp_player *player,
@@ -535,10 +541,8 @@ static uint8_t avrcp_handle_list_player_attributes(struct avrcp_player *player,
 		goto done;
 
 	for (i = 1; i <= AVRCP_ATTRIBUTE_SCAN; i++) {
-		if (player_get_attribute(player, i) < 0) {
-			DBG("Ignoring setting %u: not supported by player", i);
+		if (player_get_attribute(player, i) < 0)
 			continue;
-		}
 
 		len++;
 		pdu->params[len] = i;
@@ -681,11 +685,8 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp_player *player
 		}
 
 		val = player_get_attribute(player, settings[i]);
-		if (val < 0) {
-			DBG("Ignoring %u: not supported by player",
-								settings[i]);
+		if (val < 0)
 			continue;
-		}
 
 		pdu->params[++len] = settings[i];
 		pdu->params[++len] = val;
