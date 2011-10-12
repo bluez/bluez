@@ -133,7 +133,7 @@ Object path	freely definable
 Methods		void SetProperty(string property, variant value)
 
 			Changes the value of the specified property. Only
-			properties that are listed a read-write can be changed.
+			properties that are listed as read-write can be changed.
 
 			On success this will emit a PropertyChanged signal.
 
