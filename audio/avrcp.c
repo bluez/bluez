@@ -427,6 +427,10 @@ static int player_get_media_attribute(struct avrcp_player *player,
 
 	DBG("Get media attribute: %u", id);
 
+	if (id == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
+			id > AVRCP_MEDIA_ATTRIBUTE_LAST)
+		return -ENOENT;
+
 	value = player->cb->get_metadata(id, player->user_data);
 	if (value == NULL) {
 		len = 0;
@@ -452,8 +456,6 @@ static int player_get_media_attribute(struct avrcp_player *player,
 			return -ENOBUFS;
 		memcpy(elem->val, valstr, len);
 		break;
-	default:
-		return -ENOENT;
 	}
 
 done:
