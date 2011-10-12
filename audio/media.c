@@ -1156,6 +1156,18 @@ static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 	return 0;
 }
 
+static GList *list_metadata(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	if (mp->track == NULL)
+		return NULL;
+
+	return g_hash_table_get_keys(mp->track);
+}
+
 static void *get_metadata(uint32_t id, void *user_data)
 {
 	struct media_player *mp = user_data;
@@ -1207,6 +1219,7 @@ static uint32_t get_position(void *user_data)
 static struct avrcp_player_cb player_cb = {
 	.get_setting = get_setting,
 	.set_setting = set_setting,
+	.list_metadata = list_metadata,
 	.get_metadata = get_metadata,
 	.get_position = get_position,
 	.get_status = get_status
