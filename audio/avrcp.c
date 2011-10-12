@@ -597,12 +597,16 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 	int size;
 	unsigned int i;
 
-	if (len < 8 || *identifier != 0)
+	if (len < 9 || *identifier != 0)
+		goto err;
+
+	nattr = pdu->params[8];
+
+	if (len < nattr * sizeof(uint32_t) + 1)
 		goto err;
 
 	len = 0;
 	pos = 1; /* Keep track of current position in reponse */
-	nattr = pdu->params[8];
 
 	if (!nattr) {
 		/*
