@@ -565,11 +565,10 @@ static uint8_t avrcp_handle_list_player_values(struct avrcp_player *player,
 	if (len != 1 || !player)
 		goto err;
 
-	len = attr_get_max_val(pdu->params[0]);
-	if (!len) {
-		error("Attribute is invalid: %u", pdu->params[0]);
+	if (player_get_attribute(player, pdu->params[0]) < 0)
 		goto err;
-	}
+
+	len = attr_get_max_val(pdu->params[0]);
 
 	for (i = 1; i <= len; i++)
 		pdu->params[i] = i;
