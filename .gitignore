@@ -80,6 +80,7 @@ test/ipctest
 test/btiotest
 test/test-textfile
 test/uuidtest
+test/mpris-player
 compat/dund
 compat/hidd
 compat/pand
