@@ -611,10 +611,14 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 	if (!nattr) {
 		/*
 		 * Return all available information, at least
-		 * title must be returned.
+		 * title must be returned if there's a track selected.
 		 */
-		for (i = 1; i < AVRCP_MEDIA_ATTRIBUTE_LAST; i++) {
-			size = player_get_media_attribute(player, i,
+		GList *l, *attr_ids = player->cb->list_metadata(player->user_data);
+
+		for (l = attr_ids; l != NULL; l = l->next) {
+			uint32_t attr = GPOINTER_TO_UINT(l->data);
+
+			size = player_get_media_attribute(player, attr,
 							&pdu->params[pos],
 							AVRCP_PDU_MTU - pos);
 
@@ -623,6 +627,8 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 				pos += size;
 			}
 		}
+
+		g_list_free(attr_ids);
 	} else {
 		uint32_t *attr_ids;
 
