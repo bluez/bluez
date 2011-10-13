@@ -1448,12 +1448,16 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		dbus_message_iter_next(&dict);
 	}
 
-	if (title == FALSE)
-		goto parse_error;
-
 	if (g_hash_table_size(track) == 0) {
 		g_hash_table_unref(track);
 		track = NULL;
+	} else if (title == FALSE) {
+		struct metadata_value *value = g_new(struct metadata_value, 1);
+		uint32_t id = AVRCP_MEDIA_ATTRIBUTE_TITLE;
+
+		value->type = DBUS_TYPE_STRING;
+		value->value.str = g_strdup("");
+		g_hash_table_insert(track, GUINT_TO_POINTER(id), value);
 	}
 
 	if (mp->track != NULL)
