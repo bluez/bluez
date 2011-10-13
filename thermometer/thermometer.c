@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <bluetooth/uuid.h>
 
+#include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 #include "error.h"
@@ -112,6 +113,49 @@ static gint cmp_device(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
+static void change_property(struct thermometer *t, const gchar *name,
+							gpointer value) {
+	if (g_strcmp0(name, "Intermediate") == 0) {
+		gboolean *intermediate = value;
+		if (t->intermediate == *intermediate)
+			return;
+
+		t->intermediate = *intermediate;
+		emit_property_changed(t->conn, device_get_path(t->dev),
+					THERMOMETER_INTERFACE, name,
+					DBUS_TYPE_BOOLEAN, &t->intermediate);
+	} else if (g_strcmp0(name, "Interval") == 0) {
+		uint16_t *interval = value;
+		if (t->has_interval && t->interval == *interval)
+			return;
+
+		t->has_interval = TRUE;
+		t->interval = *interval;
+		emit_property_changed(t->conn, device_get_path(t->dev),
+					THERMOMETER_INTERFACE, name,
+					DBUS_TYPE_UINT16, &t->interval);
+	} else if (g_strcmp0(name, "Maximum") == 0) {
+		uint16_t *max = value;
+		if (t->max == *max)
+			return;
+
+		t->max = *max;
+		emit_property_changed(t->conn, device_get_path(t->dev),
+					THERMOMETER_INTERFACE, name,
+					DBUS_TYPE_UINT16, &t->max);
+	} else if (g_strcmp0(name, "Minimum") == 0) {
+		uint16_t *min = value;
+		if (t->min == *min)
+			return;
+
+		t->min = *min;
+		emit_property_changed(t->conn, device_get_path(t->dev),
+					THERMOMETER_INTERFACE, name,
+					DBUS_TYPE_UINT16, &t->min);
+	} else
+		DBG("%s is not a thermometer property", name);
+}
+
 static void discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
@@ -149,7 +193,31 @@ static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,
 static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
-	/* TODO */
+	struct characteristic *ch = user_data;
+	uint8_t value[ATT_MAX_MTU];
+	uint16_t *p, interval;
+	int vlen;
+
+	if (status != 0) {
+		DBG("Measurement Interval value read failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_read_resp(pdu, len, value, &vlen)) {
+		DBG("Protocol error\n");
+		return;
+	}
+
+	if (vlen < 2) {
+		DBG("Invalid Interval received");
+		return;
+	}
+
+	p = (uint16_t *) value;
+	interval = btohs(bt_get_unaligned(p));
+
+	change_property(ch->t, "Interval", &interval);
 }
 
 static void process_thermometer_char(struct characteristic *ch)
