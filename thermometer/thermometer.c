@@ -225,7 +225,8 @@ static void process_thermometer_char(struct characteristic *ch)
 	GAttribResultFunc func;
 
 	if (g_strcmp0(ch->attr.uuid, INTERMEDIATE_TEMPERATURE_UUID) == 0) {
-		/* TODO: Change intermediate property and emit signal */
+		gboolean intermediate = TRUE;
+		change_property(ch->t, "Intermediate", &intermediate);
 		return;
 	} else if (g_strcmp0(ch->attr.uuid, TEMPERATURE_TYPE_UUID) == 0)
 		func = read_temp_type_cb;
