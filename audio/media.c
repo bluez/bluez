@@ -1366,6 +1366,7 @@ static gboolean parse_player_metadata(struct media_player *mp,
 {
 	DBusMessageIter dict;
 	DBusMessageIter var;
+	GHashTable *track;
 	int ctype;
 	gboolean title = FALSE;
 
@@ -1375,6 +1376,9 @@ static gboolean parse_player_metadata(struct media_player *mp,
 
 	dbus_message_iter_recurse(iter, &dict);
 
+	track = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+							metadata_value_free);
+
 	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
 							DBUS_TYPE_INVALID) {
 		DBusMessageIter entry;
@@ -1383,21 +1387,21 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		int id;
 
 		if (ctype != DBUS_TYPE_DICT_ENTRY)
-			return FALSE;
+			goto parse_error;
 
 		dbus_message_iter_recurse(&dict, &entry);
 		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			return FALSE;
+			goto parse_error;
 
 		dbus_message_iter_get_basic(&entry, &key);
 		dbus_message_iter_next(&entry);
 
 		id = metadata_to_val(key);
 		if (id < 0)
-			return FALSE;
+			goto parse_error;
 
 		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
-			return FALSE;
+			goto parse_error;
 
 		dbus_message_iter_recurse(&entry, &var);
 
@@ -1412,7 +1416,7 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		case AVRCP_MEDIA_ATTRIBUTE_GENRE:
 			if (value->type != DBUS_TYPE_STRING) {
 				g_free(value);
-				return FALSE;
+				goto parse_error;
 			}
 
 			dbus_message_iter_get_basic(&var, &value->value.str);
@@ -1422,13 +1426,13 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		case AVRCP_MEDIA_ATTRIBUTE_DURATION:
 			if (value->type != DBUS_TYPE_UINT32) {
 				g_free(value);
-				return FALSE;
+				goto parse_error;
 			}
 
 			dbus_message_iter_get_basic(&var, &value->value.num);
 			break;
 		default:
-			return FALSE;
+			goto parse_error;
 		}
 
 		switch (value->type) {
@@ -1440,24 +1444,34 @@ static gboolean parse_player_metadata(struct media_player *mp,
 			DBG("%s=%u", key, value->value.num);
 		}
 
-		if (!mp->track)
-			mp->track = g_hash_table_new_full(g_direct_hash,
-							g_direct_equal, NULL,
-							metadata_value_free);
-
-		g_hash_table_replace(mp->track, GUINT_TO_POINTER(id), value);
+		g_hash_table_replace(track, GUINT_TO_POINTER(id), value);
 		dbus_message_iter_next(&dict);
 	}
 
 	if (title == FALSE)
-		return TRUE;
+		goto parse_error;
 
+	if (g_hash_table_size(track) == 0) {
+		g_hash_table_unref(track);
+		track = NULL;
+	}
+
+	if (mp->track != NULL)
+		g_hash_table_unref(mp->track);
+
+	mp->track = track;
 	mp->position = 0;
 	g_timer_start(mp->timer);
 
 	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, NULL);
 
 	return TRUE;
+
+parse_error:
+	if (track)
+		g_hash_table_unref(track);
+
+	return FALSE;
 }
 
 static gboolean track_changed(DBusConnection *connection, DBusMessage *msg,

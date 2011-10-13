@@ -144,6 +144,12 @@ Signals		PropertyChanged(string setting, variant value)
 
 		TrackChanged(dict metadata)
 
+			This signal indicates that current track has changed.
+			All available metadata for the new track shall be set
+			at once in the metadata argument. Metadata cannot be
+			updated in parts, otherwise it will be interpreted as
+			multiple track changes.
+
 			Possible values:
 
 				string Title:
