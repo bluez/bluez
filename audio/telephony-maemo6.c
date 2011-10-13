@@ -943,6 +943,9 @@ static int csd_status_to_hfp(struct csd_call *call)
 
 		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_COMING:
+		if (g_slist_length(active_calls) > 0)
+			return CALL_STATUS_WAITING;
+
 		return CALL_STATUS_INCOMING;
 	case CSD_CALL_STATUS_MO_ALERTING:
 		return CALL_STATUS_ALERTING;
