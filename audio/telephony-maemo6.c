@@ -771,7 +771,7 @@ static void start_dtmf_reply(DBusPendingCall *call, void *user_data)
 				DBUS_TYPE_INVALID);
 
 	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
+	remove_pending(call);
 }
 
 static void start_dtmf(void *telephony_device, char tone)
