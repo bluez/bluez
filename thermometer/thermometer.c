@@ -21,12 +21,15 @@
  */
 
 #include <gdbus.h>
+#include <bluetooth/uuid.h>
 
 #include "adapter.h"
 #include "device.h"
+#include "att.h"
 #include "thermometer.h"
 
-int thermometer_register(DBusConnection *connection, struct btd_device *device)
+int thermometer_register(DBusConnection *connection, struct btd_device *device,
+						struct att_primary *tattr)
 {
 	/* TODO: Register Health Thermometer Interface */
 	return 0;

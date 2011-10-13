@@ -20,5 +20,6 @@
  *
  */
 
-int thermometer_register(DBusConnection *connection, struct btd_device *device);
+int thermometer_register(DBusConnection *connection, struct btd_device *device,
+						struct att_primary *tattr);
 void thermometer_unregister(struct btd_device *device);

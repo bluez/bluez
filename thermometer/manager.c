@@ -21,9 +21,12 @@
  */
 
 #include <gdbus.h>
+#include <errno.h>
+#include <bluetooth/uuid.h>
 
 #include "adapter.h"
 #include "device.h"
+#include "att.h"
 #include "thermometer.h"
 #include "manager.h"
 
@@ -33,7 +36,16 @@ static DBusConnection *connection = NULL;
 
 static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
 {
-	return thermometer_register(connection, device);
+	struct att_primary *tattr;
+	GSList *list;
+
+	list = device_services_from_record(device, uuids);
+	if (list == NULL)
+		return -EINVAL;
+
+	tattr = list->data;
+
+	return thermometer_register(connection, device, tattr);
 }
 
 static void thermometer_driver_remove(struct btd_device *device)
