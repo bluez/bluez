@@ -48,6 +48,13 @@ struct thermometer {
 	guint			attioid;	/* Att watcher id */
 	guint			attindid;	/* Att incications id */
 	GSList			*chars;		/* Characteristics */
+	gboolean		intermediate;
+	guint8			type;
+	guint16			interval;
+	guint16			max;
+	guint16			min;
+	gboolean		has_type;
+	gboolean		has_interval;
 };
 
 struct characteristic {
@@ -114,7 +121,29 @@ static void discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
-	/* TODO */
+	struct characteristic *ch = user_data;
+	struct thermometer *t = ch->t;
+	uint8_t value[ATT_MAX_MTU];
+	int vlen;
+
+	if (status != 0) {
+		DBG("Temperature Type value read failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_read_resp(pdu, len, value, &vlen)) {
+		DBG("Protocol error.");
+		return;
+	}
+
+	if (vlen != 1) {
+		DBG("Invalid length for Temperature type");
+		return;
+	}
+
+	t->has_type = TRUE;
+	t->type = value[0];
 }
 
 static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
