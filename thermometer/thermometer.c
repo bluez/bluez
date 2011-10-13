@@ -29,6 +29,7 @@
 #include "error.h"
 #include "log.h"
 #include "gattrib.h"
+#include "attio.h"
 #include "att.h"
 #include "thermometer.h"
 
@@ -37,7 +38,9 @@
 struct thermometer {
 	DBusConnection		*conn;		/* The connection to the bus */
 	struct btd_device	*dev;		/* Device reference */
+	GAttrib			*attrib;	/* GATT connection */
 	struct att_range	*svc_range;	/* Thermometer range */
+	guint			attioid;	/* Att watcher id */
 };
 
 static GSList *thermometers = NULL;
@@ -45,6 +48,12 @@ static GSList *thermometers = NULL;
 static void destroy_thermometer(gpointer user_data)
 {
 	struct thermometer *t = user_data;
+
+	if (t->attioid > 0)
+		btd_device_remove_attio_callback(t->dev, t->attioid);
+
+	if (t->attrib != NULL)
+		g_attrib_unref(t->attrib);
 
 	dbus_connection_unref(t->conn);
 	btd_device_unref(t->dev);
@@ -127,6 +136,23 @@ static GDBusSignalTable thermometer_signals[] = {
 	{ }
 };
 
+static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
+{
+	struct thermometer *t = user_data;
+
+	t->attrib = g_attrib_ref(attrib);
+}
+
+static void attio_disconnected_cb(gpointer user_data)
+{
+	struct thermometer *t = user_data;
+
+	DBG("GATT Disconnected");
+
+	g_attrib_unref(t->attrib);
+	t->attrib = NULL;
+}
+
 int thermometer_register(DBusConnection *connection, struct btd_device *device,
 						struct att_primary *tattr)
 {
@@ -151,6 +177,8 @@ int thermometer_register(DBusConnection *connection, struct btd_device *device,
 
 	thermometers = g_slist_prepend(thermometers, t);
 
+	t->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
+						attio_disconnected_cb, t);
 	return 0;
 }
 
