@@ -41,6 +41,7 @@ struct thermometer {
 	GAttrib			*attrib;	/* GATT connection */
 	struct att_range	*svc_range;	/* Thermometer range */
 	guint			attioid;	/* Att watcher id */
+	guint			attindid;	/* Att incications id */
 };
 
 static GSList *thermometers = NULL;
@@ -51,6 +52,9 @@ static void destroy_thermometer(gpointer user_data)
 
 	if (t->attioid > 0)
 		btd_device_remove_attio_callback(t->dev, t->attioid);
+
+	if (t->attindid > 0)
+		g_attrib_unregister(t->attrib, t->attindid);
 
 	if (t->attrib != NULL)
 		g_attrib_unref(t->attrib);
@@ -136,11 +140,19 @@ static GDBusSignalTable thermometer_signals[] = {
 	{ }
 };
 
+static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	/* TODO: Process indication */
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct thermometer *t = user_data;
 
 	t->attrib = g_attrib_ref(attrib);
+
+	t->attindid = g_attrib_register(t->attrib, ATT_OP_HANDLE_IND,
+							ind_handler, t, NULL);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
@@ -148,6 +160,11 @@ static void attio_disconnected_cb(gpointer user_data)
 	struct thermometer *t = user_data;
 
 	DBG("GATT Disconnected");
+
+	if (t->attindid > 0) {
+		g_attrib_unregister(t->attrib, t->attindid);
+		t->attindid = 0;
+	}
 
 	g_attrib_unref(t->attrib);
 	t->attrib = NULL;
