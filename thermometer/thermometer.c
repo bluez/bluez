@@ -52,6 +52,17 @@ static void destroy_thermometer(gpointer user_data)
 	g_free(t);
 }
 
+static gint cmp_device(gconstpointer a, gconstpointer b)
+{
+	const struct thermometer *t = a;
+	const struct btd_device *dev = b;
+
+	if (dev == t->dev)
+		return 0;
+
+	return -1;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -145,5 +156,15 @@ int thermometer_register(DBusConnection *connection, struct btd_device *device,
 
 void thermometer_unregister(struct btd_device *device)
 {
-	/* TODO: Unregister Health Thermometer Interface */
+	struct thermometer *t;
+	GSList *l;
+
+	l = g_slist_find_custom(thermometers, device, cmp_device);
+	if (l == NULL)
+		return;
+
+	t = l->data;
+	thermometers = g_slist_remove(thermometers, t);
+	g_dbus_unregister_interface(t->conn, device_get_path(t->dev),
+							THERMOMETER_INTERFACE);
 }
