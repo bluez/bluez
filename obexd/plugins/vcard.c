@@ -277,6 +277,8 @@ static gboolean utf8_select(const char *field)
 static void vcard_qp_print_encoded(GString *vcards, const char *desc, ...)
 {
 	const char *field, *charset = "";
+	const char *encoding = ";ENCODING=QUOTED-PRINTABLE";
+	size_t limit, param_len;
 	va_list ap;
 
 	va_start(ap, desc);
@@ -290,13 +292,16 @@ static void vcard_qp_print_encoded(GString *vcards, const char *desc, ...)
 
 	va_end(ap);
 
-	vcard_printf(vcards, "%s;ENCODING=QUOTED-PRINTABLE%s:", desc, charset);
+	vcard_printf(vcards, "%s%s%s:", desc, encoding, charset);
 	g_string_truncate(vcards, vcards->len - 2);
+
+	param_len = strlen(desc) + strlen(encoding) + strlen(charset) + 1;
+	limit = QP_LINE_LEN - param_len;
 
 	va_start(ap, desc);
 
 	for (field = va_arg(ap, char *); field != NULL; ) {
-		size_t i, limit = QP_LINE_LEN, size = strlen(field);
+		size_t i, size = strlen(field);
 
 		for (i = 0; i < size; ++i) {
 			if (set_qp_encoding(field[i])) {
