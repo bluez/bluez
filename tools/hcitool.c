@@ -2308,7 +2308,7 @@ static void cmd_clock(int dev_id, int argc, char **argv)
 
 static int read_flags(uint8_t *flags, const uint8_t *data, size_t size)
 {
-	unsigned int offset;
+	size_t offset;
 
 	if (!flags || !data)
 		return -EINVAL;
@@ -2316,11 +2316,16 @@ static int read_flags(uint8_t *flags, const uint8_t *data, size_t size)
 	offset = 0;
 	while (offset < size) {
 		uint8_t len = data[offset];
-		uint8_t type = data[offset + 1];
+		uint8_t type;
 
 		/* Check if it is the end of the significant part */
 		if (len == 0)
 			break;
+
+		if (len + offset > size)
+			break;
+
+		type = data[offset + 1];
 
 		if (type == FLAGS_AD_TYPE) {
 			*flags = data[offset + 2];
@@ -2366,38 +2371,40 @@ static void sigint_handler(int sig)
 	signal_received = sig;
 }
 
-static void eir_parse_name(uint8_t *eir_data, char *name)
+static void eir_parse_name(uint8_t *eir, size_t eir_len,
+						char *buf, size_t buf_len)
 {
-	int len;
+	size_t offset;
 
-	if (eir_data == NULL)
-		goto failed;
-
-	len = 0;
-	while (len < HCI_MAX_EIR_LENGTH - 1) {
-		uint8_t field_len = eir_data[0];
+	offset = 0;
+	while (offset < eir_len) {
+		uint8_t field_len = eir[0];
+		size_t name_len;
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
 			break;
 
-		switch (eir_data[1]) {
+		if (offset + field_len > eir_len)
+			goto failed;
+
+		switch (eir[1]) {
 		case EIR_NAME_SHORT:
 		case EIR_NAME_COMPLETE:
-			if (field_len > HCI_MAX_NAME_LENGTH)
+			name_len = field_len - 1;
+			if (name_len > buf_len)
 				goto failed;
 
-			memcpy(name, &eir_data[2], field_len - 1);
+			memcpy(buf, &eir[2], name_len);
 			return;
 		}
 
-		len += field_len + 1;
-		eir_data += field_len + 1;
+		offset += field_len + 1;
+		eir += field_len + 1;
 	}
 
 failed:
-	sprintf(name, "(unknown)");
-	return;
+	snprintf(buf, buf_len, "(unknown)");
 }
 
 static int print_advertising_devices(int dd, uint8_t filter_type)
@@ -2455,12 +2462,13 @@ static int print_advertising_devices(int dd, uint8_t filter_type)
 		/* Ignoring multiple reports */
 		info = (le_advertising_info *) (meta->data + 1);
 		if (check_report_filter(filter_type, info)) {
-			char name[HCI_MAX_NAME_LENGTH + 1];
+			char name[30];
 
 			memset(name, 0, sizeof(name));
 
 			ba2str(&info->bdaddr, addr);
-			eir_parse_name(info->data, name);
+			eir_parse_name(info->data, info->length,
+							name, sizeof(name) - 1);
 
 			printf("%s %s\n", addr, name);
 		}
