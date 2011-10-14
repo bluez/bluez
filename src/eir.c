@@ -68,6 +68,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 	uint8_t *uuid128 = NULL;
 	uuid_t service;
 	char *uuid_str;
+	const char *name = NULL;
+	size_t name_len;
 	unsigned int i;
 
 	eir->flags = -1;
@@ -104,12 +106,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 			break;
 		case EIR_NAME_SHORT:
 		case EIR_NAME_COMPLETE:
-			if (g_utf8_validate((char *) &eir_data[2],
-							field_len - 1, NULL))
-				eir->name = g_strndup((char *) &eir_data[2],
-								field_len - 1);
-			else
-				eir->name = g_strdup("");
+			name = (const char *) &eir_data[2];
+			name_len = field_len - 1;
 			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
 			break;
 		}
@@ -121,6 +119,13 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 	/* Bail out if got incorrect length */
 	if (len > HCI_MAX_EIR_LENGTH)
 		return -EINVAL;
+
+	if (name != NULL) {
+		if (g_utf8_validate(name, name_len, NULL))
+			eir->name = g_strndup(name, name_len);
+		else
+			eir->name = g_strdup("");
+	}
 
 	total = uuid16_count + uuid32_count + uuid128_count;
 
