@@ -796,6 +796,7 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp_player *player,
 	uint16_t len = ntohs(pdu->params_len);
 	uint32_t position;
 	uint32_t duration;
+	void *pduration;
 
 	if (len != 0) {
 		pdu->params_len = htons(1);
@@ -804,11 +805,13 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp_player *player,
 	}
 
 	position = player->cb->get_position(player->user_data);
-	duration = GPOINTER_TO_UINT(player->cb->get_metadata(
-						AVRCP_MEDIA_ATTRIBUTE_DURATION,
-						player->user_data));
+	pduration = player->cb->get_metadata(AVRCP_MEDIA_ATTRIBUTE_DURATION,
+							player->user_data);
+	if (pduration != NULL)
+		duration = htonl(GPOINTER_TO_UINT(pduration));
+	else
+		duration = htonl(UINT32_MAX);
 
-	duration = htonl(duration);
 	position = htonl(position);
 
 	memcpy(&pdu->params[0], &duration, 4);
