@@ -2367,7 +2367,7 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 int btd_adapter_stop(struct btd_adapter *adapter)
 {
-	gboolean powered, discoverable, pairable, discovering;
+	gboolean prop_false = FALSE;
 
 	/* cancel pending timeout */
 	if (adapter->discov_timeout_id) {
@@ -2390,30 +2390,23 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 		adapter_remove_connection(adapter, device);
 	}
 
-	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY)) {
-		discoverable = FALSE;
+	if (adapter->scan_mode == (SCAN_PAGE | SCAN_INQUIRY))
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable",
-					DBUS_TYPE_BOOLEAN, &discoverable);
-	}
+					DBUS_TYPE_BOOLEAN, &prop_false);
 
-	if ((adapter->scan_mode & SCAN_PAGE) && adapter->pairable == TRUE) {
-		pairable = FALSE;
+	if ((adapter->scan_mode & SCAN_PAGE) && adapter->pairable == TRUE)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Pairable",
-					DBUS_TYPE_BOOLEAN, &pairable);
-	}
+					DBUS_TYPE_BOOLEAN, &prop_false);
 
-	if (adapter->state != STATE_IDLE) {
-		discovering = FALSE;
+	if (adapter->state != STATE_IDLE)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Discovering",
-					DBUS_TYPE_BOOLEAN, &discovering);
-	}
+					DBUS_TYPE_BOOLEAN, &prop_false);
 
-	powered = FALSE;
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN, &powered);
+				"Powered", DBUS_TYPE_BOOLEAN, &prop_false);
 
 	adapter->up = FALSE;
 	adapter->scan_mode = SCAN_DISABLED;
