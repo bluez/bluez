@@ -1482,21 +1482,6 @@ static void read_local_name_complete(int index, read_local_name_rp *rp)
 
 	DBG("Got name for hci%d", index);
 
-	/* Even though it shouldn't happen (assuming the kernel behaves
-	 * properly) it seems like we might miss the very first
-	 * initialization commands that the kernel sends. So check for
-	 * it here (since read_local_name is one of the last init
-	 * commands) and resend the first ones if we haven't seen
-	 * their results yet */
-
-	if (hci_test_bit(PENDING_FEATURES, &dev->pending))
-		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
-					OCF_READ_LOCAL_FEATURES, 0, NULL);
-
-	if (hci_test_bit(PENDING_VERSION, &dev->pending))
-		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
-					OCF_READ_LOCAL_VERSION, 0, NULL);
-
 	if (!dev->pending && dev->up)
 		init_adapter(index);
 }
@@ -2502,8 +2487,31 @@ static void device_devup_setup(int index)
 	hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_READ_STORED_LINK_KEY,
 					READ_STORED_LINK_KEY_CP_SIZE, &cp);
 
-	if (!dev->pending)
+	if (!dev->pending) {
 		init_adapter(index);
+		return;
+	}
+
+	/* Even though it shouldn't happen (assuming the kernel behaves
+	 * properly) it seems like we might miss the very first
+	 * initialization commands that the kernel sends. So check for
+	 * it here and resend the ones we haven't seen their results yet */
+
+	if (hci_test_bit(PENDING_FEATURES, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
+					OCF_READ_LOCAL_FEATURES, 0, NULL);
+
+	if (hci_test_bit(PENDING_VERSION, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
+					OCF_READ_LOCAL_VERSION, 0, NULL);
+
+	if (hci_test_bit(PENDING_NAME, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_HOST_CTL,
+					OCF_READ_LOCAL_NAME, 0, 0);
+
+	if (hci_test_bit(PENDING_BDADDR, &dev->pending))
+		hci_send_cmd(dev->sk, OGF_INFO_PARAM,
+					OCF_READ_BD_ADDR, 0, NULL);
 }
 
 static void init_pending(int index)
