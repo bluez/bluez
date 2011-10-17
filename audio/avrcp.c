@@ -363,18 +363,11 @@ int avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 		pdu->params[1] = *((uint8_t *)data);
 
 		break;
-	case AVRCP_EVENT_TRACK_CHANGED: {
+	case AVRCP_EVENT_TRACK_CHANGED:
 		size = 9;
-
-		/*
-		 * AVRCP 1.3 supports only one track identifier: PLAYING
-		 * (0x0). When 1.4 version is added, this shall be changed to
-		 * contain the identifier of the track.
-		 */
-		memset(&pdu->params[1], 0, 8);
+		memcpy(&pdu->params[1], data, sizeof(uint64_t));
 
 		break;
-	}
 	default:
 		error("Unknown event %u", id);
 		return -EINVAL;
@@ -828,6 +821,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
+	uint64_t uid;
 
 	/*
 	 * 1 byte for EventID, 4 bytes for Playback interval but the latest
@@ -845,8 +839,8 @@ static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
 		len = 9;
-
-		memset(&pdu->params[1], 0, 8);
+		uid = player->cb->get_uid(player->user_data);
+		memcpy(&pdu->params[1], &uid, sizeof(uint64_t));
 
 		break;
 	default:

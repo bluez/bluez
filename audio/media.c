@@ -1168,6 +1168,18 @@ static GList *list_metadata(void *user_data)
 	return g_hash_table_get_keys(mp->track);
 }
 
+static uint64_t get_uid(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("%p", mp->track);
+
+	if (mp->track == NULL)
+		return UINT64_MAX;
+
+	return 0;
+}
+
 static void *get_metadata(uint32_t id, void *user_data)
 {
 	struct media_player *mp = user_data;
@@ -1220,6 +1232,7 @@ static struct avrcp_player_cb player_cb = {
 	.get_setting = get_setting,
 	.set_setting = set_setting,
 	.list_metadata = list_metadata,
+	.get_uid = get_uid,
 	.get_metadata = get_metadata,
 	.get_position = get_position,
 	.get_status = get_status
@@ -1369,6 +1382,7 @@ static gboolean parse_player_metadata(struct media_player *mp,
 	GHashTable *track;
 	int ctype;
 	gboolean title = FALSE;
+	uint64_t uid;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype != DBUS_TYPE_ARRAY)
@@ -1466,8 +1480,9 @@ static gboolean parse_player_metadata(struct media_player *mp,
 	mp->track = track;
 	mp->position = 0;
 	g_timer_start(mp->timer);
+	uid = get_uid(mp);
 
-	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, NULL);
+	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, &uid);
 
 	return TRUE;
 

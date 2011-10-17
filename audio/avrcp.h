@@ -75,6 +75,7 @@
 struct avrcp_player_cb {
 	int (*get_setting) (uint8_t attr, void *user_data);
 	int (*set_setting) (uint8_t attr, uint8_t value, void *user_data);
+	uint64_t (*get_uid) (void *user_data);
 	void *(*get_metadata) (uint32_t id, void *user_data);
 	GList *(*list_metadata) (void *user_data);
 	uint8_t (*get_status) (void *user_data);
