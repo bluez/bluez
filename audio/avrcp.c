@@ -136,7 +136,7 @@ struct avrcp_player {
 
 	unsigned int handler;
 	uint16_t registered_events;
-	uint8_t transaction_events[AVRCP_EVENT_TRACK_CHANGED + 1];
+	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
 
 	struct avrcp_player_cb *cb;
 	void *user_data;
@@ -368,6 +368,9 @@ int avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 		memcpy(&pdu->params[1], data, sizeof(uint64_t));
 
 		break;
+	case AVRCP_EVENT_TRACK_REACHED_START:
+		size = 1;
+		break;
 	default:
 		error("Unknown event %u", id);
 		return -EINVAL;
@@ -504,10 +507,11 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp_player *player,
 
 		return AVC_CTYPE_STABLE;
 	case CAP_EVENTS_SUPPORTED:
-		pdu->params_len = htons(4);
-		pdu->params[1] = 2;
+		pdu->params_len = htons(5);
+		pdu->params[1] = 3;
 		pdu->params[2] = AVRCP_EVENT_STATUS_CHANGED;
 		pdu->params[3] = AVRCP_EVENT_TRACK_CHANGED;
+		pdu->params[4] = AVRCP_EVENT_TRACK_REACHED_START;
 
 		return AVC_CTYPE_STABLE;
 	}
@@ -842,6 +846,9 @@ static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 		uid = player->cb->get_uid(player->user_data);
 		memcpy(&pdu->params[1], &uid, sizeof(uint64_t));
 
+		break;
+	case AVRCP_EVENT_TRACK_REACHED_START:
+		len = 1;
 		break;
 	default:
 		/* All other events are not supported yet */

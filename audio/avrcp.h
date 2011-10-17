@@ -71,6 +71,8 @@
 /* Notification events */
 #define AVRCP_EVENT_STATUS_CHANGED	0x01
 #define AVRCP_EVENT_TRACK_CHANGED	0x02
+#define AVRCP_EVENT_TRACK_REACHED_START	0x04
+#define AVRCP_EVENT_LAST		AVRCP_EVENT_TRACK_REACHED_START
 
 struct avrcp_player_cb {
 	int (*get_setting) (uint8_t attr, void *user_data);

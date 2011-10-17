@@ -1289,6 +1289,11 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 	mp->position = value;
 	g_timer_start(mp->timer);
 
+	if (!mp->position) {
+		avrcp_player_event(mp->player,
+					AVRCP_EVENT_TRACK_REACHED_START, NULL);
+	}
+
 	return TRUE;
 }
 
