@@ -2652,6 +2652,7 @@ static void device_event(int event, int index)
 		devs[index].up = FALSE;
 		devs[index].pending_cod = 0;
 		devs[index].cache_enable = TRUE;
+		devs[index].discov_state = DISCOV_HALTED;
 		if (!devs[index].pending) {
 			struct btd_adapter *adapter;
 
