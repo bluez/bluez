@@ -383,7 +383,7 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	int crc_pos = 0;
 	int32_t temp;
 
-	int audio_sample;
+	uint32_t audio_sample;
 	int ch, sb, blk, bit;	/* channel, subband, block and bit standard
 				   counters */
 	int bits[2][8];		/* bits distribution */
@@ -494,6 +494,9 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
 				if (levels[ch][sb] > 0) {
+					uint32_t shift =
+						frame->scale_factor[ch][sb] +
+						1 + SBCDEC_FIXED_EXTRA_BITS;
 					audio_sample = 0;
 					for (bit = 0; bit < bits[ch][sb]; bit++) {
 						if (consumed > len * 8)
@@ -505,9 +508,9 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 						consumed++;
 					}
 
-					frame->sb_sample[blk][ch][sb] =
-						(((audio_sample << 1) | 1) << frame->scale_factor[ch][sb]) /
-						levels[ch][sb] - (1 << frame->scale_factor[ch][sb]);
+					frame->sb_sample[blk][ch][sb] = (int32_t)
+						(((((uint64_t) audio_sample << 1) | 1) << shift) /
+						levels[ch][sb]) - (1 << shift);
 				} else
 					frame->sb_sample[blk][ch][sb] = 0;
 			}

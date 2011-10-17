@@ -40,11 +40,13 @@ static const int sbc_offset8[4][8] = {
 	{ -4, 0, 0, 0, 0, 0, 1, 2 }
 };
 
+/* extra bits of precision for the synthesis filter input data */
+#define SBCDEC_FIXED_EXTRA_BITS 2
 
 #define SS4(val) ASR(val, SCALE_SPROTO4_TBL)
 #define SS8(val) ASR(val, SCALE_SPROTO8_TBL)
-#define SN4(val) ASR(val, SCALE_NPROTO4_TBL)
-#define SN8(val) ASR(val, SCALE_NPROTO8_TBL)
+#define SN4(val) ASR(val, SCALE_NPROTO4_TBL + 1 + SBCDEC_FIXED_EXTRA_BITS)
+#define SN8(val) ASR(val, SCALE_NPROTO8_TBL + 1 + SBCDEC_FIXED_EXTRA_BITS)
 
 static const int32_t sbc_proto_4_40m0[] = {
 	SS4(0x00000000), SS4(0xffa6982f), SS4(0xfba93848), SS4(0x0456c7b8),
