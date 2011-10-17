@@ -2367,7 +2367,7 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 int btd_adapter_stop(struct btd_adapter *adapter)
 {
-	gboolean powered, discoverable, pairable;
+	gboolean powered, discoverable, pairable, discovering;
 
 	/* cancel pending timeout */
 	if (adapter->discov_timeout_id) {
@@ -2402,6 +2402,13 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Pairable",
 					DBUS_TYPE_BOOLEAN, &pairable);
+	}
+
+	if (adapter->state != STATE_IDLE) {
+		discovering = FALSE;
+		emit_property_changed(connection, adapter->path,
+					ADAPTER_INTERFACE, "Discovering",
+					DBUS_TYPE_BOOLEAN, &discovering);
 	}
 
 	powered = FALSE;
