@@ -222,20 +222,16 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 
 static void process_thermometer_char(struct characteristic *ch)
 {
-	GAttribResultFunc func;
-
 	if (g_strcmp0(ch->attr.uuid, INTERMEDIATE_TEMPERATURE_UUID) == 0) {
 		gboolean intermediate = TRUE;
 		change_property(ch->t, "Intermediate", &intermediate);
 		return;
 	} else if (g_strcmp0(ch->attr.uuid, TEMPERATURE_TYPE_UUID) == 0)
-		func = read_temp_type_cb;
+		gatt_read_char(ch->t->attrib, ch->attr.value_handle, 0,
+							read_temp_type_cb, ch);
 	else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0)
-		func = read_interval_cb;
-	else
-		return;
-
-	gatt_read_char(ch->t->attrib, ch->attr.value_handle, 0, func, ch);
+		gatt_read_char(ch->t->attrib, ch->attr.value_handle, 0,
+							read_interval_cb, ch);
 }
 
 static void configure_thermometer_cb(GSList *characteristics, guint8 status,
