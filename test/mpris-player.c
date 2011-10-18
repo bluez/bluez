@@ -122,6 +122,7 @@ static dbus_bool_t emit_property_changed(DBusConnection *conn,
 {
 	DBusMessage *signal;
 	DBusMessageIter iter;
+	dbus_bool_t result;
 
 	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
 
@@ -137,7 +138,10 @@ static dbus_bool_t emit_property_changed(DBusConnection *conn,
 
 	append_variant(&iter, type, value);
 
-	return dbus_connection_send(conn, signal, NULL);
+	result = dbus_connection_send(conn, signal, NULL);
+	dbus_message_unref(signal);
+
+	return result;
 }
 
 static int parse_property(DBusConnection *conn, const char *path,
