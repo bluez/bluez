@@ -43,6 +43,7 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "textfile.h"
+#include "glib-compat.h"
 #include "glib-helper.h"
 #include "storage.h"
 

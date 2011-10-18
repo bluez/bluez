@@ -35,6 +35,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
+#include "glib-compat.h"
 #include "glib-helper.h"
 #include "eir.h"
 

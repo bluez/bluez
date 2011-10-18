@@ -52,7 +52,7 @@
 #include "source.h"
 #include "gateway.h"
 #include "unix.h"
-#include "glib-helper.h"
+#include "glib-compat.h"
 
 #define check_nul(str) (str[sizeof(str) - 1] == '\0')
 

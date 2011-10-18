@@ -39,6 +39,7 @@
 
 #include "btio.h"
 #include "sdpd.h"
+#include "glib-compat.h"
 #include "glib-helper.h"
 
 /* Number of seconds to keep a sdp_session_t in the cache */

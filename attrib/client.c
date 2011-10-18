@@ -36,7 +36,7 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/uuid.h>
 
-#include "glib-helper.h"
+#include "glib-compat.h"
 #include "adapter.h"
 #include "device.h"
 #include "log.h"
