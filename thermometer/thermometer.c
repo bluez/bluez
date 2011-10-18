@@ -20,6 +20,10 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <gdbus.h>
 #include <errno.h>
 #include <bluetooth/uuid.h>
@@ -34,6 +38,7 @@
 #include "att.h"
 #include "gatt.h"
 #include "thermometer.h"
+#include "glib-compat.h"
 
 #define THERMOMETER_INTERFACE "org.bluez.Thermometer"
 
