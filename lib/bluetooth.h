@@ -93,13 +93,17 @@ enum {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htobs(d)  (d)
 #define htobl(d)  (d)
+#define htobll(d) (d)
 #define btohs(d)  (d)
 #define btohl(d)  (d)
+#define btohll(d) (d)
 #elif __BYTE_ORDER == __BIG_ENDIAN
 #define htobs(d)  bswap_16(d)
 #define htobl(d)  bswap_32(d)
+#define htobll(d) bswap_64(d)
 #define btohs(d)  bswap_16(d)
 #define btohl(d)  bswap_32(d)
+#define btohll(d) bswap_64(d)
 #else
 #error "Unknown byte order"
 #endif
