@@ -54,7 +54,7 @@
 #include "telephony.h"
 #include "headset.h"
 #include "glib-compat.h"
-#include "glib-helper.h"
+#include "sdp-client.h"
 #include "btio.h"
 #include "dbus-common.h"
 #include "../src/adapter.h"

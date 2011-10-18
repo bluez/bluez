@@ -56,6 +56,7 @@
 #include "error.h"
 #include "glib-compat.h"
 #include "glib-helper.h"
+#include "sdp-client.h"
 #include "gatt.h"
 #include "agent.h"
 #include "sdp-xml.h"
