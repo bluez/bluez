@@ -95,6 +95,11 @@ struct l2cap_conninfo {
 #define L2CAP_FEAT_EXT_WINDOW	0x00000100
 #define L2CAP_FEAT_UCD		0x00000200
 
+/* L2CAP fixed channels */
+#define L2CAP_FC_L2CAP		0x02
+#define L2CAP_FC_CONNLESS	0x04
+#define L2CAP_FC_A2MP		0x08
+
 /* L2CAP structures */
 typedef struct {
 	uint16_t	len;
