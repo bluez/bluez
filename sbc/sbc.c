@@ -493,26 +493,30 @@ static int sbc_unpack_frame(const uint8_t *data, struct sbc_frame *frame,
 	for (blk = 0; blk < frame->blocks; blk++) {
 		for (ch = 0; ch < frame->channels; ch++) {
 			for (sb = 0; sb < frame->subbands; sb++) {
-				if (levels[ch][sb] > 0) {
-					uint32_t shift =
-						frame->scale_factor[ch][sb] +
-						1 + SBCDEC_FIXED_EXTRA_BITS;
-					audio_sample = 0;
-					for (bit = 0; bit < bits[ch][sb]; bit++) {
-						if (consumed > len * 8)
-							return -1;
+				uint32_t shift;
 
-						if ((data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01)
-							audio_sample |= 1 << (bits[ch][sb] - bit - 1);
-
-						consumed++;
-					}
-
-					frame->sb_sample[blk][ch][sb] = (int32_t)
-						(((((uint64_t) audio_sample << 1) | 1) << shift) /
-						levels[ch][sb]) - (1 << shift);
-				} else
+				if (levels[ch][sb] == 0) {
 					frame->sb_sample[blk][ch][sb] = 0;
+					continue;
+				}
+
+				shift = frame->scale_factor[ch][sb] +
+						1 + SBCDEC_FIXED_EXTRA_BITS;
+
+				audio_sample = 0;
+				for (bit = 0; bit < bits[ch][sb]; bit++) {
+					if (consumed > len * 8)
+						return -1;
+
+					if ((data[consumed >> 3] >> (7 - (consumed & 0x7))) & 0x01)
+						audio_sample |= 1 << (bits[ch][sb] - bit - 1);
+
+					consumed++;
+				}
+
+				frame->sb_sample[blk][ch][sb] = (int32_t)
+					(((((uint64_t) audio_sample << 1) | 1) << shift) /
+					levels[ch][sb]) - (1 << shift);
 			}
 		}
 	}
