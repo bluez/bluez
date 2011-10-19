@@ -180,12 +180,6 @@ Signals		PropertyChanged(string setting, variant value)
 
 					Track duration in milliseconds
 
-		StatusChanged(string status, uint32 position)
-
-			Possible status: "playing", "stopped", "paused",
-					"forward-seek", "reverse-seek" or
-					"error"
-
 Properties	string Equalizer [readwrite]
 
 			Possible values: "off" or "on"
