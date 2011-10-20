@@ -84,6 +84,7 @@ test/mpris-player
 compat/dund
 compat/hidd
 compat/pand
+unit/test-eir
 
 doc/*.bak
 doc/*.stamp
