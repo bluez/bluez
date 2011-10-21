@@ -371,6 +371,8 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	struct pending_pkt *p;
 	gboolean ret;
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
 	if (obex == NULL || pkt == NULL) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
 				"Invalid arguments");
@@ -398,6 +400,8 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	GObexHeader *connid;
 	struct pending_pkt *p;
 	static guint id = 1;
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	if (obex->conn_id == CONNID_INVALID)
 		goto create_pending;
@@ -587,6 +591,8 @@ gboolean g_obex_remove_request_function(GObex *obex, guint id)
 
 void g_obex_suspend(GObex *obex)
 {
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
 	if (obex->write_source > 0) {
 		g_source_remove(obex->write_source);
 		obex->write_source = 0;
@@ -597,6 +603,8 @@ void g_obex_suspend(GObex *obex)
 
 void g_obex_resume(GObex *obex)
 {
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
 	obex->suspended = FALSE;
 
 	if (g_queue_get_length(obex->tx_queue) > 0 || obex->tx_data > 0)
@@ -908,6 +916,8 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 			gobex_debug = G_OBEX_DEBUG_NONE;
 	}
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "");
+
 	if (io == NULL)
 		return NULL;
 
@@ -969,6 +979,8 @@ GObex *g_obex_ref(GObex *obex)
 
 	g_atomic_int_inc(&obex->ref_count);
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", obex->ref_count);
+
 	return obex;
 }
 
@@ -977,6 +989,8 @@ void g_obex_unref(GObex *obex)
 	gboolean last_ref;
 
 	last_ref = g_atomic_int_dec_and_test(&obex->ref_count);
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", obex->ref_count);
 
 	if (!last_ref)
 		return;
@@ -1013,6 +1027,8 @@ guint g_obex_connect(GObex *obex, GObexResponseFunc func, gpointer user_data,
 	struct connect_data data;
 	va_list args;
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "");
+
 	va_start(args, first_hdr_id);
 	req = g_obex_packet_new_valist(G_OBEX_OP_CONNECT, TRUE,
 							first_hdr_id, args);
@@ -1029,6 +1045,8 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 {
 	GObexPacket *req;
 	struct setpath_data data;
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_INVALID);
 
@@ -1054,6 +1072,8 @@ guint g_obex_mkdir(GObex *obex, const char *path, GObexResponseFunc func,
 	GObexPacket *req;
 	struct setpath_data data;
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
 	req = g_obex_packet_new(G_OBEX_OP_SETPATH, TRUE, G_OBEX_HDR_NAME, path,
 							G_OBEX_HDR_INVALID);
 
@@ -1068,6 +1088,8 @@ guint g_obex_delete(GObex *obex, const char *name, GObexResponseFunc func,
 {
 	GObexPacket *req;
 
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
 	req = g_obex_packet_new(G_OBEX_OP_PUT, TRUE, G_OBEX_HDR_NAME, name,
 							G_OBEX_HDR_INVALID);
 
@@ -1079,6 +1101,8 @@ guint g_obex_copy(GObex *obex, const char *name, const char *dest,
 			GError **err)
 {
 	GObexPacket *req;
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	req = g_obex_packet_new(G_OBEX_OP_ACTION, TRUE,
 					G_OBEX_HDR_ACTION, G_OBEX_ACTION_COPY,
@@ -1094,6 +1118,8 @@ guint g_obex_move(GObex *obex, const char *name, const char *dest,
 			GError **err)
 {
 	GObexPacket *req;
+
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
 	req = g_obex_packet_new(G_OBEX_OP_ACTION, TRUE,
 					G_OBEX_HDR_ACTION, G_OBEX_ACTION_MOVE,
