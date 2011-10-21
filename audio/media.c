@@ -1488,6 +1488,8 @@ static gboolean parse_player_metadata(struct media_player *mp,
 	uid = get_uid(mp);
 
 	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, &uid);
+	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_START,
+								NULL);
 
 	return TRUE;
 
