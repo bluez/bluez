@@ -202,6 +202,8 @@ static gboolean write_stream(GObex *obex, GError **err)
 	if (status != G_IO_STATUS_NORMAL)
 		return FALSE;
 
+	g_obex_dump("<", buf, bytes_written);
+
 	obex->tx_sent += bytes_written;
 	obex->tx_data -= bytes_written;
 
@@ -222,6 +224,8 @@ static gboolean write_packet(GObex *obex, GError **err)
 
 	if (bytes_written != obex->tx_data)
 		return FALSE;
+
+	g_obex_dump("<", buf, bytes_written);
 
 	obex->tx_sent += bytes_written;
 	obex->tx_data -= bytes_written;
@@ -720,7 +724,7 @@ static gboolean read_stream(GObex *obex, GError **err)
 
 	obex->rx_data += rbytes;
 	if (obex->rx_data < 3)
-		return TRUE;
+		goto done;
 
 	memcpy(&u16, &buf[1], sizeof(u16));
 	obex->rx_pkt_len = g_ntohs(u16);
@@ -734,7 +738,7 @@ static gboolean read_stream(GObex *obex, GError **err)
 
 read_body:
 	if (obex->rx_data >= obex->rx_pkt_len)
-		return TRUE;
+		goto done;
 
 	do {
 		toread = obex->rx_pkt_len - obex->rx_data;
@@ -742,10 +746,13 @@ read_body:
 
 		status = g_io_channel_read_chars(io, buf, toread, &rbytes, NULL);
 		if (status != G_IO_STATUS_NORMAL)
-			return TRUE;
+			goto done;
 
 		obex->rx_data += rbytes;
 	} while (rbytes > 0 && obex->rx_data < obex->rx_pkt_len);
+
+done:
+	g_obex_dump(">", obex->rx_buf, obex->rx_data);
 
 	return TRUE;
 }
@@ -790,6 +797,8 @@ static gboolean read_packet(GObex *obex, GError **err)
 			rbytes, obex->rx_pkt_len);
 		return FALSE;
 	}
+
+	g_obex_dump(">", obex->rx_buf, obex->rx_data);
 
 	return TRUE;
 fail:
