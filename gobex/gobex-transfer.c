@@ -27,6 +27,7 @@
 #include <errno.h>
 
 #include "gobex.h"
+#include "gobex-debug.h"
 
 #define FIRST_PACKET_TIMEOUT 60
 
@@ -93,6 +94,7 @@ static void transfer_abort_response(GObex *obex, GError *err, GObexPacket *rsp,
 	/* Intentionally override error */
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 						"Operation was aborted");
+	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
 	transfer_complete(transfer, err);
 	g_error_free(err);
 }
@@ -192,6 +194,7 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 							transfer, &err);
 failed:
 	if (err != NULL) {
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
 		transfer_complete(transfer, err);
 		g_error_free(err);
 	}
@@ -452,6 +455,7 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 				"Data producer function failed");
+	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
 	transfer_complete(transfer, err);
 	g_error_free(err);
 

@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "gobex-header.h"
+#include "gobex-debug.h"
 
 /* Header types */
 #define G_OBEX_HDR_ENC_UNICODE	(0 << 6)
@@ -143,6 +144,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 	if (len < 2) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 						"Too short header in packet");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return NULL;
 	}
 
@@ -266,6 +268,8 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 	return header;
 
 failed:
+	if (*err)
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 	g_obex_header_free(header);
 	return NULL;
 }

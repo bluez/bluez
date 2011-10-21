@@ -28,6 +28,7 @@
 
 #include "gobex-defs.h"
 #include "gobex-packet.h"
+#include "gobex-debug.h"
 
 #define FINAL_BIT 0x80
 
@@ -291,12 +292,14 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 	if (data_policy == G_OBEX_DATA_INHERIT) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
 							"Invalid data policy");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return NULL;
 	}
 
 	if (len < 3 + header_offset) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 					"Not enough data to decode packet");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return NULL;
 	}
 
@@ -308,6 +311,7 @@ GObexPacket *g_obex_packet_decode(const void *data, gsize len,
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Incorrect packet length (%u != %zu)",
 				packet_len, len);
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return NULL;
 	}
 

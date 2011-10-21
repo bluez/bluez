@@ -168,18 +168,23 @@ static gboolean req_timeout(gpointer user_data)
 {
 	GObex *obex = user_data;
 	struct pending_pkt *p = obex->pending_req;
+	GError *err;
 
 	g_assert(p != NULL);
 
 	obex->pending_req = NULL;
 
-	if (p->rsp_func) {
-		GError *err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_TIMEOUT,
+	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_TIMEOUT,
 					"Timed out waiting for response");
-		p->rsp_func(obex, err, NULL, p->rsp_data);
-		g_error_free(err);
-	}
 
+	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
+
+	obex->pending_req = NULL;
+
+	if (p->rsp_func)
+		p->rsp_func(obex, err, NULL, p->rsp_data);
+
+	g_error_free(err);
 	pending_pkt_free(p);
 
 	return FALSE;
@@ -311,6 +316,7 @@ static gboolean g_obex_send_internal(GObex *obex, struct pending_pkt *p,
 	if (obex->io == NULL) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_DISCONNECTED,
 					"The transport is not connected");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return FALSE;
 	}
 
@@ -368,6 +374,7 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	if (obex == NULL || pkt == NULL) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_INVALID_ARGS,
 				"Invalid arguments");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return FALSE;
 	}
 
@@ -638,6 +645,10 @@ static void handle_response(GObex *obex, GError *err, GObexPacket *rsp)
 		err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,
 					"The operation was cancelled");
 
+	if (err)
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
+
+
 	if (p->rsp_func) {
 		p->rsp_func(obex, err, rsp, p->rsp_data);
 
@@ -709,6 +720,7 @@ static gboolean read_stream(GObex *obex, GError **err)
 	if (obex->rx_pkt_len > obex->rx_mtu) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Too big incoming packet");
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
 		return FALSE;
 	}
 
@@ -741,7 +753,7 @@ static gboolean read_packet(GObex *obex, GError **err)
 	if (obex->rx_data > 0) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"RX buffer not empty before reading packet");
-		return FALSE;
+		goto fail;
 	}
 
 	status = g_io_channel_read_chars(io, (gchar *) obex->rx_buf,
@@ -750,7 +762,7 @@ static gboolean read_packet(GObex *obex, GError **err)
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Unable to read data: %s", read_err->message);
 		g_error_free(read_err);
-		return FALSE;
+		goto fail;
 	}
 
 	obex->rx_data += rbytes;
@@ -758,7 +770,7 @@ static gboolean read_packet(GObex *obex, GError **err)
 	if (rbytes < 3) {
 		g_set_error(err, G_OBEX_ERROR, G_OBEX_ERROR_PARSE_ERROR,
 				"Incomplete packet received");
-		return FALSE;
+		goto fail;
 	}
 
 	memcpy(&u16, &obex->rx_buf[1], sizeof(u16));
@@ -772,6 +784,9 @@ static gboolean read_packet(GObex *obex, GError **err)
 	}
 
 	return TRUE;
+fail:
+	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", (*err)->message);
+	return FALSE;
 }
 
 static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
@@ -846,6 +861,9 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	return TRUE;
 
 failed:
+	if (err)
+		g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
+
 	g_io_channel_unref(obex->io);
 	obex->io = NULL;
 	obex->io_source = 0;
