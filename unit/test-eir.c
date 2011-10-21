@@ -44,7 +44,7 @@ static void test_basic(void)
 	memset(buf, 0, sizeof(buf));
 	memset(&data, 0, sizeof(data));
 
-	err = eir_parse(&data, buf);
+	err = eir_parse(&data, buf, HCI_MAX_EIR_LENGTH);
 	g_assert(err == 0);
 	g_assert(data.services == NULL);
 	g_assert(data.name == NULL);

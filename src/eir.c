@@ -107,7 +107,7 @@ static void eir_parse_uuid128(struct eir_data *eir, uint8_t *data, uint8_t len)
 	}
 }
 
-int eir_parse(struct eir_data *eir, uint8_t *eir_data)
+int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
 
@@ -117,7 +117,7 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 	if (eir_data == NULL)
 		return 0;
 
-	while (len < HCI_MAX_EIR_LENGTH - 1) {
+	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
 
 		/* Check for the end of EIR */
@@ -127,7 +127,7 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data)
 		len += field_len + 1;
 
 		/* Bail out if got incorrect length */
-		if (len > HCI_MAX_EIR_LENGTH) {
+		if (len > eir_len) {
 			eir_data_free(eir);
 			return -EINVAL;
 		}

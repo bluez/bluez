@@ -1328,7 +1328,8 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	DBG("hci%u addr %s, class %u rssi %d %s", index, addr, cls,
 						ev->rssi, eir ? "eir" : "");
 
-	btd_event_device_found(&info->bdaddr, &ev->bdaddr, cls, ev->rssi, eir);
+	btd_event_device_found(&info->bdaddr, &ev->bdaddr, cls, ev->rssi, eir,
+							HCI_MAX_EIR_LENGTH);
 }
 
 static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)

@@ -265,7 +265,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 }
 
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
-				int8_t rssi, uint8_t *data)
+				int8_t rssi, uint8_t *data, uint8_t data_len)
 {
 	struct btd_adapter *adapter;
 
@@ -281,7 +281,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (data)
 		write_remote_eir(local, peer, data);
 
-	adapter_update_found_devices(adapter, peer, class, rssi, data);
+	adapter_update_found_devices(adapter, peer, class, rssi, data,
+								data_len);
 }
 
 void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,

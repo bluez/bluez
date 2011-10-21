@@ -2906,7 +2906,7 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
 
 void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 						uint32_t class, int8_t rssi,
-						uint8_t *data)
+						uint8_t *data, uint8_t data_len)
 {
 	struct remote_dev_info *dev, match;
 	struct eir_data eir_data;
@@ -2916,7 +2916,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 	int err;
 
 	memset(&eir_data, 0, sizeof(eir_data));
-	err = eir_parse(&eir_data, data);
+	err = eir_parse(&eir_data, data, data_len);
 	if (err < 0) {
 		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
 		return;

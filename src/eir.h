@@ -35,7 +35,7 @@ struct eir_data {
 };
 
 void eir_data_free(struct eir_data *eir);
-int eir_parse(struct eir_data *eir, uint8_t *eir_data);
+int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len);
 void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			uint16_t did_product, uint16_t did_version,
 			GSList *uuids, uint8_t *data);
