@@ -549,7 +549,7 @@ static DBusHandlerResult properties_changed(DBusConnection *conn,
 	if (!signal) {
 		fprintf(stderr, "Unable to allocate new PropertyChanged"
 							" signal\n");
-		goto done;
+		goto err;
 	}
 
 	dbus_message_iter_init_append(signal, &entry);
@@ -563,13 +563,19 @@ static DBusHandlerResult properties_changed(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 
 	if (parse_metadata(&iter, &metadata) < 0)
-		goto done;
+		goto err;
 
 	dbus_message_iter_close_container(&entry, &metadata);
 
 	dbus_connection_send(sys, signal, NULL);
+	dbus_message_unref(signal);
+	g_free(path);
 
-done:
+	return DBUS_HANDLER_RESULT_HANDLED;
+
+err:
+	if (signal)
+		dbus_message_unref(signal);
 	g_free(path);
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -607,7 +613,7 @@ static DBusHandlerResult session_filter(DBusConnection *conn,
 		add_player(conn, name, new);
 	}
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusHandlerResult system_filter(DBusConnection *conn,
@@ -633,7 +639,7 @@ static DBusHandlerResult system_filter(DBusConnection *conn,
 		__io_terminated = 1;
 	}
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static char *get_default_adapter(DBusConnection *conn)
