@@ -885,6 +885,7 @@ static void media_player_free(gpointer data)
 	if (mp->settings)
 		g_hash_table_unref(mp->settings);
 
+	g_timer_destroy(mp->timer);
 	g_free(mp->sender);
 	g_free(mp->path);
 	g_free(mp);
