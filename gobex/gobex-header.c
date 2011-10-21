@@ -93,6 +93,9 @@ gssize g_obex_header_encode(GObexHeader *header, void *buf, gsize buf_len)
 	gunichar2 *utf16;
 	glong utf16_len;
 
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	if (buf_len < header->hlen)
 		return -1;
 
@@ -151,6 +154,9 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 	header = g_new0(GObexHeader, 1);
 
 	ptr = get_bytes(&header->id, ptr, sizeof(header->id));
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
 
 	switch (G_OBEX_HDR_ENC(header->id)) {
 	case G_OBEX_HDR_ENC_UNICODE:
@@ -276,6 +282,9 @@ failed:
 
 void g_obex_header_free(GObexHeader *header)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	switch (G_OBEX_HDR_ENC(header->id)) {
 	case G_OBEX_HDR_ENC_UNICODE:
 		g_free(header->v.string);
@@ -296,10 +305,15 @@ void g_obex_header_free(GObexHeader *header)
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UNICODE)
 		return FALSE;
 
 	*str = header->v.string;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%s", *str);
 
 	return TRUE;
 }
@@ -307,6 +321,9 @@ gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str)
 gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 								gsize *len)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_BYTES)
 		return FALSE;
 
@@ -322,20 +339,30 @@ gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 
 gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UINT8)
 		return FALSE;
 
 	*val = header->v.u8;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%u", *val);
 
 	return TRUE;
 }
 
 gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
+						G_OBEX_HDR_ENC(header->id));
+
 	if (G_OBEX_HDR_ENC(header->id) != G_OBEX_HDR_ENC_UINT32)
 		return FALSE;
 
 	*val = header->v.u32;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%u", *val);
 
 	return TRUE;
 }
@@ -344,6 +371,8 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 {
 	GObexHeader *header;
 	gsize len;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x", G_OBEX_HDR_ENC(id));
 
 	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UNICODE)
 		return NULL;
@@ -358,12 +387,16 @@ GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str)
 	header->hlen = len == 0 ? 3 : 3 + ((len + 1) * 2);
 	header->v.string = g_strdup(str);
 
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%s", header->v.string);
+
 	return header;
 }
 
 GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len)
 {
 	GObexHeader *header;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x", G_OBEX_HDR_ENC(id));
 
 	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_BYTES)
 		return NULL;
@@ -382,6 +415,8 @@ GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val)
 {
 	GObexHeader *header;
 
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x", G_OBEX_HDR_ENC(id));
+
 	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UINT8)
 		return NULL;
 
@@ -392,12 +427,16 @@ GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val)
 	header->hlen = 2;
 	header->v.u8 = val;
 
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%u", header->v.u8);
+
 	return header;
 }
 
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val)
 {
 	GObexHeader *header;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x", G_OBEX_HDR_ENC(id));
 
 	if (G_OBEX_HDR_ENC(id) != G_OBEX_HDR_ENC_UINT32)
 		return NULL;
@@ -409,16 +448,24 @@ GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val)
 	header->hlen = 5;
 	header->v.u32 = val;
 
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "%u", header->v.u32);
+
 	return header;
 }
 
 guint8 g_obex_header_get_id(GObexHeader *header)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x id 0x%02x",
+				G_OBEX_HDR_ENC(header->id), header->id);
+
 	return header->id;
 }
 
 guint16 g_obex_header_get_length(GObexHeader *header)
 {
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x length %zu",
+				G_OBEX_HDR_ENC(header->id), header->hlen);
+
 	return header->hlen;
 }
 
@@ -427,6 +474,8 @@ GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
 {
 	unsigned int id = first_hdr_id;
 	GSList *l = NULL;
+
+	g_obex_debug(G_OBEX_DEBUG_HEADER, "");
 
 	*total_len = 0;
 
