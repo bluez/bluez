@@ -1119,6 +1119,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
 		player->session = NULL;
+		player->registered_events = 0;
 
 		if (player->handler) {
 			avctp_unregister_pdu_handler(player->handler);
