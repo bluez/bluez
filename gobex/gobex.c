@@ -29,6 +29,7 @@
 
 #include "gobex.h"
 #include "glib-helper.h"
+#include "gobex-debug.h"
 
 #define G_OBEX_DEFAULT_MTU	4096
 #define G_OBEX_MINIMUM_MTU	255
@@ -42,6 +43,8 @@
 #define FINAL_BIT		0x80
 
 #define CONNID_INVALID		0xffffffff
+
+guint gobex_debug = 0;
 
 struct _GObex {
 	gint ref_count;
@@ -864,11 +867,28 @@ failed:
 	return FALSE;
 }
 
+static GDebugKey keys[] = {
+	{ "error",	G_OBEX_DEBUG_ERROR },
+	{ "command",	G_OBEX_DEBUG_COMMAND },
+	{ "transfer",	G_OBEX_DEBUG_TRANSFER },
+	{ "header",	G_OBEX_DEBUG_HEADER },
+	{ "packet",	G_OBEX_DEBUG_PACKET },
+	{ "data",	G_OBEX_DEBUG_DATA },
+};
+
 GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 					gssize io_rx_mtu, gssize io_tx_mtu)
 {
 	GObex *obex;
 	GIOCondition cond;
+
+	if (gobex_debug == 0) {
+		const char *env = g_getenv("GOBEX_DEBUG");
+		if (env)
+			gobex_debug = g_parse_debug_string(env, keys, 6);
+		else
+			gobex_debug = G_OBEX_DEBUG_NONE;
+	}
 
 	if (io == NULL)
 		return NULL;
