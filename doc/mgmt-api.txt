@@ -163,8 +163,8 @@ Set Service Cache Command
 	Return Parameters:
 
 
-Load Keys Command
-=================
+Load Link Keys Command
+======================
 
 	Command Code:		0x000D
 	Controller Index:	<controller id>
@@ -181,14 +181,16 @@ Load Keys Command
 	Return Parameters:
 
 
-Remove Key Command
-==================
+Remove Keys Command
+===================
 
 	Command Code:		0x000E
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Disconnect (1 Octet)
 	Return Parameters:
+
+	Removes all keys associated with the remote device.
 
 
 Disconnect Command
@@ -481,8 +483,8 @@ Event Code		0x0009
 Controller Index:	<controller id>
 Event Parameters	Pairable (1 Octet)
 
-New Key Event
-=============
+New Link Key Event
+==================
 
 Event Code		0x000A
 Controller Index:	<controller id>
