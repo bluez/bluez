@@ -374,8 +374,8 @@ Set Fast Connectable Command
 	Command Parameters:	Enable (1 Octet)
 	Return Parameters:	Status (1 octet)
 
-Name Information Command
-========================
+Confirm Name Command
+====================
 
 	Command Code:		0x00020
 	Controller Index:	<controller id>
