@@ -523,6 +523,12 @@ Device Connected Event
 Event Code		0x000B
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Type (1 Octet)
+
+	Possible values for the Type parameter:
+		0	BR/EDR
+		1	LE
+
 
 Device Disconnected Event
 =========================
@@ -530,6 +536,12 @@ Device Disconnected Event
 Event Code		0x000C
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Type (1 Octet)
+
+	Possible values for the Type parameter:
+		0	BR/EDR
+		1	LE
+
 
 Connect Failed Event
 ====================
@@ -586,10 +598,16 @@ Device Found Event
 Event Code		0x0012
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
+			TYpe (1 Octet)
 			Class_Of_Device (3 Octets)
 			RSSI (1 Octet)
 			Confirm Name (1 Octet)
 			EIR_Data (240 Octets)
+
+	Possible values for the Type parameter:
+		0	BR/EDR
+		1	LE
+
 
 Remote Name Event
 =================
