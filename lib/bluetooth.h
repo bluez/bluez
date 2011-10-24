@@ -125,6 +125,70 @@ do {						\
 	__p->__v = (val);			\
 } while(0)
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static inline uint64_t bt_get_le64(void *ptr)
+{
+	return bt_get_unaligned((uint64_t *) ptr);
+}
+
+static inline uint64_t bt_get_be64(void *ptr)
+{
+	return bswap_64(bt_get_unaligned((uint64_t *) ptr));
+}
+
+static inline uint32_t bt_get_le32(void *ptr)
+{
+	return bt_get_unaligned((uint32_t *) ptr);
+}
+
+static inline uint32_t bt_get_be32(void *ptr)
+{
+	return bswap_32(bt_get_unaligned((uint32_t *) ptr));
+}
+
+static inline uint16_t bt_get_le16(void *ptr)
+{
+	return bt_get_unaligned((uint16_t *) ptr);
+}
+
+static inline uint16_t bt_get_be16(void *ptr)
+{
+	return bswap_16(bt_get_unaligned((uint16_t *) ptr));
+}
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static inline uint64_t bt_get_le64(void *ptr)
+{
+	return bswap_64(bt_get_unaligned((uint64_t *) ptr));
+}
+
+static inline uint64_t bt_get_be64(void *ptr)
+{
+	return bt_get_unaligned((uint64_t *) ptr);
+}
+
+static inline uint32_t bt_get_le32(void *ptr)
+{
+	return bswap_32(bt_get_unaligned((uint32_t *) ptr));
+}
+
+static inline uint32_t bt_get_be32(void *ptr)
+{
+	return bt_get_unaligned((uint32_t *) ptr);
+}
+
+static inline uint16_t bt_get_le16(void *ptr)
+{
+	return bswap_16(bt_get_unaligned((uint16_t *) ptr));
+}
+
+static inline uint16_t bt_get_be16(void *ptr)
+{
+	return bt_get_unaligned((uint16_t *) ptr);
+}
+#else
+#error "Unknown byte order"
+#endif
+
 /* BD Address */
 typedef struct {
 	uint8_t b[6];
