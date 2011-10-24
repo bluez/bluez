@@ -162,6 +162,42 @@ static void change_property(struct thermometer *t, const gchar *name,
 		DBG("%s is not a thermometer property", name);
 }
 
+static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct descriptor *desc = user_data;
+	uint8_t value[ATT_MAX_MTU];
+	uint16_t max, min;
+	int vlen;
+
+	if (status != 0) {
+		DBG("Valid Range descriptor read failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_read_resp(pdu, len, value, &vlen)) {
+		DBG("Protocol error\n");
+		return;
+	}
+
+	if (vlen < 4) {
+		DBG("Invalid range received");
+		return;
+	}
+
+	min = att_get_u16(&value[0]);
+	max = att_get_u16(&value[2]);
+
+	if (min == 0 || min > max) {
+		DBG("Invalid range");
+		return;
+	}
+
+	change_property(desc->ch->t, "Maximum", &max);
+	change_property(desc->ch->t, "Minimum", &min);
+}
+
 static void process_thermometer_desc(struct descriptor *desc)
 {
 	struct characteristic *ch = desc->ch;
@@ -193,7 +229,8 @@ static void process_thermometer_desc(struct descriptor *desc)
 
 	if (bt_uuid_cmp(&desc->uuid, &btuuid) == 0 && g_strcmp0(ch->attr.uuid,
 					MEASUREMENT_INTERVAL_UUID) == 0) {
-		/* TODO: Process Measurement Interval */
+		gatt_read_char(ch->t->attrib, desc->handle, 0,
+						valid_range_desc_cb, desc);
 		return;
 	}
 
