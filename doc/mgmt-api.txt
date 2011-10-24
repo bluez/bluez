@@ -338,10 +338,10 @@ Unblock Device Command
 Set Fast Connectable Command
 ============================
 
-        Command Code:           0x0001F
-        Controller Index:       <controller id>
-        Command Parameters:     Enable (1 Octet)
-        Return Parameters:      Status (1 octet)
+	Command Code:		0x0001F
+	Controller Index:	<controller id>
+	Command Parameters:	Enable (1 Octet)
+	Return Parameters:	Status (1 octet)
 
 Name Information Command
 ========================
