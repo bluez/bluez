@@ -526,7 +526,30 @@ static void enable_final_measurement(struct thermometer *t)
 
 static void disable_final_measurement(struct thermometer *t)
 {
-	/* TODO: disable final measurements */
+	struct characteristic *ch;
+	struct descriptor *desc;
+	bt_uuid_t btuuid;
+	uint8_t atval[2];
+	gchar *msg;
+
+	ch = get_characteristic(t, TEMPERATURE_MEASUREMENT_UUID);
+	if (ch == NULL) {
+		DBG("Temperature measurement characteristic not found");
+		return;
+	}
+
+	bt_uuid16_create(&btuuid, GATT_CLIENT_CHARAC_CFG_UUID);
+	desc = get_descriptor(ch, &btuuid);
+	if (desc == NULL) {
+		DBG("Client characteristic configuration descriptor not found");
+		return;
+	}
+
+	atval[0] = 0x00;
+	atval[1] = 0x00;
+	msg = g_strdup("Disable final measurement");
+	gatt_write_char(t->attrib, desc->handle, atval, 2,
+						final_measurement_cb, msg);
 }
 
 static void watcher_exit(DBusConnection *conn, void *user_data)
