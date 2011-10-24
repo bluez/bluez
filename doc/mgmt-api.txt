@@ -68,13 +68,9 @@ Read Controller Information Command
 	Command Code:		0x0004
 	Controller Index:	<controller id>
 	Command Parameters:
-	Return Parameters:	Controller_Type (1 Octet)
-				Powered (1 octet)
-				Connectable (1 octet)
-				Discoverable (1 octet)
-				Pairable (1 octed)
+	Return Parameters:	Address (6 Octets)
+				Settings (8)
 				Security_Mode (1 octed)
-				BD_ADDR (6 Octets)
 				Device_Class (3 octets)
 				Supported_Features (8 Octets)
 				Manufacturer (2 Octets)
@@ -82,9 +78,12 @@ Read Controller Information Command
 				HCI_Revision (2 Octets)
 				Name (249 Octets)
 
-		Controller_Type:0x00 Reserved
-				0x01 Bluetooth (BR/EDR)
-				0x02 802.11 (AMP)
+	Settings is a bitmask with currently the following available
+	bits:
+		1	Powered
+		2	Connectable
+		3	Discoverable
+		4	Pairable
 
 
 Set Powered Command
