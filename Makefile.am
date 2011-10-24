@@ -450,7 +450,8 @@ unit_tests = unit/test-eir
 noinst_PROGRAMS += $(unit_tests)
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
-unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+unit_test_eir_CFLAGS = @GLIB_CFLAGS@ @CHECK_CFLAGS@
+unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @CHECK_LIBS@
 unit_objects += $(unit_test_eir_OBJECTS)
 
 TESTS = $(unit_tests)
