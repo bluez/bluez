@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "parser.h"
 #include "sdp.h"
@@ -61,10 +62,12 @@ static cid_info cid_table[2][CID_TABLE_SIZE];
 #define DCID cid_table[1]
 
 /* Can we move this to l2cap.h? */
-static struct {
+struct features {
 	char	*name;
 	int	flag;
-} l2cap_features[] = {
+};
+
+static struct features l2cap_features[] = {
 	{ "Flow control mode",			L2CAP_FEAT_FLOWCTL	},
 	{ "Retransmission mode",		L2CAP_FEAT_RETRANS	},
 	{ "Bi-directional QoS",			L2CAP_FEAT_BIDIR_QOS	},
@@ -75,6 +78,13 @@ static struct {
 	{ "Fixed Channels",			L2CAP_FEAT_FIXED_CHAN	},
 	{ "Extended Window Size",		L2CAP_FEAT_EXT_WINDOW	},
 	{ "Unicast Connectless Data Reception",	L2CAP_FEAT_UCD		},
+	{ 0 }
+};
+
+static struct features l2cap_fix_chan[] = {
+	{ "L2CAP Signalling Channel",		L2CAP_FC_L2CAP		},
+	{ "L2CAP Connless",			L2CAP_FC_CONNLESS	},
+	{ "AMP Manager Protocol",		L2CAP_FC_A2MP		},
 	{ 0 }
 };
 
@@ -728,6 +738,7 @@ static inline void echo_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 static void info_opt(int level, int type, void *ptr, int len)
 {
 	uint32_t mask;
+	uint64_t fc_mask;
 	int i;
 
 	p_indent(level, 0);
@@ -747,7 +758,14 @@ static void info_opt(int level, int type, void *ptr, int len)
 				}
 		break;
 	case 0x0003:
-		printf("Fixed channel list\n");
+		fc_mask = bt_get_le64(ptr);
+		printf("Fixed channel list 0x%8.8" PRIx64 "\n", fc_mask);
+		if (parser.flags & DUMP_VERBOSE)
+			for (i=0; l2cap_fix_chan[i].name; i++)
+				if (fc_mask & l2cap_fix_chan[i].flag) {
+					p_indent(level + 1, 0);
+					printf("%s\n", l2cap_fix_chan[i].name);
+				}
 		break;
 	default:
 		printf("Unknown (len %d)\n", len);
