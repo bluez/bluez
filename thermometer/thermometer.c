@@ -55,6 +55,7 @@ struct thermometer {
 	guint			attioid;	/* Att watcher id */
 	guint			attindid;	/* Att incications id */
 	GSList			*chars;		/* Characteristics */
+	GSList			*fwatchers;     /* Final measurements */
 	gboolean		intermediate;
 	guint8			type;
 	guint16			interval;
@@ -76,7 +77,26 @@ struct descriptor {
 	bt_uuid_t		uuid;
 };
 
+struct watcher {
+	struct thermometer	*t;
+	guint			id;
+	gchar			*srv;
+	gchar			*path;
+};
+
 static GSList *thermometers = NULL;
+
+static void destroy_watcher(gpointer user_data)
+{
+	struct watcher *watcher = user_data;
+
+	if (watcher->id > 0)
+		g_dbus_remove_watch(watcher->t->conn, watcher->id);
+
+	g_free(watcher->path);
+	g_free(watcher->srv);
+	g_free(watcher);
+}
 
 static void destroy_char(gpointer user_data)
 {
@@ -102,6 +122,9 @@ static void destroy_thermometer(gpointer user_data)
 	if (t->chars != NULL)
 		g_slist_free_full(t->chars, destroy_char);
 
+	if (t->fwatchers != NULL)
+		g_slist_free_full(t->fwatchers, destroy_watcher);
+
 	dbus_connection_unref(t->conn);
 	btd_device_unref(t->dev);
 	g_free(t->svc_range);
@@ -117,6 +140,19 @@ static gint cmp_device(gconstpointer a, gconstpointer b)
 		return 0;
 
 	return -1;
+}
+
+static gint cmp_watcher(gconstpointer a, gconstpointer b)
+{
+	const struct watcher *watcher = a;
+	const struct watcher *match = b;
+	int ret;
+
+	ret = g_strcmp0(watcher->srv, match->srv);
+	if (ret != 0)
+		return ret;
+
+	return g_strcmp0(watcher->path, match->path);
 }
 
 static void change_property(struct thermometer *t, const gchar *name,
@@ -409,12 +445,66 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 						"Function not implemented.");
 }
 
+static void enable_final_measurement(struct thermometer *t)
+{
+	/* TODO: enable final measurements */
+}
+
+static void watcher_exit(DBusConnection *conn, void *user_data)
+{
+	/* TODO: Watcher disconnected */
+}
+
+static struct watcher *find_watcher(struct thermometer *t, const gchar *sender,
+							const gchar *path)
+{
+	struct watcher *match;
+	GSList *l;
+
+	match = g_new0(struct watcher, 1);
+	match->srv = g_strdup(sender);
+	match->path = g_strdup(path);
+
+	l = g_slist_find_custom(t->fwatchers, match, cmp_watcher);
+	destroy_watcher(match);
+
+	if (l != NULL)
+		return l->data;
+
+	return NULL;
+}
+
 static DBusMessage *register_watcher(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	/* TODO: */
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".ThermometerError",
-						"Function not implemented.");
+	const gchar *sender = dbus_message_get_sender(msg);
+	struct thermometer *t = data;
+	struct watcher *watcher;
+	gchar *path;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	watcher = find_watcher(t, sender, path);
+	if (watcher != NULL)
+		return btd_error_already_exists(msg);
+
+	DBG("Thermometer watcher %s registered", path);
+
+	watcher = g_new0(struct watcher, 1);
+	watcher->srv = g_strdup(sender);
+	watcher->path = g_strdup(path);
+	watcher->t = t;
+	watcher->id = g_dbus_add_disconnect_watch(conn, sender, watcher_exit,
+						watcher, destroy_watcher);
+
+	if (g_slist_length(t->fwatchers) == 0)
+		enable_final_measurement(t);
+
+	t->fwatchers = g_slist_prepend(t->fwatchers, watcher);
+
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *unregister_watcher(DBusConnection *conn, DBusMessage *msg,
