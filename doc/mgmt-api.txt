@@ -271,6 +271,27 @@ User Confirmation Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Status (1 Octet)
 
+
+User Passkey Reply Command
+==========================
+
+	Command Code:		0x0021
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Passkey (4 Octets)
+	Return Parameters:	Address (6 Octets)
+				Status (1 Octet)
+
+
+User Passkey Negative Reply Command
+===================================
+
+	Command Code:		0x0022
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Parameters:	Address (6 Octets)
+				Status (1 Octet)
+
 Set Local Name Command
 ======================
 
@@ -537,6 +558,12 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Value (4 Octets)
 
+User Passkey Request Event
+==========================
+
+Event Code		0x0017
+Controller Index:	<controller id>
+Event Parameters	Address (6 Octets)
 
 Authentication Failed Event
 ===========================
