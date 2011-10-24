@@ -101,7 +101,11 @@ Set Discoverable Command
 	Command Code:		0x0006
 	Controller Index:	<controller id>
 	Command Parameters:	Discoverable (1 Octet)
+				Timeout (2 Octets)
 	Return Parameters:	Discoverable (1 Octet)
+
+	Timeout is the time in seconds and is only meningful when
+	Discoverable is set to 1.
 
 
 Set Connectable Command
