@@ -382,6 +382,23 @@ Name Information Command
 	expected for each Device Found event with the Confirm Name
 	flag set.
 
+Load Long Term Keys Command
+===========================
+
+	Command Code:		0x0023
+	Controller Index:	<controller id>
+	Command Parameters:	Key Count (2 Octets)
+				Key1 {
+					Address (6 Octets)
+					PIN_Length (1 Octet)
+					Encryption Size (1 Octet)
+					Enc. Diversifier (2 Octets)
+					Random Number (8 Octets)
+					Value (16 Octets)
+				}
+				Key2 {  }
+				...
+
 Read Tracing Buffer Size Command
 ================================
 
@@ -638,3 +655,18 @@ Device Unblocked Event
 Event Code		0x00016
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
+
+New Long Term Key Event
+=======================
+
+Event Code		0x0018
+Controller Index	<controller id>
+Event Parameters	Store Hint (1 Octet)
+			Key {
+				Address (6 Octets)
+				PIN_Length (1 Octet)
+				Encryption Size (1 Octet)
+				Enc. Diversifier (2 Octets)
+				Random Number (8 Octets)
+				Value (16 Octets)
+			}
