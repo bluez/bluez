@@ -554,7 +554,16 @@ static void disable_final_measurement(struct thermometer *t)
 
 static void watcher_exit(DBusConnection *conn, void *user_data)
 {
-	/* TODO: Watcher disconnected */
+	struct watcher *watcher = user_data;
+	struct thermometer *t = watcher->t;
+
+	DBG("Thermometer watcher %s disconnected", watcher->path);
+
+	t->fwatchers = g_slist_remove(t->fwatchers, watcher);
+	watcher->id = 0;
+
+	if (g_slist_length(t->fwatchers) == 0)
+		disable_final_measurement(t);
 }
 
 static struct watcher *find_watcher(struct thermometer *t, const gchar *sender,
