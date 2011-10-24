@@ -343,6 +343,19 @@ Set Fast Connectable Command
         Command Parameters:     Enable (1 Octet)
         Return Parameters:      Status (1 octet)
 
+Name Information Command
+========================
+
+	Command Code:		0x00020
+	Controller Index:	<controller id>
+	Command Parameters:	Address (1 Octet)
+				Name Known (1 Octet)
+	Return Parameters:	Status (1 octet)
+
+	This command is only valid during device discovery and is
+	expected for each Device Found event with the Confirm Name
+	flag set.
+
 Read Tracing Buffer Size Command
 ================================
 
@@ -543,6 +556,7 @@ Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Class_Of_Device (3 Octets)
 			RSSI (1 Octet)
+			Confirm Name (1 Octet)
 			EIR_Data (240 Octets)
 
 Remote Name Event
