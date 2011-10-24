@@ -125,6 +125,7 @@ Set Pairable Command
 	Command Parameters:	Pairable (1 Octet)
 	Return Parameters:	Pairable (1 Octet)
 
+
 Add UUID Command
 ================
 
@@ -201,6 +202,7 @@ Disconnect Command
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
 
+
 Get Connections Command
 =======================
 
@@ -211,6 +213,7 @@ Get Connections Command
 				Address1 (6 Octets)
 				Address2 (6 Octets)
 				...
+
 
 PIN Code Reply Command
 =======================
@@ -292,6 +295,7 @@ User Passkey Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Status (1 Octet)
 
+
 Set Local Name Command
 ======================
 
@@ -299,6 +303,7 @@ Set Local Name Command
 	Controller Index:	<controller id>
 	Command Parameters:	Name (249 Octets)
 	Return Parameters:	Name (249 Octets)
+
 
 Read Local Out Of Band Data Command
 ========================================
@@ -329,6 +334,7 @@ Remove Remote Out Of Band Data Command
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:
 
+
 Start Discovery Command
 =======================
 
@@ -342,6 +348,7 @@ Start Discovery Command
 		1	LE
 		2	BR/EDR/LE (interleaved discovery)
 
+
 Stop Discovery Command
 ======================
 
@@ -349,6 +356,7 @@ Stop Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:
+
 
 Block Device Command
 ====================
@@ -358,6 +366,7 @@ Block Device Command
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Status (1 octet)
 
+
 Unblock Device Command
 ======================
 
@@ -366,6 +375,7 @@ Unblock Device Command
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Status (1 octet)
 
+
 Set Fast Connectable Command
 ============================
 
@@ -373,6 +383,7 @@ Set Fast Connectable Command
 	Controller Index:	<controller id>
 	Command Parameters:	Enable (1 Octet)
 	Return Parameters:	Status (1 octet)
+
 
 Confirm Name Command
 ====================
@@ -386,6 +397,7 @@ Confirm Name Command
 	This command is only valid during device discovery and is
 	expected for each Device Found event with the Confirm Name
 	flag set.
+
 
 Load Long Term Keys Command
 ===========================
@@ -403,6 +415,7 @@ Load Long Term Keys Command
 				}
 				Key2 {  }
 				...
+
 
 Read Tracing Buffer Size Command
 ================================
@@ -498,12 +511,14 @@ Event Code		0x0005
 Controller Index:	<controller id>
 Event Parameters
 
+
 Controller Powered Event
 ========================
 
 Event Code		0x0006
 Controller Index:	<controller id>
 Event Parameters	Powered (1 Octet)
+
 
 Controller Discoverable Event
 =============================
@@ -512,6 +527,7 @@ Event Code		0x0007
 Controller Index:	<controller id>
 Event Parameters	Discoverable (1 Octet)
 
+
 Controller Connectable Event
 ============================
 
@@ -519,12 +535,14 @@ Event Code		0x0008
 Controller Index:	<controller id>
 Event Parameters	Connectable (1 Octet)
 
+
 Controller Pairable Event
 =========================
 
 Event Code		0x0009
 Controller Index:	<controller id>
 Event Parameters	Pairable (1 Octet)
+
 
 New Link Key Event
 ==================
@@ -538,6 +556,7 @@ Event Parameters	Key {
 				PIN_Length (1 Octet)
 			}
 			Old_Key_Type (1 Octet)
+
 
 Device Connected Event
 ======================
@@ -573,6 +592,7 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Status (1 Octet)
 
+
 PIN Code Request Event
 ======================
 
@@ -584,6 +604,7 @@ Event Parameters	Address (6 Octets)
 	Secure: 0x01  secure PIN code required
 		0x00  secure PIN code not required
 
+
 User Confirmation Request Event
 ===============================
 
@@ -592,12 +613,14 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Value (4 Octets)
 
+
 User Passkey Request Event
 ==========================
 
 Event Code		0x0017
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+
 
 Authentication Failed Event
 ===========================
@@ -607,12 +630,14 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Status (1 Octet)
 
+
 Local Name Changed Event
 ========================
 
 Event Code		0x0011
 Controller Index	<controller id>
 Event Parameters	Name (249 Octets)
+
 
 Device Found Event
 ==================
@@ -647,6 +672,7 @@ Event Code		0x00014
 Controller Index	<controller id>
 Event Parameters	Discovering (1 Octet)
 
+
 Device Blocked Event
 ====================
 
@@ -654,12 +680,14 @@ Event Code		0x00015
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 
+
 Device Unblocked Event
 ======================
 
 Event Code		0x00016
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
+
 
 New Long Term Key Event
 =======================
