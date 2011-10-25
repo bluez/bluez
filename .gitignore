@@ -85,6 +85,7 @@ compat/dund
 compat/hidd
 compat/pand
 unit/test-eir
+mgmt/btmgmt
 
 doc/*.bak
 doc/*.stamp
