@@ -606,7 +606,6 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	if (perr < 0) {
 		DBG("Authorization denied!");
 		gateway_set_state(device, GATEWAY_STATE_DISCONNECTED);
-		goto drop;
 	}
 
 	return;
