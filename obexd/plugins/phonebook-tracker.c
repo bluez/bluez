@@ -1120,8 +1120,7 @@ static void contact_add_addresses(struct phonebook_contact *contact,
 	int i;
 
 	/* Addresses from affilation */
-	aff_addr = g_strsplit(reply[COL_ADDR_AFF], MAIN_DELIM,
-								MAX_FIELDS);
+	aff_addr = g_strsplit(reply[COL_ADDR_AFF], MAIN_DELIM, MAX_FIELDS);
 
 	if (aff_addr)
 		for (i = 0; aff_addr[i] != NULL; ++i)
