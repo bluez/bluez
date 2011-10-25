@@ -60,10 +60,153 @@ static int mgmt_open(void)
 	return sk;
 }
 
+static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_cmd_complete *ev, uint16_t len)
+{
+	uint16_t opcode;
+
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short (%u bytes) cmd complete event\n",
+									len);
+		return -EINVAL;
+	}
+
+	opcode = bt_get_le16(&ev->opcode);
+
+	len -= sizeof(*ev);
+
+	printf("cmd complete, opcode 0x%04x len %u\n", opcode, len);
+
+	return 0;
+}
+
+static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_cmd_status *ev, uint16_t len)
+{
+	uint16_t opcode;
+
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short (%u bytes) cmd status event\n",
+									len);
+		return -EINVAL;
+	}
+
+	opcode = bt_get_le16(&ev->opcode);
+
+	printf("cmd status, opcode 0x%04x status 0x%02x\n", opcode, ev->status);
+
+	return 0;
+}
+
+static int mgmt_controller_error(uint16_t index,
+					struct mgmt_ev_controller_error *ev,
+					uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr,
+			"Too short (%u bytes) controller error event\n", len);
+		return -EINVAL;
+	}
+
+	printf("controller error 0x%02x\n", ev->error_code);
+
+	return 0;
+}
+
+static int mgmt_index_added(int mgmt_sk, uint16_t index)
+{
+	printf("index %u added\n", index);
+	return 0;
+}
+
+static int mgmt_index_removed(int mgmt_sk, uint16_t index)
+{
+	printf("index %u removed\n", index);
+	return 0;
+}
+
+static int mgmt_powered(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
+								uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short (%u bytes) mgmt powered event\n",
+									len);
+		return -EINVAL;
+	}
+
+	printf("index %u powered %s\n", index, ev->val ? "on" : "off");
+
+	return 0;
+}
+
+static int mgmt_discoverable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
+								uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr,
+			"Too short (%u bytes) mgmt discoverable event\n", len);
+		return -EINVAL;
+	}
+
+	printf("index %u discoverable %s\n", index, ev->val ? "on" : "off");
+
+	return 0;
+}
+
+static int mgmt_connectable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
+								uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr,
+			"Too short (%u bytes) mgmt connectable event\n", len);
+		return -EINVAL;
+	}
+
+	printf("index %u connectable %s\n", index, ev->val ? "on" : "off");
+
+	return 0;
+}
+
+static int mgmt_pairable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
+								uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short (%u bytes) mgmt pairable event\n",
+									len);
+		return -EINVAL;
+	}
+
+	printf("index %u pairable %s\n", index, ev->val ? "on" : "off");
+
+	return 0;
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
-	return 0;
+	switch (ev) {
+	case MGMT_EV_CMD_COMPLETE:
+		return mgmt_cmd_complete(mgmt_sk, index, data, len);
+	case MGMT_EV_CMD_STATUS:
+		return mgmt_cmd_status(mgmt_sk, index, data, len);
+	case MGMT_EV_CONTROLLER_ERROR:
+		return mgmt_controller_error(index, data, len);
+	case MGMT_EV_INDEX_ADDED:
+		return mgmt_index_added(mgmt_sk, index);
+	case MGMT_EV_INDEX_REMOVED:
+		return mgmt_index_removed(mgmt_sk, index);
+	case MGMT_EV_POWERED:
+		return mgmt_powered(mgmt_sk, index, data, len);
+	case MGMT_EV_DISCOVERABLE:
+		return mgmt_discoverable(mgmt_sk, index, data, len);
+	case MGMT_EV_CONNECTABLE:
+		return mgmt_connectable(mgmt_sk, index, data, len);
+	case MGMT_EV_PAIRABLE:
+		return mgmt_pairable(mgmt_sk, index, data, len);
+	default:
+		printf("Unhandled event 0x%04x\n", ev);
+		return 0;
+	}
 }
 
 static int mgmt_process_data(int mgmt_sk)
