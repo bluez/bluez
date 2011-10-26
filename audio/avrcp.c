@@ -1053,7 +1053,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 	pdu->packet_type = 0;
 	pdu->rsvd = 0;
 
-	if (operand_count + 3 < AVRCP_HEADER_LENGTH) {
+	if (operand_count < AVRCP_HEADER_LENGTH) {
 		pdu->params[0] = E_INVALID_COMMAND;
 		goto err_metadata;
 	}
