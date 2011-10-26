@@ -38,6 +38,70 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/mgmt.h>
 
+#ifndef NELEM
+#define NELEM(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
+static const char *mgmt_op[] = {
+	"<0x0000>",
+	"Read Version",
+	"Read Features",
+	"Read Index List",
+	"Read Controller Info",
+	"Set Powered",
+	"Set Discoverable",
+	"Set Connectable",
+	"Set Pairable",
+	"Add UUID",
+	"Remove UUID",
+	"Set Dev Class",
+	"Set Service Cache",
+	"Load Link Keys",
+	"Remove Keys",
+	"Disconnect",
+	"Get Connections",
+	"PIN Code Reply",
+	"PIN Code Neg Reply",
+	"Set IO Capability",
+	"Pair Device",
+	"User Confirm Reply",
+	"User Confirm Neg Reply",
+	"Set Local Name",
+	"Read Local OOB Data",
+	"Add Remote OOB Data",
+	"Remove Remove OOB Data",
+	"Start Discoery",
+	"Block Device",
+	"Unblock Device",
+	"Set Fast Connectable",
+};
+
+static const char *mgmt_ev[] = {
+	"<0x0000>",
+	"Command Complete",
+	"Command Status",
+	"Controller Error",
+	"Index Added",
+	"Index Removed",
+	"Powered",
+	"Discoverable",
+	"Connectable",
+	"Pairable",
+	"New Link Key",
+	"Device Connected",
+	"Device Disconnected",
+	"Connect Failed",
+	"PIN Code Request",
+	"User Confirm Request",
+	"Authentication Failed",
+	"Local Name Changed",
+	"Device Found",
+	"Remote Name",
+	"Discovering",
+	"Device Blocked",
+	"Device Unblocked",
+};
+
 static bool monitor = false;
 
 typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -49,6 +113,20 @@ static struct {
 	cmd_cb cb;
 	void *user_data;
 } *pending_cmd = NULL;
+
+static const char *mgmt_opstr(uint16_t op)
+{
+	if (op >= NELEM(mgmt_op))
+		return "<unknown opcode>";
+	return mgmt_op[op];
+}
+
+static const char *mgmt_evstr(uint16_t ev)
+{
+	if (ev >= NELEM(mgmt_ev))
+		return "<unknown event>";
+	return mgmt_ev[ev];
+}
 
 static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 				size_t len, cmd_cb func, void *user_data)
@@ -129,7 +207,8 @@ static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 	len -= sizeof(*ev);
 
 	if (monitor)
-		printf("cmd complete, opcode 0x%04x len %u\n", op, len);
+		printf("%s complete, opcode 0x%04x len %u\n", mgmt_opstr(op),
+								op, len);
 
 	if (pending_cmd != NULL && op == pending_cmd->op) {
 		pending_cmd->cb(mgmt_sk, op, index, 0, ev->data, len,
@@ -253,6 +332,9 @@ static int mgmt_pairable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
+	if (monitor)
+		printf("event: %s\n", mgmt_evstr(ev));
+
 	switch (ev) {
 	case MGMT_EV_CMD_COMPLETE:
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
@@ -274,7 +356,7 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_pairable(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
-			printf("Unknown event 0x%04x\n", ev);
+			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
 		return 0;
 	}
 }
