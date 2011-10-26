@@ -32,10 +32,13 @@
 #include <sys/socket.h>
 #include <poll.h>
 #include <getopt.h>
+#include <stdbool.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/mgmt.h>
+
+static bool monitor = false;
 
 typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data);
@@ -125,7 +128,8 @@ static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 
 	len -= sizeof(*ev);
 
-	printf("cmd complete, opcode 0x%04x len %u\n", op, len);
+	if (monitor)
+		printf("cmd complete, opcode 0x%04x len %u\n", op, len);
 
 	if (pending_cmd != NULL && op == pending_cmd->op) {
 		pending_cmd->cb(mgmt_sk, op, index, 0, ev->data, len,
@@ -269,7 +273,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_PAIRABLE:
 		return mgmt_pairable(mgmt_sk, index, data, len);
 	default:
-		printf("Unhandled event 0x%04x\n", ev);
+		if (monitor)
+			printf("Unknown event 0x%04x\n", ev);
 		return 0;
 	}
 }
@@ -296,7 +301,8 @@ static int mgmt_process_data(int mgmt_sk)
 	index = bt_get_le16(&hdr->index);
 	len = bt_get_le16(&hdr->len);
 
-	printf("event 0x%04x len 0x%04x index 0x%04x\n", ev, len, index);
+	if (monitor)
+		printf("event 0x%04x len 0x%04x index 0x%04x\n", ev, len, index);
 
 	if (ret != MGMT_HDR_SIZE + len) {
 		fprintf(stderr, "Packet length mismatch. ret %zd len %u",
@@ -312,6 +318,7 @@ static int mgmt_process_data(int mgmt_sk)
 static void cmd_monitor(int mgmt_sk, int argc, char **argv)
 {
 	printf("Monitoring mgmt events...\n");
+	monitor = true;
 }
 
 static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -417,8 +424,6 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Unable to open mgmt socket\n");
 		return -1;
 	}
-
-	printf("mgmt socket successfully opened\n");
 
 	for (i = 0; command[i].cmd; i++) {
 		if (strcmp(command[i].cmd, argv[0]) != 0)
