@@ -37,6 +37,54 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/mgmt.h>
 
+typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data);
+
+static struct {
+	uint16_t op;
+	uint16_t id;
+	cmd_cb cb;
+	void *user_data;
+} *pending_cmd = NULL;
+
+static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
+				size_t len, cmd_cb func, void *user_data)
+{
+	char buf[1024];
+	struct mgmt_hdr *hdr = (void *) buf;
+
+	if (pending_cmd != NULL)
+		return -EBUSY;
+
+	if (len + MGMT_HDR_SIZE > sizeof(buf))
+		return -EINVAL;
+
+	pending_cmd = malloc(sizeof(*pending_cmd));
+	if (pending_cmd == NULL)
+		return -errno;
+
+	pending_cmd->op = op;
+	pending_cmd->id = id;
+	pending_cmd->cb = func;
+	pending_cmd->user_data = user_data;
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_READ_INFO);
+	hdr->index = htobs(id);
+	hdr->len = htobs(len);
+	memcpy(buf + MGMT_HDR_SIZE, data, len);
+
+	if (write(mgmt_sk, buf, MGMT_HDR_SIZE + len) < 0) {
+		fprintf(stderr, "Unable to send command: %s\n",
+							strerror(errno));
+		free(pending_cmd);
+		pending_cmd = NULL;
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mgmt_open(void)
 {
 	struct sockaddr_hci addr;
@@ -65,7 +113,7 @@ static int mgmt_open(void)
 static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_cmd_complete *ev, uint16_t len)
 {
-	uint16_t opcode;
+	uint16_t op;
 
 	if (len < sizeof(*ev)) {
 		fprintf(stderr, "Too short (%u bytes) cmd complete event\n",
@@ -73,11 +121,18 @@ static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	opcode = bt_get_le16(&ev->opcode);
+	op = bt_get_le16(&ev->opcode);
 
 	len -= sizeof(*ev);
 
-	printf("cmd complete, opcode 0x%04x len %u\n", opcode, len);
+	printf("cmd complete, opcode 0x%04x len %u\n", op, len);
+
+	if (pending_cmd != NULL && op == pending_cmd->op) {
+		pending_cmd->cb(mgmt_sk, op, index, 0, ev->data, len,
+						pending_cmd->user_data);
+		free(pending_cmd);
+		pending_cmd = NULL;
+	}
 
 	return 0;
 }
@@ -96,6 +151,14 @@ static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
 	opcode = bt_get_le16(&ev->opcode);
 
 	printf("cmd status, opcode 0x%04x status 0x%02x\n", opcode, ev->status);
+
+	if (ev->status != 0 && pending_cmd != NULL &&
+						opcode == pending_cmd->op) {
+		pending_cmd->cb(mgmt_sk, opcode, index, ev->status,
+					NULL, 0, pending_cmd->user_data);
+		free(pending_cmd);
+		pending_cmd = NULL;
+	}
 
 	return 0;
 }
@@ -251,12 +314,53 @@ static void cmd_monitor(int mgmt_sk, int argc, char **argv)
 	printf("Monitoring mgmt events...\n");
 }
 
+static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_read_info *rp = rsp;
+	char addr[18];
+
+	if (status != 0) {
+		printf("Reading controller %u info failed with status %u\n",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+	printf("hci%u:\ttype %u addr %s\n", id, rp->type, addr);
+	printf("\tclass 0x%02x%02x%02x\n",
+		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
+	printf("\tmanufacturer %d HCI ver %d:%d\n",
+					bt_get_le16(&rp->manufacturer),
+					rp->hci_ver, bt_get_le16(&rp->hci_rev));
+	printf("\tpowered %u discoverable %u pairable %u sec_mode %u\n",
+				rp->powered, rp->discoverable,
+				rp->pairable, rp->sec_mode);
+	printf("\tname %s\n", (char *) rp->name);
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_info(int mgmt_sk, int argc, char **argv)
+{
+	if (argc < 2) {
+		printf("Controller id needed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, atoi(argv[1]), NULL,
+						0, info_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, int argc, char **argv);
 	char *doc;
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
+	{ "info",	cmd_info,	"Show controller info"		},
 	{ NULL, NULL, 0 }
 };
 
