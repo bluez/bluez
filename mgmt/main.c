@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <errno.h>
@@ -30,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <poll.h>
+#include <getopt.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -244,10 +246,67 @@ static int mgmt_process_data(int mgmt_sk)
 	return 0;
 }
 
+static void cmd_monitor(int mgmt_sk, int argc, char **argv)
+{
+	printf("Monitoring mgmt events...\n");
+}
+
+static struct {
+	char *cmd;
+	void (*func)(int mgmt_sk, int argc, char **argv);
+	char *doc;
+} command[] = {
+	{ "monitor",	cmd_monitor,	"Monitor events"		},
+	{ NULL, NULL, 0 }
+};
+
+static void usage(void)
+{
+	int i;
+
+	printf("btmgmt ver %s\n", VERSION);
+	printf("Usage:\n"
+		"\tbtmgmt [options] <command> [command parameters]\n");
+
+	printf("Options:\n"
+		"\t--help\tDisplay help\n");
+
+	printf("Commands:\n");
+	for (i = 0; command[i].cmd; i++)
+		printf("\t%-4s\t%s\n", command[i].cmd, command[i].doc);
+
+	printf("\n"
+		"For more information on the usage of each command use:\n"
+		"\tbtmgmt <command> --help\n" );
+}
+
+static struct option main_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ 0, 0, 0, 0 }
+};
+
 int main(int argc, char *argv[])
 {
-	int mgmt_sk;
+	int opt, i, mgmt_sk;
 	struct pollfd pollfd;
+
+	while ((opt=getopt_long(argc, argv, "+h", main_options, NULL)) != -1) {
+		switch (opt) {
+		case 'h':
+		default:
+			usage();
+			return 0;
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		usage();
+		return 0;
+	}
 
 	mgmt_sk = mgmt_open();
 	if (mgmt_sk < 0) {
@@ -256,6 +315,14 @@ int main(int argc, char *argv[])
 	}
 
 	printf("mgmt socket successfully opened\n");
+
+	for (i = 0; command[i].cmd; i++) {
+		if (strcmp(command[i].cmd, argv[0]) != 0)
+			continue;
+
+		command[i].func(mgmt_sk, argc, argv);
+		break;
+	}
 
 	pollfd.fd = mgmt_sk;
 	pollfd.events = POLLIN;
