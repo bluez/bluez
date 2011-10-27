@@ -107,11 +107,12 @@ static bool monitor = false;
 typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data);
 
-static struct {
+static struct pending_cmd {
 	uint16_t op;
 	uint16_t id;
 	cmd_cb cb;
 	void *user_data;
+	struct pending_cmd *next;
 } *pending_cmd = NULL;
 
 static const char *mgmt_opstr(uint16_t op)
@@ -191,6 +192,28 @@ static int mgmt_open(void)
 	return sk;
 }
 
+static void mgmt_check_pending(int mgmt_sk, uint16_t op, uint16_t index,
+				uint16_t status, void *data, uint16_t len)
+{
+	struct pending_cmd *c, *prev;
+
+	for (c = pending_cmd, prev = NULL; c != NULL; prev = c, c = c->next) {
+		if (c->op != op)
+			continue;
+		if (c->id != index)
+			continue;
+
+		if (prev == NULL)
+			pending_cmd = c->next;
+		else
+			prev->next = c->next;
+
+		c->cb(mgmt_sk, op, index, status, data, len, c->user_data);
+
+		free(c);
+	}
+}
+
 static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_cmd_complete *ev, uint16_t len)
 {
@@ -210,12 +233,7 @@ static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 		printf("%s complete, opcode 0x%04x len %u\n", mgmt_opstr(op),
 								op, len);
 
-	if (pending_cmd != NULL && op == pending_cmd->op) {
-		pending_cmd->cb(mgmt_sk, op, index, 0, ev->data, len,
-						pending_cmd->user_data);
-		free(pending_cmd);
-		pending_cmd = NULL;
-	}
+	mgmt_check_pending(mgmt_sk, op, index, 0, ev->data, len);
 
 	return 0;
 }
@@ -237,13 +255,9 @@ static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
 		printf("cmd status, opcode 0x%04x status 0x%02x\n",
 							opcode, ev->status);
 
-	if (ev->status != 0 && pending_cmd != NULL &&
-						opcode == pending_cmd->op) {
-		pending_cmd->cb(mgmt_sk, opcode, index, ev->status,
-					NULL, 0, pending_cmd->user_data);
-		free(pending_cmd);
-		pending_cmd = NULL;
-	}
+	if (ev->status != 0)
+		mgmt_check_pending(mgmt_sk, opcode, index, ev->status,
+								NULL, 0);
 
 	return 0;
 }
@@ -431,11 +445,58 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	exit(EXIT_SUCCESS);
 }
 
+static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_read_index_list *rp = rsp;
+	uint16_t count;
+	unsigned int i;
+
+	if (status != 0) {
+		fprintf(stderr, "Reading index list failed with status %u\n",
+								status);
+		exit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small index list reply (%u bytes)\n",
+									len);
+		exit(EXIT_FAILURE);
+	}
+
+	count = bt_get_le16(&rp->num_controllers);
+
+	if (len < sizeof(*rp) + count * sizeof(uint16_t)) {
+		fprintf(stderr,
+			"Index count (%u) doesn't match reply length (%u)\n",
+								count, len);
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0; i < count; i++) {
+		uint16_t index;
+
+		index = bt_get_le16(&rp->index[i]);
+
+		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
+					0, info_rsp, NULL) < 0) {
+			fprintf(stderr, "Unable to send cmd\n");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+
 static void cmd_info(int mgmt_sk, int argc, char **argv)
 {
 	if (argc < 2) {
-		printf("Controller id needed\n");
-		exit(EXIT_FAILURE);
+		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INDEX_LIST,
+					MGMT_INDEX_NONE, NULL, 0,
+					index_rsp, NULL) < 0) {
+			fprintf(stderr, "Unable to send cmd\n");
+			exit(EXIT_FAILURE);
+		}
+
+		return;
 	}
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, atoi(argv[1]), NULL,
