@@ -233,7 +233,9 @@ static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
 
 	opcode = bt_get_le16(&ev->opcode);
 
-	printf("cmd status, opcode 0x%04x status 0x%02x\n", opcode, ev->status);
+	if (monitor)
+		printf("cmd status, opcode 0x%04x status 0x%02x\n",
+							opcode, ev->status);
 
 	if (ev->status != 0 && pending_cmd != NULL &&
 						opcode == pending_cmd->op) {
