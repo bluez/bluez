@@ -258,20 +258,20 @@ static int mgmt_controller_error(uint16_t index,
 		return -EINVAL;
 	}
 
-	printf("controller error 0x%02x\n", ev->error_code);
+	printf("hci%u error 0x%02x\n", index, ev->error_code);
 
 	return 0;
 }
 
 static int mgmt_index_added(int mgmt_sk, uint16_t index)
 {
-	printf("index %u added\n", index);
+	printf("hci%u added\n", index);
 	return 0;
 }
 
 static int mgmt_index_removed(int mgmt_sk, uint16_t index)
 {
-	printf("index %u removed\n", index);
+	printf("hci%u removed\n", index);
 	return 0;
 }
 
@@ -284,7 +284,7 @@ static int mgmt_powered(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
 		return -EINVAL;
 	}
 
-	printf("index %u powered %s\n", index, ev->val ? "on" : "off");
+	printf("hci%u powered %s\n", index, ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -298,7 +298,7 @@ static int mgmt_discoverable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
 		return -EINVAL;
 	}
 
-	printf("index %u discoverable %s\n", index, ev->val ? "on" : "off");
+	printf("hci%u discoverable %s\n", index, ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -312,7 +312,7 @@ static int mgmt_connectable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
 		return -EINVAL;
 	}
 
-	printf("index %u connectable %s\n", index, ev->val ? "on" : "off");
+	printf("hci%u connectable %s\n", index, ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -326,7 +326,7 @@ static int mgmt_pairable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
 		return -EINVAL;
 	}
 
-	printf("index %u pairable %s\n", index, ev->val ? "on" : "off");
+	printf("hci%u pairable %s\n", index, ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -412,7 +412,7 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	char addr[18];
 
 	if (status != 0) {
-		printf("Reading controller %u info failed with status %u\n",
+		printf("Reading hci%u info failed with status %u\n",
 								id, status);
 		exit(EXIT_FAILURE);
 	}
