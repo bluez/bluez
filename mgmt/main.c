@@ -445,6 +445,46 @@ static void cmd_info(int mgmt_sk, int argc, char **argv)
 	}
 }
 
+static void power_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_mode *rp = rsp;
+
+	if (status != 0) {
+		printf("Changing powered state for hci%u "
+				"failed with status %u\n", id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u powered %s\n", id, rp->val ? "on" : "off");
+
+	exit(EXIT_SUCCESS);
+}
+
+
+static void cmd_power(int mgmt_sk, int argc, char **argv)
+{
+	uint8_t power;
+
+	if (argc < 2) {
+		printf("Specify \"on\" or \"off\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcasecmp(argv[1], "on") == 0)
+		power = 1;
+	else if (strcasecmp(argv[1], "off") == 0)
+		power = 0;
+	else
+		power = atoi(argv[1]);
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, 0, &power,
+					sizeof(power), power_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, int argc, char **argv);
@@ -452,6 +492,7 @@ static struct {
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
 	{ "info",	cmd_info,	"Show controller info"		},
+	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ NULL, NULL, 0 }
 };
 
