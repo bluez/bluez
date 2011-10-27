@@ -113,7 +113,7 @@ static struct pending_cmd {
 	cmd_cb cb;
 	void *user_data;
 	struct pending_cmd *next;
-} *pending_cmd = NULL;
+} *pending = NULL;
 
 static const char *mgmt_opstr(uint16_t op)
 {
@@ -133,22 +133,20 @@ static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 				size_t len, cmd_cb func, void *user_data)
 {
 	char buf[1024];
+	struct pending_cmd *cmd;
 	struct mgmt_hdr *hdr = (void *) buf;
-
-	if (pending_cmd != NULL)
-		return -EBUSY;
 
 	if (len + MGMT_HDR_SIZE > sizeof(buf))
 		return -EINVAL;
 
-	pending_cmd = malloc(sizeof(*pending_cmd));
-	if (pending_cmd == NULL)
+	cmd = calloc(1, sizeof(struct pending_cmd));
+	if (cmd == NULL)
 		return -errno;
 
-	pending_cmd->op = op;
-	pending_cmd->id = id;
-	pending_cmd->cb = func;
-	pending_cmd->user_data = user_data;
+	cmd->op = op;
+	cmd->id = id;
+	cmd->cb = func;
+	cmd->user_data = user_data;
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(op);
@@ -159,10 +157,12 @@ static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 	if (write(mgmt_sk, buf, MGMT_HDR_SIZE + len) < 0) {
 		fprintf(stderr, "Unable to write to socket: %s\n",
 							strerror(errno));
-		free(pending_cmd);
-		pending_cmd = NULL;
+		free(cmd);
 		return -1;
 	}
+
+	cmd->next = pending;
+	pending = cmd;
 
 	return 0;
 }
@@ -197,14 +197,14 @@ static void mgmt_check_pending(int mgmt_sk, uint16_t op, uint16_t index,
 {
 	struct pending_cmd *c, *prev;
 
-	for (c = pending_cmd, prev = NULL; c != NULL; prev = c, c = c->next) {
+	for (c = pending, prev = NULL; c != NULL; prev = c, c = c->next) {
 		if (c->op != op)
 			continue;
 		if (c->id != index)
 			continue;
 
-		if (prev == NULL)
-			pending_cmd = c->next;
+		if (c == pending)
+			pending = c->next;
 		else
 			prev->next = c->next;
 
@@ -446,8 +446,10 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	printf("\tpowered %u discoverable %u pairable %u sec_mode %u\n",
 				rp->powered, rp->discoverable,
 				rp->pairable, rp->sec_mode);
-	printf("\tname %s\n", (char *) rp->name);
-	exit(EXIT_SUCCESS);
+	printf("\tname %s\n\n", (char *) rp->name);
+
+	if (pending == NULL)
+		exit(EXIT_SUCCESS);
 }
 
 static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
