@@ -413,7 +413,7 @@ static int mgmt_process_data(int mgmt_sk)
 	return 0;
 }
 
-static void cmd_monitor(int mgmt_sk, int argc, char **argv)
+static void cmd_monitor(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
 	printf("Monitoring mgmt events...\n");
 	monitor = true;
@@ -509,9 +509,9 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		printf("\n");
 }
 
-static void cmd_info(int mgmt_sk, int argc, char **argv)
+static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
-	if (argc < 2) {
+	if (index == MGMT_INDEX_NONE) {
 		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INDEX_LIST,
 					MGMT_INDEX_NONE, NULL, 0,
 					index_rsp, NULL) < 0) {
@@ -522,7 +522,7 @@ static void cmd_info(int mgmt_sk, int argc, char **argv)
 		return;
 	}
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, atoi(argv[1]), NULL,
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
 						0, info_rsp, NULL) < 0) {
 		fprintf(stderr, "Unable to send read_info cmd\n");
 		exit(EXIT_FAILURE);
@@ -552,7 +552,7 @@ static void power_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 }
 
 
-static void cmd_power(int mgmt_sk, int argc, char **argv)
+static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
 	uint8_t power;
 
@@ -568,7 +568,10 @@ static void cmd_power(int mgmt_sk, int argc, char **argv)
 	else
 		power = atoi(argv[1]);
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, 0, &power,
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, index, &power,
 					sizeof(power), power_rsp, NULL) < 0) {
 		fprintf(stderr, "Unable to send set_powered cmd\n");
 		exit(EXIT_FAILURE);
@@ -577,7 +580,7 @@ static void cmd_power(int mgmt_sk, int argc, char **argv)
 
 static struct {
 	char *cmd;
-	void (*func)(int mgmt_sk, int argc, char **argv);
+	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
 	char *doc;
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
@@ -595,6 +598,7 @@ static void usage(void)
 		"\tbtmgmt [options] <command> [command parameters]\n");
 
 	printf("Options:\n"
+		"\t--index <id>\tSpecify adapter index\n"
 		"\t--verbose\tEnable extra logging\n"
 		"\t--help\tDisplay help\n");
 
@@ -608,6 +612,7 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
+	{ "index",	1, 0, 'i' },
 	{ "verbose",	0, 0, 'v' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
@@ -616,10 +621,19 @@ static struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	int opt, i, mgmt_sk;
+	uint16_t index = MGMT_INDEX_NONE;
 	struct pollfd pollfd;
 
-	while ((opt=getopt_long(argc, argv, "+hv", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv, "+hvi:",
+						main_options, NULL)) != -1) {
 		switch (opt) {
+		case 'i':
+			if (strlen(optarg) > 3 &&
+					strncasecmp(optarg, "hci", 3) == 0)
+				index = atoi(&optarg[4]);
+			else
+				index = atoi(optarg);
+			break;
 		case 'v':
 			monitor = true;
 			break;
@@ -649,7 +663,7 @@ int main(int argc, char *argv[])
 		if (strcmp(command[i].cmd, argv[0]) != 0)
 			continue;
 
-		command[i].func(mgmt_sk, argc, argv);
+		command[i].func(mgmt_sk, index, argc, argv);
 		break;
 	}
 
