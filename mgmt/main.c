@@ -431,6 +431,11 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		exit(EXIT_FAILURE);
 	}
 
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small info reply (%u bytes)\n", len);
+		exit(EXIT_FAILURE);
+	}
+
 	ba2str(&rp->bdaddr, addr);
 	printf("hci%u:\ttype %u addr %s\n", id, rp->type, addr);
 	printf("\tclass 0x%02x%02x%02x\n",
@@ -514,6 +519,12 @@ static void power_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (status != 0) {
 		printf("Changing powered state for hci%u "
 				"failed with status %u\n", id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small set_powered response (%u bytes)\n",
+									len);
 		exit(EXIT_FAILURE);
 	}
 
