@@ -480,10 +480,20 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		exit(EXIT_FAILURE);
 	}
 
+	if (monitor)
+		printf("Index list with %u item%s\n",
+						count, count > 1 ? "s" : "");
+
+	if (monitor && count > 0)
+		printf("\t");
+
 	for (i = 0; i < count; i++) {
 		uint16_t index;
 
 		index = bt_get_le16(&rp->index[i]);
+
+		if (monitor)
+			printf("hci%u ", index);
 
 		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
 					0, info_rsp, NULL) < 0) {
@@ -491,6 +501,9 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	if (monitor && count > 0)
+		printf("\n");
 }
 
 static void cmd_info(int mgmt_sk, int argc, char **argv)
