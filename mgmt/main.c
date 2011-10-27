@@ -150,7 +150,7 @@ static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 	pending_cmd->user_data = user_data;
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_READ_INFO);
+	hdr->opcode = htobs(op);
 	hdr->index = htobs(id);
 	hdr->len = htobs(len);
 	memcpy(buf + MGMT_HDR_SIZE, data, len);
