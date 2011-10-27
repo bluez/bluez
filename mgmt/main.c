@@ -484,6 +484,9 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		printf("Index list with %u item%s\n",
 						count, count > 1 ? "s" : "");
 
+	if (count == 0)
+		exit(EXIT_SUCCESS);
+
 	if (monitor && count > 0)
 		printf("\t");
 
