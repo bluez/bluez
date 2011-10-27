@@ -578,6 +578,54 @@ static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void discov_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_mode *rp = rsp;
+
+	if (status != 0) {
+		fprintf(stderr, "Changing discov state for hci%u "
+				"failed with status %u\n", id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small set_discov response (%u bytes)\n",
+									len);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u discov %s\n", id, rp->val ? "on" : "off");
+
+	exit(EXIT_SUCCESS);
+}
+
+
+static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	uint8_t discov;
+
+	if (argc < 2) {
+		printf("Specify \"on\" or \"off\"\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcasecmp(argv[1], "on") == 0)
+		discov = 1;
+	else if (strcasecmp(argv[1], "off") == 0)
+		discov = 0;
+	else
+		discov = atoi(argv[1]);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DISCOVERABLE, index, &discov,
+				sizeof(discov), discov_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send set_discov cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -586,6 +634,7 @@ static struct {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
+	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ NULL, NULL, 0 }
 };
 
