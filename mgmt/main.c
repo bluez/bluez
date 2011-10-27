@@ -577,6 +577,7 @@ static void usage(void)
 		"\tbtmgmt [options] <command> [command parameters]\n");
 
 	printf("Options:\n"
+		"\t--verbose\tEnable extra logging\n"
 		"\t--help\tDisplay help\n");
 
 	printf("Commands:\n");
@@ -589,6 +590,7 @@ static void usage(void)
 }
 
 static struct option main_options[] = {
+	{ "verbose",	0, 0, 'v' },
 	{ "help",	0, 0, 'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -598,8 +600,11 @@ int main(int argc, char *argv[])
 	int opt, i, mgmt_sk;
 	struct pollfd pollfd;
 
-	while ((opt=getopt_long(argc, argv, "+h", main_options, NULL)) != -1) {
+	while ((opt=getopt_long(argc, argv, "+hv", main_options, NULL)) != -1) {
 		switch (opt) {
+		case 'v':
+			monitor = true;
+			break;
 		case 'h':
 		default:
 			usage();
