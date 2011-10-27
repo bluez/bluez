@@ -157,7 +157,7 @@ static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 	memcpy(buf + MGMT_HDR_SIZE, data, len);
 
 	if (write(mgmt_sk, buf, MGMT_HDR_SIZE + len) < 0) {
-		fprintf(stderr, "Unable to send command: %s\n",
+		fprintf(stderr, "Unable to write to socket: %s\n",
 							strerror(errno));
 		free(pending_cmd);
 		pending_cmd = NULL;
@@ -426,7 +426,7 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	char addr[18];
 
 	if (status != 0) {
-		printf("Reading hci%u info failed with status %u\n",
+		fprintf(stderr, "Reading hci%u info failed with status %u\n",
 								id, status);
 		exit(EXIT_FAILURE);
 	}
@@ -485,7 +485,7 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 
 		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
 					0, info_rsp, NULL) < 0) {
-			fprintf(stderr, "Unable to send cmd\n");
+			fprintf(stderr, "Unable to send read_info cmd\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -497,7 +497,7 @@ static void cmd_info(int mgmt_sk, int argc, char **argv)
 		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INDEX_LIST,
 					MGMT_INDEX_NONE, NULL, 0,
 					index_rsp, NULL) < 0) {
-			fprintf(stderr, "Unable to send cmd\n");
+			fprintf(stderr, "Unable to send index_list cmd\n");
 			exit(EXIT_FAILURE);
 		}
 
@@ -506,7 +506,7 @@ static void cmd_info(int mgmt_sk, int argc, char **argv)
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, atoi(argv[1]), NULL,
 						0, info_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send cmd\n");
+		fprintf(stderr, "Unable to send read_info cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -517,7 +517,7 @@ static void power_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	struct mgmt_mode *rp = rsp;
 
 	if (status != 0) {
-		printf("Changing powered state for hci%u "
+		fprintf(stderr, "Changing powered state for hci%u "
 				"failed with status %u\n", id, status);
 		exit(EXIT_FAILURE);
 	}
@@ -552,7 +552,7 @@ static void cmd_power(int mgmt_sk, int argc, char **argv)
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, 0, &power,
 					sizeof(power), power_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send cmd\n");
+		fprintf(stderr, "Unable to send set_powered cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
