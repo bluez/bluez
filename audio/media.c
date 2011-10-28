@@ -870,10 +870,32 @@ static struct media_player *media_adapter_find_player(
 	return NULL;
 }
 
+static void release_player(struct media_player *mp)
+{
+	DBusMessage *msg;
+
+	DBG("sender=%s path=%s", mp->sender, mp->path);
+
+	msg = dbus_message_new_method_call(mp->sender, mp->path,
+						MEDIA_PLAYER_INTERFACE,
+						"Release");
+	if (msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return;
+	}
+
+	g_dbus_send_message(mp->adapter->conn, msg);
+}
+
 static void media_player_free(gpointer data)
 {
 	struct media_player *mp = data;
 	struct media_adapter *adapter = mp->adapter;
+
+	if (mp->player) {
+		adapter->players = g_slist_remove(adapter->players, mp);
+		release_player(mp);
+	}
 
 	g_dbus_remove_watch(adapter->conn, mp->watch);
 	g_dbus_remove_watch(adapter->conn, mp->property_watch);
@@ -898,8 +920,10 @@ static void media_player_destroy(struct media_player *mp)
 	DBG("sender=%s path=%s", mp->sender, mp->path);
 
 	if (mp->player) {
+		struct avrcp_player *player = mp->player;
+		mp->player = NULL;
 		adapter->players = g_slist_remove(adapter->players, mp);
-		avrcp_unregister_player(mp->player);
+		avrcp_unregister_player(player);
 		return;
 	}
 
