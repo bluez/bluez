@@ -114,11 +114,12 @@ static void agent_request_reply(DBusPendingCall *call, void *user_data)
 	struct obc_agent *agent = user_data;
 	struct pending_request *req = agent->pending;
 
+	agent->pending = NULL;
+
 	if (req->function)
 		req->function(call, req->data);
 
 	pending_request_free(req);
-	agent->pending = NULL;
 }
 
 int obc_agent_request(struct obc_agent *agent, const char *path,
