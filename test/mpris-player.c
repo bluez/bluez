@@ -429,6 +429,22 @@ static char *sender2path(const char *sender)
 	return g_strdelimit(path, ":.", '_');
 }
 
+static DBusHandlerResult player_message(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	if (dbus_message_is_method_call(msg, "org.bluez.MediaPlayer",
+								"Release")) {
+		printf("Release\n");
+		exit(1);
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static const DBusObjectPathVTable player_table = {
+	.message_function = player_message,
+};
+
 static void add_player(DBusConnection *conn, const char *name,
 							const char *sender)
 {
@@ -491,6 +507,10 @@ static void add_player(DBusConnection *conn, const char *name,
 		}
 		goto done;
 	}
+
+	if (!dbus_connection_register_object_path(sys, path, &player_table,
+								NULL))
+		fprintf(stderr, "Can't register object path for agent\n");
 
 done:
 	if (reply)
