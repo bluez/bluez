@@ -823,7 +823,10 @@ static int tonegen_startevent(char tone)
 		event_tone = DTMF_D;
 		break;
 	default:
-		event_tone = atoi(&tone);
+		ret = g_ascii_digit_value(tone);
+		if (ret < 0)
+			return -EINVAL;
+		event_tone = ret;
 	}
 
 	ret = send_method_call(TONEGEN_BUS_NAME, TONEGEN_PATH,
