@@ -10,6 +10,12 @@ import gobject
 
 class Player(dbus.service.Object):
 	@dbus.service.method("org.bluez.MediaPlayer",
+					in_signature="", out_signature="")
+	def Release(self):
+		print("Release")
+		mainloop.quit()
+
+	@dbus.service.method("org.bluez.MediaPlayer",
 					in_signature="sv", out_signature="")
 	def SetProperty(self, key, value):
 		print("SetProperty (%s, %s)" % (key, value), file=sys.stderr)
