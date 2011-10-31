@@ -200,7 +200,7 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 {
 	struct characteristic *ch = user_data;
 	uint8_t value[ATT_MAX_MTU];
-	uint16_t *p, interval;
+	uint16_t interval;
 	int vlen;
 
 	if (status != 0) {
@@ -219,9 +219,7 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	p = (uint16_t *) value;
-	interval = btohs(bt_get_unaligned(p));
-
+	interval = att_get_u16(&value[0]);
 	change_property(ch->t, "Interval", &interval);
 }
 
