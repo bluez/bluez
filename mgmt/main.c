@@ -321,6 +321,24 @@ static int mgmt_new_key(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
+				struct mgmt_ev_device_connected *ev,
+				uint16_t len)
+{
+	char addr[18];
+	const char *ev_name = connected ? "connected" : "disconnected";
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid %s event length (%u bytes)\n", ev_name, len);
+		return -EINVAL;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	printf("hci%u %s %s\n", index, addr, ev_name);
+
+	return 0;
+}
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -345,6 +363,10 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_setting(mgmt_sk, index, ev, data, len);
 	case MGMT_EV_NEW_KEY:
 		return mgmt_new_key(mgmt_sk, index, data, len);
+	case MGMT_EV_DEVICE_CONNECTED:
+		return mgmt_connected(mgmt_sk, index, true, data, len);
+	case MGMT_EV_DEVICE_DISCONNECTED:
+		return mgmt_connected(mgmt_sk, index, false, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
