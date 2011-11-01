@@ -679,6 +679,47 @@ static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void con_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_get_connections *rp = rsp;
+	uint16_t count, i;
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small (%u bytes) get_connections rsp\n",
+									len);
+		exit(EXIT_FAILURE);
+	}
+
+	count = bt_get_le16(&rp->conn_count);
+	if (len != sizeof(*rp) + count * sizeof(bdaddr_t)) {
+		fprintf(stderr, "Invalid get_connections length "
+					" (count=%u, len=%u)\n", count, len);
+		exit(EXIT_FAILURE);
+	}
+
+	for (i = 0; i < count; i++) {
+		char addr[18];
+
+		ba2str(&rp->conn[i], addr);
+		printf("%s\n", addr);
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_con(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_GET_CONNECTIONS, index, NULL, 0,
+							con_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send get_connections cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -692,6 +733,7 @@ static struct {
 	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
+	{ "con",	cmd_con,	"List connections"		},
 	{ NULL, NULL, 0 }
 };
 
