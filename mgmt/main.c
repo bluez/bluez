@@ -529,28 +529,27 @@ static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
-static void power_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	struct mgmt_mode *rp = rsp;
 
 	if (status != 0) {
-		fprintf(stderr, "Changing powered state for hci%u "
-				"failed with status %u\n", id, status);
+		fprintf(stderr, "%s for hci%u failed with status %u\n",
+						mgmt_opstr(op), id, status);
 		exit(EXIT_FAILURE);
 	}
 
 	if (len < sizeof(*rp)) {
-		fprintf(stderr, "Too small set_powered response (%u bytes)\n",
-									len);
+		fprintf(stderr, "Too small %s response (%u bytes)\n",
+							mgmt_opstr(op), len);
 		exit(EXIT_FAILURE);
 	}
 
-	printf("hci%u powered %s\n", id, rp->val ? "on" : "off");
+	printf("hci%u %s %s\n", id, mgmt_opstr(op), rp->val ? "on" : "off");
 
 	exit(EXIT_SUCCESS);
 }
-
 
 static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
@@ -572,34 +571,11 @@ static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 		index = 0;
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, index, &power,
-					sizeof(power), power_rsp, NULL) < 0) {
+				sizeof(power), setting_rsp, NULL) < 0) {
 		fprintf(stderr, "Unable to send set_powered cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
-
-static void discov_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
-{
-	struct mgmt_mode *rp = rsp;
-
-	if (status != 0) {
-		fprintf(stderr, "Changing discov state for hci%u "
-				"failed with status %u\n", id, status);
-		exit(EXIT_FAILURE);
-	}
-
-	if (len < sizeof(*rp)) {
-		fprintf(stderr, "Too small set_discov response (%u bytes)\n",
-									len);
-		exit(EXIT_FAILURE);
-	}
-
-	printf("hci%u discov %s\n", id, rp->val ? "on" : "off");
-
-	exit(EXIT_SUCCESS);
-}
-
 
 static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
@@ -621,7 +597,7 @@ static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 		index = 0;
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DISCOVERABLE, index, &discov,
-				sizeof(discov), discov_rsp, NULL) < 0) {
+				sizeof(discov), setting_rsp, NULL) < 0) {
 		fprintf(stderr, "Unable to send set_discov cmd\n");
 		exit(EXIT_FAILURE);
 	}
