@@ -852,7 +852,7 @@ static void usage(void)
 
 	printf("Commands:\n");
 	for (i = 0; command[i].cmd; i++)
-		printf("\t%-4s\t%s\n", command[i].cmd, command[i].doc);
+		printf("\t%-15s\t%s\n", command[i].cmd, command[i].doc);
 
 	printf("\n"
 		"For more information on the usage of each command use:\n"
