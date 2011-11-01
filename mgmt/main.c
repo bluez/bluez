@@ -303,6 +303,24 @@ static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
 	return 0;
 }
 
+static int mgmt_new_key(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_new_key *ev, uint16_t len)
+{
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr, "Invalid new_key event length (%u bytes)\n",
+									len);
+		return -EINVAL;
+	}
+
+	ba2str(&ev->key.bdaddr, addr);
+	printf("hci%u new_key %s type 0x%02x pin_len %d store_hint %u\n",
+		index, addr, ev->key.type, ev->key.pin_len, ev->store_hint);
+
+	return 0;
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -325,6 +343,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_CONNECTABLE:
 	case MGMT_EV_PAIRABLE:
 		return mgmt_setting(mgmt_sk, index, ev, data, len);
+	case MGMT_EV_NEW_KEY:
+		return mgmt_new_key(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
