@@ -633,6 +633,52 @@ static void cmd_class(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
+				uint8_t status, void *rsp, uint16_t len,
+				void *user_data)
+{
+	struct mgmt_rp_disconnect *rp = rsp;
+	char addr[18];
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Invalid disconnect response length (%u)\n",
+									len);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (status == 0) {
+		printf("%s disconnected\n", addr);
+		exit(EXIT_SUCCESS);
+	} else {
+		fprintf(stderr, "Disconnecting %s failed with status %u\n",
+								addr, status);
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_disconnect cp;
+
+	if (argc < 2) {
+		printf("Usage: btmgmt %s <address>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	str2ba(argv[1], &cp.bdaddr);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_DISCONNECT, index,
+				&cp, sizeof(cp), disconnect_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send disconnect cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -645,6 +691,7 @@ static struct {
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
 	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
+	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ NULL, NULL, 0 }
 };
 
