@@ -289,58 +289,16 @@ static int mgmt_index_removed(int mgmt_sk, uint16_t index)
 	return 0;
 }
 
-static int mgmt_powered(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
-								uint16_t len)
+static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
+					struct mgmt_mode *ev, uint16_t len)
 {
 	if (len < sizeof(*ev)) {
-		fprintf(stderr, "Too short (%u bytes) mgmt powered event\n",
-									len);
+		fprintf(stderr, "Too short (%u bytes) %s event\n",
+							len, mgmt_evstr(op));
 		return -EINVAL;
 	}
 
-	printf("hci%u powered %s\n", index, ev->val ? "on" : "off");
-
-	return 0;
-}
-
-static int mgmt_discoverable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
-								uint16_t len)
-{
-	if (len < sizeof(*ev)) {
-		fprintf(stderr,
-			"Too short (%u bytes) mgmt discoverable event\n", len);
-		return -EINVAL;
-	}
-
-	printf("hci%u discoverable %s\n", index, ev->val ? "on" : "off");
-
-	return 0;
-}
-
-static int mgmt_connectable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
-								uint16_t len)
-{
-	if (len < sizeof(*ev)) {
-		fprintf(stderr,
-			"Too short (%u bytes) mgmt connectable event\n", len);
-		return -EINVAL;
-	}
-
-	printf("hci%u connectable %s\n", index, ev->val ? "on" : "off");
-
-	return 0;
-}
-
-static int mgmt_pairable(int mgmt_sk, uint16_t index, struct mgmt_mode *ev,
-								uint16_t len)
-{
-	if (len < sizeof(*ev)) {
-		fprintf(stderr, "Too short (%u bytes) mgmt pairable event\n",
-									len);
-		return -EINVAL;
-	}
-
-	printf("hci%u pairable %s\n", index, ev->val ? "on" : "off");
+	printf("hci%u %s %s\n", index, mgmt_evstr(op), ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -363,13 +321,10 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_INDEX_REMOVED:
 		return mgmt_index_removed(mgmt_sk, index);
 	case MGMT_EV_POWERED:
-		return mgmt_powered(mgmt_sk, index, data, len);
 	case MGMT_EV_DISCOVERABLE:
-		return mgmt_discoverable(mgmt_sk, index, data, len);
 	case MGMT_EV_CONNECTABLE:
-		return mgmt_connectable(mgmt_sk, index, data, len);
 	case MGMT_EV_PAIRABLE:
-		return mgmt_pairable(mgmt_sk, index, data, len);
+		return mgmt_setting(mgmt_sk, index, ev, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
