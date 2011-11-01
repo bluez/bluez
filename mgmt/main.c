@@ -593,6 +593,11 @@ static void cmd_connectable(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt_sk, index, MGMT_OP_SET_CONNECTABLE, argc, argv);
 }
 
+static void cmd_pairable(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_PAIRABLE, argc, argv);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -603,6 +608,7 @@ static struct {
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
+	{ "pairable",	cmd_pairable,	"Toggle pairable state"	},
 	{ NULL, NULL, 0 }
 };
 
