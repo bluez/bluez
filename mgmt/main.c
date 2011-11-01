@@ -359,6 +359,25 @@ static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_auth_failed *ev,
+				uint16_t len)
+{
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid auth_failed event length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	printf("hci%u %s auth failed with status 0x%02x\n", index, addr,
+								ev->status);
+
+	return 0;
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -389,6 +408,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_connected(mgmt_sk, index, false, data, len);
 	case MGMT_EV_CONNECT_FAILED:
 		return mgmt_conn_failed(mgmt_sk, index, data, len);
+	case MGMT_EV_AUTH_FAILED:
+		return mgmt_auth_failed(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
