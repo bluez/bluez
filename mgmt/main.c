@@ -690,6 +690,12 @@ int main(int argc, char *argv[])
 		break;
 	}
 
+	if (command[i].cmd == NULL) {
+		fprintf(stderr, "Unknown command: %s\n", argv[0]);
+		close(mgmt_sk);
+		return -1;
+	}
+
 	pollfd.fd = mgmt_sk;
 	pollfd.events = POLLIN;
 	pollfd.revents = 0;
