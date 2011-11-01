@@ -51,7 +51,7 @@ static const char *mgmt_op[] = {
 	"Set Powered",
 	"Set Discoverable",
 	"Set Connectable",
-	"Set Pairable",
+	"Set Pairable",			/* 0x0008 */
 	"Add UUID",
 	"Remove UUID",
 	"Set Dev Class",
@@ -59,7 +59,7 @@ static const char *mgmt_op[] = {
 	"Load Link Keys",
 	"Remove Keys",
 	"Disconnect",
-	"Get Connections",
+	"Get Connections",		/* 0x0010 */
 	"PIN Code Reply",
 	"PIN Code Neg Reply",
 	"Set IO Capability",
@@ -67,7 +67,7 @@ static const char *mgmt_op[] = {
 	"User Confirm Reply",
 	"User Confirm Neg Reply",
 	"Set Local Name",
-	"Read Local OOB Data",
+	"Read Local OOB Data",		/* 0x0018 */
 	"Add Remote OOB Data",
 	"Remove Remove OOB Data",
 	"Start Discoery",
@@ -85,7 +85,7 @@ static const char *mgmt_ev[] = {
 	"Index Removed",
 	"Powered",
 	"Discoverable",
-	"Connectable",
+	"Connectable",			/* 0x0008 */
 	"Pairable",
 	"New Link Key",
 	"Device Connected",
@@ -93,7 +93,7 @@ static const char *mgmt_ev[] = {
 	"Connect Failed",
 	"PIN Code Request",
 	"User Confirm Request",
-	"Authentication Failed",
+	"Authentication Failed",	/* 0x0010 */
 	"Local Name Changed",
 	"Device Found",
 	"Remote Name",
