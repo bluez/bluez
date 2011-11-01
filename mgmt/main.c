@@ -588,6 +588,11 @@ static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt_sk, index, MGMT_OP_SET_DISCOVERABLE, argc, argv);
 }
 
+static void cmd_connectable(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_CONNECTABLE, argc, argv);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -597,6 +602,7 @@ static struct {
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
+	{ "connectable",cmd_connectable,"Toggle connectable state"	},
 	{ NULL, NULL, 0 }
 };
 
