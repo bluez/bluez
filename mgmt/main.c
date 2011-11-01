@@ -434,6 +434,7 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_DISCOVERABLE:
 	case MGMT_EV_CONNECTABLE:
 	case MGMT_EV_PAIRABLE:
+	case MGMT_EV_DISCOVERING:
 		return mgmt_setting(mgmt_sk, index, ev, data, len);
 	case MGMT_EV_NEW_KEY:
 		return mgmt_new_key(mgmt_sk, index, data, len);
