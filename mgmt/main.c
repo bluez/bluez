@@ -598,6 +598,41 @@ static void cmd_pairable(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt_sk, index, MGMT_OP_SET_PAIRABLE, argc, argv);
 }
 
+static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "Setting hci%u class failed with status %u",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u class changed\n", id);
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_class(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	uint8_t class[2];
+
+	if (argc < 3) {
+		printf("Usage: btmgmt %s <major> <minor>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	class[0] = atoi(argv[1]);
+	class[1] = atoi(argv[2]);
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DEV_CLASS, index,
+				class, sizeof(class), class_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send set_dev_class cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -608,7 +643,8 @@ static struct {
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
-	{ "pairable",	cmd_pairable,	"Toggle pairable state"	},
+	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
+	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ NULL, NULL, 0 }
 };
 
