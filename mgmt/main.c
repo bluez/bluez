@@ -393,6 +393,26 @@ static int mgmt_name_changed(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static int mgmt_device_found(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_device_found *ev, uint16_t len)
+{
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid device_found event length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	printf("hci%u dev_found: %s class 0x%02x%02x%02x rssi %d eir (%s)\n",
+			index, addr,
+			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
+			ev->rssi, ev->eir[0] == 0 ? "no" : "yes");
+
+	return 0;
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -427,6 +447,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_auth_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_LOCAL_NAME_CHANGED:
 		return mgmt_name_changed(mgmt_sk, index, data, len);
+	case MGMT_EV_DEVICE_FOUND:
+		return mgmt_device_found(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
