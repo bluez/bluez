@@ -551,9 +551,10 @@ static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	exit(EXIT_SUCCESS);
 }
 
-static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_setting(int mgmt_sk, uint16_t index, uint16_t op,
+							int argc, char **argv)
 {
-	uint8_t power;
+	uint8_t val;
 
 	if (argc < 2) {
 		printf("Specify \"on\" or \"off\"\n");
@@ -561,47 +562,32 @@ static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 
 	if (strcasecmp(argv[1], "on") == 0)
-		power = 1;
+		val = 1;
 	else if (strcasecmp(argv[1], "off") == 0)
-		power = 0;
+		val = 0;
 	else
-		power = atoi(argv[1]);
+		val = atoi(argv[1]);
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_POWERED, index, &power,
-				sizeof(power), setting_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send set_powered cmd\n");
+	if (mgmt_send_cmd(mgmt_sk, op, index, &val, sizeof(val),
+						setting_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send %s cmd\n", mgmt_opstr(op));
 		exit(EXIT_FAILURE);
 	}
+}
+
+static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_POWERED, argc, argv);
 }
 
 static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
-	uint8_t discov;
-
-	if (argc < 2) {
-		printf("Specify \"on\" or \"off\"\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (strcasecmp(argv[1], "on") == 0)
-		discov = 1;
-	else if (strcasecmp(argv[1], "off") == 0)
-		discov = 0;
-	else
-		discov = atoi(argv[1]);
-
-	if (index == MGMT_INDEX_NONE)
-		index = 0;
-
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DISCOVERABLE, index, &discov,
-				sizeof(discov), setting_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send set_discov cmd\n");
-		exit(EXIT_FAILURE);
-	}
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_DISCOVERABLE, argc, argv);
 }
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
