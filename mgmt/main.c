@@ -103,6 +103,7 @@ static const char *mgmt_ev[] = {
 };
 
 static bool monitor = false;
+static bool discovery = false;
 
 typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data);
@@ -297,6 +298,9 @@ static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
 							len, mgmt_evstr(op));
 		return -EINVAL;
 	}
+
+	if (op == MGMT_EV_DISCOVERING && ev->val == 0 && discovery)
+		exit(EXIT_SUCCESS);
 
 	printf("hci%u %s %s\n", index, mgmt_evstr(op), ev->val ? "on" : "off");
 
@@ -820,6 +824,31 @@ static void cmd_con(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "Unable to start discovery (status %u)",
+								status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Discovery started\n");
+	discovery = true;
+}
+
+static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_START_DISCOVERY, index, NULL, 0,
+							find_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send get_connections cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -834,6 +863,7 @@ static struct {
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
+	{ "find",	cmd_find,	"Discover nearby devices"	},
 	{ NULL, NULL, 0 }
 };
 
