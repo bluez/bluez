@@ -378,6 +378,21 @@ static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static int mgmt_name_changed(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_local_name_changed *ev,
+				uint16_t len)
+{
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid local_name_changed length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	printf("hci%u name changed: %s\n", index, ev->name);
+
+	return 0;
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -410,6 +425,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_conn_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_AUTH_FAILED:
 		return mgmt_auth_failed(mgmt_sk, index, data, len);
+	case MGMT_EV_LOCAL_NAME_CHANGED:
+		return mgmt_name_changed(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
