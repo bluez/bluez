@@ -273,20 +273,23 @@ static int mgmt_controller_error(uint16_t index,
 		return -EINVAL;
 	}
 
-	printf("hci%u error 0x%02x\n", index, ev->error_code);
+	if (monitor)
+		printf("hci%u error 0x%02x\n", index, ev->error_code);
 
 	return 0;
 }
 
 static int mgmt_index_added(int mgmt_sk, uint16_t index)
 {
-	printf("hci%u added\n", index);
+	if (monitor)
+		printf("hci%u added\n", index);
 	return 0;
 }
 
 static int mgmt_index_removed(int mgmt_sk, uint16_t index)
 {
-	printf("hci%u removed\n", index);
+	if (monitor)
+		printf("hci%u removed\n", index);
 	return 0;
 }
 
@@ -302,7 +305,9 @@ static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
 	if (op == MGMT_EV_DISCOVERING && ev->val == 0 && discovery)
 		exit(EXIT_SUCCESS);
 
-	printf("hci%u %s %s\n", index, mgmt_evstr(op), ev->val ? "on" : "off");
+	if (monitor)
+		printf("hci%u %s %s\n", index, mgmt_evstr(op),
+						ev->val ? "on" : "off");
 
 	return 0;
 }
@@ -310,7 +315,6 @@ static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
 static int mgmt_new_key(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_new_key *ev, uint16_t len)
 {
-	char addr[18];
 
 	if (len != sizeof(*ev)) {
 		fprintf(stderr, "Invalid new_key event length (%u bytes)\n",
@@ -318,9 +322,13 @@ static int mgmt_new_key(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	ba2str(&ev->key.bdaddr, addr);
-	printf("hci%u new_key %s type 0x%02x pin_len %d store_hint %u\n",
-		index, addr, ev->key.type, ev->key.pin_len, ev->store_hint);
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->key.bdaddr, addr);
+		printf("hci%u new_key %s type 0x%02x pin_len %d "
+				"store_hint %u\n", index, addr, ev->key.type,
+				ev->key.pin_len, ev->store_hint);
+	}
 
 	return 0;
 }
@@ -329,7 +337,6 @@ static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
 				struct mgmt_ev_device_connected *ev,
 				uint16_t len)
 {
-	char addr[18];
 	const char *ev_name = connected ? "connected" : "disconnected";
 
 	if (len != sizeof(*ev)) {
@@ -338,8 +345,11 @@ static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
-	printf("hci%u %s %s\n", index, addr, ev_name);
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u %s %s\n", index, addr, ev_name);
+	}
 
 	return 0;
 }
@@ -348,17 +358,18 @@ static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_connect_failed *ev,
 				uint16_t len)
 {
-	char addr[18];
-
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid connect_failed event length (%u bytes)\n", len);
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
-	printf("hci%u %s connect failed with status 0x%02x\n", index, addr,
-								ev->status);
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u %s connect failed with status 0x%02x\n",
+						index, addr, ev->status);
+	}
 
 	return 0;
 }
@@ -367,17 +378,18 @@ static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_auth_failed *ev,
 				uint16_t len)
 {
-	char addr[18];
-
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid auth_failed event length (%u bytes)\n", len);
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
-	printf("hci%u %s auth failed with status 0x%02x\n", index, addr,
-								ev->status);
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u %s auth failed with status 0x%02x\n",
+						index, addr, ev->status);
+	}
 
 	return 0;
 }
@@ -392,7 +404,8 @@ static int mgmt_name_changed(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	printf("hci%u name changed: %s\n", index, ev->name);
+	if (monitor)
+		printf("hci%u name changed: %s\n", index, ev->name);
 
 	return 0;
 }
@@ -400,19 +413,20 @@ static int mgmt_name_changed(int mgmt_sk, uint16_t index,
 static int mgmt_device_found(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_device_found *ev, uint16_t len)
 {
-	char addr[18];
-
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid device_found event length (%u bytes)\n", len);
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
-	printf("hci%u dev_found: %s class 0x%02x%02x%02x rssi %d eir (%s)\n",
-			index, addr,
+	if (monitor || discovery) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u dev_found: %s class 0x%02x%02x%02x rssi %d "
+			"eir (%s)\n", index, addr,
 			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
 			ev->rssi, ev->eir[0] == 0 ? "no" : "yes");
+	}
 
 	return 0;
 }
@@ -420,20 +434,20 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 static int mgmt_remote_name(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_remote_name *ev, uint16_t len)
 {
-	char addr[18];
-
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid remote_name event length (%u bytes)\n", len);
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
-	printf("hci%u %s name %s\n", index, addr, ev->name);
+	if (monitor || discovery) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u %s name %s\n", index, addr, ev->name);
+	}
 
 	return 0;
 }
-
 
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
