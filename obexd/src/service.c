@@ -64,6 +64,9 @@ GSList *obex_service_driver_list(uint16_t services)
 	GSList *l;
 	GSList *list = NULL;
 
+	if (services == 0)
+		return drivers;
+
 	for (l = drivers; l && services; l = l->next) {
 		struct obex_service_driver *driver = l->data;
 

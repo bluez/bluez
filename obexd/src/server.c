@@ -47,23 +47,9 @@
 
 static GSList *servers = NULL;
 
-int obex_server_init(uint16_t service)
+static void init_server(uint16_t service, GSList *transports)
 {
-	GSList *drivers;
-	GSList *transports;
 	GSList *l;
-
-	drivers = obex_service_driver_list(service);
-	if (drivers == NULL) {
-		DBG("No service driver registered");
-		return -EINVAL;
-	}
-
-	transports = obex_transport_driver_list();
-	if (transports == NULL) {
-		DBG("No transport driver registered");
-		return -EINVAL;
-	}
 
 	for (l = transports; l; l = l->next) {
 		struct obex_transport_driver *transport = l->data;
@@ -76,7 +62,7 @@ int obex_server_init(uint16_t service)
 
 		server = g_new0(struct obex_server, 1);
 		server->transport = transport;
-		server->drivers = drivers;
+		server->drivers = obex_service_driver_list(service);
 
 		server->transport_data = transport->start(server, &err);
 		if (server->transport_data == NULL) {
@@ -87,6 +73,31 @@ int obex_server_init(uint16_t service)
 		}
 
 		servers = g_slist_prepend(servers, server);
+	}
+}
+
+int obex_server_init(void)
+{
+	GSList *drivers;
+	GSList *transports;
+	GSList *l;
+
+	drivers = obex_service_driver_list(0);
+	if (drivers == NULL) {
+		DBG("No service driver registered");
+		return -EINVAL;
+	}
+
+	transports = obex_transport_driver_list();
+	if (transports == NULL) {
+		DBG("No transport driver registered");
+		return -EINVAL;
+	}
+
+	for (l = drivers; l; l = l->next) {
+		struct obex_service_driver *driver = l->data;
+
+		init_server(driver->service, transports);
 	}
 
 	return 0;

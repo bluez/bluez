@@ -28,7 +28,7 @@ struct obex_server {
 	GSList *drivers;
 };
 
-int obex_server_init(uint16_t service);
+int obex_server_init(void);
 
 void obex_server_exit(void);
 

@@ -241,19 +241,10 @@ int main(int argc, char *argv[])
 
 	plugin_init(option_plugin, option_noplugin);
 
-	obex_server_init(OBEX_OPP);
-
-	obex_server_init(OBEX_FTP);
-
-	obex_server_init(OBEX_PCSUITE);
-
-	obex_server_init(OBEX_PBAP);
-
-	obex_server_init(OBEX_IRMC);
-
-	obex_server_init(OBEX_SYNCEVOLUTION);
-
-	obex_server_init(OBEX_MAS);
+	if (obex_server_init() < 0) {
+		error("obex_server_init failed");
+		exit(EXIT_FAILURE);
+	}
 
 	if (!root_folder_setup(option_root, option_root_setup)) {
 		error("Unable to setup root folder %s", option_root);
