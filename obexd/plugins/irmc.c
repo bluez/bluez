@@ -493,6 +493,7 @@ static struct obex_service_driver irmc = {
 	.name = "IRMC Sync server",
 	.service = OBEX_IRMC,
 	.channel = IRMC_CHANNEL,
+	.secure = TRUE,
 	.record = IRMC_RECORD,
 	.target = IRMC_TARGET,
 	.target_size = IRMC_TARGET_SIZE,

@@ -47,7 +47,7 @@
 
 static GSList *servers = NULL;
 
-int obex_server_init(uint16_t service, gboolean secure)
+int obex_server_init(uint16_t service)
 {
 	GSList *drivers;
 	GSList *transports;
@@ -77,7 +77,6 @@ int obex_server_init(uint16_t service, gboolean secure)
 		server = g_new0(struct obex_server, 1);
 		server->transport = transport;
 		server->drivers = drivers;
-		server->secure = secure;
 
 		server->transport_data = transport->start(server, &err);
 		if (server->transport_data == NULL) {

@@ -758,6 +758,7 @@ static struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
 	.channel = PBAP_CHANNEL,
+	.secure = TRUE,
 	.record = PBAP_RECORD,
 	.target = PBAP_TARGET,
 	.target_size = TARGET_SIZE,

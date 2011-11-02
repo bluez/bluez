@@ -500,11 +500,17 @@ drop:
 }
 
 static GIOChannel *start(struct obex_server *server,
-				struct obex_service_driver *service,
-				BtIOSecLevel sec_level)
+				struct obex_service_driver *service)
 {
+	BtIOSecLevel sec_level;
 	GIOChannel *io;
 	GError *err = NULL;
+
+	if (service->secure == TRUE)
+		sec_level = BT_IO_SEC_MEDIUM;
+	else
+		sec_level = BT_IO_SEC_LOW;
+
 
 	io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_event,
 				service, NULL, &err,
@@ -523,20 +529,14 @@ static GIOChannel *start(struct obex_server *server,
 
 static void *bluetooth_start(struct obex_server *server, int *err)
 {
-	BtIOSecLevel sec_level;
 	GSList *ios = NULL;
 	const GSList *l;
-
-	if (server->secure == TRUE)
-		sec_level = BT_IO_SEC_MEDIUM;
-	else
-		sec_level = BT_IO_SEC_LOW;
 
 	for (l = server->drivers; l; l = l->next) {
 		struct obex_service_driver *service = l->data;
 		GIOChannel *io;
 
-		io = start(server, service, sec_level);
+		io = start(server, service);
 		if (io == NULL)
 			continue;
 

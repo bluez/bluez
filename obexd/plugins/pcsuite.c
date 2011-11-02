@@ -253,6 +253,7 @@ static struct obex_service_driver pcsuite = {
 	.name = "Nokia OBEX PC Suite Services",
 	.service = OBEX_PCSUITE,
 	.channel = PCSUITE_CHANNEL,
+	.secure = TRUE,
 	.record = PCSUITE_RECORD,
 	.target = FTP_TARGET,
 	.target_size = TARGET_SIZE,

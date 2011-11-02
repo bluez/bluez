@@ -450,6 +450,7 @@ static struct obex_service_driver synce = {
 	.name = "OBEX server for SyncML, using SyncEvolution",
 	.service = OBEX_SYNCEVOLUTION,
 	.channel = SYNCEVOLUTION_CHANNEL,
+	.secure = TRUE,
 	.record = SYNCEVOLUTION_RECORD,
 	.target = SYNCML_TARGET,
 	.target_size = SYNCML_TARGET_SIZE,

@@ -25,11 +25,10 @@
 struct obex_server {
 	struct obex_transport_driver *transport;
 	void *transport_data;
-	gboolean secure;
 	GSList *drivers;
 };
 
-int obex_server_init(uint16_t service, gboolean secure);
+int obex_server_init(uint16_t service);
 
 void obex_server_exit(void);
 

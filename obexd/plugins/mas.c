@@ -554,6 +554,7 @@ static struct obex_service_driver mas = {
 	.name = "Message Access server",
 	.service = OBEX_MAS,
 	.channel = MAS_CHANNEL,
+	.secure = TRUE,
 	.record = MAS_RECORD,
 	.target = MAS_TARGET,
 	.target_size = TARGET_SIZE,

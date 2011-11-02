@@ -576,6 +576,7 @@ static struct obex_service_driver ftp = {
 	.name = "File Transfer server",
 	.service = OBEX_FTP,
 	.channel = FTP_CHANNEL,
+	.secure = TRUE,
 	.record = FTP_RECORD,
 	.target = FTP_TARGET,
 	.target_size = TARGET_SIZE,

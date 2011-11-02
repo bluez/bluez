@@ -25,6 +25,7 @@ struct obex_service_driver {
 	const char *name;
 	uint16_t service;
 	uint8_t channel;
+	gboolean secure;
 	const uint8_t *target;
 	unsigned int target_size;
 	const uint8_t *who;
