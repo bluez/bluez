@@ -863,6 +863,40 @@ static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "Unable to set local name (status %u)",
+								status);
+		exit(EXIT_FAILURE);
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_set_local_name cp;
+
+	if (argc < 2) {
+		printf("Usage: btmgmt %s <name>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	strncpy((char *) cp.name, argv[1], HCI_MAX_NAME_LENGTH);
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_LOCAL_NAME, index,
+					&cp, sizeof(cp), name_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send set_name cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -878,6 +912,7 @@ static struct {
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
 	{ "find",	cmd_find,	"Discover nearby devices"	},
+	{ "name",	cmd_name,	"Set local name"		},
 	{ NULL, NULL, 0 }
 };
 
