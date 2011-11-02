@@ -36,5 +36,7 @@ void plugin_cleanup(void);
 gboolean manager_init(void);
 void manager_cleanup(void);
 
+gboolean obex_option_auto_accept(void);
 const char *obex_option_root_folder(void);
 gboolean obex_option_symlinks(void);
+const char *obex_option_capability(void);

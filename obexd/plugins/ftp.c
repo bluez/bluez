@@ -171,7 +171,7 @@ static void set_folder(struct ftp_session *ftp, const char *new_folder)
 static int get_by_type(struct ftp_session *ftp, const char *type)
 {
 	struct obex_session *os = ftp->os;
-	const char *capability = obex_get_capability_path(os);
+	const char *capability = obex_option_capability();
 	const char *name = obex_get_name(os);
 	char *path;
 	int err;
@@ -202,7 +202,7 @@ void *ftp_connect(struct obex_session *os, int *err)
 
 	DBG("");
 
-	root_folder = obex_get_root_folder(os);
+	root_folder = obex_option_root_folder();
 
 	manager_register_session(os);
 
@@ -322,7 +322,7 @@ int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
 	}
 
 	name = obex_get_name(os);
-	root_folder = obex_get_root_folder(os);
+	root_folder = obex_option_root_folder();
 	root = g_str_equal(root_folder, ftp->folder);
 
 	DBG("%p name %s", ftp, name);
@@ -446,12 +446,12 @@ static char *ftp_build_filename(struct ftp_session *ftp, const char *destname)
 
 	/* DestName can either be relative or absolute (FTP style) */
 	if (destname[0] == '/')
-		filename = g_build_filename(obex_get_root_folder(ftp->os),
+		filename = g_build_filename(obex_option_root_folder(),
                                                                 destname, NULL);
 	else
 		filename = g_build_filename(ftp->folder, destname, NULL);
 
-	if (is_valid_path(filename + strlen(obex_get_root_folder(ftp->os))))
+	if (is_valid_path(filename + strlen(obex_option_root_folder())))
 		return filename;
 
 	g_free(filename);

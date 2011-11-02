@@ -47,16 +47,7 @@
 
 static GSList *servers = NULL;
 
-static void obex_server_free(struct obex_server *server)
-{
-	g_free(server->folder);
-	g_free(server->capability);
-	g_free(server);
-}
-
-int obex_server_init(uint16_t service, const char *folder,
-				gboolean secure, gboolean auto_accept,
-				gboolean symlinks, const char *capability)
+int obex_server_init(uint16_t service, gboolean secure)
 {
 	GSList *drivers;
 	GSList *transports;
@@ -86,17 +77,13 @@ int obex_server_init(uint16_t service, const char *folder,
 		server = g_new0(struct obex_server, 1);
 		server->transport = transport;
 		server->drivers = drivers;
-		server->folder = g_strdup(folder);
-		server->auto_accept = auto_accept;
-		server->symlinks = symlinks;
-		server->capability = g_strdup(capability);
 		server->secure = secure;
 
 		server->transport_data = transport->start(server, &err);
 		if (server->transport_data == NULL) {
 			DBG("Unable to start %s transport: %s (%d)",
 					transport->name, strerror(err), err);
-			obex_server_free(server);
+			g_free(server);
 			continue;
 		}
 
@@ -114,7 +101,7 @@ void obex_server_exit(void)
 		struct obex_server *server = l->data;
 
 		server->transport->stop(server->transport_data);
-		obex_server_free(server);
+		g_free(server);
 	}
 
 	g_slist_free(servers);

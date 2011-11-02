@@ -264,6 +264,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	char *uuid;
+	const char *root;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -282,8 +283,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	g_free(uuid);
 
 	/* Root folder */
+	root = obex_option_root_folder();
 	dbus_message_iter_append_dict_entry(&dict, "Root",
-					DBUS_TYPE_STRING, &os->server->folder);
+					DBUS_TYPE_STRING, &root);
 
 	/* FIXME: Added Remote Address or USB */
 

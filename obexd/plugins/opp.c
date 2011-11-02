@@ -124,8 +124,8 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	if (t != NULL && !is_filename(t))
 		return -EBADR;
 
-	if (obex_get_auto_accept(os)) {
-		folder = g_strdup(obex_get_root_folder(os));
+	if (obex_option_auto_accept()) {
+		folder = g_strdup(obex_option_root_folder());
 		name = g_strdup(obex_get_name(os));
 		goto skip_auth;
 	}
@@ -136,7 +136,7 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 		return -EPERM;
 
 	if (folder == NULL)
-		folder = g_strdup(obex_get_root_folder(os));
+		folder = g_strdup(obex_option_root_folder());
 
 	if (name == NULL)
 		name = g_strdup(obex_get_name(os));
@@ -169,7 +169,7 @@ static int opp_put(struct obex_session *os, obex_object_t *obj,
 						void *user_data)
 {
 	const char *name = obex_get_name(os);
-	const char *folder = obex_get_root_folder(os);
+	const char *folder = obex_option_root_folder();
 
 	if (folder == NULL)
 		return -EPERM;

@@ -1477,31 +1477,6 @@ const char *obex_get_type(struct obex_session *os)
 	return os->type;
 }
 
-const char *obex_get_root_folder(struct obex_session *os)
-{
-	return os->server->folder;
-}
-
-uint16_t obex_get_service(struct obex_session *os)
-{
-	return os->service->service;
-}
-
-gboolean obex_get_symlinks(struct obex_session *os)
-{
-	return os->server->symlinks;
-}
-
-const char *obex_get_capability_path(struct obex_session *os)
-{
-	return os->server->capability;
-}
-
-gboolean obex_get_auto_accept(struct obex_session *os)
-{
-	return os->server->auto_accept;
-}
-
 int obex_remove(struct obex_session *os, const char *path)
 {
 	if (os->driver == NULL)

@@ -116,6 +116,11 @@ static GOptionEntry options[] = {
 	{ NULL },
 };
 
+gboolean obex_option_auto_accept(void)
+{
+	return option_autoaccept;
+}
+
 const char *obex_option_root_folder(void)
 {
 	return option_root;
@@ -124,6 +129,11 @@ const char *obex_option_root_folder(void)
 gboolean obex_option_symlinks(void)
 {
 	return option_symlinks;
+}
+
+const char *obex_option_capability(void)
+{
+	return option_capability;
 }
 
 static gboolean is_dir(const char *dir) {
@@ -231,27 +241,19 @@ int main(int argc, char *argv[])
 
 	plugin_init(option_plugin, option_noplugin);
 
-	obex_server_init(OBEX_OPP, option_root, FALSE,
-				option_autoaccept, option_symlinks,
-				NULL);
+	obex_server_init(OBEX_OPP, FALSE);
 
-	obex_server_init(OBEX_FTP, option_root, TRUE,
-				option_autoaccept, option_symlinks,
-				option_capability);
+	obex_server_init(OBEX_FTP, TRUE);
 
-	obex_server_init(OBEX_PCSUITE, option_root, TRUE,
-				option_autoaccept, option_symlinks,
-				option_capability);
+	obex_server_init(OBEX_PCSUITE, TRUE);
 
-	obex_server_init(OBEX_PBAP, NULL, TRUE, FALSE, FALSE,
-							option_capability);
+	obex_server_init(OBEX_PBAP, TRUE);
 
-	obex_server_init(OBEX_IRMC, NULL, TRUE, FALSE, FALSE,
-							option_capability);
+	obex_server_init(OBEX_IRMC, TRUE);
 
-	obex_server_init(OBEX_SYNCEVOLUTION, NULL, TRUE, FALSE, FALSE, NULL);
+	obex_server_init(OBEX_SYNCEVOLUTION, TRUE);
 
-	obex_server_init(OBEX_MAS, NULL, TRUE, FALSE, FALSE, NULL);
+	obex_server_init(OBEX_MAS, TRUE);
 
 	if (!root_folder_setup(option_root, option_root_setup)) {
 		error("Unable to setup root folder %s", option_root);
