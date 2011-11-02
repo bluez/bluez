@@ -555,15 +555,15 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	}
 
 	ba2str(&rp->bdaddr, addr);
-	printf("hci%u:\ttype %u addr %s\n", id, rp->type, addr);
-	printf("\tclass 0x%02x%02x%02x\n",
+	printf("hci%u:\ttype %u addr %s class 0x%02x%02x%02x\n",
+		id, rp->type, addr,
 		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 	printf("\tmanufacturer %d HCI ver %d:%d\n",
 					bt_get_le16(&rp->manufacturer),
 					rp->hci_ver, bt_get_le16(&rp->hci_rev));
-	printf("\tpowered %u discoverable %u pairable %u sec_mode %u\n",
-				rp->powered, rp->discoverable,
-				rp->pairable, rp->sec_mode);
+	printf("\tpowered %u connectable %u discoverable %u\n",
+			rp->powered, rp->connectable, rp->discoverable);
+	printf("\tpairable %u sec_mode %u\n", rp->pairable, rp->sec_mode);
 	printf("\tname %s\n\n", (char *) rp->name);
 
 	if (pending == NULL)
