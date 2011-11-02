@@ -30,8 +30,6 @@ struct obex_server {
 	gboolean symlinks;
 	char *capability;
 	gboolean secure;
-	GIOChannel *io;
-	unsigned int watch;
 	GSList *drivers;
 };
 
