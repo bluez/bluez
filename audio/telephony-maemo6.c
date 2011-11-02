@@ -1354,12 +1354,16 @@ static void call_set_status(struct csd_call *call, dbus_uint32_t status)
 		break;
 	case CSD_CALL_STATUS_TERMINATED:
 		if (call->on_hold &&
-				!find_call_with_status(CSD_CALL_STATUS_HOLD))
+				!find_call_with_status(CSD_CALL_STATUS_HOLD)) {
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_NONE);
-		else if (callheld == EV_CALLHELD_MULTIPLE &&
-				find_call_with_status(CSD_CALL_STATUS_HOLD))
+			return;
+		}
+
+		if (callheld == EV_CALLHELD_MULTIPLE &&
+				find_call_with_status(CSD_CALL_STATUS_HOLD) &&
+				!find_call_with_status(CSD_CALL_STATUS_ACTIVE))
 			telephony_update_indicator(maemo_indicators,
 							"callheld",
 							EV_CALLHELD_ON_HOLD);
