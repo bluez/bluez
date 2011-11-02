@@ -358,26 +358,26 @@ done:
 
 static gboolean is_valid_path(const char *path)
 {
-        gchar **elements, **cur;
-        int depth = 0;
+	gchar **elements, **cur;
+	int depth = 0;
 
-        elements = g_strsplit(path, "/", 0);
+	elements = g_strsplit(path, "/", 0);
 
-        for (cur = elements; *cur != NULL; cur++) {
-                if (**cur == '\0' || strcmp(*cur, ".") == 0)
-                        continue;
+	for (cur = elements; *cur != NULL; cur++) {
+		if (**cur == '\0' || strcmp(*cur, ".") == 0)
+			continue;
 
-                if (strcmp(*cur, "..") == 0) {
-                        depth--;
-                        if (depth < 0)
-                                break;
-                        continue;
-                }
+		if (strcmp(*cur, "..") == 0) {
+			depth--;
+			if (depth < 0)
+				break;
+			continue;
+		}
 
-                depth++;
-        }
+		depth++;
+	}
 
-        g_strfreev(elements);
+	g_strfreev(elements);
 
 	if (depth < 0)
 		return FALSE;
