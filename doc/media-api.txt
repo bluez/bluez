@@ -213,7 +213,14 @@ Properties	string Equalizer [readwrite]
 
 		uint32 Position [readonly]
 
-			Playback position in milliseconds
+			Playback position in milliseconds. Changing the
+			position may generate additional events that will be
+			sent to the remote device. When position is 0 it means
+			the track is starting and when it's greater than or
+			equal to track's duration the track has ended. Note
+			that even if duration is not available in metadata it's
+			possible to signal its end by setting position to the
+			maximum uint32 value.
 
 MediaEndpoint hierarchy
 =======================

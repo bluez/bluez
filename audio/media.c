@@ -1304,6 +1304,7 @@ static gboolean set_status(struct media_player *mp, DBusMessageIter *iter)
 static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 {
 	uint32_t value;
+	struct metadata_value *duration;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT32)
 			return FALSE;
@@ -1317,7 +1318,20 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 	if (!mp->position) {
 		avrcp_player_event(mp->player,
 					AVRCP_EVENT_TRACK_REACHED_START, NULL);
+		return TRUE;
 	}
+
+	duration = g_hash_table_lookup(mp->track, GUINT_TO_POINTER(
+					AVRCP_MEDIA_ATTRIBUTE_DURATION));
+
+	/*
+	 * If position is the maximum value allowed or greater than track's
+	 * duration, we send a track-reached-end event.
+	 */
+	if (mp->position == UINT32_MAX ||
+			(duration && mp->position >= duration->value.num))
+		avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_END,
+									NULL);
 
 	return TRUE;
 }

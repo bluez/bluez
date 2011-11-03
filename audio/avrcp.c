@@ -383,6 +383,7 @@ int avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 		memcpy(&pdu->params[1], data, sizeof(uint64_t));
 
 		break;
+	case AVRCP_EVENT_TRACK_REACHED_END:
 	case AVRCP_EVENT_TRACK_REACHED_START:
 		size = 1;
 		break;
@@ -904,6 +905,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 		memcpy(&pdu->params[1], &uid, sizeof(uint64_t));
 
 		break;
+	case AVRCP_EVENT_TRACK_REACHED_END:
 	case AVRCP_EVENT_TRACK_REACHED_START:
 		len = 1;
 		break;
