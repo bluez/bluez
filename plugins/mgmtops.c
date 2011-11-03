@@ -1225,6 +1225,12 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_SET_FAST_CONNECTABLE:
 		DBG("set_fast_connectable complete");
 		break;
+	case MGMT_OP_START_DISCOVERY:
+		DBG("start_discovery complete");
+		break;
+	case MGMT_OP_STOP_DISCOVERY:
+		DBG("stop_discovery complete");
+		break;
 	default:
 		error("Unknown command complete for opcode %u", opcode);
 		break;
