@@ -703,7 +703,33 @@ static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_DISCOVERABLE, argc, argv);
+	struct mgmt_cp_set_discoverable cp;
+
+	if (argc < 2) {
+		printf("Usage: btmgmt %s <yes/no> [timeout]\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&cp, 0, sizeof(cp));
+
+	if (strcasecmp(argv[1], "on") == 0)
+		cp.val = 1;
+	else if (strcasecmp(argv[1], "off") == 0)
+		cp.val = 0;
+	else
+		cp.val = atoi(argv[1]);
+
+	if (argc > 2)
+		cp.timeout = htobs(atoi(argv[2]));
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DISCOVERABLE, index,
+				&cp, sizeof(cp), setting_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send set_discoverable cmd\n");
+		exit(EXIT_FAILURE);
+	}
 }
 
 static void cmd_connectable(int mgmt_sk, uint16_t index, int argc, char **argv)

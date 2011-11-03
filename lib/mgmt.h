@@ -79,6 +79,10 @@ struct mgmt_mode {
 #define MGMT_OP_SET_POWERED		0x0005
 
 #define MGMT_OP_SET_DISCOVERABLE	0x0006
+struct mgmt_cp_set_discoverable {
+	uint8_t val;
+	uint16_t timeout;
+} __packed;
 
 #define MGMT_OP_SET_CONNECTABLE		0x0007
 

@@ -193,8 +193,23 @@ static int mgmt_set_connectable(int index, gboolean connectable)
 
 static int mgmt_set_discoverable(int index, gboolean discoverable)
 {
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_discoverable)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_discoverable *cp = (void *) &buf[sizeof(*hdr)];
+
 	DBG("index %d discoverable %d", index, discoverable);
-	return mgmt_set_mode(index, MGMT_OP_SET_DISCOVERABLE, discoverable);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_DISCOVERABLE);
+	hdr->index = htobs(index);
+	hdr->len = htobs(sizeof(*cp));
+
+	cp->val = discoverable;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static int mgmt_set_pairable(int index, gboolean pairable)
