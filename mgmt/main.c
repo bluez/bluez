@@ -679,7 +679,7 @@ static void cmd_setting(int mgmt_sk, uint16_t index, uint16_t op,
 		exit(EXIT_FAILURE);
 	}
 
-	if (strcasecmp(argv[1], "on") == 0)
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
 		val = 1;
 	else if (strcasecmp(argv[1], "off") == 0)
 		val = 0;
@@ -712,7 +712,7 @@ static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 	memset(&cp, 0, sizeof(cp));
 
-	if (strcasecmp(argv[1], "on") == 0)
+	if (strcasecmp(argv[1], "on") == 0 || strcasecmp(argv[1], "yes") == 0)
 		cp.val = 1;
 	else if (strcasecmp(argv[1], "off") == 0)
 		cp.val = 0;
