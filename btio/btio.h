@@ -65,6 +65,7 @@ typedef enum {
 	BT_IO_OPT_CLASS,
 	BT_IO_OPT_MODE,
 	BT_IO_OPT_FLUSHABLE,
+	BT_IO_OPT_PRIORITY,
 } BtIOOption;
 
 typedef enum {
