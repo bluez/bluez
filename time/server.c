@@ -40,6 +40,7 @@
 
 #define CURRENT_TIME_SVC_UUID		0x1805
 
+#define LOCAL_TIME_INFO_CHR_UUID	0x2A0F
 #define CT_TIME_CHR_UUID		0x2A2B
 
 static int encode_current_time(uint8_t value[10])
@@ -88,6 +89,27 @@ static uint8_t current_time_read(struct attribute *a, gpointer user_data)
 	return 0;
 }
 
+static uint8_t local_time_info_read(struct attribute *a, gpointer user_data)
+{
+	uint8_t value[2];
+
+	DBG("a=%p", a);
+
+	tzset();
+
+	/* FIXME: POSIX "daylight" variable only indicates whether there is DST
+	 * for the local time or not. The offset is unknown. */
+	value[0] = daylight ? 0xff : 0x00;
+
+	/* Convert POSIX "timezone" (seconds West of GMT) to Time Profile
+	 * format (offset from UTC in number of 15 minutes increments). */
+	value[1] = (uint8_t) (-1 * timezone / (60 * 15));
+
+	attrib_db_update(a->handle, NULL, value, sizeof(value), NULL);
+
+	return 0;
+}
+
 static void register_current_time_service(void)
 {
 	/* Current Time service */
@@ -98,6 +120,13 @@ static void register_current_time_service(void)
 							ATT_CHAR_PROPER_NOTIFY,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
 							current_time_read,
+
+				/* Local Time Information characteristic */
+				GATT_OPT_CHR_UUID, LOCAL_TIME_INFO_CHR_UUID,
+				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
+				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
+							local_time_info_read,
+
 				GATT_OPT_INVALID);
 }
 
