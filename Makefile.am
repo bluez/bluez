@@ -108,7 +108,7 @@ endif
 
 attrib_sources = attrib/att.h attrib/att.c attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c attrib/client.h \
-		attrib/client.c
+		attrib/client.c attrib/gatt-service.h attrib/gatt-service.c
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
