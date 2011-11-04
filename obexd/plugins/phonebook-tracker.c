@@ -115,7 +115,7 @@
 "nco:birthDate(?_contact) "						\
 "nco:nickname(?_contact) "						\
 "(SELECT GROUP_CONCAT(fn:concat( "					\
-	"?url_val, \"\31\", rdfs:label(?_role) "			\
+	"?url_val, \"\31\", tracker:coalesce(rdfs:label(?_role), \"\") "\
 	"), \"\30\") "							\
 	"WHERE {"							\
 		"?_role nco:url ?url_val . "				\
@@ -224,13 +224,11 @@ CALLS_CONSTRAINTS(CONSTRAINT)						\
 	"}) "								\
 	"nco:birthDate(?_contact) "					\
 	"nco:nickname(?_contact) "					\
-"(SELECT GROUP_CONCAT(fn:concat( "					\
-	"?url_value, \"\31\", ?aff_type "				\
-	"), \"\30\") "							\
+"(SELECT GROUP_CONCAT(fn:concat(?url_value, \"\31\", "			\
+	"tracker:coalesce(rdfs:label(?c_role), \"\")), \"\30\") "	\
 	"WHERE {"							\
 		"?_contact nco:hasAffiliation ?c_role . "		\
 		"?c_role nco:url ?url_value . "				\
-		"?c_role rdfs:label ?aff_type . "			\
 "})"									\
 	"nie:url(nco:photo(?_contact)) "				\
 	"nco:role(?_role) "						\
@@ -320,7 +318,7 @@ COMBINED_CONSTRAINT		\
 "nco:birthDate(<%s>) "							\
 "nco:nickname(<%s>) "							\
 "(SELECT GROUP_CONCAT(fn:concat( "					\
-	"?url_val, \"\31\", rdfs:label(?_role) "			\
+	"?url_val, \"\31\", tracker:coalesce(rdfs:label(?_role), \"\") "\
 	"), \"\30\") "							\
 	"WHERE {"							\
 		"?_role nco:url ?url_val . "				\
