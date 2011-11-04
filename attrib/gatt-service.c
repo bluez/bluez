@@ -44,6 +44,7 @@ struct gatt_info {
 	int authorization;
 	GSList *callbacks;
 	unsigned int num_attrs;
+	uint16_t *value_handle;
 };
 
 struct attrib_cb {
@@ -84,6 +85,9 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 			cb->event = va_arg(args, attrib_event_t);
 			cb->fn = va_arg(args, void *);
 			info->callbacks = g_slist_append(info->callbacks, cb);
+			break;
+		case GATT_OPT_CHR_VALUE_GET_HANDLE:
+			info->value_handle = va_arg(args, void *);
 			break;
 		case GATT_OPT_CHR_AUTHENTICATION:
 			info->authentication = va_arg(args, gatt_option);
@@ -205,6 +209,9 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 			break;
 		}
 	}
+
+	if (info->value_handle)
+		*info->value_handle = a->handle;
 
 	/* client characteristic configuration descriptor */
 	if (info->props & (ATT_CHAR_PROPER_NOTIFY | ATT_CHAR_PROPER_INDICATE)) {
