@@ -33,6 +33,7 @@
 #include "hcid.h"
 #include "log.h"
 #include "gattrib.h"
+#include "gatt-service.h"
 #include "att.h"
 #include "attrib-server.h"
 
@@ -57,54 +58,26 @@
 
 static GSList *sdp_handles = NULL;
 
+static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
+{
+	uint8_t value;
+
+	value = 0x04;
+	attrib_db_update(a->handle, NULL, &value, sizeof(value), NULL);
+
+	return 0;
+}
+
 static void register_battery_service(void)
 {
-	uint16_t start_handle, h;
-	const int svc_size = 4;
-	uint32_t sdp_handle;
-	uint8_t atval[256];
-	bt_uuid_t uuid;
+	gatt_service_add(GATT_PRIM_SVC_UUID, BATTERY_STATE_SVC_UUID,
+			/* battery state characteristic */
+			GATT_OPT_CHR_UUID, BATTERY_STATE_UUID,
+			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
+							ATT_CHAR_PROPER_NOTIFY,
+			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ, battery_state_read,
 
-	start_handle = attrib_db_find_avail(svc_size);
-	if (start_handle == 0) {
-		error("Not enough free handles to register service");
-		return;
-	}
-
-	DBG("start_handle=0x%04x", start_handle);
-
-	h = start_handle;
-
-	/* Battery state service: primary service definition */
-	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(BATTERY_STATE_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
-
-	/* Battery: battery state characteristic */
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
-	att_put_u16(h + 1, &atval[1]);
-	att_put_u16(BATTERY_STATE_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
-
-	/* Battery: battery state attribute */
-	bt_uuid16_create(&uuid, BATTERY_STATE_UUID);
-	atval[0] = 0x04;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
-
-	/* Battery: Client Characteristic Configuration */
-	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	atval[0] = 0x00;
-	atval[1] = 0x00;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_AUTHENTICATION, atval, 2);
-
-	g_assert(h - start_handle == svc_size);
-
-	/* Add an SDP record for the above service */
-	sdp_handle = attrib_create_sdp(start_handle, "Battery State Service");
-	if (sdp_handle)
-		sdp_handles = g_slist_prepend(sdp_handles,
-						GUINT_TO_POINTER(sdp_handle));
+			GATT_OPT_INVALID);
 }
 
 static void register_termometer_service(const uint16_t manuf1[2],
