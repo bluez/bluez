@@ -33,6 +33,9 @@ typedef enum {
 	/* Get attribute handle for characteristic value */
 	GATT_OPT_CHR_VALUE_GET_HANDLE,
 
+	/* Get handle for ccc attribute */
+	GATT_OPT_CCC_GET_HANDLE,
+
 	/* arguments for authentication/authorization */
 	GATT_CHR_VALUE_READ,
 	GATT_CHR_VALUE_WRITE,
