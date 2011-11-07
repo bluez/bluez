@@ -38,10 +38,14 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "log.h"
+#include "gdbus.h"
 #include "glib-compat.h"
 #include "btio.h"
 #include "sdpd.h"
 #include "hcid.h"
+#include "adapter.h"
+#include "device.h"
+#include "manager.h"
 #include "att.h"
 #include "gattrib.h"
 #include "storage.h"
@@ -834,9 +838,12 @@ done:
 
 guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 {
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct gatt_channel *channel;
 	GIOChannel *io;
 	GError *gerr = NULL;
+	char addr[18];
 	uint16_t cid;
 
 	io = g_attrib_get_channel(attrib);
@@ -855,6 +862,14 @@ guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 		g_free(channel);
 		return 0;
 	}
+
+	adapter = manager_find_adapter(&channel->src);
+
+	ba2str(&channel->dst, addr);
+	device = adapter_find_device(adapter, addr);
+
+	if (device_is_bonded(device) == FALSE)
+		delete_device_ccc(&channel->src, &channel->dst);
 
 	if (channel->mtu > ATT_MAX_MTU)
 		channel->mtu = ATT_MAX_MTU;
