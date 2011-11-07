@@ -83,6 +83,10 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
                                         uint16_t handle, const char *chars);
 int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data);
+int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
+							uint16_t *value);
+int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
+							uint16_t value);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 

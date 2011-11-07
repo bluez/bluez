@@ -1263,3 +1263,47 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
 
 	return textfile_foreach(filename, func, data);
 }
+
+int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
+							uint16_t *value)
+{
+	char filename[PATH_MAX + 1], addr[18], key[23];
+	char *str;
+	unsigned int config;
+	int err = 0;
+
+	create_filename(filename, PATH_MAX, local, "ccc");
+
+	ba2str(peer, addr);
+	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+
+	str = textfile_caseget(filename, key);
+	if (str == NULL)
+		return -ENOENT;
+
+	if (sscanf(str, "%04X", &config) != 1)
+		err = -ENOENT;
+	else
+		*value = config;
+
+	free(str);
+
+	return err;
+}
+
+int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
+							uint16_t value)
+{
+	char filename[PATH_MAX + 1], addr[18], key[23], config[5];
+
+	create_filename(filename, PATH_MAX, local, "ccc");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+
+	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	snprintf(config, sizeof(config), "%04X", value);
+
+	return textfile_put(filename, key, config);
+}
