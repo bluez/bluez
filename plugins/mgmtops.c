@@ -430,7 +430,7 @@ static void mgmt_new_key(int sk, uint16_t index, void *buf, size_t len)
 
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 {
-	struct mgmt_ev_device_connected *ev = buf;
+	struct mgmt_addr_info *ev = buf;
 	struct controller_info *info;
 	char addr[18];
 
@@ -456,7 +456,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 								size_t len)
 {
-	struct mgmt_ev_device_disconnected *ev = buf;
+	struct mgmt_addr_info *ev = buf;
 	struct controller_info *info;
 	char addr[18];
 
@@ -490,7 +490,7 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s status %u", index, addr, ev->status);
 
@@ -501,10 +501,11 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_conn_failed(&info->bdaddr, &ev->bdaddr, ev->status);
+	btd_event_conn_failed(&info->bdaddr, &ev->addr.bdaddr, ev->status);
 
 	/* In the case of security mode 3 devices */
-	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
+	btd_event_bonding_complete(&info->bdaddr, &ev->addr.bdaddr,
+								ev->status);
 }
 
 static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
@@ -1043,7 +1044,7 @@ static void get_connections_complete(int sk, uint16_t index, void *buf,
 	info = &controllers[index];
 
 	for (i = 0; i < rp->conn_count; i++) {
-		bdaddr_t *bdaddr = g_memdup(&rp->conn[i], sizeof(bdaddr_t));
+		bdaddr_t *bdaddr = g_memdup(&rp->addr[i], sizeof(bdaddr_t));
 		info->connections = g_slist_append(info->connections, bdaddr);
 	}
 
@@ -1345,12 +1346,12 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	else
 		eir = ev->eir;
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u addr %s, class %u rssi %d %s", index, addr, cls,
 						ev->rssi, eir ? "eir" : "");
 
-	btd_event_device_found(&info->bdaddr, &ev->bdaddr, cls, ev->rssi, eir,
-							HCI_MAX_EIR_LENGTH);
+	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr, cls,
+					ev->rssi, eir, HCI_MAX_EIR_LENGTH);
 }
 
 static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)

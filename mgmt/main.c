@@ -333,9 +333,26 @@ static int mgmt_new_key(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static void type2str(uint8_t type, char *str, size_t len)
+{
+	switch (type) {
+	case MGMT_ADDR_BREDR:
+		strncpy(str, "BR/EDR", len);
+		break;
+	case MGMT_ADDR_LE:
+		strncpy(str, "LE", len);
+		break;
+	case MGMT_ADDR_BREDR_LE:
+		strncpy(str, "BR/EDR/LE", len);
+		break;
+	default:
+		strncpy(str, "(unknown)", len);
+		break;
+	}
+}
+
 static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
-				struct mgmt_ev_device_connected *ev,
-				uint16_t len)
+				struct mgmt_addr_info *ev, uint16_t len)
 {
 	const char *ev_name = connected ? "connected" : "disconnected";
 
@@ -346,9 +363,11 @@ static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
 	}
 
 	if (monitor) {
-		char addr[18];
+		char addr[18], type[10];
+
 		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s %s\n", index, addr, ev_name);
+		type2str(ev->type, type, sizeof(type));
+		printf("hci%u %s type %s %s\n", index, addr, type, ev_name);
 	}
 
 	return 0;
@@ -365,10 +384,12 @@ static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
 	}
 
 	if (monitor) {
-		char addr[18];
-		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s connect failed with status 0x%02x\n",
-						index, addr, ev->status);
+		char addr[18], type[10];
+
+		ba2str(&ev->addr.bdaddr, addr);
+		type2str(ev->addr.type, type, sizeof(type));
+		printf("hci%u %s type %s connect failed (status 0x%02x)\n",
+						index, addr, type, ev->status);
 	}
 
 	return 0;
@@ -420,10 +441,11 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 	}
 
 	if (monitor || discovery) {
-		char addr[18];
-		ba2str(&ev->bdaddr, addr);
-		printf("hci%u dev_found: %s class 0x%02x%02x%02x rssi %d "
-			"eir (%s)\n", index, addr,
+		char addr[18], type[10];
+		ba2str(&ev->addr.bdaddr, addr);
+		type2str(ev->addr.type, type, sizeof(type));
+		printf("hci%u dev_found: %s type %s class 0x%02x%02x%02x "
+			"rssi %d eir (%s)\n", index, addr, type,
 			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
 			ev->rssi, ev->eir[0] == 0 ? "no" : "yes");
 	}
@@ -836,17 +858,19 @@ static void con_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	}
 
 	count = bt_get_le16(&rp->conn_count);
-	if (len != sizeof(*rp) + count * sizeof(bdaddr_t)) {
+	if (len != sizeof(*rp) + count * sizeof(struct mgmt_addr_info)) {
 		fprintf(stderr, "Invalid get_connections length "
 					" (count=%u, len=%u)\n", count, len);
 		exit(EXIT_FAILURE);
 	}
 
 	for (i = 0; i < count; i++) {
-		char addr[18];
+		char addr[18], type[18];
 
-		ba2str(&rp->conn[i], addr);
-		printf("%s\n", addr);
+		ba2str(&rp->addr[i].bdaddr, addr);
+		type2str(rp->addr[i].type, type, sizeof(type));
+
+		printf("%s type %s\n", addr, type);
 	}
 
 	exit(EXIT_SUCCESS);

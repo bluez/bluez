@@ -138,10 +138,20 @@ struct mgmt_rp_disconnect {
 	bdaddr_t bdaddr;
 } __packed;
 
+#define MGMT_ADDR_BREDR			0x00
+#define MGMT_ADDR_LE			0x01
+#define MGMT_ADDR_BREDR_LE		0x02
+#define MGMT_ADDR_INVALID		0xff
+
+struct mgmt_addr_info {
+	bdaddr_t bdaddr;
+	uint8_t type;
+} __packed;
+
 #define MGMT_OP_GET_CONNECTIONS		0x0010
 struct mgmt_rp_get_connections {
 	uint16_t conn_count;
-	bdaddr_t conn[0];
+	struct mgmt_addr_info addr[0];
 } __packed;
 
 #define MGMT_OP_PIN_CODE_REPLY		0x0011
@@ -260,18 +270,12 @@ struct mgmt_ev_new_key {
 } __packed;
 
 #define MGMT_EV_DEVICE_CONNECTED	0x000B
-struct mgmt_ev_device_connected {
-	bdaddr_t bdaddr;
-} __packed;
 
 #define MGMT_EV_DEVICE_DISCONNECTED	0x000C
-struct mgmt_ev_device_disconnected {
-	bdaddr_t bdaddr;
-} __packed;
 
 #define MGMT_EV_CONNECT_FAILED		0x000D
 struct mgmt_ev_connect_failed {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
@@ -301,7 +305,7 @@ struct mgmt_ev_local_name_changed {
 
 #define MGMT_EV_DEVICE_FOUND		0x0012
 struct mgmt_ev_device_found {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t dev_class[3];
 	int8_t rssi;
 	uint8_t eir[HCI_MAX_EIR_LENGTH];
