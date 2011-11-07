@@ -314,7 +314,6 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 	last_handle = end;
 	for (l = database, groups = NULL, cur = NULL; l; l = l->next) {
-		struct attribute *client_attr;
 
 		a = l->data;
 
@@ -343,10 +342,6 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_GROUP_REQ,
 								a->read_reqs);
-
-		client_attr = client_cfg_attribute(channel, a, a->data, a->len);
-		if (client_attr)
-			a = client_attr;
 
 		if (status == 0x00 && a->read_cb)
 			status = a->read_cb(a, a->cb_user_data);
