@@ -71,7 +71,7 @@ void sap_connect_req(void *sap_device, uint16_t maxmsgsize)
 		return;
 	} else if (ongoing_call_status) {
 		sap_connect_rsp(sap_device, SAP_STATUS_OK_ONGOING_CALL,
-								maxmsgsize);
+						max_msg_size_supported);
 		return;
 	} else {
 		sim_card_conn_status = SIM_CONNECTED;
@@ -226,8 +226,6 @@ static DBusMessage *ongoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	if (ongoing_call_status && !ongoing) {
 		/* An ongoing call has finished. Continue connection.*/
-		sap_connect_rsp(sap_data, SAP_STATUS_OK,
-						max_msg_size_supported);
 		sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_RESET);
 		ongoing_call_status = ongoing;
 	} else if (!ongoing_call_status && ongoing) {
