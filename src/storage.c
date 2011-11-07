@@ -1170,16 +1170,9 @@ done:
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 {
 	char filename[PATH_MAX + 1], address[18];
-	int err;
-
-	create_filename(filename, PATH_MAX, sba, "primary");
 
 	memset(address, 0, sizeof(address));
 	ba2str(dba, address);
-
-	err = textfile_del(filename, address);
-	if (err < 0)
-		return err;
 
 	/* Deleting all characteristics of a given address */
 	create_filename(filename, PATH_MAX, sba, "characteristic");
@@ -1193,7 +1186,8 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 	create_filename(filename, PATH_MAX, sba, "ccc");
 	delete_by_pattern(filename, address);
 
-	return 0;
+	create_filename(filename, PATH_MAX, sba, "primary");
+	return textfile_del(filename, address);
 }
 
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba)
