@@ -505,7 +505,7 @@ static int mgmt_process_data(int mgmt_sk)
 	ret = read(mgmt_sk, buf, sizeof(buf));
 	if (ret < 0) {
 		fprintf(stderr, "read: %s\n", strerror(errno));
-		return len;
+		return ret;
 	}
 
 	if (ret < MGMT_HDR_SIZE) {
