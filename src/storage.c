@@ -1195,6 +1195,22 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 
 	g_slist_free_full(match.keys, g_free);
 
+	/* Deleting all CCC values of a given address */
+	memset(&match, 0, sizeof(match));
+	match.pattern = address;
+
+	create_filename(filename, PATH_MAX, sba, "ccc");
+	err = textfile_foreach(filename, filter_keys, &match);
+	if (err < 0)
+		return err;
+
+	for (l = match.keys; l; l = l->next) {
+		const char *key = l->data;
+		textfile_del(filename, key);
+	}
+
+	g_slist_free_full(match.keys, g_free);
+
 	return 0;
 }
 
