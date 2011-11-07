@@ -210,9 +210,16 @@ Get Connections Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Connection_Count (2 Octets)
-				Address1 (6 Octets)
-				Address2 (6 Octets)
+				Address1 {
+					Address (6 Octets)
+					Type (1 Octet)
+				}
+				Address2 { }
 				...
+
+	Possible values for the Type parameter:
+		0	BR/EDR
+		1	LE
 
 
 PIN Code Reply Command
@@ -590,8 +597,12 @@ Connect Failed Event
 Event Code		0x000D
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Type (1 Octet)
 			Status (1 Octet)
 
+	Possible values for the Type parameter:
+		0	BR/EDR
+		1	LE
 
 PIN Code Request Event
 ======================
