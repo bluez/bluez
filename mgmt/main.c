@@ -868,7 +868,7 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Unable to start discovery (status %u)",
+		fprintf(stderr, "Unable to start discovery (status %u)\n",
 								status);
 		exit(EXIT_FAILURE);
 	}
