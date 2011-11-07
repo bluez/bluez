@@ -1140,17 +1140,35 @@ int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 static void filter_keys(char *key, char *value, void *data)
 {
 	struct match *match = data;
-	const char *address = match->pattern;
 
-	/* Each key contains: MAC#handle*/
-	if (strncasecmp(key, address, 17) == 0)
+	if (strncasecmp(key, match->pattern, strlen(match->pattern)) == 0)
 		match->keys = g_slist_append(match->keys, g_strdup(key));
+}
+
+static void delete_by_pattern(const char *filename, char *pattern)
+{
+	struct match match;
+	GSList *l;
+	int err;
+
+	memset(&match, 0, sizeof(match));
+	match.pattern = pattern;
+
+	err = textfile_foreach(filename, filter_keys, &match);
+	if (err < 0)
+		goto done;
+
+	for (l = match.keys; l; l = l->next) {
+		const char *key = l->data;
+		textfile_del(filename, key);
+	}
+
+done:
+	g_slist_free_full(match.keys, g_free);
 }
 
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 {
-	GSList *l;
-	struct match match;
 	char filename[PATH_MAX + 1], address[18];
 	int err;
 
@@ -1164,52 +1182,16 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 		return err;
 
 	/* Deleting all characteristics of a given address */
-	memset(&match, 0, sizeof(match));
-	match.pattern = address;
-
 	create_filename(filename, PATH_MAX, sba, "characteristic");
-	err = textfile_foreach(filename, filter_keys, &match);
-	if (err < 0)
-		return err;
-
-	for (l = match.keys; l; l = l->next) {
-		const char *key = l->data;
-		textfile_del(filename, key);
-	}
-
-	g_slist_free_full(match.keys, g_free);
+	delete_by_pattern(filename, address);
 
 	/* Deleting all attributes values of a given address */
-	memset(&match, 0, sizeof(match));
-	match.pattern = address;
-
 	create_filename(filename, PATH_MAX, sba, "attributes");
-	err = textfile_foreach(filename, filter_keys, &match);
-	if (err < 0)
-		return err;
-
-	for (l = match.keys; l; l = l->next) {
-		const char *key = l->data;
-		textfile_del(filename, key);
-	}
-
-	g_slist_free_full(match.keys, g_free);
+	delete_by_pattern(filename, address);
 
 	/* Deleting all CCC values of a given address */
-	memset(&match, 0, sizeof(match));
-	match.pattern = address;
-
 	create_filename(filename, PATH_MAX, sba, "ccc");
-	err = textfile_foreach(filename, filter_keys, &match);
-	if (err < 0)
-		return err;
-
-	for (l = match.keys; l; l = l->next) {
-		const char *key = l->data;
-		textfile_del(filename, key);
-	}
-
-	g_slist_free_full(match.keys, g_free);
+	delete_by_pattern(filename, address);
 
 	return 0;
 }
