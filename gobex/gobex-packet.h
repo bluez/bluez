@@ -41,7 +41,6 @@
 /* Response codes */
 #define G_OBEX_RSP_CONTINUE			0x10
 #define G_OBEX_RSP_SUCCESS			0x20
-#define G_OBEX_RSP_SUCCESS			0x20
 #define G_OBEX_RSP_CREATED			0x21
 #define G_OBEX_RSP_ACCEPTED			0x22
 #define G_OBEX_RSP_NON_AUTHORITATIVE		0x23
