@@ -1305,3 +1305,14 @@ int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 
 	return textfile_put(filename, key, config);
 }
+
+void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	ba2str(peer, addr);
+
+	/* Deleting all CCC values of a given address */
+	create_filename(filename, PATH_MAX, local, "ccc");
+	delete_by_pattern(filename, addr);
+}

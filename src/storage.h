@@ -87,6 +87,7 @@ int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 							uint16_t *value);
 int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 							uint16_t value);
+void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 
