@@ -630,8 +630,7 @@ int sap_connect_rsp(void *sap_device, uint8_t status, uint16_t maxmsgsize)
 	size += PARAMETER_SIZE(SAP_PARAM_ID_CONN_STATUS_LEN);
 
 	/* Add MaxMsgSize */
-	if (maxmsgsize && (status == SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED ||
-				status == SAP_STATUS_MAX_MSG_SIZE_TOO_SMALL)) {
+	if (maxmsgsize) {
 		uint16_t *len;
 
 		msg->nparam++;
