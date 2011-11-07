@@ -69,7 +69,7 @@ Read Controller Information Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
-				Settings (8 Octets)
+				Settings (4 Octets)
 				Security_Mode (1 Octet)
 				Device_Class (3 Octets)
 				Supported_Features (8 Octets)
