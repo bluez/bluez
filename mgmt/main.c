@@ -312,12 +312,12 @@ static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
 	return 0;
 }
 
-static int mgmt_new_key(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_new_key *ev, uint16_t len)
+static int mgmt_new_link_key(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_new_link_key *ev, uint16_t len)
 {
 
 	if (len != sizeof(*ev)) {
-		fprintf(stderr, "Invalid new_key event length (%u bytes)\n",
+		fprintf(stderr, "Invalid new_link_key length (%u bytes)\n",
 									len);
 		return -EINVAL;
 	}
@@ -325,7 +325,7 @@ static int mgmt_new_key(int mgmt_sk, uint16_t index,
 	if (monitor) {
 		char addr[18];
 		ba2str(&ev->key.bdaddr, addr);
-		printf("hci%u new_key %s type 0x%02x pin_len %d "
+		printf("hci%u new_link_key %s type 0x%02x pin_len %d "
 				"store_hint %u\n", index, addr, ev->key.type,
 				ev->key.pin_len, ev->store_hint);
 	}
@@ -494,8 +494,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_PAIRABLE:
 	case MGMT_EV_DISCOVERING:
 		return mgmt_setting(mgmt_sk, index, ev, data, len);
-	case MGMT_EV_NEW_KEY:
-		return mgmt_new_key(mgmt_sk, index, data, len);
+	case MGMT_EV_NEW_LINK_KEY:
+		return mgmt_new_link_key(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_CONNECTED:
 		return mgmt_connected(mgmt_sk, index, true, data, len);
 	case MGMT_EV_DEVICE_DISCONNECTED:

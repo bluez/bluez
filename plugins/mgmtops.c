@@ -393,9 +393,9 @@ static void mgmt_pairable(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_pairable_changed(adapter, info->pairable);
 }
 
-static void mgmt_new_key(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 {
-	struct mgmt_ev_new_key *ev = buf;
+	struct mgmt_ev_new_link_key *ev = buf;
 	struct controller_info *info;
 
 	if (len != sizeof(*ev)) {
@@ -1174,11 +1174,11 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_SET_SERVICE_CACHE:
 		DBG("set_service_cache complete");
 		break;
-	case MGMT_OP_LOAD_KEYS:
-		DBG("load_keys complete");
+	case MGMT_OP_LOAD_LINK_KEYS:
+		DBG("load_link_keys complete");
 		break;
-	case MGMT_OP_REMOVE_KEY:
-		DBG("remove_key complete");
+	case MGMT_OP_REMOVE_KEYS:
+		DBG("remove_keys complete");
 		break;
 	case MGMT_OP_DISCONNECT:
 		DBG("disconnect complete");
@@ -1530,8 +1530,8 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	case MGMT_EV_PAIRABLE:
 		mgmt_pairable(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
-	case MGMT_EV_NEW_KEY:
-		mgmt_new_key(sk, index, buf + MGMT_HDR_SIZE, len);
+	case MGMT_EV_NEW_LINK_KEY:
+		mgmt_new_link_key(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_CONNECTED:
 		mgmt_device_connected(sk, index, buf + MGMT_HDR_SIZE, len);
@@ -1883,16 +1883,16 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 
 static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
 {
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_key)];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_keys)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_remove_key *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_cp_remove_keys *cp = (void *) &buf[sizeof(*hdr)];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_REMOVE_KEY);
+	hdr->opcode = htobs(MGMT_OP_REMOVE_KEYS);
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
@@ -1946,12 +1946,12 @@ static int mgmt_restore_powered(int index)
 	return -ENOSYS;
 }
 
-static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
+static int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 {
 	char *buf;
 	struct mgmt_hdr *hdr;
-	struct mgmt_cp_load_keys *cp;
-	struct mgmt_key_info *key;
+	struct mgmt_cp_load_link_keys *cp;
+	struct mgmt_link_key_info *key;
 	size_t key_count, cp_size;
 	GSList *l;
 	int err;
@@ -1969,7 +1969,7 @@ static int mgmt_load_keys(int index, GSList *keys, gboolean debug_keys)
 	memset(buf, 0, sizeof(buf));
 
 	hdr = (void *) buf;
-	hdr->opcode = htobs(MGMT_OP_LOAD_KEYS);
+	hdr->opcode = htobs(MGMT_OP_LOAD_LINK_KEYS);
 	hdr->len = htobs(cp_size);
 	hdr->index = htobs(index);
 
@@ -2148,7 +2148,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.remove_uuid = mgmt_remove_uuid,
 	.disable_cod_cache = mgmt_disable_cod_cache,
 	.restore_powered = mgmt_restore_powered,
-	.load_keys = mgmt_load_keys,
+	.load_keys = mgmt_load_link_keys,
 	.set_io_capability = mgmt_set_io_capability,
 	.create_bonding = mgmt_create_bonding,
 	.cancel_bonding = mgmt_cancel_bonding,
