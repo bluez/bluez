@@ -242,11 +242,13 @@ static void *usb_start(struct obex_server *server, int *err)
 	if (dbus_connection_send_with_reply(connection,
 					msg, &call, -1) == FALSE) {
 		error("usb: unable to send mode_request");
+		dbus_message_unref(msg);
 		goto fail;
 	}
 
 	dbus_pending_call_set_notify(call, mode_request_reply, server, NULL);
 	dbus_pending_call_unref(call);
+	dbus_message_unref(msg);
 
 	id = g_dbus_add_signal_watch(connection, NULL, NULL,
 					"com.meego.usb_moded",
