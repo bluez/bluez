@@ -120,7 +120,7 @@ static void destroy_folder_tree(void *root)
 	g_free(folder);
 }
 
-static void create_folder_tree()
+static void create_folder_tree(void)
 {
 	struct message_folder *parent, *child;
 

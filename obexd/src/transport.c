@@ -53,7 +53,7 @@ static struct obex_transport_driver *obex_transport_driver_find(
 	return NULL;
 }
 
-GSList *obex_transport_driver_list()
+GSList *obex_transport_driver_list(void)
 {
 	return drivers;
 }

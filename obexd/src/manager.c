@@ -450,7 +450,7 @@ void manager_unregister_transfer(struct obex_session *os)
 	g_free(path);
 }
 
-static void agent_cancel()
+static void agent_cancel(void)
 {
 	DBusMessage *msg;
 

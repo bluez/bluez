@@ -92,7 +92,7 @@ static gboolean is_enabled(struct obex_debug_desc *desc)
 	return 0;
 }
 
-void __obex_log_enable_debug()
+void __obex_log_enable_debug(void)
 {
 	struct obex_debug_desc *desc;
 
