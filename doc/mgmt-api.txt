@@ -350,10 +350,18 @@ Start Discovery Command
 	Command Parameters:	Type (1 Octet)
 	Return Parameters:
 
-	Possible values for the Type parameter:
-		0	BR/EDR
-		1	LE
-		2	BR/EDR/LE (interleaved discovery)
+	Possible values for the Type parameter are a bit-wise or of the
+	following bits:
+
+		1	BR/EDR
+		2	LE Public
+		3	LE Random
+
+	By combining these e.g. the following values are possible:
+
+		1	BR/EDR
+		6	LE (public & random)
+		7	BR/EDR/LE (interleaved discovery)
 
 
 Stop Discovery Command
@@ -575,7 +583,8 @@ Event Parameters	Address (6 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
-		1	LE
+		1	LE Public
+		2	LE Random
 
 
 Device Disconnected Event
@@ -588,7 +597,8 @@ Event Parameters	Address (6 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
-		1	LE
+		1	LE Public
+		2	LE Random
 
 
 Connect Failed Event
@@ -602,7 +612,8 @@ Event Parameters	Address (6 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
-		1	LE
+		1	LE Public
+		2	LE Random
 
 PIN Code Request Event
 ======================
@@ -664,7 +675,8 @@ Event Parameters	Address (6 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
-		1	LE
+		1	LE Public
+		2	LE Random
 
 
 Remote Name Event

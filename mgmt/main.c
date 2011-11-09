@@ -339,11 +339,11 @@ static void type2str(uint8_t type, char *str, size_t len)
 	case MGMT_ADDR_BREDR:
 		strncpy(str, "BR/EDR", len);
 		break;
-	case MGMT_ADDR_LE:
-		strncpy(str, "LE", len);
+	case MGMT_ADDR_LE_PUBLIC
+		strncpy(str, "LE Public", len);
 		break;
-	case MGMT_ADDR_BREDR_LE:
-		strncpy(str, "BR/EDR/LE", len);
+	case MGMT_ADDR_LE_RANDOM:
+		strncpy(str, "LE Random", len);
 		break;
 	default:
 		strncpy(str, "(unknown)", len);
