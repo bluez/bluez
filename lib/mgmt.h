@@ -216,6 +216,9 @@ struct mgmt_cp_remove_remote_oob_data {
 } __packed;
 
 #define MGMT_OP_START_DISCOVERY		0x001B
+struct mgmt_cp_start_discovery {
+	uint8_t type;
+} __packed;
 
 #define MGMT_OP_STOP_DISCOVERY		0x001C
 
