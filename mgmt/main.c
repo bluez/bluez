@@ -1175,12 +1175,43 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	exit(EXIT_SUCCESS);
 }
 
+static void pair_usage(void)
+{
+	printf("Usage: btmgmt pair [-c cap] <remote address>\n");
+}
+
+static struct option pair_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "capability",	1, 0, 'c' },
+	{ 0, 0, 0, 0 }
+};
+
 static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_pair_device cp;
+	uint8_t cap = 0x01;
+	int opt;
 
-	if (argc < 2) {
-		printf("Usage: btmgmt %s <remote address>\n", argv[0]);
+	while ((opt = getopt_long(argc, argv, "+c:h", pair_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 'c':
+			cap = strtol(optarg, NULL, 0);
+			break;
+
+		case 'h':
+		default:
+			pair_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		pair_usage();
 		exit(EXIT_FAILURE);
 	}
 
@@ -1188,8 +1219,8 @@ static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 		index = 0;
 
 	memset(&cp, 0, sizeof(cp));
-	str2ba(argv[1], &cp.bdaddr);
-	cp.io_cap = 0x03;
+	str2ba(argv[0], &cp.bdaddr);
+	cp.io_cap = cap;
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_PAIR_DEVICE, index, &cp, sizeof(cp),
 							pair_rsp, NULL) < 0) {
