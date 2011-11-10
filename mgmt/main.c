@@ -36,6 +36,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
+#include <bluetooth/hci_lib.h>
 #include <bluetooth/mgmt.h>
 
 #ifndef NELEM
@@ -903,12 +904,20 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 
 static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
+	uint8_t device_type;
+
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_START_DISCOVERY, index, NULL, 0,
-							find_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send get_connections cmd\n");
+	device_type = 0;
+	hci_set_bit(MGMT_ADDR_BREDR, &device_type);
+	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &device_type);
+	hci_set_bit(MGMT_ADDR_LE_RANDOM, &device_type);
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_START_DISCOVERY, index,
+					&device_type, sizeof(device_type),
+					find_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send start_discovery cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
