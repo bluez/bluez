@@ -1007,6 +1007,58 @@ static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void remove_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_remove_keys *rp = rsp;
+	char addr[18];
+
+	if (status != 0) {
+		fprintf(stderr, "Remove keys failed with status %u\n", status);
+		exit(EXIT_FAILURE);
+	}
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Unexpected remove_keys_rsp len %u\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (rp->status != 0) {
+		fprintf(stderr, "Removing keys for %s failed with status %u\n",
+							addr, rp->status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Removed keys for %s\n", addr);
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_remove(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_remove_keys cp;
+
+	if (argc < 2) {
+		printf("Usage: btmgmt %s <remote address>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[1], &cp.bdaddr);
+	cp.disconnect = 1;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_REMOVE_KEYS, index, &cp, sizeof(cp),
+						remove_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send remove_keys cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -1024,6 +1076,7 @@ static struct {
 	{ "find",	cmd_find,	"Discover nearby devices"	},
 	{ "name",	cmd_name,	"Set local name"		},
 	{ "pair",	cmd_pair,	"Pair with a remote device"	},
+	{ "remove",	cmd_remove,	"Remove pairing (all keys)"	},
 	{ NULL, NULL, 0 }
 };
 
