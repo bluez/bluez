@@ -1670,15 +1670,22 @@ static int mgmt_set_limited_discoverable(int index, gboolean limited)
 
 static int mgmt_start_discovery(int index)
 {
-	struct mgmt_hdr hdr;
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
 
 	DBG("index %d", index);
 
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_START_DISCOVERY);
-	hdr.index = htobs(index);
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_START_DISCOVERY);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
 
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
+	hci_set_bit(MGMT_ADDR_BREDR, &cp->type);
+	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &cp->type);
+	hci_set_bit(MGMT_ADDR_LE_RANDOM, &cp->type);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
 
 	return 0;
