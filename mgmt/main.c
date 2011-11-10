@@ -807,6 +807,11 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	struct mgmt_rp_disconnect *rp = rsp;
 	char addr[18];
 
+	if (status != 0) {
+		fprintf(stderr, "Disconnect failed with status %u\n", status);
+		exit(EXIT_FAILURE);
+	}
+
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Invalid disconnect response length (%u)\n",
 									len);
@@ -815,12 +820,12 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 
 	ba2str(&rp->bdaddr, addr);
 
-	if (status == 0) {
+	if (rp->status == 0) {
 		printf("%s disconnected\n", addr);
 		exit(EXIT_SUCCESS);
 	} else {
 		fprintf(stderr, "Disconnecting %s failed with status %u\n",
-								addr, status);
+							addr, rp->status);
 		exit(EXIT_FAILURE);
 	}
 }

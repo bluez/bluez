@@ -140,6 +140,7 @@ struct mgmt_cp_disconnect {
 } __packed;
 struct mgmt_rp_disconnect {
 	bdaddr_t bdaddr;
+	uint8_t status;
 } __packed;
 
 #define MGMT_ADDR_BREDR			0x00

@@ -202,6 +202,7 @@ Disconnect Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
+				Status (6 Octets)
 
 
 Get Connections Command

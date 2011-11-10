@@ -978,6 +978,12 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	ba2str(&rp->bdaddr, addr);
 
+	if (rp->status != 0) {
+		error("Disconnecting %s failed with status %u",
+							addr, rp->status);
+		return;
+	}
+
 	DBG("hci%d %s disconnected", index, addr);
 
 	if (index > max_index) {
