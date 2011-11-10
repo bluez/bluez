@@ -1096,14 +1096,18 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_start_discovery cp;
+	uint8_t type;
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
+	type = 0;
+	hci_set_bit(MGMT_ADDR_BREDR, &type);
+	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &type);
+	hci_set_bit(MGMT_ADDR_LE_RANDOM, &type);
+
 	memset(&cp, 0, sizeof(cp));
-	hci_set_bit(MGMT_ADDR_BREDR, &cp.type);
-	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &cp.type);
-	hci_set_bit(MGMT_ADDR_LE_RANDOM, &cp.type);
+	cp.type = type;
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_START_DISCOVERY, index,
 				&cp, sizeof(cp), find_rsp, NULL) < 0) {
