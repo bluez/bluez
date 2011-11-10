@@ -178,11 +178,11 @@ struct mgmt_cp_set_io_capability {
 
 #define MGMT_OP_PAIR_DEVICE		0x0014
 struct mgmt_cp_pair_device {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t io_cap;
 } __packed;
 struct mgmt_rp_pair_device {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 

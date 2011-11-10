@@ -1010,7 +1010,7 @@ static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&rp->bdaddr, addr);
+	ba2str(&rp->addr.bdaddr, addr);
 
 	DBG("hci%d %s pairing complete status %u", index, addr, rp->status);
 
@@ -1021,7 +1021,8 @@ static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_bonding_complete(&info->bdaddr, &rp->bdaddr, rp->status);
+	btd_event_bonding_complete(&info->bdaddr, &rp->addr.bdaddr,
+								rp->status);
 }
 
 static void get_connections_complete(int sk, uint16_t index, void *buf,
@@ -2045,7 +2046,7 @@ static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 	cp->io_cap = io_cap;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
