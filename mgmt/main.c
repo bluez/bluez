@@ -955,6 +955,58 @@ static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_pair_device *rp = rsp;
+	char addr[18];
+
+	if (status != 0) {
+		fprintf(stderr, "Pairing failed with status %u\n", status);
+		exit(EXIT_FAILURE);
+	}
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Unexpected pair_rsp len %u\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (rp->status != 0) {
+		fprintf(stderr, "Pairing with %s failed with status %u\n",
+							addr, rp->status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Paired with %s\n", addr);
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_pair_device cp;
+
+	if (argc < 2) {
+		printf("Usage: btmgmt %s <remote address>\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[1], &cp.bdaddr);
+	cp.io_cap = 0x03;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_PAIR_DEVICE, index, &cp, sizeof(cp),
+							pair_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send pair_device cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -971,6 +1023,7 @@ static struct {
 	{ "con",	cmd_con,	"List connections"		},
 	{ "find",	cmd_find,	"Discover nearby devices"	},
 	{ "name",	cmd_name,	"Set local name"		},
+	{ "pair",	cmd_pair,	"Pair with a remote device"	},
 	{ NULL, NULL, 0 }
 };
 
