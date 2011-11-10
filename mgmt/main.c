@@ -472,6 +472,91 @@ static int mgmt_remote_name(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "hci%u PIN Code reply failed with status %u",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u PIN Reply successful\n", id);
+}
+
+static int mgmt_pin_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr,
+						const char *pin, size_t len)
+{
+	struct mgmt_cp_pin_code_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.pin_len = len;
+	memcpy(cp.pin_code, pin, len);
+
+	return mgmt_send_cmd(mgmt_sk, MGMT_OP_PIN_CODE_REPLY, index,
+					&cp, sizeof(cp), pin_rsp, NULL);
+}
+
+static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "hci%u PIN Neg reply failed with status %u",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u PIN Negative Reply successful\n", id);
+}
+
+static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr)
+{
+	struct mgmt_cp_pin_code_neg_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	return mgmt_send_cmd(mgmt_sk, MGMT_OP_PIN_CODE_NEG_REPLY, index,
+					&cp, sizeof(cp), pin_neg_rsp, NULL);
+}
+
+static int mgmt_request_pin(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_pin_code_request *ev,
+				uint16_t len)
+{
+	char pin[18];
+	size_t pin_len;
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid pin_code request length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->bdaddr, addr);
+		printf("hci%u %s request PIN\n", index, addr);
+	}
+
+	printf("PIN Request (press enter to reject) >> ");
+	fflush(stdout);
+
+	memset(pin, 0, sizeof(pin));
+
+	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n')
+		return mgmt_pin_neg_reply(mgmt_sk, index, &ev->bdaddr);
+
+	pin_len = strlen(pin);
+	if (pin[pin_len - 1] == '\n') {
+		pin[pin_len - 1] = '\0';
+		pin_len--;
+	}
+
+	return mgmt_pin_reply(mgmt_sk, index, &ev->bdaddr, pin, pin_len);
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -511,6 +596,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_device_found(mgmt_sk, index, data, len);
 	case MGMT_EV_REMOTE_NAME:
 		return mgmt_remote_name(mgmt_sk, index, data, len);
+	case MGMT_EV_PIN_CODE_REQUEST:
+		return mgmt_request_pin(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
