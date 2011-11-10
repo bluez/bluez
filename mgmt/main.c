@@ -557,6 +557,103 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 	return mgmt_pin_reply(mgmt_sk, index, &ev->bdaddr, pin, pin_len);
 }
 
+static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr,
+			"hci%u User Confirm reply failed with status %u",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u User Confirm Reply successful\n", id);
+}
+
+static int mgmt_confirm_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr)
+{
+	struct mgmt_cp_user_confirm_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_REPLY, index,
+					&cp, sizeof(cp), confirm_rsp, NULL);
+}
+
+static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
+				uint8_t status, void *rsp, uint16_t len,
+				void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr,
+			"hci%u Confirm Negative reply failed with status %u",
+								id, status);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("hci%u User Confirm Negative Reply successful\n", id);
+}
+
+static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
+							bdaddr_t *bdaddr)
+{
+	struct mgmt_cp_user_confirm_reply cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+
+	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
+				&cp, sizeof(cp), confirm_neg_rsp, NULL);
+}
+
+
+static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
+				struct mgmt_ev_user_confirm_request *ev,
+				uint16_t len)
+{
+	char rsp[5];
+	size_t rsp_len;
+	uint32_t val;
+	char addr[18];
+
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid user_confirm request length (%u)\n", len);
+		return -EINVAL;
+	}
+
+	ba2str(&ev->bdaddr, addr);
+	val = bt_get_le32(&ev->value);
+
+	if (monitor)
+		printf("hci%u %s User Confirm %06u hint %u\n", index, addr,
+							val, ev->confirm_hint);
+
+	if (ev->confirm_hint)
+		printf("Accept pairing with %s (yes/no) >> ", addr);
+	else
+		printf("Confirm value %06u for %s (yes/no) >> ", val, addr);
+
+	fflush(stdout);
+
+	memset(rsp, 0, sizeof(rsp));
+
+	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n')
+		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->bdaddr);
+
+	rsp_len = strlen(rsp);
+	if (rsp[rsp_len - 1] == '\n') {
+		rsp[rsp_len - 1] = '\0';
+		rsp_len--;
+	}
+
+	if (rsp[0] == 'y' || rsp[0] == 'Y')
+		return mgmt_confirm_reply(mgmt_sk, index, &ev->bdaddr);
+	else
+		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->bdaddr);
+}
+
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 						void *data, uint16_t len)
 {
@@ -598,6 +695,8 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_remote_name(mgmt_sk, index, data, len);
 	case MGMT_EV_PIN_CODE_REQUEST:
 		return mgmt_request_pin(mgmt_sk, index, data, len);
+	case MGMT_EV_USER_CONFIRM_REQUEST:
+		return mgmt_user_confirm(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
