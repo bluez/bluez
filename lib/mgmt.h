@@ -129,6 +129,10 @@ struct mgmt_cp_remove_keys {
 	bdaddr_t bdaddr;
 	uint8_t disconnect;
 } __packed;
+struct mgmt_rp_remove_keys {
+	bdaddr_t bdaddr;
+	uint8_t status;
+} __packed;
 
 #define MGMT_OP_DISCONNECT		0x000F
 struct mgmt_cp_disconnect {

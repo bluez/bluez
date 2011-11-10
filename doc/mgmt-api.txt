@@ -189,7 +189,8 @@ Remove Keys Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Disconnect (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Status (1 Octet)
 
 	Removes all keys associated with the remote device.
 
