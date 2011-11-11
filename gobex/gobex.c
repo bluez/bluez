@@ -694,7 +694,7 @@ static gboolean check_connid(GObex *obex, GObexPacket *pkt)
 
 	hdr = g_obex_packet_get_header(pkt, G_OBEX_HDR_CONNECTION);
 	if (hdr == NULL)
-		return FALSE;
+		return TRUE;
 
 	g_obex_header_get_uint32(hdr, &id);
 
