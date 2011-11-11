@@ -104,7 +104,7 @@ if __name__ == '__main__':
 					"Shuffle" : "off",
 					"Scan" : "off",
 					"Status" : "playing",
-					"Position" : dbus.UInt32(0) })
+					"Position" : dbus.UInt32(0) }, signature="sv")
 
 	metadata = dbus.Dictionary({ "Title" : "Title",
 					"Artist" : "Artist",
@@ -112,7 +112,7 @@ if __name__ == '__main__':
 					"Genre" : "Genre",
 					"NumberOfTracks" : dbus.UInt32(10),
 					"Number" : dbus.UInt32(1),
-					"Duration" : dbus.UInt32(10000) })
+					"Duration" : dbus.UInt32(10000) }, signature="sv")
 
 	print('Register media player with:\n\tProperties: %s\n\tMetadata: %s' \
 						% (properties, metadata))
@@ -120,6 +120,6 @@ if __name__ == '__main__':
 	handler = InputHandler(player)
 	gobject.io_add_watch(sys.stdin, gobject.IO_IN, handler.handle)
 
-	media.RegisterPlayer(path, properties, metadata)
+	media.RegisterPlayer(dbus.ObjectPath(path), properties, metadata)
 
 	mainloop.run()
