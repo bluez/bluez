@@ -705,9 +705,16 @@ static void handle_request(GObex *obex, GObexPacket *req)
 
 	op = g_obex_packet_get_operation(req, NULL);
 
-	if (op == G_OBEX_OP_CONNECT)
+	switch (op) {
+	case G_OBEX_OP_CONNECT:
 		parse_connect_data(obex, req);
-	else if (check_connid(obex, req) == FALSE) {
+		break;
+	case G_OBEX_OP_ABORT:
+		break;
+	default:
+		if (check_connid(obex, req))
+			break;
+
 		g_obex_debug(G_OBEX_DEBUG_ERROR, "Invalid Connection ID");
 		g_obex_send_rsp(obex, G_OBEX_RSP_SERVICE_UNAVAILABLE, NULL,
 							G_OBEX_HDR_INVALID);
