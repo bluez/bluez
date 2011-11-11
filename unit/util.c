@@ -132,7 +132,7 @@ gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 	struct test_data *d = user_data;
 	GIOStatus status;
 	gsize bytes_written, rbytes, send_buf_len, expect_len;
-	char buf[255];
+	char buf[65535];
 	const char *send_buf, *expect;
 
 	expect = d->recv[d->count].data;
