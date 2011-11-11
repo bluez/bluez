@@ -410,6 +410,9 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	if (obex->conn_id == CONNID_INVALID)
 		goto create_pending;
 
+	if (obex->rx_last_op == G_OBEX_RSP_CONTINUE)
+		goto create_pending;
+
 	connid = g_obex_packet_get_header(req, G_OBEX_HDR_CONNECTION);
 	if (connid != NULL)
 		goto create_pending;
