@@ -103,6 +103,25 @@ static const char *mgmt_ev[] = {
 	"Device Unblocked",
 };
 
+static const char *mgmt_status[] = {
+	"Success",
+	"Unknown Command",
+	"Not Connected",
+	"Failed",
+	"Connect Failed",
+	"Authentication Failed",
+	"Not Paired",
+	"No Resources",
+	"Timeout",
+	"Already Connected",
+	"Busy",
+	"Rejected",
+	"Not Supported",
+	"Invalid Parameters",
+	"Disconnected",
+	"Not Powered",
+};
+
 static bool monitor = false;
 static bool discovery = false;
 
@@ -129,6 +148,13 @@ static const char *mgmt_evstr(uint16_t ev)
 	if (ev >= NELEM(mgmt_ev))
 		return "<unknown event>";
 	return mgmt_ev[ev];
+}
+
+static const char *mgmt_errstr(uint8_t status)
+{
+	if (status >= NELEM(mgmt_status))
+		return "<unknown status>";
+	return mgmt_status[status];
 }
 
 static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
@@ -254,8 +280,8 @@ static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
 	opcode = bt_get_le16(&ev->opcode);
 
 	if (monitor)
-		printf("cmd status, opcode 0x%04x status 0x%02x\n",
-							opcode, ev->status);
+		printf("cmd status, opcode 0x%04x status 0x%02x (%s)\n",
+				opcode, ev->status, mgmt_errstr(ev->status));
 
 	if (ev->status != 0)
 		mgmt_check_pending(mgmt_sk, opcode, index, ev->status,
@@ -378,8 +404,9 @@ static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
 	if (monitor) {
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
-		printf("hci%u %s type %s connect failed (status 0x%02x)\n",
-				index, addr, typestr(ev->addr.type), ev->status);
+		printf("hci%u %s type %s connect failed (status 0x%02x, %s)\n",
+				index, addr, typestr(ev->addr.type), ev->status,
+				mgmt_errstr(ev->status));
 	}
 
 	return 0;
@@ -398,8 +425,8 @@ static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
 	if (monitor) {
 		char addr[18];
 		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s auth failed with status 0x%02x\n",
-						index, addr, ev->status);
+		printf("hci%u %s auth failed with status 0x%02x (%s)\n",
+			index, addr, ev->status, mgmt_errstr(ev->status));
 	}
 
 	return 0;
@@ -465,8 +492,9 @@ static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "hci%u PIN Code reply failed with status %u",
-								id, status);
+		fprintf(stderr,
+			"hci%u PIN Code reply failed with status 0x%02x (%s)",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -491,8 +519,9 @@ static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "hci%u PIN Neg reply failed with status %u",
-								id, status);
+		fprintf(stderr,
+			"hci%u PIN Neg reply failed with status 0x%02x (%s)",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -551,8 +580,8 @@ static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u User Confirm reply failed with status %u",
-								id, status);
+			"hci%u User Confirm reply failed. status 0x%02x (%s)",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -576,8 +605,8 @@ static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u Confirm Negative reply failed with status %u",
-								id, status);
+			"hci%u Confirm Neg reply failed. status 0x%02x (%s)",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -742,8 +771,9 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	char addr[18];
 
 	if (status != 0) {
-		fprintf(stderr, "Reading hci%u info failed with status %u\n",
-								id, status);
+		fprintf(stderr,
+			"Reading hci%u info failed with status 0x%02x (%s)\n",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -776,8 +806,9 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	unsigned int i;
 
 	if (status != 0) {
-		fprintf(stderr, "Reading index list failed with status %u\n",
-								status);
+		fprintf(stderr,
+			"Reading index list failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -851,8 +882,9 @@ static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	struct mgmt_mode *rp = rsp;
 
 	if (status != 0) {
-		fprintf(stderr, "%s for hci%u failed with status %u\n",
-						mgmt_opstr(op), id, status);
+		fprintf(stderr,
+			"%s for hci%u failed with status 0x%02x (%s)\n",
+			mgmt_opstr(op), id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -944,8 +976,9 @@ static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Setting hci%u class failed with status %u",
-								id, status);
+		fprintf(stderr,
+			"Setting hci%u class failed with status 0x%02x (%s)",
+					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -983,7 +1016,8 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	char addr[18];
 
 	if (status != 0) {
-		fprintf(stderr, "Disconnect failed with status %u\n", status);
+		fprintf(stderr, "Disconnect failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -999,8 +1033,9 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 		printf("%s disconnected\n", addr);
 		exit(EXIT_SUCCESS);
 	} else {
-		fprintf(stderr, "Disconnecting %s failed with status %u\n",
-							addr, rp->status);
+		fprintf(stderr,
+			"Disconnecting %s failed with status 0x%02x (%s)\n",
+				addr, rp->status, mgmt_errstr(rp->status));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -1072,8 +1107,9 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Unable to start discovery (status %u)\n",
-								status);
+		fprintf(stderr,
+			"Unable to start discovery. status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1108,8 +1144,8 @@ static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Unable to set local name (status %u)",
-								status);
+		fprintf(stderr, "Unable to set local name. status 0x%02x (%s)",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1145,7 +1181,8 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	char addr[18];
 
 	if (status != 0) {
-		fprintf(stderr, "Pairing failed with status %u\n", status);
+		fprintf(stderr, "Pairing failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1157,8 +1194,10 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	ba2str(&rp->addr.bdaddr, addr);
 
 	if (rp->status != 0) {
-		fprintf(stderr, "Pairing with %s (%s) failed with status %u\n",
-				addr, typestr(rp->addr.type), rp->status);
+		fprintf(stderr,
+			"Pairing with %s (%s) failed. status 0x%02x (%s)\n",
+			addr, typestr(rp->addr.type), rp->status,
+			mgmt_errstr(rp->status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1233,7 +1272,8 @@ static void remove_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	char addr[18];
 
 	if (status != 0) {
-		fprintf(stderr, "Remove keys failed with status %u\n", status);
+		fprintf(stderr, "Remove keys failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1245,8 +1285,9 @@ static void remove_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	ba2str(&rp->bdaddr, addr);
 
 	if (rp->status != 0) {
-		fprintf(stderr, "Removing keys for %s failed with status %u\n",
-							addr, rp->status);
+		fprintf(stderr,
+			"Removing keys for %s failed. status 0x%02x (%s)\n",
+				addr, rp->status, mgmt_errstr(rp->status));
 		exit(EXIT_FAILURE);
 	}
 
