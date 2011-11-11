@@ -860,19 +860,20 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	if (obex->rx_data < 3 || obex->rx_data < obex->rx_pkt_len)
 		return TRUE;
 
+	obex->rx_last_op = obex->rx_buf[0] & ~FINAL_BIT;
+
 	if (obex->pending_req) {
 		struct pending_pkt *p = obex->pending_req;
 		opcode = g_obex_packet_get_operation(p->pkt, NULL);
 		header_offset = rsp_header_offset(opcode);
 	} else {
-		opcode = obex->rx_buf[0] & ~FINAL_BIT;
+		opcode = obex->rx_last_op;
 		/* Unexpected response -- fail silently */
 		if (opcode > 0x1f && opcode < 0xff) {
 			obex->rx_data = 0;
 			return TRUE;
 		}
 		header_offset = req_header_offset(opcode);
-		obex->rx_last_op = opcode;
 	}
 
 	if (header_offset < 0) {
