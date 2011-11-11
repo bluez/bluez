@@ -1319,6 +1319,36 @@ static void cmd_remove(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void keys_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	if (status != 0) {
+		fprintf(stderr, "Load keys failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Keys successfully loaded\n");
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_keys(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_load_link_keys cp;
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_LOAD_LINK_KEYS, index,
+				&cp, sizeof(cp), keys_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send load_keys cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -1337,6 +1367,7 @@ static struct {
 	{ "name",	cmd_name,	"Set local name"		},
 	{ "pair",	cmd_pair,	"Pair with a remote device"	},
 	{ "remove",	cmd_remove,	"Remove pairing (all keys)"	},
+	{ "keys",	cmd_keys,	"Load Keys"			},
 	{ NULL, NULL, 0 }
 };
 
