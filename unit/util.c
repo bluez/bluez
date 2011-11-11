@@ -166,6 +166,9 @@ gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 		goto failed;
 	}
 
+	if (send_buf_len == 0)
+		goto failed;
+
 	g_io_channel_write_chars(io, send_buf, send_buf_len, &bytes_written,
 									NULL);
 	if (bytes_written != send_buf_len) {
