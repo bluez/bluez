@@ -87,7 +87,7 @@ sbc_libsbc_la_SOURCES = sbc/sbc.h sbc/sbc.c sbc/sbc_math.h sbc/sbc_tables.h \
 			sbc/sbc_primitives_neon.h sbc/sbc_primitives_neon.c \
 			sbc/sbc_primitives_armv6.h sbc/sbc_primitives_armv6.c
 
-sbc_libsbc_la_CFLAGS = -finline-functions -fgcse-after-reload \
+sbc_libsbc_la_CFLAGS = $(AM_CFLAGS) -finline-functions -fgcse-after-reload \
 					-funswitch-loops -funroll-loops
 
 noinst_PROGRAMS += sbc/sbcinfo sbc/sbcdec sbc/sbcenc
@@ -102,7 +102,7 @@ if SNDFILE
 noinst_PROGRAMS += sbc/sbctester
 
 sbc_sbctester_LDADD = @SNDFILE_LIBS@ -lm
-sbc_sbctest_CFLAGS = @SNDFILE_CFLAGS@
+sbc_sbctest_CFLAGS = $(AM_CFLAGS) @SNDFILE_CFLAGS@
 endif
 endif
 
@@ -287,7 +287,7 @@ if MAINTAINER_MODE
 plugin_LTLIBRARIES += plugins/external-dummy.la
 plugins_external_dummy_la_SOURCES = plugins/external-dummy.c
 plugins_external_dummy_la_LDFLAGS = -module -avoid-version -no-undefined
-plugins_external_dummy_la_CFLAGS = -fvisibility=hidden
+plugins_external_dummy_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 endif
 
 sbin_PROGRAMS += src/bluetoothd
@@ -322,6 +322,10 @@ src_bluetoothd_LDFLAGS = -Wl,--export-dynamic \
 
 src_bluetoothd_DEPENDENCIES = lib/libbluetooth-private.la
 
+src_bluetoothd_CFLAGS = $(AM_CFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
+					-DPLUGINDIR=\""$(build_plugindir)"\"
+src_bluetoothd_SHORTNAME = bluetoothd
+
 builtin_files = src/builtin.h $(builtin_nodist)
 
 nodist_src_bluetoothd_SOURCES = $(builtin_files)
@@ -353,14 +357,14 @@ audio_libasound_module_pcm_bluetooth_la_SOURCES = audio/pcm_bluetooth.c \
 audio_libasound_module_pcm_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_pcm_.*
 audio_libasound_module_pcm_bluetooth_la_LIBADD = sbc/libsbc.la \
 					lib/libbluetooth-private.la @ALSA_LIBS@
-audio_libasound_module_pcm_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
+audio_libasound_module_pcm_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
 
 audio_libasound_module_ctl_bluetooth_la_SOURCES = audio/ctl_bluetooth.c \
 					audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_ctl_.*
 audio_libasound_module_ctl_bluetooth_la_LIBADD = \
 					lib/libbluetooth-private.la @ALSA_LIBS@
-audio_libasound_module_ctl_bluetooth_la_CFLAGS = @ALSA_CFLAGS@
+audio_libasound_module_ctl_bluetooth_la_CFLAGS = $(AM_CLAGS) @ALSA_CFLAGS@
 
 if DATAFILES
 alsaconfdir = $(datadir)/alsa
@@ -386,9 +390,10 @@ audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libgstbluetooth_la_LDFLAGS = -module -avoid-version
 audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth-private.la \
-				@DBUS_LIBS@ @GSTREAMER_LIBS@ -lgstaudio-0.10 -lgstrtp-0.10
+						@DBUS_LIBS@ @GSTREAMER_LIBS@ \
+						-lgstaudio-0.10 -lgstrtp-0.10
 audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
-						$(AM_CFLAGS) @DBUS_CFLAGS@ @GSTREAMER_CFLAGS@
+				$(AM_CFLAGS) @DBUS_CFLAGS@ @GSTREAMER_CFLAGS@
 endif
 endif
 
@@ -432,8 +437,7 @@ EXTRA_DIST += doc/manager-api.txt \
 
 AM_YFLAGS = -d
 
-AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ \
-		-DBLUETOOTH_PLUGIN_BUILTIN -DPLUGINDIR=\""$(build_plugindir)"\"
+AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@
 
 INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
@@ -450,8 +454,9 @@ unit_tests = unit/test-eir
 noinst_PROGRAMS += $(unit_tests)
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
-unit_test_eir_CFLAGS = @GLIB_CFLAGS@ @CHECK_CFLAGS@
 unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @CHECK_LIBS@
+unit_test_eir_CFLAGS = $(AM_CFLAGS) @CHECK_CFLAGS@
+unit_test_eir_SHORTNAME = unit
 unit_objects += $(unit_test_eir_OBJECTS)
 
 TESTS = $(unit_tests)
