@@ -27,8 +27,8 @@
 
 #include <errno.h>
 #include <glib.h>
-#include <openobex/obex.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
 #include "obexd.h"
 #include "plugin.h"
