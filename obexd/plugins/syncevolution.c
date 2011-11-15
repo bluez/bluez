@@ -34,9 +34,6 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
-
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"
