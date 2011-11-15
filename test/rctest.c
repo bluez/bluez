@@ -312,13 +312,6 @@ static void do_listen(void (*handler)(int sk))
 		goto error;
 	}
 
-	if (priority > 0 && setsockopt(sk, SOL_SOCKET, SO_PRIORITY, &priority,
-						sizeof(priority)) < 0) {
-		syslog(LOG_ERR, "Can't set socket priority: %s (%d)",
-						strerror(errno), errno);
-		goto error;
-	}
-
 	/* Listen for connections */
 	if (listen(sk, 10)) {
 		syslog(LOG_ERR,"Can not listen on the socket: %s (%d)",
@@ -367,6 +360,14 @@ static void do_listen(void (*handler)(int sk))
 							strerror(errno), errno);
 			//close(nsk);
 			//goto error;
+		}
+
+		if (priority > 0 && setsockopt(sk, SOL_SOCKET, SO_PRIORITY,
+					&priority, sizeof(priority)) < 0) {
+			syslog(LOG_ERR, "Can't set socket priority: %s (%d)",
+						strerror(errno), errno);
+			close(nsk);
+			goto error;
 		}
 
 		optlen = sizeof(priority);
