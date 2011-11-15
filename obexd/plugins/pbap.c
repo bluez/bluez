@@ -625,8 +625,7 @@ static void *pbap_connect(struct obex_session *os, int *err)
 	return pbap;
 }
 
-static int pbap_get(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int pbap_get(struct obex_session *os, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const char *type = obex_get_type(os);
@@ -693,8 +692,7 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	return ret;
 }
 
-static int pbap_setpath(struct obex_session *os, obex_object_t *obj,
-		void *user_data)
+static int pbap_setpath(struct obex_session *os, void *user_data)
 {
 	struct pbap_session *pbap = user_data;
 	const char *name;

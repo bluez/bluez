@@ -237,8 +237,7 @@ static void *irmc_connect(struct obex_session *os, int *err)
 	return irmc;
 }
 
-static int irmc_get(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int irmc_get(struct obex_session *os, void *user_data)
 {
 	struct irmc_session *irmc = user_data;
 	const char *type = obex_get_type(os);

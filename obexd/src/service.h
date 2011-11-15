@@ -33,15 +33,11 @@ struct obex_service_driver {
 	const char *record;
 	void *(*connect) (struct obex_session *os, int *err);
 	void (*progress) (struct obex_session *os, void *user_data);
-	int (*get) (struct obex_session *os, obex_object_t *obj,
-							void *user_data);
-	int (*put) (struct obex_session *os, obex_object_t *obj,
-			void *user_data);
+	int (*get) (struct obex_session *os, void *user_data);
+	int (*put) (struct obex_session *os, void *user_data);
 	int (*chkput) (struct obex_session *os, void *user_data);
-	int (*setpath) (struct obex_session *os, obex_object_t *obj,
-							void *user_data);
-	int (*action) (struct obex_session *os, obex_object_t *obj,
-							void *user_data);
+	int (*setpath) (struct obex_session *os, void *user_data);
+	int (*action) (struct obex_session *os, void *user_data);
 	void (*disconnect) (struct obex_session *os, void *user_data);
 	void (*reset) (struct obex_session *os, void *user_data);
 };

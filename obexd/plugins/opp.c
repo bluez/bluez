@@ -165,8 +165,7 @@ failed:
 	return err;
 }
 
-static int opp_put(struct obex_session *os, obex_object_t *obj,
-						void *user_data)
+static int opp_put(struct obex_session *os, void *user_data)
 {
 	const char *name = obex_get_name(os);
 	const char *folder = obex_option_root_folder();
@@ -180,7 +179,7 @@ static int opp_put(struct obex_session *os, obex_object_t *obj,
 	return 0;
 }
 
-static int opp_get(struct obex_session *os, obex_object_t *obj, void *user_data)
+static int opp_get(struct obex_session *os, void *user_data)
 {
 	const char *type;
 

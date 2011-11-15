@@ -165,7 +165,7 @@ static void mas_disconnect(struct obex_session *os, void *user_data)
 	mas_clean(mas);
 }
 
-static int mas_get(struct obex_session *os, obex_object_t *obj, void *user_data)
+static int mas_get(struct obex_session *os, void *user_data)
 {
 	struct mas_session *mas = user_data;
 	const char *type = obex_get_type(os);
@@ -190,7 +190,7 @@ failed:
 	return ret;
 }
 
-static int mas_put(struct obex_session *os, obex_object_t *obj, void *user_data)
+static int mas_put(struct obex_session *os, void *user_data)
 {
 	struct mas_session *mas = user_data;
 	const char *type = obex_get_type(os);
@@ -406,8 +406,7 @@ proceed:
 		obex_object_set_io_flags(mas, G_IO_IN, err);
 }
 
-static int mas_setpath(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int mas_setpath(struct obex_session *os, void *user_data)
 {
 	const char *name;
 	const uint8_t *nonhdr;

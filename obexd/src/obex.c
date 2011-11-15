@@ -851,7 +851,7 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
-	err = os->service->get(os, obj, os->service_data);
+	err = os->service->get(os, os->service_data);
 
 	if (err < 0)
 		goto done;
@@ -933,7 +933,7 @@ static void cmd_setpath(struct obex_session *os,
 
 	os->nonhdr_len = OBEX_ObjectGetNonHdrData(obj, &os->nonhdr);
 
-	err = os->service->setpath(os, obj, os->service_data);
+	err = os->service->setpath(os, os->service_data);
 	os_set_response(obj, err);
 }
 
@@ -1132,7 +1132,7 @@ static void cmd_put(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 		return;
 	}
 
-	err = os->service->put(os, obj, os->service_data);
+	err = os->service->put(os, os->service_data);
 	if (err < 0) {
 		os_set_response(obj, err);
 		return;
@@ -1240,7 +1240,7 @@ static void cmd_action(struct obex_session *os, obex_t *obex,
 		return;
 	}
 
-	err = os->service->action(os, obj, os->service_data);
+	err = os->service->action(os, os->service_data);
 	if (err < 0) {
 		os_set_response(obj, err);
 		return;

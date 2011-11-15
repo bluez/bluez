@@ -163,7 +163,7 @@ void *ftp_connect(struct obex_session *os, int *err)
 	return ftp;
 }
 
-int ftp_get(struct obex_session *os, obex_object_t *obj, void *user_data)
+int ftp_get(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *type = obex_get_type(os);
@@ -228,7 +228,7 @@ int ftp_chkput(struct obex_session *os, void *user_data)
 	return ret;
 }
 
-int ftp_put(struct obex_session *os, obex_object_t *obj, void *user_data)
+int ftp_put(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name = obex_get_name(os);
@@ -251,7 +251,7 @@ int ftp_put(struct obex_session *os, obex_object_t *obj, void *user_data)
 	return 0;
 }
 
-int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
+int ftp_setpath(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *root_folder, *name;
@@ -480,7 +480,7 @@ static int ftp_move(struct ftp_session *ftp, const char *name,
 	return ret;
 }
 
-int ftp_action(struct obex_session *os, obex_object_t *obj, void *user_data)
+int ftp_action(struct obex_session *os, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *name, *destname;

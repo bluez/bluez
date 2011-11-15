@@ -180,14 +180,13 @@ fail:
 	return NULL;
 }
 
-static int pcsuite_get(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int pcsuite_get(struct obex_session *os, void *user_data)
 {
 	struct pcsuite_session *pcsuite = user_data;
 
 	DBG("%p", pcsuite);
 
-	return ftp_get(os, obj, pcsuite->ftp);
+	return ftp_get(os, pcsuite->ftp);
 }
 
 static int pcsuite_chkput(struct obex_session *os, void *user_data)
@@ -199,34 +198,31 @@ static int pcsuite_chkput(struct obex_session *os, void *user_data)
 	return ftp_chkput(os, pcsuite->ftp);
 }
 
-static int pcsuite_put(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int pcsuite_put(struct obex_session *os, void *user_data)
 {
 	struct pcsuite_session *pcsuite = user_data;
 
 	DBG("%p", pcsuite);
 
-	return ftp_put(os, obj, pcsuite->ftp);
+	return ftp_put(os, pcsuite->ftp);
 }
 
-static int pcsuite_setpath(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int pcsuite_setpath(struct obex_session *os, void *user_data)
 {
 	struct pcsuite_session *pcsuite = user_data;
 
 	DBG("%p", pcsuite);
 
-	return ftp_setpath(os, obj, pcsuite->ftp);
+	return ftp_setpath(os, pcsuite->ftp);
 }
 
-static int pcsuite_action(struct obex_session *os, obex_object_t *obj,
-							void *user_data)
+static int pcsuite_action(struct obex_session *os, void *user_data)
 {
 	struct pcsuite_session *pcsuite = user_data;
 
 	DBG("%p", pcsuite);
 
-	return ftp_action(os, obj, pcsuite->ftp);
+	return ftp_action(os, pcsuite->ftp);
 }
 
 static void pcsuite_disconnect(struct obex_session *os, void *user_data)
