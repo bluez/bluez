@@ -36,6 +36,8 @@ struct obex_session {
 	time_t time;
 	uint8_t *apparam;
 	size_t apparam_len;
+	uint8_t *nonhdr;
+	size_t nonhdr_len;
 	uint8_t *buf;
 	int64_t pending;
 	int64_t offset;

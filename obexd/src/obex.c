@@ -931,6 +931,8 @@ static void cmd_setpath(struct obex_session *os,
 		break;
 	}
 
+	os->nonhdr_len = OBEX_ObjectGetNonHdrData(obj, &os->nonhdr);
+
 	err = os->service->setpath(os, obj, os->service_data);
 	os_set_response(obj, err);
 }
@@ -1544,6 +1546,14 @@ ssize_t obex_get_apparam(struct obex_session *os, const uint8_t **buffer)
 	*buffer = os->apparam;
 
 	return os->apparam_len;
+}
+
+ssize_t obex_get_non_header_data(struct obex_session *os,
+							const uint8_t **data)
+{
+	*data = os->nonhdr;
+
+	return os->nonhdr_len;
 }
 
 int memncmp0(const void *a, size_t na, const void *b, size_t nb)

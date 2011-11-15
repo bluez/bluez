@@ -255,13 +255,13 @@ int ftp_setpath(struct obex_session *os, obex_object_t *obj, void *user_data)
 {
 	struct ftp_session *ftp = user_data;
 	const char *root_folder, *name;
-	uint8_t *nonhdr;
+	const uint8_t *nonhdr;
 	char *fullname;
 	struct stat dstat;
 	gboolean root;
 	int err;
 
-	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
+	if (obex_get_non_header_data(os, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
 		return -EBADMSG;
 	}

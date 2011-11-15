@@ -410,10 +410,10 @@ static int mas_setpath(struct obex_session *os, obex_object_t *obj,
 							void *user_data)
 {
 	const char *name;
-	uint8_t *nonhdr;
+	const uint8_t *nonhdr;
 	struct mas_session *mas = user_data;
 
-	if (OBEX_ObjectGetNonHdrData(obj, &nonhdr) != 2) {
+	if (obex_get_non_header_data(os, &nonhdr) != 2) {
 		error("Set path failed: flag and constants not found!");
 		return -EBADR;
 	}
