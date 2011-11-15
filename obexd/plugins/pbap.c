@@ -642,7 +642,7 @@ static int pbap_get(struct obex_session *os, obex_object_t *obj,
 	if (type == NULL)
 		return -EBADR;
 
-	rsize = obex_aparam_read(os, obj, &buffer);
+	rsize = obex_get_apparam(os, &buffer);
 	if (rsize < 0) {
 		if (g_ascii_strcasecmp(type, VCARDENTRY_TYPE) != 0)
 			return -EBADR;

@@ -34,6 +34,8 @@ struct obex_session {
 	char *type;
 	char *path;
 	time_t time;
+	uint8_t *apparam;
+	size_t apparam_len;
 	uint8_t *buf;
 	int64_t pending;
 	int64_t offset;

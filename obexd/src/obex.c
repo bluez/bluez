@@ -312,6 +312,11 @@ static void os_reset_session(struct obex_session *os)
 		g_free(os->path);
 		os->path = NULL;
 	}
+	if (os->apparam) {
+		g_free(os->apparam);
+		os->apparam = NULL;
+		os->apparam_len = 0;
+	}
 
 	os->object = NULL;
 	os->obj = NULL;
@@ -824,6 +829,11 @@ static void cmd_get(struct obex_session *os, obex_t *obex, obex_object_t *obj)
 						os->service->who,
 						os->service->who_size);
 			break;
+		}
+
+		if (hi == OBEX_HDR_APPARAM) {
+			os->apparam = g_memdup(hd.bs, hlen);
+			os->apparam_len = hlen;
 		}
 	}
 
@@ -1529,23 +1539,11 @@ char *obex_get_id(struct obex_session *os)
 	return g_strdup_printf("%s+%d", address, channel);
 }
 
-ssize_t obex_aparam_read(struct obex_session *os,
-		obex_object_t *obj, const uint8_t **buffer)
+ssize_t obex_get_apparam(struct obex_session *os, const uint8_t **buffer)
 {
-	obex_headerdata_t hd;
-	uint8_t hi;
-	uint32_t hlen;
+	*buffer = os->apparam;
 
-	OBEX_ObjectReParseHeaders(os->obex, obj);
-
-	while (OBEX_ObjectGetNextHeader(os->obex, obj, &hi, &hd, &hlen)) {
-		if (hi == OBEX_HDR_APPARAM) {
-			*buffer = hd.bs;
-			return hlen;
-		}
-	}
-
-	return -EBADR;
+	return os->apparam_len;
 }
 
 int memncmp0(const void *a, size_t na, const void *b, size_t nb)
