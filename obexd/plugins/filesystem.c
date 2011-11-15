@@ -39,11 +39,9 @@
 #include <sys/sendfile.h>
 #include <fcntl.h>
 #include <wait.h>
+#include <inttypes.h>
 
 #include <glib.h>
-
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
 
 #include "obexd.h"
 #include "plugin.h"
