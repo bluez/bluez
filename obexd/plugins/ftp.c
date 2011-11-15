@@ -36,11 +36,9 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <inttypes.h>
 
 #include <glib.h>
-
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
 
 #include "obexd.h"
 #include "plugin.h"
