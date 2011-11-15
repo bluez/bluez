@@ -34,9 +34,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <termios.h>
-
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
+#include <inttypes.h>
 
 #include <glib.h>
 #include <gdbus.h>
