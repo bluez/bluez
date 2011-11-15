@@ -49,8 +49,6 @@ uint8_t obex_get_action_id(struct obex_session *os);
 char *obex_get_id(struct obex_session *os);
 ssize_t obex_aparam_read(struct obex_session *os, obex_object_t *obj,
 						const uint8_t **buffer);
-int obex_aparam_write(struct obex_session *os, obex_object_t *obj,
-				const uint8_t *buffer, unsigned int size);
 
 /* Just a thin wrapper around memcmp to deal with NULL values */
 int memncmp0(const void *a, size_t na, const void *b, size_t nb);

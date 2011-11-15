@@ -1548,17 +1548,6 @@ ssize_t obex_aparam_read(struct obex_session *os,
 	return -EBADR;
 }
 
-int obex_aparam_write(struct obex_session *os,
-		obex_object_t *obj, const uint8_t *data, unsigned int size)
-{
-	obex_headerdata_t hd;
-
-	hd.bs = data;
-
-	return OBEX_ObjectAddHeader(os->obex, obj,
-			OBEX_HDR_APPARAM, hd, size, 0);
-}
-
 int memncmp0(const void *a, size_t na, const void *b, size_t nb)
 {
 	if (na != nb)
