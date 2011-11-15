@@ -34,9 +34,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
+#include <inttypes.h>
 
 #include "obexd.h"
 #include "plugin.h"
