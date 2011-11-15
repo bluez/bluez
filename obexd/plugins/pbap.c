@@ -36,9 +36,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <inttypes.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
+#include <gobex.h>
 
 #include "obexd.h"
 #include "plugin.h"
@@ -976,7 +976,7 @@ static ssize_t vobject_pull_get_next_header(void *object, void *buf, size_t mtu,
 	if (!obj->buffer && !obj->aparams)
 		return -EAGAIN;
 
-	*hi = OBEX_HDR_APPARAM;
+	*hi = G_OBEX_HDR_APPARAM;
 
 	if (pbap->params->maxlistcount == 0 || obj->firstpacket) {
 		obj->firstpacket = FALSE;
@@ -1028,7 +1028,7 @@ static ssize_t vobject_list_get_next_header(void *object, void *buf, size_t mtu,
 	if (!pbap->cache.valid)
 		return -EAGAIN;
 
-	*hi = OBEX_HDR_APPARAM;
+	*hi = G_OBEX_HDR_APPARAM;
 
 	if (pbap->params->maxlistcount == 0)
 		return array_read(obj->aparams, buf, mtu);
