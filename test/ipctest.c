@@ -139,7 +139,7 @@ static int service_send(struct userdata *u, const bt_audio_msg_header_t *msg)
 	else {
 		err = -errno;
 		ERR("Error sending data to audio service: %s(%d)",
-			strerror(errno), errno);
+			strerror(-err), -err);
 	}
 
 	return err;
@@ -171,7 +171,7 @@ static int service_recv(struct userdata *u, bt_audio_msg_header_t *rsp)
 	} else {
 		err = -errno;
 		ERR("Error receiving data from audio service: %s(%d)",
-			strerror(errno), errno);
+			strerror(-err), -err);
 	}
 
 	return err;
@@ -215,8 +215,12 @@ static int init_bt(struct userdata *u)
 
 	u->service_fd = bt_audio_service_open();
 	if (u->service_fd <= 0) {
-		perror(strerror(errno));
-		return errno;
+		int err = -errno;
+
+		ERR("bt_audio_service_open() failed: %s (%d)", strerror(-err),
+									-err);
+
+		return err;
 	}
 
 	return 0;
