@@ -214,7 +214,7 @@ static int init_bt(struct userdata *u)
 	DBG("bt_audio_service_open");
 
 	u->service_fd = bt_audio_service_open();
-	if (u->service_fd <= 0) {
+	if (u->service_fd < 0) {
 		int err = -errno;
 
 		ERR("bt_audio_service_open() failed: %s (%d)", strerror(-err),
