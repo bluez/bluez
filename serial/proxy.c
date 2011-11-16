@@ -289,19 +289,18 @@ static inline int unix_socket_connect(const char *address)
 	/* Unix socket */
 	sk = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (sk < 0) {
-		err = errno;
+		err = -errno;
 		error("Unix socket(%s) create failed: %s(%d)",
-				address, strerror(err), err);
-		return -err;
+				address, strerror(-err), -err);
+		return err;
 	}
 
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
+		err = -errno;
 		error("Unix socket(%s) connect failed: %s(%d)",
-				address, strerror(err), err);
+				address, strerror(-err), -err);
 		close(sk);
-		errno = err;
-		return -err;
+		return err;
 	}
 
 	return sk;
@@ -329,18 +328,17 @@ static int tcp_socket_connect(const char *address)
 
 	sk = socket(PF_INET, SOCK_STREAM, 0);
 	if (sk < 0) {
-		err = errno;
+		err = -errno;
 		error("TCP socket(%s) create failed %s(%d)", address,
-							strerror(err), err);
-		return -err;
+							strerror(-err), -err);
+		return err;
 	}
 	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
+		err = -errno;
 		error("TCP socket(%s) connect failed: %s(%d)",
-						address, strerror(err), err);
+						address, strerror(-err), -err);
 		close(sk);
-		errno = err;
-		return -err;
+		return err;
 	}
 	return sk;
 }
@@ -351,18 +349,17 @@ static inline int tty_open(const char *tty, struct termios *ti)
 
 	sk = open(tty, O_RDWR | O_NOCTTY);
 	if (sk < 0) {
-		err = errno;
-		error("Can't open TTY %s: %s(%d)", tty, strerror(err), err);
-		return -err;
+		err = -errno;
+		error("Can't open TTY %s: %s(%d)", tty, strerror(-err), -err);
+		return err;
 	}
 
 	if (ti && tcsetattr(sk, TCSANOW, ti) < 0) {
-		err = errno;
+		err = -errno;
 		error("Can't change serial settings: %s(%d)",
-				strerror(err), err);
+				strerror(-err), -err);
 		close(sk);
-		errno = err;
-		return -err;
+		return err;
 	}
 
 	return sk;

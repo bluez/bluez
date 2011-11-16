@@ -183,16 +183,16 @@ static int port_release(struct serial_port *port)
 	req.flags = (1 << RFCOMM_HANGUP_NOW);
 
 	if (ioctl(rfcomm_ctl, RFCOMMRELEASEDEV, &req) < 0) {
-		err = errno;
+		err = -errno;
 		error("Can't release device %s: %s (%d)",
-				port->dev, strerror(err), err);
+				port->dev, strerror(-err), -err);
 	}
 
 	g_free(port->dev);
 	port->dev = NULL;
 	port->id = -1;
 	close(rfcomm_ctl);
-	return -err;
+	return err;
 }
 
 static void serial_port_free(void *data)
