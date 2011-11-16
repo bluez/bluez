@@ -153,16 +153,18 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 
 	if (cond & G_IO_OUT) {
-		int err = 0, sock = g_io_channel_unix_get_fd(io);
-		socklen_t len = sizeof(err);
+		int err, sk_err = 0, sock = g_io_channel_unix_get_fd(io);
+		socklen_t len = sizeof(sk_err);
 
-		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len) < 0)
-			err = errno;
+		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+			err = -errno;
+		else
+			err = -sk_err;
 
-		if (err)
+		if (err < 0)
 			g_set_error(&gerr, BT_IO_ERROR,
 					BT_IO_ERROR_CONNECT_FAILED, "%s (%d)",
-					strerror(err), err);
+					strerror(-err), -err);
 	} else if (cond & (G_IO_HUP | G_IO_ERR))
 		g_set_error(&gerr, BT_IO_ERROR, BT_IO_ERROR_CONNECT_FAILED,
 				"HUP or ERR on socket");
