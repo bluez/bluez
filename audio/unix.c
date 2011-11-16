@@ -1864,25 +1864,28 @@ int unix_init(void)
 
 	sk = socket(PF_LOCAL, SOCK_STREAM, 0);
 	if (sk < 0) {
-		err = errno;
-		error("Can't create unix socket: %s (%d)", strerror(err), err);
-		return -err;
+		err = -errno;
+		error("Can't create unix socket: %s (%d)", strerror(-err),
+									-err);
+		return err;
 	}
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Can't bind unix socket: %s (%d)", strerror(errno),
-				errno);
+		err = -errno;
+		error("Can't bind unix socket: %s (%d)", strerror(-err),
+									-err);
 		close(sk);
-		return -1;
+		return err;
 	}
 
 	set_nonblocking(sk);
 
 	if (listen(sk, 1) < 0) {
-		error("Can't listen on unix socket: %s (%d)",
-						strerror(errno), errno);
+		err = -errno;
+		error("Can't listen on unix socket: %s (%d)", strerror(-err),
+									-err);
 		close(sk);
-		return -1;
+		return err;
 	}
 
 	unix_sock = sk;

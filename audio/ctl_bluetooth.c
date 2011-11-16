@@ -257,18 +257,19 @@ static int bluetooth_read_event(snd_ctl_ext_t *ext, snd_ctl_elem_id_t *id,
 	struct bluetooth_data *data = ext->private_data;
 	char buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_control_ind *ind = (void *) buf;
-	int ret;
+	int err;
 	const char *type, *name;
 
 	DBG("ext %p id %p", ext, id);
 
 	memset(buf, 0, sizeof(buf));
 
-	ret = recv(data->sock, ind, BT_SUGGESTED_BUFFER_SIZE, MSG_DONTWAIT);
-	if (ret < 0) {
-		SNDERR("Failed while receiving data: %s (%d)",
-				strerror(errno), errno);
-		return -errno;
+	err = recv(data->sock, ind, BT_SUGGESTED_BUFFER_SIZE, MSG_DONTWAIT);
+	if (err < 0) {
+		err = -errno;
+		SNDERR("Failed while receiving data: %s (%d)", strerror(-err),
+									-err);
+		return err;
 	}
 
 	type = bt_audio_strtype(ind->h.type);
