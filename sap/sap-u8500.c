@@ -571,9 +571,9 @@ static int simd_connect(void *sap_data)
 
 	sock = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (sock < 0) {
-		err = errno;
-		sap_error("creating socket failed: %s", strerror(err));
-		return -err;
+		err = -errno;
+		sap_error("creating socket failed: %s", strerror(-err));
+		return err;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -581,14 +581,14 @@ static int simd_connect(void *sap_data)
 	memcpy(addr.sun_path, STE_SIMD_SOCK, sizeof(STE_SIMD_SOCK) - 1);
 
 	if (connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = errno;
-		sap_error("connect to the socket failed: %s", strerror(err));
+		err = -errno;
+		sap_error("connect to the socket failed: %s", strerror(-err));
 		goto failed;
 	}
 
 	if (fcntl(sock, F_SETFL, O_NONBLOCK) > 0) {
-		err = errno;
-		sap_error("setting up socket failed: %s", strerror(err));
+		err = -errno;
+		sap_error("setting up socket failed: %s", strerror(-err));
 		goto failed;
 	}
 
@@ -598,7 +598,7 @@ static int simd_connect(void *sap_data)
 
 failed:
 	close(sock);
-	return -err;
+	return err;
 }
 
 void sap_connect_req(void *sap_device, uint16_t maxmsgsize)
