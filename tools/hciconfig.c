@@ -210,9 +210,9 @@ static void cmd_le_addr(int ctl, int hdev, char *opt)
 
 	dd = hci_open_dev(hdev);
 	if (dd < 0) {
-		err = errno;
+		err = -errno;
 		fprintf(stderr, "Could not open device: %s(%d)\n",
-							strerror(err), err);
+							strerror(-err), -err);
 		exit(1);
 	}
 
@@ -230,9 +230,9 @@ static void cmd_le_addr(int ctl, int hdev, char *opt)
 
 	ret = hci_send_req(dd, &rq, 1000);
 	if (status || ret < 0) {
-		err = errno;
+		err = -errno;
 		fprintf(stderr, "Can't set random address for hci%d: "
-					"%s (%d)\n", hdev, strerror(err), err);
+				"%s (%d)\n", hdev, strerror(-err), -err);
 	}
 
 	hci_close_dev(dd);
