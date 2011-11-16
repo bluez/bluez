@@ -502,10 +502,10 @@ static int uinput_create(char *name)
 		if (fd < 0) {
 			fd = open("/dev/misc/uinput", O_RDWR);
 			if (fd < 0) {
-				err = errno;
+				err = -errno;
 				error("Can't open input device: %s (%d)",
-							strerror(err), err);
-				return -err;
+							strerror(-err), -err);
+				return err;
 			}
 		}
 	}
@@ -520,12 +520,11 @@ static int uinput_create(char *name)
 	dev.id.version = 0x0000;
 
 	if (write(fd, &dev, sizeof(dev)) < 0) {
-		err = errno;
+		err = -errno;
 		error("Can't write device information: %s (%d)",
-						strerror(err), err);
+						strerror(-err), -err);
 		close(fd);
-		errno = err;
-		return -err;
+		return err;
 	}
 
 	ioctl(fd, UI_SET_EVBIT, EV_KEY);
@@ -537,12 +536,11 @@ static int uinput_create(char *name)
 		ioctl(fd, UI_SET_KEYBIT, key_map[i].uinput);
 
 	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
-		err = errno;
+		err = -errno;
 		error("Can't create uinput device: %s (%d)",
-						strerror(err), err);
+						strerror(-err), -err);
 		close(fd);
-		errno = err;
-		return -err;
+		return err;
 	}
 
 	return fd;
@@ -895,7 +893,7 @@ int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
 	struct avctp_header *avctp;
 	struct avc_header *avc;
 	uint8_t *pdu;
-	int sk, err;
+	int sk, err = 0;
 	uint16_t size;
 
 	if (session->state != AVCTP_STATE_CONNECTED)
@@ -920,14 +918,11 @@ int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
 
 	memcpy(pdu, operands, operand_count);
 
-	err = write(sk, buf, size);
-	if (err < 0) {
-		g_free(buf);
-		return -errno;
-	}
+	if (write(sk, buf, size) < 0)
+		err = -errno;
 
 	g_free(buf);
-	return 0;
+	return err;
 }
 
 unsigned int avctp_add_state_cb(avctp_state_cb cb, void *user_data)
