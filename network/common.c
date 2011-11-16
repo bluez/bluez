@@ -108,10 +108,10 @@ int bnep_init(void)
 	ctl = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_BNEP);
 
 	if (ctl < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Failed to open control socket: %s (%d)",
-						strerror(err), err);
-		return -err;
+						strerror(-err), -err);
+		return err;
 	}
 
 	return 0;
@@ -131,10 +131,10 @@ int bnep_kill_connection(bdaddr_t *dst)
 	baswap((bdaddr_t *)&req.dst, dst);
 	req.flags = 0;
 	if (ioctl(ctl, BNEPCONNDEL, &req)) {
-		int err = errno;
+		int err = -errno;
 		error("Failed to kill connection: %s (%d)",
-						strerror(err), err);
-		return -err;
+						strerror(-err), -err);
+		return err;
 	}
 	return 0;
 }
@@ -150,10 +150,10 @@ int bnep_kill_all_connections(void)
 	req.cnum = 7;
 	req.ci   = ci;
 	if (ioctl(ctl, BNEPGETCONNLIST, &req)) {
-		err = errno;
+		err = -errno;
 		error("Failed to get connection list: %s (%d)",
-						strerror(err), err);
-		return -err;
+						strerror(-err), -err);
+		return err;
 	}
 
 	for (i = 0; i < req.cnum; i++) {
@@ -177,10 +177,10 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 	req.sock = sk;
 	req.role = role;
 	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Failed to add device %s: %s(%d)",
-				dev, strerror(err), err);
-		return -err;
+				dev, strerror(-err), -err);
+		return err;
 	}
 
 	strncpy(dev, req.device, 16);
