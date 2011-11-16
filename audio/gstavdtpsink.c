@@ -279,10 +279,10 @@ static gint gst_avdtp_sink_bluetooth_recvmsg_fd(GstAvdtpSink *sink)
 			g_io_channel_unix_get_fd(sink->server));
 
 	if (ret < 0) {
-		err = errno;
+		err = -errno;
 		GST_ERROR_OBJECT(sink, "Unable to receive fd: %s (%d)",
-				strerror(err), err);
-		return -err;
+				strerror(-err), -err);
+		return err;
 	}
 
 	sink->stream = g_io_channel_unix_new(ret);
@@ -1449,9 +1449,9 @@ static gboolean gst_avdtp_sink_start(GstBaseSink *basesink)
 
 	sk = bt_audio_service_open();
 	if (sk <= 0) {
-		err = errno;
+		err = -errno;
 		GST_ERROR_OBJECT(self, "Cannot open connection to bt "
-			"audio service: %s %d", strerror(err), err);
+			"audio service: %s %d", strerror(-err), -err);
 		goto failed;
 	}
 
@@ -1841,7 +1841,7 @@ static int gst_avdtp_sink_audioservice_send(GstAvdtpSink *self,
 	ssize_t written;
 	const char *type, *name;
 	uint16_t length;
-	int fd;
+	int fd, err;
 
 	length = msg->length ? msg->length : BT_SUGGESTED_BUFFER_SIZE;
 
@@ -1849,9 +1849,10 @@ static int gst_avdtp_sink_audioservice_send(GstAvdtpSink *self,
 
 	written = write(fd, msg, length);
 	if (written < 0) {
+		err = -errno;
 		GST_ERROR_OBJECT(self, "Error sending data to audio service:"
-			" %s", strerror(errno));
-		return -errno;
+			" %s", strerror(-err));
+		return err;
 	}
 
 	type = bt_audio_strtype(msg->type);
@@ -1876,9 +1877,10 @@ static int gst_avdtp_sink_audioservice_recv(GstAvdtpSink *self,
 
 	bytes_read = read(fd, inmsg, length);
 	if (bytes_read < 0) {
+		err = -errno;
 		GST_ERROR_OBJECT(self, "Error receiving data from "
-				"audio service: %s", strerror(errno));
-		return -errno;
+				"audio service: %s", strerror(-err));
+		return err;
 	}
 
 	type = bt_audio_strtype(inmsg->type);
