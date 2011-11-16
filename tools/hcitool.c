@@ -2696,9 +2696,9 @@ static void cmd_lewladd(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 
 	if (err < 0) {
-		err = errno;
+		err = -errno;
 		fprintf(stderr, "Can't add to white list: %s(%d)\n",
-							strerror(err), err);
+							strerror(-err), -err);
 		exit(1);
 	}
 }
@@ -2786,9 +2786,9 @@ static void cmd_lewlsz(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 
 	if (err < 0) {
-		err = errno;
+		err = -errno;
 		fprintf(stderr, "Can't read white list size: %s(%d)\n",
-							strerror(err), err);
+							strerror(-err), -err);
 		exit(1);
 	}
 
@@ -2831,9 +2831,9 @@ static void cmd_lewlclr(int dev_id, int argc, char **argv)
 	hci_close_dev(dd);
 
 	if (err < 0) {
-		err = errno;
+		err = -errno;
 		fprintf(stderr, "Can't clear white list: %s(%d)\n",
-							strerror(err), err);
+							strerror(-err), -err);
 		exit(1);
 	}
 }
@@ -2961,9 +2961,9 @@ static void cmd_lecup(int dev_id, int argc, char **argv)
 
 	if (hci_le_conn_update(dd, htobs(handle), htobs(min), htobs(max),
 				htobs(latency), htobs(timeout), 5000) < 0) {
-		int err = errno;
+		int err = -errno;
 		fprintf(stderr, "Could not change connection params: %s(%d)\n",
-							strerror(err), err);
+							strerror(-err), -err);
 	}
 
 	hci_close_dev(dd);
