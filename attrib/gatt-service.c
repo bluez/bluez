@@ -214,7 +214,7 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 		}
 	}
 
-	if (info->value_handle)
+	if (info->value_handle != NULL)
 		*info->value_handle = a->handle;
 
 	/* client characteristic configuration descriptor */
@@ -227,7 +227,7 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 		a = attrib_db_add(h++, &bt_uuid, ATT_NONE, ATT_AUTHENTICATION,
 						cfg_val, sizeof(cfg_val));
 
-		if (info->ccc_handle)
+		if (info->ccc_handle != NULL)
 			*info->ccc_handle = a->handle;
 	}
 
