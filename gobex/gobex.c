@@ -1088,6 +1088,7 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 {
 	GObexPacket *req;
 	struct setpath_data data;
+	const char *folder;
 
 	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
 
@@ -1095,12 +1096,17 @@ guint g_obex_setpath(GObex *obex, const char *path, GObexResponseFunc func,
 
 	memset(&data, 0, sizeof(data));
 
-	if (strcmp(path, "..") == 0)
+	if (path != NULL && strncmp("..", path, 2) == 0) {
 		data.flags = 0x03;
-	else {
-		GObexHeader *hdr;
+		folder = (path[2] == '/') ? &path[3] : NULL;
+	} else {
 		data.flags = 0x02;
-		hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, path);
+		folder = path;
+	}
+
+	if (folder != NULL) {
+		GObexHeader *hdr;
+		hdr = g_obex_header_new_unicode(G_OBEX_HDR_NAME, folder);
 		g_obex_packet_add_header(req, hdr);
 	}
 
