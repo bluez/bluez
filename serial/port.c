@@ -463,10 +463,10 @@ connect:
 				BT_IO_OPT_DEST_BDADDR, &device->dst,
 				BT_IO_OPT_CHANNEL, port->channel,
 				BT_IO_OPT_INVALID);
-	if (port->io)
-		return 0;
+	if (port->io == NULL)
+		return -EIO;
 
-	return -errno;
+	return 0;
 }
 
 static struct serial_port *create_port(struct serial_device *device,
