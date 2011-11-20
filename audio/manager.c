@@ -117,8 +117,8 @@ static struct enabled_interfaces enabled = {
 	.sink		= TRUE,
 	.source		= FALSE,
 	.control	= TRUE,
-	.socket		= TRUE,
-	.media		= FALSE,
+	.socket		= FALSE,
+	.media		= TRUE,
 };
 
 static struct audio_adapter *find_adapter(GSList *list,
