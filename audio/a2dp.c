@@ -638,11 +638,9 @@ static gboolean mpeg_getcap_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static void endpoint_setconf_cb(struct a2dp_sep *sep, guint setup_id,
-								gboolean ret)
-{
-	struct a2dp_setup *setup = GUINT_TO_POINTER(setup_id);
 
+static void endpoint_setconf_cb(struct a2dp_setup *setup, gboolean ret)
+{
 	if (ret == FALSE) {
 		setup->err = g_new(struct avdtp_error, 1);
 		avdtp_error_init(setup->err, AVDTP_MEDIA_CODEC,
@@ -704,7 +702,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 		ret = a2dp_sep->endpoint->set_configuration(a2dp_sep,
 						setup->dev, codec->data,
 						cap->length - sizeof(*codec),
-						GPOINTER_TO_UINT(setup),
+						setup,
 						endpoint_setconf_cb,
 						a2dp_sep->user_data);
 		if (ret == 0)
@@ -768,10 +766,8 @@ static gboolean endpoint_getcap_ind(struct avdtp *session,
 	return TRUE;
 }
 
-static void endpoint_open_cb(struct a2dp_sep *sep, guint setup_id,
-								gboolean ret)
+static void endpoint_open_cb(struct a2dp_setup *setup, gboolean ret)
 {
-	struct a2dp_setup *setup = GUINT_TO_POINTER(setup_id);
 	int err;
 
 	if (ret == FALSE) {
@@ -839,7 +835,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		err = a2dp_sep->endpoint->set_configuration(a2dp_sep, dev,
 						codec->data, service->length -
 						sizeof(*codec),
-						GPOINTER_TO_UINT(setup),
+						setup,
 						endpoint_open_cb,
 						a2dp_sep->user_data);
 		if (err == 0)
@@ -1885,10 +1881,8 @@ static gboolean select_capabilities(struct avdtp *session,
 	return TRUE;
 }
 
-static void select_cb(struct a2dp_sep *sep, guint setup_id, void *ret,
-								int size)
+static void select_cb(struct a2dp_setup *setup, void *ret, int size)
 {
-	struct a2dp_setup *setup = GUINT_TO_POINTER(setup_id);
 	struct avdtp_service_capability *media_transport, *media_codec;
 	struct avdtp_media_codec_capability *cap;
 
@@ -2029,7 +2023,7 @@ unsigned int a2dp_select_capabilities(struct avdtp *session,
 
 	err = sep->endpoint->select_configuration(sep, codec->data,
 					service->length - sizeof(*codec),
-					GPOINTER_TO_UINT(setup),
+					setup,
 					select_cb, sep->user_data);
 	if (err == 0)
 		return cb_data->id;
