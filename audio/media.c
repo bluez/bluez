@@ -659,7 +659,7 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 			goto failed;
 	} else if (strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
 		endpoint->sep = a2dp_add_sep(&adapter->src,
-					AVDTP_SEP_TYPE_SOURCE, codec,
+					AVDTP_SEP_TYPE_SINK, codec,
 					delay_reporting, &a2dp_endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
 		if (endpoint->sep == NULL)
