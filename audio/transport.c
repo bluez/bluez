@@ -670,6 +670,7 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	owner = media_owner_create(conn, msg, accesstype);
 	id = transport->resume(transport, owner);
 	if (id == 0) {
+		media_transport_release(transport, accesstype);
 		media_owner_free(owner);
 		return btd_error_not_authorized(msg);
 	}
