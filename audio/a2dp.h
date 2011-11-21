@@ -4,6 +4,7 @@
  *
  *  Copyright (C) 2006-2010  Nokia Corporation
  *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2011  BMW Car IT GmbH. All rights reserved.
  *
  *
  *  This program is free software; you can redistribute it and/or modify
