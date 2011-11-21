@@ -67,7 +67,7 @@ static void transfer_free(struct transfer *transfer)
 
 	if (transfer->get_id > 0)
 		g_obex_remove_request_function(transfer->obex,
-							transfer->req_id);
+							transfer->get_id);
 
 	if (transfer->abort_id > 0)
 		g_obex_remove_request_function(transfer->obex,
