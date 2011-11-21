@@ -356,6 +356,12 @@ static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
 	if (hdr) {
 		g_obex_header_get_bytes(hdr, &buf, &len);
 		if (len != 0) {
+			if (transfer->params == NULL)
+				transfer->params =
+					g_new0(struct obc_transfer_params, 1);
+			else
+				g_free(transfer->params->data);
+
 			transfer->params->data = g_memdup(buf, len);
 			transfer->params->size = len;
 		}
