@@ -1,0 +1,88 @@
+#!/usr/bin/python
+
+'''
+Thermometer test script
+'''
+
+import gobject
+
+import sys
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+from optparse import OptionParser, make_option
+
+class Watcher(dbus.service.Object):
+	@dbus.service.method("org.bluez.ThermometerWatcher",
+					in_signature="a{sv}", out_signature="")
+	def MeasurementReceived(self, measure):
+		print measure["Measurement"], " measurement received"
+		print "Exponent: ", measure["Exponent"]
+		print "Mantissa: ", measure["Mantissa"]
+		print "Unit: ", measure["Unit"]
+
+		if measure.has_key("Time"):
+			print "Time: ", measure["Time"]
+
+		print "Type: ", measure["Type"]
+
+def property_changed(name, value):
+
+	print "PropertyChanged('%s', '%s')" % (name, value)
+
+if __name__ == "__main__":
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+					"org.bluez.Manager")
+
+	option_list = [
+		make_option("-i", "--adapter", action="store",
+			type="string", dest="adapter"),
+		make_option("-b", "--device", action="store",
+			type="string", dest="address"),
+		]
+
+	parser = OptionParser(option_list=option_list)
+
+	(options, args) = parser.parse_args()
+
+	if not options.address:
+		print "Usage: %s [-i <adapter>] -b <bdaddr> [command]" % (sys.argv[0])
+		print "Possible commands:"
+		print "\tEnableIntermediateMeasurement"
+		sys.exit(1)
+
+	if options.adapter:
+		adapter_path = manager.FindAdapter(options.adapter)
+	else:
+		adapter_path = manager.DefaultAdapter()
+
+	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
+							"org.bluez.Adapter")
+
+	device_path = adapter.FindDevice(options.address)
+
+	bus.add_signal_receiver(property_changed, bus_name="org.bluez",
+				dbus_interface="org.bluez.Thermometer",
+				signal_name="PropertyChanged")
+
+	thermometer = dbus.Interface(bus.get_object("org.bluez",
+					device_path), "org.bluez.Thermometer")
+
+	path = "/test/watcher"
+	watcher = Watcher(bus, path)
+
+	thermometer.RegisterWatcher(path)
+
+	if len(args) > 0:
+		if args[0] == "EnableIntermediateMeasurement":
+			thermometer.EnableIntermediateMeasurement(path)
+		else:
+			print "unknown command"
+			sys.exit(1)
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
