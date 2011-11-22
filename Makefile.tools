@@ -214,7 +214,7 @@ EXTRA_DIST += test/apitest test/sap-client test/hsplay test/hsmicro \
 		test/simple-service test/simple-endpoint test/test-audio \
 		test/test-input test/test-attrib test/test-proximity \
 		test/test-sap-server test/test-oob test/test-serial-proxy \
-		test/test-thermometer \
+		test/test-thermometer test/test-health test/test-health-sink \
 		test/service-record.dtd test/service-did.xml \
 		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
 
