@@ -2220,14 +2220,8 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 			*mode = main_opts.mode;
 	}
 
-	if (on_mode) {
-		if (main_opts.remember_powered == FALSE)
-			*on_mode = get_mode(&adapter->bdaddr, "on");
-		else if (read_on_mode(address, str, sizeof(str)) == 0)
-			*on_mode = get_mode(&adapter->bdaddr, str);
-		else
-			*on_mode = main_opts.mode;
-	}
+	if (on_mode)
+		*on_mode = get_mode(&adapter->bdaddr, "on");
 
 	if (pairable)
 		*pairable = adapter->pairable;
