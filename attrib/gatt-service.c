@@ -244,7 +244,7 @@ static void free_gatt_info(void *data)
 	g_free(info);
 }
 
-void gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...)
+gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...)
 {
 	uint16_t start_handle, h;
 	unsigned int size;
@@ -265,7 +265,8 @@ void gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...)
 	start_handle = attrib_db_find_avail(size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
-		goto done;
+		g_slist_free_full(chrs, free_gatt_info);
+		return FALSE;
 	}
 
 	DBG("New service: handle 0x%04x, UUID 0x%04x, %d attributes",
@@ -282,13 +283,15 @@ void gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...)
 		struct gatt_info *info = l->data;
 
 		DBG("New characteristic: handle 0x%04x", h);
-		if (!add_characteristic(&h, info))
-			goto done;
+		if (!add_characteristic(&h, info)) {
+			g_slist_free_full(chrs, free_gatt_info);
+			return FALSE;
+		}
 	}
 
 	g_assert(size < USHRT_MAX);
 	g_assert(h - start_handle == (uint16_t) size);
-
-done:
 	g_slist_free_full(chrs, free_gatt_info);
+
+	return TRUE;
 }
