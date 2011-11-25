@@ -954,7 +954,7 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 		}
 
 		ts.tm_year = att_get_u16(&pdu[8]) - 1900;
-		ts.tm_mon = pdu[10];
+		ts.tm_mon = pdu[10] - 1;
 		ts.tm_mday = pdu[11];
 		ts.tm_hour = pdu[12];
 		ts.tm_min = pdu[13];
