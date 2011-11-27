@@ -31,9 +31,7 @@
 #include <errno.h>
 #include <gdbus.h>
 #include <sys/socket.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/rfcomm.h>
+#include <inttypes.h>
 
 #include <openobex/obex.h>
 
@@ -521,16 +519,12 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 {
 	DBusMessage *msg;
 	DBusPendingCall *call;
-	GIOChannel *io;
-	struct sockaddr_rc addr;
-	socklen_t addrlen;
-	char address[18];
-	const char *bda = address;
 	const char *filename = os->name ? os->name : "";
 	const char *type = os->type ? os->type : "";
-	char *path;
-	unsigned int watch, fd;
+	char *path, *address;
+	unsigned int watch;
 	gboolean got_reply;
+	int err;
 
 	if (!agent)
 		return -1;
@@ -541,23 +535,18 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	if (!new_folder || !new_name)
 		return -EINVAL;
 
-	memset(&addr, 0, sizeof(addr));
-	addrlen = sizeof(addr);
+	err = obex_getpeername(os, &address);
+	if (err < 0)
+		return err;
 
-	fd = OBEX_GetFD(os->obex);
-	if (getpeername(fd, (struct sockaddr *) &addr, &addrlen) < 0)
-		return -errno;
-
-	ba2str(&addr.rc_bdaddr, address);
-
-	path = g_strdup_printf("/transfer%d", os->cid);
+	path = g_strdup_printf("/transfer%u", GPOINTER_TO_UINT(os));
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 					"org.openobex.Agent", "Authorize");
 
 	dbus_message_append_args(msg,
 			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_STRING, &bda,
+			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &filename,
 			DBUS_TYPE_STRING, &type,
 			DBUS_TYPE_INT32, &os->size,
@@ -565,6 +554,7 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 			DBUS_TYPE_INVALID);
 
 	g_free(path);
+	g_free(address);
 
 	if (!dbus_connection_send_with_reply(connection,
 					msg, &call, TIMEOUT)) {
@@ -578,11 +568,9 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	got_reply = FALSE;
 
 	/* Catches errors before authorization response comes */
-	io = g_io_channel_unix_new(fd);
-	watch = g_io_add_watch_full(io, G_PRIORITY_DEFAULT,
+	watch = g_io_add_watch_full(os->io, G_PRIORITY_DEFAULT,
 			G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 			auth_error, NULL, NULL);
-	g_io_channel_unref(io);
 
 	dbus_pending_call_set_notify(call, agent_reply, &got_reply, NULL);
 

@@ -1556,6 +1556,16 @@ ssize_t obex_get_non_header_data(struct obex_session *os,
 	return os->nonhdr_len;
 }
 
+int obex_getpeername(struct obex_session *os, char **name)
+{
+	struct obex_transport_driver *transport = os->server->transport;
+
+	if (transport == NULL || transport->getpeername == NULL)
+		return -ENOTSUP;
+
+	return transport->getpeername(os->io, name);
+}
+
 int memncmp0(const void *a, size_t na, const void *b, size_t nb)
 {
 	if (na != nb)
