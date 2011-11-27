@@ -479,7 +479,7 @@ static void confirm_event(GIOChannel *io, void *user_data)
 		goto drop;
 	}
 
-	if (driver->service != OBEX_OPP) {
+	if (driver->secure) {
 		if (request_service_authorization(service, io, address) < 0)
 			goto drop;
 
