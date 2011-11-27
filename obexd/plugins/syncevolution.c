@@ -218,6 +218,7 @@ static void *synce_connect(struct obex_session *os, int *err)
 {
 	DBusConnection *conn;
 	struct synce_context *context;
+	char *address;
 
 	manager_register_session(os);
 
@@ -228,8 +229,13 @@ static void *synce_connect(struct obex_session *os, int *err)
 	context = g_new0(struct synce_context, 1);
 	context->dbus_conn = conn;
 	context->lasterr = -EAGAIN;
-	context->id = obex_get_id(os);
 	context->os = os;
+
+	if (obex_getpeername(os, &address) == 0) {
+		context->id = g_strdup_printf("%s+%d", address,
+							SYNCEVOLUTION_CHANNEL);
+		g_free(address);
+	}
 
 	if (err)
 		*err = 0;

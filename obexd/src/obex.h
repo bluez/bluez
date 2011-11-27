@@ -46,7 +46,6 @@ int obex_copy(struct obex_session *os, const char *source,
 int obex_move(struct obex_session *os, const char *source,
 						const char *destination);
 uint8_t obex_get_action_id(struct obex_session *os);
-char *obex_get_id(struct obex_session *os);
 ssize_t obex_get_apparam(struct obex_session *os, const uint8_t **buffer);
 ssize_t obex_get_non_header_data(struct obex_session *os,
 							const uint8_t **data);

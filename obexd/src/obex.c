@@ -1524,23 +1524,6 @@ uint8_t obex_get_action_id(struct obex_session *os)
 	return os->action_id;
 }
 
-/* TODO: find a way to do this for tty or fix syncevolution */
-char *obex_get_id(struct obex_session *os)
-{
-	GError *gerr = NULL;
-	char address[18];
-	uint8_t channel;
-
-	bt_io_get(os->io, BT_IO_RFCOMM, &gerr,
-			BT_IO_OPT_DEST, address,
-			BT_IO_OPT_CHANNEL, &channel,
-			BT_IO_OPT_INVALID);
-	if (gerr)
-		return NULL;
-
-	return g_strdup_printf("%s+%d", address, channel);
-}
-
 ssize_t obex_get_apparam(struct obex_session *os, const uint8_t **buffer)
 {
 	*buffer = os->apparam;
