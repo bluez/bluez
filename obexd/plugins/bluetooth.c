@@ -562,9 +562,26 @@ static void bluetooth_stop(void *data)
 	g_slist_free_full(ios, stop);
 }
 
+static int bluetooth_getpeername(GIOChannel *io, char **name)
+{
+	GError *gerr = NULL;
+	char address[18];
+
+	bt_io_get(io, BT_IO_RFCOMM, &gerr,
+			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_INVALID);
+	if (gerr)
+		return -EINVAL;
+
+	*name = g_strdup(address);
+
+	return 0;
+}
+
 static struct obex_transport_driver driver = {
 	.name = "bluetooth",
 	.start = bluetooth_start,
+	.getpeername = bluetooth_getpeername,
 	.stop = bluetooth_stop
 };
 

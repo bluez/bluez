@@ -25,6 +25,7 @@ struct obex_transport_driver {
 	const char *name;
 	uint16_t service;
 	void *(*start) (struct obex_server *server, int *err);
+	int (*getpeername) (GIOChannel *io, char **name);
 	void (*stop) (void *data);
 };
 
