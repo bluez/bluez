@@ -24,9 +24,7 @@
 
 struct obex_session {
 	GIOChannel *io;
-	uint32_t cid;
-	uint16_t tx_mtu;
-	uint16_t rx_mtu;
+	uint32_t id;
 	uint8_t cmd;
 	uint8_t action_id;
 	char *name;
@@ -36,8 +34,9 @@ struct obex_session {
 	time_t time;
 	uint8_t *apparam;
 	size_t apparam_len;
-	uint8_t *nonhdr;
+	const void *nonhdr;
 	size_t nonhdr_len;
+	guint get_rsp;
 	uint8_t *buf;
 	int64_t pending;
 	int64_t offset;
@@ -48,11 +47,8 @@ struct obex_session {
 	void *service_data;
 	struct obex_server *server;
 	gboolean checked;
-	obex_t *obex;
-	obex_object_t *obj;
+	GObex *obex;
 	struct obex_mime_type_driver *driver;
-	gboolean stream_open;
-	gboolean stream_suspended;
 	gboolean headers_sent;
 };
 

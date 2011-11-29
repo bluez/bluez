@@ -33,10 +33,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <glib.h>
-
-#include <openobex/obex.h>
+#include <gobex.h>
 
 #include "log.h"
 #include "obex.h"

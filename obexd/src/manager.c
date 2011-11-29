@@ -33,7 +33,7 @@
 #include <sys/socket.h>
 #include <inttypes.h>
 
-#include <openobex/obex.h>
+#include <gobex.h>
 
 #include "obexd.h"
 #include "obex.h"
@@ -381,7 +381,7 @@ void manager_cleanup(void)
 
 void manager_emit_transfer_started(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "TransferStarted",
@@ -391,9 +391,9 @@ void manager_emit_transfer_started(struct obex_session *os)
 	g_free(path);
 }
 
-static void emit_transfer_completed(uint32_t id, gboolean success)
+static void emit_transfer_completed(struct obex_session *os, gboolean success)
 {
-	char *path = g_strdup_printf("/transfer%u", id);
+	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "TransferCompleted",
@@ -404,10 +404,10 @@ static void emit_transfer_completed(uint32_t id, gboolean success)
 	g_free(path);
 }
 
-static void emit_transfer_progress(uint32_t id, uint32_t total,
+static void emit_transfer_progress(struct obex_session *os, uint32_t total,
 							uint32_t transfered)
 {
-	char *path = g_strdup_printf("/transfer%u", id);
+	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	g_dbus_emit_signal(connection, path,
 			TRANSFER_INTERFACE, "Progress",
@@ -420,7 +420,7 @@ static void emit_transfer_progress(uint32_t id, uint32_t total,
 
 void manager_register_transfer(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	if (!g_dbus_register_interface(connection, path,
 				TRANSFER_INTERFACE,
@@ -436,11 +436,11 @@ void manager_register_transfer(struct obex_session *os)
 
 void manager_unregister_transfer(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/transfer%u", os->cid);
+	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	/* Got an error during a transfer. */
 	if (os->object)
-		emit_transfer_completed(os->cid, os->offset == os->size);
+		emit_transfer_completed(os, os->offset == os->size);
 
 	g_dbus_unregister_interface(connection, path,
 				TRANSFER_INTERFACE);
@@ -600,7 +600,7 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 
 void manager_register_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/session%u", os->cid);
+	char *path = g_strdup_printf("/session%u", GPOINTER_TO_UINT(os));
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
@@ -621,7 +621,7 @@ void manager_register_session(struct obex_session *os)
 
 void manager_unregister_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/session%u", os->cid);
+	char *path = g_strdup_printf("/session%u", GPOINTER_TO_UINT(os));
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
 			OPENOBEX_MANAGER_INTERFACE, "SessionRemoved",
@@ -636,13 +636,13 @@ void manager_unregister_session(struct obex_session *os)
 
 void manager_emit_transfer_progress(struct obex_session *os)
 {
-	emit_transfer_progress(os->cid, os->size, os->offset);
+	emit_transfer_progress(os, os->size, os->offset);
 }
 
 void manager_emit_transfer_completed(struct obex_session *os)
 {
 	if (os->object)
-		emit_transfer_completed(os->cid, !os->aborted);
+		emit_transfer_completed(os, !os->aborted);
 }
 
 DBusConnection *manager_dbus_get_connection(void)
