@@ -28,7 +28,6 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -38,19 +37,14 @@
 #include <getopt.h>
 #include <syslog.h>
 #include <sys/time.h>
-#include <sys/stat.h>
-#include <sys/poll.h>
-#include <sys/ioctl.h>
+#include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
+#include <netdb.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
-
-#include <netdb.h>
-
-#include <glib.h>
 
 #define VHCI_DEV		"/dev/vhci"
 
@@ -68,15 +62,15 @@ struct vhci_device {
 	uint8_t		eir_data[HCI_MAX_EIR_LENGTH];
 	uint16_t	acl_cnt;
 	bdaddr_t	bdaddr;
-	int		fd;
+	int		dev_fd;
+	int		scan_fd;
 	int		dd;
-	GIOChannel	*scan;
 };
 
 struct vhci_conn {
 	bdaddr_t	dest;
 	uint16_t	handle;
-	GIOChannel	*chan;
+	int		fd;
 };
 
 struct vhci_link_info {
@@ -108,29 +102,16 @@ struct btsnoop_pkt {
 
 static uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e, 0x6f, 0x6f, 0x70, 0x00 };
 
-static GMainLoop *event_loop;
+#define MAX_EPOLL_EVENTS 10
 
-static volatile sig_atomic_t __io_canceled;
+static int epoll_fd;
 
-static inline void io_init(void)
-{
-	__io_canceled = 0;
-}
-
-static inline void io_cancel(void)
-{
-	__io_canceled = 1;
-}
+static volatile sig_atomic_t __io_canceled = 0;
 
 static void sig_term(int sig)
 {
-	io_cancel();
-	g_main_loop_quit(event_loop);
+	__io_canceled = 1;
 }
-
-static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data);
-static gboolean io_conn_ind(GIOChannel *chan, GIOCondition cond, gpointer data);
-static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data);
 
 static inline int read_n(int fd, void *buf, int len)
 {
@@ -194,7 +175,8 @@ static int create_snoop(char *file)
 	return fd;
 }
 
-static int write_snoop(int fd, int type, int incoming, unsigned char *buf, int len)
+static int write_snoop(int fd, int type, int incoming,
+				unsigned char *buf, int len)
 {
 	struct btsnoop_pkt pkt;
 	struct timeval tv;
@@ -260,7 +242,7 @@ static void command_status(uint16_t ogf, uint16_t ocf, uint8_t status)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s(%d)",
 						strerror(errno), errno);
 }
@@ -292,7 +274,7 @@ static void command_complete(uint16_t ogf, uint16_t ocf, int plen, void *data)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s(%d)",
 						strerror(errno), errno);
 }
@@ -320,7 +302,7 @@ static void connect_request(struct vhci_conn *conn)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s (%d)",
 						strerror(errno), errno);
 }
@@ -350,9 +332,11 @@ static void connect_complete(struct vhci_conn *conn)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s (%d)",
 						strerror(errno), errno);
+
+	/* TODO: Add io_acl_data() handling */
 }
 
 static void disconn_complete(struct vhci_conn *conn)
@@ -378,7 +362,7 @@ static void disconn_complete(struct vhci_conn *conn)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s (%d)",
 						strerror(errno), errno);
 
@@ -408,27 +392,27 @@ static void num_completed_pkts(struct vhci_conn *conn)
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
-	if (write(vdev.fd, buf, ptr - buf) < 0)
+	if (write(vdev.dev_fd, buf, ptr - buf) < 0)
 		syslog(LOG_ERR, "Can't send event: %s (%d)",
 						strerror(errno), errno);
 }
 
 static int scan_enable(uint8_t *data)
 {
+	struct epoll_event scan_event;
 	struct sockaddr_in sa;
-	GIOChannel *sk_io;
 	bdaddr_t ba;
 	int sk, opt;
 
 	if (!(*data & SCAN_PAGE)) {
-		if (vdev.scan) {
-			g_io_channel_shutdown(vdev.scan, TRUE, NULL);
-			vdev.scan = NULL;
+		if (vdev.scan_fd >= 0) {
+			close(vdev.scan_fd);
+			vdev.scan_fd = -1;
 		}
 		return 0;
 	}
 
-	if (vdev.scan)
+	if (vdev.scan_fd >= 0)
 		return 0;
 
 	if ((sk = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
@@ -456,9 +440,16 @@ static int scan_enable(uint8_t *data)
 		goto failed;
 	}
 
-	sk_io = g_io_channel_unix_new(sk);
-	g_io_add_watch(sk_io, G_IO_IN | G_IO_NVAL, io_conn_ind, NULL);
-	vdev.scan = sk_io;
+	memset(&scan_event, 0, sizeof(scan_event));
+	scan_event.events = EPOLLIN;
+	scan_event.data.fd = sk;
+
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sk, &scan_event) < 0) {
+		syslog(LOG_ERR, "Failed to setup scan event watch");
+		goto failed;
+	}
+
+	vdev.scan_fd = sk;
 	return 0;
 
 failed:
@@ -475,9 +466,6 @@ static void accept_connection(uint8_t *data)
 		return;
 
 	connect_complete(conn);
-
-	g_io_add_watch(conn->chan, G_IO_IN | G_IO_NVAL | G_IO_HUP,
-			io_acl_data, (gpointer) conn);
 }
 
 static void close_connection(struct vhci_conn *conn)
@@ -488,8 +476,7 @@ static void close_connection(struct vhci_conn *conn)
 	syslog(LOG_INFO, "Closing connection %s handle %d",
 					addr, conn->handle);
 
-	g_io_channel_shutdown(conn->chan, TRUE, NULL);
-	g_io_channel_unref(conn->chan);
+	close(conn->fd);
 
 	vconn[conn->handle - 1] = NULL;
 	disconn_complete(conn);
@@ -581,12 +568,9 @@ do_connect:
 
 	vconn[h] = conn;
 	conn->handle = h + 1;
-	conn->chan = g_io_channel_unix_new(sk);
+	conn->fd = sk;
 
 	connect_complete(conn);
-	g_io_add_watch(conn->chan, G_IO_IN | G_IO_NVAL | G_IO_HUP,
-				io_acl_data, (gpointer) conn);
-	return;
 }
 
 static void hci_link_control(uint16_t ocf, int plen, uint8_t *data)
@@ -832,7 +816,6 @@ static void hci_acl_data(uint8_t *data)
 	hci_acl_hdr *ah = (void *) data;
 	struct vhci_conn *conn;
 	uint16_t handle;
-	int fd;
 
 	handle = acl_handle(btohs(ah->handle));
 
@@ -841,8 +824,7 @@ static void hci_acl_data(uint8_t *data)
 		return;
 	}
 
-	fd = g_io_channel_unix_get_fd(conn->chan);
-	if (write_n(fd, data, btohs(ah->dlen) + HCI_ACL_HDR_SIZE) < 0) {
+	if (write_n(conn->fd, data, btohs(ah->dlen) + HCI_ACL_HDR_SIZE) < 0) {
 		close_connection(conn);
 		return;
 	}
@@ -854,39 +836,28 @@ static void hci_acl_data(uint8_t *data)
 	}
 }
 
-static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
+#if 0
+static void io_acl_data(void *data)
 {
-	struct vhci_conn *conn = (struct vhci_conn *) data;
+	struct vhci_conn *conn = data;
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	hci_acl_hdr *ah;
 	uint16_t flags;
-	int fd, len;
-
-	if (cond & G_IO_NVAL) {
-		g_io_channel_unref(chan);
-		return FALSE;
-	}
-
-	if (cond & G_IO_HUP) {
-		close_connection(conn);
-		return FALSE;
-	}
-
-	fd = g_io_channel_unix_get_fd(chan);
+	int len;
 
 	ptr = buf + 1;
-	if (read_n(fd, ptr, HCI_ACL_HDR_SIZE) <= 0) {
+	if (read_n(conn->fd, ptr, HCI_ACL_HDR_SIZE) <= 0) {
 		close_connection(conn);
-		return FALSE;
+		return;
 	}
 
 	ah = (void *) ptr;
 	ptr += HCI_ACL_HDR_SIZE;
 
 	len = btohs(ah->dlen);
-	if (read_n(fd, ptr, len) <= 0) {
+	if (read_n(conn->fd, ptr, len) <= 0) {
 		close_connection(conn);
-		return FALSE;
+		return;
 	}
 
 	buf[0] = HCI_ACLDATA_PKT;
@@ -897,38 +868,32 @@ static gboolean io_acl_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 
 	write_snoop(vdev.dd, HCI_ACLDATA_PKT, 1, buf, len);
 
-	if (write(vdev.fd, buf, len) < 0)
-		return FALSE;
-
-	return TRUE;
+	if (write(vdev.dev_fd, buf, len) < 0)
+		syslog(LOG_ERR, "ACL data write error");
 }
+#endif
 
-static gboolean io_conn_ind(GIOChannel *chan, GIOCondition cond, gpointer data)
+static void io_conn_ind(void)
 {
 	struct vhci_link_info info;
 	struct vhci_conn *conn;
 	struct sockaddr_in sa;
 	socklen_t len;
-	int sk, nsk, h;
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	sk = g_io_channel_unix_get_fd(chan);
+	int nsk, h;
 
 	len = sizeof(sa);
-	if ((nsk = accept(sk, (struct sockaddr *) &sa, &len)) < 0)
-		return TRUE;
+	if ((nsk = accept(vdev.scan_fd, (struct sockaddr *) &sa, &len)) < 0)
+		return;
 
 	if (read_n(nsk, &info, sizeof(info)) < 0) {
 		syslog(LOG_ERR, "Can't read link info");
-		return TRUE;
+		return;
 	}
 
 	if (!(conn = malloc(sizeof(*conn)))) {
 		syslog(LOG_ERR, "Can't alloc new connection");
 		close(nsk);
-		return TRUE;
+		return;
 	}
 
 	bacpy(&conn->dest, &info.bdaddr);
@@ -940,37 +905,31 @@ static gboolean io_conn_ind(GIOChannel *chan, GIOCondition cond, gpointer data)
 	syslog(LOG_ERR, "Too many connections");
 	free(conn);
 	close(nsk);
-	return TRUE;
+	return;
 
 accepted:
 	vconn[h] = conn;
 	conn->handle = h + 1;
-	conn->chan = g_io_channel_unix_new(nsk);
+	conn->fd = nsk;
 	connect_request(conn);
-
-	return TRUE;
 }
 
-static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data)
+static void io_hci_data(void)
 {
 	unsigned char buf[HCI_MAX_FRAME_SIZE], *ptr;
 	int type;
 	ssize_t len;
-	int fd;
 
 	ptr = buf;
 
-	fd = g_io_channel_unix_get_fd(chan);
-
-	len = read(fd, buf, sizeof(buf));
+	len = read(vdev.dev_fd, buf, sizeof(buf));
 	if (len < 0) {
 		if (errno == EAGAIN)
-			return TRUE;
+			return;
 
 		syslog(LOG_ERR, "Read failed: %s (%d)", strerror(errno), errno);
-		g_io_channel_unref(chan);
-		g_main_loop_quit(event_loop);
-		return FALSE;
+		__io_canceled = 1;
+		return;
 	}
 
 	type = *ptr++;
@@ -990,8 +949,6 @@ static gboolean io_hci_data(GIOChannel *chan, GIOCondition cond, gpointer data)
 		syslog(LOG_ERR, "Unknown packet type 0x%2.2x", type);
 		break;
 	}
-
-	return TRUE;
 }
 
 static int getbdaddrbyname(char *str, bdaddr_t *ba)
@@ -1060,10 +1017,12 @@ static const struct option options[] = {
 
 int main(int argc, char *argv[])
 {
+	int exitcode = EXIT_FAILURE;
 	struct sigaction sa;
-	GIOChannel *dev_io;
 	char *device = NULL, *snoop = NULL;
-	int fd, dd, opt, detach = 1;
+	int device_fd;
+	struct epoll_event device_event;
+	int dd, opt, detach = 1;
 
 	while ((opt=getopt_long(argc, argv, "d:s:nh", options, NULL)) != EOF) {
 		switch(opt) {
@@ -1118,18 +1077,16 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 	sigaction(SIGINT,  &sa, NULL);
 
-	io_init();
-
 	if (!device)
 		device = strdup(VHCI_DEV);
 
 	/* Open and create virtual HCI device */
-	fd = open(device, O_RDWR);
-	if (fd < 0) {
+	device_fd = open(device, O_RDWR);
+	if (device_fd < 0) {
 		syslog(LOG_ERR, "Can't open device %s: %s (%d)",
 					device, strerror(errno), errno);
 		free(device);
-		exit(1);
+		return exitcode;
 	}
 
 	free(device);
@@ -1145,7 +1102,11 @@ int main(int argc, char *argv[])
 		dd = -1;
 
 	/* Create event loop */
-	event_loop = g_main_loop_new(NULL, FALSE);
+	epoll_fd = epoll_create1(EPOLL_CLOEXEC);
+	if (epoll_fd < 0) {
+		perror("Failed to create epoll descriptor");
+		goto close_device;
+	}
 
 	/* Device settings */
 	vdev.features[0] = 0xff;
@@ -1169,23 +1130,53 @@ int main(int argc, char *argv[])
 	vdev.eir_fec = 0x00;
 	memset(vdev.eir_data, 0, sizeof(vdev.eir_data));
 
-	vdev.fd = fd;
+	vdev.dev_fd = device_fd;
 	vdev.dd = dd;
 
-	dev_io = g_io_channel_unix_new(fd);
-	g_io_add_watch(dev_io, G_IO_IN, io_hci_data, NULL);
+	memset(&device_event, 0, sizeof(device_event));
+	device_event.events = EPOLLIN;
+	device_event.data.fd = device_fd;
+
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, device_fd, &device_event) < 0) {
+		perror("Failed to setup device event watch");
+		goto close_device;
+	}
 
 	setpriority(PRIO_PROCESS, 0, -19);
 
 	/* Start event processor */
-	g_main_loop_run(event_loop);
+	for (;;) {
+		struct epoll_event events[MAX_EPOLL_EVENTS];
+		int n, nfds;
 
-	close(fd);
+		if (__io_canceled)
+			break;
+
+		nfds = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENTS, -1);
+		if (nfds < 0)
+			continue;
+
+		for (n = 0; n < nfds; n++) {
+			if (events[n].data.fd == vdev.dev_fd)
+				io_hci_data();
+			else if (events[n].data.fd == vdev.scan_fd)
+				io_conn_ind();
+		}
+	}
+
+	exitcode = EXIT_SUCCESS;
+
+	epoll_ctl(epoll_fd, EPOLL_CTL_DEL, device_fd, NULL);
+
+close_device:
+	close(device_fd);
 
 	if (dd >= 0)
 		close(dd);
 
+	close(epoll_fd);
+
 	syslog(LOG_INFO, "Exit");
 
-	return 0;
+	return exitcode;
 }

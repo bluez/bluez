@@ -161,7 +161,7 @@ noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
 					test/btiotest test/test-textfile \
 					test/uuidtest test/mpris-player
 
-test_hciemu_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
+test_hciemu_LDADD = lib/libbluetooth-private.la
 
 test_l2test_LDADD = lib/libbluetooth-private.la
 
