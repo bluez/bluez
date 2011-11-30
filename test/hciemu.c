@@ -40,7 +40,6 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
-#include <netdb.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -968,22 +967,13 @@ static int getbdaddrbyname(char *str, bdaddr_t *ba)
 		return 0;
 	}
 
-	if (n == 1) {
-		/* IP address + port */
-		struct hostent *hent;
+	if (n == 0) {
+		/* loopback port */
+		in_addr_t addr = INADDR_LOOPBACK;
 		bdaddr_t b;
-		char *ptr;
 
-		ptr = strchr(str, ':');
-		*ptr++ = 0;
-
-		if (!(hent = gethostbyname(str))) {
-			fprintf(stderr, "Can't resolve %s\n", str);
-			return -2;
-		}
-
-		memcpy(&b, hent->h_addr, 4);
-		*(uint16_t *) (&b.b[4]) = htons(atoi(ptr));
+		memcpy(&b, &addr, 4);
+		*(uint16_t *) (&b.b[4]) = htons(atoi(str));
 		baswap(ba, &b);
 
 		return 0;
@@ -998,7 +988,7 @@ static void usage(void)
 {
 	printf("hciemu - HCI emulator ver %s\n", VERSION);
 	printf("Usage: \n");
-	printf("\thciemu [options] local_address\n"
+	printf("\thciemu [options] port_number\n"
 		"Options:\n"
 		"\t[-d device] use specified device node\n"
 		"\t[-s file] create snoop file\n"
