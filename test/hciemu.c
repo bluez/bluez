@@ -52,10 +52,7 @@
 
 #include <glib.h>
 
-#define GHCI_DEV		"/dev/ghci"
-
 #define VHCI_DEV		"/dev/vhci"
-#define VHCI_UDEV		"/dev/hci_vhci"
 
 #define VHCI_MAX_CONN		12
 
@@ -1040,147 +1037,25 @@ static int getbdaddrbyname(char *str, bdaddr_t *ba)
 	return -1;
 }
 
-static void rewrite_bdaddr(unsigned char *buf, int len, bdaddr_t *bdaddr)
-{
-	hci_event_hdr *eh;
-	unsigned char *ptr = buf;
-	int type;
-
-	if (!bdaddr)
-		return;
-
-	if (!bacmp(bdaddr, BDADDR_ANY))
-		return;
-
-	type = *ptr++;
-
-	switch (type) {
-	case HCI_EVENT_PKT:
-		eh = (hci_event_hdr *) ptr;
-		ptr += HCI_EVENT_HDR_SIZE;
-
-		if (eh->evt == EVT_CMD_COMPLETE) {
-			evt_cmd_complete *cc = (void *) ptr;
-
-			ptr += EVT_CMD_COMPLETE_SIZE;
-
-			if (cc->opcode == htobs(cmd_opcode_pack(OGF_INFO_PARAM,
-						OCF_READ_BD_ADDR))) {
-				bacpy((bdaddr_t *) (ptr + 1), bdaddr);
-			}
-		}
-		break;
-	}
-}
-
-static int run_proxy(int fd, int dev, bdaddr_t *bdaddr)
-{
-	unsigned char buf[HCI_MAX_FRAME_SIZE + 1];
-	struct hci_dev_info di;
-	struct hci_filter flt;
-	struct pollfd p[2];
-	int dd, err, len, need_raw;
-
-	dd = hci_open_dev(dev);
-	if (dd < 0) {
-		syslog(LOG_ERR, "Can't open device hci%d: %s (%d)",
-						dev, strerror(errno), errno);
-		return 1;
-	}
-
-	if (hci_devinfo(dev, &di) < 0) {
-		syslog(LOG_ERR, "Can't get device info for hci%d: %s (%d)",
-						dev, strerror(errno), errno);
-		hci_close_dev(dd);
-		return 1;
-	}
-
-	need_raw = !hci_test_bit(HCI_RAW, &di.flags);
-
-	hci_filter_clear(&flt);
-	hci_filter_all_ptypes(&flt);
-	hci_filter_all_events(&flt);
-
-	if (setsockopt(dd, SOL_HCI, HCI_FILTER, &flt, sizeof(flt)) < 0) {
-		syslog(LOG_ERR, "Can't set filter for hci%d: %s (%d)",
-						dev, strerror(errno), errno);
-		hci_close_dev(dd);
-		return 1;
-	}
-
-	if (need_raw) {
-		if (ioctl(dd, HCISETRAW, 1) < 0) {
-			syslog(LOG_ERR, "Can't set raw mode on hci%d: %s (%d)",
-						dev, strerror(errno), errno);
-			hci_close_dev(dd);
-			return 1;
-		}
-	}
-
-	p[0].fd = fd;
-	p[0].events = POLLIN;
-	p[1].fd = dd;
-	p[1].events = POLLIN;
-
-	while (!__io_canceled) {
-		p[0].revents = 0;
-		p[1].revents = 0;
-		err = poll(p, 2, 500);
-		if (err < 0)
-			break;
-		if (!err)
-			continue;
-
-		if (p[0].revents & POLLIN) {
-			len = read(fd, buf, sizeof(buf));
-			if (len > 0) {
-				rewrite_bdaddr(buf, len, bdaddr);
-				err = write(dd, buf, len);
-			}
-		}
-
-		if (p[1].revents & POLLIN) {
-			len = read(dd, buf, sizeof(buf));
-			if (len > 0) {
-				rewrite_bdaddr(buf, len, bdaddr);
-				err = write(fd, buf, len);
-			}
-		}
-	}
-
-	if (need_raw) {
-		if (ioctl(dd, HCISETRAW, 0) < 0)
-			syslog(LOG_ERR, "Can't clear raw mode on hci%d: %s (%d)",
-						dev, strerror(errno), errno);
-	}
-
-	hci_close_dev(dd);
-
-	syslog(LOG_INFO, "Exit");
-
-	return 0;
-}
-
 static void usage(void)
 {
 	printf("hciemu - HCI emulator ver %s\n", VERSION);
 	printf("Usage: \n");
 	printf("\thciemu [options] local_address\n"
 		"Options:\n"
-		"\t[-d device] use specified device\n"
-		"\t[-b bdaddr] emulate specified address\n"
+		"\t[-d device] use specified device node\n"
 		"\t[-s file] create snoop file\n"
 		"\t[-n] do not detach\n"
 		"\t[-h] help, you are looking at it\n");
 }
 
-static struct option main_options[] = {
+static const struct option options[] = {
 	{ "device",	1, 0, 'd' },
 	{ "bdaddr",	1, 0, 'b' },
 	{ "snoop",	1, 0, 's' },
 	{ "nodetach",	0, 0, 'n' },
 	{ "help",	0, 0, 'h' },
-	{ 0 }
+	{ }
 };
 
 int main(int argc, char *argv[])
@@ -1188,33 +1063,25 @@ int main(int argc, char *argv[])
 	struct sigaction sa;
 	GIOChannel *dev_io;
 	char *device = NULL, *snoop = NULL;
-	bdaddr_t bdaddr;
-	int fd, dd, opt, detach = 1, dev = -1;
+	int fd, dd, opt, detach = 1;
 
-	bacpy(&bdaddr, BDADDR_ANY);
-
-	while ((opt=getopt_long(argc, argv, "d:b:s:nh", main_options, NULL)) != EOF) {
+	while ((opt=getopt_long(argc, argv, "d:s:nh", options, NULL)) != EOF) {
 		switch(opt) {
 		case 'd':
 			device = strdup(optarg);
 			break;
-
-		case 'b':
-			str2ba(optarg, &bdaddr);
-			break;
-
 		case 's':
 			snoop = strdup(optarg);
 			break;
-
 		case 'n':
 			detach = 0;
 			break;
-
 		case 'h':
-		default:
 			usage();
 			exit(0);
+		default:
+			usage();
+			exit(1);
 		}
 	}
 
@@ -1227,16 +1094,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (strlen(argv[0]) > 3 && !strncasecmp(argv[0], "hci", 3)) {
-		dev = hci_devid(argv[0]);
-		if (dev < 0) {
-			perror("Invalid device");
-			exit(1);
-		}
-	} else {
-		if (getbdaddrbyname(argv[0], &vdev.bdaddr) < 0)
-			exit(1);
-	}
+	if (getbdaddrbyname(argv[0], &vdev.bdaddr) < 0)
+		exit(1);
 
 	if (detach) {
 		if (daemon(0, 0)) {
@@ -1261,30 +1120,19 @@ int main(int argc, char *argv[])
 
 	io_init();
 
-	if (!device && dev >= 0)
-		device = strdup(GHCI_DEV);
+	if (!device)
+		device = strdup(VHCI_DEV);
 
 	/* Open and create virtual HCI device */
-	if (device) {
-		fd = open(device, O_RDWR);
-		if (fd < 0) {
-			syslog(LOG_ERR, "Can't open device %s: %s (%d)",
-						device, strerror(errno), errno);
-			free(device);
-			exit(1);
-		}
+	fd = open(device, O_RDWR);
+	if (fd < 0) {
+		syslog(LOG_ERR, "Can't open device %s: %s (%d)",
+					device, strerror(errno), errno);
 		free(device);
-	} else {
-		fd = open(VHCI_DEV, O_RDWR);
-		if (fd < 0) {
-			fd = open(VHCI_UDEV, O_RDWR);
-			if (fd < 0) {
-				syslog(LOG_ERR, "Can't open device %s: %s (%d)",
-						VHCI_DEV, strerror(errno), errno);
-				exit(1);
-			}
-		}
+		exit(1);
 	}
+
+	free(device);
 
 	/* Create snoop file */
 	if (snoop) {
@@ -1298,9 +1146,6 @@ int main(int argc, char *argv[])
 
 	/* Create event loop */
 	event_loop = g_main_loop_new(NULL, FALSE);
-
-	if (dev >= 0)
-		return run_proxy(fd, dev, &bdaddr);
 
 	/* Device settings */
 	vdev.features[0] = 0xff;
