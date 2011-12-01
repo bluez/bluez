@@ -2773,6 +2773,15 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		dev->uuid_count = uuid_count;
 	}
 
+	if (!dev->alias) {
+		if (!dev->name) {
+			alias = g_strdup(peer_addr);
+			g_strdelimit(alias, ":", '-');
+		} else
+			alias = g_strdup(dev->name);
+	} else
+		alias = g_strdup(dev->alias);
+
 	if (dev->le) {
 		gboolean broadcaster;
 
@@ -2785,36 +2794,27 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				"Address", DBUS_TYPE_STRING, &paddr,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,
+				"Alias", DBUS_TYPE_STRING, &alias,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				"Broadcaster", DBUS_TYPE_BOOLEAN, &broadcaster,
 				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
 				NULL);
-		return;
+	} else {
+		icon = class_to_icon(dev->class);
+
+		emit_device_found(adapter->path, paddr,
+				"Address", DBUS_TYPE_STRING, &paddr,
+				"Class", DBUS_TYPE_UINT32, &dev->class,
+				"Icon", DBUS_TYPE_STRING, &icon,
+				"RSSI", DBUS_TYPE_INT16, &rssi,
+				"Name", DBUS_TYPE_STRING, &dev->name,
+				"Alias", DBUS_TYPE_STRING, &alias,
+				"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
+				"Paired", DBUS_TYPE_BOOLEAN, &paired,
+				"Trusted", DBUS_TYPE_BOOLEAN, &trusted,
+				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
+				NULL);
 	}
-
-	icon = class_to_icon(dev->class);
-
-	if (!dev->alias) {
-		if (!dev->name) {
-			alias = g_strdup(peer_addr);
-			g_strdelimit(alias, ":", '-');
-		} else
-			alias = g_strdup(dev->name);
-	} else
-		alias = g_strdup(dev->alias);
-
-	emit_device_found(adapter->path, paddr,
-			"Address", DBUS_TYPE_STRING, &paddr,
-			"Class", DBUS_TYPE_UINT32, &dev->class,
-			"Icon", DBUS_TYPE_STRING, &icon,
-			"RSSI", DBUS_TYPE_INT16, &rssi,
-			"Name", DBUS_TYPE_STRING, &dev->name,
-			"Alias", DBUS_TYPE_STRING, &alias,
-			"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
-			"Paired", DBUS_TYPE_BOOLEAN, &paired,
-			"Trusted", DBUS_TYPE_BOOLEAN, &trusted,
-			"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
-			NULL);
 
 	g_free(alias);
 }
