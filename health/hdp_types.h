@@ -81,7 +81,7 @@ struct hdp_application {
 	char			*description;	/* Options description for SDP record */
 	uint8_t			id;		/* The identification is also the mdepid */
 	char			*oname;		/* Name of the owner application */
-	int			dbus_watcher;	/* Watch for clients disconnection */
+	guint			dbus_watcher;	/* Watch for clients disconnection */
 	gint			ref;		/* Reference counter */
 };
 
