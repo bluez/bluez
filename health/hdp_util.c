@@ -758,9 +758,8 @@ static gboolean get_mdep_from_rec(const sdp_record_t *rec, uint8_t role,
 		return TRUE;
 
 	list = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES_LIST);
-
-	if (list->dtd != SDP_SEQ8 && list->dtd != SDP_SEQ16 &&
-							list->dtd != SDP_SEQ32)
+	if (list == NULL || (list->dtd != SDP_SEQ8 && list->dtd != SDP_SEQ16 &&
+							list->dtd != SDP_SEQ32))
 		return FALSE;
 
 	for (feat = list->val.dataseq; feat; feat = feat->next) {
@@ -911,8 +910,8 @@ static gboolean hdp_get_prot_desc_list(const sdp_record_t *rec, guint16 *psm,
 		return TRUE;
 
 	pdl = sdp_data_get(rec, SDP_ATTR_PROTO_DESC_LIST);
-	if (pdl->dtd != SDP_SEQ8 && pdl->dtd != SDP_SEQ16 &&
-							pdl->dtd != SDP_SEQ32)
+	if (pdl == NULL || (pdl->dtd != SDP_SEQ8 && pdl->dtd != SDP_SEQ16 &&
+							pdl->dtd != SDP_SEQ32))
 		return FALSE;
 
 	p0 = pdl->val.dataseq;
@@ -935,7 +934,7 @@ static gboolean hdp_get_add_prot_desc_list(const sdp_record_t *rec,
 		return TRUE;
 
 	pdl = sdp_data_get(rec, SDP_ATTR_ADD_PROTO_DESC_LIST);
-	if (pdl->dtd != SDP_SEQ8)
+	if (pdl == NULL || pdl->dtd != SDP_SEQ8)
 		return FALSE;
 	pdl = pdl->val.dataseq;
 	if (pdl->dtd != SDP_SEQ8)
