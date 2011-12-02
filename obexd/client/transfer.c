@@ -569,8 +569,6 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 	GObex *obex;
 	GObexPacket *req;
 	GObexDataProducer data_cb;
-	struct stat st;
-	int fd;
 
 	if (transfer->xfer != 0)
 		return -EALREADY;
@@ -580,20 +578,6 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 		goto done;
 	}
 
-	fd = open(transfer->filename, O_RDONLY);
-	if (fd < 0) {
-		error("open(): %s(%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	if (fstat(fd, &st) < 0) {
-		close(fd);
-		error("fstat(): %s(%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	transfer->fd = fd;
-	transfer->size = st.st_size;
 	data_cb = put_xfer_progress;
 
 done:
@@ -672,4 +656,27 @@ const char *obc_transfer_get_path(struct obc_transfer *transfer)
 gint64 obc_transfer_get_size(struct obc_transfer *transfer)
 {
 	return transfer->size;
+}
+
+int obc_transfer_set_file(struct obc_transfer *transfer)
+{
+	int fd;
+	struct stat st;
+
+	fd = open(transfer->filename, O_RDONLY);
+	if (fd < 0) {
+		error("open(): %s(%d)", strerror(errno), errno);
+		return -errno;
+	}
+
+	if (fstat(fd, &st) < 0) {
+		error("fstat(): %s(%d)", strerror(errno), errno);
+		close(fd);
+		return -errno;
+	}
+
+	transfer->fd = fd;
+	transfer->size = st.st_size;
+
+	return 0;
 }

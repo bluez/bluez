@@ -1277,6 +1277,10 @@ int obc_session_send(struct obc_session *session, const char *filename,
 	if (transfer == NULL)
 		return -EINVAL;
 
+	err = obc_transfer_set_file(transfer);
+	if (err < 0)
+		goto fail;
+
 	/* Transfer should start if it is the first in the pending list */
 	if (transfer != session->pending->data)
 		return 0;
