@@ -40,6 +40,7 @@
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <sys/resource.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
