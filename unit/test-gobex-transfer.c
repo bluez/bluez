@@ -465,7 +465,6 @@ static void test_put_req_random(void)
 
 	create_endpoints(&obex, &io, SOCK_STREAM);
 	d.obex = obex;
-	d.provide_delay = 200;
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	io_id = g_io_add_watch(io, cond, test_io_cb, &d);
