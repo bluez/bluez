@@ -1349,7 +1349,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_get_rsp_delay", test_get_rsp_delay);
 
 	g_test_add_func("/gobex/test_put_req_eagain", test_put_req_eagain);
-	g_test_add_func("/gobex/test_put_req_eagain", test_get_rsp_eagain);
+	g_test_add_func("/gobex/test_get_req_eagain", test_get_rsp_eagain);
 
 	g_test_add_func("/gobex/test_put_req_random", test_put_req_random);
 
