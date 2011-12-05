@@ -31,9 +31,6 @@
 #include <glib.h>
 #include <bluetooth/bluetooth.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
-
 #include <libebook/e-book.h>
 
 #include "log.h"

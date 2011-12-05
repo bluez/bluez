@@ -27,8 +27,6 @@
 #include <errno.h>
 #include <glib.h>
 #include <dbus/dbus.h>
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
 #include <libtracker-sparql/tracker-sparql.h>
 
 #include "log.h"
