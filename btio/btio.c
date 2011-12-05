@@ -886,7 +886,7 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 			break;
 		case BT_IO_OPT_CID:
 			*(va_arg(args, uint16_t *)) = src.l2_cid ?
-						src.l2_cid : dst.l2_cid;
+					btohs(src.l2_cid) : btohs(dst.l2_cid);
 			break;
 		case BT_IO_OPT_OMTU:
 			*(va_arg(args, uint16_t *)) = l2o.omtu;
