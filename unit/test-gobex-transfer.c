@@ -447,7 +447,7 @@ static void handle_get(GObex *obex, GObexPacket *req, gpointer user_data)
 		g_main_loop_quit(d->mainloop);
 }
 
-static void test_put_req_random(void)
+static void test_put_req_random(int sock_type)
 {
 	GIOChannel *io;
 	GIOCondition cond;
@@ -463,7 +463,7 @@ static void test_put_req_random(void)
 				{ put_rsp_first, sizeof(put_rsp_first) },
 				{ put_rsp_last, sizeof(put_rsp_last) } } };
 
-	create_endpoints(&obex, &io, SOCK_STREAM);
+	create_endpoints(&obex, &io, sock_type);
 	d.obex = obex;
 
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
@@ -491,6 +491,16 @@ static void test_put_req_random(void)
 	g_obex_unref(obex);
 
 	g_assert_no_error(d.err);
+}
+
+static void test_stream_put_req_random(void)
+{
+	test_put_req_random(SOCK_STREAM);
+}
+
+static void test_packet_put_req_random(void)
+{
+	test_put_req_random(SOCK_SEQPACKET);
 }
 
 static void test_put_req_eagain(void)
@@ -1350,7 +1360,10 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_put_req_eagain", test_put_req_eagain);
 	g_test_add_func("/gobex/test_get_req_eagain", test_get_rsp_eagain);
 
-	g_test_add_func("/gobex/test_put_req_random", test_put_req_random);
+	g_test_add_func("/gobex/test_stream_put_req_random",
+						test_stream_put_req_random);
+	g_test_add_func("/gobex/test_packet_put_req_random",
+						test_packet_put_req_random);
 
 	g_test_add_func("/gobex/test_conn_get_req", test_conn_get_req);
 	g_test_add_func("/gobex/test_conn_get_rsp", test_conn_get_rsp);
