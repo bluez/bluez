@@ -25,12 +25,13 @@
 #include <config.h>
 #endif
 
-#include <string.h>
+#include <stdio.h>
 #include <errno.h>
-#include <glib.h>
+#include <string.h>
+#include <stdint.h>
+#include <sys/stat.h>
 
-#include <openobex/obex.h>
-#include <openobex/obex_const.h>
+#include <glib.h>
 
 #include "log.h"
 #include "obex.h"
