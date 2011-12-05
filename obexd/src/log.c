@@ -29,8 +29,6 @@
 #include <stdarg.h>
 #include <syslog.h>
 
-#include <openobex/obex.h>
-
 #include <glib.h>
 
 #include "log.h"
