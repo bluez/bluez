@@ -348,10 +348,15 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 
 		dbus_message_unref(message);
 
+		if (!adapter_reply)
+			return;
+
 		if (dbus_message_get_args(adapter_reply, NULL,
 					DBUS_TYPE_OBJECT_PATH, &adapter,
-					DBUS_TYPE_INVALID) == FALSE)
+					DBUS_TYPE_INVALID) == FALSE) {
+			dbus_message_unref(adapter_reply);
 			return;
+		}
 	}
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
@@ -386,12 +391,16 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 
 	if (dbus_message_get_args(reply, NULL,
 					DBUS_TYPE_OBJECT_PATH, &object_path,
-					DBUS_TYPE_INVALID) == FALSE)
+					DBUS_TYPE_INVALID) == FALSE) {
+		dbus_message_unref(reply);
 		return;
+	}
 
 	id = device_get_ieee1284_id(adapter, object_path);
 	add_device_to_list(name, bdaddr, id);
 	g_free(id);
+
+	dbus_message_unref(reply);
 }
 
 static void discovery_completed(void)
@@ -642,10 +651,15 @@ static gboolean print_ieee1284(const char *bdaddr)
 
 	dbus_message_unref(message);
 
+	if (!adapter_reply)
+		return FALSE;
+
 	if (dbus_message_get_args(adapter_reply, NULL,
 			DBUS_TYPE_OBJECT_PATH, &adapter,
-			DBUS_TYPE_INVALID) == FALSE)
+			DBUS_TYPE_INVALID) == FALSE) {
+		dbus_message_unref(adapter_reply);
 		return FALSE;
+	}
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
 			"org.bluez.Adapter",
@@ -680,14 +694,20 @@ static gboolean print_ieee1284(const char *bdaddr)
 
 	if (dbus_message_get_args(reply, NULL,
 					DBUS_TYPE_OBJECT_PATH, &object_path,
-					DBUS_TYPE_INVALID) == FALSE)
+					DBUS_TYPE_INVALID) == FALSE) {
+		dbus_message_unref(reply);
 		return FALSE;
+	}
 
 	id = device_get_ieee1284_id(adapter, object_path);
-	if (id == NULL)
+	if (id == NULL) {
+		dbus_message_unref(reply);
 		return FALSE;
+	}
 	printf("%s", id);
 	g_free(id);
+
+	dbus_message_unref(reply);
 
 	return TRUE;
 }
