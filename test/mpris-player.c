@@ -700,6 +700,7 @@ static char *get_default_adapter(DBusConnection *conn)
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
+		dbus_message_unref(reply);
 		return NULL;
 	}
 
@@ -756,6 +757,7 @@ static char *get_adapter(DBusConnection *conn, const char *adapter)
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
+		dbus_message_unref(reply);
 		return NULL;
 	}
 
@@ -802,8 +804,10 @@ static char *get_name_owner(DBusConnection *conn, const char *name)
 
 	if (!dbus_message_get_args(reply, NULL,
 					DBUS_TYPE_STRING, &owner,
-					DBUS_TYPE_INVALID))
+					DBUS_TYPE_INVALID)) {
+		dbus_message_unref(reply);
 		return NULL;
+	}
 
 	owner = g_strdup(owner);
 
