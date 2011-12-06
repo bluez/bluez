@@ -1599,12 +1599,12 @@ static void signal_strength_reply(DBusPendingCall *call, void *user_data)
 		error("Unable to parse signal_strength reply: %s, %s",
 							err.name, err.message);
 		dbus_error_free(&err);
-		return;
+		goto done;
 	}
 
 	if (net_err != 0) {
 		error("get_signal_strength failed with code %d", net_err);
-		return;
+		goto done;
 	}
 
 	update_signal_strength(signals_bar);
@@ -1654,12 +1654,12 @@ static void registration_status_reply(DBusPendingCall *call, void *user_data)
 		error("Unable to parse registration_status_change reply:"
 					" %s, %s", err.name, err.message);
 		dbus_error_free(&err);
-		return;
+		goto done;
 	}
 
 	if (net_err != 0) {
 		error("get_registration_status failed with code %d", net_err);
-		return;
+		goto done;
 	}
 
 	update_registration_status(status, lac, cell_id, operator_code,
