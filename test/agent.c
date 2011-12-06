@@ -504,6 +504,7 @@ static char *get_default_adapter_path(DBusConnection *conn)
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
+		dbus_message_unref(reply);
 		return NULL;
 	}
 
@@ -562,6 +563,7 @@ static char *get_adapter_path(DBusConnection *conn, const char *adapter)
 			fprintf(stderr, "%s\n", err.message);
 			dbus_error_free(&err);
 		}
+		dbus_message_unref(reply);
 		return NULL;
 	}
 
