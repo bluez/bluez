@@ -728,15 +728,13 @@ static char *iso8601_utc_to_localtime(const char *datetime)
 	time_t time;
 	struct tm tm, *local;
 	char localdate[32];
-	char tz;
 	int nr;
 
 	memset(&tm, 0, sizeof(tm));
 
-	nr = sscanf(datetime, "%04u-%02u-%02uT%02u:%02u:%02u%c",
+	nr = sscanf(datetime, "%04u-%02u-%02uT%02u:%02u:%02u",
 			&tm.tm_year, &tm.tm_mon, &tm.tm_mday,
-			&tm.tm_hour, &tm.tm_min, &tm.tm_sec,
-			&tz);
+			&tm.tm_hour, &tm.tm_min, &tm.tm_sec);
 	if (nr < 6) {
 		/* Invalid time format */
 		error("sscanf(): %s (%d)", strerror(errno), errno);
@@ -744,7 +742,7 @@ static char *iso8601_utc_to_localtime(const char *datetime)
 	}
 
 	/* Time already in localtime */
-	if (nr == 6) {
+	if (!g_str_has_suffix(datetime, "Z")) {
 		strftime(localdate, sizeof(localdate), "%Y%m%dT%H%M%S", &tm);
 		return g_strdup(localdate);
 	}
