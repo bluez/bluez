@@ -42,6 +42,7 @@
 #include "ftp.h"
 #include "pbap.h"
 #include "sync.h"
+#include "map.h"
 
 #define CLIENT_SERVICE  "org.openobex.client"
 
@@ -567,6 +568,7 @@ static struct target_module {
 	{ "ftp", ftp_init, ftp_exit },
 	{ "pbap", pbap_init, pbap_exit },
 	{ "sync", sync_init, sync_exit },
+	{ "map", map_init, map_exit },
 	{ }
 };
 
