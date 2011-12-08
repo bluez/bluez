@@ -1870,7 +1870,7 @@ static void print_dev_info(int ctl, struct hci_dev_info *di)
 		st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
 
 	if (all && !hci_test_bit(HCI_RAW, &di->flags) &&
-			bacmp(&di->bdaddr, BDADDR_ANY)) {
+			(bacmp(&di->bdaddr, BDADDR_ANY) || (di->type >> 4))) {
 		print_dev_features(di, 0);
 		print_pkt_type(di);
 		print_link_policy(di);
