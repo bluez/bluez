@@ -1072,12 +1072,18 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 		m.suptime = FALSE;
 
 	if (flags & TEMP_TYPE) {
-		if (len < 16) {
+		uint8_t index;
+
+		if (m.suptime && len >= 16)
+			index = 15;
+		else if (!m.suptime && len >= 9)
+			index = 9;
+		else {
 			DBG("Can't get temperature type");
 			return;
 		}
 
-		type = temptype2str(pdu[15]);
+		type = temptype2str(pdu[index]);
 	} else if (t->has_type)
 		type = temptype2str(t->type);
 	else {
