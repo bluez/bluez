@@ -1083,7 +1083,16 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 static void proc_measurement_interval(struct thermometer *t, const uint8_t *pdu,
 								uint16_t len)
 {
-	DBG("TODO: Process measurements interval indication");
+	guint16 interval;
+
+	if (len < 5) {
+		DBG("Measurement interval value is not provided");
+		return;
+	}
+
+	interval = att_get_u16(&pdu[3]);
+
+	change_property(t, "Interval", &interval);
 }
 
 static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
