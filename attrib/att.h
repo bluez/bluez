@@ -106,6 +106,9 @@
 #define ATT_CHAR_PROPER_AUTH			0x40
 #define ATT_CHAR_PROPER_EXT_PROPER		0x80
 
+/* Client Characteristic Configuration bit field */
+#define ATT_CLIENT_CHAR_CONF_NOTIFICATION	0x0001
+#define ATT_CLIENT_CHAR_CONF_INDICATION		0x0002
 
 #define ATT_MAX_MTU				256
 #define ATT_DEFAULT_L2CAP_MTU			48
