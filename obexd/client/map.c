@@ -104,8 +104,60 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 	return NULL;
 }
 
+static void buffer_cb(struct obc_session *session, GError *err,
+							void *user_data)
+{
+	struct obc_transfer *transfer = obc_session_get_transfer(session);
+	struct map_data *map = user_data;
+	DBusMessage *reply;
+	const char *buf;
+	int size;
+
+	if (err != NULL) {
+		reply = g_dbus_create_error(map->msg,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		goto done;
+	}
+
+	buf = obc_transfer_get_buffer(transfer, &size);
+	if (size == 0)
+		buf = "";
+
+	reply = g_dbus_create_reply(map->msg, DBUS_TYPE_STRING, &buf,
+							DBUS_TYPE_INVALID);
+
+	obc_transfer_clear_buffer(transfer);
+
+done:
+	g_dbus_send_message(conn, reply);
+	dbus_message_unref(map->msg);
+	obc_transfer_unregister(transfer);
+}
+
+static DBusMessage *map_get_folder_listing(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct map_data *map = user_data;
+	int err;
+
+	err = obc_session_get(map->session, "x-obex/folder-listing",
+							NULL, NULL, NULL, 0,
+							buffer_cb, map);
+	if (err < 0)
+		return g_dbus_create_error(message, "org.openobex.Error.Failed",
+									NULL);
+
+	map->msg = dbus_message_ref(message);
+
+	return NULL;
+}
+
 static GDBusMethodTable map_methods[] = {
-	{ "SetFolder",	"s",	"",	map_setpath, G_DBUS_METHOD_FLAG_ASYNC },
+	{ "SetFolder",		"s", "",	map_setpath,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetFolderListing",	"a{ss}", "s",	map_get_folder_listing,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
 
