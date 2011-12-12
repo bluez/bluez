@@ -153,10 +153,40 @@ static DBusMessage *map_get_folder_listing(DBusConnection *connection,
 	return NULL;
 }
 
+static DBusMessage *map_get_messages_listing(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct map_data *map = user_data;
+	int err;
+	const char *folder;
+	DBusMessageIter msg_iter;
+
+	dbus_message_iter_init(message, &msg_iter);
+
+	if (dbus_message_iter_get_arg_type(&msg_iter) != DBUS_TYPE_STRING)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	dbus_message_iter_get_basic(&msg_iter, &folder);
+
+	err = obc_session_get(map->session, "x-bt/MAP-msg-listing", folder,
+							NULL, NULL, 0,
+							buffer_cb, map);
+	if (err < 0)
+		return g_dbus_create_error(message, "org.openobex.Error.Failed",
+									NULL);
+
+	map->msg = dbus_message_ref(message);
+
+	return NULL;
+}
+
 static GDBusMethodTable map_methods[] = {
 	{ "SetFolder",		"s", "",	map_setpath,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetFolderListing",	"a{ss}", "s",	map_get_folder_listing,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetMessagesListing",	"sa{ss}", "s",	map_get_messages_listing,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
