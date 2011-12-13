@@ -320,20 +320,60 @@ static int mgmt_index_removed(int mgmt_sk, uint16_t index)
 	return 0;
 }
 
-static int mgmt_setting(int mgmt_sk, uint16_t index, uint16_t op,
-					struct mgmt_mode *ev, uint16_t len)
+static const char *settings_str[] = {
+				"powered",
+				"connectable",
+				"fast-connectable",
+				"discoverable",
+				"pairable",
+				"link-security",
+				"ssp",
+				"br/edr",
+				"hs",
+				"le" ,
+};
+
+static void print_settings(uint32_t settings)
+{
+	unsigned i;
+
+	for (i = 0; i < NELEM(settings_str); i++) {
+		if ((settings & (1 << i)) != 0)
+			printf("%s ", settings_str[i]);
+	}
+}
+
+static int mgmt_new_settings(int mgmt_sk, uint16_t index,
+					uint32_t *ev, uint16_t len)
 {
 	if (len < sizeof(*ev)) {
-		fprintf(stderr, "Too short (%u bytes) %s event\n",
-							len, mgmt_evstr(op));
+		fprintf(stderr, "Too short new_settings event (%u)\n", len);
 		return -EINVAL;
 	}
 
-	if (op == MGMT_EV_DISCOVERING && ev->val == 0 && discovery)
+	if (monitor) {
+		printf("hci%u new_settings: ", index);
+		print_settings(bt_get_le32(ev));
+		printf("\n");
+	}
+
+	return 0;
+}
+
+static int mgmt_discovering(int mgmt_sk, uint16_t index,
+					struct mgmt_mode *ev, uint16_t len)
+{
+	if (len < sizeof(*ev)) {
+		fprintf(stderr, "Too short (%u bytes) discovering event\n",
+									len);
+		return -EINVAL;
+	}
+
+	if (ev->val == 0 && discovery)
 		exit(EXIT_SUCCESS);
 
 	if (monitor)
-		printf("hci%u %s %s\n", index, mgmt_evstr(op),
+		printf("hci%u discovering %s\n", index,
 						ev->val ? "on" : "off");
 
 	return 0;
@@ -689,12 +729,10 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_index_added(mgmt_sk, index);
 	case MGMT_EV_INDEX_REMOVED:
 		return mgmt_index_removed(mgmt_sk, index);
-	case MGMT_EV_POWERED:
-	case MGMT_EV_DISCOVERABLE:
-	case MGMT_EV_CONNECTABLE:
-	case MGMT_EV_PAIRABLE:
+	case MGMT_EV_NEW_SETTINGS:
+		return mgmt_new_settings(mgmt_sk, index, data, len);
 	case MGMT_EV_DISCOVERING:
-		return mgmt_setting(mgmt_sk, index, ev, data, len);
+		return mgmt_discovering(mgmt_sk, index, data, len);
 	case MGMT_EV_NEW_LINK_KEY:
 		return mgmt_new_link_key(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_CONNECTED:
@@ -783,16 +821,19 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	}
 
 	ba2str(&rp->bdaddr, addr);
-	printf("hci%u:\ttype %u addr %s class 0x%02x%02x%02x\n",
-		id, rp->type, addr,
-		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
-	printf("\tmanufacturer %d HCI ver %d:%d\n",
-					bt_get_le16(&rp->manufacturer),
-					rp->hci_ver, bt_get_le16(&rp->hci_rev));
-	printf("\tpowered %u connectable %u discoverable %u\n",
-			rp->powered, rp->connectable, rp->discoverable);
-	printf("\tpairable %u sec_mode %u\n", rp->pairable, rp->sec_mode);
-	printf("\tname %s\n\n", (char *) rp->name);
+	printf("hci%u:\taddr %s version %u manufacturer %u"
+			" class 0x%02x%02x%02x\n",
+			id, addr, rp->version, bt_get_le16(&rp->manufacturer),
+			rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
+
+	printf("\tsupported settings: ");
+	print_settings(bt_get_le32(&rp->supported_settings));
+
+	printf("\n\tcurrent settings: ");
+	print_settings(bt_get_le32(&rp->current_settings));
+
+	printf("\n\tname %s\n", rp->name);
+	printf("\tshort name %s\n", rp->short_name);
 
 	if (pending == NULL)
 		exit(EXIT_SUCCESS);
@@ -879,7 +920,7 @@ static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
 static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	struct mgmt_mode *rp = rsp;
+	uint32_t *rp = rsp;
 
 	if (status != 0) {
 		fprintf(stderr,
@@ -894,7 +935,9 @@ static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		exit(EXIT_FAILURE);
 	}
 
-	printf("hci%u %s %s\n", id, mgmt_opstr(op), rp->val ? "on" : "off");
+	printf("hci%u %s complete, settings: ", id, mgmt_opstr(op));
+	print_settings(bt_get_le32(rp));
+	printf("\n");
 
 	exit(EXIT_SUCCESS);
 }

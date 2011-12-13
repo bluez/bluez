@@ -55,18 +55,12 @@ static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
 	gboolean notified;
-	uint8_t type;
 	bdaddr_t bdaddr;
-	uint8_t features[8];
-	uint8_t dev_class[3];
+	uint8_t version;
 	uint16_t manufacturer;
-	uint8_t hci_ver;
-	uint16_t hci_rev;
-	gboolean enabled;
-	gboolean connectable;
-	gboolean discoverable;
-	gboolean pairable;
-	uint8_t sec_mode;
+	uint32_t supported_settings;
+	uint32_t current_settings;
+	uint8_t dev_class[3];
 	GSList *connections;
 } *controllers = NULL;
 
@@ -218,33 +212,71 @@ static int mgmt_set_pairable(int index, gboolean pairable)
 	return mgmt_set_mode(index, MGMT_OP_SET_PAIRABLE, pairable);
 }
 
-static int mgmt_update_powered(int index, uint8_t powered)
+static inline int mgmt_powered(uint32_t settings)
 {
-	struct controller_info *info;
-	struct btd_adapter *adapter;
+	return (settings & MGMT_SETTING_POWERED) != 0;
+}
+
+static inline int mgmt_connectable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_CONNECTABLE) != 0;
+}
+
+static inline int mgmt_fast_connectable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_FAST_CONNECTABLE) != 0;
+}
+
+static inline int mgmt_discoverable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_DISCOVERABLE) != 0;
+}
+
+static inline int mgmt_pairable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_PAIRABLE) != 0;
+}
+
+static inline int mgmt_ssp(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_SSP) != 0;
+}
+
+static inline int mgmt_bredr(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_BREDR) != 0;
+}
+
+static inline int mgmt_high_speed(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_HS) != 0;
+}
+
+static inline int mgmt_low_energy(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_LE) != 0;
+}
+
+static uint8_t create_mode(uint32_t settings)
+{
+	uint8_t mode = 0;
+
+	if (mgmt_connectable(settings))
+		mode |= SCAN_PAGE;
+
+	if (mgmt_discoverable(settings))
+		mode |= SCAN_INQUIRY;
+
+	return mode;
+}
+
+static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
+{
 	gboolean pairable;
 	uint8_t on_mode;
+	uint16_t index;
 
-	if (index > max_index) {
-		error("Unexpected index %u", index);
-		return -ENODEV;
-	}
-
-	info = &controllers[index];
-
-	info->enabled = powered;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (adapter == NULL) {
-		DBG("Adapter not found");
-		return -ENODEV;
-	}
-
-	if (!powered) {
-		info->connectable = FALSE;
-		info->pairable = FALSE;
-		info->discoverable = FALSE;
-
+	if (!mgmt_powered(settings)) {
 		btd_adapter_stop(adapter);
 		return 0;
 	}
@@ -253,144 +285,69 @@ static int mgmt_update_powered(int index, uint8_t powered)
 
 	btd_adapter_get_mode(adapter, NULL, &on_mode, &pairable);
 
-	if (on_mode == MODE_DISCOVERABLE && !info->discoverable)
+	index = adapter_get_dev_id(adapter);
+
+	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings))
 		mgmt_set_discoverable(index, TRUE);
-	else if (on_mode == MODE_CONNECTABLE && !info->connectable)
+	else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings))
 		mgmt_set_connectable(index, TRUE);
-	else {
-		uint8_t mode = 0;
+	else
+		adapter_mode_changed(adapter, create_mode(settings));
 
-		if (info->connectable)
-			mode |= SCAN_PAGE;
-		if (info->discoverable)
-			mode |= SCAN_INQUIRY;
-
-		adapter_mode_changed(adapter, mode);
-	}
-
-	if (info->pairable != pairable)
+	if (mgmt_pairable(settings) != pairable)
 		mgmt_set_pairable(index, pairable);
 
 	return 0;
 }
 
-static void mgmt_powered(int sk, uint16_t index, void *buf, size_t len)
+static int mode_changed(uint32_t s1, uint32_t s2)
 {
-	struct mgmt_mode *ev = buf;
+	if (mgmt_connectable(s1) != mgmt_connectable(s2))
+		return 1;
 
-	if (len < sizeof(*ev)) {
-		error("Too small powered event");
-		return;
-	}
+	if (mgmt_discoverable(s1) != mgmt_discoverable(s2))
+		return 1;
 
-	DBG("Controller %u powered %u", index, ev->val);
-
-	mgmt_update_powered(index, ev->val);
+	return 0;
 }
 
-static void mgmt_discoverable(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 {
-	struct mgmt_mode *ev = buf;
+	uint32_t settings, *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	uint8_t mode;
 
 	if (len < sizeof(*ev)) {
-		error("Too small discoverable event");
+		error("Too small new settings event");
 		return;
 	}
 
-	DBG("Controller %u discoverable %u", index, ev->val);
+	DBG("hci%u new settings", index);
 
 	if (index > max_index) {
-		error("Unexpected index %u in discoverable event", index);
+		error("Unexpected index %u in new_settings event", index);
 		return;
 	}
 
 	info = &controllers[index];
 
-	info->discoverable = ev->val ? TRUE : FALSE;
-
 	adapter = manager_find_adapter(&info->bdaddr);
-	if (!adapter)
-		return;
-
-	if (info->connectable)
-		mode = SCAN_PAGE;
-	else
-		mode = 0;
-
-	if (info->discoverable)
-		mode |= SCAN_INQUIRY;
-
-	adapter_mode_changed(adapter, mode);
-}
-
-static void mgmt_connectable(int sk, uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_mode *ev = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-	uint8_t mode;
-
-	if (len < sizeof(*ev)) {
-		error("Too small connectable event");
+	if (adapter == NULL) {
+		DBG("Adapter not found");
 		return;
 	}
 
-	DBG("Controller %u connectable %u", index, ev->val);
+	settings = bt_get_le32(ev);
 
-	if (index > max_index) {
-		error("Unexpected index %u in connectable event", index);
-		return;
-	}
+	if (mgmt_powered(settings) != mgmt_powered(info->current_settings))
+		mgmt_update_powered(adapter, settings);
+	else if (mode_changed(settings, info->current_settings))
+		adapter_mode_changed(adapter, create_mode(settings));
 
-	info = &controllers[index];
+	if (mgmt_pairable(settings) != mgmt_pairable(info->current_settings))
+		btd_adapter_pairable_changed(adapter, mgmt_pairable(settings));
 
-	info->connectable = ev->val ? TRUE : FALSE;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (!adapter)
-		return;
-
-	if (info->discoverable)
-		mode = SCAN_INQUIRY;
-	else
-		mode = 0;
-
-	if (info->connectable)
-		mode |= SCAN_PAGE;
-
-	adapter_mode_changed(adapter, mode);
-}
-
-static void mgmt_pairable(int sk, uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_mode *ev = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*ev)) {
-		error("Too small pairable event");
-		return;
-	}
-
-	DBG("Controller %u pairable %u", index, ev->val);
-
-	if (index > max_index) {
-		error("Unexpected index %u in pairable event", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	info->pairable = ev->val ? TRUE : FALSE;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (!adapter)
-		return;
-
-	btd_adapter_pairable_changed(adapter, info->pairable);
+	info->current_settings = settings;
 }
 
 static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
@@ -810,29 +767,25 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	mgmt_set_mode(index, MGMT_OP_SET_SERVICE_CACHE, 1);
 
 	info = &controllers[index];
-	info->type = rp->type;
-	info->enabled = rp->powered;
-	info->connectable = rp->connectable;
-	info->discoverable = rp->discoverable;
-	info->pairable = rp->pairable;
-	info->sec_mode = rp->sec_mode;
+
 	bacpy(&info->bdaddr, &rp->bdaddr);
-	memcpy(info->dev_class, rp->dev_class, 3);
-	memcpy(info->features, rp->features, 8);
+	info->version = rp->version;
 	info->manufacturer = btohs(bt_get_unaligned(&rp->manufacturer));
-	info->hci_ver = rp->hci_ver;
-	info->hci_rev = btohs(bt_get_unaligned(&rp->hci_rev));
+
+	memcpy(&info->supported_settings, &rp->supported_settings,
+					sizeof(info->supported_settings));
+	memcpy(&info->current_settings, &rp->current_settings,
+					sizeof(info->current_settings));
+
+	memcpy(info->dev_class, rp->dev_class, sizeof(info->dev_class));
 
 	ba2str(&info->bdaddr, addr);
-	DBG("hci%u type %u addr %s", index, info->type, addr);
-	DBG("hci%u class 0x%02x%02x%02x", index,
+	DBG("hci%u addr %s version %u manufacturer %u class 0x%02x%02x%02x\n",
+		index, addr, info->version, info->manufacturer,
 		info->dev_class[2], info->dev_class[1], info->dev_class[0]);
-	DBG("hci%u manufacturer %d HCI ver %d:%d", index, info->manufacturer,
-						info->hci_ver, info->hci_rev);
-	DBG("hci%u enabled %u discoverable %u pairable %u sec_mode %u", index,
-					info->enabled, info->discoverable,
-					info->pairable, info->sec_mode);
+	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
+	DBG("hci%u short name %s", index, (char *) rp->short_name);
 
 	adapter = btd_manager_register_adapter(index);
 	if (adapter == NULL) {
@@ -846,123 +799,14 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	if (info->enabled)
-		mgmt_update_powered(index, TRUE);
+	if (mgmt_powered(info->current_settings))
+		mgmt_update_powered(adapter, info->current_settings);
 	else
 		mgmt_set_powered(index, TRUE);
 
 	adapter_name_changed(adapter, (char *) rp->name);
 
 	btd_adapter_unref(adapter);
-}
-
-static void set_powered_complete(int sk, uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_mode *rp = buf;
-
-	if (len < sizeof(*rp)) {
-		error("Too small set powered complete event");
-		return;
-	}
-
-	DBG("hci%d powered %u", index, rp->val);
-
-	mgmt_update_powered(index, rp->val);
-}
-
-static void set_discoverable_complete(int sk, uint16_t index, void *buf,
-								size_t len)
-{
-	struct mgmt_mode *rp = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-	uint8_t mode;
-
-	if (len < sizeof(*rp)) {
-		error("Too small set discoverable complete event");
-		return;
-	}
-
-	DBG("hci%d discoverable %u", index, rp->val);
-
-	if (index > max_index) {
-		error("Unexpected index %u in discoverable complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	info->discoverable = rp->val ? TRUE : FALSE;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (!adapter)
-		return;
-
-	/* set_discoverable will always also change page scanning */
-	mode = SCAN_PAGE;
-
-	if (info->discoverable)
-		mode |= SCAN_INQUIRY;
-
-	adapter_mode_changed(adapter, mode);
-}
-
-static void set_connectable_complete(int sk, uint16_t index, void *buf,
-								size_t len)
-{
-	struct mgmt_mode *rp = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*rp)) {
-		error("Too small set connectable complete event");
-		return;
-	}
-
-	DBG("hci%d connectable %u", index, rp->val);
-
-	if (index > max_index) {
-		error("Unexpected index %u in connectable complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	info->connectable = rp->val ? TRUE : FALSE;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (adapter)
-		adapter_mode_changed(adapter, rp->val ? SCAN_PAGE : 0);
-}
-
-static void set_pairable_complete(int sk, uint16_t index, void *buf,
-								size_t len)
-{
-	struct mgmt_mode *rp = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*rp)) {
-		error("Too small set pairable complete event");
-		return;
-	}
-
-	DBG("hci%d pairable %u", index, rp->val);
-
-	if (index > max_index) {
-		error("Unexpected index %u in pairable complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	info->pairable = rp->val ? TRUE : FALSE;
-
-	adapter = manager_find_adapter(&info->bdaddr);
-	if (!adapter)
-		return;
-
-	btd_adapter_pairable_changed(adapter, info->pairable);
 }
 
 static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
@@ -1158,16 +1002,16 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		read_info_complete(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_SET_POWERED:
-		set_powered_complete(sk, index, ev->data, len);
+		mgmt_new_settings(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DISCOVERABLE:
-		set_discoverable_complete(sk, index, ev->data, len);
+		mgmt_new_settings(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_SET_CONNECTABLE:
-		set_connectable_complete(sk, index, ev->data, len);
+		mgmt_new_settings(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_SET_PAIRABLE:
-		set_pairable_complete(sk, index, ev->data, len);
+		mgmt_new_settings(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_ADD_UUID:
 		DBG("add_uuid complete");
@@ -1525,17 +1369,8 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	case MGMT_EV_INDEX_REMOVED:
 		mgmt_index_removed(sk, index);
 		break;
-	case MGMT_EV_POWERED:
-		mgmt_powered(sk, index, buf + MGMT_HDR_SIZE, len);
-		break;
-	case MGMT_EV_DISCOVERABLE:
-		mgmt_discoverable(sk, index, buf + MGMT_HDR_SIZE, len);
-		break;
-	case MGMT_EV_CONNECTABLE:
-		mgmt_connectable(sk, index, buf + MGMT_HDR_SIZE, len);
-		break;
-	case MGMT_EV_PAIRABLE:
-		mgmt_pairable(sk, index, buf + MGMT_HDR_SIZE, len);
+	case MGMT_EV_NEW_SETTINGS:
+		mgmt_new_settings(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
 		mgmt_new_link_key(sk, index, buf + MGMT_HDR_SIZE, len);

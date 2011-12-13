@@ -54,22 +54,29 @@ struct mgmt_rp_read_index_list {
 /* Reserve one extra byte for names in management messages so that they
  * are always guaranteed to be nul-terminated */
 #define MGMT_MAX_NAME_LENGTH		(HCI_MAX_NAME_LENGTH + 1)
+#define MGMT_MAX_SHORT_NAME_LENGTH	(10 + 1)
+
+#define MGMT_SETTING_POWERED		0x00000001
+#define MGMT_SETTING_CONNECTABLE	0x00000002
+#define MGMT_SETTING_FAST_CONNECTABLE	0x00000004
+#define MGMT_SETTING_DISCOVERABLE	0x00000008
+#define MGMT_SETTING_PAIRABLE		0x00000010
+#define MGMT_SETTING_LINK_SECURITY	0x00000020
+#define MGMT_SETTING_SSP		0x00000040
+#define MGMT_SETTING_BREDR		0x00000080
+#define MGMT_SETTING_HS			0x00000100
+#define MGMT_SETTING_LE			0x00000200
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
-	uint8_t type;
-	uint8_t powered;
-	uint8_t connectable;
-	uint8_t discoverable;
-	uint8_t pairable;
-	uint8_t sec_mode;
 	bdaddr_t bdaddr;
-	uint8_t dev_class[3];
-	uint8_t features[8];
+	uint8_t version;
 	uint16_t manufacturer;
-	uint8_t hci_ver;
-	uint16_t hci_rev;
+	uint32_t supported_settings;
+	uint32_t current_settings;
+	uint8_t dev_class[3];
 	uint8_t name[MGMT_MAX_NAME_LENGTH];
+	uint8_t short_name[MGMT_MAX_SHORT_NAME_LENGTH];
 } __packed;
 
 struct mgmt_mode {
@@ -263,7 +270,7 @@ struct mgmt_ev_controller_error {
 
 #define MGMT_EV_INDEX_REMOVED		0x0005
 
-#define MGMT_EV_POWERED			0x0006
+#define MGMT_EV_NEW_SETTINGS		0x0006
 
 #define MGMT_EV_DISCOVERABLE		0x0007
 
