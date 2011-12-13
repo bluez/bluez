@@ -77,14 +77,30 @@ static void transfer_free(struct transfer *transfer)
 	g_free(transfer);
 }
 
+static struct transfer *find_transfer(guint id)
+{
+	GSList *l;
+
+	for (l = transfers; l != NULL; l = g_slist_next(l)) {
+		struct transfer *t = l->data;
+		if (t->id == id)
+			return t;
+	}
+
+	return NULL;
+}
+
 static void transfer_complete(struct transfer *transfer, GError *err)
 {
-	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", transfer->id);
+	guint id = transfer->id;
+
+	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", id);
 
 	transfer->complete_func(transfer->obex, err, transfer->user_data);
 	/* Check if the complete_func removed the transfer */
-	if (g_slist_find(transfers, transfer) == NULL)
+	if (find_transfer(id) == NULL)
 		return;
+
 	transfer_free(transfer);
 }
 
@@ -425,7 +441,6 @@ guint g_obex_get_req_pkt(GObex *obex, GObexPacket *req,
 
 	transfer = transfer_new(obex, G_OBEX_OP_GET, complete_func, user_data);
 	transfer->data_consumer = data_func;
-
 	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
 					transfer_response, transfer, err);
 	if (transfer->req_id == 0) {
@@ -573,17 +588,10 @@ guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
 gboolean g_obex_cancel_transfer(guint id)
 {
 	struct transfer *transfer = NULL;
-	GSList *l;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", id);
 
-	for (l = transfers; l != NULL; l = g_slist_next(l)) {
-		struct transfer *t = l->data;
-		if (t->id == id) {
-			transfer = t;
-			break;
-		}
-	}
+	transfer = find_transfer(id);
 
 	if (transfer == NULL)
 		return FALSE;
