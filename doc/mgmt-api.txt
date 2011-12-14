@@ -192,10 +192,25 @@ Set Device Class
 	This command will also implicitly disable caching of pending CoD
 	and EIR updates.
 
+
+Set Local Name Command
+======================
+
+	Command Code:		0x000F
+	Controller Index:	<controller id>
+	Command Parameters:	Name (249 Octets)
+				Short_Name (11 Octets)
+	Return Parameters:	Name (249 Octets)
+				Short_Name (11 Octets)
+
+	The name parameters need to always end with a nul byte (failure
+	to do so will cause the command to fail).
+
+
 Add UUID Command
 ================
 
-	Command Code:		0x000F
+	Command Code:		0x0010
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 				SVC_Hint (1 Octet)
@@ -205,7 +220,7 @@ Add UUID Command
 Remove UUID Command
 ===================
 
-	Command Code:		0x0010
+	Command Code:		0x0011
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
@@ -214,7 +229,7 @@ Remove UUID Command
 Load Link Keys Command
 ======================
 
-	Command Code:		0x0011
+	Command Code:		0x0012
 	Controller Index:	<controller id>
 	Command Parameters:	Debug_Keys (1 Octet)
 				Key_Count (2 Octets)
@@ -232,7 +247,7 @@ Load Link Keys Command
 Remove Keys Command
 ===================
 
-	Command Code:		0x0012
+	Command Code:		0x0013
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Disconnect (1 Octet)
@@ -245,7 +260,7 @@ Remove Keys Command
 Disconnect Command
 ==================
 
-	Command Code:		0x0013
+	Command Code:		0x0014
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -255,7 +270,7 @@ Disconnect Command
 Get Connections Command
 =======================
 
-	Command Code:		0x0014
+	Command Code:		0x0015
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Connection_Count (2 Octets)
@@ -275,7 +290,7 @@ Get Connections Command
 PIN Code Reply Command
 =======================
 
-	Command Code:		0x0015
+	Command Code:		0x0016
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -286,7 +301,7 @@ PIN Code Reply Command
 PIN Code Negative Reply Command
 ===============================
 
-	Command Code:		0x0016
+	Command Code:		0x0017
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -295,7 +310,7 @@ PIN Code Negative Reply Command
 Set IO Capability Command
 =========================
 
-	Command Code:		0x0017
+	Command Code:		0x0018
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
@@ -304,7 +319,7 @@ Set IO Capability Command
 Pair Device Command
 ===================
 
-	Command Code:		0x0018
+	Command Code:		0x0019
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -322,7 +337,7 @@ Pair Device Command
 User Confirmation Reply Command
 ===============================
 
-	Command Code:		0x0019
+	Command Code:		0x001A
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -332,7 +347,7 @@ User Confirmation Reply Command
 User Confirmation Negative Reply Command
 ========================================
 
-	Command Code:		0x001A
+	Command Code:		0x001B
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -342,7 +357,7 @@ User Confirmation Negative Reply Command
 User Passkey Reply Command
 ==========================
 
-	Command Code:		0x001B
+	Command Code:		0x001C
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Passkey (4 Octets)
@@ -353,25 +368,11 @@ User Passkey Reply Command
 User Passkey Negative Reply Command
 ===================================
 
-	Command Code:		0x001C
+	Command Code:		0x001D
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
 				Status (1 Octet)
-
-
-Set Local Name Command
-======================
-
-	Command Code:		0x001D
-	Controller Index:	<controller id>
-	Command Parameters:	Name (249 Octets)
-				Short_Name (11 Octets)
-	Return Parameters:	Name (249 Octets)
-				Short_Name (11 Octets)
-
-	The name parameters need to always end with a nul byte (failure
-	to do so will cause the command to fail).
 
 
 Read Local Out Of Band Data Command

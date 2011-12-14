@@ -111,13 +111,19 @@ struct mgmt_cp_set_dev_class {
 	uint8_t minor;
 } __packed;
 
-#define MGMT_OP_ADD_UUID		0x000F
+#define MGMT_OP_SET_LOCAL_NAME		0x000F
+struct mgmt_cp_set_local_name {
+	uint8_t name[MGMT_MAX_NAME_LENGTH];
+	uint8_t short_name[MGMT_MAX_SHORT_NAME_LENGTH];
+} __packed;
+
+#define MGMT_OP_ADD_UUID		0x0010
 struct mgmt_cp_add_uuid {
 	uint8_t uuid[16];
 	uint8_t svc_hint;
 } __packed;
 
-#define MGMT_OP_REMOVE_UUID		0x0010
+#define MGMT_OP_REMOVE_UUID		0x0011
 struct mgmt_cp_remove_uuid {
 	uint8_t uuid[16];
 } __packed;
@@ -129,14 +135,14 @@ struct mgmt_link_key_info {
 	uint8_t pin_len;
 } __packed;
 
-#define MGMT_OP_LOAD_LINK_KEYS		0x0011
+#define MGMT_OP_LOAD_LINK_KEYS		0x0012
 struct mgmt_cp_load_link_keys {
 	uint8_t debug_keys;
 	uint16_t key_count;
 	struct mgmt_link_key_info keys[0];
 } __packed;
 
-#define MGMT_OP_REMOVE_KEYS		0x0012
+#define MGMT_OP_REMOVE_KEYS		0x0013
 struct mgmt_cp_remove_keys {
 	bdaddr_t bdaddr;
 	uint8_t disconnect;
@@ -146,7 +152,7 @@ struct mgmt_rp_remove_keys {
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_DISCONNECT		0x0013
+#define MGMT_OP_DISCONNECT		0x0014
 struct mgmt_cp_disconnect {
 	bdaddr_t bdaddr;
 } __packed;
@@ -165,30 +171,30 @@ struct mgmt_addr_info {
 	uint8_t type;
 } __packed;
 
-#define MGMT_OP_GET_CONNECTIONS		0x0014
+#define MGMT_OP_GET_CONNECTIONS		0x0015
 struct mgmt_rp_get_connections {
 	uint16_t conn_count;
 	struct mgmt_addr_info addr[0];
 } __packed;
 
-#define MGMT_OP_PIN_CODE_REPLY		0x0015
+#define MGMT_OP_PIN_CODE_REPLY		0x0016
 struct mgmt_cp_pin_code_reply {
 	bdaddr_t bdaddr;
 	uint8_t pin_len;
 	uint8_t pin_code[16];
 } __packed;
 
-#define MGMT_OP_PIN_CODE_NEG_REPLY	0x0016
+#define MGMT_OP_PIN_CODE_NEG_REPLY	0x0017
 struct mgmt_cp_pin_code_neg_reply {
 	bdaddr_t bdaddr;
 } __packed;
 
-#define MGMT_OP_SET_IO_CAPABILITY	0x0017
+#define MGMT_OP_SET_IO_CAPABILITY	0x0018
 struct mgmt_cp_set_io_capability {
 	uint8_t io_capability;
 } __packed;
 
-#define MGMT_OP_PAIR_DEVICE		0x0018
+#define MGMT_OP_PAIR_DEVICE		0x0019
 struct mgmt_cp_pair_device {
 	struct mgmt_addr_info addr;
 	uint8_t io_cap;
@@ -198,7 +204,7 @@ struct mgmt_rp_pair_device {
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_USER_CONFIRM_REPLY	0x0019
+#define MGMT_OP_USER_CONFIRM_REPLY	0x001A
 struct mgmt_cp_user_confirm_reply {
 	bdaddr_t bdaddr;
 } __packed;
@@ -207,9 +213,9 @@ struct mgmt_rp_user_confirm_reply {
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_USER_CONFIRM_NEG_REPLY	0x001A
+#define MGMT_OP_USER_CONFIRM_NEG_REPLY	0x001B
 
-#define MGMT_OP_USER_PASSKEY_REPLY	0x001B
+#define MGMT_OP_USER_PASSKEY_REPLY	0x001C
 struct mgmt_cp_user_passkey_reply {
 	bdaddr_t bdaddr;
 	uint32_t passkey;
@@ -219,13 +225,7 @@ struct mgmt_rp_user_passkey_reply {
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_USER_PASSKEY_NEG_REPLY	0x001C
-
-#define MGMT_OP_SET_LOCAL_NAME		0x001D
-struct mgmt_cp_set_local_name {
-	uint8_t name[MGMT_MAX_NAME_LENGTH];
-	uint8_t short_name[MGMT_MAX_SHORT_NAME_LENGTH];
-} __packed;
+#define MGMT_OP_USER_PASSKEY_NEG_REPLY	0x001D
 
 #define MGMT_OP_READ_LOCAL_OOB_DATA	0x001E
 struct mgmt_rp_read_local_oob_data {
