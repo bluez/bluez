@@ -1783,8 +1783,8 @@ fail:
 	/* Send abort request because remote side is now in PENDING */
 	/* state. Then we have to delete it because we couldn't */
 	/* register the HealthChannel interface */
-	if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mcap_mdl_ref(mdl), NULL,
-								&gerr)) {
+	if (!mcap_mdl_abort(mdl, abort_and_del_mdl_cb, mcap_mdl_ref(mdl),
+				(GDestroyNotify) mcap_mdl_unref, &gerr)) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 		mcap_mdl_unref(mdl);
