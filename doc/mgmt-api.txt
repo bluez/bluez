@@ -88,10 +88,11 @@ Read Controller Information Command
 		3	Fast Connectable
 		4	Discoverable
 		5	Pairable
-		6	Secure Simple Pairing
-		7	Basic Rate/Enhanced Data Rate
-		8	High Speed
-		9	Low Energy
+		6	Link Level Security (Sec. mode 3)
+		7	Secure Simple Pairing
+		8	Basic Rate/Enhanced Data Rate
+		9	High Speed
+		10	Low Energy
 
 
 Set Powered Command
@@ -143,10 +144,19 @@ Set Pairable Command
 	Return Parameters:	Current_Settings (4 Octets)
 
 
+Set Link Security Command
+=========================
+
+	Command Code:		0x000A
+	Controller Index:	<controller id>
+	Command Parameters:	Link_Security (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+
 Set Secure Simple Pairing Command
 =================================
 
-	Command Code:		0x000A
+	Command Code:		0x000B
 	Controller Index:	<controller id>
 	Command Parameters:	Secure_Simple_Pairing (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
@@ -155,7 +165,7 @@ Set Secure Simple Pairing Command
 Set High Speed Command
 ======================
 
-	Command Code:		0x000B
+	Command Code:		0x000C
 	Controller Index:	<controller id>
 	Command Parameters:	High_Speed (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
@@ -164,16 +174,28 @@ Set High Speed Command
 Set Low Energy Command
 ======================
 
-	Command Code:		0x000C
+	Command Code:		0x000D
 	Controller Index:	<controller id>
 	Command Parameters:	Low_Energy (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
 
+Set Device Class
+================
+
+	Command Code:		0x000E
+	Controller Index:	<controller id>
+	Command Parameters:	Major_Class (1 Octet)
+				Minor_Class (1 Octet)
+	Return Parameters:	Class_Of_Device (3 Octets)
+
+	This command will also implicitly disable caching of pending CoD
+	and EIR updates.
+
 Add UUID Command
 ================
 
-	Command Code:		0x000D
+	Command Code:		0x000F
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 				SVC_Hint (1 Octet)
@@ -183,28 +205,9 @@ Add UUID Command
 Remove UUID Command
 ===================
 
-	Command Code:		0x000E
-	Controller Index:	<controller id>
-	Command Parameters:	UUID (16 Octets)
-	Return Parameters:	Class_Of_Device (3 Octets)
-
-
-Set Device Class
-================
-
-	Command Code:		0x000F
-	Controller Index:	<controller id>
-	Command Parameters:	Major_Class (1 Octet)
-				Minor_Class (1 Octet)
-	Return Parameters:	Class_Of_Device (3 Octets)
-
-
-Set UUID Caching Command
-========================
-
 	Command Code:		0x0010
 	Controller Index:	<controller id>
-	Command Parameters:	Enable (1 Octet)
+	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
 
@@ -292,7 +295,7 @@ PIN Code Negative Reply Command
 Set IO Capability Command
 =========================
 
-	Command Code:		0x0016
+	Command Code:		0x0017
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
@@ -301,7 +304,7 @@ Set IO Capability Command
 Pair Device Command
 ===================
 
-	Command Code:		0x0017
+	Command Code:		0x0018
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -319,7 +322,7 @@ Pair Device Command
 User Confirmation Reply Command
 ===============================
 
-	Command Code:		0x0018
+	Command Code:		0x0019
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -329,7 +332,7 @@ User Confirmation Reply Command
 User Confirmation Negative Reply Command
 ========================================
 
-	Command Code:		0x0019
+	Command Code:		0x001A
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -339,7 +342,7 @@ User Confirmation Negative Reply Command
 User Passkey Reply Command
 ==========================
 
-	Command Code:		0x001A
+	Command Code:		0x001B
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Passkey (4 Octets)
@@ -350,7 +353,7 @@ User Passkey Reply Command
 User Passkey Negative Reply Command
 ===================================
 
-	Command Code:		0x001B
+	Command Code:		0x001C
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -360,7 +363,7 @@ User Passkey Negative Reply Command
 Set Local Name Command
 ======================
 
-	Command Code:		0x001C
+	Command Code:		0x001D
 	Controller Index:	<controller id>
 	Command Parameters:	Name (249 Octets)
 				Short_Name (11 Octets)
@@ -372,9 +375,9 @@ Set Local Name Command
 
 
 Read Local Out Of Band Data Command
-========================================
+===================================
 
-	Command Code:		0x001D
+	Command Code:		0x001E
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Hash (16 Octets)
@@ -382,9 +385,9 @@ Read Local Out Of Band Data Command
 
 
 Add Remote Out Of Band Data Command
-========================================
+===================================
 
-	Command Code:		0x001E
+	Command Code:		0x001F
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Hash (16 Octets)
@@ -395,7 +398,7 @@ Add Remote Out Of Band Data Command
 Remove Remote Out Of Band Data Command
 ========================================
 
-	Command Code:		0x001F
+	Command Code:		0x0020
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:
@@ -404,7 +407,7 @@ Remove Remote Out Of Band Data Command
 Start Discovery Command
 =======================
 
-	Command Code:		0x00020
+	Command Code:		0x00021
 	Controller Index:	<controller id>
 	Command Parameters:	Type (1 Octet)
 	Return Parameters:
@@ -426,53 +429,53 @@ Start Discovery Command
 Stop Discovery Command
 ======================
 
-	Command Code:		0x00021
+	Command Code:		0x00022
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:
 
 
-Block Device Command
+Confirm Name Command
 ====================
-
-	Command Code:		0x00022
-	Controller Index:	<controller id>
-	Command Parameters:	Address (6 Octets)
-	Return Parameters:	Status (1 Octet)
-
-
-Unblock Device Command
-======================
 
 	Command Code:		0x00023
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
-	Return Parameters:	Status (1 Octet)
-
-
-Confirm Name Command
-====================
-
-	Command Code:		0x00024
-	Controller Index:	<controller id>
-	Command Parameters:	Address (1 Octet)
-				Name Known (1 Octet)
-	Return Parameters:	Status (1 Octet)
+				Name_Known (1 Octet)
+	Return Parameters:
 
 	This command is only valid during device discovery and is
 	expected for each Device Found event with the Confirm Name
 	flag set.
 
 
+Block Device Command
+====================
+
+	Command Code:		0x00024
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Parameters:
+
+
+Unblock Device Command
+======================
+
+	Command Code:		0x00025
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+	Return Parameters:
+
+
 Load Long Term Keys Command
 ===========================
 
-	Command Code:		0x0025
+	Command Code:		0x0026
 	Controller Index:	<controller id>
 	Command Parameters:	Key Count (2 Octets)
 				Key1 {
 					Address (6 Octets)
-					PIN_Length (1 Octet)
+					Authenticated (1 Octet)
 					Encryption Size (1 Octet)
 					Enc. Diversifier (2 Octets)
 					Random Number (8 Octets)
@@ -756,7 +759,7 @@ Controller Index	<controller id>
 Event Parameters	Store Hint (1 Octet)
 			Key {
 				Address (6 Octets)
-				PIN_Length (1 Octet)
+				Authenticated (1 Octet)
 				Encryption Size (1 Octet)
 				Enc. Diversifier (2 Octets)
 				Random Number (8 Octets)
