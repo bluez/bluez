@@ -764,8 +764,6 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	mgmt_set_mode(index, MGMT_OP_SET_SERVICE_CACHE, 1);
-
 	info = &controllers[index];
 
 	bacpy(&info->bdaddr, &rp->bdaddr);
@@ -1021,9 +1019,6 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
 		DBG("set_dev_class complete");
-		break;
-	case MGMT_OP_SET_SERVICE_CACHE:
-		DBG("set_service_cache complete");
 		break;
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
@@ -1592,9 +1587,9 @@ static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
 
 static int mgmt_set_fast_connectable(int index, gboolean enable)
 {
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_fast_connectable)];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_mode)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_fast_connectable *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_mode *cp = (void *) &buf[sizeof(*hdr)];
 
 	DBG("index %d enable %d", index, enable);
 
@@ -1603,7 +1598,7 @@ static int mgmt_set_fast_connectable(int index, gboolean enable)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	cp->enable = enable;
+	cp->val = enable;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -1786,7 +1781,9 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 static int mgmt_disable_cod_cache(int index)
 {
 	DBG("index %d", index);
-	return mgmt_set_mode(index, MGMT_OP_SET_SERVICE_CACHE, 0);
+
+	/* The cache control is handled automatically for mgmt */
+	return 0;
 }
 
 static int mgmt_restore_powered(int index)
