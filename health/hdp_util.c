@@ -20,15 +20,18 @@
  *
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdint.h>
+
+#include <glib.h>
+
 #include <gdbus.h>
 
 #include <adapter.h>
 #include <device.h>
-#include <stdint.h>
-#include <hdp_types.h>
-#include <hdp_util.h>
-#include <mcap.h>
-#include <hdp.h>
 
 #include <sdpd.h>
 #include <bluetooth/sdp_lib.h>
@@ -36,9 +39,14 @@
 #include <glib-helper.h>
 
 #include <btio.h>
-#include <mcap_lib.h>
 
 #include <log.h>
+
+#include "mcap.h"
+#include "mcap_lib.h"
+#include "hdp_types.h"
+#include "hdp.h"
+#include "hdp_util.h"
 
 typedef gboolean (*parse_item_f)(DBusMessageIter *iter, gpointer user_data,
 								GError **err);

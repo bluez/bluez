@@ -30,14 +30,13 @@
 #include <btio.h>
 #include <adapter.h>
 #include <device.h>
+#include <glib-helper.h>
+#include <log.h>
 
 #include "hdp_types.h"
 
-#include "log.h"
 #include "hdp_manager.h"
 #include "hdp.h"
-
-#include "glib-helper.h"
 
 static DBusConnection *connection = NULL;
 

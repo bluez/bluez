@@ -20,17 +20,20 @@
  *
  */
 
-#include "log.h"
-#include "error.h"
-
 #include <netinet/in.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 
-#include "btio.h"
+#include <glib.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
+
+#include <btio.h>
+#include <log.h>
+#include <error.h>
+
 #include "mcap.h"
 #include "mcap_lib.h"
 #include "mcap_internal.h"

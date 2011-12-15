@@ -20,24 +20,27 @@
  *
  */
 
-#include <gdbus.h>
-
-#include "log.h"
-#include "error.h"
 #include <stdlib.h>
 #include <stdint.h>
-#include <hdp_types.h>
-#include <hdp_util.h>
+#include <sdpd.h>
+#include <unistd.h>
+
+#include <glib.h>
+
+#include <bluetooth/l2cap.h>
+#include <gdbus.h>
+#include <dbus-common.h>
+#include <log.h>
+#include <error.h>
 #include <adapter.h>
 #include <device.h>
-#include <hdp.h>
-#include <mcap.h>
 #include <btio.h>
-#include <mcap_lib.h>
-#include <bluetooth/l2cap.h>
-#include <sdpd.h>
-#include "../src/dbus-common.h"
-#include <unistd.h>
+
+#include "mcap_lib.h"
+#include "hdp_types.h"
+#include "hdp_util.h"
+#include "hdp.h"
+#include "mcap.h"
 
 #ifndef DBUS_TYPE_UNIX_FD
 	#define DBUS_TYPE_UNIX_FD -1
