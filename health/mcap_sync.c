@@ -21,21 +21,19 @@
  *
  */
 
-#include "btio.h"
 #include <stdint.h>
 #include <netinet/in.h>
 #include <time.h>
 #include <stdlib.h>
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
-#include "../src/adapter.h"
-#include "../src/manager.h"
 #include <sys/ioctl.h>
 
-#include "config.h"
-#include "log.h"
-
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/l2cap.h>
+#include <adapter.h>
+#include <manager.h>
+#include <btio.h>
+#include <log.h>
+
 #include "mcap.h"
 #include "mcap_lib.h"
 #include "mcap_internal.h"
