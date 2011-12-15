@@ -226,6 +226,9 @@ struct mgmt_rp_user_passkey_reply {
 } __packed;
 
 #define MGMT_OP_USER_PASSKEY_NEG_REPLY	0x001D
+struct mgmt_cp_user_passkey_neg_reply {
+	bdaddr_t bdaddr;
+} __packed;
 
 #define MGMT_OP_READ_LOCAL_OOB_DATA	0x001E
 struct mgmt_rp_read_local_oob_data {
