@@ -153,7 +153,7 @@ static DBusMessage *map_get_folder_listing(DBusConnection *connection,
 	return NULL;
 }
 
-static DBusMessage *map_get_messages_listing(DBusConnection *connection,
+static DBusMessage *map_get_message_listing(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct map_data *map = user_data;
@@ -186,7 +186,7 @@ static GDBusMethodTable map_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetFolderListing",	"a{ss}", "s",	map_get_folder_listing,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "GetMessagesListing",	"sa{ss}", "s",	map_get_messages_listing,
+	{ "GetMessageListing",	"sa{ss}", "s",	map_get_message_listing,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ }
 };
