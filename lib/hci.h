@@ -1382,17 +1382,16 @@ typedef struct {
 #define OCF_READ_LOCAL_AMP_ASSOC	0x000A
 typedef struct {
 	uint8_t		handle;
-	uint16_t	length_so_far;
-	uint16_t	assoc_length;
+	uint16_t	len_so_far;
+	uint16_t	max_len;
 } __attribute__ ((packed)) read_local_amp_assoc_cp;
-#define READ_LOCAL_AMP_ASSOC_CP_SIZE 5
+
 typedef struct {
 	uint8_t		status;
 	uint8_t		handle;
-	uint16_t	length;
-	uint8_t		fragment[HCI_MAX_NAME_LENGTH];
+	uint16_t	rem_len;
+	uint8_t		frag[0];
 } __attribute__ ((packed)) read_local_amp_assoc_rp;
-#define READ_LOCAL_AMP_ASSOC_RP_SIZE 252
 
 #define OCF_WRITE_REMOTE_AMP_ASSOC	0x000B
 typedef struct {
