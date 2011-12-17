@@ -53,7 +53,7 @@
 #define G_OBEX_HDR_DESTNAME		0x15
 #define G_OBEX_HDR_PERMISSIONS		0xd6
 #define G_OBEX_HDR_SRM			0x97
-#define G_OBEX_HDR_SRM_PARAMETERS	0x98
+#define G_OBEX_HDR_SRMP			0x98
 
 /* Action header values */
 #define G_OBEX_ACTION_COPY		0x00
@@ -64,6 +64,11 @@
 #define G_OBEX_SRM_DISABLE		0x00
 #define G_OBEX_SRM_ENABLE		0x01
 #define G_OBEX_SRM_INDICATE		0x02
+
+/* SRMP header values */
+#define G_OBEX_SRMP_NEXT		0x00
+#define G_OBEX_SRMP_WAIT		0x01
+#define G_OBEX_SRMP_NEXT_WAIT		0x02
 
 typedef struct _GObexHeader GObexHeader;
 
