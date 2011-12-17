@@ -60,6 +60,11 @@
 #define G_OBEX_ACTION_MOVE		0x01
 #define G_OBEX_ACTION_SETPERM		0x02
 
+/* SRM header values */
+#define G_OBEX_SRM_DISABLE		0x00
+#define G_OBEX_SRM_ENABLE		0x01
+#define G_OBEX_SRM_INDICATE		0x02
+
 typedef struct _GObexHeader GObexHeader;
 
 gboolean g_obex_header_get_unicode(GObexHeader *header, const char **str);
