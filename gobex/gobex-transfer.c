@@ -277,32 +277,18 @@ guint g_obex_put_req(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err, guint8 first_hdr_id, ...)
 {
-	struct transfer *transfer;
 	GObexPacket *req;
 	va_list args;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "obex %p", obex);
-
-	transfer = transfer_new(obex, G_OBEX_OP_PUT, complete_func, user_data);
-	transfer->data_producer = data_func;
 
 	va_start(args, first_hdr_id);
 	req = g_obex_packet_new_valist(G_OBEX_OP_PUT, FALSE,
 							first_hdr_id, args);
 	va_end(args);
 
-	g_obex_packet_add_body(req, put_get_data, transfer);
-
-	transfer->req_id = g_obex_send_req(obex, req, FIRST_PACKET_TIMEOUT,
-					transfer_response, transfer, err);
-	if (transfer->req_id == 0) {
-		transfer_free(transfer);
-		return 0;
-	}
-
-	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", transfer->id);
-
-	return transfer->id;
+	return g_obex_put_req_pkt(obex, req, data_func, complete_func,
+							user_data, err);
 }
 
 static void transfer_abort_req(GObex *obex, GObexPacket *req, gpointer user_data)
