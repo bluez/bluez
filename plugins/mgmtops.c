@@ -2032,7 +2032,27 @@ static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 
 static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, gboolean name_known)
 {
-	return -ENOSYS;
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_confirm_name)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_confirm_name *cp = (void *) &buf[sizeof(*hdr)];
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s name_known %u", index, addr, name_known);
+
+	memset(buf, 0, sizeof(buf));
+
+	hdr->opcode = htobs(MGMT_OP_CONFIRM_NAME);
+	hdr->index = htobs(index);
+	hdr->len = htobs(sizeof(*cp));
+
+	bacpy(&cp->bdaddr, bdaddr);
+	cp->name_known = name_known;
+
+	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
 }
 
 static struct btd_adapter_ops mgmt_ops = {
