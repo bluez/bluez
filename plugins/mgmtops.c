@@ -1244,8 +1244,9 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	uint8_t *eir;
 	uint32_t cls;
 
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_device_found event packet");
+	if (len != sizeof(*ev)) {
+		error("mgmt_device_found length %u instead of expected %u",
+							len, sizeof(*ev));
 		return;
 	}
 
