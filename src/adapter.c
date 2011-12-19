@@ -2898,9 +2898,10 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
 	return textfile_get(filename, peer_addr);
 }
 
-void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-						uint32_t class, int8_t rssi,
-						uint8_t *data, uint8_t data_len)
+void adapter_update_found_devices(struct btd_adapter *adapter,
+					bdaddr_t *bdaddr, uint32_t class,
+					int8_t rssi, uint8_t confirm_name,
+					uint8_t *data, uint8_t data_len)
 {
 	struct remote_dev_info *dev, match;
 	struct eir_data eir_data;
@@ -2955,6 +2956,18 @@ void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		le = TRUE;
 		legacy = FALSE;
 		name_status = NAME_NOT_REQUIRED;
+	}
+
+	if (confirm_name) {
+		gboolean name_known;
+
+		if (name_status == NAME_REQUIRED)
+			name_known = FALSE;
+		else
+			name_known = TRUE;
+
+		adapter_ops->confirm_name(adapter->dev_id, bdaddr,
+								name_known);
 	}
 
 	alias = read_stored_data(&adapter->bdaddr, bdaddr, "aliases");

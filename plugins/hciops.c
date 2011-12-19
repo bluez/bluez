@@ -1869,7 +1869,7 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 						(info->dev_class[2] << 16);
 
 		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
-								0, NULL, 0);
+								0, 0, NULL, 0);
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
@@ -1891,7 +1891,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[2] << 16);
 
 			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						class, info->rssi, NULL, 0);
+						class, info->rssi, 0, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
@@ -1902,7 +1902,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[2] << 16);
 
 			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						class, info->rssi, NULL, 0);
+						class, info->rssi, 0, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
@@ -1921,7 +1921,7 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[2] << 16);
 
 		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
-						info->rssi, info->data,
+						info->rssi, 0, info->data,
 						HCI_MAX_EIR_LENGTH);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
@@ -2150,7 +2150,7 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	rssi = *(info->data + info->length);
 
 	btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-						info->data, info->length);
+						0, info->data, info->length);
 
 	num_reports--;
 
@@ -2160,7 +2160,7 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 		rssi = *(info->data + info->length);
 
 		btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-						info->data, info->length);
+						0, info->data, info->length);
 	}
 }
 
@@ -3608,6 +3608,12 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int hciops_confirm_name(int index, bdaddr_t *bdaddr,
+							gboolean name_known)
+{
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3645,6 +3651,7 @@ static struct btd_adapter_ops hci_ops = {
 	.read_local_oob_data = hciops_read_local_oob_data,
 	.add_remote_oob_data = hciops_add_remote_oob_data,
 	.remove_remote_oob_data = hciops_remove_remote_oob_data,
+	.confirm_name = hciops_confirm_name,
 };
 
 static int hciops_init(void)

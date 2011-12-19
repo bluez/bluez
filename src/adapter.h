@@ -109,9 +109,10 @@ void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
-void adapter_update_found_devices(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-						uint32_t class, int8_t rssi,
-						uint8_t *data, uint8_t data_len);
+void adapter_update_found_devices(struct btd_adapter *adapter,
+					bdaddr_t *bdaddr, uint32_t class,
+					int8_t rssi, uint8_t confirm_name,
+					uint8_t *data, uint8_t data_len);
 int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev);
@@ -219,6 +220,7 @@ struct btd_adapter_ops {
 	int (*add_remote_oob_data) (int index, bdaddr_t *bdaddr, uint8_t *hash,
 							uint8_t *randomizer);
 	int (*remove_remote_oob_data) (int index, bdaddr_t *bdaddr);
+	int (*confirm_name) (int index, bdaddr_t *bdaddr, gboolean name_known);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);

@@ -350,6 +350,7 @@ struct mgmt_ev_device_found {
 	struct mgmt_addr_info addr;
 	uint8_t dev_class[3];
 	int8_t rssi;
+	uint8_t confirm_name;
 	uint8_t eir[HCI_MAX_EIR_LENGTH];
 } __packed;
 

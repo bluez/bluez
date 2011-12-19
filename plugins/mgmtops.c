@@ -1269,7 +1269,8 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 						ev->rssi, eir ? "eir" : "");
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr, cls,
-					ev->rssi, eir, HCI_MAX_EIR_LENGTH);
+						ev->rssi, ev->confirm_name,
+						eir, HCI_MAX_EIR_LENGTH);
 }
 
 static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)
@@ -2029,6 +2030,11 @@ static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
+static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, gboolean name_known)
+{
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -2066,6 +2072,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.read_local_oob_data = mgmt_read_local_oob_data,
 	.add_remote_oob_data = mgmt_add_remote_oob_data,
 	.remove_remote_oob_data = mgmt_remove_remote_oob_data,
+	.confirm_name = mgmt_confirm_name,
 };
 
 static int mgmt_init(void)
