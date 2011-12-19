@@ -443,7 +443,8 @@ Confirm Name Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Name_Known (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Status (1 Octet)
 
 	This command is only valid during device discovery and is
 	expected for each Device Found event with the Confirm Name
