@@ -501,10 +501,11 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u dev_found: %s type %s class 0x%02x%02x%02x "
-			"rssi %d eir (%s)\n", index, addr,
+			"rssi %d confirm_name %u eir (%s)\n", index, addr,
 			typestr(ev->addr.type),
 			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
-			ev->rssi, ev->eir[0] == 0 ? "no" : "yes");
+			ev->rssi, ev->confirm_name,
+			ev->eir[0] == 0 ? "no" : "yes");
 	}
 
 	return 0;
