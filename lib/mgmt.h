@@ -259,7 +259,11 @@ struct mgmt_cp_start_discovery {
 struct mgmt_cp_confirm_name {
 	bdaddr_t bdaddr;
 	uint8_t name_known;
-};
+} __packed;
+struct mgmt_rp_confirm_name {
+	bdaddr_t bdaddr;
+	uint8_t status;
+} __packed;
 
 #define MGMT_OP_BLOCK_DEVICE		0x0024
 struct mgmt_cp_block_device {
