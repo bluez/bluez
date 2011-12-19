@@ -124,6 +124,7 @@ static const char *mgmt_status[] = {
 
 static bool monitor = false;
 static bool discovery = false;
+static bool resolve_names = true;
 
 typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data);
@@ -488,6 +489,37 @@ static int mgmt_name_changed(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
+static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
+				uint8_t status, void *rsp, uint16_t len,
+				void *user_data)
+{
+	struct mgmt_rp_confirm_name *rp = rsp;
+	char addr[18];
+
+	if (status != 0) {
+		fprintf(stderr,
+			"hci%u confirm_name failed with status 0x%02x (%s)\n",
+					id, status, mgmt_errstr(status));
+		return;
+	}
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr,
+			"hci%u confirm_name rsp length %u instead of %u\n",
+			id, len, sizeof(*rp));
+		return;
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (rp->status != 0)
+		fprintf(stderr,
+			"hci%u confirm_name for %s failed: 0x%02x (%s)\n",
+			id, addr, rp->status, mgmt_errstr(status));
+	else
+		printf("hci%u confirm_name succeeded for %s\n", id, addr);
+}
+
 static int mgmt_device_found(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_device_found *ev, uint16_t len)
 {
@@ -506,6 +538,21 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
 			ev->rssi, ev->confirm_name,
 			ev->eir[0] == 0 ? "no" : "yes");
+	}
+
+	if (discovery && ev->confirm_name) {
+		struct mgmt_cp_confirm_name cp;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.bdaddr, &ev->addr.bdaddr);
+		if (resolve_names)
+			cp.name_known = 0;
+		else
+			cp.name_known = 1;
+
+		mgmt_send_cmd(mgmt_sk, MGMT_OP_CONFIRM_NAME, index,
+					&cp, sizeof(cp), confirm_name_rsp,
+					NULL);
 	}
 
 	return 0;
