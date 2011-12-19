@@ -505,7 +505,7 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr,
-			"hci%u confirm_name rsp length %u instead of %u\n",
+			"hci%u confirm_name rsp length %u instead of %zu\n",
 			id, len, sizeof(*rp));
 		return;
 	}
