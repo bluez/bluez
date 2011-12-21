@@ -318,7 +318,7 @@ static void attio_connected(GAttrib *attrib, gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
 
-	gatt->attrib = attrib;
+	gatt->attrib = g_attrib_ref(attrib);
 
 	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_NOTIFY,
 					events_handler, gatt, NULL);
@@ -332,7 +332,10 @@ static void attio_disconnected(gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
 
-	gatt->attrib = NULL;
+	if (gatt->attrib) {
+		g_attrib_unref(gatt->attrib);
+		gatt->attrib = NULL;
+	}
 }
 
 static DBusMessage *register_watcher(DBusConnection *conn,
@@ -892,7 +895,7 @@ static void send_discover(GAttrib *attrib, gpointer user_data)
 	struct gatt_service *gatt = qchr->gatt;
 	struct att_primary *prim = gatt->prim;
 
-	gatt->attrib = attrib;
+	gatt->attrib = g_attrib_ref(attrib);
 
 	gatt_discover_char(gatt->attrib, prim->start, prim->end, NULL,
 						char_discovered_cb, qchr);
@@ -903,6 +906,7 @@ static void cancel_discover(gpointer user_data)
 	struct query_data *qchr = user_data;
 	struct gatt_service *gatt = qchr->gatt;
 
+	g_attrib_unref(gatt->attrib);
 	gatt->attrib = NULL;
 }
 
