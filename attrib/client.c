@@ -420,15 +420,17 @@ static DBusMessage *set_value(DBusConnection *conn, DBusMessage *msg,
 
 	characteristic_set_value(chr, value, len);
 
-	if (gatt->attioid == 0) {
+	if (gatt->attioid == 0)
 		gatt->attioid = btd_device_add_attio_callback(gatt->dev,
 							attio_connected,
 							attio_disconnected,
 							gatt);
-		gatt->offline_chars = g_slist_append(gatt->offline_chars, chr);
-	} else
+
+	if (gatt->attrib)
 		gatt_write_cmd(gatt->attrib, chr->handle, value, len,
 								NULL, NULL);
+	else
+		gatt->offline_chars = g_slist_append(gatt->offline_chars, chr);
 
 	return dbus_message_new_method_return(msg);
 }
