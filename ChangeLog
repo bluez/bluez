@@ -1,3 +1,13 @@
+ver 4.97:
+	Update support for proximity profile.
+	Fix issue with SBC audio decoding quality.
+	Fix multiple issues with HFP support.
+	Fix multiple issues with A2DP support.
+	Fix multiple issues with AVDTP support.
+	Fix multiple issues with AVRCP support.
+	Add support for AVRCP meta-data transfer.
+	Add support for Bluetooth based thermometers.
+
 ver 4.96:
 	Fix issue with race condition in AVDTP stream start.
 	Fix issue with global adapter offline switching.
