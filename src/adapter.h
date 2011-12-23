@@ -101,8 +101,6 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 						struct btd_device *device,
 						gboolean remove_storage);
 
-int adapter_resolve_names(struct btd_adapter *adapter);
-
 struct btd_adapter *adapter_create(DBusConnection *conn, int id);
 gboolean adapter_init(struct btd_adapter *adapter);
 void adapter_remove(struct btd_adapter *adapter);

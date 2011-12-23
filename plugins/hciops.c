@@ -191,11 +191,7 @@ static void set_state(int index, int state)
 		if (adapter_get_state(adapter) == STATE_SUSPENDED)
 			return;
 
-		if (is_resolvname_enabled() &&
-					adapter_has_discov_sessions(adapter))
-			adapter_set_state(adapter, STATE_RESOLVNAME);
-		else
-			adapter_set_state(adapter, STATE_IDLE);
+		adapter_set_state(adapter, STATE_IDLE);
 		break;
 	case DISCOV_INQ:
 	case DISCOV_SCAN:

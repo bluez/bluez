@@ -214,7 +214,7 @@ static int pending_remote_name_cancel(struct btd_adapter *adapter)
 	return err;
 }
 
-int adapter_resolve_names(struct btd_adapter *adapter)
+static int adapter_resolve_names(struct btd_adapter *adapter)
 {
 	struct remote_dev_info *dev, match;
 	int err;
@@ -2591,18 +2591,6 @@ static inline void suspend_discovery(struct btd_adapter *adapter)
 	adapter_ops->stop_discovery(adapter->dev_id);
 }
 
-static inline void resolve_names(struct btd_adapter *adapter)
-{
-	int err;
-
-	if (adapter->state != STATE_RESOLVNAME)
-		return;
-
-	err = adapter_resolve_names(adapter);
-	if (err < 0)
-		adapter_set_state(adapter, STATE_IDLE);
-}
-
 void adapter_set_state(struct btd_adapter *adapter, int state)
 {
 	const char *path = adapter->path;
@@ -2617,6 +2605,13 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 
 	switch (adapter->state) {
 	case STATE_IDLE:
+		if (main_opts.name_resolv &&
+					adapter_has_discov_sessions(adapter) &&
+					adapter_resolve_names(adapter) == 0) {
+			adapter->state = STATE_RESOLVNAME;
+			return;
+		}
+
 		update_oor_devices(adapter);
 
 		discov_active = FALSE;
@@ -2635,9 +2630,6 @@ void adapter_set_state(struct btd_adapter *adapter, int state)
 		emit_property_changed(connection, path,
 					ADAPTER_INTERFACE, "Discovering",
 					DBUS_TYPE_BOOLEAN, &discov_active);
-		break;
-	case STATE_RESOLVNAME:
-		resolve_names(adapter);
 		break;
 	case STATE_SUSPENDED:
 		suspend_discovery(adapter);

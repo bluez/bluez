@@ -381,10 +381,6 @@ proceed:
 	/* remove from remote name request list */
 	adapter_remove_found_device(adapter, peer);
 
-	/* check if there is more devices to request names */
-	if (adapter_resolve_names(adapter) == 0)
-		return;
-
 	adapter_set_state(adapter, STATE_IDLE);
 }
 
