@@ -197,7 +197,7 @@ static void headset_setconf_cb(struct media_endpoint *endpoint, void *ret,
 	if (ret != NULL)
 		return;
 
-	headset_set_state(dev, HEADSET_STATE_DISCONNECTED);
+	headset_shutdown(dev);
 }
 
 static void clear_configuration(struct media_endpoint *endpoint)
