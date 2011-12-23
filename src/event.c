@@ -93,7 +93,7 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 	bdaddr_t dba;
 	int err;
 
-	device_get_address(device, &dba);
+	device_get_address(device, &dba, NULL);
 
 	if (derr) {
 		err = btd_adapter_pincode_reply(adapter, &dba, NULL, 0);
@@ -139,7 +139,7 @@ static int confirm_reply(struct btd_adapter *adapter,
 {
 	bdaddr_t bdaddr;
 
-	device_get_address(device, &bdaddr);
+	device_get_address(device, &bdaddr, NULL);
 
 	return btd_adapter_confirm_reply(adapter, &bdaddr, success);
 }
@@ -160,7 +160,7 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	struct btd_adapter *adapter = device_get_adapter(device);
 	bdaddr_t bdaddr;
 
-	device_get_address(device, &bdaddr);
+	device_get_address(device, &bdaddr, NULL);
 
 	if (err)
 		passkey = INVALID_PASSKEY;
@@ -264,9 +264,10 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 	write_lastused_info(sba, dba, tm);
 }
 
-void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
-					int8_t rssi, uint8_t confirm_name,
-					uint8_t *data, uint8_t data_len)
+void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, addr_type_t type,
+					uint32_t class, int8_t rssi,
+					uint8_t confirm_name, uint8_t *data,
+					uint8_t data_len)
 {
 	struct btd_adapter *adapter;
 
@@ -282,7 +283,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint32_t class,
 	if (data)
 		write_remote_eir(local, peer, data);
 
-	adapter_update_found_devices(adapter, peer, class, rssi,
+	adapter_update_found_devices(adapter, peer, type, class, rssi,
 						confirm_name, data, data_len);
 }
 

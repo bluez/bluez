@@ -80,7 +80,7 @@ static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
 	DBG("path %s", path);
 
 	adapter_get_address(adapter, &src);
-	device_get_address(device, &dst);
+	device_get_address(device, &dst, NULL);
 
 	return connection_register(device, path, &src, &dst, id);
 }

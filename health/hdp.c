@@ -222,7 +222,7 @@ static gint cmp_dev_addr(gconstpointer a, gconstpointer dst)
 	const struct hdp_device *device = a;
 	bdaddr_t addr;
 
-	device_get_address(device->dev, &addr);
+	device_get_address(device->dev, &addr, NULL);
 	return bacmp(&addr, dst);
 }
 

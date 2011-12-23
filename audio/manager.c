@@ -778,7 +778,7 @@ static int audio_probe(struct btd_device *device, GSList *uuids)
 	struct audio_device *audio_dev;
 
 	adapter_get_address(adapter, &src);
-	device_get_address(device, &dst);
+	device_get_address(device, &dst, NULL);
 
 	audio_dev = manager_get_device(&src, &dst, TRUE);
 	if (!audio_dev) {

@@ -54,6 +54,12 @@ typedef enum {
 	NAME_REQUESTED,    /* HCI remote name request was sent    */
 } name_status_t;
 
+typedef enum {
+	ADDR_TYPE_BREDR,
+	ADDR_TYPE_LE_PUBLIC,
+	ADDR_TYPE_LE_RANDOM,
+} addr_type_t;
+
 struct btd_adapter;
 
 struct link_key_info {
@@ -65,13 +71,13 @@ struct link_key_info {
 
 struct remote_dev_info {
 	bdaddr_t bdaddr;
+	addr_type_t type;
 	int8_t rssi;
 	uint32_t class;
 	char *name;
 	char *alias;
 	dbus_bool_t legacy;
 	name_status_t name_status;
-	gboolean le;
 	char **uuids;
 	size_t uuid_count;
 	GSList *services;
@@ -110,8 +116,9 @@ int adapter_get_state(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
 						struct remote_dev_info *match);
 void adapter_update_found_devices(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint32_t class,
-					int8_t rssi, uint8_t confirm_name,
+					bdaddr_t *bdaddr, addr_type_t type,
+					uint32_t class, int8_t rssi,
+					uint8_t confirm_name,
 					uint8_t *data, uint8_t data_len);
 int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_emit_device_found(struct btd_adapter *adapter,

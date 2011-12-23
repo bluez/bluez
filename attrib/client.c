@@ -151,7 +151,7 @@ static void gatt_get_address(struct gatt_service *gatt,
 
 	adapter = device_get_adapter(device);
 	adapter_get_address(adapter, sba);
-	device_get_address(device, dba);
+	device_get_address(device, dba, NULL);
 }
 
 static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)

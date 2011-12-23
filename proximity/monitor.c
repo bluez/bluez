@@ -417,7 +417,7 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 	monitor->linklosslevel = g_strdup(level);
 
 	adapter_get_address(device_get_adapter(device), &sba);
-	device_get_address(device, &dba);
+	device_get_address(device, &dba, NULL);
 
 	write_proximity_config(&sba, &dba, "LinkLossAlertLevel", level);
 
@@ -592,7 +592,7 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	char *level;
 
 	adapter_get_address(device_get_adapter(device), &sba);
-	device_get_address(device, &dba);
+	device_get_address(device, &dba, NULL);
 
 	level = read_proximity_config(&sba, &dba, "LinkLossAlertLevel");
 

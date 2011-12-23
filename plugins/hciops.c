@@ -1868,8 +1868,8 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 						(info->dev_class[1] << 8) |
 						(info->dev_class[2] << 16);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
-								0, 0, NULL, 0);
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
+					ADDR_TYPE_BREDR, class, 0, 0, NULL, 0);
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
@@ -1891,7 +1891,8 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[2] << 16);
 
 			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						class, info->rssi, 0, NULL, 0);
+						ADDR_TYPE_BREDR, class,
+						info->rssi, 0, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
@@ -1902,7 +1903,8 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[2] << 16);
 
 			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						class, info->rssi, 0, NULL, 0);
+						ADDR_TYPE_BREDR, class,
+						info->rssi, 0, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
@@ -1920,9 +1922,9 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[1] << 8)
 					| (info->dev_class[2] << 16);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr, class,
-						info->rssi, 0, info->data,
-						HCI_MAX_EIR_LENGTH);
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
+					ADDR_TYPE_BREDR, class, info->rssi,
+					0, info->data, HCI_MAX_EIR_LENGTH);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
@@ -2137,6 +2139,17 @@ static inline void conn_request(int index, void *ptr)
 	btd_event_remote_class(&dev->bdaddr, &evt->bdaddr, class);
 }
 
+static inline addr_type_t le_addr_type(uint8_t bdaddr_type)
+{
+	switch (bdaddr_type) {
+	case LE_RANDOM_ADDRESS:
+		return ADDR_TYPE_LE_RANDOM;
+	case LE_PUBLIC_ADDRESS:
+	default:
+		return ADDR_TYPE_LE_PUBLIC;
+	}
+}
+
 static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 {
 	struct dev_info *dev = &devs[index];
@@ -2149,8 +2162,9 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	info = (le_advertising_info *) &meta->data[1];
 	rssi = *(info->data + info->length);
 
-	btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-						0, info->data, info->length);
+	btd_event_device_found(&dev->bdaddr, &info->bdaddr,
+				le_addr_type(info->bdaddr_type), 0, rssi, 0,
+				info->data, info->length);
 
 	num_reports--;
 
@@ -2159,8 +2173,9 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 								RSSI_SIZE);
 		rssi = *(info->data + info->length);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr, 0, rssi,
-						0, info->data, info->length);
+		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
+					le_addr_type(info->bdaddr_type),
+					0, rssi, 0, info->data, info->length);
 	}
 }
 

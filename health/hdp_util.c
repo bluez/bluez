@@ -859,7 +859,7 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 	bdaddr_t dst, src;
 	uuid_t uuid;
 
-	device_get_address(device->dev, &dst);
+	device_get_address(device->dev, &dst, NULL);
 	adapter_get_address(device_get_adapter(device->dev), &src);
 
 	mdep_data = g_new0(struct get_mdep_data, 1);
@@ -1065,7 +1065,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 	conn_data = con_mcl_data_ref(conn_data);
 
-	device_get_address(conn_data->dev->dev, &dst);
+	device_get_address(conn_data->dev->dev, &dst, NULL);
 	if (!mcap_create_mcl(conn_data->dev->hdp_adapter->mi, &dst, ccpsm,
 						create_mcl_cb, conn_data,
 						destroy_con_mcl_data, &gerr)) {
@@ -1088,7 +1088,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	bdaddr_t dst, src;
 	uuid_t uuid;
 
-	device_get_address(device->dev, &dst);
+	device_get_address(device->dev, &dst, NULL);
 	adapter_get_address(device_get_adapter(device->dev), &src);
 
 	conn_data = g_new0(struct conn_mcl_data, 1);
@@ -1158,7 +1158,7 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 	bdaddr_t dst, src;
 	uuid_t uuid;
 
-	device_get_address(device->dev, &dst);
+	device_get_address(device->dev, &dst, NULL);
 	adapter_get_address(device_get_adapter(device->dev), &src);
 
 	dcpsm_data = g_new0(struct get_dcpsm_data, 1);

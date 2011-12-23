@@ -33,19 +33,11 @@ typedef enum {
 	AUTH_TYPE_NOTIFY,
 } auth_type_t;
 
-typedef enum {
-	DEVICE_TYPE_UNKNOWN,
-	DEVICE_TYPE_BREDR,
-	DEVICE_TYPE_LE,
-	DEVICE_TYPE_DUALMODE
-} device_type_t;
-
 struct btd_device *device_create(DBusConnection *conn,
-				struct btd_adapter *adapter,
-				const gchar *address, device_type_t type);
+					struct btd_adapter *adapter,
+					const char *address, addr_type_t type);
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
-device_type_t device_get_type(struct btd_device *device);
 uint16_t btd_device_get_vendor(struct btd_device *device);
 uint16_t btd_device_get_product(struct btd_device *device);
 uint16_t btd_device_get_version(struct btd_device *device);
@@ -65,9 +57,12 @@ GSList *device_services_from_record(struct btd_device *device,
 							GSList *profiles);
 void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
-void device_get_address(struct btd_device *device, bdaddr_t *bdaddr);
+void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
+							addr_type_t *type);
 const gchar *device_get_path(struct btd_device *device);
 struct agent *device_get_agent(struct btd_device *device);
+gboolean device_is_bredr(struct btd_device *device);
+gboolean device_is_le(struct btd_device *device);
 gboolean device_is_busy(struct btd_device *device);
 gboolean device_is_temporary(struct btd_device *device);
 gboolean device_is_paired(struct btd_device *device);
@@ -75,7 +70,6 @@ gboolean device_is_bonded(struct btd_device *device);
 gboolean device_is_trusted(struct btd_device *device);
 void device_set_paired(struct btd_device *device, gboolean paired);
 void device_set_temporary(struct btd_device *device, gboolean temporary);
-void device_set_type(struct btd_device *device, device_type_t type);
 void device_set_bonded(struct btd_device *device, gboolean bonded);
 void device_set_auto_connect(struct btd_device *device, gboolean enable);
 gboolean device_is_connected(struct btd_device *device);
