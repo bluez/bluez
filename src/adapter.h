@@ -36,23 +36,10 @@
 #define MODE_DISCOVERABLE	0x02
 #define MODE_UNKNOWN		0xff
 
-/* Discover states */
-#define STATE_IDLE		0
-#define STATE_DISCOV		1
-#define STATE_RESOLVNAME	2
-#define STATE_SUSPENDED		3
-
 #define MAX_NAME_LENGTH		248
 
 /* Invalid SSP passkey value used to indicate negative replies */
 #define INVALID_PASSKEY		0xffffffff
-
-typedef enum {
-	NAME_ANY,
-	NAME_NOT_REQUIRED, /* used by get remote name without name resolving */
-	NAME_REQUIRED,      /* remote name needs be resolved       */
-	NAME_REQUESTED,    /* HCI remote name request was sent    */
-} name_status_t;
 
 typedef enum {
 	ADDR_TYPE_BREDR,
@@ -77,7 +64,6 @@ struct remote_dev_info {
 	char *name;
 	char *alias;
 	dbus_bool_t legacy;
-	name_status_t name_status;
 	char **uuids;
 	size_t uuid_count;
 	GSList *services;
@@ -106,19 +92,20 @@ gboolean adapter_init(struct btd_adapter *adapter);
 void adapter_remove(struct btd_adapter *adapter);
 void adapter_set_allow_name_changes(struct btd_adapter *adapter,
 						gboolean allow_name_changes);
+void adapter_set_discovering(struct btd_adapter *adapter,
+						gboolean discovering);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_set_state(struct btd_adapter *adapter, int state);
 int adapter_get_state(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
-						struct remote_dev_info *match);
+							bdaddr_t *bdaddr);
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					bdaddr_t *bdaddr, addr_type_t type,
 					uint32_t class, int8_t rssi,
 					uint8_t confirm_name,
 					uint8_t *data, uint8_t data_len);
-int adapter_remove_found_device(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
@@ -137,8 +124,6 @@ void adapter_add_connection(struct btd_adapter *adapter,
 void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device);
 gboolean adapter_has_discov_sessions(struct btd_adapter *adapter);
-void adapter_suspend_discovery(struct btd_adapter *adapter);
-void adapter_resume_discovery(struct btd_adapter *adapter);
 
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter);
 void btd_adapter_unref(struct btd_adapter *adapter);
@@ -192,8 +177,6 @@ struct btd_adapter_ops {
 	int (*start_discovery) (int index);
 	int (*stop_discovery) (int index);
 
-	int (*resolve_name) (int index, bdaddr_t *bdaddr);
-	int (*cancel_resolve_name) (int index, bdaddr_t *bdaddr);
 	int (*set_name) (int index, const char *name);
 	int (*set_dev_class) (int index, uint8_t major, uint8_t minor);
 	int (*set_fast_connectable) (int index, gboolean enable);
@@ -274,6 +257,9 @@ int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint8_t io_cap);
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+
+void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							uint8_t status);
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
 

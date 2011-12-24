@@ -57,6 +57,7 @@
 #define DISCOV_HALTED 0
 #define DISCOV_INQ 1
 #define DISCOV_SCAN 2
+#define DISCOV_NAMES 3
 
 #define TIMEOUT_BR_LE_SCAN 5120 /* TGAP(100)/2 */
 #define TIMEOUT_LE_SCAN 10240 /* TGAP(gen_disc_scan_min) */
@@ -64,7 +65,7 @@
 #define LENGTH_BR_INQ 0x08
 #define LENGTH_BR_LE_INQ 0x04
 
-static int hciops_start_scanning(int index, int timeout);
+static int start_scanning(int index, int timeout);
 
 static int child_pipe[2] = { -1, -1 };
 
@@ -104,6 +105,19 @@ struct oob_data {
 	bdaddr_t bdaddr;
 	uint8_t hash[16];
 	uint8_t randomizer[16];
+};
+
+enum name_state {
+	NAME_UNKNOWN,
+	NAME_NEEDED,
+	NAME_NOT_NEEDED,
+	NAME_PENDING,
+};
+
+struct found_dev {
+	bdaddr_t bdaddr;
+	int8_t rssi;
+	enum name_state name_state;
 };
 
 static int max_dev = -1;
@@ -153,19 +167,76 @@ static struct dev_info {
 
 	GSList *connections;
 
+	GSList *found_devs;
+	GSList *need_name;
+
 	guint stop_scan_id;
 } *devs = NULL;
 
-static inline int get_state(int index)
+static int found_dev_rssi_cmp(gconstpointer a, gconstpointer b)
 {
-	struct dev_info *dev = &devs[index];
+	const struct found_dev *d1 = a, *d2 = b;
+	int rssi1, rssi2;
 
-	return dev->discov_state;
+	if (d2->name_state == NAME_NOT_NEEDED)
+		return -1;
+
+	rssi1 = d1->rssi < 0 ? -d1->rssi : d1->rssi;
+	rssi2 = d2->rssi < 0 ? -d2->rssi : d2->rssi;
+
+	return rssi1 - rssi2;
 }
 
-static inline gboolean is_resolvname_enabled(void)
+static int found_dev_bda_cmp(gconstpointer a, gconstpointer b)
 {
-	return main_opts.name_resolv ? TRUE : FALSE;
+	const struct found_dev *d1 = a, *d2 = b;
+
+	return bacmp(&d1->bdaddr, &d2->bdaddr);
+}
+
+static void found_dev_cleanup(struct dev_info *info)
+{
+	g_slist_free_full(info->found_devs, g_free);
+	info->found_devs = NULL;
+
+	g_slist_free_full(info->need_name, g_free);
+	info->need_name = NULL;
+}
+
+static int resolve_name(struct dev_info *info, bdaddr_t *bdaddr)
+{
+	remote_name_req_cp cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d dba %s", info->id, addr);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.pscan_rep_mode = 0x02;
+
+	if (hci_send_cmd(info->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
+					REMOTE_NAME_REQ_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int resolve_names(struct dev_info *info, struct btd_adapter *adapter)
+{
+	struct found_dev *dev;
+
+	DBG("found_dev %u need_name %u", g_slist_length(info->found_devs),
+					g_slist_length(info->need_name));
+
+	if (g_slist_length(info->need_name) == 0)
+		return -ENOENT;
+
+	dev = info->need_name->data;
+	resolve_name(info, &dev->bdaddr);
+	dev->name_state = NAME_PENDING;
+
+	return 0;
 }
 
 static void set_state(int index, int state)
@@ -188,14 +259,16 @@ static void set_state(int index, int state)
 
 	switch (dev->discov_state) {
 	case DISCOV_HALTED:
-		if (adapter_get_state(adapter) == STATE_SUSPENDED)
-			return;
-
-		adapter_set_state(adapter, STATE_IDLE);
+		found_dev_cleanup(dev);
+		adapter_set_discovering(adapter, FALSE);
 		break;
 	case DISCOV_INQ:
 	case DISCOV_SCAN:
-		adapter_set_state(adapter, STATE_DISCOV);
+		adapter_set_discovering(adapter, TRUE);
+		break;
+	case DISCOV_NAMES:
+		if (resolve_names(dev, adapter) < 0)
+			set_state(index, DISCOV_HALTED);
 		break;
 	}
 }
@@ -1706,13 +1779,10 @@ static inline void inquiry_complete_evt(int index, uint8_t status)
 	adapter_type = get_adapter_type(index);
 
 	if (adapter_type == BR_EDR_LE &&
-					adapter_has_discov_sessions(adapter)) {
-		int err = hciops_start_scanning(index, TIMEOUT_BR_LE_SCAN);
-		if (err < 0)
-			set_state(index, DISCOV_HALTED);
-	} else {
-		set_state(index, DISCOV_HALTED);
-	}
+			start_scanning(index, TIMEOUT_BR_LE_SCAN) == 0)
+		return;
+
+	set_state(index, DISCOV_NAMES);
 }
 
 static inline void cc_inquiry_cancel(int index, uint8_t status)
@@ -1727,15 +1797,14 @@ static inline void cc_inquiry_cancel(int index, uint8_t status)
 
 static inline void cc_le_set_scan_enable(int index, uint8_t status)
 {
-	int state;
+	struct dev_info *info = &devs[index];
 
 	if (status) {
 		error("LE Set Scan Enable Failed with status 0x%02x", status);
 		return;
 	}
 
-	state = get_state(index);
-	if (state == DISCOV_SCAN)
+	if (info->discov_state == DISCOV_SCAN)
 		set_state(index, DISCOV_HALTED);
 	else
 		set_state(index, DISCOV_SCAN);
@@ -1816,16 +1885,43 @@ static inline void remote_name_information(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	evt_remote_name_req_complete *evt = ptr;
+	struct btd_adapter *adapter;
 	char name[MAX_NAME_LENGTH + 1];
+	struct found_dev *found;
+
+	GSList *match;
 
 	DBG("hci%d status %u", index, evt->status);
 
 	memset(name, 0, sizeof(name));
 
-	if (!evt->status)
+	if (evt->status == 0) {
 		memcpy(name, evt->name, MAX_NAME_LENGTH);
+		btd_event_remote_name(&dev->bdaddr, &evt->bdaddr, name);
+	}
 
-	btd_event_remote_name(&dev->bdaddr, &evt->bdaddr, evt->status, name);
+	adapter = manager_find_adapter_by_id(index);
+	if (!adapter) {
+		error("No matching adapter found");
+		return;
+	}
+
+	match = g_slist_find_custom(dev->need_name, &evt->bdaddr,
+							found_dev_bda_cmp);
+	if (match == NULL)
+		return;
+
+	found = match->data;
+	found->name_state = NAME_NOT_NEEDED;
+
+	dev->need_name = g_slist_remove_link(dev->need_name, match);
+
+	match->next = dev->found_devs;
+	dev->found_devs = match;
+	dev->found_devs = g_slist_sort(dev->found_devs, found_dev_rssi_cmp);
+
+	if (resolve_names(dev, adapter) < 0)
+		set_state(index, DISCOV_HALTED);
 }
 
 static inline void remote_version_information(int index, void *ptr)
@@ -1848,15 +1944,39 @@ static inline void remote_version_information(int index, void *ptr)
 				btohs(evt->lmp_subver));
 }
 
+static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
+				uint8_t cod, int8_t rssi, uint8_t cfm_name,
+				uint8_t *eir, uint8_t eir_len)
+{
+	struct found_dev *dev;
+	GSList *match;
+
+	match = g_slist_find_custom(info->found_devs, dba, found_dev_bda_cmp);
+	if (match != NULL) {
+		cfm_name = 0;
+		goto event;
+	}
+
+	dev = g_new0(struct found_dev, 1);
+	bacpy(&dev->bdaddr, dba);
+	dev->rssi = rssi;
+	if (cfm_name)
+		dev->name_state = NAME_UNKNOWN;
+	else
+		dev->name_state = NAME_NOT_NEEDED;
+
+	info->found_devs = g_slist_prepend(info->found_devs, dev);
+
+event:
+	btd_event_device_found(&info->bdaddr, dba, type, cod, rssi, cfm_name,
+								NULL, 0);
+}
+
 static inline void inquiry_result(int index, int plen, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
 	int i;
-
-	/* Skip if it is not in Inquiry state */
-	if (get_state(index) != DISCOV_INQ)
-		return;
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = ptr;
@@ -1864,8 +1984,8 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 						(info->dev_class[1] << 8) |
 						(info->dev_class[2] << 16);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-					ADDR_TYPE_BREDR, class, 0, 0, NULL, 0);
+		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class, 0, 1,
+								NULL, 0);
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
@@ -1886,9 +2006,8 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						ADDR_TYPE_BREDR, class,
-						info->rssi, 0, NULL, 0);
+			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
+						info->rssi, 1, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
@@ -1898,9 +2017,8 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 						| (info->dev_class[1] << 8)
 						| (info->dev_class[2] << 16);
 
-			btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-						ADDR_TYPE_BREDR, class,
-						info->rssi, 0, NULL, 0);
+			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
+						info->rssi, 1, NULL, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
@@ -1918,9 +2036,8 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[1] << 8)
 					| (info->dev_class[2] << 16);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-					ADDR_TYPE_BREDR, class, info->rssi,
-					0, info->data, HCI_MAX_EIR_LENGTH);
+		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
+				info->rssi, 1, info->data, HCI_MAX_EIR_LENGTH);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
@@ -2158,9 +2275,8 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	info = (le_advertising_info *) &meta->data[1];
 	rssi = *(info->data + info->length);
 
-	btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-				le_addr_type(info->bdaddr_type), 0, rssi, 0,
-				info->data, info->length);
+	dev_found(dev, &info->bdaddr, le_addr_type(info->bdaddr_type), 0, rssi,
+						0, info->data, info->length);
 
 	num_reports--;
 
@@ -2169,9 +2285,8 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 								RSSI_SIZE);
 		rssi = *(info->data + info->length);
 
-		btd_event_device_found(&dev->bdaddr, &info->bdaddr,
-					le_addr_type(info->bdaddr_type),
-					0, rssi, 0, info->data, info->length);
+		dev_found(dev, &info->bdaddr, le_addr_type(info->bdaddr_type),
+				0, rssi, 0, info->data, info->length);
 	}
 }
 
@@ -2921,7 +3036,7 @@ static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
 	return err;
 }
 
-static int hciops_start_inquiry(int index, uint8_t length)
+static int start_inquiry(int index, uint8_t length)
 {
 	struct dev_info *dev = &devs[index];
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
@@ -2973,7 +3088,7 @@ static gboolean stop_le_scan_cb(gpointer user_data)
 	return FALSE;
 }
 
-static int hciops_start_scanning(int index, int timeout)
+static int start_scanning(int index, int timeout)
 {
 	struct dev_info *dev = &devs[index];
 	le_set_scan_parameters_cp cp;
@@ -3018,26 +3133,6 @@ static int hciops_stop_scanning(int index)
 	return le_set_scan_enable(index, 0);
 }
 
-static int hciops_resolve_name(int index, bdaddr_t *bdaddr)
-{
-	struct dev_info *dev = &devs[index];
-	remote_name_req_cp cp;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s", index, addr);
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
-	cp.pscan_rep_mode = 0x02;
-
-	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ,
-					REMOTE_NAME_REQ_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int hciops_set_name(int index, const char *name)
 {
 	struct dev_info *dev = &devs[index];
@@ -3058,19 +3153,32 @@ static int hciops_set_name(int index, const char *name)
 	return 0;
 }
 
-static int hciops_cancel_resolve_name(int index, bdaddr_t *bdaddr)
+static int cancel_resolve_name(int index)
 {
-	struct dev_info *dev = &devs[index];
+	struct dev_info *info = &devs[index];
+	struct found_dev *dev;
 	remote_name_req_cancel_cp cp;
-	char addr[18];
+	struct btd_adapter *adapter;
 
-	ba2str(bdaddr, addr);
-	DBG("hci%d dba %s", index, addr);
+	DBG("hci%d", index);
+
+	if (g_slist_length(info->need_name) == 0)
+		return 0;
+
+	dev = info->need_name->data;
+	if (dev->name_state != NAME_PENDING)
+		return 0;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	bacpy(&cp.bdaddr, &dev->bdaddr);
 
-	if (hci_send_cmd(dev->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
+	adapter = manager_find_adapter_by_id(index);
+	if (adapter)
+		adapter_set_discovering(adapter, FALSE);
+
+	found_dev_cleanup(info);
+
+	if (hci_send_cmd(info->sk, OGF_LINK_CTL, OCF_REMOTE_NAME_REQ_CANCEL,
 				REMOTE_NAME_REQ_CANCEL_CP_SIZE, &cp) < 0)
 		return -errno;
 
@@ -3081,13 +3189,15 @@ static int hciops_start_discovery(int index)
 {
 	int adapter_type = get_adapter_type(index);
 
+	DBG("hci%u", index);
+
 	switch (adapter_type) {
 	case BR_EDR_LE:
-		return hciops_start_inquiry(index, LENGTH_BR_LE_INQ);
+		return start_inquiry(index, LENGTH_BR_LE_INQ);
 	case BR_EDR:
-		return hciops_start_inquiry(index, LENGTH_BR_INQ);
+		return start_inquiry(index, LENGTH_BR_INQ);
 	case LE_ONLY:
-		return hciops_start_scanning(index, TIMEOUT_LE_SCAN);
+		return start_scanning(index, TIMEOUT_LE_SCAN);
 	default:
 		return -EINVAL;
 	}
@@ -3104,6 +3214,8 @@ static int hciops_stop_discovery(int index)
 		return hciops_stop_inquiry(index);
 	case DISCOV_SCAN:
 		return hciops_stop_scanning(index);
+	case DISCOV_NAMES:
+		cancel_resolve_name(index);
 	default:
 		return -EINVAL;
 	}
@@ -3622,7 +3734,36 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 static int hciops_confirm_name(int index, bdaddr_t *bdaddr,
 							gboolean name_known)
 {
-	return -ENOSYS;
+	struct dev_info *info = &devs[index];
+	struct found_dev *dev;
+	GSList *match;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u %s name_known %u", index, addr, name_known);
+
+	match = g_slist_find_custom(info->found_devs, bdaddr,
+						found_dev_bda_cmp);
+	if (match == NULL)
+		return -ENOENT;
+
+	dev = match->data;
+
+	if (name_known) {
+		dev->name_state = NAME_NOT_NEEDED;
+		info->found_devs = g_slist_sort(info->found_devs,
+							found_dev_rssi_cmp);
+		return 0;
+	}
+
+	dev->name_state = NAME_NEEDED;
+	info->found_devs = g_slist_remove_link(info->found_devs, match);
+
+	match->next = info->need_name;
+	info->need_name = match;
+	info->need_name = g_slist_sort(info->need_name, found_dev_rssi_cmp);
+
+	return 0;
 }
 
 static struct btd_adapter_ops hci_ops = {
@@ -3634,8 +3775,6 @@ static struct btd_adapter_ops hci_ops = {
 	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,
-	.resolve_name = hciops_resolve_name,
-	.cancel_resolve_name = hciops_cancel_resolve_name,
 	.set_name = hciops_set_name,
 	.set_dev_class = hciops_set_dev_class,
 	.set_fast_connectable = hciops_set_fast_connectable,

@@ -1310,7 +1310,7 @@ static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)
 	ba2str(&ev->bdaddr, addr);
 	DBG("hci%u addr %s, name %s", index, addr, ev->name);
 
-	btd_event_remote_name(&info->bdaddr, &ev->bdaddr, 0, (char *) ev->name);
+	btd_event_remote_name(&info->bdaddr, &ev->bdaddr, (char *) ev->name);
 }
 
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
@@ -1318,7 +1318,6 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	struct mgmt_mode *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	int state;
 
 	if (len < sizeof(*ev)) {
 		error("Too small discovering event");
@@ -1338,12 +1337,7 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	if (!adapter)
 		return;
 
-	if (ev->val)
-		state = STATE_DISCOV;
-	else
-		state = STATE_IDLE;
-
-	adapter_set_state(adapter, state);
+	adapter_set_discovering(adapter, ev->val);
 }
 
 static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
@@ -1636,16 +1630,6 @@ static int mgmt_stop_discovery(int index)
 	return 0;
 }
 
-static int mgmt_resolve_name(int index, bdaddr_t *bdaddr)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	return -ENOSYS;
-}
-
 static int mgmt_set_name(int index, const char *name)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_local_name)];
@@ -1665,16 +1649,6 @@ static int mgmt_set_name(int index, const char *name)
 		return -errno;
 
 	return 0;
-}
-
-static int mgmt_cancel_resolve_name(int index, bdaddr_t *bdaddr)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	return -ENOSYS;
 }
 
 static int mgmt_set_fast_connectable(int index, gboolean enable)
@@ -2080,8 +2054,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_limited_discoverable = mgmt_set_limited_discoverable,
 	.start_discovery = mgmt_start_discovery,
 	.stop_discovery = mgmt_stop_discovery,
-	.resolve_name = mgmt_resolve_name,
-	.cancel_resolve_name = mgmt_cancel_resolve_name,
 	.set_name = mgmt_set_name,
 	.set_dev_class = mgmt_set_dev_class,
 	.set_fast_connectable = mgmt_set_fast_connectable,

@@ -2183,8 +2183,6 @@ static void bonding_request_free(struct bonding_req *bonding)
 
 	device->bonding = NULL;
 
-	adapter_resume_discovery(device->adapter);
-
 	if (!device->agent)
 		return;
 
@@ -2255,8 +2253,6 @@ proceed:
 
 	bonding->conn = dbus_connection_ref(conn);
 	bonding->msg = dbus_message_ref(msg);
-
-	adapter_suspend_discovery(device->adapter);
 
 	return bonding;
 }
