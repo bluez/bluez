@@ -257,7 +257,7 @@ Properties	string Address [readonly]
 			Note that this property only affects incoming pairing
 			requests.
 
-		uint32 PaireableTimeout [readwrite]
+		uint32 PairableTimeout [readwrite]
 
 			The pairable timeout in seconds. A value of zero
 			means that the timeout is disabled and it will stay in
