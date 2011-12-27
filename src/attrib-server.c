@@ -1402,6 +1402,8 @@ int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 {
 	uint16_t handle;
 
+	DBG("Deprecated function!");
+
 	/* FIXME: Missing Privacy and Reconnection Address */
 
 	switch (uuid) {
