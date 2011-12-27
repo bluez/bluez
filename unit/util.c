@@ -142,6 +142,9 @@ gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 
 	d->count++;
 
+	if (!(cond & G_IO_IN))
+		goto send;
+
 	status = g_io_channel_read_chars(io, buf, sizeof(buf), &rbytes, NULL);
 	if (status != G_IO_STATUS_NORMAL) {
 		g_print("io_cb count %u\n", d->count);
@@ -166,6 +169,7 @@ gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 		goto failed;
 	}
 
+send:
 	if ((gssize) send_buf_len < 0)
 		goto failed;
 
@@ -177,6 +181,9 @@ gboolean test_io_cb(GIOChannel *io, GIOCondition cond, gpointer user_data)
 						"Unable to write to socket");
 		goto failed;
 	}
+
+	if (d->recv[d->count].len < 0 || (gssize) expect_len < 0)
+		return test_io_cb(io, G_IO_OUT, user_data);
 
 	return TRUE;
 
