@@ -53,6 +53,13 @@
 #include "attrib-server.h"
 
 static GSList *database = NULL;
+static GSList *servers = NULL;
+
+struct gatt_server {
+	struct btd_adapter *adapter;
+	GIOChannel *l2cap_io;
+	GIOChannel *le_io;
+};
 
 struct gatt_channel {
 	bdaddr_t src;
@@ -71,7 +78,6 @@ struct group_elem {
 	uint16_t len;
 };
 
-static GIOChannel *l2cap_io = NULL;
 static GIOChannel *le_io = NULL;
 static GSList *clients = NULL;
 static uint32_t gatt_sdp_handle = 0;
@@ -93,6 +99,35 @@ static bt_uuid_t ccc_uuid = {
 			.type = BT_UUID16,
 			.value.u16 = GATT_CLIENT_CHARAC_CFG_UUID
 };
+
+static void gatt_server_free(struct gatt_server *server)
+{
+	if (server->l2cap_io != NULL) {
+		g_io_channel_unref(server->l2cap_io);
+		g_io_channel_shutdown(server->l2cap_io, FALSE, NULL);
+	}
+
+	if (server->le_io != NULL) {
+		g_io_channel_unref(server->le_io);
+		g_io_channel_shutdown(server->le_io, FALSE, NULL);
+	}
+
+	if (server->adapter != NULL)
+		btd_adapter_unref(server->adapter);
+
+	g_free(server);
+}
+
+static gint adapter_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_server *server = a;
+	const struct btd_adapter *adapter = b;
+
+	if (server->adapter == adapter)
+		return 0;
+
+	return -1;
+}
 
 static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 {
@@ -1012,66 +1047,73 @@ failed:
 	return FALSE;
 }
 
-int attrib_server_init(void)
+int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 {
+	struct gatt_server *server;
 	GError *gerr = NULL;
+	bdaddr_t addr;
+
+	DBG("Start GATT server in hci%d", adapter_get_dev_id(adapter));
+
+	server = g_new0(struct gatt_server, 1);
+	server->adapter = btd_adapter_ref(adapter);
+
+	adapter_get_address(server->adapter, &addr);
 
 	/* BR/EDR socket */
-	l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+	server->l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
 					NULL, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
+					BT_IO_OPT_SOURCE_BDADDR, &addr,
 					BT_IO_OPT_PSM, ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
-	if (l2cap_io == NULL) {
+
+	if (server->l2cap_io == NULL) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
+		gatt_server_free(server);
 		return -1;
 	}
 
-	if (!register_core_services())
-		goto failed;
+	if (!register_core_services()) {
+		gatt_server_free(server);
+		return -1;
+	}
 
 	/* LE socket */
-	le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
-					&le_io, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, BDADDR_ANY,
+	server->le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+					&server->le_io, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, &addr,
 					BT_IO_OPT_CID, ATT_CID,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
-	if (le_io == NULL) {
+
+	if (server->le_io == NULL) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
 		/* Doesn't have LE support, continue */
 	}
 
+	servers = g_slist_prepend(servers, server);
 	return 0;
-
-failed:
-	g_io_channel_unref(l2cap_io);
-	l2cap_io = NULL;
-
-	if (le_io) {
-		g_io_channel_unref(le_io);
-		le_io = NULL;
-	}
-
-	return -1;
 }
 
-void attrib_server_exit(void)
+void btd_adapter_gatt_server_stop(struct btd_adapter *adapter)
 {
+	struct gatt_server *server;
+	GSList *l;
+
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
+		return;
+
+	DBG("Stop GATT server in hci%d", adapter_get_dev_id(adapter));
+
+	server = l->data;
+	servers = g_slist_remove(servers, server);
+	gatt_server_free(server);
+
 	g_slist_free_full(database, attrib_free);
-
-	if (l2cap_io) {
-		g_io_channel_unref(l2cap_io);
-		g_io_channel_shutdown(l2cap_io, FALSE, NULL);
-	}
-
-	if (le_io) {
-		g_io_channel_unref(le_io);
-		g_io_channel_shutdown(le_io, FALSE, NULL);
-	}
 
 	g_slist_free_full(clients, (GDestroyNotify) channel_free);
 

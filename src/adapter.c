@@ -2374,6 +2374,10 @@ gboolean adapter_init(struct btd_adapter *adapter)
 	}
 
 	sdp_init_services_list(&adapter->bdaddr);
+
+	if (main_opts.attrib_server)
+		btd_adapter_gatt_server_start(adapter);
+
 	load_drivers(adapter);
 	clear_blocked(adapter);
 	load_devices(adapter);
@@ -2433,6 +2437,9 @@ void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 
 	unload_drivers(adapter);
+	if (main_opts.attrib_server)
+		btd_adapter_gatt_server_stop(adapter);
+
 	g_slist_free(adapter->pin_callbacks);
 
 	/* Return adapter to down state if it was not up on init */
