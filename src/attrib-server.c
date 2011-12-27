@@ -83,8 +83,6 @@ struct group_elem {
 	uint16_t len;
 };
 
-static GIOChannel *le_io = NULL;
-
 /* GAP attribute handles */
 static uint16_t name_handle = 0x0000;
 static uint16_t appearance_handle = 0x0000;
@@ -864,7 +862,7 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	else
 		channel->mtu = MIN(mtu, channel->mtu);
 
-	bt_io_set(le_io, BT_IO_L2CAP, NULL,
+	bt_io_set(channel->server->le_io, BT_IO_L2CAP, NULL,
 			BT_IO_OPT_OMTU, channel->mtu,
 			BT_IO_OPT_INVALID);
 
