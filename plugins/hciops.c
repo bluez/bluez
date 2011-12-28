@@ -1949,7 +1949,7 @@ static inline void remote_version_information(int index, void *ptr)
 }
 
 static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
-				uint8_t cod, int8_t rssi, uint8_t cfm_name,
+				uint32_t cod, int8_t rssi, uint8_t cfm_name,
 				uint8_t *eir, uint8_t eir_len)
 {
 	struct found_dev *dev;
