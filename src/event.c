@@ -204,23 +204,6 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 								FALSE, NULL);
 }
 
-void btd_event_bonding_complete(bdaddr_t *local, bdaddr_t *peer,
-							uint8_t status)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	gboolean create;
-
-	DBG("status 0x%02x", status);
-
-	create = status ? FALSE : TRUE;
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, create))
-		return;
-
-	adapter_bonding_complete(adapter, peer, status);
-}
-
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 								uint8_t status)
 {

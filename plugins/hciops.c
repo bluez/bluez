@@ -889,6 +889,8 @@ static int disconnect_addr(int index, bdaddr_t *dba, uint8_t reason)
 static void bonding_complete(struct dev_info *dev, struct bt_conn *conn,
 								uint8_t status)
 {
+	struct btd_adapter *adapter;
+
 	DBG("status 0x%02x", status);
 
 	if (conn->io != NULL) {
@@ -901,7 +903,9 @@ static void bonding_complete(struct dev_info *dev, struct bt_conn *conn,
 
 	conn->bonding_initiator = FALSE;
 
-	btd_event_bonding_complete(&dev->bdaddr, &conn->bdaddr, status);
+	adapter = manager_find_adapter(&dev->bdaddr);
+	if (adapter)
+		adapter_bonding_complete(adapter, &conn->bdaddr, status);
 }
 
 static int get_auth_info(int index, bdaddr_t *bdaddr, uint8_t *auth)

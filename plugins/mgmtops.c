@@ -350,6 +350,16 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 	info->current_settings = settings;
 }
 
+static void bonding_complete(struct controller_info *info, bdaddr_t *bdaddr,
+								uint8_t status)
+{
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter != NULL)
+		adapter_bonding_complete(adapter, bdaddr, status);
+}
+
 static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_link_key *ev = buf;
@@ -382,7 +392,7 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 						ev->key.val, ev->key.type,
 						ev->key.pin_len);
 
-	btd_event_bonding_complete(&info->bdaddr, &ev->key.bdaddr, 0);
+	bonding_complete(info, &ev->key.bdaddr, 0);
 }
 
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
@@ -461,8 +471,7 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_conn_failed(&info->bdaddr, &ev->addr.bdaddr, ev->status);
 
 	/* In the case of security mode 3 devices */
-	btd_event_bonding_complete(&info->bdaddr, &ev->addr.bdaddr,
-								ev->status);
+	bonding_complete(info, &ev->addr.bdaddr, ev->status);
 }
 
 static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
@@ -909,8 +918,7 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	btd_event_disconn_complete(&info->bdaddr, &rp->bdaddr);
 
-	btd_event_bonding_complete(&info->bdaddr, &rp->bdaddr,
-						HCI_CONNECTION_TERMINATED);
+	bonding_complete(info, &rp->bdaddr, HCI_CONNECTION_TERMINATED);
 }
 
 static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
@@ -935,8 +943,7 @@ static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_bonding_complete(&info->bdaddr, &rp->addr.bdaddr,
-								rp->status);
+	bonding_complete(info, &rp->addr.bdaddr, rp->status);
 }
 
 static void get_connections_complete(int sk, uint16_t index, void *buf,
@@ -1208,7 +1215,7 @@ static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_bonding_complete(&info->bdaddr, &ev->bdaddr, ev->status);
+	bonding_complete(info, &ev->bdaddr, ev->status);
 }
 
 static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t len)
