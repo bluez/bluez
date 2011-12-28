@@ -180,27 +180,6 @@ static struct gatt_server *find_gatt_server(const bdaddr_t *bdaddr)
 	return l->data;
 }
 
-static struct gatt_server *get_default_gatt_server(void)
-{
-	struct btd_adapter *adapter;
-	GSList *l;
-
-	adapter = manager_get_default_adapter();
-	if (adapter == NULL) {
-		error("Can't get default adapter");
-		return NULL;
-	}
-
-	l = g_slist_find_custom(servers, adapter, adapter_cmp);
-	if (l == NULL) {
-		error("Not GATT server initialized on adapter %s",
-						adapter_get_path(adapter));
-		return NULL;
-	}
-
-	return l->data;
-}
-
 static sdp_record_t *server_record_new(uuid_t *uuid, uint16_t start, uint16_t end)
 {
 	sdp_list_t *svclass_id, *apseq, *proto[2], *root, *aproto;
@@ -1080,15 +1059,27 @@ static gint channel_id_cmp(gconstpointer data, gconstpointer user_data)
 	return channel->id - id;
 }
 
-gboolean attrib_channel_detach(guint id)
+gboolean attrib_channel_detach(GAttrib *attrib, guint id)
 {
 	struct gatt_server *server;
 	struct gatt_channel *channel;
+	GError *gerr = NULL;
+	GIOChannel *io;
+	bdaddr_t src;
 	GSList *l;
 
-	DBG("Deprecated function");
+	io = g_attrib_get_channel(attrib);
 
-	server = get_default_gatt_server();
+	bt_io_get(io, BT_IO_L2CAP, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
+							BT_IO_OPT_INVALID);
+
+	if (gerr != NULL) {
+		error("bt_io_get: %s", gerr->message);
+		g_error_free(gerr);
+		return FALSE;
+	}
+
+	server = find_gatt_server(&src);
 	if (server == NULL)
 		return FALSE;
 

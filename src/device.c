@@ -1730,7 +1730,7 @@ static void attrib_disconnected(gpointer user_data)
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
-	attrib_channel_detach(device->attachid);
+	attrib_channel_detach(device->attrib, device->attachid);
 	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
 
@@ -1779,7 +1779,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_probe_drivers(device, uuids);
 
 	if (device->attios == NULL && device->attios_offline == NULL) {
-		attrib_channel_detach(device->attachid);
+		attrib_channel_detach(device->attrib, device->attachid);
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
 	} else
@@ -2865,7 +2865,7 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 		return TRUE;
 
 	if (device->attachid) {
-		attrib_channel_detach(device->attachid);
+		attrib_channel_detach(device->attrib, device->attachid);
 		device->attachid = 0;
 	}
 
