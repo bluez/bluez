@@ -1371,18 +1371,18 @@ int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 	return 0;
 }
 
-int attrib_db_del(uint16_t handle)
+int attrib_db_del(struct btd_adapter *adapter, uint16_t handle)
 {
 	struct gatt_server *server;
 	struct attribute *a;
 	GSList *l;
 	guint h = handle;
 
-	DBG("Deprecated function!");
-
-	server = get_default_gatt_server();
-	if (server == NULL)
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
 		return -ENOENT;
+
+	server = l->data;
 
 	DBG("handle=0x%04x", handle);
 

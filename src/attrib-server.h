@@ -29,7 +29,7 @@ struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
 int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 					bt_uuid_t *uuid, const uint8_t *value,
 					int len, struct attribute **attr);
-int attrib_db_del(uint16_t handle);
+int attrib_db_del(struct btd_adapter *adapter, uint16_t handle);
 int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
 						const uint8_t *value, int len);
 uint32_t attrib_create_sdp(uint16_t handle, const char *name);
