@@ -3583,7 +3583,7 @@ static int hciops_add_remote_oob_data(int index, bdaddr_t *bdaddr,
 	ba2str(bdaddr, addr);
 	DBG("hci%d bdaddr %s", index, addr);
 
-	match = g_slist_find_custom(dev->oob_data, &bdaddr, oob_bdaddr_cmp);
+	match = g_slist_find_custom(dev->oob_data, bdaddr, oob_bdaddr_cmp);
 
 	if (match) {
 		data = match->data;
@@ -3608,7 +3608,7 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	ba2str(bdaddr, addr);
 	DBG("hci%d bdaddr %s", index, addr);
 
-	match = g_slist_find_custom(dev->oob_data, &bdaddr, oob_bdaddr_cmp);
+	match = g_slist_find_custom(dev->oob_data, bdaddr, oob_bdaddr_cmp);
 
 	if (!match)
 		return -ENOENT;
