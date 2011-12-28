@@ -766,7 +766,7 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
 	if (main_opts.attrib_server) {
 		/* Removes service class */
 		class[1] = class[1] & 0x1f;
-		attrib_gap_set(GATT_CHARAC_APPEARANCE, class, 2);
+		attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, class, 2);
 	}
 
 	emit_property_changed(connection, adapter->path,
@@ -788,7 +788,7 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 					DBUS_TYPE_STRING, &name);
 
 	if (main_opts.attrib_server)
-		attrib_gap_set(GATT_CHARAC_DEVICE_NAME,
+		attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
 				(const uint8_t *) name, strlen(name));
 }
 

@@ -1399,11 +1399,10 @@ int attrib_db_del(uint16_t handle)
 	return 0;
 }
 
-int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
+int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
+						const uint8_t *value, int len)
 {
 	uint16_t handle;
-
-	DBG("Deprecated function!");
 
 	/* FIXME: Missing Privacy and Reconnection Address */
 
@@ -1418,6 +1417,5 @@ int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len)
 		return -ENOSYS;
 	}
 
-	/* FIXME: Provide the adapter in next function */
-	return attrib_db_update(NULL, handle, NULL, value, len, NULL);
+	return attrib_db_update(adapter, handle, NULL, value, len, NULL);
 }
