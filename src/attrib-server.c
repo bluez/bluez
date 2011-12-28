@@ -1281,19 +1281,19 @@ void attrib_free_sdp(uint32_t sdp_handle)
 	remove_record_from_server(sdp_handle);
 }
 
-uint16_t attrib_db_find_avail(uint16_t nitems)
+uint16_t attrib_db_find_avail(struct btd_adapter *adapter, uint16_t nitems)
 {
 	struct gatt_server *server;
 	uint16_t handle;
 	GSList *l;
 
-	DBG("Deprecated function!");
-
 	g_assert(nitems > 0);
 
-	server = get_default_gatt_server();
-	if (server == NULL)
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
 		return 0;
+
+	server = l->data;
 
 	for (l = server->database, handle = 0; l; l = l->next) {
 		struct attribute *a = l->data;

@@ -28,6 +28,7 @@
 
 #include <glib.h>
 #include <bluetooth/uuid.h>
+#include <adapter.h>
 
 #include "log.h"
 
@@ -58,7 +59,8 @@ static void register_link_loss(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	/* FIXME: Provide the adapter in next function */
+	start_handle = attrib_db_find_avail(NULL, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -95,7 +97,8 @@ static void register_tx_power(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	/* FIXME: Provide the adapter in next function */
+	start_handle = attrib_db_find_avail(NULL, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -139,7 +142,8 @@ static void register_immediate_alert(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	/* FIXME: Provide the adapter in next function */
+	start_handle = attrib_db_find_avail(NULL, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;

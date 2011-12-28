@@ -30,6 +30,7 @@
 #include <time.h>
 #include <errno.h>
 #include <bluetooth/uuid.h>
+#include <adapter.h>
 
 #include "att.h"
 #include "gattrib.h"

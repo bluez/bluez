@@ -126,7 +126,7 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -226,7 +226,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 						GUINT_TO_POINTER(sdp_handle));
 }
 
-static void register_manuf1_service(uint16_t range[2])
+static void register_manuf1_service(struct gatt_example_adapter *adapter,
+							uint16_t range[2])
 {
 	const char *manufacturer_name1 = "ACME Temperature Sensor";
 	const char *serial1 = "237495-3282-A";
@@ -236,7 +237,7 @@ static void register_manuf1_service(uint16_t range[2])
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -283,7 +284,8 @@ static void register_manuf1_service(uint16_t range[2])
 	range[1] = start_handle + svc_size - 1;
 }
 
-static void register_manuf2_service(uint16_t range[2])
+static void register_manuf2_service(struct gatt_example_adapter *adapter,
+							uint16_t range[2])
 {
 	const char *manufacturer_name2 = "ACME Weighing Scales";
 	const char *serial2 = "11267-2327A00239";
@@ -293,7 +295,7 @@ static void register_manuf2_service(uint16_t range[2])
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -340,14 +342,15 @@ static void register_manuf2_service(uint16_t range[2])
 	range[1] = start_handle + svc_size - 1;
 }
 
-static void register_vendor_service(uint16_t range[2])
+static void register_vendor_service(struct gatt_example_adapter *adapter,
+							uint16_t range[2])
 {
 	uint16_t start_handle, h;
 	const int svc_size = 3;
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
-	start_handle = attrib_db_find_avail(svc_size);
+	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -405,7 +408,7 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 
 	btoh128(&char_weight_uuid_btorder, &char_weight_uuid);
 
-	start_handle = attrib_db_find_avail(svc_size);
+	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -485,10 +488,10 @@ static int gatt_example_adapter_probe(struct btd_adapter *adapter)
 		return -EIO;
 	}
 
-	register_manuf1_service(manuf1_range);
-	register_manuf2_service(manuf2_range);
+	register_manuf1_service(gadapter, manuf1_range);
+	register_manuf2_service(gadapter, manuf2_range);
 	register_termometer_service(gadapter, manuf1_range, manuf2_range);
-	register_vendor_service(vendor_range);
+	register_vendor_service(gadapter, vendor_range);
 	register_weight_service(gadapter, vendor_range);
 
 	adapters = g_slist_append(adapters, gadapter);

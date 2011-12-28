@@ -29,6 +29,7 @@
 #include <glib.h>
 #include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
+#include <adapter.h>
 
 #include "att.h"
 #include "gattrib.h"
@@ -262,7 +263,8 @@ gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ..
 	}
 	va_end(args);
 
-	start_handle = attrib_db_find_avail(size);
+	/* FIXME: Provide the adapter in next function */
+	start_handle = attrib_db_find_avail(NULL, size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		g_slist_free_full(chrs, free_gatt_info);
