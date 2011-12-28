@@ -170,6 +170,12 @@ AC_DEFUN([AC_PATH_READLINE], [
 		[])
 ])
 
+AC_DEFUN([AC_PATH_CHECK], [
+	PKG_CHECK_MODULES(CHECK, check >= 0.9.4, check_found=yes, check_found=no)
+	AC_SUBST(CHECK_CFLAGS)
+	AC_SUBST(CHECK_LIBS)
+])
+
 AC_DEFUN([AC_PATH_OUI], [
 	AC_ARG_WITH(ouifile,
 		    AS_HELP_STRING([--with-ouifile=PATH],[Path to the oui.txt file @<:@auto@:>@]),
@@ -422,7 +428,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
-	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
+	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes" && test "${check_found}" = "yes")
 	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
 	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
