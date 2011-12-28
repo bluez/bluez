@@ -85,7 +85,8 @@ static uint8_t current_time_read(struct attribute *a, gpointer user_data)
 	if (encode_current_time(value) < 0)
 		return ATT_ECODE_IO;
 
-	attrib_db_update(a->handle, NULL, value, sizeof(value), NULL);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_update(NULL, a->handle, NULL, value, sizeof(value), NULL);
 
 	return 0;
 }
@@ -106,7 +107,8 @@ static uint8_t local_time_info_read(struct attribute *a, gpointer user_data)
 	 * format (offset from UTC in number of 15 minutes increments). */
 	value[1] = (uint8_t) (-1 * timezone / (60 * 15));
 
-	attrib_db_update(a->handle, NULL, value, sizeof(value), NULL);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_update(NULL, a->handle, NULL, value, sizeof(value), NULL);
 
 	return 0;
 }

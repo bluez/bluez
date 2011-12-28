@@ -97,7 +97,8 @@ static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
 	uint8_t value;
 
 	value = 0x04;
-	attrib_db_update(a->handle, NULL, &value, sizeof(value), NULL);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_update(NULL, a->handle, NULL, &value, sizeof(value), NULL);
 
 	return 0;
 }

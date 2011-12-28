@@ -26,7 +26,8 @@ uint16_t attrib_db_find_avail(struct btd_adapter *adapter, uint16_t nitems);
 struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
 				bt_uuid_t *uuid, int read_reqs, int write_reqs,
 				const uint8_t *value, int len);
-int attrib_db_update(uint16_t handle, bt_uuid_t *uuid, const uint8_t *value,
+int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
+					bt_uuid_t *uuid, const uint8_t *value,
 					int len, struct attribute **attr);
 int attrib_db_del(uint16_t handle);
 int attrib_gap_set(uint16_t uuid, const uint8_t *value, int len);
