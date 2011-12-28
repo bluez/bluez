@@ -1264,17 +1264,16 @@ void btd_adapter_gatt_server_stop(struct btd_adapter *adapter)
 	gatt_server_free(server);
 }
 
-uint32_t attrib_create_sdp(uint16_t handle, const char *name)
+uint32_t attrib_create_sdp(struct btd_adapter *adapter, uint16_t handle,
+							const char *name)
 {
-	struct gatt_server *server;
+	GSList *l;
 
-	DBG("Deprecated function!");
-
-	server = get_default_gatt_server();
-	if (server == NULL)
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
 		return 0;
 
-	return attrib_create_sdp_new(server, handle, name);
+	return attrib_create_sdp_new(l->data, handle, name);
 }
 
 void attrib_free_sdp(uint32_t sdp_handle)

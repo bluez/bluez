@@ -231,7 +231,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	g_assert(h - start_handle == svc_size);
 
 	/* Add an SDP record for the above service */
-	sdp_handle = attrib_create_sdp(start_handle, "Thermometer");
+	sdp_handle = attrib_create_sdp(adapter->adapter, start_handle,
+								"Thermometer");
 	if (sdp_handle)
 		adapter->sdp_handles = g_slist_prepend(adapter->sdp_handles,
 						GUINT_TO_POINTER(sdp_handle));
@@ -496,7 +497,8 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	g_assert(h - start_handle == svc_size);
 
 	/* Add an SDP record for the above service */
-	sdp_handle = attrib_create_sdp(start_handle, "Weight Service");
+	sdp_handle = attrib_create_sdp(adapter->adapter, start_handle,
+							"Weight Service");
 	if (sdp_handle)
 		adapter->sdp_handles = g_slist_prepend(adapter->sdp_handles,
 						GUINT_TO_POINTER(sdp_handle));
