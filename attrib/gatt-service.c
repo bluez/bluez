@@ -151,7 +151,8 @@ static gint find_callback(gconstpointer a, gconstpointer b)
 	return cb->event - event;
 }
 
-static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
+static gboolean add_characteristic(struct btd_adapter *adapter,
+				uint16_t *handle, struct gatt_info *info)
 {
 	int read_reqs, write_reqs;
 	uint16_t h = *handle;
@@ -197,14 +198,12 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 	atval[0] = info->props;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(info->uuid.value.u16, &atval[3]);
-	/* FIXME: Provide the adapter in next function */
-	attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
-								sizeof(atval));
+	attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
+							atval, sizeof(atval));
 
 	/* characteristic value */
-	/* FIXME: Provide the adapter in next function */
-	a = attrib_db_add(NULL, h++, &info->uuid, read_reqs, write_reqs, NULL,
-									0);
+	a = attrib_db_add(adapter, h++, &info->uuid, read_reqs, write_reqs,
+								NULL, 0);
 	for (l = info->callbacks; l != NULL; l = l->next) {
 		struct attrib_cb *cb = l->data;
 
@@ -228,8 +227,7 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 		bt_uuid16_create(&bt_uuid, GATT_CLIENT_CHARAC_CFG_UUID);
 		cfg_val[0] = 0x00;
 		cfg_val[1] = 0x00;
-		/* FIXME: Provide the adapter in next function */
-		a = attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE,
+		a = attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE,
 				ATT_AUTHENTICATION, cfg_val, sizeof(cfg_val));
 
 		if (info->ccc_handle != NULL)
@@ -249,7 +247,8 @@ static void free_gatt_info(void *data)
 	g_free(info);
 }
 
-gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...)
+gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
+				uint16_t svc_uuid, gatt_option opt1, ...)
 {
 	uint16_t start_handle, h;
 	unsigned int size;
@@ -266,9 +265,7 @@ gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ..
 		size += info->num_attrs;
 	}
 	va_end(args);
-
-	/* FIXME: Provide the adapter in next function */
-	start_handle = attrib_db_find_avail(NULL, size);
+	start_handle = attrib_db_find_avail(adapter, size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		g_slist_free_full(chrs, free_gatt_info);
@@ -282,15 +279,13 @@ gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ..
 	h = start_handle;
 	bt_uuid16_create(&bt_uuid, uuid);
 	att_put_u16(svc_uuid, &atval[0]);
-	/* FIXME: Provide the adapter in next function */
-	attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
-								sizeof(atval));
-
+	attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
+							atval, sizeof(atval));
 	for (l = chrs; l != NULL; l = l->next) {
 		struct gatt_info *info = l->data;
 
 		DBG("New characteristic: handle 0x%04x", h);
-		if (!add_characteristic(&h, info)) {
+		if (!add_characteristic(adapter, &h, info)) {
 			g_slist_free_full(chrs, free_gatt_info);
 			return FALSE;
 		}

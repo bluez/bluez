@@ -102,9 +102,10 @@ static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
 	return 0;
 }
 
-static gboolean register_battery_service(void)
+static gboolean register_battery_service(struct btd_adapter *adapter)
 {
-	return gatt_service_add(GATT_PRIM_SVC_UUID, BATTERY_STATE_SVC_UUID,
+	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID,
+			BATTERY_STATE_SVC_UUID,
 			/* battery state characteristic */
 			GATT_OPT_CHR_UUID, BATTERY_STATE_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
@@ -509,7 +510,7 @@ static int gatt_example_adapter_probe(struct btd_adapter *adapter)
 	gadapter = g_new0(struct gatt_example_adapter, 1);
 	gadapter->adapter = btd_adapter_ref(adapter);
 
-	if (!register_battery_service()) {
+	if (!register_battery_service(adapter)) {
 		DBG("Battery service could not be registered");
 		gatt_example_adapter_free(gadapter);
 		return -EIO;

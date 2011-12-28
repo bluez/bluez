@@ -47,4 +47,5 @@ typedef enum {
 	ATTRIB_WRITE,
 } attrib_event_t;
 
-gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ...);
+gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
+				uint16_t svc_uuid, gatt_option opt1, ...);
