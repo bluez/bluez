@@ -140,7 +140,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	/* Thermometer: primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(THERM_HUMIDITY_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 2);
 
 	bt_uuid16_create(&uuid, GATT_INCLUDE_UUID);
 
@@ -149,8 +150,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 		att_put_u16(manuf1[0], &atval[0]);
 		att_put_u16(manuf1[1], &atval[2]);
 		att_put_u16(MANUFACTURER_SVC_UUID, &atval[4]);
-		attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
-									6);
+		attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE,
+						ATT_NOT_PERMITTED, atval, 6);
 	}
 
 	/* Thermometer: Include */
@@ -158,8 +159,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 		att_put_u16(manuf2[0], &atval[0]);
 		att_put_u16(manuf2[1], &atval[2]);
 		att_put_u16(VENDOR_SPECIFIC_SVC_UUID, &atval[4]);
-		attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
-									6);
+		attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE,
+						ATT_NOT_PERMITTED, atval, 6);
 	}
 
 	/* Thermometer: temperature characteristic */
@@ -167,13 +168,15 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(TEMPERATURE_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Thermometer: temperature characteristic value */
 	bt_uuid16_create(&uuid, TEMPERATURE_UUID);
 	atval[0] = 0x8A;
 	atval[1] = 0x02;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 2);
 
 	/* Thermometer: temperature characteristic format */
 	bt_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
@@ -182,25 +185,29 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	att_put_u16(FMT_CELSIUS_UUID, &atval[2]);
 	atval[4] = 0x01;
 	att_put_u16(FMT_OUTSIDE_UUID, &atval[5]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 7);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 7);
 
 	/* Thermometer: characteristic user description */
 	bt_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
 	len = strlen(desc_out_temp);
 	strncpy((char *) atval, desc_out_temp, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	/* Thermometer: relative humidity characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(RELATIVE_HUMIDITY_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Thermometer: relative humidity value */
 	bt_uuid16_create(&uuid, RELATIVE_HUMIDITY_UUID);
 	atval[0] = 0x27;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 1);
 
 	/* Thermometer: relative humidity characteristic format */
 	bt_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
@@ -209,13 +216,15 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	att_put_u16(FMT_PERCENT_UUID, &atval[2]);
 	att_put_u16(BLUETOOTH_SIG_UUID, &atval[4]);
 	att_put_u16(FMT_OUTSIDE_UUID, &atval[6]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 8);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 8);
 
 	/* Thermometer: characteristic user description */
 	bt_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
 	len = strlen(desc_out_hum);
 	strncpy((char *) atval, desc_out_hum, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	g_assert(h - start_handle == svc_size);
 
@@ -250,33 +259,38 @@ static void register_manuf1_service(struct gatt_example_adapter *adapter,
 	/* Secondary Service: Manufacturer Service */
 	bt_uuid16_create(&uuid, GATT_SND_SVC_UUID);
 	att_put_u16(MANUFACTURER_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 2);
 
 	/* Manufacturer name characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(MANUFACTURER_NAME_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Manufacturer name characteristic value */
 	bt_uuid16_create(&uuid, MANUFACTURER_NAME_UUID);
 	len = strlen(manufacturer_name1);
 	strncpy((char *) atval, manufacturer_name1, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	/* Manufacturer serial number characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(MANUFACTURER_SERIAL_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Manufacturer serial number characteristic value */
 	bt_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
 	len = strlen(serial1);
 	strncpy((char *) atval, serial1, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	g_assert(h - start_handle == svc_size);
 
@@ -308,33 +322,38 @@ static void register_manuf2_service(struct gatt_example_adapter *adapter,
 	/* Secondary Service: Manufacturer Service */
 	bt_uuid16_create(&uuid, GATT_SND_SVC_UUID);
 	att_put_u16(MANUFACTURER_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 2);
 
 	/* Manufacturer name characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(MANUFACTURER_NAME_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Manufacturer name attribute */
 	bt_uuid16_create(&uuid, MANUFACTURER_NAME_UUID);
 	len = strlen(manufacturer_name2);
 	strncpy((char *) atval, manufacturer_name2, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	/* Characteristic: serial number */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(MANUFACTURER_SERIAL_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Serial number characteristic value */
 	bt_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
 	len = strlen(serial2);
 	strncpy((char *) atval, serial2, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	g_assert(h - start_handle == svc_size);
 
@@ -363,14 +382,16 @@ static void register_vendor_service(struct gatt_example_adapter *adapter,
 	/* Secondary Service: Vendor Specific Service */
 	bt_uuid16_create(&uuid, GATT_SND_SVC_UUID);
 	att_put_u16(VENDOR_SPECIFIC_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 2);
 
 	/* Vendor Specific Type characteristic definition */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(VENDOR_SPECIFIC_TYPE_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 5);
 
 	/* Vendor Specific Type characteristic value */
 	bt_uuid16_create(&uuid, VENDOR_SPECIFIC_TYPE_UUID);
@@ -380,7 +401,8 @@ static void register_vendor_service(struct gatt_example_adapter *adapter,
 	atval[3] = 0x64;
 	atval[4] = 0x6F;
 	atval[5] = 0x72;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 6);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 6);
 
 	g_assert(h - start_handle == svc_size);
 
@@ -422,7 +444,8 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	/* Weight service: primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	memcpy(atval, &prim_weight_uuid_btorder, 16);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 16);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 16);
 
 	if (vendor[0] && vendor[1]) {
 		/* Weight: include */
@@ -430,8 +453,8 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 		att_put_u16(vendor[0], &atval[0]);
 		att_put_u16(vendor[1], &atval[2]);
 		att_put_u16(MANUFACTURER_SVC_UUID, &atval[4]);
-		attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
-									6);
+		attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE,
+						ATT_NOT_PERMITTED, atval, 6);
 	}
 
 	/* Weight: characteristic */
@@ -439,7 +462,8 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	atval[0] = ATT_CHAR_PROPER_READ;
 	att_put_u16(h + 1, &atval[1]);
 	memcpy(&atval[3], &char_weight_uuid_btorder, 16);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 19);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 19);
 
 	/* Weight: characteristic value */
 	bt_uuid128_create(&uuid, char_weight_uuid);
@@ -447,7 +471,8 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	atval[1] = 0x55;
 	atval[2] = 0x00;
 	atval[3] = 0x00;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 4);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 4);
 
 	/* Weight: characteristic format */
 	bt_uuid16_create(&uuid, GATT_CHARAC_FMT_UUID);
@@ -456,13 +481,15 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	att_put_u16(FMT_KILOGRAM_UUID, &atval[2]);
 	att_put_u16(BLUETOOTH_SIG_UUID, &atval[4]);
 	att_put_u16(FMT_HANGING_UUID, &atval[6]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 8);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, 8);
 
 	/* Weight: characteristic user description */
 	bt_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
 	len = strlen(desc_weight);
 	strncpy((char *) atval, desc_weight, len);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, len);
+	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+								atval, len);
 
 	g_assert(h - start_handle == svc_size);
 

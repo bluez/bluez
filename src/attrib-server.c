@@ -1316,18 +1316,17 @@ uint16_t attrib_db_find_avail(struct btd_adapter *adapter, uint16_t nitems)
 	return 0;
 }
 
-struct attribute *attrib_db_add(uint16_t handle, bt_uuid_t *uuid, int read_reqs,
-				int write_reqs, const uint8_t *value, int len)
+struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
+				bt_uuid_t *uuid, int read_reqs, int write_reqs,
+						const uint8_t *value, int len)
 {
-	struct gatt_server *server;
+	GSList *l;
 
-	DBG("Deprecated function!");
-
-	server = get_default_gatt_server();
-	if (server == NULL)
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
 		return NULL;
 
-	return attrib_db_add_new(server, handle, uuid, read_reqs, write_reqs,
+	return attrib_db_add_new(l->data, handle, uuid, read_reqs, write_reqs,
 								value, len);
 }
 

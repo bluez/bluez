@@ -197,11 +197,14 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 	atval[0] = info->props;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(info->uuid.value.u16, &atval[3]);
-	attrib_db_add(h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
 								sizeof(atval));
 
 	/* characteristic value */
-	a = attrib_db_add(h++, &info->uuid, read_reqs, write_reqs, NULL, 0);
+	/* FIXME: Provide the adapter in next function */
+	a = attrib_db_add(NULL, h++, &info->uuid, read_reqs, write_reqs, NULL,
+									0);
 	for (l = info->callbacks; l != NULL; l = l->next) {
 		struct attrib_cb *cb = l->data;
 
@@ -225,8 +228,9 @@ static gboolean add_characteristic(uint16_t *handle, struct gatt_info *info)
 		bt_uuid16_create(&bt_uuid, GATT_CLIENT_CHARAC_CFG_UUID);
 		cfg_val[0] = 0x00;
 		cfg_val[1] = 0x00;
-		a = attrib_db_add(h++, &bt_uuid, ATT_NONE, ATT_AUTHENTICATION,
-						cfg_val, sizeof(cfg_val));
+		/* FIXME: Provide the adapter in next function */
+		a = attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE,
+				ATT_AUTHENTICATION, cfg_val, sizeof(cfg_val));
 
 		if (info->ccc_handle != NULL)
 			*info->ccc_handle = a->handle;
@@ -278,7 +282,8 @@ gboolean gatt_service_add(uint16_t uuid, uint16_t svc_uuid, gatt_option opt1, ..
 	h = start_handle;
 	bt_uuid16_create(&bt_uuid, uuid);
 	att_put_u16(svc_uuid, &atval[0]);
-	attrib_db_add(h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED, atval,
 								sizeof(atval));
 
 	for (l = chrs; l != NULL; l = l->next) {

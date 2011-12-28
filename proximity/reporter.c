@@ -73,19 +73,22 @@ static void register_link_loss(void)
 	/* Primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(LINK_LOSS_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
 	/* Alert level characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_WRITE;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(ALERT_LEVEL_CHR_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* Alert level value */
 	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
 	att_put_u8(NO_ALERT, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NONE, atval, 1);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NONE, atval, 1);
 
 	g_assert(h - start_handle == svc_size);
 }
@@ -111,26 +114,30 @@ static void register_tx_power(void)
 	/* Primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(TX_POWER_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
 	/* Power level characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_NOTIFY;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(POWER_LEVEL_CHR_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* Power level value */
 	bt_uuid16_create(&uuid, POWER_LEVEL_CHR_UUID);
 	att_put_u8(0x00, &atval[0]);
 	tx_power_handle = h;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
 
 	/* Client characteristic configuration */
 	bt_uuid16_create(&uuid, GATT_CLIENT_CHARAC_CFG_UUID);
 	atval[0] = 0x00;
 	atval[1] = 0x00;
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NONE, atval, 2);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NONE, atval, 2);
 
 	g_assert(h - start_handle == svc_size);
 }
@@ -156,19 +163,22 @@ static void register_immediate_alert(void)
 	/* Primary service definition */
 	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	att_put_u16(IMMEDIATE_ALERT_SVC_UUID, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
 
 	/* Alert level characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
 	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_WRITE;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(ALERT_LEVEL_CHR_UUID, &atval[3]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
 
 	/* Alert level value */
 	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
 	att_put_u8(NO_ALERT, &atval[0]);
-	attrib_db_add(h++, &uuid, ATT_NONE, ATT_NONE, atval, 1);
+	/* FIXME: Provide the adapter in next function */
+	attrib_db_add(NULL, h++, &uuid, ATT_NONE, ATT_NONE, atval, 1);
 
 	g_assert(h - start_handle == svc_size);
 }
