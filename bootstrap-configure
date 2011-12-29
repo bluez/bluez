@@ -34,5 +34,6 @@ fi
 		--enable-cups \
 		--enable-sap \
 		--enable-thermometer \
+		--enable-wiimote \
 		--disable-pcmcia \
 		--disable-datafiles $*
