@@ -32,6 +32,9 @@ fi
 		--enable-dund \
 		--enable-test \
 		--enable-cups \
+		--enable-dbusoob \
+		--enable-maemo6 \
+		--enable-pnat \
 		--enable-sap \
 		--enable-thermometer \
 		--enable-wiimote \
