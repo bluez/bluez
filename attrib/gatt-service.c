@@ -198,12 +198,16 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 	atval[0] = info->props;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(info->uuid.value.u16, &atval[3]);
-	attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
-							atval, sizeof(atval));
+	if (attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
+						atval, sizeof(atval)) == NULL)
+		return FALSE;
 
 	/* characteristic value */
 	a = attrib_db_add(adapter, h++, &info->uuid, read_reqs, write_reqs,
 								NULL, 0);
+	if (a == NULL)
+		return FALSE;
+
 	for (l = info->callbacks; l != NULL; l = l->next) {
 		struct attrib_cb *cb = l->data;
 
@@ -229,6 +233,8 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		cfg_val[1] = 0x00;
 		a = attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE,
 				ATT_AUTHENTICATION, cfg_val, sizeof(cfg_val));
+		if (a == NULL)
+			return FALSE;
 
 		if (info->ccc_handle != NULL)
 			*info->ccc_handle = a->handle;
@@ -245,6 +251,16 @@ static void free_gatt_info(void *data)
 
 	g_slist_free_full(info->callbacks, g_free);
 	g_free(info);
+}
+
+static void service_attr_del(struct btd_adapter *adapter, uint16_t start_handle,
+							uint16_t end_handle)
+{
+	uint16_t handle;
+
+	for (handle = start_handle; handle <= end_handle; handle++)
+		if (attrib_db_del(adapter, handle) < 0)
+			error("Can't delete handle 0x%04x", handle);
 }
 
 gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
@@ -279,14 +295,19 @@ gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
 	h = start_handle;
 	bt_uuid16_create(&bt_uuid, uuid);
 	att_put_u16(svc_uuid, &atval[0]);
-	attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
-							atval, sizeof(atval));
+	if (attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
+						atval, sizeof(atval)) == NULL) {
+		g_slist_free_full(chrs, free_gatt_info);
+		return FALSE;
+	}
+
 	for (l = chrs; l != NULL; l = l->next) {
 		struct gatt_info *info = l->data;
 
 		DBG("New characteristic: handle 0x%04x", h);
 		if (!add_characteristic(adapter, &h, info)) {
 			g_slist_free_full(chrs, free_gatt_info);
+			service_attr_del(adapter, start_handle, h - 1);
 			return FALSE;
 		}
 	}
