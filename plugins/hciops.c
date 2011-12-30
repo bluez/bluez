@@ -1973,7 +1973,7 @@ static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
 
 event:
 	btd_event_device_found(&info->bdaddr, dba, type, cod, rssi, cfm_name,
-								NULL, 0);
+								eir, eir_len);
 }
 
 static inline void inquiry_result(int index, int plen, void *ptr)
