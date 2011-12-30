@@ -123,13 +123,13 @@ static void register_current_time_service(void)
 				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
 							ATT_CHAR_PROPER_NOTIFY,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
-							current_time_read,
+						current_time_read, NULL,
 
 				/* Local Time Information characteristic */
 				GATT_OPT_CHR_UUID, LOCAL_TIME_INFO_CHR_UUID,
 				GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
-							local_time_info_read,
+						local_time_info_read, NULL,
 
 				GATT_OPT_INVALID);
 }

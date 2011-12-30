@@ -94,11 +94,11 @@ static gint adapter_cmp(gconstpointer a, gconstpointer b)
 
 static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
 {
+	struct btd_adapter *adapter = user_data;
 	uint8_t value;
 
 	value = 0x04;
-	/* FIXME: Provide the adapter in next function */
-	attrib_db_update(NULL, a->handle, NULL, &value, sizeof(value), NULL);
+	attrib_db_update(adapter, a->handle, NULL, &value, sizeof(value), NULL);
 
 	return 0;
 }
@@ -111,7 +111,8 @@ static gboolean register_battery_service(struct btd_adapter *adapter)
 			GATT_OPT_CHR_UUID, BATTERY_STATE_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
 							ATT_CHAR_PROPER_NOTIFY,
-			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ, battery_state_read,
+			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
+						battery_state_read, adapter,
 
 			GATT_OPT_INVALID);
 }

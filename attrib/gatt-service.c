@@ -52,6 +52,7 @@ struct gatt_info {
 struct attrib_cb {
 	attrib_event_t event;
 	void *fn;
+	void *user_data;
 };
 
 static GSList *parse_opts(gatt_option opt1, va_list args)
@@ -86,6 +87,7 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 			cb = g_new0(struct attrib_cb, 1);
 			cb->event = va_arg(args, attrib_event_t);
 			cb->fn = va_arg(args, void *);
+			cb->user_data = va_arg(args, void *);
 			info->callbacks = g_slist_append(info->callbacks, cb);
 			break;
 		case GATT_OPT_CHR_VALUE_GET_HANDLE:
@@ -219,6 +221,8 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 			a->write_cb = cb->fn;
 			break;
 		}
+
+		a->cb_user_data = cb->user_data;
 	}
 
 	if (info->value_handle != NULL)
