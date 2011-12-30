@@ -2039,9 +2039,16 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 		uint32_t class = info->dev_class[0]
 					| (info->dev_class[1] << 8)
 					| (info->dev_class[2] << 16);
+		gboolean cfm_name;
+
+		if (eir_has_complete_name(info->data, sizeof(info->data)))
+			cfm_name = FALSE;
+		else
+			cfm_name = TRUE;
 
 		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
-				info->rssi, 1, info->data, HCI_MAX_EIR_LENGTH);
+					info->rssi, cfm_name,
+					info->data, sizeof(info->data));
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
