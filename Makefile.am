@@ -131,11 +131,6 @@ builtin_modules += pnat
 builtin_sources += plugins/pnat.c
 endif
 
-if ECHOPLUGIN
-builtin_modules += echo
-builtin_sources += plugins/echo.c
-endif
-
 if AUDIOPLUGIN
 builtin_modules += audio
 builtin_sources += audio/main.c \
