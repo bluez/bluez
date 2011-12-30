@@ -124,12 +124,6 @@ AC_DEFUN([AC_PATH_GSTREAMER], [
 	AC_SUBST(GSTREAMER_PLUGINSDIR)
 ])
 
-AC_DEFUN([AC_PATH_PULSE], [
-	PKG_CHECK_MODULES(PULSE, libpulse, pulse_found=yes, pulse_found=no)
-	AC_SUBST(PULSE_CFLAGS)
-	AC_SUBST(PULSE_LIBS)
-])
-
 AC_DEFUN([AC_PATH_ALSA], [
 	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, alsa_found=no)
 	AC_CHECK_LIB(rt, clock_gettime, ALSA_LIBS="$ALSA_LIBS -lrt", alsa_found=no)
