@@ -541,6 +541,7 @@ static void gatt_example_adapter_remove(struct btd_adapter *adapter)
 		return;
 
 	gadapter = l->data;
+	adapters = g_slist_remove(adapters, gadapter);
 	gatt_example_adapter_free(gadapter);
 }
 
