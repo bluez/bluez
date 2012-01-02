@@ -1287,8 +1287,9 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 		eir = ev->eir;
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, class %u rssi %d %s", index, addr, cls,
-						ev->rssi, eir ? "eir" : "");
+	DBG("hci%u addr %s, class %u rssi %d cfm_name %u %s", index, addr, cls,
+						ev->rssi, ev->confirm_name,
+						eir ? "eir" : "");
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
 					mgmt_addr_type(ev->addr.type), cls,
