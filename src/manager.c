@@ -395,6 +395,7 @@ struct btd_adapter *btd_manager_register_adapter(int id)
 	adapters = g_slist_append(adapters, adapter);
 
 	if (!adapter_init(adapter)) {
+		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;
 	}
