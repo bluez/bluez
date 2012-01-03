@@ -33,6 +33,9 @@
 
 static GSList *transfers = NULL;
 
+static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
+							gpointer user_data);
+
 struct transfer {
 	guint id;
 	guint8 opcode;
@@ -130,16 +133,30 @@ static gssize put_get_data(void *buf, gsize len, gpointer user_data)
 	gssize ret;
 
 	ret = transfer->data_producer(buf, len, transfer->user_data);
-	if (ret >= 0)
+	if (ret == 0 || ret == -EAGAIN)
 		return ret;
 
-	if (ret == -EAGAIN)
-		return ret;
+	if (ret > 0) {
+		/* Check if SRM is active */
+		if (!g_obex_srm_active(transfer->obex))
+			return ret;
+
+		/* Generate next packet */
+		req = g_obex_packet_new(transfer->opcode, FALSE,
+							G_OBEX_HDR_INVALID);
+		g_obex_packet_add_body(req, put_get_data, transfer);
+		transfer->req_id = g_obex_send_req(transfer->obex, req, -1,
+						transfer_response, transfer,
+						&err);
+		goto done;
+	}
 
 	req = g_obex_packet_new(G_OBEX_OP_ABORT, TRUE, G_OBEX_HDR_INVALID);
+
 	transfer->req_id = g_obex_send_req(transfer->obex, req, -1,
 						transfer_abort_response,
 						transfer, &err);
+done:
 	if (err != NULL) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
@@ -209,10 +226,11 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 		req = g_obex_packet_new(transfer->opcode, FALSE,
 							G_OBEX_HDR_INVALID);
 		g_obex_packet_add_body(req, put_get_data, transfer);
-	} else {
+	} else if (!g_obex_srm_active(transfer->obex)) {
 		req = g_obex_packet_new(transfer->opcode, TRUE,
 							G_OBEX_HDR_INVALID);
-	}
+	} else
+		return;
 
 	transfer->req_id = g_obex_send_req(obex, req, -1, transfer_response,
 							transfer, &err);
@@ -350,6 +368,7 @@ static void transfer_put_req_first(struct transfer *transfer, GObexPacket *req,
 	rspcode = put_get_bytes(transfer, req);
 
 	rsp = g_obex_packet_new_valist(rspcode, TRUE, first_hdr_id, args);
+
 	if (!g_obex_send(transfer->obex, rsp, &err)) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
@@ -370,12 +389,19 @@ static void transfer_put_req(GObex *obex, GObexPacket *req, gpointer user_data)
 
 	rspcode = put_get_bytes(transfer, req);
 
+	/* Don't send continue while in SRM */
+	if (g_obex_srm_active(transfer->obex) &&
+				rspcode == G_OBEX_RSP_CONTINUE)
+		goto done;
+
 	rsp = g_obex_packet_new(rspcode, TRUE, G_OBEX_HDR_INVALID);
+
 	if (!g_obex_send(obex, rsp, &err)) {
 		transfer_complete(transfer, err);
 		g_error_free(err);
 	}
 
+done:
 	if (rspcode != G_OBEX_RSP_CONTINUE)
 		transfer_complete(transfer, NULL);
 }
@@ -472,15 +498,29 @@ guint g_obex_get_req(GObex *obex, GObexDataConsumer data_func,
 static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 {
 	struct transfer *transfer = user_data;
-	GObexPacket *req;
+	GObexPacket *req, *rsp;
 	GError *err = NULL;
 	gssize ret;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", transfer->id);
 
 	ret = transfer->data_producer(buf, len, transfer->user_data);
-	if (ret > 0)
+	if (ret > 0) {
+		if (!g_obex_srm_active(transfer->obex))
+			return ret;
+
+		/* Generate next response */
+		rsp = g_obex_packet_new(G_OBEX_RSP_CONTINUE, TRUE,
+							G_OBEX_HDR_INVALID);
+		g_obex_packet_add_body(rsp, get_get_data, transfer);
+
+		if (!g_obex_send(transfer->obex, rsp, &err)) {
+			transfer_complete(transfer, err);
+			g_error_free(err);
+		}
+
 		return ret;
+	}
 
 	if (ret == -EAGAIN)
 		return ret;
