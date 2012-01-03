@@ -72,6 +72,7 @@ struct _GObex {
 	size_t tx_sent;
 
 	gboolean suspended;
+	gboolean use_srm;
 
 	struct srm_config *srm;
 
@@ -505,6 +506,9 @@ static void setup_srm(GObex *obex, GObexPacket *pkt, gboolean outgoing)
 	guint8 op;
 	gboolean final;
 
+	if (!obex->use_srm)
+		return;
+
 	op = g_obex_packet_get_operation(pkt, &final);
 
 	hdr = g_obex_packet_get_header(pkt, G_OBEX_HDR_SRM);
@@ -538,6 +542,24 @@ static void setup_srm(GObex *obex, GObexPacket *pkt, gboolean outgoing)
 	set_srm(obex, op, G_OBEX_SRM_DISABLE);
 }
 
+static void prepare_srm_rsp(GObex *obex, GObexPacket *pkt)
+{
+	GObexHeader *hdr;
+
+	if (!obex->use_srm || obex->srm == NULL)
+		return;
+
+	if (obex->srm->enabled)
+		return;
+
+	hdr = g_obex_packet_get_header(pkt, G_OBEX_HDR_SRM);
+	if (hdr != NULL)
+		return;
+
+	hdr = g_obex_header_new_uint8(G_OBEX_HDR_SRM, G_OBEX_SRM_ENABLE);
+	g_obex_packet_prepend_header(pkt, hdr);
+}
+
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 {
 	struct pending_pkt *p;
@@ -552,8 +574,14 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 		return FALSE;
 	}
 
-	if (obex->rx_last_op == G_OBEX_OP_CONNECT)
+	switch (obex->rx_last_op) {
+	case G_OBEX_OP_CONNECT:
 		prepare_connect_rsp(obex, pkt);
+	case G_OBEX_OP_GET:
+	case G_OBEX_OP_PUT:
+		prepare_srm_rsp(obex, pkt);
+		break;
+	}
 
 	setup_srm(obex, pkt, TRUE);
 
@@ -567,6 +595,24 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	return ret;
 }
 
+static void prepare_srm_req(GObex *obex, GObexPacket *pkt)
+{
+	GObexHeader *hdr;
+
+	if (!obex->use_srm)
+		return;
+
+	if (obex->srm != NULL && obex->srm->enabled)
+		return;
+
+	hdr = g_obex_packet_get_header(pkt, G_OBEX_HDR_SRM);
+	if (hdr != NULL)
+		return;
+
+	hdr = g_obex_header_new_uint8(G_OBEX_HDR_SRM, G_OBEX_SRM_ENABLE);
+	g_obex_packet_prepend_header(pkt, hdr);
+}
+
 guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err)
@@ -574,8 +620,15 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
 	GObexHeader *hdr;
 	struct pending_pkt *p;
 	static guint id = 1;
+	guint8 op;
 
 	g_obex_debug(G_OBEX_DEBUG_COMMAND, "conn %u", obex->conn_id);
+
+	op = g_obex_packet_get_operation(req, NULL);
+	if (op == G_OBEX_OP_PUT || op == G_OBEX_OP_GET) {
+		/* Only enable SRM automatically for GET and PUT */
+		prepare_srm_req(obex, req);
+	}
 
 	setup_srm(obex, req, TRUE);
 
@@ -1226,6 +1279,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 		obex->write = write_stream;
 		break;
 	case G_OBEX_TRANSPORT_PACKET:
+		obex->use_srm = TRUE;
 		obex->read = read_packet;
 		obex->write = write_packet;
 		break;
