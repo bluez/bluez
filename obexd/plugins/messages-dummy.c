@@ -170,6 +170,12 @@ int messages_get_message(void *session,
 	return -EINVAL;
 }
 
+int messages_update_inbox(void *session, messages_update_inbox_cb callback,
+							void *user_data)
+{
+	return -EINVAL;
+}
+
 void messages_abort(void *session)
 {
 }

@@ -268,6 +268,18 @@ int messages_get_message(void *session,
 		messages_get_message_cb callback,
 		void *user_data);
 
+/* Informs Message Server to Update Inbox via network.
+ *
+ * session: Backend session.
+ * user_data: User data if any to be sent.
+ * Callback shall be called for every update inbox request recieved from MCE.
+ */
+typedef void (*messages_update_inbox_cb)(void *session, int err,
+							void *user_data);
+
+int messages_update_inbox(void *session, messages_update_inbox_cb callback,
+							void *user_data);
+
 /* Aborts currently pending request.
  *
  * session: Backend session.

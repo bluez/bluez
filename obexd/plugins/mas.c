@@ -406,6 +406,20 @@ proceed:
 		obex_object_set_io_flags(mas, G_IO_IN, err);
 }
 
+static void update_inbox_cb(void *session, int err, void *user_data)
+{
+	struct mas_session *mas = user_data;
+
+	DBG("");
+
+	mas->finished = TRUE;
+
+	if (err < 0)
+		obex_object_set_io_flags(mas, G_IO_ERR, err);
+	else
+		obex_object_set_io_flags(mas, G_IO_OUT, 0);
+}
+
 static int mas_setpath(struct obex_session *os, void *user_data)
 {
 	const char *name;
@@ -497,6 +511,26 @@ static void *message_open(const char *name, int oflag, mode_t mode,
 
 	mas->buffer = g_string_new("");
 
+	if (*err < 0)
+		return NULL;
+	else
+		return mas;
+}
+
+static void *message_update_open(const char *name, int oflag, mode_t mode,
+					void *driver_data, size_t *size,
+					int *err)
+{
+	struct mas_session *mas = driver_data;
+
+	DBG("");
+
+	if (oflag != O_WRONLY) {
+		*err = -EBADR;
+		return NULL;
+	}
+
+	*err = messages_update_inbox(mas->backend_data, update_inbox_cb, mas);
 	if (*err < 0)
 		return NULL;
 	else
@@ -628,7 +662,7 @@ static struct obex_mime_type_driver mime_message_update = {
 	.target = MAS_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/MAP-messageUpdate",
-	.open = any_open,
+	.open = message_update_open,
 	.close = any_close,
 	.read = any_read,
 	.write = any_write,
