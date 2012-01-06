@@ -237,7 +237,8 @@ int messages_set_folder(void *s, const char *name, gboolean cdup)
 	return 0;
 }
 
-static gboolean async_get_folder_listing(void *s) {
+static gboolean async_get_folder_listing(void *s)
+{
 	struct session *session = s;
 	gboolean count = FALSE;
 	int folder_count = 0;
