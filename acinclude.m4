@@ -171,7 +171,7 @@ AC_DEFUN([AC_PATH_READLINE], [
 ])
 
 AC_DEFUN([AC_PATH_CHECK], [
-	PKG_CHECK_MODULES(CHECK, check >= 0.9.4, check_found=yes, check_found=no)
+	PKG_CHECK_MODULES(CHECK, check >= 0.9.6, check_found=yes, check_found=no)
 	AC_SUBST(CHECK_CFLAGS)
 	AC_SUBST(CHECK_LIBS)
 ])
