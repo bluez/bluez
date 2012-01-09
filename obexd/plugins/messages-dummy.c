@@ -142,30 +142,27 @@ int messages_set_folder(void *s, const char *name, gboolean cdup)
 	return 0;
 }
 
-int messages_get_folder_listing(void *session,
-		const char *name,
-		uint16_t max, uint16_t offset,
-		messages_folder_listing_cb callback,
-		void *user_data)
+int messages_get_folder_listing(void *session, const char *name, uint16_t max,
+					uint16_t offset,
+					messages_folder_listing_cb callback,
+					void *user_data)
 {
 	return -EINVAL;
 }
 
-int messages_get_messages_listing(void *session,
-		const char *name,
-		uint16_t max, uint16_t offset,
-		const struct messages_filter *filter,
-		messages_get_messages_listing_cb callback,
-		void *user_data)
+int messages_get_messages_listing(void *session, const char *name,
+				uint16_t max, uint16_t offset,
+				const struct messages_filter *filter,
+				messages_get_messages_listing_cb callback,
+				void *user_data)
 {
 	return -EINVAL;
 }
 
-int messages_get_message(void *session,
-		const char *handle,
-		unsigned long flags,
-		messages_get_message_cb callback,
-		void *user_data)
+int messages_get_message(void *session, const char *handle,
+					unsigned long flags,
+					messages_get_message_cb callback,
+					void *user_data)
 {
 	return -EINVAL;
 }
