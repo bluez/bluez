@@ -996,11 +996,12 @@ static ssize_t vobject_pull_read(void *object, void *buf, size_t count)
 	DBG("buffer %p maxlistcount %d", obj->buffer,
 						pbap->params->maxlistcount);
 
-	if (!obj->buffer && !obj->aparams)
-		return -EAGAIN;
+	if (!obj->buffer) {
+		if (pbap->params->maxlistcount == 0)
+			return -ENOSTR;
 
-	if (pbap->params->maxlistcount == 0)
-		return -ENOSTR;
+		return -EAGAIN;
+	}
 
 	len = string_read(obj->buffer, buf, count);
 	if (len == 0 && !obj->lastpart) {
