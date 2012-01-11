@@ -265,6 +265,7 @@ static void os_reset_session(struct obex_session *os)
 	os->offset = 0;
 	os->size = OBJECT_SIZE_DELETE;
 	os->headers_sent = FALSE;
+	os->checked = FALSE;
 }
 
 static void obex_session_free(struct obex_session *os)
@@ -562,7 +563,7 @@ static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 
 	if (err != NULL) {
 		error("transfer failed: %s\n", err->message);
-		return;
+		goto reset;
 	}
 
 	if (os->object && os->driver && os->driver->flush) {
@@ -570,8 +571,12 @@ static void transfer_complete(GObex *obex, GError *err, gpointer user_data)
 			g_obex_suspend(os->obex);
 			os->driver->set_io_watch(os->object, handle_async_io,
 									os);
+			return;
 		}
 	}
+
+reset:
+	os_reset_session(os);
 }
 
 static int driver_get_headers(struct obex_session *os)
