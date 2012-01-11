@@ -117,6 +117,10 @@ guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
 			GObexFunc complete_func, gpointer user_data,
 			GError **err, guint8 first_hdr_id, ...);
 
+guint g_obex_get_rsp_pkt(GObex *obex, GObexPacket *rsp,
+			GObexDataProducer data_func, GObexFunc complete_func,
+			gpointer user_data, GError **err);
+
 gboolean g_obex_cancel_transfer(guint id);
 
 const char *g_obex_strerror(guint8 err_code);
