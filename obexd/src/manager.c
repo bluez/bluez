@@ -539,7 +539,7 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	if (err < 0)
 		return err;
 
-	path = g_strdup_printf("/transfer%u", GPOINTER_TO_UINT(os));
+	path = g_strdup_printf("/transfer%u", os->id);
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 					"org.openobex.Agent", "Authorize");
