@@ -643,16 +643,26 @@ static gssize driver_get_headers(struct obex_session *os)
 		total += len;
 	}
 
-	if (total == 0) {
-		g_obex_packet_free(rsp);
-		return 0;
+	if (total != 0) {
+		g_obex_send(os->obex, rsp, NULL);
+		os->get_rsp = g_obex_add_request_function(os->obex,
+							G_OBEX_OP_GET,
+							cmd_get_rsp, os);
+		goto done;
 	}
 
-	g_obex_send(os->obex, rsp, NULL);
+	g_obex_packet_free(rsp);
+	if (os->size != OBJECT_SIZE_UNKNOWN && os->size < UINT32_MAX)
+		g_obex_get_rsp(os->obex, send_data, transfer_complete,
+						os, NULL,
+						G_OBEX_HDR_LENGTH, os->size,
+						G_OBEX_HDR_INVALID);
+	else
+		g_obex_get_rsp(os->obex, send_data, transfer_complete,
+						os, NULL,
+						G_OBEX_HDR_INVALID);
 
-	os->get_rsp = g_obex_add_request_function(os->obex, G_OBEX_OP_GET,
-							cmd_get_rsp, os);
-
+done:
 	os->headers_sent = TRUE;
 
 	print_event(-1, G_OBEX_RSP_CONTINUE);
@@ -887,22 +897,8 @@ int obex_get_stream_start(struct obex_session *os, const char *filename)
 		g_obex_suspend(os->obex);
 		os->driver->set_io_watch(os->object, handle_async_io, os);
 		return 0;
-	} else if (err < 0) {
+	} else if (err < 0)
 		return err;
-	} else if (err > 0)
-		return 0;
-
-	if (os->size != OBJECT_SIZE_UNKNOWN && os->size < UINT32_MAX)
-		g_obex_get_rsp(os->obex, send_data, transfer_complete,
-						os, NULL,
-						G_OBEX_HDR_LENGTH, os->size,
-						G_OBEX_HDR_INVALID);
-	else
-		g_obex_get_rsp(os->obex, send_data, transfer_complete,
-						os, NULL,
-						G_OBEX_HDR_INVALID);
-
-	print_event(G_OBEX_OP_GET, G_OBEX_RSP_SUCCESS);
 
 	return 0;
 }
