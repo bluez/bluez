@@ -168,7 +168,7 @@ static void register_immediate_alert(void)
 
 	/* Alert level characteristic */
 	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_READ | ATT_CHAR_PROPER_WRITE;
+	atval[0] = ATT_CHAR_PROPER_WRITE_WITHOUT_RESP;
 	att_put_u16(h + 1, &atval[1]);
 	att_put_u16(ALERT_LEVEL_CHR_UUID, &atval[3]);
 	/* FIXME: Provide the adapter in next function */
