@@ -155,13 +155,12 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 		case EIR_NAME_SHORT:
 		case EIR_NAME_COMPLETE:
-			/* Some vendors put a NUL byte terminator. If that is
-			 * the case, use -1 as string length so
-			 * g_utf8_validade() can parse it properly. */
-			if (eir_data[field_len] == '\0')
-				name_len = -1;
-			else
-				name_len = field_len - 1;
+			/* Some vendors put a NUL byte terminator into
+			 * the name */
+			while (field_len > 1 && eir_data[field_len] == '\0')
+				field_len--;
+
+			name_len = field_len - 1;
 
 			if (!g_utf8_validate((char *) &eir_data[2],
 								name_len, NULL))
