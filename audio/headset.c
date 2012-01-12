@@ -1331,7 +1331,8 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 		if (err == -EINVAL) {
 			error("Badly formated or unrecognized command: %s",
 					&slc->buf[slc->data_start]);
-			err = headset_send(hs, "\r\nERROR\r\n");
+			err = telephony_generic_rsp(device,
+						CME_ERROR_NOT_SUPPORTED);
 			if (err < 0)
 				goto failed;
 		} else if (err < 0)
