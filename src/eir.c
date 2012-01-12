@@ -119,7 +119,6 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
-		ssize_t name_len;
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
@@ -160,10 +159,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			while (field_len > 1 && eir_data[field_len] == '\0')
 				field_len--;
 
-			name_len = field_len - 1;
-
 			if (!g_utf8_validate((char *) &eir_data[2],
-								name_len, NULL))
+							field_len -1, NULL))
 				break;
 
 			g_free(eir->name);
