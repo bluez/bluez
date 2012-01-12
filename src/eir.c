@@ -160,7 +160,7 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 				field_len--;
 
 			if (!g_utf8_validate((char *) &eir_data[2],
-							field_len -1, NULL))
+							field_len - 1, NULL))
 				break;
 
 			g_free(eir->name);
