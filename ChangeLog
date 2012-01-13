@@ -1,3 +1,14 @@
+ver 4.98:
+	Fix issue with adapter list upon initialization failure.
+	Fix issue with missing legacy property for Low Energy.
+	Fix issue with missing EIR information handling.
+	Fix issue with device address type tracking.
+	Fix issue with alert level characteristic.
+	Fix issue with headset shutdown handling.
+	Fix issue with Wiimote address handling.
+	Add support for advanced l2test options.
+	Add support for attribute protocol and multiple adapters.
+
 ver 4.97:
 	Update support for proximity profile.
 	Fix issue with SBC audio decoding quality.
