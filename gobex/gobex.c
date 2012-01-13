@@ -247,8 +247,6 @@ static gboolean req_timeout(gpointer user_data)
 
 	g_obex_debug(G_OBEX_DEBUG_ERROR, "%s", err->message);
 
-	obex->pending_req = NULL;
-
 	if (p->rsp_func)
 		p->rsp_func(obex, err, NULL, p->rsp_data);
 
