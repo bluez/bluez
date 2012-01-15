@@ -628,8 +628,8 @@ Event Code		0x000A
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
-			Class_Of_Device (3 Octets)
-			Name (249 Octets)
+			EIR_Data_Length (1 Octet)
+			EIR_Data (0-255 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
@@ -711,7 +711,6 @@ Event Code		0x0011
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
-			Class_Of_Device (3 Octets)
 			RSSI (1 Octet)
 			Flags (4 Octets)
 			EIR_Data_Length (1 Octet)
