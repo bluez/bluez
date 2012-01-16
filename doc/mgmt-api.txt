@@ -628,8 +628,8 @@ Event Code		0x000A
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
-			EIR_Data_Length (1 Octet)
-			EIR_Data (0-255 Octets)
+			EIR_Data_Length (2 Octets)
+			EIR_Data (0-65535 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
@@ -713,8 +713,8 @@ Event Parameters	Address (6 Octets)
 			Type (1 Octet)
 			RSSI (1 Octet)
 			Flags (4 Octets)
-			EIR_Data_Length (1 Octet)
-			EIR_Data (0-255 Octets)
+			EIR_Data_Length (2 Octets)
+			EIR_Data (0-65535 Octets)
 
 	Possible values for the Type parameter:
 		0	BR/EDR
