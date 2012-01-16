@@ -3578,7 +3578,10 @@ static int hciops_set_io_capability(int index, uint8_t io_capability)
 {
 	struct dev_info *dev = &devs[index];
 
-	dev->io_capability = io_capability;
+	/* hciops is not to be used for SMP pairing for LE devices. So
+	 * change the IO capability from KeyboardDisplay to DisplayYesNo
+	 * in case it is set. */
+	dev->io_capability = (io_capability == 0x04) ? 0x01 : io_capability;
 
 	return 0;
 }

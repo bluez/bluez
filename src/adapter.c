@@ -74,6 +74,7 @@
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
 #define IO_CAPABILITY_KEYBOARDONLY	0x02
 #define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
+#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
 #define IO_CAPABILITY_INVALID		0xFF
 
 #define check_address(address) bachk(address)
@@ -1533,6 +1534,8 @@ static uint8_t parse_io_capability(const char *capability)
 		return IO_CAPABILITY_KEYBOARDONLY;
 	if (g_str_equal(capability, "NoInputNoOutput"))
 		return IO_CAPABILITY_NOINPUTNOOUTPUT;
+	if (g_str_equal(capability, "KeyboardDisplay"))
+		return IO_CAPABILITY_KEYBOARDDISPLAY;
 	return IO_CAPABILITY_INVALID;
 }
 
