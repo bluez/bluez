@@ -141,7 +141,7 @@ enum {
 ({						\
 	struct __attribute__((packed)) {	\
 		typeof(*(ptr)) __v;		\
-	} *__p = (void *) (ptr);		\
+	} *__p = (typeof(__p)) (ptr);		\
 	__p->__v;				\
 })
 
@@ -149,7 +149,7 @@ enum {
 do {						\
 	struct __attribute__((packed)) {	\
 		typeof(*(ptr)) __v;		\
-	} *__p = (void *) (ptr);		\
+	} *__p = (typeof(__p)) (ptr);		\
 	__p->__v = (val);			\
 } while(0)
 
