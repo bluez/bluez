@@ -33,8 +33,6 @@
 #include <bluetooth/l2cap.h>
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sco.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/hci_lib.h>
 
 #include <glib.h>
 
@@ -691,10 +689,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 		switch (opt) {
 		case BT_IO_OPT_SOURCE:
 			str = va_arg(args, const char *);
-			if (strncasecmp(str, "hci", 3) == 0)
-				hci_devba(atoi(str + 3), &opts->src);
-			else
-				str2ba(str, &opts->src);
+			str2ba(str, &opts->src);
 			break;
 		case BT_IO_OPT_SOURCE_BDADDR:
 			bacpy(&opts->src, va_arg(args, const bdaddr_t *));
