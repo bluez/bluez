@@ -54,4 +54,4 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			uint16_t did_product, uint16_t did_version,
 			GSList *uuids, uint8_t *data);
 
-gboolean eir_has_complete_name(uint8_t *data, size_t len);
+gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type);

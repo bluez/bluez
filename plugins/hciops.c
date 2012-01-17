@@ -2041,7 +2041,8 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 					| (info->dev_class[2] << 16);
 		gboolean cfm_name;
 
-		if (eir_has_complete_name(info->data, sizeof(info->data)))
+		if (eir_has_data_type(info->data, sizeof(info->data),
+							EIR_NAME_COMPLETE))
 			cfm_name = FALSE;
 		else
 			cfm_name = TRUE;

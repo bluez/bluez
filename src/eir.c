@@ -334,7 +334,7 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 		eir_generate_uuid128(uuids, ptr, &eir_len);
 }
 
-gboolean eir_has_complete_name(uint8_t *data, size_t len)
+gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type)
 {
 	uint8_t field_len;
 	size_t parsed;
@@ -350,7 +350,7 @@ gboolean eir_has_complete_name(uint8_t *data, size_t len)
 		if (parsed > len)
 			break;
 
-		if (data[1] == EIR_NAME_COMPLETE)
+		if (data[1] == type)
 			return TRUE;
 
 		data += field_len + 1;
