@@ -3787,6 +3787,11 @@ static int hciops_confirm_name(int index, bdaddr_t *bdaddr,
 	return 0;
 }
 
+static int hciops_load_ltks(int index, GSList *keys)
+{
+	return -ENOSYS;
+}
+
 static struct btd_adapter_ops hci_ops = {
 	.setup = hciops_setup,
 	.cleanup = hciops_cleanup,
@@ -3823,6 +3828,7 @@ static struct btd_adapter_ops hci_ops = {
 	.add_remote_oob_data = hciops_add_remote_oob_data,
 	.remove_remote_oob_data = hciops_remove_remote_oob_data,
 	.confirm_name = hciops_confirm_name,
+	.load_ltks = hciops_load_ltks,
 };
 
 static int hciops_init(void)

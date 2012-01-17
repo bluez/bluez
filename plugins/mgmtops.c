@@ -2077,6 +2077,59 @@ static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, gboolean name_known)
 	return 0;
 }
 
+static int mgmtops_load_ltks(int index, GSList *keys)
+{
+	char *buf;
+	struct mgmt_hdr *hdr;
+	struct mgmt_cp_load_long_term_keys *cp;
+	struct mgmt_ltk_info *key;
+	size_t key_count, cp_size;
+	GSList *l;
+	int err;
+
+	key_count = g_slist_length(keys);
+
+	DBG("index %d keys %zu", index, key_count);
+
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
+
+	buf = g_try_malloc0(sizeof(*hdr) + cp_size);
+	if (buf == NULL)
+		return -ENOMEM;
+
+	memset(buf, 0, sizeof(buf));
+
+	hdr = (void *) buf;
+	hdr->opcode = htobs(MGMT_OP_LOAD_LONG_TERM_KEYS);
+	hdr->len = htobs(cp_size);
+	hdr->index = htobs(index);
+
+	cp = (void *) (buf + sizeof(*hdr));
+	cp->key_count = htobs(key_count);
+
+	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
+		struct smp_ltk_info *info = l->data;
+
+		bacpy(&key->addr.bdaddr, &info->bdaddr);
+		key->addr.type = info->addr_type;
+		memcpy(key->val, info->val, sizeof(info->val));
+		memcpy(key->rand, info->rand, sizeof(info->rand));
+		memcpy(&key->ediv, &info->ediv, sizeof(key->ediv));
+		key->authenticated = info->authenticated;
+		key->master = info->master;
+		key->enc_size = info->enc_size;
+	}
+
+	if (write(mgmt_sock, buf, sizeof(*hdr) + cp_size) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+	g_free(buf);
+
+	return err;
+}
+
 static struct btd_adapter_ops mgmt_ops = {
 	.setup = mgmt_setup,
 	.cleanup = mgmt_cleanup,
@@ -2113,6 +2166,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.add_remote_oob_data = mgmt_add_remote_oob_data,
 	.remove_remote_oob_data = mgmt_remove_remote_oob_data,
 	.confirm_name = mgmt_confirm_name,
+	.load_ltks = mgmtops_load_ltks,
 };
 
 static int mgmt_init(void)

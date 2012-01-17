@@ -56,6 +56,17 @@ struct link_key_info {
 	uint8_t pin_len;
 };
 
+struct smp_ltk_info {
+	bdaddr_t bdaddr;
+	addr_type_t addr_type;
+	uint8_t authenticated;
+	uint8_t master;
+	uint8_t enc_size;
+	uint16_t ediv;
+	uint8_t rand[8];
+	uint8_t val[16];
+};
+
 struct remote_dev_info {
 	bdaddr_t bdaddr;
 	addr_type_t type;
@@ -208,6 +219,7 @@ struct btd_adapter_ops {
 							uint8_t *randomizer);
 	int (*remove_remote_oob_data) (int index, bdaddr_t *bdaddr);
 	int (*confirm_name) (int index, bdaddr_t *bdaddr, gboolean name_known);
+	int (*load_ltks) (int index, GSList *keys);
 };
 
 int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
