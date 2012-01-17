@@ -417,7 +417,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 
 	ba2str(&ev->addr.bdaddr, addr);
 
-	DBG("hci%u device %s connected", index, addr);
+	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
 
 	if (index > max_index) {
 		error("Unexpected index %u in device_connected event", index);
