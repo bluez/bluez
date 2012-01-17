@@ -414,7 +414,7 @@ static int mgmt_connected(int mgmt_sk, uint16_t index,
 {
 	uint16_t eir_len;
 
-	if (len != sizeof(*ev)) {
+	if (len < sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid connected event length (%u bytes)\n", len);
 		return -EINVAL;
