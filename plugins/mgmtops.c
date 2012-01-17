@@ -1277,7 +1277,6 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	struct controller_info *info;
 	char addr[18];
 	uint8_t *eir;
-	uint32_t cls;
 
 	if (len != sizeof(*ev)) {
 		error("mgmt_device_found length %zu instead of expected %zu",
@@ -1292,23 +1291,19 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	cls = ev->dev_class[0] | (ev->dev_class[1] << 8) |
-						(ev->dev_class[2] << 16);
-
 	if (ev->eir[0] == 0)
 		eir = NULL;
 	else
 		eir = ev->eir;
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, class %u rssi %d cfm_name %u %s", index, addr, cls,
-						ev->rssi, ev->confirm_name,
-						eir ? "eir" : "");
+	DBG("hci%u addr %s, rssi %d cfm_name %u %s", index, addr, ev->rssi,
+					ev->confirm_name, eir ? "eir" : "");
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
-					mgmt_addr_type(ev->addr.type), cls,
-					ev->rssi, ev->confirm_name,
-					eir, HCI_MAX_EIR_LENGTH);
+						mgmt_addr_type(ev->addr.type),
+						ev->rssi, ev->confirm_name,
+						eir, HCI_MAX_EIR_LENGTH);
 }
 
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)

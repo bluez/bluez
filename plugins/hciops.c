@@ -1949,8 +1949,8 @@ static inline void remote_version_information(int index, void *ptr)
 }
 
 static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
-				uint32_t cod, int8_t rssi, uint8_t cfm_name,
-				uint8_t *eir, uint8_t eir_len)
+				uint8_t *cod, int8_t rssi, uint8_t cfm_name,
+				uint8_t *eir, size_t eir_len)
 {
 	struct found_dev *dev;
 	GSList *match;
@@ -1969,10 +1969,14 @@ static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
 	else
 		dev->name_state = NAME_NOT_NEEDED;
 
+	if (cod && !eir_has_data_type(eir, eir_len, EIR_CLASS_OF_DEV))
+		eir_len = eir_append_data(eir, eir_len, EIR_CLASS_OF_DEV,
+								cod, 3);
+
 	info->found_devs = g_slist_prepend(info->found_devs, dev);
 
 event:
-	btd_event_device_found(&info->bdaddr, dba, type, cod, rssi, cfm_name,
+	btd_event_device_found(&info->bdaddr, dba, type, rssi, cfm_name,
 								eir, eir_len);
 }
 
@@ -1984,12 +1988,11 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 
 	for (i = 0; i < num; i++) {
 		inquiry_info *info = ptr;
-		uint32_t class = info->dev_class[0] |
-						(info->dev_class[1] << 8) |
-						(info->dev_class[2] << 16);
+		uint8_t eir[5];
 
-		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class, 0, 1,
-								NULL, 0);
+		memset(eir, 0, sizeof(eir));
+		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, info->dev_class,
+								0, 1, eir, 0);
 		ptr += INQUIRY_INFO_SIZE;
 	}
 }
@@ -1998,6 +2001,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
 	uint8_t num = *(uint8_t *) ptr++;
+	uint8_t eir[5];
 	int i;
 
 	if (!num)
@@ -2006,23 +2010,21 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 	if ((plen - 1) / num == INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE) {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi_and_pscan_mode *info = ptr;
-			uint32_t class = info->dev_class[0]
-						| (info->dev_class[1] << 8)
-						| (info->dev_class[2] << 16);
 
-			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
-						info->rssi, 1, NULL, 0);
+			memset(eir, 0, sizeof(eir));
+			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR,
+						info->dev_class, info->rssi,
+						1, eir, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
 		}
 	} else {
 		for (i = 0; i < num; i++) {
 			inquiry_info_with_rssi *info = ptr;
-			uint32_t class = info->dev_class[0]
-						| (info->dev_class[1] << 8)
-						| (info->dev_class[2] << 16);
 
-			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
-						info->rssi, 1, NULL, 0);
+			memset(eir, 0, sizeof(eir));
+			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR,
+						info->dev_class, info->rssi,
+						1, eir, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
 		}
 	}
@@ -2036,20 +2038,22 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 
 	for (i = 0; i < num; i++) {
 		extended_inquiry_info *info = ptr;
-		uint32_t class = info->dev_class[0]
-					| (info->dev_class[1] << 8)
-					| (info->dev_class[2] << 16);
+		uint8_t eir[sizeof(info->data) + 5];
 		gboolean cfm_name;
+		size_t eir_len;
 
-		if (eir_has_data_type(info->data, sizeof(info->data),
-							EIR_NAME_COMPLETE))
+		eir_len = eir_length(info->data, sizeof(info->data));
+
+		memset(eir, 0, sizeof(eir));
+		memcpy(eir, info->data, eir_len);
+
+		if (eir_has_data_type(eir, eir_len, EIR_NAME_COMPLETE))
 			cfm_name = FALSE;
 		else
 			cfm_name = TRUE;
 
-		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, class,
-					info->rssi, cfm_name,
-					info->data, sizeof(info->data));
+		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, info->dev_class,
+					info->rssi, cfm_name, eir, eir_len);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
 }
@@ -2287,8 +2291,8 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 	info = (le_advertising_info *) &meta->data[1];
 	rssi = *(info->data + info->length);
 
-	dev_found(dev, &info->bdaddr, le_addr_type(info->bdaddr_type), 0, rssi,
-						0, info->data, info->length);
+	dev_found(dev, &info->bdaddr, le_addr_type(info->bdaddr_type), NULL,
+					rssi, 0, info->data, info->length);
 
 	num_reports--;
 
@@ -2298,7 +2302,7 @@ static inline void le_advertising_report(int index, evt_le_meta_event *meta)
 		rssi = *(info->data + info->length);
 
 		dev_found(dev, &info->bdaddr, le_addr_type(info->bdaddr_type),
-				0, rssi, 0, info->data, info->length);
+				NULL, rssi, 0, info->data, info->length);
 	}
 }
 

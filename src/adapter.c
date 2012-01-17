@@ -2782,14 +2782,14 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
 
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					bdaddr_t *bdaddr, addr_type_t type,
-					uint32_t class, int8_t rssi,
-					uint8_t confirm_name,
+					int8_t rssi, uint8_t confirm_name,
 					uint8_t *data, uint8_t data_len)
 {
 	struct remote_dev_info *dev;
 	struct eir_data eir_data;
 	char *alias, *name;
 	gboolean legacy, name_known;
+	uint32_t dev_class;
 	int err;
 
 	memset(&eir_data, 0, sizeof(eir_data));
@@ -2798,6 +2798,11 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
 		return;
 	}
+
+	dev_class = eir_data.dev_class[0] | (eir_data.dev_class[1] << 8) |
+						(eir_data.dev_class[2] << 16);
+	if (dev_class != 0)
+		write_remote_class(&adapter->bdaddr, bdaddr, dev_class);
 
 	if (eir_data.name != NULL && eir_data.name_complete)
 		write_device_name(&adapter->bdaddr, bdaddr, eir_data.name);
@@ -2846,7 +2851,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	alias = read_stored_data(&adapter->bdaddr, bdaddr, "aliases");
 
-	dev = found_device_new(bdaddr, type, name, alias, class, legacy,
+	dev = found_device_new(bdaddr, type, name, alias, dev_class, legacy,
 							eir_data.flags);
 	free(name);
 	free(alias);
