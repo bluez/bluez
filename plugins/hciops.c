@@ -1028,12 +1028,12 @@ static void link_key_notify(int index, void *ptr)
 	DBG("local auth 0x%02x and remote auth 0x%02x",
 					conn->loc_auth, conn->rem_auth);
 
-	if (key_type == 0x06) {
+	if (key_type == HCI_LK_CHANGED_COMBINATION) {
 		/* Some buggy controller combinations generate a changed
 		 * combination key for legacy pairing even when there's no
 		 * previous key */
 		if (conn->rem_auth == 0xff && old_key_type == 0xff)
-			key_type = 0x00;
+			key_type = HCI_LK_COMBINATION;
 		else if (old_key_type != 0xff)
 			key_type = old_key_type;
 		else
@@ -1045,7 +1045,7 @@ static void link_key_notify(int index, void *ptr)
 	key_info->type = key_type;
 
 	/* Skip the storage check if this is a debug key */
-	if (key_type == 0x03)
+	if (key_type == HCI_LK_DEBUG_COMBINATION)
 		goto done;
 
 	/* Store the link key persistently if one of the following is true:
@@ -1059,7 +1059,9 @@ static void link_key_notify(int index, void *ptr)
 	 * If none of the above match only keep the link key around for
 	 * this connection and set the temporary flag for the device.
 	 */
-	if (key_type < 0x03 || (key_type == 0x06 && old_key_type != 0xff) ||
+	if (key_type < HCI_LK_DEBUG_COMBINATION ||
+			(key_type == HCI_LK_CHANGED_COMBINATION
+					&& old_key_type != HCI_LK_INVALID) ||
 			(conn->loc_auth > 0x01 && conn->rem_auth > 0x01) ||
 			(conn->loc_auth == 0x02 || conn->loc_auth == 0x03) ||
 			(conn->rem_auth == 0x02 || conn->rem_auth == 0x03)) {
