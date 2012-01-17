@@ -1311,3 +1311,35 @@ void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer)
 	create_filename(filename, PATH_MAX, local, "ccc");
 	delete_by_pattern(filename, addr);
 }
+
+int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key)
+{
+	char filename[PATH_MAX + 1], addr[18];
+
+	if (!key)
+		return -EINVAL;
+
+	create_filename(filename, PATH_MAX, local, "longtermkeys");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+	return textfile_put(filename, addr, key);
+}
+
+gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+
+	create_filename(filename, PATH_MAX, local, "longtermkeys");
+
+	ba2str(peer, addr);
+
+	str = textfile_caseget(filename, addr);
+	if (str) {
+		free(str);
+		return TRUE;
+	}
+
+	return FALSE;
+}
