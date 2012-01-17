@@ -84,10 +84,9 @@ static const char *mgmt_ev[] = {
 	"Controller Error",
 	"Index Added",
 	"Index Removed",
-	"Powered",
-	"Discoverable",
-	"Connectable",			/* 0x0008 */
-	"Pairable",
+	"New Settings",
+	"Class of Device Changed",
+	"Local Name Changed",		/* 0x0008 */
 	"New Link Key",
 	"Device Connected",
 	"Device Disconnected",
@@ -95,9 +94,7 @@ static const char *mgmt_ev[] = {
 	"PIN Code Request",
 	"User Confirm Request",
 	"Authentication Failed",	/* 0x0010 */
-	"Local Name Changed",
 	"Device Found",
-	"Remote Name",
 	"Discovering",
 	"Device Blocked",
 	"Device Unblocked",
