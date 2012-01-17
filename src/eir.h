@@ -58,3 +58,4 @@ gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type);
 
 size_t eir_append_data(uint8_t *eir, size_t eir_len, uint8_t type,
 						uint8_t *data, size_t data_len);
+size_t eir_length(uint8_t *eir, size_t maxlen);
