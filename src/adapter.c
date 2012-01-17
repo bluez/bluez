@@ -2806,6 +2806,15 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	if (dev) {
 		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 							dev);
+
+		/* If an existing device had no name but the newly received EIR
+		 * data has (complete or not), we want to present it to the
+		 * user. */
+		if (dev->name == NULL && eir_data.name != NULL) {
+			dev->name = g_strdup(eir_data.name);
+			goto done;
+		}
+
 		if (dev->rssi != rssi)
 			goto done;
 
