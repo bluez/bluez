@@ -1388,6 +1388,38 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_device_unblocked(&info->bdaddr, &ev->bdaddr);
 }
 
+static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_ev_new_long_term_key *ev = buf;
+	struct controller_info *info;
+
+	if (len != sizeof(*ev)) {
+		error("new_smp_key event size mismatch (%zu != %zu)",
+							len, sizeof(*ev));
+		return;
+	}
+
+	DBG("Controller %u new LTK authenticated %u enc_size %u", index,
+				ev->key.authenticated, ev->key.enc_size);
+
+	if (index > max_index) {
+		error("Unexpected index %u in new_key event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	if (ev->store_hint) {
+		btd_event_ltk_notify(&info->bdaddr, &ev->key.addr.bdaddr,
+				ev->key.addr.type, ev->key.val,
+				ev->key.authenticated, ev->key.enc_size,
+				ev->key.master, ev->key.ediv, ev->key.rand);
+	}
+
+	if (ev->key.master)
+		bonding_complete(info, &ev->key.addr.bdaddr, 0);
+}
+
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
@@ -1488,6 +1520,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
 		mgmt_passkey_request(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_NEW_LONG_TERM_KEY:
+		mgmt_new_ltk(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
