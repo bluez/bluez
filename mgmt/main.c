@@ -582,24 +582,6 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
-static int mgmt_remote_name(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_remote_name *ev, uint16_t len)
-{
-	if (len != sizeof(*ev)) {
-		fprintf(stderr,
-			"Invalid remote_name event length (%u bytes)\n", len);
-		return -EINVAL;
-	}
-
-	if (monitor || discovery) {
-		char addr[18];
-		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s name %s\n", index, addr, ev->name);
-	}
-
-	return 0;
-}
-
 static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -819,8 +801,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_name_changed(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_FOUND:
 		return mgmt_device_found(mgmt_sk, index, data, len);
-	case MGMT_EV_REMOTE_NAME:
-		return mgmt_remote_name(mgmt_sk, index, data, len);
 	case MGMT_EV_PIN_CODE_REQUEST:
 		return mgmt_request_pin(mgmt_sk, index, data, len);
 	case MGMT_EV_USER_CONFIRM_REQUEST:

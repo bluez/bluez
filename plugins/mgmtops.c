@@ -1311,30 +1311,6 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 					eir, HCI_MAX_EIR_LENGTH);
 }
 
-static void mgmt_remote_name(int sk, uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_remote_name *ev = buf;
-	struct controller_info *info;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_remote_name packet");
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in remote_name event", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	ba2str(&ev->bdaddr, addr);
-	DBG("hci%u addr %s, name %s", index, addr, ev->name);
-
-	btd_event_remote_name(&info->bdaddr, &ev->bdaddr, (char *) ev->name);
-}
-
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_mode *ev = buf;
@@ -1498,9 +1474,6 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DEVICE_FOUND:
 		mgmt_device_found(sk, index, buf + MGMT_HDR_SIZE, len);
-		break;
-	case MGMT_EV_REMOTE_NAME:
-		mgmt_remote_name(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DISCOVERING:
 		mgmt_discovering(sk, index, buf + MGMT_HDR_SIZE, len);
