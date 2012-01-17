@@ -370,7 +370,8 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 	return ret;
 }
 
-void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer)
+void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer,
+						char *name, uint8_t *dev_class)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -381,6 +382,9 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer)
 	update_lastused(local, peer);
 
 	adapter_add_connection(adapter, device);
+
+	if (name != NULL)
+		btd_event_remote_name(local, peer, name);
 }
 
 void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)

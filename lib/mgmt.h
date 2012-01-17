@@ -316,6 +316,11 @@ struct mgmt_ev_new_link_key {
 } __packed;
 
 #define MGMT_EV_DEVICE_CONNECTED	0x000A
+struct mgmt_ev_device_connected {
+	struct mgmt_addr_info addr;
+	uint16_t eir_len;
+	uint8_t eir[0];
+} __packed;
 
 #define MGMT_EV_DEVICE_DISCONNECTED	0x000B
 

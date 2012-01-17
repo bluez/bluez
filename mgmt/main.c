@@ -411,22 +411,49 @@ static const char *typestr(uint8_t type)
 	return "(unknown)";
 }
 
-static int mgmt_connected(int mgmt_sk, uint16_t index, bool connected,
-				struct mgmt_addr_info *ev, uint16_t len)
+static int mgmt_connected(int mgmt_sk, uint16_t index,
+					struct mgmt_ev_device_connected *ev,
+					uint16_t len)
 {
-	const char *ev_name = connected ? "connected" : "disconnected";
+	uint16_t eir_len;
 
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
-			"Invalid %s event length (%u bytes)\n", ev_name, len);
+			"Invalid connected event length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	eir_len = bt_get_le16(&ev->eir_len);
+	if (len != sizeof(*ev) + eir_len) {
+		fprintf(stderr, "Invalid connected event length "
+			"(%u bytes, eir_len %u bytes)\n", len, eir_len);
+		return -EINVAL;
+	}
+
+	if (monitor) {
+		char addr[18];
+		ba2str(&ev->addr.bdaddr, addr);
+		printf("hci%u %s type %s connected eir_len %u\n", index, addr,
+					typestr(ev->addr.type), eir_len);
+	}
+
+	return 0;
+}
+
+static int mgmt_disconnected(int mgmt_sk, uint16_t index,
+				struct mgmt_addr_info *ev, uint16_t len)
+{
+	if (len != sizeof(*ev)) {
+		fprintf(stderr,
+			"Invalid disconnected event length (%u bytes)\n", len);
 		return -EINVAL;
 	}
 
 	if (monitor) {
 		char addr[18];
 		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s type %s %s\n", index, addr,
-						typestr(ev->type), ev_name);
+		printf("hci%u %s type %s disconnected\n", index, addr,
+							typestr(ev->type));
 	}
 
 	return 0;
@@ -784,9 +811,9 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	case MGMT_EV_NEW_LINK_KEY:
 		return mgmt_new_link_key(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_CONNECTED:
-		return mgmt_connected(mgmt_sk, index, true, data, len);
+		return mgmt_connected(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_DISCONNECTED:
-		return mgmt_connected(mgmt_sk, index, false, data, len);
+		return mgmt_disconnected(mgmt_sk, index, data, len);
 	case MGMT_EV_CONNECT_FAILED:
 		return mgmt_conn_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_AUTH_FAILED:

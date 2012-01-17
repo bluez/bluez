@@ -48,6 +48,7 @@
 #include "device.h"
 #include "event.h"
 #include "oob.h"
+#include "eir.h"
 
 #define MGMT_BUF_SIZE 1024
 
@@ -397,8 +398,10 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 {
-	struct mgmt_addr_info *ev = buf;
+	struct mgmt_ev_device_connected *ev = buf;
+	struct eir_data eir_data;
 	struct controller_info *info;
+	uint16_t eir_len;
 	char addr[18];
 
 	if (len < sizeof(*ev)) {
@@ -406,7 +409,13 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	eir_len = bt_get_le16(&ev->eir_len);
+	if (len < sizeof(*ev) + eir_len) {
+		error("Too small device_connected event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u device %s connected", index, addr);
 
@@ -417,7 +426,12 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_conn_complete(&info->bdaddr, &ev->bdaddr);
+	memset(&eir_data, 0, sizeof(eir_data));
+	if (eir_len > 0)
+		eir_parse(&eir_data, ev->eir, eir_len);
+
+	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
+					eir_data.name, eir_data.dev_class);
 }
 
 static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
