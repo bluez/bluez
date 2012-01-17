@@ -358,3 +358,14 @@ gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type)
 
 	return FALSE;
 }
+
+size_t eir_append_data(uint8_t *eir, size_t eir_len, uint8_t type,
+						uint8_t *data, size_t data_len)
+{
+	eir[eir_len++] = sizeof(type) + data_len;
+	eir[eir_len++] = type;
+	memcpy(&eir[eir_len], data, data_len);
+	eir_len += data_len;
+
+	return eir_len;
+}
