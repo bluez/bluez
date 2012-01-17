@@ -343,6 +343,56 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 		device_set_name(device, name);
 }
 
+static char *buf2str(uint8_t *data, int datalen)
+{
+	char *buf;
+	int i;
+
+	buf = g_try_new0(char, (datalen * 2) + 1);
+	if (buf == NULL)
+		return NULL;
+
+	for (i = 0; i < datalen; i++)
+		sprintf(buf + (i * 2), "%2.2x", data[i]);
+
+	return buf;
+}
+
+static int store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
+				addr_type_t addr_type, 	unsigned char *key,
+				uint8_t master, uint8_t authenticated,
+				uint8_t enc_size, uint16_t ediv, uint8_t rand[8])
+{
+	GString *newkey;
+	char *val, *str;
+	int err;
+
+	val = buf2str(key, 16);
+	if (val == NULL)
+		return -ENOMEM;
+
+	newkey = g_string_new(val);
+	g_free(val);
+
+	g_string_append_printf(newkey, " %d %d %d %d %d ", addr_type,
+					authenticated, master, enc_size, ediv);
+
+	str = buf2str(rand, 8);
+	if (str == NULL) {
+		g_string_free(newkey, TRUE);
+		return -ENOMEM;
+	}
+
+	newkey = g_string_append(newkey, str);
+	g_free(str);
+
+	err = write_longtermkeys(local, peer, newkey->str);
+
+	g_string_free(newkey, TRUE);
+
+	return err;
+}
+
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t *key, uint8_t key_type,
 				uint8_t pin_length)
@@ -358,6 +408,30 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	ret = write_link_key(local, peer, key, key_type, pin_length);
 
+	if (ret == 0) {
+		device_set_bonded(device, TRUE);
+
+		if (device_is_temporary(device))
+			device_set_temporary(device, FALSE);
+	}
+
+	return ret;
+}
+
+int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, addr_type_t addr_type,
+					uint8_t *key, uint8_t master,
+					uint8_t authenticated, uint8_t enc_size,
+					uint16_t ediv, 	uint8_t rand[8])
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	int ret;
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
+		return -ENODEV;
+
+	ret = store_longtermkey(local, peer, addr_type, key, master,
+					authenticated, enc_size, ediv, rand);
 	if (ret == 0) {
 		device_set_bonded(device, TRUE);
 
