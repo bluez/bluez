@@ -120,7 +120,7 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
-		uint8_t name_len;
+		uint8_t data_len, *data = &eir_data[2];
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
@@ -134,50 +134,49 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			return -EINVAL;
 		}
 
+		data_len = field_len - 1;
+
 		switch (eir_data[1]) {
 		case EIR_UUID16_SOME:
 		case EIR_UUID16_ALL:
-			eir_parse_uuid16(eir, &eir_data[2], field_len);
+			eir_parse_uuid16(eir, data, data_len);
 			break;
 
 		case EIR_UUID32_SOME:
 		case EIR_UUID32_ALL:
-			eir_parse_uuid32(eir, &eir_data[2], field_len);
+			eir_parse_uuid32(eir, data, data_len);
 			break;
 
 		case EIR_UUID128_SOME:
 		case EIR_UUID128_ALL:
-			eir_parse_uuid128(eir, &eir_data[2], field_len);
+			eir_parse_uuid128(eir, data, data_len);
 			break;
 
 		case EIR_FLAGS:
-			eir->flags = eir_data[2];
+			if (data_len > 0)
+				eir->flags = *data;
 			break;
 
 		case EIR_NAME_SHORT:
 		case EIR_NAME_COMPLETE:
 			/* Some vendors put a NUL byte terminator into
 			 * the name */
-			name_len = field_len - 1;
+			while (data_len > 0 && data[data_len - 1] == '\0')
+				data_len--;
 
-			while (name_len > 0 && eir_data[name_len - 1] == '\0')
-				name_len--;
-
-			if (!g_utf8_validate((char *) &eir_data[2],
-								name_len, NULL))
+			if (!g_utf8_validate((char *) data, data_len, NULL))
 				break;
 
 			g_free(eir->name);
 
-			eir->name = g_strndup((char *) &eir_data[2],
-								field_len - 1);
+			eir->name = g_strndup((char *) data, data_len);
 			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
 			break;
 
 		case EIR_CLASS_OF_DEV:
-			if (field_len - 1 < 3)
+			if (data_len < 3)
 				break;
-			memcpy(eir->dev_class, &eir_data[2], 3);
+			memcpy(eir->dev_class, data, 3);
 		}
 
 		eir_data += field_len + 1;
