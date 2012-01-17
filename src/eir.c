@@ -49,6 +49,7 @@
 #define EIR_NAME_SHORT              0x08  /* shortened local name */
 #define EIR_NAME_COMPLETE           0x09  /* complete local name */
 #define EIR_TX_POWER                0x0A  /* transmit power level */
+#define EIR_CLASS_OF_DEV            0x0D  /* Class of Device */
 #define EIR_DEVICE_ID               0x10  /* device ID */
 
 void eir_data_free(struct eir_data *eir)
@@ -172,6 +173,11 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 								field_len - 1);
 			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
 			break;
+
+		case EIR_CLASS_OF_DEV:
+			if (field_len - 1 < 3)
+				break;
+			memcpy(eir->dev_class, &eir_data[2], 3);
 		}
 
 		eir_data += field_len + 1;

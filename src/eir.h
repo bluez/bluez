@@ -31,6 +31,7 @@ struct eir_data {
 	GSList *services;
 	int flags;
 	char *name;
+	uint8_t dev_class[3];
 	gboolean name_complete;
 };
 
