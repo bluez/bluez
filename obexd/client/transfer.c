@@ -614,9 +614,6 @@ done:
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params)
 {
-	if (transfer->xfer == 0)
-		return -ENOTCONN;
-
 	params->data = transfer->params->data;
 	params->size = transfer->params->size;
 
