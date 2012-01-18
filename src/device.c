@@ -1088,6 +1088,7 @@ static void device_remove_stored(struct btd_device *device)
 	if (device_is_bonded(device)) {
 		delete_entry(&src, "linkkeys", addr);
 		delete_entry(&src, "aliases", addr);
+		delete_entry(&src, "longtermkeys", addr);
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr);
