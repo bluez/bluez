@@ -275,6 +275,22 @@ struct mgmt_cp_unblock_device {
 	bdaddr_t bdaddr;
 } __packed;
 
+struct mgmt_ltk_info {
+	struct mgmt_addr_info addr;
+	uint8_t authenticated;
+	uint8_t master;
+	uint8_t enc_size;
+	uint16_t ediv;
+	uint8_t rand[8];
+	uint8_t val[16];
+} __packed;
+
+#define MGMT_OP_LOAD_LONG_TERM_KEYS	0x0026
+struct mgmt_cp_load_long_term_keys {
+	uint16_t key_count;
+	struct mgmt_ltk_info keys[0];
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -373,4 +389,10 @@ struct mgmt_ev_device_blocked {
 #define MGMT_EV_DEVICE_UNBLOCKED	0x0014
 struct mgmt_ev_device_unblocked {
 	bdaddr_t bdaddr;
+} __packed;
+
+#define MGMT_EV_NEW_LONG_TERM_KEY	0x0015
+struct mgmt_ev_new_long_term_key {
+	uint8_t store_hint;
+	struct mgmt_ltk_info key;
 } __packed;
