@@ -364,8 +364,8 @@ static void read_return_apparam(struct obc_session *session,
 {
 	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct obc_transfer_params params;
-	unsigned char *buf;
-	size_t size = 0;
+	struct apparam_hdr *hdr;
+	size_t size;
 
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
@@ -376,9 +376,10 @@ static void read_return_apparam(struct obc_session *session,
 	if (params.size < APPARAM_HDR_SIZE)
 		return;
 
-	while (size > APPARAM_HDR_SIZE) {
-		struct apparam_hdr *hdr = (struct apparam_hdr *) params.data;
+	hdr = (struct apparam_hdr *) params.data;
+	size = params.size;
 
+	while (size > APPARAM_HDR_SIZE) {
 		if (hdr->len > size - APPARAM_HDR_SIZE) {
 			error("Unexpected PBAP pullphonebook app"
 					" length, tag %d, len %d",
@@ -404,8 +405,8 @@ static void read_return_apparam(struct obc_session *session,
 					hdr->tag, hdr->len);
 		}
 
-		buf += APPARAM_HDR_SIZE + hdr->len;
 		size -= APPARAM_HDR_SIZE + hdr->len;
+		hdr += APPARAM_HDR_SIZE + hdr->len;
 	}
 }
 
