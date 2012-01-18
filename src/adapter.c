@@ -1819,7 +1819,6 @@ static struct link_key_info *get_key_info(const char *addr, const char *value)
 	struct link_key_info *info;
 	char tmp[3];
 	long int l;
-	int i;
 
 	if (strlen(value) < 36) {
 		error("Unexpectedly short (%zu) link key line", strlen(value));
@@ -1830,12 +1829,7 @@ static struct link_key_info *get_key_info(const char *addr, const char *value)
 
 	str2ba(addr, &info->bdaddr);
 
-	memset(tmp, 0, sizeof(tmp));
-
-	for (i = 0; i < 16; i++) {
-		memcpy(tmp, value + (i * 2), 2);
-		info->key[i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
+	str2buf(value, info->key, sizeof(info->key));
 
 	memcpy(tmp, value + 33, 2);
 	info->type = (uint8_t) strtol(tmp, NULL, 10);
