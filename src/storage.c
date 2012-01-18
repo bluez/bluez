@@ -359,13 +359,14 @@ int read_device_name(const char *src, const char *dst, char *name)
 	return 0;
 }
 
-int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data)
+int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t *data,
+							uint8_t data_len)
 {
 	char filename[PATH_MAX + 1], addr[18], str[481];
 	int i;
 
 	memset(str, 0, sizeof(str));
-	for (i = 0; i < HCI_MAX_EIR_LENGTH; i++)
+	for (i = 0; i < data_len; i++)
 		sprintf(str + (i * 2), "%2.2X", data[i]);
 
 	create_filename(filename, PATH_MAX, local, "eir");
