@@ -547,21 +547,28 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 static int mgmt_device_found(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_device_found *ev, uint16_t len)
 {
-	if (len != sizeof(*ev)) {
+	uint16_t eir_len;
+
+	if (len < sizeof(*ev)) {
 		fprintf(stderr,
-			"Invalid device_found event length (%u bytes)\n", len);
+			"Too short device_found length (%u bytes)\n", len);
+		return -EINVAL;
+	}
+
+	eir_len = bt_get_le16(&ev->eir_len);
+	if (len != sizeof(*ev) + eir_len) {
+		fprintf(stderr, "dev_found: expected %zu bytes, got %zu bytes",
+						sizeof(*ev) + eir_len, len);
 		return -EINVAL;
 	}
 
 	if (monitor || discovery) {
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
-		printf("hci%u dev_found: %s type %s class 0x%02x%02x%02x "
-			"rssi %d confirm_name %u eir (%s)\n", index, addr,
+		printf("hci%u dev_found: %s type %s rssi %d "
+			"confirm_name %u eir_len %u\n", index, addr,
 			typestr(ev->addr.type),
-			ev->dev_class[2], ev->dev_class[1], ev->dev_class[0],
-			ev->rssi, ev->confirm_name,
-			ev->eir[0] == 0 ? "no" : "yes");
+			ev->rssi, ev->confirm_name, eir_len);
 	}
 
 	if (discovery && ev->confirm_name) {

@@ -1276,11 +1276,18 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	struct mgmt_ev_device_found *ev = buf;
 	struct controller_info *info;
 	char addr[18];
+	uint16_t eir_len;
 	uint8_t *eir;
 
-	if (len != sizeof(*ev)) {
+	if (len < sizeof(*ev)) {
+		error("mgmt_device_found too short (%zu bytes)", len);
+		return;
+	}
+
+	eir_len = bt_get_le16(&ev->eir_len);
+	if (len != sizeof(*ev) + eir_len) {
 		error("mgmt_device_found length %zu instead of expected %zu",
-							len, sizeof(*ev));
+						len, sizeof(*ev) + eir_len);
 		return;
 	}
 
@@ -1291,19 +1298,19 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (ev->eir[0] == 0)
+	if (eir_len == 0)
 		eir = NULL;
 	else
 		eir = ev->eir;
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, rssi %d cfm_name %u %s", index, addr, ev->rssi,
-					ev->confirm_name, eir ? "eir" : "");
+	DBG("hci%u addr %s, rssi %d cfm_name %u eir_len %u", index, addr, ev->rssi,
+					ev->confirm_name, eir_len);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
 						mgmt_addr_type(ev->addr.type),
 						ev->rssi, ev->confirm_name,
-						eir, HCI_MAX_EIR_LENGTH);
+						eir, eir_len);
 }
 
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
