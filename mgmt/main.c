@@ -557,7 +557,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 
 	eir_len = bt_get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
-		fprintf(stderr, "dev_found: expected %zu bytes, got %zu bytes",
+		fprintf(stderr, "dev_found: expected %zu bytes, got %u bytes",
 						sizeof(*ev) + eir_len, len);
 		return -EINVAL;
 	}
