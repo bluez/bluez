@@ -51,7 +51,6 @@ enum map_ap_tag {
 	MAP_AP_STATUSINDICATOR		= 0x17,		/* uint8_t	*/
 	MAP_AP_STATUSVALUE		= 0x18,		/* uint8_t	*/
 	MAP_AP_MSETIME			= 0x19,		/* char *	*/
-	MAP_AP_INVALID			= 0x100,
 };
 
 /* Data type representing MAP application parameters. Consider opaque. */
