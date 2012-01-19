@@ -23,6 +23,8 @@ Packet Structures
 	+-------------------+-------------------+-------------------+
 	|                                                           |
 
+All fields are in little-endian byte order (least significant byte first).
+
 Controller Index can have a special value <non-controller> to indicate that
 command or event is not related to any controller. Possible values:
 
