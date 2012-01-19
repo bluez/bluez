@@ -95,6 +95,29 @@ static int find_ap_def_offset(uint8_t tag)
 	return tag - 1;
 }
 
+static void ap_entry_dump(gpointer tag, gpointer val, gpointer user_data)
+{
+	struct ap_entry *entry = val;
+	int offset;
+
+	offset = find_ap_def_offset(GPOINTER_TO_INT(tag));
+
+	switch (ap_defs[offset].type) {
+	case APT_UINT8:
+		DBG("%-30s %08x", ap_defs[offset].name, entry->val.u8);
+		break;
+	case APT_UINT16:
+		DBG("%-30s %08x", ap_defs[offset].name, entry->val.u16);
+		break;
+	case APT_UINT32:
+		DBG("%-30s %08x", ap_defs[offset].name, entry->val.u32);
+		break;
+	case APT_STR:
+		DBG("%-30s %s", ap_defs[offset].name, entry->val.str);
+		break;
+	}
+}
+
 static void ap_entry_free(gpointer val)
 {
 	struct ap_entry *entry = val;
@@ -208,6 +231,8 @@ map_ap_t *map_ap_decode(const uint8_t *buffer, size_t length)
 			break;
 		}
 	}
+
+	g_hash_table_foreach(ap, ap_entry_dump, NULL);
 
 	return ap;
 }
