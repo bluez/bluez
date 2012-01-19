@@ -82,3 +82,9 @@ Properties
 			was changed by the remote device. Property shared
 			between Path Loss and Find Me. Values: "none", "mild",
 			"high".
+
+		string LinkLossAlertLevel [readonly]
+
+			This property indicates that Alert Level characteristic
+			in the local Link Loss Service was changed by the
+			remote device. Values: "none", "mild", "high".
