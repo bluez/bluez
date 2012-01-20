@@ -2225,7 +2225,6 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 {
 	struct bonding_req *bonding;
 	const char *name = dbus_message_get_sender(msg);
-	struct agent *agent;
 	char addr[18];
 
 	ba2str(&device->bdaddr, addr);
@@ -2234,16 +2233,10 @@ static struct bonding_req *bonding_request_new(DBusConnection *conn,
 	if (!agent_path)
 		goto proceed;
 
-	agent = agent_create(device->adapter, name, agent_path,
+	device->agent = agent_create(device->adapter, name, agent_path,
 					capability,
 					device_agent_removed,
 					device);
-	if (!agent) {
-		error("Unable to create a new agent");
-		return NULL;
-	}
-
-	device->agent = agent;
 
 	DBG("Temporary agent registered for %s at %s:%s",
 			addr, name, agent_path);
