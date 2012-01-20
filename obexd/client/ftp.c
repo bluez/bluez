@@ -201,16 +201,15 @@ static void list_folder_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
 	struct ftp_data *ftp = user_data;
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
 	const char *buf;
-	int size;
+	size_t size;
 
 	reply = dbus_message_new_method_return(ftp->msg);
 
-	buf = obc_transfer_get_buffer(transfer, &size);
+	buf = obc_session_get_buffer(session, &size);
 	if (size == 0)
 		goto done;
 
@@ -224,8 +223,6 @@ static void list_folder_callback(struct obc_session *session,
 	g_markup_parse_context_parse(ctxt, buf, strlen(buf) - 1, NULL);
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
-
-	obc_transfer_clear_buffer(transfer);
 
 done:
 	g_dbus_send_message(conn, reply);

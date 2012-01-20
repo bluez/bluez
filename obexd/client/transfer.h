@@ -33,11 +33,12 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 					void *user_data);
 
 struct obc_transfer *obc_transfer_register(DBusConnection *conn,
-						const char *filename,
-						const char *name,
-						const char *type,
-						struct obc_transfer_params *params,
-						void *user_data);
+					GObex *obex,
+					const char *agent,
+					const char *filename,
+					const char *name,
+					const char *type,
+					struct obc_transfer_params *params);
 
 void obc_transfer_unregister(struct obc_transfer *transfer);
 
@@ -48,7 +49,7 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params);
-const char *obc_transfer_get_buffer(struct obc_transfer *transfer, int *size);
+const char *obc_transfer_get_buffer(struct obc_transfer *transfer, size_t *size);
 void obc_transfer_set_buffer(struct obc_transfer *transfer, char *buffer);
 void obc_transfer_clear_buffer(struct obc_transfer *transfer);
 

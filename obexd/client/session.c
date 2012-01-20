@@ -869,15 +869,38 @@ proceed:
 	return session;
 }
 
+static void obc_session_add_transfer(struct obc_session *session,
+						struct obc_transfer *transfer)
+{
+	session->pending = g_slist_append(session->pending, transfer);
+	obc_session_ref(session);
+}
+
+static void obc_session_remove_transfer(struct obc_session *session,
+						struct obc_transfer *transfer)
+{
+	session->pending = g_slist_remove(session->pending, transfer);
+	obc_transfer_unregister(transfer);
+	obc_session_unref(session);
+}
+
 void obc_session_shutdown(struct obc_session *session)
 {
+	GSList *l = session->pending;
+
 	DBG("%p", session);
 
 	obc_session_ref(session);
 
 	/* Unregister any pending transfer */
-	g_slist_foreach(session->pending, (GFunc) obc_transfer_unregister,
-									NULL);
+	while (l) {
+		struct obc_transfer *transfer = l->data;
+
+		l = l->next;
+
+		obc_session_remove_transfer(session, transfer);
+	}
+
 
 	/* Unregister interfaces */
 	if (session->path)
@@ -1108,13 +1131,17 @@ static void session_terminate_transfer(struct obc_session *session,
 	struct session_callback *callback = session->callback;
 
 	if (callback) {
+		obc_session_ref(session);
 		callback->func(session, gerr, callback->data);
+		if (g_slist_find(session->pending, transfer))
+			obc_session_remove_transfer(session, transfer);
+		obc_session_unref(session);
 		return;
 	}
 
 	obc_session_ref(session);
 
-	obc_transfer_unregister(transfer);
+	obc_session_remove_transfer(session, transfer);
 
 	if (session->pending)
 		session_request(session, session_prepare_put,
@@ -1226,6 +1253,7 @@ int obc_session_get(struct obc_session *session, const char *type,
 {
 	struct obc_transfer *transfer;
 	struct obc_transfer_params *params = NULL;
+	const char *agent;
 	int err;
 
 	if (session->obex == NULL)
@@ -1238,8 +1266,15 @@ int obc_session_get(struct obc_session *session, const char *type,
 		params->size = apparam_size;
 	}
 
-	transfer = obc_transfer_register(session->conn, filename, targetname,
-							type, params, session);
+	if (session->agent)
+		agent = obc_agent_get_name(session->agent);
+	else
+		agent = NULL;
+
+	transfer = obc_transfer_register(session->conn, session->obex,
+							agent, filename,
+							targetname, type,
+							params);
 	if (transfer == NULL) {
 		if (params != NULL) {
 			g_free(params->data);
@@ -1257,8 +1292,12 @@ int obc_session_get(struct obc_session *session, const char *type,
 	}
 
 	err = session_request(session, session_prepare_get, transfer);
-	if (err < 0)
+	if (err < 0) {
+		obc_transfer_unregister(transfer);
 		return err;
+	}
+
+	obc_session_add_transfer(session, transfer);
 
 	return 0;
 }
@@ -1267,13 +1306,18 @@ int obc_session_send(struct obc_session *session, const char *filename,
 				const char *targetname)
 {
 	struct obc_transfer *transfer;
+	const char *agent;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = obc_transfer_register(session->conn, filename, targetname,
-							NULL, NULL, session);
+	agent = obc_agent_get_name(session->agent);
+
+	transfer = obc_transfer_register(session->conn, session->obex,
+							agent, filename,
+							targetname, NULL,
+							NULL);
 	if (transfer == NULL)
 		return -EINVAL;
 
@@ -1282,12 +1326,15 @@ int obc_session_send(struct obc_session *session, const char *filename,
 		goto fail;
 
 	/* Transfer should start if it is the first in the pending list */
-	if (transfer != session->pending->data)
-		return 0;
+	if (session->pending != NULL)
+		goto done;
 
 	err = session_request(session, session_prepare_put, transfer);
 	if (err < 0)
 		goto fail;
+
+done:
+	obc_session_add_transfer(session, transfer);
 
 	return 0;
 
@@ -1302,13 +1349,21 @@ int obc_session_pull(struct obc_session *session,
 				session_callback_t function, void *user_data)
 {
 	struct obc_transfer *transfer;
+	const char *agent;
 	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
-	transfer = obc_transfer_register(session->conn, NULL, filename, type,
-								NULL, session);
+	if (session->agent != NULL)
+		agent = obc_agent_get_name(session->agent);
+	else
+		agent = NULL;
+
+	transfer = obc_transfer_register(session->conn, session->obex,
+								agent, NULL,
+								filename, type,
+								NULL);
 	if (transfer == NULL) {
 		return -EIO;
 	}
@@ -1322,8 +1377,10 @@ int obc_session_pull(struct obc_session *session,
 	}
 
 	err = session_request(session, session_prepare_get, transfer);
-	if (err == 0)
+	if (err == 0) {
+		obc_session_add_transfer(session, transfer);
 		return 0;
+	}
 
 	obc_transfer_unregister(transfer);
 	return err;
@@ -1382,6 +1439,7 @@ static void session_prepare_put(struct obc_session *session,
 int obc_session_put(struct obc_session *session, char *buf, const char *targetname)
 {
 	struct obc_transfer *transfer;
+	const char *agent;
 	int err;
 
 	if (session->obex == NULL)
@@ -1390,8 +1448,12 @@ int obc_session_put(struct obc_session *session, char *buf, const char *targetna
 	if (session->pending != NULL)
 		return -EISCONN;
 
-	transfer = obc_transfer_register(session->conn, NULL, targetname, NULL,
-								NULL, session);
+	agent = obc_agent_get_name(session->agent);
+
+	transfer = obc_transfer_register(session->conn, session->obex,
+							agent, NULL,
+							targetname, NULL,
+							NULL);
 	if (transfer == NULL)
 		return -EIO;
 
@@ -1470,19 +1532,42 @@ GObex *obc_session_get_obex(struct obc_session *session)
 	return session->obex;
 }
 
-struct obc_transfer *obc_session_get_transfer(struct obc_session *session)
+static struct obc_transfer *obc_session_get_transfer(
+						struct obc_session *session)
 {
 	return session->pending ? session->pending->data : NULL;
 }
 
-void obc_session_add_transfer(struct obc_session *session,
-					struct obc_transfer *transfer)
+const char *obc_session_get_buffer(struct obc_session *session, size_t *size)
 {
-	session->pending = g_slist_append(session->pending, transfer);
+	struct obc_transfer *transfer;
+	const char *buf;
+
+	transfer = obc_session_get_transfer(session);
+	if (transfer == NULL)
+		return NULL;
+
+	buf = obc_transfer_get_buffer(transfer, size);
+
+	obc_transfer_clear_buffer(transfer);
+
+	return buf;
 }
 
-void obc_session_remove_transfer(struct obc_session *session,
-					struct obc_transfer *transfer)
+void *obc_session_get_params(struct obc_session *session, size_t *size)
 {
-	session->pending = g_slist_remove(session->pending, transfer);
+	struct obc_transfer *transfer;
+	struct obc_transfer_params params;
+
+	transfer= obc_session_get_transfer(session);
+	if (transfer == NULL)
+		return NULL;
+
+	if (obc_transfer_get_params(transfer, &params) < 0)
+		return NULL;
+
+	if (size)
+		*size = params.size;
+
+	return params.data;
 }

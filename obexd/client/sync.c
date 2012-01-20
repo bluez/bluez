@@ -33,7 +33,6 @@
 
 #include "log.h"
 
-#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "sync.h"
@@ -86,16 +85,15 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 static void sync_getphonebook_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct sync_data *sync = user_data;
 	DBusMessage *reply;
 	const char *buf;
-	int size;
+	size_t size;
 
 	reply = dbus_message_new_method_return(sync->msg);
 
-	buf = obc_transfer_get_buffer(transfer, &size);
-	if (size == 0)
+	buf = obc_session_get_buffer(session, &size);
+	if (buf == NULL)
 		buf = "";
 
 	dbus_message_append_args(reply,

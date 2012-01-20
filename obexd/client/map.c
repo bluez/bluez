@@ -31,7 +31,6 @@
 #include "log.h"
 
 #include "map.h"
-#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 
@@ -107,11 +106,10 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 static void buffer_cb(struct obc_session *session, GError *err,
 							void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct map_data *map = user_data;
 	DBusMessage *reply;
 	const char *buf;
-	int size;
+	size_t size;
 
 	if (err != NULL) {
 		reply = g_dbus_create_error(map->msg,
@@ -120,19 +118,16 @@ static void buffer_cb(struct obc_session *session, GError *err,
 		goto done;
 	}
 
-	buf = obc_transfer_get_buffer(transfer, &size);
+	buf = obc_session_get_buffer(session, &size);
 	if (size == 0)
 		buf = "";
 
 	reply = g_dbus_create_reply(map->msg, DBUS_TYPE_STRING, &buf,
 							DBUS_TYPE_INVALID);
 
-	obc_transfer_clear_buffer(transfer);
-
 done:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(map->msg);
-	obc_transfer_unregister(transfer);
 }
 
 static DBusMessage *map_get_folder_listing(DBusConnection *connection,

@@ -36,7 +36,6 @@
 
 #include "log.h"
 
-#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "pbap.h"
@@ -362,22 +361,18 @@ static int pbap_set_path(struct pbap_data *pbap, const char *path)
 static void read_return_apparam(struct obc_session *session,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
-	struct obc_transfer_params params;
 	struct apparam_hdr *hdr;
 	size_t size;
 
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
 
-	if (obc_transfer_get_params(transfer, &params) < 0)
+	hdr = obc_session_get_params(session, &size);
+	if (hdr == NULL)
 		return;
 
-	if (params.size < APPARAM_HDR_SIZE)
+	if (size < APPARAM_HDR_SIZE)
 		return;
-
-	hdr = (struct apparam_hdr *) params.data;
-	size = params.size;
 
 	while (size > APPARAM_HDR_SIZE) {
 		if (hdr->len > size - APPARAM_HDR_SIZE) {
@@ -413,14 +408,13 @@ static void read_return_apparam(struct obc_session *session,
 static void pull_phonebook_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	DBusMessage *reply;
 	const char *buf;
-	int size;
+	size_t size;
 
 	if (pbap->msg == NULL)
-		goto done;
+		return;
 
 	if (err) {
 		reply = g_dbus_create_error(pbap->msg,
@@ -431,7 +425,7 @@ static void pull_phonebook_callback(struct obc_session *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	buf = obc_transfer_get_buffer(transfer, &size);
+	buf = obc_session_get_buffer(session, &size);
 	if (size == 0)
 		buf = "";
 
@@ -439,28 +433,22 @@ static void pull_phonebook_callback(struct obc_session *session,
 			DBUS_TYPE_STRING, &buf,
 			DBUS_TYPE_INVALID);
 
-	obc_transfer_clear_buffer(transfer);
-
 send:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
-
-done:
-	obc_transfer_unregister(transfer);
 }
 
 static void phonebook_size_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	DBusMessage *reply;
 	guint16 phone_book_size;
 	guint8 new_missed_calls;
 
 	if (pbap->msg == NULL)
-		goto done;
+		return;
 
 	if (err) {
 		reply = g_dbus_create_error(pbap->msg,
@@ -477,30 +465,24 @@ static void phonebook_size_callback(struct obc_session *session,
 			DBUS_TYPE_UINT16, &phone_book_size,
 			DBUS_TYPE_INVALID);
 
-	obc_transfer_clear_buffer(transfer);
-
 send:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
-
-done:
-	obc_transfer_unregister(transfer);
 }
 
 static void pull_vcard_listing_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct pbap_data *pbap = user_data;
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
 	const char *buf;
-	int size;
+	size_t size;
 
 	if (pbap->msg == NULL)
-		goto complete;
+		return;
 
 	if (err) {
 		reply = g_dbus_create_error(pbap->msg,
@@ -511,7 +493,7 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 
 	reply = dbus_message_new_method_return(pbap->msg);
 
-	buf = obc_transfer_get_buffer(transfer, &size);
+	buf = obc_session_get_buffer(session, &size);
 	if (size == 0)
 		buf = "";
 
@@ -525,14 +507,10 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
 
-	obc_transfer_clear_buffer(transfer);
-
 send:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(pbap->msg);
 	pbap->msg = NULL;
-complete:
-	obc_transfer_unregister(transfer);
 }
 
 static DBusMessage *pull_phonebook(struct pbap_data *pbap,

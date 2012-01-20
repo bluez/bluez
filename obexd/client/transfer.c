@@ -30,18 +30,21 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 #include <glib.h>
 #include <gdbus.h>
+#include <gobex.h>
 
 #include "log.h"
 #include "transfer.h"
-#include "session.h"
 
 #define TRANSFER_INTERFACE  "org.openobex.Transfer"
 #define TRANSFER_BASEPATH   "/org/openobex"
 
 #define DEFAULT_BUFFER_SIZE 4096
+
+#define OBC_TRANSFER_ERROR obc_transfer_error_quark()
 
 static guint64 counter = 0;
 
@@ -51,10 +54,11 @@ struct transfer_callback {
 };
 
 struct obc_transfer {
-	struct obc_session *session;
+	GObex *obex;
 	struct obc_transfer_params *params;
 	struct transfer_callback *callback;
 	DBusConnection *conn;
+	char *agent;		/* Transfer agent */
 	char *path;		/* Transfer path */
 	gchar *filename;	/* Transfer file location */
 	char *name;		/* Transfer object name */
@@ -68,6 +72,11 @@ struct obc_transfer {
 	gint64 transferred;
 	int err;
 };
+
+static GQuark obc_transfer_error_quark(void)
+{
+	return g_quark_from_static_string("obc-transfer-error-quark");
+}
 
 static void append_entry(DBusMessageIter *dict,
 				const char *key, int type, void *val)
@@ -143,7 +152,7 @@ static void obc_transfer_abort(struct obc_transfer *transfer)
 	if (callback) {
 		GError *err;
 
-		err = g_error_new(OBEX_IO_ERROR, -ECANCELED, "%s",
+		err = g_error_new(OBC_TRANSFER_ERROR, -ECANCELED, "%s",
 							strerror(ECANCELED));
 		callback->func(transfer, transfer->transferred, err,
 							callback->data);
@@ -155,13 +164,11 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct obc_transfer *transfer = user_data;
-	struct obc_session *session = transfer->session;
-	const gchar *sender, *agent;
+	const gchar *sender;
 	DBusMessage *reply;
 
 	sender = dbus_message_get_sender(message);
-	agent = obc_session_get_agent(session);
-	if (g_str_equal(sender, agent) == FALSE)
+	if (g_str_equal(transfer->agent, sender) == FALSE)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
@@ -183,8 +190,6 @@ static GDBusMethodTable obc_transfer_methods[] = {
 
 static void obc_transfer_free(struct obc_transfer *transfer)
 {
-	struct obc_session *session = transfer->session;
-
 	DBG("%p", transfer);
 
 	if (transfer->xfer)
@@ -192,10 +197,6 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 
 	if (transfer->fd > 0)
 		close(transfer->fd);
-
-	obc_session_remove_transfer(session, transfer);
-
-	obc_session_unref(session);
 
 	if (transfer->params != NULL) {
 		g_free(transfer->params->data);
@@ -205,7 +206,11 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	if (transfer->conn)
 		dbus_connection_unref(transfer->conn);
 
+	if (transfer->obex)
+		g_obex_unref(transfer->obex);
+
 	g_free(transfer->callback);
+	g_free(transfer->agent);
 	g_free(transfer->filename);
 	g_free(transfer->name);
 	g_free(transfer->type);
@@ -215,17 +220,18 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 }
 
 struct obc_transfer *obc_transfer_register(DBusConnection *conn,
+						GObex *obex,
+						const char *agent,
 						const char *filename,
 						const char *name,
 						const char *type,
-						struct obc_transfer_params *params,
-						void *user_data)
+						struct obc_transfer_params *params)
 {
-	struct obc_session *session = user_data;
 	struct obc_transfer *transfer;
 
 	transfer = g_new0(struct obc_transfer, 1);
-	transfer->session = obc_session_ref(session);
+	transfer->obex = g_obex_ref(obex);
+	transfer->agent = g_strdup(agent);
 	transfer->filename = g_strdup(filename);
 	transfer->name = g_strdup(name);
 	transfer->type = g_strdup(type);
@@ -256,8 +262,6 @@ struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 
 done:
 	DBG("%p registered %s", transfer, transfer->path);
-
-	obc_session_add_transfer(session, transfer);
 
 	return transfer;
 }
@@ -345,7 +349,7 @@ static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
 
 	rspcode = g_obex_packet_get_operation(rsp, &final);
 	if (rspcode != G_OBEX_RSP_SUCCESS && rspcode != G_OBEX_RSP_CONTINUE) {
-		err = g_error_new(OBEX_IO_ERROR, rspcode,
+		err = g_error_new(OBC_TRANSFER_ERROR, rspcode,
 					"Transfer failed (0x%02x)", rspcode);
 		get_buf_xfer_complete(obex, err, transfer);
 		g_error_free(err);
@@ -499,9 +503,7 @@ static void obc_transfer_set_callback(struct obc_transfer *transfer,
 int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
-	struct obc_session *session = transfer->session;
 	GError *err = NULL;
-	GObex *obex;
 	GObexPacket *req;
 	GObexDataConsumer data_cb;
 	GObexFunc complete_cb;
@@ -527,8 +529,6 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 		complete_cb = xfer_complete;
 	}
 
-	obex = obc_session_get_obex(session);
-
 	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
 
 	if (transfer->filename != NULL)
@@ -545,12 +545,12 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 						transfer->params->size);
 
 	if (rsp_cb)
-		transfer->xfer = g_obex_send_req(obex, req, -1, rsp_cb,
-							transfer, &err);
+		transfer->xfer = g_obex_send_req(transfer->obex, req, -1,
+						rsp_cb, transfer, &err);
 	else
-		transfer->xfer = g_obex_get_req_pkt(obex, req, data_cb,
-							complete_cb, transfer,
-							&err);
+		transfer->xfer = g_obex_get_req_pkt(transfer->obex, req,
+						data_cb, complete_cb, transfer,
+						&err);
 
 	if (transfer->xfer == 0)
 		return -ENOTCONN;
@@ -564,9 +564,7 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 			void *user_data)
 {
-	struct obc_session *session = transfer->session;
 	GError *err = NULL;
-	GObex *obex;
 	GObexPacket *req;
 	GObexDataProducer data_cb;
 
@@ -581,7 +579,6 @@ int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
 	data_cb = put_xfer_progress;
 
 done:
-	obex = obc_session_get_obex(session);
 	req = g_obex_packet_new(G_OBEX_OP_PUT, FALSE, G_OBEX_HDR_INVALID);
 
 	if (transfer->name != NULL)
@@ -600,8 +597,9 @@ done:
 						transfer->params->data,
 						transfer->params->size);
 
-	transfer->xfer = g_obex_put_req_pkt(obex, req, data_cb, xfer_complete,
-							transfer, &err);
+	transfer->xfer = g_obex_put_req_pkt(transfer->obex, req, data_cb,
+						xfer_complete, transfer,
+						&err);
 	if (transfer->xfer == 0)
 		return -ENOTCONN;
 
@@ -625,7 +623,7 @@ void obc_transfer_clear_buffer(struct obc_transfer *transfer)
 	transfer->filled = 0;
 }
 
-const char *obc_transfer_get_buffer(struct obc_transfer *transfer, int *size)
+const char *obc_transfer_get_buffer(struct obc_transfer *transfer, size_t *size)
 {
 	if (size)
 		*size = transfer->filled;

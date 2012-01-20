@@ -35,7 +35,6 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "transfer.h"
 #include "session.h"
 #include "manager.h"
 #include "opp.h"
@@ -441,10 +440,9 @@ static DBusMessage *remove_session(DBusConnection *connection,
 static void capabilities_complete_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
-	struct obc_transfer *transfer = obc_session_get_transfer(session);
 	struct send_data *data = user_data;
 	const char *capabilities;
-	int size;
+	size_t size;
 
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
@@ -454,7 +452,7 @@ static void capabilities_complete_callback(struct obc_session *session,
 		goto done;
 	}
 
-	capabilities = obc_transfer_get_buffer(transfer, &size);
+	capabilities = obc_session_get_buffer(session, &size);
 	if (size == 0)
 		capabilities = "";
 

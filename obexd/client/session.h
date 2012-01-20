@@ -57,12 +57,8 @@ const char *obc_session_get_agent(struct obc_session *session);
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
 GObex *obc_session_get_obex(struct obc_session *session);
-
-struct obc_transfer *obc_session_get_transfer(struct obc_session *session);
-void obc_session_add_transfer(struct obc_session *session,
-					struct obc_transfer *transfer);
-void obc_session_remove_transfer(struct obc_session *session,
-					struct obc_transfer *transfer);
+const char *obc_session_get_buffer(struct obc_session *session, size_t *size);
+void *obc_session_get_params(struct obc_session *session, size_t *size);
 
 int obc_session_send(struct obc_session *session, const char *filename,
 				const char *remotename);
