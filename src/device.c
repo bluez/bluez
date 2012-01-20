@@ -2303,10 +2303,6 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 
 	bonding = bonding_request_new(conn, msg, device, agent_path,
 					capability);
-	if (!bonding) {
-		adapter_cancel_bonding(adapter, &device->bdaddr);
-		return NULL;
-	}
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(conn,
 						dbus_message_get_sender(msg),
