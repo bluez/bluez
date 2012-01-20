@@ -100,7 +100,6 @@ struct obc_session {
 	guint watch;
 	GSList *pending;
 	GSList *pending_calls;
-	void *priv;
 	char *adapter;
 };
 
