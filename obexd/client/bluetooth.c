@@ -1,0 +1,69 @@
+/*
+ *
+ *  OBEX Client
+ *
+ *  Copyright (C) 2012 Intel Corporation
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <errno.h>
+#include <inttypes.h>
+
+#include <glib.h>
+
+#include "log.h"
+#include "transport.h"
+#include "bluetooth.h"
+
+static guint bluetooth_connect(const char *source, const char *destination,
+				const char *service, uint16_t port,
+				obc_transport_func func, void *user_data)
+{
+	DBG("");
+
+	return 0;
+}
+
+static void bluetooth_disconnect(guint id)
+{
+	DBG("");
+}
+
+static struct obc_transport bluetooth = {
+	.name = "Bluetooth",
+	.connect = bluetooth_connect,
+	.disconnect = bluetooth_disconnect,
+};
+
+int bluetooth_init(void)
+{
+	DBG("");
+
+	return obc_transport_register(&bluetooth);
+}
+
+void bluetooth_exit(void)
+{
+	DBG("");
+
+	obc_transport_unregister(&bluetooth);
+}

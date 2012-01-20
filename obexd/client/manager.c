@@ -37,6 +37,7 @@
 #include "log.h"
 #include "session.h"
 #include "manager.h"
+#include "bluetooth.h"
 #include "opp.h"
 #include "ftp.h"
 #include "pbap.h"
@@ -557,11 +558,12 @@ static GDBusMethodTable client_methods[] = {
 
 static DBusConnection *conn = NULL;
 
-static struct target_module {
+static struct obc_module {
 	const char *name;
 	int (*init) (void);
 	void (*exit) (void);
-} targets[] = {
+} modules[] = {
+	{ "bluetooth", bluetooth_init, bluetooth_exit },
 	{ "opp", opp_init, opp_exit },
 	{ "ftp", ftp_init, ftp_exit },
 	{ "pbap", pbap_init, pbap_exit },
@@ -573,7 +575,7 @@ static struct target_module {
 int manager_init(void)
 {
 	DBusError derr;
-	struct target_module *target;
+	struct obc_module *module;
 
 	dbus_error_init(&derr);
 
@@ -593,11 +595,11 @@ int manager_init(void)
 		return -1;
 	}
 
-	for (target = targets; target && target->init; target++) {
-		if (target->init() < 0)
+	for (module = modules; module && module->init; module++) {
+		if (module->init() < 0)
 			continue;
 
-		DBG("Target %s loaded", target->name);
+		DBG("Module %s loaded", module->name);
 	}
 
 	return 0;
@@ -605,13 +607,13 @@ int manager_init(void)
 
 void manager_exit(void)
 {
-	struct target_module *target;
+	struct obc_module *module;
 
 	if (conn == NULL)
 		return;
 
-	for (target = targets; target && target->exit; target++)
-		target->exit();
+	for (module = modules; module && module->exit; module++)
+		module->exit();
 
 	g_dbus_unregister_interface(conn, CLIENT_PATH, CLIENT_INTERFACE);
 	dbus_connection_unref(conn);
