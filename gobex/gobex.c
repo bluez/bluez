@@ -588,6 +588,7 @@ gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err)
 	switch (obex->rx_last_op) {
 	case G_OBEX_OP_CONNECT:
 		prepare_connect_rsp(obex, pkt);
+		break;
 	case G_OBEX_OP_GET:
 	case G_OBEX_OP_PUT:
 		prepare_srm_rsp(obex, pkt);
