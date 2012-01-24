@@ -135,6 +135,19 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 			printf("imtu=%u, omtu=%u\n", imtu, omtu);
 	}
 
+	if (data->type == BT_IO_L2CAP) {
+		uint8_t key_size;
+
+		if (!bt_io_get(io, data->type, &err,
+					BT_IO_OPT_KEY_SIZE, &key_size,
+					BT_IO_OPT_INVALID)) {
+			printf("Unable to get L2CAP Key size: %s\n",
+								err->message);
+			g_clear_error(&err);
+		} else
+			printf("key_size=%u\n", key_size);
+	}
+
 	if (data->disconn == 0) {
 		g_io_channel_shutdown(io, TRUE, NULL);
 		printf("Disconnected\n");
