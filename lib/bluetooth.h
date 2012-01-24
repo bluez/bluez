@@ -63,6 +63,7 @@ extern "C" {
 #define BT_SECURITY	4
 struct bt_security {
 	uint8_t level;
+	uint8_t key_size;
 };
 #define BT_SECURITY_SDP		0
 #define BT_SECURITY_LOW		1
