@@ -511,6 +511,21 @@ static int set_priority(int sock, uint32_t prio)
 	return 0;
 }
 
+static gboolean get_key_size(int sock, int *size, GError **err)
+{
+	struct bt_security sec;
+	socklen_t len;
+
+	memset(&sec, 0, sizeof(sec));
+	len = sizeof(sec);
+	if (getsockopt(sock, SOL_BLUETOOTH, BT_SECURITY, &sec, &len) == 0) {
+		*size = sec.key_size;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static gboolean l2cap_set(int sock, int sec_level, uint16_t imtu,
 				uint16_t omtu, uint8_t mode, int master,
 				int flushable, uint32_t priority, GError **err)
@@ -873,6 +888,10 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_SEC_LEVEL:
 			if (!get_sec_level(sock, BT_IO_L2CAP,
 						va_arg(args, int *), err))
+				return FALSE;
+			break;
+		case BT_IO_OPT_KEY_SIZE:
+			if (!get_key_size(sock, va_arg(args, int *), err))
 				return FALSE;
 			break;
 		case BT_IO_OPT_PSM:
