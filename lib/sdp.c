@@ -2525,11 +2525,15 @@ int sdp_set_profile_descs(sdp_record_t *rec, const sdp_list_t *profiles)
 		dtds[1] = &uint16;
 		values[1] = &profile->version;
 		seq = sdp_seq_alloc(dtds, values, 2);
-		if (seq) {
-			seqDTDs[i] = &seq->dtd;
-			seqs[i] = seq;
-			sdp_pattern_add_uuid(rec, &profile->uuid);
+
+		if (seq == NULL) {
+			status = -1;
+			break;
 		}
+
+		seqDTDs[i] = &seq->dtd;
+		seqs[i] = seq;
+		sdp_pattern_add_uuid(rec, &profile->uuid);
 		i++;
 	}
 	if (status == 0) {
