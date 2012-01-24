@@ -422,6 +422,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 				BT_IO_OPT_SOURCE_BDADDR, &device->src,
 				BT_IO_OPT_DEST_BDADDR, &device->dst,
 				BT_IO_OPT_CHANNEL, port->channel,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
 	if (!port->io) {
 		error("%s", gerr->message);
@@ -462,6 +463,7 @@ connect:
 				BT_IO_OPT_SOURCE_BDADDR, &device->src,
 				BT_IO_OPT_DEST_BDADDR, &device->dst,
 				BT_IO_OPT_CHANNEL, port->channel,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
 	if (port->io == NULL)
 		return -EIO;

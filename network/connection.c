@@ -373,6 +373,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 				BT_IO_OPT_SOURCE_BDADDR, &peer->src,
 				BT_IO_OPT_DEST_BDADDR, &peer->dst,
 				BT_IO_OPT_PSM, BNEP_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_OMTU, BNEP_MTU,
 				BT_IO_OPT_IMTU, BNEP_MTU,
 				BT_IO_OPT_INVALID);

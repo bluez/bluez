@@ -368,6 +368,7 @@ static gboolean rfcomm_connect(struct input_conn *iconn, GError **err)
 				NULL, err,
 				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 				BT_IO_OPT_DEST_BDADDR, &idev->dst,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
 	if (!io)
 		return FALSE;

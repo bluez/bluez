@@ -2525,6 +2525,7 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
 				BT_IO_OPT_DEST_BDADDR, &session->dst,
 				BT_IO_OPT_PSM, AVDTP_PSM,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("%s", err->message);

@@ -1625,6 +1625,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 					BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 					BT_IO_OPT_DEST_BDADDR, &dev->dst,
 					BT_IO_OPT_CHANNEL, hs->rfcomm_ch,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID);
 
 	hs->rfcomm_ch = -1;
