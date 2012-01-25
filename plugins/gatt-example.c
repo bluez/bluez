@@ -230,10 +230,10 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	bt_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
 	len = strlen(desc_out_hum);
 	strncpy((char *) atval, desc_out_hum, len);
-	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(adapter->adapter, h, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, len);
 
-	g_assert(h - start_handle == svc_size);
+	g_assert(h - start_handle + 1 == svc_size);
 
 	/* Add an SDP record for the above service */
 	sdp_handle = attrib_create_sdp(adapter->adapter, start_handle,
@@ -298,10 +298,10 @@ static void register_manuf1_service(struct gatt_example_adapter *adapter,
 	bt_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
 	len = strlen(serial1);
 	strncpy((char *) atval, serial1, len);
-	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(adapter->adapter, h, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, len);
 
-	g_assert(h - start_handle == svc_size);
+	g_assert(h - start_handle + 1 == svc_size);
 
 	range[0] = start_handle;
 	range[1] = start_handle + svc_size - 1;
@@ -362,10 +362,10 @@ static void register_manuf2_service(struct gatt_example_adapter *adapter,
 	bt_uuid16_create(&uuid, MANUFACTURER_SERIAL_UUID);
 	len = strlen(serial2);
 	strncpy((char *) atval, serial2, len);
-	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(adapter->adapter, h, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, len);
 
-	g_assert(h - start_handle == svc_size);
+	g_assert(h - start_handle + 1 == svc_size);
 
 	range[0] = start_handle;
 	range[1] = start_handle + svc_size - 1;
@@ -412,10 +412,10 @@ static void register_vendor_service(struct gatt_example_adapter *adapter,
 	atval[3] = 0x64;
 	atval[4] = 0x6F;
 	atval[5] = 0x72;
-	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(adapter->adapter, h, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, 6);
 
-	g_assert(h - start_handle == svc_size);
+	g_assert(h - start_handle + 1 == svc_size);
 
 	range[0] = start_handle;
 	range[1] = start_handle + svc_size - 1;
@@ -500,10 +500,9 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	bt_uuid16_create(&uuid, GATT_CHARAC_USER_DESC_UUID);
 	len = strlen(desc_weight);
 	strncpy((char *) atval, desc_weight, len);
-	attrib_db_add(adapter->adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
+	attrib_db_add(adapter->adapter, h, &uuid, ATT_NONE, ATT_NOT_PERMITTED,
 								atval, len);
-
-	g_assert(h - start_handle == svc_size);
+	g_assert(h - start_handle + 1 == svc_size);
 
 	/* Add an SDP record for the above service */
 	sdp_handle = attrib_create_sdp(adapter->adapter, start_handle,
