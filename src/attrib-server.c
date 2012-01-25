@@ -1318,7 +1318,47 @@ static uint16_t find_uuid16_avail(struct btd_adapter *adapter, uint16_t nitems)
 
 static uint16_t find_uuid128_avail(struct btd_adapter *adapter, uint16_t nitems)
 {
-	/* TODO: Allocate 128 uuids at the end of the list */
+	uint16_t handle = 0, end = 0xffff;
+	struct gatt_server *server;
+	GList *dl;
+	GSList *l;
+
+	l = g_slist_find_custom(servers, adapter, adapter_cmp);
+	if (l == NULL)
+		return 0;
+
+	server = l->data;
+	if (server->database == NULL)
+		return 0xffff - nitems + 1;
+
+	for (dl = g_list_last(server->database); dl; dl = dl->prev) {
+		struct attribute *a = dl->data;
+
+		if (handle == 0)
+			handle = a->handle;
+
+		if (bt_uuid_cmp(&a->uuid, &prim_uuid) != 0 &&
+				bt_uuid_cmp(&a->uuid, &snd_uuid) != 0)
+			continue;
+
+		if (end - handle >= nitems)
+			return end - nitems + 1;
+
+		if (a->len == 2) {
+			/* 16 bit UUID service definition */
+			return 0;
+		}
+
+		if (a->handle == 0x0001)
+			return 0;
+
+		end = a->handle - 1;
+		handle = 0;
+	}
+
+	if (end - 0x0001 >= nitems)
+		return end - nitems + 1;
+
 	return 0;
 }
 
