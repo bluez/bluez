@@ -105,8 +105,11 @@ static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
 
 static gboolean register_battery_service(struct btd_adapter *adapter)
 {
-	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID,
-			BATTERY_STATE_SVC_UUID,
+	bt_uuid_t uuid;
+
+	bt_uuid16_create(&uuid, BATTERY_STATE_SVC_UUID);
+
+	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
 			/* battery state characteristic */
 			GATT_OPT_CHR_UUID, BATTERY_STATE_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |

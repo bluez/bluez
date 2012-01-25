@@ -116,6 +116,28 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 	return l;
 }
 
+static struct attribute *add_service_declaration(struct btd_adapter *adapter,
+				uint16_t handle, uint16_t svc, bt_uuid_t *uuid)
+{
+	bt_uuid_t bt_uuid;
+	uint8_t atval[16];
+	int len;
+
+	if (uuid->type == BT_UUID16) {
+		att_put_u16(uuid->value.u16, &atval[0]);
+		len = 2;
+	} else if (uuid->type == BT_UUID128) {
+		att_put_u128(uuid->value.u128, &atval[0]);
+		len = 16;
+	} else
+		return NULL;
+
+	bt_uuid16_create(&bt_uuid, svc);
+
+	return attrib_db_add(adapter, handle, &bt_uuid, ATT_NONE,
+						ATT_NOT_PERMITTED, atval, len);
+}
+
 static int att_read_reqs(int authorization, int authentication, uint8_t props)
 {
 	if (authorization == GATT_CHR_VALUE_READ ||
@@ -268,14 +290,20 @@ static void service_attr_del(struct btd_adapter *adapter, uint16_t start_handle,
 }
 
 gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
-				uint16_t svc_uuid, gatt_option opt1, ...)
+				bt_uuid_t *svc_uuid, gatt_option opt1, ...)
 {
+	char uuidstr[MAX_LEN_UUID_STR];
 	uint16_t start_handle, h;
 	unsigned int size;
-	bt_uuid_t bt_uuid;
-	uint8_t atval[2];
 	va_list args;
 	GSList *chrs, *l;
+
+	bt_uuid_to_string(svc_uuid, uuidstr, MAX_LEN_UUID_STR);
+
+	if (svc_uuid->type != BT_UUID16 && svc_uuid->type != BT_UUID128) {
+		error("Invalid service uuid: %s", uuidstr);
+		return FALSE;
+	}
 
 	va_start(args, opt1);
 	chrs = parse_opts(opt1, args);
@@ -288,31 +316,24 @@ gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
 	start_handle = attrib_db_find_avail(adapter, size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
-		g_slist_free_full(chrs, free_gatt_info);
-		return FALSE;
+		goto fail;
 	}
 
-	DBG("New service: handle 0x%04x, UUID 0x%04x, %d attributes",
-						start_handle, svc_uuid, size);
+	DBG("New service: handle 0x%04x, UUID %s, %d attributes",
+						start_handle, uuidstr, size);
 
 	/* service declaration */
 	h = start_handle;
-	bt_uuid16_create(&bt_uuid, uuid);
-	att_put_u16(svc_uuid, &atval[0]);
-	if (attrib_db_add(adapter, h++, &bt_uuid, ATT_NONE, ATT_NOT_PERMITTED,
-						atval, sizeof(atval)) == NULL) {
-		g_slist_free_full(chrs, free_gatt_info);
-		return FALSE;
-	}
+	if (add_service_declaration(adapter, h++, uuid, svc_uuid) == NULL)
+		goto fail;
 
 	for (l = chrs; l != NULL; l = l->next) {
 		struct gatt_info *info = l->data;
 
 		DBG("New characteristic: handle 0x%04x", h);
 		if (!add_characteristic(adapter, &h, info)) {
-			g_slist_free_full(chrs, free_gatt_info);
 			service_attr_del(adapter, start_handle, h - 1);
-			return FALSE;
+			goto fail;
 		}
 	}
 
@@ -321,4 +342,8 @@ gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
 	g_slist_free_full(chrs, free_gatt_info);
 
 	return TRUE;
+
+fail:
+	g_slist_free_full(chrs, free_gatt_info);
+	return FALSE;
 }

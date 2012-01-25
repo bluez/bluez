@@ -48,4 +48,4 @@ typedef enum {
 } attrib_event_t;
 
 gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
-				uint16_t svc_uuid, gatt_option opt1, ...);
+					bt_uuid_t *svc_uuid, gatt_option opt1, ...);
