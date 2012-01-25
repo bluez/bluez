@@ -315,7 +315,7 @@ gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
 		size += info->num_attrs;
 	}
 
-	start_handle = attrib_db_find_avail(adapter, size);
+	start_handle = attrib_db_find_avail(adapter, svc_uuid, size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		goto fail;

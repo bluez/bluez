@@ -59,8 +59,9 @@ static void register_link_loss(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
+	bt_uuid16_create(&uuid, LINK_LOSS_SVC_UUID);
 	/* FIXME: Provide the adapter in next function */
-	start_handle = attrib_db_find_avail(NULL, svc_size);
+	start_handle = attrib_db_find_avail(NULL, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -100,8 +101,9 @@ static void register_tx_power(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
+	bt_uuid16_create(&uuid, TX_POWER_SVC_UUID);
 	/* FIXME: Provide the adapter in next function */
-	start_handle = attrib_db_find_avail(NULL, svc_size);
+	start_handle = attrib_db_find_avail(NULL, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -149,8 +151,9 @@ static void register_immediate_alert(void)
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
+	bt_uuid16_create(&uuid, IMMEDIATE_ALERT_SVC_UUID);
 	/* FIXME: Provide the adapter in next function */
-	start_handle = attrib_db_find_avail(NULL, svc_size);
+	start_handle = attrib_db_find_avail(NULL, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;

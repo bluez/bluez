@@ -132,7 +132,8 @@ static void register_termometer_service(struct gatt_example_adapter *adapter,
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
+	bt_uuid16_create(&uuid, THERM_HUMIDITY_SVC_UUID);
+	start_handle = attrib_db_find_avail(adapter->adapter, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -253,7 +254,8 @@ static void register_manuf1_service(struct gatt_example_adapter *adapter,
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
+	bt_uuid16_create(&uuid, MANUFACTURER_SVC_UUID);
+	start_handle = attrib_db_find_avail(adapter->adapter, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -316,7 +318,8 @@ static void register_manuf2_service(struct gatt_example_adapter *adapter,
 	bt_uuid_t uuid;
 	int len;
 
-	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
+	bt_uuid16_create(&uuid, MANUFACTURER_SVC_UUID);
+	start_handle = attrib_db_find_avail(adapter->adapter, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -376,7 +379,8 @@ static void register_vendor_service(struct gatt_example_adapter *adapter,
 	uint8_t atval[256];
 	bt_uuid_t uuid;
 
-	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
+	bt_uuid16_create(&uuid, VENDOR_SPECIFIC_SVC_UUID);
+	start_handle = attrib_db_find_avail(adapter->adapter, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;
@@ -427,7 +431,7 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	const uint128_t prim_weight_uuid_btorder = {
 		.data = { 0x4F, 0x0A, 0xC0, 0x96, 0x35, 0xD4, 0x49, 0x11,
 			  0x96, 0x31, 0xDE, 0xA8, 0xDC, 0x74, 0xEE, 0xFE } };
-	uint128_t char_weight_uuid;
+	uint128_t prim_weight_uuid, char_weight_uuid;
 	uint16_t start_handle, h;
 	const int svc_size = 6;
 	uint32_t sdp_handle;
@@ -436,8 +440,9 @@ static void register_weight_service(struct gatt_example_adapter *adapter,
 	int len;
 
 	btoh128(&char_weight_uuid_btorder, &char_weight_uuid);
-
-	start_handle = attrib_db_find_avail(adapter->adapter, svc_size);
+	btoh128(&prim_weight_uuid_btorder, &prim_weight_uuid);
+	bt_uuid128_create(&uuid, prim_weight_uuid);
+	start_handle = attrib_db_find_avail(adapter->adapter, &uuid, svc_size);
 	if (start_handle == 0) {
 		error("Not enough free handles to register service");
 		return;

@@ -1270,7 +1270,8 @@ void attrib_free_sdp(uint32_t sdp_handle)
 	remove_record_from_server(sdp_handle);
 }
 
-uint16_t attrib_db_find_avail(struct btd_adapter *adapter, uint16_t nitems)
+uint16_t attrib_db_find_avail(struct btd_adapter *adapter, bt_uuid_t *svc_uuid,
+								uint16_t nitems)
 {
 	struct gatt_server *server;
 	uint16_t handle;
