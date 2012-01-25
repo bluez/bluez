@@ -28,3 +28,11 @@ static inline void g_slist_free_full(GSList *list, GDestroyNotify free_func)
 	g_slist_free(list);
 }
 #endif
+
+#ifdef NEED_G_LIST_FREE_FULL
+static inline void g_list_free_full(GList *list, GDestroyNotify free_func)
+{
+	g_list_foreach(list, (GFunc) free_func, NULL);
+	g_list_free(list);
+}
+#endif
