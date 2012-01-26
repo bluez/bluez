@@ -269,9 +269,11 @@ static void search_callback(uint8_t type, uint16_t status,
 	}
 
 failed:
-	g_io_channel_shutdown(session->io, TRUE, NULL);
-	g_io_channel_unref(session->io);
-	session->io = NULL;
+	if (session->io != NULL) {
+		g_io_channel_shutdown(session->io, TRUE, NULL);
+		g_io_channel_unref(session->io);
+		session->io = NULL;
+	}
 
 	g_set_error(&gerr, OBC_BT_ERROR, -EIO,
 					"Unable to find service record");
