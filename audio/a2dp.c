@@ -1388,9 +1388,9 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 
 int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 {
-	int sbc_srcs = 1, sbc_sinks = 1;
+	int sbc_srcs = 0, sbc_sinks = 0;
 	int mpeg12_srcs = 0, mpeg12_sinks = 0;
-	gboolean source = TRUE, sink = FALSE, socket = TRUE;
+	gboolean source = TRUE, sink = FALSE, socket = FALSE;
 	gboolean delay_reporting = FALSE;
 	char *str;
 	GError *err = NULL;
@@ -1410,6 +1410,8 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 			source = TRUE;
 		if (strstr(str, "Source"))
 			sink = TRUE;
+		if (strstr(str, "Socket"))
+			socket = TRUE;
 		g_free(str);
 	}
 
@@ -1429,18 +1431,14 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	}
 
 	/* Don't register any local sep if Socket is disabled */
-	if (socket == FALSE) {
-		sbc_srcs = 0;
-		sbc_sinks = 0;
-		mpeg12_srcs = 0;
-		mpeg12_sinks = 0;
+	if (socket == FALSE)
 		goto proceed;
-	}
 
 	str = g_key_file_get_string(config, "A2DP", "SBCSources", &err);
 	if (err) {
 		DBG("audio.conf: %s", err->message);
 		g_clear_error(&err);
+		sbc_srcs = 1;
 	} else {
 		sbc_srcs = atoi(str);
 		g_free(str);
@@ -1459,6 +1457,7 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	if (err) {
 		DBG("audio.conf: %s", err->message);
 		g_clear_error(&err);
+		sbc_sinks = 1;
 	} else {
 		sbc_sinks = atoi(str);
 		g_free(str);
