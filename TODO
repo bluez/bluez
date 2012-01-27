@@ -222,21 +222,6 @@ ATT/GATT
 Management Interface
 ====================
 
-- Device discovery support (both for BR/EDR & LE)
-
-  Priority: High
-  Complexity: C3
-
-- Blacklist support
-
-  Priority: Medium
-  Complexity: C1
-
-- mgmt_set_fast_connectable
-
-  Priority: Medium
-  Complexity: C1
-
 - Whitelist support (initially only for LE)
 
   Priority: Medium
