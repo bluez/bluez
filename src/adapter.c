@@ -1578,15 +1578,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 			return btd_error_failed(msg, strerror(-err));
 	}
 
-	if (device_is_bredr(device))
-		return device_create_bonding(device, conn, msg,
-							agent_path, cap);
-
-	err = device_browse_primary(device, conn, msg, TRUE);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	return NULL;
+	return device_create_bonding(device, conn, msg, agent_path, cap);
 }
 
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
