@@ -1952,7 +1952,7 @@ static int mgmt_set_io_capability(int index, uint8_t io_capability)
 	return 0;
 }
 
-static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
+static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t addr_type, uint8_t io_cap)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -1968,6 +1968,7 @@ static int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = addr_type;
 	cp->io_cap = io_cap;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)

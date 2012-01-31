@@ -2297,7 +2297,8 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	if (device_is_bonded(device))
 		return btd_error_already_exists(msg);
 
-	err = adapter_create_bonding(adapter, &device->bdaddr, capability);
+	err = adapter_create_bonding(adapter, &device->bdaddr,
+					device->type, capability);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 

@@ -3551,10 +3551,11 @@ int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 }
 
 int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-								uint8_t io_cap)
+					uint8_t addr_type, uint8_t io_cap)
 {
 	suspend_discovery(adapter);
-	return adapter_ops->create_bonding(adapter->dev_id, bdaddr, io_cap);
+	return adapter_ops->create_bonding(adapter->dev_id, bdaddr,
+						addr_type, io_cap);
 }
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)

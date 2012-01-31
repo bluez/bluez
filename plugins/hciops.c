@@ -3649,7 +3649,8 @@ failed:
 	bonding_complete(dev, conn, HCI_UNSPECIFIED_ERROR);
 }
 
-static int hciops_create_bonding(int index, bdaddr_t *bdaddr, uint8_t io_cap)
+static int hciops_create_bonding(int index, bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t io_cap)
 {
 	struct dev_info *dev = &devs[index];
 	BtIOSecLevel sec_level;
