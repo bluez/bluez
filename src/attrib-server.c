@@ -1022,9 +1022,9 @@ guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 	channel->server = server;
 
 	ba2str(&channel->dst, addr);
-	device = adapter_find_device(server->adapter, addr);
 
-	if (device_is_bonded(device) == FALSE)
+	device = adapter_find_device(server->adapter, addr);
+	if (device == NULL || device_is_bonded(device) == FALSE)
 		delete_device_ccc(&channel->src, &channel->dst);
 
 	if (channel->mtu > ATT_MAX_MTU)
