@@ -2160,7 +2160,8 @@ static inline void conn_complete(int index, void *ptr)
 	conn = get_connection(dev, &evt->bdaddr);
 	conn->handle = btohs(evt->handle);
 
-	btd_event_conn_complete(&dev->bdaddr, &evt->bdaddr, NULL, NULL);
+	btd_event_conn_complete(&dev->bdaddr, &evt->bdaddr, ADDR_TYPE_BREDR,
+								NULL, NULL);
 
 	if (conn->secmode3)
 		bonding_complete(dev, conn, 0);
@@ -2179,6 +2180,17 @@ static inline void conn_complete(int index, void *ptr)
 		free(str);
 }
 
+static inline addr_type_t le_addr_type(uint8_t bdaddr_type)
+{
+	switch (bdaddr_type) {
+	case LE_RANDOM_ADDRESS:
+		return ADDR_TYPE_LE_RANDOM;
+	case LE_PUBLIC_ADDRESS:
+	default:
+		return ADDR_TYPE_LE_PUBLIC;
+	}
+}
+
 static inline void le_conn_complete(int index, void *ptr)
 {
 	struct dev_info *dev = &devs[index];
@@ -2186,6 +2198,7 @@ static inline void le_conn_complete(int index, void *ptr)
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
 	struct bt_conn *conn;
+	addr_type_t type;
 
 	if (evt->status) {
 		btd_event_conn_failed(&dev->bdaddr, &evt->peer_bdaddr,
@@ -2196,7 +2209,9 @@ static inline void le_conn_complete(int index, void *ptr)
 	conn = get_connection(dev, &evt->peer_bdaddr);
 	conn->handle = btohs(evt->handle);
 
-	btd_event_conn_complete(&dev->bdaddr, &evt->peer_bdaddr, NULL, NULL);
+	type = le_addr_type(evt->peer_bdaddr_type);
+	btd_event_conn_complete(&dev->bdaddr, &evt->peer_bdaddr, type,
+								NULL, NULL);
 
 	/* check if the remote version needs be requested */
 	ba2str(&dev->bdaddr, local_addr);
@@ -2268,17 +2283,6 @@ static inline void conn_request(int index, void *ptr)
 				| (evt->dev_class[2] << 16);
 
 	btd_event_remote_class(&dev->bdaddr, &evt->bdaddr, class);
-}
-
-static inline addr_type_t le_addr_type(uint8_t bdaddr_type)
-{
-	switch (bdaddr_type) {
-	case LE_RANDOM_ADDRESS:
-		return ADDR_TYPE_LE_RANDOM;
-	case LE_PUBLIC_ADDRESS:
-	default:
-		return ADDR_TYPE_LE_PUBLIC;
-	}
 }
 
 static inline void le_advertising_report(int index, evt_le_meta_event *meta)

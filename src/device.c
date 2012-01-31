@@ -2005,6 +2005,14 @@ void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
 		*type = device->type;
 }
 
+void device_set_addr_type(struct btd_device *device, addr_type_t type)
+{
+	if (device == NULL)
+		return;
+
+	device->type = type;
+}
+
 const gchar *device_get_path(struct btd_device *device)
 {
 	if (!device)

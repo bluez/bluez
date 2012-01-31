@@ -442,7 +442,7 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, addr_type_t addr_type,
 	return ret;
 }
 
-void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer,
+void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, addr_type_t type,
 						char *name, uint8_t *dev_class)
 {
 	struct btd_adapter *adapter;
@@ -452,6 +452,8 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer,
 		return;
 
 	update_lastused(local, peer);
+
+	device_set_addr_type(device, type);
 
 	adapter_add_connection(adapter, device);
 

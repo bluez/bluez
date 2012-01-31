@@ -396,6 +396,20 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->key.bdaddr, 0);
 }
 
+static inline addr_type_t mgmt_addr_type(uint8_t mgmt_addr_type)
+{
+	switch (mgmt_addr_type) {
+	case MGMT_ADDR_BREDR:
+		return ADDR_TYPE_BREDR;
+	case MGMT_ADDR_LE_PUBLIC:
+		return ADDR_TYPE_LE_PUBLIC;
+	case MGMT_ADDR_LE_RANDOM:
+		return ADDR_TYPE_LE_RANDOM;
+	default:
+		return ADDR_TYPE_BREDR;
+	}
+}
+
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_connected *ev = buf;
@@ -431,6 +445,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 		eir_parse(&eir_data, ev->eir, eir_len);
 
 	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
+					mgmt_addr_type(ev->addr.type),
 					eir_data.name, eir_data.dev_class);
 }
 
@@ -1255,20 +1270,6 @@ static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t le
 	adapter = manager_find_adapter(&info->bdaddr);
 	if (adapter)
 		adapter_name_changed(adapter, (char *) ev->name);
-}
-
-static inline addr_type_t mgmt_addr_type(uint8_t mgmt_addr_type)
-{
-	switch (mgmt_addr_type) {
-	case MGMT_ADDR_BREDR:
-		return ADDR_TYPE_BREDR;
-	case MGMT_ADDR_LE_PUBLIC:
-		return ADDR_TYPE_LE_PUBLIC;
-	case MGMT_ADDR_LE_RANDOM:
-		return ADDR_TYPE_LE_RANDOM;
-	default:
-		return ADDR_TYPE_BREDR;
-	}
 }
 
 static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
