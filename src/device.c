@@ -1739,6 +1739,7 @@ static void attrib_disconnected(gpointer user_data)
 	attrib_channel_detach(device->attrib, device->attachid);
 	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
+	device->attachid = 0;
 
 	if (device->auto_connect == FALSE)
 		return;
@@ -1786,6 +1787,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	if (device->attios == NULL && device->attios_offline == NULL) {
 		attrib_channel_detach(device->attrib, device->attachid);
+		device->attachid = 0;
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
 	} else
@@ -2858,7 +2860,7 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	if (device->attios != NULL || device->attios_offline != NULL)
 		return TRUE;
 
-	if (device->attachid) {
+	if (device->attachid > 0) {
 		attrib_channel_detach(device->attrib, device->attachid);
 		device->attachid = 0;
 	}
