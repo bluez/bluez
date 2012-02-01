@@ -333,46 +333,52 @@ struct mgmt_ev_new_link_key {
 	struct mgmt_link_key_info key;
 } __packed;
 
-#define MGMT_EV_DEVICE_CONNECTED	0x000A
+#define MGMT_EV_NEW_LONG_TERM_KEY	0x000A
+struct mgmt_ev_new_long_term_key {
+	uint8_t store_hint;
+	struct mgmt_ltk_info key;
+} __packed;
+
+#define MGMT_EV_DEVICE_CONNECTED	0x000B
 struct mgmt_ev_device_connected {
 	struct mgmt_addr_info addr;
 	uint16_t eir_len;
 	uint8_t eir[0];
 } __packed;
 
-#define MGMT_EV_DEVICE_DISCONNECTED	0x000B
+#define MGMT_EV_DEVICE_DISCONNECTED	0x000C
 
-#define MGMT_EV_CONNECT_FAILED		0x000C
+#define MGMT_EV_CONNECT_FAILED		0x000D
 struct mgmt_ev_connect_failed {
 	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
-#define MGMT_EV_PIN_CODE_REQUEST	0x000D
+#define MGMT_EV_PIN_CODE_REQUEST	0x000E
 struct mgmt_ev_pin_code_request {
 	bdaddr_t bdaddr;
 	uint8_t secure;
 } __packed;
 
-#define MGMT_EV_USER_CONFIRM_REQUEST	0x000E
+#define MGMT_EV_USER_CONFIRM_REQUEST	0x000F
 struct mgmt_ev_user_confirm_request {
 	bdaddr_t bdaddr;
 	uint8_t confirm_hint;
 	uint32_t value;
 } __packed;
 
-#define MGMT_EV_USER_PASSKEY_REQUEST	0x000F
+#define MGMT_EV_USER_PASSKEY_REQUEST	0x0010
 struct mgmt_ev_user_passkey_request {
 	bdaddr_t bdaddr;
 } __packed;
 
-#define MGMT_EV_AUTH_FAILED		0x0010
+#define MGMT_EV_AUTH_FAILED		0x0011
 struct mgmt_ev_auth_failed {
 	bdaddr_t bdaddr;
 	uint8_t status;
 } __packed;
 
-#define MGMT_EV_DEVICE_FOUND		0x0011
+#define MGMT_EV_DEVICE_FOUND		0x0012
 struct mgmt_ev_device_found {
 	struct mgmt_addr_info addr;
 	int8_t rssi;
@@ -381,20 +387,14 @@ struct mgmt_ev_device_found {
 	uint8_t eir[0];
 } __packed;
 
-#define MGMT_EV_DISCOVERING		0x0012
+#define MGMT_EV_DISCOVERING		0x0013
 
-#define MGMT_EV_DEVICE_BLOCKED		0x0013
+#define MGMT_EV_DEVICE_BLOCKED		0x0014
 struct mgmt_ev_device_blocked {
 	bdaddr_t bdaddr;
 } __packed;
 
-#define MGMT_EV_DEVICE_UNBLOCKED	0x0014
+#define MGMT_EV_DEVICE_UNBLOCKED	0x0015
 struct mgmt_ev_device_unblocked {
 	bdaddr_t bdaddr;
-} __packed;
-
-#define MGMT_EV_NEW_LONG_TERM_KEY	0x0015
-struct mgmt_ev_new_long_term_key {
-	uint8_t store_hint;
-	struct mgmt_ltk_info key;
 } __packed;
