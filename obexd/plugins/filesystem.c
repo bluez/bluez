@@ -488,7 +488,7 @@ static GString *append_listing(GString *object, const char *name,
 		goto failed;
 	}
 
-	if (root)
+	if (!root)
 		object = g_string_append(object, FL_PARENT_FOLDER_ELEMENT);
 
 	ret = verify_path(name);
