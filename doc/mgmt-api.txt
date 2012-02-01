@@ -506,59 +506,6 @@ Unblock Device Command
 	Return Parameters:
 
 
-Read Tracing Buffer Size Command
-================================
-
-	Command Code:		<not yet assigned>
-	Controller Index:	<non-controller>
-	Command Parameters:
-	Return Parameters:	Status (1 Octet)
-				Buffer_Size (2 Octets)
-
-		Buffer Size in Kilobytes
-
-
-Write Tracing Buffer Size Command
-=================================
-
-	Command Code:		<not yet assigned>
-	Controller Index:	<non-controller>
-	Command Parameters:	Buffer_Size (2 Octets)
-	Return Parameters:	Status (1 Octet)
-
-		Buffer Size in Kilobytes
-
-
-Read Controller Tracing Filter Command
-=======================================
-
-	Command Code:		<not yet assigned>
-	Controller Index:	<controller id>
-	Command Parameters:
-	Return Parameters:	Status (1 Octet)
-				Tracing_Enable (1 Octect)
-				Num_Filters (2 Octect)
-				Protocol_UUID[i] (16 Octets)
-				Protocol_Identifier[i] (16 Octets)
-
-		Tracing_Enable:	0x00 Tracing disabled
-				0x01 Command and Event tracing
-				0x02 Command, Event and ACL tracing
-				0x03 Command, Event, ACL and SCO tracing
-
-
-Write Controller Tracing Filter Command
-=======================================
-
-	Command Code:		<not yet assigned>
-	Controller Index:	<controller id>
-	Command Parameters:	Tracing_Enable (1 Octect)
-				Num_Filters (2 Octect)
-				Protocol_UUID[i] (16 Octets)
-				Protocol_Identifier[i] (16 Octets)
-	Return Parameters:	Status (1 Octet)
-
-
 Command Complete Event
 ======================
 
