@@ -587,10 +587,28 @@ Event Parameters	Key {
 			Old_Key_Type (1 Octet)
 
 
+New Long Term Key Event
+=======================
+
+Event Code		0x000A
+Controller Index	<controller id>
+Event Parameters	Store Hint (1 Octet)
+			Key {
+				Address (6 Octets)
+				Type (1 Octet)
+				Authenticated (1 Octet)
+				Master (1 Octet)
+				Encryption Size (1 Octet)
+				Enc. Diversifier (2 Octets)
+				Random Number (8 Octets)
+				Value (16 Octets)
+			}
+
+
 Device Connected Event
 ======================
 
-Event Code		0x000A
+Event Code		0x000B
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
@@ -606,7 +624,7 @@ Event Parameters	Address (6 Octets)
 Device Disconnected Event
 =========================
 
-Event Code		0x000B
+Event Code		0x000C
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
@@ -620,7 +638,7 @@ Event Parameters	Address (6 Octets)
 Connect Failed Event
 ====================
 
-Event Code		0x000C
+Event Code		0x000D
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
@@ -635,7 +653,7 @@ Event Parameters	Address (6 Octets)
 PIN Code Request Event
 ======================
 
-Event Code		0x000D
+Event Code		0x000E
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Secure (1 Octet)
@@ -647,7 +665,7 @@ Event Parameters	Address (6 Octets)
 User Confirmation Request Event
 ===============================
 
-Event Code		0x000E
+Event Code		0x000F
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Value (4 Octets)
@@ -656,7 +674,7 @@ Event Parameters	Address (6 Octets)
 User Passkey Request Event
 ==========================
 
-Event Code		0x000F
+Event Code		0x0010
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 
@@ -664,7 +682,7 @@ Event Parameters	Address (6 Octets)
 Authentication Failed Event
 ===========================
 
-Event Code		0x0010
+Event Code		0x0011
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Status (1 Octet)
@@ -673,7 +691,7 @@ Event Parameters	Address (6 Octets)
 Device Found Event
 ==================
 
-Event Code		0x0011
+Event Code		0x0012
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Type (1 Octet)
@@ -695,7 +713,7 @@ Event Parameters	Address (6 Octets)
 Discovering Event
 =================
 
-Event Code		0x00012
+Event Code		0x00013
 Controller Index	<controller id>
 Event Parameters	Discovering (1 Octet)
 
@@ -703,7 +721,7 @@ Event Parameters	Discovering (1 Octet)
 Device Blocked Event
 ====================
 
-Event Code		0x00013
+Event Code		0x00014
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 
@@ -711,24 +729,6 @@ Event Parameters	Address (6 Octets)
 Device Unblocked Event
 ======================
 
-Event Code		0x00014
+Event Code		0x00015
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
-
-
-New Long Term Key Event
-=======================
-
-Event Code		0x0015
-Controller Index	<controller id>
-Event Parameters	Store Hint (1 Octet)
-			Key {
-				Address (6 Octets)
-				Type (1 Octet)
-				Authenticated (1 Octet)
-				Master (1 Octet)
-				Encryption Size (1 Octet)
-				Enc. Diversifier (2 Octets)
-				Random Number (8 Octets)
-				Value (16 Octets)
-			}
