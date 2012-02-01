@@ -324,7 +324,7 @@ static guint bluetooth_listen(void)
 	}
 
 	if (option_packet || option_channel > 31) {
-		type = BT_IO_L2CAP;
+		type = option_packet ? BT_IO_L2CAP : BT_IO_L2ERTM;
 		option = BT_IO_OPT_PSM;
 	} else {
 		type = BT_IO_RFCOMM;
