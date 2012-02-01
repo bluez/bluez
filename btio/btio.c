@@ -1161,6 +1161,7 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
 	switch (type) {
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
+	case BT_IO_L2ERTM:
 		return l2cap_get(sock, err, opt1, args);
 	case BT_IO_RFCOMM:
 		return rfcomm_get(sock, err, opt1, args);
@@ -1223,6 +1224,7 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	switch (type) {
 	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
+	case BT_IO_L2ERTM:
 		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
 				opts.mode, opts.master, opts.flushable,
 				opts.priority, err);
@@ -1273,6 +1275,20 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 		if (sock < 0) {
 			ERROR_FAILED(err, "socket(SEQPACKET, L2CAP)", errno);
+			return NULL;
+		}
+		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
+							opts->cid, err) < 0)
+			goto failed;
+		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
+				opts->mode, opts->master, opts->flushable,
+				opts->priority, err))
+			goto failed;
+		break;
+	case BT_IO_L2ERTM:
+		sock = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_L2CAP);
+		if (sock < 0) {
+			ERROR_FAILED(err, "socket(STREAM, L2CAP)", errno);
 			return NULL;
 		}
 		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
@@ -1353,6 +1369,7 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 		err = l2cap_connect(sock, &opts.dst, 0, opts.cid);
 		break;
 	case BT_IO_L2CAP:
+	case BT_IO_L2ERTM:
 		err = l2cap_connect(sock, &opts.dst, opts.psm, opts.cid);
 		break;
 	case BT_IO_RFCOMM:
