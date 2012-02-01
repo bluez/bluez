@@ -354,8 +354,8 @@ static GIOChannel *bluetooth_connect(GObexTransportType transport)
 	if (option_dest == NULL || option_channel < 0)
 		return NULL;
 
-	if (transport == G_OBEX_TRANSPORT_PACKET || option_channel > 31) {
-		type = BT_IO_L2CAP;
+	if (option_channel > 31) {
+		type = option_packet ? BT_IO_L2CAP : BT_IO_L2ERTM;
 		option = BT_IO_OPT_PSM;
 	} else {
 		type = BT_IO_RFCOMM;
