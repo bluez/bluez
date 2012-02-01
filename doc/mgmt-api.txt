@@ -246,10 +246,30 @@ Load Link Keys Command
 	Return Parameters:
 
 
+Load Long Term Keys Command
+===========================
+
+	Command Code:		0x0013
+	Controller Index:	<controller id>
+	Command Parameters:	Key Count (2 Octets)
+				Key1 {
+					Address (6 Octets)
+					Type (1 Octet)
+					Authenticated (1 Octet)
+					Master (1 Octet)
+					Encryption Size (1 Octet)
+					Enc. Diversifier (2 Octets)
+					Random Number (8 Octets)
+					Value (16 Octets)
+				}
+				Key2 {  }
+				...
+
+
 Remove Keys Command
 ===================
 
-	Command Code:		0x0013
+	Command Code:		0x0014
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Disconnect (1 Octet)
@@ -262,7 +282,7 @@ Remove Keys Command
 Disconnect Command
 ==================
 
-	Command Code:		0x0014
+	Command Code:		0x0015
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -272,7 +292,7 @@ Disconnect Command
 Get Connections Command
 =======================
 
-	Command Code:		0x0015
+	Command Code:		0x0016
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Connection_Count (2 Octets)
@@ -292,7 +312,7 @@ Get Connections Command
 PIN Code Reply Command
 =======================
 
-	Command Code:		0x0016
+	Command Code:		0x0017
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -303,7 +323,7 @@ PIN Code Reply Command
 PIN Code Negative Reply Command
 ===============================
 
-	Command Code:		0x0017
+	Command Code:		0x0018
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -312,7 +332,7 @@ PIN Code Negative Reply Command
 Set IO Capability Command
 =========================
 
-	Command Code:		0x0018
+	Command Code:		0x0019
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
@@ -321,7 +341,7 @@ Set IO Capability Command
 Pair Device Command
 ===================
 
-	Command Code:		0x0019
+	Command Code:		0x001A
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -340,7 +360,7 @@ Cancel Pair Device
 ==================
 
 
-	Command Code:		0x001A
+	Command Code:		0x001B
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -354,7 +374,7 @@ Cancel Pair Device
 User Confirmation Reply Command
 ===============================
 
-	Command Code:		0x001B
+	Command Code:		0x001C
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -364,7 +384,7 @@ User Confirmation Reply Command
 User Confirmation Negative Reply Command
 ========================================
 
-	Command Code:		0x001C
+	Command Code:		0x001D
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -374,7 +394,7 @@ User Confirmation Negative Reply Command
 User Passkey Reply Command
 ==========================
 
-	Command Code:		0x001D
+	Command Code:		0x001E
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Passkey (4 Octets)
@@ -385,7 +405,7 @@ User Passkey Reply Command
 User Passkey Negative Reply Command
 ===================================
 
-	Command Code:		0x001E
+	Command Code:		0x001F
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:	Address (6 Octets)
@@ -395,7 +415,7 @@ User Passkey Negative Reply Command
 Read Local Out Of Band Data Command
 ===================================
 
-	Command Code:		0x001F
+	Command Code:		0x0020
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Hash (16 Octets)
@@ -405,7 +425,7 @@ Read Local Out Of Band Data Command
 Add Remote Out Of Band Data Command
 ===================================
 
-	Command Code:		0x0020
+	Command Code:		0x0021
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Hash (16 Octets)
@@ -416,7 +436,7 @@ Add Remote Out Of Band Data Command
 Remove Remote Out Of Band Data Command
 ========================================
 
-	Command Code:		0x0021
+	Command Code:		0x0022
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:
@@ -425,7 +445,7 @@ Remove Remote Out Of Band Data Command
 Start Discovery Command
 =======================
 
-	Command Code:		0x00022
+	Command Code:		0x00023
 	Controller Index:	<controller id>
 	Command Parameters:	Type (1 Octet)
 	Return Parameters:
@@ -447,7 +467,7 @@ Start Discovery Command
 Stop Discovery Command
 ======================
 
-	Command Code:		0x00023
+	Command Code:		0x00024
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:
@@ -456,7 +476,7 @@ Stop Discovery Command
 Confirm Name Command
 ====================
 
-	Command Code:		0x00024
+	Command Code:		0x00025
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Name_Known (1 Octet)
@@ -471,7 +491,7 @@ Confirm Name Command
 Block Device Command
 ====================
 
-	Command Code:		0x00025
+	Command Code:		0x00026
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:
@@ -480,30 +500,10 @@ Block Device Command
 Unblock Device Command
 ======================
 
-	Command Code:		0x00026
+	Command Code:		0x00027
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 	Return Parameters:
-
-
-Load Long Term Keys Command
-===========================
-
-	Command Code:		0x0027
-	Controller Index:	<controller id>
-	Command Parameters:	Key Count (2 Octets)
-				Key1 {
-					Address (6 Octets)
-					Type (1 Octet)
-					Authenticated (1 Octet)
-					Master (1 Octet)
-					Encryption Size (1 Octet)
-					Enc. Diversifier (2 Octets)
-					Random Number (8 Octets)
-					Value (16 Octets)
-				}
-				Key2 {  }
-				...
 
 
 Read Tracing Buffer Size Command
