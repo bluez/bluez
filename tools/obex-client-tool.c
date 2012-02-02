@@ -362,21 +362,51 @@ static GIOChannel *bluetooth_connect(GObexTransportType transport)
 		option = BT_IO_OPT_CHANNEL;
 	}
 
-	if (option_source)
-		io = bt_io_connect(type, conn_callback, GUINT_TO_POINTER(transport),
-				NULL, &err,
-				BT_IO_OPT_SOURCE, option_source,
-				BT_IO_OPT_DEST, option_dest,
-				option, option_channel,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-				BT_IO_OPT_INVALID);
-	else
-		io = bt_io_connect(type, conn_callback, GUINT_TO_POINTER(transport),
-				NULL, &err,
-				BT_IO_OPT_DEST, option_dest,
-				option, option_channel,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-				BT_IO_OPT_INVALID);
+	if (option_source) {
+		if (type == BT_IO_L2CAP) {
+			io = bt_io_connect(type, conn_callback,
+					GUINT_TO_POINTER(transport),
+					NULL, &err,
+					BT_IO_OPT_SOURCE, option_source,
+					BT_IO_OPT_DEST, option_dest,
+					option, option_channel,
+					BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
+					BT_IO_OPT_OMTU, option_omtu,
+					BT_IO_OPT_IMTU, option_imtu,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+		} else {
+			io = bt_io_connect(type, conn_callback,
+					GUINT_TO_POINTER(transport),
+					NULL, &err,
+					BT_IO_OPT_SOURCE, option_source,
+					BT_IO_OPT_DEST, option_dest,
+					option, option_channel,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+		}
+	} else {
+		if (type == BT_IO_L2CAP) {
+			io = bt_io_connect(type, conn_callback,
+					GUINT_TO_POINTER(transport),
+					NULL, &err,
+					BT_IO_OPT_DEST, option_dest,
+					option, option_channel,
+					BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
+					BT_IO_OPT_OMTU, option_omtu,
+					BT_IO_OPT_IMTU, option_imtu,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+		} else {
+			io = bt_io_connect(type, conn_callback,
+					GUINT_TO_POINTER(transport),
+					NULL, &err,
+					BT_IO_OPT_DEST, option_dest,
+					option, option_channel,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+		}
+	}
 
 	if (io != NULL)
 		return io;
