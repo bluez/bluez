@@ -331,9 +331,20 @@ static guint bluetooth_listen(void)
 		option = BT_IO_OPT_CHANNEL;
 	}
 
-	io = bt_io_listen(type, bluetooth_accept, NULL, NULL, NULL, &err,
-				option, option_channel,
-				BT_IO_OPT_INVALID);
+	if (type == BT_IO_L2CAP)
+		io = bt_io_listen(type, bluetooth_accept, NULL, NULL,
+					NULL, &err,
+					option, option_channel,
+					BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
+					BT_IO_OPT_OMTU, option_omtu,
+					BT_IO_OPT_IMTU, option_imtu,
+					BT_IO_OPT_INVALID);
+	else
+		io = bt_io_listen(type, bluetooth_accept, NULL, NULL,
+					NULL, &err,
+					option, option_channel,
+					BT_IO_OPT_INVALID);
+
 	if (io == NULL) {
 		g_printerr("%s\n", err->message);
 		g_error_free(err);
