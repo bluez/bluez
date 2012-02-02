@@ -457,6 +457,8 @@ static void cmd_connect(GObex *obex, GObexPacket *req, void *user_data)
 		return;
 	}
 
+	os->cmd = G_OBEX_OP_CONNECT;
+
 	rsp = g_obex_packet_new(G_OBEX_RSP_SUCCESS, TRUE, G_OBEX_HDR_INVALID);
 
 	parse_authchal(os, req, rsp);
@@ -480,6 +482,8 @@ static void cmd_disconnect(GObex *obex, GObexPacket *req, void *user_data)
 	DBG("session %p", os);
 
 	print_event(G_OBEX_OP_DISCONNECT, -1);
+
+	os->cmd = G_OBEX_OP_DISCONNECT;
 
 	os_set_response(os, 0);
 }
@@ -806,6 +810,8 @@ static void cmd_get(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
+	os->cmd = G_OBEX_OP_GET;
+
 	parse_name(os, req);
 
 	parse_apparam(os, req);
@@ -835,6 +841,8 @@ static void cmd_setpath(GObex *obex, GObexPacket *req, gpointer user_data)
 		err = -EINVAL;
 		goto done;
 	}
+
+	os->cmd = G_OBEX_OP_SETPATH;
 
 	parse_name(os, req);
 
@@ -975,6 +983,8 @@ static void cmd_put(GObex *obex, GObexPacket *req, gpointer user_data)
 		return;
 	}
 
+	os->cmd = G_OBEX_OP_PUT;
+
 	parse_name(os, req);
 	parse_length(os, req);
 	parse_time(os, req);
@@ -1053,6 +1063,8 @@ static void cmd_action(GObex *obex, GObexPacket *req, gpointer user_data)
 		err = -EINVAL;
 		goto done;
 	}
+
+	os->cmd = G_OBEX_OP_ACTION;
 
 	parse_name(os, req);
 	parse_destname(os, req);
