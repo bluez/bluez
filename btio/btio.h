@@ -77,6 +77,14 @@ typedef enum {
 	BT_IO_SEC_HIGH,
 } BtIOSecLevel;
 
+typedef enum {
+	BT_IO_MODE_BASIC = 0,
+	BT_IO_MODE_RETRANS,
+	BT_IO_MODE_FLOWCTL,
+	BT_IO_MODE_ERTM,
+	BT_IO_MODE_STREAMING
+} BtIOMode;
+
 typedef void (*BtIOConfirm)(GIOChannel *io, gpointer user_data);
 
 typedef void (*BtIOConnect)(GIOChannel *io, GError *err, gpointer user_data);
