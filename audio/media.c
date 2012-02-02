@@ -1371,9 +1371,6 @@ static gboolean set_property(struct media_player *mp, const char *key,
 
 	DBG("%s=%s", key, value);
 
-	if (!mp->settings)
-		mp->settings = g_hash_table_new(g_direct_hash, g_direct_equal);
-
 	g_hash_table_replace(mp->settings, GUINT_TO_POINTER(attr),
 						GUINT_TO_POINTER(val));
 
@@ -1594,6 +1591,8 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 		media_player_destroy(mp);
 		return NULL;
 	}
+
+	mp->settings = g_hash_table_new(g_direct_hash, g_direct_equal);
 
 	adapter->players = g_slist_append(adapter->players, mp);
 
