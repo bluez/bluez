@@ -49,12 +49,12 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
 	def DisplayPasskey(self, device, passkey):
-		print "DisplayPasskey (%s, %d)" % (device, passkey)
+		print "DisplayPasskey (%s, %06d)" % (device, passkey)
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
 	def RequestConfirmation(self, device, passkey):
-		print "RequestConfirmation (%s, %d)" % (device, passkey)
+		print "RequestConfirmation (%s, %06d)" % (device, passkey)
 		confirm = raw_input("Confirm passkey (yes/no): ")
 		if (confirm == "yes"):
 			return
