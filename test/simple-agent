@@ -89,7 +89,7 @@ if __name__ == '__main__':
 	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 							"org.bluez.Manager")
 
-	capability = "DisplayYesNo"
+	capability = "KeyboardDisplay"
 
 	parser = OptionParser()
 	parser.add_option("-c", "--capability", action="store",
