@@ -1163,7 +1163,7 @@ static gboolean incoming_data(GIOChannel *io, GIOCondition cond,
 	} else {
 		opcode = obex->rx_last_op;
 		/* Unexpected response -- fail silently */
-		if (opcode > 0x1f && opcode < 0xff) {
+		if (opcode > 0x1f && opcode != G_OBEX_OP_ABORT) {
 			obex->rx_data = 0;
 			return TRUE;
 		}
