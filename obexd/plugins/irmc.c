@@ -215,9 +215,9 @@ static void *irmc_connect(struct obex_session *os, int *err)
 	 * For now lets used hostname and some 'random' value
 	 */
 	gethostname(irmc->did, DID_LEN);
-	strncpy(irmc->sn, "12345", DID_LEN);
-	strncpy(irmc->manu, "obex", DID_LEN);
-	strncpy(irmc->model, "mymodel", DID_LEN);
+	strncpy(irmc->sn, "12345", sizeof(irmc->sn) - 1);
+	strncpy(irmc->manu, "obex", sizeof(irmc->manu) - 1);
+	strncpy(irmc->model, "mymodel", sizeof(irmc->model) - 1);
 
 	/* We need to know the number of contact/cal/nt entries
 	 * somewhere so why not do it now.
