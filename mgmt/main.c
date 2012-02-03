@@ -1219,10 +1219,23 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	discovery = true;
 }
 
+static void find_usage(void)
+{
+	printf("Usage: btmgmt find [-l|-b]>\n");
+}
+
+static struct option find_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "le-only",	1, 0, 'l' },
+	{ "bredr-only",	1, 0, 'b' },
+	{ 0, 0, 0, 0 }
+};
+
 static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_start_discovery cp;
 	uint8_t type;
+	int opt;
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
@@ -1231,6 +1244,30 @@ static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 	hci_set_bit(MGMT_ADDR_BREDR, &type);
 	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &type);
 	hci_set_bit(MGMT_ADDR_LE_RANDOM, &type);
+
+	while ((opt = getopt_long(argc, argv, "+lbh", find_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 'l':
+			hci_clear_bit(MGMT_ADDR_BREDR, &type);
+			hci_set_bit(MGMT_ADDR_LE_PUBLIC, &type);
+			hci_set_bit(MGMT_ADDR_LE_RANDOM, &type);
+			break;
+		case 'b':
+			hci_set_bit(MGMT_ADDR_BREDR, &type);
+			hci_clear_bit(MGMT_ADDR_LE_PUBLIC, &type);
+			hci_clear_bit(MGMT_ADDR_LE_RANDOM, &type);
+			break;
+		case 'h':
+		default:
+			find_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
 
 	memset(&cp, 0, sizeof(cp));
 	cp.type = type;
