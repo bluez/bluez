@@ -84,10 +84,16 @@ static void attio_device_remove(struct btd_device *device)
 }
 
 static struct btd_device_driver monitor_driver = {
-	.name = "Proximity GATT Driver",
+	.name = "Proximity GATT Monitor Driver",
 	.uuids = BTD_UUIDS(IMMEDIATE_ALERT_UUID, LINK_LOSS_UUID, TX_POWER_UUID),
 	.probe = attio_device_probe,
 	.remove = attio_device_remove,
+};
+
+static struct btd_adapter_driver reporter_server_driver = {
+	.name = "Proximity GATT Reporter Driver",
+	.probe = reporter_init,
+	.remove = reporter_exit,
 };
 
 static void load_config_file(GKeyFile *config)
@@ -118,19 +124,29 @@ int proximity_manager_init(DBusConnection *conn, GKeyFile *config)
 
 	load_config_file(config);
 
-	/* TODO: Register Proximity Monitor/Reporter drivers */
-	ret = btd_register_device_driver(&monitor_driver);
-	if (ret < 0)
-		return ret;
-
 	connection = dbus_connection_ref(conn);
 
-	return reporter_init();
+	ret = btd_register_device_driver(&monitor_driver);
+	if (ret < 0)
+		goto fail_monitor;
+
+	ret = btd_register_adapter_driver(&reporter_server_driver);
+	if (ret < 0)
+		goto fail_reporter;
+
+	return 0;
+
+fail_reporter:
+	btd_unregister_device_driver(&monitor_driver);
+
+fail_monitor:
+	dbus_connection_unref(connection);
+	return ret;
 }
 
 void proximity_manager_exit(void)
 {
-	reporter_exit();
 	btd_unregister_device_driver(&monitor_driver);
+	btd_unregister_adapter_driver(&reporter_server_driver);
 	dbus_connection_unref(connection);
 }

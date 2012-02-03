@@ -22,5 +22,5 @@
  *
  */
 
-int reporter_init(void);
-void reporter_exit(void);
+int reporter_init(struct btd_adapter *adapter);
+void reporter_exit(struct btd_adapter *adapter);
