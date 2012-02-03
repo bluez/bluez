@@ -53,11 +53,11 @@ if __name__ == "__main__":
 	device_path = adapter.FindDevice(options.address)
 
 	bus.add_signal_receiver(property_changed, bus_name="org.bluez",
-				dbus_interface="org.bluez.Proximity",
+				dbus_interface="org.bluez.ProximityMonitor",
 				signal_name="PropertyChanged")
 
 	proximity = dbus.Interface(bus.get_object("org.bluez",
-					device_path), "org.bluez.Proximity")
+					device_path), "org.bluez.ProximityMonitor")
 
 	print "Proximity SetProperty('%s', '%s')" % (args[0], args[1])
 	proximity.SetProperty(args[0], args[1])

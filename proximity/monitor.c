@@ -49,7 +49,7 @@
 #include "monitor.h"
 #include "textfile.h"
 
-#define PROXIMITY_INTERFACE "org.bluez.Proximity"
+#define PROXIMITY_INTERFACE "org.bluez.ProximityMonitor"
 
 #define ALERT_LEVEL_CHR_UUID 0x2A06
 #define POWER_LEVEL_CHR_UUID 0x2A07
