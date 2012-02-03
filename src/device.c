@@ -1933,7 +1933,9 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 		return -EIO;
 	}
 
-	req->conn = dbus_connection_ref(conn);
+	if (conn)
+		req->conn = dbus_connection_ref(conn);
+
 	device->browse = req;
 
 	if (msg) {
@@ -2118,7 +2120,10 @@ static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 
-	device_browse_sdp(device, NULL, NULL, NULL, TRUE);
+	if (device_is_bredr(device))
+		device_browse_sdp(device, NULL, NULL, NULL, FALSE);
+	else
+		device_browse_primary(device, NULL, NULL, FALSE);
 
 	device->discov_timer = 0;
 
