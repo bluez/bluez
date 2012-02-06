@@ -255,7 +255,6 @@ Load Long Term Keys Command
 				Key1 {
 					Address (6 Octets)
 					Address_Type (1 Octet)
-					Key_Type (1 Octet)
 					Authenticated (1 Octet)
 					Master (1 Octet)
 					Encryption Size (1 Octet)
@@ -613,7 +612,6 @@ Event Parameters	Store Hint (1 Octet)
 			Key {
 				Address (6 Octets)
 				Address_Type (1 Octet)
-				Key_Type (1 Octet)
 				Authenticated (1 Octet)
 				Master (1 Octet)
 				Encryption Size (1 Octet)
