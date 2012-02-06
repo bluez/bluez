@@ -237,7 +237,7 @@ Load Link Keys Command
 				Key_Count (2 Octets)
 				Key1 {
 					Address (6 Octets)
-					Type (1 Octet)
+					Key_Type (1 Octet)
 					Value (16 Octets)
 					PIN_Length (1 Octet)
 				}
@@ -254,7 +254,8 @@ Load Long Term Keys Command
 	Command Parameters:	Key Count (2 Octets)
 				Key1 {
 					Address (6 Octets)
-					Type (1 Octet)
+					Address_Type (1 Octet)
+					Key_Type (1 Octet)
 					Authenticated (1 Octet)
 					Master (1 Octet)
 					Encryption Size (1 Octet)
@@ -266,44 +267,33 @@ Load Long Term Keys Command
 				...
 
 
-Remove Keys Command
-===================
+Disconnect Command
+==================
 
 	Command Code:		0x0014
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
-				Disconnect (1 Octet)
+				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
-				Status (1 Octet)
-
-	Removes all keys associated with the remote device.
-
-
-Disconnect Command
-==================
-
-	Command Code:		0x0015
-	Controller Index:	<controller id>
-	Command Parameters:	Address (6 Octets)
-	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (6 Octets)
 
 
 Get Connections Command
 =======================
 
-	Command Code:		0x0016
+	Command Code:		0x0015
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Connection_Count (2 Octets)
 				Address1 {
 					Address (6 Octets)
-					Type (1 Octet)
+					Address_Type (1 Octet)
 				}
 				Address2 { }
 				...
 
-	Possible values for the Type parameter:
+	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
@@ -312,7 +302,7 @@ Get Connections Command
 PIN Code Reply Command
 =======================
 
-	Command Code:		0x0017
+	Command Code:		0x0016
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -323,7 +313,7 @@ PIN Code Reply Command
 PIN Code Negative Reply Command
 ===============================
 
-	Command Code:		0x0018
+	Command Code:		0x0017
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
@@ -332,7 +322,7 @@ PIN Code Negative Reply Command
 Set IO Capability Command
 =========================
 
-	Command Code:		0x0019
+	Command Code:		0x0018
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
@@ -341,7 +331,7 @@ Set IO Capability Command
 Pair Device Command
 ===================
 
-	Command Code:		0x001A
+	Command Code:		0x0019
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -360,7 +350,7 @@ Cancel Pair Device
 ==================
 
 
-	Command Code:		0x001B
+	Command Code:		0x001A
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
@@ -371,13 +361,30 @@ Cancel Pair Device
 	given to a preceding Pair Device command.
 
 
+Unpair Device Command
+=====================
+
+	Command Code:		0x001B
+	Controller Index:	<controller id>
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Disconnect (1 Octet)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
+				Status (1 Octet)
+
+	Removes all keys associated with the remote device.
+
+
 User Confirmation Reply Command
 ===============================
 
 	Command Code:		0x001C
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (1 Octet)
 
 
@@ -387,7 +394,9 @@ User Confirmation Negative Reply Command
 	Command Code:		0x001D
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (1 Octet)
 
 
@@ -397,8 +406,10 @@ User Passkey Reply Command
 	Command Code:		0x001E
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Passkey (4 Octets)
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (1 Octet)
 
 
@@ -408,7 +419,9 @@ User Passkey Negative Reply Command
 	Command Code:		0x001F
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (1 Octet)
 
 
@@ -428,6 +441,7 @@ Add Remote Out Of Band Data Command
 	Command Code:		0x0021
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Hash (16 Octets)
 				Randomizer (16 Octets)
 	Return Parameters:
@@ -439,19 +453,20 @@ Remove Remote Out Of Band Data Command
 	Command Code:		0x0022
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:
 
 
 Start Discovery Command
 =======================
 
-	Command Code:		0x00023
+	Command Code:		0x0023
 	Controller Index:	<controller id>
-	Command Parameters:	Type (1 Octet)
+	Command Parameters:	Address_Type (1 Octet)
 	Return Parameters:
 
-	Possible values for the Type parameter are a bit-wise or of the
-	following bits:
+	Possible values for the Address_Type parameter are a bit-wise or
+	of the following bits:
 
 		1	BR/EDR
 		2	LE Public
@@ -467,7 +482,7 @@ Start Discovery Command
 Stop Discovery Command
 ======================
 
-	Command Code:		0x00024
+	Command Code:		0x0024
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:
@@ -476,7 +491,7 @@ Stop Discovery Command
 Confirm Name Command
 ====================
 
-	Command Code:		0x00025
+	Command Code:		0x0025
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Name_Known (1 Octet)
@@ -491,18 +506,20 @@ Confirm Name Command
 Block Device Command
 ====================
 
-	Command Code:		0x00026
+	Command Code:		0x0026
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:
 
 
 Unblock Device Command
 ======================
 
-	Command Code:		0x00027
+	Command Code:		0x0027
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:
 
 
@@ -580,7 +597,7 @@ Event Code		0x0009
 Controller Index:	<controller id>
 Event Parameters	Key {
 				Address (6 Octets)
-				Type (1 Octet)
+				Key_Type (1 Octet)
 				Value (16 Octets)
 				PIN_Length (1 Octet)
 			}
@@ -595,7 +612,8 @@ Controller Index	<controller id>
 Event Parameters	Store Hint (1 Octet)
 			Key {
 				Address (6 Octets)
-				Type (1 Octet)
+				Address_Type (1 Octet)
+				Key_Type (1 Octet)
 				Authenticated (1 Octet)
 				Master (1 Octet)
 				Encryption Size (1 Octet)
@@ -611,11 +629,11 @@ Device Connected Event
 Event Code		0x000B
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
-			Type (1 Octet)
+			Address_Type (1 Octet)
 			EIR_Data_Length (2 Octets)
 			EIR_Data (0-65535 Octets)
 
-	Possible values for the Type parameter:
+	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
@@ -627,9 +645,9 @@ Device Disconnected Event
 Event Code		0x000C
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
-			Type (1 Octet)
+			AddresS_Type (1 Octet)
 
-	Possible values for the Type parameter:
+	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
@@ -641,10 +659,10 @@ Connect Failed Event
 Event Code		0x000D
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
-			Type (1 Octet)
+			Address_Type (1 Octet)
 			Status (1 Octet)
 
-	Possible values for the Type parameter:
+	Possible values for the AddresS_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
@@ -668,6 +686,7 @@ User Confirmation Request Event
 Event Code		0x000F
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
 			Value (4 Octets)
 
 
@@ -677,6 +696,7 @@ User Passkey Request Event
 Event Code		0x0010
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
 
 
 Authentication Failed Event
@@ -685,6 +705,7 @@ Authentication Failed Event
 Event Code		0x0011
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
 			Status (1 Octet)
 
 
@@ -694,13 +715,13 @@ Device Found Event
 Event Code		0x0012
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
-			Type (1 Octet)
+			Address_Type (1 Octet)
 			RSSI (1 Octet)
 			Flags (4 Octets)
 			EIR_Data_Length (2 Octets)
 			EIR_Data (0-65535 Octets)
 
-	Possible values for the Type parameter:
+	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
@@ -713,7 +734,7 @@ Event Parameters	Address (6 Octets)
 Discovering Event
 =================
 
-Event Code		0x00013
+Event Code		0x0013
 Controller Index	<controller id>
 Event Parameters	Discovering (1 Octet)
 
@@ -721,14 +742,25 @@ Event Parameters	Discovering (1 Octet)
 Device Blocked Event
 ====================
 
-Event Code		0x00014
+Event Code		0x0014
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
 
 
 Device Unblocked Event
 ======================
 
-Event Code		0x00015
+Event Code		0x0015
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
+
+
+Device Unpaired
+===============
+
+Event Code		0x0016
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
