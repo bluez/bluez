@@ -171,7 +171,7 @@ static struct gatt_server *find_gatt_server(const bdaddr_t *bdaddr)
 		char addr[18];
 
 		ba2str(bdaddr, addr);
-		error("Not GATT adapter found for address %s", addr);
+		error("No GATT server found in %s", addr);
 		return NULL;
 	}
 
