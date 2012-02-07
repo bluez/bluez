@@ -1020,8 +1020,14 @@ guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 	}
 
 	server = find_gatt_server(&channel->src);
-	if (server == NULL)
+	if (server == NULL) {
+		char src[18];
+
+		ba2str(&channel->src, src);
+		error("No GATT server found in %s", src);
+		g_free(channel);
 		return 0;
+	}
 
 	channel->server = server;
 
