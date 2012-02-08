@@ -687,9 +687,16 @@ static void session_terminate_transfer(struct obc_session *session,
 
 	obc_session_remove_transfer(session, transfer);
 
-	if (session->pending)
-		session_request(session, session_prepare_put,
-				session->pending->data);
+	while (session->pending != NULL) {
+		struct obc_transfer *transfer = session->pending->data;
+		int err;
+
+		err = session_request(session, session_prepare_put, transfer);
+		if (err == 0)
+			break;
+
+		obc_session_remove_transfer(session, transfer);
+	}
 
 	obc_session_unref(session);
 }
