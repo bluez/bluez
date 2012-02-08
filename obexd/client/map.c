@@ -48,23 +48,16 @@ struct map_data {
 
 static DBusConnection *conn = NULL;
 
-static void simple_cb(GObex *obex, GError *err, GObexPacket *rsp,
+static void simple_cb(struct obc_session *session, GError *err,
 							gpointer user_data)
 {
 	DBusMessage *reply;
 	struct map_data *map = user_data;
-	guint8 err_code = g_obex_packet_get_operation(rsp, NULL);
 
 	if (err != NULL)
 		reply = g_dbus_create_error(map->msg,
 						"org.openobex.Error.Failed",
 						"%s", err->message);
-	else if (err_code != G_OBEX_RSP_SUCCESS)
-		reply = g_dbus_create_error(map->msg,
-						"org.openobex.Error.Failed",
-						"%s (0x%02x)",
-						g_obex_strerror(err_code),
-						err_code);
 	else
 		reply = dbus_message_new_method_return(map->msg);
 
@@ -77,7 +70,6 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 {
 	struct map_data *map = user_data;
 	const char *folder;
-	GObex *obex;
 	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &folder,
@@ -86,9 +78,7 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 					"org.openobex.Error.InvalidArguments",
 					NULL);
 
-	obex = obc_session_get_obex(map->session);
-
-	g_obex_setpath(obex, folder, simple_cb, map, &err);
+	obc_session_setpath(map->session, folder, simple_cb, map, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
 		reply =  g_dbus_create_error(message,
