@@ -83,3 +83,6 @@ guint obc_session_mkdir(struct obc_session *session, const char *folder,
 guint obc_session_copy(struct obc_session *session, const char *filename,
 				const char *destname, session_callback_t func,
 				void *user_data, GError **err);
+guint obc_session_move(struct obc_session *session, const char *filename,
+				const char *destname, session_callback_t func,
+				void *user_data, GError **err);
