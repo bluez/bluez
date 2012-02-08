@@ -73,3 +73,7 @@ const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy);
 int obc_session_put(struct obc_session *session, char *buf,
 				const char *targetname);
+
+guint obc_session_setpath(struct obc_session *session, const char *path,
+				session_callback_t func, void *user_data,
+				GError **err);
