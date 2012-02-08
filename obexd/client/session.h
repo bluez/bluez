@@ -77,3 +77,6 @@ int obc_session_put(struct obc_session *session, char *buf,
 guint obc_session_setpath(struct obc_session *session, const char *path,
 				session_callback_t func, void *user_data,
 				GError **err);
+guint obc_session_mkdir(struct obc_session *session, const char *folder,
+				session_callback_t func, void *user_data,
+				GError **err);
