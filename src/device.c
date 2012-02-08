@@ -100,8 +100,6 @@ struct authentication_req {
 struct browse_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
-	GIOChannel *io;
-	GAttrib *attrib;
 	struct btd_device *device;
 	GSList *match_uuids;
 	GSList *profiles_added;
