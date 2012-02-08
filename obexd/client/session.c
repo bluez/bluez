@@ -1305,3 +1305,33 @@ guint obc_session_mkdir(struct obc_session *session, const char *folder,
 	session->p = p;
 	return p->id;
 }
+
+guint obc_session_copy(struct obc_session *session, const char *filename,
+				const char *destname, session_callback_t func,
+				void *user_data, GError **err)
+{
+	struct pending_request *p;
+
+	if (session->obex == NULL) {
+		g_set_error(err, OBEX_IO_ERROR, OBEX_IO_DISCONNECTED,
+						"Session disconnected");
+		return 0;
+	}
+
+	if (session->p != NULL) {
+		g_set_error(err, OBEX_IO_ERROR, OBEX_IO_BUSY, "Session busy");
+		return 0;
+	}
+
+	p = pending_request_new(session, NULL, NULL, func, user_data);
+
+	p->req_id = g_obex_copy(session->obex, filename, destname, async_cb, p,
+									err);
+	if (*err != NULL) {
+		pending_request_free(p);
+		return 0;
+	}
+
+	session->p = p;
+	return p->id;
+}
