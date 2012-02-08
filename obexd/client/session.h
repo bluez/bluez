@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include <glib.h>
 #include <gdbus.h>
-#include <gobex.h>
 
 struct obc_session;
 
@@ -56,7 +55,6 @@ const char *obc_session_get_agent(struct obc_session *session);
 
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
-GObex *obc_session_get_obex(struct obc_session *session);
 const char *obc_session_get_buffer(struct obc_session *session, size_t *size);
 void *obc_session_get_params(struct obc_session *session, size_t *size);
 

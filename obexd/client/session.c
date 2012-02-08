@@ -1086,11 +1086,6 @@ const char *obc_session_get_target(struct obc_session *session)
 	return session->driver->target;
 }
 
-GObex *obc_session_get_obex(struct obc_session *session)
-{
-	return session->obex;
-}
-
 static struct obc_transfer *obc_session_get_transfer(
 						struct obc_session *session)
 {

@@ -33,7 +33,6 @@
 #include "log.h"
 
 #include "session.h"
-#include "transfer.h"
 #include "driver.h"
 #include "ftp.h"
 
