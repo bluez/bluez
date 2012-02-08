@@ -2324,6 +2324,29 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	}
 }
 
+static void bonding_connect_cb(GIOChannel *io, GError *gerr,
+							gpointer user_data)
+{
+	struct btd_device *device = user_data;
+
+	g_io_channel_unref(device->att_io);
+	device->att_io = NULL;
+
+	if (gerr) {
+		DBusMessage *reply = btd_error_failed(device->bonding->msg,
+								gerr->message);
+
+		g_dbus_send_message(device->bonding->conn, reply);
+		DBG("%s", gerr->message);
+		return;
+	}
+
+	device->attrib = g_attrib_new(io);
+	device->attachid = attrib_channel_attach(device->attrib, TRUE);
+	if (device->attachid == 0)
+		error("Attribute server attach failure!");
+}
+
 DBusMessage *device_create_bonding(struct btd_device *device,
 					DBusConnection *conn,
 					DBusMessage *msg,
@@ -2339,6 +2362,30 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 
 	if (device_is_bonded(device))
 		return btd_error_already_exists(msg);
+
+	if (device_is_le(device)) {
+		GError *gerr = NULL;
+		bdaddr_t sba;
+
+		adapter_get_address(adapter, &sba);
+
+		device->att_io = bt_io_connect(BT_IO_L2CAP, bonding_connect_cb,
+					device, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, &sba,
+					BT_IO_OPT_DEST_BDADDR,&device->bdaddr,
+					BT_IO_OPT_CID, ATT_CID,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+					BT_IO_OPT_INVALID);
+
+		if (device->att_io == NULL) {
+			DBusMessage *reply = btd_error_failed(msg,
+								gerr->message);
+
+			error("Bonding bt_io_connect(): %s", gerr->message);
+			g_error_free(gerr);
+			return reply;
+		}
+	}
 
 	err = adapter_create_bonding(adapter, &device->bdaddr,
 					device->type, capability);
