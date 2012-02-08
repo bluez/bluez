@@ -1394,3 +1394,24 @@ guint obc_session_delete(struct obc_session *session, const char *file,
 	session->p = p;
 	return p->id;
 }
+
+void obc_session_cancel(struct obc_session *session, guint id,
+							gboolean remove)
+{
+	struct pending_request *p = session->p;
+
+	if (p == NULL || p->id != id)
+		return;
+
+	if (p->req_id == 0)
+		return;
+
+	g_obex_cancel_req(session->obex, p->req_id, remove);
+	if (!remove)
+		return;
+
+	pending_request_free(p);
+	session->p = NULL;
+
+	session_process_queue(session);
+}

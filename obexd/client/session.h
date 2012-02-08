@@ -89,3 +89,5 @@ guint obc_session_move(struct obc_session *session, const char *filename,
 guint obc_session_delete(struct obc_session *session, const char *file,
 				session_callback_t func, void *user_data,
 				GError **err);
+void obc_session_cancel(struct obc_session *session, guint id,
+							gboolean remove);
