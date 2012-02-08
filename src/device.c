@@ -2958,5 +2958,11 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 		device->attrib = NULL;
 	}
 
+	if (device->att_io) {
+		g_io_channel_shutdown(device->att_io, FALSE, NULL);
+		g_io_channel_unref(device->att_io);
+		device->att_io = NULL;
+	}
+
 	return TRUE;
 }
