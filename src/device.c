@@ -160,6 +160,8 @@ struct btd_device {
 
 	gboolean	authorizing;
 	gint		ref;
+
+	GIOChannel      *att_io;
 };
 
 static uint16_t uuid_list[] = {
@@ -246,6 +248,11 @@ static void device_free(gpointer user_data)
 
 	if (device->auto_id)
 		g_source_remove(device->auto_id);
+
+	if (device->att_io) {
+		g_io_channel_shutdown(device->att_io, FALSE, NULL);
+		g_io_channel_unref(device->att_io);
+	}
 
 	DBG("%p", device);
 
@@ -1820,6 +1827,9 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	struct btd_device *device = user_data;
 	GAttrib *attrib;
 
+	g_io_channel_unref(device->att_io);
+	device->att_io = NULL;
+
 	if (gerr) {
 		DBG("%s", gerr->message);
 
@@ -1885,7 +1895,7 @@ static gboolean att_connect(gpointer user_data)
 		return FALSE;
 	}
 
-	g_io_channel_unref(io);
+	device->att_io = io;
 
 	return FALSE;
 }
