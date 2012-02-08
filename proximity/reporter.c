@@ -50,8 +50,6 @@ enum {
 	HIGH_ALERT = 0x02,
 };
 
-static uint16_t tx_power_handle;
-
 static void register_link_loss(struct btd_adapter *adapter)
 {
 	uint16_t start_handle, h;
@@ -123,7 +121,6 @@ static void register_tx_power(struct btd_adapter *adapter)
 	/* Power level value */
 	bt_uuid16_create(&uuid, POWER_LEVEL_CHR_UUID);
 	att_put_u8(0x00, &atval[0]);
-	tx_power_handle = h;
 	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 1);
 
 	/* Client characteristic configuration */
