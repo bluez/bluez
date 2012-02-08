@@ -76,7 +76,6 @@ struct obc_session {
 	struct obc_driver *driver;
 	gchar *path;		/* Session path */
 	DBusConnection *conn;
-	DBusMessage *msg;
 	GObex *obex;
 	struct obc_agent *agent;
 	struct session_callback *callback;
