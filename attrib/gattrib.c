@@ -193,10 +193,11 @@ static void attrib_destroy(GAttrib *attrib)
 	if (attrib->write_watch > 0)
 		g_source_remove(attrib->write_watch);
 
-	if (attrib->read_watch > 0) {
+	if (attrib->read_watch > 0)
 		g_source_remove(attrib->read_watch);
+
+	if (attrib->io)
 		g_io_channel_unref(attrib->io);
-	}
 
 	g_free(attrib->buf);
 
