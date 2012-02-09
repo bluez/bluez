@@ -31,6 +31,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
 
+#include "log.h"
 #include "att.h"
 #include "btio.h"
 #include "gattrib.h"
@@ -147,6 +148,8 @@ GAttrib *g_attrib_ref(GAttrib *attrib)
 
 	g_atomic_int_inc(&attrib->refs);
 
+	DBG("%p: ref=%d", attrib, attrib->refs);
+
 	return attrib;
 }
 
@@ -205,10 +208,16 @@ static void attrib_destroy(GAttrib *attrib)
 
 void g_attrib_unref(GAttrib *attrib)
 {
+	gboolean ret;
+
 	if (!attrib)
 		return;
 
-	if (g_atomic_int_dec_and_test(&attrib->refs) == FALSE)
+	ret = g_atomic_int_dec_and_test(&attrib->refs);
+
+	DBG("%p: ref=%d", attrib, attrib->refs);
+
+	if (ret == FALSE)
 		return;
 
 	attrib_destroy(attrib);
