@@ -193,8 +193,8 @@ struct btd_adapter_ops {
 	int (*read_clock) (int index, bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy);
 	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
-	int (*block_device) (int index, bdaddr_t *bdaddr);
-	int (*unblock_device) (int index, bdaddr_t *bdaddr);
+	int (*block_device) (int index, bdaddr_t *bdaddr, addr_type_t type);
+	int (*unblock_device) (int index, bdaddr_t *bdaddr, addr_type_t type);
 	int (*get_conn_list) (int index, GSList **conns);
 	int (*disconnect) (int index, bdaddr_t *bdaddr, addr_type_t type);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr, addr_type_t type);
@@ -246,8 +246,10 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy);
 
-int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
-int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							addr_type_t type);
+int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							addr_type_t type);
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 					bdaddr_t *bdaddr, addr_type_t type);

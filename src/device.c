@@ -500,7 +500,8 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
 
 	if (!update_only)
-		err = btd_adapter_block_address(device->adapter, &device->bdaddr);
+		err = btd_adapter_block_address(device->adapter,
+						&device->bdaddr, device->type);
 
 	if (err < 0)
 		return err;
@@ -531,7 +532,8 @@ int device_unblock(DBusConnection *conn, struct btd_device *device,
 		return 0;
 
 	if (!update_only)
-		err = btd_adapter_unblock_address(device->adapter, &device->bdaddr);
+		err = btd_adapter_unblock_address(device->adapter,
+						&device->bdaddr, device->type);
 
 	if (err < 0)
 		return err;

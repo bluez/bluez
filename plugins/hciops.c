@@ -3307,7 +3307,7 @@ static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_block_device(int index, bdaddr_t *bdaddr)
+static int hciops_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
@@ -3321,7 +3321,7 @@ static int hciops_block_device(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_unblock_device(int index, bdaddr_t *bdaddr)
+static int hciops_unblock_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];

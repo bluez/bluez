@@ -2063,21 +2063,23 @@ static void load_devices(struct btd_adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_blocked, adapter);
 }
 
-int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							addr_type_t type)
 {
-	return adapter_ops->block_device(adapter->dev_id, bdaddr);
+	return adapter_ops->block_device(adapter->dev_id, bdaddr, type);
 }
 
-int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							addr_type_t type)
 {
-	return adapter_ops->unblock_device(adapter->dev_id, bdaddr);
+	return adapter_ops->unblock_device(adapter->dev_id, bdaddr, type);
 }
 
 static void clear_blocked(struct btd_adapter *adapter)
 {
 	int err;
 
-	err = adapter_ops->unblock_device(adapter->dev_id, BDADDR_ANY);
+	err = adapter_ops->unblock_device(adapter->dev_id, BDADDR_ANY, 0);
 	if (err < 0)
 		error("Clearing blocked list failed: %s (%d)",
 						strerror(-err), -err);

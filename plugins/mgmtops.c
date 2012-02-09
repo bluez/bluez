@@ -1759,7 +1759,7 @@ static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_block_device(int index, bdaddr_t *bdaddr)
+static int mgmt_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -1778,6 +1778,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -1787,7 +1788,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
+static int mgmt_unblock_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unblock_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -1806,6 +1807,7 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
