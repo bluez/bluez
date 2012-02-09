@@ -1415,6 +1415,30 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_device_unblocked(&info->bdaddr, &ev->addr.bdaddr);
 }
 
+static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct controller_info *info;
+	struct mgmt_ev_device_unpaired *ev = buf;
+	char addr[18];
+
+	if (len < sizeof(*ev)) {
+		error("Too small mgmt_device_unpaired event packet");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("Device upaired, index %u, addr %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in device_unpaired event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	btd_event_device_unpaired(&info->bdaddr, &ev->addr.bdaddr);
+}
+
 static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_long_term_key *ev = buf;
@@ -1544,6 +1568,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_DEVICE_UNBLOCKED:
 		mgmt_device_unblocked(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_DEVICE_UNPAIRED:
+		mgmt_device_unpaired(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
 		mgmt_passkey_request(sk, index, buf + MGMT_HDR_SIZE, len);
