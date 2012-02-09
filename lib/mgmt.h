@@ -168,49 +168,39 @@ struct mgmt_cp_load_long_term_keys {
 	struct mgmt_ltk_info keys[0];
 } __packed;
 
-#define MGMT_OP_REMOVE_KEYS		0x0014
-struct mgmt_cp_remove_keys {
-	bdaddr_t bdaddr;
-	uint8_t disconnect;
-} __packed;
-struct mgmt_rp_remove_keys {
-	bdaddr_t bdaddr;
-	uint8_t status;
-} __packed;
-
-#define MGMT_OP_DISCONNECT		0x0015
+#define MGMT_OP_DISCONNECT		0x0014
 struct mgmt_cp_disconnect {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 struct mgmt_rp_disconnect {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_GET_CONNECTIONS		0x0016
+#define MGMT_OP_GET_CONNECTIONS		0x0015
 struct mgmt_rp_get_connections {
 	uint16_t conn_count;
 	struct mgmt_addr_info addr[0];
 } __packed;
 
-#define MGMT_OP_PIN_CODE_REPLY		0x0017
+#define MGMT_OP_PIN_CODE_REPLY		0x0016
 struct mgmt_cp_pin_code_reply {
 	bdaddr_t bdaddr;
 	uint8_t pin_len;
 	uint8_t pin_code[16];
 } __packed;
 
-#define MGMT_OP_PIN_CODE_NEG_REPLY	0x0018
+#define MGMT_OP_PIN_CODE_NEG_REPLY	0x0017
 struct mgmt_cp_pin_code_neg_reply {
 	bdaddr_t bdaddr;
 } __packed;
 
-#define MGMT_OP_SET_IO_CAPABILITY	0x0019
+#define MGMT_OP_SET_IO_CAPABILITY	0x0018
 struct mgmt_cp_set_io_capability {
 	uint8_t io_capability;
 } __packed;
 
-#define MGMT_OP_PAIR_DEVICE		0x001A
+#define MGMT_OP_PAIR_DEVICE		0x0019
 struct mgmt_cp_pair_device {
 	struct mgmt_addr_info addr;
 	uint8_t io_cap;
@@ -220,14 +210,24 @@ struct mgmt_rp_pair_device {
 	uint8_t status;
 } __packed;
 
-#define MGMT_OP_CANCEL_PAIR_DEVICE	0x001B
+#define MGMT_OP_CANCEL_PAIR_DEVICE	0x001A
+
+#define MGMT_OP_UNPAIR_DEVICE		0x001B
+struct mgmt_cp_unpair_device {
+	struct mgmt_addr_info addr;
+	uint8_t disconnect;
+} __packed;
+struct mgmt_rp_unpair_device {
+	struct mgmt_addr_info addr;
+	uint8_t status;
+} __packed;
 
 #define MGMT_OP_USER_CONFIRM_REPLY	0x001C
 struct mgmt_cp_user_confirm_reply {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 struct mgmt_rp_user_confirm_reply {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
@@ -235,17 +235,17 @@ struct mgmt_rp_user_confirm_reply {
 
 #define MGMT_OP_USER_PASSKEY_REPLY	0x001E
 struct mgmt_cp_user_passkey_reply {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint32_t passkey;
 } __packed;
 struct mgmt_rp_user_passkey_reply {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
 #define MGMT_OP_USER_PASSKEY_NEG_REPLY	0x001F
 struct mgmt_cp_user_passkey_neg_reply {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_OP_READ_LOCAL_OOB_DATA	0x0020
@@ -256,14 +256,14 @@ struct mgmt_rp_read_local_oob_data {
 
 #define MGMT_OP_ADD_REMOTE_OOB_DATA	0x0021
 struct mgmt_cp_add_remote_oob_data {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t hash[16];
 	uint8_t randomizer[16];
 } __packed;
 
 #define MGMT_OP_REMOVE_REMOTE_OOB_DATA	0x0022
 struct mgmt_cp_remove_remote_oob_data {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_OP_START_DISCOVERY		0x0023
@@ -285,12 +285,12 @@ struct mgmt_rp_confirm_name {
 
 #define MGMT_OP_BLOCK_DEVICE		0x0026
 struct mgmt_cp_block_device {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_OP_UNBLOCK_DEVICE		0x0027
 struct mgmt_cp_unblock_device {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_EV_CMD_COMPLETE		0x0001
@@ -362,19 +362,19 @@ struct mgmt_ev_pin_code_request {
 
 #define MGMT_EV_USER_CONFIRM_REQUEST	0x000F
 struct mgmt_ev_user_confirm_request {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t confirm_hint;
 	uint32_t value;
 } __packed;
 
 #define MGMT_EV_USER_PASSKEY_REQUEST	0x0010
 struct mgmt_ev_user_passkey_request {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_EV_AUTH_FAILED		0x0011
 struct mgmt_ev_auth_failed {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 	uint8_t status;
 } __packed;
 
@@ -391,10 +391,15 @@ struct mgmt_ev_device_found {
 
 #define MGMT_EV_DEVICE_BLOCKED		0x0014
 struct mgmt_ev_device_blocked {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
 } __packed;
 
 #define MGMT_EV_DEVICE_UNBLOCKED	0x0015
 struct mgmt_ev_device_unblocked {
-	bdaddr_t bdaddr;
+	struct mgmt_addr_info addr;
+} __packed;
+
+#define MGMT_EV_DEVICE_UNPAIRED		0x0016
+struct mgmt_ev_device_unpaired {
+	struct mgmt_addr_info addr;
 } __packed;

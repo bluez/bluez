@@ -604,7 +604,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	hdr->index = htobs(index);
 
 	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -632,7 +632,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 		hdr->len = htobs(sizeof(*cp));
 
 		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->bdaddr, bdaddr);
+		bacpy(&cp->addr.bdaddr, bdaddr);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -642,7 +642,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 		hdr->len = htobs(sizeof(*cp));
 
 		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->bdaddr, bdaddr);
+		bacpy(&cp->addr.bdaddr, bdaddr);
 		cp->passkey = htobl(passkey);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
@@ -666,7 +666,7 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s", index, addr);
 
@@ -677,10 +677,10 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	err = btd_event_user_passkey(&info->bdaddr, &ev->bdaddr);
+	err = btd_event_user_passkey(&info->bdaddr, &ev->addr.bdaddr);
 	if (err < 0) {
 		error("btd_event_user_passkey: %s", strerror(-err));
-		mgmt_passkey_reply(index, &ev->bdaddr, INVALID_PASSKEY);
+		mgmt_passkey_reply(index, &ev->addr.bdaddr, INVALID_PASSKEY);
 	}
 }
 
@@ -717,7 +717,7 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s confirm_hint %u", index, addr, ev->confirm_hint);
 
@@ -732,7 +732,7 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 
 		data = g_new0(struct confirm_data, 1);
 		data->index = index;
-		bacpy(&data->bdaddr, &ev->bdaddr);
+		bacpy(&data->bdaddr, &ev->addr.bdaddr);
 
 		g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1,
 						confirm_accept, data, g_free);
@@ -741,11 +741,11 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	err = btd_event_user_confirm(&info->bdaddr, &ev->bdaddr,
+	err = btd_event_user_confirm(&info->bdaddr, &ev->addr.bdaddr,
 							btohl(ev->value));
 	if (err < 0) {
 		error("btd_event_user_confirm: %s", strerror(-err));
-		mgmt_confirm_reply(index, &ev->bdaddr, FALSE);
+		mgmt_confirm_reply(index, &ev->addr.bdaddr, FALSE);
 	}
 }
 
@@ -930,7 +930,7 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&rp->bdaddr, addr);
+	ba2str(&rp->addr.bdaddr, addr);
 
 	if (rp->status != 0) {
 		error("Disconnecting %s failed with status %u",
@@ -947,9 +947,9 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_disconn_complete(&info->bdaddr, &rp->bdaddr);
+	btd_event_disconn_complete(&info->bdaddr, &rp->addr.bdaddr);
 
-	bonding_complete(info, &rp->bdaddr, HCI_CONNECTION_TERMINATED);
+	bonding_complete(info, &rp->addr.bdaddr, HCI_CONNECTION_TERMINATED);
 }
 
 static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
@@ -1133,8 +1133,8 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
 		break;
-	case MGMT_OP_REMOVE_KEYS:
-		DBG("remove_keys complete");
+	case MGMT_OP_UNPAIR_DEVICE:
+		DBG("unpair_device complete");
 		break;
 	case MGMT_OP_DISCONNECT:
 		DBG("disconnect complete");
@@ -1246,7 +1246,7 @@ static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	bonding_complete(info, &ev->bdaddr, ev->status);
+	bonding_complete(info, &ev->addr.bdaddr, ev->status);
 }
 
 static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t len)
@@ -1354,7 +1354,7 @@ static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 	DBG("Device blocked, index %u, addr %s", index, addr);
 
 	if (index > max_index) {
@@ -1364,7 +1364,7 @@ static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_device_blocked(&info->bdaddr, &ev->bdaddr);
+	btd_event_device_blocked(&info->bdaddr, &ev->addr.bdaddr);
 }
 
 static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
@@ -1378,7 +1378,7 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 	DBG("Device unblocked, index %u, addr %s", index, addr);
 
 	if (index > max_index) {
@@ -1388,7 +1388,7 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_device_unblocked(&info->bdaddr, &ev->bdaddr);
+	btd_event_device_unblocked(&info->bdaddr, &ev->addr.bdaddr);
 }
 
 static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
@@ -1753,7 +1753,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr)
 	hdr->index = htobs(index);
 
 	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -1781,7 +1781,7 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr)
 	hdr->index = htobs(index);
 
 	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -1818,7 +1818,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		error("write: %s (%d)", strerror(errno), errno);
@@ -1826,22 +1826,22 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_remove_bonding(int index, bdaddr_t *bdaddr)
+static int mgmt_unpair_device(int index, bdaddr_t *bdaddr)
 {
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_keys)];
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unpair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_remove_keys *cp = (void *) &buf[sizeof(*hdr)];
+	struct mgmt_cp_unpair_device *cp = (void *) &buf[sizeof(*hdr)];
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	DBG("index %d addr %s", index, addr);
 
 	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_REMOVE_KEYS);
+	hdr->opcode = htobs(MGMT_OP_UNPAIR_DEVICE);
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 	cp->disconnect = 1;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
@@ -2035,7 +2035,7 @@ static int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
 	hdr->index = htobs(index);
 	hdr->len = htobs(sizeof(*cp));
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 	memcpy(cp->hash, hash, 16);
 	memcpy(cp->randomizer, randomizer, 16);
 
@@ -2061,7 +2061,7 @@ static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	hdr->index = htobs(index);
 	hdr->len = htobs(sizeof(*cp));
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
 		return -errno;
@@ -2165,7 +2165,7 @@ static struct btd_adapter_ops mgmt_ops = {
 	.unblock_device = mgmt_unblock_device,
 	.get_conn_list = mgmt_get_conn_list,
 	.disconnect = mgmt_disconnect,
-	.remove_bonding = mgmt_remove_bonding,
+	.remove_bonding = mgmt_unpair_device,
 	.pincode_reply = mgmt_pincode_reply,
 	.confirm_reply = mgmt_confirm_reply,
 	.passkey_reply = mgmt_passkey_reply,

@@ -489,7 +489,7 @@ static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
 
 	if (monitor) {
 		char addr[18];
-		ba2str(&ev->bdaddr, addr);
+		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u %s auth failed with status 0x%02x (%s)\n",
 			index, addr, ev->status, mgmt_errstr(ev->status));
 	}
@@ -694,7 +694,7 @@ static int mgmt_confirm_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr)
 	struct mgmt_cp_user_confirm_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	bacpy(&cp.addr.bdaddr, bdaddr);
 
 	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_REPLY, index,
 					&cp, sizeof(cp), confirm_rsp, NULL);
@@ -720,7 +720,7 @@ static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
 	struct mgmt_cp_user_confirm_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	bacpy(&cp.addr.bdaddr, bdaddr);
 
 	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
 				&cp, sizeof(cp), confirm_neg_rsp, NULL);
@@ -742,7 +742,7 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 	val = bt_get_le32(&ev->value);
 
 	if (monitor)
@@ -759,7 +759,7 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 	memset(rsp, 0, sizeof(rsp));
 
 	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n')
-		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->bdaddr);
+		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->addr.bdaddr);
 
 	rsp_len = strlen(rsp);
 	if (rsp[rsp_len - 1] == '\n') {
@@ -768,9 +768,9 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 	}
 
 	if (rsp[0] == 'y' || rsp[0] == 'Y')
-		return mgmt_confirm_reply(mgmt_sk, index, &ev->bdaddr);
+		return mgmt_confirm_reply(mgmt_sk, index, &ev->addr.bdaddr);
 	else
-		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->bdaddr);
+		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->addr.bdaddr);
 }
 
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
@@ -1129,7 +1129,7 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 		exit(EXIT_FAILURE);
 	}
 
-	ba2str(&rp->bdaddr, addr);
+	ba2str(&rp->addr.bdaddr, addr);
 
 	if (rp->status == 0) {
 		printf("%s disconnected\n", addr);
@@ -1151,7 +1151,7 @@ static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	str2ba(argv[1], &cp.bdaddr);
+	str2ba(argv[1], &cp.addr.bdaddr);
 
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
@@ -1404,40 +1404,40 @@ static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
-static void remove_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	struct mgmt_rp_remove_keys *rp = rsp;
+	struct mgmt_rp_unpair_device *rp = rsp;
 	char addr[18];
 
 	if (status != 0) {
-		fprintf(stderr, "Remove keys failed with status 0x%02x (%s)\n",
+		fprintf(stderr, "Unpair device failed. status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
 	if (len != sizeof(*rp)) {
-		fprintf(stderr, "Unexpected remove_keys_rsp len %u\n", len);
+		fprintf(stderr, "Unexpected unpair_device_rsp len %u\n", len);
 		exit(EXIT_FAILURE);
 	}
 
-	ba2str(&rp->bdaddr, addr);
+	ba2str(&rp->addr.bdaddr, addr);
 
 	if (rp->status != 0) {
 		fprintf(stderr,
-			"Removing keys for %s failed. status 0x%02x (%s)\n",
+			"Unpairing %s failed. status 0x%02x (%s)\n",
 				addr, rp->status, mgmt_errstr(rp->status));
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Removed keys for %s\n", addr);
+	printf("%s unpaired\n", addr);
 
 	exit(EXIT_SUCCESS);
 }
 
-static void cmd_remove(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_unpair(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
-	struct mgmt_cp_remove_keys cp;
+	struct mgmt_cp_unpair_device cp;
 
 	if (argc < 2) {
 		printf("Usage: btmgmt %s <remote address>\n", argv[0]);
@@ -1448,12 +1448,12 @@ static void cmd_remove(int mgmt_sk, uint16_t index, int argc, char **argv)
 		index = 0;
 
 	memset(&cp, 0, sizeof(cp));
-	str2ba(argv[1], &cp.bdaddr);
+	str2ba(argv[1], &cp.addr.bdaddr);
 	cp.disconnect = 1;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_REMOVE_KEYS, index, &cp, sizeof(cp),
-						remove_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send remove_keys cmd\n");
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_UNPAIR_DEVICE, index, &cp,
+					sizeof(cp), unpair_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send unpair_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -1505,7 +1505,7 @@ static struct {
 	{ "find",	cmd_find,	"Discover nearby devices"	},
 	{ "name",	cmd_name,	"Set local name"		},
 	{ "pair",	cmd_pair,	"Pair with a remote device"	},
-	{ "remove",	cmd_remove,	"Remove pairing (all keys)"	},
+	{ "unpair",	cmd_unpair,	"Unpair device"			},
 	{ "keys",	cmd_keys,	"Load Keys"			},
 	{ NULL, NULL, 0 }
 };
