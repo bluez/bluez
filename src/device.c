@@ -198,6 +198,30 @@ static void browse_request_free(struct browse_req *req)
 	g_free(req);
 }
 
+static void att_cleanup(struct btd_device *device)
+{
+	if (device->attachid) {
+		attrib_channel_detach(device->attrib, device->attachid);
+		device->attachid = 0;
+	}
+
+	if (device->cleanup_id) {
+		g_source_remove(device->cleanup_id);
+		device->cleanup_id = 0;
+	}
+
+	if (device->att_io) {
+		g_io_channel_shutdown(device->att_io, FALSE, NULL);
+		g_io_channel_unref(device->att_io);
+		device->att_io = NULL;
+	}
+
+	if (device->attrib) {
+		g_attrib_unref(device->attrib);
+		device->attrib = NULL;
+	}
+}
+
 static void browse_request_cancel(struct browse_req *req)
 {
 	struct btd_device *device = req->device;
@@ -211,16 +235,7 @@ static void browse_request_cancel(struct browse_req *req)
 
 	bt_cancel_discovery(&src, &device->bdaddr);
 
-	if (device->cleanup_id) {
-		g_source_remove(device->cleanup_id);
-		device->cleanup_id = 0;
-	}
-
-	if (device->att_io) {
-		g_io_channel_shutdown(device->att_io, FALSE, NULL);
-		g_io_channel_unref(device->att_io);
-		device->att_io = NULL;
-	}
+	att_cleanup(device);
 
 	device->browse = NULL;
 	browse_request_free(req);
@@ -245,10 +260,7 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->attios, g_free);
 	g_slist_free_full(device->attios_offline, g_free);
 
-	if (device->cleanup_id)
-		g_source_remove(device->cleanup_id);
-
-	g_attrib_unref(device->attrib);
+	att_cleanup(device);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,
@@ -262,11 +274,6 @@ static void device_free(gpointer user_data)
 
 	if (device->auto_id)
 		g_source_remove(device->auto_id);
-
-	if (device->att_io) {
-		g_io_channel_shutdown(device->att_io, FALSE, NULL);
-		g_io_channel_unref(device->att_io);
-	}
 
 	DBG("%p", device);
 
@@ -1780,12 +1787,7 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 						att_connect_dispatched);
 
 done:
-	attrib_channel_detach(device->attrib, device->attachid);
-	device->attachid = 0;
-	g_attrib_unref(device->attrib);
-	device->attrib = NULL;
-
-	device->cleanup_id = 0;
+	att_cleanup(device);
 
 	return FALSE;
 }
@@ -1813,14 +1815,8 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_register_services(req->conn, device, g_slist_copy(services), -1);
 	device_probe_drivers(device, uuids);
 
-	if (device->attios == NULL && device->attios_offline == NULL) {
-		attrib_channel_detach(device->attrib, device->attachid);
-		g_source_remove(device->cleanup_id);
-		device->cleanup_id = 0;
-		device->attachid = 0;
-		g_attrib_unref(device->attrib);
-		device->attrib = NULL;
-	}
+	if (device->attios == NULL && device->attios_offline == NULL)
+		att_cleanup(device);
 
 	g_slist_free(uuids);
 
@@ -2980,24 +2976,7 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	if (device->attios != NULL || device->attios_offline != NULL)
 		return TRUE;
 
-	if (device->attachid > 0) {
-		attrib_channel_detach(device->attrib, device->attachid);
-		device->attachid = 0;
-	}
-
-	g_source_remove(device->cleanup_id);
-	device->cleanup_id = 0;
-
-	if (device->attrib) {
-		g_attrib_unref(device->attrib);
-		device->attrib = NULL;
-	}
-
-	if (device->att_io) {
-		g_io_channel_shutdown(device->att_io, FALSE, NULL);
-		g_io_channel_unref(device->att_io);
-		device->att_io = NULL;
-	}
+	att_cleanup(device);
 
 	return TRUE;
 }
