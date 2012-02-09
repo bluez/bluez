@@ -40,6 +40,7 @@ int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba);
 int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
 void btd_event_device_blocked(bdaddr_t *local, bdaddr_t *peer);
 void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer);
+void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer);
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t *key,
 					uint8_t key_type, uint8_t pin_length);
 int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, addr_type_t addr_type,

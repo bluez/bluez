@@ -526,6 +526,23 @@ void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
 	device_unblock(conn, device, FALSE, TRUE);
 }
 
+void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
+{
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	DBusConnection *conn = get_dbus_connection();
+
+	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
+		return;
+
+	device_set_temporary(device, TRUE);
+
+	if (device_is_connected(device))
+		device_request_disconnect(device, NULL);
+	else
+		adapter_remove_device(conn, adapter, device, TRUE);
+}
+
 /* Section reserved to device HCI callbacks */
 
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
