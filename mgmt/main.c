@@ -98,6 +98,7 @@ static const char *mgmt_ev[] = {
 	"Discovering",
 	"Device Blocked",
 	"Device Unblocked",
+	"Device Unpaired",
 };
 
 static const char *mgmt_status[] = {
