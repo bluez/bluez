@@ -168,6 +168,7 @@ struct btd_device {
 	gint		ref;
 
 	GIOChannel      *att_io;
+	guint		cleanup_id;
 };
 
 static uint16_t uuid_list[] = {
@@ -210,7 +211,12 @@ static void browse_request_cancel(struct browse_req *req)
 
 	bt_cancel_discovery(&src, &device->bdaddr);
 
-	if (device->att_io != NULL) {
+	if (device->cleanup_id) {
+		g_source_remove(device->cleanup_id);
+		device->cleanup_id = 0;
+	}
+
+	if (device->att_io) {
 		g_io_channel_shutdown(device->att_io, FALSE, NULL);
 		g_io_channel_unref(device->att_io);
 		device->att_io = NULL;
@@ -238,6 +244,9 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->primaries, g_free);
 	g_slist_free_full(device->attios, g_free);
 	g_slist_free_full(device->attios_offline, g_free);
+
+	if (device->cleanup_id)
+		g_source_remove(device->cleanup_id);
 
 	g_attrib_unref(device->attrib);
 
@@ -1746,17 +1755,16 @@ static void att_connect_dispatched(gpointer user_data)
 
 static gboolean att_connect(gpointer user_data);
 
-static void attrib_disconnected(gpointer user_data)
+static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
 {
 	struct btd_device *device = user_data;
-	GIOChannel *io;
 	int sock, err = 0;
 	socklen_t len;
 
 	if (device->browse)
 		goto done;
 
-	io = g_attrib_get_channel(device->attrib);
 	sock = g_io_channel_unix_get_fd(io);
 	len = sizeof(err);
 	getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
@@ -1776,6 +1784,10 @@ done:
 	device->attachid = 0;
 	g_attrib_unref(device->attrib);
 	device->attrib = NULL;
+
+	device->cleanup_id = 0;
+
+	return FALSE;
 }
 
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
@@ -1803,6 +1815,8 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	if (device->attios == NULL && device->attios_offline == NULL) {
 		attrib_channel_detach(device->attrib, device->attachid);
+		g_source_remove(device->cleanup_id);
+		device->cleanup_id = 0;
 		device->attachid = 0;
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
@@ -1844,8 +1858,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		error("Attribute server attach failure!");
 
 	device->attrib = attrib;
-	g_attrib_set_disconnect_function(device->attrib,
-					attrib_disconnected, device);
+	device->cleanup_id = g_io_add_watch(io, G_IO_HUP,
+					attrib_disconnected_cb, device);
 
 	if (attcb->success)
 		attcb->success(user_data);
@@ -2970,6 +2984,9 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 		attrib_channel_detach(device->attrib, device->attachid);
 		device->attachid = 0;
 	}
+
+	g_source_remove(device->cleanup_id);
+	device->cleanup_id = 0;
 
 	if (device->attrib) {
 		g_attrib_unref(device->attrib);
