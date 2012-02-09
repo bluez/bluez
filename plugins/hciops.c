@@ -3359,7 +3359,7 @@ static int hciops_disconnect(int index, bdaddr_t *bdaddr)
 	return disconnect_addr(index, bdaddr, HCI_OE_USER_ENDED_CONNECTION);
 }
 
-static int hciops_remove_bonding(int index, bdaddr_t *bdaddr)
+static int hciops_remove_bonding(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	struct dev_info *dev = &devs[index];
 	delete_stored_link_key_cp cp;

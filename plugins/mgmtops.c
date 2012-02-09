@@ -396,7 +396,7 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->key.bdaddr, 0);
 }
 
-static inline addr_type_t mgmt_addr_type(uint8_t mgmt_addr_type)
+static inline addr_type_t addr_type(uint8_t mgmt_addr_type)
 {
 	switch (mgmt_addr_type) {
 	case MGMT_ADDR_BREDR:
@@ -407,6 +407,20 @@ static inline addr_type_t mgmt_addr_type(uint8_t mgmt_addr_type)
 		return ADDR_TYPE_LE_RANDOM;
 	default:
 		return ADDR_TYPE_BREDR;
+	}
+}
+
+static inline uint8_t mgmt_addr_type(addr_type_t addr_type)
+{
+	switch (addr_type) {
+	case ADDR_TYPE_BREDR:
+		return MGMT_ADDR_BREDR;
+	case ADDR_TYPE_LE_PUBLIC:
+		return MGMT_ADDR_LE_PUBLIC;
+	case ADDR_TYPE_LE_RANDOM:
+		return MGMT_ADDR_LE_RANDOM;
+	default:
+		return MGMT_ADDR_BREDR;
 	}
 }
 
@@ -445,8 +459,9 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 		eir_parse(&eir_data, ev->eir, eir_len);
 
 	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
-					mgmt_addr_type(ev->addr.type),
-					eir_data.name, eir_data.dev_class);
+						addr_type(ev->addr.type),
+						eir_data.name,
+						eir_data.dev_class);
 
 	eir_data_free(&eir_data);
 }
@@ -1311,7 +1326,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 					ev->confirm_name, eir_len);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
-						mgmt_addr_type(ev->addr.type),
+						addr_type(ev->addr.type),
 						ev->rssi, ev->confirm_name,
 						eir, eir_len);
 }
@@ -1826,7 +1841,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_unpair_device(int index, bdaddr_t *bdaddr)
+static int mgmt_unpair_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unpair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -1842,6 +1857,7 @@ static int mgmt_unpair_device(int index, bdaddr_t *bdaddr)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 	cp->disconnect = 1;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
