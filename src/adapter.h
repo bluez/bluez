@@ -200,8 +200,10 @@ struct btd_adapter_ops {
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr, addr_type_t type);
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin,
 							size_t pin_len);
-	int (*confirm_reply) (int index, bdaddr_t *bdaddr, gboolean success);
-	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint32_t passkey);
+	int (*confirm_reply) (int index, bdaddr_t *bdaddr, addr_type_t type,
+							gboolean success);
+	int (*passkey_reply) (int index, bdaddr_t *bdaddr, addr_type_t type,
+							uint32_t passkey);
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
 							gpointer user_data);
 	int (*set_did) (int index, uint16_t vendor, uint16_t product,
@@ -256,9 +258,9 @@ int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 					const char *pin, size_t pin_len);
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							gboolean success);
+					addr_type_t type, gboolean success);
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint32_t passkey);
+					addr_type_t type, uint32_t passkey);
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				bt_hci_result_t cb, gpointer user_data);

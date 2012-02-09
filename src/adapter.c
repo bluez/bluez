@@ -3530,15 +3530,17 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 }
 
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							gboolean success)
+					addr_type_t type, gboolean success)
 {
-	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, success);
+	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, type,
+								success);
 }
 
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint32_t passkey)
+					addr_type_t type, uint32_t passkey)
 {
-	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, passkey);
+	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, type,
+								passkey);
 }
 
 int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,

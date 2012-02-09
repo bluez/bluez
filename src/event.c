@@ -138,10 +138,11 @@ static int confirm_reply(struct btd_adapter *adapter,
 				struct btd_device *device, gboolean success)
 {
 	bdaddr_t bdaddr;
+	addr_type_t type;
 
-	device_get_address(device, &bdaddr, NULL);
+	device_get_address(device, &bdaddr, &type);
 
-	return btd_adapter_confirm_reply(adapter, &bdaddr, success);
+	return btd_adapter_confirm_reply(adapter, &bdaddr, type, success);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -159,13 +160,14 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device_get_adapter(device);
 	bdaddr_t bdaddr;
+	addr_type_t type;
 
-	device_get_address(device, &bdaddr, NULL);
+	device_get_address(device, &bdaddr, &type);
 
 	if (err)
 		passkey = INVALID_PASSKEY;
 
-	btd_adapter_passkey_reply(adapter, &bdaddr, passkey);
+	btd_adapter_passkey_reply(adapter, &bdaddr, type, passkey);
 }
 
 int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)

@@ -598,7 +598,8 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
-static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
+static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+							gboolean success)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_confirm_reply)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -620,6 +621,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -627,7 +629,8 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
 	return 0;
 }
 
-static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
+static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+							uint32_t passkey)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_passkey_reply)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -648,6 +651,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
+		cp->addr.type = mgmt_addr_type(type);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -658,6 +662,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
+		cp->addr.type = mgmt_addr_type(type);
 		cp->passkey = htobl(passkey);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
@@ -695,13 +700,15 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 	err = btd_event_user_passkey(&info->bdaddr, &ev->addr.bdaddr);
 	if (err < 0) {
 		error("btd_event_user_passkey: %s", strerror(-err));
-		mgmt_passkey_reply(index, &ev->addr.bdaddr, INVALID_PASSKEY);
+		mgmt_passkey_reply(index, &ev->addr.bdaddr, ev->addr.type,
+							INVALID_PASSKEY);
 	}
 }
 
 struct confirm_data {
 	int index;
 	bdaddr_t bdaddr;
+	uint8_t type;
 };
 
 static gboolean confirm_accept(gpointer user_data)
@@ -714,7 +721,7 @@ static gboolean confirm_accept(gpointer user_data)
 	if (data->index > max_index || !info->valid)
 		return FALSE;
 
-	mgmt_confirm_reply(data->index, &data->bdaddr, TRUE);
+	mgmt_confirm_reply(data->index, &data->bdaddr, data->type, TRUE);
 
 	return FALSE;
 }
@@ -748,6 +755,7 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 		data = g_new0(struct confirm_data, 1);
 		data->index = index;
 		bacpy(&data->bdaddr, &ev->addr.bdaddr);
+		data->type = ev->addr.type;
 
 		g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1,
 						confirm_accept, data, g_free);
@@ -760,7 +768,8 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 							btohl(ev->value));
 	if (err < 0) {
 		error("btd_event_user_confirm: %s", strerror(-err));
-		mgmt_confirm_reply(index, &ev->addr.bdaddr, FALSE);
+		mgmt_confirm_reply(index, &ev->addr.bdaddr, ev->addr.type,
+									FALSE);
 	}
 }
 

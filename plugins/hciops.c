@@ -1125,7 +1125,8 @@ static void return_link_keys(int index, void *ptr)
 
 /* Simple Pairing handling */
 
-static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, gboolean success)
+static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+							gboolean success)
 {
 	struct dev_info *dev = &devs[index];
 	user_confirm_reply_cp cp;
@@ -1186,7 +1187,8 @@ static void user_confirm_request(int index, void *ptr)
 		/* Wait 5 milliseconds before doing auto-accept */
 		usleep(5000);
 
-		if (hciops_confirm_reply(index, &req->bdaddr, TRUE) < 0)
+		if (hciops_confirm_reply(index, &req->bdaddr,
+						ADDR_TYPE_BREDR, TRUE) < 0)
 			goto fail;
 
 		return;
@@ -3418,7 +3420,8 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 	return err;
 }
 
-static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, uint32_t passkey)
+static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+							uint32_t passkey)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
