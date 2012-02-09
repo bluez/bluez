@@ -196,7 +196,7 @@ struct btd_adapter_ops {
 	int (*block_device) (int index, bdaddr_t *bdaddr);
 	int (*unblock_device) (int index, bdaddr_t *bdaddr);
 	int (*get_conn_list) (int index, GSList **conns);
-	int (*disconnect) (int index, bdaddr_t *bdaddr);
+	int (*disconnect) (int index, bdaddr_t *bdaddr, addr_type_t type);
 	int (*remove_bonding) (int index, bdaddr_t *bdaddr, addr_type_t type);
 	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin,
 							size_t pin_len);
@@ -248,7 +248,7 @@ int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr);
+					bdaddr_t *bdaddr, addr_type_t type);
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							addr_type_t type);

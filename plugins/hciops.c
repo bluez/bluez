@@ -3352,7 +3352,7 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int hciops_disconnect(int index, bdaddr_t *bdaddr)
+static int hciops_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	DBG("hci%d", index);
 

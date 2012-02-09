@@ -1818,7 +1818,7 @@ static int mgmt_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
+static int mgmt_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_disconnect)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -1834,6 +1834,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		error("write: %s (%d)", strerror(errno), errno);

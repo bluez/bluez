@@ -479,7 +479,8 @@ static gboolean do_disconnect(gpointer user_data)
 
 	device->disconn_timer = 0;
 
-	btd_adapter_disconnect_device(device->adapter, &device->bdaddr);
+	btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
+								device->type);
 
 	return FALSE;
 }

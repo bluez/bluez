@@ -3509,9 +3509,11 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 						timeout, clock, accuracy);
 }
 
-int btd_adapter_disconnect_device(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+int btd_adapter_disconnect_device(struct btd_adapter *adapter,
+					bdaddr_t *bdaddr, addr_type_t type)
+
 {
-	return adapter_ops->disconnect(adapter->dev_id, bdaddr);
+	return adapter_ops->disconnect(adapter->dev_id, bdaddr, type);
 }
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
