@@ -75,6 +75,7 @@ struct gatt_channel {
 	guint id;
 	gboolean encrypted;
 	struct gatt_server *server;
+	guint cleanup_id;
 };
 
 struct group_elem {
@@ -107,8 +108,11 @@ static void attrib_free(void *data)
 
 static void channel_free(struct gatt_channel *channel)
 {
-	g_attrib_unref(channel->attrib);
 
+	if (channel->cleanup_id)
+		g_source_remove(channel->cleanup_id);
+
+	g_attrib_unref(channel->attrib);
 	g_free(channel);
 }
 
@@ -859,13 +863,19 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 	return enc_mtu_resp(old_mtu, pdu, len);
 }
 
-static void channel_disconnect(void *user_data)
+static void channel_remove(struct gatt_channel *channel)
 {
-	struct gatt_channel *channel = user_data;
-
 	channel->server->clients = g_slist_remove(channel->server->clients,
 								channel);
 	channel_free(channel);
+}
+
+static gboolean channel_watch_cb(GIOChannel *io, GIOCondition cond,
+						gpointer user_data)
+{
+	channel_remove(user_data);
+
+	return FALSE;
 }
 
 static void channel_handler(const uint8_t *ipdu, uint16_t len,
@@ -992,7 +1002,7 @@ done:
 							NULL, NULL, NULL);
 }
 
-guint attrib_channel_attach(GAttrib *attrib, gboolean out)
+guint attrib_channel_attach(GAttrib *attrib)
 {
 	struct gatt_server *server;
 	struct btd_device *device;
@@ -1050,9 +1060,8 @@ guint attrib_channel_attach(GAttrib *attrib, gboolean out)
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_REQS,
 					channel_handler, channel, NULL);
 
-	if (out == FALSE)
-		g_attrib_set_disconnect_function(channel->attrib,
-						channel_disconnect, channel);
+	channel->cleanup_id = g_io_add_watch(io, G_IO_HUP, channel_watch_cb,
+								channel);
 
 	server->clients = g_slist_append(server->clients, channel);
 
@@ -1099,8 +1108,7 @@ gboolean attrib_channel_detach(GAttrib *attrib, guint id)
 	channel = l->data;
 
 	g_attrib_unregister(channel->attrib, channel->id);
-
-	channel_disconnect(channel);
+	channel_remove(channel);
 
 	return TRUE;
 }
@@ -1115,7 +1123,7 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 	}
 
 	attrib = g_attrib_new(io);
-	attrib_channel_attach(attrib, FALSE);
+	attrib_channel_attach(attrib);
 	g_io_channel_unref(io);
 	g_attrib_unref(attrib);
 }
