@@ -50,9 +50,12 @@ struct mgmt_rp_read_version {
 	uint16_t revision;
 } __packed;
 
-#define MGMT_OP_READ_FEATURES		0x0002
-struct mgmt_rp_read_features {
-	uint8_t features[8];
+#define MGMT_OP_READ_COMMANDS		0x0002
+struct mgmt_rp_read_commands {
+	uint16_t num_commands;
+	uint16_t commands[0];
+	uint16_t num_events;
+	uint16_t events[0];
 } __packed;
 
 #define MGMT_OP_READ_INDEX_LIST		0x0003
