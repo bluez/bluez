@@ -47,9 +47,6 @@ void g_attrib_unref(GAttrib *attrib);
 
 GIOChannel *g_attrib_get_channel(GAttrib *attrib);
 
-gboolean g_attrib_set_disconnect_function(GAttrib *attrib,
-		GAttribDisconnectFunc disconnect, gpointer user_data);
-
 gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 		GDestroyNotify destroy, gpointer user_data);
 
