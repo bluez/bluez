@@ -42,16 +42,27 @@ Read Management Version Information Command
 				Revision (2 Octets)
 
 
-Read Management Supported Features Command
+Read Management Supported Commands Command
 ==========================================
 
 	Command Code:		0x0002
 	Controller Index:	<non-controller>
 	Command Parameters:
-	Return Parameters:	Features (8 Octets)
+	Return Parameters:	Num_Of_Commands (2 Octets)
+				Command1 (2 Octets)
+				Command2 (2 Octets)
+				...
+				Num_Of_Events (2 Octets)
+				Event1 (2 Octets)
+				Event2 (2 Octets)
+				...
 
-		Feature Bit 0:	Controller Support
-		Feature Bit 1:	Tracing Support
+	The commands Read Management Version Information and Read
+	management Supported Commands are not included in this list.
+	Both commands are always supported and mandatory.
+
+	The events Command Status and Command Complete are not included
+	in this list. Both are implicit and mandatory.
 
 
 Read Controller Index List Command
