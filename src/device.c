@@ -1970,8 +1970,14 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 
 	req = g_new0(struct browse_req, 1);
 	req->device = btd_device_ref(device);
-
 	adapter_get_address(adapter, &src);
+
+	device->browse = req;
+
+	if (device->attrib) {
+		gatt_discover_primary(device->attrib, NULL, primary_cb, req);
+		goto done;
+	}
 
 	sec_level = secure ? BT_IO_SEC_HIGH : BT_IO_SEC_LOW;
 
@@ -1994,10 +2000,9 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 		return -EIO;
 	}
 
+done:
 	if (conn)
 		req->conn = dbus_connection_ref(conn);
-
-	device->browse = req;
 
 	if (msg) {
 		const char *sender = dbus_message_get_sender(msg);
