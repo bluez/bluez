@@ -83,7 +83,6 @@ struct btd_disconnect_data {
 struct bonding_req {
 	DBusConnection *conn;
 	DBusMessage *msg;
-	GIOChannel *io;
 	guint listener_id;
 	struct btd_device *device;
 };
@@ -2220,9 +2219,6 @@ static void bonding_request_free(struct bonding_req *bonding)
 
 	if (bonding->conn)
 		dbus_connection_unref(bonding->conn);
-
-	if (bonding->io)
-		g_io_channel_unref(bonding->io);
 
 	device = bonding->device;
 	g_free(bonding);
