@@ -1124,7 +1124,6 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 
 	attrib = g_attrib_new(io);
 	attrib_channel_attach(attrib);
-	g_io_channel_unref(io);
 	g_attrib_unref(attrib);
 }
 
