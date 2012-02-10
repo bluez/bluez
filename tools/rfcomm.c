@@ -673,7 +673,7 @@ static void cmd_show(int ctl, int dev, bdaddr_t *bdaddr, int argc, char **argv)
 	if (strcmp(argv[0], "all") == 0)
 		print_dev_list(ctl, 0);
 	else {
-		struct rfcomm_dev_info di = { id: atoi(argv[0]) };
+		struct rfcomm_dev_info di = { .id = atoi(argv[0]) };
 		if (ioctl(ctl, RFCOMMGETDEVINFO, &di) < 0) {
 			perror("Get info failed");
 			exit(1);

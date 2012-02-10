@@ -74,7 +74,7 @@ static void usage(void);
 
 static int dev_info(int s, int dev_id, long arg)
 {
-	struct hci_dev_info di = { dev_id: dev_id };
+	struct hci_dev_info di = { .dev_id = dev_id };
 	char addr[18];
 
 	if (ioctl(s, HCIGETDEVINFO, (void *) &di))
