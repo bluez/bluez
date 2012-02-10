@@ -191,8 +191,8 @@ static int dun_create_tty(int sk, char *tty, int size)
 	int id, try = 30;
 
 	struct rfcomm_dev_req req = {
-		flags:   (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP),
-		dev_id:  -1
+		.flags = (1 << RFCOMM_REUSE_DLC) | (1 << RFCOMM_RELEASE_ONHUP),
+		.dev_id = -1
 	};
 
 	alen = sizeof(sa);
