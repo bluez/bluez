@@ -1906,8 +1906,10 @@ static void create_stored_device_from_ltks(char *key, char *value,
 	bdaddr_t src;
 
 	info = get_ltk_info(key, value);
-	if (info)
-		keys->keys = g_slist_append(keys->keys, info);
+	if (info == NULL)
+		return;
+
+	keys->keys = g_slist_append(keys->keys, info);
 
 	if (g_slist_find_custom(adapter->devices, key,
 					(GCompareFunc) device_address_cmp))
