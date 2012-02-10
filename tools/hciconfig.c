@@ -503,7 +503,7 @@ static void cmd_lm(int ctl, int hdev, char *opt)
 
 static void cmd_aclmtu(int ctl, int hdev, char *opt)
 {
-	struct hci_dev_req dr = { dev_id: hdev };
+	struct hci_dev_req dr = { .dev_id = hdev };
 	uint16_t mtu, mpkt;
 
 	if (!opt)
@@ -523,7 +523,7 @@ static void cmd_aclmtu(int ctl, int hdev, char *opt)
 
 static void cmd_scomtu(int ctl, int hdev, char *opt)
 {
-	struct hci_dev_req dr = { dev_id: hdev };
+	struct hci_dev_req dr = { .dev_id = hdev };
 	uint16_t mtu, mpkt;
 
 	if (!opt)
