@@ -322,13 +322,13 @@ static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
 
 	switch (req->uuid_size) {
 	case 2: /* UUID16 */
-		*dst_role = ntohs(bt_get_unaligned((uint16_t *) dest));
-		*src_role = ntohs(bt_get_unaligned((uint16_t *) source));
+		*dst_role = bt_get_be16(dest);
+		*src_role = bt_get_be16(source);
 		break;
 	case 4: /* UUID32 */
 	case 16: /* UUID128 */
-		*dst_role = ntohl(bt_get_unaligned((uint32_t *) dest));
-		*src_role = ntohl(bt_get_unaligned((uint32_t *) source));
+		*dst_role = bt_get_be32(dest);
+		*src_role = bt_get_be32(source);
 		break;
 	default:
 		return BNEP_CONN_INVALID_SVC;
