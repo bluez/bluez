@@ -49,10 +49,10 @@ Read Management Supported Commands Command
 	Controller Index:	<non-controller>
 	Command Parameters:
 	Return Parameters:	Num_Of_Commands (2 Octets)
+				Num_Of_Events (2 Octets)
 				Command1 (2 Octets)
 				Command2 (2 Octets)
 				...
-				Num_Of_Events (2 Octets)
 				Event1 (2 Octets)
 				Event2 (2 Octets)
 				...
