@@ -860,7 +860,7 @@ done:
 
 static int __other_bdaddr(int dd, int dev_id, long arg)
 {
-	struct hci_dev_info di = { dev_id: dev_id };
+	struct hci_dev_info di = { .dev_id = dev_id };
 
 	if (ioctl(dd, HCIGETDEVINFO, (void *) &di))
 		return 0;
@@ -873,7 +873,7 @@ static int __other_bdaddr(int dd, int dev_id, long arg)
 
 static int __same_bdaddr(int dd, int dev_id, long arg)
 {
-	struct hci_dev_info di = { dev_id: dev_id };
+	struct hci_dev_info di = { .dev_id = dev_id };
 
 	if (ioctl(dd, HCIGETDEVINFO, (void *) &di))
 		return 0;
