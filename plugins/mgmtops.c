@@ -1958,8 +1958,6 @@ static int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 	if (buf == NULL)
 		return -ENOMEM;
 
-	memset(buf, 0, sizeof(buf));
-
 	hdr = (void *) buf;
 	hdr->opcode = htobs(MGMT_OP_LOAD_LINK_KEYS);
 	hdr->len = htobs(cp_size);
@@ -2168,8 +2166,6 @@ static int mgmtops_load_ltks(int index, GSList *keys)
 	buf = g_try_malloc0(sizeof(*hdr) + cp_size);
 	if (buf == NULL)
 		return -ENOMEM;
-
-	memset(buf, 0, sizeof(buf));
 
 	hdr = (void *) buf;
 	hdr->opcode = htobs(MGMT_OP_LOAD_LONG_TERM_KEYS);
