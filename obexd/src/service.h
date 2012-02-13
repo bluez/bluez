@@ -21,10 +21,13 @@
  *
  */
 
+#define OBEX_PORT_RANDOM UINT16_MAX
+
 struct obex_service_driver {
 	const char *name;
 	uint16_t service;
 	uint8_t channel;
+	uint16_t port;
 	gboolean secure;
 	const uint8_t *target;
 	unsigned int target_size;
