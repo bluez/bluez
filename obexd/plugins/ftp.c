@@ -81,13 +81,16 @@
     <sequence>								\
       <sequence>							\
         <uuid value=\"0x1106\"/>					\
-        <uint16 value=\"0x0100\" name=\"version\"/>			\
+        <uint16 value=\"0x0102\" name=\"version\"/>			\
       </sequence>							\
     </sequence>								\
   </attribute>								\
 									\
   <attribute id=\"0x0100\">						\
     <text value=\"%s\" name=\"name\"/>					\
+  </attribute>								\
+  <attribute id=\"0x0200\">						\
+    <uint16 value=\"%u\" name=\"psm\"/>					\
   </attribute>								\
 </record>"
 
@@ -517,6 +520,7 @@ static struct obex_service_driver ftp = {
 	.name = "File Transfer server",
 	.service = OBEX_FTP,
 	.channel = FTP_CHANNEL,
+	.port = OBEX_PORT_RANDOM,
 	.secure = TRUE,
 	.record = FTP_RECORD,
 	.target = FTP_TARGET,
