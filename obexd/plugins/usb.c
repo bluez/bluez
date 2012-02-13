@@ -147,8 +147,8 @@ static int usb_connect(struct obex_server *server)
 	usb_io = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(usb_io, TRUE);
 
-	err = obex_server_new_connection(server, usb_io,
-					USB_TX_MTU, USB_RX_MTU);
+	err = obex_server_new_connection(server, usb_io, USB_TX_MTU,
+							USB_RX_MTU, TRUE);
 	if (err < 0)
 		goto failed;
 

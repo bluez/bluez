@@ -1119,10 +1119,11 @@ static void disconn_func(GObex *obex, GError *err, gpointer user_data)
 }
 
 int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
-			struct obex_server *server)
+				gboolean stream, struct obex_server *server)
 {
 	struct obex_session *os;
 	GObex *obex;
+	GObexTransportType type;
 	static uint32_t id = 0;
 
 	DBG("");
@@ -1135,7 +1136,9 @@ int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
 	os->server = server;
 	os->size = OBJECT_SIZE_DELETE;
 
-	obex = g_obex_new(io, G_OBEX_TRANSPORT_STREAM, rx_mtu, tx_mtu);
+	type = stream ? G_OBEX_TRANSPORT_STREAM : G_OBEX_TRANSPORT_PACKET;
+
+	obex = g_obex_new(io, type, rx_mtu, tx_mtu);
 	if (!obex) {
 		obex_session_free(os);
 		return -EIO;

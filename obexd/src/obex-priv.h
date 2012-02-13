@@ -53,4 +53,4 @@ struct obex_session {
 };
 
 int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
-			struct obex_server *server);
+				gboolean stream, struct obex_server *server);

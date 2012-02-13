@@ -35,4 +35,5 @@ void obex_server_exit(void);
 struct obex_service_driver *obex_server_find_driver(struct obex_server *server,
 							uint8_t channel);
 int obex_server_new_connection(struct obex_server *server, GIOChannel *io,
-				uint16_t tx_mtu, uint16_t rx_mtu);
+					uint16_t tx_mtu, uint16_t rx_mtu,
+					gboolean stream);
