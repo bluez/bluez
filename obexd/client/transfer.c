@@ -383,10 +383,13 @@ static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
-	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
+	if (!g_obex_srm_active(obex)) {
+		req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
 
-	transfer->xfer = g_obex_send_req(obex, req, -1, get_buf_xfer_progress,
+		transfer->xfer = g_obex_send_req(obex, req, -1,
+							get_buf_xfer_progress,
 							transfer, &err);
+	}
 
 	if (callback)
 		callback->func(transfer, transfer->transferred, err,
