@@ -72,7 +72,7 @@
     <sequence>							\
       <sequence>						\
         <uuid value=\"0x1105\"/>				\
-        <uint16 value=\"0x0100\" name=\"version\"/>		\
+        <uint16 value=\"0x0102\" name=\"version\"/>		\
       </sequence>						\
     </sequence>							\
   </attribute>							\
@@ -91,6 +91,9 @@
       <uint8 value=\"0x06\"/>					\
       <uint8 value=\"0xff\"/>					\
     </sequence>							\
+  </attribute>							\
+  <attribute id=\"0x0200\">					\
+    <uint16 value=\"%u\" name=\"psm\"/>				\
   </attribute>							\
 </record>"
 
@@ -214,6 +217,7 @@ static struct obex_service_driver driver = {
 	.name = "Object Push server",
 	.service = OBEX_OPP,
 	.channel = OPP_CHANNEL,
+	.port = OBEX_PORT_RANDOM,
 	.record = OPP_RECORD,
 	.connect = opp_connect,
 	.progress = opp_progress,
