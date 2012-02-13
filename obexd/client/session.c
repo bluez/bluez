@@ -257,7 +257,11 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 	struct callback_data *callback = user_data;
 	struct obc_session *session = callback->session;
 	struct obc_driver *driver = session->driver;
+	struct obc_transport *transport = session->transport;
 	GObex *obex;
+	GObexTransportType type;
+	int tx_mtu = -1;
+	int rx_mtu = -1;
 
 	DBG("");
 
@@ -268,7 +272,13 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 	g_io_channel_set_close_on_unref(io, FALSE);
 
-	obex = g_obex_new(io, G_OBEX_TRANSPORT_STREAM, -1, -1);
+	if (transport->getpacketopt &&
+			transport->getpacketopt(io, &tx_mtu, &rx_mtu) == 0)
+		type = G_OBEX_TRANSPORT_PACKET;
+	else
+		type = G_OBEX_TRANSPORT_STREAM;
+
+	obex = g_obex_new(io, type, tx_mtu, rx_mtu);
 	if (obex == NULL)
 		goto done;
 

@@ -29,6 +29,7 @@ struct obc_transport {
 	guint (*connect) (const char *source, const char *destination,
 				const char *service, uint16_t port,
 				obc_transport_func func, void *user_data);
+	int (*getpacketopt) (GIOChannel *io, int *tx_mtu, int *rx_mtu);
 	void (*disconnect) (guint id);
 };
 
