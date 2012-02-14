@@ -1799,9 +1799,12 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	GSList *l, *uuids = NULL;
 
 	if (status) {
-		DBusMessage *reply;
-		reply = btd_error_failed(req->msg, att_ecode2str(status));
-		g_dbus_send_message(req->conn, reply);
+		if (req->msg) {
+			DBusMessage *reply;
+			reply = btd_error_failed(req->msg,
+							att_ecode2str(status));
+			g_dbus_send_message(req->conn, reply);
+		}
 		goto done;
 	}
 
@@ -1821,7 +1824,8 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	g_slist_free(uuids);
 
 	services_changed(device);
-	create_device_reply(device, req);
+	if (req->msg)
+		create_device_reply(device, req);
 
 	store_services(device);
 
