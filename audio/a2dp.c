@@ -1589,7 +1589,7 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 	server = find_server(servers, src);
 	if (server == NULL) {
 		if (err)
-			*err = -EINVAL;
+			*err = -EPROTONOSUPPORT;
 		return NULL;
 	}
 
