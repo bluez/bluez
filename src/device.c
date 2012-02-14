@@ -2005,6 +2005,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 				BT_IO_OPT_INVALID);
 
 	if (device->att_io == NULL) {
+		device->browse = NULL;
 		browse_request_free(req);
 		g_free(attcb);
 		return -EIO;
