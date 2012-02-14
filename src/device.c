@@ -1982,6 +1982,14 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 	if (device->browse)
 		return -EBUSY;
 
+	/* FIXME: GATT service updates (implemented in update_services() for
+	 * SDP) are not supported yet. It will be supported once client side
+	 * "Services Changed" characteristic handling is implemented. */
+	if (device->primaries) {
+		error("Could not update GATT services");
+		return -ENOSYS;
+	}
+
 	req = g_new0(struct browse_req, 1);
 	req->device = btd_device_ref(device);
 	adapter_get_address(adapter, &src);
