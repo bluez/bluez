@@ -2011,8 +2011,10 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 	}
 
 done:
-	if (conn)
-		req->conn = dbus_connection_ref(conn);
+	if (conn == NULL)
+		conn = get_dbus_connection();
+
+	req->conn = dbus_connection_ref(conn);
 
 	if (msg) {
 		const char *sender = dbus_message_get_sender(msg);
