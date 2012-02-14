@@ -255,7 +255,7 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	if (err) {
 		error("sco_connect_cb(): %s", err->message);
-		gateway_close(dev);
+		gateway_suspend_stream(dev);
 		return;
 	}
 
