@@ -510,6 +510,7 @@ static gboolean gateway_suspend_complete(gpointer user_data)
 {
 	struct media_owner *owner = user_data;
 	struct media_transport *transport = owner->transport;
+	struct audio_device *device = transport->device;
 
 	/* Release always succeeds */
 	if (owner->pending) {
@@ -518,6 +519,7 @@ static gboolean gateway_suspend_complete(gpointer user_data)
 		media_owner_remove(owner);
 	}
 
+	gateway_unlock(device, GATEWAY_LOCK_READ | GATEWAY_LOCK_WRITE);
 	transport->in_use = FALSE;
 	media_transport_remove(transport, owner);
 	return FALSE;
@@ -536,7 +538,6 @@ static guint suspend_gateway(struct media_transport *transport,
 	}
 
 	gateway_suspend_stream(device);
-	gateway_unlock(device, GATEWAY_LOCK_READ | GATEWAY_LOCK_WRITE);
 	g_idle_add(gateway_suspend_complete, owner);
 	return id++;
 }
