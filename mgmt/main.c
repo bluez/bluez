@@ -52,29 +52,38 @@ static const char *mgmt_op[] = {
 	"Set Powered",
 	"Set Discoverable",
 	"Set Connectable",
-	"Set Pairable",			/* 0x0008 */
-	"Add UUID",
-	"Remove UUID",
+	"Set Fast Connectable",		/* 0x0008 */
+	"Set Pairable",
+	"Set Link Security",
+	"Set Secure Simple Pairing",
+	"Set High Speed",
+	"Set Low Energy",
 	"Set Dev Class",
-	"Set Service Cache",
+	"Set Local Name",
+	"Add UUID",			/* 0x0010 */
+	"Remove UUID",
 	"Load Link Keys",
-	"Remove Keys",
+	"Load Long Term Keys",
 	"Disconnect",
-	"Get Connections",		/* 0x0010 */
+	"Get Connections",
 	"PIN Code Reply",
 	"PIN Code Neg Reply",
-	"Set IO Capability",
+	"Set IO Capability",		/* 0x0018 */
 	"Pair Device",
+	"Cancel Pair Device",
+	"Unpair Device",
 	"User Confirm Reply",
 	"User Confirm Neg Reply",
-	"Set Local Name",
-	"Read Local OOB Data",		/* 0x0018 */
+	"User Passkey Reply",
+	"User Passkey Neg Reply",
+	"Read Local OOB Data",		/* 0x0020 */
 	"Add Remote OOB Data",
 	"Remove Remove OOB Data",
-	"Start Discoery",
+	"Start Discovery",
+	"Stop Discovery",
+	"Confirm Name",
 	"Block Device",
 	"Unblock Device",
-	"Set Fast Connectable",
 };
 
 static const char *mgmt_ev[] = {
@@ -88,12 +97,14 @@ static const char *mgmt_ev[] = {
 	"Class of Device Changed",
 	"Local Name Changed",		/* 0x0008 */
 	"New Link Key",
+	"New Long Term Key",
 	"Device Connected",
 	"Device Disconnected",
 	"Connect Failed",
 	"PIN Code Request",
 	"User Confirm Request",
-	"Authentication Failed",	/* 0x0010 */
+	"User Passkey Request",		/* 0x0010 */
+	"Authentication Failed",
 	"Device Found",
 	"Discovering",
 	"Device Blocked",
