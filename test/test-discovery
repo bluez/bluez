@@ -16,6 +16,8 @@ def device_found(address, properties):
 		else:
 			print "    %s = %s" % (key, value)
 
+	print
+
 def property_changed(name, value):
 	if (name == "Discovering" and not value):
 		mainloop.quit()
