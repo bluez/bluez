@@ -103,7 +103,8 @@ Methods		void MeasurementReceived(dict measure)
 			data. The time value is expressed in seconds since epoch.
 			The value represented is (mantissa) x (10**exponent)
 			See foot note for special values when treating with
-			health devices.
+			health devices. The Type entry is only present if the
+			measurement type is known. Otherwise, it is undefined.
 
 			Dict is defined as below:
 			{

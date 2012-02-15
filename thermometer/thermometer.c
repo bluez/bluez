@@ -1086,15 +1086,10 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 		type = temptype2str(pdu[index]);
 	} else if (t->has_type)
 		type = temptype2str(t->type);
-	else {
-		DBG("Can't get temperature type");
-		return;
-	}
+	else
+		type = NULL;
 
-	if (type == NULL)
-		return;
-
-	m.type = g_strdup(type);
+	m.type = type ? g_strdup(type) : NULL;
 	m.value = final ? "Final" : "Intermediate";
 
 	recv_measurement(t, &m);

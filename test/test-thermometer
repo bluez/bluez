@@ -24,7 +24,8 @@ class Watcher(dbus.service.Object):
 		if measure.has_key("Time"):
 			print "Time: ", measure["Time"]
 
-		print "Type: ", measure["Type"]
+		if measure.has_key("Type"):
+			print "Type: ", measure["Type"]
 
 def property_changed(name, value):
 
