@@ -46,7 +46,7 @@
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",
-	"Read Features",
+	"Read Commands",
 	"Read Index List",
 	"Read Controller Info",
 	"Set Powered",
@@ -862,6 +862,63 @@ static void cmd_monitor(int mgmt_sk, uint16_t index, int argc, char **argv)
 	monitor = true;
 }
 
+static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_read_commands *rp = rsp;
+	uint16_t num_commands, num_events, *opcode;
+	size_t expected_len;
+	int i;
+
+	if (status != 0) {
+		fprintf(stderr, "Reading supported commands failed with status"
+			" 0x%02x (%s)\n", status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small commands reply (%u bytes)\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	num_commands = bt_get_le16(&rp->num_commands);
+	num_events = bt_get_le16(&rp->num_events);
+
+	expected_len = sizeof(*rp) + num_commands * sizeof(uint16_t) +
+						num_events * sizeof(uint16_t);
+
+	if (len < expected_len) {
+		fprintf(stderr, "Too small commands reply (%u != %zu)\n",
+							len, expected_len);
+		exit(EXIT_FAILURE);
+	}
+
+	opcode = rp->opcodes;
+
+	printf("%u commands:\n", num_commands);
+	for (i = 0; i < num_commands; i++) {
+		uint16_t op = bt_get_le16(opcode++);
+		printf("\t%s (0x%04x)\n", mgmt_opstr(op), op);
+	}
+
+	printf("%u events:\n", num_events);
+	for (i = 0; i < num_events; i++) {
+		uint16_t ev = bt_get_le16(opcode++);
+		printf("\t%s (0x%04x)\n", mgmt_evstr(ev), ev);
+	}
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_commands(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE,
+					NULL, 0, commands_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send read_commands cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -1495,6 +1552,7 @@ static struct {
 	char *doc;
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
+	{ "commands",	cmd_commands,	"List supported commands"	},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
