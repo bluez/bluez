@@ -331,6 +331,17 @@ static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 	change_property(desc->ch->t, "Minimum", &min);
 }
 
+static void measurement_cb(guint8 status, const guint8 *pdu,
+						guint16 len, gpointer user_data)
+{
+	char *msg = user_data;
+
+	if (status != 0)
+		error("%s failed", msg);
+
+	g_free(msg);
+}
+
 static void process_thermometer_desc(struct descriptor *desc)
 {
 	struct characteristic *ch = desc->ch;
@@ -342,6 +353,7 @@ static void process_thermometer_desc(struct descriptor *desc)
 	if (bt_uuid_cmp(&desc->uuid, &btuuid) == 0) {
 		uint8_t atval[2];
 		uint16_t val;
+		char *msg;
 
 		if (g_strcmp0(ch->attr.uuid,
 					TEMPERATURE_MEASUREMENT_UUID) == 0) {
@@ -349,21 +361,27 @@ static void process_thermometer_desc(struct descriptor *desc)
 				return;
 
 			val = ATT_CLIENT_CHAR_CONF_INDICATION;
+			msg = g_strdup("Enable Temperature Measurement "
+								"indication");
 		} else if (g_strcmp0(ch->attr.uuid,
 					INTERMEDIATE_TEMPERATURE_UUID) == 0) {
 			if (g_slist_length(ch->t->iwatchers) == 0)
 				return;
 
 			val = ATT_CLIENT_CHAR_CONF_NOTIFICATION;
+			msg = g_strdup("Enable Intermediate Temperature "
+								"notification");
 		} else if (g_strcmp0(ch->attr.uuid,
-					MEASUREMENT_INTERVAL_UUID) == 0)
+					MEASUREMENT_INTERVAL_UUID) == 0) {
 			val = ATT_CLIENT_CHAR_CONF_INDICATION;
-		else
+			msg = g_strdup("Enable Measurement Interval "
+								"indication");
+		} else
 			goto done;
 
 		att_put_u16(val, atval);
 		gatt_write_char(ch->t->attrib, desc->handle, atval, 2,
-								NULL, NULL);
+							measurement_cb, msg);
 		return;
 	}
 
@@ -653,17 +671,6 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 	dbus_message_iter_get_basic(&sub, &value);
 
 	return write_attr_interval(t, msg, value);
-}
-
-static void measurement_cb(guint8 status, const guint8 *pdu,
-						guint16 len, gpointer user_data)
-{
-	char *msg = user_data;
-
-	if (status != 0)
-		error("%s failed", msg);
-
-	g_free(msg);
 }
 
 static void enable_final_measurement(struct thermometer *t)
