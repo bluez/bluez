@@ -1143,6 +1143,11 @@ static void cmd_pairable(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt_sk, index, MGMT_OP_SET_PAIRABLE, argc, argv);
 }
 
+static void cmd_linksec(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_LINK_SECURITY, argc, argv);
+}
+
 static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -1569,6 +1574,7 @@ static struct {
 	{ "discov",	cmd_discov,	"Toggle discoverable state"	},
 	{ "connectable",cmd_connectable,"Toggle connectable state"	},
 	{ "pairable",	cmd_pairable,	"Toggle pairable state"		},
+	{ "linksec",	cmd_linksec,	"Toggle link level security"	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
