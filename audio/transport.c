@@ -916,7 +916,7 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 
 static GDBusMethodTable transport_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties },
-	{ "Acquire",		"s",	"h",		acquire,
+	{ "Acquire",		"s",	"hqq",		acquire,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ "Release",		"s",	"",		release,
 						G_DBUS_METHOD_FLAG_ASYNC},
