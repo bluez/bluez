@@ -526,7 +526,8 @@ Block Device Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 Unblock Device Command
@@ -536,7 +537,8 @@ Unblock Device Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 Command Complete Event
