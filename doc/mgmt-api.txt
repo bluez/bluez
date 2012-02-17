@@ -654,7 +654,7 @@ Device Disconnected Event
 Event Code		0x000C
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
-			AddresS_Type (1 Octet)
+			Address_Type (1 Octet)
 
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
@@ -671,7 +671,7 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Status (1 Octet)
 
-	Possible values for the AddresS_Type parameter:
+	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
