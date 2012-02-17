@@ -248,6 +248,7 @@ Load Link Keys Command
 				Key_Count (2 Octets)
 				Key1 {
 					Address (6 Octets)
+					Address_Type (1 Octet)
 					Key_Type (1 Octet)
 					Value (16 Octets)
 					PIN_Length (1 Octet)
@@ -316,6 +317,7 @@ PIN Code Reply Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				PIN_Length (1 Octet)
 				PIN_Code (16 Octets)
 
@@ -327,6 +329,7 @@ PIN Code Negative Reply Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 Set IO Capability Command
@@ -504,8 +507,10 @@ Confirm Name Command
 	Command Code:		0x0025
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Name_Known (1 Octet)
 	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 				Status (1 Octet)
 
 	This command is only valid during device discovery and is
@@ -607,6 +612,7 @@ Event Code		0x0009
 Controller Index:	<controller id>
 Event Parameters	Key {
 				Address (6 Octets)
+				Address_Type (1 Octet)
 				Key_Type (1 Octet)
 				Value (16 Octets)
 				PIN_Length (1 Octet)
@@ -683,6 +689,7 @@ PIN Code Request Event
 Event Code		0x000E
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
 			Secure (1 Octet)
 
 	Secure: 0x01  secure PIN code required
