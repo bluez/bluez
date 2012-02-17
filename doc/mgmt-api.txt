@@ -387,6 +387,11 @@ Unpair Device Command
 
 	Removes all keys associated with the remote device.
 
+	The Disconnect parameter tells the kernel whether to focefully
+	disconnect any existing connections to the device. It should in
+	practice always be 1 except for some special GAP qualification
+	test-cases where a key removal without disconnecting is needed.
+
 
 User Confirmation Reply Command
 ===============================
