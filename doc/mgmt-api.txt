@@ -617,7 +617,6 @@ Event Parameters	Key {
 				Value (16 Octets)
 				PIN_Length (1 Octet)
 			}
-			Old_Key_Type (1 Octet)
 
 
 New Long Term Key Event
