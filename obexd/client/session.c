@@ -735,17 +735,30 @@ static void session_process_queue(struct obc_session *session)
 	if (session->queue == NULL || g_queue_is_empty(session->queue))
 		return;
 
+	obc_session_ref(session);
+
 	while ((p = g_queue_pop_head(session->queue))) {
 		int err;
 
 		err = pending_request_auth(p);
 		if (err == 0) {
 			session->p = p;
-			return;
+			break;
+		}
+
+		if (p->func) {
+			GError *gerr = NULL;
+
+			g_set_error(&gerr, OBEX_IO_ERROR, err,
+							"Authorization failed");
+			p->func(session, gerr, p->data);
+			g_error_free(gerr);
 		}
 
 		pending_request_free(p);
 	}
+
+	obc_session_unref(session);
 }
 
 static void session_terminate_transfer(struct obc_session *session,
