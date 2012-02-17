@@ -41,6 +41,9 @@ Read Management Version Information Command
 	Return Parameters:	Version (1 Octets)
 				Revision (2 Octets)
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Read Management Supported Commands Command
 ==========================================
@@ -56,6 +59,9 @@ Read Management Supported Commands Command
 				Event1 (2 Octets)
 				Event2 (2 Octets)
 				...
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 	The commands Read Management Version Information and Read
 	management Supported Commands are not included in this list.
@@ -73,6 +79,9 @@ Read Controller Index List Command
 	Command Parameters:
 	Return Parameters:	Num_Controllers (2 Octets)
 				Controller_Index[i] (2 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Read Controller Information Command
@@ -107,6 +116,9 @@ Read Controller Information Command
 		9	High Speed
 		10	Low Energy
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Set Powered Command
 ===================
@@ -115,6 +127,9 @@ Set Powered Command
 	Controller Index:	<controller id>
 	Command Parameters:	Powered (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set Discoverable Command
@@ -129,6 +144,9 @@ Set Discoverable Command
 	Timeout is the time in seconds and is only meningful when
 	Discoverable is set to 1.
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Set Connectable Command
 =======================
@@ -137,6 +155,9 @@ Set Connectable Command
 	Controller Index:	<controller id>
 	Command Parameters:	Connectable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set Fast Connectable Command
@@ -147,6 +168,9 @@ Set Fast Connectable Command
 	Command Parameters:	Enable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Set Pairable Command
 ====================
@@ -155,6 +179,9 @@ Set Pairable Command
 	Controller Index:	<controller id>
 	Command Parameters:	Pairable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set Link Security Command
@@ -165,6 +192,9 @@ Set Link Security Command
 	Command Parameters:	Link_Security (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Set Secure Simple Pairing Command
 =================================
@@ -173,6 +203,9 @@ Set Secure Simple Pairing Command
 	Controller Index:	<controller id>
 	Command Parameters:	Secure_Simple_Pairing (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set High Speed Command
@@ -183,6 +216,9 @@ Set High Speed Command
 	Command Parameters:	High_Speed (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Set Low Energy Command
 ======================
@@ -191,6 +227,9 @@ Set Low Energy Command
 	Controller Index:	<controller id>
 	Command Parameters:	Low_Energy (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set Device Class
@@ -204,6 +243,9 @@ Set Device Class
 
 	This command will also implicitly disable caching of pending CoD
 	and EIR updates.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Set Local Name Command
@@ -219,6 +261,9 @@ Set Local Name Command
 	The name parameters need to always end with a nul byte (failure
 	to do so will cause the command to fail).
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Add UUID Command
 ================
@@ -229,6 +274,9 @@ Add UUID Command
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Remove UUID Command
 ===================
@@ -237,6 +285,9 @@ Remove UUID Command
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Load Link Keys Command
@@ -256,6 +307,9 @@ Load Link Keys Command
 				Key2 { }
 				...
 	Return Parameters:
+
+	This command generates a Command Status event on success
+	or failure.
 
 
 Load Long Term Keys Command
@@ -277,6 +331,9 @@ Load Long Term Keys Command
 				Key2 {  }
 				...
 
+	This command generates a Command Status event on success
+	or failure.
+
 
 Disconnect Command
 ==================
@@ -287,6 +344,9 @@ Disconnect Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 Get Connections Command
@@ -308,6 +368,9 @@ Get Connections Command
 		1	LE Public
 		2	LE Random
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 PIN Code Reply Command
 =======================
@@ -321,6 +384,9 @@ PIN Code Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 PIN Code Negative Reply Command
 ===============================
@@ -332,6 +398,9 @@ PIN Code Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Set IO Capability Command
 =========================
@@ -340,6 +409,9 @@ Set IO Capability Command
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
+
+	This command generates a Command Status event on success
+	or failure.
 
 
 Pair Device Command
@@ -358,6 +430,9 @@ Pair Device Command
 		1	LE Public
 		2	LE Random
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Cancel Pair Device
 ==================
@@ -373,6 +448,9 @@ Cancel Pair Device
 	The Address and Address_Type parameters should match what was
 	given to a preceding Pair Device command.
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Unpair Device Command
 =====================
@@ -387,10 +465,13 @@ Unpair Device Command
 
 	Removes all keys associated with the remote device.
 
-	The Disconnect parameter tells the kernel whether to focefully
+	The Disconnect parameter tells the kernel whether to forcefully
 	disconnect any existing connections to the device. It should in
 	practice always be 1 except for some special GAP qualification
 	test-cases where a key removal without disconnecting is needed.
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 User Confirmation Reply Command
@@ -403,6 +484,9 @@ User Confirmation Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 User Confirmation Negative Reply Command
 ========================================
@@ -413,6 +497,9 @@ User Confirmation Negative Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 User Passkey Reply Command
@@ -426,6 +513,9 @@ User Passkey Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 User Passkey Negative Reply Command
 ===================================
@@ -437,6 +527,9 @@ User Passkey Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Read Local Out Of Band Data Command
 ===================================
@@ -446,6 +539,9 @@ Read Local Out Of Band Data Command
 	Command Parameters:
 	Return Parameters:	Hash (16 Octets)
 				Randomizer (16 Octets)
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 Add Remote Out Of Band Data Command
@@ -460,6 +556,9 @@ Add Remote Out Of Band Data Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Remove Remote Out Of Band Data Command
 ========================================
@@ -470,6 +569,9 @@ Remove Remote Out Of Band Data Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 Start Discovery Command
@@ -493,6 +595,9 @@ Start Discovery Command
 		6	LE (public & random)
 		7	BR/EDR/LE (interleaved discovery)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Stop Discovery Command
 ======================
@@ -501,6 +606,9 @@ Stop Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:
 	Return Parameters:
+
+	This command generates a Command Complete event on success
+	or failure.
 
 
 Confirm Name Command
@@ -518,6 +626,9 @@ Confirm Name Command
 	expected for each Device Found event with the Confirm Name
 	flag set.
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Block Device Command
 ====================
@@ -529,6 +640,9 @@ Block Device Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command generates a Command Complete event on success
+	or failure.
+
 
 Unblock Device Command
 ======================
@@ -539,6 +653,10 @@ Unblock Device Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command generates a Command Complete event on success
+	or failure.
+
 
 
 Command Complete Event
