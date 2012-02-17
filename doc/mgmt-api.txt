@@ -287,7 +287,6 @@ Disconnect Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (6 Octets)
 
 
 Get Connections Command
@@ -351,7 +350,6 @@ Pair Device Command
 				IO_Capability (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
@@ -384,7 +382,6 @@ Unpair Device Command
 				Disconnect (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 	Removes all keys associated with the remote device.
 
@@ -398,7 +395,6 @@ User Confirmation Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 
 User Confirmation Negative Reply Command
@@ -410,7 +406,6 @@ User Confirmation Negative Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 
 User Passkey Reply Command
@@ -423,7 +418,6 @@ User Passkey Reply Command
 				Passkey (4 Octets)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 
 User Passkey Negative Reply Command
@@ -435,7 +429,6 @@ User Passkey Negative Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 
 Read Local Out Of Band Data Command
@@ -511,7 +504,6 @@ Confirm Name Command
 				Name_Known (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-				Status (1 Octet)
 
 	This command is only valid during device discovery and is
 	expected for each Device Found event with the Confirm Name
@@ -544,6 +536,7 @@ Command Complete Event
 Event Code		0x0001
 Controller Index:	<controller id> or <non-controller>
 Event Parameters	Command_Opcode (2 Octets)
+			Status (1 Octet)
 			Return_Parameters
 
 
