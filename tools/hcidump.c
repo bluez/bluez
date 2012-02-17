@@ -855,7 +855,7 @@ static void usage(void)
 	"  -R, --raw                  Dump raw data\n"
 	"  -C, --cmtp=psm             PSM for CMTP\n"
 	"  -H, --hcrp=psm             PSM for HCRP\n"
-	"  -O, --obex=channel         Channel for OBEX\n"
+	"  -O, --obex=port            Channel/PSM for OBEX\n"
 	"  -P, --ppp=channel          Channel for PPP\n"
 	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
@@ -904,6 +904,7 @@ int main(int argc, char *argv[])
 	int defpsm = 0;
 	int defcompid = DEFAULT_COMPID;
 	int opt, pppdump_fd = -1, audio_fd = -1;
+	uint16_t obex_port;
 
 	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:d:taxXRC:H:O:P:D:A:YZ46hv", main_options, NULL)) != -1) {
 		switch(opt) {
@@ -970,7 +971,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'O':
-			set_proto(0, 0, atoi(optarg), SDP_UUID_OBEX);
+			obex_port = atoi(optarg);
+			if (obex_port > 31)
+				set_proto(0, obex_port, 0, SDP_UUID_OBEX);
+			else
+				set_proto(0, 0, obex_port, SDP_UUID_OBEX);
 			break;
 
 		case 'P':
