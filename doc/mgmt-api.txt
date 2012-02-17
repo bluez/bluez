@@ -314,11 +314,12 @@ PIN Code Reply Command
 
 	Command Code:		0x0016
 	Controller Index:	<controller id>
-	Command Parameters:
-	Return Parameters:	Address (6 Octets)
+	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 				PIN_Length (1 Octet)
 				PIN_Code (16 Octets)
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 PIN Code Negative Reply Command
@@ -326,7 +327,8 @@ PIN Code Negative Reply Command
 
 	Command Code:		0x0017
 	Controller Index:	<controller id>
-	Command Parameters:
+	Command Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
