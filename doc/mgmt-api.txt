@@ -556,9 +556,8 @@ Command Status Event
 
 Event Code		0x0002
 Controller Index:	<controller id> or <non-controller>
-Event Parameters	Status (1 Octet)
-			Command_Opcode (2 Octets)
-
+Event Parameters	Command_Opcode (2 Octets)
+			Status (1 Octet)
 
 Controller Error Event
 ======================
