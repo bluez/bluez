@@ -457,7 +457,8 @@ Add Remote Out Of Band Data Command
 				Address_Type (1 Octet)
 				Hash (16 Octets)
 				Randomizer (16 Octets)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 Remove Remote Out Of Band Data Command
@@ -467,7 +468,8 @@ Remove Remote Out Of Band Data Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address (6 Octets)
+				Address_Type (1 Octet)
 
 
 Start Discovery Command
