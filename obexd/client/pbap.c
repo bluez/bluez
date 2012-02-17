@@ -287,6 +287,7 @@ static gboolean pbap_setpath(struct pbap_data *pbap, const char *location,
 					const char *item, GError **err)
 {
 	char *path;
+	guint id;
 
 	path = build_phonebook_path(location, item);
 	if (path == NULL) {
@@ -300,8 +301,9 @@ static gboolean pbap_setpath(struct pbap_data *pbap, const char *location,
 		return TRUE;
 	}
 
-	obc_session_setpath(pbap->session, path, pbap_setpath_cb, pbap, err);
-	if (err != NULL) {
+	id = obc_session_setpath(pbap->session, path, pbap_setpath_cb, pbap,
+									err);
+	if (id > 0) {
 		g_free(pbap->path);
 		pbap->path = path;
 		return TRUE;
