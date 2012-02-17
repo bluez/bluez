@@ -476,7 +476,7 @@ Start Discovery Command
 	Command Code:		0x0023
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
-	Return Parameters:
+	Return Parameters:	Address_Type (1 Octet)
 
 	Possible values for the Address_Type parameter are a bit-wise or
 	of the following bits:
