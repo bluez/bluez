@@ -3770,7 +3770,7 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_confirm_name(int index, bdaddr_t *bdaddr,
+static int hciops_confirm_name(int index, bdaddr_t *bdaddr, addr_type_t type,
 							gboolean name_known)
 {
 	struct dev_info *info = &devs[index];

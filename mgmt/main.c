@@ -401,7 +401,7 @@ static int mgmt_new_link_key(int mgmt_sk, uint16_t index,
 
 	if (monitor) {
 		char addr[18];
-		ba2str(&ev->key.bdaddr, addr);
+		ba2str(&ev->key.addr.bdaddr, addr);
 		printf("hci%u new_link_key %s type 0x%02x pin_len %d "
 				"store_hint %u\n", index, addr, ev->key.type,
 				ev->key.pin_len, ev->store_hint);
@@ -546,7 +546,7 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 		return;
 	}
 
-	ba2str(&rp->bdaddr, addr);
+	ba2str(&rp->addr.bdaddr, addr);
 
 	if (rp->status != 0)
 		fprintf(stderr,
@@ -587,7 +587,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		struct mgmt_cp_confirm_name cp;
 
 		memset(&cp, 0, sizeof(cp));
-		bacpy(&cp.bdaddr, &ev->addr.bdaddr);
+		memcpy(&cp.addr, &ev->addr, sizeof(cp.addr));
 		if (resolve_names)
 			cp.name_known = 0;
 		else
@@ -614,13 +614,14 @@ static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	printf("hci%u PIN Reply successful\n", id);
 }
 
-static int mgmt_pin_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr,
+static int mgmt_pin_reply(int mgmt_sk, uint16_t index,
+						struct mgmt_addr_info *addr,
 						const char *pin, size_t len)
 {
 	struct mgmt_cp_pin_code_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	memcpy(&cp.addr, addr, sizeof(cp.addr));
 	cp.pin_len = len;
 	memcpy(cp.pin_code, pin, len);
 
@@ -641,12 +642,13 @@ static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	printf("hci%u PIN Negative Reply successful\n", id);
 }
 
-static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr)
+static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index,
+						struct mgmt_addr_info *addr)
 {
 	struct mgmt_cp_pin_code_neg_reply cp;
 
 	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
+	memcpy(&cp.addr, addr, sizeof(cp.addr));
 
 	return mgmt_send_cmd(mgmt_sk, MGMT_OP_PIN_CODE_NEG_REPLY, index,
 					&cp, sizeof(cp), pin_neg_rsp, NULL);
@@ -667,7 +669,7 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 
 	if (monitor) {
 		char addr[18];
-		ba2str(&ev->bdaddr, addr);
+		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u %s request PIN\n", index, addr);
 	}
 
@@ -677,7 +679,7 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 	memset(pin, 0, sizeof(pin));
 
 	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n')
-		return mgmt_pin_neg_reply(mgmt_sk, index, &ev->bdaddr);
+		return mgmt_pin_neg_reply(mgmt_sk, index, &ev->addr);
 
 	pin_len = strlen(pin);
 	if (pin[pin_len - 1] == '\n') {
@@ -685,7 +687,7 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 		pin_len--;
 	}
 
-	return mgmt_pin_reply(mgmt_sk, index, &ev->bdaddr, pin, pin_len);
+	return mgmt_pin_reply(mgmt_sk, index, &ev->addr, pin, pin_len);
 }
 
 static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,

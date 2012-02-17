@@ -389,11 +389,11 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	info = &controllers[index];
 
 	if (ev->store_hint)
-		btd_event_link_key_notify(&info->bdaddr, &ev->key.bdaddr,
+		btd_event_link_key_notify(&info->bdaddr, &ev->key.addr.bdaddr,
 						ev->key.val, ev->key.type,
 						ev->key.pin_len);
 
-	bonding_complete(info, &ev->key.bdaddr, 0);
+	bonding_complete(info, &ev->key.addr.bdaddr, 0);
 }
 
 static inline addr_type_t addr_type(uint8_t mgmt_addr_type)
@@ -541,7 +541,8 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 		hdr->index = htobs(index);
 
 		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->bdaddr, bdaddr);
+		bacpy(&cp->addr.bdaddr, bdaddr);
+		cp->addr.type = MGMT_ADDR_BREDR;
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -555,7 +556,8 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 		hdr->index = htobs(index);
 
 		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->bdaddr, bdaddr);
+		bacpy(&cp->addr.bdaddr, bdaddr);
+		cp->addr.type = MGMT_ADDR_BREDR;
 		cp->pin_len = pin_len;
 		memcpy(cp->pin_code, pin, pin_len);
 
@@ -580,7 +582,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s", index, addr);
 
@@ -591,10 +593,11 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	err = btd_event_request_pin(&info->bdaddr, &ev->bdaddr, ev->secure);
+	err = btd_event_request_pin(&info->bdaddr, &ev->addr.bdaddr,
+								ev->secure);
 	if (err < 0) {
 		error("btd_event_request_pin: %s", strerror(-err));
-		mgmt_pincode_reply(index, &ev->bdaddr, NULL, 0);
+		mgmt_pincode_reply(index, &ev->addr.bdaddr, NULL, 0);
 	}
 }
 
@@ -1971,7 +1974,8 @@ static int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
 		struct link_key_info *info = l->data;
 
-		bacpy(&key->bdaddr, &info->bdaddr);
+		bacpy(&key->addr.bdaddr, &info->bdaddr);
+		key->addr.type = MGMT_ADDR_BREDR;
 		key->type = info->type;
 		memcpy(key->val, info->key, 16);
 		key->pin_len = info->pin_len;
@@ -2123,7 +2127,8 @@ static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, gboolean name_known)
+static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, addr_type_t type,
+							gboolean name_known)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_confirm_name)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2139,7 +2144,8 @@ static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, gboolean name_known)
 	hdr->index = htobs(index);
 	hdr->len = htobs(sizeof(*cp));
 
-	bacpy(&cp->bdaddr, bdaddr);
+	bacpy(&cp->addr.bdaddr, bdaddr);
+	cp->addr.type = mgmt_addr_type(type);
 	cp->name_known = name_known;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)

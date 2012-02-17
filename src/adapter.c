@@ -2943,7 +2943,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	}
 
 	if (confirm_name)
-		adapter_ops->confirm_name(adapter->dev_id, bdaddr, name_known);
+		adapter_ops->confirm_name(adapter->dev_id, bdaddr, type,
+								name_known);
 
 	alias = read_stored_data(&adapter->bdaddr, bdaddr, "aliases");
 

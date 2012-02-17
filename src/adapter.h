@@ -221,7 +221,8 @@ struct btd_adapter_ops {
 	int (*add_remote_oob_data) (int index, bdaddr_t *bdaddr, uint8_t *hash,
 							uint8_t *randomizer);
 	int (*remove_remote_oob_data) (int index, bdaddr_t *bdaddr);
-	int (*confirm_name) (int index, bdaddr_t *bdaddr, gboolean name_known);
+	int (*confirm_name) (int index, bdaddr_t *bdaddr, addr_type_t type,
+							gboolean name_known);
 	int (*load_ltks) (int index, GSList *keys);
 };
 
