@@ -1017,8 +1017,10 @@ int obc_session_put(struct obc_session *session, char *buf, const char *targetna
 	struct obc_transfer *transfer;
 	const char *agent;
 
-	if (session->obex == NULL)
+	if (session->obex == NULL) {
+		g_free(buf);
 		return -ENOTCONN;
+	}
 
 	agent = obc_agent_get_name(session->agent);
 
@@ -1026,8 +1028,10 @@ int obc_session_put(struct obc_session *session, char *buf, const char *targetna
 							agent, NULL,
 							targetname, NULL,
 							NULL);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_free(buf);
 		return -EIO;
+	}
 
 	obc_transfer_set_buffer(transfer, buf);
 
