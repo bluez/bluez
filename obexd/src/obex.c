@@ -174,33 +174,7 @@ static void os_set_response(struct obex_session *os, int err)
 {
 	uint8_t rsp;
 
-	switch (err) {
-	case 0:
-		rsp = G_OBEX_RSP_SUCCESS;
-		break;
-	case -EPERM:
-	case -EACCES:
-		rsp = G_OBEX_RSP_FORBIDDEN;
-		break;
-	case -ENOENT:
-		rsp = G_OBEX_RSP_NOT_FOUND;
-		break;
-	case -EBADR:
-		rsp = G_OBEX_RSP_BAD_REQUEST;
-		break;
-	case -EFAULT:
-		rsp = G_OBEX_RSP_SERVICE_UNAVAILABLE;
-		break;
-	case -EINVAL:
-		rsp = G_OBEX_RSP_NOT_IMPLEMENTED;
-		break;
-	case -ENOTEMPTY:
-	case -EEXIST:
-		rsp = G_OBEX_RSP_PRECONDITION_FAILED;
-		break;
-	default:
-		rsp = G_OBEX_RSP_INTERNAL_SERVER_ERROR;
-	}
+	rsp = g_obex_errno_to_rsp(err);
 
 	print_event(-1, rsp);
 
