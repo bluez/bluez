@@ -501,6 +501,7 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 	GObexPacket *req, *rsp;
 	GError *err = NULL;
 	gssize ret;
+	guint8 op;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", transfer->id);
 
@@ -530,8 +531,9 @@ static gssize get_get_data(void *buf, gsize len, gpointer user_data)
 		return ret;
 	}
 
-	req = g_obex_packet_new(G_OBEX_RSP_INTERNAL_SERVER_ERROR, TRUE,
-							G_OBEX_HDR_INVALID);
+	op = g_obex_errno_to_rsp(ret);
+
+	req = g_obex_packet_new(op, TRUE, G_OBEX_HDR_INVALID);
 	g_obex_send(transfer->obex, req, NULL);
 
 	err = g_error_new(G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED,

@@ -1471,3 +1471,27 @@ guint g_obex_move(GObex *obex, const char *name, const char *dest,
 
 	return g_obex_send_req(obex, req, -1, func, user_data, err);
 }
+
+guint8 g_obex_errno_to_rsp(int err)
+{
+	switch (err) {
+	case 0:
+		return G_OBEX_RSP_SUCCESS;
+	case -EPERM:
+	case -EACCES:
+		return G_OBEX_RSP_FORBIDDEN;
+	case -ENOENT:
+		return G_OBEX_RSP_NOT_FOUND;
+	case -EBADR:
+		return G_OBEX_RSP_BAD_REQUEST;
+	case -EFAULT:
+		return G_OBEX_RSP_SERVICE_UNAVAILABLE;
+	case -EINVAL:
+		return G_OBEX_RSP_NOT_IMPLEMENTED;
+	case -ENOTEMPTY:
+	case -EEXIST:
+		return G_OBEX_RSP_PRECONDITION_FAILED;
+	default:
+		return G_OBEX_RSP_INTERNAL_SERVER_ERROR;
+	}
+}

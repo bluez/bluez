@@ -125,5 +125,6 @@ guint g_obex_get_rsp_pkt(GObex *obex, GObexPacket *rsp,
 gboolean g_obex_cancel_transfer(guint id);
 
 const char *g_obex_strerror(guint8 err_code);
+guint8 g_obex_errno_to_rsp(int err);
 
 #endif /* __GOBEX_H */
