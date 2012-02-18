@@ -554,7 +554,7 @@ static gssize send_data(void *buf, gsize size, gpointer user_data)
 									size);
 
 	if (os->aborted)
-		return -EPERM;
+		return os->err < 0 ? os->err : -EPERM;
 
 	return driver_read(os, buf, size);
 }
@@ -594,7 +594,7 @@ static int driver_get_headers(struct obex_session *os)
 	DBG("name=%s type=%s object=%p", os->name, os->type, os->object);
 
 	if (os->aborted)
-		return -EPERM;
+		return os->err < 0 ? os->err : -EPERM;
 
 	if (os->object == NULL)
 		return -EIO;
@@ -661,8 +661,10 @@ static gboolean handle_async_io(void *object, int flags, int err,
 		return TRUE;
 
 done:
-	if (err < 0)
-		os_set_response(os, err);
+	if (err < 0) {
+		os->err = err;
+		os->aborted = TRUE;
+	}
 
 	g_obex_resume(os->obex);
 
