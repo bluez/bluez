@@ -271,7 +271,7 @@ static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
 		printf("%s complete, opcode 0x%04x len %u\n", mgmt_opstr(op),
 								op, len);
 
-	mgmt_check_pending(mgmt_sk, op, index, 0, ev->data, len);
+	mgmt_check_pending(mgmt_sk, op, index, ev->status, ev->data, len);
 
 	return 0;
 }
@@ -532,7 +532,7 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	struct mgmt_rp_confirm_name *rp = rsp;
 	char addr[18];
 
-	if (status != 0) {
+	if (len == 0 && status != 0) {
 		fprintf(stderr,
 			"hci%u confirm_name failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
@@ -548,10 +548,10 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (rp->status != 0)
+	if (status != 0)
 		fprintf(stderr,
 			"hci%u confirm_name for %s failed: 0x%02x (%s)\n",
-			id, addr, rp->status, mgmt_errstr(status));
+			id, addr, status, mgmt_errstr(status));
 	else
 		printf("hci%u confirm_name succeeded for %s\n", id, addr);
 }
@@ -1198,7 +1198,7 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	struct mgmt_rp_disconnect *rp = rsp;
 	char addr[18];
 
-	if (status != 0) {
+	if (len == 0 && status != 0) {
 		fprintf(stderr, "Disconnect failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
@@ -1212,13 +1212,13 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (rp->status == 0) {
+	if (status == 0) {
 		printf("%s disconnected\n", addr);
 		exit(EXIT_SUCCESS);
 	} else {
 		fprintf(stderr,
 			"Disconnecting %s failed with status 0x%02x (%s)\n",
-				addr, rp->status, mgmt_errstr(rp->status));
+				addr, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 }
@@ -1400,7 +1400,7 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	struct mgmt_rp_pair_device *rp = rsp;
 	char addr[18];
 
-	if (status != 0) {
+	if (len == 0 && status != 0) {
 		fprintf(stderr, "Pairing failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
@@ -1413,11 +1413,11 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (rp->status != 0) {
+	if (status != 0) {
 		fprintf(stderr,
 			"Pairing with %s (%s) failed. status 0x%02x (%s)\n",
-			addr, typestr(rp->addr.type), rp->status,
-			mgmt_errstr(rp->status));
+			addr, typestr(rp->addr.type), status,
+			mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
@@ -1491,7 +1491,7 @@ static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	struct mgmt_rp_unpair_device *rp = rsp;
 	char addr[18];
 
-	if (status != 0) {
+	if (len == 0 && status != 0) {
 		fprintf(stderr, "Unpair device failed. status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
@@ -1504,10 +1504,10 @@ static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (rp->status != 0) {
+	if (status != 0) {
 		fprintf(stderr,
 			"Unpairing %s failed. status 0x%02x (%s)\n",
-				addr, rp->status, mgmt_errstr(rp->status));
+				addr, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 

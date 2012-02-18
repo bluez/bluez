@@ -946,7 +946,8 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_unref(adapter);
 }
 
-static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
+static void disconnect_complete(int sk, uint16_t index, uint8_t status,
+							void *buf, size_t len)
 {
 	struct mgmt_rp_disconnect *rp = buf;
 	struct controller_info *info;
@@ -959,9 +960,8 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (rp->status != 0) {
-		error("Disconnecting %s failed with status %u",
-							addr, rp->status);
+	if (status != 0) {
+		error("Disconnecting %s failed with status %u", addr, status);
 		return;
 	}
 
@@ -979,7 +979,8 @@ static void disconnect_complete(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &rp->addr.bdaddr, HCI_CONNECTION_TERMINATED);
 }
 
-static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
+static void pair_device_complete(int sk, uint16_t index, uint8_t status,
+							void *buf, size_t len)
 {
 	struct mgmt_rp_pair_device *rp = buf;
 	struct controller_info *info;
@@ -992,7 +993,7 @@ static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	DBG("hci%d %s pairing complete status %u", index, addr, rp->status);
+	DBG("hci%d %s pairing complete status %u", index, addr, status);
 
 	if (index > max_index) {
 		error("Unexpected index %u in pair_device complete", index);
@@ -1001,7 +1002,7 @@ static void pair_device_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	bonding_complete(info, &rp->addr.bdaddr, rp->status);
+	bonding_complete(info, &rp->addr.bdaddr, status);
 }
 
 static void get_connections_complete(int sk, uint16_t index, void *buf,
@@ -1166,7 +1167,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		break;
 	case MGMT_OP_DISCONNECT:
 		DBG("disconnect complete");
-		disconnect_complete(sk, index, ev->data, len);
+		disconnect_complete(sk, index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_GET_CONNECTIONS:
 		get_connections_complete(sk, index, ev->data, len);
@@ -1181,7 +1182,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_io_capability complete");
 		break;
 	case MGMT_OP_PAIR_DEVICE:
-		pair_device_complete(sk, index, ev->data, len);
+		pair_device_complete(sk, index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_USER_CONFIRM_REPLY:
 		DBG("user_confirm_reply complete");
