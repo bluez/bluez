@@ -120,7 +120,7 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	int err;
 
 	if (obex_get_size(os) == OBJECT_SIZE_DELETE)
-		return -EINVAL;
+		return -ENOSYS;
 
 	t = obex_get_name(os);
 	if (t != NULL && !is_filename(t))
