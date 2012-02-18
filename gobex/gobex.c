@@ -1482,11 +1482,12 @@ guint8 g_obex_errno_to_rsp(int err)
 		return G_OBEX_RSP_FORBIDDEN;
 	case -ENOENT:
 		return G_OBEX_RSP_NOT_FOUND;
+	case -EINVAL:
 	case -EBADR:
 		return G_OBEX_RSP_BAD_REQUEST;
 	case -EFAULT:
 		return G_OBEX_RSP_SERVICE_UNAVAILABLE;
-	case -EINVAL:
+	case -ENOSYS:
 		return G_OBEX_RSP_NOT_IMPLEMENTED;
 	case -ENOTEMPTY:
 	case -EEXIST:
