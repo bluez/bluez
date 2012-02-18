@@ -500,7 +500,7 @@ int ftp_action(struct obex_session *os, void *user_data)
 	case 0x01: /* Move/Rename Object */
 		return ftp_move(ftp, name, destname);
 	default:
-		return -EINVAL;
+		return -ENOSYS;
 	}
 }
 
