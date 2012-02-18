@@ -501,7 +501,7 @@ static void *message_open(const char *name, int oflag, mode_t mode,
 
 	if (oflag != O_RDONLY) {
 		DBG("Message pushing unsupported");
-		*err = -EINVAL;
+		*err = -ENOSYS;
 
 		return NULL;
 	}
@@ -542,7 +542,7 @@ static void *any_open(const char *name, int oflag, mode_t mode,
 {
 	DBG("");
 
-	*err = -EINVAL;
+	*err = -ENOSYS;
 
 	return NULL;
 }

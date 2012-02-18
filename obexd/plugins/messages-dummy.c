@@ -93,7 +93,7 @@ int messages_set_notification_registration(void *session,
 			const struct messages_event *event, void *user_data),
 		void *user_data)
 {
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 int messages_set_folder(void *s, const char *name, gboolean cdup)
@@ -147,7 +147,7 @@ int messages_get_folder_listing(void *session, const char *name, uint16_t max,
 					messages_folder_listing_cb callback,
 					void *user_data)
 {
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 int messages_get_messages_listing(void *session, const char *name,
@@ -156,7 +156,7 @@ int messages_get_messages_listing(void *session, const char *name,
 				messages_get_messages_listing_cb callback,
 				void *user_data)
 {
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 int messages_get_message(void *session, const char *handle,
@@ -164,13 +164,13 @@ int messages_get_message(void *session, const char *handle,
 					messages_get_message_cb callback,
 					void *user_data)
 {
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 int messages_update_inbox(void *session, messages_update_inbox_cb callback,
 							void *user_data)
 {
-	return -EINVAL;
+	return -ENOSYS;
 }
 
 void messages_abort(void *session)
