@@ -1569,6 +1569,137 @@ static void cmd_keys(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void block_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_addr_info *rp = rsp;
+	char addr[18];
+
+	if (len == 0 && status != 0) {
+		fprintf(stderr, "%s failed, status 0x%02x (%s)\n",
+				mgmt_opstr(op), status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Unexpected %s len %u\n", mgmt_opstr(op), len);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (status != 0) {
+		fprintf(stderr, "%s %s (%s) failed. status 0x%02x (%s)\n",
+				mgmt_opstr(op), addr, typestr(rp->type),
+				status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	printf("%s %s succeeded\n", mgmt_opstr(op), addr);
+
+	exit(EXIT_SUCCESS);
+}
+
+static void block_usage(void)
+{
+	printf("Usage: btmgmt block [-t type] <remote address>\n");
+}
+
+static struct option block_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_block(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_block_device cp;
+	uint8_t type = MGMT_ADDR_BREDR;
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", block_options,
+							NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			block_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		block_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_BLOCK_DEVICE, index,
+				&cp, sizeof(cp), block_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send block_device cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void unblock_usage(void)
+{
+	printf("Usage: btmgmt unblock [-t type] <remote address>\n");
+}
+
+static void cmd_unblock(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_unblock_device cp;
+	uint8_t type = MGMT_ADDR_BREDR;
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", block_options,
+							NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			unblock_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		unblock_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.addr.bdaddr);
+	cp.addr.type = type;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_UNBLOCK_DEVICE, index,
+				&cp, sizeof(cp), block_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send unblock_device cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -1591,6 +1722,8 @@ static struct {
 	{ "pair",	cmd_pair,	"Pair with a remote device"	},
 	{ "unpair",	cmd_unpair,	"Unpair device"			},
 	{ "keys",	cmd_keys,	"Load Keys"			},
+	{ "block",	cmd_block,	"Block Device"			},
+	{ "unblock",	cmd_unblock,	"Unblock Device"			},
 	{ NULL, NULL, 0 }
 };
 
