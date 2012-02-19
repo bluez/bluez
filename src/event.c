@@ -510,7 +510,8 @@ void btd_event_device_blocked(bdaddr_t *local, bdaddr_t *peer)
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
-	device_block(conn, device, TRUE);
+	if (device)
+		device_block(conn, device, TRUE);
 }
 
 void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
@@ -523,7 +524,8 @@ void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
-	device_unblock(conn, device, FALSE, TRUE);
+	if (device)
+		device_unblock(conn, device, FALSE, TRUE);
 }
 
 void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
