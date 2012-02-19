@@ -77,14 +77,21 @@ static void read_version_complete(int sk, void *buf, size_t len)
 	struct mgmt_rp_read_version *rp = buf;
 
 	if (len < sizeof(*rp)) {
-		error("Too small read version complete event");
-		return;
+		error("Too small read version complete event"
+				" (probably an old kernel)");
+		abort();
 	}
 
 	mgmt_revision = btohs(bt_get_unaligned(&rp->revision));
 	mgmt_version = rp->version;
 
 	DBG("version %u revision %u", mgmt_version, mgmt_revision);
+
+	if (mgmt_version < 1) {
+		error("Version 1 of mgmt needed (kernel has version %u)",
+								mgmt_version);
+		abort();
+	}
 
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = htobs(MGMT_OP_READ_INDEX_LIST);
