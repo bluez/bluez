@@ -55,6 +55,7 @@ mgmt_btmgmt_SOURCES = mgmt/main.c
 mgmt_btmgmt_LDADD = lib/libbluetooth-private.la
 
 monitor_btmon_SOURCES = monitor/main.c
+monitor_btmon_LDADD = lib/libbluetooth-private.la
 
 if READLINE
 bin_PROGRAMS += attrib/gatttool
