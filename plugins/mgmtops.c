@@ -324,6 +324,7 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 	uint32_t settings, *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
+	gboolean old_power, new_power, old_pairable, new_pairable;
 
 	if (len < sizeof(*ev)) {
 		error("Too small new settings event");
@@ -347,12 +348,20 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 
 	settings = bt_get_le32(ev);
 
-	if (mgmt_powered(settings) != mgmt_powered(info->current_settings))
+	old_power = mgmt_powered(info->current_settings);
+	new_power = mgmt_powered(settings);
+
+	if (new_power != old_power)
 		mgmt_update_powered(adapter, settings);
 	else if (mode_changed(settings, info->current_settings))
 		adapter_mode_changed(adapter, create_mode(settings));
 
-	if (mgmt_pairable(settings) != mgmt_pairable(info->current_settings))
+	old_pairable = mgmt_pairable(info->current_settings);
+	new_pairable = mgmt_pairable(settings);
+
+	/* Check for pairable change, except when powered went from True
+	 * to False (in which case we always get all settings as False) */
+	if ((!old_power || new_power) && new_pairable != old_pairable)
 		btd_adapter_pairable_changed(adapter, mgmt_pairable(settings));
 
 	info->current_settings = settings;
