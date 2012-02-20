@@ -893,8 +893,8 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 
 
-Device Unpaired
-===============
+Device Unpaired Event
+=====================
 
 Event Code		0x0016
 Controller Index	<controller id>
