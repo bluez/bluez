@@ -46,7 +46,6 @@ sbc/sbcinfo
 sbc/sbctester
 
 attrib/gatttool
-tracer/hcitrace
 tools/avctrl
 tools/avinfo
 tools/bccmd

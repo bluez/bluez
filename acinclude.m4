@@ -203,7 +203,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	health_enable=no
 	pnat_enable=no
 	gatt_example_enable=no
-	tracer_enable=no
 	tools_enable=yes
 	hidd_enable=no
 	pand_enable=no
@@ -297,10 +296,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
 		usb_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(tracer, AC_HELP_STRING([--enable-tracer], [install Tracing daemon]), [
-		tracer_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools], [install Bluetooth utilities]), [
@@ -419,7 +414,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(READLINE, test "${readline_found}" = "yes")
 	AM_CONDITIONAL(GATT_EXAMPLE_PLUGIN, test "${gatt_example_enable}" = "yes")
 	AM_CONDITIONAL(PNATPLUGIN, test "${pnat_enable}" = "yes")
-	AM_CONDITIONAL(TRACER, test "${tracer_enable}" = "yes")
 	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
 	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
 	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")

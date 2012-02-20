@@ -22,7 +22,6 @@ fi
 		--enable-time \
 		--enable-alert \
 		--enable-health \
-		--enable-tracer \
 		--enable-tools \
 		--enable-bccmd \
 		--enable-dfutool \
