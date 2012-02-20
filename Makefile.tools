@@ -49,9 +49,12 @@ tools_ppporc_LDADD = lib/libbluetooth-private.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
-noinst_PROGRAMS += mgmt/btmgmt
+noinst_PROGRAMS += mgmt/btmgmt monitor/btmon
+
 mgmt_btmgmt_SOURCES = mgmt/main.c
 mgmt_btmgmt_LDADD = lib/libbluetooth-private.la
+
+monitor_btmon_SOURCES = monitor/main.c
 
 if READLINE
 bin_PROGRAMS += attrib/gatttool
