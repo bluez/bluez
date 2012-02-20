@@ -658,6 +658,32 @@ Unblock Device Command
 	or failure.
 
 
+Set Device ID Command
+=====================
+
+	Command Code:		0x0028
+	Controller Index:	<controller id>
+	Command Parameters:	Source (2 Octets)
+				Vendor (2 Octets)
+				Product (2 Octets)
+				Version (2 Octets)
+	Return Parameters:
+
+	The Source parameter selects the organization that assigned the
+	Vendor parameter:
+
+		0x0000	Disable Device ID
+		0x0001	Bluetooth SIG
+		0x0002	USB Implementer’s Forum
+
+	The information are put into the EIR data. If the controller does
+	not support EIR or if SSP is disabled, this command will still
+	succeed. The information are stored for later use and will survive
+	toggling SSP on and off.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
+
 
 Command Complete Event
 ======================
