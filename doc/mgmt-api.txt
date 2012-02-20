@@ -604,8 +604,8 @@ Stop Discovery Command
 
 	Command Code:		0x0024
 	Controller Index:	<controller id>
-	Command Parameters:
-	Return Parameters:
+	Command Parameters:	Address_Type (1 Octet)
+	Return Parameters:	Address_Type (1 Octet)
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -872,7 +872,8 @@ Discovering Event
 
 Event Code		0x0013
 Controller Index	<controller id>
-Event Parameters	Discovering (1 Octet)
+Event Parameters	Address_Type (1 Octet)
+			Discovering (1 Octet)
 
 
 Device Blocked Event
