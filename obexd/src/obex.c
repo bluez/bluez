@@ -964,6 +964,7 @@ static void cmd_put(GObex *obex, GObexPacket *req, gpointer user_data)
 	parse_name(os, req);
 	parse_length(os, req);
 	parse_time(os, req);
+	parse_apparam(os, req);
 
 	if (!os->checked) {
 		if (!check_put(obex, req, user_data))
