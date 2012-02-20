@@ -875,6 +875,37 @@ static void cmd_monitor(int mgmt_sk, uint16_t index, int argc, char **argv)
 	monitor = true;
 }
 
+static void version_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
+				void *rsp, uint16_t len, void *user_data)
+{
+	struct mgmt_rp_read_version *rp = rsp;
+
+	if (status != 0) {
+		fprintf(stderr, "Reading mgmt version failed with status"
+			" 0x%02x (%s)\n", status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	if (len < sizeof(*rp)) {
+		fprintf(stderr, "Too small version reply (%u bytes)\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("MGMT Version %u, revision %u\n", rp->version,
+						bt_get_le16(&rp->revision));
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cmd_version(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE,
+					NULL, 0, version_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send read_version cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -1706,6 +1737,7 @@ static struct {
 	char *doc;
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
+	{ "version",	cmd_version,	"Get the MGMT Version"		},
 	{ "commands",	cmd_commands,	"List supported commands"	},
 	{ "info",	cmd_info,	"Show controller info"		},
 	{ "power",	cmd_power,	"Toggle powered state"		},
