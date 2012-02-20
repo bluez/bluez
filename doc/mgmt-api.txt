@@ -308,8 +308,8 @@ Load Link Keys Command
 				...
 	Return Parameters:
 
-	This command generates a Command Status event on success
-	or failure.
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Load Long Term Keys Command
@@ -331,8 +331,8 @@ Load Long Term Keys Command
 				Key2 {  }
 				...
 
-	This command generates a Command Status event on success
-	or failure.
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Disconnect Command
@@ -410,8 +410,8 @@ Set IO Capability Command
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
 
-	This command generates a Command Status event on success
-	or failure.
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Pair Device Command
