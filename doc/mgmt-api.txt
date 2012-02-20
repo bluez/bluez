@@ -60,15 +60,15 @@ Read Management Supported Commands Command
 				Event2 (2 Octets)
 				...
 
-	This command generates a Command Complete event on success or
-	a Command Status event on failure.
-
 	The commands Read Management Version Information and Read
 	management Supported Commands are not included in this list.
 	Both commands are always supported and mandatory.
 
 	The events Command Status and Command Complete are not included
 	in this list. Both are implicit and mandatory.
+
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Read Controller Index List Command
@@ -368,8 +368,8 @@ Get Connections Command
 		1	LE Public
 		2	LE Random
 
-	This command generates a Command Complete event on success
-	or failure.
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 PIN Code Reply Command
@@ -540,8 +540,8 @@ Read Local Out Of Band Data Command
 	Return Parameters:	Hash (16 Octets)
 				Randomizer (16 Octets)
 
-	This command generates a Command Complete event on success
-	or failure.
+	This command generates a Command Complete event on success or
+	a Command Status event on failure.
 
 
 Add Remote Out Of Band Data Command
