@@ -269,6 +269,9 @@ struct mgmt_cp_start_discovery {
 } __packed;
 
 #define MGMT_OP_STOP_DISCOVERY		0x0024
+struct mgmt_cp_stop_discovery {
+	uint8_t type;
+} __packed;
 
 #define MGMT_OP_CONFIRM_NAME		0x0025
 struct mgmt_cp_confirm_name {
@@ -385,6 +388,10 @@ struct mgmt_ev_device_found {
 } __packed;
 
 #define MGMT_EV_DISCOVERING		0x0013
+struct mgmt_ev_discovering {
+	uint8_t type;
+	uint8_t discovering;
+} __packed;
 
 #define MGMT_EV_DEVICE_BLOCKED		0x0014
 struct mgmt_ev_device_blocked {

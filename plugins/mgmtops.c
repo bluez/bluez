@@ -63,6 +63,7 @@ static struct controller_info {
 	uint32_t current_settings;
 	uint8_t dev_class[3];
 	GSList *connections;
+	uint8_t discov_type;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -103,15 +104,23 @@ static void read_version_complete(int sk, void *buf, size_t len)
 
 static void add_controller(uint16_t index)
 {
+	struct controller_info *info;
+
 	if (index > max_index) {
 		size_t size = sizeof(struct controller_info) * (index + 1);
 		max_index = index;
 		controllers = g_realloc(controllers, size);
 	}
 
-	memset(&controllers[index], 0, sizeof(struct controller_info));
+	info = &controllers[index];
 
-	controllers[index].valid = TRUE;
+	memset(info, 0, sizeof(*info));
+
+	info->valid = TRUE;
+
+	hci_set_bit(MGMT_ADDR_BREDR, &info->discov_type);
+	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &info->discov_type);
+	hci_set_bit(MGMT_ADDR_LE_RANDOM, &info->discov_type);
 
 	DBG("Added controller %u", index);
 }
@@ -1363,7 +1372,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 {
-	struct mgmt_mode *ev = buf;
+	struct mgmt_ev_discovering *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 
@@ -1372,7 +1381,8 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	DBG("Controller %u discovering %u", index, ev->val);
+	DBG("Controller %u type %u discovering %u", index,
+					ev->type, ev->discovering);
 
 	if (index > max_index) {
 		error("Unexpected index %u in discovering event", index);
@@ -1385,7 +1395,7 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	if (!adapter)
 		return;
 
-	adapter_set_discovering(adapter, ev->val);
+	adapter_set_discovering(adapter, ev->discovering);
 }
 
 static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
@@ -1703,6 +1713,7 @@ static int mgmt_start_discovery(int index)
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
 
 	DBG("index %d", index);
 
@@ -1711,9 +1722,7 @@ static int mgmt_start_discovery(int index)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	hci_set_bit(MGMT_ADDR_BREDR, &cp->type);
-	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &cp->type);
-	hci_set_bit(MGMT_ADDR_LE_RANDOM, &cp->type);
+	cp->type = info->discov_type;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -1723,15 +1732,21 @@ static int mgmt_start_discovery(int index)
 
 static int mgmt_stop_discovery(int index)
 {
-	struct mgmt_hdr hdr;
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
 
 	DBG("index %d", index);
 
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_STOP_DISCOVERY);
-	hdr.index = htobs(index);
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_STOP_DISCOVERY);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
 
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
+	cp->type = info->discov_type;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
 
 	return 0;

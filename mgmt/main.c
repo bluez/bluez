@@ -371,7 +371,7 @@ static int mgmt_new_settings(int mgmt_sk, uint16_t index,
 }
 
 static int mgmt_discovering(int mgmt_sk, uint16_t index,
-					struct mgmt_mode *ev, uint16_t len)
+				struct mgmt_ev_discovering *ev, uint16_t len)
 {
 	if (len < sizeof(*ev)) {
 		fprintf(stderr, "Too short (%u bytes) discovering event\n",
@@ -379,12 +379,12 @@ static int mgmt_discovering(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	if (ev->val == 0 && discovery)
+	if (ev->discovering == 0 && discovery)
 		exit(EXIT_SUCCESS);
 
 	if (monitor)
-		printf("hci%u discovering %s\n", index,
-						ev->val ? "on" : "off");
+		printf("hci%u type %u discovering %s\n", index,
+				ev->type, ev->discovering ? "on" : "off");
 
 	return 0;
 }
