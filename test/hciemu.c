@@ -62,6 +62,8 @@ struct vhci_device {
 	uint8_t		inq_mode;
 	uint8_t		eir_fec;
 	uint8_t		eir_data[HCI_MAX_EIR_LENGTH];
+	uint8_t		le_mode;
+	uint8_t		le_simul;
 	uint16_t	acl_cnt;
 	bdaddr_t	bdaddr;
 	int		dev_fd;
@@ -625,6 +627,7 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	read_inquiry_mode_rp im;
 	read_ext_inquiry_response_rp ir;
 	read_simple_pairing_mode_rp pm;
+	read_le_host_supported_rp hs;
 	uint8_t status;
 
 	const uint16_t ogf = OGF_HOST_CTL;
@@ -720,6 +723,20 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	case OCF_WRITE_SIMPLE_PAIRING_MODE:
 		status = 0x00;
 		vdev.ssp_mode = data[0];
+		command_complete(ogf, ocf, 1, &status);
+		break;
+
+	case OCF_READ_LE_HOST_SUPPORTED:
+		hs.status = 0x00;
+		hs.le = vdev.le_mode;
+		hs.simul = vdev.le_simul;
+		command_complete(ogf, ocf, sizeof(hs), &hs);
+		break;
+
+	case OCF_WRITE_LE_HOST_SUPPORTED:
+		status = 0x00;
+		vdev.le_mode = data[0];
+		vdev.le_simul = data[1];
 		command_complete(ogf, ocf, 1, &status);
 		break;
 
@@ -1158,7 +1175,9 @@ int main(int argc, char *argv[])
 	vdev.features[6] = 0x00;
 	vdev.features[7] = 0x80;
 
+	vdev.features[4] |= 0x40;	/* LE Supported */
 	vdev.features[6] |= 0x01;	/* Extended Inquiry Response */
+	vdev.features[6] |= 0x02;	/* BR/EDR and LE */
 	vdev.features[6] |= 0x08;	/* Secure Simple Pairing */
 
 	memset(vdev.name, 0, sizeof(vdev.name));
@@ -1173,6 +1192,8 @@ int main(int argc, char *argv[])
 	vdev.inq_mode = 0x00;
 	vdev.eir_fec = 0x00;
 	memset(vdev.eir_data, 0, sizeof(vdev.eir_data));
+	vdev.le_mode = 0x00;
+	vdev.le_simul = 0x00;
 
 	vdev.dev_fd = device_fd;
 	vdev.dd = dd;
