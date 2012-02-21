@@ -779,8 +779,15 @@ static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 		ef.status = 0x00;
 		if (*data == 0) {
 			ef.page_num = 0;
-			ef.max_page_num = 0;
+			ef.max_page_num = 1;
 			memcpy(ef.features, vdev.features, 8);
+		} else if (*data == 1) {
+			ef.page_num = 1;
+			ef.max_page_num = 1;
+			memset(ef.features, 0, 8);
+			ef.features[0] |= (!!vdev.ssp_mode << 0);
+			ef.features[0] |= (!!vdev.le_mode << 1);
+			ef.features[0] |= (!!vdev.le_simul << 2);
 		} else {
 			ef.page_num = *data;
 			ef.max_page_num = 0;
