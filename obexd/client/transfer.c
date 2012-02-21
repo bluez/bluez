@@ -391,7 +391,7 @@ static void get_buf_xfer_progress(GObex *obex, GError *err, GObexPacket *rsp,
 							transfer, &err);
 	}
 
-	if (callback)
+	if (callback && transfer->transferred != transfer->size)
 		callback->func(transfer, transfer->transferred, err,
 							callback->data);
 }
@@ -435,7 +435,7 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 		transfer->filled -= w;
 	}
 
-	if (callback)
+	if (callback && transfer->transferred != transfer->size)
 		callback->func(transfer, transfer->transferred, NULL,
 							callback->data);
 
