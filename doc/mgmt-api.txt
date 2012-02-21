@@ -128,6 +128,10 @@ Set Powered Command
 	Command Parameters:	Powered (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	If discoverable setting is activated with a timeout, then
+	switching the controller off will expire this timeout and
+	disable discoverable.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -141,7 +145,7 @@ Set Discoverable Command
 				Timeout (2 Octets)
 	Return Parameters:	Current_Settings (4 Octets)
 
-	Timeout is the time in seconds and is only meningful when
+	Timeout is the time in seconds and is only meaningful when
 	Discoverable is set to 1.
 
 	This command can be used when the controller is not powered and
@@ -149,6 +153,9 @@ Set Discoverable Command
 
 	However using a timeout when the controller is not powered will
 	return an error.
+
+	When switching discoverable on and the connectable setting is
+	off it will return an error.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -165,6 +172,13 @@ Set Connectable Command
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
+	When switching connectable off, it will also switch off the
+	discoverable setting. Once turned back on, it will restore the
+	value of discoverable setting (unless changed via Set Discoverable).
+
+	When switching connectable off it will expire a discoverable
+	setting with a timeout.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -180,6 +194,8 @@ Set Fast Connectable Command
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
+	If connectable is not set, then this command will fail.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -194,6 +210,11 @@ Set Pairable Command
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
+
+	Turning pairable on will not automatically switch the controller
+	into connectable mode. That needs to be done separately.
+
+	The setting will be remembered during power down/up toggles.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
