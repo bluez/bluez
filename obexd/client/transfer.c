@@ -488,23 +488,25 @@ static gssize put_xfer_progress(void *buf, gsize len, gpointer user_data)
 	return size;
 }
 
-static void obc_transfer_set_callback(struct obc_transfer *transfer,
+gboolean obc_transfer_set_callback(struct obc_transfer *transfer,
 					transfer_callback_t func,
 					void *user_data)
 {
 	struct transfer_callback *callback;
 
-	g_free(transfer->callback);
+	if (transfer->callback != NULL)
+		return FALSE;
 
 	callback = g_new0(struct transfer_callback, 1);
 	callback->func = func;
 	callback->data = user_data;
 
 	transfer->callback = callback;
+
+	return TRUE;
 }
 
-int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
-			void *user_data)
+int obc_transfer_get(struct obc_transfer *transfer)
 {
 	GError *err = NULL;
 	GObexPacket *req;
@@ -558,14 +560,10 @@ int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
 	if (transfer->xfer == 0)
 		return -ENOTCONN;
 
-	if (func)
-		obc_transfer_set_callback(transfer, func, user_data);
-
 	return 0;
 }
 
-int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
-			void *user_data)
+int obc_transfer_put(struct obc_transfer *transfer)
 {
 	GError *err = NULL;
 	GObexPacket *req;
@@ -605,9 +603,6 @@ done:
 						&err);
 	if (transfer->xfer == 0)
 		return -ENOTCONN;
-
-	if (func)
-		obc_transfer_set_callback(transfer, func, user_data);
 
 	return 0;
 }

@@ -42,10 +42,12 @@ struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 
 void obc_transfer_unregister(struct obc_transfer *transfer);
 
-int obc_transfer_get(struct obc_transfer *transfer, transfer_callback_t func,
-			void *user_data);
-int obc_transfer_put(struct obc_transfer *transfer, transfer_callback_t func,
-			void *user_data);
+gboolean obc_transfer_set_callback(struct obc_transfer *transfer,
+					transfer_callback_t func,
+					void *user_data);
+
+int obc_transfer_get(struct obc_transfer *transfer);
+int obc_transfer_put(struct obc_transfer *transfer);
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params);

@@ -107,6 +107,9 @@ static void session_prepare_put(gpointer data, gpointer user_data);
 static void session_terminate_transfer(struct obc_session *session,
 					struct obc_transfer *transfer,
 					GError *gerr);
+static void transfer_progress(struct obc_transfer *transfer,
+					gint64 transferred, GError *err,
+					void *user_data);
 
 GQuark obex_io_error_quark(void)
 {
@@ -710,6 +713,8 @@ static int session_request(struct obc_session *session,
 	struct pending_request *p;
 	int err;
 
+	obc_transfer_set_callback(transfer, transfer_progress, session);
+
 	p = pending_request_new(session, transfer, auth_complete, func, data);
 
 	if (session->p) {
@@ -869,7 +874,7 @@ static void session_prepare_get(gpointer data, gpointer user_data)
 	struct obc_transfer *transfer = user_data;
 	int ret;
 
-	ret = obc_transfer_get(transfer, transfer_progress, session);
+	ret = obc_transfer_get(transfer);
 	if (ret < 0) {
 		GError *gerr = NULL;
 
@@ -1014,7 +1019,7 @@ static void session_prepare_put(gpointer data, gpointer user_data)
 	struct obc_transfer *transfer = user_data;
 	int ret;
 
-	ret = obc_transfer_put(transfer, transfer_progress, session);
+	ret = obc_transfer_put(transfer);
 	if (ret < 0) {
 		GError *gerr = NULL;
 
