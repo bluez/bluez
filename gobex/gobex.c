@@ -735,6 +735,9 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id, gboolean remove_callback)
 			goto immediate_completion;
 		}
 
+		if (remove_callback)
+			obex->pending_req->rsp_func = NULL;
+
 		return TRUE;
 	}
 
