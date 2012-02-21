@@ -839,9 +839,18 @@ static void hci_status_param(uint16_t ocf, int plen, uint8_t *data)
 
 static void hci_le_control(uint16_t ocf, int plen, uint8_t *data)
 {
+	le_read_buffer_size_rp bs;
+
 	const uint16_t ogf = OGF_LE_CTL;
 
 	switch (ocf) {
+	case OCF_LE_READ_BUFFER_SIZE:
+		bs.status = 0;
+		bs.pkt_len = htobs(VHCI_ACL_MTU);
+		bs.max_pkt = htobs(VHCI_ACL_MAX_PKT);
+		command_complete(ogf, ocf, sizeof(bs), &bs);
+		break;
+
 	default:
 		command_status(ogf, ocf, 0x01);
 		break;
