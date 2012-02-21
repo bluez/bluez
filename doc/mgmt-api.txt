@@ -173,10 +173,11 @@ Set Connectable Command
 	all settings will be programmed once powered.
 
 	When switching connectable off, it will also switch off the
-	discoverable setting. Once turned back on, it will restore the
-	value of discoverable setting (unless changed via Set Discoverable).
+	discoverable setting. Switching connectable back on will not
+	restore a previous discoverable. It will stay off and needs
+	to be manually switched back on.
 
-	When switching connectable off it will expire a discoverable
+	When switching connectable off, it will expire a discoverable
 	setting with a timeout.
 
 	This command generates a Command Complete event on success or
