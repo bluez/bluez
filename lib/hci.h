@@ -1249,6 +1249,14 @@ typedef struct {
 } __attribute__ ((packed)) write_best_effort_flush_timeout_rp;
 #define WRITE_BEST_EFFORT_FLUSH_TIMEOUT_RP_SIZE 1
 
+#define OCF_READ_LE_HOST_SUPPORTED	0x006C
+typedef struct {
+	uint8_t		status;
+	uint8_t		le;
+	uint8_t		simul;
+} __attribute__ ((packed)) read_le_host_supported_rp;
+#define READ_LE_HOST_SUPPORTED_RP_SIZE 3
+
 #define OCF_WRITE_LE_HOST_SUPPORTED	0x006D
 typedef struct {
 	uint8_t		le;
