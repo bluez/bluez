@@ -168,7 +168,7 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 	DBusMessage *reply;
 
 	sender = dbus_message_get_sender(message);
-	if (g_str_equal(transfer->agent, sender) == FALSE)
+	if (g_strcmp0(transfer->agent, sender) != 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
