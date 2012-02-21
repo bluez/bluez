@@ -599,6 +599,9 @@ static void media_transport_add(struct media_transport *transport,
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 	transport->owners = g_slist_append(transport->owners, owner);
 	owner->transport = transport;
+	owner->watch = g_dbus_add_disconnect_watch(transport->conn, owner->name,
+							media_owner_exit,
+							owner, NULL);
 }
 
 static struct media_owner *media_owner_create(DBusConnection *conn,
@@ -610,9 +613,6 @@ static struct media_owner *media_owner_create(DBusConnection *conn,
 	owner = g_new0(struct media_owner, 1);
 	owner->name = g_strdup(dbus_message_get_sender(msg));
 	owner->accesstype = g_strdup(accesstype);
-	owner->watch = g_dbus_add_disconnect_watch(conn, owner->name,
-							media_owner_exit,
-							owner, NULL);
 
 	DBG("Owner created: sender=%s accesstype=%s", owner->name,
 			accesstype);
