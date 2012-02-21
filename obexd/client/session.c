@@ -732,6 +732,9 @@ static void session_process_queue(struct obc_session *session)
 {
 	struct pending_request *p;
 
+	if (session->p != NULL)
+		return;
+
 	if (session->queue == NULL || g_queue_is_empty(session->queue))
 		return;
 
