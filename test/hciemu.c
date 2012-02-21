@@ -58,6 +58,7 @@ struct vhci_device {
 	uint8_t		features[8];
 	uint8_t		name[248];
 	uint8_t		dev_class[3];
+	uint8_t		ssp_mode;
 	uint8_t		inq_mode;
 	uint8_t		eir_fec;
 	uint8_t		eir_data[HCI_MAX_EIR_LENGTH];
@@ -623,6 +624,7 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	read_class_of_dev_rp cd;
 	read_inquiry_mode_rp im;
 	read_ext_inquiry_response_rp ir;
+	read_simple_pairing_mode_rp pm;
 	uint8_t status;
 
 	const uint16_t ogf = OGF_HOST_CTL;
@@ -706,6 +708,18 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 		status = 0x00;
 		vdev.eir_fec = data[0];
 		memcpy(vdev.eir_data, data + 1, HCI_MAX_EIR_LENGTH);
+		command_complete(ogf, ocf, 1, &status);
+		break;
+
+	case OCF_READ_SIMPLE_PAIRING_MODE:
+		pm.status = 0x00;
+		pm.mode = vdev.ssp_mode;
+		command_complete(ogf, ocf, sizeof(pm), &pm);
+		break;
+
+	case OCF_WRITE_SIMPLE_PAIRING_MODE:
+		status = 0x00;
+		vdev.ssp_mode = data[0];
 		command_complete(ogf, ocf, 1, &status);
 		break;
 
@@ -1141,8 +1155,11 @@ int main(int argc, char *argv[])
 	vdev.features[3] = 0xfe;
 	vdev.features[4] = 0x9b;
 	vdev.features[5] = 0xf9;
-	vdev.features[6] = 0x01;
+	vdev.features[6] = 0x00;
 	vdev.features[7] = 0x80;
+
+	vdev.features[6] |= 0x01;	/* Extended Inquiry Response */
+	vdev.features[6] |= 0x08;	/* Secure Simple Pairing */
 
 	memset(vdev.name, 0, sizeof(vdev.name));
 	strncpy((char *) vdev.name, "BlueZ (Virtual HCI)",
@@ -1152,6 +1169,7 @@ int main(int argc, char *argv[])
 	vdev.dev_class[1] = 0x00;
 	vdev.dev_class[2] = 0x00;
 
+	vdev.ssp_mode = 0x00;
 	vdev.inq_mode = 0x00;
 	vdev.eir_fec = 0x00;
 	memset(vdev.eir_data, 0, sizeof(vdev.eir_data));
