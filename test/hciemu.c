@@ -579,8 +579,6 @@ do_connect:
 
 static void hci_link_control(uint16_t ocf, int plen, uint8_t *data)
 {
-	uint8_t status;
-
 	const uint16_t ogf = OGF_LINK_CTL;
 
 	switch (ocf) {
@@ -600,22 +598,18 @@ static void hci_link_control(uint16_t ocf, int plen, uint8_t *data)
 		break;
 
 	default:
-		status = 0x01;
-		command_complete(ogf, ocf, 1, &status);
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
 
 static void hci_link_policy(uint16_t ocf, int plen, uint8_t *data)
 {
-	uint8_t status;
-
 	const uint16_t ogf = OGF_INFO_PARAM;
 
 	switch (ocf) {
 	default:
-		status = 0x01;
-		command_complete(ogf, ocf, 1, &status);
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
@@ -741,8 +735,7 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 		break;
 
 	default:
-		status = 0x01;
-		command_complete(ogf, ocf, 1, &status);
+		command_status(ogf, ocf, status);
 		break;
 	}
 }
@@ -754,7 +747,6 @@ static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 	read_local_ext_features_rp ef;
 	read_buffer_size_rp bs;
 	read_bd_addr_rp ba;
-	uint8_t status;
 
 	const uint16_t ogf = OGF_INFO_PARAM;
 
@@ -812,8 +804,7 @@ static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 		break;
 
 	default:
-		status = 0x01;
-		command_complete(ogf, ocf, 1, &status);
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
@@ -821,7 +812,6 @@ static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 static void hci_status_param(uint16_t ocf, int plen, uint8_t *data)
 {
 	read_local_amp_info_rp ai;
-	uint8_t status;
 
 	const uint16_t ogf = OGF_STATUS_PARAM;
 
@@ -842,8 +832,18 @@ static void hci_status_param(uint16_t ocf, int plen, uint8_t *data)
 		break;
 
 	default:
-		status = 0x01;
-		command_complete(ogf, ocf, 1, &status);
+		command_status(ogf, ocf, 0x01);
+		break;
+	}
+}
+
+static void hci_le_control(uint16_t ocf, int plen, uint8_t *data)
+{
+	const uint16_t ogf = OGF_LE_CTL;
+
+	switch (ocf) {
+	default:
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
@@ -880,6 +880,14 @@ static void hci_command(uint8_t *data)
 
 	case OGF_STATUS_PARAM:
 		hci_status_param(ocf, ch->plen, ptr);
+		break;
+
+	case OGF_LE_CTL:
+		hci_le_control(ocf, ch->plen, ptr);
+		break;
+
+	default:
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
