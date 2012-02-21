@@ -730,10 +730,10 @@ static void hci_info_param(uint16_t ocf, int plen, uint8_t *data)
 	switch (ocf) {
 	case OCF_READ_LOCAL_VERSION:
 		lv.status = 0x00;
-		lv.hci_ver = 0x03;
+		lv.hci_ver = 0x06;
 		lv.hci_rev = htobs(0x0000);
-		lv.lmp_ver = 0x03;
-		lv.manufacturer = htobs(29);
+		lv.lmp_ver = 0x06;
+		lv.manufacturer = htobs(63);
 		lv.lmp_subver = htobs(0x0000);
 		command_complete(ogf, ocf, sizeof(lv), &lv);
 		break;
