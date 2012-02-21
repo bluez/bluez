@@ -1128,8 +1128,12 @@ const char *obc_session_get_buffer(struct obc_session *session, size_t *size)
 	const char *buf;
 
 	transfer = obc_session_get_transfer(session);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		if (size != NULL)
+			*size = 0;
+
 		return NULL;
+	}
 
 	buf = obc_transfer_get_buffer(transfer, size);
 
