@@ -1413,7 +1413,7 @@ static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
 	struct mgmt_cp_set_local_name cp;
 
 	if (argc < 2) {
-		printf("Usage: btmgmt %s <name>\n", argv[0]);
+		printf("Usage: btmgmt %s <name> [shortname]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -1422,6 +1422,9 @@ static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, argv[1], HCI_MAX_NAME_LENGTH);
+	if (argc > 2)
+		strncpy((char *) cp.short_name, argv[2],
+					MGMT_MAX_SHORT_NAME_LENGTH);
 
 	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_LOCAL_NAME, index,
 					&cp, sizeof(cp), name_rsp, NULL) < 0) {
