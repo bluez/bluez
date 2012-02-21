@@ -58,6 +58,7 @@ struct vhci_device {
 	uint8_t		features[8];
 	uint8_t		name[248];
 	uint8_t		dev_class[3];
+	uint8_t		scan_enable;
 	uint8_t		ssp_mode;
 	uint8_t		inq_mode;
 	uint8_t		eir_fec;
@@ -401,8 +402,9 @@ static void num_completed_pkts(struct vhci_conn *conn)
 						strerror(errno), errno);
 }
 
-static int scan_enable(uint8_t *data)
+static uint8_t scan_enable(uint8_t *data)
 {
+#if 0
 	struct epoll_event scan_event;
 	struct sockaddr_in sa;
 	bdaddr_t ba;
@@ -459,6 +461,9 @@ static int scan_enable(uint8_t *data)
 failed:
 	close(sk);
 	return 1;
+#endif
+
+	return data[0];
 }
 
 static void accept_connection(uint8_t *data)
@@ -616,6 +621,7 @@ static void hci_link_policy(uint16_t ocf, int plen, uint8_t *data)
 
 static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 {
+	read_scan_enable_rp se;
 	read_local_name_rp ln;
 	read_class_of_dev_rp cd;
 	read_inquiry_mode_rp im;
@@ -655,8 +661,15 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 		command_complete(ogf, ocf, 1, &status);
 		break;
 
+	case OCF_READ_SCAN_ENABLE:
+		se.status = 0x00;
+		se.enable = vdev.scan_enable;
+		command_complete(ogf, ocf, sizeof(se), &se);
+		break;
+
 	case OCF_WRITE_SCAN_ENABLE:
-		status = scan_enable(data);
+		status = 0x00;
+		vdev.scan_enable = scan_enable(data);
 		command_complete(ogf, ocf, 1, &status);
 		break;
 
@@ -1212,6 +1225,7 @@ int main(int argc, char *argv[])
 	vdev.dev_class[1] = 0x00;
 	vdev.dev_class[2] = 0x00;
 
+	vdev.scan_enable = 0x00;
 	vdev.ssp_mode = 0x00;
 	vdev.inq_mode = 0x00;
 	vdev.eir_fec = 0x00;
