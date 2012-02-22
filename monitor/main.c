@@ -38,6 +38,7 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
+#include <bluetooth/mgmt.h>
 
 #ifndef HCI_CHANNEL_MONITOR
 #define HCI_CHANNEL_MONITOR  2
@@ -671,6 +672,160 @@ static void process_monitor(int fd)
 	}
 }
 
+static void mgmt_index_added(uint16_t len, void *buf)
+{
+	printf("@ Index Added\n");
+
+	hexdump(buf, len);
+}
+
+static void mgmt_index_removed(uint16_t len, void *buf)
+{
+	printf("@ Index Removed\n");
+
+	hexdump(buf, len);
+}
+
+static void mgmt_new_settings(uint16_t len, void *buf)
+{
+	uint32_t settings;
+
+        if (len < 4) {
+                printf("* Malformed New Settings control\n");
+                return;
+        }
+
+	settings = bt_get_le32(buf);
+
+	printf("@ New Settings: 0x%4.4x\n", settings);
+
+	buf += 4;
+	len -= 4;
+
+	hexdump(buf, len);
+}
+
+static void mgmt_class_of_dev_changed(uint16_t len, void *buf)
+{
+	struct mgmt_ev_class_of_dev_changed *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Class of Device Changed control\n");
+		return;
+	}
+
+	printf("@ Class of Device Changed: 0x%2.2x%2.2x%2.2x\n",
+						ev->class_of_dev[2],
+						ev->class_of_dev[1],
+						ev->class_of_dev[0]);
+
+        buf += sizeof(*ev);
+        len -= sizeof(*ev);
+
+        hexdump(buf, len);
+}
+
+static void mgmt_local_name_changed(uint16_t len, void *buf)
+{
+	struct mgmt_ev_local_name_changed *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Local Name Changed control\n");
+		return;
+	}
+
+	printf("@ Local Name Changed: %s (%s)\n", ev->name, ev->short_name);
+
+        buf += sizeof(*ev);
+        len -= sizeof(*ev);
+
+        hexdump(buf, len);
+}
+
+static void process_control(int fd)
+{
+	unsigned char buf[4096];
+	unsigned char control[32];
+	struct mgmt_hdr hdr;
+	struct msghdr msg;
+	struct iovec iov[2];
+	struct cmsghdr *cmsg;
+	struct timeval *tv = NULL;
+	uint16_t opcode, index, pktlen;
+	ssize_t len;
+
+	iov[0].iov_base = &hdr;
+	iov[0].iov_len = MGMT_HDR_SIZE;
+	iov[1].iov_base = buf;
+	iov[1].iov_len = sizeof(buf);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+	msg.msg_control = control;
+	msg.msg_controllen = sizeof(control);
+
+	len = recvmsg(fd, &msg, MSG_DONTWAIT);
+	if (len < 0)
+		return;
+
+	if (len < MGMT_HDR_SIZE)
+		return;
+
+	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+		if (cmsg->cmsg_level != SOL_SOCKET)
+			continue;
+
+		if (cmsg->cmsg_type == SCM_TIMESTAMP)
+			tv = (void *) CMSG_DATA(cmsg);
+	}
+
+	opcode = btohs(hdr.opcode);
+	index  = btohs(hdr.index);
+	pktlen = btohs(hdr.len);
+
+	if (filter_mask & FILTER_SHOW_INDEX)
+		printf("{hci%d} ", index);
+
+	if (tv) {
+		time_t t = tv->tv_sec;
+		struct tm tm;
+
+		localtime_r(&t, &tm);
+
+		if (filter_mask & FILTER_SHOW_DATE)
+			printf("%04d-%02d-%02d ",
+				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
+
+		if (filter_mask & FILTER_SHOW_TIME)
+			printf("%02d:%02d:%02d.%06lu ",
+				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
+	}
+
+	switch (opcode) {
+	case MGMT_EV_INDEX_ADDED:
+		mgmt_index_added(pktlen, buf);
+		break;
+	case MGMT_EV_INDEX_REMOVED:
+		mgmt_index_removed(pktlen, buf);
+		break;
+	case MGMT_EV_NEW_SETTINGS:
+		mgmt_new_settings(pktlen, buf);
+		break;
+	case MGMT_EV_CLASS_OF_DEV_CHANGED:
+		mgmt_class_of_dev_changed(pktlen, buf);
+		break;
+	case MGMT_EV_LOCAL_NAME_CHANGED:
+		mgmt_local_name_changed(pktlen, buf);
+		break;
+	default:
+		printf("* Unknown control (code %d len %d)\n", opcode, pktlen);
+		hexdump(buf, pktlen);
+		break;
+	}
+}
+
 static int open_monitor(void)
 {
 	struct sockaddr_hci addr;
@@ -702,13 +857,44 @@ static int open_monitor(void)
 	return fd;
 }
 
+static int open_control(void)
+{
+	struct sockaddr_hci addr;
+	int fd, opt = 1;
+
+	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	if (fd < 0) {
+		perror("Failed to open control channel");
+		return -1;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.hci_family = AF_BLUETOOTH;
+	addr.hci_dev = HCI_DEV_NONE;
+	addr.hci_channel = HCI_CHANNEL_CONTROL;
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Failed to bind control channel");
+		close(fd);
+		return -1;
+	}
+
+	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &opt, sizeof(opt)) < 0) {
+		perror("Failed to enable control timestamps");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
 #define MAX_EPOLL_EVENTS 10
 
 int main(int argc, char *argv[])
 {
 	int exitcode = EXIT_FAILURE;
-	struct epoll_event mon_event;
-	int mon_fd, epoll_fd;
+	struct epoll_event epoll_event;
+	int mon_fd, ctl_fd, epoll_fd;
 
 	filter_mask |= FILTER_SHOW_INDEX;
 	filter_mask |= FILTER_SHOW_TIME;
@@ -718,20 +904,33 @@ int main(int argc, char *argv[])
 	if (mon_fd < 0)
 		return exitcode;
 
+	ctl_fd = open_control();
+	if (ctl_fd < 0)
+		goto close_monitor;
+
 	epoll_fd = epoll_create1(EPOLL_CLOEXEC);
 	if (epoll_fd < 0) {
 		perror("Failed to create epoll descriptor");
-		goto close_monitor;
+		goto close_control;
 	}
 
-	memset(&mon_event, 0, sizeof(mon_event));
-	mon_event.events = EPOLLIN;
-	mon_event.data.fd = mon_fd;
+	memset(&epoll_event, 0, sizeof(epoll_event));
+	epoll_event.events = EPOLLIN;
+	epoll_event.data.fd = mon_fd;
 
-	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, mon_fd, &mon_event) < 0) {
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, mon_fd, &epoll_event) < 0) {
 		perror("Failed to setup monitor event watch");
                 goto close_epoll;
         }
+
+	memset(&epoll_event, 0, sizeof(epoll_event));
+	epoll_event.events = EPOLLIN;
+	epoll_event.data.fd = ctl_fd;
+
+	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, ctl_fd, &epoll_event) < 0) {
+		perror("Failed to setup control event watch");
+		goto close_epoll;
+	}
 
 	for (;;) {
 		struct epoll_event events[MAX_EPOLL_EVENTS];
@@ -744,6 +943,8 @@ int main(int argc, char *argv[])
 		for (n = 0; n < nfds; n++) {
 			if (events[n].data.fd == mon_fd)
 				process_monitor(mon_fd);
+			else if (events[n].data.fd == ctl_fd)
+				process_control(ctl_fd);
 		}
 	}
 
@@ -751,6 +952,9 @@ int main(int argc, char *argv[])
 
 close_epoll:
 	close(epoll_fd);
+
+close_control:
+	close(ctl_fd);
 
 close_monitor:
 	close(mon_fd);
