@@ -1379,6 +1379,13 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
 			index, addr, ev->rssi, flags, eir_len);
 
+	if (flags & MGMT_DEV_FOUND_LEGACY_PAIRING)
+		btd_event_set_legacy_pairing(&info->bdaddr, &ev->addr.bdaddr,
+									TRUE);
+	else
+		btd_event_set_legacy_pairing(&info->bdaddr, &ev->addr.bdaddr,
+									FALSE);
+
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
