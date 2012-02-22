@@ -319,6 +319,14 @@ Set Local Name Command
 	The name parameters need to always end with a nul byte (failure
 	to do so will cause the command to fail).
 
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	The values of name and short name will be remembered when
+	switching the controller off and back on again. So the name
+	and short name only have to be set once when a new controller
+	is found and will stay until removed.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
