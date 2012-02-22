@@ -987,6 +987,7 @@ Event Code		0x000F
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+			Confirm_Hint (1 Octet)
 			Value (4 Octets)
 
 
