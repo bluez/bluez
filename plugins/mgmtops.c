@@ -289,6 +289,7 @@ static uint8_t create_mode(uint32_t settings)
 
 static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 {
+	struct controller_info *info;
 	gboolean pairable;
 	uint8_t on_mode;
 	uint16_t index;
@@ -304,6 +305,8 @@ static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 
 	index = adapter_get_dev_id(adapter);
 
+	info = &controllers[index];
+
 	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings))
 		mgmt_set_discoverable(index, TRUE);
 	else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings))
@@ -314,7 +317,7 @@ static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 	if (mgmt_pairable(settings) != pairable)
 		mgmt_set_pairable(index, pairable);
 
-	if (!mgmt_ssp(settings))
+	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
 		mgmt_set_mode(index, MGMT_OP_SET_SSP, 1);
 
 	return 0;
