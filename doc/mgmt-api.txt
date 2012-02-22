@@ -302,6 +302,13 @@ Set Device Class
 	This command will also implicitly disable caching of pending CoD
 	and EIR updates.
 
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	In case the controller is powered off, 0x000000 will be returned
+	for the class of device parameter. And after power on the new
+	value will be announced via class of device changed event.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -340,6 +347,13 @@ Add UUID Command
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	In case the controller is powered off, 0x000000 will be returned
+	for the class of device parameter. And after power on the new
+	value will be announced via class of device changed event.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -351,6 +365,13 @@ Remove UUID Command
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
+
+	This command can be used when the controller is not powered and
+	all settings will be programmed once powered.
+
+	In case the controller is powered off, 0x000000 will be returned
+	for the class of device parameter. And after power on the new
+	value will be announced via class of device changed event.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -373,6 +394,8 @@ Load Link Keys Command
 				Key2 { }
 				...
 	Return Parameters:
+
+	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -475,6 +498,8 @@ Set IO Capability Command
 	Controller Index:	<controller id>
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
+
+	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -627,7 +652,7 @@ Add Remote Out Of Band Data Command
 
 
 Remove Remote Out Of Band Data Command
-========================================
+======================================
 
 	Command Code:		0x0022
 	Controller Index:	<controller id>
@@ -706,6 +731,8 @@ Block Device Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can be used when the controller is not powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -719,6 +746,8 @@ Unblock Device Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success
 	or failure.
