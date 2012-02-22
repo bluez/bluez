@@ -99,7 +99,7 @@ void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
 						gboolean remove_storage);
 
 struct btd_adapter *adapter_create(DBusConnection *conn, int id);
-gboolean adapter_init(struct btd_adapter *adapter);
+gboolean adapter_init(struct btd_adapter *adapter, gboolean up);
 void adapter_remove(struct btd_adapter *adapter);
 void adapter_set_allow_name_changes(struct btd_adapter *adapter,
 						gboolean allow_name_changes);

@@ -2454,11 +2454,9 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 	g_free(path);
 }
 
-gboolean adapter_init(struct btd_adapter *adapter)
+gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 {
-	/* adapter_ops makes sure that newly registered adapters always
-	 * start off as powered */
-	adapter->up = TRUE;
+	adapter->up = up;
 
 	adapter->allow_name_changes = TRUE;
 

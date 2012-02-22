@@ -377,7 +377,7 @@ void manager_add_adapter(const char *path)
 	btd_stop_exit_timer();
 }
 
-struct btd_adapter *btd_manager_register_adapter(int id)
+struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 {
 	struct btd_adapter *adapter;
 	const char *path;
@@ -394,7 +394,7 @@ struct btd_adapter *btd_manager_register_adapter(int id)
 
 	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_init(adapter)) {
+	if (!adapter_init(adapter, up)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;

@@ -959,7 +959,8 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
 
-	adapter = btd_manager_register_adapter(index);
+	adapter = btd_manager_register_adapter(index,
+					mgmt_powered(info->current_settings));
 	if (adapter == NULL) {
 		error("mgmtops: unable to register adapter");
 		return;

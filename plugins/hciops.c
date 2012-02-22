@@ -656,7 +656,7 @@ static gboolean init_adapter(int index)
 	gboolean pairable, discoverable;
 
 	if (!dev->registered) {
-		adapter = btd_manager_register_adapter(index);
+		adapter = btd_manager_register_adapter(index, TRUE);
 		if (adapter)
 			dev->registered = TRUE;
 	} else {
