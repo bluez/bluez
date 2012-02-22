@@ -46,10 +46,7 @@ struct main_opts {
 };
 
 enum {
-	HCID_SET_NAME,
-	HCID_SET_CLASS,
 	HCID_SET_PAGETO,
-	HCID_SET_DISCOVTO,
 };
 
 extern struct main_opts main_opts;

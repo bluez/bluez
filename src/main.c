@@ -107,7 +107,6 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("discovto=%d", val);
 		main_opts.discovto = val;
-		main_opts.flags |= 1 << HCID_SET_DISCOVTO;
 	}
 
 	val = g_key_file_get_integer(config, "General",
@@ -148,7 +147,6 @@ static void parse_config(GKeyFile *config)
 		DBG("name=%s", str);
 		g_free(main_opts.name);
 		main_opts.name = g_strdup(str);
-		main_opts.flags |= 1 << HCID_SET_NAME;
 		g_free(str);
 	}
 
@@ -159,7 +157,6 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("class=%s", str);
 		main_opts.class = strtol(str, NULL, 16);
-		main_opts.flags |= 1 << HCID_SET_CLASS;
 		g_free(str);
 	}
 
