@@ -40,6 +40,10 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/mgmt.h>
 
+#ifndef NELEM
+#define NELEM(x) (sizeof(x) / sizeof((x)[0]))
+#endif
+
 #ifndef HCI_CHANNEL_MONITOR
 #define HCI_CHANNEL_MONITOR  2
 #endif
@@ -686,9 +690,15 @@ static void mgmt_index_removed(uint16_t len, void *buf)
 	hexdump(buf, len);
 }
 
+static const char *settings_str[] = {
+	"powered", "connectable", "fast-connectable", "discoverable",
+	"pairable", "link-security", "ssp", "br/edr", "hs", "le"
+};
+
 static void mgmt_new_settings(uint16_t len, void *buf)
 {
 	uint32_t settings;
+	unsigned int i;
 
         if (len < 4) {
                 printf("* Malformed New Settings control\n");
@@ -698,6 +708,13 @@ static void mgmt_new_settings(uint16_t len, void *buf)
 	settings = bt_get_le32(buf);
 
 	printf("@ New Settings: 0x%4.4x\n", settings);
+
+	printf("%-12c", ' ');
+	for (i = 0; i < NELEM(settings_str); i++) {
+		if (settings & (1 << i))
+			printf("%s ", settings_str[i]);
+	}
+	printf("\n");
 
 	buf += 4;
 	len -= 4;
