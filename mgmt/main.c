@@ -578,12 +578,13 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u dev_found: %s type %s rssi %d "
-			"confirm_name %u eir_len %u\n", index, addr,
-			typestr(ev->addr.type),
-			ev->rssi, ev->confirm_name, eir_len);
+			"flags 0x%02x%02x%02x%02x eir_len %u\n", index, addr,
+			typestr(ev->addr.type), ev->rssi,
+			ev->flags[3], ev->flags[2], ev->flags[1], ev->flags[0],
+			eir_len);
 	}
 
-	if (discovery && ev->confirm_name) {
+	if (discovery && (ev->flags[0] & MGMT_DEV_FOUND_CONFIRM_NAME)) {
 		struct mgmt_cp_confirm_name cp;
 
 		memset(&cp, 0, sizeof(cp));

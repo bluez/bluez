@@ -381,11 +381,14 @@ struct mgmt_ev_auth_failed {
 	uint8_t status;
 } __packed;
 
+#define MGMT_DEV_FOUND_CONFIRM_NAME	0x01
+#define MGMT_DEV_FOUND_LEGACY_PAIRING	0x02
+
 #define MGMT_EV_DEVICE_FOUND		0x0012
 struct mgmt_ev_device_found {
 	struct mgmt_addr_info addr;
 	int8_t rssi;
-	uint8_t confirm_name;
+	uint8_t flags[4];
 	uint16_t eir_len;
 	uint8_t eir[0];
 } __packed;

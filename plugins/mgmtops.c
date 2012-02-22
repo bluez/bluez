@@ -1346,6 +1346,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	char addr[18];
 	uint16_t eir_len;
 	uint8_t *eir;
+	gboolean confirm_name;
 
 	if (len < sizeof(*ev)) {
 		error("mgmt_device_found too short (%zu bytes)", len);
@@ -1372,12 +1373,16 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 		eir = ev->eir;
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, rssi %d cfm_name %u eir_len %u", index, addr, ev->rssi,
-					ev->confirm_name, eir_len);
+	DBG("hci%u addr %s, rssi %d flags 0x%02x%02x%02x%02x eir_len %u",
+			index, addr, ev->rssi,
+			ev->flags[3], ev->flags[2], ev->flags[1], ev->flags[0],
+			eir_len);
+
+	confirm_name = (ev->flags[0] & MGMT_DEV_FOUND_CONFIRM_NAME);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
 						addr_type(ev->addr.type),
-						ev->rssi, ev->confirm_name,
+						ev->rssi, confirm_name,
 						eir, eir_len);
 }
 
