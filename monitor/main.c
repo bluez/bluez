@@ -710,6 +710,46 @@ static void mgmt_local_name_changed(uint16_t len, void *buf)
 	hexdump(buf, len);
 }
 
+static void mgmt_new_link_key(uint16_t len, void *buf)
+{
+	struct mgmt_ev_new_link_key *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed New Link Key control\n");
+		return;
+	}
+
+	ba2str(&ev->key.addr.bdaddr, str);
+
+	printf("@ New Link Key: %s (%d)\n", str, ev->key.addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_new_long_term_key(uint16_t len, void *buf)
+{
+	struct mgmt_ev_new_long_term_key *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed New Long Term Key control\n");
+		return;
+	}
+
+	ba2str(&ev->key.addr.bdaddr, str);
+
+	printf("@ New Long Term Key: %s (%d)\n", str, ev->key.addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
 static void mgmt_device_connected(uint16_t len, void *buf)
 {
 	struct mgmt_ev_device_connected *ev = buf;
@@ -763,6 +803,27 @@ static void mgmt_connect_failed(uint16_t len, void *buf)
 	ba2str(&ev->addr.bdaddr, str);
 
 	printf("@ Connect Failed: %s (%d) status 0x%2.2x\n",
+					str, ev->addr.type, ev->status);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_auth_failed(uint16_t len, void *buf)
+{
+	struct mgmt_ev_auth_failed *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Authentication Failed control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Authentication Failed: %s (%d) status 0x%2.2x\n",
 					str, ev->addr.type, ev->status);
 
 	buf += sizeof(*ev);
@@ -869,6 +930,12 @@ static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 	case MGMT_EV_LOCAL_NAME_CHANGED:
 		mgmt_local_name_changed(pktlen, buf);
 		break;
+	case MGMT_EV_NEW_LINK_KEY:
+		mgmt_new_link_key(pktlen, buf);
+		break;
+	case MGMT_EV_NEW_LONG_TERM_KEY:
+		mgmt_new_long_term_key(pktlen, buf);
+		break;
 	case MGMT_EV_DEVICE_CONNECTED:
 		mgmt_device_connected(pktlen, buf);
 		break;
@@ -877,6 +944,9 @@ static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 		break;
 	case MGMT_EV_CONNECT_FAILED:
 		mgmt_connect_failed(pktlen, buf);
+		break;
+	case MGMT_EV_AUTH_FAILED:
+		mgmt_auth_failed(pktlen, buf);
 		break;
 	case MGMT_EV_DISCOVERING:
 		mgmt_discovering(pktlen, buf);
