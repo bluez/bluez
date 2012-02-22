@@ -26,6 +26,7 @@
 #endif
 
 #include <bluetooth/bluetooth.h>
+#include <glib.h>
 
 #include "plugin.h"
 #include "adapter.h"
@@ -60,18 +61,20 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 {
 	uint16_t vendor, product;
 	bdaddr_t sba, dba;
-	char addr[18];
+	char addr[18], name[25];
 
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba, NULL);
 	ba2str(&dba, addr);
 
 	vendor = btd_device_get_vendor(device);
-	if (vendor != 0x057e)
-		return 0;
-
 	product = btd_device_get_product(device);
-	if (product == 0x0306) {
+
+	device_get_name(device, name, sizeof(name));
+	name[sizeof(name) - 1] = 0;
+
+	if (g_str_equal(name, "Nintendo RVL-CNT-01") ||
+				(vendor == 0x057e && product == 0x0306)) {
 		DBG("Forcing fixed pin on detected wiimote %s", addr);
 		memcpy(pinbuf, &sba, 6);
 		return 6;
