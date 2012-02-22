@@ -224,6 +224,40 @@ static struct vhci_conn *conn_get_by_bdaddr(bdaddr_t *ba)
 	return NULL;
 }
 
+static void reset_vdev(void)
+{
+	/* Device settings */
+	vdev.features[0] = 0xff;
+	vdev.features[1] = 0xff;
+	vdev.features[2] = 0x8f;
+	vdev.features[3] = 0xfe;
+	vdev.features[4] = 0x9b;
+	vdev.features[5] = 0xf9;
+	vdev.features[6] = 0x00;
+	vdev.features[7] = 0x80;
+
+	vdev.features[4] |= 0x40;	/* LE Supported */
+	vdev.features[6] |= 0x01;	/* Extended Inquiry Response */
+	vdev.features[6] |= 0x02;	/* BR/EDR and LE */
+	vdev.features[6] |= 0x08;	/* Secure Simple Pairing */
+
+	memset(vdev.name, 0, sizeof(vdev.name));
+	strncpy((char *) vdev.name, "BlueZ (Virtual HCI)",
+							sizeof(vdev.name) - 1);
+
+	vdev.dev_class[0] = 0x00;
+	vdev.dev_class[1] = 0x00;
+	vdev.dev_class[2] = 0x00;
+
+	vdev.scan_enable = 0x00;
+	vdev.ssp_mode = 0x00;
+	vdev.inq_mode = 0x00;
+	vdev.eir_fec = 0x00;
+	memset(vdev.eir_data, 0, sizeof(vdev.eir_data));
+	vdev.le_mode = 0x00;
+	vdev.le_simul = 0x00;
+}
+
 static void command_status(uint16_t ogf, uint16_t ocf, uint8_t status)
 {
 	uint8_t buf[HCI_MAX_FRAME_SIZE], *ptr = buf;
@@ -635,6 +669,7 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 	switch (ocf) {
 	case OCF_RESET:
 		status = 0x00;
+		reset_vdev();
 		command_complete(ogf, ocf, 1, &status);
 		break;
 
@@ -1202,36 +1237,7 @@ int main(int argc, char *argv[])
 		goto close_device;
 	}
 
-	/* Device settings */
-	vdev.features[0] = 0xff;
-	vdev.features[1] = 0xff;
-	vdev.features[2] = 0x8f;
-	vdev.features[3] = 0xfe;
-	vdev.features[4] = 0x9b;
-	vdev.features[5] = 0xf9;
-	vdev.features[6] = 0x00;
-	vdev.features[7] = 0x80;
-
-	vdev.features[4] |= 0x40;	/* LE Supported */
-	vdev.features[6] |= 0x01;	/* Extended Inquiry Response */
-	vdev.features[6] |= 0x02;	/* BR/EDR and LE */
-	vdev.features[6] |= 0x08;	/* Secure Simple Pairing */
-
-	memset(vdev.name, 0, sizeof(vdev.name));
-	strncpy((char *) vdev.name, "BlueZ (Virtual HCI)",
-							sizeof(vdev.name) - 1);
-
-	vdev.dev_class[0] = 0x00;
-	vdev.dev_class[1] = 0x00;
-	vdev.dev_class[2] = 0x00;
-
-	vdev.scan_enable = 0x00;
-	vdev.ssp_mode = 0x00;
-	vdev.inq_mode = 0x00;
-	vdev.eir_fec = 0x00;
-	memset(vdev.eir_data, 0, sizeof(vdev.eir_data));
-	vdev.le_mode = 0x00;
-	vdev.le_simul = 0x00;
+	reset_vdev();
 
 	vdev.dev_fd = device_fd;
 	vdev.dd = dd;
