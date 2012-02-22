@@ -311,6 +311,37 @@ static const struct {
 	{ 0x140b, "Write Remote AMP ASSOC"		},
 
 	/* OGF 8 - LE Control */
+	{ 0x2001, "LE Set Event Mask"			},
+	{ 0x2002, "LE Read Buffer Size"			},
+	{ 0x2003, "LE Read Local Supported Features"	},
+	/* reserved command */
+	{ 0x2005, "LE Set Random Address"		},
+	{ 0x2006, "LE Set Advertising Parameters"	},
+	{ 0x2007, "LE Read Advertising Channel TX Power"},
+	{ 0x2008, "LE Set Advertising Data"		},
+	{ 0x2009, "LE Set Scan Response Data"		},
+	{ 0x200a, "LE Set Advertise Enable"		},
+	{ 0x200b, "LE Set Scan Parameters"		},
+	{ 0x200c, "LE Set Scan Enable"			},
+	{ 0x200d, "LE Create Connection"		},
+	{ 0x200e, "LE Create Connection Cancel"		},
+	{ 0x200f, "LE Read White List Size"		},
+	{ 0x2010, "LE Clear White List"			},
+	{ 0x2011, "LE Add Device To White List"		},
+	{ 0x2012, "LE Remove Device From White List"	},
+	{ 0x2013, "LE Connection Update"		},
+	{ 0x2014, "LE Set Host Channel Classification"	},
+	{ 0x2015, "LE Read Channel Map"			},
+	{ 0x2016, "LE Read Remote Used Features"	},
+	{ 0x2017, "LE Encrypt"				},
+	{ 0x2018, "LE Rand"				},
+	{ 0x2019, "LE Start Encryption"			},
+	{ 0x201a, "LE Long Term Key Request Reply"	},
+	{ 0x201b, "LE Long Term Key Request Neg Reply"	},
+	{ 0x201c, "LE Read Supported States"		},
+	{ 0x201d, "LE Receiver Test"			},
+	{ 0x201e, "LE Transmitter Test"			},
+	{ 0x201f, "LE Test End"				},
 	{ }
 };
 
