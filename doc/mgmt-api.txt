@@ -424,6 +424,8 @@ Load Long Term Keys Command
 				Key2 {  }
 				...
 
+	This command can be used when the controller is not powered.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -437,6 +439,8 @@ Disconnect Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -461,6 +465,8 @@ Get Connections Command
 		1	LE Public
 		2	LE Random
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -477,6 +483,8 @@ PIN Code Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -490,6 +498,8 @@ PIN Code Negative Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -525,6 +535,8 @@ Pair Device Command
 		1	LE Public
 		2	LE Random
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -542,6 +554,8 @@ Cancel Pair Device
 
 	The Address and Address_Type parameters should match what was
 	given to a preceding Pair Device command.
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -565,6 +579,8 @@ Unpair Device Command
 	practice always be 1 except for some special GAP qualification
 	test-cases where a key removal without disconnecting is needed.
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -579,6 +595,8 @@ User Confirmation Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -592,6 +610,8 @@ User Confirmation Negative Reply Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -608,6 +628,8 @@ User Passkey Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -622,6 +644,8 @@ User Passkey Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -634,6 +658,8 @@ Read Local Out Of Band Data Command
 	Command Parameters:
 	Return Parameters:	Hash (16 Octets)
 				Randomizer (16 Octets)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -651,6 +677,8 @@ Add Remote Out Of Band Data Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -664,6 +692,8 @@ Remove Remote Out Of Band Data Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -690,6 +720,8 @@ Start Discovery Command
 		6	LE (public & random)
 		7	BR/EDR/LE (interleaved discovery)
 
+	This command can only be used when the controller is powered.
+
 	This command generates a Command Complete event on success
 	or failure.
 
@@ -701,6 +733,8 @@ Stop Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
 	Return Parameters:	Address_Type (1 Octet)
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -720,6 +754,8 @@ Confirm Name Command
 	This command is only valid during device discovery and is
 	expected for each Device Found event with the Confirm Name
 	flag set.
+
+	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
