@@ -388,7 +388,7 @@ struct mgmt_ev_auth_failed {
 struct mgmt_ev_device_found {
 	struct mgmt_addr_info addr;
 	int8_t rssi;
-	uint8_t flags[4];
+	uint32_t flags;
 	uint16_t eir_len;
 	uint8_t eir[0];
 } __packed;

@@ -559,6 +559,7 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 static int mgmt_device_found(int mgmt_sk, uint16_t index,
 				struct mgmt_ev_device_found *ev, uint16_t len)
 {
+	uint32_t flags;
 	uint16_t eir_len;
 
 	if (len < sizeof(*ev)) {
@@ -566,6 +567,8 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 			"Too short device_found length (%u bytes)\n", len);
 		return -EINVAL;
 	}
+
+	flags = btohs(ev->flags);
 
 	eir_len = bt_get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
@@ -578,13 +581,11 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u dev_found: %s type %s rssi %d "
-			"flags 0x%02x%02x%02x%02x eir_len %u\n", index, addr,
-			typestr(ev->addr.type), ev->rssi,
-			ev->flags[3], ev->flags[2], ev->flags[1], ev->flags[0],
-			eir_len);
+			"flags 0x%04x eir_len %u\n", index, addr,
+			typestr(ev->addr.type), ev->rssi, flags, eir_len);
 	}
 
-	if (discovery && (ev->flags[0] & MGMT_DEV_FOUND_CONFIRM_NAME)) {
+	if (discovery && (flags & MGMT_DEV_FOUND_CONFIRM_NAME)) {
 		struct mgmt_cp_confirm_name cp;
 
 		memset(&cp, 0, sizeof(cp));

@@ -875,8 +875,8 @@ static void mgmt_user_confirm_request(uint16_t len, void *buf)
 
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ User Confirmation Request: %s (%d) value %d\n",
-					str, ev->addr.type, ev->value);
+	printf("@ User Confirmation Request: %s (%d) hint %d value %d\n",
+			str, ev->addr.type, ev->confirm_hint, ev->value);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -928,6 +928,7 @@ static void mgmt_auth_failed(uint16_t len, void *buf)
 static void mgmt_device_found(uint16_t len, void *buf)
 {
 	struct mgmt_ev_device_found *ev = buf;
+	uint32_t flags;
 	char str[18];
 
 	if (len < sizeof(*ev)) {
@@ -935,10 +936,11 @@ static void mgmt_device_found(uint16_t len, void *buf)
 		return;
 	}
 
+	flags = btohs(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Found: %s (%d) rssi %d\n",
-					str, ev->addr.type, ev->rssi);
+	printf("@ Device Found: %s (%d) rssi %d flags 0x%4.4x\n",
+					str, ev->addr.type, ev->rssi, flags);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
