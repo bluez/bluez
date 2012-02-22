@@ -320,6 +320,10 @@ static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
 		mgmt_set_mode(index, MGMT_OP_SET_SSP, 1);
 
+	if (mgmt_low_energy(info->supported_settings) &&
+						!mgmt_low_energy(settings))
+		mgmt_set_mode(index, MGMT_OP_SET_LE, 1);
+
 	return 0;
 }
 
