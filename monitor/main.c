@@ -624,6 +624,23 @@ static void mgmt_index_removed(uint16_t len, void *buf)
 	hexdump(buf, len);
 }
 
+static void mgmt_controller_error(uint16_t len, void *buf)
+{
+	struct mgmt_ev_controller_error *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Controller Error control\n");
+		return;
+	}
+
+	printf("@ Controller Error: 0x%2.2x\n", ev->error_code);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
 static const char *settings_str[] = {
 	"powered", "connectable", "fast-connectable", "discoverable",
 	"pairable", "link-security", "ssp", "br/edr", "hs", "le"
@@ -670,10 +687,10 @@ static void mgmt_class_of_dev_changed(uint16_t len, void *buf)
 						ev->class_of_dev[1],
 						ev->class_of_dev[0]);
 
-        buf += sizeof(*ev);
-        len -= sizeof(*ev);
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
 
-        hexdump(buf, len);
+	hexdump(buf, len);
 }
 
 static void mgmt_local_name_changed(uint16_t len, void *buf)
@@ -687,10 +704,148 @@ static void mgmt_local_name_changed(uint16_t len, void *buf)
 
 	printf("@ Local Name Changed: %s (%s)\n", ev->name, ev->short_name);
 
-        buf += sizeof(*ev);
-        len -= sizeof(*ev);
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
 
-        hexdump(buf, len);
+	hexdump(buf, len);
+}
+
+static void mgmt_device_connected(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_connected *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Connected control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Connected: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_device_disconnected(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_disconnected *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Disconnected control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Disconnected: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_connect_failed(uint16_t len, void *buf)
+{
+	struct mgmt_ev_connect_failed *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Connect Failed control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Connect Failed: %s (%d) status 0x%2.2x\n",
+					str, ev->addr.type, ev->status);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_discovering(uint16_t len, void *buf)
+{
+	struct mgmt_ev_discovering *ev = buf;
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Discovering control\n");
+		return;
+	}
+
+	printf("@ Discovering: 0x%2.2x (%d)\n", ev->discovering, ev->type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_device_blocked(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_blocked *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Blocked control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Blocked: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_device_unblocked(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_unblocked *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Unblocked control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Unblocked: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_device_unpaired(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_unpaired *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Unpaired control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Unpaired: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
 }
 
 static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
@@ -702,6 +857,9 @@ static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 	case MGMT_EV_INDEX_REMOVED:
 		mgmt_index_removed(pktlen, buf);
 		break;
+	case MGMT_EV_CONTROLLER_ERROR:
+		mgmt_controller_error(pktlen, buf);
+		break;
 	case MGMT_EV_NEW_SETTINGS:
 		mgmt_new_settings(pktlen, buf);
 		break;
@@ -710,6 +868,27 @@ static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 		break;
 	case MGMT_EV_LOCAL_NAME_CHANGED:
 		mgmt_local_name_changed(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_CONNECTED:
+		mgmt_device_connected(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_DISCONNECTED:
+		mgmt_device_disconnected(pktlen, buf);
+		break;
+	case MGMT_EV_CONNECT_FAILED:
+		mgmt_connect_failed(pktlen, buf);
+		break;
+	case MGMT_EV_DISCOVERING:
+		mgmt_discovering(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_BLOCKED:
+		mgmt_device_blocked(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_UNBLOCKED:
+		mgmt_device_unblocked(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_UNPAIRED:
+		mgmt_device_unpaired(pktlen, buf);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, pktlen);
