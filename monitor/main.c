@@ -811,6 +811,68 @@ static void mgmt_connect_failed(uint16_t len, void *buf)
 	hexdump(buf, len);
 }
 
+static void mgmt_pin_code_request(uint16_t len, void *buf)
+{
+	struct mgmt_ev_pin_code_request *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed PIN Code Request control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ PIN Code Request: %s (%d) secure 0x%2.2x\n",
+					str, ev->addr.type, ev->secure);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_user_confirm_request(uint16_t len, void *buf)
+{
+	struct mgmt_ev_user_confirm_request *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed User Confirmation Request control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ User Confirmation Request: %s (%d) value %d\n",
+					str, ev->addr.type, ev->value);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_user_passkey_request(uint16_t len, void *buf)
+{
+	struct mgmt_ev_user_passkey_request *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed User Passkey Request control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ PIN User Passkey Request: %s (%d)\n", str, ev->addr.type);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
 static void mgmt_auth_failed(uint16_t len, void *buf)
 {
 	struct mgmt_ev_auth_failed *ev = buf;
@@ -825,6 +887,27 @@ static void mgmt_auth_failed(uint16_t len, void *buf)
 
 	printf("@ Authentication Failed: %s (%d) status 0x%2.2x\n",
 					str, ev->addr.type, ev->status);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	hexdump(buf, len);
+}
+
+static void mgmt_device_found(uint16_t len, void *buf)
+{
+	struct mgmt_ev_device_found *ev = buf;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Device Found control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	printf("@ Device Found: %s (%d) rssi %d\n",
+					str, ev->addr.type, ev->rssi);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
@@ -945,8 +1028,20 @@ static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 	case MGMT_EV_CONNECT_FAILED:
 		mgmt_connect_failed(pktlen, buf);
 		break;
+	case MGMT_EV_PIN_CODE_REQUEST:
+		mgmt_pin_code_request(pktlen, buf);
+		break;
+	case MGMT_EV_USER_CONFIRM_REQUEST:
+		mgmt_user_confirm_request(pktlen, buf);
+		break;
+	case MGMT_EV_USER_PASSKEY_REQUEST:
+		mgmt_user_passkey_request(pktlen, buf);
+		break;
 	case MGMT_EV_AUTH_FAILED:
 		mgmt_auth_failed(pktlen, buf);
+		break;
+	case MGMT_EV_DEVICE_FOUND:
+		mgmt_device_found(pktlen, buf);
 		break;
 	case MGMT_EV_DISCOVERING:
 		mgmt_discovering(pktlen, buf);
