@@ -48,14 +48,6 @@
 #define HCI_CHANNEL_MONITOR  2
 #endif
 
-struct monitor_hdr {
-	uint16_t opcode;
-	uint16_t index;
-	uint16_t len;
-} __attribute__((packed));
-
-#define MONITOR_HDR_SIZE 6
-
 #define MONITOR_NEW_INDEX	0
 #define MONITOR_DEL_INDEX	1
 #define MONITOR_COMMAND_PKT	2
@@ -583,67 +575,9 @@ static void process_scodata_pkt(bool in, uint16_t len, void *buf)
 		hexdump(buf, len);
 }
 
-static void process_monitor(int fd)
+static void process_monitor(uint16_t opcode, uint16_t index,
+						uint16_t pktlen, void *buf)
 {
-	unsigned char buf[4096];
-	unsigned char control[32];
-	struct monitor_hdr hdr;
-	struct msghdr msg;
-	struct iovec iov[2];
-	struct cmsghdr *cmsg;
-	struct timeval *tv = NULL;
-	uint16_t opcode, index, pktlen;
-	ssize_t len;
-
-	iov[0].iov_base = &hdr;
-	iov[0].iov_len = MONITOR_HDR_SIZE;
-	iov[1].iov_base = buf;
-	iov[1].iov_len = sizeof(buf);
-
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
-	msg.msg_control = control;
-	msg.msg_controllen = sizeof(control);
-
-	len = recvmsg(fd, &msg, MSG_DONTWAIT);
-	if (len < 0)
-		return;
-
-	if (len < MONITOR_HDR_SIZE)
-		return;
-
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
-					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-		if (cmsg->cmsg_level != SOL_SOCKET)
-			continue;
-
-		if (cmsg->cmsg_type == SCM_TIMESTAMP)
-			tv = (void *) CMSG_DATA(cmsg);
-	}
-
-	opcode = btohs(hdr.opcode);
-	index  = btohs(hdr.index);
-	pktlen = btohs(hdr.len);
-
-	if (filter_mask & FILTER_SHOW_INDEX)
-		printf("[hci%d] ", index);
-
-	if (tv) {
-		time_t t = tv->tv_sec;
-		struct tm tm;
-
-		localtime_r(&t, &tm);
-
-		if (filter_mask & FILTER_SHOW_DATE)
-			printf("%04d-%02d-%02d ",
-				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-
-		if (filter_mask & FILTER_SHOW_TIME)
-			printf("%02d:%02d:%02d.%06lu ",
-				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
-	}
-
 	switch (opcode) {
 	case MONITOR_NEW_INDEX:
 		process_new_index(index, pktlen, buf);
@@ -759,67 +693,8 @@ static void mgmt_local_name_changed(uint16_t len, void *buf)
         hexdump(buf, len);
 }
 
-static void process_control(int fd)
+static void process_control(uint16_t opcode, uint16_t pktlen, void *buf)
 {
-	unsigned char buf[4096];
-	unsigned char control[32];
-	struct mgmt_hdr hdr;
-	struct msghdr msg;
-	struct iovec iov[2];
-	struct cmsghdr *cmsg;
-	struct timeval *tv = NULL;
-	uint16_t opcode, index, pktlen;
-	ssize_t len;
-
-	iov[0].iov_base = &hdr;
-	iov[0].iov_len = MGMT_HDR_SIZE;
-	iov[1].iov_base = buf;
-	iov[1].iov_len = sizeof(buf);
-
-	memset(&msg, 0, sizeof(msg));
-	msg.msg_iov = iov;
-	msg.msg_iovlen = 2;
-	msg.msg_control = control;
-	msg.msg_controllen = sizeof(control);
-
-	len = recvmsg(fd, &msg, MSG_DONTWAIT);
-	if (len < 0)
-		return;
-
-	if (len < MGMT_HDR_SIZE)
-		return;
-
-	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
-					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-		if (cmsg->cmsg_level != SOL_SOCKET)
-			continue;
-
-		if (cmsg->cmsg_type == SCM_TIMESTAMP)
-			tv = (void *) CMSG_DATA(cmsg);
-	}
-
-	opcode = btohs(hdr.opcode);
-	index  = btohs(hdr.index);
-	pktlen = btohs(hdr.len);
-
-	if (filter_mask & FILTER_SHOW_INDEX)
-		printf("{hci%d} ", index);
-
-	if (tv) {
-		time_t t = tv->tv_sec;
-		struct tm tm;
-
-		localtime_r(&t, &tm);
-
-		if (filter_mask & FILTER_SHOW_DATE)
-			printf("%04d-%02d-%02d ",
-				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-
-		if (filter_mask & FILTER_SHOW_TIME)
-			printf("%02d:%02d:%02d.%06lu ",
-				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
-	}
-
 	switch (opcode) {
 	case MGMT_EV_INDEX_ADDED:
 		mgmt_index_added(pktlen, buf);
@@ -843,61 +718,112 @@ static void process_control(int fd)
 	}
 }
 
-static int open_monitor(void)
+static void process_data(int fd, uint16_t channel)
 {
-	struct sockaddr_hci addr;
-	int fd, opt = 1;
+	unsigned char buf[4096];
+	unsigned char control[32];
+	struct mgmt_hdr hdr;
+	struct msghdr msg;
+	struct iovec iov[2];
 
-	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (fd < 0) {
-		perror("Failed to open monitor channel");
-		return -1;
+	iov[0].iov_base = &hdr;
+	iov[0].iov_len = MGMT_HDR_SIZE;
+	iov[1].iov_base = buf;
+	iov[1].iov_len = sizeof(buf);
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 2;
+	msg.msg_control = control;
+	msg.msg_controllen = sizeof(control);
+
+	while (1) {
+		struct cmsghdr *cmsg;
+		struct timeval *tv = NULL;
+		uint16_t opcode, index, pktlen;
+		ssize_t len;
+
+		len = recvmsg(fd, &msg, MSG_DONTWAIT);
+		if (len < 0)
+			break;
+
+		if (len < MGMT_HDR_SIZE)
+			break;
+
+		for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != NULL;
+					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+			if (cmsg->cmsg_level != SOL_SOCKET)
+				continue;
+
+			if (cmsg->cmsg_type == SCM_TIMESTAMP)
+				tv = (void *) CMSG_DATA(cmsg);
+		}
+
+		opcode = btohs(hdr.opcode);
+		index  = btohs(hdr.index);
+		pktlen = btohs(hdr.len);
+
+		if (filter_mask & FILTER_SHOW_INDEX) {
+			switch (channel) {
+			case HCI_CHANNEL_CONTROL:
+				printf("{hci%d} ", index);
+				break;
+			case HCI_CHANNEL_MONITOR:
+				printf("[hci%d] ", index);
+				break;
+			}
+		}
+
+		if (tv) {
+			time_t t = tv->tv_sec;
+			struct tm tm;
+
+			localtime_r(&t, &tm);
+
+			if (filter_mask & FILTER_SHOW_DATE)
+				printf("%04d-%02d-%02d ", tm.tm_year + 1900,
+						tm.tm_mon + 1, tm.tm_mday);
+
+			if (filter_mask & FILTER_SHOW_TIME)
+				printf("%02d:%02d:%02d.%06lu ", tm.tm_hour,
+					tm.tm_min, tm.tm_sec, tv->tv_usec);
+		}
+
+		switch (channel) {
+		case HCI_CHANNEL_CONTROL:
+			process_control(opcode, pktlen, buf);
+			break;
+		case HCI_CHANNEL_MONITOR:
+			process_monitor(opcode, index, pktlen, buf);
+			break;
+		}
 	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.hci_family = AF_BLUETOOTH;
-	addr.hci_dev = HCI_DEV_NONE;
-	addr.hci_channel = HCI_CHANNEL_MONITOR;
-
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Failed to bind monitor channel");
-		close(fd);
-		return -1;
-	}
-
-	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &opt, sizeof(opt)) < 0) {
-		perror("Failed to enable monitor timestamps");
-		close(fd);
-		return -1;
-	}
-
-	return fd;
 }
 
-static int open_control(void)
+static int open_socket(uint16_t channel)
 {
 	struct sockaddr_hci addr;
 	int fd, opt = 1;
 
 	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
 	if (fd < 0) {
-		perror("Failed to open control channel");
+		perror("Failed to open channel");
 		return -1;
 	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = HCI_DEV_NONE;
-	addr.hci_channel = HCI_CHANNEL_CONTROL;
+	addr.hci_channel = channel;
 
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Failed to bind control channel");
+		perror("Failed to bind channel");
 		close(fd);
 		return -1;
 	}
 
 	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &opt, sizeof(opt)) < 0) {
-		perror("Failed to enable control timestamps");
+		perror("Failed to enable timestamps");
 		close(fd);
 		return -1;
 	}
@@ -917,11 +843,11 @@ int main(int argc, char *argv[])
 	filter_mask |= FILTER_SHOW_TIME;
 	filter_mask |= FILTER_SHOW_ACL_DATA;
 
-	mon_fd = open_monitor();
+	mon_fd = open_socket(HCI_CHANNEL_MONITOR);
 	if (mon_fd < 0)
 		return exitcode;
 
-	ctl_fd = open_control();
+	ctl_fd = open_socket(HCI_CHANNEL_CONTROL);
 	if (ctl_fd < 0)
 		goto close_monitor;
 
@@ -959,9 +885,9 @@ int main(int argc, char *argv[])
 
 		for (n = 0; n < nfds; n++) {
 			if (events[n].data.fd == mon_fd)
-				process_monitor(mon_fd);
+				process_data(mon_fd, HCI_CHANNEL_MONITOR);
 			else if (events[n].data.fd == ctl_fd)
-				process_control(ctl_fd);
+				process_data(ctl_fd, HCI_CHANNEL_CONTROL);
 		}
 	}
 
