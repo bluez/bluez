@@ -347,6 +347,7 @@ Add UUID Command
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
+	
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
@@ -365,6 +366,9 @@ Remove UUID Command
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
+
+	When the UUID parameter is an empty UUID (16 x 0x00), then all
+	previously loaded UUIDs will be removed.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
