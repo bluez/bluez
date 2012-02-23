@@ -72,6 +72,10 @@ static struct controller_info {
 
 	gboolean pending_uuid;
 	GSList *pending_uuids;
+
+	gboolean pending_class;
+	uint8_t major;
+	uint8_t minor;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -1171,6 +1175,36 @@ static void read_local_oob_data_failed(int sk, uint16_t index)
 		oob_read_local_data_complete(adapter, NULL, NULL);
 }
 
+static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
+
+	DBG("index %d major %u minor %u", index, major, minor);
+
+	if (info->pending_uuid) {
+		info->major = major;
+		info->minor = minor;
+		info->pending_class = TRUE;
+		return 0;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp->major = major;
+	cp->minor = minor;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 								size_t len)
 {
@@ -1188,8 +1222,14 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 
 	info->pending_uuid = FALSE;
 
-	if (g_slist_length(info->pending_uuids) == 0)
+	if (g_slist_length(info->pending_uuids) == 0) {
+		if (info->pending_class) {
+			info->pending_class = FALSE;
+			mgmt_set_dev_class(index, info->major, info->minor);
+		}
+
 		return;
+	}
 
 	pending = info->pending_uuids->data;
 
@@ -1762,28 +1802,6 @@ static void mgmt_cleanup(void)
 		g_source_remove(mgmt_watch);
 		mgmt_watch = 0;
 	}
-}
-
-static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d major %u minor %u", index, major, minor);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->major = major;
-	cp->minor = minor;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 static int mgmt_set_limited_discoverable(int index, gboolean limited)
