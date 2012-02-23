@@ -1587,6 +1587,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	case MGMT_EV_NEW_SETTINGS:
 		mgmt_new_settings(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
+	case MGMT_EV_CLASS_OF_DEV_CHANGED:
+		DBG("hci%u Class of Device changed", index);
+		break;
 	case MGMT_EV_NEW_LINK_KEY:
 		mgmt_new_link_key(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
