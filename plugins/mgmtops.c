@@ -299,19 +299,12 @@ static uint8_t create_mode(uint32_t settings)
 	return mode;
 }
 
-static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
+static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
 	gboolean pairable;
 	uint8_t on_mode;
 	uint16_t index;
-
-	if (!mgmt_powered(settings)) {
-		btd_adapter_stop(adapter);
-		return 0;
-	}
-
-	btd_adapter_start(adapter);
 
 	btd_adapter_get_mode(adapter, NULL, &on_mode, &pairable);
 
@@ -323,7 +316,7 @@ static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 		mgmt_set_discoverable(index, TRUE);
 	else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings))
 		mgmt_set_connectable(index, TRUE);
-	else
+	else if (mgmt_powered(settings))
 		adapter_mode_changed(adapter, create_mode(settings));
 
 	if (mgmt_pairable(settings) != pairable)
@@ -335,6 +328,18 @@ static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
 	if (mgmt_low_energy(info->supported_settings) &&
 						!mgmt_low_energy(settings))
 		mgmt_set_mode(index, MGMT_OP_SET_LE, 1);
+}
+
+static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
+{
+	if (!mgmt_powered(settings)) {
+		btd_adapter_stop(adapter);
+		return 0;
+	}
+
+	btd_adapter_start(adapter);
+
+	update_settings(adapter, settings);
 
 	return 0;
 }
@@ -992,6 +997,8 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		error("mgmtops: unable to register adapter");
 		return;
 	}
+
+	update_settings(adapter, info->current_settings);
 
 	adapter_name_changed(adapter, (char *) rp->name);
 
