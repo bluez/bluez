@@ -389,7 +389,7 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 
 	if (new_power != old_power)
 		mgmt_update_powered(adapter, settings);
-	else if (mode_changed(settings, info->current_settings))
+	else if (new_power && mode_changed(settings, info->current_settings))
 		adapter_mode_changed(adapter, create_mode(settings));
 
 	old_pairable = mgmt_pairable(info->current_settings);
