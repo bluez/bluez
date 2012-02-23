@@ -931,7 +931,6 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		index = btohs(bt_get_unaligned(&rp->index[i]));
 
 		add_controller(index);
-		clear_uuids(index);
 		read_info(sk, index);
 	}
 }
@@ -980,6 +979,8 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
+
+	clear_uuids(index);
 
 	adapter = btd_manager_register_adapter(index,
 					mgmt_powered(info->current_settings));
