@@ -1185,6 +1185,12 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_SET_PAIRABLE:
 		mgmt_new_settings(sk, index, ev->data, len);
 		break;
+	case MGMT_OP_SET_SSP:
+		DBG("set_ssp complete");
+		break;
+	case MGMT_OP_SET_LE:
+		DBG("set_le complete");
+		break;
 	case MGMT_OP_ADD_UUID:
 		DBG("add_uuid complete");
 		break;
