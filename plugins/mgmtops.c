@@ -52,6 +52,11 @@
 
 #define MGMT_BUF_SIZE 1024
 
+struct pending_uuid {
+	uuid_t uuid;
+	uint8_t svc_hint;
+};
+
 static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
@@ -64,6 +69,9 @@ static struct controller_info {
 	uint8_t dev_class[3];
 	GSList *connections;
 	uint8_t discov_type;
+
+	gboolean pending_uuid;
+	GSList *pending_uuids;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -826,10 +834,22 @@ static int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_uuid)];
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_add_uuid *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
 	uuid_t uuid128;
 	uint128_t uint128;
 
 	DBG("index %d", index);
+
+	if (info->pending_uuid) {
+		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
+
+		memcpy(&pending->uuid, uuid, sizeof(*uuid));
+		pending->svc_hint = svc_hint;
+
+		info->pending_uuids = g_slist_append(info->pending_uuids,
+								pending);
+		return 0;
+	}
 
 	uuid_to_uuid128(&uuid128, uuid);
 
@@ -845,6 +865,8 @@ static int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
+
+	info->pending_uuid = TRUE;
 
 	return 0;
 }
@@ -1147,6 +1169,34 @@ static void read_local_oob_data_failed(int sk, uint16_t index)
 		oob_read_local_data_complete(adapter, NULL, NULL);
 }
 
+static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
+								size_t len)
+{
+	struct controller_info *info;
+	struct pending_uuid *pending;
+
+	DBG("add_uuid complete");
+
+	if (index > max_index) {
+		error("Unexpected index %u in add_uuid_complete event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	info->pending_uuid = FALSE;
+
+	if (g_slist_length(info->pending_uuids) == 0)
+		return;
+
+	pending = info->pending_uuids->data;
+
+	mgmt_add_uuid(index, &pending->uuid, pending->svc_hint);
+
+	info->pending_uuids = g_slist_remove(info->pending_uuids, pending);
+	g_free(pending);
+}
+
 static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -1192,7 +1242,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_le complete");
 		break;
 	case MGMT_OP_ADD_UUID:
-		DBG("add_uuid complete");
+		mgmt_add_uuid_complete(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_REMOVE_UUID:
 		DBG("remove_uuid complete");
