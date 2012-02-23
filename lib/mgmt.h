@@ -342,6 +342,7 @@ struct mgmt_ev_new_long_term_key {
 #define MGMT_EV_DEVICE_CONNECTED	0x000B
 struct mgmt_ev_device_connected {
 	struct mgmt_addr_info addr;
+	uint32_t flags;
 	uint16_t eir_len;
 	uint8_t eir[0];
 } __packed;

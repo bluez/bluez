@@ -784,6 +784,7 @@ static void mgmt_new_long_term_key(uint16_t len, void *buf)
 static void mgmt_device_connected(uint16_t len, void *buf)
 {
 	struct mgmt_ev_device_connected *ev = buf;
+	uint32_t flags;
 	char str[18];
 
 	if (len < sizeof(*ev)) {
@@ -791,9 +792,11 @@ static void mgmt_device_connected(uint16_t len, void *buf)
 		return;
 	}
 
+	flags = btohs(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Connected: %s (%d)\n", str, ev->addr.type);
+	printf("@ Device Connected: %s (%d) flags 0x%4.4x\n",
+						str, ev->addr.type, flags);
 
 	buf += sizeof(*ev);
 	len -= sizeof(*ev);
