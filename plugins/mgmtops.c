@@ -179,6 +179,8 @@ static void remove_controller(uint16_t index)
 
 	btd_manager_unregister_adapter(index);
 
+	g_slist_free_full(controllers[index].pending_uuids, g_free);
+
 	memset(&controllers[index], 0, sizeof(struct controller_info));
 
 	DBG("Removed controller %u", index);
@@ -330,10 +332,15 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 		mgmt_set_mode(index, MGMT_OP_SET_LE, 1);
 }
 
-static int mgmt_update_powered(struct btd_adapter *adapter, uint32_t settings)
+static int mgmt_update_powered(struct btd_adapter *adapter,
+						struct controller_info *info,
+						uint32_t settings)
 {
 	if (!mgmt_powered(settings)) {
 		btd_adapter_stop(adapter);
+		g_slist_free_full(info->pending_uuids, g_free);
+		info->pending_uuid = FALSE;
+		info->pending_class = FALSE;
 		return 0;
 	}
 
@@ -388,7 +395,7 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 	new_power = mgmt_powered(settings);
 
 	if (new_power != old_power)
-		mgmt_update_powered(adapter, settings);
+		mgmt_update_powered(adapter, info, settings);
 	else if (new_power && mode_changed(settings, info->current_settings))
 		adapter_mode_changed(adapter, create_mode(settings));
 
