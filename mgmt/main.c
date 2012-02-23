@@ -37,7 +37,12 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 #include <bluetooth/mgmt.h>
+
+#include <glib.h>
+#include "glib-helper.h"
 
 #ifndef NELEM
 #define NELEM(x) (sizeof(x) / sizeof((x)[0]))
@@ -1201,14 +1206,22 @@ static void cmd_le(int mgmt_sk, uint16_t index, int argc, char **argv)
 static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	if (status != 0) {
-		fprintf(stderr,
-			"Setting hci%u class failed with status 0x%02x (%s)",
-					id, status, mgmt_errstr(status));
+	struct mgmt_ev_class_of_dev_changed *rp = rsp;
+
+	if (len == 0 && status != 0) {
+		fprintf(stderr, "%s failed, status 0x%02x (%s)\n",
+				mgmt_opstr(op), status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
 
-	printf("hci%u class changed\n", id);
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Unexpected %s len %u\n", mgmt_opstr(op), len);
+		exit(EXIT_FAILURE);
+	}
+
+	printf("%s succeeded. Class 0x%02x%02x%02x\n", mgmt_opstr(op),
+		rp->class_of_dev[2], rp->class_of_dev[1], rp->class_of_dev[0]);
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -1746,6 +1759,90 @@ static void cmd_unblock(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
+{
+	if (uuid->type == SDP_UUID16)
+		sdp_uuid16_to_uuid128(uuid128, uuid);
+	else if (uuid->type == SDP_UUID32)
+		sdp_uuid32_to_uuid128(uuid128, uuid);
+	else
+		memcpy(uuid128, uuid, sizeof(*uuid));
+}
+
+static void cmd_add_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_add_uuid cp;
+	uint128_t uint128;
+	uuid_t uuid, uuid128;
+
+	if (argc < 3) {
+		printf("UUID and service hint needed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (bt_string2uuid(&uuid, argv[1]) < 0) {
+		printf("Invalid UUID: %s\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&cp, 0, sizeof(cp));
+
+	uuid_to_uuid128(&uuid128, &uuid);
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp.uuid);
+
+	cp.svc_hint = atoi(argv[2]);
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_ADD_UUID, index,
+				&cp, sizeof(cp), class_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send add_uuid cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_remove_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	struct mgmt_cp_remove_uuid cp;
+	uint128_t uint128;
+	uuid_t uuid, uuid128;
+
+	if (argc < 2) {
+		printf("UUID needed\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	if (bt_string2uuid(&uuid, argv[1]) < 0) {
+		printf("Invalid UUID: %s\n", argv[1]);
+		exit(EXIT_FAILURE);
+	}
+
+	memset(&cp, 0, sizeof(cp));
+
+	uuid_to_uuid128(&uuid128, &uuid);
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp.uuid);
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_REMOVE_UUID, index,
+				&cp, sizeof(cp), class_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send remove_uuid cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
+static void cmd_clr_uuids(int mgmt_sk, uint16_t index, int argc, char **argv)
+{
+	char *uuid_any = "00000000-0000-0000-0000-000000000000";
+	char *rm_argv[] = { "rm-uuid", uuid_any, NULL };
+
+	cmd_remove_uuid(mgmt_sk, index, 2, rm_argv);
+}
+
 static struct {
 	char *cmd;
 	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
@@ -1772,7 +1869,10 @@ static struct {
 	{ "unpair",	cmd_unpair,	"Unpair device"			},
 	{ "keys",	cmd_keys,	"Load Keys"			},
 	{ "block",	cmd_block,	"Block Device"			},
-	{ "unblock",	cmd_unblock,	"Unblock Device"			},
+	{ "unblock",	cmd_unblock,	"Unblock Device"		},
+	{ "add-uuid",	cmd_add_uuid,	"Add UUID"			},
+	{ "rm-uuid",	cmd_add_uuid,	"Remove UUID"			},
+	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs",			},
 	{ NULL, NULL, 0 }
 };
 

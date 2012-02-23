@@ -51,8 +51,8 @@ tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
 noinst_PROGRAMS += mgmt/btmgmt monitor/btmon
 
-mgmt_btmgmt_SOURCES = mgmt/main.c
-mgmt_btmgmt_LDADD = lib/libbluetooth-private.la
+mgmt_btmgmt_SOURCES = mgmt/main.c src/glib-helper.c
+mgmt_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 monitor_btmon_SOURCES = monitor/main.c
 monitor_btmon_LDADD = lib/libbluetooth-private.la
