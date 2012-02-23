@@ -929,6 +929,7 @@ Event Code		0x000B
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+			Flags (4 Octets)
 			EIR_Data_Length (2 Octets)
 			EIR_Data (0-65535 Octets)
 
@@ -936,6 +937,10 @@ Event Parameters	Address (6 Octets)
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	The following bits are defined for the Flags parameter:
+		0	Reserved (not in use)
+		1	Legacy Pairing
 
 
 Device Disconnected Event
