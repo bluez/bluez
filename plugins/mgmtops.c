@@ -909,8 +909,8 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		index = btohs(bt_get_unaligned(&rp->index[i]));
 
 		add_controller(index);
-		get_connections(sk, index);
 		clear_uuids(index);
+		read_info(sk, index);
 	}
 }
 
@@ -972,9 +972,10 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	if (mgmt_powered(info->current_settings))
+	if (mgmt_powered(info->current_settings)) {
 		mgmt_update_powered(adapter, info->current_settings);
-	else
+		get_connections(sk, index);
+	} else
 		mgmt_set_powered(index, TRUE);
 
 	adapter_name_changed(adapter, (char *) rp->name);
@@ -1070,8 +1071,6 @@ static void get_connections_complete(int sk, uint16_t index, void *buf,
 		bdaddr_t *bdaddr = g_memdup(&rp->addr[i], sizeof(bdaddr_t));
 		info->connections = g_slist_append(info->connections, bdaddr);
 	}
-
-	read_info(sk, index);
 }
 
 static void set_local_name_complete(int sk, uint16_t index, void *buf,
