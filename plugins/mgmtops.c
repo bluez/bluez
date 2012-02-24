@@ -76,6 +76,8 @@ static struct controller_info {
 	gboolean pending_class;
 	uint8_t major;
 	uint8_t minor;
+
+	gboolean pending_powered;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -953,7 +955,20 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 
 static int mgmt_set_powered(int index, gboolean powered)
 {
-	DBG("index %d powered %d", index, powered);
+	struct controller_info *info = &controllers[index];
+
+	DBG("index %d powered %d pending_uuid %u", index, powered,
+							info->pending_uuid);
+
+	if (powered) {
+		if (info->pending_uuid) {
+			info->pending_powered = TRUE;
+			return 0;
+		}
+	} else {
+		info->pending_powered = FALSE;
+	}
+
 	return mgmt_set_mode(index, MGMT_OP_SET_POWERED, powered);
 }
 
@@ -1240,6 +1255,11 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 		if (info->pending_class) {
 			info->pending_class = FALSE;
 			mgmt_set_dev_class(index, info->major, info->minor);
+		}
+
+		if (info->pending_powered) {
+			info->pending_powered = FALSE;
+			mgmt_set_powered(index, 1);
 		}
 
 		return;
