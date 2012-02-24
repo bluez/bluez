@@ -49,6 +49,7 @@
 #include "event.h"
 #include "oob.h"
 #include "eir.h"
+#include "glib-compat.h"
 
 #define MGMT_BUF_SIZE 1024
 
