@@ -117,10 +117,12 @@ static int defer_setup = 0;
 static int priority = -1;
 static int rcvbuf = 0;
 
-static struct {
+struct lookup_table {
 	char	*name;
 	int	flag;
-} l2cap_modes[] = {
+};
+
+static struct lookup_table l2cap_modes[] = {
 	{ "basic",	L2CAP_MODE_BASIC	},
 	/* Not implemented
 	{ "flowctl",	L2CAP_MODE_FLOWCTL	},
@@ -131,14 +133,25 @@ static struct {
 	{ 0 }
 };
 
-static void list_l2cap_modes(void)
+static int get_lookup_flag(struct lookup_table *table, char *name)
 {
 	int i;
 
-	printf("l2test - L2CAP testing\n"
-		"List L2CAP modes:\n");
-	for (i=0; l2cap_modes[i].name; i++)
-		printf("\t%s\n", l2cap_modes[i].name);
+	for (i = 0; table[i].name; i++)
+		if (!strcasecmp(table[i].name, name))
+			return table[i].flag;
+
+	return -1;
+}
+
+static void print_lookup_values(struct lookup_table *table, char *header)
+{
+	int i;
+
+	printf("%s\n", header);
+
+	for (i = 0; table[i].name; i++)
+		printf("\t%s\n", table[i].name);
 }
 
 static float tv2fl(struct timeval tv)
@@ -1199,7 +1212,7 @@ static void usage(void)
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
-	int opt, sk, i, mode = RECV, need_addr = 0;
+	int opt, sk, mode = RECV, need_addr = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
@@ -1321,14 +1334,13 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'X':
-			rfcmode = -1;
+			rfcmode = get_lookup_flag(l2cap_modes, optarg);
 
-			for (i = 0; l2cap_modes[i].name; i++)
-				if (!strcasecmp(l2cap_modes[i].name, optarg))
-					rfcmode = l2cap_modes[i].flag;
+			if (rfcmode == -1) {
+				print_lookup_values(l2cap_modes,
+						"List L2CAP modes:");
 
-			if (!strcasecmp(optarg, "help") || rfcmode == -1) {
-				list_l2cap_modes();
+
 				exit(1);
 			}
 
