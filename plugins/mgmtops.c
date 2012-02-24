@@ -132,10 +132,6 @@ static void add_controller(uint16_t index)
 
 	info->valid = TRUE;
 
-	hci_set_bit(MGMT_ADDR_BREDR, &info->discov_type);
-	hci_set_bit(MGMT_ADDR_LE_PUBLIC, &info->discov_type);
-	hci_set_bit(MGMT_ADDR_LE_RANDOM, &info->discov_type);
-
 	DBG("Added controller %u", index);
 }
 
@@ -1850,8 +1846,19 @@ static int mgmt_start_discovery(int index)
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
 	struct controller_info *info = &controllers[index];
+	uint8_t type;
 
 	DBG("index %d", index);
+
+	if (mgmt_bredr(info->current_settings))
+		hci_set_bit(MGMT_ADDR_BREDR, &type);
+
+	if (mgmt_low_energy(info->current_settings)) {
+		hci_set_bit(MGMT_ADDR_LE_PUBLIC, &type);
+		hci_set_bit(MGMT_ADDR_LE_RANDOM, &type);
+	}
+
+	info->discov_type = type;
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(MGMT_OP_START_DISCOVERY);
