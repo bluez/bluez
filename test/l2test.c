@@ -116,6 +116,7 @@ static int timestamp = 0;
 static int defer_setup = 0;
 static int priority = -1;
 static int rcvbuf = 0;
+static int chan_policy = -1;
 
 struct lookup_table {
 	char	*name;
@@ -131,6 +132,13 @@ static struct lookup_table l2cap_modes[] = {
 	{ "ertm",	L2CAP_MODE_ERTM		},
 	{ "streaming",	L2CAP_MODE_STREAMING	},
 	{ 0 }
+};
+
+static struct lookup_table chan_policies[] = {
+	{ "bredr",	BT_CHANNEL_POLICY_BREDR_ONLY		},
+	{ "bredr_pref",	BT_CHANNEL_POLICY_BREDR_PREFERRED	},
+	{ "amp_pref",	BT_CHANNEL_POLICY_AMP_PREFERRED		},
+	{ NULL,		0					},
 };
 
 static int get_lookup_flag(struct lookup_table *table, char *name)
@@ -295,6 +303,15 @@ static int do_connect(char *svr)
 		}
 	}
 #endif
+
+	if (chan_policy != -1) {
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_CHANNEL_POLICY,
+				&chan_policy, sizeof(chan_policy)) < 0) {
+			syslog(LOG_ERR, "Can't enable chan policy : %s (%d)",
+							strerror(errno), errno);
+			goto error;
+		}
+	}
 
 	/* Enable SO_LINGER */
 	if (linger) {
@@ -1194,6 +1211,7 @@ static void usage(void)
 		"\t[-D milliseconds] delay after sending num frames (default = 0)\n"
 		"\t[-K milliseconds] delay before receiving (default = 0)\n"
 		"\t[-X mode] l2cap mode (help for list, default = basic)\n"
+		"\t[-a policy] chan policy (help for list, default = bredr)\n"
 		"\t[-F fcs] use CRC16 check (default = 1)\n"
 		"\t[-Q num] Max Transmit value (default = 3)\n"
 		"\t[-Z size] Transmission Window size (default = 63)\n"
@@ -1216,8 +1234,9 @@ int main(int argc, char *argv[])
 
 	bacpy(&bdaddr, BDADDR_ANY);
 
-	while ((opt=getopt(argc,argv,"rdscuwmntqxyzpb:i:P:I:O:J:B:N:L:W:C:D:X:F:Q:Z:Y:H:K:RUGAESMT")) != EOF) {
-		switch(opt) {
+	while ((opt = getopt(argc, argv, "rdscuwmntqxyzpb:a:"
+		"i:P:I:O:J:B:N:L:W:C:D:X:F:Q:Z:Y:H:K:RUGAESMT")) != EOF) {
+		switch (opt) {
 		case 'r':
 			mode = RECV;
 			break;
@@ -1339,8 +1358,17 @@ int main(int argc, char *argv[])
 			if (rfcmode == -1) {
 				print_lookup_values(l2cap_modes,
 						"List L2CAP modes:");
+				exit(1);
+			}
 
+			break;
 
+		case 'a':
+			chan_policy = get_lookup_flag(chan_policies, optarg);
+
+			if (chan_policy == -1) {
+				print_lookup_values(chan_policies,
+						"List L2CAP chan policies:");
 				exit(1);
 			}
 
