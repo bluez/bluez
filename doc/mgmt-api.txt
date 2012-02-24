@@ -347,7 +347,6 @@ Add UUID Command
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
-	
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
@@ -543,7 +542,6 @@ Pair Device Command
 
 Cancel Pair Device
 ==================
-
 
 	Command Code:		0x001A
 	Controller Index:	<controller id>
@@ -840,6 +838,7 @@ Event Code		0x0002
 Controller Index:	<controller id> or <non-controller>
 Event Parameters	Command_Opcode (2 Octets)
 			Status (1 Octet)
+
 
 Controller Error Event
 ======================
