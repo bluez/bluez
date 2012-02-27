@@ -769,14 +769,34 @@ static void session_process_queue(struct obc_session *session)
 	obc_session_unref(session);
 }
 
+static gint pending_transfer_cmptransfer(gconstpointer a, gconstpointer b)
+{
+	const struct pending_request *p = a;
+	const struct obc_transfer *transfer = b;
+
+	if (p->transfer == transfer)
+		return 0;
+
+	return -1;
+}
+
 static void session_terminate_transfer(struct obc_session *session,
 					struct obc_transfer *transfer,
 					GError *gerr)
 {
 	struct pending_request *p = session->p;
 
-	if (p == NULL || p->transfer != transfer)
-		return;
+	if (p == NULL || p->transfer != transfer) {
+		GList *match;
+
+		match = g_list_find_custom(session->queue->head, transfer,
+						pending_transfer_cmptransfer);
+		if (match == NULL)
+			return;
+
+		p = match->data;
+		g_queue_delete_link(session->queue, match);
+	}
 
 	obc_session_ref(session);
 
@@ -784,9 +804,11 @@ static void session_terminate_transfer(struct obc_session *session,
 		p->func(session, gerr, p->data);
 
 	pending_request_free(p);
-	session->p = NULL;
 
-	session_process_queue(session);
+	if (p == session->p) {
+		session->p = NULL;
+		session_process_queue(session);
+	}
 
 	obc_session_unref(session);
 }
