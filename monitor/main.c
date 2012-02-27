@@ -34,11 +34,28 @@
 #include "control.h"
 #include "hcidump.h"
 
+static void signal_callback(int signum, void *user_data)
+{
+	switch (signum) {
+	case SIGINT:
+	case SIGTERM:
+		mainloop_quit();
+		break;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
+	sigset_t mask;
 
 	mainloop_init();
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+
+	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	filter_mask |= PACKET_FILTER_SHOW_INDEX;
 	filter_mask |= PACKET_FILTER_SHOW_TIME;

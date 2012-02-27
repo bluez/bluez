@@ -62,6 +62,16 @@ struct timeout_data {
 	void *user_data;
 };
 
+struct signal_data {
+	int fd;
+	sigset_t mask;
+	mainloop_signal_func callback;
+	mainloop_destroy_func destroy;
+	void *user_data;
+};
+
+static struct signal_data *signal_data;
+
 void mainloop_init(void)
 {
 	unsigned int i;
@@ -81,6 +91,7 @@ void mainloop_quit(void)
 
 static void signal_callback(int fd, uint32_t events, void *user_data)
 {
+	struct signal_data *data = user_data;
 	struct signalfd_siginfo si;
 	ssize_t result;
 
@@ -93,34 +104,28 @@ static void signal_callback(int fd, uint32_t events, void *user_data)
 	if (result != sizeof(si))
 		return;
 
-	switch (si.ssi_signo) {
-	case SIGINT:
-	case SIGTERM:
-		mainloop_quit();
-		break;
-	}
+	if (data->callback)
+		data->callback(si.ssi_signo, data->user_data);
 }
 
 int mainloop_run(void)
 {
 	unsigned int i;
-	sigset_t mask;
-	int fd;
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
+	if (signal_data) {
+		if (sigprocmask(SIG_BLOCK, &signal_data->mask, NULL) < 0)
+			return 1;
 
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
-		return 1;
+		signal_data->fd = signalfd(-1, &signal_data->mask,
+						SFD_NONBLOCK | SFD_CLOEXEC);
+		if (signal_data->fd < 0)
+			return 1;
 
-	fd = signalfd(-1, &mask, SFD_NONBLOCK | SFD_CLOEXEC);
-	if (fd < 0)
-		return 1;
-
-	if (mainloop_add_fd(fd, EPOLLIN, signal_callback, NULL, NULL) < 0) {
-		close(fd);
-		return 1;
+		if (mainloop_add_fd(signal_data->fd, EPOLLIN,
+				signal_callback, signal_data, NULL) < 0) {
+			close(signal_data->fd);
+			return 1;
+		}
 	}
 
 	while (!epoll_terminate) {
@@ -139,8 +144,13 @@ int mainloop_run(void)
 		}
 	}
 
-	mainloop_remove_fd(fd);
-	close(fd);
+	if (signal_data) {
+		mainloop_remove_fd(signal_data->fd);
+		close(signal_data->fd);
+
+		if (signal_data->destroy)
+			signal_data->destroy(signal_data->user_data);
+	}
 
 	for (i = 0; i < MAX_MAINLOOP_ENTRIES; i++) {
 		struct mainloop_data *data = mainloop_list[i];
@@ -350,4 +360,30 @@ int mainloop_modify_timeout(int id, unsigned int seconds)
 int mainloop_remove_timeout(int id)
 {
 	return mainloop_remove_fd(id);
+}
+
+int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
+				void *user_data, mainloop_destroy_func destroy)
+{
+	struct signal_data *data;
+
+	if (!mask || !callback)
+		return -EINVAL;
+
+	data = malloc(sizeof(*data));
+	if (!data)
+		return -ENOMEM;
+
+	memset(data, 0, sizeof(*data));
+	data->callback = callback;
+	data->destroy = destroy;
+	data->user_data = user_data;
+
+	data->fd = -1;
+	memcpy(&data->mask, mask, sizeof(sigset_t));
+
+	free(signal_data);
+	signal_data = data;
+
+	return 0;
 }

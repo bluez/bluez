@@ -22,12 +22,14 @@
  *
  */
 
+#include <signal.h>
 #include <sys/epoll.h>
 
 typedef void (*mainloop_destroy_func) (void *user_data);
 
 typedef void (*mainloop_event_func) (int fd, uint32_t events, void *user_data);
 typedef void (*mainloop_timeout_func) (int id, void *user_data);
+typedef void (*mainloop_signal_func) (int signum, void *user_data);
 
 void mainloop_init(void);
 void mainloop_quit(void);
@@ -42,3 +44,6 @@ int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
 				void *user_data, mainloop_destroy_func destroy);
 int mainloop_modify_timeout(int fd, unsigned int seconds);
 int mainloop_remove_timeout(int id);
+
+int mainloop_set_signal(sigset_t *mask, mainloop_signal_func callback,
+				void *user_data, mainloop_destroy_func destroy);
