@@ -154,64 +154,64 @@ do {						\
 } while(0)
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-static inline uint64_t bt_get_le64(void *ptr)
+static inline uint64_t bt_get_le64(const void *ptr)
 {
-	return bt_get_unaligned((uint64_t *) ptr);
+	return bt_get_unaligned((const uint64_t *) ptr);
 }
 
-static inline uint64_t bt_get_be64(void *ptr)
+static inline uint64_t bt_get_be64(const void *ptr)
 {
-	return bswap_64(bt_get_unaligned((uint64_t *) ptr));
+	return bswap_64(bt_get_unaligned((const uint64_t *) ptr));
 }
 
-static inline uint32_t bt_get_le32(void *ptr)
+static inline uint32_t bt_get_le32(const void *ptr)
 {
-	return bt_get_unaligned((uint32_t *) ptr);
+	return bt_get_unaligned((const uint32_t *) ptr);
 }
 
-static inline uint32_t bt_get_be32(void *ptr)
+static inline uint32_t bt_get_be32(const void *ptr)
 {
-	return bswap_32(bt_get_unaligned((uint32_t *) ptr));
+	return bswap_32(bt_get_unaligned((const uint32_t *) ptr));
 }
 
-static inline uint16_t bt_get_le16(void *ptr)
+static inline uint16_t bt_get_le16(const void *ptr)
 {
-	return bt_get_unaligned((uint16_t *) ptr);
+	return bt_get_unaligned((const uint16_t *) ptr);
 }
 
-static inline uint16_t bt_get_be16(void *ptr)
+static inline uint16_t bt_get_be16(const void *ptr)
 {
-	return bswap_16(bt_get_unaligned((uint16_t *) ptr));
+	return bswap_16(bt_get_unaligned((const uint16_t *) ptr));
 }
 #elif __BYTE_ORDER == __BIG_ENDIAN
-static inline uint64_t bt_get_le64(void *ptr)
+static inline uint64_t bt_get_le64(const void *ptr)
 {
-	return bswap_64(bt_get_unaligned((uint64_t *) ptr));
+	return bswap_64(bt_get_unaligned((const uint64_t *) ptr));
 }
 
-static inline uint64_t bt_get_be64(void *ptr)
+static inline uint64_t bt_get_be64(const void *ptr)
 {
-	return bt_get_unaligned((uint64_t *) ptr);
+	return bt_get_unaligned((const uint64_t *) ptr);
 }
 
-static inline uint32_t bt_get_le32(void *ptr)
+static inline uint32_t bt_get_le32(const void *ptr)
 {
-	return bswap_32(bt_get_unaligned((uint32_t *) ptr));
+	return bswap_32(bt_get_unaligned((const uint32_t *) ptr));
 }
 
-static inline uint32_t bt_get_be32(void *ptr)
+static inline uint32_t bt_get_be32(const void *ptr)
 {
-	return bt_get_unaligned((uint32_t *) ptr);
+	return bt_get_unaligned((const uint32_t *) ptr);
 }
 
-static inline uint16_t bt_get_le16(void *ptr)
+static inline uint16_t bt_get_le16(const void *ptr)
 {
-	return bswap_16(bt_get_unaligned((uint16_t *) ptr));
+	return bswap_16(bt_get_unaligned((const uint16_t *) ptr));
 }
 
-static inline uint16_t bt_get_be16(void *ptr)
+static inline uint16_t bt_get_be16(const void *ptr)
 {
-	return bt_get_unaligned((uint16_t *) ptr);
+	return bt_get_unaligned((const uint16_t *) ptr);
 }
 #else
 #error "Unknown byte order"
