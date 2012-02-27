@@ -143,11 +143,15 @@ static void obc_transfer_abort(struct obc_transfer *transfer)
 {
 	struct transfer_callback *callback = transfer->callback;
 
-	if (transfer->xfer == 0)
-		return;
+	if (transfer->xfer > 0) {
+		g_obex_cancel_transfer(transfer->xfer);
+		transfer->xfer = 0;
+	}
 
-	g_obex_cancel_transfer(transfer->xfer);
-	transfer->xfer = 0;
+	if (transfer->obex != NULL) {
+		g_obex_unref(transfer->obex);
+		transfer->obex = NULL;
+	}
 
 	if (callback) {
 		GError *err;
