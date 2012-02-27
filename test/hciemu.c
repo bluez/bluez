@@ -783,7 +783,7 @@ static void hci_host_control(uint16_t ocf, int plen, uint8_t *data)
 		break;
 
 	default:
-		command_status(ogf, ocf, status);
+		command_status(ogf, ocf, 0x01);
 		break;
 	}
 }
