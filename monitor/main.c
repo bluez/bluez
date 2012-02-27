@@ -683,10 +683,10 @@ static void mgmt_new_settings(uint16_t len, void *buf)
 	uint32_t settings;
 	unsigned int i;
 
-        if (len < 4) {
-                printf("* Malformed New Settings control\n");
-                return;
-        }
+	if (len < 4) {
+		printf("* Malformed New Settings control\n");
+		return;
+	}
 
 	settings = bt_get_le32(buf);
 
@@ -1244,8 +1244,8 @@ int main(int argc, char *argv[])
 
 	if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, mon_fd, &epoll_event) < 0) {
 		perror("Failed to setup monitor event watch");
-                goto close_epoll;
-        }
+		goto close_epoll;
+	}
 
 	memset(&epoll_event, 0, sizeof(epoll_event));
 	epoll_event.events = EPOLLIN;
