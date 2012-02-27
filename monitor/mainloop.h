@@ -3,7 +3,7 @@
  *  BlueZ - Bluetooth protocol stack for Linux
  *
  *  Copyright (C) 2011-2012  Intel Corporation
- *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2002-2010  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,36 +22,23 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include <sys/epoll.h>
 
-#include <stdio.h>
-#include <stdlib.h>
+typedef void (*mainloop_destroy_func) (void *user_data);
 
-#include "mainloop.h"
-#include "packet.h"
-#include "control.h"
-#include "hcidump.h"
+typedef void (*mainloop_event_func) (int fd, uint32_t events, void *user_data);
+typedef void (*mainloop_timeout_func) (int id, void *user_data);
 
-int main(int argc, char *argv[])
-{
-	unsigned long filter_mask = 0;
+void mainloop_init(void);
+void mainloop_quit(void);
+int mainloop_run(void);
 
-	mainloop_init();
+int mainloop_add_fd(int fd, uint32_t events, mainloop_event_func callback,
+				void *user_data, mainloop_destroy_func destroy);
+int mainloop_modify_fd(int fd, uint32_t events);
+int mainloop_remove_fd(int fd);
 
-	filter_mask |= PACKET_FILTER_SHOW_INDEX;
-	filter_mask |= PACKET_FILTER_SHOW_TIME;
-	filter_mask |= PACKET_FILTER_SHOW_ACL_DATA;
-
-	packet_set_filter(filter_mask);
-
-	printf("Bluetooth monitor ver %s\n", VERSION);
-
-	if (control_tracing() < 0) {
-		if (hcidump_tracing() < 0)
-			return EXIT_FAILURE;
-	}
-
-	return mainloop_run();
-}
+int mainloop_add_timeout(unsigned int seconds, mainloop_timeout_func callback,
+				void *user_data, mainloop_destroy_func destroy);
+int mainloop_modify_timeout(int fd, unsigned int seconds);
+int mainloop_remove_timeout(int id);

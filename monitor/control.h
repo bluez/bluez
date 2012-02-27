@@ -22,36 +22,8 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include <stdint.h>
 
-#include <stdio.h>
-#include <stdlib.h>
+int control_tracing(void);
 
-#include "mainloop.h"
-#include "packet.h"
-#include "control.h"
-#include "hcidump.h"
-
-int main(int argc, char *argv[])
-{
-	unsigned long filter_mask = 0;
-
-	mainloop_init();
-
-	filter_mask |= PACKET_FILTER_SHOW_INDEX;
-	filter_mask |= PACKET_FILTER_SHOW_TIME;
-	filter_mask |= PACKET_FILTER_SHOW_ACL_DATA;
-
-	packet_set_filter(filter_mask);
-
-	printf("Bluetooth monitor ver %s\n", VERSION);
-
-	if (control_tracing() < 0) {
-		if (hcidump_tracing() < 0)
-			return EXIT_FAILURE;
-	}
-
-	return mainloop_run();
-}
+void control_message(uint16_t opcode, const void *data, uint16_t size);
