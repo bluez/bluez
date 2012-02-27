@@ -437,7 +437,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@
 INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
 			-I$(srcdir)/attrib -I$(srcdir)/btio -I$(srcdir)/tools \
-			-I$(builddir)/tools
+			-I$(builddir)/tools -I$(srcdir)/monitor
 
 if MCAP
 INCLUDES += -I$(builddir)/health
