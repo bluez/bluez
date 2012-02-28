@@ -496,6 +496,14 @@ void obc_session_shutdown(struct obc_session *session)
 	err = g_error_new(OBEX_IO_ERROR, OBEX_IO_DISCONNECTED,
 						"Session closed by user");
 
+	if (session->p != NULL) {
+		if (session->p->func)
+			session->p->func(session, err, session->p->data);
+
+		pending_request_free(session->p);
+		session->p = NULL;
+	}
+
 	while ((p = g_queue_pop_head(session->queue))) {
 		if (p->func)
 			p->func(session, err, p->data);
