@@ -276,7 +276,9 @@ enum {
 #define LMP_EXT_FEAT	0x80
 
 /* Extended LMP features */
-#define LMP_HOST_LE	0x02
+#define LMP_HOST_SSP		0x01
+#define LMP_HOST_LE		0x02
+#define LMP_HOST_LE_BREDR	0x04
 
 /* Link policies */
 #define HCI_LP_RSWITCH	0x0001
