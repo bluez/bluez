@@ -27,9 +27,6 @@
 
 struct obc_session;
 
-#define OBEX_IO_ERROR obex_io_error_quark()
-GQuark obex_io_error_quark(void);
-
 typedef void (*session_callback_t) (struct obc_session *session,
 					GError *err, void *user_data);
 

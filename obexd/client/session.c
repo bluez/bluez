@@ -111,7 +111,7 @@ static void transfer_progress(struct obc_transfer *transfer,
 					gint64 transferred, GError *err,
 					void *user_data);
 
-GQuark obex_io_error_quark(void)
+static GQuark obex_io_error_quark(void)
 {
 	return g_quark_from_static_string("obex-io-error-quark");
 }
