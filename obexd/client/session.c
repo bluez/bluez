@@ -485,12 +485,25 @@ proceed:
 
 void obc_session_shutdown(struct obc_session *session)
 {
+	struct pending_request *p;
+	GError *err;
+
 	DBG("%p", session);
 
 	obc_session_ref(session);
 
 	/* Unregister any pending transfer */
-	g_queue_foreach(session->queue, (GFunc) pending_request_free, NULL);
+	err = g_error_new(OBEX_IO_ERROR, OBEX_IO_DISCONNECTED,
+						"Session closed by user");
+
+	while ((p = g_queue_pop_head(session->queue))) {
+		if (p->func)
+			p->func(session, err, p->data);
+
+		pending_request_free(p);
+	}
+
+	g_error_free(err);
 
 	/* Unregister interfaces */
 	if (session->path)
