@@ -1326,6 +1326,9 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
 		break;
+	case MGMT_OP_CANCEL_PAIR_DEVICE:
+		DBG("cancel_pair_device complete");
+		break;
 	case MGMT_OP_UNPAIR_DEVICE:
 		DBG("unpair_device complete");
 		break;
