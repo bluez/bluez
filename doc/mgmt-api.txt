@@ -32,6 +32,30 @@ command or event is not related to any controller. Possible values:
 	<non-controller>	0xFFFF
 
 
+Error Codes
+===========
+
+The following values have been defined for use with the Command Status
+and Command Complete events:
+
+0x00	Success
+0x01	Unknown Command
+0x02	Not Connected
+0x03	Failed
+0x04	Connect Failed
+0x05	Authentication Failed
+0x06	Not Paired
+0x07	No Resources
+0x08	Timeout
+0x09	Already Connected
+0x0A	Busy
+0x0B	Rejected
+0x0C	Not Supported
+0x0D	Invalid Parameters
+0x0E	Disconnected
+0x0F	Not Powered
+
+
 Read Management Version Information Command
 ===========================================
 
