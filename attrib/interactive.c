@@ -800,6 +800,33 @@ static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
 	return TRUE;
 }
 
+static char *completion_generator(const char *text, int state)
+{
+	static int index = 0, len = 0;
+	const char *cmd = NULL;
+
+	if (state == 0) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((cmd = commands[index].cmd) != NULL) {
+		index++;
+		if (strncmp(cmd, text, len) == 0)
+			return strdup(cmd);
+	}
+
+	return NULL;
+}
+
+static char **commands_completion(const char *text, int start, int end)
+{
+	if (start == 0)
+		return rl_completion_matches(text, &completion_generator);
+	else
+		return NULL;
+}
+
 int interactive(const gchar *src, const gchar *dst, int psm)
 {
 	GIOChannel *pchan;
@@ -820,6 +847,7 @@ int interactive(const gchar *src, const gchar *dst, int psm)
 	events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	g_io_add_watch(pchan, events, prompt_read, NULL);
 
+	rl_attempted_completion_function = commands_completion;
 	rl_callback_handler_install(get_prompt(), parse_line);
 
 	g_main_loop_run(event_loop);
