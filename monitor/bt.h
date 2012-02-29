@@ -89,6 +89,12 @@ struct bt_hci_cmd_reject_conn_request {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_CHANGE_CONN_PKT_TYPE		0x040f
+struct bt_hci_cmd_change_conn_pkt_type {
+	uint16_t handle;
+	uint16_t pkt_type;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_REMOTE_NAME_REQUEST		0x0419
 struct bt_hci_cmd_remote_name_request {
 	uint8_t  bdaddr[6];
@@ -496,6 +502,13 @@ struct bt_hci_evt_num_completed_packets {
 	uint8_t  num_handles;
 	uint16_t handle;
 	uint16_t count;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_CONN_PKT_TYPE_CHANGED	0x1d
+struct bt_hci_evt_conn_pkt_type_changed {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t pkt_type;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI	0x22
