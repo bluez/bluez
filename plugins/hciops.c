@@ -171,6 +171,9 @@ static struct dev_info {
 	GSList *need_name;
 
 	guint stop_scan_id;
+
+	uint16_t discoverable_timeout;
+	guint discoverable_id;
 } *devs = NULL;
 
 static int found_dev_rssi_cmp(gconstpointer a, gconstpointer b)
@@ -495,7 +498,8 @@ static int init_ssp_mode(int index)
 	return 0;
 }
 
-static int hciops_set_discoverable(int index, gboolean discoverable)
+static int hciops_set_discoverable(int index, gboolean discoverable,
+							uint16_t timeout)
 {
 	struct dev_info *dev = &devs[index];
 	uint8_t mode;
@@ -510,6 +514,8 @@ static int hciops_set_discoverable(int index, gboolean discoverable)
 	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_SCAN_ENABLE,
 								1, &mode) < 0)
 		return -errno;
+
+	dev->discoverable_timeout = timeout;
 
 	return 0;
 }
@@ -752,6 +758,7 @@ static gboolean init_adapter(int index)
 	uint8_t mode, on_mode, major, minor;
 	gboolean pairable, discoverable;
 	const char *name;
+	uint16_t discoverable_timeout;
 
 	if (!dev->registered) {
 		adapter = btd_manager_register_adapter(index, TRUE);
@@ -766,7 +773,9 @@ static gboolean init_adapter(int index)
 	if (adapter == NULL)
 		return FALSE;
 
-	btd_adapter_get_mode(adapter, &mode, &on_mode, &pairable);
+	btd_adapter_get_mode(adapter, &mode, &on_mode,
+						&discoverable_timeout,
+						&pairable);
 
 	if (existing_adapter)
 		mode = on_mode;
@@ -789,7 +798,7 @@ static gboolean init_adapter(int index)
 
 	discoverable = (mode == MODE_DISCOVERABLE);
 
-	hciops_set_discoverable(index, discoverable);
+	hciops_set_discoverable(index, discoverable, discoverable_timeout);
 	hciops_set_pairable(index, pairable);
 
 	if (dev->already_up)
@@ -1723,20 +1732,13 @@ static inline void cmd_status(int index, void *ptr)
 		cs_inquiry_evt(index, evt->status);
 }
 
-static void read_scan_complete(int index, uint8_t status, void *ptr)
+static gboolean discoverable_timeout_handler(gpointer user_data)
 {
-	struct btd_adapter *adapter;
-	read_scan_enable_rp *rp = ptr;
+	struct dev_info *dev = user_data;
 
-	DBG("hci%d status %u", index, status);
+	hciops_set_discoverable(dev->id, FALSE, 0);
 
-	adapter = manager_find_adapter_by_id(index);
-	if (!adapter) {
-		error("Unable to find matching adapter");
-		return;
-	}
-
-	adapter_mode_changed(adapter, rp->enable);
+	return FALSE;
 }
 
 /* Limited Discoverable bit mask in CoD */
@@ -1774,6 +1776,65 @@ static int hciops_set_limited_discoverable(int index, gboolean limited)
 		return -errno;
 
 	return write_class(index, dev->wanted_cod);
+}
+
+static void reset_discoverable_timeout(int index)
+{
+	struct dev_info *dev = &devs[index];
+
+	if (dev->discoverable_id > 0) {
+		g_source_remove(dev->discoverable_id);
+		dev->discoverable_id = 0;
+	}
+}
+
+static void set_discoverable_timeout(int index)
+{
+	struct dev_info *dev = &devs[index];
+
+	reset_discoverable_timeout(index);
+
+	if (dev->discoverable_timeout == 0) {
+		hciops_set_limited_discoverable(index, FALSE);
+		return;
+	}
+
+	/* Set limited discoverable if pairable and interval between 0 to 60
+	   sec */
+	if (dev->pairable && dev->discoverable_timeout <= 60)
+		hciops_set_limited_discoverable(index, TRUE);
+	else
+		hciops_set_limited_discoverable(index, FALSE);
+
+	dev->discoverable_id = g_timeout_add_seconds(dev->discoverable_timeout,
+						discoverable_timeout_handler,
+						dev);
+}
+
+static void read_scan_complete(int index, uint8_t status, void *ptr)
+{
+	struct btd_adapter *adapter;
+	read_scan_enable_rp *rp = ptr;
+
+	DBG("hci%d status %u", index, status);
+
+	switch (rp->enable) {
+	case (SCAN_PAGE | SCAN_INQUIRY):
+	case SCAN_INQUIRY:
+		set_discoverable_timeout(index);
+		break;
+	default:
+		reset_discoverable_timeout(index);
+		hciops_set_limited_discoverable(index, FALSE);
+	}
+
+	adapter = manager_find_adapter_by_id(index);
+	if (!adapter) {
+		error("Unable to find matching adapter");
+		return;
+	}
+
+	adapter_mode_changed(adapter, rp->enable);
 }
 
 static void write_class_complete(int index, uint8_t status)
@@ -2854,6 +2915,7 @@ static void device_event(int event, int index)
 		devs[index].pending_cod = 0;
 		devs[index].cache_enable = TRUE;
 		devs[index].discov_state = DISCOV_HALTED;
+		reset_discoverable_timeout(index);
 		if (!devs[index].pending) {
 			struct btd_adapter *adapter;
 
@@ -3824,8 +3886,8 @@ static struct btd_adapter_ops hci_ops = {
 	.cleanup = hciops_cleanup,
 	.set_powered = hciops_set_powered,
 	.set_discoverable = hciops_set_discoverable,
-	.set_pairable = hciops_set_pairable,
 	.set_limited_discoverable = hciops_set_limited_discoverable,
+	.set_pairable = hciops_set_pairable,
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,
 	.set_name = hciops_set_name,

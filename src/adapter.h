@@ -87,7 +87,9 @@ void btd_adapter_start(struct btd_adapter *adapter);
 int btd_adapter_stop(struct btd_adapter *adapter);
 
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-					uint8_t *on_mode, gboolean *pairable);
+						uint8_t *on_mode,
+						uint16_t *discoverable_timeout,
+						gboolean *pairable);
 
 void btd_adapter_get_class(struct btd_adapter *adapter, uint8_t *major,
 							uint8_t *minor);
@@ -184,7 +186,8 @@ struct btd_adapter_ops {
 	int (*setup) (void);
 	void (*cleanup) (void);
 	int (*set_powered) (int index, gboolean powered);
-	int (*set_discoverable) (int index, gboolean discoverable);
+	int (*set_discoverable) (int index, gboolean discoverable,
+							uint16_t timeout);
 	int (*set_pairable) (int index, gboolean pairable);
 	int (*set_limited_discoverable) (int index, gboolean limited);
 	int (*start_discovery) (int index);

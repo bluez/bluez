@@ -114,7 +114,6 @@ struct btd_adapter {
 	uint32_t dev_class;		/* Class of Device */
 	char *name;			/* adapter name */
 	gboolean allow_name_changes;	/* whether the adapter name can be changed */
-	guint discov_timeout_id;	/* discoverable timeout id */
 	guint stop_discov_id;		/* stop inquiry/scanning id */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
@@ -215,54 +214,6 @@ static void adapter_set_limited_discoverable(struct btd_adapter *adapter,
 	adapter_ops->set_limited_discoverable(adapter->dev_id, limited);
 }
 
-static void adapter_remove_discov_timeout(struct btd_adapter *adapter)
-{
-	if (!adapter)
-		return;
-
-	if (adapter->discov_timeout_id == 0)
-		return;
-
-	g_source_remove(adapter->discov_timeout_id);
-	adapter->discov_timeout_id = 0;
-}
-
-static gboolean discov_timeout_handler(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	adapter->discov_timeout_id = 0;
-
-	adapter_ops->set_discoverable(adapter->dev_id, FALSE);
-
-	return FALSE;
-}
-
-static void adapter_set_discov_timeout(struct btd_adapter *adapter,
-					guint interval)
-{
-	if (adapter->discov_timeout_id) {
-		g_source_remove(adapter->discov_timeout_id);
-		adapter->discov_timeout_id = 0;
-	}
-
-	if (interval == 0) {
-		adapter_set_limited_discoverable(adapter, FALSE);
-		return;
-	}
-
-	/* Set limited discoverable if pairable and interval between 0 to 60
-	   sec */
-	if (adapter->pairable && interval <= 60)
-		adapter_set_limited_discoverable(adapter, TRUE);
-	else
-		adapter_set_limited_discoverable(adapter, FALSE);
-
-	adapter->discov_timeout_id = g_timeout_add_seconds(interval,
-							discov_timeout_handler,
-							adapter);
-}
-
 static struct session_req *session_ref(struct session_req *req)
 {
 	req->refcount++;
@@ -302,22 +253,12 @@ static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
 	int err;
 
 	if (mode == MODE_CONNECTABLE)
-		err = adapter_ops->set_discoverable(adapter->dev_id, FALSE);
+		err = adapter_ops->set_discoverable(adapter->dev_id, FALSE, 0);
 	else
-		err = adapter_ops->set_discoverable(adapter->dev_id, TRUE);
+		err = adapter_ops->set_discoverable(adapter->dev_id, TRUE,
+						adapter->discov_timeout);
 
-	if (err < 0)
-		return err;
-
-	if (mode == MODE_CONNECTABLE)
-		return 0;
-
-	adapter_remove_discov_timeout(adapter);
-
-	if (adapter->discov_timeout)
-		adapter_set_discov_timeout(adapter, adapter->discov_timeout);
-
-	return 0;
+	return err;
 }
 
 static struct session_req *find_session_by_msg(GSList *list, const DBusMessage *msg)
@@ -710,7 +651,7 @@ static DBusMessage *set_discoverable_timeout(DBusConnection *conn,
 		return dbus_message_new_method_return(msg);
 
 	if (adapter->scan_mode & SCAN_INQUIRY)
-		adapter_set_discov_timeout(adapter, timeout);
+		adapter_ops->set_discoverable(adapter->dev_id, TRUE, timeout);
 
 	adapter->discov_timeout = timeout;
 
@@ -2194,7 +2135,9 @@ static void emit_device_disappeared(gpointer data, gpointer user_data)
 }
 
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-					uint8_t *on_mode, gboolean *pairable)
+						uint8_t *on_mode,
+						uint16_t *discoverable_timeout,
+						gboolean *pairable)
 {
 	char str[14], address[18];
 
@@ -2211,6 +2154,9 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 
 	if (on_mode)
 		*on_mode = get_mode(&adapter->bdaddr, "on");
+
+	if (discoverable_timeout)
+		*discoverable_timeout = get_discoverable_timeout(address);
 
 	if (pairable)
 		*pairable = adapter->pairable;
@@ -2348,12 +2294,6 @@ static void set_mode_complete(struct btd_adapter *adapter)
 int btd_adapter_stop(struct btd_adapter *adapter)
 {
 	gboolean prop_false = FALSE;
-
-	/* cancel pending timeout */
-	if (adapter->discov_timeout_id) {
-		g_source_remove(adapter->discov_timeout_id);
-		adapter->discov_timeout_id = 0;
-	}
 
 	/* check pending requests */
 	reply_pending_requests(adapter);
@@ -2984,8 +2924,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 	if (adapter->scan_mode == scan_mode)
 		return;
 
-	adapter_remove_discov_timeout(adapter);
-
 	switch (scan_mode) {
 	case SCAN_DISABLED:
 		adapter->mode = MODE_OFF;
@@ -3001,18 +2939,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		adapter->mode = MODE_DISCOVERABLE;
 		discoverable = TRUE;
 		pairable = adapter->pairable;
-		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter,
-						adapter->discov_timeout);
 		break;
-	case SCAN_INQUIRY:
-		/* Address the scenario where a low-level application like
-		 * hciconfig changed the scan mode */
-		if (adapter->discov_timeout != 0)
-			adapter_set_discov_timeout(adapter,
-						adapter->discov_timeout);
-
-		/* ignore, this event should not be sent */
 	default:
 		/* ignore, reserved */
 		return;
@@ -3023,9 +2950,6 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		emit_property_changed(connection, adapter->path,
 					ADAPTER_INTERFACE, "Pairable",
 					DBUS_TYPE_BOOLEAN, &pairable);
-
-	if (!discoverable)
-		adapter_set_limited_discoverable(adapter, FALSE);
 
 	emit_property_changed(connection, path,
 				ADAPTER_INTERFACE, "Discoverable",

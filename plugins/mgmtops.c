@@ -216,7 +216,8 @@ static int mgmt_set_connectable(int index, gboolean connectable)
 	return mgmt_set_mode(index, MGMT_OP_SET_CONNECTABLE, connectable);
 }
 
-static int mgmt_set_discoverable(int index, gboolean discoverable)
+static int mgmt_set_discoverable(int index, gboolean discoverable,
+							uint16_t timeout)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_discoverable)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -230,6 +231,7 @@ static int mgmt_set_discoverable(int index, gboolean discoverable)
 	hdr->len = htobs(sizeof(*cp));
 
 	cp->val = discoverable;
+	cp->timeout = timeout;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -306,16 +308,17 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 	struct controller_info *info;
 	gboolean pairable;
 	uint8_t on_mode;
-	uint16_t index;
+	uint16_t index, discoverable_timeout;
 
-	btd_adapter_get_mode(adapter, NULL, &on_mode, &pairable);
+	btd_adapter_get_mode(adapter, NULL, &on_mode, &discoverable_timeout,
+								&pairable);
 
 	index = adapter_get_dev_id(adapter);
 
 	info = &controllers[index];
 
 	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings))
-		mgmt_set_discoverable(index, TRUE);
+		mgmt_set_discoverable(index, TRUE, discoverable_timeout);
 	else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings))
 		mgmt_set_connectable(index, TRUE);
 	else if (mgmt_powered(settings))
@@ -1085,7 +1088,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_get_class(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
 
-	btd_adapter_get_mode(adapter, &mode, NULL, NULL);
+	btd_adapter_get_mode(adapter, &mode, NULL, NULL, NULL);
 	if (mode == MODE_OFF && mgmt_powered(info->current_settings)) {
 		mgmt_set_powered(index, FALSE);
 		return;
