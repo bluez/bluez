@@ -2092,9 +2092,6 @@ static void probe_driver(struct btd_adapter *adapter, gpointer user_data)
 	struct btd_adapter_driver *driver = user_data;
 	int err;
 
-	if (!adapter->up)
-		return;
-
 	if (driver->probe == NULL)
 		return;
 
