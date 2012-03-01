@@ -986,7 +986,7 @@ static uint8_t avrcp_handle_abort_continuing(struct avrcp_player *player,
 	player_abort_pending_pdu(player);
 	pdu->params_len = 0;
 
-	return AVC_CTYPE_STABLE;
+	return AVC_CTYPE_ACCEPTED;
 
 err:
 	pdu->params_len = htons(1);
