@@ -3886,7 +3886,6 @@ static struct btd_adapter_ops hci_ops = {
 	.cleanup = hciops_cleanup,
 	.set_powered = hciops_set_powered,
 	.set_discoverable = hciops_set_discoverable,
-	.set_limited_discoverable = hciops_set_limited_discoverable,
 	.set_pairable = hciops_set_pairable,
 	.start_discovery = hciops_start_discovery,
 	.stop_discovery = hciops_stop_discovery,

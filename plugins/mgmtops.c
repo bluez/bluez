@@ -1877,12 +1877,6 @@ static void mgmt_cleanup(void)
 	}
 }
 
-static int mgmt_set_limited_discoverable(int index, gboolean limited)
-{
-	DBG("index %d limited %d", index, limited);
-	return -ENOSYS;
-}
-
 static int mgmt_start_discovery(int index)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
@@ -2407,7 +2401,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_powered = mgmt_set_powered,
 	.set_discoverable = mgmt_set_discoverable,
 	.set_pairable = mgmt_set_pairable,
-	.set_limited_discoverable = mgmt_set_limited_discoverable,
 	.start_discovery = mgmt_start_discovery,
 	.stop_discovery = mgmt_stop_discovery,
 	.set_name = mgmt_set_name,

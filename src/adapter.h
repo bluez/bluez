@@ -189,7 +189,6 @@ struct btd_adapter_ops {
 	int (*set_discoverable) (int index, gboolean discoverable,
 							uint16_t timeout);
 	int (*set_pairable) (int index, gboolean pairable);
-	int (*set_limited_discoverable) (int index, gboolean limited);
 	int (*start_discovery) (int index);
 	int (*stop_discovery) (int index);
 

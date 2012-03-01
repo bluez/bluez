@@ -206,14 +206,6 @@ static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
 		return MODE_UNKNOWN;
 }
 
-static void adapter_set_limited_discoverable(struct btd_adapter *adapter,
-							gboolean limited)
-{
-	DBG("%s", limited ? "TRUE" : "FALSE");
-
-	adapter_ops->set_limited_discoverable(adapter->dev_id, limited);
-}
-
 static struct session_req *session_ref(struct session_req *req)
 {
 	req->refcount++;
