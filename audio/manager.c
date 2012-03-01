@@ -913,7 +913,6 @@ static int headset_server_probe(struct btd_adapter *adapter)
 		return -EINVAL;
 
 	btd_adapter_register_powered_callback(adapter, state_changed);
-	state_changed(adapter, TRUE);
 
 	err = headset_server_init(adp);
 	if (err < 0) {
