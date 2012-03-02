@@ -647,13 +647,111 @@ static int hciops_stop_inquiry(int index)
 	return 0;
 }
 
+static void update_ext_inquiry_response(int index)
+{
+	struct dev_info *dev = &devs[index];
+	write_ext_inquiry_response_cp cp;
+
+	DBG("hci%d", index);
+
+	if (!(dev->features[6] & LMP_EXT_INQ))
+		return;
+
+	if (dev->ssp_mode == 0)
+		return;
+
+	if (dev->cache_enable)
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+
+	eir_create(dev->name, dev->tx_power, dev->did_vendor, dev->did_product,
+					dev->did_version, dev->uuids, cp.data);
+
+	if (memcmp(cp.data, dev->eir, sizeof(cp.data)) == 0)
+		return;
+
+	memcpy(dev->eir, cp.data, sizeof(cp.data));
+
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
+				OCF_WRITE_EXT_INQUIRY_RESPONSE,
+				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
+		error("Unable to write EIR data: %s (%d)",
+						strerror(errno), errno);
+}
+
+static int hciops_set_name(int index, const char *name)
+{
+	struct dev_info *dev = &devs[index];
+	change_local_name_cp cp;
+
+	DBG("hci%d, name %s", index, name);
+
+	memset(&cp, 0, sizeof(cp));
+	strncpy((char *) cp.name, name, sizeof(cp.name));
+
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
+				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	memcpy(dev->name, cp.name, 248);
+	update_ext_inquiry_response(index);
+
+	return 0;
+}
+
+static int write_class(int index, uint32_t class)
+{
+	struct dev_info *dev = &devs[index];
+	write_class_of_dev_cp cp;
+
+	DBG("hci%d class 0x%06x", index, class);
+
+	memcpy(cp.dev_class, &class, 3);
+
+	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
+					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
+		return -errno;
+
+	dev->pending_cod = class;
+
+	return 0;
+}
+
+static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
+{
+	struct dev_info *dev = &devs[index];
+	int err;
+
+	DBG("hci%d major %u minor %u", index, major, minor);
+
+	/* Update only the major and minor class bits keeping remaining bits
+	 * intact*/
+	dev->wanted_cod &= 0xffe000;
+	dev->wanted_cod |= ((major & 0x1f) << 8) | minor;
+
+	if (dev->wanted_cod == dev->current_cod ||
+			dev->cache_enable || dev->pending_cod)
+		return 0;
+
+	DBG("Changing Major/Minor class to 0x%06x", dev->wanted_cod);
+
+	err = write_class(index, dev->wanted_cod);
+	if (err < 0)
+		error("Adapter class update failed: %s (%d)",
+						strerror(-err), -err);
+
+	return err;
+}
+
 static gboolean init_adapter(int index)
 {
 	struct dev_info *dev = &devs[index];
 	struct btd_adapter *adapter = NULL;
 	gboolean existing_adapter = dev->registered;
-	uint8_t mode, on_mode;
+	uint8_t mode, on_mode, major, minor;
 	gboolean pairable, discoverable;
+	const char *name;
 
 	if (!dev->registered) {
 		adapter = btd_manager_register_adapter(index, TRUE);
@@ -679,6 +777,14 @@ static gboolean init_adapter(int index)
 	}
 
 	start_adapter(index);
+
+	name = btd_adapter_get_name(adapter);
+	if (name)
+		hciops_set_name(index, name);
+
+	btd_adapter_get_class(adapter, &major, &minor);
+	hciops_set_dev_class(index, major, minor);
+
 	btd_adapter_start(adapter);
 
 	discoverable = (mode == MODE_DISCOVERABLE);
@@ -1495,39 +1601,6 @@ static void read_local_features_complete(int index,
 		init_adapter(index);
 }
 
-static void update_ext_inquiry_response(int index)
-{
-	struct dev_info *dev = &devs[index];
-	write_ext_inquiry_response_cp cp;
-
-	DBG("hci%d", index);
-
-	if (!(dev->features[6] & LMP_EXT_INQ))
-		return;
-
-	if (dev->ssp_mode == 0)
-		return;
-
-	if (dev->cache_enable)
-		return;
-
-	memset(&cp, 0, sizeof(cp));
-
-	eir_create(dev->name, dev->tx_power, dev->did_vendor, dev->did_product,
-					dev->did_version, dev->uuids, cp.data);
-
-	if (memcmp(cp.data, dev->eir, sizeof(cp.data)) == 0)
-		return;
-
-	memcpy(dev->eir, cp.data, sizeof(cp.data));
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL,
-				OCF_WRITE_EXT_INQUIRY_RESPONSE,
-				WRITE_EXT_INQUIRY_RESPONSE_CP_SIZE, &cp) < 0)
-		error("Unable to write EIR data: %s (%d)",
-						strerror(errno), errno);
-}
-
 static void update_name(int index, const char *name)
 {
 	struct btd_adapter *adapter;
@@ -1664,24 +1737,6 @@ static void read_scan_complete(int index, uint8_t status, void *ptr)
 	}
 
 	adapter_mode_changed(adapter, rp->enable);
-}
-
-static int write_class(int index, uint32_t class)
-{
-	struct dev_info *dev = &devs[index];
-	write_class_of_dev_cp cp;
-
-	DBG("hci%d class 0x%06x", index, class);
-
-	memcpy(cp.dev_class, &class, 3);
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_WRITE_CLASS_OF_DEV,
-					WRITE_CLASS_OF_DEV_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	dev->pending_cod = class;
-
-	return 0;
 }
 
 /* Limited Discoverable bit mask in CoD */
@@ -3034,32 +3089,6 @@ static int hciops_set_powered(int index, gboolean powered)
 	return err;
 }
 
-static int hciops_set_dev_class(int index, uint8_t major, uint8_t minor)
-{
-	struct dev_info *dev = &devs[index];
-	int err;
-
-	DBG("hci%d major %u minor %u", index, major, minor);
-
-	/* Update only the major and minor class bits keeping remaining bits
-	 * intact*/
-	dev->wanted_cod &= 0xffe000;
-	dev->wanted_cod |= ((major & 0x1f) << 8) | minor;
-
-	if (dev->wanted_cod == dev->current_cod ||
-			dev->cache_enable || dev->pending_cod)
-		return 0;
-
-	DBG("Changing Major/Minor class to 0x%06x", dev->wanted_cod);
-
-	err = write_class(index, dev->wanted_cod);
-	if (err < 0)
-		error("Adapter class update failed: %s (%d)",
-						strerror(-err), -err);
-
-	return err;
-}
-
 static int start_inquiry(int index, uint8_t length)
 {
 	struct dev_info *dev = &devs[index];
@@ -3155,26 +3184,6 @@ static int hciops_stop_scanning(int index)
 	}
 
 	return le_set_scan_enable(index, 0);
-}
-
-static int hciops_set_name(int index, const char *name)
-{
-	struct dev_info *dev = &devs[index];
-	change_local_name_cp cp;
-
-	DBG("hci%d, name %s", index, name);
-
-	memset(&cp, 0, sizeof(cp));
-	strncpy((char *) cp.name, name, sizeof(cp.name));
-
-	if (hci_send_cmd(dev->sk, OGF_HOST_CTL, OCF_CHANGE_LOCAL_NAME,
-				CHANGE_LOCAL_NAME_CP_SIZE, &cp) < 0)
-		return -errno;
-
-	memcpy(dev->name, cp.name, 248);
-	update_ext_inquiry_response(index);
-
-	return 0;
 }
 
 static int cancel_resolve_name(int index)

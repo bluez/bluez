@@ -168,9 +168,9 @@ static void dev_info_free(void *data)
 }
 
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
-								uint8_t minor)
+							uint8_t minor)
 {
-	return adapter_ops->set_dev_class(adapter->dev_id, major, minor);
+       return adapter_ops->set_dev_class(adapter->dev_id, major, minor);
 }
 
 static const char *mode2str(uint8_t mode)
@@ -811,6 +811,9 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 		int err = adapter_ops->set_name(adapter->dev_id, maxname);
 		if (err < 0)
 			return err;
+	} else {
+		g_free(adapter->name);
+		adapter->name = g_strdup(maxname);
 	}
 
 	write_local_name(&adapter->bdaddr, maxname);
@@ -2213,10 +2216,28 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 		*pairable = adapter->pairable;
 }
 
+void btd_adapter_get_class(struct btd_adapter *adapter, uint8_t *major,
+								uint8_t *minor)
+{
+	uint8_t cls[3];
+
+	if (read_local_class(&adapter->bdaddr, cls) < 0) {
+		uint32_t class = htobl(main_opts.class);
+		memcpy(cls, &class, 3);
+	}
+
+	*major = cls[1];
+	*minor = cls[0];
+}
+
+const char *btd_adapter_get_name(struct btd_adapter *adapter)
+{
+	return adapter->name;
+}
+
 void btd_adapter_start(struct btd_adapter *adapter)
 {
 	char address[18];
-	uint8_t cls[3];
 	gboolean powered;
 
 	ba2str(&adapter->bdaddr, address);
@@ -2228,17 +2249,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->pairable_timeout = get_pairable_timeout(address);
 	adapter->mode = MODE_CONNECTABLE;
 	adapter->off_timer = 0;
-
-	/* Forcing: Name is lost when adapter is powered off */
-	if (adapter->name)
-		adapter_ops->set_name(adapter->dev_id, adapter->name);
-
-	if (read_local_class(&adapter->bdaddr, cls) < 0) {
-		uint32_t class = htobl(main_opts.class);
-		memcpy(cls, &class, 3);
-	}
-
-	btd_adapter_set_class(adapter, cls[1], cls[0]);
 
 	powered = TRUE;
 	emit_property_changed(connection, adapter->path,

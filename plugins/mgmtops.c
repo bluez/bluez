@@ -971,12 +971,64 @@ static int mgmt_set_powered(int index, gboolean powered)
 	return mgmt_set_mode(index, MGMT_OP_SET_POWERED, powered);
 }
 
+static int mgmt_set_name(int index, const char *name)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_local_name)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_local_name *cp = (void *) &buf[sizeof(*hdr)];
+
+	DBG("index %d, name %s", index, name);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_LOCAL_NAME);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	strncpy((char *) cp->name, name, sizeof(cp->name) - 1);
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
+static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
+
+	DBG("index %d major %u minor %u", index, major, minor);
+
+	if (info->pending_uuid) {
+		info->major = major;
+		info->minor = minor;
+		info->pending_class = TRUE;
+		return 0;
+	}
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp->major = major;
+	cp->minor = minor;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
+		return -errno;
+
+	return 0;
+}
+
 static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	uint8_t mode;
+	const char *name;
+	uint8_t mode, major, minor;
 	char addr[18];
 
 	if (len < sizeof(*rp)) {
@@ -1021,7 +1073,17 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	update_settings(adapter, info->current_settings);
 
-	adapter_name_changed(adapter, (char *) rp->name);
+	name = btd_adapter_get_name(adapter);
+
+	error("mgmtops setting name %s", name);
+
+	if (name)
+		mgmt_set_name(index, name);
+	else
+		adapter_name_changed(adapter, (char *) rp->name);
+
+	btd_adapter_get_class(adapter, &major, &minor);
+	mgmt_set_dev_class(index, major, minor);
 
 	btd_adapter_get_mode(adapter, &mode, NULL, NULL);
 	if (mode == MODE_OFF && mgmt_powered(info->current_settings)) {
@@ -1201,36 +1263,6 @@ static void read_local_oob_data_failed(int sk, uint16_t index)
 
 	if (adapter)
 		oob_read_local_data_complete(adapter, NULL, NULL);
-}
-
-static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
-	struct controller_info *info = &controllers[index];
-
-	DBG("index %d major %u minor %u", index, major, minor);
-
-	if (info->pending_uuid) {
-		info->major = major;
-		info->minor = minor;
-		info->pending_class = TRUE;
-		return 0;
-	}
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->major = major;
-	cp->minor = minor;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
@@ -1895,27 +1927,6 @@ static int mgmt_stop_discovery(int index)
 	hdr->index = htobs(index);
 
 	cp->type = info->discov_type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int mgmt_set_name(int index, const char *name)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_local_name)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_local_name *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d, name %s", index, name);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_LOCAL_NAME);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	strncpy((char *) cp->name, name, sizeof(cp->name) - 1);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
