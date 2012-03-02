@@ -43,6 +43,8 @@
 #define MGMT_STATUS_INVALID_PARAMS	0x0d
 #define MGMT_STATUS_DISCONNECTED	0x0e
 #define MGMT_STATUS_NOT_POWERED		0x0f
+#define MGMT_STATUS_CANCELLED		0x10
+#define MGMT_STATUS_INVALID_INDEX	0x11
 
 struct mgmt_hdr {
 	uint16_t opcode;
@@ -518,6 +520,8 @@ static const char *mgmt_status[] = {
 	"Invalid Parameters",
 	"Disconnected",
 	"Not Powered",
+	"Cancelled",
+	"Invalid Index",
 };
 
 #ifndef NELEM
