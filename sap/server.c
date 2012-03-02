@@ -49,7 +49,7 @@
 #define SAP_UUID		"0000112D-0000-1000-8000-00805F9B34FB"
 #define SAP_SERVER_CHANNEL	8
 
-#define PADDING4(x) ((4 - (x & 0x03)) & 0x03)
+#define PADDING4(x) ((4 - ((x) & 0x03)) & 0x03)
 #define PARAMETER_SIZE(x) (sizeof(struct sap_parameter) + x + PADDING4(x))
 
 #define SAP_NO_REQ 0xFF
