@@ -1404,7 +1404,9 @@ static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
 
 	opcode = btohs(bt_get_unaligned(&ev->opcode));
 
-	DBG("status %u opcode %u (index %u)", ev->status, opcode, index);
+	error("hci%u: %s (0x%04x) failed: %s (0x%02x)", index,
+			mgmt_opstr(opcode), opcode, mgmt_errstr(ev->status),
+			ev->status);
 
 	switch (opcode) {
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
