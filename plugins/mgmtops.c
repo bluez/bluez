@@ -179,6 +179,7 @@ static void remove_controller(uint16_t index)
 	btd_manager_unregister_adapter(index);
 
 	g_slist_free_full(controllers[index].pending_uuids, g_free);
+	controllers[index].pending_uuids = NULL;
 
 	memset(&controllers[index], 0, sizeof(struct controller_info));
 
@@ -338,6 +339,7 @@ static int mgmt_update_powered(struct btd_adapter *adapter,
 	if (!mgmt_powered(settings)) {
 		btd_adapter_stop(adapter);
 		g_slist_free_full(info->pending_uuids, g_free);
+		info->pending_uuids = NULL;
 		info->pending_uuid = FALSE;
 		info->pending_class = FALSE;
 		return 0;
