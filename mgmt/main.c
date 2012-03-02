@@ -44,98 +44,6 @@
 #include <glib.h>
 #include "glib-helper.h"
 
-#ifndef NELEM
-#define NELEM(x) (sizeof(x) / sizeof((x)[0]))
-#endif
-
-static const char *mgmt_op[] = {
-	"<0x0000>",
-	"Read Version",
-	"Read Commands",
-	"Read Index List",
-	"Read Controller Info",
-	"Set Powered",
-	"Set Discoverable",
-	"Set Connectable",
-	"Set Fast Connectable",		/* 0x0008 */
-	"Set Pairable",
-	"Set Link Security",
-	"Set Secure Simple Pairing",
-	"Set High Speed",
-	"Set Low Energy",
-	"Set Dev Class",
-	"Set Local Name",
-	"Add UUID",			/* 0x0010 */
-	"Remove UUID",
-	"Load Link Keys",
-	"Load Long Term Keys",
-	"Disconnect",
-	"Get Connections",
-	"PIN Code Reply",
-	"PIN Code Neg Reply",
-	"Set IO Capability",		/* 0x0018 */
-	"Pair Device",
-	"Cancel Pair Device",
-	"Unpair Device",
-	"User Confirm Reply",
-	"User Confirm Neg Reply",
-	"User Passkey Reply",
-	"User Passkey Neg Reply",
-	"Read Local OOB Data",		/* 0x0020 */
-	"Add Remote OOB Data",
-	"Remove Remove OOB Data",
-	"Start Discovery",
-	"Stop Discovery",
-	"Confirm Name",
-	"Block Device",
-	"Unblock Device",
-};
-
-static const char *mgmt_ev[] = {
-	"<0x0000>",
-	"Command Complete",
-	"Command Status",
-	"Controller Error",
-	"Index Added",
-	"Index Removed",
-	"New Settings",
-	"Class of Device Changed",
-	"Local Name Changed",		/* 0x0008 */
-	"New Link Key",
-	"New Long Term Key",
-	"Device Connected",
-	"Device Disconnected",
-	"Connect Failed",
-	"PIN Code Request",
-	"User Confirm Request",
-	"User Passkey Request",		/* 0x0010 */
-	"Authentication Failed",
-	"Device Found",
-	"Discovering",
-	"Device Blocked",
-	"Device Unblocked",
-	"Device Unpaired",
-};
-
-static const char *mgmt_status[] = {
-	"Success",
-	"Unknown Command",
-	"Not Connected",
-	"Failed",
-	"Connect Failed",
-	"Authentication Failed",
-	"Not Paired",
-	"No Resources",
-	"Timeout",
-	"Already Connected",
-	"Busy",
-	"Rejected",
-	"Not Supported",
-	"Invalid Parameters",
-	"Disconnected",
-	"Not Powered",
-};
-
 static bool monitor = false;
 static bool discovery = false;
 static bool resolve_names = true;
@@ -150,27 +58,6 @@ static struct pending_cmd {
 	void *user_data;
 	struct pending_cmd *next;
 } *pending = NULL;
-
-static const char *mgmt_opstr(uint16_t op)
-{
-	if (op >= NELEM(mgmt_op))
-		return "<unknown opcode>";
-	return mgmt_op[op];
-}
-
-static const char *mgmt_evstr(uint16_t ev)
-{
-	if (ev >= NELEM(mgmt_ev))
-		return "<unknown event>";
-	return mgmt_ev[ev];
-}
-
-static const char *mgmt_errstr(uint8_t status)
-{
-	if (status >= NELEM(mgmt_status))
-		return "<unknown status>";
-	return mgmt_status[status];
-}
 
 static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
 				size_t len, cmd_cb func, void *user_data)
