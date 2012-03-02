@@ -1290,7 +1290,7 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 
 		if (info->pending_powered) {
 			info->pending_powered = FALSE;
-			mgmt_set_powered(index, 1);
+			mgmt_set_powered(index, TRUE);
 		}
 
 		return;
