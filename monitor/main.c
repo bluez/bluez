@@ -28,11 +28,13 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <getopt.h>
 
 #include "mainloop.h"
 #include "packet.h"
 #include "control.h"
 #include "hcidump.h"
+#include "btsnoop.h"
 
 static void signal_callback(int signum, void *user_data)
 {
@@ -44,12 +46,34 @@ static void signal_callback(int signum, void *user_data)
 	}
 }
 
+static const struct option main_options[] = {
+	{ "btsnoop",	required_argument, NULL, 'b'	},
+	{ }
+};
+
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
 	sigset_t mask;
 
 	mainloop_init();
+
+	for (;;) {
+		int opt;
+
+		opt = getopt_long(argc, argv, "b", main_options, NULL);
+		if (opt < 0)
+			break;
+
+		switch (opt) {
+		case 'b':
+			btsnoop_open(optarg);
+			break;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
+
 
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);

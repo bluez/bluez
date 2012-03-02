@@ -57,6 +57,7 @@ mgmt_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/mainloop.h monitor/mainloop.c \
 					monitor/hcidump.h monitor/hcidump.c \
+					monitor/btsnoop.h monitor/btsnoop.c \
 					monitor/control.h monitor/control.c \
 					monitor/packet.h monitor/packet.c
 monitor_btmon_LDADD = lib/libbluetooth-private.la
