@@ -508,7 +508,8 @@ static void stop_discovery(struct btd_adapter *adapter)
 		return;
 	}
 
-	adapter_ops->stop_discovery(adapter->dev_id);
+	if (adapter->up)
+		adapter_ops->stop_discovery(adapter->dev_id);
 }
 
 static void session_remove(struct session_req *req)
@@ -2290,6 +2291,8 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
+	adapter->up = FALSE;
+
 	stop_discovery(adapter);
 
 	if (adapter->disc_sessions) {
@@ -2320,7 +2323,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	emit_property_changed(connection, adapter->path, ADAPTER_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN, &prop_false);
 
-	adapter->up = FALSE;
 	adapter->scan_mode = SCAN_DISABLED;
 	adapter->mode = MODE_OFF;
 	adapter->off_requested = FALSE;
