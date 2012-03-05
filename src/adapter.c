@@ -1776,10 +1776,9 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, const char *value)
 {
 	struct smp_ltk_info *ltk;
 	char *ptr;
-	int i, ret, total;
+	int i, ret;
 
-	total = strlen(value);
-	if (total < 60) {
+	if (strlen(value) < 60) {
 		error("Unexpectedly short (%zu) LTK", strlen(value));
 		return NULL;
 	}
@@ -1791,7 +1790,6 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, const char *value)
 	str2buf(value, ltk->val, sizeof(ltk->val));
 
 	ptr = (char *) value + 2 * sizeof(ltk->val) + 1;
-	total -= 2 * sizeof(ltk->val) + 1;
 
 	ret = sscanf(ptr, " %hhd %hhd %hhd %hhd %hd %n",
 					(uint8_t *) &ltk->addr_type,
@@ -1802,7 +1800,6 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, const char *value)
 		return NULL;
 	}
 	ptr += i;
-	total -= i;
 
 	str2buf(ptr, ltk->rand, sizeof(ltk->rand));
 
