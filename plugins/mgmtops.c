@@ -317,12 +317,15 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 
 	info = &controllers[index];
 
-	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings))
+	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings)) {
+		if(!mgmt_connectable(settings))
+			mgmt_set_connectable(index, TRUE);
 		mgmt_set_discoverable(index, TRUE, discoverable_timeout);
-	else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings))
+	} else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings)) {
 		mgmt_set_connectable(index, TRUE);
-	else if (mgmt_powered(settings))
+	} else if (mgmt_powered(settings)) {
 		adapter_mode_changed(adapter, create_mode(settings));
+	}
 
 	if (mgmt_pairable(settings) != pairable)
 		mgmt_set_pairable(index, pairable);
