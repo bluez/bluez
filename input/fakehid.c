@@ -393,14 +393,16 @@ struct fake_input *fake_hid_connadd(struct fake_input *fake,
 
 	/* New device? Add it to the list of known devices,
 	 * and create the uinput necessary */
-	if (old == NULL) {
+	if (old == NULL || old->uinput < 0) {
 		if (fake_hid->setup_uinput(fake, fake_hid)) {
 			error("Error setting up uinput");
 			g_free(fake);
 			return NULL;
 		}
-		fake_hid->devices = g_list_append(fake_hid->devices, fake);
 	}
+
+	if (old == NULL)
+		fake_hid->devices = g_list_append(fake_hid->devices, fake);
 
 	fake->io = g_io_channel_ref(intr_io);
 	g_io_channel_set_close_on_unref(fake->io, TRUE);
