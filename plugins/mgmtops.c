@@ -310,6 +310,8 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 	uint8_t on_mode;
 	uint16_t index, discoverable_timeout;
 
+	DBG("new settings %x", settings);
+
 	btd_adapter_get_mode(adapter, NULL, &on_mode, &discoverable_timeout,
 								&pairable);
 
