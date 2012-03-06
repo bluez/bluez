@@ -1,3 +1,15 @@
+ver 4.99:
+	Fix issue with missing retries for BNEP connection setup.
+	Fix issue with not showing name if first EIR has no details.
+	Fix issue with running SDP discovery for LE devices.
+	Add support for GATT using 128-bit Bluetooth UUIDs.
+	Add support for retrieving key size information.
+	Add support for storing Long Term Keys.
+	Add support for Proximity Reporter API.
+	Add support for KeyboardDisplay IO capability.
+	Add support for version 1.0 of management API.
+	Add support for monitoring interface.
+
 ver 4.98:
 	Fix issue with adapter list upon initialization failure.
 	Fix issue with missing legacy property for Low Energy.
