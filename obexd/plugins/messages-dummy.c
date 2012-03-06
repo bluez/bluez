@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
+#include <dirent.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,8 +50,39 @@ struct folder_listing_data {
 	void *user_data;
 };
 
+static ssize_t get_subdirs(struct folder_listing_data *fld, GSList **list)
+{
+	return 0;
+}
+
+static void return_folder_listing(struct folder_listing_data *fld, GSList *list)
+{
+	struct session *session = fld->session;
+
+	fld->callback(session, 0, 0, NULL, fld->user_data);
+}
+
 static gboolean get_folder_listing(void *d)
 {
+	struct folder_listing_data *fld = d;
+	ssize_t n;
+	GSList *list = NULL;
+
+	n = get_subdirs(fld, &list);
+
+	if (n < 0) {
+		fld->callback(fld->session, n, 0, NULL, fld->user_data);
+		return FALSE;
+	}
+
+	if (fld->max == 0) {
+		fld->callback(fld->session, 0, n, NULL, fld->user_data);
+		return FALSE;
+	}
+
+	return_folder_listing(fld, list);
+	g_slist_free_full(list, g_free);
+
 	return FALSE;
 }
 
