@@ -59,7 +59,7 @@ plugin_LTLIBRARIES =
 
 lib_headers = lib/bluetooth.h lib/hci.h lib/hci_lib.h lib/mgmt.h \
 		lib/sco.h lib/l2cap.h lib/sdp.h lib/sdp_lib.h lib/uuid.h \
-		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h
+		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h lib/a2mp.h
 local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 
 BUILT_SOURCES = $(local_headers) src/builtin.h
