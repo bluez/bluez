@@ -86,6 +86,7 @@ compat/pand
 unit/test-eir
 mgmt/btmgmt
 monitor/btmon
+emulator/btvirt
 
 doc/*.bak
 doc/*.stamp
