@@ -498,6 +498,30 @@ char *bt_compidtostr(int compid)
 		return "Group Sense Ltd.";
 	case 116:
 		return "Zomm, LLC";
+	case 117:
+		return "Samsung Electronics Co. Ltd.";
+	case 118:
+		return "Creative Technology Ltd.";
+	case 119:
+		return "Laird Technologies";
+	case 120:
+		return "Nike, Inc.";
+	case 121:
+		return "lesswire AG";
+	case 122:
+		return "MStar Semiconductor, Inc.";
+	case 123:
+		return "Hanlynn Technologies";
+	case 124:
+		return "A & R Cambridge";
+	case 125:
+		return "Seers Technology Co. Ltd.";
+	case 126:
+		return "Sports Tracking Technologies Ltd.";
+	case 127:
+		return "Autonet Mobile";
+	case 128:
+		return "DeLorme Publishing Company, Inc.";
 	case 65535:
 		return "internal use";
 	default:
