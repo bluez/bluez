@@ -802,6 +802,7 @@ static struct {
 	{ "hci",	FILT_HCI	},
 	{ "sco",	FILT_SCO	},
 	{ "l2cap",	FILT_L2CAP	},
+	{ "a2mp",	FILT_A2MP	},
 	{ "rfcomm",	FILT_RFCOMM	},
 	{ "sdp",	FILT_SDP	},
 	{ "bnep",	FILT_BNEP	},

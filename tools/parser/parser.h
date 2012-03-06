@@ -80,6 +80,7 @@ struct frame {
 #define FILT_AVCTP	0x0800
 #define FILT_ATT 	0x1000
 #define FILT_SMP	0x2000
+#define FILT_A2MP	0x4000
 
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
