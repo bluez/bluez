@@ -526,9 +526,8 @@ int obc_transfer_get(struct obc_transfer *transfer)
 			strncmp(transfer->type, "x-bt/", 5) == 0)) {
 		rsp_cb = get_buf_xfer_progress;
 	} else {
-		int fd = open(transfer->name ? : transfer->filename,
+		int fd = open(transfer->filename ? : transfer->name,
 				O_WRONLY | O_CREAT, 0600);
-
 		if (fd < 0) {
 			error("open(): %s(%d)", strerror(errno), errno);
 			return -errno;
@@ -540,9 +539,9 @@ int obc_transfer_get(struct obc_transfer *transfer)
 
 	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
 
-	if (transfer->filename != NULL)
+	if (transfer->name != NULL)
 		g_obex_packet_add_unicode(req, G_OBEX_HDR_NAME,
-							transfer->filename);
+							transfer->name);
 
 	if (transfer->type != NULL)
 		g_obex_packet_add_bytes(req, G_OBEX_HDR_TYPE, transfer->type,

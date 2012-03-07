@@ -685,8 +685,12 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 
 	DBG("Agent.Request() reply: %s", name);
 
-	if (strlen(name))
-		obc_transfer_set_name(transfer, name);
+	if (strlen(name)) {
+		if (p->auth_complete == session_prepare_put)
+			obc_transfer_set_name(transfer, name);
+		else
+			obc_transfer_set_filename(transfer, name);
+	}
 
 	if (p->auth_complete)
 		p->auth_complete(session, transfer);
@@ -955,8 +959,8 @@ int obc_session_get(struct obc_session *session, const char *type,
 		agent = NULL;
 
 	transfer = obc_transfer_register(session->conn, session->obex,
-							agent, filename,
-							targetname, type,
+							agent, targetname,
+							filename, type,
 							params);
 	if (transfer == NULL) {
 		if (params != NULL) {
@@ -1015,8 +1019,8 @@ int obc_session_pull(struct obc_session *session,
 		agent = NULL;
 
 	transfer = obc_transfer_register(session->conn, session->obex,
-								agent, NULL,
-								filename, type,
+								agent, filename,
+								NULL, type,
 								NULL);
 	if (transfer == NULL) {
 		return -EIO;
