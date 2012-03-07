@@ -1005,27 +1005,7 @@ int obc_session_pull(struct obc_session *session,
 				const char *type, const char *targetfile,
 				session_callback_t function, void *user_data)
 {
-	struct obc_transfer *transfer;
-	const char *agent;
-
-	if (session->obex == NULL)
-		return -ENOTCONN;
-
-	if (session->agent != NULL)
-		agent = obc_agent_get_name(session->agent);
-	else
-		agent = NULL;
-
-	transfer = obc_transfer_register(session->conn, session->obex,
-								agent,
-								targetfile,
-								NULL, type,
-								NULL);
-	if (transfer == NULL) {
-		return -EIO;
-	}
-
-	return session_request(session, transfer, session_prepare_get,
+	return obc_session_get(session, type, NULL, targetfile, NULL, 0,
 							function, user_data);
 }
 
