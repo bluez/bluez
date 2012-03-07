@@ -56,18 +56,18 @@ const char *obc_session_get_buffer(struct obc_session *session, size_t *size);
 void *obc_session_get_params(struct obc_session *session, size_t *size);
 
 int obc_session_send(struct obc_session *session, const char *filename,
-				const char *remotename);
+				const char *name);
 int obc_session_get(struct obc_session *session, const char *type,
-		const char *filename, const char *targetname,
+		const char *name, const char *targetfile,
 		const guint8  *apparam, gint apparam_size,
 		session_callback_t func, void *user_data);
 int obc_session_pull(struct obc_session *session,
-				const char *type, const char *filename,
+				const char *type, const char *targetfile,
 				session_callback_t function, void *user_data);
 const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy);
 int obc_session_put(struct obc_session *session, char *buf,
-				const char *targetname);
+				const char *name);
 
 guint obc_session_setpath(struct obc_session *session, const char *path,
 				session_callback_t func, void *user_data,
@@ -75,10 +75,10 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 guint obc_session_mkdir(struct obc_session *session, const char *folder,
 				session_callback_t func, void *user_data,
 				GError **err);
-guint obc_session_copy(struct obc_session *session, const char *filename,
+guint obc_session_copy(struct obc_session *session, const char *srcname,
 				const char *destname, session_callback_t func,
 				void *user_data, GError **err);
-guint obc_session_move(struct obc_session *session, const char *filename,
+guint obc_session_move(struct obc_session *session, const char *srcname,
 				const char *destname, session_callback_t func,
 				void *user_data, GError **err);
 guint obc_session_delete(struct obc_session *session, const char *file,
