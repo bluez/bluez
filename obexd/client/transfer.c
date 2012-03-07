@@ -645,6 +645,13 @@ void obc_transfer_set_name(struct obc_transfer *transfer, const char *name)
 	transfer->name = g_strdup(name);
 }
 
+void obc_transfer_set_filename(struct obc_transfer *transfer,
+					const char *filename)
+{
+	g_free(transfer->filename);
+	transfer->filename = g_strdup(filename);
+}
+
 const char *obc_transfer_get_path(struct obc_transfer *transfer)
 {
 	return transfer->path;
