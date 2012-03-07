@@ -53,6 +53,7 @@
 #include "manager.h"
 #include "device.h"
 #include "avctp.h"
+#include "avrcp.h"
 
 #define QUIRK_NO_RELEASE 1 << 0
 
@@ -464,7 +465,8 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 	handler = find_handler(handlers, avc->opcode);
 	if (!handler) {
 		DBG("handler not found for 0x%02x", avc->opcode);
-		avc->code = AVC_CTYPE_REJECTED;
+		packet_size += avrcp_handle_vendor_reject(&code, operands);
+		avc->code = code;
 		goto done;
 	}
 
