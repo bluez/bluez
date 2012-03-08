@@ -821,14 +821,6 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		browse_request_cancel(device->browse);
 	}
 
-	if (device->attrib) {
-		GIOChannel *io = g_attrib_get_channel(device->attrib);
-		if (io) {
-			g_io_channel_shutdown(io, FALSE, NULL);
-			g_io_channel_unref(io);
-		}
-	}
-
 	if (msg)
 		device->disconnects = g_slist_append(device->disconnects,
 						dbus_message_ref(msg));
