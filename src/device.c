@@ -2942,10 +2942,15 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	attio->dcfunc = dcfunc;
 	attio->user_data = user_data;
 
-	if (device->attrib && cfunc) {
-		device->attios_offline = g_slist_append(device->attios_offline,
-									attio);
-		g_idle_add(notify_attios, device);
+	if (device->attrib) {
+		if (cfunc) {
+			device->attios_offline =
+				g_slist_append(device->attios_offline, attio);
+
+			g_idle_add(notify_attios, device);
+		} else {
+			device->attios = g_slist_append(device->attios, attio);
+		}
 	} else {
 		device->auto_id = g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
 						att_connect, device,
