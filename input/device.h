@@ -43,12 +43,10 @@ struct fake_input {
 };
 
 int fake_input_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, bdaddr_t *src, bdaddr_t *dst,
-			const char *uuid, uint8_t channel);
+			const char *path, const char *uuid, uint8_t channel);
 int input_device_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, const bdaddr_t *src,
-			const bdaddr_t *dst, const char *uuid,
-			uint32_t handle, int timeout);
+					const char *path, const char *uuid,
+					uint32_t handle, int timeout);
 int input_device_unregister(const char *path, const char *uuid);
 
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,

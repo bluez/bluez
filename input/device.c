@@ -1032,23 +1032,23 @@ static GDBusSignalTable device_signals[] = {
 };
 
 static struct input_device *input_device_new(DBusConnection *conn,
-					struct btd_device *device, const char *path,
-					const bdaddr_t *src, const bdaddr_t *dst,
-					const uint32_t handle)
+				struct btd_device *device, const char *path,
+				const uint32_t handle)
 {
+	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
 	char name[249], src_addr[18], dst_addr[18];
 
 	idev = g_new0(struct input_device, 1);
-	bacpy(&idev->src, src);
-	bacpy(&idev->dst, dst);
+	adapter_get_address(adapter, &idev->src);
+	device_get_address(device, &idev->dst, NULL);
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
 	idev->conn = dbus_connection_ref(conn);
 	idev->handle = handle;
 
-	ba2str(src, src_addr);
-	ba2str(dst, dst_addr);
+	ba2str(&idev->src, src_addr);
+	ba2str(&idev->dst, dst_addr);
 	if (read_device_name(src_addr, dst_addr, name) == 0)
 		idev->name = g_strdup(name);
 
@@ -1083,16 +1083,15 @@ static struct input_conn *input_conn_new(struct input_device *idev,
 }
 
 int input_device_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, const bdaddr_t *src,
-			const bdaddr_t *dst, const char *uuid,
-			uint32_t handle, int timeout)
+					const char *path, const char *uuid,
+					uint32_t handle, int timeout)
 {
 	struct input_device *idev;
 	struct input_conn *iconn;
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, device, path, src, dst, handle);
+		idev = input_device_new(conn, device, path, handle);
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);
@@ -1108,15 +1107,14 @@ int input_device_register(DBusConnection *conn, struct btd_device *device,
 }
 
 int fake_input_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, bdaddr_t *src, bdaddr_t *dst,
-			const char *uuid, uint8_t channel)
+			const char *path, const char *uuid, uint8_t channel)
 {
 	struct input_device *idev;
 	struct input_conn *iconn;
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, device, path, src, dst, 0);
+		idev = input_device_new(conn, device, path, 0);
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);

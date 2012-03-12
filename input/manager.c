@@ -58,21 +58,16 @@ static void input_remove(struct btd_device *device, const char *uuid)
 
 static int hid_device_probe(struct btd_device *device, GSList *uuids)
 {
-	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
-	bdaddr_t src, dst;
 
 	DBG("path %s", path);
 
 	if (!rec)
 		return -1;
 
-	adapter_get_address(adapter, &src);
-	device_get_address(device, &dst, NULL);
-
-	return input_device_register(connection, device, path, &src, &dst,
-				HID_UUID, rec->handle, idle_timeout * 60);
+	return input_device_register(connection, device, path, HID_UUID,
+						rec->handle, idle_timeout * 60);
 }
 
 static void hid_device_remove(struct btd_device *device)
@@ -82,12 +77,10 @@ static void hid_device_remove(struct btd_device *device)
 
 static int headset_probe(struct btd_device *device, GSList *uuids)
 {
-	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const sdp_record_t *record;
 	sdp_list_t *protos;
 	int ch;
-	bdaddr_t src, dst;
 
 	DBG("path %s", path);
 
@@ -111,11 +104,7 @@ static int headset_probe(struct btd_device *device, GSList *uuids)
 		return -EINVAL;
 	}
 
-	adapter_get_address(adapter, &src);
-	device_get_address(device, &dst, NULL);
-
-	return fake_input_register(connection, device, path, &src, &dst,
-				HSP_HS_UUID, ch);
+	return fake_input_register(connection, device, path, HSP_HS_UUID, ch);
 }
 
 static void headset_remove(struct btd_device *device)
