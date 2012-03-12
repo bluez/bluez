@@ -11,6 +11,8 @@ def device_found(address, properties):
 
 	for key in properties.keys():
 		value = properties[key]
+		if type(value) is dbus.String:
+			value = unicode(value).encode('ascii', 'replace')
 		if (key == "Class"):
 			print "    %s = 0x%06x" % (key, value)
 		else:
