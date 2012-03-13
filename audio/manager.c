@@ -761,6 +761,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	if (add_record_to_server(&src, record) < 0) {
 		error("Unable to register HFP HS service record");
 		sdp_record_free(record);
+		g_io_channel_shutdown(adapter->hfp_hs_server, TRUE, NULL);
 		g_io_channel_unref(adapter->hfp_hs_server);
 		adapter->hfp_hs_server = NULL;
 		return -1;
@@ -994,6 +995,7 @@ static void gateway_server_remove(struct btd_adapter *adapter)
 	}
 
 	if (adp->hfp_hs_server) {
+		g_io_channel_shutdown(adp->hfp_hs_server, TRUE, NULL);
 		g_io_channel_unref(adp->hfp_hs_server);
 		adp->hfp_hs_server = NULL;
 	}
