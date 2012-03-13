@@ -755,21 +755,24 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	record = hfp_hs_record(chan);
 	if (!record) {
 		error("Unable to allocate new service record");
-		return -1;
+		goto failed;
 	}
 
 	if (add_record_to_server(&src, record) < 0) {
 		error("Unable to register HFP HS service record");
 		sdp_record_free(record);
-		g_io_channel_shutdown(adapter->hfp_hs_server, TRUE, NULL);
-		g_io_channel_unref(adapter->hfp_hs_server);
-		adapter->hfp_hs_server = NULL;
-		return -1;
+		goto failed;
 	}
 
 	adapter->hfp_hs_record_id = record->handle;
 
 	return 0;
+
+failed:
+	g_io_channel_shutdown(adapter->hfp_hs_server, TRUE, NULL);
+	g_io_channel_unref(adapter->hfp_hs_server);
+	adapter->hfp_hs_server = NULL;
+	return -1;
 }
 
 static int audio_probe(struct btd_device *device, GSList *uuids)
