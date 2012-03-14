@@ -981,6 +981,10 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 		break;
 	case ATT_OP_HANDLE_CNF:
 		return;
+	case ATT_OP_HANDLE_IND:
+	case ATT_OP_HANDLE_NOTIFY:
+		/* The attribute client is already handling these */
+		return;
 	case ATT_OP_READ_MULTI_REQ:
 	case ATT_OP_PREP_WRITE_REQ:
 	case ATT_OP_EXEC_WRITE_REQ:
