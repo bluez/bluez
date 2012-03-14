@@ -119,6 +119,28 @@ static ssize_t get_subdirs(struct folder_listing_data *fld, GSList **list)
 static void return_folder_listing(struct folder_listing_data *fld, GSList *list)
 {
 	struct session *session = fld->session;
+	GSList *cur;
+	uint16_t num = 0;
+	uint16_t offs = 0;
+
+	/* XXX: This isn't really documented for MAP. I need to take a look how
+	 * other implementations choose to deal with parent folder.
+	 */
+	if (session->cwd[0] != 0 && fld->offset == 0) {
+		num++;
+		fld->callback(session, -EAGAIN, 0, "..", fld->user_data);
+	} else {
+		offs++;
+	}
+
+	for (cur = list; offs < fld->offset; offs++) {
+		cur = cur->next;
+		if (cur == NULL)
+			break;
+	}
+
+	for (; cur != NULL && num < fld->max; cur = cur->next, num++)
+		fld->callback(session, -EAGAIN, 0, cur->data, fld->user_data);
 
 	fld->callback(session, 0, 0, NULL, fld->user_data);
 }
