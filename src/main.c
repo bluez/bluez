@@ -220,11 +220,11 @@ static void parse_config(GKeyFile *config)
 		main_opts.debug_keys = boolean;
 
 	boolean = g_key_file_get_boolean(config, "General",
-						"AttributeServer", &err);
+						"EnableGatt", &err);
 	if (err)
 		g_clear_error(&err);
 	else
-		main_opts.attrib_server = boolean;
+		main_opts.gatt_enabled = boolean;
 
 	main_opts.link_mode = HCI_LM_ACCEPT;
 

@@ -172,7 +172,7 @@ static void register_immediate_alert(struct btd_adapter *adapter)
 
 int reporter_init(struct btd_adapter *adapter)
 {
-	if (!main_opts.attrib_server) {
+	if (!main_opts.gatt_enabled) {
 		DBG("Attribute server is disabled");
 		return -1;
 	}

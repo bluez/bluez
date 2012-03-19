@@ -698,7 +698,7 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
 
 	adapter->dev_class = new_class;
 
-	if (main_opts.attrib_server) {
+	if (main_opts.gatt_enabled) {
 		/* Removes service class */
 		class[1] = class[1] & 0x1f;
 		attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, class, 2);
@@ -722,7 +722,7 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 					ADAPTER_INTERFACE, "Name",
 					DBUS_TYPE_STRING, &name);
 
-	if (main_opts.attrib_server)
+	if (main_opts.gatt_enabled)
 		attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
 				(const uint8_t *) name, strlen(name));
 }
@@ -2407,7 +2407,7 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 
 	sdp_init_services_list(&adapter->bdaddr);
 
-	if (main_opts.attrib_server)
+	if (main_opts.gatt_enabled)
 		btd_adapter_gatt_server_start(adapter);
 
 	load_drivers(adapter);
@@ -2469,7 +2469,7 @@ void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 
 	unload_drivers(adapter);
-	if (main_opts.attrib_server)
+	if (main_opts.gatt_enabled)
 		btd_adapter_gatt_server_stop(adapter);
 
 	g_slist_free(adapter->pin_callbacks);

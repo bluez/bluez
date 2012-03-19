@@ -36,7 +36,7 @@
 
 static int alert_init(void)
 {
-	if (!main_opts.attrib_server) {
+	if (!main_opts.gatt_enabled) {
 		DBG("Attribute server is disabled");
 		return -1;
 	}
@@ -46,7 +46,7 @@ static int alert_init(void)
 
 static void alert_exit(void)
 {
-	if (!main_opts.attrib_server)
+	if (!main_opts.gatt_enabled)
 		return;
 
 	alert_server_exit();

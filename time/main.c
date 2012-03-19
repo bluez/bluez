@@ -36,7 +36,7 @@
 
 static int time_init(void)
 {
-	if (!main_opts.attrib_server) {
+	if (!main_opts.gatt_enabled) {
 		DBG("Attribute server is disabled");
 		return -1;
 	}
@@ -46,7 +46,7 @@ static int time_init(void)
 
 static void time_exit(void)
 {
-	if (!main_opts.attrib_server)
+	if (!main_opts.gatt_enabled)
 		return;
 
 	time_server_exit();
