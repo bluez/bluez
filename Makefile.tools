@@ -218,12 +218,14 @@ EXTRA_DIST += test/apitest test/sap-client test/hsplay test/hsmicro \
 		test/test-device test/test-service test/test-serial \
 		test/test-telephony test/test-network test/simple-agent \
 		test/simple-service test/simple-endpoint test/test-audio \
-		test/test-input test/test-attrib test/test-proximity \
-		test/test-sap-server test/test-oob test/test-serial-proxy \
-		test/test-thermometer test/test-health test/test-health-sink \
+		test/test-input test/test-sap-server test/test-oob \
+		test/test-serial-proxy test/test-health test/test-health-sink \
 		test/service-record.dtd test/service-did.xml \
 		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
 
+if GATTMODULES
+EXTRA_DIST += test/test-attrib test/test-proximity test/test-thermometer
+endif
 
 if HIDD
 bin_PROGRAMS += compat/hidd

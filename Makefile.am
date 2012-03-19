@@ -199,34 +199,9 @@ builtin_sources += network/main.c \
 			network/connection.h network/connection.c
 endif
 
-if PROXIMITYPLUGIN
-builtin_modules += proximity
-builtin_sources += proximity/main.c \
-			proximity/manager.h proximity/manager.c \
-			proximity/monitor.h proximity/monitor.c \
-			proximity/reporter.h proximity/reporter.c
-endif
-
 if SERVICEPLUGIN
 builtin_modules += service
 builtin_sources += plugins/service.c
-endif
-
-if GATT_EXAMPLE_PLUGIN
-builtin_modules += gatt_example
-builtin_sources += plugins/gatt-example.c
-endif
-
-if TIMEPLUGIN
-builtin_modules += time
-builtin_sources += time/main.c \
-		   time/server.h time/server.c
-endif
-
-if ALERTPLUGIN
-builtin_modules += alert
-builtin_sources += alert/main.c \
-		   alert/server.h alert/server.c
 endif
 
 if HEALTHPLUGIN
@@ -237,12 +212,19 @@ builtin_sources += health/hdp_main.c health/hdp_types.h \
 			health/hdp_util.h health/hdp_util.c
 endif
 
-if THERMOMETERPLUGIN
-builtin_modules += thermometer
+if GATTMODULES
+builtin_modules += thermometer alert time gatt_example proximity
 builtin_sources += thermometer/main.c \
 			thermometer/manager.h thermometer/manager.c \
-			thermometer/thermometer.h thermometer/thermometer.c
+			thermometer/thermometer.h thermometer/thermometer.c \
+			alert/main.c alert/server.h alert/server.c \
+			time/main.c time/server.h time/server.c \
+            plugins/gatt-example.c \
+            proximity/main.c proximity/manager.h proximity/manager.c \
+			proximity/monitor.h proximity/monitor.c \
+			proximity/reporter.h proximity/reporter.c
 endif
+
 
 builtin_modules += hciops mgmtops
 builtin_sources += plugins/hciops.c plugins/mgmtops.c

@@ -17,10 +17,6 @@ fi
 		--localstatedir=/var \
 		--libexecdir=/lib \
 		--enable-capng \
-		--enable-gatt-example \
-		--enable-proximity \
-		--enable-time \
-		--enable-alert \
 		--enable-health \
 		--enable-tools \
 		--enable-bccmd \
@@ -35,7 +31,7 @@ fi
 		--enable-maemo6 \
 		--enable-pnat \
 		--enable-sap \
-		--enable-thermometer \
 		--enable-wiimote \
 		--disable-pcmcia \
+		--enable-gatt \
 		--disable-datafiles $*
