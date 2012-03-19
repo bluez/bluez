@@ -24,17 +24,25 @@
 #include <config.h>
 #endif
 
+#include <stdint.h>
 #include <glib.h>
 #include <errno.h>
 #include <gdbus.h>
 
 #include "plugin.h"
 #include "manager.h"
+#include "hcid.h"
+#include "log.h"
 
 static DBusConnection *connection = NULL;
 
 static int thermometer_init(void)
 {
+	if (!main_opts.gatt_enabled) {
+		DBG("GATT is disabled");
+		return -ENOTSUP;
+	}
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
 		return -EIO;
@@ -49,6 +57,9 @@ static int thermometer_init(void)
 
 static void thermometer_exit(void)
 {
+	if (!main_opts.gatt_enabled)
+		return;
+
 	thermometer_manager_exit();
 
 	dbus_connection_unref(connection);

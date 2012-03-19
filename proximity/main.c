@@ -27,13 +27,14 @@
 #endif
 
 #include <errno.h>
-
+#include <stdint.h>
 #include <glib.h>
 #include <gdbus.h>
 
 #include "log.h"
 #include "plugin.h"
 #include "manager.h"
+#include "hcid.h"
 
 static DBusConnection *connection = NULL;
 static GKeyFile *config = NULL;
@@ -59,6 +60,10 @@ static GKeyFile *open_config_file(const char *file)
 
 static int proximity_init(void)
 {
+	if (!main_opts.gatt_enabled) {
+		DBG("GATT is disabled");
+		return -ENOTSUP;
+	}
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
@@ -76,6 +81,9 @@ static int proximity_init(void)
 
 static void proximity_exit(void)
 {
+	if (!main_opts.gatt_enabled)
+		return;
+
 	if (config)
 		g_key_file_free(config);
 

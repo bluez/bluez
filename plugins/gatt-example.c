@@ -561,7 +561,7 @@ static struct btd_adapter_driver gatt_example_adapter_driver = {
 static int gatt_example_init(void)
 {
 	if (!main_opts.gatt_enabled) {
-		DBG("Attribute server is disabled");
+		DBG("GATT is disabled");
 		return -ENOTSUP;
 	}
 

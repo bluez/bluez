@@ -29,6 +29,7 @@
 #include <glib.h>
 #include <bluetooth/uuid.h>
 #include <adapter.h>
+#include <errno.h>
 
 #include "log.h"
 
@@ -173,8 +174,8 @@ static void register_immediate_alert(struct btd_adapter *adapter)
 int reporter_init(struct btd_adapter *adapter)
 {
 	if (!main_opts.gatt_enabled) {
-		DBG("Attribute server is disabled");
-		return -1;
+		DBG("GATT is disabled");
+		return -ENOTSUP;
 	}
 
 	DBG("Proximity Reporter for adapter %p", adapter);
