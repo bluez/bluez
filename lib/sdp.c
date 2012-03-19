@@ -2064,7 +2064,12 @@ int sdp_get_profile_descs(const sdp_record_t *rec, sdp_list_t **profDescSeq)
 		uint16_t version = 0x100;
 
 		if (SDP_IS_UUID(seq->dtd)) {
+			sdp_data_t *next = seq->next;
 			uuid = &seq->val.uuid;
+			if (next && next->dtd == SDP_UINT16) {
+				version = next->val.uint16;
+				seq = next;
+			}
 		} else if (SDP_IS_SEQ(seq->dtd)) {
 			sdp_data_t *puuid = seq->val.dataseq;
 			sdp_data_t *pVnum = seq->val.dataseq->next;
