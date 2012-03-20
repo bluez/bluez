@@ -2204,7 +2204,7 @@ static gboolean start_discovery(gpointer user_data)
 	struct btd_device *device = user_data;
 
 	if (device_is_bredr(device))
-		device_browse_sdp(device, NULL, NULL, NULL, FALSE);
+		device_browse_sdp(device, NULL, NULL, NULL, TRUE);
 	else
 		device_browse_primary(device, NULL, NULL, FALSE);
 
