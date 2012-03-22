@@ -1198,6 +1198,10 @@ response:
 						value2str(attr, value));
 		}
 		break;
+	case AVRCP_EVENT_VOLUME_CHANGED:
+		status = get_u8(frm) & 0x7F;
+		printf("Volume: %.2f%% (%d/127)\n", status/1.27, status);
+		break;
 	}
 }
 
