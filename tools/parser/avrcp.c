@@ -1201,6 +1201,23 @@ response:
 	}
 }
 
+static void avrcp_set_absolute_volume_dump(int level, struct frame *frm,
+						uint8_t ctype, uint16_t len)
+{
+	uint8_t value;
+
+	p_indent(level, frm);
+
+	if (len < 1) {
+		printf("PDU Malformed\n");
+		raw_dump(level, frm);
+		return;
+	}
+
+	value = get_u8(frm) & 0x7F;
+	printf("Volume: %.2f%% (%d/127)\n", value/1.27, value);
+}
+
 static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 {
 	uint8_t pduid, pt;
@@ -1266,6 +1283,9 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 		break;
 	case AVRCP_REGISTER_NOTIFICATION:
 		avrcp_register_notification_dump(level + 1, frm, ctype, len);
+		break;
+	case AVRCP_SET_ABSOLUTE_VOLUME:
+		avrcp_set_absolute_volume_dump(level + 1, frm, ctype, len);
 		break;
 	default:
 		raw_dump(level, frm);
