@@ -1520,7 +1520,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	case AVDTP_SEP_TYPE_SINK:
 		if (!dev->source) {
 			btd_device_add_uuid(dev->btd_dev, A2DP_SOURCE_UUID);
-			if (!dev->sink) {
+			if (!dev->source) {
 				error("Unable to get a audio source object");
 				err = AVDTP_BAD_STATE;
 				goto failed;
