@@ -58,6 +58,7 @@
 #include "storage.h"
 #include "gattrib.h"
 #include "att.h"
+#include "gatt.h"
 #include "attrib-server.h"
 #include "eir.h"
 
@@ -1893,10 +1894,10 @@ static GSList *string_to_primary_list(char *str)
 		return NULL;
 
 	for (i = 0; services[i]; i++) {
-		struct att_primary *prim;
+		struct gatt_primary *prim;
 		int ret;
 
-		prim = g_new0(struct att_primary, 1);
+		prim = g_new0(struct gatt_primary, 1);
 
 		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
 							&prim->end, prim->uuid);
@@ -1938,7 +1939,7 @@ static void create_stored_device_from_primary(char *key, char *value,
 		return;
 
 	for (l = services, uuids = NULL; l; l = l->next) {
-		struct att_primary *prim = l->data;
+		struct gatt_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 

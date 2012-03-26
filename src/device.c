@@ -1531,7 +1531,7 @@ GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
 	for (l = profiles; l; l = l->next) {
 		const char *profile_uuid = l->data;
 		const sdp_record_t *rec;
-		struct att_primary *prim;
+		struct gatt_primary *prim;
 		uint16_t start = 0, end = 0, psm = 0;
 		uuid_t prim_uuid;
 
@@ -1545,7 +1545,7 @@ GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
 		if (!gatt_parse_record(rec, &prim_uuid, &psm, &start, &end))
 			continue;
 
-		prim = g_new0(struct att_primary, 1);
+		prim = g_new0(struct gatt_primary, 1);
 		prim->start = start;
 		prim->end = end;
 		sdp_uuid2strn(&prim_uuid, prim->uuid, sizeof(prim->uuid));
@@ -1700,7 +1700,7 @@ static char *primary_list_to_string(GSList *primary_list)
 	services = g_string_new(NULL);
 
 	for (l = primary_list; l; l = l->next) {
-		struct att_primary *primary = l->data;
+		struct gatt_primary *primary = l->data;
 		char service[64];
 
 		memset(service, 0, sizeof(service));
@@ -1803,7 +1803,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	device_set_temporary(device, FALSE);
 
 	for (l = services; l; l = l->next) {
-		struct att_primary *prim = l->data;
+		struct gatt_primary *prim = l->data;
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 

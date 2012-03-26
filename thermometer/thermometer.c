@@ -75,7 +75,7 @@ struct thermometer {
 };
 
 struct characteristic {
-	struct att_char		attr;	/* Characteristic */
+	struct gatt_char		attr;	/* Characteristic */
 	GSList			*desc;	/* Descriptors */
 	struct thermometer	*t;	/* Thermometer where the char belongs */
 };
@@ -522,7 +522,7 @@ static void configure_thermometer_cb(GSList *characteristics, guint8 status,
 	}
 
 	for (l = characteristics; l; l = l->next) {
-		struct att_char *c = l->data;
+		struct gatt_char *c = l->data;
 		struct characteristic *ch;
 		uint16_t start, end;
 
@@ -540,7 +540,7 @@ static void configure_thermometer_cb(GSList *characteristics, guint8 status,
 		start = c->value_handle + 1;
 
 		if (l->next != NULL) {
-			struct att_char *c = l->next->data;
+			struct gatt_char *c = l->next->data;
 			if (start == c->handle)
 				continue;
 			end = c->handle - 1;
@@ -1211,7 +1211,7 @@ static void attio_disconnected_cb(gpointer user_data)
 }
 
 int thermometer_register(DBusConnection *connection, struct btd_device *device,
-						struct att_primary *tattr)
+						struct gatt_primary *tattr)
 {
 	const gchar *path = device_get_path(device);
 	struct thermometer *t;

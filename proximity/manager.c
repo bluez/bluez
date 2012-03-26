@@ -33,6 +33,8 @@
 #include "adapter.h"
 #include "device.h"
 #include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "monitor.h"
 #include "reporter.h"
 #include "manager.h"
@@ -51,7 +53,7 @@ static struct enabled enabled  = {
 
 static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct att_primary *prim = a;
+	const struct gatt_primary *prim = a;
 	const char *uuid = b;
 
 	return g_strcmp0(prim->uuid, uuid);
@@ -59,7 +61,7 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 
 static int attio_device_probe(struct btd_device *device, GSList *uuids)
 {
-	struct att_primary *linkloss, *txpower, *immediate;
+	struct gatt_primary *linkloss, *txpower, *immediate;
 	GSList *l, *primaries;
 
 	primaries = btd_device_get_primaries(device);

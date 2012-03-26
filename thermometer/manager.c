@@ -27,6 +27,8 @@
 #include "adapter.h"
 #include "device.h"
 #include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "thermometer.h"
 #include "manager.h"
 
@@ -36,7 +38,7 @@ static DBusConnection *connection = NULL;
 
 static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 {
-	const struct att_primary *prim = a;
+	const struct gatt_primary *prim = a;
 	const char *uuid = b;
 
 	return g_strcmp0(prim->uuid, uuid);
@@ -44,7 +46,7 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 
 static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
 {
-	struct att_primary *tattr;
+	struct gatt_primary *tattr;
 	GSList *primaries, *l;
 
 	primaries = btd_device_get_primaries(device);

@@ -161,7 +161,7 @@ static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
 
 	printf("\n");
 	for (l = services; l; l = l->next) {
-		struct att_primary *prim = l->data;
+		struct gatt_primary *prim = l->data;
 		printf("attr handle: 0x%04x, end grp handle: 0x%04x "
 			"uuid: %s\n", prim->start, prim->end, prim->uuid);
 	}
@@ -202,7 +202,7 @@ static void char_cb(GSList *characteristics, guint8 status, gpointer user_data)
 
 	printf("\n");
 	for (l = characteristics; l; l = l->next) {
-		struct att_char *chars = l->data;
+		struct gatt_char *chars = l->data;
 
 		printf("handle: 0x%04x, char properties: 0x%02x, char value "
 				"handle: 0x%04x, uuid: %s\n", chars->handle,

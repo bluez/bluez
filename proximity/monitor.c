@@ -168,7 +168,7 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	struct monitor *monitor = user_data;
-	struct att_char *chr;
+	struct gatt_char *chr;
 	uint8_t value = str2level(monitor->linklosslevel);
 
 	if (status) {
@@ -236,7 +236,7 @@ static void tx_power_handle_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	struct monitor *monitor = user_data;
-	struct att_char *chr;
+	struct gatt_char *chr;
 
 	if (status) {
 		error("Discover Tx Power handle: %s", att_ecode2str(status));
@@ -322,7 +322,7 @@ static void immediate_handle_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	struct monitor *monitor = user_data;
-	struct att_char *chr;
+	struct gatt_char *chr;
 
 	if (status) {
 		error("Discover Immediate Alert handle: %s",
@@ -583,8 +583,8 @@ static void monitor_destroy(gpointer user_data)
 }
 
 int monitor_register(DBusConnection *conn, struct btd_device *device,
-		struct att_primary *linkloss, struct att_primary *txpower,
-		struct att_primary *immediate, struct enabled *enabled)
+		struct gatt_primary *linkloss, struct gatt_primary *txpower,
+		struct gatt_primary *immediate, struct enabled *enabled)
 {
 	const char *path = device_get_path(device);
 	struct monitor *monitor;

@@ -25,6 +25,19 @@
 
 typedef void (*gatt_cb_t) (GSList *l, guint8 status, gpointer user_data);
 
+struct gatt_primary {
+	char uuid[MAX_LEN_UUID_STR + 1];
+	uint16_t start;
+	uint16_t end;
+};
+
+struct gatt_char {
+	char uuid[MAX_LEN_UUID_STR + 1];
+	uint16_t handle;
+	uint8_t properties;
+	uint16_t value_handle;
+};
+
 guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data);
 

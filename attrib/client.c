@@ -68,7 +68,7 @@ struct query {
 
 struct gatt_service {
 	struct btd_device *dev;
-	struct att_primary *prim;
+	struct gatt_primary *prim;
 	DBusConnection *conn;
 	GAttrib *attrib;
 	guint attioid;
@@ -821,7 +821,7 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	DBusMessageIter iter, array_iter;
 	struct query_data *current = user_data;
 	struct gatt_service *gatt = current->gatt;
-	struct att_primary *prim = gatt->prim;
+	struct gatt_primary *prim = gatt->prim;
 	uint16_t *previous_end = NULL;
 	GSList *l;
 	bdaddr_t sba, dba;
@@ -835,7 +835,7 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	}
 
 	for (l = characteristics; l; l = l->next) {
-		struct att_char *current_chr = l->data;
+		struct gatt_char *current_chr = l->data;
 		struct characteristic *chr;
 		guint handle = current_chr->value_handle;
 		GSList *lchr;
@@ -895,7 +895,7 @@ static void send_discover(GAttrib *attrib, gpointer user_data)
 {
 	struct query_data *qchr = user_data;
 	struct gatt_service *gatt = qchr->gatt;
-	struct att_primary *prim = gatt->prim;
+	struct gatt_primary *prim = gatt->prim;
 
 	gatt->attrib = g_attrib_ref(attrib);
 
@@ -995,7 +995,7 @@ static GDBusMethodTable prim_methods[] = {
 
 static struct gatt_service *primary_register(DBusConnection *conn,
 						struct btd_device *device,
-						struct att_primary *prim,
+						struct gatt_primary *prim,
 						int psm)
 {
 	struct gatt_service *gatt;
@@ -1027,7 +1027,7 @@ GSList *attrib_client_register(DBusConnection *connection,
 	GSList *l, *services;
 
 	for (l = primaries, services = NULL; l; l = l->next) {
-		struct att_primary *prim = l->data;
+		struct gatt_primary *prim = l->data;
 		struct gatt_service *gatt;
 
 		gatt = primary_register(connection, device, prim, psm);

@@ -29,6 +29,6 @@ struct enabled {
 };
 
 int monitor_register(DBusConnection *conn, struct btd_device *device,
-		struct att_primary *linkloss, struct att_primary *txpower,
-		struct att_primary *immediate, struct enabled *enabled);
+		struct gatt_primary *linkloss, struct gatt_primary *txpower,
+		struct gatt_primary *immediate, struct enabled *enabled);
 void monitor_unregister(DBusConnection *conn, struct btd_device *device);
