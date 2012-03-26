@@ -1220,8 +1220,8 @@ int thermometer_register(DBusConnection *connection, struct btd_device *device,
 	t->conn = dbus_connection_ref(connection);
 	t->dev = btd_device_ref(device);
 	t->svc_range = g_new0(struct att_range, 1);
-	t->svc_range->start = tattr->start;
-	t->svc_range->end = tattr->end;
+	t->svc_range->start = tattr->range.start;
+	t->svc_range->end = tattr->range.end;
 
 	if (!g_dbus_register_interface(t->conn, path, THERMOMETER_INTERFACE,
 				thermometer_methods, thermometer_signals,

@@ -1546,8 +1546,8 @@ GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
 			continue;
 
 		prim = g_new0(struct gatt_primary, 1);
-		prim->start = start;
-		prim->end = end;
+		prim->range.start = start;
+		prim->range.end = end;
 		sdp_uuid2strn(&prim_uuid, prim->uuid, sizeof(prim->uuid));
 
 		prim_list = g_slist_append(prim_list, prim);
@@ -1706,7 +1706,7 @@ static char *primary_list_to_string(GSList *primary_list)
 		memset(service, 0, sizeof(service));
 
 		snprintf(service, sizeof(service), "%04X#%04X#%s ",
-				primary->start, primary->end, primary->uuid);
+				primary->range.start, primary->range.end, primary->uuid);
 
 		services = g_string_append(services, service);
 	}

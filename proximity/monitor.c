@@ -617,8 +617,8 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 
 	if (linkloss && enabled->linkloss) {
 		monitor->linkloss = g_new0(struct att_range, 1);
-		monitor->linkloss->start = linkloss->start;
-		monitor->linkloss->end = linkloss->end;
+		monitor->linkloss->start = linkloss->range.start;
+		monitor->linkloss->end = linkloss->range.end;
 
 		monitor->enabled.linkloss = TRUE;
 	}
@@ -626,16 +626,16 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	if (immediate) {
 		if (txpower && enabled->pathloss) {
 			monitor->txpower = g_new0(struct att_range, 1);
-			monitor->txpower->start = txpower->start;
-			monitor->txpower->end = txpower->end;
+			monitor->txpower->start = txpower->range.start;
+			monitor->txpower->end = txpower->range.end;
 
 			monitor->enabled.pathloss = TRUE;
 		}
 
 		if (enabled->pathloss || enabled->findme) {
 			monitor->immediate = g_new0(struct att_range, 1);
-			monitor->immediate->start = immediate->start;
-			monitor->immediate->end = immediate->end;
+			monitor->immediate->start = immediate->range.start;
+			monitor->immediate->end = immediate->range.end;
 		}
 
 		monitor->enabled.findme = enabled->findme;

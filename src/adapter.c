@@ -1899,8 +1899,8 @@ static GSList *string_to_primary_list(char *str)
 
 		prim = g_new0(struct gatt_primary, 1);
 
-		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->start,
-							&prim->end, prim->uuid);
+		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->range.start,
+							&prim->range.end, prim->uuid);
 
 		if (ret < 3) {
 			g_free(prim);

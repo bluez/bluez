@@ -860,10 +860,10 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	}
 
 	if (previous_end)
-		*previous_end = prim->end;
+		*previous_end = prim->range.end;
 
 	gatt_get_address(gatt, &sba, &dba);
-	store_characteristics(&sba, &dba, prim->start, gatt->chars);
+	store_characteristics(&sba, &dba, prim->range.start, gatt->chars);
 
 	g_slist_foreach(gatt->chars, register_characteristic, gatt->path);
 
@@ -899,7 +899,7 @@ static void send_discover(GAttrib *attrib, gpointer user_data)
 
 	gatt->attrib = g_attrib_ref(attrib);
 
-	gatt_discover_char(gatt->attrib, prim->start, prim->end, NULL,
+	gatt_discover_char(gatt->attrib, prim->range.start, prim->range.end, NULL,
 						char_discovered_cb, qchr);
 }
 
@@ -1009,12 +1009,12 @@ static struct gatt_service *primary_register(DBusConnection *conn,
 	gatt->psm = psm;
 	gatt->conn = dbus_connection_ref(conn);
 	gatt->path = g_strdup_printf("%s/service%04x", device_path,
-								prim->start);
+								prim->range.start);
 
 	g_dbus_register_interface(gatt->conn, gatt->path,
 					CHAR_INTERFACE, prim_methods,
 					NULL, NULL, gatt, NULL);
-	gatt->chars = load_characteristics(gatt, prim->start);
+	gatt->chars = load_characteristics(gatt, prim->range.start);
 	g_slist_foreach(gatt->chars, register_characteristic, gatt->path);
 
 	return gatt;

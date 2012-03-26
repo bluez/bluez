@@ -193,8 +193,8 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 			err = ATT_ECODE_INSUFF_RESOURCES;
 			goto done;
 		}
-		primary->start = start;
-		primary->end = end;
+		primary->range.start = start;
+		primary->range.end = end;
 		bt_uuid_to_string(&uuid, primary->uuid, sizeof(primary->uuid));
 		dp->primaries = g_slist_append(dp->primaries, primary);
 	}
