@@ -282,6 +282,44 @@ int read_local_class(bdaddr_t *bdaddr, uint8_t *class)
 	return 0;
 }
 
+int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
+							uint16_t *appearance)
+{
+	char filename[PATH_MAX + 1], addr[18], *str;
+
+	create_filename(filename, PATH_MAX, local, "appearance");
+
+	ba2str(peer, addr);
+
+	str = textfile_get(filename, addr);
+	if (!str)
+		return -ENOENT;
+
+	if (sscanf(str, "%hx", appearance) != 1) {
+		free(str);
+		return -ENOENT;
+	}
+
+	free(str);
+
+	return 0;
+}
+
+int write_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
+							uint16_t appearance)
+{
+	char filename[PATH_MAX + 1], addr[18], str[7];
+
+	create_filename(filename, PATH_MAX, local, "appearance");
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	ba2str(peer, addr);
+	sprintf(str, "0x%4.4x", appearance);
+
+	return textfile_put(filename, addr, str);
+}
+
 int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 {
 	char filename[PATH_MAX + 1], addr[18], str[9];
