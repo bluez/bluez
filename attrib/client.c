@@ -835,11 +835,35 @@ static void update_all_chars(gpointer data, gpointer user_data)
 	gatt_read_char(gatt->attrib, chr->handle, 0, update_char_value, qvalue);
 }
 
+static DBusMessage *create_discover_char_reply(DBusMessage *msg, GSList *chars)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array_iter;
+	GSList *l;
+
+	reply = dbus_message_new_method_return(msg);
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
+
+	for (l = chars; l; l = l->next) {
+		struct characteristic *chr = l->data;
+
+		dbus_message_iter_append_basic(&array_iter,
+					DBUS_TYPE_OBJECT_PATH, &chr->path);
+	}
+
+	dbus_message_iter_close_container(&iter, &array_iter);
+
+	return reply;
+}
+
 static void char_discovered_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
 	DBusMessage *reply;
-	DBusMessageIter iter, array_iter;
 	struct query_data *current = user_data;
 	struct gatt_service *gatt = current->gatt;
 	struct gatt_primary *prim = gatt->prim;
@@ -888,23 +912,9 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 
 	g_slist_foreach(gatt->chars, register_characteristic, gatt->path);
 
-	reply = dbus_message_new_method_return(gatt->query->msg);
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
-
-	for (l = gatt->chars; l; l = l->next) {
-		struct characteristic *chr = l->data;
-
-		dbus_message_iter_append_basic(&array_iter,
-					DBUS_TYPE_OBJECT_PATH, &chr->path);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
 	g_slist_foreach(gatt->chars, update_all_chars, gatt);
+
+	reply = create_discover_char_reply(gatt->query->msg, gatt->chars);
 
 fail:
 	g_dbus_send_message(gatt->conn, reply);
