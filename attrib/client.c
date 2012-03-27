@@ -916,6 +916,9 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	reply = create_discover_char_reply(gatt->query->msg, gatt->chars);
 
 fail:
+	dbus_message_unref(gatt->query->msg);
+	gatt->query->msg = NULL;
+
 	g_dbus_send_message(gatt->conn, reply);
 	query_list_remove(gatt, current);
 	g_free(current);
