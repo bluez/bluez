@@ -723,14 +723,8 @@ static void health_channel_destroy(void *data)
 					DBUS_TYPE_INVALID);
 
 	if (hdp_chan == dev->fr) {
-		char *empty_path;
-
 		hdp_channel_unref(dev->fr);
 		dev->fr = NULL;
-		empty_path = "/";
-		emit_property_changed(dev->conn, device_get_path(dev->dev),
-					HEALTH_DEVICE, "MainChannel",
-					DBUS_TYPE_OBJECT_PATH, &empty_path);
 	}
 
 end:
@@ -2061,7 +2055,6 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 	struct hdp_device *device = user_data;
 	DBusMessageIter iter, dict;
 	DBusMessage *reply;
-	char *path;
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
@@ -2075,11 +2068,9 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	if (device->fr != NULL)
-		path = g_strdup(device->fr->path);
-	else
-		path = g_strdup("");
-	dict_append_entry(&dict, "MainChannel", DBUS_TYPE_OBJECT_PATH, &path);
-	g_free(path);
+		dict_append_entry(&dict, "MainChannel", DBUS_TYPE_OBJECT_PATH,
+							&device->fr->path);
+
 	dbus_message_iter_close_container(&iter, &dict);
 
 	return reply;
