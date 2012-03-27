@@ -34,6 +34,7 @@
 #define EIR_TX_POWER                0x0A  /* transmit power level */
 #define EIR_CLASS_OF_DEV            0x0D  /* Class of Device */
 #define EIR_DEVICE_ID               0x10  /* device ID */
+#define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
 
 struct uuid_info {
 	uuid_t uuid;
@@ -45,6 +46,7 @@ struct eir_data {
 	int flags;
 	char *name;
 	uint8_t dev_class[3];
+	uint16_t appearance;
 	gboolean name_complete;
 };
 

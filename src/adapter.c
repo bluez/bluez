@@ -2698,6 +2698,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 
 	if (dev->type != ADDR_TYPE_BREDR) {
 		gboolean broadcaster;
+		uint16_t app;
 
 		if (dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC))
 			broadcaster = FALSE;
@@ -2706,8 +2707,14 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 
 		dev->legacy = FALSE;
 
+		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
+								&app) == 0)
+			icon = gap_appearance_to_icon(app);
+
 		emit_device_found(adapter->path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
+				"Class", DBUS_TYPE_UINT32, &dev->class,
+				"Icon", DBUS_TYPE_STRING, &icon,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,
 				"Alias", DBUS_TYPE_STRING, &alias,
@@ -2836,6 +2843,10 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 						(eir_data.dev_class[2] << 16);
 	if (dev_class != 0)
 		write_remote_class(&adapter->bdaddr, bdaddr, dev_class);
+
+	if (eir_data.appearance != 0)
+		write_remote_appearance(&adapter->bdaddr, bdaddr,
+							eir_data.appearance);
 
 	if (eir_data.name != NULL && eir_data.name_complete)
 		write_device_name(&adapter->bdaddr, bdaddr, eir_data.name);

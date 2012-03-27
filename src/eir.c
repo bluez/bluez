@@ -164,6 +164,13 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			if (data_len < 3)
 				break;
 			memcpy(eir->dev_class, data, 3);
+			break;
+
+		case EIR_GAP_APPEARANCE:
+			if (data_len < 2)
+				break;
+			eir->appearance = bt_get_le16(data);
+			break;
 		}
 
 		eir_data += field_len + 1;
