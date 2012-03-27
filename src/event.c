@@ -455,6 +455,14 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, addr_type_t type,
 
 	update_lastused(local, peer);
 
+	if (dev_class != NULL) {
+		uint32_t class = dev_class[0] | (dev_class[1] << 8) |
+							(dev_class[2] << 16);
+
+		if (class != 0)
+			write_remote_class(local, peer, class);
+	}
+
 	device_set_addr_type(device, type);
 
 	adapter_add_connection(adapter, device);
