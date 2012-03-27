@@ -325,6 +325,9 @@ static void offline_char_write(gpointer data, gpointer user_data)
 						offline_char_written, chr);
 }
 
+static void char_discovered_cb(GSList *characteristics, guint8 status,
+							gpointer user_data);
+
 static void attio_connected(GAttrib *attrib, gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
@@ -337,6 +340,16 @@ static void attio_connected(GAttrib *attrib, gpointer user_data)
 					events_handler, gatt, NULL);
 
 	g_slist_foreach(gatt->offline_chars, offline_char_write, attrib);
+
+	if (gatt->query) {
+		struct gatt_primary *prim = gatt->prim;
+		struct query_data *qchr;
+
+		qchr = g_slist_nth_data(gatt->query->list, 0);
+		gatt_discover_char(gatt->attrib, prim->range.start,
+						prim->range.end, NULL,
+						char_discovered_cb, qchr);
+	}
 }
 
 static void attio_disconnected(gpointer user_data)
@@ -899,27 +912,6 @@ fail:
 	g_free(current);
 }
 
-static void send_discover(GAttrib *attrib, gpointer user_data)
-{
-	struct query_data *qchr = user_data;
-	struct gatt_service *gatt = qchr->gatt;
-	struct gatt_primary *prim = gatt->prim;
-
-	gatt->attrib = g_attrib_ref(attrib);
-
-	gatt_discover_char(gatt->attrib, prim->range.start, prim->range.end, NULL,
-						char_discovered_cb, qchr);
-}
-
-static void cancel_discover(gpointer user_data)
-{
-	struct query_data *qchr = user_data;
-	struct gatt_service *gatt = qchr->gatt;
-
-	g_attrib_unref(gatt->attrib);
-	gatt->attrib = NULL;
-}
-
 static DBusMessage *discover_char(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -937,10 +929,17 @@ static DBusMessage *discover_char(DBusConnection *conn, DBusMessage *msg,
 
 	query->msg = dbus_message_ref(msg);
 
-	gatt->attioid = btd_device_add_attio_callback(gatt->dev,
-							send_discover,
-							cancel_discover,
-							qchr);
+	if (gatt->attioid == 0) {
+		gatt->attioid = btd_device_add_attio_callback(gatt->dev,
+							attio_connected,
+							attio_disconnected,
+							gatt);
+	} else if (gatt->attrib) {
+		struct gatt_primary *prim = gatt->prim;
+		gatt_discover_char(gatt->attrib, prim->range.start,
+						prim->range.end, NULL,
+						char_discovered_cb, qchr);
+	}
 
 	gatt->query = query;
 
