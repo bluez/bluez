@@ -902,6 +902,7 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 		previous_end = &chr->end;
 
 		gatt->chars = g_slist_append(gatt->chars, chr);
+		register_characteristic(chr, gatt->path);
 	}
 
 	if (previous_end)
@@ -909,8 +910,6 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 
 	gatt_get_address(gatt, &sba, &dba);
 	store_characteristics(&sba, &dba, prim->range.start, gatt->chars);
-
-	g_slist_foreach(gatt->chars, register_characteristic, gatt->path);
 
 	g_slist_foreach(gatt->chars, update_all_chars, gatt);
 
