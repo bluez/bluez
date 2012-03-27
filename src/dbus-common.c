@@ -243,3 +243,36 @@ const char *class_to_icon(uint32_t class)
 
 	return NULL;
 }
+
+const char *gap_appearance_to_icon(uint16_t appearance)
+{
+	switch ((appearance & 0xffc0) >> 6) {
+	case 0x01:
+		return "phone";
+	case 0x02:
+		return "computer";
+	case 0x05:
+		return "video-display";
+	case 0x0a:
+		return "multimedia-player";
+	case 0x0b:
+		return "scanner";
+	case 0x0f: /* HID Generic */
+		switch (appearance & 0x3f) {
+		case 0x01:
+			return "input-keyboard";
+		case 0x02:
+			return "input-mouse";
+		case 0x03:
+		case 0x04:
+			return "input-gaming";
+		case 0x05:
+			return "input-tablet";
+		case 0x08:
+			return "scanner";
+		}
+		break;
+	}
+
+	return NULL;
+}

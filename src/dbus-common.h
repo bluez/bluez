@@ -45,3 +45,4 @@ void set_dbus_connection(DBusConnection *conn);
 DBusConnection *get_dbus_connection(void);
 
 const char *class_to_icon(uint32_t class);
+const char *gap_appearance_to_icon(uint16_t appearance);
