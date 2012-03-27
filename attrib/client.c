@@ -227,6 +227,7 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	DBG("%s watcher %s exited", gatt->path, watcher->name);
 
 	gatt->watchers = g_slist_remove(gatt->watchers, watcher);
+	remove_attio(gatt);
 }
 
 static int characteristic_set_value(struct characteristic *chr,
