@@ -149,6 +149,22 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	set_state(STATE_CONNECTED);
 }
 
+static void disconnect_io()
+{
+	if (conn_state == STATE_DISCONNECTED)
+		return;
+
+	g_attrib_unref(attrib);
+	attrib = NULL;
+	opt_mtu = 0;
+
+	g_io_channel_shutdown(iochannel, FALSE, NULL);
+	g_io_channel_unref(iochannel);
+	iochannel = NULL;
+
+	set_state(STATE_DISCONNECTED);
+}
+
 static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
 {
 	GSList *l;
@@ -327,6 +343,14 @@ static void cmd_exit(int argcp, char **argvp)
 	g_main_loop_quit(event_loop);
 }
 
+static gboolean channel_watcher(GIOChannel *chan, GIOCondition cond,
+				gpointer user_data)
+{
+	disconnect_io();
+
+	return FALSE;
+}
+
 static void cmd_connect(int argcp, char **argvp)
 {
 	if (conn_state != STATE_DISCONNECTED)
@@ -347,22 +371,13 @@ static void cmd_connect(int argcp, char **argvp)
 						opt_mtu, connect_cb);
 	if (iochannel == NULL)
 		set_state(STATE_DISCONNECTED);
+	else
+		g_io_add_watch(iochannel, G_IO_HUP, channel_watcher, NULL);
 }
 
 static void cmd_disconnect(int argcp, char **argvp)
 {
-	if (conn_state == STATE_DISCONNECTED)
-		return;
-
-	g_attrib_unref(attrib);
-	attrib = NULL;
-	opt_mtu = 0;
-
-	g_io_channel_shutdown(iochannel, FALSE, NULL);
-	g_io_channel_unref(iochannel);
-	iochannel = NULL;
-
-	set_state(STATE_DISCONNECTED);
+	disconnect_io();
 }
 
 static void cmd_primary(int argcp, char **argvp)
