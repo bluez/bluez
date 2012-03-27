@@ -110,6 +110,7 @@ struct mas_session {
 	gboolean nth_call;
 	GString *buffer;
 	map_ap_t *inparams;
+	map_ap_t *outparams;
 };
 
 static const uint8_t MAS_TARGET[TARGET_SIZE] = {
@@ -131,6 +132,8 @@ static int get_params(struct obex_session *os, struct mas_session *mas)
 		return -EBADR;
 	}
 
+	mas->outparams = map_ap_new();
+
 	return 0;
 }
 
@@ -143,6 +146,8 @@ static void reset_request(struct mas_session *mas)
 
 	map_ap_free(mas->inparams);
 	mas->inparams = NULL;
+	map_ap_free(mas->outparams);
+	mas->outparams = NULL;
 
 	mas->nth_call = FALSE;
 	mas->finished = FALSE;
