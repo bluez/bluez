@@ -47,20 +47,6 @@
 static sdp_record_t *record = NULL;
 static sdp_session_t *session = NULL;
 
-static void add_lang_attr(sdp_record_t *r)
-{
-	sdp_lang_attr_t base_lang;
-	sdp_list_t *langs = 0;
-
-	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
-	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
-	base_lang.encoding = 106;
-	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
-	langs = sdp_list_append(0, &base_lang);
-	sdp_set_lang_attr(r, langs);
-	sdp_list_free(langs, 0);
-}
-
 static void epox_endian_quirk(unsigned char *data, int size)
 {
 	/* USAGE_PAGE (Keyboard)	05 07
@@ -448,7 +434,7 @@ int bnep_sdp_register(bdaddr_t *device, uint16_t role)
 	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	add_lang_attr(record);
+	sdp_add_lang_attr(record);
 
 	sdp_list_free(proto[0], NULL);
 	sdp_list_free(proto[1], NULL);

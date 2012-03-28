@@ -110,20 +110,6 @@ static struct network_server *find_server(GSList *list, uint16_t id)
 	return NULL;
 }
 
-static void add_lang_attr(sdp_record_t *r)
-{
-	sdp_lang_attr_t base_lang;
-	sdp_list_t *langs = 0;
-
-	/* UTF-8 MIBenum (http://www.iana.org/assignments/character-sets) */
-	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
-	base_lang.encoding = 106;
-	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
-	langs = sdp_list_append(0, &base_lang);
-	sdp_set_lang_attr(r, langs);
-	sdp_list_free(langs, 0);
-}
-
 static sdp_record_t *server_record_new(const char *name, uint16_t id)
 {
 	sdp_list_t *svclass, *pfseq, *apseq, *root, *aproto;
@@ -232,7 +218,7 @@ static sdp_record_t *server_record_new(const char *name, uint16_t id)
 	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	add_lang_attr(record);
+	sdp_add_lang_attr(record);
 
 	sdp_attr_add_new(record, SDP_ATTR_SECURITY_DESC,
 				SDP_UINT16, &security_desc);

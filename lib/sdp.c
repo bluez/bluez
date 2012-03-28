@@ -4794,3 +4794,16 @@ fail:
 	return -1;
 }
 
+void sdp_add_lang_attr(sdp_record_t *rec)
+{
+	sdp_lang_attr_t base_lang;
+	sdp_list_t *langs;
+
+	base_lang.code_ISO639 = (0x65 << 8) | 0x6e;
+	base_lang.encoding = 106;
+	base_lang.base_offset = SDP_PRIMARY_LANG_BASE;
+
+	langs = sdp_list_append(0, &base_lang);
+	sdp_set_lang_attr(rec, langs);
+	sdp_list_free(langs, NULL);
+}
