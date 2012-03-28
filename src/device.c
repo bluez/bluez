@@ -383,7 +383,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 							&device->product);
 
 	/* Version */
-	if (device->product)
+	if (device->version)
 		dict_append_entry(&dict, "Version", DBUS_TYPE_UINT16,
 							&device->version);
 
