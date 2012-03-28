@@ -413,6 +413,10 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 	if (default_adapter_id < 0)
 		manager_set_default_adapter(id);
 
+	if (main_opts.did_source)
+		btd_adapter_set_did(adapter, main_opts.did_vendor,
+				main_opts.did_product, main_opts.did_version);
+
 	DBG("Adapter %s registered", path);
 
 	return btd_adapter_ref(adapter);
@@ -434,15 +438,4 @@ int btd_manager_unregister_adapter(int id)
 	manager_remove_adapter(adapter);
 
 	return 0;
-}
-
-void btd_manager_set_did(uint16_t vendor, uint16_t product, uint16_t version)
-{
-	GSList *l;
-
-	for (l = adapters; l != NULL; l = g_slist_next(l)) {
-		struct btd_adapter *adapter = l->data;
-
-		btd_adapter_set_did(adapter, vendor, product, version);
-	}
 }

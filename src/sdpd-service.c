@@ -187,9 +187,6 @@ void register_device_id(void)
 	info("Adding device id record for %04x:%04x:%04x", main_opts.did_vendor,
 				main_opts.did_product, main_opts.did_version);
 
-	btd_manager_set_did(main_opts.did_vendor, main_opts.did_product,
-							main_opts.did_version);
-
 	record->handle = sdp_next_handle();
 
 	sdp_record_add(BDADDR_ANY, record);
