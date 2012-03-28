@@ -87,6 +87,21 @@ static GKeyFile *load_config(const char *file)
 	return keyfile;
 }
 
+static void parse_did(const char *did)
+{
+	int result;
+	uint16_t vendor, product, version = 0x0000; /* version is optional */
+
+	result = sscanf(did, "%4hx:%4hx:%4hx", &vendor, &product, &version);
+	if (result == EOF || result < 2)
+		return;
+
+	main_opts.did_source = 0x0002;
+	main_opts.did_vendor = vendor;
+	main_opts.did_product = product;
+	main_opts.did_version = version;
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *err = NULL;
@@ -192,8 +207,7 @@ static void parse_config(GKeyFile *config)
 		g_clear_error(&err);
 	} else {
 		DBG("deviceid=%s", str);
-		strncpy(main_opts.deviceid, str,
-					sizeof(main_opts.deviceid) - 1);
+		parse_did(str);
 		g_free(str);
 	}
 
@@ -516,7 +530,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	start_sdp_server(mtu, main_opts.deviceid, SDP_SERVER_COMPAT);
+	start_sdp_server(mtu, SDP_SERVER_COMPAT);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the

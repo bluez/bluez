@@ -42,7 +42,11 @@ struct main_opts {
 
 	uint8_t		mode;
 	uint8_t		discov_interval;
-	char		deviceid[15]; /* FIXME: */
+
+	uint16_t	did_source;
+	uint16_t	did_vendor;
+	uint16_t	did_product;
+	uint16_t	did_version;
 };
 
 enum {

@@ -53,8 +53,7 @@ int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp);
 
 void register_public_browse_group(void);
 void register_server_service(void);
-void register_device_id(const uint16_t vendor, const uint16_t product,
-						const uint16_t version);
+void register_device_id(void);
 
 int record_sort(const void *r1, const void *r2);
 void sdp_svcdb_reset(void);
@@ -74,7 +73,7 @@ uint32_t sdp_get_time(void);
 #define SDP_SERVER_COMPAT (1 << 0)
 #define SDP_SERVER_MASTER (1 << 1)
 
-int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags);
+int start_sdp_server(uint16_t mtu, uint32_t flags);
 void stop_sdp_server(void);
 
 int add_record_to_server(const bdaddr_t *src, sdp_record_t *rec);

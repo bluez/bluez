@@ -45,6 +45,7 @@
 
 #include <glib.h>
 
+#include "hcid.h"
 #include "log.h"
 #include "sdpd.h"
 
@@ -227,7 +228,7 @@ static gboolean io_accept_event(GIOChannel *chan, GIOCondition cond, gpointer da
 	return TRUE;
 }
 
-int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags)
+int start_sdp_server(uint16_t mtu, uint32_t flags)
 {
 	int compat = flags & SDP_SERVER_COMPAT;
 	int master = flags & SDP_SERVER_MASTER;
@@ -240,20 +241,8 @@ int start_sdp_server(uint16_t mtu, const char *did, uint32_t flags)
 		return -1;
 	}
 
-	if (did && strlen(did) > 0) {
-		const char *ptr = did;
-		uint16_t vid = 0x0000, pid = 0x0000, ver = 0x0000;
-
-		vid = (uint16_t) strtol(ptr, NULL, 16);
-		ptr = strchr(ptr, ':');
-		if (ptr) {
-			pid = (uint16_t) strtol(ptr + 1, NULL, 16);
-			ptr = strchr(ptr + 1, ':');
-			if (ptr)
-				ver = (uint16_t) strtol(ptr + 1, NULL, 16);
-			register_device_id(vid, pid, ver);
-		}
-	}
+	if (main_opts.did_source > 0)
+		register_device_id();
 
 	io = g_io_channel_unix_new(l2cap_sock);
 	g_io_channel_set_close_on_unref(io, TRUE);
