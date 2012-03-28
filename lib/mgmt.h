@@ -311,6 +311,14 @@ struct mgmt_cp_unblock_device {
 	struct mgmt_addr_info addr;
 } __packed;
 
+#define MGMT_OP_SET_DEVICE_ID		0x0028
+struct mgmt_cp_set_device_id {
+	uint16_t source;
+	uint16_t vendor;
+	uint16_t product;
+	uint16_t version;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -475,6 +483,7 @@ static const char *mgmt_op[] = {
 	"Confirm Name",
 	"Block Device",
 	"Unblock Device",
+	"Set Device ID",
 };
 
 static const char *mgmt_ev[] = {
