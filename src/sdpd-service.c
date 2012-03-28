@@ -175,7 +175,7 @@ void register_server_service(void)
 
 void register_device_id(void)
 {
-	const uint16_t spec = 0x0102;
+	const uint16_t spec = 0x0103;
 	const uint8_t primary = 1;
 	sdp_list_t *class_list, *group_list, *profile_list;
 	uuid_t class_uuid, group_uuid;
