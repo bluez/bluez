@@ -147,6 +147,7 @@ static struct dev_info {
 
 	struct hci_version ver;
 
+	uint16_t did_source;
 	uint16_t did_vendor;
 	uint16_t did_product;
 	uint16_t did_version;
@@ -672,7 +673,8 @@ static void update_ext_inquiry_response(int index)
 	memset(&cp, 0, sizeof(cp));
 
 	eir_create(dev->name, dev->tx_power, dev->did_vendor, dev->did_product,
-					dev->did_version, dev->uuids, cp.data);
+			dev->did_version, dev->did_source, dev->uuids,
+			cp.data);
 
 	if (memcmp(cp.data, dev->eir, sizeof(cp.data)) == 0)
 		return;
@@ -886,13 +888,14 @@ fail:
 }
 
 static int hciops_set_did(int index, uint16_t vendor, uint16_t product,
-							uint16_t version)
+					uint16_t version, uint16_t source)
 {
 	struct dev_info *dev = &devs[index];
 
 	dev->did_vendor = vendor;
 	dev->did_product = product;
 	dev->did_version = version;
+	dev->did_source = source;
 
 	return 0;
 }

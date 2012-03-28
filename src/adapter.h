@@ -212,7 +212,7 @@ struct btd_adapter_ops {
 	int (*encrypt_link) (int index, bdaddr_t *bdaddr, bt_hci_result_t cb,
 							gpointer user_data);
 	int (*set_did) (int index, uint16_t vendor, uint16_t product,
-							uint16_t version);
+					uint16_t version, uint16_t source);
 	int (*add_uuid) (int index, uuid_t *uuid, uint8_t svc_hint);
 	int (*remove_uuid) (int index, uuid_t *uuid);
 	int (*disable_cod_cache) (int index);
@@ -274,7 +274,8 @@ int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				bt_hci_result_t cb, gpointer user_data);
 
 int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
-					uint16_t product, uint16_t version);
+					uint16_t product, uint16_t version,
+					uint16_t source);
 
 int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 				uint8_t addr_type, uint8_t io_cap);

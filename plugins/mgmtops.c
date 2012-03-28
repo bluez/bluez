@@ -2116,10 +2116,10 @@ static int mgmt_encrypt_link(int index, bdaddr_t *dst, bt_hci_result_t cb,
 }
 
 static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
-							uint16_t version)
+					uint16_t version, uint16_t source)
 {
-	DBG("index %d vendor %u product %u version %u",
-					index, vendor, product, version);
+	DBG("index %d vendor %u product %u version %u source %u",
+				index, vendor, product, version, source);
 	return -ENOSYS;
 }
 

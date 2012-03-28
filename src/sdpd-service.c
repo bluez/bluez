@@ -184,7 +184,8 @@ void register_device_id(void)
 	sdp_profile_desc_t profile;
 	sdp_record_t *record = sdp_record_alloc();
 
-	info("Adding device id record for %04x:%04x:%04x", main_opts.did_vendor,
+	info("Adding device id record for %04x:%04x:%04x:%04x",
+				main_opts.did_source, main_opts.did_vendor,
 				main_opts.did_product, main_opts.did_version);
 
 	record->handle = sdp_next_handle();

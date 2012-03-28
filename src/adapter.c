@@ -3476,9 +3476,11 @@ int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 }
 
 int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
-					uint16_t product, uint16_t version)
+					uint16_t product, uint16_t version,
+					uint16_t source)
 {
-	return adapter_ops->set_did(adapter->dev_id, vendor, product, version);
+	return adapter_ops->set_did(adapter->dev_id, vendor, product, version,
+								source);
 }
 
 int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,

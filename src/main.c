@@ -90,13 +90,28 @@ static GKeyFile *load_config(const char *file)
 static void parse_did(const char *did)
 {
 	int result;
-	uint16_t vendor, product, version = 0x0000; /* version is optional */
+	uint16_t vendor, product, version , source;
+
+	/* version and source are optional */
+	version = 0x0000;
+	source = 0x0002;
+
+	result = sscanf(did, "bluetooth:%4hx:%4hx:%4hx", &vendor, &product, &version);
+	if (result != EOF && result >= 2) {
+		source = 0x0001;
+		goto done;
+	}
+
+	result = sscanf(did, "usb:%4hx:%4hx:%4hx", &vendor, &product, &version);
+	if (result != EOF && result >= 2)
+		goto done;
 
 	result = sscanf(did, "%4hx:%4hx:%4hx", &vendor, &product, &version);
 	if (result == EOF || result < 2)
 		return;
 
-	main_opts.did_source = 0x0002;
+done:
+	main_opts.did_source = source;
 	main_opts.did_vendor = vendor;
 	main_opts.did_product = product;
 	main_opts.did_version = version;

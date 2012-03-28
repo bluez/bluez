@@ -232,7 +232,7 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 
 void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			uint16_t did_product, uint16_t did_version,
-			GSList *uuids, uint8_t *data)
+			uint16_t did_source, GSList *uuids, uint8_t *data)
 {
 	GSList *l;
 	uint8_t *ptr = data;
@@ -269,11 +269,10 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 	}
 
 	if (did_vendor != 0x0000) {
-		uint16_t source = 0x0002;
 		*ptr++ = 9;
 		*ptr++ = EIR_DEVICE_ID;
-		*ptr++ = (source & 0x00ff);
-		*ptr++ = (source & 0xff00) >> 8;
+		*ptr++ = (did_source & 0x00ff);
+		*ptr++ = (did_source & 0xff00) >> 8;
 		*ptr++ = (did_vendor & 0x00ff);
 		*ptr++ = (did_vendor & 0xff00) >> 8;
 		*ptr++ = (did_product & 0x00ff);

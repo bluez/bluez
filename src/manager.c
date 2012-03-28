@@ -415,7 +415,9 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 
 	if (main_opts.did_source)
 		btd_adapter_set_did(adapter, main_opts.did_vendor,
-				main_opts.did_product, main_opts.did_version);
+						main_opts.did_product,
+						main_opts.did_version,
+						main_opts.did_source);
 
 	DBG("Adapter %s registered", path);
 
