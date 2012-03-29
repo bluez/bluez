@@ -1299,7 +1299,7 @@ static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond,
 	if (free_space < (size_t) bytes_read) {
 		/* Very likely that the HS is sending us garbage so
 		 * just ignore the data and disconnect */
-		error("Too much data to fit incomming buffer");
+		error("Too much data to fit incoming buffer");
 		goto failed;
 	}
 

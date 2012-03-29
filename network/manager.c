@@ -179,7 +179,7 @@ int network_manager_init(DBusConnection *conn)
 	}
 
 	/*
-	 * There is one socket to handle the incomming connections. NAP,
+	 * There is one socket to handle the incoming connections. NAP,
 	 * GN and PANU servers share the same PSM. The initial BNEP message
 	 * (setup connection request) contains the destination service
 	 * field that defines which service the source is connecting to.

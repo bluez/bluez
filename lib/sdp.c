@@ -3708,8 +3708,8 @@ int sdp_set_notify(sdp_session_t *session, sdp_callback_t *func, void *udata)
 
 /*
  * This function starts an asynchronous service search request.
- * The incomming and outgoing data are stored in the transaction structure
- * buffers. When there is incomming data the sdp_process function must be
+ * The incoming and outgoing data are stored in the transaction structure
+ * buffers. When there is incoming data the sdp_process function must be
  * called to get the data and handle the continuation state.
  *
  * INPUT :
@@ -3800,8 +3800,8 @@ end:
 
 /*
  * This function starts an asynchronous service attribute request.
- * The incomming and outgoing data are stored in the transaction structure
- * buffers. When there is incomming data the sdp_process function must be
+ * The incoming and outgoing data are stored in the transaction structure
+ * buffers. When there is incoming data the sdp_process function must be
  * called to get the data and handle the continuation state.
  *
  * INPUT :
@@ -3911,9 +3911,9 @@ end:
 
 /*
  * This function starts an asynchronous service search attributes.
- * It is a service search request combined with attribute request. The incomming
+ * It is a service search request combined with attribute request. The incoming
  * and outgoing data are stored in the transaction structure buffers. When there
- * is incomming data the sdp_process function must be called to get the data
+ * is incoming data the sdp_process function must be called to get the data
  * and handle the continuation state.
  *
  * INPUT:
@@ -4056,7 +4056,7 @@ int sdp_get_error(sdp_session_t *session)
 }
 
 /*
- * Receive the incomming SDP PDU. This function must be called when there is data
+ * Receive the incoming SDP PDU. This function must be called when there is data
  * available to be read. On continuation state, the original request (with a new
  * transaction ID) and the continuation state data will be appended in the initial PDU.
  * If an error happens or the transaction finishes the callback function will be called.

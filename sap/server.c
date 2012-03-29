@@ -1208,7 +1208,7 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 
 	conn = g_try_new0(struct sap_connection, 1);
 	if (!conn) {
-		error("Can't allocate memory for incomming SAP connection.");
+		error("Can't allocate memory for incoming SAP connection.");
 		g_io_channel_shutdown(io, TRUE, NULL);
 		return;
 	}
@@ -1241,7 +1241,7 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 		return;
 	}
 
-	DBG("Authorizing incomming SAP connection from %s", dstaddr);
+	DBG("Authorizing incoming SAP connection from %s", dstaddr);
 }
 
 static inline DBusMessage *message_failed(DBusMessage *msg,
