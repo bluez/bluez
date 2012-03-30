@@ -221,7 +221,8 @@ EXTRA_DIST += test/apitest test/sap-client test/hsplay test/hsmicro \
 		test/test-input test/test-sap-server test/test-oob \
 		test/test-serial-proxy test/test-health test/test-health-sink \
 		test/service-record.dtd test/service-did.xml \
-		test/service-spp.xml test/service-opp.xml test/service-ftp.xml
+		test/service-spp.xml test/service-opp.xml test/service-ftp.xml \
+		test/simple-player test/test-nap
 
 if GATTMODULES
 EXTRA_DIST += test/test-attrib test/test-proximity test/test-thermometer
