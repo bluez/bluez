@@ -859,6 +859,7 @@ static void usage(void)
 	"  -H, --hcrp=psm             PSM for HCRP\n"
 	"  -O, --obex=port            Channel/PSM for OBEX\n"
 	"  -P, --ppp=channel          Channel for PPP\n"
+	"  -S, --sap=channel          Channel for SAP\n"
 	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -Y, --novendor             No vendor commands or events\n"
@@ -887,6 +888,7 @@ static struct option main_options[] = {
 	{ "hcrp",		1, 0, 'H' },
 	{ "obex",		1, 0, 'O' },
 	{ "ppp",		1, 0, 'P' },
+	{ "sap",		1, 0, 'S' },
 	{ "pppdump",		1, 0, 'D' },
 	{ "audio",		1, 0, 'A' },
 	{ "novendor",		0, 0, 'Y' },
@@ -908,7 +910,9 @@ int main(int argc, char *argv[])
 	int opt, pppdump_fd = -1, audio_fd = -1;
 	uint16_t obex_port;
 
-	while ((opt=getopt_long(argc, argv, "i:l:p:m:w:r:d:taxXRC:H:O:P:D:A:YZ46hv", main_options, NULL)) != -1) {
+	while ((opt = getopt_long(argc, argv,
+				"i:l:p:m:w:r:d:taxXRC:H:O:P:S:D:A:YZ46hv",
+				main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
 			if (strcasecmp(optarg, "none") && strcasecmp(optarg, "system"))
@@ -982,6 +986,10 @@ int main(int argc, char *argv[])
 
 		case 'P':
 			set_proto(0, 0, atoi(optarg), SDP_UUID_LAN_ACCESS_PPP);
+			break;
+
+		case 'S':
+			set_proto(0, 0, atoi(optarg), SDP_UUID_SIM_ACCESS);
 			break;
 
 		case 'D':
