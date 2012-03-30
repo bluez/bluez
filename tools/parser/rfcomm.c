@@ -281,6 +281,13 @@ static inline void uih_frame(int level, struct frame *frm, long_frame_head *head
 					raw_dump(level, frm);
 				break;
 
+			case SDP_UUID_SIM_ACCESS:
+				if (!p_filter(FILT_SAP))
+					sap_dump(level + 1, frm);
+				else
+					raw_dump(level, frm);
+				break;
+
 			default:
 				if (p_filter(FILT_RFCOMM))
 					break;

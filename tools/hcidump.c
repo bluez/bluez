@@ -816,6 +816,7 @@ static struct {
 	{ "obex",	FILT_OBEX	},
 	{ "capi",	FILT_CAPI	},
 	{ "ppp",	FILT_PPP	},
+	{ "sap",	FILT_SAP	},
 	{ "csr",	FILT_CSR	},
 	{ "dga",	FILT_DGA	},
 	{ 0 }

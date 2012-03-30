@@ -85,6 +85,7 @@ struct frame {
 #define FILT_OBEX	0x00010000
 #define FILT_CAPI	0x00020000
 #define FILT_PPP	0x00040000
+#define FILT_SAP	0x00080000
 #define FILT_ERICSSON	0x10000000
 #define FILT_CSR	0x1000000a
 #define FILT_DGA	0x1000000c
@@ -236,6 +237,7 @@ void avctp_dump(int level, struct frame *frm);
 void avrcp_dump(int level, struct frame *frm);
 void att_dump(int level, struct frame *frm);
 void smp_dump(int level, struct frame *frm);
+void sap_dump(int level, struct frame *frm);
 
 void obex_dump(int level, struct frame *frm);
 void capi_dump(int level, struct frame *frm);
