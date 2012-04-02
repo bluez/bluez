@@ -357,6 +357,20 @@ static void attio_disconnected(gpointer user_data)
 {
 	struct gatt_service *gatt = user_data;
 
+	if (gatt->query && gatt->query->msg) {
+		DBusMessage *reply;
+
+		reply = btd_error_failed(gatt->query->msg,
+					"ATT IO channel was disconnected");
+		g_dbus_send_message(gatt->conn, reply);
+		dbus_message_unref(gatt->query->msg);
+	}
+
+	if (gatt->query) {
+		g_slist_free_full(gatt->query->list, g_free);
+		gatt->query = NULL;
+	}
+
 	if (gatt->attrib) {
 		g_attrib_unref(gatt->attrib);
 		gatt->attrib = NULL;
