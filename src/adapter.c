@@ -2710,6 +2710,8 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
 								&app) == 0)
 			icon = gap_appearance_to_icon(app);
+		else
+			icon = NULL;
 
 		emit_device_found(adapter->path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
