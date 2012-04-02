@@ -117,26 +117,6 @@
 #define ATT_CID					4
 #define ATT_PSM					31
 
-/* Requirements for read/write operations */
-enum {
-	ATT_NONE,		/* No restrictions */
-	ATT_AUTHENTICATION,	/* Authentication required */
-	ATT_AUTHORIZATION,	/* Authorization required */
-	ATT_NOT_PERMITTED,	/* Operation not permitted */
-};
-
-struct attribute {
-	uint16_t handle;
-	bt_uuid_t uuid;
-	int read_reqs;
-	int write_reqs;
-	uint8_t (*read_cb)(struct attribute *a, gpointer user_data);
-	uint8_t (*write_cb)(struct attribute *a, gpointer user_data);
-	gpointer cb_user_data;
-	int len;
-	uint8_t *data;
-};
-
 struct att_data_list {
 	uint16_t num;
 	uint16_t len;

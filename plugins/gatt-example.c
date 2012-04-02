@@ -37,6 +37,7 @@
 #include "gattrib.h"
 #include "gatt-service.h"
 #include "att.h"
+#include "att-database.h"
 #include "attrib-server.h"
 
 /* FIXME: Not defined by SIG? UUID128? */
@@ -92,7 +93,8 @@ static gint adapter_cmp(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
-static uint8_t battery_state_read(struct attribute *a, gpointer user_data)
+static uint8_t battery_state_read(struct attribute *a,
+				  struct btd_device *device, gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	uint8_t value;

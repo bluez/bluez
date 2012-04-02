@@ -47,6 +47,7 @@
 #include "device.h"
 #include "manager.h"
 #include "att.h"
+#include "att-database.h"
 #include "gattrib.h"
 #include "storage.h"
 
@@ -76,6 +77,7 @@ struct gatt_channel {
 	gboolean encrypted;
 	struct gatt_server *server;
 	guint cleanup_id;
+	struct btd_device *device;
 };
 
 struct group_elem {
@@ -111,6 +113,9 @@ static void channel_free(struct gatt_channel *channel)
 
 	if (channel->cleanup_id)
 		g_source_remove(channel->cleanup_id);
+
+	if (channel->device)
+		btd_device_unref(channel->device);
 
 	g_attrib_unref(channel->attrib);
 	g_free(channel);
@@ -452,7 +457,8 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 								a->read_reqs);
 
 		if (status == 0x00 && a->read_cb)
-			status = a->read_cb(a, a->cb_user_data);
+			status = a->read_cb(a, channel->device,
+							a->cb_user_data);
 
 		if (status) {
 			g_slist_free_full(groups, g_free);
@@ -541,7 +547,8 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 								a->read_reqs);
 
 		if (status == 0x00 && a->read_cb)
-			status = a->read_cb(a, a->cb_user_data);
+			status = a->read_cb(a, channel->device,
+							a->cb_user_data);
 
 		if (status) {
 			g_slist_free(types);
@@ -753,7 +760,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 	status = att_check_reqs(channel, ATT_OP_READ_REQ, a->read_reqs);
 
 	if (status == 0x00 && a->read_cb)
-		status = a->read_cb(a, a->cb_user_data);
+		status = a->read_cb(a, channel->device, a->cb_user_data);
 
 	if (status)
 		return enc_error_resp(ATT_OP_READ_REQ, handle, status, pdu,
@@ -796,7 +803,7 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_reqs);
 
 	if (status == 0x00 && a->read_cb)
-		status = a->read_cb(a, a->cb_user_data);
+		status = a->read_cb(a, channel->device, a->cb_user_data);
 
 	if (status)
 		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle, status,
@@ -833,7 +840,8 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 							value, vlen, NULL);
 
 		if (a->write_cb) {
-			status = a->write_cb(a, a->cb_user_data);
+			status = a->write_cb(a, channel->device,
+							a->cb_user_data);
 			if (status)
 				return enc_error_resp(ATT_OP_WRITE_REQ, handle,
 							status, pdu, len);
@@ -1066,6 +1074,8 @@ guint attrib_channel_attach(GAttrib *attrib)
 
 	channel->cleanup_id = g_io_add_watch(io, G_IO_HUP, channel_watch_cb,
 								channel);
+
+	channel->device = btd_device_ref(device);
 
 	server->clients = g_slist_append(server->clients, channel);
 
