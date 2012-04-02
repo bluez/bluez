@@ -40,6 +40,7 @@
 #include "attrib-server.h"
 #include "reporter.h"
 #include "linkloss.h"
+#include "immalert.h"
 
 static DBusConnection *connection;
 
@@ -101,44 +102,6 @@ static void register_tx_power(struct btd_adapter *adapter)
 	g_assert(h - start_handle == svc_size);
 }
 
-static void register_immediate_alert(struct btd_adapter *adapter)
-{
-	uint16_t start_handle, h;
-	const int svc_size = 3;
-	uint8_t atval[256];
-	bt_uuid_t uuid;
-
-	bt_uuid16_create(&uuid, IMMEDIATE_ALERT_SVC_UUID);
-	start_handle = attrib_db_find_avail(adapter, &uuid, svc_size);
-	if (start_handle == 0) {
-		error("Not enough free handles to register service");
-		return;
-	}
-
-	DBG("start_handle=0x%04x", start_handle);
-
-	h = start_handle;
-
-	/* Primary service definition */
-	bt_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
-	att_put_u16(IMMEDIATE_ALERT_SVC_UUID, &atval[0]);
-	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 2);
-
-	/* Alert level characteristic */
-	bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
-	atval[0] = ATT_CHAR_PROPER_WRITE_WITHOUT_RESP;
-	att_put_u16(h + 1, &atval[1]);
-	att_put_u16(ALERT_LEVEL_CHR_UUID, &atval[3]);
-	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NOT_PERMITTED, atval, 5);
-
-	/* Alert level value */
-	bt_uuid16_create(&uuid, ALERT_LEVEL_CHR_UUID);
-	att_put_u8(NO_ALERT, &atval[0]);
-	attrib_db_add(adapter, h++, &uuid, ATT_NONE, ATT_NONE, atval, 1);
-
-	g_assert(h - start_handle == svc_size);
-}
-
 int reporter_init(struct btd_adapter *adapter)
 {
 	if (!main_opts.gatt_enabled) {
@@ -153,7 +116,7 @@ int reporter_init(struct btd_adapter *adapter)
 
 	link_loss_register(adapter, connection);
 	register_tx_power(adapter);
-	register_immediate_alert(adapter);
+	imm_alert_register(adapter, connection);
 
 	return 0;
 }
@@ -161,5 +124,6 @@ int reporter_init(struct btd_adapter *adapter)
 void reporter_exit(struct btd_adapter *adapter)
 {
 	link_loss_unregister(adapter);
+	imm_alert_unregister(adapter);
 	dbus_connection_unref(connection);
 }

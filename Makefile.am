@@ -223,7 +223,8 @@ builtin_sources += thermometer/main.c \
             proximity/main.c proximity/manager.h proximity/manager.c \
 			proximity/monitor.h proximity/monitor.c \
 			proximity/reporter.h proximity/reporter.c \
-			proximity/linkloss.h proximity/linkloss.c
+			proximity/linkloss.h proximity/linkloss.c \
+			proximity/immalert.h proximity/immalert.c
 endif
 
 
