@@ -52,6 +52,8 @@ enum {
 	HIGH_ALERT = 0x02,
 };
 
+static DBusConnection *connection;
+
 static void register_link_loss(struct btd_adapter *adapter)
 {
 	uint16_t start_handle, h;
@@ -179,6 +181,9 @@ int reporter_init(struct btd_adapter *adapter)
 		return -ENOTSUP;
 	}
 
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
 	DBG("Proximity Reporter for adapter %p", adapter);
 
 	register_link_loss(adapter);
@@ -190,4 +195,5 @@ int reporter_init(struct btd_adapter *adapter)
 
 void reporter_exit(struct btd_adapter *adapter)
 {
+	dbus_connection_unref(connection);
 }
