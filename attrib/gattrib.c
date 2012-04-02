@@ -293,14 +293,18 @@ static void destroy_sender(gpointer data)
 	struct _GAttrib *attrib = data;
 
 	attrib->write_watch = 0;
+	g_attrib_unref(attrib);
 }
 
 static void wake_up_sender(struct _GAttrib *attrib)
 {
-	if (attrib->write_watch == 0)
-		attrib->write_watch = g_io_add_watch_full(attrib->io,
-			G_PRIORITY_DEFAULT, G_IO_OUT, can_write_data,
-			attrib, destroy_sender);
+	if (attrib->write_watch > 0)
+		return;
+
+	attrib = g_attrib_ref(attrib);
+	attrib->write_watch = g_io_add_watch_full(attrib->io,
+				G_PRIORITY_DEFAULT, G_IO_OUT,
+				can_write_data, attrib, destroy_sender);
 }
 
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
