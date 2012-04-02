@@ -222,7 +222,8 @@ builtin_sources += thermometer/main.c \
             plugins/gatt-example.c \
             proximity/main.c proximity/manager.h proximity/manager.c \
 			proximity/monitor.h proximity/monitor.c \
-			proximity/reporter.h proximity/reporter.c
+			proximity/reporter.h proximity/reporter.c \
+			proximity/linkloss.h proximity/linkloss.c
 endif
 
 
