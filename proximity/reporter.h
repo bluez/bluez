@@ -22,5 +22,21 @@
  *
  */
 
+#define PROXIMITY_REPORTER_INTERFACE "org.bluez.ProximityReporter"
+
+#define IMMEDIATE_ALERT_SVC_UUID	0x1802
+#define LINK_LOSS_SVC_UUID		0x1803
+#define TX_POWER_SVC_UUID		0x1804
+#define ALERT_LEVEL_CHR_UUID		0x2A06
+#define POWER_LEVEL_CHR_UUID		0x2A07
+
+enum {
+	NO_ALERT = 0x00,
+	MILD_ALERT = 0x01,
+	HIGH_ALERT = 0x02,
+};
+
 int reporter_init(struct btd_adapter *adapter);
 void reporter_exit(struct btd_adapter *adapter);
+
+const char *get_alert_level_string(uint8_t level);
