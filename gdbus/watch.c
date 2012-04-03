@@ -666,7 +666,7 @@ guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
 	if (data == NULL)
 		return 0;
 
-	cb = filter_data_add_callback(data, connect, disconnect, NULL, NULL,
+	cb = filter_data_add_callback(data, connect, disconnect, NULL, destroy,
 					user_data);
 	if (cb == NULL)
 		return 0;
