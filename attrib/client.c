@@ -227,6 +227,7 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	DBG("%s watcher %s exited", gatt->path, watcher->name);
 
 	gatt->watchers = g_slist_remove(gatt->watchers, watcher);
+	g_dbus_remove_watch(gatt->conn, watcher->id);
 	remove_attio(gatt);
 }
 
@@ -429,10 +430,8 @@ static DBusMessage *unregister_watcher(DBusConnection *conn,
 		return btd_error_not_authorized(msg);
 
 	watcher = l->data;
-	g_dbus_remove_watch(conn, watcher->id);
 	gatt->watchers = g_slist_remove(gatt->watchers, watcher);
-	watcher_free(watcher);
-
+	g_dbus_remove_watch(conn, watcher->id);
 	remove_attio(gatt);
 
 	return dbus_message_new_method_return(msg);
