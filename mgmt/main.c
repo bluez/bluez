@@ -1739,7 +1739,7 @@ static void did_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Device ID succesfully set\n");
+	printf("Device ID successfully set\n");
 
 	exit(EXIT_SUCCESS);
 }

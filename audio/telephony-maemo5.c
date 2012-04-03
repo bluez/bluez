@@ -1014,7 +1014,7 @@ static void handle_call_status(DBusMessage *msg, const char *call_path)
 					DBUS_TYPE_UINT32, &cause_type,
 					DBUS_TYPE_UINT32, &cause,
 					DBUS_TYPE_INVALID)) {
-		error("Unexpected paramters in Instance.CallStatus() signal");
+		error("Unexpected parameters in Instance.CallStatus() signal");
 		return;
 	}
 
