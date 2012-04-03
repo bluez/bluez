@@ -106,7 +106,8 @@ sbc_sbctest_CFLAGS = $(AM_CFLAGS) @SNDFILE_CFLAGS@
 endif
 endif
 
-attrib_sources = attrib/att.h attrib/att.c attrib/gatt.h attrib/gatt.c \
+attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
+		attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c attrib/client.h \
 		attrib/client.c attrib/gatt-service.h attrib/gatt-service.c
 
