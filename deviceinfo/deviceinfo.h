@@ -20,5 +20,5 @@
  *
  */
 
-int deviceinfo_register(struct btd_device *device);
+int deviceinfo_register(struct btd_device *device, struct gatt_primary *prim);
 void deviceinfo_unregister(struct btd_device *device);
