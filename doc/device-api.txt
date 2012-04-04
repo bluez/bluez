@@ -129,6 +129,10 @@ Properties	string Address [readonly]
 
 			Vendor unique numeric identifier.
 
+		uint16 VendorSource [readonly]
+
+			Vendor source numeric identifier.
+
 		uint16 Product [readonly]
 
 			Product unique numeric identifier.

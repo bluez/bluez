@@ -39,6 +39,7 @@ struct btd_device *device_create(DBusConnection *conn,
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 uint16_t btd_device_get_vendor(struct btd_device *device);
+uint16_t btd_device_get_vendor_src(struct btd_device *device);
 uint16_t btd_device_get_product(struct btd_device *device);
 uint16_t btd_device_get_version(struct btd_device *device);
 void device_remove(struct btd_device *device, gboolean remove_stored);
@@ -120,3 +121,6 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 						gboolean update_only);
 int device_unblock(DBusConnection *conn, struct btd_device *device,
 					gboolean silent, gboolean update_only);
+void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
+			uint16_t vendor_id, uint16_t product_id,
+			uint16_t product_ver);

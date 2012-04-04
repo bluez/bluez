@@ -81,6 +81,39 @@ static gint cmp_device(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
+static void read_pnpid_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct characteristic *ch = user_data;
+	uint8_t value[ATT_MAX_MTU];
+	int vlen;
+
+	if (status != 0) {
+		error("Error reading PNP_ID value: %s", att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_read_resp(pdu, len, value, &vlen)) {
+		error("Error reading PNP_ID: Protocol error");
+		return;
+	}
+
+	if (vlen < 7) {
+		error("Error reading PNP_ID: Invalid pdu length received");
+		return;
+	}
+
+	device_set_pnpid(ch->d->dev,value[0],att_get_u16(&value[1]),
+				att_get_u16(&value[3]),	att_get_u16(&value[5]));
+}
+
+static void process_deviceinfo_char(struct characteristic *ch)
+{
+	if (g_strcmp0(ch->attr.uuid, PNPID_UUID) == 0)
+		gatt_read_char(ch->d->attrib, ch->attr.value_handle, 0,
+							read_pnpid_cb, ch);
+}
+
 static void configure_deviceinfo_cb(GSList *characteristics, guint8 status,
 							gpointer user_data)
 {
@@ -105,6 +138,8 @@ static void configure_deviceinfo_cb(GSList *characteristics, guint8 status,
 		ch->d = d;
 
 		d->chars = g_slist_append(d->chars, ch);
+
+		process_deviceinfo_char(ch);
 	}
 }
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
