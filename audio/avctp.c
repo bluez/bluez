@@ -295,7 +295,7 @@ static size_t handle_subunit_info(struct avctp *session,
 
 	DBG("reply to AVC_OP_SUBUNITINFO");
 
-	return 0;
+	return operand_count;
 }
 
 static struct avctp_pdu_handler *find_handler(GSList *list, uint8_t opcode)
