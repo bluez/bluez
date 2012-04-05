@@ -61,6 +61,30 @@ Methods		void Release()
 			so the display should be zero-padded at the start if
 			the value contains less than 6 digits.
 
+		void DisplayPinCode(object device, string pincode)
+
+			This method gets called when the service daemon
+			needs to display a pincode for an authentication.
+
+			An empty reply should be returned. When the pincode
+			needs no longer to be displayed, the Cancel method
+			of the agent will be called.
+
+			If this method is not implemented the RequestPinCode
+			method will be used instead.
+
+			This is used during the pairing process of keyboards
+			that don't support Bluetooth 2.1 Secure Simple Pairing,
+			in contrast to DisplayPasskey which is used for those
+			that do.
+
+			This method will only ever be called once since
+			older keyboards do not support typing notification.
+
+			Note that the PIN will always be a 6-digit number,
+			zero-padded to 6 digits. This is for harmony with
+			the later specification.
+
 		void RequestConfirmation(object device, uint32 passkey)
 
 			This method gets called when the service daemon
