@@ -33,11 +33,8 @@
 #include <sys/types.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/hidp.h>
-#include <bluetooth/sdp.h>
 
 #include <glib.h>
-#include <dbus/dbus.h>
 
 #include "../src/adapter.h"
 #include "../src/device.h"
