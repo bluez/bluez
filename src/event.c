@@ -127,6 +127,11 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 	memset(pin, 0, sizeof(pin));
 	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
 	if (pinlen > 0 && (!secure || pinlen == 16)) {
+		if (display && device_is_bonding(device, NULL))
+			return device_request_authentication(device,
+						AUTH_TYPE_NOTIFY_PINCODE, pin,
+						secure, pincode_cb);
+
 		btd_adapter_pincode_reply(adapter, dba, pin, pinlen);
 		return 0;
 	}
