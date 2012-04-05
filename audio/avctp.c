@@ -271,7 +271,7 @@ static size_t handle_unit_info(struct avctp *session,
 
 	DBG("reply to AVC_OP_UNITINFO");
 
-	return 0;
+	return operand_count;
 }
 
 static size_t handle_subunit_info(struct avctp *session,
