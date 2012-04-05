@@ -57,7 +57,7 @@
  */
 
 static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
-								char *pinbuf)
+						char *pinbuf, gboolean *display)
 {
 	uint16_t vendor, product;
 	bdaddr_t sba, dba;

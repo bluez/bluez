@@ -3345,7 +3345,7 @@ void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 }
 
 ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
-								char *pin_buf)
+					char *pin_buf, gboolean *display)
 {
 	GSList *l;
 	btd_adapter_pin_cb_t cb;
@@ -3354,7 +3354,7 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 
 	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
 		cb = l->data;
-		ret = cb(adapter, dev, pin_buf);
+		ret = cb(adapter, dev, pin_buf, display);
 		if (ret > 0)
 			return ret;
 	}
