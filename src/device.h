@@ -31,6 +31,7 @@ typedef enum {
 	AUTH_TYPE_PASSKEY,
 	AUTH_TYPE_CONFIRM,
 	AUTH_TYPE_NOTIFY_PASSKEY,
+	AUTH_TYPE_NOTIFY_PINCODE,
 } auth_type_t;
 
 struct btd_device *device_create(DBusConnection *conn,
