@@ -202,8 +202,8 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_authentication(device, AUTH_TYPE_NOTIFY, passkey,
-								FALSE, NULL);
+	return device_request_authentication(device, AUTH_TYPE_NOTIFY_PASSKEY,
+							passkey, FALSE, NULL);
 }
 
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,

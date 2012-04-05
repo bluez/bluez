@@ -2525,7 +2525,7 @@ void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
 {
 	struct authentication_req *auth = device->authr;
 
-	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
+	if (auth && auth->type == AUTH_TYPE_NOTIFY_PASSKEY && auth->agent)
 		agent_cancel(auth->agent);
 }
 
@@ -2542,7 +2542,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	DBG("bonding %p status 0x%02x", bonding, status);
 
-	if (auth && auth->type == AUTH_TYPE_NOTIFY && auth->agent)
+	if (auth && auth->type == AUTH_TYPE_NOTIFY_PASSKEY && auth->agent)
 		agent_cancel(auth->agent);
 
 	if (status) {
@@ -2796,7 +2796,7 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 		err = agent_request_confirmation(agent, device, passkey,
 						confirm_cb, auth, NULL);
 		break;
-	case AUTH_TYPE_NOTIFY:
+	case AUTH_TYPE_NOTIFY_PASSKEY:
 		err = agent_display_passkey(agent, device, passkey);
 		break;
 	default:
@@ -2836,7 +2836,7 @@ static void cancel_authentication(struct authentication_req *auth)
 	case AUTH_TYPE_PASSKEY:
 		((agent_passkey_cb) auth->cb)(agent, &err, 0, device);
 		break;
-	case AUTH_TYPE_NOTIFY:
+	case AUTH_TYPE_NOTIFY_PASSKEY:
 		/* User Notify doesn't require any reply */
 		break;
 	}
