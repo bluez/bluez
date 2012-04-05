@@ -52,7 +52,8 @@ typedef enum {
 	AGENT_REQUEST_CONFIRMATION,
 	AGENT_REQUEST_PINCODE,
 	AGENT_REQUEST_AUTHORIZE,
-	AGENT_REQUEST_CONFIRM_MODE
+	AGENT_REQUEST_CONFIRM_MODE,
+	AGENT_REQUEST_DISPLAY_PINCODE,
 } agent_request_type_t;
 
 struct agent {
@@ -697,6 +698,115 @@ int agent_display_passkey(struct agent *agent, struct btd_device *device,
 	}
 
 	return 0;
+}
+
+static void display_pincode_reply(DBusPendingCall *call, void *user_data)
+{
+	struct agent_request *req = user_data;
+	struct agent *agent = req->agent;
+	DBusMessage *message;
+	DBusError err;
+	agent_cb cb = req->cb;
+
+	/* clear agent->request early; our callback will likely try
+	 * another request */
+	agent->request = NULL;
+
+	/* steal_reply will always return non-NULL since the callback
+	 * is only called after a reply has been received */
+	message = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&err);
+	if (dbus_set_error_from_message(&err, message)) {
+		error("Agent replied with an error: %s, %s",
+						err.name, err.message);
+
+		cb(agent, &err, req->user_data);
+
+		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+			agent_cancel(agent);
+			dbus_message_unref(message);
+			dbus_error_free(&err);
+			return;
+		}
+
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	dbus_error_init(&err);
+	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
+		error("Wrong reply signature: %s", err.message);
+		cb(agent, &err, req->user_data);
+		dbus_error_free(&err);
+		goto done;
+	}
+
+	cb(agent, NULL, req->user_data);
+done:
+	dbus_message_unref(message);
+
+	agent_request_free(req, TRUE);
+}
+
+static int display_pincode_request_new(struct agent_request *req,
+					const char *device_path,
+					const char *pincode)
+{
+	struct agent *agent = req->agent;
+
+	req->msg = dbus_message_new_method_call(agent->name, agent->path,
+					"org.bluez.Agent", "DisplayPinCode");
+	if (req->msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(req->msg,
+					DBUS_TYPE_OBJECT_PATH, &device_path,
+					DBUS_TYPE_STRING, &pincode,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, req->msg,
+				&req->call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(req->call, display_pincode_reply,
+								req, NULL);
+
+	return 0;
+}
+
+int agent_display_pincode(struct agent *agent, struct btd_device *device,
+				const char *pincode, agent_cb cb,
+				void *user_data, GDestroyNotify destroy)
+{
+	struct agent_request *req;
+	const gchar *dev_path = device_get_path(device);
+	int err;
+
+	if (agent->request)
+		return -EBUSY;
+
+	DBG("Calling Agent.DisplayPinCode: name=%s, path=%s, pincode=%s",
+					agent->name, agent->path, pincode);
+
+	req = agent_request_new(agent, AGENT_REQUEST_DISPLAY_PINCODE, cb,
+							user_data, destroy);
+
+	err = display_pincode_request_new(req, dev_path, pincode);
+	if (err < 0)
+		goto failed;
+
+	agent->request = req;
+
+	return 0;
+
+failed:
+	agent_request_free(req, FALSE);
+	return err;
 }
 
 uint8_t agent_get_io_capability(struct agent *agent)
