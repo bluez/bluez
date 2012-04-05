@@ -130,7 +130,7 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 		return 0;
 	}
 
-	return device_request_authentication(device, AUTH_TYPE_PINCODE, 0,
+	return device_request_authentication(device, AUTH_TYPE_PINCODE, NULL,
 							secure, pincode_cb);
 }
 
@@ -179,7 +179,7 @@ int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_CONFIRM,
-						passkey, FALSE, confirm_cb);
+						&passkey, FALSE, confirm_cb);
 }
 
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
@@ -190,7 +190,7 @@ int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_authentication(device, AUTH_TYPE_PASSKEY, 0,
+	return device_request_authentication(device, AUTH_TYPE_PASSKEY, NULL,
 							FALSE, passkey_cb);
 }
 
@@ -203,7 +203,7 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 		return -ENODEV;
 
 	return device_request_authentication(device, AUTH_TYPE_NOTIFY_PASSKEY,
-							passkey, FALSE, NULL);
+							&passkey, FALSE, NULL);
 }
 
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,

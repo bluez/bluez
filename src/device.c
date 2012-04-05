@@ -2753,7 +2753,7 @@ done:
 }
 
 int device_request_authentication(struct btd_device *device, auth_type_t type,
-				uint32_t passkey, gboolean secure, void *cb)
+					void *data, gboolean secure, void *cb)
 {
 	struct authentication_req *auth;
 	struct agent *agent;
@@ -2779,7 +2779,6 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	auth->device = device;
 	auth->cb = cb;
 	auth->type = type;
-	auth->passkey = passkey;
 	auth->secure = secure;
 	device->authr = auth;
 
@@ -2793,11 +2792,13 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 								auth, NULL);
 		break;
 	case AUTH_TYPE_CONFIRM:
-		err = agent_request_confirmation(agent, device, passkey,
+		auth->passkey = *((uint32_t *) data);
+		err = agent_request_confirmation(agent, device, auth->passkey,
 						confirm_cb, auth, NULL);
 		break;
 	case AUTH_TYPE_NOTIFY_PASSKEY:
-		err = agent_display_passkey(agent, device, passkey);
+		auth->passkey = *((uint32_t *) data);
+		err = agent_display_passkey(agent, device, auth->passkey);
 		break;
 	default:
 		err = -EINVAL;
