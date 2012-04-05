@@ -44,8 +44,6 @@
 #include "fakehid.h"
 #include "uinput.h"
 
-#define PS3_FLAGS_MASK 0xFFFFFF00
-
 enum ps3remote_special_keys {
 	PS3R_BIT_PS = 0,
 	PS3R_BIT_ENTER = 3,
