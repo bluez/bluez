@@ -916,13 +916,13 @@ static int headset_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
-	btd_adapter_register_powered_callback(adapter, state_changed);
-
 	err = headset_server_init(adp);
 	if (err < 0) {
 		audio_adapter_unref(adp);
 		return err;
 	}
+
+	btd_adapter_register_powered_callback(adapter, state_changed);
 
 	return 0;
 }
@@ -933,6 +933,8 @@ static void headset_server_remove(struct btd_adapter *adapter)
 	const gchar *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
+
+	btd_adapter_unregister_powered_callback(adapter, state_changed);
 
 	adp = find_adapter(adapters, adapter);
 	if (!adp)
@@ -959,8 +961,6 @@ static void headset_server_remove(struct btd_adapter *adapter)
 		g_io_channel_unref(adp->hfp_ag_server);
 		adp->hfp_ag_server = NULL;
 	}
-
-	btd_adapter_unregister_powered_callback(adapter, state_changed);
 
 	audio_adapter_unref(adp);
 }
