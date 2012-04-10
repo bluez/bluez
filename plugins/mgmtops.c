@@ -1255,6 +1255,34 @@ static void read_local_oob_data_complete(int sk, uint16_t index, void *buf,
 		oob_read_local_data_complete(adapter, rp->hash, rp->randomizer);
 }
 
+static void start_discovery_complete(int sk, uint16_t index, uint8_t status,
+						     void *buf, size_t len)
+{
+	uint8_t *type = buf;
+	struct btd_adapter *adapter;
+
+	if (len != sizeof(*type)) {
+		error("start_discovery_complete event size mismatch "
+					"(%zu != %zu)", len, sizeof(*type));
+		return;
+	}
+
+	DBG("hci%u type %u status %u", index, *type, status);
+
+	if (index > max_index) {
+		error("Invalid index %u in start_discovery_complete", index);
+		return;
+	}
+
+	if (!status)
+		return;
+
+	adapter = manager_find_adapter_by_id(index);
+	if (adapter)
+		/* Start discovery failed, inform upper layers. */
+		adapter_set_discovering(adapter, FALSE);
+}
+
 static void read_local_oob_data_failed(int sk, uint16_t index)
 {
 	struct btd_adapter *adapter;
@@ -1421,7 +1449,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_fast_connectable complete");
 		break;
 	case MGMT_OP_START_DISCOVERY:
-		DBG("start_discovery complete");
+		start_discovery_complete(sk, index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_STOP_DISCOVERY:
 		DBG("stop_discovery complete");
