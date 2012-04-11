@@ -38,6 +38,8 @@ struct test_data {
 	struct test_buf send[4];
 	guint provide_delay;
 	GObex *obex;
+	guint id;
+	gsize total;
 	GMainLoop *mainloop;
 };
 
