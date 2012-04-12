@@ -531,6 +531,9 @@ static void *msg_listing_open(const char *name, int oflag, mode_t mode,
 {
 	struct mas_session *mas = driver_data;
 	struct messages_filter filter = { 0, };
+	/* 1024 is the default when there was no MaxListCount sent */
+	uint16_t max = 1024;
+	uint16_t offset = 0;
 
 	DBG("");
 
@@ -539,8 +542,28 @@ static void *msg_listing_open(const char *name, int oflag, mode_t mode,
 		return NULL;
 	}
 
-	*err = messages_get_messages_listing(mas->backend_data, name, 0xffff, 0,
-			&filter,
+	map_ap_get_u16(mas->inparams, MAP_AP_MAXLISTCOUNT, &max);
+	map_ap_get_u16(mas->inparams, MAP_AP_STARTOFFSET, &offset);
+
+	map_ap_get_u32(mas->inparams, MAP_AP_PARAMETERMASK,
+						&filter.parameter_mask);
+	map_ap_get_u8(mas->inparams, MAP_AP_FILTERMESSAGETYPE,
+						&filter.type);
+	filter.period_begin = map_ap_get_string(mas->inparams,
+						MAP_AP_FILTERPERIODBEGIN);
+	filter.period_end = map_ap_get_string(mas->inparams,
+						MAP_AP_FILTERPERIODEND);
+	map_ap_get_u8(mas->inparams, MAP_AP_FILTERREADSTATUS,
+						&filter.read_status);
+	filter.recipient = map_ap_get_string(mas->inparams,
+						MAP_AP_FILTERRECIPIENT);
+	filter.originator = map_ap_get_string(mas->inparams,
+						MAP_AP_FILTERORIGINATOR);
+	map_ap_get_u8(mas->inparams, MAP_AP_FILTERPRIORITY,
+						&filter.priority);
+
+	*err = messages_get_messages_listing(mas->backend_data, name, max,
+			offset, &filter,
 			get_messages_listing_cb, mas);
 
 	mas->buffer = g_string_new("");
