@@ -457,7 +457,7 @@ int agent_request_pincode(struct agent *agent, struct btd_device *device,
 	return 0;
 
 failed:
-	g_free(req);
+	agent_request_free(req, FALSE);
 	return err;
 }
 
