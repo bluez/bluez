@@ -407,8 +407,11 @@ static int session_connect(struct obc_session *session,
 	}
 
 	/* Ongoing connection */
-	if (session->id > 0)
+	if (session->id > 0) {
+		obc_session_unref(callback->session);
+		g_free(callback);
 		return 0;
+	}
 
 	session->id = transport->connect(session->source, session->destination,
 					driver->uuid, session->channel,
