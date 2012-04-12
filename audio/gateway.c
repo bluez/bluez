@@ -598,12 +598,12 @@ static DBusMessage *ag_disconnect(DBusConnection *conn, DBusMessage *msg,
 	if (!device->conn)
 		return NULL;
 
+	if (!gw->rfcomm)
+		return btd_error_not_connected(msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		return NULL;
-
-	if (!gw->rfcomm)
-		return  btd_error_not_connected(msg);
 
 	gateway_close(device);
 	ba2str(&device->dst, gw_addr);
