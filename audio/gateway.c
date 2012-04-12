@@ -182,8 +182,11 @@ static gboolean agent_sendfd(struct hf_agent *agent, int fd,
 					DBUS_TYPE_UINT16, &gw->version,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(dev->conn, msg, &call, -1) == FALSE)
+	if (dbus_connection_send_with_reply(dev->conn, msg,
+							&call, -1) == FALSE) {
+		dbus_message_unref(msg);
 		return FALSE;
+	}
 
 	dbus_pending_call_set_notify(call, notify, dev, NULL);
 	dbus_pending_call_unref(call);
