@@ -792,7 +792,7 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 	if (len) {
 		pdu->params_len = 0;
 
-		return AVC_CTYPE_STABLE;
+		return AVC_CTYPE_ACCEPTED;
 	}
 
 err:
