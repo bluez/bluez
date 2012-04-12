@@ -607,8 +607,7 @@ void manager_register_session(struct obex_session *os)
 				session_methods, NULL,
 				NULL, os, NULL)) {
 		error("Cannot register Session interface.");
-		g_free(path);
-		return;
+		goto done;
 	}
 
 	g_dbus_emit_signal(connection, OPENOBEX_MANAGER_PATH,
@@ -616,6 +615,7 @@ void manager_register_session(struct obex_session *os)
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID);
 
+done:
 	g_free(path);
 }
 
