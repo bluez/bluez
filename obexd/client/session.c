@@ -61,11 +61,6 @@ struct callback_data {
 	void *data;
 };
 
-struct session_callback {
-	session_callback_t func;
-	void *data;
-};
-
 struct pending_request {
 	guint id;
 	guint req_id;
