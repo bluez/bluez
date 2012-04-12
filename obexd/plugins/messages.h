@@ -111,11 +111,11 @@ struct messages_event {
 struct messages_filter {
 	uint32_t parameter_mask;
 	uint8_t type;
-	char *period_begin;
-	char *period_end;
+	const char *period_begin;
+	const char *period_end;
 	uint8_t read_status;
-	char *recipient;
-	char *originator;
+	const char *recipient;
+	const char *originator;
 	uint8_t priority;
 };
 
