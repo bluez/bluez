@@ -693,7 +693,6 @@ int agent_display_passkey(struct agent *agent, struct btd_device *device,
 
 	if (!g_dbus_send_message(connection, message)) {
 		error("D-Bus send failed");
-		dbus_message_unref(message);
 		return -1;
 	}
 
