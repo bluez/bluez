@@ -282,10 +282,20 @@ static void get_messages_listing_cb(void *session, int err, uint16_t size,
 					void *user_data)
 {
 	struct mas_session *mas = user_data;
+	uint16_t max = 1024;
 
 	if (err < 0 && err != -EAGAIN) {
 		obex_object_set_io_flags(mas, G_IO_ERR, err);
 		return;
+	}
+
+	map_ap_get_u16(mas->inparams, MAP_AP_MAXLISTCOUNT, &max);
+
+	if (max == 0) {
+		if (!entry)
+			mas->finished = TRUE;
+
+		goto proceed;
 	}
 
 	if (!mas->nth_call) {
@@ -379,6 +389,13 @@ static void get_messages_listing_cb(void *session, int err, uint16_t size,
 	g_string_append(mas->buffer, "/>\n");
 
 proceed:
+	if (!entry) {
+		map_ap_set_u16(mas->outparams, MAP_AP_MESSAGESLISTINGSIZE,
+							size);
+		map_ap_set_u8(mas->outparams, MAP_AP_NEWMESSAGE,
+							newmsg ? 1 : 0);
+	}
+
 	if (err != -EAGAIN)
 		obex_object_set_io_flags(mas, G_IO_IN, 0);
 }
