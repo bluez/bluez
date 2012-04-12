@@ -380,7 +380,7 @@ static void simd_close(void)
 	u8500.sap_data = NULL;
 }
 
-static void recv_sim_ready()
+static void recv_sim_ready(void)
 {
 	sap_info("sim is ready. Try to connect again");
 
