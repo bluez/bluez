@@ -599,5 +599,3 @@ gboolean gst_sbc_enc_plugin_init(GstPlugin *plugin)
 	return gst_element_register(plugin, "sbcenc",
 			GST_RANK_NONE, GST_TYPE_SBC_ENC);
 }
-
-

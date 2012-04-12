@@ -82,4 +82,3 @@ GstCaps *gst_a2dp_sink_get_device_caps(GstA2dpSink *self);
 G_END_DECLS
 
 #endif
-

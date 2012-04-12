@@ -518,4 +518,3 @@ gboolean gst_sbc_util_fill_sbc_params(sbc_t *sbc, GstCaps *caps)
 
 	return TRUE;
 }
-

@@ -217,4 +217,3 @@ gboolean gst_sbc_parse_plugin_init(GstPlugin *plugin)
 	return gst_element_register(plugin, "sbcparse", GST_RANK_NONE,
 							GST_TYPE_SBC_PARSE);
 }
-

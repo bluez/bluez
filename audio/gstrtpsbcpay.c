@@ -349,4 +349,3 @@ gboolean gst_rtp_sbc_pay_plugin_init(GstPlugin *plugin)
 	return gst_element_register(plugin, "rtpsbcpay", GST_RANK_NONE,
 							GST_TYPE_RTP_SBC_PAY);
 }
-
