@@ -428,7 +428,7 @@ properties	boolean Connected [readonly]
 
 		uint16 RegistrationStatus [readonly]
 
-			Service availability indicatior of AG, where:
+			Service availability indicator of AG, where:
 			0 implies no service. No Home/Roam network available.
 			1 implies presence of service. Home/Roam network
 			available.

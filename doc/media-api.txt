@@ -25,7 +25,7 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 				byte Codec:
 
-					Assigned mumber of codec that the
+					Assigned number of codec that the
 					endpoint implements. The values should
 					match the profile specification which
 					is indicated by the UUID.
@@ -308,7 +308,7 @@ Properties	object Device [readonly]
 
 		byte Codec [readonly]
 
-			Assigned mumber of codec that the transport support.
+			Assigned number of codec that the transport support.
 			The values should match the profile specification which
 			is indicated by the UUID.
 
@@ -319,7 +319,7 @@ Properties	object Device [readonly]
 
 		uint16 Delay [readwrite]
 
-			Optional. Transport delay in 1/10 of milisecond, this
+			Optional. Transport delay in 1/10 of millisecond, this
 			property is only writeable when the transport was
 			acquired by the sender.
 

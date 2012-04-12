@@ -347,7 +347,7 @@ Set Local Name Command
 	Return Parameters:	Name (249 Octets)
 				Short_Name (11 Octets)
 
-	The name parameters need to always end with a nul byte (failure
+	The name parameters need to always end with a null byte (failure
 	to do so will cause the command to fail).
 
 	This command can be used when the controller is not powered and

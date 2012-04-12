@@ -51,7 +51,7 @@ Methods		fd ConnectFD(string pattern) [experimental]
 			timeouts in the client it is fine to call this method.
 
 			In that case one of patterns of the Connect method should
-			be suplied instead of the TTY device.
+			be supplied instead of the TTY device.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.DoesNotExist

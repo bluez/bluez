@@ -82,8 +82,8 @@ Methods:
 	void DestroyChannel(object channel)
 
 		Destroys the data channel object. Only the creator of the
-		channel or the creator of the HealtApplication that received the
-		data channel will be able to destroy it
+		channel or the creator of the HealthApplication that received
+		the data channel will be able to destroy it.
 
 		Possible errors: org.bluez.Error.InvalidArguments
 				org.bluez.Error.NotFound
@@ -131,7 +131,7 @@ Methods:
 		Returns all properties for the interface. See the properties
 		section for available properties.
 
-		Posible errors: org.bluez.Error.NotAllowed
+		Possible errors: org.bluez.Error.NotAllowed
 
 	fd Acquire()
 

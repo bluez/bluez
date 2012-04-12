@@ -261,7 +261,7 @@ Properties	string Address [readonly]
 
 			The pairable timeout in seconds. A value of zero
 			means that the timeout is disabled and it will stay in
-			pareable mode forever.
+			pairable mode forever.
 
 		uint32 DiscoverableTimeout [readwrite]
 
