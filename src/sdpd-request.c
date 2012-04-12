@@ -748,7 +748,7 @@ static int service_attr_req(sdp_req_t *req, sdp_buf_t *buf)
 			cstate_size = sdp_set_cstate_pdu(buf, &newState);
 		} else {
 			if (buf->data_size == 0)
-				sdp_append_to_buf(buf, 0, 0);
+				sdp_append_to_buf(buf, NULL, 0);
 			cstate_size = sdp_set_cstate_pdu(buf, NULL);
 		}
 	}
