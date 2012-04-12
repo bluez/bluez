@@ -95,4 +95,3 @@ int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key);
 gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer);
 
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
-

@@ -366,4 +366,3 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 
 	return 0;
 }
-

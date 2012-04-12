@@ -78,4 +78,3 @@ gboolean agent_matches(struct agent *agent, const char *name, const char *path);
 
 void agent_init(void);
 void agent_exit(void);
-
