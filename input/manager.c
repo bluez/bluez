@@ -66,8 +66,8 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 	if (!rec)
 		return -1;
 
-	return input_device_register(connection, device, path, HID_UUID,
-						rec->handle, idle_timeout * 60);
+	return input_device_register(connection, device, path, HID_UUID, rec,
+							idle_timeout * 60);
 }
 
 static void hid_device_remove(struct btd_device *device)

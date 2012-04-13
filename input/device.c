@@ -56,6 +56,8 @@
 #include "fakehid.h"
 #include "btio.h"
 
+#include "sdp-client.h"
+
 #define INPUT_DEVICE_INTERFACE "org.bluez.Input"
 
 #define BUF_SIZE		16
@@ -83,6 +85,7 @@ struct input_device {
 	bdaddr_t		dst;
 	uint32_t		handle;
 	guint			dc_id;
+	gboolean		disable_sdp;
 	char			*name;
 	struct btd_device	*device;
 	GSList			*connections;
@@ -931,6 +934,9 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 		/* HID devices */
 		GIOChannel *io;
 
+		if (idev->disable_sdp)
+			bt_clear_cached_session(&idev->src, &idev->dst);
+
 		io = bt_io_connect(BT_IO_L2CAP, control_connect_cb, iconn,
 					NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &idev->src,
@@ -1028,7 +1034,7 @@ static GDBusSignalTable device_signals[] = {
 
 static struct input_device *input_device_new(DBusConnection *conn,
 				struct btd_device *device, const char *path,
-				const uint32_t handle)
+				const uint32_t handle, gboolean disable_sdp)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
@@ -1041,6 +1047,7 @@ static struct input_device *input_device_new(DBusConnection *conn,
 	idev->path = g_strdup(path);
 	idev->conn = dbus_connection_ref(conn);
 	idev->handle = handle;
+	idev->disable_sdp = disable_sdp;
 
 	ba2str(&idev->src, src_addr);
 	ba2str(&idev->dst, dst_addr);
@@ -1075,16 +1082,26 @@ static struct input_conn *input_conn_new(struct input_device *idev,
 	return iconn;
 }
 
+static gboolean is_device_sdp_disable(const sdp_record_t *rec)
+{
+	sdp_data_t *data;
+
+	data = sdp_data_get(rec, SDP_ATTR_HID_SDP_DISABLE);
+
+	return data && data->val.uint8;
+}
+
 int input_device_register(DBusConnection *conn, struct btd_device *device,
 					const char *path, const char *uuid,
-					uint32_t handle, int timeout)
+					const sdp_record_t *rec, int timeout)
 {
 	struct input_device *idev;
 	struct input_conn *iconn;
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, device, path, handle);
+		idev = input_device_new(conn, device, path, rec->handle,
+					is_device_sdp_disable(rec));
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);
@@ -1107,7 +1124,7 @@ int fake_input_register(DBusConnection *conn, struct btd_device *device,
 
 	idev = find_device_by_path(devices, path);
 	if (!idev) {
-		idev = input_device_new(conn, device, path, 0);
+		idev = input_device_new(conn, device, path, 0, FALSE);
 		if (!idev)
 			return -EINVAL;
 		devices = g_slist_append(devices, idev);
