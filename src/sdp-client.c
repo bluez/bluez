@@ -61,7 +61,7 @@ static gboolean cached_session_expired(gpointer user_data)
 	return FALSE;
 }
 
-static sdp_session_t *get_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
+static sdp_session_t *get_cached_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	GSList *l;
 
@@ -81,6 +81,17 @@ static sdp_session_t *get_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
 
 		return session;
 	}
+
+	return NULL;
+}
+
+static sdp_session_t *get_sdp_session(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	sdp_session_t *session;
+
+	session = get_cached_sdp_session(src, dst);
+	if (session)
+		return session;
 
 	return sdp_connect(src, dst, SDP_NON_BLOCKING);
 }
@@ -365,4 +376,13 @@ int bt_cancel_discovery(const bdaddr_t *src, const bdaddr_t *dst)
 	search_context_cleanup(ctxt);
 
 	return 0;
+}
+
+void bt_clear_cached_session(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	sdp_session_t *session;
+
+	session = get_cached_sdp_session(src, dst);
+	if (session)
+		sdp_close(session);
 }
