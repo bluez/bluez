@@ -3106,6 +3106,7 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 
 	agent = device_get_agent(device);
 	if (!agent) {
+		warn("Can't find device agent");
 		g_free(auth);
 		return -EPERM;
 	}
