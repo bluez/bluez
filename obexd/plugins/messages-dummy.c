@@ -34,7 +34,6 @@
 #include "log.h"
 
 #include "messages.h"
-#include "glib-helper.h"
 
 static char *root_folder = NULL;
 

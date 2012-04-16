@@ -43,7 +43,6 @@
 
 #include "log.h"
 #include "phonebook.h"
-#include "glib-helper.h"
 
 typedef void (*vcard_func_t) (const char *file, VObject *vo, void *user_data);
 

@@ -43,7 +43,6 @@
 #include "service.h"
 #include "log.h"
 #include "btio.h"
-#include "glib-helper.h"
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767

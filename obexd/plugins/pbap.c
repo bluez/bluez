@@ -49,7 +49,6 @@
 #include "mimetype.h"
 #include "filesystem.h"
 #include "manager.h"
-#include "glib-helper.h"
 
 #define PHONEBOOK_TYPE		"x-bt/phonebook"
 #define VCARDLISTING_TYPE	"x-bt/vcard-listing"

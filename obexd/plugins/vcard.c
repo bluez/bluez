@@ -34,7 +34,6 @@
 #include <gdbus.h>
 
 #include "vcard.h"
-#include "glib-helper.h"
 
 #define ADDR_FIELD_AMOUNT 7
 #define LEN_MAX 128
