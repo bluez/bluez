@@ -4108,7 +4108,7 @@ int sdp_process(sdp_session_t *session)
 	}
 
 	if (n == 0 || reqhdr->tid != rsphdr->tid ||
-		(n != (ntohs(rsphdr->plen) + (int) sizeof(sdp_pdu_hdr_t)))) {
+		(n != (int) (ntohs(rsphdr->plen) + sizeof(sdp_pdu_hdr_t)))) {
 		t->err = EPROTO;
 		SDPERR("Protocol error.");
 		goto end;
