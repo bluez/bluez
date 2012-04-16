@@ -378,9 +378,9 @@ size_t eir_append_data(uint8_t *eir, size_t eir_len, uint8_t type,
 size_t eir_length(uint8_t *eir, size_t maxlen)
 {
 	uint8_t field_len;
-	size_t parsed, length;
+	size_t parsed = 0, length = 0;
 
-	for (parsed = 0, length = 0; parsed < maxlen - 1; parsed += field_len) {
+	while (parsed < maxlen - 1) {
 		field_len = eir[0];
 
 		if (field_len == 0)
