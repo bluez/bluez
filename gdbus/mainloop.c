@@ -28,10 +28,6 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 
-#ifdef NEED_DBUS_WATCH_GET_UNIX_FD
-#define dbus_watch_get_unix_fd dbus_watch_get_fd
-#endif
-
 #include "gdbus.h"
 
 #define DISPATCH_TIMEOUT  0
