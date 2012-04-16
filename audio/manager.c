@@ -604,7 +604,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	perr = audio_device_request_authorization(device, server_uuid,
 						gateway_auth_cb, device);
 	if (perr < 0) {
-		DBG("Authorization denied!");
+		DBG("Authorization denied: %s", strerror(-perr));
 		gateway_set_state(device, GATEWAY_STATE_DISCONNECTED);
 	}
 
