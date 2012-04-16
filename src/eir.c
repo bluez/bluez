@@ -342,9 +342,9 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type)
 {
 	uint8_t field_len;
-	size_t parsed;
+	size_t parsed = 0;
 
-	for (parsed = 0; parsed < len - 1; parsed += field_len) {
+	while (parsed < len - 1) {
 		field_len = data[0];
 
 		if (field_len == 0)
