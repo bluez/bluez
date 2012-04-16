@@ -36,8 +36,6 @@
 #include <gobex/gobex.h>
 #include <btio/btio.h>
 
-#include "glib-helper.h"
-
 static GMainLoop *main_loop = NULL;
 
 static GSList *clients = NULL;

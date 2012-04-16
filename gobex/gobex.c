@@ -28,7 +28,6 @@
 #include <errno.h>
 
 #include "gobex.h"
-#include "glib-helper.h"
 #include "gobex-debug.h"
 
 #define G_OBEX_DEFAULT_MTU	4096
