@@ -99,14 +99,8 @@ AC_DEFUN([AC_PATH_DBUS], [
 ])
 
 AC_DEFUN([AC_PATH_GLIB], [
-	PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
-				AC_MSG_ERROR(GLib library version 2.16 or later is required))
-	AC_CHECK_LIB(glib-2.0, g_slist_free_full, dummy=yes,
-		AC_DEFINE(NEED_G_SLIST_FREE_FULL, 1,
-			[Define to 1 if you need g_slist_free_full() function.]))
-	AC_CHECK_LIB(glib-2.0, g_list_free_full, dummy=yes,
-		AC_DEFINE(NEED_G_LIST_FREE_FULL, 1,
-			[Define to 1 if you need g_list_free_full() function.]))
+	PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.28, dummy=yes,
+				AC_MSG_ERROR(GLib >= 2.28 is required))
 	AC_SUBST(GLIB_CFLAGS)
 	AC_SUBST(GLIB_LIBS)
 ])
