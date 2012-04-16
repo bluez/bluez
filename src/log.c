@@ -44,6 +44,17 @@ void info(const char *format, ...)
 	va_end(ap);
 }
 
+void warn(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+
+	vsyslog(LOG_WARNING, format, ap);
+
+	va_end(ap);
+}
+
 void error(const char *format, ...)
 {
 	va_list ap;
