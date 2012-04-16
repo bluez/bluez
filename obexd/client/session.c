@@ -494,7 +494,7 @@ void obc_session_shutdown(struct obc_session *session)
 	err = g_error_new(OBEX_IO_ERROR, OBEX_IO_DISCONNECTED,
 						"Session closed by user");
 
-	if (session->p != NULL) {
+	if (session->p != NULL && session->p->id != 0) {
 		if (session->p->func)
 			session->p->func(session, err, session->p->data);
 
@@ -820,6 +820,8 @@ static void session_terminate_transfer(struct obc_session *session,
 		p = match->data;
 		g_queue_delete_link(session->queue, match);
 	}
+
+	p->id = 0;
 
 	obc_session_ref(session);
 
