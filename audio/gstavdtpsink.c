@@ -1121,6 +1121,11 @@ static gboolean gst_avdtp_sink_update_caps(GstAvdtpSink *self)
 	sbc = (void *) gst_avdtp_find_caps(self, BT_A2DP_SBC_SINK);
 	mpeg = (void *) gst_avdtp_find_caps(self, BT_A2DP_MPEG12_SINK);
 
+	if (!sbc) {
+		GST_ERROR_OBJECT(self, "Failed to find mandatory SBC sink");
+		return FALSE;
+	}
+
 	sbc_structure = gst_avdtp_sink_parse_sbc_caps(self, sbc);
 	mpeg_structure = gst_avdtp_sink_parse_mpeg_caps(self, mpeg);
 
