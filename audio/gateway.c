@@ -42,7 +42,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "glib-compat.h"
 #include "sdp-client.h"
 #include "device.h"
 #include "gateway.h"

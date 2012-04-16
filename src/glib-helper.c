@@ -35,7 +35,6 @@
 #include <glib.h>
 
 #include "btio.h"
-#include "glib-compat.h"
 #include "glib-helper.h"
 
 char *bt_uuid2string(uuid_t *uuid)

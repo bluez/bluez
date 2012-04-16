@@ -53,7 +53,6 @@
 #include "error.h"
 #include "telephony.h"
 #include "headset.h"
-#include "glib-compat.h"
 #include "sdp-client.h"
 #include "btio.h"
 #include "dbus-common.h"

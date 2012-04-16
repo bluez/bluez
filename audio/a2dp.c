@@ -37,7 +37,6 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "glib-compat.h"
 #include "log.h"
 #include "device.h"
 #include "manager.h"

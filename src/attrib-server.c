@@ -39,7 +39,6 @@
 
 #include "log.h"
 #include "gdbus.h"
-#include "glib-compat.h"
 #include "btio.h"
 #include "sdpd.h"
 #include "hcid.h"

@@ -38,7 +38,6 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "glib-compat.h"
 #include "btio.h"
 #include "dbus-common.h"
 #include "adapter.h"

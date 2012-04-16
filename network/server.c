@@ -46,7 +46,6 @@
 #include "error.h"
 #include "sdpd.h"
 #include "btio.h"
-#include "glib-compat.h"
 
 #include "common.h"
 #include "server.h"

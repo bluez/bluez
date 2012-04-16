@@ -52,7 +52,6 @@
 #include "avctp.h"
 #include "avrcp.h"
 #include "sdpd.h"
-#include "glib-compat.h"
 #include "dbus-common.h"
 
 /* Company IDs for vendor dependent commands */

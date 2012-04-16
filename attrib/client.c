@@ -34,7 +34,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
 
-#include "glib-compat.h"
 #include "adapter.h"
 #include "device.h"
 #include "log.h"

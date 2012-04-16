@@ -52,7 +52,6 @@
 #include "device.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "glib-compat.h"
 #include "glib-helper.h"
 #include "agent.h"
 #include "storage.h"

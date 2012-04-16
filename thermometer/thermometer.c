@@ -38,7 +38,6 @@
 #include "att.h"
 #include "gatt.h"
 #include "thermometer.h"
-#include "glib-compat.h"
 
 #define THERMOMETER_INTERFACE "org.bluez.Thermometer"
 

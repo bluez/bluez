@@ -54,7 +54,6 @@
 #include "device.h"
 #include "dbus-common.h"
 #include "error.h"
-#include "glib-compat.h"
 #include "glib-helper.h"
 #include "sdp-client.h"
 #include "gatt.h"

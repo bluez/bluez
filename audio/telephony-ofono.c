@@ -37,7 +37,6 @@
 
 #include <bluetooth/sdp.h>
 
-#include "glib-compat.h"
 #include "log.h"
 #include "telephony.h"
 

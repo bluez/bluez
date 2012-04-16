@@ -37,7 +37,6 @@
 #include "attrib-server.h"
 #include "gatt-service.h"
 #include "log.h"
-#include "glib-compat.h"
 
 struct gatt_info {
 	bt_uuid_t uuid;
