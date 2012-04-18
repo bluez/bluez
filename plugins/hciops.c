@@ -3738,7 +3738,10 @@ static int hciops_create_bonding(int index, bdaddr_t *bdaddr,
 	if (conn->io != NULL)
 		return -EBUSY;
 
-	conn->loc_cap = io_cap;
+	/* hciops is not to be used for SMP pairing for LE devices. So
+	 * change the IO capability from KeyboardDisplay to DisplayYesNo
+	 * in case it is set. */
+	conn->loc_cap = (io_cap == 0x04 ? 0x01 : io_cap);
 
 	/* If our IO capability is NoInputNoOutput use medium security
 	 * level (i.e. don't require MITM protection) else use high
