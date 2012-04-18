@@ -964,6 +964,7 @@ static void pbap_free(void *data)
 	struct pbap_data *pbap = data;
 
 	obc_session_unref(pbap->session);
+	g_free(pbap->path);
 	g_free(pbap);
 }
 
