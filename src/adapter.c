@@ -2528,11 +2528,10 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 	if (!adapter_has_discov_sessions(adapter) || adapter->discov_suspended)
 		return;
 
-	DBG("hci%u enabling timer, disc_sessions %u", adapter->dev_id,
+	DBG("hci%u restarting discovery, disc_sessions %u", adapter->dev_id,
 					g_slist_length(adapter->disc_sessions));
 
-	adapter->discov_id = g_timeout_add_seconds(main_opts.discov_interval,
-							discovery_cb, adapter);
+	adapter->discov_id = g_idle_add(discovery_cb, adapter);
 }
 
 static void suspend_discovery(struct btd_adapter *adapter)

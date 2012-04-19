@@ -190,16 +190,6 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
-	val = g_key_file_get_integer(config, "General",
-					"DiscoverSchedulerInterval", &err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else {
-		DBG("discov_interval=%d", val);
-		main_opts.discov_interval = val;
-	}
-
 	boolean = g_key_file_get_boolean(config, "General",
 						"InitiallyPowered", &err);
 	if (err) {

@@ -41,7 +41,6 @@ struct main_opts {
 	gboolean	gatt_enabled;
 
 	uint8_t		mode;
-	uint8_t		discov_interval;
 
 	uint16_t	did_source;
 	uint16_t	did_vendor;
