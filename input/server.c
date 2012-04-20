@@ -148,6 +148,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	struct input_server *server = user_data;
 	bdaddr_t src, dst;
 	GError *err = NULL;
+	char addr[18];
 	int ret;
 
 	bt_io_get(chan, BT_IO_L2CAP, &err,
@@ -175,6 +176,10 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 					auth_callback, server);
 	if (ret == 0)
 		return;
+
+	ba2str(&src, addr);
+	error("input: authorization for %s failed: %s (%d)",
+						addr, strerror(-ret), ret);
 
 	g_io_channel_unref(server->confirm);
 	server->confirm = NULL;
