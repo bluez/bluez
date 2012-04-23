@@ -2183,8 +2183,12 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->up = TRUE;
 	adapter->discov_timeout = get_discoverable_timeout(address);
 	adapter->pairable_timeout = get_pairable_timeout(address);
-	adapter->mode = MODE_CONNECTABLE;
 	adapter->off_timer = 0;
+
+	if (adapter->scan_mode & SCAN_INQUIRY)
+		adapter->mode = MODE_DISCOVERABLE;
+	else
+		adapter->mode = MODE_CONNECTABLE;
 
 	powered = TRUE;
 	emit_property_changed(connection, adapter->path,
