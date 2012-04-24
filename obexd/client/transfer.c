@@ -220,7 +220,6 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 }
 
 struct obc_transfer *obc_transfer_register(DBusConnection *conn,
-						GObex *obex,
 						const char *agent,
 						guint8 op,
 						const char *filename,
@@ -231,7 +230,6 @@ struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 	struct obc_transfer *transfer;
 
 	transfer = g_new0(struct obc_transfer, 1);
-	transfer->obex = g_obex_ref(obex);
 	transfer->op = op;
 	transfer->agent = g_strdup(agent);
 	transfer->filename = g_strdup(filename);
@@ -522,8 +520,11 @@ static gboolean transfer_start_put(struct obc_transfer *transfer, GError **err)
 	return TRUE;
 }
 
-gboolean obc_transfer_start(struct obc_transfer *transfer, GError **err)
+gboolean obc_transfer_start(struct obc_transfer *transfer, GObex *obex,
+								GError **err)
 {
+	transfer->obex = g_obex_ref(obex);
+
 	switch (transfer->op) {
 	case G_OBEX_OP_GET:
 		return transfer_start_get(transfer, err);

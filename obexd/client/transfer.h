@@ -33,7 +33,6 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 					void *user_data);
 
 struct obc_transfer *obc_transfer_register(DBusConnection *conn,
-					GObex *obex,
 					const char *agent,
 					guint8 op,
 					const char *filename,
@@ -47,7 +46,8 @@ gboolean obc_transfer_set_callback(struct obc_transfer *transfer,
 					transfer_callback_t func,
 					void *user_data);
 
-gboolean obc_transfer_start(struct obc_transfer *transfer, GError **err);
+gboolean obc_transfer_start(struct obc_transfer *transfer, GObex *obex,
+								GError **err);
 guint8 obc_transfer_get_operation(struct obc_transfer *transfer);
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
