@@ -196,6 +196,10 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	if (transfer->xfer)
 		g_obex_cancel_transfer(transfer->xfer);
 
+	if (transfer->op == G_OBEX_OP_GET &&
+					transfer->transferred != transfer->size)
+		remove(transfer->filename);
+
 	if (transfer->fd > 0)
 		close(transfer->fd);
 
