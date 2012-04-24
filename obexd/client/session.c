@@ -661,6 +661,7 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	const char *name;
 	DBusError derr;
+	int err;
 
 	dbus_error_init(&derr);
 	if (dbus_set_error_from_message(&derr, reply)) {
@@ -685,13 +686,26 @@ static void session_request_reply(DBusPendingCall *call, gpointer user_data)
 
 	DBG("Agent.Request() reply: %s", name);
 
-	if (strlen(name)) {
-		if (obc_transfer_get_operation(transfer) == G_OBEX_OP_PUT)
-			obc_transfer_set_name(transfer, name);
-		else
-			obc_transfer_set_filename(transfer, name);
+	if (strlen(name) == 0)
+		goto done;
+
+	if (obc_transfer_get_operation(transfer) == G_OBEX_OP_PUT) {
+		obc_transfer_set_name(transfer, name);
+		goto done;
 	}
 
+	err = obc_transfer_set_filename(transfer, name);
+	if (err < 0) {
+		GError *gerr = NULL;
+
+		g_set_error(&gerr, OBEX_IO_ERROR, err,
+						"Unable to set filename");
+		session_terminate_transfer(session, transfer, gerr);
+		g_clear_error(&gerr);
+		return;
+	}
+
+done:
 	if (p->auth_complete)
 		p->auth_complete(session, transfer);
 
@@ -956,8 +970,8 @@ int obc_session_get(struct obc_session *session, const char *type,
 	else
 		agent = NULL;
 
-	transfer = obc_transfer_register(session->conn, agent, G_OBEX_OP_GET,
-					targetfile, name, type, params);
+	transfer = obc_transfer_get(session->conn, agent, targetfile, name,
+								type, params);
 	if (transfer == NULL) {
 		if (params != NULL) {
 			g_free(params->data);
@@ -974,23 +988,16 @@ int obc_session_send(struct obc_session *session, const char *filename,
 {
 	struct obc_transfer *transfer;
 	const char *agent;
-	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
 	agent = obc_agent_get_name(session->agent);
 
-	transfer = obc_transfer_register(session->conn, agent, G_OBEX_OP_PUT,
-						filename, name, NULL, NULL);
+	transfer = obc_transfer_put(session->conn, agent, filename, name,
+					NULL, NULL, 0, NULL);
 	if (transfer == NULL)
 		return -EINVAL;
-
-	err = obc_transfer_set_file(transfer, NULL, 0);
-	if (err < 0) {
-		obc_transfer_unregister(transfer);
-		return err;
-	}
 
 	return session_request(session, transfer, NULL, NULL);
 }
@@ -1038,23 +1045,16 @@ int obc_session_put(struct obc_session *session, const char *contents,
 {
 	struct obc_transfer *transfer;
 	const char *agent;
-	int err;
 
 	if (session->obex == NULL)
 		return -ENOTCONN;
 
 	agent = obc_agent_get_name(session->agent);
 
-	transfer = obc_transfer_register(session->conn, agent, G_OBEX_OP_PUT,
-						NULL, name, NULL, NULL);
+	transfer = obc_transfer_put(session->conn, agent, NULL, name, NULL,
+							contents, size, NULL);
 	if (transfer == NULL)
 		return -EIO;
-
-	err = obc_transfer_set_file(transfer, contents, size);
-	if (err < 0) {
-		obc_transfer_unregister(transfer);
-		return err;
-	}
 
 	return session_request(session, transfer, NULL, NULL);
 }

@@ -32,12 +32,19 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 					gint64 transferred, GError *err,
 					void *user_data);
 
-struct obc_transfer *obc_transfer_register(DBusConnection *conn,
+struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 					const char *agent,
-					guint8 op,
 					const char *filename,
 					const char *name,
 					const char *type,
+					struct obc_transfer_params *params);
+struct obc_transfer *obc_transfer_put(DBusConnection *conn,
+					const char *agent,
+					const char *filename,
+					const char *name,
+					const char *type,
+					const char *contents,
+					size_t size,
 					struct obc_transfer_params *params);
 
 void obc_transfer_unregister(struct obc_transfer *transfer);
@@ -56,9 +63,7 @@ int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 								size_t *size);
 
 void obc_transfer_set_name(struct obc_transfer *transfer, const char *name);
-void obc_transfer_set_filename(struct obc_transfer *transfer,
+int obc_transfer_set_filename(struct obc_transfer *transfer,
 					const char *filename);
 const char *obc_transfer_get_path(struct obc_transfer *transfer);
 gint64 obc_transfer_get_size(struct obc_transfer *transfer);
-int obc_transfer_set_file(struct obc_transfer *transfer, const char *contents,
-								size_t size);

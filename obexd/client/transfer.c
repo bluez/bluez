@@ -219,7 +219,7 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	g_free(transfer);
 }
 
-struct obc_transfer *obc_transfer_register(DBusConnection *conn,
+static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 						const char *agent,
 						guint8 op,
 						const char *filename,
@@ -247,23 +247,131 @@ struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 			TRANSFER_BASEPATH, counter++);
 
 	transfer->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
-	if (transfer->conn == NULL) {
-		obc_transfer_free(transfer);
-		return NULL;
-	}
+	if (transfer->conn == NULL)
+		goto fail;
 
 	if (g_dbus_register_interface(transfer->conn, transfer->path,
 				TRANSFER_INTERFACE,
 				obc_transfer_methods, NULL, NULL,
-				transfer, NULL) == FALSE) {
-		obc_transfer_free(transfer);
-		return NULL;
-	}
+				transfer, NULL) == FALSE)
+		goto fail;
 
 done:
 	DBG("%p registered %s", transfer, transfer->path);
 
 	return transfer;
+
+fail:
+	obc_transfer_free(transfer);
+
+	return NULL;
+}
+
+static int transfer_open(struct obc_transfer *transfer, int flags, mode_t mode)
+{
+	GError *err = NULL;
+	int fd;
+
+	if (transfer->filename != NULL) {
+		fd = open(transfer->filename, flags, mode);
+		if (fd < 0) {
+			error("open(): %s(%d)", strerror(errno), errno);
+			return -errno;
+		}
+		goto done;
+	}
+
+	fd = g_file_open_tmp("obex-clientXXXXXX", &transfer->filename, &err);
+	if (fd < 0) {
+		error("g_file_open_tmp(): %s", err->message);
+		g_error_free(err);
+		return -EFAULT;
+	}
+
+	remove(transfer->filename);
+
+done:
+	transfer->fd = fd;
+	return fd;
+}
+
+struct obc_transfer *obc_transfer_get(DBusConnection *conn,
+					const char *agent,
+					const char *filename,
+					const char *name,
+					const char *type,
+					struct obc_transfer_params *params)
+{
+	struct obc_transfer *transfer;
+
+	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_GET, filename,
+							name, type, params);
+	if (transfer == NULL)
+		return NULL;
+
+	if (transfer_open(transfer, O_WRONLY | O_CREAT | O_TRUNC, 0600) < 0) {
+		obc_transfer_free(transfer);
+		return NULL;
+	}
+
+	return transfer;
+}
+
+struct obc_transfer *obc_transfer_put(DBusConnection *conn,
+					const char *agent,
+					const char *filename,
+					const char *name,
+					const char *type,
+					const char *contents,
+					size_t size,
+					struct obc_transfer_params *params)
+{
+	struct obc_transfer *transfer;
+	struct stat st;
+	int perr;
+
+	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_PUT, filename,
+							name, type, params);
+	if (transfer == NULL)
+		return NULL;
+
+	if (contents != NULL) {
+		ssize_t w;
+
+		perr = transfer_open(transfer, O_RDWR, 0);
+		if (perr < 0)
+			goto fail;
+
+		w = write(transfer->fd, contents, size);
+		if (w < 0) {
+			error("write(): %s(%d)", strerror(errno), errno);
+			perr = -errno;
+			goto fail;
+		} else if ((size_t) w != size) {
+			error("Unable to write all contents to file");
+			perr = -EFAULT;
+			goto fail;
+		}
+	} else {
+		perr = transfer_open(transfer, O_RDONLY, 0);
+		if (perr < 0)
+			goto fail;
+	}
+
+	perr = fstat(transfer->fd, &st);
+	if (perr < 0) {
+		error("fstat(): %s(%d)", strerror(errno), errno);
+		perr = -errno;
+		goto fail;
+	}
+
+	transfer->size = st.st_size;
+
+	return transfer;
+
+fail:
+	obc_transfer_free(transfer);
+	return NULL;
 }
 
 void obc_transfer_unregister(struct obc_transfer *transfer)
@@ -416,48 +524,15 @@ gboolean obc_transfer_set_callback(struct obc_transfer *transfer,
 	return TRUE;
 }
 
-static int transfer_open(struct obc_transfer *transfer, int flags, mode_t mode)
-{
-	GError *err = NULL;
-	int fd;
-
-	if (transfer->filename != NULL) {
-		fd = open(transfer->filename, flags, mode);
-		if (fd < 0) {
-			error("open(): %s(%d)", strerror(errno), errno);
-			return -errno;
-		}
-		goto done;
-	}
-
-	fd = g_file_open_tmp("obex-clientXXXXXX", &transfer->filename, &err);
-	if (fd < 0) {
-		error("g_file_open_tmp(): %s", err->message);
-		g_error_free(err);
-		return -EFAULT;
-	}
-
-	remove(transfer->filename);
-
-done:
-	transfer->fd = fd;
-	return fd;
-}
-
 static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 {
 	GObexPacket *req;
-	int perr;
 
 	if (transfer->xfer > 0) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EALREADY,
 						"Transfer already started");
 		return FALSE;
 	}
-
-	perr = transfer_open(transfer, O_WRONLY | O_CREAT, 0600);
-	if (perr < 0)
-		return perr;
 
 	req = g_obex_packet_new(G_OBEX_OP_GET, TRUE, G_OBEX_HDR_INVALID);
 
@@ -592,11 +667,21 @@ void obc_transfer_set_name(struct obc_transfer *transfer, const char *name)
 	transfer->name = g_strdup(name);
 }
 
-void obc_transfer_set_filename(struct obc_transfer *transfer,
+int obc_transfer_set_filename(struct obc_transfer *transfer,
 					const char *filename)
 {
+	int err;
+
+	err = rename(transfer->filename, filename);
+	if (err < 0) {
+		error("rename(): %s (%d)", strerror(errno), errno);
+		return -errno;
+	}
+
 	g_free(transfer->filename);
 	transfer->filename = g_strdup(filename);
+
+	return 0;
 }
 
 const char *obc_transfer_get_path(struct obc_transfer *transfer)
@@ -607,43 +692,4 @@ const char *obc_transfer_get_path(struct obc_transfer *transfer)
 gint64 obc_transfer_get_size(struct obc_transfer *transfer)
 {
 	return transfer->size;
-}
-
-int obc_transfer_set_file(struct obc_transfer *transfer, const char *contents,
-								size_t size)
-{
-	int err;
-	struct stat st;
-
-	err = transfer_open(transfer, O_RDONLY, 0);
-	if (err < 0)
-		return err;
-
-	if (contents != NULL) {
-		ssize_t w = write(transfer->fd, contents, size);
-		if (w < 0) {
-			error("write(): %s(%d)", strerror(errno), errno);
-			err = -errno;
-			goto fail;
-		} else if ((size_t) w != size) {
-			error("Unable to write all contents to file");
-			err = -EFAULT;
-			goto fail;
-		}
-	}
-
-	err = fstat(transfer->fd, &st);
-	if (err < 0) {
-		error("fstat(): %s(%d)", strerror(errno), errno);
-		err = -errno;
-		goto fail;
-	}
-
-	transfer->size = st.st_size;
-
-	return 0;
-fail:
-	close(transfer->fd);
-	transfer->fd = -1;
-	return err;
 }
