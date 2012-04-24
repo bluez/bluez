@@ -442,8 +442,9 @@ static void capabilities_complete_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
-	const char *capabilities;
+	char *contents;
 	size_t size;
+	int perr;
 
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
@@ -453,13 +454,20 @@ static void capabilities_complete_callback(struct obc_session *session,
 		goto done;
 	}
 
-	capabilities = obc_session_get_buffer(session, &size);
-	if (size == 0)
-		capabilities = "";
+	perr = obc_session_get_contents(session, &contents, &size);
+	if (perr < 0) {
+		DBusMessage *error = g_dbus_create_error(data->message,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		g_dbus_send_message(data->connection, error);
+		goto done;
+	}
 
 	g_dbus_send_reply(data->connection, data->message,
-			DBUS_TYPE_STRING, &capabilities,
+			DBUS_TYPE_STRING, &contents,
 			DBUS_TYPE_INVALID);
+	g_free(contents);
 
 done:
 

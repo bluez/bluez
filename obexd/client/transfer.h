@@ -51,13 +51,13 @@ int obc_transfer_put(struct obc_transfer *transfer);
 
 int obc_transfer_get_params(struct obc_transfer *transfer,
 					struct obc_transfer_params *params);
-const char *obc_transfer_get_buffer(struct obc_transfer *transfer, size_t *size);
-void obc_transfer_set_buffer(struct obc_transfer *transfer, char *buffer);
-void obc_transfer_clear_buffer(struct obc_transfer *transfer);
+int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
+								size_t *size);
 
 void obc_transfer_set_name(struct obc_transfer *transfer, const char *name);
 void obc_transfer_set_filename(struct obc_transfer *transfer,
 					const char *filename);
 const char *obc_transfer_get_path(struct obc_transfer *transfer);
 gint64 obc_transfer_get_size(struct obc_transfer *transfer);
-int obc_transfer_set_file(struct obc_transfer *transfer);
+int obc_transfer_set_file(struct obc_transfer *transfer, const char *contents,
+								size_t size);

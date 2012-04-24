@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+#include <stdio.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -991,7 +993,7 @@ int obc_session_send(struct obc_session *session, const char *filename,
 	if (transfer == NULL)
 		return -EINVAL;
 
-	err = obc_transfer_set_file(transfer);
+	err = obc_transfer_set_file(transfer, NULL, 0);
 	if (err < 0) {
 		obc_transfer_unregister(transfer);
 		return err;
@@ -1059,15 +1061,15 @@ static void session_prepare_put(gpointer data, gpointer user_data)
 	DBG("Transfer(%p) started", transfer);
 }
 
-int obc_session_put(struct obc_session *session, char *buf, const char *name)
+int obc_session_put(struct obc_session *session, const char *contents,
+					size_t size, const char *name)
 {
 	struct obc_transfer *transfer;
 	const char *agent;
+	int err;
 
-	if (session->obex == NULL) {
-		g_free(buf);
+	if (session->obex == NULL)
 		return -ENOTCONN;
-	}
 
 	agent = obc_agent_get_name(session->agent);
 
@@ -1075,12 +1077,14 @@ int obc_session_put(struct obc_session *session, char *buf, const char *name)
 							agent, NULL,
 							name, NULL,
 							NULL);
-	if (transfer == NULL) {
-		g_free(buf);
+	if (transfer == NULL)
 		return -EIO;
-	}
 
-	obc_transfer_set_buffer(transfer, buf);
+	err = obc_transfer_set_file(transfer, contents, size);
+	if (err < 0) {
+		obc_transfer_unregister(transfer);
+		return err;
+	}
 
 	return session_request(session, transfer, session_prepare_put,
 								NULL, NULL);
@@ -1156,24 +1160,20 @@ static struct obc_transfer *obc_session_get_transfer(
 	return session->p->transfer;
 }
 
-const char *obc_session_get_buffer(struct obc_session *session, size_t *size)
+int obc_session_get_contents(struct obc_session *session, char **contents,
+								size_t *size)
 {
 	struct obc_transfer *transfer;
-	const char *buf;
 
 	transfer = obc_session_get_transfer(session);
 	if (transfer == NULL) {
 		if (size != NULL)
 			*size = 0;
 
-		return NULL;
+		return -EINVAL;
 	}
 
-	buf = obc_transfer_get_buffer(transfer, size);
-
-	obc_transfer_clear_buffer(transfer);
-
-	return buf;
+	return obc_transfer_get_contents(transfer, contents, size);
 }
 
 void *obc_session_get_params(struct obc_session *session, size_t *size)

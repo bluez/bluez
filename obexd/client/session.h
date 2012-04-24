@@ -52,7 +52,8 @@ const char *obc_session_get_agent(struct obc_session *session);
 
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
-const char *obc_session_get_buffer(struct obc_session *session, size_t *size);
+int obc_session_get_contents(struct obc_session *session, char **contents,
+								size_t *size);
 void *obc_session_get_params(struct obc_session *session, size_t *size);
 
 int obc_session_send(struct obc_session *session, const char *filename,
@@ -66,8 +67,8 @@ int obc_session_pull(struct obc_session *session,
 				session_callback_t function, void *user_data);
 const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy);
-int obc_session_put(struct obc_session *session, char *buf,
-				const char *name);
+int obc_session_put(struct obc_session *session, const char *contents,
+					size_t size, const char *name);
 
 guint obc_session_setpath(struct obc_session *session, const char *path,
 				session_callback_t func, void *user_data,

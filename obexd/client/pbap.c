@@ -343,8 +343,9 @@ static void pull_phonebook_callback(struct obc_session *session,
 {
 	struct pending_request *request = user_data;
 	DBusMessage *reply;
-	const char *buf;
+	char *contents;
 	size_t size;
+	int perr;
 
 	if (err) {
 		reply = g_dbus_create_error(request->msg,
@@ -353,15 +354,22 @@ static void pull_phonebook_callback(struct obc_session *session,
 		goto send;
 	}
 
+	perr = obc_session_get_contents(session, &contents, &size);
+	if (perr < 0) {
+		reply = g_dbus_create_error(request->msg,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		goto send;
+	}
+
 	reply = dbus_message_new_method_return(request->msg);
 
-	buf = obc_session_get_buffer(session, &size);
-	if (size == 0)
-		buf = "";
-
 	dbus_message_append_args(reply,
-			DBUS_TYPE_STRING, &buf,
+			DBUS_TYPE_STRING, &contents,
 			DBUS_TYPE_INVALID);
+
+	g_free(contents);
 
 send:
 	g_dbus_send_message(conn, reply);
@@ -403,8 +411,9 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 	GMarkupParseContext *ctxt;
 	DBusMessage *reply;
 	DBusMessageIter iter, array;
-	const char *buf;
+	char *contents;
 	size_t size;
+	int perr;
 
 	if (err) {
 		reply = g_dbus_create_error(request->msg,
@@ -413,11 +422,16 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 		goto send;
 	}
 
-	reply = dbus_message_new_method_return(request->msg);
+	perr = obc_session_get_contents(session, &contents, &size);
+	if (perr < 0) {
+		reply = g_dbus_create_error(request->msg,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		goto send;
+	}
 
-	buf = obc_session_get_buffer(session, &size);
-	if (size == 0)
-		buf = "";
+	reply = dbus_message_new_method_return(request->msg);
 
 	dbus_message_iter_init_append(reply, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -425,9 +439,10 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
 			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
 	ctxt = g_markup_parse_context_new(&listing_parser, 0, &array, NULL);
-	g_markup_parse_context_parse(ctxt, buf, strlen(buf) - 1, NULL);
+	g_markup_parse_context_parse(ctxt, contents, size, NULL);
 	g_markup_parse_context_free(ctxt);
 	dbus_message_iter_close_container(&iter, &array);
+	g_free(contents);
 
 send:
 	g_dbus_send_message(conn, reply);

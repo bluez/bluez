@@ -27,6 +27,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -87,19 +88,34 @@ static void sync_getphonebook_callback(struct obc_session *session,
 {
 	struct sync_data *sync = user_data;
 	DBusMessage *reply;
-	const char *buf;
+	char *contents;
 	size_t size;
+	int perr;
+
+	if (err) {
+		reply = g_dbus_create_error(sync->msg,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		goto send;
+	}
+
+	perr = obc_session_get_contents(session, &contents, &size);
+	if (perr < 0) {
+		reply = g_dbus_create_error(sync->msg,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		goto send;
+	}
 
 	reply = dbus_message_new_method_return(sync->msg);
 
-	buf = obc_session_get_buffer(session, &size);
-	if (buf == NULL)
-		buf = "";
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &contents,
+							DBUS_TYPE_INVALID);
 
-	dbus_message_append_args(reply,
-		DBUS_TYPE_STRING, &buf,
-		DBUS_TYPE_INVALID);
+	g_free(contents);
 
+send:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(sync->msg);
 	sync->msg = NULL;
@@ -133,7 +149,6 @@ static DBusMessage *sync_putphonebook(DBusConnection *connection,
 {
 	struct sync_data *sync = user_data;
 	const char *buf;
-	char *buffer;
 
 	if (dbus_message_get_args(message, NULL,
 			DBUS_TYPE_STRING, &buf,
@@ -145,9 +160,8 @@ static DBusMessage *sync_putphonebook(DBusConnection *connection,
 	if (!sync->phonebook_path)
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
-	buffer = g_strdup(buf);
-
-	if (obc_session_put(sync->session, buffer, sync->phonebook_path) < 0)
+	if (obc_session_put(sync->session, buf, strlen(buf),
+						sync->phonebook_path) < 0)
 		return g_dbus_create_error(message,
 				ERROR_INF ".Failed", "Failed");
 

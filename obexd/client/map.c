@@ -25,6 +25,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 #include <glib.h>
 #include <gdbus.h>
 
@@ -98,8 +99,9 @@ static void buffer_cb(struct obc_session *session, GError *err,
 {
 	struct map_data *map = user_data;
 	DBusMessage *reply;
-	const char *buf;
+	char *contents;
 	size_t size;
+	int perr;
 
 	if (err != NULL) {
 		reply = g_dbus_create_error(map->msg,
@@ -108,13 +110,19 @@ static void buffer_cb(struct obc_session *session, GError *err,
 		goto done;
 	}
 
-	buf = obc_session_get_buffer(session, &size);
-	if (size == 0)
-		buf = "";
+	perr = obc_session_get_contents(session, &contents, &size);
+	if (perr < 0) {
+		reply = g_dbus_create_error(map->msg,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		goto done;
+	}
 
-	reply = g_dbus_create_reply(map->msg, DBUS_TYPE_STRING, &buf,
+	reply = g_dbus_create_reply(map->msg, DBUS_TYPE_STRING, &contents,
 							DBUS_TYPE_INVALID);
 
+	g_free(contents);
 done:
 	g_dbus_send_message(conn, reply);
 	dbus_message_unref(map->msg);
