@@ -67,7 +67,6 @@ struct obc_transfer {
 	guint xfer;
 	gint64 size;
 	gint64 transferred;
-	int err;
 };
 
 static GQuark obc_transfer_error_quark(void)
@@ -288,10 +287,8 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 		gint w;
 
 		w = write(transfer->fd, buf, len);
-		if (w < 0) {
-			transfer->err = -errno;
+		if (w < 0)
 			return FALSE;
-		}
 
 		transfer->transferred += w;
 	}
@@ -310,10 +307,8 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 
 	transfer->xfer = 0;
 
-	if (err) {
-		transfer->err = err->code;
+	if (err)
 		goto done;
-	}
 
 	transfer->size = transfer->transferred;
 
@@ -390,10 +385,8 @@ static gssize put_xfer_progress(void *buf, gsize len, gpointer user_data)
 	gssize size;
 
 	size = read(transfer->fd, buf, len);
-	if (size <= 0) {
-		transfer->err = -errno;
+	if (size <= 0)
 		return size;
-	}
 
 	if (callback)
 		callback->func(transfer, transfer->transferred, NULL,
