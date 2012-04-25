@@ -51,6 +51,7 @@
 struct set_opts {
 	bdaddr_t src;
 	bdaddr_t dst;
+	uint8_t dst_type;
 	int defer;
 	int sec_level;
 	uint8_t channel;
@@ -280,8 +281,8 @@ static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm,
 	return 0;
 }
 
-static int l2cap_connect(int sock, const bdaddr_t *dst,
-					uint16_t psm, uint16_t cid)
+static int l2cap_connect(int sock, const bdaddr_t *dst, uint8_t dst_type,
+						uint16_t psm, uint16_t cid)
 {
 	int err;
 	struct sockaddr_l2 addr;
@@ -293,6 +294,8 @@ static int l2cap_connect(int sock, const bdaddr_t *dst,
 		addr.l2_cid = htobs(cid);
 	else
 		addr.l2_psm = htobs(psm);
+
+	addr.l2_bdaddr_type = dst_type;
 
 	err = connect(sock, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS))
@@ -698,6 +701,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	opts->mode = L2CAP_MODE_BASIC;
 	opts->flushable = -1;
 	opts->priority = 0;
+	opts->dst_type = BDADDR_BREDR;
 
 	while (opt != BT_IO_OPT_INVALID) {
 		switch (opt) {
@@ -713,6 +717,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_DEST_BDADDR:
 			bacpy(&opts->dst, va_arg(args, const bdaddr_t *));
+			break;
+		case BT_IO_OPT_DEST_TYPE:
+			opts->dst_type = va_arg(args, int);
 			break;
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			opts->defer = va_arg(args, int);
@@ -875,6 +882,10 @@ static gboolean l2cap_get(int sock, GError **err, BtIOOption opt1,
 		case BT_IO_OPT_DEST_BDADDR:
 			bacpy(va_arg(args, bdaddr_t *), &dst.l2_bdaddr);
 			break;
+		case BT_IO_OPT_DEST_TYPE:
+			g_set_error(err, BT_IO_ERROR, BT_IO_ERROR_INVALID_ARGS,
+							"Not implemented");
+			return FALSE;
 		case BT_IO_OPT_DEFER_TIMEOUT:
 			len = sizeof(int);
 			if (getsockopt(sock, SOL_BLUETOOTH, BT_DEFER_SETUP,
@@ -1366,11 +1377,13 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 
 	switch (type) {
 	case BT_IO_L2RAW:
-		err = l2cap_connect(sock, &opts.dst, 0, opts.cid);
+		err = l2cap_connect(sock, &opts.dst, opts.dst_type, 0,
+								opts.cid);
 		break;
 	case BT_IO_L2CAP:
 	case BT_IO_L2ERTM:
-		err = l2cap_connect(sock, &opts.dst, opts.psm, opts.cid);
+		err = l2cap_connect(sock, &opts.dst, opts.dst_type,
+							opts.psm, opts.cid);
 		break;
 	case BT_IO_RFCOMM:
 		err = rfcomm_connect(sock, &opts.dst, opts.channel);
