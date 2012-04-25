@@ -1242,7 +1242,7 @@ static void return_link_keys(int index, void *ptr)
 
 /* Simple Pairing handling */
 
-static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+static int hciops_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success)
 {
 	struct dev_info *dev = &devs[index];
@@ -1305,7 +1305,7 @@ static void user_confirm_request(int index, void *ptr)
 		usleep(5000);
 
 		if (hciops_confirm_reply(index, &req->bdaddr,
-						ADDR_TYPE_BREDR, TRUE) < 0)
+						BDADDR_BREDR, TRUE) < 0)
 			goto fail;
 
 		return;
@@ -2070,7 +2070,7 @@ static inline void remote_version_information(int index, void *ptr)
 				btohs(evt->lmp_subver));
 }
 
-static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
+static void dev_found(struct dev_info *info, bdaddr_t *dba, uint8_t bdaddr_type,
 				uint8_t *cod, int8_t rssi, uint8_t cfm_name,
 				uint8_t *eir, size_t eir_len)
 {
@@ -2098,7 +2098,7 @@ static void dev_found(struct dev_info *info, bdaddr_t *dba, addr_type_t type,
 	info->found_devs = g_slist_prepend(info->found_devs, dev);
 
 event:
-	btd_event_device_found(&info->bdaddr, dba, type, rssi, cfm_name,
+	btd_event_device_found(&info->bdaddr, dba, bdaddr_type, rssi, cfm_name,
 								eir, eir_len);
 }
 
@@ -2113,7 +2113,7 @@ static inline void inquiry_result(int index, int plen, void *ptr)
 		uint8_t eir[5];
 
 		memset(eir, 0, sizeof(eir));
-		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, info->dev_class,
+		dev_found(dev, &info->bdaddr, BDADDR_BREDR, info->dev_class,
 								0, 1, eir, 0);
 		ptr += INQUIRY_INFO_SIZE;
 	}
@@ -2134,7 +2134,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 			inquiry_info_with_rssi_and_pscan_mode *info = ptr;
 
 			memset(eir, 0, sizeof(eir));
-			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR,
+			dev_found(dev, &info->bdaddr, BDADDR_BREDR,
 						info->dev_class, info->rssi,
 						1, eir, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_AND_PSCAN_MODE_SIZE;
@@ -2144,7 +2144,7 @@ static inline void inquiry_result_with_rssi(int index, int plen, void *ptr)
 			inquiry_info_with_rssi *info = ptr;
 
 			memset(eir, 0, sizeof(eir));
-			dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR,
+			dev_found(dev, &info->bdaddr, BDADDR_BREDR,
 						info->dev_class, info->rssi,
 						1, eir, 0);
 			ptr += INQUIRY_INFO_WITH_RSSI_SIZE;
@@ -2174,7 +2174,7 @@ static inline void extended_inquiry_result(int index, int plen, void *ptr)
 		else
 			cfm_name = TRUE;
 
-		dev_found(dev, &info->bdaddr, ADDR_TYPE_BREDR, info->dev_class,
+		dev_found(dev, &info->bdaddr, BDADDR_BREDR, info->dev_class,
 					info->rssi, cfm_name, eir, eir_len);
 		ptr += EXTENDED_INQUIRY_INFO_SIZE;
 	}
@@ -2280,7 +2280,7 @@ static inline void conn_complete(int index, void *ptr)
 	conn = get_connection(dev, &evt->bdaddr);
 	conn->handle = btohs(evt->handle);
 
-	btd_event_conn_complete(&dev->bdaddr, &evt->bdaddr, ADDR_TYPE_BREDR,
+	btd_event_conn_complete(&dev->bdaddr, &evt->bdaddr, BDADDR_BREDR,
 								NULL, NULL);
 
 	if (conn->secmode3)
@@ -2300,14 +2300,14 @@ static inline void conn_complete(int index, void *ptr)
 		free(str);
 }
 
-static inline addr_type_t le_addr_type(uint8_t bdaddr_type)
+static inline uint8_t le_addr_type(uint8_t bdaddr_type)
 {
 	switch (bdaddr_type) {
 	case LE_RANDOM_ADDRESS:
-		return ADDR_TYPE_LE_RANDOM;
+		return BDADDR_LE_RANDOM;
 	case LE_PUBLIC_ADDRESS:
 	default:
-		return ADDR_TYPE_LE_PUBLIC;
+		return BDADDR_LE_PUBLIC;
 	}
 }
 
@@ -2318,7 +2318,7 @@ static inline void le_conn_complete(int index, void *ptr)
 	char filename[PATH_MAX];
 	char local_addr[18], peer_addr[18], *str;
 	struct bt_conn *conn;
-	addr_type_t type;
+	uint8_t bdaddr_type;
 
 	if (evt->status) {
 		btd_event_conn_failed(&dev->bdaddr, &evt->peer_bdaddr,
@@ -2329,8 +2329,8 @@ static inline void le_conn_complete(int index, void *ptr)
 	conn = get_connection(dev, &evt->peer_bdaddr);
 	conn->handle = btohs(evt->handle);
 
-	type = le_addr_type(evt->peer_bdaddr_type);
-	btd_event_conn_complete(&dev->bdaddr, &evt->peer_bdaddr, type,
+	bdaddr_type = le_addr_type(evt->peer_bdaddr_type);
+	btd_event_conn_complete(&dev->bdaddr, &evt->peer_bdaddr, bdaddr_type,
 								NULL, NULL);
 
 	/* check if the remote version needs be requested */
@@ -3380,7 +3380,8 @@ static int hciops_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int hciops_block_device(int index, bdaddr_t *bdaddr,
+						uint8_t bdaddr_type)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
@@ -3394,7 +3395,8 @@ static int hciops_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 	return 0;
 }
 
-static int hciops_unblock_device(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int hciops_unblock_device(int index, bdaddr_t *bdaddr,
+						uint8_t bdaddr_type)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
@@ -3427,14 +3429,15 @@ static int hciops_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int hciops_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int hciops_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	DBG("hci%d", index);
 
 	return disconnect_addr(index, bdaddr, HCI_OE_USER_ENDED_CONNECTION);
 }
 
-static int hciops_remove_bonding(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int hciops_remove_bonding(int index, bdaddr_t *bdaddr,
+							uint8_t bdaddr_type)
 {
 	struct dev_info *dev = &devs[index];
 	delete_stored_link_key_cp cp;
@@ -3493,8 +3496,8 @@ static int hciops_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 	return err;
 }
 
-static int hciops_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
-							uint32_t passkey)
+static int hciops_passkey_reply(int index, bdaddr_t *bdaddr,
+					uint8_t bdaddr_type, uint32_t passkey)
 {
 	struct dev_info *dev = &devs[index];
 	char addr[18];
@@ -3726,7 +3729,7 @@ failed:
 }
 
 static int hciops_create_bonding(int index, bdaddr_t *bdaddr,
-					uint8_t addr_type, uint8_t io_cap)
+					uint8_t bdaddr_type, uint8_t io_cap)
 {
 	struct dev_info *dev = &devs[index];
 	BtIOSecLevel sec_level;
@@ -3846,8 +3849,8 @@ static int hciops_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int hciops_confirm_name(int index, bdaddr_t *bdaddr, addr_type_t type,
-							gboolean name_known)
+static int hciops_confirm_name(int index, bdaddr_t *bdaddr,
+				uint8_t bdaddr_type, gboolean name_known)
 {
 	struct dev_info *info = &devs[index];
 	struct found_dev *dev;

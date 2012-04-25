@@ -472,7 +472,7 @@ static GSList *remove_bredr(GSList *all)
 
 	for (l = all, le = NULL; l; l = l->next) {
 		struct remote_dev_info *dev = l->data;
-		if (dev->type == ADDR_TYPE_BREDR) {
+		if (dev->bdaddr_type == BDADDR_BREDR) {
 			dev_info_free(dev);
 			continue;
 		}
@@ -926,14 +926,14 @@ void adapter_service_remove(struct btd_adapter *adapter, void *r)
 static struct btd_device *adapter_create_device(DBusConnection *conn,
 						struct btd_adapter *adapter,
 						const char *address,
-						addr_type_t type)
+						uint8_t bdaddr_type)
 {
 	struct btd_device *device;
 	const char *path;
 
 	DBG("%s", address);
 
-	device = device_create(conn, adapter, address, type);
+	device = device_create(conn, adapter, address, bdaddr_type);
 	if (!device)
 		return NULL;
 
@@ -993,7 +993,7 @@ struct btd_device *adapter_get_device(DBusConnection *conn,
 		return device;
 
 	return adapter_create_device(conn, adapter, address,
-						ADDR_TYPE_BREDR);
+						BDADDR_BREDR);
 }
 
 static gboolean discovery_cb(gpointer user_data)
@@ -1386,17 +1386,17 @@ static struct btd_device *create_device_internal(DBusConnection *conn,
 	struct remote_dev_info *dev;
 	struct btd_device *device;
 	bdaddr_t addr;
-	addr_type_t type;
+	uint8_t bdaddr_type;
 
 	str2ba(address, &addr);
 
 	dev = adapter_search_found_devices(adapter, &addr);
 	if (dev)
-		type = dev->type;
+		bdaddr_type = dev->bdaddr_type;
 	else
-		type = ADDR_TYPE_BREDR;
+		bdaddr_type = BDADDR_BREDR;
 
-	device = adapter_create_device(conn, adapter, address, type);
+	device = adapter_create_device(conn, adapter, address, bdaddr_type);
 	if (!device && err)
 		*err = -ENOMEM;
 
@@ -1705,7 +1705,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, ADDR_TYPE_BREDR);
+	device = device_create(connection, adapter, key, BDADDR_BREDR);
 	if (!device)
 		return;
 
@@ -1792,7 +1792,7 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, const char *value)
 	ptr = (char *) value + 2 * sizeof(ltk->val) + 1;
 
 	ret = sscanf(ptr, " %hhd %hhd %hhd %hhd %hd %n",
-					(uint8_t *) &ltk->addr_type,
+					(uint8_t *) &ltk->bdaddr_type,
 					&ltk->authenticated, &ltk->master,
 					&ltk->enc_size, &ltk->ediv, &i);
 	if (ret < 2) {
@@ -1822,7 +1822,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, ADDR_TYPE_BREDR);
+	device = device_create(connection, adapter, key, BDADDR_BREDR);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1855,7 +1855,7 @@ static void create_stored_device_from_ltks(char *key, char *value,
 	if (g_strcmp0(srcaddr, key) == 0)
 		return;
 
-	device = device_create(connection, adapter, key, info->addr_type);
+	device = device_create(connection, adapter, key, info->bdaddr_type);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1872,7 +1872,7 @@ static void create_stored_device_from_blocked(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, ADDR_TYPE_BREDR);
+	device = device_create(connection, adapter, key, BDADDR_BREDR);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1926,7 +1926,7 @@ static void create_stored_device_from_primary(char *key, char *value,
 		return;
 
 	/* FIXME: Get the correct LE addr type (public/random) */
-	device = device_create(connection, adapter, key, ADDR_TYPE_LE_PUBLIC);
+	device = device_create(connection, adapter, key, BDADDR_LE_PUBLIC);
 	if (!device)
 		return;
 
@@ -2000,15 +2000,16 @@ static void load_devices(struct btd_adapter *adapter)
 }
 
 int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							addr_type_t type)
+							uint8_t bdaddr_type)
 {
-	return adapter_ops->block_device(adapter->dev_id, bdaddr, type);
+	return adapter_ops->block_device(adapter->dev_id, bdaddr, bdaddr_type);
 }
 
 int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							addr_type_t type)
+							uint8_t bdaddr_type)
 {
-	return adapter_ops->unblock_device(adapter->dev_id, bdaddr, type);
+	return adapter_ops->unblock_device(adapter->dev_id, bdaddr,
+								bdaddr_type);
 }
 
 static void clear_blocked(struct btd_adapter *adapter)
@@ -2699,7 +2700,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	} else
 		alias = g_strdup(dev->alias);
 
-	if (dev->type != ADDR_TYPE_BREDR) {
+	if (dev->bdaddr_type != BDADDR_BREDR) {
 		gboolean broadcaster;
 		uint16_t app;
 
@@ -2749,7 +2750,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 }
 
 static struct remote_dev_info *found_device_new(const bdaddr_t *bdaddr,
-					addr_type_t type, const char *name,
+					uint8_t bdaddr_type, const char *name,
 					const char *alias, uint32_t class,
 					gboolean legacy, int flags)
 {
@@ -2757,7 +2758,7 @@ static struct remote_dev_info *found_device_new(const bdaddr_t *bdaddr,
 
 	dev = g_new0(struct remote_dev_info, 1);
 	bacpy(&dev->bdaddr, bdaddr);
-	dev->type = type;
+	dev->bdaddr_type = bdaddr_type;
 	dev->name = g_strdup(name);
 	dev->alias = g_strdup(alias);
 	dev->class = class;
@@ -2826,7 +2827,7 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer, const char *file)
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, addr_type_t type,
+					bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, uint8_t confirm_name,
 					uint8_t *data, uint8_t data_len)
 {
@@ -2881,7 +2882,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	name = read_stored_data(&adapter->bdaddr, bdaddr, "names");
 
-	if (type == ADDR_TYPE_BREDR) {
+	if (bdaddr_type == BDADDR_BREDR) {
 		legacy = pairing_is_legacy(&adapter->bdaddr, bdaddr, data,
 									name);
 
@@ -2896,13 +2897,13 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	}
 
 	if (confirm_name)
-		adapter_ops->confirm_name(adapter->dev_id, bdaddr, type,
+		adapter_ops->confirm_name(adapter->dev_id, bdaddr, bdaddr_type,
 								name_known);
 
 	alias = read_stored_data(&adapter->bdaddr, bdaddr, "aliases");
 
-	dev = found_device_new(bdaddr, type, name, alias, dev_class, legacy,
-							eir_data.flags);
+	dev = found_device_new(bdaddr, bdaddr_type, name, alias, dev_class,
+						legacy, eir_data.flags);
 	free(name);
 	free(alias);
 
@@ -3453,16 +3454,17 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 }
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, addr_type_t type)
+					bdaddr_t *bdaddr, uint8_t bdaddr_type)
 
 {
-	return adapter_ops->disconnect(adapter->dev_id, bdaddr, type);
+	return adapter_ops->disconnect(adapter->dev_id, bdaddr, bdaddr_type);
 }
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							addr_type_t type)
+							uint8_t bdaddr_type)
 {
-	return adapter_ops->remove_bonding(adapter->dev_id, bdaddr, type);
+	return adapter_ops->remove_bonding(adapter->dev_id, bdaddr,
+								bdaddr_type);
 }
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
@@ -3473,16 +3475,16 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 }
 
 int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					addr_type_t type, gboolean success)
+					uint8_t bdaddr_type, gboolean success)
 {
-	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, type,
+	return adapter_ops->confirm_reply(adapter->dev_id, bdaddr, bdaddr_type,
 								success);
 }
 
 int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					addr_type_t type, uint32_t passkey)
+					uint8_t bdaddr_type, uint32_t passkey)
 {
-	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, type,
+	return adapter_ops->passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
 								passkey);
 }
 

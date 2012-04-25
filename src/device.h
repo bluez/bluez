@@ -36,7 +36,7 @@ typedef enum {
 
 struct btd_device *device_create(DBusConnection *conn,
 					struct btd_adapter *adapter,
-					const char *address, addr_type_t type);
+					const char *address, uint8_t bdaddr_type);
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 uint16_t btd_device_get_vendor(struct btd_device *device);
@@ -60,8 +60,8 @@ GSList *device_services_from_record(struct btd_device *device,
 void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
 void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
-							addr_type_t *type);
-void device_set_addr_type(struct btd_device *device, addr_type_t type);
+							uint8_t *bdaddr_type);
+void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type);
 const gchar *device_get_path(struct btd_device *device);
 struct agent *device_get_agent(struct btd_device *device);
 gboolean device_is_bredr(struct btd_device *device);

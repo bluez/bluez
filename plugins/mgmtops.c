@@ -463,28 +463,28 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->key.addr.bdaddr, 0);
 }
 
-static inline addr_type_t addr_type(uint8_t mgmt_addr_type)
+static inline uint8_t addr_type(uint8_t mgmt_addr_type)
 {
 	switch (mgmt_addr_type) {
 	case MGMT_ADDR_BREDR:
-		return ADDR_TYPE_BREDR;
+		return BDADDR_BREDR;
 	case MGMT_ADDR_LE_PUBLIC:
-		return ADDR_TYPE_LE_PUBLIC;
+		return BDADDR_LE_PUBLIC;
 	case MGMT_ADDR_LE_RANDOM:
-		return ADDR_TYPE_LE_RANDOM;
+		return BDADDR_LE_RANDOM;
 	default:
-		return ADDR_TYPE_BREDR;
+		return BDADDR_BREDR;
 	}
 }
 
-static inline uint8_t mgmt_addr_type(addr_type_t addr_type)
+static inline uint8_t mgmt_addr_type(uint8_t addr_type)
 {
 	switch (addr_type) {
-	case ADDR_TYPE_BREDR:
+	case BDADDR_BREDR:
 		return MGMT_ADDR_BREDR;
-	case ADDR_TYPE_LE_PUBLIC:
+	case BDADDR_LE_PUBLIC:
 		return MGMT_ADDR_LE_PUBLIC;
-	case ADDR_TYPE_LE_RANDOM:
+	case BDADDR_LE_RANDOM:
 		return MGMT_ADDR_LE_RANDOM;
 	default:
 		return MGMT_ADDR_BREDR;
@@ -668,7 +668,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
-static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_confirm_reply)];
@@ -691,7 +691,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -699,7 +699,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
 	return 0;
 }
 
-static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
+static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							uint32_t passkey)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_passkey_reply)];
@@ -721,7 +721,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = mgmt_addr_type(type);
+		cp->addr.type = mgmt_addr_type(bdaddr_type);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -732,7 +732,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, addr_type_t type,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = mgmt_addr_type(type);
+		cp->addr.type = mgmt_addr_type(bdaddr_type);
 		cp->passkey = htobl(passkey);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
@@ -2015,7 +2015,7 @@ static int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int mgmt_block_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2034,7 +2034,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -2044,7 +2044,8 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 	return 0;
 }
 
-static int mgmt_unblock_device(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int mgmt_unblock_device(int index, bdaddr_t *bdaddr,
+							uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unblock_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2063,7 +2064,7 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -2085,7 +2086,7 @@ static int mgmt_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-static int mgmt_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int mgmt_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_disconnect)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2101,7 +2102,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		error("write: %s (%d)", strerror(errno), errno);
@@ -2109,7 +2110,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr, addr_type_t type)
 	return 0;
 }
 
-static int mgmt_unpair_device(int index, bdaddr_t *bdaddr, addr_type_t type)
+static int mgmt_unpair_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unpair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2125,7 +2126,7 @@ static int mgmt_unpair_device(int index, bdaddr_t *bdaddr, addr_type_t type)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 	cp->disconnect = 1;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
@@ -2370,7 +2371,7 @@ static int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, addr_type_t type,
+static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean name_known)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_confirm_name)];
@@ -2388,7 +2389,7 @@ static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, addr_type_t type,
 	hdr->len = htobs(sizeof(*cp));
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(type);
+	cp->addr.type = mgmt_addr_type(bdaddr_type);
 	cp->name_known = name_known;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
@@ -2429,7 +2430,7 @@ static int mgmtops_load_ltks(int index, GSList *keys)
 		struct smp_ltk_info *info = l->data;
 
 		bacpy(&key->addr.bdaddr, &info->bdaddr);
-		key->addr.type = info->addr_type;
+		key->addr.type = info->bdaddr_type;
 		memcpy(key->val, info->val, sizeof(info->val));
 		memcpy(key->rand, info->rand, sizeof(info->rand));
 		memcpy(&key->ediv, &info->ediv, sizeof(key->ediv));

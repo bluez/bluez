@@ -130,7 +130,7 @@ struct att_callbacks {
 
 struct btd_device {
 	bdaddr_t	bdaddr;
-	addr_type_t	type;
+	uint8_t		bdaddr_type;
 	gchar		*path;
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
@@ -291,12 +291,12 @@ static void device_free(gpointer user_data)
 
 gboolean device_is_bredr(struct btd_device *device)
 {
-	return (device->type == ADDR_TYPE_BREDR);
+	return (device->bdaddr_type == BDADDR_BREDR);
 }
 
 gboolean device_is_le(struct btd_device *device)
 {
-	return (device->type != ADDR_TYPE_BREDR);
+	return (device->bdaddr_type != BDADDR_BREDR);
 }
 
 gboolean device_is_paired(struct btd_device *device)
@@ -516,7 +516,7 @@ static gboolean do_disconnect(gpointer user_data)
 	device->disconn_timer = 0;
 
 	btd_adapter_disconnect_device(device->adapter, &device->bdaddr,
-								device->type);
+							device->bdaddr_type);
 
 	return FALSE;
 }
@@ -537,7 +537,7 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 
 	if (!update_only)
 		err = btd_adapter_block_address(device->adapter,
-						&device->bdaddr, device->type);
+					&device->bdaddr, device->bdaddr_type);
 
 	if (err < 0)
 		return err;
@@ -569,7 +569,7 @@ int device_unblock(DBusConnection *conn, struct btd_device *device,
 
 	if (!update_only)
 		err = btd_adapter_unblock_address(device->adapter,
-						&device->bdaddr, device->type);
+					&device->bdaddr, device->bdaddr_type);
 
 	if (err < 0)
 		return err;
@@ -1036,7 +1036,7 @@ static void device_set_version(struct btd_device *device, uint16_t value)
 
 struct btd_device *device_create(DBusConnection *conn,
 				struct btd_adapter *adapter,
-				const gchar *address, addr_type_t type)
+				const gchar *address, uint8_t bdaddr_type)
 {
 	gchar *address_up;
 	struct btd_device *device;
@@ -1065,7 +1065,7 @@ struct btd_device *device_create(DBusConnection *conn,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
-	device->type = type;
+	device->bdaddr_type = bdaddr_type;
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
 	read_device_name(srcaddr, address, device->name);
@@ -1158,7 +1158,7 @@ static void device_remove_stored(struct btd_device *device)
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
-								device->type);
+							device->bdaddr_type);
 	}
 	delete_entry(&src, "profiles", addr);
 	delete_entry(&src, "trusts", addr);
@@ -1998,13 +1998,13 @@ static gboolean att_connect(gpointer user_data)
 					BT_IO_OPT_INVALID);
 	} else {
 		io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
-					attcb, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &sba,
-					BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-					BT_IO_OPT_DEST_TYPE, device->type,
-					BT_IO_OPT_CID, ATT_CID,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-					BT_IO_OPT_INVALID);
+				attcb, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, &sba,
+				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
+				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
+				BT_IO_OPT_CID, ATT_CID,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_INVALID);
 	}
 
 	if (io == NULL) {
@@ -2087,7 +2087,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 				attcb, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_DEST_TYPE, device->type,
+				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
 				BT_IO_OPT_CID, ATT_CID,
 				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
@@ -2182,19 +2182,19 @@ struct btd_adapter *device_get_adapter(struct btd_device *device)
 }
 
 void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
-							addr_type_t *type)
+							uint8_t *bdaddr_type)
 {
 	bacpy(bdaddr, &device->bdaddr);
-	if (type != NULL)
-		*type = device->type;
+	if (bdaddr_type != NULL)
+		*bdaddr_type = device->bdaddr_type;
 }
 
-void device_set_addr_type(struct btd_device *device, addr_type_t type)
+void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type)
 {
 	if (device == NULL)
 		return;
 
-	device->type = type;
+	device->bdaddr_type = bdaddr_type;
 }
 
 const gchar *device_get_path(struct btd_device *device)
@@ -2393,7 +2393,7 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	if (!value)
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
-								device->type);
+							device->bdaddr_type);
 
 	device->paired = value;
 
@@ -2488,13 +2488,13 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		attcb->user_data = device;
 
 		device->att_io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
-					attcb, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &sba,
-					BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-					BT_IO_OPT_DEST_TYPE, device->type,
-					BT_IO_OPT_CID, ATT_CID,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-					BT_IO_OPT_INVALID);
+				attcb, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, &sba,
+				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
+				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
+				BT_IO_OPT_CID, ATT_CID,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
 
 		if (device->att_io == NULL) {
 			DBusMessage *reply = btd_error_failed(msg,
@@ -2508,7 +2508,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	}
 
 	err = adapter_create_bonding(adapter, &device->bdaddr,
-					device->type, capability);
+					device->bdaddr_type, capability);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
