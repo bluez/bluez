@@ -601,8 +601,8 @@ static void cmd_char_write(int argcp, char **argvp)
 		return;
 	}
 
-	handle = strtoll(argvp[1], NULL, 16);
-	if (errno != 0 || handle <= 0) {
+	handle = strtohandle(argvp[1]);
+	if (handle <= 0) {
 		printf("A valid handle is required\n");
 		return;
 	}
