@@ -78,7 +78,6 @@ struct remote_dev_info {
 	char **uuids;
 	size_t uuid_count;
 	GSList *services;
-	uint8_t bdaddr_type;
 	uint8_t flags;
 };
 
