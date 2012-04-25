@@ -53,11 +53,6 @@ struct mgmt_hdr {
 } __packed;
 #define MGMT_HDR_SIZE	6
 
-#define MGMT_ADDR_BREDR			0x00
-#define MGMT_ADDR_LE_PUBLIC		0x01
-#define MGMT_ADDR_LE_RANDOM		0x02
-#define MGMT_ADDR_INVALID		0xff
-
 struct mgmt_addr_info {
 	bdaddr_t bdaddr;
 	uint8_t type;

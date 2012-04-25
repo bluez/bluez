@@ -463,34 +463,6 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->key.addr.bdaddr, 0);
 }
 
-static inline uint8_t addr_type(uint8_t mgmt_addr_type)
-{
-	switch (mgmt_addr_type) {
-	case MGMT_ADDR_BREDR:
-		return BDADDR_BREDR;
-	case MGMT_ADDR_LE_PUBLIC:
-		return BDADDR_LE_PUBLIC;
-	case MGMT_ADDR_LE_RANDOM:
-		return BDADDR_LE_RANDOM;
-	default:
-		return BDADDR_BREDR;
-	}
-}
-
-static inline uint8_t mgmt_addr_type(uint8_t addr_type)
-{
-	switch (addr_type) {
-	case BDADDR_BREDR:
-		return MGMT_ADDR_BREDR;
-	case BDADDR_LE_PUBLIC:
-		return MGMT_ADDR_LE_PUBLIC;
-	case BDADDR_LE_RANDOM:
-		return MGMT_ADDR_LE_RANDOM;
-	default:
-		return MGMT_ADDR_BREDR;
-	}
-}
-
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_connected *ev = buf;
@@ -526,7 +498,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 		eir_parse(&eir_data, ev->eir, eir_len);
 
 	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
-						addr_type(ev->addr.type),
+						ev->addr.type,
 						eir_data.name,
 						eir_data.dev_class);
 
@@ -609,7 +581,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = MGMT_ADDR_BREDR;
+		cp->addr.type = BDADDR_BREDR;
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -624,7 +596,7 @@ static int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = MGMT_ADDR_BREDR;
+		cp->addr.type = BDADDR_BREDR;
 		cp->pin_len = pin_len;
 		memcpy(cp->pin_code, pin, pin_len);
 
@@ -691,7 +663,7 @@ static int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
@@ -721,7 +693,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = mgmt_addr_type(bdaddr_type);
+		cp->addr.type = bdaddr_type;
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
 	} else {
@@ -732,7 +704,7 @@ static int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 
 		cp = (void *) &buf[sizeof(*hdr)];
 		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = mgmt_addr_type(bdaddr_type);
+		cp->addr.type = bdaddr_type;
 		cp->passkey = htobl(passkey);
 
 		buf_len = sizeof(*hdr) + sizeof(*cp);
@@ -1594,7 +1566,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
-						addr_type(ev->addr.type),
+						ev->addr.type,
 						ev->rssi, confirm_name,
 						eir, eir_len);
 }
@@ -1924,11 +1896,11 @@ static int mgmt_start_discovery(int index)
 	info->discov_type = 0;
 
 	if (mgmt_bredr(info->current_settings))
-		hci_set_bit(MGMT_ADDR_BREDR, &info->discov_type);
+		hci_set_bit(BDADDR_BREDR, &info->discov_type);
 
 	if (mgmt_low_energy(info->current_settings)) {
-		hci_set_bit(MGMT_ADDR_LE_PUBLIC, &info->discov_type);
-		hci_set_bit(MGMT_ADDR_LE_RANDOM, &info->discov_type);
+		hci_set_bit(BDADDR_LE_PUBLIC, &info->discov_type);
+		hci_set_bit(BDADDR_LE_RANDOM, &info->discov_type);
 	}
 
 	memset(buf, 0, sizeof(buf));
@@ -2034,7 +2006,7 @@ static int mgmt_block_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -2064,7 +2036,7 @@ static int mgmt_unblock_device(int index, bdaddr_t *bdaddr,
 
 	cp = (void *) &buf[sizeof(*hdr)];
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 
 	buf_len = sizeof(*hdr) + sizeof(*cp);
 
@@ -2102,7 +2074,7 @@ static int mgmt_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		error("write: %s (%d)", strerror(errno), errno);
@@ -2126,7 +2098,7 @@ static int mgmt_unpair_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 	cp->disconnect = 1;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
@@ -2219,7 +2191,7 @@ static int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 		struct link_key_info *info = l->data;
 
 		bacpy(&key->addr.bdaddr, &info->bdaddr);
-		key->addr.type = MGMT_ADDR_BREDR;
+		key->addr.type = BDADDR_BREDR;
 		key->type = info->type;
 		memcpy(key->val, info->key, 16);
 		key->pin_len = info->pin_len;
@@ -2389,7 +2361,7 @@ static int mgmt_confirm_name(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	hdr->len = htobs(sizeof(*cp));
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = mgmt_addr_type(bdaddr_type);
+	cp->addr.type = bdaddr_type;
 	cp->name_known = name_known;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
