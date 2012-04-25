@@ -43,6 +43,7 @@ struct sockaddr_l2 {
 	unsigned short	l2_psm;
 	bdaddr_t	l2_bdaddr;
 	unsigned short	l2_cid;
+	uint8_t		l2_bdaddr_type;
 };
 
 /* L2CAP socket options */
