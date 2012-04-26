@@ -112,7 +112,7 @@ static void create_callback(struct obc_session *session, GError *err,
 		const gchar *filename = g_ptr_array_index(data->files, i);
 		gchar *basename = g_path_get_basename(filename);
 
-		if (obc_session_send(session, filename, basename) < 0) {
+		if (obc_session_send(session, filename, basename, NULL) == 0) {
 			g_free(basename);
 			break;
 		}
@@ -274,22 +274,31 @@ static void pull_obc_session_callback(struct obc_session *session,
 					GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
+	DBusMessage *reply;
+	GError *gerr = NULL;
 
 	if (err != NULL) {
-		DBusMessage *error = g_dbus_create_error(data->message,
-					"org.openobex.Error.Failed",
-					"%s", err->message);
-		g_dbus_send_message(data->connection, error);
-		shutdown_session(session);
-		goto done;
+		reply = g_dbus_create_error(data->message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		goto fail;
 	}
 
 	obc_session_pull(session, "text/x-vcard", data->filename,
-						pull_complete_callback, data);
+					pull_complete_callback, data, &gerr);
+	if (gerr != NULL) {
+		reply = g_dbus_create_error(data->message,
+						"org.openobex.Error.Failed",
+						"%s", gerr->message);
+		g_error_free(gerr);
+		goto fail;
+	}
 
 	return;
 
-done:
+fail:
+	g_dbus_send_message(data->connection, reply);
+	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
 	g_free(data->filename);
@@ -482,22 +491,31 @@ static void capability_obc_session_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
+	DBusMessage *reply;
+	GError *gerr = NULL;
 
 	if (err != NULL) {
-		DBusMessage *error = g_dbus_create_error(data->message,
+		reply = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
 					"%s", err->message);
-		g_dbus_send_message(data->connection, error);
-		shutdown_session(session);
-		goto done;
+		goto fail;
 	}
 
 	obc_session_pull(session, "x-obex/capability", NULL,
-				capabilities_complete_callback, data);
+				capabilities_complete_callback, data, &gerr);
+	if (gerr != NULL) {
+		reply = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed",
+					"%s", gerr->message);
+		g_error_free(gerr);
+		goto fail;
+	}
 
 	return;
 
-done:
+fail:
+	g_dbus_send_message(data->connection, reply);
+	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
 	g_free(data->sender);

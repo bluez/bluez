@@ -255,12 +255,17 @@ static DBusMessage *list_folder(DBusConnection *connection,
 {
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
+	GError *err = NULL;
 
-	if (obc_session_get(session, "x-obex/folder-listing",
-			NULL, NULL, NULL, 0, list_folder_callback, message) < 0)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"Failed");
+	obc_session_get(session, "x-obex/folder-listing", NULL, NULL,
+				NULL, 0, list_folder_callback, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
 	dbus_message_ref(message);
 
@@ -273,6 +278,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
 	const char *target_file, *source_file;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &target_file,
@@ -281,11 +287,15 @@ static DBusMessage *get_file(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	if (obc_session_get(session, NULL, source_file,
-			target_file, NULL, 0, get_file_callback, message) < 0)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"Failed");
+	obc_session_get(session, NULL, source_file, target_file, NULL, 0,
+					get_file_callback, message, &err);
+	if (err != NULL) {
+		DBusMessage *reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
 	dbus_message_ref(message);
 
@@ -298,6 +308,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
 	gchar *sourcefile, *targetfile;
+	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL,
 					DBUS_TYPE_STRING, &sourcefile,
@@ -307,10 +318,14 @@ static DBusMessage *put_file(DBusConnection *connection,
 				"org.openobex.Error.InvalidArguments",
 				"Invalid arguments in method call");
 
-	if (obc_session_send(session, sourcefile, targetfile) < 0)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
-				"Failed");
+	obc_session_send(session, sourcefile, targetfile, &err);
+	if (err != NULL) {
+		DBusMessage *reply = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
+		g_error_free(err);
+		return reply;
+	}
 
 	return dbus_message_new_method_return(message);
 }

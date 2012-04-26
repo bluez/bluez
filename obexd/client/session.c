@@ -743,33 +743,33 @@ static int pending_request_auth(struct pending_request *p)
 									NULL);
 }
 
-static int session_request(struct obc_session *session,
+static gboolean session_request(struct obc_session *session,
 					struct obc_transfer *transfer,
 					session_callback_t func,
-					void *data)
+					void *data, GError **err)
 {
 	struct pending_request *p;
-	int err;
+	int perr;
 
 	obc_transfer_set_callback(transfer, transfer_progress, session);
 
 	p = pending_request_new(session, transfer, session_start_transfer,
 								func, data);
-
 	if (session->p) {
 		g_queue_push_tail(session->queue, p);
-		return 0;
+		return TRUE;
 	}
 
-	err = pending_request_auth(p);
-	if (err < 0) {
+	perr = pending_request_auth(p);
+	if (perr < 0) {
+		g_set_error(err, OBEX_IO_ERROR, perr, "Authorization failed");
 		pending_request_free(p);
-		return err;
+		return FALSE;
 	}
 
 	session->p = p;
 
-	return 0;
+	return TRUE;
 }
 
 static void session_process_queue(struct obc_session *session)
@@ -946,17 +946,21 @@ static void session_start_transfer(gpointer data, gpointer user_data)
 	DBG("Transfer(%p) started", transfer);
 }
 
-int obc_session_get(struct obc_session *session, const char *type,
-		const char *name, const char *targetfile,
-		const guint8 *apparam, gint apparam_size,
-		session_callback_t func, void *user_data)
+gboolean obc_session_get(struct obc_session *session, const char *type,
+				const char *name, const char *targetfile,
+				const guint8 *apparam, gint apparam_size,
+				session_callback_t func, void *user_data,
+				GError **err)
 {
 	struct obc_transfer *transfer;
 	struct obc_transfer_params *params = NULL;
 	const char *agent;
 
-	if (session->obex == NULL)
-		return -ENOTCONN;
+	if (session->obex == NULL) {
+		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
+						"Session not connected");
+		return FALSE;
+	}
 
 	if (apparam != NULL) {
 		params = g_new0(struct obc_transfer_params, 1);
@@ -971,43 +975,47 @@ int obc_session_get(struct obc_session *session, const char *type,
 		agent = NULL;
 
 	transfer = obc_transfer_get(session->conn, agent, targetfile, name,
-								type, params);
+							type, params, err);
 	if (transfer == NULL) {
 		if (params != NULL) {
 			g_free(params->data);
 			g_free(params);
 		}
-		return -EIO;
+		return FALSE;
 	}
 
-	return session_request(session, transfer, func, user_data);
+	return session_request(session, transfer, func, user_data, err);
 }
 
-int obc_session_send(struct obc_session *session, const char *filename,
-				const char *name)
+gboolean obc_session_send(struct obc_session *session, const char *filename,
+				const char *name, GError **err)
 {
 	struct obc_transfer *transfer;
 	const char *agent;
 
-	if (session->obex == NULL)
-		return -ENOTCONN;
+	if (session->obex == NULL) {
+		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
+						"Session not connected");
+		return FALSE;
+	}
 
 	agent = obc_agent_get_name(session->agent);
 
 	transfer = obc_transfer_put(session->conn, agent, filename, name,
-					NULL, NULL, 0, NULL);
+					NULL, NULL, 0, NULL, err);
 	if (transfer == NULL)
-		return -EINVAL;
+		return FALSE;
 
-	return session_request(session, transfer, NULL, NULL);
+	return session_request(session, transfer, NULL, NULL, err);
 }
 
-int obc_session_pull(struct obc_session *session,
+gboolean obc_session_pull(struct obc_session *session,
 				const char *type, const char *targetfile,
-				session_callback_t function, void *user_data)
+				session_callback_t function, void *user_data,
+				GError **err)
 {
 	return obc_session_get(session, type, NULL, targetfile, NULL, 0,
-							function, user_data);
+						function, user_data, err);
 }
 
 const char *obc_session_register(struct obc_session *session,
@@ -1040,23 +1048,26 @@ fail:
 	return NULL;
 }
 
-int obc_session_put(struct obc_session *session, const char *contents,
-					size_t size, const char *name)
+gboolean obc_session_put(struct obc_session *session, const char *contents,
+				size_t size, const char *name, GError **err)
 {
 	struct obc_transfer *transfer;
 	const char *agent;
 
-	if (session->obex == NULL)
-		return -ENOTCONN;
+	if (session->obex == NULL) {
+		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
+						"Session not connected");
+		return FALSE;
+	}
 
 	agent = obc_agent_get_name(session->agent);
 
 	transfer = obc_transfer_put(session->conn, agent, NULL, name, NULL,
-							contents, size, NULL);
+						contents, size, NULL, err);
 	if (transfer == NULL)
-		return -EIO;
+		return FALSE;
 
-	return session_request(session, transfer, NULL, NULL);
+	return session_request(session, transfer, NULL, NULL, err);
 }
 
 static void agent_destroy(gpointer data, gpointer user_data)
