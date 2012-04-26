@@ -56,20 +56,20 @@ int obc_session_get_contents(struct obc_session *session, char **contents,
 								size_t *size);
 void *obc_session_get_params(struct obc_session *session, size_t *size);
 
-gboolean obc_session_send(struct obc_session *session, const char *filename,
+guint obc_session_send(struct obc_session *session, const char *filename,
 				const char *name, GError **err);
-gboolean obc_session_get(struct obc_session *session, const char *type,
+guint obc_session_get(struct obc_session *session, const char *type,
 				const char *name, const char *targetfile,
 				const guint8  *apparam, gint apparam_size,
 				session_callback_t func, void *user_data,
 				GError **err);
-gboolean obc_session_pull(struct obc_session *session,
+guint obc_session_pull(struct obc_session *session,
 				const char *type, const char *targetfile,
 				session_callback_t function, void *user_data,
 				GError **err);
 const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy);
-gboolean obc_session_put(struct obc_session *session, const char *contents,
+guint obc_session_put(struct obc_session *session, const char *contents,
 				size_t size, const char *name, GError **err);
 
 guint obc_session_setpath(struct obc_session *session, const char *path,
