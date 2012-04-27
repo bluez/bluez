@@ -2829,7 +2829,7 @@ int hci_le_set_advertise_enable(int dd, uint8_t enable, int to)
 int hci_le_create_conn(int dd, uint16_t interval, uint16_t window,
 		uint8_t initiator_filter, uint8_t peer_bdaddr_type,
 		bdaddr_t peer_bdaddr, uint8_t own_bdaddr_type,
-		uint16_t min_interval, 	uint16_t max_interval,
+		uint16_t min_interval, uint16_t max_interval,
 		uint16_t latency, uint16_t supervision_timeout,
 		uint16_t min_ce_length, uint16_t max_ce_length,
 		uint16_t *handle, int to)
