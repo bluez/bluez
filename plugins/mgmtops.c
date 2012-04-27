@@ -1694,9 +1694,9 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 
 	if (ev->store_hint) {
 		btd_event_ltk_notify(&info->bdaddr, &ev->key.addr.bdaddr,
-				ev->key.addr.type, ev->key.val,
+				ev->key.addr.type, ev->key.val, ev->key.master,
 				ev->key.authenticated, ev->key.enc_size,
-				ev->key.master, ev->key.ediv, ev->key.rand);
+				ev->key.ediv, ev->key.rand);
 	}
 
 	if (ev->key.master)
