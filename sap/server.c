@@ -1265,7 +1265,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 		return message_failed(msg, "Client already disconnected");
 
 	if (disconnect_req(server->conn, SAP_DISCONNECTION_TYPE_GRACEFUL) < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE	".Failed",
+		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 					"There is no active connection");
 
 	return dbus_message_new_method_return(msg);
