@@ -811,7 +811,7 @@ int main(int argc, char *argv[])
         if (detach) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
-        	        exit(1);
+			exit(1);
 		}
 	} else
 		log_option |= LOG_PERROR;
