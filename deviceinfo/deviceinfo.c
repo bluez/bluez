@@ -104,8 +104,8 @@ static void read_pnpid_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	device_set_pnpid(ch->d->dev,value[0],att_get_u16(&value[1]),
-				att_get_u16(&value[3]),	att_get_u16(&value[5]));
+	device_set_pnpid(ch->d->dev, value[0], att_get_u16(&value[1]),
+				att_get_u16(&value[3]), att_get_u16(&value[5]));
 }
 
 static void process_deviceinfo_char(struct characteristic *ch)
