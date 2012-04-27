@@ -654,7 +654,7 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 	}
 
 	printf("%c SCO Data: handle %d flags 0x%2.2x dlen %d\n",
-			in ? '>' : '<',	acl_handle(handle), flags, hdr->dlen);
+			in ? '>' : '<', acl_handle(handle), flags, hdr->dlen);
 
 	data += HCI_SCO_HDR_SIZE;
 	size -= HCI_SCO_HDR_SIZE;
