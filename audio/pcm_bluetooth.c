@@ -212,7 +212,7 @@ static void *playback_hw_thread(void *param)
 			char c = 'w';
 			int frags = periods - prev_periods, n;
 
-			data->hw_ptr += frags *	data->io.period_size;
+			data->hw_ptr += frags * data->io.period_size;
 			data->hw_ptr %= data->io.buffer_size;
 
 			for (n = 0; n < frags; n++) {
