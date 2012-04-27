@@ -3468,7 +3468,7 @@ static int add_gatt(sdp_session_t *session, svc_info_t *si)
 
 	ret = sdp_device_record_register(session, &interface, &record,
 							SDP_RECORD_PERSIST);
-	if (ret	< 0)
+	if (ret < 0)
 		printf("Service Record registration failed\n");
 	else
 		printf("Generic Attribute Profile Service registered\n");

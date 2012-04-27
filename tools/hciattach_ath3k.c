@@ -900,7 +900,7 @@ int ath3k_post(int fd, int pm)
 	}
 
 	/* send vendor specific command with Sleep feature Enabled */
-	if (hci_send_cmd(dd, OGF_VENDOR_CMD, HCI_SLEEP_CMD_OCF,	1, &pm) < 0)
+	if (hci_send_cmd(dd, OGF_VENDOR_CMD, HCI_SLEEP_CMD_OCF, 1, &pm) < 0)
 		perror("PM command failed, power management Disabled");
 
 	nanosleep(&tm, NULL);
