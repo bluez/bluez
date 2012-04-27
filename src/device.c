@@ -1005,7 +1005,7 @@ static void device_set_vendor_src(struct btd_device *device, uint16_t value)
 	device->vendor_src = value;
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-				"VendorSource",	DBUS_TYPE_UINT16, &value);
+				"VendorSource", DBUS_TYPE_UINT16, &value);
 }
 
 static void device_set_product(struct btd_device *device, uint16_t value)
