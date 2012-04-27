@@ -118,7 +118,7 @@ int csr_open_bcsp(char *device, speed_t bcsp_rate)
 	while (1) {
 		delay = ubcsp_poll(&activity);
 
-		if (activity & UBCSP_PACKET_RECEIVED)
+		if (activity & UBCSP_PACKET_SENT)
 			break;
 
 		if (delay) {
