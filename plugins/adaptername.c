@@ -52,7 +52,7 @@
 #define MACHINE_INFO_FILE "machine-info"
 
 static GIOChannel *inotify = NULL;
-static int watch_fd = -1;
+static int watch_d = -1;
 
 /* This file is part of systemd's hostnamed functionality:
  * http://0pointer.de/public/systemd-man/machine-info.html
@@ -292,8 +292,8 @@ static int adaptername_init(void)
 	mask |= IN_MOVED_FROM;
 	mask |= IN_MOVED_TO;
 
-	watch_fd = inotify_add_watch(inot_fd, MACHINE_INFO_DIR, mask);
-	if (watch_fd < 0) {
+	watch_d = inotify_add_watch(inot_fd, MACHINE_INFO_DIR, mask);
+	if (watch_d < 0) {
 		error("Failed to setup watch for '%s'", MACHINE_INFO_DIR);
 		close(inot_fd);
 		return 0;
@@ -310,8 +310,11 @@ static int adaptername_init(void)
 
 static void adaptername_exit(void)
 {
-	if (watch_fd >= 0)
-		close(watch_fd);
+	if (watch_d >= 0 && inotify != NULL) {
+		int inot_fd = g_io_channel_unix_get_fd(inotify);
+		inotify_rm_watch(inot_fd, watch_d);
+	}
+
 	if (inotify != NULL) {
 		g_io_channel_shutdown(inotify, FALSE, NULL);
 		g_io_channel_unref(inotify);
