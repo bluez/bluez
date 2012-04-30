@@ -154,11 +154,14 @@ skip_auth:
 
 	path = g_build_filename(folder, name, NULL);
 
-	manager_emit_transfer_started(os);
-
 	err = obex_put_stream_start(os, path);
 
 	g_free(path);
+
+	if (err < 0)
+		goto failed;
+
+	manager_emit_transfer_started(os);
 
 failed:
 	g_free(folder);
