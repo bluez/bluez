@@ -1464,9 +1464,11 @@ static int headset_set_channel(struct headset *headset,
 
 	if (svc == HANDSFREE_SVCLASS_ID) {
 		headset->hfp_handle = record->handle;
+		headset->hsp_handle = 0;
 		DBG("Discovered Handsfree service on channel %d", ch);
 	} else {
 		headset->hsp_handle = record->handle;
+		headset->hfp_handle = 0;
 		DBG("Discovered Headset service on channel %d", ch);
 	}
 
