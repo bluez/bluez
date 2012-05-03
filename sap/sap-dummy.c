@@ -340,6 +340,9 @@ int sap_init(void)
 
 void sap_exit(void)
 {
+	g_dbus_unregister_interface(connection, SAP_DUMMY_PATH,
+							SAP_DUMMY_IFACE);
+
 	dbus_connection_unref(connection);
 	connection = NULL;
 }
