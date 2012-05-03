@@ -32,6 +32,7 @@
 #include "log.h"
 
 #include "map.h"
+#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 
@@ -49,8 +50,9 @@ struct map_data {
 
 static DBusConnection *conn = NULL;
 
-static void simple_cb(struct obc_session *session, GError *err,
-							gpointer user_data)
+static void simple_cb(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	DBusMessage *reply;
 	struct map_data *map = user_data;
@@ -94,8 +96,9 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 	return NULL;
 }
 
-static void buffer_cb(struct obc_session *session, GError *err,
-							void *user_data)
+static void buffer_cb(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct map_data *map = user_data;
 	DBusMessage *reply;

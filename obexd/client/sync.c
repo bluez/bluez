@@ -34,6 +34,7 @@
 
 #include "log.h"
 
+#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "sync.h"
@@ -84,6 +85,7 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 }
 
 static void sync_getphonebook_callback(struct obc_session *session,
+					struct obc_transfer *transfer,
 					GError *err, void *user_data)
 {
 	struct sync_data *sync = user_data;

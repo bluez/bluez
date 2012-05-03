@@ -32,6 +32,7 @@
 
 #include "log.h"
 
+#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "ftp.h"
@@ -50,8 +51,8 @@ struct ftp_data {
 	struct obc_session *session;
 };
 
-static void async_cb(struct obc_session *session, GError *err,
-							gpointer user_data)
+static void async_cb(struct obc_session *session, struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	DBusMessage *reply, *msg = user_data;
 
@@ -172,8 +173,9 @@ static const GMarkupParser parser = {
 	NULL
 };
 
-static void get_file_callback(struct obc_session *session, GError *err,
-							void *user_data)
+static void get_file_callback(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	DBusMessage *msg = user_data;
 	DBusMessage *reply;
@@ -190,7 +192,8 @@ static void get_file_callback(struct obc_session *session, GError *err,
 }
 
 static void list_folder_callback(struct obc_session *session,
-					GError *err, void *user_data)
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	DBusMessage *msg = user_data;
 	GMarkupParseContext *ctxt;

@@ -36,6 +36,7 @@
 
 #include "log.h"
 
+#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "pbap.h"
@@ -271,8 +272,9 @@ static void pbap_reset_path(struct pbap_data *pbap)
 	obc_session_setpath(pbap->session, pbap->path, NULL, NULL, NULL);
 }
 
-static void pbap_setpath_cb(struct obc_session *session, GError *err,
-							gpointer user_data)
+static void pbap_setpath_cb(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct pending_request *request = user_data;
 	struct pbap_data *pbap = request->pbap;
@@ -339,7 +341,8 @@ static void read_return_apparam(struct obc_session *session,
 }
 
 static void pull_phonebook_callback(struct obc_session *session,
-					GError *err, void *user_data)
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct pending_request *request = user_data;
 	DBusMessage *reply;
@@ -377,7 +380,8 @@ send:
 }
 
 static void phonebook_size_callback(struct obc_session *session,
-					GError *err, void *user_data)
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct pending_request *request = user_data;
 	DBusMessage *reply;
@@ -405,7 +409,8 @@ send:
 }
 
 static void pull_vcard_listing_callback(struct obc_session *session,
-					GError *err, void *user_data)
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct pending_request *request = user_data;
 	GMarkupParseContext *ctxt;

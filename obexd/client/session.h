@@ -28,6 +28,7 @@
 struct obc_session;
 
 typedef void (*session_callback_t) (struct obc_session *session,
+					struct obc_transfer *transfer,
 					GError *err, void *user_data);
 
 struct obc_session *obc_session_create(const char *source,

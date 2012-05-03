@@ -35,6 +35,7 @@
 #include <gdbus.h>
 
 #include "log.h"
+#include "transfer.h"
 #include "session.h"
 #include "manager.h"
 #include "bluetooth.h"
@@ -78,8 +79,9 @@ static void unregister_session(void *data)
 	obc_session_unref(session);
 }
 
-static void create_callback(struct obc_session *session, GError *err,
-							void *user_data)
+static void create_callback(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
 	unsigned int i;
@@ -247,6 +249,7 @@ static DBusMessage *send_files(DBusConnection *connection,
 }
 
 static void pull_complete_callback(struct obc_session *session,
+					struct obc_transfer *transfer,
 					GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
@@ -271,7 +274,8 @@ done:
 }
 
 static void pull_obc_session_callback(struct obc_session *session,
-					GError *err, void *user_data)
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
 	DBusMessage *reply;
@@ -448,6 +452,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 }
 
 static void capabilities_complete_callback(struct obc_session *session,
+						struct obc_transfer *transfer,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
@@ -488,6 +493,7 @@ done:
 }
 
 static void capability_obc_session_callback(struct obc_session *session,
+						struct obc_transfer *transfer,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;

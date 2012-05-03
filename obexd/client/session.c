@@ -245,7 +245,7 @@ static void connect_cb(GObex *obex, GError *err, GObexPacket *rsp,
 				"OBEX Connect failed with 0x%02x", rsp_code);
 
 done:
-	callback->func(callback->session, gerr, callback->data);
+	callback->func(callback->session, NULL, gerr, callback->data);
 	if (gerr != NULL)
 		g_error_free(gerr);
 	obc_session_unref(callback->session);
@@ -303,7 +303,7 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 	return;
 done:
-	callback->func(callback->session, err, callback->data);
+	callback->func(callback->session, NULL, err, callback->data);
 	obc_session_unref(callback->session);
 	g_free(callback);
 }
@@ -373,7 +373,7 @@ static gboolean connection_complete(gpointer data)
 {
 	struct callback_data *cb = data;
 
-	cb->func(cb->session, 0, cb->data);
+	cb->func(cb->session, NULL, NULL, cb->data);
 
 	obc_session_unref(cb->session);
 
@@ -498,7 +498,8 @@ void obc_session_shutdown(struct obc_session *session)
 
 	if (session->p != NULL && session->p->id != 0) {
 		if (session->p->func)
-			session->p->func(session, err, session->p->data);
+			session->p->func(session, session->p->transfer, err,
+							session->p->data);
 
 		pending_request_free(session->p);
 		session->p = NULL;
@@ -506,7 +507,7 @@ void obc_session_shutdown(struct obc_session *session)
 
 	while ((p = g_queue_pop_head(session->queue))) {
 		if (p->func)
-			p->func(session, err, p->data);
+			p->func(session, p->transfer, err, p->data);
 
 		pending_request_free(p);
 	}
@@ -798,7 +799,7 @@ static void session_process_queue(struct obc_session *session)
 
 			g_set_error(&gerr, OBEX_IO_ERROR, err,
 							"Authorization failed");
-			p->func(session, gerr, p->data);
+			p->func(session, p->transfer, gerr, p->data);
 			g_error_free(gerr);
 		}
 
@@ -842,7 +843,7 @@ static void session_terminate_transfer(struct obc_session *session,
 	obc_session_ref(session);
 
 	if (p->func)
-		p->func(session, gerr, p->data);
+		p->func(session, p->transfer, gerr, p->data);
 
 	pending_request_free(p);
 
@@ -1171,14 +1172,15 @@ const void *obc_session_get_params(struct obc_session *session, size_t *size)
 	return obc_transfer_get_params(transfer, size);
 }
 
-static void setpath_complete(struct obc_session *session, GError *err,
-							void *user_data)
+static void setpath_complete(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
 {
 	struct pending_request *p = user_data;
 	struct setpath_data *data = p->data;
 
 	if (data->func)
-		data->func(session, err, data->user_data);
+		data->func(session, NULL, err, data->user_data);
 
 	g_strfreev(data->remaining);
 	g_free(data);
@@ -1202,7 +1204,7 @@ static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
 	p->req_id = 0;
 
 	if (err != NULL) {
-		setpath_complete(p->session, err, user_data);
+		setpath_complete(p->session, NULL, err, user_data);
 		return;
 	}
 
@@ -1211,14 +1213,14 @@ static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
 		GError *gerr = NULL;
 		g_set_error(&gerr, OBEX_IO_ERROR, code, "%s",
 							g_obex_strerror(code));
-		setpath_complete(p->session, err, user_data);
+		setpath_complete(p->session, NULL, err, user_data);
 		g_clear_error(&gerr);
 		return;
 	}
 
 	next = data->remaining[data->index];
 	if (next == NULL) {
-		setpath_complete(p->session, NULL, user_data);
+		setpath_complete(p->session, NULL, NULL, user_data);
 		return;
 	}
 
@@ -1226,7 +1228,7 @@ static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
 
 	p->req_id = g_obex_setpath(obex, next, setpath_cb, p, &err);
 	if (err != NULL) {
-		setpath_complete(p->session, err, data);
+		setpath_complete(p->session, NULL, err, data);
 		g_error_free(err);
 	}
 }
@@ -1291,7 +1293,7 @@ static void async_cb(GObex *obex, GError *err, GObexPacket *rsp,
 
 	if (err != NULL) {
 		if (p->func)
-			p->func(p->session, err, p->data);
+			p->func(p->session, NULL, err, p->data);
 		goto done;
 	}
 
@@ -1301,7 +1303,7 @@ static void async_cb(GObex *obex, GError *err, GObexPacket *rsp,
 							g_obex_strerror(code));
 
 	if (p->func)
-		p->func(p->session, gerr, p->data);
+		p->func(p->session, NULL, gerr, p->data);
 
 	if (gerr != NULL)
 		g_clear_error(&gerr);

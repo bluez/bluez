@@ -25,8 +25,11 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "log.h"
 
+#include "transfer.h"
 #include "session.h"
 #include "driver.h"
 #include "opp.h"
