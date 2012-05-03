@@ -497,12 +497,13 @@ void obc_session_shutdown(struct obc_session *session)
 						"Session closed by user");
 
 	if (session->p != NULL && session->p->id != 0) {
-		if (session->p->func)
-			session->p->func(session, session->p->transfer, err,
-							session->p->data);
-
-		pending_request_free(session->p);
+		p = session->p;
 		session->p = NULL;
+
+		if (p->func)
+			p->func(session, p->transfer, err, p->data);
+
+		pending_request_free(p);
 	}
 
 	while ((p = g_queue_pop_head(session->queue))) {
@@ -836,9 +837,8 @@ static void session_terminate_transfer(struct obc_session *session,
 
 		p = match->data;
 		g_queue_delete_link(session->queue, match);
-	}
-
-	p->id = 0;
+	} else
+		session->p = NULL;
 
 	obc_session_ref(session);
 
@@ -847,10 +847,8 @@ static void session_terminate_transfer(struct obc_session *session,
 
 	pending_request_free(p);
 
-	if (p == session->p) {
-		session->p = NULL;
+	if (session->p == NULL)
 		session_process_queue(session);
-	}
 
 	obc_session_unref(session);
 }
