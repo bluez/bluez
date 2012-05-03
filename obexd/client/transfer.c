@@ -610,7 +610,7 @@ static gboolean transfer_start_put(struct obc_transfer *transfer, GError **err)
 	return TRUE;
 }
 
-gboolean obc_transfer_start(struct obc_transfer *transfer, GObex *obex,
+gboolean obc_transfer_start(struct obc_transfer *transfer, void *obex,
 								GError **err)
 {
 	transfer->obex = g_obex_ref(obex);
