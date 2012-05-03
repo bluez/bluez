@@ -631,13 +631,15 @@ guint8 obc_transfer_get_operation(struct obc_transfer *transfer)
 	return transfer->op;
 }
 
-int obc_transfer_get_params(struct obc_transfer *transfer,
-					struct obc_transfer_params *params)
+const void *obc_transfer_get_params(struct obc_transfer *transfer, size_t *size)
 {
-	params->data = transfer->params->data;
-	params->size = transfer->params->size;
+	if (transfer->params == NULL)
+		return NULL;
 
-	return 0;
+	if (size != NULL)
+		*size = transfer->params->size;
+
+	return transfer->params->data;
 }
 
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,

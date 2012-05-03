@@ -294,7 +294,7 @@ static void pbap_setpath_cb(struct obc_session *session, GError *err,
 static void read_return_apparam(struct obc_session *session,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
-	struct apparam_hdr *hdr;
+	const struct apparam_hdr *hdr;
 	size_t size;
 
 	*phone_book_size = 0;

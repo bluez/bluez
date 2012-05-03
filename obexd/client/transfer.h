@@ -22,7 +22,7 @@
  */
 
 struct obc_transfer_params {
-	guint8 *data;
+	void *data;
 	size_t size;
 };
 
@@ -59,8 +59,8 @@ gboolean obc_transfer_start(struct obc_transfer *transfer, GObex *obex,
 								GError **err);
 guint8 obc_transfer_get_operation(struct obc_transfer *transfer);
 
-int obc_transfer_get_params(struct obc_transfer *transfer,
-					struct obc_transfer_params *params);
+const void *obc_transfer_get_params(struct obc_transfer *transfer,
+								size_t *size);
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 								size_t *size);
 
