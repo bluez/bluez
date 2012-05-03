@@ -1132,46 +1132,6 @@ const char *obc_session_get_target(struct obc_session *session)
 	return session->driver->target;
 }
 
-static struct obc_transfer *obc_session_get_transfer(
-						struct obc_session *session)
-{
-	if (session->p == NULL)
-		return NULL;
-
-	return session->p->transfer;
-}
-
-int obc_session_get_contents(struct obc_session *session, char **contents,
-								size_t *size)
-{
-	struct obc_transfer *transfer;
-
-	transfer = obc_session_get_transfer(session);
-	if (transfer == NULL) {
-		if (size != NULL)
-			*size = 0;
-
-		return -EINVAL;
-	}
-
-	return obc_transfer_get_contents(transfer, contents, size);
-}
-
-const void *obc_session_get_params(struct obc_session *session, size_t *size)
-{
-	struct obc_transfer *transfer;
-
-	transfer = obc_session_get_transfer(session);
-	if (transfer == NULL) {
-		if (size != NULL)
-			*size = 0;
-
-		return NULL;
-	}
-
-	return obc_transfer_get_params(transfer, size);
-}
-
 static void setpath_complete(struct obc_session *session,
 						struct obc_transfer *transfer,
 						GError *err, void *user_data)

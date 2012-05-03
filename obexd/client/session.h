@@ -53,9 +53,6 @@ const char *obc_session_get_agent(struct obc_session *session);
 
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
-int obc_session_get_contents(struct obc_session *session, char **contents,
-								size_t *size);
-const void *obc_session_get_params(struct obc_session *session, size_t *size);
 
 guint obc_session_send(struct obc_session *session, const char *filename,
 				const char *name, GError **err);
