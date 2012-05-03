@@ -204,7 +204,7 @@ static void list_folder_callback(struct obc_session *session,
 
 	reply = dbus_message_new_method_return(msg);
 
-	if (obc_session_get_contents(session, &contents, &size) < 0)
+	if (obc_transfer_get_contents(transfer, &contents, &size) < 0)
 		goto done;
 
 	dbus_message_iter_init_append(reply, &iter);

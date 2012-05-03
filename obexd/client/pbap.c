@@ -293,7 +293,7 @@ static void pbap_setpath_cb(struct obc_session *session,
 	pending_request_free(request);
 }
 
-static void read_return_apparam(struct obc_session *session,
+static void read_return_apparam(struct obc_transfer *transfer,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
 	const struct apparam_hdr *hdr;
@@ -302,7 +302,7 @@ static void read_return_apparam(struct obc_session *session,
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
 
-	hdr = obc_session_get_params(session, &size);
+	hdr = obc_transfer_get_params(transfer, &size);
 	if (hdr == NULL)
 		return;
 
@@ -357,7 +357,7 @@ static void pull_phonebook_callback(struct obc_session *session,
 		goto send;
 	}
 
-	perr = obc_session_get_contents(session, &contents, &size);
+	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		reply = g_dbus_create_error(request->msg,
 						"org.openobex.Error.Failed",
@@ -397,7 +397,7 @@ static void phonebook_size_callback(struct obc_session *session,
 
 	reply = dbus_message_new_method_return(request->msg);
 
-	read_return_apparam(session, &phone_book_size, &new_missed_calls);
+	read_return_apparam(transfer, &phone_book_size, &new_missed_calls);
 
 	dbus_message_append_args(reply,
 			DBUS_TYPE_UINT16, &phone_book_size,
@@ -427,7 +427,7 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 		goto send;
 	}
 
-	perr = obc_session_get_contents(session, &contents, &size);
+	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		reply = g_dbus_create_error(request->msg,
 						"org.openobex.Error.Failed",

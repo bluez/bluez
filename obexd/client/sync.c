@@ -101,7 +101,7 @@ static void sync_getphonebook_callback(struct obc_session *session,
 		goto send;
 	}
 
-	perr = obc_session_get_contents(session, &contents, &size);
+	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		reply = g_dbus_create_error(sync->msg,
 						"org.openobex.Error.Failed",
