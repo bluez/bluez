@@ -249,7 +249,6 @@ static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 					const char *filename,
 					const char *name,
 					const char *type,
-					struct obc_transfer_params *params,
 					GError **err)
 {
 	struct obc_transfer *transfer;
@@ -260,7 +259,6 @@ static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 	transfer->filename = g_strdup(filename);
 	transfer->name = g_strdup(name);
 	transfer->type = g_strdup(type);
-	transfer->params = params;
 
 	/* for OBEX specific mime types we don't need to register a transfer */
 	if (type != NULL &&
@@ -339,7 +337,7 @@ struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 	int perr;
 
 	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_GET, filename,
-						name, type, params, err);
+							name, type, err);
 	if (transfer == NULL)
 		return NULL;
 
@@ -348,6 +346,8 @@ struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 		obc_transfer_free(transfer);
 		return NULL;
 	}
+
+	transfer->params = params;
 
 	return transfer;
 }
@@ -367,7 +367,7 @@ struct obc_transfer *obc_transfer_put(DBusConnection *conn,
 	int perr;
 
 	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_PUT, filename,
-						name, type, params, err);
+							name, type, err);
 	if (transfer == NULL)
 		return NULL;
 
@@ -401,6 +401,7 @@ struct obc_transfer *obc_transfer_put(DBusConnection *conn,
 	}
 
 	transfer->size = st.st_size;
+	transfer->params = params;
 
 	return transfer;
 
