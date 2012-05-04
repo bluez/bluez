@@ -243,28 +243,34 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	g_free(transfer);
 }
 
-static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
-					const char *agent,
-					guint8 op,
-					const char *filename,
-					const char *name,
-					const char *type,
-					GError **err)
+static struct obc_transfer *obc_transfer_create(guint8 op,
+						const char *filename,
+						const char *name,
+						const char *type)
 {
 	struct obc_transfer *transfer;
 
 	transfer = g_new0(struct obc_transfer, 1);
 	transfer->op = op;
-	transfer->agent = g_strdup(agent);
 	transfer->filename = g_strdup(filename);
 	transfer->name = g_strdup(name);
 	transfer->type = g_strdup(type);
 
+	return transfer;
+}
+
+static gboolean obc_transfer_register(struct obc_transfer *transfer,
+						DBusConnection *conn,
+						const char *agent,
+						GError **err)
+{
 	/* for OBEX specific mime types we don't need to register a transfer */
-	if (type != NULL &&
-			(strncmp(type, "x-obex/", 7) == 0 ||
-			strncmp(type, "x-bt/", 5) == 0))
+	if (transfer->type != NULL &&
+			(strncmp(transfer->type, "x-obex/", 7) == 0 ||
+			strncmp(transfer->type, "x-bt/", 5) == 0))
 		goto done;
+
+	transfer->agent = g_strdup(agent);
 
 	transfer->path = g_strdup_printf("%s/transfer%ju",
 			TRANSFER_BASEPATH, counter++);
@@ -273,7 +279,7 @@ static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 	if (transfer->conn == NULL) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EFAULT,
 						"Unable to connect to D-Bus");
-		goto fail;
+		return FALSE;
 	}
 
 	if (g_dbus_register_interface(transfer->conn, transfer->path,
@@ -282,18 +288,13 @@ static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
 				transfer, NULL) == FALSE) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EFAULT,
 						"Unable to register to D-Bus");
-		goto fail;
+		return FALSE;
 	}
 
 done:
 	DBG("%p registered %s", transfer, transfer->path);
 
-	return transfer;
-
-fail:
-	obc_transfer_free(transfer);
-
-	return NULL;
+	return TRUE;
 }
 
 static gboolean transfer_open(struct obc_transfer *transfer, int flags,
@@ -336,10 +337,12 @@ struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 	struct obc_transfer *transfer;
 	int perr;
 
-	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_GET, filename,
-							name, type, err);
-	if (transfer == NULL)
+	transfer = obc_transfer_create(G_OBEX_OP_GET, filename, name, type);
+
+	if (!obc_transfer_register(transfer, conn, agent, err)) {
+		obc_transfer_free(transfer);
 		return NULL;
+	}
 
 	perr = transfer_open(transfer, O_WRONLY | O_CREAT | O_TRUNC, 0600, err);
 	if (perr < 0) {
@@ -366,10 +369,12 @@ struct obc_transfer *obc_transfer_put(DBusConnection *conn,
 	struct stat st;
 	int perr;
 
-	transfer = obc_transfer_register(conn, agent, G_OBEX_OP_PUT, filename,
-							name, type, err);
-	if (transfer == NULL)
+	transfer = obc_transfer_create(G_OBEX_OP_PUT, filename, name, type);
+
+	if (!obc_transfer_register(transfer, conn, agent, err)) {
+		obc_transfer_free(transfer);
 		return NULL;
+	}
 
 	if (contents != NULL) {
 		ssize_t w;
