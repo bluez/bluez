@@ -462,8 +462,10 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 {
 	struct pending_request *request;
 	struct pullphonebook_apparam apparam;
+	struct obc_transfer *transfer;
 	session_callback_t func;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	apparam.filter_tag = FILTER_TAG;
 	apparam.filter_len = FILTER_LEN;
@@ -492,19 +494,20 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 
 	request = pending_request_new(pbap, message);
 
-	obc_session_get(pbap->session, "x-bt/phonebook", name, NULL,
-				(guint8 *) &apparam, sizeof(apparam),
-				func, request, &err);
-	if (err != NULL) {
-		DBusMessage *reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
-		g_error_free(err);
-		pending_request_free(request);
-		return reply;
-	}
+	transfer = obc_transfer_get("x-bt/phonebook", name, NULL, &apparam,
+							sizeof(apparam), &err);
+	if (transfer == NULL)
+		goto fail;
 
-	return NULL;
+	if (obc_session_queue(pbap->session, transfer, func, request, &err))
+		return NULL;
+
+fail:
+	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+								err->message);
+	g_error_free(err);
+	pending_request_free(request);
+	return reply;
 }
 
 static guint8 *fill_apparam(guint8 *dest, void *buf, guint8 tag, guint8 len)
@@ -525,9 +528,11 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 					guint16 count, guint16 offset)
 {
 	struct pending_request *request;
+	struct obc_transfer *transfer;
 	guint8 *p, *apparam = NULL;
 	gint apparam_size;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	/* trunc the searchval string if it's length exceed the max value of guint8 */
 	if (strlen(searchval) > 254)
@@ -557,21 +562,22 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 
 	request = pending_request_new(pbap, message);
 
-	obc_session_get(pbap->session, "x-bt/vcard-listing", name, NULL,
-				apparam, apparam_size,
-				pull_vcard_listing_callback, request, &err);
+	transfer = obc_transfer_get("x-bt/vcard-listing", name, NULL,
+						apparam, apparam_size, &err);
 	g_free(apparam);
-	if (err != NULL) {
-		DBusMessage *reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
-		g_error_free(err);
-		pending_request_free(request);
-		return reply;
+	if (transfer == NULL)
+		goto fail;
 
-	}
+	if (obc_session_queue(pbap->session, transfer,
+				pull_vcard_listing_callback, request, &err))
+		return NULL;
 
-	return NULL;
+fail:
+	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+								err->message);
+	g_error_free(err);
+	pending_request_free(request);
+	return reply;
 }
 
 static int set_format(struct pbap_data *pbap, const char *formatstr)
@@ -760,7 +766,9 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 	struct pullvcardentry_apparam apparam;
 	const char *name;
 	struct pending_request *request;
+	struct obc_transfer *transfer;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
@@ -782,19 +790,21 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 
 	request = pending_request_new(pbap, message);
 
-	obc_session_get(pbap->session, "x-bt/vcard", name, NULL,
-				(guint8 *)&apparam, sizeof(apparam),
-				pull_phonebook_callback, request, &err);
-	if (err != NULL) {
-		DBusMessage *reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
-		g_error_free(err);
-		pending_request_free(request);
-		return reply;
-	}
+	transfer = obc_transfer_get("x-bt/vcard", name, NULL,
+					&apparam, sizeof(apparam), &err);
+	if (transfer == NULL)
+		goto fail;
 
-	return NULL;
+	if (obc_session_queue(pbap->session, transfer, pull_phonebook_callback,
+								request, &err))
+		return NULL;
+
+fail:
+	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+								err->message);
+	g_error_free(err);
+	pending_request_free(request);
+	return reply;
 }
 
 static DBusMessage *pbap_list(DBusConnection *connection,

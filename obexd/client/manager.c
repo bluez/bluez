@@ -113,13 +113,17 @@ static void create_callback(struct obc_session *session,
 	for (i = 0; i < data->files->len; i++) {
 		const gchar *filename = g_ptr_array_index(data->files, i);
 		gchar *basename = g_path_get_basename(filename);
+		struct obc_transfer *transfer;
 
-		if (obc_session_send(session, filename, basename, NULL) == 0) {
-			g_free(basename);
-			break;
-		}
+		transfer = obc_transfer_put(NULL, basename, filename, NULL, 0,
+								NULL, 0, NULL);
 
 		g_free(basename);
+		if (transfer == NULL)
+			break;
+
+		if (!obc_session_queue(session, transfer, NULL, NULL, NULL))
+			break;
 	}
 
 	/* No need to keep a reference for SendFiles */
@@ -278,6 +282,7 @@ static void pull_obc_session_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
+	struct obc_transfer *pull;
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
@@ -288,9 +293,11 @@ static void pull_obc_session_callback(struct obc_session *session,
 		goto fail;
 	}
 
-	obc_session_pull(session, "text/x-vcard", data->filename,
-					pull_complete_callback, data, &gerr);
-	if (gerr != NULL) {
+	pull = obc_transfer_get("text/x-vcard", NULL, data->filename, NULL, 0,
+									&gerr);
+
+	if (!obc_session_queue(session, pull, pull_complete_callback, data,
+								&gerr)) {
 		reply = g_dbus_create_error(data->message,
 						"org.openobex.Error.Failed",
 						"%s", gerr->message);
@@ -497,6 +504,7 @@ static void capability_obc_session_callback(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct send_data *data = user_data;
+	struct obc_transfer *pull;
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
@@ -507,9 +515,11 @@ static void capability_obc_session_callback(struct obc_session *session,
 		goto fail;
 	}
 
-	obc_session_pull(session, "x-obex/capability", NULL,
-				capabilities_complete_callback, data, &gerr);
-	if (gerr != NULL) {
+	pull = obc_transfer_get("x-obex/capability", NULL, data->filename,
+								NULL, 0, &gerr);
+
+	if (!obc_session_queue(session, pull, capabilities_complete_callback,
+								data, &gerr)) {
 		reply = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
 					"%s", gerr->message);

@@ -127,7 +127,9 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 			DBusMessage *message, void *user_data)
 {
 	struct sync_data *sync = user_data;
+	struct obc_transfer *transfer;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	if (sync->msg)
 		return g_dbus_create_error(message,
@@ -137,29 +139,33 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 	if (!sync->phonebook_path)
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
-	obc_session_get(sync->session, "phonebook", sync->phonebook_path,
-					NULL, NULL, 0,
-					sync_getphonebook_callback, sync,
-					&err);
-	if (err != 0) {
-		DBusMessage *reply = g_dbus_create_error(message,
-						ERROR_INF ".Failed",
-						err->message);
-		g_error_free(err);
-		return reply;
+	transfer = obc_transfer_get("phonebook", sync->phonebook_path,
+							NULL, NULL, 0, &err);
+	if (transfer == NULL)
+		goto fail;
+
+	if (obc_session_queue(sync->session, transfer,
+						sync_getphonebook_callback,
+						sync, &err)) {
+		sync->msg = dbus_message_ref(message);
+		return NULL;
 	}
 
-	sync->msg = dbus_message_ref(message);
-
-	return NULL;
+fail:
+	reply = g_dbus_create_error(message, ERROR_INF ".Failed", "%s",
+								err->message);
+	g_error_free(err);
+	return reply;
 }
 
 static DBusMessage *sync_putphonebook(DBusConnection *connection,
 			DBusMessage *message, void *user_data)
 {
 	struct sync_data *sync = user_data;
+	struct obc_transfer *transfer;
 	const char *buf;
 	GError *err = NULL;
+	DBusMessage *reply;
 
 	if (dbus_message_get_args(message, NULL,
 			DBUS_TYPE_STRING, &buf,
@@ -171,17 +177,19 @@ static DBusMessage *sync_putphonebook(DBusConnection *connection,
 	if (!sync->phonebook_path)
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
-	obc_session_put(sync->session, buf, strlen(buf), sync->phonebook_path,
-									&err);
-	if (err != NULL) {
-		DBusMessage *reply = g_dbus_create_error(message,
-						ERROR_INF ".Failed",
-						err->message);
-		g_error_free(err);
-		return reply;
-	}
+	transfer = obc_transfer_put(NULL, sync->phonebook_path, NULL, buf,
+						strlen(buf), NULL, 0, &err);
+	if (transfer == NULL)
+		goto fail;
 
-	return dbus_message_new_method_return(message);
+	if (obc_session_queue(sync->session, transfer, NULL, NULL, &err))
+		return dbus_message_new_method_return(message);
+
+fail:
+	reply = g_dbus_create_error(message, ERROR_INF ".Failed", "%s",
+								err->message);
+	g_error_free(err);
+	return reply;
 }
 
 static GDBusMethodTable sync_methods[] = {

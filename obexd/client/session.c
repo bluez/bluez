@@ -745,14 +745,21 @@ static int pending_request_auth(struct pending_request *p)
 									NULL);
 }
 
-static guint session_request(struct obc_session *session,
-					struct obc_transfer *transfer,
-					session_callback_t func,
-					void *data, GError **err)
+guint obc_session_queue(struct obc_session *session,
+				struct obc_transfer *transfer,
+				session_callback_t func, void *user_data,
+				GError **err)
 {
 	struct pending_request *p;
 	const char *agent;
 	int perr;
+
+	if (session->obex == NULL) {
+		obc_transfer_unregister(transfer);
+		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
+						"Session not connected");
+		return 0;
+	}
 
 	if (session->agent)
 		agent = obc_agent_get_name(session->agent);
@@ -767,7 +774,7 @@ static guint session_request(struct obc_session *session,
 	obc_transfer_set_callback(transfer, transfer_progress, session);
 
 	p = pending_request_new(session, transfer, session_start_transfer,
-								func, data);
+							func, user_data);
 	if (session->p) {
 		g_queue_push_tail(session->queue, p);
 		return p->id;
@@ -956,56 +963,6 @@ static void session_start_transfer(gpointer data, gpointer user_data)
 	DBG("Transfer(%p) started", transfer);
 }
 
-guint obc_session_get(struct obc_session *session, const char *type,
-				const char *name, const char *targetfile,
-				const guint8 *apparam, gint apparam_size,
-				session_callback_t func, void *user_data,
-				GError **err)
-{
-	struct obc_transfer *transfer;
-
-	if (session->obex == NULL) {
-		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
-						"Session not connected");
-		return 0;
-	}
-
-	transfer = obc_transfer_get(type, name, targetfile, apparam,
-							apparam_size, err);
-	if (transfer == NULL)
-		return 0;
-
-	return session_request(session, transfer, func, user_data, err);
-}
-
-guint obc_session_send(struct obc_session *session, const char *filename,
-				const char *name, GError **err)
-{
-	struct obc_transfer *transfer;
-
-	if (session->obex == NULL) {
-		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
-						"Session not connected");
-		return 0;
-	}
-
-	transfer = obc_transfer_put(NULL, name, filename, NULL, 0, NULL, 0,
-									err);
-	if (transfer == NULL)
-		return 0;
-
-	return session_request(session, transfer, NULL, NULL, err);
-}
-
-guint obc_session_pull(struct obc_session *session,
-				const char *type, const char *targetfile,
-				session_callback_t function, void *user_data,
-				GError **err)
-{
-	return obc_session_get(session, type, NULL, targetfile, NULL, 0,
-						function, user_data, err);
-}
-
 const char *obc_session_register(struct obc_session *session,
 						GDBusDestroyFunction destroy)
 {
@@ -1034,25 +991,6 @@ fail:
 	g_free(session->path);
 	session->path = NULL;
 	return NULL;
-}
-
-guint obc_session_put(struct obc_session *session, const char *contents,
-				size_t size, const char *name, GError **err)
-{
-	struct obc_transfer *transfer;
-
-	if (session->obex == NULL) {
-		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
-						"Session not connected");
-		return 0;
-	}
-
-	transfer = obc_transfer_put(NULL, name, NULL, contents, size, NULL, 0,
-									err);
-	if (transfer == NULL)
-		return 0;
-
-	return session_request(session, transfer, NULL, NULL, err);
 }
 
 static void agent_destroy(gpointer data, gpointer user_data)
