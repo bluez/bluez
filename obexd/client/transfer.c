@@ -259,7 +259,7 @@ static struct obc_transfer *obc_transfer_create(guint8 op,
 	return transfer;
 }
 
-static gboolean obc_transfer_register(struct obc_transfer *transfer,
+gboolean obc_transfer_register(struct obc_transfer *transfer,
 						DBusConnection *conn,
 						const char *agent,
 						GError **err)
@@ -326,9 +326,7 @@ done:
 	return TRUE;
 }
 
-struct obc_transfer *obc_transfer_get(DBusConnection *conn,
-					const char *agent,
-					const char *filename,
+struct obc_transfer *obc_transfer_get(const char *filename,
 					const char *name,
 					const char *type,
 					struct obc_transfer_params *params,
@@ -338,11 +336,6 @@ struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 	int perr;
 
 	transfer = obc_transfer_create(G_OBEX_OP_GET, filename, name, type);
-
-	if (!obc_transfer_register(transfer, conn, agent, err)) {
-		obc_transfer_free(transfer);
-		return NULL;
-	}
 
 	perr = transfer_open(transfer, O_WRONLY | O_CREAT | O_TRUNC, 0600, err);
 	if (perr < 0) {
@@ -355,9 +348,7 @@ struct obc_transfer *obc_transfer_get(DBusConnection *conn,
 	return transfer;
 }
 
-struct obc_transfer *obc_transfer_put(DBusConnection *conn,
-					const char *agent,
-					const char *filename,
+struct obc_transfer *obc_transfer_put(const char *filename,
 					const char *name,
 					const char *type,
 					const char *contents,
@@ -370,11 +361,6 @@ struct obc_transfer *obc_transfer_put(DBusConnection *conn,
 	int perr;
 
 	transfer = obc_transfer_create(G_OBEX_OP_PUT, filename, name, type);
-
-	if (!obc_transfer_register(transfer, conn, agent, err)) {
-		obc_transfer_free(transfer);
-		return NULL;
-	}
 
 	if (contents != NULL) {
 		ssize_t w;
