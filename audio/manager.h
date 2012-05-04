@@ -46,6 +46,12 @@ struct audio_device *manager_find_device(const char *path,
 					const char *interface,
 					gboolean connected);
 
+GSList *manager_find_devices(const char *path,
+					const bdaddr_t *src,
+					const bdaddr_t *dst,
+					const char *interface,
+					gboolean connected);
+
 struct audio_device *manager_get_device(const bdaddr_t *src,
 					const bdaddr_t *dst,
 					gboolean create);
