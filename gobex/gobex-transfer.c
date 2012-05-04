@@ -624,9 +624,11 @@ guint g_obex_get_rsp(GObex *obex, GObexDataProducer data_func,
 							user_data, err);
 }
 
-gboolean g_obex_cancel_transfer(guint id)
+gboolean g_obex_cancel_transfer(guint id, GObexFunc complete_func,
+			gpointer user_data)
 {
 	struct transfer *transfer = NULL;
+	gboolean ret = TRUE;
 
 	g_obex_debug(G_OBEX_DEBUG_TRANSFER, "transfer %u", id);
 
@@ -635,6 +637,17 @@ gboolean g_obex_cancel_transfer(guint id)
 	if (transfer == NULL)
 		return FALSE;
 
+	if (complete_func == NULL)
+		goto done;
+
+	transfer->complete_func = complete_func;
+	transfer->user_data = user_data;
+
+	ret = g_obex_pending_req_abort(transfer->obex, NULL);
+	if (ret)
+		return TRUE;
+
+done:
 	transfer_free(transfer);
-	return TRUE;
+	return ret;
 }

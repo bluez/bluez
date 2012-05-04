@@ -684,7 +684,7 @@ static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
 	return (p->id - id);
 }
 
-static gboolean pending_req_abort(GObex *obex, GError **err)
+gboolean g_obex_pending_req_abort(GObex *obex, GError **err)
 {
 	struct pending_pkt *p = obex->pending_req;
 	GObexPacket *req;
@@ -728,7 +728,7 @@ gboolean g_obex_cancel_req(GObex *obex, guint req_id, gboolean remove_callback)
 	struct pending_pkt *p;
 
 	if (obex->pending_req && obex->pending_req->id == req_id) {
-		if (!pending_req_abort(obex, NULL)) {
+		if (!g_obex_pending_req_abort(obex, NULL)) {
 			p = obex->pending_req;
 			obex->pending_req = NULL;
 			goto immediate_completion;
