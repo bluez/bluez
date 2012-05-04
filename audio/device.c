@@ -701,7 +701,7 @@ gboolean audio_device_is_active(struct audio_device *dev,
 				control_is_active(dev))
 		return TRUE;
 	else if (!strcmp(interface, AUDIO_GATEWAY_INTERFACE) && dev->gateway &&
-				gateway_is_connected(dev))
+				gateway_is_active(dev))
 		return TRUE;
 
 	return FALSE;
