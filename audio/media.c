@@ -688,30 +688,44 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 
 static gboolean endpoint_init_ag(struct media_endpoint *endpoint, int *err)
 {
-	struct audio_device *dev;
+	GSList *list;
+	GSList *l;
 
 	endpoint->hs_watch = headset_add_state_cb(headset_state_changed,
 								endpoint);
-	dev = manager_find_device(NULL, &endpoint->adapter->src, BDADDR_ANY,
+	list = manager_find_devices(NULL, &endpoint->adapter->src, BDADDR_ANY,
 						AUDIO_HEADSET_INTERFACE, TRUE);
-	if (dev)
+
+	for (l = list; l != NULL; l = l->next) {
+		struct audio_device *dev = l->data;
+
 		set_configuration(endpoint, dev, NULL, 0,
 						headset_setconf_cb, dev, NULL);
+	}
+
+	g_slist_free(list);
 
 	return TRUE;
 }
 
 static gboolean endpoint_init_hs(struct media_endpoint *endpoint, int *err)
 {
-	struct audio_device *dev;
+	GSList *list;
+	GSList *l;
 
 	endpoint->ag_watch = gateway_add_state_cb(gateway_state_changed,
 								endpoint);
-	dev = manager_find_device(NULL, &endpoint->adapter->src, BDADDR_ANY,
+	list = manager_find_devices(NULL, &endpoint->adapter->src, BDADDR_ANY,
 						AUDIO_GATEWAY_INTERFACE, TRUE);
-	if (dev)
+
+	for (l = list; l != NULL; l = l->next) {
+		struct audio_device *dev = l->data;
+
 		set_configuration(endpoint, dev, NULL, 0,
 						gateway_setconf_cb, dev, NULL);
+	}
+
+	g_slist_free(list);
 
 	return TRUE;
 }
