@@ -456,12 +456,8 @@ static gboolean cancel_transfer(gpointer user_data)
 {
 	struct test_data *d = user_data;
 
-	if (d->id > 0) {
-		g_obex_cancel_transfer(d->id);
-		d->id = 0;
-		g_idle_add(cancel_transfer, user_data);
-	} else
-		g_main_loop_quit(d->mainloop);
+	if (d->id > 0)
+		g_obex_cancel_transfer(d->id, transfer_complete, user_data);
 
 	return FALSE;
 }
@@ -509,7 +505,7 @@ static void test_stream_put_req_abort(void)
 	g_source_remove(io_id);
 	g_obex_unref(obex);
 
-	g_assert_no_error(d.err);
+	g_assert_error(d.err, G_OBEX_ERROR, G_OBEX_ERROR_CANCELLED);
 }
 
 static void test_stream_put_rsp_abort(void)
