@@ -339,9 +339,9 @@ done:
 	return TRUE;
 }
 
-struct obc_transfer *obc_transfer_get(const char *filename,
+struct obc_transfer *obc_transfer_get(const char *type,
 					const char *name,
-					const char *type,
+					const char *filename,
 					const void *params, size_t psize,
 					GError **err)
 {
@@ -360,9 +360,9 @@ struct obc_transfer *obc_transfer_get(const char *filename,
 	return transfer;
 }
 
-struct obc_transfer *obc_transfer_put(const char *filename,
+struct obc_transfer *obc_transfer_put(const char *type,
 					const char *name,
-					const char *type,
+					const char *filename,
 					const void *contents, size_t csize,
 					const void *params, size_t psize,
 					GError **err)

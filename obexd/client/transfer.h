@@ -27,14 +27,14 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 					gint64 transferred, GError *err,
 					void *user_data);
 
-struct obc_transfer *obc_transfer_get(const char *filename,
+struct obc_transfer *obc_transfer_get(const char *type,
 					const char *name,
-					const char *type,
+					const char *filename,
 					const void *params, size_t psize,
 					GError **err);
-struct obc_transfer *obc_transfer_put(const char *filename,
+struct obc_transfer *obc_transfer_put(const char *type,
 					const char *name,
-					const char *type,
+					const char *filename,
 					const void *contents, size_t csize,
 					const void *params, size_t psize,
 					GError **err);

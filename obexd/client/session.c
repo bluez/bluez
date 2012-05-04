@@ -970,7 +970,7 @@ guint obc_session_get(struct obc_session *session, const char *type,
 		return 0;
 	}
 
-	transfer = obc_transfer_get(targetfile, name, type, apparam,
+	transfer = obc_transfer_get(type, name, targetfile, apparam,
 							apparam_size, err);
 	if (transfer == NULL)
 		return 0;
@@ -989,7 +989,7 @@ guint obc_session_send(struct obc_session *session, const char *filename,
 		return 0;
 	}
 
-	transfer = obc_transfer_put(filename, name, NULL, NULL, 0, NULL, 0,
+	transfer = obc_transfer_put(NULL, name, filename, NULL, 0, NULL, 0,
 									err);
 	if (transfer == NULL)
 		return 0;
