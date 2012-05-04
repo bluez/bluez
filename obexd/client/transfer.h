@@ -21,11 +21,6 @@
  *
  */
 
-struct obc_transfer_params {
-	void *data;
-	size_t size;
-};
-
 struct obc_transfer;
 
 typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
@@ -35,14 +30,13 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 struct obc_transfer *obc_transfer_get(const char *filename,
 					const char *name,
 					const char *type,
-					struct obc_transfer_params *params,
+					const void *params, size_t psize,
 					GError **err);
 struct obc_transfer *obc_transfer_put(const char *filename,
 					const char *name,
 					const char *type,
-					const char *contents,
-					size_t size,
-					struct obc_transfer_params *params,
+					const void *contents, size_t csize,
+					const void *params, size_t psize,
 					GError **err);
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,

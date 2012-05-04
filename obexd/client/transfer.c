@@ -53,6 +53,11 @@ struct transfer_callback {
 	void *data;
 };
 
+struct obc_transfer_params {
+	void *data;
+	size_t size;
+};
+
 struct obc_transfer {
 	GObex *obex;
 	guint8 op;
@@ -246,7 +251,9 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 static struct obc_transfer *obc_transfer_create(guint8 op,
 						const char *filename,
 						const char *name,
-						const char *type)
+						const char *type,
+						const void *params,
+						size_t psize)
 {
 	struct obc_transfer *transfer;
 
@@ -255,6 +262,12 @@ static struct obc_transfer *obc_transfer_create(guint8 op,
 	transfer->filename = g_strdup(filename);
 	transfer->name = g_strdup(name);
 	transfer->type = g_strdup(type);
+
+	if (params != NULL) {
+		transfer->params = g_new0(struct obc_transfer_params, 1);
+		transfer->params->data = g_memdup(params, psize);
+		transfer->params->size = psize;
+	}
 
 	return transfer;
 }
@@ -329,13 +342,14 @@ done:
 struct obc_transfer *obc_transfer_get(const char *filename,
 					const char *name,
 					const char *type,
-					struct obc_transfer_params *params,
+					const void *params, size_t psize,
 					GError **err)
 {
 	struct obc_transfer *transfer;
 	int perr;
 
-	transfer = obc_transfer_create(G_OBEX_OP_GET, filename, name, type);
+	transfer = obc_transfer_create(G_OBEX_OP_GET, filename, name, type,
+								params, psize);
 
 	perr = transfer_open(transfer, O_WRONLY | O_CREAT | O_TRUNC, 0600, err);
 	if (perr < 0) {
@@ -343,24 +357,22 @@ struct obc_transfer *obc_transfer_get(const char *filename,
 		return NULL;
 	}
 
-	transfer->params = params;
-
 	return transfer;
 }
 
 struct obc_transfer *obc_transfer_put(const char *filename,
 					const char *name,
 					const char *type,
-					const char *contents,
-					size_t size,
-					struct obc_transfer_params *params,
+					const void *contents, size_t csize,
+					const void *params, size_t psize,
 					GError **err)
 {
 	struct obc_transfer *transfer;
 	struct stat st;
 	int perr;
 
-	transfer = obc_transfer_create(G_OBEX_OP_PUT, filename, name, type);
+	transfer = obc_transfer_create(G_OBEX_OP_PUT, filename, name, type,
+								params, psize);
 
 	if (contents != NULL) {
 		ssize_t w;
@@ -368,12 +380,12 @@ struct obc_transfer *obc_transfer_put(const char *filename,
 		if (!transfer_open(transfer, O_RDWR, 0, err))
 			goto fail;
 
-		w = write(transfer->fd, contents, size);
+		w = write(transfer->fd, contents, csize);
 		if (w < 0) {
 			error("write(): %s(%d)", strerror(errno), errno);
 			perr = -errno;
 			goto fail;
-		} else if ((size_t) w != size) {
+		} else if ((size_t) w != csize) {
 			error("Unable to write all contents to file");
 			perr = -EFAULT;
 			goto fail;
@@ -392,7 +404,6 @@ struct obc_transfer *obc_transfer_put(const char *filename,
 	}
 
 	transfer->size = st.st_size;
-	transfer->params = params;
 
 	return transfer;
 

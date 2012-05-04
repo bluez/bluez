@@ -963,7 +963,6 @@ guint obc_session_get(struct obc_session *session, const char *type,
 				GError **err)
 {
 	struct obc_transfer *transfer;
-	struct obc_transfer_params *params = NULL;
 
 	if (session->obex == NULL) {
 		g_set_error(err, OBEX_IO_ERROR, -ENOTCONN,
@@ -971,21 +970,10 @@ guint obc_session_get(struct obc_session *session, const char *type,
 		return 0;
 	}
 
-	if (apparam != NULL) {
-		params = g_new0(struct obc_transfer_params, 1);
-		params->data = g_new(guint8, apparam_size);
-		memcpy(params->data, apparam, apparam_size);
-		params->size = apparam_size;
-	}
-
-	transfer = obc_transfer_get(targetfile, name, type, params, err);
-	if (transfer == NULL) {
-		if (params != NULL) {
-			g_free(params->data);
-			g_free(params);
-		}
+	transfer = obc_transfer_get(targetfile, name, type, apparam,
+							apparam_size, err);
+	if (transfer == NULL)
 		return 0;
-	}
 
 	return session_request(session, transfer, func, user_data, err);
 }
@@ -1001,7 +989,8 @@ guint obc_session_send(struct obc_session *session, const char *filename,
 		return 0;
 	}
 
-	transfer = obc_transfer_put(filename, name, NULL, NULL, 0, NULL, err);
+	transfer = obc_transfer_put(filename, name, NULL, NULL, 0, NULL, 0,
+									err);
 	if (transfer == NULL)
 		return 0;
 
@@ -1058,7 +1047,7 @@ guint obc_session_put(struct obc_session *session, const char *contents,
 		return 0;
 	}
 
-	transfer = obc_transfer_put(NULL, name, NULL, contents, size, NULL,
+	transfer = obc_transfer_put(NULL, name, NULL, contents, size, NULL, 0,
 									err);
 	if (transfer == NULL)
 		return 0;
