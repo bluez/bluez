@@ -21,8 +21,9 @@
  *
  */
 
-int interactive(const gchar *src, const gchar *dst, gboolean le);
+int interactive(const gchar *src, const gchar *dst, const gchar *dst_type,
+		gboolean le);
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
-			const gchar *sec_level, int psm, int mtu,
-			BtIOConnect connect_cb);
+			const gchar *dst_type, const gchar *sec_level,
+			int psm, int mtu, BtIOConnect connect_cb);
 size_t gatt_attr_data_from_string(const char *str, uint8_t **data);

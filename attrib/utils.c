@@ -41,11 +41,12 @@
 #define ATT_MIN_MTU_L2CAP	48
 
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
-				const gchar *sec_level, int psm, int mtu,
-				BtIOConnect connect_cb)
+				const gchar *dst_type, const gchar *sec_level,
+				int psm, int mtu, BtIOConnect connect_cb)
 {
 	GIOChannel *chan;
 	bdaddr_t sba, dba;
+	uint8_t dest_type;
 	GError *err = NULL;
 	BtIOSecLevel sec;
 	int minimum_mtu;
@@ -74,6 +75,12 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 	} else
 		bacpy(&sba, BDADDR_ANY);
 
+	/* Not used for BR/EDR */
+	if (strcmp(dst_type, "random") == 0)
+		dest_type = BDADDR_LE_RANDOM;
+	else
+		dest_type = BDADDR_LE_PUBLIC;
+
 	if (strcmp(sec_level, "medium") == 0)
 		sec = BT_IO_SEC_MEDIUM;
 	else if (strcmp(sec_level, "high") == 0)
@@ -85,6 +92,7 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
+				BT_IO_OPT_DEST_TYPE, dest_type,
 				BT_IO_OPT_CID, ATT_CID,
 				BT_IO_OPT_OMTU, mtu,
 				BT_IO_OPT_SEC_LEVEL, sec,

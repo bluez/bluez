@@ -44,6 +44,7 @@
 
 static gchar *opt_src = NULL;
 static gchar *opt_dst = NULL;
+static gchar *opt_dst_type = NULL;
 static gchar *opt_value = NULL;
 static gchar *opt_sec_level = NULL;
 static bt_uuid_t *opt_uuid = NULL;
@@ -523,6 +524,8 @@ static GOptionEntry options[] = {
 		"Specify local adapter interface", "hciX" },
 	{ "device", 'b', 0, G_OPTION_ARG_STRING, &opt_dst,
 		"Specify remote Bluetooth address", "MAC" },
+	{ "addr-type", 't', 0, G_OPTION_ARG_STRING, &opt_dst_type,
+		"Set LE address type. Default: public", "[public | random]"},
 	{ "mtu", 'm', 0, G_OPTION_ARG_INT, &opt_mtu,
 		"Specify the MTU size", "MTU" },
 	{ "psm", 'p', 0, G_OPTION_ARG_INT, &opt_psm,
@@ -539,6 +542,7 @@ int main(int argc, char *argv[])
 	GError *gerr = NULL;
 	GIOChannel *chan;
 
+	opt_dst_type = g_strdup("public");
 	opt_sec_level = g_strdup("low");
 
 	context = g_option_context_new(NULL);
@@ -573,7 +577,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (opt_interactive) {
-		interactive(opt_src, opt_dst, opt_psm);
+		interactive(opt_src, opt_dst, opt_dst_type, opt_psm);
 		goto done;
 	}
 
@@ -597,7 +601,7 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
-	chan = gatt_connect(opt_src, opt_dst, opt_sec_level,
+	chan = gatt_connect(opt_src, opt_dst, opt_dst_type, opt_sec_level,
 					opt_psm, opt_mtu, connect_cb);
 	if (chan == NULL) {
 		got_error = TRUE;
