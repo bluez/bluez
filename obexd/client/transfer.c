@@ -152,19 +152,20 @@ static void abort_complete(GObex *obex, GError *err, gpointer user_data)
 	dbus_message_unref(transfer->msg);
 	transfer->msg = NULL;
 
-	if (callback) {
-		if (err) {
-			callback->func(transfer, transfer->transferred, err,
-							callback->data);
-		} else {
-			GError *abort_err;
+	if (callback == NULL)
+		return;
 
-			abort_err = g_error_new(OBC_TRANSFER_ERROR, -ECANCELED, "%s",
+	if (err) {
+		callback->func(transfer, transfer->transferred, err,
+							callback->data);
+	} else {
+		GError *abort_err;
+
+		abort_err = g_error_new(OBC_TRANSFER_ERROR, -ECANCELED, "%s",
 						"Transfer cancelled by user");
-			callback->func(transfer, transfer->transferred, abort_err,
-								callback->data);
-			g_error_free(abort_err);
-		}
+		callback->func(transfer, transfer->transferred, abort_err,
+							callback->data);
+		g_error_free(abort_err);
 	}
 }
 
@@ -243,13 +244,13 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 }
 
 static struct obc_transfer *obc_transfer_register(DBusConnection *conn,
-						const char *agent,
-						guint8 op,
-						const char *filename,
-						const char *name,
-						const char *type,
-						struct obc_transfer_params *params,
-						GError **err)
+					const char *agent,
+					guint8 op,
+					const char *filename,
+					const char *name,
+					const char *type,
+					struct obc_transfer_params *params,
+					GError **err)
 {
 	struct obc_transfer *transfer;
 
