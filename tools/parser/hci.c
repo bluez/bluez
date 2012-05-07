@@ -2602,7 +2602,7 @@ static inline void read_local_amp_assoc_dump(int level, struct frame *frm)
 	int i;
 
 	p_indent(level, frm);
-	printf("status 0x%2.2x handle 0x%2.2x length %d\n",
+	printf("status 0x%2.2x handle 0x%2.2x remaining len %d\n",
 			rp->status, rp->handle, len);
 	if (rp->status > 0) {
 		p_indent(level, frm);
