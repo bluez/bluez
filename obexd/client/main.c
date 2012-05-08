@@ -69,6 +69,9 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 
 		__terminated = 1;
 		break;
+	case SIGUSR2:
+		__obex_log_enable_debug();
+		break;
 	case SIGPIPE:
 		/* ignore */
 		break;
@@ -87,6 +90,7 @@ static guint setup_signalfd(void)
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGUSR2);
 	sigaddset(&mask, SIGPIPE);
 
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
