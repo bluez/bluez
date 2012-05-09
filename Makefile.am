@@ -348,7 +348,7 @@ audio_libasound_module_ctl_bluetooth_la_SOURCES = audio/ctl_bluetooth.c \
 audio_libasound_module_ctl_bluetooth_la_LDFLAGS = -module -avoid-version #-export-symbols-regex [_]*snd_ctl_.*
 audio_libasound_module_ctl_bluetooth_la_LIBADD = \
 					lib/libbluetooth-private.la @ALSA_LIBS@
-audio_libasound_module_ctl_bluetooth_la_CFLAGS = $(AM_CLAGS) @ALSA_CFLAGS@
+audio_libasound_module_ctl_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
 
 if DATAFILES
 alsaconfdir = $(datadir)/alsa
