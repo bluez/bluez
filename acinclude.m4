@@ -11,19 +11,19 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 ])
 
 AC_DEFUN([COMPILER_FLAGS], [
-	if (test "${CFLAGS}" = ""); then
-		CFLAGS="-Wall -O2"
-	fi
+	with_cflags=""
 	if (test "$USE_MAINTAINER_MODE" = "yes"); then
-		CFLAGS="$CFLAGS -Werror -Wextra"
-		CFLAGS="$CFLAGS -Wno-unused-parameter"
-		CFLAGS="$CFLAGS -Wno-missing-field-initializers"
-		CFLAGS="$CFLAGS -Wdeclaration-after-statement"
-		CFLAGS="$CFLAGS -Wmissing-declarations"
-		CFLAGS="$CFLAGS -Wredundant-decls"
-		CFLAGS="$CFLAGS -Wcast-align"
-		CFLAGS="$CFLAGS -DG_DISABLE_DEPRECATED"
+		with_cflags="$with_cflags -Wall -Werror -Wextra"
+		with_cflags="$with_cflags -Wno-unused-parameter"
+		with_cflags="$with_cflags -Wno-missing-field-initializers"
+		with_cflags="$with_cflags -Wdeclaration-after-statement"
+		with_cflags="$with_cflags -Wmissing-declarations"
+		with_cflags="$with_cflags -Wredundant-decls"
+		with_cflags="$with_cflags -Wcast-align"
+		with_cflags="$with_cflags -DG_DISABLE_DEPRECATED"
 	fi
+
+	AC_SUBST([WARNING_CFLAGS], $with_cflags)
 ])
 
 AC_DEFUN([AC_FUNC_PPOLL], [
@@ -339,22 +339,28 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		gatt_enable=${enableval}
 	])
 
+	misc_cflags=""
+	misc_ldflags=""
+
 	if (test "${fortify_enable}" = "yes"); then
-		CFLAGS="$CFLAGS -D_FORTIFY_SOURCE=2"
+		misc_cflags="$misc_cflags -D_FORTIFY_SOURCE=2"
 	fi
 
 	if (test "${pie_enable}" = "yes" && test "${ac_cv_prog_cc_pie}" = "yes"); then
-		CFLAGS="$CFLAGS -fPIC"
-		LDFLAGS="$LDFLAGS -pie"
+		misc_cflags="$misc_cflags -fPIC"
+		misc_ldflags="$misc_ldflags -pie"
 	fi
 
 	if (test "${debug_enable}" = "yes" && test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g"
+		misc_cflags="$misc_cflags -g"
 	fi
 
 	if (test "${optimization_enable}" = "no"); then
-		CFLAGS="$CFLAGS -O0"
+		misc_cflags="$misc_cflags -O0"
 	fi
+
+	AC_SUBST([MISC_CFLAGS], $misc_cflags)
+	AC_SUBST([MISC_LDLAGS], $misc_ldlags)
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
