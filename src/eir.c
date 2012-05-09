@@ -114,11 +114,9 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 		len += field_len + 1;
 
-		/* Bail out if got incorrect length */
-		if (len > eir_len) {
-			eir_data_free(eir);
-			return -EINVAL;
-		}
+		/* Do not continue EIR Data parsing if got incorrect length */
+		if (len > eir_len)
+			break;
 
 		data_len = field_len - 1;
 
