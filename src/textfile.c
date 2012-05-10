@@ -220,8 +220,8 @@ static int write_key(const char *pathname, const char *key, const char *value, i
 	len = strlen(key);
 	off = find_key(map, size, key, len, icase);
 	if (!off) {
+		munmap(map, size);
 		if (value) {
-			munmap(map, size);
 			lseek(fd, size, SEEK_SET);
 			err = write_key_value(fd, key, value);
 		}
