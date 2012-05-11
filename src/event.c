@@ -318,7 +318,6 @@ void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
 void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	struct btd_adapter *adapter;
-	char srcaddr[18];
 	struct btd_device *device;
 	struct remote_dev_info *dev_info;
 
@@ -338,8 +337,6 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
-
-	ba2str(local, srcaddr);
 
 	dev_info = adapter_search_found_devices(adapter, peer);
 	if (dev_info) {
