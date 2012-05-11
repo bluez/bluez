@@ -92,7 +92,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
-
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
