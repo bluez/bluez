@@ -531,7 +531,7 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 {
 	struct pending_request *request;
 	struct obc_transfer *transfer;
-	guint8 *p, *apparam = NULL;
+	guint8 *p, apparam[272];
 	gint apparam_size;
 	GError *err = NULL;
 	DBusMessage *reply;
@@ -549,7 +549,6 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 			(APPARAM_HDR_SIZE + SEARCHATTRIB_LEN) +
 			(APPARAM_HDR_SIZE + MAXLISTCOUNT_LEN) +
 			(APPARAM_HDR_SIZE + LISTSTARTOFFSET_LEN);
-	apparam = g_malloc0(apparam_size);
 
 	p = apparam;
 
@@ -566,7 +565,6 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 	request = pending_request_new(pbap, message);
 
 	obc_transfer_set_params(transfer, apparam, apparam_size);
-	g_free(apparam);
 
 	if (obc_session_queue(pbap->session, transfer,
 				pull_vcard_listing_callback, request, &err))
