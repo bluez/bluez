@@ -2324,48 +2324,48 @@ static DBusMessage *new_authentication_return(DBusMessage *msg, int status)
 	case 0x00: /* success */
 		return dbus_message_new_method_return(msg);
 
-	case 0x04: /* page timeout */
+	case HCI_PAGE_TIMEOUT:
 		return dbus_message_new_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
 				"Page Timeout");
-	case 0x08: /* connection timeout */
+	case HCI_CONNECTION_TIMEOUT:
 		return dbus_message_new_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
 				"Connection Timeout");
-	case 0x10: /* connection accept timeout */
-	case 0x22: /* LMP response timeout */
-	case 0x28: /* instant passed - is this a timeout? */
+	case HCI_HOST_TIMEOUT:
+	case HCI_LMP_RESPONSE_TIMEOUT:
+	case HCI_INSTANT_PASSED: /* is this a timeout? */
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationTimeout",
 					"Authentication Timeout");
-	case 0x17: /* too frequent pairing attempts */
+	case HCI_REPEATED_ATTEMPTS: /* too frequent pairing attempts */
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".RepeatedAttempts",
 					"Repeated Attempts");
 
-	case 0x06:
-	case 0x18: /* pairing not allowed (e.g. gw rejected attempt) */
+	case HCI_PIN_OR_KEY_MISSING:
+	case HCI_PAIRING_NOT_ALLOWED: /* e.g. gw rejected attempt */
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationRejected",
 					"Authentication Rejected");
 
-	case 0x07: /* memory capacity */
-	case 0x09: /* connection limit */
-	case 0x0a: /* synchronous connection limit */
-	case 0x0d: /* limited resources */
-	case 0x13: /* user ended the connection */
-	case 0x14: /* terminated due to low resources */
-	case 0x16: /* connection terminated */
+	case HCI_MEMORY_FULL:
+	case HCI_MAX_NUMBER_OF_CONNECTIONS:
+	case HCI_MAX_NUMBER_OF_SCO_CONNECTIONS:
+	case HCI_REJECTED_LIMITED_RESOURCES:
+	case HCI_OE_USER_ENDED_CONNECTION:
+	case HCI_OE_LOW_RESOURCES:
+	case HCI_CONNECTION_TERMINATED:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationCanceled",
 					"Authentication Canceled");
 
-	case 0x05: /* authentication failure */
-	case 0x0E: /* rejected due to security reasons - is this auth failure? */
-	case 0x25: /* encryption mode not acceptable - is this auth failure? */
-	case 0x26: /* link key cannot be changed - is this auth failure? */
-	case 0x29: /* pairing with unit key unsupported - is this auth failure? */
-	case 0x2f: /* insufficient security - is this auth failure? */
+	case HCI_AUTHENTICATION_FAILURE:
+	case HCI_REJECTED_SECURITY: /* is this auth failure? */
+	case HCI_ENCRYPTION_MODE_NOT_ACCEPTED: /* is this auth failure? */
+	case HCI_UNIT_LINK_KEY_USED: /* is this auth failure? */
+	case HCI_PAIRING_NOT_SUPPORTED: /* is this auth failure? */
+	case HCI_INSUFFICIENT_SECURITY: /* is this auth failure? */
 	default:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationFailed",
