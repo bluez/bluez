@@ -139,8 +139,7 @@ static DBusMessage *map_get_folder_listing(DBusConnection *connection,
 	GError *err = NULL;
 	DBusMessage *reply;
 
-	transfer = obc_transfer_get("x-obex/folder-listing", NULL, NULL,
-								NULL, 0, &err);
+	transfer = obc_transfer_get("x-obex/folder-listing", NULL, NULL, &err);
 	if (transfer == NULL)
 		goto fail;
 
@@ -174,8 +173,7 @@ static DBusMessage *map_get_message_listing(DBusConnection *connection,
 
 	dbus_message_iter_get_basic(&msg_iter, &folder);
 
-	transfer = obc_transfer_get("x-bt/MAP-msg-listing", folder, NULL,
-								NULL, 0, &err);
+	transfer = obc_transfer_get("x-bt/MAP-msg-listing", folder, NULL, &err);
 	if (transfer == NULL)
 		goto fail;
 

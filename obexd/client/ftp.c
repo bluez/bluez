@@ -262,8 +262,7 @@ static DBusMessage *list_folder(DBusConnection *connection,
 	GError *err = NULL;
 	DBusMessage *reply;
 
-	transfer = obc_transfer_get("x-obex/folder-listing", NULL, NULL,
-				NULL, 0,  &err);
+	transfer = obc_transfer_get("x-obex/folder-listing", NULL, NULL, &err);
 	if (transfer == NULL)
 		goto fail;
 
@@ -297,8 +296,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
 
-	transfer = obc_transfer_get(NULL, source_file, target_file, NULL, 0,
-									&err);
+	transfer = obc_transfer_get(NULL, source_file, target_file, &err);
 	if (transfer == NULL)
 		goto fail;
 
@@ -334,7 +332,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 				"Invalid arguments in method call");
 
 	transfer = obc_transfer_put(NULL, targetfile, sourcefile, NULL, 0,
-								NULL, 0, &err);
+									&err);
 	if (transfer == NULL)
 		goto fail;
 

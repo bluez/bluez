@@ -139,8 +139,8 @@ static DBusMessage *sync_getphonebook(DBusConnection *connection,
 	if (!sync->phonebook_path)
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
-	transfer = obc_transfer_get("phonebook", sync->phonebook_path,
-							NULL, NULL, 0, &err);
+	transfer = obc_transfer_get("phonebook", sync->phonebook_path, NULL,
+									&err);
 	if (transfer == NULL)
 		goto fail;
 
@@ -178,7 +178,7 @@ static DBusMessage *sync_putphonebook(DBusConnection *connection,
 		sync->phonebook_path = g_strdup("telecom/pb.vcf");
 
 	transfer = obc_transfer_put(NULL, sync->phonebook_path, NULL, buf,
-						strlen(buf), NULL, 0, &err);
+							strlen(buf), &err);
 	if (transfer == NULL)
 		goto fail;
 

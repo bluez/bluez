@@ -116,7 +116,7 @@ static void create_callback(struct obc_session *session,
 		struct obc_transfer *transfer;
 
 		transfer = obc_transfer_put(NULL, basename, filename, NULL, 0,
-								NULL, 0, NULL);
+									NULL);
 
 		g_free(basename);
 		if (transfer == NULL)
@@ -293,8 +293,7 @@ static void pull_obc_session_callback(struct obc_session *session,
 		goto fail;
 	}
 
-	pull = obc_transfer_get("text/x-vcard", NULL, data->filename, NULL, 0,
-									&gerr);
+	pull = obc_transfer_get("text/x-vcard", NULL, data->filename, &gerr);
 
 	if (!obc_session_queue(session, pull, pull_complete_callback, data,
 								&gerr)) {
@@ -516,7 +515,7 @@ static void capability_obc_session_callback(struct obc_session *session,
 	}
 
 	pull = obc_transfer_get("x-obex/capability", NULL, data->filename,
-								NULL, 0, &gerr);
+									&gerr);
 
 	if (!obc_session_queue(session, pull, capabilities_complete_callback,
 								data, &gerr)) {

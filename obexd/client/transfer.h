@@ -27,16 +27,11 @@ typedef void (*transfer_callback_t) (struct obc_transfer *transfer,
 					gint64 transferred, GError *err,
 					void *user_data);
 
-struct obc_transfer *obc_transfer_get(const char *type,
-					const char *name,
+struct obc_transfer *obc_transfer_get(const char *type, const char *name,
+					const char *filename, GError **err);
+struct obc_transfer *obc_transfer_put(const char *type, const char *name,
 					const char *filename,
-					const void *params, size_t psize,
-					GError **err);
-struct obc_transfer *obc_transfer_put(const char *type,
-					const char *name,
-					const char *filename,
-					const void *contents, size_t csize,
-					const void *params, size_t psize,
+					const void *contents, size_t size,
 					GError **err);
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,
@@ -54,6 +49,8 @@ gboolean obc_transfer_start(struct obc_transfer *transfer, void *obex,
 								GError **err);
 guint8 obc_transfer_get_operation(struct obc_transfer *transfer);
 
+void obc_transfer_set_params(struct obc_transfer *transfer,
+						const void *data, size_t size);
 const void *obc_transfer_get_params(struct obc_transfer *transfer,
 								size_t *size);
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
