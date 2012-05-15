@@ -261,7 +261,8 @@ static void search_callback(uint8_t type, uint16_t status,
 		}
 
 		data = sdp_data_get(rec, 0x0200);
-		if (data != NULL)
+		/* PSM must be odd and lsb of upper byte must be 0 */
+		if (data != NULL && (data->val.uint16 & 0x0101) == 0x0001)
 			ch = data->val.uint16;
 
 		sdp_record_free(rec);
