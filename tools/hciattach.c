@@ -131,6 +131,10 @@ static int uart_speed(int s)
 	case 3500000:
 		return B3500000;
 #endif
+#ifdef B3710000
+	case 3710000
+		return B3710000;
+#endif
 #ifdef B4000000
 	case 4000000:
 		return B4000000;
@@ -320,6 +324,11 @@ static int ath3k_pm(int fd, struct uart_t *u, struct termios *ti)
 static int qualcomm(int fd, struct uart_t *u, struct termios *ti)
 {
 	return qualcomm_init(fd, u->speed, ti, u->bdaddr);
+}
+
+static int intel(int fd, struct uart_t *u, struct termios *ti)
+{
+	return intel_init(fd, u->init_speed, &u->speed, ti);
 }
 
 static int read_check(int fd, void *buf, int count)
@@ -1136,6 +1145,10 @@ struct uart_t uart[] = {
 	/* QUALCOMM BTS */
 	{ "qualcomm",   0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
 			FLOW_CTL, DISABLE_PM, NULL, qualcomm, NULL },
+
+	/* Intel Bluetooth Module */
+	{ "intel",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
+			FLOW_CTL, DISABLE_PM, NULL, intel, NULL },
 
 	{ NULL, 0 }
 };
