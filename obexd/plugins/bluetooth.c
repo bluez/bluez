@@ -607,6 +607,7 @@ static GSList *start(struct obex_server *server,
 		error("bluetooth: unable to listen in psm %d: %s",
 				service->port, err->message);
 		g_error_free(err);
+		service->port = 0;
 	} else {
 		l = g_slist_prepend(l, io);
 		bt_io_get(io, BT_IO_L2CAP, &err, BT_IO_OPT_PSM, &service->port,
