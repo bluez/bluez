@@ -1109,10 +1109,11 @@ static int getbdaddrbyname(char *str, bdaddr_t *ba)
 	if (n == 0) {
 		/* loopback port */
 		in_addr_t addr = INADDR_LOOPBACK;
+		uint16_t be16 = htons(atoi(str));
 		bdaddr_t b;
 
 		memcpy(&b, &addr, 4);
-		*(uint16_t *) (&b.b[4]) = htons(atoi(str));
+		memcpy(&b.b[4], &be16, sizeof(be16));
 		baswap(ba, &b);
 
 		return 0;
