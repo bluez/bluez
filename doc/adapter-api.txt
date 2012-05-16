@@ -165,10 +165,11 @@ Methods		dict GetProperties()
 			of its registered agents will be removed.
 
 			The capability parameter can have the values
-			"DisplayOnly", "DisplayYesNo", "KeyboardOnly" and
-			"NoInputNoOutput" which reflects the input and output
-			capabilities of the agent. If an empty string is
-			used it will fallback to "DisplayYesNo".
+			"DisplayOnly", "DisplayYesNo", "KeyboardOnly",
+			"NoInputNoOutput" and "KeyboardDisplay" which reflects
+			the input and output capabilities of the agent. If an
+			empty string is used it will fallback to
+			"DisplayYesNo".
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.AlreadyExists
