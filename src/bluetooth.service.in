@@ -8,3 +8,4 @@ ExecStart=@prefix@/sbin/bluetoothd -n
 
 [Install]
 WantedBy=bluetooth.target
+Alias=dbus-org.bluez.service

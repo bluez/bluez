@@ -30,8 +30,10 @@ AM_LDFLAGS = $(MISC_LDFLAGS)
 
 if DATAFILES
 dbusdir = $(sysconfdir)/dbus-1/system.d
+dbusservicedir = $(datadir)/dbus-1/system-services
 
 dbus_DATA = src/bluetooth.conf
+dbusservice_DATA = src/org.bluez.service
 
 confdir = $(sysconfdir)/bluetooth
 
