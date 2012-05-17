@@ -72,7 +72,6 @@ static void print_arguments(GString *gstr, const char *sig,
 
 		complete = FALSE;
 		struct_level = dict_level = 0;
-		memset(type, 0, sizeof(type));
 
 		/* Gather enough data to have a single complete type */
 		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
@@ -106,6 +105,8 @@ static void print_arguments(GString *gstr, const char *sig,
 			if (complete)
 				break;
 		}
+
+		type[len + 1] = '\0';
 
 		if (!complete) {
 			error("Unexpected signature: %s", sig);
