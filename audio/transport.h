@@ -35,5 +35,7 @@ const char *media_transport_get_path(struct media_transport *transport);
 struct audio_device *media_transport_get_dev(struct media_transport *transport);
 void media_transport_update_delay(struct media_transport *transport,
 							uint16_t delay);
+void media_transport_update_volume(struct media_transport *transport,
+								uint8_t volume);
 void transport_get_properties(struct media_transport *transport,
 							DBusMessageIter *iter);

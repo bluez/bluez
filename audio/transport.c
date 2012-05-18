@@ -77,6 +77,7 @@ struct media_transport {
 	uint16_t		omtu;		/* Transport output mtu */
 	uint16_t		delay;		/* Transport delay (a2dp only) */
 	unsigned int		nrec_id;	/* Transport nrec watch (headset only) */
+	uint8_t			volume;		/* Transport volume */
 	gboolean		read_lock;
 	gboolean		write_lock;
 	gboolean		in_use;
@@ -1062,4 +1063,18 @@ void media_transport_update_delay(struct media_transport *transport,
 struct audio_device *media_transport_get_dev(struct media_transport *transport)
 {
 	return transport->device;
+}
+
+void media_transport_update_volume(struct media_transport *transport,
+								uint8_t volume)
+{
+	/* Check if volume really changed */
+	if (transport->volume == volume)
+		return;
+
+	transport->volume = volume;
+
+	emit_property_changed(transport->conn, transport->path,
+				MEDIA_TRANSPORT_INTERFACE, "Volume",
+				DBUS_TYPE_BYTE, &transport->volume);
 }

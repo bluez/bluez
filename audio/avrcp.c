@@ -45,6 +45,9 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "../src/adapter.h"
+#include "../src/device.h"
+
 #include "log.h"
 #include "error.h"
 #include "device.h"
@@ -88,6 +91,8 @@
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
 #define CAP_EVENTS_SUPPORTED	0x03
+
+#define AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH 5
 
 enum battery_status {
 	BATTERY_STATUS_NORMAL =		0,
@@ -994,7 +999,6 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-
 static struct pdu_handler {
 	uint8_t pdu_id;
 	uint8_t code;
@@ -1119,11 +1123,53 @@ static struct avrcp_server *find_server(GSList *list, const bdaddr_t *src)
 	return NULL;
 }
 
+static gboolean avrcp_handle_volume_changed(struct avctp *session,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct avrcp_header *pdu = (void *) operands;
+	uint8_t abs_volume = pdu->params[1] & 0x7F;
+
+	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
+		return FALSE;
+
+	if (player->cb->set_volume != NULL)
+		player->cb->set_volume(abs_volume, player->dev, player->user_data);
+
+	return TRUE;
+}
+
+static void register_volume_notification(struct avrcp_player *player)
+{
+	uint8_t buf[AVRCP_HEADER_LENGTH + AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH];
+	struct avrcp_header *pdu = (void *) buf;
+	uint8_t length;
+
+	memset(buf, 0, sizeof(buf));
+
+	set_company_id(pdu->company_id, IEEEID_BTSIG);
+	pdu->pdu_id = AVRCP_REGISTER_NOTIFICATION;
+	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	pdu->params[0] = AVRCP_EVENT_VOLUME_CHANGED;
+	pdu->params_len = htons(AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH);
+
+	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
+
+	avctp_send_vendordep_req(player->session, AVC_CTYPE_NOTIFY,
+					AVC_SUBUNIT_PANEL, buf, length,
+					avrcp_handle_volume_changed, player);
+}
+
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 				avctp_state_t new_state, void *user_data)
 {
 	struct avrcp_server *server;
 	struct avrcp_player *player;
+	const sdp_record_t *rec;
+	sdp_list_t *list;
+	sdp_profile_desc_t *desc;
 
 	server = find_server(servers, &dev->src);
 	if (!server)
@@ -1153,6 +1199,20 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 							handle_vendordep_pdu,
 							player);
 		break;
+	case AVCTP_STATE_CONNECTED:
+		rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
+		if (rec == NULL)
+			return;
+
+		if (sdp_get_profile_descs(rec, &list) < 0)
+			return;
+
+		desc = list->data;
+
+		if (desc && desc->version >= 0x0104)
+			register_volume_notification(player);
+
+		sdp_list_free(list, free);
 	default:
 		return;
 	}

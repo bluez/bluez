@@ -103,6 +103,7 @@ struct media_player {
 	guint			track_watch;
 	uint8_t			status;
 	uint32_t		position;
+	uint8_t			volume;
 	GTimer			*timer;
 };
 
@@ -1340,6 +1341,34 @@ static uint32_t get_position(void *user_data)
 	return mp->position + sec * 1000 + msec;
 }
 
+static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data)
+{
+	struct media_player *mp = user_data;
+	GSList *l;
+
+	if (mp->volume == volume)
+		return;
+
+	mp->volume = volume;
+
+	for (l = mp->adapter->endpoints; l; l = l->next) {
+
+		struct media_endpoint *endpoint;
+		struct media_transport *transport;
+
+		if (l->data == NULL)
+			continue;
+
+		endpoint = l->data;
+		transport = find_device_transport(endpoint, dev);
+
+		if (transport == NULL)
+			continue;
+
+		media_transport_update_volume(transport, volume);
+	}
+}
+
 static struct avrcp_player_cb player_cb = {
 	.get_setting = get_setting,
 	.set_setting = set_setting,
@@ -1347,7 +1376,8 @@ static struct avrcp_player_cb player_cb = {
 	.get_uid = get_uid,
 	.get_metadata = get_metadata,
 	.get_position = get_position,
-	.get_status = get_status
+	.get_status = get_status,
+	.set_volume = set_volume
 };
 
 static void media_player_exit(DBusConnection *connection, void *user_data)
