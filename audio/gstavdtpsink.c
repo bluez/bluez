@@ -1144,7 +1144,7 @@ static gboolean gst_avdtp_sink_update_caps(GstAvdtpSink *self)
 
 static gboolean gst_avdtp_sink_get_capabilities(GstAvdtpSink *self)
 {
-	gchar *buf[BT_SUGGESTED_BUFFER_SIZE];
+	gchar buf[BT_SUGGESTED_BUFFER_SIZE];
 	struct bt_get_capabilities_req *req = (void *) buf;
 	struct bt_get_capabilities_rsp *rsp = (void *) buf;
 	int err;
