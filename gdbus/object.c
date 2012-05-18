@@ -59,68 +59,20 @@ struct security_data {
 	void *iface_user_data;
 };
 
-static void print_arguments(GString *gstr, const char *sig,
+static void print_arguments(GString *gstr, const GDBusArgInfo *args,
 						const char *direction)
 {
-	int i;
-
-	for (i = 0; sig[i]; i++) {
-		char type[32];
-		int struct_level, dict_level;
-		unsigned int len;
-		gboolean complete;
-
-		complete = FALSE;
-		struct_level = dict_level = 0;
-
-		/* Gather enough data to have a single complete type */
-		for (len = 0; len < (sizeof(type) - 1) && sig[i]; len++, i++) {
-			switch (sig[i]) {
-			case '(':
-				struct_level++;
-				break;
-			case ')':
-				struct_level--;
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			case '{':
-				dict_level++;
-				break;
-			case '}':
-				dict_level--;
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			case 'a':
-				break;
-			default:
-				if (struct_level <= 0 && dict_level <= 0)
-					complete = TRUE;
-				break;
-			}
-
-			type[len] = sig[i];
-
-			if (complete)
-				break;
-		}
-
-		type[len + 1] = '\0';
-
-		if (!complete) {
-			error("Unexpected signature: %s", sig);
-			return;
-		}
+	for (; args && args->name; args++) {
+		g_string_append_printf(gstr,
+					"\t\t\t<arg name=\"%s\" type=\"%s\"",
+					args->name, args->signature);
 
 		if (direction)
 			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%s\" direction=\"%s\"/>\n",
-					type, direction);
+					" direction=\"%s\"/>\n", direction);
 		else
-			g_string_append_printf(gstr,
-					"\t\t\t<arg type=\"%s\"/>\n",
-					type);
+			g_string_append_printf(gstr, "/>\n");
+
 	}
 }
 
@@ -130,26 +82,27 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 	const GDBusSignalTable *signal;
 
 	for (method = iface->methods; method && method->name; method++) {
-		if (!strlen(method->signature) && !strlen(method->reply))
+		if (!(method->in_args && method->in_args->name) &&
+				!(method->out_args && method->out_args->name))
 			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
 								method->name);
 		else {
 			g_string_append_printf(gstr, "\t\t<method name=\"%s\">\n",
 								method->name);
-			print_arguments(gstr, method->signature, "in");
-			print_arguments(gstr, method->reply, "out");
+			print_arguments(gstr, method->in_args, "in");
+			print_arguments(gstr, method->out_args, "out");
 			g_string_append_printf(gstr, "\t\t</method>\n");
 		}
 	}
 
 	for (signal = iface->signals; signal && signal->name; signal++) {
-		if (!strlen(signal->signature))
+		if (!(signal->args && signal->args->name))
 			g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
 								signal->name);
 		else {
 			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
 								signal->name);
-			print_arguments(gstr, signal->signature, NULL);
+			print_arguments(gstr, signal->args, NULL);
 			g_string_append_printf(gstr, "\t\t</signal>\n");
 		}
 	}
