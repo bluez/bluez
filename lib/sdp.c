@@ -1934,7 +1934,6 @@ int sdp_get_uuidseq_attr(const sdp_record_t *rec, uint16_t attr,
 			if (!u)
 				goto fail;
 
-			memset(u, 0, sizeof(uuid_t));
 			*u = d->val.uuid;
 			*seqp = sdp_list_append(*seqp, u);
 		}
