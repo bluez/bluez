@@ -277,6 +277,10 @@ int remove_record_from_server(uint32_t handle)
 {
 	sdp_record_t *rec;
 
+	/* Refuse to remove the server's own record */
+	if (handle == SDP_SERVER_RECORD_HANDLE)
+		return -EINVAL;
+
 	DBG("Removing record with handle 0x%05x", handle);
 
 	rec = sdp_record_find(handle);
