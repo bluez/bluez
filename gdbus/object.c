@@ -82,7 +82,11 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 	const GDBusSignalTable *signal;
 
 	for (method = iface->methods; method && method->name; method++) {
-		if (!(method->in_args && method->in_args->name) &&
+		gboolean deprecated = method->flags &
+						G_DBUS_METHOD_FLAG_DEPRECATED;
+
+		if (!deprecated &&
+				!(method->in_args && method->in_args->name) &&
 				!(method->out_args && method->out_args->name))
 			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
 								method->name);
@@ -91,18 +95,29 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 								method->name);
 			print_arguments(gstr, method->in_args, "in");
 			print_arguments(gstr, method->out_args, "out");
+
+			if (deprecated)
+				g_string_append_printf(gstr, "\t\t\t<annotation name=\"org.freedesktop.DBus.Deprecated\" value=\"true\"/>\n");
+
 			g_string_append_printf(gstr, "\t\t</method>\n");
 		}
 	}
 
 	for (signal = iface->signals; signal && signal->name; signal++) {
-		if (!(signal->args && signal->args->name))
+		gboolean deprecated = signal->flags &
+						G_DBUS_SIGNAL_FLAG_DEPRECATED;
+
+		if (!deprecated && !(signal->args && signal->args->name))
 			g_string_append_printf(gstr, "\t\t<signal name=\"%s\"/>\n",
 								signal->name);
 		else {
 			g_string_append_printf(gstr, "\t\t<signal name=\"%s\">\n",
 								signal->name);
 			print_arguments(gstr, signal->args, NULL);
+
+			if (deprecated)
+				g_string_append_printf(gstr, "\t\t\t<annotation name=\"org.freedesktop.DBus.Deprecated\" value=\"true\"/>\n");
+
 			g_string_append_printf(gstr, "\t\t</signal>\n");
 		}
 	}
