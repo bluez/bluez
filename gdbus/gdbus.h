@@ -118,6 +118,92 @@ typedef struct {
 	GDBusSecurityFunction function;
 } GDBusSecurityTable;
 
+#define GDBUS_ARGS(args...) (const GDBusArgInfo[]) { args, { } }
+
+#define _GDBUS_METHOD(_name, _signature, _reply, _in_args, _out_args, _function) \
+	.name = _name, \
+	.signature = _signature, \
+	.reply = _reply, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function
+
+#define _GDBUS_ASYNC_METHOD(_name, _signature, _reply, _in_args, _out_args, _function) \
+	.name = _name, \
+	.signature = _signature, \
+	.reply = _reply, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_ASYNC
+
+#define _GDBUS_DEPRECATED_METHOD(_name, _signature, _reply, _in_args, _out_args, _function) \
+	.name = _name, \
+	.signature = _signature, \
+	.reply = _reply, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_DEPRECATED
+
+#define _GDBUS_DEPRECATED_ASYNC_METHOD(_name, _signature, _reply, _in_args, _out_args, _function) \
+	.name = _name, \
+	.signature = _signature, \
+	.reply = _reply, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_ASYNC | G_DBUS_METHOD_FLAG_DEPRECATED
+
+#define _GDBUS_SIGNAL(_name, _signature, _args) \
+	.name = _name, \
+	.signature = _signature, \
+	.args = _args
+
+#define _GDBUS_DEPRECATED_SIGNAL(_name, _signature, _args) \
+	.name = _name, \
+	.signature = _signature, \
+	.args = _args, \
+	.flags = G_DBUS_SIGNAL_FLAG_DEPRECATED
+
+/* Helpers with no signature and reply */
+
+#define GDBUS_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function
+
+#define GDBUS_ASYNC_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_ASYNC
+
+#define GDBUS_DEPRECATED_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_DEPRECATED
+
+#define GDBUS_DEPRECATED_ASYNC_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_ASYNC | G_DBUS_METHOD_FLAG_DEPRECATED
+
+#define GDBUS_SIGNAL(_name, _args) \
+	.name = _name, \
+	.args = _args
+
+#define GDBUS_DEPRECATED_SIGNAL(_name, _args) \
+	.name = _name, \
+	.args = _args, \
+	.flags = G_DBUS_SIGNAL_FLAG_DEPRECATED
+
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					const GDBusMethodTable *methods,
