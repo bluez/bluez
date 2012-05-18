@@ -84,8 +84,10 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 	for (method = iface->methods; method && method->name; method++) {
 		gboolean deprecated = method->flags &
 						G_DBUS_METHOD_FLAG_DEPRECATED;
+		gboolean noreply = method->flags &
+						G_DBUS_METHOD_FLAG_NOREPLY;
 
-		if (!deprecated &&
+		if (!deprecated && !noreply &&
 				!(method->in_args && method->in_args->name) &&
 				!(method->out_args && method->out_args->name))
 			g_string_append_printf(gstr, "\t\t<method name=\"%s\"/>\n",
@@ -98,6 +100,9 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 
 			if (deprecated)
 				g_string_append_printf(gstr, "\t\t\t<annotation name=\"org.freedesktop.DBus.Deprecated\" value=\"true\"/>\n");
+
+			if (noreply)
+				g_string_append_printf(gstr, "\t\t\t<annotation name=\"org.freedesktop.DBus.Method.NoReply\" value=\"true\"/>\n");
 
 			g_string_append_printf(gstr, "\t\t</method>\n");
 		}
