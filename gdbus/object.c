@@ -471,7 +471,7 @@ done:
 }
 
 static const GDBusMethodTable introspect_methods[] = {
-	{ _GDBUS_METHOD("Introspect", "", "s", NULL,
+	{ GDBUS_METHOD("Introspect", NULL,
 			GDBUS_ARGS({ "xml", "s" }), introspect) },
 	{ }
 };
