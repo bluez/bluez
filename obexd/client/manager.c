@@ -286,32 +286,26 @@ static void pull_obc_session_callback(struct obc_session *session,
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
-	if (err != NULL) {
-		reply = g_dbus_create_error(data->message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
+	if (err != NULL)
 		goto fail;
-	}
 
 	pull = obc_transfer_get("text/x-vcard", NULL, data->filename, &gerr);
-	if (pull == NULL) {
-		reply = g_dbus_create_error(data->message,
-						"org.openobex.Error.Failed",
-						"%s", gerr->message);
+	if (pull == NULL)
 		goto fail;
-	}
 
 	if (!obc_session_queue(session, pull, pull_complete_callback, data,
-								&gerr)) {
-		reply = g_dbus_create_error(data->message,
-						"org.openobex.Error.Failed",
-						"%s", gerr->message);
+								&gerr))
 		goto fail;
-	}
 
 	return;
 
 fail:
+	if (err == NULL)
+		err = gerr;
+
+	reply = g_dbus_create_error(data->message,
+						"org.openobex.Error.Failed",
+						"%s", err->message);
 	g_dbus_send_message(data->connection, reply);
 	shutdown_session(session);
 	dbus_message_unref(data->message);
@@ -513,33 +507,27 @@ static void capability_obc_session_callback(struct obc_session *session,
 	DBusMessage *reply;
 	GError *gerr = NULL;
 
-	if (err != NULL) {
-		reply = g_dbus_create_error(data->message,
-					"org.openobex.Error.Failed",
-					"%s", err->message);
+	if (err != NULL)
 		goto fail;
-	}
 
 	pull = obc_transfer_get("x-obex/capability", NULL, data->filename,
 									&gerr);
-	if (pull == NULL) {
-		reply = g_dbus_create_error(data->message,
-					"org.openobex.Error.Failed",
-					"%s", gerr->message);
+	if (pull == NULL)
 		goto fail;
-	}
 
 	if (!obc_session_queue(session, pull, capabilities_complete_callback,
-								data, &gerr)) {
-		reply = g_dbus_create_error(data->message,
-					"org.openobex.Error.Failed",
-					"%s", gerr->message);
+								data, &gerr))
 		goto fail;
-	}
 
 	return;
 
 fail:
+	if (err == NULL)
+		err = gerr;
+
+	reply = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed",
+					"%s", err->message);
 	g_dbus_send_message(data->connection, reply);
 	shutdown_session(session);
 	dbus_message_unref(data->message);
