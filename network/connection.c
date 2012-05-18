@@ -553,18 +553,18 @@ static void path_unregister(void *data)
 }
 
 static const GDBusMethodTable connection_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "", "",
+	{ GDBUS_ASYNC_METHOD("Connect",
 			NULL, NULL, connection_connect) },
-	{ _GDBUS_METHOD("Disconnect", "", "",
+	{ GDBUS_METHOD("Disconnect",
 			NULL, NULL, connection_disconnect) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			connection_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable connection_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

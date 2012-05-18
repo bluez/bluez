@@ -878,25 +878,25 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable device_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			get_properties) },
-	{ _GDBUS_METHOD("SetProperty", "sv", "",
+	{ GDBUS_METHOD("GetProperties",
+				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+				get_properties) },
+	{ GDBUS_METHOD("SetProperty",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" }), NULL,
 			set_property) },
-	{ _GDBUS_ASYNC_METHOD("DiscoverServices", "s", "a{us}",
+	{ GDBUS_ASYNC_METHOD("DiscoverServices",
 			GDBUS_ARGS({ "pattern", "s" }),
 			GDBUS_ARGS({ "services", "a{us}" }),
 			discover_services) },
-	{ _GDBUS_METHOD("CancelDiscovery", "", "", NULL, NULL, cancel_discover) },
-	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, disconnect) },
+	{ GDBUS_METHOD("CancelDiscovery", NULL, NULL, cancel_discover) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
 	{ }
 };
 
 static const GDBusSignalTable device_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
-	{ _GDBUS_SIGNAL("DisconnectRequested", "", NULL) },
+	{ GDBUS_SIGNAL("DisconnectRequested", NULL) },
 	{ }
 };
 

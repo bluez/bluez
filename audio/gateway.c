@@ -713,20 +713,20 @@ done:
 }
 
 static const GDBusMethodTable gateway_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, ag_connect) },
-	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, ag_disconnect) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, ag_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, ag_disconnect) },
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			ag_get_properties) },
-	{ _GDBUS_METHOD("RegisterAgent", "o", "",
+	{ GDBUS_METHOD("RegisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, register_agent) },
-	{ _GDBUS_METHOD("UnregisterAgent", "o", "",
+	{ GDBUS_METHOD("UnregisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, unregister_agent) },
 	{ }
 };
 
 static const GDBusSignalTable gateway_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

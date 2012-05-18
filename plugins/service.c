@@ -697,20 +697,20 @@ done:
 }
 
 static const GDBusMethodTable service_methods[] = {
-	{ _GDBUS_METHOD("AddRecord", "s", "u",
+	{ GDBUS_METHOD("AddRecord",
 		GDBUS_ARGS({ "record", "s" }),
 		GDBUS_ARGS({ "handle", "u" }),
 		add_service_record) },
-	{ _GDBUS_METHOD("UpdateRecord", "us", "",
+	{ GDBUS_METHOD("UpdateRecord",
 		GDBUS_ARGS({ "handle", "u" }, { "record", "s" }), NULL,
 		update_service_record) },
-	{ _GDBUS_METHOD("RemoveRecord", "u", "",
+	{ GDBUS_METHOD("RemoveRecord",
 		GDBUS_ARGS({ "handle", "u" }), NULL,
 		remove_service_record) },
-	{ _GDBUS_ASYNC_METHOD("RequestAuthorization","su", "",
+	{ GDBUS_ASYNC_METHOD("RequestAuthorization",
 		GDBUS_ARGS({ "address", "s" }, { "handle", "u"}), NULL,
 		request_authorization) },
-	{ _GDBUS_METHOD("CancelAuthorization", "", "",
+	{ GDBUS_METHOD("CancelAuthorization",
 		NULL, NULL, cancel_authorization) },
 	{ }
 };

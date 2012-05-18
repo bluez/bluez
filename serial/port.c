@@ -568,13 +568,13 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 }
 
 static const GDBusMethodTable port_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "s", "s",
+	{ GDBUS_ASYNC_METHOD("Connect",
 		GDBUS_ARGS({ "pattern", "s" }),	GDBUS_ARGS({ "tty", "s" }),
 		port_connect) },
-	{ _GDBUS_ASYNC_METHOD("ConnectFD", "s", "h",
+	{ GDBUS_ASYNC_METHOD("ConnectFD",
 		GDBUS_ARGS({ "pattern", "s" }), GDBUS_ARGS({ "fd", "s" }),
 		port_connect) },
-	{ _GDBUS_METHOD("Disconnect", "s", "",
+	{ GDBUS_METHOD("Disconnect",
 		GDBUS_ARGS({ "device", "s" }), NULL,
 		port_disconnect) },
 	{ }

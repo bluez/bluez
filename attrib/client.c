@@ -516,10 +516,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 }
 
 static const GDBusMethodTable char_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			get_properties) },
-	{ _GDBUS_METHOD("SetProperty", "sv", "",
+	{ GDBUS_METHOD("SetProperty",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" }), NULL,
 			set_property) },
 	{ }
@@ -1019,16 +1019,16 @@ static DBusMessage *prim_get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable prim_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("DiscoverCharacteristics", "", "ao",
+	{ GDBUS_ASYNC_METHOD("DiscoverCharacteristics",
 			NULL, GDBUS_ARGS({ "characteristics", "ao" }),
 			discover_char) },
-	{ _GDBUS_METHOD("RegisterCharacteristicsWatcher", "o", "",
+	{ GDBUS_METHOD("RegisterCharacteristicsWatcher",
 			GDBUS_ARGS({ "agent", "o" }), NULL,
 			register_watcher) },
-	{ _GDBUS_METHOD("UnregisterCharacteristicsWatcher", "o", "",
+	{ GDBUS_METHOD("UnregisterCharacteristicsWatcher",
 			GDBUS_ARGS({ "agent", "o" }), NULL,
 			unregister_watcher) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			prim_get_properties) },
 	{ }

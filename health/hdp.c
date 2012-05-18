@@ -425,11 +425,11 @@ static void manager_path_unregister(gpointer data)
 }
 
 static const GDBusMethodTable health_manager_methods[] = {
-	{ _GDBUS_METHOD("CreateApplication", "a{sv}", "o",
+	{ GDBUS_METHOD("CreateApplication",
 			GDBUS_ARGS({ "config", "a{sv}" }),
 			GDBUS_ARGS({ "application", "o" }),
 			manager_create_application) },
-	{ _GDBUS_METHOD("DestroyApplication", "o", "",
+	{ GDBUS_METHOD("DestroyApplication",
 			GDBUS_ARGS({ "application", "o" }), NULL,
 			manager_destroy_application) },
 	{ }
@@ -737,13 +737,13 @@ end:
 }
 
 static const GDBusMethodTable health_channels_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			channel_get_properties) },
-	{ _GDBUS_ASYNC_METHOD("Acquire", "", "h",
+	{ GDBUS_ASYNC_METHOD("Acquire",
 			NULL, GDBUS_ARGS({ "fd", "h" }),
 			channel_acquire) },
-	{ _GDBUS_METHOD("Release", "", "", NULL, NULL, channel_release) },
+	{ GDBUS_METHOD("Release", NULL, NULL, channel_release) },
 	{ }
 };
 
@@ -2102,28 +2102,28 @@ static void health_device_destroy(void *data)
 }
 
 static const GDBusMethodTable health_device_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Echo", "", "b",
+	{ GDBUS_ASYNC_METHOD("Echo",
 			NULL, GDBUS_ARGS({ "value", "b" }), device_echo) },
-	{ _GDBUS_ASYNC_METHOD("CreateChannel", "os", "o",
+	{ GDBUS_ASYNC_METHOD("CreateChannel",
 			GDBUS_ARGS({ "application", "o" },
 					{ "configuration", "s" }),
 			GDBUS_ARGS({ "channel", "o" }),
 			device_create_channel) },
-	{ _GDBUS_ASYNC_METHOD("DestroyChannel", "o", "",
+	{ GDBUS_ASYNC_METHOD("DestroyChannel",
 			GDBUS_ARGS({ "channel", "o" }), NULL,
 			device_destroy_channel) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			device_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable health_device_signals[] = {
-	{ _GDBUS_SIGNAL("ChannelConnected", "o",
+	{ GDBUS_SIGNAL("ChannelConnected",
 			GDBUS_ARGS({ "channel", "o" })) },
-	{ _GDBUS_SIGNAL("ChannelDeleted", "o",
+	{ GDBUS_SIGNAL("ChannelDeleted",
 			GDBUS_ARGS({ "channel", "o" })) },
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

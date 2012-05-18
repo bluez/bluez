@@ -477,16 +477,16 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable source_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, source_connect) },
-	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, source_disconnect) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, source_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, source_disconnect) },
+	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				source_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable source_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

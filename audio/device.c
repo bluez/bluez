@@ -619,16 +619,16 @@ static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable dev_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, dev_connect) },
-	{ _GDBUS_METHOD("Disconnect", "", "", NULL, NULL, dev_disconnect) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
+	{ GDBUS_METHOD("Disconnect", NULL, NULL, dev_disconnect) },
+	{ GDBUS_METHOD("GetProperties",
 		NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 		dev_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable dev_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

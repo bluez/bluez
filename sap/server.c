@@ -1304,15 +1304,15 @@ static DBusMessage *get_properties(DBusConnection *c,
 }
 
 static const GDBusMethodTable server_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			get_properties) },
-	{ _GDBUS_METHOD("Disconnect", "", "", NULL, NULL, disconnect) },
+	{ GDBUS_METHOD("Disconnect", NULL, NULL, disconnect) },
 	{ }
 };
 
 static const GDBusSignalTable server_signals[] = {
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

@@ -198,21 +198,21 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable control_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("IsConnected", "", "b",
+	{ GDBUS_ASYNC_METHOD("IsConnected",
 				NULL, GDBUS_ARGS({ "connected", "b" }),
 				control_is_connected) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				control_get_properties) },
-	{ _GDBUS_METHOD("VolumeUp", "", "", NULL, NULL, volume_up) },
-	{ _GDBUS_METHOD("VolumeDown", "", "", NULL, NULL, volume_down) },
+	{ GDBUS_METHOD("VolumeUp", NULL, NULL, volume_up) },
+	{ GDBUS_METHOD("VolumeDown", NULL, NULL, volume_down) },
 	{ }
 };
 
 static const GDBusSignalTable control_signals[] = {
-	{ _GDBUS_DEPRECATED_SIGNAL("Connected", "", NULL) },
-	{ _GDBUS_DEPRECATED_SIGNAL("Disconnected", "", NULL) },
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_DEPRECATED_SIGNAL("Connected", NULL) },
+	{ GDBUS_DEPRECATED_SIGNAL("Disconnected", NULL) },
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

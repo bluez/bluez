@@ -686,10 +686,10 @@ static void path_unregister(void *data)
 }
 
 static const GDBusMethodTable server_methods[] = {
-	{ _GDBUS_METHOD("Register", "ss", "",
+	{ GDBUS_METHOD("Register",
 			GDBUS_ARGS({ "uuid", "s" }, { "bridge", "s" }), NULL,
 			register_server) },
-	{ _GDBUS_METHOD("Unregister", "s", "",
+	{ GDBUS_METHOD("Unregister",
 			GDBUS_ARGS({ "uuid", "s" }), NULL,
 			unregister_server) },
 	{ }

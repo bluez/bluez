@@ -556,23 +556,23 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable sink_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, sink_connect) },
-	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, sink_disconnect) },
-	{ _GDBUS_DEPRECATED_METHOD("IsConnected", "", "b",
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, sink_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, sink_disconnect) },
+	{ GDBUS_DEPRECATED_METHOD("IsConnected",
 			NULL, GDBUS_ARGS({ "connected", "b" }),
 			sink_is_connected) },
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				sink_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable sink_signals[] = {
-	{ _GDBUS_DEPRECATED_SIGNAL("Connected", "", NULL) },
-	{ _GDBUS_DEPRECATED_SIGNAL("Disconnected", "", NULL) },
-	{ _GDBUS_DEPRECATED_SIGNAL("Playing", "", NULL) },
-	{ _GDBUS_DEPRECATED_SIGNAL("Stopped", "", NULL) },
-	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+	{ GDBUS_DEPRECATED_SIGNAL("Connected", NULL) },
+	{ GDBUS_DEPRECATED_SIGNAL("Disconnected", NULL) },
+	{ GDBUS_DEPRECATED_SIGNAL("Playing", NULL) },
+	{ GDBUS_DEPRECATED_SIGNAL("Stopped", NULL) },
+	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };

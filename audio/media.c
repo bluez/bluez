@@ -1791,16 +1791,16 @@ static DBusMessage *unregister_player(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable media_methods[] = {
-	{ _GDBUS_METHOD("RegisterEndpoint", "oa{sv}", "",
+	{ GDBUS_METHOD("RegisterEndpoint",
 		GDBUS_ARGS({ "endpoint", "o" }, { "properties", "a{sv}" }),
 		NULL, register_endpoint) },
-	{ _GDBUS_METHOD("UnregisterEndpoint", "o", "",
+	{ GDBUS_METHOD("UnregisterEndpoint",
 		GDBUS_ARGS({ "endpoint", "o" }), NULL, unregister_endpoint) },
-	{ _GDBUS_METHOD("RegisterPlayer", "oa{sv}a{sv}", "",
+	{ GDBUS_METHOD("RegisterPlayer",
 		GDBUS_ARGS({ "player", "o" }, { "properties", "a{sv}" },
 						{ "metadata", "a{sv}" }),
 		NULL, register_player) },
-	{ _GDBUS_METHOD("UnregisterPlayer", "o", "",
+	{ GDBUS_METHOD("UnregisterPlayer",
 		GDBUS_ARGS({ "player", "o" }), NULL, unregister_player) },
 	{ },
 };
