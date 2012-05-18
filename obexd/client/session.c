@@ -649,9 +649,15 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 }
 
 static const GDBusMethodTable session_methods[] = {
-	{ "GetProperties",	"", "a{sv}",	session_get_properties	},
-	{ "AssignAgent",	"o", "",	assign_agent	},
-	{ "ReleaseAgent",	"o", "",	release_agent	},
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+				session_get_properties) },
+	{ _GDBUS_METHOD("AssignAgent", "o", "",
+				GDBUS_ARGS({ "agent", "o" }), NULL,
+				assign_agent) },
+	{ _GDBUS_METHOD("ReleaseAgent", "o", "",
+				GDBUS_ARGS({ "agent", "o" }), NULL,
+				release_agent) },
 	{ }
 };
 

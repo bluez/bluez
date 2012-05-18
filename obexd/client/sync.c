@@ -193,12 +193,16 @@ fail:
 }
 
 static const GDBusMethodTable sync_methods[] = {
-	{ "SetLocation", "s", "", sync_setlocation },
-	{ "GetPhonebook", "", "s", sync_getphonebook,
-			G_DBUS_METHOD_FLAG_ASYNC },
-	{ "PutPhonebook", "s", "", sync_putphonebook,
-			G_DBUS_METHOD_FLAG_ASYNC },
-	{}
+	{ _GDBUS_METHOD("SetLocation", "s", "",
+			GDBUS_ARGS({ "location", "s" }), NULL,
+			sync_setlocation) },
+	{ _GDBUS_ASYNC_METHOD("GetPhonebook", "", "s",
+			NULL, GDBUS_ARGS({ "obj", "s" }),
+			sync_getphonebook) },
+	{ _GDBUS_ASYNC_METHOD("PutPhonebook", "s", "",
+			GDBUS_ARGS({ "obj", "s" }), NULL,
+			sync_putphonebook) },
+	{ }
 };
 
 static void sync_free(void *data)

@@ -206,8 +206,11 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 }
 
 static const GDBusMethodTable obc_transfer_methods[] = {
-	{ "GetProperties", "", "a{sv}", obc_transfer_get_properties },
-	{ "Cancel", "", "", obc_transfer_cancel, G_DBUS_METHOD_FLAG_ASYNC },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+				obc_transfer_get_properties) },
+	{ _GDBUS_ASYNC_METHOD("Cancel", "", "", NULL, NULL,
+				obc_transfer_cancel) },
 	{ }
 };
 
