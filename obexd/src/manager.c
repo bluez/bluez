@@ -310,7 +310,7 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable manager_methods[] = {
+static const GDBusMethodTable manager_methods[] = {
 	{ "RegisterAgent",	"o",	"",	register_agent		},
 	{ "UnregisterAgent",	"o",	"",	unregister_agent	},
 	{ }
@@ -324,7 +324,7 @@ static GDBusSignalTable manager_signals[] = {
 	{ }
 };
 
-static GDBusMethodTable transfer_methods[] = {
+static const GDBusMethodTable transfer_methods[] = {
 	{ "Cancel",	"",	"",	transfer_cancel	},
 	{ }
 };
@@ -334,7 +334,7 @@ static GDBusSignalTable transfer_signals[] = {
 	{ }
 };
 
-static GDBusMethodTable session_methods[] = {
+static const GDBusMethodTable session_methods[] = {
 	{ "GetProperties",	"",	"{sv}",	get_properties	},
 	{ }
 };

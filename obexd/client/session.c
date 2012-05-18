@@ -648,7 +648,7 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 	return reply;
 }
 
-static GDBusMethodTable session_methods[] = {
+static const GDBusMethodTable session_methods[] = {
 	{ "GetProperties",	"", "a{sv}",	session_get_properties	},
 	{ "AssignAgent",	"o", "",	assign_agent	},
 	{ "ReleaseAgent",	"o", "",	release_agent	},

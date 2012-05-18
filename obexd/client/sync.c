@@ -192,7 +192,7 @@ fail:
 	return reply;
 }
 
-static GDBusMethodTable sync_methods[] = {
+static const GDBusMethodTable sync_methods[] = {
 	{ "SetLocation", "s", "", sync_setlocation },
 	{ "GetPhonebook", "", "s", sync_getphonebook,
 			G_DBUS_METHOD_FLAG_ASYNC },

@@ -435,7 +435,7 @@ static DBusMessage *delete(DBusConnection *connection,
 	return NULL;
 }
 
-static GDBusMethodTable ftp_methods[] = {
+static const GDBusMethodTable ftp_methods[] = {
 	{ "ChangeFolder",	"s", "",	change_folder,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "CreateFolder",	"s", "",	create_folder,

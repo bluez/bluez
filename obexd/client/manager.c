@@ -581,7 +581,7 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
 }
 
-static GDBusMethodTable client_methods[] = {
+static const GDBusMethodTable client_methods[] = {
 	{ "SendFiles", "a{sv}aso", "", send_files,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "PullBusinessCard", "a{sv}s", "", pull_business_card,

@@ -189,7 +189,7 @@ fail:
 	return reply;
 }
 
-static GDBusMethodTable map_methods[] = {
+static const GDBusMethodTable map_methods[] = {
 	{ "SetFolder",		"s", "",	map_setpath,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetFolderListing",	"a{ss}", "s",	map_get_folder_listing,

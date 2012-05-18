@@ -980,7 +980,7 @@ static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 	return reply;
 }
 
-static GDBusMethodTable pbap_methods[] = {
+static const GDBusMethodTable pbap_methods[] = {
 	{ "Select",	"ss",	"",	pbap_select,
 					G_DBUS_METHOD_FLAG_ASYNC },
 	{ "PullAll",	"",	"s",	pbap_pull_all,
