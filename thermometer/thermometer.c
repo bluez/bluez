@@ -960,18 +960,30 @@ static DBusMessage *disable_intermediate(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable thermometer_methods[] = {
-	{ "GetProperties",	"",	"a{sv}",	get_properties },
-	{ "SetProperty",	"sv",	"",		set_property,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "RegisterWatcher",	"o",	"",		register_watcher },
-	{ "UnregisterWatcher",	"o",	"",		unregister_watcher },
-	{ "EnableIntermediateMeasurement", "o", "", enable_intermediate },
-	{ "DisableIntermediateMeasurement","o",	"", disable_intermediate },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_ASYNC_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }), NULL,
+			set_property) },
+	{ _GDBUS_METHOD("RegisterWatcher", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			register_watcher) },
+	{ _GDBUS_METHOD("UnregisterWatcher", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			unregister_watcher) },
+	{ _GDBUS_METHOD("EnableIntermediateMeasurement", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			enable_intermediate) },
+	{ _GDBUS_METHOD("DisableIntermediateMeasurement","o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			disable_intermediate) },
 	{ }
 };
 
 static const GDBusSignalTable thermometer_signals[] = {
-	{ "PropertyChanged",	"sv"	},
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
 

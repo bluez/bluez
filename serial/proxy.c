@@ -729,10 +729,15 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 }
 
 static const GDBusMethodTable proxy_methods[] = {
-	{ "Enable",			"",	"",	proxy_enable },
-	{ "Disable",			"",	"",	proxy_disable },
-	{ "GetInfo",			"",	"a{sv}",proxy_get_info },
-	{ "SetSerialParameters",	"syys",	"",	proxy_set_serial_params },
+	{ _GDBUS_METHOD("Enable", "", "", NULL, NULL, proxy_enable) },
+	{ _GDBUS_METHOD("Disable", "", "", NULL, NULL, proxy_disable) },
+	{ _GDBUS_METHOD("GetInfo", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			proxy_get_info) },
+	{ _GDBUS_METHOD("SetSerialParameters", "syys", "",
+			GDBUS_ARGS({ "rate", "s" }, { "data", "y" },
+					{ "stop", "y" }, { "parity", "s" }),
+			NULL, proxy_set_serial_params) },
 	{ },
 };
 
@@ -1112,15 +1117,23 @@ static void manager_path_unregister(void *data)
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ "CreateProxy",		"ss",	"s",	create_proxy },
-	{ "ListProxies",		"",	"as",	list_proxies },
-	{ "RemoveProxy",		"s",	"",	remove_proxy },
+	{ _GDBUS_METHOD("CreateProxy", "ss", "s",
+			GDBUS_ARGS({ "pattern", "s" },
+					{ "address", "s" }),
+			GDBUS_ARGS({ "path", "s" }),
+			create_proxy) },
+	{ _GDBUS_METHOD("ListProxies", "", "as",
+			NULL, GDBUS_ARGS({ "paths", "as" }),
+			list_proxies) },
+	{ _GDBUS_METHOD("RemoveProxy", "s", "",
+			GDBUS_ARGS({ "path", "s" }), NULL,
+			remove_proxy) },
 	{ },
 };
 
 static const GDBusSignalTable manager_signals[] = {
-	{ "ProxyCreated",		"s"	},
-	{ "ProxyRemoved",		"s"	},
+	{ _GDBUS_SIGNAL("ProxyCreated", "s", GDBUS_ARGS({ "path", "s" })) },
+	{ _GDBUS_SIGNAL("ProxyRemoved", "s", GDBUS_ARGS({ "path", "s" })) },
 	{ }
 };
 

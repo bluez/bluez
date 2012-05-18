@@ -1952,8 +1952,9 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable telephony_maemo_methods[] = {
-	{"SetCallerId",		"s",	"",	set_callerid,
-						G_DBUS_METHOD_FLAG_ASYNC},
+	{ _GDBUS_ASYNC_METHOD("SetCallerId", "s", "",
+				GDBUS_ARGS({ "id", "s" }), NULL,
+				set_callerid) },
 	{ }
 };
 

@@ -379,19 +379,33 @@ static DBusMessage *set_subscriber_number(DBusConnection *conn,
 }
 
 static const GDBusMethodTable dummy_methods[] = {
-	{ "OutgoingCall",	"s",	"",	outgoing_call		},
-	{ "IncomingCall",	"s",	"",	incoming_call		},
-	{ "CancelCall",		"",	"",	cancel_call		},
-	{ "SignalStrength",	"u",	"",	signal_strength		},
-	{ "BatteryLevel",	"u",	"",	battery_level		},
-	{ "RoamingStatus",	"b",	"",	roaming_status		},
-	{ "RegistrationStatus",	"b",	"",	registration_status	},
-	{ "SetSubscriberNumber","s",	"",	set_subscriber_number	},
+	{ _GDBUS_METHOD("OutgoingCall", "s", "",
+			GDBUS_ARGS({ "number", "s" }), NULL,
+			outgoing_call) },
+	{ _GDBUS_METHOD("IncomingCall", "s", "",
+			GDBUS_ARGS({ "number", "s" }), NULL,
+			incoming_call) },
+	{ _GDBUS_METHOD("CancelCall", "", "", NULL, NULL, cancel_call) },
+	{ _GDBUS_METHOD("SignalStrength", "u", "",
+			GDBUS_ARGS({ "strength", "u" }), NULL,
+			signal_strength) },
+	{ _GDBUS_METHOD("BatteryLevel", "u", "",
+			GDBUS_ARGS({ "level", "u" }), NULL,
+			battery_level) },
+	{ _GDBUS_METHOD("RoamingStatus", "b", "",
+			GDBUS_ARGS({ "roaming", "b" }), NULL,
+			roaming_status) },
+	{ _GDBUS_METHOD("RegistrationStatus", "b", "",
+			GDBUS_ARGS({ "registration", "b" }), NULL,
+			registration_status) },
+	{ _GDBUS_METHOD("SetSubscriberNumber","s", "",
+			GDBUS_ARGS({ "number", "s" }), NULL,
+			set_subscriber_number) },
 	{ }
 };
 
 static const GDBusSignalTable dummy_signals[] = {
-	{ "VoiceDial",	"" },
+	{ _GDBUS_SIGNAL("VoiceDial", "", NULL) },
 	{ }
 };
 

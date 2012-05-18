@@ -425,9 +425,14 @@ static void manager_path_unregister(gpointer data)
 }
 
 static const GDBusMethodTable health_manager_methods[] = {
-	{"CreateApplication", "a{sv}", "o", manager_create_application},
-	{"DestroyApplication", "o", "", manager_destroy_application},
-	{ NULL }
+	{ _GDBUS_METHOD("CreateApplication", "a{sv}", "o",
+			GDBUS_ARGS({ "config", "a{sv}" }),
+			GDBUS_ARGS({ "application", "o" }),
+			manager_create_application) },
+	{ _GDBUS_METHOD("DestroyApplication", "o", "",
+			GDBUS_ARGS({ "application", "o" }), NULL,
+			manager_destroy_application) },
+	{ }
 };
 
 static DBusMessage *channel_get_properties(DBusConnection *conn,
@@ -732,11 +737,14 @@ end:
 }
 
 static const GDBusMethodTable health_channels_methods[] = {
-	{"GetProperties","",	"a{sv}",	channel_get_properties },
-	{"Acquire",	"",	"h",		channel_acquire,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{"Release",	"",	"",		channel_release },
-	{ NULL }
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			channel_get_properties) },
+	{ _GDBUS_ASYNC_METHOD("Acquire", "", "h",
+			NULL, GDBUS_ARGS({ "fd", "h" }),
+			channel_acquire) },
+	{ _GDBUS_METHOD("Release", "", "", NULL, NULL, channel_release) },
+	{ }
 };
 
 static struct hdp_channel *create_channel(struct hdp_device *dev,
@@ -2094,21 +2102,30 @@ static void health_device_destroy(void *data)
 }
 
 static const GDBusMethodTable health_device_methods[] = {
-	{"Echo",		"",	"b",	device_echo,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{"CreateChannel",	"os",	"o",	device_create_channel,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{"DestroyChannel",	"o",	"",	device_destroy_channel,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{"GetProperties",	"",	"a{sv}", device_get_properties},
-	{ NULL }
+	{ _GDBUS_ASYNC_METHOD("Echo", "", "b",
+			NULL, GDBUS_ARGS({ "value", "b" }), device_echo) },
+	{ _GDBUS_ASYNC_METHOD("CreateChannel", "os", "o",
+			GDBUS_ARGS({ "application", "o" },
+					{ "configuration", "s" }),
+			GDBUS_ARGS({ "channel", "o" }),
+			device_create_channel) },
+	{ _GDBUS_ASYNC_METHOD("DestroyChannel", "o", "",
+			GDBUS_ARGS({ "channel", "o" }), NULL,
+			device_destroy_channel) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			device_get_properties) },
+	{ }
 };
 
 static const GDBusSignalTable health_device_signals[] = {
-	{"ChannelConnected",		"o"		},
-	{"ChannelDeleted",		"o"		},
-	{"PropertyChanged",		"sv"		},
-	{ NULL }
+	{ _GDBUS_SIGNAL("ChannelConnected", "o",
+			GDBUS_ARGS({ "channel", "o" })) },
+	{ _GDBUS_SIGNAL("ChannelDeleted", "o",
+			GDBUS_ARGS({ "channel", "o" })) },
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ }
 };
 
 static struct hdp_device *create_health_device(DBusConnection *conn,

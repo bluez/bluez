@@ -197,19 +197,31 @@ static DBusMessage *get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ "GetProperties",	"",	"a{sv}",get_properties	},
-	{ "DefaultAdapter",	"",	"o",	default_adapter	},
-	{ "FindAdapter",	"s",	"o",	find_adapter	},
-	{ "ListAdapters",	"",	"ao",	list_adapters,
-						G_DBUS_METHOD_FLAG_DEPRECATED},
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_METHOD("DefaultAdapter", "", "o",
+			NULL, GDBUS_ARGS({ "adapter", "o" }),
+			default_adapter) },
+	{ _GDBUS_METHOD("FindAdapter", "s", "o",
+			GDBUS_ARGS({ "pattern", "s" }),
+			GDBUS_ARGS({ "adapter", "o" }),
+			find_adapter) },
+	{ _GDBUS_ASYNC_METHOD("ListAdapters", "", "ao",
+			NULL, GDBUS_ARGS({ "adapters", "ao" }),
+			list_adapters) },
 	{ }
 };
 
 static const GDBusSignalTable manager_signals[] = {
-	{ "PropertyChanged",		"sv"	},
-	{ "AdapterAdded",		"o"	},
-	{ "AdapterRemoved",		"o"	},
-	{ "DefaultAdapterChanged",	"o"	},
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ _GDBUS_SIGNAL("AdapterAdded", "o",
+			GDBUS_ARGS({ "adapter", "o" })) },
+	{ _GDBUS_SIGNAL("AdapterRemoved", "o",
+			GDBUS_ARGS({ "adapter", "o" })) },
+	{ _GDBUS_SIGNAL("DefaultAdapterChanged", "o",
+			GDBUS_ARGS({ "adapter", "o" })) },
 	{ }
 };
 

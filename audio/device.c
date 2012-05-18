@@ -619,16 +619,18 @@ static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable dev_methods[] = {
-	{ "Connect",		"",	"",	dev_connect,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect",		"",	"",	dev_disconnect },
-	{ "GetProperties",	"",	"a{sv}",dev_get_properties },
-	{ NULL, NULL, NULL, NULL }
+	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, dev_connect) },
+	{ _GDBUS_METHOD("Disconnect", "", "", NULL, NULL, dev_disconnect) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+		NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+		dev_get_properties) },
+	{ }
 };
 
 static const GDBusSignalTable dev_signals[] = {
-	{ "PropertyChanged",		"sv"	},
-	{ NULL, NULL }
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ }
 };
 
 struct audio_device *audio_device_register(DBusConnection *conn,

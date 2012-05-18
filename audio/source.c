@@ -477,17 +477,18 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable source_methods[] = {
-	{ "Connect",		"",	"",	source_connect,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect",		"",	"",	source_disconnect,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "GetProperties",	"",	"a{sv}",source_get_properties },
-	{ NULL, NULL, NULL, NULL }
+	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, source_connect) },
+	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, source_disconnect) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+				source_get_properties) },
+	{ }
 };
 
 static const GDBusSignalTable source_signals[] = {
-	{ "PropertyChanged",		"sv"	},
-	{ NULL, NULL }
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ }
 };
 
 static void source_free(struct audio_device *dev)

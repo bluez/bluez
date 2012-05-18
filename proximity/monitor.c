@@ -547,14 +547,18 @@ static DBusMessage *set_property(DBusConnection *conn,
 }
 
 static const GDBusMethodTable monitor_methods[] = {
-	{ "GetProperties",	"",	"a{sv}",	get_properties	},
-	{ "SetProperty",	"sv",	"",		set_property,
-						G_DBUS_METHOD_FLAG_ASYNC},
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_ASYNC_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }), NULL,
+			set_property) },
 	{ }
 };
 
 static const GDBusSignalTable monitor_signals[] = {
-	{ "PropertyChanged",	"sv"	},
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
 

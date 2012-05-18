@@ -915,17 +915,26 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable transport_methods[] = {
-	{ "GetProperties",	"",	"a{sv}",	get_properties },
-	{ "Acquire",		"s",	"hqq",		acquire,
-						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "Release",		"s",	"",		release,
-						G_DBUS_METHOD_FLAG_ASYNC},
-	{ "SetProperty",	"sv",	"",		set_property },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_ASYNC_METHOD("Acquire", "s", "hqq",
+			GDBUS_ARGS({ "access_type", "s" }),
+			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
+							{ "mtu_w", "q" } ),
+			acquire) },
+	{ _GDBUS_ASYNC_METHOD("Release", "s", "",
+			GDBUS_ARGS({ "access_type", "s" }), NULL,
+			release ) },
+	{ _GDBUS_ASYNC_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
+			NULL, set_property) },
 	{ },
 };
 
 static const GDBusSignalTable transport_signals[] = {
-	{ "PropertyChanged",	"sv"	},
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
 

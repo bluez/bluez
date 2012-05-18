@@ -1061,15 +1061,19 @@ static DBusMessage *input_device_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable device_methods[] = {
-	{ "Connect",		"",	"",	input_device_connect,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect",		"",	"",	input_device_disconnect	},
-	{ "GetProperties",	"",	"a{sv}",input_device_get_properties },
+	{ _GDBUS_ASYNC_METHOD("Connect", "", "",
+				NULL, NULL, input_device_connect) },
+	{ _GDBUS_METHOD("Disconnect", "", "",
+				NULL, NULL, input_device_disconnect) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			input_device_get_properties) },
 	{ }
 };
 
 static const GDBusSignalTable device_signals[] = {
-	{ "PropertyChanged",	"sv"	},
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }
 };
 

@@ -516,9 +516,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 }
 
 static const GDBusMethodTable char_methods[] = {
-	{ "GetProperties",	"",	"a{sv}", get_properties },
-	{ "SetProperty",	"sv",	"",	set_property,
-						G_DBUS_METHOD_FLAG_ASYNC},
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }), NULL,
+			set_property) },
 	{ }
 };
 
@@ -1016,13 +1019,18 @@ static DBusMessage *prim_get_properties(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable prim_methods[] = {
-	{ "DiscoverCharacteristics",	"",	"ao",	discover_char,
-					G_DBUS_METHOD_FLAG_ASYNC	},
-	{ "RegisterCharacteristicsWatcher",	"o", "",
-						register_watcher	},
-	{ "UnregisterCharacteristicsWatcher",	"o", "",
-						unregister_watcher	},
-	{ "GetProperties",	"",	"a{sv}",prim_get_properties	},
+	{ _GDBUS_ASYNC_METHOD("DiscoverCharacteristics", "", "ao",
+			NULL, GDBUS_ARGS({ "characteristics", "ao" }),
+			discover_char) },
+	{ _GDBUS_METHOD("RegisterCharacteristicsWatcher", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			register_watcher) },
+	{ _GDBUS_METHOD("UnregisterCharacteristicsWatcher", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL,
+			unregister_watcher) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			prim_get_properties) },
 	{ }
 };
 

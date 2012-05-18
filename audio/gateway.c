@@ -713,17 +713,22 @@ done:
 }
 
 static const GDBusMethodTable gateway_methods[] = {
-	{ "Connect", "", "", ag_connect, G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect", "", "", ag_disconnect, G_DBUS_METHOD_FLAG_ASYNC },
-	{ "GetProperties", "", "a{sv}", ag_get_properties },
-	{ "RegisterAgent", "o", "", register_agent },
-	{ "UnregisterAgent", "o", "", unregister_agent },
-	{ NULL, NULL, NULL, NULL }
+	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL, ag_connect) },
+	{ _GDBUS_ASYNC_METHOD("Disconnect", "", "", NULL, NULL, ag_disconnect) },
+	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			ag_get_properties) },
+	{ _GDBUS_METHOD("RegisterAgent", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL, register_agent) },
+	{ _GDBUS_METHOD("UnregisterAgent", "o", "",
+			GDBUS_ARGS({ "agent", "o" }), NULL, unregister_agent) },
+	{ }
 };
 
 static const GDBusSignalTable gateway_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ NULL, NULL }
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ }
 };
 
 static void path_unregister(void *data)
