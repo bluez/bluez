@@ -496,7 +496,7 @@ done:
 	g_free(parent_path);
 }
 
-static GDBusMethodTable introspect_methods[] = {
+static const GDBusMethodTable introspect_methods[] = {
 	{ "Introspect",	"",	"s", introspect	},
 	{ }
 };
