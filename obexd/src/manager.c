@@ -316,7 +316,7 @@ static const GDBusMethodTable manager_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable manager_signals[] = {
+static const GDBusSignalTable manager_signals[] = {
 	{ "TransferStarted",	"o"	},
 	{ "TransferCompleted",	"ob"	},
 	{ "SessionCreated",	"o"	},
@@ -329,7 +329,7 @@ static const GDBusMethodTable transfer_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable transfer_signals[] = {
+static const GDBusSignalTable transfer_signals[] = {
 	{ "Progress",	"ii"	},
 	{ }
 };
