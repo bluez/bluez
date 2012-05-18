@@ -174,11 +174,6 @@ static DBusMessage *introspect(DBusConnection *connection,
 	struct generic_data *data = user_data;
 	DBusMessage *reply;
 
-	if (!dbus_message_has_signature(message, DBUS_TYPE_INVALID_AS_STRING)) {
-		error("Unexpected signature to introspect call");
-		return NULL;
-	}
-
 	if (data->introspect == NULL)
 		generate_introspection_xml(connection, data,
 						dbus_message_get_path(message));
