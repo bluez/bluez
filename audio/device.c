@@ -626,7 +626,7 @@ static const GDBusMethodTable dev_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static GDBusSignalTable dev_signals[] = {
+static const GDBusSignalTable dev_signals[] = {
 	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };

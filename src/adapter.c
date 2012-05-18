@@ -1681,7 +1681,7 @@ static const GDBusMethodTable adapter_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable adapter_signals[] = {
+static const GDBusSignalTable adapter_signals[] = {
 	{ "PropertyChanged",		"sv"		},
 	{ "DeviceCreated",		"o"		},
 	{ "DeviceRemoved",		"o"		},

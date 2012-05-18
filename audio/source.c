@@ -485,7 +485,7 @@ static const GDBusMethodTable source_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static GDBusSignalTable source_signals[] = {
+static const GDBusSignalTable source_signals[] = {
 	{ "PropertyChanged",		"sv"	},
 	{ NULL, NULL }
 };

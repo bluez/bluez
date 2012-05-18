@@ -560,7 +560,7 @@ static const GDBusMethodTable connection_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable connection_signals[] = {
+static const GDBusSignalTable connection_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

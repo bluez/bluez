@@ -566,7 +566,7 @@ static const GDBusMethodTable sink_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static GDBusSignalTable sink_signals[] = {
+static const GDBusSignalTable sink_signals[] = {
 	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "Playing",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },

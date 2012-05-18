@@ -924,7 +924,7 @@ static const GDBusMethodTable transport_methods[] = {
 	{ },
 };
 
-static GDBusSignalTable transport_signals[] = {
+static const GDBusSignalTable transport_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

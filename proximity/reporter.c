@@ -185,7 +185,7 @@ static const GDBusMethodTable reporter_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable reporter_signals[] = {
+static const GDBusSignalTable reporter_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

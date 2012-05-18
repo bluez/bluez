@@ -2104,7 +2104,7 @@ static const GDBusMethodTable health_device_methods[] = {
 	{ NULL }
 };
 
-static GDBusSignalTable health_device_signals[] = {
+static const GDBusSignalTable health_device_signals[] = {
 	{"ChannelConnected",		"o"		},
 	{"ChannelDeleted",		"o"		},
 	{"PropertyChanged",		"sv"		},

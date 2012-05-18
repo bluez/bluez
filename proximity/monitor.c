@@ -553,7 +553,7 @@ static const GDBusMethodTable monitor_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable monitor_signals[] = {
+static const GDBusSignalTable monitor_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

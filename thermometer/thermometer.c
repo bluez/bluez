@@ -970,7 +970,7 @@ static const GDBusMethodTable thermometer_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable thermometer_signals[] = {
+static const GDBusSignalTable thermometer_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

@@ -390,7 +390,7 @@ static const GDBusMethodTable dummy_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable dummy_signals[] = {
+static const GDBusSignalTable dummy_signals[] = {
 	{ "VoiceDial",	"" },
 	{ }
 };

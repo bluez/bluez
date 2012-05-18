@@ -721,7 +721,7 @@ static const GDBusMethodTable gateway_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static GDBusSignalTable gateway_signals[] = {
+static const GDBusSignalTable gateway_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ NULL, NULL }
 };

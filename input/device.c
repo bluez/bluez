@@ -1068,7 +1068,7 @@ static const GDBusMethodTable device_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable device_signals[] = {
+static const GDBusSignalTable device_signals[] = {
 	{ "PropertyChanged",	"sv"	},
 	{ }
 };

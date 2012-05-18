@@ -2083,7 +2083,7 @@ static const GDBusMethodTable headset_methods[] = {
 	{ NULL, NULL, NULL, NULL }
 };
 
-static GDBusSignalTable headset_signals[] = {
+static const GDBusSignalTable headset_signals[] = {
 	{ "Connected",			"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "Disconnected",		"",	G_DBUS_SIGNAL_FLAG_DEPRECATED },
 	{ "AnswerRequested",		""	},

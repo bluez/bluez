@@ -1309,7 +1309,7 @@ static const GDBusMethodTable server_methods[] = {
 	{ }
 };
 
-static GDBusSignalTable server_signals[] = {
+static const GDBusSignalTable server_signals[] = {
 	{ "PropertyChanged", "sv"},
 	{ }
 };
