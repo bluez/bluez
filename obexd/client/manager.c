@@ -294,13 +294,18 @@ static void pull_obc_session_callback(struct obc_session *session,
 	}
 
 	pull = obc_transfer_get("text/x-vcard", NULL, data->filename, &gerr);
+	if (pull == NULL) {
+		reply = g_dbus_create_error(data->message,
+						"org.openobex.Error.Failed",
+						"%s", gerr->message);
+		goto fail;
+	}
 
 	if (!obc_session_queue(session, pull, pull_complete_callback, data,
 								&gerr)) {
 		reply = g_dbus_create_error(data->message,
 						"org.openobex.Error.Failed",
 						"%s", gerr->message);
-		g_error_free(gerr);
 		goto fail;
 	}
 
@@ -311,6 +316,7 @@ fail:
 	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
+	g_clear_error(&gerr);
 	g_free(data->filename);
 	g_free(data->sender);
 	g_free(data);
@@ -516,13 +522,18 @@ static void capability_obc_session_callback(struct obc_session *session,
 
 	pull = obc_transfer_get("x-obex/capability", NULL, data->filename,
 									&gerr);
+	if (pull == NULL) {
+		reply = g_dbus_create_error(data->message,
+					"org.openobex.Error.Failed",
+					"%s", gerr->message);
+		goto fail;
+	}
 
 	if (!obc_session_queue(session, pull, capabilities_complete_callback,
 								data, &gerr)) {
 		reply = g_dbus_create_error(data->message,
 					"org.openobex.Error.Failed",
 					"%s", gerr->message);
-		g_error_free(gerr);
 		goto fail;
 	}
 
@@ -533,6 +544,7 @@ fail:
 	shutdown_session(session);
 	dbus_message_unref(data->message);
 	dbus_connection_unref(data->connection);
+	g_clear_error(&gerr);
 	g_free(data->sender);
 	g_free(data);
 }
