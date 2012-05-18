@@ -728,7 +728,7 @@ static DBusMessage *proxy_set_serial_params(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable proxy_methods[] = {
+static const GDBusMethodTable proxy_methods[] = {
 	{ "Enable",			"",	"",	proxy_enable },
 	{ "Disable",			"",	"",	proxy_disable },
 	{ "GetInfo",			"",	"a{sv}",proxy_get_info },
@@ -1111,7 +1111,7 @@ static void manager_path_unregister(void *data)
 	g_free(adapter);
 }
 
-static GDBusMethodTable manager_methods[] = {
+static const GDBusMethodTable manager_methods[] = {
 	{ "CreateProxy",		"ss",	"s",	create_proxy },
 	{ "ListProxies",		"",	"as",	list_proxies },
 	{ "RemoveProxy",		"s",	"",	remove_proxy },

@@ -197,7 +197,7 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 	return reply;
 }
 
-static GDBusMethodTable control_methods[] = {
+static const GDBusMethodTable control_methods[] = {
 	{ "IsConnected",	"",	"b",	control_is_connected,
 						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "GetProperties",	"",	"a{sv}",control_get_properties },

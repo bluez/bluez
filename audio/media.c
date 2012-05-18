@@ -1790,7 +1790,7 @@ static DBusMessage *unregister_player(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable media_methods[] = {
+static const GDBusMethodTable media_methods[] = {
 	{ "RegisterEndpoint",	"oa{sv}",	"",	register_endpoint },
 	{ "UnregisterEndpoint",	"o",		"",	unregister_endpoint },
 	{ "RegisterPlayer",	"oa{sv}a{sv}","",	register_player },

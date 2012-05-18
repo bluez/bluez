@@ -696,7 +696,7 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable service_methods[] = {
+static const GDBusMethodTable service_methods[] = {
 	{ "AddRecord",		"s",	"u",	add_service_record	},
 	{ "UpdateRecord",	"us",	"",	update_service_record	},
 	{ "RemoveRecord",	"u",	"",	remove_service_record	},

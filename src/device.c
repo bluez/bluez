@@ -877,7 +877,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static GDBusMethodTable device_methods[] = {
+static const GDBusMethodTable device_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties	},
 	{ "SetProperty",	"sv",	"",		set_property	},
 	{ "DiscoverServices",	"s",	"a{us}",	discover_services,

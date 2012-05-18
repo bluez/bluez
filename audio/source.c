@@ -476,7 +476,7 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 	return reply;
 }
 
-static GDBusMethodTable source_methods[] = {
+static const GDBusMethodTable source_methods[] = {
 	{ "Connect",		"",	"",	source_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	source_disconnect,

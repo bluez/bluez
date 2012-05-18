@@ -685,7 +685,7 @@ static void path_unregister(void *data)
 	adapter_free(na);
 }
 
-static GDBusMethodTable server_methods[] = {
+static const GDBusMethodTable server_methods[] = {
 	{ "Register",	"ss",	"",	register_server		},
 	{ "Unregister",	"s",	"",	unregister_server	},
 	{ }

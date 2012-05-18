@@ -515,7 +515,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return btd_error_invalid_args(msg);
 }
 
-static GDBusMethodTable char_methods[] = {
+static const GDBusMethodTable char_methods[] = {
 	{ "GetProperties",	"",	"a{sv}", get_properties },
 	{ "SetProperty",	"sv",	"",	set_property,
 						G_DBUS_METHOD_FLAG_ASYNC},
@@ -1015,7 +1015,7 @@ static DBusMessage *prim_get_properties(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
-static GDBusMethodTable prim_methods[] = {
+static const GDBusMethodTable prim_methods[] = {
 	{ "DiscoverCharacteristics",	"",	"ao",	discover_char,
 					G_DBUS_METHOD_FLAG_ASYNC	},
 	{ "RegisterCharacteristicsWatcher",	"o", "",

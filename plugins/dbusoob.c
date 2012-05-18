@@ -175,7 +175,7 @@ static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable oob_methods[] = {
+static const GDBusMethodTable oob_methods[] = {
 	{"AddRemoteData",	"sayay",	"",	add_remote_data},
 	{"RemoveRemoteData",	"s",		"",	remove_remote_data},
 	{"ReadLocalData",	"",		"ayay",	read_local_data,

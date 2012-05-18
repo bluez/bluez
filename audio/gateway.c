@@ -712,7 +712,7 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable gateway_methods[] = {
+static const GDBusMethodTable gateway_methods[] = {
 	{ "Connect", "", "", ag_connect, G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect", "", "", ag_disconnect, G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetProperties", "", "a{sv}", ag_get_properties },

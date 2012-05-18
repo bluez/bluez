@@ -555,7 +555,7 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 	return reply;
 }
 
-static GDBusMethodTable sink_methods[] = {
+static const GDBusMethodTable sink_methods[] = {
 	{ "Connect",		"",	"",	sink_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	sink_disconnect,

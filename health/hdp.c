@@ -424,7 +424,7 @@ static void manager_path_unregister(gpointer data)
 	g_slist_foreach(adapters, (GFunc) update_adapter, NULL);
 }
 
-static GDBusMethodTable health_manager_methods[] = {
+static const GDBusMethodTable health_manager_methods[] = {
 	{"CreateApplication", "a{sv}", "o", manager_create_application},
 	{"DestroyApplication", "o", "", manager_destroy_application},
 	{ NULL }
@@ -731,7 +731,7 @@ end:
 	hdp_channel_unref(hdp_chan);
 }
 
-static GDBusMethodTable health_channels_methods[] = {
+static const GDBusMethodTable health_channels_methods[] = {
 	{"GetProperties","",	"a{sv}",	channel_get_properties },
 	{"Acquire",	"",	"h",		channel_acquire,
 						G_DBUS_METHOD_FLAG_ASYNC },
@@ -2093,7 +2093,7 @@ static void health_device_destroy(void *data)
 	health_device_unref(device);
 }
 
-static GDBusMethodTable health_device_methods[] = {
+static const GDBusMethodTable health_device_methods[] = {
 	{"Echo",		"",	"b",	device_echo,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{"CreateChannel",	"os",	"o",	device_create_channel,

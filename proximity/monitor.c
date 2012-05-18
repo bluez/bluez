@@ -546,7 +546,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return btd_error_invalid_args(msg);
 }
 
-static GDBusMethodTable monitor_methods[] = {
+static const GDBusMethodTable monitor_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties	},
 	{ "SetProperty",	"sv",	"",		set_property,
 						G_DBUS_METHOD_FLAG_ASYNC},

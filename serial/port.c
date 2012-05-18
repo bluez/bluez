@@ -567,7 +567,7 @@ static DBusMessage *port_disconnect(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable port_methods[] = {
+static const GDBusMethodTable port_methods[] = {
 	{ "Connect",    "s", "s", port_connect, G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectFD",    "s", "h", port_connect, G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect", "s", "",  port_disconnect },

@@ -1060,7 +1060,7 @@ static DBusMessage *input_device_get_properties(DBusConnection *conn,
 	return reply;
 }
 
-static GDBusMethodTable device_methods[] = {
+static const GDBusMethodTable device_methods[] = {
 	{ "Connect",		"",	"",	input_device_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	input_device_disconnect	},

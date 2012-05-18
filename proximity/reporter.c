@@ -180,7 +180,7 @@ err:
 	return btd_error_failed(msg, "not enough memory");
 }
 
-static GDBusMethodTable reporter_methods[] = {
+static const GDBusMethodTable reporter_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties	},
 	{ }
 };

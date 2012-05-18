@@ -618,7 +618,7 @@ static DBusMessage *dev_get_properties(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
-static GDBusMethodTable dev_methods[] = {
+static const GDBusMethodTable dev_methods[] = {
 	{ "Connect",		"",	"",	dev_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	dev_disconnect },

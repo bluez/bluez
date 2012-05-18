@@ -959,7 +959,7 @@ static DBusMessage *disable_intermediate(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable thermometer_methods[] = {
+static const GDBusMethodTable thermometer_methods[] = {
 	{ "GetProperties",	"",	"a{sv}",	get_properties },
 	{ "SetProperty",	"sv",	"",		set_property,
 						G_DBUS_METHOD_FLAG_ASYNC },

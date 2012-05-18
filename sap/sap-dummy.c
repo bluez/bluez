@@ -315,7 +315,7 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static GDBusMethodTable dummy_methods[] = {
+static const GDBusMethodTable dummy_methods[] = {
 	{ "OngoingCall", "b", "", ongoing_call},
 	{ "MaxMessageSize", "u", "", max_msg_size},
 	{ "DisconnectImmediate", "", "", disconnect_immediate},

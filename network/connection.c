@@ -552,7 +552,7 @@ static void path_unregister(void *data)
 	peer_free(peer);
 }
 
-static GDBusMethodTable connection_methods[] = {
+static const GDBusMethodTable connection_methods[] = {
 	{ "Connect",		"s",	"s",	connection_connect,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",		"",	"",	connection_disconnect	},

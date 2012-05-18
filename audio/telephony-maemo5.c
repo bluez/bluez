@@ -1951,7 +1951,7 @@ static DBusMessage *set_callerid(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 }
 
-static GDBusMethodTable telephony_maemo_methods[] = {
+static const GDBusMethodTable telephony_maemo_methods[] = {
 	{"SetCallerId",		"s",	"",	set_callerid,
 						G_DBUS_METHOD_FLAG_ASYNC},
 	{ }

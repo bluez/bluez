@@ -1303,7 +1303,7 @@ static DBusMessage *get_properties(DBusConnection *c,
 	return reply;
 }
 
-static GDBusMethodTable server_methods[] = {
+static const GDBusMethodTable server_methods[] = {
 	{"GetProperties", "", "a{sv}", get_properties},
 	{"Disconnect", "", "", disconnect},
 	{ }
