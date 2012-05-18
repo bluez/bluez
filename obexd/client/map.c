@@ -190,14 +190,14 @@ fail:
 }
 
 static const GDBusMethodTable map_methods[] = {
-	{ _GDBUS_ASYNC_METHOD("SetFolder", "s", "",
+	{ GDBUS_ASYNC_METHOD("SetFolder",
 				GDBUS_ARGS({ "name", "string" }), NULL,
 				map_setpath) },
-	{ _GDBUS_ASYNC_METHOD("GetFolderListing", "a{ss}", "s",
+	{ GDBUS_ASYNC_METHOD("GetFolderListing",
 					GDBUS_ARGS({ "dummy", "a{ss}" }),
 					GDBUS_ARGS({ "content", "s" }),
 					map_get_folder_listing) },
-	{ _GDBUS_ASYNC_METHOD("GetMessageListing", "sa{ss}", "s",
+	{ GDBUS_ASYNC_METHOD("GetMessageListing",
 			GDBUS_ARGS({ "folder", "s" }, { "dummy", "a{ss}" }),
 			GDBUS_ARGS({ "messages", "s" }),
 			map_get_message_listing) },

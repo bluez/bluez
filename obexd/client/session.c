@@ -649,13 +649,13 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 }
 
 static const GDBusMethodTable session_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				session_get_properties) },
-	{ _GDBUS_METHOD("AssignAgent", "o", "",
+	{ GDBUS_METHOD("AssignAgent",
 				GDBUS_ARGS({ "agent", "o" }), NULL,
 				assign_agent) },
-	{ _GDBUS_METHOD("ReleaseAgent", "o", "",
+	{ GDBUS_METHOD("ReleaseAgent",
 				GDBUS_ARGS({ "agent", "o" }), NULL,
 				release_agent) },
 	{ }

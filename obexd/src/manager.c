@@ -311,38 +311,35 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 }
 
 static const GDBusMethodTable manager_methods[] = {
-	{ _GDBUS_METHOD("RegisterAgent", "o", "",
+	{ GDBUS_METHOD("RegisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, register_agent) },
-	{ _GDBUS_METHOD("UnregisterAgent", "o", "",
+	{ GDBUS_METHOD("UnregisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, unregister_agent) },
 	{ }
 };
 
 static const GDBusSignalTable manager_signals[] = {
-	{ _GDBUS_SIGNAL("TransferStarted", "o",
-					GDBUS_ARGS({ "transfer", "o"})) },
-	{ _GDBUS_SIGNAL("TransferCompleted", "ob",
-			GDBUS_ARGS({ "transfer", "o" }, { "success", "b" })) },
-	{ _GDBUS_SIGNAL("SessionCreated", "o",
-					GDBUS_ARGS({ "session", "o" })) },
-	{ _GDBUS_SIGNAL("SessionRemoved", "o",
-					GDBUS_ARGS({ "session", "o" })) },
+	{ GDBUS_SIGNAL("TransferStarted", GDBUS_ARGS({ "transfer", "o"})) },
+	{ GDBUS_SIGNAL("TransferCompleted", GDBUS_ARGS({ "transfer", "o" },
+							{ "success", "b" })) },
+	{ GDBUS_SIGNAL("SessionCreated", GDBUS_ARGS({ "session", "o" })) },
+	{ GDBUS_SIGNAL("SessionRemoved", GDBUS_ARGS({ "session", "o" })) },
 	{ }
 };
 
 static const GDBusMethodTable transfer_methods[] = {
-	{ _GDBUS_METHOD("Cancel", "", "", NULL, NULL, transfer_cancel) },
+	{ GDBUS_METHOD("Cancel", NULL, NULL, transfer_cancel) },
 	{ }
 };
 
 static const GDBusSignalTable transfer_signals[] = {
-	{ _GDBUS_SIGNAL("Progress", "ii",
-			GDBUS_ARGS({ "total", "i" }, { "transferred", "i" })) },
+	{ GDBUS_SIGNAL("Progress", GDBUS_ARGS({ "total", "i" },
+						{ "transferred", "i" })) },
 	{ }
 };
 
 static const GDBusMethodTable session_methods[] = {
-	{ _GDBUS_METHOD("GetProperties", "", "a{sv}",
+	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				get_properties) },
 	{ }
