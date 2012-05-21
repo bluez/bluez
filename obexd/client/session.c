@@ -648,6 +648,71 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 	return reply;
 }
 
+static void capabilities_complete_callback(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
+{
+	DBusMessage *message = user_data;
+	char *contents;
+	size_t size;
+	int perr;
+
+	if (err != NULL) {
+		DBusMessage *error = g_dbus_create_error(message,
+					"org.openobex.Error.Failed",
+					"%s", err->message);
+		g_dbus_send_message(session->conn, error);
+		goto done;
+	}
+
+	perr = obc_transfer_get_contents(transfer, &contents, &size);
+	if (perr < 0) {
+		DBusMessage *error = g_dbus_create_error(message,
+						"org.openobex.Error.Failed",
+						"Error reading contents: %s",
+						strerror(-perr));
+		g_dbus_send_message(session->conn, error);
+		goto done;
+	}
+
+	g_dbus_send_reply(session->conn, message,
+						DBUS_TYPE_STRING, &contents,
+						DBUS_TYPE_INVALID);
+	g_free(contents);
+
+done:
+	dbus_message_unref(message);
+}
+
+static DBusMessage *get_capabilities(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	struct obc_session *session = user_data;
+	struct obc_transfer *pull;
+	DBusMessage *reply;
+	GError *gerr = NULL;
+
+	pull = obc_transfer_get("x-obex/capability", NULL, NULL, &gerr);
+	if (pull == NULL)
+		goto fail;
+
+	if (!obc_session_queue(session, pull, capabilities_complete_callback,
+								message, &gerr))
+		goto fail;
+
+	dbus_message_ref(message);
+
+	return NULL;
+
+fail:
+	reply = g_dbus_create_error(message,
+					"org.openobex.Error.Failed",
+					"%s", gerr->message);
+	g_error_free(gerr);
+	return reply;
+
+}
+
 static const GDBusMethodTable session_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -658,6 +723,9 @@ static const GDBusMethodTable session_methods[] = {
 	{ GDBUS_METHOD("ReleaseAgent",
 				GDBUS_ARGS({ "agent", "o" }), NULL,
 				release_agent) },
+	{ GDBUS_ASYNC_METHOD("GetCapabilities",
+				NULL, GDBUS_ARGS({ "capabilities", "s" }),
+				get_capabilities) },
 	{ }
 };
 
