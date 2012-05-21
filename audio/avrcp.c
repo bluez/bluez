@@ -94,6 +94,11 @@
 
 #define AVRCP_REGISTER_NOTIFICATION_PARAM_LENGTH 5
 
+#define AVRCP_FEATURE_CATEGORY_1	0x0001
+#define AVRCP_FEATURE_CATEGORY_2	0x0002
+#define AVRCP_FEATURE_CATEGORY_3	0x0004
+#define AVRCP_FEATURE_CATEGORY_4	0x0008
+
 enum battery_status {
 	BATTERY_STATUS_NORMAL =		0,
 	BATTERY_STATUS_WARNING =	1,
@@ -179,7 +184,11 @@ static sdp_record_t *avrcp_ct_record(void)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVCTP_PSM;
-	uint16_t avrcp_ver = 0x0100, avctp_ver = 0x0103, feat = 0x000f;
+	uint16_t avrcp_ver = 0x0100, avctp_ver = 0x0103;
+	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
+						AVRCP_FEATURE_CATEGORY_2 |
+						AVRCP_FEATURE_CATEGORY_3 |
+						AVRCP_FEATURE_CATEGORY_4 );
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -243,7 +252,11 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVCTP_PSM;
-	uint16_t avrcp_ver = 0x0104, avctp_ver = 0x0103, feat = 0x000f;
+	uint16_t avrcp_ver = 0x0104, avctp_ver = 0x0103;
+	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
+						AVRCP_FEATURE_CATEGORY_2 |
+						AVRCP_FEATURE_CATEGORY_3 |
+						AVRCP_FEATURE_CATEGORY_4 );
 
 	record = sdp_record_alloc();
 	if (!record)
