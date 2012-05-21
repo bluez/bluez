@@ -105,8 +105,7 @@ done:
 }
 
 static int parse_device_dict(DBusMessageIter *iter,
-		const char **source, const char **dest, const char **target,
-		uint8_t *channel)
+		const char **source, const char **target, uint8_t *channel)
 {
 	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -122,8 +121,6 @@ static int parse_device_dict(DBusMessageIter *iter,
 		case DBUS_TYPE_STRING:
 			if (g_str_equal(key, "Source") == TRUE)
 				dbus_message_iter_get_basic(&value, source);
-			else if (g_str_equal(key, "Destination") == TRUE)
-				dbus_message_iter_get_basic(&value, dest);
 			else if (g_str_equal(key, "Target") == TRUE)
 				dbus_message_iter_get_basic(&value, target);
 			break;
@@ -163,9 +160,20 @@ static DBusMessage *create_session(DBusConnection *connection,
 	uint8_t channel = 0;
 
 	dbus_message_iter_init(message, &iter);
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
+	dbus_message_iter_get_basic(&iter, &dest);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return g_dbus_create_error(message,
+				"org.openobex.Error.InvalidArguments", NULL);
+
 	dbus_message_iter_recurse(&iter, &dict);
 
-	parse_device_dict(&dict, &source, &dest, &target, &channel);
+	parse_device_dict(&dict, &source, &target, &channel);
 	if (dest == NULL || target == NULL)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.InvalidArguments", NULL);
@@ -223,7 +231,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 
 static const GDBusMethodTable client_methods[] = {
 	{ GDBUS_ASYNC_METHOD("CreateSession",
-			GDBUS_ARGS({ "devices", "a{sv}" }),
+			GDBUS_ARGS({ "destination", "s" }, { "args", "a{sv}" }),
 			GDBUS_ARGS({ "session", "o" }), create_session) },
 	{ GDBUS_ASYNC_METHOD("RemoveSession",
 			GDBUS_ARGS({ "session", "o" }), NULL, remove_session) },
