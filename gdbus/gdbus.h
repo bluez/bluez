@@ -144,6 +144,13 @@ typedef struct {
 	.function = _function, \
 	.flags = G_DBUS_METHOD_FLAG_ASYNC | G_DBUS_METHOD_FLAG_DEPRECATED
 
+#define GDBUS_NOREPLY_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_NOREPLY
+
 #define GDBUS_SIGNAL(_name, _args) \
 	.name = _name, \
 	.args = _args
