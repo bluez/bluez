@@ -35,7 +35,6 @@
 #include "mimetype.h"
 #include "phonebook.h"
 #include "vcard.h"
-#include "glib-helper.h"
 
 #define TRACKER_SERVICE "org.freedesktop.Tracker1"
 #define TRACKER_RESOURCES_PATH "/org/freedesktop/Tracker1/Resources"

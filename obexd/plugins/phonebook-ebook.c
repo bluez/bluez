@@ -37,7 +37,6 @@
 #include "obex.h"
 #include "service.h"
 #include "phonebook.h"
-#include "glib-helper.h"
 
 #define QUERY_FN "(contains \"family_name\" \"%s\")"
 #define QUERY_NAME "(contains \"given_name\" \"%s\")"
