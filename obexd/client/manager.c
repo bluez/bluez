@@ -510,8 +510,7 @@ static void capability_obc_session_callback(struct obc_session *session,
 	if (err != NULL)
 		goto fail;
 
-	pull = obc_transfer_get("x-obex/capability", NULL, data->filename,
-									&gerr);
+	pull = obc_transfer_get("x-obex/capability", NULL, NULL, &gerr);
 	if (pull == NULL)
 		goto fail;
 
