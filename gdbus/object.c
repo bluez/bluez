@@ -612,16 +612,12 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	for (signal = iface->signals; signal && signal->name; signal++) {
 		if (!strcmp(signal->name, name)) {
 			*args = signal->args;
-			break;
+			return TRUE;
 		}
 	}
 
-	if (*args == NULL) {
-		error("No signal named %s on interface %s", name, interface);
-		return FALSE;
-	}
-
-	return TRUE;
+	error("No signal named %s on interface %s", name, interface);
+	return FALSE;
 }
 
 static dbus_bool_t emit_signal_valist(DBusConnection *conn,
