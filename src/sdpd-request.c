@@ -1037,7 +1037,7 @@ send_rsp:
 	if (send(req->sock, rsp.data, rsp.data_size, 0) < 0)
 		error("send: %s (%d)", strerror(errno), errno);
 
-	SDPDBG("Bytes Sent : %d", sent);
+	SDPDBG("Bytes Sent : %d", rsp.data_size);
 
 	free(rsp.data);
 	free(req->buf);
