@@ -645,6 +645,9 @@ static void gateway_state_changed(struct audio_device *dev,
 
 	DBG("");
 
+	if (bacmp(&endpoint->adapter->src, &dev->src) != 0)
+		return;
+
 	switch (new_state) {
 	case GATEWAY_STATE_DISCONNECTED:
 		transport = find_device_transport(endpoint, dev);
