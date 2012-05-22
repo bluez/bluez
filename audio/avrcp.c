@@ -98,6 +98,7 @@
 #define AVRCP_FEATURE_CATEGORY_2	0x0002
 #define AVRCP_FEATURE_CATEGORY_3	0x0004
 #define AVRCP_FEATURE_CATEGORY_4	0x0008
+#define AVRCP_FEATURE_PLAYER_SETTINGS	0x0010
 
 enum battery_status {
 	BATTERY_STATUS_NORMAL =		0,
@@ -254,9 +255,10 @@ static sdp_record_t *avrcp_tg_record(void)
 	uint16_t lp = AVCTP_PSM;
 	uint16_t avrcp_ver = 0x0104, avctp_ver = 0x0103;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
-						AVRCP_FEATURE_CATEGORY_2 |
-						AVRCP_FEATURE_CATEGORY_3 |
-						AVRCP_FEATURE_CATEGORY_4 );
+					AVRCP_FEATURE_CATEGORY_2 |
+					AVRCP_FEATURE_CATEGORY_3 |
+					AVRCP_FEATURE_CATEGORY_4 |
+					AVRCP_FEATURE_PLAYER_SETTINGS );
 
 	record = sdp_record_alloc();
 	if (!record)
