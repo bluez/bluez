@@ -1940,13 +1940,17 @@ static void create_stored_device_from_primary(char *key, char *value,
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
 	GSList *services, *uuids, *l;
+	char address[18];
+	uint8_t bdaddr_type;
 
-	if (g_slist_find_custom(adapter->devices,
-			key, (GCompareFunc) device_address_cmp))
+	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
 		return;
 
-	/* FIXME: Get the correct LE addr type (public/random) */
-	device = device_create(connection, adapter, key, BDADDR_LE_PUBLIC);
+	if (g_slist_find_custom(adapter->devices,
+			address, (GCompareFunc) device_address_cmp))
+		return;
+
+	device = device_create(connection, adapter, address, bdaddr_type);
 	if (!device)
 		return;
 
