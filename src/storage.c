@@ -1206,27 +1206,31 @@ done:
 	g_slist_free_full(match.keys, g_free);
 }
 
-int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
+int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
+						uint8_t bdaddr_type)
 {
-	char filename[PATH_MAX + 1], address[18];
+	char filename[PATH_MAX + 1], key[20];
 
-	memset(address, 0, sizeof(address));
-	ba2str(dba, address);
+	memset(key, 0, sizeof(key));
+	ba2str(dba, key);
 
-	/* Deleting all characteristics of a given address */
+	/* Deleting all characteristics of a given key */
 	create_filename(filename, PATH_MAX, sba, "characteristic");
-	delete_by_pattern(filename, address);
+	delete_by_pattern(filename, key);
 
-	/* Deleting all attributes values of a given address */
+	/* Deleting all attributes values of a given key */
 	create_filename(filename, PATH_MAX, sba, "attributes");
-	delete_by_pattern(filename, address);
+	delete_by_pattern(filename, key);
 
-	/* Deleting all CCC values of a given address */
+	/* Deleting all CCC values of a given key */
 	create_filename(filename, PATH_MAX, sba, "ccc");
-	delete_by_pattern(filename, address);
+	delete_by_pattern(filename, key);
+
+	sprintf(&key[17], "#%hhu", bdaddr_type);
 
 	create_filename(filename, PATH_MAX, sba, "primary");
-	return textfile_del(filename, address);
+
+	return textfile_del(filename, key);
 }
 
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
