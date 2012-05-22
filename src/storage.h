@@ -76,9 +76,10 @@ gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote);
 int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
 							gboolean blocked);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
-							const char *services);
+				uint8_t bdaddr_type, const char *services);
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba);
-char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba);
+char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
+							uint8_t bdaddr_type);
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 					uint16_t handle, const char *chars);
 char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,

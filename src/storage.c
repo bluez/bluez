@@ -1162,17 +1162,18 @@ int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
 }
 
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
-							const char *services)
+			  uint8_t bdaddr_type, const char *services)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(dba, addr);
+	ba2str(dba, key);
+	sprintf(&key[17], "#%hhu", bdaddr_type);
 
-	return textfile_put(filename, addr, services);
+	return textfile_put(filename, key, services);
 }
 
 static void filter_keys(char *key, char *value, void *data)
@@ -1228,15 +1229,17 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba)
 	return textfile_del(filename, address);
 }
 
-char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba)
+char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
+							uint8_t bdaddr_type)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
-	ba2str(dba, addr);
+	ba2str(dba, key);
+	sprintf(&key[17], "#%hhu", bdaddr_type);
 
-	return textfile_caseget(filename, addr);
+	return textfile_caseget(filename, key);
 }
 
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,

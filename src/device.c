@@ -1759,7 +1759,7 @@ static void store_services(struct btd_device *device)
 	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba, NULL);
 
-	write_device_services(&sba, &dba, str);
+	write_device_services(&sba, &dba, device->bdaddr_type, str);
 
 	g_free(str);
 }
