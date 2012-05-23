@@ -130,7 +130,6 @@ static void read_radio_states_cb(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&derr);
 	if (dbus_message_get_args(reply, &derr,
 				DBUS_TYPE_UINT32, &radio_states,
 				DBUS_TYPE_INVALID) == FALSE) {
