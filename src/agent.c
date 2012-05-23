@@ -272,7 +272,6 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
 	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
 		error("Wrong reply signature: %s", err.message);
 		cb(agent, &err, req->user_data);
@@ -373,7 +372,6 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
 	if (!dbus_message_get_args(message, &err,
 				DBUS_TYPE_STRING, &pin,
 				DBUS_TYPE_INVALID)) {
@@ -385,7 +383,6 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 
 	len = strlen(pin);
 
-	dbus_error_init(&err);
 	if (len > 16 || len < 1) {
 		error("Invalid PIN length (%zu) from agent", len);
 		dbus_set_error_const(&err, "org.bluez.Error.InvalidArgs",
@@ -538,7 +535,6 @@ static void passkey_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
 	if (!dbus_message_get_args(message, &err,
 				DBUS_TYPE_UINT32, &passkey,
 				DBUS_TYPE_INVALID)) {
@@ -733,7 +729,6 @@ static void display_pincode_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
 	if (!dbus_message_get_args(message, &err, DBUS_TYPE_INVALID)) {
 		error("Wrong reply signature: %s", err.message);
 		cb(agent, &err, req->user_data);
