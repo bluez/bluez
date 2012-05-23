@@ -732,7 +732,7 @@ int write_trust(const char *src, const char *addr, const char *service,
 	else {
 		char *new_str = service_list_to_string(services);
 		ret = textfile_caseput(filename, addr, new_str);
-		free(new_str);
+		g_free(new_str);
 	}
 
 	g_slist_free(services);
@@ -817,7 +817,7 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 	err = textfile_put(filename, key, str);
 
 	free(buf.data);
-	free(str);
+	g_free(str);
 
 	return err;
 }
@@ -839,7 +839,7 @@ sdp_record_t *record_from_string(const gchar *str)
 	}
 
 	rec = sdp_extract_pdu(pdata, size, &len);
-	free(pdata);
+	g_free(pdata);
 
 	return rec;
 }
