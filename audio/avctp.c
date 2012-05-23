@@ -320,7 +320,7 @@ static struct avctp_pdu_handler *find_handler(GSList *list, uint8_t opcode)
 
 static void avctp_disconnected(struct avctp *session)
 {
-	struct avctp_server *server = session->server;
+	struct avctp_server *server;
 
 	if (!session)
 		return;
@@ -356,6 +356,7 @@ static void avctp_disconnected(struct avctp *session)
 		session->uinput = -1;
 	}
 
+	server = session->server;
 	server->sessions = g_slist_remove(server->sessions, session);
 	g_slist_free_full(session->handlers, g_free);
 	g_free(session);
