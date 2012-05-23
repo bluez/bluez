@@ -49,6 +49,7 @@
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer"
 #define SESSION_INTERFACE OBEXD_SERVICE ".Session"
+#define AGENT_INTERFACE OBEXD_SERVICE ".Agent"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 
@@ -461,7 +462,7 @@ static void agent_cancel(void)
 		return;
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
-					"org.openobex.Agent", "Cancel");
+						AGENT_INTERFACE, "Cancel");
 
 	g_dbus_send_message(connection, msg);
 }
@@ -547,7 +548,7 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	path = g_strdup_printf("/transfer%u", os->id);
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
-					"org.openobex.Agent", "Authorize");
+						AGENT_INTERFACE, "Authorize");
 
 	dbus_message_append_args(msg,
 			DBUS_TYPE_OBJECT_PATH, &path,

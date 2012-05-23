@@ -365,8 +365,7 @@ static ssize_t synce_read(void *object, void *buf, size_t count)
 
 	append_dict_entry(&dict, "id", DBUS_TYPE_STRING, context->id);
 
-	snprintf(transport, sizeof(transport), "%s.obexd",
-					OPENOBEX_SERVICE);
+	snprintf(transport, sizeof(transport), "%s.obexd", OBEXD_SERVICE);
 	append_dict_entry(&dict, "transport", DBUS_TYPE_STRING, transport);
 
 	snprintf(transport_description, sizeof(transport_description),
