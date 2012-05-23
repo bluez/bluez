@@ -233,7 +233,7 @@ static void device_list(int fd, int max_dev)
 
 	if (ioctl(fd, HCIGETDEVLIST, (void *) dl) < 0) {
 		perror("Failed to get device list");
-		return;
+		goto done;
 	}
 
 	for (i = 0; i < dl->dev_num; i++, dr++) {
@@ -253,6 +253,7 @@ static void device_list(int fd, int max_dev)
 		open_device(dr->dev_id);
 	}
 
+done:
 	free(dl);
 }
 
