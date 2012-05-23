@@ -276,7 +276,6 @@ static void endpoint_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	dbus_error_init(&err);
 	if (dbus_message_is_method_call(request->msg, MEDIA_ENDPOINT_INTERFACE,
 				"SelectConfiguration")) {
 		DBusMessageIter args, array;
