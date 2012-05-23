@@ -1153,8 +1153,6 @@ int input_device_register(DBusConnection *conn, struct btd_device *device,
 	}
 
 	iconn = input_conn_new(idev, uuid, timeout);
-	if (!iconn)
-		return -EINVAL;
 
 	idev->connections = g_slist_append(idev->connections, iconn);
 
@@ -1176,9 +1174,6 @@ int fake_input_register(DBusConnection *conn, struct btd_device *device,
 	}
 
 	iconn = input_conn_new(idev, uuid, 0);
-	if (!iconn)
-		return -EINVAL;
-
 	iconn->fake = g_new0(struct fake_input, 1);
 	iconn->fake->ch = channel;
 	iconn->fake->connect = rfcomm_connect;
