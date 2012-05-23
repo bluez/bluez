@@ -1618,9 +1618,6 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 
 	agent = agent_create(adapter, name, path, cap,
 				(agent_remove_cb) agent_removed, adapter);
-	if (!agent)
-		return btd_error_failed(msg, "Failed to create a new agent");
-
 	adapter->agent = agent;
 
 	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
