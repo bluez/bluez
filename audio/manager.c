@@ -852,8 +852,6 @@ static struct audio_adapter *audio_adapter_get(struct btd_adapter *adapter)
 	adp = find_adapter(adapters, adapter);
 	if (!adp) {
 		adp = audio_adapter_create(adapter);
-		if (!adp)
-			return NULL;
 		adapters = g_slist_append(adapters, adp);
 	} else
 		audio_adapter_ref(adp);
