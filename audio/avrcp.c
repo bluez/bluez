@@ -1150,8 +1150,7 @@ static gboolean avrcp_handle_volume_changed(struct avctp *session,
 	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
 		return FALSE;
 
-	if (player->cb->set_volume != NULL)
-		player->cb->set_volume(abs_volume, player->dev, player->user_data);
+	player->cb->set_volume(abs_volume, player->dev, player->user_data);
 
 	return TRUE;
 }
