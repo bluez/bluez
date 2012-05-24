@@ -982,7 +982,7 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 	struct avctp_rsp_handler *handler;
 	int err;
 
-	err = avctp_send(session, id++, AVCTP_COMMAND, code, subunit,
+	err = avctp_send(session, id, AVCTP_COMMAND, code, subunit,
 				AVC_OP_VENDORDEP, operands, operand_count);
 	if (err < 0)
 		return err;
@@ -993,6 +993,8 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 	handler->user_data = user_data;
 
 	session->handlers = g_slist_prepend(session->handlers, handler);
+
+	id++;
 
 	return 0;
 }
