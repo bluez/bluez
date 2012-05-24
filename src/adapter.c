@@ -1599,7 +1599,6 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	const char *path, *name, *capability;
-	struct agent *agent;
 	struct btd_adapter *adapter = data;
 	uint8_t cap;
 
@@ -1616,9 +1615,8 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 
 	name = dbus_message_get_sender(msg);
 
-	agent = agent_create(adapter, name, path, cap,
+	adapter->agent = agent_create(adapter, name, path, cap,
 				(agent_remove_cb) agent_removed, adapter);
-	adapter->agent = agent;
 
 	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
 			path);
