@@ -1145,12 +1145,14 @@ static gboolean avrcp_handle_volume_changed(struct avctp *session,
 {
 	struct avrcp_player *player = user_data;
 	struct avrcp_header *pdu = (void *) operands;
-	uint8_t abs_volume = pdu->params[1] & 0x7F;
+	uint8_t volume;
 
 	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
 		return FALSE;
 
-	player->cb->set_volume(abs_volume, player->dev, player->user_data);
+	volume = pdu->params[1] & 0x7F;
+
+	player->cb->set_volume(volume, player->dev, player->user_data);
 
 	return TRUE;
 }
