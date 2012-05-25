@@ -60,26 +60,32 @@ void sap_connect_req(void *sap_device, uint16_t maxmsgsize)
 		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED,
 								maxmsgsize);
 		return;
-	} else if (max_msg_size_supported > maxmsgsize) {
+	}
+
+	if (max_msg_size_supported > maxmsgsize) {
 		sap_connect_rsp(sap_device, SAP_STATUS_MAX_MSG_SIZE_TOO_SMALL,
 						max_msg_size_supported);
 		return;
-	} else if (max_msg_size_supported < maxmsgsize) {
+	}
+
+	if (max_msg_size_supported < maxmsgsize) {
 		sap_connect_rsp(sap_device,
 				SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED,
 				max_msg_size_supported);
 		return;
-	} else if (ongoing_call_status) {
+	}
+
+	if (ongoing_call_status) {
 		sap_connect_rsp(sap_device, SAP_STATUS_OK_ONGOING_CALL,
 						max_msg_size_supported);
 		return;
-	} else {
-		sim_card_conn_status = SIM_CONNECTED;
-		sap_data = sap_device;
-
-		sap_connect_rsp(sap_device, SAP_STATUS_OK, maxmsgsize);
-		sap_status_ind(sap_device, SAP_STATUS_CHANGE_CARD_RESET);
 	}
+
+	sim_card_conn_status = SIM_CONNECTED;
+	sap_data = sap_device;
+
+	sap_connect_rsp(sap_device, SAP_STATUS_OK, maxmsgsize);
+	sap_status_ind(sap_device, SAP_STATUS_CHANGE_CARD_RESET);
 }
 
 void sap_disconnect_req(void *sap_device, uint8_t linkloss)
