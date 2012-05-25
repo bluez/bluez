@@ -129,9 +129,6 @@ static int is_reset_sim_req_allowed(uint8_t processing_req)
 
 static int check_msg(struct sap_message *msg)
 {
-	if (!msg)
-		return -EINVAL;
-
 	switch (msg->id) {
 	case SAP_CONNECT_REQ:
 		if (msg->nparam != 0x01)
