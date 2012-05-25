@@ -342,6 +342,8 @@ int sap_init(void)
 				NULL, NULL) == FALSE) {
 		error("sap-dummy interface %s init failed on path %s",
 					SAP_DUMMY_IFACE, SAP_DUMMY_PATH);
+		dbus_connection_unref(connection);
+		connection = NULL;
 		return -1;
 	}
 
