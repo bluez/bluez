@@ -858,6 +858,10 @@ static void get_properties_a2dp(struct media_transport *transport,
 						DBusMessageIter *dict)
 {
 	dict_append_entry(dict, "Delay", DBUS_TYPE_UINT16, &transport->delay);
+
+	if (transport->volume <= 127)
+		dict_append_entry(dict, "Volume", DBUS_TYPE_UINT16,
+							&transport->volume);
 }
 
 static void get_properties_headset(struct media_transport *transport,
@@ -1013,6 +1017,7 @@ struct media_transport *media_transport_create(DBusConnection *conn,
 	transport->size = size;
 	transport->path = g_strdup_printf("%s/fd%d", device->path, fd++);
 	transport->fd = -1;
+	transport->volume = -1;
 
 	uuid = media_endpoint_get_uuid(endpoint);
 	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0 ||
