@@ -39,16 +39,16 @@
 #define SAP_DUMMY_PATH "/org/bluez/test"
 
 enum {
-	SIM_DISCONNECTED= 0x00,
-	SIM_CONNECTED	= 0x01,
-	SIM_POWERED_OFF	= 0x02,
-	SIM_MISSING	= 0x03
+	SIM_DISCONNECTED = 0x00,
+	SIM_CONNECTED	 = 0x01,
+	SIM_POWERED_OFF	 = 0x02,
+	SIM_MISSING	 = 0x03
 };
 
 static DBusConnection *connection = NULL;
 
 static int sim_card_conn_status = SIM_DISCONNECTED;
-static void *sap_data = NULL;  /* SAP server private data.*/
+static void *sap_data = NULL; /* SAP server private data. */
 static gboolean ongoing_call_status = FALSE;
 static int max_msg_size_supported = 512;
 
@@ -113,7 +113,7 @@ void sap_transfer_apdu_req(void *sap_device, struct sap_parameter *param)
 			SAP_RESULT_ERROR_NOT_ACCESSIBLE, NULL, 0);
 	else
 		sap_transfer_apdu_rsp(sap_device, SAP_RESULT_OK,
-						(uint8_t*)&apdu, sizeof(apdu));
+						(uint8_t *)&apdu, sizeof(apdu));
 }
 
 void sap_transfer_atr_req(void *sap_device)
@@ -133,7 +133,7 @@ void sap_transfer_atr_req(void *sap_device)
 								NULL, 0);
 	else
 		sap_transfer_atr_rsp(sap_device, SAP_RESULT_OK,
-						(uint8_t*)&atr, sizeof(atr));
+						(uint8_t *)&atr, sizeof(atr));
 }
 
 void sap_power_sim_off_req(void *sap_device)

@@ -147,7 +147,7 @@ static int check_msg(struct sap_message *msg)
 			return -EBADMSG;
 
 		if (msg->param->id != SAP_PARAM_ID_COMMAND_APDU)
-			if ( msg->param->id != SAP_PARAM_ID_COMMAND_APDU7816)
+			if (msg->param->id != SAP_PARAM_ID_COMMAND_APDU7816)
 				return -EBADMSG;
 
 		if (msg->param->len == 0x00)
@@ -230,8 +230,7 @@ static sdp_record_t *create_sap_record(uint8_t channel)
 	aproto = sdp_list_append(NULL, apseq);
 	sdp_set_access_protos(record, aproto);
 
-	sdp_set_info_attr(record, "SIM Access Server",
-			NULL, NULL);
+	sdp_set_info_attr(record, "SIM Access Server", NULL, NULL);
 
 	sdp_data_free(ch);
 	sdp_list_free(proto[0], NULL);
@@ -863,7 +862,7 @@ int sap_reset_sim_rsp(void *sap_device, uint8_t result)
 		return -EINVAL;
 
 	DBG("state %d pr 0x%02x result 0x%02x", conn->state,
-					conn->processing_req, result);
+						conn->processing_req, result);
 
 	if (conn->processing_req != SAP_RESET_SIM_REQ)
 		return 0;
@@ -891,7 +890,7 @@ int sap_transfer_card_reader_status_rsp(void *sap_device, uint8_t result,
 		return -EINVAL;
 
 	DBG("state %d pr 0x%02x result 0x%02x", conn->state,
-					conn->processing_req, result);
+						conn->processing_req, result);
 
 	if (conn->processing_req != SAP_TRANSFER_CARD_READER_STATUS_REQ)
 		return 0;
@@ -927,7 +926,7 @@ int sap_transport_protocol_rsp(void *sap_device, uint8_t result)
 		return -EINVAL;
 
 	DBG("state %d pr 0x%02x result 0x%02x", conn->state,
-					conn->processing_req, result);
+						conn->processing_req, result);
 
 	if (conn->processing_req != SAP_SET_TRANSPORT_PROTOCOL_REQ)
 		return 0;
@@ -968,7 +967,7 @@ int sap_status_ind(void *sap_device, uint8_t status_change)
 		return -EINVAL;
 
 	DBG("state %d pr 0x%02x sc 0x%02x", conn->state, conn->processing_req,
-				status_change);
+								status_change);
 
 	/* Might be need to change state to connected after ongoing call.*/
 	if (conn->state == SAP_STATE_CONNECT_MODEM_BUSY &&
