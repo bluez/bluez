@@ -1357,16 +1357,14 @@ static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data
 	mp->volume = volume;
 
 	for (l = mp->adapter->endpoints; l; l = l->next) {
-
-		struct media_endpoint *endpoint;
+		struct media_endpoint *endpoint = l->data;
 		struct media_transport *transport;
 
-		if (l->data == NULL)
+		/* Volume is A2DP only */
+		if (endpoint->sep == NULL)
 			continue;
 
-		endpoint = l->data;
 		transport = find_device_transport(endpoint, dev);
-
 		if (transport == NULL)
 			continue;
 
