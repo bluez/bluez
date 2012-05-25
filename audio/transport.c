@@ -77,7 +77,7 @@ struct media_transport {
 	uint16_t		omtu;		/* Transport output mtu */
 	uint16_t		delay;		/* Transport delay (a2dp only) */
 	unsigned int		nrec_id;	/* Transport nrec watch (headset only) */
-	uint8_t			volume;		/* Transport volume */
+	uint16_t		volume;		/* Transport volume */
 	gboolean		read_lock;
 	gboolean		write_lock;
 	gboolean		in_use;
@@ -1076,5 +1076,5 @@ void media_transport_update_volume(struct media_transport *transport,
 
 	emit_property_changed(transport->conn, transport->path,
 				MEDIA_TRANSPORT_INTERFACE, "Volume",
-				DBUS_TYPE_BYTE, &transport->volume);
+				DBUS_TYPE_UINT16, &transport->volume);
 }
