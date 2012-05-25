@@ -274,17 +274,7 @@ static int disconnect_ind(void *sap_device, uint8_t disc_type)
 	struct sap_parameter *param = (struct sap_parameter *) msg->param;
 	size_t size = sizeof(struct sap_message);
 
-	if (!conn)
-		return -EINVAL;
-
 	DBG("data %p state %d disc_type 0x%02x", conn, conn->state, disc_type);
-
-	if (conn->state != SAP_STATE_GRACEFUL_DISCONNECT &&
-			conn->state != SAP_STATE_IMMEDIATE_DISCONNECT) {
-		error("Processing error (state %d pr 0x%02x)", conn->state,
-							conn->processing_req);
-		return -EPERM;
-	}
 
 	memset(buf, 0, sizeof(buf));
 	msg->id = SAP_DISCONNECT_IND;
