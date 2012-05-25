@@ -87,6 +87,7 @@
 #define AVRCP_REGISTER_NOTIFICATION	0x31
 #define AVRCP_REQUEST_CONTINUING	0x40
 #define AVRCP_ABORT_CONTINUING		0x41
+#define AVRCP_SET_ABSOLUTE_VOLUME	0x50
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -1404,4 +1405,56 @@ void avrcp_unregister_player(struct avrcp_player *player)
 		server->active_player = g_slist_nth_data(server->players, 0);
 
 	player_destroy(player);
+}
+
+static gboolean avrcp_handle_set_volume(struct avctp *session,
+					uint8_t code, uint8_t subunit,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct avrcp_header *pdu = (void *) operands;
+	uint8_t volume;
+
+	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
+		return FALSE;
+
+	volume = pdu->params[0] & 0x7F;
+
+	player->cb->set_volume(volume, player->dev, player->user_data);
+
+	return FALSE;
+}
+
+int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
+{
+	struct avrcp_server *server;
+	struct avrcp_player *player;
+	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
+	struct avrcp_header *pdu = (void *) buf;
+
+	server = find_server(servers, &dev->src);
+	if (server == NULL)
+		return -EINVAL;
+
+	player = server->active_player;
+	if (player == NULL)
+		return -ENOTSUP;
+
+	if (player->session == NULL)
+		return -ENOTCONN;
+
+	memset(buf, 0, sizeof(buf));
+
+	set_company_id(pdu->company_id, IEEEID_BTSIG);
+
+	pdu->pdu_id = AVRCP_SET_ABSOLUTE_VOLUME;
+	pdu->params[0] = volume;
+	pdu->params_len = htons(1);
+
+	DBG("volume=%u", volume);
+
+	return avctp_send_vendordep_req(player->session, AVC_CTYPE_CONTROL,
+					AVC_SUBUNIT_PANEL, buf, sizeof(buf),
+					avrcp_handle_set_volume, player);
 }

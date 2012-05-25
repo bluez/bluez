@@ -43,6 +43,7 @@
 #include "a2dp.h"
 #include "headset.h"
 #include "gateway.h"
+#include "avrcp.h"
 
 #ifndef DBUS_TYPE_UNIX_FD
 #define DBUS_TYPE_UNIX_FD -1
@@ -753,6 +754,21 @@ static int set_property_a2dp(struct media_transport *transport,
 
 		/* FIXME: send new delay */
 		return 0;
+	} else if (g_strcmp0(property, "Volume") == 0) {
+		uint16_t volume;
+
+		if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT16)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &volume);
+
+		if (volume > 127)
+			return -EINVAL;
+
+		if (transport->volume == volume)
+			return 0;
+
+		return avrcp_set_volume(transport->device, volume);
 	}
 
 	return -EINVAL;

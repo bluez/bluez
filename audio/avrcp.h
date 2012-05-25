@@ -93,6 +93,7 @@ void avrcp_unregister(const bdaddr_t *src);
 
 gboolean avrcp_connect(struct audio_device *dev);
 void avrcp_disconnect(struct audio_device *dev);
+int avrcp_set_volume(struct audio_device *dev, uint8_t volume);
 
 struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
 						struct avrcp_player_cb *cb,
@@ -101,5 +102,6 @@ struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
 void avrcp_unregister_player(struct avrcp_player *player);
 
 int avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data);
+
 
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands);
