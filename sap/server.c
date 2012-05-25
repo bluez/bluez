@@ -1111,28 +1111,28 @@ static gboolean sap_io_cb(GIOChannel *io, GIOCondition cond, gpointer data)
 static void sap_io_destroy(void *data)
 {
 	struct sap_connection *conn = data;
+	gboolean connected = FALSE;
 
 	DBG("conn %p", conn);
 
-	if (conn && conn->io) {
-		gboolean connected = FALSE;
+	if (!conn || !conn->io)
+		return;
 
-		stop_guard_timer(conn);
+	stop_guard_timer(conn);
 
-		if (conn->state != SAP_STATE_CONNECT_IN_PROGRESS &&
-				conn->state != SAP_STATE_CONNECT_MODEM_BUSY)
-			emit_property_changed(connection, server->path,
+	if (conn->state != SAP_STATE_CONNECT_IN_PROGRESS &&
+			conn->state != SAP_STATE_CONNECT_MODEM_BUSY)
+		emit_property_changed(connection, server->path,
 					SAP_SERVER_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &connected);
 
-		if (conn->state == SAP_STATE_CONNECT_IN_PROGRESS ||
-				conn->state == SAP_STATE_CONNECT_MODEM_BUSY ||
-				conn->state == SAP_STATE_CONNECTED ||
-				conn->state == SAP_STATE_GRACEFUL_DISCONNECT)
-			sap_disconnect_req(NULL, 1);
+	if (conn->state == SAP_STATE_CONNECT_IN_PROGRESS ||
+			conn->state == SAP_STATE_CONNECT_MODEM_BUSY ||
+			conn->state == SAP_STATE_CONNECTED ||
+			conn->state == SAP_STATE_GRACEFUL_DISCONNECT)
+		sap_disconnect_req(NULL, 1);
 
-		sap_conn_remove(conn);
-	}
+	sap_conn_remove(conn);
 }
 
 static void sap_connect_cb(GIOChannel *io, GError *gerr, gpointer data)
