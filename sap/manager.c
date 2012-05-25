@@ -22,18 +22,8 @@
 #include <config.h>
 #endif
 
-#include <errno.h>
-
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/sdp.h>
-#include <bluetooth/sdp_lib.h>
-
-#include <gdbus.h>
-
 #include "log.h"
 #include "adapter.h"
-#include "device.h"
 
 #include "manager.h"
 #include "server.h"

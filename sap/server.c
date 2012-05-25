@@ -28,11 +28,8 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <errno.h>
 #include <glib.h>
-#include <netinet/in.h>
-#include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
