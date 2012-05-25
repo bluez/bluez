@@ -72,7 +72,6 @@ struct sap_connection {
 };
 
 struct sap_server {
-	bdaddr_t src;
 	char *path;
 	uint32_t record_id;
 	GIOChannel *listen_io;
@@ -1348,7 +1347,6 @@ int sap_server_register(const char *path, bdaddr_t *src)
 		return -ENOMEM;
 	}
 
-	bacpy(&server->src, src);
 	server->path = g_strdup(path);
 
 	record = create_sap_record(SAP_SERVER_CHANNEL);
@@ -1357,7 +1355,7 @@ int sap_server_register(const char *path, bdaddr_t *src)
 		goto sdp_err;
 	}
 
-	if (add_record_to_server(&server->src, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Adding SAP SDP record to the SDP server failed.");
 		sdp_record_free(record);
 		goto sdp_err;
@@ -1367,7 +1365,7 @@ int sap_server_register(const char *path, bdaddr_t *src)
 
 	io = bt_io_listen(BT_IO_RFCOMM, NULL, connect_confirm_cb, server,
 			NULL, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, &server->src,
+			BT_IO_OPT_SOURCE_BDADDR, src,
 			BT_IO_OPT_CHANNEL, SAP_SERVER_CHANNEL,
 			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
 			BT_IO_OPT_MASTER, TRUE,
