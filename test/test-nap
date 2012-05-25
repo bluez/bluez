@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import time
 import dbus
@@ -35,13 +37,13 @@ else:
 
 server.Register(service, bridge)
 
-print "Server for %s registered for %s" % (service, bridge)
+print("Server for %s registered for %s" % (service, bridge))
 
-print "Press CTRL-C to disconnect"
+print("Press CTRL-C to disconnect")
 
 try:
 	time.sleep(1000)
-	print "Terminating connection"
+	print("Terminating connection")
 except:
 	pass
 

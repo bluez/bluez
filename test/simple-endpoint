@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import dbus
 import dbus.service
@@ -52,25 +54,25 @@ class Endpoint(dbus.service.Object):
 	@dbus.service.method("org.bluez.MediaEndpoint",
 					in_signature="", out_signature="")
 	def Release(self):
-		print "Release"
+		print("Release")
 		if self.exit_on_release:
 			mainloop.quit()
 
 	@dbus.service.method("org.bluez.MediaEndpoint",
 					in_signature="", out_signature="")
 	def ClearConfiguration(self):
-		print "ClearConfiguration"
+		print("ClearConfiguration")
 
 	@dbus.service.method("org.bluez.MediaEndpoint",
 					in_signature="oay", out_signature="")
 	def SetConfiguration(self, transport, config):
-		print "SetConfiguration (%s, %s)" % (transport, config)
+		print("SetConfiguration (%s, %s)" % (transport, config))
 		return
 
 	@dbus.service.method("org.bluez.MediaEndpoint",
 					in_signature="ay", out_signature="ay")
 	def SelectConfiguration(self, caps):
-		print "SelectConfiguration (%s)" % (caps)
+		print("SelectConfiguration (%s)" % (caps))
 		return self.configuration
 
 if __name__ == '__main__':
@@ -119,7 +121,7 @@ if __name__ == '__main__':
 							"Capabilities" :  PCM_CONFIGURATION })
 			endpoint.default_configuration(dbus.Array([]))
 
-	print properties
+	print(properties)
 
 	media.RegisterEndpoint(path, properties)
 

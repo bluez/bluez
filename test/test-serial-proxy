@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import time
 import dbus
@@ -27,7 +29,7 @@ adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 if (len(args) < 1):
-	print "Usage: %s <socket_name> [service]" % (sys.argv[0])
+	print("Usage: %s <socket_name> [service]" % (sys.argv[0]))
 	sys.exit(1)
 
 socket_name = args[0]
@@ -51,7 +53,7 @@ proxy.Enable()
 
 conn, addr = sk.accept()
 
-print "Waiting for message"
+print("Waiting for message")
 
 while 1:
 	data = conn.recv(1024)

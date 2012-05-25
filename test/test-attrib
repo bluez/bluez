@@ -1,4 +1,6 @@
 #!/usr/bin/python
+
+from __future__ import absolute_import, print_function, unicode_literals
 # Script for testing the Attribute D-Bus API
 
 import sys
@@ -35,12 +37,12 @@ adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 if (len(args) < 1):
-	print "Usage: %s <command>" % (sys.argv[0])
-	print ""
-	print "	 list"
-	print "	 services <address>"
-	print "	 discover <service path>"
-	print "	 chars <service path>"
+	print("Usage: %s <command>" % (sys.argv[0]))
+	print("")
+	print("	 list")
+	print("	 services <address>")
+	print("	 discover <service path>")
+	print("	 chars <service path>")
 	sys.exit(1)
 
 if (args[0] == "list"):
@@ -48,61 +50,61 @@ if (args[0] == "list"):
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		devprop = device.GetProperties()
-		print "[ %s ]" % devprop["Address"]
+		print("[ %s ]" % devprop["Address"])
 		for path in devprop["Services"]:
 
 			service = dbus.Interface(bus.get_object("org.bluez", path),
 									 "org.bluez.Characteristic")
 			srvprop = service.GetProperties()
-			print " * %s" % (path)
-			print "	UUID: %s" % srvprop["UUID"]
-			print "	Chars: ",
+			print(" * %s" % (path))
+			print("	UUID: %s" % srvprop["UUID"])
+			print("	Chars: ",)
 			for char in srvprop["Characteristics"]:
-				print "%s " % char,
-			print
-			print
-		print
+				print("%s " % char,)
+			print()
+			print()
+		print()
 	sys.exit(0)
 
 if (args[0] == "services"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
 		for path in properties["Services"]:
-			print path
+			print(path)
 	sys.exit(0)
 
 if (args[0] == "discover"):
 	if (len(args) < 2):
-		print "Need service path parameter"
+		print("Need service path parameter")
 	else:
 		service = dbus.Interface(bus.get_object("org.bluez", args[1]),
 							"org.bluez.Characteristic")
 		for path in service.DiscoverCharacteristics():
-			print path
+			print(path)
 	sys.exit(0)
 
 if (args[0] == "chars"):
 	if (len(args) < 2):
-		print "Need service path parameter"
+		print("Need service path parameter")
 	else:
 		service = dbus.Interface(bus.get_object("org.bluez", args[1]),
 								 "org.bluez.Characteristic")
 		srvprop = service.GetProperties()
 		for path in srvprop["Characteristics"]:
-			print "[ %s ]" % (path)
+			print("[ %s ]" % (path))
 			char = dbus.Interface(bus.get_object("org.bluez", path),
 								 "org.bluez.Characteristic")
 			charprop = char.GetProperties()
-			print "	Name: %s" % charprop["Name"]
-			print "	UUID: %s" % charprop["UUID"]
-			print
-		print
+			print("	Name: %s" % charprop["Name"])
+			print("	UUID: %s" % charprop["UUID"])
+			print()
+		print()
 	sys.exit(0)
 
-print "Unknown command"
+print("Unknown command")
 sys.exit(1)

@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import dbus
 from optparse import OptionParser, make_option
@@ -25,11 +27,11 @@ adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 if len(args) < 2:
-	print """Usage: %s <command>
+	print("""Usage: %s <command>
 
 	connect <bdaddr>
 	disconnect <bdaddr>
-	""" % sys.argv[0]
+	""" % sys.argv[0])
 	sys.exit(1)
 
 device = adapter.FindDevice(args[1])
@@ -41,5 +43,5 @@ if args[0] == "connect":
 elif args[0] == "disconnect":
 	audio.Disconnect()
 else:
-	print "Unknown command"
+	print("Unknown command")
 	sys.exit(1)

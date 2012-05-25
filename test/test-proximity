@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 '''
 Proximity Monitor test script
 '''
@@ -13,7 +15,7 @@ from optparse import OptionParser, make_option
 
 def property_changed(name, value):
 
-	print "PropertyChanged('%s', '%s')" % (name, value)
+	print("PropertyChanged('%s', '%s')" % (name, value))
 	mainloop.quit()
 
 if __name__ == "__main__":
@@ -44,10 +46,10 @@ if __name__ == "__main__":
 							"org.bluez.Adapter")
 
 	if (len(args) < 1):
-		print "Usage: %s <command>" % (sys.argv[0])
-		print ""
-		print "  -b MAC LinkLossAlertLevel <none|mild|high>"
-		print "  -b MAC ImmediateAlertLevel <none|mild|high>"
+		print("Usage: %s <command>" % (sys.argv[0]))
+		print("")
+		print("  -b MAC LinkLossAlertLevel <none|mild|high>")
+		print("  -b MAC ImmediateAlertLevel <none|mild|high>")
 		sys.exit(1)
 
 	device_path = adapter.FindDevice(options.address)
@@ -59,7 +61,7 @@ if __name__ == "__main__":
 	proximity = dbus.Interface(bus.get_object("org.bluez",
 					device_path), "org.bluez.ProximityMonitor")
 
-	print "Proximity SetProperty('%s', '%s')" % (args[0], args[1])
+	print("Proximity SetProperty('%s', '%s')" % (args[0], args[1]))
 	proximity.SetProperty(args[0], args[1])
 
 	mainloop = gobject.MainLoop()

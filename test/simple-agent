@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-import gobject
+from __future__ import absolute_import, print_function, unicode_literals
+
+from gi.repository import GObject
 
 import sys
 import dbus
@@ -20,15 +22,15 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
 	def Release(self):
-		print "Release"
+		print("Release")
 		if self.exit_on_release:
 			mainloop.quit()
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="os", out_signature="")
 	def Authorize(self, device, uuid):
-		print "Authorize (%s, %s)" % (device, uuid)
-		authorize = raw_input("Authorize connection (yes/no): ")
+		print("Authorize (%s, %s)" % (device, uuid))
+		authorize = input("Authorize connection (yes/no): ")
 		if (authorize == "yes"):
 			return
 		raise Rejected("Connection rejected by user")
@@ -36,31 +38,31 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="s")
 	def RequestPinCode(self, device):
-		print "RequestPinCode (%s)" % (device)
-		return raw_input("Enter PIN Code: ")
+		print("RequestPinCode (%s)" % (device))
+		return input("Enter PIN Code: ")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="u")
 	def RequestPasskey(self, device):
-		print "RequestPasskey (%s)" % (device)
-		passkey = raw_input("Enter passkey: ")
+		print("RequestPasskey (%s)" % (device))
+		passkey = input("Enter passkey: ")
 		return dbus.UInt32(passkey)
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
 	def DisplayPasskey(self, device, passkey):
-		print "DisplayPasskey (%s, %06d)" % (device, passkey)
+		print("DisplayPasskey (%s, %06d)" % (device, passkey))
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="os", out_signature="")
 	def DisplayPinCode(self, device, pincode):
-		print "DisplayPinCode (%s, %s)" % (device, pincode)
+		print("DisplayPinCode (%s, %s)" % (device, pincode))
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="ou", out_signature="")
 	def RequestConfirmation(self, device, passkey):
-		print "RequestConfirmation (%s, %06d)" % (device, passkey)
-		confirm = raw_input("Confirm passkey (yes/no): ")
+		print("RequestConfirmation (%s, %06d)" % (device, passkey))
+		confirm = input("Confirm passkey (yes/no): ")
 		if (confirm == "yes"):
 			return
 		raise Rejected("Passkey doesn't match")
@@ -68,8 +70,8 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
-		print "ConfirmModeChange (%s)" % (mode)
-		authorize = raw_input("Authorize mode change (yes/no): ")
+		print("ConfirmModeChange (%s)" % (mode))
+		authorize = input("Authorize mode change (yes/no): ")
 		if (authorize == "yes"):
 			return
 		raise Rejected("Mode change by user")
@@ -77,14 +79,14 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="", out_signature="")
 	def Cancel(self):
-		print "Cancel"
+		print("Cancel")
 
 def create_device_reply(device):
-	print "New device (%s)" % (device)
+	print("New device (%s)" % (device))
 	mainloop.quit()
 
 def create_device_error(error):
-	print "Creating device failed: %s" % (error)
+	print("Creating device failed: %s" % (error))
 	mainloop.quit()
 
 if __name__ == '__main__':
@@ -114,7 +116,7 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	agent = Agent(bus, path)
 
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 
 	if len(args) > 1:
 		if len(args) > 2:
@@ -128,9 +130,9 @@ if __name__ == '__main__':
 					error_handler=create_device_error)
 	else:
 		adapter.RegisterAgent(path, capability)
-		print "Agent registered"
+		print("Agent registered")
 
 	mainloop.run()
 
 	#adapter.UnregisterAgent(path)
-	#print "Agent unregistered"
+	#print("Agent unregistered")

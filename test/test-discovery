@@ -1,24 +1,26 @@
 #!/usr/bin/python
 
-import gobject
+from __future__ import absolute_import, print_function, unicode_literals
+
+from gi.repository import GObject
 
 import dbus
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
 def device_found(address, properties):
-	print "[ " + address + " ]"
+	print("[ " + address + " ]")
 
 	for key in properties.keys():
 		value = properties[key]
 		if type(value) is dbus.String:
 			value = unicode(value).encode('ascii', 'replace')
 		if (key == "Class"):
-			print "    %s = 0x%06x" % (key, value)
+			print("    %s = 0x%06x" % (key, value))
 		else:
-			print "    %s = %s" % (key, value)
+			print("    %s = %s" % (key, value))
 
-	print
+	print()
 
 def property_changed(name, value):
 	if (name == "Discovering" and not value):
@@ -57,5 +59,5 @@ if __name__ == '__main__':
 
 	adapter.StartDiscovery()
 
-	mainloop = gobject.MainLoop()
+	mainloop = GObject.MainLoop()
 	mainloop.run()

@@ -1,11 +1,13 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 from sap import *
 import time
 
 def connect_disconnect_by_client(sap):
 
-    print "[Test] Connect - Disconnect by client \n"
+    print("[Test] Connect - Disconnect by client \n")
 
     try:
         if not sap.isConnected():
@@ -13,19 +15,19 @@ def connect_disconnect_by_client(sap):
 
         if sap.proc_connect():
             if sap.proc_disconnectByClient():
-                print "OK"
+                print("OK")
                 return 0
 
-        print "NOT OK"
+        print("NOT OK")
         return 1
 
-    except BluetoothError , e:
-        print "Error " + str(e)
+    except BluetoothError as e:
+        print("Error " + str(e))
 
 
 def connect_disconnect_by_server_gracefully(sap, timeout=0):
 
-    print "[Test] Connect - Disconnect by server with timer \n"
+    print("[Test] Connect - Disconnect by server with timer \n")
 
     try:
         if not sap.isConnected():
@@ -33,19 +35,19 @@ def connect_disconnect_by_server_gracefully(sap, timeout=0):
 
         if sap.proc_connect():
             if sap.proc_disconnectByServer(timeout):
-                print "OK"
+                print("OK")
                 return 0
 
-        print "NOT OK"
+        print("NOT OK")
         return 1
 
-    except BluetoothError , e:
-        print "Error " + str(e)
+    except BluetoothError as e:
+        print("Error " + str(e))
 
 
 def connect_txAPDU_disconnect_by_client(sap):
 
-    print "[Test] Connect - TX APDU - Disconnect by client \n"
+    print("[Test] Connect - TX APDU - Disconnect by client \n")
 
     try:
         if not sap.isConnected():
@@ -53,44 +55,44 @@ def connect_txAPDU_disconnect_by_client(sap):
 
         if sap.proc_connect():
             if not sap.proc_transferAPDU():
-                print "NOT OK 1"
+                print("NOT OK 1")
                 return 1
 
             if not sap.proc_transferAPDU():
-                print "NOT OK 2"
+                print("NOT OK 2")
                 return 1
 
             if not sap.proc_transferAPDU():
-                print "NOT OK 3"
+                print("NOT OK 3")
                 return 1
 
             if not sap.proc_transferAPDU():
-                print "NOT OK 4"
+                print("NOT OK 4")
                 return 1
 
             if sap.proc_disconnectByClient():
-                print "OK"
+                print("OK")
                 return 0
 
-        print "NOT OK"
+        print("NOT OK")
         return 1
 
-    except BluetoothError , e:
-        print "Error " + str(e)
+    except BluetoothError as e:
+        print("Error " + str(e))
 
 def connect_rfcomm_only_and_wait_for_close_by_server(sap):
 
-    print "[Test] Connect rfcomm only  - Disconnect by server timeout \n"
+    print("[Test] Connect rfcomm only  - Disconnect by server timeout \n")
 
     if not sap.isConnected():
        sap.connect()
 
     time.sleep(40)
-    print "OK"
+    print("OK")
 
 def power_sim_off_on(sap):
 
-    print "[Test] Powe sim off \n"
+    print("[Test] Powe sim off \n")
 
     try:
         if not sap.isConnected():
@@ -98,26 +100,26 @@ def power_sim_off_on(sap):
 
         if sap.proc_connect():
             if not sap.proc_resetSim():
-                print "NOT OK"
+                print("NOT OK")
                 return 1
 
             if not sap.proc_powerSimOff():
-                print "NOT OK"
+                print("NOT OK")
                 return 1
 
             if not sap.proc_powerSimOn():
-                print "NOT OK"
+                print("NOT OK")
                 return 1
 
             if sap.proc_disconnectByClient():
-                print "OK"
+                print("OK")
                 return 0
 
-        print "NOT OK"
+        print("NOT OK")
         return 1
 
-    except BluetoothError , e:
-        print "Error " + str(e)
+    except BluetoothError as e:
+        print("Error " + str(e))
 
 
 if __name__ == "__main__":
@@ -127,8 +129,8 @@ if __name__ == "__main__":
 
     try:
         s = SAPClient(host, port)
-    except BluetoothError , e:
-        print "Error " + str(e)
+    except BluetoothError as e:
+        print("Error " + str(e))
 
     connect_disconnect_by_client(s)
     connect_disconnect_by_server_gracefully(s)

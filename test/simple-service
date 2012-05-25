@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import time
 import dbus
@@ -114,13 +116,13 @@ service = dbus.Interface(bus.get_object("org.bluez", path),
 
 handle = service.AddRecord(xml)
 
-print "Service record with handle 0x%04x added" % (handle)
+print("Service record with handle 0x%04x added" % (handle))
 
-print "Press CTRL-C to remove service record"
+print("Press CTRL-C to remove service record")
 
 try:
 	time.sleep(1000)
-	print "Terminating session"
+	print("Terminating session")
 except:
 	pass
 

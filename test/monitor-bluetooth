@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import gobject
 
 import dbus
@@ -8,12 +10,12 @@ import dbus.mainloop.glib
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	val = str(value)
-	print "{%s.PropertyChanged} [%s] %s = %s" % (iface, path, name, val)
+	print("{%s.PropertyChanged} [%s] %s = %s" % (iface, path, name, val))
 
 def object_signal(value, path, interface, member):
 	iface = interface[interface.rfind(".") + 1:]
 	val = str(value)
-	print "{%s.%s} [%s] Path = %s" % (iface, member, path, val)
+	print("{%s.%s} [%s] Path = %s" % (iface, member, path, val))
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

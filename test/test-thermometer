@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 '''
 Thermometer test script
 '''
@@ -16,20 +18,20 @@ class Watcher(dbus.service.Object):
 	@dbus.service.method("org.bluez.ThermometerWatcher",
 					in_signature="a{sv}", out_signature="")
 	def MeasurementReceived(self, measure):
-		print measure["Measurement"], " measurement received"
-		print "Exponent: ", measure["Exponent"]
-		print "Mantissa: ", measure["Mantissa"]
-		print "Unit: ", measure["Unit"]
+		print(measure["Measurement"], " measurement received")
+		print("Exponent: ", measure["Exponent"])
+		print("Mantissa: ", measure["Mantissa"])
+		print("Unit: ", measure["Unit"])
 
-		if measure.has_key("Time"):
-			print "Time: ", measure["Time"]
+		if "Time" in measure:
+			print("Time: ", measure["Time"])
 
-		if measure.has_key("Type"):
-			print "Type: ", measure["Type"]
+		if "Type" in measure:
+			print("Type: ", measure["Type"])
 
 def property_changed(name, value):
 
-	print "PropertyChanged('%s', '%s')" % (name, value)
+	print("PropertyChanged('%s', '%s')" % (name, value))
 
 if __name__ == "__main__":
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -51,9 +53,9 @@ if __name__ == "__main__":
 	(options, args) = parser.parse_args()
 
 	if not options.address:
-		print "Usage: %s [-i <adapter>] -b <bdaddr> [command]" % (sys.argv[0])
-		print "Possible commands:"
-		print "\tEnableIntermediateMeasurement"
+		print("Usage: %s [-i <adapter>] -b <bdaddr> [command]" % (sys.argv[0]))
+		print("Possible commands:")
+		print("\tEnableIntermediateMeasurement")
 		sys.exit(1)
 
 	if options.adapter:
@@ -82,7 +84,7 @@ if __name__ == "__main__":
 		if args[0] == "EnableIntermediateMeasurement":
 			thermometer.EnableIntermediateMeasurement(path)
 		else:
-			print "unknown command"
+			print("unknown command")
 			sys.exit(1)
 
 	mainloop = gobject.MainLoop()

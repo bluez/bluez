@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import dbus
 from optparse import OptionParser, make_option
@@ -28,7 +30,7 @@ test = dbus.Interface(bus.get_object("org.bluez", "/org/bluez/test"),
 			"org.bluez.TelephonyTest")
 
 if len(args) < 1:
-	print """Usage: %s <command>
+	print("""Usage: %s <command>
 
 	connect <bdaddr>
 	disconnect <bdaddr>
@@ -44,12 +46,12 @@ if len(args) < 1:
 	microphonegain <bdaddr> [level]
 	play <bdaddr>
 	stop <bdaddr>
-	""" % sys.argv[0]
+	""" % sys.argv[0])
 	sys.exit(1)
 
 if args[0] == "connect":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -59,7 +61,7 @@ if args[0] == "connect":
 
 if args[0] == "disconnect":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -69,7 +71,7 @@ if args[0] == "disconnect":
 
 if args[0] == "speakergain":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -78,13 +80,13 @@ if args[0] == "speakergain":
 		headset.SetProperty('SpeakerGain', dbus.UInt16(args[2]))
 	else:
 		props = headset.GetProperties()
-		print props['SpeakerGain']
+		print(props['SpeakerGain'])
 
 	sys.exit(0)
 
 if args[0] == "microphonegain":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -93,13 +95,13 @@ if args[0] == "microphonegain":
 		headset.SetProperty('MicrophoneGain', dbus.UInt16(args[2]))
 	else:
 		props = headset.GetProperties()
-		print props['MicrophoneGain']
+		print(props['MicrophoneGain'])
 
 	sys.exit(0)
 
 if args[0] == "play":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -110,7 +112,7 @@ if args[0] == "play":
 
 if args[0] == "stop":
 	if len(args) < 2:
-		print "Need device address parameter"
+		print("Need device address parameter")
 		sys.exit(1)
 	device = adapter.FindDevice(args[1])
 	headset = dbus.Interface(bus.get_object("org.bluez", device),
@@ -123,14 +125,14 @@ if args[0] == "outgoing":
 	if len(args) > 1:
 		test.OutgoingCall(args[1])
 	else:
-		print "Need number parameter"
+		print("Need number parameter")
 	sys.exit(0)
 
 if args[0] == "incoming":
 	if len(args) > 1:
 		test.IncomingCall(args[1])
 	else:
-		print "Need number parameter"
+		print("Need number parameter")
 	sys.exit(0)
 
 if args[0] == "cancel":
@@ -141,36 +143,36 @@ if args[0] == "signal":
 	if len(args) > 1:
 		test.SignalStrength(args[1])
 	else:
-		print "Need signal strength parameter"
+		print("Need signal strength parameter")
 	sys.exit(0)
 
 if args[0] == "battery":
 	if len(args) > 1:
 		test.BatteryLevel(args[1])
 	else:
-		print "Need battery level parameter"
+		print("Need battery level parameter")
 	sys.exit(0)
 
 if args[0] == "roaming":
 	if len(args) > 1:
 		test.RoamingStatus(args[1] == "yes" or False)
 	else:
-		print "Need yes/no parameter"
+		print("Need yes/no parameter")
 	sys.exit(0)
 
 if args[0] == "registration":
 	if len(args) > 1:
 		test.RegistrationStatus(args[1] == "yes" or False)
 	else:
-		print "Need yes/no parameter"
+		print("Need yes/no parameter")
 	sys.exit(0)
 
 if args[0] == "subscriber":
 	if len(args) > 1:
 		test.SetSubscriberNumber(args[1])
 	else:
-		print "Need number parameter"
+		print("Need number parameter")
 	sys.exit(0)
 
-print "Unknown command"
+print("Unknown command")
 sys.exit(1)

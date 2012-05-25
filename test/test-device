@@ -1,6 +1,8 @@
 #!/usr/bin/python
 
-import gobject
+from __future__ import absolute_import, print_function, unicode_literals
+
+from gi.repository import GObject
 
 import sys
 import dbus
@@ -10,7 +12,7 @@ from optparse import OptionParser, make_option
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()
-mainloop = gobject.MainLoop()
+mainloop = GObject.MainLoop()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
@@ -31,19 +33,19 @@ adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 if (len(args) < 1):
-	print "Usage: %s <command>" % (sys.argv[0])
-	print ""
-	print "  list"
-	print "  services <address>"
-	print "  create <address>"
-	print "  remove <address|path>"
-	print "  disconnect <address>"
-	print "  discover <address> [pattern]"
-	print "  class <address>"
-	print "  name <address>"
-	print "  alias <address> [alias]"
-	print "  trusted <address> [yes/no]"
-	print "  blocked <address> [yes/no]"
+	print("Usage: %s <command>" % (sys.argv[0]))
+	print("")
+	print("  list")
+	print("  services <address>")
+	print("  create <address>")
+	print("  remove <address|path>")
+	print("  disconnect <address>")
+	print("  discover <address> [pattern]")
+	print("  class <address>")
+	print("  name <address>")
+	print("  alias <address> [alias]")
+	print("  trusted <address> [yes/no]")
+	print("  blocked <address> [yes/no]")
 	sys.exit(1)
 
 if (args[0] == "list"):
@@ -51,23 +53,23 @@ if (args[0] == "list"):
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
-		print "%s %s" % (properties["Address"], properties["Alias"])
+		print("%s %s" % (properties["Address"], properties["Alias"]))
 
 	sys.exit(0)
 
 def create_device_reply(device):
-	print "New device (%s)" % device
+	print("New device (%s)" % device)
 	mainloop.quit()
 	sys.exit(0)
 
 def create_device_error(error):
-	print "Creating device failed: %s" % error
+	print("Creating device failed: %s" % error)
 	mainloop.quit()
 	sys.exit(1)
 
 if (args[0] == "create"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		adapter.CreateDevice(args[1],
 				reply_handler=create_device_reply,
@@ -76,7 +78,7 @@ if (args[0] == "create"):
 
 if (args[0] == "remove"):
 	if (len(args) < 2):
-		print "Need address or object path parameter"
+		print("Need address or object path parameter")
 	else:
 		try:
 			path = adapter.FindDevice(args[1])
@@ -87,7 +89,7 @@ if (args[0] == "remove"):
 
 if (args[0] == "disconnect"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
@@ -97,7 +99,7 @@ if (args[0] == "disconnect"):
 
 if (args[0] == "discover"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
@@ -110,57 +112,57 @@ if (args[0] == "discover"):
 		for key in services.keys():
 			p = re.compile(">.*?<")
 			xml = p.sub("><", services[key].replace("\n", ""))
-			print "[ 0x%5x ]" % (key)
-			print xml
-			print
+			print("[ 0x%5x ]" % (key))
+			print(xml)
+			print()
 	sys.exit(0)
 
 if (args[0] == "class"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
-		print "0x%06x" % (properties["Class"])
+		print("0x%06x" % (properties["Class"]))
 	sys.exit(0)
 
 if (args[0] == "name"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
-		print properties["Name"]
+		print(properties["Name"])
 	sys.exit(0)
 
 if (args[0] == "alias"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		if (len(args) < 3):
 			properties = device.GetProperties()
-			print properties["Alias"]
+			print(properties["Alias"])
 		else:
 			device.SetProperty("Alias", args[2])
 	sys.exit(0)
 
 if (args[0] == "trusted"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		if (len(args) < 3):
 			properties = device.GetProperties()
-			print properties["Trusted"]
+			print(properties["Trusted"])
 		else:
 			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
@@ -173,14 +175,14 @@ if (args[0] == "trusted"):
 
 if (args[0] == "blocked"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		if (len(args) < 3):
 			properties = device.GetProperties()
-			print properties["Blocked"]
+			print(properties["Blocked"])
 		else:
 			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
@@ -193,15 +195,15 @@ if (args[0] == "blocked"):
 
 if (args[0] == "services"):
 	if (len(args) < 2):
-		print "Need address parameter"
+		print("Need address parameter")
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		properties = device.GetProperties()
 		for path in properties["Services"]:
-			print path
+			print(path)
 	sys.exit(0)
 
-print "Unknown command"
+print("Unknown command")
 sys.exit(1)

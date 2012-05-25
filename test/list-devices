@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import dbus
 
 bus = dbus.SystemBus()
@@ -32,19 +34,19 @@ adapter_list = manager.ListAdapters()
 for i in adapter_list:
 	adapter = dbus.Interface(bus.get_object("org.bluez", i),
 							"org.bluez.Adapter")
-	print "[ " + i + " ]"
+	print("[ " + i + " ]")
 
 	properties  = adapter.GetProperties()
 	for key in properties.keys():
 		value = properties[key]
 		if (key == "Devices"):
 			list = extract_objects(value)
-			print "    %s = %s" % (key, list)
+			print("    %s = %s" % (key, list))
 		elif (key == "UUIDs"):
 			list = extract_uuids(value)
-			print "    %s = %s" % (key, list)
+			print("    %s = %s" % (key, list))
 		else:
-			print "    %s = %s" % (key, value)
+			print("    %s = %s" % (key, value))
 
 	try:
 		device_list = properties["Devices"]
@@ -54,27 +56,27 @@ for i in adapter_list:
 	for n in device_list:
 		device = dbus.Interface(bus.get_object("org.bluez", n),
 							"org.bluez.Device")
-		print "    [ " + n + " ]"
+		print("    [ " + n + " ]")
 
 		properties = device.GetProperties()
 		for key in properties.keys():
 			value = properties[key]
 			if (key == "Nodes"):
 				list = extract_objects(value)
-				print "        %s = %s" % (key, list)
+				print("        %s = %s" % (key, list))
 			elif (key == "UUIDs"):
 				list = extract_uuids(value)
-				print "        %s = %s" % (key, list)
+				print("        %s = %s" % (key, list))
 			elif (key == "Class"):
-				print "        %s = 0x%06x" % (key, value)
+				print("        %s = 0x%06x" % (key, value))
 			elif (key == "Vendor"):
-				print "        %s = 0x%04x" % (key, value)
+				print("        %s = 0x%04x" % (key, value))
 			elif (key == "Product"):
-				print "        %s = 0x%04x" % (key, value)
+				print("        %s = 0x%04x" % (key, value))
 			elif (key == "Version"):
-				print "        %s = 0x%04x" % (key, value)
+				print("        %s = 0x%04x" % (key, value))
 			else:
-				print "        %s = %s" % (key, value)
+				print("        %s = %s" % (key, value))
 
 		try:
 			node_list = properties["Nodes"]
@@ -84,10 +86,10 @@ for i in adapter_list:
 		for x in node_list:
 			node = dbus.Interface(bus.get_object("org.bluez", x),
 							"org.bluez.Node")
-			print "        [ " + x + " ]"
+			print("        [ " + x + " ]")
 
 			properties = node.GetProperties()
 			for key in properties.keys():
-				print "            %s = %s" % (key, properties[key])
+				print("            %s = %s" % (key, properties[key]))
 
-	print
+	print("")

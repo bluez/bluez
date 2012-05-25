@@ -1,4 +1,6 @@
 #!/usr/bin/python
+
+from __future__ import absolute_import, print_function, unicode_literals
 # -*- coding: utf-8 -*-
 
 import dbus
@@ -17,7 +19,7 @@ hdp_manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
 app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
 					"Role": "sink"})
 
-print app_path
+print(app_path)
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 						"org.bluez.Manager")
@@ -26,10 +28,10 @@ adapters = manager.ListAdapters()
 
 i = 1
 for ad in adapters:
-	print "%d. %s" % (i, ad)
+	print("%d. %s" % (i, ad))
 	i = i + 1
 
-print "Select an adapter: ",
+print("Select an adapter: ",)
 select = None
 while select == None:
 	try:
@@ -38,7 +40,7 @@ while select == None:
 			raise TypeError
 		select = adapters[pos]
 	except (TypeError, IndexError, ValueError):
-		print "Wrong selection, try again: ",
+		print("Wrong selection, try again: ",)
 	except KeyboardInterrupt:
 		sys.exit()
 
@@ -48,15 +50,15 @@ adapter =  dbus.Interface(bus.get_object("org.bluez", select),
 devices = adapter.ListDevices()
 
 if len(devices) == 0:
-	print "No devices available"
+	print("No devices available")
 	sys.exit()
 
 i = 1
 for dev in devices:
-	print "%d. %s" % (i, dev)
+	print("%d. %s" % (i, dev))
 	i = i + 1
 
-print "Select a device: ",
+print("Select a device: ",)
 select = None
 while select == None:
 	try:
@@ -65,19 +67,19 @@ while select == None:
 			raise TypeError
 		select = devices[pos]
 	except (TypeError, IndexError, ValueError):
-		print "Wrong selection, try again: ",
+		print("Wrong selection, try again: ",)
 	except KeyboardInterrupt:
 		sys.exit()
 
-print "Connecting to %s" % (select)
+print("Connecting to %s" % (select))
 device = dbus.Interface(bus.get_object("org.bluez", select),
 					"org.bluez.HealthDevice")
 
 chan = device.CreateChannel(app_path, "Any")
 
-print chan
+print(chan)
 
-print "Push Enter for finishing"
+print("Push Enter for finishing")
 sys.stdin.readline()
 
 hdp_manager.DestroyApplication(app_path)

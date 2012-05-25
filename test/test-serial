@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import time
 import dbus
@@ -26,7 +28,7 @@ adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
 
 if (len(args) < 1):
-	print "Usage: %s <address> [service]" % (sys.argv[0])
+	print("Usage: %s <address> [service]" % (sys.argv[0]))
 	sys.exit(1)
 
 address = args[0]
@@ -43,13 +45,13 @@ serial = dbus.Interface(bus.get_object("org.bluez", path),
 
 node = serial.Connect(service)
 
-print "Connected %s to %s" % (node, address)
+print("Connected %s to %s" % (node, address))
 
-print "Press CTRL-C to disconnect"
+print("Press CTRL-C to disconnect")
 
 try:
 	time.sleep(1000)
-	print "Terminating connection"
+	print("Terminating connection")
 except:
 	pass
 
