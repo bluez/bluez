@@ -227,10 +227,10 @@ static DBusMessage *ongoing_call(DBusConnection *conn, DBusMessage *msg,
 	if (ongoing_call_status && !ongoing) {
 		/* An ongoing call has finished. Continue connection.*/
 		sap_status_ind(sap_data, SAP_STATUS_CHANGE_CARD_RESET);
-		ongoing_call_status = ongoing;
+		ongoing_call_status = FALSE;
 	} else if (!ongoing_call_status && ongoing) {
 		/* An ongoing call has started.*/
-		ongoing_call_status = ongoing;
+		ongoing_call_status = TRUE;
 	}
 
 	DBG("OngoingCall status set to %d", ongoing_call_status);
