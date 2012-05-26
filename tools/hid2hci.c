@@ -291,7 +291,7 @@ int main(int argc, char *argv[])
 	if (udev == NULL)
 		goto exit;
 
-	snprintf(syspath, sizeof(syspath), "%s/%s", udev_get_sys_path(udev), devpath);
+	snprintf(syspath, sizeof(syspath), "/sys/%s", devpath);
 	udev_dev = udev_device_new_from_syspath(udev, syspath);
 	if (udev_dev == NULL) {
 		fprintf(stderr, "error: could not find '%s'\n", devpath);
