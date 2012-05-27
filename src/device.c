@@ -373,7 +373,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		icon = class_to_icon(class);
 
 		dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
-	} else if (read_remote_appearance(&src, &device->bdaddr, &app) == 0)
+	} else if (read_remote_appearance(&src, &device->bdaddr,
+						device->bdaddr_type, &app) == 0)
 		/* Appearance */
 		icon = gap_appearance_to_icon(app);
 
@@ -1851,7 +1852,8 @@ static void appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	app = att_get_u16(atval);
 
 	adapter_get_address(adapter, &src);
-	write_remote_appearance(&src, &device->bdaddr, app);
+	write_remote_appearance(&src, &device->bdaddr, device->bdaddr_type,
+									app);
 
 done:
 	att_data_list_free(list);

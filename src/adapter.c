@@ -2731,7 +2731,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		dev->legacy = FALSE;
 
 		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
-								&app) == 0)
+						dev->bdaddr_type, &app) == 0)
 			icon = gap_appearance_to_icon(app);
 		else
 			icon = NULL;
@@ -2870,7 +2870,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		write_remote_class(&adapter->bdaddr, bdaddr, dev_class);
 
 	if (eir_data.appearance != 0)
-		write_remote_appearance(&adapter->bdaddr, bdaddr,
+		write_remote_appearance(&adapter->bdaddr, bdaddr, bdaddr_type,
 							eir_data.appearance);
 
 	if (eir_data.name != NULL && eir_data.name_complete)

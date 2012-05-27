@@ -36,8 +36,10 @@ int write_local_name(bdaddr_t *bdaddr, const char *name);
 int read_local_name(bdaddr_t *bdaddr, char *name);
 int write_local_class(bdaddr_t *bdaddr, uint8_t *class);
 int read_local_class(bdaddr_t *bdaddr, uint8_t *class);
-int write_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint16_t appearance);
-int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint16_t *appearance);
+int write_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t bdaddr_type, uint16_t appearance);
+int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+							uint16_t *appearance);
 int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
 int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class);
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, char *name);
