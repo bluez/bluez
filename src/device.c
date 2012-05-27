@@ -1088,7 +1088,8 @@ struct btd_device *device_create(DBusConnection *conn,
 		device_set_bonded(device, TRUE);
 	}
 
-	if (device_is_le(device) && has_longtermkeys(&src, &device->bdaddr)) {
+	if (device_is_le(device) && has_longtermkeys(&src, &device->bdaddr,
+							device->bdaddr_type)) {
 		device_set_paired(device, TRUE);
 		device_set_bonded(device, TRUE);
 	}
@@ -1152,23 +1153,31 @@ uint16_t btd_device_get_version(struct btd_device *device)
 static void device_remove_stored(struct btd_device *device)
 {
 	bdaddr_t src;
-	char addr[18];
+	char key[20];
 	DBusConnection *conn = get_dbus_connection();
 
 	adapter_get_address(device->adapter, &src);
-	ba2str(&device->bdaddr, addr);
+	ba2str(&device->bdaddr, key);
+
+	/* key: address only */
+	delete_entry(&src, "profiles", key);
+	delete_entry(&src, "trusts", key);
 
 	if (device_is_bonded(device)) {
-		delete_entry(&src, "linkkeys", addr);
-		delete_entry(&src, "aliases", addr);
-		delete_entry(&src, "longtermkeys", addr);
+		delete_entry(&src, "linkkeys", key);
+		delete_entry(&src, "aliases", key);
+
+		/* key: address#type */
+		sprintf(&key[17], "#%hhu", device->bdaddr_type);
+
+		delete_entry(&src, "longtermkeys", key);
+
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
 							device->bdaddr_type);
 	}
-	delete_entry(&src, "profiles", addr);
-	delete_entry(&src, "trusts", addr);
+
 	delete_all_records(&src, &device->bdaddr);
 	delete_device_service(&src, &device->bdaddr, device->bdaddr_type);
 

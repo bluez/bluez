@@ -380,8 +380,8 @@ static int store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 	newkey = g_string_new(val);
 	g_free(val);
 
-	g_string_append_printf(newkey, " %d %d %d %d %d ", bdaddr_type,
-					authenticated, master, enc_size, ediv);
+	g_string_append_printf(newkey, " %d %d %d %d ", authenticated, master,
+								enc_size, ediv);
 
 	str = buf2str(rand, 8);
 	if (str == NULL) {
@@ -392,7 +392,7 @@ static int store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 	newkey = g_string_append(newkey, str);
 	g_free(str);
 
-	err = write_longtermkeys(local, peer, newkey->str);
+	err = write_longtermkeys(local, peer, bdaddr_type, newkey->str);
 
 	g_string_free(newkey, TRUE);
 
