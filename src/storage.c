@@ -286,7 +286,7 @@ int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 {
 	char filename[PATH_MAX + 1], key[20], *str;
 
-	create_filename(filename, PATH_MAX, local, "appearance");
+	create_filename(filename, PATH_MAX, local, "appearances");
 
 	ba2str(peer, key);
 	sprintf(&key[17], "#%hhu", bdaddr_type);
@@ -310,7 +310,7 @@ int write_remote_appearance(bdaddr_t *local, bdaddr_t *peer,
 {
 	char filename[PATH_MAX + 1], key[20], str[7];
 
-	create_filename(filename, PATH_MAX, local, "appearance");
+	create_filename(filename, PATH_MAX, local, "appearances");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
