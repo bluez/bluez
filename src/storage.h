@@ -82,9 +82,10 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 							uint8_t bdaddr_type);
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
-					uint16_t handle, const char *chars);
+					uint8_t bdaddr_type, uint16_t handle,
+							     const char *chars);
 char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
-							uint16_t handle);
+					uint8_t bdaddr_type, uint16_t handle);
 int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
                                         uint16_t handle, const char *chars);
 int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data);
