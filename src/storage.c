@@ -1223,13 +1223,9 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
 	create_filename(filename, PATH_MAX, sba, "characteristic");
 	delete_by_pattern(filename, key);
 
-	key[17] = '\0';
-
 	/* Deleting all attributes values of a given key */
 	create_filename(filename, PATH_MAX, sba, "attributes");
 	delete_by_pattern(filename, key);
-
-	sprintf(&key[17], "#%hhu", bdaddr_type);
 
 	/* Deleting all CCC values of a given key */
 	create_filename(filename, PATH_MAX, sba, "ccc");
@@ -1283,17 +1279,17 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 }
 
 int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
-					uint16_t handle, const char *chars)
+				uint8_t bdaddr_type, uint16_t handle,
+							const char *chars)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], addr[18], key[25];
 
 	create_filename(filename, PATH_MAX, sba, "attributes");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(dba, addr);
-
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%04X", addr, bdaddr_type, handle);
 
 	return textfile_put(filename, key, chars);
 }
