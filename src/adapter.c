@@ -1935,7 +1935,7 @@ static GSList *string_to_primary_list(char *str)
 	return l;
 }
 
-static void create_stored_device_from_primary(char *key, char *value,
+static void create_stored_device_from_primaries(char *key, char *value,
 							void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -1994,8 +1994,8 @@ static void load_devices(struct btd_adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_profiles,
 								adapter);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "primary");
-	textfile_foreach(filename, create_stored_device_from_primary,
+	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "primaries");
+	textfile_foreach(filename, create_stored_device_from_primaries,
 								adapter);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");

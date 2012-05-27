@@ -1169,7 +1169,7 @@ int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 {
 	char filename[PATH_MAX + 1], key[20];
 
-	create_filename(filename, PATH_MAX, sba, "primary");
+	create_filename(filename, PATH_MAX, sba, "primaries");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -1231,7 +1231,7 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
 	create_filename(filename, PATH_MAX, sba, "ccc");
 	delete_by_pattern(filename, key);
 
-	create_filename(filename, PATH_MAX, sba, "primary");
+	create_filename(filename, PATH_MAX, sba, "primaries");
 
 	return textfile_del(filename, key);
 }
@@ -1241,7 +1241,7 @@ char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 {
 	char filename[PATH_MAX + 1], key[20];
 
-	create_filename(filename, PATH_MAX, sba, "primary");
+	create_filename(filename, PATH_MAX, sba, "primaries");
 
 	ba2str(dba, key);
 	sprintf(&key[17], "#%hhu", bdaddr_type);
