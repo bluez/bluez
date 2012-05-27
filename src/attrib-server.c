@@ -737,6 +737,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 	uint8_t status;
 	GList *l;
 	uint16_t cccval;
+	uint8_t bdaddr_type;
 	guint h = handle;
 
 	l = g_list_find_custom(channel->server->database,
@@ -747,9 +748,11 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 
 	a = l->data;
 
+	bdaddr_type = device_get_addr_type(channel->device);
+
 	if (bt_uuid_cmp(&ccc_uuid, &a->uuid) == 0 &&
-		read_device_ccc(&channel->src, &channel->dst,
-					handle, &cccval) == 0) {
+		read_device_ccc(&channel->src, &channel->dst, bdaddr_type,
+							handle, &cccval) == 0) {
 		uint8_t config[2];
 
 		att_put_u16(cccval, config);
@@ -775,6 +778,7 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 	uint8_t status;
 	GList *l;
 	uint16_t cccval;
+	uint8_t bdaddr_type;
 	guint h = handle;
 
 	l = g_list_find_custom(channel->server->database,
@@ -789,9 +793,11 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle,
 					ATT_ECODE_INVALID_OFFSET, pdu, len);
 
+	bdaddr_type = device_get_addr_type(channel->device);
+
 	if (bt_uuid_cmp(&ccc_uuid, &a->uuid) == 0 &&
-		read_device_ccc(&channel->src, &channel->dst,
-					handle, &cccval) == 0) {
+		read_device_ccc(&channel->src, &channel->dst, bdaddr_type,
+							handle, &cccval) == 0) {
 		uint8_t config[2];
 
 		att_put_u16(cccval, config);
@@ -847,7 +853,10 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		}
 	} else {
 		uint16_t cccval = att_get_u16(value);
-		write_device_ccc(&channel->src, &channel->dst, handle, cccval);
+		uint8_t bdaddr_type = device_get_addr_type(channel->device);
+
+		write_device_ccc(&channel->src, &channel->dst, bdaddr_type,
+								handle, cccval);
 	}
 
 	return enc_write_resp(pdu, len);

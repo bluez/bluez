@@ -1229,11 +1229,11 @@ int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
 	create_filename(filename, PATH_MAX, sba, "attributes");
 	delete_by_pattern(filename, key);
 
+	sprintf(&key[17], "#%hhu", bdaddr_type);
+
 	/* Deleting all CCC values of a given key */
 	create_filename(filename, PATH_MAX, sba, "ccc");
 	delete_by_pattern(filename, key);
-
-	sprintf(&key[17], "#%hhu", bdaddr_type);
 
 	create_filename(filename, PATH_MAX, sba, "primary");
 
@@ -1307,10 +1307,10 @@ int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
 	return textfile_foreach(filename, func, data);
 }
 
-int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t *value)
+int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t *value)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23];
+	char filename[PATH_MAX + 1], addr[18], key[25];
 	char *str;
 	unsigned int config;
 	int err = 0;
@@ -1318,7 +1318,7 @@ int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 	create_filename(filename, PATH_MAX, local, "ccc");
 
 	ba2str(peer, addr);
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%04X", addr, bdaddr_type, handle);
 
 	str = textfile_caseget(filename, key);
 	if (str == NULL)
@@ -1334,18 +1334,18 @@ int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
 	return err;
 }
 
-int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t value)
+int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t value)
 {
-	char filename[PATH_MAX + 1], addr[18], key[23], config[5];
+	char filename[PATH_MAX + 1], addr[18], key[25], config[5];
 
 	create_filename(filename, PATH_MAX, local, "ccc");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	ba2str(peer, addr);
+	snprintf(key, sizeof(key), "%17s#%hhu#%04X", addr, bdaddr_type, handle);
 
-	snprintf(key, sizeof(key), "%17s#%04X", addr, handle);
 	snprintf(config, sizeof(config), "%04X", value);
 
 	return textfile_put(filename, key, config);

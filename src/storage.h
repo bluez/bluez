@@ -91,10 +91,10 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
                                         uint16_t handle, const char *chars);
 int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data);
-int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t *value);
-int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint16_t handle,
-							uint16_t value);
+int read_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t *value);
+int write_device_ccc(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
+					uint16_t handle, uint16_t value);
 void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer);
 int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, const char *key);
 gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer);

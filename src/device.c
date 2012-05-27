@@ -2205,6 +2205,11 @@ void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type)
 	device->bdaddr_type = bdaddr_type;
 }
 
+uint8_t device_get_addr_type(struct btd_device *device)
+{
+	return device->bdaddr_type;
+}
+
 const gchar *device_get_path(struct btd_device *device)
 {
 	if (!device)

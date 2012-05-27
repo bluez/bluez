@@ -62,6 +62,7 @@ struct btd_adapter *device_get_adapter(struct btd_device *device);
 void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
 							uint8_t *bdaddr_type);
 void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type);
+uint8_t device_get_addr_type(struct btd_device *device);
 const gchar *device_get_path(struct btd_device *device);
 struct agent *device_get_agent(struct btd_device *device);
 gboolean device_is_bredr(struct btd_device *device);
