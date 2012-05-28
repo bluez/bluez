@@ -1456,7 +1456,7 @@ int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 	a = dl->data;
 
 	a->data = g_try_realloc(a->data, len);
-	if (a->data == NULL)
+	if (len && a->data == NULL)
 		return -ENOMEM;
 
 	a->len = len;
