@@ -258,8 +258,8 @@ static int attribute_cmp(gconstpointer a1, gconstpointer a2)
 	return attrib1->handle - attrib2->handle;
 }
 
-static struct attribute *find_primary_range(struct gatt_server *server,
-						uint16_t start, uint16_t *end)
+static struct attribute *find_svc_range(struct gatt_server *server,
+					uint16_t start, uint16_t *end)
 {
 	struct attribute *attrib;
 	guint h = start;
@@ -275,7 +275,8 @@ static struct attribute *find_primary_range(struct gatt_server *server,
 
 	attrib = l->data;
 
-	if (bt_uuid_cmp(&attrib->uuid, &prim_uuid) != 0)
+	if (bt_uuid_cmp(&attrib->uuid, &prim_uuid) != 0 &&
+			bt_uuid_cmp(&attrib->uuid, &snd_uuid) != 0)
 		return NULL;
 
 	*end = start;
@@ -302,7 +303,7 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 	uuid_t svc, gap_uuid;
 	bdaddr_t addr;
 
-	a = find_primary_range(server, handle, &end);
+	a = find_svc_range(server, handle, &end);
 
 	if (a == NULL)
 		return 0;
