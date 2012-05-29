@@ -153,6 +153,7 @@ void agent_free(struct agent *agent)
 	if (agent->request) {
 		DBusError err;
 		agent_pincode_cb pincode_cb;
+		agent_passkey_cb passkey_cb;
 		agent_cb cb;
 
 		dbus_error_init(&err);
@@ -162,6 +163,10 @@ void agent_free(struct agent *agent)
 		case AGENT_REQUEST_PINCODE:
 			pincode_cb = agent->request->cb;
 			pincode_cb(agent, &err, NULL, agent->request->user_data);
+			break;
+		case AGENT_REQUEST_PASSKEY:
+			passkey_cb = agent->request->cb;
+			passkey_cb(agent, &err, 0, agent->request->user_data);
 			break;
 		default:
 			cb = agent->request->cb;
