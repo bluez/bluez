@@ -55,10 +55,6 @@
 #include "agent.h"
 #include "manager.h"
 
-#ifdef HAVE_CAPNG
-#include <cap-ng.h>
-#endif
-
 #define BLUEZ_NAME "org.bluez"
 
 #define LAST_ADAPTER_EXIT_TIMEOUT 30
@@ -461,15 +457,6 @@ int main(int argc, char *argv[])
 	guint signal;
 
 	init_defaults();
-
-#ifdef HAVE_CAPNG
-	/* Drop capabilities */
-	capng_clear(CAPNG_SELECT_BOTH);
-	capng_updatev(CAPNG_ADD, CAPNG_EFFECTIVE | CAPNG_PERMITTED,
-					CAP_NET_BIND_SERVICE, CAP_NET_ADMIN,
-						CAP_NET_RAW, CAP_IPC_LOCK, -1);
-	capng_apply(CAPNG_SELECT_BOTH);
-#endif
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);

@@ -16,7 +16,6 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--libexecdir=/lib \
-		--enable-capng \
 		--enable-health \
 		--enable-tools \
 		--enable-bccmd \

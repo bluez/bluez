@@ -52,16 +52,6 @@ AC_PATH_CHECK
 
 AC_ARG_BLUEZ
 
-AC_ARG_ENABLE(capng, AC_HELP_STRING([--enable-capng],
-		[enable capabilities support]), [enable_capng=${enableval}])
-if (test "${enable_capng}" = "yes"); then
-	PKG_CHECK_MODULES(CAPNG, libcap-ng, dummy=yes,
-				AC_MSG_ERROR(Capabilities library is required))
-	AC_SUBST(CAPNG_CFLAGS)
-	AC_SUBST(CAPNG_LIBS)
-	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
-fi
-
 AC_ARG_WITH([systemdunitdir], AC_HELP_STRING([--with-systemdunitdir=DIR],
 	[path to systemd system service directory]), [path_systemdunit=${withval}],
 		[path_systemdunit="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"])
