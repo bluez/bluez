@@ -31,9 +31,10 @@
 #include <bluetooth/sdp.h>
 #include <adapter.h>
 
-#include "att.h"
-#include "att-database.h"
 #include "gattrib.h"
+#include "att.h"
+#include "gatt.h"
+#include "att-database.h"
 #include "attrib-server.h"
 #include "gatt-service.h"
 #include "log.h"

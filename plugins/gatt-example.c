@@ -37,6 +37,7 @@
 #include "gattrib.h"
 #include "gatt-service.h"
 #include "att.h"
+#include "gatt.h"
 #include "att-database.h"
 #include "attrib-server.h"
 

@@ -32,9 +32,10 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "att.h"
-#include "att-database.h"
 #include "gattrib.h"
+#include "att.h"
+#include "gatt.h"
+#include "att-database.h"
 #include "gatt-service.h"
 #include "attrib-server.h"
 #include "device.h"
