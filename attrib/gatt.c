@@ -303,7 +303,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	att_data_list_free(list);
 	err = 0;
 
-	if (last != 0) {
+	if (last != 0 && (last + 1 < dc->end)) {
 		buf = g_attrib_get_buffer(dc->attrib, &buflen);
 
 		bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
