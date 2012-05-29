@@ -44,7 +44,6 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "textfile.h"
 
 #include "att.h"
 #include "hcid.h"
