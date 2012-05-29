@@ -363,7 +363,7 @@ static void process_thermometer_desc(struct descriptor *desc)
 			if (g_slist_length(ch->t->fwatchers) == 0)
 				return;
 
-			val = ATT_CLIENT_CHAR_CONF_INDICATION;
+			val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
 			msg = g_strdup("Enable Temperature Measurement "
 								"indication");
 		} else if (g_strcmp0(ch->attr.uuid,
@@ -371,12 +371,12 @@ static void process_thermometer_desc(struct descriptor *desc)
 			if (g_slist_length(ch->t->iwatchers) == 0)
 				return;
 
-			val = ATT_CLIENT_CHAR_CONF_NOTIFICATION;
+			val = GATT_CLIENT_CHARAC_CFG_NOTIF_BIT;
 			msg = g_strdup("Enable Intermediate Temperature "
 								"notification");
 		} else if (g_strcmp0(ch->attr.uuid,
 					MEASUREMENT_INTERVAL_UUID) == 0) {
-			val = ATT_CLIENT_CHAR_CONF_INDICATION;
+			val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
 			msg = g_strdup("Enable Measurement Interval "
 								"indication");
 		} else
