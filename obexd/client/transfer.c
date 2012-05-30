@@ -66,7 +66,7 @@ struct obc_transfer {
 	struct transfer_callback *callback;
 	DBusConnection *conn;
 	DBusMessage *msg;
-	char *agent;		/* Transfer agent */
+	char *owner;		/* Transfer initiator */
 	char *path;		/* Transfer path */
 	gchar *filename;	/* Transfer file location */
 	char *name;		/* Transfer object name */
@@ -169,7 +169,7 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 	const gchar *sender;
 
 	sender = dbus_message_get_sender(message);
-	if (g_strcmp0(transfer->agent, sender) != 0)
+	if (g_strcmp0(transfer->owner, sender) != 0)
 		return g_dbus_create_error(message,
 				"org.openobex.Error.NotAuthorized",
 				"Not Authorized");
@@ -236,7 +236,7 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 		g_obex_unref(transfer->obex);
 
 	g_free(transfer->callback);
-	g_free(transfer->agent);
+	g_free(transfer->owner);
 	g_free(transfer->filename);
 	g_free(transfer->name);
 	g_free(transfer->type);
@@ -262,7 +262,7 @@ static struct obc_transfer *obc_transfer_create(guint8 op,
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,
 						DBusConnection *conn,
-						const char *agent,
+						const char *owner,
 						GError **err)
 {
 	/* for OBEX specific mime types we don't need to register a transfer */
@@ -271,7 +271,7 @@ gboolean obc_transfer_register(struct obc_transfer *transfer,
 			strncmp(transfer->type, "x-bt/", 5) == 0))
 		goto done;
 
-	transfer->agent = g_strdup(agent);
+	transfer->owner = g_strdup(owner);
 
 	transfer->path = g_strdup_printf("%s/transfer%ju",
 			TRANSFER_BASEPATH, counter++);

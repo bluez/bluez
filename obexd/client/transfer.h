@@ -36,7 +36,7 @@ struct obc_transfer *obc_transfer_put(const char *type, const char *name,
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,
 					DBusConnection *conn,
-					const char *agent,
+					const char *owner,
 					GError **err);
 
 void obc_transfer_unregister(struct obc_transfer *transfer);

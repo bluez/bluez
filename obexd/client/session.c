@@ -793,7 +793,6 @@ guint obc_session_queue(struct obc_session *session,
 				GError **err)
 {
 	struct pending_request *p;
-	const char *agent;
 	int perr;
 
 	if (session->obex == NULL) {
@@ -803,12 +802,8 @@ guint obc_session_queue(struct obc_session *session,
 		return 0;
 	}
 
-	if (session->agent)
-		agent = obc_agent_get_name(session->agent);
-	else
-		agent = NULL;
-
-	if (!obc_transfer_register(transfer, session->conn, agent, err)) {
+	if (!obc_transfer_register(transfer, session->conn, session->owner,
+									err)) {
 		obc_transfer_unregister(transfer);
 		return 0;
 	}
