@@ -196,6 +196,9 @@ static const GDBusMethodTable obc_transfer_methods[] = {
 static const GDBusSignalTable obc_transfer_signals[] = {
 	{ GDBUS_SIGNAL("PropertyChanged",
 		GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ GDBUS_SIGNAL("Complete", NULL) },
+	{ GDBUS_SIGNAL("Error",
+		GDBUS_ARGS({ "code", "s" }, { "message", "s" })) },
 	{ }
 };
 
@@ -437,12 +440,25 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 		transfer->progress_id = 0;
 	}
 
-	if (err)
-		goto done;
+	if (err == NULL) {
+		transfer->size = transfer->transferred;
 
-	transfer->size = transfer->transferred;
+		if (transfer->path != NULL)
+			g_dbus_emit_signal(transfer->conn, transfer->path,
+						TRANSFER_INTERFACE, "Complete",
+						DBUS_TYPE_INVALID);
+	} else if (transfer->path != NULL) {
+		const char *code = "org.openobex.Error.Failed";
 
-done:
+		g_dbus_emit_signal(transfer->conn, transfer->path,
+						TRANSFER_INTERFACE, "Error",
+						DBUS_TYPE_STRING,
+						&code,
+						DBUS_TYPE_STRING,
+						&err->message,
+						DBUS_TYPE_INVALID);
+	}
+
 	if (callback)
 		callback->func(transfer, transfer->size, err, callback->data);
 }
