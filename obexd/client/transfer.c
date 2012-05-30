@@ -751,29 +751,6 @@ int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 	return 0;
 }
 
-void obc_transfer_set_name(struct obc_transfer *transfer, const char *name)
-{
-	g_free(transfer->name);
-	transfer->name = g_strdup(name);
-}
-
-int obc_transfer_set_filename(struct obc_transfer *transfer,
-					const char *filename)
-{
-	int err;
-
-	err = rename(transfer->filename, filename);
-	if (err < 0) {
-		error("rename(): %s (%d)", strerror(errno), errno);
-		return -errno;
-	}
-
-	g_free(transfer->filename);
-	transfer->filename = g_strdup(filename);
-
-	return 0;
-}
-
 const char *obc_transfer_get_path(struct obc_transfer *transfer)
 {
 	return transfer->path;

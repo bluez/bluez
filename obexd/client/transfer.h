@@ -56,8 +56,5 @@ const void *obc_transfer_get_params(struct obc_transfer *transfer,
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 								size_t *size);
 
-void obc_transfer_set_name(struct obc_transfer *transfer, const char *name);
-int obc_transfer_set_filename(struct obc_transfer *transfer,
-					const char *filename);
 const char *obc_transfer_get_path(struct obc_transfer *transfer);
 gint64 obc_transfer_get_size(struct obc_transfer *transfer);
