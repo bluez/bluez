@@ -41,7 +41,6 @@
 #include "log.h"
 #include "transfer.h"
 #include "session.h"
-#include "agent.h"
 #include "driver.h"
 #include "transport.h"
 
@@ -92,7 +91,6 @@ struct obc_session {
 	gchar *path;		/* Session path */
 	DBusConnection *conn;
 	GObex *obex;
-	struct obc_agent *agent;
 	struct pending_request *p;
 	gchar *owner;		/* Session owner */
 	guint watch;
@@ -174,11 +172,6 @@ static void pending_request_free(struct pending_request *p)
 static void session_free(struct obc_session *session)
 {
 	DBG("%p", session);
-
-	if (session->agent) {
-		obc_agent_release(session->agent);
-		obc_agent_free(session->agent);
-	}
 
 	if (session->queue) {
 		g_queue_foreach(session->queue, (GFunc) pending_request_free,
@@ -529,60 +522,6 @@ void obc_session_shutdown(struct obc_session *session)
 	obc_session_unref(session);
 }
 
-static DBusMessage *assign_agent(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct obc_session *session = user_data;
-	const gchar *sender, *path;
-
-	if (dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments",
-				"Invalid arguments in method call");
-
-	sender = dbus_message_get_sender(message);
-
-	if (obc_session_set_agent(session, sender, path) < 0)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.AlreadyExists",
-				"Already exists");
-
-	return dbus_message_new_method_return(message);
-}
-
-static DBusMessage *release_agent(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct obc_session *session = user_data;
-	struct obc_agent *agent = session->agent;
-	const gchar *sender;
-	gchar *path;
-
-	if (dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_INVALID) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments",
-				"Invalid arguments in method call");
-
-	sender = dbus_message_get_sender(message);
-
-	if (agent == NULL)
-		return dbus_message_new_method_return(message);
-
-	if (g_str_equal(sender, obc_agent_get_name(agent)) == FALSE ||
-			g_str_equal(path, obc_agent_get_path(agent)) == FALSE)
-		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
-				"Not Authorized");
-
-	obc_agent_free(agent);
-
-	return dbus_message_new_method_return(message);
-}
-
 static DBusMessage *session_get_properties(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -685,78 +624,11 @@ static const GDBusMethodTable session_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				session_get_properties) },
-	{ GDBUS_METHOD("AssignAgent",
-				GDBUS_ARGS({ "agent", "o" }), NULL,
-				assign_agent) },
-	{ GDBUS_METHOD("ReleaseAgent",
-				GDBUS_ARGS({ "agent", "o" }), NULL,
-				release_agent) },
 	{ GDBUS_ASYNC_METHOD("GetCapabilities",
 				NULL, GDBUS_ARGS({ "capabilities", "s" }),
 				get_capabilities) },
 	{ }
 };
-
-static void session_request_reply(DBusPendingCall *call, gpointer user_data)
-{
-	struct obc_session *session = user_data;
-	struct pending_request *p = session->p;
-	struct obc_transfer *transfer = p->transfer;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	const char *name;
-	DBusError derr;
-	int err;
-
-	dbus_error_init(&derr);
-	if (dbus_set_error_from_message(&derr, reply)) {
-		GError *gerr = NULL;
-
-		error("Replied with an error: %s, %s",
-				derr.name, derr.message);
-		dbus_error_free(&derr);
-		dbus_message_unref(reply);
-
-		g_set_error(&gerr, OBEX_IO_ERROR, -ECANCELED, "%s",
-								derr.message);
-		session_terminate_transfer(session, transfer, gerr);
-		g_clear_error(&gerr);
-
-		return;
-	}
-
-	dbus_message_get_args(reply, NULL,
-			DBUS_TYPE_STRING, &name,
-			DBUS_TYPE_INVALID);
-
-	DBG("Agent.Request() reply: %s", name);
-
-	if (strlen(name) == 0)
-		goto done;
-
-	if (obc_transfer_get_operation(transfer) == G_OBEX_OP_PUT) {
-		obc_transfer_set_name(transfer, name);
-		goto done;
-	}
-
-	err = obc_transfer_set_filename(transfer, name);
-	if (err < 0) {
-		GError *gerr = NULL;
-
-		g_set_error(&gerr, OBEX_IO_ERROR, err,
-						"Unable to set filename");
-		session_terminate_transfer(session, transfer, gerr);
-		g_clear_error(&gerr);
-		return;
-	}
-
-done:
-	if (p->auth_complete)
-		p->auth_complete(session, transfer);
-
-	dbus_message_unref(reply);
-
-	return;
-}
 
 static gboolean session_request_proceed(gpointer data)
 {
@@ -772,19 +644,8 @@ static gboolean session_request_proceed(gpointer data)
 
 static int pending_request_auth(struct pending_request *p)
 {
-	struct obc_session *session = p->session;
-	struct obc_agent *agent = session->agent;
-	const char *path;
-
-	path = obc_transfer_get_path(p->transfer);
-
-	if (agent == NULL || path == NULL) {
-		g_idle_add(session_request_proceed, session);
-		return 0;
-	}
-
-	return obc_agent_request(agent, path, session_request_reply, session,
-									NULL);
+	g_idle_add(session_request_proceed, p->session);
+	return 0;
 }
 
 guint obc_session_queue(struct obc_session *session,
@@ -911,18 +772,6 @@ static void session_terminate_transfer(struct obc_session *session,
 static void session_notify_complete(struct obc_session *session,
 				struct obc_transfer *transfer)
 {
-	struct obc_agent *agent = session->agent;
-	const char *path;
-
-	path = obc_transfer_get_path(transfer);
-
-	if (agent == NULL || path == NULL)
-		goto done;
-
-	obc_agent_notify_complete(agent, path);
-
-done:
-
 	DBG("Transfer(%p) complete", transfer);
 
 	session_terminate_transfer(session, transfer, NULL);
@@ -932,16 +781,6 @@ static void session_notify_error(struct obc_session *session,
 				struct obc_transfer *transfer,
 				GError *err)
 {
-	struct obc_agent *agent = session->agent;
-	const char *path;
-
-	path = obc_transfer_get_path(transfer);
-	if (agent == NULL || path == NULL)
-		goto done;
-
-	obc_agent_notify_error(agent, path, err->message);
-
-done:
 	error("Transfer(%p) Error: %s", transfer, err->message);
 
 	session_terminate_transfer(session, transfer, err);
@@ -951,16 +790,6 @@ static void session_notify_progress(struct obc_session *session,
 					struct obc_transfer *transfer,
 					gint64 transferred)
 {
-	struct obc_agent *agent = session->agent;
-	const char *path;
-
-	path = obc_transfer_get_path(transfer);
-	if (agent == NULL || path == NULL)
-		goto done;
-
-	obc_agent_notify_progress(agent, path, transferred);
-
-done:
 	DBG("Transfer(%p) progress: %ld bytes", transfer,
 			(long int ) transferred);
 
@@ -1028,49 +857,6 @@ fail:
 	g_free(session->path);
 	session->path = NULL;
 	return NULL;
-}
-
-static void agent_destroy(gpointer data, gpointer user_data)
-{
-	struct obc_session *session = user_data;
-
-	session->agent = NULL;
-}
-
-int obc_session_set_agent(struct obc_session *session, const char *name,
-							const char *path)
-{
-	struct obc_agent *agent;
-
-	if (session == NULL)
-		return -EINVAL;
-
-	if (session->agent)
-		return -EALREADY;
-
-	agent = obc_agent_create(session->conn, name, path, agent_destroy,
-								session);
-
-	if (session->watch == 0)
-		obc_session_set_owner(session, name, owner_disconnected);
-
-	session->agent = agent;
-
-	return 0;
-}
-
-const char *obc_session_get_agent(struct obc_session *session)
-{
-	struct obc_agent *agent;
-
-	if (session == NULL)
-		return NULL;
-
-	agent = session->agent;
-	if (agent == NULL)
-		return NULL;
-
-	return obc_agent_get_name(session->agent);
 }
 
 const char *obc_session_get_owner(struct obc_session *session)
