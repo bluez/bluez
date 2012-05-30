@@ -143,7 +143,7 @@ static const GMarkupParser parser = {
 	NULL
 };
 
-static void get_file_callback(struct obc_session *session,
+static void transfer_callback(struct obc_session *session,
 						struct obc_transfer *transfer,
 						GError *err, void *user_data)
 {
@@ -270,8 +270,8 @@ static DBusMessage *get_file(DBusConnection *connection,
 	if (transfer == NULL)
 		goto fail;
 
-	if (obc_session_queue(session, transfer, get_file_callback, message,
-								&err)) {
+	if (obc_session_queue(session, transfer, transfer_callback, message,
+									&err)) {
 		dbus_message_ref(message);
 		return NULL;
 	}
@@ -306,8 +306,11 @@ static DBusMessage *put_file(DBusConnection *connection,
 	if (transfer == NULL)
 		goto fail;
 
-	if (obc_session_queue(session, transfer, NULL, NULL, &err))
-		return dbus_message_new_method_return(message);
+	if (obc_session_queue(session, transfer, transfer_callback, message,
+									&err)) {
+		dbus_message_ref(message);
+		return NULL;
+	}
 
 fail:
 	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
