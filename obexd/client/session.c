@@ -37,6 +37,7 @@
 #include <gdbus.h>
 #include <gobex.h>
 
+#include "dbus.h"
 #include "log.h"
 #include "transfer.h"
 #include "session.h"
@@ -582,40 +583,6 @@ static DBusMessage *release_agent(DBusConnection *connection,
 	return dbus_message_new_method_return(message);
 }
 
-static void append_entry(DBusMessageIter *dict,
-				const char *key, int type, void *val)
-{
-	DBusMessageIter entry, value;
-	const char *signature;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		signature = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_BYTE:
-		signature = DBUS_TYPE_BYTE_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT64:
-		signature = DBUS_TYPE_UINT64_AS_STRING;
-		break;
-	default:
-		signature = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							signature, &value);
-	dbus_message_iter_append_basic(&value, type, val);
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusMessage *session_get_properties(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -635,13 +602,14 @@ static DBusMessage *session_get_properties(DBusConnection *connection,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	if (session->source != NULL)
-		append_entry(&dict, "Source", DBUS_TYPE_STRING,
+		obex_dbus_dict_append(&dict, "Source", DBUS_TYPE_STRING,
 							&session->source);
 
-	append_entry(&dict, "Destination", DBUS_TYPE_STRING,
+	obex_dbus_dict_append(&dict, "Destination", DBUS_TYPE_STRING,
 							&session->destination);
 
-	append_entry(&dict, "Channel", DBUS_TYPE_BYTE, &session->channel);
+	obex_dbus_dict_append(&dict, "Channel", DBUS_TYPE_BYTE,
+							&session->channel);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
