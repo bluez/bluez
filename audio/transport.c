@@ -45,10 +45,6 @@
 #include "gateway.h"
 #include "avrcp.h"
 
-#ifndef DBUS_TYPE_UNIX_FD
-#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 #define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport"
 
 struct media_request {

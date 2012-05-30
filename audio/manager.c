@@ -70,10 +70,6 @@
 #include "telephony.h"
 #include "unix.h"
 
-#ifndef DBUS_TYPE_UNIX_FD
-#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 typedef enum {
 	HEADSET	= 1 << 0,
 	GATEWAY	= 1 << 1,

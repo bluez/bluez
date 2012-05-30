@@ -48,10 +48,6 @@
 #include "gateway.h"
 #include "manager.h"
 
-#ifndef DBUS_TYPE_UNIX_FD
-#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 #define MEDIA_INTERFACE "org.bluez.Media"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint"
 #define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer"
@@ -1856,9 +1852,6 @@ static void path_free(void *data)
 int media_register(DBusConnection *conn, const char *path, const bdaddr_t *src)
 {
 	struct media_adapter *adapter;
-
-	if (DBUS_TYPE_UNIX_FD < 0)
-		return -EPERM;
 
 	adapter = g_new0(struct media_adapter, 1);
 	adapter->conn = dbus_connection_ref(conn);

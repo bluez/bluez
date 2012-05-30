@@ -64,10 +64,6 @@
 #define MAX_OPEN_TRIES		5
 #define OPEN_WAIT		300	/* ms. udev node creation retry wait */
 
-#ifndef DBUS_TYPE_UNIX_FD
-#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 struct serial_device {
 	DBusConnection	*conn;		/* for name listener handling */
 	bdaddr_t	src;		/* Source (local) address */
@@ -494,9 +490,6 @@ static DBusMessage *port_connect(DBusConnection *conn,
 	struct serial_port *port;
 	const char *pattern;
 	int err;
-
-	if (dbus_message_has_member(msg, "ConnectFD") && DBUS_TYPE_UNIX_FD < 0)
-		return btd_error_not_supported(msg);
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 						DBUS_TYPE_INVALID) == FALSE)

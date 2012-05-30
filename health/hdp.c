@@ -42,10 +42,6 @@
 #include "hdp.h"
 #include "mcap.h"
 
-#ifndef DBUS_TYPE_UNIX_FD
-	#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 #define ECHO_TIMEOUT	1 /* second */
 #define HDP_ECHO_LEN	15
 

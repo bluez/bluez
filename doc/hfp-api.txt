@@ -66,9 +66,7 @@ Methods		void NewConnection(filedescriptor fd, uint16 version)
 
 			This method gets called whenever a new handsfree
 			connection has been established.  The objectpath
-			contains the object path of the remote device.  This
-			method assumes that DBus daemon with file descriptor
-			passing capability is being used.
+			contains the object path of the remote device.
 
 			The agent should only return successfully once the
 			establishment of the service level connection (SLC)

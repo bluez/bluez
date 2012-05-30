@@ -50,10 +50,6 @@
 #include "btio.h"
 #include "dbus-common.h"
 
-#ifndef DBUS_TYPE_UNIX_FD
-#define DBUS_TYPE_UNIX_FD -1
-#endif
-
 struct hf_agent {
 	char *name;	/* Bus id */
 	char *path;	/* D-Bus path */
@@ -755,9 +751,6 @@ void gateway_unregister(struct audio_device *dev)
 
 struct gateway *gateway_init(struct audio_device *dev)
 {
-	if (DBUS_TYPE_UNIX_FD < 0)
-		return NULL;
-
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_GATEWAY_INTERFACE,
 					gateway_methods, gateway_signals,
