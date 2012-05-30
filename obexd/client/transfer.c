@@ -263,12 +263,6 @@ gboolean obc_transfer_register(struct obc_transfer *transfer,
 						const char *owner,
 						GError **err)
 {
-	/* for OBEX specific mime types we don't need to register a transfer */
-	if (transfer->type != NULL &&
-			(strncmp(transfer->type, "x-obex/", 7) == 0 ||
-			strncmp(transfer->type, "x-bt/", 5) == 0))
-		goto done;
-
 	transfer->owner = g_strdup(owner);
 
 	transfer->path = g_strdup_printf("%s/transfer%ju",
@@ -290,7 +284,6 @@ gboolean obc_transfer_register(struct obc_transfer *transfer,
 		return FALSE;
 	}
 
-done:
 	DBG("%p registered %s", transfer, transfer->path);
 
 	return TRUE;
