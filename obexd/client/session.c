@@ -103,9 +103,8 @@ static void session_start_transfer(gpointer data, gpointer user_data);
 static void session_terminate_transfer(struct obc_session *session,
 					struct obc_transfer *transfer,
 					GError *gerr);
-static void transfer_progress(struct obc_transfer *transfer,
-					gint64 transferred, GError *err,
-					void *user_data);
+static void transfer_complete(struct obc_transfer *transfer,
+					GError *err, void *user_data);
 
 static GQuark obex_io_error_quark(void)
 {
@@ -669,7 +668,7 @@ guint obc_session_queue(struct obc_session *session,
 		return 0;
 	}
 
-	obc_transfer_set_callback(transfer, transfer_progress, session);
+	obc_transfer_set_callback(transfer, transfer_complete, session);
 
 	p = pending_request_new(session, transfer, session_start_transfer,
 							func, user_data);
@@ -786,27 +785,15 @@ static void session_notify_error(struct obc_session *session,
 	session_terminate_transfer(session, transfer, err);
 }
 
-static void session_notify_progress(struct obc_session *session,
-					struct obc_transfer *transfer,
-					gint64 transferred)
-{
-	DBG("Transfer(%p) progress: %ld bytes", transfer,
-			(long int ) transferred);
-
-	if (transferred == obc_transfer_get_size(transfer))
-		session_notify_complete(session, transfer);
-}
-
-static void transfer_progress(struct obc_transfer *transfer,
-					gint64 transferred, GError *err,
-					void *user_data)
+static void transfer_complete(struct obc_transfer *transfer,
+					GError *err, void *user_data)
 {
 	struct obc_session *session = user_data;
 
 	if (err != 0)
 		goto fail;
 
-	session_notify_progress(session, transfer, transferred);
+	session_notify_complete(session, transfer);
 
 	return;
 

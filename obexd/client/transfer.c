@@ -135,15 +135,13 @@ static void abort_complete(GObex *obex, GError *err, gpointer user_data)
 		return;
 
 	if (err) {
-		callback->func(transfer, transfer->transferred, err,
-							callback->data);
+		callback->func(transfer, err, callback->data);
 	} else {
 		GError *abort_err;
 
 		abort_err = g_error_new(OBC_TRANSFER_ERROR, -ECANCELED, "%s",
 						"Transfer cancelled by user");
-		callback->func(transfer, transfer->transferred, abort_err,
-							callback->data);
+		callback->func(transfer, abort_err, callback->data);
 		g_error_free(abort_err);
 	}
 }
@@ -409,7 +407,6 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 							gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
-	struct transfer_callback *callback = transfer->callback;
 
 	if (transfer->fd > 0) {
 		gint w;
@@ -420,10 +417,6 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 
 		transfer->transferred += w;
 	}
-
-	if (callback && transfer->transferred != transfer->size)
-		callback->func(transfer, transfer->transferred, NULL,
-							callback->data);
 
 	return TRUE;
 }
@@ -460,7 +453,7 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 	}
 
 	if (callback)
-		callback->func(transfer, transfer->size, err, callback->data);
+		callback->func(transfer, err, callback->data);
 }
 
 static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
@@ -527,16 +520,11 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 static gssize put_xfer_progress(void *buf, gsize len, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
-	struct transfer_callback *callback = transfer->callback;
 	gssize size;
 
 	size = read(transfer->fd, buf, len);
 	if (size <= 0)
 		return size;
-
-	if (callback)
-		callback->func(transfer, transfer->transferred, NULL,
-							callback->data);
 
 	transfer->transferred += size;
 
