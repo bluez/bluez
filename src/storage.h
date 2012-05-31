@@ -100,5 +100,3 @@ void delete_device_ccc(bdaddr_t *local, bdaddr_t *peer);
 int write_longtermkeys(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 							const char *key);
 gboolean has_longtermkeys(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type);
-
-#define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"

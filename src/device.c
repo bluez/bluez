@@ -71,7 +71,6 @@
 /* When all services should trust a remote device */
 #define GLOBAL_TRUST "[all]"
 
-#define GAP_SVC_UUID "00001800-0000-1000-8000-00805f9b34fb"
 #define APPEARANCE_CHR_UUID 0x2a01
 
 struct btd_disconnect_data {
