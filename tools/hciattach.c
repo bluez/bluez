@@ -1150,6 +1150,10 @@ struct uart_t uart[] = {
 	{ "intel",      0x0000, 0x0000, HCI_UART_H4,   115200, 115200,
 			FLOW_CTL, DISABLE_PM, NULL, intel, NULL },
 
+	/* Three-wire UART */
+	{ "3wire",      0x0000, 0x0000, HCI_UART_3WIRE, 115200, 115200,
+			0, DISABLE_PM, NULL, NULL, NULL },
+
 	{ NULL, 0 }
 };
 
