@@ -45,6 +45,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/rfcomm.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -62,8 +63,6 @@
 #include "manager.h"
 #include "sdpd.h"
 #include "glib-helper.h"
-
-#define RFCOMM_UUID_STR		"00000003-0000-1000-8000-00805F9B34FB"
 
 static DBusConnection *connection = NULL;
 
