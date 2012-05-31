@@ -32,8 +32,6 @@
 #include "thermometer.h"
 #include "manager.h"
 
-#define HEALTH_THERMOMETER_UUID		"00001809-0000-1000-8000-00805f9b34fb"
-
 static DBusConnection *connection = NULL;
 
 static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
