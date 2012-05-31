@@ -32,6 +32,7 @@
 #include <glib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include "adapter.h"
 #include "btio.h"
@@ -43,7 +44,6 @@
 #include "server.h"
 
 #define SAP_SERVER_INTERFACE	"org.bluez.SimAccess"
-#define SAP_UUID		"0000112D-0000-1000-8000-00805F9B34FB"
 #define SAP_SERVER_CHANNEL	8
 
 #define PADDING4(x) ((4 - ((x) & 0x03)) & 0x03)
