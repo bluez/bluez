@@ -39,6 +39,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 

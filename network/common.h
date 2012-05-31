@@ -21,11 +21,6 @@
  *
  */
 
-#define PANU_UUID	"00001115-0000-1000-8000-00805f9b34fb"
-#define NAP_UUID	"00001116-0000-1000-8000-00805f9b34fb"
-#define GN_UUID		"00001117-0000-1000-8000-00805f9b34fb"
-#define BNEP_SVC_UUID	"0000000f-0000-1000-8000-00805f9b34fb"
-
 int bnep_init(void);
 int bnep_cleanup(void);
 

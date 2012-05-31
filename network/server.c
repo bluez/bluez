@@ -34,6 +34,7 @@
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 #include <netinet/in.h>
 
 #include <glib.h>
