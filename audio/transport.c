@@ -28,6 +28,8 @@
 
 #include <errno.h>
 
+#include <bluetooth/uuid.h>
+
 #include <glib.h>
 #include <gdbus.h>
 
