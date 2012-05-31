@@ -39,6 +39,7 @@
 #include <bluetooth/rfcomm.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
@@ -54,7 +55,6 @@
 #define PNATD "/usr/bin/phonet-at"
 
 #define DUN_CHANNEL 1
-#define DUN_UUID "00001103-0000-1000-8000-00805F9B34FB"
 
 #define TTY_TIMEOUT 100
 #define TTY_TRIES 10
@@ -347,7 +347,7 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 		return;
 	}
 
-	if (btd_request_authorization(&server->bda, &client->bda, DUN_UUID,
+	if (btd_request_authorization(&server->bda, &client->bda, DUN_GW_UUID,
 						auth_cb, user_data) < 0) {
 		error("Requesting DUN authorization failed");
 		return;

@@ -78,6 +78,8 @@ extern "C" {
 #define HSP_HS_UUID		"00001108-0000-1000-8000-00805f9b34fb"
 #define HID_UUID		"00001124-0000-1000-8000-00805f9b34fb"
 
+#define DUN_GW_UUID		"00001103-0000-1000-8000-00805f9b34fb"
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
