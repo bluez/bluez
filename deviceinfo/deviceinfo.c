@@ -37,8 +37,6 @@
 #include "log.h"
 #include "deviceinfo.h"
 
-#define PNPID_UUID		"00002a50-0000-1000-8000-00805f9b34fb"
-
 struct deviceinfo {
 	struct btd_device	*dev;		/* Device reference */
 	GAttrib			*attrib;	/* GATT connection */
