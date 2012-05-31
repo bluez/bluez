@@ -39,10 +39,6 @@
 #include "reporter.h"
 #include "manager.h"
 
-#define IMMEDIATE_ALERT_UUID	"00001802-0000-1000-8000-00805f9b34fb"
-#define LINK_LOSS_UUID		"00001803-0000-1000-8000-00805f9b34fb"
-#define TX_POWER_UUID		"00001804-0000-1000-8000-00805f9b34fb"
-
 static DBusConnection *connection = NULL;
 
 static struct enabled enabled  = {

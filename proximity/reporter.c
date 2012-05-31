@@ -51,8 +51,6 @@
 
 #define BLUEZ_SERVICE "org.bluez"
 
-#define GATT_UUID     "00001801-0000-1000-8000-00805f9b34fb"
-
 struct reporter_adapter {
 	DBusConnection *conn;
 	struct btd_adapter *adapter;
