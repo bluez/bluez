@@ -40,7 +40,7 @@
 	"\xBB\x58\x2B\x40\x42\x0C\x11\xDB\xB0\xDE\x08\x00\x20\x0C\x9A\x66"
 #define OBEX_MAS_UUID_LEN 16
 
-#define MAP_INTERFACE  "org.openobex.MessageAccess"
+#define MAP_INTERFACE "org.bluez.obex.MessageAccess"
 #define MAS_UUID "00001132-0000-1000-8000-00805f9b34fb"
 
 struct map_data {
