@@ -45,10 +45,10 @@
 #include "sync.h"
 #include "map.h"
 
-#define CLIENT_SERVICE  "org.openobex.client"
+#define CLIENT_SERVICE		"org.bluez.obex.client"
 
-#define CLIENT_INTERFACE  "org.openobex.Client"
-#define CLIENT_PATH       "/"
+#define CLIENT_INTERFACE	"org.bluez.obex.Client"
+#define CLIENT_PATH		"/"
 
 struct send_data {
 	DBusConnection *connection;
