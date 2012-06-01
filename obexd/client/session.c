@@ -45,8 +45,8 @@
 #include "driver.h"
 #include "transport.h"
 
-#define SESSION_INTERFACE  "org.openobex.Session"
-#define SESSION_BASEPATH   "/org/openobex"
+#define SESSION_INTERFACE "org.bluez.obex.Session"
+#define SESSION_BASEPATH "/org/bluez/obex"
 
 #define OBEX_IO_ERROR obex_io_error_quark()
 #define OBEX_IO_ERROR_FIRST (0xff + 1)
