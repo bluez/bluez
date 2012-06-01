@@ -42,7 +42,7 @@
 #define OBEX_SYNC_UUID "IRMC-SYNC"
 #define OBEX_SYNC_UUID_LEN 9
 
-#define SYNC_INTERFACE	"org.openobex.Synchronization"
+#define SYNC_INTERFACE "org.bluez.obex.Synchronization"
 #define ERROR_INF SYNC_INTERFACE ".Error"
 #define SYNC_UUID "00001104-0000-1000-8000-00805f9b34fb"
 
