@@ -3143,6 +3143,11 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	if (device->attios != NULL || device->attios_offline != NULL)
 		return TRUE;
 
+	if (device->auto_id) {
+		g_source_remove(device->auto_id);
+		device->auto_id = 0;
+	}
+
 	att_cleanup(device);
 
 	return TRUE;
