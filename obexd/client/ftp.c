@@ -42,7 +42,7 @@
 	"\xF9\xEC\x7B\xC4\x95\x3C\x11\xD2\x98\x4E\x52\x54\x00\xDC\x9E\x09"
 #define OBEX_FTP_UUID_LEN 16
 
-#define FTP_INTERFACE "org.openobex.FileTransfer"
+#define FTP_INTERFACE "org.bluez.obex.FileTransfer"
 #define FTP_UUID "00001106-0000-1000-8000-00805f9b34fb"
 #define PCSUITE_UUID "00005005-0000-1000-8000-0002ee000001"
 
