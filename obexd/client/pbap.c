@@ -122,7 +122,7 @@ static const char *filter_list[] = {
 #define FILTER_BIT_MAX	63
 #define FILTER_ALL	0xFFFFFFFFFFFFFFFFULL
 
-#define PBAP_INTERFACE  "org.openobex.PhonebookAccess"
+#define PBAP_INTERFACE "org.bluez.obex.PhonebookAccess"
 #define PBAP_UUID "0000112f-0000-1000-8000-00805f9b34fb"
 
 struct pbap_data {
