@@ -43,8 +43,8 @@
 #include "log.h"
 #include "transfer.h"
 
-#define TRANSFER_INTERFACE  "org.openobex.Transfer"
-#define TRANSFER_BASEPATH   "/org/openobex"
+#define TRANSFER_INTERFACE "org.bluez.obex.Transfer"
+#define TRANSFER_BASEPATH "/org/bluez/obex"
 
 #define OBC_TRANSFER_ERROR obc_transfer_error_quark()
 
