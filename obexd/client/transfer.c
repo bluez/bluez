@@ -295,8 +295,9 @@ static gboolean transfer_open(struct obc_transfer *transfer, int flags,
 						mode_t mode, GError **err)
 {
 	int fd;
+	char *filename;
 
-	if (transfer->filename != NULL) {
+	if (transfer->filename != NULL && strcmp(transfer->filename, "") != 0) {
 		fd = open(transfer->filename, flags, mode);
 		if (fd < 0) {
 			error("open(): %s(%d)", strerror(errno), errno);
@@ -307,13 +308,19 @@ static gboolean transfer_open(struct obc_transfer *transfer, int flags,
 		goto done;
 	}
 
-	fd = g_file_open_tmp("obex-clientXXXXXX", &transfer->filename, err);
+	fd = g_file_open_tmp("obex-clientXXXXXX", &filename, err);
 	if (fd < 0) {
 		error("g_file_open_tmp(): %s", (*err)->message);
 		return FALSE;
 	}
 
-	remove(transfer->filename);
+	if (transfer->filename == NULL) {
+		remove(filename); /* remove always only if NULL was given */
+		g_free(filename);
+	} else {
+		g_free(transfer->filename);
+		transfer->filename = filename;
+	}
 
 done:
 	transfer->fd = fd;
@@ -345,6 +352,12 @@ struct obc_transfer *obc_transfer_put(const char *type, const char *name,
 	struct obc_transfer *transfer;
 	struct stat st;
 	int perr;
+
+	if (filename == NULL || strcmp(filename, "") == 0) {
+		g_set_error(err, OBC_TRANSFER_ERROR, -EINVAL,
+						"Invalid filename given");
+		return NULL;
+	}
 
 	transfer = obc_transfer_create(G_OBEX_OP_PUT, filename, name, type);
 
@@ -435,10 +448,14 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 			g_dbus_emit_signal(transfer->conn, transfer->path,
 						TRANSFER_INTERFACE, "Complete",
 						DBUS_TYPE_INVALID);
-	} else if (transfer->path != NULL) {
+	} else {
 		const char *code = "org.openobex.Error.Failed";
 
-		g_dbus_emit_signal(transfer->conn, transfer->path,
+		if (transfer->op == G_OBEX_OP_GET && transfer->filename != NULL)
+			remove(transfer->filename);
+
+		if (transfer->path != NULL)
+			g_dbus_emit_signal(transfer->conn, transfer->path,
 						TRANSFER_INTERFACE, "Error",
 						DBUS_TYPE_STRING,
 						&code,
