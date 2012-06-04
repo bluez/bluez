@@ -3,6 +3,7 @@
  *  OBEX Client
  *
  *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2011-2012  BMW Car IT GmbH. All rights reserved.
  *
  *
  *  This program is free software; you can redistribute it and/or modify
