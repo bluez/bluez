@@ -57,3 +57,6 @@ int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 
 const char *obc_transfer_get_path(struct obc_transfer *transfer);
 gint64 obc_transfer_get_size(struct obc_transfer *transfer);
+
+DBusMessage *obc_transfer_create_dbus_reply(struct obc_transfer *transfer,
+							DBusMessage *message);
