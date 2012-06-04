@@ -104,7 +104,9 @@ static DBusMessage *obc_transfer_get_properties(DBusConnection *connection,
 
 	obex_dbus_dict_append(&dict, "Name", DBUS_TYPE_STRING, &transfer->name);
 	obex_dbus_dict_append(&dict, "Size", DBUS_TYPE_UINT64, &transfer->size);
-	obex_dbus_dict_append(&dict, "Filename", DBUS_TYPE_STRING,
+
+	if (transfer->filename != NULL)
+		obex_dbus_dict_append(&dict, "Filename", DBUS_TYPE_STRING,
 							&transfer->filename);
 
 	if (transfer->obex != NULL)
