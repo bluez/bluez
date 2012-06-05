@@ -123,6 +123,7 @@ if __name__ == '__main__':
 
 		agent.set_exit_on_release(False)
 		adapter.CreatePairedDevice(args[1], path, capability,
+					timeout=60000,
 					reply_handler=create_device_reply,
 					error_handler=create_device_error)
 	else:
