@@ -53,6 +53,7 @@ struct _GAttrib {
 	guint next_evt_id;
 	GDestroyNotify destroy;
 	gpointer destroy_user_data;
+	gboolean stale;
 };
 
 struct command {
@@ -252,8 +253,25 @@ gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 static gboolean disconnect_timeout(gpointer data)
 {
 	struct _GAttrib *attrib = data;
+	struct command *c;
 
-	attrib_destroy(attrib);
+	c = g_queue_pop_head(attrib->requests);
+	if (c == NULL)
+		goto done;
+
+	if (c->func)
+		c->func(ATT_ECODE_TIMEOUT, NULL, 0, c->user_data);
+
+	command_destroy(c);
+
+	while ((c = g_queue_pop_head(attrib->requests))) {
+		if (c->func)
+			c->func(ATT_ECODE_ABORTED, NULL, 0, c->user_data);
+		command_destroy(c);
+	}
+
+done:
+	attrib->stale = TRUE;
 
 	return FALSE;
 }
@@ -267,6 +285,9 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 	gsize len;
 	GIOStatus iostat;
 	GQueue *queue;
+
+	if (attrib->stale)
+		return FALSE;
 
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
@@ -336,6 +357,9 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	gsize len;
 	GIOStatus iostat;
 	gboolean norequests, noresponses;
+
+	if (attrib->stale)
+		return FALSE;
 
 	if (attrib->timeout_watch > 0) {
 		g_source_remove(attrib->timeout_watch);
@@ -446,6 +470,9 @@ guint g_attrib_send(GAttrib *attrib, guint id, guint8 opcode,
 {
 	struct command *c;
 	GQueue *queue;
+
+	if (attrib->stale)
+		return 0;
 
 	c = g_try_new0(struct command, 1);
 	if (c == NULL)
