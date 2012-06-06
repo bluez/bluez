@@ -264,9 +264,8 @@ static int send_message(struct sap_connection *conn, void *buf, size_t size)
 	return written;
 }
 
-static int disconnect_ind(void *sap_device, uint8_t disc_type)
+static int disconnect_ind(struct sap_connection *conn, uint8_t disc_type)
 {
-	struct sap_connection *conn = sap_device;
 	char buf[SAP_BUF_SIZE];
 	struct sap_message *msg = (struct sap_message *) buf;
 	struct sap_parameter *param = (struct sap_parameter *) msg->param;
@@ -284,7 +283,7 @@ static int disconnect_ind(void *sap_device, uint8_t disc_type)
 	*param->val = disc_type;
 	size += PARAMETER_SIZE(SAP_PARAM_ID_DISCONNECT_IND_LEN);
 
-	return send_message(sap_device, buf, size);
+	return send_message(conn, buf, size);
 }
 
 static void connect_req(struct sap_connection *conn,
