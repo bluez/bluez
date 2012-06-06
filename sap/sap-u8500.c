@@ -385,8 +385,7 @@ static void recv_sim_ready(void)
 	sap_info("sim is ready. Try to connect again");
 
 	if (send_request(u8500.io, STE_START_SAP_REQ, NULL) < 0) {
-		sap_connect_rsp(u8500.sap_data, SAP_STATUS_CONNECTION_FAILED,
-								SAP_BUF_SIZE);
+		sap_connect_rsp(u8500.sap_data, SAP_STATUS_CONNECTION_FAILED);
 		simd_close();
 	}
 }
@@ -396,21 +395,18 @@ static void recv_connect_rsp(uint32_t status)
 	switch (status) {
 	case STE_STATUS_OK:
 		if (u8500.state != STE_SIM_BUSY)
-			sap_connect_rsp(u8500.sap_data,
-					SAP_STATUS_OK, 0);
+			sap_connect_rsp(u8500.sap_data, SAP_STATUS_OK);
 		break;
 	case STE_STATUS_BUSY_CALL:
 		if (u8500.state != STE_SIM_BUSY) {
 			sap_connect_rsp(u8500.sap_data,
-				SAP_STATUS_OK_ONGOING_CALL,
-				SAP_BUF_SIZE);
+						SAP_STATUS_OK_ONGOING_CALL);
 
 			u8500.state = STE_SIM_BUSY;
 		}
 		break;
 	default:
-		sap_connect_rsp(u8500.sap_data,
-				SAP_STATUS_CONNECTION_FAILED, 0);
+		sap_connect_rsp(u8500.sap_data, SAP_STATUS_CONNECTION_FAILED);
 		simd_close();
 		break;
 	}
@@ -608,13 +604,12 @@ void sap_connect_req(void *sap_device, uint16_t maxmsgsize)
 	sap_info("connect request");
 
 	if (simd_connect(sap_device) < 0) {
-		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED, 0);
+		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED);
 		return;
 	}
 
 	if (send_request(u8500.io, STE_START_SAP_REQ, NULL) < 0) {
-		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED,
-								SAP_BUF_SIZE);
+		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED);
 		simd_close();
 	}
 }

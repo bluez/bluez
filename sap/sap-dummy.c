@@ -54,34 +54,30 @@ void sap_connect_req(void *sap_device, uint16_t maxmsgsize)
 	DBG("status: %d", sim_card_conn_status);
 
 	if (sim_card_conn_status != SIM_DISCONNECTED) {
-		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED,
-								maxmsgsize);
+		sap_connect_rsp(sap_device, SAP_STATUS_CONNECTION_FAILED);
 		return;
 	}
 
 	if (max_msg_size_supported > maxmsgsize) {
-		sap_connect_rsp(sap_device, SAP_STATUS_MAX_MSG_SIZE_TOO_SMALL,
-						max_msg_size_supported);
+		sap_connect_rsp(sap_device, SAP_STATUS_MAX_MSG_SIZE_TOO_SMALL);
 		return;
 	}
 
 	if (max_msg_size_supported < maxmsgsize) {
 		sap_connect_rsp(sap_device,
-				SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED,
-				max_msg_size_supported);
+					SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED);
 		return;
 	}
 
 	if (ongoing_call_status) {
-		sap_connect_rsp(sap_device, SAP_STATUS_OK_ONGOING_CALL,
-						max_msg_size_supported);
+		sap_connect_rsp(sap_device, SAP_STATUS_OK_ONGOING_CALL);
 		return;
 	}
 
 	sim_card_conn_status = SIM_CONNECTED;
 	sap_data = sap_device;
 
-	sap_connect_rsp(sap_device, SAP_STATUS_OK, maxmsgsize);
+	sap_connect_rsp(sap_device, SAP_STATUS_OK);
 	sap_status_ind(sap_device, SAP_STATUS_CHANGE_CARD_RESET);
 }
 

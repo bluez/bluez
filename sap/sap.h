@@ -156,7 +156,7 @@ void sap_set_transport_protocol_req(void *sap_device,
 					struct sap_parameter *param);
 
 /*SAP responses to SAP requests. Implemented by server.c */
-int sap_connect_rsp(void *sap_device, uint8_t status, uint16_t maxmsgsize);
+int sap_connect_rsp(void *sap_device, uint8_t status);
 int sap_disconnect_rsp(void *sap_device);
 int sap_transfer_apdu_rsp(void *sap_device, uint8_t result,
 				uint8_t *sap_apdu_resp, uint16_t length);

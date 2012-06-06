@@ -316,8 +316,7 @@ static void connect_req(struct sap_connection *conn,
 		conn->processing_req = SAP_CONNECT_REQ;
 		sap_connect_req(conn, maxmsgsize);
 	} else {
-		sap_connect_rsp(conn, SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED,
-								SAP_BUF_SIZE);
+		sap_connect_rsp(conn, SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED);
 	}
 
 	return;
@@ -599,13 +598,14 @@ static void sap_set_connected(struct sap_connection *conn)
 	conn->state = SAP_STATE_CONNECTED;
 }
 
-int sap_connect_rsp(void *sap_device, uint8_t status, uint16_t maxmsgsize)
+int sap_connect_rsp(void *sap_device, uint8_t status)
 {
 	struct sap_connection *conn = sap_device;
 	char buf[SAP_BUF_SIZE];
 	struct sap_message *msg = (struct sap_message *) buf;
 	struct sap_parameter *param = (struct sap_parameter *) msg->param;
 	size_t size = sizeof(struct sap_message);
+	uint16_t *maxmsgsize;
 
 	if (!conn)
 		return -EINVAL;
@@ -626,30 +626,32 @@ int sap_connect_rsp(void *sap_device, uint8_t status, uint16_t maxmsgsize)
 	*param->val = status;
 	size += PARAMETER_SIZE(SAP_PARAM_ID_CONN_STATUS_LEN);
 
-	/* Add MaxMsgSize */
-	if (maxmsgsize) {
-		uint16_t *len;
 
+	switch (status) {
+	case SAP_STATUS_OK:
+		sap_set_connected(conn);
+		break;
+	case SAP_STATUS_OK_ONGOING_CALL:
+		DBG("ongoing call. Wait for reset indication!");
+		conn->state = SAP_STATE_CONNECT_MODEM_BUSY;
+		break;
+	case SAP_STATUS_MAX_MSG_SIZE_NOT_SUPPORTED: /* Add MaxMsgSize */
 		msg->nparam++;
 		param = (struct sap_parameter *) &buf[size];
 		param->id = SAP_PARAM_ID_MAX_MSG_SIZE;
 		param->len = htons(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
-		len = (uint16_t *) &param->val;
-		*len = htons(maxmsgsize);
+		maxmsgsize = (uint16_t *) &param->val;
+		*maxmsgsize = htons(SAP_BUF_SIZE);
 		size += PARAMETER_SIZE(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
-	}
 
-	if (status == SAP_STATUS_OK) {
-		sap_set_connected(conn);
-	} else if (status == SAP_STATUS_OK_ONGOING_CALL) {
-		DBG("ongoing call. Wait for reset indication!");
-		conn->state = SAP_STATE_CONNECT_MODEM_BUSY;
-	} else {
+		/* fall */
+	default:
 		conn->state = SAP_STATE_DISCONNECTED;
 
 		/* Timer will shutdown channel if client doesn't send
 		 * CONNECT_REQ or doesn't shutdown channel itself.*/
 		start_guard_timer(conn, SAP_TIMER_NO_ACTIVITY);
+		break;
 	}
 
 	conn->processing_req = SAP_NO_REQ;
