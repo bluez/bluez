@@ -40,8 +40,7 @@ enum sap_status {
 /* Disconnection Type - SAP v1.1 section 5.2.3 */
 enum sap_disconnection_type {
 	SAP_DISCONNECTION_TYPE_GRACEFUL		= 0x00,
-	SAP_DISCONNECTION_TYPE_IMMEDIATE	= 0x01,
-	SAP_DISCONNECTION_TYPE_CLIENT		= 0xFF
+	SAP_DISCONNECTION_TYPE_IMMEDIATE	= 0x01
 };
 
 /* Result codes - SAP v1.1 section 5.2.4 */

@@ -50,6 +50,7 @@
 #define PARAMETER_SIZE(x) (sizeof(struct sap_parameter) + x + PADDING4(x))
 
 #define SAP_NO_REQ 0xFF
+#define SAP_DISCONNECTION_TYPE_CLIENT 0xFF
 
 #define SAP_TIMER_GRACEFUL_DISCONNECT 30
 #define SAP_TIMER_NO_ACTIVITY 30
