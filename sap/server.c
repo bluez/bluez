@@ -286,6 +286,19 @@ static int disconnect_ind(struct sap_connection *conn, uint8_t disc_type)
 	return send_message(conn, buf, size);
 }
 
+static int sap_error_rsp(struct sap_connection *conn)
+{
+	struct sap_message msg;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.id = SAP_ERROR_RESP;
+
+	error("SAP error (state %d pr 0x%02x).", conn->state,
+							conn->processing_req);
+
+	return send_message(conn, &msg, sizeof(msg));
+}
+
 static void connect_req(struct sap_connection *conn,
 				struct sap_parameter *param)
 {
@@ -926,20 +939,6 @@ int sap_transport_protocol_rsp(void *sap_device, uint8_t result)
 	conn->processing_req = SAP_NO_REQ;
 
 	return send_message(sap_device, buf, size);
-}
-
-int sap_error_rsp(void *sap_device)
-{
-	struct sap_message msg;
-	struct sap_connection *conn = sap_device;
-
-	memset(&msg, 0, sizeof(msg));
-	msg.id = SAP_ERROR_RESP;
-
-	error("SAP error (state %d pr 0x%02x).", conn->state,
-							conn->processing_req);
-
-	return send_message(conn, &msg, sizeof(msg));
 }
 
 int sap_status_ind(void *sap_device, uint8_t status_change)

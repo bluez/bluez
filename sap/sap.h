@@ -173,7 +173,6 @@ int sap_power_sim_on_rsp(void *sap_device, uint8_t result);
 int sap_reset_sim_rsp(void *sap_device, uint8_t result);
 int sap_transfer_card_reader_status_rsp(void *sap_device, uint8_t result,
 						uint8_t status);
-int sap_error_rsp(void *sap_device);
 int sap_transport_protocol_rsp(void *sap_device, uint8_t result);
 
 /* Event indication. Implemented by server.c*/
