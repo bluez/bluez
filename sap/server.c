@@ -955,26 +955,35 @@ int sap_status_ind(void *sap_device, uint8_t status_change)
 	DBG("state %d pr 0x%02x sc 0x%02x", conn->state, conn->processing_req,
 								status_change);
 
-	/* Might be need to change state to connected after ongoing call.*/
-	if (conn->state == SAP_STATE_CONNECT_MODEM_BUSY &&
-			status_change == SAP_STATUS_CHANGE_CARD_RESET)
+	switch (conn->state) {
+	case SAP_STATE_CONNECT_MODEM_BUSY:
+		if (status_change != SAP_STATUS_CHANGE_CARD_RESET)
+			break;
+
+		/* Change state to connected after ongoing call ended */
 		sap_set_connected(conn);
+		/* fall */
+	case SAP_STATE_CONNECTED:
+	case SAP_STATE_GRACEFUL_DISCONNECT:
+		memset(buf, 0, sizeof(buf));
+		msg->id = SAP_STATUS_IND;
+		msg->nparam = 0x01;
 
-	if (conn->state != SAP_STATE_CONNECTED &&
-			conn->state != SAP_STATE_GRACEFUL_DISCONNECT)
-		return 0;
+		/* Add status change. */
+		param->id  = SAP_PARAM_ID_STATUS_CHANGE;
+		param->len = htons(SAP_PARAM_ID_STATUS_CHANGE_LEN);
+		*param->val = status_change;
+		size += PARAMETER_SIZE(SAP_PARAM_ID_STATUS_CHANGE_LEN);
 
-	memset(buf, 0, sizeof(buf));
-	msg->id = SAP_STATUS_IND;
-	msg->nparam = 0x01;
+		return send_message(sap_device, buf, size);
+	case SAP_STATE_DISCONNECTED:
+	case SAP_STATE_CONNECT_IN_PROGRESS:
+	case SAP_STATE_IMMEDIATE_DISCONNECT:
+	case SAP_STATE_CLIENT_DISCONNECT:
+		break;
+	}
 
-	/* Add status change. */
-	param->id  = SAP_PARAM_ID_STATUS_CHANGE;
-	param->len = htons(SAP_PARAM_ID_STATUS_CHANGE_LEN);
-	*param->val = status_change;
-	size += PARAMETER_SIZE(SAP_PARAM_ID_STATUS_CHANGE_LEN);
-
-	return send_message(sap_device, buf, size);
+	return 0;
 }
 
 int sap_disconnect_ind(void *sap_device, uint8_t disc_type)
