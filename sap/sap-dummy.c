@@ -43,6 +43,7 @@ enum {
 };
 
 static DBusConnection *connection = NULL;
+static unsigned int init_cnt = 0;
 
 static int sim_card_conn_status = SIM_DISCONNECTED;
 static void *sap_data = NULL; /* SAP server private data. */
@@ -355,6 +356,9 @@ static const GDBusMethodTable dummy_methods[] = {
 
 int sap_init(void)
 {
+	if (init_cnt++)
+		return 0;
+
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
 	if (g_dbus_register_interface(connection, SAP_DUMMY_PATH,
@@ -362,8 +366,11 @@ int sap_init(void)
 				NULL, NULL) == FALSE) {
 		error("sap-dummy interface %s init failed on path %s",
 					SAP_DUMMY_IFACE, SAP_DUMMY_PATH);
-		dbus_connection_unref(connection);
-		connection = NULL;
+
+		if (init_cnt--) {
+			dbus_connection_unref(connection);
+			connection = NULL;
+		}
 		return -1;
 	}
 
@@ -372,6 +379,9 @@ int sap_init(void)
 
 void sap_exit(void)
 {
+	if (--init_cnt)
+		return;
+
 	g_dbus_unregister_interface(connection, SAP_DUMMY_PATH,
 							SAP_DUMMY_IFACE);
 
