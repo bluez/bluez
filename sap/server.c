@@ -567,6 +567,7 @@ static gboolean guard_timeout(gpointer data)
 		if (conn->io) {
 			g_io_channel_shutdown(conn->io, TRUE, NULL);
 			g_io_channel_unref(conn->io);
+			conn->io = NULL;
 		}
 		break;
 
@@ -686,6 +687,7 @@ int sap_disconnect_rsp(void *sap_device)
 		if (conn->io) {
 			g_io_channel_shutdown(conn->io, TRUE, NULL);
 			g_io_channel_unref(conn->io);
+			conn->io = NULL;
 		}
 
 		return 0;
