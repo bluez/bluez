@@ -247,7 +247,7 @@ static int send_message(struct sap_connection *conn, void *buf, size_t size)
 	if (!conn || !buf)
 		return -EINVAL;
 
-	DBG("conn %p, size %zu", conn, size);
+	SAP_VDBG("conn %p, size %zu", conn, size);
 
 	gstatus = g_io_channel_write_chars(conn->io, buf, size, &written,
 									&gerr);
@@ -389,7 +389,7 @@ static int disconnect_req(struct sap_connection *conn, uint8_t disc_type)
 static void transfer_apdu_req(struct sap_connection *conn,
 					struct sap_parameter *param)
 {
-	DBG("conn %p state %d", conn, conn->state);
+	SAP_VDBG("conn %p state %d", conn, conn->state);
 
 	if (!param)
 		goto error_rsp;
@@ -712,7 +712,7 @@ int sap_transfer_apdu_rsp(void *sap_device, uint8_t result, uint8_t *apdu,
 	if (!conn)
 		return -EINVAL;
 
-	DBG("state %d pr 0x%02x", conn->state, conn->processing_req);
+	SAP_VDBG("state %d pr 0x%02x", conn->state, conn->processing_req);
 
 	if (conn->processing_req != SAP_TRANSFER_APDU_REQ)
 		return 0;
@@ -1078,7 +1078,7 @@ static gboolean sap_io_cb(GIOChannel *io, GIOCondition cond, gpointer data)
 	GError *gerr = NULL;
 	GIOStatus gstatus;
 
-	DBG("conn %p io %p", conn, io);
+	SAP_VDBG("conn %p io %p", conn, io);
 
 	if (cond & G_IO_NVAL) {
 		DBG("ERR (G_IO_NVAL) on rfcomm socket.");

@@ -38,12 +38,6 @@
 #define STE_SIMD_SOCK  "/dev/socket/catd_a"
 #define STE_CLIENT_TAG 0x0000
 
-#ifdef STE_SAP_DEBUG
-#define DBG_VERBOSE(fmt, arg...) DBG(fmt, arg)
-#else
-#define DBG_VERBOSE(fmt...)
-#endif
-
 #define sap_error(fmt, arg...) do { \
 	error("STE U8500 SAP: " fmt, ## arg); \
 	} while (0)
@@ -264,7 +258,7 @@ static int send_message(GIOChannel *io, void *buf, size_t size)
 {
 	gsize written;
 
-	DBG_VERBOSE("io %p, size %zu", io, size);
+	SAP_VDBG("io %p, size %zu", io, size);
 
 	if (g_io_channel_write_chars(io, buf, size, &written, NULL) !=
 							G_IO_STATUS_NORMAL)
@@ -280,7 +274,7 @@ static int send_request(GIOChannel *io, uint16_t id,
 	struct ste_message *msg;
 	size_t size = sizeof(*msg);
 
-	DBG_VERBOSE("io %p", io);
+	SAP_VDBG("io %p", io);
 
 	if (param)
 		size += param->len;
@@ -417,7 +411,7 @@ static void recv_response(struct ste_message *msg)
 	uint32_t status;
 	uint8_t *param;
 
-	DBG_VERBOSE("msg_id 0x%x", msg->id);
+	SAP_VDBG("msg_id 0x%x", msg->id);
 
 	if (msg->id == STE_END_SAP_RSP) {
 		sap_disconnect_rsp(u8500.sap_data);
@@ -429,7 +423,7 @@ static void recv_response(struct ste_message *msg)
 	status = *(uint32_t *)param;
 	param += sizeof(status);
 
-	DBG_VERBOSE("status 0x%x", status);
+	SAP_VDBG("status 0x%x", status);
 
 	switch (msg->id) {
 	case STE_START_SAP_RSP:
@@ -483,7 +477,7 @@ static int recv_message(void *buf, size_t size)
 	struct ste_message *msg = buf;
 
 	do {
-		DBG_VERBOSE("size %zu msg->len %u.", size, msg->len);
+		SAP_VDBG("size %zu msg->len %u.", size, msg->len);
 
 		if (size < sizeof(*msg)) {
 			sap_error("invalid message received (%zu bytes)", size);
@@ -641,7 +635,7 @@ void sap_transfer_apdu_req(void *sap_device, struct sap_parameter *param)
 {
 	uint8_t result;
 
-	DBG_VERBOSE("sap_device %p param %p", sap_device, param);
+	SAP_VDBG("sap_device %p param %p", sap_device, param);
 
 	if (u8500.state != STE_ENABLED) {
 		result = get_sap_result(STE_SEND_APDU_MSG, STE_STATUS_FAILURE);

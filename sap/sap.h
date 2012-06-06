@@ -26,6 +26,12 @@
 #include <stdint.h>
 #include <glib.h>
 
+#ifdef SAP_DEBUG
+#define SAP_VDBG(fmt, arg...) DBG(fmt, arg)
+#else
+#define SAP_VDBG(fmt...)
+#endif
+
 #define SAP_VERSION 0x0101
 
 /* Connection Status - SAP v1.1 section 5.2.2 */
