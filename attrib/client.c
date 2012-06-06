@@ -702,9 +702,17 @@ static void update_char_desc(guint8 status, const guint8 *pdu, guint16 len,
 				(void *) chr->desc, len);
 	} else if (status == ATT_ECODE_INSUFF_ENC) {
 		GIOChannel *io = g_attrib_get_channel(gatt->attrib);
+		BtIOSecLevel level = BT_IO_SEC_HIGH;
+
+		bt_io_get(io, BT_IO_L2CAP, NULL,
+				BT_IO_OPT_SEC_LEVEL, &level,
+				BT_IO_OPT_INVALID);
+
+		if (level < BT_IO_SEC_HIGH)
+			level++;
 
 		if (bt_io_set(io, BT_IO_L2CAP, NULL,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
+				BT_IO_OPT_SEC_LEVEL, level,
 				BT_IO_OPT_INVALID)) {
 			gatt_read_char(gatt->attrib, current->handle, 0,
 					update_char_desc, current);
