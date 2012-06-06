@@ -361,11 +361,6 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	if (attrib->stale)
 		return FALSE;
 
-	if (attrib->timeout_watch > 0) {
-		g_source_remove(attrib->timeout_watch);
-		attrib->timeout_watch = 0;
-	}
-
 	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		attrib->read_watch = 0;
 		return FALSE;
@@ -392,6 +387,11 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 
 	if (is_response(buf[0]) == FALSE)
 		return TRUE;
+
+	if (attrib->timeout_watch > 0) {
+		g_source_remove(attrib->timeout_watch);
+		attrib->timeout_watch = 0;
+	}
 
 	cmd = g_queue_pop_head(attrib->requests);
 	if (cmd == NULL) {
