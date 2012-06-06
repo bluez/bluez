@@ -244,9 +244,6 @@ static int send_message(struct sap_connection *conn, void *buf, size_t size)
 	GError *gerr = NULL;
 	GIOStatus gstatus;
 
-	if (!conn || !buf)
-		return -EINVAL;
-
 	SAP_VDBG("conn %p, size %zu", conn, size);
 
 	gstatus = g_io_channel_write_chars(conn->io, buf, size, &written,
