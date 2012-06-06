@@ -71,9 +71,9 @@
 #define ATT_ECODE_UNSUPP_GRP_TYPE		0x10
 #define ATT_ECODE_INSUFF_RESOURCES		0x11
 /* Application error */
-#define ATT_ECODE_IO				0xFF
-#define ATT_ECODE_TIMEOUT			0xFE
-#define ATT_ECODE_ABORTED			0xFD
+#define ATT_ECODE_IO				0x80
+#define ATT_ECODE_TIMEOUT			0x81
+#define ATT_ECODE_ABORTED			0x82
 
 /* Characteristic Property bit field */
 #define ATT_CHAR_PROPER_BROADCAST		0x01
