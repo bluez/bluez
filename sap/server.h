@@ -23,4 +23,4 @@
 int sap_server_init(DBusConnection *conn);
 void sap_server_exit(void);
 int sap_server_register(const char *path, bdaddr_t *src);
-int sap_server_unregister(const char *path);
+void sap_server_unregister(const char *path);
