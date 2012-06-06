@@ -141,6 +141,7 @@ static void mgmt_check_pending(int mgmt_sk, uint16_t op, uint16_t index,
 		c->cb(mgmt_sk, op, index, status, data, len, c->user_data);
 
 		free(c);
+		break;
 	}
 }
 
