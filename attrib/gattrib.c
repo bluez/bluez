@@ -255,6 +255,8 @@ static gboolean disconnect_timeout(gpointer data)
 	struct _GAttrib *attrib = data;
 	struct command *c;
 
+	g_attrib_ref(attrib);
+
 	c = g_queue_pop_head(attrib->requests);
 	if (c == NULL)
 		goto done;
@@ -272,6 +274,8 @@ static gboolean disconnect_timeout(gpointer data)
 
 done:
 	attrib->stale = TRUE;
+
+	g_attrib_unref(attrib);
 
 	return FALSE;
 }
