@@ -886,6 +886,7 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 					ATT_ECODE_UNLIKELY, pdu, len);
 
 	channel->mtu = MIN(mtu, imtu);
+	g_attrib_set_mtu(channel->attrib, channel->mtu);
 
 	return enc_mtu_resp(imtu, pdu, len);
 }
