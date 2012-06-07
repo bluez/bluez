@@ -1033,6 +1033,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	GError *gerr = NULL;
 	char addr[18];
 	uint16_t cid;
+	guint mtu = 0;
 
 	io = g_attrib_get_channel(attrib);
 
@@ -1042,7 +1043,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
 			BT_IO_OPT_CID, &cid,
-			BT_IO_OPT_OMTU, &channel->mtu,
+			BT_IO_OPT_IMTU, &mtu,
 			BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("bt_io_get: %s", gerr->message);
@@ -1069,14 +1070,13 @@ guint attrib_channel_attach(GAttrib *attrib)
 	if (device == NULL || device_is_bonded(device) == FALSE)
 		delete_device_ccc(&channel->src, &channel->dst);
 
-	if (channel->mtu > ATT_MAX_MTU)
-		channel->mtu = ATT_MAX_MTU;
-
-	if (cid != ATT_CID)
+	if (cid != ATT_CID) {
 		channel->le = FALSE;
-	else
+		channel->mtu = mtu;
+	} else {
 		channel->le = TRUE;
-
+		channel->mtu = ATT_DEFAULT_LE_MTU;
+	}
 
 	channel->attrib = g_attrib_ref(attrib);
 	channel->id = g_attrib_register(channel->attrib, GATTRIB_ALL_REQS,
