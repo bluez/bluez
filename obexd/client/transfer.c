@@ -309,7 +309,7 @@ gboolean obc_transfer_register(struct obc_transfer *transfer,
 	transfer->path = g_strdup_printf("%s/transfer%ju",
 			TRANSFER_BASEPATH, counter++);
 
-	transfer->conn = dbus_bus_get(DBUS_BUS_SESSION, NULL);
+	transfer->conn = dbus_connection_ref(conn);
 	if (transfer->conn == NULL) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EFAULT,
 						"Unable to connect to D-Bus");
