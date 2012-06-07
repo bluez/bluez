@@ -627,14 +627,6 @@ uint8_t *g_attrib_get_buffer(GAttrib *attrib, int *len)
 gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 {
 	if (mtu < ATT_DEFAULT_LE_MTU)
-		mtu = ATT_DEFAULT_LE_MTU;
-
-	if (mtu > ATT_MAX_MTU)
-		mtu = ATT_MAX_MTU;
-
-	if (!bt_io_set(attrib->io, BT_IO_L2CAP, NULL,
-			BT_IO_OPT_OMTU, mtu,
-			BT_IO_OPT_INVALID))
 		return FALSE;
 
 	attrib->buf = g_realloc(attrib->buf, mtu);
