@@ -94,7 +94,6 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 				BT_IO_OPT_DEST_BDADDR, &dba,
 				BT_IO_OPT_DEST_TYPE, dest_type,
 				BT_IO_OPT_CID, ATT_CID,
-				BT_IO_OPT_OMTU, mtu,
 				BT_IO_OPT_SEC_LEVEL, sec,
 				BT_IO_OPT_INVALID);
 	else
