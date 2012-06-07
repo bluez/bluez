@@ -867,18 +867,27 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 		uint8_t *pdu, int len)
 {
-	guint old_mtu = channel->mtu;
+	GError *gerr = NULL;
+	GIOChannel *io;
+	uint16_t imtu;
 
 	if (mtu < ATT_DEFAULT_LE_MTU)
-		channel->mtu = ATT_DEFAULT_LE_MTU;
-	else
-		channel->mtu = MIN(mtu, channel->mtu);
+		return enc_error_resp(ATT_OP_MTU_REQ, 0,
+					ATT_ECODE_REQ_NOT_SUPP, pdu, len);
 
-	bt_io_set(channel->server->le_io, BT_IO_L2CAP, NULL,
-			BT_IO_OPT_OMTU, channel->mtu,
+	io = g_attrib_get_channel(channel->attrib);
+
+	bt_io_get(io, BT_IO_L2CAP, &gerr,
+			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_INVALID);
 
-	return enc_mtu_resp(old_mtu, pdu, len);
+	if (gerr)
+		return enc_error_resp(ATT_OP_MTU_REQ, 0,
+					ATT_ECODE_UNLIKELY, pdu, len);
+
+	channel->mtu = MIN(mtu, imtu);
+
+	return enc_mtu_resp(imtu, pdu, len);
 }
 
 static void channel_remove(struct gatt_channel *channel)
