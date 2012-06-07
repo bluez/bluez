@@ -1446,6 +1446,12 @@ static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
 
 	opcode = btohs(bt_get_unaligned(&ev->opcode));
 
+	if (!ev->status) {
+		DBG("%s (0x%04x) cmd_status %u", mgmt_opstr(opcode), opcode,
+								ev->status);
+		return;
+	}
+
 	error("hci%u: %s (0x%04x) failed: %s (0x%02x)", index,
 			mgmt_opstr(opcode), opcode, mgmt_errstr(ev->status),
 			ev->status);
