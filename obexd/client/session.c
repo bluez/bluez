@@ -656,8 +656,8 @@ guint obc_session_queue(struct obc_session *session,
 		return 0;
 	}
 
-	if (!obc_transfer_register(transfer, session->conn, session->owner,
-									err)) {
+	if (!obc_transfer_register(transfer, session->conn, session->path,
+							session->owner, err)) {
 		obc_transfer_unregister(transfer);
 		return 0;
 	}

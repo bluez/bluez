@@ -44,7 +44,6 @@
 #include "transfer.h"
 
 #define TRANSFER_INTERFACE "org.bluez.obex.Transfer"
-#define TRANSFER_BASEPATH "/org/bluez/obex"
 
 #define OBC_TRANSFER_ERROR obc_transfer_error_quark()
 
@@ -301,13 +300,13 @@ static struct obc_transfer *obc_transfer_create(guint8 op,
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,
 						DBusConnection *conn,
+						const char *path,
 						const char *owner,
 						GError **err)
 {
 	transfer->owner = g_strdup(owner);
 
-	transfer->path = g_strdup_printf("%s/transfer%ju",
-			TRANSFER_BASEPATH, counter++);
+	transfer->path = g_strdup_printf("%s/transfer%ju", path, counter++);
 
 	transfer->conn = dbus_connection_ref(conn);
 	if (transfer->conn == NULL) {
