@@ -50,7 +50,6 @@ struct _GAttrib {
 	GQueue *responses;
 	GSList *events;
 	guint next_cmd_id;
-	guint next_evt_id;
 	GDestroyNotify destroy;
 	gpointer destroy_user_data;
 	gboolean stale;
@@ -644,6 +643,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 				GAttribNotifyFunc func, gpointer user_data,
 				GDestroyNotify notify)
 {
+	static guint next_evt_id = 0;
 	struct event *event;
 
 	event = g_try_new0(struct event, 1);
@@ -654,7 +654,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 	event->func = func;
 	event->user_data = user_data;
 	event->notify = notify;
-	event->id = ++attrib->next_evt_id;
+	event->id = ++next_evt_id;
 
 	attrib->events = g_slist_append(attrib->events, event);
 
