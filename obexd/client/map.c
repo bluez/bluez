@@ -41,6 +41,7 @@
 #define OBEX_MAS_UUID_LEN 16
 
 #define MAP_INTERFACE "org.bluez.obex.MessageAccess"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 #define MAS_UUID "00001132-0000-1000-8000-00805f9b34fb"
 
 struct map_data {
@@ -59,7 +60,7 @@ static void simple_cb(struct obc_session *session,
 
 	if (err != NULL)
 		reply = g_dbus_create_error(map->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 	else
 		reply = dbus_message_new_method_return(map->msg);
@@ -78,14 +79,14 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 	if (dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &folder,
 						DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-					"org.openobex.Error.InvalidArguments",
+					ERROR_INTERFACE ".InvalidArguments",
 					NULL);
 
 	obc_session_setpath(map->session, folder, simple_cb, map, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
 		reply =  g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		g_error_free(err);
 		return reply;
@@ -108,7 +109,7 @@ static void buffer_cb(struct obc_session *session,
 
 	if (err != NULL) {
 		reply = g_dbus_create_error(map->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		goto done;
 	}
@@ -116,7 +117,7 @@ static void buffer_cb(struct obc_session *session,
 	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		reply = g_dbus_create_error(map->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"Error reading contents: %s",
 						strerror(-perr));
 		goto done;
@@ -149,7 +150,7 @@ static DBusMessage *map_get_folder_listing(DBusConnection *connection,
 	}
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -169,7 +170,7 @@ static DBusMessage *map_get_message_listing(DBusConnection *connection,
 
 	if (dbus_message_iter_get_arg_type(&msg_iter) != DBUS_TYPE_STRING)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	dbus_message_iter_get_basic(&msg_iter, &folder);
 
@@ -183,7 +184,7 @@ static DBusMessage *map_get_message_listing(DBusConnection *connection,
 	}
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;

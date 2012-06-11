@@ -43,6 +43,7 @@
 #define OBEX_FTP_UUID_LEN 16
 
 #define FTP_INTERFACE "org.bluez.obex.FileTransfer"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 #define FTP_UUID "00001106-0000-1000-8000-00805f9b34fb"
 #define PCSUITE_UUID "00005005-0000-1000-8000-0002ee000001"
 
@@ -58,7 +59,7 @@ static void async_cb(struct obc_session *session, struct obc_transfer *transfer,
 	DBusMessage *reply, *msg = user_data;
 
 	if (err != NULL)
-		reply = g_dbus_create_error(msg, "org.openobex.Error.Failed",
+		reply = g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 	else
 		reply = dbus_message_new_method_return(msg);
@@ -79,13 +80,13 @@ static DBusMessage *change_folder(DBusConnection *connection,
 				DBUS_TYPE_STRING, &folder,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	obc_session_setpath(session, folder, async_cb, message, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
 		reply =  g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		g_error_free(err);
 		return reply;
@@ -188,13 +189,13 @@ static DBusMessage *create_folder(DBusConnection *connection,
 				DBUS_TYPE_STRING, &folder,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	obc_session_mkdir(session, folder, async_cb, message, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
 		reply = g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
+				ERROR_INTERFACE ".Failed",
 				"%s", err->message);
 		g_error_free(err);
 		return reply;
@@ -225,7 +226,7 @@ static DBusMessage *list_folder(DBusConnection *connection,
 	}
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -246,7 +247,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 				DBUS_TYPE_STRING, &source_file,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	transfer = obc_transfer_get(NULL, source_file, target_file, &err);
 	if (transfer == NULL)
@@ -258,7 +259,7 @@ static DBusMessage *get_file(DBusConnection *connection,
 	return obc_transfer_create_dbus_reply(transfer, message);
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -279,7 +280,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 					DBUS_TYPE_STRING, &targetfile,
 					DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments",
+				ERROR_INTERFACE ".InvalidArguments",
 				"Invalid arguments in method call");
 
 	transfer = obc_transfer_put(NULL, targetfile, sourcefile, NULL, 0,
@@ -293,7 +294,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 	return obc_transfer_create_dbus_reply(transfer, message);
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -312,14 +313,13 @@ static DBusMessage *copy_file(DBusConnection *connection,
 				DBUS_TYPE_STRING, &destname,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	obc_session_copy(session, filename, destname, async_cb, message, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
-		reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
+		reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
+							"%s", err->message);
 		g_error_free(err);
 		return reply;
 	}
@@ -342,14 +342,13 @@ static DBusMessage *move_file(DBusConnection *connection,
 				DBUS_TYPE_STRING, &destname,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	obc_session_move(session, filename, destname, async_cb, message, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
-		reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
+		reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
+							"%s", err->message);
 		g_error_free(err);
 		return reply;
 	}
@@ -371,14 +370,13 @@ static DBusMessage *delete(DBusConnection *connection,
 				DBUS_TYPE_STRING, &file,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	obc_session_delete(session, file, async_cb, message, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
-		reply = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
-						"%s", err->message);
+		reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
+							"%s", err->message);
 		g_error_free(err);
 		return reply;
 	}

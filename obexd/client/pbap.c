@@ -45,8 +45,6 @@
 	"\x79\x61\x35\xF0\xF0\xC5\x11\xD8\x09\x66\x08\x00\x20\x0C\x9A\x66"
 #define OBEX_PBAP_UUID_LEN 16
 
-#define ERROR_INF PBAP_INTERFACE ".Error"
-
 #define FORMAT_VCARD21	0x0
 #define FORMAT_VCARD30	0x1
 
@@ -123,6 +121,7 @@ static const char *filter_list[] = {
 #define FILTER_ALL	0xFFFFFFFFFFFFFFFFULL
 
 #define PBAP_INTERFACE "org.bluez.obex.PhonebookAccess"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 #define PBAP_UUID "0000112f-0000-1000-8000-00805f9b34fb"
 
 struct pbap_data {
@@ -284,8 +283,8 @@ static void pbap_setpath_cb(struct obc_session *session,
 
 	if (err) {
 		DBusMessage *reply = g_dbus_create_error(request->msg,
-							ERROR_INF ".Failed",
-							"%s", err->message);
+						ERROR_INTERFACE ".Failed",
+						"%s", err->message);
 		g_dbus_send_message(conn, reply);
 	} else
 		g_dbus_send_reply(conn, request->msg, DBUS_TYPE_INVALID);
@@ -351,7 +350,7 @@ static void phonebook_size_callback(struct obc_session *session,
 
 	if (err) {
 		reply = g_dbus_create_error(request->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		goto send;
 	}
@@ -383,7 +382,7 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 
 	if (err) {
 		reply = g_dbus_create_error(request->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		goto send;
 	}
@@ -391,7 +390,7 @@ static void pull_vcard_listing_callback(struct obc_session *session,
 	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		reply = g_dbus_create_error(request->msg,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"Error reading contents: %s",
 						strerror(-perr));
 		goto send;
@@ -534,7 +533,7 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 	pending_request_free(request);
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -667,12 +666,13 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 			DBUS_TYPE_STRING, &item,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	path = build_phonebook_path(location, item);
 	if (path == NULL)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "Invalid path");
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid path");
 
 	if (pbap->path != NULL && g_str_equal(pbap->path, path)) {
 		g_free(path);
@@ -685,7 +685,7 @@ static DBusMessage *pbap_select(DBusConnection *connection,
 									&err);
 	if (err != NULL) {
 		DBusMessage *reply;
-		reply =  g_dbus_create_error(message, ERROR_INF ".Failed",
+		reply =  g_dbus_create_error(message, ERROR_INTERFACE ".Failed",
 							"%s", err->message);
 		g_error_free(err);
 		g_free(path);
@@ -710,13 +710,14 @@ static DBusMessage *pbap_pull_all(DBusConnection *connection,
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden", "Call Select first of all");
+					ERROR_INTERFACE ".Forbidden",
+					"Call Select first of all");
 
 	if (dbus_message_get_args(message, NULL,
 			DBUS_TYPE_STRING, &targetfile,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	name = g_strconcat(pbap->path, ".vcf", NULL);
 
@@ -727,8 +728,8 @@ static DBusMessage *pbap_pull_all(DBusConnection *connection,
 
 	if (transfer == NULL) {
 		DBusMessage *reply = g_dbus_create_error(message,
-				"org.openobex.Error.Failed", "%s",
-				err->message);
+					ERROR_INTERFACE ".Failed", "%s",
+					err->message);
 		g_error_free(err);
 		return reply;
 	}
@@ -748,7 +749,7 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden",
+				ERROR_INTERFACE ".Forbidden",
 				"Call Select first of all");
 
 	if (dbus_message_get_args(message, NULL,
@@ -756,7 +757,7 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 			DBUS_TYPE_STRING, &targetfile,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	transfer = obc_transfer_get("x-bt/vcard", name, targetfile, &err);
 	if (transfer == NULL)
@@ -777,7 +778,7 @@ static DBusMessage *pbap_pull_vcard(DBusConnection *connection,
 	return obc_transfer_create_dbus_reply(transfer, message);
 
 fail:
-	reply = g_dbus_create_error(message, "org.openobex.Error.Failed", "%s",
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
 								err->message);
 	g_error_free(err);
 	return reply;
@@ -790,7 +791,8 @@ static DBusMessage *pbap_list(DBusConnection *connection,
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden", "Call Select first of all");
+					ERROR_INTERFACE ".Forbidden",
+					"Call Select first of all");
 
 	return pull_vcard_listing(pbap, message, "", pbap->order, "",
 				ATTRIB_NAME, DEFAULT_COUNT, DEFAULT_OFFSET);
@@ -808,11 +810,12 @@ static DBusMessage *pbap_search(DBusConnection *connection,
 			DBUS_TYPE_STRING, &value,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden", "Call Select first of all");
+					ERROR_INTERFACE ".Forbidden",
+					"Call Select first of all");
 
 	if (!field || g_str_equal(field, ""))
 		attrib = ATTRIB_NAME;
@@ -824,7 +827,7 @@ static DBusMessage *pbap_search(DBusConnection *connection,
 		attrib = ATTRIB_SOUND;
 	else
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	return pull_vcard_listing(pbap, message, "", pbap->order, value,
 					attrib, DEFAULT_COUNT, DEFAULT_OFFSET);
@@ -841,7 +844,8 @@ static DBusMessage *pbap_get_size(DBusConnection *connection,
 
 	if (!pbap->path)
 		return g_dbus_create_error(message,
-				ERROR_INF ".Forbidden", "Call Select first of all");
+					ERROR_INTERFACE ".Forbidden",
+					"Call Select first of all");
 
 	name = g_strconcat(pbap->path, ".vcf", NULL);
 
@@ -854,9 +858,8 @@ static DBusMessage *pbap_get_size(DBusConnection *connection,
 	if (transfer != NULL)
 		return NULL;
 
-	reply = g_dbus_create_error(message,
-				"org.openobex.Error.Failed", "%s",
-				err->message);
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
+								err->message);
 	g_error_free(err);
 	return reply;
 }
@@ -871,11 +874,12 @@ static DBusMessage *pbap_set_format(DBusConnection *connection,
 			DBUS_TYPE_STRING, &format,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	if (set_format(pbap, format) < 0)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "InvalidFormat");
+					ERROR_INTERFACE ".InvalidArguments",
+					"InvalidFormat");
 
 	return dbus_message_new_method_return(message);
 }
@@ -890,11 +894,12 @@ static DBusMessage *pbap_set_order(DBusConnection *connection,
 			DBUS_TYPE_STRING, &order,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	if (set_order(pbap, order) < 0)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", "InvalidFilter");
+					ERROR_INTERFACE ".InvalidArguments",
+					"InvalidFilter");
 
 	return dbus_message_new_method_return(message);
 }
@@ -911,7 +916,7 @@ static DBusMessage *pbap_set_filter(DBusConnection *connection,
 			DBUS_TYPE_STRING, &filters, &size,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	remove_filter(pbap, "ALL");
 	if (size == 0)
@@ -922,7 +927,8 @@ static DBusMessage *pbap_set_filter(DBusConnection *connection,
 			pbap->filter = oldfilter;
 			g_strfreev(filters);
 			return g_dbus_create_error(message,
-					ERROR_INF ".InvalidArguments", "InvalidFilters");
+					ERROR_INTERFACE ".InvalidArguments",
+					"InvalidFilters");
 		}
 	}
 

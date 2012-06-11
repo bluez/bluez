@@ -37,7 +37,7 @@
 
 #define OPP_UUID "00001105-0000-1000-8000-00805f9b34fb"
 #define OPP_INTERFACE "org.bluez.obex.ObjectPush"
-#define ERROR_INF OPP_INTERFACE ".Error"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 
 struct opp_data {
 	struct obc_session *session;
@@ -59,7 +59,7 @@ static DBusMessage *opp_send_file(DBusConnection *connection,
 					DBUS_TYPE_STRING, &filename,
 					DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	basename = g_path_get_basename(filename);
 
@@ -77,7 +77,7 @@ static DBusMessage *opp_send_file(DBusConnection *connection,
 
 fail:
 	reply = g_dbus_create_error(message,
-				ERROR_INF ".Failed", "%s", err->message);
+				ERROR_INTERFACE ".Failed", "%s", err->message);
 	g_error_free(err);
 	return reply;
 }
@@ -95,7 +95,7 @@ static DBusMessage *opp_pull_business_card(DBusConnection *connection,
 				DBUS_TYPE_STRING, &filename,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				ERROR_INF ".InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	pull = obc_transfer_get("text/x-vcard", NULL, filename, &err);
 	if (pull == NULL)
@@ -108,7 +108,7 @@ static DBusMessage *opp_pull_business_card(DBusConnection *connection,
 
 fail:
 	reply = g_dbus_create_error(message,
-				ERROR_INF ".Failed", "%s", err->message);
+				ERROR_INTERFACE ".Failed", "%s", err->message);
 	g_error_free(err);
 	return reply;
 }
@@ -116,7 +116,7 @@ fail:
 static DBusMessage *opp_exchange_business_cards(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+	return g_dbus_create_error(message, ERROR_INTERFACE ".Failed", NULL);
 }
 
 static const GDBusMethodTable opp_methods[] = {

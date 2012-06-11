@@ -48,6 +48,7 @@
 #define CLIENT_SERVICE		"org.bluez.obex.client"
 
 #define CLIENT_INTERFACE	"org.bluez.obex.Client"
+#define ERROR_INTERFACE		"org.bluez.obex.Error"
 #define CLIENT_PATH		"/"
 
 struct send_data {
@@ -84,7 +85,7 @@ static void create_callback(struct obc_session *session,
 
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(data->message,
-					"org.openobex.Error.Failed",
+					ERROR_INTERFACE ".Failed",
 					"%s", err->message);
 		g_dbus_send_message(data->connection, error);
 		shutdown_session(session);
@@ -162,26 +163,26 @@ static DBusMessage *create_session(DBusConnection *connection,
 	dbus_message_iter_init(message, &iter);
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	dbus_message_iter_get_basic(&iter, &dest);
 	dbus_message_iter_next(&iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	dbus_message_iter_recurse(&iter, &dict);
 
 	parse_device_dict(&dict, &source, &target, &channel);
 	if (dest == NULL || target == NULL)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	data = g_try_malloc0(sizeof(*data));
 	if (data == NULL)
 		return g_dbus_create_error(message,
-					"org.openobex.Error.NoMemory", NULL);
+				ERROR_INTERFACE ".Error.NoMemory", NULL);
 
 	data->connection = dbus_connection_ref(connection);
 	data->message = dbus_message_ref(message);
@@ -198,7 +199,7 @@ static DBusMessage *create_session(DBusConnection *connection,
 	dbus_connection_unref(data->connection);
 	g_free(data);
 
-	return g_dbus_create_error(message, "org.openobex.Error.Failed", NULL);
+	return g_dbus_create_error(message, ERROR_INTERFACE ".Failed", NULL);
 }
 
 static DBusMessage *remove_session(DBusConnection *connection,
@@ -211,17 +212,17 @@ static DBusMessage *remove_session(DBusConnection *connection,
 			DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	session = find_session(path);
 	if (session == NULL)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.InvalidArguments", NULL);
+				ERROR_INTERFACE ".InvalidArguments", NULL);
 
 	sender = dbus_message_get_sender(message);
 	if (g_str_equal(sender, obc_session_get_owner(session)) == FALSE)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
+				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
 	shutdown_session(session);

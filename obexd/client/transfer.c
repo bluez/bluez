@@ -44,6 +44,7 @@
 #include "transfer.h"
 
 #define TRANSFER_INTERFACE "org.bluez.obex.Transfer"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 
 #define OBC_TRANSFER_ERROR obc_transfer_error_quark()
 
@@ -209,12 +210,12 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 	sender = dbus_message_get_sender(message);
 	if (g_strcmp0(transfer->owner, sender) != 0)
 		return g_dbus_create_error(message,
-				"org.openobex.Error.NotAuthorized",
+				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
 	if (!obc_transfer_abort(transfer))
 		return g_dbus_create_error(message,
-				"org.openobex.Error.Failed",
+				ERROR_INTERFACE ".Failed",
 				"Failed");
 
 	transfer->msg = dbus_message_ref(message);
@@ -487,7 +488,7 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 						TRANSFER_INTERFACE, "Complete",
 						DBUS_TYPE_INVALID);
 	} else {
-		const char *code = "org.openobex.Error.Failed";
+		const char *code = ERROR_INTERFACE ".Failed";
 
 		if (transfer->op == G_OBEX_OP_GET && transfer->filename != NULL)
 			remove(transfer->filename);

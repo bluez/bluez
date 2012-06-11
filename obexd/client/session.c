@@ -46,6 +46,7 @@
 #include "transport.h"
 
 #define SESSION_INTERFACE "org.bluez.obex.Session"
+#define ERROR_INTERFACE "org.bluez.obex.Error"
 #define SESSION_BASEPATH "/org/bluez/obex"
 
 #define OBEX_IO_ERROR obex_io_error_quark()
@@ -567,7 +568,7 @@ static void capabilities_complete_callback(struct obc_session *session,
 
 	if (err != NULL) {
 		DBusMessage *error = g_dbus_create_error(message,
-					"org.openobex.Error.Failed",
+					ERROR_INTERFACE ".Failed",
 					"%s", err->message);
 		g_dbus_send_message(session->conn, error);
 		goto done;
@@ -576,7 +577,7 @@ static void capabilities_complete_callback(struct obc_session *session,
 	perr = obc_transfer_get_contents(transfer, &contents, &size);
 	if (perr < 0) {
 		DBusMessage *error = g_dbus_create_error(message,
-						"org.openobex.Error.Failed",
+						ERROR_INTERFACE ".Failed",
 						"Error reading contents: %s",
 						strerror(-perr));
 		g_dbus_send_message(session->conn, error);
@@ -613,9 +614,8 @@ static DBusMessage *get_capabilities(DBusConnection *connection,
 	return NULL;
 
 fail:
-	reply = g_dbus_create_error(message,
-					"org.openobex.Error.Failed",
-					"%s", gerr->message);
+	reply = g_dbus_create_error(message, ERROR_INTERFACE ".Failed", "%s",
+								gerr->message);
 	g_error_free(gerr);
 	return reply;
 
