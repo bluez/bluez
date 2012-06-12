@@ -181,7 +181,7 @@ static void cmd_get(int argc, char **argv)
 						G_OBEX_HDR_NAME, argv[1],
 						G_OBEX_HDR_INVALID);
 	if (err != NULL) {
-		g_printerr("put failed: %s\n", err->message);
+		g_printerr("get failed: %s\n", err->message);
 		g_error_free(err);
 		close(data->fd);
 		g_free(data);
