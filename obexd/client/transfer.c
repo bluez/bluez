@@ -187,20 +187,6 @@ static void abort_complete(GObex *obex, GError *err, gpointer user_data)
 	}
 }
 
-static gboolean obc_transfer_abort(struct obc_transfer *transfer)
-{
-	if (transfer->xfer == 0)
-		return FALSE;
-
-	if (transfer->progress_id != 0) {
-		g_source_remove(transfer->progress_id);
-		transfer->progress_id = 0;
-	}
-
-	return g_obex_cancel_transfer(transfer->xfer, abort_complete,
-								transfer);
-}
-
 static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
@@ -218,7 +204,17 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 				ERROR_INTERFACE ".InProgress",
 				"Cancellation already in progress");
 
-	if (!obc_transfer_abort(transfer))
+	if (transfer->xfer == 0)
+		return g_dbus_create_error(message,
+				ERROR_INTERFACE ".Failed",
+				"Failed");
+
+	if (transfer->progress_id != 0) {
+		g_source_remove(transfer->progress_id);
+		transfer->progress_id = 0;
+	}
+
+	if (!g_obex_cancel_transfer(transfer->xfer, abort_complete, transfer))
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".Failed",
 				"Failed");
