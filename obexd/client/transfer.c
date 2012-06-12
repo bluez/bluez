@@ -204,10 +204,20 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 				ERROR_INTERFACE ".InProgress",
 				"Cancellation already in progress");
 
-	if (transfer->xfer == 0)
-		return g_dbus_create_error(message,
-				ERROR_INTERFACE ".Failed",
-				"Failed");
+	if (transfer->xfer == 0) {
+		struct transfer_callback *callback = transfer->callback;
+
+		if (callback != NULL) {
+			GError *err;
+
+			err = g_error_new(OBC_TRANSFER_ERROR, -ECANCELED, "%s",
+						"Transfer cancelled by user");
+			callback->func(transfer, err, callback->data);
+			g_error_free(err);
+		}
+
+		return dbus_message_new_method_return(message);
+	}
 
 	if (transfer->progress_id != 0) {
 		g_source_remove(transfer->progress_id);
