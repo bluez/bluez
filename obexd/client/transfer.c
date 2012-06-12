@@ -213,6 +213,11 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
+	if (transfer->msg != NULL)
+		return g_dbus_create_error(message,
+				ERROR_INTERFACE ".InProgress",
+				"Cancellation already in progress");
+
 	if (!obc_transfer_abort(transfer))
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".Failed",
