@@ -269,7 +269,7 @@ int messages_get_message(void *session, const char *handle,
  *
  * session: Backend session.
  * user_data: User data if any to be sent.
- * Callback shall be called for every update inbox request recieved from MCE.
+ * Callback shall be called for every update inbox request received from MCE.
  */
 typedef void (*messages_update_inbox_cb)(void *session, int err,
 							void *user_data);

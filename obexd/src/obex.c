@@ -656,7 +656,7 @@ static gboolean recv_data(const void *buf, gsize size, gpointer user_data)
 	if (os->aborted)
 		return FALSE;
 
-	/* workaround: client didn't send the object lenght */
+	/* workaround: client didn't send the object length */
 	if (os->size == OBJECT_SIZE_DELETE)
 		os->size = OBJECT_SIZE_UNKNOWN;
 

@@ -411,14 +411,14 @@ static void emit_transfer_completed(struct obex_session *os, gboolean success)
 }
 
 static void emit_transfer_progress(struct obex_session *os, uint32_t total,
-							uint32_t transfered)
+							uint32_t transferred)
 {
 	char *path = g_strdup_printf("/transfer%u", os->id);
 
 	g_dbus_emit_signal(connection, path,
 			TRANSFER_INTERFACE, "Progress",
 			DBUS_TYPE_INT32, &total,
-			DBUS_TYPE_INT32, &transfered,
+			DBUS_TYPE_INT32, &transferred,
 			DBUS_TYPE_INVALID);
 
 	g_free(path);

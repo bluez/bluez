@@ -172,7 +172,7 @@ static void query_result(const char *buffer, size_t bufsize, int vcards,
 	/* loop around buffer and add X-IRMC-LUID attribs */
 	s = buffer;
 	while ((t = strstr(s, "UID:")) != NULL) {
-		/* add upto UID: into buffer */
+		/* add up to UID: into buffer */
 		irmc->buffer = g_string_append_len(irmc->buffer, s, t-s);
 		/*
 		 * add UID: line into buffer
