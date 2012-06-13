@@ -632,10 +632,7 @@ static gchar **get_filter_strs(uint64_t filter, gint *size)
 	gint i;
 	gint filter_list_size = sizeof(filter_list) / sizeof(filter_list[0]) - 1;
 
-	list = g_try_malloc0(sizeof(gchar **) * (FILTER_BIT_MAX + 2));
-
-	if (!list)
-		return NULL;
+	list = g_malloc0(sizeof(gchar **) * (FILTER_BIT_MAX + 2));
 
 	item = list;
 
