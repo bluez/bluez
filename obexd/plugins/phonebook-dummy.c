@@ -218,7 +218,7 @@ static gboolean read_dir(void *user_data)
 	struct dummy_data *dummy = user_data;
 	GString *buffer;
 	DIR *dp;
-	uint16_t count, max, offset;
+	uint16_t count = 0, max, offset;
 
 	buffer = g_string_new("");
 
