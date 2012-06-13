@@ -823,8 +823,6 @@ int avctp_register(const bdaddr_t *src, gboolean master)
 	struct avctp_server *server;
 
 	server = g_new0(struct avctp_server, 1);
-	if (!server)
-		return -ENOMEM;
 
 	server->io = avctp_server_socket(src, master);
 	if (!server->io) {

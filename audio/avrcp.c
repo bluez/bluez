@@ -1285,8 +1285,6 @@ int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	}
 
 	server = g_new0(struct avrcp_server, 1);
-	if (!server)
-		return -ENOMEM;
 
 	record = avrcp_tg_record();
 	if (!record) {

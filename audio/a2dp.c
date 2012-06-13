@@ -1535,8 +1535,6 @@ proceed:
 		int av_err;
 
 		server = g_new0(struct a2dp_server, 1);
-		if (!server)
-			return -ENOMEM;
 
 		av_err = avdtp_init(src, config, &server->version);
 		if (av_err < 0) {

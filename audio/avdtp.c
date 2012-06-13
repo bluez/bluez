@@ -3948,8 +3948,6 @@ int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version)
 
 proceed:
 	server = g_new0(struct avdtp_server, 1);
-	if (!server)
-		return -ENOMEM;
 
 	server->version = ver;
 
