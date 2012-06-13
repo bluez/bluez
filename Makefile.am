@@ -75,7 +75,7 @@ lib_LTLIBRARIES += lib/libbluetooth.la
 
 lib_libbluetooth_la_SOURCES = $(lib_headers) \
 				lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
-lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 15:0:12
+lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 16:0:13
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 
 noinst_LTLIBRARIES += lib/libbluetooth-private.la
