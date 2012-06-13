@@ -116,6 +116,8 @@ static int send_method_call(struct bluetooth_session *session,
 
 	session->pending_calls = g_slist_prepend(session->pending_calls, call);
 
+	dbus_message_unref(msg);
+
 	return 0;
 }
 
