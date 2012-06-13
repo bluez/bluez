@@ -520,7 +520,7 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 	p = fill_apparam(p, &count, MAXLISTCOUNT_TAG, MAXLISTCOUNT_LEN);
 
 	offset = GUINT16_TO_BE(offset);
-	p = fill_apparam(p, &offset, LISTSTARTOFFSET_TAG, LISTSTARTOFFSET_LEN);
+	fill_apparam(p, &offset, LISTSTARTOFFSET_TAG, LISTSTARTOFFSET_LEN);
 
 	request = pending_request_new(pbap, message);
 

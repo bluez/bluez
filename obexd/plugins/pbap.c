@@ -961,7 +961,7 @@ static ssize_t array_read(GByteArray *array, void *buf, size_t count)
 
 	len = MIN(array->len, count);
 	memcpy(buf, array->data, len);
-	array = g_byte_array_remove_range(array, 0, len);
+	g_byte_array_remove_range(array, 0, len);
 
 	return len;
 }

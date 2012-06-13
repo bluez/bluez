@@ -604,7 +604,7 @@ ssize_t string_read(void *object, void *buf, size_t count)
 
 	len = MIN(string->len, count);
 	memcpy(buf, string->str, len);
-	string = g_string_erase(string, 0, len);
+	g_string_erase(string, 0, len);
 
 	return len;
 }
