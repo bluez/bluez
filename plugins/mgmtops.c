@@ -350,6 +350,7 @@ static int mgmt_update_powered(struct btd_adapter *adapter,
 		info->pending_uuids = NULL;
 		info->pending_uuid = FALSE;
 		info->pending_class = FALSE;
+		info->pending_cod_change = FALSE;
 		return 0;
 	}
 
