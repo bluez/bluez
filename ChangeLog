@@ -1,3 +1,29 @@
+ver 4.100:
+	Fix issue with crashing when SCO connection fails.
+	Fix issue with HFP gateway failing on first GSM connection.
+	Fix issue with AVRCP and handling of vendor commands.
+	Fix issue with handling AVRCP subunit info command.
+	Fix issue with missing capability for AVRCP track reached end.
+	Fix issue with AVDTP signaling and GStreamer SBC NULL check.
+	Fix issue with AVDTP Reconfigure Reject message.
+	Fix issue with incorrect EIR length parsing.
+	Fix issue with SDP disconnect for HIDSDPDisable.
+	Fix issue with SDP interoperability with Mac OS X Lion.
+	Fix issue with reverse SDP discovery with some devices.
+	Fix issue with discovering state during power off operation.
+	Add support for AVRCP Volume Changed notifications.
+	Add support for AVRCP Set Absolute Volume handling.
+	Add support for display legacy PIN code agent method.
+	Add support for multiple media transports per endpoint.
+	Add support for discovering device information characteristics.
+	Add support for vendor source for Device ID setting.
+	Add support for immediate alert server.
+	Add support for link loss server.
+
+	Notes:
+	This version requires D-Bus 1.4 or later.
+	This version requires GLib 2.28 or later.
+
 ver 4.99:
 	Fix issue with missing retries for BNEP connection setup.
 	Fix issue with not showing name if first EIR has no details.
