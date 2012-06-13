@@ -1470,19 +1470,21 @@ static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	error("hci%u: %s (0x%04x) failed: %s (0x%02x)", index,
-			mgmt_opstr(opcode), opcode, mgmt_errstr(ev->status),
-			ev->status);
-
 	switch (opcode) {
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
 		read_local_oob_data_failed(sk, index);
 		break;
 	case MGMT_OP_ADD_UUID:
-		if (ev->status == MGMT_STATUS_BUSY)
+		if (ev->status == MGMT_STATUS_BUSY) {
 			mgmt_add_uuid_busy(sk, index);
+			return;
+		}
 		break;
 	}
+
+	error("hci%u: %s (0x%04x) failed: %s (0x%02x)", index,
+			mgmt_opstr(opcode), opcode, mgmt_errstr(ev->status),
+			ev->status);
 }
 
 static void mgmt_controller_error(int sk, uint16_t index, void *buf, size_t len)
