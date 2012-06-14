@@ -353,7 +353,7 @@ audio_libasound_module_pcm_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
 audio_libasound_module_ctl_bluetooth_la_SOURCES = audio/ctl_bluetooth.c \
 					audio/rtp.h audio/ipc.h audio/ipc.c
 audio_libasound_module_ctl_bluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module \
-						  -avoid-versionv
+						  -avoid-version
 audio_libasound_module_ctl_bluetooth_la_LIBADD = \
 					lib/libbluetooth-private.la @ALSA_LIBS@
 audio_libasound_module_ctl_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
