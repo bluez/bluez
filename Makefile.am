@@ -328,7 +328,7 @@ if DATAFILES
 conf_DATA += src/main.conf
 endif
 
-EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
+EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf network/network.conf \
 			input/input.conf serial/serial.conf \
 			audio/audio.conf audio/telephony-dummy.c \
