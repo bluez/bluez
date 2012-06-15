@@ -1948,10 +1948,8 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, uint8_t transaction,
 	}
 
 	sep = find_local_sep_by_seid(session->server, req->acp_seid);
-	if (!sep || !sep->stream) {
-		err = AVDTP_BAD_ACP_SEID;
-		goto failed;
-	}
+	if (!sep || !sep->stream)
+		return TRUE;
 
 	if (sep->ind && sep->ind->abort) {
 		if (!sep->ind->abort(session, sep, sep->stream, &err,
