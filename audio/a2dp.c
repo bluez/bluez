@@ -1038,7 +1038,7 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		return TRUE;
 
 	start_err = avdtp_start(session, a2dp_sep->stream);
-	if (start_err < 0) {
+	if (start_err < 0 && start_err != -EINPROGRESS) {
 		error("avdtp_start: %s (%d)", strerror(-start_err),
 								-start_err);
 		finalize_setup_errno(setup, start_err, finalize_resume);
@@ -1086,7 +1086,7 @@ static void suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	}
 
 	start_err = avdtp_start(session, a2dp_sep->stream);
-	if (start_err < 0) {
+	if (start_err < 0 && start_err != -EINPROGRESS) {
 		error("avdtp_start: %s (%d)", strerror(-start_err),
 								-start_err);
 		finalize_setup_errno(setup, start_err, finalize_suspend, NULL);
