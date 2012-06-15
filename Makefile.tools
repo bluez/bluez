@@ -214,7 +214,7 @@ else
 EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.8
 endif
 
-EXTRA_DIST += test/apitest test/sap-client test/hsplay test/hsmicro \
+EXTRA_DIST += test/sap-client test/hsplay test/hsmicro \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/test-service test/test-serial \
