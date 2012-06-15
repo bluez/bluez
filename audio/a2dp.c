@@ -1177,7 +1177,7 @@ static void close_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		g_timeout_add(RECONFIGURE_TIMEOUT, a2dp_reconfigure, setup);
 }
 
-static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
+static void abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_stream *stream, uint8_t *err,
 				void *user_data)
 {
@@ -1193,13 +1193,13 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	setup = find_setup_by_session(session);
 	if (!setup)
-		return TRUE;
+		return;
 
 	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
 							finalize_resume,
 							finalize_config);
 
-	return TRUE;
+	return;
 }
 
 static void abort_cfm(struct avdtp *session, struct avdtp_local_sep *sep,

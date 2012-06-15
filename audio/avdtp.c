@@ -1951,11 +1951,9 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, uint8_t transaction,
 	if (!sep || !sep->stream)
 		return TRUE;
 
-	if (sep->ind && sep->ind->abort) {
-		if (!sep->ind->abort(session, sep, sep->stream, &err,
-					sep->user_data))
-			goto failed;
-	}
+	if (sep->ind && sep->ind->abort)
+		sep->ind->abort(session, sep, sep->stream, &err,
+							sep->user_data);
 
 	avdtp_check_collision(session, AVDTP_ABORT, sep->stream);
 
@@ -1965,10 +1963,6 @@ static gboolean avdtp_abort_cmd(struct avdtp *session, uint8_t transaction,
 		avdtp_sep_set_state(session, sep, AVDTP_STATE_ABORTING);
 
 	return ret;
-
-failed:
-	return avdtp_send(session, transaction, AVDTP_MSG_TYPE_REJECT,
-					AVDTP_ABORT, &err, sizeof(err));
 }
 
 static gboolean avdtp_secctl_cmd(struct avdtp *session, uint8_t transaction,
