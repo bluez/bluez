@@ -30,6 +30,28 @@ General
   Priority: Low
   Complexity: C1
 
+BlueZ 5
+=======
+
+Priority/Complexity ommited as all items are required before 5.0 is
+released.
+
+- Make mgmtops part of Bluetooth core. mgmt will be the only way to
+  communicate with the kernel in BlueZ so a plugin is not needed
+  anymore. Probably plugins/mgmtops.c -> src/mgmt.c
+
+- Switch to standard D-Bus properties interface
+
+- Switch to standard object manager interface
+
+- Reorganize source tree according to RFC sent to linux-bluetooth
+  (Subject: [RFC] Reorganizing the BlueZ source tree)
+
+- Remove deprecated D-Bus signal from audio code. New ones need to be
+  added to replace the deprecated ones.
+
+- Remove deprecated code/D-Bus methods.
+
 Low Energy
 ==========
 
