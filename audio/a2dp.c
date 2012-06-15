@@ -1182,6 +1182,7 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 				void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
+	struct a2dp_setup *setup;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		DBG("Sink %p: Abort_Ind", sep);
@@ -1189,6 +1190,14 @@ static gboolean abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 		DBG("Source %p: Abort_Ind", sep);
 
 	a2dp_sep->stream = NULL;
+
+	setup = find_setup_by_session(session);
+	if (!setup)
+		return TRUE;
+
+	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
+							finalize_resume,
+							finalize_config);
 
 	return TRUE;
 }
