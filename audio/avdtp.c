@@ -1068,12 +1068,19 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		break;
 	case AVDTP_STATE_OPEN:
 		stream->starting = FALSE;
-		if (old_state > AVDTP_STATE_OPEN && session->auto_dc)
+		if ((old_state > AVDTP_STATE_OPEN && session->auto_dc) ||
+							stream->open_acp)
 			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
 								stream_timeout,
 								stream);
 		break;
 	case AVDTP_STATE_STREAMING:
+		if (stream->idle_timer) {
+			g_source_remove(stream->idle_timer);
+			stream->idle_timer = 0;
+		}
+		stream->open_acp = FALSE;
+		break;
 	case AVDTP_STATE_CLOSING:
 	case AVDTP_STATE_ABORTING:
 		if (stream->idle_timer) {
@@ -3659,6 +3666,15 @@ int avdtp_start(struct avdtp *session, struct avdtp_stream *stream)
 
 	if (stream->lsep->state != AVDTP_STATE_OPEN)
 		return -EINVAL;
+
+	/* Recommendation 12:
+	 *  If the RD has configured and opened a stream it is also responsible
+	 *  to start the streaming via GAVDP_START.
+	 */
+	if (stream->open_acp) {
+		stream->starting = TRUE;
+		return 0;
+	}
 
 	if (stream->close_int == TRUE) {
 		error("avdtp_start: rejecting start since close is initiated");
