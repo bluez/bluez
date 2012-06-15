@@ -954,16 +954,21 @@ static gboolean start_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	else
 		DBG("Source %p: Start_Ind", sep);
 
-	setup = find_setup_by_session(session);
-	if (setup)
-		finalize_resume(setup);
-
 	if (!a2dp_sep->locked) {
 		a2dp_sep->session = avdtp_ref(session);
 		a2dp_sep->suspend_timer = g_timeout_add_seconds(SUSPEND_TIMEOUT,
 						(GSourceFunc) suspend_timeout,
 						a2dp_sep);
 	}
+
+	if (!a2dp_sep->starting)
+		return TRUE;
+
+	a2dp_sep->starting = FALSE;
+
+	setup = find_setup_by_session(session);
+	if (setup)
+		finalize_resume(setup);
 
 	return TRUE;
 }
@@ -979,6 +984,8 @@ static void start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		DBG("Sink %p: Start_Cfm", sep);
 	else
 		DBG("Source %p: Start_Cfm", sep);
+
+	a2dp_sep->starting = FALSE;
 
 	setup = find_setup_by_session(session);
 	if (!setup)
@@ -2217,6 +2224,7 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 			error("avdtp_start failed");
 			goto failed;
 		}
+		sep->starting = TRUE;
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (!sep->suspending && sep->suspend_timer) {
