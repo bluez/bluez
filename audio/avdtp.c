@@ -1795,9 +1795,8 @@ static gboolean avdtp_start_cmd(struct avdtp *session, uint8_t transaction,
 
 		stream = sep->stream;
 
-		/* Also reject start cmd if we already initiated start */
-		if (sep->state != AVDTP_STATE_OPEN ||
-						stream->starting == TRUE) {
+		/* Also reject start cmd if state is not open */
+		if (sep->state != AVDTP_STATE_OPEN) {
 			err = AVDTP_BAD_STATE;
 			goto failed;
 		}
