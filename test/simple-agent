@@ -10,6 +10,12 @@ import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser
 
+def ask(prompt):
+	try:
+		return raw_input(prompt)
+	except:
+		return input(prompt)
+
 class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
 
@@ -30,7 +36,7 @@ class Agent(dbus.service.Object):
 					in_signature="os", out_signature="")
 	def Authorize(self, device, uuid):
 		print("Authorize (%s, %s)" % (device, uuid))
-		authorize = input("Authorize connection (yes/no): ")
+		authorize = ask("Authorize connection (yes/no): ")
 		if (authorize == "yes"):
 			return
 		raise Rejected("Connection rejected by user")
@@ -39,13 +45,13 @@ class Agent(dbus.service.Object):
 					in_signature="o", out_signature="s")
 	def RequestPinCode(self, device):
 		print("RequestPinCode (%s)" % (device))
-		return input("Enter PIN Code: ")
+		return ask("Enter PIN Code: ")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="u")
 	def RequestPasskey(self, device):
 		print("RequestPasskey (%s)" % (device))
-		passkey = input("Enter passkey: ")
+		passkey = ask("Enter passkey: ")
 		return dbus.UInt32(passkey)
 
 	@dbus.service.method("org.bluez.Agent",
@@ -62,7 +68,7 @@ class Agent(dbus.service.Object):
 					in_signature="ou", out_signature="")
 	def RequestConfirmation(self, device, passkey):
 		print("RequestConfirmation (%s, %06d)" % (device, passkey))
-		confirm = input("Confirm passkey (yes/no): ")
+		confirm = ask("Confirm passkey (yes/no): ")
 		if (confirm == "yes"):
 			return
 		raise Rejected("Passkey doesn't match")
@@ -71,7 +77,7 @@ class Agent(dbus.service.Object):
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
 		print("ConfirmModeChange (%s)" % (mode))
-		authorize = input("Authorize mode change (yes/no): ")
+		authorize = ask("Authorize mode change (yes/no): ")
 		if (authorize == "yes"):
 			return
 		raise Rejected("Mode change by user")
