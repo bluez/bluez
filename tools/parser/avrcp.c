@@ -1107,6 +1107,7 @@ static void avrcp_register_notification_dump(int level, struct frame *frm,
 						uint8_t ctype, uint16_t len)
 {
 	uint8_t event, status;
+	uint16_t uid;
 	uint32_t interval;
 	uint64_t id;
 
@@ -1201,6 +1202,15 @@ response:
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		status = get_u8(frm) & 0x7F;
 		printf("Volume: %.2f%% (%d/127)\n", status/1.27, status);
+		break;
+	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+		uid = get_u16(frm);
+		printf("PlayerID: 0x%04x (%u)", uid, uid);
+
+		p_indent(level, frm);
+
+		uid = get_u16(frm);
+		printf("UIDCounter: 0x%04x (%u)", uid, uid);
 		break;
 	}
 }
