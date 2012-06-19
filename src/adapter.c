@@ -3112,7 +3112,7 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 
 	/* Device connected? */
 	if (!g_slist_find(adapter->connections, device))
-		return -ENOTCONN;
+		error("Authorization request for non-connected device!?");
 
 	if (adapter->auth_idle_id)
 		return -EBUSY;
