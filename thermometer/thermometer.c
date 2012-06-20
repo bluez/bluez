@@ -1135,9 +1135,10 @@ static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
 	struct thermometer *t = user_data;
 	const struct characteristic *ch;
-	uint8_t opdu[ATT_MAX_MTU];
+	uint8_t *opdu;
 	uint16_t handle, olen;
 	GSList *l;
+	int plen;
 
 	if (len < 3) {
 		DBG("Bad pdu received");
@@ -1158,7 +1159,8 @@ static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0)
 		proc_measurement_interval(t, pdu, len);
 
-	olen = enc_confirmation(opdu, sizeof(opdu));
+	opdu = g_attrib_get_buffer(t->attrib, &plen);
+	olen = enc_confirmation(opdu, plen);
 
 	if (olen > 0)
 		g_attrib_send(t->attrib, 0, opdu[0], opdu, olen, NULL, NULL,
