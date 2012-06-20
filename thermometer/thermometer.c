@@ -50,6 +50,7 @@
 
 #define VALID_RANGE_DESC_SIZE	4
 #define TEMPERATURE_TYPE_SIZE	1
+#define MEASUREMENT_INTERVAL_SIZE	2
 
 struct thermometer {
 	DBusConnection		*conn;		/* The connection to the bus */
@@ -474,7 +475,7 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
 	struct characteristic *ch = user_data;
-	uint8_t value[ATT_MAX_MTU];
+	uint8_t value[MEASUREMENT_INTERVAL_SIZE];
 	uint16_t interval;
 	ssize_t vlen;
 
