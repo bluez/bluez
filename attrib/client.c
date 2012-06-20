@@ -269,9 +269,10 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	struct gatt_service *gatt = user_data;
 	struct characteristic *chr;
 	GSList *l;
-	uint8_t opdu[ATT_MAX_MTU];
+	uint8_t *opdu;
 	guint handle;
 	uint16_t olen;
+	int plen;
 
 	if (len < 3) {
 		DBG("Malformed notification/indication packet (opcode 0x%02x)",
@@ -295,7 +296,8 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 
 	switch (pdu[0]) {
 	case ATT_OP_HANDLE_IND:
-		olen = enc_confirmation(opdu, sizeof(opdu));
+		opdu = g_attrib_get_buffer(gatt->attrib, &plen);
+		olen = enc_confirmation(opdu, plen);
 		g_attrib_send(gatt->attrib, 0, opdu[0], opdu, olen,
 						NULL, NULL, NULL);
 	case ATT_OP_HANDLE_NOTIFY:
