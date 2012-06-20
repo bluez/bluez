@@ -49,6 +49,7 @@
 #define FLOAT_MAX_MANTISSA	16777216 /* 2^24 */
 
 #define VALID_RANGE_DESC_SIZE	4
+#define TEMPERATURE_TYPE_SIZE	1
 
 struct thermometer {
 	DBusConnection		*conn;		/* The connection to the bus */
@@ -445,7 +446,7 @@ static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,
 {
 	struct characteristic *ch = user_data;
 	struct thermometer *t = ch->t;
-	uint8_t value[ATT_MAX_MTU];
+	uint8_t value[TEMPERATURE_TYPE_SIZE];
 	ssize_t vlen;
 
 	if (status != 0) {
