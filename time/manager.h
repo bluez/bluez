@@ -2,8 +2,8 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2011  Nokia Corporation
- *  Copyright (C) 2011  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2012  Nokia Corporation
+ *  Copyright (C) 2012  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -22,37 +22,5 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <stdint.h>
-#include <glib.h>
-#include <errno.h>
-
-#include "plugin.h"
-#include "hcid.h"
-#include "log.h"
-#include "manager.h"
-
-static int time_init(void)
-{
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
-	return time_manager_init();
-}
-
-static void time_exit(void)
-{
-	if (!main_opts.gatt_enabled)
-		return;
-
-	time_manager_exit();
-}
-
-BLUETOOTH_PLUGIN_DEFINE(time, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-			time_init, time_exit)
+int time_manager_init(void);
+void time_manager_exit(void);
