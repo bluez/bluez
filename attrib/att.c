@@ -681,22 +681,23 @@ uint16_t enc_read_blob_resp(uint8_t *value, int vlen, uint16_t offset,
 	return vlen + 1;
 }
 
-uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen)
+ssize_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int vlen)
 {
 	if (pdu == NULL)
-		return 0;
+		return -EINVAL;
 
-	if (value == NULL || vlen == NULL)
-		return 0;
+	if (value == NULL)
+		return -EINVAL;
 
 	if (pdu[0] != ATT_OP_READ_RESP)
-		return 0;
+		return -EINVAL;
+
+	if (vlen < (len - 1))
+		return -ENOBUFS;
 
 	memcpy(value, pdu + 1, len - 1);
 
-	*vlen = len - 1;
-
-	return len;
+	return len - 1;
 }
 
 uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,

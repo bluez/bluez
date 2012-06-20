@@ -234,7 +234,7 @@ uint16_t dec_read_blob_req(const uint8_t *pdu, int len, uint16_t *handle,
 uint16_t enc_read_resp(uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t enc_read_blob_resp(uint8_t *value, int vlen, uint16_t offset,
 							uint8_t *pdu, int len);
-uint16_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int *vlen);
+ssize_t dec_read_resp(const uint8_t *pdu, int len, uint8_t *value, int vlen);
 uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 							uint8_t *pdu, int len);
 uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, int len);

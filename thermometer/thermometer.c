@@ -299,7 +299,7 @@ static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 	struct descriptor *desc = user_data;
 	uint8_t value[ATT_MAX_MTU];
 	uint16_t max, min;
-	int vlen;
+	ssize_t vlen;
 
 	if (status != 0) {
 		DBG("Valid Range descriptor read failed: %s",
@@ -307,7 +307,8 @@ static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	if (!dec_read_resp(pdu, len, value, &vlen)) {
+	vlen = dec_read_resp(pdu, len, value, sizeof(value));
+	if (vlen < 0) {
 		DBG("Protocol error\n");
 		return;
 	}
@@ -443,7 +444,7 @@ static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,
 	struct characteristic *ch = user_data;
 	struct thermometer *t = ch->t;
 	uint8_t value[ATT_MAX_MTU];
-	int vlen;
+	ssize_t vlen;
 
 	if (status != 0) {
 		DBG("Temperature Type value read failed: %s",
@@ -451,7 +452,8 @@ static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	if (!dec_read_resp(pdu, len, value, &vlen)) {
+	vlen = dec_read_resp(pdu, len, value, sizeof(value));
+	if (vlen < 0) {
 		DBG("Protocol error.");
 		return;
 	}
@@ -471,7 +473,7 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 	struct characteristic *ch = user_data;
 	uint8_t value[ATT_MAX_MTU];
 	uint16_t interval;
-	int vlen;
+	ssize_t vlen;
 
 	if (status != 0) {
 		DBG("Measurement Interval value read failed: %s",
@@ -479,7 +481,8 @@ static void read_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 		return;
 	}
 
-	if (!dec_read_resp(pdu, len, value, &vlen)) {
+	vlen = dec_read_resp(pdu, len, value, sizeof(value));
+	if (vlen < 0) {
 		DBG("Protocol error\n");
 		return;
 	}

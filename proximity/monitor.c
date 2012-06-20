@@ -212,20 +212,21 @@ static void tx_power_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	uint8_t value[ATT_MAX_MTU];
-	int vlen;
+	ssize_t vlen;
 
 	if (status != 0) {
 		DBG("Tx Power Level read failed: %s", att_ecode2str(status));
 		return;
 	}
 
-	if (!dec_read_resp(pdu, plen, value, &vlen)) {
+	vlen = dec_read_resp(pdu, plen, value, sizeof(value));
+	if (vlen < 0) {
 		DBG("Protocol error");
 		return;
 	}
 
 	if (vlen != 1) {
-		DBG("Invalid length for TX Power value: %d", vlen);
+		DBG("Invalid length for TX Power value: %zd", vlen);
 		return;
 	}
 

@@ -227,14 +227,17 @@ static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	uint8_t value[ATT_MAX_MTU];
-	int i, vlen;
+	ssize_t vlen;
+	int i;
 
 	if (status != 0) {
 		g_printerr("Characteristic value/descriptor read failed: %s\n",
 							att_ecode2str(status));
 		goto done;
 	}
-	if (!dec_read_resp(pdu, plen, value, &vlen)) {
+
+	vlen = dec_read_resp(pdu, plen, value, sizeof(value));
+	if (vlen < 0) {
 		g_printerr("Protocol error\n");
 		goto done;
 	}
