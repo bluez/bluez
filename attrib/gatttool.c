@@ -75,8 +75,9 @@ struct characteristic_data {
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
 	GAttrib *attrib = user_data;
-	uint8_t opdu[ATT_MAX_MTU];
+	uint8_t *opdu;
 	uint16_t handle, i, olen = 0;
+	int plen;
 
 	handle = att_get_u16(&pdu[1]);
 
@@ -100,7 +101,8 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	if (pdu[0] == ATT_OP_HANDLE_NOTIFY)
 		return;
 
-	olen = enc_confirmation(opdu, sizeof(opdu));
+	opdu = g_attrib_get_buffer(attrib, &plen);
+	olen = enc_confirmation(opdu, plen);
 
 	if (olen > 0)
 		g_attrib_send(attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
