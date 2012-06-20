@@ -22,5 +22,24 @@
  *
  */
 
+enum {
+	UPDATE_RESULT_SUCCESSFUL = 0,
+	UPDATE_RESULT_CANCELED = 1,
+	UPDATE_RESULT_NO_CONN = 2,
+	UPDATE_RESULT_ERROR = 3,
+	UPDATE_RESULT_TIMEOUT = 4,
+	UPDATE_RESULT_NOT_ATTEMPTED = 5,
+};
+
+enum {
+	UPDATE_STATE_IDLE = 0,
+	UPDATE_STATE_PENDING = 1,
+};
+
+enum {
+	GET_REFERENCE_UPDATE = 1,
+	CANCEL_REFERENCE_UPDATE = 2,
+};
+
 int time_server_init(struct btd_adapter *adapter);
 void time_server_exit(struct btd_adapter *adapter);
