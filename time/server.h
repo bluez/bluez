@@ -22,5 +22,5 @@
  *
  */
 
-int time_server_init(void);
-void time_server_exit(void);
+int time_server_init(struct btd_adapter *adapter);
+void time_server_exit(struct btd_adapter *adapter);
