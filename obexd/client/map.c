@@ -192,7 +192,7 @@ fail:
 
 static const GDBusMethodTable map_methods[] = {
 	{ GDBUS_ASYNC_METHOD("SetFolder",
-				GDBUS_ARGS({ "name", "string" }), NULL,
+				GDBUS_ARGS({ "name", "s" }), NULL,
 				map_setpath) },
 	{ GDBUS_ASYNC_METHOD("GetFolderListing",
 					GDBUS_ARGS({ "dummy", "a{ss}" }),
