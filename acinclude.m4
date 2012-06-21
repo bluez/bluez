@@ -360,7 +360,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fi
 
 	AC_SUBST([MISC_CFLAGS], $misc_cflags)
-	AC_SUBST([MISC_LDLAGS], $misc_ldlags)
+	AC_SUBST([MISC_LDFLAGS], $misc_ldflags)
 
 	if (test "${usb_enable}" = "yes" && test "${usb_found}" = "yes"); then
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
