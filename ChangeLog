@@ -1,3 +1,11 @@
+ver 4.101:
+	Fix issue with missing BlueZ service file.
+	Fix issue with aborting A2DP setup during AVDTP start.
+	Fix issue with handling of multiple A2DP indication.
+	Fix issue with handling AVDTP abort with invalid SEID.
+	Fix issue with rejecting AVDTP abort commands.
+	Add support for handling AVDTP command collision.
+
 ver 4.100:
 	Fix issue with crashing when SCO connection fails.
 	Fix issue with HFP gateway failing on first GSM connection.
