@@ -112,7 +112,6 @@ static struct enabled_interfaces enabled = {
 	.sink		= TRUE,
 	.source		= FALSE,
 	.control	= TRUE,
-	.socket		= FALSE,
 	.media		= TRUE,
 };
 
@@ -1181,8 +1180,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = TRUE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = TRUE;
-		else if (g_str_equal(list[i], "Socket"))
-			enabled.socket = TRUE;
 		else if (g_str_equal(list[i], "Media"))
 			enabled.media = TRUE;
 
@@ -1202,8 +1199,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = FALSE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = FALSE;
-		else if (g_str_equal(list[i], "Socket"))
-			enabled.socket = FALSE;
 		else if (g_str_equal(list[i], "Media"))
 			enabled.media = FALSE;
 	}
