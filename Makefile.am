@@ -151,7 +151,6 @@ builtin_sources += audio/main.c \
 			audio/sink.h audio/sink.c \
 			audio/a2dp.h audio/a2dp.c \
 			audio/avdtp.h audio/avdtp.c \
-			audio/ipc.h audio/ipc.c \
 			audio/media.h audio/media.c \
 			audio/transport.h audio/transport.c \
 			audio/telephony.h audio/a2dp-codecs.h
@@ -348,8 +347,7 @@ audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/gstavdtpsink.h audio/gstavdtpsink.c \
 				audio/gsta2dpsink.h audio/gsta2dpsink.c \
 				audio/gstsbcutil.h audio/gstsbcutil.c \
-				audio/gstrtpsbcpay.h audio/gstrtpsbcpay.c \
-				audio/rtp.h audio/ipc.h audio/ipc.c
+				audio/gstrtpsbcpay.h audio/gstrtpsbcpay.c
 audio_libgstbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version
 audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth-private.la \
 						@DBUS_LIBS@ @GSTREAMER_LIBS@ \

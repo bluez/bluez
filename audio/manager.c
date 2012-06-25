@@ -54,7 +54,6 @@
 #include "../src/device.h"
 
 #include "log.h"
-#include "ipc.h"
 #include "device.h"
 #include "error.h"
 #include "avdtp.h"

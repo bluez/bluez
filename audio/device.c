@@ -46,7 +46,6 @@
 #include "../src/device.h"
 
 #include "error.h"
-#include "ipc.h"
 #include "dbus-common.h"
 #include "device.h"
 #include "avdtp.h"
