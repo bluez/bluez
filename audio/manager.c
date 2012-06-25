@@ -69,7 +69,6 @@
 #include "manager.h"
 #include "sdpd.h"
 #include "telephony.h"
-#include "unix.h"
 
 typedef enum {
 	HEADSET	= 1 << 0,
@@ -1235,9 +1234,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 		max_connected_headsets = i;
 
 proceed:
-	if (enabled.socket)
-		unix_init();
-
 	if (enabled.media)
 		btd_register_adapter_driver(&media_server_driver);
 
@@ -1273,9 +1269,6 @@ void audio_manager_exit(void)
 		g_key_file_free(config);
 		config = NULL;
 	}
-
-	if (enabled.socket)
-		unix_exit();
 
 	if (enabled.media)
 		btd_unregister_adapter_driver(&media_server_driver);

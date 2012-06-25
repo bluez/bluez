@@ -43,7 +43,6 @@
 #include "avdtp.h"
 #include "sink.h"
 #include "source.h"
-#include "unix.h"
 #include "a2dp.h"
 #include "sdpd.h"
 
@@ -1240,14 +1239,11 @@ static gboolean delayreport_ind(struct avdtp *session,
 				uint8_t *err, void *user_data)
 {
 	struct a2dp_sep *a2dp_sep = user_data;
-	struct audio_device *dev = a2dp_get_dev(session);
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
 		DBG("Sink %p: DelayReport_Ind", sep);
 	else
 		DBG("Source %p: DelayReport_Ind", sep);
-
-	unix_delay_report(dev, rseid, delay);
 
 	return TRUE;
 }

@@ -152,7 +152,6 @@ builtin_sources += audio/main.c \
 			audio/a2dp.h audio/a2dp.c \
 			audio/avdtp.h audio/avdtp.c \
 			audio/ipc.h audio/ipc.c \
-			audio/unix.h audio/unix.c \
 			audio/media.h audio/media.c \
 			audio/transport.h audio/transport.c \
 			audio/telephony.h audio/a2dp-codecs.h
