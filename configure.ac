@@ -41,7 +41,6 @@ AC_CHECK_HEADER([sys/inotify.h],
 			[AC_MSG_ERROR(inotify headers are required and missing)])
 AC_PATH_DBUS
 AC_PATH_GLIB
-AC_PATH_ALSA
 AC_PATH_GSTREAMER
 AC_PATH_USB
 AC_PATH_UDEV

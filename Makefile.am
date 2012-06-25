@@ -335,35 +335,6 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c \
 			proximity/proximity.conf
 
-if ALSA
-alsadir = $(libdir)/alsa-lib
-
-alsa_LTLIBRARIES = audio/libasound_module_pcm_bluetooth.la \
-				audio/libasound_module_ctl_bluetooth.la
-
-audio_libasound_module_pcm_bluetooth_la_SOURCES = audio/pcm_bluetooth.c \
-					audio/rtp.h audio/ipc.h audio/ipc.c
-audio_libasound_module_pcm_bluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module \
-						  -avoid-version
-audio_libasound_module_pcm_bluetooth_la_LIBADD = sbc/libsbc.la \
-					lib/libbluetooth-private.la @ALSA_LIBS@
-audio_libasound_module_pcm_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
-
-audio_libasound_module_ctl_bluetooth_la_SOURCES = audio/ctl_bluetooth.c \
-					audio/rtp.h audio/ipc.h audio/ipc.c
-audio_libasound_module_ctl_bluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module \
-						  -avoid-version
-audio_libasound_module_ctl_bluetooth_la_LIBADD = \
-					lib/libbluetooth-private.la @ALSA_LIBS@
-audio_libasound_module_ctl_bluetooth_la_CFLAGS = $(AM_CFLAGS) @ALSA_CFLAGS@
-
-if DATAFILES
-alsaconfdir = $(datadir)/alsa
-
-alsaconf_DATA = audio/bluetooth.conf
-endif
-endif
-
 if AUDIOPLUGIN
 if GSTREAMER
 gstreamerdir = $(libdir)/gstreamer-0.10

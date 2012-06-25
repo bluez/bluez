@@ -114,13 +114,6 @@ AC_DEFUN([AC_PATH_GSTREAMER], [
 	AC_SUBST(GSTREAMER_PLUGINSDIR)
 ])
 
-AC_DEFUN([AC_PATH_ALSA], [
-	PKG_CHECK_MODULES(ALSA, alsa, alsa_found=yes, alsa_found=no)
-	AC_CHECK_LIB(rt, clock_gettime, ALSA_LIBS="$ALSA_LIBS -lrt", alsa_found=no)
-	AC_SUBST(ALSA_CFLAGS)
-	AC_SUBST(ALSA_LIBS)
-])
-
 AC_DEFUN([AC_PATH_USB], [
 	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, usb_found=no)
 	AC_SUBST(USB_CFLAGS)
@@ -176,7 +169,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	sndfile_enable=${sndfile_found}
 	hal_enable=no
 	usb_enable=${usb_found}
-	alsa_enable=${alsa_found}
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
 	input_enable=yes
@@ -255,10 +247,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
 		gstreamer_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(alsa, AC_HELP_STRING([--enable-alsa], [enable ALSA support]), [
-		alsa_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
@@ -368,9 +356,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(SBC, test "${alsa_enable}" = "yes" || test "${gstreamer_enable}" = "yes" ||
-									test "${test_enable}" = "yes")
-	AM_CONDITIONAL(ALSA, test "${alsa_enable}" = "yes" && test "${alsa_found}" = "yes")
+	AM_CONDITIONAL(SBC, test "${gstreamer_enable}" = "yes" || test "${test_enable}" = "yes")
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
 	AM_CONDITIONAL(AUDIOPLUGIN, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")
