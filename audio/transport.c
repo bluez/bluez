@@ -959,7 +959,7 @@ static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Release",
 			GDBUS_ARGS({ "access_type", "s" }), NULL,
 			release ) },
-	{ GDBUS_ASYNC_METHOD("SetProperty",
+	{ GDBUS_METHOD("SetProperty",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
 			NULL, set_property) },
 	{ },

@@ -2094,7 +2094,7 @@ static const GDBusMethodTable headset_methods[] = {
 static const GDBusSignalTable headset_signals[] = {
 	{ GDBUS_DEPRECATED_SIGNAL("Connected", NULL) },
 	{ GDBUS_DEPRECATED_SIGNAL("Disconnected", NULL) },
-	{ GDBUS_DEPRECATED_SIGNAL("AnswerRequested", NULL) },
+	{ GDBUS_SIGNAL("AnswerRequested", NULL) },
 	{ GDBUS_DEPRECATED_SIGNAL("Stopped", NULL) },
 	{ GDBUS_DEPRECATED_SIGNAL("Playing", NULL) },
 	{ GDBUS_DEPRECATED_SIGNAL("SpeakerGainChanged",

@@ -198,7 +198,7 @@ static DBusMessage *control_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable control_methods[] = {
-	{ GDBUS_ASYNC_METHOD("IsConnected",
+	{ GDBUS_DEPRECATED_METHOD("IsConnected",
 				NULL, GDBUS_ARGS({ "connected", "b" }),
 				control_is_connected) },
 	{ GDBUS_METHOD("GetProperties",

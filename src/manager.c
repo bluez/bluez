@@ -207,7 +207,7 @@ static const GDBusMethodTable manager_methods[] = {
 			GDBUS_ARGS({ "pattern", "s" }),
 			GDBUS_ARGS({ "adapter", "o" }),
 			find_adapter) },
-	{ GDBUS_ASYNC_METHOD("ListAdapters",
+	{ GDBUS_DEPRECATED_METHOD("ListAdapters",
 			NULL, GDBUS_ARGS({ "adapters", "ao" }),
 			list_adapters) },
 	{ }
