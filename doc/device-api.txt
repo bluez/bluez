@@ -25,7 +25,7 @@ Methods		dict GetProperties()
 		void SetProperty(string name, variant value)
 
 			Changes the value of the specified property. Only
-			properties that are listed a read-write are changeable.
+			properties that are listed as read-write are changeable.
 			On success this will emit a PropertyChanged signal.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
