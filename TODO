@@ -47,10 +47,20 @@ released.
 - Reorganize source tree according to RFC sent to linux-bluetooth
   (Subject: [RFC] Reorganizing the BlueZ source tree)
 
-- Remove deprecated D-Bus signal from audio code. New ones need to be
-  added to replace the deprecated ones.
+- Remove deprecated D-Bus signals and methods (ensuring new ones are in
+  place to replace what's removed).
 
-- Remove deprecated code/D-Bus methods.
+- Remove telephony driver framework and replace with the telephony agent
+  patches.
+
+- Remove UNIX socket based audio interface (along with ALSA plugin)
+
+- Clean up libbluetooth and only export a very minimal API (for
+  RFCOMM/L2CAP socket use)
+
+- Merge obexd.git into bluez.git
+
+- Remove unmaintained plugins like pnat and maemo6
 
 Low Energy
 ==========
