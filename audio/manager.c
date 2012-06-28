@@ -1228,6 +1228,9 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 		max_connected_headsets = i;
 
 proceed:
+	if (enabled.control)
+		btd_register_adapter_driver(&avrcp_server_driver);
+
 	if (enabled.media)
 		btd_register_adapter_driver(&media_server_driver);
 
@@ -1239,9 +1242,6 @@ proceed:
 
 	if (enabled.source || enabled.sink)
 		btd_register_adapter_driver(&a2dp_server_driver);
-
-	if (enabled.control)
-		btd_register_adapter_driver(&avrcp_server_driver);
 
 	btd_register_device_driver(&audio_driver);
 
