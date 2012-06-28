@@ -1168,7 +1168,7 @@ static void a2mp_dump_chanlist(int level, struct a2mp_tlv *tlv, char *prefix)
 	struct a2mp_country_triplet *triplet;
 	int i, num;
 
-	num = tlv->len / sizeof(*triplet);
+	num = (tlv->len - sizeof(*chan_list)) / sizeof(*triplet);
 
 	printf("%s number of triplets %d\n", prefix, num);
 
