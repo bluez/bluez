@@ -53,6 +53,14 @@ released.
 - Remove telephony driver framework and replace with the telephony agent
   patches.
 
+- Related to the telephony architecture rework, figure out how fast
+  connectable should work.
+	- New FastConnectable Adapter property?
+	- Should the property fall back to False after a timeout (e.g.
+	  30 seconds)?
+	- Should the kernel auto-disable this mode as soon as the
+	  adapter gets an incoming connect request?
+
 - Remove UNIX socket based audio interface (along with ALSA plugin)
 
 - Clean up libbluetooth and only export a very minimal API (for
