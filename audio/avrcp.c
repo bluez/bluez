@@ -148,7 +148,7 @@ struct avrcp_server {
 	uint32_t tg_record_id;
 	uint32_t ct_record_id;
 	GSList *players;
-	struct avrcp_player *active_player;
+	struct avrcp_player *addressed_player;
 };
 
 struct pending_pdu {
@@ -1202,7 +1202,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	if (!server)
 		return;
 
-	player = server->active_player;
+	player = server->addressed_player;
 	if (!player)
 		return;
 
@@ -1393,7 +1393,7 @@ struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
 	player->destroy = destroy;
 
 	if (!server->players)
-		server->active_player = player;
+		server->addressed_player = player;
 
 	if (!avctp_id)
 		avctp_id = avctp_add_state_cb(state_changed, NULL);
@@ -1409,8 +1409,8 @@ void avrcp_unregister_player(struct avrcp_player *player)
 
 	server->players = g_slist_remove(server->players, player);
 
-	if (server->active_player == player)
-		server->active_player = g_slist_nth_data(server->players, 0);
+	if (server->addressed_player == player)
+		server->addressed_player = g_slist_nth_data(server->players, 0);
 
 	player_destroy(player);
 }
@@ -1445,7 +1445,7 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 	if (server == NULL)
 		return -EINVAL;
 
-	player = server->active_player;
+	player = server->addressed_player;
 	if (player == NULL)
 		return -ENOTSUP;
 
