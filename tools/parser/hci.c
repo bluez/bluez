@@ -36,6 +36,7 @@
 #include "parser.h"
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
+#include "lib/amp.h"
 
 static uint16_t manufacturer = DEFAULT_COMPID;
 
@@ -2599,7 +2600,6 @@ static inline void read_local_amp_assoc_dump(int level, struct frame *frm)
 {
 	read_local_amp_assoc_rp *rp = frm->ptr;
 	uint16_t len = btohs(rp->length);
-	int i;
 
 	p_indent(level, frm);
 	printf("status 0x%2.2x handle 0x%2.2x remaining len %d\n",
@@ -2608,16 +2608,7 @@ static inline void read_local_amp_assoc_dump(int level, struct frame *frm)
 		p_indent(level, frm);
 		printf("Error: %s\n", status2str(rp->status));
 	} else {
-		p_indent(level, frm);
-		printf("assoc data");
-		for (i = 0; i < len; i++) {
-			if (!(i % 16)) {
-				printf("\n");
-				p_indent(level, frm);
-			}
-			printf("%2.2x ", rp->fragment[i]);
-		}
-		printf("\n");
+		amp_assoc_dump(level + 1, rp->fragment, len);
 	}
 }
 
