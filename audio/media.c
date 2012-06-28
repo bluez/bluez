@@ -1454,7 +1454,7 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 	return TRUE;
 }
 
-static gboolean set_property(struct media_player *mp, const char *key,
+static gboolean set_player_property(struct media_player *mp, const char *key,
 							DBusMessageIter *entry)
 {
 	DBusMessageIter var;
@@ -1515,7 +1515,7 @@ static gboolean property_changed(DBusConnection *connection, DBusMessage *msg,
 
 	dbus_message_iter_next(&iter);
 
-	set_property(mp, property, &iter);
+	set_player_property(mp, property, &iter);
 
 	return TRUE;
 }
@@ -1747,7 +1747,7 @@ static gboolean parse_player_properties(struct media_player *mp,
 		dbus_message_iter_get_basic(&entry, &key);
 		dbus_message_iter_next(&entry);
 
-		if (set_property(mp, key, &entry) == FALSE)
+		if (set_player_property(mp, key, &entry) == FALSE)
 			return FALSE;
 
 		dbus_message_iter_next(&dict);
