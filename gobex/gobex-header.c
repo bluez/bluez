@@ -187,7 +187,7 @@ GObexHeader *g_obex_header_decode(const void *data, gsize len,
 		}
 
 		header->v.string = g_convert((const char *) ptr, hdr_len - 5,
-						"UTF8", "UTF16BE",
+						"UTF-8", "UTF-16BE",
 						NULL, &str_len, &conv_err);
 		if (header->v.string == NULL) {
 			g_set_error(err, G_OBEX_ERROR,
