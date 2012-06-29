@@ -415,8 +415,6 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	if (!sink->session)
 		return FALSE;
 
-	avdtp_set_auto_disconnect(sink->session, FALSE);
-
 	if (avdtp_discover(sink->session, discovery_complete, sink) < 0)
 		return FALSE;
 

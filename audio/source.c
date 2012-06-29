@@ -366,8 +366,6 @@ gboolean source_setup_stream(struct source *source, struct avdtp *session)
 	if (!source->session)
 		return FALSE;
 
-	avdtp_set_auto_disconnect(source->session, FALSE);
-
 	if (avdtp_discover(source->session, discovery_complete, source) < 0)
 		return FALSE;
 

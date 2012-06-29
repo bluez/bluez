@@ -395,9 +395,6 @@ struct avdtp {
 
 	avdtp_session_state_t state;
 
-	/* True if the session should be automatically disconnected */
-	gboolean auto_dc;
-
 	/* True if the entire device is being disconnected */
 	gboolean device_disconnect;
 
@@ -805,19 +802,6 @@ static void stream_free(struct avdtp_stream *stream)
 	g_free(stream);
 }
 
-static gboolean stream_timeout(gpointer user_data)
-{
-	struct avdtp_stream *stream = user_data;
-	struct avdtp *session = stream->session;
-
-	if (avdtp_close(session, stream, FALSE) < 0)
-		error("stream_timeout: closing AVDTP stream failed");
-
-	stream->idle_timer = 0;
-
-	return FALSE;
-}
-
 static gboolean transport_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
@@ -1068,11 +1052,6 @@ static void avdtp_sep_set_state(struct avdtp *session,
 		break;
 	case AVDTP_STATE_OPEN:
 		stream->starting = FALSE;
-		if ((old_state > AVDTP_STATE_OPEN && session->auto_dc) ||
-							stream->open_acp)
-			stream->idle_timer = g_timeout_add_seconds(STREAM_TIMEOUT,
-								stream_timeout,
-								stream);
 		break;
 	case AVDTP_STATE_STREAMING:
 		if (stream->idle_timer) {
@@ -1195,8 +1174,6 @@ static void connection_lost(struct avdtp *session, int err)
 
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
-
-	session->auto_dc = TRUE;
 
 	if (session->ref != 1)
 		error("connection_lost: ref count not 1 after all callbacks");
@@ -2394,7 +2371,6 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	/* We don't use avdtp_set_state() here since this isn't a state change
 	 * but just setting of the initial state */
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
-	session->auto_dc = TRUE;
 
 	session->version = get_version(session);
 
@@ -2467,10 +2443,8 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 						(GIOFunc) session_cb, session,
 						NULL);
 
-		if (session->stream_setup) {
+		if (session->stream_setup)
 			set_disconnect_timer(session);
-			avdtp_set_auto_disconnect(session, FALSE);
-		}
 	} else if (session->pending_open)
 		handle_transport_connect(session, chan, session->imtu,
 								session->omtu);
@@ -4006,11 +3980,6 @@ void avdtp_exit(const bdaddr_t *src)
 gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 {
 	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
-}
-
-void avdtp_set_auto_disconnect(struct avdtp *session, gboolean auto_dc)
-{
-	session->auto_dc = auto_dc;
 }
 
 gboolean avdtp_stream_setup_active(struct avdtp *session)
