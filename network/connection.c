@@ -554,7 +554,9 @@ static void path_unregister(void *data)
 
 static const GDBusMethodTable connection_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect",
-			NULL, NULL, connection_connect) },
+				GDBUS_ARGS({"uuid", "s"}),
+				GDBUS_ARGS({"interface", "s"}),
+				connection_connect) },
 	{ GDBUS_METHOD("Disconnect",
 			NULL, NULL, connection_disconnect) },
 	{ GDBUS_METHOD("GetProperties",
