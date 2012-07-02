@@ -81,6 +81,7 @@ test/btiotest
 test/test-textfile
 test/uuidtest
 test/mpris-player
+test/sap_client.pyc
 compat/dund
 compat/hidd
 compat/pand

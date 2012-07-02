@@ -2,7 +2,7 @@
 
 from __future__ import absolute_import, print_function, unicode_literals
 
-from sap import *
+from sap_client import *
 import time
 
 def connect_disconnect_by_client(sap):
