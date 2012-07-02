@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 
 from sap_client import *
 import time
+import sys
 
 def connect_disconnect_by_client(sap):
 
@@ -124,13 +125,23 @@ def power_sim_off_on(sap):
 
 if __name__ == "__main__":
 
-    host = "00:00:00:00:00:0"  # server bd_addr
+    host = None  # server bd_addr
     port = 8  # sap server port
+
+    if (len(sys.argv) < 2):
+        print("Usage: %s <address> [port]" % (sys.argv[0]))
+        sys.exit(1)
+
+    host = sys.argv[1]
+
+    if (len(sys.argv) == 3):
+        port = sys.argv[2]
 
     try:
         s = SAPClient(host, port)
     except BluetoothError as e:
-        print("Error " + str(e))
+        print("Error: " + str(e))
+        sys.exit(1)
 
     connect_disconnect_by_client(s)
     connect_disconnect_by_server_gracefully(s)
