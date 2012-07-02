@@ -61,7 +61,7 @@ released.
 	- Should the kernel auto-disable this mode as soon as the
 	  adapter gets an incoming connect request?
 
-- Remove UNIX socket based audio interface (along with ALSA plugin)
+- [done] Remove UNIX socket based audio interface (along with ALSA plugin)
 
 - Clean up libbluetooth and only export a very minimal API (for
   RFCOMM/L2CAP socket use)
