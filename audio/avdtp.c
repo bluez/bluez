@@ -3627,6 +3627,8 @@ static gboolean start_timeout(gpointer user_data)
 	struct avdtp_stream *stream = user_data;
 	struct avdtp *session = stream->session;
 
+	stream->open_acp = 0;
+
 	if (avdtp_start(session, stream) < 0)
 		error("wait_timeout: avdtp_start failed");
 
