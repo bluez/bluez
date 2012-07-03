@@ -31,6 +31,7 @@
 #include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
@@ -41,14 +42,17 @@
 
 #include "hog_device.h"
 
+#include "att.h"
 #include "gattrib.h"
 #include "attio.h"
+#include "gatt.h"
 
 struct hog_device {
 	char			*path;
 	struct btd_device	*device;
 	GAttrib			*attrib;
 	guint			attioid;
+	struct gatt_primary	*hog_primary;
 };
 
 static GSList *devices = NULL;
@@ -95,17 +99,43 @@ static struct hog_device *hog_device_new(struct btd_device *device,
 	return hogdev;
 }
 
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
+
+static struct gatt_primary *load_hog_primary(struct btd_device *device)
+{
+	GSList *primaries, *l;
+
+	primaries = btd_device_get_primaries(device);
+
+	l = g_slist_find_custom(primaries, HOG_UUID, primary_uuid_cmp);
+
+	return (l ? l->data : NULL);
+}
+
 int hog_device_register(struct btd_device *device, const char *path)
 {
 	struct hog_device *hogdev;
+	struct gatt_primary *prim;
 
 	hogdev = find_device_by_path(devices, path);
 	if (hogdev)
 		return -EALREADY;
 
+	prim = load_hog_primary(device);
+	if (!prim)
+		return -EINVAL;
+
 	hogdev = hog_device_new(device, path);
 	if (!hogdev)
 		return -ENOMEM;
+
+	hogdev->hog_primary = g_memdup(prim, sizeof(*prim));
 
 	hogdev->attioid = btd_device_add_attio_callback(device,
 							attio_connected_cb,
@@ -122,6 +152,7 @@ static void hog_device_free(struct hog_device *hogdev)
 {
 	btd_device_unref(hogdev->device);
 	g_free(hogdev->path);
+	g_free(hogdev->hog_primary);
 	g_free(hogdev);
 }
 
