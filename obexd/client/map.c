@@ -597,11 +597,11 @@ static const GDBusMethodTable map_methods[] = {
 				GDBUS_ARGS({ "name", "s" }), NULL,
 				map_setpath) },
 	{ GDBUS_ASYNC_METHOD("GetFolderListing",
-					GDBUS_ARGS({ "dummy", "a{ss}" }),
+					GDBUS_ARGS({ "filter", "a{ss}" }),
 					GDBUS_ARGS({ "content", "aa{sv}" }),
 					map_get_folder_listing) },
 	{ GDBUS_ASYNC_METHOD("GetMessageListing",
-			GDBUS_ARGS({ "folder", "s" }, { "dummy", "a{ss}" }),
+			GDBUS_ARGS({ "folder", "s" }, { "filter", "a{ss}" }),
 			GDBUS_ARGS({ "messages", "a{oa{sv}}" }),
 			map_get_message_listing) },
 	{ }
