@@ -186,6 +186,11 @@ builtin_sources += input/main.c \
 			input/fakehid.c input/fakehid.h
 endif
 
+if HOGPLUGIN
+builtin_modules += hog
+builtin_sources += input/hog_device.h
+endif
+
 if SERIALPLUGIN
 builtin_modules += serial
 builtin_sources += serial/main.c \
