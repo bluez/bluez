@@ -61,11 +61,25 @@ struct hog_device {
 	struct btd_device	*device;
 	GAttrib			*attrib;
 	guint			attioid;
+	guint			report_cb_id;
 	struct gatt_primary	*hog_primary;
 	GSList			*reports;
 };
 
 static GSList *devices = NULL;
+
+static void report_value_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	uint16_t handle;
+
+	if (len < 3) { /* 1-byte opcode + 2-byte handle */
+		error("Malformed ATT notification");
+		return;
+	}
+
+	handle = att_get_u16(&pdu[1]);
+	DBG("Report notification on handle 0x%04x", handle);
+}
 
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
@@ -216,11 +230,18 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 
 	gatt_discover_char(hogdev->attrib, prim->range.start, prim->range.end,
 					NULL, char_discovered_cb, hogdev);
+
+	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
+					ATT_OP_HANDLE_NOTIFY, report_value_cb,
+					hogdev, NULL);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
+
+	g_attrib_unregister(hogdev->attrib, hogdev->report_cb_id);
+	hogdev->report_cb_id = 0;
 
 	g_attrib_unref(hogdev->attrib);
 	hogdev->attrib = NULL;
