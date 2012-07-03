@@ -13,6 +13,8 @@ manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 option_list = [
 		make_option("-i", "--device", action="store",
 				type="string", dest="dev_id"),
+		make_option("-f", "--interface", action="store",
+				type="string", dest="dev_if"),
 		]
 parser = OptionParser(option_list=option_list)
 
@@ -22,6 +24,11 @@ if options.dev_id:
 	adapter_path = manager.FindAdapter(options.dev_id)
 else:
 	adapter_path = manager.DefaultAdapter()
+
+if options.dev_if:
+	interface = "org.bluez." + options.dev_if
+else:
+	interface = "org.bluez.Audio"
 
 adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
@@ -35,8 +42,7 @@ if len(args) < 2:
 	sys.exit(1)
 
 device = adapter.FindDevice(args[1])
-audio = dbus.Interface(bus.get_object("org.bluez", device),
-				"org.bluez.Audio")
+audio = dbus.Interface(bus.get_object("org.bluez", device), interface)
 
 if args[0] == "connect":
 	audio.Connect()
