@@ -188,7 +188,7 @@ endif
 
 if HOGPLUGIN
 builtin_modules += hog
-builtin_sources += input/hog_device.h
+builtin_sources += input/hog_device.h input/hog_device.c
 endif
 
 if SERIALPLUGIN
