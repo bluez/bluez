@@ -2846,7 +2846,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 							eir_data.appearance);
 
 	if (eir_data.name != NULL && eir_data.name_complete)
-		write_device_name(&adapter->bdaddr, bdaddr, eir_data.name);
+		write_device_name(&adapter->bdaddr, bdaddr, bdaddr_type,
+								eir_data.name);
 
 	dev = adapter_search_found_devices(adapter, bdaddr);
 	if (dev) {
