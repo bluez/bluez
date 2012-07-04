@@ -106,13 +106,11 @@
 #define AVRCP_FEATURE_CATEGORY_4	0x0008
 #define AVRCP_FEATURE_PLAYER_SETTINGS	0x0010
 
-enum battery_status {
-	BATTERY_STATUS_NORMAL =		0,
-	BATTERY_STATUS_WARNING =	1,
-	BATTERY_STATUS_CRITICAL =	2,
-	BATTERY_STATUS_EXTERNAL =	3,
-	BATTERY_STATUS_FULL_CHARGE =	4,
-};
+#define AVRCP_BATTERY_STATUS_NORMAL		0
+#define AVRCP_BATTERY_STATUS_WARNING		1
+#define AVRCP_BATTERY_STATUS_CRITICAL		2
+#define AVRCP_BATTERY_STATUS_EXTERNAL		3
+#define AVRCP_BATTERY_STATUS_FULL_CHARGE	4
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -337,18 +335,18 @@ static unsigned int attr_get_max_val(uint8_t attr)
 	return 0;
 }
 
-static const char *battery_status_to_str(enum battery_status status)
+static const char *battery_status_to_str(uint8_t status)
 {
 	switch (status) {
-	case BATTERY_STATUS_NORMAL:
+	case AVRCP_BATTERY_STATUS_NORMAL:
 		return "normal";
-	case BATTERY_STATUS_WARNING:
+	case AVRCP_BATTERY_STATUS_WARNING:
 		return "warning";
-	case BATTERY_STATUS_CRITICAL:
+	case AVRCP_BATTERY_STATUS_CRITICAL:
 		return "critical";
-	case BATTERY_STATUS_EXTERNAL:
+	case AVRCP_BATTERY_STATUS_EXTERNAL:
 		return "external";
-	case BATTERY_STATUS_FULL_CHARGE:
+	case AVRCP_BATTERY_STATUS_FULL_CHARGE:
 		return "fullcharge";
 	}
 
