@@ -109,6 +109,7 @@ struct service_auth {
 struct btd_adapter {
 	uint16_t dev_id;
 	gboolean up;
+	gboolean already_up;
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* Class of Device */
@@ -2424,6 +2425,7 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 {
 	adapter->up = up;
+	adapter->already_up = up;
 
 	adapter->allow_name_changes = TRUE;
 
@@ -2504,7 +2506,8 @@ void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->pin_callbacks);
 
 	/* Return adapter to down state if it was not up on init */
-	adapter_ops->restore_powered(adapter->dev_id);
+	if (!adapter->already_up && adapter->up)
+		adapter_ops->set_powered(adapter->dev_id, FALSE);
 }
 
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter)

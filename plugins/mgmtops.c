@@ -2183,12 +2183,6 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 	return 0;
 }
 
-static int mgmt_restore_powered(int index)
-{
-	DBG("index %d", index);
-	return -ENOSYS;
-}
-
 static int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 {
 	char *buf;
@@ -2476,7 +2470,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_did = mgmt_set_did,
 	.add_uuid = mgmt_add_uuid,
 	.remove_uuid = mgmt_remove_uuid,
-	.restore_powered = mgmt_restore_powered,
 	.load_keys = mgmt_load_link_keys,
 	.set_io_capability = mgmt_set_io_capability,
 	.create_bonding = mgmt_create_bonding,

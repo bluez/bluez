@@ -204,7 +204,6 @@ struct btd_adapter_ops {
 					uint16_t version, uint16_t source);
 	int (*add_uuid) (int index, uuid_t *uuid, uint8_t svc_hint);
 	int (*remove_uuid) (int index, uuid_t *uuid);
-	int (*restore_powered) (int index);
 	int (*load_keys) (int index, GSList *keys, gboolean debug_keys);
 	int (*set_io_capability) (int index, uint8_t io_capability);
 	int (*create_bonding) (int index, bdaddr_t *bdaddr,
