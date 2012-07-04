@@ -29,9 +29,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hidp.h>
@@ -39,8 +36,6 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/uuid.h>
 
-#include <glib.h>
-#include <dbus/dbus.h>
 #include <gdbus.h>
 
 #include "log.h"
