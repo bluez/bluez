@@ -134,7 +134,7 @@ if not con:
 manager = dbus.Interface(bus.get_object("org.bluez", "/"),
 						"org.bluez.Manager")
 
-adapters = manager.ListAdapters()
+adapters = manager.GetProperties()["Adapters"]
 
 i = 1
 for ad in adapters:

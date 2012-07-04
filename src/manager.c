@@ -130,36 +130,6 @@ done:
 	return reply;
 }
 
-static DBusMessage *list_adapters(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-	DBusMessage *reply;
-	GSList *l;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
-
-	for (l = adapters; l; l = l->next) {
-		struct btd_adapter *adapter = l->data;
-		const gchar *path = adapter_get_path(adapter);
-
-		dbus_message_iter_append_basic(&array_iter,
-					DBUS_TYPE_OBJECT_PATH, &path);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	return reply;
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -207,9 +177,6 @@ static const GDBusMethodTable manager_methods[] = {
 			GDBUS_ARGS({ "pattern", "s" }),
 			GDBUS_ARGS({ "adapter", "o" }),
 			find_adapter) },
-	{ GDBUS_DEPRECATED_METHOD("ListAdapters",
-			NULL, GDBUS_ARGS({ "adapters", "ao" }),
-			list_adapters) },
 	{ }
 };
 
