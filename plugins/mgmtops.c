@@ -2194,14 +2194,6 @@ static int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 	return 0;
 }
 
-static int mgmt_disable_cod_cache(int index)
-{
-	DBG("index %d", index);
-
-	/* The cache control is handled automatically for mgmt */
-	return 0;
-}
-
 static int mgmt_restore_powered(int index)
 {
 	DBG("index %d", index);
@@ -2496,7 +2488,6 @@ static struct btd_adapter_ops mgmt_ops = {
 	.set_did = mgmt_set_did,
 	.add_uuid = mgmt_add_uuid,
 	.remove_uuid = mgmt_remove_uuid,
-	.disable_cod_cache = mgmt_disable_cod_cache,
 	.restore_powered = mgmt_restore_powered,
 	.load_keys = mgmt_load_link_keys,
 	.set_io_capability = mgmt_set_io_capability,
