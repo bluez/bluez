@@ -61,11 +61,15 @@
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
 
-/* Error codes for metadata transfer */
-#define E_INVALID_COMMAND	0x00
-#define E_INVALID_PARAM		0x01
-#define E_PARAM_NOT_FOUND	0x02
-#define E_INTERNAL		0x03
+/* Status codes */
+#define AVRCP_STATUS_INVALID_COMMAND		0x00
+#define AVRCP_STATUS_INVALID_PARAM		0x01
+#define AVRCP_STATUS_PARAM_NOT_FOUND		0x02
+#define AVRCP_STATUS_INTERNAL_ERROR		0x03
+#define AVRCP_STATUS_SUCCESS			0x04
+#define AVRCP_STATUS_INVALID_PLAYER_ID		0x11
+#define AVRCP_STATUS_NO_AVAILABLE_PLAYERS	0x15
+#define AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED	0x16
 
 /* Packet types */
 #define AVRCP_PACKET_TYPE_SINGLE	0x00
@@ -592,7 +596,7 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 
 	return AVC_CTYPE_REJECTED;
 }
@@ -606,7 +610,7 @@ static uint8_t avrcp_handle_list_player_attributes(struct avrcp_player *player,
 
 	if (len != 0) {
 		pdu->params_len = htons(1);
-		pdu->params[0] = E_INVALID_PARAM;
+		pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 		return AVC_CTYPE_REJECTED;
 	}
 
@@ -653,7 +657,7 @@ static uint8_t avrcp_handle_list_player_values(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -724,7 +728,7 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 	return AVC_CTYPE_STABLE;
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -781,7 +785,7 @@ static uint8_t avrcp_handle_get_current_player_value(struct avrcp_player *player
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 
 	return AVC_CTYPE_REJECTED;
 }
@@ -802,7 +806,7 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 	 * and set the existent ones. Sec. 5.2.4 is not clear however how to
 	 * indicate that a certain ID was not accepted. If at least one
 	 * attribute is valid, we respond with no parameters. Otherwise an
-	 * E_INVALID_PARAM is sent.
+	 * AVRCP_STATUS_INVALID_PARAM is sent.
 	 */
 	for (len = 0, i = 0, param = &pdu->params[1]; i < pdu->params[0];
 							i++, param += 2) {
@@ -820,7 +824,7 @@ static uint8_t avrcp_handle_set_player_value(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -832,7 +836,7 @@ static uint8_t avrcp_handle_displayable_charset(struct avrcp_player *player,
 
 	if (len < 3) {
 		pdu->params_len = htons(1);
-		pdu->params[0] = E_INVALID_PARAM;
+		pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 		return AVC_CTYPE_REJECTED;
 	}
 
@@ -864,7 +868,7 @@ static uint8_t avrcp_handle_ct_battery_status(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -879,7 +883,7 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp_player *player,
 
 	if (len != 0) {
 		pdu->params_len = htons(1);
-		pdu->params[0] = E_INVALID_PARAM;
+		pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 		return AVC_CTYPE_REJECTED;
 	}
 
@@ -948,7 +952,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -988,7 +992,7 @@ static uint8_t avrcp_handle_request_continuing(struct avrcp_player *player,
 	return AVC_CTYPE_STABLE;
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -1014,7 +1018,7 @@ static uint8_t avrcp_handle_abort_continuing(struct avrcp_player *player,
 
 err:
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INVALID_PARAM;
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 	return AVC_CTYPE_REJECTED;
 }
 
@@ -1079,7 +1083,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 	pdu->rsvd = 0;
 
 	if (operand_count < AVRCP_HEADER_LENGTH) {
-		pdu->params[0] = E_INVALID_COMMAND;
+		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
 		goto err_metadata;
 	}
 
@@ -1089,12 +1093,12 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 	}
 
 	if (!handler || handler->code != *code) {
-		pdu->params[0] = E_INVALID_COMMAND;
+		pdu->params[0] = AVRCP_STATUS_INVALID_COMMAND;
 		goto err_metadata;
 	}
 
 	if (!handler->func) {
-		pdu->params[0] = E_INVALID_PARAM;
+		pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
 		goto err_metadata;
 	}
 
@@ -1122,7 +1126,7 @@ size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands)
 
 	*code = AVC_CTYPE_REJECTED;
 	pdu->params_len = htons(1);
-	pdu->params[0] = E_INTERNAL;
+	pdu->params[0] = AVRCP_STATUS_INTERNAL_ERROR;
 
 	DBG("rejecting AVRCP PDU 0x%02X, company 0x%06X len 0x%04X",
 				pdu->pdu_id, company_id, pdu->params_len);
