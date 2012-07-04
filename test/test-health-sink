@@ -47,7 +47,7 @@ while select == None:
 adapter =  dbus.Interface(bus.get_object("org.bluez", select),
 						"org.bluez.Adapter")
 
-devices = adapter.ListDevices()
+devices = adapter.GetProperties()["Devices"]
 
 if len(devices) == 0:
 	print("No devices available")

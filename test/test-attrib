@@ -46,7 +46,7 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "list"):
-	for path in adapter.ListDevices():
+	for path in adapter.GetProperties()["Devices"]:
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
 		devprop = device.GetProperties()

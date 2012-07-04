@@ -88,16 +88,6 @@ Methods		dict GetProperties()
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
 
-		array{object} ListDevices() {deprecated}
-
-			Returns list of device object paths.
-			This method is deprecated, instead use the Devices
-			Property to get the list of devices object paths.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Failed
-					 org.bluez.Error.OutOfMemory
-
 		object CreateDevice(string address)
 
 			Creates a new object path for a remote device. This

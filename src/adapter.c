@@ -1308,38 +1308,6 @@ static DBusMessage *release_session(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *list_devices(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct btd_adapter *adapter = data;
-	DBusMessage *reply;
-	GSList *l;
-	DBusMessageIter iter;
-	DBusMessageIter array_iter;
-	const gchar *dev_path;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &array_iter);
-
-	for (l = adapter->devices; l; l = l->next) {
-		struct btd_device *device = l->data;
-
-		dev_path = device_get_path(device);
-
-		dbus_message_iter_append_basic(&array_iter,
-				DBUS_TYPE_OBJECT_PATH, &dev_path);
-	}
-
-	dbus_message_iter_close_container(&iter, &array_iter);
-
-	return reply;
-}
-
 static DBusMessage *cancel_device_creation(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -1663,9 +1631,6 @@ static const GDBusMethodTable adapter_methods[] = {
 			adapter_start_discovery) },
 	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL,
 			adapter_stop_discovery) },
-	{ GDBUS_DEPRECATED_METHOD("ListDevices",
-			NULL, GDBUS_ARGS({ "devices", "ao" }),
-			list_devices) },
 	{ GDBUS_ASYNC_METHOD("CreateDevice",
 			GDBUS_ARGS({ "address", "s" }),
 			GDBUS_ARGS({ "device", "o" }),
