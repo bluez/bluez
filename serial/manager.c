@@ -58,7 +58,6 @@
 
 #include "error.h"
 #include "port.h"
-#include "proxy.h"
 #include "storage.h"
 #include "manager.h"
 #include "sdpd.h"
@@ -131,35 +130,10 @@ static struct btd_device_driver serial_port_driver = {
 	.remove	= port_remove,
 };
 
-static int proxy_probe(struct btd_adapter *adapter)
-{
-	const char *path = adapter_get_path(adapter);
-
-	DBG("path %s", path);
-
-	return proxy_register(connection, adapter);
-}
-
-static void proxy_remove(struct btd_adapter *adapter)
-{
-	const char *path = adapter_get_path(adapter);
-
-	DBG("path %s", path);
-
-	proxy_unregister(adapter);
-}
-
-static struct btd_adapter_driver serial_proxy_driver = {
-	.name	= "serial-proxy",
-	.probe	= proxy_probe,
-	.remove	= proxy_remove,
-};
-
 int serial_manager_init(DBusConnection *conn)
 {
 	connection = dbus_connection_ref(conn);
 
-	btd_register_adapter_driver(&serial_proxy_driver);
 	btd_register_device_driver(&serial_port_driver);
 
 	return 0;

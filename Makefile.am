@@ -195,7 +195,6 @@ if SERIALPLUGIN
 builtin_modules += serial
 builtin_sources += serial/main.c \
 			serial/manager.h serial/manager.c \
-			serial/proxy.h serial/proxy.c \
 			serial/port.h serial/port.c
 endif
 
