@@ -193,11 +193,6 @@ Methods		void Connect()
 
 			Disconnect from the remote device.
 
-		boolean IsConnected() {deprecated}
-
-			Returns TRUE if a stream is setup to a A2DP sink on
-			the remote device.
-
 		dict GetProperties()
 
 			Returns all properties for the interface. See the

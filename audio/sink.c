@@ -492,27 +492,6 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *sink_is_connected(DBusConnection *conn,
-					DBusMessage *msg,
-					void *data)
-{
-	struct audio_device *device = data;
-	struct sink *sink = device->sink;
-	DBusMessage *reply;
-	dbus_bool_t connected;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	connected = (sink->stream_state >= AVDTP_STATE_CONFIGURED);
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 static DBusMessage *sink_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -556,9 +535,6 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 static const GDBusMethodTable sink_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, sink_connect) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, sink_disconnect) },
-	{ GDBUS_DEPRECATED_METHOD("IsConnected",
-			NULL, GDBUS_ARGS({ "connected", "b" }),
-			sink_is_connected) },
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				sink_get_properties) },
