@@ -653,22 +653,18 @@ static int hidp_add_connection(const struct input_device *idev,
 
 	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
-		struct btd_adapter *adapter = device_get_adapter(idev->device);
-
-		err = btd_adapter_encrypt_link(adapter, (bdaddr_t *) &idev->dst,
-						encrypt_completed, req);
-		if (err == 0) {
-			/* Waiting async encryption */
-			return 0;
-		}
-
-		if (err == -ENOSYS)
-			goto nosys;
-
-		if (err != -EALREADY) {
-			error("encrypt_link: %s (%d)", strerror(-err), -err);
+		if (!bt_io_set(iconn->intr_io, BT_IO_L2CAP, &gerr,
+					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+					BT_IO_OPT_INVALID)) {
+			error("btio: %s", gerr->message);
+			g_error_free(gerr);
+			err = -EFAULT;
 			goto cleanup;
 		}
+
+		iconn->req = req;
+		iconn->sec_watch = g_io_add_watch(iconn->intr_io, G_IO_OUT,
+							encrypt_notify, iconn);
 	}
 
 	err = ioctl_connadd(req);
@@ -678,20 +674,6 @@ cleanup:
 	g_free(req);
 
 	return err;
-
-nosys:
-	if (!bt_io_set(iconn->intr_io, BT_IO_L2CAP, &gerr,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-				BT_IO_OPT_INVALID)) {
-		error("btio: %s", gerr->message);
-		g_error_free(gerr);
-		goto cleanup;
-	}
-
-	iconn->req = req;
-	iconn->sec_watch = g_io_add_watch(iconn->intr_io, G_IO_OUT,
-							encrypt_notify, iconn);
-	return 0;
 }
 
 static int is_connected(struct input_conn *iconn)

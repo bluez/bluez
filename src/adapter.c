@@ -3511,12 +3511,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 								passkey);
 }
 
-int btd_adapter_encrypt_link(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					bt_hci_result_t cb, gpointer user_data)
-{
-	return adapter_ops->encrypt_link(adapter->dev_id, bdaddr, cb, user_data);
-}
-
 int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version,
 					uint16_t source)
