@@ -40,4 +40,3 @@ void manager_foreach_adapter(adapter_cb func, gpointer user_data);
 GSList *manager_get_adapters(void);
 struct btd_adapter *btd_manager_register_adapter(int id, gboolean up);
 int btd_manager_unregister_adapter(int id);
-void manager_add_adapter(const char *path);

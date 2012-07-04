@@ -377,18 +377,6 @@ GSList *manager_get_adapters(void)
 	return adapters;
 }
 
-void manager_add_adapter(const char *path)
-{
-	g_dbus_emit_signal(connection, "/",
-				MANAGER_INTERFACE, "AdapterAdded",
-				DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
-
-	manager_update_adapters();
-
-	btd_stop_exit_timer();
-}
-
 struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 {
 	struct btd_adapter *adapter;
