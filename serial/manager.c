@@ -25,43 +25,22 @@
 #include <config.h>
 #endif
 
-#include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <termios.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/param.h>
-#include <sys/ioctl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/un.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/rfcomm.h>
 #include <bluetooth/uuid.h>
 
-#include <glib.h>
 #include <gdbus.h>
 
-#include "../src/dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 
 #include "log.h"
 
-#include "error.h"
 #include "port.h"
-#include "storage.h"
 #include "manager.h"
-#include "sdpd.h"
-#include "glib-helper.h"
 
 static DBusConnection *connection = NULL;
 

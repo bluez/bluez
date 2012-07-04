@@ -26,15 +26,9 @@
 #endif
 
 #include <errno.h>
-#include <stdio.h>
-#include <stdint.h>
 #include <stdlib.h>
-#include <string.h>
-#include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 
 #include <bluetooth/bluetooth.h>
@@ -44,8 +38,6 @@
 
 #include <glib.h>
 #include <gdbus.h>
-
-#include "../src/dbus-common.h"
 
 #include "log.h"
 #include "glib-helper.h"
