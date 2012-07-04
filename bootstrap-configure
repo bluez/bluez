@@ -21,9 +21,6 @@ fi
 		--enable-bccmd \
 		--enable-dfutool \
 		--enable-hid2hci \
-		--enable-hidd \
-		--enable-pand \
-		--enable-dund \
 		--enable-test \
 		--enable-cups \
 		--enable-dbusoob \

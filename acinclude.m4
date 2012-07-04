@@ -179,9 +179,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	health_enable=no
 	pnat_enable=no
 	tools_enable=yes
-	hidd_enable=no
-	pand_enable=no
-	dund_enable=no
 	cups_enable=no
 	test_enable=no
 	bccmd_enable=no
@@ -273,18 +270,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		dfutool_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(hidd, AC_HELP_STRING([--enable-hidd], [install HID daemon]), [
-		hidd_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pand, AC_HELP_STRING([--enable-pand], [install PAN daemon]), [
-		pand_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(dund, AC_HELP_STRING([--enable-dund], [install DUN daemon]), [
-		dund_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
 		cups_enable=${enableval}
 	])
@@ -369,9 +354,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes")
 	AM_CONDITIONAL(READLINE, test "${readline_found}" = "yes")
 	AM_CONDITIONAL(PNATPLUGIN, test "${pnat_enable}" = "yes")
-	AM_CONDITIONAL(HIDD, test "${hidd_enable}" = "yes")
-	AM_CONDITIONAL(PAND, test "${pand_enable}" = "yes")
-	AM_CONDITIONAL(DUND, test "${dund_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes" && test "${check_found}" = "yes")
 	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
