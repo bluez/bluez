@@ -236,8 +236,8 @@ builtin_sources += thermometer/main.c \
 endif
 
 
-builtin_modules += hciops mgmtops
-builtin_sources += plugins/hciops.c plugins/mgmtops.c
+builtin_modules += mgmtops
+builtin_sources += plugins/mgmtops.c
 
 if HAL
 builtin_modules += hal
