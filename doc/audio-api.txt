@@ -66,11 +66,6 @@ Methods		void Connect()
 			Disconnect from the HSP/HFP service on the remote
 			device.
 
-		boolean IsConnected() {deprecated}
-
-			Returns TRUE if there is a active connection to the
-			HSP/HFP connection on the remote device.
-
 		void IndicateCall()
 
 			Indicate an incoming call on the headset
@@ -88,29 +83,6 @@ Methods		void Connect()
 		void Stop()
 
 			Close the audio connection.
-
-		boolean IsPlaying() {deprecated}
-
-			Returns true if an audio connection to the headset
-			is active.
-
-		uint16 GetSpeakerGain() {deprecated}
-
-			Returns the current speaker gain if available,
-			otherwise returns the error NotAvailable.
-
-		uint16 GetMicrophoneGain() {deprecated}
-
-			Returns the current microphone gain if available,
-			otherwise returns the error NotAvailable.
-
-		void SetSpeakerGain(uint16 gain) {deprecated}
-
-			Changes the current speaker gain if possible.
-
-		void SetMicrophoneGain(uint16 gain) {deprecated}
-
-			Changes the current speaker gain if possible.
 
 		dict GetProperties()
 
