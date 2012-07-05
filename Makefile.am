@@ -358,9 +358,6 @@ audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
 endif
 endif
 
-EXTRA_DIST += audio/bluetooth.conf
-
-
 include Makefile.tools
 
 if DATAFILES
