@@ -1072,11 +1072,12 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	if (mode != MODE_OFF && !mgmt_powered(info->current_settings))
-		mgmt_set_powered(index, TRUE);
-	else {
-		get_connections(sk, index);
-		btd_adapter_start(adapter);
+	if (mode != MODE_OFF) {
+		if (mgmt_powered(info->current_settings)) {
+			get_connections(sk, index);
+			btd_adapter_start(adapter);
+		} else
+			mgmt_set_powered(index, TRUE);
 	}
 
 	btd_adapter_unref(adapter);
