@@ -40,10 +40,6 @@ released.
   communicate with the kernel in BlueZ so a plugin is not needed
   anymore. Probably plugins/mgmtops.c -> src/mgmt.c
 
-- Switch to standard D-Bus properties interface
-
-- Switch to standard object manager interface
-
 - Reorganize source tree according to RFC sent to linux-bluetooth
   (Subject: [RFC] Reorganizing the BlueZ source tree)
 
@@ -69,6 +65,13 @@ released.
 - Merge obexd.git into bluez.git
 
 - Remove unmaintained plugins like pnat and maemo6
+
+BlueZ 6
+=======
+
+- Switch to standard D-Bus properties interface
+
+- Switch to standard object manager interface
 
 Low Energy
 ==========
