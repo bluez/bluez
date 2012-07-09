@@ -66,6 +66,11 @@ released.
 
 - Remove unmaintained plugins like pnat and maemo6
 
+- Change DiscoverServices to return a list of service object paths
+
+- Add Agent callback for incoming just-works, maybe remote lost key as
+  well?
+
 BlueZ 6
 =======
 
