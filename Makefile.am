@@ -226,7 +226,8 @@ builtin_modules += thermometer alert time gatt_example proximity \
 builtin_sources += thermometer/main.c \
 			thermometer/manager.h thermometer/manager.c \
 			thermometer/thermometer.h thermometer/thermometer.c \
-			alert/main.c alert/server.h alert/server.c \
+			profiles/alert/main.c profiles/alert/server.h \
+			profiles/alert/server.c \
 			time/main.c time/server.h time/server.c \
 			time/manager.h time/manager.c \
 			plugins/gatt-example.c \
