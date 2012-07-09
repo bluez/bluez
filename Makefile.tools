@@ -148,12 +148,16 @@ EXTRA_DIST += tools/dfubabel.1 tools/avctrl.8
 if CUPS
 cupsdir = $(libdir)/cups/backend
 
-cups_PROGRAMS = cups/bluetooth
+cups_PROGRAMS = profiles/cups/bluetooth
 
-cups_bluetooth_SOURCES = $(gdbus_sources) cups/main.c cups/cups.h \
-					cups/sdp.c cups/spp.c cups/hcrp.c
+profiles_cups_bluetooth_SOURCES = $(gdbus_sources) profiles/cups/main.c \
+					profiles/cups/cups.h \
+					profiles/cups/sdp.c \
+					profiles/cups/spp.c \
+					profiles/cups/hcrp.c
 
-cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ lib/libbluetooth-private.la
+profiles_cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ \
+				lib/libbluetooth-private.la
 endif
 
 
