@@ -222,9 +222,11 @@ endif
 
 if GATTMODULES
 builtin_modules += thermometer alert time gatt_example proximity deviceinfo
-builtin_sources += thermometer/main.c \
-			thermometer/manager.h thermometer/manager.c \
-			thermometer/thermometer.h thermometer/thermometer.c \
+builtin_sources += profiles/thermometer/main.c \
+			profiles/thermometer/manager.h \
+			profiles/thermometer/manager.c \
+			profiles/thermometer/thermometer.h \
+			profiles/thermometer/thermometer.c \
 			profiles/alert/main.c profiles/alert/server.h \
 			profiles/alert/server.c \
 			time/main.c time/server.h time/server.c \
