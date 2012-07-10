@@ -119,9 +119,27 @@ static void write_ccc(uint16_t handle, gpointer user_data)
 					report_ccc_written_cb, hogdev);
 }
 
+static void report_reference_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	if (status != 0) {
+		error("Read Report Reference descriptor failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (plen != 3) {
+		error("Malformed ATT read response");
+		return;
+	}
+
+	DBG("Report ID: 0x%02x Report type: 0x%02x", pdu[1], pdu[2]);
+}
+
 static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
+	struct hog_device *hogdev = user_data;
 	struct att_data_list *list;
 	uint8_t format;
 	int i;
@@ -147,10 +165,11 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 		handle = att_get_u16(value);
 		uuid16 = att_get_u16(&value[2]);
 
-		if (uuid16 != GATT_CLIENT_CHARAC_CFG_UUID)
-			continue;
-
-		write_ccc(handle, user_data);
+		if (uuid16 == GATT_CLIENT_CHARAC_CFG_UUID)
+			write_ccc(handle, user_data);
+		else if (uuid16 == GATT_REPORT_REFERENCE)
+			gatt_read_char(hogdev->attrib, handle, 0,
+					report_reference_cb, hogdev);
 	}
 
 done:
