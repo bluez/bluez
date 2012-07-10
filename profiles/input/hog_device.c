@@ -537,12 +537,15 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 
 	hogdev->attrib = g_attrib_ref(attrib);
 
-	gatt_discover_char(hogdev->attrib, prim->range.start, prim->range.end,
-					NULL, char_discovered_cb, hogdev);
-
 	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
 					ATT_OP_HANDLE_NOTIFY, report_value_cb,
 					hogdev, NULL);
+
+	if (hogdev->reports == NULL) {
+		gatt_discover_char(hogdev->attrib, prim->range.start,
+						prim->range.end, NULL,
+						char_discovered_cb, hogdev);
+	}
 }
 
 static void attio_disconnected_cb(gpointer user_data)
