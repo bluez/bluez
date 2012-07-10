@@ -36,10 +36,12 @@ lib/bluetooth
 src/builtin.h
 src/bluetoothd
 audio/telephony.c
-sap/sap.c
 scripts/bluetooth.rules
 scripts/97-bluetooth.rules
 scripts/97-bluetooth-hid2hci.rules
+
+profiles/sap/sap.c
+profiles/cups/bluetooth
 
 sbc/sbcdec
 sbc/sbcenc
@@ -63,7 +65,6 @@ tools/rfcomm
 tools/l2ping
 tools/ppporc
 tools/sdptool
-cups/bluetooth
 test/agent
 test/bdaddr
 test/hciemu
