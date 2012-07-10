@@ -227,11 +227,16 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/time/server.c profiles/time/manager.c \
 			profiles/time/manager.h \
 			plugins/gatt-example.c \
-			proximity/main.c proximity/manager.h proximity/manager.c \
-			proximity/monitor.h proximity/monitor.c \
-			proximity/reporter.h proximity/reporter.c \
-			proximity/linkloss.h proximity/linkloss.c \
-			proximity/immalert.h proximity/immalert.c \
+			profiles/proximity/main.c profiles/proximity/manager.h \
+			profiles/proximity/manager.c \
+			profiles/proximity/monitor.h \
+			profiles/proximity/monitor.c \
+			profiles/proximity/reporter.h \
+			profiles/proximity/reporter.c \
+			profiles/proximity/linkloss.h \
+			profiles/proximity/linkloss.c \
+			profiles/proximity/immalert.h \
+			profiles/proximity/immalert.c \
 			profiles/deviceinfo/main.c \
 			profiles/deviceinfo/manager.h \
 			profiles/deviceinfo/manager.c \
