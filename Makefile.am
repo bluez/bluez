@@ -337,7 +337,7 @@ audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
 				audio/gstsbcparse.h audio/gstsbcparse.c \
 				audio/gstavdtpsink.h audio/gstavdtpsink.c \
 				audio/gsta2dpsink.h audio/gsta2dpsink.c \
-				audio/gstsbcutil.h audio/gstsbcutil.c \
+				audio/gstsbcutil.h audio/gstsbcutil.c audio/rtp.h \
 				audio/gstrtpsbcpay.h audio/gstrtpsbcpay.c
 audio_libgstbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version
 audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth-private.la \
