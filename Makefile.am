@@ -179,16 +179,16 @@ endif
 
 if INPUTPLUGIN
 builtin_modules += input
-builtin_sources += input/main.c \
-			input/manager.h input/manager.c \
-			input/server.h input/server.c \
-			input/device.h input/device.c \
-			input/fakehid.c input/fakehid.h
+builtin_sources += profiles/input/main.c \
+			profiles/input/manager.h profiles/input/manager.c \
+			profiles/input/server.h profiles/input/server.c \
+			profiles/input/device.h profiles/input/device.c \
+			profiles/input/fakehid.c profiles/input/fakehid.h
 endif
 
 if HOGPLUGIN
 builtin_modules += hog
-builtin_sources += input/hog_device.h input/hog_device.c
+builtin_sources += profiles/input/hog_device.h profiles/input/hog_device.c
 endif
 
 if NETWORKPLUGIN
@@ -327,7 +327,7 @@ endif
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf network/network.conf \
-			input/input.conf proximity/proximity.conf \
+			profiles/input/input.conf proximity/proximity.conf \ \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
 			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c
