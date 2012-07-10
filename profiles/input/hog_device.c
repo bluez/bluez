@@ -551,12 +551,6 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 static void attio_disconnected_cb(gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
-	struct uhid_event ev;
-
-	memset(&ev, 0, sizeof(ev));
-	ev.type = UHID_DESTROY;
-	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
-		error("Failed to destroy uHID device: %s", strerror(errno));
 
 	g_attrib_unregister(hogdev->attrib, hogdev->report_cb_id);
 	hogdev->report_cb_id = 0;
@@ -677,6 +671,7 @@ int hog_device_register(struct btd_device *device, const char *path)
 int hog_device_unregister(const char *path)
 {
 	struct hog_device *hogdev;
+	struct uhid_event ev;
 
 	hogdev = find_device_by_path(devices, path);
 	if (hogdev == NULL)
@@ -688,6 +683,11 @@ int hog_device_unregister(const char *path)
 		g_source_remove(hogdev->uhid_watch_id);
 		hogdev->uhid_watch_id = 0;
 	}
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_DESTROY;
+	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
+		error("Failed to destroy uHID device: %s", strerror(errno));
 
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
