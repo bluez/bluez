@@ -165,16 +165,16 @@ endif
 
 if SAPPLUGIN
 builtin_modules += sap
-builtin_sources += sap/main.c \
-			sap/manager.h sap/manager.c \
-			sap/server.h sap/server.c \
-			sap/sap.h
+builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
+			profiles/sap/manager.c profiles/sap/server.h \
+			profiles/sap/server.c profiles/sap/sap.h
 
-builtin_nodist += sap/sap.c
+builtin_nodist += profiles/sap/sap.c
 
-noinst_LIBRARIES += sap/libsap.a
+noinst_LIBRARIES += profiles/sap/libsap.a
 
-sap_libsap_a_SOURCES = sap/sap.h sap/sap-dummy.c sap/sap-u8500.c
+profiles_sap_libsap_a_SOURCES = profiles_sap/sap.h profiles/sap/sap-dummy.c \
+				profiles/sap/sap-u8500.c
 endif
 
 if INPUTPLUGIN
@@ -337,7 +337,8 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			profiles/input/input.conf proximity/proximity.conf \ \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
-			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c
+			audio/telephony-maemo6.c profiles/sap/sap-dummy.c \
+			profiles/sap/sap-u8500.c
 
 if AUDIOPLUGIN
 if GSTREAMER
@@ -443,7 +444,7 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 audio/telephony.c: audio/@TELEPHONY_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
 
-sap/sap.c: sap/@SAP_DRIVER@
+profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 scripts/%.rules:
