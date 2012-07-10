@@ -193,11 +193,12 @@ endif
 
 if NETWORKPLUGIN
 builtin_modules += network
-builtin_sources += network/main.c \
-			network/manager.h network/manager.c \
-			network/common.h network/common.c \
-			network/server.h network/server.c \
-			network/connection.h network/connection.c
+builtin_sources += profiles/network/main.c \
+			profiles/network/manager.h profiles/network/manager.c \
+			profiles/network/common.h profiles/network/common.c \
+			profiles/network/server.h profiles/network/server.c \
+			profiles/network/connection.h \
+			profiles/network/connection.c
 endif
 
 if SERVICEPLUGIN
@@ -326,7 +327,7 @@ conf_DATA += src/main.conf
 endif
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
-			src/main.conf network/network.conf \
+			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf proximity/proximity.conf \ \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
