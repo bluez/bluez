@@ -74,7 +74,8 @@ struct hog_device {
 
 static GSList *devices = NULL;
 
-static void report_value_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
+static void report_value_cb(const uint8_t *pdu, uint16_t len,
+							gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct uhid_event ev;
