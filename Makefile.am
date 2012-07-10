@@ -168,7 +168,7 @@ builtin_nodist += profiles/sap/sap.c
 
 noinst_LIBRARIES += profiles/sap/libsap.a
 
-profiles_sap_libsap_a_SOURCES = profiles_sap/sap.h profiles/sap/sap-dummy.c \
+profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-dummy.c \
 				profiles/sap/sap-u8500.c
 endif
 
