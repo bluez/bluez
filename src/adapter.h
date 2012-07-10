@@ -173,55 +173,6 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 
 typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
 
-struct btd_adapter_ops {
-	int (*setup) (void);
-	void (*cleanup) (void);
-	int (*set_powered) (int index, gboolean powered);
-	int (*set_discoverable) (int index, gboolean discoverable,
-							uint16_t timeout);
-	int (*set_pairable) (int index, gboolean pairable);
-	int (*start_discovery) (int index);
-	int (*stop_discovery) (int index);
-
-	int (*set_name) (int index, const char *name);
-	int (*set_dev_class) (int index, uint8_t major, uint8_t minor);
-	int (*set_fast_connectable) (int index, gboolean enable);
-	int (*read_clock) (int index, bdaddr_t *bdaddr, int which, int timeout,
-					uint32_t *clock, uint16_t *accuracy);
-	int (*read_bdaddr) (int index, bdaddr_t *bdaddr);
-	int (*block_device) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
-	int (*unblock_device) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
-	int (*get_conn_list) (int index, GSList **conns);
-	int (*disconnect) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
-	int (*remove_bonding) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
-	int (*pincode_reply) (int index, bdaddr_t *bdaddr, const char *pin,
-							size_t pin_len);
-	int (*confirm_reply) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							gboolean success);
-	int (*passkey_reply) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							uint32_t passkey);
-	int (*set_did) (int index, uint16_t vendor, uint16_t product,
-					uint16_t version, uint16_t source);
-	int (*add_uuid) (int index, uuid_t *uuid, uint8_t svc_hint);
-	int (*remove_uuid) (int index, uuid_t *uuid);
-	int (*load_keys) (int index, GSList *keys, gboolean debug_keys);
-	int (*set_io_capability) (int index, uint8_t io_capability);
-	int (*create_bonding) (int index, bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, uint8_t io_cap);
-	int (*cancel_bonding) (int index, bdaddr_t *bdaddr);
-	int (*read_local_oob_data) (int index);
-	int (*add_remote_oob_data) (int index, bdaddr_t *bdaddr, uint8_t *hash,
-							uint8_t *randomizer);
-	int (*remove_remote_oob_data) (int index, bdaddr_t *bdaddr);
-	int (*confirm_name) (int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							gboolean name_known);
-	int (*load_ltks) (int index, GSList *keys);
-};
-
-int btd_register_adapter_ops(struct btd_adapter_ops *ops, gboolean priority);
-void btd_adapter_cleanup_ops(struct btd_adapter_ops *btd_adapter_ops);
-int adapter_ops_setup(void);
-
 typedef void (*btd_adapter_powered_cb) (struct btd_adapter *adapter,
 						gboolean powered);
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,

@@ -54,6 +54,7 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "manager.h"
+#include "mgmt.h"
 
 #define BLUEZ_NAME "org.bluez"
 
@@ -455,6 +456,7 @@ int main(int argc, char *argv[])
 	uint16_t mtu = 0;
 	GKeyFile *config;
 	guint signal;
+	int mgmt_err;
 
 	init_defaults();
 
@@ -530,8 +532,9 @@ int main(int argc, char *argv[])
 	 * daemon needs to be re-worked. */
 	plugin_init(config, option_plugin, option_noplugin);
 
-	if (adapter_ops_setup() < 0) {
-		error("adapter_ops_setup failed");
+	mgmt_err = mgmt_setup();
+	if (mgmt_err < 0) {
+		error("mgmt setup failed: %s", strerror(-mgmt_err));
 		exit(1);
 	}
 
@@ -557,6 +560,8 @@ int main(int argc, char *argv[])
 
 	if (config)
 		g_key_file_free(config);
+
+	mgmt_cleanup();
 
 	info("Exit");
 
