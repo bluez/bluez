@@ -56,6 +56,7 @@
 
 #define HOG_REPORT_TYPE_INPUT	1
 #define HOG_REPORT_TYPE_OUTPUT	2
+#define HOG_REPORT_TYPE_FEATURE	3
 
 #define UHID_DEVICE_FILE	"/dev/uhid"
 
@@ -363,9 +364,19 @@ static void forward_report(struct hog_device *hogdev,
 	int size;
 	guint type;
 
-	type = HOG_REPORT_TYPE_OUTPUT;
 	data = ev->u.output.data;
 	size = ev->u.output.size;
+
+	switch (ev->type) {
+	case UHID_OUTPUT:
+		type = HOG_REPORT_TYPE_OUTPUT;
+		break;
+	case UHID_FEATURE:
+		type = HOG_REPORT_TYPE_FEATURE;
+		break;
+	default:
+		return;
+	}
 
 	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(type),
 							report_type_cmp);
@@ -410,6 +421,7 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 
 	switch (ev.type) {
 	case UHID_OUTPUT:
+	case UHID_FEATURE:
 		forward_report(hogdev, &ev);
 		break;
 	case UHID_OUTPUT_EV:
