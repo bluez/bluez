@@ -54,6 +54,9 @@
 #define HOG_REPORT_MAP_UUID	0x2A4B
 #define HOG_REPORT_UUID		0x2A4D
 
+#define HOG_REPORT_TYPE_INPUT	1
+#define HOG_REPORT_TYPE_OUTPUT	2
+
 #define UHID_DEVICE_FILE	"/dev/uhid"
 
 #define HOG_REPORT_MAP_MAX_SIZE        512
@@ -334,6 +337,54 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 	}
 }
 
+static void output_written_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	if (status != 0) {
+		error("Write output report failed: %s", att_ecode2str(status));
+		return;
+	}
+}
+
+static gint report_type_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct report *report = a;
+	uint8_t type = GPOINTER_TO_UINT(b);
+
+	return report->type - type;
+}
+
+static void forward_report(struct hog_device *hogdev,
+						struct uhid_event *ev)
+{
+	struct report *report;
+	GSList *l;
+	void *data;
+	int size;
+	guint type;
+
+	type = HOG_REPORT_TYPE_OUTPUT;
+	data = ev->u.output.data;
+	size = ev->u.output.size;
+
+	l = g_slist_find_custom(hogdev->reports, GUINT_TO_POINTER(type),
+							report_type_cmp);
+	if (!l)
+		return;
+
+	report = l->data;
+
+	DBG("Sending report type %d to device %s handle 0x%X", type,
+				hogdev->path, report->decl->value_handle);
+
+	if (report->decl->properties & ATT_CHAR_PROPER_WRITE)
+		gatt_write_char(hogdev->attrib, report->decl->value_handle,
+				data, size, output_written_cb, hogdev);
+	else if (report->decl->properties & ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)
+		gatt_write_char(hogdev->attrib, report->decl->value_handle,
+						data, size, NULL, NULL);
+}
+
 static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -356,6 +407,15 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	DBG("uHID event type %d received", ev.type);
+
+	switch (ev.type) {
+	case UHID_OUTPUT:
+		forward_report(hogdev, &ev);
+		break;
+	default:
+		warn("unexpected uHID event");
+		break;
+	}
 
 	return TRUE;
 
