@@ -127,9 +127,9 @@ builtin_nodist =
 mcap_sources =
 
 if MCAP
-mcap_sources += health/mcap_lib.h health/mcap_internal.h \
-		health/mcap.h health/mcap.c \
-		health/mcap_sync.c
+mcap_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
+		ptofiles/health/mcap.h profiles/health/mcap.c \
+		profiles/health/mcap_sync.c
 endif
 
 if PNATPLUGIN
@@ -207,10 +207,10 @@ endif
 
 if HEALTHPLUGIN
 builtin_modules += health
-builtin_sources += health/hdp_main.c health/hdp_types.h \
-			health/hdp_manager.h health/hdp_manager.c \
-			health/hdp.h health/hdp.c \
-			health/hdp_util.h health/hdp_util.c
+builtin_sources += profiles/health/hdp_main.c profiles/health/hdp_types.h \
+		profiles/health/hdp_manager.h profiles/health/hdp_manager.c \
+		profiles/health/hdp.h profiles/health/hdp.c \
+		profiles/health/hdp_util.h profiles/health/hdp_util.c
 endif
 
 if GATTMODULES
