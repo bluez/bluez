@@ -36,8 +36,8 @@ BlueZ 5
 Priority/Complexity ommited as all items are required before 5.0 is
 released.
 
-- Make mgmtops part of Bluetooth core. mgmt will be the only way to
-  communicate with the kernel in BlueZ so a plugin is not needed
+- [done] Make mgmtops part of Bluetooth core. mgmt will be the only way
+  to communicate with the kernel in BlueZ so a plugin is not needed
   anymore. Probably plugins/mgmtops.c -> src/mgmt.c
 
 - Reorganize source tree according to RFC sent to linux-bluetooth
