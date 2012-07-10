@@ -82,9 +82,6 @@ test/test-textfile
 test/uuidtest
 test/mpris-player
 test/sap_client.pyc
-compat/dund
-compat/hidd
-compat/pand
 unit/test-eir
 tools/btmgmt
 monitor/btmon
