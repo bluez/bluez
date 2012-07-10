@@ -412,6 +412,11 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 	case UHID_OUTPUT:
 		forward_report(hogdev, &ev);
 		break;
+	case UHID_OUTPUT_EV:
+		DBG("uHID output event: type %d code %d value %d",
+			ev.u.output_ev.type, ev.u.output_ev.code,
+			ev.u.output_ev.value);
+		break;
 	default:
 		warn("unexpected uHID event");
 		break;
