@@ -293,7 +293,7 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	ev.u.create.vendor = vendor;
 	ev.u.create.product = product;
 	ev.u.create.version = version;
-	ev.u.create.country = 0; /* get this info from the right place */
+	ev.u.create.country = hogdev->bcountrycode;
 	ev.u.create.bus = BUS_BLUETOOTH;
 	ev.u.create.rd_data = value;
 	ev.u.create.rd_size = vlen;
@@ -335,6 +335,7 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 	bt_uuid_t report_uuid, report_map_uuid, info_uuid;
 	struct report *report;
 	GSList *l;
+	uint16_t map_handle = 0, info_handle = 0;
 
 	if (status != 0) {
 		const char *str = att_ecode2str(status);
@@ -366,12 +367,18 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 								report);
 			discover_descriptor(hogdev->attrib, chr, next, report);
 		} else if (bt_uuid_cmp(&uuid, &report_map_uuid) == 0)
-			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
-						report_map_read_cb, hogdev);
+			map_handle = chr->value_handle;
 		else if (bt_uuid_cmp(&uuid, &info_uuid) == 0)
-			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
-						info_read_cb, hogdev);
+			info_handle = chr->value_handle;
 	}
+
+	if (info_handle)
+		gatt_read_char(hogdev->attrib, info_handle, 0,
+							info_read_cb, hogdev);
+
+	if (map_handle)
+		gatt_read_char(hogdev->attrib, map_handle, 0,
+						report_map_read_cb, hogdev);
 }
 
 static void output_written_cb(guint8 status, const guint8 *pdu,
