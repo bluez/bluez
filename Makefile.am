@@ -128,7 +128,7 @@ mcap_sources =
 
 if MCAP
 mcap_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
-		ptofiles/health/mcap.h profiles/health/mcap.c \
+		profiles/health/mcap.h profiles/health/mcap.c \
 		profiles/health/mcap_sync.c
 endif
 
