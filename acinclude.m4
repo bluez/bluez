@@ -172,7 +172,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
 	input_enable=yes
-	serial_enable=yes
 	network_enable=yes
 	sap_enable=no
 	service_enable=yes
@@ -217,10 +216,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		sap_driver=${withval}
 	])
 	AC_SUBST([SAP_DRIVER], [sap-${sap_driver}.c])
-
-	AC_ARG_ENABLE(serial, AC_HELP_STRING([--disable-serial], [disable serial plugin]), [
-		serial_enable=${enableval}
-	])
 
 	AC_ARG_ENABLE(input, AC_HELP_STRING([--disable-input], [disable input plugin]), [
 		input_enable=${enableval}
@@ -345,7 +340,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
 	AM_CONDITIONAL(AUDIOPLUGIN, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")
-	AM_CONDITIONAL(SERIALPLUGIN, test "${serial_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")
 	AM_CONDITIONAL(SAPPLUGIN, test "${sap_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")

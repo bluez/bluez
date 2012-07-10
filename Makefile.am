@@ -191,13 +191,6 @@ builtin_modules += hog
 builtin_sources += input/hog_device.h input/hog_device.c
 endif
 
-if SERIALPLUGIN
-builtin_modules += serial
-builtin_sources += serial/main.c \
-			serial/manager.h serial/manager.c \
-			serial/port.h serial/port.c
-endif
-
 if NETWORKPLUGIN
 builtin_modules += network
 builtin_sources += network/main.c \
@@ -334,11 +327,10 @@ endif
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf network/network.conf \
-			input/input.conf serial/serial.conf \
+			input/input.conf proximity/proximity.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
-			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c \
-			proximity/proximity.conf
+			audio/telephony-maemo6.c sap/sap-dummy.c sap/sap-u8500.c
 
 if AUDIOPLUGIN
 if GSTREAMER
@@ -392,10 +384,9 @@ EXTRA_DIST += scripts/bluetooth-hid2hci.rules scripts/bluetooth-serial.rules
 EXTRA_DIST += doc/manager-api.txt \
 		doc/adapter-api.txt doc/device-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \
-		doc/serial-api.txt doc/network-api.txt \
-		doc/input-api.txt doc/audio-api.txt doc/control-api.txt \
-		doc/hfp-api.txt doc/health-api.txt doc/sap-api.txt \
-		doc/media-api.txt doc/assigned-numbers.txt
+		doc/network-api.txt doc/input-api.txt doc/audio-api.txt \
+		doc/control-api.txt doc/hfp-api.txt doc/health-api.txt \
+		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt
 
 AM_YFLAGS = -d
 
