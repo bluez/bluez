@@ -86,7 +86,7 @@ compat/dund
 compat/hidd
 compat/pand
 unit/test-eir
-mgmt/btmgmt
+tools/btmgmt
 monitor/btmon
 emulator/btvirt
 
