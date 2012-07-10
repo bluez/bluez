@@ -64,7 +64,7 @@ released.
 
 - Merge obexd.git into bluez.git
 
-- Remove unmaintained plugins like pnat and maemo6
+- [done] Remove unmaintained plugins like pnat and maemo6
 
 - Change DiscoverServices to return a list of service object paths
 
