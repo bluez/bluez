@@ -132,11 +132,6 @@ mcap_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 		profiles/health/mcap_sync.c
 endif
 
-if PNATPLUGIN
-builtin_modules += pnat
-builtin_sources += plugins/pnat.c
-endif
-
 if AUDIOPLUGIN
 builtin_modules += audio
 builtin_sources += audio/main.c \
@@ -244,13 +239,8 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/deviceinfo/deviceinfo.c
 endif
 
-if HAL
-builtin_modules += hal
-builtin_sources += plugins/hal.c
-else
 builtin_modules += formfactor
 builtin_sources += plugins/formfactor.c
-endif
 
 EXTRA_DIST += plugins/hal.c plugins/formfactor.c
 
@@ -263,11 +253,6 @@ builtin_sources += plugins/adaptername.c
 if WIIMOTEPLUGIN
 builtin_modules += wiimote
 builtin_sources += plugins/wiimote.c
-endif
-
-if MAEMO6PLUGIN
-builtin_modules += maemo6
-builtin_sources += plugins/maemo6.c
 endif
 
 if DBUSOOBPLUGIN

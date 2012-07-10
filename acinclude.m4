@@ -167,7 +167,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	fortify_enable=yes
 	pie_enable=yes
 	sndfile_enable=${sndfile_found}
-	hal_enable=no
 	usb_enable=${usb_found}
 	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
@@ -176,7 +175,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	sap_enable=no
 	service_enable=yes
 	health_enable=no
-	pnat_enable=no
 	tools_enable=yes
 	cups_enable=no
 	test_enable=no
@@ -186,7 +184,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	dfutool_enable=no
 	datafiles_enable=yes
 	telephony_driver=dummy
-	maemo6_enable=no
 	sap_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
@@ -231,10 +228,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(health, AC_HELP_STRING([--enable-health], [enable health plugin]), [
 		health_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(pnat, AC_HELP_STRING([--enable-pnat], [enable pnat plugin]), [
-		pnat_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
@@ -287,20 +280,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_SUBST([TELEPHONY_DRIVER], [telephony-${telephony_driver}.c])
 
-	AC_ARG_ENABLE(maemo6, AC_HELP_STRING([--enable-maemo6], [compile with maemo6 plugin]), [
-		maemo6_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(dbusoob, AC_HELP_STRING([--enable-dbusoob], [compile with D-Bus OOB plugin]), [
 		dbusoob_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(wiimote, AC_HELP_STRING([--enable-wiimote], [compile with Wii Remote plugin]), [
 		wiimote_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(hal, AC_HELP_STRING([--enable-hal], [Use HAL to determine adapter class]), [
-		hal_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(gatt, AC_HELP_STRING([--enable-gatt], [enable gatt module]), [
@@ -345,9 +330,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(HEALTHPLUGIN, test "${health_enable}" = "yes")
 	AM_CONDITIONAL(MCAP, test "${health_enable}" = "yes")
-	AM_CONDITIONAL(HAL, test "${hal_enable}" = "yes")
 	AM_CONDITIONAL(READLINE, test "${readline_found}" = "yes")
-	AM_CONDITIONAL(PNATPLUGIN, test "${pnat_enable}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes" && test "${check_found}" = "yes")
 	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
@@ -356,7 +339,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes" && test "${udev_found}" = "yes")
 	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
-	AM_CONDITIONAL(MAEMO6PLUGIN, test "${maemo6_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
 	AM_CONDITIONAL(GATTMODULES, test "${gatt_enable}" = "yes")

@@ -24,8 +24,6 @@ fi
 		--enable-test \
 		--enable-cups \
 		--enable-dbusoob \
-		--enable-maemo6 \
-		--enable-pnat \
 		--enable-sap \
 		--enable-wiimote \
 		--disable-pcmcia \
