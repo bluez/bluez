@@ -29,6 +29,10 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include "uhid_copy.h"
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
@@ -49,6 +53,7 @@
 
 #define HOG_REPORT_MAP_UUID	0x2A4B
 #define HOG_REPORT_UUID		0x2A4D
+#define UHID_DEVICE_FILE	"/dev/uhid"
 
 #define HOG_REPORT_MAP_MAX_SIZE        512
 
@@ -64,21 +69,32 @@ struct hog_device {
 	guint			report_cb_id;
 	struct gatt_primary	*hog_primary;
 	GSList			*reports;
+	int			uhid_fd;
 };
 
 static GSList *devices = NULL;
 
 static void report_value_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
-	uint16_t handle;
+	struct hog_device *hogdev = user_data;
+	struct uhid_event ev;
+	uint16_t report_size = len - 3;
 
 	if (len < 3) { /* 1-byte opcode + 2-byte handle */
 		error("Malformed ATT notification");
 		return;
 	}
 
-	handle = att_get_u16(&pdu[1]);
-	DBG("Report notification on handle 0x%04x", handle);
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_INPUT;
+	ev.u.input.size = MIN(report_size, UHID_DATA_MAX);
+	memcpy(ev.u.input.data, &pdu[3], MIN(report_size, UHID_DATA_MAX));
+
+	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
+		error("uHID write failed: %s", strerror(errno));
+	else
+		DBG("Report from HoG device %s written to uHID fd %d",
+						hogdev->path, hogdev->uhid_fd);
 }
 
 static void report_ccc_written_cb(guint8 status, const guint8 *pdu,
@@ -157,7 +173,9 @@ static void discover_descriptor(GAttrib *attrib, struct gatt_char *chr,
 static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
+	struct hog_device *hogdev = user_data;
 	uint8_t value[HOG_REPORT_MAP_MAX_SIZE];
+	struct uhid_event ev;
 	ssize_t vlen;
 	int i;
 
@@ -179,6 +197,22 @@ static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		else
 			DBG("\t %02x %02x", value[i], value[i + 1]);
 	}
+
+	/* create uHID device */
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_CREATE;
+	/* TODO: get info from DIS */
+	strcpy((char *) ev.u.create.name, "bluez-hog-device");
+	ev.u.create.vendor = 0xBEBA;
+	ev.u.create.product = 0xCAFE;
+	ev.u.create.version = 0;
+	ev.u.create.country = 0;
+	ev.u.create.bus = BUS_BLUETOOTH;
+	ev.u.create.rd_data = value;
+	ev.u.create.rd_size = vlen;
+
+	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
+		error("Failed to create uHID device: %s", strerror(errno));
 }
 
 static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
@@ -239,6 +273,12 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 static void attio_disconnected_cb(gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
+	struct uhid_event ev;
+
+	memset(&ev, 0, sizeof(ev));
+	ev.type = UHID_DESTROY;
+	if (write(hogdev->uhid_fd, &ev, sizeof(ev)) < 0)
+		error("Failed to destroy uHID device: %s", strerror(errno));
 
 	g_attrib_unregister(hogdev->attrib, hogdev->report_cb_id);
 	hogdev->report_cb_id = 0;
@@ -293,6 +333,22 @@ static struct gatt_primary *load_hog_primary(struct btd_device *device)
 	return (l ? l->data : NULL);
 }
 
+static void report_free(void *data)
+{
+	struct report *report = data;
+	g_free(report->decl);
+	g_free(report);
+}
+
+static void hog_device_free(struct hog_device *hogdev)
+{
+	btd_device_unref(hogdev->device);
+	g_slist_free_full(hogdev->reports, report_free);
+	g_free(hogdev->path);
+	g_free(hogdev->hog_primary);
+	g_free(hogdev);
+}
+
 int hog_device_register(struct btd_device *device, const char *path)
 {
 	struct hog_device *hogdev;
@@ -310,6 +366,14 @@ int hog_device_register(struct btd_device *device, const char *path)
 	if (!hogdev)
 		return -ENOMEM;
 
+	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
+	if (hogdev->uhid_fd < 0) {
+		int err = -errno;
+		error("Failed to open uHID device: %s", strerror(-err));
+		hog_device_free(hogdev);
+		return err;
+	}
+
 	hogdev->hog_primary = g_memdup(prim, sizeof(*prim));
 
 	hogdev->attioid = btd_device_add_attio_callback(device,
@@ -323,22 +387,6 @@ int hog_device_register(struct btd_device *device, const char *path)
 	return 0;
 }
 
-static void report_free(void *data)
-{
-	struct report *report = data;
-	g_free(report->decl);
-	g_free(report);
-}
-
-static void hog_device_free(struct hog_device *hogdev)
-{
-	btd_device_unref(hogdev->device);
-	g_slist_free_full(hogdev->reports, report_free);
-	g_free(hogdev->path);
-	g_free(hogdev->hog_primary);
-	g_free(hogdev);
-}
-
 int hog_device_unregister(const char *path)
 {
 	struct hog_device *hogdev;
@@ -348,6 +396,10 @@ int hog_device_unregister(const char *path)
 		return -EINVAL;
 
 	btd_device_remove_attio_callback(hogdev->device, hogdev->attioid);
+
+	close(hogdev->uhid_fd);
+	hogdev->uhid_fd = -1;
+
 	devices = g_slist_remove(devices, hogdev);
 	hog_device_free(hogdev);
 
