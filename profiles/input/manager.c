@@ -193,38 +193,3 @@ void input_manager_exit(void)
 
 	connection = NULL;
 }
-
-static int hog_device_probe(struct btd_device *device, GSList *uuids)
-{
-	const char *path = device_get_path(device);
-
-	DBG("path %s", path);
-
-	return hog_device_register(device, path);
-}
-
-static void hog_device_remove(struct btd_device *device)
-{
-	const gchar *path = device_get_path(device);
-
-	DBG("path %s", path);
-
-	hog_device_unregister(path);
-}
-
-static struct btd_device_driver hog_driver = {
-	.name	= "input-hog",
-	.uuids	= BTD_UUIDS(HOG_UUID),
-	.probe	= hog_device_probe,
-	.remove	= hog_device_remove,
-};
-
-int hog_manager_init(void)
-{
-	return btd_register_device_driver(&hog_driver);
-}
-
-void hog_manager_exit(void)
-{
-	btd_unregister_device_driver(&hog_driver);
-}

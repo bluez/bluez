@@ -85,24 +85,3 @@ static void input_exit(void)
 
 BLUETOOTH_PLUGIN_DEFINE(input, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
 							input_init, input_exit)
-
-static int hog_init(void)
-{
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
-	return hog_manager_init();
-}
-
-static void hog_exit(void)
-{
-	if (!main_opts.gatt_enabled)
-		return;
-
-	hog_manager_exit();
-}
-
-BLUETOOTH_PLUGIN_DEFINE(hog, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-							hog_init, hog_exit)

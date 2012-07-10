@@ -23,6 +23,3 @@
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config);
 void input_manager_exit(void);
-
-int hog_manager_init(void);
-void hog_manager_exit(void);

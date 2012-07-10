@@ -183,7 +183,8 @@ endif
 
 if HOGPLUGIN
 builtin_modules += hog
-builtin_sources += profiles/input/hog_device.h profiles/input/hog_device.c
+builtin_sources += profiles/input/hog_manager.c profiles/input/hog_device.h \
+			profiles/input/hog_device.c
 endif
 
 if NETWORKPLUGIN
