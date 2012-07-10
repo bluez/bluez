@@ -319,7 +319,7 @@ endif
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf profiles/network/network.conf \
-			profiles/input/input.conf proximity/proximity.conf \ \
+			profiles/input/input.conf profiles/proximity/proximity.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-maemo5.c audio/telephony-ofono.c \
 			audio/telephony-maemo6.c profiles/sap/sap-dummy.c \
