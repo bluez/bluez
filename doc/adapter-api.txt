@@ -92,7 +92,7 @@ Methods		dict GetProperties()
 
 			Creates a new object path for a remote device. This
 			method will connect to the remote device and retrieve
-			all SDP records.
+			all SDP records (or GATT primary services).
 
 			If the object for the remote device already exists
 			this method will fail.
@@ -105,7 +105,8 @@ Methods		dict GetProperties()
 
 			Creates a new object path for a remote device. This
 			method will connect to the remote device and retrieve
-			all SDP records and then initiate the pairing.
+			all SDP records (or GATT primary services) and then
+			initiate the pairing.
 
 			If previously CreateDevice was used successfully,
 			this method will only initiate the pairing.
