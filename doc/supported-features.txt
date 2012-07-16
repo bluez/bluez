@@ -10,6 +10,7 @@ Profile/protocol	Version		Role(s)
 GAP			4.0		(LE) Central, Observer, Broadcaster
 L2CAP			4.0		Server, Client
 SDP			4.0		Server, Client
+GATT			4.0		Server, Client
 SDAP			1.1		Server, Client
 RFCOMM			1.1		Server, Client
 SPP			1.1		Server, Client
