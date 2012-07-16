@@ -35,7 +35,7 @@ extern "C" {
 
 /* maximum transmission unit for channels */
 #define MCAP_CC_MTU	48
-#define MCAP_DC_MTU	L2CAP_DEFAULT_MTU
+#define MCAP_DC_MTU	65535
 
 /* MCAP Standard Op Codes */
 #define MCAP_ERROR_RSP			0x00
