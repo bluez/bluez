@@ -380,7 +380,8 @@ EXTRA_DIST += doc/manager-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \
 		doc/network-api.txt doc/input-api.txt doc/audio-api.txt \
 		doc/control-api.txt doc/hfp-api.txt doc/health-api.txt \
-		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt
+		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt \
+		doc/supported-features.txt
 
 AM_YFLAGS = -d
 
