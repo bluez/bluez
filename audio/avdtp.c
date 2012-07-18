@@ -1182,6 +1182,14 @@ static void connection_lost(struct avdtp *session, int err)
 		avdtp_unref(session);
 }
 
+static void sep_free(gpointer data)
+{
+	struct avdtp_remote_sep *sep = data;
+
+	g_slist_free_full(sep->caps, g_free);
+	g_free(sep);
+}
+
 void avdtp_unref(struct avdtp *session)
 {
 	struct avdtp_server *server;
@@ -1226,7 +1234,7 @@ void avdtp_unref(struct avdtp *session)
 	if (session->req)
 		pending_req_free(session->req);
 
-	g_slist_free_full(session->seps, g_free);
+	g_slist_free_full(session->seps, sep_free);
 
 	g_free(session->buf);
 
