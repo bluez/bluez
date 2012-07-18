@@ -459,7 +459,7 @@ char *phonebook_set_folder(const char *current_folder,
 	root = (g_strcmp0("/", current_folder) == 0);
 	child = (new_folder && strlen(new_folder) != 0);
 
-	/* Evolution back-end will support telecom/pb folder only */
+	/* Evolution back-end will support /telecom/pb folder only */
 
 	switch (flags) {
 	case 0x02:
@@ -471,8 +471,8 @@ char *phonebook_set_folder(const char *current_folder,
 
 		/* Go down 1 level */
 		fullname = g_build_filename(current_folder, new_folder, NULL);
-		if (strcmp("/telecom", fullname) != 0 &&
-				strcmp("/telecom/pb", fullname) != 0) {
+		if (strcmp(PB_TELECOM_FOLDER, fullname) != 0 &&
+				strcmp(PB_CONTACTS_FOLDER, fullname) != 0) {
 			g_free(fullname);
 			fullname = NULL;
 			ret = -ENOENT;
@@ -511,8 +511,8 @@ char *phonebook_set_folder(const char *current_folder,
 		}
 
 		fullname = g_build_filename(base, new_folder, NULL);
-		if (strcmp(fullname, "/telecom") != 0 &&
-				strcmp(fullname, "/telecom/pb") != 0) {
+		if (strcmp(fullname, PB_TELECOM_FOLDER) != 0 &&
+				strcmp(fullname, PB_CONTACTS_FOLDER) != 0) {
 			g_free(fullname);
 			fullname = NULL;
 			ret = -ENOENT;
@@ -548,7 +548,7 @@ void *phonebook_pull(const char *name, const struct apparam_field *params,
 {
 	struct query_context *data;
 
-	if (g_strcmp0("/telecom/pb.vcf", name) != 0) {
+	if (g_strcmp0(PB_CONTACTS, name) != 0) {
 		if (err)
 			*err = -ENOENT;
 
@@ -638,7 +638,7 @@ void *phonebook_create_cache(const char *name, phonebook_entry_cb entry_cb,
 	EVCardAttribute *attrib;
 	char *uid, *tel, *cname;
 
-	if (g_strcmp0("/telecom/pb", name) != 0) {
+	if (g_strcmp0(PB_CONTACTS_FOLDER, name) != 0) {
 		if (err)
 			*err = -ENOENT;
 

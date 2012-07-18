@@ -513,15 +513,15 @@ static TrackerSparqlConnection *connection = NULL;
 
 static const char *name2query(const char *name)
 {
-	if (g_str_equal(name, "/telecom/pb.vcf"))
+	if (g_str_equal(name, PB_CONTACTS))
 		return CONTACTS_QUERY_ALL;
-	else if (g_str_equal(name, "/telecom/ich.vcf"))
+	else if (g_str_equal(name, PB_CALLS_INCOMING))
 		return INCOMING_CALLS_QUERY;
-	else if (g_str_equal(name, "/telecom/och.vcf"))
+	else if (g_str_equal(name, PB_CALLS_OUTGOING))
 		return OUTGOING_CALLS_QUERY;
-	else if (g_str_equal(name, "/telecom/mch.vcf"))
+	else if (g_str_equal(name, PB_CALLS_MISSED))
 		return MISSED_CALLS_QUERY;
-	else if (g_str_equal(name, "/telecom/cch.vcf"))
+	else if (g_str_equal(name, PB_CALLS_COMBINED))
 		return COMBINED_CALLS_QUERY;
 
 	return NULL;
@@ -529,15 +529,15 @@ static const char *name2query(const char *name)
 
 static const char *name2count_query(const char *name)
 {
-	if (g_str_equal(name, "/telecom/pb.vcf"))
+	if (g_str_equal(name, PB_CONTACTS))
 		return CONTACTS_COUNT_QUERY;
-	else if (g_str_equal(name, "/telecom/ich.vcf"))
+	else if (g_str_equal(name, PB_CALLS_INCOMING))
 		return INCOMING_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "/telecom/och.vcf"))
+	else if (g_str_equal(name, PB_CALLS_OUTGOING))
 		return OUTGOING_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "/telecom/mch.vcf"))
+	else if (g_str_equal(name, PB_CALLS_MISSED))
 		return MISSED_CALLS_COUNT_QUERY;
-	else if (g_str_equal(name, "/telecom/cch.vcf"))
+	else if (g_str_equal(name, PB_CALLS_COMBINED))
 		return COMBINED_CALLS_COUNT_QUERY;
 
 	return NULL;
@@ -550,17 +550,17 @@ static gboolean folder_is_valid(const char *folder)
 
 	if (g_str_equal(folder, "/"))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom"))
+	else if (g_str_equal(folder, PB_TELECOM_FOLDER))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom/pb"))
+	else if (g_str_equal(folder, PB_CONTACTS_FOLDER))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom/ich"))
+	else if (g_str_equal(folder, PB_CALLS_INCOMING_FOLDER))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom/och"))
+	else if (g_str_equal(folder, PB_CALLS_OUTGOING_FOLDER))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom/mch"))
+	else if (g_str_equal(folder, PB_CALLS_MISSED_FOLDER))
 		return TRUE;
-	else if (g_str_equal(folder, "/telecom/cch"))
+	else if (g_str_equal(folder, PB_CALLS_COMBINED_FOLDER))
 		return TRUE;
 
 	return FALSE;
@@ -568,15 +568,15 @@ static gboolean folder_is_valid(const char *folder)
 
 static const char *folder2query(const char *folder)
 {
-	if (g_str_equal(folder, "/telecom/pb"))
+	if (g_str_equal(folder, PB_CONTACTS_FOLDER))
 		return CONTACTS_QUERY_ALL_LIST;
-	else if (g_str_equal(folder, "/telecom/ich"))
+	else if (g_str_equal(folder, PB_CALLS_INCOMING_FOLDER))
 		return INCOMING_CALLS_LIST;
-	else if (g_str_equal(folder, "/telecom/och"))
+	else if (g_str_equal(folder, PB_CALLS_OUTGOING_FOLDER))
 		return OUTGOING_CALLS_LIST;
-	else if (g_str_equal(folder, "/telecom/mch"))
+	else if (g_str_equal(folder, PB_CALLS_MISSED_FOLDER))
 		return MISSED_CALLS_LIST;
-	else if (g_str_equal(folder, "/telecom/cch"))
+	else if (g_str_equal(folder, PB_CALLS_COMBINED_FOLDER))
 		return COMBINED_CALLS_LIST;
 
 	return NULL;
@@ -1541,11 +1541,11 @@ static int pull_newmissedcalls(const char **reply, int num_fields,
 	}
 
 	if (data->params->maxlistcount == 0) {
-		query = name2count_query("/telecom/mch.vcf");
+		query = name2count_query(PB_CALLS_MISSED);
 		col_amount = COUNT_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts_size;
 	} else {
-		query = name2query("/telecom/mch.vcf");
+		query = name2query(PB_CALLS_MISSED);
 		col_amount = PULL_QUERY_COL_AMOUNT;
 		pull_cb = pull_contacts;
 	}
@@ -1613,7 +1613,7 @@ int phonebook_pull_read(void *request)
 
 	data->newmissedcalls = 0;
 
-	if (g_strcmp0(data->req_name, "/telecom/mch.vcf") == 0 &&
+	if (g_strcmp0(data->req_name, PB_CALLS_MISSED) == 0 &&
 						data->tracker_index == 0) {
 		/* new missed calls amount should be counted only once - it
 		 * will be done during generating first part of results of

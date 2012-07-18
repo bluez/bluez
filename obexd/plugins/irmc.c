@@ -226,7 +226,7 @@ static void *irmc_connect(struct obex_session *os, int *err)
 	param->maxlistcount = 0; /* to count the number of vcards... */
 	param->filter = 0x200085; /* UID TEL N VERSION */
 	irmc->params = param;
-	irmc->request = phonebook_pull("/telecom/pb.vcf", irmc->params,
+	irmc->request = phonebook_pull(PB_CONTACTS, irmc->params,
 					phonebook_size_result, irmc, err);
 	ret = phonebook_pull_read(irmc->request);
 	if (err)
@@ -312,7 +312,7 @@ static void *irmc_open_pb(const char *name, struct irmc_session *irmc,
 
 	if (!g_strcmp0(name, ".vcf")) {
 		/* how can we tell if the vcard count call already finished? */
-		irmc->request = phonebook_pull("/telecom/pb.vcf", irmc->params,
+		irmc->request = phonebook_pull(PB_CONTACTS, irmc->params,
 						query_result, irmc, &ret);
 		if (ret < 0) {
 			DBG("phonebook_pull failed...");

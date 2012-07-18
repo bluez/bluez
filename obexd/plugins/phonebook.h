@@ -29,6 +29,19 @@
 #define VCARD_LISTING_ELEMENT "<card handle = \"%d.vcf\" name = \"%s\"/>" EOL
 #define VCARD_LISTING_END "</vCard-listing>"
 
+#define PB_TELECOM_FOLDER "/telecom"
+#define PB_CONTACTS_FOLDER "/telecom/pb"
+#define PB_CALLS_COMBINED_FOLDER "/telecom/cch"
+#define PB_CALLS_INCOMING_FOLDER "/telecom/ich"
+#define PB_CALLS_MISSED_FOLDER "/telecom/mch"
+#define PB_CALLS_OUTGOING_FOLDER "/telecom/och"
+
+#define PB_CONTACTS "/telecom/pb.vcf"
+#define PB_CALLS_COMBINED "/telecom/cch.vcf"
+#define PB_CALLS_INCOMING "/telecom/ich.vcf"
+#define PB_CALLS_MISSED "/telecom/mch.vcf"
+#define PB_CALLS_OUTGOING "/telecom/och.vcf"
+
 struct apparam_field {
 	/* list and pull attributes */
 	uint16_t maxlistcount;
