@@ -1843,6 +1843,9 @@ static void path_free(void *data)
 	while (adapter->endpoints)
 		release_endpoint(adapter->endpoints->data);
 
+	while (adapter->players)
+		media_player_destroy(adapter->players->data);
+
 	dbus_connection_unref(adapter->conn);
 
 	adapters = g_slist_remove(adapters, adapter);
