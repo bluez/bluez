@@ -107,13 +107,13 @@ static uint8_t local_time_info_read(struct attribute *a,
 
 	tzset();
 
-	/* FIXME: POSIX "daylight" variable only indicates whether there is DST
-	 * for the local time or not. The offset is unknown. */
-	value[0] = daylight ? 0xff : 0x00;
-
 	/* Convert POSIX "timezone" (seconds West of GMT) to Time Profile
 	 * format (offset from UTC in number of 15 minutes increments). */
-	value[1] = (uint8_t) (-1 * timezone / (60 * 15));
+	value[0] = (uint8_t) (-1 * timezone / (60 * 15));
+
+	/* FIXME: POSIX "daylight" variable only indicates whether there
+	 * is DST for the local time or not. The offset is unknown. */
+	value[1] = daylight ? 0xff : 0x00;
 
 	attrib_db_update(adapter, a->handle, NULL, value, sizeof(value), NULL);
 
