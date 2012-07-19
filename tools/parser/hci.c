@@ -1657,6 +1657,18 @@ static inline void le_set_scan_enable_dump(int level, struct frame *frm)
 		(cp->filter_dup == 0x00 ? "disabled" : "enabled"));
 }
 
+static inline void write_remote_amp_assoc_cmd_dump(int level,
+							struct frame *frm)
+{
+	write_remote_amp_assoc_cp *cp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("handle 0x%2.2x len_so_far %d remaining_len %d\n", cp->handle,
+				cp->length_so_far, cp->remaining_length);
+
+	amp_assoc_dump(level + 1, cp->fragment, frm->len - 5);
+}
+
 static inline void command_dump(int level, struct frame *frm)
 {
 	hci_command_hdr *hdr = frm->ptr;
@@ -1933,6 +1945,9 @@ static inline void command_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_CLOCK:
 			request_clock_dump(level + 1, frm);
+			return;
+		case OCF_WRITE_REMOTE_AMP_ASSOC:
+			write_remote_amp_assoc_cmd_dump(level + 1, frm);
 			return;
 		}
 		break;
