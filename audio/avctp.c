@@ -941,6 +941,8 @@ static int avctp_send(struct avctp *session, uint8_t transaction, uint8_t cr,
 
 	sk = g_io_channel_unix_get_fd(session->io);
 
+	memset(buf, 0, sizeof(buf));
+
 	avctp = (void *) buf;
 	avc = (void *) &buf[AVCTP_HEADER_LENGTH];
 
