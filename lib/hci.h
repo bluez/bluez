@@ -1417,7 +1417,7 @@ typedef struct {
 typedef struct {
 	uint8_t		handle;
 	uint16_t	length_so_far;
-	uint16_t	assoc_length;
+	uint16_t	remaining_length;
 	uint8_t		fragment[HCI_MAX_NAME_LENGTH];
 } __attribute__ ((packed)) write_remote_amp_assoc_cp;
 #define WRITE_REMOTE_AMP_ASSOC_CP_SIZE 253
