@@ -38,6 +38,7 @@
 #include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/mgmt.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -1196,9 +1197,9 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		uint8_t status;
 
 		if (device->connected)
-			status = HCI_OE_USER_ENDED_CONNECTION;
+			status = MGMT_STATUS_DISCONNECTED;
 		else
-			status = HCI_PAGE_TIMEOUT;
+			status = MGMT_STATUS_CONNECT_FAILED;
 
 		device_cancel_bonding(device, status);
 	}
@@ -2318,54 +2319,31 @@ static gboolean start_discovery(gpointer user_data)
 	return FALSE;
 }
 
-static DBusMessage *new_authentication_return(DBusMessage *msg, int status)
+static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
 {
 	switch (status) {
-	case 0x00: /* success */
+	case MGMT_STATUS_SUCCESS:
 		return dbus_message_new_method_return(msg);
 
-	case HCI_PAGE_TIMEOUT:
+	case MGMT_STATUS_CONNECT_FAILED:
 		return dbus_message_new_error(msg,
 				ERROR_INTERFACE ".ConnectionAttemptFailed",
 				"Page Timeout");
-	case HCI_CONNECTION_TIMEOUT:
-		return dbus_message_new_error(msg,
-				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				"Connection Timeout");
-	case HCI_HOST_TIMEOUT:
-	case HCI_LMP_RESPONSE_TIMEOUT:
-	case HCI_INSTANT_PASSED: /* is this a timeout? */
+	case MGMT_STATUS_TIMEOUT:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationTimeout",
 					"Authentication Timeout");
-	case HCI_REPEATED_ATTEMPTS: /* too frequent pairing attempts */
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".RepeatedAttempts",
-					"Repeated Attempts");
-
-	case HCI_PIN_OR_KEY_MISSING:
-	case HCI_PAIRING_NOT_ALLOWED: /* e.g. gw rejected attempt */
+	case MGMT_STATUS_BUSY:
+	case MGMT_STATUS_REJECTED:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationRejected",
 					"Authentication Rejected");
-
-	case HCI_MEMORY_FULL:
-	case HCI_MAX_NUMBER_OF_CONNECTIONS:
-	case HCI_MAX_NUMBER_OF_SCO_CONNECTIONS:
-	case HCI_REJECTED_LIMITED_RESOURCES:
-	case HCI_OE_USER_ENDED_CONNECTION:
-	case HCI_OE_LOW_RESOURCES:
-	case HCI_CONNECTION_TERMINATED:
+	case MGMT_STATUS_CANCELLED:
+	case MGMT_STATUS_NO_RESOURCES:
+	case MGMT_STATUS_DISCONNECTED:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationCanceled",
 					"Authentication Canceled");
-
-	case HCI_AUTHENTICATION_FAILURE:
-	case HCI_REJECTED_SECURITY: /* is this auth failure? */
-	case HCI_ENCRYPTION_MODE_NOT_ACCEPTED: /* is this auth failure? */
-	case HCI_UNIT_LINK_KEY_USED: /* is this auth failure? */
-	case HCI_PAIRING_NOT_SUPPORTED: /* is this auth failure? */
-	case HCI_INSUFFICIENT_SECURITY: /* is this auth failure? */
 	default:
 		return dbus_message_new_error(msg,
 					ERROR_INTERFACE ".AuthenticationFailed",
