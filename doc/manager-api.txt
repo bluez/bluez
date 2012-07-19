@@ -37,16 +37,6 @@ Methods		dict GetProperties()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NoSuchAdapter
 
-		array{object} ListAdapters() {deprecated}
-
-			Returns list of adapter object paths under /org/bluez.
-			This method is deprecated, instead use the Adapters
-			Property to get the list of adapter object paths.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Failed
-					 org.bluez.Error.OutOfMemory
-
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
