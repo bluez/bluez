@@ -6,22 +6,10 @@ Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
 Service details
 ---------------
 
-One service object path for every remote SDP record or service in the
-attribute database. One service object path for every local SDP record
-or service from attribute database.
-
-Local services are children of the adapter object path. Remote services
-are children of the remote device object path. This doesn't solve the
-problem where local attributes can have different instances based on
-the remote device.
-
-In general the idea is to also represent SDP records as services so that
-new style application can just use the service interfaces to retrieve the
-needed information. That way the usage of SDP and GATT would be mostly
-fully transparent and a differentiation becomes unimportant in the future.
-
-A service consists of some generic service information and a set of
-characteristics. All characteristic are presented as object path as well.
+All characteristics are presented as object paths in a single, flat list. Each
+object has a "ServiceUUID" property which contains the 128-bit UUID of the
+service that contains it, so clients can identify the correct characteristic if
+multiple services contain the same characteristic.
 
 
 Device Service hierarchy
