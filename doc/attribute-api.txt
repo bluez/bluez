@@ -105,6 +105,18 @@ Service		unique name
 Interface	org.bluez.Watcher
 Object path	freely definable
 
-Methods		void ValueChanged(object characteristic, array{byte})
+Methods		void ValueChanged(object characteristic, dict value)
 
-			New raw value of the Characteristic Value attribute.
+			The value dictionary contains the new value for the
+			Characteristic. The format is the same returned by
+			Characteristic.GetValue().
+
+			This method is only called when the "raw" setting is
+			disabled on Adapter.RegisterCharacteristicsWatcher().
+
+		void RawValueChanged(object characteristic, array{byte} value)
+
+			New raw Characteristic value.
+
+			This method is only called when the "raw" setting is
+			enabled on Adapter.RegisterCharacteristicsWatcher().
