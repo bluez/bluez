@@ -24,19 +24,6 @@ A service consists of some generic service information and a set of
 characteristics. All characteristic are presented as object path as well.
 
 
-Local Service hierarchy
-=======================
-
-Service		org.bluez
-Interface	org.bluez.Service
-		org.bluez.Characteristic
-Object path	[prefix]/{hci0}/{service0, service1, ...}
-
-Methods
-
-Properties
-
-
 Device Service hierarchy
 ========================
 
