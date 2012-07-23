@@ -526,7 +526,7 @@ static void path_unregister(void *data)
 void source_unregister(struct audio_device *dev)
 {
 	g_dbus_unregister_interface(dev->conn, dev->path,
-		AUDIO_SOURCE_INTERFACE);
+						AUDIO_SOURCE_INTERFACE);
 }
 
 struct source *source_init(struct audio_device *dev)
@@ -540,7 +540,7 @@ struct source *source_init(struct audio_device *dev)
 		return NULL;
 
 	DBG("Registered interface %s on path %s",
-		AUDIO_SOURCE_INTERFACE, dev->path);
+					AUDIO_SOURCE_INTERFACE, dev->path);
 
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
