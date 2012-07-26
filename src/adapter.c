@@ -2690,6 +2690,11 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	if (dev->bdaddr_type != BDADDR_BREDR) {
 		uint16_t app;
 
+		/* Avoid emitting DeviceFound() signal if device is not
+		 * discoverable */
+		if (!(dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
+			return;
+
 		dev->legacy = FALSE;
 
 		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
