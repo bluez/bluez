@@ -373,9 +373,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 		dict_append_entry(&dict, "Class", DBUS_TYPE_UINT32, &class);
 	} else if (read_remote_appearance(&src, &device->bdaddr,
-						device->bdaddr_type, &app) == 0)
+					device->bdaddr_type, &app) == 0) {
 		/* Appearance */
 		icon = gap_appearance_to_icon(app);
+
+		dict_append_entry(&dict, "Appearance", DBUS_TYPE_UINT16, &app);
+	}
 
 	dict_append_entry(&dict, "Icon", DBUS_TYPE_STRING, &icon);
 

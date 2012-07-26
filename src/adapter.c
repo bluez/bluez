@@ -2700,12 +2700,14 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
 						dev->bdaddr_type, &app) == 0)
 			icon = gap_appearance_to_icon(app);
-		else
+		else {
+			app = 0;
 			icon = NULL;
+		}
 
 		emit_device_found(adapter->path, paddr,
 				"Address", DBUS_TYPE_STRING, &paddr,
-				"Class", DBUS_TYPE_UINT32, &dev->class,
+				"Appearance", DBUS_TYPE_UINT16, &app,
 				"Icon", DBUS_TYPE_STRING, &icon,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,

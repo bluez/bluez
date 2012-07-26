@@ -116,6 +116,10 @@ Properties	string Address [readonly]
 
 			The Bluetooth class of device of the remote device.
 
+		uint16 Appearance [readonly]
+
+			External appearance of device, as found on GAP service.
+
 		array{string} UUIDs [readonly]
 
 			List of 128-bit UUIDs that represents the available
