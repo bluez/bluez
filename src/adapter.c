@@ -2688,13 +2688,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 		alias = g_strdup(dev->alias);
 
 	if (dev->bdaddr_type != BDADDR_BREDR) {
-		gboolean broadcaster;
 		uint16_t app;
-
-		if (dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC))
-			broadcaster = FALSE;
-		else
-			broadcaster = TRUE;
 
 		dev->legacy = FALSE;
 
@@ -2713,7 +2707,6 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				"Alias", DBUS_TYPE_STRING, &alias,
 				"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired,
-				"Broadcaster", DBUS_TYPE_BOOLEAN, &broadcaster,
 				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
 				NULL);
 	} else {
