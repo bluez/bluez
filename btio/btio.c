@@ -162,27 +162,15 @@ static gboolean connect_cb(GIOChannel *io, GIOCondition cond,
 	if ((cond & G_IO_NVAL) || check_nval(io))
 		return FALSE;
 
-	if (cond & G_IO_OUT) {
-		sock = g_io_channel_unix_get_fd(io);
+	sock = g_io_channel_unix_get_fd(io);
 
-		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
-			err = -errno;
-		else
-			err = -sk_err;
+	if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+		err = -errno;
+	else
+		err = -sk_err;
 
-		if (err < 0)
-			ERROR_FAILED(&gerr, "connect", -err);
-	} else if (cond & (G_IO_HUP | G_IO_ERR)) {
-		sock = g_io_channel_unix_get_fd(io);
-
-		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
-			err = -errno;
-		else
-			err = -sk_err;
-
-		if (err < 0)
-			ERROR_FAILED(&gerr, "HUP or ERR on socket", -err);
-	}
+	if (err < 0)
+		ERROR_FAILED(&gerr, "connect error", -err);
 
 	conn->connect(io, gerr, conn->user_data);
 
