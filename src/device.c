@@ -549,7 +549,7 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 
 	adapter_get_address(device->adapter, &src);
 
-	err = write_blocked(&src, &device->bdaddr, TRUE);
+	err = write_blocked(&src, &device->bdaddr, device->bdaddr_type, TRUE);
 	if (err < 0)
 		error("write_blocked(): %s (%d)", strerror(-err), -err);
 
@@ -581,7 +581,7 @@ int device_unblock(DBusConnection *conn, struct btd_device *device,
 
 	adapter_get_address(device->adapter, &src);
 
-	err = write_blocked(&src, &device->bdaddr, FALSE);
+	err = write_blocked(&src, &device->bdaddr, device->bdaddr_type, FALSE);
 	if (err < 0)
 		error("write_blocked(): %s (%d)", strerror(-err), -err);
 
@@ -1084,7 +1084,7 @@ struct btd_device *device_create(DBusConnection *conn,
 		device->alias = g_strdup(alias);
 	device->trusted = read_trust(&src, address, GLOBAL_TRUST);
 
-	if (read_blocked(&src, &device->bdaddr))
+	if (read_blocked(&src, &device->bdaddr, device->bdaddr_type))
 		device_block(conn, device, FALSE);
 
 	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0) {

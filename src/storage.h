@@ -79,9 +79,10 @@ int read_device_id(const gchar *src, const gchar *dst,
 					uint16_t *product, uint16_t *version);
 int write_device_pairable(bdaddr_t *local, gboolean mode);
 int read_device_pairable(bdaddr_t *local, gboolean *mode);
-gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote);
+gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote,
+							uint8_t remote_type);
 int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-							gboolean blocked);
+				uint8_t remote_type, gboolean blocked);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 				uint8_t bdaddr_type, const char *services);
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
