@@ -301,7 +301,10 @@ static uint16_t bnep_setup_chk(uint16_t dst_role, uint16_t src_role)
 static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
 				uint16_t *dst_role, uint16_t *src_role)
 {
+	const uint8_t bt_base[] = { 0x00, 0x00, 0x10, 0x00, 0x80, 0x00,
+				0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB };
 	uint8_t *dest, *source;
+	uint32_t val;
 
 	dest = req->service;
 	source = req->service + req->uuid_size;
@@ -311,10 +314,27 @@ static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
 		*dst_role = bt_get_be16(dest);
 		*src_role = bt_get_be16(source);
 		break;
-	case 4: /* UUID32 */
 	case 16: /* UUID128 */
-		*dst_role = bt_get_be32(dest);
-		*src_role = bt_get_be32(source);
+		/* Check that the bytes in the UUID, except the service ID
+		 * itself, are correct. The service ID is checked in
+		 * bnep_setup_chk(). */
+		if (memcmp(&dest[4], bt_base, sizeof(bt_base)) != 0)
+			return BNEP_CONN_INVALID_DST;
+		if (memcmp(&source[4], bt_base, sizeof(bt_base)) != 0)
+			return BNEP_CONN_INVALID_SRC;
+
+		/* Intentional no-break */
+
+	case 4: /* UUID32 */
+		val = bt_get_be32(dest);
+		if (val > 0xffff)
+			return BNEP_CONN_INVALID_DST;
+		*dst_role = val;
+
+		val = bt_get_be32(source);
+		if (val > 0xffff)
+			return BNEP_CONN_INVALID_SRC;
+		*src_role = val;
 		break;
 	default:
 		return BNEP_CONN_INVALID_SVC;
