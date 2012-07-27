@@ -69,9 +69,6 @@
 
 #define AUTO_CONNECTION_INTERVAL	5 /* Next connection attempt */
 
-/* When all services should trust a remote device */
-#define GLOBAL_TRUST "[all]"
-
 #define APPEARANCE_CHR_UUID 0x2a01
 
 struct btd_disconnect_data {
@@ -491,8 +488,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 	ba2str(&src, srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
-	err = write_trust(srcaddr, dstaddr, device->bdaddr_type, GLOBAL_TRUST,
-									value);
+	err = write_trust(srcaddr, dstaddr, device->bdaddr_type, value);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -1083,8 +1079,7 @@ struct btd_device *device_create(DBusConnection *conn,
 	if (read_device_alias(srcaddr, address, bdaddr_type, alias,
 							sizeof(alias)) == 0)
 		device->alias = g_strdup(alias);
-	device->trusted = read_trust(&src, address, device->bdaddr_type,
-								GLOBAL_TRUST);
+	device->trusted = read_trust(&src, address, device->bdaddr_type);
 
 	if (read_blocked(&src, &device->bdaddr, device->bdaddr_type))
 		device_block(conn, device, FALSE);

@@ -47,6 +47,9 @@
 #include "glib-helper.h"
 #include "storage.h"
 
+/* When all services should trust a remote device */
+#define GLOBAL_TRUST "[all]"
+
 struct match {
 	GSList *keys;
 	char *pattern;
@@ -714,59 +717,10 @@ ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin)
 	return len;
 }
 
-static GSList *service_string_to_list(char *services)
-{
-	GSList *l = NULL;
-	char *start = services;
-	int i, finished = 0;
-
-	for (i = 0; !finished; i++) {
-		if (services[i] == '\0')
-			finished = 1;
-
-		if (services[i] == ' ' || services[i] == '\0') {
-			services[i] = '\0';
-			l = g_slist_append(l, start);
-			start = services + i + 1;
-		}
-	}
-
-	return l;
-}
-
-static char *service_list_to_string(GSList *services)
-{
-	char str[1024];
-	int len = 0;
-
-	if (!services)
-		return g_strdup("");
-
-	memset(str, 0, sizeof(str));
-
-	while (services) {
-		int ret;
-		char *ident = services->data;
-
-		ret = snprintf(str + len, sizeof(str) - len - 1, "%s%s",
-				ident, services->next ? " " : "");
-
-		if (ret > 0)
-			len += ret;
-
-		services = services->next;
-	}
-
-	return g_strdup(str);
-}
-
 int write_trust(const char *src, const char *addr, uint8_t addr_type,
-					const char *service, gboolean trust)
+							gboolean trust)
 {
-	char filename[PATH_MAX + 1], key[20], *str;
-	GSList *services = NULL, *match;
-	gboolean trusted;
-	int ret;
+	char filename[PATH_MAX + 1], key[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "trusts");
 
@@ -774,54 +728,15 @@ int write_trust(const char *src, const char *addr, uint8_t addr_type,
 
 	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
 
-	str = textfile_caseget(filename, key);
-	if (str == NULL) {
-		/* Try old format (address only) */
-		str = textfile_caseget(filename, addr);
-		if (str)
-			services = service_string_to_list(str);
-	} else
-		services = service_string_to_list(str);
+	if (trust == FALSE)
+		return textfile_casedel(filename, key);
 
-	match = g_slist_find_custom(services, service, (GCompareFunc) strcmp);
-	trusted = match ? TRUE : FALSE;
-
-	/* If the old setting is the same as the requested one, we're done */
-	if (trusted == trust) {
-		g_slist_free(services);
-		free(str);
-		return 0;
-	}
-
-	if (trust)
-		services = g_slist_append(services, (void *) service);
-	else
-		services = g_slist_remove(services, match->data);
-
-	/* Remove the entry if the last trusted service was removed */
-	if (!trust && !services) {
-		ret = textfile_casedel(filename, key);
-		if (ret < 0)
-			/* Try old format (address only) */
-			ret = textfile_casedel(filename, addr);
-	} else {
-		char *new_str = service_list_to_string(services);
-		ret = textfile_caseput(filename, key, new_str);
-		g_free(new_str);
-	}
-
-	g_slist_free(services);
-
-	free(str);
-
-	return ret;
+	return textfile_caseput(filename, key, GLOBAL_TRUST);
 }
 
-gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type,
-							const char *service)
+gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type)
 {
 	char filename[PATH_MAX + 1], key[20], *str;
-	GSList *services;
 	gboolean ret;
 
 	create_filename(filename, PATH_MAX, local, "trusts");
@@ -829,25 +744,19 @@ gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type,
 	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
 
 	str = textfile_caseget(filename, key);
-	if (str != NULL)
-		goto done;
+	if (str == NULL)
+		/* Try old format (address only) */
+		str = textfile_caseget(filename, addr);
 
-	/* Try old format (address only) */
-	str = textfile_caseget(filename, addr);
-	if (!str)
+	if (str == NULL)
 		return FALSE;
 
-done:
-	services = service_string_to_list(str);
-
-	if (g_slist_find_custom(services, service, (GCompareFunc) strcmp))
+	if (strcmp(str, GLOBAL_TRUST) == 0)
 		ret = TRUE;
 	else
 		ret = FALSE;
 
-	g_slist_free(services);
 	free(str);
-
 	return ret;
 }
 
