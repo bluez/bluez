@@ -23,8 +23,10 @@
 
 #include "textfile.h"
 
-int read_device_alias(const char *src, const char *dst, char *alias, size_t size);
-int write_device_alias(const char *src, const char *dst, const char *alias);
+int read_device_alias(const char *src, const char *dst, uint8_t dst_type,
+						char *alias, size_t size);
+int write_device_alias(const char *src, const char *dst, uint8_t dst_type,
+							const char *alias);
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout);
 int read_discoverable_timeout(const char *src, int *timeout);
 int write_pairable_timeout(bdaddr_t *bdaddr, int timeout);

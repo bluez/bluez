@@ -62,17 +62,29 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-int read_device_alias(const char *src, const char *dst, char *alias, size_t size)
+int read_device_alias(const char *src, const char *dst, uint8_t dst_type,
+						char *alias, size_t size)
 {
 	char filename[PATH_MAX + 1], *tmp;
+	char key[20];
 	int err;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
 
-	tmp = textfile_get(filename, dst);
-	if (!tmp)
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	tmp = textfile_get(filename, key);
+	if (tmp != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	key[17] = '\0';
+
+	tmp = textfile_get(filename, key);
+	if (tmp == NULL)
 		return -ENXIO;
 
+done:
 	err = snprintf(alias, size, "%s", tmp);
 
 	free(tmp);
@@ -80,15 +92,19 @@ int read_device_alias(const char *src, const char *dst, char *alias, size_t size
 	return err < 0 ? -EIO : 0;
 }
 
-int write_device_alias(const char *src, const char *dst, const char *alias)
+int write_device_alias(const char *src, const char *dst, uint8_t dst_type,
+							const char *alias)
 {
 	char filename[PATH_MAX + 1];
+	char key[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "aliases");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	return textfile_put(filename, dst, alias);
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	return textfile_put(filename, key, alias);
 }
 
 int write_discoverable_timeout(bdaddr_t *bdaddr, int timeout)
