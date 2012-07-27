@@ -748,10 +748,10 @@ static char *service_list_to_string(GSList *services)
 	return g_strdup(str);
 }
 
-int write_trust(const char *src, const char *addr, const char *service,
-		gboolean trust)
+int write_trust(const char *src, const char *addr, uint8_t addr_type,
+					const char *service, gboolean trust)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 	GSList *services = NULL, *match;
 	gboolean trusted;
 	int ret;
@@ -760,8 +760,15 @@ int write_trust(const char *src, const char *addr, const char *service,
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	str = textfile_caseget(filename, addr);
-	if (str)
+	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
+
+	str = textfile_caseget(filename, key);
+	if (str == NULL) {
+		/* Try old format (address only) */
+		str = textfile_caseget(filename, addr);
+		if (str)
+			services = service_string_to_list(str);
+	} else
 		services = service_string_to_list(str);
 
 	match = g_slist_find_custom(services, service, (GCompareFunc) strcmp);
@@ -780,11 +787,14 @@ int write_trust(const char *src, const char *addr, const char *service,
 		services = g_slist_remove(services, match->data);
 
 	/* Remove the entry if the last trusted service was removed */
-	if (!trust && !services)
-		ret = textfile_casedel(filename, addr);
-	else {
+	if (!trust && !services) {
+		ret = textfile_casedel(filename, key);
+		if (ret < 0)
+			/* Try old format (address only) */
+			ret = textfile_casedel(filename, addr);
+	} else {
 		char *new_str = service_list_to_string(services);
-		ret = textfile_caseput(filename, addr, new_str);
+		ret = textfile_caseput(filename, key, new_str);
 		g_free(new_str);
 	}
 
@@ -795,18 +805,27 @@ int write_trust(const char *src, const char *addr, const char *service,
 	return ret;
 }
 
-gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service)
+gboolean read_trust(const bdaddr_t *local, const char *addr, uint8_t addr_type,
+							const char *service)
 {
-	char filename[PATH_MAX + 1], *str;
+	char filename[PATH_MAX + 1], key[20], *str;
 	GSList *services;
 	gboolean ret;
 
 	create_filename(filename, PATH_MAX, local, "trusts");
 
+	snprintf(key, sizeof(key), "%17s#%hhu", addr, addr_type);
+
+	str = textfile_caseget(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
 	str = textfile_caseget(filename, addr);
 	if (!str)
 		return FALSE;
 
+done:
 	services = service_string_to_list(str);
 
 	if (g_slist_find_custom(services, service, (GCompareFunc) strcmp))
