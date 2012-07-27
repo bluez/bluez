@@ -800,13 +800,29 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
 	return textfile_put(filename, addr, profiles);
 }
 
-int delete_entry(bdaddr_t *src, const char *storage, const char *key)
+int delete_entry(bdaddr_t *src, const char *storage, bdaddr_t *dst,
+							uint8_t dst_type)
 {
-	char filename[PATH_MAX + 1];
+	char filename[PATH_MAX + 1], key[20];
+	int err, ret;
+
+	ba2str(dst, key);
+	sprintf(&key[17], "#%hhu", dst_type);
 
 	create_filename(filename, PATH_MAX, src, storage);
 
-	return textfile_del(filename, key);
+	err = 0;
+	ret = textfile_del(filename, key);
+	if (ret)
+		err = ret;
+
+	/* Trying without address type */
+	key[17] = '\0';
+	ret = textfile_del(filename, key);
+	if (ret)
+		err = ret;
+
+	return err;
 }
 
 int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
