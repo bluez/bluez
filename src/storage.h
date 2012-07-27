@@ -58,8 +58,10 @@ int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
 								struct tm *tm);
 int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
 								struct tm *tm);
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length);
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type);
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+				unsigned char *key, uint8_t type, int length);
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+					unsigned char *key, uint8_t *type);
 ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service);
 int write_trust(const char *src, const char *addr, const char *service, gboolean trust);

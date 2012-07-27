@@ -1087,7 +1087,8 @@ struct btd_device *device_create(DBusConnection *conn,
 	if (read_blocked(&src, &device->bdaddr, device->bdaddr_type))
 		device_block(conn, device, FALSE);
 
-	if (read_link_key(&src, &device->bdaddr, NULL, NULL) == 0) {
+	if (read_link_key(&src, &device->bdaddr, device->bdaddr_type, NULL,
+								NULL) == 0) {
 		device_set_paired(device, TRUE);
 		device_set_bonded(device, TRUE);
 	}

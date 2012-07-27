@@ -408,6 +408,7 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
+	uint8_t peer_type;
 	int ret;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
@@ -415,7 +416,10 @@ int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer,
 
 	DBG("storing link key of type 0x%02x", key_type);
 
-	ret = write_link_key(local, peer, key, key_type, pin_length);
+	peer_type = device_get_addr_type(device);
+
+	ret = write_link_key(local, peer, peer_type, key, key_type,
+								pin_length);
 
 	if (ret == 0) {
 		device_set_bonded(device, TRUE);

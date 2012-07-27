@@ -1793,20 +1793,25 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, uint8_t bdaddr_type,
 static void create_stored_device_from_linkkeys(char *key, char *value,
 							void *user_data)
 {
+	char address[18];
+	uint8_t bdaddr_type;
 	struct adapter_keys *keys = user_data;
 	struct btd_adapter *adapter = keys->adapter;
 	struct btd_device *device;
 	struct link_key_info *info;
 
+	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
+		bdaddr_type = BDADDR_BREDR;
+
 	info = get_key_info(key, value);
 	if (info)
 		keys->keys = g_slist_append(keys->keys, info);
 
-	if (g_slist_find_custom(adapter->devices, key,
+	if (g_slist_find_custom(adapter->devices, address,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, BDADDR_BREDR);
+	device = device_create(connection, adapter, address, bdaddr_type);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);

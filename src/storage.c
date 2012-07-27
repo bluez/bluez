@@ -608,9 +608,10 @@ int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
 	return textfile_put(filename, key, str);
 }
 
-int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length)
+int write_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+				unsigned char *key, uint8_t type, int length)
 {
-	char filename[PATH_MAX + 1], addr[18], str[38];
+	char filename[PATH_MAX + 1], addr[20], str[38];
 	int i;
 
 	memset(str, 0, sizeof(str));
@@ -623,6 +624,7 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
 	ba2str(peer, addr);
+	sprintf(&addr[17], "#%hhu", peer_type);
 
 	if (length < 0) {
 		char *tmp = textfile_get(filename, addr);
@@ -636,18 +638,29 @@ int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t 
 	return textfile_put(filename, addr, str);
 }
 
-int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type)
+int read_link_key(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+					unsigned char *key, uint8_t *type)
 {
-	char filename[PATH_MAX + 1], addr[18], tmp[3], *str;
+	char filename[PATH_MAX + 1], addr[20], tmp[3], *str;
 	int i;
 
 	create_filename(filename, PATH_MAX, local, "linkkeys");
 
 	ba2str(peer, addr);
+	sprintf(&addr[17], "#%hhu", peer_type);
+
+	str = textfile_get(filename, addr);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
+	addr[17] = '\0';
+
 	str = textfile_get(filename, addr);
 	if (!str)
 		return -ENOENT;
 
+done:
 	if (!key) {
 		free(str);
 		return 0;
