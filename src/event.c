@@ -233,7 +233,7 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
+static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
 	struct tm *tm;
@@ -241,7 +241,7 @@ static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba)
 	t = time(NULL);
 	tm = gmtime(&t);
 
-	write_lastseen_info(sba, dba, tm);
+	write_lastseen_info(sba, dba, dba_type, tm);
 }
 
 static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
@@ -267,7 +267,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 		return;
 	}
 
-	update_lastseen(local, peer);
+	update_lastseen(local, peer, bdaddr_type);
 
 	if (data)
 		write_remote_eir(local, peer, data, data_len);

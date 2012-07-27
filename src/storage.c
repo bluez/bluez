@@ -572,9 +572,10 @@ int read_remote_features(bdaddr_t *local, bdaddr_t *peer,
 	return err;
 }
 
-int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
+int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm)
 {
-	char filename[PATH_MAX + 1], addr[18], str[24];
+	char filename[PATH_MAX + 1], key[20], str[24];
 
 	memset(str, 0, sizeof(str));
 	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
@@ -583,8 +584,10 @@ int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
+	ba2str(peer, key);
+	sprintf(&key[17], "#%hhu", peer_type);
+
+	return textfile_put(filename, key, str);
 }
 
 int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm)
