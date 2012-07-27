@@ -31,16 +31,23 @@
 
 #define PB_TELECOM_FOLDER "/telecom"
 #define PB_CONTACTS_FOLDER "/telecom/pb"
+#define PB_CALENDAR_FOLDER "/telecom/cal"
+#define PB_NOTES_FOLDER "/telecom/nt"
 #define PB_CALLS_COMBINED_FOLDER "/telecom/cch"
 #define PB_CALLS_INCOMING_FOLDER "/telecom/ich"
 #define PB_CALLS_MISSED_FOLDER "/telecom/mch"
 #define PB_CALLS_OUTGOING_FOLDER "/telecom/och"
+#define PB_LUID_FOLDER "/telecom/luid"
 
 #define PB_CONTACTS "/telecom/pb.vcf"
 #define PB_CALLS_COMBINED "/telecom/cch.vcf"
 #define PB_CALLS_INCOMING "/telecom/ich.vcf"
 #define PB_CALLS_MISSED "/telecom/mch.vcf"
 #define PB_CALLS_OUTGOING "/telecom/och.vcf"
+#define PB_DEVINFO "/telecom/devinfo.txt"
+#define PB_INFO_LOG "/telecom/pb/info.log"
+#define PB_CC_LOG "/telecom/pb/luid/cc.log"
+
 
 struct apparam_field {
 	/* list and pull attributes */
