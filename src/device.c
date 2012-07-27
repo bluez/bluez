@@ -1098,8 +1098,8 @@ struct btd_device *device_create(DBusConnection *conn,
 		device_set_bonded(device, TRUE);
 	}
 
-	if (read_device_id(srcaddr, address, NULL, &vendor, &product, &version)
-									== 0) {
+	if (read_device_id(srcaddr, address, bdaddr_type, NULL, &vendor,
+						&product, &version) == 0) {
 		device_set_vendor(device, vendor);
 		device_set_product(device, product);
 		device_set_version(device, version);
@@ -1497,7 +1497,8 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			device_set_version(device, version);
 
 			if (source || vendor || product || version)
-				store_device_id(srcaddr, dstaddr, source,
+				store_device_id(srcaddr, dstaddr,
+						device->bdaddr_type, source,
 						vendor, product, version);
 		}
 

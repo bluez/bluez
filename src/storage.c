@@ -1021,35 +1021,46 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 	return NULL;
 }
 
-int store_device_id(const gchar *src, const gchar *dst,
+int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version)
 {
-	char filename[PATH_MAX + 1], str[20];
+	char filename[PATH_MAX + 1], key[20], str[20];
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
 	snprintf(str, sizeof(str), "%04X %04X %04X %04X", source,
 						vendor, product, version);
 
-	return textfile_put(filename, dst, str);
+	return textfile_put(filename, key, str);
 }
 
 static int read_device_id_from_did(const gchar *src, const gchar *dst,
-					uint16_t *source, uint16_t *vendor,
-					uint16_t *product, uint16_t *version)
+				   uint8_t dst_type, uint16_t *source,
+				   uint16_t *vendor, uint16_t *product,
+							uint16_t *version)
 {
 	char filename[PATH_MAX + 1];
-	char *str, *vendor_str, *product_str, *version_str;
+	char key[20], *str, *vendor_str, *product_str, *version_str;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "did");
 
+	snprintf(key, sizeof(key), "%17s#%hhu", dst, dst_type);
+
+	str = textfile_get(filename, key);
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address only) */
 	str = textfile_get(filename, dst);
 	if (!str)
 		return -ENOENT;
 
+done:
 	vendor_str = strchr(str, ' ');
 	if (!vendor_str) {
 		free(str);
@@ -1086,7 +1097,7 @@ static int read_device_id_from_did(const gchar *src, const gchar *dst,
 }
 
 int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
-					uint16_t *source, uint16_t *vendor,
+		   uint8_t dst_type, uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version)
 {
 	uint16_t lsource, lvendor, lproduct, lversion;
@@ -1095,8 +1106,9 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 	bdaddr_t src, dst;
 	int err;
 
-	err = read_device_id_from_did(srcaddr, dstaddr, &lsource,
-						vendor, product, version);
+	err = read_device_id_from_did(srcaddr, dstaddr, dst_type, &lsource,
+								vendor, product,
+								version);
 	if (!err) {
 		if (lsource == 0xffff)
 			err = -ENOENT;
@@ -1141,7 +1153,8 @@ int read_device_id(const gchar *srcaddr, const gchar *dstaddr,
 		lversion = 0x0000;
 	}
 
-	store_device_id(srcaddr, dstaddr, lsource, lvendor, lproduct, lversion);
+	store_device_id(srcaddr, dstaddr, dst_type, lsource, lvendor,
+							lproduct, lversion);
 
 	if (err)
 		return err;

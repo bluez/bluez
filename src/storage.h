@@ -74,10 +74,10 @@ int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
 void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
-int store_device_id(const gchar *src, const gchar *dst,
+int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 				const uint16_t source, const uint16_t vendor,
 				const uint16_t product, const uint16_t version);
-int read_device_id(const gchar *src, const gchar *dst,
+int read_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
 					uint16_t *source, uint16_t *vendor,
 					uint16_t *product, uint16_t *version);
 int write_device_pairable(bdaddr_t *local, gboolean mode);
