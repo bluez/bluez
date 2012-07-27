@@ -270,7 +270,7 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 	update_lastseen(local, peer, bdaddr_type);
 
 	if (data)
-		write_remote_eir(local, peer, data, data_len);
+		write_remote_eir(local, peer, bdaddr_type, data, data_len);
 
 	adapter_update_found_devices(adapter, peer, bdaddr_type, rssi,
 						confirm_name, data, data_len);
