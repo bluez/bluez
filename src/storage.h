@@ -72,11 +72,15 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
 							const char *profiles);
 int delete_entry(bdaddr_t *src, const char *storage, bdaddr_t *dst,
 							uint8_t dst_type);
-int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
+int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							sdp_record_t *rec);
 sdp_record_t *record_from_string(const gchar *str);
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst, const uint32_t handle);
-int delete_record(const gchar *src, const gchar *dst, const uint32_t handle);
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst);
+sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
+			   uint8_t dst_type, const uint32_t handle);
+int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							const uint32_t handle);
+void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
+							uint8_t dst_type);
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
 int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,

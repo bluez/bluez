@@ -894,9 +894,10 @@ int delete_entry(bdaddr_t *src, const char *storage, bdaddr_t *dst,
 	return err;
 }
 
-int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
+int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							sdp_record_t *rec)
 {
-	char filename[PATH_MAX + 1], key[28];
+	char filename[PATH_MAX + 1], key[30];
 	sdp_buf_t buf;
 	int err, size, i;
 	char *str;
@@ -905,7 +906,8 @@ int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, rec->handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type,
+								rec->handle);
 
 	if (sdp_gen_record_pdu(rec, &buf) < 0)
 		return -1;
@@ -949,34 +951,54 @@ sdp_record_t *record_from_string(const gchar *str)
 
 
 sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
-						const uint32_t handle)
+			   uint8_t dst_type, const uint32_t handle)
 {
-	char filename[PATH_MAX + 1], key[28], *str;
+	char filename[PATH_MAX + 1], old_key[28], key[30], *str;
 	sdp_record_t *rec;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
+	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
 
 	str = textfile_get(filename, key);
-	if (!str)
+	if (str != NULL)
+		goto done;
+
+	/* Try old format (address#handle) */
+	str = textfile_get(filename, old_key);
+	if (str == NULL)
 		return NULL;
 
+done:
 	rec = record_from_string(str);
 	free(str);
 
 	return rec;
 }
 
-int delete_record(const gchar *src, const gchar *dst, const uint32_t handle)
+int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
+							const uint32_t handle)
 {
-	char filename[PATH_MAX + 1], key[28];
+	char filename[PATH_MAX + 1], old_key[28], key[30];
+	int err, ret;
 
 	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
 
-	snprintf(key, sizeof(key), "%17s#%08X", dst, handle);
+	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
+	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
 
-	return textfile_del(filename, key);
+	err = 0;
+	ret = textfile_del(filename, key);
+	if (ret)
+		err = ret;
+
+	/* Try old format (address#handle) */
+	ret = textfile_del(filename, old_key);
+	if (ret)
+		err = ret;
+
+	return err;
 }
 
 struct record_list {
@@ -999,7 +1021,8 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst)
+void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
+							uint8_t dst_type)
 {
 	sdp_list_t *records, *seq;
 	char srcaddr[18], dstaddr[18];
@@ -1011,7 +1034,7 @@ void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst)
 
 	for (seq = records; seq; seq = seq->next) {
 		sdp_record_t *rec = seq->data;
-		delete_record(srcaddr, dstaddr, rec->handle);
+		delete_record(srcaddr, dstaddr, dst_type, rec->handle);
 	}
 
 	if (records)

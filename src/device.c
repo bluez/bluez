@@ -1179,8 +1179,8 @@ static void device_remove_stored(struct btd_device *device)
 		btd_adapter_remove_bonding(device->adapter, &dst, dst_type);
 	}
 
-	delete_all_records(&src, &device->bdaddr);
-	delete_device_service(&src, &device->bdaddr, device->bdaddr_type);
+	delete_all_records(&src, &dst, dst_type);
+	delete_device_service(&src, &dst, dst_type);
 
 	if (device->blocked)
 		device_unblock(conn, device, TRUE, FALSE);
@@ -1404,7 +1404,8 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 		if (!rec)
 			continue;
 
-		delete_record(srcaddr, dstaddr, rec->handle);
+		delete_record(srcaddr, dstaddr, device->bdaddr_type,
+							rec->handle);
 
 		records = sdp_list_remove(records, rec);
 		sdp_record_free(rec);
@@ -1446,6 +1447,7 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 	struct btd_adapter *adapter = device_get_adapter(device);
 	sdp_list_t *seq;
 	char srcaddr[18], dstaddr[18];
+	uint8_t dst_type;
 	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
@@ -1512,7 +1514,9 @@ static void update_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 		}
 
-		store_record(srcaddr, dstaddr, rec);
+		dst_type = device_get_addr_type(device);
+
+		store_record(srcaddr, dstaddr, dst_type, rec);
 
 		/* Copy record */
 		req->records = sdp_list_append(req->records,
