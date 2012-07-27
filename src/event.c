@@ -244,7 +244,7 @@ static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 	write_lastseen_info(sba, dba, dba_type, tm);
 }
 
-static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
+static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
 	struct tm *tm;
@@ -252,7 +252,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba)
 	t = time(NULL);
 	tm = gmtime(&t);
 
-	write_lastused_info(sba, dba, tm);
+	write_lastused_info(sba, dba, dba_type, tm);
 }
 
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
@@ -460,7 +460,7 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_typ
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
 
-	update_lastused(local, peer);
+	update_lastused(local, peer, bdaddr_type);
 
 	if (dev_class != NULL) {
 		uint32_t class = dev_class[0] | (dev_class[1] << 8) |

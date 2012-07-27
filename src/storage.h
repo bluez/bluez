@@ -56,7 +56,8 @@ int write_features_info(bdaddr_t *local, bdaddr_t *peer, unsigned char *page1, u
 int read_remote_features(bdaddr_t *local, bdaddr_t *peer, unsigned char *page1, unsigned char *page2);
 int write_lastseen_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
 								struct tm *tm);
-int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, struct tm *tm);
+int write_lastused_info(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
+								struct tm *tm);
 int write_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t type, int length);
 int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *type);
 ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
