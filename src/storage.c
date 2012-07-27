@@ -807,9 +807,10 @@ gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service
 	return ret;
 }
 
-int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
+int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
+							const char *profiles)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1], key[20];
 
 	if (!profiles)
 		return -EINVAL;
@@ -818,8 +819,10 @@ int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles)
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	ba2str(dst, addr);
-	return textfile_put(filename, addr, profiles);
+	ba2str(dst, key);
+	sprintf(&key[17], "#%hhu", dst_type);
+
+	return textfile_put(filename, key, profiles);
 }
 
 int delete_entry(bdaddr_t *src, const char *storage, bdaddr_t *dst,

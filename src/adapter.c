@@ -1674,15 +1674,20 @@ static const GDBusSignalTable adapter_signals[] = {
 static void create_stored_device_from_profiles(char *key, char *value,
 						void *user_data)
 {
+	char address[18];
+	uint8_t bdaddr_type;
 	struct btd_adapter *adapter = user_data;
 	GSList *list, *uuids = bt_string2list(value);
 	struct btd_device *device;
 
+	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
+		bdaddr_type = BDADDR_BREDR;
+
 	if (g_slist_find_custom(adapter->devices,
-				key, (GCompareFunc) device_address_cmp))
+				address, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, BDADDR_BREDR);
+	device = device_create(connection, adapter, address, bdaddr_type);
 	if (!device)
 		return;
 

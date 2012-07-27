@@ -1540,12 +1540,13 @@ static void store_profiles(struct btd_device *device)
 	adapter_get_address(adapter, &src);
 
 	if (!device->uuids) {
-		write_device_profiles(&src, &device->bdaddr, "");
+		write_device_profiles(&src, &device->bdaddr,
+				      device->bdaddr_type, "");
 		return;
 	}
 
 	str = bt_list2string(device->uuids);
-	write_device_profiles(&src, &device->bdaddr, str);
+	write_device_profiles(&src, &device->bdaddr, device->bdaddr_type, str);
 	g_free(str);
 }
 

@@ -63,7 +63,8 @@ int read_link_key(bdaddr_t *local, bdaddr_t *peer, unsigned char *key, uint8_t *
 ssize_t read_pin_code(bdaddr_t *local, bdaddr_t *peer, char *pin);
 gboolean read_trust(const bdaddr_t *local, const char *addr, const char *service);
 int write_trust(const char *src, const char *addr, const char *service, gboolean trust);
-int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, const char *profiles);
+int write_device_profiles(bdaddr_t *src, bdaddr_t *dst, uint8_t dst_type,
+							const char *profiles);
 int delete_entry(bdaddr_t *src, const char *storage, bdaddr_t *dst,
 							uint8_t dst_type);
 int store_record(const gchar *src, const gchar *dst, sdp_record_t *rec);
