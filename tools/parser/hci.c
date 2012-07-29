@@ -831,16 +831,19 @@ static inline void ext_inquiry_response_dump(int level, struct frame *frm)
 {
 	void *ptr = frm->ptr;
 	uint32_t len = frm->len;
+	uint8_t *data;
 	uint8_t length;
 
+	data = frm->ptr;
 	length = get_u8(frm);
 
 	while (length > 0) {
-		ext_inquiry_data_dump(level, frm, frm->ptr);
+		ext_inquiry_data_dump(level, frm, data);
 
 		frm->ptr += length;
 		frm->len -= length;
 
+		data = frm->ptr;
 		length = get_u8(frm);
 	}
 
