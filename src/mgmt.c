@@ -1308,6 +1308,30 @@ static void handle_pending_uuids(uint16_t index)
 	g_free(pending);
 }
 
+static void mgmt_update_cod(uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_cod *rp = buf;
+	struct controller_info *info;
+	struct btd_adapter *adapter;
+
+	DBG("index %d", index);
+
+	if (len < sizeof(*rp)) {
+		error("Too small class of device reply");
+		return;
+	}
+
+	info = &controllers[index];
+
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (adapter == NULL) {
+		DBG("Adapter not found");
+		return;
+	}
+
+	btd_adapter_class_changed(adapter, rp->val);
+}
+
 static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 								size_t len)
 {
@@ -1318,6 +1342,7 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 		return;
 	}
 
+	mgmt_update_cod(index, buf, len);
 	handle_pending_uuids(index);
 }
 
@@ -1370,9 +1395,11 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		break;
 	case MGMT_OP_REMOVE_UUID:
 		DBG("remove_uuid complete");
+		mgmt_update_cod(index, buf, len);
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
 		DBG("set_dev_class complete");
+		mgmt_update_cod(index, buf, len);
 		break;
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
@@ -1735,7 +1762,7 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 		bonding_complete(info, &ev->key.addr.bdaddr, 0);
 }
 
-static void mgmt_cod_changed(int sk, uint16_t index)
+static void mgmt_cod_changed(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 
@@ -1752,6 +1779,8 @@ static void mgmt_cod_changed(int sk, uint16_t index)
 		info->pending_cod_change = FALSE;
 		handle_pending_uuids(index);
 	}
+
+	mgmt_update_cod(index, buf, len);
 }
 
 static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
@@ -1817,7 +1846,7 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		mgmt_new_settings(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CLASS_OF_DEV_CHANGED:
-		mgmt_cod_changed(sk, index);
+		mgmt_cod_changed(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
 		mgmt_new_link_key(sk, index, buf + MGMT_HDR_SIZE, len);

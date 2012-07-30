@@ -684,27 +684,32 @@ static DBusMessage *set_pairable_timeout(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-void btd_adapter_class_changed(struct btd_adapter *adapter, uint32_t new_class)
+void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 {
-	uint8_t class[3];
+	uint32_t class;
 
-	class[2] = (new_class >> 16) & 0xff;
-	class[1] = (new_class >> 8) & 0xff;
-	class[0] = new_class & 0xff;
+	class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
 
-	write_local_class(&adapter->bdaddr, class);
+	if (class == adapter->dev_class)
+		return;
 
-	adapter->dev_class = new_class;
+	write_local_class(&adapter->bdaddr, new_class);
+
+	adapter->dev_class = class;
 
 	if (main_opts.gatt_enabled) {
+		uint8_t cls[3];
+
+		memcpy(cls, new_class, sizeof(cls));
+
 		/* Removes service class */
-		class[1] = class[1] & 0x1f;
-		attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, class, 2);
+		cls[1] = cls[1] & 0x1f;
+		attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
 	}
 
 	emit_property_changed(connection, adapter->path,
 				ADAPTER_INTERFACE, "Class",
-				DBUS_TYPE_UINT32, &new_class);
+				DBUS_TYPE_UINT32, &class);
 }
 
 void adapter_name_changed(struct btd_adapter *adapter, const char *name)
