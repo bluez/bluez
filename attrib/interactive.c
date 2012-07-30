@@ -588,7 +588,7 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		return;
 	}
 
-	if (!dec_write_resp(pdu, plen)) {
+	if (!dec_write_resp(pdu, plen) && !dec_exec_write_resp(pdu, plen)) {
 		printf("Protocol error\n");
 		return;
 	}

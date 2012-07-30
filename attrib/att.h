@@ -92,6 +92,10 @@
 #define ATT_CID					4
 #define ATT_PSM					31
 
+/* Flags for Execute Write Request Operation */
+#define ATT_CANCEL_ALL_PREP_WRITES              0x00
+#define ATT_WRITE_ALL_PREP_WRITES               0x01
+
 struct att_data_list {
 	uint16_t num;
 	uint16_t len;

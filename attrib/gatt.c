@@ -520,21 +520,120 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
 	return id;
 }
 
-guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
-			int vlen, GAttribResultFunc func, gpointer user_data)
+struct write_long_data {
+	GAttrib *attrib;
+	GAttribResultFunc func;
+	gpointer user_data;
+	guint16 handle;
+	uint16_t offset;
+	uint8_t *value;
+	int vlen;
+};
+
+static guint execute_write(GAttrib *attrib, uint8_t flags,
+				GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t *buf;
 	int buflen;
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
-	if (func)
-		plen = enc_write_req(handle, value, vlen, buf, buflen);
-	else
-		plen = enc_write_cmd(handle, value, vlen, buf, buflen);
+	plen = enc_exec_write_req(flags, buf, buflen);
+	if (plen == 0)
+		return 0;
 
-	return g_attrib_send(attrib, 0, buf[0], buf, plen, func,
+	return g_attrib_send(attrib, 0, buf[0], buf, plen, func, user_data,
+									NULL);
+}
+
+static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
+			uint8_t *value, int vlen, GAttribResultFunc func,
+			gpointer user_data);
+
+static void prepare_write_cb(guint8 status, const guint8 *rpdu,
+					guint16 rlen, gpointer user_data)
+{
+	struct write_long_data *long_write = user_data;
+
+	if (status != 0) {
+		long_write->func(status, rpdu, rlen, long_write->user_data);
+		return;
+	}
+
+	/* Skip Prepare Write Response PDU header (5 bytes) */
+	long_write->offset += rlen - 5;
+
+	if (long_write->offset == long_write->vlen){
+		execute_write(long_write->attrib, ATT_WRITE_ALL_PREP_WRITES,
+				long_write->func, long_write->user_data);
+		g_free(long_write->value);
+		g_free(long_write);
+
+		return;
+	}
+
+	prepare_write(long_write->attrib, long_write->handle,
+		long_write->offset, long_write->value, long_write->vlen,
+		long_write->func, long_write);
+}
+
+static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
+			uint8_t *value, int vlen, GAttribResultFunc func,
+			gpointer user_data)
+{
+	guint16 plen;
+	int buflen;
+	uint8_t *buf;
+
+	buf = g_attrib_get_buffer(attrib, &buflen);
+
+	plen = enc_prep_write_req(handle, offset, &value[offset], vlen - offset,
+								buf, buflen);
+	if (plen == 0)
+		return 0;
+
+	return g_attrib_send(attrib, 0, buf[0], buf, plen, prepare_write_cb,
 							user_data, NULL);
+}
+
+guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
+			int vlen, GAttribResultFunc func, gpointer user_data)
+{
+	uint8_t *buf;
+	int buflen;
+	guint16 plen;
+	struct write_long_data *long_write;
+
+	buf = g_attrib_get_buffer(attrib, &buflen);
+
+	/* Only use Write Request/Command if payload fits on a single transfer,
+	 * including 3 bytes for the header. */
+	if (vlen <= buflen - 3) {
+		if (func)
+			plen = enc_write_req(handle, value, vlen, buf,
+								buflen);
+		else
+			plen = enc_write_cmd(handle, value, vlen, buf,
+								buflen);
+
+		return g_attrib_send(attrib, 0, buf[0], buf, plen, func,
+							user_data, NULL);
+	}
+
+	/* Write Long Characteristic Values */
+	long_write = g_try_new0(struct write_long_data, 1);
+	if (long_write == NULL)
+		return 0;
+
+	long_write->attrib = attrib;
+	long_write->func = func;
+	long_write->user_data = user_data;
+	long_write->handle = handle;
+	long_write->value = g_memdup(value,vlen);
+	long_write->vlen = vlen;
+
+	return prepare_write(attrib, handle, long_write->offset, value, vlen,
+							func, long_write);
 }
 
 guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
