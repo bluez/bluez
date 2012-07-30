@@ -261,3 +261,5 @@ uint16_t enc_prep_write_req(uint16_t handle, uint16_t offset,
 			const uint8_t *value, int vlen, uint8_t *pdu, int len);
 uint16_t dec_prep_write_resp(const uint8_t *pdu, int len, uint16_t *handle,
 				uint16_t *offset, uint8_t *value, int *vlen);
+uint16_t enc_exec_write_req(uint8_t flags, uint8_t *pdu, int len);
+uint16_t dec_exec_write_resp(const uint8_t *pdu, int len);
