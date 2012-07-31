@@ -663,6 +663,8 @@ static int hidp_add_connection(const struct input_device *idev,
 		iconn->req = req;
 		iconn->sec_watch = g_io_add_watch(iconn->intr_io, G_IO_OUT,
 							encrypt_notify, iconn);
+
+		return 0;
 	}
 
 	err = ioctl_connadd(req);
