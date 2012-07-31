@@ -210,7 +210,7 @@ static void mgmt_device_connected(uint16_t len, const void *buf)
 		return;
 	}
 
-	flags = btohs(ev->flags);
+	flags = btohl(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
 	printf("@ Device Connected: %s (%d) flags 0x%4.4x\n",
@@ -357,7 +357,7 @@ static void mgmt_device_found(uint16_t len, const void *buf)
 		return;
 	}
 
-	flags = btohs(ev->flags);
+	flags = btohl(ev->flags);
 	ba2str(&ev->addr.bdaddr, str);
 
 	printf("@ Device Found: %s (%d) rssi %d flags 0x%4.4x\n",
