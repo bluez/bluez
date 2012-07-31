@@ -461,7 +461,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
-	flags = btohs(ev->flags);
+	flags = btohl(ev->flags);
 
 	eir_len = bt_get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
