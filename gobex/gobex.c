@@ -1246,9 +1246,11 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 
 	if (gobex_debug == 0) {
 		const char *env = g_getenv("GOBEX_DEBUG");
-		if (env)
+
+		if (env) {
 			gobex_debug = g_parse_debug_string(env, keys, 6);
-		else
+			g_setenv("G_MESSAGES_DEBUG", "gobex", FALSE);
+		} else
 			gobex_debug = G_OBEX_DEBUG_NONE;
 	}
 
