@@ -160,6 +160,9 @@ static void session_destroy(struct bluetooth_session *session)
 		g_io_channel_unref(session->io);
 	}
 
+	if (session->sdp)
+		sdp_close(session->sdp);
+
 	if (session->conn)
 		dbus_connection_unref(session->conn);
 
