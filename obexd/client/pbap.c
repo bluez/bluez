@@ -232,14 +232,14 @@ static gchar *build_phonebook_path(const char *location, const char *item)
 
 	if (!g_ascii_strcasecmp(location, "INT") ||
 			!g_ascii_strcasecmp(location, "INTERNAL"))
-		path = g_strdup("telecom");
+		path = g_strdup("/telecom");
 	else if (!g_ascii_strncasecmp(location, "SIM", 3)) {
 		if (strlen(location) == 3)
 			tmp = g_strdup("SIM1");
 		else
 			tmp = g_ascii_strup(location, 4);
 
-		path = g_build_filename(tmp, "telecom", NULL);
+		path = g_build_filename("/", tmp, "telecom", NULL);
 		g_free(tmp);
 	} else
 		return NULL;
