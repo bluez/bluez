@@ -21,9 +21,6 @@
  *
  */
 
-#include <glib.h>
-#include <inttypes.h>
-
 /* List of OBEX application parameters tags as per MAP specification. */
 enum map_ap_tag {
 	MAP_AP_MAXLISTCOUNT		= 0x01,		/* uint16_t	*/
@@ -52,63 +49,3 @@ enum map_ap_tag {
 	MAP_AP_STATUSVALUE		= 0x18,		/* uint8_t	*/
 	MAP_AP_MSETIME			= 0x19,		/* char *	*/
 };
-
-/* Data type representing MAP application parameters. Consider opaque. */
-typedef GHashTable map_ap_t;
-
-/* Creates a new empty MAP application parameters object. */
-map_ap_t *map_ap_new(void);
-
-/* Frees all the memory used by MAP application parameters object. */
-void map_ap_free(map_ap_t *ap);
-
-/* Parses given buffer that is a payload of OBEX application parameter header
- * with a given length. Returned value can be used in calls to map_ap_get_*()
- * and map_ap_set_*(). It has to be freed using map_ap_free(). It also takes
- * care of converting all the data to host byte order, so this is the byte
- * order used in map_ap_get_*()/map_ap_set_*().
- *
- * Returns NULL in case of failure.
- */
-map_ap_t *map_ap_decode(const uint8_t *buffer, size_t length);
-
-/* Takes all parameters currently set and packs them into a buffer with OBEX
- * application parameters header payload format.
- *
- * Returns newly allocated buffer of size 'length'. Free with g_free().
- */
-uint8_t *map_ap_encode(map_ap_t *ap, size_t *length);
-
-/* Following family of functions reads value of MAP parameter with given tag.
- * Use the one with appropriate type for a given tag, as noted above in
- * map_ap_tag declaration comments.
- *
- * Returns TRUE when value is present. FALSE if it is not or the function is
- * used get a parameter of a different type. When FALSE is returned, variable
- * pointed by 'val' is left intact.
- */
-gboolean map_ap_get_u8(map_ap_t *ap, enum map_ap_tag tag, uint8_t *val);
-gboolean map_ap_get_u16(map_ap_t *ap, enum map_ap_tag tag, uint16_t *val);
-gboolean map_ap_get_u32(map_ap_t *ap, enum map_ap_tag tag, uint32_t *val);
-
-/* Reads value of MAP parameter with given tag that is of a string type.
- *
- * Returns NULL if parameter is not present in ap or given tag is not of a
- * string type.
- */
-const char *map_ap_get_string(map_ap_t *ap, enum map_ap_tag tag);
-
-/* Following family of functions sets the value of MAP parameter with given
- * tag. Use the one with appropriate type for a given tag, as noted above in
- * map_ap_tag declaration comments.
- *
- * If there is already a parameter with given tag present, it will be
- * replaced. map_ap_set_string() makes its own copy of given string.
- *
- * Returns TRUE on success (the tag is known and the function chosen matches
- * the type of tag).
- */
-gboolean map_ap_set_u8(map_ap_t *ap, enum map_ap_tag tag, uint8_t val);
-gboolean map_ap_set_u16(map_ap_t *ap, enum map_ap_tag tag, uint16_t val);
-gboolean map_ap_set_u32(map_ap_t *ap, enum map_ap_tag tag, uint32_t val);
-gboolean map_ap_set_string(map_ap_t *ap, enum map_ap_tag tag, const char *val);
