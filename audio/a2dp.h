@@ -171,8 +171,6 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 				int *err);
 void a2dp_remove_sep(struct a2dp_sep *sep);
 
-struct a2dp_sep *a2dp_get(struct avdtp *session, struct avdtp_remote_sep *sep);
-
 unsigned int a2dp_select_capabilities(struct avdtp *session,
 					uint8_t type, const char *sender,
 					a2dp_select_cb_t cb,
