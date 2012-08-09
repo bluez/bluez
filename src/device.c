@@ -2984,6 +2984,10 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 		record = find_record_in_list(device->tmp_records, uuid);
 		if (record != NULL)
 			return record;
+
+		sdp_list_free(device->tmp_records,
+					(sdp_free_func_t) sdp_record_free);
+		device->tmp_records = NULL;
 	}
 
 	adapter_get_address(device->adapter, &src);
