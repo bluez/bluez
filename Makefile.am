@@ -423,7 +423,7 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
-	ltmain.sh depcomp compile missing install-sh mkinstalldirs ylwrap
+	ltmain.sh depcomp compile missing install-sh mkinstalldirs
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@

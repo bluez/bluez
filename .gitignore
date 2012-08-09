@@ -26,11 +26,6 @@ missing
 stamp-h1
 autom4te.cache
 
-ylwrap
-lexer.c
-parser.h
-parser.c
-
 bluez.pc
 lib/bluetooth
 src/builtin.h

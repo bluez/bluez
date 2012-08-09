@@ -48,9 +48,6 @@ Prints information about all configured RFCOMM devices.
 .BI -r
 Switch TTY into raw mode (doesn't work with "bind").
 .TP
-.BI -f " <file>"
-Specify alternate config file.
-.TP
 .BI -i " <hciX> | <bdaddr>"
 The command is applied to device
 .BI -A
@@ -89,9 +86,8 @@ Display the information about the specified device.
 .BI connect " <dev> [bdaddr] [channel]"
 Connect the RFCOMM device to the remote Bluetooth device on the
 specified channel. If no channel is specified, it will use the
-channel number 1. If also the Bluetooth address is left out, it
-tries to read the data from the config file. This command can
-be terminated with the key sequence CTRL-C.
+channel number 1. This command can be terminated with the key
+sequence CTRL-C.
 .TP
 .BI listen " <dev> [channel] [cmd]"
 Listen on a specified RFCOMM channel for incoming connections.
@@ -115,15 +111,7 @@ This binds the RFCOMM device to a remote Bluetooth device. The
 command did not establish a connection to the remote device, it
 only creates the binding. The connection will be established right
 after an application tries to open the RFCOMM device. If no channel
-number is specified, it uses the channel number 1. If the Bluetooth
-address is also left out, it tries to read the data from the config
-file.
-
-If
-.B all
-is specified for the RFCOMM device, then all devices that have
-.B "bind yes"
-set in the config will be bound.
+number is specified, it uses the channel number 1.
 .TP
 .BI release " <dev>"
 This command releases a defined RFCOMM binding.
@@ -131,7 +119,6 @@ This command releases a defined RFCOMM binding.
 If
 .B all
 is specified for the RFCOMM device, then all bindings will be removed.
-This command didn't care about the settings in the config file.
 .SH AUTHOR
 Written by Marcel Holtmann <marcel@holtmann.org>.
 .br
