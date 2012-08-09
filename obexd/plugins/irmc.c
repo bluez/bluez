@@ -281,7 +281,7 @@ static int irmc_chkput(struct obex_session *os, void *user_data)
 	return -EBADR;
 }
 
-static void *irmc_open_devinfo(struct irmc_session *irmc, int *err)
+static int irmc_open_devinfo(struct irmc_session *irmc)
 {
 	if (!irmc->buffer)
 		irmc->buffer = g_string_new("");
@@ -301,10 +301,10 @@ static void *irmc_open_devinfo(struct irmc_session *irmc, int *err)
 				"NOTE-TYPE-RX:NONE\r\n",
 				irmc->manu, irmc->model, irmc->sn);
 
-	return irmc;
+	return 0;
 }
 
-static void *irmc_open_pb(struct irmc_session *irmc, int *err)
+static int irmc_open_pb(struct irmc_session *irmc)
 {
 	int ret;
 
@@ -313,25 +313,19 @@ static void *irmc_open_pb(struct irmc_session *irmc, int *err)
 						query_result, irmc, &ret);
 	if (ret < 0) {
 		DBG("phonebook_pull failed...");
-		goto fail;
+		return ret;
 	}
 
 	ret = phonebook_pull_read(irmc->request);
 	if (ret < 0) {
 		DBG("phonebook_pull_read failed...");
-		goto fail;
+		return ret;
 	}
 
-	return irmc;
-
-fail:
-	if (err)
-		*err = ret;
-
-	return NULL;
+	return 0;
 }
 
-static void *irmc_open_info(struct irmc_session *irmc, int *err)
+static int irmc_open_info(struct irmc_session *irmc)
 {
 	if (irmc->buffer == NULL)
 		irmc->buffer = g_string_new("");
@@ -343,20 +337,20 @@ static void *irmc_open_info(struct irmc_session *irmc, int *err)
 				irmc->params->maxlistcount,
 				irmc->params->maxlistcount, irmc->did);
 
-	return irmc;
+	return 0;
 }
 
-static void *irmc_open_cc(struct irmc_session *irmc, int *err)
+static int irmc_open_cc(struct irmc_session *irmc)
 {
 	if (irmc->buffer == NULL)
 		irmc->buffer = g_string_new("");
 
 	g_string_printf(irmc->buffer, "%d\r\n", irmc->params->maxlistcount);
 
-	return irmc;
+	return 0;
 }
 
-static void *irmc_open_cal(struct irmc_session *irmc, int *err)
+static int irmc_open_cal(struct irmc_session *irmc)
 {
 	/* no suport yet. Just return an empty buffer. cal.vcs */
 	DBG("unsupported, returning empty buffer");
@@ -364,10 +358,10 @@ static void *irmc_open_cal(struct irmc_session *irmc, int *err)
 	if (!irmc->buffer)
 		irmc->buffer = g_string_new("");
 
-	return irmc;
+	return 0;
 }
 
-static void *irmc_open_nt(struct irmc_session *irmc, int *err)
+static int irmc_open_nt(struct irmc_session *irmc)
 {
 	/* no suport yet. Just return an empty buffer. nt.vnt */
 	DBG("unsupported, returning empty buffer");
@@ -375,10 +369,10 @@ static void *irmc_open_nt(struct irmc_session *irmc, int *err)
 	if (!irmc->buffer)
 		irmc->buffer = g_string_new("");
 
-	return irmc;
+	return 0;
 }
 
-static void *irmc_open_luid(struct irmc_session *irmc, int *err)
+static int irmc_open_luid(struct irmc_session *irmc)
 {
 	if (irmc->buffer == NULL)
 		irmc->buffer = g_string_new("");
@@ -393,7 +387,7 @@ static void *irmc_open_luid(struct irmc_session *irmc, int *err)
 					irmc->params->maxlistcount,
 					irmc->params->maxlistcount);
 
-	return irmc;
+	return 0;
 }
 
 static void *irmc_open(const char *name, int oflag, mode_t mode, void *context,
@@ -422,21 +416,26 @@ static void *irmc_open(const char *name, int oflag, mode_t mode, void *context,
 		path = g_build_filename("/", name, NULL);
 
 	if (g_str_equal(path, PB_DEVINFO))
-		return irmc_open_devinfo(irmc, err);
+		ret = irmc_open_devinfo(irmc);
 	else if (g_str_equal(path, PB_CONTACTS))
-		return irmc_open_pb(irmc, err);
+		ret = irmc_open_pb(irmc);
 	else if (g_str_equal(path, PB_INFO_LOG))
-		return irmc_open_info(irmc, err);
+		ret = irmc_open_info(irmc);
 	else if (g_str_equal(path, PB_CC_LOG))
-		return irmc_open_cc(irmc, err);
+		ret = irmc_open_cc(irmc);
 	else if (g_str_has_prefix(path, PB_CALENDAR_FOLDER))
-		return irmc_open_cal(irmc, err);
+		ret = irmc_open_cal(irmc);
 	else if (g_str_has_prefix(path, PB_NOTES_FOLDER))
-		return irmc_open_nt(irmc, err);
+		ret = irmc_open_nt(irmc);
 	else if (g_str_has_prefix(path, PB_LUID_FOLDER))
-		return irmc_open_luid(irmc, err);
+		ret = irmc_open_luid(irmc);
 	else
 		ret = -EBADR;
+
+	g_free(path);
+
+	if (ret == 0)
+		return irmc;
 
 fail:
 	if (err)
