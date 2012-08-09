@@ -25,6 +25,7 @@
 #include <glib.h>
 
 #include <gobex/gobex-defs.h>
+#include <gobex/gobex-apparam.h>
 
 /* Header ID's */
 #define G_OBEX_HDR_INVALID	0x00
@@ -77,11 +78,13 @@ gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 								gsize *len);
 gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val);
 gboolean g_obex_header_get_uint32(GObexHeader *header, guint32 *val);
+GObexApparam *g_obex_header_get_apparam(GObexHeader *header);
 
 GObexHeader *g_obex_header_new_unicode(guint8 id, const char *str);
 GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len);
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val);
 GObexHeader *g_obex_header_new_uint32(guint8 id, guint32 val);
+GObexHeader *g_obex_header_new_apparam(GObexApparam *apparam);
 
 GSList *g_obex_header_create_list(guint8 first_hdr_id, va_list args,
 							gsize *total_len);

@@ -337,6 +337,19 @@ gboolean g_obex_header_get_bytes(GObexHeader *header, const guint8 **val,
 	return TRUE;
 }
 
+GObexApparam *g_obex_header_get_apparam(GObexHeader *header)
+{
+	gboolean ret;
+	const guint8 *val;
+	gsize len;
+
+	ret = g_obex_header_get_bytes(header, &val, &len);
+	if (!ret)
+		return NULL;
+
+	return g_obex_apparam_decode(val, len);
+}
+
 gboolean g_obex_header_get_uint8(GObexHeader *header, guint8 *val)
 {
 	g_obex_debug(G_OBEX_DEBUG_HEADER, "header 0x%02x",
@@ -409,6 +422,18 @@ GObexHeader *g_obex_header_new_bytes(guint8 id, const void *data, gsize len)
 	header->v.data = g_memdup(data, len);
 
 	return header;
+}
+
+GObexHeader *g_obex_header_new_apparam(GObexApparam *apparam)
+{
+	guint8 buf[1024];
+	gssize len;
+
+	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
+	if (len < 0)
+		return NULL;
+
+	return g_obex_header_new_bytes(G_OBEX_HDR_APPARAM, buf, len);
 }
 
 GObexHeader *g_obex_header_new_uint8(guint8 id, guint8 val)
