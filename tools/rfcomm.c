@@ -182,10 +182,14 @@ static int create_dev(int ctl, int dev, uint32_t flags, bdaddr_t *bdaddr, int ar
 	}
 
 	err = ioctl(ctl, RFCOMMCREATEDEV, &req);
-	if (err == EOPNOTSUPP)
-		fprintf(stderr, "RFCOMM TTY support not available\n");
-	else if (err < 0)
-		perror("Can't create device");
+	if (err == -1) {
+		err = -errno;
+
+		if (err == -EOPNOTSUPP)
+			fprintf(stderr, "RFCOMM TTY support not available\n");
+		else
+			perror("Can't create device");
+	}
 
 	return err;
 }
