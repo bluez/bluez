@@ -28,27 +28,6 @@
 #define A2DP_CODEC_MPEG24		0x02
 #define A2DP_CODEC_ATRAC		0x03
 
-#define SBC_SAMPLING_FREQ_16000		(1 << 3)
-#define SBC_SAMPLING_FREQ_32000		(1 << 2)
-#define SBC_SAMPLING_FREQ_44100		(1 << 1)
-#define SBC_SAMPLING_FREQ_48000		1
-
-#define SBC_CHANNEL_MODE_MONO		(1 << 3)
-#define SBC_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
-#define SBC_CHANNEL_MODE_STEREO		(1 << 1)
-#define SBC_CHANNEL_MODE_JOINT_STEREO	1
-
-#define SBC_BLOCK_LENGTH_4		(1 << 3)
-#define SBC_BLOCK_LENGTH_8		(1 << 2)
-#define SBC_BLOCK_LENGTH_12		(1 << 1)
-#define SBC_BLOCK_LENGTH_16		1
-
-#define SBC_SUBBANDS_4			(1 << 1)
-#define SBC_SUBBANDS_8			1
-
-#define SBC_ALLOCATION_SNR		(1 << 1)
-#define SBC_ALLOCATION_LOUDNESS		1
-
 #define MPEG_CHANNEL_MODE_MONO		(1 << 3)
 #define MPEG_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
 #define MPEG_CHANNEL_MODE_STEREO	(1 << 1)
@@ -65,21 +44,7 @@
 #define MPEG_SAMPLING_FREQ_44100	(1 << 1)
 #define MPEG_SAMPLING_FREQ_48000	1
 
-#define MAX_BITPOOL 64
-#define MIN_BITPOOL 2
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-
-struct sbc_codec_cap {
-	struct avdtp_media_codec_capability cap;
-	uint8_t channel_mode:4;
-	uint8_t frequency:4;
-	uint8_t allocation_method:2;
-	uint8_t subbands:2;
-	uint8_t block_length:4;
-	uint8_t min_bitpool;
-	uint8_t max_bitpool;
-} __attribute__ ((packed));
 
 struct mpeg_codec_cap {
 	struct avdtp_media_codec_capability cap;
@@ -93,17 +58,6 @@ struct mpeg_codec_cap {
 } __attribute__ ((packed));
 
 #elif __BYTE_ORDER == __BIG_ENDIAN
-
-struct sbc_codec_cap {
-	struct avdtp_media_codec_capability cap;
-	uint8_t frequency:4;
-	uint8_t channel_mode:4;
-	uint8_t block_length:4;
-	uint8_t subbands:2;
-	uint8_t allocation_method:2;
-	uint8_t min_bitpool;
-	uint8_t max_bitpool;
-} __attribute__ ((packed));
 
 struct mpeg_codec_cap {
 	struct avdtp_media_codec_capability cap;
