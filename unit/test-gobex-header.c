@@ -47,6 +47,8 @@ static uint8_t hdr_bytes_nval_short[] = { G_OBEX_HDR_BODY, 0xab, 0xcd,
 						0x01, 0x02, 0x03 };
 static uint8_t hdr_bytes_nval_data[] = { G_OBEX_HDR_BODY, 0xab };
 static uint8_t hdr_bytes_nval_len[] = { G_OBEX_HDR_BODY, 0x00, 0x00 };
+static uint8_t hdr_apparam[] = { G_OBEX_HDR_APPARAM, 0x00, 0x09, 0x00, 0x04,
+						0x01, 0x02, 0x03, 0x04 };
 
 static void test_header_name_empty(void)
 {
@@ -112,6 +114,27 @@ static void test_header_bytes(void)
 
 	assert_memequal(hdr_body, sizeof(hdr_body), buf, len);
 
+	g_obex_header_free(header);
+}
+
+static void test_header_apparam(void)
+{
+	GObexHeader *header;
+	GObexApparam *apparam;
+	uint8_t buf[1024];
+	size_t len;
+
+	apparam = g_obex_apparam_set_uint32(NULL, 0, 0x01020304);
+	g_assert(apparam != NULL);
+
+	header = g_obex_header_new_apparam(apparam);
+	g_assert(header != NULL);
+
+	len = g_obex_header_encode(header, buf, sizeof(buf));
+
+	assert_memequal(hdr_apparam, sizeof(hdr_apparam), buf, len);
+
+	g_obex_apparam_free(apparam);
 	g_obex_header_free(header);
 }
 
@@ -244,6 +267,26 @@ static void test_header_encode_body(void)
 	g_assert(ret == TRUE);
 	assert_memequal(expected, sizeof(expected), buf, len);
 
+	g_obex_header_free(header);
+}
+
+static void test_header_encode_apparam(void)
+{
+	GObexHeader *header;
+	GObexApparam *apparam;
+	gboolean ret;
+	guint32 data;
+
+	header = parse_and_encode(hdr_apparam, sizeof(hdr_apparam));
+
+	apparam = g_obex_header_get_apparam(header);
+	g_assert(apparam != NULL);
+
+	ret = g_obex_apparam_get_uint32(apparam, 0x00, &data);
+	g_assert(ret == TRUE);
+	g_assert(data == 0x01020304);
+
+	g_obex_apparam_free(apparam);
 	g_obex_header_free(header);
 }
 
@@ -507,6 +550,8 @@ int main(int argc, char *argv[])
 						test_header_encode_body);
 	g_test_add_func("/gobex/test_header_encode_connid",
 						test_header_encode_actionid);
+	g_test_add_func("/gobex/test_header_encode_apparam",
+						test_header_encode_apparam);
 
 	g_test_add_func("/gobex/test_header_name_empty",
 						test_header_name_empty);
@@ -517,6 +562,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_bytes", test_header_bytes);
 	g_test_add_func("/gobex/test_header_uint8", test_header_uint8);
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
+	g_test_add_func("/gobex/test_header_apparam", test_header_apparam);
 
 	g_test_run();
 
