@@ -23,57 +23,6 @@
  *
  */
 
-#define A2DP_CODEC_SBC			0x00
-#define A2DP_CODEC_MPEG12		0x01
-#define A2DP_CODEC_MPEG24		0x02
-#define A2DP_CODEC_ATRAC		0x03
-
-#define MPEG_CHANNEL_MODE_MONO		(1 << 3)
-#define MPEG_CHANNEL_MODE_DUAL_CHANNEL	(1 << 2)
-#define MPEG_CHANNEL_MODE_STEREO	(1 << 1)
-#define MPEG_CHANNEL_MODE_JOINT_STEREO	1
-
-#define MPEG_LAYER_MP1			(1 << 2)
-#define MPEG_LAYER_MP2			(1 << 1)
-#define MPEG_LAYER_MP3			1
-
-#define MPEG_SAMPLING_FREQ_16000	(1 << 5)
-#define MPEG_SAMPLING_FREQ_22050	(1 << 4)
-#define MPEG_SAMPLING_FREQ_24000	(1 << 3)
-#define MPEG_SAMPLING_FREQ_32000	(1 << 2)
-#define MPEG_SAMPLING_FREQ_44100	(1 << 1)
-#define MPEG_SAMPLING_FREQ_48000	1
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-
-struct mpeg_codec_cap {
-	struct avdtp_media_codec_capability cap;
-	uint8_t channel_mode:4;
-	uint8_t crc:1;
-	uint8_t layer:3;
-	uint8_t frequency:6;
-	uint8_t mpf:1;
-	uint8_t rfa:1;
-	uint16_t bitrate;
-} __attribute__ ((packed));
-
-#elif __BYTE_ORDER == __BIG_ENDIAN
-
-struct mpeg_codec_cap {
-	struct avdtp_media_codec_capability cap;
-	uint8_t layer:3;
-	uint8_t crc:1;
-	uint8_t channel_mode:4;
-	uint8_t rfa:1;
-	uint8_t mpf:1;
-	uint8_t frequency:6;
-	uint16_t bitrate;
-} __attribute__ ((packed));
-
-#else
-#error "Unknown byte order"
-#endif
-
 struct a2dp_sep;
 struct a2dp_setup;
 
