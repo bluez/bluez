@@ -267,7 +267,7 @@ static gboolean write_stream(GObex *obex, GError **err)
 	if (status != G_IO_STATUS_NORMAL)
 		return FALSE;
 
-	g_obex_dump("<", buf, bytes_written);
+	g_obex_dump(G_OBEX_DEBUG_DATA, "<", buf, bytes_written);
 
 	obex->tx_sent += bytes_written;
 	obex->tx_data -= bytes_written;
@@ -290,7 +290,7 @@ static gboolean write_packet(GObex *obex, GError **err)
 	if (bytes_written != obex->tx_data)
 		return FALSE;
 
-	g_obex_dump("<", buf, bytes_written);
+	g_obex_dump(G_OBEX_DEBUG_DATA, "<", buf, bytes_written);
 
 	obex->tx_sent += bytes_written;
 	obex->tx_data -= bytes_written;
@@ -1078,7 +1078,7 @@ read_body:
 	} while (rbytes > 0 && obex->rx_data < obex->rx_pkt_len);
 
 done:
-	g_obex_dump(">", obex->rx_buf, obex->rx_data);
+	g_obex_dump(G_OBEX_DEBUG_DATA, ">", obex->rx_buf, obex->rx_data);
 
 	return TRUE;
 }
@@ -1124,7 +1124,7 @@ static gboolean read_packet(GObex *obex, GError **err)
 		return FALSE;
 	}
 
-	g_obex_dump(">", obex->rx_buf, obex->rx_data);
+	g_obex_dump(G_OBEX_DEBUG_DATA, ">", obex->rx_buf, obex->rx_data);
 
 	return TRUE;
 fail:
@@ -1236,6 +1236,7 @@ static GDebugKey keys[] = {
 	{ "header",	G_OBEX_DEBUG_HEADER },
 	{ "packet",	G_OBEX_DEBUG_PACKET },
 	{ "data",	G_OBEX_DEBUG_DATA },
+	{ "apparam",	G_OBEX_DEBUG_APPARAM },
 };
 
 GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
@@ -1248,7 +1249,7 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 		const char *env = g_getenv("GOBEX_DEBUG");
 
 		if (env) {
-			gobex_debug = g_parse_debug_string(env, keys, 6);
+			gobex_debug = g_parse_debug_string(env, keys, 7);
 			g_setenv("G_MESSAGES_DEBUG", "gobex", FALSE);
 		} else
 			gobex_debug = G_OBEX_DEBUG_NONE;
