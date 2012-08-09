@@ -61,7 +61,7 @@ struct apparam_field {
 	/* list attributes only */
 	uint8_t order;
 	uint8_t searchattrib;
-	uint8_t *searchval;
+	char *searchval;
 };
 
 /*
