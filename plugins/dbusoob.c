@@ -79,20 +79,36 @@ static void read_local_data_complete(struct btd_adapter *adapter, uint8_t *hash,
 {
 	struct DBusMessage *reply;
 	struct oob_request *oob_request;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
 
 	oob_request = find_oob_request(adapter);
 	if (!oob_request)
 		return;
 
-	if (hash && randomizer)
-		reply = g_dbus_create_reply(oob_request->msg,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &hash, 16,
-			DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &randomizer, 16,
-			DBUS_TYPE_INVALID);
-	else
+	if (!hash || !randomizer) {
 		reply = btd_error_failed(oob_request->msg,
 					"Failed to read local OOB data.");
+		goto done;
+	}
 
+	reply = dbus_message_new_method_return(oob_request->msg);
+	if (!reply)
+		goto done;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	dict_append_array(&dict, "Hash", DBUS_TYPE_BYTE, &hash, 16);
+	dict_append_array(&dict, "Randomizer", DBUS_TYPE_BYTE, &randomizer, 16);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+done:
 	oob_requests = g_slist_remove(oob_requests, oob_request);
 	dbus_message_unref(oob_request->msg);
 	g_free(oob_request);
@@ -182,8 +198,7 @@ static const GDBusMethodTable oob_methods[] = {
 			GDBUS_ARGS({ "address", "s" }), NULL,
 			remove_remote_data) },
 	{ GDBUS_ASYNC_METHOD("ReadLocalData",
-			NULL, GDBUS_ARGS({ "hash", "ay" },
-						{ "randomizer", "ay" }),
+			NULL, GDBUS_ARGS({ "data", "a{sv}" }),
 			read_local_data) },
 	{ }
 };
