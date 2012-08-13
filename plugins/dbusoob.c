@@ -137,6 +137,9 @@ static DBusMessage *read_local_data(DBusConnection *conn, DBusMessage *msg,
 	struct btd_adapter *adapter = data;
 	struct oob_request *oob_request;
 
+	if (!btd_adapter_ssp_enabled(adapter))
+		return btd_error_not_supported(msg);
+
 	if (find_oob_request(adapter))
 		return btd_error_in_progress(msg);
 
@@ -258,6 +261,9 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	struct oob_data remote_data;
 	struct btd_device *device;
 
+	if (!btd_adapter_ssp_enabled(adapter))
+		return btd_error_not_supported(msg);
+
 	memset(&remote_data, 0, sizeof(remote_data));
 
 	dbus_message_iter_init(msg, &args);
@@ -289,6 +295,9 @@ static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
 	struct btd_adapter *adapter = data;
 	const char *addr;
 	bdaddr_t bdaddr;
+
+	if (!btd_adapter_ssp_enabled(adapter))
+		return btd_error_not_supported(msg);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &addr,
 			DBUS_TYPE_INVALID))

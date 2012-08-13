@@ -2474,3 +2474,10 @@ int mgmt_load_ltks(int index, GSList *keys)
 
 	return err;
 }
+
+int mgmt_ssp_enabled(int index)
+{
+	struct controller_info *info = &controllers[index];
+
+	return mgmt_ssp(info->current_settings);
+}
