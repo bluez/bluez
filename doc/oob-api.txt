@@ -2,31 +2,77 @@ BlueZ D-Bus Out Of Band Pairing API description
 ===============================================
 
 Copyright (C) 2011  Szymon Janc <szymon.janc@tieto.com> for ST-Ericsson
+Copyright (C) 2012  Tieto Poland
+
+Currently only Secure Simple Pairing is supported. This might change when white
+paper describing OOB pairing for Bluetooth Low Energy will become available.
+
+Out Of Band hierarchy
+=====================
 
 Service		org.bluez
 Interface	org.bluez.OutOfBand
 Object path	[variable prefix]/{hci0,hci1,...}
 
-Methods		array{byte} hash, array{byte} randomizer ReadLocalData()
+Methods		dict ReadLocalData()
 
 			This method reads local OOB data from adapter. Return
-			value is pair of arrays 16 bytes each.
+			value is a dictionary. Following keys are possible:
 
-			Note: This method will generate and return new local
-			OOB data.
+			array{byte} Hash:
+
+					16 bytes hash blob.
+
+			array{byte} Randomizer:
+
+					16 bytes randomizer blob.
+
+			Other data that can be transmitted via OOB mechanism
+			can be obtained from org.bluez.Adapter interface.
+
+			Note: This method will generate and return new data
+			every time it is called. Data received in previous
+			calls is invalidated and cannot be used for pairing.
 
 			Possible errors: org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
+					 org.bluez.Error.NotSupported
 
-		void AddRemoteData(string address, array{byte} hash,
-							array{byte} randomizer)
+		void AddRemoteData(string address, dict data)
 
 			This method adds new Out Of Band data for
 			specified address. If data for specified address
 			already exists it will be overwritten with new one.
 
+			All data is optional.
+
+			possible keys:
+
+				array{byte} Hash:
+
+					16 bytes hash blob, it is used as is
+					so the size and byte order must match.
+
+				array{byte} Randomizer:
+
+					16 bytes randomizer blob, it is used as
+					is so the size and byte order must
+					match. If Randomizer is provided Hash
+					also needs to be provided.
+
+				uint32 Class:
+
+					The Bluetooth class of device of the
+					remote device.
+
+				string Name:
+
+					Remote device name.
+
 			Possible errors: org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.AlreadyExists
+					 org.bluez.Error.NotSupported
 
 		void RemoveRemoteData(string address)
 
@@ -36,3 +82,4 @@ Methods		array{byte} hash, array{byte} randomizer ReadLocalData()
 
 			Possible errors: org.bluez.Error.Failed
 					 org.bluez.Error.InvalidArguments
+					 org.bluez.Error.NotSupported
