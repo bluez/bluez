@@ -1502,12 +1502,33 @@ static const char *subunit2str(uint8_t subunit)
 	}
 }
 
-void avrcp_dump(int level, struct frame *frm)
+static void avrcp_browsing_dump(int level, struct frame *frm)
+{
+	uint8_t pduid;
+	uint16_t len;
+
+	pduid = get_u8(frm);
+	len = get_u16(frm);
+
+	printf("AVRCP: %s: len 0x%04x\n", pdu2str(pduid), len);
+
+	if (len != frm->len) {
+		p_indent(level, frm);
+		printf("PDU Malformed\n");
+		raw_dump(level, frm);
+		return;
+	}
+
+	switch (pduid) {
+	default:
+		raw_dump(level, frm);
+	}
+}
+
+static void avrcp_control_dump(int level, struct frame *frm)
 {
 	uint8_t ctype, address, subunit, opcode, company[3];
 	int i;
-
-	p_indent(level, frm);
 
 	ctype = get_u8(frm);
 	address = get_u8(frm);
@@ -1555,5 +1576,21 @@ void avrcp_dump(int level, struct frame *frm)
 		break;
 	default:
 		raw_dump(level, frm);
+	}
+}
+
+void avrcp_dump(int level, struct frame *frm, uint16_t psm)
+{
+	p_indent(level, frm);
+
+	switch (psm) {
+		case 0x17:
+			avrcp_control_dump(level, frm);
+			break;
+		case 0x1B:
+			avrcp_browsing_dump(level, frm);
+			break;
+		default:
+			raw_dump(level, frm);
 	}
 }

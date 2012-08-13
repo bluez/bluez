@@ -50,7 +50,7 @@ static char *pt2str(uint8_t hdr)
 	}
 }
 
-void avctp_dump(int level, struct frame *frm)
+void avctp_dump(int level, struct frame *frm, uint16_t psm)
 {
 	uint8_t hdr;
 	uint16_t pid;
@@ -65,7 +65,7 @@ void avctp_dump(int level, struct frame *frm)
 				pt2str(hdr), hdr & 0x0c, hdr >> 4, pid);
 
 	if (pid == SDP_UUID_AV_REMOTE || pid == SDP_UUID_AV_REMOTE_TARGET)
-		avrcp_dump(level + 1, frm);
+		avrcp_dump(level + 1, frm, psm);
 	else
 		raw_dump(level + 1, frm);
 }
