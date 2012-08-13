@@ -170,23 +170,6 @@ static void write_ccc(uint16_t handle, gpointer user_data)
 					report_ccc_written_cb, hogdev);
 }
 
-static void external_report_reference_cb(guint8 status, const guint8 *pdu,
-					guint16 plen, gpointer user_data)
-{
-	if (status != 0) {
-		error("Read External Report Reference descriptor failed: %s",
-							att_ecode2str(status));
-		return;
-	}
-
-	if (plen != 3) {
-		error("Malformed ATT read response");
-		return;
-	}
-
-	DBG("External Report Reference read: 0x%02x 0x%02x", pdu[1], pdu[2]);
-}
-
 static void report_reference_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
@@ -207,6 +190,9 @@ static void report_reference_cb(guint8 status, const guint8 *pdu,
 	report->type = pdu[2];
 	DBG("Report ID: 0x%02x Report type: 0x%02x", pdu[1], pdu[2]);
 }
+
+static void external_report_reference_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data);
 
 static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
@@ -272,6 +258,62 @@ static void discover_descriptor(GAttrib *attrib, struct gatt_char *chr,
 		return;
 
 	gatt_find_info(attrib, start, end, discover_descriptor_cb, user_data);
+}
+
+static void external_service_char_cb(GSList *chars, guint8 status,
+							gpointer user_data)
+{
+	struct hog_device *hogdev = user_data;
+	struct report *report;
+	GSList *l;
+
+	if (status != 0) {
+		const char *str = att_ecode2str(status);
+		DBG("Discover external service characteristic failed: %s", str);
+		return;
+	}
+
+	for (l = chars; l; l = g_slist_next(l)) {
+		struct gatt_char *chr, *next;
+
+		chr = l->data;
+		next = l->next ? l->next->data : NULL;
+
+		DBG("0x%04x UUID: %s properties: %02x",
+				chr->handle, chr->uuid, chr->properties);
+
+		report = g_new0(struct report, 1);
+		report->hogdev = hogdev;
+		report->decl = g_memdup(chr, sizeof(*chr));
+		hogdev->reports = g_slist_append(hogdev->reports, report);
+		discover_descriptor(hogdev->attrib, chr, next, report);
+	}
+}
+
+static void external_report_reference_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	struct hog_device *hogdev = user_data;
+	uint16_t uuid16;
+	bt_uuid_t uuid;
+
+	if (status != 0) {
+		error("Read External Report Reference descriptor failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	if (plen != 3) {
+		error("Malformed ATT read response");
+		return;
+	}
+
+	uuid16 = att_get_u16(&pdu[1]);
+	DBG("External report reference read, external report characteristic "
+						"UUID: 0x%04x", uuid16);
+	bt_uuid16_create(&uuid, uuid16);
+	gatt_discover_char(hogdev->attrib, 0x00, 0xff, &uuid,
+					external_service_char_cb, hogdev);
 }
 
 static void report_map_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
