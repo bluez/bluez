@@ -68,8 +68,8 @@ if __name__ == '__main__':
 	print()
 	print("Exchanging Out of Band data...")
 
-	oob_adapter0.AddRemoteData(adapter1_address, oob1[0], oob1[1])
-	oob_adapter1.AddRemoteData(adapter0_address, oob0[0], oob0[1])
+	oob_adapter0.AddRemoteData(adapter1_address, oob1)
+	oob_adapter1.AddRemoteData(adapter0_address, oob0)
 
 	print("Done.")
 	print()
