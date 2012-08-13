@@ -164,10 +164,8 @@ static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
 			DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
-	if (bachk(addr))
+	if (str2ba(addr, &bdaddr) < 0)
 		return btd_error_invalid_args(msg);
-
-	str2ba(addr, &bdaddr);
 
 	if (btd_adapter_remove_remote_oob_data(adapter, &bdaddr))
 		return btd_error_failed(msg, "Request failed");
