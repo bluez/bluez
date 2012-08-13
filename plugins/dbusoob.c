@@ -43,6 +43,7 @@
 #include "event.h"
 #include "error.h"
 #include "oob.h"
+#include "storage.h"
 
 #define OOB_INTERFACE	"org.bluez.OutOfBand"
 
@@ -55,6 +56,7 @@ struct oob_data {
 	char *addr;
 	uint8_t *hash;
 	uint8_t *randomizer;
+	uint32_t class;
 };
 
 static GSList *oob_requests = NULL;
@@ -189,6 +191,12 @@ static gboolean parse_data(DBusMessageIter *data, struct oob_data *remote_data)
 
 			if (size != 16)
 				return FALSE;
+		} else if (strcasecmp(key, "Class") == 0) {
+			if (var != DBUS_TYPE_UINT32)
+				return FALSE;
+
+			dbus_message_iter_get_basic(&value,
+							&remote_data->class);
 		}
 
 		dbus_message_iter_next(data);
@@ -221,6 +229,13 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 		if (btd_adapter_add_remote_oob_data(adapter, &bdaddr,
 					data->hash, data->randomizer) < 0)
 			return FALSE;
+	}
+
+	if (data->class) {
+		bdaddr_t local;
+		adapter_get_address(adapter, &local);
+
+		write_remote_class(&local, &bdaddr, data->class);
 	}
 
 	return TRUE;
