@@ -1264,8 +1264,8 @@ response:
 	printf("Status: 0x%02x (%s)\n", status, error2str(status));
 }
 
-static void avrcp_set_browsed_player(int level, struct frame *frm,
-						uint8_t ctype, uint16_t len)
+static void avrcp_set_browsed_player_dump(int level, struct frame *frm,
+						uint8_t hdr, uint16_t len)
 {
 	uint32_t items;
 	uint16_t id, uids, charset;
@@ -1273,7 +1273,7 @@ static void avrcp_set_browsed_player(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
+	if (hdr & 0x02)
 		goto response;
 
 	if (len < 2) {
@@ -1406,9 +1406,6 @@ static void avrcp_pdu_dump(int level, struct frame *frm, uint8_t ctype)
 	case AVRCP_SET_ADDRESSED_PLAYER:
 		avrcp_set_addressed_player(level + 1, frm, ctype, len);
 		break;
-	case AVRCP_SET_BROWSED_PLAYER:
-		avrcp_set_browsed_player(level + 1, frm, ctype, len);
-		break;
 	default:
 		raw_dump(level, frm);
 	}
@@ -1502,7 +1499,7 @@ static const char *subunit2str(uint8_t subunit)
 	}
 }
 
-static void avrcp_browsing_dump(int level, struct frame *frm)
+static void avrcp_browsing_dump(int level, struct frame *frm, uint8_t hdr)
 {
 	uint8_t pduid;
 	uint16_t len;
@@ -1520,6 +1517,9 @@ static void avrcp_browsing_dump(int level, struct frame *frm)
 	}
 
 	switch (pduid) {
+	case AVRCP_SET_BROWSED_PLAYER:
+		avrcp_set_browsed_player_dump(level + 1, frm, hdr, len);
+		break;
 	default:
 		raw_dump(level, frm);
 	}
@@ -1579,7 +1579,7 @@ static void avrcp_control_dump(int level, struct frame *frm)
 	}
 }
 
-void avrcp_dump(int level, struct frame *frm, uint16_t psm)
+void avrcp_dump(int level, struct frame *frm, uint8_t hdr, uint16_t psm)
 {
 	p_indent(level, frm);
 
@@ -1588,7 +1588,7 @@ void avrcp_dump(int level, struct frame *frm, uint16_t psm)
 			avrcp_control_dump(level, frm);
 			break;
 		case 0x1B:
-			avrcp_browsing_dump(level, frm);
+			avrcp_browsing_dump(level, frm, hdr);
 			break;
 		default:
 			raw_dump(level, frm);

@@ -234,7 +234,7 @@ void hidp_dump(int level, struct frame *frm);
 void hcrp_dump(int level, struct frame *frm);
 void avdtp_dump(int level, struct frame *frm);
 void avctp_dump(int level, struct frame *frm, uint16_t psm);
-void avrcp_dump(int level, struct frame *frm, uint16_t psm);
+void avrcp_dump(int level, struct frame *frm, uint8_t hdr, uint16_t psm);
 void att_dump(int level, struct frame *frm);
 void smp_dump(int level, struct frame *frm);
 void sap_dump(int level, struct frame *frm);

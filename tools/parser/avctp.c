@@ -65,7 +65,7 @@ void avctp_dump(int level, struct frame *frm, uint16_t psm)
 				pt2str(hdr), hdr & 0x0c, hdr >> 4, pid);
 
 	if (pid == SDP_UUID_AV_REMOTE || pid == SDP_UUID_AV_REMOTE_TARGET)
-		avrcp_dump(level + 1, frm, psm);
+		avrcp_dump(level + 1, frm, hdr, psm);
 	else
 		raw_dump(level + 1, frm);
 }
