@@ -57,6 +57,7 @@ struct oob_data {
 	uint8_t *hash;
 	uint8_t *randomizer;
 	uint32_t class;
+	char *name;
 };
 
 static GSList *oob_requests = NULL;
@@ -197,6 +198,12 @@ static gboolean parse_data(DBusMessageIter *data, struct oob_data *remote_data)
 
 			dbus_message_iter_get_basic(&value,
 							&remote_data->class);
+		} else if (strcasecmp(key, "Name") == 0) {
+			if (var != DBUS_TYPE_STRING)
+				return FALSE;
+
+			dbus_message_iter_get_basic(&value,
+							&remote_data->name);
 		}
 
 		dbus_message_iter_next(data);
@@ -215,8 +222,10 @@ static gboolean parse_data(DBusMessageIter *data, struct oob_data *remote_data)
 static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 {
 	bdaddr_t bdaddr;
+	bdaddr_t local;
 
 	str2ba(data->addr, &bdaddr);
+	adapter_get_address(adapter, &local);
 
 	if (data->hash) {
 		uint8_t empty_randomizer[16];
@@ -231,12 +240,11 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 			return FALSE;
 	}
 
-	if (data->class) {
-		bdaddr_t local;
-		adapter_get_address(adapter, &local);
-
+	if (data->class)
 		write_remote_class(&local, &bdaddr, data->class);
-	}
+
+	if (data->name)
+		write_device_name(&local, &bdaddr, 0, data->name);
 
 	return TRUE;
 }
