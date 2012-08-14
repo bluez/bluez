@@ -1205,12 +1205,12 @@ response:
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		uid = get_u16(frm);
-		printf("PlayerID: 0x%04x (%u)", uid, uid);
+		printf("PlayerID: 0x%04x (%u)\n", uid, uid);
 
 		p_indent(level, frm);
 
 		uid = get_u16(frm);
-		printf("UIDCounter: 0x%04x (%u)", uid, uid);
+		printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
 		break;
 	}
 }
