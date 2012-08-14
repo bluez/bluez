@@ -57,7 +57,7 @@ struct oob_data {
 	uint8_t *hash;
 	uint8_t *randomizer;
 	uint32_t class;
-	char *name;
+	const char *name;
 };
 
 static GSList *oob_requests = NULL;
