@@ -45,7 +45,7 @@ int read_remote_appearance(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 int write_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class);
 int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class);
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
-								char *name);
+							const char *name);
 int read_device_name(const char *src, const char *dst, uint8_t dst_type,
 								char *name);
 int write_remote_eir(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,

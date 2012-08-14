@@ -379,7 +379,7 @@ int read_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t *class)
 }
 
 int write_device_name(bdaddr_t *local, bdaddr_t *peer, uint8_t peer_type,
-								char *name)
+							const char *name)
 {
 	char filename[PATH_MAX + 1], key[20], str[HCI_MAX_NAME_LENGTH + 1];
 	int i;
