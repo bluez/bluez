@@ -42,7 +42,7 @@ struct _GAttrib {
 	GIOChannel *io;
 	gint refs;
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint read_watch;
 	guint write_watch;
 	guint timeout_watch;
@@ -617,7 +617,7 @@ gboolean g_attrib_set_debug(GAttrib *attrib,
 	return TRUE;
 }
 
-uint8_t *g_attrib_get_buffer(GAttrib *attrib, int *len)
+uint8_t *g_attrib_get_buffer(GAttrib *attrib, size_t *len)
 {
 	if (len == NULL)
 		return NULL;

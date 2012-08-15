@@ -31,13 +31,13 @@ enum {
 struct attribute {
 	uint16_t handle;
 	bt_uuid_t uuid;
-	int read_reqs;
-	int write_reqs;
+	size_t read_reqs;
+	size_t write_reqs;
 	uint8_t (*read_cb)(struct attribute *a, struct btd_device *device,
 							gpointer user_data);
 	uint8_t (*write_cb)(struct attribute *a, struct btd_device *device,
 							gpointer user_data);
 	gpointer cb_user_data;
-	int len;
+	size_t len;
 	uint8_t *data;
 };

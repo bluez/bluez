@@ -272,7 +272,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	uint8_t *opdu;
 	guint handle;
 	uint16_t olen;
-	int plen;
+	size_t plen;
 
 	if (len < 3) {
 		DBG("Malformed notification/indication packet (opcode 0x%02x)",

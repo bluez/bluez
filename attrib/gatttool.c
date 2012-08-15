@@ -77,7 +77,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	GAttrib *attrib = user_data;
 	uint8_t *opdu;
 	uint16_t handle, i, olen = 0;
-	int plen;
+	size_t plen;
 
 	handle = att_get_u16(&pdu[1]);
 

@@ -151,7 +151,7 @@ static uint8_t time_update_control(struct attribute *a,
 	DBG("handle 0x%04x", a->handle);
 
 	if (a->len != 1)
-		DBG("Invalid control point value size: %d", a->len);
+		DBG("Invalid control point value size: %zu", a->len);
 
 	switch (a->data[0]) {
 	case GET_REFERENCE_UPDATE:

@@ -338,8 +338,9 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 }
 
 static struct attribute *attrib_db_add_new(struct gatt_server *server,
-				uint16_t handle, bt_uuid_t *uuid, int read_reqs,
-				int write_reqs, const uint8_t *value, int len)
+				uint16_t handle, bt_uuid_t *uuid,
+				size_t read_reqs, size_t write_reqs,
+				const uint8_t *value, size_t len)
 {
 	struct attribute *a;
 	guint h = handle;
@@ -400,7 +401,7 @@ static uint8_t att_check_reqs(struct gatt_channel *channel, uint8_t opcode,
 
 static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 						uint16_t end, bt_uuid_t *uuid,
-						uint8_t *pdu, int len)
+						uint8_t *pdu, size_t len)
 {
 	struct att_data_list *adl;
 	struct attribute *a;
@@ -516,7 +517,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 
 static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 						uint16_t end, bt_uuid_t *uuid,
-						uint8_t *pdu, int len)
+						uint8_t *pdu, size_t len)
 {
 	struct att_data_list *adl;
 	GSList *l, *types;
@@ -598,8 +599,8 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 	return length;
 }
 
-static int find_info(struct gatt_channel *channel, uint16_t start, uint16_t end,
-							uint8_t *pdu, int len)
+static uint16_t find_info(struct gatt_channel *channel, uint16_t start,
+				uint16_t end, uint8_t *pdu, size_t len)
 {
 	struct attribute *a;
 	struct att_data_list *adl;
@@ -673,15 +674,16 @@ static int find_info(struct gatt_channel *channel, uint16_t start, uint16_t end,
 	return length;
 }
 
-static int find_by_type(struct gatt_channel *channel, uint16_t start,
-			uint16_t end, bt_uuid_t *uuid, const uint8_t *value,
-					int vlen, uint8_t *opdu, int mtu)
+static uint16_t find_by_type(struct gatt_channel *channel, uint16_t start,
+				uint16_t end, bt_uuid_t *uuid,
+				const uint8_t *value, size_t vlen,
+				uint8_t *opdu, size_t mtu)
 {
 	struct attribute *a;
 	struct att_range *range;
 	GSList *matches;
 	GList *dl, *database;
-	int len;
+	uint16_t len;
 
 	if (start > end || start == 0x0000)
 		return enc_error_resp(ATT_OP_FIND_BY_TYPE_REQ, start,
@@ -733,7 +735,7 @@ static int find_by_type(struct gatt_channel *channel, uint16_t start,
 }
 
 static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
-							uint8_t *pdu, int len)
+						uint8_t *pdu, size_t len)
 {
 	struct attribute *a;
 	uint8_t status;
@@ -774,7 +776,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 }
 
 static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
-					uint16_t offset, uint8_t *pdu, int len)
+				uint16_t offset, uint8_t *pdu, size_t len)
 {
 	struct attribute *a;
 	uint8_t status;
@@ -820,8 +822,8 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 }
 
 static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
-						const uint8_t *value, int vlen,
-						uint8_t *pdu, int len)
+					const uint8_t *value, size_t vlen,
+					uint8_t *pdu, size_t len)
 {
 	struct attribute *a;
 	uint8_t status;
@@ -865,7 +867,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 }
 
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
-		uint8_t *pdu, int len)
+						uint8_t *pdu, size_t len)
 {
 	GError *gerr = NULL;
 	GIOChannel *io;
@@ -914,7 +916,7 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 	uint16_t length, start, end, mtu, offset;
 	bt_uuid_t uuid;
 	uint8_t status = 0;
-	int vlen;
+	size_t vlen;
 
 	DBG("op 0x%02x", ipdu[0]);
 
@@ -1429,8 +1431,9 @@ uint16_t attrib_db_find_avail(struct btd_adapter *adapter, bt_uuid_t *svc_uuid,
 }
 
 struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
-				bt_uuid_t *uuid, int read_reqs, int write_reqs,
-						const uint8_t *value, int len)
+					bt_uuid_t *uuid, size_t read_reqs,
+					size_t write_reqs,
+					const uint8_t *value, size_t len)
 {
 	GSList *l;
 
@@ -1444,7 +1447,7 @@ struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
 
 int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 					bt_uuid_t *uuid, const uint8_t *value,
-					int len, struct attribute **attr)
+					size_t len, struct attribute **attr)
 {
 	struct gatt_server *server;
 	struct attribute *a;
@@ -1513,7 +1516,7 @@ int attrib_db_del(struct btd_adapter *adapter, uint16_t handle)
 }
 
 int attrib_gap_set(struct btd_adapter *adapter, uint16_t uuid,
-						const uint8_t *value, int len)
+					const uint8_t *value, size_t len)
 {
 	struct gatt_server *server;
 	uint16_t handle;

@@ -84,7 +84,7 @@ static guint16 encode_discover_primary(uint16_t start, uint16_t end,
 		uint16_t u16;
 		uint128_t u128;
 		const void *value;
-		int vlen;
+		size_t vlen;
 
 		/* Discover primary service by service UUID */
 
@@ -114,7 +114,8 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	struct att_range *range;
 	uint8_t *buf;
 	guint16 oplen;
-	int err = 0, buflen;
+	int err = 0;
+	size_t buflen;
 
 	if (status) {
 		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
@@ -201,7 +202,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	err = 0;
 
 	if (end != 0xffff) {
-		int buflen;
+		size_t buflen;
 		uint8_t *buf = g_attrib_get_buffer(dp->attrib, &buflen);
 		guint16 oplen = encode_discover_primary(end + 1, 0xffff, NULL,
 								buf, buflen);
@@ -221,7 +222,7 @@ guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 							gpointer user_data)
 {
 	struct discover_primary *dp;
-	int buflen;
+	size_t buflen;
 	uint8_t *buf = g_attrib_get_buffer(attrib, &buflen);
 	GAttribResultFunc cb;
 	guint16 plen;
@@ -253,7 +254,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	struct discover_char *dc = user_data;
 	struct att_data_list *list;
 	unsigned int i, err;
-	int buflen;
+	size_t buflen;
 	uint8_t *buf;
 	guint16 oplen;
 	bt_uuid_t uuid;
@@ -329,7 +330,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 						bt_uuid_t *uuid, gatt_cb_t func,
 						gpointer user_data)
 {
-	int buflen;
+	size_t buflen;
 	uint8_t *buf = g_attrib_get_buffer(attrib, &buflen);
 	struct discover_char *dc;
 	bt_uuid_t type_uuid;
@@ -359,7 +360,7 @@ guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
 					bt_uuid_t *uuid, GAttribResultFunc func,
 					gpointer user_data)
 {
-	int buflen;
+	size_t buflen;
 	uint8_t *buf = g_attrib_get_buffer(attrib, &buflen);
 	guint16 plen;
 
@@ -400,7 +401,7 @@ static void read_blob_helper(guint8 status, const guint8 *rpdu, guint16 rlen,
 {
 	struct read_long_data *long_read = user_data;
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint8 *tmp;
 	guint16 plen;
 	guint id;
@@ -447,7 +448,7 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 					guint16 rlen, gpointer user_data)
 {
 	struct read_long_data *long_read = user_data;
-	int buflen;
+	size_t buflen;
 	uint8_t *buf = g_attrib_get_buffer(long_read->attrib, &buflen);
 	guint16 plen;
 	guint id;
@@ -483,7 +484,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
 				GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 	guint id;
 	struct read_long_data *long_read;
@@ -527,14 +528,14 @@ struct write_long_data {
 	guint16 handle;
 	uint16_t offset;
 	uint8_t *value;
-	int vlen;
+	size_t vlen;
 };
 
 static guint execute_write(GAttrib *attrib, uint8_t flags,
 				GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
@@ -547,7 +548,7 @@ static guint execute_write(GAttrib *attrib, uint8_t flags,
 }
 
 static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
-			uint8_t *value, int vlen, GAttribResultFunc func,
+			uint8_t *value, size_t vlen, GAttribResultFunc func,
 			gpointer user_data);
 
 static void prepare_write_cb(guint8 status, const guint8 *rpdu,
@@ -578,11 +579,11 @@ static void prepare_write_cb(guint8 status, const guint8 *rpdu,
 }
 
 static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
-			uint8_t *value, int vlen, GAttribResultFunc func,
+			uint8_t *value, size_t vlen, GAttribResultFunc func,
 			gpointer user_data)
 {
 	guint16 plen;
-	int buflen;
+	size_t buflen;
 	uint8_t *buf;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
@@ -597,10 +598,10 @@ static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
 }
 
 guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
-			int vlen, GAttribResultFunc func, gpointer user_data)
+			size_t vlen, GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 	struct write_long_data *long_write;
 
@@ -629,7 +630,7 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 	long_write->func = func;
 	long_write->user_data = user_data;
 	long_write->handle = handle;
-	long_write->value = g_memdup(value,vlen);
+	long_write->value = g_memdup(value, vlen);
 	long_write->vlen = vlen;
 
 	return prepare_write(attrib, handle, long_write->offset, value, vlen,
@@ -640,7 +641,7 @@ guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
 							gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
@@ -653,7 +654,7 @@ guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 				GAttribResultFunc func, gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
@@ -669,7 +670,7 @@ guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
 				GDestroyNotify notify, gpointer user_data)
 {
 	uint8_t *buf;
-	int buflen;
+	size_t buflen;
 	guint16 plen;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);

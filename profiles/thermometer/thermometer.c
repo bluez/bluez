@@ -1142,7 +1142,7 @@ static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	uint8_t *opdu;
 	uint16_t handle, olen;
 	GSList *l;
-	int plen;
+	size_t plen;
 
 	if (len < 3) {
 		DBG("Bad pdu received");
