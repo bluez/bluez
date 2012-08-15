@@ -31,8 +31,8 @@ enum {
 struct attribute {
 	uint16_t handle;
 	bt_uuid_t uuid;
-	size_t read_reqs;
-	size_t write_reqs;
+	int read_req;		/* Read requirement */
+	int write_req;		/* Write requirement */
 	uint8_t (*read_cb)(struct attribute *a, struct btd_device *device,
 							gpointer user_data);
 	uint8_t (*write_cb)(struct attribute *a, struct btd_device *device,

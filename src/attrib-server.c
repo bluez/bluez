@@ -339,7 +339,7 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 
 static struct attribute *attrib_db_add_new(struct gatt_server *server,
 				uint16_t handle, bt_uuid_t *uuid,
-				size_t read_reqs, size_t write_reqs,
+				int read_req, int write_req,
 				const uint8_t *value, size_t len)
 {
 	struct attribute *a;
@@ -356,8 +356,8 @@ static struct attribute *attrib_db_add_new(struct gatt_server *server,
 	a->data = g_memdup(value, len);
 	a->handle = handle;
 	a->uuid = *uuid;
-	a->read_reqs = read_reqs;
-	a->write_reqs = write_reqs;
+	a->read_req = read_req;
+	a->write_req = write_req;
 
 	server->database = g_list_insert_sorted(server->database, a,
 								attribute_cmp);
@@ -456,7 +456,7 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 			break;
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_GROUP_REQ,
-								a->read_reqs);
+								a->read_req);
 
 		if (status == 0x00 && a->read_cb)
 			status = a->read_cb(a, channel->device,
@@ -546,7 +546,7 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 			continue;
 
 		status = att_check_reqs(channel, ATT_OP_READ_BY_TYPE_REQ,
-								a->read_reqs);
+								a->read_req);
 
 		if (status == 0x00 && a->read_cb)
 			status = a->read_cb(a, channel->device,
@@ -763,7 +763,7 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 		return enc_read_resp(config, sizeof(config), pdu, len);
 	}
 
-	status = att_check_reqs(channel, ATT_OP_READ_REQ, a->read_reqs);
+	status = att_check_reqs(channel, ATT_OP_READ_REQ, a->read_req);
 
 	if (status == 0x00 && a->read_cb)
 		status = a->read_cb(a, channel->device, a->cb_user_data);
@@ -809,7 +809,7 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 								pdu, len);
 	}
 
-	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_reqs);
+	status = att_check_reqs(channel, ATT_OP_READ_BLOB_REQ, a->read_req);
 
 	if (status == 0x00 && a->read_cb)
 		status = a->read_cb(a, channel->device, a->cb_user_data);
@@ -838,7 +838,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 
 	a = l->data;
 
-	status = att_check_reqs(channel, ATT_OP_WRITE_REQ, a->write_reqs);
+	status = att_check_reqs(channel, ATT_OP_WRITE_REQ, a->write_req);
 	if (status)
 		return enc_error_resp(ATT_OP_WRITE_REQ, handle, status, pdu,
 									len);
@@ -1431,9 +1431,9 @@ uint16_t attrib_db_find_avail(struct btd_adapter *adapter, bt_uuid_t *svc_uuid,
 }
 
 struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
-					bt_uuid_t *uuid, size_t read_reqs,
-					size_t write_reqs,
-					const uint8_t *value, size_t len)
+					bt_uuid_t *uuid, int read_req,
+					int write_req, const uint8_t *value,
+					size_t len)
 {
 	GSList *l;
 
@@ -1441,7 +1441,7 @@ struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
 	if (l == NULL)
 		return NULL;
 
-	return attrib_db_add_new(l->data, handle, uuid, read_reqs, write_reqs,
+	return attrib_db_add_new(l->data, handle, uuid, read_req, write_req,
 								value, len);
 }
 

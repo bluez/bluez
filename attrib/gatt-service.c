@@ -139,7 +139,7 @@ static struct attribute *add_service_declaration(struct btd_adapter *adapter,
 						ATT_NOT_PERMITTED, atval, len);
 }
 
-static int att_read_reqs(int authorization, int authentication, uint8_t props)
+static int att_read_req(int authorization, int authentication, uint8_t props)
 {
 	if (authorization == GATT_CHR_VALUE_READ ||
 				authorization == GATT_CHR_VALUE_BOTH)
@@ -153,7 +153,7 @@ static int att_read_reqs(int authorization, int authentication, uint8_t props)
 	return ATT_NONE;
 }
 
-static int att_write_reqs(int authorization, int authentication, uint8_t props)
+static int att_write_req(int authorization, int authentication, uint8_t props)
 {
 	if (authorization == GATT_CHR_VALUE_WRITE ||
 				authorization == GATT_CHR_VALUE_BOTH)
@@ -179,7 +179,7 @@ static gint find_callback(gconstpointer a, gconstpointer b)
 static gboolean add_characteristic(struct btd_adapter *adapter,
 				uint16_t *handle, struct gatt_info *info)
 {
-	int read_reqs, write_reqs;
+	int read_req, write_req;
 	uint16_t h = *handle;
 	struct attribute *a;
 	bt_uuid_t bt_uuid;
@@ -191,14 +191,14 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		return FALSE;
 	}
 
-	read_reqs = att_read_reqs(info->authorization, info->authentication,
+	read_req = att_read_req(info->authorization, info->authentication,
 								info->props);
-	write_reqs = att_write_reqs(info->authorization, info->authentication,
+	write_req = att_write_req(info->authorization, info->authentication,
 								info->props);
 
 	/* TODO: static characteristic values are not supported, therefore a
 	 * callback must be always provided if a read/write property is set */
-	if (read_reqs != ATT_NOT_PERMITTED) {
+	if (read_req != ATT_NOT_PERMITTED) {
 		gpointer reqs = GUINT_TO_POINTER(ATTRIB_READ);
 
 		if (!g_slist_find_custom(info->callbacks, reqs,
@@ -208,7 +208,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		}
 	}
 
-	if (write_reqs != ATT_NOT_PERMITTED) {
+	if (write_req != ATT_NOT_PERMITTED) {
 		gpointer reqs = GUINT_TO_POINTER(ATTRIB_WRITE);
 
 		if (!g_slist_find_custom(info->callbacks, reqs,
@@ -228,7 +228,7 @@ static gboolean add_characteristic(struct btd_adapter *adapter,
 		return FALSE;
 
 	/* characteristic value */
-	a = attrib_db_add(adapter, h++, &info->uuid, read_reqs, write_reqs,
+	a = attrib_db_add(adapter, h++, &info->uuid, read_req, write_req,
 								NULL, 0);
 	if (a == NULL)
 		return FALSE;

@@ -25,8 +25,8 @@
 uint16_t attrib_db_find_avail(struct btd_adapter *adapter, bt_uuid_t *svc_uuid,
 							uint16_t nitems);
 struct attribute *attrib_db_add(struct btd_adapter *adapter, uint16_t handle,
-				bt_uuid_t *uuid, size_t read_reqs,
-				size_t write_reqs, const uint8_t *value,
+				bt_uuid_t *uuid, int read_req,
+				int write_req, const uint8_t *value,
 				size_t len);
 int attrib_db_update(struct btd_adapter *adapter, uint16_t handle,
 					bt_uuid_t *uuid, const uint8_t *value,
