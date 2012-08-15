@@ -32,7 +32,6 @@
 #include "gattrib.h"
 #include "attio.h"
 #include "att.h"
-#include "gattrib.h"
 #include "gatt.h"
 #include "log.h"
 #include "deviceinfo.h"
