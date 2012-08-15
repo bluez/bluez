@@ -1894,7 +1894,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	for (l = services; l; l = l->next) {
 		struct gatt_primary *prim = l->data;
 
-		if (strcmp(prim->uuid, GAP_SVC_UUID) == 0)
+		if (strcmp(prim->uuid, GAP_UUID) == 0)
 			gap_prim = prim;
 
 		uuids = g_slist_append(uuids, prim->uuid);
