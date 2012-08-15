@@ -1388,7 +1388,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_ssp complete");
 		break;
 	case MGMT_OP_SET_LE:
-		DBG("set_le complete");
+		mgmt_new_settings(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_ADD_UUID:
 		mgmt_add_uuid_complete(sk, index, ev->data, len);
