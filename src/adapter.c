@@ -1808,7 +1808,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
 		bdaddr_type = BDADDR_BREDR;
 
-	info = get_key_info(key, value);
+	info = get_key_info(address, value);
 	if (info)
 		keys->keys = g_slist_append(keys->keys, info);
 
