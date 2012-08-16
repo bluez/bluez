@@ -645,8 +645,8 @@ static dbus_bool_t emit_signal_valist(DBusConnection *conn,
 		goto fail;
 
 	if (g_dbus_args_have_signature(args, signal) == FALSE) {
-		error("%s.%s: expected signature'%s' but got '%s'",
-				interface, name, args, signature);
+		error("%s.%s: got unexpected signature '%s'", interface, name,
+					dbus_message_get_signature(signal));
 		ret = FALSE;
 		goto fail;
 	}
