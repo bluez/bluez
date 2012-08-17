@@ -240,7 +240,8 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/deviceinfo/deviceinfo.h \
 			profiles/deviceinfo/deviceinfo.c \
 			profiles/gatt/main.c profiles/gatt/manager.h \
-			profiles/gatt/manager.c
+			profiles/gatt/manager.c profiles/gatt/gas.h \
+			profiles/gatt/gas.c
 endif
 
 builtin_modules += formfactor
