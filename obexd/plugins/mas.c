@@ -632,7 +632,7 @@ static void *message_update_open(const char *name, int oflag, mode_t mode,
 
 	DBG("");
 
-	if (oflag != O_WRONLY) {
+	if (oflag == O_RDONLY) {
 		*err = -EBADR;
 		return NULL;
 	}
