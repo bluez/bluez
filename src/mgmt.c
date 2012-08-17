@@ -510,18 +510,24 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 								size_t len)
 {
-	struct mgmt_addr_info *ev = buf;
+	struct mgmt_ev_device_disconnected *ev = buf;
 	struct controller_info *info;
 	char addr[18];
+	uint8_t reason;
 
-	if (len < sizeof(*ev)) {
+	if (len < sizeof(struct mgmt_addr_info)) {
 		error("Too small device_disconnected event");
 		return;
 	}
 
-	ba2str(&ev->bdaddr, addr);
+	if (len < sizeof(*ev))
+		reason = MGMT_DEV_DISCONN_UNKNOWN;
+	else
+		reason = ev->reason;
 
-	DBG("hci%u device %s disconnected", index, addr);
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u device %s disconnected reason %u", index, addr, reason);
 
 	if (index > max_index) {
 		error("Unexpected index %u in device_disconnected event", index);
@@ -530,7 +536,7 @@ static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	btd_event_disconn_complete(&info->bdaddr, &ev->bdaddr);
+	btd_event_disconn_complete(&info->bdaddr, &ev->addr.bdaddr);
 }
 
 static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)

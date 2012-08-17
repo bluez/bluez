@@ -973,11 +973,27 @@ Event Code		0x000C
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+			Reason (1 Octet)
 
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
 		2	LE Random
+
+	Possible values for the Reason parameter:
+		0	Unspecified
+		1	Connection timeout
+		2	Connection terminated by local host
+		3	Connection terminated by remote host
+
+	Note that the local/remote distinction just determines which side
+	terminated the low-level connection, regardless of the
+	disconnection of the higher-level profiles.
+
+	This can sometimes be misleading and thus must be used with care.
+	For example, some hardware combinations would report a locally
+	initiated disconnection even if the user turned Bluetooth off in
+	the remote side.
 
 
 Connect Failed Event

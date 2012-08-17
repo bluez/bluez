@@ -343,9 +343,10 @@ static int mgmt_connected(int mgmt_sk, uint16_t index,
 }
 
 static int mgmt_disconnected(int mgmt_sk, uint16_t index,
-				struct mgmt_addr_info *ev, uint16_t len)
+				struct mgmt_ev_device_disconnected *ev,
+				uint16_t len)
 {
-	if (len != sizeof(*ev)) {
+	if (len < sizeof(struct mgmt_addr_info)) {
 		fprintf(stderr,
 			"Invalid disconnected event length (%u bytes)\n", len);
 		return -EINVAL;
@@ -353,9 +354,16 @@ static int mgmt_disconnected(int mgmt_sk, uint16_t index,
 
 	if (monitor) {
 		char addr[18];
-		ba2str(&ev->bdaddr, addr);
-		printf("hci%u %s type %s disconnected\n", index, addr,
-							typestr(ev->type));
+		uint8_t reason;
+
+		if (len < sizeof(*ev))
+			reason = MGMT_DEV_DISCONN_UNKNOWN;
+		else
+			reason = ev->reason;
+
+		ba2str(&ev->addr.bdaddr, addr);
+		printf("hci%u %s type %s disconnected with reason %u\n",
+				index, addr, typestr(ev->addr.type), reason);
 	}
 
 	return 0;

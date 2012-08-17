@@ -226,18 +226,29 @@ static void mgmt_device_disconnected(uint16_t len, const void *buf)
 {
 	const struct mgmt_ev_device_disconnected *ev = buf;
 	char str[18];
+	uint8_t reason;
+	uint16_t consumed_len;
 
-	if (len < sizeof(*ev)) {
+	if (len < sizeof(struct mgmt_addr_info)) {
 		printf("* Malformed Device Disconnected control\n");
 		return;
 	}
 
+	if (len < sizeof(*ev)) {
+		reason = MGMT_DEV_DISCONN_UNKNOWN;
+		consumed_len = len;
+	} else {
+		reason = ev->reason;
+		consumed_len = sizeof(*ev);
+	}
+
 	ba2str(&ev->addr.bdaddr, str);
 
-	printf("@ Device Disconnected: %s (%d)\n", str, ev->addr.type);
+	printf("@ Device Disconnected: %s (%d) reason %u\n", str, ev->addr.type,
+									reason);
 
-	buf += sizeof(*ev);
-	len -= sizeof(*ev);
+	buf += consumed_len;
+	len -= consumed_len;
 
 	packet_hexdump(buf, len);
 }
