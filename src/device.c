@@ -3020,9 +3020,14 @@ int device_get_appearance(struct btd_device *device, uint16_t *value)
 void device_set_appearance(struct btd_device *device, uint16_t value)
 {
 	DBusConnection *conn = get_dbus_connection();
+	const char *icon = gap_appearance_to_icon(value);
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
 				"Appearance", DBUS_TYPE_UINT16, &value);
+
+	if (icon)
+		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
+					"Icon", DBUS_TYPE_STRING, &icon);
 }
 
 static gboolean notify_attios(gpointer user_data)
