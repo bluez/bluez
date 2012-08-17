@@ -215,6 +215,7 @@ int messages_get_folder_listing(void *session, const char *name, uint16_t max,
  * session: Backend session.
  * name: Optional subdirectory name.
  * max: Maximum number of entries to retrieve.
+ * offset: Offset of the first entry.
  * filter: Filter to apply on returned message listing.
  * size: Total size of listing to be returned.
  * newmsg: Indicates presence of unread messages.
