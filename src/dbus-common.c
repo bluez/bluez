@@ -247,6 +247,8 @@ const char *class_to_icon(uint32_t class)
 const char *gap_appearance_to_icon(uint16_t appearance)
 {
 	switch ((appearance & 0xffc0) >> 6) {
+	case 0x00:
+		return "unknown";
 	case 0x01:
 		return "phone";
 	case 0x02:
