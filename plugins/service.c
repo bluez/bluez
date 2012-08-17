@@ -729,6 +729,9 @@ static void path_unregister(void *data)
 		exit_callback(connection, user_record);
 	}
 
+	if (serv_adapter->adapter != NULL)
+		btd_adapter_unref(serv_adapter->adapter);
+
 	g_free(serv_adapter);
 }
 
@@ -742,7 +745,9 @@ static int register_interface(const char *path, struct btd_adapter *adapter)
 	if (serv_adapter == NULL)
 		return -ENOMEM;
 
-	serv_adapter->adapter = adapter;
+	if (adapter != NULL)
+		serv_adapter->adapter = btd_adapter_ref(adapter);
+
 	serv_adapter->pending_list = NULL;
 
 	if (g_dbus_register_interface(connection, path, SERVICE_INTERFACE,
