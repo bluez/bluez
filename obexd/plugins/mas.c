@@ -559,6 +559,9 @@ static void *msg_listing_open(const char *name, int oflag, mode_t mode,
 	/* 1024 is the default when there was no MaxListCount sent */
 	uint16_t max = 1024;
 	uint16_t offset = 0;
+	/* If MAP client does not specify the subject length,
+	   then subject_len = 0 and subject should be sent unaltered. */
+	uint8_t subject_len = 0;
 
 	DBG("");
 
@@ -569,6 +572,8 @@ static void *msg_listing_open(const char *name, int oflag, mode_t mode,
 
 	g_obex_apparam_get_uint16(mas->inparams, MAP_AP_MAXLISTCOUNT, &max);
 	g_obex_apparam_get_uint16(mas->inparams, MAP_AP_STARTOFFSET, &offset);
+	g_obex_apparam_get_uint8(mas->inparams, MAP_AP_SUBJECTLENGTH,
+						&subject_len);
 
 	g_obex_apparam_get_uint32(mas->inparams, MAP_AP_PARAMETERMASK,
 						&filter.parameter_mask);
@@ -588,7 +593,7 @@ static void *msg_listing_open(const char *name, int oflag, mode_t mode,
 						&filter.priority);
 
 	*err = messages_get_messages_listing(mas->backend_data, name, max,
-			offset, &filter,
+			offset, subject_len, &filter,
 			get_messages_listing_cb, mas);
 
 	mas->buffer = g_string_new("");

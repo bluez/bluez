@@ -303,9 +303,9 @@ int messages_get_folder_listing(void *s, const char *name,
 	return 0;
 }
 
-int messages_get_messages_listing(void *session,
-				const char *name,
+int messages_get_messages_listing(void *session, const char *name,
 				uint16_t max, uint16_t offset,
+				uint8_t subject_len,
 				const struct messages_filter *filter,
 				messages_get_messages_listing_cb callback,
 				void *user_data)

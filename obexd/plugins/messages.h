@@ -216,6 +216,7 @@ int messages_get_folder_listing(void *session, const char *name, uint16_t max,
  * name: Optional subdirectory name.
  * max: Maximum number of entries to retrieve.
  * offset: Offset of the first entry.
+ * subject_len: Maximum string length of the "subject" parameter in the entries.
  * filter: Filter to apply on returned message listing.
  * size: Total size of listing to be returned.
  * newmsg: Indicates presence of unread messages.
@@ -230,6 +231,7 @@ typedef void (*messages_get_messages_listing_cb)(void *session, int err,
 
 int messages_get_messages_listing(void *session, const char *name,
 				uint16_t max, uint16_t offset,
+				uint8_t subject_len,
 				const struct messages_filter *filter,
 				messages_get_messages_listing_cb callback,
 				void *user_data);
