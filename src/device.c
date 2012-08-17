@@ -3047,6 +3047,25 @@ void device_set_class(struct btd_device *device, uint32_t value)
 				DBUS_TYPE_UINT32, &value);
 }
 
+int device_get_appearance(struct btd_device *device, uint16_t *value)
+{
+	bdaddr_t src;
+	uint16_t app;
+	int err;
+
+	adapter_get_address(device_get_adapter(device), &src);
+
+	err = read_remote_appearance(&src, &device->bdaddr,
+						device->bdaddr_type, &app);
+	if (err < 0)
+		return err;
+
+	if (value)
+		*value = app;
+
+	return 0;
+}
+
 static gboolean notify_attios(gpointer user_data)
 {
 	struct btd_device *device = user_data;
