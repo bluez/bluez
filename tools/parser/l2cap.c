@@ -972,7 +972,8 @@ static inline void create_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Create req: psm %d scid 0x%4.4x id %d\n", psm, scid, h->id);
+	printf("Create chan req: psm 0x%4.4x scid 0x%4.4x ctrl id %d\n",
+							psm, scid, h->id);
 }
 
 static inline void create_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -986,7 +987,8 @@ static inline void create_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Create rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n", dcid, scid, result, status);
+	printf("Create chan rsp: dcid 0x%4.4x scid 0x%4.4x result %d status %d\n",
+						dcid, scid, result, status);
 }
 
 static inline void move_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -997,7 +999,7 @@ static inline void move_req(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Move req: icid 0x%4.4x id %d\n", icid, h->id);
+	printf("Move chan req: icid 0x%4.4x ctrl id %d\n", icid, h->id);
 }
 
 static inline void move_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -1009,7 +1011,7 @@ static inline void move_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Move rsp: icid 0x%4.4x result %d\n", icid, result);
+	printf("Move chan rsp: icid 0x%4.4x result %d\n", icid, result);
 }
 
 static inline void move_cfm(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -1021,7 +1023,7 @@ static inline void move_cfm(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Move cfm: icid 0x%4.4x result %d\n", icid, result);
+	printf("Move chan cfm: icid 0x%4.4x result %d\n", icid, result);
 }
 
 static inline void move_cfm_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm)
@@ -1032,7 +1034,7 @@ static inline void move_cfm_rsp(int level, l2cap_cmd_hdr *cmd, struct frame *frm
 	if (p_filter(FILT_L2CAP))
 		return;
 
-	printf("Move cfm rsp: icid 0x%4.4x\n", icid);
+	printf("Move chan cfm rsp: icid 0x%4.4x\n", icid);
 }
 
 static inline void a2mp_command_rej(int level, struct frame *frm)
