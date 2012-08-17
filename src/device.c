@@ -3021,6 +3021,7 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 {
 	DBusConnection *conn = get_dbus_connection();
 	const char *icon = gap_appearance_to_icon(value);
+	bdaddr_t src;
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
 				"Appearance", DBUS_TYPE_UINT16, &value);
@@ -3028,6 +3029,10 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 	if (icon)
 		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
 					"Icon", DBUS_TYPE_STRING, &icon);
+
+	adapter_get_address(device_get_adapter(device), &src);
+	write_remote_appearance(&src, &device->bdaddr, device->bdaddr_type,
+									value);
 }
 
 static gboolean notify_attios(gpointer user_data)
