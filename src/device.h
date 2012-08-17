@@ -104,6 +104,7 @@ guint device_add_disconnect_watch(struct btd_device *device,
 void device_remove_disconnect_watch(struct btd_device *device, guint id);
 void device_set_class(struct btd_device *device, uint32_t value);
 int device_get_appearance(struct btd_device *device, uint16_t *value);
+void device_set_appearance(struct btd_device *device, uint16_t value);
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 

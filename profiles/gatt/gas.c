@@ -67,6 +67,7 @@ static gint cmp_device(gconstpointer a, gconstpointer b)
 static void gap_appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
+	struct gas *gas = user_data;
 	struct att_data_list *list =  NULL;
 	uint16_t app;
 	uint8_t *atval;
@@ -90,6 +91,8 @@ static void gap_appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	app = att_get_u16(atval);
 
 	DBG("GAP Appearance: 0x%04x", app);
+
+	device_set_appearance(gas->device, app);
 
 done:
 	att_data_list_free(list);
