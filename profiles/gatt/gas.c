@@ -208,7 +208,7 @@ static void gatt_descriptors_cb(guint8 status, const guint8 *pdu, guint16 len,
 	if (list == NULL)
 		return;
 
-	if (format != 0x01)
+	if (format != ATT_FIND_INFO_RESP_FMT_16BIT)
 		goto done;
 
 	for (i = 0; i < list->num; i++) {

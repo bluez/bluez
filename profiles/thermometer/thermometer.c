@@ -430,7 +430,7 @@ static void discover_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
 		desc->handle = att_get_u16(value);
 		desc->ch = ch;
 
-		if (format == 0x01)
+		if (format == ATT_FIND_INFO_RESP_FMT_16BIT)
 			desc->uuid = att_get_uuid16(&value[2]);
 		else
 			desc->uuid = att_get_uuid128(&value[2]);
