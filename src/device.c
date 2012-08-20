@@ -2938,6 +2938,21 @@ GSList *btd_device_get_primaries(struct btd_device *device)
 	return device->primaries;
 }
 
+void btd_device_gatt_set_service_changed(struct btd_device *device,
+						uint16_t start, uint16_t end)
+{
+	GSList *l;
+
+	for (l = device->primaries; l; l = g_slist_next(l)) {
+		struct gatt_primary *prim = l->data;
+
+		if (start <= prim->range.end && end >= prim->range.start)
+			prim->changed = TRUE;
+	}
+
+	device_browse_primary(device, NULL, NULL, FALSE);
+}
+
 void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 {
 	GSList *uuid_list;

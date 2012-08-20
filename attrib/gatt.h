@@ -57,6 +57,7 @@ typedef void (*gatt_cb_t) (GSList *l, guint8 status, gpointer user_data);
 
 struct gatt_primary {
 	char uuid[MAX_LEN_UUID_STR + 1];
+	gboolean changed;
 	struct att_range range;
 };
 

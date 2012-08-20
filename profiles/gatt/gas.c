@@ -154,7 +154,7 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	gas->changed.start = start;
 	gas->changed.end = end;
 
-	device_browse_primary(gas->device, NULL, NULL, FALSE);
+	btd_device_gatt_set_service_changed(gas->device, start, end);
 }
 
 static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
@@ -185,7 +185,7 @@ static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
 
 	DBG("GATT Service Changed start: 0x%04X end: 0x%04X", start, end);
 
-	device_browse_primary(gas->device, NULL, NULL, FALSE);
+	btd_device_gatt_set_service_changed(gas->device, start, end);
 }
 
 static void gatt_descriptors_cb(guint8 status, const guint8 *pdu, guint16 len,
