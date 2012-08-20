@@ -32,6 +32,7 @@
 #include "att.h"
 #include "gattrib.h"
 #include "attio.h"
+#include "btio.h"
 #include "gatt.h"
 #include "log.h"
 #include "gas.h"
@@ -46,6 +47,7 @@ struct gas {
 	guint attioid;
 	guint changed_ind;
 	uint16_t changed_handle;
+	uint16_t mtu;
 };
 
 static GSList *devices = NULL;
@@ -250,12 +252,46 @@ static void gatt_characteristic_cb(GSList *characteristics, guint8 status,
 	gatt_find_info(gas->attrib, start, end, gatt_descriptors_cb, gas);
 }
 
+static void exchange_mtu_cb(guint8 status, const guint8 *pdu, guint16 plen,
+							gpointer user_data)
+{
+	struct gas *gas = user_data;
+	uint16_t rmtu;
+
+	if (status) {
+		error("MTU exchange: %s", att_ecode2str(status));
+		return;
+	}
+
+	if (!dec_mtu_resp(pdu, plen, &rmtu)) {
+		error("MTU exchange: protocol error");
+		return;
+	}
+
+	gas->mtu = MIN(rmtu, gas->mtu);
+	if (g_attrib_set_mtu(gas->attrib, gas->mtu))
+		DBG("MTU exchange succeeded: %d", gas->mtu);
+	else
+		DBG("MTU exchange failed");
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct gas *gas = user_data;
+	GIOChannel *io;
+	GError *gerr = NULL;
+	uint16_t cid, imtu;
 	uint16_t app;
 
 	gas->attrib = g_attrib_ref(attrib);
+	io = g_attrib_get_channel(attrib);
+
+	if (bt_io_get(io, BT_IO_L2CAP, &gerr, BT_IO_OPT_IMTU, &imtu,
+				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID)) {
+		gatt_exchange_mtu(gas->attrib, imtu, exchange_mtu_cb, gas);
+		gas->mtu = imtu;
+		DBG("MTU Exchange: Requesting %d", imtu);
+	}
 
 	gas->changed_ind = g_attrib_register(gas->attrib, ATT_OP_HANDLE_IND,
 						indication_cb, gas, NULL);
