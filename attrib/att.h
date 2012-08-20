@@ -96,6 +96,10 @@
 #define ATT_CANCEL_ALL_PREP_WRITES              0x00
 #define ATT_WRITE_ALL_PREP_WRITES               0x01
 
+/* Find Information Response Formats */
+#define ATT_FIND_INFO_RESP_FMT_16BIT		0x01
+#define ATT_FIND_INFO_RESP_FMT_128BIT		0x02
+
 struct att_data_list {
 	uint16_t num;
 	uint16_t len;
