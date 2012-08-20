@@ -1409,7 +1409,7 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
 }
 
-static void services_changed(struct btd_device *device)
+static void uuids_changed(struct btd_device *device)
 {
 	DBusConnection *conn = get_dbus_connection();
 	char **uuids;
@@ -1689,7 +1689,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		device_remove_drivers(device, req->profiles_removed);
 
 	/* Propagate services changes */
-	services_changed(req->device);
+	uuids_changed(req->device);
 
 send_reply:
 	if (!req->msg)
@@ -1910,7 +1910,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	if (device->attios == NULL && device->attios_offline == NULL)
 		attio_cleanup(device);
 
-	services_changed(device);
+	uuids_changed(device);
 	if (req->msg)
 		create_device_reply(device, req);
 
@@ -2971,7 +2971,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	g_slist_free(uuid_list);
 
 	store_profiles(device);
-	services_changed(device);
+	uuids_changed(device);
 }
 
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
