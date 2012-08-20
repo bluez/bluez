@@ -41,6 +41,7 @@ struct gas {
 	struct btd_device *device;
 	struct att_range gap;	/* GAP Primary service range */
 	struct att_range gatt;	/* GATT Primary service range */
+	struct att_range changed; /* Affected handle range */
 	GAttrib *attrib;
 	guint attioid;
 	guint changed_ind;
@@ -146,11 +147,20 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	opdu = g_attrib_get_buffer(gas->attrib, &plen);
 	olen = enc_confirmation(opdu, plen);
 	g_attrib_send(gas->attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
+
+	if (gas->changed.start == start && gas->changed.end == end)
+		return;
+
+	gas->changed.start = start;
+	gas->changed.end = end;
+
+	device_browse_primary(gas->device, NULL, NULL, FALSE);
 }
 
 static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
+	struct gas *gas = user_data;
 	uint16_t start, end;
 
 	if (status) {
@@ -167,7 +177,15 @@ static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
 	start = att_get_u16(&pdu[1]);
 	end = att_get_u16(&pdu[3]);
 
+	if (gas->changed.start == start && gas->changed.end == end)
+		return;
+
+	gas->changed.start = start;
+	gas->changed.end = end;
+
 	DBG("GATT Service Changed start: 0x%04X end: 0x%04X", start, end);
+
+	device_browse_primary(gas->device, NULL, NULL, FALSE);
 }
 
 static void gatt_descriptors_cb(guint8 status, const guint8 *pdu, guint16 len,
