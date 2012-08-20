@@ -124,7 +124,9 @@ static void write_ccc(GAttrib *attrib, uint16_t handle, gpointer user_data)
 static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
 	struct gas *gas = user_data;
-	uint16_t handle, start, end;
+	uint16_t handle, start, end, olen;
+	size_t plen;
+	uint8_t *opdu;
 
 	if (len < 7) { /* 1-byte opcode + 2-byte handle + 4 range */
 		error("Malformed ATT notification");
@@ -139,6 +141,11 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 		return;
 
 	DBG("Service Changed start: 0x%04X end: 0x%04X", start, end);
+
+	/* Confirming indication received */
+	opdu = g_attrib_get_buffer(gas->attrib, &plen);
+	olen = enc_confirmation(opdu, plen);
+	g_attrib_send(gas->attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
 }
 
 static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
