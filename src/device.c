@@ -1434,7 +1434,7 @@ static int rec_cmp(const void *a, const void *b)
 	return r1->handle - r2->handle;
 }
 
-static void update_services(struct browse_req *req, sdp_list_t *recs)
+static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -1618,7 +1618,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto send_reply;
 	}
 
-	update_services(req, recs);
+	update_bredr_services(req, recs);
 
 	if (device->tmp_records)
 		sdp_list_free(device->tmp_records,
@@ -1706,7 +1706,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 			goto done;
 	}
 
-	update_services(req, recs);
+	update_bredr_services(req, recs);
 
 	adapter_get_address(adapter, &src);
 
