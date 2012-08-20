@@ -302,7 +302,6 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	}
 
 	att_data_list_free(list);
-	err = 0;
 
 	if (last != 0 && (last + 1 < dc->end)) {
 		buf = g_attrib_get_buffer(dc->attrib, &buflen);
@@ -320,6 +319,8 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 
 		return;
 	}
+
+	err = (dc->characteristics ? 0 : ATT_ECODE_ATTR_NOT_FOUND);
 
 done:
 	dc->cb(dc->characteristics, err, dc->user_data);
