@@ -98,9 +98,32 @@ done:
 	att_data_list_free(list);
 }
 
+static void gatt_service_changed_cb(guint8 status, const guint8 *pdu,
+					guint16 plen, gpointer user_data)
+{
+	uint16_t start, end;
+
+	if (status) {
+		error("Read GATT Service Changed failed: %s",
+						att_ecode2str(status));
+		return;
+	}
+
+	if (plen != 5) {
+		error("Service Changed: PDU length mismatch");
+		return;
+	}
+
+	start = att_get_u16(&pdu[1]);
+	end = att_get_u16(&pdu[3]);
+
+	DBG("GATT Service Changed start: 0x%04X end: 0x%04X", start, end);
+}
+
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 {
 	struct gas *gas = user_data;
+	bt_uuid_t changed_uuid;
 	uint16_t app;
 
 	gas->attrib = g_attrib_ref(attrib);
@@ -116,6 +139,16 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	}
 
 	/* TODO: Read other GAP characteristics - See Core spec page 1739 */
+
+	/*
+	 * Always read the characteristic value in the first connection
+	 * since attribute handles caching is not supported at the moment.
+	 */
+	bt_uuid16_create(&changed_uuid, GATT_CHARAC_SERVICE_CHANGED);
+
+	gatt_read_char_by_uuid(gas->attrib, gas->gatt.start,
+					gas->gatt.end, &changed_uuid,
+					gatt_service_changed_cb, gas);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
