@@ -253,7 +253,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 {
 	struct discover_char *dc = user_data;
 	struct att_data_list *list;
-	unsigned int i, err;
+	unsigned int i, err = ATT_ECODE_ATTR_NOT_FOUND;
 	size_t buflen;
 	uint8_t *buf;
 	guint16 oplen;
@@ -261,7 +261,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	uint16_t last = 0;
 
 	if (status) {
-		err = status == ATT_ECODE_ATTR_NOT_FOUND ? 0 : status;
+		err = status;
 		goto done;
 	}
 
@@ -320,9 +320,9 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		return;
 	}
 
-	err = (dc->characteristics ? 0 : ATT_ECODE_ATTR_NOT_FOUND);
-
 done:
+	err = (dc->characteristics ? 0 : err);
+
 	dc->cb(dc->characteristics, err, dc->user_data);
 	discover_char_free(dc);
 }
