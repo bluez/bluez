@@ -598,6 +598,8 @@ static void server_remove_sessions(struct network_server *ns)
 
 		bnep_del_from_bridge(session->dev, ns->bridge);
 		bnep_if_down(session->dev);
+
+		bnep_kill_connection(&session->dst);
 	}
 
 	g_slist_free_full(ns->sessions, session_free);
