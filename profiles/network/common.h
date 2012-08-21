@@ -35,3 +35,4 @@ int bnep_connadd(int sk, uint16_t role, char *dev);
 int bnep_if_up(const char *devname);
 int bnep_if_down(const char *devname);
 int bnep_add_to_bridge(const char *devname, const char *bridge);
+int bnep_del_from_bridge(const char *devname, const char *bridge);

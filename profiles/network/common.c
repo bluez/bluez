@@ -268,3 +268,32 @@ int bnep_add_to_bridge(const char *devname, const char *bridge)
 
 	return 0;
 }
+
+int bnep_del_from_bridge(const char *devname, const char *bridge)
+{
+	int ifindex = if_nametoindex(devname);
+	struct ifreq ifr;
+	int sk, err;
+
+	if (!devname || !bridge)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = ifindex;
+
+	err = ioctl(sk, SIOCBRDELIF, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return err;
+
+	info("bridge %s: interface %s removed", bridge, devname);
+
+	return 0;
+}
