@@ -586,6 +586,25 @@ static uint32_t register_server_record(struct network_server *ns)
 	return record->handle;
 }
 
+static void server_remove_sessions(struct network_server *ns)
+{
+	GSList *list;
+
+	for (list = ns->sessions; list; list = list->next) {
+		struct network_session *session = list->data;
+
+		if (*session->dev == '\0')
+			continue;
+
+		bnep_del_from_bridge(session->dev, ns->bridge);
+		bnep_if_down(session->dev);
+	}
+
+	g_slist_free_full(ns->sessions, session_free);
+
+	ns->sessions = NULL;
+}
+
 static void server_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct network_server *ns = user_data;
@@ -678,15 +697,14 @@ static void server_free(struct network_server *ns)
 	if (!ns)
 		return;
 
-	/* FIXME: Missing release/free all bnepX interfaces */
+	server_remove_sessions(ns);
+
 	if (ns->record_id)
 		remove_record_from_server(ns->record_id);
 
 	g_free(ns->iface);
 	g_free(ns->name);
 	g_free(ns->bridge);
-
-	g_slist_free_full(ns->sessions, session_free);
 
 	g_free(ns);
 }
