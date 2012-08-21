@@ -57,6 +57,7 @@
 /* Pending Authorization */
 struct network_session {
 	bdaddr_t	dst;		/* Remote Bluetooth Address */
+	char		dev[16];	/* Interface name */
 	GIOChannel	*io;		/* Pending connect channel */
 	guint		watch;		/* BNEP socket watch */
 };
@@ -271,6 +272,8 @@ static int server_connadd(struct network_server *ns,
 	}
 
 	bnep_if_up(devname);
+
+	strncpy(session->dev, devname, sizeof(devname));
 
 	ns->sessions = g_slist_append(ns->sessions, session);
 
