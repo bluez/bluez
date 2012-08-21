@@ -223,14 +223,14 @@ static int release_all(int ctl)
 	return 0;
 }
 
-static void run_cmdline(struct pollfd *p, sigset_t* sigs, char *devname,
+static void run_cmdline(struct pollfd *p, sigset_t *sigs, char *devname,
 			int argc, char **argv)
 {
 	int i;
 	pid_t pid;
 	char **cmdargv;
 
-	cmdargv = malloc((argc + 1) * sizeof(char*));
+	cmdargv = malloc((argc + 1) * sizeof(char *));
 	if (!cmdargv)
 		return;
 

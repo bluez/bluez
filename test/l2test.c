@@ -175,7 +175,7 @@ static float tv2fl(struct timeval tv)
 	return (float)tv.tv_sec + (float)(tv.tv_usec/1000000.0);
 }
 
-static char *ltoh(unsigned long c, char* s)
+static char *ltoh(unsigned long c, char *s)
 {
 	int c1;
 
@@ -199,7 +199,7 @@ static char *ltoh(unsigned long c, char* s)
 	return s;
 }
 
-static char *ctoh(char c, char* s)
+static char *ctoh(char c, char *s)
 {
 	char c1;
 

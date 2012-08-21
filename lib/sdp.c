@@ -193,7 +193,7 @@ static char *string_lookup(struct tupla *pt0, int index)
 	return "";
 }
 
-static char *string_lookup_uuid(struct tupla *pt0, const uuid_t* uuid)
+static char *string_lookup_uuid(struct tupla *pt0, const uuid_t *uuid)
 {
 	uuid_t tmp_uuid;
 
@@ -4677,7 +4677,7 @@ int sdp_set_supp_feat(sdp_record_t *rec, const sdp_list_t *sf)
 			goto fail;
 		}
 		for (r = p->data, j = 0; r; r = r->next, j++) {
-			sdp_data_t *data = (sdp_data_t*)r->data;
+			sdp_data_t *data = (sdp_data_t *) r->data;
 			dtds[j] = &data->dtd;
 			switch (data->dtd) {
 			case SDP_URL_STR8:

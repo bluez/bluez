@@ -204,7 +204,7 @@ static void usage(void)
 	printf("Usage:\tppporc <bdaddr> [channel]\n");
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	struct sigaction sa;
 	int fd, err, opt;

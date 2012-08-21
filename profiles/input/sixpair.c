@@ -44,7 +44,7 @@ show_master (libusb_device_handle *devh, int itfnum)
 	res = libusb_control_transfer (devh,
 				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
 				       0x01, 0x03f5, itfnum,
-				       (void*) msg, sizeof(msg),
+				       (void *) msg, sizeof(msg),
 				       5000);
 
 	if (res < 0) {
@@ -67,7 +67,7 @@ get_bdaddr (libusb_device_handle *devh, int itfnum)
 	res = libusb_control_transfer (devh,
 				       LIBUSB_ENDPOINT_IN | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
 				       0x01, 0x03f2, itfnum,
-				       (void*) msg, sizeof(msg),
+				       (void *) msg, sizeof(msg),
 				       5000);
 
 	if (res < 0) {
@@ -109,7 +109,7 @@ set_master_bdaddr (libusb_device_handle *devh, int itfnum, char *host)
 	res = libusb_control_transfer (devh,
 				       LIBUSB_ENDPOINT_OUT | LIBUSB_REQUEST_TYPE_CLASS | LIBUSB_RECIPIENT_INTERFACE,
 				       0x09, 0x03f5, itfnum,
-				       (void*) msg, sizeof(msg),
+				       (void *) msg, sizeof(msg),
 				       5000);
 
 	if (res < 0) {
