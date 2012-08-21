@@ -611,6 +611,8 @@ static void server_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct network_server *ns = user_data;
 
+	server_remove_sessions(ns);
+
 	ns->watch_id = 0;
 
 	if (ns->record_id) {
