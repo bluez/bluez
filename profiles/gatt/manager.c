@@ -30,6 +30,7 @@
 #include "gattrib.h"
 #include "gatt.h"
 #include "gas.h"
+#include "log.h"
 #include "manager.h"
 
 static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
@@ -55,8 +56,12 @@ static int gatt_driver_probe(struct btd_device *device, GSList *uuids)
 	if (l)
 		gatt = l->data;
 
-	return gas_register(device, gap ? &gap->range : NULL,
-				gatt ? &gatt->range : NULL);
+	if (gap == NULL || gatt == NULL) {
+		error("GAP and GATT are mandatory");
+		return -EINVAL;
+	}
+
+	return gas_register(device, &gap->range, &gatt->range);
 }
 
 static void gatt_driver_remove(struct btd_device *device)
