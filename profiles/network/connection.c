@@ -207,8 +207,10 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	g_source_remove(nc->timeout_source);
-	nc->timeout_source = 0;
+	if (nc->timeout_source > 0) {
+		g_source_remove(nc->timeout_source);
+		nc->timeout_source = 0;
+	}
 
 	if (cond & (G_IO_HUP | G_IO_ERR)) {
 		error("Hangup or error on l2cap server socket");
