@@ -112,12 +112,14 @@ GObexApparam *g_obex_apparam_decode(const void *data, gsize size)
 	while (count < size) {
 		struct apparam_tag *tag;
 		gsize parsed;
+		guint id;
 
 		tag = apparam_tag_decode(data + count, size - count, &parsed);
 		if (tag == NULL)
 			break;
 
-		g_hash_table_insert(tags, GUINT_TO_POINTER(tag->id), tag);
+		id = tag->id;
+		g_hash_table_insert(tags, GUINT_TO_POINTER(id), tag);
 
 		count += parsed;
 	}
@@ -167,12 +169,13 @@ GObexApparam *g_obex_apparam_set_bytes(GObexApparam *apparam, guint8 id,
 						const void *value, gsize len)
 {
 	struct apparam_tag *tag;
+	guint uid = id;
 
 	if (apparam == NULL)
 		apparam = g_obex_apparam_new();
 
 	tag = tag_new(id, len, value);
-	g_hash_table_replace(apparam->tags, GUINT_TO_POINTER(id), tag);
+	g_hash_table_replace(apparam->tags, GUINT_TO_POINTER(uid), tag);
 
 	return apparam;
 }
@@ -232,6 +235,12 @@ GObexApparam *g_obex_apparam_set_string(GObexApparam *apparam, guint8 id,
 	return g_obex_apparam_set_bytes(apparam, id, value, len);
 }
 
+static struct apparam_tag *g_obex_apparam_find_tag(GObexApparam *apparam,
+								guint id)
+{
+	return g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+}
+
 gboolean g_obex_apparam_get_uint8(GObexApparam *apparam, guint8 id,
 							guint8 *dest)
 {
@@ -239,7 +248,7 @@ gboolean g_obex_apparam_get_uint8(GObexApparam *apparam, guint8 id,
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return FALSE;
 
@@ -257,7 +266,7 @@ gboolean g_obex_apparam_get_uint16(GObexApparam *apparam, guint8 id,
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return FALSE;
 
@@ -278,7 +287,7 @@ gboolean g_obex_apparam_get_uint32(GObexApparam *apparam, guint8 id,
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return FALSE;
 
@@ -299,7 +308,7 @@ gboolean g_obex_apparam_get_uint64(GObexApparam *apparam, guint8 id,
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return FALSE;
 
@@ -320,7 +329,7 @@ char *g_obex_apparam_get_string(GObexApparam *apparam, guint8 id)
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return NULL;
 
@@ -338,7 +347,7 @@ gboolean g_obex_apparam_get_bytes(GObexApparam *apparam, guint8 id,
 
 	g_obex_debug(G_OBEX_DEBUG_APPARAM, "tag 0x%02x", id);
 
-	tag = g_hash_table_lookup(apparam->tags, GUINT_TO_POINTER(id));
+	tag = g_obex_apparam_find_tag(apparam, id);
 	if (tag == NULL)
 		return FALSE;
 
