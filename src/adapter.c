@@ -2707,8 +2707,10 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 
 		/* Avoid emitting DeviceFound() signal if device is not
 		 * discoverable */
-		if (!(dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC)))
+		if (!(dev->flags & (EIR_LIM_DISC | EIR_GEN_DISC))) {
+			g_free(alias);
 			return;
+		}
 
 		dev->legacy = FALSE;
 
