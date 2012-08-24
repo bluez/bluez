@@ -180,7 +180,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 
 	ba2str(&src, addr);
 	error("input: authorization for %s failed: %s (%d)",
-						addr, strerror(-ret), ret);
+						addr, strerror(-ret), -ret);
 
 	g_io_channel_unref(server->confirm);
 	server->confirm = NULL;

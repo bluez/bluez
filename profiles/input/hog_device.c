@@ -570,7 +570,7 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 	bread = read(fd, &ev, sizeof(ev));
 	if (bread < 0) {
 		int err = -errno;
-		DBG("uhid-dev read: %s(%d)", strerror(err), err);
+		DBG("uhid-dev read: %s(%d)", strerror(-err), -err);
 		goto failed;
 	}
 
