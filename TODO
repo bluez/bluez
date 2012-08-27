@@ -71,6 +71,12 @@ released.
 
 - Switch to standard object manager interface
 
+- Device.Connect(). Still needs closer defining.
+
+- Remove CreateDevice/CreatePairedDevice and use D-Bus objects for
+  discovered devices. This fixes the issue of not exposing the address
+  type in DeviceFound and the Create* method calls
+
 Low Energy
 ==========
 
