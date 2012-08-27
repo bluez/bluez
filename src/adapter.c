@@ -2242,7 +2242,10 @@ static void set_mode_complete(struct btd_adapter *adapter)
 	const char *modestr;
 	int err;
 
-	DBG("");
+	modestr = mode2str(adapter->mode);
+	write_device_mode(&adapter->bdaddr, modestr);
+
+	DBG("%s", modestr);
 
 	if (adapter->mode == MODE_OFF) {
 		g_slist_free_full(adapter->mode_sessions, session_free);
@@ -2273,15 +2276,8 @@ static void set_mode_complete(struct btd_adapter *adapter)
 		g_dbus_send_message(connection, reply);
 	}
 
-	modestr = mode2str(adapter->mode);
-
-	DBG("%s", modestr);
-
-	/* restore if the mode doesn't matches the pending */
-	if (err != 0) {
-		write_device_mode(&adapter->bdaddr, modestr);
+	if (err != 0)
 		error("unable to set mode: %s", mode2str(pending->mode));
-	}
 
 	session_unref(pending);
 }
