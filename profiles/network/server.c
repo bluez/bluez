@@ -633,7 +633,7 @@ static DBusMessage *register_server(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_STRING, &bridge, DBUS_TYPE_INVALID))
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	if (g_strcmp0(uuid, "nap"))
 		return btd_error_failed(msg, "Invalid UUID");
@@ -668,7 +668,7 @@ static DBusMessage *unregister_server(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &uuid,
 							DBUS_TYPE_INVALID))
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	if (g_strcmp0(uuid, "nap"))
 		return btd_error_failed(msg, "Invalid UUID");

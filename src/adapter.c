@@ -1576,7 +1576,7 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	if (adapter->agent)
 		return btd_error_already_exists(msg);
@@ -1606,7 +1606,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	name = dbus_message_get_sender(msg);
 

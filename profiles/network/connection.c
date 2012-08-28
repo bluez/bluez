@@ -403,7 +403,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
 						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	id = bnep_service_id(svc);
 	nc = find_connection(peer->connections, id);

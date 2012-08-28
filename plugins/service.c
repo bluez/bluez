@@ -422,7 +422,7 @@ static DBusMessage *update_xml_record(DBusConnection *conn,
 				DBUS_TYPE_UINT32, &handle,
 				DBUS_TYPE_STRING, &record,
 				DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	len = (record ? strlen(record) : 0);
 	if (len == 0)
@@ -475,7 +475,7 @@ static DBusMessage *add_service_record(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL,
 			DBUS_TYPE_STRING, &record, DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	sender = dbus_message_get_sender(msg);
 	err = add_xml_record(conn, sender, serv_adapter, record, &handle);
@@ -509,7 +509,7 @@ static DBusMessage *remove_service_record(DBusConnection *conn,
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &handle,
 						DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	sender = dbus_message_get_sender(msg);
 
@@ -582,7 +582,7 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_UINT32, &handle,
 					DBUS_TYPE_INVALID) == FALSE)
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	sender = dbus_message_get_sender(msg);
 	if (find_pending_by_sender(serv_adapter, sender))

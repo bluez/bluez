@@ -96,7 +96,7 @@ static DBusMessage *find_adapter(DBusConnection *conn,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
 							DBUS_TYPE_INVALID))
-		return NULL;
+		return btd_error_invalid_args(msg);
 
 	/* hci_devid() would make sense to use here, except it is
 	 * restricted to devices which are up */
