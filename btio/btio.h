@@ -31,7 +31,6 @@
 GQuark bt_io_error_quark(void);
 
 typedef enum {
-	BT_IO_L2RAW,
 	BT_IO_L2CAP,
 	BT_IO_L2ERTM,
 	BT_IO_RFCOMM,

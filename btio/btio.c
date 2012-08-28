@@ -1172,7 +1172,6 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
 	sock = g_io_channel_unix_get_fd(io);
 
 	switch (type) {
-	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
 	case BT_IO_L2ERTM:
 		return l2cap_get(sock, err, opt1, args);
@@ -1235,7 +1234,6 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 	sock = g_io_channel_unix_get_fd(io);
 
 	switch (type) {
-	case BT_IO_L2RAW:
 	case BT_IO_L2CAP:
 	case BT_IO_L2ERTM:
 		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
@@ -1272,18 +1270,6 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 	GIOChannel *io;
 
 	switch (type) {
-	case BT_IO_L2RAW:
-		sock = socket(PF_BLUETOOTH, SOCK_RAW, BTPROTO_L2CAP);
-		if (sock < 0) {
-			ERROR_FAILED(err, "socket(RAW, L2CAP)", errno);
-			return NULL;
-		}
-		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
-							opts->cid, err) < 0)
-			goto failed;
-		if (!l2cap_set(sock, opts->sec_level, 0, 0, 0, -1, -1, 0, err))
-			goto failed;
-		break;
 	case BT_IO_L2CAP:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 		if (sock < 0) {
@@ -1378,10 +1364,6 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	sock = g_io_channel_unix_get_fd(io);
 
 	switch (type) {
-	case BT_IO_L2RAW:
-		err = l2cap_connect(sock, &opts.dst, opts.dst_type, 0,
-								opts.cid);
-		break;
 	case BT_IO_L2CAP:
 	case BT_IO_L2ERTM:
 		err = l2cap_connect(sock, &opts.dst, opts.dst_type,
@@ -1420,12 +1402,6 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 	struct set_opts opts;
 	int sock;
 	gboolean ret;
-
-	if (type == BT_IO_L2RAW) {
-		ERROR_FAILED(err, "Server L2CAP RAW sockets not supported",
-								EINVAL);
-		return NULL;
-	}
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, err, opt1, args);
