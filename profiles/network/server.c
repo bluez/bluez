@@ -343,7 +343,7 @@ static uint16_t bnep_setup_decode(struct bnep_setup_conn_req *req,
 		return BNEP_CONN_INVALID_SVC;
 	}
 
-	return 0;
+	return BNEP_SUCCESS;
 }
 
 static void session_free(void *data)
@@ -424,6 +424,8 @@ static gboolean bnep_setup(GIOChannel *chan,
 	rsp = bnep_setup_chk(dst_role, src_role);
 	if (rsp)
 		goto reply;
+
+	rsp = BNEP_CONN_NOT_ALLOWED;
 
 	ns = find_server(na->servers, dst_role);
 	if (!ns) {
