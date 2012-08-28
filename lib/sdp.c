@@ -4346,7 +4346,8 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 	seqlen = gen_attridseq_pdu(pdata, attrids,
 		reqtype == SDP_ATTR_REQ_INDIVIDUAL ? SDP_UINT16 : SDP_UINT32);
 	if (seqlen == -1) {
-		status = EINVAL;
+		errno = EINVAL;
+		status = -1;
 		goto end;
 	}
 	pdata += seqlen;
