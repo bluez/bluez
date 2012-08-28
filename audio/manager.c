@@ -70,23 +70,6 @@
 #include "sdpd.h"
 #include "telephony.h"
 
-typedef enum {
-	HEADSET	= 1 << 0,
-	GATEWAY	= 1 << 1,
-	SINK	= 1 << 2,
-	SOURCE	= 1 << 3,
-	CONTROL	= 1 << 4,
-	TARGET	= 1 << 5,
-	INVALID	= 1 << 6
-} audio_service_type;
-
-typedef enum {
-		GENERIC_AUDIO = 0,
-		ADVANCED_AUDIO,
-		AV_REMOTE,
-		GET_RECORDS
-} audio_sdp_state_t;
-
 struct audio_adapter {
 	struct btd_adapter *btd_adapter;
 	gboolean powered;
