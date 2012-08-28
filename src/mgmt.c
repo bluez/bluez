@@ -246,6 +246,12 @@ int mgmt_set_pairable(int index, gboolean pairable)
 	return mgmt_set_mode(index, MGMT_OP_SET_PAIRABLE, pairable);
 }
 
+static int mgmt_set_ssp(int index, gboolean ssp)
+{
+	DBG("index %d ssp %d", index, ssp);
+	return mgmt_set_mode(index, MGMT_OP_SET_SSP, ssp);
+}
+
 static inline int mgmt_powered(uint32_t settings)
 {
 	return (settings & MGMT_SETTING_POWERED) != 0;
@@ -334,7 +340,7 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 		mgmt_set_pairable(index, pairable);
 
 	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
-		mgmt_set_mode(index, MGMT_OP_SET_SSP, 1);
+		mgmt_set_ssp(index, TRUE);
 
 	if (mgmt_low_energy(info->supported_settings) &&
 						!mgmt_low_energy(settings))
