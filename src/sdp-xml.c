@@ -377,10 +377,7 @@ static void convert_raw_attr_to_xml_func(void *val, void *data)
 		 value->attrId);
 	cd->appender(cd->data, buf);
 
-	if (data)
-		convert_raw_data_to_xml(value, 2, cd->data, cd->appender);
-	else
-		cd->appender(cd->data, "\t\tNULL\n");
+	convert_raw_data_to_xml(value, 2, cd->data, cd->appender);
 
 	cd->appender(cd->data, "\t</attribute>\n");
 }
