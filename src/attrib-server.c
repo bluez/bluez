@@ -879,9 +879,7 @@ static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
 
 	io = g_attrib_get_channel(channel->attrib);
 
-	bt_io_get(io, BT_IO_L2CAP, &gerr,
-			BT_IO_OPT_IMTU, &imtu,
-			BT_IO_OPT_INVALID);
+	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu, BT_IO_OPT_INVALID);
 
 	if (gerr)
 		return enc_error_resp(ATT_OP_MTU_REQ, 0,
@@ -1051,7 +1049,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 
 	channel = g_new0(struct gatt_channel, 1);
 
-	bt_io_get(io, BT_IO_L2CAP, &gerr,
+	bt_io_get(io, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &channel->src,
 			BT_IO_OPT_DEST_BDADDR, &channel->dst,
 			BT_IO_OPT_CID, &cid,
@@ -1123,8 +1121,7 @@ gboolean attrib_channel_detach(GAttrib *attrib, guint id)
 
 	io = g_attrib_get_channel(attrib);
 
-	bt_io_get(io, BT_IO_L2CAP, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src,
-							BT_IO_OPT_INVALID);
+	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE_BDADDR, &src, BT_IO_OPT_INVALID);
 
 	if (gerr != NULL) {
 		error("bt_io_get: %s", gerr->message);
@@ -1253,7 +1250,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	adapter_get_address(server->adapter, &addr);
 
 	/* BR/EDR socket */
-	server->l2cap_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+	server->l2cap_io = bt_io_listen(NULL, confirm_event,
 					NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, &addr,
 					BT_IO_OPT_PSM, ATT_PSM,
@@ -1273,7 +1270,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	}
 
 	/* LE socket */
-	server->le_io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event,
+	server->le_io = bt_io_listen(NULL, confirm_event,
 					&server->le_io, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, &addr,
 					BT_IO_OPT_CID, ATT_CID,

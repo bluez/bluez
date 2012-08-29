@@ -665,10 +665,9 @@ static void cmd_sec_level(int argcp, char **argvp)
 		return;
 	}
 
-	bt_io_set(iochannel, BT_IO_L2CAP, &gerr,
+	bt_io_set(iochannel, &gerr,
 			BT_IO_OPT_SEC_LEVEL, sec_level,
 			BT_IO_OPT_INVALID);
-
 	if (gerr) {
 		printf("Error: %s\n", gerr->message);
 		g_error_free(gerr);

@@ -72,7 +72,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+	bt_io_get(chan, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_PSM, &psm,
@@ -110,7 +110,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 	bdaddr_t src, dst;
 	GError *err = NULL;
 
-	bt_io_get(server->confirm, BT_IO_L2CAP, &err,
+	bt_io_get(server->confirm, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_INVALID);
@@ -152,7 +152,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	char addr[18];
 	int ret;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_INVALID);
@@ -198,7 +198,7 @@ int server_start(const bdaddr_t *src)
 	server = g_new0(struct input_server, 1);
 	bacpy(&server->src, src);
 
-	server->ctrl = bt_io_listen(BT_IO_L2CAP, connect_event_cb, NULL,
+	server->ctrl = bt_io_listen(connect_event_cb, NULL,
 				server, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
@@ -211,7 +211,7 @@ int server_start(const bdaddr_t *src)
 		return -1;
 	}
 
-	server->intr = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event_cb,
+	server->intr = bt_io_listen(NULL, confirm_event_cb,
 				server, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_INTR,

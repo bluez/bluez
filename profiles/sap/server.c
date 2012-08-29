@@ -1245,7 +1245,7 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 	conn->io = g_io_channel_ref(io);
 	conn->state = SAP_STATE_DISCONNECTED;
 
-	bt_io_get(io, BT_IO_RFCOMM, &gerr,
+	bt_io_get(io, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_INVALID);
@@ -1399,7 +1399,7 @@ int sap_server_register(const char *path, bdaddr_t *src)
 	server->path = g_strdup(path);
 	server->record_id = record->handle;
 
-	io = bt_io_listen(BT_IO_RFCOMM, NULL, connect_confirm_cb, server,
+	io = bt_io_listen(NULL, connect_confirm_cb, server,
 			NULL, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, src,
 			BT_IO_OPT_CHANNEL, SAP_SERVER_CHANNEL,

@@ -462,7 +462,7 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	GError *err = NULL;
 	uint8_t ch;
 
-	bt_io_get(chan, BT_IO_RFCOMM, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_CHANNEL, &ch,
@@ -560,7 +560,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	struct audio_device *device;
 	int perr;
 
-	bt_io_get(chan, BT_IO_RFCOMM, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_CHANNEL, &ch,
@@ -632,7 +632,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 	adapter_get_address(adapter->btd_adapter, &src);
 
-	io =  bt_io_listen(BT_IO_RFCOMM, NULL, ag_confirm, adapter, NULL, &err,
+	io =  bt_io_listen(NULL, ag_confirm, adapter, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -663,7 +663,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 
 	chan = DEFAULT_HF_AG_CHANNEL;
 
-	io = bt_io_listen(BT_IO_RFCOMM, NULL, ag_confirm, adapter, NULL, &err,
+	io = bt_io_listen(NULL, ag_confirm, adapter, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -733,7 +733,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 
 	adapter_get_address(adapter->btd_adapter, &src);
 
-	io = bt_io_listen(BT_IO_RFCOMM, NULL, hf_io_cb, adapter, NULL, &err,
+	io = bt_io_listen(NULL, hf_io_cb, adapter, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,

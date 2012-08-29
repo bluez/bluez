@@ -1674,7 +1674,7 @@ gboolean mcap_connect_mdl(struct mcap_mdl *mdl, uint8_t mode,
 	con->destroy = destroy;
 	con->user_data = user_data;
 
-	mdl->dc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mdl_cb, con,
+	mdl->dc = bt_io_connect(mcap_connect_mdl_cb, con,
 				(GDestroyNotify) free_mcap_mdl_op, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mdl->mcl->mi->src,
 				BT_IO_OPT_DEST_BDADDR, &mdl->mcl->addr,
@@ -1847,7 +1847,7 @@ gboolean mcap_create_mcl(struct mcap_instance *mi,
 	con->destroy = destroy;
 	con->user_data = user_data;
 
-	mcl->cc = bt_io_connect(BT_IO_L2CAP, mcap_connect_mcl_cb, con,
+	mcl->cc = bt_io_connect(mcap_connect_mcl_cb, con,
 				mcl_io_destroy, err,
 				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_DEST_BDADDR, addr,
@@ -1883,9 +1883,7 @@ static void connect_dc_event_cb(GIOChannel *chan, GError *gerr,
 	if (gerr)
 		return;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
-			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_INVALID);
+	bt_io_get(chan, &err, BT_IO_OPT_DEST_BDADDR, &dst, BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
 		g_error_free(err);
@@ -1952,7 +1950,7 @@ static void connect_mcl_event_cb(GIOChannel *chan, GError *gerr,
 	if (gerr)
 		return;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_INVALID);
@@ -2028,7 +2026,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	mi->csp_enabled = FALSE;
 
 	/* Listen incoming connections in control channel */
-	mi->ccio = bt_io_listen(BT_IO_L2CAP, connect_mcl_event_cb, NULL, mi,
+	mi->ccio = bt_io_listen(connect_mcl_event_cb, NULL, mi,
 				NULL, gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_PSM, ccpsm,
@@ -2043,7 +2041,7 @@ struct mcap_instance *mcap_create_instance(bdaddr_t *src,
 	}
 
 	/* Listen incoming connections in data channels */
-	mi->dcio = bt_io_listen(BT_IO_L2CAP, connect_dc_event_cb, NULL, mi,
+	mi->dcio = bt_io_listen(connect_dc_event_cb, NULL, mi,
 				NULL, gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &mi->src,
 				BT_IO_OPT_PSM, dcpsm,
@@ -2133,9 +2131,7 @@ uint16_t mcap_get_ctrl_psm(struct mcap_instance *mi, GError **err)
 		return 0;
 	}
 
-	if (!bt_io_get(mi->ccio, BT_IO_L2CAP, err,
-			BT_IO_OPT_PSM, &lpsm,
-			BT_IO_OPT_INVALID))
+	if (!bt_io_get(mi->ccio, err, BT_IO_OPT_PSM, &lpsm, BT_IO_OPT_INVALID))
 		return 0;
 
 	return lpsm;
@@ -2151,9 +2147,7 @@ uint16_t mcap_get_data_psm(struct mcap_instance *mi, GError **err)
 		return 0;
 	}
 
-	if (!bt_io_get(mi->dcio, BT_IO_L2CAP, err,
-			BT_IO_OPT_PSM, &lpsm,
-			BT_IO_OPT_INVALID))
+	if (!bt_io_get(mi->dcio, err, BT_IO_OPT_PSM, &lpsm, BT_IO_OPT_INVALID))
 		return 0;
 
 	return lpsm;
@@ -2168,7 +2162,7 @@ gboolean mcap_set_data_chan_mode(struct mcap_instance *mi, uint8_t mode,
 		return FALSE;
 	}
 
-	return bt_io_set(mi->dcio, BT_IO_L2CAP, err, BT_IO_OPT_MODE, mode,
+	return bt_io_set(mi->dcio, err, BT_IO_OPT_MODE, mode,
 							BT_IO_OPT_INVALID);
 }
 

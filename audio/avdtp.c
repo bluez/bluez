@@ -893,9 +893,8 @@ static void handle_transport_connect(struct avdtp *session, GIOChannel *io,
 	if (sep->info.type != AVDTP_SEP_TYPE_SOURCE)
 		goto proceed;
 
-	bt_io_set(stream->io, BT_IO_L2CAP, &err,
-					BT_IO_OPT_FLUSHABLE, TRUE,
-					BT_IO_OPT_INVALID);
+	bt_io_set(stream->io, &err, BT_IO_OPT_FLUSHABLE, TRUE,
+							BT_IO_OPT_INVALID);
 	if (err != NULL) {
 		error("Enabling flushable packets failed: %s", err->message);
 		g_error_free(err);
@@ -2414,7 +2413,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (!session->io)
 		session->io = g_io_channel_ref(chan);
 
-	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+	bt_io_get(chan, &gerr,
 			BT_IO_OPT_OMTU, &session->omtu,
 			BT_IO_OPT_IMTU, &session->imtu,
 			BT_IO_OPT_INVALID);
@@ -2510,7 +2509,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	int perr;
 	GError *err = NULL;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
@@ -2587,7 +2586,7 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_connect(BT_IO_L2CAP, avdtp_connect_cb, session,
+	io = bt_io_connect(avdtp_connect_cb, session,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
 				BT_IO_OPT_DEST_BDADDR, &session->dst,
@@ -3855,7 +3854,7 @@ static GIOChannel *avdtp_server_socket(const bdaddr_t *src, gboolean master)
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_listen(BT_IO_L2CAP, NULL, avdtp_confirm_cb,
+	io = bt_io_listen(NULL, avdtp_confirm_cb,
 				NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, AVDTP_PSM,

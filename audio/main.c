@@ -79,7 +79,7 @@ static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	bt_io_get(chan, BT_IO_SCO, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, addr,
@@ -161,7 +161,7 @@ static int audio_init(void)
 	if (!enable_sco)
 		return 0;
 
-	sco_server = bt_io_listen(BT_IO_SCO, sco_server_cb, NULL, NULL,
+	sco_server = bt_io_listen(sco_server_cb, NULL, NULL,
 					NULL, NULL,
 					BT_IO_OPT_INVALID);
 	if (!sco_server) {

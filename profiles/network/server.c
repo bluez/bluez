@@ -504,7 +504,7 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 	char address[18];
 	GError *err = NULL;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
@@ -752,7 +752,7 @@ static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 
 	adapter_get_address(adapter, &src);
 
-	na->io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_event, na,
+	na->io = bt_io_listen(NULL, confirm_event, na,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_PSM, BNEP_PSM,

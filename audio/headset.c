@@ -621,7 +621,7 @@ static int sco_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	if (hs->state != HEADSET_STATE_CONNECTED)
 		return -EINVAL;
 
-	io = bt_io_connect(BT_IO_SCO, sco_connect_cb, dev, NULL, &err,
+	io = bt_io_connect(sco_connect_cb, dev, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
 				BT_IO_OPT_INVALID);
@@ -1621,7 +1621,7 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	DBG("%s: Connecting to %s channel %d", dev->path, address,
 		hs->rfcomm_ch);
 
-	hs->tmp_rfcomm = bt_io_connect(BT_IO_RFCOMM, headset_connect_cb, dev,
+	hs->tmp_rfcomm = bt_io_connect(headset_connect_cb, dev,
 					NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 					BT_IO_OPT_DEST_BDADDR, &dev->dst,

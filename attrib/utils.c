@@ -76,7 +76,7 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 		sec = BT_IO_SEC_LOW;
 
 	if (psm == 0)
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
+		chan = bt_io_connect(connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
 				BT_IO_OPT_DEST_TYPE, dest_type,
@@ -84,7 +84,7 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 				BT_IO_OPT_SEC_LEVEL, sec,
 				BT_IO_OPT_INVALID);
 	else
-		chan = bt_io_connect(BT_IO_L2CAP, connect_cb, NULL, NULL, &err,
+		chan = bt_io_connect(connect_cb, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &dba,
 				BT_IO_OPT_PSM, psm,

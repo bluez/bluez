@@ -363,7 +363,7 @@ static gboolean rfcomm_connect(struct input_conn *iconn, GError **err)
 	struct input_device *idev = iconn->idev;
 	GIOChannel *io;
 
-	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, iconn,
+	io = bt_io_connect(rfcomm_connect_cb, iconn,
 				NULL, err,
 				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 				BT_IO_OPT_DEST_BDADDR, &idev->dst,
@@ -651,7 +651,7 @@ static int hidp_add_connection(const struct input_device *idev,
 
 	/* Encryption is mandatory for keyboards */
 	if (req->subclass & 0x40) {
-		if (!bt_io_set(iconn->intr_io, BT_IO_L2CAP, &gerr,
+		if (!bt_io_set(iconn->intr_io, &gerr,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID)) {
 			error("btio: %s", gerr->message);
@@ -885,7 +885,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	}
 
 	/* Connect to the HID interrupt channel */
-	io = bt_io_connect(BT_IO_L2CAP, interrupt_connect_cb, iconn,
+	io = bt_io_connect(interrupt_connect_cb, iconn,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 				BT_IO_OPT_DEST_BDADDR, &idev->dst,
@@ -972,7 +972,7 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 		if (idev->disable_sdp)
 			bt_clear_cached_session(&idev->src, &idev->dst);
 
-		io = bt_io_connect(BT_IO_L2CAP, control_connect_cb, iconn,
+		io = bt_io_connect(control_connect_cb, iconn,
 					NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &idev->src,
 					BT_IO_OPT_DEST_BDADDR, &idev->dst,

@@ -887,7 +887,7 @@ static gboolean check_channel_conf(struct hdp_channel *chan)
 		return FALSE;
 	io = g_io_channel_unix_new(fd);
 
-	if (!bt_io_get(io, BT_IO_L2CAP, &err,
+	if (!bt_io_get(io, &err,
 			BT_IO_OPT_MODE, &mode,
 			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_OMTU, &omtu,

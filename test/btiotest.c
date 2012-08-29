@@ -38,7 +38,6 @@ static gint opt_update_sec = 0;
 struct io_data {
 	guint ref;
 	GIOChannel *io;
-	BtIOType type;
 	gint reject;
 	gint disconn;
 	gint accept;
@@ -63,14 +62,13 @@ static struct io_data *io_data_ref(struct io_data *data)
 	return data;
 }
 
-static struct io_data *io_data_new(GIOChannel *io, BtIOType type, gint reject,
-						gint disconn, gint accept)
+static struct io_data *io_data_new(GIOChannel *io, int reject, gint disconn,
+								gint accept)
 {
 	struct io_data *data;
 
 	data = g_new0(struct io_data, 1);
 	data->io = io;
-	data->type = type;
 	data->reject = reject;
 	data->disconn = disconn;
 	data->accept = accept;
@@ -100,9 +98,8 @@ static void update_sec_level(struct io_data *data)
 	GError *err = NULL;
 	int sec_level;
 
-	if (!bt_io_get(data->io, data->type, &err,
-					BT_IO_OPT_SEC_LEVEL, &sec_level,
-					BT_IO_OPT_INVALID)) {
+	if (!bt_io_get(data->io, &err, BT_IO_OPT_SEC_LEVEL, &sec_level,
+							BT_IO_OPT_INVALID)) {
 		printf("bt_io_get(OPT_SEC_LEVEL): %s\n", err->message);
 		g_clear_error(&err);
 		return;
@@ -113,9 +110,8 @@ static void update_sec_level(struct io_data *data)
 	if (opt_update_sec == sec_level)
 		return;
 
-	if (!bt_io_set(data->io, data->type, &err,
-					BT_IO_OPT_SEC_LEVEL, opt_update_sec,
-					BT_IO_OPT_INVALID)) {
+	if (!bt_io_set(data->io, &err, BT_IO_OPT_SEC_LEVEL, opt_update_sec,
+							BT_IO_OPT_INVALID)) {
 		printf("bt_io_set(OPT_SEC_LEVEL): %s\n", err->message);
 		g_clear_error(&err);
 	}
@@ -126,15 +122,15 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	struct io_data *data = user_data;
 	GIOCondition cond;
 	char addr[18];
-	uint16_t handle;
-	uint8_t cls[3];
+	uint16_t handle, omtu, imtu;
+	uint8_t cls[3], key_size;
 
 	if (err) {
 		printf("Connecting failed: %s\n", err->message);
 		return;
 	}
 
-	if (!bt_io_get(io, data->type, &err,
+	if (!bt_io_get(io, &err,
 			BT_IO_OPT_DEST, addr,
 			BT_IO_OPT_HANDLE, &handle,
 			BT_IO_OPT_CLASS, cls,
@@ -148,32 +144,20 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	printf("Successfully connected to %s. handle=%u, class=%02x%02x%02x\n",
 			addr, handle, cls[0], cls[1], cls[2]);
 
-	if (data->type == BT_IO_L2CAP || data->type == BT_IO_SCO) {
-		uint16_t omtu, imtu;
-
-		if (!bt_io_get(io, data->type, &err,
-					BT_IO_OPT_OMTU, &omtu,
+	if (!bt_io_get(io, &err, BT_IO_OPT_OMTU, &omtu,
 					BT_IO_OPT_IMTU, &imtu,
 					BT_IO_OPT_INVALID)) {
-			printf("Unable to get L2CAP MTU sizes: %s\n",
-								err->message);
-			g_clear_error(&err);
-		} else
-			printf("imtu=%u, omtu=%u\n", imtu, omtu);
-	}
+		printf("Unable to get MTU sizes: %s\n", err->message);
+		g_clear_error(&err);
+	} else
+		printf("imtu=%u, omtu=%u\n", imtu, omtu);
 
-	if (data->type == BT_IO_L2CAP) {
-		uint8_t key_size;
-
-		if (!bt_io_get(io, data->type, &err,
-					BT_IO_OPT_KEY_SIZE, &key_size,
-					BT_IO_OPT_INVALID)) {
-			printf("Unable to get L2CAP Key size: %s\n",
-								err->message);
-			g_clear_error(&err);
-		} else
-			printf("key_size=%u\n", key_size);
-	}
+	if (!bt_io_get(io, &err, BT_IO_OPT_KEY_SIZE, &key_size,
+							BT_IO_OPT_INVALID)) {
+		printf("Unable to get Key size: %s\n", err->message);
+		g_clear_error(&err);
+	} else
+		printf("key_size=%u\n", key_size);
 
 	if (data->disconn == 0) {
 		g_io_channel_shutdown(io, TRUE, NULL);
@@ -234,8 +218,7 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 	struct io_data *data = user_data;
 	GError *err = NULL;
 
-	if (!bt_io_get(io, data->type, &err, BT_IO_OPT_DEST, addr,
-							BT_IO_OPT_INVALID)) {
+	if (!bt_io_get(io, &err, BT_IO_OPT_DEST, addr, BT_IO_OPT_INVALID)) {
 		printf("bt_io_get(OPT_DEST): %s\n", err->message);
 		g_clear_error(&err);
 	} else
@@ -280,10 +263,10 @@ static void l2cap_connect(const char *src, const char *dst, uint16_t psm,
 
 	printf("Connecting to %s L2CAP PSM %u\n", dst, psm);
 
-	data = io_data_new(NULL, BT_IO_L2CAP, -1, disconn, -1);
+	data = io_data_new(NULL, -1, disconn, -1);
 
 	if (src)
-		data->io = bt_io_connect(BT_IO_L2CAP, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_SOURCE, src,
@@ -294,7 +277,7 @@ static void l2cap_connect(const char *src, const char *dst, uint16_t psm,
 						BT_IO_OPT_PRIORITY, prio,
 						BT_IO_OPT_INVALID);
 	else
-		data->io = bt_io_connect(BT_IO_L2CAP, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_DEST, dst,
@@ -331,11 +314,11 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 
 	printf("Listening on L2CAP PSM %u\n", psm);
 
-	data = io_data_new(NULL, BT_IO_L2CAP, reject, disconn, accept);
+	data = io_data_new(NULL, reject, disconn, accept);
 
 	if (src)
-		l2_srv = bt_io_listen(BT_IO_L2CAP, conn, cfm,
-					data, (GDestroyNotify) io_data_unref,
+		l2_srv = bt_io_listen(conn, cfm, data,
+					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_PSM, psm,
@@ -343,8 +326,8 @@ static void l2cap_listen(const char *src, uint16_t psm, gint defer,
 					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 	else
-		l2_srv = bt_io_listen(BT_IO_L2CAP, conn, cfm,
-					data, (GDestroyNotify) io_data_unref,
+		l2_srv = bt_io_listen(conn, cfm, data,
+					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, sec,
@@ -368,10 +351,10 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 
 	printf("Connecting to %s RFCOMM channel %u\n", dst, ch);
 
-	data = io_data_new(NULL, BT_IO_RFCOMM, -1, disconn, -1);
+	data = io_data_new(NULL, -1, disconn, -1);
 
 	if (src)
-		data->io = bt_io_connect(BT_IO_RFCOMM, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_SOURCE, src,
@@ -380,7 +363,7 @@ static void rfcomm_connect(const char *src, const char *dst, uint8_t ch,
 						BT_IO_OPT_SEC_LEVEL, sec,
 						BT_IO_OPT_INVALID);
 	else
-		data->io = bt_io_connect(BT_IO_RFCOMM, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_DEST, dst,
@@ -413,10 +396,10 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 		cfm = NULL;
 	}
 
-	data = io_data_new(NULL, BT_IO_RFCOMM, reject, disconn, accept);
+	data = io_data_new(NULL, reject, disconn, accept);
 
 	if (src)
-		rc_srv = bt_io_listen(BT_IO_RFCOMM, conn, cfm,
+		rc_srv = bt_io_listen(conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
@@ -425,7 +408,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 					BT_IO_OPT_MASTER, master,
 					BT_IO_OPT_INVALID);
 	else
-		rc_srv = bt_io_listen(BT_IO_RFCOMM, conn, cfm,
+		rc_srv = bt_io_listen(conn, cfm,
 					data, (GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_CHANNEL, ch,
@@ -439,9 +422,7 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 		exit(EXIT_FAILURE);
 	}
 
-	bt_io_get(rc_srv, BT_IO_RFCOMM, &err,
-			BT_IO_OPT_CHANNEL, &ch,
-			BT_IO_OPT_INVALID);
+	bt_io_get(rc_srv, &err, BT_IO_OPT_CHANNEL, &ch, BT_IO_OPT_INVALID);
 
 	printf("Listening on RFCOMM channel %u\n", ch);
 
@@ -455,17 +436,17 @@ static void sco_connect(const char *src, const char *dst, gint disconn)
 
 	printf("Connecting SCO to %s\n", dst);
 
-	data = io_data_new(NULL, BT_IO_SCO, -1, disconn, -1);
+	data = io_data_new(NULL, -1, disconn, -1);
 
 	if (src)
-		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_SOURCE, src,
 						BT_IO_OPT_DEST, dst,
 						BT_IO_OPT_INVALID);
 	else
-		data->io = bt_io_connect(BT_IO_SCO, connect_cb, data,
+		data->io = bt_io_connect(connect_cb, data,
 						(GDestroyNotify) io_data_unref,
 						&err,
 						BT_IO_OPT_DEST, dst,
@@ -486,17 +467,17 @@ static void sco_listen(const char *src, gint disconn)
 
 	printf("Listening for SCO connections\n");
 
-	data = io_data_new(NULL, BT_IO_SCO, -1, disconn, -1);
+	data = io_data_new(NULL, -1, disconn, -1);
 
 	if (src)
-		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
-					data, (GDestroyNotify) io_data_unref,
+		sco_srv = bt_io_listen(connect_cb, NULL, data,
+					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_INVALID);
 	else
-		sco_srv = bt_io_listen(BT_IO_SCO, connect_cb, NULL,
-					data, (GDestroyNotify) io_data_unref,
+		sco_srv = bt_io_listen(connect_cb, NULL, data,
+					(GDestroyNotify) io_data_unref,
 					&err, BT_IO_OPT_INVALID);
 
 	if (!sco_srv) {

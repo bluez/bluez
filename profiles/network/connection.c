@@ -412,7 +412,7 @@ static DBusMessage *connection_connect(DBusConnection *conn,
 	if (nc->state != DISCONNECTED)
 		return btd_error_already_connected(msg);
 
-	nc->io = bt_io_connect(BT_IO_L2CAP, connect_cb, nc,
+	nc->io = bt_io_connect(connect_cb, nc,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &peer->src,
 				BT_IO_OPT_DEST_BDADDR, &peer->dst,

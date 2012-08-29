@@ -444,11 +444,8 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	g_io_channel_set_encoding(io, NULL, NULL);
 	g_io_channel_set_buffered(io, FALSE);
 
-	bt_io_get(io, BT_IO_L2CAP, &gerr,
-			BT_IO_OPT_IMTU, &imtu,
-			BT_IO_OPT_CID, &cid,
-			BT_IO_OPT_INVALID);
-
+	bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu,
+				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID);
 	if (gerr) {
 		error("%s", gerr->message);
 		g_error_free(gerr);
@@ -673,7 +670,7 @@ gboolean g_attrib_is_encrypted(GAttrib *attrib)
 {
 	BtIOSecLevel sec_level;
 
-	if (!bt_io_get(attrib->io, BT_IO_L2CAP, NULL,
+	if (!bt_io_get(attrib->io, NULL,
 			BT_IO_OPT_SEC_LEVEL, &sec_level,
 			BT_IO_OPT_INVALID))
 		return FALSE;

@@ -2002,7 +2002,7 @@ static gboolean att_connect(gpointer user_data)
 	attcb->user_data = device;
 
 	if (device_is_bredr(device)) {
-		io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
+		io = bt_io_connect(att_connect_cb,
 					attcb, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, &sba,
 					BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
@@ -2010,7 +2010,7 @@ static gboolean att_connect(gpointer user_data)
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 					BT_IO_OPT_INVALID);
 	} else {
-		io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
+		io = bt_io_connect(att_connect_cb,
 				attcb, NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
@@ -2088,7 +2088,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 	attcb->success = att_browse_cb;
 	attcb->user_data = device;
 
-	device->att_io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
+	device->att_io = bt_io_connect(att_connect_cb,
 				attcb, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
@@ -2474,7 +2474,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 		attcb = g_new0(struct att_callbacks, 1);
 		attcb->user_data = device;
 
-		device->att_io = bt_io_connect(BT_IO_L2CAP, att_connect_cb,
+		device->att_io = bt_io_connect(att_connect_cb,
 				attcb, NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &sba,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,

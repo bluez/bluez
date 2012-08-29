@@ -286,7 +286,7 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	gas->attrib = g_attrib_ref(attrib);
 	io = g_attrib_get_channel(attrib);
 
-	if (bt_io_get(io, BT_IO_L2CAP, &gerr, BT_IO_OPT_IMTU, &imtu,
+	if (bt_io_get(io, &gerr, BT_IO_OPT_IMTU, &imtu,
 				BT_IO_OPT_CID, &cid, BT_IO_OPT_INVALID)) {
 		gatt_exchange_mtu(gas->attrib, imtu, exchange_mtu_cb, gas);
 		gas->mtu = imtu;

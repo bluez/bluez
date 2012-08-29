@@ -496,7 +496,7 @@ static void get_record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto fail;
 	}
 
-	io = bt_io_connect(BT_IO_RFCOMM, rfcomm_connect_cb, dev, NULL, &gerr,
+	io = bt_io_connect(rfcomm_connect_cb, dev, NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -842,7 +842,7 @@ unsigned int gateway_request_stream(struct audio_device *dev,
 	if (!gw->rfcomm)
 		get_records(dev);
 	else if (!gw->sco) {
-		io = bt_io_connect(BT_IO_SCO, sco_connect_cb, dev, NULL, &err,
+		io = bt_io_connect(sco_connect_cb, dev, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,

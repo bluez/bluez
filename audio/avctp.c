@@ -626,7 +626,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 		return;
 	}
 
-	bt_io_get(chan, BT_IO_L2CAP, &gerr,
+	bt_io_get(chan, &gerr,
 			BT_IO_OPT_DEST, &address,
 			BT_IO_OPT_IMTU, &imtu,
 			BT_IO_OPT_INVALID);
@@ -737,7 +737,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	bdaddr_t src, dst;
 	GError *err = NULL;
 
-	bt_io_get(chan, BT_IO_L2CAP, &err,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
@@ -799,7 +799,7 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 	GError *err = NULL;
 	GIOChannel *io;
 
-	io = bt_io_listen(BT_IO_L2CAP, NULL, avctp_confirm_cb, NULL,
+	io = bt_io_listen(NULL, avctp_confirm_cb, NULL,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, AVCTP_PSM,
@@ -1087,7 +1087,7 @@ struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
 
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 
-	io = bt_io_connect(BT_IO_L2CAP, avctp_connect_cb, session, NULL, &err,
+	io = bt_io_connect(avctp_connect_cb, session, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
 				BT_IO_OPT_DEST_BDADDR, &session->dst,
 				BT_IO_OPT_PSM, AVCTP_PSM,
