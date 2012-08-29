@@ -400,7 +400,7 @@ static void parse_size(struct map_msg *msg, const char *value,
 static void parse_priority(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
-	gboolean flag = strcasecmp(value, "no");
+	gboolean flag = strcasecmp(value, "no") != 0;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_PRIORITY;
@@ -413,7 +413,7 @@ static void parse_priority(struct map_msg *msg, const char *value,
 static void parse_read(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
-	gboolean flag = strcasecmp(value, "no");
+	gboolean flag = strcasecmp(value, "no") != 0;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_READ;
@@ -426,7 +426,7 @@ static void parse_read(struct map_msg *msg, const char *value,
 static void parse_sent(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
-	gboolean flag = strcasecmp(value, "no");
+	gboolean flag = strcasecmp(value, "no") != 0;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_SENT;
@@ -439,7 +439,7 @@ static void parse_sent(struct map_msg *msg, const char *value,
 static void parse_protected(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
-	gboolean flag = strcasecmp(value, "no");
+	gboolean flag = strcasecmp(value, "no") != 0;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_PROTECTED;
