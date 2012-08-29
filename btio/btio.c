@@ -50,7 +50,6 @@
 
 typedef enum {
 	BT_IO_L2CAP,
-	BT_IO_L2ERTM,
 	BT_IO_RFCOMM,
 	BT_IO_SCO,
 	BT_IO_INVALID,
@@ -96,7 +95,7 @@ struct server {
 static BtIOType bt_io_get_type(GIOChannel *io, GError **gerr)
 {
 	int sk = g_io_channel_unix_get_fd(io);
-	int domain, type, proto, err;
+	int domain, proto, err;
 	socklen_t len;
 
 	domain = 0;
@@ -126,29 +125,13 @@ static BtIOType bt_io_get_type(GIOChannel *io, GError **gerr)
 		return BT_IO_RFCOMM;
 	case BTPROTO_SCO:
 		return BT_IO_SCO;
-	}
-
-	type = 0;
-	len = sizeof(type);
-	err = getsockopt(sk, SOL_SOCKET, SO_TYPE, &type, &len);
-	if (err < 0) {
-		ERROR_FAILED(gerr, "getsockopt(SO_TYPE)", errno);
+	case BTPROTO_L2CAP:
+		return BT_IO_L2CAP;
+	default:
+		g_set_error(gerr, BT_IO_ERROR, EINVAL,
+					"Unknown BtIO socket type");
 		return BT_IO_INVALID;
 	}
-
-	switch (proto) {
-	case BTPROTO_L2CAP:
-		switch (type) {
-		case SOCK_SEQPACKET:
-			return BT_IO_L2CAP;
-		case SOCK_STREAM:
-			return BT_IO_L2ERTM;
-		}
-	}
-
-	g_set_error(gerr, BT_IO_ERROR, EINVAL, "Unknown BtIO socket type");
-
-	return BT_IO_INVALID;
 }
 
 static void server_remove(struct server *server)
@@ -1239,7 +1222,6 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
 
 	switch (type) {
 	case BT_IO_L2CAP:
-	case BT_IO_L2ERTM:
 		return l2cap_get(sock, err, opt1, args);
 	case BT_IO_RFCOMM:
 		return rfcomm_get(sock, err, opt1, args);
@@ -1305,7 +1287,6 @@ gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 
 	switch (type) {
 	case BT_IO_L2CAP:
-	case BT_IO_L2ERTM:
 		return l2cap_set(sock, opts.sec_level, opts.imtu, opts.omtu,
 				opts.mode, opts.master, opts.flushable,
 				opts.priority, err);
@@ -1349,20 +1330,6 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 		if (sock < 0) {
 			ERROR_FAILED(err, "socket(SEQPACKET, L2CAP)", errno);
-			return NULL;
-		}
-		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
-							opts->cid, err) < 0)
-			goto failed;
-		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
-				opts->mode, opts->master, opts->flushable,
-				opts->priority, err))
-			goto failed;
-		break;
-	case BT_IO_L2ERTM:
-		sock = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_L2CAP);
-		if (sock < 0) {
-			ERROR_FAILED(err, "socket(STREAM, L2CAP)", errno);
 			return NULL;
 		}
 		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
@@ -1420,9 +1387,6 @@ static BtIOType get_opts_type(struct set_opts *opts)
 	if (opts->channel)
 		return BT_IO_RFCOMM;
 
-	if (opts->mode)
-		return BT_IO_L2ERTM;
-
 	if (opts->psm || opts->cid)
 		return BT_IO_L2CAP;
 
@@ -1457,7 +1421,6 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 
 	switch (type) {
 	case BT_IO_L2CAP:
-	case BT_IO_L2ERTM:
 		err = l2cap_connect(sock, &opts.dst, opts.dst_type,
 							opts.psm, opts.cid);
 		break;
