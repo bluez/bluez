@@ -48,6 +48,14 @@
 
 #define DEFAULT_DEFER_TIMEOUT 30
 
+typedef enum {
+	BT_IO_L2CAP,
+	BT_IO_L2ERTM,
+	BT_IO_RFCOMM,
+	BT_IO_SCO,
+	BT_IO_INVALID,
+} BtIOType;
+
 struct set_opts {
 	bdaddr_t src;
 	bdaddr_t dst;
@@ -84,6 +92,64 @@ struct server {
 	gpointer user_data;
 	GDestroyNotify destroy;
 };
+
+static BtIOType bt_io_get_type(GIOChannel *io, GError **gerr)
+{
+	int sk = g_io_channel_unix_get_fd(io);
+	int domain, type, proto, err;
+	socklen_t len;
+
+	domain = 0;
+	len = sizeof(domain);
+	err = getsockopt(sk, SOL_SOCKET, SO_DOMAIN, &domain, &len);
+	if (err < 0) {
+		ERROR_FAILED(gerr, "getsockopt(SO_DOMAIN)", errno);
+		return BT_IO_INVALID;
+	}
+
+	if (domain != AF_BLUETOOTH) {
+		g_set_error(gerr, BT_IO_ERROR, EINVAL,
+				"BtIO socket domain not AF_BLUETOOTH");
+		return BT_IO_INVALID;
+	}
+
+	proto = 0;
+	len = sizeof(proto);
+	err = getsockopt(sk, SOL_SOCKET, SO_PROTOCOL, &proto, &len);
+	if (err < 0) {
+		ERROR_FAILED(gerr, "getsockopt(SO_PROTOCOL)", errno);
+		return BT_IO_INVALID;
+	}
+
+	switch (proto) {
+	case BTPROTO_RFCOMM:
+		return BT_IO_RFCOMM;
+	case BTPROTO_SCO:
+		return BT_IO_SCO;
+	}
+
+	type = 0;
+	len = sizeof(type);
+	err = getsockopt(sk, SOL_SOCKET, SO_TYPE, &type, &len);
+	if (err < 0) {
+		ERROR_FAILED(gerr, "getsockopt(SO_TYPE)", errno);
+		return BT_IO_INVALID;
+	}
+
+	switch (proto) {
+	case BTPROTO_L2CAP:
+		switch (type) {
+		case SOCK_SEQPACKET:
+			return BT_IO_L2CAP;
+		case SOCK_STREAM:
+			return BT_IO_L2ERTM;
+		}
+	}
+
+	g_set_error(gerr, BT_IO_ERROR, EINVAL, "Unknown BtIO socket type");
+
+	return BT_IO_INVALID;
+}
 
 static void server_remove(struct server *server)
 {
@@ -1179,11 +1245,11 @@ static gboolean get_valist(GIOChannel *io, BtIOType type, GError **err,
 		return rfcomm_get(sock, err, opt1, args);
 	case BT_IO_SCO:
 		return sco_get(sock, err, opt1, args);
+	default:
+		g_set_error(err, BT_IO_ERROR, EINVAL,
+				"Unknown BtIO type %d", type);
+		return FALSE;
 	}
-
-	g_set_error(err, BT_IO_ERROR, EINVAL,
-			"Unknown BtIO type %d", type);
-	return FALSE;
 }
 
 gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
@@ -1216,13 +1282,13 @@ gboolean bt_io_accept(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 	return TRUE;
 }
 
-gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
-							BtIOOption opt1, ...)
+gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 {
 	va_list args;
 	gboolean ret;
 	struct set_opts opts;
 	int sock;
+	BtIOType type;
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, err, opt1, args);
@@ -1230,6 +1296,10 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 
 	if (!ret)
 		return ret;
+
+	type = bt_io_get_type(io, err);
+	if (type == BT_IO_INVALID)
+		return FALSE;
 
 	sock = g_io_channel_unix_get_fd(io);
 
@@ -1243,18 +1313,23 @@ gboolean bt_io_set(GIOChannel *io, BtIOType type, GError **err,
 		return rfcomm_set(sock, opts.sec_level, opts.master, err);
 	case BT_IO_SCO:
 		return sco_set(sock, opts.mtu, err);
+	default:
+		g_set_error(err, BT_IO_ERROR, EINVAL,
+				"Unknown BtIO type %d", type);
+		return FALSE;
 	}
 
-	g_set_error(err, BT_IO_ERROR, EINVAL,
-			"Unknown BtIO type %d", type);
-	return FALSE;
 }
 
-gboolean bt_io_get(GIOChannel *io, BtIOType type, GError **err,
-							BtIOOption opt1, ...)
+gboolean bt_io_get(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 {
 	va_list args;
 	gboolean ret;
+	BtIOType type;
+
+	type = bt_io_get_type(io, err);
+	if (type == BT_IO_INVALID)
+		return FALSE;
 
 	va_start(args, opt1);
 	ret = get_valist(io, type, err, opt1, args);
@@ -1340,15 +1415,30 @@ failed:
 	return NULL;
 }
 
-GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
-				gpointer user_data, GDestroyNotify destroy,
-				GError **gerr, BtIOOption opt1, ...)
+static BtIOType get_opts_type(struct set_opts *opts)
+{
+	if (opts->channel)
+		return BT_IO_RFCOMM;
+
+	if (opts->mode)
+		return BT_IO_L2ERTM;
+
+	if (opts->psm || opts->cid)
+		return BT_IO_L2CAP;
+
+	return BT_IO_SCO;
+}
+
+GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
+				GDestroyNotify destroy, GError **gerr,
+				BtIOOption opt1, ...)
 {
 	GIOChannel *io;
 	va_list args;
 	struct set_opts opts;
 	int err, sock;
 	gboolean ret;
+	BtIOType type;
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, gerr, opt1, args);
@@ -1356,6 +1446,8 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 
 	if (ret == FALSE)
 		return NULL;
+
+	type = get_opts_type(&opts);
 
 	io = create_io(type, FALSE, &opts, gerr);
 	if (io == NULL)
@@ -1392,16 +1484,16 @@ GIOChannel *bt_io_connect(BtIOType type, BtIOConnect connect,
 	return io;
 }
 
-GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
-				BtIOConfirm confirm, gpointer user_data,
-				GDestroyNotify destroy, GError **err,
-				BtIOOption opt1, ...)
+GIOChannel *bt_io_listen(BtIOConnect connect, BtIOConfirm confirm,
+				gpointer user_data, GDestroyNotify destroy,
+				GError **err, BtIOOption opt1, ...)
 {
 	GIOChannel *io;
 	va_list args;
 	struct set_opts opts;
 	int sock;
 	gboolean ret;
+	BtIOType type;
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, err, opt1, args);
@@ -1409,6 +1501,8 @@ GIOChannel *bt_io_listen(BtIOType type, BtIOConnect connect,
 
 	if (ret == FALSE)
 		return NULL;
+
+	type = get_opts_type(&opts);
 
 	io = create_io(type, TRUE, &opts, err);
 	if (io == NULL)
