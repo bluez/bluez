@@ -338,7 +338,7 @@ static char *cmd_hostctl_str[CMD_HOSTCTL_NUM + 1] = {
 	"Write LE Host Supported",
 };
 
-#define CMD_INFO_NUM 9
+#define CMD_INFO_NUM 10
 static char *cmd_info_str[CMD_INFO_NUM + 1] = {
 	"Unknown",
 	"Read Local Version Information",
@@ -350,6 +350,7 @@ static char *cmd_info_str[CMD_INFO_NUM + 1] = {
 	"Read Country Code",
 	"Unknown",
 	"Read BD ADDR",
+	"Read Data Block Size",
 };
 
 #define CMD_STATUS_NUM 11
@@ -2041,6 +2042,24 @@ static inline void bdaddr_response_dump(int level, struct frame *frm)
 	raw_dump(level, frm);
 }
 
+static inline void read_data_block_size_dump(int level, struct frame *frm)
+{
+	read_data_block_size_rp *rp = frm->ptr;
+
+	p_indent(level, frm);
+	printf("status 0x%2.2x\n", rp->status);
+
+	if (rp->status > 0) {
+		p_indent(level, frm);
+		printf("Error: %s\n", status2str(rp->status));
+	} else {
+		p_indent(level, frm);
+		printf("Max ACL %d Block len %d Num blocks %d\n",
+			btohs(rp->max_acl_len), btohs(rp->data_block_len),
+							btohs(rp->num_blocks));
+	}
+}
+
 static inline void generic_response_dump(int level, struct frame *frm)
 {
 	uint8_t status = get_u8(frm);
@@ -2885,6 +2904,9 @@ static inline void cmd_complete_dump(int level, struct frame *frm)
 			return;
 		case OCF_READ_BD_ADDR:
 			bdaddr_response_dump(level, frm);
+			return;
+		case OCF_READ_DATA_BLOCK_SIZE:
+			read_data_block_size_dump(level, frm);
 			return;
 		}
 		break;
