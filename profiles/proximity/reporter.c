@@ -252,11 +252,6 @@ int reporter_adapter_probe(struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter;
 
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	radapter = g_new0(struct reporter_adapter, 1);
 	radapter->adapter = adapter;
 
