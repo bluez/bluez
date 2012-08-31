@@ -3721,6 +3721,25 @@ static inline void flow_spec_modify_dump(int level, struct frame *frm)
 	}
 }
 
+static inline void num_completed_blocks_dump(int level, struct frame *frm)
+{
+	evt_num_completed_blocks *evt = frm->ptr;
+	int i;
+
+	p_indent(level, frm);
+	printf("Total num blocks %d Num handles %d\n",
+			btohs(evt->total_num_blocks), evt->num_handles);
+
+	for (i = 0; i < evt->num_handles; i++) {
+		cmplt_handle *h = &evt->handles[i];
+
+		p_indent(level + 1, frm);
+		printf("Handle 0x%4.4x: Num complt pkts %d Num complt blks %d\n",
+				btohs(h->handle), btohs(h->num_cmplt_pkts),
+				btohs(h->num_cmplt_blks));
+	}
+}
+
 static inline void event_dump(int level, struct frame *frm)
 {
 	hci_event_hdr *hdr = frm->ptr;
@@ -3946,6 +3965,9 @@ static inline void event_dump(int level, struct frame *frm)
 		break;
 	case EVT_FLOW_SPEC_MODIFY_COMPLETE:
 		flow_spec_modify_dump(level + 1, frm);
+		break;
+	case EVT_NUMBER_COMPLETED_BLOCKS:
+		num_completed_blocks_dump(level + 1, frm);
 		break;
 	default:
 		raw_dump(level, frm);
