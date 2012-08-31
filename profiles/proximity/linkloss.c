@@ -46,8 +46,6 @@
 #include "reporter.h"
 #include "linkloss.h"
 
-#define BLUEZ_SERVICE "org.bluez"
-
 struct link_loss_adapter {
 	struct btd_adapter *adapter;
 	uint16_t alert_lvl_value_handle;

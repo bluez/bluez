@@ -51,8 +51,6 @@
 #include "linkloss.h"
 #include "immalert.h"
 
-#define BLUEZ_SERVICE "org.bluez"
-
 struct reporter_adapter {
 	DBusConnection *conn;
 	struct btd_adapter *adapter;
