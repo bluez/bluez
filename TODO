@@ -77,6 +77,9 @@ released.
   discovered devices. This fixes the issue of not exposing the address
   type in DeviceFound and the Create* method calls
 
+- Convert storage to user per-remote device directories and ini-file
+  format
+
 Low Energy
 ==========
 
