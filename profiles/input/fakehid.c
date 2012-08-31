@@ -374,6 +374,16 @@ static struct fake_hid fake_hid_table[] = {
 		.setup_uinput	= ps3remote_setup_uinput,
 		.devices	= NULL,
 	},
+	/* Logitech Harmony Adapter for PS3 */
+	{
+		.vendor		= 0x046d,
+		.product	= 0x0306,
+		.connect	= fake_hid_common_connect,
+		.disconnect	= fake_hid_common_disconnect,
+		.event		= ps3remote_event,
+		.setup_uinput	= ps3remote_setup_uinput,
+		.devices	= NULL,
+	},
 
 	{ },
 };
