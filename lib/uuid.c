@@ -271,3 +271,8 @@ int bt_string_to_uuid(bt_uuid_t *uuid, const char *string)
 
 	return -EINVAL;
 }
+
+int bt_uuid_strcmp(const void *a, const void *b)
+{
+	return strcasecmp(a, b);
+}

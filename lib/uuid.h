@@ -97,6 +97,8 @@ typedef struct {
 	} value;
 } bt_uuid_t;
 
+int bt_uuid_strcmp(const void *a, const void *b);
+
 int bt_uuid16_create(bt_uuid_t *btuuid, uint16_t value);
 int bt_uuid32_create(bt_uuid_t *btuuid, uint32_t value);
 int bt_uuid128_create(bt_uuid_t *btuuid, uint128_t value);
