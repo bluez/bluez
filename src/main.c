@@ -395,6 +395,12 @@ static void disconnect_dbus(void)
 	dbus_connection_unref(conn);
 }
 
+static void disconnected_dbus(DBusConnection *conn, void *data)
+{
+	info("Disconnected from D-Bus. Exiting.");
+	g_main_loop_quit(event_loop);
+}
+
 static int connect_dbus(void)
 {
 	DBusConnection *conn;
@@ -416,6 +422,8 @@ static int connect_dbus(void)
 		return -EIO;
 
 	set_dbus_connection(conn);
+
+	g_dbus_set_disconnect_function(conn, disconnected_dbus, NULL, NULL);
 
 	return 0;
 }
