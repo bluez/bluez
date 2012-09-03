@@ -24,9 +24,12 @@
 #include <config.h>
 #endif
 
-#include <gdbus.h>
+#include <stdbool.h>
 #include <errno.h>
+
 #include <bluetooth/uuid.h>
+
+#include <gdbus.h>
 
 #include "dbus-common.h"
 #include "adapter.h"

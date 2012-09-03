@@ -30,6 +30,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>

@@ -57,15 +57,15 @@ void headset_connect_cb(GIOChannel *chan, GError *err, gpointer user_data);
 
 GIOChannel *headset_get_rfcomm(struct audio_device *dev);
 
-struct headset *headset_init(struct audio_device *dev, uint16_t svc,
-				const char *uuidstr);
+struct headset *headset_init(struct audio_device *dev, GSList *uuids,
+							gboolean hfp_enabled);
 
 void headset_unregister(struct audio_device *dev);
 
 uint32_t headset_config_init(GKeyFile *config);
 
-void headset_update(struct audio_device *dev, uint16_t svc,
-			const char *uuidstr);
+void headset_update(struct audio_device *dev, struct headset *headset,
+								GSList *uuids);
 
 unsigned int headset_config_stream(struct audio_device *dev,
 					gboolean auto_dc,

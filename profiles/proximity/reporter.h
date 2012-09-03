@@ -36,6 +36,9 @@ enum {
 	HIGH_ALERT = 0x02,
 };
 
+void reporter_device_remove(struct btd_device *device);
+int reporter_device_probe(struct btd_device *device);
+
 int reporter_init(struct btd_adapter *adapter);
 void reporter_exit(struct btd_adapter *adapter);
 

@@ -26,6 +26,7 @@
 #endif
 
 #include <errno.h>
+#include <stdbool.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -139,24 +140,23 @@ static void hid_server_remove(struct btd_adapter *adapter)
 	btd_adapter_unref(adapter);
 }
 
-static struct btd_device_driver input_hid_driver = {
-	.name	= "input-hid",
-	.uuids	= BTD_UUIDS(HID_UUID),
-	.probe	= hid_device_probe,
-	.remove	= hid_device_remove,
+static struct btd_profile input_profile = {
+	.name		= "input-hid",
+	.remote_uuids	= BTD_UUIDS(HID_UUID),
+
+	.device_probe	= hid_device_probe,
+	.device_remove	= hid_device_remove,
+
+	.adapter_probe	= hid_server_probe,
+	.adapter_remove = hid_server_remove,
 };
 
-static struct btd_device_driver input_headset_driver = {
-	.name	= "input-headset",
-	.uuids	= BTD_UUIDS(HSP_HS_UUID),
-	.probe	= headset_probe,
-	.remove	= headset_remove,
-};
+static struct btd_profile input_headset_profile = {
+	.name		= "input-headset",
+	.remote_uuids	= BTD_UUIDS(HSP_HS_UUID),
 
-static struct btd_adapter_driver input_server_driver = {
-	.name   = "input-server",
-	.probe  = hid_server_probe,
-	.remove = hid_server_remove,
+	.device_probe	= headset_probe,
+	.device_remove	= headset_remove,
 };
 
 int input_manager_init(DBusConnection *conn, GKeyFile *config)
@@ -174,22 +174,17 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 
 	connection = dbus_connection_ref(conn);
 
-	btd_register_adapter_driver(&input_server_driver);
-
-	btd_register_device_driver(&input_hid_driver);
-	btd_register_device_driver(&input_headset_driver);
+	btd_profile_register(&input_profile);
+	btd_profile_register(&input_headset_profile);
 
 	return 0;
 }
 
 void input_manager_exit(void)
 {
-	btd_unregister_device_driver(&input_hid_driver);
-	btd_unregister_device_driver(&input_headset_driver);
-
-	btd_unregister_adapter_driver(&input_server_driver);
+	btd_profile_unregister(&input_profile);
+	btd_profile_unregister(&input_headset_profile);
 
 	dbus_connection_unref(connection);
-
 	connection = NULL;
 }

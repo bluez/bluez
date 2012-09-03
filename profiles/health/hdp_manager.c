@@ -24,6 +24,8 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/uuid.h>
@@ -51,12 +53,6 @@ static void hdp_adapter_remove(struct btd_adapter *adapter)
 	hdp_adapter_unregister(adapter);
 }
 
-static struct btd_adapter_driver hdp_adapter_driver = {
-	.name	= "hdp-adapter-driver",
-	.probe	= hdp_adapter_probe,
-	.remove	= hdp_adapter_remove,
-};
-
 static int hdp_driver_probe(struct btd_device *device, GSList *uuids)
 {
 	return hdp_device_register(connection, device);
@@ -67,11 +63,15 @@ static void hdp_driver_remove(struct btd_device *device)
 	hdp_device_unregister(device);
 }
 
-static struct btd_device_driver hdp_device_driver = {
-	.name	= "hdp-device-driver",
-	.uuids	= BTD_UUIDS(HDP_UUID, HDP_SOURCE_UUID, HDP_SINK_UUID),
-	.probe	= hdp_driver_probe,
-	.remove	= hdp_driver_remove
+static struct btd_profile hdp_profile = {
+	.name		= "hdp-profile",
+	.remote_uuids	= BTD_UUIDS(HDP_UUID, HDP_SOURCE_UUID, HDP_SINK_UUID),
+
+	.device_probe	= hdp_driver_probe,
+	.device_remove	= hdp_driver_remove,
+
+	.adapter_probe	= hdp_adapter_probe,
+	.adapter_remove	= hdp_adapter_remove,
 };
 
 int hdp_manager_init(DBusConnection *conn)
@@ -80,16 +80,16 @@ int hdp_manager_init(DBusConnection *conn)
 		return -1;
 
 	connection = dbus_connection_ref(conn);
-	btd_register_adapter_driver(&hdp_adapter_driver);
-	btd_register_device_driver(&hdp_device_driver);
+
+	btd_profile_register(&hdp_profile);
 
 	return 0;
 }
 
 void hdp_manager_exit(void)
 {
-	btd_unregister_device_driver(&hdp_device_driver);
-	btd_unregister_adapter_driver(&hdp_adapter_driver);
+	btd_profile_unregister(&hdp_profile);
+
 	hdp_manager_stop();
 
 	dbus_connection_unref(connection);

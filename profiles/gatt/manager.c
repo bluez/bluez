@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <bluetooth/uuid.h>
 
 #include "adapter.h"
@@ -69,19 +70,19 @@ static void gatt_driver_remove(struct btd_device *device)
 	gas_unregister(device);
 }
 
-static struct btd_device_driver gatt_device_driver = {
-	.name	= "gap-gatt-driver",
-	.uuids	= BTD_UUIDS(GAP_UUID, GATT_UUID),
-	.probe	= gatt_driver_probe,
-	.remove	= gatt_driver_remove
+static struct btd_profile gatt_profile = {
+	.name		= "gap-gatt-profile",
+	.remote_uuids	= BTD_UUIDS(GAP_UUID, GATT_UUID),
+	.device_probe	= gatt_driver_probe,
+	.device_remove	= gatt_driver_remove
 };
 
 int gatt_manager_init(void)
 {
-	return btd_register_device_driver(&gatt_device_driver);
+	return btd_profile_register(&gatt_profile);
 }
 
 void gatt_manager_exit(void)
 {
-	btd_unregister_device_driver(&gatt_device_driver);
+	btd_profile_unregister(&gatt_profile);
 }

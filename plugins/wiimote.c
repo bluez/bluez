@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include <bluetooth/bluetooth.h>
 #include <glib.h>
 

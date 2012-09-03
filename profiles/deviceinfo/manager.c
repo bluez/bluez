@@ -22,6 +22,7 @@
 
 #include <glib.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <bluetooth/uuid.h>
 
 #include "adapter.h"
@@ -62,19 +63,19 @@ static void deviceinfo_driver_remove(struct btd_device *device)
 	deviceinfo_unregister(device);
 }
 
-static struct btd_device_driver deviceinfo_device_driver = {
-	.name	= "deviceinfo-driver",
-	.uuids	= BTD_UUIDS(DEVICE_INFORMATION_UUID),
-	.probe	= deviceinfo_driver_probe,
-	.remove	= deviceinfo_driver_remove
+static struct btd_profile deviceinfo_profile = {
+	.name		= "deviceinfo",
+	.remote_uuids	= BTD_UUIDS(DEVICE_INFORMATION_UUID),
+	.device_probe	= deviceinfo_driver_probe,
+	.device_remove	= deviceinfo_driver_remove
 };
 
 int deviceinfo_manager_init(void)
 {
-	return btd_register_device_driver(&deviceinfo_device_driver);
+	return btd_profile_register(&deviceinfo_profile);
 }
 
 void deviceinfo_manager_exit(void)
 {
-	btd_unregister_device_driver(&deviceinfo_device_driver);
+	btd_profile_unregister(&deviceinfo_profile);
 }

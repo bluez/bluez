@@ -26,6 +26,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>

@@ -25,6 +25,8 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
@@ -72,7 +74,7 @@ done:
 				conf_security ? "true" : "false");
 }
 
-static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
+static int network_probe(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -83,46 +85,23 @@ static int network_probe(struct btd_device *device, GSList *uuids, uint16_t id)
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst, NULL);
 
-	return connection_register(device, path, &src, &dst, id);
+	if (g_slist_find_custom(uuids, PANU_UUID, bt_uuid_strcmp))
+		connection_register(device, path, &src, &dst, BNEP_SVC_PANU);
+	if (g_slist_find_custom(uuids, GN_UUID, bt_uuid_strcmp))
+		connection_register(device, path, &src, &dst, BNEP_SVC_GN);
+	if (g_slist_find_custom(uuids, NAP_UUID, bt_uuid_strcmp))
+		connection_register(device, path, &src, &dst, BNEP_SVC_NAP);
+
+	return 0;
 }
 
-static void network_remove(struct btd_device *device, uint16_t id)
+static void network_remove(struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 
 	DBG("path %s", path);
 
-	connection_unregister(path, id);
-}
-
-static int panu_probe(struct btd_device *device, GSList *uuids)
-{
-	return network_probe(device, uuids, BNEP_SVC_PANU);
-}
-
-static void panu_remove(struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_PANU);
-}
-
-static int gn_probe(struct btd_device *device, GSList *uuids)
-{
-	return network_probe(device, uuids, BNEP_SVC_GN);
-}
-
-static void gn_remove(struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_GN);
-}
-
-static int nap_probe(struct btd_device *device, GSList *uuids)
-{
-	return network_probe(device, uuids, BNEP_SVC_NAP);
-}
-
-static void nap_remove(struct btd_device *device)
-{
-	network_remove(device, BNEP_SVC_NAP);
+	connection_unregister(path);
 }
 
 static int network_server_probe(struct btd_adapter *adapter)
@@ -143,31 +122,14 @@ static void network_server_remove(struct btd_adapter *adapter)
 	server_unregister(adapter);
 }
 
-static struct btd_device_driver network_panu_driver = {
-	.name	= "network-panu",
-	.uuids	= BTD_UUIDS(PANU_UUID),
-	.probe	= panu_probe,
-	.remove	= panu_remove,
-};
+static struct btd_profile network_profile = {
+	.name		= "network",
+	.remote_uuids	= BTD_UUIDS(PANU_UUID, GN_UUID, NAP_UUID),
+	.device_probe	= network_probe,
+	.device_remove	= network_remove,
 
-static struct btd_device_driver network_gn_driver = {
-	.name	= "network-gn",
-	.uuids	= BTD_UUIDS(GN_UUID),
-	.probe	= gn_probe,
-	.remove	= gn_remove,
-};
-
-static struct btd_device_driver network_nap_driver = {
-	.name	= "network-nap",
-	.uuids	= BTD_UUIDS(NAP_UUID),
-	.probe	= nap_probe,
-	.remove	= nap_remove,
-};
-
-static struct btd_adapter_driver network_server_driver = {
-	.name	= "network-server",
-	.probe	= network_server_probe,
-	.remove	= network_server_remove,
+	.adapter_probe	= network_server_probe,
+	.adapter_remove	= network_server_remove,
 };
 
 int network_manager_init(DBusConnection *conn)
@@ -189,15 +151,10 @@ int network_manager_init(DBusConnection *conn)
 	if (server_init(conn, conf_security) < 0)
 		return -1;
 
-	/* Register network server if it doesn't exist */
-	btd_register_adapter_driver(&network_server_driver);
+	btd_profile_register(&network_profile);
 
 	if (connection_init(conn) < 0)
 		return -1;
-
-	btd_register_device_driver(&network_panu_driver);
-	btd_register_device_driver(&network_gn_driver);
-	btd_register_device_driver(&network_nap_driver);
 
 	connection = dbus_connection_ref(conn);
 
@@ -208,13 +165,9 @@ void network_manager_exit(void)
 {
 	server_exit();
 
-	btd_unregister_device_driver(&network_panu_driver);
-	btd_unregister_device_driver(&network_gn_driver);
-	btd_unregister_device_driver(&network_nap_driver);
-
 	connection_exit();
 
-	btd_unregister_adapter_driver(&network_server_driver);
+	btd_profile_unregister(&network_profile);
 
 	dbus_connection_unref(connection);
 	connection = NULL;

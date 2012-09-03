@@ -31,6 +31,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
@@ -150,7 +151,8 @@ struct btd_adapter {
 	GSList *powered_callbacks;
 	GSList *pin_callbacks;
 
-	GSList *loaded_drivers;
+	GSList *drivers;
+	GSList *profiles;
 };
 
 static void dev_info_free(void *data)
@@ -1703,7 +1705,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 	if (list)
 		device_register_services(connection, device, list, ATT_PSM);
 
-	device_probe_drivers(device, uuids);
+	device_probe_profiles(device, uuids);
 
 	g_slist_free_full(uuids, g_free);
 }
@@ -1946,7 +1948,7 @@ static void create_stored_device_from_primaries(char *key, char *value,
 
 	device_register_services(connection, device, services, -1);
 
-	device_probe_drivers(device, uuids);
+	device_probe_profiles(device, uuids);
 
 	g_slist_free(uuids);
 }
@@ -2038,8 +2040,7 @@ static void probe_driver(struct btd_adapter *adapter, gpointer user_data)
 		return;
 	}
 
-	adapter->loaded_drivers = g_slist_prepend(adapter->loaded_drivers,
-									driver);
+	adapter->drivers = g_slist_prepend(adapter->drivers, driver);
 }
 
 static void load_drivers(struct btd_adapter *adapter)
@@ -2048,6 +2049,23 @@ static void load_drivers(struct btd_adapter *adapter)
 
 	for (l = adapter_drivers; l; l = l->next)
 		probe_driver(adapter, l->data);
+}
+
+static void probe_profile(struct btd_profile *profile, void *data)
+{
+	struct btd_adapter *adapter = data;
+	int err;
+
+	if (profile->adapter_probe == NULL)
+		return;
+
+	err = profile->adapter_probe(adapter);
+	if (err < 0) {
+		error("%s: %s (%d)", profile->name, strerror(-err), -err);
+		return;
+	}
+
+	adapter->profiles = g_slist_prepend(adapter->profiles, profile);
 }
 
 static void load_connections(struct btd_adapter *adapter)
@@ -2229,11 +2247,24 @@ static void remove_driver(gpointer data, gpointer user_data)
 		driver->remove(adapter);
 }
 
+static void remove_profile(gpointer data, gpointer user_data)
+{
+	struct btd_profile *profile = data;
+	struct btd_adapter *adapter = user_data;
+
+	if (profile->adapter_remove)
+		profile->adapter_remove(adapter);
+}
+
 static void unload_drivers(struct btd_adapter *adapter)
 {
-	g_slist_foreach(adapter->loaded_drivers, remove_driver, adapter);
-	g_slist_free(adapter->loaded_drivers);
-	adapter->loaded_drivers = NULL;
+	g_slist_foreach(adapter->drivers, remove_driver, adapter);
+	g_slist_free(adapter->drivers);
+	adapter->drivers = NULL;
+
+	g_slist_foreach(adapter->profiles, remove_profile, adapter);
+	g_slist_free(adapter->profiles);
+	adapter->profiles = NULL;
 }
 
 static void set_mode_complete(struct btd_adapter *adapter)
@@ -2414,6 +2445,7 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 		btd_adapter_gatt_server_start(adapter);
 
 	load_drivers(adapter);
+	btd_profile_foreach(probe_profile, adapter);
 	clear_blocked(adapter);
 	load_devices(adapter);
 
@@ -3049,7 +3081,7 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 
 static void unload_driver(struct btd_adapter *adapter, gpointer data)
 {
-	adapter->loaded_drivers = g_slist_remove(adapter->loaded_drivers, data);
+	adapter->drivers = g_slist_remove(adapter->drivers, data);
 }
 
 void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)

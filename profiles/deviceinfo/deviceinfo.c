@@ -24,6 +24,8 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include <glib.h>
 #include <bluetooth/uuid.h>
 

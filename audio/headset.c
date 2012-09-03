@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <signal.h>
 #include <string.h>
 #include <getopt.h>
@@ -42,6 +43,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -1956,45 +1958,23 @@ static const GDBusSignalTable headset_signals[] = {
 	{ }
 };
 
-void headset_update(struct audio_device *dev, uint16_t svc,
-			const char *uuidstr)
+void headset_update(struct audio_device *dev, struct headset *headset,
+								GSList *uuids)
 {
-	struct headset *headset = dev->headset;
 	const sdp_record_t *record;
 
-	record = btd_device_get_record(dev->btd_dev, uuidstr);
-	if (!record)
-		return;
+	if (g_slist_find_custom(uuids, HFP_HS_UUID, bt_uuid_strcmp) &&
+						headset->hfp_handle == 0) {
+		record = btd_device_get_record(dev->btd_dev, HFP_HS_UUID);
+		if (record)
+			headset->hfp_handle = record->handle;
+	}
 
-	switch (svc) {
-	case HANDSFREE_SVCLASS_ID:
-		if (headset->hfp_handle &&
-				(headset->hfp_handle != record->handle)) {
-			error("More than one HFP record found on device");
-			return;
-		}
-
-		headset->hfp_handle = record->handle;
-		break;
-
-	case HEADSET_SVCLASS_ID:
-		if (headset->hsp_handle &&
-				(headset->hsp_handle != record->handle)) {
-			error("More than one HSP record found on device");
-			return;
-		}
-
-		headset->hsp_handle = record->handle;
-
-		/* Ignore this record if we already have access to HFP */
-		if (headset->hfp_handle)
-			return;
-
-		break;
-
-	default:
-		DBG("Invalid record passed to headset_update");
-		return;
+	if (g_slist_find_custom(uuids, HSP_HS_UUID, bt_uuid_strcmp) &&
+						headset->hsp_handle == 0) {
+		record = btd_device_get_record(dev->btd_dev, HSP_HS_UUID);
+		if (record)
+			headset->hsp_handle = record->handle;
 	}
 }
 
@@ -2057,36 +2037,17 @@ void headset_unregister(struct audio_device *dev)
 		AUDIO_HEADSET_INTERFACE);
 }
 
-struct headset *headset_init(struct audio_device *dev, uint16_t svc,
-				const char *uuidstr)
+struct headset *headset_init(struct audio_device *dev, GSList *uuids,
+							gboolean hfp_enabled)
 {
 	struct headset *hs;
-	const sdp_record_t *record;
 
 	hs = g_new0(struct headset, 1);
 	hs->rfcomm_ch = -1;
-	hs->search_hfp = server_is_enabled(&dev->src, HANDSFREE_SVCLASS_ID);
+	hs->search_hfp = hfp_enabled;
 
-	record = btd_device_get_record(dev->btd_dev, uuidstr);
-	if (!record)
-		goto register_iface;
+	headset_update(dev, hs, uuids);
 
-	switch (svc) {
-	case HANDSFREE_SVCLASS_ID:
-		hs->hfp_handle = record->handle;
-		break;
-
-	case HEADSET_SVCLASS_ID:
-		hs->hsp_handle = record->handle;
-		break;
-
-	default:
-		DBG("Invalid record passed to headset_init");
-		g_free(hs);
-		return NULL;
-	}
-
-register_iface:
 	if (!g_dbus_register_interface(dev->conn, dev->path,
 					AUDIO_HEADSET_INTERFACE,
 					headset_methods, headset_signals, NULL,
@@ -2095,8 +2056,8 @@ register_iface:
 		return NULL;
 	}
 
-	DBG("Registered interface %s on path %s",
-		AUDIO_HEADSET_INTERFACE, dev->path);
+	DBG("Registered interface %s on path %s", AUDIO_HEADSET_INTERFACE,
+								dev->path);
 
 	return hs;
 }

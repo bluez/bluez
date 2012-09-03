@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <errno.h>
@@ -136,7 +137,8 @@ struct btd_device {
 	GSList		*uuids;
 	GSList		*services;		/* Primary services path */
 	GSList		*primaries;		/* List of primary services */
-	GSList		*drivers;		/* List of device drivers */
+	GSList		*profiles;		/* Probed profiles */
+	GSList		*conns;			/* Connected profiles */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
 	struct agent	*agent;
@@ -169,14 +171,14 @@ struct btd_device {
 	guint		cleanup_id;
 };
 
+static GSList *profiles = NULL;
+
 static uint16_t uuid_list[] = {
 	L2CAP_UUID,
 	PNP_INFO_SVCLASS_ID,
 	PUBLIC_BROWSE_GROUP,
 	0
 };
-
-static GSList *device_drivers = NULL;
 
 static void browse_request_free(struct browse_req *req)
 {
@@ -499,12 +501,12 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-static void driver_remove(struct btd_device_driver *driver,
+static void profile_remove(struct btd_profile *profile,
 						struct btd_device *device)
 {
-	driver->remove(device);
+	profile->device_remove(device);
 
-	device->drivers = g_slist_remove(device->drivers, driver);
+	device->profiles = g_slist_remove(device->profiles, profile);
 }
 
 static gboolean do_disconnect(gpointer user_data)
@@ -531,7 +533,7 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 	if (device->connected)
 		do_disconnect(device);
 
-	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
+	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
 
 	if (!update_only)
 		err = btd_adapter_block_address(device->adapter,
@@ -584,7 +586,7 @@ int device_unblock(DBusConnection *conn, struct btd_device *device,
 		emit_property_changed(conn, device->path,
 					DEVICE_INTERFACE, "Blocked",
 					DBUS_TYPE_BOOLEAN, &device->blocked);
-		device_probe_drivers(device, device->uuids);
+		device_probe_profiles(device, device->uuids);
 	}
 
 	return 0;
@@ -1209,9 +1211,9 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (remove_stored)
 		device_remove_stored(device);
 
-	g_slist_foreach(device->drivers, (GFunc) driver_remove, device);
-	g_slist_free(device->drivers);
-	device->drivers = NULL;
+	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
+	g_slist_free(device->profiles);
+	device->profiles = NULL;
 
 	attrib_client_unregister(device->services);
 
@@ -1252,112 +1254,114 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 
 static GSList *device_match_pattern(struct btd_device *device,
 					const char *match_uuid,
-					GSList *profiles)
+					GSList *uuids)
 {
-	GSList *l, *uuids = NULL;
+	GSList *l, *match_uuids = NULL;
 
-	for (l = profiles; l; l = l->next) {
-		char *profile_uuid = l->data;
+	for (l = uuids; l; l = l->next) {
+		char *uuid = l->data;
 		const sdp_record_t *rec;
 
-		rec = btd_device_get_record(device, profile_uuid);
+		rec = btd_device_get_record(device, uuid);
 		if (!rec)
 			continue;
 
 		if (record_has_uuid(rec, match_uuid))
-			uuids = g_slist_append(uuids, profile_uuid);
+			match_uuids = g_slist_append(match_uuids, uuid);
 	}
 
-	return uuids;
+	return match_uuids;
 }
 
-static GSList *device_match_driver(struct btd_device *device,
-					struct btd_device_driver *driver,
-					GSList *profiles)
+static GSList *device_match_profile(struct btd_device *device,
+					struct btd_profile *profile,
+					GSList *uuids)
 {
 	const char **uuid;
-	GSList *uuids = NULL;
+	GSList *match_uuids = NULL;
 
-	for (uuid = driver->uuids; *uuid; uuid++) {
+	for (uuid = profile->remote_uuids; *uuid; uuid++) {
 		GSList *match;
 
 		/* skip duplicated uuids */
-		if (g_slist_find_custom(uuids, *uuid,
+		if (g_slist_find_custom(match_uuids, *uuid,
 				(GCompareFunc) strcasecmp))
 			continue;
 
-		/* match profile driver */
-		match = g_slist_find_custom(profiles, *uuid,
+		/* match profile uuid */
+		match = g_slist_find_custom(uuids, *uuid,
 					(GCompareFunc) strcasecmp);
 		if (match) {
-			uuids = g_slist_append(uuids, match->data);
+			match_uuids = g_slist_append(match_uuids, match->data);
 			continue;
 		}
 
 		/* match pattern driver */
-		match = device_match_pattern(device, *uuid, profiles);
-		uuids = g_slist_concat(uuids, match);
+		match = device_match_pattern(device, *uuid, uuids);
+		match_uuids = g_slist_concat(match_uuids, match);
 	}
 
-	return uuids;
+	return match_uuids;
 }
 
-void device_probe_drivers(struct btd_device *device, GSList *profiles)
+void device_probe_profiles(struct btd_device *device, GSList *uuids)
 {
-	GSList *list;
 	char addr[18];
-	int err;
+	GSList *l;
 
 	ba2str(&device->bdaddr, addr);
 
 	if (device->blocked) {
-		DBG("Skipping drivers for blocked device %s", addr);
+		DBG("Skipping profiles for blocked device %s", addr);
 		goto add_uuids;
 	}
 
-	DBG("Probing drivers for %s", addr);
+	DBG("Probing profiles for device %s", addr);
 
-	for (list = device_drivers; list; list = list->next) {
-		struct btd_device_driver *driver = list->data;
+	for (l = profiles; l != NULL; l = g_slist_next(l)) {
+		struct btd_profile *profile = l->data;
 		GSList *probe_uuids;
+		int err;
 
-		probe_uuids = device_match_driver(device, driver, profiles);
+		if (profile->device_probe == NULL)
+			continue;
 
+		probe_uuids = device_match_profile(device, profile, uuids);
 		if (!probe_uuids)
 			continue;
 
-		err = driver->probe(device, probe_uuids);
+		err = profile->device_probe(device, probe_uuids);
 		if (err < 0) {
-			error("%s driver probe failed for device %s",
-							driver->name, addr);
+			error("%s profile probe failed for device %s",
+							profile->name, addr);
 			g_slist_free(probe_uuids);
 			continue;
 		}
 
-		device->drivers = g_slist_append(device->drivers, driver);
+		device->profiles = g_slist_append(device->profiles, profile);
 		g_slist_free(probe_uuids);
 	}
 
 add_uuids:
-	for (list = profiles; list; list = list->next) {
-		GSList *l = g_slist_find_custom(device->uuids, list->data,
+	for (l = uuids; l != NULL; l = g_slist_next(l)) {
+		GSList *match = g_slist_find_custom(device->uuids, l->data,
 						(GCompareFunc) strcasecmp);
-		if (l)
+		if (match)
 			continue;
 
 		device->uuids = g_slist_insert_sorted(device->uuids,
-						g_strdup(list->data),
+						g_strdup(l->data),
 						(GCompareFunc) strcasecmp);
 	}
 }
 
-static void device_remove_drivers(struct btd_device *device, GSList *uuids)
+static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	GSList *list, *next;
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 	sdp_list_t *records;
+	GSList *l;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -1365,35 +1369,32 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 
 	records = read_records(&src, &device->bdaddr);
 
-	DBG("Removing drivers for %s", dstaddr);
+	DBG("Removing profiles for %s", dstaddr);
 
-	for (list = device->drivers; list; list = next) {
-		struct btd_device_driver *driver = list->data;
+	for (l = profiles; l != NULL; l = g_slist_next(l)) {
+		struct btd_profile *profile = l->data;
 		const char **uuid;
 
-		next = list->next;
-
-		for (uuid = driver->uuids; *uuid; uuid++) {
+		for (uuid = profile->remote_uuids; *uuid; uuid++) {
 			if (!g_slist_find_custom(uuids, *uuid,
 						(GCompareFunc) strcasecmp))
 				continue;
 
-			DBG("UUID %s was removed from device %s",
-							*uuid, dstaddr);
+			DBG("UUID %s was removed from device %s", *uuid, dstaddr);
 
-			driver->remove(device);
-			device->drivers = g_slist_remove(device->drivers,
-								driver);
+			profile->device_remove(device);
+			device->profiles = g_slist_remove(device->profiles,
+									profile);
 			break;
 		}
 	}
 
-	for (list = uuids; list; list = list->next) {
+	for (l = uuids; l != NULL; l = g_slist_next(l)) {
 		sdp_record_t *rec;
 
-		device->uuids = g_slist_remove(device->uuids, list->data);
+		device->uuids = g_slist_remove(device->uuids, l->data);
 
-		rec = find_record_in_list(records, list->data);
+		rec = find_record_in_list(records, l->data);
 		if (!rec)
 			continue;
 
@@ -1402,7 +1403,6 @@ static void device_remove_drivers(struct btd_device *device, GSList *uuids)
 
 		records = sdp_list_remove(records, rec);
 		sdp_record_free(rec);
-
 	}
 
 	if (records)
@@ -1672,7 +1672,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto send_reply;
 	}
 
-	/* Probe matching drivers for services added */
+	/* Probe matching profiles for services added */
 	if (req->profiles_added) {
 		GSList *list;
 
@@ -1681,12 +1681,12 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 			device_register_services(req->conn, device, list,
 								ATT_PSM);
 
-		device_probe_drivers(device, req->profiles_added);
+		device_probe_profiles(device, req->profiles_added);
 	}
 
-	/* Remove drivers for services removed */
+	/* Remove profiles for services removed */
 	if (req->profiles_removed)
-		device_remove_drivers(device, req->profiles_removed);
+		device_remove_profiles(device, req->profiles_removed);
 
 	/* Propagate services changes */
 	uuids_changed(req->device);
@@ -1903,9 +1903,9 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 	device_register_services(req->conn, device, g_slist_copy(services), -1);
 	if (req->profiles_removed)
-		device_remove_drivers(device, req->profiles_removed);
+		device_remove_profiles(device, req->profiles_removed);
 
-	device_probe_drivers(device, req->profiles_added);
+	device_probe_profiles(device, req->profiles_added);
 
 	if (device->attios == NULL && device->attios_offline == NULL)
 		attio_cleanup(device);
@@ -2965,7 +2965,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	new_uuid = g_strdup(uuid);
 	uuid_list = g_slist_append(NULL, new_uuid);
 
-	device_probe_drivers(device, uuid_list);
+	device_probe_profiles(device, uuid_list);
 
 	g_free(new_uuid);
 	g_slist_free(uuid_list);
@@ -2998,18 +2998,6 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 		return NULL;
 
 	return find_record_in_list(device->tmp_records, uuid);
-}
-
-int btd_register_device_driver(struct btd_device_driver *driver)
-{
-	device_drivers = g_slist_append(device_drivers, driver);
-
-	return 0;
-}
-
-void btd_unregister_device_driver(struct btd_device_driver *driver)
-{
-	device_drivers = g_slist_remove(device_drivers, driver);
 }
 
 struct btd_device *btd_device_ref(struct btd_device *device)
@@ -3189,4 +3177,42 @@ void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 	device_set_vendor_src(device, vendor_id_src);
 	device_set_product(device, product_id);
 	device_set_version(device, product_ver);
+}
+
+void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
+								void *data)
+{
+	GSList *l, *next;
+
+	for (l = profiles; l != NULL; l = next) {
+		struct btd_profile *profile = l->data;
+
+		next = g_slist_next(l);
+
+		func(profile, data);
+	}
+}
+
+int btd_profile_register(struct btd_profile *profile)
+{
+	profiles = g_slist_append(profiles, profile);
+	return 0;
+}
+
+void btd_profile_unregister(struct btd_profile *profile)
+{
+	profiles = g_slist_remove(profiles, profile);
+}
+
+void btd_profile_connected(struct btd_profile *profile,
+				struct btd_device *device, int err)
+{
+	if (err == 0)
+		device->conns = g_slist_append(device->conns, profile);
+}
+
+void btd_profile_disconnected(struct btd_profile *profile,
+						struct btd_device *device)
+{
+	device->conns = g_slist_remove(device->conns, profile);
 }

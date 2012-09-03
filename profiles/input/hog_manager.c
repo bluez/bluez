@@ -27,6 +27,7 @@
 #endif
 
 #include <errno.h>
+#include <stdbool.h>
 
 #include "log.h"
 #include "../src/adapter.h"
@@ -55,21 +56,21 @@ static void hog_device_remove(struct btd_device *device)
 	hog_device_unregister(path);
 }
 
-static struct btd_device_driver hog_driver = {
-	.name	= "input-hog",
-	.uuids	= BTD_UUIDS(HOG_UUID),
-	.probe	= hog_device_probe,
-	.remove	= hog_device_remove,
+static struct btd_profile hog_profile = {
+	.name		= "input-hog",
+	.remote_uuids	= BTD_UUIDS(HOG_UUID),
+	.device_probe	= hog_device_probe,
+	.device_remove	= hog_device_remove,
 };
 
 static int hog_manager_init(void)
 {
-	return btd_register_device_driver(&hog_driver);
+	return btd_profile_register(&hog_profile);
 }
 
 static void hog_manager_exit(void)
 {
-	btd_unregister_device_driver(&hog_driver);
+	btd_profile_register(&hog_profile);
 }
 
 static int hog_init(void)

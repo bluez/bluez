@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <ctype.h>
@@ -126,104 +127,6 @@ static struct audio_adapter *find_adapter(GSList *list,
 	}
 
 	return NULL;
-}
-
-gboolean server_is_enabled(bdaddr_t *src, uint16_t svc)
-{
-	switch (svc) {
-	case HEADSET_SVCLASS_ID:
-		return enabled.headset;
-	case HEADSET_AGW_SVCLASS_ID:
-		return FALSE;
-	case HANDSFREE_SVCLASS_ID:
-		return enabled.headset && enabled.hfp;
-	case HANDSFREE_AGW_SVCLASS_ID:
-		return enabled.gateway;
-	case AUDIO_SINK_SVCLASS_ID:
-		return enabled.sink;
-	case AUDIO_SOURCE_SVCLASS_ID:
-		return enabled.source;
-	case AV_REMOTE_TARGET_SVCLASS_ID:
-	case AV_REMOTE_SVCLASS_ID:
-		return enabled.control;
-	default:
-		return FALSE;
-	}
-}
-
-static void handle_uuid(const char *uuidstr, struct audio_device *device)
-{
-	uuid_t uuid;
-	uint16_t uuid16;
-
-	if (bt_string2uuid(&uuid, uuidstr) < 0) {
-		error("%s not detected as an UUID-128", uuidstr);
-		return;
-	}
-
-	if (!sdp_uuid128_to_uuid(&uuid) && uuid.type != SDP_UUID16) {
-		error("Could not convert %s to a UUID-16", uuidstr);
-		return;
-	}
-
-	uuid16 = uuid.value.uuid16;
-
-	if (!server_is_enabled(&device->src, uuid16)) {
-		DBG("server not enabled for %s (0x%04x)", uuidstr, uuid16);
-		return;
-	}
-
-	switch (uuid16) {
-	case HEADSET_SVCLASS_ID:
-		DBG("Found Headset record");
-		if (device->headset)
-			headset_update(device, uuid16, uuidstr);
-		else
-			device->headset = headset_init(device, uuid16,
-							uuidstr);
-		break;
-	case HEADSET_AGW_SVCLASS_ID:
-		DBG("Found Headset AG record");
-		break;
-	case HANDSFREE_SVCLASS_ID:
-		DBG("Found Handsfree record");
-		if (device->headset)
-			headset_update(device, uuid16, uuidstr);
-		else
-			device->headset = headset_init(device, uuid16,
-								uuidstr);
-		break;
-	case HANDSFREE_AGW_SVCLASS_ID:
-		DBG("Found Handsfree AG record");
-		if (enabled.gateway && (device->gateway == NULL))
-			device->gateway = gateway_init(device);
-		break;
-	case AUDIO_SINK_SVCLASS_ID:
-		DBG("Found Audio Sink");
-		if (device->sink == NULL)
-			device->sink = sink_init(device);
-		break;
-	case AUDIO_SOURCE_SVCLASS_ID:
-		DBG("Found Audio Source");
-		if (device->source == NULL)
-			device->source = source_init(device);
-		break;
-	case AV_REMOTE_SVCLASS_ID:
-	case AV_REMOTE_TARGET_SVCLASS_ID:
-		DBG("Found AV %s", uuid16 == AV_REMOTE_SVCLASS_ID ?
-							"Remote" : "Target");
-		if (device->control)
-			control_update(device->control, uuid16);
-		else
-			device->control = control_init(device, uuid16);
-
-		if (device->sink && sink_is_active(device))
-			avrcp_connect(device);
-		break;
-	default:
-		DBG("Unrecognized UUID: 0x%04X", uuid16);
-		break;
-	}
 }
 
 static sdp_record_t *hsp_ag_record(uint8_t ch)
@@ -769,41 +672,106 @@ failed:
 	return -1;
 }
 
-static int audio_probe(struct btd_device *device, GSList *uuids)
+static struct audio_device *get_audio_dev(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	bdaddr_t src, dst;
-	struct audio_device *audio_dev;
 
 	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst, NULL);
 
-	audio_dev = manager_get_device(&src, &dst, TRUE);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	g_slist_foreach(uuids, (GFunc) handle_uuid, audio_dev);
-
-	return 0;
+	return manager_get_device(&src, &dst, TRUE);
 }
 
 static void audio_remove(struct btd_device *device)
 {
 	struct audio_device *dev;
-	const char *path;
 
-	path = device_get_path(device);
-
-	dev = manager_find_device(path, NULL, NULL, NULL, FALSE);
+	dev = get_audio_dev(device);
 	if (!dev)
 		return;
 
 	devices = g_slist_remove(devices, dev);
-
 	audio_device_unregister(dev);
+}
 
+static int hs_probe(struct btd_device *device, GSList *uuids)
+{
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	if (audio_dev->headset)
+		headset_update(audio_dev, audio_dev->headset, uuids);
+	else
+		audio_dev->headset = headset_init(audio_dev, uuids,
+								enabled.hfp);
+
+	return 0;
+}
+
+static int ag_probe(struct btd_device *device, GSList *uuids)
+{
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	if (!audio_dev->gateway)
+		return -EALREADY;
+
+	audio_dev->gateway = gateway_init(audio_dev);
+
+	return 0;
+}
+
+static int a2dp_probe(struct btd_device *device, GSList *uuids)
+{
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	if (g_slist_find_custom(uuids, A2DP_SINK_UUID, bt_uuid_strcmp) &&
+						audio_dev->sink == NULL)
+		audio_dev->sink = sink_init(audio_dev);
+
+	if (g_slist_find_custom(uuids, A2DP_SOURCE_UUID, bt_uuid_strcmp) &&
+						audio_dev->source == NULL)
+		audio_dev->source = source_init(audio_dev);
+
+	return 0;
+}
+
+static int avrcp_probe(struct btd_device *device, GSList *uuids)
+{
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	if (audio_dev->control)
+		control_update(audio_dev->control, uuids);
+	else
+		audio_dev->control = control_init(audio_dev, uuids);
+
+	if (audio_dev->sink && sink_is_active(audio_dev))
+		avrcp_connect(audio_dev);
+
+	return 0;
 }
 
 static struct audio_adapter *audio_adapter_ref(struct audio_adapter *adp)
@@ -1113,40 +1081,51 @@ static void media_server_remove(struct btd_adapter *adapter)
 	audio_adapter_unref(adp);
 }
 
-static struct btd_device_driver audio_driver = {
-	.name	= "audio",
-	.uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID, HSP_AG_UUID, HFP_AG_UUID,
-			ADVANCED_AUDIO_UUID, A2DP_SOURCE_UUID, A2DP_SINK_UUID,
-			AVRCP_TARGET_UUID, AVRCP_REMOTE_UUID),
-	.probe	= audio_probe,
-	.remove	= audio_remove,
+static struct btd_profile headset_profile = {
+	.name		= "audio-headset",
+
+	.remote_uuids	= BTD_UUIDS(HSP_HS_UUID, HFP_HS_UUID),
+	.device_probe	= hs_probe,
+	.device_remove	= audio_remove,
+
+	.adapter_probe	= headset_server_probe,
+	.adapter_remove = headset_server_remove,
 };
 
-static struct btd_adapter_driver headset_server_driver = {
-	.name	= "audio-headset",
-	.probe	= headset_server_probe,
-	.remove	= headset_server_remove,
+static struct btd_profile gateway_profile = {
+	.name		= "audio-gateway",
+
+	.remote_uuids	= BTD_UUIDS(HSP_AG_UUID, HFP_AG_UUID),
+	.device_probe	= ag_probe,
+	.device_remove	= audio_remove,
+
+	.adapter_probe	= gateway_server_probe,
+	.adapter_remove = gateway_server_remove,
 };
 
-static struct btd_adapter_driver gateway_server_driver = {
-	.name	= "audio-gateway",
-	.probe	= gateway_server_probe,
-	.remove	= gateway_server_remove,
+static struct btd_profile a2dp_profile = {
+	.name		= "audio-a2dp",
+
+	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID, A2DP_SINK_UUID),
+	.device_probe	= a2dp_probe,
+	.device_remove	= audio_remove,
+
+	.adapter_probe	= a2dp_server_probe,
+	.adapter_remove = a2dp_server_remove,
 };
 
-static struct btd_adapter_driver a2dp_server_driver = {
-	.name	= "audio-a2dp",
-	.probe	= a2dp_server_probe,
-	.remove	= a2dp_server_remove,
+static struct btd_profile avrcp_profile = {
+	.name		= "audio-avrcp",
+
+	.remote_uuids	= BTD_UUIDS(AVRCP_TARGET_UUID, AVRCP_REMOTE_UUID),
+	.device_probe	= avrcp_probe,
+	.device_remove	= audio_remove,
+
+	.adapter_probe	= avrcp_server_probe,
+	.adapter_remove = avrcp_server_remove,
 };
 
-static struct btd_adapter_driver avrcp_server_driver = {
-	.name	= "audio-control",
-	.probe	= avrcp_server_probe,
-	.remove	= avrcp_server_remove,
-};
-
-static struct btd_adapter_driver media_server_driver = {
+static struct btd_adapter_driver media_driver = {
 	.name	= "media",
 	.probe	= media_server_probe,
 	.remove	= media_server_remove,
@@ -1228,22 +1207,20 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 		max_connected_headsets = i;
 
 proceed:
-	if (enabled.control)
-		btd_register_adapter_driver(&avrcp_server_driver);
-
-	if (enabled.media)
-		btd_register_adapter_driver(&media_server_driver);
-
 	if (enabled.headset)
-		btd_register_adapter_driver(&headset_server_driver);
+		btd_profile_register(&headset_profile);
 
 	if (enabled.gateway)
-		btd_register_adapter_driver(&gateway_server_driver);
+		btd_profile_register(&gateway_profile);
 
 	if (enabled.source || enabled.sink)
-		btd_register_adapter_driver(&a2dp_server_driver);
+		btd_profile_register(&a2dp_profile);
 
-	btd_register_device_driver(&audio_driver);
+	if (enabled.control)
+		btd_profile_register(&avrcp_profile);
+
+	if (enabled.media)
+		btd_register_adapter_driver(&media_driver);
 
 	*enable_sco = (enabled.gateway || enabled.headset);
 
@@ -1264,22 +1241,20 @@ void audio_manager_exit(void)
 		config = NULL;
 	}
 
-	if (enabled.media)
-		btd_unregister_adapter_driver(&media_server_driver);
-
 	if (enabled.headset)
-		btd_unregister_adapter_driver(&headset_server_driver);
+		btd_profile_unregister(&headset_profile);
 
 	if (enabled.gateway)
-		btd_unregister_adapter_driver(&gateway_server_driver);
+		btd_profile_unregister(&gateway_profile);
 
 	if (enabled.source || enabled.sink)
-		btd_unregister_adapter_driver(&a2dp_server_driver);
+		btd_profile_unregister(&a2dp_profile);
 
 	if (enabled.control)
-		btd_unregister_adapter_driver(&avrcp_server_driver);
+		btd_profile_unregister(&avrcp_profile);
 
-	btd_unregister_device_driver(&audio_driver);
+	if (enabled.media)
+		btd_unregister_adapter_driver(&media_driver);
 }
 
 GSList *manager_find_devices(const char *path,

@@ -26,10 +26,12 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+#include <errno.h>
+
 #include <glib.h>
 #include <bluetooth/uuid.h>
 #include <adapter.h>
-#include <errno.h>
 
 #include <dbus/dbus.h>
 #include <gdbus.h>
@@ -223,7 +225,7 @@ static void register_reporter_device(struct btd_device *device,
 	radapter->devices = g_slist_prepend(radapter->devices, device);
 }
 
-static int reporter_device_probe(struct btd_device *device, GSList *uuids)
+int reporter_device_probe(struct btd_device *device)
 {
 	struct reporter_adapter *radapter;
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -233,10 +235,11 @@ static int reporter_device_probe(struct btd_device *device, GSList *uuids)
 		return -1;
 
 	register_reporter_device(device, radapter);
+
 	return 0;
 }
 
-static void reporter_device_remove(struct btd_device *device)
+void reporter_device_remove(struct btd_device *device)
 {
 	struct reporter_adapter *radapter;
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -247,14 +250,6 @@ static void reporter_device_remove(struct btd_device *device)
 
 	unregister_reporter_device(device, radapter);
 }
-
-/* device driver for tracking remote GATT client devices */
-static struct btd_device_driver reporter_device_driver = {
-	.name = "Proximity GATT Reporter Device Tracker Driver",
-	.uuids = BTD_UUIDS(GATT_UUID),
-	.probe = reporter_device_probe,
-	.remove = reporter_device_remove,
-};
 
 int reporter_init(struct btd_adapter *adapter)
 {
@@ -278,8 +273,6 @@ int reporter_init(struct btd_adapter *adapter)
 	register_tx_power(adapter);
 	imm_alert_register(adapter, radapter->conn);
 
-	btd_register_device_driver(&reporter_device_driver);
-
 	reporter_adapters = g_slist_prepend(reporter_adapters, radapter);
 	DBG("Proximity Reporter for adapter %p", adapter);
 
@@ -291,8 +284,6 @@ void reporter_exit(struct btd_adapter *adapter)
 	struct reporter_adapter *radapter = find_reporter_adapter(adapter);
 	if (!radapter)
 		return;
-
-	btd_unregister_device_driver(&reporter_device_driver);
 
 	g_slist_foreach(radapter->devices, unregister_reporter_device,
 								radapter);

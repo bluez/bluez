@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/stat.h>
 #include <sys/param.h>
 #include <netinet/in.h>

@@ -22,6 +22,7 @@
 
 #include <gdbus.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <bluetooth/uuid.h>
 
 #include "adapter.h"
@@ -64,18 +65,18 @@ static void thermometer_driver_remove(struct btd_device *device)
 	thermometer_unregister(device);
 }
 
-static struct btd_device_driver thermometer_device_driver = {
-	.name	= "thermometer-device-driver",
-	.uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
-	.probe	= thermometer_driver_probe,
-	.remove	= thermometer_driver_remove
+static struct btd_profile thermometer_profile = {
+	.name		= "thermometer-device-driver",
+	.remote_uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
+	.device_probe	= thermometer_driver_probe,
+	.device_remove	= thermometer_driver_remove
 };
 
 int thermometer_manager_init(DBusConnection *conn)
 {
 	int ret;
 
-	ret = btd_register_device_driver(&thermometer_device_driver);
+	ret = btd_profile_register(&thermometer_profile);
 	if (ret < 0)
                 return ret;
 
@@ -85,7 +86,7 @@ int thermometer_manager_init(DBusConnection *conn)
 
 void thermometer_manager_exit(void)
 {
-	btd_unregister_device_driver(&thermometer_device_driver);
+	btd_profile_unregister(&thermometer_profile);
 
 	dbus_connection_unref(connection);
 	connection = NULL;

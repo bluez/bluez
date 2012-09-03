@@ -40,6 +40,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
+#include <bluetooth/uuid.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -58,9 +59,7 @@
 static unsigned int avctp_id = 0;
 
 struct control {
-	struct audio_device *dev;
 	struct avctp *session;
-
 	gboolean target;
 };
 
@@ -238,13 +237,13 @@ void control_unregister(struct audio_device *dev)
 						AUDIO_CONTROL_INTERFACE);
 }
 
-void control_update(struct control *control, uint16_t uuid16)
+void control_update(struct control *control, GSList *uuids)
 {
-	if (uuid16 == AV_REMOTE_TARGET_SVCLASS_ID)
+	if (g_slist_find_custom(uuids, AVRCP_TARGET_UUID, bt_uuid_strcmp))
 		control->target = TRUE;
 }
 
-struct control *control_init(struct audio_device *dev, uint16_t uuid16)
+struct control *control_init(struct audio_device *dev, GSList *uuids)
 {
 	struct control *control;
 
@@ -258,9 +257,8 @@ struct control *control_init(struct audio_device *dev, uint16_t uuid16)
 		AUDIO_CONTROL_INTERFACE, dev->path);
 
 	control = g_new0(struct control, 1);
-	control->dev = dev;
 
-	control_update(control, uuid16);
+	control_update(control, uuids);
 
 	if (!avctp_id)
 		avctp_id = avctp_add_state_cb(state_changed, NULL);

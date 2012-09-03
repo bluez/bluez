@@ -34,9 +34,41 @@ typedef enum {
 	AUTH_TYPE_NOTIFY_PINCODE,
 } auth_type_t;
 
+#define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
+
+struct btd_profile {
+	const char *name;
+
+	const char *local_uuid;
+	const char **remote_uuids;
+
+	bool auto_connect;
+
+	int (*device_probe) (struct btd_device *device, GSList *uuids);
+	void (*device_remove) (struct btd_device *device);
+
+	void (*connect) (struct btd_device *device);
+	void (*disconnect) (struct btd_device *device);
+
+	int (*adapter_probe) (struct btd_adapter *adapter);
+	void (*adapter_remove) (struct btd_adapter *adapter);
+};
+
+void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
+								void *data);
+
+int btd_profile_register(struct btd_profile *profile);
+void btd_profile_unregister(struct btd_profile *profile);
+
+void btd_profile_connected(struct btd_profile *profile,
+					struct btd_device *device, int err);
+void btd_profile_disconnected(struct btd_profile *profile,
+						struct btd_device *device);
+
 struct btd_device *device_create(DBusConnection *conn,
 					struct btd_adapter *adapter,
 					const char *address, uint8_t bdaddr_type);
+
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
 uint16_t btd_device_get_vendor(struct btd_device *device);
@@ -49,7 +81,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 				DBusMessage *msg, gboolean secure);
 int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
 			DBusMessage *msg, uuid_t *search, gboolean reverse);
-void device_probe_drivers(struct btd_device *device, GSList *profiles);
+void device_probe_profiles(struct btd_device *device, GSList *profiles);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
 GSList *btd_device_get_primaries(struct btd_device *device);
@@ -107,18 +139,6 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id);
 void device_set_class(struct btd_device *device, uint32_t value);
 int device_get_appearance(struct btd_device *device, uint16_t *value);
 void device_set_appearance(struct btd_device *device, uint16_t value);
-
-#define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
-
-struct btd_device_driver {
-	const char *name;
-	const char **uuids;
-	int (*probe) (struct btd_device *device, GSList *uuids);
-	void (*remove) (struct btd_device *device);
-};
-
-int btd_register_device_driver(struct btd_device_driver *driver);
-void btd_unregister_device_driver(struct btd_device_driver *driver);
 
 struct btd_device *btd_device_ref(struct btd_device *device);
 void btd_device_unref(struct btd_device *device);

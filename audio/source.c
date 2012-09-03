@@ -28,6 +28,7 @@
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>

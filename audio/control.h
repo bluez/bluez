@@ -24,7 +24,7 @@
 
 #define AUDIO_CONTROL_INTERFACE "org.bluez.Control"
 
-struct control *control_init(struct audio_device *dev, uint16_t uuid16);
-void control_update(struct control *control, uint16_t uuid16);
+struct control *control_init(struct audio_device *dev, GSList *uuids);
+void control_update(struct control *control, GSList *uuids);
 void control_unregister(struct audio_device *dev);
 gboolean control_is_active(struct audio_device *dev);

@@ -22,8 +22,11 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
 #include "log.h"
 #include "adapter.h"
+#include "device.h"
 
 #include "manager.h"
 #include "server.h"
@@ -51,10 +54,10 @@ static void sap_server_remove(struct btd_adapter *adapter)
 	sap_server_unregister(path);
 }
 
-static struct btd_adapter_driver sap_server_driver = {
-	.name	= "sap-server",
-	.probe	= sap_server_probe,
-	.remove	= sap_server_remove,
+static struct btd_profile sap_profile = {
+	.name		= "sap-server",
+	.adapter_probe	= sap_server_probe,
+	.adapter_remove	= sap_server_remove,
 };
 
 int sap_manager_init(DBusConnection *conn)
@@ -67,14 +70,14 @@ int sap_manager_init(DBusConnection *conn)
 		return -1;
 	}
 
-	btd_register_adapter_driver(&sap_server_driver);
+	btd_profile_register(&sap_profile);
 
 	return 0;
 }
 
 void sap_manager_exit(void)
 {
-	btd_unregister_adapter_driver(&sap_server_driver);
+	btd_profile_unregister(&sap_profile);
 
 	dbus_connection_unref(connection);
 	connection = NULL;

@@ -26,24 +26,27 @@
 #include <config.h>
 #endif
 
-#include "adapter.h"
+#include <stdbool.h>
+
 #include "manager.h"
+#include "adapter.h"
+#include "device.h"
 #include "server.h"
 
-struct btd_adapter_driver time_server_driver = {
-	.name = "gatt-time-server",
-	.probe = time_server_init,
-	.remove = time_server_exit,
+struct btd_profile time_profile = {
+	.name 		= "gatt-time-server",
+	.adapter_probe	= time_server_init,
+	.adapter_remove	= time_server_exit,
 };
 
 int time_manager_init(void)
 {
-	btd_register_adapter_driver(&time_server_driver);
+	btd_profile_register(&time_profile);
 
 	return 0;
 }
 
 void time_manager_exit(void)
 {
-	btd_unregister_adapter_driver(&time_server_driver);
+	btd_profile_unregister(&time_profile);
 }
