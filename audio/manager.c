@@ -113,7 +113,6 @@ static struct enabled_interfaces enabled = {
 	.sink		= TRUE,
 	.source		= FALSE,
 	.control	= TRUE,
-	.media		= TRUE,
 };
 
 static struct audio_adapter *find_adapter(GSList *list,
@@ -1159,9 +1158,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = TRUE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = TRUE;
-		else if (g_str_equal(list[i], "Media"))
-			enabled.media = TRUE;
-
 	}
 	g_strfreev(list);
 
@@ -1178,8 +1174,6 @@ int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
 			enabled.source = FALSE;
 		else if (g_str_equal(list[i], "Control"))
 			enabled.control = FALSE;
-		else if (g_str_equal(list[i], "Media"))
-			enabled.media = FALSE;
 	}
 	g_strfreev(list);
 
@@ -1219,8 +1213,7 @@ proceed:
 	if (enabled.control)
 		btd_profile_register(&avrcp_profile);
 
-	if (enabled.media)
-		btd_register_adapter_driver(&media_driver);
+	btd_register_adapter_driver(&media_driver);
 
 	*enable_sco = (enabled.gateway || enabled.headset);
 
@@ -1253,8 +1246,7 @@ void audio_manager_exit(void)
 	if (enabled.control)
 		btd_profile_unregister(&avrcp_profile);
 
-	if (enabled.media)
-		btd_unregister_adapter_driver(&media_driver);
+	btd_unregister_adapter_driver(&media_driver);
 }
 
 GSList *manager_find_devices(const char *path,

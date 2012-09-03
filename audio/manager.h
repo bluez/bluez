@@ -29,8 +29,6 @@ struct enabled_interfaces {
 	gboolean sink;
 	gboolean source;
 	gboolean control;
-	gboolean socket;
-	gboolean media;
 	gboolean media_player;
 };
 
