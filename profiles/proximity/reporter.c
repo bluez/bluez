@@ -251,7 +251,7 @@ void reporter_device_remove(struct btd_device *device)
 	unregister_reporter_device(device, radapter);
 }
 
-int reporter_init(struct btd_adapter *adapter)
+int reporter_adapter_probe(struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter;
 	DBusConnection *conn;
@@ -279,7 +279,7 @@ int reporter_init(struct btd_adapter *adapter)
 	return 0;
 }
 
-void reporter_exit(struct btd_adapter *adapter)
+void reporter_adapter_remove(struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter = find_reporter_adapter(adapter);
 	if (!radapter)

@@ -93,8 +93,8 @@ static struct btd_profile pxp_profile = {
 	.device_probe	= attio_device_probe,
 	.device_remove	= attio_device_remove,
 
-	.adapter_probe	= reporter_init,
-	.adapter_remove	= reporter_exit,
+	.adapter_probe	= reporter_adapter_probe,
+	.adapter_remove	= reporter_adapter_remove,
 };
 
 static void load_config_file(GKeyFile *config)
