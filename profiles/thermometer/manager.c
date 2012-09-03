@@ -78,7 +78,7 @@ int thermometer_manager_init(DBusConnection *conn)
 
 	ret = btd_profile_register(&thermometer_profile);
 	if (ret < 0)
-                return ret;
+		return ret;
 
 	connection = dbus_connection_ref(conn);
 	return 0;
