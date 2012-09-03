@@ -28,7 +28,7 @@ struct enabled {
 	gboolean findme;
 };
 
-int monitor_register(DBusConnection *conn, struct btd_device *device,
-		struct gatt_primary *linkloss, struct gatt_primary *txpower,
-		struct gatt_primary *immediate, struct enabled *enabled);
-void monitor_unregister(DBusConnection *conn, struct btd_device *device);
+int monitor_register(struct btd_device *device, struct gatt_primary *linkloss,
+		struct gatt_primary *txpower, struct gatt_primary *immediate,
+		struct enabled *enabled);
+void monitor_unregister(struct btd_device *device);

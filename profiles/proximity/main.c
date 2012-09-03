@@ -36,7 +36,6 @@
 #include "manager.h"
 #include "hcid.h"
 
-static DBusConnection *connection = NULL;
 static GKeyFile *config = NULL;
 
 static GKeyFile *open_config_file(const char *file)
@@ -65,16 +64,10 @@ static int proximity_init(void)
 		return -ENOTSUP;
 	}
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
 	config = open_config_file(CONFIGDIR "/proximity.conf");
 
-	if (proximity_manager_init(connection, config) < 0) {
-		dbus_connection_unref(connection);
+	if (proximity_manager_init(config) < 0)
 		return -EIO;
-	}
 
 	return 0;
 }
@@ -88,7 +81,6 @@ static void proximity_exit(void)
 		g_key_file_free(config);
 
 	proximity_manager_exit();
-	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(proximity, VERSION,

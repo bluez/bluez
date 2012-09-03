@@ -21,6 +21,6 @@
  *
  */
 
-void link_loss_register(struct btd_adapter *adapter, DBusConnection *conn);
+void link_loss_register(struct btd_adapter *adapter);
 void link_loss_unregister(struct btd_adapter *adapter);
 const char *link_loss_get_alert_level(struct btd_device *device);

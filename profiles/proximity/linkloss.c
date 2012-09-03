@@ -49,7 +49,6 @@
 struct link_loss_adapter {
 	struct btd_adapter *adapter;
 	uint16_t alert_lvl_value_handle;
-	DBusConnection *conn;
 	GSList *connected_devices;
 };
 
@@ -128,7 +127,6 @@ const char *link_loss_get_alert_level(struct btd_device *device)
 
 static void link_loss_emit_alert_signal(struct connected_device *condev)
 {
-	struct link_loss_adapter *adapter = condev->adapter;
 	const char *alert_level_str, *path;
 
 	if (!condev->device)
@@ -139,7 +137,7 @@ static void link_loss_emit_alert_signal(struct connected_device *condev)
 
 	DBG("alert %s remote %s", alert_level_str, path);
 
-	emit_property_changed(adapter->conn, path,
+	emit_property_changed(get_dbus_connection(), path,
 			PROXIMITY_REPORTER_INTERFACE, "LinkLossAlertLevel",
 			DBUS_TYPE_STRING, &alert_level_str);
 }
@@ -275,7 +273,7 @@ set_error:
 	return ATT_ECODE_IO;
 }
 
-void link_loss_register(struct btd_adapter *adapter, DBusConnection *conn)
+void link_loss_register(struct btd_adapter *adapter)
 {
 	gboolean svc_added;
 	bt_uuid_t uuid;
@@ -285,7 +283,6 @@ void link_loss_register(struct btd_adapter *adapter, DBusConnection *conn)
 
 	lladapter = g_new0(struct link_loss_adapter, 1);
 	lladapter->adapter = adapter;
-	lladapter->conn = dbus_connection_ref(conn);
 
 	link_loss_adapters = g_slist_append(link_loss_adapters, lladapter);
 
@@ -331,7 +328,6 @@ void link_loss_unregister(struct btd_adapter *adapter)
 
 	g_slist_foreach(lladapter->connected_devices, remove_condev_list_item,
 			NULL);
-	dbus_connection_unref(lladapter->conn);
 
 	link_loss_adapters = g_slist_remove(link_loss_adapters, lladapter);
 	g_free(lladapter);

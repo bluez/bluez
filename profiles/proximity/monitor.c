@@ -67,7 +67,6 @@ enum {
 struct monitor {
 	struct btd_device *device;
 	GAttrib *attrib;
-	DBusConnection *conn;
 	struct att_range *linkloss;
 	struct att_range *txpower;
 	struct att_range *immediate;
@@ -161,7 +160,7 @@ static void linkloss_written(guint8 status, const guint8 *pdu, guint16 plen,
 
 	DBG("Link Loss Alert Level written");
 
-	emit_property_changed(monitor->conn, path,
+	emit_property_changed(get_dbus_connection(), path,
 				PROXIMITY_INTERFACE, "LinkLossAlertLevel",
 				DBUS_TYPE_STRING, &monitor->linklosslevel);
 }
@@ -290,7 +289,7 @@ static gboolean immediate_timeout(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(monitor->conn, path, PROXIMITY_INTERFACE,
+	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
 					"ImmediateAlertLevel", DBUS_TYPE_STRING,
 					&monitor->immediatelevel);
 
@@ -305,7 +304,7 @@ static void immediate_written(gpointer user_data)
 	g_free(monitor->fallbacklevel);
 	monitor->fallbacklevel = NULL;
 
-	emit_property_changed(monitor->conn, path, PROXIMITY_INTERFACE,
+	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
 				"ImmediateAlertLevel",
 				DBUS_TYPE_STRING, &monitor->immediatelevel);
 
@@ -391,7 +390,7 @@ static void attio_disconnected_cb(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(monitor->conn, path, PROXIMITY_INTERFACE,
+	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
 					"ImmediateAlertLevel", DBUS_TYPE_STRING,
 					&monitor->immediatelevel);
 }
@@ -578,7 +577,6 @@ static void monitor_destroy(gpointer user_data)
 	if (monitor->attrib)
 		g_attrib_unref(monitor->attrib);
 
-	dbus_connection_unref(monitor->conn);
 	btd_device_unref(monitor->device);
 	g_free(monitor->linkloss);
 	g_free(monitor->immediate);
@@ -589,7 +587,7 @@ static void monitor_destroy(gpointer user_data)
 	g_free(monitor);
 }
 
-int monitor_register(DBusConnection *conn, struct btd_device *device,
+int monitor_register(struct btd_device *device,
 		struct gatt_primary *linkloss, struct gatt_primary *txpower,
 		struct gatt_primary *immediate, struct enabled *enabled)
 {
@@ -605,12 +603,11 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 
 	monitor = g_new0(struct monitor, 1);
 	monitor->device = btd_device_ref(device);
-	monitor->conn = dbus_connection_ref(conn);
 	monitor->linklosslevel = (level ? : g_strdup("high"));
 	monitor->signallevel = g_strdup("unknown");
 	monitor->immediatelevel = g_strdup("none");
 
-	if (g_dbus_register_interface(conn, path,
+	if (g_dbus_register_interface(get_dbus_connection(), path,
 				PROXIMITY_INTERFACE,
 				monitor_methods, monitor_signals,
 				NULL, monitor, monitor_destroy) == FALSE) {
@@ -662,9 +659,10 @@ int monitor_register(DBusConnection *conn, struct btd_device *device,
 	return 0;
 }
 
-void monitor_unregister(DBusConnection *conn, struct btd_device *device)
+void monitor_unregister(struct btd_device *device)
 {
 	const char *path = device_get_path(device);
 
-	g_dbus_unregister_interface(conn, path, PROXIMITY_INTERFACE);
+	g_dbus_unregister_interface(get_dbus_connection(), path,
+							PROXIMITY_INTERFACE);
 }

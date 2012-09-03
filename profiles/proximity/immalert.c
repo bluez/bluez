@@ -48,7 +48,6 @@
 
 struct imm_alert_adapter {
 	struct btd_adapter *adapter;
-	DBusConnection *conn;
 	GSList *connected_devices;
 };
 
@@ -127,19 +126,17 @@ const char *imm_alert_get_level(struct btd_device *device)
 static void imm_alert_emit_alert_signal(struct connected_device *condev,
 							uint8_t alert_level)
 {
-	struct imm_alert_adapter *adapter;
 	const char *path, *alert_level_str;
 
 	if (!condev)
 		return;
 
-	adapter = condev->adapter;
 	path = device_get_path(condev->device);
 	alert_level_str = get_alert_level_string(alert_level);
 
 	DBG("alert %s remote %s", alert_level_str, path);
 
-	emit_property_changed(adapter->conn, path,
+	emit_property_changed(get_dbus_connection(), path,
 			PROXIMITY_REPORTER_INTERFACE, "ImmediateAlertLevel",
 			DBUS_TYPE_STRING, &alert_level_str);
 }
@@ -235,7 +232,7 @@ set_error:
 	return ATT_ECODE_IO;
 }
 
-void imm_alert_register(struct btd_adapter *adapter, DBusConnection *conn)
+void imm_alert_register(struct btd_adapter *adapter)
 {
 	gboolean svc_added;
 	bt_uuid_t uuid;
@@ -245,7 +242,6 @@ void imm_alert_register(struct btd_adapter *adapter, DBusConnection *conn)
 
 	imadapter = g_new0(struct imm_alert_adapter, 1);
 	imadapter->adapter = adapter;
-	imadapter->conn = dbus_connection_ref(conn);
 
 	imm_alert_adapters = g_slist_append(imm_alert_adapters, imadapter);
 
@@ -285,7 +281,6 @@ void imm_alert_unregister(struct btd_adapter *adapter)
 
 	g_slist_foreach(imadapter->connected_devices, remove_condev_list_item,
 									NULL);
-	dbus_connection_unref(imadapter->conn);
 
 	imm_alert_adapters = g_slist_remove(imm_alert_adapters, imadapter);
 	g_free(imadapter);

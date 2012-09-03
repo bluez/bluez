@@ -52,7 +52,6 @@
 #include "immalert.h"
 
 struct reporter_adapter {
-	DBusConnection *conn;
 	struct btd_adapter *adapter;
 	GSList *devices;
 };
@@ -200,7 +199,7 @@ static void unregister_reporter_device(gpointer data, gpointer user_data)
 
 	DBG("unregister on device %s", path);
 
-	g_dbus_unregister_interface(radapter->conn, path,
+	g_dbus_unregister_interface(get_dbus_connection(), path,
 					PROXIMITY_REPORTER_INTERFACE);
 
 	radapter->devices = g_slist_remove(radapter->devices, device);
@@ -214,7 +213,7 @@ static void register_reporter_device(struct btd_device *device,
 
 	DBG("register on device %s", path);
 
-	g_dbus_register_interface(radapter->conn, path,
+	g_dbus_register_interface(get_dbus_connection(), path,
 					PROXIMITY_REPORTER_INTERFACE,
 					reporter_methods, reporter_signals,
 					NULL, device, NULL);
@@ -252,24 +251,18 @@ void reporter_device_remove(struct btd_device *device)
 int reporter_adapter_probe(struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter;
-	DBusConnection *conn;
 
 	if (!main_opts.gatt_enabled) {
 		DBG("GATT is disabled");
 		return -ENOTSUP;
 	}
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (!conn)
-		return -1;
-
 	radapter = g_new0(struct reporter_adapter, 1);
 	radapter->adapter = adapter;
-	radapter->conn = conn;
 
-	link_loss_register(adapter, radapter->conn);
+	link_loss_register(adapter);
 	register_tx_power(adapter);
-	imm_alert_register(adapter, radapter->conn);
+	imm_alert_register(adapter);
 
 	reporter_adapters = g_slist_prepend(reporter_adapters, radapter);
 	DBG("Proximity Reporter for adapter %p", adapter);
@@ -288,7 +281,6 @@ void reporter_adapter_remove(struct btd_adapter *adapter)
 
 	link_loss_unregister(adapter);
 	imm_alert_unregister(adapter);
-	dbus_connection_unref(radapter->conn);
 
 	reporter_adapters = g_slist_remove(reporter_adapters, radapter);
 	g_free(radapter);

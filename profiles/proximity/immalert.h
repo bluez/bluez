@@ -21,6 +21,6 @@
  *
  */
 
-void imm_alert_register(struct btd_adapter *adapter, DBusConnection *conn);
+void imm_alert_register(struct btd_adapter *adapter);
 void imm_alert_unregister(struct btd_adapter *adapter);
 const char *imm_alert_get_level(struct btd_device *device);

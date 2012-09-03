@@ -41,8 +41,6 @@
 #include "reporter.h"
 #include "manager.h"
 
-static DBusConnection *connection = NULL;
-
 static struct enabled enabled  = {
 	.linkloss = TRUE,
 	.pathloss = TRUE,
@@ -76,13 +74,12 @@ static int attio_device_probe(struct btd_device *device, GSList *uuids)
 	l = g_slist_find_custom(primaries, LINK_LOSS_UUID, primary_uuid_cmp);
 	linkloss = (l ? l->data : NULL);
 
-	return monitor_register(connection, device, linkloss, txpower,
-							immediate, &enabled);
+	return monitor_register(device, linkloss, txpower, immediate, &enabled);
 }
 
 static void attio_device_remove(struct btd_device *device)
 {
-	monitor_unregister(connection, device);
+	monitor_unregister(device);
 	reporter_device_remove(device);
 }
 
@@ -119,23 +116,14 @@ static void load_config_file(GKeyFile *config)
 	g_strfreev(list);
 }
 
-int proximity_manager_init(DBusConnection *conn, GKeyFile *config)
+int proximity_manager_init(GKeyFile *config)
 {
-	int ret;
-
 	load_config_file(config);
 
-	ret = btd_profile_register(&pxp_profile);
-	if (ret < 0)
-		return ret;
-
-	connection = dbus_connection_ref(conn);
-
-	return 0;
+	return btd_profile_register(&pxp_profile);
 }
 
 void proximity_manager_exit(void)
 {
 	btd_profile_unregister(&pxp_profile);
-	dbus_connection_unref(connection);
 }
