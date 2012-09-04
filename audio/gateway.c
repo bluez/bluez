@@ -846,9 +846,10 @@ unsigned int gateway_request_stream(struct audio_device *dev,
 	GError *err = NULL;
 	GIOChannel *io;
 
-	if (!gw->rfcomm)
-		get_records(dev);
-	else if (!gw->sco) {
+	if (!gw->rfcomm) {
+		if (get_records(dev) < 0)
+			return 0;
+	} else if (!gw->sco) {
 		io = bt_io_connect(sco_connect_cb, dev, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &dev->src,
 				BT_IO_OPT_DEST_BDADDR, &dev->dst,
