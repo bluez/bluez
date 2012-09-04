@@ -183,6 +183,37 @@ static inline uint16_t bt_get_be16(const void *ptr)
 {
 	return bswap_16(bt_get_unaligned((const uint16_t *) ptr));
 }
+
+static inline void bt_put_le64(uint64_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint64_t *) ptr);
+}
+
+static inline void bt_put_be64(uint64_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_64(val), (uint64_t *) ptr);
+}
+
+static inline void bt_put_le32(uint32_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint32_t *) ptr);
+}
+
+static inline void bt_put_be32(uint32_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_32(val), (uint32_t *) ptr);
+}
+
+static inline void bt_put_le16(uint16_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint16_t *) ptr);
+}
+
+static inline void bt_put_be16(uint16_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_16(val), (uint16_t *) ptr);
+}
+
 #elif __BYTE_ORDER == __BIG_ENDIAN
 static inline uint64_t bt_get_le64(const void *ptr)
 {
@@ -212,6 +243,36 @@ static inline uint16_t bt_get_le16(const void *ptr)
 static inline uint16_t bt_get_be16(const void *ptr)
 {
 	return bt_get_unaligned((const uint16_t *) ptr);
+}
+
+static inline void bt_put_le64(uint64_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_64(val), (uint64_t *) ptr);
+}
+
+static inline void bt_put_be64(uint64_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint64_t *) ptr);
+}
+
+static inline void bt_put_le32(uint32_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_32(val), (uint32_t *) ptr);
+}
+
+static inline void bt_put_be32(uint32_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint32_t *) ptr);
+}
+
+static inline void bt_put_le16(uint16_t val, const void *ptr)
+{
+	bt_put_unaligned(bswap_16(val), (uint16_t *) ptr);
+}
+
+static inline void bt_put_be16(uint16_t val, const void *ptr)
+{
+	bt_put_unaligned(val, (uint16_t *) ptr);
 }
 #else
 #error "Unknown byte order"
