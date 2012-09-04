@@ -269,8 +269,9 @@ static void send_mode(char *svr)
 
 	seq = 0;
 	while (1) {
-		*(uint32_t *) buf = htobl(seq);
-		*(uint16_t *) (buf + 4) = htobs(data_size);
+		bt_put_le32(seq, buf);
+		bt_put_le16(data_size, buf + 4);
+
 		seq++;
 
 		if (send(sk, buf, so.mtu, 0) <= 0) {
