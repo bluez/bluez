@@ -1110,3 +1110,14 @@ Event Code		0x0016
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+
+
+Passkey Notify Event
+====================
+
+Event Code		0x0017
+Controller Index	<controller id>
+Event Parameters	Address (6 Octets)
+			Address_Type (1 Octet)
+			Passkey (4 Octets)
+			Entered (1 Octet)
