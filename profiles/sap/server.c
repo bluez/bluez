@@ -302,7 +302,7 @@ static void connect_req(struct sap_server *server,
 				struct sap_parameter *param)
 {
 	struct sap_connection *conn = server->conn;
-	uint16_t maxmsgsize, *val;
+	uint16_t maxmsgsize;
 
 	DBG("conn %p state %d", conn, conn->state);
 
@@ -314,8 +314,7 @@ static void connect_req(struct sap_server *server,
 
 	stop_guard_timer(server);
 
-	val = (uint16_t *) &param->val;
-	maxmsgsize = ntohs(*val);
+	maxmsgsize = bt_get_be16(&param->val);
 
 	DBG("Connect MaxMsgSize: 0x%04x", maxmsgsize);
 
@@ -638,7 +637,6 @@ int sap_connect_rsp(void *sap_device, uint8_t status)
 	struct sap_message *msg = (struct sap_message *) buf;
 	struct sap_parameter *param = (struct sap_parameter *) msg->param;
 	size_t size = sizeof(struct sap_message);
-	uint16_t *maxmsgsize;
 
 	if (!conn)
 		return -EINVAL;
@@ -673,8 +671,7 @@ int sap_connect_rsp(void *sap_device, uint8_t status)
 		param = (struct sap_parameter *) &buf[size];
 		param->id = SAP_PARAM_ID_MAX_MSG_SIZE;
 		param->len = htons(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
-		maxmsgsize = (uint16_t *) &param->val;
-		*maxmsgsize = htons(SAP_BUF_SIZE);
+		bt_put_be16(SAP_BUF_SIZE, &param->val);
 		size += PARAMETER_SIZE(SAP_PARAM_ID_MAX_MSG_SIZE_LEN);
 
 		/* fall */
