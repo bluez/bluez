@@ -64,8 +64,6 @@ int gateway_connect_sco(struct audio_device *dev, GIOChannel *chan);
 void gateway_start_service(struct audio_device *device);
 unsigned int gateway_request_stream(struct audio_device *dev,
 			gateway_stream_cb_t cb, void *user_data);
-int gateway_config_stream(struct audio_device *dev, gateway_stream_cb_t cb,
-			void *user_data);
 gboolean gateway_cancel_stream(struct audio_device *dev, unsigned int id);
 int gateway_get_sco_fd(struct audio_device *dev);
 void gateway_suspend_stream(struct audio_device *dev);
