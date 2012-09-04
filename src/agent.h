@@ -62,7 +62,7 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				void *user_data, GDestroyNotify destroy);
 
 int agent_display_passkey(struct agent *agent, struct btd_device *device,
-				uint32_t passkey);
+				uint32_t passkey, uint16_t entered);
 
 int agent_display_pincode(struct agent *agent, struct btd_device *device,
 				const char *pincode, agent_cb cb,
