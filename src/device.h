@@ -119,8 +119,15 @@ void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_creating(struct btd_device *device, const char *sender);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);
-int device_request_authentication(struct btd_device *device, auth_type_t type,
-					void *data, gboolean secure, void *cb);
+int device_request_pincode(struct btd_device *device, gboolean secure,
+								void *cb);
+int device_request_passkey(struct btd_device *device, void *cb);
+int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
+								void *cb);
+int device_notify_passkey(struct btd_device *device, uint32_t passkey,
+							uint8_t entered);
+int device_notify_pincode(struct btd_device *device, gboolean secure,
+						const char *pincode, void *cb);
 void device_cancel_authentication(struct btd_device *device, gboolean aborted);
 gboolean device_is_authenticating(struct btd_device *device);
 gboolean device_is_authorizing(struct btd_device *device);

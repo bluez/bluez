@@ -2782,27 +2782,26 @@ done:
 	device->authr->agent = NULL;
 }
 
-
-int device_request_authentication(struct btd_device *device, auth_type_t type,
-					void *data, gboolean secure, void *cb)
+static struct authentication_req *new_auth(struct btd_device *device,
+					auth_type_t type, gboolean secure,
+					void *cb)
 {
 	struct authentication_req *auth;
 	struct agent *agent;
 	char addr[18];
-	int err;
 
 	ba2str(&device->bdaddr, addr);
 	DBG("Requesting agent authentication for %s", addr);
 
 	if (device->authr) {
 		error("Authentication already requested for %s", addr);
-		return -EALREADY;
+		return NULL;
 	}
 
 	agent = device_get_agent(device);
 	if (!agent) {
 		error("No agent available for request type %d", type);
-		return -EPERM;
+		return NULL;
 	}
 
 	auth = g_new0(struct authentication_req, 1);
@@ -2813,33 +2812,109 @@ int device_request_authentication(struct btd_device *device, auth_type_t type,
 	auth->secure = secure;
 	device->authr = auth;
 
-	switch (type) {
-	case AUTH_TYPE_PINCODE:
-		err = agent_request_pincode(agent, device, pincode_cb, secure,
+	return auth;
+}
+
+int device_request_pincode(struct btd_device *device, gboolean secure,
+								void *cb)
+{
+	struct authentication_req *auth;
+	int err;
+
+	auth = new_auth(device, AUTH_TYPE_PINCODE, secure, cb);
+	if (!auth)
+		return -EPERM;
+
+	err = agent_request_pincode(auth->agent, device, pincode_cb, secure,
 								auth, NULL);
-		break;
-	case AUTH_TYPE_PASSKEY:
-		err = agent_request_passkey(agent, device, passkey_cb,
-								auth, NULL);
-		break;
-	case AUTH_TYPE_CONFIRM:
-		auth->passkey = *((uint32_t *) data);
-		err = agent_request_confirmation(agent, device, auth->passkey,
-						confirm_cb, auth, NULL);
-		break;
-	case AUTH_TYPE_NOTIFY_PASSKEY:
-		auth->passkey = *((uint32_t *) data);
-		err = agent_display_passkey(agent, device, auth->passkey);
-		break;
-	case AUTH_TYPE_NOTIFY_PINCODE:
-		auth->pincode = g_strdup((const char *) data);
-		err = agent_display_pincode(agent, device, auth->pincode,
-						display_pincode_cb, auth, NULL);
-		break;
-	default:
-		err = -EINVAL;
+	if (err < 0) {
+		error("Failed requesting authentication");
+		device_auth_req_free(device);
 	}
 
+	return err;
+}
+
+int device_request_passkey(struct btd_device *device, void *cb)
+{
+	struct authentication_req *auth;
+	int err;
+
+	auth = new_auth(device, AUTH_TYPE_PASSKEY, FALSE, cb);
+	if (!auth)
+		return -EPERM;
+
+	err = agent_request_passkey(auth->agent, device, passkey_cb, auth,
+									NULL);
+	if (err < 0) {
+		error("Failed requesting authentication");
+		device_auth_req_free(device);
+	}
+
+	return err;
+}
+
+int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
+								void *cb)
+{
+	struct authentication_req *auth;
+	int err;
+
+	auth = new_auth(device, AUTH_TYPE_CONFIRM, FALSE, cb);
+	if (!auth)
+		return -EPERM;
+
+	auth->passkey = passkey;
+
+	err = agent_request_confirmation(auth->agent, device, passkey,
+						confirm_cb, auth, NULL);
+	if (err < 0) {
+		error("Failed requesting authentication");
+		device_auth_req_free(device);
+	}
+
+	return err;
+}
+
+int device_notify_passkey(struct btd_device *device, uint32_t passkey,
+							uint8_t entered)
+{
+	struct authentication_req *auth;
+	int err;
+
+	if (device->authr) {
+		auth = device->authr;
+		if (auth->type != AUTH_TYPE_NOTIFY_PASSKEY)
+			return -EPERM;
+	} else {
+		auth = new_auth(device, AUTH_TYPE_NOTIFY_PASSKEY, FALSE, NULL);
+		if (!auth)
+			return -EPERM;
+	}
+
+	err = agent_display_passkey(auth->agent, device, passkey, entered);
+	if (err < 0) {
+		error("Failed requesting authentication");
+		device_auth_req_free(device);
+	}
+
+	return err;
+}
+
+int device_notify_pincode(struct btd_device *device, gboolean secure,
+						const char *pincode, void *cb)
+{
+	struct authentication_req *auth;
+	int err;
+
+	auth = new_auth(device, AUTH_TYPE_NOTIFY_PINCODE, secure, cb);
+	if (!auth)
+		return -EPERM;
+
+	auth->pincode = g_strdup(pincode);
+
+	err = agent_display_pincode(auth->agent, device, pincode,
+					display_pincode_cb, auth, NULL);
 	if (err < 0) {
 		error("Failed requesting authentication");
 		device_auth_req_free(device);
