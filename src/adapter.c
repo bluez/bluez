@@ -133,6 +133,7 @@ struct btd_adapter {
 	GSList *devices;		/* Devices structure pointers */
 	GSList *mode_sessions;		/* Request Mode sessions */
 	GSList *disc_sessions;		/* Discovery sessions */
+	GSList *connect_list;		/* Devices to connect when found */
 	guint discov_id;		/* Discovery timer */
 	gboolean discovering;		/* Discovery active */
 	gboolean discov_suspended;	/* Discovery suspended */
@@ -2188,6 +2189,36 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	return adapter->name;
 }
 
+void adapter_connect_list_add(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	if (g_slist_find(adapter->connect_list, device)) {
+		DBG("ignoring already added device %s",
+						device_get_path(device));
+		return;
+	}
+
+	adapter->connect_list = g_slist_append(adapter->connect_list,
+						btd_device_ref(device));
+	DBG("%s added to %s's connect_list", device_get_path(device),
+								adapter->name);
+}
+
+void adapter_connect_list_remove(struct btd_adapter *adapter,
+					struct btd_device *device)
+{
+	if (!g_slist_find(adapter->connect_list, device)) {
+		DBG("device %s is not on the list, ignoring",
+						device_get_path(device));
+		return;
+	}
+
+	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
+	DBG("%s removed from %s's connect_list", device_get_path(device),
+								adapter->name);
+	btd_device_unref(device);
+}
+
 void btd_adapter_start(struct btd_adapter *adapter)
 {
 	char address[18];
@@ -2864,6 +2895,21 @@ static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer,
 	return textfile_get(filename, key);
 }
 
+static gboolean connect_pending_cb(gpointer user_data)
+{
+	struct btd_device *device = user_data;
+	struct btd_adapter *adapter = device_get_adapter(device);
+
+	/* in the future we may want to check here if the controller supports
+	 * scanning and connecting at the same time */
+	if (adapter->discovering)
+		return TRUE;
+
+	/* TODO: call device connect callback */
+
+	return FALSE;
+}
+
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					bdaddr_t *bdaddr, uint8_t bdaddr_type,
 					int8_t rssi, uint8_t confirm_name,
@@ -2875,6 +2921,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	gboolean legacy, name_known;
 	uint32_t dev_class;
 	int err;
+	GSList *l;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = eir_parse(&eir_data, data, data_len);
@@ -2897,7 +2944,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 								eir_data.name);
 
 	dev = adapter_search_found_devices(adapter, bdaddr);
-	if (dev) {
+	if (dev && dev->bdaddr_type == BDADDR_BREDR) {
 		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
 							dev);
 
@@ -2948,6 +2995,16 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	free(alias);
 
 	adapter->found_devices = g_slist_prepend(adapter->found_devices, dev);
+
+	if (bdaddr_type == BDADDR_LE_PUBLIC ||
+					bdaddr_type == BDADDR_LE_RANDOM) {
+		l = g_slist_find_custom(adapter->connect_list, bdaddr,
+					(GCompareFunc) device_bdaddr_cmp);
+		if (l) {
+			g_idle_add(connect_pending_cb, l->data);
+			stop_discovery(adapter);
+		}
+	}
 
 done:
 	dev->rssi = rssi;
