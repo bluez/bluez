@@ -665,13 +665,13 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 						uint8_t transaction)
 {
 	uint16_t len = ntohs(pdu->params_len);
-	uint64_t *identifier = (uint64_t *) &pdu->params[0];
+	uint64_t identifier = bt_get_le64(&pdu->params[0]);
 	uint16_t pos;
 	uint8_t nattr;
 	GList *attr_ids;
 	uint16_t offset;
 
-	if (len < 9 || *identifier != 0)
+	if (len < 9 || identifier != 0)
 		goto err;
 
 	nattr = pdu->params[8];
@@ -688,10 +688,10 @@ static uint8_t avrcp_handle_get_element_attributes(struct avrcp_player *player,
 		len = g_list_length(attr_ids);
 	} else {
 		unsigned int i;
-		uint32_t *attr = (uint32_t *) &pdu->params[9];
+		for (i = 0, len = 0, attr_ids = NULL; i < nattr; i++) {
+			uint32_t id;
 
-		for (i = 0, len = 0, attr_ids = NULL; i < nattr; i++, attr++) {
-			uint32_t id = ntohl(bt_get_unaligned(attr));
+			id = bt_get_be32(&pdu->params[9] + (i * sizeof(id)));
 
 			/* Don't add invalid attributes */
 			if (id == AVRCP_MEDIA_ATTRIBUTE_ILLEGAL ||
