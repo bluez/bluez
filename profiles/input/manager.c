@@ -84,8 +84,7 @@ static int headset_probe(struct btd_device *device, GSList *uuids)
 
 	DBG("path %s", path);
 
-	if (!g_slist_find_custom(uuids, HSP_HS_UUID,
-					(GCompareFunc) strcasecmp))
+	if (!g_slist_find_custom(uuids, HSP_HS_UUID, bt_uuid_strcmp))
 		return -EINVAL;
 
 	record = btd_device_get_record(device, uuids->data);
