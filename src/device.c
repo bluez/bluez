@@ -1369,24 +1369,6 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 	DBG("Removing profiles for %s", dstaddr);
 
-	for (l = profiles; l != NULL; l = g_slist_next(l)) {
-		struct btd_profile *profile = l->data;
-		const char **uuid;
-
-		for (uuid = profile->remote_uuids; *uuid; uuid++) {
-			if (!g_slist_find_custom(uuids, *uuid,
-						(GCompareFunc) strcasecmp))
-				continue;
-
-			DBG("UUID %s was removed from device %s", *uuid, dstaddr);
-
-			profile->device_remove(device);
-			device->profiles = g_slist_remove(device->profiles,
-									profile);
-			break;
-		}
-	}
-
 	for (l = uuids; l != NULL; l = g_slist_next(l)) {
 		sdp_record_t *rec;
 
@@ -1405,6 +1387,21 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 	if (records)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
+
+	for (l = device->profiles; l != NULL; l = g_slist_next(l)) {
+		struct btd_profile *profile = l->data;
+		GSList *probe_uuids;
+
+		probe_uuids = device_match_profile(device, profile,
+								device->uuids);
+		if (probe_uuids != NULL) {
+			g_slist_free(probe_uuids);
+			continue;
+		}
+
+		profile->device_remove(device);
+		device->profiles = g_slist_remove(device->profiles, profile);
+	}
 }
 
 static void uuids_changed(struct btd_device *device)
