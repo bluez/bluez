@@ -426,8 +426,10 @@ static void num_completed_pkts(struct vhci_conn *conn)
 	np = (void *) ptr; ptr += EVT_NUM_COMP_PKTS_SIZE;
 	np->num_hndl = 1;
 
-	*((uint16_t *) ptr) = htobs(conn->handle); ptr += 2;
-	*((uint16_t *) ptr) = htobs(vdev.acl_cnt); ptr += 2;
+	bt_put_le16(conn->handle, ptr);
+	ptr += 2;
+	bt_put_le16(vdev.acl_cnt, ptr);
+	ptr += 2;
 
 	write_snoop(vdev.dd, HCI_EVENT_PKT, 1, buf, ptr - buf);
 
