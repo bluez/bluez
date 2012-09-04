@@ -706,7 +706,7 @@ static int ag_probe(struct btd_device *device, GSList *uuids)
 		return -1;
 	}
 
-	if (!audio_dev->gateway)
+	if (audio_dev->gateway)
 		return -EALREADY;
 
 	audio_dev->gateway = gateway_init(audio_dev);
