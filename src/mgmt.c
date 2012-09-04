@@ -2034,8 +2034,11 @@ int mgmt_start_discovery(int index)
 
 	cp->type = info->discov_type;
 
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0) {
+		int err = -errno;
+		error("failed to write to MGMT socket: %s", strerror(-err));
+		return err;
+	}
 
 	return 0;
 }
