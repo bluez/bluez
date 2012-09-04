@@ -42,7 +42,8 @@ Methods		void Release()
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		void DisplayPasskey(object device, uint32 passkey, uint8 entered)
+		void DisplayPasskey(object device, uint32 passkey,
+								uint16 entered)
 
 			This method gets called when the service daemon
 			needs to display a passkey for an authentication.
