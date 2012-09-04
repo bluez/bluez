@@ -1284,13 +1284,11 @@ static GSList *device_match_profile(struct btd_device *device,
 		GSList *match;
 
 		/* skip duplicated uuids */
-		if (g_slist_find_custom(match_uuids, *uuid,
-				(GCompareFunc) strcasecmp))
+		if (g_slist_find_custom(match_uuids, *uuid, bt_uuid_strcmp))
 			continue;
 
 		/* match profile uuid */
-		match = g_slist_find_custom(uuids, *uuid,
-					(GCompareFunc) strcasecmp);
+		match = g_slist_find_custom(uuids, *uuid, bt_uuid_strcmp);
 		if (match) {
 			match_uuids = g_slist_append(match_uuids, match->data);
 			continue;
@@ -1345,13 +1343,13 @@ void device_probe_profiles(struct btd_device *device, GSList *uuids)
 add_uuids:
 	for (l = uuids; l != NULL; l = g_slist_next(l)) {
 		GSList *match = g_slist_find_custom(device->uuids, l->data,
-						(GCompareFunc) strcasecmp);
+							bt_uuid_strcmp);
 		if (match)
 			continue;
 
 		device->uuids = g_slist_insert_sorted(device->uuids,
 						g_strdup(l->data),
-						(GCompareFunc) strcasecmp);
+						bt_uuid_strcmp);
 	}
 }
 
@@ -1472,7 +1470,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 		}
 
-		if (!strcasecmp(profile_uuid, PNP_UUID)) {
+		if (bt_uuid_strcmp(profile_uuid, PNP_UUID) == 0) {
 			uint16_t source, vendor, product, version;
 			sdp_data_t *pdlist;
 
@@ -2958,8 +2956,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	GSList *uuid_list;
 	char *new_uuid;
 
-	if (g_slist_find_custom(device->uuids, uuid,
-				(GCompareFunc) strcasecmp))
+	if (g_slist_find_custom(device->uuids, uuid, bt_uuid_strcmp))
 		return;
 
 	new_uuid = g_strdup(uuid);
