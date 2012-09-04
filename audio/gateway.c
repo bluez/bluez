@@ -526,11 +526,18 @@ fail:
 static int get_records(struct audio_device *device)
 {
 	uuid_t uuid;
+	int err;
+
+	sdp_uuid16_create(&uuid, HANDSFREE_AGW_SVCLASS_ID);
+
+	err = bt_search_service(&device->src, &device->dst, &uuid,
+						get_record_cb, device, NULL);
+	if (err < 0)
+		return err;
 
 	change_state(device, GATEWAY_STATE_CONNECTING);
-	sdp_uuid16_create(&uuid, HANDSFREE_AGW_SVCLASS_ID);
-	return bt_search_service(&device->src, &device->dst, &uuid,
-				get_record_cb, device, NULL);
+
+	return 0;
 }
 
 static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
