@@ -756,6 +756,40 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
+static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
+{
+	struct mgmt_ev_passkey_notify *ev = buf;
+	struct controller_info *info;
+	uint32_t passkey;
+	char addr[18];
+	int err;
+
+	if (len < sizeof(*ev)) {
+		error("Too small passkey_notify event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u %s", index, addr);
+
+	if (index > max_index) {
+		error("Unexpected index %u in passkey_notify event", index);
+		return;
+	}
+
+	info = &controllers[index];
+
+	passkey = bt_get_le32(&ev->passkey);
+
+	DBG("passkey %06u entered %u", passkey, ev->entered);
+
+	err = btd_event_user_notify(&info->bdaddr, &ev->addr.bdaddr,
+							passkey, ev->entered);
+	if (err < 0)
+		error("btd_event_user_notify: %s", strerror(-err));
+}
+
 struct confirm_data {
 	int index;
 	bdaddr_t bdaddr;
@@ -1896,6 +1930,9 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
 		mgmt_passkey_request(sk, index, buf + MGMT_HDR_SIZE, len);
+		break;
+	case MGMT_EV_PASSKEY_NOTIFY:
+		mgmt_passkey_notify(sk, index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LONG_TERM_KEY:
 		mgmt_new_ltk(sk, index, buf + MGMT_HDR_SIZE, len);

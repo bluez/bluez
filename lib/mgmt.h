@@ -447,6 +447,13 @@ struct mgmt_ev_device_unpaired {
 	struct mgmt_addr_info addr;
 } __packed;
 
+#define MGMT_EV_PASSKEY_NOTIFY		0x0017
+struct mgmt_ev_passkey_notify {
+	struct mgmt_addr_info addr;
+	uint32_t passkey;
+	uint8_t entered;
+} __packed;
+
 static const char *mgmt_op[] = {
 	"<0x0000>",
 	"Read Version",

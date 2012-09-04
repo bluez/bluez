@@ -37,7 +37,8 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t 
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer);
 int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba);
-int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey);
+int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
+							uint8_t entered);
 void btd_event_device_blocked(bdaddr_t *local, bdaddr_t *peer);
 void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer);
 void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer);

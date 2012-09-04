@@ -198,7 +198,8 @@ int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	return device_request_passkey(device, passkey_cb);
 }
 
-int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
+int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
+							uint8_t entered)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -206,7 +207,7 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_notify_passkey(device, passkey, 0);
+	return device_notify_passkey(device, passkey, entered);
 }
 
 void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
