@@ -245,7 +245,7 @@ static void gatt_characteristic_cb(GSList *characteristics, guint8 status,
 	start = chr->value_handle + 1;
 	end = gas->gatt.end;
 
-	if (start <= end) {
+	if (start > end) {
 		error("Inconsistent database: Service Changed CCC missing");
 		return;
 	}
