@@ -787,6 +787,13 @@ gboolean gateway_is_active(struct audio_device *dev)
 	return FALSE;
 }
 
+gateway_state_t gateway_get_state(struct audio_device *dev)
+{
+	struct gateway *gw = dev->gateway;
+
+	return gw->state;
+}
+
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io)
 {
 	if (!io)

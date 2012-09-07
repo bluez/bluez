@@ -59,6 +59,7 @@ void gateway_unregister(struct audio_device *dev);
 struct gateway *gateway_init(struct audio_device *dev);
 gboolean gateway_is_active(struct audio_device *dev);
 gboolean gateway_is_connected(struct audio_device *dev);
+gateway_state_t gateway_get_state(struct audio_device *dev);
 int gateway_connect_rfcomm(struct audio_device *dev, GIOChannel *io);
 int gateway_connect_sco(struct audio_device *dev, GIOChannel *chan);
 void gateway_start_service(struct audio_device *device);
