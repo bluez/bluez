@@ -300,7 +300,7 @@ static int ps3remote_setup_uinput(struct fake_input *fake,
 	}
 
 	/* enabling keys */
-	for (i = 0; i < 256; i++)
+	for (i = 0; i < 0xff; i++)
 		if (ps3remote_keymap[i] != KEY_RESERVED)
 			if (ioctl(fake->uinput, UI_SET_KEYBIT,
 						ps3remote_keymap[i]) < 0) {
