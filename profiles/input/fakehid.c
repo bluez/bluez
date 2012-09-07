@@ -41,6 +41,9 @@
 #include "fakehid.h"
 #include "uinput.h"
 
+/* Timeout to get the PS3 remote disconnected, in seconds */
+#define PS3_REMOTE_TIMEOUT 10 * 60
+
 enum ps3remote_special_keys {
 	PS3R_BIT_PS = 0,
 	PS3R_BIT_ENTER = 3,
@@ -200,6 +203,24 @@ error:
 	return -1;
 }
 
+static gboolean ps3_remote_timeout_cb(gpointer user_data)
+{
+	struct fake_input *fake = user_data;
+
+	input_device_request_disconnect(fake);
+	DBG("Disconnected PS3 BD Remote after timeout");
+
+	fake->timeout_id = 0;
+
+	return FALSE;
+}
+
+static void ps3remote_set_timeout(struct fake_input *fake)
+{
+	fake->timeout_id = g_timeout_add_seconds(PS3_REMOTE_TIMEOUT,
+						ps3_remote_timeout_cb, fake);
+}
+
 static gboolean ps3remote_event(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
@@ -253,9 +274,17 @@ static gboolean ps3remote_event(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 	}
 
+	if (fake->timeout_id > 0)
+		g_source_remove(fake->timeout_id);
+	ps3remote_set_timeout(fake);
+
 	return TRUE;
 
 failed:
+	if (fake->timeout_id > 0) {
+		g_source_remove(fake->timeout_id);
+		fake->timeout_id = 0;
+	}
 	ioctl(fake->uinput, UI_DEV_DESTROY);
 	close(fake->uinput);
 	fake->uinput = -1;
@@ -314,6 +343,8 @@ static int ps3remote_setup_uinput(struct fake_input *fake,
 		error("Error creating uinput device");
 		goto err;
 	}
+
+	ps3remote_set_timeout(fake);
 
 	return 0;
 
@@ -375,6 +406,8 @@ struct fake_input *fake_hid_connadd(struct fake_input *fake,
 	for (l = fake_hid->devices; l != NULL; l = l->next) {
 		old = l->data;
 		if (old->idev == fake->idev) {
+			if (fake->timeout_id > 0)
+				g_source_remove(fake->timeout_id);
 			g_free(fake);
 			fake = old;
 			fake_hid->connect(fake, NULL);

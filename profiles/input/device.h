@@ -33,6 +33,7 @@ struct fake_input {
 	int		uinput;		/* uinput socket */
 	int		rfcomm;		/* RFCOMM socket */
 	uint8_t		ch;		/* RFCOMM channel number */
+	guint           timeout_id;	/* Disconnect timeout ID */
 	gboolean	(*connect) (struct input_conn *iconn, GError **err);
 	int		(*disconnect) (struct input_conn *iconn);
 	void		*priv;
