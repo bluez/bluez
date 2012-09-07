@@ -1257,27 +1257,6 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 	return FALSE;
 }
 
-static GSList *device_match_pattern(struct btd_device *device,
-					const char *match_uuid,
-					GSList *uuids)
-{
-	GSList *l, *match_uuids = NULL;
-
-	for (l = uuids; l; l = l->next) {
-		char *uuid = l->data;
-		const sdp_record_t *rec;
-
-		rec = btd_device_get_record(device, uuid);
-		if (!rec)
-			continue;
-
-		if (record_has_uuid(rec, match_uuid))
-			match_uuids = g_slist_append(match_uuids, uuid);
-	}
-
-	return match_uuids;
-}
-
 static GSList *device_match_profile(struct btd_device *device,
 					struct btd_profile *profile,
 					GSList *uuids)
@@ -1294,14 +1273,8 @@ static GSList *device_match_profile(struct btd_device *device,
 
 		/* match profile uuid */
 		match = g_slist_find_custom(uuids, *uuid, bt_uuid_strcmp);
-		if (match) {
+		if (match)
 			match_uuids = g_slist_append(match_uuids, match->data);
-			continue;
-		}
-
-		/* match pattern driver */
-		match = device_match_pattern(device, *uuid, uuids);
-		match_uuids = g_slist_concat(match_uuids, match);
 	}
 
 	return match_uuids;
