@@ -8,7 +8,31 @@ import dbus
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
+compact = False;
+addresses = [];
+
+def print_compact(address, properties):
+	if address in addresses:
+		return
+
+	addresses.append(address)
+
+	name = ""
+
+	for key in properties.keys():
+		value = properties[key]
+		if type(value) is dbus.String:
+			value = unicode(value).encode('ascii', 'replace')
+		if (key == "Name"):
+			name = value
+
+	print("%s  %s" % (address, name))
+
 def device_found(address, properties):
+	if compact:
+		print_compact(address, properties)
+		return
+
 	print("[ " + address + " ]")
 
 	for key in properties.keys():
@@ -36,6 +60,8 @@ if __name__ == '__main__':
 	option_list = [
 			make_option("-i", "--device", action="store",
 					type="string", dest="dev_id"),
+			make_option("-c", "--compact",
+					action="store_true", dest="compact"),
 			]
 	parser = OptionParser(option_list=option_list)
 
@@ -45,6 +71,9 @@ if __name__ == '__main__':
 		adapter_path = manager.FindAdapter(options.dev_id)
 	else:
 		adapter_path = manager.DefaultAdapter()
+
+	if options.compact:
+		compact = True;
 
 	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 							"org.bluez.Adapter")
