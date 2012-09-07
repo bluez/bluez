@@ -1308,3 +1308,11 @@ int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 
 	return 0;
 }
+
+void input_device_request_disconnect(struct fake_input *fake)
+{
+	if (fake == NULL || fake->idev == NULL)
+		return;
+
+	device_request_disconnect(fake->idev->device, NULL);
+}
