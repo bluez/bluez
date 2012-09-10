@@ -34,37 +34,6 @@ typedef enum {
 	AUTH_TYPE_NOTIFY_PINCODE,
 } auth_type_t;
 
-#define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
-
-struct btd_profile {
-	const char *name;
-
-	const char *local_uuid;
-	const char **remote_uuids;
-
-	bool auto_connect;
-
-	int (*device_probe) (struct btd_device *device, GSList *uuids);
-	void (*device_remove) (struct btd_device *device);
-
-	void (*connect) (struct btd_device *device);
-	void (*disconnect) (struct btd_device *device);
-
-	int (*adapter_probe) (struct btd_adapter *adapter);
-	void (*adapter_remove) (struct btd_adapter *adapter);
-};
-
-void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
-								void *data);
-
-int btd_profile_register(struct btd_profile *profile);
-void btd_profile_unregister(struct btd_profile *profile);
-
-void btd_profile_connected(struct btd_profile *profile,
-					struct btd_device *device, int err);
-void btd_profile_disconnected(struct btd_profile *profile,
-						struct btd_device *device);
-
 struct btd_device *device_create(DBusConnection *conn,
 					struct btd_adapter *adapter,
 					const char *address, uint8_t bdaddr_type);

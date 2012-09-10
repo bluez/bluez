@@ -33,6 +33,7 @@
 #include <btio.h>
 #include <adapter.h>
 #include <device.h>
+#include <profile.h>
 #include <glib-helper.h>
 #include <log.h>
 

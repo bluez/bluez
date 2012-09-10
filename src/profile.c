@@ -2,8 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2012  Nokia Corporation
- *  Copyright (C) 2012  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2012  Intel Corporation. All rights reserved.
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -27,27 +26,43 @@
 #endif
 
 #include <stdbool.h>
+#include <stdint.h>
 
-#include "manager.h"
+#include <glib.h>
+#include <dbus/dbus.h>
+
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
-#include "server.h"
 
-struct btd_profile time_profile = {
-	.name 		= "gatt-time-server",
-	.adapter_probe	= time_server_init,
-	.adapter_remove	= time_server_exit,
-};
+static GSList *profiles = NULL;
 
-int time_manager_init(void)
+void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
+								void *data)
 {
-	btd_profile_register(&time_profile);
+	GSList *l, *next;
 
+	for (l = profiles; l != NULL; l = next) {
+		struct btd_profile *profile = l->data;
+
+		next = g_slist_next(l);
+
+		func(profile, data);
+	}
+}
+
+int btd_profile_register(struct btd_profile *profile)
+{
+	profiles = g_slist_append(profiles, profile);
 	return 0;
 }
 
-void time_manager_exit(void)
+void btd_profile_unregister(struct btd_profile *profile)
 {
-	btd_profile_unregister(&time_profile);
+	profiles = g_slist_remove(profiles, profile);
+}
+
+GSList *btd_get_profiles(void)
+{
+	return profiles;
 }

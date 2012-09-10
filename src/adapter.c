@@ -51,6 +51,7 @@
 #include "adapter.h"
 #include "manager.h"
 #include "device.h"
+#include "profile.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "glib-helper.h"

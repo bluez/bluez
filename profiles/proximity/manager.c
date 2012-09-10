@@ -34,6 +34,7 @@
 
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 #include "att.h"
 #include "gattrib.h"
 #include "gatt.h"

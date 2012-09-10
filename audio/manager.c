@@ -53,6 +53,7 @@
 #include "../src/adapter.h"
 #include "../src/manager.h"
 #include "../src/device.h"
+#include "../src/profile.h"
 
 #include "log.h"
 #include "device.h"

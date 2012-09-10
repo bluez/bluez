@@ -53,6 +53,7 @@
 #include "gattrib.h"
 #include "attio.h"
 #include "device.h"
+#include "profile.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "glib-helper.h"
@@ -170,8 +171,6 @@ struct btd_device {
 	GIOChannel      *att_io;
 	guint		cleanup_id;
 };
-
-static GSList *profiles = NULL;
 
 static uint16_t uuid_list[] = {
 	L2CAP_UUID,
@@ -1294,7 +1293,7 @@ void device_probe_profiles(struct btd_device *device, GSList *uuids)
 
 	DBG("Probing profiles for device %s", addr);
 
-	for (l = profiles; l != NULL; l = g_slist_next(l)) {
+	for (l = btd_get_profiles(); l != NULL; l = g_slist_next(l)) {
 		struct btd_profile *profile = l->data;
 		GSList *probe_uuids;
 		int err;
@@ -3226,40 +3225,3 @@ void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 	device_set_version(device, product_ver);
 }
 
-void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
-								void *data)
-{
-	GSList *l, *next;
-
-	for (l = profiles; l != NULL; l = next) {
-		struct btd_profile *profile = l->data;
-
-		next = g_slist_next(l);
-
-		func(profile, data);
-	}
-}
-
-int btd_profile_register(struct btd_profile *profile)
-{
-	profiles = g_slist_append(profiles, profile);
-	return 0;
-}
-
-void btd_profile_unregister(struct btd_profile *profile)
-{
-	profiles = g_slist_remove(profiles, profile);
-}
-
-void btd_profile_connected(struct btd_profile *profile,
-				struct btd_device *device, int err)
-{
-	if (err == 0)
-		device->conns = g_slist_append(device->conns, profile);
-}
-
-void btd_profile_disconnected(struct btd_profile *profile,
-						struct btd_device *device)
-{
-	device->conns = g_slist_remove(device->conns, profile);
-}

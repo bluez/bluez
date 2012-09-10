@@ -32,6 +32,7 @@
 #include "log.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "../src/profile.h"
 
 #include "plugin.h"
 #include "hcid.h"

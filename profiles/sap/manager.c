@@ -27,6 +27,7 @@
 #include "log.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 
 #include "manager.h"
 #include "server.h"
