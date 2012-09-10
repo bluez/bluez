@@ -48,6 +48,8 @@
 
 #define OBC_TRANSFER_ERROR obc_transfer_error_quark()
 
+#define FIRST_PACKET_TIMEOUT 60
+
 static guint64 counter = 0;
 
 struct transfer_callback {
@@ -662,7 +664,8 @@ static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 						transfer->params->data,
 						transfer->params->size);
 
-	transfer->xfer = g_obex_send_req(transfer->obex, req, -1,
+	transfer->xfer = g_obex_send_req(transfer->obex, req,
+						FIRST_PACKET_TIMEOUT,
 						get_xfer_progress_first,
 						transfer, err);
 	if (transfer->xfer == 0)
