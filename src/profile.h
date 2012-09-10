@@ -23,6 +23,10 @@
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
+struct btd_profile;
+
+typedef void (*btd_profile_cb)(struct btd_profile *profile, void *data);
+
 struct btd_profile {
 	const char *name;
 
@@ -34,8 +38,10 @@ struct btd_profile {
 	int (*device_probe) (struct btd_device *device, GSList *uuids);
 	void (*device_remove) (struct btd_device *device);
 
-	void (*connect) (struct btd_device *device);
-	void (*disconnect) (struct btd_device *device);
+	void (*connect) (struct btd_device *device, btd_profile_cb cb,
+								void *data);
+	void (*disconnect) (struct btd_device *device, btd_profile_cb cb,
+								void *data);
 
 	int (*adapter_probe) (struct btd_adapter *adapter);
 	void (*adapter_remove) (struct btd_adapter *adapter);
