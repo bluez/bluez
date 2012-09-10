@@ -27,21 +27,6 @@
 struct input_device;
 struct input_conn;
 
-struct fake_input {
-	int		flags;
-	GIOChannel	*io;
-	int		uinput;		/* uinput socket */
-	int		rfcomm;		/* RFCOMM socket */
-	uint8_t		ch;		/* RFCOMM channel number */
-	guint           timeout_id;	/* Disconnect timeout ID */
-	gboolean	(*connect) (struct input_conn *iconn, GError **err);
-	int		(*disconnect) (struct input_conn *iconn);
-	void		*priv;
-	const struct input_device *idev;
-};
-
-int fake_input_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, const char *uuid, uint8_t channel);
 int input_device_register(DBusConnection *conn, struct btd_device *device,
 					const char *path, const char *uuid,
 					const sdp_record_t *rec, int timeout);
@@ -50,4 +35,3 @@ int input_device_unregister(const char *path, const char *uuid);
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 							GIOChannel *io);
 int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst);
-void input_device_request_disconnect(struct fake_input *fake);

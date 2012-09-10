@@ -76,42 +76,6 @@ static void hid_device_remove(struct btd_device *device)
 	input_remove(device, HID_UUID);
 }
 
-static int headset_probe(struct btd_device *device, GSList *uuids)
-{
-	const gchar *path = device_get_path(device);
-	const sdp_record_t *record;
-	sdp_list_t *protos;
-	int ch;
-
-	DBG("path %s", path);
-
-	if (!g_slist_find_custom(uuids, HSP_HS_UUID, bt_uuid_strcmp))
-		return -EINVAL;
-
-	record = btd_device_get_record(device, uuids->data);
-
-	if (!record || sdp_get_access_protos(record, &protos) < 0) {
-		error("Invalid record");
-		return -EINVAL;
-	}
-
-	ch = sdp_get_proto_port(protos, RFCOMM_UUID);
-	sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free, NULL);
-	sdp_list_free(protos, NULL);
-
-	if (ch <= 0) {
-		error("Invalid RFCOMM channel");
-		return -EINVAL;
-	}
-
-	return fake_input_register(connection, device, path, HSP_HS_UUID, ch);
-}
-
-static void headset_remove(struct btd_device *device)
-{
-	input_remove(device, HSP_HS_UUID);
-}
-
 static int hid_server_probe(struct btd_adapter *adapter)
 {
 	bdaddr_t src;
@@ -151,14 +115,6 @@ static struct btd_profile input_profile = {
 	.adapter_remove = hid_server_remove,
 };
 
-static struct btd_profile input_headset_profile = {
-	.name		= "input-headset",
-	.remote_uuids	= BTD_UUIDS(HSP_HS_UUID),
-
-	.device_probe	= headset_probe,
-	.device_remove	= headset_remove,
-};
-
 int input_manager_init(DBusConnection *conn, GKeyFile *config)
 {
 	GError *err = NULL;
@@ -175,7 +131,6 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 	connection = dbus_connection_ref(conn);
 
 	btd_profile_register(&input_profile);
-	btd_profile_register(&input_headset_profile);
 
 	return 0;
 }
@@ -183,7 +138,6 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 void input_manager_exit(void)
 {
 	btd_profile_unregister(&input_profile);
-	btd_profile_unregister(&input_headset_profile);
 
 	dbus_connection_unref(connection);
 	connection = NULL;

@@ -177,8 +177,7 @@ builtin_modules += input
 builtin_sources += profiles/input/main.c \
 			profiles/input/manager.h profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
-			profiles/input/device.h profiles/input/device.c \
-			profiles/input/fakehid.c profiles/input/fakehid.h
+			profiles/input/device.h profiles/input/device.c
 endif
 
 if HOGPLUGIN

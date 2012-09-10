@@ -50,7 +50,6 @@
 
 #include "device.h"
 #include "error.h"
-#include "fakehid.h"
 #include "btio.h"
 
 #include "sdp-client.h"
@@ -64,7 +63,6 @@
 #define FI_FLAG_CONNECTED	1
 
 struct input_conn {
-	struct fake_input	*fake;
 	DBusMessage		*pending_connect;
 	char			*uuid;
 	GIOChannel		*ctrl_io;
@@ -137,7 +135,6 @@ static void input_conn_free(struct input_conn *iconn)
 		g_io_channel_unref(iconn->ctrl_io);
 
 	g_free(iconn->uuid);
-	g_free(iconn->fake);
 	g_free(iconn);
 }
 
@@ -151,231 +148,6 @@ static void input_device_free(struct input_device *idev)
 	g_free(idev->name);
 	g_free(idev->path);
 	g_free(idev);
-}
-
-static int uinput_create(char *name)
-{
-	struct uinput_dev dev;
-	int fd, err;
-
-	fd = open("/dev/uinput", O_RDWR);
-	if (fd < 0) {
-		fd = open("/dev/input/uinput", O_RDWR);
-		if (fd < 0) {
-			fd = open("/dev/misc/uinput", O_RDWR);
-			if (fd < 0) {
-				err = -errno;
-				error("Can't open input device: %s (%d)",
-							strerror(-err), -err);
-				return err;
-			}
-		}
-	}
-
-	memset(&dev, 0, sizeof(dev));
-	if (name)
-		strncpy(dev.name, name, UINPUT_MAX_NAME_SIZE - 1);
-
-	dev.id.bustype = BUS_BLUETOOTH;
-	dev.id.vendor  = 0x0000;
-	dev.id.product = 0x0000;
-	dev.id.version = 0x0000;
-
-	if (write(fd, &dev, sizeof(dev)) < 0) {
-		err = -errno;
-		error("Can't write device information: %s (%d)",
-						strerror(-err), -err);
-		close(fd);
-		return err;
-	}
-
-	ioctl(fd, UI_SET_EVBIT, EV_KEY);
-	ioctl(fd, UI_SET_EVBIT, EV_REL);
-	ioctl(fd, UI_SET_EVBIT, EV_REP);
-
-	ioctl(fd, UI_SET_KEYBIT, KEY_UP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEUP);
-	ioctl(fd, UI_SET_KEYBIT, KEY_DOWN);
-	ioctl(fd, UI_SET_KEYBIT, KEY_PAGEDOWN);
-
-	if (ioctl(fd, UI_DEV_CREATE, NULL) < 0) {
-		err = -errno;
-		error("Can't create uinput device: %s (%d)",
-						strerror(-err), -err);
-		close(fd);
-		return err;
-	}
-
-	return fd;
-}
-
-static int decode_key(const char *str)
-{
-	static int mode = UPDOWN_ENABLED, gain = 0;
-
-	uint16_t key;
-	int new_gain;
-
-	/* Switch from key up/down to page up/down */
-	if (strncmp("AT+CKPD=200", str, 11) == 0) {
-		mode = ~mode;
-		return KEY_RESERVED;
-	}
-
-	if (strncmp("AT+VG", str, 5))
-		return KEY_RESERVED;
-
-	/* Gain key pressed */
-	if (strlen(str) != 10)
-		return KEY_RESERVED;
-
-	new_gain = strtol(&str[7], NULL, 10);
-	if (new_gain <= gain)
-		key = (mode == UPDOWN_ENABLED ? KEY_UP : KEY_PAGEUP);
-	else
-		key = (mode == UPDOWN_ENABLED ? KEY_DOWN : KEY_PAGEDOWN);
-
-	gain = new_gain;
-
-	return key;
-}
-
-static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
-{
-	struct uinput_event event;
-
-	memset(&event, 0, sizeof(event));
-	event.type	= type;
-	event.code	= code;
-	event.value	= value;
-
-	return write(fd, &event, sizeof(event));
-}
-
-static void send_key(int fd, uint16_t key)
-{
-	/* Key press */
-	send_event(fd, EV_KEY, key, 1);
-	send_event(fd, EV_SYN, SYN_REPORT, 0);
-	/* Key release */
-	send_event(fd, EV_KEY, key, 0);
-	send_event(fd, EV_SYN, SYN_REPORT, 0);
-}
-
-static gboolean rfcomm_io_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	struct fake_input *fake = data;
-	const char *ok = "\r\nOK\r\n";
-	char buf[BUF_SIZE];
-	ssize_t bread = 0, bwritten;
-	uint16_t key;
-	int fd;
-
-	if (cond & G_IO_NVAL)
-		return FALSE;
-
-	if (cond & (G_IO_HUP | G_IO_ERR)) {
-		error("Hangup or error on rfcomm server socket");
-		goto failed;
-	}
-
-	fd = g_io_channel_unix_get_fd(chan);
-
-	memset(buf, 0, BUF_SIZE);
-	bread = read(fd, buf, sizeof(buf) - 1);
-	if (bread < 0) {
-		error("IO Channel read error");
-		goto failed;
-	}
-
-	DBG("Received: %s", buf);
-
-	bwritten = write(fd, ok, 6);
-	if (bwritten < 0) {
-		error("IO Channel write error");
-		goto failed;
-	}
-
-	key = decode_key(buf);
-	if (key != KEY_RESERVED)
-		send_key(fake->uinput, key);
-
-	return TRUE;
-
-failed:
-	ioctl(fake->uinput, UI_DEV_DESTROY);
-	close(fake->uinput);
-	fake->uinput = -1;
-	g_io_channel_unref(fake->io);
-
-	return FALSE;
-}
-
-static void rfcomm_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
-{
-	struct input_conn *iconn = user_data;
-	struct input_device *idev = iconn->idev;
-	struct fake_input *fake = iconn->fake;
-	DBusMessage *reply;
-
-	if (err) {
-		reply = btd_error_failed(iconn->pending_connect, err->message);
-		goto failed;
-	}
-
-	fake->rfcomm = g_io_channel_unix_get_fd(chan);
-
-	/*
-	 * FIXME: Some headsets required a sco connection
-	 * first to report volume gain key events
-	 */
-	fake->uinput = uinput_create(idev->name);
-	if (fake->uinput < 0) {
-		int err = fake->uinput;
-
-		g_io_channel_shutdown(chan, TRUE, NULL);
-		reply = btd_error_failed(iconn->pending_connect,
-							strerror(-err));
-		goto failed;
-	}
-
-	fake->io = g_io_channel_unix_new(fake->rfcomm);
-	g_io_channel_set_close_on_unref(fake->io, TRUE);
-	g_io_add_watch(fake->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-						(GIOFunc) rfcomm_io_cb, fake);
-
-	/* Replying to the requestor */
-	reply = dbus_message_new_method_return(iconn->pending_connect);
-	g_dbus_send_message(idev->conn, reply);
-
-	dbus_message_unref(iconn->pending_connect);
-	iconn->pending_connect = NULL;
-
-	return;
-
-failed:
-	g_dbus_send_message(idev->conn, reply);
-	dbus_message_unref(iconn->pending_connect);
-	iconn->pending_connect = NULL;
-}
-
-static gboolean rfcomm_connect(struct input_conn *iconn, GError **err)
-{
-	struct input_device *idev = iconn->idev;
-	GIOChannel *io;
-
-	io = bt_io_connect(rfcomm_connect_cb, iconn,
-				NULL, err,
-				BT_IO_OPT_SOURCE_BDADDR, &idev->src,
-				BT_IO_OPT_DEST_BDADDR, &idev->dst,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-				BT_IO_OPT_INVALID);
-	if (!io)
-		return FALSE;
-
-	g_io_channel_unref(io);
-
-	return TRUE;
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -438,20 +210,6 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 		g_io_channel_shutdown(iconn->intr_io, TRUE, NULL);
 
 	return FALSE;
-}
-
-static gboolean fake_hid_connect(struct input_conn *iconn, GError **err)
-{
-	struct fake_hid *fhid = iconn->fake->priv;
-
-	return fhid->connect(iconn->fake, err);
-}
-
-static int fake_hid_disconnect(struct input_conn *iconn)
-{
-	struct fake_hid *fhid = iconn->fake->priv;
-
-	return fhid->disconnect(iconn->fake);
 }
 
 static void epox_endian_quirk(unsigned char *data, int size)
@@ -598,8 +356,6 @@ static int hidp_add_connection(const struct input_device *idev,
 					struct input_conn *iconn)
 {
 	struct hidp_connadd_req *req;
-	struct fake_hid *fake_hid;
-	struct fake_input *fake;
 	uint8_t dst_type;
 	sdp_record_t *rec;
 	char src_addr[18], dst_addr[18];
@@ -630,22 +386,6 @@ static int hidp_add_connection(const struct input_device *idev,
 	req->vendor = btd_device_get_vendor(idev->device);
 	req->product = btd_device_get_product(idev->device);
 	req->version = btd_device_get_version(idev->device);
-
-	fake_hid = get_fake_hid(req->vendor, req->product);
-	if (fake_hid) {
-		err = 0;
-		fake = g_new0(struct fake_input, 1);
-		fake->connect = fake_hid_connect;
-		fake->disconnect = fake_hid_disconnect;
-		fake->priv = fake_hid;
-		fake->idev = idev;
-		fake = fake_hid_connadd(fake, iconn->intr_io, fake_hid);
-		if (fake == NULL)
-			err = -ENOMEM;
-		else
-			fake->flags |= FI_FLAG_CONNECTED;
-		goto cleanup;
-	}
 
 	if (idev->name)
 		strncpy(req->name, idev->name, sizeof(req->name) - 1);
@@ -680,13 +420,8 @@ cleanup:
 static int is_connected(struct input_conn *iconn)
 {
 	struct input_device *idev = iconn->idev;
-	struct fake_input *fake = iconn->fake;
 	struct hidp_conninfo ci;
 	int ctl;
-
-	/* Fake input */
-	if (fake)
-		return fake->flags & FI_FLAG_CONNECTED;
 
 	/* Standard HID */
 	ctl = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HIDP);
@@ -711,18 +446,9 @@ static int is_connected(struct input_conn *iconn)
 static int connection_disconnect(struct input_conn *iconn, uint32_t flags)
 {
 	struct input_device *idev = iconn->idev;
-	struct fake_input *fake = iconn->fake;
 	struct hidp_conndel_req req;
 	struct hidp_conninfo ci;
 	int ctl, err = 0;
-
-	/* Fake input disconnect */
-	if (fake) {
-		err = fake->disconnect(iconn);
-		if (err == 0)
-			fake->flags &= ~FI_FLAG_CONNECTED;
-		return err;
-	}
 
 	/* Standard HID disconnect */
 	if (iconn->intr_io)
@@ -917,26 +643,6 @@ failed:
 	iconn->pending_connect = NULL;
 }
 
-static int fake_disconnect(struct input_conn *iconn)
-{
-	struct fake_input *fake = iconn->fake;
-
-	if (!fake->io)
-		return -ENOTCONN;
-
-	g_io_channel_shutdown(fake->io, TRUE, NULL);
-	g_io_channel_unref(fake->io);
-	fake->io = NULL;
-
-	if (fake->uinput >= 0) {
-		ioctl(fake->uinput, UI_DEV_DESTROY);
-		close(fake->uinput);
-		fake->uinput = -1;
-	}
-
-	return 0;
-}
-
 /*
  * Input Device methods
  */
@@ -945,9 +651,9 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 {
 	struct input_device *idev = data;
 	struct input_conn *iconn;
-	struct fake_input *fake;
 	DBusMessage *reply;
 	GError *err = NULL;
+	GIOChannel *io;
 
 	iconn = find_connection(idev->connections, HID_UUID);
 	if (!iconn)
@@ -960,28 +666,18 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 		return btd_error_already_connected(msg);
 
 	iconn->pending_connect = dbus_message_ref(msg);
-	fake = iconn->fake;
 
-	if (fake) {
-		/* Fake input device */
-		if (fake->connect(iconn, &err))
-			fake->flags |= FI_FLAG_CONNECTED;
-	} else {
-		/* HID devices */
-		GIOChannel *io;
+	if (idev->disable_sdp)
+		bt_clear_cached_session(&idev->src, &idev->dst);
 
-		if (idev->disable_sdp)
-			bt_clear_cached_session(&idev->src, &idev->dst);
-
-		io = bt_io_connect(control_connect_cb, iconn,
-					NULL, &err,
-					BT_IO_OPT_SOURCE_BDADDR, &idev->src,
-					BT_IO_OPT_DEST_BDADDR, &idev->dst,
-					BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-					BT_IO_OPT_INVALID);
-		iconn->ctrl_io = io;
-	}
+	io = bt_io_connect(control_connect_cb, iconn,
+			NULL, &err,
+			BT_IO_OPT_SOURCE_BDADDR, &idev->src,
+			BT_IO_OPT_DEST_BDADDR, &idev->dst,
+			BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
+			BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+			BT_IO_OPT_INVALID);
+	iconn->ctrl_io = io;
 
 	if (err == NULL)
 		return NULL;
@@ -1156,31 +852,6 @@ int input_device_register(DBusConnection *conn, struct btd_device *device,
 	return 0;
 }
 
-int fake_input_register(DBusConnection *conn, struct btd_device *device,
-			const char *path, const char *uuid, uint8_t channel)
-{
-	struct input_device *idev;
-	struct input_conn *iconn;
-
-	idev = find_device_by_path(devices, path);
-	if (!idev) {
-		idev = input_device_new(conn, device, path, 0, FALSE);
-		if (!idev)
-			return -EINVAL;
-		devices = g_slist_append(devices, idev);
-	}
-
-	iconn = input_conn_new(idev, uuid, 0);
-	iconn->fake = g_new0(struct fake_input, 1);
-	iconn->fake->ch = channel;
-	iconn->fake->connect = rfcomm_connect;
-	iconn->fake->disconnect = fake_disconnect;
-
-	idev->connections = g_slist_append(idev->connections, iconn);
-
-	return 0;
-}
-
 static struct input_device *find_device(const bdaddr_t *src,
 					const bdaddr_t *dst)
 {
@@ -1307,12 +978,4 @@ int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst)
 		g_io_channel_shutdown(iconn->ctrl_io, TRUE, NULL);
 
 	return 0;
-}
-
-void input_device_request_disconnect(struct fake_input *fake)
-{
-	if (fake == NULL || fake->idev == NULL)
-		return;
-
-	device_request_disconnect(fake->idev->device, NULL);
 }
