@@ -76,7 +76,7 @@ struct network_conn {
 	guint		dc_id;
 	struct network_peer *peer;
 	guint		attempt_cnt;
-	guint 		timeout_source;
+	guint		timeout_source;
 };
 
 struct __service_16 {
