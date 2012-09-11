@@ -500,7 +500,7 @@ static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
 
 	if (avctp->pid != htons(AV_REMOTE_SVCLASS_ID)) {
 		avctp->ipid = 1;
-		avc->code = AVC_CTYPE_REJECTED;
+		packet_size = AVCTP_HEADER_LENGTH;
 		goto done;
 	}
 
