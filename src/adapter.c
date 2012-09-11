@@ -2114,6 +2114,14 @@ static int get_pairable_timeout(const char *src)
 	return main_opts.pairto;
 }
 
+static void set_auto_connect(gpointer data, gpointer user_data)
+{
+	struct btd_device *device = data;
+	gboolean *enable = user_data;
+
+	device_set_auto_connect(device, *enable);
+}
+
 static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 						gboolean powered)
 {
@@ -2123,7 +2131,9 @@ static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 		btd_adapter_powered_cb cb = l->data;
 
 		cb(adapter, powered);
-       }
+	}
+
+	g_slist_foreach(adapter->devices, set_auto_connect, &powered);
 }
 
 static void emit_device_disappeared(gpointer data, gpointer user_data)
@@ -3401,15 +3411,10 @@ static gboolean disable_auto(gpointer user_data)
 	return FALSE;
 }
 
-static void set_auto_connect(gpointer data, gpointer user_data)
-{
-	struct btd_device *device = data;
-
-	device_set_auto_connect(device, TRUE);
-}
-
 void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
 {
+	gboolean enable = TRUE;
+
 	if (!adapter->up)
 		return;
 
@@ -3418,7 +3423,7 @@ void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
 	if (adapter->auto_timeout_id)
 		return;
 
-	g_slist_foreach(adapter->devices, set_auto_connect, NULL);
+	g_slist_foreach(adapter->devices, set_auto_connect, &enable);
 
 	adapter->auto_timeout_id = g_timeout_add_seconds(main_opts.autoto,
 						disable_auto, adapter);
