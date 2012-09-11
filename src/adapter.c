@@ -2915,7 +2915,7 @@ static gboolean connect_pending_cb(gpointer user_data)
 	if (adapter->discovering)
 		return TRUE;
 
-	/* TODO: call device connect callback */
+	device_att_connect(device);
 
 	return FALSE;
 }
