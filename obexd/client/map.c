@@ -53,6 +53,8 @@
 #define DEFAULT_COUNT 1024
 #define DEFAULT_OFFSET 0
 
+#define CHARSET_UTF8 1
+
 static const char * const filter_list[] = {
 	"subject",
 	"timestamp",
@@ -377,11 +379,16 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 	struct map_msg *msg = user_data;
 	struct obc_transfer *transfer;
 	const char *target_file;
+	gboolean attachment;
 	GError *err = NULL;
 	DBusMessage *reply;
+	GObexApparam *apparam;
+	guint8 buf[6];
+	gsize len;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &target_file,
+				DBUS_TYPE_BOOLEAN, &attachment,
 				DBUS_TYPE_INVALID) == FALSE)
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
@@ -390,6 +397,16 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 									&err);
 	if (transfer == NULL)
 		goto fail;
+
+	apparam = g_obex_apparam_set_uint8(NULL, MAP_AP_ATTACHMENT,
+								attachment);
+	apparam = g_obex_apparam_set_uint8(apparam, MAP_AP_CHARSET,
+								CHARSET_UTF8);
+	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
+
+	obc_transfer_set_params(transfer, buf, len);
+
+	g_obex_apparam_free(apparam);
 
 	if (!obc_session_queue(msg->data->session, transfer, NULL, NULL, &err))
 		goto fail;
@@ -405,7 +422,8 @@ fail:
 
 static const GDBusMethodTable map_msg_methods[] = {
 	{ GDBUS_METHOD("Get",
-			GDBUS_ARGS({ "targetfile", "s" }),
+			GDBUS_ARGS({ "targetfile", "s" },
+						{ "attachment", "b" }),
 			GDBUS_ARGS({ "transfer", "o" },
 						{ "properties", "a{sv}" }),
 			map_msg_get) },
