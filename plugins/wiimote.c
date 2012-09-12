@@ -76,6 +76,7 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 	name[sizeof(name) - 1] = 0;
 
 	if (g_str_equal(name, "Nintendo RVL-CNT-01") ||
+				g_str_equal(name, "Nintendo RVL-WBC-01") ||
 				(vendor == 0x057e && product == 0x0306)) {
 		DBG("Forcing fixed pin on detected wiimote %s", addr);
 		memcpy(pinbuf, &sba, 6);
