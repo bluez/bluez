@@ -57,15 +57,10 @@ struct transfer_callback {
 	void *data;
 };
 
-struct obc_transfer_params {
-	void *data;
-	size_t size;
-};
-
 struct obc_transfer {
 	GObex *obex;
+	GObexApparam *apparam;
 	guint8 op;
-	struct obc_transfer_params *params;
 	struct transfer_callback *callback;
 	DBusConnection *conn;
 	DBusMessage *msg;
@@ -273,10 +268,8 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	if (transfer->fd > 0)
 		close(transfer->fd);
 
-	if (transfer->params != NULL) {
-		g_free(transfer->params->data);
-		g_free(transfer->params);
-	}
+	if (transfer->apparam != NULL)
+		g_obex_apparam_free(transfer->apparam);
 
 	if (transfer->conn)
 		dbus_connection_unref(transfer->conn);
@@ -529,6 +522,7 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 	struct obc_transfer *transfer = user_data;
 	GObexPacket *req;
 	GObexHeader *hdr;
+	GObexApparam *apparam;
 	const guint8 *buf;
 	gsize len;
 	guint8 rspcode;
@@ -550,17 +544,9 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 
 	hdr = g_obex_packet_get_header(rsp, G_OBEX_HDR_APPARAM);
 	if (hdr) {
-		g_obex_header_get_bytes(hdr, &buf, &len);
-		if (len != 0) {
-			if (transfer->params == NULL)
-				transfer->params =
-					g_new0(struct obc_transfer_params, 1);
-			else
-				g_free(transfer->params->data);
-
-			transfer->params->data = g_memdup(buf, len);
-			transfer->params->size = len;
-		}
+		apparam = g_obex_header_get_apparam(hdr);
+		if (apparam != NULL)
+			obc_transfer_set_apparam(transfer, apparam);
 	}
 
 	hdr = g_obex_packet_get_body(rsp);
@@ -642,6 +628,7 @@ static gboolean report_progress(gpointer data)
 static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 {
 	GObexPacket *req;
+	GObexHeader *hdr;
 
 	if (transfer->xfer > 0) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EALREADY,
@@ -659,10 +646,10 @@ static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 		g_obex_packet_add_bytes(req, G_OBEX_HDR_TYPE, transfer->type,
 						strlen(transfer->type) + 1);
 
-	if (transfer->params != NULL)
-		g_obex_packet_add_bytes(req, G_OBEX_HDR_APPARAM,
-						transfer->params->data,
-						transfer->params->size);
+	if (transfer->apparam != NULL) {
+		hdr = g_obex_header_new_apparam(transfer->apparam);
+		g_obex_packet_add_header(req, hdr);
+	}
 
 	transfer->xfer = g_obex_send_req(transfer->obex, req,
 						FIRST_PACKET_TIMEOUT,
@@ -683,6 +670,7 @@ static gboolean transfer_start_get(struct obc_transfer *transfer, GError **err)
 static gboolean transfer_start_put(struct obc_transfer *transfer, GError **err)
 {
 	GObexPacket *req;
+	GObexHeader *hdr;
 
 	if (transfer->xfer > 0) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EALREADY,
@@ -703,10 +691,10 @@ static gboolean transfer_start_put(struct obc_transfer *transfer, GError **err)
 	if (transfer->size < UINT32_MAX)
 		g_obex_packet_add_uint32(req, G_OBEX_HDR_LENGTH, transfer->size);
 
-	if (transfer->params != NULL)
-		g_obex_packet_add_bytes(req, G_OBEX_HDR_APPARAM,
-						transfer->params->data,
-						transfer->params->size);
+	if (transfer->apparam != NULL) {
+		hdr = g_obex_header_new_apparam(transfer->apparam);
+		g_obex_packet_add_header(req, hdr);
+	}
 
 	transfer->xfer = g_obex_put_req_pkt(transfer->obex, req,
 					put_xfer_progress, xfer_complete,
@@ -744,31 +732,20 @@ guint8 obc_transfer_get_operation(struct obc_transfer *transfer)
 	return transfer->op;
 }
 
-void obc_transfer_set_params(struct obc_transfer *transfer,
-						const void *data, size_t size)
+void obc_transfer_set_apparam(struct obc_transfer *transfer, void *data)
 {
-	if (transfer->params != NULL) {
-		g_free(transfer->params->data);
-		g_free(transfer->params);
-	}
+	if (transfer->apparam != NULL)
+		g_obex_apparam_free(transfer->apparam);
 
 	if (data == NULL)
 		return;
 
-	transfer->params = g_new0(struct obc_transfer_params, 1);
-	transfer->params->data = g_memdup(data, size);
-	transfer->params->size = size;
+	transfer->apparam = data;
 }
 
-const void *obc_transfer_get_params(struct obc_transfer *transfer, size_t *size)
+void *obc_transfer_get_apparam(struct obc_transfer *transfer)
 {
-	if (transfer->params == NULL)
-		return NULL;
-
-	if (size != NULL)
-		*size = transfer->params->size;
-
-	return transfer->params->data;
+	return transfer->apparam;
 }
 
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,

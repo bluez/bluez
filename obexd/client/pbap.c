@@ -250,17 +250,11 @@ static void read_return_apparam(struct obc_transfer *transfer,
 				guint16 *phone_book_size, guint8 *new_missed_calls)
 {
 	GObexApparam *apparam;
-	const guint8 *data;
-	size_t size;
 
 	*phone_book_size = 0;
 	*new_missed_calls = 0;
 
-	data = obc_transfer_get_params(transfer, &size);
-	if (data == NULL)
-		return;
-
-	apparam = g_obex_apparam_decode(data, size);
+	apparam = obc_transfer_get_apparam(transfer);
 	if (apparam == NULL)
 		return;
 
@@ -268,7 +262,6 @@ static void read_return_apparam(struct obc_transfer *transfer,
 							phone_book_size);
 	g_obex_apparam_get_uint8(apparam, NEWMISSEDCALLS_TAG,
 							new_missed_calls);
-
 
 	g_obex_apparam_free(apparam);
 }
@@ -533,20 +526,17 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 	struct pending_request *request;
 	struct obc_transfer *transfer;
 	char *name;
-	guint8 buf[32];
-	gsize len;
 	session_callback_t func;
 	DBusMessage *reply;
 	GError *err = NULL;
 
 	name = g_strconcat(pbap->path, ".vcf", NULL);
 
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
-	g_obex_apparam_free(apparam);
-
 	transfer = obc_transfer_get("x-bt/phonebook", name, targetfile, &err);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_obex_apparam_free(apparam);
 		goto fail;
+	}
 
 	switch (type) {
 	case PULLPHONEBOOK:
@@ -562,7 +552,7 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 		return NULL;
 	}
 
-	obc_transfer_set_params(transfer, buf, len);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	if (!obc_session_queue(pbap->session, transfer, func, request, &err)) {
 		if (request != NULL)
@@ -592,19 +582,16 @@ static DBusMessage *pull_vcard_listing(struct pbap_data *pbap,
 {
 	struct pending_request *request;
 	struct obc_transfer *transfer;
-	guint8 buf[272];
-	gsize len;
 	GError *err = NULL;
 	DBusMessage *reply;
 
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
-	g_obex_apparam_free(apparam);
-
 	transfer = obc_transfer_get("x-bt/vcard-listing", name, NULL, &err);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_obex_apparam_free(apparam);
 		goto fail;
+	}
 
-	obc_transfer_set_params(transfer, buf, len);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	request = pending_request_new(pbap, message);
 	if (obc_session_queue(pbap->session, transfer,
@@ -711,17 +698,14 @@ static DBusMessage *pull_vcard(struct pbap_data *pbap, DBusMessage *message,
 	struct obc_transfer *transfer;
 	DBusMessage *reply;
 	GError *err = NULL;
-	guint8 buf[32];
-	gsize len;
-
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
-	g_obex_apparam_free(apparam);
 
 	transfer = obc_transfer_get("x-bt/vcard", name, targetfile, &err);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_obex_apparam_free(apparam);
 		goto fail;
+	}
 
-	obc_transfer_set_params(transfer, buf, len);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	if (!obc_session_queue(pbap->session, transfer, NULL, NULL, &err))
 		goto fail;

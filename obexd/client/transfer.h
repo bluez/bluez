@@ -50,10 +50,8 @@ gboolean obc_transfer_start(struct obc_transfer *transfer, void *obex,
 								GError **err);
 guint8 obc_transfer_get_operation(struct obc_transfer *transfer);
 
-void obc_transfer_set_params(struct obc_transfer *transfer,
-						const void *data, size_t size);
-const void *obc_transfer_get_params(struct obc_transfer *transfer,
-								size_t *size);
+void obc_transfer_set_apparam(struct obc_transfer *transfer, void *data);
+void *obc_transfer_get_apparam(struct obc_transfer *transfer);
 int obc_transfer_get_contents(struct obc_transfer *transfer, char **contents,
 								size_t *size);
 

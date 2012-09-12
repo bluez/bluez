@@ -248,17 +248,14 @@ static DBusMessage *get_folder_listing(struct map_data *map,
 	struct obc_transfer *transfer;
 	GError *err = NULL;
 	DBusMessage *reply;
-	guint8 buf[8];
-	gsize len;
-
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
-	g_obex_apparam_free(apparam);
 
 	transfer = obc_transfer_get("x-obex/folder-listing", NULL, NULL, &err);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_obex_apparam_free(apparam);
 		goto fail;
+	}
 
-	obc_transfer_set_params(transfer, buf, len);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	if (obc_session_queue(map->session, transfer, folder_listing_cb, map,
 								&err)) {
@@ -383,8 +380,6 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 	GError *err = NULL;
 	DBusMessage *reply;
 	GObexApparam *apparam;
-	guint8 buf[6];
-	gsize len;
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &target_file,
@@ -402,11 +397,8 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 								attachment);
 	apparam = g_obex_apparam_set_uint8(apparam, MAP_AP_CHARSET,
 								CHARSET_UTF8);
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
 
-	obc_transfer_set_params(transfer, buf, len);
-
-	g_obex_apparam_free(apparam);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	if (!obc_session_queue(msg->data->session, transfer, NULL, NULL, &err))
 		goto fail;
@@ -739,17 +731,14 @@ static DBusMessage *get_message_listing(struct map_data *map,
 	struct obc_transfer *transfer;
 	GError *err = NULL;
 	DBusMessage *reply;
-	guint8 buf[1024];
-	gsize len;
-
-	len = g_obex_apparam_encode(apparam, buf, sizeof(buf));
-	g_obex_apparam_free(apparam);
 
 	transfer = obc_transfer_get("x-bt/MAP-msg-listing", folder, NULL, &err);
-	if (transfer == NULL)
+	if (transfer == NULL) {
+		g_obex_apparam_free(apparam);
 		goto fail;
+	}
 
-	obc_transfer_set_params(transfer, buf, len);
+	obc_transfer_set_apparam(transfer, apparam);
 
 	if (obc_session_queue(map->session, transfer, message_listing_cb, map,
 								&err)) {
