@@ -47,6 +47,7 @@
 #include "messages.h"
 
 #define READ_STATUS_REQ 0
+#define DELETE_STATUS_REQ 1
 
 /* Channel number according to bluez doc/assigned-numbers.txt */
 #define MAS_CHANNEL	16
@@ -695,6 +696,9 @@ static void *message_set_status_open(const char *name, int oflag, mode_t mode,
 
 	if (indicator == READ_STATUS_REQ)
 		*err = messages_set_read(mas->backend_data, name, value,
+							set_status_cb, mas);
+	else if (indicator == DELETE_STATUS_REQ)
+		*err = messages_set_delete(mas->backend_data, name, value,
 							set_status_cb, mas);
 	else
 		*err = -EBADR;
