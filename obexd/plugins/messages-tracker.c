@@ -327,6 +327,12 @@ int messages_update_inbox(void *session, messages_update_inbox_cb callback,
 	return -ENOSYS;
 }
 
+int messages_set_read(void *session, const char *handle, uint8_t value,
+				messages_set_read_cb callback, void *user_data)
+{
+	return -ENOSYS;
+}
+
 void messages_abort(void *session)
 {
 }

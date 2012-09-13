@@ -46,6 +46,8 @@
 
 #include "messages.h"
 
+#define READ_STATUS_REQ 0
+
 /* Channel number according to bluez doc/assigned-numbers.txt */
 #define MAS_CHANNEL	16
 
@@ -499,6 +501,20 @@ static void update_inbox_cb(void *session, int err, void *user_data)
 		obex_object_set_io_flags(mas, G_IO_OUT, 0);
 }
 
+static void set_status_cb(void *session, int err, void *user_data)
+{
+	struct mas_session *mas = user_data;
+
+	DBG("");
+
+	mas->finished = TRUE;
+
+	if (err < 0)
+		obex_object_set_io_flags(mas, G_IO_ERR, err);
+	else
+		obex_object_set_io_flags(mas, G_IO_OUT, 0);
+}
+
 static int mas_setpath(struct obex_session *os, void *user_data)
 {
 	const char *name;
@@ -676,6 +692,15 @@ static void *message_set_status_open(const char *name, int oflag, mode_t mode,
 		*err = -EBADR;
 		return NULL;
 	}
+
+	if (indicator == READ_STATUS_REQ)
+		*err = messages_set_read(mas->backend_data, name, value,
+							set_status_cb, mas);
+	else
+		*err = -EBADR;
+
+	if (*err < 0)
+		return NULL;
 
 	return mas;
 }

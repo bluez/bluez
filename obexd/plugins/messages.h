@@ -279,6 +279,19 @@ typedef void (*messages_update_inbox_cb)(void *session, int err,
 
 int messages_update_inbox(void *session, messages_update_inbox_cb callback,
 							void *user_data);
+/* Informs Message Server to modify read status of a given message.
+ *
+ * session: Backend session.
+ * handle: Unique identifier to the message.
+ * value: Indicates the new value of the read status for a given message.
+ * Callback shall be called for every read status update request
+ *	recieved from MCE.
+ * user_data: User data if any to be sent.
+ */
+typedef void (*messages_set_read_cb)(void *session, int err, void *user_data);
+
+int messages_set_read(void *session, const char *handle, uint8_t value,
+				messages_set_read_cb callback, void *user_data);
 
 /* Aborts currently pending request.
  *
