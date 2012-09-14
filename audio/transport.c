@@ -807,6 +807,10 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	if (lock == 0)
 		return btd_error_invalid_args(msg);
 
+	if (transport->state != TRANSPORT_STATE_PENDING &&
+				g_strstr_len(accesstype, -1, "?") != NULL)
+		return btd_error_failed(msg, "Transport not playing");
+
 	if (media_transport_acquire(transport, lock) == FALSE)
 		return btd_error_not_authorized(msg);
 

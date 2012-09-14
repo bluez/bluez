@@ -282,6 +282,17 @@ Methods		dict GetProperties()
 
 				"rw": Read and write access
 
+			The accesstype string can also be combined with a "?"
+			suffix, which will make the request optional. This
+			typically means the transport will only be acquired if
+			it is already available (remote-initiated), but
+			otherwise no request will be sent to the remote side.
+			In this last case the function will fail. Note that,
+			due to compatibility issues with older versions of
+			BlueZ, clients are encouraged to use exactly the same
+			accesstype for Release(), matching the string provided
+			to Acquire().
+
 		void Release(string accesstype)
 
 			Releases file descriptor.
