@@ -446,8 +446,10 @@ static gboolean list_known_printers(const char *adapter)
 
 	dbus_message_unref(message);
 
-	if (dbus_error_is_set(&error))
+	if (dbus_error_is_set(&error)) {
+		dbus_error_free(&error);
 		return FALSE;
+	}
 
 	dbus_message_iter_init(reply, &reply_iter);
 	if (dbus_message_iter_get_arg_type(&reply_iter) != DBUS_TYPE_ARRAY) {
@@ -549,8 +551,10 @@ static gboolean list_printers(void)
 
 	dbus_error_init(&error);
 	hcid_exists = dbus_bus_name_has_owner(conn, "org.bluez", &error);
-	if (dbus_error_is_set(&error))
+	if (dbus_error_is_set(&error)) {
+		dbus_error_free(&error);
 		return TRUE;
+	}
 
 	if (!hcid_exists)
 		return TRUE;
@@ -570,6 +574,7 @@ static gboolean list_printers(void)
 	dbus_message_unref(message);
 
 	if (dbus_error_is_set(&error)) {
+		dbus_error_free(&error);
 		dbus_connection_unref(conn);
 		/* No adapter */
 		return TRUE;
