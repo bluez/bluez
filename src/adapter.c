@@ -2725,7 +2725,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev)
 {
 	struct btd_device *device;
-	char peer_addr[18], local_addr[18];
+	char peer_addr[18];
 	const char *icon, *paddr = peer_addr;
 	dbus_bool_t paired = FALSE, trusted = FALSE;
 	dbus_int16_t rssi = dev->rssi;
@@ -2733,7 +2733,6 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	size_t uuid_count;
 
 	ba2str(&dev->bdaddr, peer_addr);
-	ba2str(&adapter->bdaddr, local_addr);
 
 	device = adapter_find_device(adapter, paddr);
 	if (device) {
