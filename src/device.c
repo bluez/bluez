@@ -318,7 +318,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	bdaddr_t src;
-	char name[MAX_NAME_LENGTH + 1], srcaddr[18], dstaddr[18];
+	char name[MAX_NAME_LENGTH + 1], dstaddr[18];
 	char **str;
 	const char *ptr, *icon = NULL;
 	dbus_bool_t boolean;
@@ -348,7 +348,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	ptr = NULL;
 	memset(name, 0, sizeof(name));
 	adapter_get_address(adapter, &src);
-	ba2str(&src, srcaddr);
 
 	ptr = device->name;
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
