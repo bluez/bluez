@@ -488,20 +488,6 @@ proceed:
 		obex_object_set_io_flags(mas, G_IO_IN, err);
 }
 
-static void update_inbox_cb(void *session, int err, void *user_data)
-{
-	struct mas_session *mas = user_data;
-
-	DBG("");
-
-	mas->finished = TRUE;
-
-	if (err < 0)
-		obex_object_set_io_flags(mas, G_IO_ERR, err);
-	else
-		obex_object_set_io_flags(mas, G_IO_OUT, 0);
-}
-
 static void set_status_cb(void *session, int err, void *user_data)
 {
 	struct mas_session *mas = user_data;
@@ -659,7 +645,7 @@ static void *message_update_open(const char *name, int oflag, mode_t mode,
 		return NULL;
 	}
 
-	*err = messages_update_inbox(mas->backend_data, update_inbox_cb, mas);
+	*err = messages_update_inbox(mas->backend_data, set_status_cb, mas);
 	if (*err < 0)
 		return NULL;
 	else

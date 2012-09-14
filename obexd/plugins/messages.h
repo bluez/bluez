@@ -268,16 +268,15 @@ int messages_get_message(void *session, const char *handle,
 					messages_get_message_cb callback,
 					void *user_data);
 
+typedef void (*messages_status_cb)(void *session, int err, void *user_data);
+
 /* Informs Message Server to Update Inbox via network.
  *
  * session: Backend session.
  * user_data: User data if any to be sent.
  * Callback shall be called for every update inbox request received from MCE.
  */
-typedef void (*messages_update_inbox_cb)(void *session, int err,
-							void *user_data);
-
-int messages_update_inbox(void *session, messages_update_inbox_cb callback,
+int messages_update_inbox(void *session, messages_status_cb callback,
 							void *user_data);
 /* Informs Message Server to modify read status of a given message.
  *
@@ -288,10 +287,8 @@ int messages_update_inbox(void *session, messages_update_inbox_cb callback,
  *	recieved from MCE.
  * user_data: User data if any to be sent.
  */
-typedef void (*messages_set_read_cb)(void *session, int err, void *user_data);
-
 int messages_set_read(void *session, const char *handle, uint8_t value,
-				messages_set_read_cb callback, void *user_data);
+				messages_status_cb callback, void *user_data);
 
 /* Informs Message Server to modify delete status of a given message.
  *
@@ -302,11 +299,8 @@ int messages_set_read(void *session, const char *handle, uint8_t value,
  *	recieved from MCE.
  * user_data: User data if any to be sent.
  */
-typedef void (*messages_set_delete_cb)(void *session, int err, void *user_data);
-
 int messages_set_delete(void *session, const char *handle, uint8_t value,
-					messages_set_delete_cb callback,
-					void *user_data);
+				messages_status_cb callback, void *user_data);
 
 /* Aborts currently pending request.
  *
