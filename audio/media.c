@@ -454,6 +454,8 @@ static void release_endpoint(struct media_endpoint *endpoint)
 	if (endpoint->watch == 0)
 		goto done;
 
+	clear_endpoint(endpoint);
+
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
 						"Release");
@@ -614,8 +616,6 @@ static struct a2dp_endpoint a2dp_endpoint = {
 static void a2dp_destroy_endpoint(void *user_data)
 {
 	struct media_endpoint *endpoint = user_data;
-
-	clear_endpoint(endpoint);
 
 	endpoint->sep = NULL;
 	release_endpoint(endpoint);
