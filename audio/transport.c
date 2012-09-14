@@ -60,7 +60,7 @@ typedef enum {
 	TRANSPORT_STATE_IDLE,		/* Not acquired and suspended */
 	TRANSPORT_STATE_PENDING,	/* Playing but not acquired */
 	TRANSPORT_STATE_REQUESTING,	/* Acquire in progress */
-	TRANSPORT_STATE_ACTIVE,		/* Acquired (not necessarily playing) */
+	TRANSPORT_STATE_ACTIVE,		/* Acquired and playing */
 	TRANSPORT_STATE_SUSPENDING,     /* Release in progress */
 } transport_state_t;
 
@@ -1178,6 +1178,15 @@ static void transport_update_playing(struct media_transport *transport,
 	if (playing == FALSE) {
 		if (transport->state == TRANSPORT_STATE_PENDING)
 			transport_set_state(transport, TRANSPORT_STATE_IDLE);
+		else if (transport->state == TRANSPORT_STATE_ACTIVE) {
+			/* Remove all owners */
+			while (transport->owners != NULL) {
+				struct media_owner *owner;
+
+				owner = transport->owners->data;
+				media_transport_remove(transport, owner);
+			}
+		}
 	} else if (transport->state == TRANSPORT_STATE_IDLE)
 		transport_set_state(transport, TRANSPORT_STATE_PENDING);
 }
