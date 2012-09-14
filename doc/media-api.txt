@@ -317,6 +317,14 @@ Properties	object Device [readonly]
 			Configuration blob, it is used as it is so the size and
 			byte order must match.
 
+		string State [readonly]
+
+			Indicates the state of the transport. Possible
+			values are:
+				"idle": not streaming
+				"pending": streaming but not acquired
+				"active": streaming and acquired
+
 		uint16 Delay [readwrite]
 
 			Optional. Transport delay in 1/10 of millisecond, this

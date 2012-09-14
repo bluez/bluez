@@ -155,6 +155,22 @@ static transport_lock_t str2lock(const char *str)
 	return lock;
 }
 
+static const char *state2str(transport_state_t state)
+{
+	switch (state) {
+	case TRANSPORT_STATE_IDLE:
+	case TRANSPORT_STATE_REQUESTING:
+		return "idle";
+	case TRANSPORT_STATE_PENDING:
+		return "pending";
+	case TRANSPORT_STATE_ACTIVE:
+	case TRANSPORT_STATE_SUSPENDING:
+		return "active";
+	}
+
+	return NULL;
+}
+
 static gboolean state_in_use(transport_state_t state)
 {
 	switch (state) {
@@ -174,6 +190,7 @@ static void transport_set_state(struct media_transport *transport,
 							transport_state_t state)
 {
 	transport_state_t old_state = transport->state;
+	const char *str;
 
 	if (old_state == state)
 		return;
@@ -182,6 +199,13 @@ static void transport_set_state(struct media_transport *transport,
 
 	DBG("State changed %s: %s -> %s", transport->path, str_state[old_state],
 							str_state[state]);
+
+	str = state2str(state);
+
+	if (g_strcmp0(str, state2str(old_state)) != 0)
+		emit_property_changed(transport->conn, transport->path,
+					MEDIA_TRANSPORT_INTERFACE, "State",
+					DBUS_TYPE_STRING, &str);
 }
 
 void media_transport_destroy(struct media_transport *transport)
@@ -1017,6 +1041,7 @@ void transport_get_properties(struct media_transport *transport,
 	DBusMessageIter dict;
 	const char *uuid;
 	uint8_t codec;
+	const char *state;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -1035,6 +1060,10 @@ void transport_get_properties(struct media_transport *transport,
 
 	dict_append_array(&dict, "Configuration", DBUS_TYPE_BYTE,
 				&transport->configuration, transport->size);
+
+	/* State */
+	state = state2str(transport->state);
+	dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
 
 	if (transport->get_properties)
 		transport->get_properties(transport, &dict);
