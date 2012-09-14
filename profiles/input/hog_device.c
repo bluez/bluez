@@ -479,7 +479,7 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 		} else if (bt_uuid_cmp(&uuid, &report_map_uuid) == 0) {
 			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
 						report_map_read_cb, hogdev);
-			discover_descriptor(hogdev->attrib, chr, next, NULL);
+			discover_descriptor(hogdev->attrib, chr, next, hogdev);
 		} else if (bt_uuid_cmp(&uuid, &info_uuid) == 0)
 			info_handle = chr->value_handle;
 		else if (bt_uuid_cmp(&uuid, &proto_mode_uuid) == 0)
