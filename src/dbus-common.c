@@ -143,8 +143,7 @@ dbus_bool_t emit_property_changed(const char *path,
 	return g_dbus_send_message(connection, signal);
 }
 
-dbus_bool_t emit_array_property_changed(DBusConnection *conn,
-					const char *path,
+dbus_bool_t emit_array_property_changed(const char *path,
 					const char *interface,
 					const char *name,
 					int type, void *value, int num)
@@ -166,7 +165,7 @@ dbus_bool_t emit_array_property_changed(DBusConnection *conn,
 
 	append_array_variant(&iter, type, value, num);
 
-	return g_dbus_send_message(conn, signal);
+	return g_dbus_send_message(connection, signal);
 }
 
 void set_dbus_connection(DBusConnection *conn)

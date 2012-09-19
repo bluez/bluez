@@ -34,8 +34,7 @@ dbus_bool_t emit_property_changed(const char *path,
 					const char *name,
 					int type, void *value);
 
-dbus_bool_t emit_array_property_changed(DBusConnection *conn,
-					const char *path,
+dbus_bool_t emit_array_property_changed(const char *path,
 					const char *interface,
 					const char *name,
 					int type, void *value, int num);

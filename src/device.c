@@ -1375,7 +1375,6 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 static void uuids_changed(struct btd_device *device)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	char **uuids;
 	GSList *l;
 	int i;
@@ -1384,8 +1383,9 @@ static void uuids_changed(struct btd_device *device)
 	for (i = 0, l = device->uuids; l; l = l->next, i++)
 		uuids[i] = l->data;
 
-	emit_array_property_changed(conn, device->path, DEVICE_INTERFACE,
-					"UUIDs", DBUS_TYPE_STRING, &uuids, i);
+	emit_array_property_changed(device->path,
+					DEVICE_INTERFACE, "UUIDs",
+					DBUS_TYPE_STRING, &uuids, i);
 
 	g_free(uuids);
 }
