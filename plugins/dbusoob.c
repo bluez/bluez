@@ -63,7 +63,6 @@ struct oob_data {
 };
 
 static GSList *oob_requests = NULL;
-static DBusConnection *connection = NULL;
 
 static gint oob_request_cmp(gconstpointer a, gconstpointer b)
 {
@@ -129,7 +128,7 @@ done:
 		return;
 	}
 
-	if (!g_dbus_send_message(connection, reply))
+	if (!g_dbus_send_message(btd_get_dbus_connection(), reply))
 		error("D-Bus send failed");
 }
 
@@ -331,8 +330,10 @@ static int oob_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
-	if (!g_dbus_register_interface(connection, path, OOB_INTERFACE,
-				oob_methods, NULL, NULL, adapter, NULL)) {
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					path, OOB_INTERFACE,
+					oob_methods, NULL, NULL,
+					adapter, NULL)) {
 			error("OOB interface init failed on path %s", path);
 			return -EIO;
 		}
@@ -344,8 +345,8 @@ static void oob_remove(struct btd_adapter *adapter)
 {
 	read_local_data_complete(adapter, NULL, NULL);
 
-	g_dbus_unregister_interface(connection, adapter_get_path(adapter),
-							OOB_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				adapter_get_path(adapter), OOB_INTERFACE);
 }
 
 static struct btd_adapter_driver oob_driver = {
@@ -357,8 +358,6 @@ static struct btd_adapter_driver oob_driver = {
 static int dbusoob_init(void)
 {
 	DBG("Setup dbusoob plugin");
-
-	connection = btd_get_dbus_connection();
 
 	oob_register_cb(read_local_data_complete);
 
