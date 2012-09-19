@@ -48,6 +48,8 @@ static gchar *opt_dst_type = NULL;
 static gchar *opt_sec_level = NULL;
 static int opt_psm = 0;
 static int opt_mtu = 0;
+static int start;
+static int end;
 
 struct characteristic_data {
 	uint16_t orig_start;
@@ -237,11 +239,12 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 {
 	struct att_data_list *list;
 	guint8 format;
+	uint16_t handle = 0xffff;
 	int i;
 
 	if (status != 0) {
-		printf("Discover all characteristic descriptors failed: "
-						"%s\n", att_ecode2str(status));
+		printf("Discover descriptors finished: %s\n",
+						att_ecode2str(status));
 		return;
 	}
 
@@ -252,7 +255,6 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	printf("\n");
 	for (i = 0; i < list->num; i++) {
 		char uuidstr[MAX_LEN_UUID_STR];
-		uint16_t handle;
 		uint8_t *value;
 		bt_uuid_t uuid;
 
@@ -270,7 +272,10 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	att_data_list_free(list);
 
-	rl_forced_update_display();
+	if (handle != 0xffff && handle < end)
+		gatt_find_info(attrib, handle + 1, end, char_desc_cb, NULL);
+	else
+		rl_forced_update_display();
 }
 
 static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -469,9 +474,6 @@ static void cmd_char(int argcp, char **argvp)
 
 static void cmd_char_desc(int argcp, char **argvp)
 {
-	int start = 0x0001;
-	int end = 0xffff;
-
 	if (conn_state != STATE_CONNECTED) {
 		printf("Command failed: disconnected\n");
 		return;
@@ -483,7 +485,8 @@ static void cmd_char_desc(int argcp, char **argvp)
 			printf("Invalid start handle: %s\n", argvp[1]);
 			return;
 		}
-	}
+	} else
+		start = 0x0001;
 
 	if (argcp > 2) {
 		end = strtohandle(argvp[2]);
@@ -491,7 +494,8 @@ static void cmd_char_desc(int argcp, char **argvp)
 			printf("Invalid end handle: %s\n", argvp[2]);
 			return;
 		}
-	}
+	} else
+		end = 0xffff;
 
 	gatt_find_info(attrib, start, end, char_desc_cb, NULL);
 }
