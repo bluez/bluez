@@ -20,7 +20,6 @@
  *
  */
 
-#include <gdbus.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <bluetooth/uuid.h>
@@ -33,8 +32,6 @@
 #include "gatt.h"
 #include "thermometer.h"
 #include "manager.h"
-
-static DBusConnection *connection = NULL;
 
 static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 {
@@ -58,7 +55,7 @@ static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
 
 	tattr = l->data;
 
-	return thermometer_register(connection, device, tattr);
+	return thermometer_register(device, tattr);
 }
 
 static void thermometer_driver_remove(struct btd_device *device)
@@ -73,7 +70,7 @@ static struct btd_profile thermometer_profile = {
 	.device_remove	= thermometer_driver_remove
 };
 
-int thermometer_manager_init(DBusConnection *conn)
+int thermometer_manager_init(void)
 {
 	int ret;
 
@@ -81,14 +78,10 @@ int thermometer_manager_init(DBusConnection *conn)
 	if (ret < 0)
 		return ret;
 
-	connection = dbus_connection_ref(conn);
 	return 0;
 }
 
 void thermometer_manager_exit(void)
 {
 	btd_profile_unregister(&thermometer_profile);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }

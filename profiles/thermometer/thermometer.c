@@ -56,7 +56,6 @@
 #define MEASUREMENT_INTERVAL_SIZE	2
 
 struct thermometer {
-	DBusConnection		*conn;		/* The connection to the bus */
 	struct btd_device	*dev;		/* Device reference */
 	GAttrib			*attrib;	/* GATT connection */
 	struct att_range	*svc_range;	/* Thermometer range */
@@ -146,7 +145,7 @@ static void remove_watcher(gpointer user_data)
 {
 	struct watcher *watcher = user_data;
 
-	g_dbus_remove_watch(watcher->t->conn, watcher->id);
+	g_dbus_remove_watch(btd_get_dbus_connection(), watcher->id);
 }
 
 static void destroy_char(gpointer user_data)
@@ -179,7 +178,6 @@ static void destroy_thermometer(gpointer user_data)
 	if (t->fwatchers != NULL)
 		g_slist_free_full(t->fwatchers, remove_watcher);
 
-	dbus_connection_unref(t->conn);
 	btd_device_unref(t->dev);
 	g_free(t->svc_range);
 	g_free(t);
@@ -822,7 +820,7 @@ static void watcher_exit(DBusConnection *conn, void *user_data)
 	remove_int_watcher(t, watcher);
 
 	t->fwatchers = g_slist_remove(t->fwatchers, watcher);
-	g_dbus_remove_watch(watcher->t->conn, watcher->id);
+	g_dbus_remove_watch(btd_get_dbus_connection(), watcher->id);
 
 	if (g_slist_length(t->fwatchers) == 0)
 		disable_final_measurement(t);
@@ -901,7 +899,7 @@ static DBusMessage *unregister_watcher(DBusConnection *conn, DBusMessage *msg,
 	remove_int_watcher(t, watcher);
 
 	t->fwatchers = g_slist_remove(t->fwatchers, watcher);
-	g_dbus_remove_watch(watcher->t->conn, watcher->id);
+	g_dbus_remove_watch(btd_get_dbus_connection(), watcher->id);
 
 	if (g_slist_length(t->fwatchers) == 0)
 		disable_final_measurement(t);
@@ -996,7 +994,6 @@ static void update_watcher(gpointer data, gpointer user_data)
 {
 	struct watcher *w = data;
 	struct measurement *m = user_data;
-	DBusConnection *conn = w->t->conn;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusMessage *msg;
@@ -1027,7 +1024,7 @@ static void update_watcher(gpointer data, gpointer user_data)
 	dbus_message_iter_close_container(&iter, &dict);
 
 	dbus_message_set_no_reply(msg, TRUE);
-	g_dbus_send_message(conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 }
 
 static void recv_measurement(struct thermometer *t, struct measurement *m)
@@ -1232,20 +1229,19 @@ static void attio_disconnected_cb(gpointer user_data)
 	t->attrib = NULL;
 }
 
-int thermometer_register(DBusConnection *connection, struct btd_device *device,
-						struct gatt_primary *tattr)
+int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
 {
 	const gchar *path = device_get_path(device);
 	struct thermometer *t;
 
 	t = g_new0(struct thermometer, 1);
-	t->conn = dbus_connection_ref(connection);
 	t->dev = btd_device_ref(device);
 	t->svc_range = g_new0(struct att_range, 1);
 	t->svc_range->start = tattr->range.start;
 	t->svc_range->end = tattr->range.end;
 
-	if (!g_dbus_register_interface(t->conn, path, THERMOMETER_INTERFACE,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+				path, THERMOMETER_INTERFACE,
 				thermometer_methods, thermometer_signals,
 				NULL, t, destroy_thermometer)) {
 		error("D-Bus failed to register %s interface",
@@ -1272,6 +1268,6 @@ void thermometer_unregister(struct btd_device *device)
 
 	t = l->data;
 	thermometers = g_slist_remove(thermometers, t);
-	g_dbus_unregister_interface(t->conn, device_get_path(t->dev),
-							THERMOMETER_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				device_get_path(t->dev), THERMOMETER_INTERFACE);
 }

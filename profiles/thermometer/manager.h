@@ -20,5 +20,5 @@
  *
  */
 
-int thermometer_manager_init(DBusConnection *conn);
+int thermometer_manager_init(void);
 void thermometer_manager_exit(void);

@@ -27,14 +27,11 @@
 #include <stdint.h>
 #include <glib.h>
 #include <errno.h>
-#include <gdbus.h>
 
 #include "plugin.h"
 #include "manager.h"
 #include "hcid.h"
 #include "log.h"
-
-static DBusConnection *connection = NULL;
 
 static int thermometer_init(void)
 {
@@ -43,16 +40,7 @@ static int thermometer_init(void)
 		return -ENOTSUP;
 	}
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
-	if (thermometer_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
-
-	return 0;
+	return thermometer_manager_init();
 }
 
 static void thermometer_exit(void)
@@ -61,9 +49,6 @@ static void thermometer_exit(void)
 		return;
 
 	thermometer_manager_exit();
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }
 
 BLUETOOTH_PLUGIN_DEFINE(thermometer, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
