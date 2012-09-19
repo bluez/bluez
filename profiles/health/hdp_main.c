@@ -31,28 +31,14 @@
 #include "plugin.h"
 #include "hdp_manager.h"
 
-static DBusConnection *connection = NULL;
-
 static int hdp_init(void)
 {
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
-	if (hdp_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
-
-	return 0;
+	return hdp_manager_init();
 }
 
 static void hdp_exit(void)
 {
 	hdp_manager_exit();
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }
 
 BLUETOOTH_PLUGIN_DEFINE(health, VERSION,

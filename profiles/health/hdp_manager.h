@@ -20,5 +20,5 @@
  *
  */
 
-int hdp_manager_init(DBusConnection *conn);
+int hdp_manager_init(void);
 void hdp_manager_exit(void);

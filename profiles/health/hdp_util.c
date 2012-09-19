@@ -44,6 +44,7 @@
 
 #include <log.h>
 
+#include "dbus-common.h"
 #include "mcap.h"
 #include "mcap_lib.h"
 #include "hdp_types.h"
@@ -1183,10 +1184,9 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 static void hdp_free_application(struct hdp_application *app)
 {
 	if (app->dbus_watcher > 0)
-		g_dbus_remove_watch(app->conn, app->dbus_watcher);
+		g_dbus_remove_watch(btd_get_dbus_connection(),
+							app->dbus_watcher);
 
-	if (app->conn != NULL)
-		dbus_connection_unref(app->conn);
 	g_free(app->oname);
 	g_free(app->description);
 	g_free(app->path);

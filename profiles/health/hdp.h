@@ -20,13 +20,13 @@
  *
  */
 
-int hdp_adapter_register(DBusConnection *conn, struct btd_adapter *btd_adapter);
+int hdp_adapter_register(struct btd_adapter *btd_adapter);
 void hdp_adapter_unregister(struct btd_adapter *btd_adapter);
 
-int hdp_device_register(DBusConnection *conn, struct btd_device *device);
+int hdp_device_register(struct btd_device *device);
 void hdp_device_unregister(struct btd_device *device);
 
-int hdp_manager_start(DBusConnection *conn);
+int hdp_manager_start(void);
 void hdp_manager_stop(void);
 
 gboolean hdp_set_mcl_cb(struct hdp_device *device, GError **err);

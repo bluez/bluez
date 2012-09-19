@@ -66,7 +66,6 @@ enum data_specs {
 };
 
 struct hdp_application {
-	DBusConnection		*conn;		/* For dbus watcher */
 	char			*path;		/* The path of the application */
 	uint16_t		data_type;	/* Data type handled for this application */
 	gboolean		data_type_set;	/* Flag for dictionary parsing */
@@ -91,7 +90,6 @@ struct hdp_adapter {
 };
 
 struct hdp_device {
-	DBusConnection		*conn;		/* For name listener handling */
 	struct btd_device	*dev;		/* Device reference */
 	struct hdp_adapter	*hdp_adapter;	/* hdp_adapater */
 	struct mcap_mcl		*mcl;		/* The mcap control channel */

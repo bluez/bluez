@@ -42,11 +42,9 @@
 #include "hdp_manager.h"
 #include "hdp.h"
 
-static DBusConnection *connection = NULL;
-
 static int hdp_adapter_probe(struct btd_adapter *adapter)
 {
-	return hdp_adapter_register(connection, adapter);
+	return hdp_adapter_register(adapter);
 }
 
 static void hdp_adapter_remove(struct btd_adapter *adapter)
@@ -56,7 +54,7 @@ static void hdp_adapter_remove(struct btd_adapter *adapter)
 
 static int hdp_driver_probe(struct btd_device *device, GSList *uuids)
 {
-	return hdp_device_register(connection, device);
+	return hdp_device_register(device);
 }
 
 static void hdp_driver_remove(struct btd_device *device)
@@ -75,12 +73,10 @@ static struct btd_profile hdp_profile = {
 	.adapter_remove	= hdp_adapter_remove,
 };
 
-int hdp_manager_init(DBusConnection *conn)
+int hdp_manager_init(void)
 {
-	if (hdp_manager_start(conn) < 0)
+	if (hdp_manager_start() < 0)
 		return -1;
-
-	connection = dbus_connection_ref(conn);
 
 	btd_profile_register(&hdp_profile);
 
@@ -92,7 +88,4 @@ void hdp_manager_exit(void)
 	btd_profile_unregister(&hdp_profile);
 
 	hdp_manager_stop();
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }
