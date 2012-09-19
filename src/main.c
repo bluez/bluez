@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (!manager_init(btd_get_dbus_connection(), "/")) {
+	if (!manager_init("/")) {
 		error("Can't register manager interface");
 		exit(1);
 	}
@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
-	manager_cleanup(btd_get_dbus_connection(), "/");
+	manager_cleanup("/");
 
 	rfkill_exit();
 

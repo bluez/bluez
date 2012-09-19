@@ -29,8 +29,8 @@
 
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
 
-dbus_bool_t manager_init(DBusConnection *conn, const char *path);
-void manager_cleanup(DBusConnection *conn, const char *path);
+dbus_bool_t manager_init(const char *path);
+void manager_cleanup(const char *path);
 
 const char *manager_get_base_path(void);
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba);

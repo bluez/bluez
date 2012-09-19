@@ -53,7 +53,6 @@
 
 static char base_path[50] = "/org/bluez";
 
-static DBusConnection *connection = NULL;
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
 
@@ -192,15 +191,14 @@ static const GDBusSignalTable manager_signals[] = {
 	{ }
 };
 
-dbus_bool_t manager_init(DBusConnection *conn, const char *path)
+dbus_bool_t manager_init(const char *path)
 {
-	connection = conn;
-
 	snprintf(base_path, sizeof(base_path), "/org/bluez/%d", getpid());
 
-	return g_dbus_register_interface(conn, "/", MANAGER_INTERFACE,
-					manager_methods, manager_signals,
-					NULL, NULL, NULL);
+	return g_dbus_register_interface(btd_get_dbus_connection(),
+					"/", MANAGER_INTERFACE,
+					manager_methods, manager_signals, NULL,
+					NULL, NULL);
 }
 
 static void manager_update_adapters(void)
@@ -236,11 +234,10 @@ static void manager_set_default_adapter(int id)
 
 	path = adapter_get_path(adapter);
 
-	g_dbus_emit_signal(connection, "/",
-			MANAGER_INTERFACE,
-			"DefaultAdapterChanged",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
+				MANAGER_INTERFACE, "DefaultAdapterChanged",
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
 }
 
 struct btd_adapter *manager_get_default_adapter(void)
@@ -263,10 +260,10 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 		manager_set_default_adapter(new_default);
 	}
 
-	g_dbus_emit_signal(connection, "/",
-			MANAGER_INTERFACE, "AdapterRemoved",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
+				MANAGER_INTERFACE, "AdapterRemoved",
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
 
 	adapter_remove(adapter);
 	btd_adapter_unref(adapter);
@@ -275,7 +272,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 		btd_start_exit_timer();
 }
 
-void manager_cleanup(DBusConnection *conn, const char *path)
+void manager_cleanup(const char *path)
 {
 	while (adapters) {
 		struct btd_adapter *adapter = adapters->data;
@@ -287,7 +284,8 @@ void manager_cleanup(DBusConnection *conn, const char *path)
 
 	btd_start_exit_timer();
 
-	g_dbus_unregister_interface(conn, "/", MANAGER_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						"/", MANAGER_INTERFACE);
 }
 
 static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
@@ -354,7 +352,7 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 		return NULL;
 	}
 
-	adapter = adapter_create(connection, id);
+	adapter = adapter_create(btd_get_dbus_connection(), id);
 	if (!adapter)
 		return NULL;
 
@@ -367,7 +365,7 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 	}
 
 	path = adapter_get_path(adapter);
-	g_dbus_emit_signal(connection, "/",
+	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
 				MANAGER_INTERFACE, "AdapterAdded",
 				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
