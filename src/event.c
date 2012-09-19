@@ -521,13 +521,11 @@ void btd_event_device_blocked(bdaddr_t *local, bdaddr_t *peer)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
 	if (device)
-		device_block(conn, device, TRUE);
+		device_block(device, TRUE);
 }
 
 void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
@@ -535,13 +533,11 @@ void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
 	if (device)
-		device_unblock(conn, device, FALSE, TRUE);
+		device_unblock(device, FALSE, TRUE);
 }
 
 void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)

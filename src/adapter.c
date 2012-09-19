@@ -940,7 +940,7 @@ static struct btd_device *adapter_create_device(DBusConnection *conn,
 
 	DBG("%s", address);
 
-	device = device_create(conn, adapter, address, bdaddr_type);
+	device = device_create(adapter, address, bdaddr_type);
 	if (!device)
 		return NULL;
 
@@ -1396,9 +1396,9 @@ static DBusMessage *create_device(DBusConnection *conn,
 		goto failed;
 
 	if (device_is_bredr(device))
-		err = device_browse_sdp(device, conn, msg, NULL, FALSE);
+		err = device_browse_sdp(device, msg, NULL, FALSE);
 	else
-		err = device_browse_primary(device, conn, msg, FALSE);
+		err = device_browse_primary(device, msg, FALSE);
 
 	if (err < 0) {
 		adapter_remove_device(conn, adapter, device, TRUE);
@@ -1479,7 +1479,7 @@ static DBusMessage *create_paired_device(DBusConnection *conn,
 			return btd_error_failed(msg, strerror(-err));
 	}
 
-	return device_create_bonding(device, conn, msg, agent_path, cap);
+	return device_create_bonding(device, msg, agent_path, cap);
 }
 
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
@@ -1692,7 +1692,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 				address, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, address, bdaddr_type);
+	device = device_create(adapter, address, bdaddr_type);
 	if (!device)
 		return;
 
@@ -1701,7 +1701,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 
 	list = device_services_from_record(device, uuids);
 	if (list)
-		device_register_services(connection, device, list, ATT_PSM);
+		device_register_services(device, list, ATT_PSM);
 
 	device_probe_profiles(device, uuids);
 
@@ -1816,7 +1816,7 @@ static void create_stored_device_from_linkkeys(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, address, bdaddr_type);
+	device = device_create(adapter, address, bdaddr_type);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1853,7 +1853,7 @@ static void create_stored_device_from_ltks(char *key, char *value,
 	if (g_strcmp0(srcaddr, address) == 0)
 		return;
 
-	device = device_create(connection, adapter, address, bdaddr_type);
+	device = device_create(adapter, address, bdaddr_type);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1870,7 +1870,7 @@ static void create_stored_device_from_blocked(char *key, char *value,
 				key, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, key, BDADDR_BREDR);
+	device = device_create(adapter, key, BDADDR_BREDR);
 	if (device) {
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1928,7 +1928,7 @@ static void create_stored_device_from_primaries(char *key, char *value,
 			address, (GCompareFunc) device_address_cmp))
 		return;
 
-	device = device_create(connection, adapter, address, bdaddr_type);
+	device = device_create(adapter, address, bdaddr_type);
 	if (!device)
 		return;
 
@@ -1944,7 +1944,7 @@ static void create_stored_device_from_primaries(char *key, char *value,
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 
-	device_register_services(connection, device, services, -1);
+	device_register_services(device, services, -1);
 
 	device_probe_profiles(device, uuids);
 
@@ -3093,7 +3093,7 @@ void adapter_add_connection(struct btd_adapter *adapter,
 		return;
 	}
 
-	device_add_connection(device, connection);
+	device_add_connection(device);
 
 	adapter->connections = g_slist_append(adapter->connections, device);
 }
@@ -3108,7 +3108,7 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 		return;
 	}
 
-	device_remove_connection(device, connection);
+	device_remove_connection(device);
 
 	adapter->connections = g_slist_remove(adapter->connections, device);
 
