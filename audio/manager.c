@@ -85,7 +85,6 @@ struct audio_adapter {
 
 static gboolean auto_connect = TRUE;
 static int max_connected_headsets = 1;
-static DBusConnection *connection = NULL;
 static GKeyFile *config = NULL;
 static GSList *adapters = NULL;
 static GSList *devices = NULL;
@@ -964,7 +963,7 @@ static int a2dp_server_probe(struct btd_adapter *adapter)
 
 	adapter_get_address(adapter, &src);
 
-	err = a2dp_register(connection, &src, config);
+	err = a2dp_register(&src, config);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -1003,7 +1002,7 @@ static int avrcp_server_probe(struct btd_adapter *adapter)
 
 	adapter_get_address(adapter, &src);
 
-	err = avrcp_register(connection, &src, config);
+	err = avrcp_register(&src, config);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -1042,7 +1041,7 @@ static int media_server_probe(struct btd_adapter *adapter)
 
 	adapter_get_address(adapter, &src);
 
-	err = media_register(connection, path, &src);
+	err = media_register(path, &src);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -1114,15 +1113,12 @@ static struct btd_adapter_driver media_driver = {
 	.remove	= media_server_remove,
 };
 
-int audio_manager_init(DBusConnection *conn, GKeyFile *conf,
-							gboolean *enable_sco)
+int audio_manager_init(GKeyFile *conf, gboolean *enable_sco)
 {
 	char **list;
 	int i;
 	gboolean b;
 	GError *err = NULL;
-
-	connection = dbus_connection_ref(conn);
 
 	if (!conf)
 		goto proceed;
@@ -1206,13 +1202,6 @@ proceed:
 
 void audio_manager_exit(void)
 {
-	/* Bail out early if we haven't been initialized */
-	if (connection == NULL)
-		return;
-
-	dbus_connection_unref(connection);
-	connection = NULL;
-
 	if (config) {
 		g_key_file_free(config);
 		config = NULL;
@@ -1337,7 +1326,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 
 	path = device_get_path(device);
 
-	dev = audio_device_register(connection, device, path, src, dst);
+	dev = audio_device_register(device, path, src, dst);
 	if (!dev)
 		return NULL;
 

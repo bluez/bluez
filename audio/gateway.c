@@ -159,7 +159,7 @@ static void agent_disconnect(struct audio_device *dev, struct hf_agent *agent)
 	msg = dbus_message_new_method_call(agent->name, agent->path,
 			"org.bluez.HandsfreeAgent", "Release");
 
-	g_dbus_send_message(dev->conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 }
 
 static gboolean agent_sendfd(struct hf_agent *agent, int fd,
@@ -177,7 +177,7 @@ static gboolean agent_sendfd(struct hf_agent *agent, int fd,
 					DBUS_TYPE_UINT16, &gw->version,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(dev->conn, msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), msg,
 							&call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return FALSE;
@@ -308,6 +308,7 @@ done:
 static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 				gpointer user_data)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct audio_device *dev = user_data;
 	struct gateway *gw = dev->gateway;
 	DBusMessage *reply;
@@ -338,7 +339,7 @@ static void rfcomm_connect_cb(GIOChannel *chan, GError *err,
 	else
 		reply = btd_error_failed(gw->msg, "Can't pass file descriptor");
 
-	g_dbus_send_message(dev->conn, reply);
+	g_dbus_send_message(conn, reply);
 
 	return;
 
@@ -346,7 +347,7 @@ fail:
 	if (gw->msg) {
 		DBusMessage *reply;
 		reply = btd_error_failed(gw->msg, "Connect failed");
-		g_dbus_send_message(dev->conn, reply);
+		g_dbus_send_message(conn, reply);
 	}
 
 	gateway_close(dev);
@@ -514,7 +515,7 @@ fail:
 	if (gw->msg) {
 		DBusMessage *reply = btd_error_failed(gw->msg,
 					gerr ? gerr->message : strerror(-err));
-		g_dbus_send_message(dev->conn, reply);
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
 	}
 
 	gateway_close(dev);
@@ -596,9 +597,6 @@ static DBusMessage *ag_disconnect(DBusConnection *conn, DBusMessage *msg,
 	struct gateway *gw = device->gateway;
 	DBusMessage *reply = NULL;
 	char gw_addr[18];
-
-	if (!device->conn)
-		return NULL;
 
 	if (!gw->rfcomm)
 		return btd_error_not_connected(msg);
@@ -706,7 +704,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	if (strcmp(gw->agent->path, path) != 0)
 		return btd_error_does_not_exist(msg);
 
-	g_dbus_remove_watch(device->conn, gw->agent->watch);
+	g_dbus_remove_watch(conn, gw->agent->watch);
 
 	agent_free(gw->agent);
 	gw->agent = NULL;
@@ -752,13 +750,13 @@ void gateway_unregister(struct audio_device *dev)
 	if (dev->gateway->agent)
 		agent_disconnect(dev, dev->gateway->agent);
 
-	g_dbus_unregister_interface(dev->conn, dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
 						AUDIO_GATEWAY_INTERFACE);
 }
 
 struct gateway *gateway_init(struct audio_device *dev)
 {
-	if (!g_dbus_register_interface(dev->conn, dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
 					AUDIO_GATEWAY_INTERFACE,
 					gateway_methods, gateway_signals,
 					NULL, dev, path_unregister))

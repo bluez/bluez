@@ -38,6 +38,7 @@
 
 #include <bluetooth/sdp.h>
 
+#include "dbus-common.h"
 #include "log.h"
 #include "telephony.h"
 #include "error.h"
@@ -163,8 +164,6 @@ struct pending_req {
 
 static int get_property(const char *iface, const char *prop);
 
-static DBusConnection *connection = NULL;
-
 static GSList *calls = NULL;
 static GSList *watches = NULL;
 static GSList *pending = NULL;
@@ -233,6 +232,7 @@ static int send_method_call(const char *dest, const char *path,
 				DBusPendingCallNotifyFunction cb,
 				void *user_data, int type, ...)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	va_list args;
@@ -255,11 +255,11 @@ static int send_method_call(const char *dest, const char *path,
 	va_end(args);
 
 	if (!cb) {
-		g_dbus_send_message(connection, msg);
+		g_dbus_send_message(conn, msg);
 		return 0;
 	}
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
 		error("Sending %s failed", method);
 		dbus_message_unref(msg);
 		return -EIO;
@@ -351,7 +351,7 @@ static int release_conference(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -369,7 +369,7 @@ static int release_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -387,7 +387,7 @@ static int answer_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -460,7 +460,7 @@ static int split_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -477,7 +477,7 @@ static int unhold_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -494,7 +494,7 @@ static int hold_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -511,7 +511,7 @@ static int swap_calls(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -528,7 +528,7 @@ static int create_conference(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -545,7 +545,7 @@ static int call_transfer(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -2059,7 +2059,8 @@ static void add_watch(const char *sender, const char *path,
 {
 	guint watch;
 
-	watch = g_dbus_add_signal_watch(connection, sender, path, interface,
+	watch = g_dbus_add_signal_watch(btd_get_dbus_connection(),
+					sender, path, interface,
 					member, signal_filter, NULL, NULL);
 
 	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
@@ -2129,8 +2130,6 @@ int telephony_init(void)
 
 	DBG("");
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
 	add_watch(NULL, NULL, CSD_CALL_INTERFACE, NULL);
 	add_watch(NULL, NULL, CSD_CALL_INSTANCE, NULL);
 	add_watch(NULL, NULL, CSD_CALL_CONFERENCE, NULL);
@@ -2168,7 +2167,7 @@ int telephony_init(void)
 
 static void remove_watch(gpointer data)
 {
-	g_dbus_remove_watch(connection, GPOINTER_TO_UINT(data));
+	g_dbus_remove_watch(btd_get_dbus_connection(), GPOINTER_TO_UINT(data));
 }
 
 void telephony_exit(void)
@@ -2192,9 +2191,6 @@ void telephony_exit(void)
 
 	g_slist_free_full(watches, remove_watch);
 	watches = NULL;
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 
 	telephony_deinit();
 }

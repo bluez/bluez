@@ -33,14 +33,13 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "dbus-common.h"
 #include "log.h"
 #include "telephony.h"
 #include "error.h"
 
 #define TELEPHONY_DUMMY_IFACE "org.bluez.TelephonyTest"
 #define TELEPHONY_DUMMY_PATH "/org/bluez/test"
-
-static DBusConnection *connection = NULL;
 
 static const char *chld_str = "0,1,1x,2,2x,3,4";
 static char *subscriber_number = NULL;
@@ -199,7 +198,7 @@ void telephony_voice_dial_req(void *telephony_device, gboolean enable)
 	DBG("telephony-dummy: got %s voice dial request",
 			enable ? "enable" : "disable");
 
-	g_dbus_emit_signal(connection, TELEPHONY_DUMMY_PATH,
+	g_dbus_emit_signal(btd_get_dbus_connection(), TELEPHONY_DUMMY_PATH,
 			TELEPHONY_DUMMY_IFACE, "VoiceDial",
 			DBUS_TYPE_INVALID);
 
@@ -417,9 +416,8 @@ int telephony_init(void)
 
 	DBG("");
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
-	if (g_dbus_register_interface(connection, TELEPHONY_DUMMY_PATH,
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
+					TELEPHONY_DUMMY_PATH,
 					TELEPHONY_DUMMY_IFACE,
 					dummy_methods, dummy_signals,
 					NULL, NULL, NULL) == FALSE) {
@@ -438,10 +436,9 @@ void telephony_exit(void)
 {
 	DBG("");
 
-	g_dbus_unregister_interface(connection, TELEPHONY_DUMMY_PATH,
-						TELEPHONY_DUMMY_IFACE);
-	dbus_connection_unref(connection);
-	connection = NULL;
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+					TELEPHONY_DUMMY_PATH,
+					TELEPHONY_DUMMY_IFACE);
 
 	telephony_deinit();
 }

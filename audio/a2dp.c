@@ -102,8 +102,6 @@ struct a2dp_setup {
 	int ref;
 };
 
-static DBusConnection *connection = NULL;
-
 struct a2dp_server {
 	bdaddr_t src;
 	GSList *sinks;
@@ -1168,7 +1166,7 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 	return NULL;
 }
 
-int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
+int a2dp_register(const bdaddr_t *src, GKeyFile *config)
 {
 	gboolean source = TRUE, sink = FALSE;
 	gboolean delay_reporting = FALSE;
@@ -1206,8 +1204,6 @@ int a2dp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
 	}
 
 proceed:
-	if (!connection)
-		connection = dbus_connection_ref(conn);
 
 	server = find_server(servers, src);
 	if (!server) {
@@ -1278,9 +1274,6 @@ void a2dp_unregister(const bdaddr_t *src)
 
 	if (servers)
 		return;
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }
 
 struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,

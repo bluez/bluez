@@ -37,6 +37,7 @@
 
 #include <bluetooth/sdp.h>
 
+#include "dbus-common.h"
 #include "log.h"
 #include "telephony.h"
 
@@ -55,7 +56,6 @@ struct voice_call {
 	guint watch;
 };
 
-static DBusConnection *connection = NULL;
 static char *modem_obj_path = NULL;
 static char *last_dialed_number = NULL;
 static GSList *calls = NULL;
@@ -207,6 +207,7 @@ static int send_method_call(const char *dest, const char *path,
                                 DBusPendingCallNotifyFunction cb,
                                 void *user_data, int type, ...)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	va_list args;
@@ -228,11 +229,11 @@ static int send_method_call(const char *dest, const char *path,
 	va_end(args);
 
 	if (!cb) {
-		g_dbus_send_message(connection, msg);
+		g_dbus_send_message(conn, msg);
 		return 0;
 	}
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
 		error("Sending %s failed", method);
 		dbus_message_unref(msg);
 		return -EIO;
@@ -656,7 +657,7 @@ static void call_free(void *data)
 	if (vc->status == CALL_STATUS_INCOMING)
 		telephony_calling_stopped_ind();
 
-	g_dbus_remove_watch(connection, vc->watch);
+	g_dbus_remove_watch(btd_get_dbus_connection(), vc->watch);
 	g_free(vc->obj_path);
 	g_free(vc->number);
 	g_free(vc);
@@ -742,7 +743,8 @@ static struct voice_call *call_new(const char *path, DBusMessageIter *properties
 
 	vc = g_new0(struct voice_call, 1);
 	vc->obj_path = g_strdup(path);
-	vc->watch = g_dbus_add_signal_watch(connection, NULL, path,
+	vc->watch = g_dbus_add_signal_watch(btd_get_dbus_connection(),
+					NULL, path,
 					OFONO_VC_INTERFACE, "PropertyChanged",
 					handle_vc_property_changed, vc, NULL);
 
@@ -1470,7 +1472,8 @@ static void add_watch(const char *sender, const char *path,
 {
 	guint watch;
 
-	watch = g_dbus_add_signal_watch(connection, sender, path, interface,
+	watch = g_dbus_add_signal_watch(btd_get_dbus_connection(),
+					sender, path, interface,
 					member, function, NULL, NULL);
 
 	watches = g_slist_prepend(watches, GUINT_TO_POINTER(watch));
@@ -1557,8 +1560,6 @@ int telephony_init(void)
 	int ret;
 	guint watch;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
 	add_watch(OFONO_BUS_NAME, NULL, OFONO_MODEM_INTERFACE,
 			"PropertyChanged", handle_modem_property_changed);
 	add_watch(OFONO_BUS_NAME, NULL, OFONO_NETWORKREG_INTERFACE,
@@ -1572,7 +1573,8 @@ int telephony_init(void)
 	add_watch(OFONO_BUS_NAME, NULL, OFONO_VCMANAGER_INTERFACE,
 			"CallRemoved", handle_vcmanager_call_removed);
 
-	watch = g_dbus_add_service_watch(connection, OFONO_BUS_NAME,
+	watch = g_dbus_add_service_watch(btd_get_dbus_connection(),
+						OFONO_BUS_NAME,
 						handle_service_connect,
 						handle_service_disconnect,
 						NULL, NULL);
@@ -1601,7 +1603,7 @@ int telephony_init(void)
 
 static void remove_watch(gpointer data)
 {
-	g_dbus_remove_watch(connection, GPOINTER_TO_UINT(data));
+	g_dbus_remove_watch(btd_get_dbus_connection(), GPOINTER_TO_UINT(data));
 }
 
 static void pending_free(void *data)
@@ -1629,9 +1631,6 @@ void telephony_exit(void)
 
 	g_slist_free_full(pending, pending_free);
 	pending = NULL;
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 
 	telephony_deinit();
 }

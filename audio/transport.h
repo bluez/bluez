@@ -24,8 +24,7 @@
 
 struct media_transport;
 
-struct media_transport *media_transport_create(DBusConnection *conn,
-						struct media_endpoint *endpoint,
+struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 						struct audio_device *device,
 						uint8_t *configuration,
 						size_t size);

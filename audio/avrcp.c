@@ -1270,7 +1270,7 @@ void avrcp_disconnect(struct audio_device *dev)
 	avctp_disconnect(session);
 }
 
-int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config)
+int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 {
 	sdp_record_t *record;
 	gboolean tmp, master = TRUE;

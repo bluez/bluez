@@ -97,7 +97,6 @@ struct headset_transport {
 };
 
 struct media_transport {
-	DBusConnection		*conn;
 	char			*path;		/* Transport object path */
 	struct audio_device	*device;	/* Transport device */
 	struct media_endpoint	*endpoint;	/* Transport endpoint */
@@ -225,7 +224,7 @@ void media_transport_destroy(struct media_transport *transport)
 		source_remove_state_cb(transport->source_watch);
 
 	path = g_strdup(transport->path);
-	g_dbus_unregister_interface(transport->conn, path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), path,
 						MEDIA_TRANSPORT_INTERFACE);
 
 	g_free(path);
@@ -245,8 +244,7 @@ static struct media_request *media_request_create(DBusMessage *msg, guint id)
 	return req;
 }
 
-static void media_request_reply(struct media_request *req,
-						DBusConnection *conn, int err)
+static void media_request_reply(struct media_request *req, int err)
 {
 	DBusMessage *reply;
 
@@ -260,7 +258,7 @@ static void media_request_reply(struct media_request *req,
 						ERROR_INTERFACE ".Failed",
 						"%s", strerror(err));
 
-	g_dbus_send_message(conn, reply);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
 }
 
 static gboolean media_transport_release(struct media_transport *transport,
@@ -317,12 +315,12 @@ static void media_transport_remove(struct media_transport *transport,
 
 	/* Reply if owner has a pending request */
 	if (owner->pending)
-		media_request_reply(owner->pending, transport->conn, EIO);
+		media_request_reply(owner->pending, EIO);
 
 	transport->owners = g_slist_remove(transport->owners, owner);
 
 	if (owner->watch)
-		g_dbus_remove_watch(transport->conn, owner->watch);
+		g_dbus_remove_watch(btd_get_dbus_connection(), owner->watch);
 
 	media_owner_free(owner);
 
@@ -379,7 +377,7 @@ static void a2dp_resume_complete(struct avdtp *session,
 	if ((owner->lock & TRANSPORT_LOCK_WRITE) == 0)
 		omtu = 0;
 
-	ret = g_dbus_send_reply(transport->conn, req->msg,
+	ret = g_dbus_send_reply(btd_get_dbus_connection(), req->msg,
 						DBUS_TYPE_UNIX_FD, &fd,
 						DBUS_TYPE_UINT16, &imtu,
 						DBUS_TYPE_UINT16, &omtu,
@@ -435,7 +433,7 @@ static void a2dp_suspend_complete(struct avdtp *session,
 	/* Release always succeeds */
 	if (owner->pending) {
 		owner->pending->id = 0;
-		media_request_reply(owner->pending, transport->conn, 0);
+		media_request_reply(owner->pending, 0);
 		media_owner_remove(owner);
 	}
 
@@ -499,7 +497,7 @@ static void headset_resume_complete(struct audio_device *dev, void *user_data)
 	if ((owner->lock & TRANSPORT_LOCK_WRITE) == 0)
 		omtu = 0;
 
-	ret = g_dbus_send_reply(transport->conn, req->msg,
+	ret = g_dbus_send_reply(btd_get_dbus_connection(), req->msg,
 						DBUS_TYPE_UNIX_FD, &fd,
 						DBUS_TYPE_UINT16, &imtu,
 						DBUS_TYPE_UINT16, &omtu,
@@ -545,7 +543,7 @@ static void headset_suspend_complete(struct audio_device *dev, void *user_data)
 	/* Release always succeeds */
 	if (owner->pending) {
 		owner->pending->id = 0;
-		media_request_reply(owner->pending, transport->conn, 0);
+		media_request_reply(owner->pending, 0);
 		media_owner_remove(owner);
 	}
 
@@ -615,7 +613,7 @@ static void gateway_resume_complete(struct audio_device *dev, GError *err,
 	if ((owner->lock & TRANSPORT_LOCK_WRITE) == 0)
 		omtu = 0;
 
-	ret = g_dbus_send_reply(transport->conn, req->msg,
+	ret = g_dbus_send_reply(btd_get_dbus_connection(), req->msg,
 						DBUS_TYPE_UNIX_FD, &fd,
 						DBUS_TYPE_UINT16, &imtu,
 						DBUS_TYPE_UINT16, &omtu,
@@ -662,7 +660,7 @@ static gboolean gateway_suspend_complete(gpointer user_data)
 	/* Release always succeeds */
 	if (owner->pending) {
 		owner->pending->id = 0;
-		media_request_reply(owner->pending, transport->conn, 0);
+		media_request_reply(owner->pending, 0);
 		media_owner_remove(owner);
 	}
 
@@ -736,13 +734,13 @@ static void media_transport_add(struct media_transport *transport,
 	DBG("Transport %s Owner %s", transport->path, owner->name);
 	transport->owners = g_slist_append(transport->owners, owner);
 	owner->transport = transport;
-	owner->watch = g_dbus_add_disconnect_watch(transport->conn, owner->name,
+	owner->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
+							owner->name,
 							media_owner_exit,
 							owner, NULL);
 }
 
-static struct media_owner *media_owner_create(DBusConnection *conn,
-						DBusMessage *msg,
+static struct media_owner *media_owner_create(DBusMessage *msg,
 						transport_lock_t lock)
 {
 	struct media_owner *owner;
@@ -814,7 +812,7 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	if (media_transport_acquire(transport, lock) == FALSE)
 		return btd_error_not_authorized(msg);
 
-	owner = media_owner_create(conn, msg, lock);
+	owner = media_owner_create(msg, lock);
 	id = transport->resume(transport, owner);
 	if (id == 0) {
 		media_transport_release(transport, lock);
@@ -1153,9 +1151,6 @@ static void media_transport_free(void *data)
 	if (transport->destroy != NULL)
 		transport->destroy(transport->data);
 
-	if (transport->conn)
-		dbus_connection_unref(transport->conn);
-
 	g_free(transport->configuration);
 	g_free(transport->path);
 	g_free(transport);
@@ -1259,8 +1254,7 @@ static void source_state_changed(struct audio_device *dev,
 		transport_update_playing(transport, FALSE);
 }
 
-struct media_transport *media_transport_create(DBusConnection *conn,
-						struct media_endpoint *endpoint,
+struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 						struct audio_device *device,
 						uint8_t *configuration,
 						size_t size)
@@ -1270,7 +1264,6 @@ struct media_transport *media_transport_create(DBusConnection *conn,
 	static int fd = 0;
 
 	transport = g_new0(struct media_transport, 1);
-	transport->conn = dbus_connection_ref(conn);
 	transport->device = device;
 	transport->endpoint = endpoint;
 	transport->configuration = g_new(uint8_t, size);
@@ -1336,8 +1329,8 @@ struct media_transport *media_transport_create(DBusConnection *conn,
 	} else
 		goto fail;
 
-	if (g_dbus_register_interface(transport->conn, transport->path,
-				MEDIA_TRANSPORT_INTERFACE,
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
+				transport->path, MEDIA_TRANSPORT_INTERFACE,
 				transport_methods, transport_signals, NULL,
 				transport, media_transport_free) == FALSE) {
 		error("Could not register transport %s", transport->path);

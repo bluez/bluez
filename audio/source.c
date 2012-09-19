@@ -53,7 +53,6 @@
 #define STREAM_SETUP_RETRY_TIMER 2
 
 struct pending_request {
-	DBusConnection *conn;
 	DBusMessage *msg;
 	unsigned int id;
 };
@@ -69,7 +68,6 @@ struct source {
 	source_state_t state;
 	struct pending_request *connect;
 	struct pending_request *disconnect;
-	DBusConnection *conn;
 };
 
 struct source_state_callback {
@@ -148,8 +146,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 static void pending_request_free(struct audio_device *dev,
 					struct pending_request *pending)
 {
-	if (pending->conn)
-		dbus_connection_unref(pending->conn);
 	if (pending->msg)
 		dbus_message_unref(pending->msg);
 	if (pending->id)
@@ -180,7 +176,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			source->disconnect = NULL;
 
 			reply = dbus_message_new_method_return(p->msg);
-			g_dbus_send_message(p->conn, reply);
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
 			pending_request_free(dev, p);
 		}
 
@@ -207,11 +203,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	source->stream_state = new_state;
 }
 
-static void error_failed(DBusConnection *conn, DBusMessage *msg,
+static void error_failed(DBusMessage *msg,
 							const char *desc)
 {
 	DBusMessage *reply = btd_error_failed(msg, desc);
-	g_dbus_send_message(conn, reply);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
 }
 
 static gboolean stream_setup_retry(gpointer user_data)
@@ -226,12 +222,12 @@ static gboolean stream_setup_retry(gpointer user_data)
 		if (pending->msg) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(pending->msg);
-			g_dbus_send_message(pending->conn, reply);
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
 		}
 	} else {
 		DBG("Stream setup failed, after XCASE connect:connect");
 		if (pending->msg)
-			error_failed(pending->conn, pending->msg, "Stream setup failed");
+			error_failed(pending->msg, "Stream setup failed");
 	}
 
 	source->connect = NULL;
@@ -257,7 +253,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		if (pending->msg) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(pending->msg);
-			g_dbus_send_message(pending->conn, reply);
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
 		}
 
 		source->connect = NULL;
@@ -276,7 +272,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 							source);
 	} else {
 		if (pending->msg)
-			error_failed(pending->conn, pending->msg, "Stream setup failed");
+			error_failed(pending->msg, "Stream setup failed");
 		source->connect = NULL;
 		pending_request_free(source->dev, pending);
 		DBG("Stream setup failed : %s", avdtp_strerror(err));
@@ -306,7 +302,7 @@ static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 failed:
 	if (pending->msg)
-		error_failed(pending->conn, pending->msg, "Stream setup failed");
+		error_failed(pending->msg, "Stream setup failed");
 	pending_request_free(source->dev, pending);
 	source->connect = NULL;
 	avdtp_unref(source->session);
@@ -349,7 +345,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 
 failed:
 	if (pending->msg)
-		error_failed(pending->conn, pending->msg, "Stream setup failed");
+		error_failed(pending->msg, "Stream setup failed");
 	pending_request_free(source->dev, pending);
 	source->connect = NULL;
 	avdtp_unref(source->session);
@@ -401,7 +397,6 @@ static DBusMessage *source_connect(DBusConnection *conn,
 
 	pending = source->connect;
 
-	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 
 	DBG("stream creation in progress");
@@ -437,7 +432,6 @@ static DBusMessage *source_disconnect(DBusConnection *conn,
 		return btd_error_failed(msg, strerror(-err));
 
 	pending = g_new0(struct pending_request, 1);
-	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 	source->disconnect = pending;
 
@@ -526,7 +520,7 @@ static void path_unregister(void *data)
 
 void source_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(dev->conn, dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
 						AUDIO_SOURCE_INTERFACE);
 }
 
@@ -534,7 +528,7 @@ struct source *source_init(struct audio_device *dev)
 {
 	struct source *source;
 
-	if (!g_dbus_register_interface(dev->conn, dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
 					AUDIO_SOURCE_INTERFACE,
 					source_methods, source_signals, NULL,
 					dev, path_unregister))

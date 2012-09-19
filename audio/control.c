@@ -66,6 +66,7 @@ struct control {
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 				avctp_state_t new_state, void *user_data)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct control *control = dev->control;
 	gboolean value;
 
@@ -77,7 +78,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			break;
 
 		value = FALSE;
-		g_dbus_emit_signal(dev->conn, dev->path,
+		g_dbus_emit_signal(conn, dev->path,
 					AUDIO_CONTROL_INTERFACE,
 					"Disconnected", DBUS_TYPE_INVALID);
 		emit_property_changed(dev->path,
@@ -94,7 +95,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		break;
 	case AVCTP_STATE_CONNECTED:
 		value = TRUE;
-		g_dbus_emit_signal(dev->conn, dev->path,
+		g_dbus_emit_signal(conn, dev->path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
 				DBUS_TYPE_INVALID);
 		emit_property_changed(dev->path,
@@ -233,7 +234,7 @@ static void path_unregister(void *data)
 
 void control_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(dev->conn, dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
 						AUDIO_CONTROL_INTERFACE);
 }
 
@@ -247,7 +248,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 {
 	struct control *control;
 
-	if (!g_dbus_register_interface(dev->conn, dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
 					AUDIO_CONTROL_INTERFACE,
 					control_methods, control_signals, NULL,
 					dev, path_unregister))

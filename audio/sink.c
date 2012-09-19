@@ -52,7 +52,6 @@
 #define STREAM_SETUP_RETRY_TIMER 2
 
 struct pending_request {
-	DBusConnection *conn;
 	DBusMessage *msg;
 	unsigned int id;
 };
@@ -68,7 +67,6 @@ struct sink {
 	sink_state_t state;
 	struct pending_request *connect;
 	struct pending_request *disconnect;
-	DBusConnection *conn;
 };
 
 struct sink_state_callback {
@@ -144,7 +142,7 @@ static void avdtp_state_callback(struct audio_device *dev,
 	case AVDTP_SESSION_STATE_DISCONNECTED:
 		if (sink->state != SINK_STATE_CONNECTING) {
 			gboolean value = FALSE;
-			g_dbus_emit_signal(dev->conn, dev->path,
+			g_dbus_emit_signal(btd_get_dbus_connection(), dev->path,
 					AUDIO_SINK_INTERFACE, "Disconnected",
 					DBUS_TYPE_INVALID);
 			emit_property_changed(dev->path,
@@ -166,8 +164,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 static void pending_request_free(struct audio_device *dev,
 					struct pending_request *pending)
 {
-	if (pending->conn)
-		dbus_connection_unref(pending->conn);
 	if (pending->msg)
 		dbus_message_unref(pending->msg);
 	if (pending->id)
@@ -182,6 +178,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 					struct avdtp_error *err,
 					void *user_data)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct audio_device *dev = user_data;
 	struct sink *sink = dev->sink;
 	gboolean value;
@@ -199,7 +196,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 			sink->disconnect = NULL;
 
 			reply = dbus_message_new_method_return(p->msg);
-			g_dbus_send_message(p->conn, reply);
+			g_dbus_send_message(conn, reply);
 			pending_request_free(dev, p);
 		}
 
@@ -214,7 +211,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		if (old_state == AVDTP_STATE_CONFIGURED &&
 				sink->state == SINK_STATE_CONNECTING) {
 			value = TRUE;
-			g_dbus_emit_signal(dev->conn, dev->path,
+			g_dbus_emit_signal(conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
@@ -224,7 +221,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 						DBUS_TYPE_BOOLEAN, &value);
 		} else if (old_state == AVDTP_STATE_STREAMING) {
 			value = FALSE;
-			g_dbus_emit_signal(dev->conn, dev->path,
+			g_dbus_emit_signal(conn, dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Stopped",
 						DBUS_TYPE_INVALID);
@@ -237,8 +234,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	case AVDTP_STATE_STREAMING:
 		value = TRUE;
-		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
-					"Playing", DBUS_TYPE_INVALID);
+		g_dbus_emit_signal(conn, dev->path,
+					AUDIO_SINK_INTERFACE, "Playing",
+					DBUS_TYPE_INVALID);
 		emit_property_changed(dev->path,
 					AUDIO_SINK_INTERFACE, "Playing",
 					DBUS_TYPE_BOOLEAN, &value);
@@ -254,11 +252,10 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->stream_state = new_state;
 }
 
-static void error_failed(DBusConnection *conn, DBusMessage *msg,
-							const char *desc)
+static void error_failed(DBusMessage *msg, const char *desc)
 {
 	DBusMessage *reply = btd_error_failed(msg, desc);
-	g_dbus_send_message(conn, reply);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
 }
 
 static gboolean stream_setup_retry(gpointer user_data)
@@ -273,12 +270,12 @@ static gboolean stream_setup_retry(gpointer user_data)
 		if (pending->msg) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(pending->msg);
-			g_dbus_send_message(pending->conn, reply);
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
 		}
 	} else {
 		DBG("Stream setup failed, after XCASE connect:connect");
 		if (pending->msg)
-			error_failed(pending->conn, pending->msg, "Stream setup failed");
+			error_failed(pending->msg, "Stream setup failed");
 	}
 
 	sink->connect = NULL;
@@ -304,7 +301,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 		if (pending->msg) {
 			DBusMessage *reply;
 			reply = dbus_message_new_method_return(pending->msg);
-			g_dbus_send_message(pending->conn, reply);
+			g_dbus_send_message(btd_get_dbus_connection(), reply);
 		}
 
 		sink->connect = NULL;
@@ -323,7 +320,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 							sink);
 	} else {
 		if (pending->msg)
-			error_failed(pending->conn, pending->msg, "Stream setup failed");
+			error_failed(pending->msg, "Stream setup failed");
 		sink->connect = NULL;
 		pending_request_free(sink->dev, pending);
 		DBG("Stream setup failed : %s", avdtp_strerror(err));
@@ -349,7 +346,7 @@ static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 failed:
 	if (pending->msg)
-		error_failed(pending->conn, pending->msg, "Stream setup failed");
+		error_failed(pending->msg, "Stream setup failed");
 	pending_request_free(sink->dev, pending);
 	sink->connect = NULL;
 	avdtp_unref(sink->session);
@@ -398,7 +395,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 
 failed:
 	if (pending->msg)
-		error_failed(pending->conn, pending->msg, "Stream setup failed");
+		error_failed(pending->msg, "Stream setup failed");
 	pending_request_free(sink->dev, pending);
 	sink->connect = NULL;
 	avdtp_unref(sink->session);
@@ -450,7 +447,6 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 
 	pending = sink->connect;
 
-	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 
 	DBG("stream creation in progress");
@@ -486,7 +482,6 @@ static DBusMessage *sink_disconnect(DBusConnection *conn,
 		return btd_error_failed(msg, strerror(-err));
 
 	pending = g_new0(struct pending_request, 1);
-	pending->conn = dbus_connection_ref(conn);
 	pending->msg = dbus_message_ref(msg);
 	sink->disconnect = pending;
 
@@ -588,7 +583,7 @@ static void path_unregister(void *data)
 
 void sink_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(dev->conn, dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
 		AUDIO_SINK_INTERFACE);
 }
 
@@ -596,7 +591,7 @@ struct sink *sink_init(struct audio_device *dev)
 {
 	struct sink *sink;
 
-	if (!g_dbus_register_interface(dev->conn, dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
 					AUDIO_SINK_INTERFACE,
 					sink_methods, sink_signals, NULL,
 					dev, path_unregister))
@@ -664,8 +659,7 @@ gboolean sink_shutdown(struct sink *sink)
 		struct pending_request *pending = sink->connect;
 
 		if (pending->msg)
-			error_failed(pending->conn, pending->msg,
-							"Stream setup failed");
+			error_failed(pending->msg, "Stream setup failed");
 		pending_request_free(sink->dev, pending);
 		sink->connect = NULL;
 

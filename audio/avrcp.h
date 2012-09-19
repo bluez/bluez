@@ -88,7 +88,7 @@ struct avrcp_player_cb {
 							void *user_data);
 };
 
-int avrcp_register(DBusConnection *conn, const bdaddr_t *src, GKeyFile *config);
+int avrcp_register(const bdaddr_t *src, GKeyFile *config);
 void avrcp_unregister(const bdaddr_t *src);
 
 gboolean avrcp_connect(struct audio_device *dev);

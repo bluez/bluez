@@ -142,20 +142,14 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-static DBusConnection *connection;
-
 static int audio_init(void)
 {
 	GKeyFile *config;
 	gboolean enable_sco;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
 	config = load_config_file(CONFIGDIR "/audio.conf");
 
-	if (audio_manager_init(connection, config, &enable_sco) < 0)
+	if (audio_manager_init(config, &enable_sco) < 0)
 		goto failed;
 
 	if (!enable_sco)
@@ -174,11 +168,6 @@ static int audio_init(void)
 failed:
 	audio_manager_exit();
 
-	if (connection) {
-		dbus_connection_unref(connection);
-		connection = NULL;
-	}
-
 	return -EIO;
 }
 
@@ -191,8 +180,6 @@ static void audio_exit(void)
 	}
 
 	audio_manager_exit();
-
-	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(audio, VERSION,

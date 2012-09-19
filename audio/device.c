@@ -106,9 +106,6 @@ static void device_free(struct audio_device *dev)
 {
 	struct dev_priv *priv = dev->priv;
 
-	if (dev->conn)
-		dbus_connection_unref(dev->conn);
-
 	btd_device_unref(dev->btd_dev);
 
 	if (priv) {
@@ -230,6 +227,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct dev_priv *priv = dev->priv;
 	const char *state_str;
 	DBusMessage *reply = NULL;
@@ -263,7 +261,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 			reply = dbus_message_new_method_return(priv->dc_req);
 			dbus_message_unref(priv->dc_req);
 			priv->dc_req = NULL;
-			g_dbus_send_message(dev->conn, reply);
+			g_dbus_send_message(conn, reply);
 		}
 		priv->disconnecting = FALSE;
 	}
@@ -277,7 +275,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 
 		dbus_message_unref(priv->conn_req);
 		priv->conn_req = NULL;
-		g_dbus_send_message(dev->conn, reply);
+		g_dbus_send_message(conn, reply);
 	}
 
 	emit_property_changed(dev->path,
@@ -632,14 +630,13 @@ static const GDBusSignalTable dev_signals[] = {
 	{ }
 };
 
-struct audio_device *audio_device_register(DBusConnection *conn,
-					struct btd_device *device,
+struct audio_device *audio_device_register(struct btd_device *device,
 					const char *path, const bdaddr_t *src,
 					const bdaddr_t *dst)
 {
 	struct audio_device *dev;
 
-	if (!conn || !path)
+	if (!path)
 		return NULL;
 
 	dev = g_new0(struct audio_device, 1);
@@ -648,12 +645,11 @@ struct audio_device *audio_device_register(DBusConnection *conn,
 	dev->path = g_strdup(path);
 	bacpy(&dev->dst, dst);
 	bacpy(&dev->src, src);
-	dev->conn = dbus_connection_ref(conn);
 	dev->priv = g_new0(struct dev_priv, 1);
 	dev->priv->state = AUDIO_STATE_DISCONNECTED;
 
-	if (!g_dbus_register_interface(dev->conn, dev->path,
-					AUDIO_INTERFACE,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					dev->path, AUDIO_INTERFACE,
 					dev_methods, dev_signals, NULL,
 					dev, NULL)) {
 		error("Unable to register %s on %s", AUDIO_INTERFACE,
@@ -730,7 +726,7 @@ void audio_device_unregister(struct audio_device *device)
 	if (device->control)
 		control_unregister(device);
 
-	g_dbus_unregister_interface(device->conn, device->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), device->path,
 						AUDIO_INTERFACE);
 
 	device_free(device);

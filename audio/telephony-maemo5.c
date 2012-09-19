@@ -36,6 +36,7 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "dbus-common.h"
 #include "log.h"
 #include "telephony.h"
 #include "error.h"
@@ -188,8 +189,6 @@ static struct {
 	.operator_name = NULL,
 };
 
-static DBusConnection *connection = NULL;
-
 static GSList *calls = NULL;
 
 /* Reference count for determining the call indicator status */
@@ -322,7 +321,7 @@ static int release_conference(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -340,7 +339,7 @@ static int release_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -358,7 +357,7 @@ static int answer_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -376,7 +375,7 @@ static int split_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -393,7 +392,7 @@ static int unhold_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -410,7 +409,7 @@ static int hold_call(struct csd_call *call)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -427,7 +426,7 @@ static int swap_calls(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -444,7 +443,7 @@ static int create_conference(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -461,7 +460,7 @@ static int call_transfer(void)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -585,6 +584,7 @@ static int send_method_call(const char *dest, const char *path,
 				DBusPendingCallNotifyFunction cb,
 				void *user_data, int type, ...)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	va_list args;
@@ -606,11 +606,11 @@ static int send_method_call(const char *dest, const char *path,
 	va_end(args);
 
 	if (!cb) {
-		g_dbus_send_message(connection, msg);
+		g_dbus_send_message(conn, msg);
 		return 0;
 	}
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
 		error("Sending %s failed", method);
 		dbus_message_unref(msg);
 		return -EIO;
@@ -1759,7 +1759,7 @@ static void hal_find_device_reply(DBusPendingCall *call, void *user_data)
 			"path='%s',"
 			"interface='org.freedesktop.Hal.Device',"
 			"member='PropertyModified'", path);
-	dbus_bus_add_match(connection, match_string, NULL);
+	dbus_bus_add_match(btd_get_dbus_connection(), match_string, NULL);
 
 	hal_get_integer(path, "battery.charge_level.last_full", &battchg_last);
 	hal_get_integer(path, "battery.charge_level.current", &battchg_cur);
@@ -2031,6 +2031,7 @@ static DBusHandlerResult signal_filter(DBusConnection *conn,
 
 int telephony_init(void)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	const char *battery_cap = "battery";
 	uint32_t features = AG_FEATURE_EC_ANDOR_NR |
 				AG_FEATURE_INBAND_RINGTONE |
@@ -2040,21 +2041,19 @@ int telephony_init(void)
 				AG_FEATURE_EXTENDED_ERROR_RESULT_CODES |
 				AG_FEATURE_THREE_WAY_CALLING;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
-	if (!dbus_connection_add_filter(connection, signal_filter,
+	if (!dbus_connection_add_filter(conn, signal_filter,
 						NULL, NULL))
 		error("Can't add signal filter");
 
-	dbus_bus_add_match(connection,
+	dbus_bus_add_match(conn,
 			"type=signal,interface=" CSD_CALL_INTERFACE, NULL);
-	dbus_bus_add_match(connection,
+	dbus_bus_add_match(conn,
 			"type=signal,interface=" CSD_CALL_INSTANCE, NULL);
-	dbus_bus_add_match(connection,
+	dbus_bus_add_match(conn,
 			"type=signal,interface=" CSD_CALL_CONFERENCE, NULL);
-	dbus_bus_add_match(connection,
+	dbus_bus_add_match(conn,
 			"type=signal,interface=" NETWORK_INTERFACE, NULL);
-	dbus_bus_add_match(connection,
+	dbus_bus_add_match(conn,
 				"type=signal,interface=" SSC_DBUS_IFACE
 				",member=modem_state_changed_ind", NULL);
 
@@ -2066,7 +2065,7 @@ int telephony_init(void)
 	generate_flag_file(NONE_FLAG_FILE);
 	callerid = callerid_from_file();
 
-	if (!g_dbus_register_interface(connection, TELEPHONY_MAEMO_PATH,
+	if (!g_dbus_register_interface(conn, TELEPHONY_MAEMO_PATH,
 			TELEPHONY_MAEMO_INTERFACE, telephony_maemo_methods,
 			NULL, NULL, NULL, NULL)) {
 		error("telephony-maemo interface %s init failed on path %s",
@@ -2096,10 +2095,8 @@ void telephony_exit(void)
 	g_slist_free(calls);
 	calls = NULL;
 
-	dbus_connection_remove_filter(connection, signal_filter, NULL);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
+	dbus_connection_remove_filter(btd_get_dbus_connection(),
+							signal_filter, NULL);
 
 	telephony_deinit();
 }

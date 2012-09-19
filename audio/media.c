@@ -59,7 +59,6 @@
 struct media_adapter {
 	bdaddr_t		src;		/* Adapter address */
 	char			*path;		/* Adapter path */
-	DBusConnection		*conn;		/* Adapter connection */
 	GSList			*endpoints;	/* Endpoints list */
 	GSList			*players;	/* Players list */
 };
@@ -147,8 +146,6 @@ static void media_endpoint_cancel_all(struct media_endpoint *endpoint)
 
 static void media_endpoint_destroy(struct media_endpoint *endpoint)
 {
-	struct media_adapter *adapter = endpoint->adapter;
-
 	DBG("sender=%s path=%s", endpoint->sender, endpoint->path);
 
 	if (endpoint->hs_watch)
@@ -162,7 +159,7 @@ static void media_endpoint_destroy(struct media_endpoint *endpoint)
 	g_slist_free_full(endpoint->transports,
 				(GDestroyNotify) media_transport_destroy);
 
-	g_dbus_remove_watch(adapter->conn, endpoint->watch);
+	g_dbus_remove_watch(btd_get_dbus_connection(), endpoint->watch);
 	g_free(endpoint->capabilities);
 	g_free(endpoint->sender);
 	g_free(endpoint->path);
@@ -209,11 +206,8 @@ static void headset_setconf_cb(struct media_endpoint *endpoint, void *ret,
 static void clear_configuration(struct media_endpoint *endpoint,
 					struct media_transport *transport)
 {
-	DBusConnection *conn;
 	DBusMessage *msg;
 	const char *path;
-
-	conn = endpoint->adapter->conn;
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
@@ -226,7 +220,7 @@ static void clear_configuration(struct media_endpoint *endpoint,
 	path = media_transport_get_path(transport);
 	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
-	g_dbus_send_message(conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 done:
 	endpoint->transports = g_slist_remove(endpoint->transports, transport);
 	media_transport_destroy(transport);
@@ -307,8 +301,7 @@ done:
 	endpoint_request_free(request);
 }
 
-static gboolean media_endpoint_async_call(DBusConnection *conn,
-					DBusMessage *msg,
+static gboolean media_endpoint_async_call(DBusMessage *msg,
 					struct media_endpoint *endpoint,
 					media_endpoint_cb_t cb,
 					void *user_data,
@@ -319,7 +312,8 @@ static gboolean media_endpoint_async_call(DBusConnection *conn,
 	request = g_new0(struct endpoint_request, 1);
 
 	/* Timeout should be less than avdtp request timeout (4 seconds) */
-	if (dbus_connection_send_with_reply(conn, msg, &request->call,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(),
+						msg, &request->call,
 						REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		g_free(request);
@@ -351,10 +345,7 @@ static gboolean select_configuration(struct media_endpoint *endpoint,
 						void *user_data,
 						GDestroyNotify destroy)
 {
-	DBusConnection *conn;
 	DBusMessage *msg;
-
-	conn = endpoint->adapter->conn;
 
 	msg = dbus_message_new_method_call(endpoint->sender, endpoint->path,
 						MEDIA_ENDPOINT_INTERFACE,
@@ -368,8 +359,7 @@ static gboolean select_configuration(struct media_endpoint *endpoint,
 					&capabilities, length,
 					DBUS_TYPE_INVALID);
 
-	return media_endpoint_async_call(conn, msg, endpoint, cb, user_data,
-								destroy);
+	return media_endpoint_async_call(msg, endpoint, cb, user_data, destroy);
 }
 
 static gint transport_device_cmp(gconstpointer data, gconstpointer user_data)
@@ -404,7 +394,6 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 					void *user_data,
 					GDestroyNotify destroy)
 {
-	DBusConnection *conn;
 	DBusMessage *msg;
 	const char *path;
 	DBusMessageIter iter;
@@ -415,9 +404,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	if (transport != NULL)
 		return FALSE;
 
-	conn = endpoint->adapter->conn;
-
-	transport = media_transport_create(conn, endpoint, device,
+	transport = media_transport_create(endpoint, device,
 						configuration, size);
 	if (transport == NULL)
 		return FALSE;
@@ -440,8 +427,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 
 	transport_get_properties(transport, &iter);
 
-	return media_endpoint_async_call(conn, msg, endpoint, cb, user_data,
-								destroy);
+	return media_endpoint_async_call(msg, endpoint, cb, user_data, destroy);
 }
 
 static void release_endpoint(struct media_endpoint *endpoint)
@@ -464,7 +450,7 @@ static void release_endpoint(struct media_endpoint *endpoint)
 		return;
 	}
 
-	g_dbus_send_message(endpoint->adapter->conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 done:
 	media_endpoint_remove(endpoint);
@@ -787,9 +773,9 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 		return NULL;
 	}
 
-	endpoint->watch = g_dbus_add_disconnect_watch(adapter->conn, sender,
-						media_endpoint_exit, endpoint,
-						NULL);
+	endpoint->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
+						sender, media_endpoint_exit,
+						endpoint, NULL);
 
 	adapter->endpoints = g_slist_append(adapter->endpoints, endpoint);
 	info("Endpoint registered: sender=%s path=%s", sender, path);
@@ -975,11 +961,12 @@ static void release_player(struct media_player *mp)
 		return;
 	}
 
-	g_dbus_send_message(mp->adapter->conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 }
 
 static void media_player_free(gpointer data)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct media_player *mp = data;
 	struct media_adapter *adapter = mp->adapter;
 
@@ -988,9 +975,9 @@ static void media_player_free(gpointer data)
 		release_player(mp);
 	}
 
-	g_dbus_remove_watch(adapter->conn, mp->watch);
-	g_dbus_remove_watch(adapter->conn, mp->property_watch);
-	g_dbus_remove_watch(adapter->conn, mp->track_watch);
+	g_dbus_remove_watch(conn, mp->watch);
+	g_dbus_remove_watch(conn, mp->property_watch);
+	g_dbus_remove_watch(conn, mp->track_watch);
 
 	if (mp->track)
 		g_hash_table_unref(mp->track);
@@ -1233,7 +1220,6 @@ static int get_setting(uint8_t attr, void *user_data)
 static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 {
 	struct media_player *mp = user_data;
-	struct media_adapter *adapter = mp->adapter;
 	const char *property, *value;
 	guint attr_uint = attr;
 	DBusMessage *msg;
@@ -1267,7 +1253,7 @@ static int set_setting(uint8_t attr, uint8_t val, void *user_data)
 	dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &value);
 	dbus_message_iter_close_container(&iter, &var);
 
-	g_dbus_send_message(adapter->conn, msg);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
 
 	return 0;
 }
@@ -1678,6 +1664,7 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 						const char *path,
 						int *err)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct media_player *mp;
 
 	mp = g_new0(struct media_player, 1);
@@ -1686,15 +1673,15 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 	mp->path = g_strdup(path);
 	mp->timer = g_timer_new();
 
-	mp->watch = g_dbus_add_disconnect_watch(adapter->conn, sender,
+	mp->watch = g_dbus_add_disconnect_watch(conn, sender,
 						media_player_exit, mp,
 						NULL);
-	mp->property_watch = g_dbus_add_signal_watch(adapter->conn, sender,
+	mp->property_watch = g_dbus_add_signal_watch(conn, sender,
 						path, MEDIA_PLAYER_INTERFACE,
 						"PropertyChanged",
 						property_changed,
 						mp, NULL);
-	mp->track_watch = g_dbus_add_signal_watch(adapter->conn, sender,
+	mp->track_watch = g_dbus_add_signal_watch(conn, sender,
 						path, MEDIA_PLAYER_INTERFACE,
 						"TrackChanged",
 						track_changed,
@@ -1846,24 +1833,22 @@ static void path_free(void *data)
 	while (adapter->players)
 		media_player_destroy(adapter->players->data);
 
-	dbus_connection_unref(adapter->conn);
-
 	adapters = g_slist_remove(adapters, adapter);
 
 	g_free(adapter->path);
 	g_free(adapter);
 }
 
-int media_register(DBusConnection *conn, const char *path, const bdaddr_t *src)
+int media_register(const char *path, const bdaddr_t *src)
 {
 	struct media_adapter *adapter;
 
 	adapter = g_new0(struct media_adapter, 1);
-	adapter->conn = dbus_connection_ref(conn);
 	bacpy(&adapter->src, src);
 	adapter->path = g_strdup(path);
 
-	if (!g_dbus_register_interface(conn, path, MEDIA_INTERFACE,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					path, MEDIA_INTERFACE,
 					media_methods, NULL, NULL,
 					adapter, path_free)) {
 		error("D-Bus failed to register %s path", path);
@@ -1884,8 +1869,8 @@ void media_unregister(const char *path)
 		struct media_adapter *adapter = l->data;
 
 		if (g_strcmp0(path, adapter->path) == 0) {
-			g_dbus_unregister_interface(adapter->conn, path,
-							MEDIA_INTERFACE);
+			g_dbus_unregister_interface(btd_get_dbus_connection(),
+						path, MEDIA_INTERFACE);
 			return;
 		}
 	}

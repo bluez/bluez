@@ -32,8 +32,7 @@ struct enabled_interfaces {
 	gboolean media_player;
 };
 
-int audio_manager_init(DBusConnection *conn, GKeyFile *config,
-							gboolean *enable_sco);
+int audio_manager_init(GKeyFile *config, gboolean *enable_sco);
 void audio_manager_exit(void);
 
 struct audio_device *manager_find_device(const char *path,
