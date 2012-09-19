@@ -388,8 +388,6 @@ static void disconnect_dbus(void)
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
 
-	manager_cleanup(conn, "/");
-
 	set_dbus_connection(NULL);
 
 	dbus_connection_unref(conn);
@@ -417,9 +415,6 @@ static int connect_dbus(void)
 		}
 		return -EALREADY;
 	}
-
-	if (!manager_init(conn, "/"))
-		return -EIO;
 
 	set_dbus_connection(conn);
 
@@ -532,6 +527,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (!manager_init(btd_get_dbus_connection(), "/")) {
+		error("Can't register manager interface");
+		exit(1);
+	}
+
 	start_sdp_server(mtu, SDP_SERVER_COMPAT);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
@@ -554,7 +554,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
-	disconnect_dbus();
+	manager_cleanup(btd_get_dbus_connection(), "/");
 
 	rfkill_exit();
 
@@ -570,6 +570,8 @@ int main(int argc, char *argv[])
 		g_key_file_free(config);
 
 	mgmt_cleanup();
+
+	disconnect_dbus();
 
 	info("Exit");
 
