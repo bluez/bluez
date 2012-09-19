@@ -39,7 +39,6 @@
 #include "../src/profile.h"
 
 #include "device.h"
-#include "hog_device.h"
 #include "server.h"
 #include "manager.h"
 
