@@ -160,7 +160,7 @@ static void linkloss_written(guint8 status, const guint8 *pdu, guint16 plen,
 
 	DBG("Link Loss Alert Level written");
 
-	emit_property_changed(btd_get_dbus_connection(), path,
+	emit_property_changed(path,
 				PROXIMITY_INTERFACE, "LinkLossAlertLevel",
 				DBUS_TYPE_STRING, &monitor->linklosslevel);
 }
@@ -289,10 +289,9 @@ static gboolean immediate_timeout(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(btd_get_dbus_connection(),
-					path, PROXIMITY_INTERFACE,
-					"ImmediateAlertLevel", DBUS_TYPE_STRING,
-					&monitor->immediatelevel);
+	emit_property_changed(path,
+				PROXIMITY_INTERFACE, "ImmediateAlertLevel",
+				DBUS_TYPE_STRING, &monitor->immediatelevel);
 
 	return FALSE;
 }
@@ -305,9 +304,8 @@ static void immediate_written(gpointer user_data)
 	g_free(monitor->fallbacklevel);
 	monitor->fallbacklevel = NULL;
 
-	emit_property_changed(btd_get_dbus_connection(),
-				path, PROXIMITY_INTERFACE,
-				"ImmediateAlertLevel",
+	emit_property_changed(path,
+				PROXIMITY_INTERFACE, "ImmediateAlertLevel",
 				DBUS_TYPE_STRING, &monitor->immediatelevel);
 
 	monitor->immediateto = g_timeout_add_seconds(IMMEDIATE_TIMEOUT,
@@ -392,10 +390,9 @@ static void attio_disconnected_cb(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(btd_get_dbus_connection(),
-					path, PROXIMITY_INTERFACE,
-					"ImmediateAlertLevel", DBUS_TYPE_STRING,
-					&monitor->immediatelevel);
+	emit_property_changed(path,
+				PROXIMITY_INTERFACE, "ImmediateAlertLevel",
+				DBUS_TYPE_STRING, &monitor->immediatelevel);
 }
 
 static gboolean level_is_valid(const char *level)

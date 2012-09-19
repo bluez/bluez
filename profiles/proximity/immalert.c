@@ -136,7 +136,7 @@ static void imm_alert_emit_alert_signal(struct connected_device *condev,
 
 	DBG("alert %s remote %s", alert_level_str, path);
 
-	emit_property_changed(btd_get_dbus_connection(), path,
+	emit_property_changed(path,
 			PROXIMITY_REPORTER_INTERFACE, "ImmediateAlertLevel",
 			DBUS_TYPE_STRING, &alert_level_str);
 }

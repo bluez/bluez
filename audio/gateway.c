@@ -129,9 +129,9 @@ static void change_state(struct audio_device *dev, gateway_state_t new_state)
 	old_state = gw->state;
 	gw->state = new_state;
 
-	emit_property_changed(dev->conn, dev->path,
-			AUDIO_GATEWAY_INTERFACE, "State",
-			DBUS_TYPE_STRING, &val);
+	emit_property_changed(dev->path,
+				AUDIO_GATEWAY_INTERFACE, "State",
+				DBUS_TYPE_STRING, &val);
 
 	for (l = gateway_callbacks; l != NULL; l = l->next) {
 		struct gateway_state_callback *cb = l->data;

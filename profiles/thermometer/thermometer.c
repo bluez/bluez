@@ -265,7 +265,7 @@ static void change_property(struct thermometer *t, const char *name,
 			return;
 
 		t->intermediate = *intermediate;
-		emit_property_changed(t->conn, device_get_path(t->dev),
+		emit_property_changed(device_get_path(t->dev),
 					THERMOMETER_INTERFACE, name,
 					DBUS_TYPE_BOOLEAN, &t->intermediate);
 	} else if (g_strcmp0(name, "Interval") == 0) {
@@ -275,7 +275,7 @@ static void change_property(struct thermometer *t, const char *name,
 
 		t->has_interval = TRUE;
 		t->interval = *interval;
-		emit_property_changed(t->conn, device_get_path(t->dev),
+		emit_property_changed(device_get_path(t->dev),
 					THERMOMETER_INTERFACE, name,
 					DBUS_TYPE_UINT16, &t->interval);
 	} else if (g_strcmp0(name, "Maximum") == 0) {
@@ -284,7 +284,7 @@ static void change_property(struct thermometer *t, const char *name,
 			return;
 
 		t->max = *max;
-		emit_property_changed(t->conn, device_get_path(t->dev),
+		emit_property_changed(device_get_path(t->dev),
 					THERMOMETER_INTERFACE, name,
 					DBUS_TYPE_UINT16, &t->max);
 	} else if (g_strcmp0(name, "Minimum") == 0) {
@@ -293,7 +293,7 @@ static void change_property(struct thermometer *t, const char *name,
 			return;
 
 		t->min = *min;
-		emit_property_changed(t->conn, device_get_path(t->dev),
+		emit_property_changed(device_get_path(t->dev),
 					THERMOMETER_INTERFACE, name,
 					DBUS_TYPE_UINT16, &t->min);
 	} else

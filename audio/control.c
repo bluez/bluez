@@ -80,7 +80,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		g_dbus_emit_signal(dev->conn, dev->path,
 					AUDIO_CONTROL_INTERFACE,
 					"Disconnected", DBUS_TYPE_INVALID);
-		emit_property_changed(dev->conn, dev->path,
+		emit_property_changed(dev->path,
 					AUDIO_CONTROL_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
 
@@ -97,9 +97,9 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		g_dbus_emit_signal(dev->conn, dev->path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
 				DBUS_TYPE_INVALID);
-		emit_property_changed(dev->conn, dev->path,
-				AUDIO_CONTROL_INTERFACE, "Connected",
-				DBUS_TYPE_BOOLEAN, &value);
+		emit_property_changed(dev->path,
+					AUDIO_CONTROL_INTERFACE, "Connected",
+					DBUS_TYPE_BOOLEAN, &value);
 		break;
 	default:
 		return;

@@ -118,8 +118,7 @@ void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-dbus_bool_t emit_property_changed(DBusConnection *conn,
-					const char *path,
+dbus_bool_t emit_property_changed(const char *path,
 					const char *interface,
 					const char *name,
 					int type, void *value)
@@ -141,7 +140,7 @@ dbus_bool_t emit_property_changed(DBusConnection *conn,
 
 	append_variant(&iter, type, value);
 
-	return g_dbus_send_message(conn, signal);
+	return g_dbus_send_message(connection, signal);
 }
 
 dbus_bool_t emit_array_property_changed(DBusConnection *conn,

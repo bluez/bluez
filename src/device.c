@@ -461,7 +461,7 @@ static DBusMessage *set_alias(DBusConnection *conn, DBusMessage *msg,
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
 
-	emit_property_changed(conn, dbus_message_get_path(msg),
+	emit_property_changed(dbus_message_get_path(msg),
 				DEVICE_INTERFACE, "Alias",
 				DBUS_TYPE_STRING, &alias);
 
@@ -490,7 +490,7 @@ static DBusMessage *set_trust(DBusConnection *conn, DBusMessage *msg,
 
 	device->trusted = value;
 
-	emit_property_changed(conn, dbus_message_get_path(msg),
+	emit_property_changed(dbus_message_get_path(msg),
 				DEVICE_INTERFACE, "Trusted",
 				DBUS_TYPE_BOOLEAN, &value);
 
@@ -548,8 +548,9 @@ int device_block(DBusConnection *conn, struct btd_device *device,
 
 	device_set_temporary(device, FALSE);
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Blocked",
-					DBUS_TYPE_BOOLEAN, &device->blocked);
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Blocked",
+				DBUS_TYPE_BOOLEAN, &device->blocked);
 
 	return 0;
 }
@@ -579,7 +580,7 @@ int device_unblock(DBusConnection *conn, struct btd_device *device,
 		error("write_blocked(): %s (%d)", strerror(-err), -err);
 
 	if (!silent) {
-		emit_property_changed(conn, device->path,
+		emit_property_changed(device->path,
 					DEVICE_INTERFACE, "Blocked",
 					DBUS_TYPE_BOOLEAN, &device->blocked);
 		device_probe_profiles(device, device->uuids);
@@ -912,7 +913,7 @@ void device_add_connection(struct btd_device *device, DBusConnection *conn)
 
 	device->connected = TRUE;
 
-	emit_property_changed(conn, device->path,
+	emit_property_changed(device->path,
 					DEVICE_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &device->connected);
 }
@@ -943,9 +944,9 @@ void device_remove_connection(struct btd_device *device, DBusConnection *conn)
 	if (device_is_paired(device) && !device_is_bonded(device))
 		device_set_paired(device, FALSE);
 
-	emit_property_changed(conn, device->path,
-					DEVICE_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &device->connected);
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &device->connected);
 }
 
 guint device_add_disconnect_watch(struct btd_device *device,
@@ -986,53 +987,49 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 
 static void device_set_vendor(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (device->vendor == value)
 		return;
 
 	device->vendor = value;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Vendor",
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Vendor",
 				DBUS_TYPE_UINT16, &value);
 }
 
 static void device_set_vendor_src(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (device->vendor_src == value)
 		return;
 
 	device->vendor_src = value;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-				"VendorSource", DBUS_TYPE_UINT16, &value);
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "VendorSource",
+				DBUS_TYPE_UINT16, &value);
 }
 
 static void device_set_product(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (device->product == value)
 		return;
 
 	device->product = value;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Product",
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Product",
 				DBUS_TYPE_UINT16, &value);
 }
 
 static void device_set_version(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (device->version == value)
 		return;
 
 	device->version = value;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Version",
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Version",
 				DBUS_TYPE_UINT16, &value);
 }
 
@@ -1104,21 +1101,19 @@ struct btd_device *device_create(DBusConnection *conn,
 
 void device_set_name(struct btd_device *device, const char *name)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
 
 	strncpy(device->name, name, MAX_NAME_LENGTH);
 
-	emit_property_changed(conn, device->path,
+	emit_property_changed(device->path,
 				DEVICE_INTERFACE, "Name",
 				DBUS_TYPE_STRING, &name);
 
 	if (device->alias != NULL)
 		return;
 
-	emit_property_changed(conn, device->path,
+	emit_property_changed(device->path,
 				DEVICE_INTERFACE, "Alias",
 				DBUS_TYPE_STRING, &name);
 }
@@ -2324,8 +2319,6 @@ static void bonding_request_free(struct bonding_req *bonding)
 
 void device_set_paired(struct btd_device *device, gboolean value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (device->paired == value)
 		return;
 
@@ -2335,7 +2328,8 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	device->paired = value;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Paired",
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Paired",
 				DBUS_TYPE_BOOLEAN, &value);
 }
 
@@ -3055,15 +3049,16 @@ void btd_device_unref(struct btd_device *device)
 
 void device_set_class(struct btd_device *device, uint32_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	const char *icon = class_to_icon(value);
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Class",
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Class",
 				DBUS_TYPE_UINT32, &value);
 
 	if (icon)
-		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-					"Icon", DBUS_TYPE_STRING, &icon);
+		emit_property_changed(device->path,
+					DEVICE_INTERFACE, "Icon",
+					DBUS_TYPE_STRING, &icon);
 }
 
 int device_get_appearance(struct btd_device *device, uint16_t *value)
@@ -3087,16 +3082,17 @@ int device_get_appearance(struct btd_device *device, uint16_t *value)
 
 void device_set_appearance(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	const char *icon = gap_appearance_to_icon(value);
 	bdaddr_t src;
 
-	emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-				"Appearance", DBUS_TYPE_UINT16, &value);
+	emit_property_changed(device->path,
+				DEVICE_INTERFACE, "Appearance",
+				DBUS_TYPE_UINT16, &value);
 
 	if (icon)
-		emit_property_changed(conn, device->path, DEVICE_INTERFACE,
-					"Icon", DBUS_TYPE_STRING, &icon);
+		emit_property_changed(device->path,
+					DEVICE_INTERFACE, "Icon",
+					DBUS_TYPE_STRING, &icon);
 
 	adapter_get_address(device_get_adapter(device), &src);
 	write_remote_appearance(&src, &device->bdaddr, device->bdaddr_type,

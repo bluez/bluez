@@ -110,7 +110,7 @@ static void source_set_state(struct audio_device *dev, source_state_t new_state)
 
 	state_str = state2str(new_state);
 	if (state_str)
-		emit_property_changed(dev->conn, dev->path,
+		emit_property_changed(dev->path,
 					AUDIO_SOURCE_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
 

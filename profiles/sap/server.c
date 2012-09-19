@@ -622,9 +622,9 @@ static void sap_set_connected(struct sap_server *server)
 {
 	gboolean connected = TRUE;
 
-	emit_property_changed(connection, server->path,
-					SAP_SERVER_INTERFACE,
-		"Connected", DBUS_TYPE_BOOLEAN, &connected);
+	emit_property_changed(server->path,
+				SAP_SERVER_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &connected);
 
 	server->conn->state = SAP_STATE_CONNECTED;
 }
@@ -1149,7 +1149,7 @@ static void sap_io_destroy(void *data)
 
 	if (conn->state != SAP_STATE_CONNECT_IN_PROGRESS &&
 			conn->state != SAP_STATE_CONNECT_MODEM_BUSY)
-		emit_property_changed(connection, server->path,
+		emit_property_changed(server->path,
 					SAP_SERVER_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &connected);
 

@@ -977,9 +977,9 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 	dev->fr = hdp_channel_ref(chan);
 
-	emit_property_changed(dev->conn, device_get_path(dev->dev),
-					HEALTH_DEVICE, "MainChannel",
-					DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
+	emit_property_changed(device_get_path(dev->dev),
+				HEALTH_DEVICE, "MainChannel",
+				DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
 
 end:
 	hdp_channel_unref(dev->ndc);
@@ -1696,9 +1696,9 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 
 	dev->fr = hdp_channel_ref(hdp_chann);
 
-	emit_property_changed(dev->conn, device_get_path(dev->dev),
-					HEALTH_DEVICE, "MainChannel",
-					DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
+	emit_property_changed(device_get_path(dev->dev),
+				HEALTH_DEVICE, "MainChannel",
+				DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
 }
 
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,

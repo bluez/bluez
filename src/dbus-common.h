@@ -29,8 +29,7 @@ void dict_append_entry(DBusMessageIter *dict,
 void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 			void *val, int n_elements);
 
-dbus_bool_t emit_property_changed(DBusConnection *conn,
-					const char *path,
+dbus_bool_t emit_property_changed(const char *path,
 					const char *interface,
 					const char *name,
 					int type, void *value);

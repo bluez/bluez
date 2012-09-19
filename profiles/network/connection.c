@@ -119,13 +119,13 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	if (connection != NULL) {
 		gboolean connected = FALSE;
 		const char *property = "";
-		emit_property_changed(connection, nc->peer->path,
+		emit_property_changed(nc->peer->path,
 					NETWORK_PEER_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &connected);
-		emit_property_changed(connection, nc->peer->path,
+		emit_property_changed(nc->peer->path,
 					NETWORK_PEER_INTERFACE, "Interface",
 					DBUS_TYPE_STRING, &property);
-		emit_property_changed(connection, nc->peer->path,
+		emit_property_changed(nc->peer->path,
 					NETWORK_PEER_INTERFACE, "UUID",
 					DBUS_TYPE_STRING, &property);
 		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
@@ -274,13 +274,13 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 			DBUS_TYPE_INVALID);
 
 	connected = TRUE;
-	emit_property_changed(connection, nc->peer->path,
+	emit_property_changed(nc->peer->path,
 				NETWORK_PEER_INTERFACE, "Connected",
 				DBUS_TYPE_BOOLEAN, &connected);
-	emit_property_changed(connection, nc->peer->path,
+	emit_property_changed(nc->peer->path,
 				NETWORK_PEER_INTERFACE, "Interface",
 				DBUS_TYPE_STRING, &pdev);
-	emit_property_changed(connection, nc->peer->path,
+	emit_property_changed(nc->peer->path,
 				NETWORK_PEER_INTERFACE, "UUID",
 				DBUS_TYPE_STRING, &uuid);
 

@@ -280,7 +280,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		g_dbus_send_message(dev->conn, reply);
 	}
 
-	emit_property_changed(dev->conn, dev->path,
+	emit_property_changed(dev->path,
 				AUDIO_INTERFACE, "State",
 				DBUS_TYPE_STRING, &state_str);
 }

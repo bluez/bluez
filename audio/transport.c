@@ -203,7 +203,7 @@ static void transport_set_state(struct media_transport *transport,
 	str = state2str(state);
 
 	if (g_strcmp0(str, state2str(old_state)) != 0)
-		emit_property_changed(transport->conn, transport->path,
+		emit_property_changed(transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "State",
 					DBUS_TYPE_STRING, &str);
 }
@@ -1168,7 +1168,7 @@ static void headset_nrec_changed(struct audio_device *dev, gboolean nrec,
 
 	DBG("");
 
-	emit_property_changed(transport->conn, transport->path,
+	emit_property_changed(transport->path,
 				MEDIA_TRANSPORT_INTERFACE, "NREC",
 				DBUS_TYPE_BOOLEAN, &nrec);
 }
@@ -1367,7 +1367,7 @@ void media_transport_update_delay(struct media_transport *transport,
 
 	a2dp->delay = delay;
 
-	emit_property_changed(transport->conn, transport->path,
+	emit_property_changed(transport->path,
 				MEDIA_TRANSPORT_INTERFACE, "Delay",
 				DBUS_TYPE_UINT16, &a2dp->delay);
 }
@@ -1388,7 +1388,7 @@ void media_transport_update_volume(struct media_transport *transport,
 
 	a2dp->volume = volume;
 
-	emit_property_changed(transport->conn, transport->path,
+	emit_property_changed(transport->path,
 				MEDIA_TRANSPORT_INTERFACE, "Volume",
 				DBUS_TYPE_UINT16, &a2dp->volume);
 }

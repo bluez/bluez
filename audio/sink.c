@@ -116,7 +116,7 @@ static void sink_set_state(struct audio_device *dev, sink_state_t new_state)
 
 	state_str = state2str(new_state);
 	if (state_str)
-		emit_property_changed(dev->conn, dev->path,
+		emit_property_changed(dev->path,
 					AUDIO_SINK_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
 
@@ -147,7 +147,7 @@ static void avdtp_state_callback(struct audio_device *dev,
 			g_dbus_emit_signal(dev->conn, dev->path,
 					AUDIO_SINK_INTERFACE, "Disconnected",
 					DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
+			emit_property_changed(dev->path,
 					AUDIO_SINK_INTERFACE, "Connected",
 					DBUS_TYPE_BOOLEAN, &value);
 		}
@@ -218,7 +218,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
 						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
+			emit_property_changed(dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Connected",
 						DBUS_TYPE_BOOLEAN, &value);
@@ -228,7 +228,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 						AUDIO_SINK_INTERFACE,
 						"Stopped",
 						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->conn, dev->path,
+			emit_property_changed(dev->path,
 						AUDIO_SINK_INTERFACE,
 						"Playing",
 						DBUS_TYPE_BOOLEAN, &value);
@@ -239,7 +239,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		value = TRUE;
 		g_dbus_emit_signal(dev->conn, dev->path, AUDIO_SINK_INTERFACE,
 					"Playing", DBUS_TYPE_INVALID);
-		emit_property_changed(dev->conn, dev->path,
+		emit_property_changed(dev->path,
 					AUDIO_SINK_INTERFACE, "Playing",
 					DBUS_TYPE_BOOLEAN, &value);
 		sink_set_state(dev, SINK_STATE_PLAYING);
