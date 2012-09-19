@@ -18,5 +18,5 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-int sap_manager_init(DBusConnection *conn);
+int sap_manager_init(void);
 void sap_manager_exit(void);

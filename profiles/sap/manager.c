@@ -32,8 +32,6 @@
 #include "manager.h"
 #include "server.h"
 
-static DBusConnection *connection = NULL;
-
 static int sap_server_probe(struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
@@ -61,16 +59,8 @@ static struct btd_profile sap_profile = {
 	.adapter_remove	= sap_server_remove,
 };
 
-int sap_manager_init(DBusConnection *conn)
+int sap_manager_init(void)
 {
-	connection = dbus_connection_ref(conn);
-
-	if (sap_server_init(connection) < 0) {
-		error("Can't init SAP server");
-		dbus_connection_unref(conn);
-		return -1;
-	}
-
 	btd_profile_register(&sap_profile);
 
 	return 0;
@@ -79,9 +69,4 @@ int sap_manager_init(DBusConnection *conn)
 void sap_manager_exit(void)
 {
 	btd_profile_unregister(&sap_profile);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
-
-	sap_server_exit();
 }

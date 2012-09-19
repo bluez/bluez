@@ -28,7 +28,9 @@
 
 #include <glib.h>
 #include <gdbus.h>
+#include <stdint.h>
 
+#include "dbus-common.h"
 #include "log.h"
 #include "sap.h"
 
@@ -42,7 +44,6 @@ enum {
 	SIM_MISSING	 = 0x03
 };
 
-static DBusConnection *connection = NULL;
 static unsigned int init_cnt = 0;
 
 static int sim_card_conn_status = SIM_DISCONNECTED;
@@ -359,18 +360,13 @@ int sap_init(void)
 	if (init_cnt++)
 		return 0;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
-	if (g_dbus_register_interface(connection, SAP_DUMMY_PATH,
+	if (g_dbus_register_interface(btd_get_dbus_connection(), SAP_DUMMY_PATH,
 				SAP_DUMMY_IFACE, dummy_methods, NULL, NULL,
 				NULL, NULL) == FALSE) {
 		error("sap-dummy interface %s init failed on path %s",
 					SAP_DUMMY_IFACE, SAP_DUMMY_PATH);
 
-		if (init_cnt--) {
-			dbus_connection_unref(connection);
-			connection = NULL;
-		}
+		init_cnt--;
 		return -1;
 	}
 
@@ -382,9 +378,6 @@ void sap_exit(void)
 	if (--init_cnt)
 		return;
 
-	g_dbus_unregister_interface(connection, SAP_DUMMY_PATH,
-							SAP_DUMMY_IFACE);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+					SAP_DUMMY_PATH, SAP_DUMMY_IFACE);
 }

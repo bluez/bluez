@@ -79,8 +79,6 @@ struct sap_server {
 	struct sap_connection *conn;
 };
 
-static DBusConnection *connection;
-
 static void start_guard_timer(struct sap_server *server, guint interval);
 static void stop_guard_timer(struct sap_server *server);
 static gboolean guard_timeout(gpointer data);
@@ -1410,8 +1408,8 @@ int sap_server_register(const char *path, bdaddr_t *src)
 	}
 	server->listen_io = io;
 
-	if (!g_dbus_register_interface(connection, server->path,
-					SAP_SERVER_INTERFACE,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					server->path, SAP_SERVER_INTERFACE,
 					server_methods, server_signals, NULL,
 					server, destroy_sap_interface)) {
 		error("D-Bus failed to register %s interface",
@@ -1434,19 +1432,8 @@ sdp_err:
 
 void sap_server_unregister(const char *path)
 {
-	g_dbus_unregister_interface(connection, path, SAP_SERVER_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						path, SAP_SERVER_INTERFACE);
 
 	sap_exit();
-}
-
-int sap_server_init(DBusConnection *conn)
-{
-	connection = dbus_connection_ref(conn);
-	return 0;
-}
-
-void sap_server_exit(void)
-{
-	dbus_connection_unref(connection);
-	connection = NULL;
 }

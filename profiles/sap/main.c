@@ -27,28 +27,14 @@
 #include "plugin.h"
 #include "manager.h"
 
-static DBusConnection *connection;
-
 static int sap_init(void)
 {
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-
-	if (!connection)
-		return -EIO;
-
-	if (sap_manager_init(connection) < 0) {
-		dbus_connection_unref(connection);
-		return -EIO;
-	}
-
-	return 0;
+	return sap_manager_init();
 }
 
 static void sap_exit(void)
 {
 	sap_manager_exit();
-
-	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(sap, VERSION,
