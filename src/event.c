@@ -56,7 +56,7 @@ static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_device **device,
 					gboolean create)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 	char peer_addr[18];
 
 	*adapter = manager_find_adapter(src);
@@ -483,7 +483,7 @@ void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	DBG("status 0x%02x", status);
 
@@ -521,7 +521,7 @@ void btd_event_device_blocked(bdaddr_t *local, bdaddr_t *peer)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
@@ -535,7 +535,7 @@ void btd_event_device_unblocked(bdaddr_t *local, bdaddr_t *peer)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
@@ -548,7 +548,7 @@ void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;

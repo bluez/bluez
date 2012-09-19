@@ -383,7 +383,7 @@ void btd_stop_exit_timer(void)
 
 static void disconnect_dbus(void)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;

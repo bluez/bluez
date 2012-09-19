@@ -175,7 +175,7 @@ void set_dbus_connection(DBusConnection *conn)
 	connection = conn;
 }
 
-DBusConnection *get_dbus_connection(void)
+DBusConnection *btd_get_dbus_connection(void)
 {
 	return connection;
 }

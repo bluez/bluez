@@ -358,7 +358,7 @@ static int dbusoob_init(void)
 {
 	DBG("Setup dbusoob plugin");
 
-	connection = get_dbus_connection();
+	connection = btd_get_dbus_connection();
 
 	oob_register_cb(read_local_data_complete);
 

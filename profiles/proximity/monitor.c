@@ -160,7 +160,7 @@ static void linkloss_written(guint8 status, const guint8 *pdu, guint16 plen,
 
 	DBG("Link Loss Alert Level written");
 
-	emit_property_changed(get_dbus_connection(), path,
+	emit_property_changed(btd_get_dbus_connection(), path,
 				PROXIMITY_INTERFACE, "LinkLossAlertLevel",
 				DBUS_TYPE_STRING, &monitor->linklosslevel);
 }
@@ -289,7 +289,8 @@ static gboolean immediate_timeout(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
+	emit_property_changed(btd_get_dbus_connection(),
+					path, PROXIMITY_INTERFACE,
 					"ImmediateAlertLevel", DBUS_TYPE_STRING,
 					&monitor->immediatelevel);
 
@@ -304,7 +305,8 @@ static void immediate_written(gpointer user_data)
 	g_free(monitor->fallbacklevel);
 	monitor->fallbacklevel = NULL;
 
-	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
+	emit_property_changed(btd_get_dbus_connection(),
+				path, PROXIMITY_INTERFACE,
 				"ImmediateAlertLevel",
 				DBUS_TYPE_STRING, &monitor->immediatelevel);
 
@@ -390,7 +392,8 @@ static void attio_disconnected_cb(gpointer user_data)
 
 	g_free(monitor->immediatelevel);
 	monitor->immediatelevel = g_strdup("none");
-	emit_property_changed(get_dbus_connection(), path, PROXIMITY_INTERFACE,
+	emit_property_changed(btd_get_dbus_connection(),
+					path, PROXIMITY_INTERFACE,
 					"ImmediateAlertLevel", DBUS_TYPE_STRING,
 					&monitor->immediatelevel);
 }
@@ -607,7 +610,7 @@ int monitor_register(struct btd_device *device,
 	monitor->signallevel = g_strdup("unknown");
 	monitor->immediatelevel = g_strdup("none");
 
-	if (g_dbus_register_interface(get_dbus_connection(), path,
+	if (g_dbus_register_interface(btd_get_dbus_connection(), path,
 				PROXIMITY_INTERFACE,
 				monitor_methods, monitor_signals,
 				NULL, monitor, monitor_destroy) == FALSE) {
@@ -663,6 +666,6 @@ void monitor_unregister(struct btd_device *device)
 {
 	const char *path = device_get_path(device);
 
-	g_dbus_unregister_interface(get_dbus_connection(), path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), path,
 							PROXIMITY_INTERFACE);
 }

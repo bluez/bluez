@@ -819,7 +819,7 @@ static void bonding_request_cancel(struct bonding_req *bonding)
 
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->bonding)
 		bonding_request_cancel(device->bonding);
@@ -986,7 +986,7 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 
 static void device_set_vendor(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->vendor == value)
 		return;
@@ -999,7 +999,7 @@ static void device_set_vendor(struct btd_device *device, uint16_t value)
 
 static void device_set_vendor_src(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->vendor_src == value)
 		return;
@@ -1012,7 +1012,7 @@ static void device_set_vendor_src(struct btd_device *device, uint16_t value)
 
 static void device_set_product(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->product == value)
 		return;
@@ -1025,7 +1025,7 @@ static void device_set_product(struct btd_device *device, uint16_t value)
 
 static void device_set_version(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->version == value)
 		return;
@@ -1104,7 +1104,7 @@ struct btd_device *device_create(DBusConnection *conn,
 
 void device_set_name(struct btd_device *device, const char *name)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
@@ -1152,7 +1152,7 @@ static void device_remove_stored(struct btd_device *device)
 {
 	bdaddr_t src, dst;
 	uint8_t dst_type;
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	adapter_get_address(device->adapter, &src);
 	device_get_address(device, &dst, &dst_type);
@@ -1380,7 +1380,7 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 static void uuids_changed(struct btd_device *device)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 	char **uuids;
 	GSList *l;
 	int i;
@@ -2059,7 +2059,7 @@ int device_browse_primary(struct btd_device *device, DBusConnection *conn,
 
 done:
 	if (conn == NULL)
-		conn = get_dbus_connection();
+		conn = btd_get_dbus_connection();
 
 	req->conn = dbus_connection_ref(conn);
 
@@ -2111,7 +2111,7 @@ int device_browse_sdp(struct btd_device *device, DBusConnection *conn,
 	}
 
 	if (conn == NULL)
-		conn = get_dbus_connection();
+		conn = btd_get_dbus_connection();
 
 	req->conn = dbus_connection_ref(conn);
 	device->browse = req;
@@ -2324,7 +2324,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 
 void device_set_paired(struct btd_device *device, gboolean value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (device->paired == value)
 		return;
@@ -3036,7 +3036,7 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 
 void btd_device_unref(struct btd_device *device)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 	gchar *path;
 
 	device->ref--;
@@ -3055,7 +3055,7 @@ void btd_device_unref(struct btd_device *device)
 
 void device_set_class(struct btd_device *device, uint32_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 	const char *icon = class_to_icon(value);
 
 	emit_property_changed(conn, device->path, DEVICE_INTERFACE, "Class",
@@ -3087,7 +3087,7 @@ int device_get_appearance(struct btd_device *device, uint16_t *value)
 
 void device_set_appearance(struct btd_device *device, uint16_t value)
 {
-	DBusConnection *conn = get_dbus_connection();
+	DBusConnection *conn = btd_get_dbus_connection();
 	const char *icon = gap_appearance_to_icon(value);
 	bdaddr_t src;
 

@@ -199,7 +199,7 @@ static void unregister_reporter_device(gpointer data, gpointer user_data)
 
 	DBG("unregister on device %s", path);
 
-	g_dbus_unregister_interface(get_dbus_connection(), path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(), path,
 					PROXIMITY_REPORTER_INTERFACE);
 
 	radapter->devices = g_slist_remove(radapter->devices, device);
@@ -213,7 +213,7 @@ static void register_reporter_device(struct btd_device *device,
 
 	DBG("register on device %s", path);
 
-	g_dbus_register_interface(get_dbus_connection(), path,
+	g_dbus_register_interface(btd_get_dbus_connection(), path,
 					PROXIMITY_REPORTER_INTERFACE,
 					reporter_methods, reporter_signals,
 					NULL, device, NULL);
