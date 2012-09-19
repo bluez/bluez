@@ -82,7 +82,6 @@ struct network_server {
 	guint		watch_id;	/* Client service watch */
 };
 
-static DBusConnection *connection = NULL;
 static GSList *adapters = NULL;
 static gboolean security = TRUE;
 
@@ -553,18 +552,15 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-int server_init(DBusConnection *conn, gboolean secure)
+int server_init(gboolean secure)
 {
 	security = secure;
-	connection = dbus_connection_ref(conn);
 
 	return 0;
 }
 
 void server_exit(void)
 {
-	dbus_connection_unref(connection);
-	connection = NULL;
 }
 
 static uint32_t register_server_record(struct network_server *ns)
@@ -798,7 +794,8 @@ int server_register(struct btd_adapter *adapter)
 
 	path = adapter_get_path(adapter);
 
-	if (!g_dbus_register_interface(connection, path, ns->iface,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					path, ns->iface,
 					server_methods, NULL, NULL,
 					ns, path_unregister)) {
 		error("D-Bus failed to register %s interface",
@@ -832,8 +829,8 @@ int server_unregister(struct btd_adapter *adapter)
 	if (!ns)
 		return -EINVAL;
 
-	g_dbus_unregister_interface(connection, adapter_get_path(adapter),
-					ns->iface);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+					adapter_get_path(adapter), ns->iface);
 
 	return 0;
 }

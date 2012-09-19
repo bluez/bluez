@@ -84,7 +84,6 @@ struct __service_16 {
 	uint16_t src;
 } __attribute__ ((packed));
 
-static DBusConnection *connection = NULL;
 static GSList *peers = NULL;
 
 static struct network_peer *find_peer(GSList *list, const char *path)
@@ -115,25 +114,23 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct network_conn *nc = data;
+	gboolean connected = FALSE;
+	const char *property = "";
 
-	if (connection != NULL) {
-		gboolean connected = FALSE;
-		const char *property = "";
-		emit_property_changed(nc->peer->path,
-					NETWORK_PEER_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &connected);
-		emit_property_changed(nc->peer->path,
-					NETWORK_PEER_INTERFACE, "Interface",
-					DBUS_TYPE_STRING, &property);
-		emit_property_changed(nc->peer->path,
-					NETWORK_PEER_INTERFACE, "UUID",
-					DBUS_TYPE_STRING, &property);
-		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
-		nc->dc_id = 0;
-		if (nc->watch) {
-			g_dbus_remove_watch(connection, nc->watch);
-			nc->watch = 0;
-		}
+	emit_property_changed(nc->peer->path,
+				NETWORK_PEER_INTERFACE, "Connected",
+				DBUS_TYPE_BOOLEAN, &connected);
+	emit_property_changed(nc->peer->path,
+				NETWORK_PEER_INTERFACE, "Interface",
+				DBUS_TYPE_STRING, &property);
+	emit_property_changed(nc->peer->path,
+				NETWORK_PEER_INTERFACE, "UUID",
+				DBUS_TYPE_STRING, &property);
+	device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
+	nc->dc_id = 0;
+	if (nc->watch) {
+		g_dbus_remove_watch(btd_get_dbus_connection(), nc->watch);
+		nc->watch = 0;
 	}
 
 	info("%s disconnected", nc->dev);
@@ -148,6 +145,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 static void cancel_connection(struct network_conn *nc, const char *err_msg)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *reply;
 
 	if (nc->timeout_source > 0) {
@@ -156,13 +154,13 @@ static void cancel_connection(struct network_conn *nc, const char *err_msg)
 	}
 
 	if (nc->watch) {
-		g_dbus_remove_watch(connection, nc->watch);
+		g_dbus_remove_watch(conn, nc->watch);
 		nc->watch = 0;
 	}
 
 	if (nc->msg && err_msg) {
 		reply = btd_error_failed(nc->msg, err_msg);
-		g_dbus_send_message(connection, reply);
+		g_dbus_send_message(conn, reply);
 	}
 
 	g_io_channel_shutdown(nc->io, TRUE, NULL);
@@ -269,7 +267,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	pdev = nc->dev;
 	uuid = bnep_uuid(nc->id);
 
-	g_dbus_send_reply(connection, nc->msg,
+	g_dbus_send_reply(btd_get_dbus_connection(), nc->msg,
 			DBUS_TYPE_STRING, &pdev,
 			DBUS_TYPE_INVALID);
 
@@ -450,7 +448,7 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 	if (!g_str_equal(owner, caller))
 		return btd_error_not_authorized(msg);
 
-	connection_destroy(conn, nc);
+	connection_destroy(NULL, nc);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -530,7 +528,7 @@ static void connection_free(void *data)
 	if (nc->dc_id)
 		device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 
-	connection_destroy(connection, nc);
+	connection_destroy(NULL, nc);
 
 	g_free(nc);
 	nc = NULL;
@@ -585,7 +583,8 @@ void connection_unregister(const char *path)
 	g_slist_free_full(peer->connections, connection_free);
 	peer->connections = NULL;
 
-	g_dbus_unregister_interface(connection, path, NETWORK_PEER_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						path, NETWORK_PEER_INTERFACE);
 }
 
 static struct network_peer *create_peer(struct btd_device *device,
@@ -600,7 +599,7 @@ static struct network_peer *create_peer(struct btd_device *device,
 	bacpy(&peer->src, src);
 	bacpy(&peer->dst, dst);
 
-	if (g_dbus_register_interface(connection, path,
+	if (g_dbus_register_interface(btd_get_dbus_connection(), path,
 					NETWORK_PEER_INTERFACE,
 					connection_methods,
 					connection_signals, NULL,
@@ -648,17 +647,4 @@ int connection_register(struct btd_device *device, const char *path,
 	peer->connections = g_slist_append(peer->connections, nc);
 
 	return 0;
-}
-
-int connection_init(DBusConnection *conn)
-{
-	connection = dbus_connection_ref(conn);
-
-	return 0;
-}
-
-void connection_exit(void)
-{
-	dbus_connection_unref(connection);
-	connection = NULL;
 }

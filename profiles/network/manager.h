@@ -21,5 +21,5 @@
  *
  */
 
-int network_manager_init(DBusConnection *conn);
+int network_manager_init(void);
 void network_manager_exit(void);

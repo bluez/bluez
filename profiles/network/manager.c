@@ -45,8 +45,6 @@
 #include "connection.h"
 #include "server.h"
 
-static DBusConnection *connection = NULL;
-
 static gboolean conf_security = TRUE;
 
 static void read_config(const char *file)
@@ -133,7 +131,7 @@ static struct btd_profile network_profile = {
 	.adapter_remove	= network_server_remove,
 };
 
-int network_manager_init(DBusConnection *conn)
+int network_manager_init(void)
 {
 	read_config(CONFIGDIR "/network.conf");
 
@@ -149,15 +147,10 @@ int network_manager_init(DBusConnection *conn)
 	 * field that defines which service the source is connecting to.
 	 */
 
-	if (server_init(conn, conf_security) < 0)
+	if (server_init(conf_security) < 0)
 		return -1;
 
 	btd_profile_register(&network_profile);
-
-	if (connection_init(conn) < 0)
-		return -1;
-
-	connection = dbus_connection_ref(conn);
 
 	return 0;
 }
@@ -166,12 +159,7 @@ void network_manager_exit(void)
 {
 	server_exit();
 
-	connection_exit();
-
 	btd_profile_unregister(&network_profile);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 
 	bnep_cleanup();
 }
