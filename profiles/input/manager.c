@@ -45,7 +45,6 @@
 
 static int idle_timeout = 0;
 
-static DBusConnection *connection = NULL;
 static GSList *adapters = NULL;
 
 static void input_remove(struct btd_device *device, const char *uuid)
@@ -67,7 +66,7 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 	if (!rec)
 		return -1;
 
-	return input_device_register(connection, device, path, HID_UUID, rec,
+	return input_device_register(device, path, HID_UUID, rec,
 							idle_timeout * 60);
 }
 
@@ -115,7 +114,7 @@ static struct btd_profile input_profile = {
 	.adapter_remove = hid_server_remove,
 };
 
-int input_manager_init(DBusConnection *conn, GKeyFile *config)
+int input_manager_init(GKeyFile *config)
 {
 	GError *err = NULL;
 
@@ -128,8 +127,6 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 		}
 	}
 
-	connection = dbus_connection_ref(conn);
-
 	btd_profile_register(&input_profile);
 
 	return 0;
@@ -138,7 +135,4 @@ int input_manager_init(DBusConnection *conn, GKeyFile *config)
 void input_manager_exit(void)
 {
 	btd_profile_unregister(&input_profile);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }

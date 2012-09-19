@@ -53,22 +53,14 @@ static GKeyFile *load_config_file(const char *file)
 	return keyfile;
 }
 
-static DBusConnection *connection;
-
 static int input_init(void)
 {
 	GKeyFile *config;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
-
 	config = load_config_file(CONFIGDIR "/input.conf");
 
-	if (input_manager_init(connection, config) < 0) {
-		dbus_connection_unref(connection);
+	if (input_manager_init(config) < 0)
 		return -EIO;
-	}
 
 	if (config)
 		g_key_file_free(config);
@@ -79,8 +71,6 @@ static int input_init(void)
 static void input_exit(void)
 {
 	input_manager_exit();
-
-	dbus_connection_unref(connection);
 }
 
 BLUETOOTH_PLUGIN_DEFINE(input, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,

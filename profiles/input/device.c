@@ -103,7 +103,6 @@ static void input_device_free(struct input_device *idev)
 	if (idev->dc_id)
 		device_remove_disconnect_watch(idev->device, idev->dc_id);
 
-	dbus_connection_unref(idev->conn);
 	btd_device_unref(idev->device);
 	g_free(idev->name);
 	g_free(idev->path);
@@ -506,6 +505,7 @@ static int input_device_connected(struct input_device *idev)
 static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 							gpointer user_data)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	struct input_device *idev = user_data;
 	DBusMessage *reply;
 	int err;
@@ -523,7 +523,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	}
 
 	/* Replying to the requestor */
-	g_dbus_send_reply(idev->conn, idev->pending_connect, DBUS_TYPE_INVALID);
+	g_dbus_send_reply(conn, idev->pending_connect, DBUS_TYPE_INVALID);
 
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
@@ -537,7 +537,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 failed:
 	error("%s", err_msg);
 	reply = btd_error_failed(idev->pending_connect, err_msg);
-	g_dbus_send_message(idev->conn, reply);
+	g_dbus_send_message(conn, reply);
 
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
@@ -599,7 +599,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 failed:
 	g_io_channel_unref(idev->ctrl_io);
 	idev->ctrl_io = NULL;
-	g_dbus_send_message(idev->conn, reply);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
 	dbus_message_unref(idev->pending_connect);
 	idev->pending_connect = NULL;
 }
@@ -716,9 +716,9 @@ static const GDBusSignalTable device_signals[] = {
 	{ }
 };
 
-static struct input_device *input_device_new(DBusConnection *conn,
-				struct btd_device *device, const char *path,
-				const uint32_t handle, gboolean disable_sdp)
+static struct input_device *input_device_new(struct btd_device *device,
+				const char *path, const uint32_t handle,
+				gboolean disable_sdp)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
@@ -730,7 +730,6 @@ static struct input_device *input_device_new(DBusConnection *conn,
 	device_get_address(device, &idev->dst, &dst_type);
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
-	idev->conn = dbus_connection_ref(conn);
 	idev->handle = handle;
 	idev->disable_sdp = disable_sdp;
 
@@ -740,7 +739,8 @@ static struct input_device *input_device_new(DBusConnection *conn,
 	if (read_device_name(src_addr, dst_addr, dst_type, name) == 0)
 		idev->name = g_strdup(name);
 
-	if (g_dbus_register_interface(conn, idev->path, INPUT_DEVICE_INTERFACE,
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
+					idev->path, INPUT_DEVICE_INTERFACE,
 					device_methods, device_signals, NULL,
 					idev, device_unregister) == FALSE) {
 		error("Failed to register interface %s on path %s",
@@ -764,7 +764,7 @@ static gboolean is_device_sdp_disable(const sdp_record_t *rec)
 	return data && data->val.uint8;
 }
 
-int input_device_register(DBusConnection *conn, struct btd_device *device,
+int input_device_register(struct btd_device *device,
 					const char *path, const char *uuid,
 					const sdp_record_t *rec, int timeout)
 {
@@ -774,7 +774,7 @@ int input_device_register(DBusConnection *conn, struct btd_device *device,
 	if (idev)
 		return -EEXIST;
 
-	idev = input_device_new(conn, device, path, rec->handle,
+	idev = input_device_new(device, path, rec->handle,
 			is_device_sdp_disable(rec));
 	if (!idev)
 		return -EINVAL;
@@ -815,7 +815,8 @@ int input_device_unregister(const char *path, const char *uuid)
 		return -EBUSY;
 	}
 
-	g_dbus_unregister_interface(idev->conn, path, INPUT_DEVICE_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						path, INPUT_DEVICE_INTERFACE);
 
 	return 0;
 }

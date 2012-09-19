@@ -21,5 +21,5 @@
  *
  */
 
-int input_manager_init(DBusConnection *conn, GKeyFile *config);
+int input_manager_init(GKeyFile *config);
 void input_manager_exit(void);
