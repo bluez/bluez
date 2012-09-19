@@ -42,6 +42,7 @@
 
 #include "log.h"
 
+#include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 #include "agent.h"
@@ -79,8 +80,6 @@ struct agent_request {
 	GDestroyNotify destroy;
 };
 
-static DBusConnection *connection = NULL;
-
 static void agent_release(struct agent *agent)
 {
 	DBusMessage *message;
@@ -97,7 +96,7 @@ static void agent_release(struct agent *agent)
 		return;
 	}
 
-	g_dbus_send_message(connection, message);
+	g_dbus_send_message(btd_get_dbus_connection(), message);
 }
 
 static int send_cancel_request(struct agent_request *req)
@@ -114,7 +113,7 @@ static int send_cancel_request(struct agent_request *req)
 		return -ENOMEM;
 	}
 
-	g_dbus_send_message(connection, message);
+	g_dbus_send_message(btd_get_dbus_connection(), message);
 
 	return 0;
 }
@@ -180,7 +179,8 @@ void agent_free(struct agent *agent)
 	}
 
 	if (!agent->exited) {
-		g_dbus_remove_watch(connection, agent->listener_id);
+		g_dbus_remove_watch(btd_get_dbus_connection(),
+							agent->listener_id);
 		agent_release(agent);
 	}
 
@@ -205,9 +205,9 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 	agent->remove_cb = cb;
 	agent->remove_cb_data = remove_cb_data;
 
-	agent->listener_id = g_dbus_add_disconnect_watch(connection, name,
-							agent_exited, agent,
-							NULL);
+	agent->listener_id =
+		g_dbus_add_disconnect_watch(btd_get_dbus_connection(), name,
+						agent_exited, agent, NULL);
 
 	return agent;
 }
@@ -311,8 +311,9 @@ static int agent_call_authorize(struct agent_request *req,
 				DBUS_TYPE_STRING, &uuid,
 				DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
-					&req->call, REQUEST_TIMEOUT) == FALSE) {
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(),
+						req->msg, &req->call,
+						REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
 	}
@@ -427,7 +428,7 @@ static int pincode_request_new(struct agent_request *req, const char *device_pat
 	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &device_path,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
 					&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
@@ -480,7 +481,7 @@ static int confirm_mode_change_request_new(struct agent_request *req,
 				DBUS_TYPE_STRING, &mode,
 				DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
 					&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
@@ -576,7 +577,7 @@ static int passkey_request_new(struct agent_request *req,
 	dbus_message_append_args(req->msg, DBUS_TYPE_OBJECT_PATH, &device_path,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
 					&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
@@ -634,7 +635,7 @@ static int confirmation_request_new(struct agent_request *req,
 				DBUS_TYPE_UINT32, &passkey,
 				DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
 				&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
@@ -694,7 +695,7 @@ int agent_display_passkey(struct agent *agent, struct btd_device *device,
 				DBUS_TYPE_UINT16, &entered,
 				DBUS_TYPE_INVALID);
 
-	if (!g_dbus_send_message(connection, message)) {
+	if (!g_dbus_send_message(btd_get_dbus_connection(), message)) {
 		error("D-Bus send failed");
 		return -1;
 	}
@@ -768,7 +769,7 @@ static int display_pincode_request_new(struct agent_request *req,
 					DBUS_TYPE_STRING, &pincode,
 					DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(connection, req->msg,
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
 				&req->call, REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
 		return -EIO;
@@ -832,15 +833,4 @@ gboolean agent_is_busy(struct agent *agent, void *user_data)
 		return FALSE;
 
 	return TRUE;
-}
-
-void agent_exit(void)
-{
-	dbus_connection_unref(connection);
-	connection = NULL;
-}
-
-void agent_init(void)
-{
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 }

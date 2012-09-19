@@ -513,8 +513,6 @@ int main(int argc, char *argv[])
 
 	parse_config(config);
 
-	agent_init();
-
 	if (option_udev == FALSE) {
 		if (connect_dbus() < 0) {
 			error("Unable to get on D-Bus");
@@ -561,8 +559,6 @@ int main(int argc, char *argv[])
 	plugin_cleanup();
 
 	stop_sdp_server();
-
-	agent_exit();
 
 	g_main_loop_unref(event_loop);
 
