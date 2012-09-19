@@ -1329,7 +1329,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 
 	ba2str(dst, addr);
 
-	device = adapter_get_device(connection, adapter, addr);
+	device = adapter_get_device(adapter, addr);
 	if (!device) {
 		error("Unable to get btd_device object for %s", addr);
 		return NULL;

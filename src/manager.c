@@ -352,7 +352,7 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 		return NULL;
 	}
 
-	adapter = adapter_create(btd_get_dbus_connection(), id);
+	adapter = adapter_create(id);
 	if (!adapter)
 		return NULL;
 

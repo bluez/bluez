@@ -56,7 +56,6 @@ static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 					struct btd_device **device,
 					gboolean create)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	char peer_addr[18];
 
 	*adapter = manager_find_adapter(src);
@@ -68,7 +67,7 @@ static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
 	ba2str(dst, peer_addr);
 
 	if (create)
-		*device = adapter_get_device(conn, *adapter, peer_addr);
+		*device = adapter_get_device(*adapter, peer_addr);
 	else
 		*device = adapter_find_device(*adapter, peer_addr);
 
@@ -483,7 +482,6 @@ void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	DBusConnection *conn = btd_get_dbus_connection();
 
 	DBG("status 0x%02x", status);
 
@@ -497,7 +495,7 @@ void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 		device_cancel_bonding(device, status);
 
 	if (device_is_temporary(device))
-		adapter_remove_device(conn, adapter, device, TRUE);
+		adapter_remove_device(adapter, device, TRUE);
 }
 
 void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
@@ -544,7 +542,6 @@ void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	DBusConnection *conn = btd_get_dbus_connection();
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
@@ -554,7 +551,7 @@ void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
 	if (device_is_connected(device))
 		device_request_disconnect(device, NULL);
 	else
-		adapter_remove_device(conn, adapter, device, TRUE);
+		adapter_remove_device(adapter, device, TRUE);
 }
 
 /* Section reserved to device HCI callbacks */

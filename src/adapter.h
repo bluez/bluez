@@ -87,16 +87,16 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 void btd_adapter_get_class(struct btd_adapter *adapter, uint8_t *major,
 							uint8_t *minor);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
-struct btd_device *adapter_get_device(DBusConnection *conn,
-				struct btd_adapter *adapter, const char *address);
+struct btd_device *adapter_get_device(struct btd_adapter *adapter,
+							const char *address);
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
-void adapter_remove_device(DBusConnection *conn, struct btd_adapter *adapter,
+void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *device,
 						gboolean remove_storage);
 
-struct btd_adapter *adapter_create(DBusConnection *conn, int id);
+struct btd_adapter *adapter_create(int id);
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up);
 void adapter_remove(struct btd_adapter *adapter);
 void adapter_set_allow_name_changes(struct btd_adapter *adapter,
