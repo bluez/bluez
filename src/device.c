@@ -2929,9 +2929,7 @@ void device_register_services(struct btd_device *device,
 						GSList *prim_list, int psm)
 {
 	device->primaries = g_slist_concat(device->primaries, prim_list);
-	device->services = attrib_client_register(btd_get_dbus_connection(),
-							device, psm, NULL,
-							prim_list);
+	device->services = attrib_client_register(device, psm, NULL, prim_list);
 }
 
 GSList *btd_device_get_primaries(struct btd_device *device)
