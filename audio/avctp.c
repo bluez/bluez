@@ -803,7 +803,7 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 	io = bt_io_listen(NULL, avctp_confirm_cb, NULL,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
-				BT_IO_OPT_PSM, AVCTP_PSM,
+				BT_IO_OPT_PSM, AVCTP_CONTROL_PSM,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, master,
 				BT_IO_OPT_INVALID);
@@ -1091,7 +1091,7 @@ struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
 	io = bt_io_connect(avctp_connect_cb, session, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
 				BT_IO_OPT_DEST_BDADDR, &session->dst,
-				BT_IO_OPT_PSM, AVCTP_PSM,
+				BT_IO_OPT_PSM, AVCTP_CONTROL_PSM,
 				BT_IO_OPT_INVALID);
 	if (err) {
 		avctp_set_state(session, AVCTP_STATE_DISCONNECTED);

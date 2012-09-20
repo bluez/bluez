@@ -106,6 +106,7 @@
 #define AVRCP_FEATURE_CATEGORY_3	0x0004
 #define AVRCP_FEATURE_CATEGORY_4	0x0008
 #define AVRCP_FEATURE_PLAYER_SETTINGS	0x0010
+#define AVRCP_FEATURE_BROWSING			0x0040
 
 #define AVRCP_BATTERY_STATUS_NORMAL		0
 #define AVRCP_BATTERY_STATUS_WARNING		1
@@ -191,7 +192,7 @@ static sdp_record_t *avrcp_ct_record(void)
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM;
+	uint16_t lp = AVCTP_CONTROL_PSM;
 	uint16_t avrcp_ver = 0x0100, avctp_ver = 0x0103;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 						AVRCP_FEATURE_CATEGORY_2 |
@@ -253,18 +254,21 @@ static sdp_record_t *avrcp_ct_record(void)
 
 static sdp_record_t *avrcp_tg_record(void)
 {
-	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
+	sdp_list_t *svclass_id, *pfseq, *apseq, *root, *apseq_browsing;
 	uuid_t root_uuid, l2cap, avctp, avrtg;
 	sdp_profile_desc_t profile[1];
 	sdp_list_t *aproto, *proto[2];
 	sdp_record_t *record;
-	sdp_data_t *psm, *version, *features;
-	uint16_t lp = AVCTP_PSM;
+	sdp_data_t *psm, *version, *features, *psm_browsing;
+	sdp_list_t *aproto_browsing, *proto_browsing[2] = {0};
+	uint16_t lp = AVCTP_CONTROL_PSM;
+	uint16_t lp_browsing = AVCTP_BROWSING_PSM;
 	uint16_t avrcp_ver = 0x0104, avctp_ver = 0x0103;
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 					AVRCP_FEATURE_CATEGORY_2 |
 					AVRCP_FEATURE_CATEGORY_3 |
 					AVRCP_FEATURE_CATEGORY_4 |
+					AVRCP_FEATURE_BROWSING |
 					AVRCP_FEATURE_PLAYER_SETTINGS );
 
 	record = sdp_record_alloc();
@@ -295,6 +299,17 @@ static sdp_record_t *avrcp_tg_record(void)
 
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(record, aproto);
+	proto_browsing[0] = sdp_list_append(0, &l2cap);
+	psm_browsing = sdp_data_alloc(SDP_UINT16, &lp_browsing);
+	proto_browsing[0] = sdp_list_append(proto_browsing[0], psm_browsing);
+	apseq_browsing = sdp_list_append(0, proto_browsing[0]);
+
+	proto_browsing[1] = sdp_list_append(0, &avctp);
+	proto_browsing[1] = sdp_list_append(proto_browsing[1], version);
+	apseq_browsing = sdp_list_append(apseq_browsing, proto_browsing[1]);
+
+	aproto_browsing = sdp_list_append(0, apseq_browsing);
+	sdp_set_add_access_protos(record, aproto_browsing);
 
 	/* Bluetooth Profile Descriptor List */
 	sdp_uuid16_create(&profile[0].uuid, AV_REMOTE_PROFILE_ID);
@@ -306,6 +321,12 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
 	sdp_set_info_attr(record, "AVRCP TG", 0, 0);
+
+	free(psm_browsing);
+	sdp_list_free(proto_browsing[0], 0);
+	sdp_list_free(proto_browsing[1], 0);
+	sdp_list_free(apseq_browsing, 0);
+	sdp_list_free(aproto_browsing, 0);
 
 	free(psm);
 	free(version);
