@@ -158,6 +158,12 @@ struct avctp_pdu_handler {
 	unsigned int id;
 };
 
+struct avctp_browsing_pdu_handler {
+	avctp_browsing_pdu_cb cb;
+	void *user_data;
+	unsigned int id;
+};
+
 static struct {
 	const char *name;
 	uint8_t avc;
@@ -177,6 +183,7 @@ static GSList *callbacks = NULL;
 static GSList *servers = NULL;
 static GSList *control_handlers = NULL;
 static uint8_t id = 0;
+static struct avctp_browsing_pdu_handler *browsing_handler = NULL;
 
 static void auth_cb(DBusError *derr, void *user_data);
 
@@ -1203,6 +1210,19 @@ unsigned int avctp_register_pdu_handler(uint8_t opcode, avctp_control_pdu_cb cb,
 	return handler->id;
 }
 
+unsigned int avctp_register_browsing_pdu_handler(avctp_browsing_pdu_cb cb,
+					void *user_data)
+{
+	unsigned int id = 0;
+
+	browsing_handler = g_new(struct avctp_browsing_pdu_handler, 1);
+	browsing_handler->cb = cb;
+	browsing_handler->user_data = user_data;
+	browsing_handler->id = ++id;
+
+	return browsing_handler->id;
+}
+
 gboolean avctp_unregister_pdu_handler(unsigned int id)
 {
 	GSList *l;
@@ -1219,6 +1239,16 @@ gboolean avctp_unregister_pdu_handler(unsigned int id)
 	}
 
 	return FALSE;
+}
+
+gboolean avctp_unregister_browsing_pdu_handler(unsigned int id)
+{
+	if (browsing_handler->id != id)
+		return FALSE;
+
+	g_free(browsing_handler);
+	browsing_handler = NULL;
+	return TRUE;
 }
 
 struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
