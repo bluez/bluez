@@ -449,18 +449,14 @@ static guint suspend_a2dp(struct media_transport *transport,
 	struct media_endpoint *endpoint = transport->endpoint;
 	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
 
-	if (!owner) {
-		a2dp_sep_unlock(sep, a2dp->session);
+	if (owner != NULL)
+		return a2dp_suspend(a2dp->session, sep, a2dp_suspend_complete,
+									owner);
 
-		if (a2dp_sep_is_playing(sep))
-			transport_set_state(transport, TRANSPORT_STATE_PENDING);
-		else
-			transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	transport_set_state(transport, TRANSPORT_STATE_IDLE);
+	a2dp_sep_unlock(sep, a2dp->session);
 
-		return 0;
-	}
-
-	return a2dp_suspend(a2dp->session, sep, a2dp_suspend_complete, owner);
+	return 0;
 }
 
 static void cancel_a2dp(struct media_transport *transport, guint id)
