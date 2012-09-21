@@ -536,17 +536,16 @@ static void auth_cb(DBusError *derr, void *user_data)
 		error("Access denied: %s", derr->message);
 
 		reply = btd_error_not_authorized(auth->msg);
-		dbus_message_unref(auth->msg);
 		g_dbus_send_message(conn, reply);
 		goto done;
 	}
 
-	g_dbus_send_reply(conn, auth->msg,
-			DBUS_TYPE_INVALID);
+	g_dbus_send_reply(conn, auth->msg, DBUS_TYPE_INVALID);
 
 done:
 	serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
 									auth);
+	dbus_message_unref(auth->msg);
 	g_free(auth);
 
 	auth = next_pending(serv_adapter);
