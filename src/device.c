@@ -933,6 +933,7 @@ void device_remove_connection(struct btd_device *device)
 		g_dbus_send_reply(btd_get_dbus_connection(),
 							msg, DBUS_TYPE_INVALID);
 		device->disconnects = g_slist_remove(device->disconnects, msg);
+		dbus_message_unref(msg);
 	}
 
 	if (device_is_paired(device) && !device_is_bonded(device))
