@@ -460,9 +460,9 @@ static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct avctp *session = data;
-	uint8_t buf[1024];
+	uint8_t buf[1024], *operands;
 	struct avctp_header *avctp;
-	int sock, ret;
+	int sock, ret, packet_size, operand_count;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
 		goto failed;
@@ -474,14 +474,35 @@ static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
 		goto failed;
 
 	avctp = (struct avctp_header *) buf;
+	DBG("AVCTP transaction %u, packet type %u, C/R %u, IPID %u, "
+				"PID 0x%04X",
+				avctp->transaction, avctp->packet_type,
+				avctp->cr, avctp->ipid, ntohs(avctp->pid));
 
 	if (avctp->packet_type != AVCTP_PACKET_SINGLE)
 		goto failed;
 
+	operands = buf + AVCTP_HEADER_LENGTH;
+	ret -= AVCTP_HEADER_LENGTH;
+	operand_count = ret;
+
+	packet_size = AVCTP_HEADER_LENGTH;
+	avctp->cr = AVCTP_RESPONSE;
+
+	packet_size += browsing_handler->cb(session, avctp->transaction,
+						operands, operand_count,
+						browsing_handler->user_data);
+
+	if (packet_size != 0) {
+		ret = write(sock, buf, packet_size);
+		if (ret != packet_size)
+			goto failed;
+	}
+
 	return TRUE;
 
 failed:
-	DBG("Browsing: disconnected");
+	DBG("AVCTP Browsing: disconnected");
 	return FALSE;
 }
 
@@ -695,11 +716,12 @@ static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
 		return;
 	}
 
+	DBG("AVCTP Browsing: connected to %s", address);
+
 	if (!session->browsing_io)
 		session->browsing_io = g_io_channel_ref(chan);
 
 	session->browsing_mtu = imtu;
-
 	session->browsing_io_id = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_browsing_cb, session); }
@@ -737,7 +759,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	avctp_set_state(session, AVCTP_STATE_CONNECTED);
 	session->control_mtu = imtu;
-	 session->control_io_id = g_io_add_watch(chan,
+	session->control_io_id = g_io_add_watch(chan,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_cb, session);
 }
@@ -849,8 +871,14 @@ static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
 {
 	GError *err = NULL;
 
-	if (!session->control_io || session->browsing_io) {
+	if (session->control_io == NULL || session->browsing_io) {
 		error("Browsing: Refusing unexpected connect");
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
+
+	if (browsing_handler == NULL) {
+		error("Browsing: Handler not registered");
 		g_io_channel_shutdown(chan, TRUE, NULL);
 		return;
 	}

@@ -94,6 +94,7 @@
 #define AVRCP_REQUEST_CONTINUING	0x40
 #define AVRCP_ABORT_CONTINUING		0x41
 #define AVRCP_SET_ABSOLUTE_VOLUME	0x50
+#define AVRCP_GENERAL_REJECT		0xA0
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
 #define CAP_COMPANY_ID		0x02
@@ -145,6 +146,13 @@ struct avrcp_header {
 #define AVRCP_MTU	(AVC_MTU - AVC_HEADER_LENGTH)
 #define AVRCP_PDU_MTU	(AVRCP_MTU - AVRCP_HEADER_LENGTH)
 
+struct avrcp_browsing_header {
+	uint8_t pdu_id;
+	uint16_t param_len;
+	uint8_t params[0];
+} __attribute__ ((packed));
+#define AVRCP_BROWSING_HEADER_LENGTH 3
+
 struct avrcp_server {
 	bdaddr_t src;
 	uint32_t tg_record_id;
@@ -165,7 +173,9 @@ struct avrcp_player {
 	struct audio_device *dev;
 
 	unsigned int control_handler;
+	unsigned int browsing_handler;
 	uint16_t registered_events;
+	uint8_t transaction;
 	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
 	struct pending_pdu *pending_pdu;
 
@@ -1139,6 +1149,48 @@ err_metadata:
 	return AVRCP_HEADER_LENGTH + 1;
 }
 
+static struct browsing_pdu_handler {
+	uint8_t pdu_id;
+	void (*func) (struct avrcp_player *player,
+					struct avrcp_browsing_header *pdu,
+					uint8_t transaction);
+} browsing_handlers[] = {
+		{ },
+};
+
+static size_t handle_browsing_pdu(struct avctp *session,
+					uint8_t transaction, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct browsing_pdu_handler *handler;
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	uint8_t status;
+
+	DBG("AVRCP Browsing PDU 0x%02X, len 0x%04X", pdu->pdu_id,
+							pdu->param_len);
+
+	for (handler = browsing_handlers; handler->pdu_id; handler++) {
+		if (handler->pdu_id == pdu->pdu_id)
+			break;
+	}
+
+	if (handler == NULL || handler->func == NULL) {
+		pdu->pdu_id = AVRCP_GENERAL_REJECT;
+		status = AVRCP_STATUS_INVALID_COMMAND;
+		goto err;
+	}
+
+	player->transaction = transaction;
+	handler->func(player, pdu, transaction);
+	return AVRCP_BROWSING_HEADER_LENGTH + ntohs(pdu->param_len);
+
+err:
+	pdu->param_len = htons(sizeof(status));
+	memcpy(pdu->params, &status, (sizeof(status)));
+	return AVRCP_BROWSING_HEADER_LENGTH + sizeof(status);
+}
+
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands)
 {
 	struct avrcp_header *pdu = (void *) operands;
@@ -1239,6 +1291,11 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			player->control_handler = 0;
 		}
 
+		if (player->browsing_handler) {
+			avctp_unregister_browsing_pdu_handler(
+						player->browsing_handler);
+			player->browsing_handler = 0;
+		}
 		break;
 	case AVCTP_STATE_CONNECTING:
 		player->session = avctp_connect(&dev->src, &dev->dst);
@@ -1248,6 +1305,11 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			player->control_handler = avctp_register_pdu_handler(
 							AVC_OP_VENDORDEP,
 							handle_vendordep_pdu,
+							player);
+		if (!player->browsing_handler)
+			player->browsing_handler =
+					avctp_register_browsing_pdu_handler(
+							handle_browsing_pdu,
 							player);
 		break;
 	case AVCTP_STATE_CONNECTED:
