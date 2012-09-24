@@ -115,6 +115,7 @@
 #define AVRCP_PLAY_ITEM			0x74
 #define AVRCP_SEARCH			0x80
 #define AVRCP_ADD_TO_NOW_PLAYING	0x90
+#define AVRCP_GENERAL_REJECT		0xA0
 
 /* notification events */
 #define AVRCP_EVENT_PLAYBACK_STATUS_CHANGED		0x01
@@ -304,6 +305,8 @@ static const char *pdu2str(uint8_t pduid)
 		return "Search";
 	case AVRCP_ADD_TO_NOW_PLAYING:
 		return "AddToNowPlaying";
+	case AVRCP_GENERAL_REJECT:
+		return "GeneralReject";
 	default:
 		return "Unknown";
 	}
@@ -2150,6 +2153,25 @@ response:
 	printf("Number of Items: 0x%04x (%u)", items, items);
 }
 
+static void avrcp_general_reject_dump(int level, struct frame *frm,
+						uint8_t hdr, uint16_t len)
+{
+	uint8_t status;
+
+	p_indent(level, frm);
+
+	if (hdr & 0x02)
+		goto response;
+
+	printf("PDU Malformed\n");
+	raw_dump(level, frm);
+	return;
+
+response:
+	status = get_u8(frm);
+	printf("Status: 0x%02x (%s)\n", status, error2str(status));
+}
+
 static void avrcp_browsing_dump(int level, struct frame *frm, uint8_t hdr)
 {
 	uint8_t pduid;
@@ -2182,6 +2204,9 @@ static void avrcp_browsing_dump(int level, struct frame *frm, uint8_t hdr)
 		break;
 	case AVRCP_SEARCH:
 		avrcp_search_dump(level + 1, frm, hdr, len);
+		break;
+	case AVRCP_GENERAL_REJECT:
+		avrcp_general_reject_dump(level + 1, frm, hdr, len);
 		break;
 	default:
 		raw_dump(level, frm);
