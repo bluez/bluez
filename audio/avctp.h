@@ -75,10 +75,10 @@ typedef void (*avctp_state_cb) (struct audio_device *dev,
 				avctp_state_t new_state,
 				void *user_data);
 
-typedef size_t (*avctp_pdu_cb) (struct avctp *session, uint8_t transaction,
-					uint8_t *code, uint8_t *subunit,
-					uint8_t *operands, size_t operand_count,
-					void *user_data);
+typedef size_t (*avctp_control_pdu_cb) (struct avctp *session,
+					uint8_t transaction, uint8_t *code,
+					uint8_t *subunit, uint8_t *operands,
+					size_t operand_count, void *user_data);
 typedef gboolean (*avctp_rsp_cb) (struct avctp *session, uint8_t code,
 					uint8_t subunit, uint8_t *operands,
 					size_t operand_count, void *user_data);
@@ -93,7 +93,7 @@ struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst);
 struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst);
 void avctp_disconnect(struct avctp *session);
 
-unsigned int avctp_register_pdu_handler(uint8_t opcode, avctp_pdu_cb cb,
+unsigned int avctp_register_pdu_handler(uint8_t opcode, avctp_control_pdu_cb cb,
 							void *user_data);
 gboolean avctp_unregister_pdu_handler(unsigned int id);
 

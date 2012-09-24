@@ -164,7 +164,7 @@ struct avrcp_player {
 	struct avctp *session;
 	struct audio_device *dev;
 
-	unsigned int handler;
+	unsigned int control_handler;
 	uint16_t registered_events;
 	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
 	struct pending_pdu *pending_pdu;
@@ -257,9 +257,9 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root, *apseq_browsing;
 	uuid_t root_uuid, l2cap, avctp, avrtg;
 	sdp_profile_desc_t profile[1];
-	sdp_list_t *aproto, *proto[2];
+	sdp_list_t *aproto_control, *proto_control[2];
 	sdp_record_t *record;
-	sdp_data_t *psm, *version, *features, *psm_browsing;
+	sdp_data_t *psm_control, *version, *features, *psm_browsing;
 	sdp_list_t *aproto_browsing, *proto_browsing[2] = {0};
 	uint16_t lp = AVCTP_CONTROL_PSM;
 	uint16_t lp_browsing = AVCTP_BROWSING_PSM;
@@ -286,19 +286,19 @@ static sdp_record_t *avrcp_tg_record(void)
 
 	/* Protocol Descriptor List */
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
-	proto[0] = sdp_list_append(0, &l2cap);
-	psm = sdp_data_alloc(SDP_UINT16, &lp);
-	proto[0] = sdp_list_append(proto[0], psm);
-	apseq = sdp_list_append(0, proto[0]);
+	proto_control[0] = sdp_list_append(0, &l2cap);
+	psm_control = sdp_data_alloc(SDP_UINT16, &lp);
+	proto_control[0] = sdp_list_append(proto_control[0], psm_control);
+	apseq = sdp_list_append(0, proto_control[0]);
 
 	sdp_uuid16_create(&avctp, AVCTP_UUID);
-	proto[1] = sdp_list_append(0, &avctp);
+	proto_control[1] = sdp_list_append(0, &avctp);
 	version = sdp_data_alloc(SDP_UINT16, &avctp_ver);
-	proto[1] = sdp_list_append(proto[1], version);
-	apseq = sdp_list_append(apseq, proto[1]);
+	proto_control[1] = sdp_list_append(proto_control[1], version);
+	apseq = sdp_list_append(apseq, proto_control[1]);
 
-	aproto = sdp_list_append(0, apseq);
-	sdp_set_access_protos(record, aproto);
+	aproto_control = sdp_list_append(0, apseq);
+	sdp_set_access_protos(record, aproto_control);
 	proto_browsing[0] = sdp_list_append(0, &l2cap);
 	psm_browsing = sdp_data_alloc(SDP_UINT16, &lp_browsing);
 	proto_browsing[0] = sdp_list_append(proto_browsing[0], psm_browsing);
@@ -328,12 +328,12 @@ static sdp_record_t *avrcp_tg_record(void)
 	sdp_list_free(apseq_browsing, 0);
 	sdp_list_free(aproto_browsing, 0);
 
-	free(psm);
+	free(psm_control);
 	free(version);
-	sdp_list_free(proto[0], 0);
-	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto_control[0], 0);
+	sdp_list_free(proto_control[1], 0);
 	sdp_list_free(apseq, 0);
-	sdp_list_free(aproto, 0);
+	sdp_list_free(aproto_control, 0);
 	sdp_list_free(pfseq, 0);
 	sdp_list_free(root, 0);
 	sdp_list_free(svclass_id, 0);
@@ -1042,13 +1042,13 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
-static struct pdu_handler {
+static struct control_pdu_handler {
 	uint8_t pdu_id;
 	uint8_t code;
 	uint8_t (*func) (struct avrcp_player *player,
 					struct avrcp_header *pdu,
 					uint8_t transaction);
-} handlers[] = {
+} control_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES, AVC_CTYPE_STATUS,
 					avrcp_handle_get_capabilities },
 		{ AVRCP_LIST_PLAYER_ATTRIBUTES, AVC_CTYPE_STATUS,
@@ -1087,7 +1087,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 					void *user_data)
 {
 	struct avrcp_player *player = user_data;
-	struct pdu_handler *handler;
+	struct control_pdu_handler *handler;
 	struct avrcp_header *pdu = (void *) operands;
 	uint32_t company_id = get_company_id(pdu->company_id);
 
@@ -1107,7 +1107,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 		goto err_metadata;
 	}
 
-	for (handler = handlers; handler->pdu_id; handler++) {
+	for (handler = control_handlers; handler->pdu_id; handler++) {
 		if (handler->pdu_id == pdu->pdu_id)
 			break;
 	}
@@ -1234,9 +1234,9 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		player->dev = NULL;
 		player->registered_events = 0;
 
-		if (player->handler) {
-			avctp_unregister_pdu_handler(player->handler);
-			player->handler = 0;
+		if (player->control_handler) {
+			avctp_unregister_pdu_handler(player->control_handler);
+			player->control_handler = 0;
 		}
 
 		break;
@@ -1244,8 +1244,8 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		player->session = avctp_connect(&dev->src, &dev->dst);
 		player->dev = dev;
 
-		if (!player->handler)
-			player->handler = avctp_register_pdu_handler(
+		if (!player->control_handler)
+			player->control_handler = avctp_register_pdu_handler(
 							AVC_OP_VENDORDEP,
 							handle_vendordep_pdu,
 							player);
@@ -1363,8 +1363,8 @@ static void player_destroy(gpointer data)
 
 	player_abort_pending_pdu(player);
 
-	if (player->handler)
-		avctp_unregister_pdu_handler(player->handler);
+	if (player->control_handler)
+		avctp_unregister_pdu_handler(player->control_handler);
 
 	g_free(player);
 }
