@@ -42,6 +42,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/uuid.h>
+#include <bluetooth/l2cap.h>
 
 #include <glib.h>
 
@@ -120,6 +121,7 @@ struct avctp_state_callback {
 struct avctp_server {
 	bdaddr_t src;
 	GIOChannel *control_io;
+	GIOChannel *browsing_io;
 	GSList *sessions;
 };
 
@@ -138,9 +140,12 @@ struct avctp {
 	int uinput;
 
 	GIOChannel *control_io;
+	GIOChannel *browsing_io;
 	guint control_io_id;
+	guint browsing_io_id;
 
 	uint16_t control_mtu;
+	uint16_t browsing_mtu;
 
 	uint8_t key_quirks[256];
 	GSList *handlers;
@@ -327,6 +332,17 @@ static void avctp_disconnected(struct avctp *session)
 	if (!session)
 		return;
 
+	if (session->browsing_io) {
+		g_io_channel_shutdown(session->browsing_io, TRUE, NULL);
+		g_io_channel_unref(session->browsing_io);
+		session->browsing_io = NULL;
+	}
+
+	if (session->browsing_io_id) {
+		g_source_remove(session->browsing_io_id);
+		session->browsing_io_id = 0;
+	}
+
 	if (session->control_io) {
 		g_io_channel_shutdown(session->control_io, TRUE, NULL);
 		g_io_channel_unref(session->control_io);
@@ -431,6 +447,35 @@ static void handle_response(struct avctp *session, struct avctp_header *avctp,
 
 		return;
 	}
+}
+
+static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
+				gpointer data)
+{
+	struct avctp *session = data;
+	uint8_t buf[1024];
+	struct avctp_header *avctp;
+	int sock, ret;
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL))
+		goto failed;
+
+	sock = g_io_channel_unix_get_fd(session->browsing_io);
+
+	ret = read(sock, buf, sizeof(buf));
+	if (ret <= 0)
+		goto failed;
+
+	avctp = (struct avctp_header *) buf;
+
+	if (avctp->packet_type != AVCTP_PACKET_SINGLE)
+		goto failed;
+
+	return TRUE;
+
+failed:
+	DBG("Browsing: disconnected");
+	return FALSE;
 }
 
 static gboolean session_cb(GIOChannel *chan, GIOCondition cond,
@@ -614,6 +659,44 @@ static void init_uinput(struct avctp *session)
 		DBG("AVRCP: uinput initialized for %s", address);
 }
 
+static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
+							gpointer data)
+{
+	struct avctp *session = data;
+	char address[18];
+	uint16_t imtu;
+	GError *gerr = NULL;
+
+	if (err) {
+		error("Browsing: %s", err->message);
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		g_io_channel_unref(chan);
+		session->browsing_io = NULL;
+		return;
+	}
+
+	bt_io_get(chan, &gerr,
+			BT_IO_OPT_DEST, &address,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		error("%s", gerr->message);
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		g_io_channel_unref(chan);
+		session->browsing_io = NULL;
+		g_error_free(gerr);
+		return;
+	}
+
+	if (!session->browsing_io)
+		session->browsing_io = g_io_channel_ref(chan);
+
+	session->browsing_mtu = imtu;
+
+	session->browsing_io_id = g_io_add_watch(chan,
+				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+				(GIOFunc) session_browsing_cb, session); }
+
 static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct avctp *session = data;
@@ -730,6 +813,51 @@ static struct avctp *avctp_get_internal(const bdaddr_t *src,
 	return session;
 }
 
+static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
+						struct audio_device *dev)
+{
+	if (session->control_io) {
+		error("Control: Refusing unexpected connect");
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
+
+	avctp_set_state(session, AVCTP_STATE_CONNECTING);
+	session->control_io = g_io_channel_ref(chan);
+
+	if (audio_device_request_authorization(dev, AVRCP_TARGET_UUID,
+						auth_cb, session) < 0)
+		goto drop;
+
+	session->control_io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP |
+						G_IO_NVAL, session_cb, session);
+	return;
+
+drop:
+	avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
+}
+
+static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
+						struct audio_device *dev)
+{
+	GError *err = NULL;
+
+	if (!session->control_io || session->browsing_io) {
+		error("Browsing: Refusing unexpected connect");
+		g_io_channel_shutdown(chan, TRUE, NULL);
+		return;
+	}
+
+	if (bt_io_accept(chan, avctp_connect_browsing_cb, session, NULL,
+								&err))
+		return;
+
+	error("Browsing: %s", err->message);
+	g_error_free(err);
+
+	return;
+}
+
 static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 {
 	struct avctp *session;
@@ -737,11 +865,13 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	char address[18];
 	bdaddr_t src, dst;
 	GError *err = NULL;
+	uint16_t psm;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
+			BT_IO_OPT_PSM, &psm,
 			BT_IO_OPT_INVALID);
 	if (err) {
 		error("%s", err->message);
@@ -772,31 +902,30 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 			goto drop;
 	}
 
-	if (session->control_io) {
-		error("Refusing unexpected connect from %s", address);
-		goto drop;
+	switch (psm) {
+	case AVCTP_CONTROL_PSM:
+		avctp_control_confirm(session, chan, dev);
+		break;
+	case AVCTP_BROWSING_PSM:
+		avctp_browsing_confirm(session, chan, dev);
+		break;
 	}
 
-	avctp_set_state(session, AVCTP_STATE_CONNECTING);
-	session->control_io = g_io_channel_ref(chan);
-
-	if (audio_device_request_authorization(dev, AVRCP_TARGET_UUID,
-						auth_cb, session) < 0)
-		goto drop;
-
-	session->control_io_id = g_io_add_watch(chan,
-					G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-					session_cb, session);
 	return;
 
 drop:
-	if (!session || !session->control_io)
-		g_io_channel_shutdown(chan, TRUE, NULL);
-	if (session)
+	if (session && session->browsing_io)
+		g_io_channel_unref(session->browsing_io);
+
+	if (session && session->control_io)
+		g_io_channel_unref(session->control_io);
+
+	if (session && psm == AVCTP_CONTROL_PSM)
 		avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
 }
 
-static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
+static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master,
+						uint8_t mode, uint16_t psm)
 {
 	GError *err = NULL;
 	GIOChannel *io;
@@ -804,9 +933,10 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master)
 	io = bt_io_listen(NULL, avctp_confirm_cb, NULL,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
-				BT_IO_OPT_PSM, AVCTP_CONTROL_PSM,
+				BT_IO_OPT_PSM, psm,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, master,
+				BT_IO_OPT_MODE, mode,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("%s", err->message);
@@ -826,8 +956,20 @@ int avctp_register(const bdaddr_t *src, gboolean master)
 
 	server = g_new0(struct avctp_server, 1);
 
-	server->control_io = avctp_server_socket(src, master);
+	server->control_io = avctp_server_socket(src, master, L2CAP_MODE_BASIC,
+							AVCTP_CONTROL_PSM);
 	if (!server->control_io) {
+		g_free(server);
+		return -1;
+	}
+	server->browsing_io = avctp_server_socket(src, master, L2CAP_MODE_ERTM,
+							AVCTP_BROWSING_PSM);
+	if (!server->browsing_io) {
+		if (server->control_io) {
+			g_io_channel_shutdown(server->control_io, TRUE, NULL);
+			g_io_channel_unref(server->control_io);
+			server->control_io = NULL;
+		}
 		g_free(server);
 		return -1;
 	}
@@ -863,6 +1005,10 @@ void avctp_unregister(const bdaddr_t *src)
 		avctp_disconnected(server->sessions->data);
 
 	servers = g_slist_remove(servers, server);
+
+	g_io_channel_shutdown(server->browsing_io, TRUE, NULL);
+	g_io_channel_unref(server->browsing_io);
+	server->browsing_io = NULL;
 
 	g_io_channel_shutdown(server->control_io, TRUE, NULL);
 	g_io_channel_unref(server->control_io);
