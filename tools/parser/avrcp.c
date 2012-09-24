@@ -1250,7 +1250,7 @@ static void avrcp_set_addressed_player(int level, struct frame *frm,
 	}
 
 	id = get_u16(frm);
-	printf("PlayerID: 0x%04x (%u)", id, id);
+	printf("PlayerID: 0x%04x (%u)\n", id, id);
 	return;
 
 response:
