@@ -124,6 +124,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	p->name = ext->name;
 
+	DBG("External profile %s created", ext->name);
+
 	ext_profiles = g_slist_append(ext_profiles, ext);
 
 	return ext;
@@ -132,6 +134,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 static void remove_ext(struct ext_profile *ext)
 {
 	ext_profiles = g_slist_remove(ext_profiles, ext);
+
+	DBG("External profile %s removed", ext->name);
 
 	g_free(ext->name);
 	g_free(ext->owner);
