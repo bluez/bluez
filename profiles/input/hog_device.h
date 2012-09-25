@@ -31,3 +31,4 @@ struct hog_device *hog_device_register(struct btd_device *device,
 						const char *path, int *perr);
 int hog_device_unregister(struct hog_device *hogdev);
 struct hog_device *hog_device_find(GSList *list, const char *path);
+int hog_device_set_control_point(struct hog_device *hogdev, gboolean suspend);

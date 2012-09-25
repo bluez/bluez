@@ -57,6 +57,7 @@
 #define HOG_REPORT_MAP_UUID	0x2A4B
 #define HOG_REPORT_UUID		0x2A4D
 #define HOG_PROTO_MODE_UUID	0x2A4E
+#define HOG_CONTROL_POINT_UUID	0x2A4C
 
 #define HOG_REPORT_TYPE_INPUT	1
 #define HOG_REPORT_TYPE_OUTPUT	2
@@ -84,6 +85,7 @@ struct hog_device {
 	uint16_t		bcdhid;
 	uint8_t			bcountrycode;
 	uint16_t		proto_mode_handle;
+	uint16_t		ctrlpt_handle;
 	uint8_t			flags;
 };
 
@@ -439,7 +441,8 @@ static void proto_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
-	bt_uuid_t report_uuid, report_map_uuid, info_uuid, proto_mode_uuid;
+	bt_uuid_t report_uuid, report_map_uuid, info_uuid, proto_mode_uuid,
+		  ctrlpt_uuid;
 	struct report *report;
 	GSList *l;
 	uint16_t info_handle = 0, proto_mode_handle = 0;
@@ -454,6 +457,7 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 	bt_uuid16_create(&report_map_uuid, HOG_REPORT_MAP_UUID);
 	bt_uuid16_create(&info_uuid, HOG_INFO_UUID);
 	bt_uuid16_create(&proto_mode_uuid, HOG_PROTO_MODE_UUID);
+	bt_uuid16_create(&ctrlpt_uuid, HOG_CONTROL_POINT_UUID);
 
 	for (l = chars; l; l = g_slist_next(l)) {
 		struct gatt_char *chr, *next;
@@ -482,6 +486,8 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 			info_handle = chr->value_handle;
 		else if (bt_uuid_cmp(&uuid, &proto_mode_uuid) == 0)
 			proto_mode_handle = chr->value_handle;
+		else if (bt_uuid_cmp(&uuid, &ctrlpt_uuid) == 0)
+			hogdev->ctrlpt_handle = chr->value_handle;
 	}
 
 	if (proto_mode_handle) {
@@ -762,6 +768,25 @@ int hog_device_unregister(struct hog_device *hogdev)
 	hogdev->uhid_fd = -1;
 
 	hog_device_free(hogdev);
+
+	return 0;
+}
+
+int hog_device_set_control_point(struct hog_device *hogdev, gboolean suspend)
+{
+	uint8_t value = suspend ? 0x00 : 0x01;
+
+	if (hogdev->attrib == NULL)
+		return -ENOTCONN;
+
+	DBG("%s HID Control Point: %s", hogdev->path, suspend ?
+						"Suspend" : "Exit Suspend");
+
+	if (hogdev->ctrlpt_handle == 0)
+		return -ENOTSUP;
+
+	gatt_write_char(hogdev->attrib, hogdev->ctrlpt_handle, &value,
+					sizeof(value), NULL, NULL);
 
 	return 0;
 }
