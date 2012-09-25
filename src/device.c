@@ -135,7 +135,7 @@ struct btd_device {
 	GSList		*services;		/* Primary services path */
 	GSList		*primaries;		/* List of primary services */
 	GSList		*profiles;		/* Probed profiles */
-	GSList		*conns;			/* Connected profiles */
+	GSList		*pending;		/* Pending profiles */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
 	struct agent	*agent;
@@ -145,6 +145,7 @@ struct btd_device {
 	struct bonding_req *bonding;
 	struct authentication_req *authr;	/* authentication request */
 	GSList		*disconnects;		/* disconnects message */
+	DBusMessage	*connect;		/* connect message */
 	GAttrib		*attrib;
 	GSList		*attios;
 	GSList		*attios_offline;
@@ -152,6 +153,7 @@ struct btd_device {
 	guint		auto_id;		/* Auto connect source id */
 
 	gboolean	connected;
+	gboolean	profiles_connected;	/* Profile level connected */
 
 	sdp_list_t	*tmp_records;
 
@@ -867,6 +869,79 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static int connect_next(struct btd_device *dev, btd_profile_cb cb)
+{
+	struct btd_profile *profile;
+	int err = -ENOENT;
+
+	while (dev->pending) {
+		int err;
+
+		profile = dev->pending->data;
+
+		err = profile->connect(dev, profile, cb);
+		if (err == 0)
+			return 0;
+
+		error("Failed to connect %s", profile->name);
+		dev->pending = g_slist_remove(dev->pending, profile);
+	}
+
+	return err;
+}
+
+static void dev_profile_connected(struct btd_profile *profile,
+					struct btd_device *dev, int err)
+{
+	dev->pending = g_slist_remove(dev->pending, profile);
+
+	if (connect_next(dev, dev_profile_connected) == 0)
+		return;
+
+	dev->profiles_connected = TRUE;
+
+	if (!dev->connect)
+		return;
+
+	g_dbus_send_reply(btd_get_dbus_connection(), dev->connect,
+							DBUS_TYPE_INVALID);
+	dbus_message_unref(dev->connect);
+	dev->connect = NULL;
+}
+
+static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_device *dev = user_data;
+	struct btd_profile *p;
+	GSList *l;
+	int err;
+
+	if (dev->profiles_connected)
+		return btd_error_already_connected(msg);
+
+	if (dev->pending || dev->connect)
+		return btd_error_in_progress(msg);
+
+	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
+		p = l->data;
+
+		if (p->auto_connect)
+			dev->pending = g_slist_append(dev->pending, p);
+	}
+
+	if (!dev->pending)
+		return btd_error_not_available(msg);
+
+	err = connect_next(dev, dev_profile_connected);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	dev->connect = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -880,6 +955,7 @@ static const GDBusMethodTable device_methods[] = {
 			discover_services) },
 	{ GDBUS_METHOD("CancelDiscovery", NULL, NULL, cancel_discover) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
 	{ }
 };
 
@@ -921,6 +997,7 @@ void device_remove_connection(struct btd_device *device)
 	}
 
 	device->connected = FALSE;
+	device->profiles_connected = FALSE;
 
 	if (device->disconn_timer > 0) {
 		g_source_remove(device->disconn_timer);
