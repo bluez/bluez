@@ -83,6 +83,29 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.NotConnected
 
+		void ConnectProfile(string uuid)
+
+			This method connects a specific profile of this
+			device. The profile needs to be registered client
+			profile.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.AlreadyConnected
+					 org.bluez.Error.ConnectFailed
+
+		void DisconnectProfile(string uuid)
+
+			This method disconnects a specific profile of
+			this device. The profile needs to be registered
+			client profile.
+
+			There is no connection tracking for a profile, so
+			as long as the profile is registered this will always
+			succeed.
+
+			Possible errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.NotConnected
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

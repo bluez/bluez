@@ -68,6 +68,13 @@
     </para>
   </reference>
 
+  <reference id="profile">
+    <title>Profile interface</title>
+    <para>
+<programlisting><xi:include href="profile-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
   <reference id="agent">
     <title>Agent interface</title>
     <para>
