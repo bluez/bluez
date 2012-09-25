@@ -38,6 +38,7 @@
 #include "error.h"
 #include "dbus-common.h"
 #include "adapter.h"
+#include "manager.h"
 #include "device.h"
 #include "profile.h"
 
@@ -106,6 +107,23 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	return NULL;
 }
 
+static int ext_adapter_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct ext_profile *ext;
+	GSList *l;
+
+	l = g_slist_find(ext_profiles, p);
+	if (!l)
+		return -ENOENT;
+
+	ext = l->data;
+
+	DBG("External profile %s probed", ext->name);
+
+	return 0;
+}
+
 static struct ext_profile *create_ext(const char *owner, const char *path,
 					const char *uuid,
 					DBusMessageIter *opts)
@@ -123,10 +141,13 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p = &ext->p;
 
 	p->name = ext->name;
+	p->adapter_probe = ext_adapter_probe;
 
 	DBG("External profile %s created", ext->name);
 
 	ext_profiles = g_slist_append(ext_profiles, ext);
+
+	manager_foreach_adapter(adapter_add_profile, &ext->p);
 
 	return ext;
 }
