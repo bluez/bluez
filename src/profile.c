@@ -61,8 +61,3 @@ void btd_profile_unregister(struct btd_profile *profile)
 {
 	profiles = g_slist_remove(profiles, profile);
 }
-
-GSList *btd_get_profiles(void)
-{
-	return profiles;
-}
