@@ -185,6 +185,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	datafiles_enable=yes
 	telephony_driver=dummy
 	sap_driver=dummy
+	hog_suspend_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
 	gatt_enable=no
@@ -287,6 +288,12 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(wiimote, AC_HELP_STRING([--enable-wiimote], [compile with Wii Remote plugin]), [
 		wiimote_enable=${enableval}
 	])
+
+	AC_ARG_WITH(gatt, AC_HELP_STRING([--with-hog-suspend=DRIVER], [select HoG suspend driver]), [
+		hog_suspend_driver=${withval}
+	])
+
+	AC_SUBST([HOG_SUSPEND_DRIVER], [suspend-${hog_suspend_driver}.c])
 
 	AC_ARG_ENABLE(gatt, AC_HELP_STRING([--enable-gatt], [enable gatt module]), [
 		gatt_enable=${enableval}

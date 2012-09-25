@@ -439,6 +439,9 @@ audio/telephony.c: audio/@TELEPHONY_DRIVER@
 profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
+profiles/input/suspend.c: profiles/input/@HOG_SUSPEND_DRIVER@
+	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
+
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@
 
