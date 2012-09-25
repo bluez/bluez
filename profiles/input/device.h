@@ -35,3 +35,6 @@ int input_device_unregister(const char *path, const char *uuid);
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 							GIOChannel *io);
 int input_device_close_channels(const bdaddr_t *src, const bdaddr_t *dst);
+
+int input_device_connect(struct btd_device *dev, struct btd_profile *profile,
+							btd_profile_cb cb);

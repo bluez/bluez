@@ -107,6 +107,9 @@ static struct btd_profile input_profile = {
 	.name		= "input-hid",
 	.remote_uuids	= BTD_UUIDS(HID_UUID),
 
+	.auto_connect	= true,
+	.connect	= input_device_connect,
+
 	.device_probe	= hid_device_probe,
 	.device_remove	= hid_device_remove,
 

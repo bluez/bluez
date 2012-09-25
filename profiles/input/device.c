@@ -44,6 +44,7 @@
 
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "../src/profile.h"
 #include "../src/storage.h"
 #include "../src/manager.h"
 #include "../src/dbus-common.h"
@@ -62,10 +63,21 @@
 
 #define FI_FLAG_CONNECTED	1
 
+struct pending_connect {
+	bool local;
+	union {
+		struct {
+			struct btd_profile *profile;
+			btd_profile_cb cb;
+		} p;
+		DBusMessage *msg;
+	};
+};
+
 struct input_device {
 	struct btd_device	*device;
 	DBusConnection		*conn;
-	DBusMessage		*pending_connect;
+	struct pending_connect	*pending;
 	char			*path;
 	char			*uuid;
 	bdaddr_t		src;
@@ -107,8 +119,11 @@ static void input_device_free(struct input_device *idev)
 	g_free(idev->name);
 	g_free(idev->path);
 
-	if (idev->pending_connect)
-		dbus_message_unref(idev->pending_connect);
+	if (idev->pending) {
+		if (idev->pending->local)
+			dbus_message_unref(idev->pending->msg);
+		g_free(idev->pending);
+	}
 
 	if (idev->ctrl_watch > 0)
 		g_source_remove(idev->ctrl_watch);
@@ -502,17 +517,48 @@ static int input_device_connected(struct input_device *idev)
 	return 0;
 }
 
+static void connect_reply(struct input_device *idev, int err,
+							const char *err_msg)
+{
+	struct pending_connect *pending = idev->pending;
+	DBusConnection *conn = btd_get_dbus_connection();
+	DBusMessage *reply;
+
+	if (!pending)
+		return;
+
+	idev->pending = NULL;
+
+	if (err_msg)
+		error("%s", err_msg);
+
+	if (!pending->local) {
+		pending->p.cb(pending->p.profile, idev->device, err);
+		g_free(pending);
+		return;
+	}
+
+	if (err_msg) {
+		reply = btd_error_failed(idev->pending->msg, err_msg);
+		g_dbus_send_message(conn, reply);
+	} else {
+		g_dbus_send_reply(conn, pending->msg, DBUS_TYPE_INVALID);
+	}
+
+	dbus_message_unref(pending->msg);
+	g_free(pending);
+}
+
 static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 							gpointer user_data)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	struct input_device *idev = user_data;
-	DBusMessage *reply;
-	int err;
 	const char *err_msg;
+	int err;
 
 	if (conn_err) {
 		err_msg = conn_err->message;
+		err = -EIO;
 		goto failed;
 	}
 
@@ -522,11 +568,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 		goto failed;
 	}
 
-	/* Replying to the requestor */
-	g_dbus_send_reply(conn, idev->pending_connect, DBUS_TYPE_INVALID);
-
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+	connect_reply(idev, 0, NULL);
 
 	idev->intr_watch = g_io_add_watch(idev->intr_io,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -535,12 +577,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	error("%s", err_msg);
-	reply = btd_error_failed(idev->pending_connect, err_msg);
-	g_dbus_send_message(conn, reply);
-
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
+	connect_reply(idev, err, err_msg);
 
 	/* So we guarantee the interrupt channel is closed before the
 	 * control channel (if we only do unref GLib will close it only
@@ -561,14 +598,12 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 							gpointer user_data)
 {
 	struct input_device *idev = user_data;
-	DBusMessage *reply;
 	GIOChannel *io;
 	GError *err = NULL;
 
 	if (conn_err) {
 		error("%s", conn_err->message);
-		reply = btd_error_failed(idev->pending_connect,
-						conn_err->message);
+		connect_reply(idev, -EIO, conn_err->message);
 		goto failed;
 	}
 
@@ -582,8 +617,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("%s", err->message);
-		reply = btd_error_failed(idev->pending_connect,
-							err->message);
+		connect_reply(idev, -EIO, err->message);
 		g_error_free(err);
 		goto failed;
 	}
@@ -599,29 +633,12 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 failed:
 	g_io_channel_unref(idev->ctrl_io);
 	idev->ctrl_io = NULL;
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
 }
 
-/*
- * Input Device methods
- */
-static DBusMessage *input_device_connect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static int dev_connect(struct input_device *idev)
 {
-	struct input_device *idev = data;
-	DBusMessage *reply;
 	GError *err = NULL;
 	GIOChannel *io;
-
-	if (idev->pending_connect)
-		return btd_error_in_progress(msg);
-
-	if (is_connected(idev))
-		return btd_error_already_connected(msg);
-
-	idev->pending_connect = dbus_message_ref(msg);
 
 	if (idev->disable_sdp)
 		bt_clear_cached_session(&idev->src, &idev->dst);
@@ -636,14 +653,56 @@ static DBusMessage *input_device_connect(DBusConnection *conn,
 	idev->ctrl_io = io;
 
 	if (err == NULL)
-		return NULL;
+		return 0;
 
 	error("%s", err->message);
-	dbus_message_unref(idev->pending_connect);
-	idev->pending_connect = NULL;
-	reply = btd_error_failed(msg, err->message);
+	connect_reply(idev, -EIO, err->message);
 	g_error_free(err);
-	return reply;
+
+	return -EIO;
+}
+
+int input_device_connect(struct btd_device *dev, struct btd_profile *profile,
+							btd_profile_cb cb)
+{
+	struct input_device *idev;
+
+	idev = find_device_by_path(devices, device_get_path(dev));
+	if (!idev)
+		return -ENOENT;
+
+	if (idev->pending)
+		return -EBUSY;
+
+	if (is_connected(idev))
+		return -EALREADY;
+
+	idev->pending = g_new0(struct pending_connect, 1);
+	idev->pending->local = false;
+	idev->pending->p.profile = profile;
+	idev->pending->p.cb = cb;
+
+	return dev_connect(idev);
+}
+
+static DBusMessage *local_connect(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct input_device *idev = data;
+
+	if (idev->pending)
+		return btd_error_in_progress(msg);
+
+	if (is_connected(idev))
+		return btd_error_already_connected(msg);
+
+	idev->pending = g_new0(struct pending_connect, 1);
+	idev->pending->local = true;
+	idev->pending->msg = dbus_message_ref(msg);
+
+	dev_connect(idev);
+
+	return NULL;
 }
 
 static DBusMessage *input_device_disconnect(DBusConnection *conn,
@@ -701,7 +760,7 @@ static DBusMessage *input_device_get_properties(DBusConnection *conn,
 
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect",
-				NULL, NULL, input_device_connect) },
+				NULL, NULL, local_connect) },
 	{ GDBUS_METHOD("Disconnect",
 				NULL, NULL, input_device_disconnect) },
 	{ GDBUS_METHOD("GetProperties",
@@ -810,7 +869,7 @@ int input_device_unregister(const char *path, const char *uuid)
 	if (idev == NULL)
 		return -EINVAL;
 
-	if (idev->pending_connect) {
+	if (idev->pending) {
 		/* Pending connection running */
 		return -EBUSY;
 	}

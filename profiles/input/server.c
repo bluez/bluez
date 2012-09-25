@@ -26,6 +26,7 @@
 #endif
 
 #include <unistd.h>
+#include <stdbool.h>
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
@@ -39,7 +40,10 @@
 
 #include "glib-helper.h"
 #include "btio.h"
-#include "adapter.h"
+#include "../src/adapter.h"
+#include "../src/device.h"
+#include "../src/profile.h"
+
 #include "device.h"
 #include "server.h"
 
