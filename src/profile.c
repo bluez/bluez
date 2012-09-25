@@ -33,6 +33,9 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include <bluetooth/bluetooth.h>
+
+#include "btio.h"
 #include "uuid.h"
 #include "log.h"
 #include "error.h"
@@ -51,6 +54,21 @@ struct ext_profile {
 	char *path;
 
 	guint id;
+
+	BtIOSecLevel sec_level;
+	bool authorize;
+
+	uint16_t psm;
+	uint8_t chan;
+
+	GSList *servers;
+	GSList *conns;
+};
+
+struct ext_io {
+	struct ext_profile *ext;
+	int proto;
+	GIOChannel *io;
 };
 
 static GSList *profiles = NULL;
@@ -107,6 +125,81 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	return NULL;
 }
 
+static void ext_confirm(GIOChannel *io, gpointer user_data)
+{
+	DBG("");
+}
+
+static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
+{
+	DBG("");
+}
+
+static int ext_start_servers(struct ext_profile *ext,
+						struct btd_adapter *adapter)
+{
+	struct ext_io *server;
+	BtIOConfirm confirm;
+	BtIOConnect connect;
+	GError *err = NULL;
+	GIOChannel *io;
+	bdaddr_t src;
+
+	adapter_get_address(adapter, &src);
+
+	if (ext->authorize) {
+		confirm = ext_confirm;
+		connect = NULL;
+	} else {
+		confirm = NULL;
+		connect = ext_connect;
+	}
+
+	if (ext->psm) {
+		server = g_new(struct ext_io, 1);
+		server->ext = ext;
+
+		io = bt_io_listen(connect, confirm, server, NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_PSM, ext->psm,
+					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_INVALID);
+		if (err != NULL) {
+			error("RFCOMM server failed for %s: %s",
+						ext->name, err->message);
+			g_free(server);
+			g_clear_error(&err);
+		} else {
+			server->io = io;
+			server->proto = BTPROTO_L2CAP;
+			ext->servers = g_slist_append(ext->servers, server);
+		}
+	}
+
+	if (ext->chan) {
+		server = g_new(struct ext_io, 1);
+		server->ext = ext;
+
+		io = bt_io_listen(connect, confirm, server, NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_CHANNEL, ext->chan,
+					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_INVALID);
+		if (err != NULL) {
+			error("L2CAP server failed for %s: %s",
+						ext->name, err->message);
+			g_free(server);
+			g_clear_error(&err);
+		} else {
+			server->io = io;
+			server->proto = BTPROTO_RFCOMM;
+			ext->servers = g_slist_append(ext->servers, server);
+		}
+	}
+
+	return 0;
+}
+
 static int ext_adapter_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
@@ -121,7 +214,7 @@ static int ext_adapter_probe(struct btd_profile *p,
 
 	DBG("\"%s\" probed", ext->name);
 
-	return 0;
+	return ext_start_servers(ext, adapter);
 }
 
 static int parse_ext_opt(struct ext_profile *ext, const char *key,
@@ -140,6 +233,33 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		if (type != DBUS_TYPE_BOOLEAN)
 			return -EINVAL;
 		dbus_message_iter_get_basic(value, &ext->p.auto_connect);
+	} else if (strcasecmp(key, "PSM") == 0) {
+		if (type != DBUS_TYPE_UINT16)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &ext->psm);
+	} else if (strcasecmp(key, "Channel") == 0) {
+		uint16_t ch;
+
+		if (type != DBUS_TYPE_UINT16)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &ch);
+		ext->chan = ch;
+	} else if (strcasecmp(key, "RequireAuthentication") == 0) {
+		dbus_bool_t b;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &b);
+		if (b)
+			ext->sec_level = BT_IO_SEC_MEDIUM;
+		else
+			ext->sec_level = BT_IO_SEC_LOW;
+	} else if (strcasecmp(key, "RequireAuthorization") == 0) {
+		if (type != DBUS_TYPE_BOOLEAN)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &ext->authorize);
 	}
 
 	return 0;
@@ -191,11 +311,23 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	return ext;
 }
 
+static void ext_io_destroy(gpointer p)
+{
+	struct ext_io *ext_io = p;
+
+	g_io_channel_shutdown(ext_io->io, FALSE, NULL);
+	g_io_channel_unref(ext_io->io);
+	g_free(ext_io);
+}
+
 static void remove_ext(struct ext_profile *ext)
 {
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 
 	DBG("Removed \"%s\"", ext->name);
+
+	g_slist_free_full(ext->servers, ext_io_destroy);
+	g_slist_free_full(ext->conns, ext_io_destroy);
 
 	g_free(ext->name);
 	g_free(ext->owner);
