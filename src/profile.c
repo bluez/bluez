@@ -124,6 +124,27 @@ static int ext_adapter_probe(struct btd_profile *p,
 	return 0;
 }
 
+static int parse_ext_opt(struct ext_profile *ext, const char *key,
+							DBusMessageIter *value)
+{
+	int type = dbus_message_iter_get_arg_type(value);
+	const char *str;
+
+	if (strcasecmp(key, "Name") == 0) {
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &str);
+		g_free(ext->name);
+		ext->name = g_strdup(str);
+	} else if (strcasecmp(key, "AutoConnect") == 0) {
+		if (type != DBUS_TYPE_BOOLEAN)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &ext->p.auto_connect);
+	}
+
+	return 0;
+}
+
 static struct ext_profile *create_ext(const char *owner, const char *path,
 					const char *uuid,
 					DBusMessageIter *opts)
@@ -133,10 +154,28 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext = g_new0(struct ext_profile, 1);
 
-	ext->name = g_strdup_printf("%s-%s/%s", owner, path, uuid);
 	ext->owner = g_strdup(owner);
 	ext->path = g_strdup(path);
 	ext->uuid = g_strdup(uuid);
+
+	while (dbus_message_iter_get_arg_type(opts) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter value, entry;
+		const char *key;
+
+		dbus_message_iter_recurse(opts, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (parse_ext_opt(ext, key, &value) < 0)
+			error("Invalid value for profile option %s", key);
+
+		dbus_message_iter_next(opts);
+	}
+
+	if (!ext->name)
+		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
 
 	p = &ext->p;
 
