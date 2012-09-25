@@ -1086,7 +1086,7 @@ static size_t handle_vendordep_pdu(struct avctp *session, uint8_t transaction,
 		goto err_metadata;
 	}
 
-	for (handler = handlers; handler; handler++) {
+	for (handler = handlers; handler->pdu_id; handler++) {
 		if (handler->pdu_id == pdu->pdu_id)
 			break;
 	}
