@@ -119,7 +119,7 @@ static int ext_adapter_probe(struct btd_profile *p,
 
 	ext = l->data;
 
-	DBG("External profile %s probed", ext->name);
+	DBG("\"%s\" probed", ext->name);
 
 	return 0;
 }
@@ -182,7 +182,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p->name = ext->name;
 	p->adapter_probe = ext_adapter_probe;
 
-	DBG("External profile %s created", ext->name);
+	DBG("Created \"%s\"", ext->name);
 
 	ext_profiles = g_slist_append(ext_profiles, ext);
 
@@ -195,7 +195,7 @@ static void remove_ext(struct ext_profile *ext)
 {
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 
-	DBG("External profile %s removed", ext->name);
+	DBG("Removed \"%s\"", ext->name);
 
 	g_free(ext->name);
 	g_free(ext->owner);
@@ -209,7 +209,7 @@ static void ext_exited(DBusConnection *conn, void *user_data)
 {
 	struct ext_profile *ext = user_data;
 
-	DBG("External profile %s exited", ext->name);
+	DBG("\"%s\" exited", ext->name);
 
 	remove_ext(ext);
 }
@@ -278,7 +278,7 @@ void btd_profile_cleanup(void)
 		DBusConnection *conn = btd_get_dbus_connection();
 		DBusMessage *msg;
 
-		DBG("Releasing %s", ext->name);
+		DBG("Releasing \"%s\"", ext->name);
 
 		msg = dbus_message_new_method_call(ext->owner, ext->path,
 							"org.bluez.Profile",
