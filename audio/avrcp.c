@@ -1322,8 +1322,18 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		desc = list->data;
 
-		if (desc && desc->version >= 0x0104)
+		if (desc && desc->version >= 0x0104) {
+			int feat;
+			int ret;
+
 			register_volume_notification(player);
+
+			ret = sdp_get_int_attr(rec,
+						SDP_ATTR_SUPPORTED_FEATURES,
+						&feat);
+			if (ret == 0 && (feat & AVRCP_FEATURE_BROWSING))
+				avctp_connect_browsing(player->session);
+		}
 
 		sdp_list_free(list, free);
 	default:

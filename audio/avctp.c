@@ -1311,6 +1311,34 @@ struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
 	return session;
 }
 
+int avctp_connect_browsing(struct avctp *session)
+{
+	GError *err = NULL;
+	GIOChannel *io;
+
+	if (session->state != AVCTP_STATE_CONNECTED)
+		return -ENOTCONN;
+
+	if (session->browsing_io != NULL)
+		return 0;
+
+	io = bt_io_connect(avctp_connect_browsing_cb, session, NULL, &err,
+				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
+				BT_IO_OPT_DEST_BDADDR, &session->dst,
+				BT_IO_OPT_PSM, AVCTP_BROWSING_PSM,
+				BT_IO_OPT_MODE, L2CAP_MODE_ERTM,
+				BT_IO_OPT_INVALID);
+	if (err) {
+		error("%s", err->message);
+		g_error_free(err);
+		return -EIO;
+	}
+
+	session->browsing_io = io;
+
+	return 0;
+}
+
 void avctp_disconnect(struct avctp *session)
 {
 	if (!session->control_io)
