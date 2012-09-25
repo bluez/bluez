@@ -52,3 +52,8 @@ void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 
 int btd_profile_register(struct btd_profile *profile);
 void btd_profile_unregister(struct btd_profile *profile);
+
+DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
+							void *user_data);
+DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
+							void *user_data);

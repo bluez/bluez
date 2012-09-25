@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -48,6 +49,8 @@
 #include "dbus-common.h"
 #include "log.h"
 #include "adapter.h"
+#include "device.h"
+#include "profile.h"
 #include "error.h"
 #include "manager.h"
 
@@ -176,6 +179,12 @@ static const GDBusMethodTable manager_methods[] = {
 			GDBUS_ARGS({ "pattern", "s" }),
 			GDBUS_ARGS({ "adapter", "o" }),
 			find_adapter) },
+	{ GDBUS_METHOD("RegisterProfile",
+			GDBUS_ARGS({ "profile", "o"}, { "UUID", "s" },
+						{ "options", "a{sv}" }),
+			NULL, btd_profile_reg_ext) },
+	{ GDBUS_METHOD("UnregisterProfile", GDBUS_ARGS({ "profile", "o" }),
+			NULL, btd_profile_unreg_ext) },
 	{ }
 };
 
