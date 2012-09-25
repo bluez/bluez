@@ -94,8 +94,6 @@ struct report {
 	struct hog_device	*hogdev;
 };
 
-static GSList *devices = NULL;
-
 static gint report_handle_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct report *report = a;
@@ -629,7 +627,7 @@ static void attio_disconnected_cb(gpointer user_data)
 	hogdev->attrib = NULL;
 }
 
-static struct hog_device *find_device_by_path(GSList *list, const char *path)
+struct hog_device *hog_device_find(GSList *list, const char *path)
 {
 	for (; list; list = list->next) {
 		struct hog_device *hogdev = list->data;
@@ -691,31 +689,33 @@ static void hog_device_free(struct hog_device *hogdev)
 	g_free(hogdev);
 }
 
-int hog_device_register(struct btd_device *device, const char *path)
+struct hog_device *hog_device_register(struct btd_device *device,
+					const char *path, int *perr)
 {
-	struct hog_device *hogdev;
 	struct gatt_primary *prim;
+	struct hog_device *hogdev;
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
 	GIOChannel *io;
-
-	hogdev = find_device_by_path(devices, path);
-	if (hogdev)
-		return -EALREADY;
+	int err;
 
 	prim = load_hog_primary(device);
-	if (!prim)
-		return -EINVAL;
+	if (!prim) {
+		err = -EINVAL;
+		goto failed;
+	}
 
 	hogdev = hog_device_new(device, path);
-	if (!hogdev)
-		return -ENOMEM;
+	if (!hogdev) {
+		err = -ENOMEM;
+		goto failed;
+	}
 
 	hogdev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
 	if (hogdev->uhid_fd < 0) {
-		int err = -errno;
+		err = -errno;
 		error("Failed to open uHID device: %s", strerror(-err));
 		hog_device_free(hogdev);
-		return err;
+		goto failed;
 	}
 
 	io = g_io_channel_unix_new(hogdev->uhid_fd);
@@ -733,19 +733,18 @@ int hog_device_register(struct btd_device *device, const char *path)
 
 	device_set_auto_connect(device, TRUE);
 
-	devices = g_slist_append(devices, hogdev);
+	return hogdev;
 
-	return 0;
+failed:
+	if (perr)
+		*perr = err;
+
+	return NULL;
 }
 
-int hog_device_unregister(const char *path)
+int hog_device_unregister(struct hog_device *hogdev)
 {
-	struct hog_device *hogdev;
 	struct uhid_event ev;
-
-	hogdev = find_device_by_path(devices, path);
-	if (hogdev == NULL)
-		return -EINVAL;
 
 	btd_device_remove_attio_callback(hogdev->device, hogdev->attioid);
 
@@ -762,7 +761,6 @@ int hog_device_unregister(const char *path)
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
 
-	devices = g_slist_remove(devices, hogdev);
 	hog_device_free(hogdev);
 
 	return 0;

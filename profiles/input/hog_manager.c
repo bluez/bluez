@@ -41,6 +41,7 @@
 #include "hog_device.h"
 
 static gboolean suspend_supported = FALSE;
+static GSList *devices = NULL;
 
 static void suspend_callback(void)
 {
@@ -56,19 +57,36 @@ static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
 	const char *path = device_get_path(device);
+	struct hog_device *hogdev;
+	int err;
 
 	DBG("path %s", path);
 
-	return hog_device_register(device, path);
+	hogdev = hog_device_find(devices, path);
+	if (hogdev)
+		return -EALREADY;
+
+	hogdev = hog_device_register(device, path, &err);
+	if (hogdev == NULL)
+		return err;
+
+	devices = g_slist_append(devices, hogdev);
+
+	return 0;
 }
 
 static void hog_device_remove(struct btd_profile *p, struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
+	struct hog_device *hogdev;
 
 	DBG("path %s", path);
 
-	hog_device_unregister(path);
+	hogdev = hog_device_find(devices, path);
+	if (hogdev) {
+		devices = g_slist_remove(devices, hogdev);
+		hog_device_unregister(hogdev);
+	}
 }
 
 static struct btd_profile hog_profile = {
