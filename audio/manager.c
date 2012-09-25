@@ -668,9 +668,12 @@ static struct audio_device *get_audio_dev(struct btd_device *device)
 static void audio_remove(struct btd_profile *p, struct btd_device *device)
 {
 	struct audio_device *dev;
+	const char *path;
 
-	dev = get_audio_dev(device);
-	if (!dev)
+	path = device_get_path(device);
+
+	dev = manager_find_device(path, NULL, NULL, NULL, FALSE);
+	if (dev == NULL)
 		return;
 
 	devices = g_slist_remove(devices, dev);
