@@ -26,10 +26,18 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
+
 #include "suspend.h"
 
-int suspend_init(void)
+static suspend_event suspend_cb = NULL;
+static resume_event resume_cb = NULL;
+
+int suspend_init(suspend_event suspend, resume_event resume)
 {
+	suspend_cb = suspend;
+	resume_cb = resume;
+
 	return 0;
 }
 

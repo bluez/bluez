@@ -22,5 +22,8 @@
  *
  */
 
-int suspend_init(void);
+typedef void (*suspend_event) (void);
+typedef void (*resume_event) (void);
+
+int suspend_init(suspend_event suspend, resume_event resume);
 void suspend_exit(void);
