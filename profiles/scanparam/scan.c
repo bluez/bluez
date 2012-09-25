@@ -208,10 +208,15 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	struct scan *scan = user_data;
 	bt_uuid_t iwin_uuid, refresh_uuid;
 
+	scan->attrib = g_attrib_ref(attrib);
+
+	if (scan->iwhandle) {
+		write_scan_params(scan->attrib, scan->iwhandle);
+		return;
+	}
+
 	bt_uuid16_create(&iwin_uuid, SCAN_INTERVAL_WIN_UUID);
 	bt_uuid16_create(&refresh_uuid, SCAN_REFRESH_UUID);
-
-	scan->attrib = g_attrib_ref(attrib);
 
 	gatt_discover_char(scan->attrib, scan->range.start, scan->range.end,
 					&iwin_uuid, iwin_discovered_cb, scan);
