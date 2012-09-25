@@ -44,7 +44,10 @@ if __name__ == '__main__':
 
 	mainloop = GObject.MainLoop()
 
-	opts = { "Role" : "client" }
+	opts = {	"Role" :	"client",
+			"Name" :	"Serial Port Profile Client",
+			"AutoConnect" :	False,
+		}
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
