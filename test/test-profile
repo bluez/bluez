@@ -1,0 +1,51 @@
+#!/usr/bin/python
+
+from __future__ import absolute_import, print_function, unicode_literals
+
+from gi.repository import GObject
+
+import sys
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+from optparse import OptionParser, make_option
+
+class Profile(dbus.service.Object):
+	@dbus.service.method("org.bluez.Profile",
+					in_signature="", out_signature="")
+	def Release(self):
+		print("Release")
+		mainloop.quit()
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+
+	option_list = [
+			make_option("-u", "--uuid", action="store",
+					type="string", dest="uuid"),
+			make_option("-p", "--path", action="store",
+					type="string", dest="path"),
+			]
+	parser = OptionParser(option_list=option_list)
+
+	(options, args) = parser.parse_args()
+
+	if not options.uuid:
+		options.uuid = "spp"
+
+	if not options.path:
+		options.path = "/foo/bar/profile"
+
+	profile = Profile(bus, options.path)
+
+	mainloop = GObject.MainLoop()
+
+	opts = { "Role" : "client" }
+
+	manager.RegisterProfile(options.path, options.uuid, opts)
+
+	mainloop.run()
