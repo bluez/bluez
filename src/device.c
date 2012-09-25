@@ -1372,6 +1372,32 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 	g_slist_free(probe_uuids);
 }
 
+void device_probe_profile(gpointer a, gpointer b)
+{
+	struct btd_device *device = a;
+	struct btd_profile *profile = b;
+	GSList *probe_uuids;
+	char addr[18];
+	int err;
+
+	if (profile->device_probe == NULL)
+		return;
+
+	probe_uuids = device_match_profile(device, profile, device->uuids);
+	if (!probe_uuids)
+		return;
+
+	ba2str(&device->bdaddr, addr);
+
+	err = profile->device_probe(profile, device, probe_uuids);
+	if (err < 0)
+		error("%s profile probe failed for %s", profile->name, addr);
+	else
+		device->profiles = g_slist_append(device->profiles, profile);
+
+	g_slist_free(probe_uuids);
+}
+
 void device_probe_profiles(struct btd_device *device, GSList *uuids)
 {
 	struct probe_data d = { device, uuids };

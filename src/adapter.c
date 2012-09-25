@@ -2051,6 +2051,18 @@ static void probe_profile(struct btd_profile *profile, void *data)
 	adapter->profiles = g_slist_prepend(adapter->profiles, profile);
 }
 
+void adapter_add_profile(struct btd_adapter *adapter, gpointer p)
+{
+	struct btd_profile *profile = p;
+
+	if (!adapter->initialized)
+		return;
+
+	probe_profile(profile, adapter);
+
+	g_slist_foreach(adapter->devices, device_probe_profile, profile);
+}
+
 static void load_connections(struct btd_adapter *adapter)
 {
 	GSList *l, *conns;
