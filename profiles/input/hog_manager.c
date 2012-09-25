@@ -39,7 +39,8 @@
 #include "device.h"
 #include "hog_device.h"
 
-static int hog_device_probe(struct btd_device *device, GSList *uuids)
+static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	const char *path = device_get_path(device);
 
@@ -48,7 +49,7 @@ static int hog_device_probe(struct btd_device *device, GSList *uuids)
 	return hog_device_register(device, path);
 }
 
-static void hog_device_remove(struct btd_device *device)
+static void hog_device_remove(struct btd_profile *p, struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 

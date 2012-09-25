@@ -2042,7 +2042,7 @@ static void probe_profile(struct btd_profile *profile, void *data)
 	if (profile->adapter_probe == NULL)
 		return;
 
-	err = profile->adapter_probe(adapter);
+	err = profile->adapter_probe(profile, adapter);
 	if (err < 0) {
 		error("%s: %s (%d)", profile->name, strerror(-err), -err);
 		return;
@@ -2276,7 +2276,7 @@ static void remove_profile(gpointer data, gpointer user_data)
 	struct btd_adapter *adapter = user_data;
 
 	if (profile->adapter_remove)
-		profile->adapter_remove(adapter);
+		profile->adapter_remove(profile, adapter);
 }
 
 static void unload_drivers(struct btd_adapter *adapter)

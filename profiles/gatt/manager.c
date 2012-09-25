@@ -43,7 +43,8 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int gatt_driver_probe(struct btd_device *device, GSList *uuids)
+static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	GSList *primaries, *l;
 	struct gatt_primary *gap = NULL, *gatt = NULL;
@@ -66,7 +67,8 @@ static int gatt_driver_probe(struct btd_device *device, GSList *uuids)
 	return gas_register(device, &gap->range, &gatt->range);
 }
 
-static void gatt_driver_remove(struct btd_device *device)
+static void gatt_driver_remove(struct btd_profile *p,
+						struct btd_device *device)
 {
 	gas_unregister(device);
 }

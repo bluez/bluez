@@ -29,8 +29,13 @@
 #include <glib.h>
 #include <time.h>
 #include <errno.h>
+#include <stdbool.h>
+
 #include <bluetooth/uuid.h>
+
 #include <adapter.h>
+#include <device.h>
+#include <profile.h>
 
 #include "gattrib.h"
 #include "att.h"
@@ -207,7 +212,7 @@ static gboolean register_ref_time_update_service(struct btd_adapter *adapter)
 				GATT_OPT_INVALID);
 }
 
-int time_server_init(struct btd_adapter *adapter)
+int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
@@ -226,7 +231,7 @@ int time_server_init(struct btd_adapter *adapter)
 	return 0;
 }
 
-void time_server_exit(struct btd_adapter *adapter)
+void time_server_exit(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 

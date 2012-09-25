@@ -36,15 +36,19 @@ struct btd_profile {
 
 	bool auto_connect;
 
-	int (*device_probe) (struct btd_device *device, GSList *uuids);
-	void (*device_remove) (struct btd_device *device);
+	int (*device_probe) (struct btd_profile *p, struct btd_device *device,
+								GSList *uuids);
+	void (*device_remove) (struct btd_profile *p,
+						struct btd_device *device);
 
 	int (*connect) (struct btd_device *device, struct btd_profile *profile,
 							btd_profile_cb cb);
 	int (*disconnect) (struct btd_device *device, btd_profile_cb cb);
 
-	int (*adapter_probe) (struct btd_adapter *adapter);
-	void (*adapter_remove) (struct btd_adapter *adapter);
+	int (*adapter_probe) (struct btd_profile *p,
+						struct btd_adapter *adapter);
+	void (*adapter_remove) (struct btd_profile *p,
+						struct btd_adapter *adapter);
 };
 
 void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),

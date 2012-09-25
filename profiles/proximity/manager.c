@@ -56,7 +56,8 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int attio_device_probe(struct btd_device *device, GSList *uuids)
+static int attio_device_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	struct gatt_primary *linkloss, *txpower, *immediate;
 	GSList *l, *primaries;
@@ -78,7 +79,8 @@ static int attio_device_probe(struct btd_device *device, GSList *uuids)
 	return monitor_register(device, linkloss, txpower, immediate, &enabled);
 }
 
-static void attio_device_remove(struct btd_device *device)
+static void attio_device_remove(struct btd_profile *p,
+						struct btd_device *device)
 {
 	monitor_unregister(device);
 	reporter_device_remove(device);

@@ -42,22 +42,25 @@
 #include "hdp_manager.h"
 #include "hdp.h"
 
-static int hdp_adapter_probe(struct btd_adapter *adapter)
+static int hdp_adapter_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	return hdp_adapter_register(adapter);
 }
 
-static void hdp_adapter_remove(struct btd_adapter *adapter)
+static void hdp_adapter_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	hdp_adapter_unregister(adapter);
 }
 
-static int hdp_driver_probe(struct btd_device *device, GSList *uuids)
+static int hdp_driver_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	return hdp_device_register(device);
 }
 
-static void hdp_driver_remove(struct btd_device *device)
+static void hdp_driver_remove(struct btd_profile *p, struct btd_device *device)
 {
 	hdp_device_unregister(device);
 }

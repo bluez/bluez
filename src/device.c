@@ -497,7 +497,7 @@ static DBusMessage *set_trust(DBusMessage *msg, gboolean value, void *data)
 static void profile_remove(struct btd_profile *profile,
 						struct btd_device *device)
 {
-	profile->device_remove(device);
+	profile->device_remove(profile, device);
 
 	device->profiles = g_slist_remove(device->profiles, profile);
 }
@@ -1361,7 +1361,7 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 	if (!probe_uuids)
 		return;
 
-	err = p->device_probe(d->dev, probe_uuids);
+	err = p->device_probe(p, d->dev, probe_uuids);
 	if (err < 0) {
 		error("%s profile probe failed for %s", p->name, d->addr);
 		g_slist_free(probe_uuids);
@@ -1447,7 +1447,7 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 			continue;
 		}
 
-		profile->device_remove(device);
+		profile->device_remove(profile, device);
 		device->profiles = g_slist_remove(device->profiles, profile);
 	}
 }

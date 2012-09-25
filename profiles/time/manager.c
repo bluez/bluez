@@ -35,7 +35,7 @@
 #include "server.h"
 
 struct btd_profile time_profile = {
-	.name 		= "gatt-time-server",
+	.name		= "gatt-time-server",
 	.adapter_probe	= time_server_init,
 	.adapter_remove	= time_server_exit,
 };

@@ -41,7 +41,9 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
+static int thermometer_driver_probe(struct btd_profile *p,
+					struct btd_device *device,
+					GSList *uuids)
 {
 	struct gatt_primary *tattr;
 	GSList *primaries, *l;
@@ -58,7 +60,8 @@ static int thermometer_driver_probe(struct btd_device *device, GSList *uuids)
 	return thermometer_register(device, tattr);
 }
 
-static void thermometer_driver_remove(struct btd_device *device)
+static void thermometer_driver_remove(struct btd_profile *p,
+						struct btd_device *device)
 {
 	thermometer_unregister(device);
 }

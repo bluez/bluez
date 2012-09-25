@@ -32,7 +32,7 @@
 #include "manager.h"
 #include "server.h"
 
-static int sap_server_probe(struct btd_adapter *adapter)
+static int sap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 	bdaddr_t src;
@@ -44,7 +44,8 @@ static int sap_server_probe(struct btd_adapter *adapter)
 	return sap_server_register(path, &src);
 }
 
-static void sap_server_remove(struct btd_adapter *adapter)
+static void sap_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 

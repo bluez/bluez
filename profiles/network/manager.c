@@ -73,7 +73,8 @@ done:
 				conf_security ? "true" : "false");
 }
 
-static int network_probe(struct btd_device *device, GSList *uuids)
+static int network_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
@@ -94,7 +95,7 @@ static int network_probe(struct btd_device *device, GSList *uuids)
 	return 0;
 }
 
-static void network_remove(struct btd_device *device)
+static void network_remove(struct btd_profile *p, struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 
@@ -103,7 +104,8 @@ static void network_remove(struct btd_device *device)
 	connection_unregister(path);
 }
 
-static int network_server_probe(struct btd_adapter *adapter)
+static int network_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
 
@@ -112,7 +114,8 @@ static int network_server_probe(struct btd_adapter *adapter)
 	return server_register(adapter);
 }
 
-static void network_server_remove(struct btd_adapter *adapter)
+static void network_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	const gchar *path = adapter_get_path(adapter);
 

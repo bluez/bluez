@@ -41,6 +41,7 @@
 #include "dbus-common.h"
 #include "error.h"
 #include "device.h"
+#include "profile.h"
 #include "hcid.h"
 #include "gattrib.h"
 #include "att.h"
@@ -248,7 +249,7 @@ void reporter_device_remove(struct btd_device *device)
 	unregister_reporter_device(device, radapter);
 }
 
-int reporter_adapter_probe(struct btd_adapter *adapter)
+int reporter_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter;
 
@@ -265,7 +266,8 @@ int reporter_adapter_probe(struct btd_adapter *adapter)
 	return 0;
 }
 
-void reporter_adapter_remove(struct btd_adapter *adapter)
+void reporter_adapter_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	struct reporter_adapter *radapter = find_reporter_adapter(adapter);
 	if (!radapter)

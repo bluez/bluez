@@ -56,7 +56,8 @@ static void input_remove(struct btd_device *device, const char *uuid)
 	input_device_unregister(path, uuid);
 }
 
-static int hid_device_probe(struct btd_device *device, GSList *uuids)
+static int hid_device_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	const gchar *path = device_get_path(device);
 	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
@@ -70,12 +71,12 @@ static int hid_device_probe(struct btd_device *device, GSList *uuids)
 							idle_timeout * 60);
 }
 
-static void hid_device_remove(struct btd_device *device)
+static void hid_device_remove(struct btd_profile *p, struct btd_device *device)
 {
 	input_remove(device, HID_UUID);
 }
 
-static int hid_server_probe(struct btd_adapter *adapter)
+static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	bdaddr_t src;
 	int ret;
@@ -91,7 +92,8 @@ static int hid_server_probe(struct btd_adapter *adapter)
 	return 0;
 }
 
-static void hid_server_remove(struct btd_adapter *adapter)
+static void hid_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	bdaddr_t src;
 

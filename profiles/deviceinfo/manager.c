@@ -42,7 +42,9 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int deviceinfo_driver_probe(struct btd_device *device, GSList *uuids)
+static int deviceinfo_driver_probe(struct btd_profile *p,
+					struct btd_device *device,
+					GSList *uuids)
 {
 	struct gatt_primary *prim;
 	GSList *primaries, *l;
@@ -59,7 +61,8 @@ static int deviceinfo_driver_probe(struct btd_device *device, GSList *uuids)
 	return deviceinfo_register(device, prim);
 }
 
-static void deviceinfo_driver_remove(struct btd_device *device)
+static void deviceinfo_driver_remove(struct btd_profile *p,
+						struct btd_device *device)
 {
 	deviceinfo_unregister(device);
 }

@@ -41,6 +41,7 @@
 #include "gatt-service.h"
 #include "attrib-server.h"
 #include "device.h"
+#include "profile.h"
 #include "attio.h"
 #include "dbus-common.h"
 #include "reporter.h"
