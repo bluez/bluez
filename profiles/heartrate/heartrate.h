@@ -22,5 +22,6 @@
 
 int heartrate_adapter_register(struct btd_adapter *adapter);
 void heartrate_adapter_unregister(struct btd_adapter *adapter);
-int heartrate_device_register(struct btd_device *device);
+int heartrate_device_register(struct btd_device *device,
+						struct gatt_primary *prim);
 void heartrate_device_unregister(struct btd_device *device);
