@@ -27,26 +27,50 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 #include <glib.h>
+#include <bluetooth/uuid.h>
 
 #include "log.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "manager.h"
+#include "scan.h"
 
 #define SCAN_PARAMETERS_UUID	"00001813-0000-1000-8000-00805f9b34fb"
+
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
 
 static int scan_param_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
+	GSList *primaries, *l;
+
 	DBG("Probing Scan Parameters");
 
-	return 0;
+	primaries = btd_device_get_primaries(device);
+
+	l = g_slist_find_custom(primaries, SCAN_PARAMETERS_UUID,
+							primary_uuid_cmp);
+	if (!l)
+		return -EINVAL;
+
+	return scan_register(device, l->data);
 }
 
 static void scan_param_remove(struct btd_profile *p, struct btd_device *device)
 {
+	scan_unregister(device);
 }
 
 static struct btd_profile scan_profile = {

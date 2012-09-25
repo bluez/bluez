@@ -244,7 +244,8 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/gatt/gas.c \
 			profiles/scanparam/main.c \
 			profiles/scanparam/manager.h \
-			profiles/scanparam/manager.c
+			profiles/scanparam/manager.c \
+			profiles/scanparam/scan.h profiles/scanparam/scan.c
 endif
 
 builtin_modules += formfactor
