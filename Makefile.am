@@ -245,7 +245,13 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/scanparam/main.c \
 			profiles/scanparam/manager.h \
 			profiles/scanparam/manager.c \
-			profiles/scanparam/scan.h profiles/scanparam/scan.c
+			profiles/scanparam/scan.h profiles/scanparam/scan.c \
+			profiles/heartrate/main.c \
+			profiles/heartrate/manager.c \
+			profiles/heartrate/manager.h \
+			profiles/heartrate/heartrate.c \
+			profiles/heartrate/heartrate.h
+
 endif
 
 builtin_modules += formfactor
