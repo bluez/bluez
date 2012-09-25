@@ -37,7 +37,10 @@
 #include "plugin.h"
 #include "hcid.h"
 #include "device.h"
+#include "suspend.h"
 #include "hog_device.h"
+
+static gboolean suspend_supported = FALSE;
 
 static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
@@ -67,11 +70,22 @@ static struct btd_profile hog_profile = {
 
 static int hog_manager_init(void)
 {
+	int err;
+
+	err = suspend_init();
+	if (err < 0)
+		DBG("Suspend: %s(%d)", strerror(-err), -err);
+	else
+		suspend_supported = TRUE;
+
 	return btd_profile_register(&hog_profile);
 }
 
 static void hog_manager_exit(void)
 {
+	if (suspend_supported)
+		suspend_exit();
+
 	btd_profile_register(&hog_profile);
 }
 
