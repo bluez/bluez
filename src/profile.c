@@ -43,10 +43,13 @@
 
 struct ext_profile {
 	struct btd_profile p;
+
 	char *name;
 	char *owner;
 	char *uuid;
 	char *path;
+
+	guint id;
 };
 
 static GSList *profiles = NULL;
@@ -138,6 +141,15 @@ static void remove_ext(struct ext_profile *ext)
 	g_free(ext);
 }
 
+static void ext_exited(DBusConnection *conn, void *user_data)
+{
+	struct ext_profile *ext = user_data;
+
+	DBG("External profile %s exited", ext->name);
+
+	remove_ext(ext);
+}
+
 DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
@@ -167,6 +179,9 @@ DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
 	if (!ext)
 		return btd_error_invalid_args(msg);
 
+	ext->id = g_dbus_add_disconnect_watch(conn, sender, ext_exited, ext,
+									NULL);
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -186,6 +201,7 @@ DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
 	if (!ext)
 		return btd_error_does_not_exist(msg);
 
+	g_dbus_remove_watch(conn, ext->id);
 	remove_ext(ext);
 
 	return dbus_message_new_method_return(msg);
@@ -195,14 +211,18 @@ void btd_profile_cleanup(void)
 {
 	while (ext_profiles) {
 		struct ext_profile *ext = ext_profiles->data;
+		DBusConnection *conn = btd_get_dbus_connection();
 		DBusMessage *msg;
+
+		DBG("Releasing %s", ext->name);
 
 		msg = dbus_message_new_method_call(ext->owner, ext->path,
 							"org.bluez.Profile",
 							"Release");
 		if (msg)
-			g_dbus_send_message(btd_get_dbus_connection(), msg);
+			g_dbus_send_message(conn, msg);
 
+		g_dbus_remove_watch(conn, ext->id);
 		remove_ext(ext);
 	}
 }
