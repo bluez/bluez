@@ -31,6 +31,11 @@
 
 #include "adapter.h"
 #include "device.h"
+#include "gattrib.h"
+#include "att.h"
+#include "gatt.h"
+#include "attio.h"
+#include "log.h"
 #include "heartrate.h"
 
 struct heartrate_adapter {
@@ -41,6 +46,8 @@ struct heartrate_adapter {
 struct heartrate {
 	struct btd_device		*dev;
 	struct heartrate_adapter	*hradapter;
+	GAttrib				*attrib;
+	guint				attioid;
 };
 
 static GSList *heartrate_adapters = NULL;
@@ -82,6 +89,12 @@ static void destroy_heartrate(gpointer user_data)
 {
 	struct heartrate *hr = user_data;
 
+	if (hr->attioid > 0)
+		btd_device_remove_attio_callback(hr->dev, hr->attioid);
+
+	if (hr->attrib != NULL)
+		g_attrib_unref(hr->attrib);
+
 	btd_device_unref(hr->dev);
 	g_free(hr);
 }
@@ -91,6 +104,25 @@ static void destroy_heartrate_adapter(gpointer user_data)
 	struct heartrate_adapter *hradapter = user_data;
 
 	g_free(hradapter);
+}
+
+static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
+{
+	struct heartrate *hr = user_data;
+
+	DBG("");
+
+	hr->attrib = g_attrib_ref(attrib);
+}
+
+static void attio_disconnected_cb(gpointer user_data)
+{
+	struct heartrate *hr = user_data;
+
+	DBG("");
+
+	g_attrib_unref(hr->attrib);
+	hr->attrib = NULL;
 }
 
 int heartrate_adapter_register(struct btd_adapter *adapter)
@@ -136,6 +168,9 @@ int heartrate_device_register(struct btd_device *device)
 	hr->hradapter = hradapter;
 
 	hradapter->devices = g_slist_prepend(hradapter->devices, hr);
+
+	hr->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
+						attio_disconnected_cb, hr);
 
 	return 0;
 }
