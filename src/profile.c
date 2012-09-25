@@ -27,12 +27,16 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "uuid.h"
+#include "log.h"
 #include "error.h"
+#include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
@@ -185,4 +189,20 @@ DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
 	remove_ext(ext);
 
 	return dbus_message_new_method_return(msg);
+}
+
+void btd_profile_cleanup(void)
+{
+	while (ext_profiles) {
+		struct ext_profile *ext = ext_profiles->data;
+		DBusMessage *msg;
+
+		msg = dbus_message_new_method_call(ext->owner, ext->path,
+							"org.bluez.Profile",
+							"Release");
+		if (msg)
+			g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+		remove_ext(ext);
+	}
 }

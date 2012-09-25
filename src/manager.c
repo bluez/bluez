@@ -291,6 +291,8 @@ void manager_cleanup(const char *path)
 		btd_adapter_unref(adapter);
 	}
 
+	btd_profile_cleanup();
+
 	btd_start_exit_timer();
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
