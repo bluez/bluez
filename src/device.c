@@ -1342,43 +1342,51 @@ static GSList *device_match_profile(struct btd_device *device,
 	return match_uuids;
 }
 
+struct probe_data {
+	struct btd_device *dev;
+	GSList *uuids;
+	char addr[18];
+};
+
+static void dev_probe(struct btd_profile *p, void *user_data)
+{
+	struct probe_data *d = user_data;
+	GSList *probe_uuids;
+	int err;
+
+	if (p->device_probe == NULL)
+		return;
+
+	probe_uuids = device_match_profile(d->dev, p, d->uuids);
+	if (!probe_uuids)
+		return;
+
+	err = p->device_probe(d->dev, probe_uuids);
+	if (err < 0) {
+		error("%s profile probe failed for %s", p->name, d->addr);
+		g_slist_free(probe_uuids);
+		return;
+	}
+
+	d->dev->profiles = g_slist_append(d->dev->profiles, p);
+	g_slist_free(probe_uuids);
+}
+
 void device_probe_profiles(struct btd_device *device, GSList *uuids)
 {
-	char addr[18];
+	struct probe_data d = { device, uuids };
 	GSList *l;
 
-	ba2str(&device->bdaddr, addr);
+	ba2str(&device->bdaddr, d.addr);
 
 	if (device->blocked) {
-		DBG("Skipping profiles for blocked device %s", addr);
+		DBG("Skipping profiles for blocked device %s", d.addr);
 		goto add_uuids;
 	}
 
-	DBG("Probing profiles for device %s", addr);
+	DBG("Probing profiles for device %s", d.addr);
 
-	for (l = btd_get_profiles(); l != NULL; l = g_slist_next(l)) {
-		struct btd_profile *profile = l->data;
-		GSList *probe_uuids;
-		int err;
-
-		if (profile->device_probe == NULL)
-			continue;
-
-		probe_uuids = device_match_profile(device, profile, uuids);
-		if (!probe_uuids)
-			continue;
-
-		err = profile->device_probe(device, probe_uuids);
-		if (err < 0) {
-			error("%s profile probe failed for device %s",
-							profile->name, addr);
-			g_slist_free(probe_uuids);
-			continue;
-		}
-
-		device->profiles = g_slist_append(device->profiles, profile);
-		g_slist_free(probe_uuids);
-	}
+	btd_profile_foreach(dev_probe, &d);
 
 add_uuids:
 	for (l = uuids; l != NULL; l = g_slist_next(l)) {
