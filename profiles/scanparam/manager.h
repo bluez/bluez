@@ -22,34 +22,5 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#include <errno.h>
-#include <stdint.h>
-#include <glib.h>
-
-#include "log.h"
-#include "plugin.h"
-#include "hcid.h"
-#include "manager.h"
-
-static int scan_param_init(void)
-{
-	if (!main_opts.gatt_enabled) {
-		DBG("Scan Parameters: GATT is disabled");
-		return -ENOTSUP;
-	}
-
-	return scan_param_manager_init();
-}
-
-static void scan_param_exit(void)
-{
-	scan_param_manager_exit();
-}
-
-BLUETOOTH_PLUGIN_DEFINE(scanparam, VERSION,
-			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
-			scan_param_init, scan_param_exit)
+int scan_param_manager_init(void);
+void scan_param_manager_exit(void);
