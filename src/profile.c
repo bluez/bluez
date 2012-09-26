@@ -52,6 +52,7 @@ struct ext_profile {
 	char *owner;
 	char *uuid;
 	char *path;
+	char *role;
 
 	guint id;
 
@@ -260,6 +261,12 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		if (type != DBUS_TYPE_BOOLEAN)
 			return -EINVAL;
 		dbus_message_iter_get_basic(value, &ext->authorize);
+	} else if (strcasecmp(key, "Role") == 0) {
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &str);
+		g_free(ext->role);
+		ext->role = g_strdup(str);
 	}
 
 	return 0;
@@ -334,6 +341,7 @@ static void remove_ext(struct ext_profile *ext)
 	g_free(ext->name);
 	g_free(ext->owner);
 	g_free(ext->uuid);
+	g_free(ext->role);
 	g_free(ext->path);
 
 	g_free(ext);
