@@ -70,6 +70,10 @@ struct ext_io {
 	struct ext_profile *ext;
 	int proto;
 	GIOChannel *io;
+	guint io_id;
+
+	bool authorizing;
+	DBusPendingCall *new_conn;
 };
 
 static GSList *profiles = NULL;
@@ -126,14 +130,291 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	return NULL;
 }
 
-static void ext_confirm(GIOChannel *io, gpointer user_data)
+static void ext_cancel(struct ext_profile *ext)
 {
-	DBG("");
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(ext->owner, ext->path,
+						"org.bluez.Profile", "Cancel");
+	if (msg)
+		g_dbus_send_message(btd_get_dbus_connection(), msg);
+}
+
+static void ext_io_destroy(gpointer p)
+{
+	struct ext_io *ext_io = p;
+	struct ext_profile *ext = ext_io->ext;
+
+	if (ext_io->io_id > 0)
+		g_source_remove(ext_io->io_id);
+
+	g_io_channel_shutdown(ext_io->io, FALSE, NULL);
+	g_io_channel_unref(ext_io->io);
+
+	if (ext_io->authorizing) {
+		bdaddr_t src, dst;
+
+		if (bt_io_get(ext_io->io, NULL, BT_IO_OPT_SOURCE_BDADDR, &src,
+						BT_IO_OPT_DEST_BDADDR, &dst,
+						BT_IO_OPT_INVALID))
+			btd_cancel_authorization(&src, &dst);
+	}
+
+	if (ext_io->new_conn) {
+		dbus_pending_call_cancel(ext_io->new_conn);
+		dbus_pending_call_unref(ext_io->new_conn);
+		ext_cancel(ext);
+	}
+
+	g_free(ext_io);
+}
+
+static gboolean ext_io_disconnected(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	GError *gerr = NULL;
+	char addr[18];
+
+	if (cond & G_IO_NVAL)
+		return FALSE;
+
+	bt_io_get(io, &gerr, BT_IO_OPT_DEST, addr, BT_IO_OPT_INVALID);
+	if (gerr != NULL) {
+		error("Unable to get io data for %s: %s",
+						ext->name, gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	DBG("%s disconnected from %s", ext->name, addr);
+drop:
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+	return FALSE;
+}
+
+static void new_conn_reply(DBusPendingCall *call, void *user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	dbus_set_error_from_message(&err, reply);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(conn->new_conn);
+	conn->new_conn = NULL;
+
+	if (!dbus_error_is_set(&err))
+		return;
+
+	error("%s replied with an error: %s, %s", ext->name,
+						err.name, err.message);
+
+	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
+		ext_cancel(ext);
+
+	dbus_error_free(&err);
+
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
+static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
+							struct btd_device *dev)
+{
+	DBusMessage *msg;
+	const char *path;
+	int fd;
+
+	msg = dbus_message_new_method_call(ext->owner, ext->path,
+							"org.bluez.Profile",
+							"NewConnection");
+	if (!msg) {
+		error("Unable to create NewConnection call for %s", ext->name);
+		return false;
+	}
+
+	path = device_get_path(dev);
+	fd = g_io_channel_unix_get_fd(conn->io);
+
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_UNIX_FD, &fd,
+					DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
+						msg, &conn->new_conn, -1)) {
+		error("%s: sending NewConnection failed", ext->name);
+		dbus_message_unref(msg);
+		return false;
+	}
+
+	dbus_message_unref(msg);
+
+	dbus_pending_call_set_notify(conn->new_conn, new_conn_reply, conn,
+									NULL);
+
+	return true;
+}
+
+static struct btd_device *get_btd_dev(bdaddr_t *src, const char *addr)
+{
+	struct btd_adapter *adapter;
+
+	adapter = manager_find_adapter(src);
+	if (!adapter)
+		return NULL;
+
+	return adapter_get_device(adapter, addr);
 }
 
 static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 {
-	DBG("");
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	struct btd_device *device;
+	bdaddr_t src;
+	char addr[18];
+
+	if (!bt_io_get(io, NULL,
+				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_DEST, addr,
+				BT_IO_OPT_INVALID)) {
+		error("Unable to get connect data for %s", ext->name);
+		goto drop;
+	}
+
+	if (err != NULL) {
+		error("%s failed to connect to %s: %s", ext->name, addr,
+								err->message);
+		goto drop;
+	}
+
+	DBG("%s connected to %s", ext->name, addr);
+
+	device = get_btd_dev(&src, addr);
+	if (!device) {
+		error("%s: Unable to get dev object for %s", ext->name, addr);
+		goto drop;
+	}
+
+	if (send_new_connection(ext, conn, device))
+		return;
+
+drop:
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
+static void ext_auth(DBusError *err, void *user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	GError *gerr = NULL;
+	char addr[18];
+
+	conn->authorizing = false;
+
+	bt_io_get(conn->io, &gerr, BT_IO_OPT_DEST, addr, BT_IO_OPT_INVALID);
+	if (gerr != NULL) {
+		error("Unable to get connect data for %s: %s",
+						ext->name, err->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	if (err && dbus_error_is_set(err)) {
+		error("%s rejected %s: %s", ext->name, addr, err->message);
+		goto drop;
+	}
+
+	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
+		error("bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	DBG("%s authorized to connect to %s", addr, ext->name);
+
+	return;
+
+drop:
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
+static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io)
+{
+	struct ext_io *conn;
+	GIOCondition cond;
+
+	conn = g_new0(struct ext_io, 1);
+	conn->io = g_io_channel_ref(io);
+	conn->proto = server->proto;
+	conn->ext = server->ext;
+
+	cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected, conn);
+
+	return conn;
+}
+
+static void ext_confirm(GIOChannel *io, gpointer user_data)
+{
+	struct ext_io *server = user_data;
+	struct ext_profile *ext = server->ext;
+	struct ext_io *conn;
+	GError *gerr = NULL;
+	bdaddr_t src, dst;
+	char addr[18];
+	int err;
+
+	bt_io_get(io, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_DEST, addr,
+			BT_IO_OPT_INVALID);
+	if (gerr != NULL) {
+		error("%s failed to get connect data: %s", ext->name,
+								gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	DBG("incoming connect from %s", addr);
+
+	conn = create_conn(server, io);
+
+	err = btd_request_authorization(&src, &dst, ext->uuid, ext_auth, conn);
+	if (err < 0) {
+		error("%s authorization failure: %s", ext->name,
+							strerror(-err));
+		ext_io_destroy(conn);
+		return;
+	}
+
+	conn->authorizing = true;
+
+	ext->conns = g_slist_append(ext->conns, conn);
+
+	DBG("%s authorizing connection from %s", ext->name, addr);
+}
+
+static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
+{
+	struct ext_io *server = user_data;
+	struct ext_profile *ext = server->ext;
+	struct ext_io *conn;
+
+	conn = create_conn(server, io);
+	ext->conns = g_slist_append(ext->conns, conn);
+
+	ext_connect(io, err, conn);
 }
 
 static int ext_start_servers(struct ext_profile *ext,
@@ -153,37 +434,16 @@ static int ext_start_servers(struct ext_profile *ext,
 		connect = NULL;
 	} else {
 		confirm = NULL;
-		connect = ext_connect;
+		connect = ext_direct_connect;
 	}
 
 	if (ext->psm) {
-		server = g_new(struct ext_io, 1);
+		server = g_new0(struct ext_io, 1);
 		server->ext = ext;
 
 		io = bt_io_listen(connect, confirm, server, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &src,
 					BT_IO_OPT_PSM, ext->psm,
-					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
-					BT_IO_OPT_INVALID);
-		if (err != NULL) {
-			error("RFCOMM server failed for %s: %s",
-						ext->name, err->message);
-			g_free(server);
-			g_clear_error(&err);
-		} else {
-			server->io = io;
-			server->proto = BTPROTO_L2CAP;
-			ext->servers = g_slist_append(ext->servers, server);
-		}
-	}
-
-	if (ext->chan) {
-		server = g_new(struct ext_io, 1);
-		server->ext = ext;
-
-		io = bt_io_listen(connect, confirm, server, NULL, &err,
-					BT_IO_OPT_SOURCE_BDADDR, &src,
-					BT_IO_OPT_CHANNEL, ext->chan,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
@@ -193,8 +453,31 @@ static int ext_start_servers(struct ext_profile *ext,
 			g_clear_error(&err);
 		} else {
 			server->io = io;
+			server->proto = BTPROTO_L2CAP;
+			ext->servers = g_slist_append(ext->servers, server);
+			DBG("%s listening on PSM %u", ext->name, ext->psm);
+		}
+	}
+
+	if (ext->chan) {
+		server = g_new0(struct ext_io, 1);
+		server->ext = ext;
+
+		io = bt_io_listen(connect, confirm, server, NULL, &err,
+					BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_CHANNEL, ext->chan,
+					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_INVALID);
+		if (err != NULL) {
+			error("RFCOMM server failed for %s: %s",
+						ext->name, err->message);
+			g_free(server);
+			g_clear_error(&err);
+		} else {
+			server->io = io;
 			server->proto = BTPROTO_RFCOMM;
 			ext->servers = g_slist_append(ext->servers, server);
+			DBG("%s listening on chan %u", ext->name, ext->chan);
 		}
 	}
 
@@ -333,15 +616,6 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	manager_foreach_adapter(adapter_add_profile, &ext->p);
 
 	return ext;
-}
-
-static void ext_io_destroy(gpointer p)
-{
-	struct ext_io *ext_io = p;
-
-	g_io_channel_shutdown(ext_io->io, FALSE, NULL);
-	g_io_channel_unref(ext_io->io);
-	g_free(ext_io);
 }
 
 static void remove_ext(struct ext_profile *ext)
