@@ -278,6 +278,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	ext->path = g_strdup(path);
 	ext->uuid = g_strdup(uuid);
 
+	ext->sec_level = BT_IO_SEC_LOW;
+
 	while (dbus_message_iter_get_arg_type(opts) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter value, entry;
 		const char *key;
