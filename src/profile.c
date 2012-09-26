@@ -414,13 +414,13 @@ void btd_profile_cleanup(void)
 
 		DBG("Releasing \"%s\"", ext->name);
 
+		g_dbus_remove_watch(conn, ext->id);
+		remove_ext(ext);
+
 		msg = dbus_message_new_method_call(ext->owner, ext->path,
 							"org.bluez.Profile",
 							"Release");
 		if (msg)
 			g_dbus_send_message(conn, msg);
-
-		g_dbus_remove_watch(conn, ext->id);
-		remove_ext(ext);
 	}
 }
