@@ -3221,7 +3221,8 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 
 	dev_path = device_get_path(device);
 
-	err = agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth, g_free);
+	err = agent_authorize(agent, dev_path, uuid, agent_auth_cb, auth,
+								g_free);
 	if (err < 0)
 		g_free(auth);
 	else
