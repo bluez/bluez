@@ -181,6 +181,8 @@ struct avrcp {
 	struct avctp *conn;
 	struct audio_device *dev;
 	struct avrcp_player *player;
+	uint16_t version;
+	int features;
 
 	unsigned int control_handler;
 	unsigned int browsing_handler;
@@ -1348,10 +1350,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 							session);
 
 		server->sessions = g_slist_append(server->sessions, session);
-		break;
-	case AVCTP_STATE_CONNECTED:
-		if (session == NULL)
-			break;
 
 		rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
 		if (rec == NULL)
@@ -1361,21 +1359,22 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			return;
 
 		desc = list->data;
-
-		if (desc && desc->version >= 0x0104) {
-			int feat;
-			int ret;
-
-			register_volume_notification(session);
-
-			ret = sdp_get_int_attr(rec,
-						SDP_ATTR_SUPPORTED_FEATURES,
-						&feat);
-			if (ret == 0 && (feat & AVRCP_FEATURE_BROWSING))
-				avctp_connect_browsing(session->conn);
-		}
+		session->version = desc->version;
+		sdp_get_int_attr(rec, SDP_ATTR_SUPPORTED_FEATURES,
+							&session->features);
 
 		sdp_list_free(list, free);
+
+		break;
+	case AVCTP_STATE_CONNECTED:
+		if (session == NULL)
+			break;
+
+		if (session->version >= 0x0104) {
+			register_volume_notification(session);
+			if (session->features & AVRCP_FEATURE_BROWSING)
+				avctp_connect_browsing(session->conn);
+		}
 	default:
 		return;
 	}
