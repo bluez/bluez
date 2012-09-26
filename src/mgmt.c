@@ -979,7 +979,7 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 	for (i = 0; i < num; i++) {
 		uint16_t index;
 
-		index = bt_get_le16(&rp->index);
+		index = bt_get_le16(&rp->index[i]);
 
 		add_controller(index);
 		read_info(sk, index);
