@@ -17,6 +17,16 @@ class Profile(dbus.service.Object):
 		print("Release")
 		mainloop.quit()
 
+	@dbus.service.method("org.bluez.Profile",
+					in_signature="", out_signature="")
+	def Cancel(self):
+		print("Cancel")
+
+	@dbus.service.method("org.bluez.Profile",
+					in_signature="od", out_signature="")
+	def NewConnection(self, path, fd):
+		print("NewConnection(%s, %d)" % (path, fd))
+
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -26,28 +36,40 @@ if __name__ == '__main__':
 
 	option_list = [
 			make_option("-u", "--uuid", action="store",
-					type="string", dest="uuid"),
+					type="string", dest="uuid",
+					default="spp"),
 			make_option("-p", "--path", action="store",
-					type="string", dest="path"),
+					type="string", dest="path",
+					default="/foo/bar/profile"),
+			make_option("-n", "--name", action="store",
+					type="string", dest="name",
+					default="Test Profile"),
+			make_option("-s", "--server",
+					action="store_const",
+					const="server", dest="role"),
+			make_option("-c", "--client",
+					action="store_const",
+					const="client", dest="role"),
+			make_option("-a", "--auto-connect",
+					action="store_true",
+					dest="auto_connect", default=False),
 			]
+
 	parser = OptionParser(option_list=option_list)
 
 	(options, args) = parser.parse_args()
-
-	if not options.uuid:
-		options.uuid = "spp"
-
-	if not options.path:
-		options.path = "/foo/bar/profile"
 
 	profile = Profile(bus, options.path)
 
 	mainloop = GObject.MainLoop()
 
-	opts = {	"Role" :	"client",
-			"Name" :	"Serial Port Profile Client",
-			"AutoConnect" :	False,
+	opts = {
+			"Name" :	options.name,
+			"AutoConnect" :	options.auto_connect,
 		}
+
+	if (options.role):
+		opts["Role"] = options.role
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
