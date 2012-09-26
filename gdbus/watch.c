@@ -78,6 +78,47 @@ struct filter_data {
 	gboolean registered;
 };
 
+static struct filter_data *filter_data_find_match(DBusConnection *connection,
+							const char *name,
+							const char *owner,
+							const char *path,
+							const char *interface,
+							const char *member,
+							const char *argument)
+{
+	GSList *current;
+
+	for (current = listeners;
+			current != NULL; current = current->next) {
+		struct filter_data *data = current->data;
+
+		if (connection != data->connection)
+			continue;
+
+		if (g_strcmp0(name, data->name) != 0)
+			continue;
+
+		if (g_strcmp0(owner, data->owner) != 0)
+			continue;
+
+		if (g_strcmp0(path, data->path) != 0)
+			continue;
+
+		if (g_strcmp0(interface, data->interface) != 0)
+			continue;
+
+		if (g_strcmp0(member, data->member) != 0)
+			continue;
+
+		if (g_strcmp0(argument, data->argument) != 0)
+			continue;
+
+		return data;
+	}
+
+	return NULL;
+}
+
 static struct filter_data *filter_data_find(DBusConnection *connection,
 							const char *name,
 							const char *owner,
@@ -221,8 +262,8 @@ static struct filter_data *filter_data_get(DBusConnection *connection,
 		name = sender;
 
 proceed:
-	data = filter_data_find(connection, name, owner, path, interface,
-					member, argument);
+	data = filter_data_find_match(connection, name, owner, path,
+						interface, member, argument);
 	if (data)
 		return data;
 
@@ -501,6 +542,7 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 {
 	struct filter_data *data;
 	const char *sender, *path, *iface, *member, *arg = NULL;
+	GSList *current, *delete_listener = NULL;
 
 	/* Only filter signals */
 	if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_SIGNAL)
@@ -512,38 +554,69 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	member = dbus_message_get_member(message);
 	dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &arg, DBUS_TYPE_INVALID);
 
-	/* Sender is always bus name */
-	data = filter_data_find(connection, NULL, sender, path, iface, member,
-					arg);
-	if (data == NULL) {
-		error("Got %s.%s signal which has no listeners", iface, member);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	/* Sender is always the owner */
+
+	for (current = listeners; current != NULL; current = current->next) {
+		data = current->data;
+
+		if (connection != data->connection)
+			continue;
+
+		if (data->owner && g_str_equal(sender, data->owner) == FALSE)
+			continue;
+
+		if (data->path && g_str_equal(path, data->path) == FALSE)
+			continue;
+
+		if (data->interface && g_str_equal(iface,
+						data->interface) == FALSE)
+			continue;
+
+		if (data->member && g_str_equal(member, data->member) == FALSE)
+			continue;
+
+		if (data->argument && g_str_equal(arg,
+						data->argument) == FALSE)
+			continue;
+
+		if (data->handle_func) {
+			data->lock = TRUE;
+
+			data->handle_func(connection, message, data);
+
+			data->callbacks = data->processed;
+			data->processed = NULL;
+			data->lock = FALSE;
+		}
+
+		if (!data->callbacks)
+			delete_listener = g_slist_prepend(delete_listener,
+								current);
 	}
 
-	if (data->handle_func) {
-		data->lock = TRUE;
+	for (current = delete_listener; current != NULL;
+					current = delete_listener->next) {
+		GSList *l = current->data;
 
-		data->handle_func(connection, message, data);
+		data = l->data;
 
-		data->callbacks = data->processed;
-		data->processed = NULL;
-		data->lock = FALSE;
+		/* Has any other callback added callbacks back to this data? */
+		if (data->callbacks != NULL)
+			continue;
+
+		remove_match(data);
+		listeners = g_slist_remove_link(listeners, l);
+
+		filter_data_free(data);
 	}
 
-	if (data->callbacks)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	remove_match(data);
-
-	listeners = g_slist_remove(listeners, data);
+	g_slist_free(delete_listener);
 
 	/* Remove filter if there are no listeners left for the connection */
 	if (filter_data_find(connection, NULL, NULL, NULL, NULL, NULL,
 								NULL) == NULL)
 		dbus_connection_remove_filter(connection, message_filter,
 						NULL);
-
-	filter_data_free(data);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
