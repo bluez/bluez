@@ -34,9 +34,9 @@
 #include <gdbus.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/uuid.h>
 
 #include "btio.h"
-#include "uuid.h"
 #include "log.h"
 #include "error.h"
 #include "dbus-common.h"
