@@ -53,6 +53,10 @@ if __name__ == '__main__':
 			make_option("-a", "--auto-connect",
 					action="store_true",
 					dest="auto_connect", default=False),
+			make_option("-P", "--PSM", action="store",
+					type="int", dest="psm"),
+			make_option("-C", "--channel", action="store",
+					type="int", dest="channel")
 			]
 
 	parser = OptionParser(option_list=option_list)
@@ -70,6 +74,12 @@ if __name__ == '__main__':
 
 	if (options.role):
 		opts["Role"] = options.role
+
+	if (options.psm):
+		opts["PSM"] = dbus.UInt16(options.psm)
+
+	if (options.channel):
+		opts["Channel"] = dbus.UInt16(options.channel)
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
