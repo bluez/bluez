@@ -218,6 +218,19 @@ static int ext_adapter_probe(struct btd_profile *p,
 	return ext_start_servers(ext, adapter);
 }
 
+static void ext_get_defaults(struct ext_profile *ext)
+{
+	if (ext->psm || ext->chan)
+		return;
+
+	if (strcasecmp(ext->uuid, "spp") == 0) {
+		if (g_strcmp0(ext->role, "client") == 0)
+			return;
+
+		ext->chan = 3;
+	}
+}
+
 static int parse_ext_opt(struct ext_profile *ext, const char *key,
 							DBusMessageIter *value)
 {
@@ -305,6 +318,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
+
+	ext_get_defaults(ext);
 
 	p = &ext->p;
 
