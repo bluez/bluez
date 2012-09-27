@@ -4,6 +4,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 
 from gi.repository import GObject
 
+import os
 import sys
 import dbus
 import dbus.service
@@ -25,7 +26,9 @@ class Profile(dbus.service.Object):
 	@dbus.service.method("org.bluez.Profile",
 					in_signature="oh", out_signature="")
 	def NewConnection(self, path, fd):
+		fd = fd.take()
 		print("NewConnection(%s, %d)" % (path, fd))
+		os.close(fd)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
