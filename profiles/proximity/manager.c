@@ -56,8 +56,8 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int attio_device_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int monitor_device_probe(struct btd_profile *p,
+				struct btd_device *device, GSList *uuids)
 {
 	struct gatt_primary *linkloss, *txpower, *immediate;
 	GSList *l, *primaries;
@@ -77,7 +77,7 @@ static int attio_device_probe(struct btd_profile *p, struct btd_device *device,
 	return monitor_register(device, linkloss, txpower, immediate, &enabled);
 }
 
-static void attio_device_remove(struct btd_profile *p,
+static void monitor_device_remove(struct btd_profile *p,
 						struct btd_device *device)
 {
 	monitor_unregister(device);
@@ -87,8 +87,8 @@ static struct btd_profile pxp_monitor_profile = {
 	.name		= "Proximity Monitor GATT Driver",
 	.remote_uuids	= BTD_UUIDS(IMMEDIATE_ALERT_UUID,
 						LINK_LOSS_UUID, TX_POWER_UUID),
-	.device_probe	= attio_device_probe,
-	.device_remove	= attio_device_remove,
+	.device_probe	= monitor_device_probe,
+	.device_remove	= monitor_device_remove,
 };
 
 static struct btd_profile pxp_reporter_profile = {
