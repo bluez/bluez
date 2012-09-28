@@ -112,7 +112,6 @@ struct btd_adapter {
 	uint32_t dev_class;		/* Class of Device */
 	char *name;			/* adapter name */
 	gboolean allow_name_changes;	/* whether the adapter name can be changed */
-	guint stop_discov_id;		/* stop inquiry/scanning id */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
@@ -122,8 +121,6 @@ struct btd_adapter {
 					 * limited */
 	uint8_t global_mode;		/* last valid global mode */
 	struct session_req *pending_mode;
-	int state;			/* standard inq, periodic inq, name
-					 * resolving, suspended discovery */
 	GSList *found_devices;
 	GSList *oor_devices;		/* out of range device list */
 	struct agent *agent;		/* For the new API */
