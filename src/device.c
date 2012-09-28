@@ -1398,6 +1398,19 @@ void device_probe_profile(gpointer a, gpointer b)
 	g_slist_free(probe_uuids);
 }
 
+void device_remove_profile(gpointer a, gpointer b)
+{
+	struct btd_device *device = a;
+	struct btd_profile *profile = b;
+
+	if (!g_slist_find(device->profiles, profile))
+		return;
+
+	device->profiles = g_slist_remove(device->profiles, profile);
+
+	profile->device_remove(profile, device);
+}
+
 void device_probe_profiles(struct btd_device *device, GSList *uuids)
 {
 	struct probe_data d = { device, uuids };

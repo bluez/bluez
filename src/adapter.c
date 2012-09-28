@@ -2060,6 +2060,22 @@ void adapter_add_profile(struct btd_adapter *adapter, gpointer p)
 	g_slist_foreach(adapter->devices, device_probe_profile, profile);
 }
 
+void adapter_remove_profile(struct btd_adapter *adapter, gpointer p)
+{
+	struct btd_profile *profile = p;
+
+	if (!adapter->initialized)
+		return;
+
+	if (profile->device_remove)
+		g_slist_foreach(adapter->devices, device_remove_profile, p);
+
+	adapter->profiles = g_slist_remove(adapter->profiles, profile);
+
+	if (profile->adapter_remove)
+		profile->adapter_remove(profile, adapter);
+}
+
 static void load_connections(struct btd_adapter *adapter)
 {
 	GSList *l, *conns;

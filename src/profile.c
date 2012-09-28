@@ -620,6 +620,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 static void remove_ext(struct ext_profile *ext)
 {
+	manager_foreach_adapter(adapter_remove_profile, &ext->p);
+
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 
 	DBG("Removed \"%s\"", ext->name);
