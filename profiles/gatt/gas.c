@@ -146,6 +146,11 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 
 	DBG("Service Changed start: 0x%04X end: 0x%04X", start, end);
 
+	if (device_is_bonded(gas->device) == FALSE) {
+		DBG("Ignoring Service Changed: device is not bonded");
+		return;
+	}
+
 	/* Confirming indication received */
 	opdu = g_attrib_get_buffer(gas->attrib, &plen);
 	olen = enc_confirmation(opdu, plen);
