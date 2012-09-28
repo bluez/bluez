@@ -163,7 +163,6 @@ struct btd_device {
 	gboolean	bonded;
 	gboolean	auto_connect;
 
-	gboolean	authorizing;
 	gint		ref;
 
 	GIOChannel      *att_io;
@@ -3061,16 +3060,6 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 gboolean device_is_authenticating(struct btd_device *device)
 {
 	return (device->authr != NULL);
-}
-
-gboolean device_is_authorizing(struct btd_device *device)
-{
-	return device->authorizing;
-}
-
-void device_set_authorizing(struct btd_device *device, gboolean auth)
-{
-	device->authorizing = auth;
 }
 
 void device_register_services(struct btd_device *device,
