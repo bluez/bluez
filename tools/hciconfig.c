@@ -1924,7 +1924,7 @@ static struct {
 	{ "scomtu",	cmd_scomtu,	"<mtu:pkt>",	"Set SCO MTU and number of packets" },
 	{ "putkey",	cmd_putkey,	"<bdaddr>",	"Store link key on the device" },
 	{ "delkey",	cmd_delkey,	"<bdaddr>",	"Delete link key from the device" },
-	{ "oobdata",	cmd_oob_data,	0,		"Display local OOB data" },
+	{ "oobdata",	cmd_oob_data,	0,		"Get local OOB data" },
 	{ "commands",	cmd_commands,	0,		"Display supported commands" },
 	{ "features",	cmd_features,	0,		"Display device features" },
 	{ "version",	cmd_version,	0,		"Display version information" },
