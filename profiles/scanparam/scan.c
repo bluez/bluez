@@ -59,7 +59,7 @@ struct scan {
 	uint16_t refresh_cb_id;
 };
 
-GSList *servers = NULL;
+static GSList *servers = NULL;
 
 static gint scan_device_cmp(gconstpointer a, gconstpointer b)
 {
