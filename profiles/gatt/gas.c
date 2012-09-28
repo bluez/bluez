@@ -44,7 +44,6 @@ struct gas {
 	struct btd_device *device;
 	struct att_range gap;	/* GAP Primary service range */
 	struct att_range gatt;	/* GATT Primary service range */
-	struct att_range changed; /* Affected handle range */
 	GAttrib *attrib;
 	guint attioid;
 	guint changed_ind;
@@ -151,12 +150,6 @@ static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	opdu = g_attrib_get_buffer(gas->attrib, &plen);
 	olen = enc_confirmation(opdu, plen);
 	g_attrib_send(gas->attrib, 0, opdu[0], opdu, olen, NULL, NULL, NULL);
-
-	if (gas->changed.start == start && gas->changed.end == end)
-		return;
-
-	gas->changed.start = start;
-	gas->changed.end = end;
 
 	btd_device_gatt_set_service_changed(gas->device, start, end);
 }
