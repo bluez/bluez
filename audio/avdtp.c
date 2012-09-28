@@ -400,6 +400,8 @@ struct avdtp {
 	/* True if the entire device is being disconnected */
 	gboolean device_disconnect;
 
+	guint auth_id;
+
 	GIOChannel *io;
 	guint io_id;
 
@@ -1129,16 +1131,21 @@ static void release_stream(struct avdtp_stream *stream, struct avdtp *session)
 
 static int avdtp_cancel_authorization(struct avdtp *session)
 {
-	struct audio_device *dev;
+	int err;
 
 	if (session->state != AVDTP_SESSION_STATE_CONNECTING)
 		return 0;
 
-	dev = manager_get_device(&session->server->src, &session->dst, FALSE);
-	if (dev == NULL)
-		return -ENODEV;
+	if (session->auth_id == 0)
+		return 0;
 
-	return audio_device_cancel_authorization(dev, auth_cb, session);
+	err = btd_cancel_authorization(session->auth_id);
+	if (err < 0)
+		return err;
+
+	session->auth_id = 0;
+
+	return 0;
 }
 
 static void connection_lost(struct avdtp *session, int err)
@@ -2507,7 +2514,6 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	struct audio_device *dev;
 	char address[18];
 	bdaddr_t src, dst;
-	int perr;
 	GError *err = NULL;
 
 	bt_io_get(chan, &err,
@@ -2566,9 +2572,10 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	session->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
 
-	perr = audio_device_request_authorization(dev, ADVANCED_AUDIO_UUID,
+	session->auth_id = btd_request_authorization(&dev->src, &dev->dst,
+							ADVANCED_AUDIO_UUID,
 							auth_cb, session);
-	if (perr < 0) {
+	if (session->auth_id == 0) {
 		avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
 		avdtp_unref(session);
 		goto drop;

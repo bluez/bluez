@@ -71,19 +71,12 @@ typedef enum {
 	AUDIO_STATE_CONNECTED,
 } audio_state_t;
 
-struct service_auth {
-	service_auth_cb cb;
-	void *user_data;
-};
-
 struct dev_priv {
 	audio_state_t state;
 
 	headset_state_t hs_state;
 	sink_state_t sink_state;
 	avctp_state_t avctp_state;
-	GSList *auths;
-	guint auth_id;
 
 	DBusMessage *conn_req;
 	DBusMessage *dc_req;
@@ -94,8 +87,6 @@ struct dev_priv {
 	guint dc_id;
 
 	gboolean disconnecting;
-	gboolean authorized;
-	guint auth_idle_id;
 };
 
 static unsigned int sink_callback_id = 0;
@@ -110,8 +101,6 @@ static void device_free(struct audio_device *dev)
 	btd_device_unref(dev->btd_dev);
 
 	if (priv) {
-		if (priv->auths)
-			audio_device_cancel_authorization(dev, NULL, NULL);
 		if (priv->control_timer)
 			g_source_remove(priv->control_timer);
 		if (priv->avdtp_timer)
@@ -238,8 +227,6 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		return;
 
 	if (new_state == AUDIO_STATE_DISCONNECTED) {
-		priv->authorized = FALSE;
-
 		if (priv->dc_id) {
 			device_remove_disconnect_watch(dev->btd_dev,
 							priv->dc_id);
@@ -731,140 +718,4 @@ void audio_device_unregister(struct audio_device *device)
 						AUDIO_INTERFACE);
 
 	device_free(device);
-}
-
-static void auth_cb(DBusError *derr, void *user_data)
-{
-	struct audio_device *dev = user_data;
-	struct dev_priv *priv = dev->priv;
-
-	priv->auth_id = 0;
-
-	if (derr == NULL)
-		priv->authorized = TRUE;
-
-	while (priv->auths) {
-		struct service_auth *auth = priv->auths->data;
-
-		auth->cb(derr, auth->user_data);
-		priv->auths = g_slist_remove(priv->auths, auth);
-		g_free(auth);
-	}
-}
-
-static gboolean auth_idle_cb(gpointer user_data)
-{
-	struct audio_device *dev = user_data;
-	struct dev_priv *priv = dev->priv;
-
-	priv->auth_idle_id = 0;
-
-	auth_cb(NULL, dev);
-
-	return FALSE;
-}
-
-static gboolean audio_device_is_connected(struct audio_device *dev)
-{
-	if (dev->headset) {
-		headset_state_t state = headset_get_state(dev);
-
-		if (state == HEADSET_STATE_CONNECTED ||
-				state == HEADSET_STATE_PLAY_IN_PROGRESS ||
-				state == HEADSET_STATE_PLAYING)
-			return TRUE;
-	}
-
-	if (dev->sink) {
-		sink_state_t state = sink_get_state(dev);
-
-		if (state == SINK_STATE_CONNECTED ||
-				state == SINK_STATE_PLAYING)
-			return TRUE;
-	}
-
-	if (dev->source) {
-		source_state_t state = source_get_state(dev);
-
-		if (state == SOURCE_STATE_CONNECTED ||
-				state == SOURCE_STATE_PLAYING)
-			return TRUE;
-	}
-
-	return FALSE;
-}
-
-int audio_device_request_authorization(struct audio_device *dev,
-					const char *uuid, service_auth_cb cb,
-					void *user_data)
-{
-	struct dev_priv *priv = dev->priv;
-	struct service_auth *auth;
-
-	auth = g_try_new0(struct service_auth, 1);
-	if (!auth)
-		return -ENOMEM;
-
-	auth->cb = cb;
-	auth->user_data = user_data;
-
-	priv->auths = g_slist_append(priv->auths, auth);
-	if (g_slist_length(priv->auths) > 1)
-		return 0;
-
-	if (priv->authorized || audio_device_is_connected(dev)) {
-		priv->auth_idle_id = g_idle_add(auth_idle_cb, dev);
-		return 0;
-	}
-
-	priv->auth_id = btd_request_authorization(&dev->src, &dev->dst, uuid,
-								auth_cb, dev);
-	if (priv->auth_id != 0)
-		return 0;
-
-	priv->auths = g_slist_remove(priv->auths, auth);
-	g_free(auth);
-
-	return -EPERM;
-}
-
-int audio_device_cancel_authorization(struct audio_device *dev,
-					authorization_cb cb, void *user_data)
-{
-	struct dev_priv *priv = dev->priv;
-	GSList *l, *next;
-
-	for (l = priv->auths; l != NULL; l = next) {
-		struct service_auth *auth = l->data;
-
-		next = g_slist_next(l);
-
-		if (cb && auth->cb != cb)
-			continue;
-
-		if (user_data && auth->user_data != user_data)
-			continue;
-
-		priv->auths = g_slist_remove(priv->auths, auth);
-		g_free(auth);
-	}
-
-	if (g_slist_length(priv->auths) == 0) {
-		if (priv->auth_idle_id > 0) {
-			g_source_remove(priv->auth_idle_id);
-			priv->auth_idle_id = 0;
-		} else {
-			btd_cancel_authorization(priv->auth_id);
-			priv->auth_id = 0;
-		}
-	}
-
-	return 0;
-}
-
-void audio_device_set_authorized(struct audio_device *dev, gboolean auth)
-{
-	struct dev_priv *priv = dev->priv;
-
-	priv->authorized = auth;
 }

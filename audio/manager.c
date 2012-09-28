@@ -300,6 +300,8 @@ static void headset_auth_cb(DBusError *derr, void *user_data)
 	GError *err = NULL;
 	GIOChannel *io;
 
+	device->hs_auth_id = 0;
+
 	if (device->hs_preauth_id) {
 		g_source_remove(device->hs_preauth_id);
 		device->hs_preauth_id = 0;
@@ -328,7 +330,8 @@ static gboolean hs_preauth_cb(GIOChannel *chan, GIOCondition cond,
 
 	DBG("Headset disconnected during authorization");
 
-	audio_device_cancel_authorization(device, headset_auth_cb, device);
+	btd_cancel_authorization(device->hs_auth_id);
+	device->hs_auth_id = 0;
 
 	headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 
@@ -343,7 +346,6 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 	struct audio_device *device;
 	gboolean hfp_active;
 	bdaddr_t src, dst;
-	int perr;
 	GError *err = NULL;
 	uint8_t ch;
 
@@ -398,10 +400,13 @@ static void ag_confirm(GIOChannel *chan, gpointer data)
 
 	headset_set_state(device, HEADSET_STATE_CONNECTING);
 
-	perr = audio_device_request_authorization(device, server_uuid,
-						headset_auth_cb, device);
-	if (perr < 0) {
-		DBG("Authorization denied: %s", strerror(-perr));
+	device->hs_auth_id = btd_request_authorization(&device->src,
+							&device->dst,
+							server_uuid,
+							headset_auth_cb,
+							device);
+	if (device->hs_auth_id == 0) {
+		DBG("Authorization denied");
 		headset_set_state(device, HEADSET_STATE_DISCONNECTED);
 		return;
 	}
@@ -443,7 +448,7 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 	uint8_t ch;
 	const char *server_uuid, *remote_uuid;
 	struct audio_device *device;
-	int perr;
+	guint auth_id;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -480,10 +485,11 @@ static void hf_io_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	perr = audio_device_request_authorization(device, server_uuid,
-						gateway_auth_cb, device);
-	if (perr < 0) {
-		DBG("Authorization denied: %s", strerror(-perr));
+	auth_id = btd_request_authorization(&device->src, &device->dst,
+						server_uuid, gateway_auth_cb,
+						device);
+	if (auth_id == 0) {
+		DBG("Authorization denied");
 		gateway_set_state(device, GATEWAY_STATE_DISCONNECTED);
 	}
 
