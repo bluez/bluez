@@ -29,6 +29,9 @@
 #include <errno.h>
 #include <stdbool.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/uuid.h>
+
 #include "log.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
@@ -38,6 +41,9 @@
 #include "hcid.h"
 #include "device.h"
 #include "suspend.h"
+#include "att.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "hog_device.h"
 
 static gboolean suspend_supported = FALSE;
@@ -73,36 +79,41 @@ static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
 	const char *path = device_get_path(device);
-	struct hog_device *hogdev;
-	int err;
+	GSList *primaries, *l;
 
 	DBG("path %s", path);
 
-	hogdev = hog_device_find(devices, path);
-	if (hogdev)
-		return -EALREADY;
+	primaries = btd_device_get_primaries(device);
+	if (primaries == NULL)
+		return -EINVAL;
 
-	hogdev = hog_device_register(device, path, &err);
-	if (hogdev == NULL)
-		return err;
+	for (l = primaries; l; l = g_slist_next(l)) {
+		struct gatt_primary *prim = l->data;
+		struct hog_device *hogdev;
 
-	devices = g_slist_append(devices, hogdev);
+		hogdev = hog_device_register(device, prim);
+		if (hogdev == NULL)
+			continue;
+
+		devices = g_slist_append(devices, hogdev);
+	}
 
 	return 0;
+}
+
+static void remove_device(gpointer hogdev, gpointer b)
+{
+	devices = g_slist_remove(devices, hogdev);
+	hog_device_unregister(hogdev);
 }
 
 static void hog_device_remove(struct btd_profile *p, struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
-	struct hog_device *hogdev;
 
 	DBG("path %s", path);
 
-	hogdev = hog_device_find(devices, path);
-	if (hogdev) {
-		devices = g_slist_remove(devices, hogdev);
-		hog_device_unregister(hogdev);
-	}
+	g_slist_foreach(devices, remove_device, NULL);
 }
 
 static struct btd_profile hog_profile = {
