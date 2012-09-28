@@ -500,10 +500,10 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 {
 	struct network_adapter *na = user_data;
 	struct network_server *ns;
-	int perr;
 	bdaddr_t src, dst;
 	char address[18];
 	GError *err = NULL;
+	guint ret;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -537,11 +537,10 @@ static void confirm_event(GIOChannel *chan, gpointer user_data)
 	bacpy(&na->setup->dst, &dst);
 	na->setup->io = g_io_channel_ref(chan);
 
-	perr = btd_request_authorization(&src, &dst, BNEP_SVC_UUID,
+	ret = btd_request_authorization(&src, &dst, BNEP_SVC_UUID,
 					auth_cb, na);
-	if (perr < 0) {
-		error("Refusing connect from %s: %s (%d)", address,
-				strerror(-perr), -perr);
+	if (ret == 0) {
+		error("Refusing connect from %s", address);
 		setup_destroy(na);
 		goto drop;
 	}

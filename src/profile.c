@@ -82,7 +82,7 @@ struct ext_io {
 	guint io_id;
 	struct btd_adapter *adapter;
 
-	bool authorizing;
+	guint auth_id;
 	DBusPendingCall *new_conn;
 };
 
@@ -161,14 +161,8 @@ static void ext_io_destroy(gpointer p)
 	g_io_channel_shutdown(ext_io->io, FALSE, NULL);
 	g_io_channel_unref(ext_io->io);
 
-	if (ext_io->authorizing) {
-		bdaddr_t src, dst;
-
-		if (bt_io_get(ext_io->io, NULL, BT_IO_OPT_SOURCE_BDADDR, &src,
-						BT_IO_OPT_DEST_BDADDR, &dst,
-						BT_IO_OPT_INVALID))
-			btd_cancel_authorization(&src, &dst);
-	}
+	if (ext_io->auth_id != 0)
+		btd_cancel_authorization(ext_io->auth_id);
 
 	if (ext_io->new_conn) {
 		dbus_pending_call_cancel(ext_io->new_conn);
@@ -331,7 +325,7 @@ static void ext_auth(DBusError *err, void *user_data)
 	GError *gerr = NULL;
 	char addr[18];
 
-	conn->authorizing = false;
+	conn->auth_id = 0;
 
 	bt_io_get(conn->io, &gerr, BT_IO_OPT_DEST, addr, BT_IO_OPT_INVALID);
 	if (gerr != NULL) {
@@ -385,7 +379,6 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 	GError *gerr = NULL;
 	bdaddr_t src, dst;
 	char addr[18];
-	int err;
 
 	bt_io_get(io, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -403,15 +396,13 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 
 	conn = create_conn(server, io);
 
-	err = btd_request_authorization(&src, &dst, ext->uuid, ext_auth, conn);
-	if (err < 0) {
-		error("%s authorization failure: %s", ext->name,
-							strerror(-err));
+	conn->auth_id = btd_request_authorization(&src, &dst, ext->uuid,
+								ext_auth, conn);
+	if (conn->auth_id == 0) {
+		error("%s authorization failure", ext->name);
 		ext_io_destroy(conn);
 		return;
 	}
-
-	conn->authorizing = true;
 
 	ext->conns = g_slist_append(ext->conns, conn);
 

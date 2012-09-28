@@ -97,6 +97,7 @@ struct session_req {
 };
 
 struct service_auth {
+	guint id;
 	service_auth_cb cb;
 	void *user_data;
 	struct btd_device *device;
@@ -3209,27 +3210,29 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	char address[18];
 	const gchar *dev_path;
 	int err;
+	static guint id = 0;
 
 	ba2str(dst, address);
 	device = adapter_find_device(adapter, address);
 	if (!device)
-		return -EPERM;
+		return 0;
 
 	/* Device connected? */
 	if (!g_slist_find(adapter->connections, device))
 		error("Authorization request for non-connected device!?");
 
 	if (adapter->auth != NULL)
-		return -EBUSY;
+		return 0;
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
-		return -ENOMEM;
+		return 0;
 
 	auth->cb = cb;
 	auth->user_data = user_data;
 	auth->device = device;
 	auth->adapter = adapter;
+	auth->id = ++id;
 
 	if (device_is_trusted(device) == TRUE) {
 		adapter->auth_idle_id = g_idle_add(auth_idle_cb, adapter);
@@ -3240,7 +3243,7 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	if (!agent) {
 		warn("Can't find device agent");
 		g_free(auth);
-		return -EPERM;
+		return 0;
 	}
 
 	dev_path = device_get_path(device);
@@ -3249,15 +3252,15 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 									NULL);
 	if (err < 0) {
 		g_free(auth);
-		return err;
+		return 0;
 	}
 
 done:
 	adapter->auth = auth;
-	return 0;
+	return auth->id;
 }
 
-int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
+guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 					const char *uuid, service_auth_cb cb,
 					void *user_data)
 {
@@ -3267,55 +3270,65 @@ int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 	if (bacmp(src, BDADDR_ANY) != 0) {
 		adapter = manager_find_adapter(src);
 		if (!adapter)
-			return -EPERM;
+			return 0;
 
 		return adapter_authorize(adapter, dst, uuid, cb, user_data);
 	}
 
 	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
-		int err;
+		guint id;
 
 		adapter = l->data;
 
-		err = adapter_authorize(adapter, dst, uuid, cb, user_data);
-		if (err == 0)
-			return 0;
+		id = adapter_authorize(adapter, dst, uuid, cb, user_data);
+		if (id != 0)
+			return id;
 	}
 
-	return -EPERM;
+	return 0;
 }
 
-int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst)
+static struct btd_adapter *find_authorization(guint id)
 {
-	struct btd_adapter *adapter = manager_find_adapter(src);
-	struct btd_device *device;
+	GSList *l;
+
+	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
+		struct btd_adapter *adapter = l->data;
+
+		if (adapter->auth == NULL)
+			continue;
+
+		if (adapter->auth->id == id)
+			return adapter;
+	}
+
+	return NULL;
+}
+
+int btd_cancel_authorization(guint id)
+{
+	struct btd_adapter *adapter;
 	struct agent *agent;
-	char address[18];
 	int err;
 
-	if (!adapter)
-		return -EPERM;
-
-	ba2str(dst, address);
-	device = adapter_find_device(adapter, address);
-	if (!device)
+	adapter = find_authorization(id);
+	if (adapter == NULL)
 		return -EPERM;
 
 	if (adapter->auth_idle_id) {
 		g_source_remove(adapter->auth_idle_id);
 		adapter->auth_idle_id = 0;
+		g_free(adapter->auth);
+		adapter->auth = NULL;
 		return 0;
 	}
-
-	if (!adapter->auth || adapter->auth->device != device)
-		return -EPERM;
 
 	/*
 	 * FIXME: Cancel fails if authorization is requested to adapter's
 	 * agent and in the meanwhile CreatePairedDevice is called.
 	 */
 
-	agent = device_get_agent(device);
+	agent = device_get_agent(adapter->auth->device);
 	if (!agent)
 		return -EPERM;
 

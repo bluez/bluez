@@ -1213,7 +1213,7 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 	GError *gerr = NULL;
 	bdaddr_t src, dst;
 	char dstaddr[18];
-	int err;
+	guint ret;
 
 	DBG("conn %p io %p", conn, io);
 
@@ -1253,10 +1253,10 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 
 	ba2str(&dst, dstaddr);
 
-	err = btd_request_authorization(&src, &dst, SAP_UUID, connect_auth_cb,
+	ret = btd_request_authorization(&src, &dst, SAP_UUID, connect_auth_cb,
 								server);
-	if (err < 0) {
-		error("Authorization failure (err %d)", err);
+	if (ret == 0) {
+		error("Authorization failure");
 		sap_server_remove_conn(server);
 		return;
 	}

@@ -83,6 +83,7 @@ struct dev_priv {
 	sink_state_t sink_state;
 	avctp_state_t avctp_state;
 	GSList *auths;
+	guint auth_id;
 
 	DBusMessage *conn_req;
 	DBusMessage *dc_req;
@@ -737,6 +738,8 @@ static void auth_cb(DBusError *derr, void *user_data)
 	struct audio_device *dev = user_data;
 	struct dev_priv *priv = dev->priv;
 
+	priv->auth_id = 0;
+
 	if (derr == NULL)
 		priv->authorized = TRUE;
 
@@ -797,7 +800,6 @@ int audio_device_request_authorization(struct audio_device *dev,
 {
 	struct dev_priv *priv = dev->priv;
 	struct service_auth *auth;
-	int err;
 
 	auth = g_try_new0(struct service_auth, 1);
 	if (!auth)
@@ -815,14 +817,15 @@ int audio_device_request_authorization(struct audio_device *dev,
 		return 0;
 	}
 
-	err = btd_request_authorization(&dev->src, &dev->dst, uuid, auth_cb,
-					dev);
-	if (err < 0) {
-		priv->auths = g_slist_remove(priv->auths, auth);
-		g_free(auth);
-	}
+	priv->auth_id = btd_request_authorization(&dev->src, &dev->dst, uuid,
+								auth_cb, dev);
+	if (priv->auth_id != 0)
+		return 0;
 
-	return err;
+	priv->auths = g_slist_remove(priv->auths, auth);
+	g_free(auth);
+
+	return -EPERM;
 }
 
 int audio_device_cancel_authorization(struct audio_device *dev,
@@ -850,8 +853,10 @@ int audio_device_cancel_authorization(struct audio_device *dev,
 		if (priv->auth_idle_id > 0) {
 			g_source_remove(priv->auth_idle_id);
 			priv->auth_idle_id = 0;
-		} else
-			btd_cancel_authorization(&dev->src, &dev->dst);
+		} else {
+			btd_cancel_authorization(priv->auth_id);
+			priv->auth_id = 0;
+		}
 	}
 
 	return 0;

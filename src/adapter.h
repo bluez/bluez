@@ -149,9 +149,9 @@ void adapter_add_profile(struct btd_adapter *adapter, gpointer p);
 void adapter_remove_profile(struct btd_adapter *adapter, gpointer p);
 int btd_register_adapter_driver(struct btd_adapter_driver *driver);
 void btd_unregister_adapter_driver(struct btd_adapter_driver *driver);
-int btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
+guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);
-int btd_cancel_authorization(const bdaddr_t *src, const bdaddr_t *dst);
+int btd_cancel_authorization(guint id);
 
 const char *adapter_any_get_path(void);
 

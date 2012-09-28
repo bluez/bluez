@@ -154,7 +154,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	bdaddr_t src, dst;
 	GError *err = NULL;
 	char addr[18];
-	int ret;
+	guint ret;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -179,12 +179,11 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 
 	ret = btd_request_authorization(&src, &dst, HID_UUID,
 					auth_callback, server);
-	if (ret == 0)
+	if (ret != 0)
 		return;
 
 	ba2str(&src, addr);
-	error("input: authorization for %s failed: %s (%d)",
-						addr, strerror(-ret), -ret);
+	error("input: authorization for %s failed", addr);
 
 	g_io_channel_unref(server->confirm);
 	server->confirm = NULL;
