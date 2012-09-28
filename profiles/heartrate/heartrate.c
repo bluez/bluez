@@ -110,6 +110,7 @@ static const gchar *location2str(uint8_t value)
 		return location_enum[value];
 
 	error("Body Sensor Location [%d] is RFU", value);
+
 	return NULL;
 }
 
@@ -714,8 +715,7 @@ static const GDBusMethodTable heartrate_device_methods[] = {
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 			get_properties) },
-	{ GDBUS_METHOD("Reset", NULL, NULL,
-			hrcp_reset) },
+	{ GDBUS_METHOD("Reset", NULL, NULL, hrcp_reset) },
 	{ }
 };
 
