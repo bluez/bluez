@@ -113,7 +113,7 @@ static void read_pnpid_cb(guint8 status, const guint8 *pdu, guint16 len,
 static void process_deviceinfo_char(struct characteristic *ch)
 {
 	if (g_strcmp0(ch->attr.uuid, PNPID_UUID) == 0)
-		gatt_read_char(ch->d->attrib, ch->attr.value_handle, 0,
+		gatt_read_char(ch->d->attrib, ch->attr.value_handle,
 							read_pnpid_cb, ch);
 }
 

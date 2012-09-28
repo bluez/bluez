@@ -393,8 +393,8 @@ static void process_thermometer_desc(struct descriptor *desc)
 
 	if (bt_uuid_cmp(&desc->uuid, &btuuid) == 0 && g_strcmp0(ch->attr.uuid,
 					MEASUREMENT_INTERVAL_UUID) == 0) {
-		gatt_read_char(ch->t->attrib, desc->handle, 0,
-						valid_range_desc_cb, desc);
+		gatt_read_char(ch->t->attrib, desc->handle, valid_range_desc_cb,
+									desc);
 		return;
 	}
 
@@ -508,10 +508,10 @@ static void process_thermometer_char(struct characteristic *ch)
 		change_property(ch->t, "Intermediate", &intermediate);
 		return;
 	} else if (g_strcmp0(ch->attr.uuid, TEMPERATURE_TYPE_UUID) == 0)
-		gatt_read_char(ch->t->attrib, ch->attr.value_handle, 0,
+		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_temp_type_cb, ch);
 	else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0)
-		gatt_read_char(ch->t->attrib, ch->attr.value_handle, 0,
+		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_interval_cb, ch);
 }
 

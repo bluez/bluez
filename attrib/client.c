@@ -782,7 +782,7 @@ static void update_char_desc(guint8 status, const guint8 *pdu, guint16 len,
 		if (bt_io_set(io, NULL,
 				BT_IO_OPT_SEC_LEVEL, level,
 				BT_IO_OPT_INVALID)) {
-			gatt_read_char(gatt->attrib, current->handle, 0,
+			gatt_read_char(gatt->attrib, current->handle,
 					update_char_desc, current);
 			return;
 		}
@@ -833,7 +833,7 @@ static void update_char_value(guint8 status, const guint8 *pdu,
 		if (bt_io_set(io, NULL,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_HIGH,
 				BT_IO_OPT_INVALID)) {
-			gatt_read_char(gatt->attrib, chr->handle, 0,
+			gatt_read_char(gatt->attrib, chr->handle,
 					update_char_value, current);
 			return;
 		}
@@ -894,12 +894,12 @@ static void descriptor_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 		if (uuid_desc16_cmp(&uuid, GATT_CHARAC_USER_DESC_UUID) == 0) {
 			query_list_append(gatt, qfmt);
-			gatt_read_char(gatt->attrib, handle, 0, update_char_desc,
+			gatt_read_char(gatt->attrib, handle, update_char_desc,
 									qfmt);
 		} else if (uuid_desc16_cmp(&uuid, GATT_CHARAC_FMT_UUID) == 0) {
 			query_list_append(gatt, qfmt);
-			gatt_read_char(gatt->attrib, handle, 0,
-						update_char_format, qfmt);
+			gatt_read_char(gatt->attrib, handle, update_char_format,
+									qfmt);
 		} else
 			g_free(qfmt);
 	}
@@ -931,7 +931,7 @@ static void update_all_chars(gpointer data, gpointer user_data)
 
 	query_list_append(gatt, qvalue);
 
-	gatt_read_char(gatt->attrib, chr->handle, 0, update_char_value, qvalue);
+	gatt_read_char(gatt->attrib, chr->handle, update_char_value, qvalue);
 }
 
 static DBusMessage *create_discover_char_reply(DBusMessage *msg, GSList *chars)

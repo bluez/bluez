@@ -75,8 +75,8 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 					bt_uuid_t *uuid, gatt_cb_t func,
 					gpointer user_data);
 
-guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
-				GAttribResultFunc func, gpointer user_data);
+guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
+							gpointer user_data);
 
 guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 					size_t vlen, GAttribResultFunc func,

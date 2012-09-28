@@ -250,7 +250,7 @@ static void tx_power_handle_cb(GSList *characteristics, guint8 status,
 
 	DBG("Tx Power handle: 0x%04x", monitor->txpowerhandle);
 
-	gatt_read_char(monitor->attrib, monitor->txpowerhandle, 0,
+	gatt_read_char(monitor->attrib, monitor->txpowerhandle,
 							tx_power_read_cb, monitor);
 }
 
@@ -260,7 +260,7 @@ static void read_tx_power(struct monitor *monitor)
 	bt_uuid_t uuid;
 
 	if (monitor->txpowerhandle != 0) {
-		gatt_read_char(monitor->attrib, monitor->txpowerhandle, 0,
+		gatt_read_char(monitor->attrib, monitor->txpowerhandle,
 						tx_power_read_cb, monitor);
 		return;
 	}

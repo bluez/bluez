@@ -481,8 +481,8 @@ done:
 	long_read->func(status, rpdu, rlen, long_read->user_data);
 }
 
-guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
-				GAttribResultFunc func, gpointer user_data)
+guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
+							gpointer user_data)
 {
 	uint8_t *buf;
 	size_t buflen;
@@ -501,16 +501,9 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, uint16_t offset,
 	long_read->handle = handle;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
-	if (offset > 0) {
-		plen = enc_read_blob_req(long_read->handle, offset, buf,
-									buflen);
-		id = g_attrib_send(attrib, 0, ATT_OP_READ_BLOB_REQ, buf, plen,
-				read_blob_helper, long_read, read_long_destroy);
-	} else {
-		plen = enc_read_req(handle, buf, buflen);
-		id = g_attrib_send(attrib, 0, ATT_OP_READ_REQ, buf, plen,
+	plen = enc_read_req(handle, buf, buflen);
+	id = g_attrib_send(attrib, 0, ATT_OP_READ_REQ, buf, plen,
 				read_char_helper, long_read, read_long_destroy);
-	}
 
 	if (id == 0)
 		g_free(long_read);

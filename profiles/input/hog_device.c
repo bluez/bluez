@@ -233,12 +233,12 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 			break;
 		case GATT_REPORT_REFERENCE:
 			report = user_data;
-			gatt_read_char(report->hogdev->attrib, handle, 0,
+			gatt_read_char(report->hogdev->attrib, handle,
 						report_reference_cb, report);
 			break;
 		case GATT_EXTERNAL_REPORT_REFERENCE:
 			hogdev = user_data;
-			gatt_read_char(hogdev->attrib, handle, 0,
+			gatt_read_char(hogdev->attrib, handle,
 					external_report_reference_cb, hogdev);
 			break;
 		}
@@ -479,7 +479,7 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 								report);
 			discover_descriptor(hogdev->attrib, chr, next, report);
 		} else if (bt_uuid_cmp(&uuid, &report_map_uuid) == 0) {
-			gatt_read_char(hogdev->attrib, chr->value_handle, 0,
+			gatt_read_char(hogdev->attrib, chr->value_handle,
 						report_map_read_cb, hogdev);
 			discover_descriptor(hogdev->attrib, chr, next, hogdev);
 		} else if (bt_uuid_cmp(&uuid, &info_uuid) == 0)
@@ -492,13 +492,13 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 
 	if (proto_mode_handle) {
 		hogdev->proto_mode_handle = proto_mode_handle;
-		gatt_read_char(hogdev->attrib, proto_mode_handle, 0,
+		gatt_read_char(hogdev->attrib, proto_mode_handle,
 						proto_mode_read_cb, hogdev);
 	}
 
 	if (info_handle)
-		gatt_read_char(hogdev->attrib, info_handle, 0,
-							info_read_cb, hogdev);
+		gatt_read_char(hogdev->attrib, info_handle, info_read_cb,
+									hogdev);
 }
 
 static void output_written_cb(guint8 status, const guint8 *pdu,

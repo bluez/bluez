@@ -355,7 +355,7 @@ static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 		} else if (g_strcmp0(c->uuid, BODY_SENSOR_LOCATION_UUID) == 0) {
 			DBG("Body Sensor Location supported");
 
-			gatt_read_char(hr->attrib, c->value_handle, 0,
+			gatt_read_char(hr->attrib, c->value_handle,
 						read_sensor_location_cb, hr);
 		} else if (g_strcmp0(c->uuid,
 					HEART_RATE_CONTROL_POINT_UUID) == 0) {
