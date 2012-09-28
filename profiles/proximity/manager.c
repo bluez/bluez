@@ -62,8 +62,6 @@ static int attio_device_probe(struct btd_profile *p, struct btd_device *device,
 	struct gatt_primary *linkloss, *txpower, *immediate;
 	GSList *l, *primaries;
 
-	reporter_device_probe(device);
-
 	primaries = btd_device_get_primaries(device);
 
 	l = g_slist_find_custom(primaries, IMMEDIATE_ALERT_UUID,
@@ -83,15 +81,21 @@ static void attio_device_remove(struct btd_profile *p,
 						struct btd_device *device)
 {
 	monitor_unregister(device);
-	reporter_device_remove(device);
 }
 
-static struct btd_profile pxp_profile = {
-	.name		= "Proximity GATT Driver",
-	.remote_uuids	= BTD_UUIDS(GATT_UUID, IMMEDIATE_ALERT_UUID,
+static struct btd_profile pxp_monitor_profile = {
+	.name		= "Proximity Monitor GATT Driver",
+	.remote_uuids	= BTD_UUIDS(IMMEDIATE_ALERT_UUID,
 						LINK_LOSS_UUID, TX_POWER_UUID),
 	.device_probe	= attio_device_probe,
 	.device_remove	= attio_device_remove,
+};
+
+static struct btd_profile pxp_reporter_profile = {
+	.name		= "Proximity Reporter GATT Driver",
+	.remote_uuids	= BTD_UUIDS(GATT_UUID),
+	.device_probe	= reporter_device_probe,
+	.device_remove	= reporter_device_remove,
 
 	.adapter_probe	= reporter_adapter_probe,
 	.adapter_remove	= reporter_adapter_remove,
@@ -123,10 +127,19 @@ int proximity_manager_init(GKeyFile *config)
 {
 	load_config_file(config);
 
-	return btd_profile_register(&pxp_profile);
+	if (btd_profile_register(&pxp_monitor_profile) < 0)
+		return -1;
+
+	if (btd_profile_register(&pxp_reporter_profile) < 0) {
+		btd_profile_unregister(&pxp_monitor_profile);
+		return -1;
+	}
+
+	return 0;
 }
 
 void proximity_manager_exit(void)
 {
-	btd_profile_unregister(&pxp_profile);
+	btd_profile_unregister(&pxp_monitor_profile);
+	btd_profile_unregister(&pxp_reporter_profile);
 }

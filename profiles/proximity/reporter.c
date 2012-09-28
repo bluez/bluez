@@ -223,7 +223,8 @@ static void register_reporter_device(struct btd_device *device,
 	radapter->devices = g_slist_prepend(radapter->devices, device);
 }
 
-int reporter_device_probe(struct btd_device *device)
+int reporter_device_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
 {
 	struct reporter_adapter *radapter;
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -237,7 +238,7 @@ int reporter_device_probe(struct btd_device *device)
 	return 0;
 }
 
-void reporter_device_remove(struct btd_device *device)
+void reporter_device_remove(struct btd_profile *p, struct btd_device *device)
 {
 	struct reporter_adapter *radapter;
 	struct btd_adapter *adapter = device_get_adapter(device);
