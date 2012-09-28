@@ -25,9 +25,11 @@
 #endif
 
 #include <stdbool.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <bluetooth/uuid.h>
@@ -100,6 +102,32 @@ static int write_ctp_handle(bdaddr_t *sba, bdaddr_t *dba, uint8_t bdaddr_type,
 	snprintf(value, sizeof(value), "0x%4.4x", handle);
 
 	return textfile_put(filename, key, value);
+}
+
+static int read_ctp_handle(bdaddr_t *sba, bdaddr_t *dba, uint8_t bdaddr_type,
+						uint16_t uuid, uint16_t *value)
+{
+	char filename[PATH_MAX + 1], addr[18], key[27];
+	char *str;
+
+	create_filename(filename, PATH_MAX, sba, "gatt");
+
+	ba2str(dba, addr);
+	snprintf(key, sizeof(key), "%17s#%hhu#0x%04x", addr, bdaddr_type,
+									uuid);
+
+	str = textfile_get(filename, key);
+	if (str == NULL)
+		return -errno;
+
+	if (sscanf(str, "%hx", value) != 1) {
+		free(str);
+		return -ENOENT;
+	}
+
+	free(str);
+
+	return 0;
 }
 
 static void gap_appearance_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -349,6 +377,8 @@ int gas_register(struct btd_device *device, struct att_range *gap,
 						struct att_range *gatt)
 {
 	struct gas *gas;
+	bdaddr_t sba, dba;
+	uint8_t bdaddr_type;
 
 	gas = g_new0(struct gas, 1);
 	gas->gap.start = gap->start;
@@ -363,6 +393,12 @@ int gas_register(struct btd_device *device, struct att_range *gap,
 	gas->attioid = btd_device_add_attio_callback(device,
 						attio_connected_cb,
 						attio_disconnected_cb, gas);
+
+	adapter_get_address(device_get_adapter(gas->device), &sba);
+	device_get_address(gas->device, &dba, &bdaddr_type);
+
+	read_ctp_handle(&sba, &dba, bdaddr_type, GATT_CHARAC_SERVICE_CHANGED,
+							&gas->changed_handle);
 
 	return 0;
 }
