@@ -1472,6 +1472,7 @@ static void player_destroy(gpointer data)
 	if (player->destroy)
 		player->destroy(player->user_data);
 
+	g_slist_free(player->sessions);
 	g_free(player);
 }
 
