@@ -45,6 +45,11 @@
 #include "device.h"
 #include "profile.h"
 
+struct pending_connect {
+	struct btd_device *dev;
+	btd_profile_cb cb;
+};
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -53,6 +58,8 @@ struct ext_profile {
 	char *uuid;
 	char *path;
 	char *role;
+
+	char **remote_uuids;
 
 	guint id;
 
@@ -64,6 +71,8 @@ struct ext_profile {
 
 	GSList *servers;
 	GSList *conns;
+
+	GSList *connects;
 };
 
 struct ext_io {
@@ -490,17 +499,25 @@ static int ext_start_servers(struct ext_profile *ext,
 	return 0;
 }
 
-static int ext_adapter_probe(struct btd_profile *p,
-						struct btd_adapter *adapter)
+static struct ext_profile *find_ext(struct btd_profile *p)
 {
-	struct ext_profile *ext;
 	GSList *l;
 
 	l = g_slist_find(ext_profiles, p);
 	if (!l)
-		return -ENOENT;
+		return NULL;
 
-	ext = l->data;
+	return l->data;
+}
+
+static int ext_adapter_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct ext_profile *ext;
+
+	ext = find_ext(p);
+	if (!ext)
+		return -ENOENT;
 
 	DBG("\"%s\" probed", ext->name);
 
@@ -513,11 +530,9 @@ static void ext_adapter_remove(struct btd_profile *p,
 	struct ext_profile *ext;
 	GSList *l, *next;
 
-	l = g_slist_find(ext_profiles, p);
-	if (!l)
+	ext = find_ext(p);
+	if (!ext)
 		return;
-
-	ext = l->data;
 
 	DBG("\"%s\" removed", ext->name);
 
@@ -532,6 +547,102 @@ static void ext_adapter_remove(struct btd_profile *p,
 		ext->servers = g_slist_remove(ext->servers, server);
 		ext_io_destroy(server);
 	}
+}
+
+static int ext_device_probe(struct btd_profile *p, struct btd_device *dev,
+								GSList *uuids)
+{
+	struct ext_profile *ext;
+
+	ext = find_ext(p);
+	if (!ext)
+		return -ENOENT;
+
+	DBG("%s probed with %u UUIDs", ext->name, g_slist_length(uuids));
+
+	return 0;
+}
+
+static void pending_conn_free(gpointer data)
+{
+	struct pending_connect *conn = data;
+
+	btd_device_unref(conn->dev);
+	g_free(conn);
+}
+
+static void remove_connect(struct ext_profile *ext, struct btd_device *dev)
+{
+	GSList *l, *next;
+
+	for (l = ext->connects; l != NULL; l = next) {
+		struct pending_connect *conn = l->data;
+
+		next = g_slist_next(l);
+
+		if (conn->dev != dev)
+			continue;
+
+		ext->connects = g_slist_remove(ext->connects, conn);
+		pending_conn_free(conn);
+	}
+}
+
+static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
+{
+	struct ext_profile *ext;
+
+	ext = find_ext(p);
+	if (!ext)
+		return;
+
+	DBG("%s", ext->name);
+
+	remove_connect(ext, dev);
+}
+
+static int connect_ext(struct ext_profile *ext, struct btd_device *dev)
+{
+	return -ENOSYS;
+}
+
+static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
+							btd_profile_cb cb)
+{
+	struct ext_profile *ext;
+	struct pending_connect *conn;
+	int err;
+
+	ext = find_ext(profile);
+	if (!ext)
+		return -ENOENT;
+
+	err = connect_ext(ext, dev);
+	if (err < 0)
+		return err;
+
+	conn = g_new0(struct pending_connect, 1);
+	conn->dev = btd_device_ref(dev);
+	conn->cb = cb;
+
+	ext->connects = g_slist_append(ext->connects, conn);
+
+	return 0;
+}
+
+static int ext_disconnect_dev(struct btd_device *dev,
+						struct btd_profile *profile,
+						btd_profile_cb cb)
+{
+	struct ext_profile *ext;
+
+	ext = find_ext(profile);
+	if (!ext)
+		return -ENOENT;
+
+	remove_connect(ext, dev);
+
+	return 0;
 }
 
 static void ext_get_defaults(struct ext_profile *ext)
@@ -613,6 +724,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	ext->owner = g_strdup(owner);
 	ext->path = g_strdup(path);
 	ext->uuid = g_strdup(uuid);
+	ext->remote_uuids = g_new0(char *, 1);
 
 	ext->sec_level = BT_IO_SEC_LOW;
 
@@ -643,6 +755,15 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p->adapter_probe = ext_adapter_probe;
 	p->adapter_remove = ext_adapter_remove;
 
+	/* Typecast can't really be avoided here:
+	 * http://c-faq.com/ansi/constmismatch.html */
+	p->remote_uuids = (const char **) ext->remote_uuids;
+
+	p->device_probe = ext_device_probe;
+	p->device_remove = ext_device_remove;
+	p->connect = ext_connect_dev;
+	p->disconnect = ext_disconnect_dev;
+
 	DBG("Created \"%s\"", ext->name);
 
 	ext_profiles = g_slist_append(ext_profiles, ext);
@@ -662,6 +783,9 @@ static void remove_ext(struct ext_profile *ext)
 
 	g_slist_free_full(ext->servers, ext_io_destroy);
 	g_slist_free_full(ext->conns, ext_io_destroy);
+	g_slist_free_full(ext->connects, pending_conn_free);
+
+	g_strfreev(ext->remote_uuids);
 
 	g_free(ext->name);
 	g_free(ext->owner);
