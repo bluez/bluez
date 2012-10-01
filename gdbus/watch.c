@@ -574,7 +574,7 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 			continue;
 
 		remove_match(data);
-		listeners = g_slist_remove_link(listeners, l);
+		listeners = g_slist_delete_link(listeners, l);
 
 		filter_data_free(data);
 	}
