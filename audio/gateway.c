@@ -54,6 +54,7 @@ struct hf_agent {
 	char *name;	/* Bus id */
 	char *path;	/* D-Bus path */
 	guint watch;	/* Disconnect watch */
+	DBusPendingCall *call;
 };
 
 struct connect_cb {
@@ -110,6 +111,9 @@ static void agent_free(struct hf_agent *agent)
 	if (!agent)
 		return;
 
+	if (agent->call)
+		dbus_pending_call_unref(agent->call);
+
 	g_free(agent->name);
 	g_free(agent->path);
 	g_free(agent);
@@ -152,6 +156,16 @@ void gateway_set_state(struct audio_device *dev, gateway_state_t new_state)
 	}
 }
 
+static void agent_cancel(struct hf_agent *agent)
+{
+	if (!agent->call)
+		return;
+
+	dbus_pending_call_cancel(agent->call);
+	dbus_pending_call_unref(agent->call);
+	agent->call = NULL;
+}
+
 static void agent_disconnect(struct audio_device *dev, struct hf_agent *agent)
 {
 	DBusMessage *msg;
@@ -160,6 +174,8 @@ static void agent_disconnect(struct audio_device *dev, struct hf_agent *agent)
 			"org.bluez.HandsfreeAgent", "Release");
 
 	g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	agent_cancel(agent);
 }
 
 static gboolean agent_sendfd(struct hf_agent *agent, int fd,
@@ -168,7 +184,9 @@ static gboolean agent_sendfd(struct hf_agent *agent, int fd,
 	struct audio_device *dev = data;
 	struct gateway *gw = dev->gateway;
 	DBusMessage *msg;
-	DBusPendingCall *call;
+
+	if (agent->call)
+		return FALSE;
 
 	msg = dbus_message_new_method_call(agent->name, agent->path,
 			"org.bluez.HandsfreeAgent", "NewConnection");
@@ -178,13 +196,12 @@ static gboolean agent_sendfd(struct hf_agent *agent, int fd,
 					DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), msg,
-							&call, -1) == FALSE) {
+						&agent->call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return FALSE;
 	}
 
-	dbus_pending_call_set_notify(call, notify, dev, NULL);
-	dbus_pending_call_unref(call);
+	dbus_pending_call_set_notify(agent->call, notify, dev, NULL);
 	dbus_message_unref(msg);
 
 	return TRUE;
@@ -279,13 +296,12 @@ static void newconnection_reply(DBusPendingCall *call, void *data)
 {
 	struct audio_device *dev = data;
 	struct gateway *gw = dev->gateway;
+	struct hf_agent *agent = gw->agent;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
 
-	if (!dev->gateway->rfcomm) {
-		DBG("RFCOMM disconnected from server before agent reply");
-		goto done;
-	}
+	dbus_pending_call_unref(agent->call);
+	agent->call = NULL;
 
 	dbus_error_init(&derr);
 	if (!dbus_set_error_from_message(&derr, reply)) {
@@ -580,6 +596,9 @@ int gateway_close(struct audio_device *device)
 		g_io_channel_unref(gw->sco);
 		gw->sco = NULL;
 	}
+
+	if (gw->agent)
+		agent_cancel(gw->agent);
 
 	change_state(device, GATEWAY_STATE_DISCONNECTED);
 	g_set_error(&gerr, GATEWAY_ERROR,
