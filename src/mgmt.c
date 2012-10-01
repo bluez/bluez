@@ -1166,7 +1166,7 @@ static void disconnect_complete(int sk, uint16_t index, uint8_t status,
 
 	btd_event_disconn_complete(&info->bdaddr, &rp->addr.bdaddr);
 
-	bonding_complete(info, &rp->addr.bdaddr, HCI_CONNECTION_TERMINATED);
+	bonding_complete(info, &rp->addr.bdaddr, MGMT_STATUS_DISCONNECTED);
 }
 
 static void pair_device_complete(int sk, uint16_t index, uint8_t status,
