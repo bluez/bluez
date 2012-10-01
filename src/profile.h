@@ -43,7 +43,9 @@ struct btd_profile {
 
 	int (*connect) (struct btd_device *device, struct btd_profile *profile,
 							btd_profile_cb cb);
-	int (*disconnect) (struct btd_device *device, btd_profile_cb cb);
+	int (*disconnect) (struct btd_device *device,
+						struct btd_profile *profile,
+						btd_profile_cb cb);
 
 	int (*adapter_probe) (struct btd_profile *p,
 						struct btd_adapter *adapter);
