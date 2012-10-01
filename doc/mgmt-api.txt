@@ -54,6 +54,8 @@ and Command Complete events:
 0x0D	Invalid Parameters
 0x0E	Disconnected
 0x0F	Not Powered
+0x10	Cancelled
+0x11	Invalid Index
 
 
 Read Management Version Information Command
