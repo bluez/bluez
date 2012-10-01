@@ -814,6 +814,17 @@ static void bonding_request_cancel(struct bonding_req *bonding)
 	adapter_cancel_bonding(adapter, &device->bdaddr);
 }
 
+static void dev_disconn_profile(gpointer a, gpointer b)
+{
+	struct btd_profile *profile = a;
+	struct btd_device *dev = b;
+
+	if (!profile->disconnect)
+		return;
+
+	profile->disconnect(dev, profile, NULL);
+}
+
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 {
 	if (device->bonding)
@@ -830,6 +841,12 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 
 	if (device->disconn_timer)
 		return;
+
+	if (device->profiles_connected)
+		g_slist_foreach(device->profiles, dev_disconn_profile, device);
+
+	g_slist_free(device->pending);
+	device->pending = NULL;
 
 	while (device->watches) {
 		struct btd_disconnect_data *data = device->watches->data;
@@ -1266,6 +1283,12 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		discover_services_reply(device->browse, -ECANCELED, NULL);
 		browse_request_cancel(device->browse);
 	}
+
+	if (device->profiles_connected)
+		g_slist_foreach(device->profiles, dev_disconn_profile, device);
+
+	g_slist_free(device->pending);
+	device->pending = NULL;
 
 	if (device->connected)
 		do_disconnect(device);
