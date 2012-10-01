@@ -68,6 +68,8 @@ struct gateway {
 	GIOChannel *rfcomm;
 	GIOChannel *sco;
 	GIOChannel *incoming;
+	guint rfcomm_id;
+	guint sco_id;
 	GSList *callbacks;
 	struct hf_agent *agent;
 	DBusMessage *msg;
@@ -251,6 +253,10 @@ static gboolean sco_io_cb(GIOChannel *chan, GIOCondition cond,
 		return FALSE;
 
 	DBG("sco connection is released");
+
+	g_source_remove(gw->sco_id);
+	gw->sco_id = 0;
+
 	g_io_channel_shutdown(gw->sco, TRUE, NULL);
 	g_io_channel_unref(gw->sco);
 	gw->sco = NULL;
@@ -268,14 +274,14 @@ static void sco_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 
 	gw->sco = g_io_channel_ref(chan);
 
+	gw->sco_id = g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						(GIOFunc) sco_io_cb, dev);
+
 	if (err) {
 		error("sco_connect_cb(): %s", err->message);
 		gateway_suspend_stream(dev);
 		return;
 	}
-
-	g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-				(GIOFunc) sco_io_cb, dev);
 
 	change_state(dev, GATEWAY_STATE_PLAYING);
 	run_connect_cb(dev, NULL);
@@ -306,8 +312,10 @@ static void newconnection_reply(DBusPendingCall *call, void *data)
 	dbus_error_init(&derr);
 	if (!dbus_set_error_from_message(&derr, reply)) {
 		DBG("Agent reply: file descriptor passed successfully");
-		g_io_add_watch(gw->rfcomm, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-					(GIOFunc) rfcomm_disconnect_cb, dev);
+		gw->rfcomm_id = g_io_add_watch(gw->rfcomm,
+						G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+						(GIOFunc) rfcomm_disconnect_cb,
+						dev);
 		change_state(dev, GATEWAY_STATE_CONNECTED);
 		goto done;
 	}
@@ -582,6 +590,16 @@ int gateway_close(struct audio_device *device)
 	struct gateway *gw = device->gateway;
 	int sock;
 
+	if (gw->rfcomm_id != 0) {
+		g_source_remove(gw->rfcomm_id);
+		gw->rfcomm_id = 0;
+	}
+
+	if (gw->sco_id != 0) {
+		g_source_remove(gw->sco_id);
+		gw->sco_id = 0;
+	}
+
 	if (gw->rfcomm) {
 		sock = g_io_channel_unix_get_fd(gw->rfcomm);
 		shutdown(sock, SHUT_RDWR);
@@ -832,7 +850,7 @@ int gateway_connect_sco(struct audio_device *dev, GIOChannel *io)
 
 	gw->sco = g_io_channel_ref(io);
 
-	g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+	gw->sco_id = g_io_add_watch(gw->sco, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 						(GIOFunc) sco_io_cb, dev);
 
 	change_state(dev, GATEWAY_STATE_PLAYING);
@@ -933,6 +951,9 @@ void gateway_suspend_stream(struct audio_device *dev)
 
 	if (!gw || !gw->sco)
 		return;
+
+	g_source_remove(gw->sco_id);
+	gw->sco_id = 0;
 
 	g_io_channel_shutdown(gw->sco, TRUE, NULL);
 	g_io_channel_unref(gw->sco);
