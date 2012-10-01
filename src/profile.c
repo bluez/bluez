@@ -507,6 +507,33 @@ static int ext_adapter_probe(struct btd_profile *p,
 	return ext_start_servers(ext, adapter);
 }
 
+static void ext_adapter_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct ext_profile *ext;
+	GSList *l, *next;
+
+	l = g_slist_find(ext_profiles, p);
+	if (!l)
+		return;
+
+	ext = l->data;
+
+	DBG("\"%s\" removed", ext->name);
+
+	for (l = ext->servers; l != NULL; l = next) {
+		struct ext_io *server = l->data;
+
+		next = g_slist_next(l);
+
+		if (server->adapter != adapter)
+			continue;
+
+		ext->servers = g_slist_remove(ext->servers, server);
+		ext_io_destroy(server);
+	}
+}
+
 static void ext_get_defaults(struct ext_profile *ext)
 {
 	if (ext->psm || ext->chan)
@@ -614,6 +641,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	p->name = ext->name;
 	p->adapter_probe = ext_adapter_probe;
+	p->adapter_remove = ext_adapter_remove;
 
 	DBG("Created \"%s\"", ext->name);
 
