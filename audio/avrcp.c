@@ -1328,6 +1328,11 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			avctp_unregister_browsing_pdu_handler(
 						session->browsing_handler);
 
+		if (session->player != NULL)
+			session->player->sessions = g_slist_remove(
+						session->player->sessions,
+						session);
+
 		g_free(session);
 		break;
 	case AVCTP_STATE_CONNECTING:
