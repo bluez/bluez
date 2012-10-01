@@ -71,6 +71,7 @@ struct ext_io {
 	int proto;
 	GIOChannel *io;
 	guint io_id;
+	struct btd_adapter *adapter;
 
 	bool authorizing;
 	DBusPendingCall *new_conn;
@@ -165,6 +166,9 @@ static void ext_io_destroy(gpointer p)
 		dbus_pending_call_unref(ext_io->new_conn);
 		ext_cancel(ext);
 	}
+
+	if (ext_io->adapter)
+		btd_adapter_unref(ext_io->adapter);
 
 	g_free(ext_io);
 }
@@ -454,6 +458,7 @@ static int ext_start_servers(struct ext_profile *ext,
 		} else {
 			server->io = io;
 			server->proto = BTPROTO_L2CAP;
+			server->adapter = btd_adapter_ref(adapter);
 			ext->servers = g_slist_append(ext->servers, server);
 			DBG("%s listening on PSM %u", ext->name, ext->psm);
 		}
@@ -476,6 +481,7 @@ static int ext_start_servers(struct ext_profile *ext,
 		} else {
 			server->io = io;
 			server->proto = BTPROTO_RFCOMM;
+			server->adapter = btd_adapter_ref(adapter);
 			ext->servers = g_slist_append(ext->servers, server);
 			DBG("%s listening on chan %u", ext->name, ext->chan);
 		}
