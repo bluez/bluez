@@ -572,6 +572,11 @@ static DBusMessage *ag_connect(DBusConnection *conn, DBusMessage *msg,
 	struct gateway *gw = au_dev->gateway;
 	int err;
 
+	if (gw->state == GATEWAY_STATE_CONNECTING)
+		return btd_error_in_progress(msg);
+	else if (gw->state > GATEWAY_STATE_CONNECTING)
+		return btd_error_already_connected(msg);
+
 	if (!gw->agent)
 		return btd_error_agent_not_available(msg);
 
