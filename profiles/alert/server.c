@@ -27,14 +27,35 @@
 #endif
 
 #include <stdbool.h>
+#include <glib.h>
+#include <bluetooth/uuid.h>
 
+#include "att.h"
 #include "adapter.h"
+#include "gatt-service.h"
+#include "gattrib.h"
+#include "gatt.h"
 #include "server.h"
 #include "profile.h"
+
+#define PHONE_ALERT_STATUS_SVC_UUID		0x180E
+
+static void register_phone_alert_service(struct btd_adapter *adapter)
+{
+	bt_uuid_t uuid;
+
+	bt_uuid16_create(&uuid, PHONE_ALERT_STATUS_SVC_UUID);
+
+	/* Phone Alert Status Service */
+	gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
+			GATT_OPT_INVALID);
+}
 
 static int alert_server_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
+	register_phone_alert_service(adapter);
+
 	return 0;
 }
 
