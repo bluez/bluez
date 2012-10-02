@@ -35,10 +35,12 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
+#include <bluetooth/sdp.h>
 
 #include "btio.h"
 #include "log.h"
 #include "error.h"
+#include "glib-helper.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "manager.h"
@@ -716,7 +718,9 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext->owner = g_strdup(owner);
 	ext->path = g_strdup(path);
-	ext->uuid = g_strdup(uuid);
+
+	ext->uuid = bt_name2string(uuid);
+
 	ext->remote_uuids = g_new0(char *, 1);
 
 	ext->sec_level = BT_IO_SEC_LOW;
