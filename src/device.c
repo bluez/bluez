@@ -2062,7 +2062,7 @@ static void att_success_cb(gpointer user_data)
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
 
-gboolean device_att_connect(gpointer user_data)
+GIOChannel *device_att_connect(gpointer user_data)
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device->adapter;
@@ -2105,12 +2105,12 @@ gboolean device_att_connect(gpointer user_data)
 		error("ATT bt_io_connect(%s): %s", addr, gerr->message);
 		g_error_free(gerr);
 		g_free(attcb);
-		return FALSE;
+		return NULL;
 	}
 
 	device->att_io = io;
 
-	return FALSE;
+	return g_io_channel_ref(io);
 }
 
 static void att_browse_error_cb(const GError *gerr, gpointer user_data)
