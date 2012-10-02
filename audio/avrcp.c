@@ -1489,6 +1489,7 @@ void avrcp_unregister(const bdaddr_t *src)
 	if (!server)
 		return;
 
+	g_slist_free_full(server->sessions, g_free);
 	g_slist_free_full(server->players, player_destroy);
 
 	servers = g_slist_remove(servers, server);
