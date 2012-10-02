@@ -36,12 +36,15 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
+#include <bluetooth/sdp_lib.h>
 
 #include "btio.h"
+#include "sdpd.h"
 #include "log.h"
 #include "error.h"
 #include "glib-helper.h"
 #include "dbus-common.h"
+#include "sdp-xml.h"
 #include "adapter.h"
 #include "manager.h"
 #include "device.h"
@@ -62,6 +65,7 @@ struct ext_profile {
 	char *uuid;
 	char *path;
 	char *role;
+	char *record;
 
 	char **remote_uuids;
 
@@ -88,6 +92,7 @@ struct ext_io {
 	GIOChannel *io;
 	guint io_id;
 	struct btd_adapter *adapter;
+	uint16_t rec_handle;
 
 	guint auth_id;
 	DBusPendingCall *new_conn;
@@ -176,6 +181,9 @@ static void ext_io_destroy(gpointer p)
 		dbus_pending_call_unref(ext_io->new_conn);
 		ext_cancel(ext);
 	}
+
+	if (ext_io->rec_handle)
+		remove_record_from_server(ext_io->rec_handle);
 
 	if (ext_io->adapter)
 		btd_adapter_unref(ext_io->adapter);
@@ -428,6 +436,36 @@ static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
 	ext_connect(io, err, conn);
 }
 
+static sdp_record_t *ext_get_record(struct ext_profile *ext)
+{
+	return NULL;
+}
+
+static uint16_t ext_register_record(struct ext_profile *ext, bdaddr_t *src)
+{
+	sdp_record_t *rec;
+	uint16_t handle;
+
+	if (ext->record)
+		rec = sdp_xml_parse_record(ext->record, strlen(ext->record));
+	else
+		rec = ext_get_record(ext);
+
+	if (!rec)
+		return 0;
+
+	if (add_record_to_server(src, rec) < 0) {
+		error("Failed to register service record");
+		return 0;
+	}
+
+	handle = rec->handle;
+
+	sdp_record_free(rec);
+
+	return handle;
+}
+
 static int ext_start_servers(struct ext_profile *ext,
 						struct btd_adapter *adapter)
 {
@@ -435,10 +473,13 @@ static int ext_start_servers(struct ext_profile *ext,
 	BtIOConfirm confirm;
 	BtIOConnect connect;
 	GError *err = NULL;
+	uint16_t handle;
 	GIOChannel *io;
 	bdaddr_t src;
 
 	adapter_get_address(adapter, &src);
+
+	handle = ext_register_record(ext, &src);
 
 	if (ext->authorize) {
 		confirm = ext_confirm;
@@ -451,6 +492,7 @@ static int ext_start_servers(struct ext_profile *ext,
 	if (ext->psm) {
 		server = g_new0(struct ext_io, 1);
 		server->ext = ext;
+		server->rec_handle = handle;
 
 		io = bt_io_listen(connect, confirm, server, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -474,6 +516,7 @@ static int ext_start_servers(struct ext_profile *ext,
 	if (ext->chan) {
 		server = g_new0(struct ext_io, 1);
 		server->ext = ext;
+		server->rec_handle = handle;
 
 		io = bt_io_listen(connect, confirm, server, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -708,6 +751,13 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 			ext->enable_server = true;
 			ext->enable_client = false;
 		}
+	} else if (strcasecmp(key, "ServiceRecord") == 0) {
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &str);
+		g_free(ext->record);
+		ext->record = g_strdup(str);
+		ext->enable_server = true;
 	}
 
 	return 0;
@@ -802,6 +852,7 @@ static void remove_ext(struct ext_profile *ext)
 	g_free(ext->uuid);
 	g_free(ext->role);
 	g_free(ext->path);
+	g_free(ext->record);
 
 	g_free(ext);
 }
