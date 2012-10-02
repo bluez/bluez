@@ -61,6 +61,7 @@
 
 #define ALERT_OBJECT_PATH "/org/bluez"
 #define ALERT_INTERFACE   "org.bluez.Alert"
+#define ALERT_AGENT_INTERFACE "org.bluez.AlertAgent"
 
 /* Maximum length for "Text String Information" */
 #define NEW_ALERT_MAX_INFO_SIZE		18
@@ -403,6 +404,28 @@ static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static int agent_ringer_mute_once(void)
+{
+	struct alert_data *alert;
+	DBusMessage *msg;
+
+	alert = get_alert_data_by_category("ringer");
+	if (!alert) {
+		DBG("Category ringer is not registered");
+		return -EINVAL;
+	}
+
+	msg = dbus_message_new_method_call(alert->srv, alert->path,
+					ALERT_AGENT_INTERFACE, "MuteOnce");
+	if (!msg)
+		return -ENOMEM;
+
+	dbus_message_set_no_reply(msg, TRUE);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	return 0;
+}
+
 static void update_unread_alert(gpointer data, gpointer user_data)
 {
 	struct alert_adapter *al_adapter = data;
@@ -478,6 +501,7 @@ static uint8_t ringer_cp_write(struct attribute *a,
 		break;
 	case RINGER_MUTE_ONCE:
 		DBG("Mute Once");
+		agent_ringer_mute_once();
 		break;
 	case RINGER_CANCEL_SILENT_MODE:
 		DBG("Cancel Silent Mode");
