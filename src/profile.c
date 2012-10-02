@@ -45,6 +45,8 @@
 #include "device.h"
 #include "profile.h"
 
+#define SPP_DEFAULT_CHANNEL	3
+
 struct pending_connect {
 	struct btd_device *dev;
 	btd_profile_cb cb;
@@ -641,11 +643,11 @@ static void ext_get_defaults(struct ext_profile *ext)
 	if (ext->psm || ext->chan)
 		return;
 
-	if (strcasecmp(ext->uuid, "spp") == 0) {
+	if (strcasecmp(ext->uuid, SPP_UUID) == 0) {
 		if (g_strcmp0(ext->role, "client") == 0)
 			return;
 
-		ext->chan = 3;
+		ext->chan = SPP_DEFAULT_CHANNEL;
 	}
 }
 
