@@ -33,6 +33,7 @@ int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor);
 int mgmt_set_fast_connectable(int index, gboolean enable);
 
 int mgmt_start_discovery(int index);
+int mgmt_start_le_scanning(int index);
 int mgmt_stop_discovery(int index);
 
 int mgmt_read_clock(int index, bdaddr_t *bdaddr, int which, int timeout,

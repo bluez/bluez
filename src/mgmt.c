@@ -2055,6 +2055,40 @@ int mgmt_start_discovery(int index)
 	return 0;
 }
 
+int mgmt_start_le_scanning(int index)
+{
+	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
+	struct mgmt_hdr *hdr = (void *) buf;
+	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
+
+	DBG("index %d", index);
+
+	if (!mgmt_low_energy(info->current_settings)) {
+		error("scanning failed: Low Energy not enabled/supported");
+		return -ENOTSUP;
+	}
+
+	info->discov_type = 0;
+	hci_set_bit(BDADDR_LE_PUBLIC, &info->discov_type);
+	hci_set_bit(BDADDR_LE_RANDOM, &info->discov_type);
+
+	memset(buf, 0, sizeof(buf));
+	hdr->opcode = htobs(MGMT_OP_START_DISCOVERY);
+	hdr->len = htobs(sizeof(*cp));
+	hdr->index = htobs(index);
+
+	cp->type = info->discov_type;
+
+	if (write(mgmt_sock, buf, sizeof(buf)) < 0) {
+		int err = -errno;
+		error("failed to write to MGMT socket: %s", strerror(-err));
+		return err;
+	}
+
+	return 0;
+}
+
 int mgmt_stop_discovery(int index)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
