@@ -76,6 +76,12 @@ enum {
 	NOTIFY_UNREAD_CAT,
 };
 
+enum {
+	RINGER_SILENT_MODE = 1,
+	RINGER_MUTE_ONCE,
+	RINGER_CANCEL_SILENT_MODE,
+};
+
 /* Ringer Setting characteristic values */
 enum {
 	RINGER_SILENT,
@@ -460,6 +466,25 @@ static uint8_t ringer_cp_write(struct attribute *a,
 						gpointer user_data)
 {
 	DBG("a = %p", a);
+
+	if (a->len > 1) {
+		DBG("Invalid command size (%zu)", a->len);
+		return 0;
+	}
+
+	switch (a->data[0]) {
+	case RINGER_SILENT_MODE:
+		DBG("Silent Mode");
+		break;
+	case RINGER_MUTE_ONCE:
+		DBG("Mute Once");
+		break;
+	case RINGER_CANCEL_SILENT_MODE:
+		DBG("Cancel Silent Mode");
+		break;
+	default:
+		DBG("Invalid command (0x%02x)", a->data[0]);
+	}
 
 	return 0;
 }
