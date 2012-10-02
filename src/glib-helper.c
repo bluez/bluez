@@ -101,7 +101,16 @@ static struct {
 	{ "fax",	FAX_SVCLASS_ID			},
 	{ "spp",	SERIAL_PORT_SVCLASS_ID		},
 	{ "hsp",	HEADSET_SVCLASS_ID		},
+	{ "hsp-hs",	HEADSET_SVCLASS_ID		},
+	{ "hsp-ag",	HEADSET_AGW_SVCLASS_ID		},
 	{ "hfp",	HANDSFREE_SVCLASS_ID		},
+	{ "hfp-hf",	HANDSFREE_SVCLASS_ID		},
+	{ "hfp-ag",	HANDSFREE_AGW_SVCLASS_ID	},
+	{ "pbap-pce",	PBAP_PCE_SVCLASS_ID		},
+	{ "pbap-pse",	PBAP_PSE_SVCLASS_ID		},
+	{ "map-mse",	MAP_MSE_SVCLASS_ID		},
+	{ "map-mce",	MAP_MCE_SVCLASS_ID		},
+	{ "gnss",	GNSS_SERVER_SVCLASS_ID		},
 	{ }
 };
 
