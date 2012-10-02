@@ -662,11 +662,6 @@ static DBusMessage *cancel_authorization(DBusConnection *conn,
 	if (auth == NULL)
 		return btd_error_does_not_exist(msg);
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
 	btd_cancel_authorization(auth->id);
 
 	reply = btd_error_not_authorized(auth->msg);
