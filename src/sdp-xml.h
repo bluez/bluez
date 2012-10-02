@@ -56,4 +56,6 @@ struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem);
 sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem,
 							sdp_record_t *record);
 
+sdp_record_t *sdp_xml_parse_record(const char *data, int size);
+
 #endif /* __SDP_XML_H */

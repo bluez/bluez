@@ -31,7 +31,7 @@ tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c \
 tools_hcitool_LDADD = lib/libbluetooth-private.la
 
 tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c
-tools_sdptool_LDADD = lib/libbluetooth-private.la
+tools_sdptool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 tools_ciptool_LDADD = lib/libbluetooth-private.la
 
