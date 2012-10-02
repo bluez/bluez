@@ -88,6 +88,8 @@ extern "C" {
 #define GAP_UUID		"00001800-0000-1000-8000-00805f9b34fb"
 #define PNP_UUID		"00001200-0000-1000-8000-00805f9b34fb"
 
+#define SPP_UUID		"00001101-0000-1000-8000-00805f9b34fb"
+
 typedef struct {
 	enum {
 		BT_UUID_UNSPEC = 0,
