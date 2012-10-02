@@ -287,6 +287,36 @@ static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *unread_alert(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	const char *sender = dbus_message_get_sender(msg);
+	struct alert_data *alert;
+	const char *category;
+	uint16_t count;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &category,
+						DBUS_TYPE_UINT16, &count,
+						DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	alert = get_alert_data_by_category(category);
+	if (!alert) {
+		DBG("Category %s not registered", category);
+		return btd_error_invalid_args(msg);
+	}
+
+	if (!g_str_equal(alert->srv, sender)) {
+		DBG("Sender %s is not registered in category %s", sender,
+								category);
+		return btd_error_invalid_args(msg);
+	}
+
+	DBG("category %s, count %d", category, count);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static uint8_t ringer_cp_write(struct attribute *a,
 						struct btd_device *device,
 						gpointer user_data)
@@ -480,6 +510,9 @@ static const GDBusMethodTable alert_methods[] = {
 				   { "count", "q" },
 				   { "description", "s" }), NULL,
 			new_alert) },
+	{ GDBUS_METHOD("UnreadAlert",
+			GDBUS_ARGS({ "category", "s" }, { "count", "q" }), NULL,
+			unread_alert) },
 	{ }
 };
 
