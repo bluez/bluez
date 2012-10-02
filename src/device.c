@@ -1818,14 +1818,8 @@ send_reply:
 	}
 
 cleanup:
-	if (!device->temporary) {
-		bdaddr_t sba, dba;
-
-		adapter_get_address(device->adapter, &sba);
-		device_get_address(device, &dba, NULL);
-
+	if (!device->temporary)
 		store_profiles(device);
-	}
 
 	device->browse = NULL;
 	browse_request_free(req);
