@@ -398,7 +398,8 @@ struct obc_transfer *obc_transfer_put(const char *type, const char *name,
 	struct stat st;
 	int perr;
 
-	if (filename == NULL || strcmp(filename, "") == 0) {
+	if ((filename == NULL || strcmp(filename, "") == 0) &&
+							contents == NULL) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EINVAL,
 						"Invalid filename given");
 		return NULL;
