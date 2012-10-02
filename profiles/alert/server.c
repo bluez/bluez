@@ -32,6 +32,9 @@
 
 #include "att.h"
 #include "adapter.h"
+#include "device.h"
+#include "att-database.h"
+#include "log.h"
 #include "gatt-service.h"
 #include "gattrib.h"
 #include "gatt.h"
@@ -39,6 +42,16 @@
 #include "profile.h"
 
 #define PHONE_ALERT_STATUS_SVC_UUID		0x180E
+#define RINGER_CP_CHR_UUID		0x2A40
+
+static uint8_t ringer_cp_write(struct attribute *a,
+						struct btd_device *device,
+						gpointer user_data)
+{
+	DBG("a = %p", a);
+
+	return 0;
+}
 
 static void register_phone_alert_service(struct btd_adapter *adapter)
 {
@@ -48,6 +61,11 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 
 	/* Phone Alert Status Service */
 	gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
+			/* Ringer Control Point characteristic */
+			GATT_OPT_CHR_UUID, RINGER_CP_CHR_UUID,
+			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_WRITE_WITHOUT_RESP,
+			GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,
+			ringer_cp_write, NULL,
 			GATT_OPT_INVALID);
 }
 
