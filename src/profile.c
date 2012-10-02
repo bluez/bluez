@@ -70,6 +70,9 @@ struct ext_profile {
 	BtIOSecLevel sec_level;
 	bool authorize;
 
+	bool enable_client;
+	bool enable_server;
+
 	uint16_t psm;
 	uint8_t chan;
 
@@ -642,14 +645,9 @@ static int ext_disconnect_dev(struct btd_device *dev,
 
 static void ext_get_defaults(struct ext_profile *ext)
 {
-	if (ext->psm || ext->chan)
-		return;
-
 	if (strcasecmp(ext->uuid, SPP_UUID) == 0) {
-		if (g_strcmp0(ext->role, "client") == 0)
-			return;
-
-		ext->chan = SPP_DEFAULT_CHANNEL;
+		if (ext->enable_server && !ext->chan)
+			ext->chan = SPP_DEFAULT_CHANNEL;
 	}
 }
 
@@ -702,6 +700,14 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		dbus_message_iter_get_basic(value, &str);
 		g_free(ext->role);
 		ext->role = g_strdup(str);
+
+		if (g_str_equal(ext->role, "client")) {
+			ext->enable_server = false;
+			ext->enable_client = true;
+		} else if (g_str_equal(ext->role, "server")) {
+			ext->enable_server = true;
+			ext->enable_client = false;
+		}
 	}
 
 	return 0;
@@ -724,6 +730,8 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	ext->remote_uuids = g_new0(char *, 1);
 
 	ext->sec_level = BT_IO_SEC_LOW;
+	ext->enable_client = true;
+	ext->enable_server = true;
 
 	while (dbus_message_iter_get_arg_type(opts) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter value, entry;
@@ -749,17 +757,22 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p = &ext->p;
 
 	p->name = ext->name;
-	p->adapter_probe = ext_adapter_probe;
-	p->adapter_remove = ext_adapter_remove;
 
 	/* Typecast can't really be avoided here:
 	 * http://c-faq.com/ansi/constmismatch.html */
 	p->remote_uuids = (const char **) ext->remote_uuids;
 
-	p->device_probe = ext_device_probe;
-	p->device_remove = ext_device_remove;
-	p->connect = ext_connect_dev;
-	p->disconnect = ext_disconnect_dev;
+	if (ext->enable_server) {
+		p->adapter_probe = ext_adapter_probe;
+		p->adapter_remove = ext_adapter_remove;
+	}
+
+	if (ext->enable_client) {
+		p->device_probe = ext_device_probe;
+		p->device_remove = ext_device_remove;
+		p->connect = ext_connect_dev;
+		p->disconnect = ext_disconnect_dev;
+	}
 
 	DBG("Created \"%s\"", ext->name);
 
