@@ -26,13 +26,37 @@
 #include <config.h>
 #endif
 
+#include <stdbool.h>
+
+#include "adapter.h"
 #include "server.h"
+#include "profile.h"
+
+static int alert_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	return 0;
+}
+
+static void alert_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+}
+
+static struct btd_profile alert_profile = {
+	.name = "gatt-alert-server",
+	.adapter_probe = alert_server_probe,
+	.adapter_remove = alert_server_remove,
+};
 
 int alert_server_init(void)
 {
+	btd_profile_register(&alert_profile);
+
 	return 0;
 }
 
 void alert_server_exit(void)
 {
+	btd_profile_unregister(&alert_profile);
 }
