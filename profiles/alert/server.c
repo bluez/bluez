@@ -179,9 +179,25 @@ static void alert_data_destroy(gpointer user_data)
 	g_free(alert);
 }
 
+static void alert_release(gpointer user_data)
+{
+	struct alert_data *alert = user_data;
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(alert->srv, alert->path,
+							ALERT_AGENT_INTERFACE,
+							"Release");
+	if (msg)
+		g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	alert_data_destroy(alert);
+}
+
 static void alert_destroy(gpointer user_data)
 {
-	g_slist_free_full(registered_alerts, alert_data_destroy);
+	DBG("");
+
+	g_slist_free_full(registered_alerts, alert_release);
 	registered_alerts = NULL;
 }
 

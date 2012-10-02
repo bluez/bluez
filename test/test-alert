@@ -15,9 +15,10 @@ BLUEZ_OBJECT_PATH = '/org/bluez'
 TEST_OBJECT_PATH = '/org/bluez/test'
 
 class AlertAgent(dbus.service.Object):
-	def __init__(self, bus, object_path, alert):
+	def __init__(self, bus, object_path, alert, mainloop):
 		dbus.service.Object.__init__(self, bus, object_path)
 		self.alert = alert
+		self.mainloop = mainloop
 
 	@dbus.service.method(ALERT_AGENT_INTERFACE, in_signature='',
 							out_signature='')
@@ -30,6 +31,12 @@ class AlertAgent(dbus.service.Object):
 	def SetRinger(self, mode):
 		print('method SetRinger(%s) was called' % mode)
 		self.alert.NewAlert('ringer', 1, mode)
+
+	@dbus.service.method(ALERT_AGENT_INTERFACE, in_signature='',
+							out_signature='')
+	def Release(self):
+		print('method Release() was called')
+		self.mainloop.quit()
 
 def print_command_line(options):
 	if not options.verbose:
@@ -145,7 +152,7 @@ bus = dbus.SystemBus()
 mainloop = gobject.MainLoop()
 alert = dbus.Interface(bus.get_object(BUS_NAME, BLUEZ_OBJECT_PATH),
 								ALERT_INTERFACE)
-alert_agent = AlertAgent(bus, TEST_OBJECT_PATH, alert)
+alert_agent = AlertAgent(bus, TEST_OBJECT_PATH, alert, mainloop)
 
 print_command_line(options)
 
