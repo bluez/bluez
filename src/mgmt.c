@@ -2383,7 +2383,8 @@ int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t addr_type, uint8_t 
 	char addr[18];
 
 	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s io_cap 0x%02x", index, addr, io_cap);
+	DBG("hci%d bdaddr %s type %d io_cap 0x%02x",
+					index, addr, addr_type, io_cap);
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(MGMT_OP_PAIR_DEVICE);
