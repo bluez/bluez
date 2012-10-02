@@ -355,15 +355,11 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 {
 	struct agent_request *req = user_data;
 	struct agent *agent = req->agent;
-	struct btd_adapter *adapter = agent->adapter;
 	agent_pincode_cb cb = req->cb;
 	DBusMessage *message;
 	DBusError err;
-	bdaddr_t sba;
 	size_t len;
 	char *pin;
-
-	adapter_get_address(adapter, &sba);
 
 	/* steal_reply will always return non-NULL since the callback
 	 * is only called after a reply has been received */
