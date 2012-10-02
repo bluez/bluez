@@ -84,6 +84,7 @@ struct alert_data {
 	const char *category;
 	char *srv;
 	char *path;
+	guint watcher;
 };
 
 static GSList *registered_alerts = NULL;
@@ -112,6 +113,9 @@ static const char * const pasp_categories[] = {
 static void alert_data_destroy(gpointer user_data)
 {
 	struct alert_data *alert = user_data;
+
+	if (alert->watcher)
+		g_dbus_remove_watch(btd_get_dbus_connection(), alert->watcher);
 
 	g_free(alert->srv);
 	g_free(alert->path);
@@ -210,6 +214,16 @@ static gboolean valid_count(const char *category, uint16_t count)
 	return FALSE;
 }
 
+static void watcher_disconnect(DBusConnection *conn, void *user_data)
+{
+	struct alert_data *alert = user_data;
+
+	DBG("Category %s was disconnected", alert->category);
+
+	registered_alerts = g_slist_remove(registered_alerts, alert);
+	alert_data_destroy(alert);
+}
+
 static DBusMessage *register_alert(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -238,6 +252,15 @@ static DBusMessage *register_alert(DBusConnection *conn, DBusMessage *msg,
 	alert->srv = g_strdup(sender);
 	alert->path = g_strdup(path);
 	alert->category = category;
+	alert->watcher = g_dbus_add_disconnect_watch(conn, alert->srv,
+					watcher_disconnect, alert, NULL);
+
+	if (alert->watcher == 0) {
+		alert_data_destroy(alert);
+		DBG("Could not register disconnect watcher");
+		return btd_error_failed(msg,
+				"Could not register disconnect watcher");
+	}
 
 	registered_alerts = g_slist_append(registered_alerts, alert);
 
