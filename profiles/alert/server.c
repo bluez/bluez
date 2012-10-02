@@ -339,6 +339,27 @@ static void update_new_alert(gpointer data, gpointer user_data)
 								value[0], NULL);
 }
 
+static void update_phone_alerts(const char *category, const char *description)
+{
+	unsigned int i;
+
+	if (g_str_equal(category, "ringer")) {
+		if (g_str_equal(description, "enabled"))
+			ringer_setting = RINGER_NORMAL;
+		else if (g_str_equal(description, "disabled"))
+			ringer_setting = RINGER_SILENT;
+	}
+
+	for (i = 0; i < G_N_ELEMENTS(pasp_categories); i++) {
+		if (g_str_equal(pasp_categories[i], category)) {
+			if (g_str_equal(description, "active"))
+				alert_status |= (1 << i);
+			else if (g_str_equal(description, "not active"))
+				alert_status &= ~(1 << i);
+		}
+	}
+}
+
 static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -398,6 +419,9 @@ static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 									value);
 		}
 	}
+
+	if (pasp_category(category))
+		update_phone_alerts(category, description);
 
 	DBG("NewAlert(\"%s\", %d, \"%s\")", category, count, description);
 
