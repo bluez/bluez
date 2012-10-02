@@ -43,6 +43,8 @@
 #include "profile.h"
 
 #define PHONE_ALERT_STATUS_SVC_UUID		0x180E
+
+#define ALERT_STATUS_CHR_UUID		0x2A3F
 #define RINGER_CP_CHR_UUID		0x2A40
 #define RINGER_SETTING_CHR_UUID		0x2A41
 
@@ -53,12 +55,28 @@ enum {
 };
 
 static uint8_t ringer_setting = RINGER_NORMAL;
+static uint8_t alert_status = 0;
 
 static uint8_t ringer_cp_write(struct attribute *a,
 						struct btd_device *device,
 						gpointer user_data)
 {
 	DBG("a = %p", a);
+
+	return 0;
+}
+
+static uint8_t alert_status_read(struct attribute *a,
+						struct btd_device *device,
+						gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	DBG("a = %p", a);
+
+	if (a->data == NULL || a->data[0] != alert_status)
+		attrib_db_update(adapter, a->handle, NULL, &alert_status,
+						sizeof(alert_status), NULL);
 
 	return 0;
 }
@@ -86,6 +104,12 @@ static void register_phone_alert_service(struct btd_adapter *adapter)
 
 	/* Phone Alert Status Service */
 	gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
+			/* Alert Status characteristic */
+			GATT_OPT_CHR_UUID, ALERT_STATUS_CHR_UUID,
+			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
+							ATT_CHAR_PROPER_NOTIFY,
+			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,
+			alert_status_read, adapter,
 			/* Ringer Control Point characteristic */
 			GATT_OPT_CHR_UUID, RINGER_CP_CHR_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_WRITE_WITHOUT_RESP,
