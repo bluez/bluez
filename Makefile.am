@@ -219,7 +219,8 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/thermometer/thermometer.h \
 			profiles/thermometer/thermometer.c \
 			profiles/alert/main.c profiles/alert/server.h \
-			profiles/alert/server.c \
+			profiles/alert/server.c profiles/alert/manager.h \
+			profiles/alert/manager.c \
 			profiles/time/main.c profiles/time/server.h \
 			profiles/time/server.c profiles/time/manager.c \
 			profiles/time/manager.h \
