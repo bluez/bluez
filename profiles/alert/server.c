@@ -426,6 +426,31 @@ static int agent_ringer_mute_once(void)
 	return 0;
 }
 
+static int agent_ringer_set_ringer(const char *mode)
+{
+	struct alert_data *alert;
+	DBusMessage *msg;
+
+	alert = get_alert_data_by_category("ringer");
+	if (!alert) {
+		DBG("Category ringer is not registered");
+		return -EINVAL;
+	}
+
+	msg = dbus_message_new_method_call(alert->srv, alert->path,
+					ALERT_AGENT_INTERFACE, "SetRinger");
+	if (!msg)
+		return -ENOMEM;
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &mode,
+							DBUS_TYPE_INVALID);
+
+	dbus_message_set_no_reply(msg, TRUE);
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	return 0;
+}
+
 static void update_unread_alert(gpointer data, gpointer user_data)
 {
 	struct alert_adapter *al_adapter = data;
@@ -498,6 +523,7 @@ static uint8_t ringer_cp_write(struct attribute *a,
 	switch (a->data[0]) {
 	case RINGER_SILENT_MODE:
 		DBG("Silent Mode");
+		agent_ringer_set_ringer("disabled");
 		break;
 	case RINGER_MUTE_ONCE:
 		DBG("Mute Once");
@@ -505,6 +531,7 @@ static uint8_t ringer_cp_write(struct attribute *a,
 		break;
 	case RINGER_CANCEL_SILENT_MODE:
 		DBG("Cancel Silent Mode");
+		agent_ringer_set_ringer("enabled");
 		break;
 	default:
 		DBG("Invalid command (0x%02x)", a->data[0]);
