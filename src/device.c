@@ -899,7 +899,8 @@ static int connect_next(struct btd_device *dev, btd_profile_cb cb)
 		if (err == 0)
 			return 0;
 
-		error("Failed to connect %s", profile->name);
+		error("Failed to connect %s: %s", profile->name,
+							strerror(-err));
 		dev->pending = g_slist_remove(dev->pending, profile);
 	}
 
