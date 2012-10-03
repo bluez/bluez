@@ -246,11 +246,21 @@ static void new_conn_reply(DBusPendingCall *call, void *user_data)
 	dbus_pending_call_unref(conn->new_conn);
 	conn->new_conn = NULL;
 
-	if (!dbus_error_is_set(&err))
+	if (!dbus_error_is_set(&err)) {
+		if (conn->cb) {
+			conn->cb(&ext->p, conn->device, 0);
+			conn->cb = NULL;
+		}
 		return;
+	}
 
 	error("%s replied with an error: %s, %s", ext->name,
 						err.name, err.message);
+
+	if (conn->cb) {
+		conn->cb(&ext->p, conn->device, -ECONNREFUSED);
+		conn->cb = NULL;
+	}
 
 	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
 		ext_cancel(ext);
@@ -691,8 +701,71 @@ static int connect_io(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
 static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	bdaddr_t src, dst;
+	sdp_list_t *r;
 
 	conn->resolving = false;
+
+	if (err < 0) {
+		error("Unable to get %s SDP record: %s", ext->name,
+							strerror(-err));
+		goto failed;
+	}
+
+	if (!recs || !recs->data) {
+		error("No SDP records found for %s", ext->name);
+		goto failed;
+	}
+
+	for (r = recs; r != NULL; r = r->next) {
+		sdp_record_t *rec = r->data;
+		sdp_list_t *protos;
+		int port;
+
+		if (sdp_get_access_protos(rec, &protos) < 0) {
+			error("Unable to get proto list from %s record",
+								ext->name);
+			goto failed;
+		}
+
+		port = sdp_get_proto_port(protos, L2CAP_UUID);
+		if (port > 0)
+			ext->psm = port;
+
+		port = sdp_get_proto_port(protos, RFCOMM_UUID);
+		if (port > 0)
+			ext->chan = port;
+
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
+									NULL);
+		sdp_list_free(protos, NULL);
+
+		if (ext->chan || ext->psm)
+			break;
+	}
+
+	if (!ext->chan && !ext->psm) {
+		error("Failed to find L2CAP PSM or RFCOMM channel for %s",
+								ext->name);
+		goto failed;
+	}
+
+	adapter_get_address(conn->adapter, &src);
+	device_get_address(conn->device, &dst, NULL);
+
+	err = connect_io(conn, &src, &dst);
+	if (err < 0) {
+		error("Connecting %s failed: %s", ext->name, strerror(-err));
+		goto failed;
+	}
+
+	return;
+
+failed:
+	conn->cb(&ext->p, conn->device, err);
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
 }
 
 static int resolve_service(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
