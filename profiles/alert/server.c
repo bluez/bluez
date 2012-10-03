@@ -49,8 +49,8 @@
 #include "textfile.h"
 #include "attio.h"
 
-#define PHONE_ALERT_STATUS_SVC_UUID		0x180E
-#define ALERT_NOTIF_SVC_UUID			0x1811
+#define PHONE_ALERT_STATUS_SVC_UUID	0x180E
+#define ALERT_NOTIF_SVC_UUID		0x1811
 
 #define ALERT_STATUS_CHR_UUID		0x2A3F
 #define RINGER_CP_CHR_UUID		0x2A40
@@ -62,9 +62,9 @@
 #define SUPP_NEW_ALERT_CAT_CHR_UUID	0x2A47
 #define SUPP_UNREAD_ALERT_CAT_CHR_UUID	0x2A48
 
-#define ALERT_OBJECT_PATH "/org/bluez"
-#define ALERT_INTERFACE   "org.bluez.Alert"
-#define ALERT_AGENT_INTERFACE "org.bluez.AlertAgent"
+#define ALERT_OBJECT_PATH		"/org/bluez"
+#define ALERT_INTERFACE			"org.bluez.Alert"
+#define ALERT_AGENT_INTERFACE		"org.bluez.AlertAgent"
 
 /* Maximum length for "Text String Information" */
 #define NEW_ALERT_MAX_INFO_SIZE		18
@@ -255,7 +255,7 @@ static gboolean pasp_category(const char *category)
 }
 
 static gboolean valid_description(const char *category,
-							const char *description)
+						const char *description)
 {
 	if (!pasp_category(category)) {
 		if (strlen(description) >= NEW_ALERT_MAX_INFO_SIZE)
@@ -548,6 +548,7 @@ static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 	struct alert_data *alert;
 	uint16_t count;
 	unsigned int i;
+	size_t dlen;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &category,
 			DBUS_TYPE_UINT16, &count, DBUS_TYPE_STRING,
@@ -577,27 +578,28 @@ static DBusMessage *new_alert(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 	}
 
+	dlen = strlen(description);
+
 	for (i = 0; i < G_N_ELEMENTS(anp_categories); i++) {
-		if (g_str_equal(anp_categories[i], category)) {
-			uint8_t value[NEW_ALERT_CHR_MAX_VALUE_SIZE + 1];
-			size_t dlen = strlen(description);
-			uint8_t *ptr = value;
+		uint8_t value[NEW_ALERT_CHR_MAX_VALUE_SIZE + 1];
+		uint8_t *ptr = value;
 
-			memset(value, 0, sizeof(value));
+		if (!g_str_equal(anp_categories[i], category))
+			continue;
 
-			*ptr++ = 2; /* Attribute value size */
-			*ptr++ = i; /* Category ID (mandatory) */
-			*ptr++ = count; /* Number of New Alert (mandatory) */
-			/* Text String Information (optional) */
-			strncpy((char *) ptr, description,
+		memset(value, 0, sizeof(value));
+
+		*ptr++ = 2; /* Attribute value size */
+		*ptr++ = i; /* Category ID (mandatory) */
+		*ptr++ = count; /* Number of New Alert (mandatory) */
+		/* Text String Information (optional) */
+		strncpy((char *) ptr, description,
 						NEW_ALERT_MAX_INFO_SIZE - 1);
 
-			if (dlen > 0)
-				*value += dlen + 1;
+		if (dlen > 0)
+			*value += dlen + 1;
 
-			g_slist_foreach(alert_adapters, update_new_alert,
-									value);
-		}
+		g_slist_foreach(alert_adapters, update_new_alert, value);
 	}
 
 	if (pasp_category(category))
@@ -818,7 +820,7 @@ static uint8_t supp_new_alert_cat_read(struct attribute *a,
 						gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint8_t value[] = {0x00, 0x00};
+	uint8_t value[] = { 0x00, 0x00 };
 
 	DBG("a = %p", a);
 
@@ -834,7 +836,7 @@ static uint8_t supp_unread_alert_cat_read(struct attribute *a,
 						gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint8_t value[] = {0x00, 0x00};
+	uint8_t value[] = { 0x00, 0x00 };
 
 	DBG("a = %p", a);
 
