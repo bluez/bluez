@@ -452,7 +452,7 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 }
 
 void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
-						char *name, uint8_t *dev_class)
+						char *name, uint32_t class)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
@@ -462,13 +462,8 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_typ
 
 	update_lastused(local, peer, bdaddr_type);
 
-	if (dev_class != NULL) {
-		uint32_t class = dev_class[0] | (dev_class[1] << 8) |
-							(dev_class[2] << 16);
-
-		if (class != 0)
-			write_remote_class(local, peer, class);
-	}
+	if (class != 0)
+		write_remote_class(local, peer, class);
 
 	device_set_addr_type(device, bdaddr_type);
 

@@ -166,7 +166,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 		case EIR_CLASS_OF_DEV:
 			if (data_len < 3)
 				break;
-			memcpy(eir->dev_class, data, 3);
+			eir->class = data[0] | (data[1] << 8) |
+							(data[2] << 16);
 			break;
 
 		case EIR_GAP_APPEARANCE:

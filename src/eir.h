@@ -47,7 +47,7 @@ struct eir_data {
 	GSList *services;
 	int flags;
 	char *name;
-	uint8_t dev_class[3];
+	uint32_t class;
 	uint16_t appearance;
 	gboolean name_complete;
 	uint8_t *hash;

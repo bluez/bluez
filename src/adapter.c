@@ -3063,7 +3063,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	struct eir_data eir_data;
 	char *alias, *name;
 	gboolean legacy, name_known;
-	uint32_t dev_class;
 	int err;
 	GSList *l;
 
@@ -3074,10 +3073,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
-	dev_class = eir_data.dev_class[0] | (eir_data.dev_class[1] << 8) |
-						(eir_data.dev_class[2] << 16);
-	if (dev_class != 0)
-		write_remote_class(&adapter->bdaddr, bdaddr, dev_class);
+	if (eir_data.class != 0)
+		write_remote_class(&adapter->bdaddr, bdaddr, eir_data.class);
 
 	if (eir_data.appearance != 0)
 		write_remote_appearance(&adapter->bdaddr, bdaddr, bdaddr_type,
@@ -3133,8 +3130,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	alias = read_stored_data(&adapter->bdaddr, bdaddr, bdaddr_type,
 								"aliases");
 
-	dev = found_device_new(bdaddr, bdaddr_type, name, alias, dev_class,
-						legacy, eir_data.flags);
+	dev = found_device_new(bdaddr, bdaddr_type, name, alias,
+				eir_data.class, legacy, eir_data.flags);
 	free(name);
 	free(alias);
 

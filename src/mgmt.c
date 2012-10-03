@@ -515,7 +515,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
 						ev->addr.type,
 						eir_data.name,
-						eir_data.dev_class);
+						eir_data.class);
 
 	eir_data_free(&eir_data);
 }
