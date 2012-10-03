@@ -38,6 +38,8 @@
 #include "glib-helper.h"
 #include "eir.h"
 
+#define EIR_OOB_MIN (2 + 6)
+
 void eir_data_free(struct eir_data *eir)
 {
 	g_slist_free_full(eir->services, g_free);
@@ -191,6 +193,29 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 		eir_data += field_len + 1;
 	}
+
+	return 0;
+}
+
+int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len)
+{
+
+	if (eir_len < EIR_OOB_MIN)
+		return -1;
+
+	if (eir_len != bt_get_le16(eir_data))
+		return -1;
+
+	eir_data += sizeof(uint16_t);
+	eir_len -= sizeof(uint16_t);
+
+	memcpy(&eir->addr, eir_data, sizeof(bdaddr_t));
+	eir_data += sizeof(bdaddr_t);
+	eir_len -= sizeof(bdaddr_t);
+
+	/* optional OOB EIR data */
+	if (eir_len > 0)
+		return eir_parse(eir, eir_data, eir_len);
 
 	return 0;
 }

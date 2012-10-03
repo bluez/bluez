@@ -52,10 +52,12 @@ struct eir_data {
 	gboolean name_complete;
 	uint8_t *hash;
 	uint8_t *randomizer;
+	bdaddr_t addr;
 };
 
 void eir_data_free(struct eir_data *eir);
 int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len);
+int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len);
 void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 			uint16_t did_product, uint16_t did_version,
 			uint16_t did_source, GSList *uuids, uint8_t *data);
