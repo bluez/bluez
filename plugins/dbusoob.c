@@ -232,13 +232,6 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 	adapter_get_address(adapter, &local);
 
 	if (data->hash) {
-		uint8_t empty_randomizer[16];
-
-		if (!data->randomizer) {
-			memset(empty_randomizer, 0, sizeof(empty_randomizer));
-			data->randomizer = empty_randomizer;
-		}
-
 		if (btd_adapter_add_remote_oob_data(adapter, &bdaddr,
 					data->hash, data->randomizer) < 0)
 			return FALSE;

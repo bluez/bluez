@@ -2459,7 +2459,9 @@ int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
 
 	bacpy(&cp->addr.bdaddr, bdaddr);
 	memcpy(cp->hash, hash, 16);
-	memcpy(cp->randomizer, randomizer, 16);
+
+	if (randomizer)
+		memcpy(cp->randomizer, randomizer, 16);
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
 		return -errno;
