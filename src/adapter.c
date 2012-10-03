@@ -2259,6 +2259,11 @@ void btd_adapter_read_class(struct btd_adapter *adapter, uint8_t *major,
 	*minor = cls[0];
 }
 
+uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
+{
+	return adapter->dev_class;
+}
+
 const char *btd_adapter_get_name(struct btd_adapter *adapter)
 {
 	return adapter->name;
