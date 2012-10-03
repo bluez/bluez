@@ -278,7 +278,7 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	}
 }
 
-void eir_create_oob(const char *name, int8_t tx_power, uint32_t cod,
+void eir_create_oob(const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
@@ -345,13 +345,6 @@ void eir_create_oob(const char *name, int8_t tx_power, uint32_t cod,
 
 		eir_len += (name_len + 2);
 		ptr += (name_len + 2);
-	}
-
-	if (tx_power != 0) {
-		*ptr++ = 2;
-		*ptr++ = EIR_TX_POWER;
-		*ptr++ = (uint8_t) tx_power;
-		eir_len += 3;
 	}
 
 	if (did_vendor != 0x0000) {
