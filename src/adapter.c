@@ -1031,6 +1031,11 @@ struct btd_device *adapter_get_device(struct btd_adapter *adapter,
 	return adapter_create_device(adapter, address, BDADDR_BREDR);
 }
 
+sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter)
+{
+	return adapter->services;
+}
+
 static gboolean discovery_cb(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
