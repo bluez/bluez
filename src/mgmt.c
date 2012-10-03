@@ -48,7 +48,6 @@
 #include "manager.h"
 #include "device.h"
 #include "event.h"
-#include "oob.h"
 #include "eir.h"
 #include "mgmt.h"
 
@@ -1277,9 +1276,9 @@ static void read_local_oob_data_complete(int sk, uint16_t index, void *buf,
 	DBG("hci%u", index);
 
 	adapter = manager_find_adapter_by_id(index);
-
 	if (adapter)
-		oob_read_local_data_complete(adapter, rp->hash, rp->randomizer);
+		adapter_read_local_oob_data_complete(adapter, rp->hash,
+							rp->randomizer);
 }
 
 static void start_discovery_complete(int sk, uint16_t index, uint8_t status,
@@ -1323,9 +1322,8 @@ static void read_local_oob_data_failed(int sk, uint16_t index)
 	DBG("hci%u", index);
 
 	adapter = manager_find_adapter_by_id(index);
-
 	if (adapter)
-		oob_read_local_data_complete(adapter, NULL, NULL);
+		adapter_read_local_oob_data_complete(adapter, NULL, NULL);
 }
 
 static void handle_pending_uuids(uint16_t index)

@@ -157,6 +157,8 @@ struct btd_adapter {
 
 	GSList *drivers;
 	GSList *profiles;
+
+	struct oob_handler *oob_handler;
 };
 
 static gboolean process_auth_queue(gpointer user_data);
@@ -3716,6 +3718,22 @@ int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 	return mgmt_cancel_bonding(adapter->dev_id, bdaddr);
 }
 
+static void check_oob_bonding_complete(struct btd_adapter *adapter,
+					bdaddr_t *bdaddr, uint8_t status)
+{
+	if (!adapter->oob_handler || !adapter->oob_handler->bonding_cb)
+		return;
+
+	if (bacmp(bdaddr, &adapter->oob_handler->remote_addr) != 0)
+		return;
+
+	adapter->oob_handler->bonding_cb(adapter, bdaddr, status,
+					adapter->oob_handler->user_data);
+
+	g_free(adapter->oob_handler);
+	adapter->oob_handler = NULL;
+}
+
 void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 								uint8_t status)
 {
@@ -3735,6 +3753,8 @@ void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 		adapter->discov_suspended = FALSE;
 		mgmt_start_discovery(adapter->dev_id);
 	}
+
+	check_oob_bonding_complete(adapter, bdaddr, status);
 }
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)
@@ -3758,4 +3778,28 @@ int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
 int btd_adapter_ssp_enabled(struct btd_adapter *adapter)
 {
 	return mgmt_ssp_enabled(adapter->dev_id);
+}
+
+void btd_adapter_set_oob_handler(struct btd_adapter *adapter,
+						struct oob_handler *handler)
+{
+	adapter->oob_handler = handler;
+}
+
+gboolean btd_adapter_check_oob_handler(struct btd_adapter *adapter)
+{
+	return adapter->oob_handler != NULL;
+}
+
+void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
+					uint8_t *hash, uint8_t *randomizer)
+{
+	if (!adapter->oob_handler || !adapter->oob_handler->read_local_cb)
+		return;
+
+	adapter->oob_handler->read_local_cb(adapter, hash, randomizer,
+					adapter->oob_handler->user_data);
+
+	g_free(adapter->oob_handler);
+	adapter->oob_handler = NULL;
 }

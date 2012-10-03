@@ -43,6 +43,20 @@
 
 struct btd_adapter;
 
+typedef void (*oob_read_local_cb_t) (struct btd_adapter *adapter,
+					uint8_t *hash, uint8_t *randomizer,
+					void *user_data);
+typedef void (*oob_bonding_cb_t) (struct btd_adapter *adapter,
+					bdaddr_t *bdaddr, uint8_t status,
+					void *user_data);
+
+struct oob_handler {
+	oob_read_local_cb_t read_local_cb;
+	oob_bonding_cb_t bonding_cb;
+	bdaddr_t remote_addr;
+	void *user_data;
+};
+
 struct link_key_info {
 	bdaddr_t bdaddr;
 	unsigned char key[16];
@@ -226,6 +240,8 @@ void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 							uint8_t status);
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
+void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
+					uint8_t *hash, uint8_t *randomizer);
 
 int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
 			bdaddr_t *bdaddr, uint8_t *hash, uint8_t *randomizer);
@@ -242,3 +258,7 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 						struct btd_device *device);
 void adapter_connect_list_remove(struct btd_adapter *adapter,
 						struct btd_device *device);
+
+void btd_adapter_set_oob_handler(struct btd_adapter *adapter,
+						struct oob_handler *handler);
+gboolean btd_adapter_check_oob_handler(struct btd_adapter *adapter);

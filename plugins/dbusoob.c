@@ -44,15 +44,9 @@
 #include "dbus-common.h"
 #include "event.h"
 #include "error.h"
-#include "oob.h"
 #include "storage.h"
 
 #define OOB_INTERFACE	"org.bluez.OutOfBand"
-
-struct oob_request {
-	struct btd_adapter *adapter;
-	DBusMessage *msg;
-};
 
 struct oob_data {
 	char *addr;
@@ -62,47 +56,22 @@ struct oob_data {
 	const char *name;
 };
 
-static GSList *oob_requests = NULL;
-
-static gint oob_request_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct oob_request *data = a;
-	const struct btd_adapter *adapter = b;
-
-	return data->adapter != adapter;
-}
-
-static struct oob_request *find_oob_request(struct btd_adapter *adapter)
-{
-	GSList *match;
-
-	match = g_slist_find_custom(oob_requests, adapter, oob_request_cmp);
-
-	if (match)
-		return match->data;
-
-	return NULL;
-}
-
 static void read_local_data_complete(struct btd_adapter *adapter, uint8_t *hash,
-				uint8_t *randomizer)
+				uint8_t *randomizer, void *user_data)
 {
 	struct DBusMessage *reply;
-	struct oob_request *oob_request;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
+	DBusMessage *msg = user_data;
 
-	oob_request = find_oob_request(adapter);
-	if (!oob_request)
-		return;
+	DBG("");
 
 	if (!hash || !randomizer) {
-		reply = btd_error_failed(oob_request->msg,
-					"Failed to read local OOB data.");
+		reply = btd_error_failed(msg, "Failed to read local OOB data");
 		goto done;
 	}
 
-	reply = dbus_message_new_method_return(oob_request->msg);
+	reply = dbus_message_new_method_return(msg);
 	if (!reply)
 		goto done;
 
@@ -119,9 +88,7 @@ static void read_local_data_complete(struct btd_adapter *adapter, uint8_t *hash,
 	dbus_message_iter_close_container(&iter, &dict);
 
 done:
-	oob_requests = g_slist_remove(oob_requests, oob_request);
-	dbus_message_unref(oob_request->msg);
-	g_free(oob_request);
+	dbus_message_unref(msg);
 
 	if (!reply) {
 		error("Couldn't allocate D-Bus message");
@@ -136,21 +103,22 @@ static DBusMessage *read_local_data(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	struct btd_adapter *adapter = data;
-	struct oob_request *oob_request;
+	struct oob_handler *handler;
 
 	if (!btd_adapter_ssp_enabled(adapter))
 		return btd_error_not_supported(msg);
 
-	if (find_oob_request(adapter))
+	if (btd_adapter_check_oob_handler(adapter))
 		return btd_error_in_progress(msg);
 
 	if (btd_adapter_read_local_oob_data(adapter))
 		return btd_error_failed(msg, "Request failed.");
 
-	oob_request = g_new(struct oob_request, 1);
-	oob_request->adapter = adapter;
-	oob_requests = g_slist_append(oob_requests, oob_request);
-	oob_request->msg = dbus_message_ref(msg);
+	handler = g_new0(struct oob_handler, 1);
+	handler->read_local_cb = read_local_data_complete;
+	handler->user_data = dbus_message_ref(msg);
+
+	btd_adapter_set_oob_handler(adapter, handler);
 
 	return NULL;
 }
@@ -336,8 +304,6 @@ static int oob_probe(struct btd_adapter *adapter)
 
 static void oob_remove(struct btd_adapter *adapter)
 {
-	read_local_data_complete(adapter, NULL, NULL);
-
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				adapter_get_path(adapter), OOB_INTERFACE);
 }
@@ -351,8 +317,6 @@ static struct btd_adapter_driver oob_driver = {
 static int dbusoob_init(void)
 {
 	DBG("Setup dbusoob plugin");
-
-	oob_register_cb(read_local_data_complete);
 
 	return btd_register_adapter_driver(&oob_driver);
 }
