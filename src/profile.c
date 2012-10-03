@@ -672,16 +672,16 @@ static int connect_io(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
 	if (ext->psm) {
 		conn->proto = BTPROTO_L2CAP;
 		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &src,
-					BT_IO_OPT_DEST_BDADDR, &dst,
+					BT_IO_OPT_SOURCE_BDADDR, src,
+					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_PSM, ext->psm,
 					BT_IO_OPT_INVALID);
 	} else {
 		conn->proto = BTPROTO_RFCOMM;
 		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &src,
-					BT_IO_OPT_DEST_BDADDR, &dst,
+					BT_IO_OPT_SOURCE_BDADDR, src,
+					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_CHANNEL, ext->chan,
 					BT_IO_OPT_INVALID);
