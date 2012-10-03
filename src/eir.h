@@ -33,6 +33,8 @@
 #define EIR_NAME_COMPLETE           0x09  /* complete local name */
 #define EIR_TX_POWER                0x0A  /* transmit power level */
 #define EIR_CLASS_OF_DEV            0x0D  /* Class of Device */
+#define EIR_SSP_HASH                0x0E  /* SSP Hash */
+#define EIR_SSP_RANDOMIZER          0x0F  /* SSP Randomizer */
 #define EIR_DEVICE_ID               0x10  /* device ID */
 #define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
 
@@ -48,6 +50,8 @@ struct eir_data {
 	uint8_t dev_class[3];
 	uint16_t appearance;
 	gboolean name_complete;
+	uint8_t *hash;
+	uint8_t *randomizer;
 };
 
 void eir_data_free(struct eir_data *eir);

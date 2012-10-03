@@ -44,6 +44,10 @@ void eir_data_free(struct eir_data *eir)
 	eir->services = NULL;
 	g_free(eir->name);
 	eir->name = NULL;
+	g_free(eir->hash);
+	eir->hash = NULL;
+	g_free(eir->randomizer);
+	eir->randomizer = NULL;
 }
 
 static void eir_parse_uuid16(struct eir_data *eir, void *data, uint8_t len)
@@ -169,6 +173,18 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			if (data_len < 2)
 				break;
 			eir->appearance = bt_get_le16(data);
+			break;
+
+		case EIR_SSP_HASH:
+			if (data_len < 16)
+				break;
+			eir->hash = g_memdup(data, 16);
+			break;
+
+		case EIR_SSP_RANDOMIZER:
+			if (data_len < 16)
+				break;
+			eir->randomizer = g_memdup(data, 16);
 			break;
 		}
 
