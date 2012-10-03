@@ -38,11 +38,6 @@
 #define EIR_DEVICE_ID               0x10  /* device ID */
 #define EIR_GAP_APPEARANCE          0x19  /* GAP appearance */
 
-struct uuid_info {
-	uuid_t uuid;
-	uint8_t svc_hint;
-};
-
 struct eir_data {
 	GSList *services;
 	int flags;
@@ -62,7 +57,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
-			GSList *uuids, uint8_t *data);
+			sdp_list_t *uuids, uint8_t *data);
 
 gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type);
 

@@ -222,7 +222,8 @@ int eir_parse_oob(struct eir_data *eir, uint8_t *eir_data, uint16_t eir_len)
 
 #define SIZEOF_UUID128 16
 
-static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
+static void eir_generate_uuid128(sdp_list_t *list, uint8_t *ptr,
+							uint16_t *eir_len)
 {
 	int i, k, uuid_count = 0;
 	uint16_t len = *eir_len;
@@ -233,10 +234,11 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	uuid128 = ptr + 2;
 
 	for (; list; list = list->next) {
-		struct uuid_info *uuid = list->data;
-		uint8_t *uuid128_data = uuid->uuid.value.uuid128.data;
+		sdp_record_t *rec = list->data;
+		uuid_t *uuid = &rec->svclass;
+		uint8_t *uuid128_data = uuid->value.uuid128.data;
 
-		if (uuid->uuid.type != SDP_UUID128)
+		if (uuid->type != SDP_UUID128)
 			continue;
 
 		/* Stop if not enough space to put next UUID128 */
@@ -282,9 +284,9 @@ int eir_create_oob(const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
-			GSList *uuids, uint8_t *data)
+			sdp_list_t *uuids, uint8_t *data)
 {
-	GSList *l;
+	sdp_list_t *l;
 	uint8_t *ptr = data;
 	uint16_t eir_len = 0;
 	uint16_t uuid16[HCI_MAX_EIR_LENGTH / 2];
@@ -362,16 +364,17 @@ int eir_create_oob(const char *name, uint32_t cod,
 	}
 
 	/* Group all UUID16 types */
-	for (l = uuids; l != NULL; l = g_slist_next(l)) {
-		struct uuid_info *uuid = l->data;
+	for (l = uuids; l != NULL; l = l->next) {
+		sdp_record_t *rec = l->data;
+		uuid_t *uuid = &rec->svclass;
 
-		if (uuid->uuid.type != SDP_UUID16)
+		if (uuid->type != SDP_UUID16)
 			continue;
 
-		if (uuid->uuid.value.uuid16 < 0x1100)
+		if (uuid->value.uuid16 < 0x1100)
 			continue;
 
-		if (uuid->uuid.value.uuid16 == PNP_INFO_SVCLASS_ID)
+		if (uuid->value.uuid16 == PNP_INFO_SVCLASS_ID)
 			continue;
 
 		/* Stop if not enough space to put next UUID16 */
@@ -382,13 +385,13 @@ int eir_create_oob(const char *name, uint32_t cod,
 
 		/* Check for duplicates */
 		for (i = 0; i < uuid_count; i++)
-			if (uuid16[i] == uuid->uuid.value.uuid16)
+			if (uuid16[i] == uuid->value.uuid16)
 				break;
 
 		if (i < uuid_count)
 			continue;
 
-		uuid16[uuid_count++] = uuid->uuid.value.uuid16;
+		uuid16[uuid_count++] = uuid->value.uuid16;
 		eir_len += sizeof(uint16_t);
 	}
 
