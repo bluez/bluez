@@ -24,6 +24,7 @@ fi
 		--enable-test \
 		--enable-cups \
 		--enable-dbusoob \
+		--enable-neard \
 		--enable-sap \
 		--enable-wiimote \
 		--disable-pcmcia \

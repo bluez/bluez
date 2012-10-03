@@ -189,6 +189,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	dbusoob_enable=no
 	wiimote_enable=no
 	gatt_enable=no
+	neard_enable=no
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
 		optimization_enable=${enableval}
@@ -299,6 +300,10 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		gatt_enable=${enableval}
 	])
 
+	AC_ARG_ENABLE(neard, AC_HELP_STRING([--enable-neard], [compile with neard plugin]), [
+		neard_enable=${enableval}
+	])
+
 	misc_cflags=""
 	misc_ldflags=""
 
@@ -350,4 +355,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
 	AM_CONDITIONAL(GATTMODULES, test "${gatt_enable}" = "yes")
 	AM_CONDITIONAL(HOGPLUGIN, test "${gatt_enable}" = "yes" && test "${input_enable}" = "yes")
+	AM_CONDITIONAL(NEARDPLUGIN, test "${neard_enable}" = "yes")
 ])
