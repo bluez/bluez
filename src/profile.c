@@ -444,7 +444,6 @@ static sdp_record_t *ext_get_record(struct ext_profile *ext)
 static uint16_t ext_register_record(struct ext_profile *ext, bdaddr_t *src)
 {
 	sdp_record_t *rec;
-	uint16_t handle;
 
 	if (ext->record)
 		rec = sdp_xml_parse_record(ext->record, strlen(ext->record));
@@ -456,14 +455,11 @@ static uint16_t ext_register_record(struct ext_profile *ext, bdaddr_t *src)
 
 	if (add_record_to_server(src, rec) < 0) {
 		error("Failed to register service record");
+		sdp_record_free(rec);
 		return 0;
 	}
 
-	handle = rec->handle;
-
-	sdp_record_free(rec);
-
-	return handle;
+	return rec->handle;
 }
 
 static int ext_start_servers(struct ext_profile *ext,
