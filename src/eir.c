@@ -278,7 +278,7 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	}
 }
 
-void eir_create_oob(const char *name, uint32_t cod,
+int eir_create_oob(const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
@@ -410,6 +410,8 @@ void eir_create_oob(const char *name, uint32_t cod,
 	/* Group all UUID128 types */
 	if (eir_len <= HCI_MAX_EIR_LENGTH - 2)
 		eir_generate_uuid128(uuids, ptr, &eir_len);
+
+	return eir_len;
 }
 
 gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type)
