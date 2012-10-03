@@ -2245,7 +2245,7 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 		*pairable = adapter->pairable;
 }
 
-void btd_adapter_get_class(struct btd_adapter *adapter, uint8_t *major,
+void btd_adapter_read_class(struct btd_adapter *adapter, uint8_t *major,
 								uint8_t *minor)
 {
 	uint8_t cls[3];
