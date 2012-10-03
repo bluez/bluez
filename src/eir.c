@@ -280,7 +280,7 @@ static void eir_generate_uuid128(sdp_list_t *list, uint8_t *ptr,
 	}
 }
 
-int eir_create_oob(const char *name, uint32_t cod,
+int eir_create_oob(bdaddr_t *addr, const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
@@ -288,11 +288,18 @@ int eir_create_oob(const char *name, uint32_t cod,
 {
 	sdp_list_t *l;
 	uint8_t *ptr = data;
-	uint16_t eir_len = 0;
+	uint16_t eir_optional_len = 0;
+	uint16_t eir_total_len;
 	uint16_t uuid16[HCI_MAX_EIR_LENGTH / 2];
 	int i, uuid_count = 0;
 	gboolean truncated = FALSE;
 	size_t name_len;
+
+	eir_total_len =  sizeof(uint16_t) + sizeof(bdaddr_t);
+	ptr += sizeof(uint16_t);
+
+	memcpy(ptr, addr, sizeof(bdaddr_t));
+	ptr += sizeof(bdaddr_t);
 
 	if (cod > 0) {
 		uint8_t class[3];
@@ -307,7 +314,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 		memcpy(ptr, class, sizeof(class));
 		ptr += sizeof(class);
 
-		eir_len += sizeof(class) + 2;
+		eir_optional_len += sizeof(class) + 2;
 	}
 
 	if (hash) {
@@ -317,7 +324,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 		memcpy(ptr, hash, 16);
 		ptr += 16;
 
-		eir_len += 16 + 2;
+		eir_optional_len += 16 + 2;
 	}
 
 	if (randomizer) {
@@ -327,7 +334,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 		memcpy(ptr, randomizer, 16);
 		ptr += 16;
 
-		eir_len += 16 + 2;
+		eir_optional_len += 16 + 2;
 	}
 
 	name_len = strlen(name);
@@ -345,7 +352,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 
 		memcpy(ptr + 2, name, name_len);
 
-		eir_len += (name_len + 2);
+		eir_optional_len += (name_len + 2);
 		ptr += (name_len + 2);
 	}
 
@@ -360,7 +367,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 		*ptr++ = (did_product & 0xff00) >> 8;
 		*ptr++ = (did_version & 0x00ff);
 		*ptr++ = (did_version & 0xff00) >> 8;
-		eir_len += 10;
+		eir_optional_len += 10;
 	}
 
 	/* Group all UUID16 types */
@@ -378,7 +385,8 @@ int eir_create_oob(const char *name, uint32_t cod,
 			continue;
 
 		/* Stop if not enough space to put next UUID16 */
-		if ((eir_len + 2 + sizeof(uint16_t)) > HCI_MAX_EIR_LENGTH) {
+		if ((eir_optional_len + 2 + sizeof(uint16_t)) >
+				HCI_MAX_EIR_LENGTH) {
 			truncated = TRUE;
 			break;
 		}
@@ -392,7 +400,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 			continue;
 
 		uuid16[uuid_count++] = uuid->value.uuid16;
-		eir_len += sizeof(uint16_t);
+		eir_optional_len += sizeof(uint16_t);
 	}
 
 	if (uuid_count > 0) {
@@ -402,7 +410,7 @@ int eir_create_oob(const char *name, uint32_t cod,
 		ptr[1] = truncated ? EIR_UUID16_SOME : EIR_UUID16_ALL;
 
 		ptr += 2;
-		eir_len += 2;
+		eir_optional_len += 2;
 
 		for (i = 0; i < uuid_count; i++) {
 			*ptr++ = (uuid16[i] & 0x00ff);
@@ -411,10 +419,15 @@ int eir_create_oob(const char *name, uint32_t cod,
 	}
 
 	/* Group all UUID128 types */
-	if (eir_len <= HCI_MAX_EIR_LENGTH - 2)
-		eir_generate_uuid128(uuids, ptr, &eir_len);
+	if (eir_optional_len <= HCI_MAX_EIR_LENGTH - 2)
+		eir_generate_uuid128(uuids, ptr, &eir_optional_len);
 
-	return eir_len;
+	eir_total_len += eir_optional_len;
+
+	/* store total length */
+	bt_put_le16(eir_total_len, data);
+
+	return eir_total_len;
 }
 
 gboolean eir_has_data_type(uint8_t *data, size_t len, uint8_t type)
