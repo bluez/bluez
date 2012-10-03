@@ -278,7 +278,7 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	}
 }
 
-void eir_create(const char *name, int8_t tx_power,
+void eir_create(const char *name, int8_t tx_power, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,
@@ -291,6 +291,22 @@ void eir_create(const char *name, int8_t tx_power,
 	int i, uuid_count = 0;
 	gboolean truncated = FALSE;
 	size_t name_len;
+
+	if (cod > 0) {
+		uint8_t class[3];
+
+		class[0] = (uint8_t) cod;
+		class[1] = (uint8_t) (cod >> 8);
+		class[2] = (uint8_t) (cod >> 16);
+
+		*ptr++ = 4;
+		*ptr++ = EIR_CLASS_OF_DEV;
+
+		memcpy(ptr, class, sizeof(class));
+		ptr += sizeof(class);
+
+		eir_len += sizeof(class) + 2;
+	}
 
 	if (hash) {
 		*ptr++ = 17;
