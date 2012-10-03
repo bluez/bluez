@@ -44,6 +44,7 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "dbus-common.h"
+#include "sdp-client.h"
 #include "sdp-xml.h"
 #include "adapter.h"
 #include "manager.h"
@@ -51,11 +52,6 @@
 #include "profile.h"
 
 #define SPP_DEFAULT_CHANNEL	3
-
-struct pending_connect {
-	struct btd_device *dev;
-	btd_profile_cb cb;
-};
 
 struct ext_profile {
 	struct btd_profile p;
@@ -92,6 +88,10 @@ struct ext_io {
 	GIOChannel *io;
 	guint io_id;
 	struct btd_adapter *adapter;
+	struct btd_device *device;
+
+	bool resolving;
+	btd_profile_cb cb;
 	uint16_t rec_handle;
 
 	guint auth_id;
@@ -170,8 +170,10 @@ static void ext_io_destroy(gpointer p)
 	if (ext_io->io_id > 0)
 		g_source_remove(ext_io->io_id);
 
-	g_io_channel_shutdown(ext_io->io, FALSE, NULL);
-	g_io_channel_unref(ext_io->io);
+	if (ext_io->io) {
+		g_io_channel_shutdown(ext_io->io, FALSE, NULL);
+		g_io_channel_unref(ext_io->io);
+	}
 
 	if (ext_io->auth_id != 0)
 		btd_cancel_authorization(ext_io->auth_id);
@@ -182,11 +184,23 @@ static void ext_io_destroy(gpointer p)
 		ext_cancel(ext);
 	}
 
+	if (ext_io->resolving) {
+		bdaddr_t src, dst;
+
+		adapter_get_address(ext_io->adapter, &src);
+		device_get_address(ext_io->device, &dst, NULL);
+
+		bt_cancel_discovery(&src, &dst);
+	}
+
 	if (ext_io->rec_handle)
 		remove_record_from_server(ext_io->rec_handle);
 
 	if (ext_io->adapter)
 		btd_adapter_unref(ext_io->adapter);
+
+	if (ext_io->device)
+		btd_device_unref(ext_io->device);
 
 	g_free(ext_io);
 }
@@ -323,6 +337,12 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 	if (!device) {
 		error("%s: Unable to get dev object for %s", ext->name, addr);
 		goto drop;
+	}
+
+	if (conn->io_id == 0) {
+		GIOCondition cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+		conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected,
+									conn);
 	}
 
 	if (send_new_connection(ext, conn, device))
@@ -600,28 +620,23 @@ static int ext_device_probe(struct btd_profile *p, struct btd_device *dev,
 	return 0;
 }
 
-static void pending_conn_free(gpointer data)
-{
-	struct pending_connect *conn = data;
-
-	btd_device_unref(conn->dev);
-	g_free(conn);
-}
-
 static void remove_connect(struct ext_profile *ext, struct btd_device *dev)
 {
 	GSList *l, *next;
 
-	for (l = ext->connects; l != NULL; l = next) {
-		struct pending_connect *conn = l->data;
+	for (l = ext->conns; l != NULL; l = next) {
+		struct ext_io *conn = l->data;
 
 		next = g_slist_next(l);
 
-		if (conn->dev != dev)
+		if (!conn->cb)
 			continue;
 
-		ext->connects = g_slist_remove(ext->connects, conn);
-		pending_conn_free(conn);
+		if (conn->device != dev)
+			continue;
+
+		ext->conns = g_slist_remove(ext->conns, conn);
+		ext_io_destroy(conn);
 	}
 }
 
@@ -638,33 +653,104 @@ static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
 	remove_connect(ext, dev);
 }
 
-static int connect_ext(struct ext_profile *ext, struct btd_device *dev)
+static int connect_io(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
 {
+	struct ext_profile *ext = conn->ext;
+	GError *gerr = NULL;
+	GIOChannel *io;
+
+	if (ext->psm) {
+		conn->proto = BTPROTO_L2CAP;
+		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_DEST_BDADDR, &dst,
+					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_PSM, ext->psm,
+					BT_IO_OPT_INVALID);
+	} else {
+		conn->proto = BTPROTO_RFCOMM;
+		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
+					BT_IO_OPT_SOURCE_BDADDR, &src,
+					BT_IO_OPT_DEST_BDADDR, &dst,
+					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
+					BT_IO_OPT_CHANNEL, ext->chan,
+					BT_IO_OPT_INVALID);
+	}
+
+	if (gerr != NULL) {
+		error("Unable to connect %s: %s", ext->name, gerr->message);
+		g_error_free(gerr);
+		return -EIO;
+	}
+
+	conn->io = io;
+
+	return 0;
+}
+
+static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
+{
+	struct ext_io *conn = user_data;
+
+	conn->resolving = false;
+}
+
+static int resolve_service(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
+{
+	struct ext_profile *ext = conn->ext;
+	uuid_t uuid;
+	int err;
+
+	bt_string2uuid(&uuid, ext->remote_uuids[0]);
+
+	err = bt_search_service(src, dst, &uuid, record_cb, conn, NULL);
+	if (err < 0)
+		return err;
+
+	conn->resolving = true;
+
 	return -ENOSYS;
 }
 
 static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 							btd_profile_cb cb)
 {
+	struct btd_adapter *adapter;
+	struct ext_io *conn;
 	struct ext_profile *ext;
-	struct pending_connect *conn;
+	bdaddr_t src, dst;
 	int err;
 
 	ext = find_ext(profile);
 	if (!ext)
 		return -ENOENT;
 
-	err = connect_ext(ext, dev);
-	if (err < 0)
-		return err;
+	adapter = device_get_adapter(dev);
+	adapter_get_address(adapter, &src);
+	device_get_address(dev, &dst, NULL);
 
-	conn = g_new0(struct pending_connect, 1);
-	conn->dev = btd_device_ref(dev);
+	conn = g_new0(struct ext_io, 1);
+	conn->ext = ext;
+
+	if (ext->psm || ext->chan)
+		err = connect_io(conn, &src, &dst);
+	else
+		err = resolve_service(conn, &src, &dst);
+
+	if (err < 0)
+		goto failed;
+
+	conn->adapter = btd_adapter_ref(adapter);
+	conn->device = btd_device_ref(dev);
 	conn->cb = cb;
 
-	ext->connects = g_slist_append(ext->connects, conn);
+	ext->conns = g_slist_append(ext->conns, conn);
 
 	return 0;
+
+failed:
+	g_free(conn);
+	return err;
 }
 
 static int ext_disconnect_dev(struct btd_device *dev,
@@ -684,6 +770,12 @@ static int ext_disconnect_dev(struct btd_device *dev,
 
 static void ext_get_defaults(struct ext_profile *ext)
 {
+	if (ext->enable_client && !ext->remote_uuids[0]) {
+		g_strfreev(ext->remote_uuids);
+		ext->remote_uuids = g_new0(char *, 2);
+		ext->remote_uuids[0] = g_strdup(ext->uuid);
+	}
+
 	if (strcasecmp(ext->uuid, SPP_UUID) == 0) {
 		if (ext->enable_server && !ext->chan)
 			ext->chan = SPP_DEFAULT_CHANNEL;
@@ -839,7 +931,6 @@ static void remove_ext(struct ext_profile *ext)
 
 	g_slist_free_full(ext->servers, ext_io_destroy);
 	g_slist_free_full(ext->conns, ext_io_destroy);
-	g_slist_free_full(ext->connects, pending_conn_free);
 
 	g_strfreev(ext->remote_uuids);
 
