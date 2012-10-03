@@ -777,12 +777,10 @@ static int resolve_service(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
 	bt_string2uuid(&uuid, ext->remote_uuids[0]);
 
 	err = bt_search_service(src, dst, &uuid, record_cb, conn, NULL);
-	if (err < 0)
-		return err;
+	if (err == 0)
+		conn->resolving = true;
 
-	conn->resolving = true;
-
-	return -ENOSYS;
+	return err;
 }
 
 static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
