@@ -278,9 +278,11 @@ static void eir_generate_uuid128(GSList *list, uint8_t *ptr, uint16_t *eir_len)
 	}
 }
 
-void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
-			uint16_t did_product, uint16_t did_version,
-			uint16_t did_source, GSList *uuids, uint8_t *data)
+void eir_create(const char *name, int8_t tx_power,
+			uint8_t *hash, uint8_t *randomizer,
+			uint16_t did_vendor, uint16_t did_product,
+			uint16_t did_version, uint16_t did_source,
+			GSList *uuids, uint8_t *data)
 {
 	GSList *l;
 	uint8_t *ptr = data;
@@ -289,6 +291,26 @@ void eir_create(const char *name, int8_t tx_power, uint16_t did_vendor,
 	int i, uuid_count = 0;
 	gboolean truncated = FALSE;
 	size_t name_len;
+
+	if (hash) {
+		*ptr++ = 17;
+		*ptr++ = EIR_SSP_HASH;
+
+		memcpy(ptr, hash, 16);
+		ptr += 16;
+
+		eir_len += 16 + 2;
+	}
+
+	if (randomizer) {
+		*ptr++ = 17;
+		*ptr++ = EIR_SSP_RANDOMIZER;
+
+		memcpy(ptr, randomizer, 16);
+		ptr += 16;
+
+		eir_len += 16 + 2;
+	}
 
 	name_len = strlen(name);
 
