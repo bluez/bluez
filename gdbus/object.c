@@ -496,10 +496,28 @@ static void reset_parent(gpointer data, gpointer user_data)
 	child->parent = parent;
 }
 
+static void append_property(struct interface_data *iface,
+			const GDBusPropertyTable *p, DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+								&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &p->name);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, p->type,
+								&value);
+
+	p->get(p, &value, iface->user_data);
+
+	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void append_properties(struct interface_data *data,
 							DBusMessageIter *iter)
 {
 	DBusMessageIter dict;
+	const GDBusPropertyTable *p;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -507,7 +525,15 @@ static void append_properties(struct interface_data *data,
 				DBUS_TYPE_VARIANT_AS_STRING
 				DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	/* TODO: list properties */
+	for (p = data->properties; p && p->name; p++) {
+		if (p->get == NULL)
+			continue;
+
+		if (p->exists != NULL && !p->exists(p, data->user_data))
+			continue;
+
+		append_property(data, p, &dict);
+	}
 
 	dbus_message_iter_close_container(iter, &dict);
 }
