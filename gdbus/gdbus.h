@@ -254,6 +254,9 @@ void g_dbus_pending_property_error_valist(DBusConnection *connection,
 void g_dbus_pending_property_error(DBusConnection *connection,
 					GDBusPendingReply id, const char *name,
 					const char *format, ...);
+void g_dbus_emit_property_changed(DBusConnection *connection,
+				const char *path, const char *interface,
+				const char *name);
 
 #ifdef __cplusplus
 }
