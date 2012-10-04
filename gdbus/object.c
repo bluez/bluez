@@ -507,10 +507,70 @@ static const GDBusMethodTable introspect_methods[] = {
 	{ }
 };
 
+static inline const GDBusPropertyTable *find_property(const GDBusPropertyTable *properties,
+							const char *name)
+{
+	const GDBusPropertyTable *p;
+
+	for (p = properties; p && p->name; p++) {
+		if (strcmp(name, p->name) == 0)
+			return p;
+	}
+
+	return NULL;
+}
+
 static DBusMessage *properties_get(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	return NULL;
+	struct generic_data *data = user_data;
+	struct interface_data *iface;
+	const GDBusPropertyTable *property;
+	const char *interface, *name;
+	DBusMessageIter iter, value;
+	DBusMessage *reply;
+
+	if (!dbus_message_get_args(message, NULL,
+					DBUS_TYPE_STRING, &interface,
+					DBUS_TYPE_STRING, &name,
+					DBUS_TYPE_INVALID))
+		return NULL;
+
+	iface = find_interface(data->interfaces, interface);
+	if (iface == NULL)
+		return g_dbus_create_error(message, DBUS_ERROR_INVALID_ARGS,
+				"No such interface '%s'", interface);
+
+	property = find_property(iface->properties, name);
+	if (property == NULL)
+		return g_dbus_create_error(message, DBUS_ERROR_INVALID_ARGS,
+				"No such property '%s'", name);
+
+	if (property->exists != NULL &&
+			!property->exists(property, iface->user_data))
+		return g_dbus_create_error(message, DBUS_ERROR_INVALID_ARGS,
+					"No such property '%s'", name);
+
+	if (property->get == NULL)
+		return g_dbus_create_error(message, DBUS_ERROR_INVALID_ARGS,
+				"Property '%s' is not readable", name);
+
+	reply = dbus_message_new_method_return(message);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
+						property->type, &value);
+
+	if (!property->get(property, &value, iface->user_data)) {
+		dbus_message_unref(reply);
+		return NULL;
+	}
+
+	dbus_message_iter_close_container(&iter, &value);
+
+	return reply;
 }
 
 static DBusMessage *properties_get_all(DBusConnection *connection,

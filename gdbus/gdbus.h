@@ -66,6 +66,12 @@ typedef void (* GDBusDestroyFunction) (void *user_data);
 typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 					DBusMessage *message, void *user_data);
 
+typedef gboolean (*GDBusPropertyGetter)(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data);
+
+typedef gboolean (*GDBusPropertyExists)(const GDBusPropertyTable *property,
+								void *data);
+
 typedef guint32 GDBusPendingReply;
 
 typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
@@ -116,6 +122,8 @@ struct GDBusSignalTable {
 struct GDBusPropertyTable {
 	const char *name;
 	const char *type;
+	GDBusPropertyGetter get;
+	GDBusPropertyExists exists;
 	GDBusPropertyFlags flags;
 };
 
