@@ -392,7 +392,7 @@ static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
 
 	dev = manager_get_device(&session->server->src, &session->dst, FALSE);
 	if (dev == NULL) {
-		error("avdtp_set_state(): no matching audio device");
+		error("%s(): No matching audio device", __func__);
 		return;
 	}
 
