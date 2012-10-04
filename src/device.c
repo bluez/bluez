@@ -1469,7 +1469,7 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 	char srcaddr[18], dstaddr[18];
 	bdaddr_t src;
 	sdp_list_t *records;
-	GSList *l;
+	GSList *l, *next;
 
 	adapter_get_address(adapter, &src);
 	ba2str(&src, srcaddr);
@@ -1498,10 +1498,11 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 	if (records)
 		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
 
-	for (l = device->profiles; l != NULL; l = g_slist_next(l)) {
+	for (l = device->profiles; l != NULL; l = next) {
 		struct btd_profile *profile = l->data;
 		GSList *probe_uuids;
 
+		next = l->next;
 		probe_uuids = device_match_profile(device, profile,
 								device->uuids);
 		if (probe_uuids != NULL) {
