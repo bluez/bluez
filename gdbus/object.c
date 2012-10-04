@@ -534,6 +534,10 @@ static void emit_interfaces_added(struct generic_data *data)
 	if (parent == NULL)
 		return;
 
+	/* Find root data */
+	while (parent->parent)
+		parent = parent->parent;
+
 	signal = dbus_message_new_signal(parent->path,
 					DBUS_INTERFACE_OBJECT_MANAGER,
 					"InterfacesAdded");
@@ -918,6 +922,10 @@ static void emit_interfaces_removed(struct generic_data *data)
 	if (parent == NULL)
 		return;
 
+	/* Find root data */
+	while (parent->parent)
+		parent = parent->parent;
+
 	signal = dbus_message_new_signal(parent->path,
 					DBUS_INTERFACE_OBJECT_MANAGER,
 					"InterfacesRemoved");
@@ -1054,6 +1062,8 @@ static void append_object(gpointer data, gpointer user_data)
 								&child->path);
 	append_interfaces(child, &entry);
 	dbus_message_iter_close_container(array, &entry);
+
+	g_slist_foreach(child->objects, append_object, user_data);
 }
 
 static DBusMessage *get_objects(DBusConnection *connection,
@@ -1168,8 +1178,11 @@ static struct generic_data *object_path_ref(DBusConnection *connection,
 	add_interface(data, DBUS_INTERFACE_INTROSPECTABLE, introspect_methods,
 						NULL, NULL, data, NULL);
 
-	add_interface(data, DBUS_INTERFACE_OBJECT_MANAGER, manager_methods,
-					manager_signals, NULL, data, NULL);
+	/* Only root path export ObjectManager interface */
+	if (data->parent == NULL)
+		add_interface(data, DBUS_INTERFACE_OBJECT_MANAGER,
+					manager_methods, manager_signals,
+					NULL, data, NULL);
 
 	add_interface(data, DBUS_INTERFACE_PROPERTIES, properties_methods,
 					properties_signals, NULL, data, NULL);
