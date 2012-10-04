@@ -770,7 +770,7 @@ static void avdtp_set_state(struct avdtp *session,
 	avdtp_get_peers(session, &src, &dst);
 	dev = manager_get_device(&src, &dst, FALSE);
 	if (dev == NULL) {
-		error("avdtp_set_state(): no matching audio device");
+		error("%s(): No matching audio device", __func__);
 		return;
 	}
 
