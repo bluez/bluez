@@ -698,6 +698,24 @@ static int connect_io(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
 	return 0;
 }
 
+static uint16_t get_goep_l2cap_psm(sdp_record_t *rec)
+{
+	sdp_data_t *data;
+
+	data = sdp_data_get(rec, SDP_ATTR_GOEP_L2CAP_PSM);
+	if (!data)
+		return 0;
+
+	if (data->dtd != SDP_UINT16)
+		return 0;
+
+	/* PSM must be odd and lsb of upper byte must be 0 */
+	if ((data->val.uint16 & 0x0101) != 0x0001)
+		return 0;
+
+	return data->val.uint16;
+}
+
 static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct ext_io *conn = user_data;
@@ -736,6 +754,9 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		port = sdp_get_proto_port(protos, RFCOMM_UUID);
 		if (port > 0)
 			ext->chan = port;
+
+		if (ext->psm == 0 && sdp_get_proto_desc(protos, OBEX_UUID))
+			ext->psm = get_goep_l2cap_psm(rec);
 
 		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
 									NULL);
