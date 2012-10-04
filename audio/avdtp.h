@@ -274,8 +274,6 @@ int avdtp_get_configuration(struct avdtp *session,
 				struct avdtp_stream *stream);
 
 int avdtp_open(struct avdtp *session, struct avdtp_stream *stream);
-int avdtp_reconfigure(struct avdtp *session, GSList *caps,
-			struct avdtp_stream *stream);
 int avdtp_start(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_suspend(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_close(struct avdtp *session, struct avdtp_stream *stream,
