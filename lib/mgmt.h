@@ -522,6 +522,7 @@ static const char *mgmt_ev[] = {
 	"Device Blocked",
 	"Device Unblocked",
 	"Device Unpaired",
+	"Passkey Notify",
 };
 
 static const char *mgmt_status[] = {
