@@ -507,6 +507,48 @@ static const GDBusMethodTable introspect_methods[] = {
 	{ }
 };
 
+static DBusMessage *properties_get(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	return NULL;
+}
+
+static DBusMessage *properties_get_all(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	return NULL;
+}
+
+static DBusMessage *properties_set(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	return dbus_message_new_method_return(message);
+}
+
+static const GDBusMethodTable properties_methods[] = {
+	{ GDBUS_METHOD("Get",
+			GDBUS_ARGS({ "interface", "s" }, { "name", "s" }),
+			GDBUS_ARGS({ "value", "v" }),
+			properties_get) },
+	{ GDBUS_ASYNC_METHOD("Set", NULL,
+			GDBUS_ARGS({ "interface", "s" }, { "name", "s" },
+							{ "value", "v" }),
+			properties_set) },
+	{ GDBUS_METHOD("GetAll",
+			GDBUS_ARGS({ "interface", "s" }),
+			GDBUS_ARGS({ "properties", "a{sv}" }),
+			properties_get_all) },
+	{ }
+};
+
+static const GDBusSignalTable properties_signals[] = {
+	{ GDBUS_SIGNAL("PropertiesChanged",
+			GDBUS_ARGS({ "interface", "s" },
+					{ "changed_properties", "a{sv}" },
+					{ "invalidated_properties", "as"})) },
+	{ }
+};
+
 static void add_interface(struct generic_data *data, const char *name,
 				const GDBusMethodTable *methods,
 				const GDBusSignalTable *signals,
@@ -557,6 +599,9 @@ static struct generic_data *object_path_ref(DBusConnection *connection,
 	add_interface(data, DBUS_INTERFACE_INTROSPECTABLE,
 			introspect_methods, NULL, NULL, data, NULL);
 
+	add_interface(data, DBUS_INTERFACE_PROPERTIES, properties_methods,
+					properties_signals, NULL, data, NULL);
+
 	return data;
 }
 
@@ -596,6 +641,7 @@ static void object_path_unref(DBusConnection *connection, const char *path)
 		return;
 
 	remove_interface(data, DBUS_INTERFACE_INTROSPECTABLE);
+	remove_interface(data, DBUS_INTERFACE_PROPERTIES);
 
 	invalidate_parent_data(connection, path);
 
