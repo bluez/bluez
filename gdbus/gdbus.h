@@ -69,6 +69,12 @@ typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 typedef gboolean (*GDBusPropertyGetter)(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data);
 
+typedef guint32 GDBusPendingPropertySet;
+
+typedef void (*GDBusPropertySetter)(const GDBusPropertyTable *property,
+			DBusMessageIter *value, GDBusPendingPropertySet id,
+			void *data);
+
 typedef gboolean (*GDBusPropertyExists)(const GDBusPropertyTable *property,
 								void *data);
 
@@ -123,6 +129,7 @@ struct GDBusPropertyTable {
 	const char *name;
 	const char *type;
 	GDBusPropertyGetter get;
+	GDBusPropertySetter set;
 	GDBusPropertyExists exists;
 	GDBusPropertyFlags flags;
 };
@@ -238,6 +245,15 @@ guint g_dbus_add_signal_watch(DBusConnection *connection,
 				GDBusDestroyFunction destroy);
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint tag);
 void g_dbus_remove_all_watches(DBusConnection *connection);
+
+void g_dbus_pending_property_success(DBusConnection *connection,
+						GDBusPendingPropertySet id);
+void g_dbus_pending_property_error_valist(DBusConnection *connection,
+					GDBusPendingReply id, const char *name,
+					const char *format, va_list args);
+void g_dbus_pending_property_error(DBusConnection *connection,
+					GDBusPendingReply id, const char *name,
+					const char *format, ...);
 
 #ifdef __cplusplus
 }
