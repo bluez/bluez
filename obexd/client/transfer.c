@@ -426,6 +426,7 @@ struct obc_transfer *obc_transfer_put(const char *type, const char *name,
 					"Writing all contents to file failed");
 			goto fail;
 		}
+		lseek(transfer->fd, 0, SEEK_SET);
 	} else {
 		if (!transfer_open(transfer, O_RDONLY, 0, err))
 			goto fail;
