@@ -407,13 +407,13 @@ AM_YFLAGS = -d
 
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-INCLUDES = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
+AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/audio -I$(srcdir)/sbc -I$(srcdir)/gdbus \
 			-I$(srcdir)/attrib -I$(srcdir)/btio -I$(srcdir)/tools \
 			-I$(builddir)/tools -I$(srcdir)/monitor
 
 if MCAP
-INCLUDES += -I$(builddir)/health
+AM_CPPFLAGS += -I$(builddir)/health
 endif
 
 unit_objects =
