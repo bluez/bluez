@@ -2534,6 +2534,8 @@ static void adapter_free(gpointer user_data)
 
 	g_slist_free(adapter->oor_devices);
 
+	g_slist_free(adapter->connections);
+
 	g_free(adapter->path);
 	g_free(adapter->name);
 	g_free(adapter);
