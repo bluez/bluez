@@ -95,6 +95,7 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 {
 	const GDBusMethodTable *method;
 	const GDBusSignalTable *signal;
+	const GDBusPropertyTable *property;
 
 	for (method = iface->methods; method && method->name; method++) {
 		gboolean deprecated = method->flags &
@@ -146,6 +147,24 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 
 			g_string_append_printf(gstr, "\t\t</signal>\n");
 		}
+	}
+
+	for (property = iface->properties; property && property->name;
+								property++) {
+		gboolean deprecated = property->flags &
+					G_DBUS_PROPERTY_FLAG_DEPRECATED;
+
+		g_string_append_printf(gstr, "\t\t<property name=\"%s\""
+					" type=\"%s\" access=\"%s%s\"",
+					property->name,	property->type,
+					property->get ? "read" : "",
+					property->set ? "write" : "");
+
+		if (!deprecated)
+			g_string_append_printf(gstr, "/>\n");
+		else
+			g_string_append_printf(gstr,
+				G_DBUS_ANNOTATE_DEPRECATED(">\n\t\t\t"));
 	}
 }
 
