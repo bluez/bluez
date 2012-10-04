@@ -657,6 +657,17 @@ static gboolean remove_interface(struct generic_data *data, const char *name)
 		return TRUE;
 	}
 
+	/*
+	 * Interface being removed was just added, on the same mainloop
+	 * iteration? Don't send any signal
+	 */
+	if (g_slist_find(data->added, iface)) {
+		data->added = g_slist_remove(data->added, iface);
+		g_free(iface->name);
+		g_free(iface);
+		return TRUE;
+	}
+
 	data->removed = g_slist_prepend(data->removed, iface->name);
 	g_free(iface);
 
