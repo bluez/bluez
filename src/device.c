@@ -2312,7 +2312,7 @@ struct btd_adapter *device_get_adapter(struct btd_device *device)
 	return device->adapter;
 }
 
-bdaddr_t *device_get_address(struct btd_device *device)
+const bdaddr_t *device_get_address(struct btd_device *device)
 {
 	return &device->bdaddr;
 }
