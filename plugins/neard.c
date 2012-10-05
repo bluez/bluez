@@ -216,8 +216,9 @@ static void read_local_complete(struct btd_adapter *adapter, uint8_t *hash,
 		error("D-Bus send failed");
 }
 
-static void bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					uint8_t status, void *user_data)
+static void bonding_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr, uint8_t status,
+					void *user_data)
 {
 	DBusMessage *msg = user_data;
 	DBusMessage *reply;

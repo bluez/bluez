@@ -3716,7 +3716,7 @@ int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
 }
 
 static void check_oob_bonding_complete(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t status)
+					const bdaddr_t *bdaddr, uint8_t status)
 {
 	if (!adapter->oob_handler || !adapter->oob_handler->bonding_cb)
 		return;
@@ -3731,8 +3731,8 @@ static void check_oob_bonding_complete(struct btd_adapter *adapter,
 	adapter->oob_handler = NULL;
 }
 
-void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-								uint8_t status)
+void adapter_bonding_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr, uint8_t status)
 {
 	struct btd_device *device;
 	char addr[18];

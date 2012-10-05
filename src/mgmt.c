@@ -432,8 +432,8 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 	info->current_settings = settings;
 }
 
-static void bonding_complete(struct controller_info *info, bdaddr_t *bdaddr,
-								uint8_t status)
+static void bonding_complete(struct controller_info *info,
+					const bdaddr_t *bdaddr, uint8_t status)
 {
 	struct btd_adapter *adapter;
 
@@ -579,7 +579,7 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->addr.bdaddr, ev->status);
 }
 
-int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
+int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pin_code_reply)];
@@ -660,7 +660,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
-int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_confirm_reply)];
@@ -691,7 +691,7 @@ int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	return 0;
 }
 
-int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							uint32_t passkey)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_passkey_reply)];
@@ -2130,7 +2130,7 @@ int mgmt_set_fast_connectable(int index, gboolean enable)
 	return 0;
 }
 
-int mgmt_read_clock(int index, bdaddr_t *bdaddr, int which, int timeout,
+int mgmt_read_clock(int index, const bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy)
 {
 	char addr[18];
@@ -2158,7 +2158,7 @@ int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-int mgmt_block_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
+int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2187,7 +2187,7 @@ int mgmt_block_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	return 0;
 }
 
-int mgmt_unblock_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
+int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unblock_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2228,7 +2228,7 @@ int mgmt_get_conn_list(int index, GSList **conns)
 	return 0;
 }
 
-int mgmt_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
+int mgmt_disconnect(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_disconnect)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2252,7 +2252,7 @@ int mgmt_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	return 0;
 }
 
-int mgmt_unpair_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type)
+int mgmt_unpair_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unpair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2373,7 +2373,8 @@ int mgmt_set_io_capability(int index, uint8_t io_capability)
 	return 0;
 }
 
-int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t addr_type, uint8_t io_cap)
+int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
+								uint8_t io_cap)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pair_device)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2399,7 +2400,7 @@ int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t addr_type, uint8_t 
 	return 0;
 }
 
-int mgmt_cancel_bonding(int index, bdaddr_t *bdaddr)
+int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_addr_info)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2438,7 +2439,7 @@ int mgmt_read_local_oob_data(int index)
 	return 0;
 }
 
-int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
+int mgmt_add_remote_oob_data(int index, const bdaddr_t *bdaddr,
 					uint8_t *hash, uint8_t *randomizer)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_remote_oob_data)];
@@ -2467,7 +2468,7 @@ int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
 	return 0;
 }
 
-int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
+int mgmt_remove_remote_oob_data(int index, const bdaddr_t *bdaddr)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_remote_oob_data)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2491,7 +2492,7 @@ int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr)
 	return 0;
 }
 
-int mgmt_confirm_name(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_confirm_name(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean name_known)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_confirm_name)];

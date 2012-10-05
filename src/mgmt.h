@@ -36,18 +36,18 @@ int mgmt_start_discovery(int index);
 int mgmt_start_le_scanning(int index);
 int mgmt_stop_discovery(int index);
 
-int mgmt_read_clock(int index, bdaddr_t *bdaddr, int which, int timeout,
+int mgmt_read_clock(int index, const bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy);
 int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr);
 
-int mgmt_block_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
-int mgmt_unblock_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
+int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
+int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
 int mgmt_get_conn_list(int index, GSList **conns);
 
-int mgmt_disconnect(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
+int mgmt_disconnect(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
-int mgmt_unpair_device(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type);
+int mgmt_unpair_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
 int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint);
 int mgmt_remove_uuid(int index, uuid_t *uuid);
@@ -60,24 +60,24 @@ int mgmt_load_ltks(int index, GSList *keys);
 
 int mgmt_set_io_capability(int index, uint8_t io_capability);
 
-int mgmt_create_bonding(int index, bdaddr_t *bdaddr, uint8_t addr_type,
+int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
 							uint8_t io_cap);
-int mgmt_cancel_bonding(int index, bdaddr_t *bdaddr);
+int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr);
 
-int mgmt_pincode_reply(int index, bdaddr_t *bdaddr, const char *pin,
+int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len);
-int mgmt_confirm_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success);
-int mgmt_passkey_reply(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							uint32_t passkey);
 
 int mgmt_read_local_oob_data(int index);
 
-int mgmt_add_remote_oob_data(int index, bdaddr_t *bdaddr,
+int mgmt_add_remote_oob_data(int index, const bdaddr_t *bdaddr,
 					uint8_t *hash, uint8_t *randomizer);
-int mgmt_remove_remote_oob_data(int index, bdaddr_t *bdaddr);
+int mgmt_remove_remote_oob_data(int index, const bdaddr_t *bdaddr);
 
-int mgmt_confirm_name(int index, bdaddr_t *bdaddr, uint8_t bdaddr_type,
+int mgmt_confirm_name(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean name_known);
 
 int mgmt_ssp_enabled(int index);

@@ -47,7 +47,7 @@ typedef void (*oob_read_local_cb_t) (struct btd_adapter *adapter,
 					uint8_t *hash, uint8_t *randomizer,
 					void *user_data);
 typedef void (*oob_bonding_cb_t) (struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t status,
+					const bdaddr_t *bdaddr, uint8_t status,
 					void *user_data);
 
 struct oob_handler {
@@ -236,8 +236,8 @@ int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
 
-void adapter_bonding_complete(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t status);
+void adapter_bonding_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr, uint8_t status);
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
 void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
