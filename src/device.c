@@ -1529,7 +1529,6 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	struct btd_device *device = req->device;
 	sdp_list_t *seq;
 	char srcaddr[18], dstaddr[18];
-	uint8_t dst_type;
 
 	ba2str(adapter_get_address(device->adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
@@ -1594,9 +1593,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 		}
 
-		dst_type = device_get_addr_type(device);
-
-		store_record(srcaddr, dstaddr, dst_type, rec);
+		store_record(srcaddr, dstaddr, device->bdaddr_type, rec);
 
 		/* Copy record */
 		req->records = sdp_list_append(req->records,
