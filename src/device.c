@@ -1116,7 +1116,7 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	gchar *address_up;
 	struct btd_device *device;
 	const gchar *adapter_path = adapter_get_path(adapter);
-	bdaddr_t *src;
+	const bdaddr_t *src;
 	char srcaddr[18], alias[MAX_NAME_LENGTH + 1];
 	uint16_t vendor, product, version;
 
@@ -1222,7 +1222,8 @@ uint16_t btd_device_get_version(struct btd_device *device)
 
 static void device_remove_stored(struct btd_device *device)
 {
-	bdaddr_t *src, dst;
+	const bdaddr_t *src;
+	bdaddr_t dst;
 	uint8_t dst_type;
 
 	src = adapter_get_address(device->adapter);

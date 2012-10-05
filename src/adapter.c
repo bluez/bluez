@@ -2668,7 +2668,7 @@ const gchar *adapter_get_path(struct btd_adapter *adapter)
 	return adapter->path;
 }
 
-bdaddr_t *adapter_get_address(struct btd_adapter *adapter)
+const bdaddr_t *adapter_get_address(struct btd_adapter *adapter)
 {
 	return &adapter->bdaddr;
 }

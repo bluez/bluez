@@ -86,8 +86,9 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-static int write_ctp_handle(bdaddr_t *sba, bdaddr_t *dba, uint8_t bdaddr_type,
-						uint16_t uuid, uint16_t handle)
+static int write_ctp_handle(const bdaddr_t *sba, const bdaddr_t *dba,
+					uint8_t bdaddr_type, uint16_t uuid,
+					uint16_t handle)
 {
 	char filename[PATH_MAX + 1], addr[18], key[27], value[7];
 
@@ -104,8 +105,9 @@ static int write_ctp_handle(bdaddr_t *sba, bdaddr_t *dba, uint8_t bdaddr_type,
 	return textfile_put(filename, key, value);
 }
 
-static int read_ctp_handle(bdaddr_t *sba, bdaddr_t *dba, uint8_t bdaddr_type,
-						uint16_t uuid, uint16_t *value)
+static int read_ctp_handle(const bdaddr_t *sba, const bdaddr_t *dba,
+					uint8_t bdaddr_type, uint16_t uuid,
+					uint16_t *value)
 {
 	char filename[PATH_MAX + 1], addr[18], key[27];
 	char *str;

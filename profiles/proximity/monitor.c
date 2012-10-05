@@ -93,7 +93,7 @@ static inline int create_filename(char *buf, size_t size,
 	return create_name(buf, size, STORAGEDIR, addr, name);
 }
 
-static int write_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
+static int write_proximity_config(const bdaddr_t *sba, const bdaddr_t *dba,
 					const char *alert, const char *level)
 {
 	char filename[PATH_MAX + 1], addr[18], key[38];
@@ -109,7 +109,7 @@ static int write_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
 	return textfile_put(filename, key, level);
 }
 
-static char *read_proximity_config(bdaddr_t *sba, bdaddr_t *dba,
+static char *read_proximity_config(const bdaddr_t *sba, const bdaddr_t *dba,
 							const char *alert)
 {
 	char filename[PATH_MAX + 1], addr[18], key[38];

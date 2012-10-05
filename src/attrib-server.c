@@ -1237,7 +1237,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 {
 	struct gatt_server *server;
 	GError *gerr = NULL;
-	bdaddr_t *addr;
+	const bdaddr_t *addr;
 
 	DBG("Start GATT server in hci%d", adapter_get_dev_id(adapter));
 

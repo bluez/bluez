@@ -1984,7 +1984,7 @@ drop:
 	g_io_channel_shutdown(chan, TRUE, NULL);
 }
 
-struct mcap_instance *mcap_create_instance(bdaddr_t *src,
+struct mcap_instance *mcap_create_instance(const bdaddr_t *src,
 					BtIOSecLevel sec,
 					uint16_t ccpsm,
 					uint16_t dcpsm,

@@ -78,7 +78,8 @@ static int network_probe(struct btd_profile *p, struct btd_device *device,
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
-	bdaddr_t *src, dst;
+	const bdaddr_t *src;
+	bdaddr_t dst;
 
 	DBG("path %s", path);
 

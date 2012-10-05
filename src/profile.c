@@ -470,7 +470,8 @@ static sdp_record_t *ext_get_record(struct ext_profile *ext)
 	return NULL;
 }
 
-static uint16_t ext_register_record(struct ext_profile *ext, bdaddr_t *src)
+static uint16_t ext_register_record(struct ext_profile *ext,
+							const bdaddr_t *src)
 {
 	sdp_record_t *rec;
 
@@ -661,7 +662,8 @@ static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
 	remove_connect(ext, dev);
 }
 
-static int connect_io(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
+static int connect_io(struct ext_io *conn, const bdaddr_t *src,
+							const bdaddr_t *dst)
 {
 	struct ext_profile *ext = conn->ext;
 	GError *gerr = NULL;
@@ -786,7 +788,8 @@ failed:
 	ext_io_destroy(conn);
 }
 
-static int resolve_service(struct ext_io *conn, bdaddr_t *src, bdaddr_t *dst)
+static int resolve_service(struct ext_io *conn, const bdaddr_t *src,
+							const bdaddr_t *dst)
 {
 	struct ext_profile *ext = conn->ext;
 	uuid_t uuid;

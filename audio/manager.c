@@ -507,7 +507,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 	GError *err = NULL;
 	uint32_t features;
 	GIOChannel *io;
-	bdaddr_t *src;
+	const bdaddr_t *src;
 
 	if (config) {
 		gboolean tmp;
@@ -608,7 +608,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	gboolean master = TRUE;
 	GError *err = NULL;
 	GIOChannel *io;
-	bdaddr_t *src;
+	const bdaddr_t *src;
 
 	if (config) {
 		gboolean tmp;

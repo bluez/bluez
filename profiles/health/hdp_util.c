@@ -857,7 +857,8 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 				GDestroyNotify destroy, GError **err)
 {
 	struct get_mdep_data *mdep_data;
-	bdaddr_t dst, *src;
+	bdaddr_t dst;
+	const bdaddr_t *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);
@@ -1086,7 +1087,8 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 						GError **err)
 {
 	struct conn_mcl_data *conn_data;
-	bdaddr_t dst, *src;
+	bdaddr_t dst;
+	const bdaddr_t *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);
@@ -1156,7 +1158,8 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 							GError **err)
 {
 	struct get_dcpsm_data *dcpsm_data;
-	bdaddr_t dst, *src;
+	bdaddr_t dst;
+	const bdaddr_t *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);

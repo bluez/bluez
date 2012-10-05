@@ -22,5 +22,5 @@
  */
 
 int connection_register(struct btd_device *device, const char *path,
-			bdaddr_t *src, bdaddr_t *dst, uint16_t id);
+			const bdaddr_t *src, const bdaddr_t *dst, uint16_t id);
 void connection_unregister(const char *path);

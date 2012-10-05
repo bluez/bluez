@@ -280,7 +280,7 @@ static void eir_generate_uuid128(sdp_list_t *list, uint8_t *ptr,
 	}
 }
 
-int eir_create_oob(bdaddr_t *addr, const char *name, uint32_t cod,
+int eir_create_oob(const bdaddr_t *addr, const char *name, uint32_t cod,
 			uint8_t *hash, uint8_t *randomizer,
 			uint16_t did_vendor, uint16_t did_product,
 			uint16_t did_version, uint16_t did_source,

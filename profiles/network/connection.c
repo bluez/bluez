@@ -594,8 +594,8 @@ void connection_unregister(const char *path)
 }
 
 static struct network_peer *create_peer(struct btd_device *device,
-					const char *path, bdaddr_t *src,
-					bdaddr_t *dst)
+					const char *path, const bdaddr_t *src,
+					const bdaddr_t *dst)
 {
 	struct network_peer *peer;
 
@@ -623,7 +623,7 @@ static struct network_peer *create_peer(struct btd_device *device,
 }
 
 int connection_register(struct btd_device *device, const char *path,
-			bdaddr_t *src, bdaddr_t *dst, uint16_t id)
+			const bdaddr_t *src, const bdaddr_t *dst, uint16_t id)
 {
 	struct network_peer *peer;
 	struct network_conn *nc;

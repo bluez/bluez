@@ -1366,7 +1366,7 @@ static void destroy_sap_interface(void *data)
 	server_remove(server);
 }
 
-int sap_server_register(const char *path, bdaddr_t *src)
+int sap_server_register(const char *path, const bdaddr_t *src)
 {
 	sdp_record_t *record = NULL;
 	GError *gerr = NULL;

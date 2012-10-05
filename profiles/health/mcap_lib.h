@@ -196,7 +196,7 @@ void mcap_sync_set_req(struct mcap_mcl *mcl,
 
 /* MCAP main operations */
 
-struct mcap_instance *mcap_create_instance(bdaddr_t *src,
+struct mcap_instance *mcap_create_instance(const bdaddr_t *src,
 					BtIOSecLevel sec, uint16_t ccpsm,
 					uint16_t dcpsm,
 					mcap_mcl_event_cb mcl_connected,
