@@ -507,7 +507,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 	GError *err = NULL;
 	uint32_t features;
 	GIOChannel *io;
-	bdaddr_t src;
+	bdaddr_t *src;
 
 	if (config) {
 		gboolean tmp;
@@ -521,10 +521,10 @@ static int headset_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	adapter_get_address(adapter->btd_adapter, &src);
+	src = adapter_get_address(adapter->btd_adapter);
 
 	io =  bt_io_listen(NULL, ag_confirm, adapter, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, master,
@@ -540,7 +540,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 		goto failed;
 	}
 
-	if (add_record_to_server(&src, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register HS AG service record");
 		sdp_record_free(record);
 		goto failed;
@@ -555,7 +555,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 	chan = DEFAULT_HF_AG_CHANNEL;
 
 	io = bt_io_listen(NULL, ag_confirm, adapter, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, master,
@@ -571,7 +571,7 @@ static int headset_server_init(struct audio_adapter *adapter)
 		goto failed;
 	}
 
-	if (add_record_to_server(&src, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register HF AG service record");
 		sdp_record_free(record);
 		goto failed;
@@ -608,7 +608,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 	gboolean master = TRUE;
 	GError *err = NULL;
 	GIOChannel *io;
-	bdaddr_t src;
+	bdaddr_t *src;
 
 	if (config) {
 		gboolean tmp;
@@ -622,10 +622,10 @@ static int gateway_server_init(struct audio_adapter *adapter)
 			master = tmp;
 	}
 
-	adapter_get_address(adapter->btd_adapter, &src);
+	src = adapter_get_address(adapter->btd_adapter);
 
 	io = bt_io_listen(NULL, hf_io_cb, adapter, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_CHANNEL, chan,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_MASTER, master,
@@ -643,7 +643,7 @@ static int gateway_server_init(struct audio_adapter *adapter)
 		goto failed;
 	}
 
-	if (add_record_to_server(&src, record) < 0) {
+	if (add_record_to_server(src, record) < 0) {
 		error("Unable to register HFP HS service record");
 		sdp_record_free(record);
 		goto failed;
@@ -663,12 +663,11 @@ failed:
 static struct audio_device *get_audio_dev(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	bdaddr_t src, dst;
+	bdaddr_t dst;
 
-	adapter_get_address(adapter, &src);
 	device_get_address(device, &dst, NULL);
 
-	return manager_get_device(&src, &dst, TRUE);
+	return manager_get_device(adapter_get_address(adapter), &dst, TRUE);
 }
 
 static void audio_remove(struct btd_profile *p, struct btd_device *device)
@@ -970,7 +969,6 @@ static int a2dp_server_probe(struct btd_profile *p,
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 	int err;
 
 	DBG("path %s", path);
@@ -979,9 +977,7 @@ static int a2dp_server_probe(struct btd_profile *p,
 	if (!adp)
 		return -EINVAL;
 
-	adapter_get_address(adapter, &src);
-
-	err = a2dp_register(&src, config);
+	err = a2dp_register(adapter_get_address(adapter), config);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -993,7 +989,6 @@ static void a2dp_server_remove(struct btd_profile *p,
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 
 	DBG("path %s", path);
 
@@ -1001,8 +996,7 @@ static void a2dp_server_remove(struct btd_profile *p,
 	if (!adp)
 		return;
 
-	adapter_get_address(adapter, &src);
-	a2dp_unregister(&src);
+	a2dp_unregister(adapter_get_address(adapter));
 	audio_adapter_unref(adp);
 }
 
@@ -1011,7 +1005,6 @@ static int avrcp_server_probe(struct btd_profile *p,
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 	int err;
 
 	DBG("path %s", path);
@@ -1020,9 +1013,7 @@ static int avrcp_server_probe(struct btd_profile *p,
 	if (!adp)
 		return -EINVAL;
 
-	adapter_get_address(adapter, &src);
-
-	err = avrcp_register(&src, config);
+	err = avrcp_register(adapter_get_address(adapter), config);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -1034,7 +1025,6 @@ static void avrcp_server_remove(struct btd_profile *p,
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 
 	DBG("path %s", path);
 
@@ -1042,8 +1032,7 @@ static void avrcp_server_remove(struct btd_profile *p,
 	if (!adp)
 		return;
 
-	adapter_get_address(adapter, &src);
-	avrcp_unregister(&src);
+	avrcp_unregister(adapter_get_address(adapter));
 	audio_adapter_unref(adp);
 }
 
@@ -1051,7 +1040,6 @@ static int media_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	bdaddr_t src;
 	int err;
 
 	DBG("path %s", path);
@@ -1060,9 +1048,7 @@ static int media_server_probe(struct btd_adapter *adapter)
 	if (!adp)
 		return -EINVAL;
 
-	adapter_get_address(adapter, &src);
-
-	err = media_register(path, &src);
+	err = media_register(path, adapter_get_address(adapter));
 	if (err < 0)
 		audio_adapter_unref(adp);
 

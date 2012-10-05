@@ -154,11 +154,8 @@ static gint adapter_cmp_addr(gconstpointer a, gconstpointer b)
 {
 	const struct gatt_server *server = a;
 	const bdaddr_t *bdaddr = b;
-	bdaddr_t src;
 
-	adapter_get_address(server->adapter, &src);
-
-	return bacmp(&src, bdaddr);
+	return bacmp(adapter_get_address(server->adapter), bdaddr);
 }
 
 static gint adapter_cmp(gconstpointer a, gconstpointer b)
@@ -302,7 +299,6 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 	struct attribute *a;
 	uint16_t end = 0;
 	uuid_t svc, gap_uuid;
-	bdaddr_t addr;
 
 	a = find_svc_range(server, handle, &end);
 
@@ -330,8 +326,8 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 				"http://www.bluez.org/");
 	}
 
-	adapter_get_address(server->adapter, &addr);
-	if (add_record_to_server(&addr, record) == 0)
+	if (add_record_to_server(adapter_get_address(server->adapter), record)
+			== 0)
 		return record->handle;
 
 	sdp_record_free(record);
@@ -1241,19 +1237,19 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 {
 	struct gatt_server *server;
 	GError *gerr = NULL;
-	bdaddr_t addr;
+	bdaddr_t *addr;
 
 	DBG("Start GATT server in hci%d", adapter_get_dev_id(adapter));
 
 	server = g_new0(struct gatt_server, 1);
 	server->adapter = btd_adapter_ref(adapter);
 
-	adapter_get_address(server->adapter, &addr);
+	addr = adapter_get_address(server->adapter);
 
 	/* BR/EDR socket */
 	server->l2cap_io = bt_io_listen(NULL, confirm_event,
 					NULL, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &addr,
+					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_PSM, ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);
@@ -1273,7 +1269,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	/* LE socket */
 	server->le_io = bt_io_listen(NULL, confirm_event,
 					&server->le_io, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR, &addr,
+					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_CID, ATT_CID,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 					BT_IO_OPT_INVALID);

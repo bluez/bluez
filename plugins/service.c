@@ -134,13 +134,20 @@ static void exit_callback(DBusConnection *conn, void *user_data)
 	g_free(user_record);
 }
 
+static const bdaddr_t *get_address(struct service_adapter *serv_adapter)
+{
+	if (serv_adapter->adapter)
+		return adapter_get_address(serv_adapter->adapter);
+
+	return BDADDR_ANY;
+}
+
 static int add_xml_record(const char *sender,
 			struct service_adapter *serv_adapter,
 			const char *record, dbus_uint32_t *handle)
 {
 	struct record_data *user_record;
 	sdp_record_t *sdp_record;
-	bdaddr_t src;
 
 	sdp_record = sdp_xml_parse_record(record, strlen(record));
 	if (!sdp_record) {
@@ -148,12 +155,7 @@ static int add_xml_record(const char *sender,
 		return -EIO;
 	}
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
-	if (add_record_to_server(&src, sdp_record) < 0) {
+	if (add_record_to_server(get_address(serv_adapter), sdp_record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(sdp_record);
 		return -EIO;
@@ -181,7 +183,6 @@ static DBusMessage *update_record(DBusMessage *msg,
 				struct service_adapter *serv_adapter,
 				dbus_uint32_t handle, sdp_record_t *sdp_record)
 {
-	bdaddr_t src;
 	int err;
 
 	if (remove_record_from_server(handle) < 0) {
@@ -189,13 +190,8 @@ static DBusMessage *update_record(DBusMessage *msg,
 		return btd_error_not_available(msg);
 	}
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
 	sdp_record->handle = handle;
-	err = add_record_to_server(&src, sdp_record);
+	err = add_record_to_server(get_address(serv_adapter), sdp_record);
 	if (err < 0) {
 		sdp_record_free(sdp_record);
 		error("Failed to update the service record");
@@ -322,7 +318,6 @@ static void auth_cb(DBusError *derr, void *user_data)
 	struct service_adapter *serv_adapter = user_data;
 	DBusMessage *reply;
 	struct pending_auth *auth;
-	bdaddr_t src;
 
 	auth = next_pending(serv_adapter);
 	if (auth == NULL) {
@@ -350,14 +345,9 @@ done:
 	if (auth == NULL)
 		return;
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
-	auth->id = btd_request_authorization(&src, &auth->dst,
-							auth->uuid, auth_cb,
-							serv_adapter);
+	auth->id = btd_request_authorization(get_address(serv_adapter),
+							&auth->dst, auth->uuid,
+							auth_cb, serv_adapter);
 }
 
 static DBusMessage *request_authorization(DBusConnection *conn,
@@ -373,7 +363,6 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	struct pending_auth *auth;
 	char uuid_str[MAX_LEN_UUID_STR];
 	uuid_t *uuid, *uuid128;
-	bdaddr_t src;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
 					DBUS_TYPE_UINT32, &handle,
@@ -427,12 +416,8 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	if (auth == NULL)
 		return btd_error_does_not_exist(msg);
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
-	auth->id = btd_request_authorization(&src, &auth->dst, auth->uuid,
+	auth->id = btd_request_authorization(get_address(serv_adapter),
+							&auth->dst, auth->uuid,
 							auth_cb, serv_adapter);
 	if (auth->id == 0) {
 		serv_adapter->pending_list = g_slist_remove(serv_adapter->pending_list,
@@ -451,7 +436,6 @@ static DBusMessage *cancel_authorization(DBusConnection *conn,
 	struct service_adapter *serv_adapter = data;
 	struct pending_auth *auth;
 	const gchar *sender;
-	bdaddr_t src;
 
 	sender = dbus_message_get_sender(msg);
 
@@ -473,14 +457,9 @@ static DBusMessage *cancel_authorization(DBusConnection *conn,
 	if (auth == NULL)
 		goto done;
 
-	if (serv_adapter->adapter)
-		adapter_get_address(serv_adapter->adapter, &src);
-	else
-		bacpy(&src, BDADDR_ANY);
-
-	auth->id = btd_request_authorization(&src, &auth->dst,
-							auth->uuid, auth_cb,
-							serv_adapter);
+	auth->id = btd_request_authorization(get_address(serv_adapter),
+							&auth->dst, auth->uuid,
+							auth_cb, serv_adapter);
 
 done:
 	return dbus_message_new_method_return(msg);

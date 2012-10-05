@@ -1317,7 +1317,6 @@ static void release_adapter_instance(struct hdp_adapter *hdp_adapter)
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 {
 	GError *err = NULL;
-	bdaddr_t addr;
 
 	if (applications == NULL) {
 		release_adapter_instance(hdp_adapter);
@@ -1327,12 +1326,13 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 	if (hdp_adapter->mi != NULL)
 		goto update;
 
-	adapter_get_address(hdp_adapter->btd_adapter, &addr);
-	hdp_adapter->mi = mcap_create_instance(&addr, BT_IO_SEC_MEDIUM, 0, 0,
-					mcl_connected, mcl_reconnected,
-					mcl_disconnected, mcl_uncached,
-					NULL, /* CSP is not used by now */
-					hdp_adapter, &err);
+	hdp_adapter->mi = mcap_create_instance(
+				adapter_get_address(hdp_adapter->btd_adapter),
+				BT_IO_SEC_MEDIUM, 0, 0,
+				mcl_connected, mcl_reconnected,
+				mcl_disconnected, mcl_uncached,
+				NULL, /* CSP is not used by now */
+				hdp_adapter, &err);
 
 	if (hdp_adapter->mi == NULL) {
 		error("Error creating the MCAP instance: %s", err->message);

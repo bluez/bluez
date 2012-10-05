@@ -785,7 +785,7 @@ static struct input_device *input_device_new(struct btd_device *device,
 	uint8_t dst_type;
 
 	idev = g_new0(struct input_device, 1);
-	adapter_get_address(adapter, &idev->src);
+	bacpy(&idev->src, adapter_get_address(adapter));
 	device_get_address(device, &idev->dst, &dst_type);
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);

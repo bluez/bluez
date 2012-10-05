@@ -194,10 +194,8 @@ static gboolean parse_data(DBusMessageIter *data, struct oob_data *remote_data)
 static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 {
 	bdaddr_t bdaddr;
-	bdaddr_t local;
 
 	str2ba(data->addr, &bdaddr);
-	adapter_get_address(adapter, &local);
 
 	if (data->hash) {
 		if (btd_adapter_add_remote_oob_data(adapter, &bdaddr,
@@ -206,10 +204,12 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 	}
 
 	if (data->class)
-		write_remote_class(&local, &bdaddr, data->class);
+		write_remote_class(adapter_get_address(adapter), &bdaddr,
+								data->class);
 
 	if (data->name)
-		write_device_name(&local, &bdaddr, 0, data->name);
+		write_device_name(adapter_get_address(adapter), &bdaddr, 0,
+								data->name);
 
 	return TRUE;
 }

@@ -77,12 +77,9 @@ static void hid_device_remove(struct btd_profile *p, struct btd_device *device)
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	bdaddr_t src;
 	int ret;
 
-	adapter_get_address(adapter, &src);
-
-	ret = server_start(&src);
+	ret = server_start(adapter_get_address(adapter));
 	if (ret < 0)
 		return ret;
 
@@ -94,11 +91,7 @@ static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 static void hid_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
-	bdaddr_t src;
-
-	adapter_get_address(adapter, &src);
-
-	server_stop(&src);
+	server_stop(adapter_get_address(adapter));
 
 	adapters = g_slist_remove(adapters, adapter);
 	btd_adapter_unref(adapter);

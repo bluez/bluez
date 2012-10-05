@@ -1870,7 +1870,6 @@ static void create_stored_device_from_ltks(char *key, char *value,
 	struct smp_ltk_info *info;
 	char address[18], srcaddr[18];
 	uint8_t bdaddr_type;
-	bdaddr_t src;
 
 	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
 		return;
@@ -1885,8 +1884,7 @@ static void create_stored_device_from_ltks(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	adapter_get_address(adapter, &src);
-	ba2str(&src, srcaddr);
+	ba2str(adapter_get_address(adapter), srcaddr);
 
 	if (g_strcmp0(srcaddr, address) == 0)
 		return;
@@ -2670,9 +2668,9 @@ const gchar *adapter_get_path(struct btd_adapter *adapter)
 	return adapter->path;
 }
 
-void adapter_get_address(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+bdaddr_t *adapter_get_address(struct btd_adapter *adapter)
 {
-	bacpy(bdaddr, &adapter->bdaddr);
+	return &adapter->bdaddr;
 }
 
 void adapter_set_allow_name_changes(struct btd_adapter *adapter,
@@ -3618,7 +3616,7 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 {
 	GSList *l;
 	btd_adapter_pin_cb_t cb;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	ssize_t ret;
 
 	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
@@ -3628,10 +3626,9 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 			return ret;
 	}
 
-	adapter_get_address(adapter, &sba);
 	device_get_address(dev, &dba, NULL);
 
-	return read_pin_code(&sba, &dba, pin_buf);
+	return read_pin_code(adapter_get_address(adapter), &dba, pin_buf);
 }
 
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,

@@ -280,11 +280,8 @@ static gint adapter_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_adapter *adapter = (struct btd_adapter *) a;
 	const bdaddr_t *bdaddr = b;
-	bdaddr_t src;
 
-	adapter_get_address(adapter, &src);
-
-	return bacmp(&src, bdaddr);
+	return bacmp(adapter_get_address(adapter), bdaddr);
 }
 
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba)

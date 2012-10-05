@@ -695,7 +695,6 @@ static gboolean register_mcap_features(sdp_record_t *sdp_record)
 gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list)
 {
 	sdp_record_t *sdp_record;
-	bdaddr_t addr;
 
 	if (adapter->sdp_handler > 0)
 		remove_record_from_server(adapter->sdp_handler);
@@ -738,9 +737,8 @@ gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list)
 	if (sdp_set_record_state(sdp_record, adapter->record_state++) < 0)
 		goto fail;
 
-	adapter_get_address(adapter->btd_adapter, &addr);
-
-	if (add_record_to_server(&addr, sdp_record) < 0)
+	if (add_record_to_server(adapter_get_address(adapter->btd_adapter),
+					sdp_record) < 0)
 		goto fail;
 	adapter->sdp_handler = sdp_record->handle;
 	return TRUE;
@@ -859,11 +857,11 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 				GDestroyNotify destroy, GError **err)
 {
 	struct get_mdep_data *mdep_data;
-	bdaddr_t dst, src;
+	bdaddr_t dst, *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);
-	adapter_get_address(device_get_adapter(device->dev), &src);
+	src = adapter_get_address(device_get_adapter(device->dev));
 
 	mdep_data = g_new0(struct get_mdep_data, 1);
 	mdep_data->app = hdp_application_ref(app);
@@ -872,7 +870,7 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 	mdep_data->destroy = destroy;
 
 	bt_string2uuid(&uuid, HDP_UUID);
-	if (bt_search_service(&src, &dst, &uuid, get_mdep_cb, mdep_data,
+	if (bt_search_service(src, &dst, &uuid, get_mdep_cb, mdep_data,
 							free_mdep_data) < 0) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
@@ -1088,11 +1086,11 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 						GError **err)
 {
 	struct conn_mcl_data *conn_data;
-	bdaddr_t dst, src;
+	bdaddr_t dst, *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);
-	adapter_get_address(device_get_adapter(device->dev), &src);
+	src = adapter_get_address(device_get_adapter(device->dev));
 
 	conn_data = g_new0(struct conn_mcl_data, 1);
 	conn_data->refs = 1;
@@ -1102,7 +1100,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	conn_data->dev = health_device_ref(device);
 
 	bt_string2uuid(&uuid, HDP_UUID);
-	if (bt_search_service(&src, &dst, &uuid, search_cb, conn_data,
+	if (bt_search_service(src, &dst, &uuid, search_cb, conn_data,
 						destroy_con_mcl_data) < 0) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");
@@ -1158,11 +1156,11 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 							GError **err)
 {
 	struct get_dcpsm_data *dcpsm_data;
-	bdaddr_t dst, src;
+	bdaddr_t dst, *src;
 	uuid_t uuid;
 
 	device_get_address(device->dev, &dst, NULL);
-	adapter_get_address(device_get_adapter(device->dev), &src);
+	src = adapter_get_address(device_get_adapter(device->dev));
 
 	dcpsm_data = g_new0(struct get_dcpsm_data, 1);
 	dcpsm_data->func = func;
@@ -1170,7 +1168,7 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 	dcpsm_data->destroy = destroy;
 
 	bt_string2uuid(&uuid, HDP_UUID);
-	if (bt_search_service(&src, &dst, &uuid, get_dcpsm_cb, dcpsm_data,
+	if (bt_search_service(src, &dst, &uuid, get_dcpsm_cb, dcpsm_data,
 							free_dcpsm_data) < 0) {
 		g_set_error(err, HDP_ERROR, HDP_CONNECTION_ERROR,
 						"Can't get remote SDP record");

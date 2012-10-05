@@ -200,7 +200,6 @@ static int adaptername_probe(struct btd_adapter *adapter)
 	int current_id;
 	char name[MAX_NAME_LENGTH + 1];
 	char *pretty_hostname;
-	bdaddr_t bdaddr;
 
 	pretty_hostname = read_pretty_host_name();
 	if (pretty_hostname != NULL) {
@@ -210,10 +209,9 @@ static int adaptername_probe(struct btd_adapter *adapter)
 	}
 
 	adapter_set_allow_name_changes(adapter, TRUE);
-	adapter_get_address(adapter, &bdaddr);
 	current_id = adapter_get_dev_id(adapter);
 
-	if (read_local_name(&bdaddr, name) < 0)
+	if (read_local_name(adapter_get_address(adapter), name) < 0)
 		expand_name(name, MAX_NAME_LENGTH, main_opts.name, current_id);
 
 	DBG("Setting name '%s' for device 'hci%d'", name, current_id);

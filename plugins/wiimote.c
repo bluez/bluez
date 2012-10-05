@@ -62,10 +62,9 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 						char *pinbuf, gboolean *display)
 {
 	uint16_t vendor, product;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	char addr[18], name[25];
 
-	adapter_get_address(adapter, &sba);
 	device_get_address(device, &dba, NULL);
 	ba2str(&dba, addr);
 
@@ -79,7 +78,7 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 				g_str_equal(name, "Nintendo RVL-WBC-01") ||
 				(vendor == 0x057e && product == 0x0306)) {
 		DBG("Forcing fixed pin on detected wiimote %s", addr);
-		memcpy(pinbuf, &sba, 6);
+		memcpy(pinbuf, adapter_get_address(adapter), 6);
 		return 6;
 	}
 

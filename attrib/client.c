@@ -229,7 +229,7 @@ static void gatt_get_address(struct gatt_service *gatt, bdaddr_t *sba,
 	struct btd_adapter *adapter;
 
 	adapter = device_get_adapter(device);
-	adapter_get_address(adapter, sba);
+	bacpy(sba, adapter_get_address(adapter));
 	device_get_address(device, dba, bdaddr_type);
 }
 

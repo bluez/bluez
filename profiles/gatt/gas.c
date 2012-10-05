@@ -168,7 +168,7 @@ static void ccc_written_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
 	struct gas *gas = user_data;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	uint8_t bdaddr_type;
 
 	if (status) {
@@ -179,11 +179,11 @@ static void ccc_written_cb(guint8 status, const guint8 *pdu, guint16 plen,
 
 	DBG("Service Changed indications enabled");
 
-	adapter_get_address(device_get_adapter(gas->device), &sba);
 	device_get_address(gas->device, &dba, &bdaddr_type);
 
-	write_ctp_handle(&sba, &dba, bdaddr_type, GATT_CHARAC_SERVICE_CHANGED,
-							gas->changed_handle);
+	write_ctp_handle(adapter_get_address(device_get_adapter(gas->device)),
+				&dba, bdaddr_type, GATT_CHARAC_SERVICE_CHANGED,
+				gas->changed_handle);
 }
 
 static void write_ccc(GAttrib *attrib, uint16_t handle, gpointer user_data)
@@ -377,7 +377,7 @@ int gas_register(struct btd_device *device, struct att_range *gap,
 						struct att_range *gatt)
 {
 	struct gas *gas;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	uint8_t bdaddr_type;
 
 	gas = g_new0(struct gas, 1);
@@ -394,11 +394,11 @@ int gas_register(struct btd_device *device, struct att_range *gap,
 						attio_connected_cb,
 						attio_disconnected_cb, gas);
 
-	adapter_get_address(device_get_adapter(gas->device), &sba);
 	device_get_address(gas->device, &dba, &bdaddr_type);
 
-	read_ctp_handle(&sba, &dba, bdaddr_type, GATT_CHARAC_SERVICE_CHANGED,
-							&gas->changed_handle);
+	read_ctp_handle(adapter_get_address(device_get_adapter(gas->device)),
+				&dba, bdaddr_type, GATT_CHARAC_SERVICE_CHANGED,
+				&gas->changed_handle);
 
 	return 0;
 }

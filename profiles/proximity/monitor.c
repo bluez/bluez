@@ -407,7 +407,7 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 {
 	struct monitor *monitor = data;
 	struct btd_device *device = monitor->device;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 
 	if (!level_is_valid(level))
 		return btd_error_invalid_args(msg);
@@ -418,10 +418,10 @@ static DBusMessage *set_link_loss_alert(DBusConnection *conn, DBusMessage *msg,
 	g_free(monitor->linklosslevel);
 	monitor->linklosslevel = g_strdup(level);
 
-	adapter_get_address(device_get_adapter(device), &sba);
 	device_get_address(device, &dba, NULL);
 
-	write_proximity_config(&sba, &dba, "LinkLossAlertLevel", level);
+	write_proximity_config(adapter_get_address(device_get_adapter(device)),
+					&dba, "LinkLossAlertLevel", level);
 
 	if (monitor->attrib)
 		write_alert_level(monitor);
@@ -593,13 +593,14 @@ int monitor_register(struct btd_device *device,
 {
 	const char *path = device_get_path(device);
 	struct monitor *monitor;
-	bdaddr_t sba, dba;
+	bdaddr_t dba;
 	char *level;
 
-	adapter_get_address(device_get_adapter(device), &sba);
 	device_get_address(device, &dba, NULL);
 
-	level = read_proximity_config(&sba, &dba, "LinkLossAlertLevel");
+	level = read_proximity_config(
+			adapter_get_address(device_get_adapter(device)),
+			&dba, "LinkLossAlertLevel");
 
 	monitor = g_new0(struct monitor, 1);
 	monitor->device = btd_device_ref(device);

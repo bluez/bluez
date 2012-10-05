@@ -742,16 +742,14 @@ static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 {
 	struct network_adapter *na;
 	GError *err = NULL;
-	bdaddr_t src;
 
 	na = g_new0(struct network_adapter, 1);
 	na->adapter = btd_adapter_ref(adapter);
 
-	adapter_get_address(adapter, &src);
-
 	na->io = bt_io_listen(NULL, confirm_event, na,
 				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR,
+				adapter_get_address(adapter),
 				BT_IO_OPT_PSM, BNEP_PSM,
 				BT_IO_OPT_OMTU, BNEP_MTU,
 				BT_IO_OPT_IMTU, BNEP_MTU,
@@ -803,7 +801,7 @@ int server_register(struct btd_adapter *adapter)
 		return -1;
 	}
 
-	adapter_get_address(adapter, &ns->src);
+	bacpy(&ns->src, adapter_get_address(adapter));
 	ns->id = BNEP_SVC_NAP;
 	ns->na = na;
 	ns->record_id = 0;

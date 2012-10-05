@@ -415,10 +415,8 @@ static void filter_devices_notify(char *key, char *value, void *user_data)
 static void create_filename(char *filename, struct btd_adapter *adapter)
 {
 	char srcaddr[18];
-	bdaddr_t src;
 
-	adapter_get_address(adapter, &src);
-	ba2str(&src, srcaddr);
+	ba2str(adapter_get_address(adapter), srcaddr);
 
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "ccc");
 }

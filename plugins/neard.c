@@ -180,13 +180,11 @@ static void read_local_complete(struct btd_adapter *adapter, uint8_t *hash,
 		int len;
 		uint8_t eir[NFC_OOB_EIR_MAX];
 		uint8_t *peir = eir;
-		bdaddr_t addr;
 		DBusMessageIter iter;
 		DBusMessageIter dict;
 
-		adapter_get_address(adapter, &addr);
-
-		len = eir_create_oob(&addr, btd_adapter_get_name(adapter),
+		len = eir_create_oob(adapter_get_address(adapter),
+				btd_adapter_get_name(adapter),
 				btd_adapter_get_class(adapter), hash,
 				randomizer, main_opts.did_vendor,
 				main_opts.did_product, main_opts.did_version,
@@ -254,7 +252,6 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 {
 	struct btd_device *device;
 	struct eir_data eir_data;
-	bdaddr_t local;
 	char remote_address[18];
 
 	DBG("size %zu", size);
@@ -288,16 +285,15 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 	if (device)
 		adapter_remove_device(adapter, device, TRUE);
 
-	adapter_get_address(adapter, &local);
-
 	/* store OOB data */
 	if (eir_data.class != 0)
-		write_remote_class(&local, &eir_data.addr, eir_data.class);
+		write_remote_class(adapter_get_address(adapter),
+					&eir_data.addr, eir_data.class);
 
 	/* TODO handle incomplete name? */
 	if (eir_data.name)
-		write_device_name(&local, &eir_data.addr, BDADDR_BREDR,
-								eir_data.name);
+		write_device_name(adapter_get_address(adapter), &eir_data.addr,
+						BDADDR_BREDR, eir_data.name);
 
 	if (eir_data.hash)
 		btd_adapter_add_remote_oob_data(adapter, &eir_data.addr,
