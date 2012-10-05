@@ -1884,7 +1884,7 @@ static void create_stored_device_from_ltks(char *key, char *value,
 					(GCompareFunc) device_address_cmp))
 		return;
 
-	ba2str(adapter_get_address(adapter), srcaddr);
+	ba2str(&adapter->bdaddr, srcaddr);
 
 	if (g_strcmp0(srcaddr, address) == 0)
 		return;
@@ -3626,8 +3626,8 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 			return ret;
 	}
 
-	return read_pin_code(adapter_get_address(adapter),
-					device_get_address(dev), pin_buf);
+	return read_pin_code(&adapter->bdaddr, device_get_address(dev),
+								pin_buf);
 }
 
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
