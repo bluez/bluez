@@ -82,6 +82,14 @@ struct bonding_req {
 	struct btd_device *device;
 };
 
+typedef enum {
+	AUTH_TYPE_PINCODE,
+	AUTH_TYPE_PASSKEY,
+	AUTH_TYPE_CONFIRM,
+	AUTH_TYPE_NOTIFY_PASSKEY,
+	AUTH_TYPE_NOTIFY_PINCODE,
+} auth_type_t;
+
 struct authentication_req {
 	auth_type_t type;
 	void *cb;

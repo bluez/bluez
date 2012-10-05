@@ -26,14 +26,6 @@
 
 struct btd_device;
 
-typedef enum {
-	AUTH_TYPE_PINCODE,
-	AUTH_TYPE_PASSKEY,
-	AUTH_TYPE_CONFIRM,
-	AUTH_TYPE_NOTIFY_PASSKEY,
-	AUTH_TYPE_NOTIFY_PINCODE,
-} auth_type_t;
-
 struct btd_device *device_create(struct btd_adapter *adapter,
 				const char *address, uint8_t bdaddr_type);
 
