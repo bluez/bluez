@@ -2549,7 +2549,6 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	if (device_is_bonded(device))
 		return btd_error_already_exists(msg);
 
-				adapter_get_address(adapter),
 	bonding = bonding_request_new(msg, device, agent_path,
 					capability);
 
