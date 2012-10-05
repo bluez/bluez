@@ -124,11 +124,12 @@ uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr);
+							const bdaddr_t *bdaddr);
 void adapter_update_found_devices(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t bdaddr_type,
-					int8_t rssi, uint8_t confirm_name,
-					uint8_t *data, uint8_t data_len);
+					const bdaddr_t *bdaddr,
+					uint8_t bdaddr_type, int8_t rssi,
+					uint8_t confirm_name, uint8_t *data,
+					uint8_t data_len);
 void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
@@ -205,36 +206,41 @@ void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable);
 
-int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy);
 
-int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t bdaddr_type);
-int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t bdaddr_type);
+int btd_adapter_block_address(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type);
+int btd_adapter_unblock_address(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t bdaddr_type);
-
-int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+							const bdaddr_t *bdaddr,
 							uint8_t bdaddr_type);
 
-int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+int btd_adapter_remove_bonding(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type);
+
+int btd_adapter_pincode_reply(struct btd_adapter *adapter,
+					const  bdaddr_t *bdaddr,
 					const char *pin, size_t pin_len);
-int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, gboolean success);
-int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, uint32_t passkey);
+int btd_adapter_confirm_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				gboolean success);
+int btd_adapter_passkey_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				uint32_t passkey);
 
 int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version,
 					uint16_t source);
 
-int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-				uint8_t bdaddr_type, uint8_t io_cap);
+int adapter_create_bonding(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				uint8_t io_cap);
 
-int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr);
+int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr);
 
 void adapter_bonding_complete(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr, uint8_t status);
@@ -244,10 +250,11 @@ void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
 					uint8_t *hash, uint8_t *randomizer);
 
 int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
-			bdaddr_t *bdaddr, uint8_t *hash, uint8_t *randomizer);
+					const bdaddr_t *bdaddr,
+					uint8_t *hash, uint8_t *randomizer);
 
 int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr);
+							const bdaddr_t *bdaddr);
 
 int btd_adapter_gatt_server_start(struct btd_adapter *adapter);
 void btd_adapter_gatt_server_stop(struct btd_adapter *adapter);

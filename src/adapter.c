@@ -2037,14 +2037,14 @@ static void load_devices(struct btd_adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_blocked, adapter);
 }
 
-int btd_adapter_block_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t bdaddr_type)
+int btd_adapter_block_address(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	return mgmt_block_device(adapter->dev_id, bdaddr, bdaddr_type);
 }
 
-int btd_adapter_unblock_address(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t bdaddr_type)
+int btd_adapter_unblock_address(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	return mgmt_unblock_device(adapter->dev_id, bdaddr,
 								bdaddr_type);
@@ -2751,7 +2751,7 @@ static int found_device_cmp(gconstpointer a, gconstpointer b)
 }
 
 struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr)
+							const bdaddr_t *bdaddr)
 {
 	GSList *l;
 
@@ -2978,7 +2978,7 @@ static void dev_prepend_uuid(gpointer data, gpointer user_data)
 	dev->services = g_slist_prepend(dev->services, g_strdup(new_uuid));
 }
 
-static gboolean pairing_is_legacy(bdaddr_t *local, bdaddr_t *peer,
+static gboolean pairing_is_legacy(const bdaddr_t *local, const bdaddr_t *peer,
 					const uint8_t *eir, const char *name)
 {
 	unsigned char features[8];
@@ -2998,7 +2998,7 @@ static gboolean pairing_is_legacy(bdaddr_t *local, bdaddr_t *peer,
 		return TRUE;
 }
 
-static char *read_stored_data(bdaddr_t *local, bdaddr_t *peer,
+static char *read_stored_data(const bdaddr_t *local, const bdaddr_t *peer,
 			      uint8_t peer_type, const char *file)
 {
 	char local_addr[18], key[20], filename[PATH_MAX + 1], *str;
@@ -3067,9 +3067,10 @@ static gboolean connect_pending_cb(gpointer user_data)
 }
 
 void adapter_update_found_devices(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t bdaddr_type,
-					int8_t rssi, uint8_t confirm_name,
-					uint8_t *data, uint8_t data_len)
+					const bdaddr_t *bdaddr,
+					uint8_t bdaddr_type, int8_t rssi,
+					uint8_t confirm_name, uint8_t *data,
+					uint8_t data_len)
 {
 	struct remote_dev_info *dev;
 	struct eir_data eir_data;
@@ -3652,7 +3653,7 @@ int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 	return mgmt_set_fast_connectable(adapter->dev_id, enable);
 }
 
-int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy)
 {
@@ -3664,33 +3665,37 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, bdaddr_t *bdaddr,
 }
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
-					bdaddr_t *bdaddr, uint8_t bdaddr_type)
+						const bdaddr_t *bdaddr,
+						uint8_t bdaddr_type)
 
 {
 	return mgmt_disconnect(adapter->dev_id, bdaddr, bdaddr_type);
 }
 
-int btd_adapter_remove_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-							uint8_t bdaddr_type)
+int btd_adapter_remove_bonding(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	return mgmt_unpair_device(adapter->dev_id, bdaddr, bdaddr_type);
 }
 
-int btd_adapter_pincode_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+int btd_adapter_pincode_reply(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr,
 					const char *pin, size_t pin_len)
 {
 	return mgmt_pincode_reply(adapter->dev_id, bdaddr, pin, pin_len);
 }
 
-int btd_adapter_confirm_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, gboolean success)
+int btd_adapter_confirm_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				gboolean success)
 {
 	return mgmt_confirm_reply(adapter->dev_id, bdaddr, bdaddr_type,
 								success);
 }
 
-int btd_adapter_passkey_reply(struct btd_adapter *adapter, bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, uint32_t passkey)
+int btd_adapter_passkey_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				uint32_t passkey)
 {
 	return mgmt_passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
 								passkey);
@@ -3703,14 +3708,14 @@ int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 	return mgmt_set_did(adapter->dev_id, vendor, product, version, source);
 }
 
-int adapter_create_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr,
+int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap)
 {
 	suspend_discovery(adapter);
 	return mgmt_create_bonding(adapter->dev_id, bdaddr, addr_type, io_cap);
 }
 
-int adapter_cancel_bonding(struct btd_adapter *adapter, bdaddr_t *bdaddr)
+int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr)
 {
 	return mgmt_cancel_bonding(adapter->dev_id, bdaddr);
 }
@@ -3760,14 +3765,15 @@ int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)
 }
 
 int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
-			bdaddr_t *bdaddr, uint8_t *hash, uint8_t *randomizer)
+					const bdaddr_t *bdaddr,
+					uint8_t *hash, uint8_t *randomizer)
 {
 	return mgmt_add_remote_oob_data(adapter->dev_id, bdaddr, hash,
 								randomizer);
 }
 
 int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
-							bdaddr_t *bdaddr)
+							const bdaddr_t *bdaddr)
 {
 	return mgmt_remove_remote_oob_data(adapter->dev_id, bdaddr);
 }
