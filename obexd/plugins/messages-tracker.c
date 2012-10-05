@@ -321,20 +321,20 @@ int messages_get_message(void *session, const char *handle,
 	return -ENOSYS;
 }
 
-int messages_update_inbox(void *session, messages_update_inbox_cb callback,
+int messages_update_inbox(void *session, messages_status_cb callback,
 							void *user_data)
 {
 	return -ENOSYS;
 }
 
 int messages_set_read(void *session, const char *handle, uint8_t value,
-				messages_set_read_cb callback, void *user_data)
+				messages_status_cb callback, void *user_data)
 {
 	return -ENOSYS;
 }
 
 int messages_set_delete(void *session, const char *handle, uint8_t value,
-					messages_set_delete_cb callback,
+					messages_status_cb callback,
 					void *user_data)
 {
 	return -ENOSYS;
