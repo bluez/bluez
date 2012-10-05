@@ -62,11 +62,9 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 						char *pinbuf, gboolean *display)
 {
 	uint16_t vendor, product;
-	bdaddr_t dba;
 	char addr[18], name[25];
 
-	device_get_address(device, &dba, NULL);
-	ba2str(&dba, addr);
+	ba2str(device_get_address(device), addr);
 
 	vendor = btd_device_get_vendor(device);
 	product = btd_device_get_product(device);

@@ -64,8 +64,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid);
 void device_probe_profile(gpointer a, gpointer b);
 void device_remove_profile(gpointer a, gpointer b);
 struct btd_adapter *device_get_adapter(struct btd_device *device);
-void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
-							uint8_t *bdaddr_type);
+bdaddr_t *device_get_address(struct btd_device *device);
 void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type);
 uint8_t device_get_addr_type(struct btd_device *device);
 const gchar *device_get_path(struct btd_device *device);

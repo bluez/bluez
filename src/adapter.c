@@ -3616,7 +3616,6 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 {
 	GSList *l;
 	btd_adapter_pin_cb_t cb;
-	bdaddr_t dba;
 	ssize_t ret;
 
 	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
@@ -3626,9 +3625,8 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 			return ret;
 	}
 
-	device_get_address(dev, &dba, NULL);
-
-	return read_pin_code(adapter_get_address(adapter), &dba, pin_buf);
+	return read_pin_code(adapter_get_address(adapter),
+					device_get_address(dev), pin_buf);
 }
 
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,

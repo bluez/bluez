@@ -222,17 +222,6 @@ static void remove_attio(struct gatt_service *gatt)
 	}
 }
 
-static void gatt_get_address(struct gatt_service *gatt, bdaddr_t *sba,
-					bdaddr_t *dba, uint8_t *bdaddr_type)
-{
-	struct btd_device *device = gatt->dev;
-	struct btd_adapter *adapter;
-
-	adapter = device_get_adapter(device);
-	bacpy(sba, adapter_get_address(adapter));
-	device_get_address(device, dba, bdaddr_type);
-}
-
 static int characteristic_handle_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct characteristic *chr = a;
@@ -684,14 +673,15 @@ static GSList *string_to_characteristic_list(struct gatt_service *gatt,
 
 static GSList *load_characteristics(struct gatt_service *gatt, uint16_t start)
 {
+	struct btd_device *device = gatt->dev;
+	struct btd_adapter *adapter = device_get_adapter(device);
 	GSList *chrs_list;
-	bdaddr_t sba, dba;
-	uint8_t bdaddr_type;
 	char *str;
 
-	gatt_get_address(gatt, &sba, &dba, &bdaddr_type);
-
-	str = read_device_characteristics(&sba, &dba, bdaddr_type, start);
+	str = read_device_characteristics(adapter_get_address(adapter),
+						device_get_address(device),
+						device_get_addr_type(device),
+						start);
 	if (str == NULL)
 		return NULL;
 
@@ -705,8 +695,7 @@ static GSList *load_characteristics(struct gatt_service *gatt, uint16_t start)
 static void store_attribute(struct gatt_service *gatt, uint16_t handle,
 				uint16_t type, uint8_t *value, gsize len)
 {
-	bdaddr_t sba, dba;
-	uint8_t bdaddr_type;
+	struct btd_device *device = gatt->dev;
 	bt_uuid_t uuid;
 	char *str, *tmp;
 	guint i;
@@ -721,9 +710,9 @@ static void store_attribute(struct gatt_service *gatt, uint16_t handle,
 	for (i = 0, tmp = str + MAX_LEN_UUID_STR; i < len; i++, tmp += 2)
 		sprintf(tmp, "%02X", value[i]);
 
-	gatt_get_address(gatt, &sba, &dba, &bdaddr_type);
-
-	write_device_attribute(&sba, &dba, bdaddr_type, handle, str);
+	write_device_attribute(adapter_get_address(device_get_adapter(device)),
+				device_get_address(device),
+				device_get_addr_type(device), handle, str);
 
 	g_free(str);
 }
@@ -964,9 +953,9 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	struct gatt_service *gatt = current->gatt;
 	struct gatt_primary *prim = gatt->prim;
 	uint16_t *previous_end = NULL;
+	struct btd_device *device = gatt->dev;
+	struct btd_adapter *adapter = device_get_adapter(device);
 	GSList *l;
-	bdaddr_t sba, dba;
-	uint8_t bdaddr_type;
 
 	if (status != 0) {
 		const char *str = att_ecode2str(status);
@@ -1005,9 +994,10 @@ static void char_discovered_cb(GSList *characteristics, guint8 status,
 	if (previous_end)
 		*previous_end = prim->range.end;
 
-	gatt_get_address(gatt, &sba, &dba, &bdaddr_type);
-	store_characteristics(&sba, &dba, bdaddr_type, prim->range.start,
-								gatt->chars);
+	store_characteristics(adapter_get_address(adapter),
+					device_get_address(device),
+					device_get_addr_type(device),
+					prim->range.start, gatt->chars);
 
 	g_slist_foreach(gatt->chars, update_all_chars, gatt);
 

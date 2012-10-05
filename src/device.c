@@ -1222,28 +1222,25 @@ uint16_t btd_device_get_version(struct btd_device *device)
 
 static void device_remove_stored(struct btd_device *device)
 {
-	const bdaddr_t *src;
-	bdaddr_t dst;
-	uint8_t dst_type;
+	const bdaddr_t *src = adapter_get_address(device->adapter);
+	uint8_t dst_type = device->bdaddr_type;
 
-	src = adapter_get_address(device->adapter);
-	device_get_address(device, &dst, &dst_type);
-
-	delete_entry(src, "profiles", &dst, dst_type);
-	delete_entry(src, "trusts", &dst, dst_type);
+	delete_entry(src, "profiles", &device->bdaddr, dst_type);
+	delete_entry(src, "trusts", &device->bdaddr, dst_type);
 
 	if (device_is_bonded(device)) {
-		delete_entry(src, "linkkeys", &dst, dst_type);
-		delete_entry(src, "aliases", &dst, dst_type);
-		delete_entry(src, "longtermkeys", &dst, dst_type);
+		delete_entry(src, "linkkeys", &device->bdaddr, dst_type);
+		delete_entry(src, "aliases", &device->bdaddr, dst_type);
+		delete_entry(src, "longtermkeys", &device->bdaddr, dst_type);
 
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
-		btd_adapter_remove_bonding(device->adapter, &dst, dst_type);
+		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
+								dst_type);
 	}
 
-	delete_all_records(src, &dst, dst_type);
-	delete_device_service(src, &dst, dst_type);
+	delete_all_records(src, &device->bdaddr, dst_type);
+	delete_device_service(src, &device->bdaddr, dst_type);
 
 	if (device->blocked)
 		device_unblock(device, TRUE, FALSE);
@@ -1884,12 +1881,9 @@ static char *primary_list_to_string(GSList *primary_list)
 static void store_services(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
-	bdaddr_t dba;
 	char *str = primary_list_to_string(device->primaries);
 
-	device_get_address(device, &dba, NULL);
-
-	write_device_services(adapter_get_address(adapter), &dba,
+	write_device_services(adapter_get_address(adapter), &device->bdaddr,
 						device->bdaddr_type, str);
 
 	g_free(str);
@@ -2318,12 +2312,9 @@ struct btd_adapter *device_get_adapter(struct btd_device *device)
 	return device->adapter;
 }
 
-void device_get_address(struct btd_device *device, bdaddr_t *bdaddr,
-							uint8_t *bdaddr_type)
+bdaddr_t *device_get_address(struct btd_device *device)
 {
-	bacpy(bdaddr, &device->bdaddr);
-	if (bdaddr_type != NULL)
-		*bdaddr_type = device->bdaddr_type;
+	return &device->bdaddr;
 }
 
 void device_set_addr_type(struct btd_device *device, uint8_t bdaddr_type)

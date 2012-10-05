@@ -90,20 +90,18 @@ static void pincode_cb(struct agent *agent, DBusError *derr,
 				const char *pincode, struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	bdaddr_t dba;
 	int err;
 
-	device_get_address(device, &dba, NULL);
-
 	if (derr) {
-		err = btd_adapter_pincode_reply(adapter, &dba, NULL, 0);
+		err = btd_adapter_pincode_reply(adapter,
+					device_get_address(device), NULL, 0);
 		if (err < 0)
 			goto fail;
 		return;
 	}
 
-	err = btd_adapter_pincode_reply(adapter, &dba, pincode,
-						pincode ? strlen(pincode) : 0);
+	err = btd_adapter_pincode_reply(adapter, device_get_address(device),
+					pincode, pincode ? strlen(pincode) : 0);
 	if (err < 0)
 		goto fail;
 
@@ -141,13 +139,9 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 static int confirm_reply(struct btd_adapter *adapter,
 				struct btd_device *device, gboolean success)
 {
-	bdaddr_t bdaddr;
-	uint8_t bdaddr_type;
-
-	device_get_address(device, &bdaddr, &bdaddr_type);
-
-	return btd_adapter_confirm_reply(adapter, &bdaddr, bdaddr_type,
-								success);
+	return btd_adapter_confirm_reply(adapter, device_get_address(device),
+						device_get_addr_type(device),
+						success);
 }
 
 static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
@@ -164,15 +158,12 @@ static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
 {
 	struct btd_device *device = user_data;
 	struct btd_adapter *adapter = device_get_adapter(device);
-	bdaddr_t bdaddr;
-	uint8_t bdaddr_type;
-
-	device_get_address(device, &bdaddr, &bdaddr_type);
 
 	if (err)
 		passkey = INVALID_PASSKEY;
 
-	btd_adapter_passkey_reply(adapter, &bdaddr, bdaddr_type, passkey);
+	btd_adapter_passkey_reply(adapter, device_get_address(device),
+					device_get_addr_type(device), passkey);
 }
 
 int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)

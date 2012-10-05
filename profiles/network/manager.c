@@ -79,19 +79,19 @@ static int network_probe(struct btd_profile *p, struct btd_device *device,
 	struct btd_adapter *adapter = device_get_adapter(device);
 	const gchar *path = device_get_path(device);
 	const bdaddr_t *src;
-	bdaddr_t dst;
+	const bdaddr_t *dst;
 
 	DBG("path %s", path);
 
 	src = adapter_get_address(adapter);
-	device_get_address(device, &dst, NULL);
+	dst = device_get_address(device);
 
 	if (g_slist_find_custom(uuids, PANU_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, &dst, BNEP_SVC_PANU);
+		connection_register(device, path, src, dst, BNEP_SVC_PANU);
 	if (g_slist_find_custom(uuids, GN_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, &dst, BNEP_SVC_GN);
+		connection_register(device, path, src, dst, BNEP_SVC_GN);
 	if (g_slist_find_custom(uuids, NAP_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, &dst, BNEP_SVC_NAP);
+		connection_register(device, path, src, dst, BNEP_SVC_NAP);
 
 	return 0;
 }

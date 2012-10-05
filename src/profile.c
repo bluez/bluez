@@ -184,13 +184,9 @@ static void ext_io_destroy(gpointer p)
 		ext_cancel(ext);
 	}
 
-	if (ext_io->resolving) {
-		bdaddr_t dst;
-
-		device_get_address(ext_io->device, &dst, NULL);
-
-		bt_cancel_discovery(adapter_get_address(ext_io->adapter), &dst);
-	}
+	if (ext_io->resolving)
+		bt_cancel_discovery(adapter_get_address(ext_io->adapter),
+					device_get_address(ext_io->device));
 
 	if (ext_io->rec_handle)
 		remove_record_from_server(ext_io->rec_handle);
@@ -720,7 +716,6 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
-	bdaddr_t dst;
 	sdp_list_t *r;
 
 	conn->resolving = false;
@@ -772,9 +767,8 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto failed;
 	}
 
-	device_get_address(conn->device, &dst, NULL);
-
-	err = connect_io(conn, adapter_get_address(conn->adapter), &dst);
+	err = connect_io(conn, adapter_get_address(conn->adapter),
+					device_get_address(conn->device));
 	if (err < 0) {
 		error("Connecting %s failed: %s", ext->name, strerror(-err));
 		goto failed;
@@ -810,7 +804,6 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 	struct btd_adapter *adapter;
 	struct ext_io *conn;
 	struct ext_profile *ext;
-	bdaddr_t dst;
 	int err;
 
 	ext = find_ext(profile);
@@ -818,15 +811,16 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 		return -ENOENT;
 
 	adapter = device_get_adapter(dev);
-	device_get_address(dev, &dst, NULL);
 
 	conn = g_new0(struct ext_io, 1);
 	conn->ext = ext;
 
 	if (ext->psm || ext->chan)
-		err = connect_io(conn, adapter_get_address(adapter), &dst);
+		err = connect_io(conn, adapter_get_address(adapter),
+						device_get_address(dev));
 	else
-		err = resolve_service(conn, adapter_get_address(adapter), &dst);
+		err = resolve_service(conn, adapter_get_address(adapter),
+						device_get_address(dev));
 
 	if (err < 0)
 		goto failed;

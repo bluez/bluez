@@ -782,11 +782,10 @@ static struct input_device *input_device_new(struct btd_device *device,
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
 	char name[249], src_addr[18], dst_addr[18];
-	uint8_t dst_type;
 
 	idev = g_new0(struct input_device, 1);
 	bacpy(&idev->src, adapter_get_address(adapter));
-	device_get_address(device, &idev->dst, &dst_type);
+	bacpy(&idev->dst, device_get_address(device));
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
 	idev->handle = handle;
@@ -795,7 +794,8 @@ static struct input_device *input_device_new(struct btd_device *device,
 	ba2str(&idev->src, src_addr);
 	ba2str(&idev->dst, dst_addr);
 
-	if (read_device_name(src_addr, dst_addr, dst_type, name) == 0)
+	if (read_device_name(src_addr, dst_addr, device_get_addr_type(device),
+				name) == 0)
 		idev->name = g_strdup(name);
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),

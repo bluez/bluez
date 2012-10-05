@@ -210,10 +210,8 @@ static int cmp_device(gconstpointer a, gconstpointer b)
 static gint cmp_dev_addr(gconstpointer a, gconstpointer dst)
 {
 	const struct hdp_device *device = a;
-	bdaddr_t addr;
 
-	device_get_address(device->dev, &addr, NULL);
-	return bacmp(&addr, dst);
+	return bacmp(device_get_address(device->dev), dst);
 }
 
 static gint cmp_dev_mcl(gconstpointer a, gconstpointer mcl)

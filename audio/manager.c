@@ -663,11 +663,9 @@ failed:
 static struct audio_device *get_audio_dev(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	bdaddr_t dst;
 
-	device_get_address(device, &dst, NULL);
-
-	return manager_get_device(adapter_get_address(adapter), &dst, TRUE);
+	return manager_get_device(adapter_get_address(adapter),
+					device_get_address(device), TRUE);
 }
 
 static void audio_remove(struct btd_profile *p, struct btd_device *device)
