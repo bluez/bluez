@@ -126,32 +126,32 @@ Properties	string Address [readonly]
 			The Bluetooth remote name. This value can not be
 			changed. Use the Alias property instead.
 
-		uint16 Vendor [readonly]
+		uint16 Vendor [readonly] [optional]
 
 			Vendor unique numeric identifier.
 
-		uint16 VendorSource [readonly]
+		uint16 VendorSource [readonly] [optional]
 
 			Vendor source numeric identifier.
 
-		uint16 Product [readonly]
+		uint16 Product [readonly] [optional]
 
 			Product unique numeric identifier.
 
-		uint16 Version [readonly]
+		uint16 Version [readonly] [optional]
 
 			Version unique numeric identifier.
 
-		string Icon [readonly]
+		string Icon [readonly] [optional]
 
 			Proposed icon name according to the freedesktop.org
 			icon naming specification.
 
-		uint32 Class [readonly]
+		uint32 Class [readonly] [optional]
 
 			The Bluetooth class of device of the remote device.
 
-		uint16 Appearance [readonly]
+		uint16 Appearance [readonly] [optional]
 
 			External appearance of device, as found on GAP service.
 
