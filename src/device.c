@@ -574,6 +574,9 @@ static gboolean dev_property_get_product(const GDBusPropertyTable *property,
 	if (!device->product)
 		return FALSE;
 
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
+							&device->product);
+
 	return TRUE;
 }
 
