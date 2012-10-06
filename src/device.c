@@ -318,7 +318,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	char name[MAX_NAME_LENGTH + 1], dstaddr[18];
+	char dstaddr[18];
 	char **str;
 	const char *ptr, *icon = NULL;
 	dbus_bool_t boolean;
@@ -345,9 +345,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dict_append_entry(&dict, "Address", DBUS_TYPE_STRING, &ptr);
 
 	/* Name */
-	ptr = NULL;
-	memset(name, 0, sizeof(name));
-
 	ptr = device->name;
 	dict_append_entry(&dict, "Name", DBUS_TYPE_STRING, &ptr);
 
@@ -375,7 +372,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		dict_append_entry(&dict, "Appearance", DBUS_TYPE_UINT16, &app);
 	}
 
-	dict_append_entry(&dict, "Icon", DBUS_TYPE_STRING, &icon);
+	if (icon != NULL)
+		dict_append_entry(&dict, "Icon", DBUS_TYPE_STRING, &icon);
 
 	/* Vendor */
 	if (device->vendor)
