@@ -646,6 +646,8 @@ static gboolean remove_interface(struct generic_data *data, const char *name)
 	if (iface == NULL)
 		return FALSE;
 
+	process_properties_from_interface(data, iface);
+
 	data->interfaces = g_slist_remove(data->interfaces, iface);
 
 	if (iface->destroy) {
