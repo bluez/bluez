@@ -2388,6 +2388,13 @@ GIOChannel *device_att_connect(gpointer user_data)
 			bonding_request_free(device->bonding);
 		}
 	} else {
+		BtIOSecLevel sec_level;
+
+		if (device->paired)
+			sec_level = BT_IO_SEC_MEDIUM;
+		else
+			sec_level = BT_IO_SEC_LOW;
+
 		io = bt_io_connect(att_connect_cb,
 				attcb, NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR,
@@ -2395,7 +2402,7 @@ GIOChannel *device_att_connect(gpointer user_data)
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
 				BT_IO_OPT_CID, ATT_CID,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 	}
 
