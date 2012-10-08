@@ -45,6 +45,8 @@
 #include "log.h"
 
 #define SERVICE_INTERFACE "org.bluez.Service"
+#define get_address(adp) \
+	(adp->adapter ? adapter_get_address(adp->adapter) : BDADDR_ANY)
 
 struct record_data {
 	uint32_t handle;
@@ -132,14 +134,6 @@ static void exit_callback(DBusConnection *conn, void *user_data)
 
 	g_free(user_record->sender);
 	g_free(user_record);
-}
-
-static const bdaddr_t *get_address(struct service_adapter *serv_adapter)
-{
-	if (serv_adapter->adapter)
-		return adapter_get_address(serv_adapter->adapter);
-
-	return BDADDR_ANY;
 }
 
 static int add_xml_record(const char *sender,
