@@ -82,6 +82,7 @@ unit/test-eir
 tools/btmgmt
 monitor/btmon
 emulator/btvirt
+emulator/b1ee
 
 doc/*.bak
 doc/*.stamp
