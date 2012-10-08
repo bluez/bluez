@@ -280,28 +280,6 @@ void btd_event_set_legacy_pairing(bdaddr_t *local, bdaddr_t *peer,
 		dev->legacy = legacy;
 }
 
-void btd_event_remote_class(bdaddr_t *local, bdaddr_t *peer, uint32_t class)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	uint32_t old_class = 0;
-
-	read_remote_class(local, peer, &old_class);
-
-	if (old_class == class)
-		return;
-
-	write_remote_class(local, peer, class);
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
-		return;
-
-	if (!device)
-		return;
-
-	device_set_class(device, class);
-}
-
 void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	struct btd_adapter *adapter;
