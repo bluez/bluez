@@ -44,6 +44,7 @@
 
 #define THERMOMETER_INTERFACE		"org.bluez.Thermometer"
 #define THERMOMETER_MANAGER_INTERFACE	"org.bluez.ThermometerManager"
+#define THERMOMETER_WATCHER_INTERFACE	"org.bluez.ThermometerWatcher"
 
 /* Temperature measurement flag fields */
 #define TEMP_UNITS		0x01
@@ -1034,7 +1035,7 @@ static void update_watcher(gpointer data, gpointer user_data)
 	DBusMessage *msg;
 
 	msg = dbus_message_new_method_call(w->srv, w->path,
-				"org.bluez.ThermometerWatcher",
+				THERMOMETER_WATCHER_INTERFACE,
 				"MeasurementReceived");
 	if (msg == NULL)
 		return;
