@@ -50,10 +50,14 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "list"):
-	for path in adapter.GetProperties()["Devices"]:
-		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
-		properties = device.GetProperties()
+	om = dbus.Interface(bus.get_object("org.bluez", "/"),
+					"org.freedesktop.DBus.ObjectManager")
+	objects = om.GetManagedObjects()
+
+	for path, interfaces in objects.iteritems():
+		if "org.bluez.Device" not in interfaces:
+			continue
+		properties = interfaces["org.bluez.Device"]
 		print("%s %s" % (properties["Address"], properties["Alias"]))
 
 	sys.exit(0)
@@ -134,9 +138,9 @@ if (args[0] == "class"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
-		properties = device.GetProperties()
-		print("0x%06x" % (properties["Class"]))
+					"org.freedesktop.DBus.Properties")
+		cls = device.Get("org.bluez.Device", "Class")
+		print("0x%06x" % cls)
 	sys.exit(0)
 
 if (args[0] == "name"):
@@ -145,9 +149,9 @@ if (args[0] == "name"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
-		properties = device.GetProperties()
-		print(properties["Name"])
+					"org.freedesktop.DBus.Properties")
+		name = device.Get("org.bluez.Device", "Name")
+		print(name)
 	sys.exit(0)
 
 if (args[0] == "alias"):
@@ -156,12 +160,12 @@ if (args[0] == "alias"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+					"org.freedesktop.DBus.Properties")
 		if (len(args) < 3):
-			properties = device.GetProperties()
-			print(properties["Alias"])
+			alias = device.Get("org.bluez.Device", "Alias")
+			print(alias)
 		else:
-			device.SetProperty("Alias", args[2])
+			device.Set("org.bluez.Device", "Alias", args[2])
 	sys.exit(0)
 
 if (args[0] == "trusted"):
@@ -170,10 +174,10 @@ if (args[0] == "trusted"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+					"org.freedesktop.DBus.Properties")
 		if (len(args) < 3):
-			properties = device.GetProperties()
-			print(properties["Trusted"])
+			trusted = device.Get("org.bluez.Device", "Trusted")
+			print(trusted)
 		else:
 			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
@@ -181,7 +185,7 @@ if (args[0] == "trusted"):
 				value = dbus.Boolean(0)
 			else:
 				value = dbus.Boolean(args[2])
-			device.SetProperty("Trusted", value)
+			device.Set("org.bluez.Device", "Trusted", value)
 	sys.exit(0)
 
 if (args[0] == "blocked"):
@@ -190,10 +194,10 @@ if (args[0] == "blocked"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+					"org.freedesktop.DBus.Properties")
 		if (len(args) < 3):
-			properties = device.GetProperties()
-			print(properties["Blocked"])
+			blocked = device.Get("org.bluez.Device", "Blocked")
+			print(blocked)
 		else:
 			if (args[2] == "yes"):
 				value = dbus.Boolean(1)
@@ -201,7 +205,7 @@ if (args[0] == "blocked"):
 				value = dbus.Boolean(0)
 			else:
 				value = dbus.Boolean(args[2])
-			device.SetProperty("Blocked", value)
+			device.Set("org.bluez.Device", "Blocked", value)
 	sys.exit(0)
 
 if (args[0] == "services"):
@@ -210,9 +214,9 @@ if (args[0] == "services"):
 	else:
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
-		properties = device.GetProperties()
-		for path in properties["Services"]:
+					"org.freedesktop.DBus.Properties")
+		services = device.Get("org.bluez.Device", "Services")
+		for path in services:
 			print(path)
 	sys.exit(0)
 
