@@ -3475,18 +3475,6 @@ void btd_device_unref(struct btd_device *device)
 	g_free(path);
 }
 
-void device_set_class(struct btd_device *device, uint32_t value)
-{
-	const char *icon = class_to_icon(value);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
-						DEVICE_INTERFACE, "Class");
-
-	if (icon)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				device->path, DEVICE_INTERFACE, "Icon");
-}
-
 int device_get_appearance(struct btd_device *device, uint16_t *value)
 {
 	uint16_t app;
