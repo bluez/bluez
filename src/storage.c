@@ -435,47 +435,6 @@ done:
 	return 0;
 }
 
-int read_remote_eir(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, uint8_t *data)
-{
-	char filename[PATH_MAX + 1], key[18], *str;
-	int i;
-
-	create_filename(filename, PATH_MAX, local, "eir");
-
-	ba2str(peer, key);
-	sprintf(&key[17], "#%hhu", peer_type);
-
-	str = textfile_get(filename, key);
-	if (str != NULL)
-		goto done;
-
-	/* Try old format (address only) */
-	key[17] = '\0';
-
-	str = textfile_get(filename, key);
-	if (!str)
-		return -ENOENT;
-
-done:
-	if (!data) {
-		free(str);
-		return 0;
-	}
-
-	if (strlen(str) < 480) {
-		free(str);
-		return -EIO;
-	}
-
-	for (i = 0; i < HCI_MAX_EIR_LENGTH; i++)
-		sscanf(str + (i * 2), "%02hhX", &data[i]);
-
-	free(str);
-
-	return 0;
-}
-
 int write_version_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint16_t manufacturer, uint8_t lmp_ver,
 					uint16_t lmp_subver)

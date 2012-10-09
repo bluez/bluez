@@ -50,8 +50,6 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, const char *name);
 int read_device_name(const char *src, const char *dst, uint8_t dst_type,
 								char *name);
-int read_remote_eir(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, uint8_t *data);
 int write_version_info(const bdaddr_t *local, const bdaddr_t *peer,
 				uint16_t manufacturer, uint8_t lmp_ver,
 				uint16_t lmp_subver);
