@@ -435,27 +435,6 @@ done:
 	return 0;
 }
 
-int write_remote_eir(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, uint8_t *data,
-					uint8_t data_len)
-{
-	char filename[PATH_MAX + 1], key[20], str[481];
-	int i;
-
-	memset(str, 0, sizeof(str));
-	for (i = 0; i < data_len; i++)
-		sprintf(str + (i * 2), "%2.2X", data[i]);
-
-	create_filename(filename, PATH_MAX, local, "eir");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(peer, key);
-	sprintf(&key[17], "#%hhu", peer_type);
-
-	return textfile_put(filename, key, str);
-}
-
 int read_remote_eir(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, uint8_t *data)
 {
