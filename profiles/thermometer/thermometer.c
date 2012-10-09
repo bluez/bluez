@@ -83,7 +83,7 @@ struct thermometer {
 };
 
 struct characteristic {
-	struct gatt_char		attr;	/* Characteristic */
+	struct gatt_char	attr;	/* Characteristic */
 	GSList			*desc;	/* Descriptors */
 	struct thermometer	*t;	/* Thermometer where the char belongs */
 };
