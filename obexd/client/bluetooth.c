@@ -581,6 +581,7 @@ static guint bluetooth_connect(const char *source, const char *destination,
 
 	session->id = ++id;
 	session->func = func;
+	session->port = port;
 	session->user_data = user_data;
 
 	session->conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
