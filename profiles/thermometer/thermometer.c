@@ -55,23 +55,29 @@
 #define TEMPERATURE_TYPE_SIZE	1
 #define MEASUREMENT_INTERVAL_SIZE	2
 
+struct thermometer_adapter {
+	struct btd_adapter	*adapter;
+	GSList			*devices;
+};
+
 struct thermometer {
-	struct btd_device	*dev;		/* Device reference */
-	GAttrib			*attrib;	/* GATT connection */
-	struct att_range	*svc_range;	/* Thermometer range */
-	guint			attioid;	/* Att watcher id */
-	guint			attindid;	/* Att incications id */
-	guint			attnotid;	/* Att notifications id */
-	GSList			*chars;		/* Characteristics */
-	GSList			*fwatchers;     /* Final measurements */
-	GSList			*iwatchers;     /* Intermediate measurements */
-	gboolean		intermediate;
-	uint8_t			type;
-	uint16_t		interval;
-	uint16_t		max;
-	uint16_t		min;
-	gboolean		has_type;
-	gboolean		has_interval;
+	struct btd_device		*dev;		/* Device reference */
+	struct thermometer_adapter	*tadapter;
+	GAttrib				*attrib;	/* GATT connection */
+	struct att_range		*svc_range;	/* Thermometer range */
+	guint				attioid;	/* Att watcher id */
+	guint				attindid;	/* Att incications id */
+	guint				attnotid;	/* Att notif id */
+	GSList				*chars;		/* Characteristics */
+	GSList				*fwatchers;     /* Final measurements */
+	GSList				*iwatchers;     /* Intermediate meas  */
+	gboolean			intermediate;
+	uint8_t				type;
+	uint16_t			interval;
+	uint16_t			max;
+	uint16_t			min;
+	gboolean			has_type;
+	gboolean			has_interval;
 };
 
 struct characteristic {
@@ -108,7 +114,7 @@ struct tmp_interval_data {
 	uint16_t		interval;
 };
 
-static GSList *thermometers = NULL;
+static GSList *thermometer_adapters = NULL;
 
 const char *temp_type[] = {
 	"<reserved>",
@@ -183,6 +189,17 @@ static void destroy_thermometer(gpointer user_data)
 	g_free(t);
 }
 
+static gint cmp_adapter(gconstpointer a, gconstpointer b)
+{
+	const struct thermometer_adapter *tadapter = a;
+	const struct btd_adapter *adapter = b;
+
+	if (adapter == tadapter->adapter)
+		return 0;
+
+	return -1;
+}
+
 static gint cmp_device(gconstpointer a, gconstpointer b)
 {
 	const struct thermometer *t = a;
@@ -229,6 +246,17 @@ static gint cmp_descriptor(gconstpointer a, gconstpointer b)
 	const bt_uuid_t *uuid = b;
 
 	return bt_uuid_cmp(&desc->uuid, uuid);
+}
+
+static struct thermometer_adapter *
+find_thermometer_adapter(struct btd_adapter *adapter)
+{
+	GSList *l = g_slist_find_custom(thermometer_adapters, adapter,
+								cmp_adapter);
+	if (!l)
+		return NULL;
+
+	return l->data;
 }
 
 static struct characteristic *get_characteristic(struct thermometer *t,
@@ -1232,12 +1260,24 @@ int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
 {
 	const gchar *path = device_get_path(device);
 	struct thermometer *t;
+	struct btd_adapter *adapter;
+	struct thermometer_adapter *tadapter;
+
+	adapter = device_get_adapter(device);
+
+	tadapter = find_thermometer_adapter(adapter);
+
+	if (tadapter == NULL)
+		return -1;
 
 	t = g_new0(struct thermometer, 1);
 	t->dev = btd_device_ref(device);
+	t->tadapter = tadapter;
 	t->svc_range = g_new0(struct att_range, 1);
 	t->svc_range->start = tattr->range.start;
 	t->svc_range->end = tattr->range.end;
+
+	tadapter->devices = g_slist_prepend(tadapter->devices, t);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 				path, THERMOMETER_INTERFACE,
@@ -1249,8 +1289,6 @@ int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
 		return -EIO;
 	}
 
-	thermometers = g_slist_prepend(thermometers, t);
-
 	t->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
 						attio_disconnected_cb, t);
 	return 0;
@@ -1259,14 +1297,48 @@ int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
 void thermometer_unregister(struct btd_device *device)
 {
 	struct thermometer *t;
+	struct btd_adapter *adapter;
+	struct thermometer_adapter *tadapter;
 	GSList *l;
 
-	l = g_slist_find_custom(thermometers, device, cmp_device);
+	adapter = device_get_adapter(device);
+
+	tadapter = find_thermometer_adapter(adapter);
+
+	if (tadapter == NULL)
+		return;
+
+	l = g_slist_find_custom(tadapter->devices, device, cmp_device);
 	if (l == NULL)
 		return;
 
 	t = l->data;
-	thermometers = g_slist_remove(thermometers, t);
+
+	tadapter->devices = g_slist_remove(tadapter->devices, t);
+
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				device_get_path(t->dev), THERMOMETER_INTERFACE);
+}
+
+int thermometer_adapter_register(struct btd_adapter *adapter)
+{
+	struct thermometer_adapter *tadapter;
+
+	tadapter = g_new0(struct thermometer_adapter, 1);
+	tadapter->adapter = adapter;
+
+	thermometer_adapters = g_slist_prepend(thermometer_adapters, tadapter);
+
+	return 0;
+}
+
+void thermometer_adapter_unregister(struct btd_adapter *adapter)
+{
+	struct thermometer_adapter *tadapter;
+
+	tadapter = find_thermometer_adapter(adapter);
+	if (tadapter == NULL)
+		return;
+
+	thermometer_adapters = g_slist_remove(thermometer_adapters, tadapter);
 }

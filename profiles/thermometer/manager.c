@@ -66,11 +66,25 @@ static void thermometer_driver_remove(struct btd_profile *p,
 	thermometer_unregister(device);
 }
 
+static int thermometer_adapter_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	return thermometer_adapter_register(adapter);
+}
+
+static void thermometer_adapter_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	thermometer_adapter_unregister(adapter);
+}
+
 static struct btd_profile thermometer_profile = {
 	.name		= "thermometer-device-driver",
 	.remote_uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
 	.device_probe	= thermometer_driver_probe,
-	.device_remove	= thermometer_driver_remove
+	.device_remove	= thermometer_driver_remove,
+	.adapter_probe	= thermometer_adapter_probe,
+	.adapter_remove	= thermometer_adapter_remove
 };
 
 int thermometer_manager_init(void)

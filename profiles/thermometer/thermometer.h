@@ -22,3 +22,5 @@
 
 int thermometer_register(struct btd_device *device, struct gatt_primary *tattr);
 void thermometer_unregister(struct btd_device *device);
+int thermometer_adapter_register(struct btd_adapter *adapter);
+void thermometer_adapter_unregister(struct btd_adapter *adapter);
