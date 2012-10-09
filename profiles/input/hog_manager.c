@@ -91,6 +91,9 @@ static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
 		struct gatt_primary *prim = l->data;
 		struct hog_device *hogdev;
 
+		if (strcmp(prim->uuid, HOG_UUID) != 0)
+			continue;
+
 		hogdev = hog_device_register(device, prim);
 		if (hogdev == NULL)
 			continue;
