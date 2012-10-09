@@ -42,7 +42,8 @@
 #include "gatt.h"
 #include "thermometer.h"
 
-#define THERMOMETER_INTERFACE "org.bluez.Thermometer"
+#define THERMOMETER_INTERFACE		"org.bluez.Thermometer"
+#define THERMOMETER_MANAGER_INTERFACE	"org.bluez.ThermometerManager"
 
 /* Temperature measurement flag fields */
 #define TEMP_UNITS		0x01
@@ -187,6 +188,16 @@ static void destroy_thermometer(gpointer user_data)
 	btd_device_unref(t->dev);
 	g_free(t->svc_range);
 	g_free(t);
+}
+
+static void destroy_thermometer_adapter(gpointer user_data)
+{
+	struct thermometer_adapter *tadapter = user_data;
+
+	if (tadapter->devices != NULL)
+		g_slist_free_full(tadapter->devices, destroy_thermometer);
+
+	g_free(tadapter);
 }
 
 static gint cmp_adapter(gconstpointer a, gconstpointer b)
@@ -1320,12 +1331,28 @@ void thermometer_unregister(struct btd_device *device)
 				device_get_path(t->dev), THERMOMETER_INTERFACE);
 }
 
+static const GDBusMethodTable thermometer_manager_methods[] = {
+	{ }
+};
+
 int thermometer_adapter_register(struct btd_adapter *adapter)
 {
 	struct thermometer_adapter *tadapter;
 
 	tadapter = g_new0(struct thermometer_adapter, 1);
 	tadapter->adapter = adapter;
+
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+						adapter_get_path(adapter),
+						THERMOMETER_MANAGER_INTERFACE,
+						thermometer_manager_methods,
+						NULL, NULL, tadapter,
+						destroy_thermometer_adapter)) {
+		error("D-Bus failed to register %s interface",
+						THERMOMETER_MANAGER_INTERFACE);
+		destroy_thermometer_adapter(tadapter);
+		return -EIO;
+	}
 
 	thermometer_adapters = g_slist_prepend(thermometer_adapters, tadapter);
 
@@ -1341,4 +1368,8 @@ void thermometer_adapter_unregister(struct btd_adapter *adapter)
 		return;
 
 	thermometer_adapters = g_slist_remove(thermometer_adapters, tadapter);
+
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+					adapter_get_path(tadapter->adapter),
+					THERMOMETER_MANAGER_INTERFACE);
 }
