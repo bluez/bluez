@@ -405,8 +405,6 @@ EXTRA_DIST += doc/manager-api.txt \
 		doc/oob-api.txt doc/proximity-api.txt doc/heartrate-api.txt \
 		doc/thermometer-api.txt
 
-AM_YFLAGS = -d
-
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
