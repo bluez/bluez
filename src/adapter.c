@@ -2947,6 +2947,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 	const char *icon, *paddr = peer_addr;
 	dbus_bool_t paired = FALSE, trusted = FALSE;
 	dbus_int16_t rssi = dev->rssi;
+	dbus_bool_t legacy = dev->legacy;
 	char *alias;
 	size_t uuid_count;
 
@@ -2985,8 +2986,6 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 			return;
 		}
 
-		dev->legacy = FALSE;
-
 		if (read_remote_appearance(&adapter->bdaddr, &dev->bdaddr,
 						dev->bdaddr_type, &app) == 0)
 			icon = gap_appearance_to_icon(app);
@@ -3002,7 +3001,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,
 				"Alias", DBUS_TYPE_STRING, &alias,
-				"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
+				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
 				NULL);
@@ -3016,7 +3015,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 				"RSSI", DBUS_TYPE_INT16, &rssi,
 				"Name", DBUS_TYPE_STRING, &dev->name,
 				"Alias", DBUS_TYPE_STRING, &alias,
-				"LegacyPairing", DBUS_TYPE_BOOLEAN, &dev->legacy,
+				"LegacyPairing", DBUS_TYPE_BOOLEAN, &legacy,
 				"Paired", DBUS_TYPE_BOOLEAN, &paired,
 				"Trusted", DBUS_TYPE_BOOLEAN, &trusted,
 				"UUIDs", DBUS_TYPE_ARRAY, &dev->uuids, uuid_count,
@@ -3069,26 +3068,6 @@ static void dev_prepend_uuid(gpointer data, gpointer user_data)
 	char *new_uuid = data;
 
 	dev->services = g_slist_prepend(dev->services, g_strdup(new_uuid));
-}
-
-static gboolean pairing_is_legacy(const bdaddr_t *local, const bdaddr_t *peer,
-					const uint8_t *eir, const char *name)
-{
-	unsigned char features[8];
-
-	if (eir)
-		return FALSE;
-
-	if (name == NULL)
-		return TRUE;
-
-	if (read_remote_features(local, peer, NULL, features) < 0)
-		return TRUE;
-
-	if (features[0] & 0x01)
-		return FALSE;
-	else
-		return TRUE;
 }
 
 static char *read_stored_data(const bdaddr_t *local, const bdaddr_t *peer,
@@ -3162,13 +3141,13 @@ static gboolean connect_pending_cb(gpointer user_data)
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					uint8_t confirm_name, uint8_t *data,
-					uint8_t data_len)
+					uint8_t confirm_name, gboolean legacy,
+					uint8_t *data, uint8_t data_len)
 {
 	struct remote_dev_info *dev;
 	struct eir_data eir_data;
 	char *alias, *name;
-	gboolean legacy, name_known;
+	gboolean name_known;
 	int err;
 	GSList *l;
 
@@ -3203,7 +3182,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 			goto done;
 		}
 
-		if (dev->rssi != rssi)
+		if (dev->rssi != rssi || dev->legacy != legacy)
 			goto done;
 
 		eir_data_free(&eir_data);
@@ -3215,19 +3194,11 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	name = read_stored_data(&adapter->bdaddr, bdaddr, bdaddr_type, "names");
 
-	if (bdaddr_type == BDADDR_BREDR) {
-		legacy = pairing_is_legacy(&adapter->bdaddr, bdaddr, data,
-									name);
-
-		if (!name && main_opts.name_resolv &&
-				adapter_has_discov_sessions(adapter))
-			name_known = FALSE;
-		else
-			name_known = TRUE;
-	} else {
-		legacy = FALSE;
+	if (bdaddr_type == BDADDR_BREDR && !name && main_opts.name_resolv &&
+			adapter_has_discov_sessions(adapter))
+		name_known = FALSE;
+	else
 		name_known = TRUE;
-	}
 
 	if (confirm_name)
 		mgmt_confirm_name(adapter->dev_id, bdaddr, bdaddr_type,
@@ -3262,6 +3233,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 done:
 	dev->rssi = rssi;
+	dev->legacy = legacy;
 
 	adapter->found_devices = g_slist_sort(adapter->found_devices,
 						(GCompareFunc) dev_rssi_cmp);

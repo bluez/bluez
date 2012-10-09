@@ -82,7 +82,7 @@ struct remote_dev_info {
 	uint32_t class;
 	char *name;
 	char *alias;
-	dbus_bool_t legacy;
+	gboolean legacy;
 	char **uuids;
 	size_t uuid_count;
 	GSList *services;
@@ -128,8 +128,8 @@ struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					uint8_t confirm_name, uint8_t *data,
-					uint8_t data_len);
+					uint8_t confirm_name, gboolean legacy,
+					uint8_t *data, uint8_t data_len);
 void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
