@@ -50,8 +50,6 @@ int write_device_name(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, const char *name);
 int read_device_name(const char *src, const char *dst, uint8_t dst_type,
 								char *name);
-int read_remote_features(const bdaddr_t *local, const bdaddr_t *peer,
-				unsigned char *page1, unsigned char *page2);
 int write_lastseen_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, struct tm *tm);
 int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
