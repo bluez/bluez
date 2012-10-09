@@ -262,8 +262,6 @@ static void read_return_apparam(struct obc_transfer *transfer,
 							phone_book_size);
 	g_obex_apparam_get_uint8(apparam, NEWMISSEDCALLS_TAG,
 							new_missed_calls);
-
-	g_obex_apparam_free(apparam);
 }
 
 static void phonebook_size_callback(struct obc_session *session,
