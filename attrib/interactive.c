@@ -211,6 +211,34 @@ static void primary_by_uuid_cb(GSList *ranges, guint8 status,
 	rl_forced_update_display();
 }
 
+static void included_cb(GSList *includes, guint8 status, gpointer user_data)
+{
+	GSList *l;
+
+	if (status) {
+		printf("Find included services failed: %s\n",
+							att_ecode2str(status));
+		goto done;
+	}
+
+	if (includes == NULL) {
+		printf("No included services found for this range\n");
+		goto done;
+	}
+
+	printf("\n");
+	for (l = includes; l; l = l->next) {
+		struct gatt_included *incl = l->data;
+		printf("handle: 0x%04x, start handle: 0x%04x, "
+					"end handle: 0x%04x uuid: %s\n",
+					incl->handle, incl->range.start,
+					incl->range.end, incl->uuid);
+	}
+
+done:
+	rl_forced_update_display();
+}
+
 static void char_cb(GSList *characteristics, guint8 status, gpointer user_data)
 {
 	GSList *l;
@@ -429,6 +457,36 @@ static int strtohandle(const char *src)
 		return -EINVAL;
 
 	return dst;
+}
+
+static void cmd_included(int argcp, char **argvp)
+{
+	int start = 0x0001;
+	int end = 0xffff;
+
+	if (conn_state != STATE_CONNECTED) {
+		printf("Command failed: disconnected\n");
+		return;
+	}
+
+	if (argcp > 1) {
+		start = strtohandle(argvp[1]);
+		if (start < 0) {
+			printf("Invalid start handle: %s\n", argvp[1]);
+			return;
+		}
+		end = start;
+	}
+
+	if (argcp > 2) {
+		end = strtohandle(argvp[2]);
+		if (end < 0) {
+			printf("Invalid end handle: %s\n", argvp[2]);
+			return;
+		}
+	}
+
+	gatt_find_included(attrib, start, end, included_cb, NULL);
 }
 
 static void cmd_char(int argcp, char **argvp)
@@ -743,6 +801,8 @@ static struct {
 		"Disconnect from a remote device" },
 	{ "primary",		cmd_primary,	"[UUID]",
 		"Primary Service Discovery" },
+	{ "included",		cmd_included,	"[start hnd [end hnd]]",
+		"Find Included Services" },
 	{ "characteristics",	cmd_char,	"[start hnd [end hnd [UUID]]]",
 		"Characteristics Discovery" },
 	{ "char-desc",		cmd_char_desc,	"[start hnd] [end hnd]",
