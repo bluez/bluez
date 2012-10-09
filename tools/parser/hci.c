@@ -1578,6 +1578,17 @@ static inline void le_create_connection_dump(int level, struct frame *frm)
 	p_indent(level, frm);
 	p_ba2str(&cp->peer_bdaddr, addr);
 	printf("bdaddr %s type %d\n", addr, cp->peer_bdaddr_type);
+	p_indent(level, frm);
+	printf("interval %u window %u initiator_filter %u\n",
+		btohs(cp->interval), btohs(cp->window), cp->initiator_filter);
+	p_indent(level, frm);
+	printf("own_bdaddr_type %u min_interval %u max_interval %u\n",
+			cp->own_bdaddr_type, btohs(cp->min_interval),
+			btohs(cp->max_interval));
+	p_indent(level, frm);
+	printf("latency %u supervision_to %u min_ce %u max_ce %u\n",
+			btohs(cp->latency), btohs(cp->supervision_timeout),
+			btohs(cp->min_ce_length), btohs(cp->max_ce_length));
 }
 
 static inline void le_set_event_mask_dump(int level, struct frame *frm)
