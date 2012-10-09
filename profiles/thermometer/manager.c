@@ -41,7 +41,7 @@ static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
 	return g_strcmp0(prim->uuid, uuid);
 }
 
-static int thermometer_driver_probe(struct btd_profile *p,
+static int thermometer_device_probe(struct btd_profile *p,
 					struct btd_device *device,
 					GSList *uuids)
 {
@@ -60,7 +60,7 @@ static int thermometer_driver_probe(struct btd_profile *p,
 	return thermometer_register(device, tattr);
 }
 
-static void thermometer_driver_remove(struct btd_profile *p,
+static void thermometer_device_remove(struct btd_profile *p,
 						struct btd_device *device)
 {
 	thermometer_unregister(device);
@@ -79,10 +79,10 @@ static void thermometer_adapter_remove(struct btd_profile *p,
 }
 
 static struct btd_profile thermometer_profile = {
-	.name		= "thermometer-device-driver",
+	.name		= "Health Thermometer GATT driver",
 	.remote_uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
-	.device_probe	= thermometer_driver_probe,
-	.device_remove	= thermometer_driver_remove,
+	.device_probe	= thermometer_device_probe,
+	.device_remove	= thermometer_device_remove,
 	.adapter_probe	= thermometer_adapter_probe,
 	.adapter_remove	= thermometer_adapter_remove
 };
