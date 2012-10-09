@@ -101,13 +101,14 @@ struct watcher {
 };
 
 struct measurement {
-	int16_t		exp;
-	int32_t		mant;
-	uint64_t	time;
-	gboolean	suptime;
-	char		*unit;
-	char		*type;
-	char		*value;
+	struct thermometer	*t;
+	int16_t			exp;
+	int32_t			mant;
+	uint64_t		time;
+	gboolean		suptime;
+	char			*unit;
+	char			*type;
+	char			*value;
 };
 
 struct tmp_interval_data {
@@ -1027,6 +1028,7 @@ static void update_watcher(gpointer data, gpointer user_data)
 {
 	struct watcher *w = data;
 	struct measurement *m = user_data;
+	const gchar *path = device_get_path(m->t->dev);
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusMessage *msg;
@@ -1038,6 +1040,8 @@ static void update_watcher(gpointer data, gpointer user_data)
 		return;
 
 	dbus_message_iter_init_append(msg, &iter);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH , &path);
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -1063,6 +1067,8 @@ static void update_watcher(gpointer data, gpointer user_data)
 static void recv_measurement(struct thermometer *t, struct measurement *m)
 {
 	GSList *wlist;
+
+	m->t = t;
 
 	if (g_strcmp0(m->value, "Intermediate") == 0)
 		wlist = t->tadapter->iwatchers;
