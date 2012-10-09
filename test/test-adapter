@@ -25,7 +25,7 @@ else:
 	adapter_path = manager.DefaultAdapter()
 
 adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
+					"org.freedesktop.DBus.Properties")
 
 if (len(args) < 1):
 	print("Usage: %s <command>" % (sys.argv[0]))
@@ -42,27 +42,32 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "address"):
-	properties = adapter.GetProperties()
-	print(properties["Address"])
+	addr = adapter.Get("org.bluez.Adapter", "Address")
+	print(addr)
 	sys.exit(0)
 
 if (args[0] == "name"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["Name"])
+		name = adapter.Get("org.bluez.Adapter", "Name")
+		print(name)
 	else:
-		adapter.SetProperty("Name", args[1])
+		adapter.Set("org.bluez.Adapter", "Name", args[1])
 	sys.exit(0)
 
 if (args[0] == "list"):
 	if (len(args) < 2):
-		properties = manager.GetProperties()
-		for adapter_path in properties["Adapters"]:
-			adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-								"org.bluez.Adapter")
-			prop = adapter.GetProperties()
-			print(" [ %s ]" % (adapter_path))
-			for (key, value) in prop.items():
+		om = dbus.Interface(bus.get_object("org.bluez", "/"),
+					"org.freedesktop.DBus.ObjectManager")
+		objects = om.GetManagedObjects()
+		for path, interfaces in objects.iteritems():
+			if "org.bluez.Adapter" not in interfaces:
+				continue
+
+			print(" [ %s ]" % (path))
+
+			props = interfaces["org.bluez.Adapter"]
+
+			for (key, value) in props.items():
 				if (key == "Class"):
 					print("    %s = 0x%06x" % (key, value))
 				else:
@@ -72,8 +77,8 @@ if (args[0] == "list"):
 
 if (args[0] == "powered"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["Powered"])
+		powered = adapter.Get("org.bluez.Adapter", "Powered")
+		print(powered)
 	else:
 		if (args[1] == "on"):
 			value = dbus.Boolean(1)
@@ -81,13 +86,13 @@ if (args[0] == "powered"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.SetProperty("Powered", value)
+		adapter.Set("org.bluez.Adapter", "Powered", value)
 	sys.exit(0)
 
 if (args[0] == "pairable"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["Pairable"])
+		pairable = adapter.Get("org.bluez.Adapter", "Pairable")
+		print(pairable)
 	else:
 		if (args[1] == "on"):
 			value = dbus.Boolean(1)
@@ -95,22 +100,22 @@ if (args[0] == "pairable"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.SetProperty("Pairable", value)
+		adapter.Set("org.bluez.Adapter", "Pairable", value)
 	sys.exit(0)
 
 if (args[0] == "pairabletimeout"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["PairableTimeout"])
+		pt = adapter.Get("org.bluez.Adapter", "PairableTimeout")
+		print(pt)
 	else:
 		timeout = dbus.UInt32(args[1])
-		adapter.SetProperty("PairableTimeout", timeout)
+		adapter.Set("org.bluez.Adapter", "PairableTimeout", timeout)
 	sys.exit(0)
 
 if (args[0] == "discoverable"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["Discoverable"])
+		discoverable = adapter.Get("org.bluez.Adapter", "Discoverable")
+		print(discoverable)
 	else:
 		if (args[1] == "on"):
 			value = dbus.Boolean(1)
@@ -118,21 +123,21 @@ if (args[0] == "discoverable"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.SetProperty("Discoverable", value)
+		adapter.Set("org.bluez.Adapter", "Discoverable", value)
 	sys.exit(0)
 
 if (args[0] == "discoverabletimeout"):
 	if (len(args) < 2):
-		properties = adapter.GetProperties()
-		print(properties["DiscoverableTimeout"])
+		dt = adapter.Get("org.bluez.Adapter", "DiscoverableTimeout")
+		print(dt)
 	else:
-		timeout = dbus.UInt32(args[1])
-		adapter.SetProperty("DiscoverableTimeout", timeout)
+		to = dbus.UInt32(args[1])
+		adapter.Set("org.bluez.Adapter", "DiscoverableTimeout", to)
 	sys.exit(0)
 
 if (args[0] == "discovering"):
-	properties = adapter.GetProperties()
-	print(properties["Discovering"])
+	discovering = adapter.Get("org.bluez.Adapter", "Discovering")
+	print(discovering)
 	sys.exit(0)
 
 print("Unknown command")
