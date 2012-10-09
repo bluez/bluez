@@ -148,15 +148,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		if (sink->state != SINK_STATE_CONNECTING) {
-			gboolean value = FALSE;
-			g_dbus_emit_signal(btd_get_dbus_connection(), dev->path,
-					AUDIO_SINK_INTERFACE, "Disconnected",
-					DBUS_TYPE_INVALID);
-			emit_property_changed(dev->path,
-					AUDIO_SINK_INTERFACE, "Connected",
-					DBUS_TYPE_BOOLEAN, &value);
-		}
 		sink_set_state(dev, SINK_STATE_DISCONNECTED);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
@@ -189,7 +180,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	DBusConnection *conn = btd_get_dbus_connection();
 	struct audio_device *dev = user_data;
 	struct sink *sink = dev->sink;
-	gboolean value;
 
 	if (err)
 		return;
@@ -216,38 +206,9 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		sink->cb_id = 0;
 		break;
 	case AVDTP_STATE_OPEN:
-		if (old_state == AVDTP_STATE_CONFIGURED &&
-				sink->state == SINK_STATE_CONNECTING) {
-			value = TRUE;
-			g_dbus_emit_signal(conn, dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Connected",
-						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Connected",
-						DBUS_TYPE_BOOLEAN, &value);
-		} else if (old_state == AVDTP_STATE_STREAMING) {
-			value = FALSE;
-			g_dbus_emit_signal(conn, dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Stopped",
-						DBUS_TYPE_INVALID);
-			emit_property_changed(dev->path,
-						AUDIO_SINK_INTERFACE,
-						"Playing",
-						DBUS_TYPE_BOOLEAN, &value);
-		}
 		sink_set_state(dev, SINK_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
-		value = TRUE;
-		g_dbus_emit_signal(conn, dev->path,
-					AUDIO_SINK_INTERFACE, "Playing",
-					DBUS_TYPE_INVALID);
-		emit_property_changed(dev->path,
-					AUDIO_SINK_INTERFACE, "Playing",
-					DBUS_TYPE_BOOLEAN, &value);
 		sink_set_state(dev, SINK_STATE_PLAYING);
 		break;
 	case AVDTP_STATE_CONFIGURED:
@@ -505,7 +466,6 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	const char *state;
-	gboolean value;
 
 	reply = dbus_message_new_method_return(msg);
 	if (!reply)
@@ -517,14 +477,6 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	/* Playing */
-	value = (sink->stream_state == AVDTP_STATE_STREAMING);
-	dict_append_entry(&dict, "Playing", DBUS_TYPE_BOOLEAN, &value);
-
-	/* Connected */
-	value = (sink->stream_state >= AVDTP_STATE_CONFIGURED);
-	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &value);
 
 	/* State */
 	state = state2str(sink->state);
@@ -546,10 +498,6 @@ static const GDBusMethodTable sink_methods[] = {
 };
 
 static const GDBusSignalTable sink_signals[] = {
-	{ GDBUS_DEPRECATED_SIGNAL("Connected", NULL) },
-	{ GDBUS_DEPRECATED_SIGNAL("Disconnected", NULL) },
-	{ GDBUS_DEPRECATED_SIGNAL("Playing", NULL) },
-	{ GDBUS_DEPRECATED_SIGNAL("Stopped", NULL) },
 	{ GDBUS_SIGNAL("PropertyChanged",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ }

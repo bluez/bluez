@@ -200,24 +200,7 @@ Methods		void Connect()
 
 			Possible Errors: org.bluez.Error.InvalidArguments
 
-Signals		void Connected() {deprecated}
-
-			Sent when a successful connection has been made to the
-			remote A2DP Sink
-
-		void Disconnected() {deprecated}
-
-			Sent when the device has been disconnected from.
-
-		void Playing() {deprecated}
-
-			Sent when a stream with remote device is started.
-
-		void Stopped() {deprecated}
-
-			Sent when a stream with remote device is suspended.
-
-		PropertyChanged(string name, variant value)
+Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
 			property.
@@ -246,16 +229,6 @@ properties	string State [readonly]
 			"connected" -> "disconnected"
 			"playing" -> "disconnected"
 				Disconnected from the remote device
-
-		boolean Connected [readonly]
-
-			Indicates if a stream is setup to a A2DP sink on
-			the remote device.
-
-		boolean Playing  [readonly]
-
-			Indicates if a stream is active to a A2DP sink on
-			the remote device.
 
 AudioSource hierarchy
 =====================
