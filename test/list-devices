@@ -7,7 +7,7 @@ import dbus
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-						"org.bluez.Manager")
+					"org.freedesktop.DBus.ObjectManager")
 
 def extract_objects(object_list):
 	list = ""
@@ -29,13 +29,14 @@ def extract_uuids(uuid_list):
 		list = list + val + " "
 	return list
 
-adapter_list = manager.GetProperties()["Adapters"]
-for i in adapter_list:
-	adapter = dbus.Interface(bus.get_object("org.bluez", i),
-							"org.bluez.Adapter")
-	print("[ " + i + " ]")
+objects = manager.GetManagedObjects()
+for path, interfaces in objects.iteritems():
+	if "org.bluez.Adapter" not in interfaces.keys():
+		continue
 
-	properties  = adapter.GetProperties()
+	print("[ " + path + " ]")
+
+	properties = interfaces["org.bluez.Adapter"]
 	for key in properties.keys():
 		value = properties[key]
 		if (key == "Devices"):
@@ -52,12 +53,12 @@ for i in adapter_list:
 	except:
 		device_list = []
 
-	for n in device_list:
-		device = dbus.Interface(bus.get_object("org.bluez", n),
-							"org.bluez.Device")
-		print("    [ " + n + " ]")
+	for dev_path in device_list:
+		print("    [ " + dev_path + " ]")
 
-		properties = device.GetProperties()
+		dev = objects[dev_path]
+		properties = dev["org.bluez.Device"]
+
 		for key in properties.keys():
 			value = properties[key]
 			if (key == "UUIDs"):
