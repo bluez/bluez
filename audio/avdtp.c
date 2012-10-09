@@ -2411,9 +2411,10 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 {
 	struct avdtp *session = user_data;
 	char address[18];
-	GError *gerr = NULL;
+	int err_no = EIO;
 
 	if (err) {
+		err_no = err->code;
 		error("%s", err->message);
 		goto failed;
 	}
@@ -2421,13 +2422,13 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	if (!session->io)
 		session->io = g_io_channel_ref(chan);
 
-	bt_io_get(chan, &gerr,
+	bt_io_get(chan, &err,
 			BT_IO_OPT_OMTU, &session->omtu,
 			BT_IO_OPT_IMTU, &session->imtu,
 			BT_IO_OPT_INVALID);
-	if (gerr) {
-		error("%s", gerr->message);
-		g_error_free(gerr);
+	if (err) {
+		err_no = err->code;
+		error("%s", err->message);
 		goto failed;
 	}
 
@@ -2481,7 +2482,7 @@ failed:
 			avdtp_sep_set_state(session, stream->lsep,
 						AVDTP_STATE_IDLE);
 	} else
-		connection_lost(session, EIO);
+		connection_lost(session, err_no);
 }
 
 static void auth_cb(DBusError *derr, void *user_data)
