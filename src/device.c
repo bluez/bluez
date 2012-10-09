@@ -66,6 +66,13 @@
 #include "attrib-server.h"
 #include "attrib/client.h"
 
+#define IO_CAPABILITY_DISPLAYONLY	0x00
+#define IO_CAPABILITY_DISPLAYYESNO	0x01
+#define IO_CAPABILITY_KEYBOARDONLY	0x02
+#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
+#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
+#define IO_CAPABILITY_INVALID		0xFF
+
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
@@ -1187,6 +1194,43 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static uint8_t parse_io_capability(const char *capability)
+{
+	if (g_str_equal(capability, ""))
+		return IO_CAPABILITY_DISPLAYYESNO;
+	if (g_str_equal(capability, "DisplayOnly"))
+		return IO_CAPABILITY_DISPLAYONLY;
+	if (g_str_equal(capability, "DisplayYesNo"))
+		return IO_CAPABILITY_DISPLAYYESNO;
+	if (g_str_equal(capability, "KeyboardOnly"))
+		return IO_CAPABILITY_KEYBOARDONLY;
+	if (g_str_equal(capability, "NoInputNoOutput"))
+		return IO_CAPABILITY_NOINPUTNOOUTPUT;
+	if (g_str_equal(capability, "KeyboardDisplay"))
+		return IO_CAPABILITY_KEYBOARDDISPLAY;
+	return IO_CAPABILITY_INVALID;
+}
+
+static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct btd_device *device = data;
+	const char *agent_path, *capability;
+	uint8_t io_cap;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_OBJECT_PATH, &agent_path,
+					DBUS_TYPE_STRING, &capability,
+					DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	io_cap = parse_io_capability(capability);
+	if (io_cap == IO_CAPABILITY_INVALID)
+		return btd_error_invalid_args(msg);
+
+	return device_create_bonding(device, msg, agent_path, io_cap);
+}
+
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("DiscoverServices",
 			GDBUS_ARGS({ "pattern", "s" }),
@@ -1195,6 +1239,9 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_METHOD("CancelDiscovery", NULL, NULL, cancel_discover) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
+	{ GDBUS_ASYNC_METHOD("Pair",
+			GDBUS_ARGS({ "agent", "o" }, { "capability", "s" }),
+			NULL, pair_device) },
 	{ }
 };
 
