@@ -3582,49 +3582,6 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	return mgmt_set_powered(adapter->dev_id, TRUE);
 }
 
-static gboolean switch_off_timeout(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	mgmt_set_powered(adapter->dev_id, FALSE);
-	adapter->off_timer = 0;
-
-	return FALSE;
-}
-
-int btd_adapter_switch_online(struct btd_adapter *adapter)
-{
-	if (adapter->up)
-		return -EALREADY;
-
-	if (adapter->off_timer)
-		off_timer_remove(adapter);
-
-	return mgmt_set_powered(adapter->dev_id, TRUE);
-}
-
-int btd_adapter_switch_offline(struct btd_adapter *adapter)
-{
-	if (!adapter->up)
-		return -EALREADY;
-
-	if (adapter->off_timer)
-		return 0;
-
-	adapter->global_mode = MODE_OFF;
-
-	if (adapter->connections == NULL)
-		return mgmt_set_powered(adapter->dev_id, FALSE);
-
-	g_slist_foreach(adapter->connections,
-				(GFunc) device_request_disconnect, NULL);
-
-	adapter->off_timer = g_timeout_add_seconds(OFF_TIMER,
-						switch_off_timeout, adapter);
-
-	return 0;
-}
-
 static gboolean disable_auto(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
