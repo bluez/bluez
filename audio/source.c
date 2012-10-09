@@ -116,6 +116,14 @@ static void source_set_state(struct audio_device *dev, source_state_t new_state)
 		struct source_state_callback *cb = l->data;
 		cb->cb(dev, old_state, new_state, cb->user_data);
 	}
+
+	if (new_state != SOURCE_STATE_DISCONNECTED)
+		return;
+
+	if (source->session) {
+		avdtp_unref(source->session);
+		source->session = NULL;
+	}
 }
 
 static void avdtp_state_callback(struct audio_device *dev,

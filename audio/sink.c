@@ -125,6 +125,14 @@ static void sink_set_state(struct audio_device *dev, sink_state_t new_state)
 		struct sink_state_callback *cb = l->data;
 		cb->cb(dev, old_state, new_state, cb->user_data);
 	}
+
+	if (new_state != SINK_STATE_DISCONNECTED)
+		return;
+
+	if (sink->session) {
+		avdtp_unref(sink->session);
+		sink->session = NULL;
+	}
 }
 
 static void avdtp_state_callback(struct audio_device *dev,
