@@ -97,33 +97,49 @@ Service		unique name
 Interface	org.bluez.ThermometerWatcher
 Object path	freely definable
 
-Methods		void MeasurementReceived(dict measure)
+Methods		void MeasurementReceived(dict measurement)
 
-			This callback gets called when a measure has been
-			scanned	in the thermometer. The Time entry in the dict
-			will be only present if the device supports storing of
-			data. The time value is expressed in seconds since epoch.
-			The value represented is (mantissa) x (10**exponent)
-			See foot note for special values when treating with
-			health devices. The Type entry is only present if the
-			measurement type is known. Otherwise, it is undefined.
+			This callback gets called when a measurement has been
+			scanned in the thermometer.
 
-			Dict is defined as below:
-			{
-				"Exponent" : int8,
-				"Mantissa" : int32,
-				"Unit" : ("Celsius" or "Fahrenheit"),
-				"Time" : uint64,
-				"Type" : ("Armpit", "Body", "Ear", "Finger",
-					"Intestines", "Mouth", "Rectum", "Toe",
-					"Tympanum"),
-				"Measurement" : ("Final" or "Intermediate"),
-			}
+			Measurement:
 
-			For special cases, the exponent shall always be zero and
-			the mantissa should be one of following values:
+				int16 Exponent:
+				int32 Mantissa:
 
-			NRes = -(2**23)
-			NaN = +(2**23-1)
-			INFINITY = (2**23-2)
-			-INFINITY = -(2**23-2)
+					Exponent and Mantissa values as
+					extracted from float value defined by
+					IEEE-11073-20601.
+
+					Measurement value is calculated as
+					(Mantissa) * (10^Exponent)
+
+					For special cases Exponent is set to 0
+					and Mantissa is set to one of following
+					values:
+
+					+(2^23 - 1)	NaN (invalid or missing data)
+					-(2^23)		NRes
+					+(2^23 - 2)	+Infinity
+					-(2^23 - 2)	-Infinity
+
+				string Unit:
+
+					Possible values: "Celsius" or "Fahrenheit"
+
+				uint64 Time (optional):
+
+					Time of measurement, if supported by device.
+					Expressed in seconds since epoch.
+
+				string Type (optional):
+
+					Only present if measurement type is known.
+
+					Possible values: "Armpit", "Body", "Ear",
+						"Finger", "Intestines", "Mouth",
+						"Rectum", "Toe", "Tympanum"
+
+				string Measurement:
+
+					Possible values: "Final" or "Intermediate"
