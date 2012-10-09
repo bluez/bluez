@@ -176,8 +176,7 @@ static void primary_by_uuid_cb(guint8 status, const guint8 *ipdu,
 	if (oplen == 0)
 		goto done;
 
-	g_attrib_send(dp->attrib, 0, buf[0], buf, oplen, primary_by_uuid_cb,
-								dp, NULL);
+	g_attrib_send(dp->attrib, 0, buf, oplen, primary_by_uuid_cb, dp, NULL);
 	return;
 
 done:
@@ -242,7 +241,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		guint16 oplen = encode_discover_primary(end + 1, 0xffff, NULL,
 								buf, buflen);
 
-		g_attrib_send(dp->attrib, 0, buf[0], buf, oplen, primary_all_cb,
+		g_attrib_send(dp->attrib, 0, buf, oplen, primary_all_cb,
 								dp, NULL);
 
 		return;
@@ -280,7 +279,7 @@ guint gatt_discover_primary(GAttrib *attrib, bt_uuid_t *uuid, gatt_cb_t func,
 	} else
 		cb = primary_all_cb;
 
-	return g_attrib_send(attrib, 0, buf[0], buf, plen, cb, dp, NULL);
+	return g_attrib_send(attrib, 0, buf, plen, cb, dp, NULL);
 }
 
 static void resolve_included_uuid_cb(uint8_t status, const uint8_t *pdu,
@@ -331,7 +330,7 @@ static guint resolve_included_uuid(struct included_discovery *isd,
 	query->isd = isd_ref(isd);
 	query->included = incl;
 
-	return g_attrib_send(isd->attrib, 0, buf[0], buf, oplen,
+	return g_attrib_send(isd->attrib, 0, buf, oplen,
 				resolve_included_uuid_cb, query, NULL);
 }
 
@@ -368,8 +367,8 @@ static guint find_included(struct included_discovery *isd, uint16_t start)
 	oplen = enc_read_by_type_req(start, isd->end_handle, &uuid,
 							buf, buflen);
 
-	return g_attrib_send(isd->attrib, 0, buf[0], buf, oplen,
-					find_included_cb, isd_ref(isd), NULL);
+	return g_attrib_send(isd->attrib, 0, buf, oplen, find_included_cb,
+							isd_ref(isd), NULL);
 }
 
 static void find_included_cb(uint8_t status, const uint8_t *pdu, uint16_t len,
@@ -506,8 +505,8 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		if (oplen == 0)
 			return;
 
-		g_attrib_send(dc->attrib, 0, buf[0], buf, oplen,
-						char_discovered_cb, dc, NULL);
+		g_attrib_send(dc->attrib, 0, buf, oplen, char_discovered_cb,
+								dc, NULL);
 
 		return;
 	}
@@ -545,7 +544,7 @@ guint gatt_discover_char(GAttrib *attrib, uint16_t start, uint16_t end,
 	dc->end = end;
 	dc->uuid = g_memdup(uuid, sizeof(bt_uuid_t));
 
-	return g_attrib_send(attrib, 0, buf[0], buf, plen, char_discovered_cb,
+	return g_attrib_send(attrib, 0, buf, plen, char_discovered_cb,
 								dc, NULL);
 }
 
@@ -561,8 +560,7 @@ guint gatt_read_char_by_uuid(GAttrib *attrib, uint16_t start, uint16_t end,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, 0, ATT_OP_READ_BY_TYPE_REQ,
-					buf, plen, func, user_data, NULL);
+	return g_attrib_send(attrib, 0, buf, plen, func, user_data, NULL);
 }
 
 struct read_long_data {
@@ -621,8 +619,7 @@ static void read_blob_helper(guint8 status, const guint8 *rpdu, guint16 rlen,
 
 	plen = enc_read_blob_req(long_read->handle, long_read->size - 1,
 								buf, buflen);
-	id = g_attrib_send(long_read->attrib, long_read->id,
-				ATT_OP_READ_BLOB_REQ, buf, plen,
+	id = g_attrib_send(long_read->attrib, long_read->id, buf, plen,
 				read_blob_helper, long_read, read_long_destroy);
 
 	if (id != 0) {
@@ -658,9 +655,8 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 	long_read->size = rlen;
 
 	plen = enc_read_blob_req(long_read->handle, rlen - 1, buf, buflen);
-	id = g_attrib_send(long_read->attrib, long_read->id,
-			ATT_OP_READ_BLOB_REQ, buf, plen, read_blob_helper,
-			long_read, read_long_destroy);
+	id = g_attrib_send(long_read->attrib, long_read->id, buf, plen,
+			read_blob_helper, long_read, read_long_destroy);
 
 	if (id != 0) {
 		g_atomic_int_inc(&long_read->ref);
@@ -694,9 +690,8 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
 	plen = enc_read_req(handle, buf, buflen);
-	id = g_attrib_send(attrib, 0, ATT_OP_READ_REQ, buf, plen,
-				read_char_helper, long_read, read_long_destroy);
-
+	id = g_attrib_send(attrib, 0, buf, plen, read_char_helper,
+						long_read, read_long_destroy);
 	if (id == 0)
 		g_free(long_read);
 	else {
@@ -729,8 +724,7 @@ static guint execute_write(GAttrib *attrib, uint8_t flags,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, 0, buf[0], buf, plen, func, user_data,
-									NULL);
+	return g_attrib_send(attrib, 0, buf, plen, func, user_data, NULL);
 }
 
 static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
@@ -779,7 +773,7 @@ static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, 0, buf[0], buf, plen, prepare_write_cb,
+	return g_attrib_send(attrib, 0, buf, plen, prepare_write_cb,
 							user_data, NULL);
 }
 
@@ -803,7 +797,7 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 			plen = enc_write_cmd(handle, value, vlen, buf,
 								buflen);
 
-		return g_attrib_send(attrib, 0, buf[0], buf, plen, func,
+		return g_attrib_send(attrib, 0, buf, plen, func,
 							user_data, NULL);
 	}
 
@@ -832,8 +826,7 @@ guint gatt_exchange_mtu(GAttrib *attrib, uint16_t mtu, GAttribResultFunc func,
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
 	plen = enc_mtu_req(mtu, buf, buflen);
-	return g_attrib_send(attrib, 0, ATT_OP_MTU_REQ, buf, plen, func,
-							user_data, NULL);
+	return g_attrib_send(attrib, 0, buf, plen, func, user_data, NULL);
 }
 
 guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
@@ -848,8 +841,7 @@ guint gatt_find_info(GAttrib *attrib, uint16_t start, uint16_t end,
 	if (plen == 0)
 		return 0;
 
-	return g_attrib_send(attrib, 0, ATT_OP_FIND_INFO_REQ, buf, plen, func,
-							user_data, NULL);
+	return g_attrib_send(attrib, 0, buf, plen, func, user_data, NULL);
 }
 
 guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
@@ -861,8 +853,7 @@ guint gatt_write_cmd(GAttrib *attrib, uint16_t handle, uint8_t *value, int vlen,
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
 	plen = enc_write_cmd(handle, value, vlen, buf, buflen);
-	return g_attrib_send(attrib, 0, ATT_OP_WRITE_CMD, buf, plen, NULL,
-							user_data, notify);
+	return g_attrib_send(attrib, 0, buf, plen, NULL, user_data, notify);
 }
 
 static sdp_data_t *proto_seq_find(sdp_list_t *proto_list)

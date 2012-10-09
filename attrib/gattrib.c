@@ -472,12 +472,13 @@ GAttrib *g_attrib_new(GIOChannel *io)
 	return g_attrib_ref(attrib);
 }
 
-guint g_attrib_send(GAttrib *attrib, guint id, guint8 opcode,
-			const guint8 *pdu, guint16 len, GAttribResultFunc func,
-			gpointer user_data, GDestroyNotify notify)
+guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
+			GAttribResultFunc func, gpointer user_data,
+			GDestroyNotify notify)
 {
 	struct command *c;
 	GQueue *queue;
+	uint8_t opcode;
 
 	if (attrib->stale)
 		return 0;
@@ -485,6 +486,8 @@ guint g_attrib_send(GAttrib *attrib, guint id, guint8 opcode,
 	c = g_try_new0(struct command, 1);
 	if (c == NULL)
 		return 0;
+
+	opcode = pdu[0];
 
 	c->opcode = opcode;
 	c->expected = opcode2expected(opcode);

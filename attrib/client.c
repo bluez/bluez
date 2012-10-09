@@ -354,8 +354,7 @@ static void events_handler(const uint8_t *pdu, uint16_t len,
 	case ATT_OP_HANDLE_IND:
 		opdu = g_attrib_get_buffer(gatt->attrib, &plen);
 		olen = enc_confirmation(opdu, plen);
-		g_attrib_send(gatt->attrib, 0, opdu[0], opdu, olen,
-						NULL, NULL, NULL);
+		g_attrib_send(gatt->attrib, 0, opdu, olen, NULL, NULL, NULL);
 	case ATT_OP_HANDLE_NOTIFY:
 		if (characteristic_set_value(chr, &pdu[3], len - 3) < 0)
 			DBG("Can't change Characteristic 0x%02x", handle);

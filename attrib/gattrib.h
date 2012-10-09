@@ -50,9 +50,9 @@ GIOChannel *g_attrib_get_channel(GAttrib *attrib);
 gboolean g_attrib_set_destroy_function(GAttrib *attrib,
 		GDestroyNotify destroy, gpointer user_data);
 
-guint g_attrib_send(GAttrib *attrib, guint id, guint8 opcode,
-			const guint8 *pdu, guint16 len, GAttribResultFunc func,
-			gpointer user_data, GDestroyNotify notify);
+guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
+			GAttribResultFunc func, gpointer user_data,
+			GDestroyNotify notify);
 
 gboolean g_attrib_cancel(GAttrib *attrib, guint id);
 gboolean g_attrib_cancel_all(GAttrib *attrib);

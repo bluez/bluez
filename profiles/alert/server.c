@@ -381,8 +381,7 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 					al_adapter->hnd_value[type],
 					al_adapter->hnd_ccc[type]);
 
-	g_attrib_send(attrib, 0, ATT_OP_HANDLE_NOTIFY, pdu, len,
-							NULL, NULL, NULL);
+	g_attrib_send(attrib, 0, pdu, len, NULL, NULL, NULL);
 
 end:
 	btd_device_remove_attio_callback(cb->device, cb->id);

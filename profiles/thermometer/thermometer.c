@@ -1167,8 +1167,7 @@ static void ind_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	olen = enc_confirmation(opdu, plen);
 
 	if (olen > 0)
-		g_attrib_send(t->attrib, 0, opdu[0], opdu, olen, NULL, NULL,
-									NULL);
+		g_attrib_send(t->attrib, 0, opdu, olen, NULL, NULL, NULL);
 }
 
 static void notif_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)

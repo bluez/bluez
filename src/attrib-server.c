@@ -1027,8 +1027,7 @@ done:
 		length = enc_error_resp(ipdu[0], 0x0000, status, opdu,
 								channel->mtu);
 
-	g_attrib_send(channel->attrib, 0, opdu[0], opdu, length,
-							NULL, NULL, NULL);
+	g_attrib_send(channel->attrib, 0, opdu, length, NULL, NULL, NULL);
 }
 
 guint attrib_channel_attach(GAttrib *attrib)
