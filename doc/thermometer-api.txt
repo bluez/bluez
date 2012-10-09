@@ -1,10 +1,47 @@
 BlueZ D-Bus Thermometer API description
-****************************************
+***************************************
 
 	Santiago Carot-Nemesio <sancane@gmail.com>
 
+Health Thermometer Manager hierarchy
+====================================
+
+Service		org.bluez
+Interface	org.bluez.ThermometerManager
+Object path	[variable prefix]/{hci0,hci1,...}
+
+Methods		RegisterWatcher(object agent)
+
+			Registers a watcher to monitor scanned measurements.
+			This agent will be notified about final temperature
+			measurements.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+		UnregisterWatcher(object agent)
+
+			Unregisters a watcher.
+
+		EnableIntermediateMeasurement(object agent)
+
+			Enables intermediate measurement notifications for this
+			agent. Intermediate measurements will be enabled only
+			for thermometers which support it.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+
+		DisableIntermediateMeasurement(object agent)
+
+			Disables intermediate measurement notifications for this
+			agent. It will disable notifications in thermometers
+			when the last agent removes the watcher for intermediate
+			measurements.
+
+			Possible Errors: org.bluez.Error.InvalidArguments
+					org.bluez.Error.NotFound
+
 Health Thermometer Profile hierarchy
-=====================================
+====================================
 
 Service		org.bluez
 Interface	org.bluez.Thermometer
@@ -23,42 +60,6 @@ Methods		void SetProperty(string name, variant value)
 
 			Returns all properties for the interface. See the
 			Properties section for the available properties.
-
-		RegisterWatcher(object agent)
-
-			Registers a watcher to monitor scanned measurements.
-			This agent will be notified about final temperature
-			measurements.
-
-			Possible Errors: org.bluez.Error.InvalidArguments
-
-		UnregisterWatcher(object agent)
-
-			Unregisters a watcher.
-
-			Final and intermediate temperatures won't be notified to
-			this agent any more.
-
-			Possible Errors: org.bluez.Error.InvalidArguments
-					org.bluez.Error.NotFound
-
-		EnableIntermediateMeasurement(object agent)
-
-			Enables intermediate measurement notifications for this
-			agent if the thermometer supports it.
-
-			Possible Errors: org.bluez.Error.InvalidArguments
-					org.bluez.Error.NotSupported
-
-		DisableIntermediateMeasurement(object agent)
-
-			Disables intermediate measurement notifications for this
-			agent. It will disable notifications in the thermometer
-			when the last agent removes the watcher for intermediate
-			measurements.
-
-			Possible Errors: org.bluez.Error.InvalidArguments
-					org.bluez.Error.NotFound
 
 Signals		PropertyChanged(string name, variant value)
 
@@ -91,6 +92,7 @@ Properties	boolean Intermediate [readonly]
 
 Health Thermometer Watcher hierarchy
 ====================================
+
 Service		unique name
 Interface	org.bluez.ThermometerWatcher
 Object path	freely definable
