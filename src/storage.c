@@ -435,23 +435,6 @@ done:
 	return 0;
 }
 
-int write_version_info(const bdaddr_t *local, const bdaddr_t *peer,
-					uint16_t manufacturer, uint8_t lmp_ver,
-					uint16_t lmp_subver)
-{
-	char filename[PATH_MAX + 1], addr[18], str[16];
-
-	memset(str, 0, sizeof(str));
-	sprintf(str, "%d %d %d", manufacturer, lmp_ver, lmp_subver);
-
-	create_filename(filename, PATH_MAX, local, "manufacturers");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(peer, addr);
-	return textfile_put(filename, addr, str);
-}
-
 int write_features_info(const bdaddr_t *local, const bdaddr_t *peer,
 				unsigned char *page1, unsigned char *page2)
 {
