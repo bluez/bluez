@@ -634,7 +634,7 @@ static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
-static void write_interval_cb (guint8 status, const guint8 *pdu, guint16 len,
+static void write_interval_cb(guint8 status, const guint8 *pdu, guint16 len,
 							gpointer user_data)
 {
 	struct tmp_interval_data *data = user_data;
