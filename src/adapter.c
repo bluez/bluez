@@ -278,8 +278,7 @@ static struct session_req *find_session_by_msg(GSList *list, const DBusMessage *
 	return NULL;
 }
 
-static int set_mode(struct btd_adapter *adapter, uint8_t new_mode,
-			DBusMessage *msg)
+static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 {
 	int err;
 	const char *modestr;
@@ -319,22 +318,25 @@ done:
 
 	DBG("%s", modestr);
 
-	if (msg != NULL) {
-		struct session_req *req;
-
-		req = find_session_by_msg(adapter->mode_sessions, msg);
-		if (req) {
-			adapter->pending_mode = req;
-			session_ref(req);
-		} else
-			/* Wait for mode change to reply */
-			adapter->pending_mode = create_session(adapter, msg,
-								new_mode, NULL);
-	} else
-		/* Nothing to reply just write the new mode */
-		adapter->mode = new_mode;
-
 	return 0;
+}
+
+static void set_pending_mode(struct btd_adapter *adapter, uint8_t new_mode,
+							DBusMessage *msg)
+{
+	struct session_req *req;
+
+	/*
+	 * Schedule the reply to be sent when a mode-change notification
+	 * arrives. The reply will be sent by set_mode_complete().
+	 */
+	req = find_session_by_msg(adapter->mode_sessions, msg);
+	if (req) {
+		adapter->pending_mode = req;
+		session_ref(req);
+	} else
+		adapter->pending_mode = create_session(adapter, msg, new_mode,
+									NULL);
 }
 
 static DBusMessage *set_discoverable(DBusMessage *msg,
@@ -351,9 +353,11 @@ static DBusMessage *set_discoverable(DBusMessage *msg,
 		return dbus_message_new_method_return(msg);
 	}
 
-	err = set_mode(adapter, mode, msg);
+	err = set_mode(adapter, mode);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
+
+	set_pending_mode(adapter, mode, msg);
 
 	return NULL;
 }
@@ -376,9 +380,11 @@ static DBusMessage *set_powered(DBusMessage *msg, gboolean powered, void *data)
 		return dbus_message_new_method_return(msg);
 	}
 
-	err = set_mode(adapter, mode, msg);
+	err = set_mode(adapter, mode);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
+
+	set_pending_mode(adapter, mode, msg);
 
 	return NULL;
 }
@@ -398,7 +404,7 @@ static DBusMessage *set_pairable(DBusMessage *msg,
 	if (!(adapter->scan_mode & SCAN_INQUIRY))
 		goto store;
 
-	err = set_mode(adapter, MODE_DISCOVERABLE, NULL);
+	err = set_mode(adapter, MODE_DISCOVERABLE);
 	if (err < 0 && msg)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -549,7 +555,7 @@ static void session_remove(struct session_req *req)
 
 		DBG("Switching to '%s' mode", mode2str(mode));
 
-		set_mode(adapter, mode, NULL);
+		set_mode(adapter, mode);
 	} else {
 		adapter->disc_sessions = g_slist_remove(adapter->disc_sessions,
 							req);
@@ -620,28 +626,26 @@ static void confirm_mode_cb(struct agent *agent, DBusError *derr, void *data)
 		return;
 	}
 
-	err = set_mode(req->adapter, req->mode, req->msg);
-	if (err < 0)
-		reply = btd_error_failed(req->msg, strerror(-err));
-	else if (!req->adapter->pending_mode)
-		reply = dbus_message_new_method_return(req->msg);
-	else
-		reply = NULL;
-
-	if (reply) {
-		/*
-		 * Send reply immediately only if there was an error changing
-		 * mode, or change is not needed. Otherwise, reply is sent in
-		 * set_mode_complete.
-		 */
-		g_dbus_send_message(conn, reply);
-
-		dbus_message_unref(req->msg);
-		req->msg = NULL;
+	err = set_mode(req->adapter, req->mode);
+	if (err >= 0 && req->adapter->mode != req->mode) {
+		set_pending_mode(req->adapter, req->mode, req->msg);
+		goto done;
 	}
 
-	if (!find_session(req->adapter->mode_sessions, req->owner))
-		session_unref(req);
+	if (err < 0)
+		reply = btd_error_failed(req->msg, strerror(-err));
+	else
+		reply = dbus_message_new_method_return(req->msg);
+
+	/*
+	 * Send reply immediately only if there was an error changing mode, or
+	 * change is not needed. Otherwise, reply is sent in
+	 * set_mode_complete.
+	 */
+	g_dbus_send_message(conn, reply);
+
+done:
+	session_unref(req);
 }
 
 static void set_discoverable_timeout(struct btd_adapter *adapter,
