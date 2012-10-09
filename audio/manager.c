@@ -1093,7 +1093,8 @@ static struct btd_profile gateway_profile = {
 static struct btd_profile a2dp_profile = {
 	.name		= "audio-a2dp",
 
-	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID, A2DP_SINK_UUID),
+	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID, A2DP_SINK_UUID,
+							ADVANCED_AUDIO_UUID),
 	.device_probe	= a2dp_probe,
 	.device_remove	= audio_remove,
 
