@@ -335,8 +335,9 @@ static void change_property(struct thermometer *t, const char *name,
 		emit_property_changed(device_get_path(t->dev),
 					THERMOMETER_INTERFACE, name,
 					DBUS_TYPE_UINT16, &t->min);
-	} else
+	} else {
 		DBG("%s is not a thermometer property", name);
+	}
 }
 
 static void valid_range_desc_cb(guint8 status, const guint8 *pdu, guint16 len,
@@ -421,8 +422,9 @@ static void process_thermometer_desc(struct descriptor *desc)
 			val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
 			msg = g_strdup("Enable Measurement Interval "
 								"indication");
-		} else
+		} else {
 			goto done;
+		}
 
 		att_put_u16(val, atval);
 		gatt_write_char(ch->t->attrib, desc->handle, atval, 2,
@@ -548,12 +550,13 @@ static void process_thermometer_char(struct characteristic *ch)
 		gboolean intermediate = TRUE;
 		change_property(ch->t, "Intermediate", &intermediate);
 		return;
-	} else if (g_strcmp0(ch->attr.uuid, TEMPERATURE_TYPE_UUID) == 0)
+	} else if (g_strcmp0(ch->attr.uuid, TEMPERATURE_TYPE_UUID) == 0) {
 		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_temp_type_cb, ch);
-	else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0)
+	} else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0) {
 		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_interval_cb, ch);
+	}
 }
 
 static void configure_thermometer_cb(GSList *characteristics, guint8 status,
@@ -591,10 +594,11 @@ static void configure_thermometer_cb(GSList *characteristics, guint8 status,
 			if (start == c->handle)
 				continue;
 			end = c->handle - 1;
-		} else if (c->value_handle != t->svc_range->end)
+		} else if (c->value_handle != t->svc_range->end) {
 			end = t->svc_range->end;
-		else
+		} else {
 			continue;
+		}
 
 		gatt_find_info(t->attrib, start, end, discover_desc_cb, ch);
 	}
