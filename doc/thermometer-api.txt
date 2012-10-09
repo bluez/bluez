@@ -125,7 +125,7 @@ Methods		void MeasurementReceived(dict measurement)
 
 				string Unit:
 
-					Possible values: "Celsius" or "Fahrenheit"
+					Possible values: "celsius" or "fahrenheit"
 
 				uint64 Time (optional):
 
@@ -136,10 +136,10 @@ Methods		void MeasurementReceived(dict measurement)
 
 					Only present if measurement type is known.
 
-					Possible values: "Armpit", "Body", "Ear",
-						"Finger", "Intestines", "Mouth",
-						"Rectum", "Toe", "Tympanum"
+					Possible values: "armpit", "body", "ear",
+						"finger", "intestines", "mouth",
+						"rectum", "toe", "tympanum"
 
 				string Measurement:
 
-					Possible values: "Final" or "Intermediate"
+					Possible values: "final" or "intermediate"

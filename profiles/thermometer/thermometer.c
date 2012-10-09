@@ -120,15 +120,15 @@ static GSList *thermometer_adapters = NULL;
 
 const char *temp_type[] = {
 	"<reserved>",
-	"Armpit",
-	"Body",
-	"Ear",
-	"Finger",
-	"Intestines",
-	"Mouth",
-	"Rectum",
-	"Toe",
-	"Tympanum"
+	"armpit",
+	"body",
+	"ear",
+	"finger",
+	"intestines",
+	"mouth",
+	"rectum",
+	"toe",
+	"tympanum"
 };
 
 static const gchar *temptype2str(uint8_t value)
@@ -1070,7 +1070,7 @@ static void recv_measurement(struct thermometer *t, struct measurement *m)
 
 	m->t = t;
 
-	if (g_strcmp0(m->value, "Intermediate") == 0)
+	if (g_strcmp0(m->value, "intermediate") == 0)
 		wlist = t->tadapter->iwatchers;
 	else
 		wlist = t->tadapter->fwatchers;
@@ -1093,9 +1093,9 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 
 	flags = pdu[3];
 	if (flags & TEMP_UNITS)
-		m.unit = "Fahrenheit";
+		m.unit = "fahrenheit";
 	else
-		m.unit = "Celsius";
+		m.unit = "celsius";
 
 	if (len < 8) {
 		DBG("Temperature measurement value is not provided");
@@ -1153,7 +1153,7 @@ static void proc_measurement(struct thermometer *t, const uint8_t *pdu,
 		type = NULL;
 
 	m.type = type ? g_strdup(type) : NULL;
-	m.value = final ? "Final" : "Intermediate";
+	m.value = final ? "final" : "intermediate";
 
 	recv_measurement(t, &m);
 	g_free(m.type);
