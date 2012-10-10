@@ -3032,7 +3032,7 @@ void adapter_emit_device_found(struct btd_adapter *adapter,
 static struct remote_dev_info *found_device_new(const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, const char *name,
 					const char *alias, uint32_t class,
-					gboolean legacy, int flags)
+					bool legacy, int flags)
 {
 	struct remote_dev_info *dev;
 
@@ -3145,7 +3145,7 @@ static gboolean connect_pending_cb(gpointer user_data)
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					bool confirm_name, gboolean legacy,
+					bool confirm_name, bool legacy,
 					uint8_t *data, uint8_t data_len)
 {
 	struct remote_dev_info *dev;

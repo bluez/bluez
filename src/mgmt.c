@@ -1635,7 +1635,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	uint16_t eir_len;
 	uint8_t *eir;
 	bool confirm_name;
-	gboolean legacy;
+	bool legacy;
 
 	if (len < sizeof(*ev)) {
 		error("mgmt_device_found too short (%zu bytes)", len);
@@ -1668,7 +1668,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 			index, addr, ev->rssi, flags, eir_len);
 
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
-	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING) ? TRUE : FALSE;
+	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 
 	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
 						ev->addr.type,
