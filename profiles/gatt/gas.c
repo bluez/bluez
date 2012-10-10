@@ -166,6 +166,36 @@ done:
 	att_data_list_free(list);
 }
 
+static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
+{
+	struct gas *gas = user_data;
+	uint16_t start, end, olen;
+	size_t plen;
+	uint8_t *opdu;
+
+	if (len < 7) { /* 1-byte opcode + 2-byte handle + 4 range */
+		error("Malformed ATT notification");
+		return;
+	}
+
+	start = att_get_u16(&pdu[3]);
+	end = att_get_u16(&pdu[5]);
+
+	DBG("Service Changed start: 0x%04X end: 0x%04X", start, end);
+
+	if (device_is_bonded(gas->device) == FALSE) {
+		DBG("Ignoring Service Changed: device is not bonded");
+		return;
+	}
+
+	/* Confirming indication received */
+	opdu = g_attrib_get_buffer(gas->attrib, &plen);
+	olen = enc_confirmation(opdu, plen);
+	g_attrib_send(gas->attrib, 0, opdu, olen, NULL, NULL, NULL);
+
+	btd_device_gatt_set_service_changed(gas->device, start, end);
+}
+
 static void ccc_written_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
@@ -178,6 +208,10 @@ static void ccc_written_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	}
 
 	DBG("Service Changed indications enabled");
+
+	gas->changed_ind = g_attrib_register(gas->attrib, ATT_OP_HANDLE_IND,
+						gas->changed_handle,
+						indication_cb, gas, NULL);
 
 	write_ctp_handle(adapter_get_address(device_get_adapter(gas->device)),
 					device_get_address(gas->device),
@@ -193,40 +227,6 @@ static void write_ccc(GAttrib *attrib, uint16_t handle, gpointer user_data)
 	att_put_u16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
 	gatt_write_char(attrib, handle, value, sizeof(value), ccc_written_cb,
 								user_data);
-}
-
-static void indication_cb(const uint8_t *pdu, uint16_t len, gpointer user_data)
-{
-	struct gas *gas = user_data;
-	uint16_t handle, start, end, olen;
-	size_t plen;
-	uint8_t *opdu;
-
-	if (len < 7) { /* 1-byte opcode + 2-byte handle + 4 range */
-		error("Malformed ATT notification");
-		return;
-	}
-
-	handle = att_get_u16(&pdu[1]);
-	start = att_get_u16(&pdu[3]);
-	end = att_get_u16(&pdu[5]);
-
-	if (handle != gas->changed_handle)
-		return;
-
-	DBG("Service Changed start: 0x%04X end: 0x%04X", start, end);
-
-	if (device_is_bonded(gas->device) == FALSE) {
-		DBG("Ignoring Service Changed: device is not bonded");
-		return;
-	}
-
-	/* Confirming indication received */
-	opdu = g_attrib_get_buffer(gas->attrib, &plen);
-	olen = enc_confirmation(opdu, plen);
-	g_attrib_send(gas->attrib, 0, opdu, olen, NULL, NULL, NULL);
-
-	btd_device_gatt_set_service_changed(gas->device, start, end);
 }
 
 static void gatt_descriptors_cb(guint8 status, const guint8 *pdu, guint16 len,
@@ -332,10 +332,6 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 		gas->mtu = imtu;
 		DBG("MTU Exchange: Requesting %d", imtu);
 	}
-
-	gas->changed_ind = g_attrib_register(gas->attrib, ATT_OP_HANDLE_IND,
-						GATTRIB_ALL_HANDLES,
-						indication_cb, gas, NULL);
 
 	if (device_get_appearance(gas->device, &app) < 0) {
 		bt_uuid_t uuid;
