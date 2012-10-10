@@ -353,24 +353,25 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	struct notify_data *nd = cb->notify_data;
 	enum notify_type type = nd->type;
 	struct alert_adapter *al_adapter = nd->al_adapter;
-	uint8_t pdu[ATT_MAX_MTU];
-	size_t len = 0;
+	size_t len;
+	uint8_t *pdu = g_attrib_get_buffer(attrib, &len);
+
 
 	switch (type) {
 	case NOTIFY_RINGER_SETTING:
 		len = enc_notification(al_adapter->hnd_value[type],
 				&ringer_setting, sizeof(ringer_setting),
-				pdu, sizeof(pdu));
+				pdu, len);
 		break;
 	case NOTIFY_ALERT_STATUS:
 		len = enc_notification(al_adapter->hnd_value[type],
 				&alert_status, sizeof(alert_status),
-				pdu, sizeof(pdu));
+				pdu, len);
 		break;
 	case NOTIFY_NEW_ALERT:
 	case NOTIFY_UNREAD_ALERT:
 		len = enc_notification(al_adapter->hnd_value[type],
-					nd->value, nd->len, pdu, sizeof(pdu));
+					nd->value, nd->len, pdu, len);
 		break;
 	default:
 		DBG("Unknown type, could not send notification");

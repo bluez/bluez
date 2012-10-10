@@ -309,7 +309,7 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 							gpointer user_data)
 {
-	uint8_t value[ATT_MAX_MTU];
+	uint8_t value[plen];
 	ssize_t vlen;
 	int i;
 

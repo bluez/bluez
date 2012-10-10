@@ -907,11 +907,12 @@ static void channel_handler(const uint8_t *ipdu, uint16_t len,
 							gpointer user_data)
 {
 	struct gatt_channel *channel = user_data;
-	uint8_t opdu[channel->mtu], value[ATT_MAX_MTU];
+	uint8_t opdu[channel->mtu];
 	uint16_t length, start, end, mtu, offset;
 	bt_uuid_t uuid;
 	uint8_t status = 0;
 	size_t vlen;
+	uint8_t *value = g_attrib_get_buffer(channel->attrib, &vlen);
 
 	DBG("op 0x%02x", ipdu[0]);
 
