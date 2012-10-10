@@ -111,10 +111,10 @@ static gboolean listen_start(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, events_handler,
-							attrib, NULL);
-	g_attrib_register(attrib, ATT_OP_HANDLE_IND, events_handler,
-							attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, GATTRIB_ALL_HANDLES,
+						events_handler, attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_IND, GATTRIB_ALL_HANDLES,
+						events_handler, attrib, NULL);
 
 	return FALSE;
 }

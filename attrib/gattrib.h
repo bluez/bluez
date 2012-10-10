@@ -30,6 +30,7 @@ extern "C" {
 
 #define GATTRIB_ALL_EVENTS 0xFF
 #define GATTRIB_ALL_REQS 0xFE
+#define GATTRIB_ALL_HANDLES 0x0000
 
 struct _GAttrib;
 typedef struct _GAttrib GAttrib;
@@ -60,9 +61,9 @@ gboolean g_attrib_cancel_all(GAttrib *attrib);
 gboolean g_attrib_set_debug(GAttrib *attrib,
 		GAttribDebugFunc func, gpointer user_data);
 
-guint g_attrib_register(GAttrib *attrib, guint8 opcode,
-		GAttribNotifyFunc func, gpointer user_data,
-					GDestroyNotify notify);
+guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
+				GAttribNotifyFunc func, gpointer user_data,
+				GDestroyNotify notify);
 
 gboolean g_attrib_is_encrypted(GAttrib *attrib);
 

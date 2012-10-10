@@ -544,7 +544,7 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	hr->attrib = g_attrib_ref(attrib);
 
 	hr->attionotid = g_attrib_register(hr->attrib, ATT_OP_HANDLE_NOTIFY,
-						notify_handler, hr, NULL);
+				GATTRIB_ALL_HANDLES, notify_handler, hr, NULL);
 
 	gatt_discover_char(hr->attrib, hr->svc_range->start, hr->svc_range->end,
 						NULL, discover_char_cb, hr);

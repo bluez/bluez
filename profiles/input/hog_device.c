@@ -612,8 +612,9 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	hogdev->attrib = g_attrib_ref(attrib);
 
 	hogdev->report_cb_id = g_attrib_register(hogdev->attrib,
-					ATT_OP_HANDLE_NOTIFY, report_value_cb,
-					hogdev, NULL);
+					ATT_OP_HANDLE_NOTIFY,
+					GATTRIB_ALL_HANDLES,
+					report_value_cb, hogdev, NULL);
 
 	if (hogdev->reports == NULL) {
 		gatt_discover_char(hogdev->attrib, prim->range.start,

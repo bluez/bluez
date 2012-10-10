@@ -70,6 +70,7 @@ struct command {
 struct event {
 	guint id;
 	guint8 expected;
+	guint16 handle;
 	GAttribNotifyFunc func;
 	gpointer user_data;
 	GDestroyNotify notify;
@@ -357,6 +358,30 @@ static void wake_up_sender(struct _GAttrib *attrib)
 				can_write_data, attrib, destroy_sender);
 }
 
+static gboolean match_event(struct event *evt, const uint8_t *pdu, gsize len)
+{
+	guint16 handle;
+
+	if (evt->expected == GATTRIB_ALL_EVENTS)
+		return TRUE;
+
+	if (is_response(pdu[0]) == FALSE && evt->expected == GATTRIB_ALL_REQS)
+		return TRUE;
+
+	if (evt->expected == pdu[0] && evt->handle == GATTRIB_ALL_HANDLES)
+		return TRUE;
+
+	if (len < 3)
+		return FALSE;
+
+	handle = att_get_u16(&pdu[1]);
+
+	if (evt->expected == pdu[0] && evt->handle == handle)
+		return TRUE;
+
+	return FALSE;
+}
+
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 {
 	struct _GAttrib *attrib = data;
@@ -387,10 +412,7 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	for (l = attrib->events; l; l = l->next) {
 		struct event *evt = l->data;
 
-		if (evt->expected == buf[0] ||
-				evt->expected == GATTRIB_ALL_EVENTS ||
-				(is_response(buf[0]) == FALSE &&
-						evt->expected == GATTRIB_ALL_REQS))
+		if (match_event(evt, buf, len))
 			evt->func(buf, len, evt->user_data);
 	}
 
@@ -645,7 +667,7 @@ gboolean g_attrib_set_mtu(GAttrib *attrib, int mtu)
 	return TRUE;
 }
 
-guint g_attrib_register(GAttrib *attrib, guint8 opcode,
+guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 				GAttribNotifyFunc func, gpointer user_data,
 				GDestroyNotify notify)
 {
@@ -657,6 +679,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode,
 		return 0;
 
 	event->expected = opcode;
+	event->handle = handle;
 	event->func = func;
 	event->user_data = user_data;
 	event->notify = notify;

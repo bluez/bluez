@@ -1191,8 +1191,10 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	t->attrib = g_attrib_ref(attrib);
 
 	t->attindid = g_attrib_register(t->attrib, ATT_OP_HANDLE_IND,
+							GATTRIB_ALL_HANDLES,
 							ind_handler, t, NULL);
 	t->attnotid = g_attrib_register(t->attrib, ATT_OP_HANDLE_NOTIFY,
+							GATTRIB_ALL_HANDLES,
 							notif_handler, t, NULL);
 	gatt_discover_char(t->attrib, t->svc_range->start, t->svc_range->end,
 					NULL, configure_thermometer_cb, t);

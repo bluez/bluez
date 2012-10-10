@@ -393,9 +393,9 @@ static void attio_connected(GAttrib *attrib, gpointer user_data)
 	gatt->attrib = g_attrib_ref(attrib);
 
 	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_NOTIFY,
-					events_handler, gatt, NULL);
+			GATTRIB_ALL_HANDLES, events_handler, gatt, NULL);
 	g_attrib_register(gatt->attrib, ATT_OP_HANDLE_IND,
-					events_handler, gatt, NULL);
+			GATTRIB_ALL_HANDLES, events_handler, gatt, NULL);
 
 	g_slist_foreach(gatt->offline_chars, offline_char_write, attrib);
 

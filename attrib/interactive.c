@@ -147,10 +147,10 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	}
 
 	attrib = g_attrib_new(iochannel);
-	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, events_handler,
-							attrib, NULL);
-	g_attrib_register(attrib, ATT_OP_HANDLE_IND, events_handler,
-							attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_NOTIFY, GATTRIB_ALL_HANDLES,
+						events_handler, attrib, NULL);
+	g_attrib_register(attrib, ATT_OP_HANDLE_IND, GATTRIB_ALL_HANDLES,
+						events_handler, attrib, NULL);
 	set_state(STATE_CONNECTED);
 }
 

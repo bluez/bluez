@@ -115,8 +115,8 @@ static void ccc_written_cb(guint8 status, const guint8 *pdu,
 	DBG("Scan Refresh: notification enabled");
 
 	scan->refresh_cb_id = g_attrib_register(scan->attrib,
-					ATT_OP_HANDLE_NOTIFY, refresh_value_cb,
-					user_data, NULL);
+				ATT_OP_HANDLE_NOTIFY, GATTRIB_ALL_HANDLES,
+				refresh_value_cb, user_data, NULL);
 }
 
 static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
