@@ -101,6 +101,9 @@ struct att_data_list *att_data_list_alloc(uint16_t num, uint16_t len)
 	struct att_data_list *list;
 	int i;
 
+	if (len > UINT8_MAX)
+		return NULL;
+
 	list = g_new0(struct att_data_list, 1);
 	list->len = len;
 	list->num = num;
