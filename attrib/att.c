@@ -211,6 +211,8 @@ struct att_data_list *dec_read_by_grp_resp(const uint8_t *pdu, size_t len)
 	elen = pdu[1];
 	num = (len - 2) / elen;
 	list = att_data_list_alloc(num, elen);
+	if (list == NULL)
+		return NULL;
 
 	ptr = &pdu[2];
 
@@ -441,6 +443,8 @@ struct att_data_list *dec_read_by_type_resp(const uint8_t *pdu, size_t len)
 	elen = pdu[1];
 	num = (len - 2) / elen;
 	list = att_data_list_alloc(num, elen);
+	if (list == NULL)
+		return NULL;
 
 	ptr = &pdu[2];
 
@@ -825,6 +829,8 @@ struct att_data_list *dec_find_info_resp(const uint8_t *pdu, size_t len,
 	ptr = (void *) &pdu[2];
 
 	list = att_data_list_alloc(num, elen);
+	if (list == NULL)
+		return NULL;
 
 	for (i = 0; i < num; i++) {
 		memcpy(list->data[i], ptr, list->len);
