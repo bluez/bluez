@@ -260,145 +260,6 @@ static void char_write_cb(guint8 status, const guint8 *pdu, guint16 len,
 	g_free(msg);
 }
 
-static void discover_ccc_cb(guint8 status, const guint8 *pdu,
-						guint16 len, gpointer user_data)
-{
-	struct heartrate *hr = user_data;
-	struct att_data_list *list;
-	uint8_t format;
-	int i;
-
-	if (status != 0) {
-		error("Discover Heart Rate Measurement descriptors failed: %s",
-							att_ecode2str(status));
-		return;
-	}
-
-	list = dec_find_info_resp(pdu, len, &format);
-	if (list == NULL)
-		return;
-
-	if (format != ATT_FIND_INFO_RESP_FMT_16BIT)
-		goto done;
-
-	for (i = 0; i < list->num; i++) {
-		uint8_t *value;
-		uint16_t handle, uuid;
-
-		value = list->data[i];
-		handle = att_get_u16(value);
-		uuid = att_get_u16(value + 2);
-
-		if (uuid == GATT_CLIENT_CHARAC_CFG_UUID) {
-			uint8_t value[2];
-			char *msg;
-
-			hr->measurement_ccc_handle = handle;
-
-			if (g_slist_length(hr->hradapter->watchers) == 0)
-				break;
-
-			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
-			msg = g_strdup("Enable measurement");
-
-			gatt_write_char(hr->attrib, handle, value,
-					sizeof(value), char_write_cb, msg);
-
-			break;
-		}
-	}
-
-done:
-	att_data_list_free(list);
-}
-
-static void discover_measurement_ccc(struct heartrate *hr,
-				struct gatt_char *c, struct gatt_char *c_next)
-{
-	uint16_t start, end;
-
-	start = c->value_handle + 1;
-
-	if (c_next != NULL) {
-		if (start == c_next->handle)
-			return;
-		end = c_next->handle - 1;
-	} else if (c->value_handle != hr->svc_range->end) {
-		end = hr->svc_range->end;
-	} else {
-		return;
-	}
-
-	gatt_find_info(hr->attrib, start, end, discover_ccc_cb, hr);
-}
-
-static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
-{
-	struct heartrate *hr = user_data;
-
-	if (status) {
-		error("Discover HRS characteristics failed: %s",
-							att_ecode2str(status));
-		return;
-	}
-
-	for (; chars; chars = chars->next) {
-		struct gatt_char *c = chars->data;
-
-		if (g_strcmp0(c->uuid, HEART_RATE_MEASUREMENT_UUID) == 0) {
-			struct gatt_char *c_next =
-				(chars->next ? chars->next->data : NULL);
-
-			hr->measurement_val_handle = c->value_handle;
-
-			discover_measurement_ccc(hr, c, c_next);
-		} else if (g_strcmp0(c->uuid, BODY_SENSOR_LOCATION_UUID) == 0) {
-			DBG("Body Sensor Location supported");
-
-			gatt_read_char(hr->attrib, c->value_handle,
-						read_sensor_location_cb, hr);
-		} else if (g_strcmp0(c->uuid,
-					HEART_RATE_CONTROL_POINT_UUID) == 0) {
-			DBG("Heart Rate Control Point supported");
-			hr->hrcp_val_handle = c->value_handle;
-		}
-	}
-}
-
-static void enable_measurement(gpointer data, gpointer user_data)
-{
-	struct heartrate *hr = data;
-	uint16_t handle = hr->measurement_ccc_handle;
-	uint8_t value[2];
-	char *msg;
-
-	if (hr->attrib == NULL || !handle)
-		return;
-
-	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
-	msg = g_strdup("Enable measurement");
-
-	gatt_write_char(hr->attrib, handle, value, sizeof(value),
-							char_write_cb, msg);
-}
-
-static void disable_measurement(gpointer data, gpointer user_data)
-{
-	struct heartrate *hr = data;
-	uint16_t handle = hr->measurement_ccc_handle;
-	uint8_t value[2];
-	char *msg;
-
-	if (hr->attrib == NULL || !handle)
-		return;
-
-	att_put_u16(0x0000, value);
-	msg = g_strdup("Disable measurement");
-
-	gatt_write_char(hr->attrib, handle, value, sizeof(value),
-							char_write_cb, msg);
-}
-
 static void update_watcher(gpointer data, gpointer user_data)
 {
 	struct watcher *w = data;
@@ -518,7 +379,6 @@ static void process_measurement(struct heartrate *hr, const uint8_t *pdu,
 static void notify_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 {
 	struct heartrate *hr = user_data;
-	uint16_t handle;
 
 	/* should be at least opcode (1b) + handle (2b) */
 	if (len < 3) {
@@ -526,13 +386,159 @@ static void notify_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 		return;
 	}
 
-	handle = att_get_u16(pdu + 1);
-	if (handle != hr->measurement_val_handle) {
-		error("Unexpected handle: 0x%04x", handle);
+	process_measurement(hr, pdu + 3, len - 3);
+}
+
+static void ccc_write_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
+{
+	struct heartrate *hr = user_data;
+
+	if (status != 0) {
+		error("Enable measurement failed");
 		return;
 	}
 
-	process_measurement(hr, pdu + 3, len - 3);
+	hr->attionotid = g_attrib_register(hr->attrib, ATT_OP_HANDLE_NOTIFY,
+						hr->measurement_val_handle,
+						notify_handler, hr, NULL);
+}
+
+static void discover_ccc_cb(guint8 status, const guint8 *pdu,
+						guint16 len, gpointer user_data)
+{
+	struct heartrate *hr = user_data;
+	struct att_data_list *list;
+	uint8_t format;
+	int i;
+
+	if (status != 0) {
+		error("Discover Heart Rate Measurement descriptors failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	list = dec_find_info_resp(pdu, len, &format);
+	if (list == NULL)
+		return;
+
+	if (format != ATT_FIND_INFO_RESP_FMT_16BIT)
+		goto done;
+
+	for (i = 0; i < list->num; i++) {
+		uint8_t *value;
+		uint16_t handle, uuid;
+
+		value = list->data[i];
+		handle = att_get_u16(value);
+		uuid = att_get_u16(value + 2);
+
+		if (uuid == GATT_CLIENT_CHARAC_CFG_UUID) {
+			uint8_t value[2];
+
+			hr->measurement_ccc_handle = handle;
+
+			if (g_slist_length(hr->hradapter->watchers) == 0)
+				break;
+
+			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+
+			gatt_write_char(hr->attrib, handle, value,
+					sizeof(value), ccc_write_cb, hr);
+
+			break;
+		}
+	}
+
+done:
+	att_data_list_free(list);
+}
+
+static void discover_measurement_ccc(struct heartrate *hr,
+				struct gatt_char *c, struct gatt_char *c_next)
+{
+	uint16_t start, end;
+
+	start = c->value_handle + 1;
+
+	if (c_next != NULL) {
+		if (start == c_next->handle)
+			return;
+		end = c_next->handle - 1;
+	} else if (c->value_handle != hr->svc_range->end) {
+		end = hr->svc_range->end;
+	} else {
+		return;
+	}
+
+	gatt_find_info(hr->attrib, start, end, discover_ccc_cb, hr);
+}
+
+static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
+{
+	struct heartrate *hr = user_data;
+
+	if (status) {
+		error("Discover HRS characteristics failed: %s",
+							att_ecode2str(status));
+		return;
+	}
+
+	for (; chars; chars = chars->next) {
+		struct gatt_char *c = chars->data;
+
+		if (g_strcmp0(c->uuid, HEART_RATE_MEASUREMENT_UUID) == 0) {
+			struct gatt_char *c_next =
+				(chars->next ? chars->next->data : NULL);
+
+			hr->measurement_val_handle = c->value_handle;
+
+			discover_measurement_ccc(hr, c, c_next);
+		} else if (g_strcmp0(c->uuid, BODY_SENSOR_LOCATION_UUID) == 0) {
+			DBG("Body Sensor Location supported");
+
+			gatt_read_char(hr->attrib, c->value_handle,
+						read_sensor_location_cb, hr);
+		} else if (g_strcmp0(c->uuid,
+					HEART_RATE_CONTROL_POINT_UUID) == 0) {
+			DBG("Heart Rate Control Point supported");
+			hr->hrcp_val_handle = c->value_handle;
+		}
+	}
+}
+
+static void enable_measurement(gpointer data, gpointer user_data)
+{
+	struct heartrate *hr = data;
+	uint16_t handle = hr->measurement_ccc_handle;
+	uint8_t value[2];
+	char *msg;
+
+	if (hr->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	msg = g_strdup("Enable measurement");
+
+	gatt_write_char(hr->attrib, handle, value, sizeof(value),
+							char_write_cb, msg);
+}
+
+static void disable_measurement(gpointer data, gpointer user_data)
+{
+	struct heartrate *hr = data;
+	uint16_t handle = hr->measurement_ccc_handle;
+	uint8_t value[2];
+	char *msg;
+
+	if (hr->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(0x0000, value);
+	msg = g_strdup("Disable measurement");
+
+	gatt_write_char(hr->attrib, handle, value, sizeof(value),
+							char_write_cb, msg);
 }
 
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
@@ -542,9 +548,6 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	DBG("");
 
 	hr->attrib = g_attrib_ref(attrib);
-
-	hr->attionotid = g_attrib_register(hr->attrib, ATT_OP_HANDLE_NOTIFY,
-				GATTRIB_ALL_HANDLES, notify_handler, hr, NULL);
 
 	gatt_discover_char(hr->attrib, hr->svc_range->start, hr->svc_range->end,
 						NULL, discover_char_cb, hr);
