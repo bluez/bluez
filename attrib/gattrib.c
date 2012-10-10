@@ -313,8 +313,14 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 
 	iostat = g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len,
 								&len, &gerr);
-	if (iostat != G_IO_STATUS_NORMAL)
+	if (iostat != G_IO_STATUS_NORMAL) {
+		if (gerr) {
+			error("%s", gerr->message);
+			g_error_free(gerr);
+		}
+
 		return FALSE;
+	}
 
 	if (cmd->expected == 0) {
 		g_queue_pop_head(queue);
