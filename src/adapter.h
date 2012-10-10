@@ -28,6 +28,7 @@
 #include <bluetooth/hci_lib.h>
 #include <dbus/dbus.h>
 #include <glib.h>
+#include <stdbool.h>
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter"
 
@@ -128,7 +129,7 @@ struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					uint8_t confirm_name, gboolean legacy,
+					bool confirm_name, gboolean legacy,
 					uint8_t *data, uint8_t data_len);
 void adapter_emit_device_found(struct btd_adapter *adapter,
 						struct remote_dev_info *dev);

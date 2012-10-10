@@ -243,7 +243,7 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 }
 
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
-					int8_t rssi, uint8_t confirm_name,
+					int8_t rssi, bool confirm_name,
 					gboolean legacy, uint8_t *data,
 					uint8_t data_len)
 {

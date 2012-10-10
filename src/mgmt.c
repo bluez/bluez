@@ -1634,7 +1634,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	uint32_t flags;
 	uint16_t eir_len;
 	uint8_t *eir;
-	gboolean confirm_name;
+	bool confirm_name;
 	gboolean legacy;
 
 	if (len < sizeof(*ev)) {
