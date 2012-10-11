@@ -808,7 +808,7 @@ static void msg_element(GMarkupParseContext *ctxt, const gchar *element,
 			break;
 	}
 
-	msg = g_hash_table_lookup(data->messages, key);
+	msg = g_hash_table_lookup(data->messages, values[i]);
 	if (msg == NULL) {
 		msg = map_msg_create(data, values[i]);
 		if (msg == NULL)
