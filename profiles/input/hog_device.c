@@ -686,7 +686,9 @@ static void report_free(void *data)
 	struct report *report = data;
 	struct hog_device *hogdev = report->hogdev;
 
-	g_attrib_unregister(hogdev->attrib, report->notifyid);
+	if (hogdev->attrib)
+		g_attrib_unregister(hogdev->attrib, report->notifyid);
+
 	g_free(report->decl);
 	g_free(report);
 }
