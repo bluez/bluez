@@ -71,6 +71,8 @@ gboolean device_is_trusted(struct btd_device *device);
 void device_set_paired(struct btd_device *device, gboolean paired);
 void device_set_temporary(struct btd_device *device, gboolean temporary);
 void device_set_bonded(struct btd_device *device, gboolean bonded);
+void device_set_legacy(struct btd_device *device, bool legacy);
+void device_set_rssi(struct btd_device *device, int8_t rssi);
 void device_set_auto_connect(struct btd_device *device, gboolean enable);
 gboolean device_is_connected(struct btd_device *device);
 DBusMessage *device_create_bonding(struct btd_device *device, DBusMessage *msg,

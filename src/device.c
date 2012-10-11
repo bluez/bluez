@@ -184,6 +184,9 @@ struct btd_device {
 	gboolean	bonded;
 	gboolean	auto_connect;
 
+	bool		legacy;
+	int8_t		rssi;
+
 	gint		ref;
 
 	GIOChannel      *att_io;
@@ -623,6 +626,36 @@ static gboolean dev_property_get_paired(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
 
 	return TRUE;
+}
+
+static gboolean dev_property_get_legacy(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	dbus_bool_t val = device->legacy;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
+
+	return TRUE;
+}
+
+static gboolean dev_property_get_rssi(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *dev = data;
+	dbus_int16_t val = dev->rssi;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16, &val);
+
+	return TRUE;
+}
+
+static gboolean dev_property_exists_rssi(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *dev = data;
+
+	return dev->rssi ? TRUE : FALSE;
 }
 
 static gboolean dev_property_get_trusted(const GDBusPropertyTable *property,
@@ -1272,6 +1305,8 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "Paired", "b", dev_property_get_paired },
 	{ "Trusted", "b", dev_property_get_trusted, dev_property_set_trusted },
 	{ "Blocked", "b", dev_property_get_blocked, dev_property_set_blocked },
+	{ "LegacyPairing", "b", dev_property_get_legacy },
+	{ "RSSI", "n", dev_property_get_rssi, NULL, dev_property_exists_rssi },
 	{ "Connected", "b", dev_property_get_connected },
 	{ "UUIDs", "as", dev_property_get_uuids },
 	{ "Services", "ao", dev_property_get_services },
@@ -2761,6 +2796,38 @@ void device_set_bonded(struct btd_device *device, gboolean bonded)
 	DBG("bonded %d", bonded);
 
 	device->bonded = bonded;
+}
+
+void device_set_legacy(struct btd_device *device, bool legacy)
+{
+	if (!device)
+		return;
+
+	DBG("legacy %d", legacy);
+
+	if (device->legacy == legacy)
+		return;
+
+	device->legacy = legacy;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+					DEVICE_INTERFACE, "LegacyPairing");
+}
+
+void device_set_rssi(struct btd_device *device, int8_t rssi)
+{
+	if (!device)
+		return;
+
+	DBG("rssi %d", rssi);
+
+	if (device->rssi == rssi)
+		return;
+
+	device->rssi = rssi;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+						DEVICE_INTERFACE, "RSSI");
 }
 
 void device_set_auto_connect(struct btd_device *device, gboolean enable)
