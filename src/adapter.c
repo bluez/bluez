@@ -1455,85 +1455,6 @@ static DBusMessage *cancel_device_creation(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static struct btd_device *create_device_internal(struct btd_adapter *adapter,
-						const char *address, int *err)
-{
-	struct remote_dev_info *dev;
-	struct btd_device *device;
-	bdaddr_t addr;
-	uint8_t bdaddr_type;
-
-	str2ba(address, &addr);
-
-	dev = adapter_search_found_devices(adapter, &addr);
-	if (dev)
-		bdaddr_type = dev->bdaddr_type;
-	else
-		bdaddr_type = BDADDR_BREDR;
-
-	device = adapter_create_device(adapter, address, bdaddr_type);
-	if (!device && err)
-		*err = -ENOMEM;
-
-	return device;
-}
-
-static DBusMessage *create_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct btd_adapter *adapter = data;
-	struct btd_device *device;
-	const gchar *address;
-	DBusMessage *reply;
-	int err;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	if (check_address(address) < 0)
-		return btd_error_invalid_args(msg);
-
-	if (!adapter->up)
-		return btd_error_not_ready(msg);
-
-	if (adapter_find_device(adapter, address))
-		return btd_error_already_exists(msg);
-
-	DBG("%s", address);
-
-	device = create_device_internal(adapter, address, &err);
-	if (!device)
-		goto failed;
-
-	if (device_is_bredr(device))
-		err = device_browse_sdp(device, msg, NULL, FALSE);
-	else
-		err = device_browse_primary(device, msg, FALSE);
-
-	if (err < 0) {
-		adapter_remove_device(adapter, device, TRUE);
-		return btd_error_failed(msg, strerror(-err));
-	}
-
-	return NULL;
-
-failed:
-	if (err == -ENOTCONN) {
-		/* Device is not connectable */
-		const char *path = device_get_path(device);
-
-		reply = dbus_message_new_method_return(msg);
-
-		dbus_message_append_args(reply,
-				DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
-	} else
-		reply = btd_error_failed(msg, strerror(-err));
-
-	return reply;
-}
-
 static uint8_t parse_io_capability(const char *capability)
 {
 	if (g_str_equal(capability, ""))
@@ -1549,48 +1470,6 @@ static uint8_t parse_io_capability(const char *capability)
 	if (g_str_equal(capability, "KeyboardDisplay"))
 		return IO_CAPABILITY_KEYBOARDDISPLAY;
 	return IO_CAPABILITY_INVALID;
-}
-
-static DBusMessage *create_paired_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct btd_adapter *adapter = data;
-	struct btd_device *device;
-	const gchar *address, *agent_path, *capability, *sender;
-	uint8_t cap;
-	int err;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-					DBUS_TYPE_OBJECT_PATH, &agent_path,
-					DBUS_TYPE_STRING, &capability,
-					DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	if (check_address(address) < 0)
-		return btd_error_invalid_args(msg);
-
-	if (!adapter->up)
-		return btd_error_not_ready(msg);
-
-	sender = dbus_message_get_sender(msg);
-	if (adapter->agent &&
-			agent_matches(adapter->agent, sender, agent_path)) {
-		error("Refusing adapter agent usage as device specific one");
-		return btd_error_invalid_args(msg);
-	}
-
-	cap = parse_io_capability(capability);
-	if (cap == IO_CAPABILITY_INVALID)
-		return btd_error_invalid_args(msg);
-
-	device = adapter_find_device(adapter, address);
-	if (!device) {
-		device = create_device_internal(adapter, address, &err);
-		if (!device)
-			return btd_error_failed(msg, strerror(-err));
-	}
-
-	return device_create_bonding(device, msg, agent_path, cap);
 }
 
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
@@ -1737,15 +1616,6 @@ static const GDBusMethodTable adapter_methods[] = {
 			adapter_start_discovery) },
 	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL,
 			adapter_stop_discovery) },
-	{ GDBUS_ASYNC_METHOD("CreateDevice",
-			GDBUS_ARGS({ "address", "s" }),
-			GDBUS_ARGS({ "device", "o" }),
-			create_device) },
-	{ GDBUS_ASYNC_METHOD("CreatePairedDevice",
-			GDBUS_ARGS({ "address", "s" }, { "agent", "o" },
-							{ "capability", "s" }),
-			GDBUS_ARGS({ "device", "o" }),
-			create_paired_device) },
 	{ GDBUS_ASYNC_METHOD("CancelDeviceCreation",
 			GDBUS_ARGS({ "address", "s" }), NULL,
 			cancel_device_creation) },
