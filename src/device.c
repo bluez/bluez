@@ -1536,6 +1536,11 @@ void device_get_name(struct btd_device *device, char *name, size_t len)
 	strncpy(name, device->name, len);
 }
 
+bool device_name_known(struct btd_device *device)
+{
+	return device->name[0] != '\0';
+}
+
 uint16_t btd_device_get_vendor(struct btd_device *device)
 {
 	return device->vendor;
