@@ -1513,6 +1513,7 @@ static void process_properties_from_interface(struct generic_data *data,
 	GSList *l;
 	DBusMessage *signal;
 	DBusMessageIter iter, dict, array;
+	GSList *invalidated;
 
 	if (iface->pending_prop == NULL)
 		return;
@@ -1534,21 +1535,33 @@ static void process_properties_from_interface(struct generic_data *data,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	invalidated = NULL;
+
 	for (l = iface->pending_prop; l != NULL; l = l->next) {
 		GDBusPropertyTable *p = l->data;
 
 		if (p->get == NULL)
 			continue;
 
-		if (p->exists != NULL && !p->exists(p, iface->user_data))
+		if (p->exists != NULL && !p->exists(p, iface->user_data)) {
+			invalidated = g_slist_prepend(invalidated, p);
 			continue;
+		}
 
 		append_property(iface, p, &dict);
 	}
 
 	dbus_message_iter_close_container(&iter, &dict);
+
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &array);
+	for (l = invalidated; l != NULL; l = g_slist_next(l)) {
+		GDBusPropertyTable *p = l->data;
+
+		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
+								&p->name);
+	}
+	g_slist_free(invalidated);
 	dbus_message_iter_close_container(&iter, &array);
 
 	g_dbus_send_message(data->conn, signal);
