@@ -2940,7 +2940,7 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	device->bonding = bonding;
 	bonding->device = device;
 
-	if (device_is_le(device)) {
+	if (device_is_le(device) && !device_is_connected(device)) {
 		adapter_connect_list_add(adapter, device);
 		return NULL;
 	}
