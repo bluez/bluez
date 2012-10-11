@@ -266,7 +266,6 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	uint8_t peer_type;
-	struct remote_dev_info *dev_info;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		int i;
@@ -286,13 +285,6 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	peer_type = device_get_addr_type(device);
 
 	write_device_name(local, peer, peer_type, name);
-
-	dev_info = adapter_search_found_devices(adapter, peer);
-	if (dev_info) {
-		g_free(dev_info->name);
-		dev_info->name = g_strdup(name);
-		adapter_emit_device_found(adapter, dev_info);
-	}
 
 	if (device)
 		device_set_name(device, name);

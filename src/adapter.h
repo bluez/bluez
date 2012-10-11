@@ -76,20 +76,6 @@ struct smp_ltk_info {
 	uint8_t val[16];
 };
 
-struct remote_dev_info {
-	bdaddr_t bdaddr;
-	uint8_t bdaddr_type;
-	int8_t rssi;
-	uint32_t class;
-	char *name;
-	char *alias;
-	bool legacy;
-	char **uuids;
-	size_t uuid_count;
-	GSList *services;
-	uint8_t flags;
-};
-
 void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);
@@ -124,15 +110,11 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
 const gchar *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
-struct remote_dev_info *adapter_search_found_devices(struct btd_adapter *adapter,
-							const bdaddr_t *bdaddr);
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm_name, bool legacy,
 					uint8_t *data, uint8_t data_len);
-void adapter_emit_device_found(struct btd_adapter *adapter,
-						struct remote_dev_info *dev);
 void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_name_changed(struct btd_adapter *adapter, const char *name);
