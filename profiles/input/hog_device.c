@@ -96,6 +96,11 @@ struct report {
 	struct hog_device	*hogdev;
 };
 
+struct disc_desc_cb_data {
+	uint16_t end;
+	gpointer data;
+};
+
 static void report_value_cb(const uint8_t *pdu, uint16_t len,
 							gpointer user_data)
 {
@@ -188,16 +193,25 @@ static void external_report_reference_cb(guint8 status, const guint8 *pdu,
 static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 					guint16 len, gpointer user_data)
 {
+	struct disc_desc_cb_data *ddcb_data = user_data;
 	struct report *report;
 	struct hog_device *hogdev;
-	struct att_data_list *list;
+	struct att_data_list *list = NULL;
+	GAttrib *attrib = NULL;
 	uint8_t format;
+	uint16_t handle = 0xffff;
+	uint16_t end = ddcb_data->end;
 	int i;
+
+	if (status == ATT_ECODE_ATTR_NOT_FOUND) {
+		DBG("Discover all characteristic descriptors finished");
+		goto done;
+	}
 
 	if (status != 0) {
 		error("Discover all characteristic descriptors failed: %s",
 							att_ecode2str(status));
-		return;
+		goto done;
 	}
 
 	list = dec_find_info_resp(pdu, len, &format);
@@ -208,7 +222,7 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 		goto done;
 
 	for (i = 0; i < list->num; i++) {
-		uint16_t uuid16, handle;
+		uint16_t uuid16;
 		uint8_t *value;
 
 		value = list->data[i];
@@ -217,17 +231,20 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 
 		switch (uuid16) {
 		case GATT_CLIENT_CHARAC_CFG_UUID:
-			report = user_data;
+			report = ddcb_data->data;
+			attrib = report->hogdev->attrib;
 			write_ccc(handle, report);
 			break;
 		case GATT_REPORT_REFERENCE:
-			report = user_data;
-			gatt_read_char(report->hogdev->attrib, handle,
+			report = ddcb_data->data;
+			attrib = report->hogdev->attrib;
+			gatt_read_char(attrib, handle,
 						report_reference_cb, report);
 			break;
 		case GATT_EXTERNAL_REPORT_REFERENCE:
-			hogdev = user_data;
-			gatt_read_char(hogdev->attrib, handle,
+			hogdev = ddcb_data->data;
+			attrib = hogdev->attrib;
+			gatt_read_char(attrib, handle,
 					external_report_reference_cb, hogdev);
 			break;
 		}
@@ -235,12 +252,19 @@ static void discover_descriptor_cb(guint8 status, const guint8 *pdu,
 
 done:
 	att_data_list_free(list);
+
+	if (handle != 0xffff && handle < end)
+		gatt_find_info(attrib, handle + 1, end, discover_descriptor_cb,
+								ddcb_data);
+	else
+		g_free(ddcb_data);
 }
 
 static void discover_descriptor(GAttrib *attrib, struct gatt_char *chr,
 				struct gatt_char *next, gpointer user_data)
 {
 	uint16_t start, end;
+	struct disc_desc_cb_data *ddcb_data;
 
 	start = chr->value_handle + 1;
 	end = (next ? next->handle - 1 : 0xffff);
@@ -248,7 +272,11 @@ static void discover_descriptor(GAttrib *attrib, struct gatt_char *chr,
 	if (start > end)
 		return;
 
-	gatt_find_info(attrib, start, end, discover_descriptor_cb, user_data);
+	ddcb_data = g_new0(struct disc_desc_cb_data, 1);
+	ddcb_data->end = end;
+	ddcb_data->data = user_data;
+
+	gatt_find_info(attrib, start, end, discover_descriptor_cb, ddcb_data);
 }
 
 static void external_service_char_cb(GSList *chars, guint8 status,
