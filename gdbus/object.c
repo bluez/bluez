@@ -1615,3 +1615,22 @@ void g_dbus_emit_property_changed(DBusConnection *connection,
 		return;
 	}
 }
+
+gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
+				const char *interface, DBusMessageIter *iter)
+{
+	struct generic_data *data;
+	struct interface_data *iface;
+
+	if (!dbus_connection_get_object_path_data(connection, path,
+					(void **) &data) || data == NULL)
+		return FALSE;
+
+	iface = find_interface(data->interfaces, interface);
+	if (iface == NULL)
+		return FALSE;
+
+	append_properties(iface, iter);
+
+	return TRUE;
+}
