@@ -82,60 +82,9 @@ Methods		dict GetProperties()
 		object FindDevice(string address)
 
 			Returns the object path of device for given address.
-			The device object needs to be first created via
-			CreateDevice or CreatePairedDevice.
 
 			Possible Errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.InvalidArguments
-
-		object CreateDevice(string address)
-
-			Creates a new object path for a remote device. This
-			method will connect to the remote device and retrieve
-			all SDP records (or GATT primary services).
-
-			If the object for the remote device already exists
-			this method will fail.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Failed
-
-		object CreatePairedDevice(string address, object agent,
-							string capability)
-
-			Creates a new object path for a remote device. This
-			method will connect to the remote device and retrieve
-			all SDP records (or GATT primary services) and then
-			initiate the pairing.
-
-			If previously CreateDevice was used successfully,
-			this method will only initiate the pairing.
-
-			Compared to CreateDevice this method will fail if
-			the pairing already exists, but not if the object
-			path already has been created. This allows applications
-			to use CreateDevice first and the if needed use
-			CreatePairedDevice to initiate pairing.
-
-			The agent object path is assumed to reside within the
-			process (D-Bus connection instance) that calls this
-			method. No separate registration procedure is needed
-			for it and it gets automatically released once the
-			pairing operation is complete.
-
-			The capability parameter is the same as for the
-			RegisterAgent method.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.Failed
-
-		void CancelDeviceCreation(string address)
-
-			Aborts either a CreateDevice call or a
-			CreatePairedDevice call.
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.NotInProgress
 
 		void RemoveDevice(object device)
 
@@ -178,22 +127,14 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-		DeviceFound(string address, dict values)
+		DevicesFound(array{object path, dict values})
 
-			This signal will be sent every time an inquiry result
-			has been found by the service daemon. In general they
-			only appear during a device discovery.
+			This signal will be sent every time devices have
+			been found. In general they only appear during a
+			device discovery.
 
-			The dictionary can contain basically the same values
-			that are returned by the GetProperties method
-			from the org.bluez.Device interface. In addition there
-			can be values for the RSSI and the TX power level.
-
-		DeviceDisappeared(string address)
-
-			This signal will be sent when an inquiry session for
-			a periodic discovery finishes and previously found
-			devices are no longer in range or visible.
+			The dictionary contains the properties from the
+			org.bluez.Device interface.
 
 		DeviceCreated(object device)
 

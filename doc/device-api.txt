@@ -67,6 +67,10 @@ Methods		dict GetProperties()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.AlreadyConnected
+		void CancelConnect()
+
+			This method can be used to cancel a preceeding
+			Connect call before a reply to it has been received.
 
 		void Disconnect()
 
@@ -123,6 +127,11 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
+
+		void CancelPairing()
+
+			This method can be used to cancel a pairing
+			operation initiated by the Pair method.
 
 Signals		PropertyChanged(string name, variant value)
 
