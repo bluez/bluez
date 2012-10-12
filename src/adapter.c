@@ -134,7 +134,6 @@ struct btd_adapter {
 	uint8_t global_mode;		/* last valid global mode */
 	struct session_req *pending_mode;
 	GSList *found_devices;
-	GSList *oor_devices;		/* out of range device list */
 	struct agent *agent;		/* For the new API */
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
@@ -503,11 +502,6 @@ static uint8_t get_needed_mode(struct btd_adapter *adapter, uint8_t mode)
 /* Called when a session gets removed or the adapter is stopped */
 static void stop_discovery(struct btd_adapter *adapter)
 {
-	if (adapter->oor_devices) {
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-	}
-
 	/* Reset if suspended, otherwise remove timer (software scheduler)
 	 * or request inquiry to stop */
 	if (adapter->discov_suspended) {
@@ -1033,9 +1027,6 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 
 	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
-
-	g_slist_free(adapter->oor_devices);
-	adapter->oor_devices = NULL;
 
 	if (adapter->discov_suspended)
 		goto done;
@@ -1610,8 +1601,6 @@ static const GDBusSignalTable adapter_signals[] = {
 	{ GDBUS_SIGNAL("DeviceFound",
 			GDBUS_ARGS({ "address", "s" },
 						{ "values", "a{sv}" })) },
-	{ GDBUS_SIGNAL("DeviceDisappeared",
-			GDBUS_ARGS({ "address", "s" })) },
 	{ }
 };
 
@@ -2122,24 +2111,6 @@ static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 	g_slist_foreach(adapter->devices, set_auto_connect, &powered);
 }
 
-static void emit_device_disappeared(gpointer data, gpointer user_data)
-{
-	struct btd_device *dev = data;
-	struct btd_adapter *adapter = user_data;
-	char address[18];
-	const char *paddr = address;
-
-	ba2str(device_get_address(dev), address);
-
-	g_dbus_emit_signal(btd_get_dbus_connection(), adapter->path,
-					ADAPTER_INTERFACE, "DeviceDisappeared",
-					DBUS_TYPE_STRING, &paddr,
-					DBUS_TYPE_INVALID);
-
-	if (device_is_temporary(dev))
-		adapter_remove_device(adapter, dev, TRUE);
-}
-
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 						uint8_t *on_mode,
 						uint16_t *discoverable_timeout,
@@ -2465,8 +2436,6 @@ static void adapter_free(gpointer user_data)
 
 	g_slist_free(adapter->found_devices);
 
-	g_slist_free(adapter->oor_devices);
-
 	g_slist_free(adapter->connections);
 
 	g_free(adapter->path);
@@ -2629,15 +2598,12 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 	if (discovering)
 		return;
 
-	g_slist_foreach(adapter->oor_devices, emit_device_disappeared, adapter);
-	g_slist_free(adapter->oor_devices);
-
 	for (l = adapter->found_devices; l != NULL; l = g_slist_next(l)) {
 		struct btd_device *dev = l->data;
 		device_set_rssi(dev, 0);
 	}
 
-	adapter->oor_devices = adapter->found_devices;
+	g_slist_free(adapter->found_devices);
 	adapter->found_devices = NULL;
 
 	if (adapter->discov_suspended)
@@ -2666,11 +2632,6 @@ static void suspend_discovery(struct btd_adapter *adapter)
 		return;
 
 	DBG("Suspending discovery");
-
-	if (adapter->oor_devices) {
-		g_slist_free(adapter->oor_devices);
-		adapter->oor_devices = NULL;
-	}
 
 	adapter->discov_suspended = TRUE;
 
@@ -2782,10 +2743,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	device_add_eir_uuids(dev, eir_data.services);
 
 	eir_data_free(&eir_data);
-
-	if (device_is_bredr(dev))
-		adapter->oor_devices = g_slist_remove(adapter->oor_devices,
-									dev);
 
 	if (g_slist_find(adapter->found_devices, dev))
 		return;
