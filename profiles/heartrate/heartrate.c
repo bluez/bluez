@@ -389,21 +389,6 @@ static void notify_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 	process_measurement(hr, pdu + 3, len - 3);
 }
 
-static void ccc_write_cb(guint8 status, const guint8 *pdu, guint16 len,
-							gpointer user_data)
-{
-	struct heartrate *hr = user_data;
-
-	if (status != 0) {
-		error("Enable measurement failed");
-		return;
-	}
-
-	hr->attionotid = g_attrib_register(hr->attrib, ATT_OP_HANDLE_NOTIFY,
-						hr->measurement_val_handle,
-						notify_handler, hr, NULL);
-}
-
 static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 						guint16 len, gpointer user_data)
 {
@@ -434,6 +419,7 @@ static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 		uuid = att_get_u16(value + 2);
 
 		if (uuid == GATT_CLIENT_CHARAC_CFG_UUID) {
+			char *msg;
 			uint8_t value[2];
 
 			hr->measurement_ccc_handle = handle;
@@ -442,9 +428,10 @@ static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 				break;
 
 			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+			msg = g_strdup("Enable measurement");
 
 			gatt_write_char(hr->attrib, handle, value,
-					sizeof(value), ccc_write_cb, hr);
+					sizeof(value), char_write_cb, msg);
 
 			break;
 		}
@@ -492,6 +479,11 @@ static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 				(chars->next ? chars->next->data : NULL);
 
 			hr->measurement_val_handle = c->value_handle;
+
+			hr->attionotid = g_attrib_register(hr->attrib,
+						ATT_OP_HANDLE_NOTIFY,
+						c->value_handle,
+						notify_handler, hr, NULL);
 
 			discover_measurement_ccc(hr, c, c_next);
 		} else if (g_strcmp0(c->uuid, BODY_SENSOR_LOCATION_UUID) == 0) {
