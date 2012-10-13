@@ -66,7 +66,6 @@ struct heartrate {
 
 	struct att_range		*svc_range;	/* primary svc range */
 
-	uint16_t			measurement_val_handle;
 	uint16_t			measurement_ccc_handle;
 	uint16_t			hrcp_val_handle;
 
@@ -477,8 +476,6 @@ static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 		if (g_strcmp0(c->uuid, HEART_RATE_MEASUREMENT_UUID) == 0) {
 			struct gatt_char *c_next =
 				(chars->next ? chars->next->data : NULL);
-
-			hr->measurement_val_handle = c->value_handle;
 
 			hr->attionotid = g_attrib_register(hr->attrib,
 						ATT_OP_HANDLE_NOTIFY,
