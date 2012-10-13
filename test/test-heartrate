@@ -80,7 +80,10 @@ if __name__ == "__main__":
 
 	watcher = Watcher(bus, path)
 
-	properties = heartrate.GetProperties()
+	dev_prop = dbus.Interface(bus.get_object("org.bluez", device_path),
+					"org.freedesktop.DBus.Properties")
+
+	properties = dev_prop.GetAll("org.bluez.HeartRate")
 
 	if "Location" in properties:
 		print("Sensor location: %s" % properties["Location"])

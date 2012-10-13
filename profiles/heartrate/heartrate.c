@@ -641,43 +641,47 @@ static const GDBusMethodTable heartrate_manager_methods[] = {
 	{ }
 };
 
-static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
+static gboolean property_get_location(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct heartrate *hr = data;
+	char *loc;
+
+	if (!hr->has_location)
+		return FALSE;
+
+	loc = g_strdup(location2str(hr->location));
+
+	if (loc == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &loc);
+
+	g_free(loc);
+
+	return TRUE;
+}
+
+static gboolean property_exists_location(const GDBusPropertyTable *property,
 								void *data)
 {
 	struct heartrate *hr = data;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	DBusMessage *reply;
-	gboolean has_reset;
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
+	if (!hr->has_location || location2str(hr->location) == NULL)
+		return FALSE;
 
-	dbus_message_iter_init_append(reply, &iter);
+	return TRUE;
+}
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+static gboolean property_get_reset_supported(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct heartrate *hr = data;
+	dbus_bool_t has_reset = !!hr->hrcp_val_handle;
 
-	if (hr->has_location) {
-		char *loc = g_strdup(location2str(hr->location));
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &has_reset);
 
-		if (loc) {
-			dict_append_entry(&dict, "Location",
-						DBUS_TYPE_STRING, &loc);
-			g_free(loc);
-		}
-	}
-
-	has_reset = !!hr->hrcp_val_handle;
-	dict_append_entry(&dict, "ResetSupported", DBUS_TYPE_BOOLEAN,
-								&has_reset);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
+	return TRUE;
 }
 
 static DBusMessage *hrcp_reset(DBusConnection *conn, DBusMessage *msg,
@@ -704,10 +708,14 @@ static DBusMessage *hrcp_reset(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable heartrate_device_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			get_properties) },
 	{ GDBUS_METHOD("Reset", NULL, NULL, hrcp_reset) },
+	{ }
+};
+
+static const GDBusPropertyTable heartrate_device_properties[] = {
+	{ "Location", "s", property_get_location, NULL,
+						property_exists_location },
+	{ "ResetSupported", "b", property_get_reset_supported },
 	{ }
 };
 
@@ -772,8 +780,9 @@ int heartrate_device_register(struct btd_device *device,
 						device_get_path(device),
 						HEART_RATE_INTERFACE,
 						heartrate_device_methods,
-						NULL, NULL, hr,
-						destroy_heartrate)) {
+						NULL,
+						heartrate_device_properties,
+						hr, destroy_heartrate)) {
 		error("D-Bus failed to register %s interface",
 						HEART_RATE_INTERFACE);
 		destroy_heartrate(hr);

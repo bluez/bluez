@@ -28,12 +28,7 @@ Service		org.bluez
 Interface	org.bluez.HeartRate
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		dict GetProperties()
-
-			Returns all properties for the interface. See the
-			Properties section for the available properties.
-
-		Reset()
+Methods		Reset()
 
 			Restart the accumulation of energy expended from zero.
 
