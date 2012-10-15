@@ -1114,26 +1114,60 @@ static int avctp_send(struct avctp *session, uint8_t transaction, uint8_t cr,
 	return err;
 }
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op)
+static int avctp_send_req(struct avctp *session, uint8_t code,
+				uint8_t subunit, uint8_t opcode,
+				uint8_t *operands, size_t operand_count,
+				avctp_rsp_cb func, void *user_data)
 {
-	uint8_t operands[2];
-	int ret;
+	struct avctp_rsp_handler *handler;
+	int err;
 
-	operands[0] = op & 0x7f;
-	operands[1] = 0;
+	err = avctp_send(session, id, AVCTP_COMMAND, code, subunit,
+				opcode, operands, operand_count);
+	if (err < 0)
+		return err;
 
-	ret = avctp_send(session, id, AVCTP_COMMAND, AVC_CTYPE_CONTROL,
-					AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
-					operands, sizeof(operands));
-	if (ret < 0)
-		return ret;
+	handler = g_new0(struct avctp_rsp_handler, 1);
+	handler->id = id;
+	handler->func = func;
+	handler->user_data = user_data;
+
+	session->handlers = g_slist_prepend(session->handlers, handler);
+
+	id++;
+
+	return 0;
+}
+
+static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
+					uint8_t subunit, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	if (code != AVC_CTYPE_ACCEPTED)
+		return FALSE;
 
 	/* Button release */
 	operands[0] |= 0x80;
 
-	return avctp_send(session, id, AVCTP_COMMAND, AVC_CTYPE_CONTROL,
+	avctp_send(session, id, AVCTP_COMMAND, AVC_CTYPE_CONTROL,
 					AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
-					operands, sizeof(operands));
+					operands, sizeof(operand_count));
+
+	return FALSE;
+}
+
+int avctp_send_passthrough(struct avctp *session, uint8_t op)
+{
+	uint8_t operands[2];
+
+	/* Button pressed */
+	operands[0] = op & 0x7f;
+	operands[1] = 0;
+
+	return avctp_send_req(session, AVC_CTYPE_CONTROL,
+				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
+				operands, sizeof(operands),
+				avctp_passthrough_rsp, NULL);
 }
 
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,
