@@ -88,11 +88,11 @@ class Agent(dbus.service.Object):
 	def Cancel(self):
 		print("Cancel")
 
-def create_device_reply(device):
-	print("New device (%s)" % (device))
+def pair_reply():
+	print("Device paired")
 	mainloop.quit()
 
-def create_device_error(error):
+def pair_error(error):
 	print("Creating device failed: %s" % (error))
 	mainloop.quit()
 
@@ -126,15 +126,14 @@ if __name__ == '__main__':
 	mainloop = GObject.MainLoop()
 
 	if len(args) > 1:
-		if len(args) > 2:
-			device = adapter.FindDevice(args[1])
-			adapter.RemoveDevice(device)
+		dev_path = adapter.FindDevice(args[1])
+		device = dbus.Interface(bus.get_object("org.bluez", dev_path),
+						"org.bluez.Device")
 
 		agent.set_exit_on_release(False)
-		adapter.CreatePairedDevice(args[1], path, capability,
-					timeout=60000,
-					reply_handler=create_device_reply,
-					error_handler=create_device_error)
+		device.Pair(path, capability, timeout=60000,
+					reply_handler=pair_reply,
+					error_handler=pair_error)
 	else:
 		adapter.RegisterAgent(path, capability)
 		print("Agent registered")
