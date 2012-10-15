@@ -549,7 +549,7 @@ static void send_devices_found(struct btd_adapter *adapter)
 	g_dbus_send_message(conn, signal);
 }
 
-static void invalidate_rssi(gpointer a, gpointer b)
+static void invalidate_rssi(gpointer a)
 {
 	struct btd_device *dev = a;
 
@@ -570,8 +570,7 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 
 	send_devices_found(adapter);
 
-	g_slist_foreach(discovery->found, invalidate_rssi, NULL);
-	g_slist_free(discovery->found);
+	g_slist_free_full(discovery->found, invalidate_rssi);
 
 	g_free(discovery);
 }
