@@ -25,6 +25,10 @@ Methods		boolean IsConnected() {deprecated}
 
 			Connect to remote device.
 
+		void Disconnect()
+
+			Disconnect from remote device.
+
 		void Play()
 
 			Resume playback.

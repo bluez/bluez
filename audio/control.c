@@ -62,6 +62,7 @@ struct control {
 	struct avctp *session;
 	gboolean target;
 	DBusMessage *connect;
+	DBusMessage *disconnect;
 };
 
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
@@ -81,6 +82,13 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			g_dbus_send_message(btd_get_dbus_connection(), reply);
 			dbus_message_unref(control->connect);
 			control->connect = NULL;
+		}
+
+		if (control->disconnect) {
+			g_dbus_send_reply(conn, control->disconnect,
+							DBUS_TYPE_INVALID);
+			dbus_message_unref(control->disconnect);
+			control->disconnect = NULL;
 		}
 
 		if (old_state != AVCTP_STATE_CONNECTED)
@@ -164,6 +172,25 @@ static DBusMessage *control_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *control_disconnect(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct audio_device *device = data;
+	struct control *control = device->control;
+
+	if (!control->session)
+		return btd_error_not_connected(msg);
+
+	if (control->disconnect)
+		return btd_error_in_progress(msg);
+
+	avctp_disconnect(control->session);
+
+	control->disconnect = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 static DBusMessage *key_pressed(DBusConnection *conn, DBusMessage *msg,
 						uint8_t op, void *data)
 {
@@ -243,6 +270,7 @@ static const GDBusMethodTable control_methods[] = {
 				NULL, GDBUS_ARGS({ "connected", "b" }),
 				control_is_connected) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, control_connect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, control_disconnect) },
 	{ GDBUS_METHOD("Play", NULL, NULL, control_play) },
 	{ GDBUS_METHOD("Pause", NULL, NULL, control_pause) },
 	{ GDBUS_METHOD("Stop", NULL, NULL, control_stop) },
@@ -277,6 +305,9 @@ static void path_unregister(void *data)
 
 	if (control->connect)
 		dbus_message_unref(control->connect);
+
+	if (control->disconnect)
+		dbus_message_unref(control->disconnect);
 
 	g_free(control);
 	dev->control = NULL;
