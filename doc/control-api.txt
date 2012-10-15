@@ -21,6 +21,30 @@ Methods		boolean IsConnected() {deprecated}
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
+		void Play()
+
+			Resume playback.
+
+		void Pause()
+
+			Pause playback.
+
+		void Stop()
+
+			Stop playback.
+
+		void Next()
+
+			Next item.
+
+		void Previous()
+
+			Previous item.
+
+		void VolumeDown()
+
+			Adjust remote volume one step down
+
 		void VolumeUp()
 
 			Adjust remote volume one step up
