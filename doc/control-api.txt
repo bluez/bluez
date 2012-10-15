@@ -21,6 +21,10 @@ Methods		boolean IsConnected() {deprecated}
 			Returns all properties for the interface. See the
 			properties section for available properties.
 
+		void Connect()
+
+			Connect to remote device.
+
 		void Play()
 
 			Resume playback.
