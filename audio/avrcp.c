@@ -58,6 +58,9 @@
 #include "avrcp.h"
 #include "sdpd.h"
 #include "dbus-common.h"
+#include "control.h"
+#include "avdtp.h"
+#include "sink.h"
 
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
@@ -181,6 +184,7 @@ struct avrcp {
 	struct avctp *conn;
 	struct audio_device *dev;
 	struct avrcp_player *player;
+	gboolean target;
 	uint16_t version;
 	int features;
 
@@ -1319,7 +1323,20 @@ static struct avrcp *session_create(struct avrcp_server *server,
 
 	server->sessions = g_slist_append(server->sessions, session);
 
-	rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
+	if (dev->sink && !dev->source)
+		session->target = TRUE;
+	else if (dev->source && !dev->sink)
+		session->target = FALSE;
+	else if (dev->sink && sink_is_active(dev))
+		session->target = TRUE;
+	else
+		session->target = FALSE;
+
+	if (session->target)
+		rec = btd_device_get_record(dev->btd_dev, AVRCP_REMOTE_UUID);
+	else
+		rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
+
 	if (rec == NULL)
 		return session;
 
