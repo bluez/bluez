@@ -1464,39 +1464,6 @@ static DBusMessage *release_session(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *cancel_device_creation(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct btd_adapter *adapter = data;
-	const gchar *address, *sender = dbus_message_get_sender(msg);
-	struct btd_device *device;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &address,
-						DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	if (check_address(address) < 0)
-		return btd_error_invalid_args(msg);
-
-	device = adapter_find_device(adapter, address);
-	if (!device || !device_is_creating(device, NULL))
-		return btd_error_does_not_exist(msg);
-
-	if (!device_is_creating(device, sender))
-		return btd_error_not_authorized(msg);
-
-	device_set_temporary(device, TRUE);
-
-	if (device_is_connected(device)) {
-		device_request_disconnect(device, msg);
-		return NULL;
-	}
-
-	adapter_remove_device(adapter, device, TRUE);
-
-	return dbus_message_new_method_return(msg);
-}
-
 static uint8_t parse_io_capability(const char *capability)
 {
 	if (g_str_equal(capability, ""))
@@ -1653,9 +1620,6 @@ static const GDBusMethodTable adapter_methods[] = {
 			adapter_start_discovery) },
 	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL,
 			adapter_stop_discovery) },
-	{ GDBUS_ASYNC_METHOD("CancelDeviceCreation",
-			GDBUS_ARGS({ "address", "s" }), NULL,
-			cancel_device_creation) },
 	{ GDBUS_ASYNC_METHOD("RemoveDevice",
 			GDBUS_ARGS({ "device", "o" }), NULL,
 			remove_device) },
