@@ -84,6 +84,7 @@
 
 #define OFF_TIMER 3
 
+#define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
 static GSList *adapter_drivers = NULL;
@@ -146,6 +147,7 @@ struct btd_adapter {
 	GQueue *auths;			/* Ongoing and pending auths */
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
+	guint	remove_temp;		/* Remove devices timer */
 	GSList *mode_sessions;		/* Request Mode sessions */
 	GSList *disc_sessions;		/* Discovery sessions */
 	struct session_req *scanning_session;
@@ -2510,8 +2512,6 @@ static void adapter_free(gpointer user_data)
 
 	sdp_list_free(adapter->services, NULL);
 
-	discovery_cleanup(adapter);
-
 	g_slist_free(adapter->connections);
 
 	g_free(adapter->path);
@@ -2621,6 +2621,13 @@ void adapter_remove(struct btd_adapter *adapter)
 
 	DBG("Removing adapter %s", adapter->path);
 
+	if (adapter->remove_temp > 0) {
+		g_source_remove(adapter->remove_temp);
+		adapter->remove_temp = 0;
+	}
+
+	discovery_cleanup(adapter);
+
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(l->data, FALSE);
 	g_slist_free(adapter->devices);
@@ -2680,6 +2687,27 @@ static gboolean send_found(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean adapter_remove_temp(gpointer data)
+{
+	struct btd_adapter *adapter = data;
+	GSList *l, *next;
+
+	DBG("%s", adapter->path);
+
+	adapter->remove_temp = 0;
+
+	for (l = adapter->devices; l != NULL; l = next) {
+		struct btd_device *dev = l->data;
+
+		next = g_slist_next(l);
+
+		if (device_is_temporary(dev))
+			adapter_remove_device(adapter, dev, TRUE);
+	}
+
+	return FALSE;
+}
+
 void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering)
 {
@@ -2695,11 +2723,19 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 					ADAPTER_INTERFACE, "Discovering");
 
 	if (discovering) {
+		if (adapter->remove_temp > 0) {
+			g_source_remove(adapter->remove_temp);
+			adapter->remove_temp = 0;
+		}
 		discovery->id = g_timeout_add_seconds(1, send_found, adapter);
 		return;
 	}
 
 	discovery_cleanup(adapter);
+
+	adapter->remove_temp = g_timeout_add_seconds(REMOVE_TEMP_TIMEOUT,
+							adapter_remove_temp,
+							adapter);
 
 	if (adapter->discov_suspended)
 		return;

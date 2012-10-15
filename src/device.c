@@ -1271,6 +1271,8 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	if (dev->pending || dev->connect || dev->browse)
 		return btd_error_in_progress(msg);
 
+	device_set_temporary(dev, FALSE);
+
 	if (!dev->svc_resolved) {
 		err = device_resolve_svc(dev, msg);
 		if (err < 0)
@@ -1359,6 +1361,8 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	const char *agent_path, *capability;
 	uint8_t io_cap;
 
+	device_set_temporary(device, FALSE);
+
 	if (!dbus_message_get_args(msg, NULL,
 					DBUS_TYPE_OBJECT_PATH, &agent_path,
 					DBUS_TYPE_STRING, &capability,
@@ -1437,6 +1441,8 @@ void device_add_connection(struct btd_device *device)
 		error("Device %s is already connected", addr);
 		return;
 	}
+
+	device_set_temporary(device, FALSE);
 
 	device->connected = TRUE;
 
@@ -2858,6 +2864,9 @@ gboolean device_is_temporary(struct btd_device *device)
 void device_set_temporary(struct btd_device *device, gboolean temporary)
 {
 	if (!device)
+		return;
+
+	if (device->temporary == temporary)
 		return;
 
 	DBG("temporary %d", temporary);
