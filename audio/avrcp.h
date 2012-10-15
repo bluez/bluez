@@ -105,3 +105,4 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data);
 
 
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands);
+size_t avrcp_browsing_general_reject(uint8_t *operands);

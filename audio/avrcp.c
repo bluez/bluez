@@ -184,8 +184,8 @@ struct avrcp {
 	uint16_t version;
 	int features;
 
-	unsigned int control_handler;
-	unsigned int browsing_handler;
+	unsigned int control_id;
+	unsigned int browsing_id;
 	uint16_t registered_events;
 	uint8_t transaction;
 	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
@@ -1179,6 +1179,19 @@ static struct browsing_pdu_handler {
 		{ },
 };
 
+size_t avrcp_browsing_general_reject(uint8_t *operands)
+{
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	uint8_t status;
+
+	pdu->pdu_id = AVRCP_GENERAL_REJECT;
+	status = AVRCP_STATUS_INVALID_COMMAND;
+
+	pdu->param_len = htons(sizeof(status));
+	memcpy(pdu->params, &status, (sizeof(status)));
+	return AVRCP_BROWSING_HEADER_LENGTH + sizeof(status);
+}
+
 static size_t handle_browsing_pdu(struct avctp *conn,
 					uint8_t transaction, uint8_t *operands,
 					size_t operand_count, void *user_data)
@@ -1186,7 +1199,6 @@ static size_t handle_browsing_pdu(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct browsing_pdu_handler *handler;
 	struct avrcp_browsing_header *pdu = (void *) operands;
-	uint8_t status;
 
 	DBG("AVRCP Browsing PDU 0x%02X, len 0x%04X", pdu->pdu_id,
 							pdu->param_len);
@@ -1196,20 +1208,12 @@ static size_t handle_browsing_pdu(struct avctp *conn,
 			break;
 	}
 
-	if (handler == NULL || handler->func == NULL) {
-		pdu->pdu_id = AVRCP_GENERAL_REJECT;
-		status = AVRCP_STATUS_INVALID_COMMAND;
-		goto err;
-	}
+	if (handler == NULL || handler->func == NULL)
+		return avrcp_browsing_general_reject(operands);
 
 	session->transaction = transaction;
 	handler->func(session, pdu, transaction);
 	return AVRCP_BROWSING_HEADER_LENGTH + ntohs(pdu->param_len);
-
-err:
-	pdu->param_len = htons(sizeof(status));
-	memcpy(pdu->params, &status, (sizeof(status)));
-	return AVRCP_BROWSING_HEADER_LENGTH + sizeof(status);
 }
 
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands)
@@ -1321,12 +1325,12 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		server->sessions = g_slist_remove(server->sessions, session);
 
-		if (session->control_handler)
-			avctp_unregister_pdu_handler(session->control_handler);
+		if (session->control_id > 0)
+			avctp_unregister_pdu_handler(session->control_id);
 
-		if (session->browsing_handler)
+		if (session->browsing_id > 0)
 			avctp_unregister_browsing_pdu_handler(
-						session->browsing_handler);
+							session->browsing_id);
 
 		if (session->player != NULL)
 			session->player->sessions = g_slist_remove(
@@ -1344,15 +1348,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		session->conn = avctp_connect(&dev->src, &dev->dst);
 		session->dev = dev;
 		session->player = g_slist_nth_data(server->players, 0);
-
-		session->control_handler = avctp_register_pdu_handler(
-							AVC_OP_VENDORDEP,
-							handle_vendordep_pdu,
-							session);
-		session->browsing_handler =
-					avctp_register_browsing_pdu_handler(
-							handle_browsing_pdu,
-							session);
 
 		server->sessions = g_slist_append(server->sessions, session);
 
@@ -1380,6 +1375,15 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			if (session->features & AVRCP_FEATURE_BROWSING)
 				avctp_connect_browsing(session->conn);
 		}
+
+		session->control_id = avctp_register_pdu_handler(session->conn,
+							AVC_OP_VENDORDEP,
+							handle_vendordep_pdu,
+							session);
+		session->browsing_id = avctp_register_browsing_pdu_handler(
+							session->conn,
+							handle_browsing_pdu,
+							session);
 	default:
 		return;
 	}

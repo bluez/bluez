@@ -98,12 +98,14 @@ struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst);
 int avctp_connect_browsing(struct avctp *session);
 void avctp_disconnect(struct avctp *session);
 
-unsigned int avctp_register_pdu_handler(uint8_t opcode, avctp_control_pdu_cb cb,
-							void *user_data);
+unsigned int avctp_register_pdu_handler(struct avctp *session, uint8_t opcode,
+						avctp_control_pdu_cb cb,
+						void *user_data);
 gboolean avctp_unregister_pdu_handler(unsigned int id);
 
-unsigned int avctp_register_browsing_pdu_handler(avctp_browsing_pdu_cb cb,
-							void *user_data);
+unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
+						avctp_browsing_pdu_cb cb,
+						void *user_data);
 gboolean avctp_unregister_browsing_pdu_handler(unsigned int id);
 
 int avctp_send_passthrough(struct avctp *session, uint8_t op);
