@@ -1467,6 +1467,9 @@ int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 
 	servers = g_slist_append(servers, server);
 
+	if (!avctp_id)
+		avctp_id = avctp_add_state_cb(state_changed, NULL);
+
 	return 0;
 }
 
@@ -1527,9 +1530,6 @@ struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
 	player->cb = cb;
 	player->user_data = user_data;
 	player->destroy = destroy;
-
-	if (!avctp_id)
-		avctp_id = avctp_add_state_cb(state_changed, NULL);
 
 	server->players = g_slist_append(server->players, player);
 
