@@ -1376,6 +1376,22 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	return device_create_bonding(device, msg, agent_path, io_cap);
 }
 
+static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct btd_device *device = data;
+	struct bonding_req *req = device->bonding;
+
+	DBG("");
+
+	if (!req)
+		return btd_error_does_not_exist(msg);
+
+	device_cancel_bonding(device, MGMT_STATUS_CANCELLED);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("DiscoverServices",
 			GDBUS_ARGS({ "pattern", "s" }),
@@ -1387,6 +1403,7 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Pair",
 			GDBUS_ARGS({ "agent", "o" }, { "capability", "s" }),
 			NULL, pair_device) },
+	{ GDBUS_METHOD("CancelPairing", NULL, NULL, cancel_pairing) },
 	{ }
 };
 
