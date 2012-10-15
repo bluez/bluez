@@ -49,18 +49,18 @@
 #define AVC_SUBUNIT_PANEL		0x09
 
 /* operands in passthrough commands */
-#define VOL_UP_OP			0x41
-#define VOL_DOWN_OP			0x42
-#define MUTE_OP				0x43
-#define PLAY_OP				0x44
-#define STAVC_OP_OP			0x45
-#define PAUSE_OP			0x46
-#define RECORD_OP			0x47
-#define REWIND_OP			0x48
-#define FAST_FORWARD_OP			0x49
-#define EJECT_OP			0x4a
-#define FORWARD_OP			0x4b
-#define BACKWARD_OP			0x4c
+#define AVC_VOLUME_UP			0x41
+#define AVC_VOLUME_DOWN			0x42
+#define AVC_MUTE			0x43
+#define AVC_PLAY			0x44
+#define AVC_STOP			0x45
+#define AVC_PAUSE			0x46
+#define AVC_RECORD			0x47
+#define AVC_REWIND			0x48
+#define AVC_FAST_FORWARD		0x49
+#define AVC_EJECT			0x4a
+#define AVC_FORWARD			0x4b
+#define AVC_BACKWARD			0x4c
 
 struct avctp;
 
