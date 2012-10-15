@@ -10,6 +10,8 @@ import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser
 
+device_obj = None
+
 def ask(prompt):
 	try:
 		return raw_input(prompt)
@@ -93,7 +95,14 @@ def pair_reply():
 	mainloop.quit()
 
 def pair_error(error):
-	print("Creating device failed: %s" % (error))
+	err_name = error.get_dbus_name()
+	if err_name == "org.freedesktop.DBus.Error.NoReply" and device_obj:
+		print("Timed out. Cancelling pairing")
+		device_obj.CancelPairing()
+	else:
+		print("Creating device failed: %s" % (error))
+
+
 	mainloop.quit()
 
 if __name__ == '__main__':
@@ -108,6 +117,9 @@ if __name__ == '__main__':
 	parser = OptionParser()
 	parser.add_option("-c", "--capability", action="store",
 					type="string", dest="capability")
+	parser.add_option("-t", "--timeout", action="store",
+					type="int", dest="timeout",
+					default=60000)
 	(options, args) = parser.parse_args()
 	if options.capability:
 		capability  = options.capability
@@ -131,9 +143,10 @@ if __name__ == '__main__':
 						"org.bluez.Device")
 
 		agent.set_exit_on_release(False)
-		device.Pair(path, capability, timeout=60000,
+		device.Pair(path, capability, timeout=options.timeout,
 					reply_handler=pair_reply,
 					error_handler=pair_error)
+		device_obj = device
 	else:
 		adapter.RegisterAgent(path, capability)
 		print("Agent registered")
