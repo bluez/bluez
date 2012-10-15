@@ -2853,11 +2853,10 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		pending_count = g_slist_length(discovery->pending);
 
 		if (discovery->id == 0) {
-			send_found(adapter);
+			discovery->id = g_idle_add(send_found, adapter);
 		} else if (pending_count > PENDING_FOUND_MAX) {
 			g_source_remove(discovery->id);
-			discovery->id = 0;
-			send_found(adapter);
+			discovery->id = g_idle_add(send_found, adapter);
 		}
 	}
 
