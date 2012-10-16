@@ -1923,6 +1923,11 @@ add_uuids:
 						g_strdup(l->data),
 						bt_uuid_strcmp);
 	}
+
+	device->svc_resolved = true;
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						device->path, DEVICE_INTERFACE,
+						"UUIDs");
 }
 
 static void device_remove_profiles(struct btd_device *device, GSList *uuids)
