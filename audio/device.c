@@ -98,8 +98,6 @@ static void device_free(struct audio_device *dev)
 {
 	struct dev_priv *priv = dev->priv;
 
-	btd_device_unref(dev->btd_dev);
-
 	if (priv) {
 		if (priv->control_timer)
 			g_source_remove(priv->control_timer);
@@ -116,6 +114,8 @@ static void device_free(struct audio_device *dev)
 							priv->dc_id);
 		g_free(priv);
 	}
+
+	btd_device_unref(dev->btd_dev);
 
 	g_free(dev->path);
 	g_free(dev);
