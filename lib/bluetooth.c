@@ -82,7 +82,6 @@ int ba2str(const bdaddr_t *ba, char *str)
 
 int str2ba(const char *str, bdaddr_t *ba)
 {
-	bdaddr_t b;
 	int i;
 
 	if (bachk(str) < 0) {
@@ -90,10 +89,8 @@ int str2ba(const char *str, bdaddr_t *ba)
 		return -1;
 	}
 
-	for (i = 0; i < 6; i++, str += 3)
-		b.b[i] = strtol(str, NULL, 16);
-
-	baswap(ba, &b);
+	for (i = 5; i >= 0; i--, str += 3)
+		ba->b[i] = strtol(str, NULL, 16);
 
 	return 0;
 }
