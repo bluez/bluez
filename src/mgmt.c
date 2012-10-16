@@ -352,7 +352,7 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 		mgmt_set_low_energy(index, TRUE);
 }
 
-static int mgmt_update_powered(struct btd_adapter *adapter,
+static void mgmt_update_powered(struct btd_adapter *adapter,
 						struct controller_info *info,
 						uint32_t settings)
 {
@@ -363,14 +363,12 @@ static int mgmt_update_powered(struct btd_adapter *adapter,
 		info->pending_uuid = FALSE;
 		info->pending_class = FALSE;
 		info->pending_cod_change = FALSE;
-		return 0;
+		return;
 	}
 
 	btd_adapter_start(adapter);
 
 	update_settings(adapter, settings);
-
-	return 0;
 }
 
 static int mode_changed(uint32_t s1, uint32_t s2)
