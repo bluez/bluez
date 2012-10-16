@@ -80,10 +80,6 @@
 #define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
 #define IO_CAPABILITY_INVALID		0xFF
 
-#define check_address(address) bachk(address)
-
-#define OFF_TIMER 3
-
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
