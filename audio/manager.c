@@ -435,7 +435,7 @@ static void gateway_auth_cb(DBusError *derr, void *user_data)
 
 		ba2str(&device->dst, ag_address);
 		DBG("Accepted AG connection from %s for %s",
-			ag_address, device->path);
+			ag_address, device_get_path(device->btd_dev));
 
 		gateway_start_service(device);
 	}
@@ -1240,7 +1240,8 @@ GSList *manager_find_devices(const char *path,
 	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *dev = l->data;
 
-		if ((path && (strcmp(path, "")) && strcmp(dev->path, path)))
+		if ((path && (strcmp(path, "")) &&
+				strcmp(device_get_path(dev->btd_dev), path)))
 			continue;
 
 		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(&dev->src, src))
@@ -1304,7 +1305,6 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
-	const char *path;
 
 	dev = manager_find_device(NULL, src, dst, NULL, FALSE);
 	if (dev)
@@ -1330,9 +1330,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 		return NULL;
 	}
 
-	path = device_get_path(device);
-
-	dev = audio_device_register(device, path, src, dst);
+	dev = audio_device_register(device, src, dst);
 	if (!dev)
 		return NULL;
 

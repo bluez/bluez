@@ -33,7 +33,6 @@ struct dev_priv;
 struct audio_device {
 	struct btd_device *btd_dev;
 
-	char *path;
 	bdaddr_t src;
 	bdaddr_t dst;
 
@@ -53,8 +52,8 @@ struct audio_device {
 };
 
 struct audio_device *audio_device_register(struct btd_device *device,
-					const char *path, const bdaddr_t *src,
-					const bdaddr_t *dst);
+							const bdaddr_t *src,
+							const bdaddr_t *dst);
 
 void audio_device_unregister(struct audio_device *device);
 

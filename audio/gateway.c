@@ -42,6 +42,9 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "../src/adapter.h"
+#include "../src/device.h"
+
 #include "sdp-client.h"
 #include "device.h"
 #include "gateway.h"
@@ -135,7 +138,7 @@ static void change_state(struct audio_device *dev, gateway_state_t new_state)
 	old_state = gw->state;
 	gw->state = new_state;
 
-	emit_property_changed(dev->path,
+	emit_property_changed(device_get_path(dev->btd_dev),
 				AUDIO_GATEWAY_INTERFACE, "State",
 				DBUS_TYPE_STRING, &val);
 
@@ -649,7 +652,8 @@ static DBusMessage *ag_disconnect(DBusConnection *conn, DBusMessage *msg,
 
 	gateway_close(device);
 	ba2str(&device->dst, gw_addr);
-	DBG("Disconnected from %s, %s", gw_addr, device->path);
+	DBG("Disconnected from %s, %s", gw_addr,
+					device_get_path(device->btd_dev));
 
 	return reply;
 }
@@ -779,7 +783,7 @@ static void path_unregister(void *data)
 	struct audio_device *dev = data;
 
 	DBG("Unregistered interface %s on path %s",
-		AUDIO_GATEWAY_INTERFACE, dev->path);
+		AUDIO_GATEWAY_INTERFACE, device_get_path(dev->btd_dev));
 
 	gateway_close(dev);
 
@@ -792,13 +796,15 @@ void gateway_unregister(struct audio_device *dev)
 	if (dev->gateway->agent)
 		agent_disconnect(dev, dev->gateway->agent);
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						device_get_path(dev->btd_dev),
 						AUDIO_GATEWAY_INTERFACE);
 }
 
 struct gateway *gateway_init(struct audio_device *dev)
 {
-	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					device_get_path(dev->btd_dev),
 					AUDIO_GATEWAY_INTERFACE,
 					gateway_methods, gateway_signals,
 					NULL, dev, path_unregister))

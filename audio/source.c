@@ -108,7 +108,7 @@ static void source_set_state(struct audio_device *dev, source_state_t new_state)
 
 	state_str = state2str(new_state);
 	if (state_str)
-		emit_property_changed(dev->path,
+		emit_property_changed(device_get_path(dev->btd_dev),
 					AUDIO_SOURCE_INTERFACE, "State",
 					DBUS_TYPE_STRING, &state_str);
 
@@ -521,29 +521,30 @@ static void path_unregister(void *data)
 	struct audio_device *dev = data;
 
 	DBG("Unregistered interface %s on path %s",
-		AUDIO_SOURCE_INTERFACE, dev->path);
+			AUDIO_SOURCE_INTERFACE, device_get_path(dev->btd_dev));
 
 	source_free(dev);
 }
 
 void source_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
-						AUDIO_SOURCE_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+			device_get_path(dev->btd_dev), AUDIO_SOURCE_INTERFACE);
 }
 
 struct source *source_init(struct audio_device *dev)
 {
 	struct source *source;
 
-	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					device_get_path(dev->btd_dev),
 					AUDIO_SOURCE_INTERFACE,
 					source_methods, source_signals, NULL,
 					dev, path_unregister))
 		return NULL;
 
 	DBG("Registered interface %s on path %s",
-					AUDIO_SOURCE_INTERFACE, dev->path);
+			AUDIO_SOURCE_INTERFACE, device_get_path(dev->btd_dev));
 
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,

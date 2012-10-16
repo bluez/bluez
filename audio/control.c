@@ -46,6 +46,9 @@
 #include <dbus/dbus.h>
 #include <gdbus.h>
 
+#include "../src/adapter.h"
+#include "../src/device.h"
+
 #include "log.h"
 #include "error.h"
 #include "device.h"
@@ -70,6 +73,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 	struct control *control = dev->control;
+	const char *path = device_get_path(dev->btd_dev);
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
@@ -94,10 +98,9 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		if (old_state != AVCTP_STATE_CONNECTED)
 			break;
 
-		g_dbus_emit_signal(conn, dev->path,
-					AUDIO_CONTROL_INTERFACE,
+		g_dbus_emit_signal(conn, path, AUDIO_CONTROL_INTERFACE,
 					"Disconnected", DBUS_TYPE_INVALID);
-		g_dbus_emit_property_changed(conn, dev->path,
+		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 
 		break;
@@ -116,10 +119,10 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			control->connect = NULL;
 		}
 
-		g_dbus_emit_signal(conn, dev->path,
+		g_dbus_emit_signal(conn, path,
 				AUDIO_CONTROL_INTERFACE, "Connected",
 				DBUS_TYPE_INVALID);
-		g_dbus_emit_property_changed(conn, dev->path,
+		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 		break;
 	default:
@@ -298,7 +301,7 @@ static void path_unregister(void *data)
 	struct control *control = dev->control;
 
 	DBG("Unregistered interface %s on path %s",
-		AUDIO_CONTROL_INTERFACE, dev->path);
+		AUDIO_CONTROL_INTERFACE, device_get_path(dev->btd_dev));
 
 	if (control->session)
 		avctp_disconnect(control->session);
@@ -315,7 +318,8 @@ static void path_unregister(void *data)
 
 void control_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(btd_get_dbus_connection(), dev->path,
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						device_get_path(dev->btd_dev),
 						AUDIO_CONTROL_INTERFACE);
 }
 
@@ -329,7 +333,8 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 {
 	struct control *control;
 
-	if (!g_dbus_register_interface(btd_get_dbus_connection(), dev->path,
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					device_get_path(dev->btd_dev),
 					AUDIO_CONTROL_INTERFACE,
 					control_methods, control_signals,
 					control_properties, dev,
@@ -337,7 +342,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 		return NULL;
 
 	DBG("Registered interface %s on path %s",
-		AUDIO_CONTROL_INTERFACE, dev->path);
+		AUDIO_CONTROL_INTERFACE, device_get_path(dev->btd_dev));
 
 	control = g_new0(struct control, 1);
 

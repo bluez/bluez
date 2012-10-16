@@ -117,7 +117,6 @@ static void device_free(struct audio_device *dev)
 
 	btd_device_unref(dev->btd_dev);
 
-	g_free(dev->path);
 	g_free(dev);
 }
 
@@ -266,7 +265,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 		g_dbus_send_message(conn, reply);
 	}
 
-	emit_property_changed(dev->path,
+	emit_property_changed(device_get_path(dev->btd_dev),
 				AUDIO_INTERFACE, "State",
 				DBUS_TYPE_STRING, &state_str);
 }
@@ -619,35 +618,31 @@ static const GDBusSignalTable dev_signals[] = {
 };
 
 struct audio_device *audio_device_register(struct btd_device *device,
-					const char *path, const bdaddr_t *src,
-					const bdaddr_t *dst)
+							const bdaddr_t *src,
+							const bdaddr_t *dst)
 {
 	struct audio_device *dev;
-
-	if (!path)
-		return NULL;
 
 	dev = g_new0(struct audio_device, 1);
 
 	dev->btd_dev = btd_device_ref(device);
-	dev->path = g_strdup(path);
 	bacpy(&dev->dst, dst);
 	bacpy(&dev->src, src);
 	dev->priv = g_new0(struct dev_priv, 1);
 	dev->priv->state = AUDIO_STATE_DISCONNECTED;
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					dev->path, AUDIO_INTERFACE,
-					dev_methods, dev_signals, NULL,
-					dev, NULL)) {
+					device_get_path(dev->btd_dev),
+					AUDIO_INTERFACE, dev_methods,
+					dev_signals, NULL, dev, NULL)) {
 		error("Unable to register %s on %s", AUDIO_INTERFACE,
-								dev->path);
+						device_get_path(dev->btd_dev));
 		device_free(dev);
 		return NULL;
 	}
 
 	DBG("Registered interface %s on path %s", AUDIO_INTERFACE,
-								dev->path);
+						device_get_path(dev->btd_dev));
 
 	if (sink_callback_id == 0)
 		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
@@ -714,8 +709,9 @@ void audio_device_unregister(struct audio_device *device)
 	if (device->control)
 		control_unregister(device);
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(), device->path,
-						AUDIO_INTERFACE);
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+					device_get_path(device->btd_dev),
+					AUDIO_INTERFACE);
 
 	device_free(device);
 }

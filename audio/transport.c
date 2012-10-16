@@ -34,6 +34,7 @@
 #include <gdbus.h>
 
 #include "../src/adapter.h"
+#include "../src/device.h"
 #include "../src/dbus-common.h"
 
 #include "log.h"
@@ -1040,6 +1041,7 @@ void transport_get_properties(struct media_transport *transport,
 	const char *uuid;
 	uint8_t codec;
 	const char *state;
+	const char *path;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -1047,8 +1049,8 @@ void transport_get_properties(struct media_transport *transport,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	/* Device */
-	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH,
-						&transport->device->path);
+	path = device_get_path(transport->device->btd_dev);
+	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH, &path);
 
 	uuid = media_endpoint_get_uuid(transport->endpoint);
 	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
@@ -1265,7 +1267,8 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 	transport->configuration = g_new(uint8_t, size);
 	memcpy(transport->configuration, configuration, size);
 	transport->size = size;
-	transport->path = g_strdup_printf("%s/fd%d", device->path, fd++);
+	transport->path = g_strdup_printf("%s/fd%d",
+				device_get_path(device->btd_dev), fd++);
 	transport->fd = -1;
 
 	uuid = media_endpoint_get_uuid(endpoint);
