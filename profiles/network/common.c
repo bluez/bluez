@@ -124,7 +124,7 @@ int bnep_cleanup(void)
 	return 0;
 }
 
-int bnep_kill_connection(bdaddr_t *dst)
+int bnep_kill_connection(const bdaddr_t *dst)
 {
 	struct bnep_conndel_req req;
 

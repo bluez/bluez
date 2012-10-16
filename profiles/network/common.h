@@ -28,7 +28,7 @@ uint16_t bnep_service_id(const char *svc);
 const char *bnep_uuid(uint16_t id);
 const char *bnep_name(uint16_t id);
 
-int bnep_kill_connection(bdaddr_t *dst);
+int bnep_kill_connection(const bdaddr_t *dst);
 int bnep_kill_all_connections(void);
 
 int bnep_connadd(int sk, uint16_t role, char *dev);

@@ -76,33 +76,23 @@ done:
 static int network_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
-	struct btd_adapter *adapter = device_get_adapter(device);
-	const gchar *path = device_get_path(device);
-	const bdaddr_t *src;
-	const bdaddr_t *dst;
-
-	DBG("path %s", path);
-
-	src = adapter_get_address(adapter);
-	dst = device_get_address(device);
+	DBG("path %s", device_get_path(device));
 
 	if (g_slist_find_custom(uuids, PANU_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, dst, BNEP_SVC_PANU);
+		connection_register(device, BNEP_SVC_PANU);
 	if (g_slist_find_custom(uuids, GN_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, dst, BNEP_SVC_GN);
+		connection_register(device, BNEP_SVC_GN);
 	if (g_slist_find_custom(uuids, NAP_UUID, bt_uuid_strcmp))
-		connection_register(device, path, src, dst, BNEP_SVC_NAP);
+		connection_register(device, BNEP_SVC_NAP);
 
 	return 0;
 }
 
 static void network_remove(struct btd_profile *p, struct btd_device *device)
 {
-	const gchar *path = device_get_path(device);
+	DBG("path %s", device_get_path(device));
 
-	DBG("path %s", path);
-
-	connection_unregister(path);
+	connection_unregister(device);
 }
 
 static int network_server_probe(struct btd_profile *p,
