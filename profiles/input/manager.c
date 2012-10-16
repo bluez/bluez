@@ -44,8 +44,6 @@
 
 static int idle_timeout = 0;
 
-static GSList *adapters = NULL;
-
 static void input_remove(struct btd_device *device, const char *uuid)
 {
 	const gchar *path = device_get_path(device);
@@ -77,24 +75,13 @@ static void hid_device_remove(struct btd_profile *p, struct btd_device *device)
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	int ret;
-
-	ret = server_start(adapter_get_address(adapter));
-	if (ret < 0)
-		return ret;
-
-	adapters = g_slist_append(adapters, btd_adapter_ref(adapter));
-
-	return 0;
+	return server_start(adapter_get_address(adapter));
 }
 
 static void hid_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
 	server_stop(adapter_get_address(adapter));
-
-	adapters = g_slist_remove(adapters, adapter);
-	btd_adapter_unref(adapter);
 }
 
 static struct btd_profile input_profile = {
