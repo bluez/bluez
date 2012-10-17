@@ -58,6 +58,8 @@ if (args[0] == "list"):
 		if "org.bluez.Device" not in interfaces:
 			continue
 		properties = interfaces["org.bluez.Device"]
+		if properties["Adapter"] != adapter_path:
+			continue;
 		print("%s %s" % (properties["Address"], properties["Alias"]))
 
 	sys.exit(0)
