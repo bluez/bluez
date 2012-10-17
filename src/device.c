@@ -872,8 +872,6 @@ static void profile_remove(struct btd_profile *profile,
 						struct btd_device *device)
 {
 	profile->device_remove(profile, device);
-
-	device->profiles = g_slist_remove(device->profiles, profile);
 }
 
 static gboolean do_disconnect(gpointer user_data)
@@ -899,6 +897,8 @@ int device_block(struct btd_device *device, gboolean update_only)
 		do_disconnect(device);
 
 	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
+	g_slist_free(device->profiles);
+	device->profiles = NULL;
 
 	if (!update_only)
 		err = btd_adapter_block_address(device->adapter,
