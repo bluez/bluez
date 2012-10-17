@@ -412,28 +412,30 @@ static void discover_ccc_cb(guint8 status, const guint8 *pdu,
 	for (i = 0; i < list->num; i++) {
 		uint8_t *value;
 		uint16_t handle, uuid;
+		char *msg;
+		uint8_t attr_val[2];
 
 		value = list->data[i];
 		handle = att_get_u16(value);
 		uuid = att_get_u16(value + 2);
 
-		if (uuid == GATT_CLIENT_CHARAC_CFG_UUID) {
-			char *msg;
-			uint8_t value[2];
+		if (uuid != GATT_CLIENT_CHARAC_CFG_UUID)
+			continue;
 
-			hr->measurement_ccc_handle = handle;
+		hr->measurement_ccc_handle = handle;
 
-			if (g_slist_length(hr->hradapter->watchers) == 0)
-				break;
-
-			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+		if (g_slist_length(hr->hradapter->watchers) == 0) {
+			att_put_u16(0x0000, attr_val);
+			msg = g_strdup("Disable measurement");
+		} else {
+			att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, attr_val);
 			msg = g_strdup("Enable measurement");
-
-			gatt_write_char(hr->attrib, handle, value,
-					sizeof(value), char_write_cb, msg);
-
-			break;
 		}
+
+		gatt_write_char(hr->attrib, handle, attr_val,
+					sizeof(attr_val), char_write_cb, msg);
+
+		break;
 	}
 
 done:
