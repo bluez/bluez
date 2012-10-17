@@ -394,10 +394,8 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	/* No change */
 	if ((device->alias == NULL && g_str_equal(alias, "")) ||
-					g_strcmp0(device->alias, alias) == 0) {
-		g_dbus_pending_property_success(btd_get_dbus_connection(), id);
-		return;
-	}
+					g_strcmp0(device->alias, alias) == 0)
+		return g_dbus_pending_property_success(id);
 
 	ba2str(adapter_get_address(adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
@@ -405,11 +403,9 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 	/* Remove alias if empty string */
 	err = write_device_alias(srcaddr, dstaddr, device->bdaddr_type,
 					g_str_equal(alias, "") ? NULL : alias);
-	if (err < 0) {
-		g_dbus_pending_property_error(btd_get_dbus_connection(),
-				id, ERROR_INTERFACE ".Failed", strerror(-err));
-		return;
-	}
+	if (err < 0)
+		return g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".Failed", strerror(-err));
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -417,7 +413,7 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device->path, DEVICE_INTERFACE, "Alias");
 
-	g_dbus_pending_property_success(btd_get_dbus_connection(), id);
+	g_dbus_pending_property_success(id);
 }
 
 static void dev_property_set_alias(const GDBusPropertyTable *property,
@@ -426,12 +422,10 @@ static void dev_property_set_alias(const GDBusPropertyTable *property,
 {
 	const char *alias;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING) {
-		g_dbus_pending_property_error(btd_get_dbus_connection(),
-				id, ERROR_INTERFACE ".InvalidArguments",
-				"Invalid arguments in method call");
-		return;
-	}
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING)
+		return g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
 
 	dbus_message_iter_get_basic(value, &alias);
 
@@ -686,27 +680,23 @@ static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 	char srcaddr[18], dstaddr[18];
 	int err;
 
-	if (device->trusted == value) {
-		g_dbus_pending_property_success(btd_get_dbus_connection(), id);
-		return;
-	}
+	if (device->trusted == value)
+		return g_dbus_pending_property_success(id);
 
 	ba2str(adapter_get_address(adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
 	err = write_trust(srcaddr, dstaddr, device->bdaddr_type, value);
-	if (err < 0) {
-		g_dbus_pending_property_error(btd_get_dbus_connection(),
-				id, ERROR_INTERFACE ".Failed", strerror(-err));
-		return;
-	}
+	if (err < 0)
+		return g_dbus_pending_property_error(id,
+				ERROR_INTERFACE ".Failed", strerror(-err));
 
 	device->trusted = value;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device->path, DEVICE_INTERFACE, "Trusted");
 
-	g_dbus_pending_property_success(btd_get_dbus_connection(), id);
+	g_dbus_pending_property_success(id);
 }
 
 static void dev_property_set_trusted(const GDBusPropertyTable *property,
@@ -715,12 +705,10 @@ static void dev_property_set_trusted(const GDBusPropertyTable *property,
 {
 	dbus_bool_t b;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
-		g_dbus_pending_property_error(btd_get_dbus_connection(),
-				id, ERROR_INTERFACE ".InvalidArguments",
-				"Invalid arguments in method call");
-		return;
-	}
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
+		return g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
 
 	dbus_message_iter_get_basic(value, &b);
 
@@ -750,17 +738,15 @@ static void set_blocked(GDBusPendingPropertySet id, gboolean value, void *data)
 
 	switch (-err) {
 	case 0:
-		g_dbus_pending_property_success(btd_get_dbus_connection(), id);
+		g_dbus_pending_property_success(id);
 		break;
 	case EINVAL:
-		g_dbus_pending_property_error(btd_get_dbus_connection(), id,
-					ERROR_INTERFACE ".Failed",
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
 					"Kernel lacks blacklist support");
 		break;
 	default:
-		g_dbus_pending_property_error(btd_get_dbus_connection(), id,
-					ERROR_INTERFACE ".Failed",
-					strerror(-err));
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+							strerror(-err));
 		break;
 	}
 }
@@ -772,12 +758,10 @@ static void dev_property_set_blocked(const GDBusPropertyTable *property,
 {
 	dbus_bool_t b;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
-		g_dbus_pending_property_error(btd_get_dbus_connection(),
-				id, ERROR_INTERFACE ".InvalidArguments",
-				"Invalid arguments in method call");
-		return;
-	}
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
+		return g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
 
 	dbus_message_iter_get_basic(value, &b);
 
