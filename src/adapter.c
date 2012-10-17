@@ -556,8 +556,6 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 {
 	struct discovery *discovery = adapter->discovery;
 
-	adapter->discovery = NULL;
-
 	if (!discovery)
 		return;
 
@@ -565,6 +563,8 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 		g_source_remove(discovery->id);
 
 	send_devices_found(adapter);
+
+	adapter->discovery = NULL;
 
 	g_slist_free_full(discovery->found, invalidate_rssi);
 
