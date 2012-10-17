@@ -71,6 +71,7 @@ struct security_data {
 };
 
 struct property_data {
+	DBusConnection *conn;
 	GDBusPendingPropertySet id;
 	DBusMessage *message;
 };
@@ -445,8 +446,7 @@ static struct property_data *remove_pending_property_data(
 	return propdata;
 }
 
-void g_dbus_pending_property_success(DBusConnection *connection,
-						GDBusPendingPropertySet id)
+void g_dbus_pending_property_success(GDBusPendingPropertySet id)
 {
 	struct property_data *propdata;
 
@@ -454,14 +454,15 @@ void g_dbus_pending_property_success(DBusConnection *connection,
 	if (propdata == NULL)
 		return;
 
-	g_dbus_send_reply(connection, propdata->message, DBUS_TYPE_INVALID);
+	g_dbus_send_reply(propdata->conn, propdata->message,
+							DBUS_TYPE_INVALID);
 	dbus_message_unref(propdata->message);
 	g_free(propdata);
 }
 
-void g_dbus_pending_property_error_valist(DBusConnection *connection,
-					GDBusPendingReply id, const char *name,
-					const char *format, va_list args)
+void g_dbus_pending_property_error_valist(GDBusPendingReply id,
+					const char *name, const char *format,
+					va_list args)
 {
 	struct property_data *propdata;
 	DBusMessage *reply;
@@ -473,7 +474,7 @@ void g_dbus_pending_property_error_valist(DBusConnection *connection,
 	reply = g_dbus_create_error_valist(propdata->message, name, format,
 									args);
 	if (reply != NULL) {
-		dbus_connection_send(connection, reply, NULL);
+		dbus_connection_send(propdata->conn, reply, NULL);
 		dbus_message_unref(reply);
 	}
 
@@ -481,16 +482,14 @@ void g_dbus_pending_property_error_valist(DBusConnection *connection,
 	g_free(propdata);
 }
 
-void g_dbus_pending_property_error(DBusConnection *connection,
-					GDBusPendingReply id, const char *name,
-					const char *format, ...)
+void g_dbus_pending_property_error(GDBusPendingReply id, const char *name,
+						const char *format, ...)
 {
 	va_list args;
 
 	va_start(args, format);
 
-	g_dbus_pending_property_error_valist(connection, id, name, format,
-									args);
+	g_dbus_pending_property_error_valist(id, name, format, args);
 
 	va_end(args);
 }
@@ -891,6 +890,7 @@ static DBusMessage *properties_set(DBusConnection *connection,
 	propdata = g_new(struct property_data, 1);
 	propdata->id = next_pending_property++;
 	propdata->message = dbus_message_ref(message);
+	propdata->conn = connection;
 	pending_property_set = g_slist_prepend(pending_property_set, propdata);
 
 	property->set(property, &sub, propdata->id, iface->user_data);

@@ -246,14 +246,11 @@ guint g_dbus_add_signal_watch(DBusConnection *connection,
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint tag);
 void g_dbus_remove_all_watches(DBusConnection *connection);
 
-void g_dbus_pending_property_success(DBusConnection *connection,
-						GDBusPendingPropertySet id);
-void g_dbus_pending_property_error_valist(DBusConnection *connection,
-					GDBusPendingReply id, const char *name,
-					const char *format, va_list args);
-void g_dbus_pending_property_error(DBusConnection *connection,
-					GDBusPendingReply id, const char *name,
-					const char *format, ...);
+void g_dbus_pending_property_success(GDBusPendingPropertySet id);
+void g_dbus_pending_property_error_valist(GDBusPendingReply id,
+			const char *name, const char *format, va_list args);
+void g_dbus_pending_property_error(GDBusPendingReply id, const char *name,
+						const char *format, ...);
 void g_dbus_emit_property_changed(DBusConnection *connection,
 				const char *path, const char *interface,
 				const char *name);
