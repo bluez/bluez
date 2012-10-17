@@ -16,11 +16,6 @@ Methods		boolean IsConnected() {deprecated}
 
 			Returns True if connected, otherwise FALSE.
 
-		dict GetProperties()
-
-			Returns all properties for the interface. See the
-			properties section for available properties.
-
 		void Connect()
 
 			Connect to remote device.

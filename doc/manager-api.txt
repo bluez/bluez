@@ -14,14 +14,6 @@ Service		org.bluez
 Interface	org.bluez.Manager
 Object path	/
 
-Methods		dict GetProperties()
-
-			Returns all global properties. See the
-			properties section for available properties.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-
 		object DefaultAdapter()
 
 			Returns object path for the default adapter.
@@ -114,12 +106,7 @@ Methods		dict GetProperties()
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
-Signals		PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
-
-		AdapterAdded(object adapter)
+Signals		AdapterAdded(object adapter)
 
 			Parameter is object path of added adapter.
 

@@ -14,24 +14,7 @@ Service		org.bluez
 Interface	org.bluez.Device
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		dict GetProperties()
-
-			Returns all properties for the device. See the
-			properties section for available properties.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-
-		void SetProperty(string name, variant value)
-
-			Changes the value of the specified property. Only
-			properties that are listed as read-write are changeable.
-			On success this will emit a PropertyChanged signal.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-
-		dict DiscoverServices(string pattern)
+Methods		dict DiscoverServices(string pattern)
 
 			This method starts the service discovery to retrieve
 			remote service records. The pattern parameter can
@@ -133,12 +116,7 @@ Methods		dict GetProperties()
 			This method can be used to cancel a pairing
 			operation initiated by the Pair method.
 
-Signals		PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
-
-		DisconnectRequested()
+Signals		DisconnectRequested()
 
 			This signal will be sent when a low level
 			disconnection to a remote device has been requested.
@@ -198,7 +176,7 @@ Properties	string Address [readonly]
 		boolean Connected [readonly]
 
 			Indicates if the remote device is currently connected.
-			A PropertyChanged signal indicate changes to this
+			A PropertiesChanged signal indicate changes to this
 			status.
 
 		boolean Trusted [readwrite]
@@ -224,7 +202,7 @@ Properties	string Address [readonly]
 			convert it back to the remote device name.
 
 			When resetting the alias with an empty string, the
-			emitted PropertyChanged signal will show the remote
+			emitted PropertiesChanged signal will show the remote
 			name again.
 
 		object Adapter [readonly]
