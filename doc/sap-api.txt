@@ -17,18 +17,6 @@ Methods		void Disconnect()
 
 			Possible errors: org.bluez.Error.Failed
 
-		dict GetProperties()
-
-			Return all properties for the interface. See the
-			properties section for available properties.
-
-			Possible Errors: org.bluez.Error.Failed
-
-Signals		PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
-
 Properties	boolean Connected [readonly]
 
 			Indicates if SAP client is connected to the server.
