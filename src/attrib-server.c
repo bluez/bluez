@@ -490,9 +490,11 @@ static uint16_t read_by_group(struct gatt_channel *channel, uint16_t start,
 	length = g_slist_length(groups);
 
 	adl = att_data_list_alloc(length, last_size + 4);
-	if (adl == NULL)
+	if (adl == NULL) {
+		g_slist_free_full(groups, g_free);
 		return enc_error_resp(ATT_OP_READ_BY_GROUP_REQ, start,
 					ATT_ECODE_UNLIKELY, pdu, len);
+	}
 
 	for (i = 0, l = groups; l; l = l->next, i++) {
 		uint8_t *value;
@@ -577,9 +579,11 @@ static uint16_t read_by_type(struct gatt_channel *channel, uint16_t start,
 	length += 2;
 
 	adl = att_data_list_alloc(num, length);
-	if (adl == NULL)
+	if (adl == NULL) {
+		g_slist_free(types);
 		return enc_error_resp(ATT_OP_READ_BY_TYPE_REQ, start,
 					ATT_ECODE_UNLIKELY, pdu, len);
+	}
 
 	for (i = 0, l = types; l; i++, l = l->next) {
 		uint8_t *value;
@@ -655,9 +659,11 @@ static uint16_t find_info(struct gatt_channel *channel, uint16_t start,
 	}
 
 	adl = att_data_list_alloc(num, length + 2);
-	if (adl == NULL)
+	if (adl == NULL) {
+		g_slist_free(info);
 		return enc_error_resp(ATT_OP_FIND_INFO_REQ, start,
 					ATT_ECODE_UNLIKELY, pdu, len);
+	}
 
 	for (i = 0, l = info; l; i++, l = l->next) {
 		uint8_t *value;
