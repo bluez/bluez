@@ -1294,7 +1294,8 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 static DBusMessage *get_properties(DBusConnection *c,
 				DBusMessage *msg, void *data)
 {
-	struct sap_connection *conn = data;
+	struct sap_server *server = data;
+	struct sap_connection *conn = server->conn;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
