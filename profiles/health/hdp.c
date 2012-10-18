@@ -418,44 +418,43 @@ static const GDBusMethodTable health_manager_methods[] = {
 	{ }
 };
 
-static DBusMessage *channel_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static gboolean channel_property_get_device(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
-	struct hdp_channel *chan = user_data;
-	DBusMessageIter iter, dict;
-	DBusMessage *reply;
-	const char *path;
-	char *type;
+	struct hdp_channel *chan = data;
+	const char *path = device_get_path(chan->dev->dev);
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	dbus_message_iter_init_append(reply, &iter);
+	return TRUE;
+}
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+static gboolean channel_property_get_application(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct hdp_channel *chan = data;
+	const char *path = chan->app->path;
 
-	path = device_get_path(chan->dev->dev);
-	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	path = chan->app->path;
-	dict_append_entry(&dict, "Application", DBUS_TYPE_OBJECT_PATH, &path);
+	return TRUE;
+}
+
+static gboolean channel_property_get_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct hdp_channel *chan = data;
+	const char *type;
 
 	if (chan->config == HDP_RELIABLE_DC)
-		type = g_strdup("Reliable");
+		type = "Reliable";
 	else
-		type = g_strdup("Streaming");
+		type = "Streaming";
 
-	dict_append_entry(&dict, "Type", DBUS_TYPE_STRING, &type);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &type);
 
-	g_free(type);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
+	return TRUE;
 }
 
 static void hdp_tmp_dc_data_destroy(gpointer data)
@@ -720,13 +719,17 @@ end:
 }
 
 static const GDBusMethodTable health_channels_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			channel_get_properties) },
 	{ GDBUS_ASYNC_METHOD("Acquire",
 			NULL, GDBUS_ARGS({ "fd", "h" }),
 			channel_acquire) },
 	{ GDBUS_METHOD("Release", NULL, NULL, channel_release) },
+	{ }
+};
+
+static const GDBusPropertyTable health_channels_properties[] = {
+	{ "Device", "o",  channel_property_get_device },
+	{ "Application", "o", channel_property_get_application },
+	{ "Type", "s", channel_property_get_type },
 	{ }
 };
 
@@ -768,8 +771,9 @@ static struct hdp_channel *create_channel(struct hdp_device *dev,
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					hdp_chann->path, HEALTH_CHANNEL,
-					health_channels_methods, NULL, NULL,
-					hdp_chann, health_channel_destroy)) {
+					health_channels_methods, NULL,
+					health_channels_properties, hdp_chann,
+					health_channel_destroy)) {
 		g_set_error(err, HDP_ERROR, HDP_UNSPECIFIED_ERROR,
 					"Can't register the channel interface");
 		health_channel_destroy(hdp_chann);
