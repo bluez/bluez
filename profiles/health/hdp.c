@@ -968,9 +968,9 @@ static void hdp_mcap_mdl_connected_cb(struct mcap_mdl *mdl, void *data)
 
 	dev->fr = hdp_channel_ref(chan);
 
-	emit_property_changed(device_get_path(dev->dev),
-				HEALTH_DEVICE, "MainChannel",
-				DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				device_get_path(dev->dev), HEALTH_DEVICE,
+				"MainChannel");
 
 end:
 	hdp_channel_unref(dev->ndc);
@@ -1690,9 +1690,9 @@ static void hdp_mdl_conn_cb(struct mcap_mdl *mdl, GError *err, gpointer data)
 
 	dev->fr = hdp_channel_ref(hdp_chann);
 
-	emit_property_changed(device_get_path(dev->dev),
-				HEALTH_DEVICE, "MainChannel",
-				DBUS_TYPE_OBJECT_PATH, &dev->fr->path);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				device_get_path(dev->dev), HEALTH_DEVICE,
+				"MainChannel");
 }
 
 static void device_create_mdl_cb(struct mcap_mdl *mdl, uint8_t conf,
@@ -2049,31 +2049,26 @@ fail:
 	return reply;
 }
 
-static DBusMessage *device_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static gboolean dev_property_exists_main_channel(
+				const GDBusPropertyTable *property, void *data)
 {
-	struct hdp_device *device = user_data;
-	DBusMessageIter iter, dict;
-	DBusMessage *reply;
+	struct hdp_device *device = data;
+	return device->fr != NULL;
+}
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
+static gboolean dev_property_get_main_channel(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct hdp_device *device = data;
 
-	dbus_message_iter_init_append(reply, &iter);
+	if (device->fr == NULL)
+		return FALSE;
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	if (device->fr != NULL)
-		dict_append_entry(&dict, "MainChannel", DBUS_TYPE_OBJECT_PATH,
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
 							&device->fr->path);
 
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
+	return TRUE;
 }
 
 static void health_device_destroy(void *data)
@@ -2104,9 +2099,6 @@ static const GDBusMethodTable health_device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("DestroyChannel",
 			GDBUS_ARGS({ "channel", "o" }), NULL,
 			device_destroy_channel) },
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			device_get_properties) },
 	{ }
 };
 
@@ -2115,8 +2107,12 @@ static const GDBusSignalTable health_device_signals[] = {
 			GDBUS_ARGS({ "channel", "o" })) },
 	{ GDBUS_SIGNAL("ChannelDeleted",
 			GDBUS_ARGS({ "channel", "o" })) },
-	{ GDBUS_SIGNAL("PropertyChanged",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	{ }
+};
+
+static const GDBusPropertyTable health_device_properties[] = {
+	{ "MainChannel", "o", dev_property_get_main_channel, NULL,
+					dev_property_exists_main_channel },
 	{ }
 };
 
