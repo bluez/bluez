@@ -90,6 +90,7 @@ static struct btd_profile input_profile = {
 
 	.auto_connect	= true,
 	.connect	= input_device_connect,
+	.disconnect	= input_device_disconnect,
 
 	.device_probe	= hid_device_probe,
 	.device_remove	= hid_device_remove,
