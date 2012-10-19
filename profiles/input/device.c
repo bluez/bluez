@@ -700,6 +700,26 @@ static DBusMessage *local_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile,
+							btd_profile_cb cb)
+{
+	struct input_device *idev;
+	int err;
+
+	idev = find_device_by_path(devices, device_get_path(dev));
+	if (!idev)
+		return -ENOENT;
+
+	err = connection_disconnect(idev, 0);
+	if (err < 0)
+		return err;
+
+	if (cb)
+		cb(profile, dev, 0);
+
+	return 0;
+}
+
 static DBusMessage *local_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
