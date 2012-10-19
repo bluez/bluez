@@ -1295,11 +1295,15 @@ static gboolean server_property_get_connected(
 	struct sap_connection *conn = server->conn;
 	dbus_bool_t connected;
 
-	if (!conn)
-		return FALSE;
+	if (!conn) {
+		connected = FALSE;
+		goto append;
+	}
 
 	connected = (conn->state == SAP_STATE_CONNECTED ||
 				conn->state == SAP_STATE_GRACEFUL_DISCONNECT);
+
+append:
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &connected);
 
 	return TRUE;
