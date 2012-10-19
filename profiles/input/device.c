@@ -700,7 +700,7 @@ static DBusMessage *local_connect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static DBusMessage *input_device_disconnect(DBusConnection *conn,
+static DBusMessage *local_disconnect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct input_device *idev = data;
@@ -742,7 +742,7 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect",
 				NULL, NULL, local_connect) },
 	{ GDBUS_METHOD("Disconnect",
-				NULL, NULL, input_device_disconnect) },
+				NULL, NULL, local_disconnect) },
 	{ }
 };
 
