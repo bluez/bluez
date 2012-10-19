@@ -397,7 +397,7 @@ failed:
 }
 
 /* Connect and initiate BNEP session */
-static DBusMessage *connection_connect(DBusConnection *conn,
+static DBusMessage *local_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_peer *peer = data;
@@ -465,7 +465,7 @@ static DBusMessage *connection_cancel(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *connection_disconnect(DBusConnection *conn,
+static DBusMessage *local_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_peer *peer = data;
@@ -483,7 +483,7 @@ static DBusMessage *connection_disconnect(DBusConnection *conn,
 	return btd_error_not_connected(msg);
 }
 
-static DBusMessage *connection_get_properties(DBusConnection *conn,
+static DBusMessage *local_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct network_peer *peer = data;
@@ -568,12 +568,12 @@ static const GDBusMethodTable connection_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect",
 				GDBUS_ARGS({"uuid", "s"}),
 				GDBUS_ARGS({"interface", "s"}),
-				connection_connect) },
+				local_connect) },
 	{ GDBUS_METHOD("Disconnect",
-			NULL, NULL, connection_disconnect) },
+			NULL, NULL, local_disconnect) },
 	{ GDBUS_METHOD("GetProperties",
 			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			connection_get_properties) },
+			local_get_properties) },
 	{ }
 };
 
