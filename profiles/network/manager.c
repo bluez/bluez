@@ -102,7 +102,7 @@ static int network_server_probe(struct btd_profile *p,
 
 	DBG("path %s", path);
 
-	return server_register(adapter);
+	return server_register(adapter, BNEP_SVC_NAP);
 }
 
 static void network_server_remove(struct btd_profile *p,
@@ -112,7 +112,7 @@ static void network_server_remove(struct btd_profile *p,
 
 	DBG("path %s", path);
 
-	server_unregister(adapter);
+	server_unregister(adapter, BNEP_SVC_NAP);
 }
 
 static struct btd_profile network_profile = {

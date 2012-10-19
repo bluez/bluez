@@ -766,7 +766,7 @@ static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 	return na;
 }
 
-int server_register(struct btd_adapter *adapter)
+int server_register(struct btd_adapter *adapter, uint16_t id)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
@@ -780,7 +780,7 @@ int server_register(struct btd_adapter *adapter)
 		adapters = g_slist_append(adapters, na);
 	}
 
-	ns = find_server(na->servers, BNEP_SVC_NAP);
+	ns = find_server(na->servers, id);
 	if (ns)
 		return 0;
 
@@ -802,7 +802,7 @@ int server_register(struct btd_adapter *adapter)
 	}
 
 	bacpy(&ns->src, adapter_get_address(adapter));
-	ns->id = BNEP_SVC_NAP;
+	ns->id = id;
 	ns->na = na;
 	ns->record_id = 0;
 	na->servers = g_slist_append(na->servers, ns);
@@ -812,11 +812,10 @@ int server_register(struct btd_adapter *adapter)
 	return 0;
 }
 
-int server_unregister(struct btd_adapter *adapter)
+int server_unregister(struct btd_adapter *adapter, uint16_t id)
 {
 	struct network_adapter *na;
 	struct network_server *ns;
-	uint16_t id = BNEP_SVC_NAP;
 
 	na = find_adapter(adapters, adapter);
 	if (!na)
