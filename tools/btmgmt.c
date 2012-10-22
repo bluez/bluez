@@ -43,6 +43,7 @@
 
 #include <glib.h>
 #include "glib-helper.h"
+#include "eir.h"
 
 static bool monitor = false;
 static bool discovery = false;
@@ -462,6 +463,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 {
 	uint32_t flags;
 	uint16_t eir_len;
+	struct eir_data eir;
 
 	if (len < sizeof(*ev)) {
 		fprintf(stderr,
@@ -478,13 +480,23 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		return -EINVAL;
 	}
 
+	memset(&eir, 0, sizeof(eir));
+	eir_parse(&eir, ev->eir, eir_len);
+
 	if (monitor || discovery) {
 		char addr[18];
 		ba2str(&ev->addr.bdaddr, addr);
 		printf("hci%u dev_found: %s type %s rssi %d "
-			"flags 0x%04x eir_len %u\n", index, addr,
-			typestr(ev->addr.type), ev->rssi, flags, eir_len);
+			"flags 0x%04x ", index, addr,
+			typestr(ev->addr.type), ev->rssi, flags);
+
+		if (eir.name)
+			printf("name %s\n", eir.name);
+		else
+			printf("eir_len %u\n", eir_len);
 	}
+
+	eir_data_free(&eir);
 
 	if (discovery && (flags & MGMT_DEV_FOUND_CONFIRM_NAME)) {
 		struct mgmt_cp_confirm_name cp;
