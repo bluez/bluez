@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2011  David Herrmann <dh.herrmann@googlemail.com>
+ *  Copyright (C) 2011-2012 David Herrmann <dh.herrmann@googlemail.com>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -58,11 +58,23 @@
  * is pressed.
  */
 
+static uint16_t wii_ids[][2] = {
+	{ 0x057e, 0x0306 },
+	{ 0x057e, 0x0330 },
+};
+
+static const char *wii_names[] = {
+	"Nintendo RVL-CNT-01",
+	"Nintendo RVL-CNT-01-TR",
+	"Nintendo RVL-WBC-01",
+};
+
 static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 						char *pinbuf, gboolean *display)
 {
 	uint16_t vendor, product;
 	char addr[18], name[25];
+	unsigned int i;
 
 	ba2str(device_get_address(device), addr);
 
@@ -72,15 +84,22 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 	device_get_name(device, name, sizeof(name));
 	name[sizeof(name) - 1] = 0;
 
-	if (g_str_equal(name, "Nintendo RVL-CNT-01") ||
-				g_str_equal(name, "Nintendo RVL-WBC-01") ||
-				(vendor == 0x057e && product == 0x0306)) {
-		DBG("Forcing fixed pin on detected wiimote %s", addr);
-		memcpy(pinbuf, adapter_get_address(adapter), 6);
-		return 6;
+	for (i = 0; i < G_N_ELEMENTS(wii_ids); ++i) {
+		if (vendor == wii_ids[i][0] && product == wii_ids[i][1])
+			goto found;
+	}
+
+	for (i = 0; i < G_N_ELEMENTS(wii_names); ++i) {
+		if (g_str_equal(name, wii_names[i]))
+			goto found;
 	}
 
 	return 0;
+
+found:
+	DBG("Forcing fixed pin on detected wiimote %s", addr);
+	memcpy(pinbuf, adapter_get_address(adapter), 6);
+	return 6;
 }
 
 static int wii_probe(struct btd_adapter *adapter)
