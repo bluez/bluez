@@ -235,7 +235,7 @@ static const char *settings_str[] = {
 				"br/edr",
 				"hs",
 				"le" ,
-				"le-peripheral",
+				"peripheral",
 };
 
 static void print_settings(uint32_t settings)
