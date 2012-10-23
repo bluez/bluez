@@ -48,7 +48,7 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 								dict metadata)
 
 			Register a media player object to sender, the sender
-			can register as many objets as it likes.
+			can register as many objects as it likes.
 
 			Note: If the sender disconnects its objects are
 			automatically unregistered.
