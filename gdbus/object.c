@@ -291,7 +291,7 @@ void g_dbus_pending_success(DBusConnection *connection,
 {
 	GSList *list;
 
-        for (list = pending_security; list; list = list->next) {
+	for (list = pending_security; list; list = list->next) {
 		struct security_data *secdata = list->data;
 
 		if (secdata->pending != pending)
@@ -305,7 +305,7 @@ void g_dbus_pending_success(DBusConnection *connection,
 		dbus_message_unref(secdata->message);
 		g_free(secdata);
 		return;
-        }
+	}
 }
 
 void g_dbus_pending_error_valist(DBusConnection *connection,
@@ -314,7 +314,7 @@ void g_dbus_pending_error_valist(DBusConnection *connection,
 {
 	GSList *list;
 
-        for (list = pending_security; list; list = list->next) {
+	for (list = pending_security; list; list = list->next) {
 		struct security_data *secdata = list->data;
 		DBusMessage *reply;
 
@@ -333,7 +333,7 @@ void g_dbus_pending_error_valist(DBusConnection *connection,
 		dbus_message_unref(secdata->message);
 		g_free(secdata);
 		return;
-        }
+	}
 }
 
 void g_dbus_pending_error(DBusConnection *connection,
