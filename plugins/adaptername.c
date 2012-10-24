@@ -211,8 +211,10 @@ static int adaptername_probe(struct btd_adapter *adapter)
 	adapter_set_allow_name_changes(adapter, TRUE);
 	current_id = adapter_get_dev_id(adapter);
 
-	if (read_local_name(adapter_get_address(adapter), name) < 0)
-		expand_name(name, MAX_NAME_LENGTH, main_opts.name, current_id);
+	if (btd_adapter_get_name(adapter) != NULL)
+		return 0;
+
+	expand_name(name, MAX_NAME_LENGTH, main_opts.name, current_id);
 
 	DBG("Setting name '%s' for device 'hci%d'", name, current_id);
 	adapter_set_name(adapter, name);
