@@ -30,6 +30,12 @@ General
   Priority: Low
   Complexity: C1
 
+- Function in src/adapter.c to convert old storage files to new ini-file format
+  should be removed 6-8 months after first BlueZ 5 release.
+
+  Priority: Low
+  Complexity: C1
+
 BlueZ 5
 =======
 
