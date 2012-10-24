@@ -221,17 +221,6 @@ void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
 	device_simple_pairing_complete(device, status);
 }
 
-static void update_lastseen(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
-{
-	time_t t;
-	struct tm *tm;
-
-	t = time(NULL);
-	tm = gmtime(&t);
-
-	write_lastseen_info(sba, dba, dba_type, tm);
-}
-
 static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
@@ -255,8 +244,6 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 		error("No matching adapter found");
 		return;
 	}
-
-	update_lastseen(local, peer, bdaddr_type);
 
 	adapter_update_found_devices(adapter, peer, bdaddr_type, rssi,
 					confirm_name, legacy, data, data_len);
