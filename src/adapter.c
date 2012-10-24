@@ -2499,6 +2499,10 @@ static void load_config(struct btd_adapter *adapter)
 
 	/* Set class */
 	adapter->dev_class = main_opts.class;
+
+	/* Get pairable mode */
+	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
+		adapter->pairable = TRUE;
 }
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
@@ -2525,10 +2529,6 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 	btd_profile_foreach(probe_profile, adapter);
 	clear_blocked(adapter);
 	load_devices(adapter);
-
-	/* Set pairable mode */
-	if (read_device_pairable(&adapter->bdaddr, &adapter->pairable) < 0)
-		adapter->pairable = TRUE;
 
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
