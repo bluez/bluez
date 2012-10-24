@@ -756,8 +756,6 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 	if (class == adapter->dev_class)
 		return;
 
-	write_local_class(&adapter->bdaddr, new_class);
-
 	adapter->dev_class = class;
 
 	if (main_opts.gatt_enabled) {
@@ -2169,18 +2167,11 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 		*pairable = adapter->pairable;
 }
 
-void btd_adapter_read_class(struct btd_adapter *adapter, uint8_t *major,
+void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
 								uint8_t *minor)
 {
-	uint8_t cls[3];
-
-	if (read_local_class(&adapter->bdaddr, cls) < 0) {
-		uint32_t class = htobl(main_opts.class);
-		memcpy(cls, &class, 3);
-	}
-
-	*major = cls[1];
-	*minor = cls[0];
+	*major = (adapter->dev_class >> 8) & 0xFF;
+	*minor = adapter->dev_class & 0xFF;
 }
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
@@ -2249,7 +2240,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 
 	ba2str(&adapter->bdaddr, address);
 
-	adapter->dev_class = 0;
 	adapter->off_requested = FALSE;
 	adapter->up = TRUE;
 	adapter->discov_timeout = get_discoverable_timeout(address);
@@ -2507,6 +2497,8 @@ static void load_config(struct btd_adapter *adapter)
 	else
 		adapter->name = g_strdup(name);
 
+	/* Set class */
+	adapter->dev_class = main_opts.class;
 }
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
