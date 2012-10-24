@@ -2097,16 +2097,6 @@ static void load_connections(struct btd_adapter *adapter)
 	g_slist_free_full(conns, g_free);
 }
 
-static int get_discoverable_timeout(const char *src)
-{
-	int timeout;
-
-	if (read_discoverable_timeout(src, &timeout) == 0)
-		return timeout;
-
-	return main_opts.discovto;
-}
-
 static void set_auto_connect(gpointer data, gpointer user_data)
 {
 	struct btd_device *device = data;
@@ -2151,7 +2141,7 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 		*on_mode = get_mode(&adapter->bdaddr, "on");
 
 	if (discoverable_timeout)
-		*discoverable_timeout = get_discoverable_timeout(address);
+		*discoverable_timeout = adapter->discov_timeout;
 
 	if (pairable)
 		*pairable = adapter->pairable;
@@ -2232,7 +2222,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 
 	adapter->off_requested = FALSE;
 	adapter->up = TRUE;
-	adapter->discov_timeout = get_discoverable_timeout(address);
 	adapter->off_timer = 0;
 
 	if (adapter->scan_mode & SCAN_INQUIRY)
@@ -2502,6 +2491,12 @@ static void load_config(struct btd_adapter *adapter)
 		adapter->pairable_timeout = main_opts.pairto;
 	else
 		adapter->pairable_timeout = timeout;
+
+	/* Get discoverable timeout */
+	if (read_discoverable_timeout(address, &timeout) < 0)
+		adapter->discov_timeout = main_opts.discovto;
+	else
+		adapter->discov_timeout = timeout;
 }
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
