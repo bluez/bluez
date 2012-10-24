@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -265,7 +266,11 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
-	uint8_t peer_type;
+	char filename[PATH_MAX + 1];
+	char local_addr[18], peer_addr[18];
+	GKeyFile *key_file;
+	char *data;
+	gsize length = 0;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		int i;
@@ -282,9 +287,22 @@ void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;
 
-	peer_type = device_get_addr_type(device);
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local_addr,
+			peer_addr);
+	filename[PATH_MAX] = '\0';
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
-	write_device_name(local, peer, peer_type, name);
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	g_key_file_set_string(key_file, "General", "Name", name);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, data, length, NULL);
+	g_free(data);
+
+	g_key_file_free(key_file);
 
 	if (device)
 		device_set_name(device, name);
