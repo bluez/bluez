@@ -2497,6 +2497,18 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 	g_free(path);
 }
 
+static void load_config(struct btd_adapter *adapter)
+{
+	char name[MAX_NAME_LENGTH + 1];
+
+	/* Get name */
+	if (read_local_name(&adapter->bdaddr, name) < 0)
+		adapter->name = NULL;
+	else
+		adapter->name = g_strdup(name);
+
+}
+
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 {
 	adapter->up = up;
@@ -2516,6 +2528,7 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 	if (main_opts.gatt_enabled)
 		btd_adapter_gatt_server_start(adapter);
 
+	load_config(adapter);
 	load_drivers(adapter);
 	btd_profile_foreach(probe_profile, adapter);
 	clear_blocked(adapter);
