@@ -207,7 +207,7 @@ static int mgmt_set_mode(int index, uint16_t opcode, uint8_t val)
 	return 0;
 }
 
-static int mgmt_set_connectable(int index, gboolean connectable)
+int mgmt_set_connectable(int index, gboolean connectable)
 {
 	DBG("index %d connectable %d", index, connectable);
 	return mgmt_set_mode(index, MGMT_OP_SET_CONNECTABLE, connectable);
@@ -315,27 +315,18 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
 	gboolean pairable;
-	uint8_t on_mode;
 	uint16_t index, discoverable_timeout;
 
 	DBG("new settings %x", settings);
 
-	btd_adapter_get_mode(adapter, NULL, &on_mode, &discoverable_timeout,
-								&pairable);
+	btd_adapter_get_mode(adapter, NULL, &discoverable_timeout, &pairable);
 
 	index = adapter_get_dev_id(adapter);
 
 	info = &controllers[index];
 
-	if (on_mode == MODE_DISCOVERABLE && !mgmt_discoverable(settings)) {
-		if(!mgmt_connectable(settings))
-			mgmt_set_connectable(index, TRUE);
-		mgmt_set_discoverable(index, TRUE, discoverable_timeout);
-	} else if (on_mode == MODE_CONNECTABLE && !mgmt_connectable(settings)) {
-		mgmt_set_connectable(index, TRUE);
-	} else if (mgmt_powered(settings)) {
+	if (mgmt_powered(settings))
 		adapter_mode_changed(adapter, create_mode(settings));
-	}
 
 	if (mgmt_pairable(settings) != pairable)
 		mgmt_set_pairable(index, pairable);
@@ -1108,7 +1099,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_get_major_minor(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
 
-	btd_adapter_get_mode(adapter, &mode, NULL, NULL, NULL);
+	btd_adapter_get_mode(adapter, &mode, NULL, NULL);
 	if (mode == MODE_OFF && mgmt_powered(info->current_settings)) {
 		mgmt_set_powered(index, FALSE);
 		return;

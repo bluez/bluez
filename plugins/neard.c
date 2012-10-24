@@ -376,7 +376,7 @@ static int check_adapter(struct btd_adapter *adapter)
 	if (btd_adapter_check_oob_handler(adapter))
 		return -EINPROGRESS;
 
-	btd_adapter_get_mode(adapter, NULL, NULL, NULL, &pairable);
+	btd_adapter_get_mode(adapter, NULL, NULL, &pairable);
 
 	if (!pairable || !adapter_get_agent(adapter))
 		return -ENOENT;

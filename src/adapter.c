@@ -156,6 +156,7 @@ struct btd_adapter {
 	guint auto_timeout_id;		/* Automatic connections timeout */
 	sdp_list_t *services;		/* Services associated to adapter */
 
+	gboolean discoverable;		/* discoverable state */
 	gboolean pairable;		/* pairable state */
 	gboolean initialized;
 
@@ -196,7 +197,7 @@ static const char *mode2str(uint8_t mode)
 	}
 }
 
-static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
+static uint8_t get_mode(const char *mode)
 {
 	if (strcasecmp("off", mode) == 0)
 		return MODE_OFF;
@@ -204,15 +205,7 @@ static uint8_t get_mode(const bdaddr_t *bdaddr, const char *mode)
 		return MODE_CONNECTABLE;
 	else if (strcasecmp("discoverable", mode) == 0)
 		return MODE_DISCOVERABLE;
-	else if (strcasecmp("on", mode) == 0) {
-		char onmode[14], srcaddr[18];
-
-		ba2str(bdaddr, srcaddr);
-		if (read_on_mode(srcaddr, onmode, sizeof(onmode)) < 0)
-			return MODE_CONNECTABLE;
-
-		return get_mode(bdaddr, onmode);
-	} else
+	else
 		return MODE_UNKNOWN;
 }
 
@@ -373,11 +366,8 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 	uint8_t mode;
 	int err;
 
-	if (powered) {
-		mode = get_mode(&adapter->bdaddr, "on");
-		return set_discoverable(adapter, mode == MODE_DISCOVERABLE,
-									id);
-	}
+	if (powered)
+		return set_discoverable(adapter, adapter->discoverable, id);
 
 	mode = MODE_OFF;
 
@@ -1406,7 +1396,10 @@ static DBusMessage *request_session(DBusConnection *conn,
 	if (!adapter->mode_sessions)
 		adapter->global_mode = adapter->mode;
 
-	new_mode = get_mode(&adapter->bdaddr, "on");
+	if (adapter->discoverable)
+		new_mode = MODE_DISCOVERABLE;
+	else
+		new_mode = MODE_CONNECTABLE;
 
 	req = find_session(adapter->mode_sessions, sender);
 	if (req) {
@@ -2120,25 +2113,15 @@ static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
 }
 
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-						uint8_t *on_mode,
 						uint16_t *discoverable_timeout,
 						gboolean *pairable)
 {
-	char str[14], address[18];
+	char address[18];
 
 	ba2str(&adapter->bdaddr, address);
 
-	if (mode) {
-		if (main_opts.remember_powered == FALSE)
-			*mode = main_opts.mode;
-		else if (read_device_mode(address, str, sizeof(str)) == 0)
-			*mode = get_mode(&adapter->bdaddr, str);
-		else
-			*mode = main_opts.mode;
-	}
-
-	if (on_mode)
-		*on_mode = get_mode(&adapter->bdaddr, "on");
+	if (mode)
+		*mode = adapter->mode;
 
 	if (discoverable_timeout)
 		*discoverable_timeout = adapter->discov_timeout;
@@ -2224,10 +2207,13 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	adapter->up = TRUE;
 	adapter->off_timer = 0;
 
-	if (adapter->scan_mode & SCAN_INQUIRY)
+	if (adapter->scan_mode & SCAN_INQUIRY) {
 		adapter->mode = MODE_DISCOVERABLE;
-	else
+		adapter->discoverable = TRUE;
+	} else {
 		adapter->mode = MODE_CONNECTABLE;
+		adapter->discoverable = FALSE;
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Powered");
@@ -2469,6 +2455,7 @@ static void load_config(struct btd_adapter *adapter)
 {
 	char name[MAX_NAME_LENGTH + 1];
 	char address[18];
+	char mode[14];
 	int timeout;
 
 	ba2str(&adapter->bdaddr, address);
@@ -2497,6 +2484,24 @@ static void load_config(struct btd_adapter *adapter)
 		adapter->discov_timeout = main_opts.discovto;
 	else
 		adapter->discov_timeout = timeout;
+
+	/* Get mode */
+	if (main_opts.remember_powered == FALSE)
+		adapter->mode = main_opts.mode;
+	else if (read_device_mode(address, mode, sizeof(mode)) == 0)
+		adapter->mode = get_mode(mode);
+	else
+		adapter->mode = main_opts.mode;
+
+	/* Get on mode */
+	if (read_on_mode(address, mode, sizeof(mode)) == 0)
+		adapter->discoverable = (strcasecmp("discoverable", mode) == 0);
+	else
+		adapter->discoverable = (adapter->mode == MODE_DISCOVERABLE);
+
+	mgmt_set_connectable(adapter->dev_id, TRUE);
+	mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
+				adapter->discov_timeout);
 }
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
@@ -2877,9 +2882,11 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 		break;
 	case SCAN_PAGE:
 		adapter->mode = MODE_CONNECTABLE;
+		adapter->discoverable = FALSE;
 		break;
 	case (SCAN_PAGE | SCAN_INQUIRY):
 		adapter->mode = MODE_DISCOVERABLE;
+		adapter->discoverable = TRUE;
 		break;
 	default:
 		/* ignore, reserved */
@@ -3182,17 +3189,13 @@ gboolean adapter_powering_down(struct btd_adapter *adapter)
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
-	char mode[14], address[18];
-
 	if (!main_opts.remember_powered)
 		return -EINVAL;
 
 	if (adapter->up)
 		return 0;
 
-	ba2str(&adapter->bdaddr, address);
-	if (read_device_mode(address, mode, sizeof(mode)) == 0 &&
-						g_str_equal(mode, "off"))
+	if (adapter->mode == MODE_OFF)
 		return 0;
 
 	return mgmt_set_powered(adapter->dev_id, TRUE);

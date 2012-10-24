@@ -26,6 +26,7 @@ int mgmt_setup(void);
 void mgmt_cleanup(void);
 
 int mgmt_set_powered(int index, gboolean powered);
+int mgmt_set_connectable(int index, gboolean connectable);
 int mgmt_set_discoverable(int index, gboolean discoverable, uint16_t timeout);
 int mgmt_set_pairable(int index, gboolean pairable);
 int mgmt_set_name(int index, const char *name);
