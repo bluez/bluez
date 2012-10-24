@@ -1,0 +1,183 @@
+BlueZ settings storage
+**********************
+
+Purpose
+=======
+
+The purpose of this document is to describe the directory structure of BlueZ
+settings storage. In effect, this document will serve as the primary, up to
+date source of BlueZ storage information.  It is intended for developers,
+managers and users needing to understand the storage directory.
+
+Adapter and remote device info are read form the storage during object
+initialization.
+Write to storage is performed immediately on every value change.
+
+Default storage directory is /var/lib/bluetooth.
+
+All files are in ini-file format.
+
+Storage directory structure
+===========================
+
+There is one directory per adapter, named by its bluetooth address, which
+contains:
+ - a settings file for the local adapter
+ - an attributes file containing attributes of supported LE services
+ - a cache directory containing:
+    - one file per device, named by remote device address, which contains
+    device name
+ - one directory per remote device, named by remote device address, which
+   contains:
+    - an info file
+    - an attributes file containing attributes of remote LE services
+
+So the directory structure is:
+    /var/lib/bluetooth/<adapter address>/
+        ./settings
+        ./attributes
+        ./cache/
+            ./<remote device address>
+            ./<remote device address>
+            ...
+        ./<remote device address>/
+            ./info
+            ./attributes
+        ./<remote device address>/
+            ./info
+            ./attributes
+        ...
+
+Settings file format
+====================
+
+Settings file contains one [General] group with adapter info like:
+
+  Name			String		Friendly name advertised for
+					this adapter
+
+  Discoverable		Boolean		Discoverability of the adapter
+
+  Connectable		Boolean		Connectability of the adapter
+
+  Pairable		Boolean		Can the adapter accept pairing
+					request ?
+
+  Powered		Boolean		Is the adapter powered ?
+
+  PairableTimeout	Integer		How long to stay in pairable mode
+					before going back to non-pairable.
+					The value is in seconds.
+					0 = disable timer, i.e. stay
+					pairable forever
+
+  DiscoverableTimeout	Integer		How long to stay in discoverable mode
+					before going back to non-discoverable.
+					The value is in seconds.
+					0 = disable timer, i.e. stay
+					discoverable forever
+
+Sample:
+  [General]
+  Name=My PC
+  Discoverable=false
+  Connectable=true
+  Pairable=true
+  Powered=true
+  DiscoverableTimeout=0
+
+Attributes file format
+======================
+
+The attributes file lists all attributes supported by the local adapter or
+remote device.
+
+Attributes are stored using their handle as group name (decimal format).
+
+Each group contains:
+
+  UUID		String		128-bit UUID of the attribute
+
+  Value		String		Value of the attribute as hexadecimal encoded
+				string
+
+Sample:
+  [1]
+  UUID=00002800-0000-1000-8000-00805f9b34fb
+  Value=0018
+
+  [4]
+  UUID=00002803-0000-1000-8000-00805f9b34fb
+  Value=020600002A
+
+  [6]
+  UUID=00002a00-0000-1000-8000-00805f9b34fb
+  Value=4578616D706C6520446576696365
+
+Cache directory file format
+============================
+
+Each file, named by remote device address, contains one [General] group.
+This general group contains:
+
+  Name		String		Remote device friendly name
+
+  ShortName	String		Remote device shortened name
+
+Info file format
+================
+
+Info file may includes multiple groups (General, Device ID, Link key and
+Long term key) related to a remote device.
+
+[General] group contains:
+
+  Alias			String		Alias name
+
+  Class			String		Device class in hexadecimal,
+					i.e. 0x000000
+
+  Features		String		Bluetooth device features in
+					hexadecimal, i.e. 0x0000000000000000
+
+  AddressType		String		An address can be "static" or "public"
+
+  Trusted		Boolean		True if the remote device is trusted
+
+  Profiles		List of		List of profiles advertised by remote,
+			strings		in 128-bits UUID format, separated by
+					";"
+
+
+[DeviceID] group contains:
+
+  Source		Integer		Assigner of Device ID
+
+  Vendor		Integer		Device vendor
+
+  Product		Integer		Device product
+
+  Version		Integer		Device version
+
+
+[LinkKey] group contains:
+
+  Key			String		Key in hexadecimal format
+
+  Type			Integer		Type of link key
+
+  PINLength		Integer		Length of PIN
+
+
+[LongTermKey] group contains:
+
+  Key			String		Long term key in hexadecimal format
+
+  Authenticated		Boolean		True if remote device has been
+					authenticated
+
+  EncSize		Integer		Encrypted size
+
+  EDiv			Integer		Encrypted diversifier
+
+  Rand			Integer		Randomizer
