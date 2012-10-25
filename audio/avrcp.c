@@ -1443,10 +1443,16 @@ static struct avrcp *find_session(GSList *list, struct audio_device *dev)
 static void session_tg_init(struct avrcp *session)
 {
 	struct avrcp_server *server = session->server;
+	struct avrcp_player *player;
 
 	DBG("%p version 0x%04x", session, session->version);
 
-	session->player = g_slist_nth_data(server->players, 0);
+	player = g_slist_nth_data(server->players, 0);
+	if (player != NULL) {
+		session->player = player;
+		player->sessions = g_slist_prepend(player->sessions, session);
+	}
+
 	session->control_handlers = tg_control_handlers;
 
 	if (session->version >= 0x0104) {
