@@ -431,12 +431,29 @@ static void set_company_id(uint8_t cid[3], const uint32_t cid_in)
 	cid[2] = cid_in;
 }
 
+static int player_get_attribute(struct avrcp_player *player, uint8_t attr)
+{
+	int value;
+
+	DBG("attr %u", attr);
+
+	if (player == NULL)
+		return -ENOENT;
+
+	value = player->cb->get_setting(attr, player->user_data);
+	if (value < 0)
+		DBG("attr %u not supported by player", attr);
+
+	return value;
+}
+
 void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 {
 	uint8_t buf[AVRCP_HEADER_LENGTH + 9];
 	struct avrcp_header *pdu = (void *) buf;
 	uint16_t size;
 	GSList *l;
+	GList *settings;
 
 	if (player->sessions == NULL)
 		return;
@@ -464,6 +481,22 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 	case AVRCP_EVENT_TRACK_REACHED_END:
 	case AVRCP_EVENT_TRACK_REACHED_START:
 		size = 1;
+		break;
+	case AVRCP_EVENT_SETTINGS_CHANGED:
+		size = 2;
+		settings = data;
+		pdu->params[1] = g_list_length(settings);
+		for (; settings; settings = settings->next) {
+			uint8_t attr = GPOINTER_TO_UINT(settings->data);
+			int val;
+
+			val = player_get_attribute(player, attr);
+			if (val < 0)
+				continue;
+
+			pdu->params[++size] = attr;
+			pdu->params[++size] = val;
+		}
 		break;
 	default:
 		error("Unknown event %u", id);
@@ -642,11 +675,12 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
 
 		return AVC_CTYPE_STABLE;
 	case CAP_EVENTS_SUPPORTED:
-		pdu->params[1] = 4;
+		pdu->params[1] = 5;
 		pdu->params[2] = AVRCP_EVENT_STATUS_CHANGED;
 		pdu->params[3] = AVRCP_EVENT_TRACK_CHANGED;
 		pdu->params[4] = AVRCP_EVENT_TRACK_REACHED_START;
 		pdu->params[5] = AVRCP_EVENT_TRACK_REACHED_END;
+		pdu->params[6] = AVRCP_EVENT_SETTINGS_CHANGED;
 
 		pdu->params_len = htons(2 + pdu->params[1]);
 		return AVC_CTYPE_STABLE;
@@ -1012,6 +1046,14 @@ static uint64_t player_get_uid(struct avrcp_player *player)
 	return player->cb->get_uid(player->user_data);
 }
 
+static GList *player_list_settings(struct avrcp_player *player)
+{
+	if (player == NULL)
+		return NULL;
+
+	return player->cb->list_settings(player->user_data);
+}
+
 static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 						struct avrcp_header *pdu,
 						uint8_t transaction)
@@ -1019,6 +1061,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 	struct avrcp_player *player = session->player;
 	uint16_t len = ntohs(pdu->params_len);
 	uint64_t uid;
+	GList *settings;
 
 	/*
 	 * 1 byte for EventID, 4 bytes for Playback interval but the latest
@@ -1043,6 +1086,23 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 	case AVRCP_EVENT_TRACK_REACHED_END:
 	case AVRCP_EVENT_TRACK_REACHED_START:
 		len = 1;
+		break;
+	case AVRCP_EVENT_SETTINGS_CHANGED:
+		settings = player_list_settings(player);
+
+		pdu->params[++len] = g_list_length(settings);
+		for (; settings; settings = settings->next) {
+			uint8_t attr = GPOINTER_TO_UINT(settings->data);
+			int val;
+
+			val = player_get_attribute(player, attr);
+			if (val < 0)
+				continue;
+
+			pdu->params[++len] = attr;
+			pdu->params[++len] = val;
+		}
+
 		break;
 	default:
 		/* All other events are not supported yet */

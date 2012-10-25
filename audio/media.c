@@ -1195,6 +1195,18 @@ static const char *metadata_to_str(uint32_t id)
 	return NULL;
 }
 
+static GList *list_settings(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	if (mp->settings == NULL)
+		return NULL;
+
+	return g_hash_table_get_keys(mp->settings);
+}
+
 static int get_setting(uint8_t attr, void *user_data)
 {
 	struct media_player *mp = user_data;
@@ -1345,6 +1357,7 @@ static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data
 }
 
 static struct avrcp_player_cb player_cb = {
+	.list_settings = list_settings,
 	.get_setting = get_setting,
 	.set_setting = set_setting,
 	.list_metadata = list_metadata,
@@ -1428,8 +1441,9 @@ static gboolean set_player_property(struct media_player *mp, const char *key,
 							DBusMessageIter *entry)
 {
 	DBusMessageIter var;
-	const char *value;
+	const char *value, *curval;
 	int attr, val;
+	GList *settings;
 
 	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
 		return FALSE;
@@ -1455,10 +1469,20 @@ static gboolean set_player_property(struct media_player *mp, const char *key,
 	if (val < 0)
 		return FALSE;
 
+	curval = g_hash_table_lookup(mp->settings, GUINT_TO_POINTER(attr));
+	if (g_strcmp0(curval, value) == 0)
+		return TRUE;
+
 	DBG("%s=%s", key, value);
 
 	g_hash_table_replace(mp->settings, GUINT_TO_POINTER(attr),
 						GUINT_TO_POINTER(val));
+
+	settings = list_settings(mp);
+
+	avrcp_player_event(mp->player, AVRCP_EVENT_SETTINGS_CHANGED, settings);
+
+	g_list_free(settings);
 
 	return TRUE;
 }

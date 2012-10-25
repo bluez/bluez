@@ -73,10 +73,12 @@
 #define AVRCP_EVENT_TRACK_CHANGED	0x02
 #define AVRCP_EVENT_TRACK_REACHED_END	0x03
 #define AVRCP_EVENT_TRACK_REACHED_START	0x04
+#define AVRCP_EVENT_SETTINGS_CHANGED	0x08
 #define AVRCP_EVENT_VOLUME_CHANGED	0x0d
 #define AVRCP_EVENT_LAST		AVRCP_EVENT_VOLUME_CHANGED
 
 struct avrcp_player_cb {
+	GList *(*list_settings) (void *user_data);
 	int (*get_setting) (uint8_t attr, void *user_data);
 	int (*set_setting) (uint8_t attr, uint8_t value, void *user_data);
 	uint64_t (*get_uid) (void *user_data);
