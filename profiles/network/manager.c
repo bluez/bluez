@@ -86,6 +86,8 @@ static void connect_profile_cb(struct btd_device *device, int err,
 
 	req->cb(req->profile, req->device, err);
 
+	btd_device_unref(req->device);
+
 	g_free(req);
 }
 
@@ -98,13 +100,14 @@ static int connect_profile(struct btd_device *dev, struct btd_profile *profile,
 	DBG("path %s id %u", device_get_path(dev), id);
 
 	req  = g_new0(struct connect_req, 1);
-	req->device = dev;
+	req->device = btd_device_ref(dev);
 	req->profile = profile;
 	req->cb = cb;
 
 	err = connection_connect(dev, BNEP_SVC_PANU, NULL, connect_profile_cb,
 									req);
 	if (err < 0) {
+		btd_device_unref(req->device);
 		g_free(req);
 		return err;
 	}
