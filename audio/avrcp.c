@@ -500,8 +500,7 @@ static uint16_t player_write_media_attribute(struct avrcp_player *player,
 {
 	uint16_t len;
 	uint16_t attr_len;
-	char valstr[20];
-	void *value;
+	const char *value = NULL;
 
 	DBG("%u", id);
 
@@ -509,15 +508,6 @@ static uint16_t player_write_media_attribute(struct avrcp_player *player,
 	if (value == NULL) {
 		*offset = 0;
 		return 0;
-	}
-
-	switch (id) {
-	case AVRCP_MEDIA_ATTRIBUTE_TRACK:
-	case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
-	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
-		snprintf(valstr, 20, "%u", GPOINTER_TO_UINT(value));
-		value = valstr;
-		break;
 	}
 
 	attr_len = strlen(value);
@@ -946,7 +936,6 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp *session,
 	uint16_t len = ntohs(pdu->params_len);
 	uint32_t position;
 	uint32_t duration;
-	void *pduration;
 
 	if (len != 0 || player == NULL) {
 		pdu->params_len = htons(1);
@@ -955,14 +944,12 @@ static uint8_t avrcp_handle_get_play_status(struct avrcp *session,
 	}
 
 	position = player->cb->get_position(player->user_data);
-	pduration = player->cb->get_metadata(AVRCP_MEDIA_ATTRIBUTE_DURATION,
-							player->user_data);
-	if (pduration != NULL)
-		duration = htonl(GPOINTER_TO_UINT(pduration));
-	else
-		duration = htonl(UINT32_MAX);
+	duration = player->cb->get_duration(player->user_data);
+	if (duration == 0)
+		duration = UINT32_MAX;
 
 	position = htonl(position);
+	duration = htonl(duration);
 
 	memcpy(&pdu->params[0], &duration, 4);
 	memcpy(&pdu->params[4], &position, 4);

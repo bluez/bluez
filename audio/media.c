@@ -100,16 +100,9 @@ struct media_player {
 	guint			track_watch;
 	uint8_t			status;
 	uint32_t		position;
+	uint32_t		duration;
 	uint8_t			volume;
 	GTimer			*timer;
-};
-
-struct metadata_value {
-	int			type;
-	union {
-		char		*str;
-		uint32_t	num;
-	} value;
 };
 
 static GSList *adapters = NULL;
@@ -1282,28 +1275,16 @@ static uint64_t get_uid(void *user_data)
 	return 0;
 }
 
-static void *get_metadata(uint32_t id, void *user_data)
+static const char *get_metadata(uint32_t id, void *user_data)
 {
 	struct media_player *mp = user_data;
-	struct metadata_value *value;
 
 	DBG("%s", metadata_to_str(id));
 
 	if (mp->track == NULL)
 		return NULL;
 
-	value = g_hash_table_lookup(mp->track, GUINT_TO_POINTER(id));
-	if (!value)
-		return NULL;
-
-	switch (value->type) {
-	case DBUS_TYPE_STRING:
-		return value->value.str;
-	case DBUS_TYPE_UINT32:
-		return GUINT_TO_POINTER(value->value.num);
-	}
-
-	return NULL;
+	return g_hash_table_lookup(mp->track, GUINT_TO_POINTER(id));
 }
 
 static uint8_t get_status(void *user_data)
@@ -1328,6 +1309,13 @@ static uint32_t get_position(void *user_data)
 	msec = (uint32_t) ((timedelta - sec) * 1000);
 
 	return mp->position + sec * 1000 + msec;
+}
+
+static uint32_t get_duration(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	return mp->duration;
 }
 
 static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data)
@@ -1363,6 +1351,7 @@ static struct avrcp_player_cb player_cb = {
 	.get_uid = get_uid,
 	.get_metadata = get_metadata,
 	.get_position = get_position,
+	.get_duration = get_duration,
 	.get_status = get_status,
 	.set_volume = set_volume
 };
@@ -1408,7 +1397,6 @@ static gboolean set_status(struct media_player *mp, DBusMessageIter *iter)
 static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 {
 	uint32_t value;
-	struct metadata_value *duration;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT32)
 			return FALSE;
@@ -1425,15 +1413,11 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 		return TRUE;
 	}
 
-	duration = g_hash_table_lookup(mp->track, GUINT_TO_POINTER(
-					AVRCP_MEDIA_ATTRIBUTE_DURATION));
-
 	/*
 	 * If position is the maximum value allowed or greater than track's
 	 * duration, we send a track-reached-end event.
 	 */
-	if (mp->position == UINT32_MAX ||
-			(duration && mp->position >= duration->value.num))
+	if (mp->position == UINT32_MAX || mp->position >= mp->duration)
 		avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_END,
 									NULL);
 
@@ -1506,19 +1490,6 @@ static gboolean property_changed(DBusConnection *connection, DBusMessage *msg,
 	return TRUE;
 }
 
-static void metadata_value_free(gpointer data)
-{
-	struct metadata_value *value = data;
-
-	switch (value->type) {
-	case DBUS_TYPE_STRING:
-		g_free(value->value.str);
-		break;
-	}
-
-	g_free(value);
-}
-
 static gboolean parse_player_metadata(struct media_player *mp,
 							DBusMessageIter *iter)
 {
@@ -1536,14 +1507,18 @@ static gboolean parse_player_metadata(struct media_player *mp,
 	dbus_message_iter_recurse(iter, &dict);
 
 	track = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-							metadata_value_free);
+								g_free);
 
 	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
 							DBUS_TYPE_INVALID) {
 		DBusMessageIter entry;
 		const char *key;
-		struct metadata_value *value;
+		const char *string;
+		char valstr[20];
+		char *value;
+		uint32_t num;
 		int id;
+		int type;
 
 		if (ctype != DBUS_TYPE_DICT_ENTRY)
 			goto parse_error;
@@ -1564,8 +1539,7 @@ static gboolean parse_player_metadata(struct media_player *mp,
 
 		dbus_message_iter_recurse(&entry, &var);
 
-		value = g_new0(struct metadata_value, 1);
-		value->type = dbus_message_iter_get_arg_type(&var);
+		type = dbus_message_iter_get_arg_type(&var);
 
 		switch (id) {
 		case AVRCP_MEDIA_ATTRIBUTE_TITLE:
@@ -1573,36 +1547,39 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		case AVRCP_MEDIA_ATTRIBUTE_ARTIST:
 		case AVRCP_MEDIA_ATTRIBUTE_ALBUM:
 		case AVRCP_MEDIA_ATTRIBUTE_GENRE:
-			if (value->type != DBUS_TYPE_STRING) {
-				g_free(value);
+			if (type != DBUS_TYPE_STRING)
 				goto parse_error;
-			}
 
-			dbus_message_iter_get_basic(&var, &value->value.str);
+			dbus_message_iter_get_basic(&var, &string);
 			break;
 		case AVRCP_MEDIA_ATTRIBUTE_TRACK:
 		case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
-		case AVRCP_MEDIA_ATTRIBUTE_DURATION:
-			if (value->type != DBUS_TYPE_UINT32) {
-				g_free(value);
+			if (type != DBUS_TYPE_UINT32)
 				goto parse_error;
-			}
 
-			dbus_message_iter_get_basic(&var, &value->value.num);
+			dbus_message_iter_get_basic(&var, &num);
+			break;
+		case AVRCP_MEDIA_ATTRIBUTE_DURATION:
+			if (type != DBUS_TYPE_UINT32)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &num);
+			mp->duration = num;
 			break;
 		default:
 			goto parse_error;
 		}
 
-		switch (value->type) {
+		switch (dbus_message_iter_get_arg_type(&var)) {
 		case DBUS_TYPE_STRING:
-			value->value.str = g_strdup(value->value.str);
-			DBG("%s=%s", key, value->value.str);
+			value = g_strdup(string);
 			break;
 		default:
-			DBG("%s=%u", key, value->value.num);
+			snprintf(valstr, 20, "%u", num);
+			value = g_strdup(valstr);
 		}
 
+		DBG("%s=%s", key, value);
 		g_hash_table_replace(track, GUINT_TO_POINTER(id), value);
 		dbus_message_iter_next(&dict);
 	}
@@ -1611,12 +1588,9 @@ static gboolean parse_player_metadata(struct media_player *mp,
 		g_hash_table_unref(track);
 		track = NULL;
 	} else if (title == FALSE) {
-		struct metadata_value *value = g_new(struct metadata_value, 1);
 		uint32_t id = AVRCP_MEDIA_ATTRIBUTE_TITLE;
 
-		value->type = DBUS_TYPE_STRING;
-		value->value.str = g_strdup("");
-		g_hash_table_insert(track, GUINT_TO_POINTER(id), value);
+		g_hash_table_insert(track, GUINT_TO_POINTER(id), g_strdup(""));
 	}
 
 	if (mp->track != NULL)
