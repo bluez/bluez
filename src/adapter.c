@@ -3355,7 +3355,10 @@ int btd_cancel_authorization(guint id)
 
 	g_queue_remove(auth->adapter->auths, auth);
 
-	service_auth_cancel(auth);
+	if (auth->agent != NULL)
+		agent_cancel(auth->agent);
+
+	g_free(auth);
 
 	return 0;
 }
