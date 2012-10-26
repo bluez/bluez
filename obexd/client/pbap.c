@@ -528,7 +528,7 @@ static DBusMessage *pull_phonebook(struct pbap_data *pbap,
 	DBusMessage *reply;
 	GError *err = NULL;
 
-	name = g_strconcat(pbap->path, ".vcf", NULL);
+	name = g_strconcat(g_path_skip_root(pbap->path), ".vcf", NULL);
 
 	transfer = obc_transfer_get("x-bt/phonebook", name, targetfile, &err);
 	if (transfer == NULL) {
