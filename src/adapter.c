@@ -2684,6 +2684,8 @@ static void load_config(struct btd_adapter *adapter)
 	mgmt_set_connectable(adapter->dev_id, TRUE);
 	mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
 				adapter->discov_timeout);
+
+	g_key_file_free(key_file);
 }
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
