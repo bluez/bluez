@@ -35,7 +35,9 @@
 #include "btdev.h"
 
 #define le16_to_cpu(val) (val)
+#define le32_to_cpu(val) (val)
 #define cpu_to_le16(val) (val)
+#define cpu_to_le32(val) (val)
 
 struct btdev {
 	enum btdev_type type;
@@ -653,6 +655,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	struct bt_hci_rsp_read_country_code rcc;
 	struct bt_hci_rsp_read_bd_addr rba;
 	struct bt_hci_rsp_read_data_block_size rdbs;
+	struct bt_hci_rsp_read_local_amp_info rlai;
 	struct bt_hci_rsp_le_read_buffer_size lrbs;
 	struct bt_hci_rsp_le_read_local_features lrlf;
 	struct bt_hci_rsp_le_read_supported_states lrss;
@@ -1035,6 +1038,21 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		rdbs.block_len = cpu_to_le16(btdev->acl_mtu);
 		rdbs.num_blocks = cpu_to_le16(btdev->acl_max_pkt);
 		cmd_complete(btdev, opcode, &rdbs, sizeof(rdbs));
+		break;
+
+	case BT_HCI_CMD_READ_LOCAL_AMP_INFO:
+		rlai.status = BT_HCI_ERR_SUCCESS;
+		rlai.amp_status = 0x01;		/* Used for Bluetooth only */
+		rlai.total_bw = cpu_to_le32(0);
+		rlai.max_bw = cpu_to_le32(0);
+		rlai.min_latency = cpu_to_le32(0);
+		rlai.max_pdu = cpu_to_le32(672);
+		rlai.amp_type = 0x01;		/* 802.11 AMP Controller */
+		rlai.pal_cap = cpu_to_le16(0x0000);
+		rlai.max_assoc_size = cpu_to_le16(512);
+		rlai.max_flush_to = cpu_to_le32(0xffffffff);
+		rlai.be_flush_to = cpu_to_le32(0xffffffff);
+		cmd_complete(btdev, opcode, &rlai, sizeof(rlai));
 		break;
 
 	case BT_HCI_CMD_LE_SET_EVENT_MASK:
