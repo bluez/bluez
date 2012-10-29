@@ -449,6 +449,60 @@ static const char *attr_to_str(uint8_t attr)
 	return NULL;
 }
 
+static int attrval_to_val(uint8_t attr, const char *value)
+{
+	int ret;
+
+	switch (attr) {
+	case AVRCP_ATTRIBUTE_EQUALIZER:
+		if (!strcmp(value, "off"))
+			ret = AVRCP_EQUALIZER_OFF;
+		else if (!strcmp(value, "on"))
+			ret = AVRCP_EQUALIZER_ON;
+		else
+			ret = -EINVAL;
+
+		return ret;
+	case AVRCP_ATTRIBUTE_REPEAT_MODE:
+		if (!strcmp(value, "off"))
+			ret = AVRCP_REPEAT_MODE_OFF;
+		else if (!strcmp(value, "singletrack"))
+			ret = AVRCP_REPEAT_MODE_SINGLE;
+		else if (!strcmp(value, "alltracks"))
+			ret = AVRCP_REPEAT_MODE_ALL;
+		else if (!strcmp(value, "group"))
+			ret = AVRCP_REPEAT_MODE_GROUP;
+		else
+			ret = -EINVAL;
+
+		return ret;
+	case AVRCP_ATTRIBUTE_SHUFFLE:
+		if (!strcmp(value, "off"))
+			ret = AVRCP_SHUFFLE_OFF;
+		else if (!strcmp(value, "alltracks"))
+			ret = AVRCP_SHUFFLE_ALL;
+		else if (!strcmp(value, "group"))
+			ret = AVRCP_SHUFFLE_GROUP;
+		else
+			ret = -EINVAL;
+
+		return ret;
+	case AVRCP_ATTRIBUTE_SCAN:
+		if (!strcmp(value, "off"))
+			ret = AVRCP_SCAN_OFF;
+		else if (!strcmp(value, "alltracks"))
+			ret = AVRCP_SCAN_ALL;
+		else if (!strcmp(value, "group"))
+			ret = AVRCP_SCAN_GROUP;
+		else
+			ret = -EINVAL;
+
+		return ret;
+	}
+
+	return -EINVAL;
+}
+
 static int attr_to_val(const char *str)
 {
 	if (!strcasecmp(str, "Equalizer"))
@@ -1528,6 +1582,22 @@ static void avrcp_get_play_status(struct avrcp *session)
 					session);
 }
 
+static const char *status_to_str(uint8_t status)
+{
+	switch (status) {
+	case AVRCP_STATUS_INVALID_COMMAND:
+		return "Invalid Command";
+	case AVRCP_STATUS_INVALID_PARAM:
+		return "Invalid Parameter";
+	case AVRCP_STATUS_INTERNAL_ERROR:
+		return "Internal Error";
+	case AVRCP_STATUS_SUCCESS:
+		return "Success";
+	default:
+		return "Unknown";
+	}
+}
+
 static gboolean avrcp_player_value_rsp(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
@@ -1540,8 +1610,11 @@ static gboolean avrcp_player_value_rsp(struct avctp *conn,
 	uint8_t count;
 	int i;
 
-	if (code == AVC_CTYPE_REJECTED)
+	if (code == AVC_CTYPE_REJECTED) {
+		media_player_set_setting(mp, "Error",
+					status_to_str(pdu->params[0]));
 		return FALSE;
+	}
 
 	count = pdu->params[0];
 
@@ -1811,6 +1884,59 @@ static void avrcp_register_notification(struct avrcp *session, uint8_t event)
 					avrcp_handle_event, session);
 }
 
+static void avrcp_set_player_value(struct avrcp *session, uint8_t attr,
+								uint8_t val)
+{
+	uint8_t buf[AVRCP_HEADER_LENGTH + 3];
+	struct avrcp_header *pdu = (void *) buf;
+	uint8_t length;
+
+	memset(buf, 0, sizeof(buf));
+
+	set_company_id(pdu->company_id, IEEEID_BTSIG);
+	pdu->pdu_id = AVRCP_SET_PLAYER_VALUE;
+	pdu->packet_type = AVRCP_PACKET_TYPE_SINGLE;
+	pdu->params[0] = 1;
+	pdu->params[1] = attr;
+	pdu->params[2] = val;
+	pdu->params_len = htons(3);
+
+	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
+
+	avctp_send_vendordep_req(session->conn, AVC_CTYPE_NOTIFY,
+					AVC_SUBUNIT_PANEL, buf, length,
+					avrcp_player_value_rsp, session);
+}
+
+static bool ct_set_setting(struct media_player *mp, const char *key,
+					const char *value, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	int attr = attr_to_val(key);
+	int val = attrval_to_val(attr, value);
+	struct avrcp *session;
+
+	session = player->sessions->data;
+	if (session == NULL)
+		return false;
+
+	attr = attr_to_val(key);
+	if (attr < 0)
+		return false;
+
+	val = attrval_to_val(attr, value);
+	if (val < 0)
+		return false;
+
+	avrcp_set_player_value(session, attr, val);
+
+	return true;
+}
+
+static const struct media_player_callback ct_cbs = {
+	.set_setting = ct_set_setting,
+};
+
 static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
@@ -1845,6 +1971,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 
 	path = device_get_path(session->dev->btd_dev);
 	mp = media_player_controller_create(path);
+	media_player_set_callbacks(mp, &ct_cbs, player);
 	player->user_data = mp;
 	player->destroy = (GDestroyNotify) media_player_destroy;
 

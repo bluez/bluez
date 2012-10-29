@@ -25,6 +25,11 @@
 
 struct media_player;
 
+struct media_player_callback {
+	bool (*set_setting) (struct media_player *mp, const char *key,
+				const char *value, void *user_data);
+};
+
 struct media_player *media_player_controller_create(const char *path);
 void media_player_destroy(struct media_player *mp);
 uint32_t media_player_get_position(struct media_player *mp);
@@ -35,3 +40,7 @@ const char *media_player_get_status(struct media_player *mp);
 void media_player_set_status(struct media_player *mp, const char *status);
 void media_player_set_metadata(struct media_player *mp, const char *key,
 						void *data, size_t len);
+
+void media_player_set_callbacks(struct media_player *mp,
+				const struct media_player_callback *cbs,
+				void *user_data);
