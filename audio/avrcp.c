@@ -519,10 +519,19 @@ static int attr_to_val(const char *str)
 
 static int player_get_setting(struct avrcp_player *player, uint8_t id)
 {
+	const char *key;
+	const char *value;
+
 	if (player == NULL)
 		return -ENOENT;
 
-	return player->cb->get_setting(id, player->user_data);
+	key = attr_to_str(id);
+	if (key == NULL)
+		return -EINVAL;
+
+	value = player->cb->get_setting(key, player->user_data);
+
+	return attrval_to_val(id, value);
 }
 
 static int play_status_to_val(const char *status)
@@ -652,8 +661,14 @@ static const char *metadata_to_str(uint32_t id)
 static const char *player_get_metadata(struct avrcp_player *player,
 								uint32_t id)
 {
+	const char *key;
+
+	key = metadata_to_str(id);
+	if (key == NULL)
+		return NULL;
+
 	if (player != NULL)
-		return player->cb->get_metadata(id, player->user_data);
+		return player->cb->get_metadata(key, player->user_data);
 
 	if (id == AVRCP_MEDIA_ATTRIBUTE_TITLE)
 		return "";
@@ -803,10 +818,20 @@ static const char *attrval_to_str(uint8_t attr, uint8_t value)
 static int player_set_setting(struct avrcp_player *player, uint8_t id,
 								uint8_t val)
 {
+	const char *key, *value;
+
+	key = attr_to_str(id);
+	if (key == NULL)
+		return -EINVAL;
+
+	value = attrval_to_str(id, val);
+	if (value == NULL)
+		return -EINVAL;
+
 	if (player == NULL)
 		return -ENOENT;
 
-	return player->cb->set_setting(id, val, player->user_data);
+	return player->cb->set_setting(key, value, player->user_data);
 }
 
 static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
@@ -1160,10 +1185,14 @@ static uint32_t player_get_duration(struct avrcp_player *player)
 
 static uint8_t player_get_status(struct avrcp_player *player)
 {
+	const char *value;
+
 	if (player == NULL)
 		return AVRCP_PLAY_STATUS_STOPPED;
 
-	return player->cb->get_status(player->user_data);
+	value = player->cb->get_status(player->user_data);
+
+	return play_status_to_val(value);
 }
 
 static uint8_t avrcp_handle_get_play_status(struct avrcp *session,
