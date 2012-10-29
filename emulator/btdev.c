@@ -204,6 +204,10 @@ static void set_le_features(struct btdev *btdev)
 	btdev->features[7] |= 0x80;	/* Extended features */
 }
 
+static void set_amp_features(struct btdev *btdev)
+{
+}
+
 struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 {
 	struct btdev *btdev;
@@ -226,6 +230,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 		break;
 	case BTDEV_TYPE_LE:
 		set_le_features(btdev);
+		break;
+	case BTDEV_TYPE_AMP:
+		set_amp_features(btdev);
 		break;
 	}
 

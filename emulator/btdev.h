@@ -30,6 +30,7 @@ typedef void (*btdev_send_func) (const void *data, uint16_t len,
 enum btdev_type {
 	BTDEV_TYPE_BREDR,
 	BTDEV_TYPE_LE,
+	BTDEV_TYPE_AMP,
 };
 
 struct btdev;
