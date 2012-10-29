@@ -36,6 +36,8 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -220,7 +222,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	}
 }
 
-static int open_server(const char *path)
+static int open_unix(const char *path)
 {
 	struct sockaddr_un addr;
 	int fd;
@@ -263,7 +265,68 @@ struct server *server_open_unix(const char *path, uint16_t id)
 	memset(server, 0, sizeof(*server));
 	server->id = id;
 
-	server->fd = open_server(path);
+	server->fd = open_unix(path);
+	if (server->fd < 0) {
+		free(server);
+		return NULL;
+	}
+
+	if (mainloop_add_fd(server->fd, EPOLLIN, server_accept_callback,
+						server, server_destroy) < 0) {
+		close(server->fd);
+		free(server);
+		return NULL;
+	}
+
+	return server;
+}
+
+static int open_tcp(void)
+{
+	struct sockaddr_in addr;
+	int fd, opt = 1;
+
+	fd = socket(PF_INET, SOCK_STREAM, 0);
+	if (fd < 0) {
+		perror("Failed to open server socket");
+		return -1;
+	}
+
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_port = htons(45550);
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Failed to bind server socket");
+		close(fd);
+		return -1;
+	}
+
+	if (listen(fd, 5) < 0) {
+		perror("Failed to listen server socket");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+struct server *server_open_tcp(uint16_t id)
+{
+	struct server *server;
+
+	server = malloc(sizeof(*server));
+	if (!server)
+		return server;
+
+	memset(server, 0, sizeof(*server));
+	server->id = id;
+
+	server->fd = open_tcp();
 	if (server->fd < 0) {
 		free(server);
 		return NULL;

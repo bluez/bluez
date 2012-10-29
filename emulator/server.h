@@ -27,4 +27,5 @@
 struct server;
 
 struct server *server_open_unix(const char *path, uint16_t id);
+struct server *server_open_tcp(uint16_t id);
 void server_close(struct server *server);
