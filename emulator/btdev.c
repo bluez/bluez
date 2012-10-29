@@ -160,11 +160,11 @@ static void hexdump(const unsigned char *buf, uint16_t len)
 	}
 }
 
-static void get_bdaddr(uint16_t id, uint8_t *bdaddr)
+static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
 {
 	bdaddr[0] = id & 0xff;
 	bdaddr[1] = id >> 8;
-	bdaddr[2] = 0x00;
+	bdaddr[2] = index;
 	bdaddr[3] = 0x01;
 	bdaddr[4] = 0xaa;
 	bdaddr[5] = 0x00;
@@ -173,6 +173,7 @@ static void get_bdaddr(uint16_t id, uint8_t *bdaddr)
 struct btdev *btdev_create(uint16_t id)
 {
 	struct btdev *btdev;
+	int index;
 
 	btdev = malloc(sizeof(*btdev));
 	if (!btdev)
@@ -212,9 +213,13 @@ struct btdev *btdev_create(uint16_t id)
 
 	btdev->country_code = 0x00;
 
-	get_bdaddr(id, btdev->bdaddr);
+	index = add_btdev(btdev);
+	if (index < 0) {
+		free(btdev);
+		return NULL;
+	}
 
-	add_btdev(btdev);
+	get_bdaddr(id, index, btdev->bdaddr);
 
 	return btdev;
 }
