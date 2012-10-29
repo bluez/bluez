@@ -25,11 +25,11 @@
 #include <stdint.h>
 
 enum vhci_type {
-	VHCI_TYPE_BREDR	= 0,
-	VHCI_TYPE_AMP	= 1,
+	VHCI_TYPE_BREDR,
+	VHCI_TYPE_AMP,
 };
 
 struct vhci;
 
-struct vhci *vhci_open(enum vhci_type type, uint16_t id);
+struct vhci *vhci_open(enum vhci_type type);
 void vhci_close(struct vhci *vhci);

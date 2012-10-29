@@ -45,7 +45,8 @@ static void signal_callback(int signum, void *user_data)
 int main(int argc, char *argv[])
 {
 	struct vhci *vhci;
-	struct server *server;
+	struct server *server1;
+	struct server *server2;
 	sigset_t mask;
 
 	mainloop_init();
@@ -56,13 +57,17 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	vhci = vhci_open(VHCI_TYPE_BREDR, 0x23);
+	vhci = vhci_open(VHCI_TYPE_BREDR);
 	if (!vhci)
 		fprintf(stderr, "Failed to open Virtual HCI device\n");
 
-	server = server_open_unix("/tmp/bt-server-bredr", 0x42);
-	if (!server)
-		fprintf(stderr, "Failed to open server channel\n");
+	server1 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-bredr");
+	if (!server1)
+		fprintf(stderr, "Failed to open BR/EDR server channel\n");
+
+	server2 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-amp");
+	if (!server2)
+		fprintf(stderr, "Failed to open AMP server channel\n");
 
 	return mainloop_run();
 }

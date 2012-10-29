@@ -46,7 +46,10 @@
 #include "btdev.h"
 #include "server.h"
 
+#define uninitialized_var(x) x = x
+
 struct server {
+	enum server_type type;
 	uint16_t id;
 	int fd;
 };
@@ -189,6 +192,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 {
 	struct server *server = user_data;
 	struct client *client;
+	enum btdev_type uninitialized_var(type);
 
 	if (events & (EPOLLERR | EPOLLHUP))
 		return;
@@ -205,7 +209,16 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	client->btdev = btdev_create(BTDEV_TYPE_BREDR, server->id);
+	switch (server->type) {
+	case SERVER_TYPE_BREDR:
+		type = BTDEV_TYPE_BREDR;
+		break;
+	case SERVER_TYPE_AMP:
+		type = BTDEV_TYPE_AMP;
+		break;
+	}
+
+	client->btdev = btdev_create(type, server->id);
 	if (!client->btdev) {
 		close(client->fd);
 		free(client);
@@ -254,7 +267,7 @@ static int open_unix(const char *path)
 	return fd;
 }
 
-struct server *server_open_unix(const char *path, uint16_t id)
+struct server *server_open_unix(enum server_type type, const char *path)
 {
 	struct server *server;
 
@@ -263,7 +276,8 @@ struct server *server_open_unix(const char *path, uint16_t id)
 		return NULL;
 
 	memset(server, 0, sizeof(*server));
-	server->id = id;
+	server->type = type;
+	server->id = 0x42;
 
 	server->fd = open_unix(path);
 	if (server->fd < 0) {
@@ -315,7 +329,7 @@ static int open_tcp(void)
 	return fd;
 }
 
-struct server *server_open_tcp(uint16_t id)
+struct server *server_open_tcp(enum server_type type)
 {
 	struct server *server;
 
@@ -324,7 +338,8 @@ struct server *server_open_tcp(uint16_t id)
 		return server;
 
 	memset(server, 0, sizeof(*server));
-	server->id = id;
+	server->type = type;
+	server->id = 0x43;
 
 	server->fd = open_tcp();
 	if (server->fd < 0) {

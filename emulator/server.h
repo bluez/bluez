@@ -24,8 +24,13 @@
 
 #include <stdint.h>
 
+enum server_type {
+	SERVER_TYPE_BREDR,
+	SERVER_TYPE_AMP,
+};
+
 struct server;
 
-struct server *server_open_unix(const char *path, uint16_t id);
-struct server *server_open_tcp(uint16_t id);
+struct server *server_open_unix(enum server_type type, const char *path);
+struct server *server_open_tcp(enum server_type type);
 void server_close(struct server *server);

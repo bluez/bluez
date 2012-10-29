@@ -80,7 +80,7 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 	btdev_receive_h4(vhci->btdev, buf, len);
 }
 
-struct vhci *vhci_open(enum vhci_type type, uint16_t id)
+struct vhci *vhci_open(enum vhci_type type)
 {
 	struct vhci *vhci;
 
@@ -104,7 +104,7 @@ struct vhci *vhci_open(enum vhci_type type, uint16_t id)
 		return NULL;
 	}
 
-	vhci->btdev = btdev_create(BTDEV_TYPE_BREDR, id);
+	vhci->btdev = btdev_create(BTDEV_TYPE_BREDR, 0x23);
 	if (!vhci->btdev) {
 		close(vhci->fd);
 		free(vhci);
