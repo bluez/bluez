@@ -184,8 +184,11 @@ if HOGPLUGIN
 builtin_modules += hog
 builtin_sources += profiles/input/hog_manager.c profiles/input/hog_device.h \
 			profiles/input/hog_device.c profiles/input/uhid_copy.h \
-			profiles/input/suspend-dummy.c profiles/input/suspend.h
+			profiles/input/suspend.h
+builtin_nodist += profiles/input/suspend.c
 endif
+
+EXTRA_DIST += profiles/input/suspend-dummy.c
 
 if NETWORKPLUGIN
 builtin_modules += network

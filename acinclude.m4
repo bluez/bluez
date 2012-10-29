@@ -290,7 +290,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		wiimote_enable=${enableval}
 	])
 
-	AC_ARG_WITH(gatt, AC_HELP_STRING([--with-hog-suspend=DRIVER], [select HoG suspend driver]), [
+	AC_ARG_WITH(hog_suspend, AC_HELP_STRING([--with-hog-suspend=DRIVER], [select HoG suspend driver]), [
 		hog_suspend_driver=${withval}
 	])
 
