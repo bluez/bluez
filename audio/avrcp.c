@@ -61,6 +61,7 @@
 #include "control.h"
 #include "avdtp.h"
 #include "sink.h"
+#include "player.h"
 
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
@@ -432,12 +433,60 @@ static void set_company_id(uint8_t cid[3], const uint32_t cid_in)
 	cid[2] = cid_in;
 }
 
+static const char *attr_to_str(uint8_t attr)
+{
+	switch (attr) {
+	case AVRCP_ATTRIBUTE_EQUALIZER:
+		return "Equalizer";
+	case AVRCP_ATTRIBUTE_REPEAT_MODE:
+		return "Repeat";
+	case AVRCP_ATTRIBUTE_SHUFFLE:
+		return "Shuffle";
+	case AVRCP_ATTRIBUTE_SCAN:
+		return "Scan";
+	}
+
+	return NULL;
+}
+
+static int attr_to_val(const char *str)
+{
+	if (!strcasecmp(str, "Equalizer"))
+		return AVRCP_ATTRIBUTE_EQUALIZER;
+	else if (!strcasecmp(str, "Repeat"))
+		return AVRCP_ATTRIBUTE_REPEAT_MODE;
+	else if (!strcasecmp(str, "Shuffle"))
+		return AVRCP_ATTRIBUTE_SHUFFLE;
+	else if (!strcasecmp(str, "Scan"))
+		return AVRCP_ATTRIBUTE_SCAN;
+
+	return -EINVAL;
+}
+
 static int player_get_setting(struct avrcp_player *player, uint8_t id)
 {
 	if (player == NULL)
 		return -ENOENT;
 
 	return player->cb->get_setting(id, player->user_data);
+}
+
+static int play_status_to_val(const char *status)
+{
+	if (!strcasecmp(status, "stopped"))
+		return AVRCP_PLAY_STATUS_STOPPED;
+	else if (!strcasecmp(status, "playing"))
+		return AVRCP_PLAY_STATUS_PLAYING;
+	else if (!strcasecmp(status, "paused"))
+		return AVRCP_PLAY_STATUS_PAUSED;
+	else if (!strcasecmp(status, "forward-seek"))
+		return AVRCP_PLAY_STATUS_FWD_SEEK;
+	else if (!strcasecmp(status, "reverse-seek"))
+		return AVRCP_PLAY_STATUS_REV_SEEK;
+	else if (!strcasecmp(status, "error"))
+		return AVRCP_PLAY_STATUS_ERROR;
+
+	return -EINVAL;
 }
 
 void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
@@ -463,7 +512,7 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 	switch (id) {
 	case AVRCP_EVENT_STATUS_CHANGED:
 		size = 2;
-		pdu->params[1] = *((uint8_t *)data);
+		pdu->params[1] = play_status_to_val(data);
 
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
@@ -480,8 +529,13 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 		settings = data;
 		pdu->params[1] = g_list_length(settings);
 		for (; settings; settings = settings->next) {
-			uint8_t attr = GPOINTER_TO_UINT(settings->data);
+			const char *key = settings->data;
+			int attr;
 			int val;
+
+			attr = attr_to_val(key);
+			if (attr < 0)
+				continue;
 
 			val = player_get_setting(player, attr);
 			if (val < 0)
@@ -519,13 +573,35 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 	return;
 }
 
+static const char *metadata_to_str(uint32_t id)
+{
+	switch (id) {
+	case AVRCP_MEDIA_ATTRIBUTE_TITLE:
+		return "Title";
+	case AVRCP_MEDIA_ATTRIBUTE_ARTIST:
+		return "Artist";
+	case AVRCP_MEDIA_ATTRIBUTE_ALBUM:
+		return "Album";
+	case AVRCP_MEDIA_ATTRIBUTE_GENRE:
+		return "Genre";
+	case AVRCP_MEDIA_ATTRIBUTE_TRACK:
+		return "Track";
+	case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
+		return "NumberOfTracks";
+	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
+		return "Duration";
+	}
+
+	return NULL;
+}
+
 static const char *player_get_metadata(struct avrcp_player *player,
-								uint32_t attr)
+								uint32_t id)
 {
 	if (player != NULL)
-		return player->cb->get_metadata(attr, player->user_data);
+		return player->cb->get_metadata(id, player->user_data);
 
-	if (attr == AVRCP_MEDIA_ATTRIBUTE_TITLE)
+	if (id == AVRCP_MEDIA_ATTRIBUTE_TITLE)
 		return "";
 
 	return NULL;
@@ -625,6 +701,49 @@ static gboolean session_abort_pending_pdu(struct avrcp *session)
 	session->pending_pdu = NULL;
 
 	return TRUE;
+}
+
+static const char *attrval_to_str(uint8_t attr, uint8_t value)
+{
+	switch (attr) {
+	case AVRCP_ATTRIBUTE_EQUALIZER:
+		switch (value) {
+		case AVRCP_EQUALIZER_ON:
+			return "on";
+		case AVRCP_EQUALIZER_OFF:
+			return "off";
+		}
+
+		break;
+	case AVRCP_ATTRIBUTE_REPEAT_MODE:
+		switch (value) {
+		case AVRCP_REPEAT_MODE_OFF:
+			return "off";
+		case AVRCP_REPEAT_MODE_SINGLE:
+			return "singletrack";
+		case AVRCP_REPEAT_MODE_ALL:
+			return "alltracks";
+		case AVRCP_REPEAT_MODE_GROUP:
+			return "group";
+		}
+
+		break;
+	/* Shuffle and scan have the same values */
+	case AVRCP_ATTRIBUTE_SHUFFLE:
+	case AVRCP_ATTRIBUTE_SCAN:
+		switch (value) {
+		case AVRCP_SCAN_OFF:
+			return "off";
+		case AVRCP_SCAN_ALL:
+			return "alltracks";
+		case AVRCP_SCAN_GROUP:
+			return "group";
+		}
+
+		break;
+	}
+
+	return NULL;
 }
 
 static int player_set_setting(struct avrcp_player *player, uint8_t id,
@@ -1077,7 +1196,8 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 
 		pdu->params[++len] = g_list_length(settings);
 		for (; settings; settings = settings->next) {
-			uint8_t attr = GPOINTER_TO_UINT(settings->data);
+			const char *key = settings->data;
+			uint8_t attr = attr_to_val(key);
 			int val;
 
 			val = player_get_setting(player, attr);
@@ -1367,6 +1487,9 @@ static gboolean avrcp_get_play_status_rsp(struct avctp *conn,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
 	struct avrcp_header *pdu = (void *) operands;
 	uint32_t duration;
 	uint32_t position;
@@ -1380,9 +1503,10 @@ static gboolean avrcp_get_play_status_rsp(struct avctp *conn,
 
 	memcpy(&position, pdu->params + 4, sizeof(uint32_t));
 	position = ntohl(position);
+	media_player_set_position(mp, position);
 
 	memcpy(&status, pdu->params + 8, sizeof(uint8_t));
-	DBG("%s", status_to_string(status));
+	media_player_set_status(mp, status_to_string(status));
 
 	return FALSE;
 }
@@ -1404,70 +1528,14 @@ static void avrcp_get_play_status(struct avrcp *session)
 					session);
 }
 
-static const char *attrval_to_str(uint8_t attr, uint8_t value)
-{
-	switch (attr) {
-	case AVRCP_ATTRIBUTE_EQUALIZER:
-		switch (value) {
-		case AVRCP_EQUALIZER_ON:
-			return "on";
-		case AVRCP_EQUALIZER_OFF:
-			return "off";
-		}
-
-		break;
-	case AVRCP_ATTRIBUTE_REPEAT_MODE:
-		switch (value) {
-		case AVRCP_REPEAT_MODE_OFF:
-			return "off";
-		case AVRCP_REPEAT_MODE_SINGLE:
-			return "singletrack";
-		case AVRCP_REPEAT_MODE_ALL:
-			return "alltracks";
-		case AVRCP_REPEAT_MODE_GROUP:
-			return "group";
-		}
-
-		break;
-	/* Shuffle and scan have the same values */
-	case AVRCP_ATTRIBUTE_SHUFFLE:
-	case AVRCP_ATTRIBUTE_SCAN:
-		switch (value) {
-		case AVRCP_SCAN_OFF:
-			return "off";
-		case AVRCP_SCAN_ALL:
-			return "alltracks";
-		case AVRCP_SCAN_GROUP:
-			return "group";
-		}
-
-		break;
-	}
-
-	return NULL;
-}
-
-static const char *attr_to_str(uint8_t attr)
-{
-	switch (attr) {
-	case AVRCP_ATTRIBUTE_EQUALIZER:
-		return "Equalizer";
-	case AVRCP_ATTRIBUTE_REPEAT_MODE:
-		return "Repeat";
-	case AVRCP_ATTRIBUTE_SHUFFLE:
-		return "Shuffle";
-	case AVRCP_ATTRIBUTE_SCAN:
-		return "Scan";
-	}
-
-	return NULL;
-}
-
 static gboolean avrcp_player_value_rsp(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t count;
 	int i;
@@ -1492,7 +1560,7 @@ static gboolean avrcp_player_value_rsp(struct avctp *conn,
 		if (value == NULL)
 			continue;
 
-		DBG("%s: %s", key, value);
+		media_player_set_setting(mp, key, value);
 	}
 
 	return FALSE;
@@ -1563,33 +1631,14 @@ static void avrcp_list_player_attributes(struct avrcp *session)
 					session);
 }
 
-static const char *metadata_to_str(uint32_t id)
-{
-	switch (id) {
-	case AVRCP_MEDIA_ATTRIBUTE_TITLE:
-		return "Title";
-	case AVRCP_MEDIA_ATTRIBUTE_ARTIST:
-		return "Artist";
-	case AVRCP_MEDIA_ATTRIBUTE_ALBUM:
-		return "Album";
-	case AVRCP_MEDIA_ATTRIBUTE_GENRE:
-		return "Genre";
-	case AVRCP_MEDIA_ATTRIBUTE_TRACK:
-		return "Track";
-	case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
-		return "NumberOfTracks";
-	case AVRCP_MEDIA_ATTRIBUTE_DURATION:
-		return "Duration";
-	}
-
-	return NULL;
-}
-
 static gboolean avrcp_get_attributes_rsp(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
 					void *user_data)
 {
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t count;
 	int i;
@@ -1622,10 +1671,11 @@ static gboolean avrcp_get_attributes_rsp(struct avctp *conn,
 
 		if (charset == 106) {
 			const char *key = metadata_to_str(id);
-			char *value = g_strndup((char *) &pdu->params[i], len);
 
-			DBG("%s: %s", key , value);
-			g_free(value);
+			if (key != NULL)
+				media_player_set_metadata(mp,
+							metadata_to_str(id),
+							&pdu->params[i], len);
 		}
 
 		i += len;
@@ -1663,9 +1713,11 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
 	struct avrcp_header *pdu = (void *) operands;
+	struct media_player *mp;
 	uint8_t event;
 	uint8_t value;
 	uint8_t count;
+	const char *curval, *strval;
 	int i;
 
 	if (code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED)
@@ -1683,17 +1735,29 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 
 		break;
 	case AVRCP_EVENT_STATUS_CHANGED:
+		mp = player->user_data;
 		value = pdu->params[1];
 
-		avrcp_get_play_status(session);
+		curval = media_player_get_status(mp);
+		strval = status_to_string(value);
+
+		if (g_strcmp0(curval, strval) != 0) {
+			media_player_set_status(mp, strval);
+			avrcp_get_play_status(session);
+		}
 
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
+		mp = player->user_data;
+		if (code == AVC_CTYPE_CHANGED)
+			media_player_set_position(mp, 0);
+
 		avrcp_get_element_attributes(session);
 
 		break;
 
 	case AVRCP_EVENT_SETTINGS_CHANGED:
+		mp = player->user_data;
 		count = pdu->params[1];
 
 		for (i = 2; count > 0; count--, i += 2) {
@@ -1709,7 +1773,7 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 			if (value == NULL)
 				continue;
 
-			DBG("%s: %s", key, value);
+			media_player_set_setting(mp, key, value);
 		}
 
 		break;
@@ -1753,9 +1817,12 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 					void *user_data)
 {
 	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp;
 	struct avrcp_header *pdu = (void *) operands;
 	uint16_t events = 0;
 	uint8_t count;
+	const char *path;
 
 	if (pdu->params[0] != CAP_EVENTS_SUPPORTED)
 		return FALSE;
@@ -1775,6 +1842,11 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 			break;
 		}
 	}
+
+	path = device_get_path(session->dev->btd_dev);
+	mp = media_player_controller_create(path);
+	player->user_data = mp;
+	player->destroy = (GDestroyNotify) media_player_destroy;
 
 	if (!(events & (1 << AVRCP_EVENT_SETTINGS_CHANGED)))
 		avrcp_list_player_attributes(session);

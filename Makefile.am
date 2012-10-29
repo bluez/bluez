@@ -148,6 +148,7 @@ builtin_sources += audio/main.c \
 			audio/avdtp.h audio/avdtp.c \
 			audio/media.h audio/media.c \
 			audio/transport.h audio/transport.c \
+			audio/player.h audio/player.c \
 			audio/telephony.h audio/a2dp-codecs.h
 builtin_nodist += audio/telephony.c
 

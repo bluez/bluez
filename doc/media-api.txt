@@ -126,11 +126,25 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 MediaPlayer hierarchy
 =====================
 
-Service		unique name
+Service		unique name (Target role)
+		org.bluez (Controller role)
 Interface	org.bluez.MediaPlayer
-Object path	freely definable
+Object path	freely definable (Target role)
+		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
+		(Controller role)
 
-Methods		void SetProperty(string property, variant value)
+Methods		dict GetProperties()
+
+			Returns all properties for the interface. See the
+			properties section for available properties.
+
+		dict GetTrack()
+
+			Returns known metadata of the current track.
+
+			See TrackChanged for possible values.
+
+		void SetProperty(string property, variant value)
 
 			Changes the value of the specified property. Only
 			properties that are listed as read-write can be changed.
