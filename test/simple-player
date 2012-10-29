@@ -111,7 +111,7 @@ if __name__ == '__main__':
 					"Album" : "Album",
 					"Genre" : "Genre",
 					"NumberOfTracks" : dbus.UInt32(10),
-					"Number" : dbus.UInt32(1),
+					"Track" : dbus.UInt32(1),
 					"Duration" : dbus.UInt32(10000) }, signature="sv")
 
 	print('Register media player with:\n\tProperties: %s\n\tMetadata: %s' \
