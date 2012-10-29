@@ -383,6 +383,21 @@ struct bt_hci_rsp_read_data_block_size {
 	uint16_t num_blocks;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCAL_AMP_INFO		0x1409
+struct bt_hci_rsp_read_local_amp_info {
+	uint8_t  status;
+	uint8_t  amp_status;
+	uint32_t total_bw;
+	uint32_t max_bw;
+	uint32_t min_latency;
+	uint32_t max_pdu;
+	uint8_t  amp_type;
+	uint16_t pal_cap;
+	uint16_t max_assoc_size;
+	uint32_t max_flush_to;
+	uint32_t be_flush_to;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_SET_EVENT_MASK		0x2001
 struct bt_hci_cmd_le_set_event_mask {
 	uint8_t  mask[8];
