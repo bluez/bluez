@@ -68,6 +68,7 @@ struct uart_t {
 };
 
 #define FLOW_CTL	0x0001
+#define AMP_DEV		0x0002
 #define ENABLE_PM	1
 #define DISABLE_PM	0
 
@@ -1154,6 +1155,10 @@ struct uart_t uart[] = {
 	{ "3wire",      0x0000, 0x0000, HCI_UART_3WIRE, 115200, 115200,
 			0, DISABLE_PM, NULL, NULL, NULL },
 
+	/* AMP controller UART */
+	{ "amp",	0x0000, 0x0000, HCI_UART_H4, 115200, 115200,
+			AMP_DEV, DISABLE_PM, NULL, NULL, NULL },
+
 	{ NULL, 0 }
 };
 
@@ -1186,6 +1191,9 @@ static int init_uart(char *dev, struct uart_t *u, int send_break, int raw)
 
 	if (raw)
 		flags |= 1 << HCI_UART_RAW_DEVICE;
+
+	if (u->flags & AMP_DEV)
+		flags |= 1 << HCI_UART_CREATE_AMP;
 
 	fd = open(dev, O_RDWR | O_NOCTTY);
 	if (fd < 0) {
