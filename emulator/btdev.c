@@ -172,22 +172,8 @@ static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
 	bdaddr[5] = 0x00;
 }
 
-struct btdev *btdev_create(enum btdev_type type, uint16_t id)
+static void set_bredr_features(struct btdev *btdev)
 {
-	struct btdev *btdev;
-	int index;
-
-	btdev = malloc(sizeof(*btdev));
-	if (!btdev)
-		return NULL;
-
-	memset(btdev, 0, sizeof(*btdev));
-	btdev->type = type;
-
-	btdev->manufacturer = 63;
-	btdev->version = 0x06;
-	btdev->revision = 0x0000;
-
 	btdev->features[0] |= 0x04;	/* Encryption */
 	btdev->features[0] |= 0x20;	/* Role switch */
 	btdev->features[0] |= 0x80;	/* Sniff mode */
@@ -210,6 +196,38 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->features[7] |= 0x01;	/* Link Supervision Timeout Event */
 	btdev->features[7] |= 0x02;	/* Inquiry TX Power Level */
 	btdev->features[7] |= 0x80;	/* Extended features */
+}
+
+static void set_le_features(struct btdev *btdev)
+{
+	btdev->features[4] |= 0x40;	/* LE Supported */
+	btdev->features[7] |= 0x80;	/* Extended features */
+}
+
+struct btdev *btdev_create(enum btdev_type type, uint16_t id)
+{
+	struct btdev *btdev;
+	int index;
+
+	btdev = malloc(sizeof(*btdev));
+	if (!btdev)
+		return NULL;
+
+	memset(btdev, 0, sizeof(*btdev));
+	btdev->type = type;
+
+	btdev->manufacturer = 63;
+	btdev->version = 0x06;
+	btdev->revision = 0x0000;
+
+	switch (btdev->type) {
+	case BTDEV_TYPE_BREDR:
+		set_bredr_features(btdev);
+		break;
+	case BTDEV_TYPE_LE:
+		set_le_features(btdev);
+		break;
+	}
 
 	btdev->acl_mtu = 192;
 	btdev->acl_max_pkt = 1;
