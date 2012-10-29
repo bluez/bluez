@@ -338,7 +338,7 @@ static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 
 		dbus_message_iter_get_basic(&var, &value);
 
-		dict_append_entry(metadata, "Number", DBUS_TYPE_UINT32,
+		dict_append_entry(metadata, "Track", DBUS_TYPE_UINT32,
 								&value);
 	}
 
