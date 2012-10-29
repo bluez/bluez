@@ -57,17 +57,12 @@ int main(int argc, char *argv[])
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	vhci = vhci_open(VHCI_TYPE_BREDR, 0x23);
-	if (!vhci) {
+	if (!vhci)
 		fprintf(stderr, "Failed to open Virtual HCI device\n");
-		return 1;
-	}
 
 	server = server_open_unix("/tmp/bt-server-bredr", 0x42);
-	if (!server) {
+	if (!server)
 		fprintf(stderr, "Failed to open server channel\n");
-		vhci_close(vhci);
-		return 1;
-	}
 
 	return mainloop_run();
 }
