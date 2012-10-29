@@ -38,6 +38,8 @@
 #define cpu_to_le16(val) (val)
 
 struct btdev {
+	enum btdev_type type;
+
 	struct btdev *conn;
 
 	btdev_send_func send_handler;
@@ -170,7 +172,7 @@ static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
 	bdaddr[5] = 0x00;
 }
 
-struct btdev *btdev_create(uint16_t id)
+struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 {
 	struct btdev *btdev;
 	int index;
@@ -180,6 +182,7 @@ struct btdev *btdev_create(uint16_t id)
 		return NULL;
 
 	memset(btdev, 0, sizeof(*btdev));
+	btdev->type = type;
 
 	btdev->manufacturer = 63;
 	btdev->version = 0x06;

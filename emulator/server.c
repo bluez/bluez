@@ -205,7 +205,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	client->btdev = btdev_create(server->id);
+	client->btdev = btdev_create(BTDEV_TYPE_BREDR, server->id);
 	if (!client->btdev) {
 		close(client->fd);
 		free(client);

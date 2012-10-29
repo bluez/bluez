@@ -27,9 +27,13 @@
 typedef void (*btdev_send_func) (const void *data, uint16_t len,
 							void *user_data);
 
+enum btdev_type {
+	BTDEV_TYPE_BREDR,
+};
+
 struct btdev;
 
-struct btdev *btdev_create(uint16_t id);
+struct btdev *btdev_create(enum btdev_type type, uint16_t id);
 void btdev_destroy(struct btdev *btdev);
 
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,

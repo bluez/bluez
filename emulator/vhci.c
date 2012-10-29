@@ -104,7 +104,7 @@ struct vhci *vhci_open(enum vhci_type type, uint16_t id)
 		return NULL;
 	}
 
-	vhci->btdev = btdev_create(id);
+	vhci->btdev = btdev_create(BTDEV_TYPE_BREDR, id);
 	if (!vhci->btdev) {
 		close(vhci->fd);
 		free(vhci);
