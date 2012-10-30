@@ -40,6 +40,8 @@
 #include <sys/socket.h>
 #include <signal.h>
 
+#include <glib.h>
+
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
@@ -409,13 +411,32 @@ static char *major_classes[] = {
 
 static char *get_device_name(const bdaddr_t *local, const bdaddr_t *peer)
 {
-	char filename[PATH_MAX + 1], addr[18];
+	char filename[PATH_MAX + 1];
+	char local_addr[18], peer_addr[18];
+	GKeyFile *key_file;
+	char *str = NULL;
+	int len;
 
-	ba2str(local, addr);
-	create_name(filename, PATH_MAX, STORAGEDIR, addr, "names");
+	ba2str(local, local_addr);
+	ba2str(peer, peer_addr);
 
-	ba2str(peer, addr);
-	return textfile_get(filename, addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local_addr,
+			peer_addr);
+	filename[PATH_MAX] = '\0';
+	key_file = g_key_file_new();
+
+	if (g_key_file_load_from_file(key_file, filename, 0, NULL)) {
+		str = g_key_file_get_string(key_file, "General", "Name", NULL);
+		if (str) {
+			len = strlen(str);
+			if (len > HCI_MAX_NAME_LENGTH)
+				str[HCI_MAX_NAME_LENGTH] = '\0';
+		}
+	}
+
+	g_key_file_free(key_file);
+
+	return str;
 }
 
 /* Display local devices */
