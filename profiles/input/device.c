@@ -777,7 +777,7 @@ static struct input_device *input_device_new(struct btd_device *device,
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
-	char name[249], src_addr[18], dst_addr[18];
+	char name[HCI_MAX_NAME_LENGTH + 1];
 
 	idev = g_new0(struct input_device, 1);
 	bacpy(&idev->src, adapter_get_address(adapter));
@@ -787,11 +787,8 @@ static struct input_device *input_device_new(struct btd_device *device,
 	idev->handle = handle;
 	idev->disable_sdp = disable_sdp;
 
-	ba2str(&idev->src, src_addr);
-	ba2str(&idev->dst, dst_addr);
-
-	if (read_device_name(src_addr, dst_addr, device_get_addr_type(device),
-				name) == 0)
+	device_get_name(device, name, HCI_MAX_NAME_LENGTH);
+	if (strlen(name) > 0)
 		idev->name = g_strdup(name);
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
