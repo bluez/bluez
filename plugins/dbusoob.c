@@ -208,7 +208,7 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 								data->class);
 
 	if (data->name)
-		write_device_name(adapter_get_address(adapter), &bdaddr, 0,
+		btd_event_remote_name(adapter_get_address(adapter), &bdaddr,
 								data->name);
 
 	return TRUE;
