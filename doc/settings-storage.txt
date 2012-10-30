@@ -132,6 +132,8 @@ Long term key) related to a remote device.
 
 [General] group contains:
 
+  Name			String		Remote device friendly name
+
   Alias			String		Alias name
 
   Class			String		Device class in hexadecimal,
