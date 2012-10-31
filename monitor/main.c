@@ -53,11 +53,13 @@ static void usage(void)
 	printf("\tbtmon [options]\n");
 	printf("options:\n"
 		"\t-b, --btsnoop <file>  Save dump in btsnoop format\n"
+		"\t-s, --server <path>   Start monitor server socket\n"
 		"\t-h, --help            Show help options\n");
 }
 
 static const struct option main_options[] = {
 	{ "btsnoop",	required_argument, NULL, 'b'	},
+	{ "server",	required_argument, NULL, 'r'	},
 	{ "version",	no_argument,	   NULL, 'v'	},
 	{ "help",	no_argument,	   NULL, 'h'	},
 	{ }
@@ -73,13 +75,16 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "b:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "b:s:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
 		case 'b':
 			btsnoop_open(optarg);
+			break;
+		case 's':
+			control_server(optarg);
 			break;
 		case 'v':
 			printf("%s\n", VERSION);

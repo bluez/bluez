@@ -32,6 +32,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
@@ -648,8 +650,106 @@ static int open_channel(uint16_t channel)
 	return 0;
 }
 
+static void client_callback(int fd, uint32_t events, void *user_data)
+{
+	struct control_data *data = user_data;
+	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	ssize_t len;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(data->fd);
+		return;
+	}
+
+	len = recv(fd, buf, sizeof(buf), 0);
+	if (len < 0)
+		return;
+}
+
+static void server_accept_callback(int fd, uint32_t events, void *user_data)
+{
+	struct control_data *data;
+	struct sockaddr_un addr;
+	socklen_t len;
+	int nfd;
+
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(fd);
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	len = sizeof(addr);
+
+	nfd = accept(fd, (struct sockaddr *) &addr, &len);
+	if (nfd < 0) {
+		perror("Failed to accept client socket");
+		return;
+	}
+
+	printf("--- New monitor connection ---\n");
+
+	data = malloc(sizeof(*data));
+	if (!data) {
+		close(nfd);
+		return;
+	}
+
+	memset(data, 0, sizeof(*data));
+	data->channel = HCI_CHANNEL_MONITOR;
+	data->fd = nfd;
+
+        mainloop_add_fd(data->fd, EPOLLIN, client_callback, data, free_data);
+}
+
+static int server_fd = -1;
+
+void control_server(const char *path)
+{
+	struct sockaddr_un addr;
+	int fd;
+
+	if (server_fd >= 0)
+		return;
+
+	unlink(path);
+
+	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	if (fd < 0) {
+		perror("Failed to open server socket");
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strcpy(addr.sun_path, path);
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		perror("Failed to bind server socket");
+		close(fd);
+		return;
+	}
+
+	if (listen(fd, 5) < 0) {
+		perror("Failed to listen server socket");
+		close(fd);
+		return;
+	}
+
+	if (mainloop_add_fd(fd, EPOLLIN, server_accept_callback,
+						NULL, NULL) < 0) {
+		close(fd);
+		return;
+	}
+
+	server_fd = fd;
+}
+
 int control_tracing(void)
 {
+	if (server_fd >= 0)
+		return 0;
+
 	if (open_channel(HCI_CHANNEL_MONITOR) < 0)
 		return -1;
 
