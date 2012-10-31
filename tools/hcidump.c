@@ -341,7 +341,6 @@ static void read_dump(int fd)
 	struct btsnoop_pkt dp;
 	struct pktlog_hdr ph;
 	struct frame frm;
-	uint8_t pkt_type;
 	int err;
 
 	frm.data = malloc(HCI_MAX_FRAME_SIZE);
@@ -389,6 +388,9 @@ static void read_dump(int fd)
 			frm.data_len = ntohl(ph.len) - 8;
 			err = read_n(fd, frm.data + 1, frm.data_len - 1);
 		} else if (parser.flags & DUMP_BTSNOOP) {
+			uint32_t opcode;
+			uint8_t pkt_type;
+
 			switch (btsnoop_type) {
 			case 1001:
 				if (ntohl(dp.flags) & 0x02) {
@@ -409,6 +411,44 @@ static void read_dump(int fd)
 				frm.data_len = ntohl(dp.len);
 				err = read_n(fd, frm.data, frm.data_len);
 				break;
+
+			case 2001:
+				opcode = ntohl(dp.flags) & 0xffff;
+
+				switch (opcode) {
+				case 2:
+					pkt_type = HCI_COMMAND_PKT;
+					frm.in = 0;
+					break;
+				case 3:
+					pkt_type = HCI_EVENT_PKT;
+					frm.in = 1;
+					break;
+				case 4:
+					pkt_type = HCI_ACLDATA_PKT;
+					frm.in = 0;
+					break;
+				case 5:
+					pkt_type = HCI_ACLDATA_PKT;
+					frm.in = 1;
+					break;
+				case 6:
+					pkt_type = HCI_SCODATA_PKT;
+					frm.in = 0;
+					break;
+				case 7:
+					pkt_type = HCI_SCODATA_PKT;
+					frm.in = 1;
+					break;
+				default:
+					pkt_type = 0xff;
+					break;
+				}
+
+				((uint8_t *) frm.data)[0] = pkt_type;
+
+				frm.data_len = ntohl(dp.len) + 1;
+				err = read_n(fd, frm.data + 1, frm.data_len - 1);
 			}
 		} else {
 			frm.data_len = btohs(dh.len);
@@ -486,7 +526,8 @@ static int open_file(char *file, int mode, unsigned long flags)
 				exit(1);
 			}
 
-			if (btsnoop_type != 1001 && btsnoop_type != 1002) {
+			if (btsnoop_type != 1001 && btsnoop_type != 1002 &&
+							btsnoop_type != 2001) {
 				fprintf(stderr, "Unsupported BTSnoop datalink type\n");
 				exit(1);
 			}
