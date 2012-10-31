@@ -27,6 +27,8 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <getopt.h>
 
 #include "mainloop.h"
 #include "server.h"
@@ -42,6 +44,21 @@ static void signal_callback(int signum, void *user_data)
 	}
 }
 
+static void usage(void)
+{
+	printf("btvirt - Bluetooth emulator\n"
+		"Usage:\n");
+	printf("\tbtvirt [options]\n");
+	printf("options:\n"
+		"\t-h, --help            Show help options\n");
+}
+
+static const struct option main_options[] = {
+	{ "version", no_argument, NULL, 'v' },
+	{ "help",    no_argument, NULL, 'h' },
+	{ }
+};
+
 int main(int argc, char *argv[])
 {
 	struct vhci *vhci;
@@ -51,11 +68,32 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
+	for (;;) {
+		int opt;
+
+		opt = getopt_long(argc, argv, "vh", main_options, NULL);
+		if (opt < 0)
+			break;
+
+		switch (opt) {
+		case 'v':
+			printf("%s\n", VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+			usage();
+			return EXIT_SUCCESS;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
+
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
+
+	printf("Bluetooth emulator ver %s\n", VERSION);
 
 	vhci = vhci_open(VHCI_TYPE_BREDR);
 	if (!vhci)
