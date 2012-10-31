@@ -103,8 +103,10 @@ static void client_read_callback(int fd, uint32_t events, void *user_data)
 	ssize_t len;
 	uint16_t count;
 
-	if (events & (EPOLLERR | EPOLLHUP))
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(client->fd);
 		return;
+	}
 
 again:
 	len = recv(fd, buf + client->pkt_offset,
@@ -194,8 +196,10 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	struct client *client;
 	enum btdev_type uninitialized_var(type);
 
-	if (events & (EPOLLERR | EPOLLHUP))
+	if (events & (EPOLLERR | EPOLLHUP)) {
+		mainloop_remove_fd(server->fd);
 		return;
+	}
 
 	client = malloc(sizeof(*client));
 	if (!client)
