@@ -27,7 +27,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t bdaddr_type, int8_t rssi,
 				bool confirm_name, bool legacy,
 				uint8_t *data, uint8_t data_len);
-void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, const char *name);
+void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
+							const char *name);
 void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer,
 					uint8_t bdaddr_type, const char *name,
 					uint32_t class);

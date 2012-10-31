@@ -55,7 +55,7 @@
 #include "storage.h"
 #include "event.h"
 
-static gboolean get_adapter_and_device(bdaddr_t *src, bdaddr_t *dst,
+static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
 					gboolean create)
@@ -252,7 +252,8 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 					confirm_name, legacy, data, data_len);
 }
 
-void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, const char *name)
+void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
+							const char *name)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
