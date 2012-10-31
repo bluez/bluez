@@ -37,6 +37,9 @@
 #include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+#include <bluetooth/sdp.h>
+#include <bluetooth/mgmt.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -249,26 +252,31 @@ void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type
 					confirm_name, legacy, data, data_len);
 }
 
-void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, char *name)
+void btd_event_remote_name(bdaddr_t *local, bdaddr_t *peer, const char *name)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char filename[PATH_MAX + 1];
 	char local_addr[18], peer_addr[18];
 	GKeyFile *key_file;
-	char *data;
+	char *data, utf8_name[MGMT_MAX_NAME_LENGTH + 1];
 	gsize length = 0;
 
 	if (!g_utf8_validate(name, -1, NULL)) {
 		int i;
 
+		memset(utf8_name, 0, sizeof(utf8_name));
+		strncpy(utf8_name, name, MGMT_MAX_NAME_LENGTH);
+
 		/* Assume ASCII, and replace all non-ASCII with spaces */
-		for (i = 0; name[i] != '\0'; i++) {
-			if (!isascii(name[i]))
-				name[i] = ' ';
+		for (i = 0; utf8_name[i] != '\0'; i++) {
+			if (!isascii(utf8_name[i]))
+				utf8_name[i] = ' ';
 		}
 		/* Remove leading and trailing whitespace characters */
-		g_strstrip(name);
+		g_strstrip(utf8_name);
+
+		name = utf8_name;
 	}
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
@@ -399,7 +407,7 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 }
 
 void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
-						char *name, uint32_t class)
+						const char *name, uint32_t class)
 {
 	struct btd_adapter *adapter;
 	struct btd_device *device;
