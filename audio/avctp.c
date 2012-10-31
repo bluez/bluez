@@ -150,6 +150,7 @@ struct avctp_pending_req {
 struct avctp_channel {
 	struct avctp *session;
 	GIOChannel *io;
+	uint8_t transaction;
 	guint watch;
 	uint16_t imtu;
 	uint16_t omtu;
@@ -1224,17 +1225,16 @@ static struct avctp_pending_req *pending_create(struct avctp_channel *chan,
 						GDestroyNotify destroy)
 {
 	struct avctp_pending_req *p;
-	static uint8_t transaction = 0;
 
 	p = g_new0(struct avctp_pending_req, 1);
 	p->chan = chan;
-	p->transaction = transaction;
+	p->transaction = chan->transaction;
 	p->process = process;
 	p->data = data;
 	p->destroy = destroy;
 
-	transaction++;
-	transaction %= 16;
+	chan->transaction++;
+	chan->transaction %= 16;
 
 	return p;
 }
