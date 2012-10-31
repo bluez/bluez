@@ -41,7 +41,6 @@
 #include <bluetooth/hci_lib.h>
 
 #include "control.h"
-#include "btsnoop.h"
 #include "packet.h"
 
 static unsigned long filter_mask = 0;
@@ -156,6 +155,28 @@ struct monitor_new_index {
 #define MAX_INDEX 16
 
 static struct monitor_new_index index_list[MAX_INDEX];
+
+uint32_t packet_get_flags(uint16_t opcode)
+{
+	switch (opcode) {
+	case MONITOR_NEW_INDEX:
+	case MONITOR_DEL_INDEX:
+		break;
+	case MONITOR_COMMAND_PKT:
+		return 0x02;
+	case MONITOR_EVENT_PKT:
+		return 0x03;
+	case MONITOR_ACL_TX_PKT:
+		return 0x00;
+	case MONITOR_ACL_RX_PKT:
+		return 0x01;
+	case MONITOR_SCO_TX_PKT:
+	case MONITOR_SCO_RX_PKT:
+		break;
+	}
+
+	return 0xff;
+}
 
 void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
@@ -571,8 +592,6 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 
-	btsnoop_write(tv, index, 0x02, data, size);
-
 	print_header(tv, index);
 
 	if (size < HCI_COMMAND_HDR_SIZE) {
@@ -593,8 +612,6 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
 	const hci_event_hdr *hdr = data;
-
-	btsnoop_write(tv, index, 0x03, data, size);
 
 	print_header(tv, index);
 
@@ -619,8 +636,6 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	uint16_t handle = btohs(hdr->handle);
 	uint16_t dlen = btohs(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
-
-	btsnoop_write(tv, index, in ? 0x01 : 0x00, data, size);
 
 	print_header(tv, index);
 

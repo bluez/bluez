@@ -41,6 +41,7 @@
 
 #include "mainloop.h"
 #include "packet.h"
+#include "btsnoop.h"
 #include "control.h"
 
 struct control_data {
@@ -587,6 +588,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			break;
 		case HCI_CHANNEL_MONITOR:
 			packet_monitor(tv, index, opcode, buf, pktlen);
+			btsnoop_write(tv, index, opcode, buf, pktlen);
 			break;
 		}
 	}

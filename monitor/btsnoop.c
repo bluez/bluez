@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
+#include "packet.h"
 #include "btsnoop.h"
 
 static inline uint64_t ntoh64(uint64_t n)
@@ -71,25 +72,38 @@ static const uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e,
 				      0x6f, 0x6f, 0x70, 0x00 };
 
 static const uint32_t btsnoop_version = 1;
-static const uint32_t btsnoop_type = 1001;
+static const uint32_t btsnoop_type = 2001;
 
 static int btsnoop_fd = -1;
 static uint16_t btsnoop_index = 0xffff;
 
 void btsnoop_open(const char *path)
 {
+	struct btsnoop_hdr hdr;
+	ssize_t written;
+
 	if (btsnoop_fd >= 0)
 		return;
 
 	btsnoop_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (btsnoop_fd < 0)
+		return;
+
+	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
+	hdr.version = htonl(btsnoop_version);
+	hdr.type = htonl(btsnoop_type);
+
+	written = write(btsnoop_fd, &hdr, BTSNOOP_HDR_SIZE);
+	if (written < 0)
+		return;
 }
 
-void btsnoop_write(struct timeval *tv, uint16_t index, uint32_t flags,
+void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
-	struct btsnoop_hdr hdr;
 	struct btsnoop_pkt pkt;
+	uint32_t flags;
 	uint64_t ts;
 	ssize_t written;
 
@@ -99,20 +113,26 @@ void btsnoop_write(struct timeval *tv, uint16_t index, uint32_t flags,
 	if (btsnoop_fd < 0)
 		return;
 
-	if (btsnoop_index == 0xffff) {
-		memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
-		hdr.version = htonl(btsnoop_version);
-		hdr.type = htonl(btsnoop_type);
+	switch (btsnoop_type) {
+	case 1001:
+		if (btsnoop_index == 0xffff)
+			btsnoop_index = index;
 
-		written = write(btsnoop_fd, &hdr, BTSNOOP_HDR_SIZE);
-		if (written < 0)
+		if (index != btsnoop_index)
 			return;
 
-		btsnoop_index = index;
-	}
+		flags = packet_get_flags(opcode);
+		if (flags == 0xff)
+			return;
+		break;
 
-	if (index != btsnoop_index)
+	case 2001:
+		flags = (index << 16) | opcode;
+		break;
+
+	default:
 		return;
+	}
 
 	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
 
