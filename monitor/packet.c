@@ -40,6 +40,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "bt.h"
 #include "control.h"
 #include "packet.h"
 
@@ -83,6 +84,48 @@ static void print_channel_header(struct timeval *tv, uint16_t index,
 static void print_header(struct timeval *tv, uint16_t index)
 {
 	print_channel_header(tv, index, HCI_CHANNEL_MONITOR);
+}
+
+#define print_field(fmt, args...) printf("%-12c" fmt "\n", ' ', ## args)
+
+static const struct {
+	uint8_t status;
+	const char *str;
+} status2str_table[] = {
+	{ 0x00, "Success"	},
+	{ }
+};
+
+static void print_status(uint8_t status)
+{
+	const char *str = "Unknown";
+	int i;
+
+	for (i = 0; status2str_table[i].str; i++) {
+		if (status2str_table[i].status == status) {
+			str = status2str_table[i].str;
+			break;
+		}
+	}
+
+	print_field("Status: %s (0x%2.2x)", str, status);
+}
+
+static void print_class(const uint8_t *dev_class)
+{
+	print_field("Class: 0x%2.2x%2.2x%2.2x",
+			dev_class[2], dev_class[1], dev_class[0]);
+}
+
+static void print_features(const uint8_t *features)
+{
+	char str[41] = "";
+	int i;
+
+	for (i = 0; i < 8; i++)
+		sprintf(str + (i * 5), " 0x%2.2x", features[i]);
+
+	print_field("Features:%s", str);
 }
 
 void packet_hexdump(const unsigned char *buf, uint16_t len)
@@ -245,10 +288,61 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 	}
 }
 
-static const struct {
+static void null_cmd(const void *data, uint8_t size)
+{
+}
+
+static void status_rsp(const void *data, uint8_t size)
+{
+	uint8_t status = *((uint8_t *) data);
+
+	print_status(status);
+}
+
+static void read_class_of_device_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_class_of_dev *rsp = data;
+
+	print_status(rsp->status);
+	print_class(rsp->dev_class);
+}
+
+static void read_local_features_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_features *rsp = data;
+
+	print_status(rsp->status);
+	print_features(rsp->features);
+}
+
+static void read_local_ext_features_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_local_ext_features *cmd = data;
+
+	print_field("Page: %d", cmd->page);
+}
+
+static void read_local_ext_features_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_ext_features *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Page: %d/%d", rsp->page, rsp->max_page);
+	print_features(rsp->features);
+}
+
+struct opcode_data {
 	uint16_t opcode;
 	const char *str;
-} opcode2str_table[] = {
+	void (*cmd_func) (const void *data, uint8_t size);
+	uint8_t cmd_size;
+	bool cmd_fixed;
+	void (*rsp_func) (const void *data, uint8_t size);
+	uint8_t rsp_size;
+	bool rsp_fixed;
+};
+
+static const struct opcode_data opcode_table[] = {
 	/* OGF 1 - Link Control */
 	{ 0x0401, "Inquiry"				},
 	{ 0x0402, "Inquiry Cancel"			},
@@ -324,11 +418,17 @@ static const struct {
 	{ 0x0811, "Sniff Subrating"			},
 
 	/* OGF 3 - Host Control */
-	{ 0x0c01, "Set Event Mask"			},
+	{ 0x0c01, "Set Event Mask",
+				NULL, 8, true,
+				status_rsp, 1, true },
 	/* reserved command */
-	{ 0x0c03, "Reset"				},
+	{ 0x0c03, "Reset",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
 	/* reserved command */
-	{ 0x0c05, "Set Event Filter"			},
+	{ 0x0c05, "Set Event Filter",
+				NULL, 1, false,
+				status_rsp, 1, true },
 	/* reserved commands */
 	{ 0x0c08, "Flush"				},
 	{ 0x0c09, "Read PIN Type"			},
@@ -355,7 +455,9 @@ static const struct {
 	{ 0x0c20, "Write Authentication Enable"		},
 	{ 0x0c21, "Read Encryption Mode"		},
 	{ 0x0c22, "Write Encryption Mode"		},
-	{ 0x0c23, "Read Class of Device"		},
+	{ 0x0c23, "Read Class of Device",
+				null_cmd, 0, true,
+				read_class_of_device_rsp, 4, true },
 	{ 0x0c24, "Write Class of Device"		},
 	{ 0x0c25, "Read Voice Setting"			},
 	{ 0x0c26, "Write Voice Setting"			},
@@ -395,7 +497,9 @@ static const struct {
 	{ 0x0c49, "Write AFH Channel Assessment Mode"	},
 	/* reserved commands */
 	{ 0x0c51, "Read Extended Inquiry Response"	},
-	{ 0x0c52, "Write Extended Inquiry Response"	},
+	{ 0x0c52, "Write Extended Inquiry Response",
+				NULL, 241, true,
+				status_rsp, 1, true },
 	{ 0x0c53, "Refresh Encryption Key"		},
 	/* reserved command */
 	{ 0x0c55, "Read Simple Pairing Mode"		},
@@ -425,8 +529,12 @@ static const struct {
 	/* OGF 4 - Information Parameter */
 	{ 0x1001, "Read Local Version Information"	},
 	{ 0x1002, "Read Local Supported Commands"	},
-	{ 0x1003, "Read Local Supported Features"	},
-	{ 0x1004, "Read Local Extended Features"	},
+	{ 0x1003, "Read Local Supported Features",
+				null_cmd, 0, true,
+				read_local_features_rsp, 9, true },
+	{ 0x1004, "Read Local Extended Features",
+				read_local_ext_features_cmd, 1, true,
+				read_local_ext_features_rsp, 11, true },
 	{ 0x1005, "Read Buffer Size"			},
 	/* reserved command */
 	{ 0x1007, "Read Country Code"			},
@@ -482,22 +590,80 @@ static const struct {
 	{ }
 };
 
-static const char *opcode2str(uint16_t opcode)
+static void cmd_complete_evt(const void *data, uint8_t size)
 {
+	const struct bt_hci_evt_cmd_complete *evt = data;
+	uint16_t opcode = btohs(evt->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
+	const struct opcode_data *opcode_data = NULL;
 	int i;
 
-	for (i = 0; opcode2str_table[i].str; i++) {
-		if (opcode2str_table[i].opcode == opcode)
-			return opcode2str_table[i].str;
+	for (i = 0; opcode_table[i].str; i++) {
+		if (opcode_table[i].opcode == opcode) {
+			opcode_data = &opcode_table[i];
+			break;
+		}
 	}
 
-	return "Unknown";
+	print_field("%s (0x%2.2x|0x%4.4x) ncmd %d",
+				opcode_data ? opcode_data->str : "Unknown",
+							ogf, ocf, evt->ncmd);
+
+	if (!opcode_data->rsp_func) {
+		packet_hexdump(data + 3, size - 3);
+		return;
+	}
+
+	if (opcode_data->rsp_fixed) {
+		if (size - 3 != opcode_data->rsp_size) {
+			print_field("invalid packet size");
+			packet_hexdump(data + 3, size - 3);
+			return;
+		}
+	} else {
+		if (size - 3 < opcode_data->rsp_size) {
+			print_field("too short packet");
+			packet_hexdump(data + 3, size - 3);
+			return;
+		}
+	}
+
+	opcode_data->rsp_func(data + 3, size - 3);
 }
 
-static const struct {
+static void cmd_status_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_cmd_status *evt = data;
+	uint16_t opcode = btohs(evt->opcode);
+	uint16_t ogf = cmd_opcode_ogf(opcode);
+	uint16_t ocf = cmd_opcode_ocf(opcode);
+	const struct opcode_data *opcode_data = NULL;
+	int i;
+
+	for (i = 0; opcode_table[i].str; i++) {
+		if (opcode_table[i].opcode == opcode) {
+			opcode_data = &opcode_table[i];
+			break;
+		}
+	}
+
+	print_field("%s (0x%2.2x|0x%4.4x) ncmd %d",
+				opcode_data ? opcode_data->str : "Unknown",
+							ogf, ocf, evt->ncmd);
+
+	print_status(evt->status);
+}
+
+struct event_data {
 	uint8_t event;
 	const char *str;
-} event2str_table[] = {
+	void (*func) (const void *data, uint8_t size);
+	uint8_t size;
+	bool fixed;
+};
+
+static const struct event_data event_table[] = {
 	{ 0x01, "Inquiry Complete"			},
 	{ 0x02, "Inquiry Result"			},
 	{ 0x03, "Connect Complete"			},
@@ -511,8 +677,10 @@ static const struct {
 	{ 0x0b, "Read Remote Supported Features"	},
 	{ 0x0c, "Read Remote Version Complete"		},
 	{ 0x0d, "QoS Setup Complete"			},
-	{ 0x0e, "Command Complete"			},
-	{ 0x0f, "Command Status"			},
+	{ 0x0e, "Command Complete",
+				cmd_complete_evt, 3, false },
+	{ 0x0f, "Command Status",
+				cmd_status_evt, 4, true },
 	{ 0x10, "Hardware Error"			},
 	{ 0x11, "Flush Occurred"			},
 	{ 0x12, "Role Change"				},
@@ -573,18 +741,6 @@ static const struct {
 	{ }
 };
 
-static const char *event2str(uint8_t event)
-{
-	int i;
-
-	for (i = 0; event2str_table[i].str; i++) {
-		if (event2str_table[i].event == event)
-			return event2str_table[i].str;
-	}
-
-	return "Unknown";
-}
-
 void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 				uint8_t type, uint8_t bus, const char *name)
 {
@@ -608,6 +764,8 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	uint16_t opcode = btohs(hdr->opcode);
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
+	const struct opcode_data *opcode_data = NULL;
+	int i;
 
 	print_header(tv, index);
 
@@ -616,19 +774,53 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 		return;
 	}
 
-	printf("< HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n",
-				opcode2str(opcode), ogf, ocf, hdr->plen);
-
 	data += HCI_COMMAND_HDR_SIZE;
 	size -= HCI_COMMAND_HDR_SIZE;
 
-	packet_hexdump(data, size);
+	if (size != hdr->plen) {
+		printf("* Invalid HCI Command packet size\n");
+		return;
+	}
+
+	for (i = 0; opcode_table[i].str; i++) {
+		if (opcode_table[i].opcode == opcode) {
+			opcode_data = &opcode_table[i];
+			break;
+		}
+	}
+
+	printf("< HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n",
+				opcode_data ? opcode_data->str : "Unknown",
+							ogf, ocf, hdr->plen);
+
+	if (!opcode_data->cmd_func) {
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (opcode_data->cmd_fixed) {
+		if (hdr->plen != opcode_data->cmd_size) {
+			print_field("invalid packet size");
+			packet_hexdump(data, size);
+			return;
+		}
+	} else {
+		if (hdr->plen < opcode_data->cmd_size) {
+			print_field("too short packet");
+			packet_hexdump(data, size);
+			return;
+		}
+	}
+
+	opcode_data->cmd_func(data, hdr->plen);
 }
 
 void packet_hci_event(struct timeval *tv, uint16_t index,
 					const void *data, uint16_t size)
 {
 	const hci_event_hdr *hdr = data;
+	const struct event_data *event_data = NULL;
+	int i;
 
 	print_header(tv, index);
 
@@ -637,13 +829,45 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 		return;
 	}
 
-	printf("> HCI Event: %s (0x%2.2x) plen %d\n",
-				event2str(hdr->evt), hdr->evt, hdr->plen);
-
 	data += HCI_EVENT_HDR_SIZE;
 	size -= HCI_EVENT_HDR_SIZE;
 
-	packet_hexdump(data, size);
+	if (size != hdr->plen) {
+		printf("* Invalid HCI Event packet size\n");
+		return;
+	}
+
+	for (i = 0; event_table[i].str; i++) {
+		if (event_table[i].event == hdr->evt) {
+			event_data = &event_table[i];
+			break;
+		}
+	}
+
+	printf("> HCI Event: %s (0x%2.2x) plen %d\n",
+				event_data ? event_data->str : "Unknown",
+							hdr->evt, hdr->plen);
+
+	if (!event_data->func) {
+		packet_hexdump(data, size);
+		return;
+	}
+
+	if (event_data->fixed) {
+		if (hdr->plen != event_data->size) {
+			print_field("invalid packet size");
+			packet_hexdump(data, size);
+			return;
+		}
+	} else {
+		if (hdr->plen < event_data->size) {
+			print_field("too short packet");
+			packet_hexdump(data, size);
+			return;
+		}
+	}
+
+	event_data->func(data, hdr->plen);
 }
 
 void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
