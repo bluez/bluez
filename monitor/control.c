@@ -47,6 +47,8 @@
 struct control_data {
 	uint16_t channel;
 	int fd;
+	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	uint16_t offset;
 };
 
 static void free_data(void *user_data)
@@ -534,21 +536,20 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 static void data_callback(int fd, uint32_t events, void *user_data)
 {
 	struct control_data *data = user_data;
-	unsigned char buf[HCI_MAX_FRAME_SIZE];
 	unsigned char control[32];
 	struct mgmt_hdr hdr;
 	struct msghdr msg;
 	struct iovec iov[2];
 
 	if (events & (EPOLLERR | EPOLLHUP)) {
-		mainloop_remove_fd(fd);
+		mainloop_remove_fd(data->fd);
 		return;
 	}
 
 	iov[0].iov_base = &hdr;
 	iov[0].iov_len = MGMT_HDR_SIZE;
-	iov[1].iov_base = buf;
-	iov[1].iov_len = sizeof(buf);
+	iov[1].iov_base = data->buf;
+	iov[1].iov_len = sizeof(data->buf);
 
 	memset(&msg, 0, sizeof(msg));
 	msg.msg_iov = iov;
@@ -562,7 +563,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 		uint16_t opcode, index, pktlen;
 		ssize_t len;
 
-		len = recvmsg(fd, &msg, MSG_DONTWAIT);
+		len = recvmsg(data->fd, &msg, MSG_DONTWAIT);
 		if (len < 0)
 			break;
 
@@ -584,11 +585,11 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 
 		switch (data->channel) {
 		case HCI_CHANNEL_CONTROL:
-			packet_control(tv, index, opcode, buf, pktlen);
+			packet_control(tv, index, opcode, data->buf, pktlen);
 			break;
 		case HCI_CHANNEL_MONITOR:
-			packet_monitor(tv, index, opcode, buf, pktlen);
-			btsnoop_write(tv, index, opcode, buf, pktlen);
+			packet_monitor(tv, index, opcode, data->buf, pktlen);
+			btsnoop_write(tv, index, opcode, data->buf, pktlen);
 			break;
 		}
 	}
@@ -655,7 +656,6 @@ static int open_channel(uint16_t channel)
 static void client_callback(int fd, uint32_t events, void *user_data)
 {
 	struct control_data *data = user_data;
-	unsigned char buf[HCI_MAX_FRAME_SIZE];
 	ssize_t len;
 
 	if (events & (EPOLLERR | EPOLLHUP)) {
@@ -663,9 +663,31 @@ static void client_callback(int fd, uint32_t events, void *user_data)
 		return;
 	}
 
-	len = recv(fd, buf, sizeof(buf), 0);
+	len = recv(data->fd, data->buf + data->offset,
+			sizeof(data->buf) - data->offset, MSG_DONTWAIT);
 	if (len < 0)
 		return;
+
+	data->offset += len;
+
+	if (data->offset > MGMT_HDR_SIZE) {
+		struct mgmt_hdr *hdr = (struct mgmt_hdr *) data->buf;
+		uint16_t pktlen = btohs(hdr->len);
+
+		if (data->offset > pktlen + MGMT_HDR_SIZE) {
+			uint16_t opcode = btohs(hdr->opcode);
+			uint16_t index = btohs(hdr->index);
+
+			packet_monitor(NULL, index, opcode,
+					data->buf + MGMT_HDR_SIZE, pktlen);
+
+			data->offset -= pktlen + MGMT_HDR_SIZE;
+
+			if (data->offset > 0)
+				memmove(data->buf, data->buf +
+					 MGMT_HDR_SIZE + pktlen, data->offset);
+		}
+	}
 }
 
 static void server_accept_callback(int fd, uint32_t events, void *user_data)
