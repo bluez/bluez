@@ -658,6 +658,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	struct bt_hci_rsp_read_local_amp_info rlai;
 	struct bt_hci_rsp_le_read_buffer_size lrbs;
 	struct bt_hci_rsp_le_read_local_features lrlf;
+	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
 	uint16_t opcode;
 	uint8_t status, page;
@@ -1073,6 +1074,12 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		lrlf.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lrlf.features, btdev->le_features, 8);
 		cmd_complete(btdev, opcode, &lrlf, sizeof(lrlf));
+		break;
+
+	case BT_HCI_CMD_LE_READ_ADV_TX_POWER:
+		lratp.status = BT_HCI_ERR_SUCCESS;
+		lratp.level = 0;
+		cmd_complete(btdev, opcode, &lratp, sizeof(lratp));
 		break;
 
 	case BT_HCI_CMD_LE_SET_SCAN_PARAMETERS:
