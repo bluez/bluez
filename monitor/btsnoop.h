@@ -24,7 +24,10 @@
 
 #include <sys/time.h>
 
-void btsnoop_open(const char *path);
+void btsnoop_create(const char *path);
 void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
+int btsnoop_open(const char *path);
+int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
+						void *data, uint16_t *size);
 void btsnoop_close(void);

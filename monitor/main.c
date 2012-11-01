@@ -52,12 +52,14 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbtmon [options]\n");
 	printf("options:\n"
+		"\t-r, --read <file>      Read traces in btsnoop format\n"
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
 		"\t-s, --server <socket>  Start monitor server socket\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
+	{ "read",    required_argument, NULL, 'r' },
 	{ "write",   required_argument, NULL, 'b' },
 	{ "server",  required_argument, NULL, 'r' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -68,6 +70,7 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
+	const char *reader_path = NULL;
 	sigset_t mask;
 
 	mainloop_init();
@@ -75,13 +78,16 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "w:s:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "r:w:s:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'r':
+			reader_path = optarg;
+			break;
 		case 'w':
-			btsnoop_open(optarg);
+			btsnoop_create(optarg);
 			break;
 		case 's':
 			control_server(optarg);
@@ -110,6 +116,11 @@ int main(int argc, char *argv[])
 	packet_set_filter(filter_mask);
 
 	printf("Bluetooth monitor ver %s\n", VERSION);
+
+	if (reader_path) {
+		control_reader(reader_path);
+		return EXIT_SUCCESS;
+	}
 
 	if (control_tracing() < 0) {
 		if (hcidump_tracing() < 0)

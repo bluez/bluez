@@ -747,6 +747,25 @@ void control_server(const char *path)
 	server_fd = fd;
 }
 
+void control_reader(const char *path)
+{
+	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	uint16_t index, opcode, pktlen;
+	struct timeval tv;
+
+	if (btsnoop_open(path) < 0)
+		return;
+
+	while (1) {
+		if (btsnoop_read(&tv, &index, &opcode, buf, &pktlen) < 0)
+			break;
+
+		packet_monitor(&tv, index, opcode, buf, pktlen);
+	}
+
+	btsnoop_close();
+}
+
 int control_tracing(void)
 {
 	if (server_fd >= 0)

@@ -178,6 +178,23 @@ uint32_t packet_get_flags(uint16_t opcode)
 	return 0xff;
 }
 
+uint16_t packet_get_opcode(uint32_t flags)
+{
+	if (flags & 0x02) {
+		if (flags & 0x01)
+			return MONITOR_EVENT_PKT;
+		else
+			return MONITOR_COMMAND_PKT;
+	} else {
+		if (flags & 0x01)
+			return MONITOR_ACL_RX_PKT;
+		else
+			return MONITOR_ACL_TX_PKT;
+	}
+
+	return 0xff;
+}
+
 void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
