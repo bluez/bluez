@@ -416,6 +416,12 @@ struct bt_hci_rsp_le_read_local_features {
 	uint8_t  features[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_READ_ADV_TX_POWER		0x2007
+struct bt_hci_rsp_le_read_adv_tx_power {
+	uint8_t  status;
+	int8_t   level;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_SET_SCAN_PARAMETERS	0x200b
 struct bt_hci_cmd_le_set_scan_parameters {
 	uint8_t  type;
