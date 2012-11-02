@@ -275,7 +275,7 @@ static void print_pscan_rep_mode(uint8_t pscan_rep_mode)
 		str = "R1";
 		break;
 	case 0x02:
-		str = "R3";
+		str = "R2";
 		break;
 	default:
 		str = "Reserved";
@@ -298,7 +298,7 @@ static void print_pscan_period_mode(uint8_t pscan_period_mode)
 		str = "P1";
 		break;
 	case 0x02:
-		str = "P3";
+		str = "P2";
 		break;
 	default:
 		str = "Reserved";
