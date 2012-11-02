@@ -260,6 +260,31 @@ static void print_voice_setting(uint16_t setting)
 	print_field("Setting: 0x%4.4x", btohs(setting));
 }
 
+static void print_retransmission_effort(uint8_t effort)
+{
+	const char *str;
+
+	switch (effort) {
+	case 0x00:
+		str = "No retransmissions";
+		break;
+	case 0x01:
+		str = "Optimize for power consumption";
+		break;
+	case 0x02:
+		str = "Optimize for link quality";
+		break;
+	case 0xff:
+		str = "Don't care";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Retransmission effort: %s (0x%2.2x)", str, effort);
+}
+
 static void print_link_policy(uint16_t link_policy)
 {
 	print_field("Link policy: 0x%4.4x", btohs(link_policy));
@@ -500,7 +525,7 @@ static void print_key_type(uint8_t key_type)
 	print_field("Key type: %s (0x%2.2x)", str, key_type);
 }
 
-static void print_link_key(const uint8_t *link_key)
+static void print_key(const char *label, const uint8_t *link_key)
 {
 	char str[33];
 	int i;
@@ -508,7 +533,27 @@ static void print_link_key(const uint8_t *link_key)
 	for (i = 0; i < 16; i++)
 		sprintf(str + (i * 2), "%2.2x", link_key[i]);
 
-	print_field("Link key: %s", str);
+	print_field("%s: %s", label, str);
+}
+
+static void print_link_key(const uint8_t *link_key)
+{
+	print_key("Link key", link_key);
+}
+
+static void print_pin_code(const uint8_t *pin_code)
+{
+	print_key("PIN code", pin_code);
+}
+
+static void print_hash(const uint8_t *hash)
+{
+	print_key("Hash C", hash);
+}
+
+static void print_randomizer(const uint8_t *randomizer)
+{
+	print_key("Randomizer R", randomizer);
 }
 
 static void print_passkey(uint32_t passkey)
@@ -1061,6 +1106,74 @@ static void reject_conn_request_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
+static void link_key_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_link_key_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_link_key(cmd->link_key);
+}
+
+static void link_key_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_link_key_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void pin_code_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_pin_code_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_field("PIN length: %d", cmd->pin_len);
+	print_pin_code(cmd->pin_code);
+}
+
+static void pin_code_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_pin_code_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void change_conn_pkt_type_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_change_conn_pkt_type *cmd = data;
+
+	print_handle(cmd->handle);
+	print_pkt_type(cmd->pkt_type);
+}
+
+static void auth_requested_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_auth_requested *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void set_conn_encrypt_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_conn_encrypt *cmd = data;
+
+	print_handle(cmd->handle);
+	print_encr_mode(cmd->encr_mode);
+}
+
+static void change_conn_link_key_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_change_conn_link_key *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void master_link_key_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_master_link_key *cmd = data;
+
+	print_key_flag(cmd->key_flag);
+}
+
 static void remote_name_request_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_remote_name_request *cmd = data;
@@ -1098,6 +1211,127 @@ static void read_remote_version_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_read_remote_version *cmd = data;
 
 	print_handle(cmd->handle);
+}
+
+static void read_clock_offset_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_clock_offset *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_lmp_handle_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_lmp_handle *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_lmp_handle_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_lmp_handle *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_field("LMP handle: %d", rsp->lmp_handle);
+	print_field("Reserved: %d", btohl(rsp->reserved));
+}
+
+static void setup_sync_conn_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_setup_sync_conn *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Transmit bandwidth: %d", btohl(cmd->tx_bandwidth));
+	print_field("Receive bandwidth: %d", btohl(cmd->rx_bandwidth));
+	print_field("Max latency: %d", btohs(cmd->max_latency));
+	print_voice_setting(cmd->voice_setting);
+	print_retransmission_effort(cmd->retrans_effort);
+	print_pkt_type(cmd->pkt_type);
+}
+
+static void accept_sync_conn_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_accept_sync_conn *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_field("Transmit bandwidth: %d", btohl(cmd->tx_bandwidth));
+	print_field("Receive bandwidth: %d", btohl(cmd->rx_bandwidth));
+	print_field("Max latency: %d", btohs(cmd->max_latency));
+	print_voice_setting(cmd->voice_setting);
+	print_retransmission_effort(cmd->retrans_effort);
+	print_pkt_type(cmd->pkt_type);
+}
+
+static void reject_sync_conn_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_reject_sync_conn *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_reason(cmd->reason);
+}
+
+static void io_capability_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_io_capability_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_io_capability(cmd->capability);
+	print_oob_data(cmd->oob_data);
+	print_authentication(cmd->authentication);
+}
+
+static void user_confirm_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_user_confirm_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void user_confirm_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_user_confirm_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void user_passkey_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_user_passkey_request_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_passkey(cmd->passkey);
+}
+
+static void user_passkey_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_user_passkey_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void remote_oob_data_request_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_remote_oob_data_request_reply *cmd = data;
+
+        print_bdaddr(cmd->bdaddr);
+	print_hash(cmd->hash);
+	print_randomizer(cmd->randomizer);
+}
+
+static void remote_oob_data_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_remote_oob_data_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void io_capability_request_neg_reply_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_io_capability_request_neg_reply *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_reason(cmd->reason);
 }
 
 static void read_default_link_policy_rsp(const void *data, uint8_t size)
@@ -1526,19 +1760,32 @@ static const struct opcode_data opcode_table[] = {
 				accept_conn_request_cmd, 7, true },
 	{ 0x040a, "Reject Connection Request",
 				reject_conn_request_cmd, 7, true },
-	{ 0x040b, "Link Key Request Reply"		},
-	{ 0x040c, "Link Key Request Negative Reply"	},
-	{ 0x040d, "PIN Code Request Reply"		},
-	{ 0x040e, "PIN Code Request Negative Reply"	},
-	{ 0x040f, "Change Connection Packet Type"	},
+	{ 0x040b, "Link Key Request Reply",
+				link_key_request_reply_cmd, 22, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x040c, "Link Key Request Negative Reply",
+				link_key_request_neg_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x040d, "PIN Code Request Reply",
+				pin_code_request_reply_cmd, 23, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x040e, "PIN Code Request Negative Reply",
+				pin_code_request_neg_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x040f, "Change Connection Packet Type",
+				change_conn_pkt_type_cmd, 4, true },
 	/* reserved command */
-	{ 0x0411, "Authentication Requested"		},
+	{ 0x0411, "Authentication Requested",
+				auth_requested_cmd, 2, true },
 	/* reserved command */
-	{ 0x0413, "Set Connection Encryption"		},
+	{ 0x0413, "Set Connection Encryption",
+				set_conn_encrypt_cmd, 3, true },
 	/* reserved command */
-	{ 0x0415, "Change Connection Link Key"		},
+	{ 0x0415, "Change Connection Link Key",
+				change_conn_link_key_cmd, 2, true },
 	/* reserved command */
-	{ 0x0417, "Master Link Key"			},
+	{ 0x0417, "Master Link Key",
+				master_link_key_cmd, 1, true },
 	/* reserved command */
 	{ 0x0419, "Remote Name Request",
 				remote_name_request_cmd, 10, true },
@@ -1552,21 +1799,43 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x041d, "Read Remote Version Information",
 				read_remote_version_cmd, 2, true },
 	/* reserved command */
-	{ 0x041f, "Read Clock Offset"			},
-	{ 0x0420, "Read LMP Handle"			},
+	{ 0x041f, "Read Clock Offset",
+				read_clock_offset_cmd, 2, true },
+	{ 0x0420, "Read LMP Handle",
+				read_lmp_handle_cmd, 2, true,
+				read_lmp_handle_rsp, 8, true },
 	/* reserved commands */
-	{ 0x0428, "Setup Synchronous Connection"	},
-	{ 0x0429, "Accept Synchronous Connection"	},
-	{ 0x042a, "Reject Synchronous Connection"	},
-	{ 0x042b, "IO Capability Request Reply"		},
-	{ 0x042c, "User Confirmation Request Reply"	},
-	{ 0x042d, "User Confirmation Request Neg Reply"	},
-	{ 0x042e, "User Passkey Request Reply"		},
-	{ 0x042f, "User Passkey Request Negative Reply"	},
-	{ 0x0430, "Remote OOB Data Request Reply"	},
+	{ 0x0428, "Setup Synchronous Connection",
+				setup_sync_conn_cmd, 17, true },
+	{ 0x0429, "Accept Synchronous Connection",
+				accept_sync_conn_cmd, 21, true },
+	{ 0x042a, "Reject Synchronous Connection",
+				reject_sync_conn_cmd, 7, true },
+	{ 0x042b, "IO Capability Request Reply",
+				io_capability_request_reply_cmd, 9, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x042c, "User Confirmation Request Reply",
+				user_confirm_request_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x042d, "User Confirmation Request Neg Reply",
+				user_confirm_request_neg_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x042e, "User Passkey Request Reply",
+				user_passkey_request_reply_cmd, 10, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x042f, "User Passkey Request Negative Reply",
+				user_passkey_request_neg_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x0430, "Remote OOB Data Request Reply",
+				remote_oob_data_request_reply_cmd, 38, true,
+				status_bdaddr_rsp, 7, true },
 	/* reserved commands */
-	{ 0x0433, "Remote OOB Data Request Neg Reply"	},
-	{ 0x0434, "IO Capability Request Negative Reply"},
+	{ 0x0433, "Remote OOB Data Request Neg Reply",
+				remote_oob_data_request_neg_reply_cmd, 6, true,
+				status_bdaddr_rsp, 7, true },
+	{ 0x0434, "IO Capability Request Negative Reply",
+				io_capability_request_neg_reply_cmd, 7, true,
+				status_bdaddr_rsp, 7, true },
 	{ 0x0435, "Create Physical Link"		},
 	{ 0x0436, "Accept Physical Link"		},
 	{ 0x0437, "Disconnect Physical Link"		},
@@ -2293,7 +2562,7 @@ static void user_confirm_request_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_user_confirm_request *evt = data;
 
 	print_bdaddr(evt->bdaddr);
-	print_field("Value: %06d", btohl(evt->value));
+	print_passkey(evt->passkey);
 }
 
 static void user_passkey_request_evt(const void *data, uint8_t size)

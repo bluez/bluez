@@ -100,10 +100,54 @@ struct bt_hci_cmd_reject_conn_request {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LINK_KEY_REQUEST_REPLY	0x040b
+struct bt_hci_cmd_link_key_request_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  link_key[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LINK_KEY_REQUEST_NEG_REPLY	0x040c
+struct bt_hci_cmd_link_key_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_PIN_CODE_REQUEST_REPLY	0x040d
+struct bt_hci_cmd_pin_code_request_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  pin_len;
+	uint8_t  pin_code[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_PIN_CODE_REQUEST_NEG_REPLY	0x040e
+struct bt_hci_cmd_pin_code_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_CHANGE_CONN_PKT_TYPE		0x040f
 struct bt_hci_cmd_change_conn_pkt_type {
 	uint16_t handle;
 	uint16_t pkt_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_AUTH_REQUESTED		0x0411
+struct bt_hci_cmd_auth_requested {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SET_CONN_ENCRYPT		0x0413
+struct bt_hci_cmd_set_conn_encrypt {
+	uint16_t handle;
+	uint8_t  encr_mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_CHANGE_CONN_LINK_KEY		0x0415
+struct bt_hci_cmd_change_conn_link_key {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_MASTER_LINK_KEY		0x0417
+struct bt_hci_cmd_master_link_key {
+	uint8_t  key_flag;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_REMOTE_NAME_REQUEST		0x0419
@@ -133,6 +177,97 @@ struct bt_hci_cmd_read_remote_ext_features {
 #define BT_HCI_CMD_READ_REMOTE_VERSION		0x041d
 struct bt_hci_cmd_read_remote_version {
 	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_CLOCK_OFFSET		0x041f
+struct bt_hci_cmd_read_clock_offset {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_LMP_HANDLE		0x0420
+struct bt_hci_cmd_read_lmp_handle {
+	uint16_t  handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_lmp_handle {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  lmp_handle;
+	uint32_t reserved;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SETUP_SYNC_CONN		0x0428
+struct bt_hci_cmd_setup_sync_conn {
+	uint16_t handle;
+	uint32_t tx_bandwidth;
+	uint32_t rx_bandwidth;
+	uint16_t max_latency;
+	uint16_t voice_setting;
+	uint8_t  retrans_effort;
+	uint16_t pkt_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_ACCEPT_SYNC_CONN		0x0429
+struct bt_hci_cmd_accept_sync_conn {
+	uint8_t  bdaddr[6];
+	uint32_t tx_bandwidth;
+	uint32_t rx_bandwidth;
+	uint16_t max_latency;
+	uint16_t voice_setting;
+	uint8_t  retrans_effort;
+	uint16_t pkt_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_REJECT_SYNC_CONN		0x042a
+struct bt_hci_cmd_reject_sync_conn {
+	uint8_t  bdaddr[6];
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_IO_CAPABILITY_REQUEST_REPLY		0x042b
+struct bt_hci_cmd_io_capability_request_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  capability;
+	uint8_t  oob_data;
+	uint8_t  authentication;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_USER_CONFIRM_REQUEST_REPLY		0x042c
+struct bt_hci_cmd_user_confirm_request_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_USER_CONFIRM_REQUEST_NEG_REPLY	0x042d
+struct bt_hci_cmd_user_confirm_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_USER_PASSKEY_REQUEST_REPLY		0x042e
+struct bt_hci_cmd_user_passkey_request_reply {
+	uint8_t  bdaddr[6];
+	uint32_t passkey;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_USER_PASSKEY_REQUEST_NEG_REPLY	0x042f
+struct bt_hci_cmd_user_passkey_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_REMOTE_OOB_DATA_REQUEST_REPLY	0x0430
+struct bt_hci_cmd_remote_oob_data_request_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  hash[16];
+	uint8_t  randomizer[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_REMOTE_OOB_DATA_REQUEST_NEG_REPLY	0x0433
+struct bt_hci_cmd_remote_oob_data_request_neg_reply {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_IO_CAPABILITY_REQUEST_NEG_REPLY	0x0434
+struct bt_hci_cmd_io_capability_request_neg_reply {
+	uint8_t  bdaddr[6];
+	uint8_t  reason;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_READ_DEFAULT_LINK_POLICY	0x080e
@@ -757,7 +892,7 @@ struct bt_hci_evt_io_capability_response {
 #define BT_HCI_EVT_USER_CONFIRM_REQUEST		0x33
 struct bt_hci_evt_user_confirm_request {
 	uint8_t  bdaddr[6];
-	uint32_t value;
+	uint32_t passkey;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_USER_PASSKEY_REQUEST		0x34
