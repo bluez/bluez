@@ -40,6 +40,7 @@
 #include <bluetooth/mgmt.h>
 
 #include "mainloop.h"
+#include "pager.h"
 #include "packet.h"
 #include "btsnoop.h"
 #include "control.h"
@@ -778,12 +779,16 @@ void control_reader(const char *path)
 	if (btsnoop_open(path) < 0)
 		return;
 
+	pager_open();
+
 	while (1) {
 		if (btsnoop_read(&tv, &index, &opcode, buf, &pktlen) < 0)
 			break;
 
 		packet_monitor(&tv, index, opcode, buf, pktlen);
 	}
+
+	pager_close();
 
 	btsnoop_close();
 }

@@ -40,6 +40,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
+#include "pager.h"
 #include "bt.h"
 #include "control.h"
 #include "packet.h"
@@ -62,7 +63,7 @@ static bool use_color(void)
 	static int cached_use_color = -1;
 
 	if (__builtin_expect(!!(cached_use_color < 0), 0))
-		cached_use_color = isatty(STDOUT_FILENO) > 0;
+		cached_use_color = isatty(STDOUT_FILENO) > 0 || pager_have();
 
 	return cached_use_color;
 }
