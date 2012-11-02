@@ -44,6 +44,35 @@
 #include "control.h"
 #include "packet.h"
 
+#define COLOR_OFF	"\x1B[0m"
+#define COLOR_BLACK	"\x1B[0;30m"
+#define COLOR_RED	"\x1B[0;31m"
+#define COLOR_GREEN	"\x1B[0;32m"
+#define COLOR_YELLOW	"\x1B[0;33m"
+#define COLOR_BLUE	"\x1B[0;34m"
+#define COLOR_MAGENTA	"\x1B[0;35m"
+#define COLOR_CYAN	"\x1B[0;36m"
+#define COLOR_WHITE	"\x1B[0;37m"
+#define COLOR_HIGHLIGHT	"\x1B[1;39m"
+
+#define COLOR_ERROR	"\x1B[1;31m"
+
+static bool use_color(void)
+{
+	static int cached_use_color = -1;
+
+	if (__builtin_expect(!!(cached_use_color < 0), 0))
+		cached_use_color = isatty(STDOUT_FILENO) > 0;
+
+	return cached_use_color;
+}
+
+#define print_text(color, fmt, args...) do { \
+	printf("%s" fmt "%s", \
+		use_color() ? color : "", ## args, \
+		use_color() ? COLOR_OFF : ""); \
+} while (0);
+
 static unsigned long filter_mask = 0;
 
 void packet_set_filter(unsigned long filter)
@@ -57,10 +86,10 @@ static void print_channel_header(struct timeval *tv, uint16_t index,
 	if (filter_mask & PACKET_FILTER_SHOW_INDEX) {
 		switch (channel) {
 		case HCI_CHANNEL_CONTROL:
-			printf("{hci%d} ", index);
+			print_text(COLOR_WHITE, "{hci%d} ", index);
 			break;
 		case HCI_CHANNEL_MONITOR:
-			printf("[hci%d] ", index);
+			print_text(COLOR_BLACK, "[hci%d] ", index);
 			break;
 		}
 	}
@@ -72,12 +101,12 @@ static void print_channel_header(struct timeval *tv, uint16_t index,
 		localtime_r(&t, &tm);
 
 		if (filter_mask & PACKET_FILTER_SHOW_DATE)
-			printf("%04d-%02d-%02d ", tm.tm_year + 1900,
-						tm.tm_mon + 1, tm.tm_mday);
+			print_text(COLOR_YELLOW, "%04d-%02d-%02d ",
+				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
 
 		if (filter_mask & PACKET_FILTER_SHOW_TIME)
-			printf("%02d:%02d:%02d.%06lu ", tm.tm_hour,
-					tm.tm_min, tm.tm_sec, tv->tv_usec);
+			print_text(COLOR_YELLOW, "%02d:%02d:%02d.%06lu ",
+				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
 	}
 }
 
@@ -162,6 +191,7 @@ static const struct {
 static void print_error(const char *label, uint8_t error)
 {
 	const char *str = "Unknown";
+	const char *color_on, *color_off;
 	int i;
 
 	for (i = 0; error2str_table[i].str; i++) {
@@ -171,7 +201,19 @@ static void print_error(const char *label, uint8_t error)
 		}
 	}
 
-	print_field("%s: %s (0x%2.2x)", label, str, error);
+	if (use_color()) {
+		if (error)
+			color_on = COLOR_RED;
+		else
+			color_on = COLOR_GREEN;
+		color_off = COLOR_OFF;
+	} else {
+		color_on = "";
+		color_off = "";
+	}
+
+	print_field("%s: %s%s%s (0x%2.2x)", label,
+				color_on, str, color_off, error);
 }
 
 static void print_status(uint8_t status)
@@ -531,7 +573,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 			str[47] = ' ';
 			str[48] = ' ';
 			str[65] = '\0';
-			printf("%-12c%s\n", ' ', str);
+			print_text(COLOR_WHITE, "%-12c%s\n", ' ', str);
 			str[0] = ' ';
 		}
 	}
@@ -547,7 +589,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 		str[47] = ' ';
 		str[48] = ' ';
 		str[65] = '\0';
-		printf("%-12c%s\n", ' ', str);
+		print_text(COLOR_WHITE, "%-12c%s\n", ' ', str);
 	}
 }
 
@@ -1831,7 +1873,7 @@ void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 {
 	print_header(tv, index);
 
-	printf("= New Index: %s (%s,%s,%s)\n", label,
+	print_text(COLOR_MAGENTA, "= New Index: %s (%s,%s,%s)\n", label,
 				hci_typetostr(type), hci_bustostr(bus), name);
 }
 
@@ -1839,7 +1881,7 @@ void packet_del_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_header(tv, index);
 
-	printf("= Delete Index: %s\n", label);
+	print_text(COLOR_MAGENTA, "= Delete Index: %s\n", label);
 }
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
@@ -1855,7 +1897,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	print_header(tv, index);
 
 	if (size < HCI_COMMAND_HDR_SIZE) {
-		printf("* Malformed HCI Command packet\n");
+		print_text(COLOR_ERROR, "* Malformed HCI Command packet\n");
 		return;
 	}
 
@@ -1863,7 +1905,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	size -= HCI_COMMAND_HDR_SIZE;
 
 	if (size != hdr->plen) {
-		printf("* Invalid HCI Command packet size\n");
+		print_text(COLOR_ERROR, "* Invalid HCI Command packet size\n");
 		return;
 	}
 
@@ -1874,9 +1916,10 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 		}
 	}
 
-	printf("< HCI Command: %s (0x%2.2x|0x%4.4x) plen %d\n",
-				opcode_data ? opcode_data->str : "Unknown",
-							ogf, ocf, hdr->plen);
+	print_text(COLOR_BLUE, "< HCI Command: %s",
+				opcode_data ? opcode_data->str : "Unknown");
+	print_text(COLOR_OFF, " (0x%2.2x|0x%4.4x) plen %d\n",
+						ogf, ocf, hdr->plen);
 
 	if (!opcode_data || !opcode_data->cmd_func) {
 		packet_hexdump(data, size);
@@ -1910,7 +1953,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 	print_header(tv, index);
 
 	if (size < HCI_EVENT_HDR_SIZE) {
-		printf("* Malformed HCI Event packet\n");
+		print_text(COLOR_ERROR, "* Malformed HCI Event packet\n");
 		return;
 	}
 
@@ -1918,7 +1961,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 	size -= HCI_EVENT_HDR_SIZE;
 
 	if (size != hdr->plen) {
-		printf("* Invalid HCI Event packet size\n");
+		print_text(COLOR_ERROR, "* Invalid HCI Event packet size\n");
 		return;
 	}
 
@@ -1929,9 +1972,9 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 		}
 	}
 
-	printf("> HCI Event: %s (0x%2.2x) plen %d\n",
-				event_data ? event_data->str : "Unknown",
-							hdr->evt, hdr->plen);
+	print_text(COLOR_BLUE, "> HCI Event: %s",
+				event_data ? event_data->str : "Unknown");
+	print_text(COLOR_OFF, " (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 
 	if (!event_data || !event_data->func) {
 		packet_hexdump(data, size);
@@ -1966,12 +2009,14 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	print_header(tv, index);
 
 	if (size < HCI_ACL_HDR_SIZE) {
-		printf("* Malformed ACL Data %s packet\n", in ? "RX" : "TX");
+		print_text(COLOR_ERROR, "* Malformed ACL Data %s packet\n",
+							in ? "RX" : "TX");
 		return;
 	}
 
-	printf("%c ACL Data: handle %d flags 0x%2.2x dlen %d\n",
-			in ? '>' : '<', acl_handle(handle), flags, dlen);
+	print_text(COLOR_BLUE, "%c ACL Data: handle %d",
+					in ? '>' : '<', acl_handle(handle));
+	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, dlen);
 
 	data += HCI_ACL_HDR_SIZE;
 	size -= HCI_ACL_HDR_SIZE;
@@ -1990,12 +2035,14 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 	print_header(tv, index);
 
 	if (size < HCI_SCO_HDR_SIZE) {
-		printf("* Malformed SCO Data %s packet\n", in ? "RX" : "TX");
+		print_text(COLOR_ERROR, "* Malformed SCO Data %s packet\n",
+							in ? "RX" : "TX");
 		return;
 	}
 
-	printf("%c SCO Data: handle %d flags 0x%2.2x dlen %d\n",
-			in ? '>' : '<', acl_handle(handle), flags, hdr->dlen);
+	print_text(COLOR_BLUE, "%c SCO Data: handle %d",
+					in ? '>' : '<', acl_handle(handle));
+	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, hdr->dlen);
 
 	data += HCI_SCO_HDR_SIZE;
 	size -= HCI_SCO_HDR_SIZE;
