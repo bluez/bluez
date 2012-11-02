@@ -384,6 +384,8 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			ir.num_resp = 0x01;
 			memcpy(ir.bdaddr, btdev_list[i]->bdaddr, 6);
+			ir.pscan_rep_mode = 0x00;
+			ir.pscan_period_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
 			ir.rssi = -60;
 			memcpy(ir.data, btdev_list[i]->ext_inquiry_rsp, 240);
@@ -398,6 +400,8 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			ir.num_resp = 0x01;
 			memcpy(ir.bdaddr, btdev_list[i]->bdaddr, 6);
+			ir.pscan_rep_mode = 0x00;
+			ir.pscan_period_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
 			ir.rssi = -60;
 
@@ -408,6 +412,9 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 
 			ir.num_resp = 0x01;
 			memcpy(ir.bdaddr, btdev_list[i]->bdaddr, 6);
+			ir.pscan_rep_mode = 0x00;
+			ir.pscan_period_mode = 0x00;
+			ir.pscan_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
 
 			send_event(btdev, BT_HCI_EVT_INQUIRY_RESULT,
