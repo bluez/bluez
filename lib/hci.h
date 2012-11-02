@@ -1716,7 +1716,7 @@ typedef struct {
 	uint8_t		link_type;
 	uint8_t		encr_mode;
 } __attribute__ ((packed)) evt_conn_complete;
-#define EVT_CONN_COMPLETE_SIZE 13
+#define EVT_CONN_COMPLETE_SIZE 11
 
 #define EVT_CONN_REQUEST		0x04
 typedef struct {
