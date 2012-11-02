@@ -506,7 +506,7 @@ static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 static void name_request_complete(struct btdev *btdev,
 					const uint8_t *bdaddr, uint8_t status)
 {
-        struct bt_hci_evt_remote_name_req_complete nc;
+        struct bt_hci_evt_remote_name_request_complete nc;
 
 	nc.status = status;
 	memcpy(nc.bdaddr, bdaddr, 6);
@@ -626,7 +626,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	const struct bt_hci_cmd_write_voice_setting *wvs;
 	const struct bt_hci_cmd_write_inquiry_mode *wim;
 	const struct bt_hci_cmd_write_afh_assess_mode *waam;
-	const struct bt_hci_cmd_write_ext_inquiry_rsp *weir;
+	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
@@ -643,9 +643,9 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	struct bt_hci_rsp_read_voice_setting rvs;
 	struct bt_hci_rsp_read_inquiry_mode rim;
 	struct bt_hci_rsp_read_afh_assess_mode raam;
-	struct bt_hci_rsp_read_ext_inquiry_rsp reir;
+	struct bt_hci_rsp_read_ext_inquiry_response reir;
 	struct bt_hci_rsp_read_simple_pairing_mode rspm;
-	struct bt_hci_rsp_read_inquiry_rsp_tx_power rirtp;
+	struct bt_hci_rsp_read_inquiry_resp_tx_power rirtp;
 	struct bt_hci_rsp_read_le_host_supported rlhs;
 	struct bt_hci_rsp_read_local_version rlv;
 	struct bt_hci_rsp_read_local_commands rlc;
@@ -910,14 +910,14 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
-	case BT_HCI_CMD_READ_EXT_INQUIRY_RSP:
+	case BT_HCI_CMD_READ_EXT_INQUIRY_RESPONSE:
 		reir.status = BT_HCI_ERR_SUCCESS;
 		reir.fec = btdev->ext_inquiry_fec;
 		memcpy(reir.data, btdev->ext_inquiry_rsp, 240);
 		cmd_complete(btdev, opcode, &reir, sizeof(reir));
 		break;
 
-	case BT_HCI_CMD_WRITE_EXT_INQUIRY_RSP:
+	case BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE:
 		weir = data + sizeof(*hdr);
 		btdev->ext_inquiry_fec = weir->fec;
 		memcpy(btdev->ext_inquiry_rsp, weir->data, 240);
@@ -938,7 +938,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
-	case BT_HCI_CMD_READ_INQUIRY_RSP_TX_POWER:
+	case BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER:
 		rirtp.status = BT_HCI_ERR_SUCCESS;
 		rirtp.level = 0;
 		cmd_complete(btdev, opcode, &rirtp, sizeof(rirtp));

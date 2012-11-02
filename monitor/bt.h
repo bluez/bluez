@@ -45,10 +45,21 @@ struct bt_hci_evt_hdr {
 struct bt_hci_cmd_inquiry {
 	uint8_t  lap[3];
 	uint8_t  length;
-	uint8_t  num_rsp;
+	uint8_t  num_resp;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_INQUIRY_CANCEL		0x0402
+
+#define BT_HCI_CMD_PERIODIC_INQUIRY		0x0403
+struct bt_hci_cmd_periodic_inquiry {
+	uint16_t max_period;
+	uint16_t min_period;
+	uint8_t  lap[3];
+	uint8_t  length;
+	uint8_t  num_resp;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_EXIT_PERIODIC_INQUIRY	0x0404
 
 #define BT_HCI_CMD_CREATE_CONN			0x0405
 struct bt_hci_cmd_create_conn {
@@ -278,15 +289,15 @@ struct bt_hci_cmd_write_afh_assess_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_READ_EXT_INQUIRY_RSP		0x0c51
-struct bt_hci_rsp_read_ext_inquiry_rsp {
+#define BT_HCI_CMD_READ_EXT_INQUIRY_RESPONSE	0x0c51
+struct bt_hci_rsp_read_ext_inquiry_response {
 	uint8_t  status;
 	uint8_t  fec;
 	uint8_t  data[240];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_WRITE_EXT_INQUIRY_RSP	0x0c52
-struct bt_hci_cmd_write_ext_inquiry_rsp {
+#define BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE	0x0c52
+struct bt_hci_cmd_write_ext_inquiry_response {
 	uint8_t  fec;
 	uint8_t	 data[240];
 } __attribute__ ((packed));
@@ -302,8 +313,8 @@ struct bt_hci_cmd_write_simple_pairing_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_READ_INQUIRY_RSP_TX_POWER	0x0c58
-struct bt_hci_rsp_read_inquiry_rsp_tx_power {
+#define BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER	0x0c58
+struct bt_hci_rsp_read_inquiry_resp_tx_power {
 	uint8_t  status;
 	int8_t   level;
 } __attribute__ ((packed));
@@ -456,7 +467,7 @@ struct bt_hci_evt_inquiry_result {
 	uint8_t  pscan_period_mode;
 	uint8_t  pscan_mode;
 	uint8_t  dev_class[3];
-	uint8_t  clock_offset;
+	uint16_t clock_offset;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_CONN_COMPLETE		0x03
@@ -482,11 +493,37 @@ struct bt_hci_evt_disconnect_complete {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_AUTH_COMPLETE		0x06
+struct bt_hci_evt_auth_complete {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_REMOTE_NAME_REQUEST_COMPLETE	0x07
-struct bt_hci_evt_remote_name_req_complete {
+struct bt_hci_evt_remote_name_request_complete {
 	uint8_t  status;
 	uint8_t  bdaddr[6];
 	uint8_t  name[248];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_ENCRYPT_CHANGE		0x08
+struct bt_hci_evt_encrypt_change {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  encr_mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_CHANGE_CONN_LINK_KEY_COMPLETE 0x09
+struct bt_hci_evt_change_conn_link_key_complete {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_MASTER_LINK_KEY_COMPLETE	0x0a
+struct bt_hci_evt_master_link_key_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  key_flag;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_REMOTE_FEATURES_COMPLETE	0x0b
@@ -505,6 +542,8 @@ struct bt_hci_evt_remote_version_complete {
 	uint16_t lmp_subver;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_QOS_SETUP_COMPLETE		0x0d
+
 #define BT_HCI_EVT_CMD_COMPLETE			0x0e
 struct bt_hci_evt_cmd_complete {
 	uint8_t  ncmd;
@@ -518,6 +557,23 @@ struct bt_hci_evt_cmd_status {
 	uint16_t opcode;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_HARDWARE_ERROR		0x10
+struct bt_hci_evt_hardware_error {
+	uint8_t  code;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_FLUSH_OCCURRED		0x11
+struct bt_hci_evt_flush_occurred {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_ROLE_CHANGE			0x12
+struct bt_hci_evt_role_change {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+	uint8_t  role;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_NUM_COMPLETED_PACKETS	0x13
 struct bt_hci_evt_num_completed_packets {
 	uint8_t  num_handles;
@@ -525,11 +581,23 @@ struct bt_hci_evt_num_completed_packets {
 	uint16_t count;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_MAX_SLOTS_CHANGE		0x1b
+struct bt_hci_evt_max_slots_change {
+	uint16_t handle;
+	uint8_t  max_slots;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_CONN_PKT_TYPE_CHANGED	0x1d
 struct bt_hci_evt_conn_pkt_type_changed {
 	uint8_t  status;
 	uint16_t handle;
 	uint16_t pkt_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_PSCAN_REP_MODE_CHANGE	0x20
+struct bt_hci_evt_pscan_rep_mode_change {
+	uint8_t  bdaddr[6];
+	uint8_t  pscan_rep_mode;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI	0x22
@@ -562,6 +630,12 @@ struct bt_hci_evt_ext_inquiry_result {
 	uint16_t clock_offset;
 	int8_t   rssi;
 	uint8_t  data[240];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_REMOTE_HOST_FEATURES_NOTIFY	0x3d
+struct bt_hci_evt_remote_host_features_notify {
+	uint8_t  bdaddr[6];
+	uint8_t  features[8];
 } __attribute__ ((packed));
 
 #define BT_HCI_ERR_SUCCESS			0x00
