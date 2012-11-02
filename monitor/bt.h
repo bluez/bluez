@@ -586,10 +586,51 @@ struct bt_hci_evt_num_completed_packets {
 	uint16_t count;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_MODE_CHANGE			0x14
+struct bt_hci_evt_mode_change {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  mode;
+	uint16_t interval;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_RETURN_LINK_KEYS		0x15
+
+#define BT_HCI_EVT_PIN_CODE_REQUEST		0x16
+struct bt_hci_evt_pin_code_request {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LINK_KEY_REQUEST		0x17
+struct bt_hci_evt_link_key_request {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LINK_KEY_NOTIFY		0x18
+struct bt_hci_evt_link_key_notify {
+	uint8_t  bdaddr[6];
+	uint8_t  link_key[16];
+	uint8_t  key_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LOOPBACK_COMMAND		0x19
+
+#define BT_HCI_EVT_DATA_BUFFER_OVERFLOW		0x1a
+struct bt_hci_evt_data_buffer_overflow {
+	uint8_t  link_type;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_MAX_SLOTS_CHANGE		0x1b
 struct bt_hci_evt_max_slots_change {
 	uint16_t handle;
 	uint8_t  max_slots;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_CLOCK_OFFSET_COMPLETE	0x1c
+struct bt_hci_evt_clock_offset_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t clock_offset;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_CONN_PKT_TYPE_CHANGED	0x1d
@@ -599,10 +640,34 @@ struct bt_hci_evt_conn_pkt_type_changed {
 	uint16_t pkt_type;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_QOS_VIOLATION		0x1e
+struct bt_hci_evt_qos_violation {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_PSCAN_MODE_CHANGE		0x1f
+struct bt_hci_evt_pscan_mode_change {
+	uint8_t  bdaddr[6];
+	uint8_t  pscan_mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_PSCAN_REP_MODE_CHANGE	0x20
 struct bt_hci_evt_pscan_rep_mode_change {
 	uint8_t  bdaddr[6];
 	uint8_t  pscan_rep_mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_FLOW_SPEC_COMPLETE		0x21
+struct bt_hci_evt_flow_spec_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  flags;
+	uint8_t  direction;
+	uint8_t  service_type;
+	uint32_t token_rate;
+	uint32_t token_bucket_size;
+	uint32_t peak_bandwidth;
+	uint32_t access_latency;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI	0x22
@@ -625,6 +690,39 @@ struct bt_hci_evt_remote_ext_features_complete {
 	uint8_t  features[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_SYNC_CONN_COMPLETE		0x2c
+struct bt_hci_evt_sync_conn_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  bdaddr[6];
+	uint8_t  link_type;
+	uint8_t  tx_interval;
+	uint8_t  retrans_window;
+	uint16_t rx_pkt_len;
+	uint16_t tx_pkt_len;
+	uint8_t  air_mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SYNC_CONN_CHANGED		0x2d
+struct bt_hci_evt_sync_conn_changed {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  tx_interval;
+	uint8_t  retrans_window;
+	uint16_t rx_pkt_len;
+	uint16_t tx_pkt_len;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SNIFF_SUBRATING		0x2e
+struct bt_hci_evt_sniff_subrating {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t max_tx_latency;
+	uint16_t max_rx_latency;
+	uint16_t min_remote_timeout;
+	uint16_t min_local_timeout;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_EXT_INQUIRY_RESULT		0x2f
 struct bt_hci_evt_ext_inquiry_result {
 	uint8_t  num_resp;
@@ -635,6 +733,70 @@ struct bt_hci_evt_ext_inquiry_result {
 	uint16_t clock_offset;
 	int8_t   rssi;
 	uint8_t  data[240];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_ENCRYPT_KEY_REFRESH_COMPLETE	0x30
+struct bt_hci_evt_encrypt_key_refresh_complete {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_IO_CAPABILITY_REQUEST	0x31
+struct bt_hci_evt_io_capability_request {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_IO_CAPABILITY_RESPONSE	0x32
+struct bt_hci_evt_io_capability_response {
+	uint8_t  bdaddr[6];
+	uint8_t  capability;
+	uint8_t  oob_data;
+	uint8_t  authentication;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_USER_CONFIRM_REQUEST		0x33
+struct bt_hci_evt_user_confirm_request {
+	uint8_t  bdaddr[6];
+	uint32_t value;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_USER_PASSKEY_REQUEST		0x34
+struct bt_hci_evt_user_passkey_request {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_REMOTE_OOB_DATA_REQUEST	0x35
+struct bt_hci_evt_remote_oob_data_request {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SIMPLE_PAIRING_COMPLETE	0x36
+struct bt_hci_evt_simple_pairing_complete {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LINK_SUPV_TIMEOUT_CHANGED	0x38
+struct bt_hci_evt_link_supv_timeout_changed {
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_ENHANCED_FLUSH_COMPLETE	0x39
+struct bt_hci_evt_enhanced_flush_complete {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_USER_PASSKEY_NOTIFY		0x3b
+struct bt_hci_evt_user_passkey_notify {
+	uint8_t  bdaddr[6];
+	uint32_t passkey;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_KEYPRESS_NOTIFY		0x3c
+struct bt_hci_evt_keypress_notify {
+	uint8_t  bdaddr[6];
+	uint8_t  type;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_REMOTE_HOST_FEATURES_NOTIFY	0x3d

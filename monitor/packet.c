@@ -264,6 +264,31 @@ static void print_link_policy(uint16_t link_policy)
 	print_field("Link policy: 0x%4.4x", btohs(link_policy));
 }
 
+static void print_air_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "u-law log";
+		break;
+	case 0x01:
+		str = "A-law log";
+		break;
+	case 0x02:
+		str = "CVSD";
+		break;
+	case 0x03:
+		str = "Transparent";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Air mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_inquiry_mode(uint8_t mode)
 {
 	const char *str;
@@ -391,6 +416,9 @@ static void print_link_type(uint8_t link_type)
 	case 0x01:
 		str = "ACL";
 		break;
+	case 0x02:
+		str = "eSCO";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -437,6 +465,153 @@ static void print_key_flag(uint8_t key_flag)
 	print_field("Key flag: %s (0x%2.2x)", str, key_flag);
 }
 
+static void print_key_type(uint8_t key_type)
+{
+	const char *str;
+
+	switch (key_type) {
+	case 0x00:
+		str = "Combination key";
+		break;
+	case 0x01:
+		str = "Local Unit key";
+		break;
+	case 0x02:
+		str = "Remote Unit key";
+		break;
+	case 0x03:
+		str = "Debug Combination key";
+		break;
+	case 0x04:
+		str = "Unauthenticated Combination key";
+		break;
+	case 0x05:
+		str = "Authenticated Combination key";
+		break;
+	case 0x06:
+		str = "Changed Combination key";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Key type: %s (0x%2.2x)", str, key_type);
+}
+
+static void print_link_key(const uint8_t *link_key)
+{
+	char str[33];
+	int i;
+
+	for (i = 0; i < 16; i++)
+		sprintf(str + (i * 2), "%2.2x", link_key[i]);
+
+	print_field("Link key: %s", str);
+}
+
+static void print_passkey(uint32_t passkey)
+{
+	print_field("Passkey: %06d", btohl(passkey));
+}
+
+static void print_io_capability(uint8_t capability)
+{
+	const char *str;
+
+	switch (capability) {
+	case 0x00:
+		str = "DisplayOnly";
+		break;
+	case 0x01:
+		str = "DisplayYesNo";
+		break;
+	case 0x02:
+		str = "KeyboardOnly";
+		break;
+	case 0x03:
+		str = "NoInputNoOutput";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("IO capability: %s (0x%2.2x)", str, capability);
+}
+
+static void print_oob_data(uint8_t oob_data)
+{
+	const char *str;
+
+	switch (oob_data) {
+	case 0x00:
+		str = "Authentication data not present";
+		break;
+	case 0x01:
+		str = "Authentication data present";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("OOB data: %s (0x%2.2x)", str, oob_data);
+}
+
+static void print_authentication(uint8_t authentication)
+{
+	const char *str;
+
+	switch (authentication) {
+	case 0x00:
+		str = "No Bonding - MITM not required";
+		break;
+	case 0x01:
+		str = "No Bonding - MITM required";
+		break;
+	case 0x02:
+		str = "Dedicated Bonding - MITM not required";
+		break;
+	case 0x03:
+		str = "Dedicated Bonding - MITM required";
+		break;
+	case 0x04:
+		str = "General Bonding - MITM not required";
+		break;
+	case 0x05:
+		str = "General Bonding - MITM required";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Authentication: %s (0x%2.2x)", str, authentication);
+}
+
+static void print_service_type(uint8_t service_type)
+{
+	const char *str;
+
+	switch (service_type) {
+	case 0x00:
+		str = "No Traffic";
+		break;
+	case 0x01:
+		str = "Best Effort";
+		break;
+	case 0x02:
+		str = "Guaranteed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Service type: %s (0x%2.2x)", str, service_type);
+}
+
 static void print_num_resp(uint8_t num_resp)
 {
 	print_field("Num responses: %d", num_resp);
@@ -447,10 +622,25 @@ static void print_rssi(int8_t rssi)
 	print_field("RSSI: %d dBm", rssi);
 }
 
+static void print_slot(const char *label, uint16_t value)
+{
+	 print_field("%s: %.3f msec (0x%4.4x)", label,
+					btohs(value) * 0.625, value);
+}
+
 static void print_timeout(uint16_t timeout)
 {
-	print_field("Timeout: %.3f msec (0x%4.4x)",
-				btohs(timeout) * 0.625, btohs(timeout));
+	print_slot("Timeout", timeout);
+}
+
+static void print_interval(uint16_t interval)
+{
+	print_slot("Interval", interval);
+}
+
+static void print_window(uint16_t window)
+{
+	print_slot("Window", window);
 }
 
 static void print_role(uint8_t role)
@@ -470,6 +660,31 @@ static void print_role(uint8_t role)
 	}
 
 	print_field("Role: %s (0x%2.2x)", str, role);
+}
+
+static void print_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Active";
+		break;
+	case 0x01:
+		str = "Hold";
+		break;
+	case 0x02:
+		str = "Sniff";
+		break;
+	case 0x03:
+		str = "Park";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
 static void print_name(const uint8_t *name)
@@ -1188,10 +1403,8 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 
 	print_field("Type: %s (0x%2.2x)", str, cmd->type);
 
-	print_field("Interval: %.3f msec (0x%4.4x)",
-				cmd->interval * 0.625, cmd->interval);
-	print_field("Window: %.3f msec (0x%4.4x)",
-				cmd->window * 0.625, cmd->window);
+	print_interval(cmd->interval);
+	print_window(cmd->window);
 
 	switch (cmd->own_addr_type) {
 	case 0x00:
@@ -1819,12 +2032,137 @@ static void num_completed_packets_evt(const void *data, uint8_t size)
 		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
 }
 
+static void mode_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_mode_change *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_mode(evt->mode);
+	print_interval(evt->interval);
+}
+
+static void return_link_keys_evt(const void *data, uint8_t size)
+{
+	uint8_t num_keys = *((uint8_t *) data);
+
+	print_field("Num keys: %d", num_keys);
+
+	packet_hexdump(data + 1, size - 1);
+}
+
+static void pin_code_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_pin_code_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+}
+
+static void link_key_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_link_key_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+}
+
+static void link_key_notify_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_link_key_notify *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_link_key(evt->link_key);
+	print_key_type(evt->key_type);
+}
+
+static void loopback_command_evt(const void *data, uint8_t size)
+{
+	packet_hexdump(data, size);
+}
+
+static void data_buffer_overflow_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_data_buffer_overflow *evt = data;
+
+	print_link_type(evt->link_type);
+}
+
 static void max_slots_change_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_max_slots_change *evt = data;
 
 	print_handle(evt->handle);
 	print_field("Max slots: %d", evt->max_slots);
+}
+
+static void clock_offset_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_clock_offset_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_clock_offset(evt->clock_offset);
+}
+
+static void conn_pkt_type_changed_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_conn_pkt_type_changed *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_pkt_type(evt->pkt_type);
+}
+
+static void qos_violation_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_qos_violation *evt = data;
+
+	print_handle(evt->handle);
+}
+
+static void pscan_mode_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_pscan_mode_change *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_pscan_mode(evt->pscan_mode);
+}
+
+static void pscan_rep_mode_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_pscan_rep_mode_change *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_pscan_rep_mode(evt->pscan_rep_mode);
+}
+
+static void flow_spec_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_flow_spec_complete *evt = data;
+	const char *str;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_field("Flags: 0x%2.2x", evt->flags);
+
+	switch (evt->direction) {
+	case 0x00:
+		str = "Outgoing";
+		break;
+	case 0x01:
+		str = "Incoming";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Flow direction: %s (0x%2.2x)", str, evt->direction);
+	print_service_type(evt->service_type);
+
+	print_field("Token rate: %d", btohl(evt->token_rate));
+	print_field("Token bucket size: %d", btohl(evt->token_bucket_size));
+	print_field("Peak bandwidth: %d", btohl(evt->peak_bandwidth));
+	print_field("Access latency: %d", btohl(evt->access_latency));
 }
 
 static void inquiry_result_with_rssi_evt(const void *data, uint8_t size)
@@ -1853,12 +2191,43 @@ static void remote_ext_features_complete_evt(const void *data, uint8_t size)
 	print_features(evt->features);
 }
 
-static void pscan_rep_mode_change_evt(const void *data, uint8_t size)
+static void sync_conn_complete_evt(const void *data, uint8_t size)
 {
-	const struct bt_hci_evt_pscan_rep_mode_change *evt = data;
+	const struct bt_hci_evt_sync_conn_complete *evt = data;
 
+	print_status(evt->status);
+	print_handle(evt->handle);
 	print_bdaddr(evt->bdaddr);
-	print_pscan_rep_mode(evt->pscan_rep_mode);
+	print_link_type(evt->link_type);
+	print_field("Transmission interval: 0x%2.2x", evt->tx_interval);
+	print_field("Retransmission window: 0x%2.2x", evt->retrans_window);
+	print_field("RX packet length: %d", btohs(evt->rx_pkt_len));
+	print_field("TX packet length: %d", btohs(evt->tx_pkt_len));
+	print_air_mode(evt->air_mode);
+}
+
+static void sync_conn_changed_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_sync_conn_changed *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_field("Transmission interval: 0x%2.2x", evt->tx_interval);
+	print_field("Retransmission window: 0x%2.2x", evt->retrans_window);
+	print_field("RX packet length: %d", btohs(evt->rx_pkt_len));
+	print_field("TX packet length: %d", btohs(evt->tx_pkt_len));
+}
+
+static void sniff_subrating_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_sniff_subrating *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_slot("Max transmit latency", evt->max_tx_latency);
+	print_slot("Max receive latency", evt->max_rx_latency);
+	print_slot("Min remote timeout", evt->min_remote_timeout);
+	print_slot("Min local timeout", evt->min_local_timeout);
 }
 
 static void ext_inquiry_result_evt(const void *data, uint8_t size)
@@ -1873,6 +2242,115 @@ static void ext_inquiry_result_evt(const void *data, uint8_t size)
 	print_clock_offset(evt->clock_offset);
 	print_rssi(evt->rssi);
 	print_eir(evt->data);
+}
+
+static void encrypt_key_refresh_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_encrypt_key_refresh_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+}
+
+static void io_capability_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_io_capability_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+}
+
+static void io_capability_response_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_io_capability_response *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_io_capability(evt->capability);
+	print_oob_data(evt->oob_data);
+	print_authentication(evt->authentication);
+}
+
+static void user_confirm_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_user_confirm_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_field("Value: %06d", btohl(evt->value));
+}
+
+static void user_passkey_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_user_passkey_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+}
+
+static void remote_oob_data_request_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_remote_oob_data_request *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+}
+
+static void simple_pairing_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_simple_pairing_complete *evt = data;
+
+	print_status(evt->status);
+	print_bdaddr(evt->bdaddr);
+}
+
+static void link_supv_timeout_changed_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_link_supv_timeout_changed *evt = data;
+
+	print_handle(evt->handle);
+	print_timeout(evt->timeout);
+}
+
+static void enhanced_flush_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_enhanced_flush_complete *evt = data;
+
+	print_handle(evt->handle);
+}
+
+static void user_passkey_notify_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_user_passkey_notify *evt = data;
+
+	print_bdaddr(evt->bdaddr);
+	print_passkey(evt->passkey);
+}
+
+static void keypress_notify_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_keypress_notify *evt = data;
+	const char *str;
+
+	print_bdaddr(evt->bdaddr);
+
+	switch (evt->type) {
+	case 0x00:
+		str = "Passkey entry started";
+		break;
+	case 0x01:
+		str = "Passkey digit entered";
+		break;
+	case 0x02:
+		str = "Passkey digit erased";
+		break;
+	case 0x03:
+		str = "Passkey clared";
+		break;
+	case 0x04:
+		str = "Passkey entry completed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Notification type: %s (0x%2.2x)", str, evt->type);
 }
 
 static void remote_host_features_notify_evt(const void *data, uint8_t size)
@@ -1961,45 +2439,71 @@ static const struct event_data event_table[] = {
 				role_change_evt, 8, true },
 	{ 0x13, "Number of Completed Packets",
 				num_completed_packets_evt, 1, false },
-	{ 0x14, "Mode Change"				},
-	{ 0x15, "Return Link Keys"			},
-	{ 0x16, "PIN Code Request"			},
-	{ 0x17, "Link Key Request"			},
-	{ 0x18, "Link Key Notification"			},
-	{ 0x19, "Loopback Command"			},
-	{ 0x1a, "Data Buffer Overflow"			},
+	{ 0x14, "Mode Change",
+				mode_change_evt, 6, true },
+	{ 0x15, "Return Link Keys",
+				return_link_keys_evt, 1, false },
+	{ 0x16, "PIN Code Request",
+				pin_code_request_evt, 6, true },
+	{ 0x17, "Link Key Request",
+				link_key_request_evt, 6, true },
+	{ 0x18, "Link Key Notification",
+				link_key_notify_evt, 23, true },
+	{ 0x19, "Loopback Command",
+				loopback_command_evt, 3, false },
+	{ 0x1a, "Data Buffer Overflow",
+				data_buffer_overflow_evt, 1, true },
 	{ 0x1b, "Max Slots Change",
 				max_slots_change_evt, 3, true },
-	{ 0x1c, "Read Clock Offset Complete"		},
-	{ 0x1d, "Connection Packet Type Changed"	},
-	{ 0x1e, "QoS Violation"				},
-	{ 0x1f, "Page Scan Mode Change"			},
+	{ 0x1c, "Read Clock Offset Complete",
+				clock_offset_complete_evt, 5, true },
+	{ 0x1d, "Connection Packet Type Changed",
+				conn_pkt_type_changed_evt, 5, true },
+	{ 0x1e, "QoS Violation",
+				qos_violation_evt, 2, true },
+	{ 0x1f, "Page Scan Mode Change",
+				pscan_mode_change_evt, 7, true },
 	{ 0x20, "Page Scan Repetition Mode Change",
 				pscan_rep_mode_change_evt, 7, true },
-	{ 0x21, "Flow Specification Complete"		},
+	{ 0x21, "Flow Specification Complete",
+				flow_spec_complete_evt, 22, true },
 	{ 0x22, "Inquiry Result with RSSI",
 				inquiry_result_with_rssi_evt, 1, false },
 	{ 0x23, "Read Remote Extended Features",
 				remote_ext_features_complete_evt, 13, true },
 	/* reserved events */
-	{ 0x2c, "Synchronous Connect Complete"		},
-	{ 0x2d, "Synchronous Connect Changed"		},
-	{ 0x2e, "Sniff Subrate"				},
+	{ 0x2c, "Synchronous Connect Complete",
+				sync_conn_complete_evt, 17, true },
+	{ 0x2d, "Synchronous Connect Changed",
+				sync_conn_changed_evt, 9, true },
+	{ 0x2e, "Sniff Subrating",
+				sniff_subrating_evt, 11, true },
 	{ 0x2f, "Extended Inquiry Result",
 				ext_inquiry_result_evt, 1, false },
-	{ 0x30, "Encryption Key Refresh Complete"	},
-	{ 0x31, "IO Capability Request"			},
-	{ 0x32, "IO Capability Response"		},
-	{ 0x33, "User Confirmation Request"		},
-	{ 0x34, "User Passkey Request"			},
-	{ 0x35, "Remote OOB Data Request"		},
-	{ 0x36, "Simple Pairing Complete"		},
+	{ 0x30, "Encryption Key Refresh Complete",
+				encrypt_key_refresh_complete_evt, 3, true },
+	{ 0x31, "IO Capability Request",
+				io_capability_request_evt, 6, true },
+	{ 0x32, "IO Capability Response",
+				io_capability_response_evt, 9, true },
+	{ 0x33, "User Confirmation Request",
+				user_confirm_request_evt, 10, true },
+	{ 0x34, "User Passkey Request",
+				user_passkey_request_evt, 6, true },
+	{ 0x35, "Remote OOB Data Request",
+				remote_oob_data_request_evt, 6, true },
+	{ 0x36, "Simple Pairing Complete",
+				simple_pairing_complete_evt, 7, true },
 	/* reserved event */
-	{ 0x38, "Link Supervision Timeout Change"	},
-	{ 0x39, "Enhanced Flush Complete"		},
+	{ 0x38, "Link Supervision Timeout Changed",
+				link_supv_timeout_changed_evt, 4, true },
+	{ 0x39, "Enhanced Flush Complete",
+				enhanced_flush_complete_evt, 2, true },
 	/* reserved event */
-	{ 0x3b, "User Passkey Notification"		},
-	{ 0x3c, "Keypress Notification"			},
+	{ 0x3b, "User Passkey Notification",
+				user_passkey_notify_evt, 10, true },
+	{ 0x3c, "Keypress Notification",
+				keypress_notify_evt, 7, true },
 	{ 0x3d, "Remote Host Supported Features",
 				remote_host_features_notify_evt, 14, true },
 	{ 0x3e, "LE Meta Event",
