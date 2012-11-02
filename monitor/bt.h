@@ -427,6 +427,11 @@ struct bt_hci_rsp_le_read_local_features {
 	uint8_t  features[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_RANDOM_ADDRESS	0x2005
+struct bt_hci_cmd_le_set_random_address {
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_ADV_TX_POWER		0x2007
 struct bt_hci_rsp_le_read_adv_tx_power {
 	uint8_t  status;

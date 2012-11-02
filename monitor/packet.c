@@ -1133,6 +1133,13 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", btohs(rsp->num_blocks));
 }
 
+static void le_set_event_mask_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_event_mask *cmd = data;
+
+	print_event_mask(cmd->mask);
+}
+
 static void le_read_buffer_size_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_buffer_size *rsp = data;
@@ -1140,6 +1147,108 @@ static void le_read_buffer_size_rsp(const void *data, uint8_t size)
 	print_status(rsp->status);
 	print_field("Data packet length: %d", btohs(rsp->le_mtu));
 	print_field("Num data packets: %d", rsp->le_max_pkt);
+}
+
+static void le_read_local_features_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_local_features *rsp = data;
+
+	print_status(rsp->status);
+	print_features(rsp->features);
+}
+
+static void le_set_random_address_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_random_address *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+}
+
+static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_parameters *cmd = data;
+	const char *str;
+
+	switch (cmd->type) {
+	case 0x00:
+		str = "Passive";
+		break;
+	case 0x01:
+		str = "Active";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+
+	print_field("Interval: %.3f msec (0x%4.4x)",
+				cmd->interval * 0.625, cmd->interval);
+	print_field("Window: %.3f msec (0x%4.4x)",
+				cmd->window * 0.625, cmd->window);
+
+	switch (cmd->own_addr_type) {
+	case 0x00:
+		str = "Public";
+		break;
+	case 0x01:
+		str = "Random";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Own address type: %s (0x%2.2x)", str, cmd->own_addr_type);
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "Accept all advertisement";
+		break;
+	case 0x01:
+		str = "Ignore not in white list";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+}
+
+static void le_set_scan_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_enable *cmd = data;
+	const char *str;
+
+	switch (cmd->enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Scanning: %s (0x%2.2x)", str, cmd->enable);
+
+	switch (cmd->filter_dup) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter duplicates: %s (0x%2.2x)", str, cmd->filter_dup);
 }
 
 struct opcode_data {
@@ -1436,20 +1545,30 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x140b, "Write Remote AMP ASSOC"		},
 
 	/* OGF 8 - LE Control */
-	{ 0x2001, "LE Set Event Mask"			},
+	{ 0x2001, "LE Set Event Mask",
+				le_set_event_mask_cmd, 8, true,
+				status_rsp, 1, true },
 	{ 0x2002, "LE Read Buffer Size",
 				null_cmd, 0, true,
 				le_read_buffer_size_rsp, 4, true },
-	{ 0x2003, "LE Read Local Supported Features"	},
+	{ 0x2003, "LE Read Local Supported Features",
+				null_cmd, 0, true,
+				le_read_local_features_rsp, 9, true },
 	/* reserved command */
-	{ 0x2005, "LE Set Random Address"		},
+	{ 0x2005, "LE Set Random Address",
+				le_set_random_address_cmd, 6, true,
+				status_rsp, 1, true },
 	{ 0x2006, "LE Set Advertising Parameters"	},
 	{ 0x2007, "LE Read Advertising Channel TX Power"},
 	{ 0x2008, "LE Set Advertising Data"		},
 	{ 0x2009, "LE Set Scan Response Data"		},
 	{ 0x200a, "LE Set Advertise Enable"		},
-	{ 0x200b, "LE Set Scan Parameters"		},
-	{ 0x200c, "LE Set Scan Enable"			},
+	{ 0x200b, "LE Set Scan Parameters",
+				le_set_scan_parameters_cmd, 7, true,
+				status_rsp, 1, true },
+	{ 0x200c, "LE Set Scan Enable",
+				le_set_scan_enable_cmd, 2, true,
+				status_rsp, 1, true },
 	{ 0x200d, "LE Create Connection"		},
 	{ 0x200e, "LE Create Connection Cancel"		},
 	{ 0x200f, "LE Read White List Size"		},
