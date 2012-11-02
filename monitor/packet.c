@@ -442,6 +442,11 @@ static void print_num_resp(uint8_t num_resp)
 	print_field("Num responses: %d", num_resp);
 }
 
+static void print_rssi(int8_t rssi)
+{
+	print_field("RSSI: %d dBm", rssi);
+}
+
 static void print_timeout(uint16_t timeout)
 {
 	print_field("Timeout: %.3f msec (0x%4.4x)",
@@ -1822,6 +1827,22 @@ static void max_slots_change_evt(const void *data, uint8_t size)
 	print_field("Max slots: %d", evt->max_slots);
 }
 
+static void inquiry_result_with_rssi_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_inquiry_result_with_rssi *evt = data;
+
+	print_num_resp(evt->num_resp);
+	print_bdaddr(evt->bdaddr);
+	print_pscan_rep_mode(evt->pscan_rep_mode);
+	print_pscan_period_mode(evt->pscan_period_mode);
+	print_dev_class(evt->dev_class);
+	print_clock_offset(evt->clock_offset);
+	print_rssi(evt->rssi);
+
+	if (size > sizeof(*evt))
+		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+}
+
 static void remote_ext_features_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_remote_ext_features_complete *evt = data;
@@ -1838,6 +1859,20 @@ static void pscan_rep_mode_change_evt(const void *data, uint8_t size)
 
 	print_bdaddr(evt->bdaddr);
 	print_pscan_rep_mode(evt->pscan_rep_mode);
+}
+
+static void ext_inquiry_result_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_ext_inquiry_result *evt = data;
+
+	print_num_resp(evt->num_resp);
+	print_bdaddr(evt->bdaddr);
+	print_pscan_rep_mode(evt->pscan_rep_mode);
+	print_pscan_period_mode(evt->pscan_period_mode);
+	print_dev_class(evt->dev_class);
+	print_clock_offset(evt->clock_offset);
+	print_rssi(evt->rssi);
+	print_eir(evt->data);
 }
 
 static void remote_host_features_notify_evt(const void *data, uint8_t size)
@@ -1942,14 +1977,16 @@ static const struct event_data event_table[] = {
 	{ 0x20, "Page Scan Repetition Mode Change",
 				pscan_rep_mode_change_evt, 7, true },
 	{ 0x21, "Flow Specification Complete"		},
-	{ 0x22, "Inquiry Result with RSSI"		},
+	{ 0x22, "Inquiry Result with RSSI",
+				inquiry_result_with_rssi_evt, 1, false },
 	{ 0x23, "Read Remote Extended Features",
 				remote_ext_features_complete_evt, 13, true },
 	/* reserved events */
 	{ 0x2c, "Synchronous Connect Complete"		},
 	{ 0x2d, "Synchronous Connect Changed"		},
 	{ 0x2e, "Sniff Subrate"				},
-	{ 0x2f, "Extended Inquiry Result"		},
+	{ 0x2f, "Extended Inquiry Result",
+				ext_inquiry_result_evt, 1, false },
 	{ 0x30, "Encryption Key Refresh Complete"	},
 	{ 0x31, "IO Capability Request"			},
 	{ 0x32, "IO Capability Response"		},
