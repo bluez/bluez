@@ -867,18 +867,36 @@ uint32_t packet_get_flags(uint16_t opcode)
 	return 0xff;
 }
 
-uint16_t packet_get_opcode(uint32_t flags)
+uint16_t packet_get_opcode(uint8_t type, uint32_t flags)
 {
-	if (flags & 0x02) {
-		if (flags & 0x01)
-			return MONITOR_EVENT_PKT;
-		else
-			return MONITOR_COMMAND_PKT;
-	} else {
+	switch (type) {
+	case HCI_COMMAND_PKT:
+		return MONITOR_COMMAND_PKT;
+	case HCI_ACLDATA_PKT:
 		if (flags & 0x01)
 			return MONITOR_ACL_RX_PKT;
 		else
 			return MONITOR_ACL_TX_PKT;
+	case HCI_SCODATA_PKT:
+		if (flags & 0x01)
+			return MONITOR_SCO_RX_PKT;
+		else
+			return MONITOR_SCO_TX_PKT;
+	case HCI_EVENT_PKT:
+		return MONITOR_EVENT_PKT;
+	case 0xff:
+		if (flags & 0x02) {
+			if (flags & 0x01)
+				return MONITOR_EVENT_PKT;
+			else
+				return MONITOR_COMMAND_PKT;
+		} else {
+			if (flags & 0x01)
+				return MONITOR_ACL_RX_PKT;
+			else
+				return MONITOR_ACL_TX_PKT;
+		}
+		break;
 	}
 
 	return 0xff;

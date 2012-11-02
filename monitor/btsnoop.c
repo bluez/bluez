@@ -207,6 +207,7 @@ int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	struct btsnoop_pkt pkt;
 	uint32_t toread, flags;
 	uint64_t ts;
+	uint8_t pkt_type;
 	ssize_t len;
 
 	if (btsnoop_fd < 0)
@@ -233,7 +234,21 @@ int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	switch (btsnoop_type) {
 	case 1001:
 		*index = 0;
-		*opcode = packet_get_opcode(flags);
+		*opcode = packet_get_opcode(0xff, flags);
+		break;
+
+	case 1002:
+		len = read(btsnoop_fd, &pkt_type, 1);
+		if (len < 0) {
+			perror("Failed to read packet type");
+			close(btsnoop_fd);
+			btsnoop_fd = -1;
+			return -1;
+		}
+		toread--;
+
+		*index = 0;
+		*opcode = packet_get_opcode(pkt_type, flags);
 		break;
 
 	case 2001:
