@@ -270,6 +270,77 @@ struct bt_hci_cmd_io_capability_request_neg_reply {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_HOLD_MODE			0x0801
+struct bt_hci_cmd_hold_mode {
+	uint16_t handle;
+	uint16_t max_interval;
+	uint16_t min_interval;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SNIFF_MODE			0x0803
+struct bt_hci_cmd_sniff_mode {
+	uint16_t handle;
+	uint16_t max_interval;
+	uint16_t min_interval;
+	uint16_t attempt;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_EXIT_SNIFF_MODE		0x0804
+struct bt_hci_cmd_exit_sniff_mode {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_PARK_STATE			0x0805
+struct bt_hci_cmd_park_state {
+	uint16_t handle;
+	uint16_t max_interval;
+	uint16_t min_interval;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_EXIT_PARK_STATE		0x0806
+struct bt_hci_cmd_exit_park_state {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_QOS_SETUP			0x0807
+
+#define BT_HCI_CMD_ROLE_DISCOVERY		0x0809
+struct bt_hci_cmd_role_discovery {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_role_discovery {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  role;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SWITCH_ROLE			0x080b
+struct bt_hci_cmd_switch_role {
+	uint8_t  bdaddr[6];
+	uint8_t  role;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_LINK_POLICY		0x080c
+struct bt_hci_cmd_read_link_policy {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_link_policy {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t policy;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_LINK_POLICY		0x080d
+struct bt_hci_cmd_write_link_policy {
+	uint16_t handle;
+	uint16_t policy;
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_link_policy {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_DEFAULT_LINK_POLICY	0x080e
 struct bt_hci_rsp_read_default_link_policy {
 	uint8_t  status;
@@ -279,6 +350,30 @@ struct bt_hci_rsp_read_default_link_policy {
 #define BT_HCI_CMD_WRITE_DEFAULT_LINK_POLICY	0x080f
 struct bt_hci_cmd_write_default_link_policy {
 	uint16_t policy;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_FLOW_SPEC			0x0810
+struct bt_hci_cmd_flow_spec {
+	uint16_t handle;
+	uint8_t  flags;
+	uint8_t  direction;
+	uint8_t  service_type;
+	uint32_t token_rate;
+	uint32_t token_bucket_size;
+	uint32_t peak_bandwidth;
+	uint32_t access_latency;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SNIFF_SUBRATING		0x0811
+struct bt_hci_cmd_sniff_subrating {
+	uint16_t handle;
+	uint16_t max_latency;
+	uint16_t min_remote_timeout;
+	uint16_t min_local_timeout;
+} __attribute__ ((packed));
+struct bt_hci_rsp_sniff_subrating {
+	uint8_t  status;
+	uint16_t handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_SET_EVENT_MASK		0x0c01
@@ -294,6 +389,28 @@ struct bt_hci_cmd_set_event_filter {
 	uint8_t  cond_type;
 	uint8_t  cond[0];
 } __attribute__ ((packed));
+
+#define BT_HCI_CMD_FLUSH			0x0c08
+struct bt_hci_cmd_flush {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_flush {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_PIN_TYPE		0x0c09
+struct bt_hci_rsp_read_pin_type {
+	uint8_t  status;
+	uint8_t  pin_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_PIN_TYPE		0x0c0a
+struct bt_hci_cmd_write_pin_type {
+	uint8_t  pin_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_CREATE_NEW_UNIT_KEY		0x0c0b
 
 #define BT_HCI_CMD_READ_STORED_LINK_KEY		0x0c0d
 struct bt_hci_cmd_read_stored_link_key {
@@ -437,6 +554,11 @@ struct bt_hci_cmd_write_ext_inquiry_response {
 	uint8_t	 data[240];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_REFRESH_ENCRYPT_KEY		0x0c53
+struct bt_hci_cmd_refresh_encrypt_key {
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_SIMPLE_PAIRING_MODE	0x0c55
 struct bt_hci_rsp_read_simple_pairing_mode {
 	uint8_t  status;
@@ -452,6 +574,17 @@ struct bt_hci_cmd_write_simple_pairing_mode {
 struct bt_hci_rsp_read_inquiry_resp_tx_power {
 	uint8_t  status;
 	int8_t   level;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_ENHANCED_FLUSH		0x0c5f
+struct bt_hci_cmd_enhanced_flush {
+	uint16_t handle;
+	uint8_t  type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_SET_EVENT_MASK_PAGE2		0x0c63
+struct bt_hci_cmd_set_event_mask_page2 {
+	uint8_t  mask[8];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_READ_LE_HOST_SUPPORTED	0x0c6c

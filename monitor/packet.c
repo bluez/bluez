@@ -301,6 +301,31 @@ static void print_retransmission_effort(uint8_t effort)
 	print_field("Retransmission effort: %s (0x%2.2x)", str, effort);
 }
 
+static void print_scan_enable(uint8_t scan_enable)
+{
+	const char *str;
+
+	switch (scan_enable) {
+	case 0x00:
+		str = "No Scans";
+		break;
+	case 0x01:
+		str = "Inquiry Scan";
+		break;
+	case 0x02:
+		str = "Page Scan";
+		break;
+	case 0x03:
+		str = "Inquiry Scan + Page Scan";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Scan enable: %s (0x%2.2x)", str, scan_enable);
+}
+
 static void print_link_policy(uint16_t link_policy)
 {
 	print_field("Link policy: 0x%4.4x", btohs(link_policy));
@@ -488,6 +513,25 @@ static void print_encr_mode(uint8_t encr_mode)
 	print_field("Encryption: %s (0x%2.2x)", str, encr_mode);
 }
 
+static void print_pin_type(uint8_t pin_type)
+{
+	const char *str;
+
+	switch (pin_type) {
+	case 0x00:
+		str = "Variable";
+		break;
+	case 0x01:
+		str = "Fixed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("PIN type: %s (0x%2.2x)", str, pin_type);
+}
+
 static void print_key_flag(uint8_t key_flag)
 {
 	const char *str;
@@ -652,6 +696,25 @@ static void print_authentication(uint8_t authentication)
 	print_field("Authentication: %s (0x%2.2x)", str, authentication);
 }
 
+static void print_flow_direction(uint8_t direction)
+{
+	const char *str;
+
+	switch (direction) {
+	case 0x00:
+		str = "Outgoing";
+		break;
+	case 0x01:
+		str = "Incoming";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Flow direction: %s (0x%2.2x)", str, direction);
+}
+
 static void print_service_type(uint8_t service_type)
 {
 	const char *str;
@@ -684,25 +747,31 @@ static void print_rssi(int8_t rssi)
 	print_field("RSSI: %d dBm", rssi);
 }
 
-static void print_slot(const char *label, uint16_t value)
+static void print_slot_625(const char *label, uint16_t value)
 {
 	 print_field("%s: %.3f msec (0x%4.4x)", label,
 					btohs(value) * 0.625, value);
 }
 
+static void print_slot_125(const char *label, uint16_t value)
+{
+	print_field("%s: %.2f msec (0x%4.4x)", label,
+					btohs(value) * 1.25, value);
+}
+
 static void print_timeout(uint16_t timeout)
 {
-	print_slot("Timeout", timeout);
+	print_slot_625("Timeout", timeout);
 }
 
 static void print_interval(uint16_t interval)
 {
-	print_slot("Interval", interval);
+	print_slot_625("Interval", interval);
 }
 
 static void print_window(uint16_t window)
 {
-	print_slot("Window", window);
+	print_slot_625("Window", window);
 }
 
 static void print_role(uint8_t role)
@@ -1350,6 +1419,110 @@ static void io_capability_request_neg_reply_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
+static void hold_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_hold_mode *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_625("Hold max interval", cmd->max_interval);
+	print_slot_625("Hold min interval", cmd->min_interval);
+}
+
+static void sniff_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_sniff_mode *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_625("Sniff max interval", cmd->max_interval);
+	print_slot_625("Sniff min interval", cmd->min_interval);
+	print_slot_125("Sniff attempt", cmd->attempt);
+	print_slot_125("Sniff timeout", cmd->timeout);
+}
+
+static void exit_sniff_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_exit_sniff_mode *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void park_state_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_park_state *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_625("Beacon max interval", cmd->max_interval);
+	print_slot_625("Beacon min interval", cmd->min_interval);
+}
+
+static void exit_park_state_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_exit_park_state *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void qos_setup_cmd(const void *data, uint8_t size)
+{
+	packet_hexdump(data, size);
+}
+
+static void role_discovery_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_role_discovery *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void role_discovery_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_role_discovery *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_role(rsp->role);
+}
+
+static void switch_role_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_switch_role *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_role(cmd->role);
+}
+
+static void read_link_policy_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_link_policy *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_link_policy_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_link_policy *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_link_policy(rsp->policy);
+}
+
+static void write_link_policy_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_link_policy *cmd = data;
+
+	print_handle(cmd->handle);
+	print_link_policy(cmd->policy);
+}
+
+static void write_link_policy_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_link_policy *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
 static void read_default_link_policy_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_default_link_policy *rsp = data;
@@ -1363,6 +1536,40 @@ static void write_default_link_policy_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_default_link_policy *cmd = data;
 
 	print_link_policy(cmd->policy);
+}
+
+static void flow_spec_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_flow_spec *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Flags: 0x%2.2x", cmd->flags);
+
+	print_flow_direction(cmd->direction);
+	print_service_type(cmd->service_type);
+
+	print_field("Token rate: %d", btohl(cmd->token_rate));
+	print_field("Token bucket size: %d", btohl(cmd->token_bucket_size));
+	print_field("Peak bandwidth: %d", btohl(cmd->peak_bandwidth));
+	print_field("Access latency: %d", btohl(cmd->access_latency));
+}
+
+static void sniff_subrating_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_sniff_subrating *cmd = data;
+
+	print_handle(cmd->handle);
+	print_slot_625("Max latency", cmd->max_latency);
+	print_slot_625("Min remote timeout", cmd->min_remote_timeout);
+	print_slot_625("Min local timeout", cmd->min_local_timeout);
+}
+
+static void sniff_subrating_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_sniff_subrating *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
 }
 
 static void set_event_mask_cmd(const void *data, uint8_t size)
@@ -1379,6 +1586,70 @@ static void set_event_filter_cmd(const void *data, uint8_t size)
 	print_field("Type: 0x%2.2x", type);
 
 	packet_hexdump(data + 1, size - 1);
+}
+
+static void flush_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_flush *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void flush_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_flush *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
+static void read_pin_type_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_pin_type *rsp = data;
+
+	print_status(rsp->status);
+	print_pin_type(rsp->pin_type);
+}
+
+static void write_pin_type_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_pin_type *cmd = data;
+
+	print_pin_type(cmd->pin_type);
+}
+
+static void read_stored_link_key_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_stored_link_key *cmd = data;
+
+	print_bdaddr(cmd->bdaddr);
+	print_field("Read all: 0x%2.2x", cmd->read_all);
+}
+
+static void read_stored_link_key_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_stored_link_key *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Max num keys: %d", btohs(rsp->max_num_keys));
+	print_field("Num keys: %d", btohs(rsp->num_keys));
+}
+
+static void write_stored_link_key_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_stored_link_key *cmd = data;
+
+	print_field("Num keys: %d", cmd->num_keys);
+
+	packet_hexdump(data + 1, size - 1);
+}
+
+static void write_stored_link_key_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_stored_link_key *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Num keys: %d", rsp->num_keys);
 }
 
 static void delete_stored_link_key_cmd(const void *data, uint8_t size)
@@ -1425,6 +1696,36 @@ static void write_conn_accept_timeout_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_conn_accept_timeout *cmd = data;
 
 	print_timeout(cmd->timeout);
+}
+
+static void read_page_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_page_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_timeout(rsp->timeout);
+}
+
+static void write_page_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_page_timeout *cmd = data;
+
+	print_timeout(cmd->timeout);
+}
+
+static void read_scan_enable_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_scan_enable *rsp = data;
+
+	print_status(rsp->status);
+	print_scan_enable(rsp->enable);
+}
+
+static void write_scan_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_scan_enable *cmd = data;
+
+	print_scan_enable(cmd->enable);
 }
 
 static void read_class_of_dev_rsp(const void *data, uint8_t size)
@@ -1489,6 +1790,13 @@ static void write_ext_inquiry_response_cmd(const void *data, uint8_t size)
 	print_eir(cmd->data);
 }
 
+static void refresh_encrypt_key_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_refresh_encrypt_key *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
 static void read_simple_pairing_mode_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_simple_pairing_mode *rsp = data;
@@ -1510,6 +1818,32 @@ static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_field("TX power: %d dBm", rsp->level);
+}
+
+static void enhanced_flush_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_enhanced_flush *cmd = data;
+	const char *str;
+
+	print_handle(cmd->handle);
+
+	switch (cmd->type) {
+	case 0x00:
+		str = "Automatic flushable only";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+}
+
+static void set_event_mask_page2_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
+
+	print_event_mask(cmd->mask);
 }
 
 static void read_le_host_supported_rsp(const void *data, uint8_t size)
@@ -1863,27 +2197,43 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x043c, "Flow Specifcation Modify"		},
 
 	/* OGF 2 - Link Policy */
-	{ 0x0801, "Holde Mode"				},
+	{ 0x0801, "Holde Mode",
+				hold_mode_cmd, 6, true },
 	/* reserved command */
-	{ 0x0803, "Sniff Mode"				},
-	{ 0x0804, "Exit Sniff Mode"			},
-	{ 0x0805, "Park State"				},
-	{ 0x0806, "Exit Park State"			},
-	{ 0x0807, "QoS Setup"				},
+	{ 0x0803, "Sniff Mode",
+				sniff_mode_cmd, 10, true },
+	{ 0x0804, "Exit Sniff Mode",
+				exit_sniff_mode_cmd, 2, true },
+	{ 0x0805, "Park State",
+				park_state_cmd, 6, true },
+	{ 0x0806, "Exit Park State",
+				exit_park_state_cmd, 2, true },
+	{ 0x0807, "QoS Setup",
+				qos_setup_cmd, 20, true },
 	/* reserved command */
-	{ 0x0809, "Role Discovery"			},
+	{ 0x0809, "Role Discovery",
+				role_discovery_cmd, 2, true,
+				role_discovery_rsp, 4, true },
 	/* reserved command */
-	{ 0x080b, "Switch Role"				},
-	{ 0x080c, "Read Link Policy Settings"		},
-	{ 0x080d, "Write Link Policy Settings"		},
+	{ 0x080b, "Switch Role",
+				switch_role_cmd, 7, true },
+	{ 0x080c, "Read Link Policy Settings",
+				read_link_policy_cmd, 2, true,
+				read_link_policy_rsp, 5, true },
+	{ 0x080d, "Write Link Policy Settings",
+				write_link_policy_cmd, 2, true,
+				write_link_policy_rsp, 2, true },
 	{ 0x080e, "Read Default Link Policy Settings",
 				null_cmd, 0, true,
 				read_default_link_policy_rsp, 3, true },
 	{ 0x080f, "Write Default Link Policy Settings",
 				write_default_link_policy_cmd, 2, true,
 				status_rsp, 1, true },
-	{ 0x0810, "Flow Specification"			},
-	{ 0x0811, "Sniff Subrating"			},
+	{ 0x0810, "Flow Specification",
+				flow_spec_cmd, 21, true },
+	{ 0x0811, "Sniff Subrating",
+				sniff_subrating_cmd, 8, true,
+				sniff_subrating_rsp, 3, true },
 
 	/* OGF 3 - Host Control */
 	{ 0x0c01, "Set Event Mask",
@@ -1898,14 +2248,26 @@ static const struct opcode_data opcode_table[] = {
 				set_event_filter_cmd, 1, false,
 				status_rsp, 1, true },
 	/* reserved commands */
-	{ 0x0c08, "Flush"				},
-	{ 0x0c09, "Read PIN Type"			},
-	{ 0x0c0a, "Write PIN Type"			},
-	{ 0x0c0b, "Create New Unit Key"			},
+	{ 0x0c08, "Flush",
+				flush_cmd, 2, true,
+				flush_rsp, 3, true },
+	{ 0x0c09, "Read PIN Type",
+				null_cmd, 0, true,
+				read_pin_type_rsp, 2, true },
+	{ 0x0c0a, "Write PIN Type",
+				write_pin_type_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x0c0b, "Create New Unit Key",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
 	/* reserved command */
-	{ 0x0c0d, "Read Stored Link Key"		},
+	{ 0x0c0d, "Read Stored Link Key",
+				read_stored_link_key_cmd, 8, true,
+				read_stored_link_key_rsp, 5, true },
 	/* reserved commands */
-	{ 0x0c11, "Write Stored Link Key"		},
+	{ 0x0c11, "Write Stored Link Key",
+				write_stored_link_key_cmd, 1, false,
+				write_stored_link_key_rsp, 2, true },
 	{ 0x0c12, "Delete Stored Link Key",
 				delete_stored_link_key_cmd, 7, true,
 				delete_stored_link_key_rsp, 3, true },
@@ -1921,10 +2283,18 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c16, "Write Connection Accept Timeout",
 				write_conn_accept_timeout_cmd, 2, true,
 				status_rsp, 1, true },
-	{ 0x0c17, "Read Page Timeout"			},
-	{ 0x0c18, "Write Page Timeout"			},
-	{ 0x0c19, "Read Scan Enable"			},
-	{ 0x0c1a, "Write Scan Enable"			},
+	{ 0x0c17, "Read Page Timeout",
+				null_cmd, 0, true,
+				read_page_timeout_rsp, 3, true },
+	{ 0x0c18, "Write Page Timeout",
+				write_page_timeout_cmd, 2, true,
+				status_rsp, 1, true },
+	{ 0x0c19, "Read Scan Enable",
+				null_cmd, 0, true,
+				read_scan_enable_rsp, 2, true },
+	{ 0x0c1a, "Write Scan Enable",
+				write_scan_enable_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c1b, "Read Page Scan Activity"		},
 	{ 0x0c1c, "Write Page Scan Activity"		},
 	{ 0x0c1d, "Read Inquiry Scan Activity"		},
@@ -1990,7 +2360,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c52, "Write Extended Inquiry Response",
 				write_ext_inquiry_response_cmd, 241, true,
 				status_rsp, 1, true },
-	{ 0x0c53, "Refresh Encryption Key"		},
+	{ 0x0c53, "Refresh Encryption Key",
+				refresh_encrypt_key_cmd, 2, true },
 	/* reserved command */
 	{ 0x0c55, "Read Simple Pairing Mode",
 				null_cmd, 0, true,
@@ -2006,11 +2377,14 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c5a, "Read Default Erroneous Reporting"	},
 	{ 0x0c5b, "Write Default Erroneous Reporting"	},
 	/* reserved commands */
-	{ 0x0c5f, "Enhanced Flush"			},
+	{ 0x0c5f, "Enhanced Flush",
+				enhanced_flush_cmd, 3, true },
 	/* reserved command */
 	{ 0x0c61, "Read Logical Link Accept Timeout"	},
 	{ 0x0c62, "Write Logical Link Accept Timeout"	},
-	{ 0x0c63, "Set Event Mask Page 2"		},
+	{ 0x0c63, "Set Event Mask Page 2",
+				set_event_mask_page2_cmd, 8, true,
+				status_rsp, 1, true },
 	{ 0x0c64, "Read Location Data"			},
 	{ 0x0c65, "Write Location Data"			},
 	{ 0x0c66, "Read Flow Control Mode"		},
@@ -2464,25 +2838,12 @@ static void pscan_rep_mode_change_evt(const void *data, uint8_t size)
 static void flow_spec_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_flow_spec_complete *evt = data;
-	const char *str;
 
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_field("Flags: 0x%2.2x", evt->flags);
 
-	switch (evt->direction) {
-	case 0x00:
-		str = "Outgoing";
-		break;
-	case 0x01:
-		str = "Incoming";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Flow direction: %s (0x%2.2x)", str, evt->direction);
+	print_flow_direction(evt->direction);
 	print_service_type(evt->service_type);
 
 	print_field("Token rate: %d", btohl(evt->token_rate));
@@ -2550,10 +2911,10 @@ static void sniff_subrating_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_slot("Max transmit latency", evt->max_tx_latency);
-	print_slot("Max receive latency", evt->max_rx_latency);
-	print_slot("Min remote timeout", evt->min_remote_timeout);
-	print_slot("Min local timeout", evt->min_local_timeout);
+	print_slot_625("Max transmit latency", evt->max_tx_latency);
+	print_slot_625("Max receive latency", evt->max_rx_latency);
+	print_slot_625("Min remote timeout", evt->min_remote_timeout);
+	print_slot_625("Min local timeout", evt->min_local_timeout);
 }
 
 static void ext_inquiry_result_evt(const void *data, uint8_t size)
