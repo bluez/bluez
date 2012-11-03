@@ -56,7 +56,23 @@
 #define COLOR_WHITE	"\x1B[0;37m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
+#define COLOR_WHITE_BG	"\x1B[0;47m"
+
 #define COLOR_ERROR	"\x1B[1;31m"
+
+#define COLOR_TIMESTAMP			COLOR_YELLOW
+
+#define COLOR_NEW_INDEX			COLOR_GREEN
+#define COLOR_DEL_INDEX			COLOR_RED
+
+#define COLOR_HCI_COMMAND		COLOR_BLUE
+#define COLOR_HCI_COMMAND_UNKNOWN	COLOR_WHITE_BG
+
+#define COLOR_HCI_EVENT			COLOR_MAGENTA
+#define COLOR_HCI_EVENT_UNKNOWN		COLOR_WHITE_BG
+
+#define COLOR_HCI_ACLDATA		COLOR_CYAN
+#define COLOR_HCI_SCODATA		COLOR_YELLOW
 
 static bool use_color(void)
 {
@@ -102,11 +118,11 @@ static void print_channel_header(struct timeval *tv, uint16_t index,
 		localtime_r(&t, &tm);
 
 		if (filter_mask & PACKET_FILTER_SHOW_DATE)
-			print_text(COLOR_YELLOW, "%04d-%02d-%02d ",
+			print_text(COLOR_TIMESTAMP, "%04d-%02d-%02d ",
 				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
 
 		if (filter_mask & PACKET_FILTER_SHOW_TIME)
-			print_text(COLOR_YELLOW, "%02d:%02d:%02d.%06lu ",
+			print_text(COLOR_TIMESTAMP, "%02d:%02d:%02d.%06lu ",
 				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
 	}
 }
@@ -1735,6 +1751,7 @@ struct opcode_data {
 
 static const struct opcode_data opcode_table[] = {
 	{ 0x0000, "NOP" },
+
 	/* OGF 1 - Link Control */
 	{ 0x0401, "Inquiry",
 				inquiry_cmd, 5, true },
@@ -2227,6 +2244,7 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	const struct opcode_data *opcode_data = NULL;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	for (i = 0; opcode_table[i].str; i++) {
@@ -2236,9 +2254,20 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 		}
 	}
 
-	print_field("%s (0x%2.2x|0x%4.4x) ncmd %d",
-				opcode_data ? opcode_data->str : "Unknown",
-							ogf, ocf, evt->ncmd);
+	if (opcode_data) {
+		if (opcode_data->rsp_func)
+			opcode_color = COLOR_HCI_COMMAND;
+		else
+			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+		opcode_str = opcode_data->str;
+	} else {
+		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+		opcode_str = "Unknown";
+	}
+
+	print_field("%s%s%s (0x%2.2x|0x%4.4x) ncmd %d",
+			use_color() ? opcode_color : "", opcode_str,
+			use_color() ? COLOR_OFF : "", ogf, ocf, evt->ncmd);
 
 	if (!opcode_data->rsp_func) {
 		packet_hexdump(data + 3, size - 3);
@@ -2269,6 +2298,7 @@ static void cmd_status_evt(const void *data, uint8_t size)
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	const struct opcode_data *opcode_data = NULL;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	for (i = 0; opcode_table[i].str; i++) {
@@ -2278,9 +2308,17 @@ static void cmd_status_evt(const void *data, uint8_t size)
 		}
 	}
 
-	print_field("%s (0x%2.2x|0x%4.4x) ncmd %d",
-				opcode_data ? opcode_data->str : "Unknown",
-							ogf, ocf, evt->ncmd);
+	if (opcode_data) {
+		opcode_color = COLOR_HCI_COMMAND;
+		opcode_str = opcode_data->str;
+	} else {
+		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+		opcode_str = "Unknown";
+	}
+
+	print_field("%s%s%s (0x%2.2x|0x%4.4x) ncmd %d",
+			use_color() ? opcode_color : "", opcode_str,
+			use_color() ? COLOR_OFF : "", ogf, ocf, evt->ncmd);
 
 	print_status(evt->status);
 }
@@ -2821,15 +2859,17 @@ void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 {
 	print_header(tv, index);
 
-	print_text(COLOR_MAGENTA, "= New Index: %s (%s,%s,%s)\n", label,
+	print_text(COLOR_NEW_INDEX, "= New Index: %s (%s,%s,%s)", label,
 				hci_typetostr(type), hci_bustostr(bus), name);
+	printf("\n");
 }
 
 void packet_del_index(struct timeval *tv, uint16_t index, const char *label)
 {
 	print_header(tv, index);
 
-	print_text(COLOR_MAGENTA, "= Delete Index: %s\n", label);
+	print_text(COLOR_DEL_INDEX, "= Delete Index: %s", label);
+	printf("\n");
 }
 
 void packet_hci_command(struct timeval *tv, uint16_t index,
@@ -2840,6 +2880,7 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 	uint16_t ogf = cmd_opcode_ogf(opcode);
 	uint16_t ocf = cmd_opcode_ocf(opcode);
 	const struct opcode_data *opcode_data = NULL;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	print_header(tv, index);
@@ -2864,8 +2905,18 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 		}
 	}
 
-	print_text(COLOR_BLUE, "< HCI Command: %s",
-				opcode_data ? opcode_data->str : "Unknown");
+	if (opcode_data) {
+		if (opcode_data->cmd_func)
+			opcode_color = COLOR_HCI_COMMAND;
+		else
+			opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+		opcode_str = opcode_data->str;
+	} else {
+		opcode_color = COLOR_HCI_COMMAND_UNKNOWN;
+		opcode_str = "Unknown";
+	}
+
+	print_text(opcode_color, "< HCI Command: %s", opcode_str);
 	print_text(COLOR_OFF, " (0x%2.2x|0x%4.4x) plen %d\n",
 						ogf, ocf, hdr->plen);
 
@@ -2896,6 +2947,7 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 {
 	const hci_event_hdr *hdr = data;
 	const struct event_data *event_data = NULL;
+	const char *event_color, *event_str;
 	int i;
 
 	print_header(tv, index);
@@ -2920,8 +2972,18 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 		}
 	}
 
-	print_text(COLOR_BLUE, "> HCI Event: %s",
-				event_data ? event_data->str : "Unknown");
+	if (event_data) {
+		if (event_data->func)
+			event_color = COLOR_HCI_EVENT;
+		else
+			event_color = COLOR_HCI_EVENT_UNKNOWN;
+		event_str = event_data->str;
+	} else {
+		event_color = COLOR_HCI_EVENT_UNKNOWN;
+		event_str = "Unknown";
+	}
+
+	print_text(event_color, "> HCI Event: %s", event_str);
 	print_text(COLOR_OFF, " (0x%2.2x) plen %d\n", hdr->evt, hdr->plen);
 
 	if (!event_data || !event_data->func) {
@@ -2962,7 +3024,7 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 		return;
 	}
 
-	print_text(COLOR_BLUE, "%c ACL Data: handle %d",
+	print_text(COLOR_HCI_ACLDATA, "%c ACL Data: handle %d",
 					in ? '>' : '<', acl_handle(handle));
 	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, dlen);
 
@@ -2988,7 +3050,7 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 		return;
 	}
 
-	print_text(COLOR_BLUE, "%c SCO Data: handle %d",
+	print_text(COLOR_HCI_SCODATA, "%c SCO Data: handle %d",
 					in ? '>' : '<', acl_handle(handle));
 	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, hdr->dlen);
 
