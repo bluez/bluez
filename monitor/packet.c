@@ -262,12 +262,15 @@ static void print_addr(const uint8_t *addr, uint8_t addr_type)
 		print_bdaddr(addr);
 		break;
 	case 0x01:
-		switch (addr[5] & 0x03) {
+		switch ((addr[5] & 0xc0) >> 6) {
 		case 0x00:
 			str = "Non-Resolvable";
 			break;
 		case 0x01:
 			str = "Resolvable";
+			break;
+		case 0x03:
+			str = "Static";
 			break;
 		default:
 			str = "Reserved";
