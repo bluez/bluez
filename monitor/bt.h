@@ -697,7 +697,7 @@ struct bt_hci_rsp_le_read_local_features {
 
 #define BT_HCI_CMD_LE_SET_RANDOM_ADDRESS	0x2005
 struct bt_hci_cmd_le_set_random_address {
-	uint8_t  bdaddr[6];
+	uint8_t  addr[6];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_READ_ADV_TX_POWER		0x2007
@@ -719,6 +719,71 @@ struct bt_hci_cmd_le_set_scan_parameters {
 struct bt_hci_cmd_le_set_scan_enable {
 	uint8_t  enable;
 	uint8_t  filter_dup;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CREATE_CONN		0x200d
+struct bt_hci_cmd_le_create_conn {
+	uint16_t scan_interval;
+	uint16_t scan_window;
+	uint8_t  filter_policy;
+	uint8_t  peer_addr_type;
+	uint8_t  peer_addr[6];
+	uint8_t  own_addr_type;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint16_t min_length;
+	uint16_t max_length;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CREATE_CONN_CANCEL	0x200e
+
+#define BT_HCI_CMD_LE_CONN_UPDATE		0x2013
+struct bt_hci_cmd_le_conn_update {
+	uint16_t handle;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint16_t min_length;
+	uint16_t max_length;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_SET_HOST_CLASSIFICATION	0x2014
+struct bt_hci_cmd_le_set_host_classification {
+	uint8_t  map[5];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_CHANNEL_MAP		0x2015
+struct bt_hci_cmd_le_read_channel_map {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_read_channel_map {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  map[5];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_READ_REMOTE_FEATURES	0x2016
+struct bt_hci_cmd_le_read_remote_features {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_ENCRYPT			0x2017
+struct bt_hci_cmd_le_encrypt {
+	uint8_t  key[16];
+	uint8_t  plaintext[16];
+} __attribute__ ((packed));
+struct bt_hci_rsp_le_encrypt {
+	uint8_t  status;
+	uint8_t  data[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_RAND			0x2018
+struct bt_hci_rsp_le_rand {
+	uint8_t  status;
+	uint8_t  number[8];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_READ_SUPPORTED_STATES	0x201c
@@ -1071,6 +1136,51 @@ struct bt_hci_evt_keypress_notify {
 struct bt_hci_evt_remote_host_features_notify {
 	uint8_t  bdaddr[6];
 	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_CONN_COMPLETE		0x01
+struct bt_hci_evt_le_conn_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  role;
+	uint8_t  peer_addr_type;
+	uint8_t  peer_addr[6];
+	uint16_t interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+	uint8_t  clock_accuracy;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_ADV_REPORT		0x02
+struct bt_hci_evt_le_adv_report {
+	uint8_t  num_reports;
+	uint8_t  event_type;
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+	uint8_t  data_len;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE	0x03
+struct bt_hci_evt_le_conn_update_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t interval;
+	uint16_t latency;
+	uint16_t supv_timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_REMOTE_FEATURES_COMPLETE	0x04
+struct bt_hci_evt_le_remote_features_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST	0x05
+struct bt_hci_evt_le_long_term_key_request {
+	uint16_t handle;
+	uint8_t  number[8];
+	uint16_t diversifier;
 } __attribute__ ((packed));
 
 #define BT_HCI_ERR_SUCCESS			0x00
