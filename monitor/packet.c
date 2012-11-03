@@ -2252,6 +2252,18 @@ static void le_rand_rsp(const void *data, uint8_t size)
 	print_random_number(rsp->number);
 }
 
+static void le_start_encrypt(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_start_encrypt *cmd = data;
+
+	print_handle(cmd->handle);
+	print_random_number(cmd->number);
+	print_field("Encryption diversifier: 0x%4.4x",
+					btohs(cmd->diversifier));
+	print_key("Long term key", cmd->ltk);
+
+}
+
 static void le_read_supported_states_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_supported_states *rsp = data;
@@ -2679,7 +2691,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2018, "LE Rand",
 				null_cmd, 0, true,
 				le_rand_rsp, 9, true },
-	{ 0x2019, "LE Start Encryption"			},
+	{ 0x2019, "LE Start Encryption",
+				le_start_encrypt, 28, true },
 	{ 0x201a, "LE Long Term Key Request Reply"	},
 	{ 0x201b, "LE Long Term Key Request Neg Reply"	},
 	{ 0x201c, "LE Read Supported States",

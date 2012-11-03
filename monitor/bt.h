@@ -786,6 +786,14 @@ struct bt_hci_rsp_le_rand {
 	uint8_t  number[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_START_ENCRYPT		0x2019
+struct bt_hci_cmd_le_start_encrypt {
+	uint16_t handle;
+	uint8_t  number[8];
+	uint16_t diversifier;
+	uint8_t  ltk[16];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_SUPPORTED_STATES	0x201c
 struct bt_hci_rsp_le_read_supported_states {
 	uint8_t  status;
