@@ -253,7 +253,60 @@ static void att_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_field("ATT: %s (0x%2.2x)", opcode_str, opcode);
+	print_field("ATT: %s (0x%2.2x) len %d", opcode_str, opcode, size - 1);
+
+	packet_hexdump(data + 1, size - 1);
+}
+
+struct smp_opcode_data {
+	uint8_t opcode;
+	const char *str;
+	void (*func) (const void *data, uint8_t size);
+	uint8_t size;
+	bool fixed;
+};
+
+static const struct smp_opcode_data smp_opcode_table[] = {
+	{ 0x01, "Pairing Request"		},
+	{ 0x02, "Pairing Response"		},
+	{ 0x03, "Pairing Confirm"		},
+	{ 0x04, "Pairing Random"		},
+	{ 0x05, "Pairing Failed"		},
+	{ 0x06, "Encryption Information"	},
+	{ 0x07, "Master Identification"		},
+	{ 0x08, "Identity Information"		},
+	{ 0x09, "Identity Address Information"	},
+	{ 0x0a, "Signing Information"		},
+	{ 0x0b, "Security Request"		},
+	{ }
+};
+
+static void smp_packet(const void *data, uint16_t size)
+{
+	uint8_t opcode = *((const uint8_t *) data);
+	const struct smp_opcode_data *opcode_data = NULL;
+	const char *opcode_str;
+	int i;
+
+	if (size < 1) {
+		print_field("malformed security packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	for (i = 0; smp_opcode_table[i].str; i++) {
+		if (smp_opcode_table[i].opcode == opcode) {
+			opcode_data = &smp_opcode_table[i];
+			break;
+		}
+	}
+
+	if (opcode_data)
+		opcode_str = opcode_data->str;
+	else
+		opcode_str = "Unknown";
+
+	print_field("SMP: %s (0x%2.2x) len %d", opcode_str, opcode, size - 1);
 
 	packet_hexdump(data + 1, size - 1);
 }
@@ -284,6 +337,9 @@ void l2cap_packet(const void *data, uint16_t size)
 		break;
 	case 0x0004:
 		att_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		break;
+	case 0x0006:
+		smp_packet(data + sizeof(*hdr), size - sizeof(*hdr));
 		break;
 	default:
 		print_field("Channel: %d dlen %d", btohs(hdr->cid),
