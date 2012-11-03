@@ -33,11 +33,84 @@
 
 #define print_field(fmt, args...) printf("%-12c" fmt "\n", ' ', ## args)
 
+struct sig_opcode_data {
+	uint8_t opcode;
+	const char *str;
+	void (*func) (const void *data, uint16_t size);
+	uint16_t size;
+	bool fixed;
+};
+
+static const struct sig_opcode_data sig_opcode_table[] = {
+	{ 0x01, "Command Reject"			},
+	{ 0x02, "Connection Request"			},
+	{ 0x03, "Connection Response"			},
+	{ 0x04, "Configure Request"			},
+	{ 0x05, "Configure Response"			},
+	{ 0x06, "Disconnection Request"			},
+	{ 0x07, "Disconnection Response"		},
+	{ 0x08, "Echo Request"				},
+	{ 0x09, "Echo Response"				},
+	{ 0x0a, "Information Request"			},
+	{ 0x0b, "Information Response"			},
+	{ 0x0c, "Create Channel Request"		},
+	{ 0x0d, "Create Channel Response"		},
+	{ 0x0e, "Move Channel Request"			},
+	{ 0x0f, "Move Channel Response"			},
+	{ 0x10, "Move Channel Confirmation"		},
+	{ 0x11, "Move Channel Confirmation Response"	},
+	{ 0x12, "Connection Parameter Update Request"	},
+	{ 0x13, "Connection Parameter Update Response"	},
+	{ },
+};
+
+static void sig_packet(const void *data, uint16_t size)
+{
+	uint16_t len;
+	uint8_t opcode, ident;
+	const struct sig_opcode_data *opcode_data = NULL;
+	const char *opcode_str;
+	int i;
+
+	if (size < 4) {
+		print_field("malformed signal packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	opcode = *((const uint8_t *) (data));
+	ident = *((const uint8_t *) (data + 1));
+	len = bt_get_le16(data + 2);
+
+	if (len != size - 4) {
+		print_field("invalid signal packet size");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	for (i = 0; sig_opcode_table[i].str; i++) {
+		if (sig_opcode_table[i].opcode == opcode) {
+			opcode_data = &sig_opcode_table[i];
+			break;
+		}
+	}
+
+	if (opcode_data)
+		opcode_str = opcode_data->str;
+	else
+		opcode_str = "Unknown";
+
+	print_field("L2CAP: %s (0x%2.2x) ident %d len %d",
+					opcode_str, opcode, ident, len);
+
+	packet_hexdump(data + 4, size - 4);
+}
+
 struct amp_opcode_data {
 	uint8_t opcode;
 	const char *str;
-	void (*func) (const void *data, uint8_t size);
-	uint8_t size;
+	void (*func) (const void *data, uint16_t size);
+	uint16_t size;
 	bool fixed;
 };
 
@@ -197,21 +270,25 @@ void l2cap_packet(const void *data, uint16_t size)
 
 	if (btohs(hdr->len) != size - sizeof(*hdr)) {
 		print_field("invalid packet size");
-		packet_hexdump(data +  sizeof(*hdr), size - sizeof(*hdr));
+		packet_hexdump(data + sizeof(*hdr), size - sizeof(*hdr));
 		return;
 	}
 
 	switch (btohs(hdr->cid)) {
+	case 0x0001:
+	case 0x0005:
+		sig_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		break;
 	case 0x0003:
 		amp_packet(data + sizeof(*hdr), size - sizeof(*hdr));
 		break;
 	case 0x0004:
-		att_packet(data +  sizeof(*hdr), size - sizeof(*hdr));
+		att_packet(data + sizeof(*hdr), size - sizeof(*hdr));
 		break;
 	default:
 		print_field("Channel: %d dlen %d", btohs(hdr->cid),
 							btohs(hdr->len));
-		packet_hexdump(data +  sizeof(*hdr), size - sizeof(*hdr));
+		packet_hexdump(data + sizeof(*hdr), size - sizeof(*hdr));
 		break;
 	}
 }
