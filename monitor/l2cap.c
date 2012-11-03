@@ -33,6 +33,88 @@
 
 #define print_field(fmt, args...) printf("%-12c" fmt "\n", ' ', ## args)
 
+struct amp_opcode_data {
+	uint8_t opcode;
+	const char *str;
+	void (*func) (const void *data, uint8_t size);
+	uint8_t size;
+	bool fixed;
+};
+
+static const struct amp_opcode_data amp_opcode_table[] = {
+	{ 0x01, "Command Reject"			},
+	{ 0x02, "Discover Request"			},
+	{ 0x03, "Discover Response"			},
+	{ 0x04, "Change Notify"				},
+	{ 0x05, "Change Response"			},
+	{ 0x06, "Get Info Request"			},
+	{ 0x07, "Get Info Response"			},
+	{ 0x08, "Get Assoc Request"			},
+	{ 0x09, "Get Assoc Response"			},
+	{ 0x0a, "Create Physical Link Request"		},
+	{ 0x0b, "Create Physical Link Response"		},
+	{ 0x0c, "Disconnect Physical Link Request"	},
+	{ 0x0d, "Disconnect Physical Link Response"	},
+	{ },
+};
+
+static void amp_packet(const void *data, uint16_t size)
+{
+	uint16_t control, fcs, len;
+	uint8_t opcode, ident;
+	const struct amp_opcode_data *opcode_data = NULL;
+	const char *opcode_str;
+	int i;
+
+	if (size < 4) {
+		print_field("malformed information frame packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	control = bt_get_le16(data);
+	fcs = bt_get_le16(data + size - 2);
+
+	print_field("Channel: %d dlen %d control 0x%4.4x fcs 0x%4.4x",
+						3, size, control, fcs);
+
+	if (control & 0x01)
+		return;
+
+	if (size < 8) {
+		print_field("malformed manager packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	opcode = *((const uint8_t *) (data + 2));
+	ident = *((const uint8_t *) (data + 3));
+	len = bt_get_le16(data + 4);
+
+	if (len != size - 8) {
+		print_field("invalid manager packet size");
+		packet_hexdump(data +  2, size - 4);
+		return;
+	}
+
+	for (i = 0; amp_opcode_table[i].str; i++) {
+		if (amp_opcode_table[i].opcode == opcode) {
+			opcode_data = &amp_opcode_table[i];
+			break;
+		}
+	}
+
+	if (opcode_data)
+		opcode_str = opcode_data->str;
+	else
+		opcode_str = "Unknown";
+
+	print_field("AMP: %s (0x%2.2x) ident %d len %d",
+					opcode_str, opcode, ident, len);
+
+	packet_hexdump(data + 6, size - 8);
+}
+
 struct att_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -120,6 +202,9 @@ void l2cap_packet(const void *data, uint16_t size)
 	}
 
 	switch (btohs(hdr->cid)) {
+	case 0x0003:
+		amp_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		break;
 	case 0x0004:
 		att_packet(data +  sizeof(*hdr), size - sizeof(*hdr));
 		break;
