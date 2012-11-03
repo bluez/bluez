@@ -42,6 +42,7 @@
 
 #include "pager.h"
 #include "bt.h"
+#include "l2cap.h"
 #include "control.h"
 #include "packet.h"
 
@@ -1066,7 +1067,13 @@ struct monitor_new_index {
 
 #define MAX_INDEX 16
 
-static struct monitor_new_index index_list[MAX_INDEX];
+struct index_data {
+	bdaddr_t bdaddr;
+	void *frag_buf;
+	uint16_t frag_len;
+};
+
+static struct index_data index_list[MAX_INDEX];
 
 uint32_t packet_get_flags(uint16_t opcode)
 {
@@ -1135,16 +1142,20 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 	case MONITOR_NEW_INDEX:
 		ni = data;
 
-		if (index < MAX_INDEX)
-			memcpy(&index_list[index], ni, MONITOR_NEW_INDEX_SIZE);
+		if (index < MAX_INDEX) {
+			bacpy(&index_list[index].bdaddr, &ni->bdaddr);
+			index_list[index].frag_buf = NULL;
+			index_list[index].frag_len = 0;
+		}
 
 		ba2str(&ni->bdaddr, str);
 		packet_new_index(tv, index, str, ni->type, ni->bus, ni->name);
 		break;
 	case MONITOR_DEL_INDEX:
-		if (index < MAX_INDEX)
+		if (index < MAX_INDEX) {
 			ba2str(&index_list[index].bdaddr, str);
-		else
+			free(index_list[index].frag_buf);
+		} else
 			ba2str(BDADDR_ANY, str);
 
 		packet_del_index(tv, index, str);
@@ -3700,15 +3711,32 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 		return;
 	}
 
+	data += HCI_ACL_HDR_SIZE;
+	size -= HCI_ACL_HDR_SIZE;
+
+	if (size != dlen) {
+		print_text(COLOR_ERROR, "* Invalid ACL Data packet size\n");
+		return;
+	}
+
 	print_text(COLOR_HCI_ACLDATA, "%c ACL Data: handle %d",
 					in ? '>' : '<', acl_handle(handle));
 	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, dlen);
 
-	data += HCI_ACL_HDR_SIZE;
-	size -= HCI_ACL_HDR_SIZE;
-
 	if (filter_mask & PACKET_FILTER_SHOW_ACL_DATA)
 		packet_hexdump(data, size);
+
+	if (index > MAX_INDEX - 1)
+		return;
+
+	switch (flags) {
+	case 0x00:
+	case 0x02:
+		if (index_list[index].frag_len == 0)
+			l2cap_packet(data, size);
+		index_list[index].frag_len = 0;
+		break;
+	}
 }
 
 void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
@@ -3726,12 +3754,17 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 		return;
 	}
 
+	data += HCI_SCO_HDR_SIZE;
+	size -= HCI_SCO_HDR_SIZE;
+
+	if (size != hdr->dlen) {
+		print_text(COLOR_ERROR, "* Invalid SCO Data packet size\n");
+		return;
+	}
+
 	print_text(COLOR_HCI_SCODATA, "%c SCO Data: handle %d",
 					in ? '>' : '<', acl_handle(handle));
 	print_text(COLOR_OFF, " flags 0x%2.2x dlen %d\n", flags, hdr->dlen);
-
-	data += HCI_SCO_HDR_SIZE;
-	size -= HCI_SCO_HDR_SIZE;
 
 	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
 		packet_hexdump(data, size);

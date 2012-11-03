@@ -111,7 +111,6 @@ int main(int argc, char *argv[])
 
 	filter_mask |= PACKET_FILTER_SHOW_INDEX;
 	filter_mask |= PACKET_FILTER_SHOW_TIME;
-	filter_mask |= PACKET_FILTER_SHOW_ACL_DATA;
 
 	packet_set_filter(filter_mask);
 
