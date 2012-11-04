@@ -61,6 +61,7 @@
 
 #define COLOR_ERROR	"\x1B[1;31m"
 
+#define COLOR_INDEX_LABEL		COLOR_WHITE
 #define COLOR_TIMESTAMP			COLOR_YELLOW
 
 #define COLOR_NEW_INDEX			COLOR_GREEN
@@ -105,43 +106,51 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 					const char *text, const char *extra)
 {
 	int col = num_columns();
-	char line[272], ts_str[28];
-	int n, ts_len, len = 0, pos = 0;
+	char line[252], ts_str[48];
+	int n, ts_len = 0, ts_pos = 0, len = 0, pos = 0;
+
+	if (filter_mask & PACKET_FILTER_SHOW_INDEX) {
+		if (use_color()) {
+			n = sprintf(ts_str + ts_pos, "%s", COLOR_INDEX_LABEL);
+			if (n > 0)
+				ts_pos += n;
+		}
+
+		n = sprintf(ts_str + ts_pos, " [hci%d]", index);
+		if (n > 0) {
+			ts_pos += n;
+			ts_len += n;
+		}
+	}
 
 	if (tv) {
 		time_t t = tv->tv_sec;
 		struct tm tm;
-		int offset;
 
 		localtime_r(&t, &tm);
 
+		if (use_color()) {
+			n = sprintf(ts_str + ts_pos, "%s", COLOR_TIMESTAMP);
+			if (n > 0)
+				ts_pos += n;
+		}
+
 		if (filter_mask & PACKET_FILTER_SHOW_DATE) {
-			offset = sprintf(ts_str, " %04d-%02d-%02d",
+			n = sprintf(ts_str + ts_pos, " %04d-%02d-%02d",
 				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday);
-			if (offset < 0)
-				offset = 0;
-		} else
-			offset = 0;
+			if (n > 0) {
+				ts_pos += n;
+				ts_len += n;
+			}
+		}
 
-		if (filter_mask & PACKET_FILTER_SHOW_TIME)
-			sprintf(ts_str + offset, " %02d:%02d:%02d.%06lu",
+		if (filter_mask & PACKET_FILTER_SHOW_TIME) {
+			n = sprintf(ts_str + ts_pos, " %02d:%02d:%02d.%06lu",
 				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
-
-		ts_len = strlen(ts_str);
-	} else
-		ts_len = 0;
-
-	if (use_color()) {
-		n = sprintf(line + pos, "%s", COLOR_OFF);
-		if (n > 0)
-			pos += n;
-	}
-
-	if (filter_mask & PACKET_FILTER_SHOW_INDEX) {
-		n = sprintf(line + pos, "[hci%d] ", index);
-		if (n > 0) {
-			pos += n;
-			len += n;
+			if (n > 0) {
+				ts_pos += n;
+				ts_len += n;
+			}
 		}
 	}
 
@@ -200,7 +209,7 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 		printf("%s\n", line);
 }
 
-#define print_field(fmt, args...) printf("%-10c" fmt "\n", ' ', ## args)
+#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
 
 static const struct {
 	uint8_t error;
@@ -1087,7 +1096,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 			str[47] = ' ';
 			str[48] = ' ';
 			str[65] = '\0';
-			print_text(COLOR_WHITE, "%-10c%s\n", ' ', str);
+			print_text(COLOR_WHITE, "%-8c%s\n", ' ', str);
 			str[0] = ' ';
 		}
 	}
@@ -1103,16 +1112,13 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 		str[47] = ' ';
 		str[48] = ' ';
 		str[65] = '\0';
-		print_text(COLOR_WHITE, "%-10c%s\n", ' ', str);
+		print_text(COLOR_WHITE, "%-8c%s\n", ' ', str);
 	}
 }
 
 void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
-	if (filter_mask & PACKET_FILTER_SHOW_INDEX)
-		print_text(COLOR_WHITE, "{hci%d} ", index);
-
 	control_message(opcode, data, size);
 }
 
@@ -3804,7 +3810,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
 
 	print_packet(tv, index, in ? '>' : '<', COLOR_HCI_ACLDATA,
-					"ACL Data", handle_str, extra_str);
+				in ? "ACL Data RX" : "ACL Data TX",
+						handle_str, extra_str);
 
 	if (size != dlen) {
 		print_field("invalid packet size");
@@ -3853,7 +3860,8 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, hdr->dlen);
 
 	print_packet(tv, index, in ? '>' : '<', COLOR_HCI_SCODATA,
-					"SCO Data", handle_str, extra_str);
+				in ? "SCO Data RX" : "SCO Data TX",
+						handle_str, extra_str);
 
 	if (size != hdr->dlen) {
 		print_field("invalid packet size");

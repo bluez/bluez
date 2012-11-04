@@ -31,7 +31,7 @@
 #include "packet.h"
 #include "l2cap.h"
 
-#define print_field(fmt, args...) printf("%-10c" fmt "\n", ' ', ## args)
+#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
 
 struct sig_opcode_data {
 	uint8_t opcode;
