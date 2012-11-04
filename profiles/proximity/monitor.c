@@ -652,6 +652,8 @@ int monitor_register(struct btd_device *device,
 							attio_disconnected_cb,
 							monitor);
 
+	device_set_auto_connect(device, TRUE);
+
 	return 0;
 }
 
