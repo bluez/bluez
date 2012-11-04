@@ -188,7 +188,7 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 		printf("%s\n", line);
 }
 
-#define print_field(fmt, args...) printf("%-12c" fmt "\n", ' ', ## args)
+#define print_field(fmt, args...) printf("%-10c" fmt "\n", ' ', ## args)
 
 static const struct {
 	uint8_t error;
@@ -1075,7 +1075,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 			str[47] = ' ';
 			str[48] = ' ';
 			str[65] = '\0';
-			print_text(COLOR_WHITE, "%-12c%s\n", ' ', str);
+			print_text(COLOR_WHITE, "%-10c%s\n", ' ', str);
 			str[0] = ' ';
 		}
 	}
@@ -1091,7 +1091,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 		str[47] = ' ';
 		str[48] = ' ';
 		str[65] = '\0';
-		print_text(COLOR_WHITE, "%-12c%s\n", ' ', str);
+		print_text(COLOR_WHITE, "%-10c%s\n", ' ', str);
 	}
 }
 
