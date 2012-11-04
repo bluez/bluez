@@ -270,6 +270,17 @@ struct bt_hci_cmd_io_capability_request_neg_reply {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_DISCONN_PHY_LINK		0x0437
+struct bt_hci_cmd_disconn_phy_link {
+	uint8_t  phy_handle;
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_DISCONN_LOGIC_LINK		0x043a
+struct bt_hci_cmd_disconn_logic_link {
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_HOLD_MODE			0x0801
 struct bt_hci_cmd_hold_mode {
 	uint16_t handle;
@@ -662,6 +673,16 @@ struct bt_hci_rsp_read_data_block_size {
 	uint16_t num_blocks;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_ENCRYPT_KEY_SIZE	0x1408
+struct bt_hci_cmd_read_encrypt_key_size {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_encrypt_key_size {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  key_size;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LOCAL_AMP_INFO		0x1409
 struct bt_hci_rsp_read_local_amp_info {
 	uint8_t  status;
@@ -672,9 +693,34 @@ struct bt_hci_rsp_read_local_amp_info {
 	uint32_t max_pdu;
 	uint8_t  amp_type;
 	uint16_t pal_cap;
-	uint16_t max_assoc_size;
+	uint16_t max_assoc_len;
 	uint32_t max_flush_to;
 	uint32_t be_flush_to;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_LOCAL_AMP_ASSOC		0x140a
+struct bt_hci_cmd_read_local_amp_assoc {
+	uint8_t  phy_handle;
+	uint16_t len_so_far;
+	uint16_t max_assoc_len;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_local_amp_assoc {
+	uint8_t  status;
+	uint8_t  phy_handle;
+	uint16_t remain_assoc_len;
+	uint8_t  assoc_fragement[248];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_REMOTE_AMP_ASSOC	0x140b
+struct bt_hci_cmd_write_remote_amp_assoc {
+	uint8_t  phy_handle;
+	uint16_t len_so_far;
+	uint16_t remain_assoc_len;
+	uint8_t  assoc_fragement[248];
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_remote_amp_assoc {
+	uint8_t  status;
+	uint8_t  phy_handle;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_SET_EVENT_MASK		0x2001
@@ -1144,6 +1190,50 @@ struct bt_hci_evt_keypress_notify {
 struct bt_hci_evt_remote_host_features_notify {
 	uint8_t  bdaddr[6];
 	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_META_EVENT		0x3e
+
+#define BT_HCI_EVT_PHY_LINK_COMPLETE		0x40
+struct bt_hci_evt_phy_link_complete {
+	uint8_t  status;
+	uint8_t  phy_handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_CHANNEL_SELECTED		0x412
+struct bt_hci_evt_channel_selected {
+	uint8_t  phy_handle;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_DISCONN_PHY_LINK_COMPLETE	0x42
+struct bt_hci_evt_disconn_phy_link_complete {
+	uint8_t  status;
+	uint8_t  phy_handle;
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LOGIC_LINK_COMPLETE		0x45
+struct bt_hci_evt_logic_link_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  phy_handle;
+	uint8_t  flow_spec;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_DISCONN_LOGIC_LINK_COMPLETE	0x46
+struct bt_hci_evt_disconn_logic_link_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_NUM_COMPLETED_DATA_BLOCKS	0x48
+struct bt_hci_evt_num_completed_data_blocks {
+	uint16_t total_num_blocks;
+	uint8_t  num_handles;
+	uint16_t handle;
+	uint16_t num_packets;
+	uint16_t num_blocks;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_CONN_COMPLETE		0x01

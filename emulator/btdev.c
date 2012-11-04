@@ -1057,7 +1057,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		rlai.max_pdu = cpu_to_le32(672);
 		rlai.amp_type = 0x01;		/* 802.11 AMP Controller */
 		rlai.pal_cap = cpu_to_le16(0x0000);
-		rlai.max_assoc_size = cpu_to_le16(512);
+		rlai.max_assoc_len = cpu_to_le16(672);
 		rlai.max_flush_to = cpu_to_le32(0xffffffff);
 		rlai.be_flush_to = cpu_to_le32(0xffffffff);
 		cmd_complete(btdev, opcode, &rlai, sizeof(rlai));

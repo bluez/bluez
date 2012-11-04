@@ -418,6 +418,11 @@ static void print_handle(uint16_t handle)
 	print_field("Handle: %d", btohs(handle));
 }
 
+static void print_phy_handle(uint8_t phy_handle)
+{
+	print_field("Physical handle: %d", phy_handle);
+}
+
 static void print_pkt_type(uint16_t pkt_type)
 {
 	print_field("Packet type: 0x%4.4x", btohs(pkt_type));
@@ -746,6 +751,11 @@ static void print_key_type(uint8_t key_type)
 	}
 
 	print_field("Key type: %s (0x%2.2x)", str, key_type);
+}
+
+static void print_key_size(uint8_t key_size)
+{
+	print_field("Key size: %d", key_size);
 }
 
 static void print_key(const char *label, const uint8_t *link_key)
@@ -1638,6 +1648,21 @@ static void io_capability_request_neg_reply_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
+static void disconn_phy_link_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_disconn_phy_link *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_reason(cmd->reason);
+}
+
+static void disconn_logic_link_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_disconn_logic_link *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
 static void hold_mode_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_hold_mode *cmd = data;
@@ -2175,6 +2200,122 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", btohs(rsp->num_blocks));
 }
 
+static void read_encrypt_key_size_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_encrypt_key_size *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_encrypt_key_size_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_encrypt_key_size *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_key_size(rsp->key_size);
+}
+
+static void read_local_amp_info_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_amp_info *rsp = data;
+	const char *str;
+
+	print_status(rsp->status);
+
+	switch (rsp->amp_status) {
+	case 0x00:
+		str = "Present";
+		break;
+	case 0x01:
+		str = "Bluetooth only";
+		break;
+	case 0x02:
+		str = "No capacity";
+		break;
+	case 0x03:
+		str = "Low capacity";
+		break;
+	case 0x04:
+		str = "Medium capacity";
+		break;
+	case 0x05:
+		str = "High capacity";
+		break;
+	case 0x06:
+		str = "Full capacity";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("AMP status: %s (0x%2.2x)", str, rsp->amp_status);
+
+	print_field("Total bandwidth: %d kbps", btohl(rsp->total_bw));
+	print_field("Max guaranteed bandwidth: %d kbps", btohl(rsp->max_bw));
+	print_field("Min latency: %d", btohl(rsp->min_latency));
+	print_field("Max PDU size: %d", btohl(rsp->max_pdu));
+
+	switch (rsp->amp_type) {
+	case 0x00:
+		str = "Primary BR/EDR Controller";
+		break;
+	case 0x01:
+		str = "802.11 AMP Controller";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Controller type: %s (0x%2.2x)", str, rsp->amp_type);
+
+	print_field("PAL capabilities: 0x%4.4x", rsp->pal_cap);
+	print_field("Max ASSOC length: %d", rsp->max_assoc_len);
+	print_field("Max flush timeout: %d", rsp->max_flush_to);
+	print_field("Best effort flush timeout: %d", rsp->be_flush_to);
+}
+
+static void read_local_amp_assoc_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_local_amp_assoc *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_field("Length so far: %d", btohs(cmd->len_so_far));
+	print_field("Max ASSOC length: %d", btohs(cmd->max_assoc_len));
+}
+
+static void read_local_amp_assoc_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_amp_assoc *rsp = data;
+
+	print_status(rsp->status);
+	print_phy_handle(rsp->phy_handle);
+	print_field("Remaining ASSOC length: %d", btohs(rsp->remain_assoc_len));
+
+	packet_hexdump(data + 4, size - 4);
+}
+
+static void write_remote_amp_assoc_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_remote_amp_assoc *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_field("Length so far: %d", btohs(cmd->len_so_far));
+	print_field("Remaining ASSOC length: %d", btohs(cmd->remain_assoc_len));
+
+	packet_hexdump(data + 5, size - 5);
+}
+
+static void write_remote_amp_assoc_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_remote_amp_assoc *rsp = data;
+
+	print_status(rsp->status);
+	print_phy_handle(rsp->phy_handle);
+}
+
 static void le_set_event_mask_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_event_mask *cmd = data;
@@ -2502,10 +2643,12 @@ static const struct opcode_data opcode_table[] = {
 				status_bdaddr_rsp, 7, true },
 	{ 0x0435, "Create Physical Link"		},
 	{ 0x0436, "Accept Physical Link"		},
-	{ 0x0437, "Disconnect Physical Link"		},
+	{ 0x0437, "Disconnect Physical Link",
+				disconn_phy_link_cmd, 2, true },
 	{ 0x0438, "Create Logical Link"			},
 	{ 0x0439, "Accept Logical Link"			},
-	{ 0x043a, "Disconnect Logical Link"		},
+	{ 0x043a, "Disconnect Logical Link",
+				disconn_logic_link_cmd, 2, true },
 	{ 0x043b, "Logical Link Cancel"			},
 	{ 0x043c, "Flow Specifcation Modify"		},
 
@@ -2749,10 +2892,18 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1405, "Read RSSI"				},
 	{ 0x1406, "Read AFH Channel Map"		},
 	{ 0x1407, "Read Clock"				},
-	{ 0x1408, "Read Encryption Key Size"		},
-	{ 0x1409, "Read Local AMP Info"			},
-	{ 0x140a, "Read Local AMP ASSOC"		},
-	{ 0x140b, "Write Remote AMP ASSOC"		},
+	{ 0x1408, "Read Encryption Key Size",
+				read_encrypt_key_size_cmd, 2, true,
+				read_encrypt_key_size_rsp, 4, true },
+	{ 0x1409, "Read Local AMP Info",
+				null_cmd, 0, true,
+				read_local_amp_info_rsp, 31, true },
+	{ 0x140a, "Read Local AMP ASSOC",
+				read_local_amp_assoc_cmd, 5, true,
+				read_local_amp_assoc_rsp, 5, false },
+	{ 0x140b, "Write Remote AMP ASSOC",
+				write_remote_amp_assoc_cmd, 6, false,
+				write_remote_amp_assoc_rsp, 2, true },
 
 	/* OGF 8 - LE Control */
 	{ 0x2001, "LE Set Event Mask",
@@ -3377,6 +3528,63 @@ static void remote_host_features_notify_evt(const void *data, uint8_t size)
 	print_features(evt->features);
 }
 
+static void phy_link_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_phy_link_complete *evt = data;
+
+	print_status(evt->status);
+	print_phy_handle(evt->phy_handle);
+}
+
+static void channel_selected_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_channel_selected *evt = data;
+
+	print_phy_handle(evt->phy_handle);
+}
+
+static void disconn_phy_link_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_disconn_phy_link_complete *evt = data;
+
+	print_status(evt->status);
+	print_phy_handle(evt->phy_handle);
+	print_reason(evt->reason);
+}
+
+static void logic_link_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_logic_link_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_phy_handle(evt->phy_handle);
+	print_field("TX flow spec: 0x%2.2x", evt->flow_spec);
+}
+
+static void disconn_logic_link_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_disconn_logic_link_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_reason(evt->reason);
+}
+
+static void num_completed_data_blocks_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_num_completed_data_blocks *evt = data;
+
+	print_field("Total num data blocks: %d", btohs(evt->total_num_blocks));
+	print_field("Num handles: %d", evt->num_handles);
+	print_handle(evt->handle);
+	print_field("Num packets: %d", evt->num_packets);
+	print_field("Num blocks: %d", evt->num_blocks);
+
+	if (size > sizeof(*evt))
+		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+}
+
 static void le_conn_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_conn_complete *evt = data;
@@ -3651,15 +3859,21 @@ static const struct event_data event_table[] = {
 	{ 0x3e, "LE Meta Event",
 				le_meta_event_evt, 1, false },
 	/* reserved event */
-	{ 0x40, "Physical Link Complete"		},
-	{ 0x41, "Channel Selected"			},
-	{ 0x42, "Disconn Physical Link Complete"	},
+	{ 0x40, "Physical Link Complete",
+				phy_link_complete_evt, 2, true },
+	{ 0x41, "Channel Selected",
+				channel_selected_evt, 1, true },
+	{ 0x42, "Disconnect Physical Link Complete",
+				disconn_phy_link_complete_evt, 3, true },
 	{ 0x43, "Physical Link Loss Early Warning"	},
 	{ 0x44, "Physical Link Recovery"		},
-	{ 0x45, "Logical Link Complete"			},
-	{ 0x46, "Disconn Logical Link Complete"		},
+	{ 0x45, "Logical Link Complete",
+				logic_link_complete_evt, 5, true },
+	{ 0x46, "Disconnect Logical Link Complete",
+				disconn_logic_link_complete_evt, 4, true },
 	{ 0x47, "Flow Spec Modify Complete"		},
-	{ 0x48, "Number Of Completed Data Blocks"	},
+	{ 0x48, "Number Of Completed Data Blocks",
+				num_completed_data_blocks_evt, 3, false },
 	{ 0x49, "AMP Start Test"			},
 	{ 0x4a, "AMP Test End"				},
 	{ 0x4b, "AMP Receiver Report"			},
