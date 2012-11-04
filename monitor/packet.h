@@ -29,8 +29,9 @@
 #define PACKET_FILTER_SHOW_INDEX	(1 << 0)
 #define PACKET_FILTER_SHOW_DATE		(1 << 1)
 #define PACKET_FILTER_SHOW_TIME		(1 << 2)
-#define PACKET_FILTER_SHOW_ACL_DATA	(1 << 3)
-#define PACKET_FILTER_SHOW_SCO_DATA	(1 << 4)
+#define PACKET_FILTER_SHOW_TIME_OFFSET	(1 << 3)
+#define PACKET_FILTER_SHOW_ACL_DATA	(1 << 4)
+#define PACKET_FILTER_SHOW_SCO_DATA	(1 << 5)
 
 void packet_set_filter(unsigned long filter);
 void packet_add_filter(unsigned long filter);

@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	filter_mask |= PACKET_FILTER_SHOW_TIME;
+	filter_mask |= PACKET_FILTER_SHOW_TIME_OFFSET;
 
 	packet_set_filter(filter_mask);
 

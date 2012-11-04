@@ -82,6 +82,7 @@
 		use_color() ? COLOR_OFF : ""); \
 } while (0);
 
+static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
 
 void packet_set_filter(unsigned long filter)
@@ -147,6 +148,15 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 		if (filter_mask & PACKET_FILTER_SHOW_TIME) {
 			n = sprintf(ts_str + ts_pos, " %02d:%02d:%02d.%06lu",
 				tm.tm_hour, tm.tm_min, tm.tm_sec, tv->tv_usec);
+			if (n > 0) {
+				ts_pos += n;
+				ts_len += n;
+			}
+		}
+
+		if (filter_mask & PACKET_FILTER_SHOW_TIME_OFFSET) {
+			n = sprintf(ts_str + ts_pos, " %lu.%06lu",
+					tv->tv_sec - time_offset, tv->tv_usec);
 			if (n > 0) {
 				ts_pos += n;
 				ts_len += n;
@@ -1220,6 +1230,9 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 {
 	const struct monitor_new_index *ni;
 	char str[18], extra_str[24];
+
+	if (tv && time_offset == ((time_t) -1))
+		time_offset = tv->tv_sec;
 
 	switch (opcode) {
 	case MONITOR_NEW_INDEX:
