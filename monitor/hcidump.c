@@ -62,7 +62,7 @@ static int open_hci_dev(uint16_t index)
 	struct hci_filter flt;
 	int fd, opt = 1;
 
-	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	fd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (fd < 0) {
 		perror("Failed to open channel");
 		return -1;
@@ -263,7 +263,7 @@ static int open_stack_internal(void)
 	struct hci_filter flt;
 	int fd, opt = 1;
 
-	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	fd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (fd < 0) {
 		perror("Failed to open channel");
 		return -1;

@@ -85,7 +85,7 @@ void btsnoop_create(const char *path)
 	if (btsnoop_fd >= 0)
 		return;
 
-	btsnoop_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC,
+	btsnoop_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (btsnoop_fd < 0)
 		return;
@@ -168,7 +168,7 @@ int btsnoop_open(const char *path)
 		return -1;
 	}
 
-	btsnoop_fd = open(path, O_RDONLY);
+	btsnoop_fd = open(path, O_RDONLY | O_CLOEXEC);
 	if (btsnoop_fd < 0) {
 		perror("Failed to open file");
 		return -1;

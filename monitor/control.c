@@ -601,7 +601,7 @@ static int open_socket(uint16_t channel)
 	struct sockaddr_hci addr;
 	int fd, opt = 1;
 
-	fd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	fd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (fd < 0) {
 		perror("Failed to open channel");
 		return -1;
@@ -739,7 +739,7 @@ void control_server(const char *path)
 
 	unlink(path);
 
-	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	fd = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		perror("Failed to open server socket");
 		return;
