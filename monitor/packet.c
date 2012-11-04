@@ -84,6 +84,8 @@
 
 static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
+static bool index_filter = false;
+static uint16_t index_number = 0;
 
 void packet_set_filter(unsigned long filter)
 {
@@ -92,12 +94,23 @@ void packet_set_filter(unsigned long filter)
 
 void packet_add_filter(unsigned long filter)
 {
+	if (index_filter)
+		filter &= ~PACKET_FILTER_SHOW_INDEX;
+
 	filter_mask |= filter;
 }
 
 void packet_del_filter(unsigned long filter)
 {
 	filter_mask &= ~filter;
+}
+
+void packet_select_index(uint16_t index)
+{
+	filter_mask &= ~PACKET_FILTER_SHOW_INDEX;
+
+	index_filter = true;
+	index_number = index;
 }
 
 #define print_space(x) printf("%*c", (x), ' ');
@@ -1135,6 +1148,9 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
+	if (index_filter && index_number != index)
+		return;
+
 	control_message(opcode, data, size);
 }
 
@@ -1230,6 +1246,9 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 {
 	const struct monitor_new_index *ni;
 	char str[18], extra_str[24];
+
+	if (index_filter && index_number != index)
+		return;
 
 	if (tv && time_offset == ((time_t) -1))
 		time_offset = tv->tv_sec;

@@ -27,7 +27,9 @@
 #endif
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
 #include <getopt.h>
 
 #include "mainloop.h"
@@ -55,6 +57,7 @@ static void usage(void)
 		"\t-r, --read <file>      Read traces in btsnoop format\n"
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
 		"\t-s, --server <socket>  Start monitor server socket\n"
+		"\t-i, --index <num>      Show only specified controller\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
 		"\t-h, --help             Show help options\n");
@@ -62,8 +65,9 @@ static void usage(void)
 
 static const struct option main_options[] = {
 	{ "read",    required_argument, NULL, 'r' },
-	{ "write",   required_argument, NULL, 'b' },
-	{ "server",  required_argument, NULL, 'r' },
+	{ "write",   required_argument, NULL, 'w' },
+	{ "server",  required_argument, NULL, 's' },
+	{ "index",   required_argument, NULL, 'i' },
 	{ "time",    no_argument,       NULL, 't' },
 	{ "date",    no_argument,       NULL, 'T' },
 	{ "version", no_argument,       NULL, 'v' },
@@ -74,7 +78,7 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
-	const char *reader_path = NULL;
+	const char *str, *reader_path = NULL;
 	sigset_t mask;
 
 	mainloop_init();
@@ -84,7 +88,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:s:tTvh",
+		opt = getopt_long(argc, argv, "r:w:s:i:tTvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -98,6 +102,17 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			control_server(optarg);
+			break;
+		case 'i':
+			if (strlen(optarg) > 3 && !strncmp(optarg, "hci", 3))
+				str = optarg + 3;
+			else
+				str = optarg;
+			if (!isdigit(*str)) {
+				usage();
+				return EXIT_FAILURE;
+			}
+			packet_select_index(atoi(str));
 			break;
 		case 't':
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
