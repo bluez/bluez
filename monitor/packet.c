@@ -158,7 +158,19 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 	}
 
 	if (text) {
-		n = sprintf(line + pos, ": %s", text);
+		int extra_len = extra ? strlen(extra) : 0;
+		int max_len = col - len - extra_len - ts_len - 3;
+
+		n = snprintf(line + pos, max_len + 1, ": %s", text);
+		if (n > max_len) {
+			line[pos + max_len - 1] = '.';
+			line[pos + max_len - 2] = '.';
+			if (line[pos + max_len - 3] == ' ')
+				line[pos + max_len - 3] = '.';
+
+			n = max_len;
+		}
+
 		if (n > 0) {
 			pos += n;
 			len += n;
