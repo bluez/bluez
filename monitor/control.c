@@ -45,10 +45,12 @@
 #include "btsnoop.h"
 #include "control.h"
 
+#define MAX_PACKET_SIZE		(1486 + 4)
+
 struct control_data {
 	uint16_t channel;
 	int fd;
-	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	unsigned char buf[MAX_PACKET_SIZE];
 	uint16_t offset;
 };
 
@@ -772,7 +774,7 @@ void control_server(const char *path)
 
 void control_reader(const char *path)
 {
-	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	unsigned char buf[MAX_PACKET_SIZE];
 	uint16_t index, opcode, pktlen;
 	struct timeval tv;
 

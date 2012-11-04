@@ -3833,7 +3833,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 						handle_str, extra_str);
 
 	if (size != dlen) {
-		print_field("invalid packet size");
+		print_field("invalid packet size (%d != %d)", size, dlen);
+		packet_hexdump(data, size);
 		return;
 	}
 
@@ -3883,7 +3884,8 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 						handle_str, extra_str);
 
 	if (size != hdr->dlen) {
-		print_field("invalid packet size");
+		print_field("invalid packet size (%d != %d)", size, hdr->dlen);
+		packet_hexdump(data, size);
 		return;
 	}
 

@@ -108,7 +108,7 @@ static int open_hci_dev(uint16_t index)
 static void device_callback(int fd, uint32_t events, void *user_data)
 {
 	struct hcidump_data *data = user_data;
-	unsigned char buf[HCI_MAX_FRAME_SIZE];
+	unsigned char buf[HCI_MAX_FRAME_SIZE * 2];
 	unsigned char control[64];
 	struct msghdr msg;
 	struct iovec iov;
