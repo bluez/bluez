@@ -107,7 +107,7 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 					const char *text, const char *extra)
 {
 	int col = num_columns();
-	char line[252], ts_str[48];
+	char line[256], ts_str[64];
 	int n, ts_len = 0, ts_pos = 0, len = 0, pos = 0;
 
 	if (filter_mask & PACKET_FILTER_SHOW_INDEX) {

@@ -55,6 +55,8 @@ static void usage(void)
 		"\t-r, --read <file>      Read traces in btsnoop format\n"
 		"\t-w, --write <file>     Save traces in btsnoop format\n"
 		"\t-s, --server <socket>  Start monitor server socket\n"
+		"\t-t, --time             Show time instead of time offset\n"
+		"\t-T, --date             Show time and date information\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -62,6 +64,8 @@ static const struct option main_options[] = {
 	{ "read",    required_argument, NULL, 'r' },
 	{ "write",   required_argument, NULL, 'b' },
 	{ "server",  required_argument, NULL, 'r' },
+	{ "time",    no_argument,       NULL, 't' },
+	{ "date",    no_argument,       NULL, 'T' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -75,10 +79,13 @@ int main(int argc, char *argv[])
 
 	mainloop_init();
 
+	filter_mask |= PACKET_FILTER_SHOW_TIME_OFFSET;
+
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:s:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "r:w:s:tTvh",
+						main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -91,6 +98,15 @@ int main(int argc, char *argv[])
 			break;
 		case 's':
 			control_server(optarg);
+			break;
+		case 't':
+			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
+			filter_mask |= PACKET_FILTER_SHOW_TIME;
+			break;
+		case 'T':
+			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
+			filter_mask |= PACKET_FILTER_SHOW_TIME;
+			filter_mask |= PACKET_FILTER_SHOW_DATE;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -109,11 +125,9 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
-	filter_mask |= PACKET_FILTER_SHOW_TIME_OFFSET;
+	printf("Bluetooth monitor ver %s\n", VERSION);
 
 	packet_set_filter(filter_mask);
-
-	printf("Bluetooth monitor ver %s\n", VERSION);
 
 	if (reader_path) {
 		control_reader(reader_path);
