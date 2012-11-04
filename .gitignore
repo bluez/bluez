@@ -81,6 +81,7 @@ test/mpris-player
 test/sap_client.pyc
 unit/test-eir
 tools/btmgmt
+tools/btsnoop
 monitor/btmon
 emulator/btvirt
 emulator/b1ee

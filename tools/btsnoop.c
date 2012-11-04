@@ -1,0 +1,349 @@
+/*
+ *
+ *  BlueZ - Bluetooth protocol stack for Linux
+ *
+ *  Copyright (C) 2011-2012  Intel Corporation
+ *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <string.h>
+#include <getopt.h>
+#include <arpa/inet.h>
+
+#define MONITOR_NEW_INDEX	0
+#define MONITOR_DEL_INDEX	1
+#define MONITOR_COMMAND_PKT	2
+#define MONITOR_EVENT_PKT	3
+#define MONITOR_ACL_TX_PKT	4
+#define MONITOR_ACL_RX_PKT	5
+#define MONITOR_SCO_TX_PKT	6
+#define MONITOR_SCO_RX_PKT	7
+
+static inline uint64_t ntoh64(uint64_t n)
+{
+	uint64_t h;
+	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
+
+	h = ntohl(n >> 32);
+	h |= tmp << 32;
+
+	return h;
+}
+
+#define hton64(x)     ntoh64(x)
+
+struct btsnoop_hdr {
+	uint8_t		id[8];		/* Identification Pattern */
+	uint32_t	version;	/* Version Number = 1 */
+	uint32_t	type;		/* Datalink Type */
+} __attribute__ ((packed));
+#define BTSNOOP_HDR_SIZE (sizeof(struct btsnoop_hdr))
+
+struct btsnoop_pkt {
+	uint32_t	size;		/* Original Length */
+	uint32_t	len;		/* Included Length */
+	uint32_t	flags;		/* Packet Flags */
+	uint32_t	drops;		/* Cumulative Drops */
+	uint64_t	ts;		/* Timestamp microseconds */
+	uint8_t		data[0];	/* Packet Data */
+} __attribute__ ((packed));
+#define BTSNOOP_PKT_SIZE (sizeof(struct btsnoop_pkt))
+
+static const uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e,
+				      0x6f, 0x6f, 0x70, 0x00 };
+
+static const uint32_t btsnoop_version = 1;
+
+static int btsnoop_create(const char *path)
+{
+	struct btsnoop_hdr hdr;
+	ssize_t written;
+	int fd;
+
+	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
+				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0) {
+		perror("failed to output file");
+		return -1;
+	}
+
+	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
+	hdr.version = htonl(btsnoop_version);
+	hdr.type = htonl(2001);
+
+	written = write(fd, &hdr, BTSNOOP_HDR_SIZE);
+	if (written < 0) {
+		perror("failed to write output header");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+static int btsnoop_open(const char *path)
+{
+	struct btsnoop_hdr hdr;
+	ssize_t len;
+	int fd;
+
+	fd = open(path, O_RDONLY | O_CLOEXEC);
+	if (fd < 0) {
+		perror("failed to open input file");
+		return -1;
+	}
+
+	len = read(fd, &hdr, BTSNOOP_HDR_SIZE);
+	if (len < 0 || len != BTSNOOP_HDR_SIZE) {
+		perror("failed to read input header");
+		close(fd);
+		return -1;
+	}
+
+	if (memcmp(hdr.id, btsnoop_id, sizeof(btsnoop_id))) {
+		fprintf(stderr, "not a valid btsnoop header\n");
+		close(fd);
+		return -1;
+	}
+
+	if (ntohl(hdr.version) != btsnoop_version) {
+		fprintf(stderr, "invalid btsnoop version\n");
+		close(fd);
+		return -1;
+	}
+
+	if (ntohl(hdr.type) != 1002) {
+		fprintf(stderr, "unsupported link data type\n");
+		close(fd);
+		return -1;
+	}
+
+	return fd;
+}
+
+#define MAX_MERGE 8
+
+static void command_merge(const char *output, int argc, char *argv[])
+{
+	struct btsnoop_pkt input_pkt[MAX_MERGE];
+	unsigned char buf[2048];
+	int output_fd, input_fd[MAX_MERGE], num_input = 0;
+	int i, select_input;
+	ssize_t len, written;
+	uint32_t toread, flags;
+	uint16_t index, opcode;
+
+	if (argc > MAX_MERGE) {
+		fprintf(stderr, "only up to %d files allowed\n", MAX_MERGE);
+		return;
+	}
+
+	for (i = 0; i < argc; i++) {
+		int fd;
+
+		fd = btsnoop_open(argv[i]);
+		if (fd < 0)
+			break;
+
+		input_fd[num_input++] = fd;
+	}
+
+	if (num_input != argc) {
+		fprintf(stderr, "failed to open all input files\n");
+		goto close_input;
+	}
+
+	output_fd = btsnoop_create(output);
+	if (output_fd < 0)
+		goto close_input;
+
+	for (i = 0; i < num_input; i++) {
+		len = read(input_fd[i], &input_pkt[i], BTSNOOP_PKT_SIZE);
+		if (len < 0 || len != BTSNOOP_PKT_SIZE) {
+			close(input_fd[i]);
+			input_fd[i] = -1;
+		}
+	}
+
+next_packet:
+	select_input = -1;
+
+	for (i = 0; i < num_input; i++) {
+		uint64_t ts;
+
+		if (input_fd[i] < 0)
+			continue;
+
+		if (select_input < 0) {
+			select_input = i;
+			continue;
+		}
+
+		ts = ntoh64(input_pkt[i].ts);
+
+		if (ts < ntoh64(input_pkt[select_input].ts))
+			select_input = i;
+	}
+
+	if (select_input < 0)
+		goto close_output;
+
+	toread = ntohl(input_pkt[select_input].size);
+	flags = ntohl(input_pkt[select_input].flags);
+
+	len = read(input_fd[select_input], buf, toread);
+	if (len < 0 || len != toread) {
+		close(input_fd[select_input]);
+		input_fd[select_input] = -1;
+		goto next_packet;
+	}
+
+	written = input_pkt[select_input].size = htonl(toread - 1);
+	written = input_pkt[select_input].len = htonl(toread - 1);
+
+	switch (buf[0]) {
+	case 0x01:
+		opcode = MONITOR_COMMAND_PKT;
+		break;
+	case 0x02:
+		if (flags & 0x01)
+			opcode = MONITOR_ACL_RX_PKT;
+		else
+			opcode = MONITOR_ACL_TX_PKT;
+		break;
+	case 0x03:
+		if (flags & 0x01)
+			opcode = MONITOR_SCO_RX_PKT;
+		else
+			opcode = MONITOR_ACL_TX_PKT;
+		break;
+	case 0x04:
+		opcode = MONITOR_EVENT_PKT;
+		break;
+	default:
+		goto skip_write;
+	}
+
+	index = select_input;
+	input_pkt[select_input].flags = htonl((index << 16) | opcode);
+
+	written = write(output_fd, &input_pkt[select_input], BTSNOOP_PKT_SIZE);
+	if (written != BTSNOOP_PKT_SIZE) {
+		fprintf(stderr, "write of packet header failed\n");
+		goto close_output;
+	}
+
+	written = write(output_fd, buf + 1, toread - 1);
+	if (written != toread - 1) {
+		fprintf(stderr, "write of packet data failed\n");
+		goto close_output;
+	}
+
+skip_write:
+	len = read(input_fd[select_input],
+				&input_pkt[select_input], BTSNOOP_PKT_SIZE);
+	if (len < 0 || len != BTSNOOP_PKT_SIZE) {
+		close(input_fd[select_input]);
+		input_fd[select_input] = -1;
+	}
+
+	goto next_packet;
+
+close_output:
+	close(output_fd);
+
+close_input:
+	for (i = 0; i < num_input; i++)
+		close(input_fd[i]);
+}
+
+static void usage(void)
+{
+	printf("btsnoop trace file handling tool\n"
+		"Usage:\n");
+	printf("\tbtsnoop <command> [files]\n");
+	printf("commands:\n"
+		"\t-m, --merge <output>   Merge multiple btsnoop files\n"
+		"\t-h, --help             Show help options\n");
+}
+
+static const struct option main_options[] = {
+	{ "merge",   required_argument, NULL, 'm' },
+	{ "version", no_argument,       NULL, 'v' },
+	{ "help",    no_argument,       NULL, 'h' },
+	{ }
+};
+
+enum { INVALID, MERGE };
+
+int main(int argc, char *argv[])
+{
+	const char *output_path = NULL;
+	unsigned short command = INVALID;
+
+	for (;;) {
+		int opt;
+
+		opt = getopt_long(argc, argv, "m:vh", main_options, NULL);
+		if (opt < 0)
+			break;
+
+		switch (opt) {
+		case 'm':
+			command = MERGE;
+			output_path = optarg;
+			break;
+		case 'v':
+			printf("%s\n", VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+			usage();
+			return EXIT_SUCCESS;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
+
+	switch (command) {
+	case MERGE:
+		if (argc - optind < 1) {
+			fprintf(stderr, "input files required\n");
+			return EXIT_FAILURE;
+		}
+
+		command_merge(output_path, argc - optind, argv + optind);
+		break;
+
+	default:
+		usage();
+		return EXIT_FAILURE;
+	}
+
+	return EXIT_SUCCESS;
+}
