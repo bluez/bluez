@@ -98,6 +98,16 @@ void packet_set_filter(unsigned long filter)
 	filter_mask = filter;
 }
 
+void packet_add_filter(unsigned long filter)
+{
+	filter_mask |= filter;
+}
+
+void packet_del_filter(unsigned long filter)
+{
+	filter_mask &= ~filter;
+}
+
 static void print_channel_header(struct timeval *tv, uint16_t index,
 							uint16_t channel)
 {

@@ -33,6 +33,8 @@
 #define PACKET_FILTER_SHOW_SCO_DATA	(1 << 4)
 
 void packet_set_filter(unsigned long filter);
+void packet_add_filter(unsigned long filter);
+void packet_del_filter(unsigned long filter);
 
 void packet_hexdump(const unsigned char *buf, uint16_t len);
 

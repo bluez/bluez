@@ -795,6 +795,8 @@ void control_reader(const char *path)
 
 int control_tracing(void)
 {
+	packet_add_filter(PACKET_FILTER_SHOW_INDEX);
+
 	if (server_fd >= 0)
 		return 0;
 

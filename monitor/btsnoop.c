@@ -198,6 +198,17 @@ int btsnoop_open(const char *path)
 
 	btsnoop_type = ntohl(hdr.type);
 
+	switch (btsnoop_type) {
+	case 1001:
+	case 1002:
+		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
+		break;
+
+	case 2001:
+		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
+		break;
+	}
+
 	return 0;
 }
 
