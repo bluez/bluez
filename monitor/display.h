@@ -24,6 +24,8 @@
 
 #include <stdbool.h>
 
-void pager_open(void);
-void pager_close(void);
-bool pager_have(void);
+bool use_color(void);
+int num_columns(void);
+
+void open_pager(void);
+void close_pager(void);

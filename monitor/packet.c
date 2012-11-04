@@ -40,7 +40,7 @@
 #include <bluetooth/hci.h>
 #include <bluetooth/hci_lib.h>
 
-#include "pager.h"
+#include "display.h"
 #include "bt.h"
 #include "l2cap.h"
 #include "control.h"
@@ -74,16 +74,6 @@
 
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
-
-static bool use_color(void)
-{
-	static int cached_use_color = -1;
-
-	if (__builtin_expect(!!(cached_use_color < 0), 0))
-		cached_use_color = isatty(STDOUT_FILENO) > 0 || pager_have();
-
-	return cached_use_color;
-}
 
 #define print_text(color, fmt, args...) do { \
 	printf("%s" fmt "%s", \

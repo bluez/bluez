@@ -47,8 +47,8 @@ tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c
 tools_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
-					monitor/pager.h monitor/pager.c \
 					monitor/mainloop.h monitor/mainloop.c \
+					monitor/display.h monitor/display.c \
 					monitor/hcidump.h monitor/hcidump.c \
 					monitor/btsnoop.h monitor/btsnoop.c \
 					monitor/control.h monitor/control.c \

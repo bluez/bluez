@@ -34,10 +34,38 @@
 #include <signal.h>
 #include <sys/wait.h>
 #include <sys/prctl.h>
+#include <sys/ioctl.h>
 
-#include "pager.h"
+#include "display.h"
 
 static pid_t pager_pid = 0;
+
+bool use_color(void)
+{
+	static int cached_use_color = -1;
+
+	if (__builtin_expect(!!(cached_use_color < 0), 0))
+		cached_use_color = isatty(STDOUT_FILENO) > 0 || pager_pid > 0;
+
+	return cached_use_color;
+}
+
+int num_columns(void)
+{
+	static int cached_num_columns = -1;
+
+	if (__builtin_expect(!!(cached_num_columns < 0), 0)) {
+		struct winsize ws;
+
+		if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
+			return -1;
+
+		if (ws.ws_col > 0)
+			cached_num_columns = ws.ws_col;
+	}
+
+	return cached_num_columns;
+}
 
 static void close_pipe(int p[])
 {
@@ -64,7 +92,7 @@ static void wait_for_terminate(pid_t pid)
 	}
 }
 
-void pager_open(void)
+void open_pager(void)
 {
 	const char *pager;
 	pid_t parent_pid;
@@ -81,6 +109,8 @@ void pager_open(void)
 
 	if (!(isatty(STDOUT_FILENO) > 0))
 		return;
+
+	num_columns();
 
 	if (pipe(fd) < 0) {
 		perror("Failed to create pager pipe");
@@ -128,7 +158,7 @@ void pager_open(void)
 	close_pipe(fd);
 }
 
-void pager_close(void)
+void close_pager(void)
 {
 	if (pager_pid <= 0)
 		return;
@@ -137,9 +167,4 @@ void pager_close(void)
 	kill(pager_pid, SIGCONT);
 	wait_for_terminate(pager_pid);
 	pager_pid = 0;
-}
-
-bool pager_have(void)
-{
-	return pager_pid > 0;
 }
