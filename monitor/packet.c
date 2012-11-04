@@ -155,6 +155,12 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 	}
 
 	if (use_color()) {
+		n = sprintf(ts_str + ts_pos, "%s", COLOR_OFF);
+		if (n > 0)
+			ts_pos += n;
+	}
+
+	if (use_color()) {
 		n = sprintf(line + pos, "%s", color);
 		if (n > 0)
 			pos += n;
