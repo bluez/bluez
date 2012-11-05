@@ -3604,38 +3604,59 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 static void le_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_report *evt = data;
+	size_t data_left;
 	const char *str;
+	const void *ptr;
+	uint8_t num_reports;
+	const int8_t *rssi;
 
 	print_num_reports(evt->num_reports);
 
-	switch (evt->event_type) {
-	case 0x00:
-		str = "Connectable undirected - ADV_IND";
-		break;
-	case 0x01:
-		str = "Connectable directed - ADV_DIRECT_IND";
-		break;
-	case 0x02:
-		str = "Scannable undirected - ADV_SCAN_IND";
-		break;
-	case 0x03:
-		str = "Non connectable undirected - ADV_NONCONN_IND";
-		break;
-	case 0x04:
-		str = "Scan response - SCAN_RSP";
-		break;
-	default:
-		str = "Reserved";
-		break;
+	data_left = size - sizeof(*evt);
+	ptr = evt->reports;
+	num_reports = evt->num_reports;
+
+	while (data_left > sizeof(struct bt_hci_adv_data) && num_reports > 0) {
+		const struct bt_hci_adv_data *adv = ptr;
+		size_t adv_len = sizeof(*adv) + adv->data_len + 1;
+
+		switch (adv->event_type) {
+		case 0x00:
+			str = "Connectable undirected - ADV_IND";
+			break;
+		case 0x01:
+			str = "Connectable directed - ADV_DIRECT_IND";
+			break;
+		case 0x02:
+			str = "Scannable undirected - ADV_SCAN_IND";
+			break;
+		case 0x03:
+			str = "Non connectable undirected - ADV_NONCONN_IND";
+			break;
+		case 0x04:
+			str = "Scan response - SCAN_RSP";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("Event type: %s (0x%2.2x)", str, adv->event_type);
+		print_addr_type("Address type", adv->addr_type);
+		print_addr(adv->addr, adv->addr_type);
+		print_field("Data length: %d", adv->data_len);
+		print_eir(adv->data, adv->data_len);
+
+		rssi = ptr + (adv_len - 1);
+		print_rssi(*rssi);
+
+		ptr += adv_len;
+		data_left -= adv_len;
+		num_reports--;
 	}
 
-	print_field("Event type: %s (0x%2.2x)", str, evt->event_type);
-	print_addr_type("Address type", evt->addr_type);
-	print_addr(evt->addr, evt->addr_type);
-	print_field("Data length: %d", evt->data_len);
-
-	if (size > sizeof(*evt))
-		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+	if (data_left > 0)
+		packet_hexdump(ptr, data_left);
 }
 
 static void le_conn_update_complete_evt(const void *data, uint8_t size)

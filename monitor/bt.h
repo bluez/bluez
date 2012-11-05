@@ -1249,13 +1249,18 @@ struct bt_hci_evt_le_conn_complete {
 	uint8_t  clock_accuracy;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_LE_ADV_REPORT		0x02
-struct bt_hci_evt_le_adv_report {
-	uint8_t  num_reports;
+struct bt_hci_adv_data {
 	uint8_t  event_type;
 	uint8_t  addr_type;
 	uint8_t  addr[6];
 	uint8_t  data_len;
+	uint8_t  data[0];
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_LE_ADV_REPORT		0x02
+struct bt_hci_evt_le_adv_report {
+	uint8_t  num_reports;
+	uint8_t  reports[0];
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_CONN_UPDATE_COMPLETE	0x03
