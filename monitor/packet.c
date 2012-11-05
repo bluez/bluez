@@ -1111,9 +1111,9 @@ static void print_fec(uint8_t fec)
 	print_field("FEC: %s (0x%02x)", str, fec);
 }
 
-static void print_eir(const uint8_t *eir)
+static void print_eir(const uint8_t *eir, size_t len)
 {
-	packet_hexdump(eir, 240);
+	packet_hexdump(eir, len);
 }
 
 void packet_hexdump(const unsigned char *buf, uint16_t len)
@@ -2023,7 +2023,7 @@ static void read_ext_inquiry_response_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_fec(rsp->fec);
-	print_eir(rsp->data);
+	print_eir(rsp->data, sizeof(rsp->data));
 }
 
 static void write_ext_inquiry_response_cmd(const void *data, uint8_t size)
@@ -2031,7 +2031,7 @@ static void write_ext_inquiry_response_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_ext_inquiry_response *cmd = data;
 
 	print_fec(cmd->fec);
-	print_eir(cmd->data);
+	print_eir(cmd->data, sizeof(cmd->data));
 }
 
 static void refresh_encrypt_key_cmd(const void *data, uint8_t size)
@@ -3408,7 +3408,7 @@ static void ext_inquiry_result_evt(const void *data, uint8_t size)
 	print_dev_class(evt->dev_class);
 	print_clock_offset(evt->clock_offset);
 	print_rssi(evt->rssi);
-	print_eir(evt->data);
+	print_eir(evt->data, sizeof(evt->data));
 }
 
 static void encrypt_key_refresh_complete_evt(const void *data, uint8_t size)
