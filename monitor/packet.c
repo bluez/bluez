@@ -1110,9 +1110,266 @@ static void print_fec(uint8_t fec)
 	print_field("FEC: %s (0x%02x)", str, fec);
 }
 
-static void print_eir(const uint8_t *eir, size_t len)
+#define BT_EIR_FLAGS			0x01
+#define BT_EIR_UUID16_SOME		0x02
+#define BT_EIR_UUID16_ALL		0x03
+#define BT_EIR_UUID32_SOME		0x04
+#define BT_EIR_UUID32_ALL		0x05
+#define BT_EIR_UUID128_SOME		0x06
+#define BT_EIR_UUID128_ALL		0x07
+#define BT_EIR_NAME_SHORT		0x08
+#define BT_EIR_NAME_COMPLETE		0x09
+#define BT_EIR_TX_POWER			0x0a
+#define BT_EIR_CLASS_OF_DEV		0x0d
+#define BT_EIR_SSP_HASH			0x0e
+#define BT_EIR_SSP_RANDOMIZER		0x0f
+#define BT_EIR_DEVICE_ID		0x10
+#define BT_EIR_SMP_TK			0x10
+#define BT_EIR_SMP_OOB_FLAGS		0x11
+#define BT_EIR_SLAVE_CONN_INT		0x12
+#define BT_EIR_SERVICE_UUID16		0x14
+#define BT_EIR_SERVICE_UUID128		0x15
+#define BT_EIR_SERVICE_DATA		0x16
+#define BT_EIR_RANDOM_ADDRESS		0x17
+#define BT_EIR_PUBLIC_ADDRESS		0x18
+#define BT_EIR_GAP_APPEARANCE		0x19
+#define BT_EIR_MANUFACTURER_DATA	0xff
+
+static void print_uuid16_list(const char *label, const void *data,
+							size_t data_len)
 {
-	packet_hexdump(eir, len);
+	const uint16_t *uuids = data;
+	size_t count = data_len / sizeof(uint16_t);
+	char str[count * 7 + 1];
+	unsigned int i;
+
+	for (i = 0; i < count; i++)
+		sprintf(str + (i * 7), "0x%4.4x ", bt_get_le16(&uuids[i]));
+
+	print_field("%s: %s", label, str);
+}
+
+static void print_uuid32_list(const char *label, const void *data,
+							size_t data_len)
+{
+	const uint32_t *uuids = data;
+	size_t count = data_len / sizeof(uint32_t);
+	char str[count * 11 + 1];
+	unsigned int i;
+
+	for (i = 0; i < count; i++)
+		sprintf(str + (i * 11), "0x%8.8x ", bt_get_le32(&uuids[i]));
+
+	print_field("%s: %s", label, str);
+}
+
+static void print_uuid128_list(const char *label, const void *data,
+							size_t data_len)
+{
+	size_t count = data_len / 16;
+	char str[count * 38 + 1];
+	unsigned int i;
+
+	for (i = 0; i < count; i++) {
+		const uint8_t *uuid = data + (i * 16);
+
+		sprintf(str + (i * 38), "%.8x-%.4x-%.4x-%.4x-%.8x%.4x ",
+				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
+				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
+				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
+	}
+
+	print_field("%s: %s", label, str);
+}
+
+static void print_eir(const uint8_t *eir, size_t eir_len, bool le)
+{
+	uint16_t len = 0;
+
+	if (eir_len == 0)
+		return;
+
+	while (len < eir_len - 1) {
+		uint8_t field_len = eir[0];
+		const uint8_t *data = &eir[2];
+		uint8_t data_len;
+		char name[239], label[100];
+		uint32_t cls;
+
+		/* Check for the end of EIR */
+		if (field_len == 0)
+			break;
+
+		len += field_len + 1;
+
+		/* Do not continue EIR Data parsing if got incorrect length */
+		if (len > eir_len) {
+			len -= field_len + 1;
+			break;
+		}
+
+		data_len = field_len - 1;
+
+		switch (eir[1]) {
+		case BT_EIR_FLAGS:
+			print_field("Flags: 0x%2.2x", *data);
+			break;
+
+		case BT_EIR_UUID16_SOME:
+			if (data_len < sizeof(uint16_t))
+				break;
+			print_uuid16_list("16-bit Service UUIDs (partial)",
+							data, data_len);
+			break;
+
+		case BT_EIR_UUID16_ALL:
+			if (data_len < sizeof(uint16_t))
+				break;
+			print_uuid16_list("16-bit Service UUIDs (complete)",
+							data, data_len);
+			break;
+
+		case BT_EIR_UUID32_SOME:
+			if (data_len < sizeof(uint32_t))
+				break;
+			print_uuid32_list("32-bit Service UUIDs (partial)",
+							data, data_len);
+			break;
+
+		case BT_EIR_UUID32_ALL:
+			if (data_len < sizeof(uint32_t))
+				break;
+			print_uuid32_list("32-bit Service UUIDs (complete)",
+							data, data_len);
+			break;
+		case BT_EIR_UUID128_SOME:
+			if (data_len < 16)
+				break;
+			print_uuid128_list("128-bit Service UUIDs (partial)",
+								data, data_len);
+			break;
+
+		case BT_EIR_UUID128_ALL:
+			if (data_len < 16)
+				break;
+			print_uuid128_list("128-bit Service UUIDs (complete)",
+								data, data_len);
+			break;
+
+		case BT_EIR_NAME_SHORT:
+			memset(name, 0, sizeof(name));
+			memcpy(name, data, data_len);
+			print_field("Name (short): %s", name);
+			break;
+
+		case BT_EIR_NAME_COMPLETE:
+			memset(name, 0, sizeof(name));
+			memcpy(name, data, data_len);
+			print_field("Name (complete): %s", name);
+			break;
+
+		case BT_EIR_TX_POWER:
+			print_field("TX power: %d dBm", (int8_t) *data);
+			break;
+
+		case BT_EIR_CLASS_OF_DEV:
+			if (data_len < 3)
+				break;
+			cls = data[0] | (data[1] << 8) | (data[2] << 16);
+			print_field("Class Of Device: 0x%6.6x", cls);
+			break;
+
+		case BT_EIR_SSP_HASH:
+			print_hex_field("SSP Hash", data, data_len);
+			break;
+
+		case BT_EIR_SSP_RANDOMIZER:
+			print_hex_field("SSP Rand", data, data_len);
+			break;
+
+		case BT_EIR_DEVICE_ID:
+			/* SMP TK has the same value as Device ID */
+			if (le)
+				print_hex_field("SMP TK", data, data_len);
+			else if (data_len >= 8)
+				print_field("Device ID: "
+						"Source 0x%4.4x "
+						"Vendor 0x%4.4x "
+						"Product 0x%4.4x "
+						"Version 0x%4.4x",
+						bt_get_le16(&data[0]),
+						bt_get_le16(&data[2]),
+						bt_get_le16(&data[4]),
+						bt_get_le16(&data[6]));
+			break;
+
+		case BT_EIR_SMP_OOB_FLAGS:
+			print_field("SMP OOB Flags: 0x%2.2x", *data);
+			break;
+
+		case BT_EIR_SLAVE_CONN_INT:
+			if (data_len < 4)
+				break;
+			print_field("Slave Conn. Interval: 0x%4.4x - 0x%4.4x",
+							bt_get_le16(&data[0]),
+							bt_get_le16(&data[2]));
+			break;
+
+		case BT_EIR_SERVICE_UUID16:
+			if (data_len < sizeof(uint16_t))
+				break;
+			print_uuid16_list("16-bit Service UUIDs",
+							data, data_len);
+			break;
+
+		case BT_EIR_SERVICE_UUID128:
+			if (data_len < 16)
+				break;
+			print_uuid128_list("128-bit Service UUIDs",
+							data, data_len);
+			break;
+
+		case BT_EIR_SERVICE_DATA:
+			if (data_len < 2)
+				break;
+			sprintf(label, "Service Data (UUID 0x%4.4x)",
+							bt_get_le16(&data[0]));
+			print_hex_field(label, &data[2], data_len - 2);
+			break;
+
+		case BT_EIR_RANDOM_ADDRESS:
+			if (data_len < 6)
+				break;
+			print_addr(data, 0x01);
+			break;
+
+		case BT_EIR_PUBLIC_ADDRESS:
+			if (data_len < 6)
+				break;
+			print_addr(data, 0x00);
+			break;
+
+		case BT_EIR_GAP_APPEARANCE:
+			if (data_len < 2)
+				break;
+			print_field("Appearance: 0x%4.4x", bt_get_le16(data));
+			break;
+
+		case BT_EIR_MANUFACTURER_DATA:
+			print_hex_field("Manufacturer Data", data, data_len);
+			break;
+
+		default:
+			sprintf(label, "Unknown EIR field 0x%2.2x", eir[1]);
+			print_hex_field(label, data, data_len);
+			break;
+		}
+
+		eir += field_len + 1;
+	}
+
+	if (len < eir_len && eir[0] != 0)
+		packet_hexdump(eir, eir_len - len);
 }
 
 void packet_hexdump(const unsigned char *buf, uint16_t len)
@@ -2022,7 +2279,7 @@ static void read_ext_inquiry_response_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_fec(rsp->fec);
-	print_eir(rsp->data, sizeof(rsp->data));
+	print_eir(rsp->data, sizeof(rsp->data), false);
 }
 
 static void write_ext_inquiry_response_cmd(const void *data, uint8_t size)
@@ -2030,7 +2287,7 @@ static void write_ext_inquiry_response_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_ext_inquiry_response *cmd = data;
 
 	print_fec(cmd->fec);
-	print_eir(cmd->data, sizeof(cmd->data));
+	print_eir(cmd->data, sizeof(cmd->data), false);
 }
 
 static void refresh_encrypt_key_cmd(const void *data, uint8_t size)
@@ -3407,7 +3664,7 @@ static void ext_inquiry_result_evt(const void *data, uint8_t size)
 	print_dev_class(evt->dev_class);
 	print_clock_offset(evt->clock_offset);
 	print_rssi(evt->rssi);
-	print_eir(evt->data, sizeof(evt->data));
+	print_eir(evt->data, sizeof(evt->data), false);
 }
 
 static void encrypt_key_refresh_complete_evt(const void *data, uint8_t size)
@@ -3644,7 +3901,7 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 		print_addr_type("Address type", adv->addr_type);
 		print_addr(adv->addr, adv->addr_type);
 		print_field("Data length: %d", adv->data_len);
-		print_eir(adv->data, adv->data_len);
+		print_eir(adv->data, adv->data_len, true);
 
 		rssi = ptr + (adv_len - 1);
 		print_rssi(*rssi);
