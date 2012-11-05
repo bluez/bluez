@@ -758,15 +758,20 @@ static void print_key_size(uint8_t key_size)
 	print_field("Key size: %d", key_size);
 }
 
-static void print_key(const char *label, const uint8_t *link_key)
+static void print_hex_field(const char *label, const uint8_t *data, size_t len)
 {
-	char str[33];
-	int i;
+	char str[len * 2 + 1];
+	unsigned int i;
 
-	for (i = 0; i < 16; i++)
-		sprintf(str + (i * 2), "%2.2x", link_key[i]);
+	for (i = 0; i < len; i++)
+		sprintf(str + (i * 2), "%2.2x", data[i]);
 
 	print_field("%s: %s", label, str);
+}
+
+static void print_key(const char *label, const uint8_t *link_key)
+{
+	print_hex_field(label, link_key, 16);
 }
 
 static void print_link_key(const uint8_t *link_key)
@@ -1072,13 +1077,7 @@ static void print_le_channel_map(const uint8_t *map)
 
 static void print_random_number(const uint8_t *number)
 {
-	char str[17];
-	int i;
-
-	for (i = 0; i < 8; i++)
-		sprintf(str + (i * 2), "%2.2x", number[i]);
-
-	print_field("Random number: %s", str);
+	print_hex_field("Random number", number, 8);
 }
 
 static void print_event_mask(const uint8_t *mask)
