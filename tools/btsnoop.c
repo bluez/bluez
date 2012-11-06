@@ -218,7 +218,7 @@ next_packet:
 	flags = ntohl(input_pkt[select_input].flags);
 
 	len = read(input_fd[select_input], buf, toread);
-	if (len < 0 || len != toread) {
+	if (len < 0 || len != (ssize_t) toread) {
 		close(input_fd[select_input]);
 		input_fd[select_input] = -1;
 		goto next_packet;
@@ -260,7 +260,7 @@ next_packet:
 	}
 
 	written = write(output_fd, buf + 1, toread - 1);
-	if (written != toread - 1) {
+	if (written != (ssize_t) toread - 1) {
 		fprintf(stderr, "write of packet data failed\n");
 		goto close_output;
 	}
