@@ -758,10 +758,11 @@ static void print_key_size(uint8_t key_size)
 	print_field("Key size: %d", key_size);
 }
 
-static void print_hex_field(const char *label, const uint8_t *data, size_t len)
+static void print_hex_field(const char *label, const uint8_t *data,
+								uint8_t len)
 {
 	char str[len * 2 + 1];
-	unsigned int i;
+	uint8_t i;
 
 	for (i = 0; i < len; i++)
 		sprintf(str + (i * 2), "%2.2x", data[i]);
@@ -1136,10 +1137,10 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_MANUFACTURER_DATA	0xff
 
 static void print_uuid16_list(const char *label, const void *data,
-							size_t data_len)
+							uint8_t data_len)
 {
 	const uint16_t *uuids = data;
-	size_t count = data_len / sizeof(uint16_t);
+	uint8_t count = data_len / sizeof(uint16_t);
 	char str[count * 7 + 1];
 	unsigned int i;
 
@@ -1150,10 +1151,10 @@ static void print_uuid16_list(const char *label, const void *data,
 }
 
 static void print_uuid32_list(const char *label, const void *data,
-							size_t data_len)
+							uint8_t data_len)
 {
 	const uint32_t *uuids = data;
-	size_t count = data_len / sizeof(uint32_t);
+	uint8_t count = data_len / sizeof(uint32_t);
 	char str[count * 11 + 1];
 	unsigned int i;
 
@@ -1164,9 +1165,9 @@ static void print_uuid32_list(const char *label, const void *data,
 }
 
 static void print_uuid128_list(const char *label, const void *data,
-							size_t data_len)
+							uint8_t data_len)
 {
-	size_t count = data_len / 16;
+	uint8_t count = data_len / 16;
 	char str[count * 38 + 1];
 	unsigned int i;
 
@@ -1182,9 +1183,9 @@ static void print_uuid128_list(const char *label, const void *data,
 	print_field("%s: %s", label, str);
 }
 
-static void print_eir(const uint8_t *eir, size_t eir_len, bool le)
+static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
-	uint16_t len = 0;
+	uint8_t len = 0;
 
 	if (eir_len == 0)
 		return;
@@ -3860,7 +3861,7 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 static void le_adv_report_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_le_adv_report *evt = data;
-	size_t data_left;
+	uint8_t data_left;
 	const char *str;
 	const void *ptr;
 	uint8_t num_reports;
