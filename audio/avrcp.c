@@ -197,6 +197,7 @@ struct avrcp {
 
 	unsigned int control_id;
 	unsigned int browsing_id;
+	uint16_t supported_events;
 	uint16_t registered_events;
 	uint8_t transaction;
 	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
@@ -858,12 +859,12 @@ static uint8_t avrcp_handle_get_capabilities(struct avrcp *session,
 
 		return AVC_CTYPE_STABLE;
 	case CAP_EVENTS_SUPPORTED:
-		pdu->params[1] = 5;
-		pdu->params[2] = AVRCP_EVENT_STATUS_CHANGED;
-		pdu->params[3] = AVRCP_EVENT_TRACK_CHANGED;
-		pdu->params[4] = AVRCP_EVENT_TRACK_REACHED_START;
-		pdu->params[5] = AVRCP_EVENT_TRACK_REACHED_END;
-		pdu->params[6] = AVRCP_EVENT_SETTINGS_CHANGED;
+		for (i = 0; i <= AVRCP_EVENT_LAST; i++) {
+			if (session->supported_events & (1 << i)) {
+				pdu->params[1]++;
+				pdu->params[pdu->params[1] + 1] = i;
+			}
+		}
 
 		pdu->params_len = htons(2 + pdu->params[1]);
 		return AVC_CTYPE_STABLE;
@@ -2064,6 +2065,11 @@ static void session_tg_init(struct avrcp *session)
 	}
 
 	session->control_handlers = tg_control_handlers;
+	session->supported_events = (1 << AVRCP_EVENT_STATUS_CHANGED) |
+				(1 << AVRCP_EVENT_TRACK_CHANGED) |
+				(1 << AVRCP_EVENT_TRACK_REACHED_START) |
+				(1 << AVRCP_EVENT_TRACK_REACHED_END) |
+				(1 << AVRCP_EVENT_SETTINGS_CHANGED);
 
 	if (session->version >= 0x0104) {
 		avrcp_register_notification(session,
