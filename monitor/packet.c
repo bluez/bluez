@@ -4343,8 +4343,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 		return;
 
 	switch (flags) {
-	case 0x00:
-	case 0x02:
+	case 0x00:	/* start of a non-automatically-flushable PDU */
+	case 0x02:	/* start of an automatically-flushable PDU */
 		if (index_list[index].frag_len == 0)
 			l2cap_packet(data, size);
 		index_list[index].frag_len = 0;
