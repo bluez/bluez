@@ -1412,6 +1412,8 @@ static const struct control_pdu_handler tg_control_handlers[] = {
 };
 
 static const struct control_pdu_handler ct_control_handlers[] = {
+		{ AVRCP_GET_CAPABILITIES, AVC_CTYPE_STATUS,
+					avrcp_handle_get_capabilities },
 		{ },
 };
 
