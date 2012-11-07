@@ -42,6 +42,7 @@
 #include "storage.h"
 #include "agent.h"
 #include "hcid.h"
+#include "event.h"
 
 #define NEARD_NAME "org.neard"
 #define NEARD_PATH "/"
@@ -293,8 +294,8 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 
 	/* TODO handle incomplete name? */
 	if (eir_data.name)
-		write_device_name(adapter_get_address(adapter), &eir_data.addr,
-						BDADDR_BREDR, eir_data.name);
+		btd_event_remote_name(adapter_get_address(adapter),
+					&eir_data.addr, eir_data.name);
 
 	if (eir_data.hash)
 		btd_adapter_add_remote_oob_data(adapter, &eir_data.addr,
