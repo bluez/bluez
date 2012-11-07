@@ -41,11 +41,13 @@ tools_ppporc_LDADD = lib/libbluetooth-private.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
-noinst_PROGRAMS += tools/btmgmt tools/btsnoop \
+noinst_PROGRAMS += tools/btmgmt tools/btattach tools/btsnoop \
 				monitor/btmon emulator/btvirt emulator/b1ee
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c
 tools_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+
+tools_btattach_SOURCES = tools/btattach.c
 
 tools_btsnoop_SOURCES = tools/btsnoop.c
 
