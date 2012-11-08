@@ -811,6 +811,7 @@ static struct obex_mime_type_driver mime_msg_listing = {
 	.target = MAS_TARGET,
 	.target_size = TARGET_SIZE,
 	.mimetype = "x-bt/MAP-msg-listing",
+	.get_next_header = any_get_next_header,
 	.open = msg_listing_open,
 	.close = any_close,
 	.read = any_read,
