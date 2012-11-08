@@ -162,6 +162,7 @@ static void reset_request(struct mas_session *mas)
 
 	mas->nth_call = FALSE;
 	mas->finished = FALSE;
+	mas->ap_sent = FALSE;
 }
 
 static void mas_clean(struct mas_session *mas)
