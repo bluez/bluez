@@ -24,6 +24,8 @@
 
 #include <stdbool.h>
 
+#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
+
 bool use_color(void);
 int num_columns(void);
 

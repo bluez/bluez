@@ -238,8 +238,6 @@ static void print_packet(struct timeval *tv, uint16_t index, char ident,
 		printf("%s\n", line);
 }
 
-#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
-
 static const struct {
 	uint8_t error;
 	const char *str;

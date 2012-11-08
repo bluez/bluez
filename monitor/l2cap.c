@@ -29,9 +29,8 @@
 #include <bluetooth/bluetooth.h>
 
 #include "packet.h"
+#include "display.h"
 #include "l2cap.h"
-
-#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
 
 struct sig_opcode_data {
 	uint8_t opcode;
