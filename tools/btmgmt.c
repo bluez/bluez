@@ -1869,7 +1869,7 @@ static struct {
 	{ "block",	cmd_block,	"Block Device"			},
 	{ "unblock",	cmd_unblock,	"Unblock Device"		},
 	{ "add-uuid",	cmd_add_uuid,	"Add UUID"			},
-	{ "rm-uuid",	cmd_add_uuid,	"Remove UUID"			},
+	{ "rm-uuid",	cmd_remove_uuid, "Remove UUID"			},
 	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs",			},
 	{ "did",	cmd_did,	"Set Device ID",		},
 	{ NULL, NULL, 0 }
