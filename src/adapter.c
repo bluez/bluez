@@ -83,7 +83,6 @@
 #define MODE_UNKNOWN		0xff
 
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
-#define PENDING_FOUND_MAX 5
 
 static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
@@ -114,9 +113,7 @@ struct service_auth {
 };
 
 struct discovery {
-	guint id;
 	GSList *found;
-	GSList *pending;
 };
 
 struct btd_adapter {
@@ -389,49 +386,6 @@ static struct session_req *find_session(GSList *list, const char *sender)
 	return NULL;
 }
 
-static void send_devices_found(struct btd_adapter *adapter)
-{
-	struct discovery *discovery = adapter->discovery;
-	DBusConnection *conn = btd_get_dbus_connection();
-	DBusMessageIter iter, props;
-	DBusMessage *signal;
-
-	if (!discovery || !discovery->pending)
-		return;
-
-	signal = dbus_message_new_signal(adapter->path, ADAPTER_INTERFACE,
-							"DevicesFound");
-	if (!signal) {
-		error("Unable to allocate DevicesFound signal");
-		g_slist_free(discovery->pending);
-		discovery->pending = NULL;
-		return;
-	}
-
-	dbus_message_iter_init_append(signal, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{oa{sv}}",
-								&props);
-
-	while (discovery->pending) {
-		struct btd_device *dev = discovery->pending->data;
-		const char *path = device_get_path(dev);
-		DBusMessageIter entry;
-
-		dbus_message_iter_open_container(&props, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
-									&path);
-		g_dbus_get_properties(conn, path, DEVICE_INTERFACE, &entry);
-		dbus_message_iter_close_container(&props, &entry);
-
-		discovery->pending = g_slist_remove(discovery->pending, dev);
-	}
-
-	dbus_message_iter_close_container(&iter, &props);
-
-	g_dbus_send_message(conn, signal);
-}
-
 static void invalidate_rssi(gpointer a)
 {
 	struct btd_device *dev = a;
@@ -445,11 +399,6 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 
 	if (!discovery)
 		return;
-
-	if (discovery->id > 0)
-		g_source_remove(discovery->id);
-
-	send_devices_found(adapter);
 
 	adapter->discovery = NULL;
 
@@ -806,10 +755,8 @@ void adapter_remove_device(struct btd_adapter *adapter,
 
 	adapter->devices = g_slist_remove(adapter->devices, dev);
 
-	if (discovery) {
+	if (discovery)
 		discovery->found = g_slist_remove(discovery->found, dev);
-		discovery->pending = g_slist_remove(discovery->pending, dev);
-	}
 
 	adapter->connections = g_slist_remove(adapter->connections, dev);
 
@@ -1209,12 +1156,6 @@ static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_ASYNC_METHOD("RemoveDevice",
 			GDBUS_ARGS({ "device", "o" }), NULL,
 			remove_device) },
-	{ }
-};
-
-static const GDBusSignalTable adapter_signals[] = {
-	{ GDBUS_SIGNAL("DevicesFound",
-			GDBUS_ARGS({ "devices", "a{oa{sv}}" })) },
 	{ }
 };
 
@@ -2739,7 +2680,7 @@ struct btd_adapter *adapter_create(int id)
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					path, ADAPTER_INTERFACE,
-					adapter_methods, adapter_signals,
+					adapter_methods, NULL,
 					adapter_properties, adapter,
 					adapter_free)) {
 		error("Adapter interface init failed on path %s", path);
@@ -2801,26 +2742,6 @@ void adapter_set_allow_name_changes(struct btd_adapter *adapter,
 	adapter->allow_name_changes = allow_name_changes;
 }
 
-static gboolean send_found(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	struct discovery *discovery = adapter->discovery;
-
-	if (!discovery)
-		return FALSE;
-
-	discovery->id = 0;
-
-	if (!discovery->pending)
-		return FALSE;
-
-	send_devices_found(adapter);
-
-	discovery->id = g_timeout_add_seconds(1, send_found, adapter);
-
-	return FALSE;
-}
-
 static gboolean adapter_remove_temp(gpointer data)
 {
 	struct btd_adapter *adapter = data;
@@ -2845,13 +2766,10 @@ static gboolean adapter_remove_temp(gpointer data)
 void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering)
 {
-	struct discovery *discovery;
 	guint connect_list_len;
 
 	if (discovering && !adapter->discovery)
 		adapter->discovery = g_new0(struct discovery, 1);
-
-	discovery = adapter->discovery;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
@@ -2861,7 +2779,6 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 			g_source_remove(adapter->remove_temp);
 			adapter->remove_temp = 0;
 		}
-		discovery->id = g_timeout_add_seconds(1, send_found, adapter);
 		return;
 	}
 
@@ -3013,21 +2930,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	device_add_eir_uuids(dev, eir_data.services);
 
 	eir_data_free(&eir_data);
-
-	if (!g_slist_find(discovery->pending, dev)) {
-		guint pending_count;
-
-		discovery->pending = g_slist_prepend(discovery->pending, dev);
-
-		pending_count = g_slist_length(discovery->pending);
-
-		if (discovery->id == 0) {
-			discovery->id = g_idle_add(send_found, adapter);
-		} else if (pending_count > PENDING_FOUND_MAX) {
-			g_source_remove(discovery->id);
-			discovery->id = g_idle_add(send_found, adapter);
-		}
-	}
 
 	if (g_slist_find(discovery->found, dev))
 		return;

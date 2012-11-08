@@ -21,8 +21,8 @@ Methods		void StartDiscovery()
 			resolving. Use StopDiscovery to release the sessions
 			acquired.
 
-			This process will start emitting DevicesFound and
-			PropertyChanged "Discovering" signals.
+			This process will start creating Device objects as
+			new devices are discovered.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
@@ -47,15 +47,6 @@ Methods		void StartDiscovery()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
-
-Signals		DevicesFound(array{object path, dict values})
-
-			This signal will be sent every time devices have
-			been found. In general they only appear during a
-			device discovery.
-
-			The dictionary contains the properties from the
-			org.bluez.Device1 interface.
 
 Properties	string Address [readonly]
 
