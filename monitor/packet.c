@@ -2602,6 +2602,26 @@ static void le_set_random_address_cmd(const void *data, uint8_t size)
 	print_addr(cmd->addr, 0x01);
 }
 
+static void le_set_adv_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_adv_enable *cmd = data;
+	const char *str;
+
+	switch (cmd->enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Advertising: %s (0x%2.2x)", str, cmd->enable);
+}
+
 static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_scan_parameters *cmd = data;
@@ -3178,7 +3198,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2007, "LE Read Advertising Channel TX Power"},
 	{ 0x2008, "LE Set Advertising Data"		},
 	{ 0x2009, "LE Set Scan Response Data"		},
-	{ 0x200a, "LE Set Advertise Enable"		},
+	{ 0x200a, "LE Set Advertise Enable",
+				le_set_adv_enable_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x200b, "LE Set Scan Parameters",
 				le_set_scan_parameters_cmd, 7, true,
 				status_rsp, 1, true },
