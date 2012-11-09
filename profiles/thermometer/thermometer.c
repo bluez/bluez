@@ -82,6 +82,7 @@ struct thermometer {
 	gboolean			has_interval;
 
 	uint16_t			measurement_ccc_handle;
+	uint16_t			intermediate_ccc_handle;
 };
 
 struct characteristic {
@@ -255,14 +256,6 @@ static gint cmp_char_val_handle(gconstpointer a, gconstpointer b)
 	return ch->attr.value_handle - *handle;
 }
 
-static gint cmp_descriptor(gconstpointer a, gconstpointer b)
-{
-	const struct descriptor *desc = a;
-	const bt_uuid_t *uuid = b;
-
-	return bt_uuid_cmp(&desc->uuid, uuid);
-}
-
 static struct thermometer_adapter *
 find_thermometer_adapter(struct btd_adapter *adapter)
 {
@@ -280,18 +273,6 @@ static struct characteristic *get_characteristic(struct thermometer *t,
 	GSList *l;
 
 	l = g_slist_find_custom(t->chars, uuid, cmp_char_uuid);
-	if (l == NULL)
-		return NULL;
-
-	return l->data;
-}
-
-static struct descriptor *get_descriptor(struct characteristic *ch,
-							const bt_uuid_t *uuid)
-{
-	GSList *l;
-
-	l = g_slist_find_custom(ch->desc, uuid, cmp_descriptor);
 	if (l == NULL)
 		return NULL;
 
@@ -415,6 +396,8 @@ static void process_thermometer_desc(struct descriptor *desc)
 								"indication");
 		} else if (g_strcmp0(ch->attr.uuid,
 					INTERMEDIATE_TEMPERATURE_UUID) == 0) {
+			desc->ch->t->intermediate_ccc_handle = desc->handle;
+
 			if (g_slist_length(ch->t->tadapter->iwatchers) == 0)
 				return;
 
@@ -728,38 +711,6 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 	return write_attr_interval(t, msg, value);
 }
 
-static void write_ccc(struct thermometer *t, const char *uuid, uint16_t value)
-{
-	struct characteristic *ch;
-	struct descriptor *desc;
-	bt_uuid_t btuuid;
-	uint8_t atval[2];
-	char *msg;
-
-	if (t->attrib == NULL)
-		return;
-
-	ch = get_characteristic(t, uuid);
-	if (ch == NULL) {
-		DBG("Characteristic %s not found", uuid);
-		return;
-	}
-
-	bt_uuid16_create(&btuuid, GATT_CLIENT_CHARAC_CFG_UUID);
-	desc = get_descriptor(ch, &btuuid);
-	if (desc == NULL) {
-		DBG("CCC descriptor for %s not found", uuid);
-		return;
-	}
-
-	att_put_u16(value, atval);
-
-	msg = g_strdup_printf("Write CCC: %04x for %s", value, uuid);
-
-	gatt_write_char(t->attrib, desc->handle, atval, sizeof(atval),
-							write_ccc_cb, msg);
-}
-
 static void enable_final_measurement(gpointer data, gpointer user_data)
 {
 	struct thermometer *t = data;
@@ -780,9 +731,18 @@ static void enable_final_measurement(gpointer data, gpointer user_data)
 static void enable_intermediate_measurement(gpointer data, gpointer user_data)
 {
 	struct thermometer *t = data;
+	uint16_t handle = t->intermediate_ccc_handle;
+	uint8_t value[2];
+	char *msg;
 
-	write_ccc(t, INTERMEDIATE_TEMPERATURE_UUID,
-					GATT_CLIENT_CHARAC_CFG_NOTIF_BIT);
+	if (t->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(GATT_CLIENT_CHARAC_CFG_NOTIF_BIT, value);
+	msg = g_strdup("Enable Intermediate Temperature notifications");
+
+	gatt_write_char(t->attrib, handle, value, sizeof(value),
+							write_ccc_cb, msg);
 }
 
 static void disable_final_measurement(gpointer data, gpointer user_data)
@@ -805,8 +765,18 @@ static void disable_final_measurement(gpointer data, gpointer user_data)
 static void disable_intermediate_measurement(gpointer data, gpointer user_data)
 {
 	struct thermometer *t = data;
+	uint16_t handle = t->intermediate_ccc_handle;
+	uint8_t value[2];
+	char *msg;
 
-	write_ccc(t, INTERMEDIATE_TEMPERATURE_UUID, 0x0000);
+	if (t->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(0x0000, value);
+	msg = g_strdup("Disable Intermediate Temperature notifications");
+
+	gatt_write_char(t->attrib, handle, value, sizeof(value),
+							write_ccc_cb, msg);
 }
 
 static void remove_int_watcher(struct thermometer_adapter *tadapter,
