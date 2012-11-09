@@ -123,12 +123,6 @@ AC_DEFUN([AC_PATH_UDEV], [
 	AC_SUBST(UDEV_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_SNDFILE], [
-	PKG_CHECK_MODULES(SNDFILE, sndfile, sndfile_found=yes, sndfile_found=no)
-	AC_SUBST(SNDFILE_CFLAGS)
-	AC_SUBST(SNDFILE_LIBS)
-])
-
 AC_DEFUN([AC_PATH_READLINE], [
 	AC_CHECK_HEADER(readline/readline.h,
 		AC_CHECK_LIB(readline, main,
@@ -157,7 +151,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	optimization_enable=yes
 	fortify_enable=yes
 	pie_enable=yes
-	sndfile_enable=${sndfile_found}
 	usb_enable=${usb_found}
 	audio_enable=yes
 	input_enable=yes
@@ -317,9 +310,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
 	fi
 
-	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(SBC, test "${test_enable}" = "yes")
 
 	AM_CONDITIONAL(AUDIOPLUGIN, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")

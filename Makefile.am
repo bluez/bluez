@@ -82,35 +82,6 @@ noinst_LTLIBRARIES += lib/libbluetooth-private.la
 
 lib_libbluetooth_private_la_SOURCES = $(lib_libbluetooth_la_SOURCES)
 
-if SBC
-noinst_LTLIBRARIES += sbc/libsbc.la
-
-sbc_libsbc_la_SOURCES = sbc/sbc.h sbc/sbc.c sbc/sbc_math.h sbc/sbc_tables.h \
-			sbc/sbc_primitives.h sbc/sbc_primitives.c \
-			sbc/sbc_primitives_mmx.h sbc/sbc_primitives_mmx.c \
-			sbc/sbc_primitives_iwmmxt.h sbc/sbc_primitives_iwmmxt.c \
-			sbc/sbc_primitives_neon.h sbc/sbc_primitives_neon.c \
-			sbc/sbc_primitives_armv6.h sbc/sbc_primitives_armv6.c
-
-sbc_libsbc_la_CFLAGS = $(AM_CFLAGS) -finline-functions -fgcse-after-reload \
-					-funswitch-loops -funroll-loops
-
-noinst_PROGRAMS += sbc/sbcinfo sbc/sbcdec sbc/sbcenc
-
-sbc_sbcdec_SOURCES = sbc/sbcdec.c sbc/formats.h
-sbc_sbcdec_LDADD = sbc/libsbc.la
-
-sbc_sbcenc_SOURCES = sbc/sbcenc.c sbc/formats.h
-sbc_sbcenc_LDADD = sbc/libsbc.la
-
-if SNDFILE
-noinst_PROGRAMS += sbc/sbctester
-
-sbc_sbctester_LDADD = @SNDFILE_LIBS@ -lm
-sbc_sbctest_CFLAGS = $(AM_CFLAGS) @SNDFILE_CFLAGS@
-endif
-endif
-
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c attrib/client.h \
