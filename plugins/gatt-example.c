@@ -563,19 +563,11 @@ static struct btd_adapter_driver gatt_example_adapter_driver = {
 
 static int gatt_example_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return btd_register_adapter_driver(&gatt_example_adapter_driver);
 }
 
 static void gatt_example_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	btd_unregister_adapter_driver(&gatt_example_adapter_driver);
 }
 
