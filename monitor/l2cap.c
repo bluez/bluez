@@ -314,37 +314,47 @@ static void smp_packet(const void *data, uint16_t size)
 void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
 {
 	const struct bt_l2cap_hdr *hdr = data;
+	uint16_t len, cid;
 
 	if (size < sizeof(*hdr)) {
 		print_text(COLOR_ERROR, "malformed packet");
-		packet_hexdump(data, size);
-		return;
+		goto done;
 	}
 
-	if (btohs(hdr->len) != size - sizeof(*hdr)) {
+	len = btohs(hdr->len);
+	cid = btohs(hdr->cid);
+
+	data += sizeof(*hdr);
+	size -= sizeof(*hdr);
+
+	if (len != size) {
 		print_text(COLOR_ERROR, "invalid packet size");
-		packet_hexdump(data + sizeof(*hdr), size - sizeof(*hdr));
-		return;
+		goto done;
 	}
 
 	switch (btohs(hdr->cid)) {
 	case 0x0001:
 	case 0x0005:
-		sig_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		sig_packet(data, len);
 		break;
 	case 0x0003:
-		amp_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		amp_packet(data, len);
 		break;
 	case 0x0004:
-		att_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		att_packet(data, len);
 		break;
 	case 0x0006:
-		smp_packet(data + sizeof(*hdr), size - sizeof(*hdr));
+		smp_packet(data, len);
 		break;
 	default:
-		print_field("Channel: %d dlen %d", btohs(hdr->cid),
-							btohs(hdr->len));
-		packet_hexdump(data + sizeof(*hdr), size - sizeof(*hdr));
+		print_field("Channel: %d len %d", cid, len);
+		packet_hexdump(data, len);
 		break;
 	}
+
+	data += len;
+	size += len;
+
+done:
+	packet_hexdump(data, size);
 }
