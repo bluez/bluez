@@ -38,7 +38,6 @@ struct main_opts {
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
 	gboolean	debug_keys;
-	gboolean	gatt_enabled;
 
 	uint8_t		mode;
 

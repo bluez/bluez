@@ -235,13 +235,6 @@ static void parse_config(GKeyFile *config)
 	else
 		main_opts.debug_keys = boolean;
 
-	boolean = g_key_file_get_boolean(config, "General",
-						"EnableGatt", &err);
-	if (err)
-		g_clear_error(&err);
-	else
-		main_opts.gatt_enabled = boolean;
-
 	main_opts.link_mode = HCI_LM_ACCEPT;
 
 	main_opts.link_policy = HCI_LP_RSWITCH | HCI_LP_SNIFF |

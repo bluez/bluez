@@ -811,6 +811,7 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 {
 	uint32_t class;
+	uint8_t cls[3];
 
 	class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
 
@@ -819,15 +820,11 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 
 	adapter->dev_class = class;
 
-	if (main_opts.gatt_enabled) {
-		uint8_t cls[3];
+	memcpy(cls, new_class, sizeof(cls));
 
-		memcpy(cls, new_class, sizeof(cls));
-
-		/* Removes service class */
-		cls[1] = cls[1] & 0x1f;
-		attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
-	}
+	/* Removes service class */
+	cls[1] = cls[1] & 0x1f;
+	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Class");
@@ -844,8 +841,7 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Name");
 
-	if (main_opts.gatt_enabled)
-		attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
+	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
 				(const uint8_t *) name, strlen(name));
 }
 
@@ -2718,8 +2714,7 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 
 	sdp_init_services_list(&adapter->bdaddr);
 
-	if (main_opts.gatt_enabled)
-		btd_adapter_gatt_server_start(adapter);
+	btd_adapter_gatt_server_start(adapter);
 
 	load_config(adapter);
 	convert_device_storage(adapter);
@@ -2786,8 +2781,7 @@ void adapter_remove(struct btd_adapter *adapter)
 	g_slist_free(adapter->devices);
 
 	unload_drivers(adapter);
-	if (main_opts.gatt_enabled)
-		btd_adapter_gatt_server_stop(adapter);
+	btd_adapter_gatt_server_stop(adapter);
 
 	g_slist_free(adapter->pin_callbacks);
 
