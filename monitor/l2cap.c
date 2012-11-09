@@ -446,6 +446,7 @@ static void sig_packet(bool in, const void *data, uint16_t size)
 		}
 
 		print_indent(6, opcode_color, "L2CAP: ", opcode_str,
+					COLOR_OFF,
 					" (0x%2.2x) ident %d len %d",
 					hdr->code, hdr->ident, len);
 
@@ -559,7 +560,7 @@ static void amp_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_indent(6, COLOR_CYAN, "AMP: ", opcode_str,
+	print_indent(6, COLOR_CYAN, "AMP: ", opcode_str, COLOR_OFF,
 			" (0x%2.2x) ident %d len %d", opcode, ident, len);
 
 	packet_hexdump(data + 6, size - 8);
@@ -630,7 +631,7 @@ static void att_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_indent(6, COLOR_CYAN, "ATT: ", opcode_str,
+	print_indent(6, COLOR_CYAN, "ATT: ", opcode_str, COLOR_OFF,
 				" (0x%2.2x) len %d", opcode, size - 1);
 
 	packet_hexdump(data + 1, size - 1);
@@ -684,7 +685,7 @@ static void smp_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_indent(6, COLOR_CYAN, "SMP: ", opcode_str,
+	print_indent(6, COLOR_CYAN, "SMP: ", opcode_str, COLOR_OFF,
 				" (0x%2.2x) len %d", opcode, size - 1);
 
 	packet_hexdump(data + 1, size - 1);
@@ -728,7 +729,7 @@ void l2cap_packet(uint16_t handle, bool in, const void *data, uint16_t size)
 		smp_packet(data, len);
 		break;
 	default:
-		print_indent(6, COLOR_CYAN, "Channel:", "",
+		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
 						" %d len %d", cid, len);
 		packet_hexdump(data, len);
 		break;
