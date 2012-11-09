@@ -38,13 +38,15 @@ bool use_color(void);
 #define COLOR_WHITE_BG	"\x1B[0;47m"
 #define COLOR_HIGHLIGHT	"\x1B[1;39m"
 
+#define COLOR_ERROR	"\x1B[1;31m"
+
 #define print_text(color, fmt, args...) do { \
 	printf("%-8c%s" fmt "%s\n", ' ', \
 		use_color() ? color : "", ## args, \
 		use_color() ? COLOR_OFF : ""); \
 } while (0);
 
-#define print_field(fmt, args...) printf("%-8c" fmt "\n", ' ', ## args)
+#define print_field(fmt, args...) print_text(COLOR_OFF, fmt, ## args)
 
 int num_columns(void);
 

@@ -72,7 +72,7 @@ static void sig_packet(const void *data, uint16_t size)
 	int i;
 
 	if (size < 4) {
-		print_field("malformed signal packet");
+		print_text(COLOR_ERROR, "malformed signal packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -82,7 +82,7 @@ static void sig_packet(const void *data, uint16_t size)
 	len = bt_get_le16(data + 2);
 
 	if (len != size - 4) {
-		print_field("invalid signal packet size");
+		print_text(COLOR_ERROR, "invalid signal packet size");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -139,7 +139,7 @@ static void amp_packet(const void *data, uint16_t size)
 	int i;
 
 	if (size < 4) {
-		print_field("malformed information frame packet");
+		print_text(COLOR_ERROR, "malformed info frame packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -154,7 +154,7 @@ static void amp_packet(const void *data, uint16_t size)
 		return;
 
 	if (size < 8) {
-		print_field("malformed manager packet");
+		print_text(COLOR_ERROR, "malformed manager packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -164,7 +164,7 @@ static void amp_packet(const void *data, uint16_t size)
 	len = bt_get_le16(data + 4);
 
 	if (len != size - 8) {
-		print_field("invalid manager packet size");
+		print_text(COLOR_ERROR, "invalid manager packet size");
 		packet_hexdump(data +  2, size - 4);
 		return;
 	}
@@ -235,7 +235,7 @@ static void att_packet(const void *data, uint16_t size)
 	int i;
 
 	if (size < 1) {
-		print_field("malformed attribute packet");
+		print_text(COLOR_ERROR, "malformed attribute packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -288,7 +288,7 @@ static void smp_packet(const void *data, uint16_t size)
 	int i;
 
 	if (size < 1) {
-		print_field("malformed security packet");
+		print_text(COLOR_ERROR, "malformed security packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -315,13 +315,13 @@ void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
 	const struct bt_l2cap_hdr *hdr = data;
 
 	if (size < sizeof(*hdr)) {
-		print_field("malformed packet");
+		print_text(COLOR_ERROR, "malformed packet");
 		packet_hexdump(data, size);
 		return;
 	}
 
 	if (btohs(hdr->len) != size - sizeof(*hdr)) {
-		print_field("invalid packet size");
+		print_text(COLOR_ERROR, "invalid packet size");
 		packet_hexdump(data + sizeof(*hdr), size - sizeof(*hdr));
 		return;
 	}

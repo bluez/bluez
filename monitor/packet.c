@@ -46,8 +46,6 @@
 #include "control.h"
 #include "packet.h"
 
-#define COLOR_ERROR	"\x1B[1;31m"
-
 #define COLOR_INDEX_LABEL		COLOR_WHITE
 #define COLOR_TIMESTAMP			COLOR_YELLOW
 
@@ -3388,13 +3386,13 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 
 	if (opcode_data->rsp_fixed) {
 		if (size - 3 != opcode_data->rsp_size) {
-			print_field("invalid packet size");
+			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data + 3, size - 3);
 			return;
 		}
 	} else {
 		if (size - 3 < opcode_data->rsp_size) {
-			print_field("too short packet");
+			print_text(COLOR_ERROR, "too short packet");
 			packet_hexdump(data + 3, size - 3);
 			return;
 		}
@@ -3993,13 +3991,13 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 
 	if (subevent_data->fixed) {
 		if (size - 1 != subevent_data->size) {
-			print_field("invalid packet size");
+			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data + 1, size - 1);
 			return;
 		}
 	} else {
 		if (size - 1 < subevent_data->size) {
-			print_field("too short packet");
+			print_text(COLOR_ERROR, "too short packet");
 			packet_hexdump(data + 1, size - 1);
 			return;
 		}
@@ -4221,13 +4219,13 @@ void packet_hci_command(struct timeval *tv, uint16_t index,
 
 	if (opcode_data->cmd_fixed) {
 		if (hdr->plen != opcode_data->cmd_size) {
-			print_field("invalid packet size");
+			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data, size);
 			return;
 		}
 	} else {
 		if (hdr->plen < opcode_data->cmd_size) {
-			print_field("too short packet");
+			print_text(COLOR_ERROR, "too short packet");
 			packet_hexdump(data, size);
 			return;
 		}
@@ -4286,13 +4284,13 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 
 	if (event_data->fixed) {
 		if (hdr->plen != event_data->size) {
-			print_field("invalid packet size");
+			print_text(COLOR_ERROR, "invalid packet size");
 			packet_hexdump(data, size);
 			return;
 		}
 	} else {
 		if (hdr->plen < event_data->size) {
-			print_field("too short packet");
+			print_text(COLOR_ERROR, "too short packet");
 			packet_hexdump(data, size);
 			return;
 		}
@@ -4332,7 +4330,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 						handle_str, extra_str);
 
 	if (size != dlen) {
-		print_field("invalid packet size (%d != %d)", size, dlen);
+		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
+								size, dlen);
 		packet_hexdump(data, size);
 		return;
 	}
@@ -4388,7 +4387,8 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 						handle_str, extra_str);
 
 	if (size != hdr->dlen) {
-		print_field("invalid packet size (%d != %d)", size, hdr->dlen);
+		print_text(COLOR_ERROR, "invalid packet size (%d != %d)",
+							size, hdr->dlen);
 		packet_hexdump(data, size);
 		return;
 	}
