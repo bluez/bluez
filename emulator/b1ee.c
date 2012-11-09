@@ -41,11 +41,32 @@
 
 #include "mainloop.h"
 
-#define DEFAULT_SERVER	"b1ee.com"
-#define DEFAULT_PORT	"45550"		/* 0xb1ee */
+#define DEFAULT_SERVER		"b1ee.com"
+#define DEFAULT_HOST_PORT	"45550"		/* 0xb1ee */
+#define DEFAULT_SNIFFER_PORT	"45551"		/* 0xb1ef */
 
+static int sniffer_fd;
 static int server_fd;
 static int vhci_fd;
+
+static void sniffer_read_callback(int fd, uint32_t events, void *user_data)
+{
+	static uint8_t buf[4096];
+	ssize_t len;
+
+	if (events & (EPOLLERR | EPOLLHUP))
+		return;
+
+again:
+	len = recv(fd, buf, sizeof(buf), MSG_DONTWAIT);
+	if (len < 0) {
+		if (errno == EAGAIN)
+			goto again;
+		return;
+	}
+
+	printf("Sniffer received: %zi bytes\n", len);
+}
 
 static uint8_t *server_pkt_data;
 static uint8_t server_pkt_type;
@@ -64,7 +85,7 @@ static void server_read_callback(int fd, uint32_t events, void *user_data)
 		return;
 
 again:
-	len = recv(server_fd, buf + server_pkt_offset,
+	len = recv(fd, buf + server_pkt_offset,
 			sizeof(buf) - server_pkt_offset, MSG_DONTWAIT);
 	if (len < 0) {
 		if (errno == EAGAIN)
@@ -132,7 +153,7 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 	if (events & (EPOLLERR | EPOLLHUP))
 		return;
 
-	len = read(vhci_fd, buf, sizeof(buf));
+	len = read(fd, buf, sizeof(buf));
 	if (len < 0)
 		return;
 
@@ -151,18 +172,17 @@ static void signal_callback(int signum, void *user_data)
 	}
 }
 
-int main(int argc, char *argv[])
+static int do_connect(const char *node, const char *service)
 {
-	sigset_t mask;
 	struct addrinfo hints;
 	struct addrinfo *info, *res;
-	int err;
+	int err, fd = -1;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = PF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	err = getaddrinfo(DEFAULT_SERVER, DEFAULT_PORT, &hints, &res);
+	err = getaddrinfo(DEFAULT_SERVER, DEFAULT_HOST_PORT, &hints, &res);
 	if (err) {
 		perror(gai_strerror(err));
 		exit(1);
@@ -174,20 +194,20 @@ int main(int argc, char *argv[])
 		inet_ntop(info->ai_family, info->ai_addr->sa_data,
 							str, sizeof(str));
 
-		server_fd = socket(info->ai_family, info->ai_socktype,
+		fd = socket(info->ai_family, info->ai_socktype,
 						info->ai_protocol);
-		if (server_fd < 0)
+		if (fd < 0)
 			continue;
 
-		printf("Trying to connect to %s on port %s\n",
-						str, DEFAULT_PORT);
+		printf("Trying to connect to %s on port %s\n", str, service);
 
-		if (connect(server_fd, res->ai_addr, res->ai_addrlen) < 0) {
+		if (connect(fd, res->ai_addr, res->ai_addrlen) < 0) {
 			perror("Failed to connect");
 			continue;
 		}
 
-		printf("Successfully connected to %s\n", str);
+		printf("Successfully connected to %s on port %s\n",
+							str, service);
 		break;
 	}
 
@@ -195,6 +215,23 @@ int main(int argc, char *argv[])
 
 	if (res == NULL)
 		exit(1);
+
+	return fd;
+}
+
+int main(int argc, char *argv[])
+{
+	const char sniff_cmd[] = { 0x01, 0x00,
+					0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	ssize_t written;
+	sigset_t mask;
+
+	server_fd = do_connect(DEFAULT_SERVER, DEFAULT_HOST_PORT);
+	sniffer_fd = do_connect(DEFAULT_SERVER, DEFAULT_SNIFFER_PORT);
+
+	written = write(sniffer_fd, sniff_cmd, sizeof(sniff_cmd));
+	if (written < 0)
+		perror("Failed to enable sniffer");
 
 	vhci_fd = open("/dev/vhci", O_RDWR | O_NONBLOCK);
 	if (vhci_fd < 0) {
@@ -211,6 +248,7 @@ int main(int argc, char *argv[])
 
 	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
+	mainloop_add_fd(sniffer_fd, EPOLLIN, sniffer_read_callback, NULL, NULL);
 	mainloop_add_fd(server_fd, EPOLLIN, server_read_callback, NULL, NULL);
 	mainloop_add_fd(vhci_fd, EPOLLIN, vhci_read_callback, NULL, NULL);
 
