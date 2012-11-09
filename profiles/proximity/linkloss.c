@@ -138,9 +138,8 @@ static void link_loss_emit_alert_signal(struct connected_device *condev)
 
 	DBG("alert %s remote %s", alert_level_str, path);
 
-	emit_property_changed(path,
-			PROXIMITY_REPORTER_INTERFACE, "LinkLossAlertLevel",
-			DBUS_TYPE_STRING, &alert_level_str);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), path,
+			PROXIMITY_REPORTER_INTERFACE, "LinkLossAlertLevel");
 }
 
 static uint8_t link_loss_alert_lvl_read(struct attribute *a,

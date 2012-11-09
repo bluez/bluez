@@ -139,56 +139,36 @@ static void register_tx_power(struct btd_adapter *adapter)
 	g_assert(h - start_handle == svc_size);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static gboolean property_get_link_loss_level(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	DBusMessage *reply = NULL;
-	const char *linkloss_level, *immalert_level;
 	struct btd_device *device = data;
+	const char *level;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	level = link_loss_get_alert_level(device);
 
-	linkloss_level = link_loss_get_alert_level(device);
-	immalert_level = imm_alert_get_level(device);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &level);
 
-	dbus_message_iter_init_append(reply, &iter);
-
-	if (!dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict))
-		goto err;
-
-	dict_append_entry(&dict, "LinkLossAlertLevel", DBUS_TYPE_STRING,
-							&linkloss_level);
-	dict_append_entry(&dict, "ImmediateAlertLevel", DBUS_TYPE_STRING,
-							&immalert_level);
-
-	if (!dbus_message_iter_close_container(&iter, &dict))
-		goto err;
-
-	return reply;
-
-err:
-	if (reply)
-		dbus_message_unref(reply);
-	return btd_error_failed(msg, "not enough memory");
+	return TRUE;
 }
 
-static const GDBusMethodTable reporter_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			get_properties) },
-	{ }
-};
+static gboolean property_get_immediate_alert_level(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+	const char *level;
 
-static const GDBusSignalTable reporter_signals[] = {
-	{ GDBUS_SIGNAL("PropertyChanged",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+	level = imm_alert_get_level(device);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &level);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable reporter_device_properties[] = {
+	{ "LinkLossAlertLevel", "s", property_get_link_loss_level },
+	{ "ImmediateAlertLevel", "s", property_get_immediate_alert_level },
 	{ }
 };
 
@@ -216,8 +196,8 @@ static void register_reporter_device(struct btd_device *device,
 
 	g_dbus_register_interface(btd_get_dbus_connection(), path,
 					PROXIMITY_REPORTER_INTERFACE,
-					reporter_methods, reporter_signals,
-					NULL, device, NULL);
+					NULL, NULL, reporter_device_properties,
+					device, NULL);
 
 	btd_device_ref(device);
 	radapter->devices = g_slist_prepend(radapter->devices, device);
