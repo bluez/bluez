@@ -50,8 +50,6 @@ released.
 
 - Move base path to /org/bluez
 
-- Move profile registration to org.bluez.ProfileManager
-
 - Remove GStreamer and libsbc code
 
 - Don't install libbluetooth by default (put it behind a configure switch)
