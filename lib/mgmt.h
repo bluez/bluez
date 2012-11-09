@@ -92,7 +92,6 @@ struct mgmt_rp_read_index_list {
 #define MGMT_SETTING_BREDR		0x00000080
 #define MGMT_SETTING_HS			0x00000100
 #define MGMT_SETTING_LE			0x00000200
-#define MGMT_SETTING_PERIPHERAL		0x00000400
 
 #define MGMT_OP_READ_INFO		0x0004
 struct mgmt_rp_read_info {
@@ -135,10 +134,6 @@ struct mgmt_cp_set_discoverable {
 #define MGMT_OP_SET_HS			0x000C
 
 #define MGMT_OP_SET_LE			0x000D
-
-#define MGMT_LE_OFF			0x00
-#define MGMT_LE_CENTRAL			0x01
-#define MGMT_LE_PERIPHERAL		0x02
 
 #define MGMT_OP_SET_DEV_CLASS		0x000E
 struct mgmt_cp_set_dev_class {

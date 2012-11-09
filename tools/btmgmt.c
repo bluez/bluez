@@ -235,7 +235,6 @@ static const char *settings_str[] = {
 				"br/edr",
 				"hs",
 				"le" ,
-				"peripheral",
 };
 
 static void print_settings(uint32_t settings)
@@ -1109,32 +1108,7 @@ static void cmd_hs(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 static void cmd_le(int mgmt_sk, uint16_t index, int argc, char **argv)
 {
-	uint8_t val;
-
-	if (argc < 2) {
-		printf("Specify \"off\", \"central\" or \"peripheral\"\n");
-		exit(EXIT_FAILURE);
-	}
-
-	if (strcasecmp(argv[1], "on") == 0 ||
-			strcasecmp(argv[1], "yes") == 0 ||
-			strcasecmp(argv[1], "central") == 0)
-		val = MGMT_LE_CENTRAL;
-	else if (strcasecmp(argv[1], "peripheral") == 0)
-		val = MGMT_LE_PERIPHERAL;
-	else if (strcasecmp(argv[1], "off") == 0)
-		val = MGMT_LE_OFF;
-	else
-		val = atoi(argv[1]);
-
-	if (index == MGMT_INDEX_NONE)
-		index = 0;
-
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_LE, index, &val, sizeof(val),
-						setting_rsp, NULL) < 0) {
-		fprintf(stderr, "Unable to send set_le cmd\n");
-		exit(EXIT_FAILURE);
-	}
+	cmd_setting(mgmt_sk, index, MGMT_OP_SET_LE, argc, argv);
 }
 
 static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,

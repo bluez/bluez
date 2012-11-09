@@ -247,10 +247,10 @@ static int mgmt_set_ssp(int index, gboolean ssp)
 	return mgmt_set_mode(index, MGMT_OP_SET_SSP, ssp);
 }
 
-static int mgmt_set_low_energy(int index, uint8_t mode)
+static int mgmt_set_low_energy(int index, gboolean le)
 {
-	DBG("index %d mode %d", index, mode);
-	return mgmt_set_mode(index, MGMT_OP_SET_LE, mode);
+	DBG("index %d le %d", index, le);
+	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
 }
 
 static inline int mgmt_powered(uint32_t settings)
@@ -336,7 +336,7 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 
 	if (mgmt_low_energy(info->supported_settings) &&
 						!mgmt_low_energy(settings))
-		mgmt_set_low_energy(index, MGMT_LE_CENTRAL);
+		mgmt_set_low_energy(index, TRUE);
 }
 
 static void mgmt_update_powered(struct btd_adapter *adapter,

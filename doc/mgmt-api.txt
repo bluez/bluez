@@ -141,7 +141,6 @@ Read Controller Information Command
 		8	Basic Rate/Enhanced Data Rate
 		9	High Speed
 		10	Low Energy
-		11	Peripheral
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -304,14 +303,8 @@ Set Low Energy Command
 
 	Command Code:		0x000D
 	Controller Index:	<controller id>
-	Command Parameters:	Mode (1 Octet)
+	Command Parameters:	Low_Energy (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
-
-	Possible mode values:
-
-			0x00	Off
-			0x01	Central
-			0x02	Peripheral
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -321,10 +314,6 @@ Set Low Energy Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
-
-	Setting the mode to Central will enable the Low Energy bit in
-	the supported settings. Setting the mode to Peripheral will enable
-	both the Low Energy and the Peripheral settings bits.
 
 
 Set Device Class
