@@ -83,6 +83,7 @@ struct thermometer {
 
 	uint16_t			measurement_ccc_handle;
 	uint16_t			intermediate_ccc_handle;
+	uint16_t			interval_val_handle;
 };
 
 struct characteristic {
@@ -240,14 +241,6 @@ static gint cmp_watcher(gconstpointer a, gconstpointer b)
 	return g_strcmp0(watcher->path, match->path);
 }
 
-static gint cmp_char_uuid(gconstpointer a, gconstpointer b)
-{
-	const struct characteristic *ch = a;
-	const char *uuid = b;
-
-	return g_strcmp0(ch->attr.uuid, uuid);
-}
-
 static gint cmp_char_val_handle(gconstpointer a, gconstpointer b)
 {
 	const struct characteristic *ch = a;
@@ -262,18 +255,6 @@ find_thermometer_adapter(struct btd_adapter *adapter)
 	GSList *l = g_slist_find_custom(thermometer_adapters, adapter,
 								cmp_adapter);
 	if (!l)
-		return NULL;
-
-	return l->data;
-}
-
-static struct characteristic *get_characteristic(struct thermometer *t,
-							const char *uuid)
-{
-	GSList *l;
-
-	l = g_slist_find_custom(t->chars, uuid, cmp_char_uuid);
-	if (l == NULL)
 		return NULL;
 
 	return l->data;
@@ -541,6 +522,8 @@ static void process_thermometer_char(struct characteristic *ch)
 		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_temp_type_cb, ch);
 	} else if (g_strcmp0(ch->attr.uuid, MEASUREMENT_INTERVAL_UUID) == 0) {
+		ch->t->interval_val_handle = ch->attr.value_handle;
+
 		gatt_read_char(ch->t->attrib, ch->attr.value_handle,
 							read_interval_cb, ch);
 	}
@@ -651,14 +634,12 @@ static DBusMessage *write_attr_interval(struct thermometer *t, DBusMessage *msg,
 								uint16_t value)
 {
 	struct tmp_interval_data *data;
-	struct characteristic *ch;
 	uint8_t atval[2];
 
 	if (t->attrib == NULL)
 		return btd_error_not_connected(msg);
 
-	ch = get_characteristic(t, MEASUREMENT_INTERVAL_UUID);
-	if (ch == NULL)
+	if (t->interval_val_handle == 0)
 		return btd_error_not_available(msg);
 
 	if (value < t->min || value > t->max)
@@ -669,7 +650,7 @@ static DBusMessage *write_attr_interval(struct thermometer *t, DBusMessage *msg,
 	data = g_new0(struct tmp_interval_data, 1);
 	data->thermometer = t;
 	data->interval = value;
-	gatt_write_char(t->attrib, ch->attr.value_handle, atval, 2,
+	gatt_write_char(t->attrib, t->interval_val_handle, atval, 2,
 						write_interval_cb, data);
 
 	return dbus_message_new_method_return(msg);
