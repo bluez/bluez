@@ -52,7 +52,6 @@ tools/hcitool
 tools/hid2hci
 tools/rfcomm
 tools/l2ping
-tools/ppporc
 tools/sdptool
 test/agent
 test/bdaddr

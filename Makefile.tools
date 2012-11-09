@@ -5,8 +5,7 @@ bin_PROGRAMS += tools/rfcomm tools/l2ping \
 
 sbin_PROGRAMS += tools/hciattach tools/hciconfig
 
-noinst_PROGRAMS += tools/avinfo tools/ppporc \
-				tools/hcieventmask tools/hcisecfilter
+noinst_PROGRAMS += tools/avinfo tools/hcieventmask tools/hcisecfilter
 
 tools_rfcomm_SOURCES = tools/rfcomm.c
 tools_rfcomm_LDADD = lib/libbluetooth-private.la
@@ -36,8 +35,6 @@ tools_sdptool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 tools_ciptool_LDADD = lib/libbluetooth-private.la
 
 tools_avinfo_LDADD = lib/libbluetooth-private.la
-
-tools_ppporc_LDADD = lib/libbluetooth-private.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
