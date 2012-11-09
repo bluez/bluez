@@ -39,11 +39,6 @@ profiles/input/suspend.c
 profiles/sap/sap.c
 profiles/cups/bluetooth
 
-sbc/sbcdec
-sbc/sbcenc
-sbc/sbcinfo
-sbc/sbctester
-
 attrib/gatttool
 tools/avctrl
 tools/avinfo
