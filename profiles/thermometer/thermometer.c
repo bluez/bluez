@@ -119,7 +119,7 @@ struct tmp_interval_data {
 
 static GSList *thermometer_adapters = NULL;
 
-const char *temp_type[] = {
+static const char * const temp_type[] = {
 	"<reserved>",
 	"armpit",
 	"body",
