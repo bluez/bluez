@@ -171,7 +171,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	hog_suspend_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
-	gatt_enable=no
 	neard_enable=no
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
@@ -275,10 +274,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_SUBST([HOG_SUSPEND_DRIVER], [suspend-${hog_suspend_driver}.c])
 
-	AC_ARG_ENABLE(gatt, AC_HELP_STRING([--enable-gatt], [enable gatt module]), [
-		gatt_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(neard, AC_HELP_STRING([--enable-neard], [compile with neard plugin]), [
 		neard_enable=${enableval}
 	])
@@ -330,7 +325,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
-	AM_CONDITIONAL(GATTMODULES, test "${gatt_enable}" = "yes")
-	AM_CONDITIONAL(HOGPLUGIN, test "${gatt_enable}" = "yes" && test "${input_enable}" = "yes")
+	AM_CONDITIONAL(HOGPLUGIN, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(NEARDPLUGIN, test "${neard_enable}" = "yes")
 ])

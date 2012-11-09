@@ -28,5 +28,4 @@ fi
 		--enable-sap \
 		--enable-wiimote \
 		--disable-pcmcia \
-		--enable-gatt \
 		--disable-datafiles $*

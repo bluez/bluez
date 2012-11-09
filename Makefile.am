@@ -185,7 +185,6 @@ builtin_sources += profiles/health/hdp_main.c profiles/health/hdp_types.h \
 		profiles/health/hdp_util.h profiles/health/hdp_util.c
 endif
 
-if GATTMODULES
 builtin_modules += thermometer alert time gatt_example proximity deviceinfo \
 			gatt scanparam heartrate
 builtin_sources += profiles/thermometer/main.c \
@@ -228,7 +227,6 @@ builtin_sources += profiles/thermometer/main.c \
 			profiles/heartrate/heartrate.c \
 			profiles/heartrate/heartrate.h
 
-endif
 
 builtin_modules += formfactor
 builtin_sources += plugins/formfactor.c
