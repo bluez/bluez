@@ -130,15 +130,6 @@ EXTRA_DIST += tools/dfutool.1
 endif
 
 
-if USB
-noinst_PROGRAMS += tools/dfubabel
-
-tools_dfubabel_LDADD = @USB_LIBS@
-endif
-
-EXTRA_DIST += tools/dfubabel.1
-
-
 if CUPS
 cupsdir = $(libdir)/cups/backend
 
