@@ -718,15 +718,24 @@ static void process_thermometer_char(struct thermometer *t,
 		gatt_read_char(t->attrib, c->value_handle,
 							read_temp_type_cb, t);
 	} else if (g_strcmp0(c->uuid, MEASUREMENT_INTERVAL_UUID) == 0) {
+		bool need_desc = false;
+
 		gatt_read_char(t->attrib, c->value_handle, read_interval_cb, t);
 
-		t->interval_val_handle = c->value_handle;
+		if (c->properties & ATT_CHAR_PROPER_WRITE) {
+			t->interval_val_handle = c->value_handle;
+			need_desc = true;
+		}
 
-		t->attio_interval_id = g_attrib_register(t->attrib,
+		if (c->properties & ATT_CHAR_PROPER_INDICATE) {
+			t->attio_interval_id = g_attrib_register(t->attrib,
 					ATT_OP_HANDLE_IND, c->value_handle,
 					interval_ind_handler, t, NULL);
+			need_desc = true;
+		}
 
-		discover_desc(t, c, c_next);
+		if (need_desc)
+			discover_desc(t, c, c_next);
 	}
 }
 
