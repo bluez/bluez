@@ -270,6 +270,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 							struct btd_device *dev)
 {
 	DBusMessage *msg;
+	DBusMessageIter iter, dict;
 	const char *path;
 	int fd;
 
@@ -281,12 +282,19 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 		return false;
 	}
 
-	path = device_get_path(dev);
-	fd = g_io_channel_unix_get_fd(conn->io);
+	dbus_message_iter_init_append(msg, &iter);
 
-	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
-					DBUS_TYPE_UNIX_FD, &fd,
-					DBUS_TYPE_INVALID);
+	path = device_get_path(dev);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	fd = g_io_channel_unix_get_fd(conn->io);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_UNIX_FD, &fd);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
+
+	/* fd properties go here */
+
+	dbus_message_iter_close_container(&iter, &dict);
 
 	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
 						msg, &conn->new_conn, -1)) {

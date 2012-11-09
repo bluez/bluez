@@ -24,8 +24,8 @@ class Profile(dbus.service.Object):
 		print("Cancel")
 
 	@dbus.service.method("org.bluez.Profile",
-					in_signature="oh", out_signature="")
-	def NewConnection(self, path, fd):
+				in_signature="oha{sv}", out_signature="")
+	def NewConnection(self, path, fd, properties):
 		fd = fd.take()
 		print("NewConnection(%s, %d)" % (path, fd))
 		os.close(fd)

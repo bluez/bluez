@@ -19,7 +19,7 @@ Methods		void Release()
 			profile, because when this method gets called it has
 			already been unregistered.
 
-		void NewConnection(object device, fd)
+		void NewConnection(object device, fd, dict fd_properties)
 
 			This method gets called when a new service level
 			connection has been made and authorized.
