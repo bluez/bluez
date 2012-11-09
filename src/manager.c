@@ -54,7 +54,7 @@
 #include "error.h"
 #include "manager.h"
 
-static char base_path[50] = "/org/bluez";
+static const char *base_path = "/org/bluez";
 
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
@@ -184,8 +184,6 @@ static const GDBusPropertyTable manager_properties[] = {
 dbus_bool_t manager_init(const char *path)
 {
 	btd_profile_init();
-
-	snprintf(base_path, sizeof(base_path), "/org/bluez/%d", getpid());
 
 	return g_dbus_register_interface(btd_get_dbus_connection(),
 					"/", MANAGER_INTERFACE,
