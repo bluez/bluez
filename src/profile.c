@@ -168,7 +168,7 @@ static void ext_cancel(struct ext_profile *ext)
 	DBusMessage *msg;
 
 	msg = dbus_message_new_method_call(ext->owner, ext->path,
-						"org.bluez.Profile", "Cancel");
+						"org.bluez.Profile1", "Cancel");
 	if (msg)
 		g_dbus_send_message(btd_get_dbus_connection(), msg);
 }
@@ -314,7 +314,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 	int fd;
 
 	msg = dbus_message_new_method_call(ext->owner, ext->path,
-							"org.bluez.Profile",
+							"org.bluez.Profile1",
 							"NewConnection");
 	if (!msg) {
 		error("Unable to create NewConnection call for %s", ext->name);
@@ -1085,8 +1085,8 @@ static void ext_exited(DBusConnection *conn, void *user_data)
 	remove_ext(ext);
 }
 
-DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
-							void *user_data)
+static DBusMessage *register_profile(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
 	const char *path, *sender, *uuid;
 	DBusMessageIter args, opts;
@@ -1120,8 +1120,8 @@ DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
-DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
-							void *user_data)
+static DBusMessage *unregister_profile(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
 	const char *path, *sender;
 	struct ext_profile *ext;
@@ -1141,6 +1141,16 @@ DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
 
 	return dbus_message_new_method_return(msg);
 }
+
+static const GDBusMethodTable methods[] = {
+	{ GDBUS_METHOD("RegisterProfile",
+			GDBUS_ARGS({ "profile", "o"}, { "UUID", "s" },
+						{ "options", "a{sv}" }),
+			NULL, register_profile) },
+	{ GDBUS_METHOD("UnregisterProfile", GDBUS_ARGS({ "profile", "o" }),
+			NULL, unregister_profile) },
+	{ }
+};
 
 void btd_profile_add_custom_prop(const char *uuid, const char *type,
 					const char *name,
@@ -1173,6 +1183,13 @@ static void free_property(gpointer data)
 	g_free(p);
 }
 
+void btd_profile_init(void)
+{
+	g_dbus_register_interface(btd_get_dbus_connection(),
+				"/org/bluez", "org.bluez.ProfileManager1",
+				methods, NULL, NULL, NULL, NULL);
+}
+
 void btd_profile_cleanup(void)
 {
 	while (ext_profiles) {
@@ -1186,7 +1203,7 @@ void btd_profile_cleanup(void)
 		ext->conns = NULL;
 
 		msg = dbus_message_new_method_call(ext->owner, ext->path,
-							"org.bluez.Profile",
+							"org.bluez.Profile1",
 							"Release");
 		if (msg)
 			g_dbus_send_message(conn, msg);
@@ -1198,4 +1215,8 @@ void btd_profile_cleanup(void)
 
 	g_slist_free_full(custom_props, free_property);
 	custom_props = NULL;
+
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				"/org/bluez", "org.bluez.ProfileManager1");
+
 }

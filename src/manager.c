@@ -163,12 +163,6 @@ static const GDBusMethodTable manager_methods[] = {
 			GDBUS_ARGS({ "pattern", "s" }),
 			GDBUS_ARGS({ "adapter", "o" }),
 			find_adapter) },
-	{ GDBUS_METHOD("RegisterProfile",
-			GDBUS_ARGS({ "profile", "o"}, { "UUID", "s" },
-						{ "options", "a{sv}" }),
-			NULL, btd_profile_reg_ext) },
-	{ GDBUS_METHOD("UnregisterProfile", GDBUS_ARGS({ "profile", "o" }),
-			NULL, btd_profile_unreg_ext) },
 	{ }
 };
 
@@ -189,6 +183,8 @@ static const GDBusPropertyTable manager_properties[] = {
 
 dbus_bool_t manager_init(const char *path)
 {
+	btd_profile_init();
+
 	snprintf(base_path, sizeof(base_path), "/org/bluez/%d", getpid());
 
 	return g_dbus_register_interface(btd_get_dbus_connection(),

@@ -74,9 +74,5 @@ void btd_profile_add_custom_prop(const char *uuid, const char *type,
 					btd_profile_prop_get get,
 					void *user_data);
 
+void btd_profile_init(void);
 void btd_profile_cleanup(void);
-
-DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,
-							void *user_data);
-DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
-							void *user_data);
