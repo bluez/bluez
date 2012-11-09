@@ -35,11 +35,6 @@
 
 static int heartrate_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return heartrate_manager_init();
 }
 

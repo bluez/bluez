@@ -35,11 +35,6 @@
 
 static int gatt_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		error("GATT can not start: EnableGatt is false");
-		return -ENOTSUP;
-	}
-
 	return gatt_manager_init();
 }
 

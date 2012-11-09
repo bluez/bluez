@@ -37,11 +37,6 @@
 
 static int scan_param_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("Scan Parameters: GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return scan_param_manager_init();
 }
 

@@ -35,19 +35,11 @@
 
 static int thermometer_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return thermometer_manager_init();
 }
 
 static void thermometer_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	thermometer_manager_exit();
 }
 

@@ -37,19 +37,11 @@
 
 static int alert_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return alert_manager_init();
 }
 
 static void alert_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	alert_manager_exit();
 }
 

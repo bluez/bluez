@@ -37,19 +37,11 @@
 
 static int time_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return time_manager_init();
 }
 
 static void time_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	time_manager_exit();
 }
 

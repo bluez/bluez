@@ -59,11 +59,6 @@ static GKeyFile *open_config_file(const char *file)
 
 static int proximity_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	config = open_config_file(CONFIGDIR "/proximity.conf");
 
 	if (proximity_manager_init(config) < 0)
@@ -74,9 +69,6 @@ static int proximity_init(void)
 
 static void proximity_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	if (config)
 		g_key_file_free(config);
 

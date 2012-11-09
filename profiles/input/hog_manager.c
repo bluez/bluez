@@ -149,19 +149,11 @@ static void hog_manager_exit(void)
 
 static int hog_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		DBG("GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return hog_manager_init();
 }
 
 static void hog_exit(void)
 {
-	if (!main_opts.gatt_enabled)
-		return;
-
 	hog_manager_exit();
 }
 

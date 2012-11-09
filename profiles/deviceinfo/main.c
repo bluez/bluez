@@ -35,11 +35,6 @@
 
 static int deviceinfo_init(void)
 {
-	if (!main_opts.gatt_enabled) {
-		error("DIS cannot start: GATT is disabled");
-		return -ENOTSUP;
-	}
-
 	return deviceinfo_manager_init();
 }
 
