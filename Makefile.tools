@@ -131,14 +131,12 @@ endif
 
 
 if USB
-noinst_PROGRAMS += tools/dfubabel tools/avctrl
+noinst_PROGRAMS += tools/dfubabel
 
 tools_dfubabel_LDADD = @USB_LIBS@
-
-tools_avctrl_LDADD = @USB_LIBS@
 endif
 
-EXTRA_DIST += tools/dfubabel.1 tools/avctrl.8
+EXTRA_DIST += tools/dfubabel.1
 
 
 if CUPS

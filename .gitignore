@@ -40,7 +40,6 @@ profiles/sap/sap.c
 profiles/cups/bluetooth
 
 attrib/gatttool
-tools/avctrl
 tools/avinfo
 tools/bccmd
 tools/ciptool
