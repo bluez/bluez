@@ -23,5 +23,6 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
-void l2cap_packet(uint16_t handle, const void *data, uint16_t size);
+void l2cap_packet(uint16_t handle, bool in, const void *data, uint16_t size);

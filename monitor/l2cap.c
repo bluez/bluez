@@ -33,6 +33,329 @@
 #include "display.h"
 #include "l2cap.h"
 
+static void print_psm(uint16_t psm)
+{
+	print_field("PSM: %d (0x%4.4x)", btohs(psm), btohs(psm));
+}
+
+static void print_cid(const char *type, uint16_t cid)
+{
+	print_field("%s CID: %d", type, btohs(cid));
+}
+
+static void print_reject_reason(uint16_t reason)
+{
+	const char *str;
+
+	switch (btohs(reason)) {
+	case 0x0000:
+		str = "Command not understood";
+		break;
+	case 0x0001:
+		str = "Signaling MTU exceeded";
+		break;
+	case 0x0002:
+		str = "Invalid CID in request";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Reason: %s (0x%4.4x)", str, btohs(reason));
+}
+
+static void print_conn_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Connection successful";
+		break;
+	case 0x0001:
+		str = "Connection pending";
+		break;
+	case 0x0002:
+		str = "Connection refused - PSM not supported";
+		break;
+	case 0x0003:
+		str = "Connection refused - security block";
+		break;
+	case 0x0004:
+		str = "Connection refused - no resources available";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static void print_conn_status(uint16_t status)
+{
+        const char *str;
+
+	switch (btohs(status)) {
+	case 0x0000:
+		str = "No further information available";
+		break;
+	case 0x0001:
+		str = "Authentication pending";
+		break;
+	case 0x0002:
+		str = "Authorization pending";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Status: %s (0x%4.4x)", str, btohs(status));
+}
+
+static void print_config_flags(uint16_t flags)
+{
+	print_field("Flags: 0x%4.4x", btohs(flags));
+}
+
+static void print_config_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Success";
+		break;
+	case 0x0001:
+		str = "Failure - unacceptable parameters";
+		break;
+	case 0x0002:
+		str = "Failure - rejected";
+		break;
+	case 0x0003:
+		str = "Failure - unknown options";
+		break;
+	case 0x0004:
+		str = "Pending";
+		break;
+	case 0x0005:
+		str = "Failure - flow spec rejected";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static void print_info_type(uint16_t type)
+{
+	const char *str;
+
+	switch (btohs(type)) {
+	case 0x0001:
+		str = "Connectionless MTU";
+		break;
+	case 0x0002:
+		str = "Extended features supported";
+		break;
+	case 0x0003:
+		str = "Fixed channels supported";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%4.4x)", str, btohs(type));
+}
+
+static void print_info_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Success";
+		break;
+	case 0x0001:
+		str = "Not supported";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static void sig_cmd_reject(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_cmd_reject *pdu = data;
+	uint16_t mtu, scid, dcid;
+
+	print_reject_reason(pdu->reason);
+
+	data += sizeof(*pdu);
+	size -= sizeof(*pdu);
+
+	switch (btohs(pdu->reason)) {
+	case 0x0000:
+		if (size != 0) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+		break;
+	case 0x0001:
+		if (size != 2) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+		mtu = bt_get_le16(data);
+		print_field("MTU: %d", mtu);
+		break;
+	case 0x0002:
+		if (size != 4) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+		dcid = bt_get_le16(data);
+		scid = bt_get_le16(data + 2);
+		print_cid("Destination", htobs(dcid));
+		print_cid("Source", htobs(scid));
+		break;
+	default:
+		packet_hexdump(data, size);
+		break;
+	}
+}
+
+static void sig_conn_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_conn_req *pdu = data;
+
+	print_psm(pdu->psm);
+	print_cid("Source", pdu->scid);
+}
+
+static void sig_conn_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_conn_rsp *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_cid("Source", pdu->scid);
+	print_conn_result(pdu->result);
+	print_conn_status(pdu->status);
+}
+
+static void sig_config_req(const void *data, uint16_t size)
+{
+        const struct bt_l2cap_pdu_config_rsp *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_config_flags(pdu->flags);
+
+	packet_hexdump(data + 4, size - 4);
+}
+
+static void sig_config_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_config_rsp *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_config_flags(pdu->flags);
+	print_config_result(pdu->result);
+
+	packet_hexdump(data + 6, size - 6);
+}
+
+static void sig_disconn_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_disconn_req *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_cid("Source", pdu->scid);
+}
+
+static void sig_disconn_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_disconn_rsp *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_cid("Source", pdu->scid);
+}
+
+static void sig_echo_req(const void *data, uint16_t size)
+{
+	packet_hexdump(data, size);
+}
+
+static void sig_echo_rsp(const void *data, uint16_t size)
+{
+	packet_hexdump(data, size);
+}
+
+static void sig_info_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_info_req *pdu = data;
+
+	print_info_type(pdu->type);
+}
+
+static void sig_info_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_info_rsp *pdu = data;
+	uint16_t mtu;
+	uint32_t features;
+	uint64_t channels;
+
+	print_info_type(pdu->type);
+	print_info_result(pdu->result);
+
+	data += sizeof(*pdu);
+	size -= sizeof(*pdu);
+
+	switch (btohs(pdu->type)) {
+	case 0x0001:
+		if (size != 2) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+
+		mtu = bt_get_le16(data);
+		print_field("MTU: %d", mtu);
+		break;
+	case 0x0002:
+		if (size != 4) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+		features = bt_get_le32(data);
+		print_field("Features: 0x%8.8x", features);
+		break;
+	case 0x0003:
+		if (size != 8) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+			break;
+		}
+		channels = bt_get_le64(data);
+		print_field("Channels: 0x%16.16lx", channels);
+		break;
+	default:
+		packet_hexdump(data, size);
+		break;
+	}
+}
+
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -42,17 +365,28 @@ struct sig_opcode_data {
 };
 
 static const struct sig_opcode_data sig_opcode_table[] = {
-	{ 0x01, "Command Reject"			},
-	{ 0x02, "Connection Request"			},
-	{ 0x03, "Connection Response"			},
-	{ 0x04, "Configure Request"			},
-	{ 0x05, "Configure Response"			},
-	{ 0x06, "Disconnection Request"			},
-	{ 0x07, "Disconnection Response"		},
-	{ 0x08, "Echo Request"				},
-	{ 0x09, "Echo Response"				},
-	{ 0x0a, "Information Request"			},
-	{ 0x0b, "Information Response"			},
+	{ 0x01, "Command Reject",
+			sig_cmd_reject, 2, false },
+	{ 0x02, "Connection Request",
+			sig_conn_req, 4, true },
+	{ 0x03, "Connection Response",
+			sig_conn_rsp, 8, true },
+	{ 0x04, "Configure Request",
+			sig_config_req, 4, false },
+	{ 0x05, "Configure Response",
+			sig_config_rsp, 6, false },
+	{ 0x06, "Disconnection Request",
+			sig_disconn_req, 4, true },
+	{ 0x07, "Disconnection Response",
+			sig_disconn_rsp, 4, true },
+	{ 0x08, "Echo Request",
+			sig_echo_req, 0, false },
+	{ 0x09, "Echo Response",
+			sig_echo_rsp, 0, false },
+	{ 0x0a, "Information Request",
+			sig_info_req, 2, true },
+	{ 0x0b, "Information Response",
+			sig_info_rsp, 4, false },
 	{ 0x0c, "Create Channel Request"		},
 	{ 0x0d, "Create Channel Response"		},
 	{ 0x0e, "Move Channel Request"			},
@@ -64,46 +398,89 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 	{ },
 };
 
-static void sig_packet(const void *data, uint16_t size)
+static void sig_packet(bool in, const void *data, uint16_t size)
 {
-	uint16_t len;
-	uint8_t opcode, ident;
-	const struct sig_opcode_data *opcode_data = NULL;
-	const char *opcode_str;
-	int i;
+	while (size > 0) {
+		uint16_t len;
+		const struct bt_l2cap_hdr_sig *hdr = data;
+		const struct sig_opcode_data *opcode_data = NULL;
+		const char *opcode_color, *opcode_str;
+		int i;
 
-	if (size < 4) {
-		print_text(COLOR_ERROR, "malformed signal packet");
-		packet_hexdump(data, size);
-		return;
-	}
-
-	opcode = *((const uint8_t *) (data));
-	ident = *((const uint8_t *) (data + 1));
-	len = bt_get_le16(data + 2);
-
-	if (len != size - 4) {
-		print_text(COLOR_ERROR, "invalid signal packet size");
-		packet_hexdump(data, size);
-		return;
-	}
-
-	for (i = 0; sig_opcode_table[i].str; i++) {
-		if (sig_opcode_table[i].opcode == opcode) {
-			opcode_data = &sig_opcode_table[i];
-			break;
+		if (size < 4) {
+			print_text(COLOR_ERROR, "malformed signal packet");
+			packet_hexdump(data, size);
+			return;
 		}
+
+		len = btohs(hdr->len);
+
+		data += 4;
+		size -= 4;
+
+		if (size < len) {
+			print_text(COLOR_ERROR, "invalid signal packet size");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		for (i = 0; sig_opcode_table[i].str; i++) {
+			if (sig_opcode_table[i].opcode == hdr->code) {
+				opcode_data = &sig_opcode_table[i];
+				break;
+			}
+		}
+
+		if (opcode_data) {
+			if (opcode_data->func) {
+				if (in)
+					opcode_color = COLOR_MAGENTA;
+				else
+					opcode_color = COLOR_BLUE;
+			} else
+				opcode_color = COLOR_WHITE_BG;
+			opcode_str = opcode_data->str;
+		} else {
+			opcode_color = COLOR_WHITE_BG;
+			opcode_str = "Unknown";
+		}
+
+		print_indent(6, opcode_color,
+				"L2CAP: %s (0x%2.2x) ident %d len %d",
+				opcode_str, hdr->code, hdr->ident, len);
+
+		if (!opcode_data || !opcode_data->func) {
+			packet_hexdump(data, len);
+			data += len;
+			size -= len;
+			return;
+		}
+
+		if (opcode_data->fixed) {
+			if (len != opcode_data->size) {
+				print_text(COLOR_ERROR, "invalid size");
+				packet_hexdump(data, len);
+				data += len;
+				size -= len;
+				continue;
+			}
+		} else {
+			if (len < opcode_data->size) {
+				print_text(COLOR_ERROR, "too short packet");
+				packet_hexdump(data, size);
+				data += len;
+				size -= len;
+				continue;
+			}
+		}
+
+		opcode_data->func(data, len);
+
+		data += len;
+		size -= len;
 	}
 
-	if (opcode_data)
-		opcode_str = opcode_data->str;
-	else
-		opcode_str = "Unknown";
-
-	print_field("L2CAP: %s (0x%2.2x) ident %d len %d",
-					opcode_str, opcode, ident, len);
-
-	packet_hexdump(data + 4, size - 4);
+	packet_hexdump(data, size);
 }
 
 struct amp_opcode_data {
@@ -182,7 +559,7 @@ static void amp_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_field("AMP: %s (0x%2.2x) ident %d len %d",
+	print_indent(8, COLOR_CYAN, "AMP: %s (0x%2.2x) ident %d len %d",
 					opcode_str, opcode, ident, len);
 
 	packet_hexdump(data + 6, size - 8);
@@ -253,7 +630,8 @@ static void att_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_field("ATT: %s (0x%2.2x) len %d", opcode_str, opcode, size - 1);
+	print_indent(8, COLOR_CYAN, "ATT: %s (0x%2.2x) len %d",
+					opcode_str, opcode, size - 1);
 
 	packet_hexdump(data + 1, size - 1);
 }
@@ -306,19 +684,21 @@ static void smp_packet(const void *data, uint16_t size)
 	else
 		opcode_str = "Unknown";
 
-	print_field("SMP: %s (0x%2.2x) len %d", opcode_str, opcode, size - 1);
+	print_indent(8, COLOR_CYAN, "SMP: %s (0x%2.2x) len %d",
+					opcode_str, opcode, size - 1);
 
 	packet_hexdump(data + 1, size - 1);
 }
 
-void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
+void l2cap_packet(uint16_t handle, bool in, const void *data, uint16_t size)
 {
 	const struct bt_l2cap_hdr *hdr = data;
 	uint16_t len, cid;
 
 	if (size < sizeof(*hdr)) {
 		print_text(COLOR_ERROR, "malformed packet");
-		goto done;
+		packet_hexdump(data, size);
+		return;
 	}
 
 	len = btohs(hdr->len);
@@ -329,13 +709,14 @@ void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
 
 	if (len != size) {
 		print_text(COLOR_ERROR, "invalid packet size");
-		goto done;
+		packet_hexdump(data, size);
+		return;
 	}
 
 	switch (btohs(hdr->cid)) {
 	case 0x0001:
 	case 0x0005:
-		sig_packet(data, len);
+		sig_packet(in, data, len);
 		break;
 	case 0x0003:
 		amp_packet(data, len);
@@ -353,8 +734,7 @@ void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
 	}
 
 	data += len;
-	size += len;
+	size -= len;
 
-done:
 	packet_hexdump(data, size);
 }

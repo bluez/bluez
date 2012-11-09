@@ -1298,3 +1298,68 @@ struct bt_l2cap_hdr {
 	uint16_t len;
 	uint16_t cid;
 } __attribute__ ((packed));
+
+struct bt_l2cap_hdr_sig {
+	uint8_t  code;
+	uint8_t  ident;
+	uint16_t len;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CMD_REJECT		0x01
+struct bt_l2cap_pdu_cmd_reject {
+	uint16_t reason;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONN_REQ		0x02
+struct bt_l2cap_pdu_conn_req {
+	uint16_t psm;
+	uint16_t scid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONN_RSP		0x03
+struct bt_l2cap_pdu_conn_rsp {
+	uint16_t dcid;
+	uint16_t scid;
+	uint16_t result;
+	uint16_t status;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONFIG_REQ		0x04
+struct bt_l2cap_pdu_config_req {
+	uint16_t dcid;
+	uint16_t flags;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONFIG_RSP		0x05
+struct bt_l2cap_pdu_config_rsp {
+	uint16_t dcid;
+	uint16_t flags;
+	uint16_t result;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_DISCONN_REQ	0x06
+struct bt_l2cap_pdu_disconn_req {
+	uint16_t dcid;
+	uint16_t scid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_DISCONN_RSP	0x07
+struct bt_l2cap_pdu_disconn_rsp {
+	uint16_t dcid;
+	uint16_t scid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_ECHO_REQ		0x08
+
+#define BT_L2CAP_PDU_ECHO_RSP		0x09
+
+#define BT_L2CAP_PDU_INFO_REQ		0x0a
+struct bt_l2cap_pdu_info_req {
+	uint16_t type;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_INFO_RSP		0x0b
+struct bt_l2cap_pdu_info_rsp {
+	uint16_t type;
+	uint16_t result;
+} __attribute__ ((packed));
