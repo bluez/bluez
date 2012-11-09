@@ -29,9 +29,9 @@ class Watcher(dbus.service.Object):
 		if "Type" in measure:
 			print("Type: ", measure["Type"])
 
-def property_changed(name, value):
-
-	print("PropertyChanged('%s', '%s')" % (name, value))
+def properties_changed(interface, changed, invalidated):
+	for name, value in changed.iteritems():
+		print("Property %s changed:  %s" % (name, str(value)))
 
 if __name__ == "__main__":
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -71,9 +71,10 @@ if __name__ == "__main__":
 
 	device_path = adapter.FindDevice(options.address)
 
-	bus.add_signal_receiver(property_changed, bus_name="org.bluez",
-				dbus_interface="org.bluez.Thermometer",
-				signal_name="PropertyChanged")
+	bus.add_signal_receiver(properties_changed, bus_name="org.bluez",
+			path=device_path,
+			dbus_interface="org.freedesktop.DBus.Properties",
+			signal_name="PropertiesChanged")
 
 	path = "/test/watcher"
 	watcher = Watcher(bus, path)
