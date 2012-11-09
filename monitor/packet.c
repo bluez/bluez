@@ -46,19 +46,6 @@
 #include "control.h"
 #include "packet.h"
 
-#define COLOR_OFF	"\x1B[0m"
-#define COLOR_BLACK	"\x1B[0;30m"
-#define COLOR_RED	"\x1B[0;31m"
-#define COLOR_GREEN	"\x1B[0;32m"
-#define COLOR_YELLOW	"\x1B[0;33m"
-#define COLOR_BLUE	"\x1B[0;34m"
-#define COLOR_MAGENTA	"\x1B[0;35m"
-#define COLOR_CYAN	"\x1B[0;36m"
-#define COLOR_WHITE	"\x1B[0;37m"
-#define COLOR_HIGHLIGHT	"\x1B[1;39m"
-
-#define COLOR_WHITE_BG	"\x1B[0;47m"
-
 #define COLOR_ERROR	"\x1B[1;31m"
 
 #define COLOR_INDEX_LABEL		COLOR_WHITE
@@ -75,12 +62,6 @@
 
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
-
-#define print_text(color, fmt, args...) do { \
-	printf("%s" fmt "%s", \
-		use_color() ? color : "", ## args, \
-		use_color() ? COLOR_OFF : ""); \
-} while (0);
 
 static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
@@ -1390,7 +1371,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 			str[47] = ' ';
 			str[48] = ' ';
 			str[65] = '\0';
-			print_text(COLOR_WHITE, "%-8c%s\n", ' ', str);
+			print_text(COLOR_WHITE, "%s", str);
 			str[0] = ' ';
 		}
 	}
@@ -1406,7 +1387,7 @@ void packet_hexdump(const unsigned char *buf, uint16_t len)
 		str[47] = ' ';
 		str[48] = ' ';
 		str[65] = '\0';
-		print_text(COLOR_WHITE, "%-8c%s\n", ' ', str);
+		print_text(COLOR_WHITE, "%s", str);
 	}
 }
 
@@ -4368,6 +4349,11 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 		if (index_list[index].frag_len == 0)
 			l2cap_packet(data, size);
 		index_list[index].frag_len = 0;
+		break;
+	default:
+		print_text(COLOR_ERROR, "invalid packet flags (0x%2.2x)",
+								flags);
+		packet_hexdump(data, size);
 		break;
 	}
 }
