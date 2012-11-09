@@ -310,7 +310,7 @@ static void smp_packet(const void *data, uint16_t size)
 	packet_hexdump(data + 1, size - 1);
 }
 
-void l2cap_packet(const void *data, uint16_t size)
+void l2cap_packet(uint16_t handle, const void *data, uint16_t size)
 {
 	const struct bt_l2cap_hdr *hdr = data;
 

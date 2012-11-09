@@ -29,4 +29,4 @@ struct bt_l2cap_hdr {
 	uint16_t cid;
 } __attribute__ ((packed));
 
-void l2cap_packet(const void *data, uint16_t size);
+void l2cap_packet(uint16_t handle, const void *data, uint16_t size);
