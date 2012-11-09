@@ -28,6 +28,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include "bt.h"
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
