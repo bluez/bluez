@@ -550,19 +550,23 @@ static void process_thermometer_desc(struct characteristic *ch, uint16_t uuid,
 	if (g_strcmp0(ch->uuid, TEMPERATURE_MEASUREMENT_UUID) == 0) {
 		ch->t->measurement_ccc_handle = handle;
 
-		if (g_slist_length(ch->t->tadapter->fwatchers) == 0)
-			return;
-
-		val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
-		msg = g_strdup("Enable Temperature Measurement indication");
+		if (g_slist_length(ch->t->tadapter->fwatchers) == 0) {
+			val = 0x0000;
+			msg = g_strdup("Disable Temperature Measurement ind");
+		} else {
+			val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
+			msg = g_strdup("Enable Temperature Measurement ind");
+		}
 	} else if (g_strcmp0(ch->uuid, INTERMEDIATE_TEMPERATURE_UUID) == 0) {
 		ch->t->intermediate_ccc_handle = handle;
 
-		if (g_slist_length(ch->t->tadapter->iwatchers) == 0)
-			return;
-
-		val = GATT_CLIENT_CHARAC_CFG_NOTIF_BIT;
-		msg = g_strdup("Enable Intermediate Temperature notification");
+		if (g_slist_length(ch->t->tadapter->iwatchers) == 0) {
+			val = 0x0000;
+			msg = g_strdup("Disable Intermediate Temperature noti");
+		} else {
+			val = GATT_CLIENT_CHARAC_CFG_NOTIF_BIT;
+			msg = g_strdup("Enable Intermediate Temperature noti");
+		}
 	} else if (g_strcmp0(ch->uuid, MEASUREMENT_INTERVAL_UUID) == 0) {
 		val = GATT_CLIENT_CHARAC_CFG_IND_BIT;
 		msg = g_strdup("Enable Measurement Interval indication");
