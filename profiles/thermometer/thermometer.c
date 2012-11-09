@@ -80,6 +80,8 @@ struct thermometer {
 	uint16_t			min;
 	gboolean			has_type;
 	gboolean			has_interval;
+
+	uint16_t			measurement_ccc_handle;
 };
 
 struct characteristic {
@@ -403,6 +405,8 @@ static void process_thermometer_desc(struct descriptor *desc)
 
 		if (g_strcmp0(ch->attr.uuid,
 					TEMPERATURE_MEASUREMENT_UUID) == 0) {
+			desc->ch->t->measurement_ccc_handle = desc->handle;
+
 			if (g_slist_length(ch->t->tadapter->fwatchers) == 0)
 				return;
 
@@ -759,9 +763,18 @@ static void write_ccc(struct thermometer *t, const char *uuid, uint16_t value)
 static void enable_final_measurement(gpointer data, gpointer user_data)
 {
 	struct thermometer *t = data;
+	uint16_t handle = t->measurement_ccc_handle;
+	uint8_t value[2];
+	char *msg;
 
-	write_ccc(t, TEMPERATURE_MEASUREMENT_UUID,
-					GATT_CLIENT_CHARAC_CFG_IND_BIT);
+	if (t->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(GATT_CLIENT_CHARAC_CFG_IND_BIT, value);
+	msg = g_strdup("Enable Temperature Measurement indications");
+
+	gatt_write_char(t->attrib, handle, value, sizeof(value),
+							write_ccc_cb, msg);
 }
 
 static void enable_intermediate_measurement(gpointer data, gpointer user_data)
@@ -775,8 +788,18 @@ static void enable_intermediate_measurement(gpointer data, gpointer user_data)
 static void disable_final_measurement(gpointer data, gpointer user_data)
 {
 	struct thermometer *t = data;
+	uint16_t handle = t->measurement_ccc_handle;
+	uint8_t value[2];
+	char *msg;
 
-	write_ccc(t, TEMPERATURE_MEASUREMENT_UUID, 0x0000);
+	if (t->attrib == NULL || !handle)
+		return;
+
+	att_put_u16(0x0000, value);
+	msg = g_strdup("Disable Temperature Measurement indications");
+
+	gatt_write_char(t->attrib, handle, value, sizeof(value),
+							write_ccc_cb, msg);
 }
 
 static void disable_intermediate_measurement(gpointer data, gpointer user_data)
