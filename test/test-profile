@@ -12,18 +12,18 @@ import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
 class Profile(dbus.service.Object):
-	@dbus.service.method("org.bluez.Profile",
+	@dbus.service.method("org.bluez.Profile1",
 					in_signature="", out_signature="")
 	def Release(self):
 		print("Release")
 		mainloop.quit()
 
-	@dbus.service.method("org.bluez.Profile",
+	@dbus.service.method("org.bluez.Profile1",
 					in_signature="", out_signature="")
 	def Cancel(self):
 		print("Cancel")
 
-	@dbus.service.method("org.bluez.Profile",
+	@dbus.service.method("org.bluez.Profile1",
 				in_signature="oha{sv}", out_signature="")
 	def NewConnection(self, path, fd, properties):
 		fd = fd.take()
@@ -35,7 +35,8 @@ if __name__ == '__main__':
 
 	bus = dbus.SystemBus()
 
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
+	manager = dbus.Interface(bus.get_object("org.bluez",
+				"/org/bluez"), "org.bluez.ProfileManager1")
 
 	option_list = [
 			make_option("-u", "--uuid", action="store",
