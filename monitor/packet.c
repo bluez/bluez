@@ -1028,7 +1028,7 @@ static void print_features(const uint8_t *features)
 	for (i = 0; i < 8; i++)
 		sprintf(str + (i * 5), " 0x%2.2x", features[i]);
 
-	print_field("Features: %s", str);
+	print_field("Features:%s", str);
 }
 
 static void print_le_states(const uint8_t *states)
