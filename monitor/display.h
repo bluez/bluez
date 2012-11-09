@@ -40,13 +40,14 @@ bool use_color(void);
 
 #define COLOR_ERROR	"\x1B[1;31m"
 
-#define print_text(color, fmt, args...) do { \
-	printf("%-8c%s" fmt "%s\n", ' ', \
-		use_color() ? color : "", ## args, \
+#define print_indent(indent, color, fmt, args...) do { \
+	printf("%*c%s" fmt "%s\n", (indent), ' ', \
+		use_color() ? (color) : "", ## args, \
 		use_color() ? COLOR_OFF : ""); \
 } while (0);
 
-#define print_field(fmt, args...) print_text(COLOR_OFF, fmt, ## args)
+#define print_text(color, fmt, args...) print_indent(8, color, fmt, ## args)
+#define print_field(fmt, args...) print_indent(8, COLOR_OFF, fmt, ## args)
 
 int num_columns(void);
 
