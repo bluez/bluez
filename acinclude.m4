@@ -105,15 +105,6 @@ AC_DEFUN([AC_PATH_GLIB], [
 	AC_SUBST(GLIB_LIBS)
 ])
 
-AC_DEFUN([AC_PATH_GSTREAMER], [
-	PKG_CHECK_MODULES(GSTREAMER, gstreamer-0.10 >= 0.10.30 gstreamer-plugins-base-0.10, gstreamer_found=yes,
-				AC_MSG_WARN(GStreamer library version 0.10.30 or later is required);gstreamer_found=no)
-	AC_SUBST(GSTREAMER_CFLAGS)
-	AC_SUBST(GSTREAMER_LIBS)
-	GSTREAMER_PLUGINSDIR=`$PKG_CONFIG --variable=pluginsdir gstreamer-0.10`
-	AC_SUBST(GSTREAMER_PLUGINSDIR)
-])
-
 AC_DEFUN([AC_PATH_USB], [
 	PKG_CHECK_MODULES(USB, libusb, usb_found=yes, usb_found=no)
 	AC_SUBST(USB_CFLAGS)
@@ -168,7 +159,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	pie_enable=yes
 	sndfile_enable=${sndfile_found}
 	usb_enable=${usb_found}
-	gstreamer_enable=${gstreamer_found}
 	audio_enable=yes
 	input_enable=yes
 	network_enable=yes
@@ -230,10 +220,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(health, AC_HELP_STRING([--enable-health], [enable health plugin]), [
 		health_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(gstreamer, AC_HELP_STRING([--enable-gstreamer], [enable GStreamer support]), [
-		gstreamer_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(usb, AC_HELP_STRING([--enable-usb], [enable USB support]), [
@@ -333,8 +319,8 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AM_CONDITIONAL(SNDFILE, test "${sndfile_enable}" = "yes" && test "${sndfile_found}" = "yes")
 	AM_CONDITIONAL(USB, test "${usb_enable}" = "yes" && test "${usb_found}" = "yes")
-	AM_CONDITIONAL(SBC, test "${gstreamer_enable}" = "yes" || test "${test_enable}" = "yes")
-	AM_CONDITIONAL(GSTREAMER, test "${gstreamer_enable}" = "yes" && test "${gstreamer_found}" = "yes")
+	AM_CONDITIONAL(SBC, test "${test_enable}" = "yes")
+
 	AM_CONDITIONAL(AUDIOPLUGIN, test "${audio_enable}" = "yes")
 	AM_CONDITIONAL(INPUTPLUGIN, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(NETWORKPLUGIN, test "${network_enable}" = "yes")

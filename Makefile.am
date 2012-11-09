@@ -350,29 +350,6 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			audio/telephony-maemo6.c profiles/sap/sap-dummy.c \
 			profiles/sap/sap-u8500.c
 
-if AUDIOPLUGIN
-if GSTREAMER
-gstreamerdir = $(libdir)/gstreamer-0.10
-
-gstreamer_LTLIBRARIES = audio/libgstbluetooth.la
-
-audio_libgstbluetooth_la_SOURCES = audio/gstbluetooth.c audio/gstpragma.h \
-				audio/gstsbcenc.h audio/gstsbcenc.c \
-				audio/gstsbcdec.h audio/gstsbcdec.c \
-				audio/gstsbcparse.h audio/gstsbcparse.c \
-				audio/gstavdtpsink.h audio/gstavdtpsink.c \
-				audio/gsta2dpsink.h audio/gsta2dpsink.c \
-				audio/gstsbcutil.h audio/gstsbcutil.c audio/rtp.h \
-				audio/gstrtpsbcpay.h audio/gstrtpsbcpay.c
-audio_libgstbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version
-audio_libgstbluetooth_la_LIBADD = sbc/libsbc.la lib/libbluetooth-private.la \
-						@DBUS_LIBS@ @GSTREAMER_LIBS@ \
-						-lgstaudio-0.10 -lgstrtp-0.10
-audio_libgstbluetooth_la_CFLAGS = -fvisibility=hidden -fno-strict-aliasing \
-                               $(AM_CFLAGS) @DBUS_CFLAGS@ @GSTREAMER_CFLAGS@
-endif
-endif
-
 include Makefile.tools
 
 if DATAFILES
