@@ -3375,9 +3375,8 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 		opcode_str = "Unknown";
 	}
 
-	print_field("%s%s%s (0x%2.2x|0x%4.4x) ncmd %d",
-			use_color() ? opcode_color : "", opcode_str,
-			use_color() ? COLOR_OFF : "", ogf, ocf, evt->ncmd);
+	print_indent(6, opcode_color, "", opcode_str,
+			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
 
 	if (!opcode_data->rsp_func) {
 		packet_hexdump(data + 3, size - 3);
@@ -3426,9 +3425,8 @@ static void cmd_status_evt(const void *data, uint8_t size)
 		opcode_str = "Unknown";
 	}
 
-	print_field("%s%s%s (0x%2.2x|0x%4.4x) ncmd %d",
-			use_color() ? opcode_color : "", opcode_str,
-			use_color() ? COLOR_OFF : "", ogf, ocf, evt->ncmd);
+	print_indent(6, opcode_color, "", opcode_str,
+			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
 
 	print_status(evt->status);
 }
@@ -3980,9 +3978,8 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 		subevent_str = "Unknown";
 	}
 
-	print_field("Subevent: %s%s%s (0x%2.2x)",
-			use_color() ? subevent_color : "", subevent_str,
-			use_color() ? COLOR_OFF : "", subevent);
+	print_indent(6, subevent_color, "", subevent_str,
+					" (0x%2.2x)", subevent);
 
 	if (!subevent_data || !subevent_data->func) {
 		packet_hexdump(data + 1, size - 1);
