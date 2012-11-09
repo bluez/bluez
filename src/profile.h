@@ -59,6 +59,21 @@ void btd_profile_foreach(void (*func)(struct btd_profile *p, void *data),
 int btd_profile_register(struct btd_profile *profile);
 void btd_profile_unregister(struct btd_profile *profile);
 
+typedef bool (*btd_profile_prop_exists)(const char *uuid,
+						struct btd_device *dev,
+						void *user_data);
+
+typedef bool (*btd_profile_prop_get)(const char *uuid,
+						struct btd_device *dev,
+						DBusMessageIter *iter,
+						void *user_data);
+
+void btd_profile_add_custom_prop(const char *uuid, const char *type,
+					const char *name,
+					btd_profile_prop_exists exists,
+					btd_profile_prop_get get,
+					void *user_data);
+
 void btd_profile_cleanup(void);
 
 DBusMessage *btd_profile_reg_ext(DBusConnection *conn, DBusMessage *msg,

@@ -98,6 +98,17 @@ struct ext_io {
 	DBusPendingCall *new_conn;
 };
 
+struct btd_profile_custom_property {
+	char *uuid;
+	char *type;
+	char *name;
+	btd_profile_prop_exists exists;
+	btd_profile_prop_get get;
+	void *user_data;
+};
+
+static GSList *custom_props = NULL;
+
 static GSList *profiles = NULL;
 static GSList *ext_profiles = NULL;
 
@@ -266,11 +277,39 @@ static void new_conn_reply(DBusPendingCall *call, void *user_data)
 	ext_io_destroy(conn);
 }
 
+struct prop_append_data {
+	DBusMessageIter *dict;
+	struct ext_io *io;
+};
+
+static void append_prop(gpointer a, gpointer b)
+{
+	struct btd_profile_custom_property *p = a;
+	struct prop_append_data *data = b;
+	DBusMessageIter entry, value, *dict = data->dict;
+	struct btd_device *dev = data->io->device;
+
+	if (p->exists && !p->exists(p->uuid, dev, p->user_data))
+		return;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY, NULL,
+								&entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &p->name);
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT, p->type,
+								&value);
+
+	p->get(p->uuid, dev, &value, p->user_data);
+
+	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 							struct btd_device *dev)
 {
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
+	struct prop_append_data data = { &dict, conn };
 	const char *path;
 	int fd;
 
@@ -292,7 +331,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
 
-	/* fd properties go here */
+	g_slist_foreach(custom_props, append_prop, &data);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
@@ -1103,6 +1142,37 @@ DBusMessage *btd_profile_unreg_ext(DBusConnection *conn, DBusMessage *msg,
 	return dbus_message_new_method_return(msg);
 }
 
+void btd_profile_add_custom_prop(const char *uuid, const char *type,
+					const char *name,
+					btd_profile_prop_exists exists,
+					btd_profile_prop_get get,
+					void *user_data)
+{
+	struct btd_profile_custom_property *prop;
+
+	prop = g_new0(struct btd_profile_custom_property, 1);
+
+	prop->uuid = g_strdup(uuid);
+	prop->type = g_strdup(type);
+	prop->name = g_strdup(name);
+	prop->exists = exists;
+	prop->get = get;
+	prop->user_data = user_data;
+
+	custom_props = g_slist_append(custom_props, prop);
+}
+
+static void free_property(gpointer data)
+{
+	struct btd_profile_custom_property *p = data;
+
+	g_free(p->uuid);
+	g_free(p->type);
+	g_free(p->name);
+
+	g_free(p);
+}
+
 void btd_profile_cleanup(void)
 {
 	while (ext_profiles) {
@@ -1125,4 +1195,7 @@ void btd_profile_cleanup(void)
 		remove_ext(ext);
 
 	}
+
+	g_slist_free_full(custom_props, free_property);
+	custom_props = NULL;
 }
