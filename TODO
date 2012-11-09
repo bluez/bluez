@@ -42,18 +42,51 @@ BlueZ 5
 Priority/Complexity ommited as all items are required before 5.0 is
 released.
 
+- Remove telephony driver framework and replace with a org.bluez.Profile
+  based solution.
+
+- Expose per-profile connection states on the Device interface
+  (presumably a list of UUIDs for each connected profile)
+
+- Move base path to /org/bluez
+
+- Move profile registration to org.bluez.ProfileManager
+
+- Remove GStreamer and libsbc code
+
+- Don't install libbluetooth by default (put it behind a configure switch)
+
+- Merge obexd.git into bluez.git
+
+- Change DiscoverServices to return a list of service object paths
+
+- Remove org.bluez.Service interface (it has become unnecessary thanks
+  to org.bluez.Profile). obexd needs to be converted to use the new
+  interface first.
+
+- Add Agent callback for incoming just-works, maybe remote lost key as
+  well?
+
+- [pending] Reorganize source tree according to RFC sent to
+  linux-bluetooth (Subject: [RFC] Reorganizing the BlueZ source tree)
+
+- [pending] Remove deprecated D-Bus signals, methods and properties
+  (ensuring new ones are in place to replace what's removed).
+
+- [pending] Switch to standard D-Bus properties interface
+
+- [pending] Switch to standard object manager interface
+
+- [pending] Add connect/disconnect callbacks to all btd_profile
+  instances that need them and add auto_connect = true to the ones that
+  make sense.
+
+- [pending] Convert storage to user per-remote device directories and
+  ini-file format
+
 - [done] Make mgmtops part of Bluetooth core. mgmt will be the only way
   to communicate with the kernel in BlueZ so a plugin is not needed
   anymore. Probably plugins/mgmtops.c -> src/mgmt.c
-
-- Reorganize source tree according to RFC sent to linux-bluetooth
-  (Subject: [RFC] Reorganizing the BlueZ source tree)
-
-- Remove deprecated D-Bus signals and methods (ensuring new ones are in
-  place to replace what's removed).
-
-- Remove telephony driver framework and replace with the telephony agent
-  patches.
 
 - [done] Related to the telephony architecture rework, figure out how fast
   connectable should work. - Implemented as a property in the Telephony
@@ -61,30 +94,11 @@ released.
 
 - [done] Remove UNIX socket based audio interface (along with ALSA plugin)
 
-- Clean up libbluetooth and only export a very minimal API (for
-  RFCOMM/L2CAP socket use)
-
-- Merge obexd.git into bluez.git
-
 - [done] Remove unmaintained plugins like pnat and maemo6
-
-- Change DiscoverServices to return a list of service object paths
-
-- Add Agent callback for incoming just-works, maybe remote lost key as
-  well?
-
-- Switch to standard D-Bus properties interface
-
-- Switch to standard object manager interface
-
-- Device.Connect(). Still needs closer defining.
 
 - [done] Remove CreateDevice/CreatePairedDevice and use D-Bus objects for
   discovered devices. This fixes the issue of not exposing the address
   type in DeviceFound and the Create* method calls
-
-- Convert storage to user per-remote device directories and ini-file
-  format
 
 Low Energy
 ==========
