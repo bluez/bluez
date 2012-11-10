@@ -2581,6 +2581,30 @@ static void le_set_random_address_cmd(const void *data, uint8_t size)
 	print_addr(cmd->addr, 0x01);
 }
 
+static void le_read_adv_tx_power_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_adv_tx_power *rsp = data;
+
+	print_status(rsp->status);
+	print_field("TX power: %d dBm", rsp->level);
+}
+
+static void le_set_adv_data_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_adv_data *cmd = data;
+
+	print_field("Length: %d", cmd->len);
+	print_eir(cmd->data, cmd->len, true);
+}
+
+static void le_set_scan_response_data_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_scan_response_data *cmd = data;
+
+	print_field("Length: %d", cmd->len);
+	print_eir(cmd->data, cmd->len, true);
+}
+
 static void le_set_adv_enable_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_adv_enable *cmd = data;
@@ -3174,9 +3198,15 @@ static const struct opcode_data opcode_table[] = {
 				le_set_random_address_cmd, 6, true,
 				status_rsp, 1, true },
 	{ 0x2006, "LE Set Advertising Parameters"	},
-	{ 0x2007, "LE Read Advertising Channel TX Power"},
-	{ 0x2008, "LE Set Advertising Data"		},
-	{ 0x2009, "LE Set Scan Response Data"		},
+	{ 0x2007, "LE Read Advertising Channel TX Power",
+				null_cmd, 0, true,
+				le_read_adv_tx_power_rsp, 2, true },
+	{ 0x2008, "LE Set Advertising Data",
+				le_set_adv_data_cmd, 32, true,
+				status_rsp, 1, true },
+	{ 0x2009, "LE Set Scan Response Data",
+				le_set_scan_response_data_cmd, 32, true,
+				status_rsp, 1, true },
 	{ 0x200a, "LE Set Advertise Enable",
 				le_set_adv_enable_cmd, 1, true,
 				status_rsp, 1, true },
