@@ -43,7 +43,10 @@
 #include "display.h"
 #include "packet.h"
 #include "btsnoop.h"
+#include "hcidump.h"
 #include "control.h"
+
+static bool hcidump_fallback = false;
 
 #define MAX_PACKET_SIZE		(1486 + 4)
 
@@ -616,6 +619,7 @@ static int open_socket(uint16_t channel)
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		if (errno == EINVAL) {
 			/* Fallback to hcidump support */
+			hcidump_fallback = true;
 			close(fd);
 			return -1;
 		}
@@ -801,8 +805,13 @@ int control_tracing(void)
 	if (server_fd >= 0)
 		return 0;
 
-	if (open_channel(HCI_CHANNEL_MONITOR) < 0)
-		return -1;
+	if (open_channel(HCI_CHANNEL_MONITOR) < 0) {
+		if (!hcidump_fallback)
+			return -1;
+		if (hcidump_tracing() < 0)
+			return -1;
+		return 0;
+	}
 
 	open_channel(HCI_CHANNEL_CONTROL);
 

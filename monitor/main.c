@@ -35,7 +35,6 @@
 #include "mainloop.h"
 #include "packet.h"
 #include "control.h"
-#include "hcidump.h"
 #include "btsnoop.h"
 
 static void signal_callback(int signum, void *user_data)
@@ -149,10 +148,8 @@ int main(int argc, char *argv[])
 		return EXIT_SUCCESS;
 	}
 
-	if (control_tracing() < 0) {
-		if (hcidump_tracing() < 0)
-			return EXIT_FAILURE;
-	}
+	if (control_tracing() < 0)
+		return EXIT_FAILURE;
 
 	return mainloop_run();
 }
