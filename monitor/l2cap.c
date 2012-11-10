@@ -194,6 +194,75 @@ static void print_info_result(uint16_t result)
 	print_field("Result: %s (0x%4.4x)", str, btohs(result));
 }
 
+static struct {
+	uint8_t bit;
+	const char *str;
+} features_table[] = {
+	{  0, "Flow control mode"			},
+	{  1, "Retransmission mode"			},
+	{  2, "Bi-directional QoS"			},
+	{  3, "Enhanced Retransmission Mode"		},
+	{  4, "Streaming Mode"				},
+	{  5, "FCS Option"				},
+	{  6, "Extended Flow Specification for BR/EDR"	},
+	{  7, "Fixed Channels"				},
+	{  8, "Extended Window Size"			},
+	{  9, "Unicast Connectionless Data Reception"	},
+	{ 31, "Reserved for feature mask extension"	},
+	{ }
+};
+
+static void print_features(uint32_t features)
+{
+	uint32_t mask = features;
+	int i;
+
+	print_field("Features: 0x%8.8x", features);
+
+	for (i = 0; features_table[i].str; i++) {
+		if (features & (1 << features_table[i].bit)) {
+			print_field("  %s", features_table[i].str);
+			mask &= ~(1 << features_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_field("  Unknown features (0x%8.8x)", mask);
+}
+
+static struct {
+	uint16_t cid;
+	const char *str;
+} channels_table[] = {
+	{ 0x0000, "Null identifier"		},
+	{ 0x0001, "L2CAP Signaling (BR/EDR)"	},
+	{ 0x0002, "Connectionless reception"	},
+	{ 0x0003, "AMP Manager Protocol"	},
+	{ 0x0004, "Attribute Protocol"		},
+	{ 0x0005, "L2CAP Signaling (LE)"	},
+	{ 0x0006, "Security Manager"		},
+	{ 0x003f, "AMP Test Manager"		},
+	{ }
+};
+
+static void print_channels(uint64_t channels)
+{
+	uint64_t mask = channels;
+	int i;
+
+	print_field("Channels: 0x%16.16" PRIu64, channels);
+
+	for (i = 0; channels_table[i].str; i++) {
+		if (channels & (1 << channels_table[i].cid)) {
+			print_field("  %s", channels_table[i].str);
+			mask &= ~(1 << channels_table[i].cid);
+		}
+	}
+
+	if (mask)
+		print_field("  Unknown channels (0x%8.8" PRIu64 ")", mask);
+}
+
 static void sig_cmd_reject(const void *data, uint16_t size)
 {
 	const struct bt_l2cap_pdu_cmd_reject *pdu = data;
@@ -341,7 +410,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			break;
 		}
 		features = bt_get_le32(data);
-		print_field("Features: 0x%8.8x", features);
+		print_features(features);
 		break;
 	case 0x0003:
 		if (size != 8) {
@@ -350,7 +419,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			break;
 		}
 		channels = bt_get_le64(data);
-		print_field("Channels: 0x%16.16" PRIu64, channels);
+		print_channels(channels);
 		break;
 	default:
 		packet_hexdump(data, size);
