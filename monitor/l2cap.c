@@ -26,6 +26,8 @@
 #include <config.h>
 #endif
 
+#include <inttypes.h>
+
 #include <bluetooth/bluetooth.h>
 
 #include "bt.h"
@@ -348,7 +350,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			break;
 		}
 		channels = bt_get_le64(data);
-		print_field("Channels: 0x%16.16lx", channels);
+		print_field("Channels: 0x%16.16" PRIu64, channels);
 		break;
 	default:
 		packet_hexdump(data, size);
