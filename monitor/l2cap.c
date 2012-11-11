@@ -250,7 +250,7 @@ static void print_channels(uint64_t channels)
 	uint64_t mask = channels;
 	int i;
 
-	print_field("Channels: 0x%16.16" PRIu64, channels);
+	print_field("Channels: 0x%16.16" PRIx64, channels);
 
 	for (i = 0; channels_table[i].str; i++) {
 		if (channels & (1 << channels_table[i].cid)) {
@@ -260,7 +260,7 @@ static void print_channels(uint64_t channels)
 	}
 
 	if (mask)
-		print_field("  Unknown channels (0x%8.8" PRIu64 ")", mask);
+		print_field("  Unknown channels (0x%8.8" PRIx64 ")", mask);
 }
 
 static void sig_cmd_reject(const void *data, uint16_t size)
