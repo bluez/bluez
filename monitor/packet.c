@@ -696,6 +696,22 @@ static void print_key_flag(uint8_t key_flag)
 	print_field("Key flag: %s (0x%2.2x)", str, key_flag);
 }
 
+static void print_key_len(uint8_t key_len)
+{
+	const char *str;
+
+	switch (key_len) {
+	case 32:
+		str = "802.11 PAL keyLength";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Key length: %s (%d)", str, key_len);
+}
+
 static void print_key_type(uint8_t key_type)
 {
 	const char *str;
@@ -1882,12 +1898,52 @@ static void io_capability_request_neg_reply_cmd(const void *data, uint8_t size)
 	print_reason(cmd->reason);
 }
 
+static void create_phy_link_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_create_phy_link *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_key_len(cmd->key_len);
+	print_key_type(cmd->key_type);
+
+	packet_hexdump(data + 3, size - 3);
+}
+
+static void accept_phy_link_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_accept_phy_link *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_key_len(cmd->key_len);
+	print_key_type(cmd->key_type);
+
+	packet_hexdump(data + 3, size - 3);
+}
+
 static void disconn_phy_link_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_disconn_phy_link *cmd = data;
 
 	print_phy_handle(cmd->phy_handle);
 	print_reason(cmd->reason);
+}
+
+static void create_logic_link_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_create_logic_link *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+
+	packet_hexdump(data + 1, size - 1);
+}
+
+static void accept_logic_link_cmd(const void *data, uint8_t size)
+{
+        const struct bt_hci_cmd_accept_logic_link *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+
+	packet_hexdump(data + 1, size - 1);
 }
 
 static void disconn_logic_link_cmd(const void *data, uint8_t size)
@@ -2919,12 +2975,16 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0434, "IO Capability Request Negative Reply",
 				io_capability_request_neg_reply_cmd, 7, true,
 				status_bdaddr_rsp, 7, true },
-	{ 0x0435, "Create Physical Link"		},
-	{ 0x0436, "Accept Physical Link"		},
+	{ 0x0435, "Create Physical Link",
+				create_phy_link_cmd, 3, false },
+	{ 0x0436, "Accept Physical Link",
+				accept_phy_link_cmd, 3, false },
 	{ 0x0437, "Disconnect Physical Link",
 				disconn_phy_link_cmd, 2, true },
-	{ 0x0438, "Create Logical Link"			},
-	{ 0x0439, "Accept Logical Link"			},
+	{ 0x0438, "Create Logical Link",
+				create_logic_link_cmd, 33, true },
+	{ 0x0439, "Accept Logical Link",
+				accept_logic_link_cmd, 33, true },
 	{ 0x043a, "Disconnect Logical Link",
 				disconn_logic_link_cmd, 2, true },
 	{ 0x043b, "Logical Link Cancel"			},

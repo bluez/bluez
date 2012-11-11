@@ -270,10 +270,38 @@ struct bt_hci_cmd_io_capability_request_neg_reply {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_CREATE_PHY_LINK		0x0435
+struct bt_hci_cmd_create_phy_link {
+	uint8_t  phy_handle;
+	uint8_t  key_len;
+	uint8_t  key_type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_ACCEPT_PHY_LINK		0x0436
+struct bt_hci_cmd_accept_phy_link {
+	uint8_t  phy_handle;
+	uint8_t  key_len;
+	uint8_t  key_type;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_DISCONN_PHY_LINK		0x0437
 struct bt_hci_cmd_disconn_phy_link {
 	uint8_t  phy_handle;
 	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_CREATE_LOGIC_LINK		0x0438
+struct bt_hci_cmd_create_logic_link {
+	uint8_t  phy_handle;
+	uint8_t  tx_flow_spec[16];
+	uint8_t  rx_flow_spec[16];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_ACCEPT_LOGIC_LINK		0x0439
+struct bt_hci_cmd_accept_logic_link {
+	uint8_t  phy_handle;
+	uint8_t  tx_flow_spec[16];
+	uint8_t  rx_flow_spec[16];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_DISCONN_LOGIC_LINK		0x043a
