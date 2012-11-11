@@ -1403,3 +1403,18 @@ struct bt_l2cap_pdu_info_rsp {
 	uint16_t type;
 	uint16_t result;
 } __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CREATE_CHAN_REQ	0x0c
+struct bt_l2cap_pdu_create_chan_req {
+	uint16_t psm;
+	uint16_t scid;
+	uint8_t  ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CREATE_CHAN_RSP	0x0d
+struct bt_l2cap_pdu_create_chan_rsp {
+	uint16_t dcid;
+	uint16_t scid;
+	uint16_t result;
+	uint16_t status;
+} __attribute__ ((packed));

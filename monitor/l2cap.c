@@ -427,6 +427,25 @@ static void sig_info_rsp(const void *data, uint16_t size)
 	}
 }
 
+static void sig_create_chan_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_create_chan_req *pdu = data;
+
+	print_psm(pdu->psm);
+	print_cid("Source", pdu->scid);
+	print_field("Controller ID: %d", pdu->ctrlid);
+}
+
+static void sig_create_chan_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_create_chan_rsp *pdu = data;
+
+	print_cid("Destination", pdu->dcid);
+	print_cid("Source", pdu->scid);
+	print_conn_result(pdu->result);
+	print_conn_status(pdu->status);
+}
+
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -458,8 +477,10 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 			sig_info_req, 2, true },
 	{ 0x0b, "Information Response",
 			sig_info_rsp, 4, false },
-	{ 0x0c, "Create Channel Request"		},
-	{ 0x0d, "Create Channel Response"		},
+	{ 0x0c, "Create Channel Request",
+			sig_create_chan_req, 5, true },
+	{ 0x0d, "Create Channel Response",
+			sig_create_chan_rsp, 8, true },
 	{ 0x0e, "Move Channel Request"			},
 	{ 0x0f, "Move Channel Response"			},
 	{ 0x10, "Move Channel Confirmation"		},
