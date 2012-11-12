@@ -107,6 +107,11 @@ Methods		void Release()
 			This method gets called when a new service level
 			connection has been made and authorized.
 
+			Common fd_properties:
+
+			uint16 Version		Profile version (optional)
+			uint16 Features		Profile features (optional)
+
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 

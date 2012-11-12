@@ -27,6 +27,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #include <glib.h>
@@ -93,6 +94,9 @@ struct ext_io {
 	bool resolving;
 	btd_profile_cb cb;
 	uint32_t rec_handle;
+
+	uint16_t version;
+	uint16_t features;
 
 	guint auth_id;
 	DBusPendingCall *new_conn;
@@ -331,6 +335,14 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY, "{sv}", &dict);
 
+	if (conn->version)
+		dict_append_entry(&dict, "Version", DBUS_TYPE_UINT16,
+							&conn->version);
+
+	if (conn->features)
+		dict_append_entry(&dict, "Features", DBUS_TYPE_UINT16,
+							&conn->features);
+
 	g_slist_foreach(custom_props, append_prop, &data);
 
 	dbus_message_iter_close_container(&iter, &dict);
@@ -442,15 +454,63 @@ drop:
 	ext_io_destroy(conn);
 }
 
-static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io)
+static uint16_t get_supported_features(const sdp_record_t *rec)
 {
+	sdp_data_t *data;
+
+	data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
+	if (!data || data->dtd != SDP_UINT16)
+		return 0;
+
+	return data->val.uint16;
+}
+
+static uint16_t get_profile_version(const sdp_record_t *rec)
+{
+	sdp_list_t *descs;
+	uint16_t version;
+
+	if (sdp_get_profile_descs(rec, &descs) < 0)
+		return 0;
+
+	if (descs && descs->data) {
+		sdp_profile_desc_t *desc = descs->data;
+		version = desc->version;
+	} else {
+		version = 0;
+	}
+
+	sdp_list_free(descs, free);
+
+	return version;
+}
+
+static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
+						bdaddr_t *src, bdaddr_t *dst)
+{
+	struct btd_device *device;
+	char addr[18];
 	struct ext_io *conn;
 	GIOCondition cond;
+	const char *remote_uuid = server->ext->remote_uuids[0];
 
 	conn = g_new0(struct ext_io, 1);
 	conn->io = g_io_channel_ref(io);
 	conn->proto = server->proto;
 	conn->ext = server->ext;
+
+	ba2str(dst, addr);
+	device = adapter_find_device(server->adapter, addr);
+
+	if (device && remote_uuid) {
+		const sdp_record_t *rec;
+
+		rec = btd_device_get_record(device, remote_uuid);
+		if (rec) {
+			conn->features = get_supported_features(rec);
+			conn->version = get_profile_version(rec);
+		}
+	}
 
 	cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected, conn);
@@ -481,7 +541,7 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 
 	DBG("incoming connect from %s", addr);
 
-	conn = create_conn(server, io);
+	conn = create_conn(server, io, &src, &dst);
 
 	conn->auth_id = btd_request_authorization(&src, &dst, ext->uuid,
 								ext_auth, conn);
@@ -500,9 +560,22 @@ static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct ext_io *server = user_data;
 	struct ext_profile *ext = server->ext;
+	GError *gerr = NULL;
 	struct ext_io *conn;
+	bdaddr_t src, dst;
 
-	conn = create_conn(server, io);
+	bt_io_get(io, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
+			BT_IO_OPT_INVALID);
+	if (gerr != NULL) {
+		error("%s failed to get connect data: %s", ext->name,
+								gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	conn = create_conn(server, io, &src, &dst);
 	ext->conns = g_slist_append(ext->conns, conn);
 
 	ext_connect(io, err, conn);
@@ -799,6 +872,9 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		if (ext->psm == 0 && sdp_get_proto_desc(protos, OBEX_UUID))
 			ext->psm = get_goep_l2cap_psm(rec);
+
+		conn->features = get_supported_features(rec);
+		conn->version = get_profile_version(rec);
 
 		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
 									NULL);
