@@ -90,7 +90,6 @@ static GSList *adapters = NULL;
 static GSList *devices = NULL;
 
 static struct enabled_interfaces enabled = {
-	.hfp		= TRUE,
 	.gateway	= FALSE,
 	.sink		= TRUE,
 	.source		= FALSE,
@@ -673,13 +672,6 @@ int audio_manager_init(GKeyFile *conf, gboolean *enable_sco)
 		g_clear_error(&err);
 	} else
 		auto_connect = b;
-
-	b = g_key_file_get_boolean(config, "Headset", "HFP",
-					&err);
-	if (err)
-		g_clear_error(&err);
-	else
-		enabled.hfp = b;
 
 	err = NULL;
 	i = g_key_file_get_integer(config, "Headset", "MaxConnected",
