@@ -119,7 +119,7 @@ builtin_sources += audio/main.c \
 			audio/media.h audio/media.c \
 			audio/transport.h audio/transport.c \
 			audio/player.h audio/player.c \
-			audio/telephony.h audio/a2dp-codecs.h
+			audio/a2dp-codecs.h
 endif
 
 if SAPPLUGIN

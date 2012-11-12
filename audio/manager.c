@@ -68,7 +68,6 @@
 #include "control.h"
 #include "manager.h"
 #include "sdpd.h"
-#include "telephony.h"
 
 struct audio_adapter {
 	struct btd_adapter *btd_adapter;
