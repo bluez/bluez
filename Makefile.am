@@ -121,11 +121,6 @@ builtin_sources += audio/main.c \
 			audio/transport.h audio/transport.c \
 			audio/player.h audio/player.c \
 			audio/telephony.h audio/a2dp-codecs.h
-builtin_nodist += audio/telephony.c
-
-noinst_LIBRARIES += audio/libtelephony.a
-
-audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c
 endif
 
 if SAPPLUGIN
@@ -312,7 +307,7 @@ endif
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
-			audio/audio.conf audio/telephony-dummy.c \
+			audio/audio.conf \
 			profiles/sap/sap-dummy.c profiles/sap/sap-u8500.c
 
 include Makefile.tools
@@ -397,9 +392,6 @@ MAINTAINERCLEANFILES = Makefile.in \
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
-
-audio/telephony.c: audio/@TELEPHONY_DRIVER@
-	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
 
 profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
