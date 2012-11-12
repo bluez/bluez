@@ -1614,9 +1614,6 @@ static int rfcomm_connect(struct audio_device *dev, headset_stream_cb_t cb,
 	char address[18];
 	GError *err = NULL;
 
-	if (!manager_allow_headset_connection(dev))
-		return -ECONNREFUSED;
-
 	if (hs->rfcomm_ch < 0)
 		return get_records(dev, cb, user_data, cb_id);
 

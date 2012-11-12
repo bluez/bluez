@@ -44,7 +44,6 @@
 #include "media.h"
 #include "transport.h"
 #include "a2dp.h"
-#include "headset.h"
 #include "gateway.h"
 #include "sink.h"
 #include "source.h"
@@ -211,9 +210,6 @@ static void transport_set_state(struct media_transport *transport,
 void media_transport_destroy(struct media_transport *transport)
 {
 	char *path;
-
-	if (transport->hs_watch)
-		headset_remove_state_cb(transport->hs_watch);
 
 	if (transport->ag_watch)
 		gateway_remove_state_cb(transport->ag_watch);
@@ -463,116 +459,6 @@ static guint suspend_a2dp(struct media_transport *transport,
 static void cancel_a2dp(struct media_transport *transport, guint id)
 {
 	a2dp_cancel(transport->device, id);
-}
-
-static void headset_resume_complete(struct audio_device *dev, void *user_data)
-{
-	struct media_owner *owner = user_data;
-	struct media_request *req = owner->pending;
-	struct media_transport *transport = owner->transport;
-	int fd;
-	uint16_t imtu, omtu;
-	gboolean ret;
-
-	req->id = 0;
-
-	if (dev == NULL)
-		goto fail;
-
-	fd = headset_get_sco_fd(dev);
-	if (fd < 0)
-		goto fail;
-
-	imtu = 48;
-	omtu = 48;
-
-	media_transport_set_fd(transport, fd, imtu, omtu);
-
-	if ((owner->lock & TRANSPORT_LOCK_READ) == 0)
-		imtu = 0;
-
-	if ((owner->lock & TRANSPORT_LOCK_WRITE) == 0)
-		omtu = 0;
-
-	ret = g_dbus_send_reply(btd_get_dbus_connection(), req->msg,
-						DBUS_TYPE_UNIX_FD, &fd,
-						DBUS_TYPE_UINT16, &imtu,
-						DBUS_TYPE_UINT16, &omtu,
-						DBUS_TYPE_INVALID);
-	if (ret == FALSE)
-		goto fail;
-
-	media_owner_remove(owner);
-
-	transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
-
-	return;
-
-fail:
-	media_transport_remove(transport, owner);
-}
-
-static guint resume_headset(struct media_transport *transport,
-				struct media_owner *owner)
-{
-	struct audio_device *device = transport->device;
-
-	if (state_in_use(transport->state))
-		goto done;
-
-	if (headset_lock(device, HEADSET_LOCK_READ |
-						HEADSET_LOCK_WRITE) == FALSE)
-		return 0;
-
-	if (transport->state == TRANSPORT_STATE_IDLE)
-		transport_set_state(transport, TRANSPORT_STATE_REQUESTING);
-
-done:
-	return headset_request_stream(device, headset_resume_complete,
-					owner);
-}
-
-static void headset_suspend_complete(struct audio_device *dev, void *user_data)
-{
-	struct media_owner *owner = user_data;
-	struct media_transport *transport = owner->transport;
-
-	/* Release always succeeds */
-	if (owner->pending) {
-		owner->pending->id = 0;
-		media_request_reply(owner->pending, 0);
-		media_owner_remove(owner);
-	}
-
-	headset_unlock(dev, HEADSET_LOCK_READ | HEADSET_LOCK_WRITE);
-	transport_set_state(transport, TRANSPORT_STATE_IDLE);
-	media_transport_remove(transport, owner);
-}
-
-static guint suspend_headset(struct media_transport *transport,
-						struct media_owner *owner)
-{
-	struct audio_device *device = transport->device;
-
-	if (!owner) {
-		headset_state_t state = headset_get_state(device);
-
-		headset_unlock(device, HEADSET_LOCK_READ | HEADSET_LOCK_WRITE);
-
-		if (state == HEADSET_STATE_PLAYING)
-			transport_set_state(transport, TRANSPORT_STATE_PENDING);
-		else
-			transport_set_state(transport, TRANSPORT_STATE_IDLE);
-
-		return 0;
-	}
-
-	return headset_suspend_stream(device, headset_suspend_complete, owner);
-}
-
-static void cancel_headset(struct media_transport *transport, guint id)
-{
-	headset_cancel_stream(transport->device, id);
 }
 
 static void gateway_resume_complete(struct audio_device *dev, GError *err,
@@ -920,33 +806,6 @@ static int set_property_a2dp(struct media_transport *transport,
 	return -EINVAL;
 }
 
-static int set_property_headset(struct media_transport *transport,
-						const char *property,
-						DBusMessageIter *value)
-{
-	if (g_strcmp0(property, "NREC") == 0) {
-		gboolean nrec;
-
-		if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-			return -EINVAL;
-		dbus_message_iter_get_basic(value, &nrec);
-
-		/* FIXME: set new nrec */
-		return 0;
-	} else if (g_strcmp0(property, "InbandRingtone") == 0) {
-		gboolean inband;
-
-		if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-			return -EINVAL;
-		dbus_message_iter_get_basic(value, &inband);
-
-		/* FIXME: set new inband */
-		return 0;
-	}
-
-	return -EINVAL;
-}
-
 static int set_property_gateway(struct media_transport *transport,
 						const char *property,
 						DBusMessageIter *value)
@@ -1010,22 +869,6 @@ static void get_properties_a2dp(struct media_transport *transport,
 	if (a2dp->volume <= 127)
 		dict_append_entry(dict, "Volume", DBUS_TYPE_UINT16,
 							&a2dp->volume);
-}
-
-static void get_properties_headset(struct media_transport *transport,
-						DBusMessageIter *dict)
-{
-	gboolean nrec, inband;
-	const char *routing;
-
-	nrec = headset_get_nrec(transport->device);
-	dict_append_entry(dict, "NREC", DBUS_TYPE_BOOLEAN, &nrec);
-
-	inband = headset_get_inband(transport->device);
-	dict_append_entry(dict, "InbandRingtone", DBUS_TYPE_BOOLEAN, &inband);
-
-	routing = headset_get_sco_hci(transport->device) ? "HCI" : "PCM";
-	dict_append_entry(dict, "Routing", DBUS_TYPE_STRING, &routing);
 }
 
 static void get_properties_gateway(struct media_transport *transport,
@@ -1123,16 +966,6 @@ static void destroy_a2dp(void *data)
 	g_free(a2dp);
 }
 
-static void destroy_headset(void *data)
-{
-	struct headset_transport *headset = data;
-
-	if (headset->nrec_id > 0)
-		headset_remove_nrec_cb(headset->device, headset->nrec_id);
-
-	g_free(headset);
-}
-
 static void media_transport_free(void *data)
 {
 	struct media_transport *transport = data;
@@ -1152,18 +985,6 @@ static void media_transport_free(void *data)
 	g_free(transport->configuration);
 	g_free(transport->path);
 	g_free(transport);
-}
-
-static void headset_nrec_changed(struct audio_device *dev, gboolean nrec,
-							void *user_data)
-{
-	struct media_transport *transport = user_data;
-
-	DBG("");
-
-	emit_property_changed(transport->path,
-				MEDIA_TRANSPORT_INTERFACE, "NREC",
-				DBUS_TYPE_BOOLEAN, &nrec);
 }
 
 static void transport_update_playing(struct media_transport *transport,
@@ -1186,22 +1007,6 @@ static void transport_update_playing(struct media_transport *transport,
 		}
 	} else if (transport->state == TRANSPORT_STATE_IDLE)
 		transport_set_state(transport, TRANSPORT_STATE_PENDING);
-}
-
-static void headset_state_changed(struct audio_device *dev,
-						headset_state_t old_state,
-						headset_state_t new_state,
-						void *user_data)
-{
-	struct media_transport *transport = user_data;
-
-	if (dev != transport->device)
-		return;
-
-	if (new_state == HEADSET_STATE_PLAYING)
-		transport_update_playing(transport, TRUE);
-	else
-		transport_update_playing(transport, FALSE);
 }
 
 static void gateway_state_changed(struct audio_device *dev,
@@ -1294,26 +1099,6 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		else
 			transport->source_watch = source_add_state_cb(
 							source_state_changed,
-							transport);
-	} else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
-			strcasecmp(uuid, HSP_AG_UUID) == 0) {
-		struct headset_transport *headset;
-
-		headset = g_new0(struct headset_transport, 1);
-		headset->device = device;
-		headset->nrec_id = headset_add_nrec_cb(device,
-							headset_nrec_changed,
-							transport);
-
-		transport->resume = resume_headset;
-		transport->suspend = suspend_headset;
-		transport->cancel = cancel_headset;
-		transport->get_properties = get_properties_headset;
-		transport->set_property = set_property_headset;
-		transport->data = headset;
-		transport->destroy = destroy_headset;
-		transport->hs_watch = headset_add_state_cb(
-							headset_state_changed,
 							transport);
 	} else if (strcasecmp(uuid, HFP_HS_UUID) == 0 ||
 			strcasecmp(uuid, HSP_HS_UUID) == 0) {

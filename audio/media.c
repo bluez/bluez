@@ -46,7 +46,6 @@
 #include "transport.h"
 #include "a2dp.h"
 #include "avrcp.h"
-#include "headset.h"
 #include "gateway.h"
 #include "manager.h"
 
@@ -141,9 +140,6 @@ static void media_endpoint_destroy(struct media_endpoint *endpoint)
 {
 	DBG("sender=%s path=%s", endpoint->sender, endpoint->path);
 
-	if (endpoint->hs_watch)
-		headset_remove_state_cb(endpoint->hs_watch);
-
 	if (endpoint->ag_watch)
 		gateway_remove_state_cb(endpoint->ag_watch);
 
@@ -183,17 +179,6 @@ static void media_endpoint_exit(DBusConnection *connection, void *user_data)
 
 	endpoint->watch = 0;
 	media_endpoint_remove(endpoint);
-}
-
-static void headset_setconf_cb(struct media_endpoint *endpoint, void *ret,
-						int size, void *user_data)
-{
-	struct audio_device *dev = user_data;
-
-	if (ret != NULL)
-		return;
-
-	headset_shutdown(dev);
 }
 
 static void clear_configuration(struct media_endpoint *endpoint,
@@ -449,41 +434,6 @@ done:
 	media_endpoint_remove(endpoint);
 }
 
-static void headset_state_changed(struct audio_device *dev,
-					headset_state_t old_state,
-					headset_state_t new_state,
-					void *user_data)
-{
-	struct media_endpoint *endpoint = user_data;
-	struct media_transport *transport;
-
-	DBG("");
-
-	if (bacmp(&endpoint->adapter->src, &dev->src) != 0)
-		return;
-
-	switch (new_state) {
-	case HEADSET_STATE_DISCONNECTED:
-		transport = find_device_transport(endpoint, dev);
-
-		if (transport != NULL) {
-			DBG("Clear endpoint %p", endpoint);
-			clear_configuration(endpoint, transport);
-		}
-		break;
-	case HEADSET_STATE_CONNECTING:
-		set_configuration(endpoint, dev, NULL, 0, headset_setconf_cb,
-								dev, NULL);
-		break;
-	case HEADSET_STATE_CONNECTED:
-		break;
-	case HEADSET_STATE_PLAY_IN_PROGRESS:
-		break;
-	case HEADSET_STATE_PLAYING:
-		break;
-	}
-}
-
 static const char *get_name(struct a2dp_sep *sep, void *user_data)
 {
 	struct media_endpoint *endpoint = user_data;
@@ -671,28 +621,6 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 	return TRUE;
 }
 
-static gboolean endpoint_init_ag(struct media_endpoint *endpoint, int *err)
-{
-	GSList *list;
-	GSList *l;
-
-	endpoint->hs_watch = headset_add_state_cb(headset_state_changed,
-								endpoint);
-	list = manager_find_devices(NULL, &endpoint->adapter->src, BDADDR_ANY,
-						AUDIO_HEADSET_INTERFACE, TRUE);
-
-	for (l = list; l != NULL; l = l->next) {
-		struct audio_device *dev = l->data;
-
-		set_configuration(endpoint, dev, NULL, 0,
-						headset_setconf_cb, dev, NULL);
-	}
-
-	g_slist_free(list);
-
-	return TRUE;
-}
-
 static gboolean endpoint_init_hs(struct media_endpoint *endpoint, int *err)
 {
 	GSList *list;
@@ -750,7 +678,7 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 							delay_reporting, err);
 	else if (strcasecmp(uuid, HFP_AG_UUID) == 0 ||
 					strcasecmp(uuid, HSP_AG_UUID) == 0)
-		succeeded = endpoint_init_ag(endpoint, err);
+		succeeded = TRUE;
 	else if (strcasecmp(uuid, HFP_HS_UUID) == 0 ||
 					strcasecmp(uuid, HSP_HS_UUID) == 0)
 		succeeded = endpoint_init_hs(endpoint, err);

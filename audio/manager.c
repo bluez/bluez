@@ -61,7 +61,6 @@
 #include "avdtp.h"
 #include "media.h"
 #include "a2dp.h"
-#include "headset.h"
 #include "gateway.h"
 #include "sink.h"
 #include "source.h"
@@ -637,9 +636,7 @@ int audio_manager_init(GKeyFile *conf, gboolean *enable_sco)
 	list = g_key_file_get_string_list(config, "General", "Enable",
 						NULL, NULL);
 	for (i = 0; list && list[i] != NULL; i++) {
-		if (g_str_equal(list[i], "Headset"))
-			enabled.headset = TRUE;
-		else if (g_str_equal(list[i], "Gateway"))
+		if (g_str_equal(list[i], "Gateway"))
 			enabled.gateway = TRUE;
 		else if (g_str_equal(list[i], "Sink"))
 			enabled.sink = TRUE;
@@ -653,9 +650,7 @@ int audio_manager_init(GKeyFile *conf, gboolean *enable_sco)
 	list = g_key_file_get_string_list(config, "General", "Disable",
 						NULL, NULL);
 	for (i = 0; list && list[i] != NULL; i++) {
-		if (g_str_equal(list[i], "Headset"))
-			enabled.headset = FALSE;
-		else if (g_str_equal(list[i], "Gateway"))
+		if (g_str_equal(list[i], "Gateway"))
 			enabled.gateway = FALSE;
 		else if (g_str_equal(list[i], "Sink"))
 			enabled.sink = FALSE;
@@ -694,7 +689,7 @@ proceed:
 
 	btd_register_adapter_driver(&media_driver);
 
-	*enable_sco = (enabled.gateway || enabled.headset);
+	*enable_sco = enabled.gateway;
 
 	return 0;
 }
@@ -738,10 +733,6 @@ GSList *manager_find_devices(const char *path,
 			continue;
 
 		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(&dev->dst, dst))
-			continue;
-
-		if (interface && !strcmp(AUDIO_HEADSET_INTERFACE, interface)
-				&& !dev->headset)
 			continue;
 
 		if (interface && !strcmp(AUDIO_GATEWAY_INTERFACE, interface)
@@ -829,42 +820,9 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 	return dev;
 }
 
-gboolean manager_allow_headset_connection(struct audio_device *device)
-{
-	GSList *l;
-	int connected = 0;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *dev = l->data;
-		struct headset *hs = dev->headset;
-
-		if (dev == device)
-			continue;
-
-		if (device && bacmp(&dev->src, &device->src) != 0)
-			continue;
-
-		if (!hs)
-			continue;
-
-		if (headset_get_state(dev) > HEADSET_STATE_DISCONNECTED)
-			connected++;
-
-		if (connected >= max_connected_headsets)
-			return FALSE;
-	}
-
-	return TRUE;
-}
-
 void manager_set_fast_connectable(gboolean enable)
 {
 	GSList *l;
-
-	if (enable && !manager_allow_headset_connection(NULL)) {
-		DBG("Refusing enabling fast connectable");
-		return;
-	}
 
 	for (l = adapters; l != NULL; l = l->next) {
 		struct audio_adapter *adapter = l->data;

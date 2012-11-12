@@ -23,7 +23,6 @@
  */
 
 struct enabled_interfaces {
-	gboolean headset;
 	gboolean gateway;
 	gboolean sink;
 	gboolean source;
@@ -49,8 +48,6 @@ GSList *manager_find_devices(const char *path,
 struct audio_device *manager_get_device(const bdaddr_t *src,
 					const bdaddr_t *dst,
 					gboolean create);
-
-gboolean manager_allow_headset_connection(struct audio_device *device);
 
 /* TRUE to enable fast connectable and FALSE to disable fast connectable for all
  * audio adapters. */
