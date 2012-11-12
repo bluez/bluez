@@ -43,7 +43,6 @@
 #include "log.h"
 #include "device.h"
 #include "manager.h"
-#include "gateway.h"
 
 static GIOChannel *sco_server = NULL;
 
@@ -66,83 +65,18 @@ static GKeyFile *load_config_file(const char *file)
 	return keyfile;
 }
 
-static void sco_server_cb(GIOChannel *chan, GError *err, gpointer data)
-{
-	int sk;
-	struct audio_device *device;
-	char addr[18];
-	bdaddr_t src, dst;
-
-	if (err) {
-		error("sco_server_cb: %s", err->message);
-		return;
-	}
-
-	bt_io_get(chan, &err,
-			BT_IO_OPT_SOURCE_BDADDR, &src,
-			BT_IO_OPT_DEST_BDADDR, &dst,
-			BT_IO_OPT_DEST, addr,
-			BT_IO_OPT_INVALID);
-	if (err) {
-		error("bt_io_get: %s", err->message);
-		goto drop;
-	}
-
-	device = manager_find_device(NULL, &src, &dst,
-						AUDIO_GATEWAY_INTERFACE,
-						FALSE);
-	if (!device)
-		goto drop;
-
-	if (device->gateway) {
-		if (!gateway_is_connected(device)) {
-			DBG("Refusing SCO from non-connected AG");
-			goto drop;
-		}
-
-		if (gateway_connect_sco(device, chan) < 0)
-			goto drop;
-	} else
-		goto drop;
-
-	sk = g_io_channel_unix_get_fd(chan);
-	fcntl(sk, F_SETFL, 0);
-
-	DBG("Accepted SCO connection from %s", addr);
-
-	return;
-
-drop:
-	g_io_channel_shutdown(chan, TRUE, NULL);
-}
-
 static int audio_init(void)
 {
 	GKeyFile *config;
-	gboolean enable_sco;
 
 	config = load_config_file(CONFIGDIR "/audio.conf");
 
-	if (audio_manager_init(config, &enable_sco) < 0)
-		goto failed;
-
-	if (!enable_sco)
-		return 0;
-
-	sco_server = bt_io_listen(sco_server_cb, NULL, NULL,
-					NULL, NULL,
-					BT_IO_OPT_INVALID);
-	if (!sco_server) {
-		error("Unable to start SCO server socket");
-		goto failed;
+	if (audio_manager_init(config) < 0) {
+		audio_manager_exit();
+		return -EIO;
 	}
 
 	return 0;
-
-failed:
-	audio_manager_exit();
-
-	return -EIO;
 }
 
 static void audio_exit(void)

@@ -44,7 +44,6 @@
 #include "media.h"
 #include "transport.h"
 #include "a2dp.h"
-#include "gateway.h"
 #include "sink.h"
 #include "source.h"
 #include "avrcp.h"
@@ -109,7 +108,6 @@ struct media_transport {
 	transport_lock_t	lock;
 	transport_state_t	state;
 	guint			hs_watch;
-	guint			ag_watch;
 	guint			source_watch;
 	guint			sink_watch;
 	guint			(*resume) (struct media_transport *transport,
@@ -210,9 +208,6 @@ static void transport_set_state(struct media_transport *transport,
 void media_transport_destroy(struct media_transport *transport)
 {
 	char *path;
-
-	if (transport->ag_watch)
-		gateway_remove_state_cb(transport->ag_watch);
 
 	if (transport->sink_watch)
 		sink_remove_state_cb(transport->sink_watch);
@@ -461,127 +456,6 @@ static void cancel_a2dp(struct media_transport *transport, guint id)
 	a2dp_cancel(transport->device, id);
 }
 
-static void gateway_resume_complete(struct audio_device *dev, GError *err,
-							void *user_data)
-{
-	struct media_owner *owner = user_data;
-	struct media_request *req = owner->pending;
-	struct media_transport *transport = owner->transport;
-	int fd;
-	uint16_t imtu, omtu;
-	gboolean ret;
-
-	req->id = 0;
-
-	if (dev == NULL)
-		goto fail;
-
-	if (err) {
-		error("Failed to resume gateway: error %s", err->message);
-		goto fail;
-	}
-
-	fd = gateway_get_sco_fd(dev);
-	if (fd < 0)
-		goto fail;
-
-	imtu = 48;
-	omtu = 48;
-
-	media_transport_set_fd(transport, fd, imtu, omtu);
-
-	if ((owner->lock & TRANSPORT_LOCK_READ) == 0)
-		imtu = 0;
-
-	if ((owner->lock & TRANSPORT_LOCK_WRITE) == 0)
-		omtu = 0;
-
-	ret = g_dbus_send_reply(btd_get_dbus_connection(), req->msg,
-						DBUS_TYPE_UNIX_FD, &fd,
-						DBUS_TYPE_UINT16, &imtu,
-						DBUS_TYPE_UINT16, &omtu,
-						DBUS_TYPE_INVALID);
-	if (ret == FALSE)
-		goto fail;
-
-	media_owner_remove(owner);
-
-	transport_set_state(transport, TRANSPORT_STATE_ACTIVE);
-
-	return;
-
-fail:
-	media_transport_remove(transport, owner);
-}
-
-static guint resume_gateway(struct media_transport *transport,
-				struct media_owner *owner)
-{
-	struct audio_device *device = transport->device;
-
-	if (state_in_use(transport->state))
-		goto done;
-
-	if (gateway_lock(device, GATEWAY_LOCK_READ |
-						GATEWAY_LOCK_WRITE) == FALSE)
-		return 0;
-
-	if (transport->state == TRANSPORT_STATE_IDLE)
-		transport_set_state(transport, TRANSPORT_STATE_REQUESTING);
-
-done:
-	return gateway_request_stream(device, gateway_resume_complete,
-					owner);
-}
-
-static gboolean gateway_suspend_complete(gpointer user_data)
-{
-	struct media_owner *owner = user_data;
-	struct media_transport *transport = owner->transport;
-	struct audio_device *device = transport->device;
-
-	/* Release always succeeds */
-	if (owner->pending) {
-		owner->pending->id = 0;
-		media_request_reply(owner->pending, 0);
-		media_owner_remove(owner);
-	}
-
-	gateway_unlock(device, GATEWAY_LOCK_READ | GATEWAY_LOCK_WRITE);
-	transport_set_state(transport, TRANSPORT_STATE_IDLE);
-	media_transport_remove(transport, owner);
-	return FALSE;
-}
-
-static guint suspend_gateway(struct media_transport *transport,
-						struct media_owner *owner)
-{
-	struct audio_device *device = transport->device;
-	static int id = 1;
-
-	if (!owner) {
-		gateway_state_t state = gateway_get_state(device);
-
-		gateway_unlock(device, GATEWAY_LOCK_READ | GATEWAY_LOCK_WRITE);
-
-		if (state == GATEWAY_STATE_PLAYING)
-			transport_set_state(transport, TRANSPORT_STATE_PENDING);
-		else
-			transport_set_state(transport, TRANSPORT_STATE_IDLE);
-
-		return 0;
-	}
-
-	gateway_suspend_stream(device);
-	g_idle_add(gateway_suspend_complete, owner);
-	return id++;
-}
-
-static void cancel_gateway(struct media_transport *transport, guint id)
-{
-	gateway_cancel_stream(transport->device, id);
-}
-
 static void media_owner_exit(DBusConnection *connection, void *user_data)
 {
 	struct media_owner *owner = user_data;
@@ -806,13 +680,6 @@ static int set_property_a2dp(struct media_transport *transport,
 	return -EINVAL;
 }
 
-static int set_property_gateway(struct media_transport *transport,
-						const char *property,
-						DBusMessageIter *value)
-{
-	return -EINVAL;
-}
-
 static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -869,12 +736,6 @@ static void get_properties_a2dp(struct media_transport *transport,
 	if (a2dp->volume <= 127)
 		dict_append_entry(dict, "Volume", DBUS_TYPE_UINT16,
 							&a2dp->volume);
-}
-
-static void get_properties_gateway(struct media_transport *transport,
-						DBusMessageIter *dict)
-{
-	/* None */
 }
 
 void transport_get_properties(struct media_transport *transport,
@@ -1009,22 +870,6 @@ static void transport_update_playing(struct media_transport *transport,
 		transport_set_state(transport, TRANSPORT_STATE_PENDING);
 }
 
-static void gateway_state_changed(struct audio_device *dev,
-						gateway_state_t old_state,
-						gateway_state_t new_state,
-						void *user_data)
-{
-	struct media_transport *transport = user_data;
-
-	if (dev != transport->device)
-		return;
-
-	if (new_state == GATEWAY_STATE_PLAYING)
-		transport_update_playing(transport, TRUE);
-	else
-		transport_update_playing(transport, FALSE);
-}
-
 static void sink_state_changed(struct audio_device *dev,
 						sink_state_t old_state,
 						sink_state_t new_state,
@@ -1099,16 +944,6 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		else
 			transport->source_watch = source_add_state_cb(
 							source_state_changed,
-							transport);
-	} else if (strcasecmp(uuid, HFP_HS_UUID) == 0 ||
-			strcasecmp(uuid, HSP_HS_UUID) == 0) {
-		transport->resume = resume_gateway;
-		transport->suspend = suspend_gateway;
-		transport->cancel = cancel_gateway;
-		transport->get_properties = get_properties_gateway;
-		transport->set_property = set_property_gateway;
-		transport->ag_watch = gateway_add_state_cb(
-							gateway_state_changed,
 							transport);
 	} else
 		goto fail;

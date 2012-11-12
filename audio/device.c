@@ -53,7 +53,6 @@
 #include "control.h"
 #include "avctp.h"
 #include "avrcp.h"
-#include "gateway.h"
 #include "sink.h"
 #include "source.h"
 
@@ -500,9 +499,6 @@ gboolean audio_device_is_active(struct audio_device *dev,
 	else if (!strcmp(interface, AUDIO_CONTROL_INTERFACE) && dev->control &&
 				control_is_active(dev))
 		return TRUE;
-	else if (!strcmp(interface, AUDIO_GATEWAY_INTERFACE) && dev->gateway &&
-				gateway_is_active(dev))
-		return TRUE;
 
 	return FALSE;
 }
@@ -513,9 +509,6 @@ void audio_device_unregister(struct audio_device *device)
 		g_source_remove(device->hs_preauth_id);
 		device->hs_preauth_id = 0;
 	}
-
-	if (device->gateway)
-		gateway_unregister(device);
 
 	if (device->sink)
 		sink_unregister(device);

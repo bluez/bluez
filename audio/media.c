@@ -46,7 +46,6 @@
 #include "transport.h"
 #include "a2dp.h"
 #include "avrcp.h"
-#include "gateway.h"
 #include "manager.h"
 
 #define MEDIA_INTERFACE "org.bluez.Media"
@@ -139,9 +138,6 @@ static void media_endpoint_cancel_all(struct media_endpoint *endpoint)
 static void media_endpoint_destroy(struct media_endpoint *endpoint)
 {
 	DBG("sender=%s path=%s", endpoint->sender, endpoint->path);
-
-	if (endpoint->ag_watch)
-		gateway_remove_state_cb(endpoint->ag_watch);
 
 	media_endpoint_cancel_all(endpoint);
 
@@ -550,49 +546,6 @@ static void a2dp_destroy_endpoint(void *user_data)
 	release_endpoint(endpoint);
 }
 
-static void gateway_setconf_cb(struct media_endpoint *endpoint, void *ret,
-						int size, void *user_data)
-{
-	struct audio_device *dev = user_data;
-
-	if (ret != NULL)
-		return;
-
-	gateway_set_state(dev, GATEWAY_STATE_DISCONNECTED);
-}
-
-static void gateway_state_changed(struct audio_device *dev,
-					gateway_state_t old_state,
-					gateway_state_t new_state,
-					void *user_data)
-{
-	struct media_endpoint *endpoint = user_data;
-	struct media_transport *transport;
-
-	DBG("");
-
-	if (bacmp(&endpoint->adapter->src, &dev->src) != 0)
-		return;
-
-	switch (new_state) {
-	case GATEWAY_STATE_DISCONNECTED:
-		transport = find_device_transport(endpoint, dev);
-		if (transport != NULL) {
-			DBG("Clear endpoint %p", endpoint);
-			clear_configuration(endpoint, transport);
-		}
-		break;
-	case GATEWAY_STATE_CONNECTING:
-		set_configuration(endpoint, dev, NULL, 0,
-					gateway_setconf_cb, dev, NULL);
-		break;
-	case GATEWAY_STATE_CONNECTED:
-		break;
-	case GATEWAY_STATE_PLAYING:
-		break;
-	}
-}
-
 static gboolean endpoint_init_a2dp_source(struct media_endpoint *endpoint,
 						gboolean delay_reporting,
 						int *err)
@@ -617,28 +570,6 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
 	if (endpoint->sep == NULL)
 		return FALSE;
-
-	return TRUE;
-}
-
-static gboolean endpoint_init_hs(struct media_endpoint *endpoint, int *err)
-{
-	GSList *list;
-	GSList *l;
-
-	endpoint->ag_watch = gateway_add_state_cb(gateway_state_changed,
-								endpoint);
-	list = manager_find_devices(NULL, &endpoint->adapter->src, BDADDR_ANY,
-						AUDIO_GATEWAY_INTERFACE, TRUE);
-
-	for (l = list; l != NULL; l = l->next) {
-		struct audio_device *dev = l->data;
-
-		set_configuration(endpoint, dev, NULL, 0,
-						gateway_setconf_cb, dev, NULL);
-	}
-
-	g_slist_free(list);
 
 	return TRUE;
 }
@@ -681,7 +612,7 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 		succeeded = TRUE;
 	else if (strcasecmp(uuid, HFP_HS_UUID) == 0 ||
 					strcasecmp(uuid, HSP_HS_UUID) == 0)
-		succeeded = endpoint_init_hs(endpoint, err);
+		succeeded = TRUE;
 	else {
 		succeeded = FALSE;
 
