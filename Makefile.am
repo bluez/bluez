@@ -105,20 +105,20 @@ endif
 
 if AUDIOPLUGIN
 builtin_modules += audio
-builtin_sources += audio/main.c \
-			audio/manager.h audio/manager.c \
-			audio/control.h audio/control.c \
-			audio/avctp.h audio/avctp.c \
-			audio/avrcp.h audio/avrcp.c \
-			audio/device.h audio/device.c \
-			audio/source.h audio/source.c \
-			audio/sink.h audio/sink.c \
-			audio/a2dp.h audio/a2dp.c \
-			audio/avdtp.h audio/avdtp.c \
-			audio/media.h audio/media.c \
-			audio/transport.h audio/transport.c \
-			audio/player.h audio/player.c \
-			audio/a2dp-codecs.h
+builtin_sources += profiles/audio/main.c \
+			profiles/audio/manager.h profiles/audio/manager.c \
+			profiles/audio/control.h profiles/audio/control.c \
+			profiles/audio/avctp.h profiles/audio/avctp.c \
+			profiles/audio/avrcp.h profiles/audio/avrcp.c \
+			profiles/audio/device.h profiles/audio/device.c \
+			profiles/audio/source.h profiles/audio/source.c \
+			profiles/audio/sink.h profiles/audio/sink.c \
+			profiles/audio/a2dp.h profiles/audio/a2dp.c \
+			profiles/audio/avdtp.h profiles/audio/avdtp.c \
+			profiles/audio/media.h profiles/audio/media.c \
+			profiles/audio/transport.h profiles/audio/transport.c \
+			profiles/audio/player.h profiles/audio/player.c \
+			profiles/audio/a2dp-codecs.h
 endif
 
 if SAPPLUGIN
@@ -305,7 +305,7 @@ endif
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
-			audio/audio.conf \
+			profiles/audio/audio.conf \
 			profiles/sap/sap-dummy.c profiles/sap/sap-u8500.c
 
 include Makefile.tools
@@ -347,7 +347,7 @@ EXTRA_DIST += doc/manager-api.txt \
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
-			-I$(srcdir)/audio -I$(srcdir)/gdbus \
+			-I$(srcdir)/profiles/audio -I$(srcdir)/gdbus \
 			-I$(srcdir)/attrib -I$(srcdir)/btio -I$(srcdir)/tools \
 			-I$(builddir)/tools -I$(srcdir)/monitor
 
