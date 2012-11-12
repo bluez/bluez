@@ -366,6 +366,10 @@ if MCAP
 AM_CPPFLAGS += -I$(builddir)/health
 endif
 
+if HOGPLUGIN
+AM_CPPFLAGS += -I$(srcdir)/profiles/input
+endif
+
 unit_objects =
 
 if TEST
@@ -405,7 +409,7 @@ profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 profiles/input/suspend.c: profiles/input/@HOG_SUSPEND_DRIVER@
-	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
+	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
 
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@
