@@ -222,6 +222,8 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	DBusMessageIter data;
 	struct oob_data remote_data;
 	struct btd_device *device;
+	DBusMessage *reply;
+	const char *dev_path;
 
 	if (!btd_adapter_ssp_enabled(adapter))
 		return btd_error_not_supported(msg);
@@ -236,11 +238,19 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	if (bachk(remote_data.addr) < 0)
 		return btd_error_invalid_args(msg);
 
-	device = adapter_find_device(adapter, remote_data.addr);
-	if (device && device_is_paired(device))
+	device = adapter_get_device(adapter, remote_data.addr);
+	if (!device)
+		return btd_error_failed(msg, "Creating device object failed");
+
+	if (device_is_paired(device))
 		return btd_error_already_exists(msg);
 
 	dbus_message_iter_recurse(&args, &data);
+
+	/*
+	 * TODO
+	 * Should device object be destroyed if parsing or storing failed?
+	 */
 
 	if (!parse_data(&data, &remote_data))
 		return btd_error_invalid_args(msg);
@@ -248,7 +258,16 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	if (!store_data(adapter, &remote_data))
 		return btd_error_failed(msg, "Request failed");
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dev_path = device_get_path(device);
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &dev_path,
+							DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
@@ -277,7 +296,8 @@ static DBusMessage *remove_remote_data(DBusConnection *conn, DBusMessage *msg,
 static const GDBusMethodTable oob_methods[] = {
 	{ GDBUS_METHOD("AddRemoteData",
 			GDBUS_ARGS({ "address", "s" }, { "data", "a{sv}"}),
-			NULL, add_remote_data) },
+			GDBUS_ARGS({ "device", "o" }),
+			add_remote_data) },
 	{ GDBUS_METHOD("RemoveRemoteData",
 			GDBUS_ARGS({ "address", "s" }), NULL,
 			remove_remote_data) },

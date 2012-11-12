@@ -38,11 +38,15 @@ Methods		dict ReadLocalData()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.NotSupported
 
-		void AddRemoteData(string address, dict data)
+		object AddRemoteData(string address, dict data)
 
 			This method adds new Out Of Band data for
 			specified address. If data for specified address
 			already exists it will be overwritten with new one.
+			If device object with given address does not exist yet
+			it will be created.
+
+			Returns the object path of device for given address.
 
 			All data is optional.
 
