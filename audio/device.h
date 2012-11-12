@@ -38,7 +38,6 @@ struct audio_device {
 
 	gboolean auto_connect;
 
-	struct gateway *gateway;
 	struct sink *sink;
 	struct source *source;
 	struct control *control;

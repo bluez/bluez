@@ -107,7 +107,6 @@ if AUDIOPLUGIN
 builtin_modules += audio
 builtin_sources += audio/main.c \
 			audio/manager.h audio/manager.c \
-			audio/gateway.h audio/gateway.c \
 			audio/control.h audio/control.c \
 			audio/avctp.h audio/avctp.c \
 			audio/avrcp.h audio/avrcp.c \
