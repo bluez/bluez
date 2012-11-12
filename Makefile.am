@@ -126,8 +126,7 @@ builtin_nodist += audio/telephony.c
 noinst_LIBRARIES += audio/libtelephony.a
 
 audio_libtelephony_a_SOURCES = audio/telephony.h audio/telephony-dummy.c \
-				audio/telephony-ofono.c \
-				audio/telephony-maemo6.c
+				audio/telephony-ofono.c
 endif
 
 if SAPPLUGIN
@@ -316,8 +315,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
 			audio/audio.conf audio/telephony-dummy.c \
 			audio/telephony-ofono.c \
-			audio/telephony-maemo6.c profiles/sap/sap-dummy.c \
-			profiles/sap/sap-u8500.c
+			profiles/sap/sap-dummy.c profiles/sap/sap-u8500.c
 
 include Makefile.tools
 
