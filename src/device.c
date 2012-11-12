@@ -1285,13 +1285,32 @@ static int device_resolve_svc(struct btd_device *dev, DBusMessage *msg)
 		return device_browse_primary(dev, msg, FALSE);
 }
 
-static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
-							void *user_data)
+static struct btd_profile *find_connectable_profile(struct btd_device *dev,
+							const char *uuid)
 {
-	struct btd_device *dev = user_data;
+	GSList *l;
+
+	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
+		struct btd_profile *p = l->data;
+
+		if (!p->connect)
+			continue;
+
+		if (strcasecmp(uuid, p->local_uuid) == 0)
+			return p;
+	}
+
+	return NULL;
+}
+
+static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
+							const char *uuid)
+{
 	struct btd_profile *p;
 	GSList *l;
 	int err;
+
+	DBG("%s %s", dev->path, uuid ? uuid : "(all)");
 
 	if (dev->profiles_connected)
 		return btd_error_already_connected(msg);
@@ -1308,6 +1327,16 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		return NULL;
 	}
 
+	if (uuid) {
+		p = find_connectable_profile(dev, uuid);
+		if (!p)
+			return btd_error_invalid_args(msg);
+
+		dev->pending = g_slist_prepend(dev->pending, p);
+
+		goto start_connect;
+	}
+
 	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
 		p = l->data;
 
@@ -1318,6 +1347,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	if (!dev->pending)
 		return btd_error_not_available(msg);
 
+start_connect:
 	err = connect_next(dev, dev_profile_connected);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
@@ -1325,6 +1355,33 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	dev->connect = dbus_message_ref(msg);
 
 	return NULL;
+}
+
+static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_device *dev = user_data;
+
+	return connect_profiles(dev, msg, NULL);
+}
+
+static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_device *dev = user_data;
+	const char *pattern;
+	char *uuid;
+	DBusMessage *reply;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	uuid = bt_name2string(pattern);
+	reply = connect_profiles(dev, msg, uuid);
+	g_free(uuid);
+
+	return reply;
 }
 
 static void device_svc_resolved(struct btd_device *dev, int err)
@@ -1345,24 +1402,34 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 						"DiscoverServices")) {
 		discover_services_reply(req, err, dev->tmp_records);
-	} else if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+		return;
+	}
+
+	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 								"Pair")) {
 		reply = dbus_message_new_method_return(req->msg);
 		g_dbus_send_message(conn, reply);
-	} else if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
-								"Connect")) {
-		if (err) {
-			reply = btd_error_failed(req->msg, strerror(-err));
-			g_dbus_send_message(conn, reply);
-			return;
-		}
-
-		reply = dev_connect(conn, req->msg, dev);
-		if (reply)
-			g_dbus_send_message(conn, reply);
-		else
-			req->msg = NULL;
+		return;
 	}
+
+	if (err) {
+		reply = btd_error_failed(req->msg, strerror(-err));
+		g_dbus_send_message(conn, reply);
+		return;
+	}
+
+	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE, "Connect"))
+		reply = dev_connect(conn, req->msg, dev);
+	else if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
+							"ConnectProfile"))
+		reply = connect_profile(conn, req->msg, dev);
+	else
+		return;
+
+	if (reply)
+		g_dbus_send_message(conn, reply);
+	else
+		req->msg = NULL;
 }
 
 static uint8_t parse_io_capability(const char *capability)
@@ -1428,6 +1495,8 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_METHOD("CancelDiscovery", NULL, NULL, cancel_discover) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
+	{ GDBUS_ASYNC_METHOD("ConnectProfile", GDBUS_ARGS({ "UUID", "s" }),
+						NULL, connect_profile) },
 	{ GDBUS_ASYNC_METHOD("Pair",
 			GDBUS_ARGS({ "agent", "o" }, { "capability", "s" }),
 			NULL, pair_device) },
