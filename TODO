@@ -36,6 +36,15 @@ General
   Priority: Low
   Complexity: C1
 
+- Remove usage of symlinks for drivers, such as profiles/input/suspend.c and
+  profiles/sap/sap.c. Instead, select drivers at runtime by using config
+  options or probing for running D-Bus services (using e.g.
+  g_dbus_add_service_watch()). Idea first mentioned on
+  http://thread.gmane.org/gmane.linux.bluez.kernel/30175/focus=30190.
+
+  Priority: Low
+  Complexity: C2
+
 BlueZ 5
 =======
 
