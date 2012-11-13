@@ -2006,6 +2006,32 @@ static void disconn_logic_link_cmd(const void *data, uint8_t size)
 	print_handle(cmd->handle);
 }
 
+static void logic_link_cancel_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_logic_link_cancel *cmd = data;
+
+	print_phy_handle(cmd->phy_handle);
+	print_field("TX flow spec: 0x%2.2x", cmd->flow_spec);
+}
+
+static void logic_link_cancel_rsp(const void *data, uint8_t size)
+{
+        const struct bt_hci_rsp_logic_link_cancel *rsp = data;
+
+	print_status(rsp->status);
+	print_phy_handle(rsp->phy_handle);
+	print_field("TX flow spec: 0x%2.2x", rsp->flow_spec);
+}
+
+static void flow_spec_modify_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_flow_spec_modify *cmd = data;
+
+	print_handle(cmd->handle);
+
+	packet_hexdump(data + 2, size - 2);
+}
+
 static void hold_mode_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_hold_mode *cmd = data;
@@ -3012,8 +3038,11 @@ static const struct opcode_data opcode_table[] = {
 				accept_logic_link_cmd, 33, true },
 	{ 0x043a, "Disconnect Logical Link",
 				disconn_logic_link_cmd, 2, true },
-	{ 0x043b, "Logical Link Cancel"			},
-	{ 0x043c, "Flow Specifcation Modify"		},
+	{ 0x043b, "Logical Link Cancel",
+				logic_link_cancel_cmd, 2, true,
+				logic_link_cancel_rsp, 3, true },
+	{ 0x043c, "Flow Specifcation Modify",
+				flow_spec_modify_cmd, 34, true },
 
 	/* OGF 2 - Link Policy */
 	{ 0x0801, "Holde Mode",

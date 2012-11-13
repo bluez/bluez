@@ -309,6 +309,24 @@ struct bt_hci_cmd_disconn_logic_link {
 	uint16_t handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LOGIC_LINK_CANCEL		0x043b
+struct bt_hci_cmd_logic_link_cancel {
+	uint8_t  phy_handle;
+	uint8_t  flow_spec;
+} __attribute__ ((packed));
+struct bt_hci_rsp_logic_link_cancel {
+	uint8_t  status;
+	uint8_t  phy_handle;
+	uint8_t  flow_spec;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_FLOW_SPEC_MODIFY		0x043c
+struct bt_hci_cmd_flow_spec_modify {
+	uint16_t handle;
+	uint8_t  tx_flow_spec[16];
+	uint8_t  rx_flow_spec[16];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_HOLD_MODE			0x0801
 struct bt_hci_cmd_hold_mode {
 	uint16_t handle;
