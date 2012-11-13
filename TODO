@@ -57,9 +57,9 @@ released.
 - Expose per-profile connection states on the Device interface
   (presumably a list of UUIDs for each connected profile)
 
-- Move base path to /org/bluez
+- [done] Move base path to /org/bluez
 
-- Remove GStreamer and libsbc code
+- [done] Remove GStreamer and libsbc code
 
 - Don't install libbluetooth by default (put it behind a configure switch)
 
@@ -74,7 +74,7 @@ released.
 - Add Agent callback for incoming just-works, maybe remote lost key as
   well?
 
-- [pending] Reorganize source tree according to RFC sent to
+- [done] Reorganize source tree according to RFC sent to
   linux-bluetooth (Subject: [RFC] Reorganizing the BlueZ source tree)
 
 - [pending] Remove deprecated D-Bus signals, methods and properties
