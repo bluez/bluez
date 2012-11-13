@@ -11,6 +11,52 @@ import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
+hfp_record = """
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<record>
+	<attribute id="0x0000">
+		<uint32 value="0x00010002" />
+	</attribute>
+	<attribute id="0x0001">
+		<sequence>
+			<uuid value="0x111e" />
+			<uuid value="0x1203" />
+		</sequence>
+	</attribute>
+	<attribute id="0x0004">
+		<sequence>
+			<sequence>
+				<uuid value="0x0100" />
+			</sequence>
+			<sequence>
+				<uuid value="0x0003" />
+				<uint8 value="0x07" />
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x0005">
+		<sequence>
+			<uuid value="0x1002" />
+		</sequence>
+	</attribute>
+	<attribute id="0x0009">
+		<sequence>
+			<sequence>
+				<uuid value="0x111e" />
+				<uint16 value="0x0105" />
+			</sequence>
+		</sequence>
+	</attribute>
+	<attribute id="0x0100">
+		<text value="Handsfree" />
+	</attribute>
+	<attribute id="0x0311">
+		<uint16 value="0x0031" />
+	</attribute>
+</record>
+"""
+
 class Profile(dbus.service.Object):
 	@dbus.service.method("org.bluez.Profile1",
 					in_signature="", out_signature="")
@@ -63,7 +109,10 @@ if __name__ == '__main__':
 			make_option("-P", "--PSM", action="store",
 					type="int", dest="psm"),
 			make_option("-C", "--channel", action="store",
-					type="int", dest="channel")
+					type="int", dest="channel"),
+			make_option("-r", "--record", action="store",
+					type="string", dest="record",
+					default=None),
 			]
 
 	parser = OptionParser(option_list=option_list)
@@ -73,6 +122,11 @@ if __name__ == '__main__':
 	profile = Profile(bus, options.path)
 
 	mainloop = GObject.MainLoop()
+
+	if options.uuid == "hfp":
+		options.channel = 7
+		options.record = hfp_record
+		options.name = "HFP HandsFree"
 
 	opts = {
 			"Name" :	options.name,
@@ -87,6 +141,9 @@ if __name__ == '__main__':
 
 	if (options.channel):
 		opts["Channel"] = dbus.UInt16(options.channel)
+
+	if (options.record):
+		opts["ServiceRecord"] = options.record
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
