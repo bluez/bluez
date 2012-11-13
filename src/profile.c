@@ -292,6 +292,10 @@ static void append_prop(gpointer a, gpointer b)
 	struct prop_append_data *data = b;
 	DBusMessageIter entry, value, *dict = data->dict;
 	struct btd_device *dev = data->io->device;
+	struct ext_profile *ext = data->io->ext;
+
+	if (strcasecmp(p->uuid, ext->uuid) != 0)
+		return;
 
 	if (p->exists && !p->exists(p->uuid, dev, p->user_data))
 		return;
