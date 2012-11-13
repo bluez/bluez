@@ -75,7 +75,10 @@ class Profile(dbus.service.Object):
 		fd = fd.take()
 		print("NewConnection(%s, %d)" % (path, fd))
 		for key in properties.keys():
-			print("  %s = %s" % key, properties[key])
+			if key == "Version" or key == "Features":
+				print("  %s = 0x%04x" % (key, properties[key]))
+			else:
+				print("  %s = %s" % (key, properties[key]))
 
 		os.close(fd)
 
