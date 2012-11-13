@@ -1944,8 +1944,8 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 					const char *value, void *user_data)
 {
 	struct avrcp_player *player = user_data;
-	int attr = attr_to_val(key);
-	int val = attrval_to_val(attr, value);
+	int attr;
+	int val;
 	struct avrcp *session;
 
 	session = player->sessions->data;
