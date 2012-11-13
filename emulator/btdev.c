@@ -39,6 +39,9 @@
 #define cpu_to_le16(val) (val)
 #define cpu_to_le32(val) (val)
 
+#define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
+#define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
+
 struct btdev {
 	enum btdev_type type;
 
@@ -202,6 +205,7 @@ static void set_bredr_features(struct btdev *btdev)
 
 static void set_le_features(struct btdev *btdev)
 {
+	btdev->features[4] |= 0x20;	/* BR/EDR Not Supported */
 	btdev->features[4] |= 0x40;	/* LE Supported */
 	btdev->features[7] |= 0x80;	/* Extended features */
 }

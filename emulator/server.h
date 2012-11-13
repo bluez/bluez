@@ -26,6 +26,7 @@
 
 enum server_type {
 	SERVER_TYPE_BREDR,
+	SERVER_TYPE_LE,
 	SERVER_TYPE_AMP,
 };
 

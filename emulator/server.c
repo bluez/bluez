@@ -217,6 +217,9 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	case SERVER_TYPE_BREDR:
 		type = BTDEV_TYPE_BREDR;
 		break;
+	case SERVER_TYPE_LE:
+		type = BTDEV_TYPE_LE;
+		break;
 	case SERVER_TYPE_AMP:
 		type = BTDEV_TYPE_AMP;
 		break;

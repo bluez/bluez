@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 	struct vhci *vhci;
 	struct server *server1;
 	struct server *server2;
+	struct server *server3;
 	sigset_t mask;
 
 	mainloop_init();
@@ -103,9 +104,13 @@ int main(int argc, char *argv[])
 	if (!server1)
 		fprintf(stderr, "Failed to open BR/EDR server channel\n");
 
-	server2 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-amp");
+	server2 = server_open_unix(SERVER_TYPE_AMP, "/tmp/bt-server-amp");
 	if (!server2)
 		fprintf(stderr, "Failed to open AMP server channel\n");
+
+	server3 = server_open_unix(SERVER_TYPE_LE, "/tmp/bt-server-le");
+	if (!server3)
+		fprintf(stderr, "Failed to open LE server channel\n");
 
 	return mainloop_run();
 }
