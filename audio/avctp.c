@@ -577,7 +577,7 @@ static void control_response(struct avctp_channel *control,
 					size_t operand_count)
 {
 	struct avctp_pending_req *p = control->p;
-	struct avctp_control_req *req = p->data;
+	struct avctp_control_req *req;
 	GSList *l;
 
 	if (p && p->transaction == avctp->transaction) {
