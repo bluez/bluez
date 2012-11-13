@@ -909,6 +909,59 @@ static void print_service_type(uint8_t service_type)
 	print_field("Service type: %s (0x%2.2x)", str, service_type);
 }
 
+static void print_short_range_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Short range mode: %s (0x%2.2x)", str, mode);
+}
+
+static void print_amp_status(uint8_t amp_status)
+{
+	const char *str;
+
+	switch (amp_status) {
+	case 0x00:
+		str = "Present";
+		break;
+	case 0x01:
+		str = "Bluetooth only";
+		break;
+	case 0x02:
+		str = "No capacity";
+		break;
+	case 0x03:
+		str = "Low capacity";
+		break;
+	case 0x04:
+		str = "Medium capacity";
+		break;
+	case 0x05:
+		str = "High capacity";
+		break;
+	case 0x06:
+		str = "Full capacity";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("AMP status: %s (0x%2.2x)", str, amp_status);
+}
+
 static void print_num_resp(uint8_t num_resp)
 {
 	print_field("Num responses: %d", num_resp);
@@ -2512,35 +2565,7 @@ static void read_local_amp_info_rsp(const void *data, uint8_t size)
 	const char *str;
 
 	print_status(rsp->status);
-
-	switch (rsp->amp_status) {
-	case 0x00:
-		str = "Present";
-		break;
-	case 0x01:
-		str = "Bluetooth only";
-		break;
-	case 0x02:
-		str = "No capacity";
-		break;
-	case 0x03:
-		str = "Low capacity";
-		break;
-	case 0x04:
-		str = "Medium capacity";
-		break;
-	case 0x05:
-		str = "High capacity";
-		break;
-	case 0x06:
-		str = "Full capacity";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("AMP status: %s (0x%2.2x)", str, rsp->amp_status);
+	print_amp_status(rsp->amp_status);
 
 	print_field("Total bandwidth: %d kbps", btohl(rsp->total_bw));
 	print_field("Max guaranteed bandwidth: %d kbps", btohl(rsp->max_bw));
@@ -3896,6 +3921,44 @@ static void disconn_phy_link_complete_evt(const void *data, uint8_t size)
 	print_reason(evt->reason);
 }
 
+static void phy_link_loss_early_warning_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_phy_link_loss_early_warning *evt = data;
+	const char *str;
+
+	print_phy_handle(evt->phy_handle);
+
+	switch (evt->reason) {
+	case 0x00:
+		str = "Unknown";
+		break;
+	case 0x01:
+		str = "Range related";
+		break;
+	case 0x02:
+		str = "Bandwidth related";
+		break;
+	case 0x03:
+		str = "Resolving conflict";
+		break;
+	case 0x04:
+		str = "Interference";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Reason: %s (0x%2.2x)", str, evt->reason);
+}
+
+static void phy_link_recovery_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_phy_link_recovery *evt = data;
+
+	print_phy_handle(evt->phy_handle);
+}
+
 static void logic_link_complete_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_logic_link_complete *evt = data;
@@ -3915,6 +3978,14 @@ static void disconn_logic_link_complete_evt(const void *data, uint8_t size)
 	print_reason(evt->reason);
 }
 
+static void flow_spec_modify_complete_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_flow_spec_modify_complete *evt = data;
+
+	print_status(evt->status);
+	print_handle(evt->handle);
+}
+
 static void num_completed_data_blocks_evt(const void *data, uint8_t size)
 {
 	const struct bt_hci_evt_num_completed_data_blocks *evt = data;
@@ -3927,6 +3998,23 @@ static void num_completed_data_blocks_evt(const void *data, uint8_t size)
 
 	if (size > sizeof(*evt))
 		packet_hexdump(data + sizeof(*evt), size - sizeof(*evt));
+}
+
+static void short_range_mode_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_short_range_mode_change *evt = data;
+
+	print_status(evt->status);
+	print_phy_handle(evt->phy_handle);
+	print_short_range_mode(evt->mode);
+}
+
+static void amp_status_change_evt(const void *data, uint8_t size)
+{
+	const struct bt_hci_evt_amp_status_change *evt = data;
+
+	print_status(evt->status);
+	print_amp_status(evt->amp_status);
 }
 
 static void le_conn_complete_evt(const void *data, uint8_t size)
@@ -4216,20 +4304,25 @@ static const struct event_data event_table[] = {
 				channel_selected_evt, 1, true },
 	{ 0x42, "Disconnect Physical Link Complete",
 				disconn_phy_link_complete_evt, 3, true },
-	{ 0x43, "Physical Link Loss Early Warning"	},
-	{ 0x44, "Physical Link Recovery"		},
+	{ 0x43, "Physical Link Loss Early Warning",
+				phy_link_loss_early_warning_evt, 2, true },
+	{ 0x44, "Physical Link Recovery",
+				phy_link_recovery_evt, 1, true },
 	{ 0x45, "Logical Link Complete",
 				logic_link_complete_evt, 5, true },
 	{ 0x46, "Disconnect Logical Link Complete",
 				disconn_logic_link_complete_evt, 4, true },
-	{ 0x47, "Flow Spec Modify Complete"		},
+	{ 0x47, "Flow Spec Modify Complete",
+				flow_spec_modify_complete_evt, 3, true },
 	{ 0x48, "Number Of Completed Data Blocks",
 				num_completed_data_blocks_evt, 3, false },
 	{ 0x49, "AMP Start Test"			},
 	{ 0x4a, "AMP Test End"				},
 	{ 0x4b, "AMP Receiver Report"			},
-	{ 0x4c, "Short Range Mode Change Complete"	},
-	{ 0x4d, "AMP Status Change"			},
+	{ 0x4c, "Short Range Mode Change Complete",
+				short_range_mode_change_evt, 3, true },
+	{ 0x4d, "AMP Status Change",
+				amp_status_change_evt, 2, true },
 	{ 0xfe, "Testing"				},
 	{ 0xff, "Vendor"				},
 	{ }

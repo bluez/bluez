@@ -1257,6 +1257,17 @@ struct bt_hci_evt_disconn_phy_link_complete {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_PHY_LINK_LOSS_EARLY_WARNING	0x43
+struct bt_hci_evt_phy_link_loss_early_warning {
+	uint8_t  phy_handle;
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_PHY_LINK_RECOVERY		0x44
+struct bt_hci_evt_phy_link_recovery {
+	uint8_t  phy_handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_LOGIC_LINK_COMPLETE		0x45
 struct bt_hci_evt_logic_link_complete {
 	uint8_t  status;
@@ -1272,6 +1283,12 @@ struct bt_hci_evt_disconn_logic_link_complete {
 	uint8_t  reason;
 } __attribute__ ((packed));
 
+#define BT_HCI_EVT_FLOW_SPEC_MODIFY_COMPLETE	0x47
+struct bt_hci_evt_flow_spec_modify_complete {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_NUM_COMPLETED_DATA_BLOCKS	0x48
 struct bt_hci_evt_num_completed_data_blocks {
 	uint16_t total_num_blocks;
@@ -1279,6 +1296,19 @@ struct bt_hci_evt_num_completed_data_blocks {
 	uint16_t handle;
 	uint16_t num_packets;
 	uint16_t num_blocks;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_SHORT_RANGE_MODE_CHANGE	0x4c
+struct bt_hci_evt_short_range_mode_change {
+	uint8_t  status;
+	uint8_t  phy_handle;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_EVT_AMP_STATUS_CHANGE		0x4d
+struct bt_hci_evt_amp_status_change {
+	uint8_t  status;
+	uint8_t  amp_status;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_LE_CONN_COMPLETE		0x01
