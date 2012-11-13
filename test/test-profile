@@ -28,6 +28,9 @@ class Profile(dbus.service.Object):
 	def NewConnection(self, path, fd, properties):
 		fd = fd.take()
 		print("NewConnection(%s, %d)" % (path, fd))
+		for key in properties.keys():
+			print("  %s = %s" % key, properties[key])
+
 		os.close(fd)
 
 if __name__ == '__main__':
