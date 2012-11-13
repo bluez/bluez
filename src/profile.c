@@ -1115,6 +1115,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p = &ext->p;
 
 	p->name = ext->name;
+	p->local_uuid = ext->uuid;
 
 	/* Typecast can't really be avoided here:
 	 * http://c-faq.com/ansi/constmismatch.html */
