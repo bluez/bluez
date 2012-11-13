@@ -308,8 +308,7 @@ static void append_prop(gpointer a, gpointer b)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
-							struct btd_device *dev)
+static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 {
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
@@ -327,7 +326,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 
 	dbus_message_iter_init_append(msg, &iter);
 
-	path = device_get_path(dev);
+	path = device_get_path(conn->device);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
 
 	fd = g_io_channel_unix_get_fd(conn->io);
@@ -362,22 +361,10 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn,
 	return true;
 }
 
-static struct btd_device *get_btd_dev(bdaddr_t *src, const char *addr)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(src);
-	if (!adapter)
-		return NULL;
-
-	return adapter_get_device(adapter, addr);
-}
-
 static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
-	struct btd_device *device;
 	GError *io_err = NULL;
 	bdaddr_t src;
 	char addr[18];
@@ -405,22 +392,13 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 
 	DBG("%s connected to %s", ext->name, addr);
 
-	device = get_btd_dev(&src, addr);
-	if (!device) {
-		g_set_error(&io_err, BT_IO_ERROR, ENODEV,
-						"Unable to get dev object");
-		err = io_err;
-		error("%s: Unable to get dev object for %s", ext->name, addr);
-		goto drop;
-	}
-
 	if (conn->io_id == 0) {
 		GIOCondition cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 		conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected,
 									conn);
 	}
 
-	if (send_new_connection(ext, conn, device))
+	if (send_new_connection(ext, conn))
 		return;
 
 drop:
@@ -515,11 +493,15 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 	conn->io = g_io_channel_ref(io);
 	conn->proto = server->proto;
 	conn->ext = server->ext;
+	conn->adapter = btd_adapter_ref(server->adapter);
 
 	ba2str(dst, addr);
 	device = adapter_find_device(server->adapter, addr);
 
-	if (device && remote_uuid) {
+	if (device)
+		conn->device = btd_device_ref(device);
+
+	if (conn->device && remote_uuid) {
 		const sdp_record_t *rec;
 
 		rec = btd_device_get_record(device, remote_uuid);
