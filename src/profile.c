@@ -92,7 +92,7 @@ struct ext_io {
 
 	bool resolving;
 	btd_profile_cb cb;
-	uint16_t rec_handle;
+	uint32_t rec_handle;
 
 	guint auth_id;
 	DBusPendingCall *new_conn;
@@ -513,7 +513,7 @@ static sdp_record_t *ext_get_record(struct ext_profile *ext)
 	return NULL;
 }
 
-static uint16_t ext_register_record(struct ext_profile *ext,
+static uint32_t ext_register_record(struct ext_profile *ext,
 							const bdaddr_t *src)
 {
 	sdp_record_t *rec;
@@ -542,7 +542,7 @@ static int ext_start_servers(struct ext_profile *ext,
 	BtIOConfirm confirm;
 	BtIOConnect connect;
 	GError *err = NULL;
-	uint16_t handle;
+	uint32_t handle;
 	GIOChannel *io;
 
 	handle = ext_register_record(ext, adapter_get_address(adapter));
