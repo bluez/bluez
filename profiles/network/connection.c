@@ -371,19 +371,16 @@ static int bnep_connect(struct network_conn *nc)
 static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 {
 	struct network_conn *nc = data;
-	const char *err_msg;
 	int perr;
 
 	if (err) {
 		error("%s", err->message);
-		err_msg = err->message;
 		goto failed;
 	}
 
 	perr = bnep_connect(nc);
 	if (perr < 0) {
-		err_msg = strerror(-perr);
-		error("bnep connect(): %s (%d)", err_msg, -perr);
+		error("bnep connect(): %s (%d)", strerror(-perr), -perr);
 		goto failed;
 	}
 
