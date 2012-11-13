@@ -283,6 +283,78 @@ static void print_channels(uint64_t channels)
 		print_field("  Unknown channels (0x%8.8" PRIx64 ")", mask);
 }
 
+static void print_move_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Move success";
+		break;
+	case 0x0001:
+		str = "Move pending";
+		break;
+	case 0x0002:
+		str = "Move refused - Controller ID not supported";
+		break;
+	case 0x0003:
+		str = "Move refused - new Controller ID is same";
+		break;
+	case 0x0004:
+		str = "Move refused - Configuration not supported";
+		break;
+	case 0x0005:
+		str = "Move refused - Move Channel collision";
+		break;
+	case 0x0006:
+		str = "Move refused - Channel not allowed to be moved";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static void print_move_conf_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Move success - both sides succeed";
+		break;
+	case 0x0001:
+		str = "Move failure - one or both sides refuse";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static void print_conn_param_result(uint16_t result)
+{
+	const char *str;
+
+	switch (btohs(result)) {
+	case 0x0000:
+		str = "Connection Parameters accepted";
+		break;
+	case 0x0001:
+		str = "Connection Parameters rejected";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
 static void sig_cmd_reject(const void *data, uint16_t size)
 {
 	const struct bt_l2cap_pdu_cmd_reject *pdu = data;
@@ -466,6 +538,54 @@ static void sig_create_chan_rsp(const void *data, uint16_t size)
 	print_conn_status(pdu->status);
 }
 
+static void sig_move_chan_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_move_chan_req *pdu = data;
+
+	print_cid("Initiator", pdu->icid);
+	print_field("Controller ID: %d", pdu->ctrlid);
+}
+
+static void sig_move_chan_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_move_chan_rsp *pdu = data;
+
+	print_cid("Initiator", pdu->icid);
+	print_move_result(pdu->result);
+}
+
+static void sig_move_chan_conf(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_move_chan_conf *pdu = data;
+
+	print_cid("Initiator", pdu->icid);
+	print_move_conf_result(pdu->result);
+}
+
+static void sig_move_chan_conf_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_move_chan_conf_rsp *pdu = data;
+
+	print_cid("Initiator", pdu->icid);
+}
+
+static void sig_conn_param_req(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_conn_param_req *pdu = data;
+
+	print_field("Min interval: %d", btohs(pdu->min_interval));
+	print_field("Max interval: %d", btohs(pdu->max_interval));
+	print_field("Slave latency: %d", btohs(pdu->latency));
+	print_field("Timeout multiplier: %d", btohs(pdu->timeout));
+}
+
+static void sig_conn_param_rsp(const void *data, uint16_t size)
+{
+	const struct bt_l2cap_pdu_conn_param_rsp *pdu = data;
+
+	print_conn_param_result(pdu->result);
+}
+
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -501,12 +621,18 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 			sig_create_chan_req, 5, true },
 	{ 0x0d, "Create Channel Response",
 			sig_create_chan_rsp, 8, true },
-	{ 0x0e, "Move Channel Request"			},
-	{ 0x0f, "Move Channel Response"			},
-	{ 0x10, "Move Channel Confirmation"		},
-	{ 0x11, "Move Channel Confirmation Response"	},
-	{ 0x12, "Connection Parameter Update Request"	},
-	{ 0x13, "Connection Parameter Update Response"	},
+	{ 0x0e, "Move Channel Request",
+			sig_move_chan_req, 3, true },
+	{ 0x0f, "Move Channel Response",
+			sig_move_chan_rsp, 4, true },
+	{ 0x10, "Move Channel Confirmation",
+			sig_move_chan_conf, 4, true },
+	{ 0x11, "Move Channel Confirmation Response",
+			sig_move_chan_conf_rsp, 2, true },
+	{ 0x12, "Connection Parameter Update Request",
+			sig_conn_param_req, 8, true },
+	{ 0x13, "Connection Parameter Update Response",
+			sig_conn_param_rsp, 2, true },
 	{ },
 };
 

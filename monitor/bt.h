@@ -1466,3 +1466,39 @@ struct bt_l2cap_pdu_create_chan_rsp {
 	uint16_t result;
 	uint16_t status;
 } __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_MOVE_CHAN_REQ	0x0e
+struct bt_l2cap_pdu_move_chan_req {
+	uint16_t icid;
+	uint8_t  ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_MOVE_CHAN_RSP	0x0f
+struct bt_l2cap_pdu_move_chan_rsp {
+	uint16_t icid;
+	uint16_t result;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_MOVE_CHAN_CONF	0x10
+struct bt_l2cap_pdu_move_chan_conf {
+	uint16_t icid;
+	uint16_t result;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_MOVE_CHAN_CONF_RSP	0x11
+struct bt_l2cap_pdu_move_chan_conf_rsp {
+	uint16_t icid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONN_PARAM_REQ	0x12
+struct bt_l2cap_pdu_conn_param_req {
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint16_t latency;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_CONN_PARAM_RSP	0x13
+struct bt_l2cap_pdu_conn_param_rsp {
+	uint16_t result;
+} __attribute__ ((packed));
