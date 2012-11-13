@@ -27,6 +27,7 @@
 #endif
 
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -34,6 +35,25 @@
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
+
+#define MAX_INDEX 16
+
+struct index_data {
+	void *frag_buf;
+	uint16_t frag_pos;
+	uint16_t frag_len;
+	uint16_t frag_cid;
+};
+
+static struct index_data index_list[MAX_INDEX];
+
+static void clear_fragment_buffer(uint16_t index)
+{
+	free(index_list[index].frag_buf);
+	index_list[index].frag_buf = NULL;
+	index_list[index].frag_pos = 0;
+	index_list[index].frag_len = 0;
+}
 
 static void print_psm(uint16_t psm)
 {
@@ -783,52 +803,153 @@ static void smp_packet(const void *data, uint16_t size)
 	packet_hexdump(data + 1, size - 1);
 }
 
-void l2cap_packet(uint16_t handle, bool in, const void *data, uint16_t size)
+static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
+			uint16_t cid, const void *data, uint16_t size)
+{
+	switch (cid) {
+	case 0x0001:
+	case 0x0005:
+		sig_packet(in, data, size);
+		break;
+	case 0x0003:
+		amp_packet(data, size);
+		break;
+	case 0x0004:
+		att_packet(data, size);
+		break;
+	case 0x0006:
+		smp_packet(data, size);
+		break;
+	default:
+		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
+						" %d len %d", cid, size);
+		packet_hexdump(data, size);
+		break;
+	}
+}
+
+void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
+					const void *data, uint16_t size)
 {
 	const struct bt_l2cap_hdr *hdr = data;
 	uint16_t len, cid;
 
-	if (size < sizeof(*hdr)) {
-		print_text(COLOR_ERROR, "malformed packet");
+	if (index > MAX_INDEX - 1) {
+		print_text(COLOR_ERROR, "controller index too large");
 		packet_hexdump(data, size);
 		return;
 	}
 
-	len = btohs(hdr->len);
-	cid = btohs(hdr->cid);
+	switch (flags) {
+	case 0x00:	/* start of a non-automatically-flushable PDU */
+	case 0x02:	/* start of an automatically-flushable PDU */
+		if (index_list[index].frag_len) {
+			print_text(COLOR_ERROR, "unexpected start frame");
+			packet_hexdump(data, size);
+			clear_fragment_buffer(index);
+			return;
+		}
 
-	data += sizeof(*hdr);
-	size -= sizeof(*hdr);
+		if (size < sizeof(*hdr)) {
+			print_text(COLOR_ERROR, "frame too short");
+			packet_hexdump(data, size);
+			return;
+		}
 
-	if (len != size) {
-		print_text(COLOR_ERROR, "invalid packet size");
-		packet_hexdump(data, size);
-		return;
-	}
+		len = btohs(hdr->len);
+		cid = btohs(hdr->cid);
 
-	switch (btohs(hdr->cid)) {
-	case 0x0001:
-	case 0x0005:
-		sig_packet(in, data, len);
+		data += sizeof(*hdr);
+		size -= sizeof(*hdr);
+
+		if (len == size) {
+			/* complete frame */
+			l2cap_frame(index, in, handle, cid, data, len);
+			return;
+		}
+
+		if (size > len) {
+			print_text(COLOR_ERROR, "frame too long");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		index_list[index].frag_buf = malloc(len);
+		if (!index_list[index].frag_buf) {
+			print_text(COLOR_ERROR, "failed buffer allocation");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		memcpy(index_list[index].frag_buf, data, size);
+		index_list[index].frag_pos = size;
+		index_list[index].frag_len = len - size;
+		index_list[index].frag_cid = cid;
 		break;
-	case 0x0003:
-		amp_packet(data, len);
+
+	case 0x01:	/* continuing fragment */
+		if (!index_list[index].frag_len) {
+			print_text(COLOR_ERROR, "unexpected continuation");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		if (size > index_list[index].frag_len) {
+			print_text(COLOR_ERROR, "fragment too long");
+			packet_hexdump(data, size);
+			clear_fragment_buffer(index);
+			return;
+		}
+
+		memcpy(index_list[index].frag_buf +
+				index_list[index].frag_pos, data, size);
+		index_list[index].frag_pos += size;
+		index_list[index].frag_len -= size;
+
+		if (!index_list[index].frag_len) {
+			/* complete frame */
+			l2cap_frame(index, in, handle,
+					index_list[index].frag_cid,
+					data, index_list[index].frag_pos);
+			clear_fragment_buffer(index);
+			return;
+		}
 		break;
-	case 0x0004:
-		att_packet(data, len);
+
+	case 0x03:	/* complete automatically-flushable PDU */
+		if (index_list[index].frag_len) {
+			print_text(COLOR_ERROR, "unexpected complete frame");
+			packet_hexdump(data, size);
+			clear_fragment_buffer(index);
+			return;
+		}
+
+		if (size < sizeof(*hdr)) {
+			print_text(COLOR_ERROR, "frame too short");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		len = btohs(hdr->len);
+		cid = btohs(hdr->cid);
+
+		data += sizeof(*hdr);
+		size -= sizeof(*hdr);
+
+		if (len != size) {
+			print_text(COLOR_ERROR, "wrong frame size");
+			packet_hexdump(data, size);
+			return;
+		}
+
+		/* complete frame */
+		l2cap_frame(index, in, handle, cid, data, len);
 		break;
-	case 0x0006:
-		smp_packet(data, len);
-		break;
+
 	default:
-		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
-						" %d len %d", cid, len);
-		packet_hexdump(data, len);
-		break;
+		print_text(COLOR_ERROR, "invalid packet flags (0x%2.2x)",
+								flags);
+		packet_hexdump(data, size);
+		return;
 	}
-
-	data += len;
-	size -= len;
-
-	packet_hexdump(data, size);
 }

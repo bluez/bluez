@@ -1491,8 +1491,6 @@ struct monitor_new_index {
 
 struct index_data {
 	bdaddr_t bdaddr;
-	void *frag_buf;
-	uint16_t frag_len;
 };
 
 static struct index_data index_list[MAX_INDEX];
@@ -1572,18 +1570,15 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 
 		if (index < MAX_INDEX) {
 			bacpy(&index_list[index].bdaddr, &ni->bdaddr);
-			index_list[index].frag_buf = NULL;
-			index_list[index].frag_len = 0;
 		}
 
 		ba2str(&ni->bdaddr, str);
 		packet_new_index(tv, index, str, ni->type, ni->bus, ni->name);
 		break;
 	case MONITOR_DEL_INDEX:
-		if (index < MAX_INDEX) {
+		if (index < MAX_INDEX)
 			ba2str(&index_list[index].bdaddr, str);
-			free(index_list[index].frag_buf);
-		} else
+		else
 			ba2str(BDADDR_ANY, str);
 
 		packet_del_index(tv, index, str);
@@ -4548,22 +4543,7 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 	if (filter_mask & PACKET_FILTER_SHOW_ACL_DATA)
 		packet_hexdump(data, size);
 
-	if (index > MAX_INDEX - 1)
-		return;
-
-	switch (flags) {
-	case 0x00:	/* start of a non-automatically-flushable PDU */
-	case 0x02:	/* start of an automatically-flushable PDU */
-		if (index_list[index].frag_len == 0)
-			l2cap_packet(acl_handle(handle), in, data, size);
-		index_list[index].frag_len = 0;
-		break;
-	default:
-		print_text(COLOR_ERROR, "invalid packet flags (0x%2.2x)",
-								flags);
-		packet_hexdump(data, size);
-		break;
-	}
+	l2cap_packet(index, in, acl_handle(handle), flags, data, size);
 }
 
 void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
