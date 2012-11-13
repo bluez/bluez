@@ -903,9 +903,21 @@ static int ext_disconnect_dev(struct btd_device *dev,
 static void ext_get_defaults(struct ext_profile *ext)
 {
 	if (ext->enable_client && !ext->remote_uuids[0]) {
+		const char *remote_uuid;
+
 		g_strfreev(ext->remote_uuids);
 		ext->remote_uuids = g_new0(char *, 2);
-		ext->remote_uuids[0] = g_strdup(ext->uuid);
+
+		if (strcasecmp(ext->uuid, HFP_HS_UUID) == 0)
+			remote_uuid = HFP_AG_UUID;
+		else if (strcasecmp(ext->uuid, HFP_AG_UUID) == 0)
+			remote_uuid = HFP_HS_UUID;
+		else if (strcasecmp(ext->uuid, HSP_HS_UUID) == 0)
+			remote_uuid = HSP_AG_UUID;
+		else
+			remote_uuid = ext->uuid;
+
+		ext->remote_uuids[0] = g_strdup(remote_uuid);
 	}
 
 	if (strcasecmp(ext->uuid, SPP_UUID) == 0) {
