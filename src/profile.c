@@ -378,14 +378,22 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
 	struct btd_device *device;
+	GError *io_err = NULL;
 	bdaddr_t src;
 	char addr[18];
 
-	if (!bt_io_get(io, NULL,
+	if (!bt_io_get(io, &io_err,
 				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST, addr,
 				BT_IO_OPT_INVALID)) {
-		error("Unable to get connect data for %s", ext->name);
+		error("Unable to get connect data for %s: %s", ext->name,
+							io_err->message);
+		if (err) {
+			g_error_free(io_err);
+			io_err = NULL;
+		} else {
+			err = io_err;
+		}
 		goto drop;
 	}
 
@@ -399,6 +407,9 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 
 	device = get_btd_dev(&src, addr);
 	if (!device) {
+		g_set_error(&io_err, BT_IO_ERROR, ENODEV,
+						"Unable to get dev object");
+		err = io_err;
 		error("%s: Unable to get dev object for %s", ext->name, addr);
 		goto drop;
 	}
@@ -413,6 +424,12 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 		return;
 
 drop:
+	if (conn->cb) {
+		conn->cb(&ext->p, conn->device, -err->code);
+		conn->cb = NULL;
+	}
+	if (io_err)
+		g_error_free(io_err);
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
 }
