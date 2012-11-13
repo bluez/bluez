@@ -39,8 +39,8 @@ if (len(args) < 1):
 	print("  services <address>")
 	print("  create <address>")
 	print("  remove <address|path>")
-	print("  connect <address>")
-	print("  disconnect <address>")
+	print("  connect <address> [profile]")
+	print("  disconnect <address> [profile]")
 	print("  discover <address> [pattern]")
 	print("  class <address>")
 	print("  name <address>")
@@ -101,7 +101,10 @@ if (args[0] == "connect"):
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		device.Connect()
+		if (len(args) > 2):
+			device.ConnectProfile(args[2])
+		else:
+			device.Connect()
 	sys.exit(0)
 
 if (args[0] == "disconnect"):
@@ -111,7 +114,10 @@ if (args[0] == "disconnect"):
 		path = adapter.FindDevice(args[1])
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
-		device.Disconnect()
+		if (len(args) > 2):
+			device.DisconnectProfile(args[2])
+		else:
+			device.Disconnect()
 	sys.exit(0)
 
 if (args[0] == "discover"):
