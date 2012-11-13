@@ -1239,18 +1239,28 @@ static int connect_next(struct btd_device *dev, btd_profile_cb cb)
 static void dev_profile_connected(struct btd_profile *profile,
 					struct btd_device *dev, int err)
 {
+	DBG("%s (%d)", strerror(-err), -err);
+
 	dev->pending = g_slist_remove(dev->pending, profile);
 
-	if (connect_next(dev, dev_profile_connected) == 0)
-		return;
-
-	dev->profiles_connected = TRUE;
+	if (!err) {
+		if (connect_next(dev, dev_profile_connected) == 0)
+			return;
+		dev->profiles_connected = TRUE;
+	}
 
 	if (!dev->connect)
 		return;
 
-	g_dbus_send_reply(btd_get_dbus_connection(), dev->connect,
+	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
+
+	if (err)
+		g_dbus_send_message(btd_get_dbus_connection(),
+				btd_error_failed(dev->connect, strerror(-err)));
+	else
+		g_dbus_send_reply(btd_get_dbus_connection(), dev->connect,
 							DBUS_TYPE_INVALID);
+
 	dbus_message_unref(dev->connect);
 	dev->connect = NULL;
 }
@@ -1310,7 +1320,8 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 	GSList *l;
 	int err;
 
-	DBG("%s %s", dev->path, uuid ? uuid : "(all)");
+	DBG("%s %s, client %s", dev->path, uuid ? uuid : "(all)",
+						dbus_message_get_sender(msg));
 
 	if (dev->profiles_connected)
 		return btd_error_already_connected(msg);
