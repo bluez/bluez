@@ -327,6 +327,7 @@ static void media_server_remove(struct btd_adapter *adapter)
 
 static struct btd_profile a2dp_profile = {
 	.name		= "audio-a2dp",
+	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 
 	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID, A2DP_SINK_UUID,
 							ADVANCED_AUDIO_UUID),

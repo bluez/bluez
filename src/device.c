@@ -1313,6 +1313,13 @@ static struct btd_profile *find_connectable_profile(struct btd_device *dev,
 	return NULL;
 }
 
+static gint profile_prio_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct btd_profile *p1 = a, *p2 = b;
+
+	return p1->priority - p2->priority;
+}
+
 static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 							const char *uuid)
 {
@@ -1351,8 +1358,11 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
 		p = l->data;
 
-		if (p->auto_connect)
-			dev->pending = g_slist_append(dev->pending, p);
+		if (!p->auto_connect)
+			continue;
+
+		dev->pending = g_slist_insert_sorted(dev->pending, p,
+							profile_prio_cmp);
 	}
 
 	if (!dev->pending)

@@ -23,6 +23,10 @@
 
 #define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
 
+#define BTD_PROFILE_PRIORITY_LOW	0
+#define BTD_PROFILE_PRIORITY_MEDIUM	1
+#define BTD_PROFILE_PRIORITY_HIGH	2
+
 struct btd_profile;
 
 typedef void (*btd_profile_cb)(struct btd_profile *profile,
@@ -30,6 +34,7 @@ typedef void (*btd_profile_cb)(struct btd_profile *profile,
 
 struct btd_profile {
 	const char *name;
+	int priority;
 
 	const char *local_uuid;
 	const char **remote_uuids;

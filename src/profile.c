@@ -1074,6 +1074,26 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	return 0;
 }
 
+static gint get_priority(const struct btd_profile *p)
+{
+	if (strcasecmp(p->local_uuid, HFP_HS_UUID) == 0)
+		return BTD_PROFILE_PRIORITY_HIGH;
+
+	if (strcasecmp(p->local_uuid, HFP_AG_UUID) == 0)
+		return BTD_PROFILE_PRIORITY_HIGH;
+
+	if (strcasecmp(p->local_uuid, A2DP_SOURCE_UUID) == 0)
+		return BTD_PROFILE_PRIORITY_MEDIUM;
+
+	if (strcasecmp(p->local_uuid, A2DP_SINK_UUID) == 0)
+		return BTD_PROFILE_PRIORITY_MEDIUM;
+
+	if (strcasecmp(p->local_uuid, ADVANCED_AUDIO_UUID) == 0)
+		return BTD_PROFILE_PRIORITY_MEDIUM;
+
+	return BTD_PROFILE_PRIORITY_LOW;
+}
+
 static struct ext_profile *create_ext(const char *owner, const char *path,
 					const char *uuid,
 					DBusMessageIter *opts)
@@ -1118,6 +1138,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	p = &ext->p;
 
 	p->name = ext->name;
+	p->priority = get_priority(p);
 	p->local_uuid = ext->uuid;
 
 	/* Typecast can't really be avoided here:
