@@ -308,40 +308,40 @@ static gboolean bluetooth_watch(GIOChannel *chan, GIOCondition cond, gpointer da
 	return FALSE;
 }
 
+static GIOChannel *l2cap_listen(GError **err)
+{
+	return bt_io_listen(bluetooth_accept, NULL, NULL,
+					NULL, err,
+					BT_IO_OPT_PSM, option_channel,
+					BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
+					BT_IO_OPT_OMTU, option_omtu,
+					BT_IO_OPT_IMTU, option_imtu,
+					BT_IO_OPT_INVALID);
+}
+
+static GIOChannel *rfcomm_listen(GError **err)
+{
+	return bt_io_listen(bluetooth_accept, NULL, NULL,
+					NULL, err,
+					BT_IO_OPT_CHANNEL, option_channel,
+					BT_IO_OPT_INVALID);
+}
+
 static guint bluetooth_listen(void)
 {
 	GIOChannel *io;
 	guint id;
 	GError *err = NULL;
-	BtIOType type;
-	BtIOOption option;
 
 	if (option_channel == -1) {
 		g_printerr("Bluetooth channel not set\n");
 		return 0;
 	}
 
-	if (option_packet || option_channel > 31) {
-		type = option_packet ? BT_IO_L2CAP : BT_IO_L2ERTM;
-		option = BT_IO_OPT_PSM;
-	} else {
-		type = BT_IO_RFCOMM;
-		option = BT_IO_OPT_CHANNEL;
-	}
-
-	if (type == BT_IO_L2CAP)
-		io = bt_io_listen(type, bluetooth_accept, NULL, NULL,
-					NULL, &err,
-					option, option_channel,
-					BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
-					BT_IO_OPT_OMTU, option_omtu,
-					BT_IO_OPT_IMTU, option_imtu,
-					BT_IO_OPT_INVALID);
+	if (option_packet || option_channel > 31)
+		io = l2cap_listen(&err);
 	else
-		io = bt_io_listen(type, bluetooth_accept, NULL, NULL,
-					NULL, &err,
-					option, option_channel,
-					BT_IO_OPT_INVALID);
+		io = rfcomm_listen(&err);
 
 	if (io == NULL) {
 		g_printerr("%s\n", err->message);
