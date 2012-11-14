@@ -226,6 +226,9 @@ static gboolean store_device_info_cb(gpointer user_data)
 		g_key_file_set_string(key_file, "General", "Alias",
 					device->alias);
 
+	g_key_file_set_boolean(key_file, "General", "Trusted",
+				device->trusted);
+
 	ba2str(adapter_get_address(device->adapter), adapter_addr);
 	ba2str(&device->bdaddr, device_addr);
 	snprintf(filename, PATH_MAX, INFO_PATH, adapter_addr, device_addr);
@@ -713,22 +716,13 @@ static gboolean dev_property_get_trusted(const GDBusPropertyTable *property,
 static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 {
 	struct btd_device *device = data;
-	struct btd_adapter *adapter = device->adapter;
-	char srcaddr[18], dstaddr[18];
-	int err;
 
 	if (device->trusted == value)
 		return g_dbus_pending_property_success(id);
 
-	ba2str(adapter_get_address(adapter), srcaddr);
-	ba2str(&device->bdaddr, dstaddr);
-
-	err = write_trust(srcaddr, dstaddr, device->bdaddr_type, value);
-	if (err < 0)
-		return g_dbus_pending_property_error(id,
-				ERROR_INTERFACE ".Failed", strerror(-err));
-
 	device->trusted = value;
+
+	store_device_info(device);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device->path, DEVICE_INTERFACE, "Trusted");
@@ -1753,6 +1747,10 @@ static void load_info(struct btd_device *device, const gchar *local,
 	device->alias = g_key_file_get_string(key_file, "General", "Alias",
 						NULL);
 
+	/* Load trust */
+	device->trusted = g_key_file_get_boolean(key_file, "General",
+							"Trusted", NULL);
+
 	if (store_needed)
 		store_device_info(device);
 
@@ -1796,8 +1794,6 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	ba2str(src, srcaddr);
 
 	load_info(device, srcaddr, address);
-
-	device->trusted = read_trust(src, address, device->bdaddr_type);
 
 	if (read_blocked(src, &device->bdaddr, device->bdaddr_type))
 		device_block(device, FALSE);
