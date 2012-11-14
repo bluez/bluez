@@ -790,6 +790,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			opts->psm = va_arg(args, int);
 			break;
 		case BT_IO_OPT_CID:
+			opts->type = BT_IO_L2CAP;
 			opts->cid = va_arg(args, int);
 			break;
 		case BT_IO_OPT_MTU:
