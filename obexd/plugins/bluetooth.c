@@ -325,9 +325,8 @@ static void connect_event(GIOChannel *io, GError *err, void *user_data)
 	stream = FALSE;
 
 	/* Read MTU if io is an L2CAP socket */
-	bt_io_get(io, BT_IO_L2CAP, NULL, BT_IO_OPT_OMTU, &omtu,
-						BT_IO_OPT_IMTU, &imtu,
-						BT_IO_OPT_INVALID);
+	bt_io_get(io, NULL, BT_IO_OPT_OMTU, &omtu, BT_IO_OPT_IMTU, &imtu,
+							BT_IO_OPT_INVALID);
 
 done:
 	if (obex_server_new_connection(server, io, omtu, imtu, stream) < 0)
@@ -520,7 +519,7 @@ static void confirm_rfcomm(GIOChannel *io, void *user_data)
 	char address[18];
 	uint8_t channel;
 
-	bt_io_get(io, BT_IO_RFCOMM, &err,
+	bt_io_get(io, &err,
 			BT_IO_OPT_SOURCE, source,
 			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_CHANNEL, &channel,
@@ -545,7 +544,7 @@ static void confirm_l2cap(GIOChannel *io, void *user_data)
 	char address[18];
 	uint16_t psm;
 
-	bt_io_get(io, BT_IO_L2CAP, &err,
+	bt_io_get(io, &err,
 			BT_IO_OPT_SOURCE, source,
 			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_PSM, &psm,
@@ -576,7 +575,7 @@ static GSList *start(struct obex_server *server,
 	else
 		sec_level = BT_IO_SEC_LOW;
 
-	io = bt_io_listen(BT_IO_RFCOMM, NULL, confirm_rfcomm,
+	io = bt_io_listen(NULL, confirm_rfcomm,
 				service, NULL, &err,
 				BT_IO_OPT_CHANNEL, service->channel,
 				BT_IO_OPT_SEC_LEVEL, sec_level,
@@ -595,7 +594,7 @@ static GSList *start(struct obex_server *server,
 
 	psm = service->port == OBEX_PORT_RANDOM ? 0 : service->port;
 
-	io = bt_io_listen(BT_IO_L2CAP, NULL, confirm_l2cap,
+	io = bt_io_listen(NULL, confirm_l2cap,
 			service, NULL, &err,
 			BT_IO_OPT_PSM, psm,
 			BT_IO_OPT_MODE, BT_IO_MODE_ERTM,
@@ -610,7 +609,7 @@ static GSList *start(struct obex_server *server,
 		service->port = 0;
 	} else {
 		l = g_slist_prepend(l, io);
-		bt_io_get(io, BT_IO_L2CAP, &err, BT_IO_OPT_PSM, &service->port,
+		bt_io_get(io, &err, BT_IO_OPT_PSM, &service->port,
 							BT_IO_OPT_INVALID);
 		DBG("listening on psm %d", service->port);
 	}
@@ -656,23 +655,10 @@ static void bluetooth_stop(void *data)
 
 static int bluetooth_getpeername(GIOChannel *io, char **name)
 {
-	int sk = g_io_channel_unix_get_fd(io);
 	GError *gerr = NULL;
 	char address[18];
-	int type;
-	socklen_t len = sizeof(int);
 
-	if (getsockopt(sk, SOL_SOCKET, SO_TYPE, &type, &len) < 0)
-		return -errno;
-
-	if (type == SOCK_STREAM)
-		bt_io_get(io, BT_IO_RFCOMM, &gerr,
-				BT_IO_OPT_DEST, address,
-				BT_IO_OPT_INVALID);
-	else
-		bt_io_get(io, BT_IO_L2CAP, &gerr,
-				BT_IO_OPT_DEST, address,
-				BT_IO_OPT_INVALID);
+	bt_io_get(io, &gerr, BT_IO_OPT_DEST, address, BT_IO_OPT_INVALID);
 
 	if (gerr) {
 		error("%s", gerr->message);
