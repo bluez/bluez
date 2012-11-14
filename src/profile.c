@@ -52,7 +52,18 @@
 #include "device.h"
 #include "profile.h"
 
+#define DUN_DEFAULT_CHANNEL	1
 #define SPP_DEFAULT_CHANNEL	3
+#define HFP_HF_DEFAULT_CHANNEL	7
+#define OPP_DEFAULT_CHANNEL	9
+#define FTP_DEFAULT_CHANNEL	10
+#define BIP_DEFAULT_CHANNEL	11
+#define HSP_AG_DEFAULT_CHANNEL	12
+#define HFP_AG_DEFAULT_CHANNEL	13
+#define SYNC_DEFAULT_CHANNEL	14
+#define PBAP_DEFAULT_CHANNEL	15
+#define MAS_DEFAULT_CHANNEL	16
+#define MNS_DEFAULT_CHANNEL	17
 
 struct ext_profile {
 	struct btd_profile p;
