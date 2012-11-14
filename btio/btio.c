@@ -58,6 +58,7 @@ typedef enum {
 struct set_opts {
 	bdaddr_t src;
 	bdaddr_t dst;
+	BtIOType type;
 	uint8_t dst_type;
 	int defer;
 	int sec_level;
@@ -748,6 +749,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	memset(opts, 0, sizeof(*opts));
 
 	/* Set defaults */
+	opts->type = BT_IO_SCO;
 	opts->defer = DEFAULT_DEFER_TIMEOUT;
 	opts->master = -1;
 	opts->mode = L2CAP_MODE_BASIC;
@@ -780,9 +782,11 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			opts->sec_level = va_arg(args, int);
 			break;
 		case BT_IO_OPT_CHANNEL:
+			opts->type = BT_IO_RFCOMM;
 			opts->channel = va_arg(args, int);
 			break;
 		case BT_IO_OPT_PSM:
+			opts->type = BT_IO_L2CAP;
 			opts->psm = va_arg(args, int);
 			break;
 		case BT_IO_OPT_CID:
@@ -1319,13 +1323,13 @@ gboolean bt_io_get(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 	return ret;
 }
 
-static GIOChannel *create_io(BtIOType type, gboolean server,
-					struct set_opts *opts, GError **err)
+static GIOChannel *create_io(gboolean server, struct set_opts *opts,
+								GError **err)
 {
 	int sock;
 	GIOChannel *io;
 
-	switch (type) {
+	switch (opts->type) {
 	case BT_IO_L2CAP:
 		sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
 		if (sock < 0) {
@@ -1365,7 +1369,7 @@ static GIOChannel *create_io(BtIOType type, gboolean server,
 		break;
 	default:
 		g_set_error(err, BT_IO_ERROR, EINVAL,
-				"Unknown BtIO type %d", type);
+				"Unknown BtIO type %d", opts->type);
 		return NULL;
 	}
 
@@ -1382,17 +1386,6 @@ failed:
 	return NULL;
 }
 
-static BtIOType get_opts_type(struct set_opts *opts)
-{
-	if (opts->channel)
-		return BT_IO_RFCOMM;
-
-	if (opts->psm || opts->cid)
-		return BT_IO_L2CAP;
-
-	return BT_IO_SCO;
-}
-
 GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 				GDestroyNotify destroy, GError **gerr,
 				BtIOOption opt1, ...)
@@ -1402,7 +1395,6 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 	struct set_opts opts;
 	int err, sock;
 	gboolean ret;
-	BtIOType type;
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, gerr, opt1, args);
@@ -1411,15 +1403,13 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 	if (ret == FALSE)
 		return NULL;
 
-	type = get_opts_type(&opts);
-
-	io = create_io(type, FALSE, &opts, gerr);
+	io = create_io(FALSE, &opts, gerr);
 	if (io == NULL)
 		return NULL;
 
 	sock = g_io_channel_unix_get_fd(io);
 
-	switch (type) {
+	switch (opts.type) {
 	case BT_IO_L2CAP:
 		err = l2cap_connect(sock, &opts.dst, opts.dst_type,
 							opts.psm, opts.cid);
@@ -1432,7 +1422,7 @@ GIOChannel *bt_io_connect(BtIOConnect connect, gpointer user_data,
 		break;
 	default:
 		g_set_error(gerr, BT_IO_ERROR, EINVAL,
-						"Unknown BtIO type %d", type);
+					"Unknown BtIO type %d", opts.type);
 		return NULL;
 	}
 
@@ -1456,7 +1446,6 @@ GIOChannel *bt_io_listen(BtIOConnect connect, BtIOConfirm confirm,
 	struct set_opts opts;
 	int sock;
 	gboolean ret;
-	BtIOType type;
 
 	va_start(args, opt1);
 	ret = parse_set_opts(&opts, err, opt1, args);
@@ -1465,9 +1454,7 @@ GIOChannel *bt_io_listen(BtIOConnect connect, BtIOConfirm confirm,
 	if (ret == FALSE)
 		return NULL;
 
-	type = get_opts_type(&opts);
-
-	io = create_io(type, TRUE, &opts, err);
+	io = create_io(TRUE, &opts, err);
 	if (io == NULL)
 		return NULL;
 
