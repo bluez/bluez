@@ -990,29 +990,93 @@ static int ext_disconnect_dev(struct btd_device *dev,
 	return 0;
 }
 
-static void ext_get_defaults(struct ext_profile *ext)
+static struct default_settings {
+	const char	*uuid;
+	int		priority;
+	const char	*remote_uuid;
+	uint8_t		channel;
+	BtIOSecLevel	sec_level;
+	bool		authorize;
+} defaults[] = {
+	{
+		.uuid		= SPP_UUID,
+		.channel	= SPP_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= DUN_GW_UUID,
+		.channel	= DUN_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= HFP_HS_UUID,
+		.priority	= BTD_PROFILE_PRIORITY_HIGH,
+		.remote_uuid	= HFP_AG_UUID,
+		.channel	= HFP_HF_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= HFP_AG_UUID,
+		.priority	= BTD_PROFILE_PRIORITY_HIGH,
+		.remote_uuid	= HFP_HS_UUID,
+		.channel	= HFP_AG_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= HSP_AG_UUID,
+		.priority	= BTD_PROFILE_PRIORITY_HIGH,
+		.remote_uuid	= HSP_HS_UUID,
+		.channel	= HSP_AG_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_OPP_UUID,
+		.channel	= OPP_DEFAULT_CHANNEL,
+		.sec_level	= BT_IO_SEC_LOW,
+		.authorize	= false,
+	}, {
+		.uuid		= OBEX_FTP_UUID,
+		.channel	= FTP_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_BIP_UUID,
+		.channel	= BIP_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_SYNC_UUID,
+		.channel	= SYNC_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_PBAP_UUID,
+		.channel	= SYNC_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_MAS_UUID,
+		.channel	= MAS_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_MNS_UUID,
+		.channel	= MNS_DEFAULT_CHANNEL,
+	},
+};
+
+static void ext_set_defaults(struct ext_profile *ext)
 {
-	if (ext->enable_client && !ext->remote_uuids[0]) {
+	unsigned int i;
+
+	ext->sec_level = BT_IO_SEC_MEDIUM;
+	ext->authorize = true;
+	ext->enable_client = true;
+	ext->enable_server = true;
+
+	for (i = 0; i < G_N_ELEMENTS(defaults); i++) {
+		struct default_settings *settings = &defaults[i];
 		const char *remote_uuid;
 
-		g_strfreev(ext->remote_uuids);
+		if (strcasecmp(ext->uuid, settings->uuid) != 0)
+			continue;
+
 		ext->remote_uuids = g_new0(char *, 2);
 
-		if (strcasecmp(ext->uuid, HFP_HS_UUID) == 0)
-			remote_uuid = HFP_AG_UUID;
-		else if (strcasecmp(ext->uuid, HFP_AG_UUID) == 0)
-			remote_uuid = HFP_HS_UUID;
-		else if (strcasecmp(ext->uuid, HSP_HS_UUID) == 0)
-			remote_uuid = HSP_AG_UUID;
+		if (settings->remote_uuid)
+			remote_uuid = settings->remote_uuid;
 		else
 			remote_uuid = ext->uuid;
 
 		ext->remote_uuids[0] = g_strdup(remote_uuid);
-	}
+		if (settings->channel)
+			ext->chan = settings->channel;
 
-	if (strcasecmp(ext->uuid, SPP_UUID) == 0) {
-		if (ext->enable_server && !ext->chan)
-			ext->chan = SPP_DEFAULT_CHANNEL;
+		if (settings->sec_level)
+			ext->sec_level = settings->sec_level;
+
+		if (settings->priority)
+			ext->p.priority = settings->priority;
 	}
 }
 
@@ -1085,26 +1149,6 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	return 0;
 }
 
-static int get_priority(const struct btd_profile *p)
-{
-	if (strcasecmp(p->local_uuid, HFP_HS_UUID) == 0)
-		return BTD_PROFILE_PRIORITY_HIGH;
-
-	if (strcasecmp(p->local_uuid, HFP_AG_UUID) == 0)
-		return BTD_PROFILE_PRIORITY_HIGH;
-
-	if (strcasecmp(p->local_uuid, A2DP_SOURCE_UUID) == 0)
-		return BTD_PROFILE_PRIORITY_MEDIUM;
-
-	if (strcasecmp(p->local_uuid, A2DP_SINK_UUID) == 0)
-		return BTD_PROFILE_PRIORITY_MEDIUM;
-
-	if (strcasecmp(p->local_uuid, ADVANCED_AUDIO_UUID) == 0)
-		return BTD_PROFILE_PRIORITY_MEDIUM;
-
-	return BTD_PROFILE_PRIORITY_LOW;
-}
-
 static struct ext_profile *create_ext(const char *owner, const char *path,
 					const char *uuid,
 					DBusMessageIter *opts)
@@ -1116,14 +1160,9 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext->owner = g_strdup(owner);
 	ext->path = g_strdup(path);
-
 	ext->uuid = bt_name2string(uuid);
 
-	ext->remote_uuids = g_new0(char *, 1);
-
-	ext->sec_level = BT_IO_SEC_LOW;
-	ext->enable_client = true;
-	ext->enable_server = true;
+	ext_set_defaults(ext);
 
 	while (dbus_message_iter_get_arg_type(opts) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter value, entry;
@@ -1144,12 +1183,9 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
 
-	ext_get_defaults(ext);
-
 	p = &ext->p;
 
 	p->name = ext->name;
-	p->priority = get_priority(p);
 	p->local_uuid = ext->uuid;
 
 	/* Typecast can't really be avoided here:
