@@ -2627,7 +2627,7 @@ static void convert_device_storage(struct btd_adapter *adapter)
 }
 
 static void convert_config(struct btd_adapter *adapter, const char *filename,
-				GKeyFile *key_file)
+							GKeyFile *key_file)
 {
 	char address[18];
 	char str[MAX_NAME_LENGTH + 1];

@@ -224,10 +224,10 @@ static gboolean store_device_info_cb(gpointer user_data)
 
 	if (device->alias != NULL)
 		g_key_file_set_string(key_file, "General", "Alias",
-					device->alias);
+								device->alias);
 
 	g_key_file_set_boolean(key_file, "General", "Trusted",
-				device->trusted);
+							device->trusted);
 
 	ba2str(adapter_get_address(device->adapter), adapter_addr);
 	ba2str(&device->bdaddr, device_addr);
@@ -1745,7 +1745,7 @@ static void load_info(struct btd_device *device, const gchar *local,
 
 	/* Load alias */
 	device->alias = g_key_file_get_string(key_file, "General", "Alias",
-						NULL);
+									NULL);
 
 	/* Load trust */
 	device->trusted = g_key_file_get_boolean(key_file, "General",
