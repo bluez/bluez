@@ -16,7 +16,8 @@ HSP AG		12
 HFP AG		13
 SYNCH (IrMC)	14
 PBAP		15
-MAP		16
+MAP MAS		16
+MAP MNS		17
 SyncEvolution	19
 PC/Ovi Suite	24
 SyncML Client	25
