@@ -84,9 +84,6 @@
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
-#define SETTINGS_PATH STORAGEDIR "/%s/settings"
-#define CACHE_PATH STORAGEDIR "/%s/cache/%s"
-
 static GSList *adapter_drivers = NULL;
 
 enum session_req_type {
@@ -244,7 +241,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 					adapter->discov_timeout);
 
 	ba2str(&adapter->bdaddr, address);
-	snprintf(filename, PATH_MAX, SETTINGS_PATH, address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
 	filename[PATH_MAX] = '\0';
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -267,7 +264,7 @@ static void store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
 
 	ba2str(local, s_addr);
 	ba2str(peer, d_addr);
-	snprintf(filename, PATH_MAX, CACHE_PATH, s_addr, d_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
 	filename[PATH_MAX] = '\0';
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -2703,7 +2700,7 @@ static void load_config(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	snprintf(filename, PATH_MAX, SETTINGS_PATH, address);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
 	filename[PATH_MAX] = '\0';
 
 	if (!g_key_file_load_from_file(key_file, filename, 0, NULL))
