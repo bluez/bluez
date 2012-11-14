@@ -39,6 +39,14 @@
 
 #define DBUS_INTERFACE_OBJECT_MANAGER "org.freedesktop.DBus.ObjectManager"
 
+#ifndef DBUS_ERROR_UNKNOWN_PROPERTY
+#define DBUS_ERROR_UNKNOWN_PROPERTY "org.freedesktop.DBus.Error.UnknownProperty"
+#endif
+
+#ifndef DBUS_ERROR_PROPERTY_READ_ONLY
+#define DBUS_ERROR_PROPERTY_READ_ONLY "org.freedesktop.DBus.Error.PropertyReadOnly"
+#endif
+
 struct generic_data {
 	unsigned int refcount;
 	DBusConnection *conn;
