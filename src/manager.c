@@ -245,15 +245,15 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 
 void manager_cleanup(const char *path)
 {
+	btd_profile_cleanup();
+
 	while (adapters) {
 		struct btd_adapter *adapter = adapters->data;
 
-		adapters = g_slist_remove(adapters, adapter);
 		adapter_remove(adapter);
+		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 	}
-
-	btd_profile_cleanup();
 
 	btd_start_exit_timer();
 
