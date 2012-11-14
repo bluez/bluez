@@ -65,6 +65,48 @@
 #define MAS_DEFAULT_CHANNEL	16
 #define MNS_DEFAULT_CHANNEL	17
 
+#define HFP_HF_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+									\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x111e\" />		\
+				<uuid value=\"0x1203\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x111e\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+		<attribute id=\"0x0311\">				\
+			<uint16 value=\"0x%04x\" />			\
+		</attribute>						\
+	</record>"
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -73,7 +115,9 @@ struct ext_profile {
 	char *uuid;
 	char *path;
 	char *role;
+
 	char *record;
+	char *(*get_record)(struct ext_profile *ext);
 
 	char **remote_uuids;
 
@@ -87,6 +131,9 @@ struct ext_profile {
 
 	uint16_t psm;
 	uint8_t chan;
+
+	uint16_t version;
+	uint16_t features;
 
 	GSList *servers;
 	GSList *conns;
@@ -990,6 +1037,12 @@ static int ext_disconnect_dev(struct btd_device *dev,
 	return 0;
 }
 
+static char *get_hfp_hf_record(struct ext_profile *ext)
+{
+	return g_strdup_printf(HFP_HF_RECORD, ext->chan, ext->version,
+						ext->name, ext->features);
+}
+
 static struct default_settings {
 	const char	*uuid;
 	int		priority;
@@ -997,6 +1050,9 @@ static struct default_settings {
 	uint8_t		channel;
 	BtIOSecLevel	sec_level;
 	bool		authorize;
+	char *		(*get_record)(struct ext_profile *ext);
+	uint16_t	version;
+	uint16_t	features;
 } defaults[] = {
 	{
 		.uuid		= SPP_UUID,
@@ -1009,11 +1065,14 @@ static struct default_settings {
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_AG_UUID,
 		.channel	= HFP_HF_DEFAULT_CHANNEL,
+		.get_record	= get_hfp_hf_record,
+		.version	= 0x0105,
 	}, {
 		.uuid		= HFP_AG_UUID,
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_HS_UUID,
 		.channel	= HFP_AG_DEFAULT_CHANNEL,
+		.version	= 0x0105,
 	}, {
 		.uuid		= HSP_AG_UUID,
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
@@ -1077,6 +1136,15 @@ static void ext_set_defaults(struct ext_profile *ext)
 
 		if (settings->priority)
 			ext->p.priority = settings->priority;
+
+		if (settings->get_record)
+			ext->get_record = settings->get_record;
+
+		if (settings->version)
+			ext->version = settings->version;
+
+		if (settings->features)
+			ext->features = settings->features;
 	}
 }
 
@@ -1144,6 +1212,22 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 		g_free(ext->record);
 		ext->record = g_strdup(str);
 		ext->enable_server = true;
+	} else if (strcasecmp(key, "Version") == 0) {
+		uint16_t ver;
+
+		if (type != DBUS_TYPE_UINT16)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &ver);
+		ext->version = ver;
+	} else if (strcasecmp(key, "Features") == 0) {
+		uint16_t feat;
+
+		if (type != DBUS_TYPE_UINT16)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &feat);
+		ext->features = feat;
 	}
 
 	return 0;
@@ -1182,6 +1266,9 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
+
+	if (!ext->record && ext->get_record)
+		ext->record = ext->get_record(ext);
 
 	p = &ext->p;
 
