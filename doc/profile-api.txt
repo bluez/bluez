@@ -75,6 +75,14 @@ Object path	/org/bluez
 
 					Provide a manual SDP record.
 
+				uint16 Version
+
+					Profile version (for SDP record)
+
+				uint16 Features
+
+					Profile features (for SDP record)
+
 			Possible errors: org.bluez.Error.InvalidArguments
 			                 org.bluez.Error.AlreadyExists
 
