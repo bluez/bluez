@@ -1074,7 +1074,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	return 0;
 }
 
-static gint get_priority(const struct btd_profile *p)
+static int get_priority(const struct btd_profile *p)
 {
 	if (strcasecmp(p->local_uuid, HFP_HS_UUID) == 0)
 		return BTD_PROFILE_PRIORITY_HIGH;
