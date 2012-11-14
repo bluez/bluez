@@ -194,7 +194,7 @@ static GIOChannel *transport_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	DBG("port %u", port);
 
 	if (port > 31) {
-		io = bt_io_connect(BT_IO_L2CAP, function, user_data,
+		io = bt_io_connect(function, user_data,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
@@ -205,7 +205,7 @@ static GIOChannel *transport_connect(const bdaddr_t *src, const bdaddr_t *dst,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	} else {
-		io = bt_io_connect(BT_IO_RFCOMM, function, user_data,
+		io = bt_io_connect(function, user_data,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR, dst,
@@ -635,7 +635,7 @@ static int bluetooth_getpacketopt(GIOChannel *io, int *tx_mtu, int *rx_mtu)
 	if (type != SOCK_SEQPACKET)
 		return -EINVAL;
 
-	if (!bt_io_get(io, BT_IO_L2CAP, NULL, BT_IO_OPT_OMTU, &omtu,
+	if (!bt_io_get(io, NULL, BT_IO_OPT_OMTU, &omtu,
 						BT_IO_OPT_IMTU, &imtu,
 						BT_IO_OPT_INVALID))
 		return -EINVAL;
