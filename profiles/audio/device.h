@@ -22,6 +22,7 @@
  *
  */
 
+struct audio_device;
 struct source;
 struct control;
 struct target;
@@ -29,6 +30,8 @@ struct sink;
 struct headset;
 struct gateway;
 struct dev_priv;
+
+typedef void (*audio_device_cb) (struct audio_device *dev, int err, void *data);
 
 struct audio_device {
 	struct btd_device *btd_dev;
