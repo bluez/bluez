@@ -604,12 +604,15 @@ gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 	return TRUE;
 }
 
-gboolean sink_disconnect(struct sink *sink)
+int sink_disconnect(struct audio_device *dev, gboolean shutdown)
 {
-	if (!sink->session)
-		return FALSE;
+	struct sink *sink = dev->sink;
 
-	avdtp_set_device_disconnect(sink->session, TRUE);
+	if (!sink->session)
+		return -ENOTCONN;
+
+	if (shutdown)
+		avdtp_set_device_disconnect(sink->session, TRUE);
 
 	/* cancel pending connect */
 	if (sink->connect) {
@@ -623,20 +626,17 @@ gboolean sink_disconnect(struct sink *sink)
 		avdtp_unref(sink->session);
 		sink->session = NULL;
 
-		return TRUE;
+		return 0;
 	}
 
 	/* disconnect already ongoing */
 	if (sink->disconnect)
-		return TRUE;
+		return -EBUSY;
 
 	if (!sink->stream)
-		return FALSE;
+		return -ENOTCONN;
 
-	if (avdtp_close(sink->session, sink->stream, FALSE) < 0)
-		return FALSE;
-
-	return TRUE;
+	return avdtp_close(sink->session, sink->stream, FALSE);
 }
 
 unsigned int sink_add_state_cb(sink_state_cb cb, void *user_data)
