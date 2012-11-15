@@ -67,7 +67,6 @@
 
 #define HFP_HF_RECORD							\
 	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
-									\
 	<record>							\
 		<attribute id=\"0x0001\">				\
 			<sequence>					\
