@@ -3070,9 +3070,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (eir_data.class != 0)
-		write_remote_class(&adapter->bdaddr, bdaddr, eir_data.class);
-
 	if (eir_data.appearance != 0)
 		write_remote_appearance(&adapter->bdaddr, bdaddr, bdaddr_type,
 							eir_data.appearance);
@@ -3101,6 +3098,9 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	if (eir_data.name)
 		device_set_name(dev, eir_data.name);
+
+	if (eir_data.class != 0)
+		device_set_class(dev, eir_data.class);
 
 	device_add_eir_uuids(dev, eir_data.services);
 
