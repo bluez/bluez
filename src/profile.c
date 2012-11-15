@@ -247,8 +247,11 @@ struct ext_profile {
 	bool enable_client;
 	bool enable_server;
 
-	uint16_t psm;
-	uint8_t chan;
+	uint16_t local_psm;
+	uint8_t local_chan;
+
+	uint16_t remote_psm;
+	uint8_t remote_chan;
 
 	uint16_t version;
 	uint16_t features;
@@ -803,7 +806,7 @@ static int ext_start_servers(struct ext_profile *ext,
 		connect = ext_direct_connect;
 	}
 
-	if (ext->psm) {
+	if (ext->local_psm) {
 		server = g_new0(struct ext_io, 1);
 		server->ext = ext;
 		server->rec_handle = handle;
@@ -811,7 +814,7 @@ static int ext_start_servers(struct ext_profile *ext,
 		io = bt_io_listen(connect, confirm, server, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
 					adapter_get_address(adapter),
-					BT_IO_OPT_PSM, ext->psm,
+					BT_IO_OPT_PSM, ext->local_psm,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
@@ -824,11 +827,12 @@ static int ext_start_servers(struct ext_profile *ext,
 			server->proto = BTPROTO_L2CAP;
 			server->adapter = btd_adapter_ref(adapter);
 			ext->servers = g_slist_append(ext->servers, server);
-			DBG("%s listening on PSM %u", ext->name, ext->psm);
+			DBG("%s listening on PSM %u", ext->name,
+							ext->local_psm);
 		}
 	}
 
-	if (ext->chan) {
+	if (ext->local_chan) {
 		server = g_new0(struct ext_io, 1);
 		server->ext = ext;
 		server->rec_handle = handle;
@@ -836,7 +840,7 @@ static int ext_start_servers(struct ext_profile *ext,
 		io = bt_io_listen(connect, confirm, server, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
 					adapter_get_address(adapter),
-					BT_IO_OPT_CHANNEL, ext->chan,
+					BT_IO_OPT_CHANNEL, ext->local_chan,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
@@ -849,7 +853,8 @@ static int ext_start_servers(struct ext_profile *ext,
 			server->proto = BTPROTO_RFCOMM;
 			server->adapter = btd_adapter_ref(adapter);
 			ext->servers = g_slist_append(ext->servers, server);
-			DBG("%s listening on chan %u", ext->name, ext->chan);
+			DBG("%s listening on chan %u", ext->name,
+							ext->local_chan);
 		}
 	}
 
@@ -960,13 +965,13 @@ static int connect_io(struct ext_io *conn, const bdaddr_t *src,
 	GError *gerr = NULL;
 	GIOChannel *io;
 
-	if (ext->psm) {
+	if (ext->remote_psm) {
 		conn->proto = BTPROTO_L2CAP;
 		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, src,
 					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
-					BT_IO_OPT_PSM, ext->psm,
+					BT_IO_OPT_PSM, ext->remote_psm,
 					BT_IO_OPT_INVALID);
 	} else {
 		conn->proto = BTPROTO_RFCOMM;
@@ -974,7 +979,7 @@ static int connect_io(struct ext_io *conn, const bdaddr_t *src,
 					BT_IO_OPT_SOURCE_BDADDR, src,
 					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
-					BT_IO_OPT_CHANNEL, ext->chan,
+					BT_IO_OPT_CHANNEL, ext->remote_chan,
 					BT_IO_OPT_INVALID);
 	}
 
@@ -1039,14 +1044,15 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		port = sdp_get_proto_port(protos, L2CAP_UUID);
 		if (port > 0)
-			ext->psm = port;
+			ext->remote_psm = port;
 
 		port = sdp_get_proto_port(protos, RFCOMM_UUID);
 		if (port > 0)
-			ext->chan = port;
+			ext->remote_chan = port;
 
-		if (ext->psm == 0 && sdp_get_proto_desc(protos, OBEX_UUID))
-			ext->psm = get_goep_l2cap_psm(rec);
+		if (ext->remote_psm == 0 &&
+					sdp_get_proto_desc(protos, OBEX_UUID))
+			ext->remote_psm = get_goep_l2cap_psm(rec);
 
 		conn->features = get_supported_features(rec);
 		conn->version = get_profile_version(rec);
@@ -1055,11 +1061,11 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 									NULL);
 		sdp_list_free(protos, NULL);
 
-		if (ext->chan || ext->psm)
+		if (ext->remote_chan || ext->remote_psm)
 			break;
 	}
 
-	if (!ext->chan && !ext->psm) {
+	if (!ext->remote_chan && !ext->remote_psm) {
 		error("Failed to find L2CAP PSM or RFCOMM channel for %s",
 								ext->name);
 		goto failed;
@@ -1113,7 +1119,7 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 	conn = g_new0(struct ext_io, 1);
 	conn->ext = ext;
 
-	if (ext->psm || ext->chan)
+	if (ext->remote_psm || ext->remote_chan)
 		err = connect_io(conn, adapter_get_address(adapter),
 						device_get_address(dev));
 	else
@@ -1153,24 +1159,26 @@ static int ext_disconnect_dev(struct btd_device *dev,
 
 static char *get_hfp_hf_record(struct ext_profile *ext)
 {
-	return g_strdup_printf(HFP_HF_RECORD, ext->chan, ext->version,
+	return g_strdup_printf(HFP_HF_RECORD, ext->local_chan, ext->version,
 						ext->name, ext->features);
 }
 
 static char *get_hfp_ag_record(struct ext_profile *ext)
 {
-	return g_strdup_printf(HFP_AG_RECORD, ext->chan, ext->version,
+	return g_strdup_printf(HFP_AG_RECORD, ext->local_chan, ext->version,
 						ext->name, ext->features);
 }
 
 static char *get_spp_record(struct ext_profile *ext)
 {
-	return g_strdup_printf(SPP_RECORD, ext->chan, ext->version, ext->name);
+	return g_strdup_printf(SPP_RECORD, ext->local_chan, ext->version,
+								ext->name);
 }
 
 static char *get_dun_record(struct ext_profile *ext)
 {
-	return g_strdup_printf(DUN_RECORD, ext->chan, ext->version, ext->name);
+	return g_strdup_printf(DUN_RECORD, ext->local_chan, ext->version,
+								ext->name);
 }
 
 static struct default_settings {
@@ -1276,8 +1284,9 @@ static void ext_set_defaults(struct ext_profile *ext)
 			remote_uuid = ext->uuid;
 
 		ext->remote_uuids[0] = g_strdup(remote_uuid);
+
 		if (settings->channel)
-			ext->chan = settings->channel;
+			ext->local_chan = settings->channel;
 
 		if (settings->sec_level)
 			ext->sec_level = settings->sec_level;
@@ -1318,7 +1327,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	} else if (strcasecmp(key, "PSM") == 0) {
 		if (type != DBUS_TYPE_UINT16)
 			return -EINVAL;
-		dbus_message_iter_get_basic(value, &ext->psm);
+		dbus_message_iter_get_basic(value, &ext->local_psm);
 	} else if (strcasecmp(key, "Channel") == 0) {
 		uint16_t ch;
 
@@ -1326,7 +1335,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 			return -EINVAL;
 
 		dbus_message_iter_get_basic(value, &ch);
-		ext->chan = ch;
+		ext->local_chan = ch;
 	} else if (strcasecmp(key, "RequireAuthentication") == 0) {
 		dbus_bool_t b;
 
