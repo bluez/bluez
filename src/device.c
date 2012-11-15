@@ -1873,6 +1873,9 @@ static void device_remove_stored(struct btd_device *device)
 {
 	const bdaddr_t *src = adapter_get_address(device->adapter);
 	uint8_t dst_type = device->bdaddr_type;
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
 
 	delete_entry(src, "profiles", &device->bdaddr, dst_type);
 	delete_entry(src, "trusts", &device->bdaddr, dst_type);
@@ -1893,6 +1896,19 @@ static void device_remove_stored(struct btd_device *device)
 
 	if (device->blocked)
 		device_unblock(device, TRUE, FALSE);
+
+	ba2str(src, adapter_addr);
+	ba2str(&device->bdaddr, device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+			device_addr);
+	filename[PATH_MAX] = '\0';
+	remove(filename);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s", adapter_addr,
+			device_addr);
+	filename[PATH_MAX] = '\0';
+	remove(filename);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)
