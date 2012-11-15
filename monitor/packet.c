@@ -909,6 +909,33 @@ static void print_service_type(uint8_t service_type)
 	print_field("Service type: %s (0x%2.2x)", str, service_type);
 }
 
+static void print_flow_spec(const char *label, const uint8_t *data)
+{
+	const char *str;
+
+	switch (data[1]) {
+	case 0x00:
+		str = "No traffic";
+		break;
+	case 0x01:
+		str = "Best effort";
+		break;
+	case 0x02:
+		str = "Guaranteed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s flow spec: 0x%2.2x", label, data[0]);
+	print_field("  Service type: %s (0x%2.2x)", str, data[1]);
+	print_field("  Maximum SDU size: 0x%4.4x", bt_get_le16(data + 2));
+	print_field("  SDU inter-arrival time: 0x%8.8x", bt_get_le32(data + 4));
+	print_field("  Access latency: 0x%8.8x", bt_get_le32(data + 8));
+	print_field("  Flush timeout: 0x%8.8x", bt_get_le32(data + 12));
+}
+
 static void print_short_range_mode(uint8_t mode)
 {
 	const char *str;
@@ -1981,8 +2008,8 @@ static void create_logic_link_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_create_logic_link *cmd = data;
 
 	print_phy_handle(cmd->phy_handle);
-
-	packet_hexdump(data + 1, size - 1);
+	print_flow_spec("TX", cmd->tx_flow_spec);
+	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
 static void accept_logic_link_cmd(const void *data, uint8_t size)
@@ -1990,8 +2017,8 @@ static void accept_logic_link_cmd(const void *data, uint8_t size)
         const struct bt_hci_cmd_accept_logic_link *cmd = data;
 
 	print_phy_handle(cmd->phy_handle);
-
-	packet_hexdump(data + 1, size - 1);
+	print_flow_spec("TX", cmd->tx_flow_spec);
+	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
 static void disconn_logic_link_cmd(const void *data, uint8_t size)
@@ -2023,8 +2050,8 @@ static void flow_spec_modify_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_flow_spec_modify *cmd = data;
 
 	print_handle(cmd->handle);
-
-	packet_hexdump(data + 2, size - 2);
+	print_flow_spec("TX", cmd->tx_flow_spec);
+	print_flow_spec("RX", cmd->rx_flow_spec);
 }
 
 static void hold_mode_cmd(const void *data, uint8_t size)

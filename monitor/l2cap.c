@@ -139,7 +139,14 @@ static void print_conn_status(uint16_t status)
 
 static void print_config_flags(uint16_t flags)
 {
-	print_field("Flags: 0x%4.4x", btohs(flags));
+	const char *str;
+
+	if (btohs(flags) & 0x0001)
+		str = " (continuation)";
+	else
+		str = "";
+
+	print_field("Flags: 0x%4.4x%s", btohs(flags), str);
 }
 
 static void print_config_result(uint16_t result)
@@ -171,6 +178,177 @@ static void print_config_result(uint16_t result)
 	}
 
 	print_field("Result: %s (0x%4.4x)", str, btohs(result));
+}
+
+static struct {
+	uint8_t type;
+	uint8_t len;
+	const char *str;
+} options_table[] = {
+	{ 0x01,  2, "Maximum Transmission Unit"		},
+	{ 0x02,  2, "Flush Timeout"			},
+	{ 0x03, 22, "Quality of Service"		},
+	{ 0x04,  9, "Retransmission and Flow Control"	},
+	{ 0x05,  1, "Frame Check Sequence"		},
+	{ 0x06, 16, "Extended Flow Specification"	},
+	{ 0x07,  2, "Extended Window Size"		},
+        { }
+};
+
+static void print_config_options(const uint8_t *data, uint16_t size)
+{
+	uint16_t consumed = 0;
+
+	while (consumed < size - 2) {
+		const char *str = "Unknown";
+		uint8_t type = data[consumed];
+		uint8_t len = data[consumed + 1];
+		uint8_t expect_len = 0;
+		int i;
+
+		for (i = 0; options_table[i].str; i++) {
+			if (options_table[i].type == type) {
+				str = options_table[i].str;
+				expect_len = options_table[i].len;
+				break;
+			}
+		}
+
+		print_field("Option: %s (0x%2.2x)", str, type);
+
+		if (len != expect_len) {
+			print_text(COLOR_ERROR, "wrong option size (%d != %d)",
+							len, expect_len);
+			break;
+		}
+
+		switch (type) {
+		case 0x01:
+			print_field("  MTU: %d",
+					bt_get_le16(data + consumed + 2));
+			break;
+		case 0x02:
+			print_field("  Flush timeout: %d",
+					bt_get_le16(data + consumed + 2));
+			break;
+		case 0x03:
+			switch (data[consumed + 3]) {
+			case 0x00:
+				str = "No Traffic";
+				break;
+			case 0x01:
+				str = "Best Effort";
+				break;
+			case 0x02:
+				str = "Guaranteed";
+				break;
+			default:
+				str = "Reserved";
+				break;
+			}
+			print_field("  Flags: 0x%2.2x", data[consumed + 2]);
+			print_field("  Service type: %s (0x%2.2x)",
+						str, data[consumed + 3]);
+			print_field("  Token rate: 0x%8.8x",
+					bt_get_le32(data + consumed + 4));
+			print_field("  Token bucket size: 0x%8.8x",
+					bt_get_le32(data + consumed + 8));
+			print_field("  Peak bandwidth: 0x%8.8x",
+					bt_get_le32(data + consumed + 12));
+			print_field("  Latency: 0x%8.8x",
+					bt_get_le32(data + consumed + 16));
+			print_field("  Delay variation: 0x%8.8x",
+					bt_get_le32(data + consumed + 20));
+                        break;
+		case 0x04:
+			switch (data[consumed + 2]) {
+			case 0x00:
+				str = "Basic";
+				break;
+			case 0x01:
+				str = "Retransmission";
+				break;
+			case 0x02:
+				str = "Flow control";
+				break;
+			case 0x03:
+				str = "Enhanced retransmission";
+				break;
+			case 0x04:
+				str = "Streaming";
+				break;
+			default:
+				str = "Reserved";
+				break;
+			}
+			print_field("  Mode: %s (0x%2.2x)",
+						str, data[consumed + 2]);
+			print_field("  TX window size: %d", data[consumed + 3]);
+			print_field("  Max transmit: %d", data[consumed + 4]);
+			print_field("  Retransmission timeout: %d",
+					bt_get_le16(data + consumed + 5));
+			print_field("  Monitor timeout: %d",
+					bt_get_le16(data + consumed + 7));
+			print_field("  Maximum PDU size: %d",
+					bt_get_le16(data + consumed + 9));
+			break;
+		case 0x05:
+			switch (data[consumed + 2]) {
+			case 0x00:
+				str = "No FCS";
+				break;
+			case 0x01:
+				str = "16-bit FCS";
+				break;
+			default:
+				str = "Reserved";
+				break;
+			}
+			print_field("  FCS: %s (0x%2.2d)",
+						str, data[consumed + 2]);
+			break;
+		case 0x06:
+			switch (data[consumed + 3]) {
+			case 0x00:
+				str = "No traffic";
+				break;
+			case 0x01:
+				str = "Best effort";
+				break;
+			case 0x02:
+				str = "Guaranteed";
+				break;
+			default:
+				str = "Reserved";
+				break;
+			}
+			print_field("  Identifier: 0x%2.2x",
+						data[consumed + 2]);
+			print_field("  Service type: %s (0x%2.2x)",
+						str, data[consumed + 3]);
+			print_field("  Maximum SDU size: 0x%4.4x",
+					bt_get_le16(data + consumed + 4));
+			print_field("  SDU inter-arrival time: 0x%8.8x",
+					bt_get_le32(data + consumed + 6));
+			print_field("  Access latency: 0x%8.8x",
+					bt_get_le32(data + consumed + 10));
+			print_field("  Flush timeout: 0x%8.8x",
+					bt_get_le32(data + consumed + 14));
+			break;
+		case 0x07:
+			print_field("  Max window size: %d",
+					bt_get_le16(data + consumed + 2));
+			break;
+		default:
+			packet_hexdump(data + consumed + 2, len);
+			break;
+		}
+
+		consumed += len + 2;
+	}
+
+	if (consumed < size)
+		packet_hexdump(data + consumed, size - consumed);
 }
 
 static void print_info_type(uint16_t type)
@@ -423,8 +601,7 @@ static void sig_config_req(const void *data, uint16_t size)
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
-
-	packet_hexdump(data + 4, size - 4);
+	print_config_options(data + 4, size - 4);
 }
 
 static void sig_config_rsp(const void *data, uint16_t size)
@@ -434,8 +611,7 @@ static void sig_config_rsp(const void *data, uint16_t size)
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-
-	packet_hexdump(data + 6, size - 6);
+	print_config_options(data + 6, size - 6);
 }
 
 static void sig_disconn_req(const void *data, uint16_t size)
