@@ -1090,6 +1090,7 @@ static char *get_hfp_ag_record(struct ext_profile *ext)
 
 static struct default_settings {
 	const char	*uuid;
+	const char	*name;
 	int		priority;
 	const char	*remote_uuid;
 	uint8_t		channel;
@@ -1101,12 +1102,15 @@ static struct default_settings {
 } defaults[] = {
 	{
 		.uuid		= SPP_UUID,
+		.name		= "Serial Port",
 		.channel	= SPP_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= DUN_GW_UUID,
+		.name		= "Dialup Networking",
 		.channel	= DUN_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= HFP_HS_UUID,
+		.name		= "Hands-Free unit",
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_AG_UUID,
 		.channel	= HFP_HF_DEFAULT_CHANNEL,
@@ -1114,6 +1118,7 @@ static struct default_settings {
 		.version	= 0x0105,
 	}, {
 		.uuid		= HFP_AG_UUID,
+		.name		= "Hands-Free Voice gateway",
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_HS_UUID,
 		.channel	= HFP_AG_DEFAULT_CHANNEL,
@@ -1121,31 +1126,39 @@ static struct default_settings {
 		.version	= 0x0105,
 	}, {
 		.uuid		= HSP_AG_UUID,
+		.name		= "Headset Voice gateway",
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HSP_HS_UUID,
 		.channel	= HSP_AG_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_OPP_UUID,
+		.name		= "Object Push",
 		.channel	= OPP_DEFAULT_CHANNEL,
 		.sec_level	= BT_IO_SEC_LOW,
 		.authorize	= false,
 	}, {
 		.uuid		= OBEX_FTP_UUID,
+		.name		= "File Transfer",
 		.channel	= FTP_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_BIP_UUID,
+		.name		= "Basic Imaging",
 		.channel	= BIP_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_SYNC_UUID,
+		.name		= "Synchronization",
 		.channel	= SYNC_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_PBAP_UUID,
+		.name		= "Phone Book Access",
 		.channel	= SYNC_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_MAS_UUID,
+		.name		= "Message Access",
 		.channel	= MAS_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_MNS_UUID,
+		.name		= "Message Notification",
 		.channel	= MNS_DEFAULT_CHANNEL,
 	},
 };
@@ -1191,6 +1204,9 @@ static void ext_set_defaults(struct ext_profile *ext)
 
 		if (settings->features)
 			ext->features = settings->features;
+
+		if (settings->name)
+			ext->name = g_strdup(settings->name);
 	}
 }
 
