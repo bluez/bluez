@@ -150,6 +150,43 @@
 		</attribute>						\
 	</record>"
 
+#define SPP_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x1101\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x1101\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+	</record>"
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -1088,6 +1125,11 @@ static char *get_hfp_ag_record(struct ext_profile *ext)
 						ext->name, ext->features);
 }
 
+static char *get_spp_record(struct ext_profile *ext)
+{
+	return g_strdup_printf(SPP_RECORD, ext->chan, ext->version, ext->name);
+}
+
 static struct default_settings {
 	const char	*uuid;
 	const char	*name;
@@ -1104,6 +1146,8 @@ static struct default_settings {
 		.uuid		= SPP_UUID,
 		.name		= "Serial Port",
 		.channel	= SPP_DEFAULT_CHANNEL,
+		.get_record	= get_spp_record,
+		.version	= 0x0102,
 	}, {
 		.uuid		= DUN_GW_UUID,
 		.name		= "Dialup Networking",
