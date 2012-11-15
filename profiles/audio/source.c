@@ -593,15 +593,40 @@ gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 	return TRUE;
 }
 
-gboolean source_disconnect(struct source *source)
+int source_disconnect(struct audio_device *dev, gboolean shutdown)
 {
+	struct source *source = dev->source;
+
+	if (!source->session)
+		return -ENOTCONN;
+
+	if (shutdown)
+		avdtp_set_device_disconnect(source->session, TRUE);
+
+	/* cancel pending connect */
+	if (source->connect) {
+		struct pending_request *pending = source->connect;
+
+		if (pending->msg)
+			error_failed(pending->msg, "Stream setup failed");
+
+		pending_request_free(source->dev, pending);
+		source->connect = NULL;
+
+		avdtp_unref(source->session);
+		source->session = NULL;
+
+		return 0;
+	}
+
+	/* disconnect already ongoing */
+	if (source->disconnect)
+		return -EBUSY;
+
 	if (!source->stream)
-		return FALSE;
+		return -ENOTCONN;
 
-	if (avdtp_close(source->session, source->stream, FALSE) < 0)
-		return FALSE;
-
-	return TRUE;
+	return avdtp_close(source->session, source->stream, FALSE);
 }
 
 unsigned int source_add_state_cb(source_state_cb cb, void *user_data)
