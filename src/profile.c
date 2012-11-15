@@ -1109,13 +1109,13 @@ static int connect_io(struct ext_io *conn, const bdaddr_t *src,
 	GError *gerr = NULL;
 	GIOChannel *io;
 
-	if (ext->remote_psm) {
+	if (conn->psm) {
 		conn->proto = BTPROTO_L2CAP;
 		io = bt_io_connect(ext_connect, conn, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, src,
 					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
-					BT_IO_OPT_PSM, ext->remote_psm,
+					BT_IO_OPT_PSM, conn->psm,
 					BT_IO_OPT_INVALID);
 	} else {
 		conn->proto = BTPROTO_RFCOMM;
@@ -1123,7 +1123,7 @@ static int connect_io(struct ext_io *conn, const bdaddr_t *src,
 					BT_IO_OPT_SOURCE_BDADDR, src,
 					BT_IO_OPT_DEST_BDADDR, dst,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
-					BT_IO_OPT_CHANNEL, ext->remote_chan,
+					BT_IO_OPT_CHANNEL, conn->chan,
 					BT_IO_OPT_INVALID);
 	}
 
@@ -1192,11 +1192,11 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		port = sdp_get_proto_port(protos, RFCOMM_UUID);
 		if (port > 0)
-			ext->remote_chan = port;
+			conn->chan = port;
 
 		if (ext->remote_psm == 0 &&
 					sdp_get_proto_desc(protos, OBEX_UUID))
-			ext->remote_psm = get_goep_l2cap_psm(rec);
+			conn->psm = get_goep_l2cap_psm(rec);
 
 		conn->features = get_supported_features(rec);
 		conn->version = get_profile_version(rec);
@@ -1205,11 +1205,11 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 									NULL);
 		sdp_list_free(protos, NULL);
 
-		if (ext->remote_chan || ext->remote_psm)
+		if (conn->chan || conn->psm)
 			break;
 	}
 
-	if (!ext->remote_chan && !ext->remote_psm) {
+	if (!conn->chan && !conn->psm) {
 		error("Failed to find L2CAP PSM or RFCOMM channel for %s",
 								ext->name);
 		goto failed;
@@ -1263,12 +1263,15 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 	conn = g_new0(struct ext_io, 1);
 	conn->ext = ext;
 
-	if (ext->remote_psm || ext->remote_chan)
+	if (ext->remote_psm || ext->remote_chan) {
+		conn->psm = ext->remote_psm;
+		conn->chan = ext->remote_chan;
 		err = connect_io(conn, adapter_get_address(adapter),
 						device_get_address(dev));
-	else
+	} else {
 		err = resolve_service(conn, adapter_get_address(adapter),
 						device_get_address(dev));
+	}
 
 	if (err < 0)
 		goto failed;
