@@ -203,7 +203,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 		avrcp_disconnect(dev);
 
 	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
-		sink_shutdown(dev->sink);
+		sink_disconnect(dev->sink);
 	else
 		priv->disconnecting = FALSE;
 }
@@ -390,7 +390,7 @@ static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 	}
 
 	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
-		sink_shutdown(dev->sink);
+		sink_disconnect(dev->sink);
 	else {
 		dbus_message_unref(priv->dc_req);
 		priv->dc_req = NULL;

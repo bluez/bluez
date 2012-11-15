@@ -390,7 +390,7 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	return TRUE;
 }
 
-static DBusMessage *sink_connect(DBusConnection *conn,
+static DBusMessage *connect_sink(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct audio_device *dev = data;
@@ -423,7 +423,7 @@ static DBusMessage *sink_connect(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *sink_disconnect(DBusConnection *conn,
+static DBusMessage *disconnect_sink(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
@@ -489,8 +489,8 @@ static DBusMessage *sink_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable sink_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, sink_connect) },
-	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, sink_disconnect) },
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_sink) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect_sink) },
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				sink_get_properties) },
@@ -604,7 +604,7 @@ gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 	return TRUE;
 }
 
-gboolean sink_shutdown(struct sink *sink)
+gboolean sink_disconnect(struct sink *sink)
 {
 	if (!sink->session)
 		return FALSE;

@@ -379,7 +379,7 @@ gboolean source_setup_stream(struct source *source, struct avdtp *session)
 	return TRUE;
 }
 
-static DBusMessage *source_connect(DBusConnection *conn,
+static DBusMessage *connect_source(DBusConnection *conn,
 				DBusMessage *msg, void *data)
 {
 	struct audio_device *dev = data;
@@ -412,7 +412,7 @@ static DBusMessage *source_connect(DBusConnection *conn,
 	return NULL;
 }
 
-static DBusMessage *source_disconnect(DBusConnection *conn,
+static DBusMessage *disconnect_source(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct audio_device *device = data;
@@ -478,8 +478,8 @@ static DBusMessage *source_get_properties(DBusConnection *conn,
 }
 
 static const GDBusMethodTable source_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, source_connect) },
-	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, source_disconnect) },
+	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_source) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect_source) },
 	{ GDBUS_METHOD("GetProperties",
 				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
 				source_get_properties) },
@@ -593,7 +593,7 @@ gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 	return TRUE;
 }
 
-gboolean source_shutdown(struct source *source)
+gboolean source_disconnect(struct source *source)
 {
 	if (!source->stream)
 		return FALSE;
