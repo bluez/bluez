@@ -685,23 +685,19 @@ static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
 	ext_connect(io, err, conn);
 }
 
-static sdp_record_t *ext_get_record(struct ext_profile *ext)
-{
-	return NULL;
-}
-
 static uint32_t ext_register_record(struct ext_profile *ext,
 							const bdaddr_t *src)
 {
 	sdp_record_t *rec;
 
-	if (ext->record)
-		rec = sdp_xml_parse_record(ext->record, strlen(ext->record));
-	else
-		rec = ext_get_record(ext);
-
-	if (!rec)
+	if (!ext->record)
 		return 0;
+
+	rec = sdp_xml_parse_record(ext->record, strlen(ext->record));
+	if (!rec) {
+		error("Unable to parse record for %s", ext->name);
+		return 0;
+	}
 
 	if (add_record_to_server(src, rec) < 0) {
 		error("Failed to register service record");
