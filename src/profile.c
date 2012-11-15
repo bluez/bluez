@@ -1261,28 +1261,28 @@ static int ext_disconnect_dev(struct btd_device *dev,
 static char *get_hfp_hf_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
-	return g_strdup_printf(HFP_HF_RECORD, ext->local_chan, ext->version,
+	return g_strdup_printf(HFP_HF_RECORD, rfcomm->chan, ext->version,
 						ext->name, ext->features);
 }
 
 static char *get_hfp_ag_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
-	return g_strdup_printf(HFP_AG_RECORD, ext->local_chan, ext->version,
+	return g_strdup_printf(HFP_AG_RECORD, rfcomm->chan, ext->version,
 						ext->name, ext->features);
 }
 
 static char *get_spp_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
-	return g_strdup_printf(SPP_RECORD, ext->local_chan, ext->version,
+	return g_strdup_printf(SPP_RECORD, rfcomm->chan, ext->version,
 								ext->name);
 }
 
 static char *get_dun_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
-	return g_strdup_printf(DUN_RECORD, ext->local_chan, ext->version,
+	return g_strdup_printf(DUN_RECORD, rfcomm->chan, ext->version,
 								ext->name);
 }
 
