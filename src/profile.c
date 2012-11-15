@@ -106,6 +106,50 @@
 		</attribute>						\
 	</record>"
 
+#define HFP_AG_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x111f\" />		\
+				<uuid value=\"0x1203\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x111e\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+		<attribute id=\"0x0311\">				\
+			<uint16 value=\"0x%04x\" />			\
+		</attribute>						\
+		<attribute id=\"0x0301\" >				\
+			<uint8 value=\"0x01\" />			\
+		</attribute>						\
+	</record>"
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -1042,6 +1086,12 @@ static char *get_hfp_hf_record(struct ext_profile *ext)
 						ext->name, ext->features);
 }
 
+static char *get_hfp_ag_record(struct ext_profile *ext)
+{
+	return g_strdup_printf(HFP_AG_RECORD, ext->chan, ext->version,
+						ext->name, ext->features);
+}
+
 static struct default_settings {
 	const char	*uuid;
 	int		priority;
@@ -1071,6 +1121,7 @@ static struct default_settings {
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_HS_UUID,
 		.channel	= HFP_AG_DEFAULT_CHANNEL,
+		.get_record	= get_hfp_ag_record,
 		.version	= 0x0105,
 	}, {
 		.uuid		= HSP_AG_UUID,
