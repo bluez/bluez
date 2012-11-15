@@ -29,7 +29,7 @@
 
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
 
-dbus_bool_t manager_init(const char *path);
+bool manager_init(const char *path);
 void manager_cleanup(const char *path);
 
 const char *manager_get_base_path(void);

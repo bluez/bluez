@@ -181,14 +181,17 @@ static const GDBusPropertyTable manager_properties[] = {
 	{ }
 };
 
-dbus_bool_t manager_init(const char *path)
+bool manager_init(const char *path)
 {
-	btd_profile_init();
-
-	return g_dbus_register_interface(btd_get_dbus_connection(),
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					"/", MANAGER_INTERFACE,
 					manager_methods, manager_signals,
-					manager_properties, NULL, NULL);
+					manager_properties, NULL, NULL))
+		return false;
+
+	btd_profile_init();
+
+	return true;
 }
 
 static void manager_set_default_adapter(int id)
