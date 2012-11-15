@@ -36,6 +36,27 @@
 #include "display.h"
 #include "l2cap.h"
 
+struct l2cap_frame {
+	uint16_t index;
+	bool in;
+	uint16_t handle;
+	uint16_t cid;
+	const void *data;
+	uint16_t size;
+};
+
+static inline void l2cap_frame_init(struct l2cap_frame *frame,
+				uint16_t index, bool in, uint16_t handle,
+				uint16_t cid, const void *data, uint16_t size)
+{
+	frame->index  = index;
+	frame->in     = in;
+	frame->handle = handle;
+	frame->cid    = cid;
+	frame->data   = data;
+	frame->size   = size;
+}
+
 #define MAX_INDEX 16
 
 struct index_data {
@@ -533,10 +554,12 @@ static void print_conn_param_result(uint16_t result)
 	print_field("Result: %s (0x%4.4x)", str, btohs(result));
 }
 
-static void sig_cmd_reject(const void *data, uint16_t size)
+static void sig_cmd_reject(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_cmd_reject *pdu = data;
-	uint16_t mtu, scid, dcid;
+	const struct bt_l2cap_pdu_cmd_reject *pdu = frame->data;
+	const void *data = frame->data;
+	uint16_t size = frame->size;
+	uint16_t scid, dcid;
 
 	print_reject_reason(pdu->reason);
 
@@ -557,8 +580,7 @@ static void sig_cmd_reject(const void *data, uint16_t size)
 			packet_hexdump(data, size);
 			break;
 		}
-		mtu = bt_get_le16(data);
-		print_field("MTU: %d", mtu);
+		print_field("MTU: %d", bt_get_le16(data));
 		break;
 	case 0x0002:
 		if (size != 4) {
@@ -577,17 +599,17 @@ static void sig_cmd_reject(const void *data, uint16_t size)
 	}
 }
 
-static void sig_conn_req(const void *data, uint16_t size)
+static void sig_conn_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_conn_req *pdu = data;
+	const struct bt_l2cap_pdu_conn_req *pdu = frame->data;
 
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
 }
 
-static void sig_conn_rsp(const void *data, uint16_t size)
+static void sig_conn_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_conn_rsp *pdu = data;
+	const struct bt_l2cap_pdu_conn_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
@@ -595,64 +617,63 @@ static void sig_conn_rsp(const void *data, uint16_t size)
 	print_conn_status(pdu->status);
 }
 
-static void sig_config_req(const void *data, uint16_t size)
+static void sig_config_req(const struct l2cap_frame *frame)
 {
-        const struct bt_l2cap_pdu_config_rsp *pdu = data;
+	const struct bt_l2cap_pdu_config_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
-	print_config_options(data + 4, size - 4);
+	print_config_options(frame->data + 4, frame->size - 4);
 }
 
-static void sig_config_rsp(const void *data, uint16_t size)
+static void sig_config_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_config_rsp *pdu = data;
+	const struct bt_l2cap_pdu_config_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	print_config_options(data + 6, size - 6);
+	print_config_options(frame->data + 6, frame->size - 6);
 }
 
-static void sig_disconn_req(const void *data, uint16_t size)
+static void sig_disconn_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_disconn_req *pdu = data;
+	const struct bt_l2cap_pdu_disconn_req *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
 }
 
-static void sig_disconn_rsp(const void *data, uint16_t size)
+static void sig_disconn_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_disconn_rsp *pdu = data;
+	const struct bt_l2cap_pdu_disconn_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
 }
 
-static void sig_echo_req(const void *data, uint16_t size)
+static void sig_echo_req(const struct l2cap_frame *frame)
 {
-	packet_hexdump(data, size);
+	packet_hexdump(frame->data, frame->size);
 }
 
-static void sig_echo_rsp(const void *data, uint16_t size)
+static void sig_echo_rsp(const struct l2cap_frame *frame)
 {
-	packet_hexdump(data, size);
+	packet_hexdump(frame->data, frame->size);
 }
 
-static void sig_info_req(const void *data, uint16_t size)
+static void sig_info_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_info_req *pdu = data;
+	const struct bt_l2cap_pdu_info_req *pdu = frame->data;
 
 	print_info_type(pdu->type);
 }
 
-static void sig_info_rsp(const void *data, uint16_t size)
+static void sig_info_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_info_rsp *pdu = data;
-	uint16_t mtu;
-	uint32_t features;
-	uint64_t channels;
+	const struct bt_l2cap_pdu_info_rsp *pdu = frame->data;
+	const void *data = frame->data;
+	uint16_t size = frame->size;
 
 	print_info_type(pdu->type);
 	print_info_result(pdu->result);
@@ -667,9 +688,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			packet_hexdump(data, size);
 			break;
 		}
-
-		mtu = bt_get_le16(data);
-		print_field("MTU: %d", mtu);
+		print_field("MTU: %d", bt_get_le16(data));
 		break;
 	case 0x0002:
 		if (size != 4) {
@@ -677,8 +696,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			packet_hexdump(data, size);
 			break;
 		}
-		features = bt_get_le32(data);
-		print_features(features);
+		print_features(bt_get_le32(data));
 		break;
 	case 0x0003:
 		if (size != 8) {
@@ -686,8 +704,7 @@ static void sig_info_rsp(const void *data, uint16_t size)
 			packet_hexdump(data, size);
 			break;
 		}
-		channels = bt_get_le64(data);
-		print_channels(channels);
+		print_channels(bt_get_le64(data));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -695,18 +712,18 @@ static void sig_info_rsp(const void *data, uint16_t size)
 	}
 }
 
-static void sig_create_chan_req(const void *data, uint16_t size)
+static void sig_create_chan_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_create_chan_req *pdu = data;
+	const struct bt_l2cap_pdu_create_chan_req *pdu = frame->data;
 
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
 	print_field("Controller ID: %d", pdu->ctrlid);
 }
 
-static void sig_create_chan_rsp(const void *data, uint16_t size)
+static void sig_create_chan_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_create_chan_rsp *pdu = data;
+	const struct bt_l2cap_pdu_create_chan_rsp *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
@@ -714,40 +731,40 @@ static void sig_create_chan_rsp(const void *data, uint16_t size)
 	print_conn_status(pdu->status);
 }
 
-static void sig_move_chan_req(const void *data, uint16_t size)
+static void sig_move_chan_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_req *pdu = data;
+	const struct bt_l2cap_pdu_move_chan_req *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
 	print_field("Controller ID: %d", pdu->ctrlid);
 }
 
-static void sig_move_chan_rsp(const void *data, uint16_t size)
+static void sig_move_chan_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_rsp *pdu = data;
+	const struct bt_l2cap_pdu_move_chan_rsp *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
 	print_move_result(pdu->result);
 }
 
-static void sig_move_chan_conf(const void *data, uint16_t size)
+static void sig_move_chan_conf(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_conf *pdu = data;
+	const struct bt_l2cap_pdu_move_chan_conf *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
 	print_move_conf_result(pdu->result);
 }
 
-static void sig_move_chan_conf_rsp(const void *data, uint16_t size)
+static void sig_move_chan_conf_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_conf_rsp *pdu = data;
+	const struct bt_l2cap_pdu_move_chan_conf_rsp *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
 }
 
-static void sig_conn_param_req(const void *data, uint16_t size)
+static void sig_conn_param_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_conn_param_req *pdu = data;
+	const struct bt_l2cap_pdu_conn_param_req *pdu = frame->data;
 
 	print_field("Min interval: %d", btohs(pdu->min_interval));
 	print_field("Max interval: %d", btohs(pdu->max_interval));
@@ -755,9 +772,9 @@ static void sig_conn_param_req(const void *data, uint16_t size)
 	print_field("Timeout multiplier: %d", btohs(pdu->timeout));
 }
 
-static void sig_conn_param_rsp(const void *data, uint16_t size)
+static void sig_conn_param_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_conn_param_rsp *pdu = data;
+	const struct bt_l2cap_pdu_conn_param_rsp *pdu = frame->data;
 
 	print_conn_param_result(pdu->result);
 }
@@ -765,7 +782,7 @@ static void sig_conn_param_rsp(const void *data, uint16_t size)
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
-	void (*func) (const void *data, uint16_t size);
+	void (*func) (const struct l2cap_frame *frame);
 	uint16_t size;
 	bool fixed;
 };
@@ -812,8 +829,11 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 	{ },
 };
 
-static void sig_packet(bool in, const void *data, uint16_t size)
+static void sig_packet(uint16_t index, bool in, uint16_t handle,
+			uint16_t cid, const void *data, uint16_t size)
 {
+	struct l2cap_frame frame;
+
 	while (size > 0) {
 		uint16_t len;
 		const struct bt_l2cap_hdr_sig *hdr = data;
@@ -889,7 +909,8 @@ static void sig_packet(bool in, const void *data, uint16_t size)
 			}
 		}
 
-		opcode_data->func(data, len);
+		l2cap_frame_init(&frame, index, in, handle, cid, data, len);
+		opcode_data->func(&frame);
 
 		data += len;
 		size -= len;
@@ -1111,7 +1132,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 	switch (cid) {
 	case 0x0001:
 	case 0x0005:
-		sig_packet(in, data, size);
+		sig_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0003:
 		amp_packet(data, size);
