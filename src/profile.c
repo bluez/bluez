@@ -65,6 +65,9 @@
 #define MAS_DEFAULT_CHANNEL	16
 #define MNS_DEFAULT_CHANNEL	17
 
+#define BTD_PROFILE_PSM_AUTO	-1
+#define BTD_PROFILE_CHAN_AUTO	-1
+
 #define HFP_HF_RECORD							\
 	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
 	<record>							\
@@ -225,6 +228,8 @@
 		</attribute>						\
 	</record>"
 
+struct ext_io;
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -235,7 +240,8 @@ struct ext_profile {
 	char *role;
 
 	char *record;
-	char *(*get_record)(struct ext_profile *ext);
+	char *(*get_record)(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm);
 
 	char **remote_uuids;
 
@@ -247,8 +253,8 @@ struct ext_profile {
 	bool enable_client;
 	bool enable_server;
 
-	uint16_t local_psm;
-	uint8_t local_chan;
+	int local_psm;
+	int local_chan;
 
 	uint16_t remote_psm;
 	uint8_t remote_chan;
@@ -276,6 +282,9 @@ struct ext_io {
 
 	uint16_t version;
 	uint16_t features;
+
+	uint16_t psm;
+	uint8_t chan;
 
 	guint auth_id;
 	DBusPendingCall *new_conn;
@@ -764,14 +773,26 @@ static void ext_direct_connect(GIOChannel *io, GError *err, gpointer user_data)
 }
 
 static uint32_t ext_register_record(struct ext_profile *ext,
+							struct ext_io *l2cap,
+							struct ext_io *rfcomm,
 							const bdaddr_t *src)
 {
 	sdp_record_t *rec;
+	char *dyn_record = NULL;
+	const char *record = ext->record;
 
-	if (!ext->record)
+	if (!record && ext->get_record) {
+		dyn_record = ext->get_record(ext, l2cap, rfcomm);
+		record = dyn_record;
+	}
+
+	if (!record)
 		return 0;
 
-	rec = sdp_xml_parse_record(ext->record, strlen(ext->record));
+	rec = sdp_xml_parse_record(record, strlen(record));
+
+	g_free(dyn_record);
+
 	if (!rec) {
 		error("Unable to parse record for %s", ext->name);
 		return 0;
@@ -789,14 +810,13 @@ static uint32_t ext_register_record(struct ext_profile *ext,
 static int ext_start_servers(struct ext_profile *ext,
 						struct btd_adapter *adapter)
 {
-	struct ext_io *server;
+	struct ext_io *l2cap = NULL;
+	struct ext_io *rfcomm = NULL;
 	BtIOConfirm confirm;
 	BtIOConnect connect;
 	GError *err = NULL;
 	uint32_t handle;
 	GIOChannel *io;
-
-	handle = ext_register_record(ext, adapter_get_address(adapter));
 
 	if (ext->authorize) {
 		confirm = ext_confirm;
@@ -807,56 +827,83 @@ static int ext_start_servers(struct ext_profile *ext,
 	}
 
 	if (ext->local_psm) {
-		server = g_new0(struct ext_io, 1);
-		server->ext = ext;
-		server->rec_handle = handle;
+		uint16_t psm;
 
-		io = bt_io_listen(connect, confirm, server, NULL, &err,
+		if (ext->local_psm > 0)
+			psm = ext->local_psm;
+		else
+			psm = 0;
+
+		l2cap = g_new0(struct ext_io, 1);
+		l2cap->ext = ext;
+
+		io = bt_io_listen(connect, confirm, l2cap, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
 					adapter_get_address(adapter),
-					BT_IO_OPT_PSM, ext->local_psm,
+					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
 			error("L2CAP server failed for %s: %s",
 						ext->name, err->message);
-			g_free(server);
+			g_free(l2cap);
+			l2cap = NULL;
 			g_clear_error(&err);
 		} else {
-			server->io = io;
-			server->proto = BTPROTO_L2CAP;
-			server->adapter = btd_adapter_ref(adapter);
-			ext->servers = g_slist_append(ext->servers, server);
-			DBG("%s listening on PSM %u", ext->name,
-							ext->local_psm);
+			if (psm == 0)
+				bt_io_get(io, NULL, BT_IO_OPT_PSM, &psm,
+							BT_IO_OPT_INVALID);
+			l2cap->io = io;
+			l2cap->proto = BTPROTO_L2CAP;
+			l2cap->psm = psm;
+			l2cap->adapter = btd_adapter_ref(adapter);
+			ext->servers = g_slist_append(ext->servers, l2cap);
+			DBG("%s listening on PSM %u", ext->name, psm);
 		}
 	}
 
 	if (ext->local_chan) {
-		server = g_new0(struct ext_io, 1);
-		server->ext = ext;
-		server->rec_handle = handle;
+		uint8_t chan;
 
-		io = bt_io_listen(connect, confirm, server, NULL, &err,
+		if (ext->local_chan > 0)
+			chan = ext->local_chan;
+		else
+			chan = 0;
+
+		rfcomm = g_new0(struct ext_io, 1);
+		rfcomm->ext = ext;
+
+		io = bt_io_listen(connect, confirm, rfcomm, NULL, &err,
 					BT_IO_OPT_SOURCE_BDADDR,
 					adapter_get_address(adapter),
-					BT_IO_OPT_CHANNEL, ext->local_chan,
+					BT_IO_OPT_CHANNEL, chan,
 					BT_IO_OPT_SEC_LEVEL, ext->sec_level,
 					BT_IO_OPT_INVALID);
 		if (err != NULL) {
 			error("RFCOMM server failed for %s: %s",
 						ext->name, err->message);
-			g_free(server);
+			g_free(rfcomm);
+			rfcomm = NULL;
 			g_clear_error(&err);
 		} else {
-			server->io = io;
-			server->proto = BTPROTO_RFCOMM;
-			server->adapter = btd_adapter_ref(adapter);
-			ext->servers = g_slist_append(ext->servers, server);
-			DBG("%s listening on chan %u", ext->name,
-							ext->local_chan);
+			if (chan == 0)
+				bt_io_get(io, NULL, BT_IO_OPT_CHANNEL, &chan,
+							BT_IO_OPT_INVALID);
+			rfcomm->io = io;
+			rfcomm->proto = BTPROTO_RFCOMM;
+			rfcomm->chan = chan;
+			rfcomm->adapter = btd_adapter_ref(adapter);
+			ext->servers = g_slist_append(ext->servers, rfcomm);
+			DBG("%s listening on chan %u", ext->name, chan);
 		}
 	}
+
+	handle = ext_register_record(ext, l2cap, rfcomm,
+						adapter_get_address(adapter));
+	if (l2cap)
+		l2cap->rec_handle = handle;
+	if (rfcomm)
+		rfcomm->rec_handle = handle;
 
 	return 0;
 }
@@ -1157,25 +1204,29 @@ static int ext_disconnect_dev(struct btd_device *dev,
 	return 0;
 }
 
-static char *get_hfp_hf_record(struct ext_profile *ext)
+static char *get_hfp_hf_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
 {
 	return g_strdup_printf(HFP_HF_RECORD, ext->local_chan, ext->version,
 						ext->name, ext->features);
 }
 
-static char *get_hfp_ag_record(struct ext_profile *ext)
+static char *get_hfp_ag_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
 {
 	return g_strdup_printf(HFP_AG_RECORD, ext->local_chan, ext->version,
 						ext->name, ext->features);
 }
 
-static char *get_spp_record(struct ext_profile *ext)
+static char *get_spp_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
 {
 	return g_strdup_printf(SPP_RECORD, ext->local_chan, ext->version,
 								ext->name);
 }
 
-static char *get_dun_record(struct ext_profile *ext)
+static char *get_dun_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
 {
 	return g_strdup_printf(DUN_RECORD, ext->local_chan, ext->version,
 								ext->name);
@@ -1186,10 +1237,13 @@ static struct default_settings {
 	const char	*name;
 	int		priority;
 	const char	*remote_uuid;
-	uint8_t		channel;
+	int		channel;
+	int		psm;
 	BtIOSecLevel	sec_level;
 	bool		authorize;
-	char *		(*get_record)(struct ext_profile *ext);
+	char *		(*get_record)(struct ext_profile *ext,
+					struct ext_io *l2cap,
+					struct ext_io *rfcomm);
 	uint16_t	version;
 	uint16_t	features;
 } defaults[] = {
@@ -1288,6 +1342,9 @@ static void ext_set_defaults(struct ext_profile *ext)
 		if (settings->channel)
 			ext->local_chan = settings->channel;
 
+		if (settings->psm)
+			ext->local_psm = settings->psm;
+
 		if (settings->sec_level)
 			ext->sec_level = settings->sec_level;
 
@@ -1313,6 +1370,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 {
 	int type = dbus_message_iter_get_arg_type(value);
 	const char *str;
+	uint16_t u16;
 
 	if (strcasecmp(key, "Name") == 0) {
 		if (type != DBUS_TYPE_STRING)
@@ -1327,15 +1385,16 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	} else if (strcasecmp(key, "PSM") == 0) {
 		if (type != DBUS_TYPE_UINT16)
 			return -EINVAL;
-		dbus_message_iter_get_basic(value, &ext->local_psm);
+		dbus_message_iter_get_basic(value, &u16);
+		ext->local_psm = u16 ? u16 : BTD_PROFILE_PSM_AUTO;
 	} else if (strcasecmp(key, "Channel") == 0) {
-		uint16_t ch;
-
 		if (type != DBUS_TYPE_UINT16)
 			return -EINVAL;
 
-		dbus_message_iter_get_basic(value, &ch);
-		ext->local_chan = ch;
+		dbus_message_iter_get_basic(value, &u16);
+		if (u16 > 31)
+			return -EINVAL;
+		ext->local_chan = u16 ? u16 : BTD_PROFILE_CHAN_AUTO;
 	} else if (strcasecmp(key, "RequireAuthentication") == 0) {
 		dbus_bool_t b;
 
@@ -1426,9 +1485,6 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
-
-	if (!ext->record && ext->get_record)
-		ext->record = ext->get_record(ext);
 
 	p = &ext->p;
 
