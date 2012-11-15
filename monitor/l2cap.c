@@ -57,6 +57,123 @@ static inline void l2cap_frame_init(struct l2cap_frame *frame,
 	frame->size   = size;
 }
 
+#define MAX_CHAN 64
+
+struct chan_data {
+	uint16_t index;
+	uint16_t handle;
+	uint16_t scid;
+	uint16_t dcid;
+	uint16_t psm;
+};
+
+static struct chan_data chan_list[MAX_CHAN];
+
+static void assign_scid(const struct l2cap_frame *frame,
+				uint16_t scid, uint16_t psm, uint8_t ctrlid)
+{
+	int i, n = -1;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index == frame->index &&
+				chan_list[i].handle == frame->handle) {
+			if (frame->in) {
+				if (chan_list[i].dcid == scid) {
+					n = i;
+					break;
+				}
+			} else {
+				if (chan_list[i].scid == scid) {
+					n = i;
+					break;
+				}
+			}
+		}
+
+		if (n < 0 && chan_list[i].handle == 0x0000)
+			n = i;
+	}
+
+	if (n < 0)
+		return;
+
+	memset(&chan_list[n], 0, sizeof(chan_list[n]));
+	chan_list[n].index = frame->index;
+	chan_list[n].handle = frame->handle;
+
+	if (frame->in)
+		chan_list[n].dcid = scid;
+	else
+		chan_list[n].scid = scid;
+
+	chan_list[n].psm = psm;
+}
+
+static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index == frame->index &&
+				chan_list[i].handle == frame->handle) {
+			if (frame->in) {
+				if (chan_list[i].scid == scid) {
+					chan_list[i].handle = 0;
+					break;
+				}
+			} else {
+				if (chan_list[i].dcid == scid) {
+					chan_list[i].handle = 0;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static void assign_dcid(const struct l2cap_frame *frame,
+					uint16_t dcid, uint16_t scid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index == frame->index &&
+				chan_list[i].handle == frame->handle) {
+			if (frame->in) {
+				if (chan_list[i].scid == scid) {
+					chan_list[i].dcid = dcid;
+					break;
+				}
+			} else {
+				if (chan_list[i].dcid == scid) {
+					chan_list[i].scid = dcid;
+					break;
+				}
+			}
+		}
+	}
+}
+
+static uint16_t get_psm(const struct l2cap_frame *frame)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index == frame->index &&
+				chan_list[i].handle == frame->handle) {
+			if (frame->in) {
+				if (chan_list[i].scid == frame->cid)
+					return chan_list[i].psm;
+			} else {
+				if (chan_list[i].dcid == frame->cid)
+					return chan_list[i].psm;
+			}
+		}
+	}
+
+	return 0;
+}
+
 #define MAX_INDEX 16
 
 struct index_data {
@@ -605,6 +722,8 @@ static void sig_conn_req(const struct l2cap_frame *frame)
 
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
+
+	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), 0);
 }
 
 static void sig_conn_rsp(const struct l2cap_frame *frame)
@@ -615,6 +734,8 @@ static void sig_conn_rsp(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_conn_result(pdu->result);
 	print_conn_status(pdu->status);
+
+	assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));
 }
 
 static void sig_config_req(const struct l2cap_frame *frame)
@@ -650,6 +771,8 @@ static void sig_disconn_rsp(const struct l2cap_frame *frame)
 
 	print_cid("Destination", pdu->dcid);
 	print_cid("Source", pdu->scid);
+
+	release_scid(frame, btohs(pdu->scid));
 }
 
 static void sig_echo_req(const struct l2cap_frame *frame)
@@ -719,6 +842,8 @@ static void sig_create_chan_req(const struct l2cap_frame *frame)
 	print_psm(pdu->psm);
 	print_cid("Source", pdu->scid);
 	print_field("Controller ID: %d", pdu->ctrlid);
+
+	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), pdu->ctrlid);
 }
 
 static void sig_create_chan_rsp(const struct l2cap_frame *frame)
@@ -729,6 +854,8 @@ static void sig_create_chan_rsp(const struct l2cap_frame *frame)
 	print_cid("Source", pdu->scid);
 	print_conn_result(pdu->result);
 	print_conn_status(pdu->status);
+
+	assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));
 }
 
 static void sig_move_chan_req(const struct l2cap_frame *frame)
@@ -1129,6 +1256,9 @@ static void smp_packet(const void *data, uint16_t size)
 static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 			uint16_t cid, const void *data, uint16_t size)
 {
+	struct l2cap_frame frame;
+	uint16_t psm;
+
 	switch (cid) {
 	case 0x0001:
 	case 0x0005:
@@ -1144,8 +1274,11 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		smp_packet(data, size);
 		break;
 	default:
+		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
+		psm = get_psm(&frame);
+
 		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
-						" %d len %d", cid, size);
+					" %d len %d [PSM %d]", cid, size, psm);
 		packet_hexdump(data, size);
 		break;
 	}
