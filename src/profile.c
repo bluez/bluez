@@ -187,6 +187,44 @@
 		</attribute>						\
 	</record>"
 
+#define DUN_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x1103\" />		\
+				<uuid value=\"0x1201\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x1103\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+	</record>"
+
 struct ext_profile {
 	struct btd_profile p;
 
@@ -1130,6 +1168,11 @@ static char *get_spp_record(struct ext_profile *ext)
 	return g_strdup_printf(SPP_RECORD, ext->chan, ext->version, ext->name);
 }
 
+static char *get_dun_record(struct ext_profile *ext)
+{
+	return g_strdup_printf(DUN_RECORD, ext->chan, ext->version, ext->name);
+}
+
 static struct default_settings {
 	const char	*uuid;
 	const char	*name;
@@ -1150,8 +1193,10 @@ static struct default_settings {
 		.version	= 0x0102,
 	}, {
 		.uuid		= DUN_GW_UUID,
-		.name		= "Dialup Networking",
+		.name		= "Dial-Up Networking",
 		.channel	= DUN_DEFAULT_CHANNEL,
+		.get_record	= get_dun_record,
+		.version	= 0x0102,
 	}, {
 		.uuid		= HFP_HS_UUID,
 		.name		= "Hands-Free unit",
