@@ -76,9 +76,6 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		2
 
-#define INFO_PATH STORAGEDIR "/%s/%s/info"
-#define CACHE_PATH STORAGEDIR "/%s/cache/%s"
-
 struct btd_disconnect_data {
 	guint id;
 	disconnect_watch watch;
@@ -231,7 +228,8 @@ static gboolean store_device_info_cb(gpointer user_data)
 
 	ba2str(adapter_get_address(device->adapter), adapter_addr);
 	ba2str(&device->bdaddr, device_addr);
-	snprintf(filename, PATH_MAX, INFO_PATH, adapter_addr, device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+			device_addr);
 	filename[PATH_MAX] = '\0';
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -1693,7 +1691,7 @@ static char *load_cached_name(struct btd_device *device, const char *local,
 	char *str = NULL;
 	int len;
 
-	snprintf(filename, PATH_MAX, CACHE_PATH, local, peer);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);
 	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
@@ -1722,7 +1720,7 @@ static void load_info(struct btd_device *device, const gchar *local,
 	char *str;
 	gboolean store_needed = FALSE;
 
-	snprintf(filename, PATH_MAX, INFO_PATH, local, peer);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", local, peer);
 	filename[PATH_MAX] = '\0';
 
 	key_file = g_key_file_new();
