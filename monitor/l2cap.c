@@ -65,6 +65,7 @@ struct chan_data {
 	uint16_t scid;
 	uint16_t dcid;
 	uint16_t psm;
+	uint8_t  ctrlid;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
@@ -75,23 +76,26 @@ static void assign_scid(const struct l2cap_frame *frame,
 	int i, n = -1;
 
 	for (i = 0; i < MAX_CHAN; i++) {
-		if (chan_list[i].index == frame->index &&
-				chan_list[i].handle == frame->handle) {
-			if (frame->in) {
-				if (chan_list[i].dcid == scid) {
-					n = i;
-					break;
-				}
-			} else {
-				if (chan_list[i].scid == scid) {
-					n = i;
-					break;
-				}
-			}
-		}
-
 		if (n < 0 && chan_list[i].handle == 0x0000)
 			n = i;
+
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].dcid == scid) {
+				n = i;
+				break;
+			}
+		} else {
+			if (chan_list[i].scid == scid) {
+				n = i;
+				break;
+			}
+		}
 	}
 
 	if (n < 0)
@@ -107,6 +111,7 @@ static void assign_scid(const struct l2cap_frame *frame,
 		chan_list[n].scid = scid;
 
 	chan_list[n].psm = psm;
+	chan_list[n].ctrlid = ctrlid;
 }
 
 static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
@@ -114,18 +119,21 @@ static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
 	int i;
 
 	for (i = 0; i < MAX_CHAN; i++) {
-		if (chan_list[i].index == frame->index &&
-				chan_list[i].handle == frame->handle) {
-			if (frame->in) {
-				if (chan_list[i].scid == scid) {
-					chan_list[i].handle = 0;
-					break;
-				}
-			} else {
-				if (chan_list[i].dcid == scid) {
-					chan_list[i].handle = 0;
-					break;
-				}
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				chan_list[i].handle = 0;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				chan_list[i].handle = 0;
+				break;
 			}
 		}
 	}
@@ -137,18 +145,21 @@ static void assign_dcid(const struct l2cap_frame *frame,
 	int i;
 
 	for (i = 0; i < MAX_CHAN; i++) {
-		if (chan_list[i].index == frame->index &&
-				chan_list[i].handle == frame->handle) {
-			if (frame->in) {
-				if (chan_list[i].scid == scid) {
-					chan_list[i].dcid = dcid;
-					break;
-				}
-			} else {
-				if (chan_list[i].dcid == scid) {
-					chan_list[i].scid = dcid;
-					break;
-				}
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == scid) {
+				chan_list[i].dcid = dcid;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == scid) {
+				chan_list[i].scid = dcid;
+				break;
 			}
 		}
 	}
@@ -159,15 +170,20 @@ static uint16_t get_psm(const struct l2cap_frame *frame)
 	int i;
 
 	for (i = 0; i < MAX_CHAN; i++) {
-		if (chan_list[i].index == frame->index &&
-				chan_list[i].handle == frame->handle) {
-			if (frame->in) {
-				if (chan_list[i].scid == frame->cid)
-					return chan_list[i].psm;
-			} else {
-				if (chan_list[i].dcid == frame->cid)
-					return chan_list[i].psm;
-			}
+		if (chan_list[i].index != frame->index &&
+					chan_list[i].ctrlid == 0)
+			continue;
+
+		if (chan_list[i].handle != frame->handle &&
+					chan_list[i].ctrlid != frame->index)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == frame->cid)
+				return chan_list[i].psm;
+		} else {
+			if (chan_list[i].dcid == frame->cid)
+				return chan_list[i].psm;
 		}
 	}
 
