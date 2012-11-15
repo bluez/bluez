@@ -282,6 +282,49 @@
 		</attribute>						\
 	</record>"
 
+#define FTP_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x1106\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0003\" />	\
+					<uint8 value=\"0x%02x\" />	\
+				</sequence>				\
+				<sequence>				\
+					<uuid value=\"0x0008\"/>	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x1106\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0200\">				\
+			<uint16 value=\"%u\" name=\"psm\"/>		\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+	</record>"
+
 struct ext_io;
 
 struct ext_profile {
@@ -1300,6 +1343,20 @@ static char *get_opp_record(struct ext_profile *ext, struct ext_io *l2cap,
 	return g_strdup_printf(OPP_RECORD, chan, ext->version, psm, ext->name);
 }
 
+static char *get_ftp_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
+{
+	uint16_t psm = 0;
+	uint8_t chan = 0;
+
+	if (l2cap)
+		psm = l2cap->psm;
+	if (rfcomm)
+		chan = rfcomm->chan;
+
+	return g_strdup_printf(FTP_RECORD, chan, ext->version, psm, ext->name);
+}
+
 static struct default_settings {
 	const char	*uuid;
 	const char	*name;
@@ -1362,6 +1419,9 @@ static struct default_settings {
 		.uuid		= OBEX_FTP_UUID,
 		.name		= "File Transfer",
 		.channel	= FTP_DEFAULT_CHANNEL,
+		.psm		= BTD_PROFILE_PSM_AUTO,
+		.get_record	= get_ftp_record,
+		.version	= 0x0102,
 	}, {
 		.uuid		= OBEX_BIP_UUID,
 		.name		= "Basic Imaging",
