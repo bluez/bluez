@@ -191,7 +191,9 @@ static gboolean parse_data(DBusMessageIter *data, struct oob_data *remote_data)
 	return TRUE;
 }
 
-static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
+static gboolean store_data(struct btd_adapter *adapter,
+				struct btd_device *device,
+				struct oob_data *data)
 {
 	bdaddr_t bdaddr;
 
@@ -204,8 +206,7 @@ static gboolean store_data(struct btd_adapter *adapter, struct oob_data *data)
 	}
 
 	if (data->class)
-		write_remote_class(adapter_get_address(adapter), &bdaddr,
-								data->class);
+		device_set_class(device, data->class);
 
 	if (data->name)
 		btd_event_remote_name(adapter_get_address(adapter), &bdaddr,
@@ -255,7 +256,7 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	if (!parse_data(&data, &remote_data))
 		return btd_error_invalid_args(msg);
 
-	if (!store_data(adapter, &remote_data))
+	if (!store_data(adapter, device, &remote_data))
 		return btd_error_failed(msg, "Request failed");
 
 	reply = dbus_message_new_method_return(msg);
