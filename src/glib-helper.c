@@ -108,7 +108,9 @@ static struct {
 	{ "pbap-pce",	PBAP_PCE_SVCLASS_ID		},
 	{ "pbap-pse",	PBAP_PSE_SVCLASS_ID		},
 	{ "map-mse",	MAP_MSE_SVCLASS_ID		},
+	{ "map-mas",	MAP_MSE_SVCLASS_ID		},
 	{ "map-mce",	MAP_MCE_SVCLASS_ID		},
+	{ "map-mns",	MAP_MCE_SVCLASS_ID		},
 	{ "gnss",	GNSS_SERVER_SVCLASS_ID		},
 	{ }
 };
