@@ -419,7 +419,7 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_typ
 	update_lastused(local, peer, bdaddr_type);
 
 	if (class != 0)
-		write_remote_class(local, peer, class);
+		device_set_class(device, class);
 
 	device_set_addr_type(device, bdaddr_type);
 
