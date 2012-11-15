@@ -545,11 +545,11 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
+	plugin_cleanup();
+
 	manager_cleanup("/");
 
 	rfkill_exit();
-
-	plugin_cleanup();
 
 	stop_sdp_server();
 
