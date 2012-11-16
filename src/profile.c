@@ -325,6 +325,32 @@
 		</attribute>						\
 	</record>"
 
+#define PCE_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"0x112e\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x1130\" />	\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+	</record>"
+
 struct ext_io;
 
 struct ext_profile {
@@ -377,7 +403,6 @@ struct ext_io {
 
 	bool resolving;
 	btd_profile_cb cb;
-	uint32_t rec_handle;
 
 	uint16_t version;
 	uint16_t features;
@@ -1366,6 +1391,12 @@ static char *get_dun_record(struct ext_profile *ext, struct ext_io *l2cap,
 								ext->name);
 }
 
+static char *get_pce_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
+{
+	return g_strdup_printf(PCE_RECORD, ext->version, ext->name);
+}
+
 static char *get_opp_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
@@ -1467,6 +1498,12 @@ static struct default_settings {
 		.uuid		= OBEX_PSE_UUID,
 		.name		= "Phone Book Access",
 		.channel	= PBAP_DEFAULT_CHANNEL,
+	}, {
+		.uuid		= OBEX_PCE_UUID,
+		.name		= "Phone Book Access Client",
+		.remote_uuid	= OBEX_PSE_UUID,
+		.get_record	= get_pce_record,
+		.version	= 0x0101,
 	}, {
 		.uuid		= OBEX_MAS_UUID,
 		.name		= "Message Access",
@@ -1695,7 +1732,7 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	 * http://c-faq.com/ansi/constmismatch.html */
 	p->remote_uuids = (const char **) ext->remote_uuids;
 
-	if (ext->enable_server) {
+	if (ext->enable_server || ext->record || ext->get_record) {
 		p->adapter_probe = ext_adapter_probe;
 		p->adapter_remove = ext_adapter_remove;
 	}
