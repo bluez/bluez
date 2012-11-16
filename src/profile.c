@@ -360,6 +360,7 @@ struct ext_profile {
 	uint16_t version;
 	uint16_t features;
 
+	GSList *records;
 	GSList *servers;
 	GSList *conns;
 
@@ -386,6 +387,11 @@ struct ext_io {
 
 	guint auth_id;
 	DBusPendingCall *new_conn;
+};
+
+struct ext_record {
+	struct btd_adapter *adapter;
+	uint32_t handle;
 };
 
 struct btd_profile_custom_property {
@@ -488,9 +494,6 @@ static void ext_io_destroy(gpointer p)
 	if (ext_io->resolving)
 		bt_cancel_discovery(adapter_get_address(ext_io->adapter),
 					device_get_address(ext_io->device));
-
-	if (ext_io->rec_handle)
-		remove_record_from_server(ext_io->rec_handle);
 
 	if (ext_io->adapter)
 		btd_adapter_unref(ext_io->adapter);
@@ -907,7 +910,7 @@ static uint32_t ext_register_record(struct ext_profile *ext,
 	return rec->handle;
 }
 
-static int ext_start_servers(struct ext_profile *ext,
+static uint32_t ext_start_servers(struct ext_profile *ext,
 						struct btd_adapter *adapter)
 {
 	struct ext_io *l2cap = NULL;
@@ -915,7 +918,6 @@ static int ext_start_servers(struct ext_profile *ext,
 	BtIOConfirm confirm;
 	BtIOConnect connect;
 	GError *err = NULL;
-	uint32_t handle;
 	GIOChannel *io;
 
 	if (ext->authorize) {
@@ -998,14 +1000,8 @@ static int ext_start_servers(struct ext_profile *ext,
 		}
 	}
 
-	handle = ext_register_record(ext, l2cap, rfcomm,
+	return ext_register_record(ext, l2cap, rfcomm,
 						adapter_get_address(adapter));
-	if (l2cap)
-		l2cap->rec_handle = handle;
-	if (rfcomm)
-		rfcomm->rec_handle = handle;
-
-	return 0;
 }
 
 static struct ext_profile *find_ext(struct btd_profile *p)
@@ -1023,6 +1019,8 @@ static int ext_adapter_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
 	struct ext_profile *ext;
+	struct ext_record *rec;
+	uint32_t handle;
 
 	ext = find_ext(p);
 	if (!ext)
@@ -1030,7 +1028,38 @@ static int ext_adapter_probe(struct btd_profile *p,
 
 	DBG("\"%s\" probed", ext->name);
 
-	return ext_start_servers(ext, adapter);
+	handle = ext_start_servers(ext, adapter);
+	if (!handle)
+		return 0;
+
+	rec = g_new0(struct ext_record, 1);
+	rec->adapter = btd_adapter_ref(adapter);
+	rec->handle = handle;
+
+	ext->records = g_slist_append(ext->records, rec);
+
+	return 0;
+}
+
+static void ext_remove_records(struct ext_profile *ext,
+						struct btd_adapter *adapter)
+{
+	GSList *l, *next;
+
+	for (l = ext->records; l != NULL; l = next) {
+		struct ext_record *r = l->data;
+
+		next = g_slist_next(l);
+
+		if (adapter && r->adapter != adapter)
+			continue;
+
+		ext->records = g_slist_remove(ext->records, r);
+
+		remove_record_from_server(r->handle);
+		btd_adapter_unref(r->adapter);
+		g_free(r);
+	}
 }
 
 static void ext_adapter_remove(struct btd_profile *p,
@@ -1044,6 +1073,8 @@ static void ext_adapter_remove(struct btd_profile *p,
 		return;
 
 	DBG("\"%s\" removed", ext->name);
+
+	ext_remove_records(ext, adapter);
 
 	for (l = ext->servers; l != NULL; l = next) {
 		struct ext_io *server = l->data;
@@ -1692,6 +1723,8 @@ static void remove_ext(struct ext_profile *ext)
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 
 	DBG("Removed \"%s\"", ext->name);
+
+	ext_remove_records(ext, NULL);
 
 	g_slist_free_full(ext->servers, ext_io_destroy);
 	g_slist_free_full(ext->conns, ext_io_destroy);
