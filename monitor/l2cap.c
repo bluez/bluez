@@ -66,6 +66,7 @@ struct chan_data {
 	uint16_t dcid;
 	uint16_t psm;
 	uint8_t  ctrlid;
+	uint8_t  mode;
 };
 
 static struct chan_data chan_list[MAX_CHAN];
@@ -112,6 +113,7 @@ static void assign_scid(const struct l2cap_frame *frame,
 
 	chan_list[n].psm = psm;
 	chan_list[n].ctrlid = ctrlid;
+	chan_list[n].mode = 0;
 }
 
 static void release_scid(const struct l2cap_frame *frame, uint16_t scid)
@@ -165,6 +167,32 @@ static void assign_dcid(const struct l2cap_frame *frame,
 	}
 }
 
+static void assign_mode(const struct l2cap_frame *frame,
+					uint8_t mode, uint16_t dcid)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index)
+			continue;
+
+		if (chan_list[i].handle != frame->handle)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == dcid) {
+				chan_list[i].mode = mode;
+				break;
+			}
+		} else {
+			if (chan_list[i].dcid == dcid) {
+				chan_list[i].mode = mode;
+				break;
+			}
+		}
+	}
+}
+
 static uint16_t get_psm(const struct l2cap_frame *frame)
 {
 	int i;
@@ -184,6 +212,31 @@ static uint16_t get_psm(const struct l2cap_frame *frame)
 		} else {
 			if (chan_list[i].dcid == frame->cid)
 				return chan_list[i].psm;
+		}
+	}
+
+	return 0;
+}
+
+static uint8_t get_mode(const struct l2cap_frame *frame)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index &&
+					chan_list[i].ctrlid == 0)
+			continue;
+
+		if (chan_list[i].handle != frame->handle &&
+					chan_list[i].ctrlid != frame->index)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == frame->cid)
+				return chan_list[i].mode;
+		} else {
+			if (chan_list[i].dcid == frame->cid)
+				return chan_list[i].mode;
 		}
 	}
 
@@ -349,8 +402,11 @@ static struct {
         { }
 };
 
-static void print_config_options(const uint8_t *data, uint16_t size)
+static void print_config_options(const struct l2cap_frame *frame,
+				uint8_t offset, uint16_t dcid, bool response)
 {
+	const uint8_t *data = frame->data + offset;
+	uint16_t size = frame->size - offset;
 	uint16_t consumed = 0;
 
 	while (consumed < size - 2) {
@@ -415,6 +471,9 @@ static void print_config_options(const uint8_t *data, uint16_t size)
 					bt_get_le32(data + consumed + 20));
                         break;
 		case 0x04:
+			if (response)
+				assign_mode(frame, data[consumed + 2], dcid);
+
 			switch (data[consumed + 2]) {
 			case 0x00:
 				str = "Basic";
@@ -760,7 +819,7 @@ static void sig_config_req(const struct l2cap_frame *frame)
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
-	print_config_options(frame->data + 4, frame->size - 4);
+	print_config_options(frame, 4, btohs(pdu->dcid), false);
 }
 
 static void sig_config_rsp(const struct l2cap_frame *frame)
@@ -770,7 +829,7 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	print_config_options(frame->data + 6, frame->size - 6);
+	print_config_options(frame, 6, btohs(pdu->dcid), true);
 }
 
 static void sig_disconn_req(const struct l2cap_frame *frame)
@@ -1274,6 +1333,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 {
 	struct l2cap_frame frame;
 	uint16_t psm;
+	uint8_t mode;
 
 	switch (cid) {
 	case 0x0001:
@@ -1292,9 +1352,11 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 	default:
 		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
 		psm = get_psm(&frame);
+		mode = get_mode(&frame);
 
 		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
-					" %d len %d [PSM %d]", cid, size, psm);
+						" %d len %d [PSM %d mode %d]",
+							cid, size, psm, mode);
 		packet_hexdump(data, size);
 		break;
 	}
