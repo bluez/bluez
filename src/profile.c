@@ -332,8 +332,9 @@ struct ext_profile {
 
 	char *name;
 	char *owner;
-	char *uuid;
 	char *path;
+	char *uuid;
+	char *service;
 	char *role;
 
 	char *record;
@@ -578,8 +579,9 @@ static void append_prop(gpointer a, gpointer b)
 	DBusMessageIter entry, value, *dict = data->dict;
 	struct btd_device *dev = data->io->device;
 	struct ext_profile *ext = data->io->ext;
+	const char *uuid = ext->service ? ext->service : ext->uuid;
 
-	if (strcasecmp(p->uuid, ext->uuid) != 0)
+	if (strcasecmp(p->uuid, uuid) != 0)
 		return;
 
 	if (p->exists && !p->exists(p->uuid, dev, p->user_data))
@@ -810,6 +812,7 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 {
 	struct ext_io *server = user_data;
 	struct ext_profile *ext = server->ext;
+	const char *uuid = ext->service ? ext->service : ext->uuid;
 	struct ext_io *conn;
 	GError *gerr = NULL;
 	bdaddr_t src, dst;
@@ -831,8 +834,8 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 
 	conn = create_conn(server, io, &src, &dst);
 
-	conn->auth_id = btd_request_authorization(&src, &dst, ext->uuid,
-								ext_auth, conn);
+	conn->auth_id = btd_request_authorization(&src, &dst, uuid, ext_auth,
+									conn);
 	if (conn->auth_id == 0) {
 		error("%s authorization failure", ext->name);
 		ext_io_destroy(conn);
@@ -1426,17 +1429,13 @@ static struct default_settings {
 		.get_record	= get_ftp_record,
 		.version	= 0x0102,
 	}, {
-		.uuid		= OBEX_BIP_UUID,
-		.name		= "Basic Imaging",
-		.channel	= BIP_DEFAULT_CHANNEL,
-	}, {
 		.uuid		= OBEX_SYNC_UUID,
 		.name		= "Synchronization",
 		.channel	= SYNC_DEFAULT_CHANNEL,
 	}, {
-		.uuid		= OBEX_PBAP_UUID,
+		.uuid		= OBEX_PSE_UUID,
 		.name		= "Phone Book Access",
-		.channel	= SYNC_DEFAULT_CHANNEL,
+		.channel	= PBAP_DEFAULT_CHANNEL,
 	}, {
 		.uuid		= OBEX_MAS_UUID,
 		.name		= "Message Access",
@@ -1581,9 +1580,42 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 
 		dbus_message_iter_get_basic(value, &feat);
 		ext->features = feat;
+	} else if (strcasecmp(key, "Service") == 0) {
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+		dbus_message_iter_get_basic(value, &str);
+		g_free(ext->service);
+		ext->service = bt_name2string(str);
 	}
 
 	return 0;
+}
+
+static void set_service(struct ext_profile *ext)
+{
+	if (strcasecmp(ext->uuid, HSP_HS_UUID) == 0) {
+		ext->service = g_strdup(ext->uuid);
+	} else if (strcasecmp(ext->uuid, HSP_AG_UUID) == 0) {
+		ext->service = ext->uuid;
+		ext->uuid = g_strdup(HSP_HS_UUID);
+	} else if (strcasecmp(ext->uuid, HFP_HS_UUID) == 0) {
+		ext->service = g_strdup(ext->uuid);
+	} else if (strcasecmp(ext->uuid, HFP_AG_UUID) == 0) {
+		ext->service = ext->uuid;
+		ext->uuid = g_strdup(HFP_HS_UUID);
+	} else if (strcasecmp(ext->uuid, OBEX_SYNC_UUID) == 0 ||
+			strcasecmp(ext->uuid, OBEX_OPP_UUID) == 0 ||
+			strcasecmp(ext->uuid, OBEX_FTP_UUID) == 0) {
+		ext->service = g_strdup(ext->uuid);
+	} else if (strcasecmp(ext->uuid, OBEX_PSE_UUID) == 0 ||
+			strcasecmp(ext->uuid, OBEX_PCE_UUID) ==  0) {
+		ext->service = ext->uuid;
+		ext->uuid = g_strdup(OBEX_PBAP_UUID);
+	} else if (strcasecmp(ext->uuid, OBEX_MAS_UUID) == 0 ||
+			strcasecmp(ext->uuid, OBEX_MNS_UUID) == 0) {
+		ext->service = ext->uuid;
+		ext->uuid = g_strdup(OBEX_MAP_UUID);
+	}
 }
 
 static struct ext_profile *create_ext(const char *owner, const char *path,
@@ -1617,13 +1649,16 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 		dbus_message_iter_next(opts);
 	}
 
+	if (!ext->service)
+		set_service(ext);
+
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
 
 	p = &ext->p;
 
 	p->name = ext->name;
-	p->local_uuid = ext->uuid;
+	p->local_uuid = ext->service ? ext->service : ext->uuid;
 
 	/* Typecast can't really be avoided here:
 	 * http://c-faq.com/ansi/constmismatch.html */
@@ -1666,6 +1701,7 @@ static void remove_ext(struct ext_profile *ext)
 	g_free(ext->name);
 	g_free(ext->owner);
 	g_free(ext->uuid);
+	g_free(ext->service);
 	g_free(ext->role);
 	g_free(ext->path);
 	g_free(ext->record);

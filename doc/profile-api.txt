@@ -27,6 +27,12 @@ Object path	/org/bluez
 
 					Human readable name for the profile
 
+				string Service
+
+					The primary service class UUID
+					(if different from the actual
+					 profile UUID)
+
 				string Role
 
 					For asymmetric profiles that do not
