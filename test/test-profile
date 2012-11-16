@@ -70,6 +70,9 @@ if __name__ == '__main__':
 			make_option("-r", "--record", action="store",
 					type="string", dest="record",
 					default=None),
+			make_option("-S", "--service", action="store",
+					type="string", dest="service",
+					default=None),
 			]
 
 	parser = OptionParser(option_list=option_list)
@@ -98,6 +101,9 @@ if __name__ == '__main__':
 
 	if (options.record):
 		opts["ServiceRecord"] = options.record
+
+	if (options.service):
+		opts["Service"] = options.service
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
