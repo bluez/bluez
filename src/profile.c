@@ -159,6 +159,7 @@
 		<attribute id=\"0x0001\">				\
 			<sequence>					\
 				<uuid value=\"0x1101\" />		\
+				%s					\
 			</sequence>					\
 		</attribute>						\
 		<attribute id=\"0x0004\">				\
@@ -1423,8 +1424,17 @@ static char *get_hfp_ag_record(struct ext_profile *ext, struct ext_io *l2cap,
 static char *get_spp_record(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm)
 {
-	return g_strdup_printf(SPP_RECORD, rfcomm->chan, ext->version,
+	char *svc, *rec;
+
+	if (ext->service)
+		svc = g_strdup_printf("<uuid value=\"%s\" />", ext->service);
+	else
+		svc = g_strdup("");
+
+	rec = g_strdup_printf(SPP_RECORD, svc, rfcomm->chan, ext->version,
 								ext->name);
+	g_free(svc);
+	return rec;
 }
 
 static char *get_dun_record(struct ext_profile *ext, struct ext_io *l2cap,
