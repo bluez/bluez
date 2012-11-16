@@ -3132,7 +3132,7 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	/* reserved command */
 	{ 0x0c0d, "Read Stored Link Key",
-				read_stored_link_key_cmd, 8, true,
+				read_stored_link_key_cmd, 7, true,
 				read_stored_link_key_rsp, 5, true },
 	/* reserved commands */
 	{ 0x0c11, "Write Stored Link Key",
