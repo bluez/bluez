@@ -55,7 +55,8 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/btsnoop.h monitor/btsnoop.c \
 					monitor/control.h monitor/control.c \
 					monitor/packet.h monitor/packet.c \
-					monitor/l2cap.h monitor/l2cap.c
+					monitor/l2cap.h monitor/l2cap.c \
+					monitor/sdp.h monitor/sdp.c
 monitor_btmon_LDADD = lib/libbluetooth-private.la
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \

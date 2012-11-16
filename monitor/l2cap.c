@@ -26,8 +26,9 @@
 #include <config.h>
 #endif
 
-#include <inttypes.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -35,27 +36,7 @@
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
-
-struct l2cap_frame {
-	uint16_t index;
-	bool in;
-	uint16_t handle;
-	uint16_t cid;
-	const void *data;
-	uint16_t size;
-};
-
-static inline void l2cap_frame_init(struct l2cap_frame *frame,
-				uint16_t index, bool in, uint16_t handle,
-				uint16_t cid, const void *data, uint16_t size)
-{
-	frame->index  = index;
-	frame->in     = in;
-	frame->handle = handle;
-	frame->cid    = cid;
-	frame->data   = data;
-	frame->size   = size;
-}
+#include "sdp.h"
 
 #define MAX_CHAN 64
 
@@ -1357,7 +1338,15 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
 						" %d len %d [PSM %d mode %d]",
 							cid, size, psm, mode);
-		packet_hexdump(data, size);
+
+		switch (psm) {
+		case 0x0001:
+			sdp_packet(&frame);
+			break;
+		default:
+			packet_hexdump(data, size);
+			break;
+		}
 		break;
 	}
 }

@@ -1502,3 +1502,9 @@ struct bt_l2cap_pdu_conn_param_req {
 struct bt_l2cap_pdu_conn_param_rsp {
 	uint16_t result;
 } __attribute__ ((packed));
+
+struct bt_sdp_hdr {
+	uint8_t  pdu;
+	uint16_t tid;
+	uint16_t plen;
+} __attribute__ ((packed));
