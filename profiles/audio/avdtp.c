@@ -331,7 +331,6 @@ struct avdtp_remote_sep {
 
 struct avdtp_server {
 	bdaddr_t src;
-	uint16_t version;
 	GIOChannel *io;
 	GSList *seps;
 	GSList *sessions;
@@ -1391,9 +1390,6 @@ static gboolean avdtp_getcap_cmd(struct avdtp *session, uint8_t transaction,
 		err = AVDTP_BAD_ACP_SEID;
 		goto failed;
 	}
-
-	if (get_all && session->server->version < 0x0103)
-		return avdtp_unknown_cmd(session, transaction, cmd);
 
 	if (!sep->ind->get_capability(session, sep, get_all, &caps,
 							&err, sep->user_data))
@@ -2785,7 +2781,7 @@ static gboolean avdtp_discover_resp(struct avdtp *session,
 	int ret = 0;
 	gboolean getcap_pending = FALSE;
 
-	if (session->version >= 0x0103 && session->server->version >= 0x0103)
+	if (session->version >= 0x0103)
 		getcap_cmd = AVDTP_GET_ALL_CAPABILITIES;
 	else
 		getcap_cmd = AVDTP_GET_CAPABILITIES;
@@ -3717,8 +3713,7 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 				stream->lsep->state != AVDTP_STATE_STREAMING)
 		return -EINVAL;
 
-	if (!stream->delay_reporting || session->version < 0x0103 ||
-					session->server->version < 0x0103)
+	if (!stream->delay_reporting || session->version < 0x0103)
 		return -EINVAL;
 
 	stream->delay = delay;
@@ -3868,12 +3863,11 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
 		bacpy(dst, &session->dst);
 }
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version)
+int avdtp_init(const bdaddr_t *src, GKeyFile *config)
 {
 	GError *err = NULL;
 	gboolean tmp, master = TRUE;
 	struct avdtp_server *server;
-	uint16_t ver = 0x0102;
 
 	if (!config)
 		goto proceed;
@@ -3893,16 +3887,8 @@ int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version)
 	else
 		auto_connect = tmp;
 
-	if (g_key_file_get_boolean(config, "A2DP", "DelayReporting", NULL))
-		ver = 0x0103;
-
 proceed:
 	server = g_new0(struct avdtp_server, 1);
-
-	server->version = ver;
-
-	if (version)
-		*version = server->version;
 
 	server->io = avdtp_server_socket(src, master);
 	if (!server->io) {

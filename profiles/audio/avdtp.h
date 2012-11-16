@@ -309,5 +309,5 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 gboolean avdtp_stream_setup_active(struct avdtp *session);
 void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc);
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config, uint16_t *version);
+int avdtp_init(const bdaddr_t *src, GKeyFile *config);
 void avdtp_exit(const bdaddr_t *src);

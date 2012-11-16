@@ -109,7 +109,6 @@ struct a2dp_server {
 	GSList *sources;
 	uint32_t source_record_id;
 	uint32_t sink_record_id;
-	uint16_t version;
 	gboolean sink_enabled;
 	gboolean source_enabled;
 };
@@ -1087,7 +1086,7 @@ static struct avdtp_sep_ind endpoint_ind = {
 	.delayreport		= endpoint_delayreport_ind,
 };
 
-static sdp_record_t *a2dp_record(uint8_t type, uint16_t avdtp_ver)
+static sdp_record_t *a2dp_record(uint8_t type)
 {
 	sdp_list_t *svclass_id, *pfseq, *apseq, *root;
 	uuid_t root_uuid, l2cap_uuid, avdtp_uuid, a2dp_uuid;
@@ -1096,7 +1095,7 @@ static sdp_record_t *a2dp_record(uint8_t type, uint16_t avdtp_ver)
 	sdp_record_t *record;
 	sdp_data_t *psm, *version, *features;
 	uint16_t lp = AVDTP_UUID;
-	uint16_t a2dp_ver = 0x0102, feat = 0x000f;
+	uint16_t a2dp_ver = 0x0103, avdtp_ver = 0x0103, feat = 0x000f;
 
 	record = sdp_record_alloc();
 	if (!record)
@@ -1170,7 +1169,6 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 int a2dp_register(const bdaddr_t *src, GKeyFile *config)
 {
 	gboolean source = TRUE, sink = FALSE;
-	gboolean delay_reporting = FALSE;
 	char *str;
 	GError *err = NULL;
 	struct a2dp_server *server;
@@ -1212,7 +1210,7 @@ proceed:
 
 		server = g_new0(struct a2dp_server, 1);
 
-		av_err = avdtp_init(src, config, &server->version);
+		av_err = avdtp_init(src, config);
 		if (av_err < 0) {
 			g_free(server);
 			return av_err;
@@ -1221,15 +1219,6 @@ proceed:
 		bacpy(&server->src, src);
 		servers = g_slist_append(servers, server);
 	}
-
-	if (config)
-		delay_reporting = g_key_file_get_boolean(config, "A2DP",
-						"DelayReporting", NULL);
-
-	if (delay_reporting)
-		server->version = 0x0103;
-	else
-		server->version = 0x0102;
 
 	server->source_enabled = source;
 
@@ -1341,7 +1330,7 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 	if (*record_id != 0)
 		goto add;
 
-	record = a2dp_record(type, server->version);
+	record = a2dp_record(type);
 	if (!record) {
 		error("Unable to allocate new service record");
 		avdtp_unregister_sep(sep->lsep);
