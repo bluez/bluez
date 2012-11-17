@@ -1479,14 +1479,14 @@ struct bt_l2cap_pdu_move_chan_rsp {
 	uint16_t result;
 } __attribute__ ((packed));
 
-#define BT_L2CAP_PDU_MOVE_CHAN_CONF	0x10
-struct bt_l2cap_pdu_move_chan_conf {
+#define BT_L2CAP_PDU_MOVE_CHAN_CFM	0x10
+struct bt_l2cap_pdu_move_chan_cfm {
 	uint16_t icid;
 	uint16_t result;
 } __attribute__ ((packed));
 
-#define BT_L2CAP_PDU_MOVE_CHAN_CONF_RSP	0x11
-struct bt_l2cap_pdu_move_chan_conf_rsp {
+#define BT_L2CAP_PDU_MOVE_CHAN_CFM_RSP	0x11
+struct bt_l2cap_pdu_move_chan_cfm_rsp {
 	uint16_t icid;
 } __attribute__ ((packed));
 
@@ -1525,6 +1525,10 @@ struct bt_l2cap_amp_discover_rsp {
 	uint16_t size;
 	uint16_t features;
 } __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_CHANGE_NOTIFY	0x04
+
+#define BT_L2CAP_AMP_CHANGE_RESPONSE	0x05
 
 #define BT_L2CAP_AMP_GET_INFO_REQ	0x06
 struct bt_l2cap_amp_get_info_req {

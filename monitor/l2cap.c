@@ -689,7 +689,7 @@ static void print_move_result(uint16_t result)
 	print_field("Result: %s (0x%4.4x)", str, btohs(result));
 }
 
-static void print_move_conf_result(uint16_t result)
+static void print_move_cfm_result(uint16_t result)
 {
 	const char *str;
 
@@ -930,17 +930,17 @@ static void sig_move_chan_rsp(const struct l2cap_frame *frame)
 	print_move_result(pdu->result);
 }
 
-static void sig_move_chan_conf(const struct l2cap_frame *frame)
+static void sig_move_chan_cfm(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_conf *pdu = frame->data;
+	const struct bt_l2cap_pdu_move_chan_cfm *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
-	print_move_conf_result(pdu->result);
+	print_move_cfm_result(pdu->result);
 }
 
-static void sig_move_chan_conf_rsp(const struct l2cap_frame *frame)
+static void sig_move_chan_cfm_rsp(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_move_chan_conf_rsp *pdu = frame->data;
+	const struct bt_l2cap_pdu_move_chan_cfm_rsp *pdu = frame->data;
 
 	print_cid("Initiator", pdu->icid);
 }
@@ -1002,9 +1002,9 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 	{ 0x0f, "Move Channel Response",
 			sig_move_chan_rsp, 4, true },
 	{ 0x10, "Move Channel Confirmation",
-			sig_move_chan_conf, 4, true },
+			sig_move_chan_cfm, 4, true },
 	{ 0x11, "Move Channel Confirmation Response",
-			sig_move_chan_conf_rsp, 2, true },
+			sig_move_chan_cfm_rsp, 2, true },
 	{ 0x12, "Connection Parameter Update Request",
 			sig_conn_param_req, 8, true },
 	{ 0x13, "Connection Parameter Update Response",
@@ -1102,30 +1102,8 @@ static void sig_packet(uint16_t index, bool in, uint16_t handle,
 	packet_hexdump(data, size);
 }
 
-static void amp_cmd_reject(const struct l2cap_frame *frame)
+static void print_controller_list(const uint8_t *data, uint16_t size)
 {
-	const struct bt_l2cap_amp_cmd_reject *pdu = frame->data;
-
-	print_field("Reason: 0x%4.4x", btohs(pdu->reason));
-}
-
-static void amp_discover_req(const struct l2cap_frame *frame)
-{
-	const struct bt_l2cap_amp_discover_req *pdu = frame->data;
-
-	print_field("MTU/MPS size: %d", btohs(pdu->size));
-	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
-}
-
-static void amp_discover_rsp(const struct l2cap_frame *frame)
-{
-	const struct bt_l2cap_amp_discover_rsp *pdu = frame->data;
-	const uint8_t *data = frame->data + 4;
-	uint16_t size = frame->size - 4;
-
-	print_field("MTU/MPS size: %d", btohs(pdu->size));
-	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
-
 	while (size > 2) {
 		const char *str;
 
@@ -1179,6 +1157,40 @@ static void amp_discover_rsp(const struct l2cap_frame *frame)
 	}
 
 	packet_hexdump(data, size);
+}
+
+static void amp_cmd_reject(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_cmd_reject *pdu = frame->data;
+
+	print_field("Reason: 0x%4.4x", btohs(pdu->reason));
+}
+
+static void amp_discover_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_discover_req *pdu = frame->data;
+
+	print_field("MTU/MPS size: %d", btohs(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+}
+
+static void amp_discover_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_discover_rsp *pdu = frame->data;
+
+	print_field("MTU/MPS size: %d", btohs(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+
+	print_controller_list(frame->data + 4, frame->size - 4);
+}
+
+static void amp_change_notify(const struct l2cap_frame *frame)
+{
+	print_controller_list(frame->data, frame->size);
+}
+
+static void amp_change_response(const struct l2cap_frame *frame)
+{
 }
 
 static void amp_get_info_req(const struct l2cap_frame *frame)
@@ -1345,8 +1357,10 @@ static const struct amp_opcode_data amp_opcode_table[] = {
 			amp_discover_req, 4, true },
 	{ 0x03, "Discover Response",
 			amp_discover_rsp, 7, false },
-	{ 0x04, "Change Notify"				},
-	{ 0x05, "Change Response"			},
+	{ 0x04, "Change Notify",
+			amp_change_notify, 3, false },
+	{ 0x05, "Change Response",
+			amp_change_response, 0, true },
 	{ 0x06, "Get Info Request",
 			amp_get_info_req, 1, true },
 	{ 0x07, "Get Info Response",
