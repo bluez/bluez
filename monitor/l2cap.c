@@ -1469,6 +1469,164 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
+static void print_hex_field(const char *label, const uint8_t *data,
+								uint8_t len)
+{
+	char str[len * 2 + 1];
+	uint8_t i;
+
+	for (i = 0; i < len; i++)
+		sprintf(str + (i * 2), "%2.2x", data[i]);
+
+	print_field("%s: %s", label, str);
+}
+
+static void print_uuid(const char *label, const void *data, uint16_t size)
+{
+	switch (size) {
+	case 2:
+		print_field("%s: 0x%4.4x", label, bt_get_le16(data));
+		break;
+	default:
+		packet_hexdump(data, size);
+		break;
+	}
+}
+
+static void print_handle_range(const char *label, const void *data)
+{
+	print_field("%s: 0x%4.4x-0x%4.4x", label,
+				bt_get_le16(data), bt_get_le16(data + 2));
+}
+
+static void print_data_list(const char *label, uint8_t length,
+					const void *data, uint16_t size)
+{
+	while (size > length) {
+		print_handle_range("Handle", data);
+		print_hex_field("  Data", data + 4, length - 4);
+
+		data += length;
+		size -= length;
+	}
+
+	packet_hexdump(data, size);
+}
+
+static const char *att_opcode_to_str(uint8_t opcode);
+
+static void att_error_response(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_error_response *pdu = frame->data;
+	const char *str;
+
+	switch (pdu->error) {
+	case 0x01:
+		str = "Invalid Handle";
+		break;
+	case 0x02:
+		str = "Read Not Permitted";
+		break;
+	case 0x03:
+		str = "Write Not Permitted";
+		break;
+	case 0x04:
+		str = "Invalid PDU";
+		break;
+	case 0x05:
+		str = "Insufficient Authentication";
+		break;
+	case 0x06:
+		str = "Request Not Supported";
+		break;
+	case 0x07:
+		str = "Invalid Offset";
+		break;
+	case 0x08:
+		str = "Insufficient Authorization";
+		break;
+	case 0x09:
+		str = "Prepare Queue Full";
+		break;
+	case 0x0a:
+		str = "Attribute Not Found";
+		break;
+	case 0x0b:
+		str = "Attribute Not Long";
+		break;
+	case 0x0c:
+		str = "Insufficient Encryption Key Size";
+		break;
+	case 0x0d:
+		str = "Invalid Attribute Value Length";
+		break;
+	case 0x0e:
+		str = "Unlikely Error";
+		break;
+	case 0x0f:
+		str = "Insufficient Encryption";
+		break;
+	case 0x10:
+		str = "Unsupported Group Type";
+		break;
+	case 0x11:
+		str = "Insufficient Resources";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s (0x%2.2x)", att_opcode_to_str(pdu->request),
+							pdu->request);
+	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_field("Error: %s (0x%2.2x)", str, pdu->error);
+}
+
+static void att_exchange_mtu_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_exchange_mtu_req *pdu = frame->data;
+
+	print_field("Client RX MTU: %d", btohs(pdu->mtu));
+}
+
+static void att_exchange_mtu_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_exchange_mtu_rsp *pdu = frame->data;
+
+	print_field("Server RX MTU: %d", btohs(pdu->mtu));
+}
+
+static void att_read_type_req(const struct l2cap_frame *frame)
+{
+	print_handle_range("Handle range", frame->data);
+	print_uuid("Attribute group type", frame->data + 4, frame->size - 4);
+}
+
+static void att_read_type_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_read_group_type_rsp *pdu = frame->data;
+
+	print_field("Attribute data length: %d", pdu->length);
+	print_data_list("Attribute data list", pdu->length,
+					frame->data + 1, frame->size - 1);
+}
+
+static void att_read_group_type_req(const struct l2cap_frame *frame)
+{
+	print_handle_range("Handle range", frame->data);
+	print_uuid("Attribute group type", frame->data + 4, frame->size - 4);
+}
+
+static void att_read_group_type_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_read_group_type_rsp *pdu = frame->data;
+
+	print_field("Attribute data length: %d", pdu->length);
+	print_data_list("Attribute data list", pdu->length,
+					frame->data + 1, frame->size - 1);
+}
+
 struct att_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -1478,23 +1636,30 @@ struct att_opcode_data {
 };
 
 static const struct att_opcode_data att_opcode_table[] = {
-	{ 0x01, "Error Response"		},
-	{ 0x02, "Exchange MTU Request"		},
-	{ 0x03, "Exchange MTU Response"		},
+	{ 0x01, "Error Response",
+			att_error_response, 4, true },
+	{ 0x02, "Exchange MTU Request",
+			att_exchange_mtu_req, 2, true },
+	{ 0x03, "Exchange MTU Response",
+			att_exchange_mtu_rsp, 2, true },
 	{ 0x04, "Find Information Request"	},
 	{ 0x05, "Find Information Response"	},
 	{ 0x06, "Find By Type Value Request"	},
 	{ 0x07, "Find By Type Value Response"	},
-	{ 0x08, "Read By Type Request"		},
-	{ 0x09, "Read By Type Response"		},
+	{ 0x08, "Read By Type Request",
+			att_read_type_req, 6, false },
+	{ 0x09, "Read By Type Response",
+			att_read_type_rsp, 4, false },
 	{ 0x0a, "Read Request"			},
 	{ 0x0b, "Read Response"			},
 	{ 0x0c, "Read Blob Request"		},
 	{ 0x0d, "Read Blob Response"		},
 	{ 0x0e, "Read Multiple Request"		},
 	{ 0x0f, "Read Multiple Response"	},
-	{ 0x10, "Read By Group Type Request"	},
-	{ 0x11, "Read By Group Type Response"	},
+	{ 0x10, "Read By Group Type Request",
+			att_read_group_type_req, 6, false },
+	{ 0x11, "Read By Group Type Response",
+			att_read_group_type_rsp, 4, false },
 	{ 0x12, "Write Request"			},
 	{ 0x13, "Write Response"		},
 	{ 0x16, "Prepare Write Request"		},
@@ -1508,6 +1673,18 @@ static const struct att_opcode_data att_opcode_table[] = {
 	{ 0xd2, "Signed Write Command"		},
 	{ }
 };
+
+static const char *att_opcode_to_str(uint8_t opcode)
+{
+	int i;
+
+	for (i = 0; att_opcode_table[i].str; i++) {
+		if (att_opcode_table[i].opcode == opcode)
+			return att_opcode_table[i].str;
+	}
+
+	return "Unknown";
+}
 
 static void att_packet(uint16_t index, bool in, uint16_t handle,
 			uint16_t cid, const void *data, uint16_t size)
@@ -1569,18 +1746,6 @@ static void att_packet(uint16_t index, bool in, uint16_t handle,
 
 	l2cap_frame_init(&frame, index, in, handle, cid, data + 1, size - 1);
 	opcode_data->func(&frame);
-}
-
-static void print_hex_field(const char *label, const uint8_t *data,
-								uint8_t len)
-{
-	char str[len * 2 + 1];
-	uint8_t i;
-
-	for (i = 0; i < len; i++)
-		sprintf(str + (i * 2), "%2.2x", data[i]);
-
-	print_field("%s: %s", label, str);
 }
 
 static void print_addr(const uint8_t *addr, uint8_t addr_type)

@@ -1587,6 +1587,45 @@ struct bt_l2cap_hdr_att {
 	uint8_t  code;
 } __attribute__ ((packed));
 
+#define BT_L2CAP_ATT_ERROR_RESPONSE		0x01
+struct bt_l2cap_att_error_response {
+	uint8_t  request;
+	uint16_t handle;
+	uint8_t  error;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_EXCHANGE_MTU_REQ		0x02
+struct bt_l2cap_att_exchange_mtu_req {
+	uint16_t mtu;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_EXCHANGE_MTU_RSP		0x03
+struct bt_l2cap_att_exchange_mtu_rsp {
+	uint16_t mtu;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_READ_TYPE_REQ		0x08
+struct bt_l2cap_att_read_type_req {
+	uint16_t start_handle;
+	uint16_t end_handle;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_READ_TYPE_RSP		0x09
+struct bt_l2cap_att_read_type_rsp {
+	uint8_t  length;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_READ_GROUP_TYPE_REQ	0x10
+struct bt_l2cap_att_read_group_type_req {
+	uint16_t start_handle;
+	uint16_t end_handle;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_READ_GROUP_TYPE_RSP	0x11
+struct bt_l2cap_att_read_group_type_rsp {
+	uint8_t  length;
+} __attribute__ ((packed));
+
 struct bt_l2cap_hdr_smp {
 	uint8_t  code;
 } __attribute__ ((packed));
