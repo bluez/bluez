@@ -702,7 +702,7 @@ static void print_key_len(uint8_t key_len)
 
 	switch (key_len) {
 	case 32:
-		str = "802.11 PAL keyLength";
+		str = "802.11 PAL";
 		break;
 	default:
 		str = "Reserved";
@@ -2634,10 +2634,10 @@ static void read_local_amp_info_rsp(const void *data, uint8_t size)
 
 	print_field("Controller type: %s (0x%2.2x)", str, rsp->amp_type);
 
-	print_field("PAL capabilities: 0x%4.4x", rsp->pal_cap);
-	print_field("Max ASSOC length: %d", rsp->max_assoc_len);
-	print_field("Max flush timeout: %d", rsp->max_flush_to);
-	print_field("Best effort flush timeout: %d", rsp->be_flush_to);
+	print_field("PAL capabilities: 0x%4.4x", btohs(rsp->pal_cap));
+	print_field("Max ASSOC length: %d", btohs(rsp->max_assoc_len));
+	print_field("Max flush timeout: %d", btohl(rsp->max_flush_to));
+	print_field("Best effort flush timeout: %d", btohl(rsp->be_flush_to));
 }
 
 static void read_local_amp_assoc_cmd(const void *data, uint8_t size)

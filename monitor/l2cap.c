@@ -1102,37 +1102,278 @@ static void sig_packet(uint16_t index, bool in, uint16_t handle,
 	packet_hexdump(data, size);
 }
 
+static void amp_cmd_reject(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_cmd_reject *pdu = frame->data;
+
+	print_field("Reason: 0x%4.4x", btohs(pdu->reason));
+}
+
+static void amp_discover_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_discover_req *pdu = frame->data;
+
+	print_field("MTU/MPS size: %d", btohs(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+}
+
+static void amp_discover_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_discover_rsp *pdu = frame->data;
+	const uint8_t *data = frame->data + 4;
+	uint16_t size = frame->size - 4;
+
+	print_field("MTU/MPS size: %d", btohs(pdu->size));
+	print_field("Extended feature mask: 0x%4.4x", btohs(pdu->features));
+
+	while (size > 2) {
+		const char *str;
+
+		print_field("Controller ID: %d", data[0]);
+
+		switch (data[1]) {
+		case 0x00:
+			str = "Primary BR/EDR Controller";
+			break;
+		case 0x01:
+			str = "802.11 AMP Controller";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Type: %s (0x%2.2x)", str, data[1]);
+
+		switch (data[2]) {
+		case 0x00:
+			str = "Present";
+			break;
+		case 0x01:
+			str = "Bluetooth only";
+			break;
+		case 0x02:
+			str = "No capacity";
+			break;
+		case 0x03:
+			str = "Low capacity";
+			break;
+		case 0x04:
+			str = "Medium capacity";
+			break;
+		case 0x05:
+			str = "High capacity";
+			break;
+		case 0x06:
+			str = "Full capacity";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("  Status: %s (0x%2.2x)", str, data[2]);
+
+		data += 3;
+		size -= 3;
+	}
+
+	packet_hexdump(data, size);
+}
+
+static void amp_get_info_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_get_info_req *pdu = frame->data;
+
+	print_field("Controller ID: %d", pdu->ctrlid);
+}
+
+static void amp_get_info_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_get_info_rsp *pdu = frame->data;
+	const char *str;
+
+	print_field("Controller ID: %d", pdu->ctrlid);
+
+	switch (pdu->status) {
+	case 0x00:
+		str = "Success";
+		break;
+	case 0x01:
+		str = "Invalid Controller ID";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Status: %s (0x%2.2x)", str, pdu->status);
+
+	print_field("Total bandwidth: %d kbps", btohl(pdu->total_bw));
+	print_field("Max guaranteed bandwidth: %d kbps", btohl(pdu->max_bw));
+	print_field("Min latency: %d", btohl(pdu->min_latency));
+
+	print_field("PAL capabilities: 0x%4.4x", btohs(pdu->pal_cap));
+	print_field("Max ASSOC length: %d", btohs(pdu->max_assoc_len));
+}
+
+static void amp_get_assoc_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_get_assoc_req *pdu = frame->data;
+
+	print_field("Controller ID: %d", pdu->ctrlid);
+}
+
+static void amp_get_assoc_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_get_assoc_rsp *pdu = frame->data;
+	const char *str;
+
+	print_field("Controller ID: %d", pdu->ctrlid);
+
+	switch (pdu->status) {
+	case 0x00:
+		str = "Success";
+		break;
+	case 0x01:
+		str = "Invalid Controller ID";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Status: %s (0x%2.2x)", str, pdu->status);
+
+	packet_hexdump(frame->data + 2, frame->size - 2);
+}
+
+static void amp_create_phy_link_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_create_phy_link_req *pdu = frame->data;
+
+	print_field("Local controller ID: %d", pdu->local_ctrlid);
+	print_field("Remote controller ID: %d", pdu->remote_ctrlid);
+
+	packet_hexdump(frame->data + 2, frame->size - 2);
+}
+
+static void amp_create_phy_link_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_create_phy_link_rsp *pdu = frame->data;
+	const char *str;
+
+	print_field("Local controller ID: %d", pdu->local_ctrlid);
+	print_field("Remote controller ID: %d", pdu->remote_ctrlid);
+
+	switch (pdu->status) {
+	case 0x00:
+		str = "Success";
+		break;
+	case 0x01:
+		str = "Invalid Controller ID";
+		break;
+	case 0x02:
+		str = "Failed - Unable to start link creation";
+		break;
+	case 0x03:
+		str = "Failed - Collision occurred";
+		break;
+	case 0x04:
+		str = "Failed - Disconnected link packet received";
+		break;
+	case 0x05:
+		str = "Failed - Link already exists";
+		break;
+	case 0x06:
+		str = "Failed - Security violation";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Status: %s (0x%2.2x)", str, pdu->status);
+}
+
+static void amp_disconn_phy_link_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_disconn_phy_link_req *pdu = frame->data;
+
+	print_field("Local controller ID: %d", pdu->local_ctrlid);
+	print_field("Remote controller ID: %d", pdu->remote_ctrlid);
+}
+
+static void amp_disconn_phy_link_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_amp_disconn_phy_link_rsp *pdu = frame->data;
+	const char *str;
+
+	print_field("Local controller ID: %d", pdu->local_ctrlid);
+	print_field("Remote controller ID: %d", pdu->remote_ctrlid);
+
+	switch (pdu->status) {
+	case 0x00:
+		str = "Success";
+		break;
+	case 0x01:
+		str = "Invalid Controller ID";
+		break;
+	case 0x02:
+		str = "Failed - No link exists";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Status: %s (0x%2.2x)", str, pdu->status);
+}
+
 struct amp_opcode_data {
 	uint8_t opcode;
 	const char *str;
-	void (*func) (const void *data, uint16_t size);
+	void (*func) (const struct l2cap_frame *frame);
 	uint16_t size;
 	bool fixed;
 };
 
 static const struct amp_opcode_data amp_opcode_table[] = {
-	{ 0x01, "Command Reject"			},
-	{ 0x02, "Discover Request"			},
-	{ 0x03, "Discover Response"			},
+	{ 0x01, "Command Reject",
+			amp_cmd_reject, 2, false },
+	{ 0x02, "Discover Request",
+			amp_discover_req, 4, true },
+	{ 0x03, "Discover Response",
+			amp_discover_rsp, 7, false },
 	{ 0x04, "Change Notify"				},
 	{ 0x05, "Change Response"			},
-	{ 0x06, "Get Info Request"			},
-	{ 0x07, "Get Info Response"			},
-	{ 0x08, "Get Assoc Request"			},
-	{ 0x09, "Get Assoc Response"			},
-	{ 0x0a, "Create Physical Link Request"		},
-	{ 0x0b, "Create Physical Link Response"		},
-	{ 0x0c, "Disconnect Physical Link Request"	},
-	{ 0x0d, "Disconnect Physical Link Response"	},
+	{ 0x06, "Get Info Request",
+			amp_get_info_req, 1, true },
+	{ 0x07, "Get Info Response",
+			amp_get_info_rsp, 18, true },
+	{ 0x08, "Get Assoc Request",
+			amp_get_assoc_req, 1, true },
+	{ 0x09, "Get Assoc Response",
+			amp_get_assoc_rsp, 2, false },
+	{ 0x0a, "Create Physical Link Request",
+			amp_create_phy_link_req, 2, false },
+	{ 0x0b, "Create Physical Link Response",
+			amp_create_phy_link_rsp, 3, true },
+	{ 0x0c, "Disconnect Physical Link Request",
+			amp_disconn_phy_link_req, 2, true },
+	{ 0x0d, "Disconnect Physical Link Response",
+			amp_disconn_phy_link_rsp, 3, true },
 	{ },
 };
 
-static void amp_packet(const void *data, uint16_t size)
+static void amp_packet(uint16_t index, bool in, uint16_t handle,
+			uint16_t cid, const void *data, uint16_t size)
 {
+	struct l2cap_frame frame;
 	uint16_t control, fcs, len;
 	uint8_t opcode, ident;
 	const struct amp_opcode_data *opcode_data = NULL;
-	const char *opcode_str;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	if (size < 4) {
@@ -1144,7 +1385,8 @@ static void amp_packet(const void *data, uint16_t size)
 	control = bt_get_le16(data);
 	fcs = bt_get_le16(data + size - 2);
 
-	print_field("Channel: %d dlen %d control 0x%4.4x fcs 0x%4.4x",
+	print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
+				" %d dlen %d control 0x%4.4x fcs 0x%4.4x",
 						3, size, control, fcs);
 
 	if (control & 0x01)
@@ -1173,15 +1415,44 @@ static void amp_packet(const void *data, uint16_t size)
 		}
 	}
 
-	if (opcode_data)
+	if (opcode_data) {
+		if (opcode_data->func) {
+			if (in)
+				opcode_color = COLOR_MAGENTA;
+			else
+				opcode_color = COLOR_BLUE;
+		} else
+			opcode_color = COLOR_WHITE_BG;
 		opcode_str = opcode_data->str;
-	else
+	} else {
+		opcode_color = COLOR_WHITE_BG;
 		opcode_str = "Unknown";
+	}
 
-	print_indent(6, COLOR_CYAN, "AMP: ", opcode_str, COLOR_OFF,
+	print_indent(6, opcode_color, "AMP: ", opcode_str, COLOR_OFF,
 			" (0x%2.2x) ident %d len %d", opcode, ident, len);
 
-	packet_hexdump(data + 6, size - 8);
+	if (!opcode_data || !opcode_data->func) {
+		packet_hexdump(data + 6, size - 8);
+		return;
+	}
+
+	if (opcode_data->fixed) {
+		if (len != opcode_data->size) {
+			print_text(COLOR_ERROR, "invalid size");
+			packet_hexdump(data + 6, size - 8);
+			return;
+		}
+	} else {
+		if (len < opcode_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data + 6, size - 8);
+			return;
+		}
+	}
+
+	l2cap_frame_init(&frame, index, in, handle, cid, data + 6, len);
+	opcode_data->func(&frame);
 }
 
 struct att_opcode_data {
@@ -1322,7 +1593,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		sig_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0003:
-		amp_packet(data, size);
+		amp_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0004:
 		att_packet(data, size);

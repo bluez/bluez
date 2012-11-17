@@ -1503,6 +1503,82 @@ struct bt_l2cap_pdu_conn_param_rsp {
 	uint16_t result;
 } __attribute__ ((packed));
 
+struct bt_l2cap_hdr_amp {
+	uint8_t  code;
+	uint8_t  ident;
+	uint16_t len;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_CMD_REJECT		0x01
+struct bt_l2cap_amp_cmd_reject {
+	uint16_t reason;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_DISCOVER_REQ	0x02
+struct bt_l2cap_amp_discover_req {
+	uint16_t size;
+	uint16_t features;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_DISCOVER_RSP	0x03
+struct bt_l2cap_amp_discover_rsp {
+	uint16_t size;
+	uint16_t features;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_GET_INFO_REQ	0x06
+struct bt_l2cap_amp_get_info_req {
+	uint8_t  ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_GET_INFO_RSP	0x07
+struct bt_l2cap_amp_get_info_rsp {
+	uint8_t  ctrlid;
+	uint8_t  status;
+	uint32_t total_bw;
+	uint32_t max_bw;
+	uint32_t min_latency;
+	uint16_t pal_cap;
+	uint16_t max_assoc_len;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_GET_ASSOC_REQ	0x08
+struct bt_l2cap_amp_get_assoc_req {
+	uint8_t  ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_GET_ASSOC_RSP	0x09
+struct bt_l2cap_amp_get_assoc_rsp {
+	uint8_t  ctrlid;
+	uint8_t  status;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_CREATE_PHY_LINK_REQ	0x0a
+struct bt_l2cap_amp_create_phy_link_req {
+	uint8_t  local_ctrlid;
+	uint8_t  remote_ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_CREATE_PHY_LINK_RSP	0x0b
+struct bt_l2cap_amp_create_phy_link_rsp {
+	uint8_t  local_ctrlid;
+	uint8_t  remote_ctrlid;
+	uint8_t  status;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_DISCONN_PHY_LINK_REQ	0x0c
+struct bt_l2cap_amp_disconn_phy_link_req {
+	uint8_t  local_ctrlid;
+	uint8_t  remote_ctrlid;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_AMP_DISCONN_PHY_LINK_RSP	0x0d
+struct bt_l2cap_amp_disconn_phy_link_rsp {
+	uint8_t  local_ctrlid;
+	uint8_t  remote_ctrlid;
+	uint8_t  status;
+} __attribute__ ((packed));
+
 struct bt_sdp_hdr {
 	uint8_t  pdu;
 	uint16_t tid;
