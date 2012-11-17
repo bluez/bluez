@@ -1048,6 +1048,7 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 			g_free(l2cap);
 			l2cap = NULL;
 			g_clear_error(&err);
+			goto failed;
 		} else {
 			if (psm == 0)
 				bt_io_get(io, NULL, BT_IO_OPT_PSM, &psm,
@@ -1084,6 +1085,7 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 			g_free(rfcomm);
 			rfcomm = NULL;
 			g_clear_error(&err);
+			goto failed;
 		} else {
 			if (chan == 0)
 				bt_io_get(io, NULL, BT_IO_OPT_CHANNEL, &chan,
@@ -1099,6 +1101,18 @@ static uint32_t ext_start_servers(struct ext_profile *ext,
 
 	return ext_register_record(ext, l2cap, rfcomm,
 						adapter_get_address(adapter));
+
+failed:
+	if (l2cap) {
+		ext->servers = g_slist_remove(ext->servers, l2cap);
+		ext_io_destroy(l2cap);
+	}
+	if (rfcomm) {
+		ext->servers = g_slist_remove(ext->servers, rfcomm);
+		ext_io_destroy(rfcomm);
+	}
+
+	return 0;
 }
 
 static struct ext_profile *find_ext(struct btd_profile *p)
