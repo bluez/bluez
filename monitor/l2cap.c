@@ -1458,7 +1458,7 @@ static void amp_packet(uint16_t index, bool in, uint16_t handle,
 struct att_opcode_data {
 	uint8_t opcode;
 	const char *str;
-	void (*func) (const void *data, uint8_t size);
+	void (*func) (const struct l2cap_frame *frame);
 	uint8_t size;
 	bool fixed;
 };
@@ -1495,11 +1495,13 @@ static const struct att_opcode_data att_opcode_table[] = {
 	{ }
 };
 
-static void att_packet(const void *data, uint16_t size)
+static void att_packet(uint16_t index, bool in, uint16_t handle,
+			uint16_t cid, const void *data, uint16_t size)
 {
+	struct l2cap_frame frame;
 	uint8_t opcode = *((const uint8_t *) data);
 	const struct att_opcode_data *opcode_data = NULL;
-	const char *opcode_str;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	if (size < 1) {
@@ -1515,21 +1517,50 @@ static void att_packet(const void *data, uint16_t size)
 		}
 	}
 
-	if (opcode_data)
+	if (opcode_data) {
+		if (opcode_data->func) {
+			if (in)
+				opcode_color = COLOR_MAGENTA;
+			else
+				opcode_color = COLOR_BLUE;
+		} else
+			opcode_color = COLOR_WHITE_BG;
 		opcode_str = opcode_data->str;
-	else
+	} else {
+		opcode_color = COLOR_WHITE_BG;
 		opcode_str = "Unknown";
+	}
 
-	print_indent(6, COLOR_CYAN, "ATT: ", opcode_str, COLOR_OFF,
+	print_indent(6, opcode_color, "ATT: ", opcode_str, COLOR_OFF,
 				" (0x%2.2x) len %d", opcode, size - 1);
 
-	packet_hexdump(data + 1, size - 1);
+	if (!opcode_data || !opcode_data->func) {
+		packet_hexdump(data + 1, size - 1);
+		return;
+	}
+
+	if (opcode_data->fixed) {
+		if (size - 1 != opcode_data->size) {
+			print_text(COLOR_ERROR, "invalid size");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	} else {
+		if (size - 1 < opcode_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	}
+
+	l2cap_frame_init(&frame, index, in, handle, cid, data + 1, size - 1);
+	opcode_data->func(&frame);
 }
 
 struct smp_opcode_data {
 	uint8_t opcode;
 	const char *str;
-	void (*func) (const void *data, uint8_t size);
+	void (*func) (const struct l2cap_frame *frame);
 	uint8_t size;
 	bool fixed;
 };
@@ -1549,15 +1580,17 @@ static const struct smp_opcode_data smp_opcode_table[] = {
 	{ }
 };
 
-static void smp_packet(const void *data, uint16_t size)
+static void smp_packet(uint16_t index, bool in, uint16_t handle,
+			uint16_t cid, const void *data, uint16_t size)
 {
+	struct l2cap_frame frame;
 	uint8_t opcode = *((const uint8_t *) data);
 	const struct smp_opcode_data *opcode_data = NULL;
-	const char *opcode_str;
+	const char *opcode_color, *opcode_str;
 	int i;
 
 	if (size < 1) {
-		print_text(COLOR_ERROR, "malformed security packet");
+		print_text(COLOR_ERROR, "malformed attribute packet");
 		packet_hexdump(data, size);
 		return;
 	}
@@ -1569,15 +1602,44 @@ static void smp_packet(const void *data, uint16_t size)
 		}
 	}
 
-	if (opcode_data)
+	if (opcode_data) {
+		if (opcode_data->func) {
+			if (in)
+				opcode_color = COLOR_MAGENTA;
+			else
+				opcode_color = COLOR_BLUE;
+		} else
+			opcode_color = COLOR_WHITE_BG;
 		opcode_str = opcode_data->str;
-	else
+	} else {
+		opcode_color = COLOR_WHITE_BG;
 		opcode_str = "Unknown";
+	}
 
-	print_indent(6, COLOR_CYAN, "SMP: ", opcode_str, COLOR_OFF,
+	print_indent(6, opcode_color, "SMP: ", opcode_str, COLOR_OFF,
 				" (0x%2.2x) len %d", opcode, size - 1);
 
-	packet_hexdump(data + 1, size - 1);
+	if (!opcode_data || !opcode_data->func) {
+		packet_hexdump(data + 1, size - 1);
+		return;
+	}
+
+	if (opcode_data->fixed) {
+		if (size - 1 != opcode_data->size) {
+			print_text(COLOR_ERROR, "invalid size");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	} else {
+		if (size - 1 < opcode_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data + 1, size - 1);
+			return;
+		}
+	}
+
+	l2cap_frame_init(&frame, index, in, handle, cid, data + 1, size - 1);
+	opcode_data->func(&frame);
 }
 
 static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
@@ -1596,10 +1658,10 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		amp_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0004:
-		att_packet(data, size);
+		att_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0006:
-		smp_packet(data, size);
+		smp_packet(index, in, handle, cid, data, size);
 		break;
 	default:
 		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
