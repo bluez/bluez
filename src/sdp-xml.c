@@ -160,6 +160,11 @@ static void element_end(GMarkupParseContext *context,
 		return;
 	}
 
+	if (!ctx_data->stack_head || !ctx_data->stack_head->data) {
+		DBG("No data for %s", element_name);
+		return;
+	}
+
 	if (!strcmp(element_name, "sequence")) {
 		ctx_data->stack_head->data->unitSize = compute_seq_size(ctx_data->stack_head->data);
 
