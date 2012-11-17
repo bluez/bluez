@@ -1586,14 +1586,14 @@ static void ext_set_defaults(struct ext_profile *ext)
 	ext->enable_client = true;
 	ext->enable_server = true;
 
+	ext->remote_uuids = g_new0(char *, 2);
+
 	for (i = 0; i < G_N_ELEMENTS(defaults); i++) {
 		struct default_settings *settings = &defaults[i];
 		const char *remote_uuid;
 
 		if (strcasecmp(ext->uuid, settings->uuid) != 0)
 			continue;
-
-		ext->remote_uuids = g_new0(char *, 2);
 
 		if (settings->remote_uuid)
 			remote_uuid = settings->remote_uuid;
@@ -1784,6 +1784,13 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
+
+	if (!ext->remote_uuids[0]) {
+		if (ext->service)
+			ext->remote_uuids[0] = g_strdup(ext->service);
+		else
+			ext->remote_uuids[0] = g_strdup(ext->uuid);
+	}
 
 	p = &ext->p;
 
