@@ -1557,6 +1557,270 @@ static void att_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
+static void print_hex_field(const char *label, const uint8_t *data,
+								uint8_t len)
+{
+	char str[len * 2 + 1];
+	uint8_t i;
+
+	for (i = 0; i < len; i++)
+		sprintf(str + (i * 2), "%2.2x", data[i]);
+
+	print_field("%s: %s", label, str);
+}
+
+static void print_addr(const uint8_t *addr, uint8_t addr_type)
+{
+	const char *str;
+
+	switch (addr_type) {
+	case 0x00:
+		print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+						addr[5], addr[4], addr[3],
+						addr[2], addr[1], addr[0]);
+		break;
+	case 0x01:
+		switch ((addr[5] & 0xc0) >> 6) {
+		case 0x00:
+			str = "Non-Resolvable";
+			break;
+		case 0x01:
+			str = "Resolvable";
+			break;
+		case 0x03:
+			str = "Static";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
+					" (%s)", addr[5], addr[4], addr[3],
+					addr[2], addr[1], addr[0], str);
+		break;
+	default:
+		print_field("Address: %2.2X-%2.2X-%2.2X-%2.2X-%2.2X-%2.2X",
+						addr[5], addr[4], addr[3],
+						addr[2], addr[1], addr[0]);
+		break;
+	}
+}
+
+static void print_addr_type(uint8_t addr_type)
+{
+	const char *str;
+
+	switch (addr_type) {
+	case 0x00:
+		str = "Public";
+		break;
+	case 0x01:
+		str = "Random";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Address type: %s (0x%2.2x)", str, addr_type);
+}
+
+static void print_smp_io_capa(uint8_t io_capa)
+{
+	const char *str;
+
+	switch (io_capa) {
+	case 0x00:
+		str = "DisplayOnly";
+		break;
+	case 0x01:
+		str = "DisplayYesNo";
+		break;
+	case 0x02:
+		str = "KeyboardOnly";
+		break;
+	case 0x03:
+		str = "NoInputNoOutput";
+		break;
+	case 0x04:
+		str = "KeyboardDisplay";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("IO capability: %s (0x%2.2x)", str, io_capa);
+}
+
+static void print_smp_oob_data(uint8_t oob_data)
+{
+	const char *str;
+
+	switch (oob_data) {
+	case 0x00:
+		str = "Authentication data not present";
+		break;
+	case 0x01:
+		str = "Authentication data from remote device present";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("OOB data: %s (0x%2.2x)", str, oob_data);
+}
+
+static void print_smp_auth_req(uint8_t auth_req)
+{
+	const char *str;
+
+	switch (auth_req & 0x03) {
+	case 0x00:
+		str = "No bonding";
+		break;
+	case 0x01:
+		str = "Bonding";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Authentication requirement: %s - %s (0x%2.2x)",
+			str, (auth_req & 0x04) ? "MITM" : "No MITM", auth_req);
+}
+
+static void smp_pairing_request(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_pairing_request *pdu = frame->data;
+
+	print_smp_io_capa(pdu->io_capa);
+	print_smp_oob_data(pdu->oob_data);
+	print_smp_auth_req(pdu->auth_req);
+
+	print_field("Max encryption key size: %d", pdu->max_key_size);
+	print_field("Initiator key distribution: 0x%2.2x", pdu->init_key_dist);
+	print_field("Responder key distribution: 0x%2.2x", pdu->resp_key_dist);
+}
+
+static void smp_pairing_response(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_pairing_response *pdu = frame->data;
+
+	print_smp_io_capa(pdu->io_capa);
+	print_smp_oob_data(pdu->oob_data);
+	print_smp_auth_req(pdu->auth_req);
+
+	print_field("Max encryption key size: %d", pdu->max_key_size);
+	print_field("Initiator key distribution: 0x%2.2x", pdu->init_key_dist);
+	print_field("Responder key distribution: 0x%2.2x", pdu->resp_key_dist);
+}
+
+static void smp_pairing_confirm(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_pairing_confirm *pdu = frame->data;
+
+	print_hex_field("Confim value", pdu->value, 16);
+}
+
+static void smp_pairing_random(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_pairing_random *pdu = frame->data;
+
+	print_hex_field("Random value", pdu->value, 16);
+}
+
+static void smp_pairing_failed(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_pairing_failed *pdu = frame->data;
+	const char *str;
+
+	switch (pdu->reason) {
+	case 0x01:
+		str = "Passkey entry failed";
+		break;
+	case 0x02:
+		str = "OOB not available";
+		break;
+	case 0x03:
+		str = "Authentication requirements";
+		break;
+	case 0x04:
+		str = "Confirm value failed";
+		break;
+	case 0x05:
+		str = "Pairing not supported";
+		break;
+	case 0x06:
+		str = "Encryption key size";
+		break;
+	case 0x07:
+		str = "Command not supported";
+		break;
+	case 0x08:
+		str = "Unspecified reason";
+		break;
+	case 0x09:
+		str = "Repeated attempts";
+		break;
+	case 0x0a:
+		str = "Invalid parameters";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Reason: %s (0x%2.2x)", str, pdu->reason);
+}
+
+static void smp_encrypt_info(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_encrypt_info *pdu = frame->data;
+
+	print_hex_field("Long term key", pdu->ltk, 16);
+}
+
+static void smp_master_ident(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_master_ident *pdu = frame->data;
+
+	print_field("EDIV: 0x%4.4x", btohs(pdu->ediv));
+	print_field("Rand: 0x%16.16" PRIx64, btohll(pdu->rand));
+}
+
+static void smp_ident_info(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_ident_info *pdu = frame->data;
+
+	print_hex_field("Identity resolving key", pdu->irk, 16);
+}
+
+static void smp_ident_addr_info(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_ident_addr_info *pdu = frame->data;
+
+	print_addr_type(pdu->addr_type);
+	print_addr(pdu->addr, pdu->addr_type);
+}
+
+static void smp_signing_info(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_signing_info *pdu = frame->data;
+
+	print_hex_field("Signature key", pdu->csrk, 16);
+}
+
+static void smp_security_request(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_smp_security_request *pdu = frame->data;
+
+	print_smp_auth_req(pdu->auth_req);
+}
+
 struct smp_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -1566,17 +1830,28 @@ struct smp_opcode_data {
 };
 
 static const struct smp_opcode_data smp_opcode_table[] = {
-	{ 0x01, "Pairing Request"		},
-	{ 0x02, "Pairing Response"		},
-	{ 0x03, "Pairing Confirm"		},
-	{ 0x04, "Pairing Random"		},
-	{ 0x05, "Pairing Failed"		},
-	{ 0x06, "Encryption Information"	},
-	{ 0x07, "Master Identification"		},
-	{ 0x08, "Identity Information"		},
-	{ 0x09, "Identity Address Information"	},
-	{ 0x0a, "Signing Information"		},
-	{ 0x0b, "Security Request"		},
+	{ 0x01, "Pairing Request",
+			smp_pairing_request, 6, true },
+	{ 0x02, "Pairing Response",
+			smp_pairing_response, 6, true },
+	{ 0x03, "Pairing Confirm",
+			smp_pairing_confirm, 16, true },
+	{ 0x04, "Pairing Random",
+			smp_pairing_random, 16, true },
+	{ 0x05, "Pairing Failed",
+			smp_pairing_failed, 1, true },
+	{ 0x06, "Encryption Information",
+			smp_encrypt_info, 16, true },
+	{ 0x07, "Master Identification",
+			smp_master_ident, 10, true },
+	{ 0x08, "Identity Information",
+			smp_ident_info, 16, true },
+	{ 0x09, "Identity Address Information",
+			smp_ident_addr_info, 7, true },
+	{ 0x0a, "Signing Information",
+			smp_signing_info, 16, true },
+	{ 0x0b, "Security Request",
+			smp_security_request, 1, true },
 	{ }
 };
 

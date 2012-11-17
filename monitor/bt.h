@@ -1579,6 +1579,81 @@ struct bt_l2cap_amp_disconn_phy_link_rsp {
 	uint8_t  status;
 } __attribute__ ((packed));
 
+struct bt_l2cap_hdr_att {
+	uint8_t  code;
+} __attribute__ ((packed));
+
+struct bt_l2cap_hdr_smp {
+	uint8_t  code;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_PAIRING_REQUEST	0x01
+struct bt_l2cap_smp_pairing_request {
+	uint8_t  io_capa;
+	uint8_t  oob_data;
+	uint8_t  auth_req;
+	uint8_t  max_key_size;
+	uint8_t  init_key_dist;
+	uint8_t  resp_key_dist;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_PAIRING_RESPONSE	0x02
+struct bt_l2cap_smp_pairing_response {
+	uint8_t  io_capa;
+	uint8_t  oob_data;
+	uint8_t  auth_req;
+	uint8_t  max_key_size;
+	uint8_t  init_key_dist;
+	uint8_t  resp_key_dist;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_PAIRING_CONFIRM	0x03
+struct bt_l2cap_smp_pairing_confirm {
+	uint8_t  value[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_PAIRING_RANDOM	0x04
+struct bt_l2cap_smp_pairing_random {
+	uint8_t  value[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_PAIRING_FAILED	0x05
+struct bt_l2cap_smp_pairing_failed {
+	uint8_t  reason;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_ENCRYPT_INFO	0x06
+struct bt_l2cap_smp_encrypt_info {
+	uint8_t  ltk[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_MASTER_IDENT	0x07
+struct bt_l2cap_smp_master_ident {
+	uint16_t ediv;
+	uint64_t rand;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_IDENT_INFO		0x08
+struct bt_l2cap_smp_ident_info {
+	uint8_t  irk[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_IDENT_ADDR_INFO	0x09
+struct bt_l2cap_smp_ident_addr_info {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_SIGNING_INFO	0x0a
+struct bt_l2cap_smp_signing_info {
+	uint8_t  csrk[16];
+} __attribute__ ((packed));
+
+#define BT_L2CAP_SMP_SECURITY_REQUEST	0x0b
+struct bt_l2cap_smp_security_request {
+	uint8_t  auth_req;
+} __attribute__ ((packed));
+
 struct bt_sdp_hdr {
 	uint8_t  pdu;
 	uint16_t tid;
