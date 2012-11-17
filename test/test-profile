@@ -6,6 +6,7 @@ from gi.repository import GObject
 
 import os
 import sys
+import uuid
 import dbus
 import dbus.service
 import dbus.mainloop.glib
@@ -47,7 +48,7 @@ if __name__ == '__main__':
 	option_list = [
 			make_option("-u", "--uuid", action="store",
 					type="string", dest="uuid",
-					default="spp"),
+					default=None),
 			make_option("-p", "--path", action="store",
 					type="string", dest="path",
 					default="/foo/bar/profile"),
@@ -104,6 +105,9 @@ if __name__ == '__main__':
 
 	if (options.service):
 		opts["Service"] = options.service
+
+	if not options.uuid:
+		options.uuid = str(uuid.uuid4())
 
 	manager.RegisterProfile(options.path, options.uuid, opts)
 
