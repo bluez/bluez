@@ -395,6 +395,34 @@
 		</attribute>						\
 	</record>"
 
+#define GENERIC_RECORD							\
+	"<?xml version=\"1.0\" encoding=\"UTF-8\" ?>			\
+	<record>							\
+		<attribute id=\"0x0001\">				\
+			<sequence>					\
+				<uuid value=\"%s\" />			\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0004\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"0x0100\" />	\
+					%s				\
+				</sequence>				\
+				%s					\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
+		%s							\
+		<attribute id=\"0x0100\">				\
+			<text value=\"%s\" />				\
+		</attribute>						\
+	</record>"
+
 struct ext_io;
 
 struct ext_profile {
@@ -1485,6 +1513,64 @@ static char *get_ftp_record(struct ext_profile *ext, struct ext_io *l2cap,
 	return g_strdup_printf(FTP_RECORD, chan, ext->version, psm, ext->name);
 }
 
+#define RFCOMM_SEQ	"<sequence>				\
+				<uuid value=\"0x0003\" />	\
+				<uint8 value=\"0x%02x\" />	\
+			</sequence>"
+
+#define VERSION_ATTR							\
+		"<attribute id=\"0x0009\">				\
+			<sequence>					\
+				<sequence>				\
+					<uuid value=\"%s\" />		\
+					<uint16 value=\"0x%04x\" />	\
+				</sequence>				\
+			</sequence>					\
+		</attribute>"
+
+static char *get_generic_record(struct ext_profile *ext, struct ext_io *l2cap,
+							struct ext_io *rfcomm)
+{
+	char uuid_str[MAX_LEN_UUID_STR], svc_str[MAX_LEN_UUID_STR], psm[30];
+	char *rf_seq, *ver_attr, *rec;
+	uuid_t uuid;
+
+	bt_string2uuid(&uuid, ext->uuid);
+	sdp_uuid2strn(&uuid, uuid_str, sizeof(uuid_str));
+
+	if (ext->service) {
+		bt_string2uuid(&uuid, ext->service);
+		sdp_uuid2strn(&uuid, svc_str, sizeof(svc_str));
+	} else {
+		strncpy(svc_str, uuid_str, sizeof(svc_str));
+	}
+
+	if (l2cap)
+		snprintf(psm, sizeof(psm), "<uint16 value=\"0x%04x\" />",
+								l2cap->psm);
+	else
+		psm[0] = '\0';
+
+	if (rfcomm)
+		rf_seq = g_strdup_printf(RFCOMM_SEQ, rfcomm->chan);
+	else
+		rf_seq = g_strdup("");
+
+	if (ext->version)
+		ver_attr = g_strdup_printf(VERSION_ATTR, uuid_str,
+								ext->version);
+	else
+		ver_attr = g_strdup("");
+
+	rec = g_strdup_printf(GENERIC_RECORD, svc_str, psm, rf_seq, ver_attr,
+								ext->name);
+
+	g_free(rf_seq);
+	g_free(ver_attr);
+
+	return rec;
+}
+
 static struct default_settings {
 	const char	*uuid;
 	const char	*name;
@@ -1781,6 +1867,9 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	if (!ext->service)
 		set_service(ext);
+
+	if (ext->enable_server && !(ext->record || ext->get_record))
+		ext->get_record = get_generic_record;
 
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
