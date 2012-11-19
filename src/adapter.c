@@ -2259,9 +2259,6 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 void btd_adapter_start(struct btd_adapter *adapter)
 {
 	struct session_req *req;
-	char address[18];
-
-	ba2str(&adapter->bdaddr, address);
 
 	adapter->off_requested = FALSE;
 	adapter->up = TRUE;
