@@ -461,24 +461,35 @@ static void sco_connect(const char *src, const char *dst, gint disconn)
 	}
 }
 
-static void sco_listen(const char *src, gint disconn)
+static void sco_listen(const char *src, gboolean defer, gint reject,
+				gint disconn, gint accept)
 {
 	struct io_data *data;
+	BtIOConnect conn;
+	BtIOConfirm cfm;
 	GIOChannel *sco_srv;
 	GError *err = NULL;
 
 	printf("Listening for SCO connections\n");
 
-	data = io_data_new(NULL, -1, disconn, -1);
+	if (defer) {
+		conn = NULL;
+		cfm = confirm_cb;
+	} else {
+		conn = connect_cb;
+		cfm = NULL;
+	}
+
+	data = io_data_new(NULL, reject, disconn, accept);
 
 	if (src)
-		sco_srv = bt_io_listen(connect_cb, NULL, data,
+		sco_srv = bt_io_listen(conn, cfm, data,
 					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
 					BT_IO_OPT_INVALID);
 	else
-		sco_srv = bt_io_listen(connect_cb, NULL, data,
+		sco_srv = bt_io_listen(conn, cfm, data,
 					(GDestroyNotify) io_data_unref,
 					&err, BT_IO_OPT_INVALID);
 
@@ -588,7 +599,8 @@ int main(int argc, char *argv[])
 		if (argc > 1)
 			sco_connect(opt_dev, argv[1], opt_disconn);
 		else
-			sco_listen(opt_dev, opt_disconn);
+			sco_listen(opt_dev, opt_defer, opt_reject,
+					opt_disconn, opt_accept);
 	}
 
 	signal(SIGTERM, sig_term);
