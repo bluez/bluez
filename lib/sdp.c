@@ -666,18 +666,6 @@ static int sdp_get_data_type(sdp_buf_t *buf, uint8_t dtd)
 	return data_type;
 }
 
-static int sdp_set_data_type(sdp_buf_t *buf, uint8_t dtd)
-{
-	int data_type = 0;
-	uint8_t *p = buf->data + buf->data_size;
-
-	*p = dtd;
-	data_type = sdp_get_data_type(buf, dtd);
-	buf->data_size += data_type;
-
-	return data_type;
-}
-
 void sdp_set_attrid(sdp_buf_t *buf, uint16_t attr)
 {
 	uint8_t *p = buf->data;
@@ -815,8 +803,12 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	uint128_t u128;
 	uint8_t *seqp = buf->data + buf->data_size;
 
-	pdu_size = sdp_set_data_type(buf, dtd);
+	pdu_size = sdp_get_data_type(buf, dtd);
+	buf->data_size += pdu_size;
+
 	data_size = sdp_get_data_size(buf, d);
+
+	*seqp = dtd;
 
 	switch (dtd) {
 	case SDP_DATA_NIL:
