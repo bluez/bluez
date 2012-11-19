@@ -174,7 +174,6 @@ struct btd_device {
 	GSList		*attios;
 	GSList		*attios_offline;
 	guint		attachid;		/* Attrib server attach */
-	guint		auto_id;		/* Auto connect source id */
 
 	gboolean	connected;
 	gboolean	profiles_connected;	/* Profile level connected */
@@ -345,9 +344,6 @@ static void device_free(gpointer user_data)
 
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
-
-	if (device->auto_id)
-		g_source_remove(device->auto_id);
 
 	DBG("%p", device);
 
@@ -4026,11 +4022,6 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 
 	if (device->attios != NULL || device->attios_offline != NULL)
 		return TRUE;
-
-	if (device->auto_id) {
-		g_source_remove(device->auto_id);
-		device->auto_id = 0;
-	}
 
 	attio_cleanup(device);
 
