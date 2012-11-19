@@ -181,7 +181,7 @@ static gboolean process_auth_queue(gpointer user_data);
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor)
 {
-       return mgmt_set_dev_class(adapter->dev_id, major, minor);
+	return mgmt_set_dev_class(adapter->dev_id, major, minor);
 }
 
 static const char *mode2str(uint8_t mode)
