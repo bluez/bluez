@@ -158,6 +158,46 @@ unregister:
 							AGENT_INTERFACE);
 }
 
+static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
+							uint8_t *hash,
+							uint8_t *randomizer,
+							DBusMessage *msg)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	uint8_t eir[NFC_OOB_EIR_MAX];
+	uint8_t *peir = eir;
+	int len;
+
+	len = eir_create_oob(adapter_get_address(adapter),
+				btd_adapter_get_name(adapter),
+				btd_adapter_get_class(adapter), hash,
+				randomizer, main_opts.did_vendor,
+				main_opts.did_product, main_opts.did_version,
+				main_opts.did_source,
+				btd_adapter_get_services(adapter), eir);
+
+	reply = dbus_message_new_method_return(msg);
+	if (!reply)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING
+				DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+				&dict);
+
+	dict_append_array(&dict, "EIR", DBUS_TYPE_BYTE, &peir, len);
+
+	dbus_message_iter_close_container(&iter, &dict);
+
+	return reply;
+}
+
 static void read_local_complete(struct btd_adapter *adapter, uint8_t *hash,
 					uint8_t *randomizer, void *user_data)
 {
@@ -177,39 +217,11 @@ static void read_local_complete(struct btd_adapter *adapter, uint8_t *hash,
 		return;
 	}
 
-	if (hash && randomizer) {
-		int len;
-		uint8_t eir[NFC_OOB_EIR_MAX];
-		uint8_t *peir = eir;
-		DBusMessageIter iter;
-		DBusMessageIter dict;
-
-		len = eir_create_oob(adapter_get_address(adapter),
-				btd_adapter_get_name(adapter),
-				btd_adapter_get_class(adapter), hash,
-				randomizer, main_opts.did_vendor,
-				main_opts.did_product, main_opts.did_version,
-				main_opts.did_source,
-				btd_adapter_get_services(adapter), eir);
-
-		reply = dbus_message_new_method_return(msg);
-
-		dbus_message_iter_init_append(reply, &iter);
-
-		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-					DBUS_TYPE_STRING_AS_STRING
-					DBUS_TYPE_VARIANT_AS_STRING
-					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
-					&dict);
-
-		dict_append_array(&dict, "EIR", DBUS_TYPE_BYTE, &peir, len);
-
-		dbus_message_iter_close_container(&iter, &dict);
-
-	} else {
+	if (hash && randomizer)
+		reply = create_request_oob_reply(adapter, hash, randomizer,
+									msg);
+	else
 		reply = error_reply(msg, EIO);
-	}
 
 	dbus_message_unref(msg);
 
@@ -273,7 +285,7 @@ static int check_device(struct btd_adapter *adapter, const char *address)
 	return 0;
 }
 
-/* returns 1 if pairing is not needed */
+/* returns 1 if action (pairing or reading local data) is not needed */
 static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 							bdaddr_t *remote)
 {
@@ -317,9 +329,16 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 	if (remote)
 		bacpy(remote, &eir_data.addr);
 
+	/*
+	 * In RequestOOB reply append local hash and randomizer only if
+	 * received EIR also contained it.
+	 */
+	if (!remote && !eir_data.hash)
+		ret = 1;
+
 	eir_data_free(&eir_data);
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -650,6 +669,9 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 	ret = process_params(msg, adapter, NULL);
 	if (ret < 0)
 		return error_reply(msg, -ret);
+
+	if (ret == 1)
+		return create_request_oob_reply(adapter, NULL, NULL, msg);
 
 	ret = btd_adapter_read_local_oob_data(adapter);
 	if (ret < 0)
