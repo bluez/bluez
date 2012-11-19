@@ -633,37 +633,32 @@ void sdp_set_seq_len(uint8_t *ptr, uint32_t length)
 	}
 }
 
-static int sdp_get_data_type(sdp_buf_t *buf, uint8_t dtd)
+static int sdp_get_data_type_size(uint8_t dtd)
 {
-	int data_type = 0;
-
-	data_type += sizeof(uint8_t);
+	int size = sizeof(uint8_t);
 
 	switch (dtd) {
 	case SDP_SEQ8:
 	case SDP_TEXT_STR8:
 	case SDP_URL_STR8:
 	case SDP_ALT8:
-		data_type += sizeof(uint8_t);
+		size += sizeof(uint8_t);
 		break;
 	case SDP_SEQ16:
 	case SDP_TEXT_STR16:
 	case SDP_URL_STR16:
 	case SDP_ALT16:
-		data_type += sizeof(uint16_t);
+		size += sizeof(uint16_t);
 		break;
 	case SDP_SEQ32:
 	case SDP_TEXT_STR32:
 	case SDP_URL_STR32:
 	case SDP_ALT32:
-		data_type += sizeof(uint32_t);
+		size += sizeof(uint32_t);
 		break;
 	}
 
-	if (!buf->data)
-		buf->buf_size += data_type;
-
-	return data_type;
+	return size;
 }
 
 void sdp_set_attrid(sdp_buf_t *buf, uint16_t attr)
@@ -762,9 +757,6 @@ static int sdp_get_data_size(sdp_buf_t *buf, sdp_data_t *d)
 		break;
 	}
 
-	if (!buf->data)
-		buf->buf_size += data_size;
-
 	return data_size;
 }
 
@@ -783,8 +775,8 @@ static int sdp_gen_buffer(sdp_buf_t *buf, sdp_data_t *d)
 	/* attribute length */
 	buf->buf_size += sizeof(uint8_t) + sizeof(uint16_t);
 
-	sdp_get_data_type(buf, d->dtd);
-	sdp_get_data_size(buf, d);
+	buf->buf_size += sdp_get_data_type_size(d->dtd);
+	buf->buf_size += sdp_get_data_size(buf, d);
 
 	if (buf->buf_size > UCHAR_MAX && d->dtd == SDP_SEQ8)
 		buf->buf_size += sizeof(uint8_t);
@@ -803,7 +795,7 @@ int sdp_gen_pdu(sdp_buf_t *buf, sdp_data_t *d)
 	uint128_t u128;
 	uint8_t *seqp = buf->data + buf->data_size;
 
-	pdu_size = sdp_get_data_type(buf, dtd);
+	pdu_size = sdp_get_data_type_size(dtd);
 	buf->data_size += pdu_size;
 
 	data_size = sdp_get_data_size(buf, d);
