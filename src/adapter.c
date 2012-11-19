@@ -2180,10 +2180,6 @@ void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 						uint16_t *discoverable_timeout,
 						gboolean *pairable)
 {
-	char address[18];
-
-	ba2str(&adapter->bdaddr, address);
-
 	if (mode)
 		*mode = adapter->mode;
 
