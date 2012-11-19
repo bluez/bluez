@@ -380,7 +380,7 @@ static int check_adapter(struct btd_adapter *adapter)
 	btd_adapter_get_mode(adapter, NULL, NULL, &pairable);
 
 	if (!pairable || !adapter_get_agent(adapter))
-		return -ENOENT;
+		return -ENONET;
 
 	if (!btd_adapter_ssp_enabled(adapter))
 		return -ENOTSUP;
