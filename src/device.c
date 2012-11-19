@@ -191,7 +191,7 @@ struct btd_device {
 
 	gint		ref;
 
-	GIOChannel      *att_io;
+	GIOChannel	*att_io;
 	guint		cleanup_id;
 	guint		store_id;
 };
@@ -1505,7 +1505,6 @@ static const GDBusSignalTable device_signals[] = {
 	{ GDBUS_SIGNAL("DisconnectRequested", NULL) },
 	{ }
 };
-
 
 static const GDBusPropertyTable device_properties[] = {
 	{ "Address", "s", dev_property_get_address },
@@ -4037,4 +4036,3 @@ void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 	device_set_product(device, product_id);
 	device_set_version(device, product_ver);
 }
-
