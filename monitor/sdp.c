@@ -26,7 +26,9 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
+#include <string.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -34,7 +36,186 @@
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
+#include "uuid.h"
 #include "sdp.h"
+
+#define SIZES(args...) ((uint8_t[]) { args, 0xff } )
+
+static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
+{
+	switch (size) {
+	case 1:
+		print_field("%*c0x%2.2x", indent, ' ', data[0]);
+		break;
+	case 2:
+		print_field("%*c0x%4.4x", indent, ' ', bt_get_be16(data));
+		break;
+	case 4:
+		print_field("%*c0x%8.8x", indent, ' ', bt_get_be32(data));
+		break;
+	}
+}
+
+static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
+{
+	switch (size) {
+	case 2:
+		print_field("%*c%s (0x%4.4x)", indent, ' ',
+			uuid16_to_str(bt_get_be16(data)), bt_get_be16(data));
+		break;
+	}
+}
+
+static void print_string(uint8_t indent, const uint8_t *data, uint32_t size)
+{
+	char *str = strndupa((const char *) data, size);
+	print_field("%*c%s [len %d]", indent, ' ', str, size);
+}
+
+static struct {
+	uint8_t value;
+	uint8_t *sizes;
+	bool recurse;
+	const char *str;
+	void (*print) (uint8_t indent, const uint8_t *data, uint32_t size);
+} type_table[] = {
+	{ 0, SIZES(0),             false, "Nil"			},
+	{ 1, SIZES(0, 1, 2, 3, 4), false, "Unsigned Integer",	print_uint },
+	{ 2, SIZES(0, 1, 2, 3, 4), false, "Signed Integer"	},
+	{ 3, SIZES(1, 2, 4),       false, "UUID",		print_uuid },
+	{ 4, SIZES(5, 6, 7),       false, "String",		print_string },
+	{ 5, SIZES(0),             false, "Boolean"		},
+	{ 6, SIZES(5, 6, 7),       true,  "Sequence"		},
+	{ 7, SIZES(5, 6, 7),       true,  "Alternative"		},
+	{ 8, SIZES(5, 6, 7),       false, "URL",		print_string },
+	{ }
+};
+
+static struct {
+	uint8_t index;
+	uint8_t bits;
+	uint8_t size;
+	const char *str;
+} size_table[] = {
+	{ 0,  0,  1, "1 byte"	},
+	{ 1,  0,  2, "2 bytes"	},
+	{ 2,  0,  4, "4 bytes"	},
+	{ 3,  0,  8, "8 bytes"	},
+	{ 4,  0, 16, "16 bytes"	},
+	{ 5,  8,  0, "8 bits"	},
+	{ 6, 16,  0, "16 bits"	},
+	{ 7, 32,  0, "32 bits"	},
+	{ }
+};
+
+static bool valid_size(uint8_t size, uint8_t *sizes)
+{
+	int i;
+
+	for (i = 0; sizes[i] != 0xff; i++) {
+		if (sizes[i] == size)
+			return true;
+	}
+
+	return false;
+}
+
+static uint8_t get_bits(const uint8_t *data, uint16_t size)
+{
+	int i;
+
+	for (i = 0; size_table[i].str; i++) {
+		if (size_table[i].index == (data[0] & 0x07))
+			return size_table[i].bits;
+	}
+
+	return 0;
+}
+
+static uint32_t get_size(const uint8_t *data, uint16_t size)
+{
+	int i;
+
+	for (i = 0; size_table[i].str; i++) {
+		if (size_table[i].index == (data[0] & 0x07)) {
+			switch (size_table[i].bits) {
+			case 0:
+				if ((data[0] & 0xf8) == 0)
+					return 0;
+				else
+					return size_table[i].size;
+			case 8:
+				return data[1];
+			case 16:
+				return bt_get_be16(data + 1);
+			case 32:
+				return bt_get_be32(data + 1);
+			default:
+				return 0;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static void decode_data_elements(uint8_t indent,
+					const uint8_t *data, uint16_t size)
+
+{
+	uint32_t datalen, elemlen;
+	uint8_t extrabits;
+	int i;
+
+	if (!size)
+		return;
+
+	extrabits = get_bits(data, size);
+
+	if (size < 1 + (extrabits / 8)) {
+		print_text(COLOR_ERROR, "data element descriptor too short");
+		return;
+	}
+
+	datalen = get_size(data, size);
+
+	if (size < 1 + (extrabits / 8) + datalen) {
+		print_text(COLOR_ERROR, "data element size too short");
+		return;
+	}
+
+	elemlen = 1 + (extrabits / 8) + datalen;
+
+	for (i = 0; type_table[i].str; i++) {
+		uint8_t type = (data[0] & 0xf8) >> 3;
+
+		if (type_table[i].value != type)
+			continue;
+
+		print_field("%*c%s (%d) with %u byte%s [%u extra bits] len %u",
+					indent, ' ', type_table[i].str, type,
+					datalen, datalen == 1 ? "" : "s",
+					extrabits, elemlen);
+		if (!valid_size(data[0] & 0x07, type_table[i].sizes)) {
+			print_text(COLOR_ERROR, "invalid data element size");
+			packet_hexdump(data + 1 + (extrabits / 8), datalen);
+			break;
+		}
+
+		if (type_table[i].recurse)
+			decode_data_elements(indent + 2,
+					data + 1 + (extrabits / 8), datalen);
+		else if (type_table[i].print)
+			type_table[i].print(indent + 2,
+					data + 1 + (extrabits / 8), datalen);
+		break;
+	}
+
+	data += elemlen;
+	size -= elemlen;
+
+	decode_data_elements(indent, data, size);
+}
 
 static void print_continuation(const uint8_t *data, uint16_t size)
 {
@@ -82,9 +263,15 @@ static void service_req(const struct l2cap_frame *frame)
 	uint16_t search_bytes;
 
 	search_bytes = get_bytes(frame->data, frame->size);
-
 	print_field("Search pattern: [len %d]", search_bytes);
-	packet_hexdump(frame->data, search_bytes);
+
+	if (search_bytes > frame->size - 2) {
+		print_text(COLOR_ERROR, "invalid search list length");
+		packet_hexdump(frame->data, frame->size);
+		return;
+	}
+
+	decode_data_elements(2, frame->data, search_bytes);
 
 	print_field("Max record count: %d",
 				bt_get_be16(frame->data + search_bytes));
@@ -119,6 +306,8 @@ static void service_rsp(const struct l2cap_frame *frame)
 
 static void attr_req(const struct l2cap_frame *frame)
 {
+	uint16_t attr_bytes;
+
 	if (frame->size < 6) {
 		print_text(COLOR_ERROR, "invalid size");
 		packet_hexdump(frame->data, frame->size);
@@ -128,7 +317,19 @@ static void attr_req(const struct l2cap_frame *frame)
 	print_field("Record handle: 0x%4.4x", bt_get_be32(frame->data));
 	print_field("Max attribute bytes: %d", bt_get_be16(frame->data + 4));
 
-	packet_hexdump(frame->data + 6, frame->size - 6);
+	attr_bytes = get_bytes(frame->data + 6, frame->size - 6);
+	print_field("Attribute list: [len %d]", attr_bytes);
+
+	if (attr_bytes > frame->size - 6) {
+		print_text(COLOR_ERROR, "invalid attribute list length");
+		packet_hexdump(frame->data, frame->size);
+		return;
+	}
+
+	decode_data_elements(2, frame->data + 6, attr_bytes);
+
+	print_continuation(frame->data + 6 + attr_bytes,
+					frame->size - 6 - attr_bytes);
 }
 
 static void attr_rsp(const struct l2cap_frame *frame)
@@ -142,10 +343,14 @@ static void attr_rsp(const struct l2cap_frame *frame)
 	}
 
 	bytes = bt_get_be16(frame->data);
-
 	print_field("Attribute bytes: %d", bytes);
 
-	packet_hexdump(frame->data + 2, bytes);
+	if (bytes > frame->size - 2) {
+		print_text(COLOR_ERROR, "invalid attribute size");
+		return;
+	}
+
+	decode_data_elements(2, frame->data + 2, bytes);
 
 	print_continuation(frame->data + 2 + bytes, frame->size - 2 - bytes);
 }
@@ -155,18 +360,24 @@ static void search_attr_req(const struct l2cap_frame *frame)
 	uint16_t search_bytes, attr_bytes;
 
 	search_bytes = get_bytes(frame->data, frame->size);
-
 	print_field("Search pattern: [len %d]", search_bytes);
-	packet_hexdump(frame->data, search_bytes);
+
+	if (search_bytes > frame->size - 2) {
+		print_text(COLOR_ERROR, "invalid search list length");
+		packet_hexdump(frame->data, frame->size);
+		return;
+	}
+
+	decode_data_elements(2, frame->data, search_bytes);
 
 	print_field("Max record count: %d",
 				bt_get_be16(frame->data + search_bytes));
 
 	attr_bytes = get_bytes(frame->data + search_bytes + 2,
 				frame->size - search_bytes - 2);
-
 	print_field("Attribte list: [len %d]", attr_bytes);
-	packet_hexdump(frame->data + search_bytes + 2, attr_bytes);
+
+	decode_data_elements(2, frame->data + search_bytes + 2, attr_bytes);
 
 	print_continuation(frame->data + search_bytes + 2 + attr_bytes,
 				frame->size - search_bytes - 2 - attr_bytes);
@@ -183,10 +394,9 @@ static void search_attr_rsp(const struct l2cap_frame *frame)
 	}
 
 	bytes = bt_get_be16(frame->data);
-
 	print_field("Attribute list bytes: %d", bytes);
 
-	packet_hexdump(frame->data + 2, bytes);
+	decode_data_elements(2, frame->data + 2, bytes);
 
 	print_continuation(frame->data + 2 + bytes, frame->size - 2 - bytes);
 }
