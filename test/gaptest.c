@@ -39,6 +39,8 @@
 #define MANAGER_INTF	BLUEZ_SERVICE ".Manager"
 #define ADAPTER_INTF	BLUEZ_SERVICE ".Adapter"
 
+#define PROPERTIES_INTF "org.freedesktop.DBus.Properties"
+
 static char *get_adapter(DBusConnection *conn)
 {
 	DBusMessage *message, *reply;
@@ -170,10 +172,11 @@ static int set_property(DBusConnection *conn, const char *adapter,
 	DBusMessage *message, *reply;
 	DBusMessageIter array, value;
 	DBusError error;
-	const char *signature;
+	const char *signature, *intf;
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, adapter,
-						ADAPTER_INTF, "SetProperty");
+							PROPERTIES_INTF,
+							"Set");
 	if (!message)
 		return -ENOMEM;
 
@@ -189,6 +192,9 @@ static int set_property(DBusConnection *conn, const char *adapter,
 	}
 
 	dbus_message_iter_init_append(message, &array);
+
+	intf = ADAPTER_INTF;
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &intf);
 
 	dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &key);
 
