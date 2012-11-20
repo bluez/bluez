@@ -47,10 +47,10 @@
 
 #include "log.h"
 
-#include "att.h"
+#include "attrib/att.h"
 #include "hcid.h"
 #include "adapter.h"
-#include "gattrib.h"
+#include "attrib/gattrib.h"
 #include "attio.h"
 #include "device.h"
 #include "profile.h"
@@ -58,7 +58,7 @@
 #include "error.h"
 #include "glib-helper.h"
 #include "sdp-client.h"
-#include "gatt.h"
+#include "attrib/gatt.h"
 #include "agent.h"
 #include "sdp-xml.h"
 #include "storage.h"

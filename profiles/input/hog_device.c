@@ -43,13 +43,13 @@
 
 #include "log.h"
 
-#include "../src/adapter.h"
-#include "../src/device.h"
+#include "src/adapter.h"
+#include "src/device.h"
 
-#include "att.h"
-#include "gattrib.h"
+#include "attrib/att.h"
+#include "attrib/gattrib.h"
 #include "attio.h"
-#include "gatt.h"
+#include "attrib/gatt.h"
 
 #include "hog_device.h"
 

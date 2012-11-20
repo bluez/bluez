@@ -34,11 +34,11 @@
 #include <gdbus.h>
 
 #include "log.h"
-#include "gattrib.h"
-#include "att.h"
-#include "gatt.h"
-#include "att-database.h"
-#include "gatt-service.h"
+#include "attrib/gattrib.h"
+#include "attrib/att.h"
+#include "attrib/gatt.h"
+#include "attrib/att-database.h"
+#include "attrib/gatt-service.h"
 #include "attrib-server.h"
 #include "device.h"
 #include "profile.h"

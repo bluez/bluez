@@ -31,10 +31,10 @@
 
 #include "adapter.h"
 #include "device.h"
-#include "gattrib.h"
+#include "attrib/gattrib.h"
 #include "attio.h"
-#include "att.h"
-#include "gatt.h"
+#include "attrib/att.h"
+#include "attrib/gatt.h"
 #include "log.h"
 #include "deviceinfo.h"
 

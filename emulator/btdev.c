@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "bt.h"
+#include "monitor/bt.h"
 #include "btdev.h"
 
 #define le16_to_cpu(val) (val)

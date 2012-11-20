@@ -34,9 +34,9 @@
 #include "log.h"
 #include "adapter.h"
 #include "device.h"
-#include "att.h"
-#include "gattrib.h"
-#include "gatt.h"
+#include "attrib/att.h"
+#include "attrib/gattrib.h"
+#include "attrib/gatt.h"
 #include "attio.h"
 #include "scan.h"
 

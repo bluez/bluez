@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <getopt.h>
 
-#include "mainloop.h"
+#include "monitor/mainloop.h"
 #include "server.h"
 #include "vhci.h"
 

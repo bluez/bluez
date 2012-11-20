@@ -39,7 +39,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <a2dp-codecs.h>
+#include "profiles/audio/a2dp-codecs.h"
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
