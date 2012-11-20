@@ -254,6 +254,7 @@ static void nap_server_remove(struct btd_profile *p,
 
 static struct btd_profile panu_profile = {
 	.name		= "network-panu",
+	.local_uuid	= NAP_UUID,
 	.remote_uuids	= BTD_UUIDS(PANU_UUID),
 	.device_probe	= panu_probe,
 	.device_remove	= network_remove,
@@ -265,6 +266,7 @@ static struct btd_profile panu_profile = {
 
 static struct btd_profile gn_profile = {
 	.name		= "network-gn",
+	.local_uuid	= PANU_UUID,
 	.remote_uuids	= BTD_UUIDS(GN_UUID),
 	.device_probe	= gn_probe,
 	.device_remove	= network_remove,
@@ -276,6 +278,7 @@ static struct btd_profile gn_profile = {
 
 static struct btd_profile nap_profile = {
 	.name		= "network-nap",
+	.local_uuid	= PANU_UUID,
 	.remote_uuids	= BTD_UUIDS(NAP_UUID),
 	.device_probe	= nap_probe,
 	.device_remove	= network_remove,
