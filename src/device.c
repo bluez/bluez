@@ -170,6 +170,7 @@ struct btd_device {
 	struct authentication_req *authr;	/* authentication request */
 	GSList		*disconnects;		/* disconnects message */
 	DBusMessage	*connect;		/* connect message */
+	DBusMessage	*disconnect;		/* disconnect message */
 	GAttrib		*attrib;
 	GSList		*attios;
 	GSList		*attios_offline;
@@ -1381,6 +1382,56 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
+static void profile_disconnected(struct btd_profile *profile,
+					struct btd_device *dev, int err)
+{
+	if (!dev->disconnect)
+		return;
+
+	if (err)
+		g_dbus_send_message(btd_get_dbus_connection(),
+				btd_error_failed(dev->connect, strerror(-err)));
+	else
+		g_dbus_send_reply(btd_get_dbus_connection(), dev->disconnect,
+							DBUS_TYPE_INVALID);
+
+	dbus_message_unref(dev->disconnect);
+	dev->disconnect = NULL;
+}
+
+static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct btd_device *dev = user_data;
+	struct btd_profile *p;
+	const char *pattern;
+	char *uuid;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID))
+		return btd_error_invalid_args(msg);
+
+	uuid = bt_name2string(pattern);
+
+	p = find_connectable_profile(dev, uuid);
+	g_free(uuid);
+
+	if (!p)
+		return btd_error_invalid_args(msg);
+
+	if (!p->disconnect)
+		return btd_error_not_supported(msg);
+
+	err = p->disconnect(dev, p, profile_disconnected);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	dev->disconnect = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 static void device_svc_resolved(struct btd_device *dev, int err)
 {
 	DBusMessage *reply;
@@ -1494,6 +1545,8 @@ static const GDBusMethodTable device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
 	{ GDBUS_ASYNC_METHOD("ConnectProfile", GDBUS_ARGS({ "UUID", "s" }),
 						NULL, connect_profile) },
+	{ GDBUS_ASYNC_METHOD("DisconnectProfile", GDBUS_ARGS({ "UUID", "s" }),
+						NULL, disconnect_profile) },
 	{ GDBUS_ASYNC_METHOD("Pair",
 			GDBUS_ARGS({ "agent", "o" }, { "capability", "s" }),
 			NULL, pair_device) },
