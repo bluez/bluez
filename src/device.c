@@ -346,6 +346,12 @@ static void device_free(gpointer user_data)
 	if (device->discov_timer)
 		g_source_remove(device->discov_timer);
 
+	if (device->connect)
+		dbus_message_unref(device->connect);
+
+	if (device->disconnect)
+		dbus_message_unref(device->disconnect);
+
 	DBG("%p", device);
 
 	if (device->authr)
