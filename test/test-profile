@@ -13,6 +13,8 @@ import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
 class Profile(dbus.service.Object):
+	fd = -1
+
 	@dbus.service.method("org.bluez.Profile1",
 					in_signature="", out_signature="")
 	def Release(self):
@@ -27,15 +29,22 @@ class Profile(dbus.service.Object):
 	@dbus.service.method("org.bluez.Profile1",
 				in_signature="oha{sv}", out_signature="")
 	def NewConnection(self, path, fd, properties):
-		fd = fd.take()
-		print("NewConnection(%s, %d)" % (path, fd))
+		self.fd = fd.take()
+		print("NewConnection(%s, %d)" % (path, self.fd))
 		for key in properties.keys():
 			if key == "Version" or key == "Features":
 				print("  %s = 0x%04x" % (key, properties[key]))
 			else:
 				print("  %s = %s" % (key, properties[key]))
 
-		os.close(fd)
+	@dbus.service.method("org.bluez.Profile1",
+				in_signature="o", out_signature="")
+	def RequestDisconnection(self, path):
+		print("RequestDisconnection(%s)" % (path))
+
+		if (self.fd > 0):
+			os.close(self.fd)
+			self.fd = -1
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
