@@ -269,7 +269,7 @@ static void device_avdtp_cb(struct audio_device *dev, struct avdtp *session,
 				avdtp_session_state_t new_state,
 				void *user_data)
 {
-	if (!dev->sink || !dev->control)
+	if (!dev->control)
 		return;
 
 	if (new_state == AVDTP_SESSION_STATE_CONNECTED) {
