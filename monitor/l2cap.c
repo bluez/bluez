@@ -36,6 +36,7 @@
 #include "packet.h"
 #include "display.h"
 #include "l2cap.h"
+#include "uuid.h"
 #include "sdp.h"
 
 #define MAX_CHAN 64
@@ -1483,9 +1484,12 @@ static void print_hex_field(const char *label, const uint8_t *data,
 
 static void print_uuid(const char *label, const void *data, uint16_t size)
 {
+	const char *str;
+
 	switch (size) {
 	case 2:
-		print_field("%s: 0x%4.4x", label, bt_get_le16(data));
+		str = uuid16_to_str(bt_get_le16(data));
+		print_field("%s: %s (0x%4.4x)", label, str, bt_get_le16(data));
 		break;
 	default:
 		packet_hexdump(data, size);
