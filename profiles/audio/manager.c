@@ -71,12 +71,6 @@
 struct audio_adapter {
 	struct btd_adapter *btd_adapter;
 	gboolean powered;
-	uint32_t hsp_ag_record_id;
-	uint32_t hfp_ag_record_id;
-	uint32_t hfp_hs_record_id;
-	GIOChannel *hsp_ag_server;
-	GIOChannel *hfp_ag_server;
-	GIOChannel *hfp_hs_server;
 	gint ref;
 };
 
