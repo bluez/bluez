@@ -474,6 +474,7 @@ struct ext_io {
 	struct btd_device *device;
 
 	bool resolving;
+	bool connected;
 	btd_profile_cb cb;
 
 	uint16_t version;
@@ -483,7 +484,7 @@ struct ext_io {
 	uint8_t chan;
 
 	guint auth_id;
-	DBusPendingCall *new_conn;
+	DBusPendingCall *pending;
 };
 
 struct ext_record {
@@ -582,9 +583,9 @@ static void ext_io_destroy(gpointer p)
 	if (ext_io->auth_id != 0)
 		btd_cancel_authorization(ext_io->auth_id);
 
-	if (ext_io->new_conn) {
-		dbus_pending_call_cancel(ext_io->new_conn);
-		dbus_pending_call_unref(ext_io->new_conn);
+	if (ext_io->pending) {
+		dbus_pending_call_cancel(ext_io->pending);
+		dbus_pending_call_unref(ext_io->pending);
 		ext_cancel(ext);
 	}
 
@@ -627,7 +628,7 @@ drop:
 	return FALSE;
 }
 
-static void new_conn_reply(DBusPendingCall *call, void *user_data)
+static void pending_reply(DBusPendingCall *call, void *user_data)
 {
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
@@ -639,14 +640,19 @@ static void new_conn_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_unref(reply);
 
-	dbus_pending_call_unref(conn->new_conn);
-	conn->new_conn = NULL;
+	dbus_pending_call_unref(conn->pending);
+	conn->pending = NULL;
 
 	if (!dbus_error_is_set(&err)) {
 		if (conn->cb) {
 			conn->cb(&ext->p, conn->device, 0);
 			conn->cb = NULL;
 		}
+
+		if (conn->connected)
+			goto disconnect;
+
+		conn->connected = true;
 		return;
 	}
 
@@ -663,6 +669,7 @@ static void new_conn_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_free(&err);
 
+disconnect:
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
 }
@@ -738,7 +745,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	dbus_message_iter_close_container(&iter, &dict);
 
 	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
-						msg, &conn->new_conn, -1)) {
+						msg, &conn->pending, -1)) {
 		error("%s: sending NewConnection failed", ext->name);
 		dbus_message_unref(msg);
 		return false;
@@ -746,8 +753,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 
 	dbus_message_unref(msg);
 
-	dbus_pending_call_set_notify(conn->new_conn, new_conn_reply, conn,
-									NULL);
+	dbus_pending_call_set_notify(conn->pending, pending_reply, conn, NULL);
 
 	return true;
 }
@@ -1214,29 +1220,25 @@ static int ext_device_probe(struct btd_profile *p, struct btd_device *dev,
 	return 0;
 }
 
-static void remove_connect(struct ext_profile *ext, struct btd_device *dev)
+static struct ext_io *find_connection(struct ext_profile *ext,
+							struct btd_device *dev)
 {
-	GSList *l, *next;
+	GSList *l;
 
-	for (l = ext->conns; l != NULL; l = next) {
+	for (l = ext->conns; l != NULL; l = g_slist_next(l)) {
 		struct ext_io *conn = l->data;
 
-		next = g_slist_next(l);
-
-		if (!conn->cb)
-			continue;
-
-		if (conn->device != dev)
-			continue;
-
-		ext->conns = g_slist_remove(ext->conns, conn);
-		ext_io_destroy(conn);
+		if (conn->device == dev)
+			return conn;
 	}
+
+	return NULL;
 }
 
 static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
 {
 	struct ext_profile *ext;
+	struct ext_io *conn;
 
 	ext = find_ext(p);
 	if (!ext)
@@ -1244,7 +1246,11 @@ static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
 
 	DBG("%s", ext->name);
 
-	remove_connect(ext, dev);
+	conn = find_connection(ext, dev);
+	if (conn) {
+		ext->conns = g_slist_remove(ext->conns, conn);
+		ext_io_destroy(conn);
+	}
 }
 
 static int connect_io(struct ext_io *conn, const bdaddr_t *src,
@@ -1403,6 +1409,10 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 	if (!ext)
 		return -ENOENT;
 
+	conn = find_connection(ext, dev);
+	if (conn)
+		return -EALREADY;
+
 	adapter = device_get_adapter(dev);
 
 	conn = g_new0(struct ext_io, 1);
@@ -1434,17 +1444,62 @@ failed:
 	return err;
 }
 
+static int send_disconn_req(struct ext_profile *ext, struct ext_io *conn)
+{
+	DBusMessage *msg;
+	const char *path;
+
+	msg = dbus_message_new_method_call(ext->owner, ext->path,
+						"org.bluez.Profile1",
+						"RequestDisconnection");
+	if (!msg) {
+		error("Unable to create RequestDisconnection call for %s",
+								ext->name);
+		return -ENOMEM;
+	}
+
+	path = device_get_path(conn->device);
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
+						msg, &conn->pending, -1)) {
+		error("%s: sending RequestDisconnection failed", ext->name);
+		dbus_message_unref(msg);
+		return -EIO;
+	}
+
+	dbus_message_unref(msg);
+
+	dbus_pending_call_set_notify(conn->pending, pending_reply, conn, NULL);
+
+	return 0;
+}
+
 static int ext_disconnect_dev(struct btd_device *dev,
 						struct btd_profile *profile,
 						btd_profile_cb cb)
 {
 	struct ext_profile *ext;
+	struct ext_io *conn;
+	int err;
 
 	ext = find_ext(profile);
 	if (!ext)
 		return -ENOENT;
 
-	remove_connect(ext, dev);
+	conn = find_connection(ext, dev);
+	if (!conn || !conn->connected)
+		return -ENOTCONN;
+
+	if (conn->cb)
+		return -EBUSY;
+
+	err = send_disconn_req(ext, conn);
+	if (err < 0)
+		return err;
+
+	conn->cb = cb;
 
 	return 0;
 }
