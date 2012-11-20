@@ -25,3 +25,4 @@
 #include <stdint.h>
 
 const char *uuid16_to_str(uint16_t uuid);
+const char *uuid32_to_str(uint32_t uuid);

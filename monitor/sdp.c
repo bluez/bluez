@@ -53,7 +53,15 @@ static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 	case 4:
 		print_field("%*c0x%8.8x", indent, ' ', bt_get_be32(data));
 		break;
+	default:
+		packet_hexdump(data, size);
+		break;
 	}
+}
+
+static void print_sint(uint8_t indent, const uint8_t *data, uint32_t size)
+{
+	packet_hexdump(data, size);
 }
 
 static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
@@ -63,6 +71,28 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 		print_field("%*c%s (0x%4.4x)", indent, ' ',
 			uuid16_to_str(bt_get_be16(data)), bt_get_be16(data));
 		break;
+	case 4:
+		print_field("%*c%s (0x%8.8x)", indent, ' ',
+			uuid32_to_str(bt_get_be32(data)), bt_get_be32(data));
+		break;
+	case 16:
+		/* BASE_UUID = 00000000-0000-1000-8000-00805F9B34FB */
+		print_field("%*c%8.8x-%4.4x-%4.4x-%4.4x-%4.4x%8.4x",
+				indent, ' ',
+				bt_get_be32(data), bt_get_be16(data + 4),
+				bt_get_be16(data + 6), bt_get_be16(data + 8),
+				bt_get_be16(data + 10), bt_get_be32(data + 12));
+		if (bt_get_be16(data + 4) == 0x0000 &&
+				bt_get_be16(data + 6) == 0x1000 &&
+				bt_get_be16(data + 8) == 0x8000 &&
+				bt_get_be16(data + 10) == 0x0080 &&
+				bt_get_be32(data + 12) == 0x5F9B34FB)
+			print_field("%*c%s", indent, ' ',
+				uuid32_to_str(bt_get_be32(data)));
+		break;
+	default:
+		packet_hexdump(data, size);
+		break;
 	}
 }
 
@@ -70,6 +100,11 @@ static void print_string(uint8_t indent, const uint8_t *data, uint32_t size)
 {
 	char *str = strndupa((const char *) data, size);
 	print_field("%*c%s [len %d]", indent, ' ', str, size);
+}
+
+static void print_boolean(uint8_t indent, const uint8_t *data, uint32_t size)
+{
+	print_field("%*c%s", indent, ' ', data[0] ? "true" : "false");
 }
 
 static struct {
@@ -81,10 +116,10 @@ static struct {
 } type_table[] = {
 	{ 0, SIZES(0),             false, "Nil"			},
 	{ 1, SIZES(0, 1, 2, 3, 4), false, "Unsigned Integer",	print_uint },
-	{ 2, SIZES(0, 1, 2, 3, 4), false, "Signed Integer"	},
+	{ 2, SIZES(0, 1, 2, 3, 4), false, "Signed Integer",	print_sint },
 	{ 3, SIZES(1, 2, 4),       false, "UUID",		print_uuid },
 	{ 4, SIZES(5, 6, 7),       false, "String",		print_string },
-	{ 5, SIZES(0),             false, "Boolean"		},
+	{ 5, SIZES(0),             false, "Boolean",		print_boolean },
 	{ 6, SIZES(5, 6, 7),       true,  "Sequence"		},
 	{ 7, SIZES(5, 6, 7),       true,  "Alternative"		},
 	{ 8, SIZES(5, 6, 7),       false, "URL",		print_string },
@@ -174,6 +209,7 @@ static void decode_data_elements(uint8_t indent,
 
 	if (size < 1 + (extrabits / 8)) {
 		print_text(COLOR_ERROR, "data element descriptor too short");
+		packet_hexdump(data, size);
 		return;
 	}
 
@@ -181,6 +217,7 @@ static void decode_data_elements(uint8_t indent,
 
 	if (size < 1 + (extrabits / 8) + datalen) {
 		print_text(COLOR_ERROR, "data element size too short");
+		packet_hexdump(data, size);
 		return;
 	}
 

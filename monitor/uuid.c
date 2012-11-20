@@ -151,3 +151,11 @@ const char *uuid16_to_str(uint16_t uuid)
 
 	return "Unknown";
 }
+
+const char *uuid32_to_str(uint32_t uuid)
+{
+	if ((uuid & 0xffff0000) == 0x0000)
+		return uuid16_to_str(uuid & 0x0000ffff);
+
+	return "Unknown";
+}
