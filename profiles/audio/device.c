@@ -61,7 +61,6 @@
 #define CONTROL_CONNECT_TIMEOUT 2
 #define AVDTP_CONNECT_TIMEOUT 1
 #define AVDTP_CONNECT_TIMEOUT_BOOST 1
-#define HEADSET_CONNECT_TIMEOUT 1
 
 typedef enum {
 	AUDIO_STATE_DISCONNECTED,
@@ -80,7 +79,6 @@ struct dev_priv {
 
 	guint control_timer;
 	guint avdtp_timer;
-	guint headset_timer;
 	guint dc_id;
 
 	gboolean disconnecting;
@@ -99,8 +97,6 @@ static void device_free(struct audio_device *dev)
 			g_source_remove(priv->control_timer);
 		if (priv->avdtp_timer)
 			g_source_remove(priv->avdtp_timer);
-		if (priv->headset_timer)
-			g_source_remove(priv->headset_timer);
 		if (priv->dc_req)
 			dbus_message_unref(priv->dc_req);
 		if (priv->conn_req)
@@ -174,13 +170,6 @@ static void device_remove_avdtp_timer(struct audio_device *dev)
 	dev->priv->avdtp_timer = 0;
 }
 
-static void device_remove_headset_timer(struct audio_device *dev)
-{
-	if (dev->priv->headset_timer)
-		g_source_remove(dev->priv->headset_timer);
-	dev->priv->headset_timer = 0;
-}
-
 static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 				void *user_data)
 {
@@ -197,7 +186,6 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	device_remove_control_timer(dev);
 	device_remove_avdtp_timer(dev);
-	device_remove_headset_timer(dev);
 
 	if (dev->control)
 		avrcp_disconnect(dev);
