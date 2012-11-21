@@ -2548,6 +2548,45 @@ static void convert_blocked_entry(GKeyFile *key_file, void *value)
 	g_key_file_set_boolean(key_file, "General", "Blocked", TRUE);
 }
 
+static void convert_did_entry(GKeyFile *key_file, void *value)
+{
+	char *vendor_str, *product_str, *version_str;
+	uint16_t val;
+
+	vendor_str = strchr(value, ' ');
+	if (!vendor_str)
+		return;
+
+	*(vendor_str++) = 0;
+
+	if (g_str_equal(value, "FFFF"))
+		return;
+
+	product_str = strchr(vendor_str, ' ');
+	if (!product_str)
+		return;
+
+	*(product_str++) = 0;
+
+	version_str = strchr(product_str, ' ');
+	if (!version_str)
+		return;
+
+	*(version_str++) = 0;
+
+	val = (uint16_t) strtol(value, NULL, 16);
+	g_key_file_set_integer(key_file, "DeviceID", "Source", val);
+
+	val = (uint16_t) strtol(vendor_str, NULL, 16);
+	g_key_file_set_integer(key_file, "DeviceID", "Vendor", val);
+
+	val = (uint16_t) strtol(product_str, NULL, 16);
+	g_key_file_set_integer(key_file, "DeviceID", "Product", val);
+
+	val = (uint16_t) strtol(version_str, NULL, 16);
+	g_key_file_set_integer(key_file, "DeviceID", "Version", val);
+}
+
 static void convert_entry(char *key, char *value, void *user_data)
 {
 	struct device_converter *converter = user_data;
@@ -2633,6 +2672,9 @@ static void convert_device_storage(struct btd_adapter *adapter)
 
 	/* Convert blocked */
 	convert_file("blocked", address, convert_blocked_entry);
+
+	/* Convert device ids */
+	convert_file("did", address, convert_did_entry);
 }
 
 static void convert_config(struct btd_adapter *adapter, const char *filename,
