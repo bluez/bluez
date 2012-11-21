@@ -240,8 +240,8 @@ proceed:
 	data = g_new0(struct filter_data, 1);
 
 	data->connection = dbus_connection_ref(connection);
-	data->name = name ? g_strdup(name) : NULL;
-	data->owner = owner ? g_strdup(owner) : NULL;
+	data->name = g_strdup(name);
+	data->owner = g_strdup(owner);
 	data->path = g_strdup(path);
 	data->interface = g_strdup(interface);
 	data->member = g_strdup(member);
