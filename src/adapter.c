@@ -2543,6 +2543,11 @@ static void convert_classes_entry(GKeyFile *key_file, void *value)
 	g_key_file_set_string(key_file, "General", "Class", value);
 }
 
+static void convert_blocked_entry(GKeyFile *key_file, void *value)
+{
+	g_key_file_set_boolean(key_file, "General", "Blocked", TRUE);
+}
+
 static void convert_entry(char *key, char *value, void *user_data)
 {
 	struct device_converter *converter = user_data;
@@ -2625,6 +2630,9 @@ static void convert_device_storage(struct btd_adapter *adapter)
 
 	/* Convert classes */
 	convert_file("classes", address, convert_classes_entry);
+
+	/* Convert blocked */
+	convert_file("blocked", address, convert_blocked_entry);
 }
 
 static void convert_config(struct btd_adapter *adapter, const char *filename,
