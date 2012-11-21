@@ -1300,7 +1300,7 @@ static gint profile_prio_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_profile *p1 = a, *p2 = b;
 
-	return p1->priority - p2->priority;
+	return p2->priority - p1->priority;
 }
 
 static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
