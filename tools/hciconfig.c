@@ -242,6 +242,72 @@ static void cmd_le_adv(int ctl, int hdev, char *opt)
 {
 	struct hci_request rq;
 	le_set_advertise_enable_cp advertise_cp;
+	le_set_advertising_parameters_cp adv_params_cp;
+	uint8_t status;
+	int dd, ret;
+
+	if (hdev < 0)
+		hdev = hci_get_route(NULL);
+
+	dd = hci_open_dev(hdev);
+	if (dd < 0) {
+		perror("Could not open device");
+		exit(1);
+	}
+
+	memset(&adv_params_cp, 0, sizeof(adv_params_cp));
+	adv_params_cp.min_interval = htobs(0x0800);
+	adv_params_cp.max_interval = htobs(0x0800);
+	if (opt)
+		adv_params_cp.advtype = atoi(opt);
+	adv_params_cp.chan_map = 7;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_ADVERTISING_PARAMETERS;
+	rq.cparam = &adv_params_cp;
+	rq.clen = LE_SET_ADVERTISING_PARAMETERS_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	ret = hci_send_req(dd, &rq, 1000);
+	if (ret < 0)
+		goto done;
+
+	memset(&advertise_cp, 0, sizeof(advertise_cp));
+	advertise_cp.enable = 0x01;
+
+	memset(&rq, 0, sizeof(rq));
+	rq.ogf = OGF_LE_CTL;
+	rq.ocf = OCF_LE_SET_ADVERTISE_ENABLE;
+	rq.cparam = &advertise_cp;
+	rq.clen = LE_SET_ADVERTISE_ENABLE_CP_SIZE;
+	rq.rparam = &status;
+	rq.rlen = 1;
+
+	ret = hci_send_req(dd, &rq, 1000);
+
+done:
+	hci_close_dev(dd);
+
+	if (ret < 0) {
+		fprintf(stderr, "Can't set advertise mode on hci%d: %s (%d)\n",
+						hdev, strerror(errno), errno);
+		exit(1);
+	}
+
+	if (status) {
+		fprintf(stderr,
+			"LE set advertise enable on hci%d returned status %d\n",
+								hdev, status);
+		exit(1);
+	}
+}
+
+static void cmd_no_le_adv(int ctl, int hdev, char *opt)
+{
+	struct hci_request rq;
+	le_set_advertise_enable_cp advertise_cp;
 	uint8_t status;
 	int dd, ret;
 
@@ -255,10 +321,6 @@ static void cmd_le_adv(int ctl, int hdev, char *opt)
 	}
 
 	memset(&advertise_cp, 0, sizeof(advertise_cp));
-	if (strcmp(opt, "noleadv") == 0)
-		advertise_cp.enable = 0x00;
-	else
-		advertise_cp.enable = 0x01;
 
 	memset(&rq, 0, sizeof(rq));
 	rq.ogf = OGF_LE_CTL;
@@ -1932,8 +1994,10 @@ static struct {
 	{ "block",	cmd_block,	"<bdaddr>",	"Add a device to the blacklist" },
 	{ "unblock",	cmd_unblock,	"<bdaddr>",	"Remove a device from the blacklist" },
 	{ "lerandaddr", cmd_le_addr,	"<bdaddr>",	"Set LE Random Address" },
-	{ "leadv",	cmd_le_adv,	0,		"Enable LE advertising" },
-	{ "noleadv",	cmd_le_adv,	0,		"Disable LE advertising" },
+	{ "leadv",	cmd_le_adv,	"[type]",	"Enable LE advertising"
+		"\n\t\t\t0 - Connectable undirected advertising (default)"
+		"\n\t\t\t3 - Non connectable undirected advertising"},
+	{ "noleadv",	cmd_no_le_adv,	0,		"Disable LE advertising" },
 	{ "lestates",	cmd_le_states,	0,		"Display the supported LE states" },
 	{ NULL, NULL, 0 }
 };
