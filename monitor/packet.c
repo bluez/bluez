@@ -3065,6 +3065,8 @@ static const struct opcode_data opcode_table[] = {
 				logic_link_cancel_rsp, 3, true },
 	{ 0x043c, "Flow Specifcation Modify",
 				flow_spec_modify_cmd, 34, true },
+	{ 0x043d, "Enhanced Setup Synchronous Connection" },
+	{ 0x043e, "Enhanced Accept Synchronous Connection" },
 
 	/* OGF 2 - Link Policy */
 	{ 0x0801, "Holde Mode",
@@ -3269,6 +3271,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c6d, "Write LE Host Supported",
 				write_le_host_supported_cmd, 2, true,
 				status_rsp, 1, true },
+	{ 0x0c6e, "Set MWS Channel Parameters"		},
+	{ 0x0c6f, "Set External Fram Configuration"	},
+	{ 0x0c70, "Set MWS Signaling"			},
+	{ 0x0c71, "Set MWS Transport Layer"		},
+	{ 0x0c72, "Set MWS Scan Frequency Table"	},
+	{ 0x0c73, "Set MWS Pattern Configuration"	},
 
 	/* OGF 4 - Information Parameter */
 	{ 0x1001, "Read Local Version Information",
@@ -3297,6 +3305,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x100a, "Read Data Block Size",
 				null_cmd, 0, true,
 				read_data_block_size_rsp, 7, true },
+	{ 0x100b, "Read Local Supported Codecs" },
 
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, "Read Failed Contact Counter"		},
@@ -3318,6 +3327,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x140b, "Write Remote AMP ASSOC",
 				write_remote_amp_assoc_cmd, 6, false,
 				write_remote_amp_assoc_rsp, 2, true },
+	{ 0x140c, "Get MWS Transport Layer Configuration" },
 
 	/* OGF 8 - LE Control */
 	{ 0x2001, "LE Set Event Mask",
