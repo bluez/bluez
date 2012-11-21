@@ -262,6 +262,62 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 	return 0;
 }
 
+static int a2dp_sink_connect(struct btd_device *dev,
+						struct btd_profile *profile,
+						btd_profile_cb cb)
+{
+	const gchar *path = device_get_path(dev);
+	struct audio_device *audio_dev;
+	struct profile_req *req;
+	int err;
+
+	DBG("path %s", path);
+
+	audio_dev = get_audio_dev(dev);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	req = new_profile_request(dev, profile, cb);
+
+	err = sink_connect(audio_dev, profile_cb, req);
+	if (err < 0) {
+		g_free(req);
+		return err;
+	}
+
+	return 0;
+}
+
+static int a2dp_sink_disconnect(struct btd_device *dev,
+						struct btd_profile *profile,
+						btd_profile_cb cb)
+{
+	const gchar *path = device_get_path(dev);
+	struct audio_device *audio_dev;
+	struct profile_req *req;
+	int err;
+
+	DBG("path %s", path);
+
+	audio_dev = get_audio_dev(dev);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	req = new_profile_request(dev, profile, cb);
+
+	err = sink_disconnect(audio_dev, FALSE, profile_cb, req);
+	if (err < 0) {
+		g_free(req);
+		return err;
+	}
+
+	return 0;
+}
+
 static struct audio_adapter *audio_adapter_ref(struct audio_adapter *adp)
 {
 	adp->ref++;
@@ -435,6 +491,10 @@ static struct btd_profile a2dp_sink_profile = {
 	.remote_uuids	= BTD_UUIDS(A2DP_SINK_UUID),
 	.device_probe	= a2dp_sink_probe,
 	.device_remove	= audio_remove,
+
+	.auto_connect	= true,
+	.connect	= a2dp_sink_connect,
+	.disconnect	= a2dp_sink_disconnect,
 
 	.adapter_probe	= a2dp_sink_server_probe,
 };
