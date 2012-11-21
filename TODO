@@ -42,6 +42,15 @@ General
   g_dbus_add_service_watch()). Idea first mentioned on
   http://thread.gmane.org/gmane.linux.bluez.kernel/30175/focus=30190.
 
+- Reuse connection handling code of src/profile.c also for built-in profiles
+  so plugins would only need to register their btd_profile and the core takes
+  care of the rest including listen to the right channel and manages the sdp
+  record. Once btd_profile manages the connection it can also notify about
+  their state, this probably remove the need of having callbacks to
+  .connect/.disconnect since their state can be tracked, it also enables any
+  plugin to track any profile state change which can be useful for e.g.
+  a connection policy plugin in case one is needed.
+
   Priority: Low
   Complexity: C2
 
