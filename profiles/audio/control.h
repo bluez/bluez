@@ -28,3 +28,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids);
 void control_update(struct control *control, GSList *uuids);
 void control_unregister(struct audio_device *dev);
 gboolean control_is_active(struct audio_device *dev);
+
+int control_connect(struct audio_device *dev, audio_device_cb cb, void *data);
+int control_disconnect(struct audio_device *dev, audio_device_cb cb,
+								void *data);
