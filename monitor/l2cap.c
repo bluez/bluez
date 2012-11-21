@@ -225,6 +225,31 @@ static uint8_t get_mode(const struct l2cap_frame *frame)
 	return 0;
 }
 
+static uint16_t get_chan(const struct l2cap_frame *frame)
+{
+	int i;
+
+	for (i = 0; i < MAX_CHAN; i++) {
+		if (chan_list[i].index != frame->index &&
+					chan_list[i].ctrlid == 0)
+			continue;
+
+		if (chan_list[i].handle != frame->handle &&
+					chan_list[i].ctrlid != frame->index)
+			continue;
+
+		if (frame->in) {
+			if (chan_list[i].scid == frame->cid)
+				return i;
+		} else {
+			if (chan_list[i].dcid == frame->cid)
+				return i;
+		}
+	}
+
+	return 0;
+}
+
 #define MAX_INDEX 16
 
 struct index_data {
@@ -2104,7 +2129,7 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 			uint16_t cid, const void *data, uint16_t size)
 {
 	struct l2cap_frame frame;
-	uint16_t psm;
+	uint16_t psm, chan;
 	uint8_t mode;
 
 	switch (cid) {
@@ -2125,14 +2150,15 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		l2cap_frame_init(&frame, index, in, handle, cid, data, size);
 		psm = get_psm(&frame);
 		mode = get_mode(&frame);
+		chan = get_chan(&frame);
 
 		print_indent(6, COLOR_CYAN, "Channel:", "", COLOR_OFF,
-						" %d len %d [PSM %d mode %d]",
-							cid, size, psm, mode);
+				" %d len %d [PSM %d mode %d] {chan %d}",
+						cid, size, psm, mode, chan);
 
 		switch (psm) {
 		case 0x0001:
-			sdp_packet(&frame);
+			sdp_packet(&frame, chan);
 			break;
 		default:
 			packet_hexdump(data, size);

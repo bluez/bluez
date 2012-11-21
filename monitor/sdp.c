@@ -28,7 +28,9 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include <bluetooth/bluetooth.h>
 
@@ -39,7 +41,47 @@
 #include "uuid.h"
 #include "sdp.h"
 
-#define SIZES(args...) ((uint8_t[]) { args, 0xff } )
+#define MAX_TID 16
+
+struct tid_data {
+	bool inuse;
+	uint16_t tid;
+	uint16_t channel;
+	uint8_t cont[17];
+};
+
+static struct tid_data tid_list[MAX_TID];
+
+static struct tid_data *get_tid(uint16_t tid, uint16_t channel)
+{
+	int i, n = -1;
+
+	for (i = 0; i < MAX_TID; i++) {
+		if (!tid_list[i].inuse) {
+			if (n < 0)
+				n = i;
+			continue;
+		}
+
+		if (tid_list[i].tid == tid && tid_list[i].channel == channel)
+			return &tid_list[i];
+	}
+
+	if (n < 0)
+		return NULL;
+
+	tid_list[n].inuse = true;
+	tid_list[n].tid = tid;
+	tid_list[n].channel = channel;
+
+	return &tid_list[n];
+}
+
+static void clear_tid(struct tid_data *tid)
+{
+	if (tid)
+		tid->inuse = false;
+}
 
 static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 {
@@ -52,6 +94,10 @@ static void print_uint(uint8_t indent, const uint8_t *data, uint32_t size)
 		break;
 	case 4:
 		print_field("%*c0x%8.8x", indent, ' ', bt_get_be32(data));
+		break;
+	case 8:
+		print_field("%*c0x%16.16" PRIx64, indent, ' ',
+							bt_get_be64(data));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -106,6 +152,8 @@ static void print_boolean(uint8_t indent, const uint8_t *data, uint32_t size)
 {
 	print_field("%*c%s", indent, ' ', data[0] ? "true" : "false");
 }
+
+#define SIZES(args...) ((uint8_t[]) { args, 0xff } )
 
 static struct {
 	uint8_t value;
@@ -254,18 +302,6 @@ static void decode_data_elements(uint8_t indent,
 	decode_data_elements(indent, data, size);
 }
 
-static void print_continuation(const uint8_t *data, uint16_t size)
-{
-	if (data[0] != size - 1) {
-		print_text(COLOR_ERROR, "invalid continuation state");
-		packet_hexdump(data, size);
-		return;
-	}
-
-	print_field("Continuation state: %d", data[0]);
-	packet_hexdump(data + 1, size - 1);
-}
-
 static uint16_t get_bytes(const uint8_t *data, uint16_t size)
 {
 	switch (data[0] & 0x07) {
@@ -280,9 +316,133 @@ static uint16_t get_bytes(const uint8_t *data, uint16_t size)
 	return 0;
 }
 
-static void error_rsp(const struct l2cap_frame *frame)
+static void print_continuation(const uint8_t *data, uint16_t size)
+{
+	if (data[0] != size - 1) {
+		print_text(COLOR_ERROR, "invalid continuation state");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	print_field("Continuation state: %d", data[0]);
+	packet_hexdump(data + 1, size - 1);
+}
+
+static void store_continuation(struct tid_data *tid,
+					const uint8_t *data, uint16_t size)
+{
+	memcpy(tid->cont, data, size);
+	print_continuation(data, size);
+}
+
+#define MAX_CONT 8
+
+struct cont_data {
+	uint16_t channel;
+	uint8_t cont[17];
+	void *data;
+	uint32_t size;
+};
+
+static struct cont_data cont_list[MAX_CONT];
+
+static void handle_continuation(struct tid_data *tid, uint16_t bytes,
+					const uint8_t *data, uint16_t size)
+{
+	uint8_t *newdata;
+	int i, n = -1;
+
+	if (bytes + 1 > size) {
+		print_text(COLOR_ERROR, "missing continuation state");
+		return;
+	}
+
+	if (tid->cont[0] == 0x00 && data[bytes] == 0x00) {
+		decode_data_elements(2, data, bytes);
+		print_continuation(data + bytes, size - bytes);
+		return;
+	}
+
+	for (i = 0; i < MAX_CONT; i++) {
+		if (cont_list[i].cont[0] == 0x00) {
+			if (n < 0)
+				n = i;
+			continue;
+		}
+
+		if (cont_list[i].channel != tid->channel)
+			continue;
+
+		if (cont_list[i].cont[0] != tid->cont[0])
+			continue;
+
+		if (!memcmp(cont_list[i].cont + 1,
+					tid->cont + 1, tid->cont[0])) {
+			n = i;
+			break;
+		}
+	}
+
+	print_continuation(data + bytes, size - bytes);
+
+	if (n < 0)
+		return;
+
+	newdata = realloc(cont_list[n].data, cont_list[n].size + bytes);
+	if (!newdata) {
+		print_text(COLOR_ERROR, "failed buffer allocation");
+		free(cont_list[n].data);
+		cont_list[n].data = NULL;
+		cont_list[n].size = 0;
+		return;
+	}
+
+	cont_list[n].channel = tid->channel;
+	cont_list[n].data = newdata;
+
+	if (bytes > 0) {
+		memcpy(cont_list[n].data + cont_list[n].size, data, bytes);
+		cont_list[n].size += bytes;
+	}
+
+	if (data[bytes] == 0x00) {
+		print_field("Combined attribute bytes: %d", cont_list[n].size);
+		decode_data_elements(2, cont_list[n].data, cont_list[n].size);
+		free(cont_list[n].data);
+		cont_list[n].data = NULL;
+		cont_list[n].size = 0;
+	} else
+		memcpy(cont_list[i].cont, data + bytes, data[bytes] + 1);
+}
+
+static uint16_t common_rsp(const struct l2cap_frame *frame,
+						struct tid_data *tid)
+{
+	uint16_t bytes;
+
+	if (frame->size < 2) {
+		print_text(COLOR_ERROR, "invalid size");
+		packet_hexdump(frame->data, frame->size);
+		return 0;
+	}
+
+	bytes = bt_get_be16(frame->data);
+	print_field("Attribute bytes: %d", bytes);
+
+	if (bytes > frame->size - 2) {
+		print_text(COLOR_ERROR, "invalid attribute size");
+		packet_hexdump(frame->data + 2, frame->size - 2);
+		return 0;
+	}
+
+	return bytes;
+}
+
+static void error_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t error;
+
+	clear_tid(tid);
 
 	if (frame->size < 2) {
 		print_text(COLOR_ERROR, "invalid size");
@@ -295,7 +455,7 @@ static void error_rsp(const struct l2cap_frame *frame)
 	print_field("Error code: 0x%2.2x", error);
 }
 
-static void service_req(const struct l2cap_frame *frame)
+static void service_req(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t search_bytes;
 
@@ -317,10 +477,12 @@ static void service_req(const struct l2cap_frame *frame)
 					frame->size - search_bytes - 2);
 }
 
-static void service_rsp(const struct l2cap_frame *frame)
+static void service_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t count;
 	int i;
+
+	clear_tid(tid);
 
 	if (frame->size < 4) {
 		print_text(COLOR_ERROR, "invalid size");
@@ -341,7 +503,7 @@ static void service_rsp(const struct l2cap_frame *frame)
 					frame->size - 4 - (count * 4));
 }
 
-static void attr_req(const struct l2cap_frame *frame)
+static void attr_req(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t attr_bytes;
 
@@ -365,34 +527,23 @@ static void attr_req(const struct l2cap_frame *frame)
 
 	decode_data_elements(2, frame->data + 6, attr_bytes);
 
-	print_continuation(frame->data + 6 + attr_bytes,
+	store_continuation(tid, frame->data + 6 + attr_bytes,
 					frame->size - 6 - attr_bytes);
 }
 
-static void attr_rsp(const struct l2cap_frame *frame)
+static void attr_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 {
 	uint16_t bytes;
 
-	if (frame->size < 2) {
-		print_text(COLOR_ERROR, "invalid size");
-		packet_hexdump(frame->data, frame->size);
-		return;
-	}
+	bytes = common_rsp(frame, tid);
 
-	bytes = bt_get_be16(frame->data);
-	print_field("Attribute bytes: %d", bytes);
+	handle_continuation(tid, bytes, frame->data + 2, frame->size - 2);
 
-	if (bytes > frame->size - 2) {
-		print_text(COLOR_ERROR, "invalid attribute size");
-		return;
-	}
-
-	decode_data_elements(2, frame->data + 2, bytes);
-
-	print_continuation(frame->data + 2 + bytes, frame->size - 2 - bytes);
+	clear_tid(tid);
 }
 
-static void search_attr_req(const struct l2cap_frame *frame)
+static void search_attr_req(const struct l2cap_frame *frame,
+						struct tid_data *tid)
 {
 	uint16_t search_bytes, attr_bytes;
 
@@ -416,32 +567,26 @@ static void search_attr_req(const struct l2cap_frame *frame)
 
 	decode_data_elements(2, frame->data + search_bytes + 2, attr_bytes);
 
-	print_continuation(frame->data + search_bytes + 2 + attr_bytes,
+	store_continuation(tid, frame->data + search_bytes + 2 + attr_bytes,
 				frame->size - search_bytes - 2 - attr_bytes);
 }
 
-static void search_attr_rsp(const struct l2cap_frame *frame)
+static void search_attr_rsp(const struct l2cap_frame *frame,
+						struct tid_data *tid)
 {
 	uint16_t bytes;
 
-	if (frame->size < 2) {
-		print_text(COLOR_ERROR, "invalid size");
-		packet_hexdump(frame->data, frame->size);
-		return;
-	}
+	bytes = common_rsp(frame, tid);
 
-	bytes = bt_get_be16(frame->data);
-	print_field("Attribute list bytes: %d", bytes);
+	handle_continuation(tid, bytes, frame->data + 2, frame->size - 2);
 
-	decode_data_elements(2, frame->data + 2, bytes);
-
-	print_continuation(frame->data + 2 + bytes, frame->size - 2 - bytes);
+	clear_tid(tid);
 }
 
 struct sdp_data {
 	uint8_t pdu;
 	const char *str;
-	void (*func) (const struct l2cap_frame *frame);
+	void (*func) (const struct l2cap_frame *frame, struct tid_data *tid);
 };
 
 static const struct sdp_data sdp_table[] = {
@@ -455,11 +600,12 @@ static const struct sdp_data sdp_table[] = {
 	{ }
 };
 
-void sdp_packet(const struct l2cap_frame *frame)
+void sdp_packet(const struct l2cap_frame *frame, uint16_t channel)
 {
 	uint8_t pdu;
 	uint16_t tid, plen;
 	struct l2cap_frame sdp_frame;
+	struct tid_data *tid_info;
 	const struct sdp_data *sdp_data = NULL;
 	const char *pdu_color, *pdu_str;
 
@@ -510,6 +656,8 @@ void sdp_packet(const struct l2cap_frame *frame)
 		return;
 	}
 
+	tid_info = get_tid(tid, channel);
+
 	l2cap_frame_pull(&sdp_frame, frame, 5);
-	sdp_data->func(&sdp_frame);
+	sdp_data->func(&sdp_frame, tid_info);
 }
