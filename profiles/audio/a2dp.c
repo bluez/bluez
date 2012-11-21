@@ -1166,63 +1166,59 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 	return NULL;
 }
 
-int a2dp_register(const bdaddr_t *src, GKeyFile *config)
+static struct a2dp_server *a2dp_server_register(const bdaddr_t *src,
+							GKeyFile *config)
 {
-	gboolean source = TRUE, sink = FALSE;
-	char *str;
-	GError *err = NULL;
+	struct a2dp_server *server;
+	int av_err;
+
+	server = g_new0(struct a2dp_server, 1);
+
+	av_err = avdtp_init(src, config);
+	if (av_err < 0) {
+		DBG("AVDTP not registered");
+		g_free(server);
+		return NULL;
+	}
+
+	bacpy(&server->src, src);
+	servers = g_slist_append(servers, server);
+
+	return server;
+}
+
+int a2dp_source_register(const bdaddr_t *src, GKeyFile *config)
+{
 	struct a2dp_server *server;
 
-	if (!config)
-		goto proceed;
+	server = find_server(servers, src);
+	if (server != NULL)
+		goto done;
 
-	str = g_key_file_get_string(config, "General", "Enable", &err);
+	server = a2dp_server_register(src, config);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
 
-	if (err) {
-		DBG("audio.conf: %s", err->message);
-		g_clear_error(&err);
-	} else {
-		if (strstr(str, "Sink"))
-			source = TRUE;
-		if (strstr(str, "Source"))
-			sink = TRUE;
-		g_free(str);
-	}
+done:
+	server->source_enabled = TRUE;
 
-	str = g_key_file_get_string(config, "General", "Disable", &err);
+	return 0;
+}
 
-	if (err) {
-		DBG("audio.conf: %s", err->message);
-		g_clear_error(&err);
-	} else {
-		if (strstr(str, "Sink"))
-			source = FALSE;
-		if (strstr(str, "Source"))
-			sink = FALSE;
-		g_free(str);
-	}
-
-proceed:
+int a2dp_sink_register(const bdaddr_t *src, GKeyFile *config)
+{
+	struct a2dp_server *server;
 
 	server = find_server(servers, src);
-	if (!server) {
-		int av_err;
+	if (server != NULL)
+		goto done;
 
-		server = g_new0(struct a2dp_server, 1);
+	server = a2dp_server_register(src, config);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
 
-		av_err = avdtp_init(src, config);
-		if (av_err < 0) {
-			g_free(server);
-			return av_err;
-		}
-
-		bacpy(&server->src, src);
-		servers = g_slist_append(servers, server);
-	}
-
-	server->source_enabled = source;
-
-	server->sink_enabled = sink;
+done:
+	server->sink_enabled = TRUE;
 
 	return 0;
 }

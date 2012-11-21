@@ -122,7 +122,7 @@ static void audio_remove(struct btd_profile *p, struct btd_device *device)
 	audio_device_unregister(dev);
 }
 
-static int a2dp_probe(struct btd_profile *p, struct btd_device *device,
+static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
 	struct audio_device *audio_dev;
@@ -133,13 +133,23 @@ static int a2dp_probe(struct btd_profile *p, struct btd_device *device,
 		return -1;
 	}
 
-	if (g_slist_find_custom(uuids, A2DP_SINK_UUID, bt_uuid_strcmp) &&
-						audio_dev->sink == NULL)
-		audio_dev->sink = sink_init(audio_dev);
+	audio_dev->source = source_init(audio_dev);
 
-	if (g_slist_find_custom(uuids, A2DP_SOURCE_UUID, bt_uuid_strcmp) &&
-						audio_dev->source == NULL)
-		audio_dev->source = source_init(audio_dev);
+	return 0;
+}
+
+static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
+{
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	audio_dev->sink = sink_init(audio_dev);
 
 	return 0;
 }
@@ -213,12 +223,11 @@ static struct audio_adapter *audio_adapter_get(struct btd_adapter *adapter)
 	return adp;
 }
 
-static int a2dp_server_probe(struct btd_profile *p,
+static int a2dp_source_server_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
-	int err;
 
 	DBG("path %s", path);
 
@@ -226,14 +235,12 @@ static int a2dp_server_probe(struct btd_profile *p,
 	if (!adp)
 		return -EINVAL;
 
-	err = a2dp_register(adapter_get_address(adapter), config);
-	if (err < 0)
-		audio_adapter_unref(adp);
+	audio_adapter_unref(adp); /* Referenced by a2dp server */
 
-	return err;
+	return a2dp_source_register(adapter_get_address(adapter), config);
 }
 
-static void a2dp_server_remove(struct btd_profile *p,
+static int a2dp_sink_server_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
@@ -241,12 +248,13 @@ static void a2dp_server_remove(struct btd_profile *p,
 
 	DBG("path %s", path);
 
-	adp = find_adapter(adapters, adapter);
+	adp = audio_adapter_get(adapter);
 	if (!adp)
-		return;
+		return -EINVAL;
 
-	a2dp_unregister(adapter_get_address(adapter));
-	audio_adapter_unref(adp);
+	audio_adapter_unref(adp); /* Referenced by a2dp server */
+
+	return a2dp_sink_register(adapter_get_address(adapter), config);
 }
 
 static int avrcp_server_probe(struct btd_profile *p,
@@ -319,17 +327,26 @@ static void media_server_remove(struct btd_adapter *adapter)
 	audio_adapter_unref(adp);
 }
 
-static struct btd_profile a2dp_profile = {
-	.name		= "audio-a2dp",
+static struct btd_profile a2dp_source_profile = {
+	.name		= "audio-source",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 
-	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID, A2DP_SINK_UUID,
-							ADVANCED_AUDIO_UUID),
-	.device_probe	= a2dp_probe,
+	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID),
+	.device_probe	= a2dp_source_probe,
 	.device_remove	= audio_remove,
 
-	.adapter_probe	= a2dp_server_probe,
-	.adapter_remove = a2dp_server_remove,
+	.adapter_probe	= a2dp_source_server_probe,
+};
+
+static struct btd_profile a2dp_sink_profile = {
+	.name		= "audio-sink",
+	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+
+	.remote_uuids	= BTD_UUIDS(A2DP_SINK_UUID),
+	.device_probe	= a2dp_sink_probe,
+	.device_remove	= audio_remove,
+
+	.adapter_probe	= a2dp_sink_server_probe,
 };
 
 static struct btd_profile avrcp_profile = {
@@ -402,8 +419,11 @@ int audio_manager_init(GKeyFile *conf)
 		max_connected_headsets = i;
 
 proceed:
-	if (enabled.source || enabled.sink)
-		btd_profile_register(&a2dp_profile);
+	if (enabled.source)
+		btd_profile_register(&a2dp_source_profile);
+
+	if (enabled.sink)
+		btd_profile_register(&a2dp_sink_profile);
 
 	if (enabled.control)
 		btd_profile_register(&avrcp_profile);
@@ -420,8 +440,11 @@ void audio_manager_exit(void)
 		config = NULL;
 	}
 
-	if (enabled.source || enabled.sink)
-		btd_profile_unregister(&a2dp_profile);
+	if (enabled.source)
+		btd_profile_unregister(&a2dp_source_profile);
+
+	if (enabled.sink)
+		btd_profile_unregister(&a2dp_sink_profile);
 
 	if (enabled.control)
 		btd_profile_unregister(&avrcp_profile);
