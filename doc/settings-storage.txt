@@ -139,12 +139,15 @@ Long term key) related to a remote device.
   Class			String		Device class in hexadecimal,
 					i.e. 0x000000
 
-  Features		String		Bluetooth device features in
-					hexadecimal, i.e. 0x0000000000000000
+  SupportedTechnologies	List of		List of technologies supported by
+			strings		device, separated by ";"
+					Technologies can be BR/EDR or LE
 
   AddressType		String		An address can be "static" or "public"
 
   Trusted		Boolean		True if the remote device is trusted
+
+  Blocked		Boolean		True if the remote device is blocked
 
   Profiles		List of		List of profiles advertised by remote,
 			strings		in 128-bits UUID format, separated by
