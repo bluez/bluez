@@ -267,7 +267,7 @@ static int check_device(struct btd_device *device)
 	/* If already paired */
 	if (device_is_paired(device)) {
 		DBG("already paired");
-		return 1;
+		return -EALREADY;
 	}
 
 	/* Pairing in progress... */
@@ -286,7 +286,7 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 	struct eir_data eir_data;
 	char remote_address[18];
 	struct btd_device *device;
-	int ret;
+	int err;
 
 	DBG("size %zu", size);
 
@@ -301,10 +301,10 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 
 	device = adapter_get_device(adapter, remote_address);
 
-	ret = check_device(device);
-	if (ret != 0) {
+	err = check_device(device);
+	if (err < 0) {
 		eir_data_free(&eir_data);
-		return ret;
+		return err;
 	}
 
 	/* store OOB data */
@@ -330,11 +330,11 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 	 * received EIR also contained it.
 	 */
 	if (!remote && !eir_data.hash)
-		ret = 1;
+		err = -EALREADY;
 
 	eir_data_free(&eir_data);
 
-	return ret;
+	return err;
 }
 
 /*
@@ -547,7 +547,7 @@ static int process_params(DBusMessage *msg, struct btd_adapter *adapter,
 	type = dbus_message_iter_get_arg_type(&dict);
 	if (type != DBUS_TYPE_DICT_ENTRY) {
 		if (!remote && type == DBUS_TYPE_INVALID)
-			return 1;
+			return -EALREADY;
 
 		return -EINVAL;
 	}
@@ -616,29 +616,30 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 	struct agent *agent;
 	struct oob_handler *handler;
 	bdaddr_t remote;
-	int ret;
+	int err;
 
 	DBG("");
 
 	adapter = manager_get_default_adapter();
-	ret = check_adapter(adapter);
-	if (ret < 0)
-		return error_reply(msg, -ret);
+	err = check_adapter(adapter);
+	if (err < 0)
+		return error_reply(msg, -err);
 
-	ret = process_params(msg, adapter, &remote);
-	if (ret < 0)
-		return error_reply(msg, -ret);
+	err = process_params(msg, adapter, &remote);
 
 	/* already paired, reply immediately */
-	if (ret > 0)
+	if (err == -EALREADY)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (err < 0)
+		return error_reply(msg, -err);
 
 	agent = adapter_get_agent(adapter);
 
-	ret = adapter_create_bonding(adapter, &remote, BDADDR_BREDR,
+	err = adapter_create_bonding(adapter, &remote, BDADDR_BREDR,
 					agent_get_io_capability(agent));
-	if (ret < 0)
-		return error_reply(msg, -ret);
+	if (err < 0)
+		return error_reply(msg, -err);
 
 	handler = g_new0(struct oob_handler, 1);
 	handler->bonding_cb = bonding_complete;
@@ -655,25 +656,25 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_adapter *adapter;
 	struct oob_handler *handler;
-	int ret;
+	int err;
 
 	DBG("");
 
 	adapter = manager_get_default_adapter();
-	ret = check_adapter(adapter);
-	if (ret < 0)
-		return error_reply(msg, -ret);
+	err = check_adapter(adapter);
+	if (err < 0)
+		return error_reply(msg, -err);
 
-	ret = process_params(msg, adapter, NULL);
-	if (ret < 0)
-		return error_reply(msg, -ret);
-
-	if (ret == 1)
+	err = process_params(msg, adapter, NULL);
+	if (err == -EALREADY)
 		return create_request_oob_reply(adapter, NULL, NULL, msg);
 
-	ret = btd_adapter_read_local_oob_data(adapter);
-	if (ret < 0)
-		return error_reply(msg, -ret);
+	if (err < 0)
+		return error_reply(msg, -err);
+
+	err = btd_adapter_read_local_oob_data(adapter);
+	if (err < 0)
+		return error_reply(msg, -err);
 
 	handler = g_new0(struct oob_handler, 1);
 	handler->read_local_cb = read_local_complete;
