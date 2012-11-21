@@ -203,7 +203,7 @@ static bool valid_size(uint8_t size, uint8_t *sizes)
 	return false;
 }
 
-static uint8_t get_bits(const uint8_t *data, uint16_t size)
+static uint8_t get_bits(const uint8_t *data, uint32_t size)
 {
 	int i;
 
@@ -215,7 +215,7 @@ static uint8_t get_bits(const uint8_t *data, uint16_t size)
 	return 0;
 }
 
-static uint32_t get_size(const uint8_t *data, uint16_t size)
+static uint32_t get_size(const uint8_t *data, uint32_t size)
 {
 	int i;
 
@@ -242,12 +242,13 @@ static uint32_t get_size(const uint8_t *data, uint16_t size)
 	return 0;
 }
 
-static void decode_data_elements(uint8_t indent,
-					const uint8_t *data, uint16_t size)
+static void decode_data_elements(uint32_t position, uint8_t indent,
+				const uint8_t *data, uint32_t size,
+				void (*print_func) (uint32_t, uint8_t, uint8_t,
+						const uint8_t *, uint32_t))
 
 {
-	uint32_t datalen, elemlen;
-	uint8_t extrabits;
+	uint32_t datalen, elemlen, extrabits;
 	int i;
 
 	if (!size)
@@ -277,6 +278,12 @@ static void decode_data_elements(uint8_t indent,
 		if (type_table[i].value != type)
 			continue;
 
+		if (print_func) {
+			print_func(position, indent, type,
+					data + 1 + (extrabits / 8), datalen);
+			break;
+		}
+
 		print_field("%*c%s (%d) with %u byte%s [%u extra bits] len %u",
 					indent, ' ', type_table[i].str, type,
 					datalen, datalen == 1 ? "" : "s",
@@ -288,8 +295,9 @@ static void decode_data_elements(uint8_t indent,
 		}
 
 		if (type_table[i].recurse)
-			decode_data_elements(indent + 2,
-					data + 1 + (extrabits / 8), datalen);
+			decode_data_elements(0, indent + 2,
+					data + 1 + (extrabits / 8), datalen,
+								print_func);
 		else if (type_table[i].print)
 			type_table[i].print(indent + 2,
 					data + 1 + (extrabits / 8), datalen);
@@ -299,10 +307,10 @@ static void decode_data_elements(uint8_t indent,
 	data += elemlen;
 	size -= elemlen;
 
-	decode_data_elements(indent, data, size);
+	decode_data_elements(position + 1, indent, data, size, print_func);
 }
 
-static uint16_t get_bytes(const uint8_t *data, uint16_t size)
+static uint32_t get_bytes(const uint8_t *data, uint32_t size)
 {
 	switch (data[0] & 0x07) {
 	case 5:
@@ -314,6 +322,73 @@ static uint16_t get_bytes(const uint8_t *data, uint16_t size)
 	}
 
 	return 0;
+}
+
+static struct {
+	uint16_t id;
+	const char *str;
+} attribute_table[] = {
+	{ 0x0000, "Service Record Handle"		},
+	{ 0x0001, "Service Class ID List"		},
+	{ 0x0002, "Service Record State"		},
+	{ 0x0003, "Service ID"				},
+	{ 0x0004, "Protocol Descriptor List"		},
+	{ 0x0005, "Browse Group List"			},
+	{ 0x0006, "Language Base Attribute ID List"	},
+	{ 0x0007, "Service Info Time To Live"		},
+	{ 0x0008, "Service Availability"		},
+	{ 0x0009, "Bluetooth Profile Descriptor List"	},
+	{ 0x000a, "Documentation URL"			},
+	{ 0x000b, "Client Executable URL"		},
+	{ 0x000c, "Icon URL"				},
+	{ 0x000d, "Additional Protocol Descriptor List" },
+	{ }
+};
+
+static void print_attr(uint32_t position, uint8_t indent, uint8_t type,
+					const uint8_t *data, uint32_t size)
+{
+	int i;
+
+	if ((position % 2) == 0) {
+		uint16_t id = bt_get_be16(data);
+		const char *str = "Unknown";
+
+		for (i = 0; attribute_table[i].str; i++) {
+			if (attribute_table[i].id == id)
+				str = attribute_table[i].str;
+		}
+
+		print_field("%*cAttribute: %s (0x%4.4x) [len %d]",
+						indent, ' ', str, id, size);
+		return;
+	}
+
+	for (i = 0; type_table[i].str; i++) {
+		if (type_table[i].value != type)
+			continue;
+
+		if (type_table[i].recurse)
+			decode_data_elements(0, indent + 2, data, size, NULL);
+		else if (type_table[i].print)
+			type_table[i].print(indent + 2, data, size);
+		break;
+	}
+}
+
+static void print_attr_list(uint32_t position, uint8_t indent, uint8_t type,
+					const uint8_t *data, uint32_t size)
+{
+	print_field("%*cAttribute list: [len %d] {position %d}",
+						indent, ' ', size, position);
+
+	decode_data_elements(0, indent + 2, data, size, print_attr);
+}
+
+static void print_attr_lists(uint32_t position, uint8_t indent, uint8_t type,
+					const uint8_t *data, uint32_t size)
+{
+	decode_data_elements(0, indent, data, size, print_attr_list);
 }
 
 static void print_continuation(const uint8_t *data, uint16_t size)
@@ -346,8 +421,8 @@ struct cont_data {
 
 static struct cont_data cont_list[MAX_CONT];
 
-static void handle_continuation(struct tid_data *tid, uint16_t bytes,
-					const uint8_t *data, uint16_t size)
+static void handle_continuation(struct tid_data *tid, bool nested,
+			uint16_t bytes, const uint8_t *data, uint16_t size)
 {
 	uint8_t *newdata;
 	int i, n = -1;
@@ -358,7 +433,9 @@ static void handle_continuation(struct tid_data *tid, uint16_t bytes,
 	}
 
 	if (tid->cont[0] == 0x00 && data[bytes] == 0x00) {
-		decode_data_elements(2, data, bytes);
+		decode_data_elements(0, 2, data, bytes,
+				nested ? print_attr_lists : print_attr_list);
+
 		print_continuation(data + bytes, size - bytes);
 		return;
 	}
@@ -407,7 +484,10 @@ static void handle_continuation(struct tid_data *tid, uint16_t bytes,
 
 	if (data[bytes] == 0x00) {
 		print_field("Combined attribute bytes: %d", cont_list[n].size);
-		decode_data_elements(2, cont_list[n].data, cont_list[n].size);
+
+		decode_data_elements(0, 2, cont_list[n].data, cont_list[n].size,
+				nested ? print_attr_lists : print_attr_list);
+
 		free(cont_list[n].data);
 		cont_list[n].data = NULL;
 		cont_list[n].size = 0;
@@ -457,18 +537,18 @@ static void error_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 static void service_req(const struct l2cap_frame *frame, struct tid_data *tid)
 {
-	uint16_t search_bytes;
+	uint32_t search_bytes;
 
 	search_bytes = get_bytes(frame->data, frame->size);
 	print_field("Search pattern: [len %d]", search_bytes);
 
-	if (search_bytes > frame->size - 2) {
+	if (search_bytes + 2 > frame->size) {
 		print_text(COLOR_ERROR, "invalid search list length");
 		packet_hexdump(frame->data, frame->size);
 		return;
 	}
 
-	decode_data_elements(2, frame->data, search_bytes);
+	decode_data_elements(0, 2, frame->data, search_bytes, NULL);
 
 	print_field("Max record count: %d",
 				bt_get_be16(frame->data + search_bytes));
@@ -505,7 +585,7 @@ static void service_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 static void attr_req(const struct l2cap_frame *frame, struct tid_data *tid)
 {
-	uint16_t attr_bytes;
+	uint32_t attr_bytes;
 
 	if (frame->size < 6) {
 		print_text(COLOR_ERROR, "invalid size");
@@ -519,13 +599,13 @@ static void attr_req(const struct l2cap_frame *frame, struct tid_data *tid)
 	attr_bytes = get_bytes(frame->data + 6, frame->size - 6);
 	print_field("Attribute list: [len %d]", attr_bytes);
 
-	if (attr_bytes > frame->size - 6) {
+	if (attr_bytes + 6 > frame->size) {
 		print_text(COLOR_ERROR, "invalid attribute list length");
 		packet_hexdump(frame->data, frame->size);
 		return;
 	}
 
-	decode_data_elements(2, frame->data + 6, attr_bytes);
+	decode_data_elements(0, 2, frame->data + 6, attr_bytes, NULL);
 
 	store_continuation(tid, frame->data + 6 + attr_bytes,
 					frame->size - 6 - attr_bytes);
@@ -537,7 +617,8 @@ static void attr_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 
 	bytes = common_rsp(frame, tid);
 
-	handle_continuation(tid, bytes, frame->data + 2, frame->size - 2);
+	handle_continuation(tid, false, bytes,
+					frame->data + 2, frame->size - 2);
 
 	clear_tid(tid);
 }
@@ -545,27 +626,28 @@ static void attr_rsp(const struct l2cap_frame *frame, struct tid_data *tid)
 static void search_attr_req(const struct l2cap_frame *frame,
 						struct tid_data *tid)
 {
-	uint16_t search_bytes, attr_bytes;
+	uint32_t search_bytes, attr_bytes;
 
 	search_bytes = get_bytes(frame->data, frame->size);
 	print_field("Search pattern: [len %d]", search_bytes);
 
-	if (search_bytes > frame->size - 2) {
+	if (search_bytes + 2 > frame->size) {
 		print_text(COLOR_ERROR, "invalid search list length");
 		packet_hexdump(frame->data, frame->size);
 		return;
 	}
 
-	decode_data_elements(2, frame->data, search_bytes);
+	decode_data_elements(0, 2, frame->data, search_bytes, NULL);
 
 	print_field("Max record count: %d",
 				bt_get_be16(frame->data + search_bytes));
 
 	attr_bytes = get_bytes(frame->data + search_bytes + 2,
 				frame->size - search_bytes - 2);
-	print_field("Attribte list: [len %d]", attr_bytes);
+	print_field("Attribute list: [len %d]", attr_bytes);
 
-	decode_data_elements(2, frame->data + search_bytes + 2, attr_bytes);
+	decode_data_elements(0, 2, frame->data + search_bytes + 2,
+						attr_bytes, NULL);
 
 	store_continuation(tid, frame->data + search_bytes + 2 + attr_bytes,
 				frame->size - search_bytes - 2 - attr_bytes);
@@ -578,7 +660,7 @@ static void search_attr_rsp(const struct l2cap_frame *frame,
 
 	bytes = common_rsp(frame, tid);
 
-	handle_continuation(tid, bytes, frame->data + 2, frame->size - 2);
+	handle_continuation(tid, true, bytes, frame->data + 2, frame->size - 2);
 
 	clear_tid(tid);
 }
