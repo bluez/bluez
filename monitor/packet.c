@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <time.h>
 #include <sys/time.h>
 
@@ -1116,15 +1117,119 @@ static void print_commands(const uint8_t *commands)
 	print_field("Commands: 0x%s", str);
 }
 
-static void print_features(const uint8_t *features)
+struct features_data {
+	uint8_t bit;
+	const char *str;
+};
+
+static const struct features_data features_page0[] = {
+	{  0, "3 slot packets"				},
+	{  1, "5 slot packets"				},
+	{  2, "Encryption"				},
+	{  3, "Slot offset"				},
+	{  4, "Timing accuracy"				},
+	{  5, "Role switch"				},
+	{  6, "Hold mode"				},
+	{  7, "Sniff mode"				},
+	{  8, "Park state"				},
+	{  9, "Power control requests"			},
+	{ 10, "Channel quality driven data rate (CQDDR)"},
+	{ 11, "SCO link"				},
+	{ 12, "HV2 packets"				},
+	{ 13, "HV3 packets"				},
+	{ 14, "u-law log synchronous data"		},
+	{ 15, "A-law log synchronous data"		},
+	{ 16, "CVSD synchronous data"			},
+	{ 17, "Paging parameter negotiation"		},
+	{ 18, "Power control"				},
+	{ 19, "Transparent synchronous data"		},
+	{ 23, "Broadcast Encryption"			},
+	{ 25, "Enhanced Data Rate ACL 2 Mbps mode"	},
+	{ 26, "Enhanced Data Rate ACL 3 Mbps mode"	},
+	{ 27, "Enhanced inquiry scan"			},
+	{ 28, "Interlaced inquiry scan"			},
+	{ 29, "Interlaced page scan"			},
+	{ 30, "RSSI with inquiry results"		},
+	{ 31, "Extended SCO link (EV3 packets)"		},
+	{ 32, "EV4 packets"				},
+	{ 33, "EV5 packets"				},
+	{ 35, "AFH capable slave"			},
+	{ 36, "AFH classification slave"		},
+	{ 37, "BR/EDR Not Supported"			},
+	{ 38, "LE Supported (Controller)"		},
+	{ 39, "3-slot Enhanced Data Rate ACL packets"	},
+	{ 40, "5-slot Enhanced Data Rate ACL packets"	},
+	{ 41, "Sniff subrating"				},
+	{ 42, "Pause encryption"			},
+	{ 43, "AFH capable master"			},
+	{ 44, "AFH classification master"		},
+	{ 45, "Enhanced Data Rate eSCO 2 Mbps mode"	},
+	{ 46, "Enhanced Data Rate eSCO 3 Mbps mode"	},
+	{ 47, "3-slot Enhanced Data Rate eSCO packets"	},
+	{ 48, "Extended Inquiry Response"		},
+	{ 49, "Simultaneous LE and BR/EDR (Controller)"	},
+	{ 51, "Secure Simple Pairing"			},
+	{ 52, "Encapsulated PDU"			},
+	{ 53, "Erroneous Data Reporting"		},
+	{ 54, "Non-flushable Packet Boundary Flag"	},
+	{ 56, "Link Supervision Timeout Changed Event"	},
+	{ 57, "Inquiry TX Power Level"			},
+	{ 58, "Enhanced Power Control"			},
+	{ 63, "Extended features"			},
+	{ }
+};
+
+static const struct features_data features_page1[] = {
+	{  0, "Secure Simple Pairing (Host Support)"	},
+	{  1, "LE Supported (Host)"			},
+	{  2, "Simultaneous LE and BR/EDR (Host)"	},
+	{ }
+};
+
+static const struct features_data features_page2[] = {
+	{ }
+};
+
+static void print_features(uint8_t page, const uint8_t *features_array)
 {
+	const struct features_data *features_table = NULL;
+	uint64_t mask, features = 0;
 	char str[41];
 	int i;
 
-	for (i = 0; i < 8; i++)
-		sprintf(str + (i * 5), " 0x%2.2x", features[i]);
+	for (i = 0; i < 8; i++) {
+		sprintf(str + (i * 5), " 0x%2.2x", features_array[i]);
+		features |= ((uint64_t ) features_array[i]) << (i * 8);
+	}
 
 	print_field("Features:%s", str);
+
+	switch (page) {
+	case 0:
+		features_table = features_page0;
+		break;
+	case 1:
+		features_table = features_page1;
+		break;
+	case 2:
+		features_table = features_page2;
+		break;
+	}
+
+	if (!features_table)
+		return;
+
+	mask = features;
+
+	for (i = 0; features_table[i].str; i++) {
+		if (features & (1 << features_table[i].bit)) {
+			print_field("  %s", features_table[i].str);
+			mask &= ~(1 << features_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_field("  Unknown features (0x%16.16" PRIx64 ")", mask);
 }
 
 static void print_le_states(const uint8_t *states)
@@ -2521,7 +2626,7 @@ static void read_local_features_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_features *rsp = data;
 
 	print_status(rsp->status);
-	print_features(rsp->features);
+	print_features(0, rsp->features);
 }
 
 static void read_local_ext_features_cmd(const void *data, uint8_t size)
@@ -2537,7 +2642,7 @@ static void read_local_ext_features_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_field("Page: %d/%d", rsp->page, rsp->max_page);
-	print_features(rsp->features);
+	print_features(rsp->page, rsp->features);
 }
 
 static void read_buffer_size_rsp(const void *data, uint8_t size)
@@ -2700,7 +2805,7 @@ static void le_read_local_features_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_le_read_local_features *rsp = data;
 
 	print_status(rsp->status);
-	print_features(rsp->features);
+	print_features(0, rsp->features);
 }
 
 static void le_set_random_address_cmd(const void *data, uint8_t size)
@@ -3511,7 +3616,7 @@ static void remote_features_complete_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_features(evt->features);
+	print_features(0, evt->features);
 }
 
 static void remote_version_complete_evt(const void *data, uint8_t size)
@@ -3795,7 +3900,7 @@ static void remote_ext_features_complete_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_field("Page: %d/%d", evt->page, evt->max_page);
-	print_features(evt->features);
+	print_features(evt->page, evt->features);
 }
 
 static void sync_conn_complete_evt(const void *data, uint8_t size)
@@ -3965,7 +4070,7 @@ static void remote_host_features_notify_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_remote_host_features_notify *evt = data;
 
 	print_bdaddr(evt->bdaddr);
-	print_features(evt->features);
+	print_features(1, evt->features);
 }
 
 static void phy_link_complete_evt(const void *data, uint8_t size)
@@ -4167,7 +4272,7 @@ static void le_remote_features_complete_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_features(evt->features);
+	print_features(0, evt->features);
 }
 
 static void le_long_term_key_request_evt(const void *data, uint8_t size)
