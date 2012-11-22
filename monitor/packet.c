@@ -3329,6 +3329,16 @@ static const struct opcode_data opcode_table[] = {
 				write_remote_amp_assoc_rsp, 2, true },
 	{ 0x140c, "Get MWS Transport Layer Configuration" },
 
+	/* OGF 6 - Testing */
+	{ 0x1801, "Read Loopback Mode"			},
+	{ 0x1802, "Write Loopback Mode"			},
+	{ 0x1803, "Enable Device Under Test Mode"	},
+	{ 0x1804, "Write Simple Pairing Debug Mode"	},
+	/* reserved commands */
+	{ 0x1807, "Enable AMP Receiver Reports"		},
+	{ 0x1808, "AMP Test End"			},
+	{ 0x1809, "AMP Test"				},
+
 	/* OGF 8 - LE Control */
 	{ 0x2001, "LE Set Event Mask",
 				le_set_event_mask_cmd, 8, true,
