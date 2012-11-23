@@ -317,6 +317,10 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x112e, "Phonebook Access (PBAP) - PCE", NULL, 0 },
 	{ 0x112f, "Phonebook Access (PBAP) - PSE", NULL, 0 },
 	{ 0x1130, "Phonebook Access (PBAP)", NULL, 0 },
+	{ 0x1131, "Headset (HSP)", NULL, 0 },
+	{ 0x1132, "Message Access (MAP) - MAS", NULL, 0 },
+	{ 0x1133, "Message Access (MAP) - MNS", NULL, 0 },
+	{ 0x1134, "Message Access (MAP)", NULL, 0 },
 	/* ... */
 	{ 0x1200, "PnPInformation",
 		did_attrib_names, sizeof(did_attrib_names)/sizeof(struct attrib_def) },
