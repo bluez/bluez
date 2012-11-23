@@ -74,7 +74,7 @@
 #define IO_CAPABILITY_INVALID		0xFF
 
 #define DISCONNECT_TIMER	2
-#define DISCOVERY_TIMER		2
+#define DISCOVERY_TIMER		1
 
 struct btd_disconnect_data {
 	guint id;
