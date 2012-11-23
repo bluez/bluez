@@ -2984,7 +2984,6 @@ int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device
 
 	rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 	p = rspbuf + sizeof(sdp_pdu_hdr_t);
-	status = bt_get_unaligned((uint16_t *) p);
 
 	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 		/* For this case the status always is invalid record handle */
@@ -2993,6 +2992,12 @@ int sdp_device_record_unregister_binary(sdp_session_t *session, bdaddr_t *device
 	} else if (rsphdr->pdu_id != SDP_SVC_REMOVE_RSP) {
 		errno = EPROTO;
 		status = -1;
+	} else {
+		uint16_t tmp;
+
+		memcpy(&tmp, p, sizeof(tmp));
+
+		status = tmp;
 	}
 end:
 	free(reqbuf);
@@ -3089,7 +3094,6 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 
 	rsphdr = (sdp_pdu_hdr_t *) rspbuf;
 	p = rspbuf + sizeof(sdp_pdu_hdr_t);
-	status = bt_get_unaligned((uint16_t *) p);
 
 	if (rsphdr->pdu_id == SDP_ERROR_RSP) {
 		/* The status can be invalid sintax or invalid record handle */
@@ -3098,6 +3102,12 @@ int sdp_device_record_update(sdp_session_t *session, bdaddr_t *device, const sdp
 	} else if (rsphdr->pdu_id != SDP_SVC_UPDATE_RSP) {
 		errno = EPROTO;
 		status = -1;
+	} else {
+		uint16_t tmp;
+
+		memcpy(&tmp, p, sizeof(tmp));
+
+		status = tmp;
 	}
 end:
 	free(reqbuf);
@@ -4139,14 +4149,18 @@ int sdp_process(sdp_session_t *session)
 			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
 		} else {
 			/* point to the first csrc */
-			uint16_t *pcsrc = (uint16_t *) (t->rsp_concat_buf.data + 2);
+			uint8_t *pcsrc = t->rsp_concat_buf.data + 2;
+			uint16_t tcsrc, tcsrc2;
 
 			/* FIXME: update the interface later. csrc doesn't need be passed to clients */
 
 			pdata += sizeof(uint16_t); /* point to csrc */
 
 			/* the first csrc contains the sum of partial csrc responses */
-			*pcsrc += bt_get_unaligned((uint16_t *) pdata);
+			memcpy(&tcsrc, pcsrc, sizeof(tcsrc));
+			memcpy(&tcsrc2, pdata, sizeof(tcsrc2));
+			tcsrc += tcsrc2;
+			memcpy(pcsrc, &tcsrc, sizeof(tcsrc));
 
 			pdata += sizeof(uint16_t); /* point to the first handle */
 			rsp_count = csrc * 4;
