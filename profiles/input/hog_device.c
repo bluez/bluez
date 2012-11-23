@@ -549,8 +549,13 @@ static void forward_report(struct hog_device *hogdev,
 	int size;
 	guint type;
 
-	data = ev->u.output.data;
-	size = ev->u.output.size;
+	if (hogdev->prepend_id) {
+		data = ev->u.output.data + 1;
+		size = ev->u.output.size - 1;
+	} else {
+		data = ev->u.output.data;
+		size = ev->u.output.size;
+	}
 
 	switch (ev->type) {
 	case UHID_OUTPUT:
