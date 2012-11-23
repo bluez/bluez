@@ -573,6 +573,9 @@ static void forward_report(struct hog_device *hogdev,
 	DBG("Sending report type %d to device 0x%04X handle 0x%X", type,
 				hogdev->id, report->decl->value_handle);
 
+	if (hogdev->attrib == NULL)
+		return;
+
 	if (report->decl->properties & ATT_CHAR_PROPER_WRITE)
 		gatt_write_char(hogdev->attrib, report->decl->value_handle,
 				data, size, output_written_cb, hogdev);
