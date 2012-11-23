@@ -10,13 +10,25 @@ import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser
 
+bus = None
 device_obj = None
+dev_path = None
 
 def ask(prompt):
 	try:
 		return raw_input(prompt)
 	except:
 		return input(prompt)
+
+def set_trusted(path):
+	props = dbus.Interface(bus.get_object("org.bluez", path),
+					"org.freedesktop.DBus.Properties")
+	props.Set("org.bluez.Device", "Trusted", True)
+
+def dev_connect(path):
+	dev = dbus.Interface(bus.get_object("org.bluez", path),
+							"org.bluez.Device")
+	dev.Connect()
 
 class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
@@ -47,12 +59,14 @@ class Agent(dbus.service.Object):
 					in_signature="o", out_signature="s")
 	def RequestPinCode(self, device):
 		print("RequestPinCode (%s)" % (device))
+		set_trusted(device)
 		return ask("Enter PIN Code: ")
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="o", out_signature="u")
 	def RequestPasskey(self, device):
 		print("RequestPasskey (%s)" % (device))
+		set_trusted(device)
 		passkey = ask("Enter passkey: ")
 		return dbus.UInt32(passkey)
 
@@ -73,6 +87,7 @@ class Agent(dbus.service.Object):
 		print("RequestConfirmation (%s, %06d)" % (device, passkey))
 		confirm = ask("Confirm passkey (yes/no): ")
 		if (confirm == "yes"):
+			set_trusted(device)
 			return
 		raise Rejected("Passkey doesn't match")
 
@@ -92,6 +107,8 @@ class Agent(dbus.service.Object):
 
 def pair_reply():
 	print("Device paired")
+	set_trusted(dev_path)
+	dev_connect(dev_path)
 	mainloop.quit()
 
 def pair_error(error):
