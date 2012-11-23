@@ -182,8 +182,12 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 				aid->uint16 = bt_get_be16(p);
 				pElem = (char *) aid;
 			} else {
+				uint16_t tmp;
+
+				memcpy(&tmp, p, sizeof(tmp));
+
 				pElem = malloc(sizeof(uint16_t));
-				bt_put_be16(bt_get_unaligned((uint16_t *)p), pElem);
+				bt_put_be16(tmp, pElem);
 			}
 			p += sizeof(uint16_t);
 			seqlen += sizeof(uint16_t);
@@ -206,8 +210,12 @@ static int extract_des(uint8_t *buf, int len, sdp_list_t **svcReqSeq, uint8_t *p
 
 				pElem = (char *) aid;
 			} else {
+				uint32_t tmp;
+
+				memcpy(&tmp, p, sizeof(tmp));
+
 				pElem = malloc(sizeof(uint32_t));
-				bt_put_be32(bt_get_unaligned((uint32_t *)p), pElem);
+				bt_put_be32(tmp, pElem);
 			}
 			p += sizeof(uint32_t);
 			seqlen += sizeof(uint32_t);
