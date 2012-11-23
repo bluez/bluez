@@ -565,6 +565,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 	while (1) {
 		struct cmsghdr *cmsg;
 		struct timeval *tv = NULL;
+		struct timeval ctv;
 		uint16_t opcode, index, pktlen;
 		ssize_t len;
 
@@ -580,8 +581,10 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			if (cmsg->cmsg_level != SOL_SOCKET)
 				continue;
 
-			if (cmsg->cmsg_type == SCM_TIMESTAMP)
-				tv = (struct timeval *) CMSG_DATA(cmsg);
+			if (cmsg->cmsg_type == SCM_TIMESTAMP) {
+				memcpy(&ctv, CMSG_DATA(cmsg), sizeof(ctv));
+				tv = &ctv;
+			}
 		}
 
 		opcode = btohs(hdr.opcode);

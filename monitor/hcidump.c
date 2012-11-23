@@ -130,7 +130,8 @@ static void device_callback(int fd, uint32_t events, void *user_data)
 	while (1) {
 		struct cmsghdr *cmsg;
 		struct timeval *tv = NULL;
-		int *dir = NULL;
+		struct timeval ctv;
+		int dir = -1;
 		ssize_t len;
 
 		len = recvmsg(fd, &msg, MSG_DONTWAIT);
@@ -144,15 +145,16 @@ static void device_callback(int fd, uint32_t events, void *user_data)
 
 			switch (cmsg->cmsg_type) {
 			case HCI_DATA_DIR:
-				dir = (int *) CMSG_DATA(cmsg);
+				memcpy(&dir, CMSG_DATA(cmsg), sizeof(dir));
 				break;
 			case HCI_CMSG_TSTAMP:
-				tv = (struct timeval *) CMSG_DATA(cmsg);
+				memcpy(&ctv, CMSG_DATA(cmsg), sizeof(ctv));
+				tv = &ctv;
 				break;
 			}
 		}
 
-		if (!dir || len < 1)
+		if (dir < 0 || len < 1)
 			continue;
 
 		switch (buf[0]) {
@@ -163,11 +165,11 @@ static void device_callback(int fd, uint32_t events, void *user_data)
 			packet_hci_event(tv, data->index, buf + 1, len - 1);
 			break;
 		case HCI_ACLDATA_PKT:
-			packet_hci_acldata(tv, data->index, !!(*dir),
+			packet_hci_acldata(tv, data->index, !!dir,
 							buf + 1, len - 1);
 			break;
 		case HCI_SCODATA_PKT:
-			packet_hci_scodata(tv, data->index, !!(*dir),
+			packet_hci_scodata(tv, data->index, !!dir,
 							buf + 1, len - 1);
 			break;
 		}
@@ -314,6 +316,7 @@ static void stack_internal_callback(int fd, uint32_t events, void *user_data)
 	evt_stack_internal *si;
 	evt_si_device *sd;
 	struct timeval *tv = NULL;
+	struct timeval ctv;
 	uint8_t type = 0xff, bus = 0xff;
 	char str[18], name[8] = "";
 	bdaddr_t bdaddr;
@@ -345,7 +348,8 @@ static void stack_internal_callback(int fd, uint32_t events, void *user_data)
 
 		switch (cmsg->cmsg_type) {
 		case HCI_CMSG_TSTAMP:
-			tv = (struct timeval *) CMSG_DATA(cmsg);
+			memcpy(&ctv, CMSG_DATA(cmsg), sizeof(ctv));
+			tv = &ctv;
 			break;
 		}
 	}
