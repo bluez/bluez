@@ -313,16 +313,16 @@ static void recv_status(uint32_t status)
 
 static void recv_card_status(uint32_t status, uint8_t *param)
 {
-	uint32_t *card_status;
+	uint32_t card_status;
 	uint8_t result;
 	uint8_t iccrs;
 
 	if (status != STE_STATUS_OK)
 		return;
 
-	card_status = (uint32_t *)param;
+	memcpy(&card_status, param, sizeof(card_status));
 
-	if (get_sap_reader_status(*card_status, &iccrs) < 0)
+	if (get_sap_reader_status(card_status, &iccrs) < 0)
 		result = SAP_RESULT_ERROR_NO_REASON;
 	else
 		result = get_sap_result(STE_GET_STATUS_MSG, status);
@@ -420,7 +420,7 @@ static void recv_response(struct ste_message *msg)
 	}
 
 	param = msg->payload;
-	status = *(uint32_t *)param;
+	memcpy(&status, param, sizeof(status));
 	param += sizeof(status);
 
 	SAP_VDBG("status 0x%x", status);
