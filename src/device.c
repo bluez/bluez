@@ -2349,7 +2349,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			version = pdlist ? pdlist->val.uint16 : 0x0000;
 
 			if (source || vendor || product || version)
-				device_set_pnpid(device, source, vendor,
+				btd_device_set_pnpid(device, source, vendor,
 							product, version);
 		}
 
@@ -4101,7 +4101,7 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	return TRUE;
 }
 
-void device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
+void btd_device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 			uint16_t vendor_id, uint16_t product_id,
 			uint16_t product_ver)
 {
