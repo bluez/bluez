@@ -102,8 +102,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		if (old_state != AVCTP_STATE_CONNECTED)
 			break;
 
-		g_dbus_emit_signal(conn, path, AUDIO_CONTROL_INTERFACE,
-					"Disconnected", DBUS_TYPE_INVALID);
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 
@@ -121,9 +119,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 			control->connect = NULL;
 		}
 
-		g_dbus_emit_signal(conn, path,
-				AUDIO_CONTROL_INTERFACE, "Connected",
-				DBUS_TYPE_INVALID);
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 		break;
@@ -313,12 +308,6 @@ static const GDBusMethodTable control_methods[] = {
 	{ }
 };
 
-static const GDBusSignalTable control_signals[] = {
-	{ GDBUS_DEPRECATED_SIGNAL("Connected", NULL) },
-	{ GDBUS_DEPRECATED_SIGNAL("Disconnected", NULL) },
-	{ }
-};
-
 static const GDBusPropertyTable control_properties[] = {
 	{ "Connected", "b", control_property_get_connected },
 	{ }
@@ -362,7 +351,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					device_get_path(dev->btd_dev),
 					AUDIO_CONTROL_INTERFACE,
-					control_methods, control_signals,
+					control_methods, NULL,
 					control_properties, dev,
 					path_unregister))
 		return NULL;

@@ -52,16 +52,6 @@ Methods		void Connect()
 
 			Adjust remote volume one step down
 
-Signals		Connected() {deprecated}
-
-			Sent when a successful AVRCP connection has been made
-			to the remote device.
-
-		Disconnected() {deprecated}
-
-			Sent when the AVRCP connection to the remote device
-			has been disconnected.
-
 Properties
 
 		boolean Connected [readonly]
