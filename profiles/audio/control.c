@@ -132,27 +132,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	}
 }
 
-static DBusMessage *control_is_connected(DBusConnection *conn,
-						DBusMessage *msg,
-						void *data)
-{
-	struct audio_device *device = data;
-	struct control *control = device->control;
-	DBusMessage *reply;
-	dbus_bool_t connected;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	connected = (control->session != NULL);
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &connected,
-					DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 int control_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 {
 	struct control *control = dev->control;
@@ -322,9 +301,6 @@ static gboolean control_property_get_connected(
 }
 
 static const GDBusMethodTable control_methods[] = {
-	{ GDBUS_DEPRECATED_METHOD("IsConnected",
-				NULL, GDBUS_ARGS({ "connected", "b" }),
-				control_is_connected) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_control) },
 	{ GDBUS_METHOD("Disconnect", NULL, NULL, disconnect_control) },
 	{ GDBUS_METHOD("Play", NULL, NULL, control_play) },

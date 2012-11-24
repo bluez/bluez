@@ -12,11 +12,7 @@ Service		org.bluez
 Interface	org.bluez.Control
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		boolean IsConnected() {deprecated}
-
-			Returns True if connected, otherwise FALSE.
-
-		void Connect()
+Methods		void Connect()
 
 			Connect to remote device.
 
