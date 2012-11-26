@@ -11,42 +11,6 @@ Service		org.bluez
 Interface	org.bluez.Network
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		string Connect(string uuid)
-
-			Connect to the network device and return the network
-			interface name. Examples of the interface name are
-			bnep0, bnep1 etc.
-
-			uuid can be either one of "gn", "panu" or "nap" (case
-			insensitive) or a traditional string representation of
-			UUID or a hexadecimal number.
-
-			The connection will be closed and network device
-			released either upon calling Disconnect() or when
-			the client disappears from the message bus.
-
-			Possible errors: org.bluez.Error.AlreadyConnected
-					 org.bluez.Error.ConnectionAttemptFailed
-
-		void Disconnect()
-
-			Disconnect from the network device.
-
-			To abort a connection attempt in case of errors or
-			timeouts in the client it is fine to call this method.
-
-			Possible errors: org.bluez.Error.Failed
-
-		dict GetProperties()
-
-			Returns all properties for the interface. See the
-			properties section for available properties.
-
-Signals		PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
-
 Properties	boolean Connected [readonly]
 
 			Indicates if the device is connected.

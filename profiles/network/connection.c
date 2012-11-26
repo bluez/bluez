@@ -380,50 +380,6 @@ failed:
 	cancel_connection(nc, -EIO);
 }
 
-static void local_connect_cb(struct btd_device *device, int err,
-						const char *pdev, void *data)
-{
-	DBusMessage *msg = data;
-	DBusMessage *reply;
-
-	if (err < 0) {
-		reply = btd_error_failed(msg, strerror(-err));
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
-		dbus_message_unref(msg);
-		return;
-	}
-
-	g_dbus_send_reply(btd_get_dbus_connection(), msg,
-						DBUS_TYPE_STRING, &pdev,
-						DBUS_TYPE_INVALID);
-
-	dbus_message_unref(msg);
-}
-
-static DBusMessage *local_connect(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct network_peer *peer = data;
-	const char *svc;
-	uint16_t id;
-	int err;
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
-						DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	id = bnep_service_id(svc);
-
-	err = connection_connect(peer->device, id, dbus_message_get_sender(msg),
-							local_connect_cb, msg);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	dbus_message_ref(msg);
-
-	return NULL;
-}
-
 /* Connect and initiate BNEP session */
 int connection_connect(struct btd_device *device, uint16_t id,
 					const char *owner,
@@ -496,30 +452,6 @@ int connection_disconnect(struct btd_device *device, uint16_t id,
 	connection_destroy(NULL, nc);
 
 	return 0;
-}
-
-static DBusMessage *local_disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct network_peer *peer = data;
-	const char *caller = dbus_message_get_sender(msg);
-	GSList *l;
-
-	for (l = peer->connections; l; l = l->next) {
-		struct network_conn *nc = l->data;
-		int err;
-
-		if (nc->state == DISCONNECTED)
-			continue;
-
-		err = connection_disconnect(peer->device, nc->id, caller);
-		if (err < 0)
-			return btd_error_failed(msg, strerror(-err));
-
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
-
-	return btd_error_not_connected(msg);
 }
 
 static gboolean
@@ -618,16 +550,6 @@ static void path_unregister(void *data)
 	peer_free(peer);
 }
 
-static const GDBusMethodTable connection_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect",
-				GDBUS_ARGS({"uuid", "s"}),
-				GDBUS_ARGS({"interface", "s"}),
-				local_connect) },
-	{ GDBUS_METHOD("Disconnect",
-			NULL, NULL, local_disconnect) },
-	{ }
-};
-
 static const GDBusPropertyTable connection_properties[] = {
 	{ "Connected", "b", network_property_get_connected },
 	{ "Interface", "s", network_property_get_interface },
@@ -663,8 +585,7 @@ static struct network_peer *create_peer(struct btd_device *device)
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(), path,
 					NETWORK_PEER_INTERFACE,
-					connection_methods,
-					NULL, connection_properties,
+					NULL, NULL, connection_properties,
 					peer, path_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
 			NETWORK_PEER_INTERFACE);
