@@ -261,14 +261,9 @@ fail:
 	return FALSE;
 }
 
-static void adaptername_remove(struct btd_adapter *adapter)
-{
-}
-
 static struct btd_adapter_driver adaptername_driver = {
 	.name	= "adaptername",
 	.probe	= adaptername_probe,
-	.remove	= adaptername_remove,
 };
 
 static int adaptername_init(void)
