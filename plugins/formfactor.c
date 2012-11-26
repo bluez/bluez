@@ -124,14 +124,9 @@ static int formfactor_probe(struct btd_adapter *adapter)
 	return 0;
 }
 
-static void formfactor_remove(struct btd_adapter *adapter)
-{
-}
-
 static struct btd_adapter_driver formfactor_driver = {
 	.name	= "formfactor",
 	.probe	= formfactor_probe,
-	.remove	= formfactor_remove,
 };
 
 static int formfactor_init(void)
