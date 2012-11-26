@@ -346,8 +346,6 @@ static void dbusoob_exit(void)
 {
 	DBG("Cleanup dbusoob plugin");
 
-	manager_foreach_adapter((adapter_cb) oob_remove, NULL);
-
 	btd_unregister_adapter_driver(&oob_driver);
 }
 

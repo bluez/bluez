@@ -3291,6 +3291,11 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 
 static void unload_driver(struct btd_adapter *adapter, gpointer data)
 {
+	struct btd_adapter_driver *driver = data;
+
+	if (driver->remove)
+		driver->remove(adapter);
+
 	adapter->drivers = g_slist_remove(adapter->drivers, data);
 }
 
