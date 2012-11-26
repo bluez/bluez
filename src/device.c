@@ -1488,10 +1488,11 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	else
 		return;
 
+	dbus_message_unref(req->msg);
+	req->msg = NULL;
+
 	if (reply)
 		g_dbus_send_message(conn, reply);
-	else
-		req->msg = NULL;
 }
 
 static uint8_t parse_io_capability(const char *capability)
