@@ -113,19 +113,15 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
 	struct network_conn *nc = data;
-	gboolean connected = FALSE;
-	const char *property = "";
+	DBusConnection *conn = btd_get_dbus_connection();
 	const char *path = device_get_path(nc->peer->device);
 
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "Connected",
-				DBUS_TYPE_BOOLEAN, &connected);
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "Interface",
-				DBUS_TYPE_STRING, &property);
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "UUID",
-				DBUS_TYPE_STRING, &property);
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "Connected");
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "Interface");
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "UUID");
 	device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 	nc->dc_id = 0;
 	if (nc->watch) {
@@ -202,9 +198,8 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	char pkt[BNEP_MTU];
 	ssize_t r;
 	int sk;
-	const char *pdev, *uuid;
-	gboolean connected;
 	const char *path;
+	DBusConnection *conn;
 
 	if (cond & G_IO_NVAL)
 		return FALSE;
@@ -267,24 +262,19 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	}
 
 	bnep_if_up(nc->dev);
-	pdev = nc->dev;
-	uuid = bnep_uuid(nc->id);
 
 	if (nc->cb)
-		nc->cb(nc->peer->device, 0, pdev, nc->cb_data);
+		nc->cb(nc->peer->device, 0, nc->dev, nc->cb_data);
 
+	conn = btd_get_dbus_connection();
 	path = device_get_path(nc->peer->device);
 
-	connected = TRUE;
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "Connected",
-				DBUS_TYPE_BOOLEAN, &connected);
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "Interface",
-				DBUS_TYPE_STRING, &pdev);
-	emit_property_changed(path,
-				NETWORK_PEER_INTERFACE, "UUID",
-				DBUS_TYPE_STRING, &uuid);
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "Connected");
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "Interface");
+	g_dbus_emit_property_changed(conn, path,
+					NETWORK_PEER_INTERFACE, "UUID");
 
 	nc->state = CONNECTED;
 	nc->dc_id = device_add_disconnect_watch(nc->peer->device, disconnect_cb,
@@ -532,54 +522,69 @@ static DBusMessage *local_disconnect(DBusConnection *conn,
 	return btd_error_not_connected(msg);
 }
 
-static DBusMessage *local_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static gboolean
+network_property_get_connected(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
 	struct network_peer *peer = data;
-	struct network_conn *nc = NULL;
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	dbus_bool_t connected;
-	const char *property;
+	dbus_bool_t value = FALSE;
 	GSList *l;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	/* Connected */
 	for (l = peer->connections; l; l = l->next) {
 		struct network_conn *tmp = l->data;
 
-		if (tmp->state != CONNECTED)
-			continue;
-
-		nc = tmp;
-		break;
+		if (tmp->state == CONNECTED) {
+			value = TRUE;
+			break;
+		}
 	}
 
-	connected = nc ? TRUE : FALSE;
-	dict_append_entry(&dict, "Connected", DBUS_TYPE_BOOLEAN, &connected);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
 
-	/* Interface */
-	property = nc ? nc->dev : "";
-	dict_append_entry(&dict, "Interface", DBUS_TYPE_STRING, &property);
+	return TRUE;
+}
 
-	/* UUID */
-	property = nc ? bnep_uuid(nc->id) : "";
-	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &property);
+static gboolean
+network_property_get_interface(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct network_peer *peer = data;
+	const char *value = "";
+	GSList *l;
 
-	dbus_message_iter_close_container(&iter, &dict);
+	for (l = peer->connections; l; l = l->next) {
+		struct network_conn *tmp = l->data;
 
-	return reply;
+		if (tmp->state == CONNECTED) {
+			value = tmp->dev;
+			break;
+		}
+	}
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
+
+	return TRUE;
+}
+
+static gboolean network_property_get_uuid(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct network_peer *peer = data;
+	const char *value = "";
+	GSList *l;
+
+	for (l = peer->connections; l; l = l->next) {
+		struct network_conn *tmp = l->data;
+
+		if (tmp->state == CONNECTED) {
+			value = bnep_uuid(tmp->id);
+			break;
+		}
+	}
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
+
+	return TRUE;
 }
 
 static void connection_free(void *data)
@@ -620,15 +625,13 @@ static const GDBusMethodTable connection_methods[] = {
 				local_connect) },
 	{ GDBUS_METHOD("Disconnect",
 			NULL, NULL, local_disconnect) },
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			local_get_properties) },
 	{ }
 };
 
-static const GDBusSignalTable connection_signals[] = {
-	{ GDBUS_SIGNAL("PropertyChanged",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+static const GDBusPropertyTable connection_properties[] = {
+	{ "Connected", "b", network_property_get_connected },
+	{ "Interface", "s", network_property_get_interface },
+	{ "UUID", "s", network_property_get_uuid },
 	{ }
 };
 
@@ -661,7 +664,7 @@ static struct network_peer *create_peer(struct btd_device *device)
 	if (g_dbus_register_interface(btd_get_dbus_connection(), path,
 					NETWORK_PEER_INTERFACE,
 					connection_methods,
-					connection_signals, NULL,
+					NULL, connection_properties,
 					peer, path_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
 			NETWORK_PEER_INTERFACE);
