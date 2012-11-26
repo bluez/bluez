@@ -202,9 +202,8 @@ endif
 EXTRA_DIST += test/sap_client.py test/hsplay test/hsmicro \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
 		test/test-discovery test/test-manager test/test-adapter \
-		test/test-device test/test-service test/test-network \
-		test/simple-agent test/simple-service test/simple-endpoint \
-		test/test-sap-server \
+		test/test-device test/test-service test/simple-agent \
+		test/simple-service test/simple-endpoint test/test-sap-server \
 		test/test-oob test/test-attrib test/test-proximity \
 		test/test-thermometer test/test-profile test/test-health \
 		test/test-health-sink test/service-record.dtd \
