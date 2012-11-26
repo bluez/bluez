@@ -81,37 +81,23 @@ static GSList *source_callbacks = NULL;
 
 static unsigned int avdtp_callback_id = 0;
 
-static const char *state2str(source_state_t state)
-{
-	switch (state) {
-	case SOURCE_STATE_DISCONNECTED:
-		return "disconnected";
-	case SOURCE_STATE_CONNECTING:
-		return "connecting";
-	case SOURCE_STATE_CONNECTED:
-		return "connected";
-	case SOURCE_STATE_PLAYING:
-		return "playing";
-	default:
-		error("Invalid source state %d", state);
-		return NULL;
-	}
-}
+static char *str_state[] = {
+	"SOURCE_STATE_DISCONNECTED",
+	"SOURCE_STATE_CONNECTING",
+	"SOURCE_STATE_CONNECTED",
+	"SOURCE_STATE_PLAYING",
+};
 
 static void source_set_state(struct audio_device *dev, source_state_t new_state)
 {
 	struct source *source = dev->source;
-	const char *state_str;
 	source_state_t old_state = source->state;
 	GSList *l;
 
 	source->state = new_state;
 
-	state_str = state2str(new_state);
-	if (state_str)
-		emit_property_changed(device_get_path(dev->btd_dev),
-					AUDIO_SOURCE_INTERFACE, "State",
-					DBUS_TYPE_STRING, &state_str);
+	DBG("State changed %s: %s -> %s", device_get_path(dev->btd_dev),
+				str_state[old_state], str_state[new_state]);
 
 	for (l = source_callbacks; l != NULL; l = l->next) {
 		struct source_state_callback *cb = l->data;
@@ -356,38 +342,6 @@ gboolean source_setup_stream(struct source *source, struct avdtp *session)
 	return TRUE;
 }
 
-static void generic_cb(struct audio_device *dev, int err, void *data)
-{
-	DBusMessage *msg = data;
-	DBusMessage *reply;
-
-	if (err < 0) {
-		reply = btd_error_failed(msg, strerror(-err));
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
-		dbus_message_unref(msg);
-		return;
-	}
-
-	g_dbus_send_reply(btd_get_dbus_connection(), msg, DBUS_TYPE_INVALID);
-
-	dbus_message_unref(msg);
-}
-
-static DBusMessage *connect_source(DBusConnection *conn,
-				DBusMessage *msg, void *data)
-{
-	struct audio_device *dev = data;
-	int err;
-
-	err = source_connect(dev, generic_cb, msg);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	dbus_message_ref(msg);
-
-	return NULL;
-}
-
 int source_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 {
 	struct source *source = dev->source;
@@ -423,67 +377,6 @@ int source_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	return 0;
 }
 
-static DBusMessage *disconnect_source(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct audio_device *dev = data;
-	int err;
-
-	err = source_disconnect(dev, FALSE, generic_cb, msg);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	dbus_message_ref(msg);
-
-	return NULL;
-}
-
-static DBusMessage *source_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct audio_device *device = data;
-	struct source *source = device->source;
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	const char *state;
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	/* State */
-	state = state2str(source->state);
-	if (state)
-		dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
-static const GDBusMethodTable source_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_source) },
-	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect_source) },
-	{ GDBUS_METHOD("GetProperties",
-				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-				source_get_properties) },
-	{ }
-};
-
-static const GDBusSignalTable source_signals[] = {
-	{ GDBUS_SIGNAL("PropertyChanged",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
-	{ }
-};
-
 static void source_free(struct audio_device *dev)
 {
 	struct source *source = dev->source;
@@ -508,35 +401,18 @@ static void source_free(struct audio_device *dev)
 	dev->source = NULL;
 }
 
-static void path_unregister(void *data)
-{
-	struct audio_device *dev = data;
-
-	DBG("Unregistered interface %s on path %s",
-			AUDIO_SOURCE_INTERFACE, device_get_path(dev->btd_dev));
-
-	source_free(dev);
-}
-
 void source_unregister(struct audio_device *dev)
 {
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-			device_get_path(dev->btd_dev), AUDIO_SOURCE_INTERFACE);
+	DBG("%s", device_get_path(dev->btd_dev));
+
+	source_free(dev);
 }
 
 struct source *source_init(struct audio_device *dev)
 {
 	struct source *source;
 
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					device_get_path(dev->btd_dev),
-					AUDIO_SOURCE_INTERFACE,
-					source_methods, source_signals, NULL,
-					dev, path_unregister))
-		return NULL;
-
-	DBG("Registered interface %s on path %s",
-			AUDIO_SOURCE_INTERFACE, device_get_path(dev->btd_dev));
+	DBG("%s", device_get_path(dev->btd_dev));
 
 	if (avdtp_callback_id == 0)
 		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
