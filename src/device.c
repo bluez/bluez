@@ -3479,7 +3479,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 			device_browse_primary(device, bonding->msg, FALSE);
 
 		bonding_request_free(bonding);
-	} else {
+	} else if (!device->svc_resolved) {
 		if (!device->browse && !device->discov_timer &&
 				main_opts.reverse_sdp) {
 			/* If we are not initiators and there is no currently
