@@ -107,6 +107,19 @@ static struct network_conn *find_connection(GSList *list, uint16_t id)
 	return NULL;
 }
 
+static struct network_conn *find_connection_by_state(GSList *list,
+							conn_state state)
+{
+	for (; list; list = list->next) {
+		struct network_conn *nc = list->data;
+
+		if (nc->state == state)
+			return nc;
+	}
+
+	return NULL;
+}
+
 static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 				gpointer data)
 {
@@ -433,19 +446,26 @@ network_property_get_connected(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct network_peer *peer = data;
-	dbus_bool_t value = FALSE;
-	GSList *l;
+	struct network_conn *nc;
+	dbus_bool_t connected;
 
-	for (l = peer->connections; l; l = l->next) {
-		struct network_conn *tmp = l->data;
+	nc = find_connection_by_state(peer->connections, CONNECTED);
+	connected = nc != NULL ? TRUE : FALSE;
 
-		if (tmp->state == CONNECTED) {
-			value = TRUE;
-			break;
-		}
-	}
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &connected);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
+	return TRUE;
+}
+
+static gboolean network_property_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct network_peer *peer = data;
+	struct network_conn *nc;
+
+	nc = find_connection_by_state(peer->connections, CONNECTED);
+	if (nc == NULL)
+		return FALSE;
 
 	return TRUE;
 }
@@ -455,19 +475,16 @@ network_property_get_interface(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct network_peer *peer = data;
-	const char *value = "";
-	GSList *l;
+	struct network_conn *nc;
+	const char *iface;
 
-	for (l = peer->connections; l; l = l->next) {
-		struct network_conn *tmp = l->data;
+	nc = find_connection_by_state(peer->connections, CONNECTED);
+	if (nc == NULL)
+		return FALSE;
 
-		if (tmp->state == CONNECTED) {
-			value = tmp->dev;
-			break;
-		}
-	}
+	iface = nc->dev;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &iface);
 
 	return TRUE;
 }
@@ -476,19 +493,16 @@ static gboolean network_property_get_uuid(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct network_peer *peer = data;
-	const char *value = "";
-	GSList *l;
+	struct network_conn *nc;
+	const char *uuid;
 
-	for (l = peer->connections; l; l = l->next) {
-		struct network_conn *tmp = l->data;
+	nc = find_connection_by_state(peer->connections, CONNECTED);
+	if (nc == NULL)
+		return FALSE;
 
-		if (tmp->state == CONNECTED) {
-			value = bnep_uuid(tmp->id);
-			break;
-		}
-	}
+	uuid = bnep_uuid(nc->id);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 
 	return TRUE;
 }
@@ -526,8 +540,10 @@ static void path_unregister(void *data)
 
 static const GDBusPropertyTable connection_properties[] = {
 	{ "Connected", "b", network_property_get_connected },
-	{ "Interface", "s", network_property_get_interface },
-	{ "UUID", "s", network_property_get_uuid },
+	{ "Interface", "s", network_property_get_interface, NULL,
+						network_property_exists },
+	{ "UUID", "s", network_property_get_uuid, NULL,
+						network_property_exists },
 	{ }
 };
 
