@@ -419,6 +419,8 @@ int connection_connect(struct btd_device *device, uint16_t id,
 
 	nc->state = CONNECTING;
 	nc->owner = g_strdup(owner);
+	nc->cb = cb;
+	nc->cb_data = data;
 
 	if (owner)
 		nc->watch = g_dbus_add_disconnect_watch(
