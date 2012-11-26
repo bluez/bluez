@@ -1650,6 +1650,7 @@ static struct default_settings {
 	int		psm;
 	BtIOSecLevel	sec_level;
 	bool		authorize;
+	bool		auto_connect;
 	char *		(*get_record)(struct ext_profile *ext,
 					struct ext_io *l2cap,
 					struct ext_io *rfcomm);
@@ -1674,6 +1675,7 @@ static struct default_settings {
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_AG_UUID,
 		.channel	= HFP_HF_DEFAULT_CHANNEL,
+		.auto_connect	= true,
 		.get_record	= get_hfp_hf_record,
 		.version	= 0x0105,
 	}, {
@@ -1682,6 +1684,7 @@ static struct default_settings {
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HFP_HS_UUID,
 		.channel	= HFP_AG_DEFAULT_CHANNEL,
+		.auto_connect	= true,
 		.get_record	= get_hfp_ag_record,
 		.version	= 0x0105,
 	}, {
@@ -1690,6 +1693,7 @@ static struct default_settings {
 		.priority	= BTD_PROFILE_PRIORITY_HIGH,
 		.remote_uuid	= HSP_HS_UUID,
 		.channel	= HSP_AG_DEFAULT_CHANNEL,
+		.auto_connect	= true,
 	}, {
 		.uuid		= OBEX_OPP_UUID,
 		.name		= "Object Push",
@@ -1766,6 +1770,9 @@ static void ext_set_defaults(struct ext_profile *ext)
 
 		if (settings->sec_level)
 			ext->sec_level = settings->sec_level;
+
+		if (settings->auto_connect)
+			ext->p.auto_connect = true;
 
 		if (settings->priority)
 			ext->p.priority = settings->priority;
