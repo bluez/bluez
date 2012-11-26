@@ -1252,6 +1252,9 @@ static void dev_profile_connected(struct btd_profile *profile,
 		g_dbus_send_reply(btd_get_dbus_connection(), dev->connect,
 							DBUS_TYPE_INVALID);
 
+	g_slist_free(dev->pending);
+	dev->pending = NULL;
+
 	dbus_message_unref(dev->connect);
 	dev->connect = NULL;
 }
