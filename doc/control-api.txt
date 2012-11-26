@@ -12,15 +12,7 @@ Service		org.bluez
 Interface	org.bluez.Control
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		void Connect()
-
-			Connect to remote device.
-
-		void Disconnect()
-
-			Disconnect from remote device.
-
-		void Play()
+Methods		void Play()
 
 			Resume playback.
 

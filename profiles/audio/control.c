@@ -153,38 +153,6 @@ int control_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	return 0;
 }
 
-static void generic_cb(struct audio_device *dev, int err, void *data)
-{
-	DBusMessage *msg = data;
-	DBusMessage *reply;
-
-	if (err < 0) {
-		reply = btd_error_failed(msg, strerror(-err));
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
-		dbus_message_unref(msg);
-		return;
-	}
-
-	g_dbus_send_reply(btd_get_dbus_connection(), msg, DBUS_TYPE_INVALID);
-
-	dbus_message_unref(msg);
-}
-
-static DBusMessage *connect_control(DBusConnection *conn, DBusMessage *msg,
-								void *data)
-{
-	struct audio_device *device = data;
-	int err;
-
-	err = control_connect(device, generic_cb, msg);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	dbus_message_ref(msg);
-
-	return NULL;
-}
-
 int control_disconnect(struct audio_device *dev, audio_device_cb cb,
 								void *data)
 {
@@ -206,19 +174,6 @@ int control_disconnect(struct audio_device *dev, audio_device_cb cb,
 
 	return 0;
 
-}
-
-static DBusMessage *disconnect_control(DBusConnection *conn, DBusMessage *msg,
-								void *data)
-{
-	struct audio_device *device = data;
-	int err;
-
-	err = control_disconnect(device, NULL, NULL);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *key_pressed(DBusConnection *conn, DBusMessage *msg,
@@ -296,8 +251,6 @@ static gboolean control_property_get_connected(
 }
 
 static const GDBusMethodTable control_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, connect_control) },
-	{ GDBUS_METHOD("Disconnect", NULL, NULL, disconnect_control) },
 	{ GDBUS_METHOD("Play", NULL, NULL, control_play) },
 	{ GDBUS_METHOD("Pause", NULL, NULL, control_pause) },
 	{ GDBUS_METHOD("Stop", NULL, NULL, control_stop) },

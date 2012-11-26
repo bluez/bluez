@@ -298,6 +298,8 @@ struct audio_device *audio_device_register(struct btd_device *device,
 {
 	struct audio_device *dev;
 
+	DBG("%s", device_get_path(device));
+
 	dev = g_new0(struct audio_device, 1);
 
 	dev->btd_dev = btd_device_ref(device);
@@ -305,8 +307,6 @@ struct audio_device *audio_device_register(struct btd_device *device,
 	bacpy(&dev->src, src);
 	dev->priv = g_new0(struct dev_priv, 1);
 	dev->priv->state = AUDIO_STATE_DISCONNECTED;
-
-	DBG("%s", device_get_path(dev->btd_dev));
 
 	if (sink_callback_id == 0)
 		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
@@ -341,6 +341,8 @@ gboolean audio_device_is_active(struct audio_device *dev,
 
 void audio_device_unregister(struct audio_device *device)
 {
+	DBG("%s", device_get_path(device->btd_dev));
+
 	if (device->hs_preauth_id) {
 		g_source_remove(device->hs_preauth_id);
 		device->hs_preauth_id = 0;
