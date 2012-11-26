@@ -680,26 +680,6 @@ int input_device_connect(struct btd_device *dev, struct btd_profile *profile,
 	return dev_connect(idev);
 }
 
-static DBusMessage *local_connect(DBusConnection *conn, DBusMessage *msg,
-								void *data)
-{
-	struct input_device *idev = data;
-
-	if (idev->pending)
-		return btd_error_in_progress(msg);
-
-	if (is_connected(idev))
-		return btd_error_already_connected(msg);
-
-	idev->pending = g_new0(struct pending_connect, 1);
-	idev->pending->local = true;
-	idev->pending->msg = dbus_message_ref(msg);
-
-	dev_connect(idev);
-
-	return NULL;
-}
-
 int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile,
 							btd_profile_cb cb)
 {
@@ -719,57 +699,6 @@ int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile,
 
 	return 0;
 }
-
-static DBusMessage *local_disconnect(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
-	struct input_device *idev = data;
-	int err;
-
-	err = connection_disconnect(idev, 0);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static void device_unregister(void *data)
-{
-	struct input_device *idev = data;
-
-	DBG("Unregistered interface %s on path %s", INPUT_DEVICE_INTERFACE,
-								idev->path);
-
-	devices = g_slist_remove(devices, idev);
-	input_device_free(idev);
-}
-
-
-
-static gboolean input_device_property_get_connected(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct input_device *idev = data;
-	dbus_bool_t connected = is_connected(idev);
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &connected);
-
-	return TRUE;
-}
-
-static const GDBusMethodTable device_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Connect",
-				NULL, NULL, local_connect) },
-	{ GDBUS_METHOD("Disconnect",
-				NULL, NULL, local_disconnect) },
-	{ }
-};
-
-static const GDBusPropertyTable device_properties[] = {
-	{ "Connected", "b", input_device_property_get_connected },
-	{ }
-};
 
 static struct input_device *input_device_new(struct btd_device *device,
 				const char *path, const uint32_t handle,
@@ -791,20 +720,6 @@ static struct input_device *input_device_new(struct btd_device *device,
 	if (strlen(name) > 0)
 		idev->name = g_strdup(name);
 
-	if (g_dbus_register_interface(btd_get_dbus_connection(),
-					idev->path, INPUT_DEVICE_INTERFACE,
-					device_methods, NULL,
-					device_properties, idev,
-					device_unregister) == FALSE) {
-		error("Failed to register interface %s on path %s",
-			INPUT_DEVICE_INTERFACE, path);
-		input_device_free(idev);
-		return NULL;
-	}
-
-	DBG("Registered interface %s on path %s",
-			INPUT_DEVICE_INTERFACE, idev->path);
-
 	return idev;
 }
 
@@ -822,6 +737,8 @@ int input_device_register(struct btd_device *device,
 					const sdp_record_t *rec, int timeout)
 {
 	struct input_device *idev;
+
+	DBG("%s", path);
 
 	idev = find_device_by_path(devices, path);
 	if (idev)
@@ -859,6 +776,8 @@ int input_device_unregister(const char *path, const char *uuid)
 {
 	struct input_device *idev;
 
+	DBG("%s", path);
+
 	idev = find_device_by_path(devices, path);
 	if (idev == NULL)
 		return -EINVAL;
@@ -868,8 +787,8 @@ int input_device_unregister(const char *path, const char *uuid)
 		return -EBUSY;
 	}
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-						path, INPUT_DEVICE_INTERFACE);
+	devices = g_slist_remove(devices, idev);
+	input_device_free(idev);
 
 	return 0;
 }
