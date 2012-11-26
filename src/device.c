@@ -1415,7 +1415,8 @@ static void profile_disconnected(struct btd_profile *profile,
 
 	if (err)
 		g_dbus_send_message(btd_get_dbus_connection(),
-				btd_error_failed(dev->connect, strerror(-err)));
+					btd_error_failed(dev->disconnect,
+							strerror(-err)));
 	else
 		g_dbus_send_reply(btd_get_dbus_connection(), dev->disconnect,
 							DBUS_TYPE_INVALID);
