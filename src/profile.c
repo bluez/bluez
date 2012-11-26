@@ -1797,6 +1797,7 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	int type = dbus_message_iter_get_arg_type(value);
 	const char *str;
 	uint16_t u16;
+	dbus_bool_t b;
 
 	if (strcasecmp(key, "Name") == 0) {
 		if (type != DBUS_TYPE_STRING)
@@ -1807,7 +1808,8 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	} else if (strcasecmp(key, "AutoConnect") == 0) {
 		if (type != DBUS_TYPE_BOOLEAN)
 			return -EINVAL;
-		dbus_message_iter_get_basic(value, &ext->p.auto_connect);
+		dbus_message_iter_get_basic(value, &b);
+		ext->p.auto_connect = b;
 	} else if (strcasecmp(key, "PSM") == 0) {
 		if (type != DBUS_TYPE_UINT16)
 			return -EINVAL;
@@ -1822,8 +1824,6 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 			return -EINVAL;
 		ext->local_chan = u16 ? u16 : BTD_PROFILE_CHAN_AUTO;
 	} else if (strcasecmp(key, "RequireAuthentication") == 0) {
-		dbus_bool_t b;
-
 		if (type != DBUS_TYPE_BOOLEAN)
 			return -EINVAL;
 
@@ -1835,7 +1835,8 @@ static int parse_ext_opt(struct ext_profile *ext, const char *key,
 	} else if (strcasecmp(key, "RequireAuthorization") == 0) {
 		if (type != DBUS_TYPE_BOOLEAN)
 			return -EINVAL;
-		dbus_message_iter_get_basic(value, &ext->authorize);
+		dbus_message_iter_get_basic(value, &b);
+		ext->authorize = b;
 	} else if (strcasecmp(key, "Role") == 0) {
 		if (type != DBUS_TYPE_STRING)
 			return -EINVAL;
