@@ -70,8 +70,6 @@ struct network_conn {
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
 	GIOChannel	*io;
-	char		*owner;		/* Connection initiator D-Bus client */
-	guint		watch;		/* Disconnect watch */
 	guint		dc_id;
 	struct network_peer *peer;
 	guint		attempt_cnt;
@@ -124,10 +122,6 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 					NETWORK_PEER_INTERFACE, "UUID");
 	device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 	nc->dc_id = 0;
-	if (nc->watch) {
-		g_dbus_remove_watch(btd_get_dbus_connection(), nc->watch);
-		nc->watch = 0;
-	}
 
 	info("%s disconnected", nc->dev);
 
@@ -141,16 +135,9 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 
 static void cancel_connection(struct network_conn *nc, int err)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
-
 	if (nc->timeout_source > 0) {
 		g_source_remove(nc->timeout_source);
 		nc->timeout_source = 0;
-	}
-
-	if (nc->watch) {
-		g_dbus_remove_watch(conn, nc->watch);
-		nc->watch = 0;
 	}
 
 	if (nc->cb)
@@ -172,11 +159,6 @@ static void connection_destroy(DBusConnection *conn, void *user_data)
 		bnep_kill_connection(device_get_address(nc->peer->device));
 	} else if (nc->io)
 		cancel_connection(nc, -EIO);
-
-	if (nc->owner) {
-		g_free(nc->owner);
-		nc->owner = NULL;
-	}
 }
 
 static void disconnect_cb(struct btd_device *device, gboolean removal,
@@ -418,15 +400,8 @@ int connection_connect(struct btd_device *device, uint16_t id,
 		return -EIO;
 
 	nc->state = CONNECTING;
-	nc->owner = g_strdup(owner);
 	nc->cb = cb;
 	nc->cb_data = data;
-
-	if (owner)
-		nc->watch = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
-						owner, connection_destroy,
-						nc, NULL);
 
 	return 0;
 }
@@ -447,9 +422,6 @@ int connection_disconnect(struct btd_device *device, uint16_t id,
 
 	if (nc->state == DISCONNECTED)
 		return 0;
-
-	if (!g_str_equal(nc->owner, caller))
-		return -EPERM;
 
 	connection_destroy(NULL, nc);
 
