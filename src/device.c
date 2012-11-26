@@ -1154,6 +1154,14 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		browse_request_cancel(device->browse);
 	}
 
+	if (device->connect) {
+		DBusMessage *reply = btd_error_failed(device->connect,
+								"Cancelled");
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		dbus_message_unref(device->connect);
+		device->connect = NULL;
+	}
+
 	if (msg)
 		device->disconnects = g_slist_append(device->disconnects,
 						dbus_message_ref(msg));
