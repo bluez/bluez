@@ -207,7 +207,6 @@ if __name__ == '__main__':
 	mainloop = GObject.MainLoop()
 
 	opts = {
-			"AutoConnect" :	True,
 			"Version" : dbus.UInt16(0x0106),
 			"Features" : dbus.UInt16(HF_FEATURES),
 		}
