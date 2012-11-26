@@ -100,8 +100,7 @@ static int connect_profile(struct btd_device *dev, struct btd_profile *profile,
 	req->profile = profile;
 	req->cb = cb;
 
-	err = connection_connect(dev, BNEP_SVC_PANU, NULL, connect_profile_cb,
-									req);
+	err = connection_connect(dev, id, NULL, connect_profile_cb, req);
 	if (err < 0) {
 		g_free(req);
 		return err;
