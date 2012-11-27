@@ -243,6 +243,11 @@ guint g_dbus_add_signal_watch(DBusConnection *connection,
 				const char *interface, const char *member,
 				GDBusSignalFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
+guint g_dbus_add_properties_watch(DBusConnection *connection,
+				const char *sender, const char *path,
+				const char *interface,
+				GDBusSignalFunction function, void *user_data,
+				GDBusDestroyFunction destroy);
 gboolean g_dbus_remove_watch(DBusConnection *connection, guint tag);
 void g_dbus_remove_all_watches(DBusConnection *connection);
 
