@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
 	struct server *server1;
 	struct server *server2;
 	struct server *server3;
+	struct server *server4;
 	sigset_t mask;
 
 	mainloop_init();
@@ -111,6 +112,10 @@ int main(int argc, char *argv[])
 	server3 = server_open_unix(SERVER_TYPE_LE, "/tmp/bt-server-le");
 	if (!server3)
 		fprintf(stderr, "Failed to open LE server channel\n");
+
+	server4 = server_open_unix(SERVER_TYPE_MONITOR, "/tmp/bt-server-mon");
+	if (!server4)
+		fprintf(stderr, "Failed to open monitor server channel\n");
 
 	return mainloop_run();
 }

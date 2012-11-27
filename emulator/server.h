@@ -28,6 +28,7 @@ enum server_type {
 	SERVER_TYPE_BREDR,
 	SERVER_TYPE_LE,
 	SERVER_TYPE_AMP,
+	SERVER_TYPE_MONITOR,
 };
 
 struct server;

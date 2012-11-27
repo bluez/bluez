@@ -117,6 +117,9 @@ again:
 		return;
 	}
 
+	if (!client->btdev)
+		return;
+
 	count = client->pkt_offset + len;
 
 	while (count > 0) {
@@ -223,6 +226,8 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	case SERVER_TYPE_AMP:
 		type = BTDEV_TYPE_AMP;
 		break;
+	case SERVER_TYPE_MONITOR:
+		goto done;
 	}
 
 	client->btdev = btdev_create(type, server->id);
@@ -234,6 +239,7 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 
 	btdev_set_send_handler(client->btdev, client_write_callback, client);
 
+done:
 	if (mainloop_add_fd(client->fd, EPOLLIN, client_read_callback,
 						client, client_destroy) < 0) {
 		btdev_destroy(client->btdev);
