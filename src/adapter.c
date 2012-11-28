@@ -2702,7 +2702,7 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 			return;
 		}
 
-		g_free(converted);
+		free(converted);
 	}
 
 	if (read_local_name(&adapter->bdaddr, str) == 0)
