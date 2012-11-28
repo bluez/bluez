@@ -35,6 +35,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <arpa/inet.h>
+#include <sys/stat.h>
 
 #define MONITOR_NEW_INDEX	0
 #define MONITOR_DEL_INDEX	1
