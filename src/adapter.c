@@ -2698,6 +2698,7 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 	if (converted) {
 		if (strcmp(converted, "yes") == 0) {
 			DBG("Legacy config file already converted");
+			free(converted);
 			return;
 		}
 
