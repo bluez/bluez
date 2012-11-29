@@ -90,11 +90,6 @@ struct a2dp_transport {
 	uint16_t		volume;
 };
 
-struct headset_transport {
-	struct audio_device	*device;
-	unsigned int		nrec_id;
-};
-
 struct media_transport {
 	char			*path;		/* Transport object path */
 	struct audio_device	*device;	/* Transport device */
