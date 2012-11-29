@@ -278,12 +278,7 @@ Service		org.bluez
 Interface	org.bluez.MediaTransport
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/fdX
 
-Methods		dict GetProperties()
-
-			Returns all properties for the interface. See the
-			properties section for available properties.
-
-		fd, uint16, uint16 Acquire(string accesstype)
+Methods		fd, uint16, uint16 Acquire(string accesstype)
 
 			Acquire transport file descriptor and the MTU for read
 			and write respectively.
@@ -310,13 +305,6 @@ Methods		dict GetProperties()
 		void Release(string accesstype)
 
 			Releases file descriptor.
-
-		void SetProperty(string name, variant value)
-
-			Changes the value of the specified property. Only
-			properties that are listed as read-write can be changed.
-
-			On success this will emit a PropertyChanged signal.
 
 Signals		void PropertyChanged(string name, variant value)
 
