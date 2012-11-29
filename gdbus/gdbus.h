@@ -257,6 +257,9 @@ void g_dbus_emit_property_changed(DBusConnection *connection,
 gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
 				const char *interface, DBusMessageIter *iter);
 
+gboolean g_dbus_attach_object_manager(DBusConnection *connection);
+gboolean g_dbus_detach_object_manager(DBusConnection *connection);
+
 #ifdef __cplusplus
 }
 #endif
