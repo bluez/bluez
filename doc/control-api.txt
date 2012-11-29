@@ -32,10 +32,6 @@ Methods		void Play()
 
 			Previous item.
 
-		void VolumeDown()
-
-			Adjust remote volume one step down
-
 		void VolumeUp()
 
 			Adjust remote volume one step up
