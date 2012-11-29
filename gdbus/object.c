@@ -1213,9 +1213,6 @@ static struct generic_data *object_path_ref(DBusConnection *connection,
 					manager_methods, manager_signals,
 					NULL, data, NULL);
 
-	add_interface(data, DBUS_INTERFACE_PROPERTIES, properties_methods,
-					properties_signals, NULL, data, NULL);
-
 	return data;
 }
 
@@ -1335,6 +1332,12 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 		object_path_unref(connection, path);
 		return FALSE;
 	}
+
+	if (properties != NULL && !find_interface(data->interfaces,
+						DBUS_INTERFACE_PROPERTIES))
+		add_interface(data, DBUS_INTERFACE_PROPERTIES,
+				properties_methods, properties_signals, NULL,
+				data, NULL);
 
 	add_interface(data, name, methods, signals, properties, user_data,
 								destroy);
