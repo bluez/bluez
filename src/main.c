@@ -381,6 +381,7 @@ static void disconnect_dbus(void)
 	if (!conn || !dbus_connection_get_is_connected(conn))
 		return;
 
+	g_dbus_detach_object_manager(conn);
 	set_dbus_connection(NULL);
 
 	dbus_connection_unref(conn);
@@ -412,6 +413,7 @@ static int connect_dbus(void)
 	set_dbus_connection(conn);
 
 	g_dbus_set_disconnect_function(conn, disconnected_dbus, NULL, NULL);
+	g_dbus_attach_object_manager(conn);
 
 	return 0;
 }
