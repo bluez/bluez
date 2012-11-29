@@ -370,6 +370,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 					void *user_data,
 					GDestroyNotify destroy)
 {
+	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *msg;
 	const char *path;
 	DBusMessageIter iter;
@@ -401,7 +402,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	path = media_transport_get_path(transport);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	transport_get_properties(transport, &iter);
+	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport", &iter);
 
 	return media_endpoint_async_call(msg, endpoint, cb, user_data, destroy);
 }

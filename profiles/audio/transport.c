@@ -116,13 +116,6 @@ struct media_transport {
 					struct media_owner *owner);
 	void			(*cancel) (struct media_transport *transport,
 								guint id);
-	void			(*get_properties) (
-					struct media_transport *transport,
-					DBusMessageIter *dict);
-	int			(*set_property) (
-					struct media_transport *transport,
-					const char *property,
-					DBusMessageIter *value);
 	GDestroyNotify		destroy;
 	void			*data;
 };
@@ -200,9 +193,10 @@ static void transport_set_state(struct media_transport *transport,
 	str = state2str(state);
 
 	if (g_strcmp0(str, state2str(old_state)) != 0)
-		emit_property_changed(transport->path,
-					MEDIA_TRANSPORT_INTERFACE, "State",
-					DBUS_TYPE_STRING, &str);
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+						transport->path,
+						MEDIA_TRANSPORT_INTERFACE,
+						"State");
 }
 
 void media_transport_destroy(struct media_transport *transport)
@@ -647,156 +641,133 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static int set_property_a2dp(struct media_transport *transport,
-						const char *property,
-						DBusMessageIter *value)
-{
-	struct a2dp_transport *a2dp = transport->data;
-
-	if (g_strcmp0(property, "Delay") == 0) {
-		if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT16)
-			return -EINVAL;
-		dbus_message_iter_get_basic(value, &a2dp->delay);
-
-		/* FIXME: send new delay */
-		return 0;
-	} else if (g_strcmp0(property, "Volume") == 0) {
-		uint16_t volume;
-
-		if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT16)
-			return -EINVAL;
-
-		dbus_message_iter_get_basic(value, &volume);
-
-		if (volume > 127)
-			return -EINVAL;
-
-		if (a2dp->volume == volume)
-			return 0;
-
-		return avrcp_set_volume(transport->device, volume);
-	}
-
-	return -EINVAL;
-}
-
-static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
-								void *data)
+static gboolean get_device(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
-	DBusMessageIter iter;
-	DBusMessageIter value;
-	const char *property, *sender;
-	GSList *l;
-	int err;
+	const char *path = device_get_path(transport->device->btd_dev);
 
-	if (!dbus_message_iter_init(msg, &iter))
-		return btd_error_invalid_args(msg);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
-		return btd_error_invalid_args(msg);
-
-	dbus_message_iter_get_basic(&iter, &property);
-	dbus_message_iter_next(&iter);
-
-	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_VARIANT)
-		return btd_error_invalid_args(msg);
-	dbus_message_iter_recurse(&iter, &value);
-
-	sender = dbus_message_get_sender(msg);
-	err = -EINVAL;
-
-	/* Check if sender has acquired the transport */
-	for (l = transport->owners; l; l = l->next) {
-		struct media_owner *owner = l->data;
-
-		if (g_strcmp0(owner->name, sender) == 0) {
-			err = transport->set_property(transport, property,
-								&value);
-			break;
-		}
-	}
-
-	if (err < 0) {
-		if (err == -EINVAL)
-			return btd_error_invalid_args(msg);
-		return btd_error_failed(msg, strerror(-err));
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	return TRUE;
 }
 
-static void get_properties_a2dp(struct media_transport *transport,
-						DBusMessageIter *dict)
+static gboolean get_uuid(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
-	struct a2dp_transport *a2dp = transport->data;
+	struct media_transport *transport = data;
+	const char *uuid = media_endpoint_get_uuid(transport->endpoint);
 
-	dict_append_entry(dict, "Delay", DBUS_TYPE_UINT16, &a2dp->delay);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 
-	if (a2dp->volume <= 127)
-		dict_append_entry(dict, "Volume", DBUS_TYPE_UINT16,
-							&a2dp->volume);
+	return TRUE;
 }
 
-void transport_get_properties(struct media_transport *transport,
-							DBusMessageIter *iter)
+static gboolean get_codec(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
-	DBusMessageIter dict;
-	const char *uuid;
-	uint8_t codec;
-	const char *state;
-	const char *path;
+	struct media_transport *transport = data;
+	uint8_t codec = media_endpoint_get_codec(transport->endpoint);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &codec);
+
+	return TRUE;
+}
+
+static gboolean get_configuration(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	DBusMessageIter array;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+					DBUS_TYPE_BYTE_AS_STRING, &array);
 
-	/* Device */
-	path = device_get_path(transport->device->btd_dev);
-	dict_append_entry(&dict, "Device", DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_fixed_array(&array, DBUS_TYPE_BYTE,
+						&transport->configuration,
+						transport->size);
 
-	uuid = media_endpoint_get_uuid(transport->endpoint);
-	dict_append_entry(&dict, "UUID", DBUS_TYPE_STRING, &uuid);
+	dbus_message_iter_close_container(iter, &array);
 
-	codec = media_endpoint_get_codec(transport->endpoint);
-	dict_append_entry(&dict, "Codec", DBUS_TYPE_BYTE, &codec);
-
-	dict_append_array(&dict, "Configuration", DBUS_TYPE_BYTE,
-				&transport->configuration, transport->size);
-
-	/* State */
-	state = state2str(transport->state);
-	dict_append_entry(&dict, "State", DBUS_TYPE_STRING, &state);
-
-	if (transport->get_properties)
-		transport->get_properties(transport, &dict);
-
-	dbus_message_iter_close_container(iter, &dict);
+	return TRUE;
 }
 
-static DBusMessage *get_properties(DBusConnection *conn, DBusMessage *msg,
-					void *data)
+static gboolean get_state(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
-	DBusMessage *reply;
-	DBusMessageIter iter;
+	const char *state = state2str(transport->state);
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &state);
 
-	dbus_message_iter_init_append(reply, &iter);
+	return TRUE;
+}
 
-	transport_get_properties(transport, &iter);
+static gboolean delay_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_transport *transport = data;
+	struct a2dp_transport *a2dp = transport->data;
 
-	return reply;
+	return a2dp->delay != 0;
+}
+
+static gboolean get_delay(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct a2dp_transport *a2dp = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &a2dp->delay);
+
+	return TRUE;
+}
+
+static gboolean volume_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_transport *transport = data;
+	struct a2dp_transport *a2dp = transport->data;
+
+	return a2dp->volume <= 127;
+}
+
+static gboolean get_volume(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_transport *transport = data;
+	struct a2dp_transport *a2dp = transport->data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &a2dp->volume);
+
+	return TRUE;
+}
+
+static void set_volume(const GDBusPropertyTable *property,
+			DBusMessageIter *iter, GDBusPendingPropertySet id,
+			void *data)
+{
+	struct media_transport *transport = data;
+	struct a2dp_transport *a2dp = transport->data;
+	uint16_t volume;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
+		return g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+
+	dbus_message_iter_get_basic(iter, &volume);
+
+	if (volume > 127)
+		return g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+
+	if (a2dp->volume != volume)
+		avrcp_set_volume(transport->device, volume);
+
+	g_dbus_pending_property_success(id);
 }
 
 static const GDBusMethodTable transport_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-			get_properties) },
 	{ GDBUS_ASYNC_METHOD("Acquire",
 			GDBUS_ARGS({ "access_type", "s" }),
 			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
@@ -805,15 +776,17 @@ static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Release",
 			GDBUS_ARGS({ "access_type", "s" }), NULL,
 			release ) },
-	{ GDBUS_METHOD("SetProperty",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
-			NULL, set_property) },
 	{ },
 };
 
-static const GDBusSignalTable transport_signals[] = {
-	{ GDBUS_SIGNAL("PropertyChanged",
-			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
+static const GDBusPropertyTable transport_properties[] = {
+	{ "Device", "o", get_device },
+	{ "UUID", "s", get_uuid },
+	{ "Codec", "y", get_codec },
+	{ "Configuration", "ay", get_configuration },
+	{ "State", "s", get_state },
+	{ "Delay", "q", get_delay, NULL, delay_exists },
+	{ "Volume", "q", get_volume, set_volume, volume_exists },
 	{ }
 };
 
@@ -932,8 +905,6 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		transport->resume = resume_a2dp;
 		transport->suspend = suspend_a2dp;
 		transport->cancel = cancel_a2dp;
-		transport->get_properties = get_properties_a2dp;
-		transport->set_property = set_property_a2dp;
 		transport->data = a2dp;
 		transport->destroy = destroy_a2dp;
 
@@ -950,7 +921,7 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
 				transport->path, MEDIA_TRANSPORT_INTERFACE,
-				transport_methods, transport_signals, NULL,
+				transport_methods, NULL, transport_properties,
 				transport, media_transport_free) == FALSE) {
 		error("Could not register transport %s", transport->path);
 		goto fail;
@@ -979,9 +950,9 @@ void media_transport_update_delay(struct media_transport *transport,
 
 	a2dp->delay = delay;
 
-	emit_property_changed(transport->path,
-				MEDIA_TRANSPORT_INTERFACE, "Delay",
-				DBUS_TYPE_UINT16, &a2dp->delay);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					transport->path,
+					MEDIA_TRANSPORT_INTERFACE, "Delay");
 }
 
 struct audio_device *media_transport_get_dev(struct media_transport *transport)
@@ -1000,7 +971,7 @@ void media_transport_update_volume(struct media_transport *transport,
 
 	a2dp->volume = volume;
 
-	emit_property_changed(transport->path,
-				MEDIA_TRANSPORT_INTERFACE, "Volume",
-				DBUS_TYPE_UINT16, &a2dp->volume);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					transport->path,
+					MEDIA_TRANSPORT_INTERFACE, "Volume");
 }
