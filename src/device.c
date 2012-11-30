@@ -217,17 +217,28 @@ static gboolean store_device_info_cb(gpointer user_data)
 
 	device->store_id = 0;
 
+	ba2str(adapter_get_address(device->adapter), adapter_addr);
+	ba2str(&device->bdaddr, device_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+			device_addr);
+	filename[PATH_MAX] = '\0';
+
 	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
 	g_key_file_set_string(key_file, "General", "Name", device->name);
 
 	if (device->alias != NULL)
 		g_key_file_set_string(key_file, "General", "Alias",
 								device->alias);
+	else
+		g_key_file_remove_key(key_file, "General", "Alias", NULL);
 
 	if (device->class) {
 		sprintf(class, "0x%6.6x", device->class);
 		g_key_file_set_string(key_file, "General", "Class", class);
+	} else {
+		g_key_file_remove_key(key_file, "General", "Class", NULL);
 	}
 
 	g_key_file_set_boolean(key_file, "General", "Trusted",
@@ -245,13 +256,9 @@ static gboolean store_device_info_cb(gpointer user_data)
 					device->product);
 		g_key_file_set_integer(key_file, "DeviceID", "Version",
 					device->version);
+	} else {
+		g_key_file_remove_group(key_file, "DeviceID", NULL);
 	}
-
-	ba2str(adapter_get_address(device->adapter), adapter_addr);
-	ba2str(&device->bdaddr, device_addr);
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-			device_addr);
-	filename[PATH_MAX] = '\0';
 
 	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
