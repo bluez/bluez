@@ -57,14 +57,7 @@ Service		org.bluez
 Interface	org.bluez.HealthDevice
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		dict GetProperties()
-
-			Returns all properties for the interface. See the
-			properties section for available properties.
-
-			Posible errors: org.bluez.Error.NotAllowed
-
-		boolean Echo()
+Methods		boolean Echo()
 
 			Sends an echo petition to the remote service. Returns
 			True if response matches with the buffer sent. If some
@@ -107,11 +100,6 @@ Signals		void ChannelConnected(object channel)
 			After this signal the data channel path will not be
 			valid and its path can be reused for future data
 			channels.
-
-		void PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
 
 Properties	object MainChannel [readonly]
 
