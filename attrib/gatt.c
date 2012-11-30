@@ -475,14 +475,14 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 		} else
 			uuid = att_get_uuid128(&value[5]);
 
+		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid))
+			break;
+
 		chars = g_try_new0(struct gatt_char, 1);
 		if (!chars) {
 			err = ATT_ECODE_INSUFF_RESOURCES;
 			goto done;
 		}
-
-		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid))
-			break;
 
 		chars->handle = last;
 		chars->properties = value[2];
