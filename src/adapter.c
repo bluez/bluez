@@ -2604,14 +2604,17 @@ static void convert_entry(char *key, char *value, void *user_data)
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info",
 			converter->address, key);
 	filename[PATH_MAX] = '\0';
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 	converter->cb(key_file, value);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
+	if (length > 0) {
+		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		g_file_set_contents(filename, data, length, NULL);
+	}
+
 	g_free(data);
 
 	g_key_file_free(key_file);
