@@ -144,7 +144,7 @@ static void hog_manager_exit(void)
 	if (suspend_supported)
 		suspend_exit();
 
-	btd_profile_register(&hog_profile);
+	btd_profile_unregister(&hog_profile);
 }
 
 static int hog_init(void)
