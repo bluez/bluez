@@ -344,6 +344,18 @@ static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
 static gboolean option_udev = FALSE;
 
+static void free_options(void)
+{
+	g_free(option_debug);
+	option_debug = NULL;
+
+	g_free(option_plugin);
+	option_plugin = NULL;
+
+	g_free(option_noplugin);
+	option_noplugin = NULL;
+}
+
 static guint last_adapter_timeout = 0;
 
 static gboolean exit_timeout(gpointer data)
@@ -532,6 +544,9 @@ int main(int argc, char *argv[])
 	 * best order of how to init various subsystems of the Bluetooth
 	 * daemon needs to be re-worked. */
 	plugin_init(config, option_plugin, option_noplugin);
+
+	/* no need to keep parsed option in memory */
+	free_options();
 
 	mgmt_err = mgmt_setup();
 	if (mgmt_err < 0) {
