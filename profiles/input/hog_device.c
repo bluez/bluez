@@ -706,6 +706,7 @@ static void hog_device_free(struct hog_device *hogdev)
 {
 	btd_device_unref(hogdev->device);
 	g_slist_free_full(hogdev->reports, report_free);
+	g_attrib_unref(hogdev->attrib);
 	g_free(hogdev->hog_primary);
 	g_free(hogdev);
 }
