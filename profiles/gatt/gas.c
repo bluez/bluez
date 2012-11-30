@@ -64,6 +64,7 @@ static void gas_free(struct gas *gas)
 	if (gas->attioid)
 		btd_device_remove_attio_callback(gas->device, gas->attioid);
 
+	g_attrib_unref(gas->attrib);
 	btd_device_unref(gas->device);
 	g_free(gas);
 }
