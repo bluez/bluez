@@ -50,8 +50,7 @@
 #define MACHINE_INFO_DIR "/etc/"
 #define MACHINE_INFO_FILE "machine-info"
 
-static GIOChannel *inotify = NULL;
-static int watch_d = -1;
+static guint watchid = 0;
 
 /* This file is part of systemd's hostnamed functionality:
  * http://0pointer.de/public/systemd-man/machine-info.html
@@ -266,20 +265,32 @@ static struct btd_adapter_driver adaptername_driver = {
 	.probe	= adaptername_probe,
 };
 
+struct inotify_data {
+	int inot_fd;
+	int watch_d;
+};
+
+static void destroy_cb(gpointer user_data)
+{
+	struct inotify_data *data = user_data;
+
+	inotify_rm_watch(data->inot_fd, data->watch_d);
+	g_free(data);
+}
+
 static int adaptername_init(void)
 {
-	int err;
-	int inot_fd;
 	guint32 mask;
-
-	err = btd_register_adapter_driver(&adaptername_driver);
-	if (err < 0)
-		return err;
+	GIOChannel *inotify;
+	int inot_fd;
+	int watch_d;
+	struct inotify_data *data;
 
 	inot_fd = inotify_init();
 	if (inot_fd < 0) {
-		error("Failed to setup inotify");
-		return 0;
+		int err = errno;
+		error("Failed to setup inotify: %s (%d)", strerror(-err), -err);
+		return -err;
 	}
 
 	mask = IN_CLOSE_WRITE;
@@ -290,30 +301,38 @@ static int adaptername_init(void)
 
 	watch_d = inotify_add_watch(inot_fd, MACHINE_INFO_DIR, mask);
 	if (watch_d < 0) {
-		error("Failed to setup watch for '%s'", MACHINE_INFO_DIR);
+		int err = errno;
+		error("Failed to setup watch for '%s': %s (%d)",
+				MACHINE_INFO_DIR, strerror(-err), -err);
 		close(inot_fd);
-		return 0;
+		return -err;
 	}
+
+	data = g_new(struct inotify_data, 1);
+	data->inot_fd = inot_fd;
+	data->watch_d = watch_d;
 
 	inotify = g_io_channel_unix_new(inot_fd);
 	g_io_channel_set_close_on_unref(inotify, TRUE);
 	g_io_channel_set_encoding(inotify, NULL, NULL);
 	g_io_channel_set_flags(inotify, G_IO_FLAG_NONBLOCK, NULL);
-	g_io_add_watch(inotify, G_IO_IN, handle_inotify_cb, NULL);
+
+	watchid = g_io_add_watch_full(inotify, G_PRIORITY_DEFAULT, G_IO_IN,
+					handle_inotify_cb, data, destroy_cb);
+
+	g_io_channel_unref(inotify);
+
+	btd_register_adapter_driver(&adaptername_driver);
 
 	return 0;
 }
 
 static void adaptername_exit(void)
 {
-	if (watch_d >= 0 && inotify != NULL) {
-		int inot_fd = g_io_channel_unix_get_fd(inotify);
-		inotify_rm_watch(inot_fd, watch_d);
-	}
 
-	if (inotify != NULL) {
-		g_io_channel_shutdown(inotify, FALSE, NULL);
-		g_io_channel_unref(inotify);
+	if (watchid > 0) {
+		g_source_remove(watchid);
+		watchid = 0;
 	}
 
 	btd_unregister_adapter_driver(&adaptername_driver);
