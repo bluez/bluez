@@ -162,6 +162,11 @@ struct avctp_channel {
 	guint process_id;
 };
 
+struct key_pressed {
+	uint8_t op;
+	guint timer;
+};
+
 struct avctp {
 	struct avctp_server *server;
 	bdaddr_t dst;
@@ -179,6 +184,7 @@ struct avctp {
 	struct avctp_channel *browsing;
 
 	uint8_t key_quirks[256];
+	struct key_pressed *key;
 };
 
 struct avctp_pdu_handler {
@@ -214,6 +220,9 @@ static GSList *servers = NULL;
 
 static void auth_cb(DBusError *derr, void *user_data);
 static gboolean process_queue(gpointer user_data);
+static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
+					uint8_t subunit, uint8_t *operands,
+					size_t operand_count, void *user_data);
 
 static int send_event(int fd, uint16_t type, uint16_t code, int32_t value)
 {
@@ -407,6 +416,12 @@ static void avctp_disconnected(struct avctp *session)
 	if (session->auth_id != 0) {
 		btd_cancel_authorization(session->auth_id);
 		session->auth_id = 0;
+	}
+
+	if (session->key != NULL) {
+		if (session->key->timer > 0)
+			g_source_remove(session->key->timer);
+		g_free(session->key);
 	}
 
 	if (session->uinput >= 0) {
@@ -1272,27 +1287,43 @@ static int avctp_send_req(struct avctp *session, uint8_t code,
 	return 0;
 }
 
-static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
-					uint8_t subunit, uint8_t *operands,
-					size_t operand_count, void *user_data)
+static char *op2str(uint8_t op)
 {
-	if (code != AVC_CTYPE_ACCEPTED)
-		return FALSE;
-
-	/* Button release */
-	operands[0] |= 0x80;
-
-	avctp_send_req(session, AVC_CTYPE_CONTROL,
-				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
-				operands, operand_count,
-				NULL, NULL);
-
-	return FALSE;
+	switch (op & 0x7f) {
+	case AVC_VOLUME_UP:
+		return "VOLUME UP";
+	case AVC_VOLUME_DOWN:
+		return "VOLUME DOWN";
+	case AVC_MUTE:
+		return "MUTE";
+	case AVC_PLAY:
+		return "PLAY";
+	case AVC_STOP:
+		return "STOP";
+	case AVC_PAUSE:
+		return "PAUSE";
+	case AVC_RECORD:
+		return "RECORD";
+	case AVC_REWIND:
+		return "REWIND";
+	case AVC_FAST_FORWARD:
+		return "FAST FORWARD";
+	case AVC_EJECT:
+		return "EJECT";
+	case AVC_FORWARD:
+		return "FORWARD";
+	case AVC_BACKWARD:
+		return "BACKWARD";
+	default:
+		return "UNKNOWN";
+	}
 }
 
-int avctp_send_passthrough(struct avctp *session, uint8_t op)
+static int avctp_passthrough_press(struct avctp *session, uint8_t op)
 {
 	uint8_t operands[2];
+
+	DBG("%s", op2str(op));
 
 	/* Button pressed */
 	operands[0] = op & 0x7f;
@@ -1302,6 +1333,92 @@ int avctp_send_passthrough(struct avctp *session, uint8_t op)
 				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
 				operands, sizeof(operands),
 				avctp_passthrough_rsp, NULL);
+}
+
+static int avctp_passthrough_release(struct avctp *session, uint8_t op)
+{
+	uint8_t operands[2];
+
+	DBG("%s", op2str(op));
+
+	/* Button released */
+	operands[0] = op | 0x80;
+	operands[1] = 0;
+
+	return avctp_send_req(session, AVC_CTYPE_CONTROL,
+				AVC_SUBUNIT_PANEL, AVC_OP_PASSTHROUGH,
+				operands, sizeof(operands),
+				NULL, NULL);
+}
+
+static gboolean repeat_timeout(gpointer user_data)
+{
+	struct avctp *session = user_data;
+	struct key_pressed *key = session->key;
+
+	avctp_passthrough_release(session, key->op);
+	avctp_passthrough_press(session, key->op);
+
+	return TRUE;
+}
+
+static void release_pressed(struct avctp *session)
+{
+	struct key_pressed *key = session->key;
+
+	avctp_passthrough_release(session, key->op);
+
+	if (key->timer > 0)
+		g_source_remove(key->timer);
+
+	g_free(key);
+	session->key = NULL;
+}
+
+static bool set_pressed(struct avctp *session, uint8_t op)
+{
+	struct key_pressed *key;
+
+	if (session->key != NULL) {
+		if (session->key->op == op)
+			return TRUE;
+		release_pressed(session);
+	}
+
+	if (op != AVC_FAST_FORWARD && op != AVC_REWIND)
+		return FALSE;
+
+	key = g_new0(struct key_pressed, 1);
+	key->op = op;
+	key->timer = g_timeout_add_seconds(2, repeat_timeout, session);
+
+	session->key = key;
+
+	return TRUE;
+}
+
+static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
+					uint8_t subunit, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	if (code != AVC_CTYPE_ACCEPTED)
+		return FALSE;
+
+	if (set_pressed(session, operands[0]))
+		return FALSE;
+
+	avctp_passthrough_release(session, operands[0]);
+
+	return FALSE;
+}
+
+int avctp_send_passthrough(struct avctp *session, uint8_t op)
+{
+	/* Auto release if key pressed */
+	if (session->key != NULL)
+		release_pressed(session);
+
+	return avctp_passthrough_press(session, op);
 }
 
 int avctp_send_vendordep(struct avctp *session, uint8_t transaction,

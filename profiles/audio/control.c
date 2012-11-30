@@ -238,6 +238,18 @@ static DBusMessage *control_previous(DBusConnection *conn, DBusMessage *msg,
 	return key_pressed(conn, msg, AVC_BACKWARD, data);
 }
 
+static DBusMessage *control_fast_forward(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return key_pressed(conn, msg, AVC_FAST_FORWARD, data);
+}
+
+static DBusMessage *control_rewind(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return key_pressed(conn, msg, AVC_REWIND, data);
+}
+
 static gboolean control_property_get_connected(
 					const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
@@ -258,6 +270,8 @@ static const GDBusMethodTable control_methods[] = {
 	{ GDBUS_METHOD("Previous", NULL, NULL, control_previous) },
 	{ GDBUS_METHOD("VolumeUp", NULL, NULL, control_volume_up) },
 	{ GDBUS_METHOD("VolumeDown", NULL, NULL, control_volume_down) },
+	{ GDBUS_METHOD("FastForward", NULL, NULL, control_fast_forward) },
+	{ GDBUS_METHOD("Rewind", NULL, NULL, control_rewind) },
 	{ }
 };
 
