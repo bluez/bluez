@@ -127,13 +127,13 @@ static void gatt_server_free(struct gatt_server *server)
 	g_list_free_full(server->database, attrib_free);
 
 	if (server->l2cap_io != NULL) {
-		g_io_channel_unref(server->l2cap_io);
 		g_io_channel_shutdown(server->l2cap_io, FALSE, NULL);
+		g_io_channel_unref(server->l2cap_io);
 	}
 
 	if (server->le_io != NULL) {
-		g_io_channel_unref(server->le_io);
 		g_io_channel_shutdown(server->le_io, FALSE, NULL);
+		g_io_channel_unref(server->le_io);
 	}
 
 	g_slist_free_full(server->clients, (GDestroyNotify) channel_free);
