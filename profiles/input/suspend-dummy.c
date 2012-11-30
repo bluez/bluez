@@ -44,7 +44,7 @@
 
 static suspend_event suspend_cb = NULL;
 static resume_event resume_cb = NULL;
-static GIOChannel *fifoio = NULL;
+static guint watch = 0;
 
 static int fifo_open(void);
 
@@ -54,8 +54,15 @@ static gboolean read_fifo(GIOChannel *io, GIOCondition cond, gpointer user_data)
 	gsize offset, left, bread;
 	GIOStatus iostatus;
 
-	if (cond & (G_IO_ERR | G_IO_HUP))
-		goto failed;
+	if (cond & (G_IO_ERR | G_IO_HUP)) {
+		/*
+		 * Both ends needs to be open simultaneously before proceeding
+		 * any input or output operation. When the remote closes the
+		 * channel, hup signal is received on this end.
+		 */
+		fifo_open();
+		return FALSE;
+	}
 
 	offset = 0;
 	left = sizeof(buffer) - 1;
@@ -77,25 +84,12 @@ static gboolean read_fifo(GIOChannel *io, GIOCondition cond, gpointer user_data)
 		resume_cb();
 
 	return TRUE;
-
-failed:
-	/*
-	 * Both ends needs to be open simultaneously before proceeding
-	 * any input or output operation. When the remote closes the
-	 * channel, hup signal is received on this end.
-	 */
-
-	g_io_channel_unref(fifoio);
-	fifoio = NULL;
-
-	fifo_open();
-
-	return FALSE;
 }
 
 static int fifo_open(void)
 {
 	GIOCondition condition = G_IO_IN | G_IO_ERR | G_IO_HUP;
+	GIOChannel *fifoio;
 	int fd;
 
 	fd = open(HOG_SUSPEND_FIFO, O_RDONLY | O_NONBLOCK);
@@ -109,7 +103,9 @@ static int fifo_open(void)
 	fifoio = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(fifoio, TRUE);
 
-	g_io_add_watch(fifoio, condition, read_fifo, NULL);
+	watch = g_io_add_watch(fifoio, condition, read_fifo, NULL);
+
+	g_io_channel_unref(fifoio);
 
 	return 0;
 }
@@ -137,9 +133,9 @@ int suspend_init(suspend_event suspend, resume_event resume)
 
 void suspend_exit(void)
 {
-	if (fifoio) {
-		g_io_channel_shutdown(fifoio, FALSE, NULL);
-		g_io_channel_unref(fifoio);
+	if (watch > 0) {
+		g_source_remove(watch);
+		watch = 0;
 	}
 
 	remove(HOG_SUSPEND_FIFO);
