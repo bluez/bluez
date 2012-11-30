@@ -1904,12 +1904,6 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 
 	load_info(device, srcaddr, address);
 
-	if (read_link_key(src, &device->bdaddr, device->bdaddr_type, NULL,
-								NULL) == 0) {
-		device_set_paired(device, TRUE);
-		device_set_bonded(device, TRUE);
-	}
-
 	if (device_is_le(device) && has_longtermkeys(src, &device->bdaddr,
 							device->bdaddr_type)) {
 		device_set_paired(device, TRUE);

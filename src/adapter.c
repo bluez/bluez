@@ -1766,31 +1766,26 @@ static int str2buf(const char *str, uint8_t *buf, size_t blen)
 	return 0;
 }
 
-static struct link_key_info *get_key_info(const char *addr, const char *value)
+static struct link_key_info *get_key_info(GKeyFile *key_file, const char *peer)
 {
-	struct link_key_info *info;
-	char tmp[3];
-	long int l;
+	struct link_key_info *info = NULL;
+	char *str;
 
-	if (strlen(value) < 36) {
-		error("Unexpectedly short (%zu) link key line", strlen(value));
-		return NULL;
-	}
+	str = g_key_file_get_string(key_file, "LinkKey", "Key", NULL);
+	if (!str || strlen(str) != 34)
+		goto failed;
 
 	info = g_new0(struct link_key_info, 1);
 
-	str2ba(addr, &info->bdaddr);
+	str2ba(peer, &info->bdaddr);
+	str2buf(&str[2], info->key, sizeof(info->key));
 
-	str2buf(value, info->key, sizeof(info->key));
+	info->type = g_key_file_get_integer(key_file, "LinkKey", "Type", NULL);
+	info->pin_len = g_key_file_get_integer(key_file, "LinkKey", "PINLength",
+						NULL);
 
-	memcpy(tmp, value + 33, 2);
-	info->type = (uint8_t) strtol(tmp, NULL, 10);
-
-	memcpy(tmp, value + 35, 2);
-	l = strtol(tmp, NULL, 10);
-	if (l < 0)
-		l = 0;
-	info->pin_len = l;
+failed:
+	g_free(str);
 
 	return info;
 }
@@ -1829,34 +1824,6 @@ static struct smp_ltk_info *get_ltk_info(const char *addr, uint8_t bdaddr_type,
 	str2buf(ptr, ltk->rand, sizeof(ltk->rand));
 
 	return ltk;
-}
-
-static void create_stored_device_from_linkkeys(char *key, char *value,
-							void *user_data)
-{
-	char address[18];
-	uint8_t bdaddr_type;
-	struct adapter_keys *keys = user_data;
-	struct btd_adapter *adapter = keys->adapter;
-	struct btd_device *device;
-	struct link_key_info *info;
-
-	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
-		bdaddr_type = BDADDR_BREDR;
-
-	info = get_key_info(address, value);
-	if (info)
-		keys->keys = g_slist_append(keys->keys, info);
-
-	if (g_slist_find_custom(adapter->devices, address,
-					(GCompareFunc) device_address_cmp))
-		return;
-
-	device = device_create(adapter, address, bdaddr_type);
-	if (device) {
-		device_set_temporary(device, FALSE);
-		adapter->devices = g_slist_append(adapter->devices, device);
-	}
 }
 
 static void create_stored_device_from_ltks(char *key, char *value,
@@ -1994,18 +1961,6 @@ static void load_devices(struct btd_adapter *adapter)
 	textfile_foreach(filename, create_stored_device_from_primaries,
 								adapter);
 
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "linkkeys");
-	textfile_foreach(filename, create_stored_device_from_linkkeys, &keys);
-
-	err = mgmt_load_link_keys(adapter->dev_id, keys.keys,
-							main_opts.debug_keys);
-	if (err < 0)
-		error("Unable to load link keys: %s (%d)",
-							strerror(-err), -err);
-
-	g_slist_free_full(keys.keys, g_free);
-	keys.keys = NULL;
-
 	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "longtermkeys");
 	textfile_foreach(filename, create_stored_device_from_ltks, &keys);
 
@@ -2027,13 +1982,32 @@ static void load_devices(struct btd_adapter *adapter)
 
 	while ((entry = readdir(dir)) != NULL) {
 		struct btd_device *device;
+		char filename[PATH_MAX + 1];
+		GKeyFile *key_file;
+		struct link_key_info *key_info;
+		GSList *l;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
 
-		if (g_slist_find_custom(adapter->devices, entry->d_name,
-					(GCompareFunc) device_address_cmp))
-			continue;
+		snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", srcaddr,
+				entry->d_name);
+
+		key_file = g_key_file_new();
+		g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+		key_info = get_key_info(key_file, entry->d_name);
+		if (key_info)
+			keys.keys = g_slist_append(keys.keys, key_info);
+
+		g_key_file_free(key_file);
+
+		l = g_slist_find_custom(adapter->devices, entry->d_name,
+					(GCompareFunc) device_address_cmp);
+		if (l) {
+			device = l->data;
+			goto device_exist;
+		}
 
 		device = device_create(adapter, entry->d_name, BDADDR_BREDR);
 		if (!device)
@@ -2041,9 +2015,23 @@ static void load_devices(struct btd_adapter *adapter)
 
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
+
+device_exist:
+		if (key_info) {
+			device_set_paired(device, TRUE);
+			device_set_bonded(device, TRUE);
+		}
 	}
 
 	closedir(dir);
+
+	err = mgmt_load_link_keys(adapter->dev_id, keys.keys,
+							main_opts.debug_keys);
+	if (err < 0)
+		error("Unable to load link keys: %s (%d)",
+							strerror(-err), -err);
+
+	g_slist_free_full(keys.keys, g_free);
 }
 
 int btd_adapter_block_address(struct btd_adapter *adapter,
