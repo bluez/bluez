@@ -139,11 +139,12 @@ static gboolean rfkill_event(GIOChannel *chan,
 	return TRUE;
 }
 
-static GIOChannel *channel = NULL;
+static guint watch = 0;
 
 void rfkill_init(void)
 {
 	int fd;
+	GIOChannel *channel;
 
 	if (!main_opts.remember_powered)
 		return;
@@ -157,17 +158,18 @@ void rfkill_init(void)
 	channel = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(channel, TRUE);
 
-	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-							rfkill_event, NULL);
+	watch = g_io_add_watch(channel,
+				G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+				rfkill_event, NULL);
+
+	g_io_channel_unref(channel);
 }
 
 void rfkill_exit(void)
 {
-	if (!channel)
+	if (watch == 0)
 		return;
 
-	g_io_channel_shutdown(channel, TRUE, NULL);
-	g_io_channel_unref(channel);
-
-	channel = NULL;
+	g_source_remove(watch);
+	watch = 0;
 }
