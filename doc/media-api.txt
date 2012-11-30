@@ -289,11 +289,6 @@ Methods		fd, uint16, uint16 Acquire(string accesstype)
 
 			Releases file descriptor.
 
-Signals		void PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
-
 Properties	object Device [readonly]
 
 			Device object which the transport is connected to.
