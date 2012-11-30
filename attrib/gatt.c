@@ -476,7 +476,7 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 			uuid = att_get_uuid128(&value[5]);
 
 		if (dc->uuid && bt_uuid_cmp(dc->uuid, &uuid))
-			break;
+			continue;
 
 		chars = g_try_new0(struct gatt_char, 1);
 		if (!chars) {
