@@ -30,6 +30,8 @@ class Watcher(dbus.service.Object):
 			print("Type: ", measure["Type"])
 
 def properties_changed(interface, changed, invalidated):
+	if interface != "org.bluez.Thermometer":
+		return
 	for name, value in changed.iteritems():
 		print("Property %s changed:  %s" % (name, str(value)))
 
