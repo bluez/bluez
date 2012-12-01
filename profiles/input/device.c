@@ -160,9 +160,6 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && idev->ctrl_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
-	g_dbus_emit_property_changed(idev->conn, idev->path,
-					INPUT_DEVICE_INTERFACE, "Connected");
-
 	device_remove_disconnect_watch(idev->device, idev->dc_id);
 	idev->dc_id = 0;
 
@@ -502,9 +499,6 @@ static int input_device_connected(struct input_device *idev)
 	err = hidp_add_connection(idev);
 	if (err < 0)
 		return err;
-
-	g_dbus_emit_property_changed(idev->conn, idev->path,
-					INPUT_DEVICE_INTERFACE, "Connected");
 
 	idev->dc_id = device_add_disconnect_watch(idev->device, disconnect_cb,
 							idev, NULL);
