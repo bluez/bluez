@@ -93,6 +93,13 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 
 btio_sources = btio/btio.h btio/btio.c
 
+gobex_sources = gobex/gobex.h gobex/gobex.c \
+			gobex/gobex-defs.h gobex/gobex-defs.c \
+			gobex/gobex-packet.c gobex/gobex-packet.h \
+			gobex/gobex-header.c gobex/gobex-header.h \
+			gobex/gobex-transfer.c gobex/gobex-debug.h \
+			gobex/gobex-apparam.c gobex/gobex-apparam.h
+
 builtin_modules =
 builtin_sources =
 builtin_nodist =
@@ -370,6 +377,31 @@ unit_objects += $(unit_test_eir_OBJECTS)
 else
 unit_tests =
 endif
+
+unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
+			unit/test-gobex-transfer unit/test-gobex-apparam
+
+unit_test_gobex_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
+						unit/test-gobex.c
+unit_test_gobex_LDADD = @GLIB_LIBS@
+
+unit_test_gobex_packet_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
+						unit/test-gobex-packet.c
+unit_test_gobex_packet_LDADD = @GLIB_LIBS@
+
+unit_test_gobex_header_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
+						unit/test-gobex-header.c
+unit_test_gobex_header_LDADD = @GLIB_LIBS@
+
+unit_test_gobex_transfer_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
+						unit/test-gobex-transfer.c
+unit_test_gobex_transfer_LDADD = @GLIB_LIBS@
+
+unit_test_gobex_apparam_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
+						unit/test-gobex-apparam.c
+unit_test_gobex_apparam_LDADD = @GLIB_LIBS@
+
+noinst_PROGRAMS += $(unit_tests)
 
 TESTS = $(unit_tests)
 

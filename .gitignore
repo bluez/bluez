@@ -89,3 +89,11 @@ doc/xml
 doc/html
 src/bluetoothd.8
 src/bluetooth.service
+
+tools/obex-client-tool
+tools/obex-server-tool
+unit/test-gobex
+unit/test-gobex-apparam
+unit/test-gobex-header
+unit/test-gobex-packet
+unit/test-gobex-transfer
