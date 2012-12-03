@@ -60,7 +60,6 @@ struct pending_connect {
 
 struct input_device {
 	struct btd_device	*device;
-	DBusConnection		*conn;
 	struct pending_connect	*pending;
 	char			*path;
 	char			*uuid;
@@ -74,7 +73,6 @@ struct input_device {
 	guint			sec_watch;
 	int			timeout;
 	struct hidp_connadd_req *req;
-	struct input_device	*idev;
 	guint			dc_id;
 	gboolean		disable_sdp;
 	char			*name;
