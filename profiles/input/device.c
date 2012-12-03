@@ -55,14 +55,6 @@
 
 #include "sdp-client.h"
 
-#define INPUT_DEVICE_INTERFACE "org.bluez.Input"
-
-#define BUF_SIZE		16
-
-#define UPDOWN_ENABLED		1
-
-#define FI_FLAG_CONNECTED	1
-
 struct pending_connect {
 	struct btd_profile *profile;
 	btd_profile_cb cb;
