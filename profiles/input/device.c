@@ -30,23 +30,21 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hidp.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/uuid.h>
 
 #include <gdbus.h>
 
 #include "log.h"
-#include "uinput.h"
 
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"
 #include "../src/storage.h"
-#include "../src/manager.h"
 #include "../src/dbus-common.h"
 
 #include "device.h"
