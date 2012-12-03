@@ -11,6 +11,7 @@ import gobject
 A2DP_SOURCE_UUID = "0000110A-0000-1000-8000-00805F9B34FB"
 A2DP_SINK_UUID = "0000110B-0000-1000-8000-00805F9B34FB"
 HFP_AG_UUID = "0000111F-0000-1000-8000-00805F9B34FB"
+HFP_HF_UUID = "0000111E-0000-1000-8000-00805F9B34FB"
 HSP_AG_UUID = "00001112-0000-1000-8000-00805F9B34FB"
 
 SBC_CODEC = dbus.Byte(0x00)
@@ -37,6 +38,8 @@ MP3_CONFIGURATION = dbus.Array([dbus.Byte(0x21), dbus.Byte(0x02), dbus.Byte(0x00
 
 PCM_CODEC = dbus.Byte(0x00)
 PCM_CONFIGURATION = dbus.Array([], signature="ay")
+
+CVSD_CODEC = dbus.Byte(0x01)
 
 class Rejected(dbus.DBusException):
 	_dbus_error_name = "org.bluez.Error.Rejected"
@@ -118,6 +121,11 @@ if __name__ == '__main__':
 		if sys.argv[2] == "hfpag" or sys.argv[2] == "hspag":
 			properties = dbus.Dictionary({ "UUID" : HFP_AG_UUID,
 							"Codec" : PCM_CODEC,
+							"Capabilities" :  PCM_CONFIGURATION })
+			endpoint.default_configuration(dbus.Array([]))
+		if sys.argv[2] == "hfphf":
+			properties = dbus.Dictionary({ "UUID" : HFP_HF_UUID,
+							"Codec" : CVSD_CODEC,
 							"Capabilities" :  PCM_CONFIGURATION })
 			endpoint.default_configuration(dbus.Array([]))
 
