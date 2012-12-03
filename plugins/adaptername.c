@@ -288,9 +288,9 @@ static int adaptername_init(void)
 
 	inot_fd = inotify_init();
 	if (inot_fd < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Failed to setup inotify: %s (%d)", strerror(-err), -err);
-		return -err;
+		return err;
 	}
 
 	mask = IN_CLOSE_WRITE;
@@ -301,11 +301,11 @@ static int adaptername_init(void)
 
 	watch_d = inotify_add_watch(inot_fd, MACHINE_INFO_DIR, mask);
 	if (watch_d < 0) {
-		int err = errno;
+		int err = -errno;
 		error("Failed to setup watch for '%s': %s (%d)",
 				MACHINE_INFO_DIR, strerror(-err), -err);
 		close(inot_fd);
-		return -err;
+		return err;
 	}
 
 	data = g_new(struct inotify_data, 1);
