@@ -83,13 +83,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-/*****************************************************************
- *
- *  Section reserved to HCI commands confirmation handling and low
- *  level events(eg: device attached/dettached.
- *
- *****************************************************************/
-
 static void pincode_cb(struct agent *agent, DBusError *derr,
 				const char *pincode, struct btd_device *device)
 {
