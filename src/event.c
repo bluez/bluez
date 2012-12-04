@@ -480,8 +480,6 @@ void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer)
 		adapter_remove_device(adapter, device, TRUE);
 }
 
-/* Section reserved to device HCI callbacks */
-
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;
