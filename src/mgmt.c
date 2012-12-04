@@ -26,6 +26,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -34,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
+#include <sys/stat.h>
 
 #include <glib.h>
 
@@ -49,6 +51,7 @@
 #include "device.h"
 #include "event.h"
 #include "eir.h"
+#include "storage.h"
 #include "mgmt.h"
 
 #define MGMT_BUF_SIZE 1024
@@ -1897,10 +1900,67 @@ static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
 		adapter_remove_device(adapter, device, TRUE);
 }
 
+static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
+				uint8_t bdaddr_type, unsigned char *key,
+				uint8_t master, uint8_t authenticated,
+				uint8_t enc_size, uint16_t ediv,
+				uint8_t rand[8])
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char key_str[35];
+	char rand_str[19];
+	char *str;
+	int i;
+	gsize length = 0;
+
+	ba2str(local, adapter_addr);
+	ba2str(peer, device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	key_str[0] = '0';
+	key_str[1] = 'x';
+	for (i = 0; i < 16; i++)
+		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
+
+	g_key_file_set_string(key_file, "LongTermKey", "Key", key_str);
+
+	g_key_file_set_integer(key_file, "LongTermKey", "Authenticated",
+				authenticated);
+	g_key_file_set_integer(key_file, "LongTermKey", "Master", master);
+	g_key_file_set_integer(key_file, "LongTermKey", "EncSize", enc_size);
+	g_key_file_set_integer(key_file, "LongTermKey", "EDiv", ediv);
+
+	rand_str[0] = '0';
+	rand_str[1] = 'x';
+	for (i = 0; i < 8; i++)
+		sprintf(rand_str + 2 + (i * 2), "%2.2X", rand[i]);
+
+	g_key_file_set_string(key_file, "LongTermKey", "Rand", rand_str);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	g_key_file_free(key_file);
+}
+
 static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_long_term_key *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 
 	if (len != sizeof(*ev)) {
 		error("mgmt_new_ltk event size mismatch (%zu != %zu)",
@@ -1918,11 +1978,22 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
+	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
 	if (ev->store_hint) {
-		btd_event_ltk_notify(&info->bdaddr, &ev->key.addr.bdaddr,
-				ev->key.addr.type, ev->key.val, ev->key.master,
-				ev->key.authenticated, ev->key.enc_size,
-				ev->key.ediv, ev->key.rand);
+		struct mgmt_ltk_info *key = &ev->key;
+
+		store_longtermkey(&info->bdaddr, &key->addr.bdaddr,
+					key->addr.type, key->val, key->master,
+					key->authenticated, key->enc_size,
+					key->ediv, key->rand);
+
+		device_set_bonded(device, TRUE);
+
+		if (device_is_temporary(device))
+			device_set_temporary(device, FALSE);
 	}
 
 	if (ev->key.master)
