@@ -549,6 +549,8 @@ static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 {
 	struct mgmt_ev_device_disconnected *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char addr[18];
 	uint8_t reason;
 
@@ -573,7 +575,12 @@ static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	btd_event_disconn_complete(&info->bdaddr, &ev->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, false))
+		return;
+
+	if (device)
+		adapter_remove_connection(adapter, device);
 }
 
 static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
@@ -1212,6 +1219,8 @@ static void disconnect_complete(int sk, uint16_t index, uint8_t status,
 {
 	struct mgmt_rp_disconnect *rp = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char addr[18];
 
 	if (len < sizeof(*rp)) {
@@ -1235,9 +1244,15 @@ static void disconnect_complete(int sk, uint16_t index, uint8_t status,
 
 	info = &controllers[index];
 
-	btd_event_disconn_complete(&info->bdaddr, &rp->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &rp->addr.bdaddr,
+						&adapter, &device, false))
+		return;
 
-	bonding_complete(info, &rp->addr.bdaddr, MGMT_STATUS_DISCONNECTED);
+	if (device)
+		adapter_remove_connection(adapter, device);
+
+	adapter_bonding_complete(adapter, &rp->addr.bdaddr,
+						MGMT_STATUS_DISCONNECTED);
 }
 
 static void pair_device_complete(int sk, uint16_t index, uint8_t status,
