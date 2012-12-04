@@ -800,7 +800,7 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 
 drop:
 	if (conn->cb) {
-		conn->cb(&ext->p, conn->device, -err->code);
+		conn->cb(&ext->p, conn->device, err ? -err->code : -EIO);
 		conn->cb = NULL;
 	}
 	if (io_err)
