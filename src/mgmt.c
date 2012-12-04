@@ -1798,6 +1798,8 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct mgmt_ev_device_blocked *ev = buf;
 	char addr[18];
 
@@ -1816,12 +1818,19 @@ static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_device_blocked(&info->bdaddr, &ev->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, false))
+		return;
+
+	if (device)
+		device_block(device, TRUE);
 }
 
 static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct mgmt_ev_device_unblocked *ev = buf;
 	char addr[18];
 
@@ -1840,7 +1849,12 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_device_unblocked(&info->bdaddr, &ev->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, false))
+		return;
+
+	if (device)
+		device_unblock(device, FALSE, TRUE);
 }
 
 static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
