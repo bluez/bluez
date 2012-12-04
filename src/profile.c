@@ -763,11 +763,9 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
 	GError *io_err = NULL;
-	bdaddr_t src;
 	char addr[18];
 
 	if (!bt_io_get(io, &io_err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
 				BT_IO_OPT_DEST, addr,
 				BT_IO_OPT_INVALID)) {
 		error("Unable to get connect data for %s: %s", ext->name,
