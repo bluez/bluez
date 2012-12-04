@@ -1259,15 +1259,83 @@ static void print_random_number(const uint8_t *number)
 	print_hex_field("Random number", number, 8);
 }
 
-static void print_event_mask(const uint8_t *mask)
+static const struct {
+	uint8_t bit;
+	const char *str;
+} events_table[] = {
+	{  0, "Inquiry Complete"				},
+	{  1, "Inquiry Result"					},
+	{  2, "Connection Complete"				},
+	{  3, "Connection Request"				},
+	{  4, "Disconnection Complete"				},
+	{  5, "Authentication Complete"				},
+	{  6, "Remote Name Request Complete"			},
+	{  7, "Encryption Change"				},
+	{  8, "Change Connection Link Key Complete"		},
+	{  9, "Master Link Key Complete"			},
+	{ 10, "Read Remote Supported Features Complete"		},
+	{ 11, "Read Remote Version Information Complete"	},
+	{ 12, "QoS Setup Complete"				},
+	{ 15, "Hardware Error"					},
+	{ 16, "Flush Occurred"					},
+	{ 17, "Role Change"					},
+	{ 19, "Mode Change"					},
+	{ 20, "Return Link Keys"				},
+	{ 21, "PIN Code Request"				},
+	{ 22, "Link Key Request"				},
+	{ 23, "Link Key Notification"				},
+	{ 24, "Loopback Command"				},
+	{ 25, "Data Buffer Overflow"				},
+	{ 26, "Max Slots Change"				},
+	{ 27, "Read Clock Offset Complete"			},
+	{ 28, "Connection Packet Type Changed"			},
+	{ 29, "QoS Violation"					},
+	{ 30, "Page Scan Mode Change"				},
+	{ 31, "Page Scan Repetition Mode Change"		},
+	{ 32, "Flow Specification Complete"			},
+	{ 33, "Inquiry Result with RSSI"			},
+	{ 34, "Read Remote Extended Features Complete"		},
+	{ 43, "Synchronous Connection Complete"			},
+	{ 44, "Synchronous Connection Changed"			},
+	{ 45, "Sniff Subrating"					},
+	{ 46, "Extended Inquiry Result"				},
+	{ 47, "Encryption Key Refresh Complete"			},
+	{ 48, "IO Capability Request"				},
+	{ 49, "IO Capability Request Reply"			},
+	{ 50, "User Confirmation Request"			},
+	{ 51, "User Passkey Request"				},
+	{ 52, "Remote OOB Data Request"				},
+	{ 53, "Simple Pairing Complete"				},
+	{ 55, "Link Supervision Timeout Changed"		},
+	{ 56, "Enhanced Flush Complete"				},
+	{ 58, "User Passkey Notification"			},
+	{ 59, "Keypress Notification"				},
+	{ 60, "Remote Host Supported Features Notification"	},
+	{ 61, "LE Meta"						},
+	{ }
+};
+
+static void print_event_mask(const uint8_t *events_array)
 {
-	char str[17];
+	uint64_t mask, events = 0;
 	int i;
 
 	for (i = 0; i < 8; i++)
-		sprintf(str + (i * 2), "%2.2x", mask[i]);
+		events |= ((uint64_t) events_array[i]) << (i * 8);
 
-	print_field("Mask: 0x%s", str);
+	print_field("Mask: 0x%16.16" PRIx64, events);
+
+	mask = events;
+
+	for (i = 0; events_table[i].str; i++) {
+		if (events & (((uint64_t) 1) << events_table[i].bit)) {
+			print_field("  %s", events_table[i].str);
+			mask &= ~(((uint64_t) 1) << events_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_field("  Unknown mask (0x%16.16" PRIx64 ")", mask);
 }
 
 static void print_fec(uint8_t fec)
