@@ -94,23 +94,6 @@ static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 	write_lastused_info(sba, dba, dba_type, tm);
 }
 
-void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
-					int8_t rssi, bool confirm_name,
-					bool legacy, uint8_t *data,
-					uint8_t data_len)
-{
-	struct btd_adapter *adapter;
-
-	adapter = manager_find_adapter(local);
-	if (!adapter) {
-		error("No matching adapter found");
-		return;
-	}
-
-	adapter_update_found_devices(adapter, peer, bdaddr_type, rssi,
-					confirm_name, legacy, data, data_len);
-}
-
 void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 							const char *name)
 {

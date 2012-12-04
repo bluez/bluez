@@ -1679,6 +1679,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_found *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
 	char addr[18];
 	uint32_t flags;
 	uint16_t eir_len;
@@ -1705,6 +1706,10 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
+	adapter = manager_find_adapter(&info->bdaddr);
+	if (!adapter)
+		return;
+
 	if (eir_len == 0)
 		eir = NULL;
 	else
@@ -1719,10 +1724,9 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
 	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
 
-	btd_event_device_found(&info->bdaddr, &ev->addr.bdaddr,
-						ev->addr.type,
-						ev->rssi, confirm_name,
-						legacy, eir, eir_len);
+	adapter_update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
+					ev->rssi, confirm_name, legacy,
+					eir, eir_len);
 }
 
 static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
