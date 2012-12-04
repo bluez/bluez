@@ -83,31 +83,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-static void pincode_cb(struct agent *agent, DBusError *derr,
-				const char *pincode, struct btd_device *device)
-{
-	struct btd_adapter *adapter = device_get_adapter(device);
-	int err;
-
-	if (derr) {
-		err = btd_adapter_pincode_reply(adapter,
-					device_get_address(device), NULL, 0);
-		if (err < 0)
-			goto fail;
-		return;
-	}
-
-	err = btd_adapter_pincode_reply(adapter, device_get_address(device),
-					pincode, pincode ? strlen(pincode) : 0);
-	if (err < 0)
-		goto fail;
-
-	return;
-
-fail:
-	error("Sending PIN code reply failed: %s (%d)", strerror(-err), -err);
-}
-
 int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 {
 	struct btd_adapter *adapter;
@@ -123,44 +98,13 @@ int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure)
 	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
 	if (pinlen > 0 && (!secure || pinlen == 16)) {
 		if (display && device_is_bonding(device, NULL))
-			return device_notify_pincode(device, secure, pin,
-								pincode_cb);
+			return device_notify_pincode(device, secure, pin);
 
 		btd_adapter_pincode_reply(adapter, dba, pin, pinlen);
 		return 0;
 	}
 
-	return device_request_pincode(device, secure, pincode_cb);
-}
-
-static int confirm_reply(struct btd_adapter *adapter,
-				struct btd_device *device, gboolean success)
-{
-	return btd_adapter_confirm_reply(adapter, device_get_address(device),
-						device_get_addr_type(device),
-						success);
-}
-
-static void confirm_cb(struct agent *agent, DBusError *err, void *user_data)
-{
-	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device_get_adapter(device);
-	gboolean success = (err == NULL) ? TRUE : FALSE;
-
-	confirm_reply(adapter, device, success);
-}
-
-static void passkey_cb(struct agent *agent, DBusError *err, uint32_t passkey,
-			void *user_data)
-{
-	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device_get_adapter(device);
-
-	if (err)
-		passkey = INVALID_PASSKEY;
-
-	btd_adapter_passkey_reply(adapter, device_get_address(device),
-					device_get_addr_type(device), passkey);
+	return device_request_pincode(device, secure);
 }
 
 int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
@@ -171,7 +115,7 @@ int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_confirm_passkey(device, passkey, confirm_cb);
+	return device_confirm_passkey(device, passkey);
 }
 
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
@@ -182,7 +126,7 @@ int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
 		return -ENODEV;
 
-	return device_request_passkey(device, passkey_cb);
+	return device_request_passkey(device);
 }
 
 int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,

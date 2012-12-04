@@ -99,7 +99,6 @@ typedef enum {
 
 struct authentication_req {
 	auth_type_t type;
-	void *cb;
 	struct agent *agent;
 	struct btd_device *device;
 	uint32_t passkey;
@@ -3559,8 +3558,8 @@ void device_cancel_bonding(struct btd_device *device, uint8_t status)
 	bonding_request_free(bonding);
 }
 
-static void pincode_cb(struct agent *agent, DBusError *err,
-					const char *pincode, void *data)
+static void pincode_cb(struct agent *agent, DBusError *err, const char *pin,
+								void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
@@ -3582,12 +3581,12 @@ static void pincode_cb(struct agent *agent, DBusError *err,
 
 done:
 	/* No need to reply anything if the authentication already failed */
-	if (auth->cb == NULL)
+	if (auth->agent == NULL)
 		return;
 
-	((agent_pincode_cb) auth->cb)(agent, err, pincode, device);
+	btd_adapter_pincode_reply(device->adapter, device_get_address(device),
+						pin, pin ? strlen(pin) : 0);
 
-	device->authr->cb = NULL;
 	device->authr->agent = NULL;
 }
 
@@ -3614,12 +3613,13 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 
 done:
 	/* No need to reply anything if the authentication already failed */
-	if (auth->cb == NULL)
+	if (auth->agent == NULL)
 		return;
 
-	((agent_cb) auth->cb)(agent, err, device);
+	btd_adapter_confirm_reply(device->adapter, device_get_address(device),
+						device_get_addr_type(device),
+						err ? FALSE : TRUE);
 
-	device->authr->cb = NULL;
 	device->authr->agent = NULL;
 }
 
@@ -3646,12 +3646,15 @@ static void passkey_cb(struct agent *agent, DBusError *err,
 
 done:
 	/* No need to reply anything if the authentication already failed */
-	if (auth->cb == NULL)
+	if (auth->agent == NULL)
 		return;
 
-	((agent_passkey_cb) auth->cb)(agent, err, passkey, device);
+	if (err)
+		passkey = INVALID_PASSKEY;
 
-	device->authr->cb = NULL;
+	btd_adapter_passkey_reply(device->adapter, device_get_address(device),
+					device_get_addr_type(device), passkey);
+
 	device->authr->agent = NULL;
 }
 
@@ -3682,20 +3685,18 @@ static void display_pincode_cb(struct agent *agent, DBusError *err, void *data)
 
 done:
 	/* No need to reply anything if the authentication already failed */
-	if (auth->cb == NULL)
+	if (auth->agent == NULL)
 		return;
 
-	((agent_pincode_cb) auth->cb)(agent, err, auth->pincode, device);
+	pincode_cb(agent, err, auth->pincode, device);
 
 	g_free(device->authr->pincode);
 	device->authr->pincode = NULL;
-	device->authr->cb = NULL;
 	device->authr->agent = NULL;
 }
 
 static struct authentication_req *new_auth(struct btd_device *device,
-					auth_type_t type, gboolean secure,
-					void *cb)
+					auth_type_t type, gboolean secure)
 {
 	struct authentication_req *auth;
 	struct agent *agent;
@@ -3718,7 +3719,6 @@ static struct authentication_req *new_auth(struct btd_device *device,
 	auth = g_new0(struct authentication_req, 1);
 	auth->agent = agent;
 	auth->device = device;
-	auth->cb = cb;
 	auth->type = type;
 	auth->secure = secure;
 	device->authr = auth;
@@ -3726,13 +3726,12 @@ static struct authentication_req *new_auth(struct btd_device *device,
 	return auth;
 }
 
-int device_request_pincode(struct btd_device *device, gboolean secure,
-								void *cb)
+int device_request_pincode(struct btd_device *device, gboolean secure)
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_PINCODE, secure, cb);
+	auth = new_auth(device, AUTH_TYPE_PINCODE, secure);
 	if (!auth)
 		return -EPERM;
 
@@ -3746,12 +3745,12 @@ int device_request_pincode(struct btd_device *device, gboolean secure,
 	return err;
 }
 
-int device_request_passkey(struct btd_device *device, void *cb)
+int device_request_passkey(struct btd_device *device)
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_PASSKEY, FALSE, cb);
+	auth = new_auth(device, AUTH_TYPE_PASSKEY, FALSE);
 	if (!auth)
 		return -EPERM;
 
@@ -3765,13 +3764,13 @@ int device_request_passkey(struct btd_device *device, void *cb)
 	return err;
 }
 
-int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
-								void *cb)
+int device_confirm_passkey(struct btd_device *device, uint32_t passkey)
+
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_CONFIRM, FALSE, cb);
+	auth = new_auth(device, AUTH_TYPE_CONFIRM, FALSE);
 	if (!auth)
 		return -EPERM;
 
@@ -3798,7 +3797,7 @@ int device_notify_passkey(struct btd_device *device, uint32_t passkey,
 		if (auth->type != AUTH_TYPE_NOTIFY_PASSKEY)
 			return -EPERM;
 	} else {
-		auth = new_auth(device, AUTH_TYPE_NOTIFY_PASSKEY, FALSE, NULL);
+		auth = new_auth(device, AUTH_TYPE_NOTIFY_PASSKEY, FALSE);
 		if (!auth)
 			return -EPERM;
 	}
@@ -3813,12 +3812,12 @@ int device_notify_passkey(struct btd_device *device, uint32_t passkey,
 }
 
 int device_notify_pincode(struct btd_device *device, gboolean secure,
-						const char *pincode, void *cb)
+							const char *pincode)
 {
 	struct authentication_req *auth;
 	int err;
 
-	auth = new_auth(device, AUTH_TYPE_NOTIFY_PINCODE, secure, cb);
+	auth = new_auth(device, AUTH_TYPE_NOTIFY_PINCODE, secure);
 	if (!auth)
 		return -EPERM;
 
@@ -3840,35 +3839,35 @@ static void cancel_authentication(struct authentication_req *auth)
 	struct agent *agent;
 	DBusError err;
 
-	if (!auth || !auth->cb)
+	if (!auth || !auth->agent)
 		return;
 
 	device = auth->device;
 	agent = auth->agent;
+	auth->agent = NULL;
 
 	dbus_error_init(&err);
 	dbus_set_error_const(&err, "org.bluez.Error.Canceled", NULL);
 
 	switch (auth->type) {
 	case AUTH_TYPE_PINCODE:
-		((agent_pincode_cb) auth->cb)(agent, &err, NULL, device);
+		pincode_cb(agent, &err, NULL, device);
 		break;
 	case AUTH_TYPE_CONFIRM:
-		((agent_cb) auth->cb)(agent, &err, device);
+		confirm_cb(agent, &err, device);
 		break;
 	case AUTH_TYPE_PASSKEY:
-		((agent_passkey_cb) auth->cb)(agent, &err, 0, device);
+		passkey_cb(agent, &err, 0, device);
 		break;
 	case AUTH_TYPE_NOTIFY_PASSKEY:
 		/* User Notify doesn't require any reply */
 		break;
 	case AUTH_TYPE_NOTIFY_PINCODE:
-		((agent_pincode_cb) auth->cb)(agent, &err, NULL, device);
+		pincode_cb(agent, &err, NULL, device);
 		break;
 	}
 
 	dbus_error_free(&err);
-	auth->cb = NULL;
 }
 
 void device_cancel_authentication(struct btd_device *device, gboolean aborted)
