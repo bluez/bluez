@@ -83,17 +83,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
-{
-	time_t t;
-	struct tm *tm;
-
-	t = time(NULL);
-	tm = gmtime(&t);
-
-	write_lastused_info(sba, dba, dba_type, tm);
-}
-
 void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 							const char *name)
 {
@@ -295,8 +284,6 @@ void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_typ
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
 		return;
-
-	update_lastused(local, peer, bdaddr_type);
 
 	if (class != 0)
 		device_set_class(device, class);
