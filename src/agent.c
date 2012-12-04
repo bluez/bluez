@@ -52,6 +52,7 @@
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
 	AGENT_REQUEST_CONFIRMATION,
+	AGENT_REQUEST_AUTHORIZATION,
 	AGENT_REQUEST_PINCODE,
 	AGENT_REQUEST_AUTHORIZE_SERVICE,
 	AGENT_REQUEST_CONFIRM_MODE,
@@ -657,6 +658,63 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				user_data, destroy);
 
 	err = confirmation_request_new(req, dev_path, passkey);
+	if (err < 0)
+		goto failed;
+
+	agent->request = req;
+
+	return 0;
+
+failed:
+	agent_request_free(req, FALSE);
+	return err;
+}
+
+static int authorization_request_new(struct agent_request *req,
+						const char *device_path)
+{
+	struct agent *agent = req->agent;
+
+	req->msg = dbus_message_new_method_call(agent->name, agent->path,
+				"org.bluez.Agent", "RequestAuthorization");
+	if (req->msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return -ENOMEM;
+	}
+
+	dbus_message_append_args(req->msg,
+				DBUS_TYPE_OBJECT_PATH, &device_path,
+				DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
+				&req->call, REQUEST_TIMEOUT) == FALSE) {
+		error("D-Bus send failed");
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
+
+	return 0;
+}
+
+int agent_request_authorization(struct agent *agent, struct btd_device *device,
+						agent_cb cb, void *user_data,
+						GDestroyNotify destroy)
+{
+	struct agent_request *req;
+	const gchar *dev_path = device_get_path(device);
+	int err;
+
+	if (agent->request)
+		return -EBUSY;
+
+	DBG("Calling Agent.RequestAuthorization: name=%s, path=%s",
+						agent->name, agent->path);
+
+	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZATION, cb,
+				user_data, destroy);
+
+	err = authorization_request_new(req, dev_path);
 	if (err < 0)
 		goto failed;
 

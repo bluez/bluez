@@ -3755,7 +3755,8 @@ int device_request_passkey(struct btd_device *device)
 	return err;
 }
 
-int device_confirm_passkey(struct btd_device *device, uint32_t passkey)
+int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
+							uint8_t confirm_hint)
 
 {
 	struct authentication_req *auth;
@@ -3767,8 +3768,13 @@ int device_confirm_passkey(struct btd_device *device, uint32_t passkey)
 
 	auth->passkey = passkey;
 
-	err = agent_request_confirmation(auth->agent, device, passkey,
+	if (confirm_hint)
+		err = agent_request_authorization(auth->agent, device,
 						confirm_cb, auth, NULL);
+	else
+		err = agent_request_confirmation(auth->agent, device, passkey,
+						confirm_cb, auth, NULL);
+
 	if (err < 0) {
 		error("Failed requesting authentication");
 		device_auth_req_free(device);

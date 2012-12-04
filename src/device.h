@@ -86,7 +86,8 @@ gboolean device_is_bonding(struct btd_device *device, const char *sender);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);
 int device_request_pincode(struct btd_device *device, gboolean secure);
 int device_request_passkey(struct btd_device *device);
-int device_confirm_passkey(struct btd_device *device, uint32_t passkey);
+int device_confirm_passkey(struct btd_device *device, uint32_t passkey,
+							uint8_t confirm_hint);
 int device_notify_passkey(struct btd_device *device, uint32_t passkey,
 							uint8_t entered);
 int device_notify_pincode(struct btd_device *device, gboolean secure,

@@ -938,27 +938,6 @@ static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
 		error("device_notify_passkey: %s", strerror(-err));
 }
 
-struct confirm_data {
-	int index;
-	bdaddr_t bdaddr;
-	uint8_t type;
-};
-
-static gboolean confirm_accept(gpointer user_data)
-{
-	struct confirm_data *data = user_data;
-	struct controller_info *info = &controllers[data->index];
-
-	DBG("auto-accepting incoming pairing request");
-
-	if (data->index > max_index || !info->valid)
-		return FALSE;
-
-	mgmt_confirm_reply(data->index, &data->bdaddr, data->type, TRUE);
-
-	return FALSE;
-}
-
 static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 								size_t len)
 {
@@ -984,26 +963,14 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 		return;
 	}
 
-	if (ev->confirm_hint) {
-		struct confirm_data *data;
-
-		data = g_new0(struct confirm_data, 1);
-		data->index = index;
-		bacpy(&data->bdaddr, &ev->addr.bdaddr);
-		data->type = ev->addr.type;
-
-		g_timeout_add_seconds_full(G_PRIORITY_DEFAULT, 1,
-						confirm_accept, data, g_free);
-		return;
-	}
-
 	info = &controllers[index];
 
 	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
 						&adapter, &device, true))
 		return;
 
-	err = device_confirm_passkey(device, btohl(ev->value));
+	err = device_confirm_passkey(device, btohl(ev->value),
+							ev->confirm_hint);
 	if (err < 0) {
 		error("device_confirm_passkey: %s", strerror(-err));
 		mgmt_confirm_reply(index, &ev->addr.bdaddr, ev->addr.type,

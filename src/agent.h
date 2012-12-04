@@ -61,6 +61,10 @@ int agent_request_confirmation(struct agent *agent, struct btd_device *device,
 				uint32_t passkey, agent_cb cb,
 				void *user_data, GDestroyNotify destroy);
 
+int agent_request_authorization(struct agent *agent, struct btd_device *device,
+						agent_cb cb, void *user_data,
+						GDestroyNotify destroy);
+
 int agent_display_passkey(struct agent *agent, struct btd_device *device,
 				uint32_t passkey, uint16_t entered);
 
