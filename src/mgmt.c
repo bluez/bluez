@@ -864,6 +864,8 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 {
 	struct mgmt_ev_user_confirm_request *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char addr[18];
 	int err;
 
@@ -897,10 +899,13 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	err = btd_event_user_confirm(&info->bdaddr, &ev->addr.bdaddr,
-							btohl(ev->value));
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
+	err = device_confirm_passkey(device, btohl(ev->value));
 	if (err < 0) {
-		error("btd_event_user_confirm: %s", strerror(-err));
+		error("device_confirm_passkey: %s", strerror(-err));
 		mgmt_confirm_reply(index, &ev->addr.bdaddr, ev->addr.type,
 									FALSE);
 	}

@@ -83,17 +83,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-int btd_event_user_confirm(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
-		return -ENODEV;
-
-	return device_confirm_passkey(device, passkey);
-}
-
 int btd_event_user_passkey(bdaddr_t *sba, bdaddr_t *dba)
 {
 	struct btd_adapter *adapter;
