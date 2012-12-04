@@ -1199,7 +1199,7 @@ static void print_features(uint8_t page, const uint8_t *features_array)
 
 	for (i = 0; i < 8; i++) {
 		sprintf(str + (i * 5), " 0x%2.2x", features_array[i]);
-		features |= ((uint64_t ) features_array[i]) << (i * 8);
+		features |= ((uint64_t) features_array[i]) << (i * 8);
 	}
 
 	print_field("Features:%s", str);
@@ -1222,9 +1222,9 @@ static void print_features(uint8_t page, const uint8_t *features_array)
 	mask = features;
 
 	for (i = 0; features_table[i].str; i++) {
-		if (features & (1 << features_table[i].bit)) {
+		if (features & (((uint64_t) 1) << features_table[i].bit)) {
 			print_field("  %s", features_table[i].str);
-			mask &= ~(1 << features_table[i].bit);
+			mask &= ~(((uint64_t) 1) << features_table[i].bit);
 		}
 	}
 
