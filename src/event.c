@@ -276,26 +276,6 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 	return 0;
 }
 
-void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	DBG("status 0x%02x", status);
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
-		return;
-
-	if (!device)
-		return;
-
-	if (device_is_bonding(device, NULL))
-		device_cancel_bonding(device, status);
-
-	if (device_is_temporary(device))
-		adapter_remove_device(adapter, device, TRUE);
-}
-
 void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer)
 {
 	struct btd_adapter *adapter;

@@ -580,6 +580,8 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_connect_failed *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char addr[18];
 
 	if (len < sizeof(*ev)) {
@@ -598,10 +600,19 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_conn_failed(&info->bdaddr, &ev->addr.bdaddr, ev->status);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, false))
+		return;
+
+	if (device) {
+		if (device_is_bonding(device, NULL))
+			device_cancel_bonding(device, ev->status);
+		if (device_is_temporary(device))
+			adapter_remove_device(adapter, device, TRUE);
+	}
 
 	/* In the case of security mode 3 devices */
-	bonding_complete(info, &ev->addr.bdaddr, ev->status);
+	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->status);
 }
 
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
