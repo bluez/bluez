@@ -1340,6 +1340,50 @@ static void print_event_mask(const uint8_t *events_array)
 		print_field("  Unknown mask (0x%16.16" PRIx64 ")", mask);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} events_page2_table[] = {
+	{  0, "Physical Link Complete"			},
+	{  1, "Channel Selected"			},
+	{  2, "Disconnection Physical Link"		},
+	{  3, "Physical Link Loss Early Warning"	},
+	{  4, "Physical Link Recovery"			},
+	{  5, "Logical Link Complete"			},
+	{  6, "Disconnection Logical Link Complete"	},
+	{  7, "Flow Spec Modify Complete"		},
+	{  8, "Number of Completed Data Blocks"		},
+	{  9, "AMP Start Test"				},
+	{ 10, "AMP Test End"				},
+	{ 11, "AMP Receiver Report"			},
+	{ 12, "Short Range Mode Change Complete"	},
+	{ 13, "AMP Status Change"			},
+	{ }
+};
+
+static void print_event_mask_page2(const uint8_t *events_array)
+{
+	uint64_t mask, events = 0;
+	int i;
+
+	for (i = 0; i < 8; i++)
+		events |= ((uint64_t) events_array[i]) << (i * 8);
+
+	print_field("Mask: 0x%16.16" PRIx64, events);
+
+	mask = events;
+
+	for (i = 0; events_page2_table[i].str; i++) {
+		if (events & (((uint64_t) 1) << events_page2_table[i].bit)) {
+			print_field("  %s", events_page2_table[i].str);
+			mask &= ~(((uint64_t) 1) << events_page2_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_field("  Unknown mask (0x%16.16" PRIx64 ")", mask);
+}
+
 static void print_fec(uint8_t fec)
 {
 	const char *str;
@@ -2653,7 +2697,7 @@ static void set_event_mask_page2_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
 
-	print_event_mask(cmd->mask);
+	print_event_mask_page2(cmd->mask);
 }
 
 static void read_le_host_supported_rsp(const void *data, uint8_t size)
