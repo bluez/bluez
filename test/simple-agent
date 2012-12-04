@@ -92,6 +92,15 @@ class Agent(dbus.service.Object):
 		raise Rejected("Passkey doesn't match")
 
 	@dbus.service.method("org.bluez.Agent",
+					in_signature="o", out_signature="")
+	def RequestAuthorization(self, device):
+		print("RequestAuthorization (%s)" % (device))
+		auth = ask("Authorize? (yes/no): ")
+		if (auth == "yes"):
+			return
+		raise Rejected("Pairing rejected")
+
+	@dbus.service.method("org.bluez.Agent",
 					in_signature="s", out_signature="")
 	def ConfirmModeChange(self, mode):
 		print("ConfirmModeChange (%s)" % (mode))
