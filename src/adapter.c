@@ -255,8 +255,8 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-static void store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
-				char *name)
+void adapter_store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
+							const char *name)
 {
 	char filename[PATH_MAX + 1];
 	char s_addr[18], d_addr[18];
@@ -2496,7 +2496,7 @@ static void convert_names_entry(char *key, char *value, void *user_data)
 
 	str2ba(address, &local);
 	str2ba(str, &peer);
-	store_cached_name(&local, &peer, value);
+	adapter_store_cached_name(&local, &peer, value);
 }
 
 struct device_converter {
@@ -3233,7 +3233,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 							eir_data.appearance);
 
 	if (eir_data.name != NULL && eir_data.name_complete)
-		store_cached_name(&adapter->bdaddr, bdaddr, eir_data.name);
+		adapter_store_cached_name(&adapter->bdaddr, bdaddr,
+								eir_data.name);
 
 	/* Avoid creating LE device if it's not discoverable */
 	if (bdaddr_type != BDADDR_BREDR &&

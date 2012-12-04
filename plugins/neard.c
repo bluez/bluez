@@ -312,9 +312,11 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 		device_set_class(device, eir_data.class);
 
 	/* TODO handle incomplete name? */
-	if (eir_data.name)
-		btd_event_remote_name(adapter_get_address(adapter),
+	if (eir_data.name) {
+		adapter_store_cached_name(adapter_get_address(adapter),
 					&eir_data.addr, eir_data.name);
+		device_set_name(device, eir_data.name);
+	}
 
 	if (eir_data.hash)
 		btd_adapter_add_remote_oob_data(adapter, &eir_data.addr,
@@ -507,8 +509,9 @@ static int process_nokia_com_bt(struct btd_adapter *adapter, void *data,
 	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
 
 	if (nokia.name) {
-		btd_event_remote_name(adapter_get_address(adapter), remote,
+		adapter_store_cached_name(adapter_get_address(adapter), remote,
 								nokia.name);
+		device_set_name(device, nokia.name);
 		g_free(nokia.name);
 	}
 

@@ -208,9 +208,11 @@ static gboolean store_data(struct btd_adapter *adapter,
 	if (data->class)
 		device_set_class(device, data->class);
 
-	if (data->name)
-		btd_event_remote_name(adapter_get_address(adapter), &bdaddr,
-								data->name);
+	if (data->name) {
+		adapter_store_cached_name(adapter_get_address(adapter),
+							&bdaddr, data->name);
+		device_set_name(device, data->name);
+	}
 
 	return TRUE;
 }

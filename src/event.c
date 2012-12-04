@@ -82,33 +82,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
-							const char *name)
-{
-	char filename[PATH_MAX + 1];
-	char local_addr[18], peer_addr[18];
-	GKeyFile *key_file;
-	gsize length = 0;
-	char *data;
-
-	ba2str(local, local_addr);
-	ba2str(peer, peer_addr);
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local_addr,
-			peer_addr);
-	filename[PATH_MAX] = '\0';
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
-	g_key_file_set_string(key_file, "General", "Name", name);
-
-	data = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
-	g_free(data);
-
-	g_key_file_free(key_file);
-}
-
 static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t bdaddr_type, unsigned char *key,
 				uint8_t master, uint8_t authenticated,

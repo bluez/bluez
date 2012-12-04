@@ -538,7 +538,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 	adapter_add_connection(adapter, device);
 
 	if (eir_data.name != NULL) {
-		btd_event_remote_name(&info->bdaddr, &ev->addr.bdaddr,
+		adapter_store_cached_name(&info->bdaddr, &ev->addr.bdaddr,
 								eir_data.name);
 		device_set_name(device, eir_data.name);
 	}
