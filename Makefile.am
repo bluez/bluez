@@ -11,6 +11,8 @@ bin_PROGRAMS =
 
 sbin_PROGRAMS =
 
+libexec_PROGRAMS =
+
 noinst_PROGRAMS =
 
 dist_man_MANS =
@@ -316,6 +318,7 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			profiles/sap/sap-dummy.c profiles/sap/sap-u8500.c
 
 include Makefile.tools
+include Makefile.obexd
 
 if DATAFILES
 rulesdir = @UDEV_DIR@/rules.d
