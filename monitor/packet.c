@@ -1276,6 +1276,8 @@ static const struct {
 	{ 10, "Read Remote Supported Features Complete"		},
 	{ 11, "Read Remote Version Information Complete"	},
 	{ 12, "QoS Setup Complete"				},
+	{ 13, "Command Complete"				},
+	{ 14, "Command Status"					},
 	{ 15, "Hardware Error"					},
 	{ 16, "Flush Occurred"					},
 	{ 17, "Role Change"					},
