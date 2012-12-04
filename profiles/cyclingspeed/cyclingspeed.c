@@ -55,6 +55,8 @@ struct csc {
 
 	uint16_t		measurement_ccc_handle;
 	uint16_t		controlpoint_val_handle;
+
+	uint16_t		feature;
 };
 
 struct characteristic {
@@ -116,6 +118,32 @@ static void destroy_csc(gpointer user_data)
 	btd_device_unref(csc->dev);
 	g_free(csc->svc_range);
 	g_free(csc);
+}
+
+static void read_feature_cb(guint8 status, const guint8 *pdu,
+						guint16 len, gpointer user_data)
+{
+	struct csc *csc = user_data;
+	uint8_t value[2];
+	ssize_t vlen;
+
+	if (status) {
+		error("CSC Feature read failed: %s", att_ecode2str(status));
+		return;
+	}
+
+	vlen = dec_read_resp(pdu, len, value, sizeof(value));
+	if (vlen < 0) {
+		error("Protocol error");
+		return;
+	}
+
+	if (vlen != sizeof(value)) {
+		error("Invalid value length for CSC Feature");
+		return;
+	}
+
+	csc->feature = att_get_u16(value);
 }
 
 static void discover_desc_cb(guint8 status, const guint8 *pdu,
@@ -191,6 +219,7 @@ static void discover_desc(struct csc *csc, struct gatt_char *c,
 static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 {
 	struct csc *csc = user_data;
+	uint16_t feature_val_handle = 0;
 
 	if (status) {
 		error("Discover CSCS characteristics: %s",
@@ -206,7 +235,7 @@ static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 		if (g_strcmp0(c->uuid, CSC_MEASUREMENT_UUID) == 0) {
 			discover_desc(csc, c, c_next);
 		} else if (g_strcmp0(c->uuid, CSC_FEATURE_UUID) == 0) {
-			/* TODO: read characterictic value */
+			feature_val_handle = c->value_handle;
 		} else if (g_strcmp0(c->uuid, SENSOR_LOCATION_UUID) == 0) {
 			DBG("Sensor Location supported");
 			/* TODO: read characterictic value */
@@ -216,6 +245,10 @@ static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)
 			discover_desc(csc, c, c_next);
 		}
 	}
+
+	if (feature_val_handle > 0)
+		gatt_read_char(csc->attrib, feature_val_handle,
+							read_feature_cb, csc);
 }
 
 static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
