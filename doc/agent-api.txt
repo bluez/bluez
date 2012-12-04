@@ -101,7 +101,7 @@ Methods		void Release()
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		void Authorize(object device, string uuid)
+		void AuthorizeService(object device, string uuid)
 
 			This method gets called when the service daemon
 			needs to authorize a connection/service request.

@@ -41,9 +41,9 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 
 void agent_free(struct agent *agent);
 
-int agent_authorize(struct agent *agent, const char *path,
-			const char *uuid, agent_cb cb, void *user_data,
-			GDestroyNotify destroy);
+int agent_authorize_service(struct agent *agent, const char *path,
+				const char *uuid, agent_cb cb,
+				void *user_data, GDestroyNotify destroy);
 
 int agent_request_pincode(struct agent *agent, struct btd_device *device,
 				agent_pincode_cb cb, gboolean secure,

@@ -48,8 +48,8 @@ class Agent(dbus.service.Object):
 
 	@dbus.service.method("org.bluez.Agent",
 					in_signature="os", out_signature="")
-	def Authorize(self, device, uuid):
-		print("Authorize (%s, %s)" % (device, uuid))
+	def AuthorizeService(self, device, uuid):
+		print("AuthorizeService (%s, %s)" % (device, uuid))
 		authorize = ask("Authorize connection (yes/no): ")
 		if (authorize == "yes"):
 			return

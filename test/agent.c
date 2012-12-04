@@ -211,7 +211,7 @@ send:
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusHandlerResult authorize_message(DBusConnection *conn,
+static DBusHandlerResult authorize_service_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -220,7 +220,8 @@ static DBusHandlerResult authorize_message(DBusConnection *conn,
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_STRING, &uuid,
 							DBUS_TYPE_INVALID)) {
-		fprintf(stderr, "Invalid arguments for Authorize method");
+		fprintf(stderr,
+			"Invalid arguments for AuthorizeService method");
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
 
@@ -320,8 +321,9 @@ static DBusHandlerResult agent_message(DBusConnection *conn,
 							"RequestConfirmation"))
 		return request_confirmation_message(conn, msg, data);
 
-	if (dbus_message_is_method_call(msg, "org.bluez.Agent", "Authorize"))
-		return authorize_message(conn, msg, data);
+	if (dbus_message_is_method_call(msg, "org.bluez.Agent",
+							"AuthorizeService"))
+		return authorize_service_message(conn, msg, data);
 
 	if (dbus_message_is_method_call(msg, "org.bluez.Agent", "Cancel"))
 		return cancel_message(conn, msg, data);

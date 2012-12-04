@@ -53,7 +53,7 @@ typedef enum {
 	AGENT_REQUEST_PASSKEY,
 	AGENT_REQUEST_CONFIRMATION,
 	AGENT_REQUEST_PINCODE,
-	AGENT_REQUEST_AUTHORIZE,
+	AGENT_REQUEST_AUTHORIZE_SERVICE,
 	AGENT_REQUEST_CONFIRM_MODE,
 	AGENT_REQUEST_DISPLAY_PINCODE,
 } agent_request_type_t;
@@ -293,14 +293,14 @@ done:
 	agent_request_free(req, TRUE);
 }
 
-static int agent_call_authorize(struct agent_request *req,
-				const char *device_path,
-				const char *uuid)
+static int agent_call_authorize_service(struct agent_request *req,
+						const char *device_path,
+						const char *uuid)
 {
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "Authorize");
+				"org.bluez.Agent", "AuthorizeService");
 	if (!req->msg) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -322,12 +322,9 @@ static int agent_call_authorize(struct agent_request *req,
 	return 0;
 }
 
-int agent_authorize(struct agent *agent,
-			const char *path,
-			const char *uuid,
-			agent_cb cb,
-			void *user_data,
-			GDestroyNotify destroy)
+int agent_authorize_service(struct agent *agent, const char *path,
+				const char *uuid, agent_cb cb,
+				void *user_data, GDestroyNotify destroy)
 {
 	struct agent_request *req;
 	int err;
@@ -335,10 +332,10 @@ int agent_authorize(struct agent *agent,
 	if (agent->request)
 		return -EBUSY;
 
-	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE, cb,
+	req = agent_request_new(agent, AGENT_REQUEST_AUTHORIZE_SERVICE, cb,
 							user_data, destroy);
 
-	err = agent_call_authorize(req, path, uuid);
+	err = agent_call_authorize_service(req, path, uuid);
 	if (err < 0) {
 		agent_request_free(req, FALSE);
 		return -ENOMEM;
@@ -346,7 +343,7 @@ int agent_authorize(struct agent *agent,
 
 	agent->request = req;
 
-	DBG("authorize request was sent for %s", path);
+	DBG("authorize service request was sent for %s", path);
 
 	return 0;
 }

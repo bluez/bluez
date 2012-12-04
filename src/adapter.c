@@ -3466,7 +3466,7 @@ static gboolean process_auth_queue(gpointer user_data)
 
 		dev_path = device_get_path(device);
 
-		if (agent_authorize(auth->agent, dev_path, auth->uuid,
+		if (agent_authorize_service(auth->agent, dev_path, auth->uuid,
 					agent_auth_cb, adapter, NULL) < 0) {
 			auth->cb(&err, auth->user_data);
 			goto next;
