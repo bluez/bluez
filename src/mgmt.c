@@ -84,6 +84,34 @@ static guint mgmt_watch = 0;
 static uint8_t mgmt_version = 0;
 static uint16_t mgmt_revision = 0;
 
+static bool get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
+					struct btd_adapter **adapter,
+					struct btd_device **device,
+					bool create)
+{
+	char peer_addr[18];
+
+	*adapter = manager_find_adapter(src);
+	if (!*adapter) {
+		error("Unable to find matching adapter");
+		return false;
+	}
+
+	ba2str(dst, peer_addr);
+
+	if (create)
+		*device = adapter_get_device(*adapter, peer_addr);
+	else
+		*device = adapter_find_device(*adapter, peer_addr);
+
+	if (create && !*device) {
+		error("Unable to get device object!");
+		return false;
+	}
+
+	return true;
+}
+
 static void read_version_complete(int sk, void *buf, size_t len)
 {
 	struct mgmt_hdr hdr;
@@ -618,6 +646,11 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_pin_code_request *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
+	gboolean display = FALSE;
+	char pin[17];
+	ssize_t pinlen;
 	char addr[18];
 	int err;
 
@@ -637,10 +670,29 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	err = btd_event_request_pin(&info->bdaddr, &ev->addr.bdaddr,
-								ev->secure);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
+	memset(pin, 0, sizeof(pin));
+	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
+	if (pinlen > 0 && (!ev->secure || pinlen == 16)) {
+		if (display && device_is_bonding(device, NULL)) {
+			err = device_notify_pincode(device, ev->secure, pin);
+			if (err < 0) {
+				error("device_notify_pin: %s", strerror(-err));
+				mgmt_pincode_reply(index, &ev->addr.bdaddr,
+								NULL, 0);
+			}
+		} else {
+			mgmt_pincode_reply(index, &ev->addr.bdaddr, pin, pinlen);
+		}
+		return;
+	}
+
+	err = device_request_pincode(device, ev->secure);
 	if (err < 0) {
-		error("btd_event_request_pin: %s", strerror(-err));
+		error("device_request_pin: %s", strerror(-err));
 		mgmt_pincode_reply(index, &ev->addr.bdaddr, NULL, 0);
 	}
 }

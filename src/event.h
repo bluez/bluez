@@ -22,7 +22,6 @@
  *
  */
 
-int btd_event_request_pin(bdaddr_t *sba, bdaddr_t *dba, gboolean secure);
 void btd_event_device_found(bdaddr_t *local, bdaddr_t *peer,
 				uint8_t bdaddr_type, int8_t rssi,
 				bool confirm_name, bool legacy,
