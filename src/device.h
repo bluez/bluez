@@ -81,7 +81,6 @@ gboolean device_is_connected(struct btd_device *device);
 DBusMessage *device_create_bonding(struct btd_device *device, DBusMessage *msg,
 				const char *agent_path, uint8_t capability);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
-void device_simple_pairing_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_creating(struct btd_device *device, const char *sender);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);

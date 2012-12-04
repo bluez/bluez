@@ -3424,15 +3424,6 @@ DBusMessage *device_create_bonding(struct btd_device *device,
 	return NULL;
 }
 
-void device_simple_pairing_complete(struct btd_device *device, uint8_t status)
-{
-	struct authentication_req *auth = device->authr;
-
-	if (auth && (auth->type == AUTH_TYPE_NOTIFY_PASSKEY
-		     || auth->type == AUTH_TYPE_NOTIFY_PINCODE) && auth->agent)
-		agent_cancel(auth->agent);
-}
-
 static void device_auth_req_free(struct btd_device *device)
 {
 	if (device->authr)

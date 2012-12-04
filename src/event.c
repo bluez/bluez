@@ -141,26 +141,6 @@ int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
 	return device_notify_passkey(device, passkey, entered);
 }
 
-void btd_event_simple_pairing_complete(bdaddr_t *local, bdaddr_t *peer,
-								uint8_t status)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	gboolean create;
-
-	DBG("status=%02x", status);
-
-	create = status ? FALSE : TRUE;
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, create))
-		return;
-
-	if (!device)
-		return;
-
-	device_simple_pairing_complete(device, status);
-}
-
 static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;
