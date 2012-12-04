@@ -33,6 +33,11 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "attrib/gattrib.h"
+#include "attrib/att.h"
+#include "attrib/gatt.h"
+#include "attio.h"
+#include "log.h"
 
 struct csc_adapter {
 	struct btd_adapter	*adapter;
@@ -42,6 +47,9 @@ struct csc_adapter {
 struct csc {
 	struct btd_device	*dev;
 	struct csc_adapter	*cadapter;
+
+	GAttrib			*attrib;
+	guint			attioid;
 };
 
 static GSList *csc_adapters = NULL;
@@ -89,8 +97,33 @@ static void destroy_csc(gpointer user_data)
 {
 	struct csc *csc = user_data;
 
+	if (csc->attioid > 0)
+		btd_device_remove_attio_callback(csc->dev, csc->attioid);
+
+	if (csc->attrib != NULL)
+		g_attrib_unref(csc->attrib);
+
 	btd_device_unref(csc->dev);
 	g_free(csc);
+}
+
+static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
+{
+	struct csc *csc = user_data;
+
+	DBG("");
+
+	csc->attrib = g_attrib_ref(attrib);
+}
+
+static void attio_disconnected_cb(gpointer user_data)
+{
+	struct csc *csc = user_data;
+
+	DBG("");
+
+	g_attrib_unref(csc->attrib);
+	csc->attrib = NULL;
 }
 
 static int csc_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -137,6 +170,9 @@ static int csc_device_probe(struct btd_profile *p,
 	csc->cadapter = cadapter;
 
 	cadapter->devices = g_slist_prepend(cadapter->devices, csc);
+
+	csc->attioid = btd_device_add_attio_callback(device, attio_connected_cb,
+						attio_disconnected_cb, csc);
 
 	return 0;
 }
