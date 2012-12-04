@@ -85,16 +85,11 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 							const char *name)
 {
-	struct btd_adapter *adapter;
-	struct btd_device *device;
 	char filename[PATH_MAX + 1];
 	char local_addr[18], peer_addr[18];
 	GKeyFile *key_file;
 	gsize length = 0;
 	char *data;
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
-		return;
 
 	ba2str(local, local_addr);
 	ba2str(peer, peer_addr);
@@ -112,9 +107,6 @@ void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 	g_free(data);
 
 	g_key_file_free(key_file);
-
-	if (device)
-		device_set_name(device, name);
 }
 
 static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
