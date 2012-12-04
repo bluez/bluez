@@ -458,10 +458,54 @@ static void bonding_complete(struct controller_info *info,
 		adapter_bonding_complete(adapter, bdaddr, status);
 }
 
+static void store_link_key(struct btd_adapter *adapter,
+				struct btd_device *device, uint8_t *key,
+				uint8_t type, uint8_t pin_length)
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char key_str[35];
+	char *str;
+	int i;
+	gsize length = 0;
+
+	ba2str(adapter_get_address(adapter), adapter_addr);
+	ba2str(device_get_address(device), device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	key_str[0] = '0';
+	key_str[1] = 'x';
+	for (i = 0; i < 16; i++)
+		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
+
+	g_key_file_set_string(key_file, "LinkKey", "Key", key_str);
+
+	g_key_file_set_integer(key_file, "LinkKey", "Type", type);
+	g_key_file_set_integer(key_file, "LinkKey", "PINLength", pin_length);
+
+	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	g_key_file_free(key_file);
+}
+
 static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_link_key *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 
 	if (len != sizeof(*ev)) {
 		error("mgmt_new_link_key event size mismatch (%zu != %zu)",
@@ -485,10 +529,21 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (ev->store_hint)
-		btd_event_link_key_notify(&info->bdaddr, &ev->key.addr.bdaddr,
-						ev->key.val, ev->key.type,
-						ev->key.pin_len);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
+	if (ev->store_hint) {
+		struct mgmt_link_key_info *key = &ev->key;
+
+		store_link_key(adapter, device, key->val, key->type,
+								key->pin_len);
+
+		device_set_bonded(device, TRUE);
+
+		if (device_is_temporary(device))
+			device_set_temporary(device, FALSE);
+	}
 
 	bonding_complete(info, &ev->key.addr.bdaddr, 0);
 }

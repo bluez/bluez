@@ -21,6 +21,3 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
-
-int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t *key,
-					uint8_t key_type, uint8_t pin_length);
