@@ -83,18 +83,6 @@ static gboolean get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 	return TRUE;
 }
 
-int btd_event_user_notify(bdaddr_t *sba, bdaddr_t *dba, uint32_t passkey,
-							uint8_t entered)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (!get_adapter_and_device(sba, dba, &adapter, &device, TRUE))
-		return -ENODEV;
-
-	return device_notify_passkey(device, passkey, entered);
-}
-
 static void update_lastused(bdaddr_t *sba, bdaddr_t *dba, uint8_t dba_type)
 {
 	time_t t;

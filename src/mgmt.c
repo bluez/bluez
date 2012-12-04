@@ -814,6 +814,8 @@ static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_passkey_notify *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	uint32_t passkey;
 	char addr[18];
 	int err;
@@ -834,14 +836,17 @@ static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
 	passkey = bt_get_le32(&ev->passkey);
 
 	DBG("passkey %06u entered %u", passkey, ev->entered);
 
-	err = btd_event_user_notify(&info->bdaddr, &ev->addr.bdaddr,
-							passkey, ev->entered);
+	err = device_notify_passkey(device, passkey, ev->entered);
 	if (err < 0)
-		error("btd_event_user_notify: %s", strerror(-err));
+		error("device_notify_passkey: %s", strerror(-err));
 }
 
 struct confirm_data {
