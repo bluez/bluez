@@ -42,7 +42,6 @@
 #include "device.h"
 #include "manager.h"
 #include "dbus-common.h"
-#include "event.h"
 #include "error.h"
 #include "storage.h"
 

@@ -49,7 +49,6 @@
 #include "adapter.h"
 #include "manager.h"
 #include "device.h"
-#include "event.h"
 #include "eir.h"
 #include "storage.h"
 #include "mgmt.h"

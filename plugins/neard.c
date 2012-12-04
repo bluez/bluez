@@ -41,7 +41,6 @@
 #include "eir.h"
 #include "agent.h"
 #include "hcid.h"
-#include "event.h"
 
 #define NEARD_NAME "org.neard"
 #define NEARD_PATH "/"
