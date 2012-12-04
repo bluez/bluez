@@ -275,14 +275,3 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 
 	return 0;
 }
-
-void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
-		return;
-
-	device_set_paired(device, TRUE);
-}
