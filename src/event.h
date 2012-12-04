@@ -24,9 +24,6 @@
 
 void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 							const char *name);
-void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer,
-					uint8_t bdaddr_type, const char *name,
-					uint32_t class);
 void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status);
 void btd_event_disconn_complete(bdaddr_t *local, bdaddr_t *peer);
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer);

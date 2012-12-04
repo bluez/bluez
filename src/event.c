@@ -276,26 +276,6 @@ int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
 	return 0;
 }
 
-void btd_event_conn_complete(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,
-						const char *name, uint32_t class)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (!get_adapter_and_device(local, peer, &adapter, &device, TRUE))
-		return;
-
-	if (class != 0)
-		device_set_class(device, class);
-
-	device_set_addr_type(device, bdaddr_type);
-
-	adapter_add_connection(adapter, device);
-
-	if (name != NULL)
-		btd_event_remote_name(local, peer, name);
-}
-
 void btd_event_conn_failed(bdaddr_t *local, bdaddr_t *peer, uint8_t status)
 {
 	struct btd_adapter *adapter;

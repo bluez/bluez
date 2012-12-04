@@ -495,6 +495,8 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 	struct mgmt_ev_device_connected *ev = buf;
 	struct eir_data eir_data;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	uint16_t eir_len;
 	char addr[18];
 
@@ -520,14 +522,24 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
 	memset(&eir_data, 0, sizeof(eir_data));
 	if (eir_len > 0)
 		eir_parse(&eir_data, ev->eir, eir_len);
 
-	btd_event_conn_complete(&info->bdaddr, &ev->addr.bdaddr,
-						ev->addr.type,
-						eir_data.name,
-						eir_data.class);
+	if (eir_data.class != 0)
+		device_set_class(device, eir_data.class);
+
+	device_set_addr_type(device, ev->addr.type);
+
+	adapter_add_connection(adapter, device);
+
+	if (eir_data.name != NULL)
+		btd_event_remote_name(&info->bdaddr, &ev->addr.bdaddr,
+								eir_data.name);
 
 	eir_data_free(&eir_data);
 }
