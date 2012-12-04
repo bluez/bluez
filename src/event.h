@@ -25,7 +25,6 @@
 void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 							const char *name);
 void btd_event_returned_link_key(bdaddr_t *local, bdaddr_t *peer);
-void btd_event_device_unpaired(bdaddr_t *local, bdaddr_t *peer);
 int btd_event_link_key_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t *key,
 					uint8_t key_type, uint8_t pin_length);
 int btd_event_ltk_notify(bdaddr_t *local, bdaddr_t *peer, uint8_t bdaddr_type,

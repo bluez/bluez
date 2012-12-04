@@ -1860,6 +1860,8 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	struct mgmt_ev_device_unpaired *ev = buf;
 	char addr[18];
 
@@ -1878,7 +1880,19 @@ static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	btd_event_device_unpaired(&info->bdaddr, &ev->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, false))
+		return;
+
+	if (!device)
+		return;
+
+	device_set_temporary(device, TRUE);
+
+	if (device_is_connected(device))
+		device_request_disconnect(device, NULL);
+	else
+		adapter_remove_device(adapter, device, TRUE);
 }
 
 static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
