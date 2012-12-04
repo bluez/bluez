@@ -777,6 +777,8 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_user_passkey_request *ev = buf;
 	struct controller_info *info;
+	struct btd_adapter *adapter;
+	struct btd_device *device;
 	char addr[18];
 	int err;
 
@@ -796,9 +798,13 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	err = btd_event_user_passkey(&info->bdaddr, &ev->addr.bdaddr);
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+						&adapter, &device, true))
+		return;
+
+	err = device_request_passkey(device);
 	if (err < 0) {
-		error("btd_event_user_passkey: %s", strerror(-err));
+		error("device_request_passkey: %s", strerror(-err));
 		mgmt_passkey_reply(index, &ev->addr.bdaddr, ev->addr.type,
 							INVALID_PASSKEY);
 	}
