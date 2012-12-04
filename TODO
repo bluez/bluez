@@ -74,9 +74,6 @@ released.
 
 - (maybe) rename or re-design DiscoverServices since it's BR/EDR specific
 
-- Add Agent callback for incoming just-works, maybe remote lost key as
-  well?
-
 - [pending] Remove deprecated D-Bus signals, methods and properties
   (ensuring new ones are in place to replace what's removed).
 
@@ -90,6 +87,8 @@ released.
   ini-file format
 
 Completed items:
+
+- Add Agent callback for incoming just-works (RequestAuthorization)
 
 - Switch to standard object manager interface
 
