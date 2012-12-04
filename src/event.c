@@ -28,7 +28,6 @@
 
 #define _GNU_SOURCE
 #include <stdio.h>
-#include <ctype.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -91,25 +90,8 @@ void btd_event_remote_name(const bdaddr_t *local, bdaddr_t *peer,
 	char filename[PATH_MAX + 1];
 	char local_addr[18], peer_addr[18];
 	GKeyFile *key_file;
-	char *data, utf8_name[MGMT_MAX_NAME_LENGTH + 1];
 	gsize length = 0;
-
-	if (!g_utf8_validate(name, -1, NULL)) {
-		int i;
-
-		memset(utf8_name, 0, sizeof(utf8_name));
-		strncpy(utf8_name, name, MGMT_MAX_NAME_LENGTH);
-
-		/* Assume ASCII, and replace all non-ASCII with spaces */
-		for (i = 0; utf8_name[i] != '\0'; i++) {
-			if (!isascii(utf8_name[i]))
-				utf8_name[i] = ' ';
-		}
-		/* Remove leading and trailing whitespace characters */
-		g_strstrip(utf8_name);
-
-		name = utf8_name;
-	}
+	char *data;
 
 	if (!get_adapter_and_device(local, peer, &adapter, &device, FALSE))
 		return;

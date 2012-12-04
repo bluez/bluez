@@ -27,6 +27,7 @@
 #endif
 
 #include <errno.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <glib.h>
@@ -102,6 +103,29 @@ static void eir_parse_uuid128(struct eir_data *eir, uint8_t *data, uint8_t len)
 	}
 }
 
+static char *name2utf8(const uint8_t *name, uint8_t len)
+{
+	char utf8_name[HCI_MAX_NAME_LENGTH + 2];
+	int i;
+
+	if (g_utf8_validate((const char *) name, len, NULL))
+		return g_strndup((char *) name, len);
+
+	memset(utf8_name, 0, sizeof(utf8_name));
+	strncpy(utf8_name, (char *) name, len);
+
+	/* Assume ASCII, and replace all non-ASCII with spaces */
+	for (i = 0; utf8_name[i] != '\0'; i++) {
+		if (!isascii(utf8_name[i]))
+			utf8_name[i] = ' ';
+	}
+
+	/* Remove leading and trailing whitespace characters */
+	g_strstrip(utf8_name);
+
+	return g_strdup(utf8_name);
+}
+
 int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
@@ -156,12 +180,9 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 			while (data_len > 0 && data[data_len - 1] == '\0')
 				data_len--;
 
-			if (!g_utf8_validate((char *) data, data_len, NULL))
-				break;
-
 			g_free(eir->name);
 
-			eir->name = g_strndup((char *) data, data_len);
+			eir->name = name2utf8(data, data_len);
 			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
 			break;
 
