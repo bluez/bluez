@@ -107,7 +107,7 @@ Signals		DevicesFound(array{object path, dict values})
 			device discovery.
 
 			The dictionary contains the properties from the
-			org.bluez.Device interface.
+			org.bluez.Device1 interface.
 
 Properties	string Address [readonly]
 

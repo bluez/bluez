@@ -22,7 +22,7 @@
  *
  */
 
-#define DEVICE_INTERFACE	"org.bluez.Device"
+#define DEVICE_INTERFACE	"org.bluez.Device1"
 
 struct btd_device;
 

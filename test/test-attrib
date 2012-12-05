@@ -40,7 +40,7 @@ if (args[0] == "list"):
 	adapter = bluezutils.find_adapter(options.dev_id)
 	for path in adapter.GetProperties()["Devices"]:
 		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+							"org.bluez.Device1")
 		devprop = device.GetProperties()
 		print("[ %s ]" % devprop["Address"])
 		for path in devprop["Services"]:

@@ -133,7 +133,7 @@ static char *device_get_ieee1284_id(const char *adapter, const char *device)
 
 	/* Look for the service handle of the HCRP service */
 	message = dbus_message_new_method_call("org.bluez", device,
-						"org.bluez.Device",
+						"org.bluez.Device1",
 						"DiscoverServices");
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &hcr_print);
@@ -309,7 +309,7 @@ static gboolean device_is_printer(const char *adapter, const char *device_path, 
 	gboolean retval;
 
 	message = dbus_message_new_method_call("org.bluez", device_path,
-							"org.bluez.Device",
+							"org.bluez.Device1",
 							"GetProperties");
 
 	reply = dbus_connection_send_with_reply_and_block(conn,

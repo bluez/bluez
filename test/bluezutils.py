@@ -2,7 +2,7 @@ import dbus
 
 SERVICE_NAME = "org.bluez"
 ADAPTER_INTERFACE = SERVICE_NAME + ".Adapter"
-DEVICE_INTERFACE = SERVICE_NAME + ".Device"
+DEVICE_INTERFACE = SERVICE_NAME + ".Device1"
 
 def get_managed_objects():
 	bus = dbus.SystemBus()

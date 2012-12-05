@@ -24,11 +24,11 @@ def ask(prompt):
 def set_trusted(path):
 	props = dbus.Interface(bus.get_object("org.bluez", path),
 					"org.freedesktop.DBus.Properties")
-	props.Set("org.bluez.Device", "Trusted", True)
+	props.Set("org.bluez.Device1", "Trusted", True)
 
 def dev_connect(path):
 	dev = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+							"org.bluez.Device1")
 	dev.Connect()
 
 class Rejected(dbus.DBusException):

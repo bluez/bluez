@@ -11,7 +11,7 @@ Device hierarchy
 ================
 
 Service		org.bluez
-Interface	org.bluez.Device
+Interface	org.bluez.Device1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		dict DiscoverServices(string pattern)
