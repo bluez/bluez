@@ -426,10 +426,10 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
 profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
-	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
+	$(AM_V_GEN)$(LN_S) -f $(abs_top_srcdir)/$< $@
 
 profiles/input/suspend.c: profiles/input/@HOG_SUSPEND_DRIVER@
-	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
+	$(AM_V_GEN)$(LN_S) -f $(abs_top_builddir)/$< $@
 
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@
@@ -438,7 +438,7 @@ $(lib_libbluetooth_la_OBJECTS): $(local_headers)
 
 lib/bluetooth/%.h: lib/%.h
 	$(AM_V_at)$(MKDIR_P) lib/bluetooth
-	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
+	$(AM_V_GEN)$(LN_S) -f $(abs_top_builddir)/$< $@
 
 clean-local:
 	$(RM) -r lib/bluetooth
