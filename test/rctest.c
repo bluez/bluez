@@ -80,7 +80,7 @@ static int save_fd = -1;
 
 static int master = 0;
 static int auth = 0;
-static int encrypt = 0;
+static int encr = 0;
 static int secure = 0;
 static int socktype = SOCK_STREAM;
 static int linger = 0;
@@ -205,7 +205,7 @@ static int do_connect(const char *svr)
 		opt |= RFCOMM_LM_MASTER;
 	if (auth)
 		opt |= RFCOMM_LM_AUTH;
-	if (encrypt)
+	if (encr)
 		opt |= RFCOMM_LM_ENCRYPT;
 	if (secure)
 		opt |= RFCOMM_LM_SECURE;
@@ -296,7 +296,7 @@ static void do_listen(void (*handler)(int sk))
 		opt |= RFCOMM_LM_MASTER;
 	if (auth)
 		opt |= RFCOMM_LM_AUTH;
-	if (encrypt)
+	if (encr)
 		opt |= RFCOMM_LM_ENCRYPT;
 	if (secure)
 		opt |= RFCOMM_LM_SECURE;
@@ -776,7 +776,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'E':
-			encrypt = 1;
+			encr = 1;
 			break;
 
 		case 'S':
