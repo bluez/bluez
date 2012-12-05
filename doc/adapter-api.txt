@@ -116,14 +116,6 @@ Signals		DevicesFound(array{object path, dict values})
 			The dictionary contains the properties from the
 			org.bluez.Device interface.
 
-		DeviceCreated(object device)
-
-			Parameter is object path of created device.
-
-		DeviceRemoved(object device)
-
-			Parameter is object path of removed device.
-
 Properties	string Address [readonly]
 
 			The Bluetooth device address.

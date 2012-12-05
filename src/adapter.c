@@ -1010,7 +1010,6 @@ static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 						uint8_t bdaddr_type)
 {
 	struct btd_device *device;
-	const char *path;
 
 	DBG("%s", address);
 
@@ -1021,12 +1020,6 @@ static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 	device_set_temporary(device, TRUE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
-
-	path = device_get_path(device);
-	g_dbus_emit_signal(btd_get_dbus_connection(), adapter->path,
-			ADAPTER_INTERFACE, "DeviceCreated",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter->path, ADAPTER_INTERFACE, "Devices");
@@ -1055,7 +1048,6 @@ void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *dev,
 						gboolean remove_storage)
 {
-	const gchar *dev_path = device_get_path(dev);
 	struct discovery *discovery = adapter->discovery;
 	GList *l;
 
@@ -1086,11 +1078,6 @@ void adapter_remove_device(struct btd_adapter *adapter,
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter->path, ADAPTER_INTERFACE, "Devices");
-
-	g_dbus_emit_signal(btd_get_dbus_connection(), adapter->path,
-			ADAPTER_INTERFACE, "DeviceRemoved",
-			DBUS_TYPE_OBJECT_PATH, &dev_path,
-			DBUS_TYPE_INVALID);
 
 	device_remove(dev, remove_storage);
 }
@@ -1683,10 +1670,6 @@ static const GDBusMethodTable adapter_methods[] = {
 };
 
 static const GDBusSignalTable adapter_signals[] = {
-	{ GDBUS_SIGNAL("DeviceCreated",
-			GDBUS_ARGS({ "device", "o" })) },
-	{ GDBUS_SIGNAL("DeviceRemoved",
-			GDBUS_ARGS({ "device", "o" })) },
 	{ GDBUS_SIGNAL("DevicesFound",
 			GDBUS_ARGS({ "devices", "a{oa{sv}}" })) },
 	{ }
