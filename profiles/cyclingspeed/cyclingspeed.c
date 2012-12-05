@@ -150,6 +150,7 @@ static const gchar *location2str(uint8_t value)
 		return location_enum[value];
 
 	info("Body Sensor Location [%d] is RFU", value);
+
 	return location_enum[0];
 }
 
@@ -289,8 +290,8 @@ static gboolean controlpoint_timeout(gpointer user_data)
 
 	if (req->opcode == UPDATE_SENSOR_LOC) {
 		g_dbus_pending_property_error(req->reply_id,
-				ERROR_INTERFACE ".Failed",
-				"Operation failed (timeout)");
+						ERROR_INTERFACE ".Failed",
+						"Operation failed (timeout)");
 	} else if (req->opcode == SET_CUMULATIVE_VALUE) {
 		DBusMessage *reply;
 
@@ -313,32 +314,31 @@ static void controlpoint_write_cb(guint8 status, const guint8 *pdu, guint16 len,
 {
 	struct controlpoint_req *req = user_data;
 
-	if (status != 0) {
-		error("SC Control Point write failed (opcode=%d)", req->opcode);
-
-		if (req->opcode == UPDATE_SENSOR_LOC) {
-			g_dbus_pending_property_error(req->reply_id,
-					ERROR_INTERFACE ".Failed",
-					"Operation failed (%d)", status);
-		} else if  (req->opcode == SET_CUMULATIVE_VALUE) {
-			DBusMessage *reply;
-
-			reply = btd_error_failed(req->msg,
-						"Operation failed");
-
-			g_dbus_send_message(btd_get_dbus_connection(), reply);
-
-			dbus_message_unref(req->msg);
-		}
-
-		req->csc->pending_req = NULL;
-		g_free(req);
-
+	if (status == 0) {
+		req->timeout = g_timeout_add_seconds(ATT_TIMEOUT,
+							controlpoint_timeout,
+							req);
 		return;
 	}
 
-	req->timeout = g_timeout_add_seconds(ATT_TIMEOUT, controlpoint_timeout,
-									req);
+	error("SC Control Point write failed (opcode=%d)", req->opcode);
+
+	if (req->opcode == UPDATE_SENSOR_LOC) {
+		g_dbus_pending_property_error(req->reply_id,
+					ERROR_INTERFACE ".Failed",
+					"Operation failed (%d)", status);
+	} else if  (req->opcode == SET_CUMULATIVE_VALUE) {
+		DBusMessage *reply;
+
+		reply = btd_error_failed(req->msg, "Operation failed");
+
+		g_dbus_send_message(btd_get_dbus_connection(), reply);
+
+		dbus_message_unref(req->msg);
+	}
+
+	req->csc->pending_req = NULL;
+	g_free(req);
 }
 
 static void read_supported_locations(struct csc *csc)
@@ -351,12 +351,13 @@ static void read_supported_locations(struct csc *csc)
 
 	csc->pending_req = req;
 
-	gatt_write_char(csc->attrib, csc->controlpoint_val_handle, &req->opcode,
-			sizeof(req->opcode), controlpoint_write_cb, req);
+	gatt_write_char(csc->attrib, csc->controlpoint_val_handle,
+					&req->opcode, sizeof(req->opcode),
+					controlpoint_write_cb, req);
 }
 
-static void read_feature_cb(guint8 status, const guint8 *pdu,
-						guint16 len, gpointer user_data)
+static void read_feature_cb(guint8 status, const guint8 *pdu, guint16 len,
+							gpointer user_data)
 {
 	struct csc *csc = user_data;
 	uint8_t value[2];
@@ -847,8 +848,8 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	csc->attrib = g_attrib_ref(attrib);
 
 	gatt_discover_char(csc->attrib, csc->svc_range->start,
-				csc->svc_range->end, NULL,
-				discover_char_cb, csc);
+						csc->svc_range->end, NULL,
+						discover_char_cb, csc);
 }
 
 static void attio_disconnected_cb(gpointer user_data)
@@ -1057,8 +1058,7 @@ static void property_set_location(const GDBusPropertyTable *property,
 	att_val[1] = loc_val;
 
 	gatt_write_char(csc->attrib, csc->controlpoint_val_handle, att_val,
-		sizeof(att_val), controlpoint_write_cb, req);
-
+				sizeof(att_val), controlpoint_write_cb, req);
 }
 
 static gboolean property_exists_location(const GDBusPropertyTable *property,
@@ -1167,8 +1167,8 @@ static DBusMessage *set_cumulative_wheel_rev(DBusConnection *conn,
 
 static const GDBusMethodTable cyclingspeed_device_methods[] = {
 	{ GDBUS_ASYNC_METHOD("SetCumulativeWheelRevolutions",
-			GDBUS_ARGS({ "value", "u" }), NULL,
-			set_cumulative_wheel_rev) },
+				GDBUS_ARGS({ "value", "u" }), NULL,
+						set_cumulative_wheel_rev) },
 	{ }
 };
 
@@ -1256,7 +1256,8 @@ static void csc_device_remove(struct btd_profile *p,
 	cadapter->devices = g_slist_remove(cadapter->devices, csc);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
-			device_get_path(device), CYCLINGSPEED_INTERFACE);
+						device_get_path(device),
+						CYCLINGSPEED_INTERFACE);
 }
 
 static struct btd_profile cscp_profile = {
