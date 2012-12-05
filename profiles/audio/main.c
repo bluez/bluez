@@ -44,8 +44,6 @@
 #include "device.h"
 #include "manager.h"
 
-static GIOChannel *sco_server = NULL;
-
 static GKeyFile *load_config_file(const char *file)
 {
 	GError *err = NULL;
@@ -81,12 +79,6 @@ static int audio_init(void)
 
 static void audio_exit(void)
 {
-	if (sco_server) {
-		g_io_channel_shutdown(sco_server, TRUE, NULL);
-		g_io_channel_unref(sco_server);
-		sco_server = NULL;
-	}
-
 	audio_manager_exit();
 }
 
