@@ -1055,6 +1055,9 @@ static struct avctp *avctp_get_internal(const bdaddr_t *src,
 static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 						struct audio_device *dev)
 {
+	const bdaddr_t *src;
+	const bdaddr_t *dst;
+
 	if (session->control != NULL) {
 		error("Control: Refusing unexpected connect");
 		g_io_channel_shutdown(chan, TRUE, NULL);
@@ -1064,7 +1067,10 @@ static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 	session->control = avctp_channel_create(session, chan);
 
-	session->auth_id = btd_request_authorization(&dev->src, &dev->dst,
+	src = adapter_get_address(device_get_adapter(dev->btd_dev));
+	dst = device_get_address(dev->btd_dev);
+
+	session->auth_id = btd_request_authorization(src, dst,
 							AVRCP_TARGET_UUID,
 							auth_cb, session);
 	if (session->auth_id == 0)
