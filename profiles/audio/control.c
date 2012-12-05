@@ -141,7 +141,7 @@ int control_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	if (control->connect)
 		return -EINPROGRESS;
 
-	control->session = avctp_connect(&dev->src, &dev->dst);
+	control->session = avctp_connect(dev);
 	if (!control->session)
 		return -EIO;
 

@@ -1594,11 +1594,16 @@ gboolean avctp_unregister_browsing_pdu_handler(unsigned int id)
 	return FALSE;
 }
 
-struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst)
+struct avctp *avctp_connect(struct audio_device *device)
 {
 	struct avctp *session;
 	GError *err = NULL;
 	GIOChannel *io;
+	const bdaddr_t *src;
+	const bdaddr_t *dst;
+
+	src = adapter_get_address(device_get_adapter(device->btd_dev));
+	dst = device_get_address(device->btd_dev);
 
 	session = avctp_get_internal(src, dst);
 	if (!session)

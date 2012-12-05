@@ -93,7 +93,7 @@ gboolean avctp_remove_state_cb(unsigned int id);
 int avctp_register(const bdaddr_t *src, gboolean master);
 void avctp_unregister(const bdaddr_t *src);
 
-struct avctp *avctp_connect(const bdaddr_t *src, const bdaddr_t *dst);
+struct avctp *avctp_connect(struct audio_device *device);
 struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst);
 int avctp_connect_browsing(struct avctp *session);
 void avctp_disconnect(struct avctp *session);

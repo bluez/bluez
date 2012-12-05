@@ -2173,7 +2173,7 @@ static struct avrcp *session_create(struct avrcp_server *server,
 
 	session = g_new0(struct avrcp, 1);
 	session->server = server;
-	session->conn = avctp_connect(&dev->src, &dev->dst);
+	session->conn = avctp_connect(dev);
 	session->dev = dev;
 
 	server->sessions = g_slist_append(server->sessions, session);
@@ -2254,7 +2254,7 @@ gboolean avrcp_connect(struct audio_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_connect(&dev->src, &dev->dst);
+	session = avctp_connect(dev);
 	if (session)
 		return FALSE;
 
