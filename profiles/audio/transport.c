@@ -123,19 +123,6 @@ static const char *lock2str(transport_lock_t lock)
 		return "rw";
 }
 
-static transport_lock_t str2lock(const char *str)
-{
-	transport_lock_t lock = 0;
-
-	if (g_strstr_len(str, -1, "r") != NULL)
-		lock |= TRANSPORT_LOCK_READ;
-
-	if (g_strstr_len(str, -1, "w") != NULL)
-		lock |= TRANSPORT_LOCK_WRITE;
-
-	return lock;
-}
-
 static const char *state2str(transport_state_t state)
 {
 	switch (state) {
@@ -528,28 +515,15 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	struct media_transport *transport = data;
 	struct media_owner *owner;
 	struct media_request *req;
-	const char *accesstype, *sender;
-	transport_lock_t lock;
+	const char *sender;
 	guint id;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &accesstype,
-				DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
+	transport_lock_t lock = TRANSPORT_LOCK_READ | TRANSPORT_LOCK_WRITE;
 
 	sender = dbus_message_get_sender(msg);
 
 	owner = media_transport_find_owner(transport, sender);
 	if (owner != NULL)
 		return btd_error_not_authorized(msg);
-
-	lock = str2lock(accesstype);
-	if (lock == 0)
-		return btd_error_invalid_args(msg);
-
-	if (transport->state != TRANSPORT_STATE_PENDING &&
-				g_strstr_len(accesstype, -1, "?") != NULL)
-		return btd_error_failed(msg, "Transport not playing");
 
 	if (media_transport_acquire(transport, lock) == FALSE)
 		return btd_error_not_authorized(msg);
@@ -574,22 +548,15 @@ static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 {
 	struct media_transport *transport = data;
 	struct media_owner *owner;
-	const char *accesstype, *sender;
-	transport_lock_t lock;
+	const char *sender;
 	struct media_request *req;
-
-	if (!dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &accesstype,
-				DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
+	transport_lock_t lock = TRANSPORT_LOCK_READ | TRANSPORT_LOCK_WRITE;
 
 	sender = dbus_message_get_sender(msg);
 
 	owner = media_transport_find_owner(transport, sender);
 	if (owner == NULL)
 		return btd_error_not_authorized(msg);
-
-	lock = str2lock(accesstype);
 
 	if (owner->lock == lock) {
 		guint id;
@@ -760,13 +727,11 @@ static void set_volume(const GDBusPropertyTable *property,
 
 static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Acquire",
-			GDBUS_ARGS({ "access_type", "s" }),
+			NULL,
 			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
 							{ "mtu_w", "q" } ),
 			acquire) },
-	{ GDBUS_ASYNC_METHOD("Release",
-			GDBUS_ARGS({ "access_type", "s" }), NULL,
-			release ) },
+	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, release) },
 	{ },
 };
 
