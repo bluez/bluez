@@ -2544,7 +2544,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	session->io_id = g_io_add_watch(chan, G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 					(GIOFunc) session_cb, session);
 
-	session->auth_id = btd_request_authorization(&dev->src, &dev->dst,
+	session->auth_id = btd_request_authorization(&src, &dst,
 							ADVANCED_AUDIO_UUID,
 							auth_cb, session);
 	if (session->auth_id == 0) {
