@@ -54,141 +54,11 @@
 #include "error.h"
 #include "manager.h"
 
-static const char *base_path = "/org/bluez";
-
 static int default_adapter_id = -1;
 static GSList *adapters = NULL;
 
-const char *manager_get_base_path(void)
-{
-	return base_path;
-}
-
-static DBusMessage *default_adapter(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	struct btd_adapter *adapter;
-	const gchar *path;
-
-	adapter = manager_find_adapter_by_id(default_adapter_id);
-	if (!adapter)
-		return btd_error_no_such_adapter(msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	path = adapter_get_path(adapter);
-
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *find_adapter(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	struct btd_adapter *adapter;
-	const char *pattern;
-	int dev_id;
-	const gchar *path;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
-							DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
-
-	/* hci_devid() would make sense to use here, except it is
-	 * restricted to devices which are up */
-	if (!strcmp(pattern, "any") || !strcmp(pattern, "00:00:00:00:00:00")) {
-		path = adapter_any_get_path();
-		if (path != NULL)
-			goto done;
-		return btd_error_no_such_adapter(msg);
-	} else if (!strncmp(pattern, "hci", 3) && strlen(pattern) >= 4) {
-		dev_id = atoi(pattern + 3);
-		adapter = manager_find_adapter_by_id(dev_id);
-	} else {
-		bdaddr_t bdaddr;
-		str2ba(pattern, &bdaddr);
-		adapter = manager_find_adapter(&bdaddr);
-	}
-
-	if (!adapter)
-		return btd_error_no_such_adapter(msg);
-
-	path = adapter_get_path(adapter);
-
-done:
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static gboolean manager_property_get_adapters(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	DBusMessageIter entry;
-	GSList *l;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &entry);
-
-	for (l = adapters; l != NULL; l = l->next) {
-		struct btd_adapter *adapter = l->data;
-		const char *path = adapter_get_path(adapter);
-
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
-								&path);
-	}
-
-	dbus_message_iter_close_container(iter, &entry);
-
-	return TRUE;
-}
-
-static const GDBusMethodTable manager_methods[] = {
-	{ GDBUS_METHOD("DefaultAdapter",
-			NULL, GDBUS_ARGS({ "adapter", "o" }),
-			default_adapter) },
-	{ GDBUS_METHOD("FindAdapter",
-			GDBUS_ARGS({ "pattern", "s" }),
-			GDBUS_ARGS({ "adapter", "o" }),
-			find_adapter) },
-	{ }
-};
-
-static const GDBusSignalTable manager_signals[] = {
-	{ GDBUS_SIGNAL("AdapterAdded",
-			GDBUS_ARGS({ "adapter", "o" })) },
-	{ GDBUS_SIGNAL("AdapterRemoved",
-			GDBUS_ARGS({ "adapter", "o" })) },
-	{ GDBUS_SIGNAL("DefaultAdapterChanged",
-			GDBUS_ARGS({ "adapter", "o" })) },
-	{ }
-};
-
-static const GDBusPropertyTable manager_properties[] = {
-	{ "Adapters", "ao", manager_property_get_adapters },
-	{ }
-};
-
 bool manager_init(const char *path)
 {
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					"/", MANAGER_INTERFACE,
-					manager_methods, manager_signals,
-					manager_properties, NULL, NULL))
-		return false;
-
 	btd_profile_init();
 
 	return true;
@@ -196,21 +66,7 @@ bool manager_init(const char *path)
 
 static void manager_set_default_adapter(int id)
 {
-	struct btd_adapter *adapter;
-	const gchar *path;
-
 	default_adapter_id = id;
-
-	adapter = manager_find_adapter_by_id(id);
-	if (!adapter)
-		return;
-
-	path = adapter_get_path(adapter);
-
-	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
-				MANAGER_INTERFACE, "DefaultAdapterChanged",
-				DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
 }
 
 struct btd_adapter *manager_get_default_adapter(void)
@@ -221,23 +77,14 @@ struct btd_adapter *manager_get_default_adapter(void)
 static void manager_remove_adapter(struct btd_adapter *adapter)
 {
 	uint16_t dev_id = adapter_get_dev_id(adapter);
-	const gchar *path = adapter_get_path(adapter);
 
 	adapters = g_slist_remove(adapters, adapter);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), "/",
-					MANAGER_INTERFACE, "Adapters");
 
 	if (default_adapter_id == dev_id || default_adapter_id < 0) {
 		int new_default = hci_get_route(NULL);
 
 		manager_set_default_adapter(new_default);
 	}
-
-	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
-				MANAGER_INTERFACE, "AdapterRemoved",
-				DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
 
 	adapter_remove(adapter);
 	btd_adapter_unref(adapter);
@@ -259,9 +106,6 @@ void manager_cleanup(const char *path)
 	}
 
 	btd_start_exit_timer();
-
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-						"/", MANAGER_INTERFACE);
 }
 
 static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
@@ -338,13 +182,6 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 	}
 
 	path = adapter_get_path(adapter);
-	g_dbus_emit_signal(btd_get_dbus_connection(), "/",
-				MANAGER_INTERFACE, "AdapterAdded",
-				DBUS_TYPE_OBJECT_PATH, &path,
-				DBUS_TYPE_INVALID);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),  "/",
-					MANAGER_INTERFACE, "Adapters");
 
 	btd_stop_exit_timer();
 

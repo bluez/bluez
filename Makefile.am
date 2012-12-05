@@ -345,8 +345,7 @@ CLEANFILES += $(rules_DATA)
 
 EXTRA_DIST += scripts/bluetooth-hid2hci.rules scripts/bluetooth-serial.rules
 
-EXTRA_DIST += doc/manager-api.txt \
-		doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
+EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \
 		doc/network-api.txt doc/control-api.txt doc/health-api.txt \
 		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt \

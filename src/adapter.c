@@ -86,6 +86,7 @@
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
+static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
 
 enum session_req_type {
@@ -2972,7 +2973,6 @@ struct btd_adapter *adapter_create(int id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
-	const char *base_path = manager_get_base_path();
 
 	adapter = g_try_new0(struct btd_adapter, 1);
 	if (!adapter) {
@@ -3603,7 +3603,7 @@ const char *btd_adapter_any_request_path(void)
 	if (adapter_any_refcount++ > 0)
 		return adapter_any_path;
 
-	adapter_any_path = g_strdup_printf("%s/any", manager_get_base_path());
+	adapter_any_path = g_strdup_printf("%s/any", base_path);
 
 	return adapter_any_path;
 }

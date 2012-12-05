@@ -25,14 +25,11 @@
 #include <bluetooth/bluetooth.h>
 #include <dbus/dbus.h>
 
-#define MANAGER_INTERFACE "org.bluez.Manager"
-
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
 
 bool manager_init(const char *path);
 void manager_cleanup(const char *path);
 
-const char *manager_get_base_path(void);
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba);
 struct btd_adapter *manager_find_adapter_by_id(int id);
 struct btd_adapter *manager_get_default_adapter(void);

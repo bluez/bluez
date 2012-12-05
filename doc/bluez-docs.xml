@@ -47,13 +47,6 @@
     </legalnotice>
   </bookinfo>
 
-  <reference id="manager">
-    <title>Manager interface</title>
-    <para>
-<programlisting><xi:include href="manager-api.txt" parse="text" /></programlisting>
-    </para>
-  </reference>
-
   <reference id="adapter">
     <title>Adapter interface</title>
     <para>
