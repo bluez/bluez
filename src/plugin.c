@@ -29,11 +29,11 @@
 #include <bluetooth/bluetooth.h>
 
 #include <glib.h>
+#include <btio/btio.h>
 
 #include "plugin.h"
 #include "log.h"
 #include "hcid.h"
-#include <btio/btio.h>
 
 static GSList *plugins = NULL;
 

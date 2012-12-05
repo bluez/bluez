@@ -29,13 +29,13 @@
 
 #include <glib.h>
 #include <bluetooth/uuid.h>
+#include <btio/btio.h>
 
 #include "adapter.h"
 #include "device.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
-#include <btio/btio.h>
 #include "attrib/gatt.h"
 #include "log.h"
 #include "textfile.h"

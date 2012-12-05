@@ -30,10 +30,10 @@
 #include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 
+#include <btio/btio.h>
 #include "att.h"
 #include "gattrib.h"
 #include "gatt.h"
-#include <btio/btio.h>
 #include "gatttool.h"
 
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,

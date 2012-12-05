@@ -33,9 +33,9 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
+#include <btio/btio.h>
 
 #include "log.h"
-#include <btio/btio.h>
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"

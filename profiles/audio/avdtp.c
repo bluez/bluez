@@ -39,6 +39,7 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
+#include <btio/btio.h>
 
 #include "log.h"
 
@@ -50,7 +51,6 @@
 #include "manager.h"
 #include "control.h"
 #include "avdtp.h"
-#include <btio/btio.h>
 #include "sink.h"
 #include "source.h"
 

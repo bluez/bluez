@@ -41,6 +41,7 @@
 #include <bluetooth/l2cap.h>
 
 #include <glib.h>
+#include <btio/btio.h>
 
 #include "adapter.h"
 #include "../src/device.h"
@@ -48,7 +49,6 @@
 #include "log.h"
 #include "error.h"
 #include "uinput.h"
-#include <btio/btio.h>
 #include "manager.h"
 #include "device.h"
 #include "avctp.h"

@@ -32,12 +32,12 @@
 #include <bluetooth/uuid.h>
 
 #include <gdbus/gdbus.h>
+#include <btio/btio.h>
 #include "adapter.h"
 #include "device.h"
 #include "log.h"
 #include "error.h"
 #include "dbus-common.h"
-#include <btio/btio.h>
 #include "storage.h"
 
 #include "att.h"

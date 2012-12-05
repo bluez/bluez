@@ -31,8 +31,8 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-#include "att.h"
 #include <btio/btio.h>
+#include "att.h"
 #include "gattrib.h"
 #include "gatt.h"
 #include "gatttool.h"

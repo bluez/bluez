@@ -35,6 +35,7 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
+#include <btio/btio.h>
 
 #include "../src/dbus-common.h"
 #include "../src/adapter.h"
@@ -42,7 +43,6 @@
 #include "log.h"
 #include "error.h"
 #include "sdpd.h"
-#include <btio/btio.h>
 
 #include "common.h"
 #include "server.h"

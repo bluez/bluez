@@ -36,6 +36,7 @@
 #include <inttypes.h>
 
 #include <glib.h>
+#include <btio/btio.h>
 #include <gobex/gobex.h>
 
 #include "obexd.h"
@@ -47,7 +48,6 @@
 #include "mimetype.h"
 #include "service.h"
 #include "transport.h"
-#include <btio/btio.h>
 
 /* Challenge request */
 #define NONCE_TAG 0x00

@@ -32,9 +32,9 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
+#include <btio/btio.h>
 
 #include "glib-helper.h"
-#include <btio/btio.h>
 #include "plugin.h"
 #include "log.h"
 #include "device.h"

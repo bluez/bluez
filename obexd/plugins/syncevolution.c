@@ -32,6 +32,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include <btio/btio.h>
 #include <gdbus/gdbus.h>
 #include "plugin.h"
 #include "obex.h"
@@ -39,7 +40,6 @@
 #include "mimetype.h"
 #include "log.h"
 #include "manager.h"
-#include <btio/btio.h>
 #include "obexd.h"
 #include "filesystem.h"
 

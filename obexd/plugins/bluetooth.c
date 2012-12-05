@@ -30,6 +30,7 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
+#include <btio/btio.h>
 
 #include "obexd.h"
 #include "plugin.h"
@@ -38,7 +39,6 @@
 #include "transport.h"
 #include "service.h"
 #include "log.h"
-#include <btio/btio.h>
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767

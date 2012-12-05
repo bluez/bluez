@@ -40,6 +40,7 @@
 #include <glib.h>
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
+#include <btio/btio.h>
 
 #include "log.h"
 
@@ -58,7 +59,6 @@
 #include "agent.h"
 #include "sdp-xml.h"
 #include "storage.h"
-#include <btio/btio.h>
 #include "attrib-server.h"
 #include "attrib/client.h"
 
