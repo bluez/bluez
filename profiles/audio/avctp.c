@@ -1671,7 +1671,13 @@ void avctp_disconnect(struct avctp *session)
 	avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
 }
 
-struct avctp *avctp_get(const bdaddr_t *src, const bdaddr_t *dst)
+struct avctp *avctp_get(struct audio_device *device)
 {
+	const bdaddr_t *src;
+	const bdaddr_t *dst;
+
+	src = adapter_get_address(device_get_adapter(device->btd_dev));
+	dst = device_get_address(device->btd_dev);
+
 	return avctp_get_internal(src, dst);
 }

@@ -2265,7 +2265,7 @@ void avrcp_disconnect(struct audio_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_get(&dev->src, &dev->dst);
+	session = avctp_get(dev);
 	if (!session)
 		return;
 

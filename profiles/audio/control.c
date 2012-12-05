@@ -110,7 +110,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		if (control->session)
 			break;
 
-		control->session = avctp_get(&dev->src, &dev->dst);
+		control->session = avctp_get(dev);
 
 		break;
 	case AVCTP_STATE_CONNECTED:
