@@ -5,6 +5,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 import gobject
 
 import dbus.mainloop.glib
+import bluezutils
 
 def create_device_reply(device):
 	print("Pairing succeed!")
@@ -20,19 +21,19 @@ if __name__ == '__main__':
 	mainloop = gobject.MainLoop()
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-							"org.bluez.Manager")
 
-	adapter0_path = manager.FindAdapter("hci0")
-	adapter1_path = manager.FindAdapter("hci1")
+	managed_objects = bluezutils.get_managed_objects()
+	adapter0 = bluezutils.find_adapter_in_objects(managed_objects, "hci0")
+	adapter1 = bluezutils.find_adapter_in_objects(managed_objects, "hci1")
 
-	adapter0 = dbus.Interface(bus.get_object("org.bluez", adapter0_path),
-							"org.bluez.Adapter")
-	adapter1 = dbus.Interface(bus.get_object("org.bluez", adapter1_path),
-							"org.bluez.Adapter")
+	adapter0_path = adapter0.object_path
+	adapter1_path = adapter1.object_path
 
-	adapter0_address = adapter0.GetProperties()["Address"]
-	adapter1_address = adapter1.GetProperties()["Address"]
+	adapter0_address = managed_objects[adapter0_path][
+					bluezutils.ADAPTER_INTERFACE]["Address"]
+	adapter1_address = managed_objects[adapter1_path][
+					bluezutils.ADAPTER_INTERFACE]["Address"]
+
 	print("Adapters:")
 	print("    hci0: " + adapter0_address)
 	print("    hci1: " + adapter1_address)

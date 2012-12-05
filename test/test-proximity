@@ -12,6 +12,7 @@ import sys
 import dbus
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
+import bluezutils
 
 def properties_changed(interface, changed, invalidated):
 	if interface != "org.bluez.ProximityMonitor":
@@ -25,9 +26,6 @@ if __name__ == "__main__":
 
 	bus = dbus.SystemBus()
 
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-					"org.bluez.Manager")
-
 	option_list = [
 		make_option("-i", "--adapter", action="store",
 			type="string", dest="dev_id"),
@@ -39,13 +37,7 @@ if __name__ == "__main__":
 
 	(options, args) = parser.parse_args()
 
-	if options.dev_id:
-		adapter_path = manager.FindAdapter(options.dev_id)
-	else:
-		adapter_path = manager.DefaultAdapter()
-
-	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
+	adapter = bluezutils.find_adapter(options.dev_id)
 
 	if (len(args) < 1):
 		print("Usage: %s <command>" % (sys.argv[0]))

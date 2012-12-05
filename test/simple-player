@@ -7,6 +7,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 import gobject
+import bluezutils
 
 class Player(dbus.service.Object):
 	properties = None
@@ -141,13 +142,11 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-						"org.bluez.Manager")
 
 	if len(sys.argv) > 1:
-		path = manager.FindAdapter(sys.argv[1])
+		path = bluezutils.find_adapter(sys.argv[1]).object_path
 	else:
-		path = manager.DefaultAdapter()
+		path = bluezutils.find_adapter().object_path
 
 	media = dbus.Interface(bus.get_object("org.bluez", path),
 						"org.bluez.Media")

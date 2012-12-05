@@ -5,6 +5,7 @@ from __future__ import absolute_import, print_function, unicode_literals
 import sys
 import time
 import dbus
+import bluezutils
 
 xml = ' \
 <?xml version="1.0" encoding="UTF-8" ?> 	\
@@ -103,13 +104,11 @@ xml = ' \
 '
 
 bus = dbus.SystemBus()
-manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-						"org.bluez.Manager")
 
 if len(sys.argv) > 1:
-	path = manager.FindAdapter(sys.argv[1])
+	path = bluezutils.find_adapter(sys.argv[1]).object_path
 else:
-	path = manager.DefaultAdapter()
+	path = bluezutils.find_adapter().object_path
 
 service = dbus.Interface(bus.get_object("org.bluez", path),
 						"org.bluez.Service")

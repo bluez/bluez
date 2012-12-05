@@ -6,11 +6,9 @@ import sys
 import time
 import dbus
 from optparse import OptionParser, make_option
+import bluezutils
 
 bus = dbus.SystemBus()
-
-manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-						"org.bluez.Manager")
 
 option_list = [
 		make_option("-i", "--device", action="store",
@@ -20,11 +18,7 @@ parser = OptionParser(option_list=option_list)
 
 (options, args) = parser.parse_args()
 
-if options.dev_id:
-	adapter_path = manager.FindAdapter(options.dev_id)
-else:
-	adapter_path = manager.DefaultAdapter()
-
+adapter_path = bluezutils.find_adapter(options.dev_id).object_path
 server = dbus.Interface(bus.get_object("org.bluez", adapter_path),
 						"org.bluez.NetworkServer")
 

@@ -13,6 +13,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
+import bluezutils
 
 class Watcher(dbus.service.Object):
 	@dbus.service.method("org.bluez.HeartRateWatcher",
@@ -36,9 +37,6 @@ if __name__ == "__main__":
 
 	bus = dbus.SystemBus()
 
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-					"org.bluez.Manager")
-
 	option_list = [
 		make_option("-i", "--adapter", action="store",
 			type="string", dest="adapter"),
@@ -56,14 +54,8 @@ if __name__ == "__main__":
 		print("\tReset")
 		sys.exit(1)
 
-	if options.adapter:
-		adapter_path = manager.FindAdapter(options.adapter)
-	else:
-		adapter_path = manager.DefaultAdapter()
-
-	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
-
+	adapter = bluezutils.find_adapter(options.adapter)
+	adapter_path = adapter.object_path
 	heartrateManager = dbus.Interface(bus.get_object("org.bluez",
 				adapter_path), "org.bluez.HeartRateManager")
 

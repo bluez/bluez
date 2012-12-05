@@ -6,6 +6,7 @@ from gi.repository import GObject
 
 import dbus
 import dbus.mainloop.glib
+import bluezutils
 
 def adapter_added(path):
 	print("Adapter with path %s added" % (path))
@@ -31,7 +32,7 @@ if __name__ == "__main__":
 	manager.connect_to_signal("DefaultAdapterChanged", default_changed)
 
 	try:
-		path = manager.DefaultAdapter()
+		path = bluezutils.find_adapter().object_path
 		default_changed(path)
 	except:
 		pass

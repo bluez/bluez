@@ -9,6 +9,7 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser
+import bluezutils
 
 bus = None
 device_obj = None
@@ -135,8 +136,6 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-							"org.bluez.Manager")
 
 	capability = "KeyboardDisplay"
 
@@ -151,12 +150,9 @@ if __name__ == '__main__':
 		capability  = options.capability
 
 	if len(args) > 0:
-		path = manager.FindAdapter(args[0])
+		adapter = bluezutils.find_adapter(args[0])
 	else:
-		path = manager.DefaultAdapter()
-
-	adapter = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Adapter")
+		adapter = bluezutils.find_adapter()
 
 	path = "/test/agent"
 	agent = Agent(bus, path)

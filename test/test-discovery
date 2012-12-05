@@ -7,6 +7,7 @@ from gi.repository import GObject
 import dbus
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
+import bluezutils
 
 compact = False
 devices = {}
@@ -88,8 +89,6 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-							"org.bluez.Manager")
 
 	option_list = [
 			make_option("-i", "--device", action="store",
@@ -101,16 +100,10 @@ if __name__ == '__main__':
 
 	(options, args) = parser.parse_args()
 
-	if options.dev_id:
-		adapter_path = manager.FindAdapter(options.dev_id)
-	else:
-		adapter_path = manager.DefaultAdapter()
+	adapter = bluezutils.find_adapter(options.dev_id)
 
 	if options.compact:
 		compact = True;
-
-	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
 
 	bus.add_signal_receiver(devices_found,
 					dbus_interface = "org.bluez.Adapter",

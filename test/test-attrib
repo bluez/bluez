@@ -13,12 +13,11 @@ import sys
 import dbus
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
+import bluezutils
 
 dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 bus = dbus.SystemBus()
 mainloop = gobject.MainLoop()
-
-manager = dbus.Interface(bus.get_object("org.bluez", "/"), "org.bluez.Manager")
 
 option_list = [
 		make_option("-i", "--device", action="store",
@@ -28,13 +27,7 @@ parser = OptionParser(option_list=option_list)
 
 (options, args) = parser.parse_args()
 
-if options.dev_id:
-	adapter_path = manager.FindAdapter(options.dev_id)
-else:
-	adapter_path = manager.DefaultAdapter()
-
-adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
+adapter = bluezutils.find_adapter(options.dev_id)
 
 if (len(args) < 1):
 	print("Usage: %s <command>" % (sys.argv[0]))

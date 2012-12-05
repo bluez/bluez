@@ -1,4 +1,5 @@
 import dbus
+import bluezutils
 
 bus = dbus.SystemBus()
 
@@ -8,9 +9,7 @@ dummy = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.freedesktop.DBus.I
 #print dummy.Introspect()
 
 
-manager = dbus.Interface(bus.get_object('org.bluez', '/'), 'org.bluez.Manager')
-
 try:
-	adapter = dbus.Interface(bus.get_object('org.bluez', manager.DefaultAdapter()), 'org.bluez.Adapter')
+	adapter = bluezutils.find_adapter()
 except:
 	pass

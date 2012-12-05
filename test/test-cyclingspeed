@@ -125,15 +125,8 @@ if __name__ == "__main__":
 		print("\tSetCumulativeWheelRevolutions <value>")
 		sys.exit(1)
 
-	manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-					"org.bluez.Manager")
-	if options.adapter:
-		adapter_path = manager.FindAdapter(options.adapter)
-	else:
-		adapter_path = manager.DefaultAdapter()
-
-	adapter = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-							"org.bluez.Adapter")
+	adapter = bluezutils.find_adapter(options.adapter)
+	adapter_path = adapter.object_path
 
 	device_path = adapter.FindDevice(options.address)
 
