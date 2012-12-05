@@ -459,6 +459,37 @@ static DBusMessage *acquire(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *try_acquire(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_transport *transport = data;
+	struct media_owner *owner;
+	struct media_request *req;
+	guint id;
+
+	if (transport->owner != NULL)
+		return btd_error_not_authorized(msg);
+
+	if (transport->state >= TRANSPORT_STATE_REQUESTING)
+		return btd_error_not_authorized(msg);
+
+	if (transport->state != TRANSPORT_STATE_PENDING)
+		return btd_error_failed(msg, "Transport not playing");
+
+	owner = media_owner_create(msg);
+	id = transport->resume(transport, owner);
+	if (id == 0) {
+		media_owner_free(owner);
+		return btd_error_not_authorized(msg);
+	}
+
+	req = media_request_create(msg, id);
+	media_owner_add(owner, req);
+	media_transport_set_owner(transport, owner);
+
+	return NULL;
+}
+
 static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
@@ -630,6 +661,11 @@ static const GDBusMethodTable transport_methods[] = {
 			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
 							{ "mtu_w", "q" } ),
 			acquire) },
+	{ GDBUS_ASYNC_METHOD("TryAcquire",
+			NULL,
+			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
+							{ "mtu_w", "q" }),
+			try_acquire) },
 	{ GDBUS_ASYNC_METHOD("Release", NULL, NULL, release) },
 	{ },
 };
