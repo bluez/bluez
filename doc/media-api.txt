@@ -5,7 +5,7 @@ Media hierarchy
 ===============
 
 Service		org.bluez
-Interface	org.bluez.Media
+Interface	org.bluez.Media1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		void RegisterEndpoint(object endpoint, dict properties)
@@ -123,12 +123,12 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 			Unregister sender media player.
 
-MediaPlayer hierarchy
-=====================
+MediaPlayer1 hierarchy
+======================
 
 Service		unique name (Target role)
 		org.bluez (Controller role)
-Interface	org.bluez.MediaPlayer
+Interface	org.bluez.Media1Player1
 Object path	freely definable (Target role)
 		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
 		(Controller role)
@@ -219,11 +219,11 @@ Properties	string Equalizer [readwrite]
 			possible to signal its end by setting position to the
 			maximum uint32 value.
 
-MediaEndpoint hierarchy
-=======================
+MediaEndpoint1 hierarchy
+========================
 
 Service		unique name
-Interface	org.bluez.MediaEndpoint
+Interface	org.bluez.Media1Endpoint1
 Object path	freely definable
 
 Methods		void SetConfiguration(object transport, dict properties)
@@ -254,11 +254,11 @@ Methods		void SetConfiguration(object transport, dict properties)
 			endpoint, because when this method gets called it has
 			already been unregistered.
 
-MediaTransport hierarchy
-========================
+MediaTransport1 hierarchy
+=========================
 
 Service		org.bluez
-Interface	org.bluez.MediaTransport
+Interface	org.bluez.MediaTransport1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/fdX
 
 Methods		fd, uint16, uint16 Acquire()

@@ -35,9 +35,9 @@ When a new device is connected, NewConnection method of Profile1 agent
 is called with informations related to connecting profile (like RFCOMM
 client file descriptor, version, features, media end point path, ...).
 
-The telephony application is in charge to implement a MediaTransport for
+The telephony application is in charge to implement a MediaTransport1 for
 its audio connection with remote device and interact with the
-MediaTransport of the audio component (i.e. PulseAudio).
+MediaTransport1 of the audio component (i.e. PulseAudio).
 
 Flow charts
 ===========

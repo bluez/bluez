@@ -182,7 +182,7 @@ static int parse_property(DBusConnection *conn, const char *path,
 						DBUS_TYPE_STRING, &value);
 		else
 			emit_properties_changed(sys, path,
-					"org.bluez.MediaPlayer", "Status",
+					"org.bluez.MediaPlayer1", "Status",
 					DBUS_TYPE_STRING, &value);
 	} else if (strcasecmp(key, "Position") == 0) {
 		int64_t usec, msec;
@@ -199,7 +199,7 @@ static int parse_property(DBusConnection *conn, const char *path,
 						DBUS_TYPE_UINT32, &msec);
 		else
 			emit_properties_changed(sys, path,
-					"org.bluez.MediaPlayer", "Position",
+					"org.bluez.MediaPlayer1", "Position",
 					DBUS_TYPE_UINT32, &msec);
 	} else if (strcasecmp(key, "Shuffle") == 0) {
 		dbus_bool_t value;
@@ -217,7 +217,7 @@ static int parse_property(DBusConnection *conn, const char *path,
 						DBUS_TYPE_STRING, &str);
 		else
 			emit_properties_changed(sys, path,
-					"org.bluez.MediaPlayer", "Shuffle",
+					"org.bluez.MediaPlayer1", "Shuffle",
 					DBUS_TYPE_STRING, &str);
 	}
 
@@ -442,7 +442,7 @@ static char *sender2path(const char *sender)
 static DBusHandlerResult player_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	if (dbus_message_is_method_call(msg, "org.bluez.MediaPlayer",
+	if (dbus_message_is_method_call(msg, "org.bluez.MediaPlayer1",
 								"Release")) {
 		printf("Release\n");
 		exit(1);
@@ -468,7 +468,7 @@ static void add_player(DBusConnection *conn, const char *name,
 		return;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter,
-					"org.bluez.Media",
+					"org.bluez.Media1",
 					"RegisterPlayer");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
@@ -535,7 +535,7 @@ static void remove_player(DBusConnection *conn, const char *sender)
 	char *path;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter,
-					"org.bluez.Media",
+					"org.bluez.Media1",
 					"UnregisterPlayer");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
@@ -574,7 +574,7 @@ static DBusHandlerResult properties_changed(DBusConnection *conn,
 	path = sender2path(dbus_message_get_sender(msg));
 	parse_properties(conn, path, &iter, NULL);
 
-	signal = dbus_message_new_signal(path, "org.bluez.MediaPlayer",
+	signal = dbus_message_new_signal(path, "org.bluez.MediaPlayer1",
 							"TrackChanged");
 	if (!signal) {
 		fprintf(stderr, "Unable to allocate new PropertyChanged"

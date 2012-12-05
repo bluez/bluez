@@ -38,7 +38,7 @@
 #include "dbus-common.h"
 #include "error.h"
 
-#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer"
+#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 
 struct player_callback {
 	const struct media_player_callback *cbs;

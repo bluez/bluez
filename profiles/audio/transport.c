@@ -44,7 +44,7 @@
 #include "source.h"
 #include "avrcp.h"
 
-#define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport"
+#define MEDIA_TRANSPORT_INTERFACE "org.bluez.MediaTransport1"
 
 typedef enum {
 	TRANSPORT_STATE_IDLE,		/* Not acquired and suspended */

@@ -46,9 +46,9 @@
 #include "avrcp.h"
 #include "manager.h"
 
-#define MEDIA_INTERFACE "org.bluez.Media"
-#define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint"
-#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer"
+#define MEDIA_INTERFACE "org.bluez.Media1"
+#define MEDIA_ENDPOINT_INTERFACE "org.bluez.Media1Endpoint1"
+#define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 
 #define REQUEST_TIMEOUT (3 * 1000)		/* 3 seconds */
 
@@ -398,7 +398,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	path = media_transport_get_path(transport);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport", &iter);
+	g_dbus_get_properties(conn, path, "org.bluez.MediaTransport1", &iter);
 
 	return media_endpoint_async_call(msg, endpoint, cb, user_data, destroy);
 }
