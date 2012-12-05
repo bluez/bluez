@@ -2217,8 +2217,11 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
+	const bdaddr_t *src;
 
-	server = find_server(servers, &dev->src);
+	src = adapter_get_address(device_get_adapter(dev->btd_dev));
+
+	server = find_server(servers, src);
 	if (!server)
 		return;
 
@@ -2445,8 +2448,11 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 	struct avrcp *session;
 	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
 	struct avrcp_header *pdu = (void *) buf;
+	const bdaddr_t *src;
 
-	server = find_server(servers, &dev->src);
+	src = adapter_get_address(device_get_adapter(dev->btd_dev));
+
+	server = find_server(servers, src);
 	if (server == NULL)
 		return -EINVAL;
 
