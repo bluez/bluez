@@ -64,13 +64,6 @@ Methods		void RequestSession()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.NotAuthorized
 
-		object FindDevice(string address)
-
-			Returns the object path of device for given address.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-					 org.bluez.Error.InvalidArguments
-
 		void RemoveDevice(object device)
 
 			This removes the remote device object at the given
