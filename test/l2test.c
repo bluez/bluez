@@ -454,8 +454,6 @@ static void do_listen(void (*handler)(int sk))
 		addr.l2_cid = htobs(cid);
 	else if (psm)
 		addr.l2_psm = htobs(psm);
-	else
-		goto error;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
