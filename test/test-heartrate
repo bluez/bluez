@@ -54,18 +54,21 @@ if __name__ == "__main__":
 		print("\tReset")
 		sys.exit(1)
 
-	adapter = bluezutils.find_adapter(options.adapter)
+	managed_objects = bluezutils.get_managed_objects()
+	adapter = bluezutils.find_adapter_in_objects(managed_objects,
+								options.adapter)
 	adapter_path = adapter.object_path
+
 	heartrateManager = dbus.Interface(bus.get_object("org.bluez",
 				adapter_path), "org.bluez.HeartRateManager")
 
 	path = "/test/watcher"
 	heartrateManager.RegisterWatcher(path)
 
-	device_path = adapter.FindDevice(options.address)
-
-	device = dbus.Interface(bus.get_object("org.bluez", device_path),
-							"org.bluez.Device")
+	device = bluezutils.find_device_in_objects(managed_objects,
+								options.address,
+								options.adapter)
+	device_path = device.object_path
 
 	heartrate = dbus.Interface(bus.get_object("org.bluez",
 					device_path), "org.bluez.HeartRate")

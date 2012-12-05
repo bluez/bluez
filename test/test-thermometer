@@ -58,12 +58,18 @@ if __name__ == "__main__":
 		print("\tEnableIntermediateMeasurement")
 		sys.exit(1)
 
-	adapter = bluezutils.find_adapter(options.adapter)
+	managed_objects = bluezutils.get_managed_objects()
+	adapter = bluezutils.find_adapter_in_objects(managed_objects,
+								options.adapter)
 	adapter_path = adapter.object_path
+
 	thermometer_manager = dbus.Interface(bus.get_object("org.bluez",
 				adapter_path), "org.bluez.ThermometerManager")
 
-	device_path = adapter.FindDevice(options.address)
+	device = bluezutils.find_device_in_objects(managed_objects,
+								options.address,
+								options.adapter)
+	device_path = device.object_path
 
 	bus.add_signal_receiver(properties_changed, bus_name="org.bluez",
 			path=device_path,

@@ -27,8 +27,6 @@ parser = OptionParser(option_list=option_list)
 
 (options, args) = parser.parse_args()
 
-adapter = bluezutils.find_adapter(options.dev_id)
-
 if (len(args) < 1):
 	print("Usage: %s <command>" % (sys.argv[0]))
 	print("")
@@ -39,6 +37,7 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "list"):
+	adapter = bluezutils.find_adapter(options.dev_id)
 	for path in adapter.GetProperties()["Devices"]:
 		device = dbus.Interface(bus.get_object("org.bluez", path),
 							"org.bluez.Device")
@@ -63,9 +62,7 @@ if (args[0] == "services"):
 	if (len(args) < 2):
 		print("Need address parameter")
 	else:
-		path = adapter.FindDevice(args[1])
-		device = dbus.Interface(bus.get_object("org.bluez", path),
-							"org.bluez.Device")
+		device = bluezutils.find_device(args[1], options.dev_id)
 		properties = device.GetProperties()
 		for path in properties["Services"]:
 			print(path)

@@ -35,10 +35,6 @@ if __name__ == "__main__":
 		]
 	parser = OptionParser(option_list=option_list)
 
-	(options, args) = parser.parse_args()
-
-	adapter = bluezutils.find_adapter(options.dev_id)
-
 	if (len(args) < 1):
 		print("Usage: %s <command>" % (sys.argv[0]))
 		print("")
@@ -46,7 +42,8 @@ if __name__ == "__main__":
 		print("  -b MAC ImmediateAlertLevel <none|mild|high>")
 		sys.exit(1)
 
-	device_path = adapter.FindDevice(options.address)
+	device = bluezutils.find_device(options.address, options.dev_id)
+	device_path = device.object_path
 
 	bus.add_signal_receiver(properties_changed, bus_name="org.bluez",
 			path=device_path,

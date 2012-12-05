@@ -42,14 +42,18 @@ if __name__ == '__main__':
 	print("Removing any existing bond...")
 
 	try:
-		device = adapter0.FindDevice(adapter1_address)
-		adapter0.RemoveDevice(device)
+		dev = bluezutils.find_device_in_objects(managed_objects,
+							adapter1_address,
+							adapter0_address)
+		adapter0.RemoveDevice(dev.object_path)
 	except:
 		pass
 
 	try:
-		device = adapter1.FindDevice(adapter0_address)
-		adapter1.RemoveDevice(device)
+		dev = bluezutils.find_device_in_objects(managed_objects,
+							adapter0_address,
+							adapter1_address)
+		adapter1.RemoveDevice(dev.object_path)
 	except:
 		pass
 

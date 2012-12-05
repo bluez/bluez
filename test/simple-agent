@@ -149,10 +149,9 @@ if __name__ == '__main__':
 	if options.capability:
 		capability  = options.capability
 
+	adapter_pattern = None
 	if len(args) > 0:
-		adapter = bluezutils.find_adapter(args[0])
-	else:
-		adapter = bluezutils.find_adapter()
+		adapter_pattern = args[0]
 
 	path = "/test/agent"
 	agent = Agent(bus, path)
@@ -160,16 +159,15 @@ if __name__ == '__main__':
 	mainloop = GObject.MainLoop()
 
 	if len(args) > 1:
-		dev_path = adapter.FindDevice(args[1])
-		device = dbus.Interface(bus.get_object("org.bluez", dev_path),
-						"org.bluez.Device")
-
+		device = bluezutils.find_device(args[1], adapter_pattern)
+		dev_path = device.object_path
 		agent.set_exit_on_release(False)
 		device.Pair(path, capability, timeout=options.timeout,
 					reply_handler=pair_reply,
 					error_handler=pair_error)
 		device_obj = device
 	else:
+		adapter = bluezutils.find_adapter(adapter_pattern)
 		adapter.RegisterAgent(path, capability)
 		print("Agent registered")
 
