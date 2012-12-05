@@ -659,7 +659,7 @@ static const GDBusMethodTable transport_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Acquire",
 			NULL,
 			GDBUS_ARGS({ "fd", "h" }, { "mtu_r", "q" },
-							{ "mtu_w", "q" } ),
+							{ "mtu_w", "q" }),
 			acquire) },
 	{ GDBUS_ASYNC_METHOD("TryAcquire",
 			NULL,
