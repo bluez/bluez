@@ -81,7 +81,6 @@ struct profile_req {
 };
 
 static gboolean auto_connect = TRUE;
-static int max_connected_headsets = 1;
 static GKeyFile *config = NULL;
 static GSList *adapters = NULL;
 static GSList *devices = NULL;
@@ -618,15 +617,6 @@ int audio_manager_init(GKeyFile *conf)
 		g_clear_error(&err);
 	} else
 		auto_connect = b;
-
-	err = NULL;
-	i = g_key_file_get_integer(config, "Headset", "MaxConnected",
-					&err);
-	if (err) {
-		DBG("audio.conf: %s", err->message);
-		g_clear_error(&err);
-	} else
-		max_connected_headsets = i;
 
 proceed:
 	if (enabled.source)
