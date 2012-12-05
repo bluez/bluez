@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <signal.h>
 #include <sys/socket.h>
 #include <glib.h>
@@ -338,26 +339,7 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 
 	adapter_reply = NULL;
 
-	if (adapter == NULL) {
-		message = dbus_message_new_method_call("org.bluez", "/",
-							"org.bluez.Manager",
-							"DefaultAdapter");
-
-		adapter_reply = dbus_connection_send_with_reply_and_block(conn,
-							message, -1, NULL);
-
-		dbus_message_unref(message);
-
-		if (!adapter_reply)
-			return;
-
-		if (dbus_message_get_args(adapter_reply, NULL,
-					DBUS_TYPE_OBJECT_PATH, &adapter,
-					DBUS_TYPE_INVALID) == FALSE) {
-			dbus_message_unref(adapter_reply);
-			return;
-		}
-	}
+	assert(adapter != NULL);
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
 							"org.bluez.Adapter",
