@@ -3197,10 +3197,15 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 	}
 }
 
-gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst)
+gboolean avdtp_is_connected(struct audio_device *device)
 {
 	struct avdtp_server *server;
 	struct avdtp *session;
+	const bdaddr_t *src;
+	const bdaddr_t *dst;
+
+	src = adapter_get_address(device_get_adapter(device->btd_dev));
+	dst = device_get_address(device->btd_dev);
 
 	server = find_server(servers, src);
 	if (!server)

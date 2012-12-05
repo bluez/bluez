@@ -218,7 +218,7 @@ struct avdtp *avdtp_get(struct audio_device *device);
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
-gboolean avdtp_is_connected(const bdaddr_t *src, const bdaddr_t *dst);
+gboolean avdtp_is_connected(struct audio_device *device);
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
