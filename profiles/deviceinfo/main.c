@@ -20,10 +20,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <glib.h>
 #include <errno.h>
 #include <stdint.h>

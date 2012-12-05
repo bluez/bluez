@@ -18,10 +18,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "plugin.h"
 #include "log.h"
 

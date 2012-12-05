@@ -22,10 +22,6 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <glib.h>
 #include <bluetooth/uuid.h>
 #include <errno.h>

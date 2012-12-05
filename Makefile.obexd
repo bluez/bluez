@@ -29,7 +29,8 @@ obexd_src_obexd_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
 					-DPLUGINDIR=\""$(obex_plugindir)"\" \
 					-fPIC -D_FILE_OFFSET_BITS=64
 
-obexd_src_obexd_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/obexd/src  \
+obexd_src_obexd_CPPFLAGS = -include $(top_builddir)/config.h -I$(builddir)/lib \
+				-I$(builddir)/obexd/src  \
 				-I$(srcdir)/obexd/src -I$(srcdir)/btio \
 				-I$(srcdir)/gobex -I$(srcdir)/gdbus
 
@@ -76,7 +77,8 @@ obexd_client_obex_client_LDADD = lib/libbluetooth-private.la \
 obexd_client_obex_client_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
 						-fPIC -D_FILE_OFFSET_BITS=64
 
-obexd_client_obex_client_CPPFLAGS = -I$(builddir)/lib -I$(srcdir)/obexd/src \
+obexd_client_obex_client_CPPFLAGS = -include $(top_builddir)/config.h \
+				-I$(builddir)/lib -I$(srcdir)/obexd/src \
 				-I$(srcdir)/btio -I$(srcdir)/gobex \
 				-I$(srcdir)/gdbus
 
