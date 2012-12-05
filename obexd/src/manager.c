@@ -30,7 +30,7 @@
 #include <inttypes.h>
 
 #include <btio/btio.h>
-#include <gobex.h>
+#include <gobex/gobex.h>
 
 #include "obexd.h"
 #include "obex.h"

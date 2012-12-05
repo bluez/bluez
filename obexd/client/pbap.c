@@ -29,7 +29,7 @@
 #include <gdbus/gdbus.h>
 
 #include <bluetooth/bluetooth.h>
-#include <gobex-apparam.h>
+#include <gobex/gobex-apparam.h>
 
 #include "log.h"
 

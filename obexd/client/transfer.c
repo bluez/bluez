@@ -33,7 +33,7 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
-#include <gobex.h>
+#include <gobex/gobex.h>
 
 #include "dbus.h"
 #include "log.h"

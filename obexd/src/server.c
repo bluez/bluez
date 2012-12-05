@@ -31,7 +31,7 @@
 #include <inttypes.h>
 
 #include <glib.h>
-#include <gobex.h>
+#include <gobex/gobex.h>
 
 #include "log.h"
 #include "obex.h"
