@@ -342,7 +342,7 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 	assert(adapter != NULL);
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
-							"org.bluez.Adapter",
+							"org.bluez.Adapter1",
 							"FindDevice");
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
@@ -357,7 +357,7 @@ static void remote_device_found(const char *adapter, const char *bdaddr,
 
 	if (!reply) {
 		message = dbus_message_new_method_call("org.bluez", adapter,
-							"org.bluez.Adapter",
+							"org.bluez.Adapter1",
 							"CreateDevice");
 		dbus_message_iter_init_append(message, &iter);
 		dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
@@ -417,7 +417,7 @@ static gboolean list_known_printers(const char *adapter)
 	DBusMessage *message, *reply;
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
-						"org.bluez.Adapter",
+						"org.bluez.Adapter1",
 						"ListDevices");
 	if (message == NULL)
 		return FALSE;
@@ -467,7 +467,7 @@ static gboolean list_known_printers(const char *adapter)
 static DBusHandlerResult filter_func(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	if (dbus_message_is_signal(message, "org.bluez.Adapter",
+	if (dbus_message_is_signal(message, "org.bluez.Adapter1",
 						"DeviceFound")) {
 		const char *adapter, *bdaddr;
 		char *name;
@@ -481,7 +481,7 @@ static DBusHandlerResult filter_func(DBusConnection *connection,
 		if (parse_device_properties(&iter, &name, NULL))
 			remote_device_found(adapter, bdaddr, name);
 		g_free (name);
-	} else if (dbus_message_is_signal(message, "org.bluez.Adapter",
+	} else if (dbus_message_is_signal(message, "org.bluez.Adapter1",
 						"DeviceDisappeared")) {
 		const char *bdaddr;
 
@@ -489,7 +489,7 @@ static DBusHandlerResult filter_func(DBusConnection *connection,
 					DBUS_TYPE_STRING, &bdaddr,
 					DBUS_TYPE_INVALID);
 		remote_device_disappeared(bdaddr);
-	} else if (dbus_message_is_signal(message, "org.bluez.Adapter",
+	} else if (dbus_message_is_signal(message, "org.bluez.Adapter1",
 						"PropertyChanged")) {
 		DBusMessageIter iter, value_iter;
 		const char *name;
@@ -582,7 +582,7 @@ static gboolean list_printers(void)
 
 #define MATCH_FORMAT				\
 	"type='signal',"			\
-	"interface='org.bluez.Adapter',"	\
+	"interface='org.bluez.Adapter1',"	\
 	"sender='org.bluez',"			\
 	"path='%s'"
 
@@ -595,7 +595,7 @@ static gboolean list_printers(void)
 
 	doing_disco = TRUE;
 	message = dbus_message_new_method_call("org.bluez", adapter,
-					"org.bluez.Adapter",
+					"org.bluez.Adapter1",
 					"StartDiscovery");
 
 	if (!dbus_connection_send_with_reply(conn, message, NULL, -1)) {
@@ -649,7 +649,7 @@ static gboolean print_ieee1284(const char *bdaddr)
 	}
 
 	message = dbus_message_new_method_call("org.bluez", adapter,
-			"org.bluez.Adapter",
+			"org.bluez.Adapter1",
 			"FindDevice");
 	dbus_message_iter_init_append(message, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &bdaddr);
@@ -664,7 +664,7 @@ static gboolean print_ieee1284(const char *bdaddr)
 
 	if (!reply) {
 		message = dbus_message_new_method_call("org.bluez", adapter,
-				"org.bluez.Adapter",
+				"org.bluez.Adapter1",
 				"CreateDevice");
 		dbus_message_iter_init_append(message, &iter);
 		dbus_message_iter_append_basic(&iter,

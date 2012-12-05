@@ -37,16 +37,16 @@ if (len(args) < 1):
 	sys.exit(1)
 
 if (args[0] == "address"):
-	addr = adapter.Get("org.bluez.Adapter", "Address")
+	addr = adapter.Get("org.bluez.Adapter1", "Address")
 	print(addr)
 	sys.exit(0)
 
 if (args[0] == "name"):
 	if (len(args) < 2):
-		name = adapter.Get("org.bluez.Adapter", "Name")
+		name = adapter.Get("org.bluez.Adapter1", "Name")
 		print(name)
 	else:
-		adapter.Set("org.bluez.Adapter", "Name", args[1])
+		adapter.Set("org.bluez.Adapter1", "Name", args[1])
 	sys.exit(0)
 
 if (args[0] == "list"):
@@ -55,12 +55,12 @@ if (args[0] == "list"):
 					"org.freedesktop.DBus.ObjectManager")
 		objects = om.GetManagedObjects()
 		for path, interfaces in objects.iteritems():
-			if "org.bluez.Adapter" not in interfaces:
+			if "org.bluez.Adapter1" not in interfaces:
 				continue
 
 			print(" [ %s ]" % (path))
 
-			props = interfaces["org.bluez.Adapter"]
+			props = interfaces["org.bluez.Adapter1"]
 
 			for (key, value) in props.items():
 				if (key == "Class"):
@@ -72,7 +72,7 @@ if (args[0] == "list"):
 
 if (args[0] == "powered"):
 	if (len(args) < 2):
-		powered = adapter.Get("org.bluez.Adapter", "Powered")
+		powered = adapter.Get("org.bluez.Adapter1", "Powered")
 		print(powered)
 	else:
 		if (args[1] == "on"):
@@ -81,12 +81,12 @@ if (args[0] == "powered"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.Set("org.bluez.Adapter", "Powered", value)
+		adapter.Set("org.bluez.Adapter1", "Powered", value)
 	sys.exit(0)
 
 if (args[0] == "pairable"):
 	if (len(args) < 2):
-		pairable = adapter.Get("org.bluez.Adapter", "Pairable")
+		pairable = adapter.Get("org.bluez.Adapter1", "Pairable")
 		print(pairable)
 	else:
 		if (args[1] == "on"):
@@ -95,21 +95,21 @@ if (args[0] == "pairable"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.Set("org.bluez.Adapter", "Pairable", value)
+		adapter.Set("org.bluez.Adapter1", "Pairable", value)
 	sys.exit(0)
 
 if (args[0] == "pairabletimeout"):
 	if (len(args) < 2):
-		pt = adapter.Get("org.bluez.Adapter", "PairableTimeout")
+		pt = adapter.Get("org.bluez.Adapter1", "PairableTimeout")
 		print(pt)
 	else:
 		timeout = dbus.UInt32(args[1])
-		adapter.Set("org.bluez.Adapter", "PairableTimeout", timeout)
+		adapter.Set("org.bluez.Adapter1", "PairableTimeout", timeout)
 	sys.exit(0)
 
 if (args[0] == "discoverable"):
 	if (len(args) < 2):
-		discoverable = adapter.Get("org.bluez.Adapter", "Discoverable")
+		discoverable = adapter.Get("org.bluez.Adapter1", "Discoverable")
 		print(discoverable)
 	else:
 		if (args[1] == "on"):
@@ -118,20 +118,20 @@ if (args[0] == "discoverable"):
 			value = dbus.Boolean(0)
 		else:
 			value = dbus.Boolean(args[1])
-		adapter.Set("org.bluez.Adapter", "Discoverable", value)
+		adapter.Set("org.bluez.Adapter1", "Discoverable", value)
 	sys.exit(0)
 
 if (args[0] == "discoverabletimeout"):
 	if (len(args) < 2):
-		dt = adapter.Get("org.bluez.Adapter", "DiscoverableTimeout")
+		dt = adapter.Get("org.bluez.Adapter1", "DiscoverableTimeout")
 		print(dt)
 	else:
 		to = dbus.UInt32(args[1])
-		adapter.Set("org.bluez.Adapter", "DiscoverableTimeout", to)
+		adapter.Set("org.bluez.Adapter1", "DiscoverableTimeout", to)
 	sys.exit(0)
 
 if (args[0] == "discovering"):
-	discovering = adapter.Get("org.bluez.Adapter", "Discovering")
+	discovering = adapter.Get("org.bluez.Adapter1", "Discovering")
 	print(discovering)
 	sys.exit(0)
 

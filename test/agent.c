@@ -346,7 +346,7 @@ static int register_agent(DBusConnection *conn, const char *adapter_path,
 	DBusError err;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter_path,
-					"org.bluez.Adapter", "RegisterAgent");
+					"org.bluez.Adapter1", "RegisterAgent");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
 		return -1;
@@ -385,7 +385,8 @@ static int unregister_agent(DBusConnection *conn, const char *adapter_path,
 	DBusError err;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter_path,
-					"org.bluez.Adapter", "UnregisterAgent");
+							"org.bluez.Adapter1",
+							"UnregisterAgent");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");
 		return -1;
@@ -435,7 +436,7 @@ static int create_paired_device(DBusConnection *conn, const char *adapter_path,
 	DBusPendingCall *pending;
 
 	msg = dbus_message_new_method_call("org.bluez", adapter_path,
-						"org.bluez.Adapter",
+						"org.bluez.Adapter1",
 						"CreatePairedDevice");
 	if (!msg) {
 		fprintf(stderr, "Can't allocate new method call\n");

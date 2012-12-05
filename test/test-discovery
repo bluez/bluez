@@ -106,11 +106,11 @@ if __name__ == '__main__':
 		compact = True;
 
 	bus.add_signal_receiver(devices_found,
-					dbus_interface = "org.bluez.Adapter",
+					dbus_interface = "org.bluez.Adapter1",
 					signal_name = "DevicesFound")
 
 	bus.add_signal_receiver(property_changed,
-					dbus_interface = "org.bluez.Adapter",
+					dbus_interface = "org.bluez.Adapter1",
 					signal_name = "PropertyChanged")
 
 	adapter.StartDiscovery()

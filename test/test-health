@@ -138,7 +138,7 @@ objects = manager.GetManagedObjects()
 adapters = []
 
 for path, ifaces in objects.iteritems():
-	if ifaces.has_key("org.bluez.Adapter"):
+	if ifaces.has_key("org.bluez.Adapter1"):
 		adapters.append(path)
 
 i = 1
@@ -160,7 +160,7 @@ while select == None:
 		sys.exit()
 
 adapter =  dbus.Interface(bus.get_object("org.bluez", select),
-						"org.bluez.Adapter")
+						"org.bluez.Adapter1")
 
 devices = adapter.GetProperties()["Devices"]
 

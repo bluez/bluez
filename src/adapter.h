@@ -30,7 +30,7 @@
 #include <glib.h>
 #include <stdbool.h>
 
-#define ADAPTER_INTERFACE	"org.bluez.Adapter"
+#define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 
 #define MODE_OFF		0x00
 #define MODE_CONNECTABLE	0x01

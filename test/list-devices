@@ -35,12 +35,12 @@ all_devices = (str(path) for path, interfaces in objects.iteritems() if
 					"org.bluez.Device1" in interfaces.keys())
 
 for path, interfaces in objects.iteritems():
-	if "org.bluez.Adapter" not in interfaces.keys():
+	if "org.bluez.Adapter1" not in interfaces.keys():
 		continue
 
 	print("[ " + path + " ]")
 
-	properties = interfaces["org.bluez.Adapter"]
+	properties = interfaces["org.bluez.Adapter1"]
 	for key in properties.keys():
 		value = properties[key]
 		if (key == "UUIDs"):

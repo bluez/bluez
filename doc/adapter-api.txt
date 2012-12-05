@@ -11,7 +11,7 @@ Adapter hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.Adapter
+Interface	org.bluez.Adapter1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		void RequestSession()

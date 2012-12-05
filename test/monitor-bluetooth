@@ -7,7 +7,7 @@ import gobject
 import dbus
 import dbus.mainloop.glib
 
-relevant_ifaces = [ "org.bluez.Adapter", "org.bluez.Device1" ]
+relevant_ifaces = [ "org.bluez.Adapter1", "org.bluez.Device1" ]
 
 def property_changed(interface, changed, invalidated, path):
 	iface = interface[interface.rfind(".") + 1:]

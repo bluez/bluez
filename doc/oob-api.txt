@@ -28,7 +28,7 @@ Methods		dict ReadLocalData()
 					16 bytes randomizer blob.
 
 			Other data that can be transmitted via OOB mechanism
-			can be obtained from org.bluez.Adapter interface.
+			can be obtained from org.bluez.Adapter1 interface.
 
 			Note: This method will generate and return new data
 			every time it is called. Data received in previous
