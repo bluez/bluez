@@ -22,9 +22,15 @@ app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
 print(app_path)
 
 manager = dbus.Interface(bus.get_object("org.bluez", "/"),
-						"org.bluez.Manager")
+					"org.freedesktop.DBus.ObjectManager")
 
-adapters = manager.GetProperties()["Adapters"]
+objects = manager.GetManagedObjects()
+adapters = []
+
+for path, ifaces in objects.iteritems():
+	if ifaces.has_key("org.bluez.Adapter"):
+		adapters.append(path)
+
 i = 1
 for ad in adapters:
 	print("%d. %s" % (i, ad))
