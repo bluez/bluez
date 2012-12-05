@@ -348,7 +348,7 @@ int source_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	struct pending_request *pending;
 
 	if (!source->session)
-		source->session = avdtp_get(&dev->src, &dev->dst);
+		source->session = avdtp_get(dev);
 
 	if (!source->session) {
 		DBG("Unable to get a session");

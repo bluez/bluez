@@ -348,7 +348,7 @@ int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	struct pending_request *pending;
 
 	if (!sink->session)
-		sink->session = avdtp_get(&dev->src, &dev->dst);
+		sink->session = avdtp_get(dev);
 
 	if (!sink->session) {
 		DBG("Unable to get a session");

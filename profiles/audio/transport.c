@@ -327,11 +327,10 @@ static guint resume_a2dp(struct media_transport *transport,
 {
 	struct a2dp_transport *a2dp = transport->data;
 	struct media_endpoint *endpoint = transport->endpoint;
-	struct audio_device *device = transport->device;
 	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
 
 	if (a2dp->session == NULL) {
-		a2dp->session = avdtp_get(&device->src, &device->dst);
+		a2dp->session = avdtp_get(transport->device);
 		if (a2dp->session == NULL)
 			return 0;
 	}

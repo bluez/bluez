@@ -2361,9 +2361,14 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	return session;
 }
 
-struct avdtp *avdtp_get(bdaddr_t *src, bdaddr_t *dst)
+struct avdtp *avdtp_get(struct audio_device *device)
 {
 	struct avdtp *session;
+	const bdaddr_t *src;
+	const bdaddr_t *dst;
+
+	src = adapter_get_address(device_get_adapter(device->btd_dev));
+	dst = device_get_address(device->btd_dev);
 
 	session = avdtp_get_internal(src, dst);
 
