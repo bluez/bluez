@@ -26,7 +26,7 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
-#include <btio.h>
+#include <btio/btio.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/rfcomm.h>

@@ -45,7 +45,7 @@
 
 #include "device.h"
 #include "error.h"
-#include "btio.h"
+#include <btio/btio.h>
 
 #include "sdp-client.h"
 

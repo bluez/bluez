@@ -35,7 +35,7 @@
 #include <error.h>
 #include <adapter.h>
 #include <device.h>
-#include <btio.h>
+#include <btio/btio.h>
 
 #include "mcap_lib.h"
 #include "hdp_types.h"

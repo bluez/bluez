@@ -30,7 +30,7 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 
-#include <btio.h>
+#include <btio/btio.h>
 #include <log.h>
 #include <error.h>
 

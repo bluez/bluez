@@ -33,7 +33,7 @@
 #include <bluetooth/uuid.h>
 
 #include "att.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "gattrib.h"
 #include "gatt.h"
 #include "gatttool.h"

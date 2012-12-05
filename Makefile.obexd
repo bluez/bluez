@@ -31,7 +31,7 @@ obexd_src_obexd_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
 
 obexd_src_obexd_CPPFLAGS = -include $(top_builddir)/config.h -I$(builddir)/lib \
 				-I$(builddir)/obexd/src  \
-				-I$(srcdir)/obexd/src -I$(srcdir)/btio \
+				-I$(srcdir)/obexd/src \
 				-I$(srcdir)/gobex
 
 obexd_src_obexd_SHORTNAME = obexd
@@ -79,6 +79,6 @@ obexd_client_obex_client_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
 
 obexd_client_obex_client_CPPFLAGS = -include $(top_builddir)/config.h \
 				-I$(builddir)/lib -I$(srcdir)/obexd/src \
-				-I$(srcdir)/btio -I$(srcdir)/gobex
+				-I$(srcdir)/gobex
 
 obexd_client_obex_client_SHORTNAME = obex-client

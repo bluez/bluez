@@ -37,7 +37,7 @@
 #include "server.h"
 #include "manager.h"
 #include "log.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "service.h"
 
 #define OBEX_MANAGER_PATH "/"

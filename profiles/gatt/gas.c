@@ -35,7 +35,7 @@
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "attrib/gatt.h"
 #include "log.h"
 #include "textfile.h"

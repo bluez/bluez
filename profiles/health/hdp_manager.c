@@ -26,7 +26,7 @@
 #include <bluetooth/sdp_lib.h>
 #include <bluetooth/uuid.h>
 
-#include <btio.h>
+#include <btio/btio.h>
 #include <adapter.h>
 #include <device.h>
 #include <profile.h>

@@ -36,7 +36,7 @@
 
 #include <gdbus/gdbus.h>
 #include "log.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "sdpd.h"
 #include "hcid.h"
 #include "adapter.h"

@@ -48,7 +48,7 @@
 #include "log.h"
 #include "error.h"
 #include "uinput.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "manager.h"
 #include "device.h"
 #include "avctp.h"

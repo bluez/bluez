@@ -33,7 +33,7 @@
 #include "plugin.h"
 #include "log.h"
 #include "hcid.h"
-#include "btio.h"
+#include <btio/btio.h>
 
 static GSList *plugins = NULL;
 

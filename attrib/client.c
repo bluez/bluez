@@ -37,7 +37,7 @@
 #include "log.h"
 #include "error.h"
 #include "dbus-common.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "storage.h"
 
 #include "att.h"

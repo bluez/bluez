@@ -35,7 +35,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "btio.h"
+#include <btio/btio.h>
 #include "sdpd.h"
 #include "log.h"
 #include "error.h"

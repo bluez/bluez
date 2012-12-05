@@ -36,7 +36,7 @@
 #include <sdp-client.h>
 #include <glib-helper.h>
 
-#include <btio.h>
+#include <btio/btio.h>
 
 #include <log.h>
 

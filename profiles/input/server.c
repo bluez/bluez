@@ -35,7 +35,7 @@
 #include "log.h"
 
 #include "glib-helper.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"

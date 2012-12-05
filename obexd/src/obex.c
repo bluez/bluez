@@ -47,7 +47,7 @@
 #include "mimetype.h"
 #include "service.h"
 #include "transport.h"
-#include "btio.h"
+#include <btio/btio.h>
 
 /* Challenge request */
 #define NONCE_TAG 0x00

@@ -45,7 +45,7 @@
 #include <gdbus/gdbus.h>
 
 #include "glib-helper.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "../src/adapter.h"
 #include "../src/manager.h"
 #include "../src/device.h"

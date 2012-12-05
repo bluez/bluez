@@ -50,7 +50,7 @@
 #include "manager.h"
 #include "control.h"
 #include "avdtp.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "sink.h"
 #include "source.h"
 

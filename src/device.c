@@ -58,7 +58,7 @@
 #include "agent.h"
 #include "sdp-xml.h"
 #include "storage.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "attrib-server.h"
 #include "attrib/client.h"
 

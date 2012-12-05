@@ -30,7 +30,7 @@
 
 #include <glib.h>
 
-#include "btio.h"
+#include <btio/btio.h>
 
 #define DEFAULT_ACCEPT_TIMEOUT 2
 static gint opt_update_sec = 0;

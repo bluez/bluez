@@ -33,7 +33,7 @@
 
 #include "log.h"
 #include "att.h"
-#include "btio.h"
+#include <btio/btio.h>
 #include "gattrib.h"
 
 #define GATT_TIMEOUT 30

@@ -31,7 +31,7 @@
 #include <bluetooth/l2cap.h>
 #include <adapter.h>
 #include <manager.h>
-#include <btio.h>
+#include <btio/btio.h>
 #include <log.h>
 
 #include "mcap.h"
