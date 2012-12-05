@@ -2673,7 +2673,7 @@ static void convert_ltk_entry(GKeyFile *key_file, void *value)
 static void convert_entry(char *key, char *value, void *user_data)
 {
 	struct device_converter *converter = user_data;
-	char device_type = -1;
+	char type = BDADDR_BREDR;
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
 	char *data;
@@ -2681,7 +2681,7 @@ static void convert_entry(char *key, char *value, void *user_data)
 
 	if (key[17] == '#') {
 		key[17] = '\0';
-		device_type = key[18] - '0';
+		type = key[18] - '0';
 	}
 
 	if (bachk(key) != 0)
@@ -2707,8 +2707,7 @@ static void convert_entry(char *key, char *value, void *user_data)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
-	if (device_type >= 0)
-		set_device_type(key_file, device_type);
+	set_device_type(key_file, type);
 
 	converter->cb(key_file, value);
 
