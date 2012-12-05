@@ -18,7 +18,7 @@
  *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 int sap_server_register(const char *path, const bdaddr_t *src);
 void sap_server_unregister(const char *path);

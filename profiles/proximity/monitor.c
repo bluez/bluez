@@ -24,7 +24,7 @@
 
 #include <errno.h>
 #include <fcntl.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>

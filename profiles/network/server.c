@@ -34,7 +34,7 @@
 #include <netinet/in.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "../src/dbus-common.h"
 #include "../src/adapter.h"

@@ -24,7 +24,7 @@
 
 #include <stdbool.h>
 #include <errno.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <glib.h>
 #include <bluetooth/uuid.h>
 #include <stdlib.h>

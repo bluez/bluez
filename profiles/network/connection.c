@@ -32,7 +32,7 @@
 #include <bluetooth/sdp.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "log.h"
 #include "btio.h"

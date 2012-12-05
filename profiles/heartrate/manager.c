@@ -20,7 +20,7 @@
  *
  */
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <errno.h>
 #include <stdbool.h>
 #include <bluetooth/uuid.h>

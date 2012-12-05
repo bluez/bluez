@@ -25,7 +25,7 @@
 #include <inttypes.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <btio.h>
 
 #include <bluetooth/bluetooth.h>

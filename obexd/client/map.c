@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include <gobex-apparam.h>
 

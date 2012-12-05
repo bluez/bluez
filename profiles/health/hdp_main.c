@@ -22,7 +22,7 @@
 
 #include <errno.h>
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "plugin.h"
 #include "hdp_manager.h"

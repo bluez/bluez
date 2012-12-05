@@ -39,7 +39,7 @@
 
 #include <glib.h>
 #include <dbus/dbus.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "log.h"
 

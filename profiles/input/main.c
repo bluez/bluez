@@ -25,7 +25,7 @@
 
 #include <bluetooth/bluetooth.h>
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "plugin.h"
 #include "hcid.h"

@@ -30,7 +30,7 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "dbus-common.h"
 #include "sdpd.h"

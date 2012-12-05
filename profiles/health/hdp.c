@@ -29,7 +29,7 @@
 #include <glib.h>
 
 #include <bluetooth/l2cap.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <dbus-common.h>
 #include <log.h>
 #include <error.h>

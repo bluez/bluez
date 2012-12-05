@@ -28,7 +28,7 @@
 #include <syslog.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "log.h"
 #include "transfer.h"

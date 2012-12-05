@@ -31,10 +31,10 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
 
+#include <gdbus/gdbus.h>
 #include "adapter.h"
 #include "device.h"
 #include "log.h"
-#include "gdbus.h"
 #include "error.h"
 #include "dbus-common.h"
 #include "btio.h"

@@ -25,7 +25,7 @@
 
 #include <bluetooth/uuid.h>
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "dbus-common.h"
 #include "adapter.h"

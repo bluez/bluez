@@ -23,7 +23,7 @@
  *
  */
 
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "error.h"
 

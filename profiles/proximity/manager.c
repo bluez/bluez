@@ -25,7 +25,7 @@
 #include <stdbool.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <bluetooth/uuid.h>
 
 #include "adapter.h"

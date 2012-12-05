@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <sys/socket.h>
 #include <inttypes.h>
 

@@ -31,7 +31,7 @@
 #include <sys/stat.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 #include <gobex.h>
 
 #include "dbus.h"

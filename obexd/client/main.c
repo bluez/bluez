@@ -30,7 +30,7 @@
 #include <sys/signalfd.h>
 
 #include <glib.h>
-#include <gdbus.h>
+#include <gdbus/gdbus.h>
 
 #include "log.h"
 #include "manager.h"

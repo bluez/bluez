@@ -32,6 +32,7 @@
 
 #include <bluetooth/bluetooth.h>
 
+#include <gdbus/gdbus.h>
 #include "plugin.h"
 #include "obex.h"
 #include "service.h"
@@ -40,7 +41,6 @@
 #include "manager.h"
 #include "btio.h"
 #include "obexd.h"
-#include "gdbus.h"
 #include "filesystem.h"
 
 #define SYNCML_TARGET_SIZE 11
