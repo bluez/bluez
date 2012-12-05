@@ -653,15 +653,20 @@ GSList *manager_find_devices(const char *path,
 
 	for (l = devices; l != NULL; l = l->next) {
 		struct audio_device *dev = l->data;
+		const bdaddr_t *dev_src;
+		const bdaddr_t *dev_dst;
+
+		dev_src = adapter_get_address(device_get_adapter(dev->btd_dev));
+		dev_dst = device_get_address(dev->btd_dev);
 
 		if ((path && (strcmp(path, "")) &&
 				strcmp(device_get_path(dev->btd_dev), path)))
 			continue;
 
-		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(&dev->src, src))
+		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(dev_src, src))
 			continue;
 
-		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(&dev->dst, dst))
+		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(dev_dst, dst))
 			continue;
 
 		if (interface && !strcmp(AUDIO_SINK_INTERFACE, interface)
