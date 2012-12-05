@@ -436,8 +436,6 @@ static GSList *servers = NULL;
 
 static GSList *avdtp_callbacks = NULL;
 
-static gboolean auto_connect = TRUE;
-
 static int send_request(struct avdtp *session, gboolean priority,
 			struct avdtp_stream *stream, uint8_t signal_id,
 			void *buffer, size_t size);
@@ -2549,8 +2547,6 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	dev->auto_connect = auto_connect;
-
 	return;
 
 drop:
@@ -3879,13 +3875,6 @@ int avdtp_init(const bdaddr_t *src, GKeyFile *config)
 		g_clear_error(&err);
 	} else
 		master = tmp;
-
-	tmp = g_key_file_get_boolean(config, "General", "AutoConnect",
-			&err);
-	if (err)
-		g_clear_error(&err);
-	else
-		auto_connect = tmp;
 
 proceed:
 	server = g_new0(struct avdtp_server, 1);

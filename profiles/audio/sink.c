@@ -366,8 +366,6 @@ int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 		return -EIO;
 	}
 
-	dev->auto_connect = FALSE;
-
 	pending = sink->connect;
 
 	pending->cb = cb;

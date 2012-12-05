@@ -80,7 +80,6 @@ struct profile_req {
 	btd_profile_cb		cb;
 };
 
-static gboolean auto_connect = TRUE;
 static GKeyFile *config = NULL;
 static GSList *adapters = NULL;
 static GSList *devices = NULL;
@@ -579,8 +578,6 @@ int audio_manager_init(GKeyFile *conf)
 {
 	char **list;
 	int i;
-	gboolean b;
-	GError *err = NULL;
 
 	if (!conf)
 		goto proceed;
@@ -610,13 +607,6 @@ int audio_manager_init(GKeyFile *conf)
 			enabled.control = FALSE;
 	}
 	g_strfreev(list);
-
-	b = g_key_file_get_boolean(config, "General", "AutoConnect", &err);
-	if (err) {
-		DBG("audio.conf: %s", err->message);
-		g_clear_error(&err);
-	} else
-		auto_connect = b;
 
 proceed:
 	if (enabled.source)

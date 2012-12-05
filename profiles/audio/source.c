@@ -366,8 +366,6 @@ int source_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 		return -EIO;
 	}
 
-	dev->auto_connect = FALSE;
-
 	pending = source->connect;
 	pending->cb = cb;
 	pending->cb_data = data;

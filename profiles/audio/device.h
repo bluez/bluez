@@ -39,8 +39,6 @@ struct audio_device {
 	bdaddr_t src;
 	bdaddr_t dst;
 
-	gboolean auto_connect;
-
 	struct sink *sink;
 	struct source *source;
 	struct control *control;
