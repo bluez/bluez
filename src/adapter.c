@@ -1021,9 +1021,6 @@ static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "Devices");
-
 	return device;
 }
 
@@ -1075,9 +1072,6 @@ void adapter_remove_device(struct btd_adapter *adapter,
 
 		service_auth_cancel(auth);
 	}
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "Devices");
 
 	device_remove(dev, remove_storage);
 }
@@ -1384,29 +1378,6 @@ static gboolean adapter_property_get_discovering(
 	return TRUE;
 }
 
-static gboolean adapter_property_get_devices(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_adapter *adapter = data;
-	DBusMessageIter entry;
-	GSList *l;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &entry);
-
-	for (l = adapter->devices; l != NULL; l = l->next) {
-		const char *path = device_get_path(l->data);
-
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
-								&path);
-	}
-
-	dbus_message_iter_close_container(iter, &entry);
-
-	return TRUE;
-}
-
 static gboolean adapter_property_get_uuids(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1691,7 +1662,6 @@ static const GDBusPropertyTable adapter_properties[] = {
 	{ "PairableTimeout", "u", adapter_property_get_pairable_timeout,
 				adapter_property_set_pairable_timeout },
 	{ "Discovering", "b", adapter_property_get_discovering },
-	{ "Devices", "ao", adapter_property_get_devices },
 	{ "UUIDs", "as", adapter_property_get_uuids },
 	{ }
 };

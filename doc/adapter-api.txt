@@ -180,10 +180,6 @@ Properties	string Address [readonly]
 
 			Indicates that a device discovery procedure is active.
 
-		array{object} Devices [readonly]
-
-			List of device object paths.
-
 		array{string} UUIDs [readonly]
 
 			List of 128-bit UUIDs that represents the available
