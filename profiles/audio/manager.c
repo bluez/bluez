@@ -741,7 +741,7 @@ struct audio_device *manager_get_device(const bdaddr_t *src,
 		return NULL;
 	}
 
-	dev = audio_device_register(device, src, dst);
+	dev = audio_device_register(device);
 	if (!dev)
 		return NULL;
 

@@ -36,9 +36,6 @@ typedef void (*audio_device_cb) (struct audio_device *dev, int err, void *data);
 struct audio_device {
 	struct btd_device *btd_dev;
 
-	bdaddr_t src;
-	bdaddr_t dst;
-
 	struct sink *sink;
 	struct source *source;
 	struct control *control;
@@ -50,9 +47,7 @@ struct audio_device {
 	struct dev_priv *priv;
 };
 
-struct audio_device *audio_device_register(struct btd_device *device,
-							const bdaddr_t *src,
-							const bdaddr_t *dst);
+struct audio_device *audio_device_register(struct btd_device *device);
 
 void audio_device_unregister(struct audio_device *device);
 

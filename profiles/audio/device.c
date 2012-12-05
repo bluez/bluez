@@ -292,9 +292,7 @@ static void device_avctp_cb(struct audio_device *dev,
 	}
 }
 
-struct audio_device *audio_device_register(struct btd_device *device,
-							const bdaddr_t *src,
-							const bdaddr_t *dst)
+struct audio_device *audio_device_register(struct btd_device *device)
 {
 	struct audio_device *dev;
 
@@ -303,8 +301,6 @@ struct audio_device *audio_device_register(struct btd_device *device,
 	dev = g_new0(struct audio_device, 1);
 
 	dev->btd_dev = btd_device_ref(device);
-	bacpy(&dev->dst, dst);
-	bacpy(&dev->src, src);
 	dev->priv = g_new0(struct dev_priv, 1);
 	dev->priv->state = AUDIO_STATE_DISCONNECTED;
 
