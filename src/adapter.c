@@ -2230,8 +2230,6 @@ static void set_mode_complete(struct btd_adapter *adapter)
 	struct session_req *pending;
 	int err;
 
-	store_adapter_info(adapter);
-
 	DBG("%s", mode2str(adapter->mode));
 
 	if (adapter->mode == MODE_OFF) {
@@ -2270,6 +2268,8 @@ static void set_mode_complete(struct btd_adapter *adapter)
 
 	if (err != 0)
 		error("unable to set mode: %s", mode2str(pending->mode));
+
+	store_adapter_info(adapter);
 
 	session_unref(pending);
 }
