@@ -215,6 +215,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	char address[18];
 	char *str;
 	gsize length = 0;
+	gboolean discov;
 
 	key_file = g_key_file_new();
 
@@ -230,8 +231,12 @@ static void store_adapter_info(struct btd_adapter *adapter)
 		g_key_file_set_integer(key_file, "General", "PairableTimeout",
 					adapter->pairable_timeout);
 
-	g_key_file_set_boolean(key_file, "General", "Discoverable",
-				adapter->discoverable);
+	if (adapter->discov_timeout > 0)
+		discov = FALSE;
+	else
+		discov = adapter->discoverable;
+
+	g_key_file_set_boolean(key_file, "General", "Discoverable", discov);
 
 	if (adapter->discov_timeout != main_opts.discovto)
 		g_key_file_set_integer(key_file, "General",
