@@ -2269,7 +2269,8 @@ static void set_mode_complete(struct btd_adapter *adapter)
 	if (err != 0)
 		error("unable to set mode: %s", mode2str(pending->mode));
 
-	store_adapter_info(adapter);
+	if (adapter->mode != MODE_DISCOVERABLE || adapter->discov_timeout == 0)
+		store_adapter_info(adapter);
 
 	session_unref(pending);
 }
