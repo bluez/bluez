@@ -128,7 +128,7 @@ MediaPlayer1 hierarchy
 
 Service		unique name (Target role)
 		org.bluez (Controller role)
-Interface	org.bluez.Media1Player1
+Interface	org.bluez.MediaPlayer1
 Object path	freely definable (Target role)
 		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
 		(Controller role)
@@ -223,7 +223,7 @@ MediaEndpoint1 hierarchy
 ========================
 
 Service		unique name
-Interface	org.bluez.Media1Endpoint1
+Interface	org.bluez.MediaEndpoint1
 Object path	freely definable
 
 Methods		void SetConfiguration(object transport, dict properties)

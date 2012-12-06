@@ -47,7 +47,7 @@
 #include "manager.h"
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
-#define MEDIA_ENDPOINT_INTERFACE "org.bluez.Media1Endpoint1"
+#define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
 #define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 
 #define REQUEST_TIMEOUT (3 * 1000)		/* 3 seconds */
