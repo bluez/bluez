@@ -60,7 +60,15 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- Merge obexd.git into bluez.git
+- Update the btd_profile connection state tracking so that device.c also
+  knows about remotely initiated connections.
+
+- Update Device.Connect to connect any "auto_connect" profiles that are
+  not currently connected instead of returning "already connected".
+
+- Auto-connect newly registered profiles if we're in a connected state
+  created by Device.Connect. This will fix e.g. oFono crashing and
+  restarting.
 
 - Convert obexd to use org.bluez.Profile
 
@@ -87,6 +95,8 @@ released.
   ini-file format
 
 Completed items:
+
+- Merge obexd.git into bluez.git
 
 - Add Agent callback for incoming just-works (RequestAuthorization)
 
