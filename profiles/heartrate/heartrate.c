@@ -20,11 +20,15 @@
  *
  */
 
-#include <gdbus/gdbus.h>
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <errno.h>
 #include <stdbool.h>
 #include <glib.h>
 #include <bluetooth/uuid.h>
+#include <gdbus/gdbus.h>
 
 #include "adapter.h"
 #include "dbus-common.h"

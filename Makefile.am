@@ -356,8 +356,8 @@ EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
-AM_CPPFLAGS = -include $(top_builddir)/config.h -I$(builddir)/lib \
-		-I$(builddir)/src -I$(srcdir)/src
+AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
+			-I$(srcdir)/gdbus -I$(srcdir)/btio
 
 if MCAP
 AM_CPPFLAGS += -I$(builddir)/health
