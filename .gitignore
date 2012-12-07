@@ -71,6 +71,7 @@ test/test-textfile
 test/uuidtest
 test/mpris-player
 test/sap_client.pyc
+test/bluezutils.pyc
 unit/test-eir
 tools/btattach
 tools/btmgmt
