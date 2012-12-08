@@ -88,9 +88,6 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 
 	adapter_remove(adapter);
 	btd_adapter_unref(adapter);
-
-	if (adapters == NULL)
-		btd_start_exit_timer();
 }
 
 void manager_cleanup(const char *path)
@@ -104,8 +101,6 @@ void manager_cleanup(const char *path)
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 	}
-
-	btd_start_exit_timer();
 }
 
 static gint adapter_id_cmp(gconstpointer a, gconstpointer b)
@@ -182,8 +177,6 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 	}
 
 	path = adapter_get_path(adapter);
-
-	btd_stop_exit_timer();
 
 	if (default_adapter_id < 0)
 		manager_set_default_adapter(id);

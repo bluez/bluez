@@ -342,7 +342,6 @@ static gchar *option_plugin = NULL;
 static gchar *option_noplugin = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
-static gboolean option_udev = FALSE;
 
 static void free_options(void)
 {
@@ -354,36 +353,6 @@ static void free_options(void)
 
 	g_free(option_noplugin);
 	option_noplugin = NULL;
-}
-
-static guint last_adapter_timeout = 0;
-
-static gboolean exit_timeout(gpointer data)
-{
-	g_main_loop_quit(event_loop);
-	last_adapter_timeout = 0;
-	return FALSE;
-}
-
-void btd_start_exit_timer(void)
-{
-	if (option_udev == FALSE)
-		return;
-
-	if (last_adapter_timeout > 0)
-		g_source_remove(last_adapter_timeout);
-
-	last_adapter_timeout = g_timeout_add_seconds(LAST_ADAPTER_EXIT_TIMEOUT,
-						exit_timeout, NULL);
-}
-
-void btd_stop_exit_timer(void)
-{
-	if (last_adapter_timeout == 0)
-		return;
-
-	g_source_remove(last_adapter_timeout);
-	last_adapter_timeout = 0;
 }
 
 static void disconnect_dbus(void)
@@ -454,8 +423,6 @@ static GOptionEntry options[] = {
 				"Don't run as daemon in background" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
-	{ "udev", 'u', 0, G_OPTION_ARG_NONE, &option_udev,
-				"Run from udev mode of operation" },
 	{ NULL },
 };
 
@@ -489,19 +456,7 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
-	if (option_udev == TRUE) {
-		int err;
-
-		option_detach = TRUE;
-		err = connect_dbus();
-		if (err < 0) {
-			if (err == -EALREADY)
-				exit(0);
-			exit(1);
-		}
-	}
-
-	if (option_detach == TRUE && option_udev == FALSE) {
+	if (option_detach == TRUE) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
 			exit(1);
@@ -520,16 +475,9 @@ int main(int argc, char *argv[])
 
 	parse_config(config);
 
-	if (option_udev == FALSE) {
-		if (connect_dbus() < 0) {
-			error("Unable to get on D-Bus");
-			exit(1);
-		}
-	} else {
-		if (daemon(0, 0)) {
-			perror("Can't start daemon");
-			exit(1);
-		}
+	if (connect_dbus() < 0) {
+		error("Unable to get on D-Bus");
+		exit(1);
 	}
 
 	if (!manager_init("/")) {
