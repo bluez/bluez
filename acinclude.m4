@@ -26,11 +26,6 @@ AC_DEFUN([COMPILER_FLAGS], [
 	AC_SUBST([WARNING_CFLAGS], $with_cflags)
 ])
 
-AC_DEFUN([AC_FUNC_PPOLL], [
-	AC_CHECK_FUNC(ppoll, dummy=yes, AC_DEFINE(NEED_PPOLL, 1,
-			[Define to 1 if you need the ppoll() function.]))
-])
-
 AC_DEFUN([AC_INIT_BLUEZ], [
 	AC_PREFIX_DEFAULT(/usr/local)
 
