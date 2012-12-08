@@ -48,10 +48,6 @@
 
 #include "hciattach.h"
 
-#ifdef NEED_PPOLL
-#include "ppoll.h"
-#endif
-
 struct uart_t {
 	char *type;
 	int  m_id;
