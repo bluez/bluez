@@ -330,20 +330,12 @@ if HID2HCI
 udev_files += scripts/bluetooth-hid2hci.rules
 endif
 
-if PCMCIA
-udevdir = @UDEV_DIR@
-
-udev_files += scripts/bluetooth-serial.rules
-
-dist_udev_SCRIPTS = scripts/bluetooth_serial
-endif
-
 rules_DATA = $(foreach file,$(udev_files), scripts/97-$(notdir $(file)))
 endif
 
 CLEANFILES += $(rules_DATA)
 
-EXTRA_DIST += scripts/bluetooth-hid2hci.rules scripts/bluetooth-serial.rules
+EXTRA_DIST += scripts/bluetooth-hid2hci.rules
 
 EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \

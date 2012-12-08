@@ -26,5 +26,4 @@ fi
 		--enable-neard \
 		--enable-sap \
 		--enable-wiimote \
-		--disable-pcmcia \
 		--disable-datafiles $*
