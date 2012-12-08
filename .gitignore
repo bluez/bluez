@@ -43,7 +43,6 @@ attrib/gatttool
 tools/avinfo
 tools/bccmd
 tools/ciptool
-tools/dfutool
 tools/hciattach
 tools/hciconfig
 tools/hcieventmask

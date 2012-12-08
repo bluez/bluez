@@ -162,7 +162,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	bccmd_enable=no
 	pcmcia_enable=no
 	hid2hci_enable=no
-	dfutool_enable=no
 	datafiles_enable=yes
 	telephony_driver=dummy
 	sap_driver=dummy
@@ -230,10 +229,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 
 	AC_ARG_ENABLE(hid2hci, AC_HELP_STRING([--enable-hid2hci], [install HID mode switching utility]), [
 		hid2hci_enable=${enableval}
-	])
-
-	AC_ARG_ENABLE(dfutool, AC_HELP_STRING([--enable-dfutool], [install DFU firmware upgrade utility]), [
-		dfutool_enable=${enableval}
 	])
 
 	AC_ARG_ENABLE(cups, AC_HELP_STRING([--enable-cups], [install CUPS backend support]), [
@@ -319,7 +314,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(BCCMD, test "${bccmd_enable}" = "yes")
 	AM_CONDITIONAL(PCMCIA, test "${pcmcia_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes" && test "${udev_found}" = "yes")
-	AM_CONDITIONAL(DFUTOOL, test "${dfutool_enable}" = "yes" && test "${usb_found}" = "yes")
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")

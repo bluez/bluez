@@ -19,7 +19,6 @@ fi
 		--enable-health \
 		--enable-tools \
 		--enable-bccmd \
-		--enable-dfutool \
 		--enable-hid2hci \
 		--enable-test \
 		--enable-cups \
