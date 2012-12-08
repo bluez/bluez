@@ -84,18 +84,3 @@ char *ouitocomp(const char *oui)
 
 	return str;
 }
-
-int oui2comp(const char *oui, char *comp, size_t size)
-{
-	char *tmp;
-
-	tmp = ouitocomp(oui);
-	if (!tmp)
-		return -1;
-
-	snprintf(comp, size, "%s", tmp);
-
-	free(tmp);
-
-	return 0;
-}
