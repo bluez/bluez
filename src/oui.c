@@ -44,7 +44,7 @@
 #define OUIFILE "/usr/share/hwdata/oui.txt"
 #endif
 
-char *ouitocomp(const char *oui)
+static char *ouitocomp(const char *oui)
 {
 	struct stat st;
 	char *str, *map, *off, *end;
