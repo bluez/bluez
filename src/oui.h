@@ -21,4 +21,6 @@
  *
  */
 
+#include <bluetooth/bluetooth.h>
+
 char *batocomp(const bdaddr_t *ba);
