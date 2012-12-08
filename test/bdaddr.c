@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
 	struct hci_dev_info di;
 	struct hci_version ver;
 	bdaddr_t bdaddr;
-	char addr[18], oui[9], *comp;
+	char addr[18], *comp;
 	int i, dd, opt, dev = 0, reset = 0;
 
 	bacpy(&bdaddr, BDADDR_ANY);
@@ -386,8 +386,7 @@ int main(int argc, char *argv[])
 	printf("Manufacturer:   %s (%d)\n",
 			bt_compidtostr(ver.manufacturer), ver.manufacturer);
 
-	ba2oui(&bdaddr, oui);
-	comp = ouitocomp(oui);
+	comp = batocomp(&bdaddr);
 
 	ba2str(&bdaddr, addr);
 	printf("Device address: %s", addr);
@@ -411,8 +410,7 @@ int main(int argc, char *argv[])
 
 	for (i = 0; vendor[i].compid != 65535; i++)
 		if (ver.manufacturer == vendor[i].compid) {
-			ba2oui(&bdaddr, oui);
-			comp = ouitocomp(oui);
+			comp = batocomp(&bdaddr);
 
 			ba2str(&bdaddr, addr);
 			printf("New BD address: %s", addr);

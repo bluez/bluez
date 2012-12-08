@@ -581,7 +581,7 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 	uint8_t lap[3] = { 0x33, 0x8b, 0x9e };
 	int num_rsp, length, flags;
 	uint8_t cls[3], features[8];
-	char addr[18], name[249], oui[9], *comp, *tmp;
+	char addr[18], name[249], *comp, *tmp;
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
@@ -726,9 +726,10 @@ static void cmd_scan(int dev_id, int argc, char **argv)
 			(info+i)->pscan_rep_mode, btohs((info+i)->clock_offset));
 
 		if (extoui) {
-			ba2oui(&(info+i)->bdaddr, oui);
-			comp = ouitocomp(oui);
+			comp = batocomp(&(info+i)->bdaddr);
 			if (comp) {
+				char oui[9];
+				ba2oui(&(info+i)->bdaddr, oui);
 				printf("OUI company:\t%s (%s)\n", comp, oui);
 				free(comp);
 			}
@@ -898,7 +899,7 @@ static void cmd_info(int dev_id, int argc, char **argv)
 	bdaddr_t bdaddr;
 	uint16_t handle;
 	uint8_t features[8], max_page = 0;
-	char name[249], oui[9], *comp, *tmp;
+	char name[249], *comp, *tmp;
 	struct hci_version version;
 	struct hci_dev_info di;
 	struct hci_conn_info_req *cr;
@@ -963,9 +964,10 @@ static void cmd_info(int dev_id, int argc, char **argv)
 
 	printf("\tBD Address:  %s\n", argv[0]);
 
-	ba2oui(&bdaddr, oui);
-	comp = ouitocomp(oui);
+	comp = batocomp(&bdaddr);
 	if (comp) {
+		char oui[9];
+		ba2oui(&bdaddr, oui);
 		printf("\tOUI Company: %s (%s)\n", comp, oui);
 		free(comp);
 	}
