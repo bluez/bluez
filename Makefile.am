@@ -278,7 +278,7 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/sdp-client.h src/sdp-client.c \
 			src/textfile.h src/textfile.c \
 			src/glib-helper.h src/glib-helper.c \
-			src/oui.h src/oui.c src/uinput.h src/ppoll.h \
+			src/uinput.h src/ppoll.h \
 			src/plugin.h src/plugin.c \
 			src/storage.h src/storage.c \
 			src/agent.h src/agent.c \
