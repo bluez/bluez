@@ -34,6 +34,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
+#include <bluetooth/bluetooth.h>
+
 #include "oui.h"
 
 /* http://standards.ieee.org/regauth/oui/oui.txt */
@@ -87,4 +89,13 @@ char *ouitocomp(const char *oui)
 	close(fd);
 
 	return str;
+}
+
+char *batocomp(const bdaddr_t *ba)
+{
+	char oui[9];
+
+	sprintf(oui, "%2.2X-%2.2X-%2.2X", ba->b[5], ba->b[4], ba->b[3]);
+
+	return ouitocomp(oui);
 }

@@ -22,3 +22,4 @@
  */
 
 char *ouitocomp(const char *oui);
+char *batocomp(const bdaddr_t *ba);
