@@ -121,6 +121,9 @@ AC_DEFUN([AC_PATH_UDEV], [
 	PKG_CHECK_MODULES(UDEV, libudev, udev_found=yes, udev_found=no)
 	AC_SUBST(UDEV_CFLAGS)
 	AC_SUBST(UDEV_LIBS)
+	AC_CHECK_LIB(udev, udev_hwdb_new,
+		AC_DEFINE(HAVE_UDEV_HWDB_NEW, 1,
+			[Define to 1 if you have the udev_hwdb_new() function.]))
 ])
 
 AC_DEFUN([AC_PATH_READLINE], [
