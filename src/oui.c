@@ -38,6 +38,10 @@
 
 /* http://standards.ieee.org/regauth/oui/oui.txt */
 
+#ifndef OUIFILE
+#define OUIFILE "/usr/share/hwdata/oui.txt"
+#endif
+
 char *ouitocomp(const char *oui)
 {
 	struct stat st;
