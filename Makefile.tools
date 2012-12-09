@@ -1,6 +1,6 @@
 
 if TOOLS
-bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test \
+bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test tools/rctest \
 				tools/hcitool tools/sdptool tools/ciptool
 
 bin_PROGRAMS += tools/hciattach tools/hciconfig
@@ -14,6 +14,8 @@ tools_rfcomm_LDADD = lib/libbluetooth-private.la
 tools_l2ping_LDADD = lib/libbluetooth-private.la
 
 tools_l2test_LDADD = lib/libbluetooth-private.la
+
+tools_rctest_LDADD = lib/libbluetooth-private.la
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -94,11 +96,11 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 tools_obex_server_tool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 endif
 
-dist_man_MANS += tools/rfcomm.1 tools/l2ping.1 \
+dist_man_MANS += tools/rfcomm.1 tools/l2ping.1 tools/rctest.1 \
 			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 else
-EXTRA_DIST += tools/rfcomm.1 tools/l2ping.1 \
+EXTRA_DIST += tools/rfcomm.1 tools/l2ping.1 tools/rctest.1 \
 			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
@@ -147,15 +149,13 @@ endif
 
 
 if TEST
-bin_PROGRAMS += test/hciemu test/rctest
+bin_PROGRAMS += test/hciemu
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
 					test/lmptest test/bdaddr test/agent \
 					test/btiotest test/mpris-player
 
 test_hciemu_LDADD = lib/libbluetooth-private.la
-
-test_rctest_LDADD = lib/libbluetooth-private.la
 
 test_gaptest_LDADD = @DBUS_LIBS@
 
@@ -176,11 +176,11 @@ test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
 test_mpris_player_SOURCES = test/mpris-player.c
 test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
 
-dist_man_MANS += test/rctest.1 test/hciemu.1
+dist_man_MANS += test/hciemu.1
 
 EXTRA_DIST += test/bdaddr.1
 else
-EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.1
+EXTRA_DIST += test/hciemu.1 test/bdaddr.1
 endif
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \

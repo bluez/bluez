@@ -48,12 +48,12 @@ tools/hid2hci
 tools/rfcomm
 tools/l2ping
 tools/l2test
+tools/rctest
 tools/sdptool
 tools/avtest
 test/agent
 test/bdaddr
 test/hciemu
-test/rctest
 test/scotest
 test/gaptest
 test/sdptest
