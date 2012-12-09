@@ -69,9 +69,6 @@ builtin_sources += profiles/time/main.c profiles/time/server.h \
 			profiles/time/server.c profiles/time/manager.c \
 			profiles/time/manager.h
 
-builtin_modules += gatt_example
-builtin_sources += plugins/gatt-example.c
-
 builtin_modules += proximity
 builtin_sources += profiles/proximity/main.c profiles/proximity/manager.h \
 			profiles/proximity/manager.c \
