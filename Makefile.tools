@@ -146,8 +146,7 @@ sbin_PROGRAMS += test/hciemu
 
 bin_PROGRAMS += test/l2test test/rctest
 
-noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
-			test/hstest test/avtest \
+noinst_PROGRAMS += test/gaptest test/sdptest test/scotest test/avtest \
 					test/lmptest test/bdaddr test/agent \
 					test/btiotest test/test-textfile \
 					test/uuidtest test/mpris-player
@@ -163,8 +162,6 @@ test_gaptest_LDADD = @DBUS_LIBS@
 test_sdptest_LDADD = lib/libbluetooth-private.la
 
 test_scotest_LDADD = lib/libbluetooth-private.la
-
-test_hstest_LDADD = lib/libbluetooth-private.la
 
 test_avtest_LDADD = lib/libbluetooth-private.la
 
@@ -193,7 +190,7 @@ else
 EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.8
 endif
 
-EXTRA_DIST += test/sap_client.py test/hsplay test/hsmicro test/bluezutils.py \
+EXTRA_DIST += test/sap_client.py test/bluezutils.py \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/test-service test/simple-agent \
