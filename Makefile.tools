@@ -151,12 +151,8 @@ endif
 
 
 if TEST
-bin_PROGRAMS += test/hciemu
-
 noinst_PROGRAMS += test/gaptest test/bdaddr test/agent \
 					test/btiotest test/mpris-player
-
-test_hciemu_LDADD = lib/libbluetooth-private.la
 
 test_gaptest_LDADD = @DBUS_LIBS@
 
@@ -170,13 +166,9 @@ test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
 
 test_mpris_player_SOURCES = test/mpris-player.c
 test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
-
-dist_man_MANS += test/hciemu.1
+endif
 
 EXTRA_DIST += test/bdaddr.1
-else
-EXTRA_DIST += test/hciemu.1 test/bdaddr.1
-endif
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \

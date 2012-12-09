@@ -54,7 +54,6 @@ tools/sdptool
 tools/avtest
 test/agent
 test/bdaddr
-test/hciemu
 test/gaptest
 test/ipctest
 test/btiotest
