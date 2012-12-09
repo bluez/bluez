@@ -55,7 +55,6 @@ tools/avtest
 test/agent
 test/bdaddr
 test/gaptest
-test/ipctest
 test/btiotest
 test/mpris-player
 test/sap_client.pyc
