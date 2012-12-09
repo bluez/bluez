@@ -61,11 +61,11 @@ test/lmptest
 test/ipctest
 test/btiotest
 test/test-textfile
-test/uuidtest
 test/mpris-player
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir
+unit/test-uuid
 tools/btattach
 tools/btmgmt
 tools/btsnoop
