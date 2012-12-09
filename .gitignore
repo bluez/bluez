@@ -52,8 +52,8 @@ tools/rctest
 tools/scotest
 tools/sdptool
 tools/avtest
+tools/bdaddr
 test/agent
-test/bdaddr
 test/gaptest
 test/btiotest
 test/mpris-player

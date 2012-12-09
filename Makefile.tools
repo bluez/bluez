@@ -3,7 +3,7 @@ if TOOLS
 bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test tools/rctest \
 				tools/hciattach tools/hciconfig \
 				tools/hcitool tools/sdptool tools/ciptool \
-				tools/bccmd
+				tools/bccmd tools/bdaddr
 
 noinst_PROGRAMS += tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter \
@@ -100,15 +100,18 @@ tools_bccmd_SOURCES += tools/csr_usb.c
 tools_bccmd_LDADD += @USB_LIBS@
 endif
 
+tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
+tools_bdaddr_LDADD = lib/libbluetooth-private.la
+
 dist_man_MANS += tools/rfcomm.1 tools/l2ping.1 tools/rctest.1 \
 			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1 \
-			tools/bccmd.1
+			tools/bccmd.1 tools/bdaddr.1
 else
 EXTRA_DIST += tools/rfcomm.1 tools/l2ping.1 tools/rctest.1  \
 			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1 \
-			tools/bccmd.1
+			tools/bccmd.1 tools/bdaddr.1
 endif
 
 if HID2HCI
@@ -141,13 +144,9 @@ endif
 
 
 if TEST
-noinst_PROGRAMS += test/gaptest test/bdaddr test/agent \
-					test/btiotest test/mpris-player
+noinst_PROGRAMS += test/gaptest test/agent test/btiotest test/mpris-player
 
 test_gaptest_LDADD = @DBUS_LIBS@
-
-test_bdaddr_SOURCES = test/bdaddr.c src/oui.h src/oui.c
-test_bdaddr_LDADD = lib/libbluetooth-private.la
 
 test_agent_LDADD = @DBUS_LIBS@
 
@@ -157,8 +156,6 @@ test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
 test_mpris_player_SOURCES = test/mpris-player.c
 test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
 endif
-
-EXTRA_DIST += test/bdaddr.1
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
