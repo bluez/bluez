@@ -105,7 +105,6 @@ gobex_sources = gobex/gobex.h gobex/gobex.c \
 builtin_modules =
 builtin_sources =
 builtin_nodist =
-mcap_sources =
 
 include Makefile.profiles
 
@@ -163,7 +162,7 @@ sbin_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
-			$(mcap_sources) src/bluetooth.ver \
+			src/bluetooth.ver \
 			src/main.c src/log.h src/log.c \
 			src/rfkill.c src/hcid.h src/sdpd.h \
 			src/sdpd-server.c src/sdpd-request.c \
