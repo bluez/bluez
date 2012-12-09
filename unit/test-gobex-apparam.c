@@ -416,7 +416,5 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_apparam_set_multi",
 						test_apparam_set_multi);
 
-	g_test_run();
-
-	return 0;
+	return g_test_run();
 }

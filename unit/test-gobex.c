@@ -1192,7 +1192,5 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_copy", test_copy);
 	g_test_add_func("/gobex/test_move", test_move);
 
-	g_test_run();
-
-	return 0;
+	return g_test_run();
 }

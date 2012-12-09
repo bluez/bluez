@@ -2251,7 +2251,5 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_conn_put_req_seq_srm",
 						test_conn_put_req_seq_srm);
 
-	g_test_run();
-
-	return 0;
+	return g_test_run();
 }

@@ -564,7 +564,5 @@ int main(int argc, char *argv[])
 	g_test_add_func("/gobex/test_header_uint32", test_header_uint32);
 	g_test_add_func("/gobex/test_header_apparam", test_header_apparam);
 
-	g_test_run();
-
-	return 0;
+	return g_test_run();
 }

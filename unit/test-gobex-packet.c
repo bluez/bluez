@@ -250,7 +250,5 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/gobex/test_create_args", test_create_args);
 
-	g_test_run();
-
-	return 0;
+	return g_test_run();
 }
