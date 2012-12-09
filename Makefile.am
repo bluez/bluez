@@ -133,9 +133,6 @@ builtin_sources += plugins/formfactor.c
 
 EXTRA_DIST += plugins/formfactor.c
 
-builtin_modules += storage
-builtin_sources += plugins/storage.c
-
 builtin_modules += adaptername
 builtin_sources += plugins/adaptername.c
 
