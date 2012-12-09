@@ -155,7 +155,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	test_enable=no
 	hid2hci_enable=no
 	datafiles_enable=yes
-	telephony_driver=dummy
 	sap_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
@@ -229,12 +228,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug], [enable compiling with debugging information]), [
 		debug_enable=${enableval}
 	])
-
-	AC_ARG_WITH(telephony, AC_HELP_STRING([--with-telephony=DRIVER], [select telephony driver]), [
-		telephony_driver=${withval}
-	])
-
-	AC_SUBST([TELEPHONY_DRIVER], [telephony-${telephony_driver}.c])
 
 	AC_ARG_ENABLE(dbusoob, AC_HELP_STRING([--enable-dbusoob], [compile with D-Bus OOB plugin]), [
 		dbusoob_enable=${enableval}
