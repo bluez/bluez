@@ -9,7 +9,7 @@ noinst_PROGRAMS += tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btmgmt tools/btattach tools/btsnoop \
 			monitor/btmon emulator/btvirt emulator/b1ee \
-			tools/btiotest
+			tools/btiotest tools/mpris-player
 
 tools_rfcomm_LDADD = lib/libbluetooth-private.la
 
@@ -94,6 +94,8 @@ endif
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
 tools_btiotest_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
+tools_mpris_player_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
 			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
 			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
@@ -148,14 +150,11 @@ endif
 
 
 if TEST
-noinst_PROGRAMS += test/gaptest test/agent test/mpris-player
+noinst_PROGRAMS += test/gaptest test/agent
 
 test_gaptest_LDADD = @DBUS_LIBS@
 
 test_agent_LDADD = @DBUS_LIBS@
-
-test_mpris_player_SOURCES = test/mpris-player.c
-test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
 endif
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \
