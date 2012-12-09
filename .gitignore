@@ -53,9 +53,9 @@ tools/scotest
 tools/sdptool
 tools/avtest
 tools/bdaddr
+tools/btiotest
 test/agent
 test/gaptest
-test/btiotest
 test/mpris-player
 test/sap_client.pyc
 test/bluezutils.pyc

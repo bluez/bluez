@@ -8,7 +8,8 @@ bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test tools/rctest \
 noinst_PROGRAMS += tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter \
 			tools/btmgmt tools/btattach tools/btsnoop \
-			monitor/btmon emulator/btvirt emulator/b1ee
+			monitor/btmon emulator/btvirt emulator/b1ee \
+			tools/btiotest
 
 tools_rfcomm_LDADD = lib/libbluetooth-private.la
 
@@ -90,6 +91,9 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 tools_obex_server_tool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 endif
 
+tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
+tools_btiotest_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
 			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
 			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
@@ -144,14 +148,11 @@ endif
 
 
 if TEST
-noinst_PROGRAMS += test/gaptest test/agent test/btiotest test/mpris-player
+noinst_PROGRAMS += test/gaptest test/agent test/mpris-player
 
 test_gaptest_LDADD = @DBUS_LIBS@
 
 test_agent_LDADD = @DBUS_LIBS@
-
-test_btiotest_SOURCES = test/btiotest.c btio/btio.h btio/btio.c
-test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
 
 test_mpris_player_SOURCES = test/mpris-player.c
 test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
