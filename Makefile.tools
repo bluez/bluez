@@ -5,7 +5,7 @@ bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test tools/rctest \
 
 bin_PROGRAMS += tools/hciattach tools/hciconfig
 
-noinst_PROGRAMS += tools/avinfo tools/avtest \
+noinst_PROGRAMS += tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter
 
 tools_rfcomm_SOURCES = tools/rfcomm.c
@@ -42,6 +42,8 @@ tools_ciptool_LDADD = lib/libbluetooth-private.la
 tools_avinfo_LDADD = lib/libbluetooth-private.la
 
 tools_avtest_LDADD = lib/libbluetooth-private.la
+
+tools_scotest_LDADD = lib/libbluetooth-private.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
@@ -151,7 +153,7 @@ endif
 if TEST
 bin_PROGRAMS += test/hciemu
 
-noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
+noinst_PROGRAMS += test/gaptest test/sdptest \
 					test/lmptest test/bdaddr test/agent \
 					test/btiotest test/mpris-player
 
@@ -160,8 +162,6 @@ test_hciemu_LDADD = lib/libbluetooth-private.la
 test_gaptest_LDADD = @DBUS_LIBS@
 
 test_sdptest_LDADD = lib/libbluetooth-private.la
-
-test_scotest_LDADD = lib/libbluetooth-private.la
 
 test_lmptest_LDADD = lib/libbluetooth-private.la
 

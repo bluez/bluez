@@ -49,12 +49,12 @@ tools/rfcomm
 tools/l2ping
 tools/l2test
 tools/rctest
+tools/scotest
 tools/sdptool
 tools/avtest
 test/agent
 test/bdaddr
 test/hciemu
-test/scotest
 test/gaptest
 test/sdptest
 test/lmptest
