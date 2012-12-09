@@ -56,7 +56,6 @@ test/agent
 test/bdaddr
 test/hciemu
 test/gaptest
-test/sdptest
 test/lmptest
 test/ipctest
 test/btiotest

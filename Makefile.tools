@@ -153,15 +153,12 @@ endif
 if TEST
 bin_PROGRAMS += test/hciemu
 
-noinst_PROGRAMS += test/gaptest test/sdptest \
-					test/lmptest test/bdaddr test/agent \
+noinst_PROGRAMS += test/gaptest test/lmptest test/bdaddr test/agent \
 					test/btiotest test/mpris-player
 
 test_hciemu_LDADD = lib/libbluetooth-private.la
 
 test_gaptest_LDADD = @DBUS_LIBS@
-
-test_sdptest_LDADD = lib/libbluetooth-private.la
 
 test_lmptest_LDADD = lib/libbluetooth-private.la
 
