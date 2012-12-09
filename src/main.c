@@ -55,6 +55,7 @@
 #include "agent.h"
 #include "manager.h"
 #include "mgmt.h"
+#include "systemd.h"
 
 #define BLUEZ_NAME "org.bluez"
 
@@ -471,6 +472,8 @@ int main(int argc, char *argv[])
 
 	__btd_log_init(option_debug, option_detach);
 
+	sd_notify(0, "STATUS=Starting up");
+
 	config = load_config(CONFIGDIR "/main.conf");
 
 	parse_config(config);
@@ -506,7 +509,12 @@ int main(int argc, char *argv[])
 
 	DBG("Entering main loop");
 
+	sd_notify(0, "STATUS=Running");
+	sd_notify(0, "READY=1");
+
 	g_main_loop_run(event_loop);
+
+	sd_notify(0, "STATUS=Quitting");
 
 	g_source_remove(signal);
 
