@@ -3,7 +3,7 @@ if TOOLS
 bin_PROGRAMS += tools/rfcomm tools/l2ping \
 				tools/hcitool tools/sdptool tools/ciptool
 
-sbin_PROGRAMS += tools/hciattach tools/hciconfig
+bin_PROGRAMS += tools/hciattach tools/hciconfig
 
 noinst_PROGRAMS += tools/avinfo tools/hcieventmask tools/hcisecfilter
 
@@ -89,16 +89,16 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 tools_obex_server_tool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 endif
 
-dist_man_MANS += tools/rfcomm.1 tools/l2ping.8 \
-			tools/hciattach.8 tools/hciconfig.8 \
+dist_man_MANS += tools/rfcomm.1 tools/l2ping.1 \
+			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 else
-EXTRA_DIST += tools/rfcomm.1 tools/l2ping.8 \
-			tools/hciattach.8 tools/hciconfig.8 \
+EXTRA_DIST += tools/rfcomm.1 tools/l2ping.1 \
+			tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
 
-sbin_PROGRAMS += tools/bccmd
+bin_PROGRAMS += tools/bccmd
 
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
 			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
@@ -110,7 +110,7 @@ tools_bccmd_SOURCES += tools/csr_usb.c
 tools_bccmd_LDADD += @USB_LIBS@
 endif
 
-dist_man_MANS += tools/bccmd.8
+dist_man_MANS += tools/bccmd.1
 
 if HID2HCI
 udevdir = @UDEV_DIR@
@@ -119,9 +119,9 @@ udev_PROGRAMS = tools/hid2hci
 
 tools_hid2hci_LDADD = @USB_LIBS@ @UDEV_LIBS@
 
-dist_man_MANS += tools/hid2hci.8
+dist_man_MANS += tools/hid2hci.1
 else
-EXTRA_DIST += tools/hid2hci.8
+EXTRA_DIST += tools/hid2hci.1
 endif
 
 
@@ -142,9 +142,7 @@ endif
 
 
 if TEST
-sbin_PROGRAMS += test/hciemu
-
-bin_PROGRAMS += test/l2test test/rctest
+bin_PROGRAMS += test/hciemu test/l2test test/rctest
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest test/avtest \
 					test/lmptest test/bdaddr test/agent \
@@ -185,9 +183,9 @@ test_test_textfile_SOURCES = test/test-textfile.c src/textfile.h src/textfile.c
 
 dist_man_MANS += test/rctest.1 test/hciemu.1
 
-EXTRA_DIST += test/bdaddr.8
+EXTRA_DIST += test/bdaddr.1
 else
-EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.8
+EXTRA_DIST += test/rctest.1 test/hciemu.1 test/bdaddr.1
 endif
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \
