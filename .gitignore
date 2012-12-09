@@ -51,7 +51,6 @@ tools/sdptool
 test/agent
 test/bdaddr
 test/hciemu
-test/attest
 test/hstest
 test/avtest
 test/l2test
