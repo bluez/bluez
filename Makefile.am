@@ -219,13 +219,16 @@ AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/gdbus -I$(srcdir)/btio
 
 
-unit_tests = unit/test-eir unit/test-uuid
+unit_tests = unit/test-eir unit/test-uuid unit/test-textfile
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
 unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 unit_test_uuid_SOURCES = unit/test-uuid.c
 unit_test_uuid_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+
+unit_test_textfile_SOURCES = unit/test-textfile.c src/textfile.h src/textfile.c
+unit_test_textfile_LDADD = @GLIB_LIBS@
 
 unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
 			unit/test-gobex-transfer unit/test-gobex-apparam

@@ -60,12 +60,12 @@ test/sdptest
 test/lmptest
 test/ipctest
 test/btiotest
-test/test-textfile
 test/mpris-player
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir
 unit/test-uuid
+unit/test-textfile
 tools/btattach
 tools/btmgmt
 tools/btsnoop

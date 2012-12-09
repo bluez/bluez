@@ -146,8 +146,7 @@ bin_PROGRAMS += test/hciemu test/l2test test/rctest
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest test/avtest \
 					test/lmptest test/bdaddr test/agent \
-					test/btiotest test/test-textfile \
-					test/mpris-player
+					test/btiotest test/mpris-player
 
 test_hciemu_LDADD = lib/libbluetooth-private.la
 
@@ -175,8 +174,6 @@ test_btiotest_LDADD = @GLIB_LIBS@ lib/libbluetooth-private.la
 
 test_mpris_player_SOURCES = test/mpris-player.c
 test_mpris_player_LDADD = @DBUS_LIBS@ @GLIB_LIBS@
-
-test_test_textfile_SOURCES = test/test-textfile.c src/textfile.h src/textfile.c
 
 dist_man_MANS += test/rctest.1 test/hciemu.1
 
