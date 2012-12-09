@@ -15,8 +15,6 @@ In order to compile Bluetooth utilities you need following software packages:
 	- D-Bus library
 	- GLib library
 	- USB library (optional)
-	- Lexical Analyzer (flex, lex)
-	- YACC (yacc, bison, byacc)
 
 To configure run:
 	./configure --prefix=/usr --mandir=/usr/share/man \
