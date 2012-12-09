@@ -54,4 +54,4 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
-AC_OUTPUT(Makefile doc/version.xml src/bluetoothd.8 src/bluetooth.service bluez.pc)
+AC_OUTPUT(Makefile doc/version.xml src/bluetoothd.8 bluez.pc)

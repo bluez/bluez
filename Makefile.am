@@ -9,8 +9,6 @@ noinst_LTLIBRARIES =
 
 bin_PROGRAMS =
 
-sbin_PROGRAMS =
-
 libexec_PROGRAMS =
 
 noinst_PROGRAMS =
@@ -51,6 +49,8 @@ systemdunitdir = @SYSTEMD_UNITDIR@
 systemdunit_DATA = src/bluetooth.service
 endif
 endif
+
+EXTRA_DIST += src/bluetooth.service.in
 
 plugindir = $(libdir)/bluetooth/plugins
 
@@ -131,7 +131,7 @@ plugins_external_dummy_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
 plugins_external_dummy_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden
 endif
 
-sbin_PROGRAMS += src/bluetoothd
+libexec_PROGRAMS += src/bluetoothd
 
 src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
@@ -262,6 +262,13 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
 	ltmain.sh depcomp compile missing install-sh mkinstalldirs
+
+SED_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
+		$(SED) -e 's,@libexecdir\@,$(libexecdir),g' \
+		< $< > $@
+
+%.service: %.service.in Makefile
+	$(SED_PROCESS)
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@

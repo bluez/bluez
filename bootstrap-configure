@@ -15,7 +15,6 @@ fi
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--libexecdir=/lib \
 		--enable-health \
 		--enable-tools \
 		--enable-hid2hci \
