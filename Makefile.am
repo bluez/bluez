@@ -107,29 +107,7 @@ builtin_sources =
 builtin_nodist =
 mcap_sources =
 
-if MCAP
-mcap_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
-		profiles/health/mcap.h profiles/health/mcap.c \
-		profiles/health/mcap_sync.c
-endif
-
-if AUDIOPLUGIN
-builtin_modules += audio
-builtin_sources += profiles/audio/main.c \
-			profiles/audio/manager.h profiles/audio/manager.c \
-			profiles/audio/control.h profiles/audio/control.c \
-			profiles/audio/avctp.h profiles/audio/avctp.c \
-			profiles/audio/avrcp.h profiles/audio/avrcp.c \
-			profiles/audio/device.h profiles/audio/device.c \
-			profiles/audio/source.h profiles/audio/source.c \
-			profiles/audio/sink.h profiles/audio/sink.c \
-			profiles/audio/a2dp.h profiles/audio/a2dp.c \
-			profiles/audio/avdtp.h profiles/audio/avdtp.c \
-			profiles/audio/media.h profiles/audio/media.c \
-			profiles/audio/transport.h profiles/audio/transport.c \
-			profiles/audio/player.h profiles/audio/player.c \
-			profiles/audio/a2dp-codecs.h
-endif
+include Makefile.profiles
 
 if SAPPLUGIN
 builtin_modules += sap
@@ -145,90 +123,10 @@ profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-dummy.c \
 				profiles/sap/sap-u8500.c
 endif
 
-if INPUTPLUGIN
-builtin_modules += input
-builtin_sources += profiles/input/main.c \
-			profiles/input/manager.h profiles/input/manager.c \
-			profiles/input/server.h profiles/input/server.c \
-			profiles/input/device.h profiles/input/device.c
-endif
-
-if HOGPLUGIN
-builtin_modules += hog
-builtin_sources += profiles/input/hog_manager.c profiles/input/hog_device.h \
-			profiles/input/hog_device.c profiles/input/uhid_copy.h \
-			profiles/input/suspend.h
-builtin_nodist += profiles/input/suspend.c
-endif
-
-EXTRA_DIST += profiles/input/suspend-dummy.c
-
-if NETWORKPLUGIN
-builtin_modules += network
-builtin_sources += profiles/network/main.c \
-			profiles/network/manager.h profiles/network/manager.c \
-			profiles/network/common.h profiles/network/common.c \
-			profiles/network/server.h profiles/network/server.c \
-			profiles/network/connection.h \
-			profiles/network/connection.c
-endif
-
 if SERVICEPLUGIN
 builtin_modules += service
 builtin_sources += plugins/service.c
 endif
-
-if HEALTHPLUGIN
-builtin_modules += health
-builtin_sources += profiles/health/hdp_main.c profiles/health/hdp_types.h \
-		profiles/health/hdp_manager.h profiles/health/hdp_manager.c \
-		profiles/health/hdp.h profiles/health/hdp.c \
-		profiles/health/hdp_util.h profiles/health/hdp_util.c
-endif
-
-builtin_modules += thermometer alert time gatt_example proximity deviceinfo \
-			gatt scanparam heartrate cyclingspeed
-builtin_sources += profiles/thermometer/main.c \
-			profiles/thermometer/manager.h \
-			profiles/thermometer/manager.c \
-			profiles/thermometer/thermometer.h \
-			profiles/thermometer/thermometer.c \
-			profiles/alert/main.c profiles/alert/server.h \
-			profiles/alert/server.c profiles/alert/manager.h \
-			profiles/alert/manager.c \
-			profiles/time/main.c profiles/time/server.h \
-			profiles/time/server.c profiles/time/manager.c \
-			profiles/time/manager.h \
-			plugins/gatt-example.c \
-			profiles/proximity/main.c profiles/proximity/manager.h \
-			profiles/proximity/manager.c \
-			profiles/proximity/monitor.h \
-			profiles/proximity/monitor.c \
-			profiles/proximity/reporter.h \
-			profiles/proximity/reporter.c \
-			profiles/proximity/linkloss.h \
-			profiles/proximity/linkloss.c \
-			profiles/proximity/immalert.h \
-			profiles/proximity/immalert.c \
-			profiles/deviceinfo/main.c \
-			profiles/deviceinfo/manager.h \
-			profiles/deviceinfo/manager.c \
-			profiles/deviceinfo/deviceinfo.h \
-			profiles/deviceinfo/deviceinfo.c \
-			profiles/gatt/main.c profiles/gatt/manager.h \
-			profiles/gatt/manager.c profiles/gatt/gas.h \
-			profiles/gatt/gas.c \
-			profiles/scanparam/main.c \
-			profiles/scanparam/manager.h \
-			profiles/scanparam/manager.c \
-			profiles/scanparam/scan.h profiles/scanparam/scan.c \
-			profiles/heartrate/main.c \
-			profiles/heartrate/manager.c \
-			profiles/heartrate/manager.h \
-			profiles/heartrate/heartrate.c \
-			profiles/heartrate/heartrate.h \
-			profiles/cyclingspeed/cyclingspeed.c
-
 
 builtin_modules += formfactor
 builtin_sources += plugins/formfactor.c
@@ -351,13 +249,6 @@ AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/gdbus -I$(srcdir)/btio
 
-if MCAP
-AM_CPPFLAGS += -I$(builddir)/health
-endif
-
-if HOGPLUGIN
-AM_CPPFLAGS += -I$(srcdir)/profiles/input
-endif
 
 unit_objects =
 
@@ -418,9 +309,6 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 
 profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
 	$(AM_V_GEN)$(LN_S) -f $(abs_top_srcdir)/$< $@
-
-profiles/input/suspend.c: profiles/input/@HOG_SUSPEND_DRIVER@
-	$(AM_V_GEN)$(LN_S) -f $(abs_top_builddir)/$< $@
 
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@

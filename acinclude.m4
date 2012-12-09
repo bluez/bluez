@@ -164,7 +164,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	datafiles_enable=yes
 	telephony_driver=dummy
 	sap_driver=dummy
-	hog_suspend_driver=dummy
 	dbusoob_enable=no
 	wiimote_enable=no
 	neard_enable=no
@@ -256,12 +255,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		wiimote_enable=${enableval}
 	])
 
-	AC_ARG_WITH(hog_suspend, AC_HELP_STRING([--with-hog-suspend=DRIVER], [select HoG suspend driver]), [
-		hog_suspend_driver=${withval}
-	])
-
-	AC_SUBST([HOG_SUSPEND_DRIVER], [suspend-${hog_suspend_driver}.c])
-
 	AC_ARG_ENABLE(neard, AC_HELP_STRING([--enable-neard], [compile with neard plugin]), [
 		neard_enable=${enableval}
 	])
@@ -301,7 +294,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(SAPPLUGIN, test "${sap_enable}" = "yes")
 	AM_CONDITIONAL(SERVICEPLUGIN, test "${service_enable}" = "yes")
 	AM_CONDITIONAL(HEALTHPLUGIN, test "${health_enable}" = "yes")
-	AM_CONDITIONAL(MCAP, test "${health_enable}" = "yes")
 	AM_CONDITIONAL(READLINE, test "${readline_found}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
 	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes" && test "${check_found}" = "yes")
@@ -311,6 +303,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
 	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
-	AM_CONDITIONAL(HOGPLUGIN, test "${input_enable}" = "yes")
 	AM_CONDITIONAL(NEARDPLUGIN, test "${neard_enable}" = "yes")
 ])
