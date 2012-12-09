@@ -1,6 +1,6 @@
 
 if TOOLS
-bin_PROGRAMS += tools/rfcomm tools/l2ping \
+bin_PROGRAMS += tools/rfcomm tools/l2ping tools/l2test \
 				tools/hcitool tools/sdptool tools/ciptool
 
 bin_PROGRAMS += tools/hciattach tools/hciconfig
@@ -12,6 +12,8 @@ tools_rfcomm_SOURCES = tools/rfcomm.c
 tools_rfcomm_LDADD = lib/libbluetooth-private.la
 
 tools_l2ping_LDADD = lib/libbluetooth-private.la
+
+tools_l2test_LDADD = lib/libbluetooth-private.la
 
 tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_st.c \
@@ -145,15 +147,13 @@ endif
 
 
 if TEST
-bin_PROGRAMS += test/hciemu test/l2test test/rctest
+bin_PROGRAMS += test/hciemu test/rctest
 
 noinst_PROGRAMS += test/gaptest test/sdptest test/scotest \
 					test/lmptest test/bdaddr test/agent \
 					test/btiotest test/mpris-player
 
 test_hciemu_LDADD = lib/libbluetooth-private.la
-
-test_l2test_LDADD = lib/libbluetooth-private.la
 
 test_rctest_LDADD = lib/libbluetooth-private.la
 
