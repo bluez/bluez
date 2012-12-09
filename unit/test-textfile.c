@@ -26,79 +26,150 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "textfile.h"
+#include <glib.h>
 
-static void print_entry(char *key, char *value, void *data)
-{
-	printf("%s %s\n", key, value);
-}
+#include "src/textfile.h"
 
-int main(int argc, char *argv[])
+static const char test_pathname[] = "/tmp/textfile";
+
+static void util_create_empty(void)
 {
-	char filename[] = "/tmp/textfile";
-	char key[18], value[512], *str;
-	unsigned int i, j, size, max = 10;
 	int fd;
 
-	size = getpagesize();
-	printf("System uses a page size of %d bytes\n\n", size);
+	fd = creat(test_pathname, 0644);
+	if (fd < 0)
+		return;
 
-	fd = creat(filename, 0644);
 	if (ftruncate(fd, 0) < 0)
-		return -errno;
+		goto done;
+
+done:
+	close(fd);
+}
+
+static void util_create_pagesize(void)
+{
+	char value[512];
+	unsigned int i;
+	int fd, size;
+
+	size = getpagesize();
+	if (size < 0)
+		return;
+
+	fd = creat(test_pathname, 0644);
+	if (fd < 0)
+		return;
+
+	if (ftruncate(fd, 0) < 0)
+		goto done;
 
 	memset(value, 0, sizeof(value));
 	for (i = 0; i < (size / sizeof(value)); i++) {
 		if (write(fd, value, sizeof(value)) < 0)
-			return -errno;
+			break;
 	}
 
+done:
 	close(fd);
+}
+
+static void test_pagesize(void)
+{
+	char key[18], *str;
+	int size;
+
+	size = getpagesize();
+	g_assert(size >= 4096);
+
+	if (g_test_verbose())
+		g_print("System uses a page size of %d bytes\n", size);
+
+	util_create_pagesize();
 
 	sprintf(key, "11:11:11:11:11:11");
-	str = textfile_get(filename, key);
+	str = textfile_get(test_pathname, key);
 
-	if (truncate(filename, 0) < 0)
-		return -errno;
+	if (g_test_verbose())
+		g_print("%s\n", str);
+
+	g_assert(str == NULL);
+}
+
+static void test_delete(void)
+{
+	char key[18], value[512], *str;
+
+	util_create_empty();
 
 	sprintf(key, "00:00:00:00:00:00");
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
 	memset(value, 0, sizeof(value));
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
-	str = textfile_get(filename, key);
-	if (!str)
-		fprintf(stderr, "No value for %s\n", key);
-	else
-		free(str);
+	str = textfile_get(test_pathname, key);
+	g_assert(str != NULL);
+
+	if (g_test_verbose())
+		g_print("%s\n", str);
+
+	g_free(str);
+}
+
+static void test_overwrite(void)
+{
+	char key[18], value[512], *str;
+
+	util_create_empty();
+
+	sprintf(key, "00:00:00:00:00:00");
+	memset(value, 0, sizeof(value));
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
 	snprintf(value, sizeof(value), "Test");
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
-	str = textfile_get(filename, key);
-	if (str) {
-		fprintf(stderr, "Found value for %s\n", key);
-		free(str);
-	}
+	str = textfile_get(test_pathname, key);
+
+	if (g_test_verbose())
+		g_print("%s\n", str);
+
+	g_assert(str == NULL);
+}
+
+static void check_entry(char *key, char *value, void *data)
+{
+	unsigned int max = GPOINTER_TO_UINT(data);
+	unsigned int len;
+
+	len = strtol(key + 16, NULL, 16);
+	if (len == 1)
+		len = max;
+
+	if (g_test_verbose())
+		g_print("%s %s\n", key, value);
+
+	g_assert(strlen(value) == len);
+}
+
+static void test_multiple(void)
+{
+	char key[18], value[512], *str;
+	unsigned int i, j, max = 10;
+
+	util_create_empty();
 
 	for (i = 1; i < max + 1; i++) {
 		sprintf(key, "00:00:00:00:00:%02X", i);
@@ -107,20 +178,18 @@ int main(int argc, char *argv[])
 		for (j = 0; j < i; j++)
 			value[j] = 'x';
 
-		printf("%s %s\n", key, value);
+		g_assert(textfile_put(test_pathname, key, value) == 0);
 
-		if (textfile_put(filename, key, value) < 0) {
-			fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
-			break;
-		}
+		str = textfile_get(test_pathname, key);
 
-		str = textfile_get(filename, key);
-		if (!str)
-			fprintf(stderr, "No value for %s\n", key);
-		else
-			free(str);
+		if (g_test_verbose())
+			g_print("%s %s\n", key, str);
+
+		g_assert(str != NULL);
+		g_assert(strcmp(str, value) == 0);
+
+		free(str);
 	}
-
 
 	sprintf(key, "00:00:00:00:00:%02X", max);
 
@@ -128,8 +197,17 @@ int main(int argc, char *argv[])
 	for (j = 0; j < max; j++)
 		value[j] = 'y';
 
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
+
+	str = textfile_get(test_pathname, key);
+
+	if (g_test_verbose())
+		g_print("%s %s\n", key, str);
+
+	g_assert(str != NULL);
+	g_assert(strcmp(str, value) == 0);
+
+	free(str);
 
 	sprintf(key, "00:00:00:00:00:%02X", 1);
 
@@ -137,55 +215,63 @@ int main(int argc, char *argv[])
 	for (j = 0; j < max; j++)
 		value[j] = 'z';
 
-	if (textfile_put(filename, key, value) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_put(test_pathname, key, value) == 0);
 
-	printf("\n");
+	str = textfile_get(test_pathname, key);
+
+	if (g_test_verbose())
+		g_print("%s %s\n", key, str);
+
+	g_assert(str != NULL);
+	g_assert(strcmp(str, value) == 0);
+
+	free(str);
 
 	for (i = 1; i < max + 1; i++) {
 		sprintf(key, "00:00:00:00:00:%02X", i);
+		str = textfile_get(test_pathname, key);
 
-		str = textfile_get(filename, key);
-		if (str) {
-			printf("%s %s\n", key, str);
-			free(str);
-		}
+		if (g_test_verbose())
+			g_print("%s %s\n", key, str);
+
+		g_assert(str != NULL);
+
+		if (i == 1)
+			g_assert(strlen(str) == max);
+		else
+			g_assert(strlen(str) == i);
+
+		g_free(str);
 	}
 
-
 	sprintf(key, "00:00:00:00:00:%02X", 2);
-
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
 	sprintf(key, "00:00:00:00:00:%02X", max - 3);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
-
-	printf("\n");
-
-	textfile_foreach(filename, print_entry, NULL);
-
+	textfile_foreach(test_pathname, check_entry, GUINT_TO_POINTER(max));
 
 	sprintf(key, "00:00:00:00:00:%02X", 1);
-
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
 	sprintf(key, "00:00:00:00:00:%02X", max);
-
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
 	sprintf(key, "00:00:00:00:00:%02X", max + 1);
+	g_assert(textfile_del(test_pathname, key) == 0);
 
-	if (textfile_del(filename, key) < 0)
-		fprintf(stderr, "%s (%d)\n", strerror(errno), errno);
+	textfile_foreach(test_pathname, check_entry, GUINT_TO_POINTER(max));
+}
 
-	printf("\n");
+int main(int argc, char *argv[])
+{
+	g_test_init(&argc, &argv, NULL);
 
-	textfile_foreach(filename, print_entry, NULL);
+	g_test_add_func("/textfile/pagesize", test_pagesize);
+	g_test_add_func("/textfile/delete", test_delete);
+	g_test_add_func("/textfile/overwrite", test_overwrite);
+	g_test_add_func("/textfile/multiple", test_multiple);
 
-	return 0;
+	return g_test_run();
 }
