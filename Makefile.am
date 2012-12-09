@@ -106,6 +106,7 @@ builtin_modules =
 builtin_sources =
 builtin_nodist =
 
+include Makefile.plugins
 include Makefile.profiles
 
 if SAPPLUGIN
@@ -120,34 +121,6 @@ noinst_LIBRARIES += profiles/sap/libsap.a
 
 profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-dummy.c \
 				profiles/sap/sap-u8500.c
-endif
-
-if SERVICEPLUGIN
-builtin_modules += service
-builtin_sources += plugins/service.c
-endif
-
-builtin_modules += formfactor
-builtin_sources += plugins/formfactor.c
-
-EXTRA_DIST += plugins/formfactor.c
-
-builtin_modules += adaptername
-builtin_sources += plugins/adaptername.c
-
-if WIIMOTEPLUGIN
-builtin_modules += wiimote
-builtin_sources += plugins/wiimote.c
-endif
-
-if DBUSOOBPLUGIN
-builtin_modules += dbusoob
-builtin_sources += plugins/dbusoob.c
-endif
-
-if NEARDPLUGIN
-builtin_modules += neard
-builtin_sources += plugins/neard.c
 endif
 
 if MAINTAINER_MODE

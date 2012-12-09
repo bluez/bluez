@@ -1,0 +1,24 @@
+
+builtin_modules += service
+builtin_sources += plugins/service.c
+
+builtin_modules += formfactor
+builtin_sources += plugins/formfactor.c
+
+builtin_modules += adaptername
+builtin_sources += plugins/adaptername.c
+
+if WIIMOTEPLUGIN
+builtin_modules += wiimote
+builtin_sources += plugins/wiimote.c
+endif
+
+if DBUSOOBPLUGIN
+builtin_modules += dbusoob
+builtin_sources += plugins/dbusoob.c
+endif
+
+if NEARDPLUGIN
+builtin_modules += neard
+builtin_sources += plugins/neard.c
+endif
