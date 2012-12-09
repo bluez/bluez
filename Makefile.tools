@@ -98,7 +98,6 @@ EXTRA_DIST += tools/rfcomm.1 tools/l2ping.8 \
 			tools/hcitool.1 tools/sdptool.1 tools/ciptool.1
 endif
 
-if BCCMD
 sbin_PROGRAMS += tools/bccmd
 
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
@@ -112,9 +111,6 @@ tools_bccmd_LDADD += @USB_LIBS@
 endif
 
 dist_man_MANS += tools/bccmd.8
-else
-EXTRA_DIST += tools/bccmd.8
-endif
 
 if HID2HCI
 udevdir = @UDEV_DIR@

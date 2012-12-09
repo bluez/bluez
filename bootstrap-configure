@@ -18,7 +18,6 @@ fi
 		--libexecdir=/lib \
 		--enable-health \
 		--enable-tools \
-		--enable-bccmd \
 		--enable-hid2hci \
 		--enable-test \
 		--enable-cups \
