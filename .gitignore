@@ -30,7 +30,6 @@ bluez.pc
 lib/bluetooth
 src/builtin.h
 src/bluetoothd
-audio/telephony.c
 scripts/97-bluetooth-hid2hci.rules
 
 profiles/sap/sap.c
