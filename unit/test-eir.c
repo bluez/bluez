@@ -25,19 +25,15 @@
 #include <config.h>
 #endif
 
-#include <check.h>
-
-#include <stdint.h>
-
 #include <glib.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
 #include <bluetooth/sdp.h>
 
-#include "eir.h"
+#include "src/eir.h"
 
-START_TEST(test_basic)
+static void test_basic(void)
 {
 	struct eir_data data;
 	unsigned char buf[HCI_MAX_EIR_LENGTH];
@@ -47,43 +43,18 @@ START_TEST(test_basic)
 	memset(&data, 0, sizeof(data));
 
 	err = eir_parse(&data, buf, HCI_MAX_EIR_LENGTH);
-	ck_assert(err == 0);
-	ck_assert(data.services == NULL);
-	ck_assert(data.name == NULL);
+	g_assert(err == 0);
+	g_assert(data.services == NULL);
+	g_assert(data.name == NULL);
 
 	eir_data_free(&data);
-}
-END_TEST
-
-static void add_test(Suite *s, const char *name, TFun func)
-{
-	TCase *t;
-
-	t = tcase_create(name);
-	tcase_add_test(t, func);
-	suite_add_tcase(s, t);
 }
 
 int main(int argc, char *argv[])
 {
-	int fails;
-	SRunner *sr;
-	Suite *s;
+	g_test_init(&argc, &argv, NULL);
 
-	s = suite_create("EIR");
+	g_test_add_func("/eir/basic", test_basic);
 
-	add_test(s, "basic", test_basic);
-
-	sr = srunner_create(s);
-
-	srunner_run_all(sr, CK_NORMAL);
-
-	fails = srunner_ntests_failed(sr);
-
-	srunner_free(sr);
-
-	if (fails > 0)
-		return -1;
-
-	return 0;
+	return g_test_run();
 }
