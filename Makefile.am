@@ -219,20 +219,10 @@ AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 			-I$(srcdir)/gdbus -I$(srcdir)/btio
 
 
-unit_objects =
-
-if TEST
 unit_tests = unit/test-eir
 
-noinst_PROGRAMS += $(unit_tests)
-
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
-unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @CHECK_LIBS@
-unit_test_eir_CFLAGS = $(AM_CFLAGS) @CHECK_CFLAGS@
-unit_objects += $(unit_test_eir_OBJECTS)
-else
-unit_tests =
-endif
+unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
 			unit/test-gobex-transfer unit/test-gobex-apparam

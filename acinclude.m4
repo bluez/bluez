@@ -130,12 +130,6 @@ AC_DEFUN([AC_PATH_READLINE], [
 		[])
 ])
 
-AC_DEFUN([AC_PATH_CHECK], [
-	PKG_CHECK_MODULES(CHECK, check >= 0.9.6, check_found=yes, check_found=no)
-	AC_SUBST(CHECK_CFLAGS)
-	AC_SUBST(CHECK_LIBS)
-])
-
 AC_DEFUN([AC_PATH_OUI], [
 	AC_ARG_WITH(ouifile,
 		    AS_HELP_STRING([--with-ouifile=PATH],[Path to the oui.txt file @<:@auto@:>@]),
@@ -291,7 +285,7 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HEALTHPLUGIN, test "${health_enable}" = "yes")
 	AM_CONDITIONAL(READLINE, test "${readline_found}" = "yes")
 	AM_CONDITIONAL(CUPS, test "${cups_enable}" = "yes")
-	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes" && test "${check_found}" = "yes")
+	AM_CONDITIONAL(TEST, test "${test_enable}" = "yes")
 	AM_CONDITIONAL(TOOLS, test "${tools_enable}" = "yes")
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes" && test "${udev_found}" = "yes")
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
