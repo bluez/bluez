@@ -56,7 +56,6 @@ test/agent
 test/bdaddr
 test/hciemu
 test/gaptest
-test/lmptest
 test/ipctest
 test/btiotest
 test/mpris-player
