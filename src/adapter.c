@@ -3528,11 +3528,6 @@ void btd_adapter_any_release_path(void)
 	adapter_any_path = NULL;
 }
 
-gboolean adapter_powering_down(struct btd_adapter *adapter)
-{
-	return adapter->off_requested;
-}
-
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
 	if (!main_opts.remember_powered)

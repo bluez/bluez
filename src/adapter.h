@@ -154,7 +154,6 @@ int btd_cancel_authorization(guint id);
 
 const char *btd_adapter_any_request_path(void);
 void btd_adapter_any_release_path(void);
-gboolean adapter_powering_down(struct btd_adapter *adapter);
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter);
 void btd_adapter_enable_auto_connect(struct btd_adapter *adapter);
