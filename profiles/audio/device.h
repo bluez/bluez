@@ -39,7 +39,6 @@ struct audio_device {
 	struct sink *sink;
 	struct source *source;
 	struct control *control;
-	struct target *target;
 
 	struct dev_priv *priv;
 };
