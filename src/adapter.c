@@ -3052,7 +3052,7 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 		adapter->scanning_session = NULL;
 	}
 
-	if (adapter_has_discov_sessions(adapter)) {
+	if (adapter->disc_sessions != NULL) {
 		adapter->discov_id = g_idle_add(discovery_cb, adapter);
 
 		DBG("hci%u restarting discovery: disc_sessions %u",
@@ -3304,14 +3304,6 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 		DBG("Removing temporary device %s", path);
 		adapter_remove_device(adapter, device, TRUE);
 	}
-}
-
-gboolean adapter_has_discov_sessions(struct btd_adapter *adapter)
-{
-	if (!adapter || !adapter->disc_sessions)
-		return FALSE;
-
-	return TRUE;
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
