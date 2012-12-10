@@ -25,6 +25,14 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stddef.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
 #include "systemd.h"
 
 int sd_listen_fds(int unset_environment)
@@ -34,5 +42,65 @@ int sd_listen_fds(int unset_environment)
 
 int sd_notify(int unset_environment, const char *state)
 {
-	return 0;
+	const char *sock;
+	struct sockaddr_un addr;
+	struct msghdr msghdr;
+	struct iovec iovec;
+	int fd, err;
+
+	if (!state) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	sock = getenv("NOTIFY_SOCKET");
+	if (!sock)
+		return 0;
+
+	/* check for abstract socket or absolute path */
+	if (sock[0] != '@' && sock[0] != '/') {
+		err = -EINVAL;
+		goto done;
+	}
+
+	fd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (fd < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	strncpy(addr.sun_path, sock, sizeof(addr.sun_path));
+
+	if (addr.sun_path[0] == '@')
+		addr.sun_path[0] = '\0';
+
+	memset(&iovec, 0, sizeof(iovec));
+	iovec.iov_base = (char *) state;
+	iovec.iov_len = strlen(state);
+
+	memset(&msghdr, 0, sizeof(msghdr));
+	msghdr.msg_name = &addr;
+	msghdr.msg_namelen = offsetof(struct sockaddr_un, sun_path) +
+								strlen(sock);
+
+	if (msghdr.msg_namelen > sizeof(struct sockaddr_un))
+		msghdr.msg_namelen = sizeof(struct sockaddr_un);
+
+	msghdr.msg_iov = &iovec;
+	msghdr.msg_iovlen = 1;
+
+	if (sendmsg(fd, &msghdr, MSG_NOSIGNAL) < 0)
+		err = -errno;
+	else
+		err = 1;
+
+	close(fd);
+
+done:
+	if (unset_environment)
+		unsetenv("NOTIFY_SOCKET");
+
+	return err;
 }
