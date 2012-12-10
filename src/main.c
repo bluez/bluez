@@ -400,6 +400,13 @@ static int connect_dbus(void)
 	return 0;
 }
 
+static gboolean watchdog_callback(gpointer user_data)
+{
+	sd_notify(0, "WATCHDOG=1");
+
+	return TRUE;
+}
+
 static gboolean parse_debug(const char *key, const char *value,
 				gpointer user_data, GError **error)
 {
@@ -433,7 +440,8 @@ int main(int argc, char *argv[])
 	GError *err = NULL;
 	uint16_t mtu = 0;
 	GKeyFile *config;
-	guint signal;
+	guint signal, watchdog;
+	const char *watchdog_usec;
 	int mgmt_err;
 
 	init_defaults();
@@ -512,6 +520,18 @@ int main(int argc, char *argv[])
 	sd_notify(0, "STATUS=Running");
 	sd_notify(0, "READY=1");
 
+	watchdog_usec = getenv("WATCHDOG_USEC");
+	if (watchdog_usec) {
+		unsigned int seconds;
+
+		seconds = atoi(watchdog_usec) / (1000 * 1000);
+		info("Watchdog timeout is %d seconds", seconds);
+
+		watchdog = g_timeout_add_seconds(seconds / 2,
+						watchdog_callback, NULL);
+	} else
+		watchdog = 0;
+
 	g_main_loop_run(event_loop);
 
 	sd_notify(0, "STATUS=Quitting");
@@ -536,6 +556,9 @@ int main(int argc, char *argv[])
 	disconnect_dbus();
 
 	info("Exit");
+
+	if (watchdog > 0)
+		g_source_remove(watchdog);
 
 	__btd_log_cleanup();
 
