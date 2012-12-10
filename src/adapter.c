@@ -169,8 +169,6 @@ struct btd_adapter {
 
 	gint ref;
 
-	guint off_timer;
-
 	GSList *pin_callbacks;
 
 	GSList *drivers;
@@ -2137,7 +2135,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 
 	adapter->off_requested = FALSE;
 	adapter->up = TRUE;
-	adapter->off_timer = 0;
 
 	if (adapter->scan_mode & SCAN_INQUIRY) {
 		adapter->mode = MODE_DISCOVERABLE;
@@ -2318,12 +2315,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
-static void off_timer_remove(struct btd_adapter *adapter)
-{
-	g_source_remove(adapter->off_timer);
-	adapter->off_timer = 0;
-}
-
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -2337,9 +2328,6 @@ static void adapter_free(gpointer user_data)
 		g_source_remove(adapter->auth_idle_id);
 
 	g_queue_free_full(adapter->auths, g_free);
-
-	if (adapter->off_timer)
-		off_timer_remove(adapter);
 
 	sdp_list_free(adapter->services, NULL);
 
