@@ -125,10 +125,9 @@ fi
 AM_CONDITIONAL(USB, test "${enable_usb}" != "no")
 
 AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
-			[disable udev device support]),
-						[enable_udev=${enableval}])
+		[disable udev device support]), [enable_udev=${enableval}])
 if (test "${enable_udev}" != "no"); then
-	PKG_CHECK_MODULES(UDEV, libudev >= 143, [enable_udev="yes"],
+	PKG_CHECK_MODULES(UDEV, libudev >= 143, dummy=yes,
 				AC_MSG_ERROR(libudev >= 143 is required))
 	AC_CHECK_LIB(udev, udev_hwdb_new,
 		AC_DEFINE(HAVE_UDEV_HWDB_NEW, 1,
