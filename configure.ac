@@ -89,6 +89,10 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
+AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
+		[install Bluetooth library]), [enable_library=${enableval}])
+AM_CONDITIONAL(LIBRARY, test "${enable_library}" = "yes")
+
 AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
