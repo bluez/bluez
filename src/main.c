@@ -428,7 +428,7 @@ static GOptionEntry options[] = {
 				"Specify plugins not to load", "NAME,..." },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
-				"Don't run as daemon in background" },
+				"Run with logging in foreground" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
@@ -463,13 +463,6 @@ int main(int argc, char *argv[])
 	if (option_version == TRUE) {
 		printf("%s\n", VERSION);
 		exit(0);
-	}
-
-	if (option_detach == TRUE) {
-		if (daemon(0, 0)) {
-			perror("Can't start daemon");
-			exit(1);
-		}
 	}
 
 	umask(0077);

@@ -4,8 +4,7 @@ Description=Bluetooth service
 [Service]
 Type=dbus
 BusName=org.bluez
-ExecStart=@libexecdir@/bluetoothd -n
-StandardOutput=null
+ExecStart=@libexecdir@/bluetoothd
 NotifyAccess=main
 #WatchdogSec=10
 #Restart=on-failure
