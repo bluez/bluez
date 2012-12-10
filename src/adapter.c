@@ -171,7 +171,6 @@ struct btd_adapter {
 
 	guint off_timer;
 
-	GSList *powered_callbacks;
 	GSList *pin_callbacks;
 
 	GSList *drivers;
@@ -2052,28 +2051,6 @@ static void load_connections(struct btd_adapter *adapter)
 	g_slist_free_full(conns, g_free);
 }
 
-static void set_auto_connect(gpointer data, gpointer user_data)
-{
-	struct btd_device *device = data;
-	gboolean *enable = user_data;
-
-	device_set_auto_connect(device, *enable);
-}
-
-static void call_adapter_powered_callbacks(struct btd_adapter *adapter,
-						gboolean powered)
-{
-	GSList *l;
-
-	for (l = adapter->powered_callbacks; l; l = l->next) {
-		btd_adapter_powered_cb cb = l->data;
-
-		cb(adapter, powered);
-	}
-
-	g_slist_foreach(adapter->devices, set_auto_connect, &powered);
-}
-
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
 						uint16_t *discoverable_timeout,
 						gboolean *pairable)
@@ -2172,8 +2149,6 @@ void btd_adapter_start(struct btd_adapter *adapter)
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Powered");
-
-	call_adapter_powered_callbacks(adapter, TRUE);
 
 	info("Adapter %s has been enabled", adapter->path);
 
@@ -2335,8 +2310,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 
 	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
 								"Powered");
-
-	call_adapter_powered_callbacks(adapter, FALSE);
 
 	info("Adapter %s has been disabled", adapter->path);
 
@@ -3570,20 +3543,6 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 
 	return read_pin_code(&adapter->bdaddr, device_get_address(dev),
 								pin_buf);
-}
-
-void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
-						btd_adapter_powered_cb cb)
-{
-	adapter->powered_callbacks =
-			g_slist_append(adapter->powered_callbacks, cb);
-}
-
-void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
-						btd_adapter_powered_cb cb)
-{
-	adapter->powered_callbacks =
-			g_slist_remove(adapter->powered_callbacks, cb);
 }
 
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,

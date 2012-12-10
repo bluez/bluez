@@ -166,13 +166,6 @@ void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 					char *pin_buf, gboolean *display);
 
-typedef void (*btd_adapter_powered_cb) (struct btd_adapter *adapter,
-						gboolean powered);
-void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
-						btd_adapter_powered_cb cb);
-void btd_adapter_unregister_powered_callback(struct btd_adapter *adapter,
-						btd_adapter_powered_cb cb);
-
 /* If TRUE, enables fast connectabe, i.e. reduces page scan interval and changes
  * type. If FALSE, disables fast connectable, i.e. sets page scan interval and
  * type to default values. Valid for both connectable and discoverable modes. */
