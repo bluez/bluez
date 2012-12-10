@@ -55,8 +55,6 @@ tools/avtest
 tools/bdaddr
 tools/btiotest
 tools/mpris-player
-test/agent
-test/gaptest
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir

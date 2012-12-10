@@ -132,7 +132,6 @@ else
 EXTRA_DIST += tools/hid2hci.1
 endif
 
-
 if CUPS
 cupsdir = $(libdir)/cups/backend
 
@@ -146,15 +145,6 @@ profiles_cups_bluetooth_SOURCES = $(gdbus_sources) profiles/cups/main.c \
 
 profiles_cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ \
 				lib/libbluetooth-private.la
-endif
-
-
-if TEST
-noinst_PROGRAMS += test/gaptest test/agent
-
-test_gaptest_LDADD = @DBUS_LIBS@
-
-test_agent_LDADD = @DBUS_LIBS@
 endif
 
 EXTRA_DIST += test/sap_client.py test/bluezutils.py \
