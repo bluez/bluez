@@ -82,9 +82,6 @@ released.
 
 - (maybe) rename or re-design DiscoverServices since it's BR/EDR specific
 
-- [pending] Remove deprecated D-Bus signals, methods and properties
-  (ensuring new ones are in place to replace what's removed).
-
 - [pending] Switch plugins to standard D-Bus properties interface
 
 - [pending] Add connect/disconnect callbacks to all btd_profile
@@ -95,6 +92,9 @@ released.
   ini-file format
 
 Completed items:
+
+- Remove deprecated D-Bus signals, methods and properties
+  (ensuring new ones are in place to replace what's removed).
 
 - Merge obexd.git into bluez.git
 
