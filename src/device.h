@@ -73,7 +73,6 @@ void device_set_rssi(struct btd_device *device, int8_t rssi);
 void device_set_auto_connect(struct btd_device *device, gboolean enable);
 gboolean device_is_connected(struct btd_device *device);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
-gboolean device_is_creating(struct btd_device *device, const char *sender);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);
 int device_request_pincode(struct btd_device *device, gboolean secure);

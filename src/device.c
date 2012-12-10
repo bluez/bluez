@@ -329,9 +329,6 @@ static void browse_request_cancel(struct browse_req *req)
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device->adapter;
 
-	if (device_is_creating(device, NULL))
-		device_set_temporary(device, TRUE);
-
 	bt_cancel_discovery(adapter_get_address(adapter), &device->bdaddr);
 
 	attio_cleanup(device);
@@ -3471,29 +3468,6 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 							device);
 		}
 	}
-}
-
-gboolean device_is_creating(struct btd_device *device, const char *sender)
-{
-	DBusMessage *msg;
-
-	if (device->bonding && device->bonding->msg)
-		msg = device->bonding->msg;
-	else if (device->browse && device->browse->msg)
-		msg = device->browse->msg;
-	else
-		return FALSE;
-
-	if (!dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
-						"CreatePairedDevice") &&
-			!dbus_message_is_method_call(msg, ADAPTER_INTERFACE,
-							"CreateDevice"))
-		return FALSE;
-
-	if (sender == NULL)
-		return TRUE;
-
-	return g_str_equal(sender, dbus_message_get_sender(msg));
 }
 
 gboolean device_is_bonding(struct btd_device *device, const char *sender)
