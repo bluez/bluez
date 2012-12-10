@@ -5,6 +5,19 @@ obexd_builtin_modules =
 obexd_builtin_sources =
 obexd_builtin_nodist =
 
+obexd_builtin_modules += filesystem
+obexd_builtin_sources += obexd/plugins/filesystem.c obexd/plugins/filesystem.h
+
+obexd_builtin_modules += bluetooth
+obexd_builtin_sources += obexd/plugins/bluetooth.c
+
+obexd_builtin_modules += opp
+obexd_builtin_sources += obexd/plugins/opp.c
+
+obexd_builtin_modules += ftp
+obexd_builtin_sources += obexd/plugins/ftp.c obexd/plugins/ftp.h
+
+
 libexec_PROGRAMS += obexd/src/obexd
 
 obexd_src_obexd_SOURCES = $(gdbus_sources) $(btio_sources) $(gobex_sources) \
