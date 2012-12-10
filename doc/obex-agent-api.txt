@@ -1,0 +1,31 @@
+obexd Agent API description
+**********************************
+
+Copyright (C) 2007-2010  Nokia Corporation
+Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+
+
+Agent hierarchy
+===============
+
+Service		unique name
+Interface	org.bluez.obex.Agent
+Object path	freely definable
+
+Methods
+		string Authorize(object transfer, string bt_address, string name,
+					string type, int32 length, int32 time)
+
+			This method gets called when the service daemon
+			needs to accept/reject a Bluetooth object push request.
+			Returns the full path (including the filename) where
+			the object shall be stored.
+
+			Possible errors: org.bluez.obex.Error.Rejected
+			                 org.bluez.obex.Error.Canceled
+
+		void Cancel()
+
+			This method gets called to indicate that the agent
+			request failed before a reply was returned. It cancels
+			the previous request.

@@ -1,0 +1,87 @@
+obexd API description
+**********************************
+
+Copyright (C) 2007-2010  Nokia Corporation
+Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+
+
+Manager hierarchy
+===============
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.Manager
+Object path	/
+
+Methods
+		void RegisterAgent(object agent)
+
+			Register an agent to request authorization of 
+			the user to accept/reject objects. Object push
+			service needs to authorize each received object.
+
+			Possible errors: org.bluez.obex.Error.AlreadyExists
+
+		void UnregisterAgent(object agent)
+
+			This unregisters the agent that has been previously
+			registered. The object path parameter must match the
+			same value that has been used on registration.
+
+			Possible errors: org.bluez.obex.Error.DoesNotExist
+
+Signals		SessionCreated(object session)
+			
+			Signal sent when OBEX connection has been accepted.
+			(FTP only)
+
+		SessionRemoved(object session)
+			
+			Sent when the transport is disconnected
+			(FTP only)
+
+		TransferStarted(object transfer)
+
+			Signal sent when an object push operation starts.
+			(OPP only)
+
+		TransferCompleted(object transfer, boolean success)
+
+			Signal sent when the object has been received
+			or an error happens.
+			(OPP only)
+
+
+Transfer hierarchy
+===============
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.Transfer
+Object path	/transfer{0, 1, 2, ...}
+
+Methods
+		void Cancel()
+
+			Stops the current transference.
+
+Signals
+		Progress(int32 total, int32 transfered)
+
+
+Session hierarchy
+===============
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.Session
+Object path	/session{0, 1, 2, ...}
+
+Methods
+		dict GetProperties()
+
+
+Signals		TBD
+
+
+Properties
+		string Address [readonly]
+
+			Bluetooth device address or USB
