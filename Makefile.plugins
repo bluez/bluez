@@ -11,10 +11,8 @@ builtin_sources += plugins/adaptername.c
 builtin_modules += gatt_example
 builtin_sources += plugins/gatt-example.c
 
-if WIIMOTEPLUGIN
 builtin_modules += wiimote
 builtin_sources += plugins/wiimote.c
-endif
 
 if DBUSOOBPLUGIN
 builtin_modules += dbusoob

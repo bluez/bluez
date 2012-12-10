@@ -157,7 +157,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	datafiles_enable=yes
 	sap_driver=dummy
 	dbusoob_enable=no
-	wiimote_enable=no
 	neard_enable=no
 
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization], [disable code optimization]), [
@@ -233,10 +232,6 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 		dbusoob_enable=${enableval}
 	])
 
-	AC_ARG_ENABLE(wiimote, AC_HELP_STRING([--enable-wiimote], [compile with Wii Remote plugin]), [
-		wiimote_enable=${enableval}
-	])
-
 	AC_ARG_ENABLE(neard, AC_HELP_STRING([--enable-neard], [compile with neard plugin]), [
 		neard_enable=${enableval}
 	])
@@ -283,6 +278,5 @@ AC_DEFUN([AC_ARG_BLUEZ], [
 	AM_CONDITIONAL(HID2HCI, test "${hid2hci_enable}" = "yes" && test "${usb_found}" = "yes" && test "${udev_found}" = "yes")
 	AM_CONDITIONAL(DATAFILES, test "${datafiles_enable}" = "yes")
 	AM_CONDITIONAL(DBUSOOBPLUGIN, test "${dbusoob_enable}" = "yes")
-	AM_CONDITIONAL(WIIMOTEPLUGIN, test "${wiimote_enable}" = "yes")
 	AM_CONDITIONAL(NEARDPLUGIN, test "${neard_enable}" = "yes")
 ])

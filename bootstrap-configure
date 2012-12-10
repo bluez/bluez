@@ -23,5 +23,4 @@ fi
 		--enable-dbusoob \
 		--enable-neard \
 		--enable-sap \
-		--enable-wiimote \
 		--disable-datafiles $*
