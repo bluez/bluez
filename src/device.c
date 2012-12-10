@@ -1518,6 +1518,103 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 		g_dbus_send_message(conn, reply);
 }
 
+static void device_agent_removed(struct agent *agent, void *user_data)
+{
+	struct btd_device *device = user_data;
+
+	device->agent = NULL;
+
+	if (device->authr)
+		device->authr->agent = NULL;
+}
+
+static struct bonding_req *bonding_request_new(DBusMessage *msg,
+						struct btd_device *device,
+						const char *agent_path,
+						uint8_t capability)
+{
+	struct bonding_req *bonding;
+	const char *name = dbus_message_get_sender(msg);
+	char addr[18];
+
+	ba2str(&device->bdaddr, addr);
+	DBG("Requesting bonding for %s", addr);
+
+	if (!agent_path)
+		goto proceed;
+
+	device->agent = agent_create(device->adapter, name, agent_path,
+					capability,
+					device_agent_removed,
+					device);
+
+	DBG("Temporary agent registered for %s at %s:%s",
+			addr, name, agent_path);
+
+proceed:
+	bonding = g_new0(struct bonding_req, 1);
+
+	bonding->msg = dbus_message_ref(msg);
+
+	return bonding;
+}
+
+static void create_bond_req_exit(DBusConnection *conn, void *user_data)
+{
+	struct btd_device *device = user_data;
+	char addr[18];
+
+	ba2str(&device->bdaddr, addr);
+	DBG("%s: requestor exited before bonding was completed", addr);
+
+	if (device->authr)
+		device_cancel_authentication(device, FALSE);
+
+	if (device->bonding) {
+		device->bonding->listener_id = 0;
+		device_request_disconnect(device, NULL);
+	}
+}
+
+static DBusMessage *device_create_bonding(struct btd_device *device,
+						DBusMessage *msg,
+						const char *agent_path,
+						uint8_t capability)
+{
+	struct btd_adapter *adapter = device->adapter;
+	struct bonding_req *bonding;
+	int err;
+
+	if (device->bonding)
+		return btd_error_in_progress(msg);
+
+	if (device_is_bonded(device))
+		return btd_error_already_exists(msg);
+
+	bonding = bonding_request_new(msg, device, agent_path,
+					capability);
+
+	bonding->listener_id = g_dbus_add_disconnect_watch(
+						btd_get_dbus_connection(),
+						dbus_message_get_sender(msg),
+						create_bond_req_exit, device,
+						NULL);
+
+	device->bonding = bonding;
+	bonding->device = device;
+
+	if (device_is_le(device) && !device_is_connected(device)) {
+		adapter_connect_list_add(adapter, device);
+		return NULL;
+	}
+
+	err = adapter_create_bonding(adapter, &device->bdaddr,
+					device->bdaddr_type, capability);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return NULL;
+}
 static uint8_t parse_io_capability(const char *capability)
 {
 	if (g_str_equal(capability, ""))
@@ -3316,104 +3413,6 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
 						DEVICE_INTERFACE, "Paired");
-}
-
-static void device_agent_removed(struct agent *agent, void *user_data)
-{
-	struct btd_device *device = user_data;
-
-	device->agent = NULL;
-
-	if (device->authr)
-		device->authr->agent = NULL;
-}
-
-static struct bonding_req *bonding_request_new(DBusMessage *msg,
-						struct btd_device *device,
-						const char *agent_path,
-						uint8_t capability)
-{
-	struct bonding_req *bonding;
-	const char *name = dbus_message_get_sender(msg);
-	char addr[18];
-
-	ba2str(&device->bdaddr, addr);
-	DBG("Requesting bonding for %s", addr);
-
-	if (!agent_path)
-		goto proceed;
-
-	device->agent = agent_create(device->adapter, name, agent_path,
-					capability,
-					device_agent_removed,
-					device);
-
-	DBG("Temporary agent registered for %s at %s:%s",
-			addr, name, agent_path);
-
-proceed:
-	bonding = g_new0(struct bonding_req, 1);
-
-	bonding->msg = dbus_message_ref(msg);
-
-	return bonding;
-}
-
-static void create_bond_req_exit(DBusConnection *conn, void *user_data)
-{
-	struct btd_device *device = user_data;
-	char addr[18];
-
-	ba2str(&device->bdaddr, addr);
-	DBG("%s: requestor exited before bonding was completed", addr);
-
-	if (device->authr)
-		device_cancel_authentication(device, FALSE);
-
-	if (device->bonding) {
-		device->bonding->listener_id = 0;
-		device_request_disconnect(device, NULL);
-	}
-}
-
-DBusMessage *device_create_bonding(struct btd_device *device,
-					DBusMessage *msg,
-					const char *agent_path,
-					uint8_t capability)
-{
-	struct btd_adapter *adapter = device->adapter;
-	struct bonding_req *bonding;
-	int err;
-
-	if (device->bonding)
-		return btd_error_in_progress(msg);
-
-	if (device_is_bonded(device))
-		return btd_error_already_exists(msg);
-
-	bonding = bonding_request_new(msg, device, agent_path,
-					capability);
-
-	bonding->listener_id = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
-						dbus_message_get_sender(msg),
-						create_bond_req_exit, device,
-						NULL);
-
-	device->bonding = bonding;
-	bonding->device = device;
-
-	if (device_is_le(device) && !device_is_connected(device)) {
-		adapter_connect_list_add(adapter, device);
-		return NULL;
-	}
-
-	err = adapter_create_bonding(adapter, &device->bdaddr,
-					device->bdaddr_type, capability);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	return NULL;
 }
 
 static void device_auth_req_free(struct btd_device *device)
