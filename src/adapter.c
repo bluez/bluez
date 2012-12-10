@@ -3542,40 +3542,6 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	return mgmt_set_powered(adapter->dev_id, TRUE);
 }
 
-static gboolean disable_auto(gpointer user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	GSList *l;
-
-	for (l = adapter->devices; l; l = l->next) {
-		struct btd_device *device = l->data;
-
-		device_set_auto_connect(device, FALSE);
-	}
-
-	adapter->auto_timeout_id = 0;
-
-	return FALSE;
-}
-
-void btd_adapter_enable_auto_connect(struct btd_adapter *adapter)
-{
-	gboolean enable = TRUE;
-
-	if (!adapter->up)
-		return;
-
-	DBG("Enabling automatic connections");
-
-	if (adapter->auto_timeout_id)
-		return;
-
-	g_slist_foreach(adapter->devices, set_auto_connect, &enable);
-
-	adapter->auto_timeout_id = g_timeout_add_seconds(main_opts.autoto,
-						disable_auto, adapter);
-}
-
 void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 							btd_adapter_pin_cb_t cb)
 {

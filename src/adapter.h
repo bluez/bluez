@@ -156,7 +156,6 @@ const char *btd_adapter_any_request_path(void);
 void btd_adapter_any_release_path(void);
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter);
-void btd_adapter_enable_auto_connect(struct btd_adapter *adapter);
 
 typedef ssize_t (*btd_adapter_pin_cb_t) (struct btd_adapter *adapter,
 			struct btd_device *dev, char *out, gboolean *display);
