@@ -1,0 +1,38 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+
+def list_folder(folder):
+	bus = dbus.SessionBus()
+	client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+				"org.bluez.obex.Client")
+
+	path = client.CreateSession(sys.argv[1], { "Target": "ftp" })
+
+	ftp = dbus.Interface(bus.get_object("org.bluez.obex.client", path),
+				"org.bluez.obex.FileTransfer")
+
+	if folder:
+		for node in folder.split("/"):
+			ftp.ChangeFolder(node)
+
+	for i in ftp.ListFolder():
+		if i["Type"] == "folder":
+			print "%s/" % (i["Name"])
+		else:
+			print "%s" % (i["Name"])
+
+
+if __name__ == '__main__':
+
+	if len(sys.argv) < 2:
+		print "Usage: %s <device> [folder]" % (sys.argv[0])
+		sys.exit(1)
+
+	folder = None
+	if len(sys.argv) == 3:
+		folder = sys.argv[2]
+
+	list_folder(folder)
