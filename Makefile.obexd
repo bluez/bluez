@@ -38,6 +38,11 @@ obexd_builtin_sources += obexd/plugins/pbap.c \
 				obexd/plugins/phonebook-dummy.c
 endif
 
+obexd_builtin_modules += mas
+obexd_builtin_sources += obexd/plugins/mas.c obexd/src/map_ap.h \
+				obexd/plugins/messages.h \
+				obexd/plugins/messages-dummy.c
+
 
 libexec_PROGRAMS += obexd/src/obexd
 
