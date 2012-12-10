@@ -1576,45 +1576,6 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	}
 }
 
-static DBusMessage *device_create_bonding(struct btd_device *device,
-						DBusMessage *msg,
-						const char *agent_path,
-						uint8_t capability)
-{
-	struct btd_adapter *adapter = device->adapter;
-	struct bonding_req *bonding;
-	int err;
-
-	if (device->bonding)
-		return btd_error_in_progress(msg);
-
-	if (device_is_bonded(device))
-		return btd_error_already_exists(msg);
-
-	bonding = bonding_request_new(msg, device, agent_path,
-					capability);
-
-	bonding->listener_id = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
-						dbus_message_get_sender(msg),
-						create_bond_req_exit, device,
-						NULL);
-
-	device->bonding = bonding;
-	bonding->device = device;
-
-	if (device_is_le(device) && !device_is_connected(device)) {
-		adapter_connect_list_add(adapter, device);
-		return NULL;
-	}
-
-	err = adapter_create_bonding(adapter, &device->bdaddr,
-					device->bdaddr_type, capability);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	return NULL;
-}
 static uint8_t parse_io_capability(const char *capability)
 {
 	if (g_str_equal(capability, ""))
@@ -1636,8 +1597,11 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	struct btd_device *device = data;
+	struct btd_adapter *adapter = device->adapter;
 	const char *agent_path, *capability;
+	struct bonding_req *bonding;
 	uint8_t io_cap;
+	int err;
 
 	device_set_temporary(device, FALSE);
 
@@ -1651,7 +1615,34 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (io_cap == IO_CAPABILITY_INVALID)
 		return btd_error_invalid_args(msg);
 
-	return device_create_bonding(device, msg, agent_path, io_cap);
+	if (device->bonding)
+		return btd_error_in_progress(msg);
+
+	if (device_is_bonded(device))
+		return btd_error_already_exists(msg);
+
+	bonding = bonding_request_new(msg, device, agent_path, io_cap);
+
+	bonding->listener_id = g_dbus_add_disconnect_watch(
+						btd_get_dbus_connection(),
+						dbus_message_get_sender(msg),
+						create_bond_req_exit, device,
+						NULL);
+
+	device->bonding = bonding;
+	bonding->device = device;
+
+	if (device_is_le(device) && !device_is_connected(device)) {
+		adapter_connect_list_add(adapter, device);
+		return NULL;
+	}
+
+	err = adapter_create_bonding(adapter, &device->bdaddr,
+					device->bdaddr_type, io_cap);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return NULL;
 }
 
 static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
