@@ -6,6 +6,9 @@ Type=dbus
 BusName=org.bluez
 ExecStart=@libexecdir@/bluetoothd -n
 StandardOutput=null
+NotifyAccess=main
+#WatchdogSec=10
+#Restart=on-failure
 
 [Install]
 WantedBy=bluetooth.target
