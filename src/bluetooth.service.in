@@ -9,6 +9,8 @@ StandardOutput=null
 NotifyAccess=main
 #WatchdogSec=10
 #Restart=on-failure
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+LimitNPROC=1
 
 [Install]
 WantedBy=bluetooth.target
