@@ -110,7 +110,6 @@ builtin_sources =
 builtin_nodist =
 
 include Makefile.plugins
-include Makefile.profiles
 
 if EXPERIMENTAL
 builtin_modules += sap
