@@ -111,18 +111,6 @@ builtin_nodist =
 
 include Makefile.plugins
 
-if EXPERIMENTAL
-builtin_modules += sap
-builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
-			profiles/sap/manager.c profiles/sap/server.h \
-			profiles/sap/server.c profiles/sap/sap.h \
-			profiles/sap/sap-dummy.c
-
-noinst_LIBRARIES += profiles/sap/libsap.a
-
-profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-u8500.c
-endif
-
 if MAINTAINER_MODE
 plugin_LTLIBRARIES += plugins/external-dummy.la
 plugins_external_dummy_la_SOURCES = plugins/external-dummy.c
