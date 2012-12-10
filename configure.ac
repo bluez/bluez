@@ -153,6 +153,16 @@ AM_CONDITIONAL(HID2HCI, test "${enable_udev}" != "no" &&
 						test "${enable_usb}" != "no")
 AM_CONDITIONAL(CUPS, test "${enable_tools}" = "yes")
 
+AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
+		[disable OBEX profile support]), [enable_obex=${enableval}])
+if (test "${enable_obex}" != "no"); then
+	PKG_CHECK_MODULES(ICAL, libical, dummy=yes,
+					AC_MSG_ERROR(libical is required))
+fi
+AC_SUBST(ICAL_CFLAGS)
+AC_SUBST(ICAL_LIBS)
+AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
+
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),
 					[enable_datafiles=${enableval}])

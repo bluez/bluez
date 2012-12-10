@@ -27,6 +27,17 @@ obexd_builtin_sources += obexd/plugins/opp.c
 obexd_builtin_modules += ftp
 obexd_builtin_sources += obexd/plugins/ftp.c obexd/plugins/ftp.h
 
+obexd_builtin_modules += irmc
+obexd_builtin_sources += obexd/plugins/irmc.c
+
+if OBEX
+obexd_builtin_modules += pbap
+obexd_builtin_sources += obexd/plugins/pbap.c \
+				obexd/plugins/vcard.h obexd/plugins/vcard.c \
+				obexd/plugins/phonebook.h \
+				obexd/plugins/phonebook-dummy.c
+endif
+
 
 libexec_PROGRAMS += obexd/src/obexd
 
@@ -43,11 +54,11 @@ obexd_src_obexd_SOURCES = $(gdbus_sources) $(btio_sources) $(gobex_sources) \
 			obexd/src/server.h obexd/src/server.c
 
 obexd_src_obexd_LDADD = lib/libbluetooth-private.la \
-				@DBUS_LIBS@ @GLIB_LIBS@ -ldl
+				@ICAL_LIBS@ @DBUS_LIBS@ @GLIB_LIBS@ -ldl
 
 obexd_src_obexd_LDFLAGS = -Wl,--export-dynamic
 
-obexd_src_obexd_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
+obexd_src_obexd_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ @ICAL_CFLAGS@ \
 					-DOBEX_PLUGIN_BUILTIN \
 					-DPLUGINDIR=\""$(obex_plugindir)"\" \
 					-fPIC -D_FILE_OFFSET_BITS=64
