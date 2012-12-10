@@ -109,18 +109,16 @@ builtin_nodist =
 include Makefile.plugins
 include Makefile.profiles
 
-if SAPPLUGIN
+if EXPERIMENTAL
 builtin_modules += sap
 builtin_sources += profiles/sap/main.c profiles/sap/manager.h \
 			profiles/sap/manager.c profiles/sap/server.h \
-			profiles/sap/server.c profiles/sap/sap.h
-
-builtin_nodist += profiles/sap/sap.c
+			profiles/sap/server.c profiles/sap/sap.h \
+			profiles/sap/sap-dummy.c
 
 noinst_LIBRARIES += profiles/sap/libsap.a
 
-profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-dummy.c \
-				profiles/sap/sap-u8500.c
+profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-u8500.c
 endif
 
 if MAINTAINER_MODE
@@ -184,8 +182,7 @@ endif
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
-			profiles/audio/audio.conf \
-			profiles/sap/sap-dummy.c profiles/sap/sap-u8500.c
+			profiles/audio/audio.conf
 
 include Makefile.tools
 include Makefile.obexd
@@ -263,7 +260,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = bluez.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles
+DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --disable-udev
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
@@ -280,9 +277,6 @@ SED_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
-
-profiles/sap/sap.c: profiles/sap/@SAP_DRIVER@
-	$(AM_V_GEN)$(LN_S) -f $(abs_top_srcdir)/$< $@
 
 scripts/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@

@@ -15,12 +15,7 @@ fi
 		--mandir=/usr/share/man \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--enable-health \
-		--enable-tools \
-		--enable-hid2hci \
 		--enable-test \
-		--enable-cups \
-		--enable-dbusoob \
-		--enable-neard \
-		--enable-sap \
+		--enable-tools \
+		--enable-experimental \
 		--disable-datafiles $*

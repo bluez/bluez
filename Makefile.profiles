@@ -1,5 +1,4 @@
 
-if AUDIOPLUGIN
 builtin_modules += audio
 builtin_sources += profiles/audio/main.c \
 			profiles/audio/manager.h profiles/audio/manager.c \
@@ -15,9 +14,7 @@ builtin_sources += profiles/audio/main.c \
 			profiles/audio/transport.h profiles/audio/transport.c \
 			profiles/audio/player.h profiles/audio/player.c \
 			profiles/audio/a2dp-codecs.h
-endif
 
-if NETWORKPLUGIN
 builtin_modules += network
 builtin_sources += profiles/network/main.c \
 			profiles/network/manager.h profiles/network/manager.c \
@@ -25,9 +22,7 @@ builtin_sources += profiles/network/main.c \
 			profiles/network/server.h profiles/network/server.c \
 			profiles/network/connection.h \
 			profiles/network/connection.c
-endif
 
-if INPUTPLUGIN
 builtin_modules += input
 builtin_sources += profiles/input/main.c \
 			profiles/input/manager.h profiles/input/manager.c \
@@ -38,9 +33,7 @@ builtin_modules += hog
 builtin_sources += profiles/input/hog_manager.c profiles/input/hog_device.h \
 			profiles/input/hog_device.c profiles/input/uhid_copy.h \
 			profiles/input/suspend.h profiles/input/suspend-dummy.c
-endif
 
-if HEALTHPLUGIN
 builtin_modules += health
 builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 			profiles/health/mcap.h profiles/health/mcap.c \
@@ -50,7 +43,6 @@ builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 			profiles/health/hdp_manager.c \
 			profiles/health/hdp.h profiles/health/hdp.c \
 			profiles/health/hdp_util.h profiles/health/hdp_util.c
-endif
 
 builtin_modules += thermometer
 builtin_sources += profiles/thermometer/main.c \

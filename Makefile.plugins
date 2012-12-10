@@ -14,12 +14,10 @@ builtin_sources += plugins/gatt-example.c
 builtin_modules += wiimote
 builtin_sources += plugins/wiimote.c
 
-if DBUSOOBPLUGIN
+if EXPERIMENTAL
 builtin_modules += dbusoob
 builtin_sources += plugins/dbusoob.c
-endif
 
-if NEARDPLUGIN
 builtin_modules += neard
 builtin_sources += plugins/neard.c
 endif
