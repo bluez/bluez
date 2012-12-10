@@ -166,8 +166,6 @@ void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 					char *pin_buf, gboolean *display);
 
-typedef void (*bt_hci_result_t) (uint8_t status, gpointer user_data);
-
 typedef void (*btd_adapter_powered_cb) (struct btd_adapter *adapter,
 						gboolean powered);
 void btd_adapter_register_powered_callback(struct btd_adapter *adapter,
