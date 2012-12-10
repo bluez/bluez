@@ -165,10 +165,6 @@ CLEANFILES += $(builtin_files) src/bluetooth.service
 
 man_MANS = src/bluetoothd.8
 
-if DATAFILES
-conf_DATA += src/main.conf
-endif
-
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
