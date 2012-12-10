@@ -1,5 +1,6 @@
 [Unit]
 Description=Bluetooth service
+Documentation=man:bluetoothd(8)
 
 [Service]
 Type=dbus
