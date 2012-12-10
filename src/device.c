@@ -3163,11 +3163,6 @@ struct agent *device_get_agent(struct btd_device *device)
 	return adapter_get_agent(device->adapter);
 }
 
-gboolean device_is_busy(struct btd_device *device)
-{
-	return device->browse ? TRUE : FALSE;
-}
-
 gboolean device_is_temporary(struct btd_device *device)
 {
 	return device->temporary;

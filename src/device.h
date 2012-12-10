@@ -61,7 +61,6 @@ const gchar *device_get_path(struct btd_device *device);
 struct agent *device_get_agent(struct btd_device *device);
 gboolean device_is_bredr(struct btd_device *device);
 gboolean device_is_le(struct btd_device *device);
-gboolean device_is_busy(struct btd_device *device);
 gboolean device_is_temporary(struct btd_device *device);
 gboolean device_is_paired(struct btd_device *device);
 gboolean device_is_bonded(struct btd_device *device);
