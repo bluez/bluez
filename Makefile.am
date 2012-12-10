@@ -177,21 +177,19 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 include Makefile.tools
 include Makefile.obexd
 
-if DATAFILES
 rulesdir = @UDEV_DIR@/rules.d
 
 udev_files =
 
 if HID2HCI
-udev_files += scripts/bluetooth-hid2hci.rules
+udev_files += tools/hid2hci.rules
 endif
 
-rules_DATA = $(foreach file,$(udev_files), scripts/97-$(notdir $(file)))
-endif
+EXTRA_DIST += tools/hid2hci.rules
+
+rules_DATA = $(foreach file,$(udev_files), tools/97-$(notdir $(file)))
 
 CLEANFILES += $(rules_DATA)
-
-EXTRA_DIST += scripts/bluetooth-hid2hci.rules
 
 EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \
@@ -270,7 +268,7 @@ SED_PROCESS = $(AM_V_GEN)$(MKDIR_P) $(dir $@) && \
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
-scripts/%.rules:
+tools/%.rules:
 	$(AM_V_GEN)cp $(subst 97-,,$@) $@
 
 $(lib_libbluetooth_la_OBJECTS): $(local_headers)
