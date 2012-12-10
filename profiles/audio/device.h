@@ -41,9 +41,6 @@ struct audio_device {
 	struct control *control;
 	struct target *target;
 
-	guint hs_preauth_id;
-	guint hs_auth_id;
-
 	struct dev_priv *priv;
 };
 

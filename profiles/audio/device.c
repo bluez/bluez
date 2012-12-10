@@ -338,11 +338,6 @@ void audio_device_unregister(struct audio_device *device)
 {
 	DBG("%s", device_get_path(device->btd_dev));
 
-	if (device->hs_preauth_id) {
-		g_source_remove(device->hs_preauth_id);
-		device->hs_preauth_id = 0;
-	}
-
 	if (device->sink)
 		sink_unregister(device);
 
