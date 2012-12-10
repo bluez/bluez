@@ -158,7 +158,7 @@ static gboolean parse_debug(const char *key, const char *value,
 static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
-				"Don't run as daemon in background" },
+				"Run with logging in foreground" },
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Enable debug information output", "DEBUG" },
@@ -267,13 +267,6 @@ int main(int argc, char *argv[])
 	}
 
 	g_option_context_free(context);
-
-	if (option_detach == TRUE) {
-		if (daemon(0, 0)) {
-			perror("Can't start daemon");
-			exit(1);
-		}
-	}
 
 	__obex_log_init("obexd", option_debug, option_detach);
 
