@@ -1203,7 +1203,8 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 		char str[18];
 
 		ba2str(&addr, str);
-		device = adapter_get_device(hdp_adapter->btd_adapter, str);
+		device = adapter_get_device(hdp_adapter->btd_adapter, str,
+								BDADDR_BREDR);
 		if (!device)
 			return;
 		hdp_device = create_health_device(device);

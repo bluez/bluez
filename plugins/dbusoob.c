@@ -240,7 +240,7 @@ static DBusMessage *add_remote_data(DBusConnection *conn, DBusMessage *msg,
 	if (bachk(remote_data.addr) < 0)
 		return btd_error_invalid_args(msg);
 
-	device = adapter_get_device(adapter, remote_data.addr);
+	device = adapter_get_device(adapter, remote_data.addr, BDADDR_BREDR);
 	if (!device)
 		return btd_error_failed(msg, "Creating device object failed");
 

@@ -37,7 +37,9 @@
 #include <dirent.h>
 
 #include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
 #include <bluetooth/uuid.h>
+#include <bluetooth/mgmt.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -1081,7 +1083,7 @@ void adapter_remove_device(struct btd_adapter *adapter,
 }
 
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
-							const gchar *address)
+				const gchar *address, uint8_t addr_type)
 {
 	struct btd_device *device;
 
@@ -1094,7 +1096,7 @@ struct btd_device *adapter_get_device(struct btd_adapter *adapter,
 	if (device)
 		return device;
 
-	return adapter_create_device(adapter, address, BDADDR_BREDR);
+	return adapter_create_device(adapter, address, addr_type);
 }
 
 sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter)
@@ -2035,14 +2037,14 @@ static void load_connections(struct btd_adapter *adapter)
 	}
 
 	for (l = conns; l != NULL; l = g_slist_next(l)) {
-		bdaddr_t *bdaddr = l->data;
+		struct mgmt_addr_info *addr = l->data;
 		struct btd_device *device;
 		char address[18];
 
-		ba2str(bdaddr, address);
+		ba2str(&addr->bdaddr, address);
 		DBG("Adding existing connection to %s", address);
 
-		device = adapter_get_device(adapter, address);
+		device = adapter_get_device(adapter, address, addr->type);
 		if (device)
 			adapter_add_connection(adapter, device);
 	}
@@ -3729,14 +3731,15 @@ static void check_oob_bonding_complete(struct btd_adapter *adapter,
 }
 
 void adapter_bonding_complete(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr, uint8_t status)
+					const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t status)
 {
 	struct btd_device *device;
 	char addr[18];
 
 	ba2str(bdaddr, addr);
 	if (status == 0)
-		device = adapter_get_device(adapter, addr);
+		device = adapter_get_device(adapter, addr, addr_type);
 	else
 		device = adapter_find_device(adapter, addr);
 

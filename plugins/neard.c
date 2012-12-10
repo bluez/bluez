@@ -298,7 +298,7 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 
 	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
 
-	device = adapter_get_device(adapter, remote_address);
+	device = adapter_get_device(adapter, remote_address, BDADDR_BREDR);
 
 	err = check_device(device);
 	if (err < 0) {
@@ -497,7 +497,7 @@ static int process_nokia_com_bt(struct btd_adapter *adapter, void *data,
 	ba2str(&nokia.address, remote_address);
 	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
 
-	device = adapter_get_device(adapter, remote_address);
+	device = adapter_get_device(adapter, remote_address, BDADDR_BREDR);
 
 	ret = check_device(device);
 	if (ret != 0) {

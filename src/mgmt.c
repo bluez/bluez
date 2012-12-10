@@ -85,7 +85,8 @@ static guint mgmt_watch = 0;
 static uint8_t mgmt_version = 0;
 static uint16_t mgmt_revision = 0;
 
-static bool get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
+static bool get_adapter_and_device(const bdaddr_t *src,
+					struct mgmt_addr_info *addr,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
 					bool create)
@@ -98,10 +99,10 @@ static bool get_adapter_and_device(const bdaddr_t *src, bdaddr_t *dst,
 		return false;
 	}
 
-	ba2str(dst, peer_addr);
+	ba2str(&addr->bdaddr, peer_addr);
 
 	if (create)
-		*device = adapter_get_device(*adapter, peer_addr);
+		*device = adapter_get_device(*adapter, peer_addr, addr->type);
 	else
 		*device = adapter_find_device(*adapter, peer_addr);
 
@@ -447,13 +448,15 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 }
 
 static void bonding_complete(struct controller_info *info,
-					const bdaddr_t *bdaddr, uint8_t status)
+					const struct mgmt_addr_info *addr,
+					uint8_t status)
 {
 	struct btd_adapter *adapter;
 
 	adapter = manager_find_adapter(&info->bdaddr);
 	if (adapter != NULL)
-		adapter_bonding_complete(adapter, bdaddr, status);
+		adapter_bonding_complete(adapter, &addr->bdaddr, addr->type,
+								status);
 }
 
 static void store_link_key(struct btd_adapter *adapter,
@@ -527,7 +530,7 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr,
 						&adapter, &device, true))
 		return;
 
@@ -543,7 +546,7 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 			device_set_temporary(device, FALSE);
 	}
 
-	bonding_complete(info, &ev->key.addr.bdaddr, 0);
+	bonding_complete(info, &ev->key.addr, 0);
 }
 
 static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
@@ -578,8 +581,8 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
-						&adapter, &device, true))
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr, &adapter,
+								&device, true))
 		return;
 
 	memset(&eir_data, 0, sizeof(eir_data));
@@ -588,8 +591,6 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 
 	if (eir_data.class != 0)
 		device_set_class(device, eir_data.class);
-
-	device_set_addr_type(device, ev->addr.type);
 
 	adapter_add_connection(adapter, device);
 
@@ -633,7 +634,7 @@ static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, false))
 		return;
 
@@ -665,7 +666,7 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, false))
 		return;
 
@@ -677,7 +678,8 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 	}
 
 	/* In the case of security mode 3 devices */
-	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->status);
+	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
+								ev->status);
 }
 
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
@@ -758,7 +760,7 @@ static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, true))
 		return;
 
@@ -886,7 +888,7 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, true))
 		return;
 
@@ -924,7 +926,7 @@ static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, true))
 		return;
 
@@ -964,7 +966,7 @@ static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, true))
 		return;
 
@@ -1269,14 +1271,14 @@ static void disconnect_complete(int sk, uint16_t index, uint8_t status,
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &rp->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &rp->addr,
 						&adapter, &device, false))
 		return;
 
 	if (device)
 		adapter_remove_connection(adapter, device);
 
-	adapter_bonding_complete(adapter, &rp->addr.bdaddr,
+	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
 						MGMT_STATUS_DISCONNECTED);
 }
 
@@ -1303,7 +1305,7 @@ static void pair_device_complete(int sk, uint16_t index, uint8_t status,
 
 	info = &controllers[index];
 
-	bonding_complete(info, &rp->addr.bdaddr, status);
+	bonding_complete(info, &rp->addr, status);
 }
 
 static void get_connections_complete(int sk, uint16_t index, void *buf,
@@ -1332,8 +1334,11 @@ static void get_connections_complete(int sk, uint16_t index, void *buf,
 	info = &controllers[index];
 
 	for (i = 0; i < rp->conn_count; i++) {
-		bdaddr_t *bdaddr = g_memdup(&rp->addr[i], sizeof(bdaddr_t));
-		info->connections = g_slist_append(info->connections, bdaddr);
+		struct mgmt_addr_info *addr;
+
+		addr = g_memdup(&rp->addr[i], sizeof(*addr));
+
+		info->connections = g_slist_append(info->connections, addr);
 	}
 }
 
@@ -1710,7 +1715,7 @@ static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	bonding_complete(info, &ev->addr.bdaddr, ev->status);
+	bonding_complete(info, &ev->addr, ev->status);
 }
 
 static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t len)
@@ -1843,7 +1848,7 @@ static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, false))
 		return;
 
@@ -1874,7 +1879,7 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, false))
 		return;
 
@@ -1905,7 +1910,7 @@ static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
 						&adapter, &device, false))
 		return;
 
@@ -1998,7 +2003,7 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr.bdaddr,
+	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr,
 						&adapter, &device, true))
 		return;
 
@@ -2017,7 +2022,7 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 	}
 
 	if (ev->key.master)
-		bonding_complete(info, &ev->key.addr.bdaddr, 0);
+		bonding_complete(info, &ev->key.addr, 0);
 }
 
 static void mgmt_cod_changed(int sk, uint16_t index, void *buf, size_t len)

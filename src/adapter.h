@@ -90,7 +90,7 @@ void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
-							const char *address);
+				const gchar *address, uint8_t addr_type);
 sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter);
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
@@ -223,7 +223,8 @@ int adapter_create_bonding(struct btd_adapter *adapter,
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr);
 
 void adapter_bonding_complete(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr, uint8_t status);
+					const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t status);
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
 void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
