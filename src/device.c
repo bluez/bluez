@@ -203,6 +203,11 @@ static uint16_t uuid_list[] = {
 	0
 };
 
+static int device_browse_primary(struct btd_device *device, DBusMessage *msg,
+							gboolean secure);
+static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
+					uuid_t *search, gboolean reverse);
+
 static gboolean store_device_info_cb(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -3010,7 +3015,7 @@ static void att_browse_cb(gpointer user_data)
 							device->browse);
 }
 
-int device_browse_primary(struct btd_device *device, DBusMessage *msg,
+static int device_browse_primary(struct btd_device *device, DBusMessage *msg,
 								gboolean secure)
 {
 	struct btd_adapter *adapter = device->adapter;
@@ -3073,7 +3078,7 @@ done:
 	return 0;
 }
 
-int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
+static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
 					uuid_t *search, gboolean reverse)
 {
 	struct btd_adapter *adapter = device->adapter;
