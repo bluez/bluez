@@ -622,6 +622,7 @@ static gboolean ext_io_disconnected(GIOChannel *io, GIOCondition cond,
 
 	DBG("%s disconnected from %s", ext->name, addr);
 drop:
+	device_profile_disconnected(conn->device, &ext->p, 0);
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
 	return FALSE;
