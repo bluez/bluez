@@ -60,25 +60,18 @@ PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.4, dummy=yes,
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-AC_ARG_WITH(dbusconfdir, AC_HELP_STRING([--with-dbusconfdir=PATH],
-	[path to D-Bus config directory]), [path_dbusconf=${withval}],
-		[path_dbusconf="`$PKG_CONFIG --variable=sysconfdir dbus-1`"])
-if (test -z "${path_dbusconf}"); then
-	DBUS_CONFDIR="${sysconfdir}/dbus-1/system.d"
-else
-	DBUS_CONFDIR="${path_dbusconf}/dbus-1/system.d"
+AC_ARG_WITH([dbusconfdir], AC_HELP_STRING([--with-dbusconfdir=DIR],
+				[path to D-Bus configuration directory]),
+					[path_dbusconfdir=${withval}])
+if (test -z "${path_dbusconfdir}"); then
+	AC_MSG_CHECKING([D-Bus configuration directory])
+	path_dbusconfdir="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
+	if (test -z "${path_dbusconfdir}"); then
+		AC_MSG_ERROR([D-Bus configuration directory is required])
+	fi
+	AC_MSG_RESULT([${path_dbusconfdir}])
+	AC_SUBST(DBUS_CONFDIR, [${path_dbusconfdir}])
 fi
-AC_SUBST(DBUS_CONFDIR)
-
-AC_ARG_WITH(dbusdatadir, AC_HELP_STRING([--with-dbusdatadir=PATH],
-	[path to D-Bus data directory]), [path_dbusdata=${withval}],
-		[path_dbusdata="`$PKG_CONFIG --variable=datadir dbus-1`"])
-if (test -z "${path_dbusdata}"); then
-	DBUS_DATADIR="${datadir}/dbus-1/system-services"
-else
-	DBUS_DATADIR="${path_dbusdata}/dbus-1/system-services"
-fi
-AC_SUBST(DBUS_DATADIR)
 
 AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
