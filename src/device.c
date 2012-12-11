@@ -2282,12 +2282,22 @@ void device_probe_profile(gpointer a, gpointer b)
 	ba2str(&device->bdaddr, addr);
 
 	err = profile->device_probe(profile, device, probe_uuids);
-	if (err < 0)
+	if (err < 0) {
 		error("%s profile probe failed for %s", profile->name, addr);
-	else
-		device->profiles = g_slist_append(device->profiles, profile);
+		g_slist_free(probe_uuids);
+		return;
+	}
 
+	device->profiles = g_slist_append(device->profiles, profile);
 	g_slist_free(probe_uuids);
+
+	if (!profile->auto_connect || !device->general_connect)
+		return;
+
+	device->pending = g_slist_append(device->pending, profile);
+
+	if (g_slist_length(device->pending) == 1)
+		connect_next(device);
 }
 
 void device_remove_profile(gpointer a, gpointer b)
