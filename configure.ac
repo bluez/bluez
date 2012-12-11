@@ -155,7 +155,10 @@ AM_CONDITIONAL(UDEV, test "${enable_udev}" != "no")
 
 AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
 		test "${enable_udev}" != "no" && test "${enable_usb}" != "no")
-AM_CONDITIONAL(CUPS, test "${enable_tools}" != "no")
+
+AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
+                [disable CUPS printer support]), [enable_cups=${enableval}])
+AM_CONDITIONAL(CUPS, test "${enable_cups}" != "no")
 
 AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
 		[disable OBEX profile support]), [enable_obex=${enableval}])
