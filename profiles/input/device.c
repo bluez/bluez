@@ -47,19 +47,15 @@
 #include "../src/storage.h"
 #include "../src/dbus-common.h"
 
+#include "manager.h"
 #include "device.h"
 #include "error.h"
 #include <btio/btio.h>
 
 #include "sdp-client.h"
 
-struct pending_connect {
-	struct btd_profile *profile;
-};
-
 struct input_device {
 	struct btd_device	*device;
-	struct pending_connect	*pending;
 	char			*path;
 	char			*uuid;
 	bdaddr_t		src;
@@ -99,9 +95,6 @@ static void input_device_free(struct input_device *idev)
 	btd_device_unref(idev->device);
 	g_free(idev->name);
 	g_free(idev->path);
-
-	if (idev->pending)
-		g_free(idev->pending);
 
 	if (idev->ctrl_watch > 0)
 		g_source_remove(idev->ctrl_watch);
@@ -481,46 +474,25 @@ static int input_device_connected(struct input_device *idev)
 	idev->dc_id = device_add_disconnect_watch(idev->device, disconnect_cb,
 							idev, NULL);
 
+	input_manager_device_connected(idev->device, 0);
+
 	return 0;
-}
-
-static void connect_reply(struct input_device *idev, int err,
-							const char *err_msg)
-{
-	struct pending_connect *pending = idev->pending;
-
-	if (!pending)
-		return;
-
-	idev->pending = NULL;
-
-	if (err_msg)
-		error("%s", err_msg);
-
-	device_profile_connected(idev->device, pending->profile, err);
-	g_free(pending);
 }
 
 static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 							gpointer user_data)
 {
 	struct input_device *idev = user_data;
-	const char *err_msg;
 	int err;
 
 	if (conn_err) {
-		err_msg = conn_err->message;
 		err = -EIO;
 		goto failed;
 	}
 
 	err = input_device_connected(idev);
-	if (err < 0) {
-		err_msg = strerror(-err);
+	if (err < 0)
 		goto failed;
-	}
-
-	connect_reply(idev, 0, NULL);
 
 	idev->intr_watch = g_io_add_watch(idev->intr_io,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -529,7 +501,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	connect_reply(idev, err, err_msg);
+	input_manager_device_connected(idev->device, err);
 
 	/* So we guarantee the interrupt channel is closed before the
 	 * control channel (if we only do unref GLib will close it only
@@ -555,7 +527,6 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 
 	if (conn_err) {
 		error("%s", conn_err->message);
-		connect_reply(idev, -EIO, conn_err->message);
 		goto failed;
 	}
 
@@ -569,7 +540,6 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("%s", err->message);
-		connect_reply(idev, -EIO, err->message);
 		g_error_free(err);
 		goto failed;
 	}
@@ -583,6 +553,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
+	input_manager_device_connected(idev->device, -EIO);
 	g_io_channel_unref(idev->ctrl_io);
 	idev->ctrl_io = NULL;
 }
@@ -608,7 +579,6 @@ static int dev_connect(struct input_device *idev)
 		return 0;
 
 	error("%s", err->message);
-	connect_reply(idev, -EIO, err->message);
 	g_error_free(err);
 
 	return -EIO;
@@ -622,14 +592,11 @@ int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
 	if (!idev)
 		return -ENOENT;
 
-	if (idev->pending)
+	if (idev->ctrl_io)
 		return -EBUSY;
 
 	if (is_connected(idev))
 		return -EALREADY;
-
-	idev->pending = g_new0(struct pending_connect, 1);
-	idev->pending->profile = profile;
 
 	return dev_connect(idev);
 }
@@ -734,7 +701,7 @@ int input_device_unregister(const char *path, const char *uuid)
 	if (idev == NULL)
 		return -EINVAL;
 
-	if (idev->pending) {
+	if (idev->ctrl_io) {
 		/* Pending connection running */
 		return -EBUSY;
 	}

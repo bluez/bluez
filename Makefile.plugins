@@ -56,8 +56,7 @@ builtin_sources += profiles/network/main.c \
 			profiles/network/connection.c
 
 builtin_modules += input
-builtin_sources += profiles/input/main.c \
-			profiles/input/manager.h profiles/input/manager.c \
+builtin_sources += profiles/input/manager.h profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
 			profiles/input/device.h profiles/input/device.c
 

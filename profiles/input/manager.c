@@ -34,6 +34,7 @@
 #include <bluetooth/uuid.h>
 
 #include "log.h"
+#include "plugin.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"
@@ -100,10 +101,39 @@ static struct btd_profile input_profile = {
 	.adapter_remove = hid_server_remove,
 };
 
-int input_manager_init(GKeyFile *config)
+void input_manager_device_connected(struct btd_device *dev, int err)
 {
+	device_profile_connected(dev, &input_profile, err);
+}
+
+void input_manager_device_disconnected(struct btd_device *dev, int err)
+{
+	device_profile_disconnected(dev, &input_profile, err);
+}
+
+static GKeyFile *load_config_file(const char *file)
+{
+	GKeyFile *keyfile;
 	GError *err = NULL;
 
+	keyfile = g_key_file_new();
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	return keyfile;
+}
+
+static int input_init(void)
+{
+	GKeyFile *config;
+	GError *err = NULL;
+
+	config = load_config_file(CONFIGDIR "/input.conf");
 	if (config) {
 		idle_timeout = g_key_file_get_integer(config, "General",
 						"IdleTimeout", &err);
@@ -115,10 +145,16 @@ int input_manager_init(GKeyFile *config)
 
 	btd_profile_register(&input_profile);
 
+	if (config)
+		g_key_file_free(config);
+
 	return 0;
 }
 
-void input_manager_exit(void)
+static void input_exit(void)
 {
 	btd_profile_unregister(&input_profile);
 }
+
+BLUETOOTH_PLUGIN_DEFINE(input, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+							input_init, input_exit)

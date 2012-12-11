@@ -21,5 +21,5 @@
  *
  */
 
-int input_manager_init(GKeyFile *config);
-void input_manager_exit(void);
+void input_manager_device_connected(struct btd_device *dev, int err);
+void input_manager_device_disconnected(struct btd_device *dev, int err);
