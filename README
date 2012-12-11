@@ -10,15 +10,16 @@ Compilation and installation
 ============================
 
 In order to compile Bluetooth utilities you need following software packages:
-	- Linux Bluetooth protocol stack (BlueZ)
 	- GCC compiler
-	- D-Bus library
 	- GLib library
+	- D-Bus library
 	- USB library (optional)
+	- udev library (optional)
+	- readline (command line clients)
 
 To configure run:
 	./configure --prefix=/usr --mandir=/usr/share/man \
-		--sysconfdir=/etc --localstatedir=/var --libexecdir=/lib
+				--sysconfdir=/etc --localstatedir=/var
 
 Configure automatically searches for all required components and packages.
 
