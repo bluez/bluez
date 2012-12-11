@@ -9,8 +9,6 @@ noinst_LTLIBRARIES =
 
 bin_PROGRAMS =
 
-libexec_PROGRAMS =
-
 noinst_PROGRAMS =
 
 dist_man_MANS =
@@ -20,6 +18,10 @@ dist_noinst_MANS =
 CLEANFILES =
 
 EXTRA_DIST =
+
+libexecdir = @libexecdir@/bluetooth
+
+libexec_PROGRAMS =
 
 includedir = @includedir@/bluetooth
 
