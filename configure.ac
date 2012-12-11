@@ -1,7 +1,8 @@
 AC_PREREQ(2.60)
 AC_INIT(bluez, 5.x)
 
-AM_INIT_AUTOMAKE([foreign subdir-objects color-tests])
+AM_INIT_AUTOMAKE([foreign subdir-objects color-tests silent-rules
+					tar-pax no-dist-gzip dist-xz])
 AM_CONFIG_HEADER(config.h)
 AC_USE_SYSTEM_EXTENSIONS
 
