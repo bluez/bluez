@@ -74,6 +74,19 @@ if (test -z "${path_dbusconfdir}"); then
 	AC_SUBST(DBUS_CONFDIR, [${path_dbusconfdir}])
 fi
 
+AC_ARG_WITH([dbussystembusdir], AC_HELP_STRING([--with-dbussystembusdir=DIR],
+				[path to D-Bus system bus services directory]),
+					[path_dbussystembusdir=${withval}])
+if (test -z "${path_dbussystembusdir}"); then
+	AC_MSG_CHECKING([D-Bus system bus services dir])
+	path_dbussystembusdir="`$PKG_CONFIG --variable=system_bus_services_dir dbus-1`"
+	if (test -z "${path_dbusconfdir}"); then
+		AC_MSG_ERROR([D-Bus system bus services directory is required])
+	fi
+	AC_MSG_RESULT([${path_dbussystembusdir}])
+	AC_SUBST(DBUS_SYSTEMBUSDIR, [${path_dbussystembusdir}])
+fi
+
 AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
 AM_CONDITIONAL(LIBRARY, test "${enable_library}" = "yes")

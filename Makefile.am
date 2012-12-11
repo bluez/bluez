@@ -32,9 +32,6 @@ if DATAFILES
 dbusdir = @DBUS_CONFDIR@/dbus-1/system.d
 dbus_DATA = src/bluetooth.conf
 
-dbusservicedir = $(datadir)/dbus-1/system-services
-dbusservice_DATA = src/org.bluez.service
-
 confdir = $(sysconfdir)/bluetooth
 conf_DATA =
 
@@ -44,8 +41,10 @@ endif
 
 if SYSTEMD
 systemdsystemunitdir = @SYSTEMD_SYSTEMUNITDIR@
-
 systemdsystemunit_DATA = src/bluetooth.service
+
+dbussystembusdir = @DBUS_SYSTEMBUSDIR@
+dbussystembus_DATA = src/org.bluez.service
 endif
 
 EXTRA_DIST += src/bluetooth.service.in
