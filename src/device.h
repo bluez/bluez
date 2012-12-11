@@ -109,3 +109,10 @@ void btd_device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
 			uint16_t vendor_id, uint16_t product_id,
 			uint16_t product_ver);
 GIOChannel *device_att_connect(gpointer user_data);
+
+struct btd_profile;
+
+void device_profile_connected(struct btd_device *dev,
+					struct btd_profile *profile, int err);
+void device_profile_disconnected(struct btd_device *dev,
+					struct btd_profile *profile, int err);

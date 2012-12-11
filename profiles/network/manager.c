@@ -83,7 +83,7 @@ static void connect_profile_cb(struct btd_device *device, int err,
 {
 	struct connect_req *req = data;
 
-	req->cb(req->profile, device, err);
+	req->cb(device, req->profile, err);
 
 	g_free(req);
 }
@@ -122,7 +122,7 @@ static int disconnect_profile(struct btd_device *dev,
 		return err;
 
 	if (cb)
-		cb(profile, dev, 0);
+		cb(dev, profile, 0);
 
 	return 0;
 }
@@ -142,16 +142,16 @@ static void network_remove(struct btd_profile *p, struct btd_device *device)
 	connection_unregister(device);
 }
 
-static int panu_connect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int panu_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_PANU, cb);
+	return connect_profile(dev, profile, BNEP_SVC_PANU,
+						device_profile_connected);
 }
 
-static int panu_disconnect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int panu_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_PANU, cb);
+	return disconnect_profile(dev, profile, BNEP_SVC_PANU,
+						device_profile_disconnected);
 }
 
 static int panu_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -181,16 +181,16 @@ static int gn_probe(struct btd_profile *p, struct btd_device *device,
 	return connection_register(device, BNEP_SVC_GN);
 }
 
-static int gn_connect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int gn_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_GN, cb);
+	return connect_profile(dev, profile, BNEP_SVC_GN,
+						device_profile_connected);
 }
 
-static int gn_disconnect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int gn_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_GN, cb);
+	return disconnect_profile(dev, profile, BNEP_SVC_GN,
+						device_profile_disconnected);
 }
 
 static int gn_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -220,16 +220,16 @@ static int nap_probe(struct btd_profile *p, struct btd_device *device,
 	return connection_register(device, BNEP_SVC_NAP);
 }
 
-static int nap_connect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int nap_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_NAP, cb);
+	return connect_profile(dev, profile, BNEP_SVC_NAP,
+						device_profile_connected);
 }
 
-static int nap_disconnect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int nap_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_NAP, cb);
+	return disconnect_profile(dev, profile, BNEP_SVC_NAP,
+						device_profile_disconnected);
 }
 
 static int nap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)

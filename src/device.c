@@ -1149,7 +1149,7 @@ static void dev_disconn_profile(gpointer a, gpointer b)
 	if (!profile->disconnect)
 		return;
 
-	profile->disconnect(dev, profile, NULL);
+	profile->disconnect(dev, profile);
 }
 
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
@@ -1221,7 +1221,7 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static int connect_next(struct btd_device *dev, btd_profile_cb cb)
+static int connect_next(struct btd_device *dev)
 {
 	struct btd_profile *profile;
 	int err = -ENOENT;
@@ -1231,7 +1231,7 @@ static int connect_next(struct btd_device *dev, btd_profile_cb cb)
 
 		profile = dev->pending->data;
 
-		err = profile->connect(dev, profile, cb);
+		err = profile->connect(dev, profile);
 		if (err == 0)
 			return 0;
 
@@ -1243,15 +1243,15 @@ static int connect_next(struct btd_device *dev, btd_profile_cb cb)
 	return err;
 }
 
-static void dev_profile_connected(struct btd_profile *profile,
-					struct btd_device *dev, int err)
+void device_profile_connected(struct btd_device *dev,
+					struct btd_profile *profile, int err)
 {
 	DBG("%s (%d)", strerror(-err), -err);
 
 	dev->pending = g_slist_remove(dev->pending, profile);
 
 	if (!err) {
-		if (connect_next(dev, dev_profile_connected) == 0)
+		if (connect_next(dev) == 0)
 			return;
 		dev->profiles_connected = TRUE;
 	}
@@ -1379,7 +1379,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 		return btd_error_not_available(msg);
 
 start_connect:
-	err = connect_next(dev, dev_profile_connected);
+	err = connect_next(dev);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -1415,8 +1415,8 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
-static void profile_disconnected(struct btd_profile *profile,
-					struct btd_device *dev, int err)
+void device_profile_disconnected(struct btd_device *dev,
+					struct btd_profile *profile, int err)
 {
 	if (!dev->disconnect)
 		return;
@@ -1457,7 +1457,7 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 	if (!p->disconnect)
 		return btd_error_not_supported(msg);
 
-	err = p->disconnect(dev, p, profile_disconnected);
+	err = p->disconnect(dev, p);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 

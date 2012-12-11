@@ -645,7 +645,7 @@ static void pending_reply(DBusPendingCall *call, void *user_data)
 
 	if (!dbus_error_is_set(&err)) {
 		if (conn->cb) {
-			conn->cb(&ext->p, conn->device, 0);
+			conn->cb(conn->device, &ext->p, 0);
 			conn->cb = NULL;
 		}
 
@@ -660,7 +660,7 @@ static void pending_reply(DBusPendingCall *call, void *user_data)
 						err.name, err.message);
 
 	if (conn->cb) {
-		conn->cb(&ext->p, conn->device, -ECONNREFUSED);
+		conn->cb(conn->device, &ext->p, -ECONNREFUSED);
 		conn->cb = NULL;
 	}
 
@@ -798,7 +798,7 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 
 drop:
 	if (conn->cb) {
-		conn->cb(&ext->p, conn->device, err ? -err->code : -EIO);
+		conn->cb(conn->device, &ext->p, err ? -err->code : -EIO);
 		conn->cb = NULL;
 	}
 	if (io_err)
@@ -1374,7 +1374,7 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	return;
 
 failed:
-	conn->cb(&ext->p, conn->device, err);
+	conn->cb(conn->device, &ext->p, err);
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
 }
@@ -1396,8 +1396,7 @@ static int resolve_service(struct ext_io *conn, const bdaddr_t *src,
 	return err;
 }
 
-static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile)
 {
 	struct btd_adapter *adapter;
 	struct ext_io *conn;
@@ -1432,7 +1431,7 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile,
 
 	conn->adapter = btd_adapter_ref(adapter);
 	conn->device = btd_device_ref(dev);
-	conn->cb = cb;
+	conn->cb = device_profile_connected;
 
 	ext->conns = g_slist_append(ext->conns, conn);
 
@@ -1476,8 +1475,7 @@ static int send_disconn_req(struct ext_profile *ext, struct ext_io *conn)
 }
 
 static int ext_disconnect_dev(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	struct ext_profile *ext;
 	struct ext_io *conn;
@@ -1498,7 +1496,7 @@ static int ext_disconnect_dev(struct btd_device *dev,
 	if (err < 0)
 		return err;
 
-	conn->cb = cb;
+	conn->cb = device_profile_disconnected;
 
 	return 0;
 }

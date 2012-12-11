@@ -498,7 +498,7 @@ static void connect_reply(struct input_device *idev, int err,
 	if (err_msg)
 		error("%s", err_msg);
 
-	pending->cb(pending->profile, idev->device, err);
+	pending->cb(idev->device, pending->profile, err);
 	g_free(pending);
 }
 
@@ -615,8 +615,7 @@ static int dev_connect(struct input_device *idev)
 	return -EIO;
 }
 
-int input_device_connect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
 {
 	struct input_device *idev;
 
@@ -632,13 +631,12 @@ int input_device_connect(struct btd_device *dev, struct btd_profile *profile,
 
 	idev->pending = g_new0(struct pending_connect, 1);
 	idev->pending->profile = profile;
-	idev->pending->cb = cb;
+	idev->pending->cb = device_profile_connected;
 
 	return dev_connect(idev);
 }
 
-int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile,
-							btd_profile_cb cb)
+int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
 	struct input_device *idev;
 	int err;
@@ -651,8 +649,7 @@ int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile,
 	if (err < 0)
 		return err;
 
-	if (cb)
-		cb(profile, dev, 0);
+	device_profile_disconnected(dev, profile, 0);
 
 	return 0;
 }

@@ -199,14 +199,13 @@ static void profile_cb(struct audio_device *dev, int err, void *data)
 	struct profile_req *req = data;
 
 	if (req->cb)
-		req->cb(req->profile, req->device, err);
+		req->cb(req->device, req->profile, err);
 
 	g_free(req);
 }
 
 static int a2dp_source_connect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -221,7 +220,7 @@ static int a2dp_source_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_connected);
 
 	err = source_connect(audio_dev, profile_cb, req);
 	if (err < 0) {
@@ -233,8 +232,7 @@ static int a2dp_source_connect(struct btd_device *dev,
 }
 
 static int a2dp_source_disconnect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -249,7 +247,7 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_disconnected);
 
 	err = source_disconnect(audio_dev, FALSE, profile_cb, req);
 	if (err < 0) {
@@ -261,8 +259,7 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 }
 
 static int a2dp_sink_connect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -277,7 +274,7 @@ static int a2dp_sink_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_connected);
 
 	err = sink_connect(audio_dev, profile_cb, req);
 	if (err < 0) {
@@ -289,8 +286,7 @@ static int a2dp_sink_connect(struct btd_device *dev,
 }
 
 static int a2dp_sink_disconnect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -305,7 +301,7 @@ static int a2dp_sink_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_disconnected);
 
 	err = sink_disconnect(audio_dev, FALSE, profile_cb, req);
 	if (err < 0) {
@@ -317,8 +313,7 @@ static int a2dp_sink_disconnect(struct btd_device *dev,
 }
 
 static int avrcp_control_connect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -333,7 +328,7 @@ static int avrcp_control_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_connected);
 
 	err = control_connect(audio_dev, profile_cb, req);
 	if (err < 0) {
@@ -345,8 +340,7 @@ static int avrcp_control_connect(struct btd_device *dev,
 }
 
 static int avrcp_control_disconnect(struct btd_device *dev,
-						struct btd_profile *profile,
-						btd_profile_cb cb)
+						struct btd_profile *profile)
 {
 	const gchar *path = device_get_path(dev);
 	struct audio_device *audio_dev;
@@ -361,7 +355,7 @@ static int avrcp_control_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	req = new_profile_request(dev, profile, cb);
+	req = new_profile_request(dev, profile, device_profile_disconnected);
 
 	err = control_disconnect(audio_dev, profile_cb, req);
 	if (err < 0) {

@@ -29,8 +29,8 @@
 
 struct btd_profile;
 
-typedef void (*btd_profile_cb)(struct btd_profile *profile,
-					struct btd_device *device, int err);
+typedef void (*btd_profile_cb)(struct btd_device *device,
+					struct btd_profile *profile, int err);
 
 struct btd_profile {
 	const char *name;
@@ -46,11 +46,10 @@ struct btd_profile {
 	void (*device_remove) (struct btd_profile *p,
 						struct btd_device *device);
 
-	int (*connect) (struct btd_device *device, struct btd_profile *profile,
-							btd_profile_cb cb);
+	int (*connect) (struct btd_device *device,
+						struct btd_profile *profile);
 	int (*disconnect) (struct btd_device *device,
-						struct btd_profile *profile,
-						btd_profile_cb cb);
+						struct btd_profile *profile);
 
 	int (*adapter_probe) (struct btd_profile *p,
 						struct btd_adapter *adapter);
