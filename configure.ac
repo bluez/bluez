@@ -127,22 +127,22 @@ if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
 	AC_CHECK_LIB(udev, udev_hwdb_new,
 		AC_DEFINE(HAVE_UDEV_HWDB_NEW, 1,
 			[Define to 1 if you have the udev_hwdb_new() function.]))
-	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
-	if (test -z "${UDEV_DATADIR}"); then
-		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
-	else
-		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
-	fi
-	AC_SUBST(UDEV_DATADIR)
-	UDEV_DIR="`$PKG_CONFIG --variable=udevdir udev`"
-	if (test -z "${UDEV_DIR}"); then
-		UDEV_DIR="${libdir}/udev"
-	fi
-	AC_SUBST(UDEV_DIR)
 fi
 AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
 AM_CONDITIONAL(UDEV, test "${enable_udev}" != "no")
+
+AC_ARG_WITH([udevdir], AC_HELP_STRING([--with-udevdir=DIR],
+			[path to udev directory]), [path_udevdir=${withval}])
+if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
+	AC_MSG_CHECKING([udev directory])
+	path_udevdir="`$PKG_CONFIG --variable=udevdir udev`"
+	if (test -z "${path_udevdir}"); then
+		AC_MSG_ERROR(udev directory is required)
+	fi
+	AC_MSG_RESULT([${path_udevdir}])
+	AC_SUBST(UDEV_DIR, [${path_udevdir}])
+fi
 
 AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
 		test "${enable_udev}" != "no" && test "${enable_usb}" != "no")
