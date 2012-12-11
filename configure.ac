@@ -97,13 +97,13 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
-AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
-		[enable testing tools]), [enable_tools=${enableval}])
-AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
+AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
+		[disable Bluetooth tools]), [enable_tools=${enableval}])
+AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
 AC_ARG_ENABLE(readline, AC_HELP_STRING([--disable-readline],
 		[disable readline support]), [enable_readline=${enableval}])
-if (test "${enable_tools}" = "yes" && test "${enable_readline}" != "no"  ); then
+if (test "${enable_tools}" != "no" && test "${enable_readline}" != "no"  ); then
 	AC_CHECK_HEADERS(readline/readline.h, dummy=yes,
 		AC_MSG_ERROR(readline header files are required))
 fi
@@ -111,7 +111,7 @@ AM_CONDITIONAL(READLINE, test "${enable_readline}" != "no")
 
 AC_ARG_ENABLE(usb, AC_HELP_STRING([--disable-usb],
 			[disable USB support]), [enable_usb=${enableval}])
-if (test "${enable_tools}" = "yes" && test "${enable_usb}" != "no"  ); then
+if (test "${enable_tools}" != "no" && test "${enable_usb}" != "no"  ); then
 	PKG_CHECK_MODULES(USB, libusb, dummy=yes,
 			AC_MSG_ERROR(USB library support is required))
 	AC_SUBST(USB_CFLAGS)
@@ -130,7 +130,7 @@ AM_CONDITIONAL(USB, test "${enable_usb}" != "no")
 
 AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
 		[disable udev device support]), [enable_udev=${enableval}])
-if (test "${enable_tools}" = "yes" && test "${enable_udev}" != "no"); then
+if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
 	PKG_CHECK_MODULES(UDEV, libudev >= 143, dummy=yes,
 				AC_MSG_ERROR(libudev >= 143 is required))
 	AC_CHECK_LIB(udev, udev_hwdb_new,
@@ -153,9 +153,9 @@ AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
 AM_CONDITIONAL(UDEV, test "${enable_udev}" != "no")
 
-AM_CONDITIONAL(HID2HCI, test "${enable_tools}" = "yes" &&
+AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
 		test "${enable_udev}" != "no" && test "${enable_usb}" != "no")
-AM_CONDITIONAL(CUPS, test "${enable_tools}" = "yes")
+AM_CONDITIONAL(CUPS, test "${enable_tools}" != "no")
 
 AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
 		[disable OBEX profile support]), [enable_obex=${enableval}])
