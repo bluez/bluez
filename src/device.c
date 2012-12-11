@@ -176,7 +176,7 @@ struct btd_device {
 	guint		attachid;		/* Attrib server attach */
 
 	gboolean	connected;
-	gboolean	profiles_connected;	/* Profile level connected */
+	GSList		*connected_profiles;
 
 	sdp_list_t	*tmp_records;
 
@@ -185,6 +185,7 @@ struct btd_device {
 	gboolean	blocked;
 	gboolean	bonded;
 	gboolean	auto_connect;
+	gboolean	general_connect;
 
 	bool		legacy;
 	int8_t		rssi;
@@ -1177,8 +1178,10 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->disconn_timer)
 		return;
 
-	if (device->profiles_connected)
-		g_slist_foreach(device->profiles, dev_disconn_profile, device);
+	g_slist_foreach(device->connected_profiles, dev_disconn_profile,
+								device);
+	g_slist_free(device->connected_profiles);
+	device->connected_profiles = NULL;
 
 	g_slist_free(device->pending);
 	device->pending = NULL;
@@ -1251,13 +1254,19 @@ void device_profile_connected(struct btd_device *dev,
 	dev->pending = g_slist_remove(dev->pending, profile);
 
 	if (!err) {
+		dev->connected_profiles =
+				g_slist_append(dev->connected_profiles,
+								profile);
 		if (connect_next(dev) == 0)
 			return;
-		dev->profiles_connected = TRUE;
 	}
 
 	if (!dev->connect)
 		return;
+
+	if (!err && dbus_message_is_method_call(dev->connect, DEVICE_INTERFACE,
+								"Connect"))
+		dev->general_connect = TRUE;
 
 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
 
@@ -1340,9 +1349,6 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 	DBG("%s %s, client %s", dev->path, uuid ? uuid : "(all)",
 						dbus_message_get_sender(msg));
 
-	if (dev->profiles_connected)
-		return btd_error_already_connected(msg);
-
 	if (dev->pending || dev->connect || dev->browse)
 		return btd_error_in_progress(msg);
 
@@ -1369,6 +1375,12 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 		p = l->data;
 
 		if (!p->auto_connect)
+			continue;
+
+		if (g_slist_find(dev->pending, p))
+			continue;
+
+		if (g_slist_find(dev->connected_profiles, p))
 			continue;
 
 		dev->pending = g_slist_insert_sorted(dev->pending, p,
@@ -1418,6 +1430,9 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 void device_profile_disconnected(struct btd_device *dev,
 					struct btd_profile *profile, int err)
 {
+	dev->connected_profiles = g_slist_remove(dev->connected_profiles,
+								profile);
+
 	if (!dev->disconnect)
 		return;
 
@@ -1746,7 +1761,7 @@ void device_remove_connection(struct btd_device *device)
 	}
 
 	device->connected = FALSE;
-	device->profiles_connected = FALSE;
+	device->general_connect = FALSE;
 
 	if (device->disconn_timer > 0) {
 		g_source_remove(device->disconn_timer);
@@ -2128,8 +2143,10 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		browse_request_cancel(device->browse);
 	}
 
-	if (device->profiles_connected)
-		g_slist_foreach(device->profiles, dev_disconn_profile, device);
+	g_slist_foreach(device->connected_profiles, dev_disconn_profile,
+								device);
+	g_slist_free(device->connected_profiles);
+	device->connected_profiles = NULL;
 
 	g_slist_free(device->pending);
 	device->pending = NULL;
