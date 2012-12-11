@@ -71,8 +71,11 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
 
 if READLINE
-bin_PROGRAMS += attrib/gatttool
+noinst_PROGRAMS += client/bluetoothctl
+client_bluetoothctl_SOURCES = client/main.c
+client_bluetoothctl_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 
+bin_PROGRAMS += attrib/gatttool
 attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
 				attrib/gattrib.c btio/btio.c \
 				attrib/gatttool.h attrib/interactive.c \

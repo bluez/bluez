@@ -167,6 +167,11 @@ AC_SUBST(ICAL_CFLAGS)
 AC_SUBST(ICAL_LIBS)
 AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
+AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
+		[disable command line client]), [enable_client=${enableval}])
+AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no" &&
+					test "${enable_readline}" != "no")
+
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),
 					[enable_datafiles=${enableval}])

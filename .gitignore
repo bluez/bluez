@@ -66,6 +66,7 @@ tools/btsnoop
 monitor/btmon
 emulator/btvirt
 emulator/b1ee
+client/bluetoothctl
 
 doc/*.bak
 doc/*.stamp
