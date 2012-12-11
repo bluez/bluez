@@ -60,9 +60,6 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- Update Device.Connect to connect any "auto_connect" profiles that are
-  not currently connected instead of returning "already connected".
-
 - Auto-connect newly registered profiles if we're in a connected state
   created by Device.Connect. This will fix e.g. oFono crashing and
   restarting.
@@ -89,6 +86,9 @@ released.
   ini-file format
 
 Completed items:
+
+- Update Device.Connect to connect any "auto_connect" profiles that are
+  not currently connected instead of returning "already connected".
 
 - Update the btd_profile connection state tracking so that device.c also
   knows about remotely initiated connections.
