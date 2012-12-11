@@ -152,7 +152,7 @@ profiles_cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ \
 				lib/libbluetooth-private.la
 endif
 
-EXTRA_DIST += test/sap_client.py test/bluezutils.py \
+test_scripts += test/sap_client.py test/bluezutils.py \
 		test/dbusdef.py test/monitor-bluetooth test/list-devices \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/test-service test/simple-agent \

@@ -169,6 +169,8 @@ EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
 			profiles/audio/audio.conf
 
+test_scripts =
+
 include Makefile.tools
 include Makefile.obexd
 
@@ -185,6 +187,13 @@ EXTRA_DIST += tools/hid2hci.rules
 rules_DATA = $(foreach file,$(udev_files), tools/97-$(notdir $(file)))
 
 CLEANFILES += $(rules_DATA)
+
+if TEST
+testdir = $(pkglibdir)/test
+test_SCRIPTS = $(test_scripts)
+endif
+
+EXTRA_DIST += $(test_scripts)
 
 EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 		doc/service-api.txt doc/agent-api.txt doc/attribute-api.txt \
