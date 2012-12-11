@@ -79,6 +79,18 @@ For a working system, certain configuration options need to be enabled:
 		configured by other means, the command line client can be
 		disabled and the dependency on readline is removed.
 
+	--disable-systemd
+
+		Disable integration with systemd
+
+		By default the integration with systemd is enabled and
+		installed. This gives the best integration into all
+		distributions based on systemd.
+
+		This option is provided for distributions that do not
+		support systemd. In that case all integration with the
+		init system is up to the package.
+
 	--enable-experimental
 
 		Enable experimental plugins
