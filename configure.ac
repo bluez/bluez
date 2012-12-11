@@ -168,9 +168,11 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no" &&
 
 AC_ARG_ENABLE(systemd, AC_HELP_STRING([--disable-systemd],
 		[disable systemd integration]), [enable_systemd=${enableval}])
+AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" != "no")
+
 AC_ARG_WITH([systemdsystemunitdir],
 			AC_HELP_STRING([--with-systemdsystemunitdir=DIR],
-				[path to systemd system unit directory]),
+			[path to systemd system unit directory]),
 					[path_systemunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
 	AC_MSG_CHECKING([sytemd system unit dir])
@@ -179,12 +181,12 @@ if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
 		AC_MSG_ERROR(systemd system unit directory is required)
 	fi
 	AC_MSG_RESULT([${path_systemunitdir}])
-	SYSTEMD_SYSTEMUNITDIR="${path_systemunitdir}"
-	AC_SUBST(SYSTEMD_SYSTEMUNITDIR)
+	AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
 fi
+
 AC_ARG_WITH([systemduserunitdir],
 			AC_HELP_STRING([--with-systemduserunitdir=DIR],
-				[path to systemd user unit directory]),
+			[path to systemd user unit directory]),
 					[path_userunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
 	AC_MSG_CHECKING([sytemd user unit dir])
@@ -192,11 +194,9 @@ if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
 	if (test -z "${path_userunitdir}"); then
 		AC_MSG_ERROR(systemd user unit directory is required)
 	fi
-	SYSTEMD_USERUNITDIR="${path_userunitdir}"
 	AC_MSG_RESULT([${path_userunitdir}])
-	AC_SUBST(SYSTEMD_USERUNITDIR)
+	AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
 fi
-AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" != "no")
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),
