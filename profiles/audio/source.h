@@ -44,9 +44,8 @@ struct source *source_init(struct audio_device *dev);
 void source_unregister(struct audio_device *dev);
 gboolean source_is_active(struct audio_device *dev);
 source_state_t source_get_state(struct audio_device *dev);
-int source_connect(struct audio_device *dev, audio_device_cb cb, void *data);
+int source_connect(struct audio_device *dev);
 gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);
 gboolean source_setup_stream(struct source *source, struct avdtp *session);
-int source_disconnect(struct audio_device *dev, gboolean shutdown,
-						audio_device_cb cb, void *data);
+int source_disconnect(struct audio_device *dev, gboolean shutdown);

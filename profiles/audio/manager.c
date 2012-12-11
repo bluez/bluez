@@ -202,7 +202,7 @@ static int a2dp_source_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	return source_connect(audio_dev, connect_cb, profile);
+	return source_connect(audio_dev);
 }
 
 static int a2dp_source_disconnect(struct btd_device *dev,
@@ -219,7 +219,7 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	return source_disconnect(audio_dev, FALSE, disconnect_cb, profile);
+	return source_disconnect(audio_dev, FALSE);
 }
 
 static int a2dp_sink_connect(struct btd_device *dev,
@@ -491,6 +491,26 @@ static struct btd_adapter_driver media_driver = {
 	.probe	= media_server_probe,
 	.remove	= media_server_remove,
 };
+
+void audio_sink_connected(struct btd_device *dev, int err)
+{
+	device_profile_connected(dev, &a2dp_sink_profile, err);
+}
+
+void audio_sink_disconnected(struct btd_device *dev, int err)
+{
+	device_profile_connected(dev, &a2dp_sink_profile, err);
+}
+
+void audio_source_connected(struct btd_device *dev, int err)
+{
+	device_profile_connected(dev, &a2dp_source_profile, err);
+}
+
+void audio_source_disconnected(struct btd_device *dev, int err)
+{
+	device_profile_connected(dev, &a2dp_source_profile, err);
+}
 
 int audio_manager_init(GKeyFile *conf)
 {
