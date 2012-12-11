@@ -29,18 +29,16 @@ AM_CFLAGS = $(WARNING_CFLAGS) $(MISC_CFLAGS)
 AM_LDFLAGS = $(MISC_LDFLAGS)
 
 if DATAFILES
-dbusdir = $(sysconfdir)/dbus-1/system.d
-dbusservicedir = $(datadir)/dbus-1/system-services
-
+dbusdir = @DBUS_CONFDIR@/dbus-1/system.d
 dbus_DATA = src/bluetooth.conf
+
+dbusservicedir = $(datadir)/dbus-1/system-services
 dbusservice_DATA = src/org.bluez.service
 
 confdir = $(sysconfdir)/bluetooth
-
 conf_DATA =
 
 statedir = $(localstatedir)/lib/bluetooth
-
 state_DATA =
 endif
 
