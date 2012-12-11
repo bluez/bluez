@@ -80,15 +80,6 @@ else
 fi
 AC_SUBST(DBUS_DATADIR)
 
-AC_ARG_WITH([systemdunitdir], AC_HELP_STRING([--with-systemdunitdir=DIR],
-	[path to systemd service directory]), [path_systemdunit=${withval}],
-		[path_systemdunit="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"])
-if (test -n "${path_systemdunit}"); then
-	SYSTEMD_UNITDIR="${path_systemdunit}"
-	AC_SUBST(SYSTEMD_UNITDIR)
-fi
-AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
-
 AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
 AM_CONDITIONAL(LIBRARY, test "${enable_library}" = "yes")
@@ -174,6 +165,38 @@ AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no" &&
 					test "${enable_readline}" != "no")
+
+AC_ARG_ENABLE(systemd, AC_HELP_STRING([--disable-systemd],
+		[disable systemd integration]), [enable_systemd=${enableval}])
+AC_ARG_WITH([systemdsystemunitdir],
+			AC_HELP_STRING([--with-systemdsystemunitdir=DIR],
+				[path to systemd system unit directory]),
+					[path_systemunitdir=${withval}])
+if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
+	AC_MSG_CHECKING([sytemd system unit dir])
+	path_systemunitdir="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
+	if (test -z "${path_systemunitdir}"); then
+		AC_MSG_ERROR(systemd system unit directory is required)
+	fi
+	AC_MSG_RESULT([${path_systemunitdir}])
+	SYSTEMD_SYSTEMUNITDIR="${path_systemunitdir}"
+	AC_SUBST(SYSTEMD_SYSTEMUNITDIR)
+fi
+AC_ARG_WITH([systemduserunitdir],
+			AC_HELP_STRING([--with-systemduserunitdir=DIR],
+				[path to systemd user unit directory]),
+					[path_userunitdir=${withval}])
+if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
+	AC_MSG_CHECKING([sytemd user unit dir])
+	path_userunitdir="`$PKG_CONFIG --variable=systemduserunitdir systemd`"
+	if (test -z "${path_userunitdir}"); then
+		AC_MSG_ERROR(systemd user unit directory is required)
+	fi
+	SYSTEMD_USERUNITDIR="${path_userunitdir}"
+	AC_MSG_RESULT([${path_userunitdir}])
+	AC_SUBST(SYSTEMD_USERUNITDIR)
+fi
+AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" != "no")
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),

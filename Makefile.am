@@ -42,12 +42,12 @@ conf_DATA =
 statedir = $(localstatedir)/lib/bluetooth
 
 state_DATA =
+endif
 
 if SYSTEMD
-systemdunitdir = @SYSTEMD_UNITDIR@
+systemdsystemunitdir = @SYSTEMD_SYSTEMUNITDIR@
 
-systemdunit_DATA = src/bluetooth.service
-endif
+systemdsystemunit_DATA = src/bluetooth.service
 endif
 
 EXTRA_DIST += src/bluetooth.service.in
