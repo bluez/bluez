@@ -60,10 +60,6 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- Auto-connect newly registered profiles if we're in a connected state
-  created by Device.Connect. This will fix e.g. oFono crashing and
-  restarting.
-
 - Convert obexd to use org.bluez.Profile
 
 - Convert obexd & obex-client to ObjectManager/Properties
@@ -86,6 +82,10 @@ released.
   ini-file format
 
 Completed items:
+
+- Auto-connect newly registered profiles if we're in a connected state
+  created by Device.Connect. This will fix e.g. oFono crashing and
+  restarting.
 
 - Update Device.Connect to connect any "auto_connect" profiles that are
   not currently connected instead of returning "already connected".
