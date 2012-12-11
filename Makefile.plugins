@@ -74,13 +74,25 @@ builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 			profiles/health/hdp.h profiles/health/hdp.c \
 			profiles/health/hdp_util.h profiles/health/hdp_util.c
 
-builtin_modules += thermometer
-builtin_sources += profiles/thermometer/main.c \
-			profiles/thermometer/manager.h \
-			profiles/thermometer/manager.c \
-			profiles/thermometer/thermometer.h \
-			profiles/thermometer/thermometer.c
+builtin_modules += gatt
+builtin_sources += profiles/gatt/main.c profiles/gatt/manager.h \
+			profiles/gatt/manager.c profiles/gatt/gas.h \
+			profiles/gatt/gas.c
 
+builtin_modules += scanparam
+builtin_sources += profiles/scanparam/main.c \
+			profiles/scanparam/manager.h \
+			profiles/scanparam/manager.c \
+			profiles/scanparam/scan.h profiles/scanparam/scan.c
+
+builtin_modules += deviceinfo
+builtin_sources += profiles/deviceinfo/main.c \
+			profiles/deviceinfo/manager.h \
+			profiles/deviceinfo/manager.c \
+			profiles/deviceinfo/deviceinfo.h \
+			profiles/deviceinfo/deviceinfo.c
+
+if EXPERIMENTAL
 builtin_modules += alert
 builtin_sources += profiles/alert/main.c profiles/alert/server.h \
 			profiles/alert/server.c profiles/alert/manager.h \
@@ -103,23 +115,12 @@ builtin_sources += profiles/proximity/main.c profiles/proximity/manager.h \
 			profiles/proximity/immalert.h \
 			profiles/proximity/immalert.c
 
-builtin_modules += deviceinfo
-builtin_sources += profiles/deviceinfo/main.c \
-			profiles/deviceinfo/manager.h \
-			profiles/deviceinfo/manager.c \
-			profiles/deviceinfo/deviceinfo.h \
-			profiles/deviceinfo/deviceinfo.c
-
-builtin_modules += gatt
-builtin_sources += profiles/gatt/main.c profiles/gatt/manager.h \
-			profiles/gatt/manager.c profiles/gatt/gas.h \
-			profiles/gatt/gas.c
-
-builtin_modules += scanparam
-builtin_sources += profiles/scanparam/main.c \
-			profiles/scanparam/manager.h \
-			profiles/scanparam/manager.c \
-			profiles/scanparam/scan.h profiles/scanparam/scan.c
+builtin_modules += thermometer
+builtin_sources += profiles/thermometer/main.c \
+			profiles/thermometer/manager.h \
+			profiles/thermometer/manager.c \
+			profiles/thermometer/thermometer.h \
+			profiles/thermometer/thermometer.c
 
 builtin_modules += heartrate
 builtin_sources += profiles/heartrate/main.c \
@@ -130,3 +131,4 @@ builtin_sources += profiles/heartrate/main.c \
 
 builtin_modules += cyclingspeed
 builtin_sources += profiles/cyclingspeed/cyclingspeed.c
+endif
