@@ -27,6 +27,70 @@ To compile and install run:
 	make && make install
 
 
+Configuration and options
+=========================
+
+For a working system, certain configuration options need to be enabled:
+
+	--enable-library
+
+		Enable installation of Bluetooth library
+
+		By default the Bluetooth library is no longer installed.
+
+		The user interfaces or command line utilities do not
+		require an installed Bluetooth library anymore. This
+		option is provided for legacy third party applications
+		that still depend on the library.
+
+		When the library installation is enabled, it is a good
+		idea to use a separate bluez-library or libbluetooth
+		package for it.
+
+	--disable-tools
+
+		Disable support for Bluetooth utilities
+
+		By default the Bluetooth utilities are built and also
+		installed. For production systems the tools are not
+		needed and this option allows to disable them to save
+		build time and disk space.
+
+		When the tools are selected, it is a good idea to
+		use a separate bluez-tools package for them.
+
+	--disable-cups
+
+		Disable support for CUPS printer backend
+
+		By default the printer backend for CUPS is build and
+		also installed. For systems that do not require printing
+		over Bluetooth, this options allows to disable it.
+
+		When the CUPS backend is selected, it is a good idea to
+		use a separate bluez-cups package for it.
+
+	--disable-client
+
+		Disable support for the command line client
+
+		By default the command line client is enabled and uses the
+		readline library. For specific systems where BlueZ is
+		configured by other means, the command line client can be
+		disabled and the dependency on readline is removed.
+
+	--enable-experimental
+
+		Enable experimental plugins
+
+		By default all plugins that are still in development
+		are disabled. This option can be used to enable them.
+
+		It is not recommended to enable this option for production
+		systems. The APIs or behavior of the experimental plugins
+		is unstable and might still change.
+
+
 Information
 ===========
 
