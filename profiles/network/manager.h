@@ -21,5 +21,5 @@
  *
  */
 
-int network_manager_init(void);
-void network_manager_exit(void);
+void network_connected(struct btd_device *dev, int id, int err);
+void network_disconnected(struct btd_device *dev, int id, int err);

@@ -46,6 +46,7 @@
 
 #include "error.h"
 #include "common.h"
+#include "manager.h"
 #include "connection.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.Network"
@@ -64,8 +65,6 @@ struct network_peer {
 };
 
 struct network_conn {
-	btd_connection_cb cb;
-	void		*cb_data;
 	char		dev[16];	/* Interface name */
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
@@ -136,6 +135,8 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 	nc->dc_id = 0;
 
+	network_disconnected(nc->peer->device, nc->id, 0);
+
 	info("%s disconnected", nc->dev);
 
 	bnep_if_down(nc->dev);
@@ -153,8 +154,7 @@ static void cancel_connection(struct network_conn *nc, int err)
 		nc->timeout_source = 0;
 	}
 
-	if (nc->cb)
-		nc->cb(nc->peer->device, err, NULL, nc->cb_data);
+	network_connected(nc->peer->device, nc->id, err);
 
 	g_io_channel_shutdown(nc->io, TRUE, NULL);
 	g_io_channel_unref(nc->io);
@@ -258,8 +258,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	bnep_if_up(nc->dev);
 
-	if (nc->cb)
-		nc->cb(nc->peer->device, 0, nc->dev, nc->cb_data);
+	network_connected(nc->peer->device, nc->id, 0);
 
 	conn = btd_get_dbus_connection();
 	path = device_get_path(nc->peer->device);
@@ -376,9 +375,7 @@ failed:
 }
 
 /* Connect and initiate BNEP session */
-int connection_connect(struct btd_device *device, uint16_t id,
-					const char *owner,
-					btd_connection_cb cb, void *data)
+int connection_connect(struct btd_device *device, uint16_t id)
 {
 	struct network_peer *peer;
 	struct network_conn *nc;
@@ -413,14 +410,11 @@ int connection_connect(struct btd_device *device, uint16_t id,
 		return -EIO;
 
 	nc->state = CONNECTING;
-	nc->cb = cb;
-	nc->cb_data = data;
 
 	return 0;
 }
 
-int connection_disconnect(struct btd_device *device, uint16_t id,
-							const char *caller)
+int connection_disconnect(struct btd_device *device, uint16_t id)
 {
 	struct network_peer *peer;
 	struct network_conn *nc;

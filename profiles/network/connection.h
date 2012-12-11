@@ -21,13 +21,7 @@
  *
  */
 
-typedef void (*btd_connection_cb)(struct btd_device *device, int err,
-					const char *pdev, void *data);
-
 int connection_register(struct btd_device *device, uint16_t id);
 void connection_unregister(struct btd_device *device);
-int connection_connect(struct btd_device *device, uint16_t id,
-					const char *owner,
-					btd_connection_cb cb, void *data);
-int connection_disconnect(struct btd_device *device, uint16_t id,
-					const char *caller);
+int connection_connect(struct btd_device *device, uint16_t id);
+int connection_disconnect(struct btd_device *device, uint16_t id);

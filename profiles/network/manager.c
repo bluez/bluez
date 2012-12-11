@@ -36,6 +36,7 @@
 #include <gdbus/gdbus.h>
 
 #include "log.h"
+#include "plugin.h"
 
 #include "adapter.h"
 #include "device.h"
@@ -73,39 +74,6 @@ done:
 				conf_security ? "true" : "false");
 }
 
-static void connect_profile_cb(struct btd_device *device, int err,
-						const char *pdev, void *data)
-{
-	struct btd_profile *profile = data;
-
-	device_profile_connected(device, profile, err);
-}
-
-static int connect_profile(struct btd_device *dev, struct btd_profile *profile,
-						uint16_t id)
-{
-	DBG("path %s id %u", device_get_path(dev), id);
-
-	return connection_connect(dev, id, NULL, connect_profile_cb, profile);
-}
-
-static int disconnect_profile(struct btd_device *dev,
-						struct btd_profile *profile,
-						uint16_t id)
-{
-	int err;
-
-	DBG("path %s id %u", device_get_path(dev), id);
-
-	err = connection_disconnect(dev, id, NULL);
-	if (err < 0)
-		return err;
-
-	device_profile_disconnected(dev, profile, 0);
-
-	return 0;
-}
-
 static int panu_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
@@ -123,12 +91,12 @@ static void network_remove(struct btd_profile *p, struct btd_device *device)
 
 static int panu_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_PANU);
+	return connection_connect(dev, BNEP_SVC_PANU);
 }
 
 static int panu_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_PANU);
+	return connection_disconnect(dev, BNEP_SVC_PANU);
 }
 
 static int panu_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -160,12 +128,12 @@ static int gn_probe(struct btd_profile *p, struct btd_device *device,
 
 static int gn_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_GN);
+	return connection_connect(dev, BNEP_SVC_GN);
 }
 
 static int gn_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_GN);
+	return connection_disconnect(dev, BNEP_SVC_GN);
 }
 
 static int gn_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -197,12 +165,12 @@ static int nap_probe(struct btd_profile *p, struct btd_device *device,
 
 static int nap_connect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return connect_profile(dev, profile, BNEP_SVC_NAP);
+	return connection_connect(dev, BNEP_SVC_NAP);
 }
 
 static int nap_disconnect(struct btd_device *dev, struct btd_profile *profile)
 {
-	return disconnect_profile(dev, profile, BNEP_SVC_NAP);
+	return connection_disconnect(dev, BNEP_SVC_NAP);
 }
 
 static int nap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -260,7 +228,43 @@ static struct btd_profile nap_profile = {
 	.adapter_remove	= nap_server_remove,
 };
 
-int network_manager_init(void)
+void network_connected(struct btd_device *dev, int id, int err)
+{
+	switch (id) {
+	case BNEP_SVC_PANU:
+		device_profile_connected(dev, &panu_profile, err);
+		break;
+	case BNEP_SVC_GN:
+		device_profile_connected(dev, &gn_profile, err);
+		break;
+	case BNEP_SVC_NAP:
+		device_profile_connected(dev, &gn_profile, err);
+		break;
+	default:
+		error("Invalid id %d passed to network_connected", id);
+		break;
+	}
+}
+
+void network_disconnected(struct btd_device *dev, int id, int err)
+{
+	switch (id) {
+	case BNEP_SVC_PANU:
+		device_profile_disconnected(dev, &panu_profile, err);
+		break;
+	case BNEP_SVC_GN:
+		device_profile_disconnected(dev, &gn_profile, err);
+		break;
+	case BNEP_SVC_NAP:
+		device_profile_disconnected(dev, &gn_profile, err);
+		break;
+	default:
+		error("Invalid id %d passed to network_disconnected", id);
+		break;
+	}
+}
+
+static int network_init(void)
 {
 	read_config(CONFIGDIR "/network.conf");
 
@@ -286,7 +290,7 @@ int network_manager_init(void)
 	return 0;
 }
 
-void network_manager_exit(void)
+static void network_exit(void)
 {
 	server_exit();
 
@@ -296,3 +300,6 @@ void network_manager_exit(void)
 
 	bnep_cleanup();
 }
+
+BLUETOOTH_PLUGIN_DEFINE(network, VERSION,
+			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, network_init, network_exit)
