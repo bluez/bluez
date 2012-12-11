@@ -55,7 +55,6 @@
 
 struct pending_connect {
 	struct btd_profile *profile;
-	btd_profile_cb cb;
 };
 
 struct input_device {
@@ -498,7 +497,7 @@ static void connect_reply(struct input_device *idev, int err,
 	if (err_msg)
 		error("%s", err_msg);
 
-	pending->cb(idev->device, pending->profile, err);
+	device_profile_connected(idev->device, pending->profile, err);
 	g_free(pending);
 }
 
@@ -631,7 +630,6 @@ int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
 
 	idev->pending = g_new0(struct pending_connect, 1);
 	idev->pending->profile = profile;
-	idev->pending->cb = device_profile_connected;
 
 	return dev_connect(idev);
 }

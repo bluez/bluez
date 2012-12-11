@@ -27,11 +27,6 @@
 #define BTD_PROFILE_PRIORITY_MEDIUM	1
 #define BTD_PROFILE_PRIORITY_HIGH	2
 
-struct btd_profile;
-
-typedef void (*btd_profile_cb)(struct btd_device *device,
-					struct btd_profile *profile, int err);
-
 struct btd_profile {
 	const char *name;
 	int priority;

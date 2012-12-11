@@ -475,7 +475,6 @@ struct ext_io {
 
 	bool resolving;
 	bool connected;
-	btd_profile_cb cb;
 
 	uint16_t version;
 	uint16_t features;
@@ -628,7 +627,7 @@ drop:
 	return FALSE;
 }
 
-static void pending_reply(DBusPendingCall *call, void *user_data)
+static void new_conn_reply(DBusPendingCall *call, void *user_data)
 {
 	struct ext_io *conn = user_data;
 	struct ext_profile *ext = conn->ext;
@@ -644,14 +643,7 @@ static void pending_reply(DBusPendingCall *call, void *user_data)
 	conn->pending = NULL;
 
 	if (!dbus_error_is_set(&err)) {
-		if (conn->cb) {
-			conn->cb(conn->device, &ext->p, 0);
-			conn->cb = NULL;
-		}
-
-		if (conn->connected)
-			goto disconnect;
-
+		device_profile_connected(conn->device, &ext->p, 0);
 		conn->connected = true;
 		return;
 	}
@@ -659,10 +651,41 @@ static void pending_reply(DBusPendingCall *call, void *user_data)
 	error("%s replied with an error: %s, %s", ext->name,
 						err.name, err.message);
 
-	if (conn->cb) {
-		conn->cb(conn->device, &ext->p, -ECONNREFUSED);
-		conn->cb = NULL;
+	device_profile_connected(conn->device, &ext->p, -ECONNREFUSED);
+
+	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
+		ext_cancel(ext);
+
+	dbus_error_free(&err);
+
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
+static void disconn_reply(DBusPendingCall *call, void *user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError err;
+
+	dbus_error_init(&err);
+	dbus_set_error_from_message(&err, reply);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(conn->pending);
+	conn->pending = NULL;
+
+	if (!dbus_error_is_set(&err)) {
+		device_profile_disconnected(conn->device, &ext->p, 0);
+		goto disconnect;
 	}
+
+	error("%s replied with an error: %s, %s", ext->name,
+						err.name, err.message);
+
+	device_profile_disconnected(conn->device, &ext->p, -ECONNREFUSED);
 
 	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
 		ext_cancel(ext);
@@ -753,7 +776,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 
 	dbus_message_unref(msg);
 
-	dbus_pending_call_set_notify(conn->pending, pending_reply, conn, NULL);
+	dbus_pending_call_set_notify(conn->pending, new_conn_reply, conn, NULL);
 
 	return true;
 }
@@ -797,10 +820,8 @@ static void ext_connect(GIOChannel *io, GError *err, gpointer user_data)
 		return;
 
 drop:
-	if (conn->cb) {
-		conn->cb(conn->device, &ext->p, err ? -err->code : -EIO);
-		conn->cb = NULL;
-	}
+	device_profile_connected(conn->device, &ext->p,
+						err ? -err->code : -EIO);
 	if (io_err)
 		g_error_free(io_err);
 	ext->conns = g_slist_remove(ext->conns, conn);
@@ -1374,7 +1395,7 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 	return;
 
 failed:
-	conn->cb(conn->device, &ext->p, err);
+	device_profile_connected(conn->device, &ext->p, err);
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
 }
@@ -1431,7 +1452,6 @@ static int ext_connect_dev(struct btd_device *dev, struct btd_profile *profile)
 
 	conn->adapter = btd_adapter_ref(adapter);
 	conn->device = btd_device_ref(dev);
-	conn->cb = device_profile_connected;
 
 	ext->conns = g_slist_append(ext->conns, conn);
 
@@ -1469,7 +1489,7 @@ static int send_disconn_req(struct ext_profile *ext, struct ext_io *conn)
 
 	dbus_message_unref(msg);
 
-	dbus_pending_call_set_notify(conn->pending, pending_reply, conn, NULL);
+	dbus_pending_call_set_notify(conn->pending, disconn_reply, conn, NULL);
 
 	return 0;
 }
@@ -1489,14 +1509,12 @@ static int ext_disconnect_dev(struct btd_device *dev,
 	if (!conn || !conn->connected)
 		return -ENOTCONN;
 
-	if (conn->cb)
+	if (conn->pending)
 		return -EBUSY;
 
 	err = send_disconn_req(ext, conn);
 	if (err < 0)
 		return err;
-
-	conn->cb = device_profile_disconnected;
 
 	return 0;
 }
