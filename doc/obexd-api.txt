@@ -15,7 +15,7 @@ Object path	/
 Methods
 		void RegisterAgent(object agent)
 
-			Register an agent to request authorization of 
+			Register an agent to request authorization of
 			the user to accept/reject objects. Object push
 			service needs to authorize each received object.
 
@@ -30,12 +30,12 @@ Methods
 			Possible errors: org.bluez.obex.Error.DoesNotExist
 
 Signals		SessionCreated(object session)
-			
+
 			Signal sent when OBEX connection has been accepted.
 			(FTP only)
 
 		SessionRemoved(object session)
-			
+
 			Sent when the transport is disconnected
 			(FTP only)
 
