@@ -99,14 +99,6 @@ AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
-AC_ARG_ENABLE(readline, AC_HELP_STRING([--disable-readline],
-		[disable readline support]), [enable_readline=${enableval}])
-if (test "${enable_tools}" != "no" && test "${enable_readline}" != "no"  ); then
-	AC_CHECK_HEADERS(readline/readline.h, dummy=yes,
-		AC_MSG_ERROR(readline header files are required))
-fi
-AM_CONDITIONAL(READLINE, test "${enable_readline}" != "no")
-
 AC_ARG_ENABLE(usb, AC_HELP_STRING([--disable-usb],
 			[disable USB support]), [enable_usb=${enableval}])
 if (test "${enable_tools}" != "no" && test "${enable_usb}" != "no"  ); then
@@ -170,8 +162,13 @@ AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 		[disable command line client]), [enable_client=${enableval}])
-AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no" &&
-					test "${enable_readline}" != "no")
+AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
+
+if (test "${enable_client}" != "no"); then
+        AC_CHECK_HEADERS(readline/readline.h, enable_readline=yes,
+                AC_MSG_ERROR(readline header files are required))
+fi
+AM_CONDITIONAL(READLINE, test "${enable_readline}" = "yes")
 
 AC_ARG_ENABLE(systemd, AC_HELP_STRING([--disable-systemd],
 		[disable systemd integration]), [enable_systemd=${enableval}])
