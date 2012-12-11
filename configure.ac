@@ -131,7 +131,7 @@ if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 	AC_MSG_CHECKING([udev directory])
 	path_udevdir="`$PKG_CONFIG --variable=udevdir udev`"
 	if (test -z "${path_udevdir}"); then
-		AC_MSG_ERROR(udev directory is required)
+		AC_MSG_ERROR([udev directory is required])
 	fi
 	AC_MSG_RESULT([${path_udevdir}])
 	AC_SUBST(UDEV_DIR, [${path_udevdir}])
@@ -171,7 +171,7 @@ if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
 	AC_MSG_CHECKING([sytemd system unit dir])
 	path_systemunitdir="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
 	if (test -z "${path_systemunitdir}"); then
-		AC_MSG_ERROR(systemd system unit directory is required)
+		AC_MSG_ERROR([systemd system unit directory is required])
 	fi
 	AC_MSG_RESULT([${path_systemunitdir}])
 	AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
@@ -185,7 +185,7 @@ if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
 	AC_MSG_CHECKING([sytemd user unit dir])
 	path_userunitdir="`$PKG_CONFIG --variable=systemduserunitdir systemd`"
 	if (test -z "${path_userunitdir}"); then
-		AC_MSG_ERROR(systemd user unit directory is required)
+		AC_MSG_ERROR([systemd user unit directory is required])
 	fi
 	AC_MSG_RESULT([${path_userunitdir}])
 	AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
