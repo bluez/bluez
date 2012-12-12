@@ -1257,9 +1257,6 @@ void a2dp_unregister(const bdaddr_t *src)
 		remove_record_from_server(server->sink_record_id);
 
 	g_free(server);
-
-	if (servers)
-		return;
 }
 
 struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
