@@ -91,6 +91,9 @@ For a working system, certain configuration options need to be enabled:
 		configured by other means, the command line client can be
 		disabled and the dependency on readline is removed.
 
+		The client should be placed in the main package along
+		with the daemons. It is universally useful.
+
 	--disable-systemd
 
 		Disable integration with systemd
