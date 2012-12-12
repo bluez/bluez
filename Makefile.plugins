@@ -1,7 +1,4 @@
 
-builtin_modules += service
-builtin_sources += plugins/service.c
-
 builtin_modules += formfactor
 builtin_sources += plugins/formfactor.c
 
