@@ -1132,14 +1132,10 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (session == NULL)
 		return;
 
-	dev = manager_get_audio_device(device, FALSE);
+	dev = manager_get_audio_device(device, TRUE);
 	if (!dev) {
-		dev = manager_get_audio_device(device, TRUE);
-		if (!dev) {
-			error("Unable to get audio device object for %s",
-					address);
-			goto drop;
-		}
+		error("Unable to get audio device object for %s", address);
+		goto drop;
 	}
 
 	if (dev->control == NULL) {
