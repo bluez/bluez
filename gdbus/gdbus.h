@@ -45,6 +45,9 @@ typedef struct GDBusSecurityTable GDBusSecurityTable;
 typedef void (* GDBusWatchFunction) (DBusConnection *connection,
 							void *user_data);
 
+typedef void (* GDBusMessageFunction) (DBusConnection *connection,
+					 DBusMessage *message, void *user_data);
+
 typedef gboolean (* GDBusSignalFunction) (DBusConnection *connection,
 					DBusMessage *message, void *user_data);
 
@@ -264,6 +267,21 @@ gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
 
 gboolean g_dbus_attach_object_manager(DBusConnection *connection);
 gboolean g_dbus_detach_object_manager(DBusConnection *connection);
+
+typedef struct GDBusClient GDBusClient;
+
+GDBusClient *g_dbus_client_new(DBusConnection *connection,
+					const char *service, const char *path);
+
+GDBusClient *g_dbus_client_ref(GDBusClient *client);
+void g_dbus_client_unref(GDBusClient *client);
+
+gboolean g_dbus_client_set_connect_watch(GDBusClient *client,
+				GDBusWatchFunction function, void *user_data);
+gboolean g_dbus_client_set_disconnect_watch(GDBusClient *client,
+				GDBusWatchFunction function, void *user_data);
+gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
+				GDBusMessageFunction function, void *user_data);
 
 #ifdef __cplusplus
 }
