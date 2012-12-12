@@ -93,7 +93,7 @@ attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/client.c attrib/gatt-service.h attrib/gatt-service.c
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
-					gdbus/object.c gdbus/polkit.c
+				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
 btio_sources = btio/btio.h btio/btio.c
 
