@@ -127,9 +127,8 @@ static struct audio_device *a2dp_get_dev(struct avdtp *session)
 	struct btd_adapter *adapter = avdtp_get_adapter(session);
 	struct btd_device *device = avdtp_get_device(session);
 
-	return manager_find_device(NULL, adapter_get_address(adapter),
-					device_get_address(device), NULL,
-					FALSE);
+	return manager_get_device(adapter_get_address(adapter),
+					device_get_address(device), FALSE);
 }
 
 static struct a2dp_setup *setup_new(struct avdtp *session)

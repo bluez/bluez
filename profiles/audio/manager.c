@@ -105,6 +105,72 @@ static struct audio_device *get_audio_dev(struct btd_device *device)
 					device_get_address(device), TRUE);
 }
 
+static GSList *manager_find_devices(const char *path,
+					const bdaddr_t *src,
+					const bdaddr_t *dst,
+					const char *interface,
+					gboolean connected)
+{
+	GSList *result = NULL;
+	GSList *l;
+
+	for (l = devices; l != NULL; l = l->next) {
+		struct audio_device *dev = l->data;
+		const bdaddr_t *dev_src;
+		const bdaddr_t *dev_dst;
+
+		dev_src = adapter_get_address(device_get_adapter(dev->btd_dev));
+		dev_dst = device_get_address(dev->btd_dev);
+
+		if ((path && (strcmp(path, "")) &&
+				strcmp(device_get_path(dev->btd_dev), path)))
+			continue;
+
+		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(dev_src, src))
+			continue;
+
+		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(dev_dst, dst))
+			continue;
+
+		if (interface && !strcmp(AUDIO_SINK_INTERFACE, interface)
+				&& !dev->sink)
+			continue;
+
+		if (interface && !strcmp(AUDIO_SOURCE_INTERFACE, interface)
+				&& !dev->source)
+			continue;
+
+		if (interface && !strcmp(AUDIO_CONTROL_INTERFACE, interface)
+				&& !dev->control)
+			continue;
+
+		if (connected && !audio_device_is_active(dev, interface))
+			continue;
+
+		result = g_slist_append(result, dev);
+	}
+
+	return result;
+}
+
+static struct audio_device *manager_find_device(const char *path,
+					const bdaddr_t *src,
+					const bdaddr_t *dst,
+					const char *interface,
+					gboolean connected)
+{
+	struct audio_device *result;
+	GSList *l;
+
+	l = manager_find_devices(path, src, dst, interface, connected);
+	if (l == NULL)
+		return NULL;
+
+	result = l->data;
+	g_slist_free(l);
+	return result;
+}
+
 static void audio_remove(struct btd_profile *p, struct btd_device *device)
 {
 	struct audio_device *dev;
@@ -572,72 +638,6 @@ void audio_manager_exit(void)
 		btd_profile_unregister(&avrcp_profile);
 
 	btd_unregister_adapter_driver(&media_driver);
-}
-
-static GSList *manager_find_devices(const char *path,
-					const bdaddr_t *src,
-					const bdaddr_t *dst,
-					const char *interface,
-					gboolean connected)
-{
-	GSList *result = NULL;
-	GSList *l;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *dev = l->data;
-		const bdaddr_t *dev_src;
-		const bdaddr_t *dev_dst;
-
-		dev_src = adapter_get_address(device_get_adapter(dev->btd_dev));
-		dev_dst = device_get_address(dev->btd_dev);
-
-		if ((path && (strcmp(path, "")) &&
-				strcmp(device_get_path(dev->btd_dev), path)))
-			continue;
-
-		if ((src && bacmp(src, BDADDR_ANY)) && bacmp(dev_src, src))
-			continue;
-
-		if ((dst && bacmp(dst, BDADDR_ANY)) && bacmp(dev_dst, dst))
-			continue;
-
-		if (interface && !strcmp(AUDIO_SINK_INTERFACE, interface)
-				&& !dev->sink)
-			continue;
-
-		if (interface && !strcmp(AUDIO_SOURCE_INTERFACE, interface)
-				&& !dev->source)
-			continue;
-
-		if (interface && !strcmp(AUDIO_CONTROL_INTERFACE, interface)
-				&& !dev->control)
-			continue;
-
-		if (connected && !audio_device_is_active(dev, interface))
-			continue;
-
-		result = g_slist_append(result, dev);
-	}
-
-	return result;
-}
-
-struct audio_device *manager_find_device(const char *path,
-					const bdaddr_t *src,
-					const bdaddr_t *dst,
-					const char *interface,
-					gboolean connected)
-{
-	struct audio_device *result;
-	GSList *l;
-
-	l = manager_find_devices(path, src, dst, interface, connected);
-	if (l == NULL)
-		return NULL;
-
-	result = l->data;
-	g_slist_free(l);
-	return result;
 }
 
 struct audio_device *manager_get_device(const bdaddr_t *src,

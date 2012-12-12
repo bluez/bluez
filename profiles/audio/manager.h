@@ -39,12 +39,6 @@ void audio_control_disconnected(struct btd_device *dev, int err);
 int audio_manager_init(GKeyFile *config);
 void audio_manager_exit(void);
 
-struct audio_device *manager_find_device(const char *path,
-					const bdaddr_t *src,
-					const bdaddr_t *dst,
-					const char *interface,
-					gboolean connected);
-
 struct audio_device *manager_get_device(const bdaddr_t *src,
 					const bdaddr_t *dst,
 					gboolean create);
