@@ -46,52 +46,6 @@
 #include "filesystem.h"
 #include "manager.h"
 
-#define IRMC_CHANNEL	14
-
-#define IRMC_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>								\
-  <attribute id=\"0x0001\">						\
-    <sequence>								\
-      <uuid value=\"0x1104\"/>						\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0004\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x0100\"/>					\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0003\"/>					\
-        <uint8 value=\"%u\" name=\"channel\"/>				\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0008\"/>					\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0009\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x1104\"/>					\
-        <uint16 value=\"0x0100\" name=\"version\"/>			\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0100\">						\
-    <text value=\"%s\" name=\"name\"/>					\
-  </attribute>								\
-									\
-  <attribute id=\"0x0301\">						\
-    <sequence>								\
-      <uint8 value=\"0x01\"/>						\
-    </sequence>								\
-  </attribute>								\
-</record>"
-
-
 struct aparam_header {
 	uint8_t tag;
 	uint8_t len;
@@ -488,9 +442,6 @@ static struct obex_mime_type_driver irmc_driver = {
 static struct obex_service_driver irmc = {
 	.name = "IRMC Sync server",
 	.service = OBEX_IRMC,
-	.channel = IRMC_CHANNEL,
-	.secure = TRUE,
-	.record = IRMC_RECORD,
 	.target = IRMC_TARGET,
 	.target_size = IRMC_TARGET_SIZE,
 	.connect = irmc_connect,
