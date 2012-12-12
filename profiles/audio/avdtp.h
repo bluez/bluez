@@ -282,7 +282,8 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							uint16_t delay);
 
-struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
+struct avdtp_local_sep *avdtp_register_sep(struct btd_adapter *adapter,
+						uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
@@ -309,5 +310,5 @@ void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst);
 gboolean avdtp_stream_setup_active(struct avdtp *session);
 void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc);
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config);
-void avdtp_exit(const bdaddr_t *src);
+int avdtp_init(struct btd_adapter *adapter, GKeyFile *config);
+void avdtp_exit(struct btd_adapter *adapter);

@@ -330,7 +330,7 @@ struct avdtp_remote_sep {
 };
 
 struct avdtp_server {
-	bdaddr_t src;
+	struct btd_adapter *adapter;
 	GIOChannel *io;
 	GSList *seps;
 	GSList *sessions;
@@ -391,7 +391,7 @@ struct avdtp {
 	uint16_t version;
 
 	struct avdtp_server *server;
-	bdaddr_t dst;
+	struct btd_device *device;
 
 	avdtp_session_state_t state;
 
@@ -454,12 +454,12 @@ static void avdtp_sep_set_state(struct avdtp *session,
 				avdtp_state_t state);
 static void auth_cb(DBusError *derr, void *user_data);
 
-static struct avdtp_server *find_server(GSList *list, const bdaddr_t *src)
+static struct avdtp_server *find_server(GSList *list, struct btd_adapter *a)
 {
 	for (; list; list = list->next) {
 		struct avdtp_server *server = list->data;
 
-		if (bacmp(&server->src, src) == 0)
+		if (server->adapter == a)
 			return server;
 	}
 
@@ -1157,7 +1157,9 @@ static gboolean disconnect_timeout(gpointer user_data)
 
 	stream_setup = session->stream_setup;
 	session->stream_setup = FALSE;
-	dev = manager_get_device(&session->server->src, &session->dst, FALSE);
+	dev = manager_get_device(adapter_get_address(session->server->adapter),
+					device_get_address(session->device),
+					FALSE);
 
 	if (dev && dev->sink && stream_setup)
 		sink_setup_stream(dev->sink, session);
@@ -1189,7 +1191,7 @@ static void connection_lost(struct avdtp *session, int err)
 	struct avdtp_server *server = session->server;
 	char address[18];
 
-	ba2str(&session->dst, address);
+	ba2str(device_get_address(session->device), address);
 	DBG("Disconnected from %s", address);
 
 	if (err != EACCES)
@@ -1206,6 +1208,7 @@ static void connection_lost(struct avdtp *session, int err)
 		return;
 
 	server->sessions = g_slist_remove(server->sessions, session);
+	btd_device_unref(session->device);
 	avdtp_free(session);
 }
 
@@ -2273,15 +2276,13 @@ failed:
 	return FALSE;
 }
 
-static struct avdtp *find_session(GSList *list, const bdaddr_t *dst)
+static struct avdtp *find_session(GSList *list, struct btd_device *device)
 {
 	for (; list != NULL; list = g_slist_next(list)) {
 		struct avdtp *s = list->data;
 
-		if (bacmp(dst, &s->dst))
-			continue;
-
-		return s;
+		if (s->device == device)
+			return s;
 	}
 
 	return NULL;
@@ -2289,26 +2290,14 @@ static struct avdtp *find_session(GSList *list, const bdaddr_t *dst)
 
 static uint16_t get_version(struct avdtp *session)
 {
-	struct btd_adapter *adapter;
-	struct btd_device *device;
 	const sdp_record_t *rec;
 	sdp_list_t *protos;
 	sdp_data_t *proto_desc;
-	char addr[18];
 	uint16_t ver = 0x0100;
 
-	adapter = manager_find_adapter(&session->server->src);
-	if (!adapter)
-		return ver;
-
-	ba2str(&session->dst, addr);
-	device = adapter_find_device(adapter, addr);
-	if (!device)
-		return ver;
-
-	rec = btd_device_get_record(device, A2DP_SINK_UUID);
+	rec = btd_device_get_record(session->device, A2DP_SINK_UUID);
 	if (!rec)
-		rec = btd_device_get_record(device, A2DP_SOURCE_UUID);
+		rec = btd_device_get_record(session->device, A2DP_SOURCE_UUID);
 
 	if (!rec)
 		return ver;
@@ -2326,19 +2315,16 @@ static uint16_t get_version(struct avdtp *session)
 	return ver;
 }
 
-static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst)
+static struct avdtp *avdtp_get_internal(struct btd_device *device)
 {
 	struct avdtp_server *server;
 	struct avdtp *session;
 
-	assert(src != NULL);
-	assert(dst != NULL);
-
-	server = find_server(servers, src);
+	server = find_server(servers, device_get_adapter(device));
 	if (server == NULL)
 		return NULL;
 
-	session = find_session(server->sessions, dst);
+	session = find_session(server->sessions, device);
 	if (session) {
 		if (session->pending_auth)
 			return NULL;
@@ -2349,7 +2335,7 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 	session = g_new0(struct avdtp, 1);
 
 	session->server = server;
-	bacpy(&session->dst, dst);
+	session->device = btd_device_ref(device);
 	/* We don't use avdtp_set_state() here since this isn't a state change
 	 * but just setting of the initial state */
 	session->state = AVDTP_SESSION_STATE_DISCONNECTED;
@@ -2364,13 +2350,8 @@ static struct avdtp *avdtp_get_internal(const bdaddr_t *src, const bdaddr_t *dst
 struct avdtp *avdtp_get(struct audio_device *device)
 {
 	struct avdtp *session;
-	const bdaddr_t *src;
-	const bdaddr_t *dst;
 
-	src = adapter_get_address(device_get_adapter(device->btd_dev));
-	dst = device_get_address(device->btd_dev);
-
-	session = avdtp_get_internal(src, dst);
+	session = avdtp_get_internal(device->btd_dev);
 
 	if (!session)
 		return NULL;
@@ -2403,7 +2384,7 @@ static void avdtp_connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		goto failed;
 	}
 
-	ba2str(&session->dst, address);
+	ba2str(device_get_address(session->device), address);
 	DBG("AVDTP: connected %s channel to %s",
 			session->pending_open ? "transport" : "signaling",
 			address);
@@ -2487,6 +2468,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 	char address[18];
 	bdaddr_t src, dst;
 	GError *err = NULL;
+	struct btd_device *device;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
@@ -2501,7 +2483,11 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVDTP: incoming connect from %s", address);
 
-	session = avdtp_get_internal(&src, &dst);
+	device = adapter_find_device(manager_find_adapter(&src), address);
+	if (!device)
+		goto drop;
+
+	session = avdtp_get_internal(device);
 	if (!session)
 		goto drop;
 
@@ -2565,8 +2551,10 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 
 	io = bt_io_connect(avdtp_connect_cb, session,
 				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &session->server->src,
-				BT_IO_OPT_DEST_BDADDR, &session->dst,
+				BT_IO_OPT_SOURCE_BDADDR,
+				adapter_get_address(session->server->adapter),
+				BT_IO_OPT_DEST_BDADDR,
+				device_get_address(session->device),
 				BT_IO_OPT_PSM, AVDTP_PSM,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
 				BT_IO_OPT_INVALID);
@@ -3201,17 +3189,12 @@ gboolean avdtp_is_connected(struct audio_device *device)
 {
 	struct avdtp_server *server;
 	struct avdtp *session;
-	const bdaddr_t *src;
-	const bdaddr_t *dst;
 
-	src = adapter_get_address(device_get_adapter(device->btd_dev));
-	dst = device_get_address(device->btd_dev);
-
-	server = find_server(servers, src);
+	server = find_server(servers, device_get_adapter(device->btd_dev));
 	if (!server)
 		return FALSE;
 
-	session = find_session(server->sessions, dst);
+	session = find_session(server->sessions, device->btd_dev);
 	if (!session)
 		return FALSE;
 
@@ -3732,7 +3715,8 @@ int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							&req, sizeof(req));
 }
 
-struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
+struct avdtp_local_sep *avdtp_register_sep(struct btd_adapter *adapter,
+						uint8_t type,
 						uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
@@ -3743,7 +3727,7 @@ struct avdtp_local_sep *avdtp_register_sep(const bdaddr_t *src, uint8_t type,
 	struct avdtp_server *server;
 	struct avdtp_local_sep *sep;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter);
 	if (!server)
 		return NULL;
 
@@ -3864,12 +3848,12 @@ avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep)
 void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
 {
 	if (src)
-		bacpy(src, &session->server->src);
+		bacpy(src, adapter_get_address(session->server->adapter));
 	if (dst)
-		bacpy(dst, &session->dst);
+		bacpy(dst, device_get_address(session->device));
 }
 
-int avdtp_init(const bdaddr_t *src, GKeyFile *config)
+int avdtp_init(struct btd_adapter *adapter, GKeyFile *config)
 {
 	GError *err = NULL;
 	gboolean tmp, master = TRUE;
@@ -3889,24 +3873,24 @@ int avdtp_init(const bdaddr_t *src, GKeyFile *config)
 proceed:
 	server = g_new0(struct avdtp_server, 1);
 
-	server->io = avdtp_server_socket(src, master);
+	server->io = avdtp_server_socket(adapter_get_address(adapter), master);
 	if (!server->io) {
 		g_free(server);
 		return -1;
 	}
 
-	bacpy(&server->src, src);
+	server->adapter = btd_adapter_ref(adapter);
 
 	servers = g_slist_append(servers, server);
 
 	return 0;
 }
 
-void avdtp_exit(const bdaddr_t *src)
+void avdtp_exit(struct btd_adapter *adapter)
 {
 	struct avdtp_server *server;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter);
 	if (!server)
 		return;
 
@@ -3916,6 +3900,7 @@ void avdtp_exit(const bdaddr_t *src)
 
 	g_io_channel_shutdown(server->io, TRUE, NULL);
 	g_io_channel_unref(server->io);
+	btd_adapter_unref(server->adapter);
 	g_free(server);
 }
 

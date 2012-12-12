@@ -1160,7 +1160,7 @@ static struct a2dp_server *find_server(GSList *list, const bdaddr_t *src)
 	return NULL;
 }
 
-static struct a2dp_server *a2dp_server_register(const bdaddr_t *src,
+static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter,
 							GKeyFile *config)
 {
 	struct a2dp_server *server;
@@ -1168,14 +1168,14 @@ static struct a2dp_server *a2dp_server_register(const bdaddr_t *src,
 
 	server = g_new0(struct a2dp_server, 1);
 
-	av_err = avdtp_init(src, config);
+	av_err = avdtp_init(adapter, config);
 	if (av_err < 0) {
 		DBG("AVDTP not registered");
 		g_free(server);
 		return NULL;
 	}
 
-	bacpy(&server->src, src);
+	bacpy(&server->src, adapter_get_address(adapter));
 	servers = g_slist_append(servers, server);
 
 	return server;
@@ -1189,7 +1189,7 @@ int a2dp_source_register(struct btd_adapter *adapter, GKeyFile *config)
 	if (server != NULL)
 		goto done;
 
-	server = a2dp_server_register(adapter_get_address(adapter), config);
+	server = a2dp_server_register(adapter, config);
 	if (server == NULL)
 		return -EPROTONOSUPPORT;
 
@@ -1207,7 +1207,7 @@ int a2dp_sink_register(struct btd_adapter *adapter, GKeyFile *config)
 	if (server != NULL)
 		goto done;
 
-	server = a2dp_server_register(adapter_get_address(adapter), config);
+	server = a2dp_server_register(adapter, config);
 	if (server == NULL)
 		return -EPROTONOSUPPORT;
 
@@ -1240,7 +1240,7 @@ void a2dp_unregister(struct btd_adapter *adapter)
 	g_slist_free_full(server->sources,
 					(GDestroyNotify) a2dp_unregister_sep);
 
-	avdtp_exit(adapter_get_address(adapter));
+	avdtp_exit(adapter);
 
 	servers = g_slist_remove(servers, server);
 
@@ -1286,7 +1286,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 
 	sep = g_new0(struct a2dp_sep, 1);
 
-	sep->lsep = avdtp_register_sep(&server->src, type,
+	sep->lsep = avdtp_register_sep(adapter, type,
 					AVDTP_MEDIA_TYPE_AUDIO, codec,
 					delay_reporting, &endpoint_ind,
 					&cfm, sep);
