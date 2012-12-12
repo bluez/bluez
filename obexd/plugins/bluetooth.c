@@ -36,6 +36,8 @@
 #include <gdbus/gdbus.h>
 #include <btio/btio.h>
 
+#include <bluetooth/uuid.h>
+
 #include "obexd.h"
 #include "plugin.h"
 #include "server.h"
@@ -43,7 +45,6 @@
 #include "transport.h"
 #include "service.h"
 #include "log.h"
-#include "uuid.h"
 
 #define BT_RX_MTU 32767
 #define BT_TX_MTU 32767
