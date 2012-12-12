@@ -312,6 +312,8 @@ static const char *service2uuid(uint16_t service)
 		return OBEX_FTP_UUID;
 	case OBEX_PBAP:
 		return OBEX_PSE_UUID;
+	case OBEX_IRMC:
+		return OBEX_SYNC_UUID;
 	case OBEX_MAS:
 		return OBEX_MAS_UUID;
 	}
