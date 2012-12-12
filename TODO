@@ -72,13 +72,7 @@ released.
 - Once the above item is done switch ConnectProfile to match remote_uuid
   instead of local_uuid (as that's more intuitive).
 
-- Convert obexd to use org.bluez.Profile
-
 - Convert obexd & obex-client to ObjectManager/Properties
-
-- Remove org.bluez.Service interface (it has become unnecessary thanks
-  to org.bluez.Profile). obexd needs to be converted to use the new
-  interface first.
 
 - Don't install libbluetooth by default (put it behind a configure switch)
 
@@ -94,6 +88,12 @@ released.
   ini-file format
 
 Completed items:
+
+- Convert obexd to use org.bluez.Profile
+
+- Remove org.bluez.Service interface (it has become unnecessary thanks
+  to org.bluez.Profile). obexd needs to be converted to use the new
+  interface first.
 
 - Auto-connect newly registered profiles if we're in a connected state
   created by Device.Connect. This will fix e.g. oFono crashing and
