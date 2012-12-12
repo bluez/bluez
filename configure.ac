@@ -99,6 +99,10 @@ AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 		[disable Bluetooth tools]), [enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
+AC_ARG_ENABLE(monitor, AC_HELP_STRING([--disable-monitor],
+		[disable Bluetooth monitor]), [enable_monitor=${enableval}])
+AM_CONDITIONAL(MONITOR, test "${enable_monitor}" != "no")
+
 AC_ARG_ENABLE(usb, AC_HELP_STRING([--disable-usb],
 			[disable USB support]), [enable_usb=${enableval}])
 if (test "${enable_tools}" != "no" && test "${enable_usb}" != "no"  ); then
