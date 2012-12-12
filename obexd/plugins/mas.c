@@ -49,54 +49,6 @@
 #define READ_STATUS_REQ 0
 #define DELETE_STATUS_REQ 1
 
-/* Channel number according to bluez doc/assigned-numbers.txt */
-#define MAS_CHANNEL	16
-
-#define MAS_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>		\
-<record>								\
-  <attribute id=\"0x0001\">						\
-    <sequence>								\
-      <uuid value=\"0x1132\"/>						\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0004\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x0100\"/>					\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0003\"/>					\
-        <uint8 value=\"%u\" name=\"channel\"/>				\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0008\"/>					\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0009\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x1134\"/>					\
-        <uint16 value=\"0x0100\" name=\"version\"/>			\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0100\">						\
-    <text value=\"%s\" name=\"name\"/>					\
-  </attribute>								\
-									\
-  <attribute id=\"0x0315\">						\
-    <uint8 value=\"0x00\"/>						\
-  </attribute>								\
-									\
-  <attribute id=\"0x0316\">						\
-    <uint8 value=\"0x0F\"/>						\
-  </attribute>								\
-</record>"
-
 #define XML_DECL "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 
 /* Building blocks for x-obex/folder-listing */
@@ -764,9 +716,6 @@ static int any_close(void *obj)
 static struct obex_service_driver mas = {
 	.name = "Message Access server",
 	.service = OBEX_MAS,
-	.channel = MAS_CHANNEL,
-	.secure = TRUE,
-	.record = MAS_RECORD,
 	.target = MAS_TARGET,
 	.target_size = TARGET_SIZE,
 	.connect = mas_connect,
