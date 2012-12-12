@@ -27,8 +27,8 @@ struct media_endpoint;
 typedef void (*media_endpoint_cb_t) (struct media_endpoint *endpoint,
 					void *ret, int size, void *user_data);
 
-int media_register(const char *path, const bdaddr_t *src);
-void media_unregister(const char *path);
+int media_register(struct btd_adapter *btd_adapter);
+void media_unregister(struct btd_adapter *btd_adapter);
 
 struct a2dp_sep *media_endpoint_get_sep(struct media_endpoint *endpoint);
 const char *media_endpoint_get_uuid(struct media_endpoint *endpoint);

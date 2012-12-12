@@ -57,8 +57,7 @@
 #define REQUEST_TIMEOUT (3 * 1000)		/* 3 seconds */
 
 struct media_adapter {
-	bdaddr_t		src;		/* Adapter address */
-	char			*path;		/* Adapter path */
+	struct btd_adapter	*btd_adapter;
 	GSList			*endpoints;	/* Endpoints list */
 	GSList			*players;	/* Players list */
 };
@@ -553,7 +552,11 @@ static gboolean endpoint_init_a2dp_source(struct media_endpoint *endpoint,
 						gboolean delay_reporting,
 						int *err)
 {
-	endpoint->sep = a2dp_add_sep(&endpoint->adapter->src,
+	const bdaddr_t *src;
+
+	src = adapter_get_address(endpoint->adapter->btd_adapter);
+
+	endpoint->sep = a2dp_add_sep(src,
 					AVDTP_SEP_TYPE_SOURCE, endpoint->codec,
 					delay_reporting, &a2dp_endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
@@ -567,7 +570,11 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 						gboolean delay_reporting,
 						int *err)
 {
-	endpoint->sep = a2dp_add_sep(&endpoint->adapter->src,
+	const bdaddr_t *src;
+
+	src = adapter_get_address(endpoint->adapter->btd_adapter);
+
+	endpoint->sep = a2dp_add_sep(src,
 					AVDTP_SEP_TYPE_SINK, endpoint->codec,
 					delay_reporting, &a2dp_endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
@@ -608,10 +615,8 @@ static bool endpoint_properties_exists(const char *uuid,
 						void *user_data)
 {
 	struct media_adapter *adapter = user_data;
-	struct btd_adapter *btd_adapter = device_get_adapter(dev);
-	const bdaddr_t *src = adapter_get_address(btd_adapter);
 
-	if (bacmp(&adapter->src, src) != 0)
+	if (adapter->btd_adapter != device_get_adapter(dev))
 		return false;
 
 	if (media_adapter_find_endpoint(adapter, NULL, NULL, uuid) == NULL)
@@ -1444,8 +1449,9 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 						"TrackChanged",
 						track_changed,
 						mp, NULL);
-	mp->player = avrcp_register_player(&adapter->src, &player_cb, mp,
-						media_player_free);
+	mp->player = avrcp_register_player(adapter_get_address(adapter->btd_adapter),
+							&player_cb, mp,
+							media_player_free);
 	if (!mp->player) {
 		if (err)
 			*err = -EPROTONOSUPPORT;
@@ -1558,23 +1564,24 @@ static void path_free(void *data)
 
 	adapters = g_slist_remove(adapters, adapter);
 
-	g_free(adapter->path);
+	btd_adapter_unref(adapter->btd_adapter);
 	g_free(adapter);
 }
 
-int media_register(const char *path, const bdaddr_t *src)
+int media_register(struct btd_adapter *btd_adapter)
 {
 	struct media_adapter *adapter;
 
 	adapter = g_new0(struct media_adapter, 1);
-	bacpy(&adapter->src, src);
-	adapter->path = g_strdup(path);
+	adapter->btd_adapter = btd_adapter_ref(btd_adapter);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					path, MEDIA_INTERFACE,
+					adapter_get_path(btd_adapter),
+					MEDIA_INTERFACE,
 					media_methods, NULL, NULL,
 					adapter, path_free)) {
-		error("D-Bus failed to register %s path", path);
+		error("D-Bus failed to register %s path",
+						adapter_get_path(btd_adapter));
 		path_free(adapter);
 		return -1;
 	}
@@ -1584,16 +1591,17 @@ int media_register(const char *path, const bdaddr_t *src)
 	return 0;
 }
 
-void media_unregister(const char *path)
+void media_unregister(struct btd_adapter *btd_adapter)
 {
 	GSList *l;
 
 	for (l = adapters; l; l = l->next) {
 		struct media_adapter *adapter = l->data;
 
-		if (g_strcmp0(path, adapter->path) == 0) {
+		if (adapter->btd_adapter == btd_adapter) {
 			g_dbus_unregister_interface(btd_get_dbus_connection(),
-						path, MEDIA_INTERFACE);
+						adapter_get_path(btd_adapter),
+						MEDIA_INTERFACE);
 			return;
 		}
 	}

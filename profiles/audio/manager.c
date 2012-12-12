@@ -396,16 +396,15 @@ static void avrcp_server_remove(struct btd_profile *p,
 static int media_server_probe(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
-	const gchar *path = adapter_get_path(adapter);
 	int err;
 
-	DBG("path %s", path);
+	DBG("path %s", adapter_get_path(adapter));
 
 	adp = audio_adapter_get(adapter);
 	if (!adp)
 		return -EINVAL;
 
-	err = media_register(path, adapter_get_address(adapter));
+	err = media_register(adapter);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -415,15 +414,14 @@ static int media_server_probe(struct btd_adapter *adapter)
 static void media_server_remove(struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
-	const gchar *path = adapter_get_path(adapter);
 
-	DBG("path %s", path);
+	DBG("path %s", adapter_get_path(adapter));
 
 	adp = find_adapter(adapters, adapter);
 	if (!adp)
 		return;
 
-	media_unregister(path);
+	media_unregister(adapter);
 	audio_adapter_unref(adp);
 }
 
