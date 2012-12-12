@@ -92,14 +92,14 @@ struct avrcp_player_cb {
 							void *user_data);
 };
 
-int avrcp_register(const bdaddr_t *src, GKeyFile *config);
-void avrcp_unregister(const bdaddr_t *src);
+int avrcp_register(struct btd_adapter *adapter, GKeyFile *config);
+void avrcp_unregister(struct btd_adapter *adapter);
 
 gboolean avrcp_connect(struct audio_device *dev);
 void avrcp_disconnect(struct audio_device *dev);
 int avrcp_set_volume(struct audio_device *dev, uint8_t volume);
 
-struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
+struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 						struct avrcp_player_cb *cb,
 						void *user_data,
 						GDestroyNotify destroy);

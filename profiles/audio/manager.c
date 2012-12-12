@@ -370,7 +370,7 @@ static int avrcp_server_probe(struct btd_profile *p,
 	if (!adp)
 		return -EINVAL;
 
-	err = avrcp_register(adapter_get_address(adapter), config);
+	err = avrcp_register(adapter, config);
 	if (err < 0)
 		audio_adapter_unref(adp);
 
@@ -389,7 +389,7 @@ static void avrcp_server_remove(struct btd_profile *p,
 	if (!adp)
 		return;
 
-	avrcp_unregister(adapter_get_address(adapter));
+	avrcp_unregister(adapter);
 	audio_adapter_unref(adp);
 }
 

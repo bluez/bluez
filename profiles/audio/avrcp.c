@@ -159,7 +159,7 @@ struct avrcp_browsing_header {
 #define AVRCP_BROWSING_HEADER_LENGTH 3
 
 struct avrcp_server {
-	bdaddr_t src;
+	struct btd_adapter *adapter;
 	uint32_t tg_record_id;
 	uint32_t ct_record_id;
 	GSList *players;
@@ -1536,12 +1536,12 @@ size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands)
 	return AVRCP_HEADER_LENGTH + 1;
 }
 
-static struct avrcp_server *find_server(GSList *list, const bdaddr_t *src)
+static struct avrcp_server *find_server(GSList *list, struct btd_adapter *a)
 {
 	for (; list; list = list->next) {
 		struct avrcp_server *server = list->data;
 
-		if (bacmp(&server->src, src) == 0)
+		if (server->adapter == a)
 			return server;
 	}
 
@@ -2217,11 +2217,8 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
-	const bdaddr_t *src;
 
-	src = adapter_get_address(device_get_adapter(dev->btd_dev));
-
-	server = find_server(servers, src);
+	server = find_server(servers, device_get_adapter(dev->btd_dev));
 	if (!server)
 		return;
 
@@ -2275,7 +2272,7 @@ void avrcp_disconnect(struct audio_device *dev)
 	avctp_disconnect(session);
 }
 
-int avrcp_register(const bdaddr_t *src, GKeyFile *config)
+int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
 {
 	sdp_record_t *record;
 	gboolean tmp, master = TRUE;
@@ -2301,7 +2298,7 @@ int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(src, record) < 0) {
+	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
 		error("Unable to register AVRCP target service record");
 		g_free(server);
 		sdp_record_free(record);
@@ -2316,7 +2313,7 @@ int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 		return -1;
 	}
 
-	if (add_record_to_server(src, record) < 0) {
+	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
 		error("Unable to register AVRCP service record");
 		sdp_record_free(record);
 		g_free(server);
@@ -2324,14 +2321,14 @@ int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 	}
 	server->ct_record_id = record->handle;
 
-	if (avctp_register(src, master) < 0) {
+	if (avctp_register(adapter_get_address(adapter), master) < 0) {
 		remove_record_from_server(server->ct_record_id);
 		remove_record_from_server(server->tg_record_id);
 		g_free(server);
 		return -1;
 	}
 
-	bacpy(&server->src, src);
+	server->adapter = btd_adapter_ref(adapter);
 
 	servers = g_slist_append(servers, server);
 
@@ -2341,11 +2338,11 @@ int avrcp_register(const bdaddr_t *src, GKeyFile *config)
 	return 0;
 }
 
-void avrcp_unregister(const bdaddr_t *src)
+void avrcp_unregister(struct btd_adapter *adapter)
 {
 	struct avrcp_server *server;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter);
 	if (!server)
 		return;
 
@@ -2357,7 +2354,8 @@ void avrcp_unregister(const bdaddr_t *src)
 	remove_record_from_server(server->ct_record_id);
 	remove_record_from_server(server->tg_record_id);
 
-	avctp_unregister(&server->src);
+	avctp_unregister(adapter_get_address(server->adapter));
+	btd_adapter_unref(server->adapter);
 	g_free(server);
 
 	if (servers)
@@ -2369,7 +2367,7 @@ void avrcp_unregister(const bdaddr_t *src)
 	}
 }
 
-struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
+struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 						struct avrcp_player_cb *cb,
 						void *user_data,
 						GDestroyNotify destroy)
@@ -2378,7 +2376,7 @@ struct avrcp_player *avrcp_register_player(const bdaddr_t *src,
 	struct avrcp_player *player;
 	GSList *l;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter);
 	if (!server)
 		return NULL;
 
@@ -2448,11 +2446,8 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 	struct avrcp *session;
 	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
 	struct avrcp_header *pdu = (void *) buf;
-	const bdaddr_t *src;
 
-	src = adapter_get_address(device_get_adapter(dev->btd_dev));
-
-	server = find_server(servers, src);
+	server = find_server(servers, device_get_adapter(dev->btd_dev));
 	if (server == NULL)
 		return -EINVAL;
 

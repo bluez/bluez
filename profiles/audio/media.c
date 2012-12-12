@@ -1441,9 +1441,8 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 						"TrackChanged",
 						track_changed,
 						mp, NULL);
-	mp->player = avrcp_register_player(adapter_get_address(adapter->btd_adapter),
-							&player_cb, mp,
-							media_player_free);
+	mp->player = avrcp_register_player(adapter->btd_adapter, &player_cb,
+							mp, media_player_free);
 	if (!mp->player) {
 		if (err)
 			*err = -EPROTONOSUPPORT;
