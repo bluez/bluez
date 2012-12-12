@@ -68,7 +68,7 @@ int a2dp_source_register(struct btd_adapter *adapter, GKeyFile *config);
 int a2dp_sink_register(struct btd_adapter *adapter, GKeyFile *config);
 void a2dp_unregister(struct btd_adapter *adapter);
 
-struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
+struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 				uint8_t codec, gboolean delay_reporting,
 				struct a2dp_endpoint *endpoint,
 				void *user_data, GDestroyNotify destroy,

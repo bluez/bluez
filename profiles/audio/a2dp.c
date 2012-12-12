@@ -1253,7 +1253,7 @@ void a2dp_unregister(struct btd_adapter *adapter)
 	g_free(server);
 }
 
-struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
+struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 				uint8_t codec, gboolean delay_reporting,
 				struct a2dp_endpoint *endpoint,
 				void *user_data, GDestroyNotify destroy,
@@ -1265,7 +1265,7 @@ struct a2dp_sep *a2dp_add_sep(const bdaddr_t *src, uint8_t type,
 	uint32_t *record_id;
 	sdp_record_t *record;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter_get_address(adapter));
 	if (server == NULL) {
 		if (err)
 			*err = -EPROTONOSUPPORT;

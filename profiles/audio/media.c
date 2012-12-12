@@ -552,11 +552,7 @@ static gboolean endpoint_init_a2dp_source(struct media_endpoint *endpoint,
 						gboolean delay_reporting,
 						int *err)
 {
-	const bdaddr_t *src;
-
-	src = adapter_get_address(endpoint->adapter->btd_adapter);
-
-	endpoint->sep = a2dp_add_sep(src,
+	endpoint->sep = a2dp_add_sep(endpoint->adapter->btd_adapter,
 					AVDTP_SEP_TYPE_SOURCE, endpoint->codec,
 					delay_reporting, &a2dp_endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
@@ -570,11 +566,7 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 						gboolean delay_reporting,
 						int *err)
 {
-	const bdaddr_t *src;
-
-	src = adapter_get_address(endpoint->adapter->btd_adapter);
-
-	endpoint->sep = a2dp_add_sep(src,
+	endpoint->sep = a2dp_add_sep(endpoint->adapter->btd_adapter,
 					AVDTP_SEP_TYPE_SINK, endpoint->codec,
 					delay_reporting, &a2dp_endpoint,
 					endpoint, a2dp_destroy_endpoint, err);
