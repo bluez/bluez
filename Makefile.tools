@@ -1,6 +1,7 @@
 
 if CLIENT
-noinst_PROGRAMS += client/bluetoothctl
+bin_PROGRAMS += client/bluetoothctl
+
 client_bluetoothctl_SOURCES = $(gdbus_sources) client/main.c
 client_bluetoothctl_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
