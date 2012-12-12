@@ -70,6 +70,18 @@ For a working system, certain configuration options need to be enabled:
 		When the CUPS backend is selected, it is a good idea to
 		use a separate bluez-cups package for it.
 
+	--disable-monitor
+
+		Disable support for the Bluetooth monitor utility
+
+		By default the monitor utility is enabled. It provides
+		support for HCI level tracing and debugging. For systems
+		that don't require any kind of tracing or debugging
+		capabilities, this options allows to disable it.
+
+		The monitor utility should be place in the main package
+		along with the daemons. It is universally useful.
+
 	--disable-client
 
 		Disable support for the command line client
