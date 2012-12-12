@@ -23,47 +23,19 @@
 
 #include "textfile.h"
 
-int read_device_alias(const char *src, const char *dst, uint8_t dst_type,
-						char *alias, size_t size);
-int write_device_alias(const char *src, const char *dst, uint8_t dst_type,
-							const char *alias);
-int write_discoverable_timeout(const bdaddr_t *bdaddr, int timeout);
 int read_discoverable_timeout(const char *src, int *timeout);
-int write_pairable_timeout(const bdaddr_t *bdaddr, int timeout);
 int read_pairable_timeout(const char *src, int *timeout);
-int write_device_mode(const bdaddr_t *bdaddr, const char *mode);
 int read_device_mode(const char *src, char *mode, int length);
 int read_on_mode(const char *src, char *mode, int length);
-int write_local_name(const bdaddr_t *bdaddr, const char *name);
 int read_local_name(const bdaddr_t *bdaddr, char *name);
-int write_local_class(const bdaddr_t *bdaddr, uint8_t *class);
 int read_local_class(const bdaddr_t *bdaddr, uint8_t *class);
 int write_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, uint16_t appearance);
 int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, uint16_t *appearance);
-int write_remote_class(const bdaddr_t *local, const bdaddr_t *peer,
-							uint32_t class);
-int read_remote_class(const bdaddr_t *local, const bdaddr_t *peer,
-							uint32_t *class);
-int write_device_name(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, const char *name);
-int read_device_name(const char *src, const char *dst, uint8_t dst_type,
-								char *name);
-int write_lastseen_info(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, struct tm *tm);
 int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, struct tm *tm);
-int write_link_key(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, unsigned char *key,
-					uint8_t type, int length);
-int read_link_key(const bdaddr_t *local, const bdaddr_t *peer,
-			uint8_t peer_type, unsigned char *key, uint8_t *type);
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin);
-gboolean read_trust(const bdaddr_t *local, const char *addr,
-						uint8_t addr_type);
-int write_trust(const char *src, const char *addr, uint8_t addr_type,
-							gboolean trust);
 int write_device_profiles(const bdaddr_t *src, const bdaddr_t *dst,
 				uint8_t dst_type, const char *profiles);
 int delete_entry(const bdaddr_t *src, const char *storage, const bdaddr_t *dst,
@@ -79,18 +51,7 @@ void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
 							uint8_t dst_type);
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
-int store_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
-				const uint16_t source, const uint16_t vendor,
-				const uint16_t product, const uint16_t version);
-int read_device_id(const gchar *src, const gchar *dst, uint8_t dst_type,
-					uint16_t *source, uint16_t *vendor,
-					uint16_t *product, uint16_t *version);
-int write_device_pairable(const bdaddr_t *local, gboolean mode);
 int read_device_pairable(const bdaddr_t *local, gboolean *mode);
-gboolean read_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-							uint8_t remote_type);
-int write_blocked(const bdaddr_t *local, const bdaddr_t *remote,
-				uint8_t remote_type, gboolean blocked);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 				uint8_t bdaddr_type, const char *services);
 int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
@@ -112,7 +73,3 @@ int write_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t bdaddr_type, uint16_t handle,
 					uint16_t value);
 void delete_device_ccc(const bdaddr_t *local, const bdaddr_t *peer);
-int write_longtermkeys(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t bdaddr_type, const char *key);
-gboolean has_longtermkeys(const bdaddr_t *local, const bdaddr_t *peer,
-							uint8_t bdaddr_type);
