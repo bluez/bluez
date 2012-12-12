@@ -39,9 +39,8 @@ void audio_control_disconnected(struct btd_device *dev, int err);
 int audio_manager_init(GKeyFile *config);
 void audio_manager_exit(void);
 
-struct audio_device *manager_get_device(const bdaddr_t *src,
-					const bdaddr_t *dst,
-					gboolean create);
+struct audio_device *manager_get_audio_device(struct btd_device *device,
+							gboolean create);
 
 /* TRUE to enable fast connectable and FALSE to disable fast connectable for all
  * audio adapters. */

@@ -48,8 +48,6 @@
 #include "a2dp.h"
 #include "a2dp-codecs.h"
 #include "sdpd.h"
-#include "../src/manager.h"
-#include "../src/device.h"
 
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
@@ -124,11 +122,7 @@ static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 
 static struct audio_device *a2dp_get_dev(struct avdtp *session)
 {
-	struct btd_adapter *adapter = avdtp_get_adapter(session);
-	struct btd_device *device = avdtp_get_device(session);
-
-	return manager_get_device(adapter_get_address(adapter),
-					device_get_address(device), FALSE);
+	return manager_get_audio_device(avdtp_get_device(session), FALSE);
 }
 
 static struct a2dp_setup *setup_new(struct avdtp *session)

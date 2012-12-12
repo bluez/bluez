@@ -99,10 +99,7 @@ static struct audio_adapter *find_adapter(GSList *list,
 
 static struct audio_device *get_audio_dev(struct btd_device *device)
 {
-	struct btd_adapter *adapter = device_get_adapter(device);
-
-	return manager_get_device(adapter_get_address(adapter),
-					device_get_address(device), TRUE);
+	return manager_get_audio_device(device, TRUE);
 }
 
 static GSList *manager_find_devices(const char *path,
@@ -640,38 +637,20 @@ void audio_manager_exit(void)
 	btd_unregister_adapter_driver(&media_driver);
 }
 
-struct audio_device *manager_get_device(const bdaddr_t *src,
-					const bdaddr_t *dst,
-					gboolean create)
+struct audio_device *manager_get_audio_device(struct btd_device *device,
+							gboolean create)
 {
 	struct audio_device *dev;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
+	struct btd_adapter *adapter = device_get_adapter(device);
 
-	dev = manager_find_device(NULL, src, dst, NULL, FALSE);
+	dev = manager_find_device(NULL, adapter_get_address(adapter),
+					device_get_address(device), NULL,
+					FALSE);
 	if (dev)
 		return dev;
 
 	if (!create)
 		return NULL;
-
-	ba2str(src, addr);
-
-	adapter = manager_find_adapter(src);
-	if (!adapter) {
-		error("Unable to get a btd_adapter object for %s",
-				addr);
-		return NULL;
-	}
-
-	ba2str(dst, addr);
-
-	device = adapter_get_device(adapter, addr, BDADDR_BREDR);
-	if (!device) {
-		error("Unable to get btd_device object for %s", addr);
-		return NULL;
-	}
 
 	dev = audio_device_register(device);
 	if (!dev)

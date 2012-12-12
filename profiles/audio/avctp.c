@@ -448,9 +448,7 @@ static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
 	struct audio_device *dev;
 	avctp_state_t old_state = session->state;
 
-	dev = manager_get_device(adapter_get_address(session->server->adapter),
-					device_get_address(session->device),
-					FALSE);
+	dev = manager_get_audio_device(session->device, FALSE);
 	if (dev == NULL) {
 		error("%s(): No matching audio device", __func__);
 		return;
@@ -842,9 +840,7 @@ static void init_uinput(struct avctp *session)
 	struct audio_device *dev;
 	char address[18], name[248 + 1];
 
-	dev = manager_get_device(adapter_get_address(session->server->adapter),
-					device_get_address(session->device),
-					FALSE);
+	dev = manager_get_audio_device(session->device, FALSE);
 
 	device_get_name(dev->btd_dev, name, sizeof(name));
 	if (g_str_equal(name, "Nokia CK-20W")) {
@@ -855,7 +851,6 @@ static void init_uinput(struct avctp *session)
 	}
 
 	ba2str(device_get_address(session->device), address);
-
 	session->uinput = uinput_create(address);
 	if (session->uinput < 0)
 		error("AVRCP: failed to init uinput for %s", address);
@@ -1137,10 +1132,9 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (session == NULL)
 		return;
 
-	dev = manager_get_device(&src, device_get_address(device), FALSE);
+	dev = manager_get_audio_device(device, FALSE);
 	if (!dev) {
-		dev = manager_get_device(&src, device_get_address(device),
-									TRUE);
+		dev = manager_get_audio_device(device, TRUE);
 		if (!dev) {
 			error("Unable to get audio device object for %s",
 					address);

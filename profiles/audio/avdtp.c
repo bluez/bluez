@@ -715,13 +715,10 @@ static void avdtp_set_state(struct avdtp *session,
 	GSList *l;
 	struct audio_device *dev;
 	avdtp_session_state_t old_state = session->state;
-	struct btd_adapter *adapter = avdtp_get_adapter(session);
-	struct btd_device *device = avdtp_get_device(session);
 
 	session->state = new_state;
 
-	dev = manager_get_device(adapter_get_address(adapter),
-					device_get_address(device), FALSE);
+	dev = manager_get_audio_device(avdtp_get_device(session), FALSE);
 	if (dev == NULL) {
 		error("%s(): No matching audio device", __func__);
 		return;
@@ -1158,9 +1155,7 @@ static gboolean disconnect_timeout(gpointer user_data)
 
 	stream_setup = session->stream_setup;
 	session->stream_setup = FALSE;
-	dev = manager_get_device(adapter_get_address(session->server->adapter),
-					device_get_address(session->device),
-					FALSE);
+	dev = manager_get_audio_device(session->device, FALSE);
 
 	if (dev && dev->sink && stream_setup)
 		sink_setup_stream(dev->sink, session);
@@ -1458,8 +1453,6 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	uint8_t err, category = 0x00;
 	struct audio_device *dev;
 	GSList *l;
-	struct btd_adapter *adapter = avdtp_get_adapter(session);
-	struct btd_device *device = avdtp_get_device(session);
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
@@ -1477,8 +1470,7 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	dev = manager_get_device(adapter_get_address(adapter),
-					device_get_address(device), FALSE);
+	dev = manager_get_audio_device(avdtp_get_device(session), FALSE);
 	if (!dev) {
 		error("Unable to get a audio device object");
 		err = AVDTP_BAD_STATE;
@@ -2515,9 +2507,9 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 		goto drop;
 	}
 
-	dev = manager_get_device(&src, &dst, FALSE);
+	dev = manager_get_audio_device(device, FALSE);
 	if (!dev) {
-		dev = manager_get_device(&src, &dst, TRUE);
+		dev = manager_get_audio_device(device, TRUE);
 		if (!dev) {
 			error("Unable to get audio device object for %s",
 					address);
