@@ -65,49 +65,6 @@
 #define PHONEBOOKSIZE_TAG	0X08
 #define NEWMISSEDCALLS_TAG	0X09
 
-#define PBAP_CHANNEL	15
-
-#define PBAP_RECORD "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>	\
-<record>								\
-  <attribute id=\"0x0001\">						\
-    <sequence>								\
-      <uuid value=\"0x112f\"/>						\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0004\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x0100\"/>					\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0003\"/>					\
-        <uint8 value=\"%u\" name=\"channel\"/>				\
-      </sequence>							\
-      <sequence>							\
-        <uuid value=\"0x0008\"/>					\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0009\">						\
-    <sequence>								\
-      <sequence>							\
-        <uuid value=\"0x1130\"/>					\
-        <uint16 value=\"0x0100\" name=\"version\"/>			\
-      </sequence>							\
-    </sequence>								\
-  </attribute>								\
-									\
-  <attribute id=\"0x0100\">						\
-    <text value=\"%s\" name=\"name\"/>					\
-  </attribute>								\
-									\
-  <attribute id=\"0x0314\">						\
-    <uint8 value=\"0x01\"/>						\
-  </attribute>								\
-</record>"
-
 struct cache {
 	gboolean valid;
 	uint32_t index;
@@ -664,9 +621,6 @@ static int pbap_chkput(struct obex_session *os, void *user_data)
 static struct obex_service_driver pbap = {
 	.name = "Phonebook Access server",
 	.service = OBEX_PBAP,
-	.channel = PBAP_CHANNEL,
-	.secure = TRUE,
-	.record = PBAP_RECORD,
 	.target = PBAP_TARGET,
 	.target_size = TARGET_SIZE,
 	.connect = pbap_connect,
