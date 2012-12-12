@@ -49,6 +49,7 @@
 #include "a2dp-codecs.h"
 #include "sdpd.h"
 #include "../src/manager.h"
+#include "../src/device.h"
 
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
@@ -123,11 +124,12 @@ static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 
 static struct audio_device *a2dp_get_dev(struct avdtp *session)
 {
-	bdaddr_t src, dst;
+	struct btd_adapter *adapter = avdtp_get_adapter(session);
+	struct btd_device *device = avdtp_get_device(session);
 
-	avdtp_get_peers(session, &src, &dst);
-
-	return manager_find_device(NULL, &src, &dst, NULL, FALSE);
+	return manager_find_device(NULL, adapter_get_address(adapter),
+					device_get_address(device), NULL,
+					FALSE);
 }
 
 static struct a2dp_setup *setup_new(struct avdtp *session)
@@ -1492,10 +1494,8 @@ static struct a2dp_sep *a2dp_select_sep(struct avdtp *session, uint8_t type,
 	struct a2dp_server *server;
 	struct a2dp_sep *sep;
 	GSList *l;
-	bdaddr_t src;
 
-	avdtp_get_peers(session, &src, NULL);
-	server = find_server(servers, manager_find_adapter(&src));
+	server = find_server(servers, avdtp_get_adapter(session));
 	if (!server)
 		return NULL;
 
@@ -1571,10 +1571,8 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 	struct avdtp_service_capability *cap;
 	struct avdtp_media_codec_capability *codec_cap = NULL;
 	int posix_err;
-	bdaddr_t src;
 
-	avdtp_get_peers(session, &src, NULL);
-	server = find_server(servers, manager_find_adapter(&src));
+	server = find_server(servers, avdtp_get_adapter(session));
 	if (!server)
 		return 0;
 

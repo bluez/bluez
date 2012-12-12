@@ -714,13 +714,14 @@ static void avdtp_set_state(struct avdtp *session,
 {
 	GSList *l;
 	struct audio_device *dev;
-	bdaddr_t src, dst;
 	avdtp_session_state_t old_state = session->state;
+	struct btd_adapter *adapter = avdtp_get_adapter(session);
+	struct btd_device *device = avdtp_get_device(session);
 
 	session->state = new_state;
 
-	avdtp_get_peers(session, &src, &dst);
-	dev = manager_get_device(&src, &dst, FALSE);
+	dev = manager_get_device(adapter_get_address(adapter),
+					device_get_address(device), FALSE);
 	if (dev == NULL) {
 		error("%s(): No matching audio device", __func__);
 		return;
@@ -1456,8 +1457,9 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 	struct avdtp_stream *stream;
 	uint8_t err, category = 0x00;
 	struct audio_device *dev;
-	bdaddr_t src, dst;
 	GSList *l;
+	struct btd_adapter *adapter = avdtp_get_adapter(session);
+	struct btd_device *device = avdtp_get_device(session);
 
 	if (size < sizeof(struct setconf_req)) {
 		error("Too short getcap request");
@@ -1475,8 +1477,8 @@ static gboolean avdtp_setconf_cmd(struct avdtp *session, uint8_t transaction,
 		goto failed;
 	}
 
-	avdtp_get_peers(session, &src, &dst);
-	dev = manager_get_device(&src, &dst, FALSE);
+	dev = manager_get_device(adapter_get_address(adapter),
+					device_get_address(device), FALSE);
 	if (!dev) {
 		error("Unable to get a audio device object");
 		err = AVDTP_BAD_STATE;
@@ -3845,12 +3847,14 @@ avdtp_state_t avdtp_sep_get_state(struct avdtp_local_sep *sep)
 	return sep->state;
 }
 
-void avdtp_get_peers(struct avdtp *session, bdaddr_t *src, bdaddr_t *dst)
+struct btd_adapter *avdtp_get_adapter(struct avdtp *session)
 {
-	if (src)
-		bacpy(src, adapter_get_address(session->server->adapter));
-	if (dst)
-		bacpy(dst, device_get_address(session->device));
+	return session->server->adapter;
+}
+
+struct btd_device *avdtp_get_device(struct avdtp *session)
+{
+	return session->device;
 }
 
 int avdtp_init(struct btd_adapter *adapter, GKeyFile *config)
