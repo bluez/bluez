@@ -2321,7 +2321,7 @@ int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
 	}
 	server->ct_record_id = record->handle;
 
-	if (avctp_register(adapter_get_address(adapter), master) < 0) {
+	if (avctp_register(adapter, master) < 0) {
 		remove_record_from_server(server->ct_record_id);
 		remove_record_from_server(server->tg_record_id);
 		g_free(server);
@@ -2354,7 +2354,7 @@ void avrcp_unregister(struct btd_adapter *adapter)
 	remove_record_from_server(server->ct_record_id);
 	remove_record_from_server(server->tg_record_id);
 
-	avctp_unregister(adapter_get_address(server->adapter));
+	avctp_unregister(server->adapter);
 	btd_adapter_unref(server->adapter);
 	g_free(server);
 

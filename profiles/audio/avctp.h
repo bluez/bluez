@@ -90,8 +90,8 @@ typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 unsigned int avctp_add_state_cb(avctp_state_cb cb, void *user_data);
 gboolean avctp_remove_state_cb(unsigned int id);
 
-int avctp_register(const bdaddr_t *src, gboolean master);
-void avctp_unregister(const bdaddr_t *src);
+int avctp_register(struct btd_adapter *adapter, gboolean master);
+void avctp_unregister(struct btd_adapter *adapter);
 
 struct avctp *avctp_connect(struct audio_device *device);
 struct avctp *avctp_get(struct audio_device *device);
