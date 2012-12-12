@@ -337,7 +337,7 @@ static int a2dp_source_server_probe(struct btd_profile *p,
 
 	audio_adapter_unref(adp); /* Referenced by a2dp server */
 
-	return a2dp_source_register(adapter_get_address(adapter), config);
+	return a2dp_source_register(adapter, config);
 }
 
 static int a2dp_sink_server_probe(struct btd_profile *p,
@@ -354,7 +354,7 @@ static int a2dp_sink_server_probe(struct btd_profile *p,
 
 	audio_adapter_unref(adp); /* Referenced by a2dp server */
 
-	return a2dp_sink_register(adapter_get_address(adapter), config);
+	return a2dp_sink_register(adapter, config);
 }
 
 static int avrcp_server_probe(struct btd_profile *p,

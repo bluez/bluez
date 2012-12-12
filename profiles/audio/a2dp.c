@@ -37,6 +37,8 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
+#include "../src/adapter.h"
+
 #include "log.h"
 #include "device.h"
 #include "manager.h"
@@ -1179,15 +1181,15 @@ static struct a2dp_server *a2dp_server_register(const bdaddr_t *src,
 	return server;
 }
 
-int a2dp_source_register(const bdaddr_t *src, GKeyFile *config)
+int a2dp_source_register(struct btd_adapter *adapter, GKeyFile *config)
 {
 	struct a2dp_server *server;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter_get_address(adapter));
 	if (server != NULL)
 		goto done;
 
-	server = a2dp_server_register(src, config);
+	server = a2dp_server_register(adapter_get_address(adapter), config);
 	if (server == NULL)
 		return -EPROTONOSUPPORT;
 
@@ -1197,15 +1199,15 @@ done:
 	return 0;
 }
 
-int a2dp_sink_register(const bdaddr_t *src, GKeyFile *config)
+int a2dp_sink_register(struct btd_adapter *adapter, GKeyFile *config)
 {
 	struct a2dp_server *server;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter_get_address(adapter));
 	if (server != NULL)
 		goto done;
 
-	server = a2dp_server_register(src, config);
+	server = a2dp_server_register(adapter_get_address(adapter), config);
 	if (server == NULL)
 		return -EPROTONOSUPPORT;
 

@@ -39,6 +39,9 @@
 
 #include "log.h"
 
+#include "../src/adapter.h"
+#include "../src/device.h"
+
 #include "device.h"
 #include "avdtp.h"
 #include "media.h"
@@ -47,8 +50,6 @@
 #include "manager.h"
 #include "sink.h"
 #include "dbus-common.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
 
 #define STREAM_SETUP_RETRY_TIMER 2
 
