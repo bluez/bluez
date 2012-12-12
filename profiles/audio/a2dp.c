@@ -1228,11 +1228,11 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 	g_free(sep);
 }
 
-void a2dp_unregister(const bdaddr_t *src)
+void a2dp_unregister(struct btd_adapter *adapter)
 {
 	struct a2dp_server *server;
 
-	server = find_server(servers, src);
+	server = find_server(servers, adapter_get_address(adapter));
 	if (!server)
 		return;
 
@@ -1240,7 +1240,7 @@ void a2dp_unregister(const bdaddr_t *src)
 	g_slist_free_full(server->sources,
 					(GDestroyNotify) a2dp_unregister_sep);
 
-	avdtp_exit(src);
+	avdtp_exit(adapter_get_address(adapter));
 
 	servers = g_slist_remove(servers, server);
 
