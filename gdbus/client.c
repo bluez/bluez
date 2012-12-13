@@ -55,7 +55,60 @@ struct GDBusProxy {
 	GDBusClient *client;
 	char *obj_path;
 	char *interface;
+	GHashTable *prop_list;
 };
+
+struct prop_entry {
+	char *name;
+	int type;
+	DBusMessage *msg;
+};
+
+static struct prop_entry *prop_entry_new(const char *name,
+						DBusMessageIter *iter)
+{
+	struct prop_entry *prop;
+
+	prop = g_try_new0(struct prop_entry, 1);
+	if (prop == NULL)
+		return NULL;
+
+	prop->name = g_strdup(name);
+	prop->type = dbus_message_iter_get_arg_type(iter);
+
+	if (dbus_type_is_basic(prop->type)) {
+		DBusMessage *msg;
+		DBusMessageIter append_iter;
+		const void *value;
+
+		msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+		if (msg == NULL)
+			return prop;
+
+		dbus_message_iter_init_append(msg, &append_iter);
+		dbus_message_iter_get_basic(iter, &value);
+		dbus_message_iter_append_basic(&append_iter,
+						prop->type, &value);
+
+		prop->msg = dbus_message_copy(msg);
+
+		dbus_message_unref(msg);
+	}
+
+	return prop;
+}
+
+static void prop_entry_free(gpointer data)
+{
+	struct prop_entry *prop = data;
+
+	if (prop->msg != NULL)
+		dbus_message_unref(prop->msg);
+
+	g_free(prop->name);
+
+	g_free(prop);
+}
 
 static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
 						const char *interface)
@@ -69,6 +122,9 @@ static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
 	proxy->client = client;
 	proxy->obj_path = g_strdup(path);
 	proxy->interface = g_strdup(interface);
+
+	proxy->prop_list = g_hash_table_new_full(g_str_hash, g_str_equal,
+							NULL, prop_entry_free);
 
 	return g_dbus_proxy_ref(proxy);
 }
@@ -126,6 +182,8 @@ void g_dbus_proxy_unref(GDBusProxy *proxy)
 	if (g_atomic_int_dec_and_test(&proxy->ref_count) == FALSE)
 		return;
 
+	g_hash_table_destroy(proxy->prop_list);
+
 	g_free(proxy->obj_path);
 	g_free(proxy->interface);
 
@@ -148,9 +206,49 @@ const char *g_dbus_proxy_get_interface(GDBusProxy *proxy)
 	return proxy->interface;
 }
 
+gboolean g_dbus_proxy_get_property(GDBusProxy *proxy, const char *name,
+                                                        DBusMessageIter *iter)
+{
+	struct prop_entry *prop;
+
+	if (proxy == NULL || name == NULL)
+		return FALSE;
+
+	prop = g_hash_table_lookup(proxy->prop_list, name);
+	if (prop == NULL)
+		return FALSE;
+
+	if (prop->msg == NULL)
+		return FALSE;
+
+	if (dbus_message_iter_init(prop->msg, iter) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void add_property(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter value;
+	struct prop_entry *prop;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_VARIANT)
+		return;
+
+	dbus_message_iter_recurse(iter, &value);
+
+	prop = prop_entry_new(name, &value);
+	if (prop == NULL)
+		return;
+
+	g_hash_table_replace(proxy->prop_list, prop->name, prop);
+}
+
 static void parse_properties(GDBusClient *client, const char *path,
 				const char *interface, DBusMessageIter *iter)
 {
+	DBusMessageIter dict;
 	GDBusProxy *proxy;
 
 	if (g_str_equal(interface, DBUS_INTERFACE_INTROSPECTABLE) == TRUE)
@@ -161,6 +259,29 @@ static void parse_properties(GDBusClient *client, const char *path,
 
 	proxy = proxy_new(client, path, interface);
 
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *name;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &name);
+		dbus_message_iter_next(&entry);
+
+		add_property(proxy, name, &entry);
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
 	if (client->proxy_added)
 		client->proxy_added(proxy, client->proxy_data);
 
@@ -178,7 +299,7 @@ static void parse_interfaces(GDBusClient *client, const char *path,
 	dbus_message_iter_recurse(iter, &dict);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
+		DBusMessageIter entry;
 		const char *interface;
 
 		dbus_message_iter_recurse(&dict, &entry);
@@ -189,8 +310,7 @@ static void parse_interfaces(GDBusClient *client, const char *path,
 		dbus_message_iter_get_basic(&entry, &interface);
 		dbus_message_iter_next(&entry);
 
-		dbus_message_iter_recurse(&entry, &value);
-		parse_properties(client, path, interface, &value);
+		parse_properties(client, path, interface, &entry);
 
 		dbus_message_iter_next(&dict);
 	}

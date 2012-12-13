@@ -276,6 +276,9 @@ void g_dbus_proxy_unref(GDBusProxy *proxy);
 const char *g_dbus_proxy_get_path(GDBusProxy *proxy);
 const char *g_dbus_proxy_get_interface(GDBusProxy *proxy);
 
+gboolean g_dbus_proxy_get_property(GDBusProxy *proxy, const char *name,
+							DBusMessageIter *iter);
+
 typedef struct GDBusClient GDBusClient;
 
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
