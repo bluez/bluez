@@ -2013,8 +2013,7 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	struct btd_device *device;
 	const bdaddr_t *src;
 	char srcaddr[18];
-	char filename[PATH_MAX + 1];
-	GKeyFile *key_file;
+	char *str;
 
 	device = device_new(adapter, address);
 	if (device == NULL)
@@ -2024,20 +2023,11 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	src = adapter_get_address(adapter);
 	ba2str(src, srcaddr);
 
-	/*TODO: after all device load during start-up has been converted to
-	 * new key file structure, this should be replaced by :
-	 *	str = load_cached_name(device, srcaddr, address);
-	 *	if (str) {
-	 *		strcpy(device->name, str);
-	 *		g_free(str);
-	 *	}
-	 */
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", srcaddr,
-			address);
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
-	load_info(device, srcaddr, address, key_file);
-	g_key_file_free(key_file);
+	str = load_cached_name(device, srcaddr, address);
+	if (str) {
+		strcpy(device->name, str);
+		g_free(str);
+	}
 
 	return btd_device_ref(device);
 }

@@ -1591,80 +1591,6 @@ failed:
 	return ltk;
 }
 
-static GSList *string_to_primary_list(char *str)
-{
-	GSList *l = NULL;
-	char **services;
-	int i;
-
-	if (str == NULL)
-		return NULL;
-
-	services = g_strsplit(str, " ", 0);
-	if (services == NULL)
-		return NULL;
-
-	for (i = 0; services[i]; i++) {
-		struct gatt_primary *prim;
-		int ret;
-
-		prim = g_new0(struct gatt_primary, 1);
-
-		ret = sscanf(services[i], "%04hX#%04hX#%s", &prim->range.start,
-							&prim->range.end, prim->uuid);
-
-		if (ret < 3) {
-			g_free(prim);
-			continue;
-		}
-
-		l = g_slist_append(l, prim);
-	}
-
-	g_strfreev(services);
-
-	return l;
-}
-
-static void create_stored_device_from_primaries(char *key, char *value,
-							void *user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	struct btd_device *device;
-	GSList *services, *uuids, *l;
-	char address[18];
-	uint8_t bdaddr_type;
-
-	if (sscanf(key, "%17s#%hhu", address, &bdaddr_type) < 2)
-		return;
-
-	if (g_slist_find_custom(adapter->devices,
-			address, (GCompareFunc) device_address_cmp))
-		return;
-
-	device = device_create(adapter, address, bdaddr_type);
-	if (!device)
-		return;
-
-	device_set_temporary(device, FALSE);
-	adapter->devices = g_slist_append(adapter->devices, device);
-
-	services = string_to_primary_list(value);
-	if (services == NULL)
-		return;
-
-	for (l = services, uuids = NULL; l; l = l->next) {
-		struct gatt_primary *prim = l->data;
-		uuids = g_slist_append(uuids, prim->uuid);
-	}
-
-	device_register_primaries(device, services, -1);
-
-	device_probe_profiles(device, uuids);
-
-	g_slist_free(uuids);
-}
-
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -1676,10 +1602,6 @@ static void load_devices(struct btd_adapter *adapter)
 	struct dirent *entry;
 
 	ba2str(&adapter->bdaddr, srcaddr);
-
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "primaries");
-	textfile_foreach(filename, create_stored_device_from_primaries,
-								adapter);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s", srcaddr);
 	filename[PATH_MAX] = '\0';
@@ -1729,6 +1651,8 @@ static void load_devices(struct btd_adapter *adapter)
 
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
+
+		/* TODO: register services from pre-loaded list of primaries */
 
 		l = device_get_uuids(device);
 		if (l)
