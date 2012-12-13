@@ -2419,6 +2419,12 @@ static void convert_ltk_entry(GKeyFile *key_file, void *value)
 	g_free(str);
 }
 
+static void convert_profiles_entry(GKeyFile *key_file, void *value)
+{
+	g_strdelimit(value, " ", ';');
+	g_key_file_set_string(key_file, "General", "Profiles", value);
+}
+
 static void convert_entry(char *key, char *value, void *user_data)
 {
 	struct device_converter *converter = user_data;
@@ -2525,6 +2531,9 @@ static void convert_device_storage(struct btd_adapter *adapter)
 
 	/* Convert blocked */
 	convert_file("blocked", address, convert_blocked_entry, TRUE);
+
+	/* Convert profiles */
+	convert_file("profiles", address, convert_profiles_entry, TRUE);
 
 	/* Convert linkkeys */
 	convert_file("linkkeys", address, convert_linkkey_entry, TRUE);
