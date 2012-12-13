@@ -76,8 +76,6 @@ released.
 
 - Don't install libbluetooth by default (put it behind a configure switch)
 
-- (maybe) rename or re-design DiscoverServices since it's BR/EDR specific
-
 - [pending] Switch plugins to standard D-Bus properties interface
 
 - [pending] Add connect/disconnect callbacks to all btd_profile
@@ -88,6 +86,8 @@ released.
   ini-file format
 
 Completed items:
+
+- Remove Device.DiscoverServices & Device.CancelDiscovery
 
 - Convert obexd to use org.bluez.Profile
 
