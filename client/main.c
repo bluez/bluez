@@ -353,6 +353,11 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
 
 	switch (si.ssi_signo) {
 	case SIGINT:
+		rl_replace_line("", 0);
+		rl_crlf();
+		rl_on_new_line();
+		rl_redisplay();
+		break;
 	case SIGTERM:
 		if (__terminated == 0) {
 			rl_replace_line("", 0);
