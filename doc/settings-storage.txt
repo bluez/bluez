@@ -63,8 +63,6 @@ Settings file contains one [General] group with adapter info like:
   Pairable		Boolean		Can the adapter accept pairing
 					request ?
 
-  Powered		Boolean		Is the adapter powered ?
-
   PairableTimeout	Integer		How long to stay in pairable mode
 					before going back to non-pairable.
 					The value is in seconds.

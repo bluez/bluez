@@ -34,7 +34,6 @@ struct main_opts {
 	uint32_t	pairto;
 	uint16_t	link_mode;
 	uint16_t	link_policy;
-	gboolean	remember_powered;
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
 	gboolean	debug_keys;

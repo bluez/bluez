@@ -146,9 +146,6 @@ void rfkill_init(void)
 	int fd;
 	GIOChannel *channel;
 
-	if (!main_opts.remember_powered)
-		return;
-
 	fd = open("/dev/rfkill", O_RDWR);
 	if (fd < 0) {
 		error("Failed to open RFKILL control device");

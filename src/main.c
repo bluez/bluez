@@ -188,22 +188,6 @@ static void parse_config(GKeyFile *config)
 		g_free(str);
 	}
 
-	boolean = g_key_file_get_boolean(config, "General",
-						"InitiallyPowered", &err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else if (boolean == FALSE)
-		main_opts.mode = MODE_OFF;
-
-	boolean = g_key_file_get_boolean(config, "General",
-						"RememberPowered", &err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else
-		main_opts.remember_powered = boolean;
-
 	str = g_key_file_get_string(config, "General", "DeviceID", &err);
 	if (err) {
 		DBG("%s", err->message);
@@ -246,11 +230,10 @@ static void init_defaults(void)
 {
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.mode	= MODE_CONNECTABLE;
+	main_opts.mode	= MODE_OFF;
 	main_opts.name	= g_strdup("BlueZ");
 	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;
-	main_opts.remember_powered = TRUE;
 	main_opts.reverse_sdp = TRUE;
 	main_opts.name_resolv = TRUE;
 

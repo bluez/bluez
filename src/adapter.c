@@ -224,9 +224,6 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	g_key_file_set_string(key_file, "General", "Name", adapter->name);
 
-	g_key_file_set_boolean(key_file, "General", "Powered",
-				adapter->mode > MODE_OFF);
-
 	g_key_file_set_boolean(key_file, "General", "Pairable",
 				adapter->pairable);
 
@@ -2716,12 +2713,6 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 		g_key_file_set_integer(key_file, "General",
 						"DiscoverableTimeout", timeout);
 
-	if (read_device_mode(address, str, sizeof(str)) == 0) {
-		mode = get_mode(str);
-		g_key_file_set_boolean(key_file, "General", "Powered",
-					mode > MODE_OFF);
-	}
-
 	if (read_on_mode(address, str, sizeof(str)) == 0) {
 		mode = get_mode(str);
 		g_key_file_set_boolean(key_file, "General", "Discoverable",
@@ -2742,7 +2733,6 @@ static void load_config(struct btd_adapter *adapter)
 	GKeyFile *key_file;
 	char filename[PATH_MAX + 1];
 	char address[18];
-	gboolean powered;
 	GError *gerr = NULL;
 
 	ba2str(&adapter->bdaddr, address);
@@ -2798,18 +2788,7 @@ static void load_config(struct btd_adapter *adapter)
 		gerr = NULL;
 	}
 
-	/* Get powered mode */
-	powered = g_key_file_get_boolean(key_file, "General", "Powered",
-						&gerr);
-	if (gerr) {
-		adapter->mode = main_opts.mode;
-		g_error_free(gerr);
-		gerr = NULL;
-	} else if (powered) {
-		adapter->mode = adapter->discoverable ? MODE_DISCOVERABLE :
-							MODE_CONNECTABLE;
-	} else
-		adapter->mode = MODE_OFF;
+	adapter->mode = main_opts.mode;
 
 	mgmt_set_connectable(adapter->dev_id, TRUE);
 	mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
@@ -3491,9 +3470,6 @@ void btd_adapter_any_release_path(void)
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
-	if (!main_opts.remember_powered)
-		return -EINVAL;
-
 	if (adapter->up)
 		return 0;
 
