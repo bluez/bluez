@@ -11,11 +11,6 @@ obexd_builtin_sources += obexd/plugins/filesystem.c obexd/plugins/filesystem.h
 obexd_builtin_modules += bluetooth
 obexd_builtin_sources += obexd/plugins/bluetooth.c
 
-if USB
-obexd_builtin_modules += usb
-obexd_builtin_sources += obexd/plugins/usb.c
-endif
-
 if EXPERIMENTAL
 obexd_builtin_modules += pcsuite
 obexd_builtin_sources += obexd/plugins/pcsuite.c
