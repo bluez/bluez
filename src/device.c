@@ -34,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <errno.h>
+#include <dirent.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
@@ -2031,6 +2032,34 @@ uint16_t btd_device_get_version(struct btd_device *device)
 	return device->version;
 }
 
+static void delete_folder_tree(const char *dirname)
+{
+	DIR *dir;
+	struct dirent *entry;
+	char filename[PATH_MAX + 1];
+
+	dir = opendir(dirname);
+	if (dir == NULL)
+		return;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (g_str_equal(entry->d_name, ".") ||
+				g_str_equal(entry->d_name, ".."))
+			continue;
+
+		snprintf(filename, PATH_MAX, "%s/%s", dirname, entry->d_name);
+		filename[PATH_MAX] = '\0';
+
+		if (entry->d_type == DT_DIR)
+			delete_folder_tree(filename);
+		else
+			unlink(filename);
+	}
+	closedir(dir);
+
+	rmdir(dirname);
+}
+
 static void device_remove_stored(struct btd_device *device)
 {
 	const bdaddr_t *src = adapter_get_address(device->adapter);
@@ -2062,15 +2091,10 @@ static void device_remove_stored(struct btd_device *device)
 	ba2str(src, adapter_addr);
 	ba2str(&device->bdaddr, device_addr);
 
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-			device_addr);
-	filename[PATH_MAX] = '\0';
-	remove(filename);
-
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s", adapter_addr,
 			device_addr);
 	filename[PATH_MAX] = '\0';
-	remove(filename);
+	delete_folder_tree(filename);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)
