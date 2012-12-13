@@ -43,6 +43,20 @@
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
+static GList *ctrl_list;
+static GDBusProxy *default_ctrl;
+
+static inline void begin_message(void)
+{
+	rl_message("");
+	printf("\r%*c\r", rl_end, ' ');
+}
+
+static inline void end_message(void)
+{
+	rl_clear_message();
+}
+
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	rl_set_prompt(COLOR_BLUE "[bluetooth]" COLOR_OFF "# ");
@@ -59,9 +73,128 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	rl_redisplay();
 }
 
+static void print_adapter(GDBusProxy *proxy, const char *description)
+{
+	DBusMessageIter iter;
+	const char *address, *name;
+
+	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &address);
+
+	if (g_dbus_proxy_get_property(proxy, "Name", &iter) == TRUE)
+		dbus_message_iter_get_basic(&iter, &name);
+	else
+		name = "<unknown>";
+
+	if (description != NULL)
+		printf("[%s] ", description);
+
+	printf("Controller %s %s %s\n", address, name,
+				default_ctrl == proxy ? "[default]" : "");
+
+}
+
+static void print_property(GDBusProxy *proxy, const char *name)
+{
+	DBusMessageIter iter;
+	dbus_bool_t valbool;
+	dbus_uint32_t val32;
+	const char *valstr;
+
+	if (g_dbus_proxy_get_property(proxy, name, &iter) == FALSE)
+		return;
+
+	switch (dbus_message_iter_get_arg_type(&iter)) {
+	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_OBJECT_PATH:
+		dbus_message_iter_get_basic(&iter, &valstr);
+		printf("\t%s: %s\n", name, valstr);
+		break;
+	case DBUS_TYPE_BOOLEAN:
+		dbus_message_iter_get_basic(&iter, &valbool);
+		printf("\t%s: %s\n", name, valbool == TRUE ? "yes" : "no");
+		break;
+	case DBUS_TYPE_UINT32:
+		dbus_message_iter_get_basic(&iter, &val32);
+		printf("\t%s: 0x%06x\n", name, val32);
+		break;
+	}
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		ctrl_list = g_list_append(ctrl_list, proxy);
+
+		if (default_ctrl == NULL)
+			default_ctrl = proxy;
+
+		begin_message();
+		print_adapter(proxy, "NEW");
+		end_message();
+	}
+}
+
+static void proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		ctrl_list = g_list_remove(ctrl_list, proxy);
+
+		begin_message();
+		print_adapter(proxy, "DEL");
+		end_message();
+
+		if (default_ctrl == proxy)
+			default_ctrl = NULL;
+	}
+}
+
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
+}
+
+static void cmd_list(const void *arg)
+{
+	GList *list;
+
+	for (list = g_list_first(ctrl_list); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		print_adapter(proxy, NULL);
+	}
+}
+
+static void cmd_info(const void *arg)
+{
+	DBusMessageIter iter;
+	const char *address;
+
+	if (default_ctrl == NULL) {
+		printf("No default controller available\n");
+		return;
+	}
+
+	if (g_dbus_proxy_get_property(default_ctrl, "Address", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &address);
+	printf("Controller %s\n", address);
+
+	print_property(default_ctrl, "Name");
+	print_property(default_ctrl, "Class");
+	print_property(default_ctrl, "Powered");
+	print_property(default_ctrl, "Discoverable");
+	print_property(default_ctrl, "Pairable");
 }
 
 static void cmd_quit(const void *arg)
@@ -74,6 +207,8 @@ static const struct {
 	void (*func) (const void *arg);
 	const char *desc;
 } cmd_table[] = {
+	{ "list",  cmd_list,  "List controllers" },
+	{ "info",  cmd_info,  "Controller info"  },
 	{ "quit",  cmd_quit,  "Quit program"     },
 	{ "exit",  cmd_quit                      },
 	{ }
@@ -269,6 +404,9 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
 	g_dbus_client_set_signal_watch(client, message_handler, NULL);
+
+	g_dbus_client_set_proxy_handlers(client, proxy_added,
+							proxy_removed, NULL);
 
 	g_main_loop_run(main_loop);
 
