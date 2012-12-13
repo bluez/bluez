@@ -14,32 +14,7 @@ Service		org.bluez
 Interface	org.bluez.Device1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
-Methods		dict DiscoverServices(string pattern)
-
-			This method starts the service discovery to retrieve
-			remote service records. The pattern parameter can
-			be used to specify specific UUIDs. And empty string
-			will look for the public browse group.
-
-			The return value is a dictionary with the record
-			handles as keys and the service record in XML format
-			as values. The key is uint32 and the value a string
-			for this dictionary.
-
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.Failed
-					 org.bluez.Error.InProgress
-
-		void CancelDiscovery()
-
-			This method will cancel any previous DiscoverServices
-			transaction.
-
-			Possible errors: org.bluez.Error.NotReady
-					 org.bluez.Error.Failed
-					 org.bluez.Error.NotAuthorized
-
-		void Connect()
+Methods		void Connect()
 
 			This is a generic method to connect any profiles
 			the remote device supports that can be connected

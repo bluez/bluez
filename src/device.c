@@ -961,149 +961,6 @@ static void discover_services_req_exit(DBusConnection *conn, void *user_data)
 	browse_request_cancel(req);
 }
 
-static DBusMessage *discover_services(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	struct btd_device *device = user_data;
-	const char *pattern;
-	int err;
-
-	if (device->browse)
-		return btd_error_in_progress(msg);
-
-	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
-						DBUS_TYPE_INVALID) == FALSE)
-		return btd_error_invalid_args(msg);
-
-	if (strlen(pattern) == 0) {
-		err = device_browse_sdp(device, msg, NULL, FALSE);
-		if (err < 0)
-			goto fail;
-	} else {
-		uuid_t uuid;
-
-		if (bt_string2uuid(&uuid, pattern) < 0)
-			return btd_error_invalid_args(msg);
-
-		sdp_uuid128_to_uuid(&uuid);
-
-		err = device_browse_sdp(device, msg, &uuid, FALSE);
-		if (err < 0)
-			goto fail;
-	}
-
-	return NULL;
-
-fail:
-	return btd_error_failed(msg, strerror(-err));
-}
-
-static const char *browse_request_get_requestor(struct browse_req *req)
-{
-	if (!req->msg)
-		return NULL;
-
-	return dbus_message_get_sender(req->msg);
-}
-
-static void iter_append_record(DBusMessageIter *dict, uint32_t handle,
-							const char *record)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_UINT32, &handle);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &record);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void discover_services_reply(struct browse_req *req, int err,
-							sdp_list_t *recs)
-{
-	DBusConnection *conn = btd_get_dbus_connection();
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-	sdp_list_t *seq;
-
-	if (err) {
-		const char *err_if;
-
-		if (err == -EHOSTDOWN)
-			err_if = ERROR_INTERFACE ".ConnectionAttemptFailed";
-		else
-			err_if = ERROR_INTERFACE ".Failed";
-
-		reply = dbus_message_new_error(req->msg, err_if,
-							strerror(-err));
-		g_dbus_send_message(conn, reply);
-		return;
-	}
-
-	reply = dbus_message_new_method_return(req->msg);
-	if (!reply)
-		return;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_UINT32_AS_STRING DBUS_TYPE_STRING_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	for (seq = recs; seq; seq = seq->next) {
-		sdp_record_t *rec = (sdp_record_t *) seq->data;
-		GString *result;
-
-		if (!rec)
-			break;
-
-		result = g_string_new(NULL);
-
-		convert_sdp_record_to_xml(rec, result,
-				(void *) g_string_append);
-
-		if (result->len)
-			iter_append_record(&dict, rec->handle, result->str);
-
-		g_string_free(result, TRUE);
-	}
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	g_dbus_send_message(conn, reply);
-}
-
-static DBusMessage *cancel_discover(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	struct btd_device *device = user_data;
-	const char *sender = dbus_message_get_sender(msg);
-	const char *requestor;
-
-	if (!device->browse)
-		return btd_error_does_not_exist(msg);
-
-	if (!dbus_message_is_method_call(device->browse->msg, DEVICE_INTERFACE,
-					"DiscoverServices"))
-		return btd_error_not_authorized(msg);
-
-	requestor = browse_request_get_requestor(device->browse);
-
-	/* only the discover requestor can cancel the inquiry process */
-	if (!requestor || !g_str_equal(requestor, sender))
-		return btd_error_not_authorized(msg);
-
-	discover_services_reply(device->browse, -ECANCELED, NULL);
-
-	browse_request_cancel(device->browse);
-
-	return dbus_message_new_method_return(msg);
-}
-
 static void bonding_request_cancel(struct bonding_req *bonding)
 {
 	struct btd_device *device = bonding->device;
@@ -1128,10 +985,8 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->bonding)
 		bonding_request_cancel(device->bonding);
 
-	if (device->browse) {
-		discover_services_reply(device->browse, -ECANCELED, NULL);
+	if (device->browse)
 		browse_request_cancel(device->browse);
-	}
 
 	if (device->connect) {
 		DBusMessage *reply = btd_error_failed(device->connect,
@@ -1467,12 +1322,6 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 		return;
 
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
-						"DiscoverServices")) {
-		discover_services_reply(req, err, dev->tmp_records);
-		return;
-	}
-
-	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 								"Pair")) {
 		reply = dbus_message_new_method_return(req->msg);
 		g_dbus_send_message(conn, reply);
@@ -1644,11 +1493,6 @@ static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable device_methods[] = {
-	{ GDBUS_ASYNC_METHOD("DiscoverServices",
-			GDBUS_ARGS({ "pattern", "s" }),
-			GDBUS_ARGS({ "services", "a{us}" }),
-			discover_services) },
-	{ GDBUS_METHOD("CancelDiscovery", NULL, NULL, cancel_discover) },
 	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
 	{ GDBUS_ASYNC_METHOD("ConnectProfile", GDBUS_ARGS({ "UUID", "s" }),
@@ -2106,10 +1950,8 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		device_cancel_bonding(device, status);
 	}
 
-	if (device->browse) {
-		discover_services_reply(device->browse, -ECANCELED, NULL);
+	if (device->browse)
 		browse_request_cancel(device->browse);
-	}
 
 	g_slist_foreach(device->connected_profiles, dev_disconn_profile,
 								device);
