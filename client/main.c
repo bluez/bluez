@@ -223,11 +223,43 @@ static const struct {
 	{ "info",  cmd_info,  "Controller info"  },
 	{ "quit",  cmd_quit,  "Quit program"     },
 	{ "exit",  cmd_quit                      },
+	{ "help" },
 	{ }
 };
 
+static char *cmd_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *str;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((str = cmd_table[index].str)) {
+		index++;
+
+		if (!strncmp(str, text, len))
+			return strdup(str);
+	}
+
+	return NULL;
+}
+
+static char **cmd_completion(const char *text, int start, int end)
+{
+	if (start > 0) {
+		rl_attempted_completion_over = 1;
+		return NULL;
+	}
+
+	return rl_completion_matches(text, cmd_generator);
+}
+
 static void rl_handler(char *input)
 {
+	char *cmd;
 	int i;
 
 	if (!input) {
@@ -243,15 +275,21 @@ static void rl_handler(char *input)
 
 	add_history(input);
 
+	cmd = strtok(input, " ");
+	if (cmd == NULL)
+		return;
+
 	for (i = 0; cmd_table[i].str; i++) {
-		if (strcmp(input, cmd_table[i].str))
+		if (strcmp(cmd, cmd_table[i].str))
 			continue;
 
-		cmd_table[i].func(cmd_table[i].str);
-		return;
+		if (cmd_table[i].func) {
+			cmd_table[i].func(input);
+			return;
+		}
 	}
 
-	if (strcmp(input, "help")) {
+	if (strcmp(cmd, "help")) {
 		printf("Invalid command\n");
 		return;
 	}
@@ -402,6 +440,8 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+
+	rl_attempted_completion_function = cmd_completion;
 
 	rl_erase_empty_line = 1;
 	rl_callback_handler_install(NULL, rl_handler);
