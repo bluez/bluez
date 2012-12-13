@@ -1751,8 +1751,6 @@ static void load_devices(struct btd_adapter *adapter)
 		if (ltk_info)
 			ltks.keys = g_slist_append(ltks.keys, ltk_info);
 
-		g_key_file_free(key_file);
-
 		l = g_slist_find_custom(adapter->devices, entry->d_name,
 					(GCompareFunc) device_address_cmp);
 		if (l) {
@@ -1760,9 +1758,10 @@ static void load_devices(struct btd_adapter *adapter)
 			goto device_exist;
 		}
 
-		device = device_create(adapter, entry->d_name, BDADDR_BREDR);
+		device = device_create_from_storage(adapter, entry->d_name,
+							key_file);
 		if (!device)
-			continue;
+			goto free;
 
 		device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
@@ -1772,6 +1771,9 @@ device_exist:
 			device_set_paired(device, TRUE);
 			device_set_bonded(device, TRUE);
 		}
+
+free:
+		g_key_file_free(key_file);
 	}
 
 	closedir(dir);

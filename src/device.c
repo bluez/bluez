@@ -1735,10 +1735,8 @@ failed:
 }
 
 static void load_info(struct btd_device *device, const gchar *local,
-			const gchar *peer)
+			const gchar *peer, GKeyFile *key_file)
 {
-	char filename[PATH_MAX + 1];
-	GKeyFile *key_file;
 	char *str;
 	gboolean store_needed = FALSE;
 	gboolean blocked;
@@ -1746,12 +1744,6 @@ static void load_info(struct btd_device *device, const gchar *local,
 	char **techno, **t;
 	gboolean bredr = FALSE;
 	gboolean le = FALSE;
-
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", local, peer);
-	filename[PATH_MAX] = '\0';
-
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
 	/* Load device name from storage info file, if that fails fall back to
 	 * the cache.
@@ -1847,18 +1839,14 @@ next:
 
 	if (store_needed)
 		store_device_info(device);
-
-	g_key_file_free(key_file);
 }
 
-struct btd_device *device_create(struct btd_adapter *adapter,
-				const gchar *address, uint8_t bdaddr_type)
+static struct btd_device *device_new(struct btd_adapter *adapter,
+				const gchar *address)
 {
 	gchar *address_up;
 	struct btd_device *device;
 	const gchar *adapter_path = adapter_get_path(adapter);
-	const bdaddr_t *src;
-	char srcaddr[18];
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -1882,11 +1870,60 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 
 	str2ba(address, &device->bdaddr);
 	device->adapter = adapter;
+
+	return btd_device_ref(device);
+}
+
+struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
+				const char *address, GKeyFile *key_file)
+{
+	struct btd_device *device;
+	const bdaddr_t *src;
+	char srcaddr[18];
+
+	device = device_new(adapter, address);
+	if (device == NULL)
+		return NULL;
+
+	src = adapter_get_address(adapter);
+	ba2str(src, srcaddr);
+
+	load_info(device, srcaddr, address, key_file);
+
+	return device;
+}
+
+struct btd_device *device_create(struct btd_adapter *adapter,
+				const gchar *address, uint8_t bdaddr_type)
+{
+	struct btd_device *device;
+	const bdaddr_t *src;
+	char srcaddr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+
+	device = device_new(adapter, address);
+	if (device == NULL)
+		return NULL;
+
 	device->bdaddr_type = bdaddr_type;
 	src = adapter_get_address(adapter);
 	ba2str(src, srcaddr);
 
-	load_info(device, srcaddr, address);
+	/*TODO: after all device load during start-up has been converted to
+	 * new key file structure, this should be replaced by :
+	 *	str = load_cached_name(device, srcaddr, address);
+	 *	if (str) {
+	 *		strcpy(device->name, str);
+	 *		g_free(str);
+	 *	}
+	 */
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", srcaddr,
+			address);
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	load_info(device, srcaddr, address, key_file);
+	g_key_file_free(key_file);
 
 	return btd_device_ref(device);
 }

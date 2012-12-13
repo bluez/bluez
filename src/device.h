@@ -28,6 +28,8 @@ struct btd_device;
 
 struct btd_device *device_create(struct btd_adapter *adapter,
 				const char *address, uint8_t bdaddr_type);
+struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
+				const char *address, GKeyFile *key_file);
 
 void device_set_name(struct btd_device *device, const char *name);
 void device_get_name(struct btd_device *device, char *name, size_t len);
