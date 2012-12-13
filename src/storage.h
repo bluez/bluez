@@ -35,8 +35,6 @@ int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, struct tm *tm);
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin);
-int delete_entry(const bdaddr_t *src, const char *storage, const bdaddr_t *dst,
-							uint8_t dst_type);
 int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 							sdp_record_t *rec);
 sdp_record_t *record_from_string(const gchar *str);
@@ -44,15 +42,11 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
 			   uint8_t dst_type, const uint32_t handle);
 int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 							const uint32_t handle);
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
-							uint8_t dst_type);
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
 int read_device_pairable(const bdaddr_t *local, gboolean *mode);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 				uint8_t bdaddr_type, const char *services);
-int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
-						uint8_t bdaddr_type);
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
 							uint8_t bdaddr_type);
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,

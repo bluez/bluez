@@ -2067,23 +2067,16 @@ static void device_remove_stored(struct btd_device *device)
 	char adapter_addr[18];
 	char device_addr[18];
 	char filename[PATH_MAX + 1];
-
-	delete_entry(src, "profiles", &device->bdaddr, dst_type);
-	delete_entry(src, "trusts", &device->bdaddr, dst_type);
+	GKeyFile *key_file;
+	char *data;
+	gsize length = 0;
 
 	if (device_is_bonded(device)) {
-		delete_entry(src, "linkkeys", &device->bdaddr, dst_type);
-		delete_entry(src, "aliases", &device->bdaddr, dst_type);
-		delete_entry(src, "longtermkeys", &device->bdaddr, dst_type);
-
 		device_set_bonded(device, FALSE);
 		device->paired = FALSE;
 		btd_adapter_remove_bonding(device->adapter, &device->bdaddr,
 								dst_type);
 	}
-
-	delete_all_records(src, &device->bdaddr, dst_type);
-	delete_device_service(src, &device->bdaddr, dst_type);
 
 	if (device->blocked)
 		device_unblock(device, TRUE, FALSE);
@@ -2095,6 +2088,24 @@ static void device_remove_stored(struct btd_device *device)
 			device_addr);
 	filename[PATH_MAX] = '\0';
 	delete_folder_tree(filename);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", adapter_addr,
+			device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	g_key_file_remove_group(key_file, "ServiceRecords", NULL);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	if (length > 0) {
+		create_file(filename, S_IRUSR | S_IWUSR |
+					S_IRGRP | S_IROTH);
+		g_file_set_contents(filename, data, length, NULL);
+	}
+
+	g_free(data);
+	g_key_file_free(key_file);
 }
 
 void device_remove(struct btd_device *device, gboolean remove_stored)

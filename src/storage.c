@@ -245,31 +245,6 @@ ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 	return len;
 }
 
-int delete_entry(const bdaddr_t *src, const char *storage, const bdaddr_t *dst,
-							uint8_t dst_type)
-{
-	char filename[PATH_MAX + 1], key[20];
-	int err, ret;
-
-	ba2str(dst, key);
-	sprintf(&key[17], "#%hhu", dst_type);
-
-	create_filename(filename, PATH_MAX, src, storage);
-
-	err = 0;
-	ret = textfile_del(filename, key);
-	if (ret)
-		err = ret;
-
-	/* Trying without address type */
-	key[17] = '\0';
-	ret = textfile_del(filename, key);
-	if (ret)
-		err = ret;
-
-	return err;
-}
-
 int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 							sdp_record_t *rec)
 {
@@ -397,26 +372,6 @@ static void create_stored_records_from_keys(char *key, char *value,
 	rec_list->recs = sdp_list_append(rec_list->recs, rec);
 }
 
-void delete_all_records(const bdaddr_t *src, const bdaddr_t *dst,
-							uint8_t dst_type)
-{
-	sdp_list_t *records, *seq;
-	char srcaddr[18], dstaddr[18];
-
-	ba2str(src, srcaddr);
-	ba2str(dst, dstaddr);
-
-	records = read_records(src, dst);
-
-	for (seq = records; seq; seq = seq->next) {
-		sdp_record_t *rec = seq->data;
-		delete_record(srcaddr, dstaddr, dst_type, rec->handle);
-	}
-
-	if (records)
-		sdp_list_free(records, (sdp_free_func_t) sdp_record_free);
-}
-
 sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	char filename[PATH_MAX + 1];
@@ -524,33 +479,6 @@ static void delete_by_pattern(const char *filename, char *pattern)
 
 done:
 	g_slist_free_full(match.keys, g_free);
-}
-
-int delete_device_service(const bdaddr_t *sba, const bdaddr_t *dba,
-						uint8_t bdaddr_type)
-{
-	char filename[PATH_MAX + 1], key[20];
-
-	memset(key, 0, sizeof(key));
-
-	ba2str(dba, key);
-	sprintf(&key[17], "#%hhu", bdaddr_type);
-
-	/* Deleting all characteristics of a given key */
-	create_filename(filename, PATH_MAX, sba, "characteristics");
-	delete_by_pattern(filename, key);
-
-	/* Deleting all attributes values of a given key */
-	create_filename(filename, PATH_MAX, sba, "attributes");
-	delete_by_pattern(filename, key);
-
-	/* Deleting all CCC values of a given key */
-	create_filename(filename, PATH_MAX, sba, "ccc");
-	delete_by_pattern(filename, key);
-
-	create_filename(filename, PATH_MAX, sba, "primaries");
-
-	return textfile_del(filename, key);
 }
 
 char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
