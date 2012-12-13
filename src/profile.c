@@ -1440,14 +1440,13 @@ static void record_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		port = sdp_get_proto_port(protos, L2CAP_UUID);
 		if (port > 0)
-			ext->remote_psm = port;
+			conn->psm = port;
 
 		port = sdp_get_proto_port(protos, RFCOMM_UUID);
 		if (port > 0)
 			conn->chan = port;
 
-		if (ext->remote_psm == 0 &&
-					sdp_get_proto_desc(protos, OBEX_UUID))
+		if (conn->psm == 0 && sdp_get_proto_desc(protos, OBEX_UUID))
 			conn->psm = get_goep_l2cap_psm(rec);
 
 		conn->features = get_supported_features(rec);
