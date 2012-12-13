@@ -119,15 +119,6 @@ Methods		void Release()
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
 
-		void ConfirmModeChange(string mode)
-
-			This method gets called if a mode change is requested
-			that needs to be confirmed by the user. An example
-			would be leaving flight mode.
-
-			Possible errors: org.bluez.Error.Rejected
-			                 org.bluez.Error.Canceled
-
 		void Cancel()
 
 			This method gets called to indicate that the agent

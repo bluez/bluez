@@ -459,61 +459,6 @@ failed:
 	return err;
 }
 
-static int confirm_mode_change_request_new(struct agent_request *req,
-						const char *mode)
-{
-	struct agent *agent = req->agent;
-
-	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "ConfirmModeChange");
-	if (req->msg == NULL) {
-		error("Couldn't allocate D-Bus message");
-		return -ENOMEM;
-	}
-
-	dbus_message_append_args(req->msg,
-				DBUS_TYPE_STRING, &mode,
-				DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(btd_get_dbus_connection(), req->msg,
-					&req->call, REQUEST_TIMEOUT) == FALSE) {
-		error("D-Bus send failed");
-		return -EIO;
-	}
-
-	dbus_pending_call_set_notify(req->call, simple_agent_reply, req, NULL);
-	return 0;
-}
-
-int agent_confirm_mode_change(struct agent *agent, const char *new_mode,
-				agent_cb cb, void *user_data,
-				GDestroyNotify destroy)
-{
-	struct agent_request *req;
-	int err;
-
-	if (agent->request)
-		return -EBUSY;
-
-	DBG("Calling Agent.ConfirmModeChange: name=%s, path=%s, mode=%s",
-			agent->name, agent->path, new_mode);
-
-	req = agent_request_new(agent, AGENT_REQUEST_CONFIRM_MODE,
-				cb, user_data, destroy);
-
-	err = confirm_mode_change_request_new(req, new_mode);
-	if (err < 0)
-		goto failed;
-
-	agent->request = req;
-
-	return 0;
-
-failed:
-	agent_request_free(req, FALSE);
-	return err;
-}
-
 static void passkey_reply(DBusPendingCall *call, void *user_data)
 {
 	struct agent_request *req = user_data;
