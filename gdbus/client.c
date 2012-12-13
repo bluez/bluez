@@ -64,10 +64,49 @@ struct prop_entry {
 	DBusMessage *msg;
 };
 
+static void iter_append_iter(DBusMessageIter *base, DBusMessageIter *iter)
+{
+	int type;
+
+	type = dbus_message_iter_get_arg_type(iter);
+
+	if (dbus_type_is_basic(type)) {
+		const void *value;
+
+		dbus_message_iter_get_basic(iter, &value);
+		dbus_message_iter_append_basic(base, type, &value);
+	} else if (dbus_type_is_container(type)) {
+		DBusMessageIter iter_sub, base_sub;
+		char *sig;
+
+		dbus_message_iter_recurse(iter, &iter_sub);
+
+		if (type == DBUS_TYPE_ARRAY) {
+			sig = dbus_message_iter_get_signature(&iter_sub);
+		} else
+			sig = NULL;
+
+		dbus_message_iter_open_container(base, type, sig, &base_sub);
+
+		if (sig != NULL)
+			dbus_free(sig);
+
+		while (dbus_message_iter_get_arg_type(&iter_sub) !=
+							DBUS_TYPE_INVALID) {
+			iter_append_iter(&base_sub, &iter_sub);
+			dbus_message_iter_next(&iter_sub);
+		}
+
+		dbus_message_iter_close_container(base, &base_sub);
+	}
+}
+
 static struct prop_entry *prop_entry_new(const char *name,
 						DBusMessageIter *iter)
 {
 	struct prop_entry *prop;
+	DBusMessage *msg;
+	DBusMessageIter base;
 
 	prop = g_try_new0(struct prop_entry, 1);
 	if (prop == NULL)
@@ -76,24 +115,15 @@ static struct prop_entry *prop_entry_new(const char *name,
 	prop->name = g_strdup(name);
 	prop->type = dbus_message_iter_get_arg_type(iter);
 
-	if (dbus_type_is_basic(prop->type)) {
-		DBusMessage *msg;
-		DBusMessageIter append_iter;
-		const void *value;
+	msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	if (msg == NULL)
+		return prop;
 
-		msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
-		if (msg == NULL)
-			return prop;
+	dbus_message_iter_init_append(msg, &base);
+	iter_append_iter(&base, iter);
 
-		dbus_message_iter_init_append(msg, &append_iter);
-		dbus_message_iter_get_basic(iter, &value);
-		dbus_message_iter_append_basic(&append_iter,
-						prop->type, &value);
-
-		prop->msg = dbus_message_copy(msg);
-
-		dbus_message_unref(msg);
-	}
+	prop->msg = dbus_message_copy(msg);
+	dbus_message_unref(msg);
 
 	return prop;
 }
