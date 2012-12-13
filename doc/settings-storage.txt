@@ -115,12 +115,22 @@ Sample:
 Cache directory file format
 ============================
 
-Each file, named by remote device address, contains one [General] group.
-This general group contains:
+Each file, named by remote device address, may includes multiple groups
+(General and ServiceRecords).
+
+In ServiceRecords, SDP records are stored using their handle as key
+(hexadecimal format).
+
+[General] group contains:
 
   Name		String		Remote device friendly name
 
   ShortName	String		Remote device shortened name
+
+[ServiceRecords] group contains
+
+  <0x...>	String		SDP record as hexadecimal encoded
+				string
 
 Info file format
 ================
