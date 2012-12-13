@@ -2461,6 +2461,77 @@ static void uuids_changed(struct btd_device *device)
 	g_free(uuids);
 }
 
+static void store_sdp_record(GKeyFile *key_file, sdp_record_t *rec)
+{
+	char handle_str[11];
+	sdp_buf_t buf;
+	int size, i;
+	char *str;
+
+	sprintf(handle_str, "0x%8.8X", rec->handle);
+
+	if (sdp_gen_record_pdu(rec, &buf) < 0)
+		return;
+
+	size = buf.data_size;
+
+	str = g_malloc0(size*2+1);
+
+	for (i = 0; i < size; i++)
+		sprintf(str + (i * 2), "%02X", buf.data[i]);
+
+	g_key_file_set_string(key_file, "ServiceRecords", handle_str, str);
+
+	free(buf.data);
+	g_free(str);
+}
+
+static void store_primaries_from_sdp_record(GKeyFile *key_file,
+						sdp_record_t *rec)
+{
+	uuid_t uuid;
+	char *att_uuid, *prim_uuid;
+	uint16_t start = 0, end = 0, psm = 0;
+	char handle[6], uuid_str[33];
+	int i;
+
+	sdp_uuid16_create(&uuid, ATT_UUID);
+	att_uuid = bt_uuid2string(&uuid);
+
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	prim_uuid = bt_uuid2string(&uuid);
+
+	if (!record_has_uuid(rec, att_uuid))
+		goto done;
+
+	if (!gatt_parse_record(rec, &uuid, &psm, &start, &end))
+		goto done;
+
+	sprintf(handle, "%hu", start);
+	switch (uuid.type) {
+	case SDP_UUID16:
+		sprintf(uuid_str, "%4.4X", uuid.value.uuid16);
+		break;
+	case SDP_UUID32:
+		sprintf(uuid_str, "%8.8X", uuid.value.uuid32);
+		break;
+	case SDP_UUID128:
+		for (i = 0; i < 16; i++)
+			sprintf(uuid_str + (i * 2), "%2.2X",
+					uuid.value.uuid128.data[i]);
+		break;
+	default:
+		uuid_str[0] = '\0';
+	}
+
+	g_key_file_set_string(key_file, handle, "UUID", prim_uuid);
+	g_key_file_set_string(key_file, handle, "Value", uuid_str);
+
+done:
+	g_free(prim_uuid);
+	g_free(att_uuid);
+}
+
 static int rec_cmp(const void *a, const void *b)
 {
 	const sdp_record_t *r1 = a;
@@ -2474,9 +2545,31 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	struct btd_device *device = req->device;
 	sdp_list_t *seq;
 	char srcaddr[18], dstaddr[18];
+	char sdp_file[PATH_MAX + 1];
+	char att_file[PATH_MAX + 1];
+	GKeyFile *sdp_key_file = NULL;
+	GKeyFile *att_key_file = NULL;
+	char *data;
+	gsize length = 0;
 
 	ba2str(adapter_get_address(device->adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
+
+	if (!device->temporary) {
+		snprintf(sdp_file, PATH_MAX, STORAGEDIR "/%s/cache/%s",
+							srcaddr, dstaddr);
+		sdp_file[PATH_MAX] = '\0';
+
+		sdp_key_file = g_key_file_new();
+		g_key_file_load_from_file(sdp_key_file, sdp_file, 0, NULL);
+
+		snprintf(att_file, PATH_MAX, STORAGEDIR "/%s/%s/attributes",
+							srcaddr, dstaddr);
+		att_file[PATH_MAX] = '\0';
+
+		att_key_file = g_key_file_new();
+		g_key_file_load_from_file(att_key_file, att_file, 0, NULL);
+	}
 
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
@@ -2531,7 +2624,11 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 			continue;
 		}
 
-		store_record(srcaddr, dstaddr, device->bdaddr_type, rec);
+		if (sdp_key_file)
+			store_sdp_record(sdp_key_file, rec);
+
+		if (att_key_file)
+			store_primaries_from_sdp_record(att_key_file, rec);
 
 		/* Copy record */
 		req->records = sdp_list_append(req->records,
@@ -2551,6 +2648,30 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 		}
 
 		sdp_list_free(svcclass, free);
+	}
+
+	if (sdp_key_file) {
+		data = g_key_file_to_data(sdp_key_file, &length, NULL);
+		if (length > 0) {
+			create_file(sdp_file, S_IRUSR | S_IWUSR |
+						S_IRGRP | S_IROTH);
+			g_file_set_contents(sdp_file, data, length, NULL);
+		}
+
+		g_free(data);
+		g_key_file_free(sdp_key_file);
+	}
+
+	if (att_key_file) {
+		data = g_key_file_to_data(att_key_file, &length, NULL);
+		if (length > 0) {
+			create_file(att_file, S_IRUSR | S_IWUSR |
+						S_IRGRP | S_IROTH);
+			g_file_set_contents(att_file, data, length, NULL);
+		}
+
+		g_free(data);
+		g_key_file_free(att_key_file);
 	}
 }
 

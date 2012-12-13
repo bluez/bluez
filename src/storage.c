@@ -245,39 +245,6 @@ ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 	return len;
 }
 
-int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
-							sdp_record_t *rec)
-{
-	char filename[PATH_MAX + 1], key[30];
-	sdp_buf_t buf;
-	int err, size, i;
-	char *str;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type,
-								rec->handle);
-
-	if (sdp_gen_record_pdu(rec, &buf) < 0)
-		return -1;
-
-	size = buf.data_size;
-
-	str = g_malloc0(size*2+1);
-
-	for (i = 0; i < size; i++)
-		sprintf(str + (i * 2), "%02X", buf.data[i]);
-
-	err = textfile_put(filename, key, str);
-
-	free(buf.data);
-	g_free(str);
-
-	return err;
-}
-
 sdp_record_t *record_from_string(const gchar *str)
 {
 	sdp_record_t *rec;
