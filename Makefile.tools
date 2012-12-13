@@ -163,7 +163,7 @@ test_scripts += test/sap_client.py test/bluezutils.py \
 		test/test-discovery test/test-manager test/test-adapter \
 		test/test-device test/test-service test/simple-agent \
 		test/simple-service test/simple-endpoint test/test-sap-server \
-		test/test-oob test/test-attrib test/test-proximity \
+		test/test-oob test/test-proximity \
 		test/test-thermometer test/test-profile test/test-health \
 		test/test-health-sink test/service-record.dtd \
 		test/service-did.xml test/service-spp.xml test/service-opp.xml \
