@@ -40,7 +40,6 @@ sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
 			   uint8_t dst_type, const uint32_t handle);
 int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 							const uint32_t handle);
-sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
 int read_device_pairable(const bdaddr_t *local, gboolean *mode);
 int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,

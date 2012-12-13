@@ -4051,6 +4051,43 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 	uuids_changed(device);
 }
 
+static sdp_list_t *read_device_records(struct btd_device *device)
+{
+	char local[18], peer[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char **keys, **handle;
+	char *str;
+	sdp_list_t *recs = NULL;
+	sdp_record_t *rec;
+
+	ba2str(adapter_get_address(device->adapter), local);
+	ba2str(&device->bdaddr, peer);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	keys = g_key_file_get_keys(key_file, "ServiceRecords", NULL, NULL);
+
+	for (handle = keys; *handle; handle++) {
+		str = g_key_file_get_string(key_file, "ServiceRecords",
+						*handle, NULL);
+		if (!str)
+			continue;
+
+		rec = record_from_string(str);
+		recs = sdp_list_append(recs, rec);
+		g_free(str);
+	}
+
+	g_strfreev(keys);
+	g_key_file_free(key_file);
+
+	return recs;
+}
+
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 							const char *uuid)
 {
@@ -4066,8 +4103,7 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 		device->tmp_records = NULL;
 	}
 
-	device->tmp_records = read_records(adapter_get_address(device->adapter),
-							&device->bdaddr);
+	device->tmp_records = read_device_records(device);
 	if (!device->tmp_records)
 		return NULL;
 

@@ -319,44 +319,6 @@ int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 	return err;
 }
 
-struct record_list {
-	sdp_list_t *recs;
-	const gchar *addr;
-};
-
-static void create_stored_records_from_keys(char *key, char *value,
-							void *user_data)
-{
-	struct record_list *rec_list = user_data;
-	const gchar *addr = rec_list->addr;
-	sdp_record_t *rec;
-
-	if (strncmp(key, addr, 17))
-		return;
-
-	rec = record_from_string(value);
-
-	rec_list->recs = sdp_list_append(rec_list->recs, rec);
-}
-
-sdp_list_t *read_records(const bdaddr_t *src, const bdaddr_t *dst)
-{
-	char filename[PATH_MAX + 1];
-	struct record_list rec_list;
-	char srcaddr[18], dstaddr[18];
-
-	ba2str(src, srcaddr);
-	ba2str(dst, dstaddr);
-
-	rec_list.addr = dstaddr;
-	rec_list.recs = NULL;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, srcaddr, "sdp");
-	textfile_foreach(filename, create_stored_records_from_keys, &rec_list);
-
-	return rec_list.recs;
-}
-
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 {
 	sdp_list_t *seq;
