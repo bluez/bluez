@@ -132,7 +132,7 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 	if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_append(ctrl_list, proxy);
 
-		if (default_ctrl == NULL)
+		if (!default_ctrl)
 			default_ctrl = proxy;
 
 		begin_message();
@@ -164,7 +164,28 @@ static void message_handler(DBusConnection *connection,
 {
 }
 
-static void cmd_list(const void *arg)
+static GDBusProxy *find_proxy_by_address(const char *address)
+{
+	GList *list;
+
+	for (list = g_list_first(ctrl_list); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		DBusMessageIter iter;
+		const char *str;
+
+		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+			continue;
+
+		dbus_message_iter_get_basic(&iter, &str);
+
+		if (!strcmp(address, str))
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void cmd_list(const char *arg)
 {
 	GList *list;
 
@@ -174,29 +195,40 @@ static void cmd_list(const void *arg)
 	}
 }
 
-static void cmd_info(const void *arg)
+static void cmd_info(const char *arg)
 {
+	GDBusProxy *proxy;
 	DBusMessageIter iter, value;
 	const char *address;
 
-	if (default_ctrl == NULL) {
-		printf("No default controller available\n");
-		return;
+	if (!arg || !strlen(arg)) {
+		if (!default_ctrl) {
+			printf("No default controller available\n");
+			return;
+		}
+
+		proxy = default_ctrl;
+	} else {
+		proxy = find_proxy_by_address(arg);
+		if (!proxy) {
+			printf("Controller %s not available\n", arg);
+			return;
+		}
 	}
 
-	if (g_dbus_proxy_get_property(default_ctrl, "Address", &iter) == FALSE)
+	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
 	printf("Controller %s\n", address);
 
-	print_property(default_ctrl, "Name");
-	print_property(default_ctrl, "Class");
-	print_property(default_ctrl, "Powered");
-	print_property(default_ctrl, "Discoverable");
-	print_property(default_ctrl, "Pairable");
+	print_property(proxy, "Name");
+	print_property(proxy, "Class");
+	print_property(proxy, "Powered");
+	print_property(proxy, "Discoverable");
+	print_property(proxy, "Pairable");
 
-	if (g_dbus_proxy_get_property(default_ctrl, "UUIDs", &iter) == FALSE)
+	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
 		return;
 
 	dbus_message_iter_recurse(&iter, &value);
@@ -209,20 +241,76 @@ static void cmd_info(const void *arg)
 	}
 }
 
-static void cmd_quit(const void *arg)
+static void cmd_select(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	if (!arg || !strlen(arg)) {
+		printf("Missing controller address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(arg);
+	if (!proxy) {
+		printf("Controller %s not available\n", arg);
+		return;
+	}
+
+	default_ctrl = proxy;
+	print_adapter(proxy, NULL);
+}
+
+static void cmd_quit(const char *arg)
 {
 	g_main_loop_quit(main_loop);
 }
 
+static char *ctrl_generator(const char *text, int state)
+{
+	static int index, len;
+	GList *list;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+
+	for (list = g_list_nth(ctrl_list, index); list;
+						list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		DBusMessageIter iter;
+		const char *address;
+
+		index++;
+
+		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+			continue;
+
+		dbus_message_iter_get_basic(&iter, &address);
+
+		if (!strncmp(address, text, len))
+			return strdup(address);
+        }
+
+	return NULL;
+}
+
 static const struct {
-	const char *str;
-	void (*func) (const void *arg);
+	const char *cmd;
+	const char *arg;
+	void (*func) (const char *arg);
 	const char *desc;
+	char * (*gen) (const char *text, int state);
+	void (*disp) (char **matches, int num_matches, int max_length);
 } cmd_table[] = {
-	{ "list",  cmd_list,  "List controllers" },
-	{ "info",  cmd_info,  "Controller info"  },
-	{ "quit",  cmd_quit,  "Quit program"     },
-	{ "exit",  cmd_quit                      },
+	{ "list",   NULL,     cmd_list,   "List available controllers" },
+	{ "info",   "[ctrl]", cmd_info,   "Controller information",
+							ctrl_generator },
+	{ "select", "<ctrl>", cmd_select, "Select default controller",
+							ctrl_generator },
+	{ "quit",   NULL,     cmd_quit,   "Quit program" },
+	{ "exit",   NULL,     cmd_quit },
 	{ "help" },
 	{ }
 };
@@ -230,18 +318,18 @@ static const struct {
 static char *cmd_generator(const char *text, int state)
 {
 	static int index, len;
-	const char *str;
+	const char *cmd;
 
 	if (!state) {
 		index = 0;
 		len = strlen(text);
 	}
 
-	while ((str = cmd_table[index].str)) {
+	while ((cmd = cmd_table[index].cmd)) {
 		index++;
 
-		if (!strncmp(str, text, len))
-			return strdup(str);
+		if (!strncmp(cmd, text, len))
+			return strdup(cmd);
 	}
 
 	return NULL;
@@ -249,17 +337,37 @@ static char *cmd_generator(const char *text, int state)
 
 static char **cmd_completion(const char *text, int start, int end)
 {
+	char **matches = NULL;
+
 	if (start > 0) {
-		rl_attempted_completion_over = 1;
-		return NULL;
+		int i;
+
+		for (i = 0; cmd_table[i].cmd; i++) {
+			if (strncmp(cmd_table[i].cmd,
+					rl_line_buffer, start - 1))
+				continue;
+
+			if (!cmd_table[i].gen)
+				continue;
+
+			rl_completion_display_matches_hook = cmd_table[i].disp;
+			matches = rl_completion_matches(text, cmd_table[i].gen);
+			break;
+		}
+	} else {
+		rl_completion_display_matches_hook = NULL;
+		matches = rl_completion_matches(text, cmd_generator);
 	}
 
-	return rl_completion_matches(text, cmd_generator);
+	if (!matches)
+		rl_attempted_completion_over = 1;
+
+	return matches;
 }
 
 static void rl_handler(char *input)
 {
-	char *cmd;
+	char *cmd, *arg;
 	int i;
 
 	if (!input) {
@@ -276,15 +384,17 @@ static void rl_handler(char *input)
 	add_history(input);
 
 	cmd = strtok(input, " ");
-	if (cmd == NULL)
+	if (!cmd)
 		return;
 
-	for (i = 0; cmd_table[i].str; i++) {
-		if (strcmp(cmd, cmd_table[i].str))
+	arg = strtok(NULL, " ");
+
+	for (i = 0; cmd_table[i].cmd; i++) {
+		if (strcmp(cmd, cmd_table[i].cmd))
 			continue;
 
 		if (cmd_table[i].func) {
-			cmd_table[i].func(input);
+			cmd_table[i].func(arg);
 			return;
 		}
 	}
@@ -296,9 +406,10 @@ static void rl_handler(char *input)
 
 	printf("Available commands:\n");
 
-	for (i = 0; cmd_table[i].str; i++) {
+	for (i = 0; cmd_table[i].cmd; i++) {
 		if (cmd_table[i].desc)
-			printf("\t%s\t%s\n", cmd_table[i].str,
+			printf("\t%s %s\t%s\n", cmd_table[i].cmd,
+						cmd_table[i].arg ? : "    ",
 						cmd_table[i].desc);
 	}
 }
