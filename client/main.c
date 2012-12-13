@@ -176,7 +176,7 @@ static void cmd_list(const void *arg)
 
 static void cmd_info(const void *arg)
 {
-	DBusMessageIter iter;
+	DBusMessageIter iter, value;
 	const char *address;
 
 	if (default_ctrl == NULL) {
@@ -195,6 +195,18 @@ static void cmd_info(const void *arg)
 	print_property(default_ctrl, "Powered");
 	print_property(default_ctrl, "Discoverable");
 	print_property(default_ctrl, "Pairable");
+
+	if (g_dbus_proxy_get_property(default_ctrl, "UUIDs", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_recurse(&iter, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
+		const char *str;
+		dbus_message_iter_get_basic(&value, &str);
+		printf("\tUUID: %s\n", str);
+		dbus_message_iter_next(&value);
+	}
 }
 
 static void cmd_quit(const void *arg)
