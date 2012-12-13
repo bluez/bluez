@@ -268,33 +268,6 @@ sdp_record_t *record_from_string(const gchar *str)
 }
 
 
-sdp_record_t *fetch_record(const gchar *src, const gchar *dst,
-			   uint8_t dst_type, const uint32_t handle)
-{
-	char filename[PATH_MAX + 1], old_key[28], key[30], *str;
-	sdp_record_t *rec;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
-
-	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
-	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
-
-	str = textfile_get(filename, key);
-	if (str != NULL)
-		goto done;
-
-	/* Try old format (address#handle) */
-	str = textfile_get(filename, old_key);
-	if (str == NULL)
-		return NULL;
-
-done:
-	rec = record_from_string(str);
-	free(str);
-
-	return rec;
-}
-
 int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
 							const uint32_t handle)
 {

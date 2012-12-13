@@ -316,9 +316,11 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 static int hidp_add_connection(struct input_device *idev)
 {
 	struct hidp_connadd_req *req;
-	uint8_t dst_type;
 	sdp_record_t *rec;
 	char src_addr[18], dst_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char handle[11], *str;
 	GError *gerr = NULL;
 	int err;
 
@@ -331,14 +333,24 @@ static int hidp_add_connection(struct input_device *idev)
 	ba2str(&idev->src, src_addr);
 	ba2str(&idev->dst, dst_addr);
 
-	dst_type = device_get_addr_type(idev->device);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", src_addr,
+								dst_addr);
+	filename[PATH_MAX] = '\0';
+	sprintf(handle, "0x%8.8X", idev->handle);
 
-	rec = fetch_record(src_addr, dst_addr, dst_type, idev->handle);
-	if (!rec) {
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	str = g_key_file_get_string(key_file, "ServiceRecords", handle, NULL);
+	g_key_file_free(key_file);
+
+	if (!str) {
 		error("Rejected connection from unknown device %s", dst_addr);
 		err = -EPERM;
 		goto cleanup;
 	}
+
+	rec = record_from_string(str);
+	g_free(str);
 
 	extract_hid_record(rec, req);
 	sdp_record_free(rec);
