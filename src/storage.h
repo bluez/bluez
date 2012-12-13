@@ -25,7 +25,6 @@
 
 int read_discoverable_timeout(const char *src, int *timeout);
 int read_pairable_timeout(const char *src, int *timeout);
-int read_device_mode(const char *src, char *mode, int length);
 int read_on_mode(const char *src, char *mode, int length);
 int read_local_name(const bdaddr_t *bdaddr, char *name);
 int read_local_class(const bdaddr_t *bdaddr, uint8_t *class);

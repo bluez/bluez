@@ -105,24 +105,6 @@ int read_pairable_timeout(const char *src, int *timeout)
 	return 0;
 }
 
-int read_device_mode(const char *src, char *mode, int length)
-{
-	char filename[PATH_MAX + 1], *str;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "config");
-
-	str = textfile_get(filename, "mode");
-	if (!str)
-		return -ENOENT;
-
-	strncpy(mode, str, length);
-	mode[length - 1] = '\0';
-
-	free(str);
-
-	return 0;
-}
-
 int read_on_mode(const char *src, char *mode, int length)
 {
 	char filename[PATH_MAX + 1], *str;
