@@ -245,24 +245,6 @@ ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 	return len;
 }
 
-int write_device_profiles(const bdaddr_t *src, const bdaddr_t *dst,
-					uint8_t dst_type, const char *profiles)
-{
-	char filename[PATH_MAX + 1], key[20];
-
-	if (!profiles)
-		return -EINVAL;
-
-	create_filename(filename, PATH_MAX, src, "profiles");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(dst, key);
-	sprintf(&key[17], "#%hhu", dst_type);
-
-	return textfile_put(filename, key, profiles);
-}
-
 int delete_entry(const bdaddr_t *src, const char *storage, const bdaddr_t *dst,
 							uint8_t dst_type)
 {

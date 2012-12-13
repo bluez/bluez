@@ -35,8 +35,6 @@ int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, struct tm *tm);
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin);
-int write_device_profiles(const bdaddr_t *src, const bdaddr_t *dst,
-				uint8_t dst_type, const char *profiles);
 int delete_entry(const bdaddr_t *src, const char *storage, const bdaddr_t *dst,
 							uint8_t dst_type);
 int store_record(const gchar *src, const gchar *dst, uint8_t dst_type,
