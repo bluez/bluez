@@ -268,6 +268,14 @@ gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
 gboolean g_dbus_attach_object_manager(DBusConnection *connection);
 gboolean g_dbus_detach_object_manager(DBusConnection *connection);
 
+typedef struct GDBusProxy GDBusProxy;
+
+GDBusProxy *g_dbus_proxy_ref(GDBusProxy *proxy);
+void g_dbus_proxy_unref(GDBusProxy *proxy);
+
+const char *g_dbus_proxy_get_path(GDBusProxy *proxy);
+const char *g_dbus_proxy_get_interface(GDBusProxy *proxy);
+
 typedef struct GDBusClient GDBusClient;
 
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
@@ -282,6 +290,12 @@ gboolean g_dbus_client_set_disconnect_watch(GDBusClient *client,
 				GDBusWatchFunction function, void *user_data);
 gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 				GDBusMessageFunction function, void *user_data);
+
+typedef void (* GDBusProxyFunction) (GDBusProxy *proxy, void *user_data);
+
+gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
+				GDBusProxyFunction added,
+				GDBusProxyFunction removed, void *user_data);
 
 #ifdef __cplusplus
 }

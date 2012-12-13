@@ -44,7 +44,279 @@ struct GDBusClient {
 	void *disconn_data;
 	GDBusMessageFunction signal_func;
 	void *signal_data;
+	GDBusProxyFunction proxy_added;
+	GDBusProxyFunction proxy_removed;
+	void *proxy_data;
+	GList *proxy_list;
 };
+
+struct GDBusProxy {
+	gint ref_count;
+	GDBusClient *client;
+	char *obj_path;
+	char *interface;
+};
+
+static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
+						const char *interface)
+{
+	GDBusProxy *proxy;
+
+	proxy = g_try_new0(GDBusProxy, 1);
+	if (proxy == NULL)
+		return NULL;
+
+	proxy->client = client;
+	proxy->obj_path = g_strdup(path);
+	proxy->interface = g_strdup(interface);
+
+	return g_dbus_proxy_ref(proxy);
+}
+
+static void proxy_free(gpointer data)
+{
+	GDBusProxy *proxy = data;
+
+	if (proxy->client) {
+		GDBusClient *client = proxy->client;
+
+		if (client->proxy_removed)
+			client->proxy_removed(proxy, client->proxy_data);
+
+		proxy->client = NULL;
+	}
+
+	g_dbus_proxy_unref(proxy);
+}
+
+static void proxy_remove(GDBusClient *client, const char *path,
+						const char *interface)
+{
+	GList *list;
+
+	for (list = g_list_first(client->proxy_list); list;
+						list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		if (g_str_equal(proxy->interface, interface) == TRUE &&
+				g_str_equal(proxy->obj_path, path) == TRUE) {
+			client->proxy_list =
+				g_list_delete_link(client->proxy_list, list);
+			proxy_free(proxy);
+			break;
+		}
+	}
+}
+
+GDBusProxy *g_dbus_proxy_ref(GDBusProxy *proxy)
+{
+	if (proxy == NULL)
+		return NULL;
+
+	g_atomic_int_inc(&proxy->ref_count);
+
+	return proxy;
+}
+
+void g_dbus_proxy_unref(GDBusProxy *proxy)
+{
+	if (proxy == NULL)
+		return;
+
+	if (g_atomic_int_dec_and_test(&proxy->ref_count) == FALSE)
+		return;
+
+	g_free(proxy->obj_path);
+	g_free(proxy->interface);
+
+	g_free(proxy);
+}
+
+const char *g_dbus_proxy_get_path(GDBusProxy *proxy)
+{
+	if (proxy == NULL)
+		return NULL;
+
+	return proxy->obj_path;
+}
+
+const char *g_dbus_proxy_get_interface(GDBusProxy *proxy)
+{
+	if (proxy == NULL)
+		return NULL;
+
+	return proxy->interface;
+}
+
+static void parse_properties(GDBusClient *client, const char *path,
+				const char *interface, DBusMessageIter *iter)
+{
+	GDBusProxy *proxy;
+
+	if (g_str_equal(interface, DBUS_INTERFACE_INTROSPECTABLE) == TRUE)
+		return;
+
+	if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE)
+		return;
+
+	proxy = proxy_new(client, path, interface);
+
+	if (client->proxy_added)
+		client->proxy_added(proxy, client->proxy_data);
+
+	client->proxy_list = g_list_append(client->proxy_list, proxy);
+}
+
+static void parse_interfaces(GDBusClient *client, const char *path,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *interface;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &interface);
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+		parse_properties(client, path, interface, &value);
+
+		dbus_message_iter_next(&dict);
+	}
+}
+
+static void interfaces_added(GDBusClient *client, DBusMessage *msg)
+{
+	DBusMessageIter iter;
+	const char *path;
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &path);
+	dbus_message_iter_next(&iter);
+
+	parse_interfaces(client, path, &iter);
+}
+
+static void interfaces_removed(GDBusClient *client, DBusMessage *msg)
+{
+	DBusMessageIter iter, entry;
+	const char *path;
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_OBJECT_PATH)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &path);
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *interface;
+
+		dbus_message_iter_get_basic(&entry, &interface);
+		proxy_remove(client, path, interface);
+		dbus_message_iter_next(&entry);
+	}
+}
+
+static void parse_managed_objects(GDBusClient *client, DBusMessage *msg)
+{
+	DBusMessageIter iter, dict;
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *path;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) !=
+							DBUS_TYPE_OBJECT_PATH)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &path);
+		dbus_message_iter_next(&entry);
+
+		parse_interfaces(client, path, &entry);
+
+		dbus_message_iter_next(&dict);
+	}
+}
+
+static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
+{
+	GDBusClient *client = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	parse_managed_objects(client, reply);
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(client->pending_call);
+	client->pending_call = NULL;
+}
+
+static void get_managed_objects(GDBusClient *client)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call("org.bluez", "/",
+					DBUS_INTERFACE_DBUS ".ObjectManager",
+							"GetManagedObjects");
+	if (msg == NULL)
+		return;
+
+	dbus_message_append_args(msg, DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+					&client->pending_call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return;
+	}
+
+	dbus_pending_call_set_notify(client->pending_call,
+				get_managed_objects_reply, client, NULL);
+
+	dbus_message_unref(msg);
+}
 
 static void modify_match_reply(DBusPendingCall *call, void *user_data)
 {
@@ -67,7 +339,7 @@ static gboolean modify_match(DBusConnection *conn, const char *member,
 
 	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
 					DBUS_INTERFACE_DBUS, member);
-	if (!msg)
+	if (msg == NULL)
 		return FALSE;
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &rule,
@@ -115,6 +387,8 @@ done:
 
 	dbus_pending_call_unref(client->pending_call);
 	client->pending_call = NULL;
+
+	get_managed_objects(client);
 }
 
 static void get_name_owner(GDBusClient *client, const char *name)
@@ -123,7 +397,7 @@ static void get_name_owner(GDBusClient *client, const char *name)
 
 	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
 					DBUS_INTERFACE_DBUS, "GetNameOwner");
-	if (!msg)
+	if (msg == NULL)
 		return;
 
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &name,
@@ -180,14 +454,18 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 			if (client->disconn_func)
 				client->disconn_func(client->dbus_conn,
 							client->disconn_data);
+
 			g_free(client->unique_name);
 			client->unique_name = NULL;
 		} else if (*old == '\0') {
+			g_free(client->unique_name);
+			client->unique_name = g_strdup(new);
+
 			if (client->connect_func)
 				client->connect_func(client->dbus_conn,
 							client->connect_data);
-			g_free(client->unique_name);
-			client->unique_name = g_strdup(new);
+
+			get_managed_objects(client);
 		}
 
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -197,6 +475,37 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (g_str_equal(sender, client->unique_name) == TRUE) {
+		const char *path;
+
+		path = dbus_message_get_path(message);
+
+		if (g_str_equal(path, "/") == TRUE) {
+			const char *interface, *member;
+
+			interface = dbus_message_get_interface(message);
+
+			if (g_str_equal(interface, DBUS_INTERFACE_DBUS
+						".ObjectManager") == FALSE)
+				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+			member = dbus_message_get_member(message);
+
+			if (g_str_equal(member, "InterfacesAdded") == TRUE) {
+				interfaces_added(client, message);
+				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+			}
+
+			if (g_str_equal(member, "InterfacesRemoved") == TRUE) {
+				interfaces_removed(client, message);
+				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+			}
+
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		}
+
+		if (g_str_has_prefix(path, client->base_path) == FALSE)
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 		if (client->signal_func)
 			client->signal_func(client->dbus_conn,
 					message, client->signal_data);
@@ -288,6 +597,8 @@ void g_dbus_client_unref(GDBusClient *client)
 	dbus_connection_remove_filter(client->dbus_conn,
 						message_filter, client);
 
+	g_list_free_full(client->proxy_list, proxy_free);
+
 	if (client->disconn_func)
 		client->disconn_func(client->dbus_conn, client->disconn_data);
 
@@ -332,6 +643,20 @@ gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 
 	client->signal_func = function;
 	client->signal_data = user_data;
+
+	return TRUE;
+}
+
+gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
+				GDBusProxyFunction added,
+				GDBusProxyFunction removed, void *user_data)
+{
+	if (client == NULL)
+		return FALSE;
+
+	client->proxy_added = added;
+	client->proxy_removed = removed;
+	client->proxy_data = user_data;
 
 	return TRUE;
 }
