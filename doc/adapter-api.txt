@@ -14,31 +14,7 @@ Service		org.bluez
 Interface	org.bluez.Adapter1
 Object path	[variable prefix]/{hci0,hci1,...}
 
-Methods		void RequestSession()
-
-			This method requests a client session that provides
-			operational Bluetooth. A possible mode change must be
-			confirmed by the user via the agent.
-
-			Clients may request multiple sessions. All sessions
-			are released when adapter's mode is changed to off
-			state.
-
-			Possible Errors: org.bluez.Error.Rejected
-
-		void ReleaseSession()
-
-			Release a previously requested session. It sets
-			adapter to the mode in use on the moment of session
-			request.
-
-			Setting the powered or discoverable properties
-			changes adapter's mode persistently, such that session
-			release will not modify it.
-
-			Possible Errors: org.bluez.Error.DoesNotExist
-
-		void StartDiscovery()
+Methods		void StartDiscovery()
 
 			This method starts the device discovery session. This
 			includes an inquiry procedure and remote device name
