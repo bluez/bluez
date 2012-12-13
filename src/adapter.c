@@ -1656,7 +1656,7 @@ static void create_stored_device_from_profiles(char *key, char *value,
 
 	list = device_services_from_record(device, uuids);
 	if (list)
-		device_register_services(device, list, ATT_PSM);
+		device_register_primaries(device, list, ATT_PSM);
 
 	device_probe_profiles(device, uuids);
 
@@ -1827,7 +1827,7 @@ static void create_stored_device_from_primaries(char *key, char *value,
 		uuids = g_slist_append(uuids, prim->uuid);
 	}
 
-	device_register_services(device, services, -1);
+	device_register_primaries(device, services, -1);
 
 	device_probe_profiles(device, uuids);
 

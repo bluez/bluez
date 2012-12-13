@@ -64,7 +64,6 @@
 #include "sdp-xml.h"
 #include "storage.h"
 #include "attrib-server.h"
-#include "attrib/client.h"
 
 #define IO_CAPABILITY_DISPLAYONLY	0x00
 #define IO_CAPABILITY_DISPLAYYESNO	0x01
@@ -155,7 +154,6 @@ struct btd_device {
 	uint16_t	version;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
-	GSList		*services;		/* Primary services path */
 	GSList		*primaries;		/* List of primary services */
 	GSList		*profiles;		/* Probed profiles */
 	GSList		*pending;		/* Pending profiles */
@@ -351,7 +349,6 @@ static void device_free(gpointer user_data)
 				agent_is_busy(agent, device->authr)))
 		agent_cancel(agent);
 
-	g_slist_free_full(device->services, g_free);
 	g_slist_free_full(device->uuids, g_free);
 	g_slist_free_full(device->primaries, g_free);
 	g_slist_free_full(device->attios, g_free);
@@ -862,33 +859,6 @@ static gboolean dev_property_exists_uuids(const GDBusPropertyTable *property,
 		return dev->uuids ? TRUE : FALSE;
 	else
 		return dev->eir_uuids ? TRUE : FALSE;
-}
-
-static gboolean dev_property_get_services(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_device *device = data;
-	DBusMessageIter entry;
-	GSList *l;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &entry);
-
-	for (l = device->services; l != NULL; l = l->next)
-		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
-							&l->data);
-
-	dbus_message_iter_close_container(iter, &entry);
-
-	return TRUE;
-}
-
-static gboolean dev_property_exists_services(const GDBusPropertyTable *prop,
-								void *data)
-{
-	struct btd_device *dev = data;
-
-	return dev->services ? TRUE : FALSE;
 }
 
 static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
@@ -1723,8 +1693,6 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "Connected", "b", dev_property_get_connected },
 	{ "UUIDs", "as", dev_property_get_uuids, NULL,
 						dev_property_exists_uuids },
-	{ "Services", "ao", dev_property_get_services, NULL,
-						dev_property_exists_services },
 	{ "Adapter", "o", dev_property_get_adapter },
 	{ }
 };
@@ -2168,8 +2136,6 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
 	g_slist_free(device->profiles);
 	device->profiles = NULL;
-
-	attrib_client_unregister(device->services);
 
 	btd_device_unref(device);
 }
@@ -2638,7 +2604,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		list = device_services_from_record(device, req->profiles_added);
 		if (list)
-			device_register_services(device, list, ATT_PSM);
+			device_register_primaries(device, list, ATT_PSM);
 
 		device_probe_profiles(device, req->profiles_added);
 	}
@@ -2792,27 +2758,17 @@ done:
 	return FALSE;
 }
 
-static void device_unregister_services(struct btd_device *device)
-{
-	attrib_client_unregister(device->services);
-	g_slist_free_full(device->services, g_free);
-	device->services = NULL;
-}
-
 static void register_all_services(struct browse_req *req, GSList *services)
 {
 	struct btd_device *device = req->device;
 
 	device_set_temporary(device, FALSE);
 
-	if (device->services)
-		device_unregister_services(device);
-
 	update_gatt_services(req, device->primaries, services);
 	g_slist_free_full(device->primaries, g_free);
 	device->primaries = NULL;
 
-	device_register_services(device, g_slist_copy(services), -1);
+	device_register_primaries(device, g_slist_copy(services), -1);
 	if (req->profiles_removed)
 		device_remove_profiles(device, req->profiles_removed);
 
@@ -3875,11 +3831,10 @@ gboolean device_is_authenticating(struct btd_device *device)
 	return (device->authr != NULL);
 }
 
-void device_register_services(struct btd_device *device,
+void device_register_primaries(struct btd_device *device,
 						GSList *prim_list, int psm)
 {
 	device->primaries = g_slist_concat(device->primaries, prim_list);
-	device->services = attrib_client_register(device, psm, NULL, prim_list);
 }
 
 GSList *btd_device_get_primaries(struct btd_device *device)

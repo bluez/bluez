@@ -89,8 +89,8 @@ lib_libbluetooth_private_la_SOURCES = $(lib_headers) \
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
-		attrib/gattrib.h attrib/gattrib.c attrib/client.h \
-		attrib/client.c attrib/gatt-service.h attrib/gatt-service.c
+		attrib/gattrib.h attrib/gattrib.c \
+		attrib/gatt-service.h attrib/gatt-service.c
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 				gdbus/object.c gdbus/client.c gdbus/polkit.c
