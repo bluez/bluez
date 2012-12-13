@@ -701,7 +701,7 @@ Add Remote Out Of Band Data Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
-	This command can only be used when the controller is powered.
+	Provided Out Of Band data is persistent over power down/up toggles.
 
 	This command generates a Command Complete event on success
 	or failure.
@@ -716,8 +716,6 @@ Remove Remote Out Of Band Data Command
 				Address_Type (1 Octet)
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
-
-	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
