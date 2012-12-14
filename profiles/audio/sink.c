@@ -433,13 +433,6 @@ gboolean sink_is_active(struct audio_device *dev)
 	return FALSE;
 }
 
-sink_state_t sink_get_state(struct audio_device *dev)
-{
-	struct sink *sink = dev->sink;
-
-	return sink->state;
-}
-
 gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream)
 {

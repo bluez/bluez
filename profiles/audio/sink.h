@@ -42,7 +42,6 @@ gboolean sink_remove_state_cb(unsigned int id);
 struct sink *sink_init(struct audio_device *dev);
 void sink_unregister(struct audio_device *dev);
 gboolean sink_is_active(struct audio_device *dev);
-sink_state_t sink_get_state(struct audio_device *dev);
 int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data);
 gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);
