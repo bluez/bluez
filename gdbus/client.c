@@ -56,6 +56,7 @@ struct GDBusProxy {
 	char *obj_path;
 	char *interface;
 	GHashTable *prop_list;
+	char *match_rule;
 };
 
 struct prop_entry {
@@ -63,6 +64,46 @@ struct prop_entry {
 	int type;
 	DBusMessage *msg;
 };
+
+static void modify_match_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE)
+		dbus_error_free(&error);
+
+	dbus_message_unref(reply);
+}
+
+static gboolean modify_match(DBusConnection *conn, const char *member,
+							const char *rule)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
+					DBUS_INTERFACE_DBUS, member);
+	if (msg == NULL)
+		return FALSE;
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &rule,
+						DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return FALSE;
+	}
+
+	dbus_pending_call_set_notify(call, modify_match_reply, NULL, NULL);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+
+	return TRUE;
+}
 
 static void iter_append_iter(DBusMessageIter *base, DBusMessageIter *iter)
 {
@@ -161,6 +202,14 @@ static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
 	proxy->prop_list = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, prop_entry_free);
 
+	proxy->match_rule = g_strdup_printf("type='signal',"
+				"sender='%s',path='%s',interface='%s',"
+				"member='PropertiesChanged',arg0='%s'",
+				client->service_name, proxy->obj_path,
+				DBUS_INTERFACE_PROPERTIES, proxy->interface);
+
+	modify_match(client->dbus_conn, "AddMatch", proxy->match_rule);
+
 	return g_dbus_proxy_ref(proxy);
 }
 
@@ -173,6 +222,14 @@ static void proxy_free(gpointer data)
 
 		if (client->proxy_removed)
 			client->proxy_removed(proxy, client->proxy_data);
+
+		modify_match(client->dbus_conn, "RemoveMatch",
+							proxy->match_rule);
+
+		g_free(proxy->match_rule);
+		proxy->match_rule = NULL;
+
+		g_hash_table_remove_all(proxy->prop_list);
 
 		proxy->client = NULL;
 	}
@@ -563,46 +620,6 @@ static void get_managed_objects(GDBusClient *client)
 				get_managed_objects_reply, client, NULL);
 
 	dbus_message_unref(msg);
-}
-
-static void modify_match_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
-	DBusError error;
-
-	dbus_error_init(&error);
-
-	if (dbus_set_error_from_message(&error, reply) == TRUE)
-		dbus_error_free(&error);
-
-	dbus_message_unref(reply);
-}
-
-static gboolean modify_match(DBusConnection *conn, const char *member,
-							const char *rule)
-{
-	DBusMessage *msg;
-	DBusPendingCall *call;
-
-	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
-					DBUS_INTERFACE_DBUS, member);
-	if (msg == NULL)
-		return FALSE;
-
-	dbus_message_append_args(msg, DBUS_TYPE_STRING, &rule,
-						DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
-		dbus_message_unref(msg);
-		return FALSE;
-	}
-
-	dbus_pending_call_set_notify(call, modify_match_reply, NULL, NULL);
-	dbus_pending_call_unref(call);
-
-	dbus_message_unref(msg);
-
-	return TRUE;
 }
 
 static void get_name_owner_reply(DBusPendingCall *call, void *user_data)
