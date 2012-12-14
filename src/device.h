@@ -46,6 +46,8 @@ GSList *device_get_uuids(struct btd_device *device);
 void device_probe_profiles(struct btd_device *device, GSList *profiles);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,
 						const char *uuid);
+struct gatt_primary *btd_device_get_primary(struct btd_device *device,
+							const char *uuid);
 GSList *btd_device_get_primaries(struct btd_device *device);
 void btd_device_gatt_set_service_changed(struct btd_device *device,
 						uint16_t start, uint16_t end);

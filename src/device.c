@@ -4020,6 +4020,26 @@ gboolean device_is_authenticating(struct btd_device *device)
 	return (device->authr != NULL);
 }
 
+static int primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return strcasecmp(prim->uuid, uuid);
+}
+
+struct gatt_primary *btd_device_get_primary(struct btd_device *device,
+							const char *uuid)
+{
+	GSList *match;
+
+	match = g_slist_find_custom(device->primaries, uuid, primary_uuid_cmp);
+	if (match)
+		return match->data;
+
+	return NULL;
+}
+
 GSList *btd_device_get_primaries(struct btd_device *device)
 {
 	return device->primaries;
