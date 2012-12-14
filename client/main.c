@@ -96,31 +96,42 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 
 }
 
-static void print_property(GDBusProxy *proxy, const char *name)
+static void print_iter(const char *label, const char *name,
+						DBusMessageIter *iter)
 {
-	DBusMessageIter iter;
 	dbus_bool_t valbool;
 	dbus_uint32_t val32;
 	const char *valstr;
 
+	switch (dbus_message_iter_get_arg_type(iter)) {
+	case DBUS_TYPE_INVALID:
+		printf("%s%s is inavlid\n", label, name);
+		break;
+	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_OBJECT_PATH:
+		dbus_message_iter_get_basic(iter, &valstr);
+		printf("%s%s: %s\n", label, name, valstr);
+		break;
+	case DBUS_TYPE_BOOLEAN:
+		dbus_message_iter_get_basic(iter, &valbool);
+		printf("%s%s: %s\n", label, name,
+					valbool == TRUE ? "yes" : "no");
+		break;
+	case DBUS_TYPE_UINT32:
+		dbus_message_iter_get_basic(iter, &val32);
+		printf("%s%s: 0x%06x\n", label, name, val32);
+		break;
+	}
+}
+
+static void print_property(GDBusProxy *proxy, const char *name)
+{
+	DBusMessageIter iter;
+
 	if (g_dbus_proxy_get_property(proxy, name, &iter) == FALSE)
 		return;
 
-	switch (dbus_message_iter_get_arg_type(&iter)) {
-	case DBUS_TYPE_STRING:
-	case DBUS_TYPE_OBJECT_PATH:
-		dbus_message_iter_get_basic(&iter, &valstr);
-		printf("\t%s: %s\n", name, valstr);
-		break;
-	case DBUS_TYPE_BOOLEAN:
-		dbus_message_iter_get_basic(&iter, &valbool);
-		printf("\t%s: %s\n", name, valbool == TRUE ? "yes" : "no");
-		break;
-	case DBUS_TYPE_UINT32:
-		dbus_message_iter_get_basic(&iter, &val32);
-		printf("\t%s: 0x%06x\n", name, val32);
-		break;
-	}
+	print_iter("\t", name, &iter);
 }
 
 static void proxy_added(GDBusProxy *proxy, void *user_data)
@@ -157,6 +168,14 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		if (default_ctrl == proxy)
 			default_ctrl = NULL;
 	}
+}
+
+static void property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	begin_message();
+	print_iter("[CHANGED] ", name, iter);
+	end_message();
 }
 
 static void message_handler(DBusConnection *connection,
@@ -702,8 +721,8 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
 	g_dbus_client_set_signal_watch(client, message_handler, NULL);
 
-	g_dbus_client_set_proxy_handlers(client, proxy_added,
-							proxy_removed, NULL);
+	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
+							property_changed, NULL);
 
 	g_main_loop_run(main_loop);
 
