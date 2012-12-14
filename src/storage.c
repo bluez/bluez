@@ -207,24 +207,6 @@ int write_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 	return textfile_put(filename, key, str);
 }
 
-int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t peer_type, struct tm *tm)
-{
-	char filename[PATH_MAX + 1], key[20], str[24];
-
-	memset(str, 0, sizeof(str));
-	strftime(str, sizeof(str), "%Y-%m-%d %H:%M:%S %Z", tm);
-
-	create_filename(filename, PATH_MAX, local, "lastused");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(peer, key);
-	sprintf(&key[17], "#%hhu", peer_type);
-
-	return textfile_put(filename, key, str);
-}
-
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;
