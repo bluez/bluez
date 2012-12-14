@@ -118,31 +118,6 @@ void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-dbus_bool_t emit_array_property_changed(const char *path,
-					const char *interface,
-					const char *name,
-					int type, void *value, int num)
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
-
-	if (!signal) {
-		error("Unable to allocate new %s.PropertyChanged signal",
-				interface);
-		return FALSE;
-	}
-
-	dbus_message_iter_init_append(signal, &iter);
-
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
-
-	append_array_variant(&iter, type, value, num);
-
-	return g_dbus_send_message(connection, signal);
-}
-
 void set_dbus_connection(DBusConnection *conn)
 {
 	connection = conn;
