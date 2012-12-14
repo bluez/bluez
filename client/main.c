@@ -173,9 +173,15 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
-	begin_message();
-	print_iter("[CHANGED] ", name, iter);
-	end_message();
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		begin_message();
+		print_iter("[CHANGED] ", name, iter);
+		end_message();
+	}
 }
 
 static void message_handler(DBusConnection *connection,
