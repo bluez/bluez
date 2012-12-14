@@ -524,39 +524,6 @@ void obc_session_shutdown(struct obc_session *session)
 	obc_session_unref(session);
 }
 
-static DBusMessage *session_get_properties(DBusConnection *connection,
-				DBusMessage *message, void *user_data)
-{
-	struct obc_session *session = user_data;
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-
-	reply = dbus_message_new_method_return(message);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	if (session->source != NULL)
-		obex_dbus_dict_append(&dict, "Source", DBUS_TYPE_STRING,
-							&session->source);
-
-	obex_dbus_dict_append(&dict, "Destination", DBUS_TYPE_STRING,
-							&session->destination);
-
-	obex_dbus_dict_append(&dict, "Channel", DBUS_TYPE_BYTE,
-							&session->channel);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
 static void capabilities_complete_callback(struct obc_session *session,
 						struct obc_transfer *transfer,
 						GError *err, void *user_data)
@@ -621,13 +588,60 @@ fail:
 
 }
 
+static gboolean get_source(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_session *session = data;
+
+	if (session->source == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&session->source);
+
+	return TRUE;
+}
+
+static gboolean source_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct obc_session *session = data;
+
+	return session->source != NULL;
+}
+
+static gboolean get_destination(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_session *session = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&session->destination);
+
+	return TRUE;
+}
+
+static gboolean get_channel(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_session *session = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE,
+							&session->channel);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable session_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-				session_get_properties) },
 	{ GDBUS_ASYNC_METHOD("GetCapabilities",
 				NULL, GDBUS_ARGS({ "capabilities", "s" }),
 				get_capabilities) },
+	{ }
+};
+
+static const GDBusPropertyTable session_properties[] = {
+	{ "Source", "s", get_source, NULL, source_exists },
+	{ "Destination", "s", get_destination },
+	{ "Channel", "y", get_channel },
 	{ }
 };
 

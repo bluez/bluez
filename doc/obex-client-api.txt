@@ -43,11 +43,7 @@ Service		org.bluez.obex.client
 Interface	org.bluez.obex.Session
 Object path	[variable prefix]/{session0,session1,...}
 
-Methods		dict GetProperties()
-
-			Returns all properties for the session.
-
-		string GetCapabilities()
+Methods		string GetCapabilities()
 
 			Get remote device capabilities.
 
