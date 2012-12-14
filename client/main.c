@@ -185,6 +185,32 @@ static GDBusProxy *find_proxy_by_address(const char *address)
 	return NULL;
 }
 
+static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
+{
+	if (!arg || !strlen(arg)) {
+		printf("Missing on/off argument\n");
+		return FALSE;
+	}
+
+	if (!default_ctrl) {
+		printf("No default controller available\n");
+		return FALSE;
+	}
+
+	if (!strcmp(arg, "on") || !strcmp(arg, "yes")) {
+		*value = TRUE;
+		return TRUE;
+	}
+
+	if (!strcmp(arg, "off") || !strcmp(arg, "no")) {
+		*value = FALSE;
+		return TRUE;
+	}
+
+	printf("Invalid argument %s\n", arg);
+	return FALSE;
+}
+
 static void cmd_list(const char *arg)
 {
 	GList *list;
@@ -260,18 +286,16 @@ static void cmd_select(const char *arg)
 	print_adapter(proxy, NULL);
 }
 
-static void power_callback(const DBusError *error, void *user_data)
+static void generic_callback(const DBusError *error, void *user_data)
 {
-	dbus_bool_t powered = GPOINTER_TO_UINT(user_data);
+	char *str = user_data;
 
 	begin_message();
 
 	if (dbus_error_is_set(error))
-		printf("Failed to set power %s: %s\n",
-				powered == TRUE ? "on" : "off", error->name);
+		printf("Failed to set %s: %s\n", str, error->name);
 	else
-		printf("Changing power %s succeeded\n",
-				powered == TRUE ? "on" : "off");
+		printf("Changing %s succeeded\n", str);
 
 	end_message();
 }
@@ -279,43 +303,19 @@ static void power_callback(const DBusError *error, void *user_data)
 static void cmd_power(const char *arg)
 {
 	dbus_bool_t powered;
+	char *str;
 
-	if (!arg || !strlen(arg)) {
-		printf("Missing argument\n");
+	if (parse_argument_on_off(arg, &powered) == FALSE)
 		return;
-	}
 
-	if (!default_ctrl) {
-		printf("No default controller available\n");
+	str = g_strdup_printf("power %s", powered == TRUE ? "on" : "off");
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered,
+					generic_callback, str, g_free) == TRUE)
 		return;
-	}
 
-	if (!strcmp(arg, "on") || !strcmp(arg, "yes"))
-		powered = TRUE;
-	else if (!strcmp(arg, "off") || !strcmp(arg, "no"))
-		powered = FALSE;
-	else {
-		printf("Invalid argument\n");
-		return;
-	}
-
-	g_dbus_proxy_set_property_basic(default_ctrl, "Powered",
-			DBUS_TYPE_BOOLEAN, &powered,
-			power_callback, GUINT_TO_POINTER(powered), NULL);
-}
-
-static void name_callback(const DBusError *error, void *user_data)
-{
-	char *name = user_data;
-
-	begin_message();
-
-	if (dbus_error_is_set(error))
-		printf("Failed to set name \"%s\": %s\n", name, error->name);
-	else
-		printf("Changed name to \"%s\"\n", name);
-
-	end_message();
+	g_free(str);
 }
 
 static void cmd_name(const char *arg)
@@ -336,7 +336,7 @@ static void cmd_name(const char *arg)
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl, "Name",
 					DBUS_TYPE_STRING, &name,
-					name_callback, name, g_free) == TRUE)
+					generic_callback, name, g_free) == TRUE)
 		return;
 
 	g_free(name);
