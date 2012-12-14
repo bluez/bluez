@@ -391,23 +391,6 @@ struct source *source_init(struct audio_device *dev)
 	return source;
 }
 
-gboolean source_is_active(struct audio_device *dev)
-{
-	struct source *source = dev->source;
-
-	if (source->session)
-		return TRUE;
-
-	return FALSE;
-}
-
-source_state_t source_get_state(struct audio_device *dev)
-{
-	struct source *source = dev->source;
-
-	return source->state;
-}
-
 gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream)
 {
