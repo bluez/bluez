@@ -83,11 +83,7 @@ builtin_sources += profiles/scanparam/main.c \
 			profiles/scanparam/scan.h profiles/scanparam/scan.c
 
 builtin_modules += deviceinfo
-builtin_sources += profiles/deviceinfo/main.c \
-			profiles/deviceinfo/manager.h \
-			profiles/deviceinfo/manager.c \
-			profiles/deviceinfo/deviceinfo.h \
-			profiles/deviceinfo/deviceinfo.c
+builtin_sources += profiles/deviceinfo/deviceinfo.c
 
 if EXPERIMENTAL
 builtin_modules += alert

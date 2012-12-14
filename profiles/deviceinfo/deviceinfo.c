@@ -25,18 +25,20 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <bluetooth/uuid.h>
 
+#include "plugin.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
 #include "log.h"
-#include "deviceinfo.h"
 
 #define PNP_ID_SIZE	7
 
@@ -163,7 +165,8 @@ static void attio_disconnected_cb(gpointer user_data)
 	d->attrib = NULL;
 }
 
-int deviceinfo_register(struct btd_device *device, struct gatt_primary *prim)
+static int deviceinfo_register(struct btd_device *device,
+						struct gatt_primary *prim)
 {
 	struct deviceinfo *d;
 
@@ -180,7 +183,7 @@ int deviceinfo_register(struct btd_device *device, struct gatt_primary *prim)
 	return 0;
 }
 
-void deviceinfo_unregister(struct btd_device *device)
+static void deviceinfo_unregister(struct btd_device *device)
 {
 	struct deviceinfo *d;
 	GSList *l;
@@ -194,3 +197,56 @@ void deviceinfo_unregister(struct btd_device *device)
 
 	deviceinfo_free(d);
 }
+
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
+
+static int deviceinfo_driver_probe(struct btd_profile *p,
+					struct btd_device *device,
+					GSList *uuids)
+{
+	struct gatt_primary *prim;
+	GSList *primaries, *l;
+
+	primaries = btd_device_get_primaries(device);
+
+	l = g_slist_find_custom(primaries, DEVICE_INFORMATION_UUID,
+							primary_uuid_cmp);
+	if (l == NULL)
+		return -EINVAL;
+
+	prim = l->data;
+
+	return deviceinfo_register(device, prim);
+}
+
+static void deviceinfo_driver_remove(struct btd_profile *p,
+						struct btd_device *device)
+{
+	deviceinfo_unregister(device);
+}
+
+static struct btd_profile deviceinfo_profile = {
+	.name		= "deviceinfo",
+	.remote_uuids	= BTD_UUIDS(DEVICE_INFORMATION_UUID),
+	.device_probe	= deviceinfo_driver_probe,
+	.device_remove	= deviceinfo_driver_remove
+};
+
+static int deviceinfo_init(void)
+{
+	return btd_profile_register(&deviceinfo_profile);
+}
+
+static void deviceinfo_exit(void)
+{
+	btd_profile_unregister(&deviceinfo_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(deviceinfo, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+					deviceinfo_init, deviceinfo_exit)
