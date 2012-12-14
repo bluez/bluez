@@ -1275,29 +1275,15 @@ static void thermometer_adapter_unregister(struct btd_adapter *adapter)
 					THERMOMETER_MANAGER_INTERFACE);
 }
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int thermometer_device_probe(struct btd_profile *p,
 					struct btd_device *device,
 					GSList *uuids)
 {
 	struct gatt_primary *tattr;
-	GSList *primaries, *l;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, HEALTH_THERMOMETER_UUID,
-							primary_uuid_cmp);
-	if (l == NULL)
+	tattr = btd_device_get_primary(device, HEALTH_THERMOMETER_UUID);
+	if (tattr == NULL)
 		return -EINVAL;
-
-	tattr = l->data;
 
 	return thermometer_register(device, tattr);
 }

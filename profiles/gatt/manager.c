@@ -35,29 +35,13 @@
 #include "log.h"
 #include "manager.h"
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
-	GSList *primaries, *l;
-	struct gatt_primary *gap = NULL, *gatt = NULL;
+	struct gatt_primary *gap, *gatt;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, GAP_UUID, primary_uuid_cmp);
-	if (l)
-		gap = l->data;
-
-	l = g_slist_find_custom(primaries, GATT_UUID, primary_uuid_cmp);
-	if (l)
-		gatt = l->data;
+	gap = btd_device_get_primary(device, GAP_UUID);
+	gatt = btd_device_get_primary(device, GATT_UUID);
 
 	if (gap == NULL || gatt == NULL) {
 		error("GAP and GATT are mandatory");

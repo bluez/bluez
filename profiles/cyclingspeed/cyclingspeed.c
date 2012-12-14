@@ -1172,14 +1172,6 @@ static const GDBusMethodTable cyclingspeed_device_methods[] = {
 	{ }
 };
 
-static gint cmp_primary_uuid(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int csc_device_probe(struct btd_profile *p,
 				struct btd_device *device, GSList *uuids)
 {
@@ -1187,16 +1179,10 @@ static int csc_device_probe(struct btd_profile *p,
 	struct csc_adapter *cadapter;
 	struct csc *csc;
 	struct gatt_primary *prim;
-	GSList *primaries;
-	GSList *l;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, CYCLING_SC_UUID, cmp_primary_uuid);
-	if (l == NULL)
+	prim = btd_device_get_primary(device, CYCLING_SC_UUID);
+	if (prim == NULL)
 		return -EINVAL;
-
-	prim = l->data;
 
 	adapter = device_get_adapter(device);
 

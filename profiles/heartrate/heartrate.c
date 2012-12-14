@@ -829,14 +829,6 @@ static void heartrate_device_unregister(struct btd_device *device)
 				device_get_path(device), HEART_RATE_INTERFACE);
 }
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int heartrate_adapter_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
@@ -852,16 +844,13 @@ static void heartrate_adapter_remove(struct btd_profile *p,
 static int heartrate_device_probe(struct btd_profile *p,
 				struct btd_device *device, GSList *uuids)
 {
-	GSList *primaries;
-	GSList *l;
+	struct gatt_primary *prim;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, HEART_RATE_UUID, primary_uuid_cmp);
-	if (l == NULL)
+	prim = btd_device_get_primary(device, HEART_RATE_UUID);
+	if (prim == NULL)
 		return -EINVAL;
 
-	return heartrate_device_register(device, l->data);
+	return heartrate_device_register(device, prim);
 }
 
 static void heartrate_device_remove(struct btd_profile *p,

@@ -48,31 +48,14 @@ static struct enabled enabled  = {
 	.findme = TRUE,
 };
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int monitor_device_probe(struct btd_profile *p,
 				struct btd_device *device, GSList *uuids)
 {
 	struct gatt_primary *linkloss, *txpower, *immediate;
-	GSList *l, *primaries;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, IMMEDIATE_ALERT_UUID,
-			primary_uuid_cmp);
-	immediate = (l ? l->data : NULL);
-
-	l = g_slist_find_custom(primaries, TX_POWER_UUID, primary_uuid_cmp);
-	txpower = (l ? l->data : NULL);
-
-	l = g_slist_find_custom(primaries, LINK_LOSS_UUID, primary_uuid_cmp);
-	linkloss = (l ? l->data : NULL);
+	immediate = btd_device_get_primary(device, IMMEDIATE_ALERT_UUID);
+	txpower = btd_device_get_primary(device, TX_POWER_UUID);
+	linkloss = btd_device_get_primary(device, LINK_LOSS_UUID);
 
 	return monitor_register(device, linkloss, txpower, immediate, &enabled);
 }

@@ -198,29 +198,15 @@ static void deviceinfo_unregister(struct btd_device *device)
 	deviceinfo_free(d);
 }
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int deviceinfo_driver_probe(struct btd_profile *p,
 					struct btd_device *device,
 					GSList *uuids)
 {
 	struct gatt_primary *prim;
-	GSList *primaries, *l;
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, DEVICE_INFORMATION_UUID,
-							primary_uuid_cmp);
-	if (l == NULL)
+	prim = btd_device_get_primary(device, DEVICE_INFORMATION_UUID);
+	if (prim == NULL)
 		return -EINVAL;
-
-	prim = l->data;
 
 	return deviceinfo_register(device, prim);
 }

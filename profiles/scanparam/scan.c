@@ -266,29 +266,18 @@ static void scan_unregister(struct btd_device *device)
 	g_free(scan);
 }
 
-static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return g_strcmp0(prim->uuid, uuid);
-}
-
 static int scan_param_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
-	GSList *primaries, *l;
+	struct gatt_primary *prim;
 
 	DBG("Probing Scan Parameters");
 
-	primaries = btd_device_get_primaries(device);
-
-	l = g_slist_find_custom(primaries, SCAN_PARAMETERS_UUID,
-							primary_uuid_cmp);
-	if (!l)
+	prim = btd_device_get_primary(device, SCAN_PARAMETERS_UUID);
+	if (!prim)
 		return -EINVAL;
 
-	return scan_register(device, l->data);
+	return scan_register(device, prim);
 }
 
 static void scan_param_remove(struct btd_profile *p, struct btd_device *device)
