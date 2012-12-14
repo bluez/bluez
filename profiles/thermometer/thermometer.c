@@ -42,9 +42,9 @@
 #include "attrib/gatt.h"
 #include "thermometer.h"
 
-#define THERMOMETER_INTERFACE		"org.bluez.Thermometer"
-#define THERMOMETER_MANAGER_INTERFACE	"org.bluez.ThermometerManager"
-#define THERMOMETER_WATCHER_INTERFACE	"org.bluez.ThermometerWatcher"
+#define THERMOMETER_INTERFACE		"org.bluez.Thermometer1"
+#define THERMOMETER_MANAGER_INTERFACE	"org.bluez.ThermometerManager1"
+#define THERMOMETER_WATCHER_INTERFACE	"org.bluez.ThermometerWatcher1"
 
 /* Temperature measurement flag fields */
 #define TEMP_UNITS		0x01

@@ -15,8 +15,13 @@ import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 import bluezutils
 
+BUS_NAME = 'org.bluez'
+THERMOMETER_MANAGER_INTERFACE = 'org.bluez.ThermometerManager1'
+THERMOMETER_WATCHER_INTERFACE = 'org.bluez.ThermometerWatcher1'
+THERMOMETER_INTERFACE = 'org.bluez.Thermometer1'
+
 class Watcher(dbus.service.Object):
-	@dbus.service.method("org.bluez.ThermometerWatcher",
+	@dbus.service.method(THERMOMETER_WATCHER_INTERFACE,
 					in_signature="oa{sv}", out_signature="")
 	def MeasurementReceived(self, device, measure):
 		print("%s measurement received from %s" % (measure["Measurement"], device))
@@ -31,7 +36,7 @@ class Watcher(dbus.service.Object):
 			print("Type: ", measure["Type"])
 
 def properties_changed(interface, changed, invalidated):
-	if interface != "org.bluez.Thermometer":
+	if interface != THERMOMETER_INTERFACE:
 		return
 	for name, value in changed.iteritems():
 		print("Property %s changed:  %s" % (name, str(value)))
@@ -63,15 +68,15 @@ if __name__ == "__main__":
 								options.adapter)
 	adapter_path = adapter.object_path
 
-	thermometer_manager = dbus.Interface(bus.get_object("org.bluez",
-				adapter_path), "org.bluez.ThermometerManager")
+	thermometer_manager = dbus.Interface(bus.get_object(BUS_NAME,
+				adapter_path), THERMOMETER_MANAGER_INTERFACE)
 
 	device = bluezutils.find_device_in_objects(managed_objects,
 								options.address,
 								options.adapter)
 	device_path = device.object_path
 
-	bus.add_signal_receiver(properties_changed, bus_name="org.bluez",
+	bus.add_signal_receiver(properties_changed, bus_name=BUS_NAME,
 			path=device_path,
 			dbus_interface="org.freedesktop.DBus.Properties",
 			signal_name="PropertiesChanged")

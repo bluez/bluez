@@ -7,7 +7,7 @@ Health Thermometer Manager hierarchy
 ====================================
 
 Service		org.bluez
-Interface	org.bluez.ThermometerManager
+Interface	org.bluez.ThermometerManager1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		RegisterWatcher(object agent)
@@ -44,7 +44,7 @@ Health Thermometer Profile hierarchy
 ====================================
 
 Service		org.bluez
-Interface	org.bluez.Thermometer
+Interface	org.bluez.Thermometer1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 
@@ -77,7 +77,7 @@ Health Thermometer Watcher hierarchy
 ====================================
 
 Service		unique name
-Interface	org.bluez.ThermometerWatcher
+Interface	org.bluez.ThermometerWatcher1
 Object path	freely definable
 
 Methods		void MeasurementReceived(dict measurement)
