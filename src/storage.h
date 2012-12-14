@@ -47,10 +47,6 @@ int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 							     const char *chars);
 char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 					uint8_t bdaddr_type, uint16_t handle);
-int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
-				uint8_t bdaddr_type, uint16_t handle,
-							const char *chars);
-int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data);
 int read_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,
 			uint8_t bdaddr_type, uint16_t handle, uint16_t *value);
 int write_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,

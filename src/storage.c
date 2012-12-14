@@ -412,31 +412,6 @@ char *read_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 	return textfile_caseget(filename, key);
 }
 
-int write_device_attribute(const bdaddr_t *sba, const bdaddr_t *dba,
-				uint8_t bdaddr_type, uint16_t handle,
-							const char *chars)
-{
-	char filename[PATH_MAX + 1], addr[18], key[25];
-
-	create_filename(filename, PATH_MAX, sba, "attributes");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(dba, addr);
-	snprintf(key, sizeof(key), "%17s#%hhu#%04X", addr, bdaddr_type, handle);
-
-	return textfile_put(filename, key, chars);
-}
-
-int read_device_attributes(const bdaddr_t *sba, textfile_cb func, void *data)
-{
-	char filename[PATH_MAX + 1];
-
-	create_filename(filename, PATH_MAX, sba, "attributes");
-
-	return textfile_foreach(filename, func, data);
-}
-
 int read_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t bdaddr_type, uint16_t handle,
 					uint16_t *value)
