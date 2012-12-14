@@ -1191,12 +1191,15 @@ static struct btd_profile *find_connectable_profile(struct btd_device *dev,
 
 	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
 		struct btd_profile *p = l->data;
+		int i;
 
-		if (!p->connect || !p->local_uuid)
+		if (!p->connect || !p->remote_uuids)
 			continue;
 
-		if (strcasecmp(uuid, p->local_uuid) == 0)
-			return p;
+		for (i = 0; p->remote_uuids[i] != NULL; i++) {
+			if (strcasecmp(uuid, p->remote_uuids[i]) == 0)
+				return p;
+		}
 	}
 
 	return NULL;
