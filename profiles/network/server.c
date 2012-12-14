@@ -51,7 +51,7 @@
 #include "common.h"
 #include "server.h"
 
-#define NETWORK_SERVER_INTERFACE "org.bluez.NetworkServer"
+#define NETWORK_SERVER_INTERFACE "org.bluez.NetworkServer1"
 #define SETUP_TIMEOUT		1
 
 /* Pending Authorization */

@@ -49,7 +49,7 @@
 #include "manager.h"
 #include "connection.h"
 
-#define NETWORK_PEER_INTERFACE "org.bluez.Network"
+#define NETWORK_PEER_INTERFACE "org.bluez.Network1"
 #define CON_SETUP_RETRIES      3
 #define CON_SETUP_TO           9
 

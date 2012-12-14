@@ -8,7 +8,7 @@ Network hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.Network
+Interface	org.bluez.Network1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Properties	boolean Connected [readonly]
@@ -28,7 +28,7 @@ Network server hierarchy
 ========================
 
 Service		org.bluez
-Interface	org.bluez.NetworkServer
+Interface	org.bluez.NetworkServer1
 Object path	/org/bluez/{hci0,hci1,...}
 
 Methods		void Register(string uuid, string bridge)
