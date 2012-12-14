@@ -7,6 +7,9 @@ import gobject
 import dbus.mainloop.glib
 import bluezutils
 
+BUS_NAME = 'org.bluez'
+OOB_INTERFACE = 'org.bluez.OutOfBand1'
+
 def create_device_reply(device):
 	print("Pairing succeed!")
 	mainloop.quit()
@@ -61,10 +64,10 @@ if __name__ == '__main__':
 	print()
 	print("Reading local Out of Band data...")
 
-	oob_adapter0 = dbus.Interface(bus.get_object("org.bluez",
-					adapter0_path), "org.bluez.OutOfBand")
-	oob_adapter1 = dbus.Interface(bus.get_object("org.bluez",
-					adapter1_path), "org.bluez.OutOfBand")
+	oob_adapter0 = dbus.Interface(bus.get_object(BUS_NAME,
+					adapter0_path), OOB_INTERFACE)
+	oob_adapter1 = dbus.Interface(bus.get_object(BUS_NAME,
+					adapter1_path), OOB_INTERFACE)
 
 	oob0 = oob_adapter0.ReadLocalData()
 	oob1 = oob_adapter1.ReadLocalData()

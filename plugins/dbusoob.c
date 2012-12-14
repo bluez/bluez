@@ -45,7 +45,7 @@
 #include "error.h"
 #include "storage.h"
 
-#define OOB_INTERFACE	"org.bluez.OutOfBand"
+#define OOB_INTERFACE	"org.bluez.OutOfBand1"
 
 struct oob_data {
 	char *addr;
