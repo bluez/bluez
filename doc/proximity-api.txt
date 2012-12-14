@@ -8,7 +8,7 @@ Proximity Monitor hierarchy
 ===========================
 
 Service		org.bluez
-Interface	org.bluez.ProximityMonitor
+Interface	org.bluez.ProximityMonitor1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Properties	string SignalLevel [readonly]
@@ -40,7 +40,7 @@ Shared service used by Proximity Path Loss and Find Me. Allows per device
 alert level handling.
 
 Service		org.bluez
-Interface	org.bluez.ProximityReporter
+Interface	org.bluez.ProximityReporter1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Properties	string ImmediateAlertLevel [readonly]

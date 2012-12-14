@@ -22,7 +22,7 @@
  *
  */
 
-#define PROXIMITY_REPORTER_INTERFACE "org.bluez.ProximityReporter"
+#define PROXIMITY_REPORTER_INTERFACE "org.bluez.ProximityReporter1"
 
 #define IMMEDIATE_ALERT_SVC_UUID	0x1802
 #define LINK_LOSS_SVC_UUID		0x1803
