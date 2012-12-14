@@ -41,9 +41,9 @@
 #include "log.h"
 #include "heartrate.h"
 
-#define HEART_RATE_INTERFACE		"org.bluez.HeartRate"
-#define HEART_RATE_MANAGER_INTERFACE	"org.bluez.HeartRateManager"
-#define HEART_RATE_WATCHER_INTERFACE	"org.bluez.HeartRateWatcher"
+#define HEART_RATE_INTERFACE		"org.bluez.HeartRate1"
+#define HEART_RATE_MANAGER_INTERFACE	"org.bluez.HeartRateManager1"
+#define HEART_RATE_WATCHER_INTERFACE	"org.bluez.HeartRateWatcher1"
 
 #define HR_VALUE_FORMAT		0x01
 #define SENSOR_CONTACT_DETECTED	0x02

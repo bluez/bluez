@@ -8,7 +8,7 @@ Heart Rate Manager hierarchy
 ============================
 
 Service		org.bluez
-Interface	org.bluez.HeartRateManager
+Interface	org.bluez.HeartRateManager1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		RegisterWatcher(object agent)
@@ -25,7 +25,7 @@ Heart Rate Profile hierarchy
 ============================
 
 Service		org.bluez
-Interface	org.bluez.HeartRate
+Interface	org.bluez.HeartRate1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		Reset()
@@ -47,7 +47,7 @@ Heart Rate Watcher hierarchy
 ============================
 
 Service		unique name
-Interface	org.bluez.HeartRateWatcher
+Interface	org.bluez.HeartRateWatcher1
 Object path	freely definable
 
 Methods		void MeasurementReceived(object device, dict measurement)

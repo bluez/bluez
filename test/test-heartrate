@@ -15,8 +15,13 @@ import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 import bluezutils
 
+BUS_NAME = 'org.bluez'
+HEARTRATE_MANAGER_INTERFACE = 'org.bluez.HeartRateManager1'
+HEARTRATE_WATCHER_INTERFACE = 'org.bluez.HeartRateWatcher1'
+HEARTRATE_INTERFACE = 'org.bluez.HeartRate1'
+
 class Watcher(dbus.service.Object):
-	@dbus.service.method("org.bluez.HeartRateWatcher",
+	@dbus.service.method(HEARTRATE_WATCHER_INTERFACE,
 					in_signature="oa{sv}", out_signature="")
 	def MeasurementReceived(self, device, measure):
 		print("Measurement received from %s" % device)
@@ -59,8 +64,8 @@ if __name__ == "__main__":
 								options.adapter)
 	adapter_path = adapter.object_path
 
-	heartrateManager = dbus.Interface(bus.get_object("org.bluez",
-				adapter_path), "org.bluez.HeartRateManager")
+	heartrateManager = dbus.Interface(bus.get_object(BUS_NAME,
+				adapter_path), HEARTRATE_MANAGER_INTERFACE)
 
 	path = "/test/watcher"
 	heartrateManager.RegisterWatcher(path)
@@ -70,15 +75,15 @@ if __name__ == "__main__":
 								options.adapter)
 	device_path = device.object_path
 
-	heartrate = dbus.Interface(bus.get_object("org.bluez",
-					device_path), "org.bluez.HeartRate")
+	heartrate = dbus.Interface(bus.get_object(BUS_NAME, device_path),
+							HEARTRATE_INTERFACE)
 
 	watcher = Watcher(bus, path)
 
-	dev_prop = dbus.Interface(bus.get_object("org.bluez", device_path),
+	dev_prop = dbus.Interface(bus.get_object(BUS_NAME, device_path),
 					"org.freedesktop.DBus.Properties")
 
-	properties = dev_prop.GetAll("org.bluez.HeartRate")
+	properties = dev_prop.GetAll(HEARTRATE_INTERFACE)
 
 	if "Location" in properties:
 		print("Sensor location: %s" % properties["Location"])
