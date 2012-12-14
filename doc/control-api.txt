@@ -9,7 +9,7 @@ Control hierarchy
 =================
 
 Service		org.bluez
-Interface	org.bluez.Control
+Interface	org.bluez.Control1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		void Play()
