@@ -27,7 +27,6 @@ int read_discoverable_timeout(const char *src, int *timeout);
 int read_pairable_timeout(const char *src, int *timeout);
 int read_on_mode(const char *src, char *mode, int length);
 int read_local_name(const bdaddr_t *bdaddr, char *name);
-int read_local_class(const bdaddr_t *bdaddr, uint8_t *class);
 int write_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, uint16_t appearance);
 int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,

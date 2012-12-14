@@ -144,28 +144,6 @@ int read_local_name(const bdaddr_t *bdaddr, char *name)
 	return 0;
 }
 
-int read_local_class(const bdaddr_t *bdaddr, uint8_t *class)
-{
-	char filename[PATH_MAX + 1], tmp[3], *str;
-	int i;
-
-	create_filename(filename, PATH_MAX, bdaddr, "config");
-
-	str = textfile_get(filename, "class");
-	if (!str)
-		return -ENOENT;
-
-	memset(tmp, 0, sizeof(tmp));
-	for (i = 0; i < 3; i++) {
-		memcpy(tmp, str + (i * 2) + 2, 2);
-		class[2 - i] = (uint8_t) strtol(tmp, NULL, 16);
-	}
-
-	free(str);
-
-	return 0;
-}
-
 int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
 				uint8_t bdaddr_type, uint16_t *appearance)
 {
