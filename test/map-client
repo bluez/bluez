@@ -136,8 +136,8 @@ class MapClient:
 		self.map.ListMessages("", dict())
 		path = self.path + "/message" + handle
 		obj = bus.get_object("org.bluez.obex.client", path)
-		msg = dbus.Interface(obj, "org.bluez.obex.Message")
-		ret = msg.GetProperties()
+		msg = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
+		ret = msg.GetAll("org.bluez.obex.Message")
 		print pformat(unwrap(ret))
 
 	def set_message_property(self, handle, prop, flag):
