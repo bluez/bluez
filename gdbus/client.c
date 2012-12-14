@@ -147,12 +147,29 @@ static void iter_append_iter(DBusMessageIter *base, DBusMessageIter *iter)
 	}
 }
 
+static void prop_entry_update(struct prop_entry *prop, DBusMessageIter *iter)
+{
+	DBusMessage *msg;
+	DBusMessageIter base;
+
+	msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
+	if (msg == NULL)
+		return;
+
+	dbus_message_iter_init_append(msg, &base);
+	iter_append_iter(&base, iter);
+
+	if (prop->msg != NULL)
+		dbus_message_unref(prop->msg);
+
+	prop->msg = dbus_message_copy(msg);
+	dbus_message_unref(msg);
+}
+
 static struct prop_entry *prop_entry_new(const char *name,
 						DBusMessageIter *iter)
 {
 	struct prop_entry *prop;
-	DBusMessage *msg;
-	DBusMessageIter base;
 
 	prop = g_try_new0(struct prop_entry, 1);
 	if (prop == NULL)
@@ -161,15 +178,7 @@ static struct prop_entry *prop_entry_new(const char *name,
 	prop->name = g_strdup(name);
 	prop->type = dbus_message_iter_get_arg_type(iter);
 
-	msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_RETURN);
-	if (msg == NULL)
-		return prop;
-
-	dbus_message_iter_init_append(msg, &base);
-	iter_append_iter(&base, iter);
-
-	prop->msg = dbus_message_copy(msg);
-	dbus_message_unref(msg);
+	prop_entry_update(prop, iter);
 
 	return prop;
 }
@@ -422,6 +431,12 @@ static void add_property(GDBusProxy *proxy, const char *name,
 
 	dbus_message_iter_recurse(iter, &value);
 
+	prop = g_hash_table_lookup(proxy->prop_list, name);
+	if (prop != NULL) {
+		prop_entry_update(prop, &value);
+		return;
+	}
+
 	prop = prop_entry_new(name, &value);
 	if (prop == NULL)
 		return;
@@ -429,22 +444,12 @@ static void add_property(GDBusProxy *proxy, const char *name,
 	g_hash_table_replace(proxy->prop_list, prop->name, prop);
 }
 
-static void parse_properties(GDBusClient *client, const char *path,
-				const char *interface, DBusMessageIter *iter)
+static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
 {
 	DBusMessageIter dict;
-	GDBusProxy *proxy;
-
-	if (g_str_equal(interface, DBUS_INTERFACE_INTROSPECTABLE) == TRUE)
-		return;
-
-	if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE)
-		return;
-
-	proxy = proxy_new(client, path, interface);
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
-		goto done;
+		return;
 
 	dbus_message_iter_recurse(iter, &dict);
 
@@ -464,8 +469,76 @@ static void parse_properties(GDBusClient *client, const char *path,
 
 		dbus_message_iter_next(&dict);
 	}
+}
 
-done:
+static void properties_changed(GDBusClient *client, const char *path,
+							DBusMessage *msg)
+{
+	GDBusProxy *proxy = NULL;
+	DBusMessageIter iter, entry;
+	const char *interface;
+	GList *list;
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &interface);
+	dbus_message_iter_next(&iter);
+
+	for (list = g_list_first(client->proxy_list); list;
+						list = g_list_next(list)) {
+		GDBusProxy *data = list->data;
+
+		if (g_str_equal(data->interface, interface) == TRUE &&
+				g_str_equal(data->obj_path, path) == TRUE) {
+			proxy = data;
+			break;
+		}
+	}
+
+	if (proxy == NULL)
+		return;
+
+	update_properties(proxy, &iter);
+
+	dbus_message_iter_next(&iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *name;
+
+		dbus_message_iter_get_basic(&entry, &name);
+
+		g_hash_table_remove(proxy->prop_list, name);
+
+		dbus_message_iter_next(&entry);
+	}
+}
+
+static void parse_properties(GDBusClient *client, const char *path,
+				const char *interface, DBusMessageIter *iter)
+{
+	GDBusProxy *proxy;
+
+	if (g_str_equal(interface, DBUS_INTERFACE_INTROSPECTABLE) == TRUE)
+		return;
+
+	if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE)
+		return;
+
+	proxy = proxy_new(client, path, interface);
+	if (proxy == NULL)
+		return;
+
+	update_properties(proxy, iter);
+
 	if (client->proxy_added)
 		client->proxy_added(proxy, client->proxy_data);
 
@@ -739,20 +812,16 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (g_str_equal(sender, client->unique_name) == TRUE) {
-		const char *path;
+		const char *path, *interface, *member;
 
 		path = dbus_message_get_path(message);
+		interface = dbus_message_get_interface(message);
+		member = dbus_message_get_member(message);
 
 		if (g_str_equal(path, "/") == TRUE) {
-			const char *interface, *member;
-
-			interface = dbus_message_get_interface(message);
-
 			if (g_str_equal(interface, DBUS_INTERFACE_DBUS
 						".ObjectManager") == FALSE)
 				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-			member = dbus_message_get_member(message);
 
 			if (g_str_equal(member, "InterfacesAdded") == TRUE) {
 				interfaces_added(client, message);
@@ -769,6 +838,13 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 
 		if (g_str_has_prefix(path, client->base_path) == FALSE)
 			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+		if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE) {
+			if (g_str_equal(member, "PropertiesChanged") == TRUE)
+				properties_changed(client, path, message);
+
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		}
 
 		if (client->signal_func)
 			client->signal_func(client->dbus_conn,
