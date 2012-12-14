@@ -287,11 +287,6 @@ sdp_list_t *sdp_get_record_list(void)
 	return service_db;
 }
 
-sdp_list_t *sdp_get_access_list(void)
-{
-	return access_db;
-}
-
 int sdp_check_access(uint32_t handle, bdaddr_t *device)
 {
 	sdp_list_t *p = access_locate(handle);

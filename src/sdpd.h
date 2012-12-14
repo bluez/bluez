@@ -64,7 +64,6 @@ sdp_record_t *sdp_record_find(uint32_t handle);
 void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec);
 int sdp_record_remove(uint32_t handle);
 sdp_list_t *sdp_get_record_list(void);
-sdp_list_t *sdp_get_access_list(void);
 int sdp_check_access(uint32_t handle, bdaddr_t *device);
 uint32_t sdp_next_handle(void);
 
