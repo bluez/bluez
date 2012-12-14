@@ -66,14 +66,13 @@ released.
 
 - [pending] Switch plugins to standard D-Bus properties interface
 
-- [pending] Add connect/disconnect callbacks to all btd_profile
-  instances that need them and add auto_connect = true to the ones that
-  make sense.
-
 - [pending] Convert storage to user per-remote device directories and
   ini-file format
 
 Completed items:
+
+- Add connect/disconnect callbacks to all btd_profile instances that
+  need them and add auto_connect = true to the ones that make sense.
 
 - Switch ConnectProfile to match remote_uuid instead of local_uuid (as
   that's more intuitive).
