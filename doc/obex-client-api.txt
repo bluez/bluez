@@ -535,18 +535,6 @@ Methods		object, dict Get(string targetfile, boolean attachment)
 			The properties of this transfer are also returned along
 			with the object path, to avoid a call to GetProperties.
 
-		dict GetProperties()
-
-			Returns all properties for the message. See the
-			properties section for available properties.
-
-		void SetProperty (string name, variant value)
-
-			Sets value to the mentioned property.
-
-			Possible properties: Read and Deleted.
-
-
 Properties	string Subject [readonly]
 
 			Message subject
