@@ -178,8 +178,19 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 	interface = g_dbus_proxy_get_interface(proxy);
 
 	if (!strcmp(interface, "org.bluez.Adapter1")) {
+		DBusMessageIter addr_iter;
+
 		begin_message();
-		print_iter("[CHANGED] ", name, iter);
+
+		if (g_dbus_proxy_get_property(proxy, "Address",
+						&addr_iter) == TRUE) {
+			const char *address;
+
+			dbus_message_iter_get_basic(&addr_iter, &address);
+			printf("[CHG] Controller %s, ", address);
+		}
+
+		print_iter("", name, iter);
 		end_message();
 	}
 }
