@@ -81,10 +81,15 @@ static void iter_append_iter(DBusMessageIter *base, DBusMessageIter *iter)
 
 		dbus_message_iter_recurse(iter, &iter_sub);
 
-		if (type == DBUS_TYPE_ARRAY) {
+		switch (type) {
+		case DBUS_TYPE_ARRAY:
+		case DBUS_TYPE_VARIANT:
 			sig = dbus_message_iter_get_signature(&iter_sub);
-		} else
+			break;
+		default:
 			sig = NULL;
+			break;
+		}
 
 		dbus_message_iter_open_container(base, type, sig, &base_sub);
 
