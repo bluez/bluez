@@ -44,18 +44,13 @@
 #include "media.h"
 #include "a2dp.h"
 #include "error.h"
+#include "manager.h"
 #include "sink.h"
 #include "dbus-common.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 
 #define STREAM_SETUP_RETRY_TIMER 2
-
-struct pending_request {
-	audio_device_cb cb;
-	void *cb_data;
-	unsigned int id;
-};
 
 struct sink {
 	struct audio_device *dev;
@@ -66,8 +61,8 @@ struct sink {
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
 	sink_state_t state;
-	struct pending_request *connect;
-	struct pending_request *disconnect;
+	unsigned int connect_id;
+	unsigned int disconnect_id;
 };
 
 struct sink_state_callback {
@@ -137,19 +132,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 	sink->session_state = new_state;
 }
 
-static void pending_request_free(struct audio_device *dev,
-					struct pending_request *pending,
-					int err)
-{
-	if (pending->cb)
-		pending->cb(dev, err, pending->cb_data);
-
-	if (pending->id)
-		a2dp_cancel(dev, pending->id);
-
-	g_free(pending);
-}
-
 static void stream_state_changed(struct avdtp_stream *stream,
 					avdtp_state_t old_state,
 					avdtp_state_t new_state,
@@ -164,13 +146,11 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
-		if (sink->disconnect) {
-			struct pending_request *p;
+		audio_sink_disconnected(dev->btd_dev, 0);
 
-			p = sink->disconnect;
-			sink->disconnect = NULL;
-
-			pending_request_free(dev, p, 0);
+		if (sink->disconnect_id > 0) {
+			a2dp_cancel(dev, sink->disconnect_id);
+			sink->disconnect_id = 0;
 		}
 
 		if (sink->session) {
@@ -199,7 +179,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean stream_setup_retry(gpointer user_data)
 {
 	struct sink *sink = user_data;
-	struct pending_request *pending = sink->connect;
 	int err;
 
 	sink->retry_id = 0;
@@ -212,8 +191,12 @@ static gboolean stream_setup_retry(gpointer user_data)
 		err = -EIO;
 	}
 
-	sink->connect = NULL;
-	pending_request_free(sink->dev, pending, err);
+	audio_sink_connected(sink->dev->btd_dev, err);
+
+	if (sink->connect_id > 0) {
+		a2dp_cancel(sink->dev, sink->connect_id);
+		sink->connect_id = 0;
+	}
 
 	return FALSE;
 }
@@ -223,18 +206,12 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_error *err, void *user_data)
 {
 	struct sink *sink = user_data;
-	struct pending_request *pending;
 
-	pending = sink->connect;
-
-	pending->id = 0;
+	sink->connect_id = 0;
 
 	if (stream) {
 		DBG("Stream successfully created");
-
-		sink->connect = NULL;
-		pending_request_free(sink->dev, pending, 0);
-
+		audio_sink_connected(sink->dev->btd_dev, 0);
 		return;
 	}
 
@@ -247,8 +224,8 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 							stream_setup_retry,
 							sink);
 	} else {
-		sink->connect = NULL;
-		pending_request_free(sink->dev, pending, -EIO);
+		DBG("Stream setup failed : %s", avdtp_strerror(err));
+		audio_sink_connected(sink->dev->btd_dev, -EIO);
 	}
 }
 
@@ -256,22 +233,20 @@ static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
 			GSList *caps, void *user_data)
 {
 	struct sink *sink = user_data;
-	struct pending_request *pending;
 	int id;
 
-	pending = sink->connect;
-	pending->id = 0;
+	sink->connect_id = 0;
 
 	id = a2dp_config(session, sep, stream_setup_complete, caps, sink);
 	if (id == 0)
 		goto failed;
 
-	pending->id = id;
+	sink->connect_id = id;
 	return;
 
 failed:
-	pending_request_free(sink->dev, pending, -EIO);
-	sink->connect = NULL;
+	audio_sink_connected(sink->dev->btd_dev, -EIO);
+
 	avdtp_unref(sink->session);
 	sink->session = NULL;
 }
@@ -280,16 +255,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 				void *user_data)
 {
 	struct sink *sink = user_data;
-	struct pending_request *pending;
 	int id;
-
-	if (!sink->connect) {
-		avdtp_unref(sink->session);
-		sink->session = NULL;
-		return;
-	}
-
-	pending = sink->connect;
 
 	if (err) {
 		avdtp_unref(sink->session);
@@ -313,19 +279,18 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	if (id == 0)
 		goto failed;
 
-	pending->id = id;
+	sink->connect_id = id;
 	return;
 
 failed:
-	pending_request_free(sink->dev, pending, -EIO);
-	sink->connect = NULL;
+	audio_sink_connected(sink->dev->btd_dev, -EIO);
 	avdtp_unref(sink->session);
 	sink->session = NULL;
 }
 
 gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 {
-	if (sink->connect || sink->disconnect)
+	if (sink->connect_id > 0 || sink->disconnect_id > 0)
 		return FALSE;
 
 	if (session && !sink->session)
@@ -337,15 +302,12 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	if (avdtp_discover(sink->session, discovery_complete, sink) < 0)
 		return FALSE;
 
-	sink->connect = g_new0(struct pending_request, 1);
-
 	return TRUE;
 }
 
 int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 {
 	struct sink *sink = dev->sink;
-	struct pending_request *pending;
 
 	if (!sink->session)
 		sink->session = avdtp_get(dev);
@@ -355,7 +317,7 @@ int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 		return -EIO;
 	}
 
-	if (sink->connect || sink->disconnect)
+	if (sink->connect_id > 0 || sink->disconnect_id > 0)
 		return -EBUSY;
 
 	if (sink->stream_state >= AVDTP_STATE_OPEN)
@@ -365,11 +327,6 @@ int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 		DBG("Failed to create a stream");
 		return -EIO;
 	}
-
-	pending = sink->connect;
-
-	pending->cb = cb;
-	pending->cb_data = data;
 
 	DBG("stream creation in progress");
 
@@ -387,11 +344,17 @@ static void sink_free(struct audio_device *dev)
 	if (sink->session)
 		avdtp_unref(sink->session);
 
-	if (sink->connect)
-		pending_request_free(dev, sink->connect, -ECANCELED);
+	if (sink->connect_id > 0) {
+		audio_sink_connected(dev->btd_dev, -ECANCELED);
+		a2dp_cancel(dev, sink->connect_id);
+		sink->connect_id = 0;
+	}
 
-	if (sink->disconnect)
-		pending_request_free(dev, sink->disconnect, -ECANCELED);
+	if (sink->disconnect_id > 0) {
+		audio_sink_disconnected(dev->btd_dev, -ECANCELED);
+		a2dp_cancel(dev, sink->disconnect_id);
+		sink->disconnect_id = 0;
+	}
 
 	if (sink->retry_id)
 		g_source_remove(sink->retry_id);
@@ -456,8 +419,6 @@ int sink_disconnect(struct audio_device *dev, gboolean shutdown,
 						audio_device_cb cb, void *data)
 {
 	struct sink *sink = dev->sink;
-	struct pending_request *pending;
-	int err;
 
 	if (!sink->session)
 		return -ENOTCONN;
@@ -466,11 +427,10 @@ int sink_disconnect(struct audio_device *dev, gboolean shutdown,
 		avdtp_set_device_disconnect(sink->session, TRUE);
 
 	/* cancel pending connect */
-	if (sink->connect) {
-		struct pending_request *pending = sink->connect;
-
-		pending_request_free(sink->dev, pending, -ECANCELED);
-		sink->connect = NULL;
+	if (sink->connect_id > 0) {
+		a2dp_cancel(dev, sink->connect_id);
+		sink->connect_id = 0;
+		audio_sink_connected(dev->btd_dev, -ECANCELED);
 
 		avdtp_unref(sink->session);
 		sink->session = NULL;
@@ -479,22 +439,13 @@ int sink_disconnect(struct audio_device *dev, gboolean shutdown,
 	}
 
 	/* disconnect already ongoing */
-	if (sink->disconnect)
+	if (sink->disconnect_id > 0)
 		return -EBUSY;
 
 	if (!sink->stream)
 		return -ENOTCONN;
 
-	err = avdtp_close(sink->session, sink->stream, FALSE);
-	if (err < 0)
-		return err;
-
-	pending = g_new0(struct pending_request, 1);
-	pending->cb = cb;
-	pending->cb_data = data;
-	sink->disconnect = pending;
-
-	return 0;
+	return avdtp_close(sink->session, sink->stream, FALSE);
 }
 
 unsigned int sink_add_state_cb(sink_state_cb cb, void *user_data)
