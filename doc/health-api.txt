@@ -9,7 +9,7 @@ HealthManager hierarchy
 =======================
 
 Service		org.bluez
-Interface	org.bluez.HealthManager
+Interface	org.bluez.HealthManager1
 Object path	/org/bluez/
 
 Methods		object CreateApplication(dict config)
@@ -54,7 +54,7 @@ HealthDevice hierarchy
 ======================
 
 Service		org.bluez
-Interface	org.bluez.HealthDevice
+Interface	org.bluez.HealthDevice1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		boolean Echo()
@@ -112,7 +112,7 @@ HealthChannel hierarchy
 =======================
 
 Service		org.bluez
-Interface	org.bluez.HealthChannel
+Interface	org.bluez.HealthChannel1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/chanZZZ
 
 Only the process that created the data channel or the creator of the

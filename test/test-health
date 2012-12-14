@@ -9,6 +9,12 @@ import gobject
 from dbus.mainloop.glib import DBusGMainLoop
 import sys
 
+BUS_NAME = 'org.bluez'
+PATH = '/org/bluez'
+ADAPTER_INTERFACE = 'org.bluez.Adapter1'
+HEALTH_MANAGER_INTERFACE = 'org.bluez.HealthManager1'
+HEALTH_DEVICE_INTERFACE = 'org.bluez.HealthDevice1'
+
 DBusGMainLoop(set_as_default=True)
 loop = gobject.MainLoop()
 
@@ -33,8 +39,8 @@ def sig_received(*args, **kwargs):
 
 
 def enter_mainloop():
-	bus.add_signal_receiver(sig_received, bus_name="org.bluez",
-				dbus_interface = "org.bluez.HealthDevice",
+	bus.add_signal_receiver(sig_received, bus_name=BUS_NAME,
+				dbus_interface=HEALTH_DEVICE_INTERFACE,
 				path_keyword="path",
 				member_keyword="member",
 				interface_keyword="interface")
@@ -49,8 +55,8 @@ def enter_mainloop():
 	finally:
 		print("Exiting, bye")
 
-hdp_manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
-						"org.bluez.HealthManager")
+hdp_manager = dbus.Interface(bus.get_object(BUS_NAME, PATH),
+						HEALTH_MANAGER_INTERFACE)
 
 role = None
 while role == None:
@@ -131,14 +137,14 @@ if not con:
 	enter_mainloop()
 	sys.exit()
 
-manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+manager = dbus.Interface(bus.get_object(BUS_NAME, "/"),
 					"org.freedesktop.DBus.ObjectManager")
 
 objects = manager.GetManagedObjects()
 adapters = []
 
 for path, ifaces in objects.iteritems():
-	if ifaces.has_key("org.bluez.Adapter1"):
+	if ifaces.has_key(ADAPTER_INTERFACE):
 		adapters.append(path)
 
 i = 1
@@ -159,8 +165,7 @@ while select == None:
 	except KeyboardInterrupt:
 		sys.exit()
 
-adapter =  dbus.Interface(bus.get_object("org.bluez", select),
-						"org.bluez.Adapter1")
+adapter = dbus.Interface(bus.get_object(BUS_NAME, select), ADAPTER_INTERFACE)
 
 devices = adapter.GetProperties()["Devices"]
 
@@ -186,8 +191,8 @@ while select == None:
 	except KeyboardInterrupt:
 		sys.exit()
 
-device = dbus.Interface(bus.get_object("org.bluez", select),
-					"org.bluez.HealthDevice")
+device = dbus.Interface(bus.get_object(BUS_NAME, select),
+					HEALTH_DEVICE_INTERFACE)
 
 echo = None
 while echo == None:

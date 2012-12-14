@@ -25,9 +25,9 @@
 
 #define MANAGER_PATH		"/org/bluez"
 
-#define HEALTH_MANAGER		"org.bluez.HealthManager"
-#define HEALTH_DEVICE		"org.bluez.HealthDevice"
-#define HEALTH_CHANNEL		"org.bluez.HealthChannel"
+#define HEALTH_MANAGER		"org.bluez.HealthManager1"
+#define HEALTH_DEVICE		"org.bluez.HealthDevice1"
+#define HEALTH_CHANNEL		"org.bluez.HealthChannel1"
 
 #define HDP_VERSION		0x0100
 

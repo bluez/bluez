@@ -9,26 +9,32 @@ import gobject
 from dbus.mainloop.glib import DBusGMainLoop
 import sys
 
+BUS_NAME = 'org.bluez'
+PATH = '/org/bluez'
+ADAPTER_INTERFACE = 'org.bluez.Adapter1'
+HEALTH_MANAGER_INTERFACE = 'org.bluez.HealthManager1'
+HEALTH_DEVICE_INTERFACE = 'org.bluez.HealthDevice1'
+
 DBusGMainLoop(set_as_default=True)
 loop = gobject.MainLoop()
 
 bus = dbus.SystemBus()
 
-hdp_manager = dbus.Interface(bus.get_object("org.bluez", "/org/bluez"),
-						"org.bluez.HealthManager")
+hdp_manager = dbus.Interface(bus.get_object(BUS_NAME, PATH),
+						HEALTH_MANAGER_INTERFACE)
 app_path = hdp_manager.CreateApplication({"DataType": dbus.types.UInt16(4103),
 					"Role": "sink"})
 
 print(app_path)
 
-manager = dbus.Interface(bus.get_object("org.bluez", "/"),
+manager = dbus.Interface(bus.get_object(BUS_NAME, "/"),
 					"org.freedesktop.DBus.ObjectManager")
 
 objects = manager.GetManagedObjects()
 adapters = []
 
 for path, ifaces in objects.iteritems():
-	if ifaces.has_key("org.bluez.Adapter1"):
+	if ifaces.has_key(ADAPTER_INTERFACE):
 		adapters.append(path)
 
 i = 1
@@ -49,8 +55,8 @@ while select == None:
 	except KeyboardInterrupt:
 		sys.exit()
 
-adapter =  dbus.Interface(bus.get_object("org.bluez", select),
-						"org.bluez.Adapter1")
+adapter =  dbus.Interface(bus.get_object(BUS_NAME, select),
+						ADAPTER_INTERFACE)
 
 devices = adapter.GetProperties()["Devices"]
 
@@ -77,8 +83,8 @@ while select == None:
 		sys.exit()
 
 print("Connecting to %s" % (select))
-device = dbus.Interface(bus.get_object("org.bluez", select),
-					"org.bluez.HealthDevice")
+device = dbus.Interface(bus.get_object(BUS_NAME, select),
+						HEALTH_DEVICE_INTERFACE)
 
 chan = device.CreateChannel(app_path, "Any")
 
