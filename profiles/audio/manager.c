@@ -580,7 +580,7 @@ void audio_manager_exit(void)
 	btd_unregister_adapter_driver(&media_driver);
 }
 
-GSList *manager_find_devices(const char *path,
+static GSList *manager_find_devices(const char *path,
 					const bdaddr_t *src,
 					const bdaddr_t *dst,
 					const char *interface,
