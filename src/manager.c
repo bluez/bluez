@@ -51,6 +51,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "agent.h"
 #include "error.h"
 #include "manager.h"
 
@@ -59,6 +60,7 @@ static GSList *adapters = NULL;
 
 bool manager_init(const char *path)
 {
+	btd_agent_init();
 	btd_profile_init();
 
 	return true;
@@ -93,6 +95,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 void manager_cleanup(const char *path)
 {
 	btd_profile_cleanup();
+	btd_agent_cleanup();
 
 	while (adapters) {
 		struct btd_adapter *adapter = adapters->data;

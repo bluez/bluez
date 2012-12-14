@@ -831,3 +831,37 @@ gboolean agent_is_busy(struct agent *agent, void *user_data)
 
 	return TRUE;
 }
+
+static DBusMessage *register_agent(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *unregister_agent(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return dbus_message_new_method_return(msg);
+}
+
+static const GDBusMethodTable methods[] = {
+	{ GDBUS_METHOD("RegisterAgent",
+			GDBUS_ARGS({ "agent", "o"}, { "capability", "s" }),
+			NULL, register_agent) },
+	{ GDBUS_METHOD("UnregisterAgent", GDBUS_ARGS({ "agent", "o" }),
+			NULL, unregister_agent) },
+	{ }
+};
+
+void btd_agent_init(void)
+{
+	g_dbus_register_interface(btd_get_dbus_connection(),
+				"/org/bluez", "org.bluez.AgentManager1",
+				methods, NULL, NULL, NULL, NULL);
+}
+
+void btd_agent_cleanup(void)
+{
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+				"/org/bluez", "org.bluez.AgentManager1");
+}
