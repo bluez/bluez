@@ -288,10 +288,10 @@ static gboolean store_device_info_cb(gpointer user_data)
 		uuids = g_new0(gchar *, g_slist_length(device->uuids) + 1);
 		for (i = 0, l = device->uuids; l; l = g_slist_next(l), i++)
 			uuids[i] = l->data;
-		g_key_file_set_string_list(key_file, "General", "Profiles",
+		g_key_file_set_string_list(key_file, "General", "Services",
 						(const gchar **)uuids, i);
 	} else {
-		g_key_file_remove_key(key_file, "General", "Profiles", NULL);
+		g_key_file_remove_key(key_file, "General", "Services", NULL);
 	}
 
 	if (device->vendor_src) {
@@ -1837,7 +1837,7 @@ next:
 		device_block(device, FALSE);
 
 	/* Load device profile list */
-	uuids = g_key_file_get_string_list(key_file, "General", "Profiles",
+	uuids = g_key_file_get_string_list(key_file, "General", "Services",
 						NULL, NULL);
 	if (uuids) {
 		gchar **uuid;

@@ -157,9 +157,9 @@ Long term key) related to a remote device.
 
   Blocked		Boolean		True if the remote device is blocked
 
-  Profiles		List of		List of profiles advertised by remote,
-			strings		in 128-bits UUID format, separated by
-					";"
+  Services		List of		List of service UUIDs advertised by
+			strings		remote in 128-bits UUID format,
+					separated by ";"
 
 
 [DeviceID] group contains:

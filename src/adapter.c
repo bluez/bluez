@@ -2314,7 +2314,7 @@ static void convert_ltk_entry(GKeyFile *key_file, void *value)
 static void convert_profiles_entry(GKeyFile *key_file, void *value)
 {
 	g_strdelimit(value, " ", ';');
-	g_key_file_set_string(key_file, "General", "Profiles", value);
+	g_key_file_set_string(key_file, "General", "Services", value);
 }
 
 static void convert_entry(char *key, char *value, void *user_data)
