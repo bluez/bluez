@@ -2270,5 +2270,4 @@ void btd_profile_cleanup(void)
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.ProfileManager1");
-
 }
