@@ -37,6 +37,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include "agent.h"
 #include "display.h"
 
 static GMainLoop *main_loop;
@@ -44,6 +45,8 @@ static DBusConnection *dbus_conn;
 
 static GList *ctrl_list;
 static GDBusProxy *default_ctrl;
+static GDBusProxy *agent_manager;
+static gboolean auto_register_agent = FALSE;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -137,6 +140,13 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		begin_message();
 		print_adapter(proxy, "NEW");
 		end_message();
+	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
+		if (!agent_manager) {
+			agent_manager = proxy;
+
+			if (auto_register_agent == TRUE)
+				agent_register(dbus_conn, agent_manager);
+		}
 	}
 }
 
@@ -155,6 +165,9 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 		if (default_ctrl == proxy)
 			default_ctrl = NULL;
+	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
+		if (agent_manager == proxy)
+			agent_manager = NULL;
 	}
 }
 
@@ -395,6 +408,30 @@ static void cmd_discoverable(const char *arg)
 	g_free(str);
 }
 
+static void cmd_agent(const char *arg)
+{
+	dbus_bool_t enable;
+
+	if (parse_argument_on_off(arg, &enable) == FALSE)
+		return;
+
+	if (enable == TRUE) {
+		auto_register_agent = TRUE;
+
+		if (agent_manager)
+			agent_register(dbus_conn, agent_manager);
+		else
+			printf("Agent registration enabled\n");
+	} else {
+		auto_register_agent = FALSE;
+
+		if (agent_manager)
+			agent_unregister(dbus_conn, agent_manager);
+		else
+			printf("Agent registration disabled\n");
+	}
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -474,8 +511,9 @@ static const struct {
 					"Set controller pairable mode" },
 	{ "discoverable", "<on/off>", cmd_discoverable,
 					"Set controller discoverable mode" },
-	{ "quit",   NULL,     cmd_quit,   "Quit program" },
-	{ "exit",   NULL,     cmd_quit },
+	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
+	{ "quit",         NULL,       cmd_quit, "Quit program" },
+	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
 	{ }
 };
@@ -690,10 +728,13 @@ static guint setup_signalfd(void)
 }
 
 static gboolean option_version = FALSE;
+static gboolean option_agent = FALSE;
 
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
+	{ "agent", 'a', 0, G_OPTION_ARG_NONE, &option_agent,
+				"Automatically register agent handler" },
 	{ NULL },
 };
 
@@ -722,6 +763,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", VERSION);
 		exit(0);
 	}
+
+	auto_register_agent = option_agent;
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
