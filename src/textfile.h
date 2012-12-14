@@ -24,7 +24,6 @@
 #ifndef __TEXTFILE_H
 #define __TEXTFILE_H
 
-int create_dirs(const char *filename, const mode_t mode);
 int create_file(const char *filename, const mode_t mode);
 int create_name(char *buf, size_t size, const char *path,
 				const char *address, const char *name);

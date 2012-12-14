@@ -39,7 +39,7 @@
 
 #include "textfile.h"
 
-int create_dirs(const char *filename, const mode_t mode)
+static int create_dirs(const char *filename, const mode_t mode)
 {
 	struct stat st;
 	char dir[PATH_MAX + 1], *prev, *next;
