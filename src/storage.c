@@ -267,31 +267,6 @@ sdp_record_t *record_from_string(const gchar *str)
 	return rec;
 }
 
-
-int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
-							const uint32_t handle)
-{
-	char filename[PATH_MAX + 1], old_key[28], key[30];
-	int err, ret;
-
-	create_name(filename, PATH_MAX, STORAGEDIR, src, "sdp");
-
-	snprintf(key, sizeof(key), "%17s#%hhu#%08X", dst, dst_type, handle);
-	snprintf(old_key, sizeof(old_key), "%17s#%08X", dst, handle);
-
-	err = 0;
-	ret = textfile_del(filename, key);
-	if (ret)
-		err = ret;
-
-	/* Try old format (address#handle) */
-	ret = textfile_del(filename, old_key);
-	if (ret)
-		err = ret;
-
-	return err;
-}
-
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 {
 	sdp_list_t *seq;

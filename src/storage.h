@@ -36,8 +36,6 @@ int write_lastused_info(const bdaddr_t *local, const bdaddr_t *peer,
 					uint8_t peer_type, struct tm *tm);
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin);
 sdp_record_t *record_from_string(const gchar *str);
-int delete_record(const gchar *src, const gchar *dst, uint8_t dst_type,
-							const uint32_t handle);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
 int read_device_pairable(const bdaddr_t *local, gboolean *mode);
 int write_device_primaries(const bdaddr_t *sba, const bdaddr_t *dba,
