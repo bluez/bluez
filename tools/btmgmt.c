@@ -475,7 +475,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 
 	eir_len = bt_get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
-		fprintf(stderr, "dev_found: expected %zu bytes, got %u bytes",
+		fprintf(stderr, "dev_found: expected %zu bytes, got %u bytes\n",
 						sizeof(*ev) + eir_len, len);
 		return -EINVAL;
 	}
@@ -521,7 +521,7 @@ static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u PIN Code reply failed with status 0x%02x (%s)",
+			"hci%u PIN Code reply failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
@@ -549,7 +549,7 @@ static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u PIN Neg reply failed with status 0x%02x (%s)",
+			"hci%u PIN Neg reply failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
@@ -610,7 +610,7 @@ static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u User Confirm reply failed. status 0x%02x (%s)",
+			"hci%u User Confirm reply failed. status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
@@ -635,7 +635,7 @@ static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u Confirm Neg reply failed. status 0x%02x (%s)",
+			"hci%u Confirm Neg reply failed. status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
@@ -774,7 +774,7 @@ static int mgmt_process_data(int mgmt_sk)
 		printf("event 0x%04x len 0x%04x index 0x%04x\n", ev, len, index);
 
 	if (ret != MGMT_HDR_SIZE + len) {
-		fprintf(stderr, "Packet length mismatch. ret %zd len %u",
+		fprintf(stderr, "Packet length mismatch. ret %zd len %u\n",
 								ret, len);
 		return 0;
 	}
@@ -1328,7 +1328,8 @@ static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Unable to set local name. status 0x%02x (%s)",
+		fprintf(stderr, "Unable to set local name "
+						"with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
@@ -1755,7 +1756,8 @@ static void did_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
 	if (status != 0) {
-		fprintf(stderr, "Set Device ID failed with status 0x%02x (%s)\n",
+		fprintf(stderr, "Set Device ID failed "
+						"with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
 		exit(EXIT_FAILURE);
 	}
