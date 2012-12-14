@@ -318,6 +318,24 @@ static void cmd_power(const char *arg)
 	g_free(str);
 }
 
+static void cmd_pairable(const char *arg)
+{
+	dbus_bool_t pairable;
+	char *str;
+
+	if (parse_argument_on_off(arg, &pairable) == FALSE)
+		return;
+
+	str = g_strdup_printf("pairable %s", pairable == TRUE ? "on" : "off");
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Pairable",
+					DBUS_TYPE_BOOLEAN, &pairable,
+					generic_callback, str, g_free) == TRUE)
+		return;
+
+	g_free(str);
+}
+
 static void cmd_discoverable(const char *arg)
 {
 	dbus_bool_t discoverable;
@@ -412,6 +430,8 @@ static const struct {
 							ctrl_generator },
 	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "name",         "<name>",   cmd_name,  "Set controller local name" },
+	{ "pairable",     "<on/off>", cmd_pairable,
+					"Set controller pairable mode" },
 	{ "discoverable", "<on/off>", cmd_discoverable,
 					"Set controller discoverable mode" },
 	{ "quit",   NULL,     cmd_quit,   "Quit program" },
