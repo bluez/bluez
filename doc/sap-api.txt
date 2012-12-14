@@ -8,7 +8,7 @@ Sim Access Profile hierarchy
 ============================
 
 Service		org.bluez
-Interface	org.bluez.SimAccess
+Interface	org.bluez.SimAccess1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		void Disconnect()

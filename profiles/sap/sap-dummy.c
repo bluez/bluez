@@ -34,7 +34,7 @@
 #include "log.h"
 #include "sap.h"
 
-#define SAP_DUMMY_IFACE "org.bluez.SimAccessTest"
+#define SAP_DUMMY_IFACE "org.bluez.SimAccessTest1"
 #define SAP_DUMMY_PATH "/org/bluez/test"
 
 enum {

@@ -43,7 +43,7 @@
 #include "sap.h"
 #include "server.h"
 
-#define SAP_SERVER_INTERFACE	"org.bluez.SimAccess"
+#define SAP_SERVER_INTERFACE	"org.bluez.SimAccess1"
 #define SAP_SERVER_CHANNEL	8
 
 #define PADDING4(x) ((4 - ((x) & 0x03)) & 0x03)
