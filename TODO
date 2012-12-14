@@ -64,12 +64,12 @@ released.
 
 - Don't install libbluetooth by default (put it behind a configure switch)
 
-- [pending] Switch plugins to standard D-Bus properties interface
-
 - [pending] Convert storage to user per-remote device directories and
   ini-file format
 
 Completed items:
+
+- Switch plugins to standard D-Bus properties interface
 
 - Add connect/disconnect callbacks to all btd_profile instances that
   need them and add auto_connect = true to the ones that make sense.
