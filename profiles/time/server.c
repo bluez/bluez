@@ -266,8 +266,7 @@ struct btd_profile time_profile = {
 
 static int time_init(void)
 {
-	btd_profile_register(&time_profile);
-	return 0;
+	return btd_profile_register(&time_profile);
 }
 
 static void time_exit(void)
