@@ -181,6 +181,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
+	begin_message();
+	printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
+					dbus_message_get_member(message));
+	end_message();
 }
 
 static GDBusProxy *find_proxy_by_address(const char *address)
