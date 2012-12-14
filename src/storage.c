@@ -383,19 +383,6 @@ done:
 	g_slist_free_full(match.keys, g_free);
 }
 
-char *read_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
-							uint8_t bdaddr_type)
-{
-	char filename[PATH_MAX + 1], key[20];
-
-	create_filename(filename, PATH_MAX, sba, "primaries");
-
-	ba2str(dba, key);
-	sprintf(&key[17], "#%hhu", bdaddr_type);
-
-	return textfile_caseget(filename, key);
-}
-
 int write_device_characteristics(const bdaddr_t *sba, const bdaddr_t *dba,
 					uint8_t bdaddr_type, uint16_t handle,
 							      const char *chars)
