@@ -27,18 +27,22 @@
 #endif
 
 #include <stdbool.h>
+#include <errno.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
 
 #include "log.h"
+#include "plugin.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
 #include "attio.h"
-#include "scan.h"
+
+#define SCAN_PARAMETERS_UUID		"00001813-0000-1000-8000-00805f9b34fb"
 
 #define SCAN_INTERVAL_WIN_UUID		0x2A4F
 #define SCAN_REFRESH_UUID		0x2A31
@@ -222,7 +226,7 @@ static void attio_disconnected_cb(gpointer user_data)
 	scan->attrib = NULL;
 }
 
-int scan_register(struct btd_device *device, struct gatt_primary *prim)
+static int scan_register(struct btd_device *device, struct gatt_primary *prim)
 {
 	struct scan *scan;
 
@@ -239,7 +243,7 @@ int scan_register(struct btd_device *device, struct gatt_primary *prim)
 	return 0;
 }
 
-void scan_unregister(struct btd_device *device)
+static void scan_unregister(struct btd_device *device)
 {
 	struct scan *scan;
 	GSList *l;
@@ -261,3 +265,54 @@ void scan_unregister(struct btd_device *device)
 	g_attrib_unref(scan->attrib);
 	g_free(scan);
 }
+
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
+
+static int scan_param_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
+{
+	GSList *primaries, *l;
+
+	DBG("Probing Scan Parameters");
+
+	primaries = btd_device_get_primaries(device);
+
+	l = g_slist_find_custom(primaries, SCAN_PARAMETERS_UUID,
+							primary_uuid_cmp);
+	if (!l)
+		return -EINVAL;
+
+	return scan_register(device, l->data);
+}
+
+static void scan_param_remove(struct btd_profile *p, struct btd_device *device)
+{
+	scan_unregister(device);
+}
+
+static struct btd_profile scan_profile = {
+	.name = "Scan Parameters Client Driver",
+	.remote_uuids = BTD_UUIDS(SCAN_PARAMETERS_UUID),
+	.device_probe = scan_param_probe,
+	.device_remove = scan_param_remove,
+};
+
+static int scan_param_init(void)
+{
+	return btd_profile_register(&scan_profile);
+}
+
+static void scan_param_exit(void)
+{
+	btd_profile_unregister(&scan_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(scanparam, VERSION,
+			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+			scan_param_init, scan_param_exit)

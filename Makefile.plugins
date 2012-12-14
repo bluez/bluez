@@ -77,10 +77,7 @@ builtin_sources += profiles/gatt/main.c profiles/gatt/manager.h \
 			profiles/gatt/gas.c
 
 builtin_modules += scanparam
-builtin_sources += profiles/scanparam/main.c \
-			profiles/scanparam/manager.h \
-			profiles/scanparam/manager.c \
-			profiles/scanparam/scan.h profiles/scanparam/scan.c
+builtin_sources += profiles/scanparam/scan.c
 
 builtin_modules += deviceinfo
 builtin_sources += profiles/deviceinfo/deviceinfo.c
