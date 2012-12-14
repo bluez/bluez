@@ -1906,14 +1906,17 @@ static void load_att_info(struct btd_device *device, const gchar *local,
 	groups = g_key_file_get_groups(key_file, NULL);
 
 	for (handle = groups; *handle; handle++) {
+		gboolean uuid_ok;
+
 		str = g_key_file_get_string(key_file, *handle, "UUID", NULL);
 		if (!str)
 			continue;
 
-		if (!g_str_equal(str, prim_uuid))
-			continue;
-
+		uuid_ok = g_str_equal(str, prim_uuid);
 		g_free(str);
+
+		if (!uuid_ok)
+			continue;
 
 		str = g_key_file_get_string(key_file, *handle, "Value", NULL);
 		if (!str)
@@ -1941,6 +1944,8 @@ static void load_att_info(struct btd_device *device, const gchar *local,
 			}
 			break;
 		default:
+			g_free(str);
+			g_free(prim);
 			continue;
 		}
 
