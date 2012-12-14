@@ -318,6 +318,25 @@ static void cmd_power(const char *arg)
 	g_free(str);
 }
 
+static void cmd_discoverable(const char *arg)
+{
+	dbus_bool_t discoverable;
+	char *str;
+
+	if (parse_argument_on_off(arg, &discoverable) == FALSE)
+		return;
+
+	str = g_strdup_printf("discoverable %s",
+				discoverable == TRUE ? "on" : "off");
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Discoverable",
+					DBUS_TYPE_BOOLEAN, &discoverable,
+					generic_callback, str, g_free) == TRUE)
+		return;
+
+	g_free(str);
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -386,13 +405,15 @@ static const struct {
 	char * (*gen) (const char *text, int state);
 	void (*disp) (char **matches, int num_matches, int max_length);
 } cmd_table[] = {
-	{ "list",   NULL,     cmd_list,   "List available controllers" },
-	{ "info",   "[ctrl]", cmd_info,   "Controller information",
+	{ "list",         NULL,       cmd_list, "List available controllers" },
+	{ "info",         "[ctrl]",   cmd_info, "Controller information",
 							ctrl_generator },
-	{ "select", "<ctrl>", cmd_select, "Select default controller",
+	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
-	{ "power", "<on/off>",cmd_power,  "Set controller power" },
-	{ "name",  "<name",   cmd_name,   "Set controller name" },
+	{ "power",        "<on/off>", cmd_power, "Set controller power" },
+	{ "name",         "<name>",   cmd_name,  "Set controller local name" },
+	{ "discoverable", "<on/off>", cmd_discoverable,
+					"Set controller discoverable mode" },
 	{ "quit",   NULL,     cmd_quit,   "Quit program" },
 	{ "exit",   NULL,     cmd_quit },
 	{ "help" },
