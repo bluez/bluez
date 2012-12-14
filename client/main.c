@@ -428,11 +428,15 @@ static void rl_handler(char *input)
 
 	add_history(input);
 
-	cmd = strtok(input, " ");
+	cmd = strtok_r(input, " ", &arg);
 	if (!cmd)
 		return;
 
-	arg = strtok(NULL, " ");
+	if (arg) {
+		int len = strlen(arg);
+		if (len > 0 && arg[len - 1] == ' ')
+			arg[len - 1] = '\0';
+	}
 
 	for (i = 0; cmd_table[i].cmd; i++) {
 		if (strcmp(cmd, cmd_table[i].cmd))
