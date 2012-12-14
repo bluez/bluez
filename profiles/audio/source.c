@@ -350,8 +350,8 @@ static void source_free(struct audio_device *dev)
 
 	if (source->connect_id > 0) {
 		audio_source_connected(dev->btd_dev, -ECANCELED);
-		a2dp_cancel(dev, source->disconnect_id);
-		source->disconnect_id = 0;
+		a2dp_cancel(dev, source->connect_id);
+		source->connect_id = 0;
 	}
 
 	if (source->disconnect_id > 0) {
