@@ -7,7 +7,7 @@ Cycling Speed and Cadence Manager hierarchy
 ===========================================
 
 Service		org.bluez
-Interface	org.bluez.CyclingSpeedManager
+Interface	org.bluez.CyclingSpeedManager1
 Object path	[variable prefix]/{hci0,hci1,...}
 
 Methods		RegisterWatcher(object agent)
@@ -25,7 +25,7 @@ Cycling Speed and Cadence Profile hierarchy
 ===========================================
 
 Service		org.bluez
-Interface	org.bluez.CyclingSpeed
+Interface	org.bluez.CyclingSpeed1
 Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
 
 Methods		SetCumulativeWheelRevolutions(uint32 value)
@@ -68,7 +68,7 @@ Cycling Speed and Cadence Watcher hierarchy
 ===========================================
 
 Service		unique name
-Interface	org.bluez.CyclingSpeedWatcher
+Interface	org.bluez.CyclingSpeedWatcher1
 Object path	freely definable
 
 Methods		void MeasurementReceived(object device, dict measurement)

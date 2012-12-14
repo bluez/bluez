@@ -47,9 +47,9 @@
 
 #define ATT_TIMEOUT 30
 
-#define CYCLINGSPEED_INTERFACE		"org.bluez.CyclingSpeed"
-#define CYCLINGSPEED_MANAGER_INTERFACE	"org.bluez.CyclingSpeedManager"
-#define CYCLINGSPEED_WATCHER_INTERFACE	"org.bluez.CyclingSpeedWatcher"
+#define CYCLINGSPEED_INTERFACE		"org.bluez.CyclingSpeed1"
+#define CYCLINGSPEED_MANAGER_INTERFACE	"org.bluez.CyclingSpeedManager1"
+#define CYCLINGSPEED_WATCHER_INTERFACE	"org.bluez.CyclingSpeedWatcher1"
 
 #define WHEEL_REV_SUPPORT		0x01
 #define CRANK_REV_SUPPORT		0x02

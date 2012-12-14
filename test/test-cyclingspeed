@@ -14,6 +14,11 @@ import dbus.service
 import dbus.mainloop.glib
 from optparse import OptionParser, make_option
 
+BUS_NAME = 'org.bluez'
+CYCLINGSPEED_MANAGER_INTERFACE = 'org.bluez.CyclingSpeedManager1'
+CYCLINGSPEED_WATCHER_INTERFACE = 'org.bluez.CyclingSpeedWatcher1'
+CYCLINGSPEED_INTERFACE = 'org.bluez.CyclingSpeed1'
+
 class MeasurementQ:
 	def __init__(self, wrap_v):
 		self._now = [None, None]
@@ -50,7 +55,7 @@ class Watcher(dbus.service.Object):
 	def enable_calc(self, v):
 		self._circumference = v
 
-	@dbus.service.method("org.bluez.CyclingSpeedWatcher",
+	@dbus.service.method(CYCLINGSPEED_WATCHER_INTERFACE,
 					in_signature="oa{sv}", out_signature="")
 	def MeasurementReceived(self, device, measure):
 		print("Measurement received from %s" % device)
@@ -135,8 +140,8 @@ if __name__ == "__main__":
 								options.adapter)
 	device_path = device.object_path
 
-	cscmanager = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-						"org.bluez.CyclingSpeedManager")
+	cscmanager = dbus.Interface(bus.get_object(BUS_NAME, adapter_path),
+						CYCLINGSPEED_WATCHER_INTERFACE)
 
 	watcher_path = "/test/watcher"
 	watcher = Watcher(bus, watcher_path)
@@ -144,18 +149,18 @@ if __name__ == "__main__":
 		watcher.enable_calc(options.circumference)
 	cscmanager.RegisterWatcher(watcher_path)
 
-	csc = dbus.Interface(bus.get_object("org.bluez", device_path),
-						"org.bluez.CyclingSpeed")
+	csc = dbus.Interface(bus.get_object(BUS_NAME, device_path),
+							CYCLINGSPEED_INTERFACE)
 
-	bus.add_signal_receiver(properties_changed, bus_name="org.bluez",
+	bus.add_signal_receiver(properties_changed, bus_name=BUS_NAME,
 				path=device_path,
 				dbus_interface="org.freedesktop.DBus.Properties",
 				signal_name="PropertiesChanged")
 
-	device_prop = dbus.Interface(bus.get_object("org.bluez", device_path),
+	device_prop = dbus.Interface(bus.get_object(BUS_NAME, device_path),
 					"org.freedesktop.DBus.Properties")
 
-	properties = device_prop.GetAll("org.bluez.CyclingSpeed")
+	properties = device_prop.GetAll(CYCLINGSPEED_INTERFACE)
 
 	if "Location" in properties:
 		print("Sensor location: %s" % properties["Location"])
@@ -171,7 +176,7 @@ if __name__ == "__main__":
 
 		elif args[0] == "SetLocation":
 			if properties["MultipleSensorLocationsSupported"]:
-				device_prop.Set("org.bluez.CyclingSpeed", "Location", args[1])
+				device_prop.Set(CYCLINGSPEED_INTERFACE, "Location", args[1])
 			else:
 				print("Multiple sensor locations not supported")
 
