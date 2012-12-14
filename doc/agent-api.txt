@@ -9,7 +9,7 @@ Agent hierarchy
 ===============
 
 Service		unique name
-Interface	org.bluez.Agent
+Interface	org.bluez.Agent1
 Object path	freely definable
 
 Methods		void Release()

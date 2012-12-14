@@ -48,6 +48,7 @@
 #include "agent.h"
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
+#define AGENT_INTERFACE "org.bluez.Agent1"
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
@@ -91,7 +92,7 @@ static void agent_release(struct agent *agent)
 		agent_cancel(agent);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-			"org.bluez.Agent", "Release");
+						AGENT_INTERFACE, "Release");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return;
@@ -108,7 +109,7 @@ static int send_cancel_request(struct agent_request *req)
 							req->agent->path);
 
 	message = dbus_message_new_method_call(req->agent->name, req->agent->path,
-						"org.bluez.Agent", "Cancel");
+						AGENT_INTERFACE, "Cancel");
 	if (message == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -301,7 +302,7 @@ static int agent_call_authorize_service(struct agent_request *req,
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "AuthorizeService");
+					AGENT_INTERFACE, "AuthorizeService");
 	if (!req->msg) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -413,7 +414,7 @@ static int pincode_request_new(struct agent_request *req, const char *device_pat
 		secure pin. */
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "RequestPinCode");
+					AGENT_INTERFACE, "RequestPinCode");
 	if (req->msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -507,7 +508,7 @@ static int passkey_request_new(struct agent_request *req,
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "RequestPasskey");
+					AGENT_INTERFACE, "RequestPasskey");
 	if (req->msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -563,7 +564,7 @@ static int confirmation_request_new(struct agent_request *req,
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "RequestConfirmation");
+				AGENT_INTERFACE, "RequestConfirmation");
 	if (req->msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -621,7 +622,7 @@ static int authorization_request_new(struct agent_request *req,
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "RequestAuthorization");
+				AGENT_INTERFACE, "RequestAuthorization");
 	if (req->msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
@@ -679,7 +680,7 @@ int agent_display_passkey(struct agent *agent, struct btd_device *device,
 	const gchar *dev_path = device_get_path(device);
 
 	message = dbus_message_new_method_call(agent->name, agent->path,
-				"org.bluez.Agent", "DisplayPasskey");
+					AGENT_INTERFACE, "DisplayPasskey");
 	if (!message) {
 		error("Couldn't allocate D-Bus message");
 		return -1;
@@ -754,7 +755,7 @@ static int display_pincode_request_new(struct agent_request *req,
 	struct agent *agent = req->agent;
 
 	req->msg = dbus_message_new_method_call(agent->name, agent->path,
-					"org.bluez.Agent", "DisplayPinCode");
+					AGENT_INTERFACE, "DisplayPinCode");
 	if (req->msg == NULL) {
 		error("Couldn't allocate D-Bus message");
 		return -ENOMEM;
