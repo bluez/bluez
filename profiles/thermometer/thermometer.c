@@ -31,16 +31,17 @@
 
 #include <gdbus/gdbus.h>
 
+#include "plugin.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 #include "error.h"
 #include "log.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
-#include "thermometer.h"
 
 #define THERMOMETER_INTERFACE		"org.bluez.Thermometer1"
 #define THERMOMETER_MANAGER_INTERFACE	"org.bluez.ThermometerManager1"
@@ -1154,7 +1155,8 @@ static void attio_disconnected_cb(gpointer user_data)
 	t->attrib = NULL;
 }
 
-int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
+static int thermometer_register(struct btd_device *device,
+						struct gatt_primary *tattr)
 {
 	const gchar *path = device_get_path(device);
 	struct thermometer *t;
@@ -1192,7 +1194,7 @@ int thermometer_register(struct btd_device *device, struct gatt_primary *tattr)
 	return 0;
 }
 
-void thermometer_unregister(struct btd_device *device)
+static void thermometer_unregister(struct btd_device *device)
 {
 	struct thermometer *t;
 	struct btd_adapter *adapter;
@@ -1234,7 +1236,7 @@ static const GDBusMethodTable thermometer_manager_methods[] = {
 	{ }
 };
 
-int thermometer_adapter_register(struct btd_adapter *adapter)
+static int thermometer_adapter_register(struct btd_adapter *adapter)
 {
 	struct thermometer_adapter *tadapter;
 
@@ -1258,7 +1260,7 @@ int thermometer_adapter_register(struct btd_adapter *adapter)
 	return 0;
 }
 
-void thermometer_adapter_unregister(struct btd_adapter *adapter)
+static void thermometer_adapter_unregister(struct btd_adapter *adapter)
 {
 	struct thermometer_adapter *tadapter;
 
@@ -1272,3 +1274,70 @@ void thermometer_adapter_unregister(struct btd_adapter *adapter)
 					adapter_get_path(tadapter->adapter),
 					THERMOMETER_MANAGER_INTERFACE);
 }
+
+static gint primary_uuid_cmp(gconstpointer a, gconstpointer b)
+{
+	const struct gatt_primary *prim = a;
+	const char *uuid = b;
+
+	return g_strcmp0(prim->uuid, uuid);
+}
+
+static int thermometer_device_probe(struct btd_profile *p,
+					struct btd_device *device,
+					GSList *uuids)
+{
+	struct gatt_primary *tattr;
+	GSList *primaries, *l;
+
+	primaries = btd_device_get_primaries(device);
+
+	l = g_slist_find_custom(primaries, HEALTH_THERMOMETER_UUID,
+							primary_uuid_cmp);
+	if (l == NULL)
+		return -EINVAL;
+
+	tattr = l->data;
+
+	return thermometer_register(device, tattr);
+}
+
+static void thermometer_device_remove(struct btd_profile *p,
+						struct btd_device *device)
+{
+	thermometer_unregister(device);
+}
+
+static int thermometer_adapter_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	return thermometer_adapter_register(adapter);
+}
+
+static void thermometer_adapter_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	thermometer_adapter_unregister(adapter);
+}
+
+static struct btd_profile thermometer_profile = {
+	.name		= "Health Thermometer GATT driver",
+	.remote_uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
+	.device_probe	= thermometer_device_probe,
+	.device_remove	= thermometer_device_remove,
+	.adapter_probe	= thermometer_adapter_probe,
+	.adapter_remove	= thermometer_adapter_remove
+};
+
+static int thermometer_init(void)
+{
+	return btd_profile_register(&thermometer_profile);
+}
+
+static void thermometer_exit(void)
+{
+	btd_profile_unregister(&thermometer_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(thermometer, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+					thermometer_init, thermometer_exit)

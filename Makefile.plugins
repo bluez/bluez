@@ -102,11 +102,7 @@ builtin_sources += profiles/proximity/main.c profiles/proximity/manager.h \
 			profiles/proximity/immalert.c
 
 builtin_modules += thermometer
-builtin_sources += profiles/thermometer/main.c \
-			profiles/thermometer/manager.h \
-			profiles/thermometer/manager.c \
-			profiles/thermometer/thermometer.h \
-			profiles/thermometer/thermometer.c
+builtin_sources += profiles/thermometer/thermometer.c
 
 builtin_modules += heartrate
 builtin_sources += profiles/heartrate/main.c \
