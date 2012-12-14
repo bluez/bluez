@@ -36,6 +36,7 @@
 #include <adapter.h>
 #include <device.h>
 #include <profile.h>
+#include <plugin.h>
 
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -44,7 +45,6 @@
 #include "attrib-server.h"
 #include "attrib/gatt-service.h"
 #include "log.h"
-#include "server.h"
 
 #define CURRENT_TIME_SVC_UUID		0x1805
 #define REF_TIME_UPDATE_SVC_UUID	0x1806
@@ -53,6 +53,25 @@
 #define TIME_UPDATE_CTRL_CHR_UUID	0x2A16
 #define TIME_UPDATE_STAT_CHR_UUID	0x2A17
 #define CT_TIME_CHR_UUID		0x2A2B
+
+enum {
+	UPDATE_RESULT_SUCCESSFUL = 0,
+	UPDATE_RESULT_CANCELED = 1,
+	UPDATE_RESULT_NO_CONN = 2,
+	UPDATE_RESULT_ERROR = 3,
+	UPDATE_RESULT_TIMEOUT = 4,
+	UPDATE_RESULT_NOT_ATTEMPTED = 5,
+};
+
+enum {
+	UPDATE_STATE_IDLE = 0,
+	UPDATE_STATE_PENDING = 1,
+};
+
+enum {
+	GET_REFERENCE_UPDATE = 1,
+	CANCEL_REFERENCE_UPDATE = 2,
+};
 
 static int encode_current_time(uint8_t value[10])
 {
@@ -212,7 +231,7 @@ static gboolean register_ref_time_update_service(struct btd_adapter *adapter)
 				GATT_OPT_INVALID);
 }
 
-int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
+static int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
@@ -231,9 +250,31 @@ int time_server_init(struct btd_profile *p, struct btd_adapter *adapter)
 	return 0;
 }
 
-void time_server_exit(struct btd_profile *p, struct btd_adapter *adapter)
+static void time_server_exit(struct btd_profile *p,
+						struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 }
+
+struct btd_profile time_profile = {
+	.name		= "gatt-time-server",
+	.adapter_probe	= time_server_init,
+	.adapter_remove	= time_server_exit,
+};
+
+static int time_init(void)
+{
+	btd_profile_register(&time_profile);
+	return 0;
+}
+
+static void time_exit(void)
+{
+	btd_profile_unregister(&time_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(time, VERSION,
+			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+			time_init, time_exit)

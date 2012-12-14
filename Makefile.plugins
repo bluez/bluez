@@ -96,9 +96,7 @@ builtin_sources += profiles/alert/main.c profiles/alert/server.h \
 			profiles/alert/manager.c
 
 builtin_modules += time
-builtin_sources += profiles/time/main.c profiles/time/server.h \
-			profiles/time/server.c profiles/time/manager.c \
-			profiles/time/manager.h
+builtin_sources += profiles/time/server.c
 
 builtin_modules += proximity
 builtin_sources += profiles/proximity/main.c profiles/proximity/manager.h \
