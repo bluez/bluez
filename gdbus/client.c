@@ -36,7 +36,7 @@ struct GDBusClient {
 	char *service_name;
 	char *unique_name;
 	char *base_path;
-	char *match_rules[4];
+	GPtrArray *match_rules;
 	DBusPendingCall *pending_call;
 	GDBusWatchFunction connect_func;
 	void *connect_data;
@@ -765,7 +765,7 @@ GDBusClient *g_dbus_client_new(DBusConnection *connection,
 					const char *service, const char *path)
 {
 	GDBusClient *client;
-	int i;
+	unsigned int i;
 
 	if (connection == NULL)
 		return NULL;
@@ -786,26 +786,31 @@ GDBusClient *g_dbus_client_new(DBusConnection *connection,
 
 	get_name_owner(client, client->service_name);
 
-	client->match_rules[0] = g_strdup_printf("type='signal',sender='%s',"
-				"path='%s',interface='%s',"
+	client->match_rules = g_ptr_array_new_full(4, g_free);
+
+	g_ptr_array_add(client->match_rules, g_strdup_printf("type='signal',"
+				"sender='%s',path='%s',interface='%s',"
 				"member='NameOwnerChanged',arg0='%s'",
 				DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
-				DBUS_INTERFACE_DBUS, client->service_name);
-	client->match_rules[1] = g_strdup_printf("type='signal',sender='%s',"
+				DBUS_INTERFACE_DBUS, client->service_name));
+	g_ptr_array_add(client->match_rules, g_strdup_printf("type='signal',"
+				"sender='%s',"
 				"path='/',interface='%s.ObjectManager',"
 				"member='InterfacesAdded'",
-				client->service_name, DBUS_INTERFACE_DBUS);
-	client->match_rules[2] = g_strdup_printf("type='signal',sender='%s',"
+				client->service_name, DBUS_INTERFACE_DBUS));
+	g_ptr_array_add(client->match_rules, g_strdup_printf("type='signal',"
+				"sender='%s',"
 				"path='/',interface='%s.ObjectManager',"
 				"member='InterfacesRemoved'",
-				client->service_name, DBUS_INTERFACE_DBUS);
-	client->match_rules[3] = g_strdup_printf("type='signal',sender='%s',"
-				"path_namespace='%s'",
-				client->service_name, client->base_path);
+				client->service_name, DBUS_INTERFACE_DBUS));
+	g_ptr_array_add(client->match_rules, g_strdup_printf("type='signal',"
+				"sender='%s',path_namespace='%s'",
+				client->service_name, client->base_path));
 
-	for (i = 0; i < 4; i++)
+	for (i = 0; i < client->match_rules->len; i++) {
 		modify_match(client->dbus_conn, "AddMatch",
-						client->match_rules[i]);
+				g_ptr_array_index(client->match_rules, i));
+	}
 
 	return g_dbus_client_ref(client);
 }
@@ -822,7 +827,7 @@ GDBusClient *g_dbus_client_ref(GDBusClient *client)
 
 void g_dbus_client_unref(GDBusClient *client)
 {
-	int i;
+	unsigned int i;
 
 	if (client == NULL)
 		return;
@@ -835,11 +840,12 @@ void g_dbus_client_unref(GDBusClient *client)
 		dbus_pending_call_unref(client->pending_call);
 	}
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < client->match_rules->len; i++) {
 		modify_match(client->dbus_conn, "RemoveMatch",
-						client->match_rules[i]);
-		g_free(client->match_rules[i]);
+				g_ptr_array_index(client->match_rules, i));
 	}
+
+	g_ptr_array_free(client->match_rules, TRUE);
 
 	dbus_connection_remove_filter(client->dbus_conn,
 						message_filter, client);
