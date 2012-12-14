@@ -338,7 +338,7 @@ int read_device_pairable(const bdaddr_t *bdaddr, gboolean *mode)
 	return 0;
 }
 
-int write_device_services(const bdaddr_t *sba, const bdaddr_t *dba,
+int write_device_primaries(const bdaddr_t *sba, const bdaddr_t *dba,
 			  uint8_t bdaddr_type, const char *services)
 {
 	char filename[PATH_MAX + 1], key[20];

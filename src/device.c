@@ -2874,7 +2874,7 @@ static void store_services(struct btd_device *device)
 	struct btd_adapter *adapter = device->adapter;
 	char *str = primary_list_to_string(device->primaries);
 
-	write_device_services(adapter_get_address(adapter), &device->bdaddr,
+	write_device_primaries(adapter_get_address(adapter), &device->bdaddr,
 						device->bdaddr_type, str);
 
 	g_free(str);
