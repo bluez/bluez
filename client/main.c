@@ -260,6 +260,50 @@ static void cmd_select(const char *arg)
 	print_adapter(proxy, NULL);
 }
 
+static void power_callback(const DBusError *error, void *user_data)
+{
+	dbus_bool_t powered = GPOINTER_TO_UINT(user_data);
+
+	begin_message();
+
+	if (dbus_error_is_set(error))
+		printf("Failed to set power %s: %s\n",
+				powered == TRUE ? "on" : "off", error->name);
+	else
+		printf("Changing power %s succeeded\n",
+				powered == TRUE ? "on" : "off");
+
+	end_message();
+}
+
+static void cmd_power(const char *arg)
+{
+	dbus_bool_t powered;
+
+	if (!arg || !strlen(arg)) {
+		printf("Missing argument\n");
+		return;
+	}
+
+	if (!default_ctrl) {
+		printf("No default controller available\n");
+		return;
+	}
+
+	if (!strcmp(arg, "on") || !strcmp(arg, "yes"))
+		powered = TRUE;
+	else if (!strcmp(arg, "off") || !strcmp(arg, "no"))
+		powered = FALSE;
+	else {
+		printf("Invalid argument\n");
+		return;
+	}
+
+	g_dbus_proxy_set_property_basic(default_ctrl, "Powered",
+			DBUS_TYPE_BOOLEAN, &powered,
+			power_callback, GUINT_TO_POINTER(powered), NULL);
+}
+
 static void cmd_quit(const char *arg)
 {
 	g_main_loop_quit(main_loop);
@@ -309,6 +353,7 @@ static const struct {
 							ctrl_generator },
 	{ "select", "<ctrl>", cmd_select, "Select default controller",
 							ctrl_generator },
+	{ "power", "<on/off>",cmd_power,  "Power on/off" },
 	{ "quit",   NULL,     cmd_quit,   "Quit program" },
 	{ "exit",   NULL,     cmd_quit },
 	{ "help" },
