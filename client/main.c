@@ -37,25 +37,13 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#define COLOR_OFF	"\x1B[0m"
-#define COLOR_BLUE	"\x1B[0;34m"
+#include "display.h"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
 static GList *ctrl_list;
 static GDBusProxy *default_ctrl;
-
-static inline void begin_message(void)
-{
-	rl_message("");
-	printf("\r%*c\r", rl_end, ' ');
-}
-
-static inline void end_message(void)
-{
-	rl_clear_message();
-}
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
