@@ -304,6 +304,44 @@ static void cmd_power(const char *arg)
 			power_callback, GUINT_TO_POINTER(powered), NULL);
 }
 
+static void name_callback(const DBusError *error, void *user_data)
+{
+	char *name = user_data;
+
+	begin_message();
+
+	if (dbus_error_is_set(error))
+		printf("Failed to set name \"%s\": %s\n", name, error->name);
+	else
+		printf("Changed name to \"%s\"\n", name);
+
+	end_message();
+}
+
+static void cmd_name(const char *arg)
+{
+	char *name;
+
+	if (!arg || !strlen(arg)) {
+		printf("Missing name argument\n");
+		return;
+	}
+
+	if (!default_ctrl) {
+		printf("No default controller available\n");
+		return;
+	}
+
+	name = g_strdup(arg);
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Name",
+					DBUS_TYPE_STRING, &name,
+					name_callback, name, g_free) == TRUE)
+		return;
+
+	g_free(name);
+}
+
 static void cmd_quit(const char *arg)
 {
 	g_main_loop_quit(main_loop);
@@ -353,7 +391,8 @@ static const struct {
 							ctrl_generator },
 	{ "select", "<ctrl>", cmd_select, "Select default controller",
 							ctrl_generator },
-	{ "power", "<on/off>",cmd_power,  "Power on/off" },
+	{ "power", "<on/off>",cmd_power,  "Set controller power" },
+	{ "name",  "<name",   cmd_name,   "Set controller name" },
 	{ "quit",   NULL,     cmd_quit,   "Quit program" },
 	{ "exit",   NULL,     cmd_quit },
 	{ "help" },
