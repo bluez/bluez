@@ -2708,7 +2708,8 @@ static void update_gatt_services(struct browse_req *req, GSList *current,
 	g_slist_free(left);
 }
 
-GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
+static GSList *device_services_from_record(struct btd_device *device,
+							GSList *profiles)
 {
 	GSList *l, *prim_list = NULL;
 	char *att_uuid;
@@ -2745,6 +2746,12 @@ GSList *device_services_from_record(struct btd_device *device, GSList *profiles)
 	g_free(att_uuid);
 
 	return prim_list;
+}
+
+static void device_register_primaries(struct btd_device *device,
+						GSList *prim_list, int psm)
+{
+	device->primaries = g_slist_concat(device->primaries, prim_list);
 }
 
 static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
@@ -4006,12 +4013,6 @@ void device_cancel_authentication(struct btd_device *device, gboolean aborted)
 gboolean device_is_authenticating(struct btd_device *device)
 {
 	return (device->authr != NULL);
-}
-
-void device_register_primaries(struct btd_device *device,
-						GSList *prim_list, int psm)
-{
-	device->primaries = g_slist_concat(device->primaries, prim_list);
 }
 
 GSList *btd_device_get_primaries(struct btd_device *device)
