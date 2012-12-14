@@ -3479,30 +3479,6 @@ int btd_cancel_authorization(guint id)
 	return 0;
 }
 
-static gchar *adapter_any_path = NULL;
-static int adapter_any_refcount = 0;
-
-const char *btd_adapter_any_request_path(void)
-{
-	if (adapter_any_refcount++ > 0)
-		return adapter_any_path;
-
-	adapter_any_path = g_strdup_printf("%s/any", base_path);
-
-	return adapter_any_path;
-}
-
-void btd_adapter_any_release_path(void)
-{
-	adapter_any_refcount--;
-
-	if (adapter_any_refcount > 0)
-		return;
-
-	g_free(adapter_any_path);
-	adapter_any_path = NULL;
-}
-
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
 	if (adapter->up)

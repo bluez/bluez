@@ -152,9 +152,6 @@ guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		const char *uuid, service_auth_cb cb, void *user_data);
 int btd_cancel_authorization(guint id);
 
-const char *btd_adapter_any_request_path(void);
-void btd_adapter_any_release_path(void);
-
 int btd_adapter_restore_powered(struct btd_adapter *adapter);
 
 typedef ssize_t (*btd_adapter_pin_cb_t) (struct btd_adapter *adapter,
