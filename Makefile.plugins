@@ -105,11 +105,7 @@ builtin_modules += thermometer
 builtin_sources += profiles/thermometer/thermometer.c
 
 builtin_modules += heartrate
-builtin_sources += profiles/heartrate/main.c \
-			profiles/heartrate/manager.c \
-			profiles/heartrate/manager.h \
-			profiles/heartrate/heartrate.c \
-			profiles/heartrate/heartrate.h
+builtin_sources += profiles/heartrate/heartrate.c
 
 builtin_modules += cyclingspeed
 builtin_sources += profiles/cyclingspeed/cyclingspeed.c
