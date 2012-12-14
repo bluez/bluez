@@ -187,7 +187,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			const char *address;
 
 			dbus_message_iter_get_basic(&addr_iter, &address);
-			printf("[CHG] Controller %s, ", address);
+			printf("[CHG] Controller %s ", address);
 		}
 
 		print_iter("", name, iter);
