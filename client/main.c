@@ -213,15 +213,20 @@ static GDBusProxy *find_proxy_by_address(const char *address)
 	return NULL;
 }
 
+static gboolean check_default_ctrl(void)
+{
+	if (!default_ctrl) {
+		printf("No default controller available\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
 {
 	if (!arg || !strlen(arg)) {
 		printf("Missing on/off argument\n");
-		return FALSE;
-	}
-
-	if (!default_ctrl) {
-		printf("No default controller available\n");
 		return FALSE;
 	}
 
@@ -256,10 +261,8 @@ static void cmd_info(const char *arg)
 	const char *address;
 
 	if (!arg || !strlen(arg)) {
-		if (!default_ctrl) {
-			printf("No default controller available\n");
+		if (check_default_ctrl() == FALSE)
 			return;
-		}
 
 		proxy = default_ctrl;
 	} else {
@@ -336,6 +339,9 @@ static void cmd_power(const char *arg)
 	if (parse_argument_on_off(arg, &powered) == FALSE)
 		return;
 
+	if (check_default_ctrl() == FALSE)
+		return;
+
 	str = g_strdup_printf("power %s", powered == TRUE ? "on" : "off");
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl, "Powered",
@@ -354,6 +360,9 @@ static void cmd_pairable(const char *arg)
 	if (parse_argument_on_off(arg, &pairable) == FALSE)
 		return;
 
+	if (check_default_ctrl() == FALSE)
+		return;
+
 	str = g_strdup_printf("pairable %s", pairable == TRUE ? "on" : "off");
 
 	if (g_dbus_proxy_set_property_basic(default_ctrl, "Pairable",
@@ -370,6 +379,9 @@ static void cmd_discoverable(const char *arg)
 	char *str;
 
 	if (parse_argument_on_off(arg, &discoverable) == FALSE)
+		return;
+
+	if (check_default_ctrl() == FALSE)
 		return;
 
 	str = g_strdup_printf("discoverable %s",
