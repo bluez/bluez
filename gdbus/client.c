@@ -46,7 +46,8 @@ struct GDBusClient {
 	void *signal_data;
 	GDBusProxyFunction proxy_added;
 	GDBusProxyFunction proxy_removed;
-	void *proxy_data;
+	GDBusPropertyFunction property_changed;
+	void *user_data;
 	GList *proxy_list;
 };
 
@@ -230,7 +231,7 @@ static void proxy_free(gpointer data)
 		GDBusClient *client = proxy->client;
 
 		if (client->proxy_removed)
-			client->proxy_removed(proxy, client->proxy_data);
+			client->proxy_removed(proxy, client->user_data);
 
 		modify_match(client->dbus_conn, "RemoveMatch",
 							proxy->match_rule);
@@ -433,7 +434,16 @@ static void add_property(GDBusProxy *proxy, const char *name,
 
 	prop = g_hash_table_lookup(proxy->prop_list, name);
 	if (prop != NULL) {
+		GDBusClient *client = proxy->client;
+
 		prop_entry_update(prop, &value);
+
+		if (client == NULL)
+			return;
+
+		if (client->property_changed)
+			client->property_changed(proxy, name, &value,
+							client->user_data);
 		return;
 	}
 
@@ -518,6 +528,10 @@ static void properties_changed(GDBusClient *client, const char *path,
 
 		g_hash_table_remove(proxy->prop_list, name);
 
+		if (client->property_changed)
+			client->property_changed(proxy, name, NULL,
+							client->user_data);
+
 		dbus_message_iter_next(&entry);
 	}
 }
@@ -540,7 +554,7 @@ static void parse_properties(GDBusClient *client, const char *path,
 	update_properties(proxy, iter);
 
 	if (client->proxy_added)
-		client->proxy_added(proxy, client->proxy_data);
+		client->proxy_added(proxy, client->user_data);
 
 	client->proxy_list = g_list_append(client->proxy_list, proxy);
 }
@@ -994,15 +1008,18 @@ gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 }
 
 gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
-				GDBusProxyFunction added,
-				GDBusProxyFunction removed, void *user_data)
+					GDBusProxyFunction proxy_added,
+					GDBusProxyFunction proxy_removed,
+					GDBusPropertyFunction property_changed,
+					void *user_data)
 {
 	if (client == NULL)
 		return FALSE;
 
-	client->proxy_added = added;
-	client->proxy_removed = removed;
-	client->proxy_data = user_data;
+	client->proxy_added = proxy_added;
+	client->proxy_removed = proxy_removed;
+	client->property_changed = property_changed;
+	client->user_data = user_data;
 
 	return TRUE;
 }

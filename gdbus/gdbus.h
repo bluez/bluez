@@ -302,10 +302,14 @@ gboolean g_dbus_client_set_signal_watch(GDBusClient *client,
 				GDBusMessageFunction function, void *user_data);
 
 typedef void (* GDBusProxyFunction) (GDBusProxy *proxy, void *user_data);
+typedef void (* GDBusPropertyFunction) (GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data);
 
 gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
-				GDBusProxyFunction added,
-				GDBusProxyFunction removed, void *user_data);
+					GDBusProxyFunction proxy_added,
+					GDBusProxyFunction proxy_removed,
+					GDBusPropertyFunction property_changed,
+					void *user_data);
 
 #ifdef __cplusplus
 }
