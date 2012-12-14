@@ -60,12 +60,6 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- Fix all btd_profile instances to only have one UUID in remote_uuids,
-  then convert remote_uuids to a single remote_uuid.
-
-- Once the above item is done switch ConnectProfile to match remote_uuid
-  instead of local_uuid (as that's more intuitive).
-
 - Convert obexd & obex-client to ObjectManager/Properties
 
 - Don't install libbluetooth by default (put it behind a configure switch)
@@ -80,6 +74,9 @@ released.
   ini-file format
 
 Completed items:
+
+- Switch ConnectProfile to match remote_uuid instead of local_uuid (as
+  that's more intuitive).
 
 - Remove powered state storing and rely on external entity to do the
   power on/off.
