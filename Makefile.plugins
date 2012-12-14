@@ -91,9 +91,7 @@ builtin_sources += profiles/deviceinfo/main.c \
 
 if EXPERIMENTAL
 builtin_modules += alert
-builtin_sources += profiles/alert/main.c profiles/alert/server.h \
-			profiles/alert/server.c profiles/alert/manager.h \
-			profiles/alert/manager.c
+builtin_sources += profiles/alert/server.c
 
 builtin_modules += time
 builtin_sources += profiles/time/server.c

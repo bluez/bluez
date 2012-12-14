@@ -33,6 +33,7 @@
 #include <bluetooth/uuid.h>
 #include <stdlib.h>
 
+#include "plugin.h"
 #include "dbus-common.h"
 #include "attrib/att.h"
 #include "adapter.h"
@@ -43,7 +44,6 @@
 #include "attrib/gattrib.h"
 #include "attrib-server.h"
 #include "attrib/gatt.h"
-#include "server.h"
 #include "profile.h"
 #include "error.h"
 #include "textfile.h"
@@ -974,7 +974,7 @@ static const GDBusMethodTable alert_methods[] = {
 	{ }
 };
 
-int alert_server_init(void)
+static int alert_server_init(void)
 {
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					ALERT_OBJECT_PATH, ALERT_INTERFACE,
@@ -990,10 +990,24 @@ int alert_server_init(void)
 	return 0;
 }
 
-void alert_server_exit(void)
+static void alert_server_exit(void)
 {
 	btd_profile_unregister(&alert_profile);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 					ALERT_OBJECT_PATH, ALERT_INTERFACE);
 }
+
+static int alert_init(void)
+{
+	return alert_server_init();
+}
+
+static void alert_exit(void)
+{
+	alert_server_exit();
+}
+
+BLUETOOTH_PLUGIN_DEFINE(alert, VERSION,
+			BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+			alert_init, alert_exit)
