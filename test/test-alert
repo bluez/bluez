@@ -9,8 +9,8 @@ import sys
 import os
 
 BUS_NAME = 'org.bluez'
-ALERT_INTERFACE = 'org.bluez.Alert'
-ALERT_AGENT_INTERFACE = 'org.bluez.AlertAgent'
+ALERT_INTERFACE = 'org.bluez.Alert1'
+ALERT_AGENT_INTERFACE = 'org.bluez.AlertAgent1'
 BLUEZ_OBJECT_PATH = '/org/bluez'
 TEST_OBJECT_PATH = '/org/bluez/test'
 

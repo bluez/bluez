@@ -19,7 +19,7 @@ Alert hierarchy
 ===============
 
 Service		org.bluez
-Interface	org.bluez.Alert
+Interface	org.bluez.Alert1
 Object path	/org/bluez
 
 Methods		void RegisterAlert(string category, object agent)
@@ -79,7 +79,7 @@ Alert Agent hierarchy
 =====================
 
 Service		org.bluez
-Interface	org.bluez.AlertAgent
+Interface	org.bluez.AlertAgent1
 Object path	freely definable
 
 Methods		void MuteOnce()

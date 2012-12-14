@@ -63,8 +63,8 @@
 #define SUPP_UNREAD_ALERT_CAT_CHR_UUID	0x2A48
 
 #define ALERT_OBJECT_PATH		"/org/bluez"
-#define ALERT_INTERFACE			"org.bluez.Alert"
-#define ALERT_AGENT_INTERFACE		"org.bluez.AlertAgent"
+#define ALERT_INTERFACE			"org.bluez.Alert1"
+#define ALERT_AGENT_INTERFACE		"org.bluez.AlertAgent1"
 
 /* Maximum length for "Text String Information" */
 #define NEW_ALERT_MAX_INFO_SIZE		18
