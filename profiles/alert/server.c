@@ -985,9 +985,7 @@ static int alert_server_init(void)
 		return -EIO;
 	}
 
-	btd_profile_register(&alert_profile);
-
-	return 0;
+	return btd_profile_register(&alert_profile);
 }
 
 static void alert_server_exit(void)
