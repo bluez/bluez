@@ -50,6 +50,11 @@ static GDBusProxy *default_ctrl;
 static GList *ctrl_list;
 static GList *dev_list;
 
+static void proxy_leak(gpointer data)
+{
+	printf("Leaking proxy %p\n", data);
+}
+
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	rl_set_prompt(COLOR_BLUE "[bluetooth]" COLOR_OFF "# ");
@@ -966,6 +971,9 @@ int main(int argc, char *argv[])
 
 	dbus_connection_unref(dbus_conn);
 	g_main_loop_unref(main_loop);
+
+	g_list_free_full(ctrl_list, proxy_leak);
+	g_list_free_full(dev_list, proxy_leak);
 
 	return 0;
 }
