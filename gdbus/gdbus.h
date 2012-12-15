@@ -286,6 +286,14 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 				GDBusResultFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
 
+typedef void (* GDBusSetupFunction) (DBusMessageIter *iter, void *user_data);
+typedef void (* GDBusReturnFunction) (DBusMessage *message, void *user_data);
+
+gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
+				GDBusSetupFunction setup,
+				GDBusReturnFunction function, void *user_data,
+				GDBusDestroyFunction destroy);
+
 typedef struct GDBusClient GDBusClient;
 
 GDBusClient *g_dbus_client_new(DBusConnection *connection,

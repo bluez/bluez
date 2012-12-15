@@ -421,6 +421,80 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 	return TRUE;
 }
 
+struct method_call_data {
+	GDBusReturnFunction function;
+	void *user_data;
+	GDBusDestroyFunction destroy;
+};
+
+static void method_call_reply(DBusPendingCall *call, void *user_data)
+{
+	struct method_call_data *data = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+
+	if (data->function)
+		data->function(reply, data->user_data);
+
+	if (data->destroy)
+		data->destroy(data->user_data);
+
+	dbus_message_unref(reply);
+}
+
+gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
+				GDBusSetupFunction setup,
+				GDBusReturnFunction function, void *user_data,
+				GDBusDestroyFunction destroy)
+{
+	struct method_call_data *data;
+	GDBusClient *client;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	if (proxy == NULL || method == NULL)
+		return FALSE;
+
+	client = proxy->client;
+	if (client == NULL)
+		return FALSE;
+
+	data = g_try_new0(struct method_call_data, 1);
+	if (data == NULL)
+		return FALSE;
+
+	data->function = function;
+	data->user_data = user_data;
+	data->destroy = destroy;
+
+	msg = dbus_message_new_method_call(client->service_name,
+				proxy->obj_path, proxy->interface, method);
+	if (msg == NULL) {
+		g_free(data);
+		return FALSE;
+	}
+
+	if (setup) {
+		DBusMessageIter iter;
+
+		dbus_message_iter_init_append(msg, &iter);
+		setup(&iter, data->user_data);
+	}
+
+	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+							&call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		g_free(data);
+		return FALSE;
+	}
+
+	dbus_pending_call_set_notify(call, method_call_reply, data, g_free);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+
+	return TRUE;
+}
+
 static void add_property(GDBusProxy *proxy, const char *name,
 						DBusMessageIter *iter)
 {
