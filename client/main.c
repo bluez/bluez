@@ -87,11 +87,33 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 
 }
 
+static void print_device(GDBusProxy *proxy, const char *description)
+{
+	DBusMessageIter iter;
+	const char *address, *name;
+
+	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &address);
+
+	if (g_dbus_proxy_get_property(proxy, "Alias", &iter) == TRUE)
+		dbus_message_iter_get_basic(&iter, &name);
+	else
+		name = "<unknown>";
+
+	if (description != NULL)
+		printf("[%s] ", description);
+
+	printf("Device %s %s\n", address, name);
+}
+
 static void print_iter(const char *label, const char *name,
 						DBusMessageIter *iter)
 {
 	dbus_bool_t valbool;
-	dbus_uint32_t val32;
+	dbus_uint32_t valu32;
+	dbus_int16_t vals16;
 	const char *valstr;
 
 	if (iter == NULL) {
@@ -114,8 +136,12 @@ static void print_iter(const char *label, const char *name,
 					valbool == TRUE ? "yes" : "no");
 		break;
 	case DBUS_TYPE_UINT32:
-		dbus_message_iter_get_basic(iter, &val32);
-		printf("%s%s: 0x%06x\n", label, name, val32);
+		dbus_message_iter_get_basic(iter, &valu32);
+		printf("%s%s: 0x%06x\n", label, name, valu32);
+		break;
+	case DBUS_TYPE_INT16:
+		dbus_message_iter_get_basic(iter, &vals16);
+		printf("%s%s: %d\n", label, name, vals16);
 		break;
 	default:
 		printf("%s%s has unsupported type\n", label, name);
