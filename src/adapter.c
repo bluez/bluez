@@ -2410,7 +2410,8 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 }
 
 static void store_attribute_uuid(GKeyFile *key_file, uint16_t start,
-					char *att_uuid, uuid_t uuid)
+					uint16_t end, char *att_uuid,
+					uuid_t uuid)
 {
 	char handle[6], uuid_str[33];
 	int i;
@@ -2434,6 +2435,7 @@ static void store_attribute_uuid(GKeyFile *key_file, uint16_t start,
 	sprintf(handle, "%hu", start);
 	g_key_file_set_string(key_file, handle, "UUID", att_uuid);
 	g_key_file_set_string(key_file, handle, "Value", uuid_str);
+	g_key_file_set_integer(key_file, handle, "EndGroupHandle", end);
 }
 
 static void store_sdp_record(char *local, char *peer, int handle, char *value)
@@ -2526,7 +2528,7 @@ static void convert_sdp_entry(char *key, char *value, void *user_data)
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 
-	store_attribute_uuid(key_file, start, prim_uuid, uuid);
+	store_attribute_uuid(key_file, start, end, prim_uuid, uuid);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
@@ -2588,7 +2590,7 @@ static void convert_primaries_entry(char *key, char *value, void *user_data)
 		bt_string2uuid(&uuid, uuid_str);
 		sdp_uuid128_to_uuid(&uuid);
 
-		store_attribute_uuid(key_file, start, prim_uuid, uuid);
+		store_attribute_uuid(key_file, start, end, prim_uuid, uuid);
 	}
 
 	g_strfreev(services);

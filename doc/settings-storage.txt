@@ -94,10 +94,12 @@ Attributes are stored using their handle as group name (decimal format).
 
 Each group contains:
 
-  UUID		String		128-bit UUID of the attribute
+  UUID			String		128-bit UUID of the attribute
 
-  Value		String		Value of the attribute as hexadecimal encoded
-				string
+  Value			String		Value of the attribute as hexadecimal encoded
+					string
+
+  EndGroupHandle	Integer		End group handle in decimal format
 
 Sample:
   [1]

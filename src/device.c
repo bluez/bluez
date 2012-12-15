@@ -1899,6 +1899,7 @@ static void load_att_info(struct btd_device *device, const gchar *local,
 
 	for (handle = groups; *handle; handle++) {
 		gboolean uuid_ok;
+		gint end;
 
 		str = g_key_file_get_string(key_file, *handle, "UUID", NULL);
 		if (!str)
@@ -1914,8 +1915,16 @@ static void load_att_info(struct btd_device *device, const gchar *local,
 		if (!str)
 			continue;
 
+		end = g_key_file_get_integer(key_file, *handle,
+						"EndGroupHandle", NULL);
+		if (end == 0) {
+			g_free(str);
+			continue;
+		}
+
 		prim = g_new0(struct gatt_primary, 1);
 		prim->range.start = atoi(*handle);
+		prim->range.end = end;
 
 		switch (strlen(str)) {
 		case 4:
@@ -2499,6 +2508,7 @@ static void store_primaries_from_sdp_record(GKeyFile *key_file,
 
 	g_key_file_set_string(key_file, handle, "UUID", prim_uuid);
 	g_key_file_set_string(key_file, handle, "Value", uuid_str);
+	g_key_file_set_integer(key_file, handle, "EndGroupHandle", end);
 
 done:
 	g_free(prim_uuid);
