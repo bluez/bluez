@@ -471,7 +471,6 @@ static char *ctrl_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-
 	for (list = g_list_nth(ctrl_list, index); list;
 						list = g_list_next(list)) {
 		GDBusProxy *proxy = list->data;
