@@ -41,7 +41,7 @@
 #include <gdbus/gdbus.h>
 
 #include "log.h"
-
+#include "error.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
@@ -49,6 +49,14 @@
 
 #define REQUEST_TIMEOUT (60 * 1000)		/* 60 seconds */
 #define AGENT_INTERFACE "org.bluez.Agent1"
+
+static GHashTable *agent_list;
+
+struct agent_data {
+	char *owner;
+	char *path;
+	guint watch;
+};
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
@@ -832,15 +840,112 @@ gboolean agent_is_busy(struct agent *agent, void *user_data)
 	return TRUE;
 }
 
+static struct agent_data *agent_alloc(const char *owner, const char *path)
+{
+	struct agent_data *agent;
+
+	agent = g_try_new0(struct agent_data, 1);
+	if (!agent)
+		return NULL;
+
+	agent->owner = g_strdup(owner);
+	agent->path = g_strdup(path);
+
+	return agent;
+}
+
+static void agent_destroy(gpointer data)
+{
+	struct agent_data *agent = data;
+
+	DBG("agent %s", agent->owner);
+
+	if (agent->watch > 0) {
+		DBusConnection *conn = btd_get_dbus_connection();
+		DBusMessage *msg;
+
+		g_dbus_remove_watch(conn, agent->watch);
+
+		msg = dbus_message_new_method_call(agent->owner, agent->path,
+						AGENT_INTERFACE, "Release");
+		if (msg)
+			g_dbus_send_message(conn, msg);
+	}
+
+	g_free(agent->owner);
+	g_free(agent->path);
+
+	g_free(agent);
+}
+
+static void agent_disconnect(DBusConnection *conn, void *user_data)
+{
+	struct agent_data *agent = user_data;
+
+	DBG("agent %s", agent->owner);
+
+	if (agent->watch > 0) {
+		g_dbus_remove_watch(conn, agent->watch);
+		agent->watch = 0;
+	}
+
+	g_hash_table_remove(agent_list, agent->owner);
+}
+
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	struct agent_data *agent;
+	const char *sender, *path, *capability;
+
+	sender = dbus_message_get_sender(msg);
+
+	agent = g_hash_table_lookup(agent_list, sender);
+	if (agent)
+		return btd_error_already_exists(msg);
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_STRING, &capability,
+						DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	agent = agent_alloc(sender, path);
+	if (!agent)
+		return btd_error_invalid_args(msg);
+
+	DBG("agent %s", agent->owner);
+
+	g_hash_table_replace(agent_list, agent->owner, agent);
+
+	agent->watch = g_dbus_add_disconnect_watch(conn, agent->owner,
+						agent_disconnect, agent, NULL);
+
 	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	struct agent_data *agent;
+	const char *sender, *path;
+
+	sender = dbus_message_get_sender(msg);
+
+	agent = g_hash_table_lookup(agent_list, sender);
+	if (!agent)
+		return btd_error_does_not_exist(msg);
+
+	DBG("agent %s", agent->owner);
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	if (g_str_equal(path, agent->path) == FALSE)
+		return btd_error_does_not_exist(msg);
+
+	agent_disconnect(conn, agent);
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -855,6 +960,9 @@ static const GDBusMethodTable methods[] = {
 
 void btd_agent_init(void)
 {
+	agent_list = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, agent_destroy);
+
 	g_dbus_register_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.AgentManager1",
 				methods, NULL, NULL, NULL, NULL);
@@ -864,4 +972,6 @@ void btd_agent_cleanup(void)
 {
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.AgentManager1");
+
+	g_hash_table_destroy(agent_list);
 }
