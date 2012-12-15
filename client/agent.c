@@ -42,6 +42,10 @@ static DBusMessage *release_agent(DBusConnection *conn,
 {
 	agent_registered = FALSE;
 
+	begin_message();
+	printf("Agent released\n");
+	end_message();
+
 	g_dbus_unregister_interface(conn, AGENT_PATH, AGENT_INTERFACE);
 
 	return dbus_message_new_method_return(msg);
