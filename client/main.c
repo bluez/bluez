@@ -647,6 +647,64 @@ static void cmd_pair(const char *arg)
 	}
 }
 
+static void remove_device_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	begin_message();
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		printf("Failed to remove device: %s\n", error.name);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	printf("Device has been removed\n");
+
+done:
+	end_message();
+}
+
+static void remove_device_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void cmd_remove(const char *arg)
+{
+	GDBusProxy *proxy;
+	char *path;
+
+	if (!arg || !strlen(arg)) {
+		printf("Missing device address argument\n");
+		return;
+	}
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		printf("Device %s not available\n", arg);
+		return;
+	}
+
+	path = g_strdup(g_dbus_proxy_get_path(proxy));
+
+	if (g_dbus_proxy_method_call(default_ctrl, "RemoveDevice",
+						remove_device_setup,
+						remove_device_reply,
+						path, g_free) == FALSE) {
+		printf("Failed to remove device\n");
+		g_free(path);
+		return;
+	}
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -738,6 +796,8 @@ static const struct {
 	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
 	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
+							dev_generator },
+	{ "remove",       "<dev>",    cmd_remove, "Remove device",
 							dev_generator },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
