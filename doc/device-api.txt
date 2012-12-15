@@ -68,20 +68,23 @@ Methods		void Connect()
 			Possible errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.NotConnected
 
-		void Pair(object agent, string capability)
+		void Pair()
 
 			This method will connect to the remote device,
 			initiate pairing and then retrieve all SDP records
 			(or GATT primary services).
 
-			The agent object path is assumed to reside within the
-			process (D-Bus connection instance) that calls this
-			method. No separate registration procedure is needed
-			for it and it gets automatically released once the
-			pairing operation is complete.
+			If the application has registered its own agent,
+			then that specific agent will be used. Otherwise
+			it will use the default agent.
 
-			The capability parameter is the same as for the
-			Adapter.RegisterAgent method.
+			Only for applications like a pairing wizard it
+			would make sense to have its own agent. In almost
+			all other cases the default agent will handle
+			this just fine.
+
+			In case there is no application agent and also
+			no default agent present, this method will fail.
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
