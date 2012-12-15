@@ -428,8 +428,14 @@ static void cmd_select(const char *arg)
 		return;
 	}
 
+	if (default_ctrl == proxy)
+		return;
+
 	default_ctrl = proxy;
 	print_adapter(proxy, NULL);
+
+	g_list_free(dev_list);
+	dev_list = NULL;
 }
 
 static void cmd_devices(const char *arg)
