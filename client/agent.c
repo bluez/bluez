@@ -52,6 +52,39 @@ static const GDBusMethodTable methods[] = {
 	{ }
 };
 
+static void register_agent_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = AGENT_PATH;
+	const char *capability = "";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &capability);
+}
+
+static void register_agent_reply(DBusMessage *message, void *user_data)
+{
+	DBusConnection *conn = user_data;
+	DBusError error;
+
+	begin_message();
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == FALSE) {
+		agent_registered = TRUE;
+		printf("Agent registered\n");
+	} else {
+		printf("Failed to register agent: %s\n", error.name);
+		dbus_error_free(&error);
+
+		if (g_dbus_unregister_interface(conn, AGENT_PATH,
+						AGENT_INTERFACE) == FALSE)
+			printf("Failed to unregister agent object\n");
+	}
+
+	end_message();
+}
+
 void agent_register(DBusConnection *conn, GDBusProxy *manager)
 {
 	if (agent_registered == TRUE) {
@@ -66,7 +99,44 @@ void agent_register(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 
-	agent_registered = TRUE;
+	if (g_dbus_proxy_method_call(manager, "RegisterAgent",
+						register_agent_setup,
+						register_agent_reply,
+						conn, NULL) == FALSE) {
+		printf("Failed to call register agent method\n");
+		return;
+	}
+}
+
+static void unregister_agent_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = AGENT_PATH;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void unregister_agent_reply(DBusMessage *message, void *user_data)
+{
+	DBusConnection *conn = user_data;
+	DBusError error;
+
+	begin_message();
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == FALSE) {
+		agent_registered = FALSE;
+		printf("Agent unregistered\n");
+
+		if (g_dbus_unregister_interface(conn, AGENT_PATH,
+						AGENT_INTERFACE) == FALSE)
+			printf("Failed to unregister agent object\n");
+	} else {
+		printf("Failed to unregister agent: %s\n", error.name);
+		dbus_error_free(&error);
+	}
+
+	end_message();
 }
 
 void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
@@ -76,11 +146,11 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 
-	if (g_dbus_unregister_interface(conn, AGENT_PATH,
-						AGENT_INTERFACE) == FALSE) {
-		printf("Failed to unregister agent object\n");
+	if (g_dbus_proxy_method_call(manager, "UnregisterAgent",
+						unregister_agent_setup,
+						unregister_agent_reply,
+						conn, NULL) == FALSE) {
+		printf("Failed to call unregister agent method\n");
 		return;
 	}
-
-	agent_registered = FALSE;
 }
