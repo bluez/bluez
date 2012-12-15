@@ -31,6 +31,8 @@ contains:
    contains:
     - an info file
     - an attributes file containing attributes of remote LE services
+    - a ccc file containing persistent Client Characteristic Configuration
+      (CCC) descriptor information for GATT characteristics
 
 So the directory structure is:
     /var/lib/bluetooth/<adapter address>/
@@ -43,6 +45,7 @@ So the directory structure is:
         ./<remote device address>/
             ./info
             ./attributes
+            ./ccc
         ./<remote device address>/
             ./info
             ./attributes
@@ -113,6 +116,20 @@ Sample:
   [6]
   UUID=00002a00-0000-1000-8000-00805f9b34fb
   Value=4578616D706C6520446576696365
+
+CCC file format
+======================
+
+The ccc file stores the current CCC descriptor values for GATT characteristics
+which have notification/indication enabled by the remote device.
+
+Information is stored using CCC attribute handle as group name (in decimal
+format).
+
+Each group contains:
+
+  Value			String		CCC descriptor value encoded in
+					hexadecimal
 
 Cache directory file format
 ============================
