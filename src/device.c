@@ -1477,21 +1477,13 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device->adapter;
-	const char *agent_path, *capability;
 	struct bonding_req *bonding;
 	uint8_t io_cap;
 	int err;
 
 	device_set_temporary(device, FALSE);
 
-	if (!dbus_message_get_args(msg, NULL,
-					DBUS_TYPE_OBJECT_PATH, &agent_path,
-					DBUS_TYPE_STRING, &capability,
-					DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
-
-	io_cap = parse_io_capability(capability);
-	if (io_cap == IO_CAPABILITY_INVALID)
+	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
 	if (device->bonding)
@@ -1500,7 +1492,9 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (device_is_bonded(device))
 		return btd_error_already_exists(msg);
 
-	bonding = bonding_request_new(msg, device, agent_path, io_cap);
+	io_cap = parse_io_capability("");
+
+	bonding = bonding_request_new(msg, device, NULL, io_cap);
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(
 						btd_get_dbus_connection(),
@@ -1547,9 +1541,7 @@ static const GDBusMethodTable device_methods[] = {
 						NULL, connect_profile) },
 	{ GDBUS_ASYNC_METHOD("DisconnectProfile", GDBUS_ARGS({ "UUID", "s" }),
 						NULL, disconnect_profile) },
-	{ GDBUS_ASYNC_METHOD("Pair",
-			GDBUS_ARGS({ "agent", "o" }, { "capability", "s" }),
-			NULL, pair_device) },
+	{ GDBUS_ASYNC_METHOD("Pair", NULL, NULL, pair_device) },
 	{ GDBUS_METHOD("CancelPairing", NULL, NULL, cancel_pairing) },
 	{ }
 };
