@@ -769,6 +769,8 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 	g_free(adapter->name);
 	adapter->name = g_strdup(name);
 
+	store_adapter_info(adapter);
+
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Name");
 
@@ -790,18 +792,7 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 		return -EINVAL;
 	}
 
-	if (adapter->up) {
-		int err = mgmt_set_name(adapter->dev_id, maxname);
-		if (err < 0)
-			return err;
-	} else {
-		g_free(adapter->name);
-		adapter->name = g_strdup(maxname);
-	}
-
-	store_adapter_info(adapter);
-
-	return 0;
+	return mgmt_set_name(adapter->dev_id, maxname);
 }
 
 static void set_name(struct btd_adapter *adapter, const char *name,
