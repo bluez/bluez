@@ -2041,6 +2041,21 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	return btd_device_ref(device);
 }
 
+char *btd_device_get_storage_path(struct btd_device *device,
+				const char *filename)
+{
+	char srcaddr[18], dstaddr[18];
+
+	ba2str(adapter_get_address(device->adapter), srcaddr);
+	ba2str(&device->bdaddr, dstaddr);
+
+	if (!filename)
+		return g_strdup_printf(STORAGEDIR "/%s/%s", srcaddr, dstaddr);
+
+	return g_strdup_printf(STORAGEDIR "/%s/%s/%s", srcaddr, dstaddr,
+							filename);
+}
+
 void device_set_name(struct btd_device *device, const char *name)
 {
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
