@@ -43,10 +43,12 @@
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
-static GList *ctrl_list;
-static GDBusProxy *default_ctrl;
 static GDBusProxy *agent_manager;
 static gboolean auto_register_agent = FALSE;
+
+static GDBusProxy *default_ctrl;
+static GList *ctrl_list;
+static GList *dev_list;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -54,6 +56,8 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
+
+	default_ctrl = NULL;
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
@@ -62,6 +66,9 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
+
+	g_list_free(ctrl_list);
+	ctrl_list = NULL;
 }
 
 static void print_adapter(GDBusProxy *proxy, const char *description)
@@ -159,13 +166,41 @@ static void print_property(GDBusProxy *proxy, const char *name)
 	print_iter("\t", name, &iter);
 }
 
+static gboolean device_is_child(GDBusProxy *device, GDBusProxy *master)
+{
+	DBusMessageIter iter;
+	const char *adapter, *path;
+
+	if (!master)
+		return FALSE;
+
+	if (g_dbus_proxy_get_property(device, "Adapter", &iter) == FALSE)
+		return FALSE;
+
+	dbus_message_iter_get_basic(&iter, &adapter);
+	path = g_dbus_proxy_get_path(master);
+
+	if (!strcmp(path, adapter))
+		return TRUE;
+
+	return FALSE;
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, "org.bluez.Adapter1")) {
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		if (device_is_child(proxy, default_ctrl) == TRUE) {
+			dev_list = g_list_append(dev_list, proxy);
+
+			begin_message();
+			print_device(proxy, "NEW");
+			end_message();
+		}
+	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_append(ctrl_list, proxy);
 
 		if (!default_ctrl)
@@ -190,15 +225,27 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, "org.bluez.Adapter1")) {
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		if (device_is_child(proxy, default_ctrl) == TRUE) {
+			dev_list = g_list_remove(dev_list, proxy);
+
+			begin_message();
+			print_device(proxy, "DEL");
+			end_message();
+		}
+	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_remove(ctrl_list, proxy);
 
 		begin_message();
 		print_adapter(proxy, "DEL");
 		end_message();
 
-		if (default_ctrl == proxy)
+		if (default_ctrl == proxy) {
 			default_ctrl = NULL;
+
+			g_list_free(dev_list);
+			dev_list = NULL;
+		}
 	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
 		if (agent_manager == proxy)
 			agent_manager = NULL;
@@ -212,7 +259,25 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, "org.bluez.Adapter1")) {
+	if (!strcmp(interface, "org.bluez.Device1")) {
+		if (device_is_child(proxy, default_ctrl) == TRUE) {
+			DBusMessageIter addr_iter;
+
+			begin_message();
+
+			if (g_dbus_proxy_get_property(proxy, "Address",
+							&addr_iter) == TRUE) {
+				const char *address;
+
+				dbus_message_iter_get_basic(&addr_iter,
+								&address);
+				printf("[CHG] Device %s ", address);
+			}
+
+			print_iter("", name, iter);
+			end_message();
+		}
+	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		DBusMessageIter addr_iter;
 
 		begin_message();
@@ -253,7 +318,7 @@ static GDBusProxy *find_proxy_by_address(const char *address)
 
 		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strcmp(address, str))
+		if (!strcmp(str, address))
 			return proxy;
 	}
 
@@ -365,6 +430,16 @@ static void cmd_select(const char *arg)
 
 	default_ctrl = proxy;
 	print_adapter(proxy, NULL);
+}
+
+static void cmd_devices(const char *arg)
+{
+	GList *list;
+
+	for (list = g_list_first(dev_list); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		print_device(proxy, NULL);
+	}
 }
 
 static void generic_callback(const DBusError *error, void *user_data)
@@ -586,6 +661,7 @@ static const struct {
 							ctrl_generator },
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
+	{ "devices",      NULL,       cmd_devices, "List available devices" },
 	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "name",         "<name>",   cmd_name,  "Set controller local name" },
 	{ "pairable",     "<on/off>", cmd_pairable,
