@@ -94,6 +94,11 @@ static void print_iter(const char *label, const char *name,
 	dbus_uint32_t val32;
 	const char *valstr;
 
+	if (iter == NULL) {
+		printf("%s%s is nil\n", label, name);
+		return;
+	}
+
 	switch (dbus_message_iter_get_arg_type(iter)) {
 	case DBUS_TYPE_INVALID:
 		printf("%s%s is inavlid\n", label, name);
@@ -111,6 +116,9 @@ static void print_iter(const char *label, const char *name,
 	case DBUS_TYPE_UINT32:
 		dbus_message_iter_get_basic(iter, &val32);
 		printf("%s%s: 0x%06x\n", label, name, val32);
+		break;
+	default:
+		printf("%s%s has unsupported type\n", label, name);
 		break;
 	}
 }
