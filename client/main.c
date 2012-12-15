@@ -754,13 +754,13 @@ static void rl_handler(char *input)
 	}
 
 	if (!strlen(input))
-		return;
+		goto done;
 
 	add_history(input);
 
 	cmd = strtok_r(input, " ", &arg);
 	if (!cmd)
-		return;
+		goto done;
 
 	if (arg) {
 		int len = strlen(arg);
@@ -774,13 +774,13 @@ static void rl_handler(char *input)
 
 		if (cmd_table[i].func) {
 			cmd_table[i].func(arg);
-			return;
+			goto done;
 		}
 	}
 
 	if (strcmp(cmd, "help")) {
 		printf("Invalid command\n");
-		return;
+		goto done;
 	}
 
 	printf("Available commands:\n");
@@ -791,6 +791,9 @@ static void rl_handler(char *input)
 						cmd_table[i].arg ? : "    ",
 						cmd_table[i].desc);
 	}
+
+done:
+	free(input);
 }
 
 static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
