@@ -268,6 +268,14 @@ void btdev_destroy(struct btdev *btdev)
 	free(btdev);
 }
 
+void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr)
+{
+	if (!btdev)
+		return;
+
+	memcpy(btdev->bdaddr, bdaddr, 6);
+}
+
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 							void *user_data)
 {

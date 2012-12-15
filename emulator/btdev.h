@@ -38,6 +38,8 @@ struct btdev;
 struct btdev *btdev_create(enum btdev_type type, uint16_t id);
 void btdev_destroy(struct btdev *btdev);
 
+void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr);
+
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 							void *user_data);
 
