@@ -32,6 +32,9 @@
 #include "display.h"
 #include "agent.h"
 
+#define AGENT_PATH "/org/bluez/agent"
+#define AGENT_INTERFACE "org.bluez.Agent1"
+
 static gboolean agent_registered = FALSE;
 
 static DBusMessage *release_agent(DBusConnection *conn,
@@ -39,8 +42,7 @@ static DBusMessage *release_agent(DBusConnection *conn,
 {
 	agent_registered = FALSE;
 
-	g_dbus_unregister_interface(conn, "/org/bluez/agent",
-						"org.bluez.Agent1");
+	g_dbus_unregister_interface(conn, AGENT_PATH, AGENT_INTERFACE);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -57,8 +59,8 @@ void agent_register(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 
-	if (g_dbus_register_interface(conn, "/org/bluez/agent",
-					"org.bluez.Agent1", methods,
+	if (g_dbus_register_interface(conn, AGENT_PATH,
+					AGENT_INTERFACE, methods,
 					NULL, NULL, NULL, NULL) == FALSE) {
 		printf("Failed to register agent object\n");
 		return;
@@ -74,8 +76,8 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 
-	if (g_dbus_unregister_interface(conn, "/org/bluez/agent",
-						"org.bluez.Agent1") == FALSE) {
+	if (g_dbus_unregister_interface(conn, AGENT_PATH,
+						AGENT_INTERFACE) == FALSE) {
 		printf("Failed to unregister agent object\n");
 		return;
 	}
