@@ -56,8 +56,6 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
-
-	default_ctrl = NULL;
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
@@ -69,6 +67,11 @@ static void disconnect_handler(DBusConnection *connection, void *user_data)
 
 	g_list_free(ctrl_list);
 	ctrl_list = NULL;
+
+	default_ctrl = NULL;
+
+	g_list_free(dev_list);
+	dev_list = NULL;
 }
 
 static void print_adapter(GDBusProxy *proxy, const char *description)
