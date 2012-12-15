@@ -299,7 +299,7 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "Pairable");
 
 	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
-		return;
+		goto done;
 
 	dbus_message_iter_recurse(&iter, &value);
 
@@ -309,6 +309,9 @@ static void cmd_info(const char *arg)
 		printf("\tUUID: %s\n", str);
 		dbus_message_iter_next(&value);
 	}
+
+done:
+	print_property(proxy, "Discovering");
 }
 
 static void cmd_select(const char *arg)
@@ -432,6 +435,53 @@ static void cmd_agent(const char *arg)
 	}
 }
 
+static void start_discovery_reply(DBusMessage *message, void *user_data)
+{
+	dbus_bool_t enable = GPOINTER_TO_UINT(user_data);
+	DBusError error;
+
+	begin_message();
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		printf("Failed to %s discovery: %s\n",
+				enable == TRUE ? "start" : "stop", error.name);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
+
+done:
+	end_message();
+}
+
+static void cmd_scan(const char *arg)
+{
+	dbus_bool_t enable;
+	const char *method;
+
+	if (parse_argument_on_off(arg, &enable) == FALSE)
+		return;
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	if (enable == TRUE)
+		method = "StartDiscovery";
+	else
+		method = "StopDiscovery";
+
+	if (g_dbus_proxy_method_call(default_ctrl, method,
+				NULL, start_discovery_reply,
+				GUINT_TO_POINTER(enable), NULL) == FALSE) {
+		printf("Failed to %s discovery\n",
+					enable == TRUE ? "start" : "stop");
+		return;
+	}
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -441,10 +491,8 @@ static void cmd_name(const char *arg)
 		return;
 	}
 
-	if (!default_ctrl) {
-		printf("No default controller available\n");
+	if (check_default_ctrl() == FALSE)
 		return;
-	}
 
 	name = g_strdup(arg);
 
@@ -511,6 +559,7 @@ static const struct {
 	{ "discoverable", "<on/off>", cmd_discoverable,
 					"Set controller discoverable mode" },
 	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
+	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
