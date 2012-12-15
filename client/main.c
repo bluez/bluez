@@ -312,11 +312,11 @@ static void message_handler(DBusConnection *connection,
 	end_message();
 }
 
-static GDBusProxy *find_proxy_by_address(const char *address)
+static GDBusProxy *find_proxy_by_address(GList *source, const char *address)
 {
 	GList *list;
 
-	for (list = g_list_first(ctrl_list); list; list = g_list_next(list)) {
+	for (list = g_list_first(source); list; list = g_list_next(list)) {
 		GDBusProxy *proxy = list->data;
 		DBusMessageIter iter;
 		const char *str;
@@ -386,7 +386,7 @@ static void cmd_info(const char *arg)
 
 		proxy = default_ctrl;
 	} else {
-		proxy = find_proxy_by_address(arg);
+		proxy = find_proxy_by_address(ctrl_list, arg);
 		if (!proxy) {
 			printf("Controller %s not available\n", arg);
 			return;
@@ -430,7 +430,7 @@ static void cmd_select(const char *arg)
 		return;
 	}
 
-	proxy = find_proxy_by_address(arg);
+	proxy = find_proxy_by_address(ctrl_list, arg);
 	if (!proxy) {
 		printf("Controller %s not available\n", arg);
 		return;
@@ -605,6 +605,48 @@ static void cmd_scan(const char *arg)
 	}
 }
 
+static void pair_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	begin_message();
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		printf("Failed to pair: %s\n", error.name);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	printf("Pairing successful\n");
+
+done:
+	end_message();
+}
+
+static void cmd_pair(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	if (!arg || !strlen(arg)) {
+		printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		printf("Device %s not available\n", arg);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Pair", NULL, pair_reply,
+							NULL, NULL) == FALSE) {
+		printf("Failed to pair\n");
+		return;
+	}
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -632,7 +674,8 @@ static void cmd_quit(const char *arg)
 	g_main_loop_quit(main_loop);
 }
 
-static char *ctrl_generator(const char *text, int state)
+static char *generic_generator(const char *text, int state,
+					GList *source, const char *property)
 {
 	static int index, len;
 	GList *list;
@@ -642,24 +685,34 @@ static char *ctrl_generator(const char *text, int state)
 		len = strlen(text);
 	}
 
-	for (list = g_list_nth(ctrl_list, index); list;
+	for (list = g_list_nth(source, index); list;
 						list = g_list_next(list)) {
 		GDBusProxy *proxy = list->data;
 		DBusMessageIter iter;
-		const char *address;
+		const char *str;
 
 		index++;
 
-		if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+		if (g_dbus_proxy_get_property(proxy, property, &iter) == FALSE)
 			continue;
 
-		dbus_message_iter_get_basic(&iter, &address);
+		dbus_message_iter_get_basic(&iter, &str);
 
-		if (!strncmp(address, text, len))
-			return strdup(address);
+		if (!strncmp(str, text, len))
+			return strdup(str);
         }
 
 	return NULL;
+}
+
+static char *ctrl_generator(const char *text, int state)
+{
+	return generic_generator(text, state, ctrl_list, "Address");
+}
+
+static char *dev_generator(const char *text, int state)
+{
+	return generic_generator(text, state, dev_list, "Address");
 }
 
 static const struct {
@@ -684,6 +737,8 @@ static const struct {
 					"Set controller discoverable mode" },
 	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
+	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
+							dev_generator },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
