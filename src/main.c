@@ -503,8 +503,10 @@ int main(int argc, char *argv[])
 		seconds = atoi(watchdog_usec) / (1000 * 1000);
 		info("Watchdog timeout is %d seconds", seconds);
 
-		watchdog = g_timeout_add_seconds(seconds / 2,
-						watchdog_callback, NULL);
+		watchdog = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
+							seconds / 2,
+							watchdog_callback,
+							NULL, NULL);
 	} else
 		watchdog = 0;
 
