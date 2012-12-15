@@ -2849,37 +2849,70 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 						l->data);
 }
 
-static char *primary_list_to_string(GSList *primary_list)
-{
-	GString *services;
-	GSList *l;
-
-	services = g_string_new(NULL);
-
-	for (l = primary_list; l; l = l->next) {
-		struct gatt_primary *primary = l->data;
-		char service[64];
-
-		memset(service, 0, sizeof(service));
-
-		snprintf(service, sizeof(service), "%04X#%04X#%s ",
-				primary->range.start, primary->range.end, primary->uuid);
-
-		services = g_string_append(services, service);
-	}
-
-	return g_string_free(services, FALSE);
-}
-
 static void store_services(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device->adapter;
-	char *str = primary_list_to_string(device->primaries);
+	char filename[PATH_MAX + 1];
+	char src_addr[18], dst_addr[18];
+	uuid_t uuid;
+	char *prim_uuid;
+	GKeyFile *key_file;
+	GSList *l;
+	char *data;
+	gsize length = 0;
 
-	write_device_primaries(adapter_get_address(adapter), &device->bdaddr,
-						device->bdaddr_type, str);
+	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
+	prim_uuid = bt_uuid2string(&uuid);
 
-	g_free(str);
+	ba2str(adapter_get_address(adapter), src_addr);
+	ba2str(&device->bdaddr, dst_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/attributes", src_addr,
+								dst_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+
+	for (l = device->primaries; l; l = l->next) {
+		struct gatt_primary *primary = l->data;
+		char handle[6], uuid_str[33];
+		int i;
+
+		sprintf(handle, "%hu", primary->range.start);
+
+		bt_string2uuid(&uuid, primary->uuid);
+		sdp_uuid128_to_uuid(&uuid);
+
+		switch (uuid.type) {
+		case SDP_UUID16:
+			sprintf(uuid_str, "%4.4X", uuid.value.uuid16);
+			break;
+		case SDP_UUID32:
+			sprintf(uuid_str, "%8.8X", uuid.value.uuid32);
+			break;
+		case SDP_UUID128:
+			for (i = 0; i < 16; i++)
+				sprintf(uuid_str + (i * 2), "%2.2X",
+						uuid.value.uuid128.data[i]);
+			break;
+		default:
+			uuid_str[0] = '\0';
+		}
+
+		g_key_file_set_string(key_file, handle, "UUID", prim_uuid);
+		g_key_file_set_string(key_file, handle, "Value", uuid_str);
+		g_key_file_set_integer(key_file, handle, "EndGroupHandle",
+					primary->range.end);
+	}
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	if (length > 0) {
+		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		g_file_set_contents(filename, data, length, NULL);
+	}
+
+	g_free(data);
+	g_key_file_free(key_file);
 }
 
 static void attio_connected(gpointer data, gpointer user_data)

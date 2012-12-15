@@ -273,21 +273,6 @@ int read_device_pairable(const bdaddr_t *bdaddr, gboolean *mode)
 	return 0;
 }
 
-int write_device_primaries(const bdaddr_t *sba, const bdaddr_t *dba,
-			  uint8_t bdaddr_type, const char *services)
-{
-	char filename[PATH_MAX + 1], key[20];
-
-	create_filename(filename, PATH_MAX, sba, "primaries");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(dba, key);
-	sprintf(&key[17], "#%hhu", bdaddr_type);
-
-	return textfile_put(filename, key, services);
-}
-
 static void filter_keys(char *key, char *value, void *data)
 {
 	struct match *match = data;
