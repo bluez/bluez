@@ -32,6 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <glib.h>
+#include <sys/file.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/uuid.h>
@@ -746,6 +747,36 @@ static uint16_t find_by_type(struct gatt_channel *channel, uint16_t start,
 	return len;
 }
 
+static int read_device_ccc(struct btd_device *device, uint16_t handle,
+				uint16_t *value)
+{
+	char *filename;
+	GKeyFile *key_file;
+	char group[6];
+	char *str;
+	unsigned int config;
+	int err = 0;
+
+	filename = btd_device_get_storage_path(device, "ccc");
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	sprintf(group, "%hu", handle);
+
+	str = g_key_file_get_string(key_file, group, "Value", NULL);
+	if (!str || sscanf(str, "%04X", &config) != 1)
+		err = -ENOENT;
+	else
+		*value = config;
+
+	g_free(str);
+	g_free(filename);
+	g_key_file_free(key_file);
+
+	return err;
+}
+
 static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 						uint8_t *pdu, size_t len)
 {
@@ -753,7 +784,6 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 	uint8_t status;
 	GList *l;
 	uint16_t cccval;
-	uint8_t bdaddr_type;
 	guint h = handle;
 
 	l = g_list_find_custom(channel->server->database,
@@ -764,11 +794,8 @@ static uint16_t read_value(struct gatt_channel *channel, uint16_t handle,
 
 	a = l->data;
 
-	bdaddr_type = device_get_addr_type(channel->device);
-
 	if (bt_uuid_cmp(&ccc_uuid, &a->uuid) == 0 &&
-		read_device_ccc(&channel->src, &channel->dst, bdaddr_type,
-							handle, &cccval) == 0) {
+		read_device_ccc(channel->device, handle, &cccval) == 0) {
 		uint8_t config[2];
 
 		att_put_u16(cccval, config);
@@ -794,7 +821,6 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 	uint8_t status;
 	GList *l;
 	uint16_t cccval;
-	uint8_t bdaddr_type;
 	guint h = handle;
 
 	l = g_list_find_custom(channel->server->database,
@@ -809,11 +835,8 @@ static uint16_t read_blob(struct gatt_channel *channel, uint16_t handle,
 		return enc_error_resp(ATT_OP_READ_BLOB_REQ, handle,
 					ATT_ECODE_INVALID_OFFSET, pdu, len);
 
-	bdaddr_type = device_get_addr_type(channel->device);
-
 	if (bt_uuid_cmp(&ccc_uuid, &a->uuid) == 0 &&
-		read_device_ccc(&channel->src, &channel->dst, bdaddr_type,
-							handle, &cccval) == 0) {
+		read_device_ccc(channel->device, handle, &cccval) == 0) {
 		uint8_t config[2];
 
 		att_put_u16(cccval, config);
@@ -869,10 +892,31 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		}
 	} else {
 		uint16_t cccval = att_get_u16(value);
-		uint8_t bdaddr_type = device_get_addr_type(channel->device);
+		char *filename;
+		GKeyFile *key_file;
+		char group[6], value[5];
+		char *data;
+		gsize length = 0;
 
-		write_device_ccc(&channel->src, &channel->dst, bdaddr_type,
-								handle, cccval);
+		filename = btd_device_get_storage_path(channel->device, "ccc");
+
+		key_file = g_key_file_new();
+		g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+		sprintf(group, "%hu", handle);
+		sprintf(value, "%hhX", cccval);
+		g_key_file_set_string(key_file, group, "Value", value);
+
+		data = g_key_file_to_data(key_file, &length, NULL);
+		if (length > 0) {
+			create_file(filename,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+			g_file_set_contents(filename, data, length, NULL);
+		}
+
+		g_free(data);
+		g_free(filename);
+		g_key_file_free(key_file);
 	}
 
 	return enc_write_resp(pdu, len);
@@ -1089,8 +1133,13 @@ guint attrib_channel_attach(GAttrib *attrib)
 	ba2str(&channel->dst, addr);
 
 	device = adapter_find_device(server->adapter, addr);
-	if (device == NULL || device_is_bonded(device) == FALSE)
-		delete_device_ccc(&channel->src, &channel->dst);
+	if (device == NULL || device_is_bonded(device) == FALSE) {
+		char *filename;
+
+		filename = btd_device_get_storage_path(channel->device, "ccc");
+		unlink(filename);
+		g_free(filename);
+	}
 
 	if (cid != ATT_CID) {
 		channel->le = FALSE;

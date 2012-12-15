@@ -35,9 +35,3 @@ ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin);
 sdp_record_t *record_from_string(const gchar *str);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
 int read_device_pairable(const bdaddr_t *local, gboolean *mode);
-int read_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,
-			uint8_t bdaddr_type, uint16_t handle, uint16_t *value);
-int write_device_ccc(const bdaddr_t *local, const bdaddr_t *peer,
-					uint8_t bdaddr_type, uint16_t handle,
-					uint16_t value);
-void delete_device_ccc(const bdaddr_t *local, const bdaddr_t *peer);
