@@ -757,6 +757,8 @@ done:
 
 	dbus_pending_call_unref(client->pending_call);
 	client->pending_call = NULL;
+
+	g_dbus_client_unref(client);
 }
 
 static void get_managed_objects(GDBusClient *client)
@@ -776,6 +778,8 @@ static void get_managed_objects(GDBusClient *client)
 		dbus_message_unref(msg);
 		return;
 	}
+
+	g_dbus_client_ref(client);
 
 	dbus_pending_call_set_notify(client->pending_call,
 				get_managed_objects_reply, client, NULL);
@@ -804,6 +808,8 @@ static void get_name_owner_reply(DBusPendingCall *call, void *user_data)
 	g_free(client->unique_name);
 	client->unique_name = g_strdup(name);
 
+	g_dbus_client_ref(client);
+
 	if (client->connect_func)
 		client->connect_func(client->dbus_conn, client->connect_data);
 
@@ -814,6 +820,8 @@ done:
 	client->pending_call = NULL;
 
 	get_managed_objects(client);
+
+	g_dbus_client_unref(client);
 }
 
 static void get_name_owner(GDBusClient *client, const char *name)
