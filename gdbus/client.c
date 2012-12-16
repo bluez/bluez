@@ -675,7 +675,11 @@ static void interfaces_added(GDBusClient *client, DBusMessage *msg)
 	dbus_message_iter_get_basic(&iter, &path);
 	dbus_message_iter_next(&iter);
 
+	g_dbus_client_ref(client);
+
 	parse_interfaces(client, path, &iter);
+
+	g_dbus_client_unref(client);
 }
 
 static void interfaces_removed(GDBusClient *client, DBusMessage *msg)
@@ -697,6 +701,8 @@ static void interfaces_removed(GDBusClient *client, DBusMessage *msg)
 
 	dbus_message_iter_recurse(&iter, &entry);
 
+	g_dbus_client_ref(client);
+
 	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
 		const char *interface;
 
@@ -704,6 +710,8 @@ static void interfaces_removed(GDBusClient *client, DBusMessage *msg)
 		proxy_remove(client, path, interface);
 		dbus_message_iter_next(&entry);
 	}
+
+	g_dbus_client_unref(client);
 }
 
 static void parse_managed_objects(GDBusClient *client, DBusMessage *msg)
