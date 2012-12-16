@@ -196,6 +196,23 @@ static void prop_entry_free(gpointer data)
 	g_free(prop);
 }
 
+static GDBusProxy *proxy_lookup(GDBusClient *client, const char *path,
+						const char *interface)
+{
+	GList *list;
+
+	for (list = g_list_first(client->proxy_list); list;
+						list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		if (g_str_equal(proxy->interface, interface) == TRUE &&
+				g_str_equal(proxy->obj_path, path) == TRUE)
+			return proxy;
+        }
+
+	return NULL;
+}
+
 static GDBusProxy *proxy_new(GDBusClient *client, const char *path,
 						const char *interface)
 {
@@ -620,6 +637,12 @@ static void parse_properties(GDBusClient *client, const char *path,
 
 	if (g_str_equal(interface, DBUS_INTERFACE_PROPERTIES) == TRUE)
 		return;
+
+	proxy = proxy_lookup(client, path, interface);
+	if (proxy) {
+		update_properties(proxy, iter);
+		return;
+	}
 
 	proxy = proxy_new(client, path, interface);
 	if (proxy == NULL)
