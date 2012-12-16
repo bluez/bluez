@@ -60,6 +60,7 @@ test/bluezutils.pyc
 unit/test-eir
 unit/test-uuid
 unit/test-textfile
+unit/test-gdbus-client
 tools/btattach
 tools/btmgmt
 tools/btsnoop
