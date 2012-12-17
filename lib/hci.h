@@ -1326,6 +1326,14 @@ typedef struct {
 } __attribute__ ((packed)) read_bd_addr_rp;
 #define READ_BD_ADDR_RP_SIZE 7
 
+#define OCF_READ_DATA_BLOCK_SIZE	0x000A
+typedef struct {
+	uint8_t		status;
+	uint16_t	max_acl_len;
+	uint16_t	data_block_len;
+	uint16_t	num_blocks;
+} __attribute__ ((packed)) read_data_block_size_rp;
+
 /* Status params */
 #define OGF_STATUS_PARAM	0x05
 
