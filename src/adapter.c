@@ -417,29 +417,9 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
 				bool reply, GDBusPendingPropertySet id)
 {
-	int err;
-
-	if (!adapter->connectable)
-		return g_dbus_pending_property_error(id,
-						ERROR_INTERFACE ".NotReady",
-						"Resource Not Ready");
-
 	if (pairable == adapter->pairable)
 		goto done;
 
-	if (!adapter->discoverable)
-		goto store;
-
-	err = set_mode(adapter, MODE_DISCOVERABLE);
-	if (err < 0) {
-		if (reply)
-			g_dbus_pending_property_error(id,
-						ERROR_INTERFACE ".Failed",
-						strerror(-err));
-		return;
-	}
-
-store:
 	mgmt_set_pairable(adapter->dev_id, pairable);
 
 done:
