@@ -37,55 +37,5 @@ Use specific MTU size for SDP server.
 .I @CONFIGDIR@/main.conf
 Default location of the global configuration file.
 
-.TP
-.I @STORAGEDIR@/nn:nn:nn:nn:nn:nn/linkkeys
-Default location for link keys of paired devices. The directory
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP
-is the address of the local device. The file is line separated, with
-the following columns separated by whitespace:
-
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP Remote device address.
-
-\fInnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn\fP Link key.
-
-\fIn\fP Link type integer.
-
-.TP
-.I @STORAGEDIR@/nn:nn:nn:nn:nn:nn/names
-Default location for the device name cache. The directory
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP
-is the address of the local device. The file is line separated, with
-the following columns separated by whitespace:
-
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP Remote device address.
-
-\fIname\fP Remote device name, terminated with newline.
-
-.TP
-.I @STORAGEDIR@/nn:nn:nn:nn:nn:nn/features
-Default location for the features cache. The directory
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP
-is the address of the local device. The file is line separated, with
-the following columns separated by whitespace:
-
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP Remote device address.
-
-\fInnnnnnnnnnnnnnnn\fP Remote device LMP features coded as an 8 byte bitfield.
-
-.TP
-.I @STORAGEDIR@/nn:nn:nn:nn:nn:nn/manufacturers
-Default location for the manufacturers cache. The directory
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP
-is the address of the local device. The file is line separated, with
-the following columns separated by whitespace:
-
-\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP\fB:\fP\fInn\fP Remote device address.
-
-\fIn\fP Remote device manufacturer integer.
-
-\fIn\fP Remote device LMP version integer.
-
-\fIn\fP Remote device LMP sub-version integer.
-
 .SH "AUTHOR"
 This manual page was written by Marcel Holtmann, Philipp Matthias Hahn and Fredrik Noring.
