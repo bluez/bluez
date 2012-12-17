@@ -37,7 +37,7 @@ emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
 endif
 
 if TOOLS
-bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool \
+bin_PROGRAMS += tools/hciattach tools/hciconfig tools/hcitool tools/hcidump \
 			tools/rfcomm tools/rctest tools/l2test tools/l2ping \
 			tools/sdptool tools/ciptool tools/bccmd
 
@@ -55,6 +55,33 @@ tools_hciconfig_LDADD = lib/libbluetooth-private.la
 
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
 tools_hcitool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @UDEV_LIBS@
+
+tools_hcidump_SOURCES = tools/hcidump.c \
+				tools/parser/parser.h tools/parser/parser.c \
+				tools/parser/lmp.c \
+				tools/parser/hci.c \
+				tools/parser/l2cap.h tools/parser/l2cap.c \
+				tools/parser/amp.c \
+				tools/parser/smp.c \
+				tools/parser/att.c \
+				tools/parser/sdp.h tools/parser/sdp.c \
+				tools/parser/rfcomm.h tools/parser/rfcomm.c \
+				tools/parser/bnep.c \
+				tools/parser/cmtp.c \
+				tools/parser/hidp.c \
+				tools/parser/hcrp.c \
+				tools/parser/avdtp.c \
+				tools/parser/avctp.c \
+				tools/parser/avrcp.c \
+				tools/parser/sap.c \
+				tools/parser/obex.c \
+				tools/parser/capi.c \
+				tools/parser/ppp.c \
+				tools/parser/tcpip.c \
+				tools/parser/ericsson.c \
+				tools/parser/csr.c \
+				tools/parser/bpa.c
+tools_hcidump_LDADD = lib/libbluetooth-private.la
 
 tools_rfcomm_LDADD = lib/libbluetooth-private.la
 
@@ -79,11 +106,13 @@ tools_bccmd_SOURCES += tools/csr_usb.c
 tools_bccmd_LDADD += @USB_LIBS@
 endif
 
-dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 tools/hcitool.1 \
+dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
+			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/rctest.1 tools/l2ping.1 \
 			tools/sdptool.1 tools/ciptool.1 tools/bccmd.1
 else
-EXTRA_DIST += tools/hciattach.1 tools/hciconfig.1 tools/hcitool.1 \
+EXTRA_DIST += tools/hciattach.1 tools/hciconfig.1 \
+			tools/hcitool.1 tools/hcidump.1 \
 			tools/rfcomm.1 tools/rctest.1 tools/l2ping.1 \
 			tools/sdptool.1 tools/ciptool.1 tools/bccmd.1
 endif

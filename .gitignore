@@ -44,6 +44,7 @@ tools/hciconfig
 tools/hcieventmask
 tools/hcisecfilter
 tools/hcitool
+tools/hcidump
 tools/hid2hci
 tools/rfcomm
 tools/l2ping
