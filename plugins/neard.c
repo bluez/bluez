@@ -593,17 +593,13 @@ static int process_params(DBusMessage *msg, struct btd_adapter *adapter,
 
 static int check_adapter(struct btd_adapter *adapter)
 {
-	gboolean pairable;
-
 	if (!adapter)
 		return -ENOENT;
 
 	if (btd_adapter_check_oob_handler(adapter))
 		return -EINPROGRESS;
 
-	btd_adapter_get_mode(adapter, NULL, NULL, &pairable);
-
-	if (!pairable || !adapter_get_agent(adapter))
+	if (!btd_adapter_get_pairable(adapter) || !adapter_get_agent(adapter))
 		return -ENONET;
 
 	if (!btd_adapter_ssp_enabled(adapter))

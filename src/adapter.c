@@ -1694,17 +1694,18 @@ static void load_connections(struct btd_adapter *adapter)
 }
 
 void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-						uint16_t *discoverable_timeout,
-						gboolean *pairable)
+						uint16_t *discoverable_timeout)
 {
 	if (mode)
 		*mode = adapter->mode;
 
 	if (discoverable_timeout)
 		*discoverable_timeout = adapter->discov_timeout;
+}
 
-	if (pairable)
-		*pairable = adapter->pairable;
+bool btd_adapter_get_pairable(struct btd_adapter *adapter)
+{
+	return adapter->pairable;
 }
 
 void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
