@@ -248,6 +248,8 @@ void ericsson_dump(int level, struct frame *frm);
 void csr_dump(int level, struct frame *frm);
 void bpa_dump(int level, struct frame *frm);
 
+void amp_assoc_dump(int level, uint8_t *assoc, uint16_t len);
+
 static inline void parse(struct frame *frm)
 {
 	p_indent(-1, NULL);
