@@ -97,47 +97,6 @@ static void obc_transfer_append_dbus_properties(struct obc_transfer *transfer,
 						&transfer->progress);
 }
 
-static DBusMessage *obc_transfer_get_properties(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	struct obc_transfer *transfer = user_data;
-	DBusMessage *reply;
-	DBusMessageIter iter, dict;
-
-	reply = dbus_message_new_method_return(message);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-						OBC_PROPERTIES_ARRAY_SIGNATURE,
-						&dict);
-
-	obc_transfer_append_dbus_properties(transfer, &dict);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
-}
-
-static void obc_transfer_append_dbus_data(struct obc_transfer *transfer,
-							DBusMessageIter *iter)
-{
-	const char *path = transfer->path;
-	DBusMessageIter entry, dict;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH, &path);
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_ARRAY,
-						OBC_PROPERTIES_ARRAY_SIGNATURE,
-						&dict);
-
-	obc_transfer_append_dbus_properties(transfer, &dict);
-
-	dbus_message_iter_close_container(&entry, &dict);
-	dbus_message_iter_close_container(iter, &entry);
-}
-
 DBusMessage *obc_transfer_create_dbus_reply(struct obc_transfer *transfer,
 							DBusMessage *message)
 {
@@ -149,7 +108,10 @@ DBusMessage *obc_transfer_create_dbus_reply(struct obc_transfer *transfer,
 		return NULL;
 
 	dbus_message_iter_init_append(reply, &iter);
-	obc_transfer_append_dbus_data(transfer, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&transfer->path);
+	g_dbus_get_properties(transfer->conn, transfer->path,
+						TRANSFER_INTERFACE, &iter);
 
 	return reply;
 }
