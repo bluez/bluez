@@ -42,8 +42,8 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "parser.h"
-#include "sdp.h"
+#include "parser/parser.h"
+#include "parser/sdp.h"
 
 #include "lib/hci.h"
 #include "lib/hci_lib.h"
