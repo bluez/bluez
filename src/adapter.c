@@ -2067,8 +2067,10 @@ static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
-	agent_unref(adapter->agent);
-	adapter->agent = NULL;
+	if (adapter->agent) {
+		agent_unref(adapter->agent);
+		adapter->agent = NULL;
+	}
 
 	DBG("%p", adapter);
 
