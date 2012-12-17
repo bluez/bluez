@@ -1160,7 +1160,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 	const char *name;
-	uint8_t mode, major, minor;
+	uint8_t major, minor;
 	char addr[18];
 
 	if (len < sizeof(*rp)) {
@@ -1213,18 +1213,9 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_get_major_minor(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
 
-	btd_adapter_get_mode(adapter, &mode);
-	if (mode == MODE_OFF && mgmt_powered(info->current_settings)) {
-		mgmt_set_powered(index, FALSE);
-		return;
-	}
-
-	if (mode != MODE_OFF) {
-		if (mgmt_powered(info->current_settings)) {
-			get_connections(sk, index);
-			btd_adapter_start(adapter);
-		} else
-			mgmt_set_powered(index, TRUE);
+	if (mgmt_powered(info->current_settings)) {
+		get_connections(sk, index);
+		btd_adapter_start(adapter);
 	}
 
 	btd_adapter_unref(adapter);
