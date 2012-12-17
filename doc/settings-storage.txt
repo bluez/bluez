@@ -84,7 +84,6 @@ Sample:
   Discoverable=false
   Connectable=true
   Pairable=true
-  Powered=true
   DiscoverableTimeout=0
 
 Attributes file format
