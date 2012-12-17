@@ -230,7 +230,6 @@ static void init_defaults(void)
 {
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.mode	= MODE_OFF;
 	main_opts.name	= g_strdup("BlueZ");
 	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;

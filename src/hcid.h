@@ -38,8 +38,6 @@ struct main_opts {
 	gboolean	name_resolv;
 	gboolean	debug_keys;
 
-	uint8_t		mode;
-
 	uint16_t	did_source;
 	uint16_t	did_vendor;
 	uint16_t	did_product;

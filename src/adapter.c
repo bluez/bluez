@@ -2746,12 +2746,7 @@ static void load_config(struct btd_adapter *adapter)
 
 	/* Get discoverable mode */
 	adapter->discoverable = g_key_file_get_boolean(key_file, "General",
-							"Discoverable", &gerr);
-	if (gerr) {
-		adapter->discoverable = (main_opts.mode == MODE_DISCOVERABLE);
-		g_error_free(gerr);
-		gerr = NULL;
-	}
+							"Discoverable", NULL);
 
 	/* Get discoverable timeout */
 	adapter->discov_timeout = g_key_file_get_integer(key_file, "General",
@@ -2762,7 +2757,7 @@ static void load_config(struct btd_adapter *adapter)
 		gerr = NULL;
 	}
 
-	adapter->mode = main_opts.mode;
+	adapter->mode = MODE_OFF;
 
 	mgmt_set_connectable(adapter->dev_id, TRUE);
 	mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
