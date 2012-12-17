@@ -144,6 +144,10 @@ if __name__ == '__main__':
 	capability = "KeyboardDisplay"
 
 	parser = OptionParser()
+	parser.add_option("-i", "--adapter", action="store",
+					type="string",
+					dest="adapter_pattern",
+					default=None)
 	parser.add_option("-c", "--capability", action="store",
 					type="string", dest="capability")
 	parser.add_option("-t", "--timeout", action="store",
@@ -153,27 +157,26 @@ if __name__ == '__main__':
 	if options.capability:
 		capability  = options.capability
 
-	adapter_pattern = None
-	if len(args) > 0:
-		adapter_pattern = args[0]
-
 	path = "/test/agent"
 	agent = Agent(bus, path)
 
 	mainloop = GObject.MainLoop()
 
-	if len(args) > 1:
-		device = bluezutils.find_device(args[1], adapter_pattern)
+	obj = bus.get_object(BUS_NAME, "/org/bluez");
+	manager = dbus.Interface(obj, "org.bluez.AgentManager1")
+	manager.RegisterAgent(path, capability)
+
+	print("Agent registered")
+
+	if len(args) > 0:
+		device = bluezutils.find_device(args[0],
+						options.adapter_pattern)
 		dev_path = device.object_path
 		agent.set_exit_on_release(False)
 		device.Pair(path, capability, timeout=options.timeout,
 					reply_handler=pair_reply,
 					error_handler=pair_error)
 		device_obj = device
-	else:
-		adapter = bluezutils.find_adapter(adapter_pattern)
-		adapter.RegisterAgent(path, capability)
-		print("Agent registered")
 
 	mainloop.run()
 
