@@ -4022,7 +4022,7 @@ static sdp_list_t *read_device_records(struct btd_device *device)
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
 	keys = g_key_file_get_keys(key_file, "ServiceRecords", NULL, NULL);
 
-	for (handle = keys; *handle; handle++) {
+	for (handle = keys; handle && *handle; handle++) {
 		str = g_key_file_get_string(key_file, "ServiceRecords",
 						*handle, NULL);
 		if (!str)
