@@ -159,6 +159,11 @@ if __name__ == '__main__':
 
 	print("Agent registered")
 
+	# Fix-up old style invocation (BlueZ 4)
+	if len(args) > 0 and args[0].startswith("hci"):
+		options.adapter_pattern = args[0]
+		del args[:1]
+
 	if len(args) > 0:
 		device = bluezutils.find_device(args[0],
 						options.adapter_pattern)
