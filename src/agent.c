@@ -864,14 +864,6 @@ uint8_t agent_get_io_capability(struct agent *agent)
 	return agent->capability;
 }
 
-gboolean agent_matches(struct agent *agent, const char *name, const char *path)
-{
-	if (g_str_equal(agent->owner, name) && g_str_equal(agent->path, path))
-		return TRUE;
-
-	return FALSE;
-}
-
 static void agent_destroy(gpointer data)
 {
 	struct agent *agent = data;

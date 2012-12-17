@@ -69,7 +69,5 @@ int agent_cancel(struct agent *agent);
 
 uint8_t agent_get_io_capability(struct agent *agent);
 
-gboolean agent_matches(struct agent *agent, const char *name, const char *path);
-
 void btd_agent_init(void);
 void btd_agent_cleanup(void);
