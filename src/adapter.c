@@ -315,19 +315,6 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	return session_ref(req);
 }
 
-static int adapter_set_mode(struct btd_adapter *adapter, uint8_t mode)
-{
-	int err;
-
-	if (mode == MODE_CONNECTABLE)
-		err = mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
-	else
-		err = mgmt_set_discoverable(adapter->dev_id, TRUE,
-						adapter->discov_timeout);
-
-	return err;
-}
-
 static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 {
 	int err;
@@ -356,8 +343,11 @@ static int set_mode(struct btd_adapter *adapter, uint8_t new_mode)
 	if (new_mode == adapter->mode)
 		return 0;
 
-	err = adapter_set_mode(adapter, new_mode);
-
+	if (new_mode == MODE_CONNECTABLE)
+		err = mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
+	else
+		err = mgmt_set_discoverable(adapter->dev_id, TRUE,
+						adapter->discov_timeout);
 	if (err < 0)
 		return err;
 
