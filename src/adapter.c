@@ -77,13 +77,6 @@
 #define EIR_SIM_HOST                0x10 /* Simultaneous LE and BR/EDR to Same
 					    Device Capable (Host) */
 
-#define IO_CAPABILITY_DISPLAYONLY	0x00
-#define IO_CAPABILITY_DISPLAYYESNO	0x01
-#define IO_CAPABILITY_KEYBOARDONLY	0x02
-#define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
-#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
-#define IO_CAPABILITY_INVALID		0xFF
-
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
@@ -1324,23 +1317,6 @@ static gboolean adapter_property_get_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static uint8_t parse_io_capability(const char *capability)
-{
-	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "DisplayOnly"))
-		return IO_CAPABILITY_DISPLAYONLY;
-	if (g_str_equal(capability, "DisplayYesNo"))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "KeyboardOnly"))
-		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputNoOutput"))
-		return IO_CAPABILITY_NOINPUTNOOUTPUT;
-	if (g_str_equal(capability, "KeyboardDisplay"))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	return IO_CAPABILITY_INVALID;
-}
-
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
 {
 	const gchar *dev_path = device_get_path(device);
@@ -1378,43 +1354,6 @@ static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
-								void *data)
-{
-	const char *path, *name, *capability;
-	struct btd_adapter *adapter = data;
-	uint8_t cap;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
-
-	cap = parse_io_capability(capability);
-	if (cap == IO_CAPABILITY_INVALID)
-		return btd_error_invalid_args(msg);
-
-	name = dbus_message_get_sender(msg);
-
-	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
-			path);
-
-	mgmt_set_io_capability(adapter->dev_id, cap);
-
-	return dbus_message_new_method_return(msg);
-}
-
-static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
-								void *data)
-{
-	const char *path;
-
-	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID))
-		return btd_error_invalid_args(msg);
-
-	return dbus_message_new_method_return(msg);
-}
-
 static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_METHOD("StartDiscovery", NULL, NULL,
 			adapter_start_discovery) },
@@ -1423,13 +1362,6 @@ static const GDBusMethodTable adapter_methods[] = {
 	{ GDBUS_ASYNC_METHOD("RemoveDevice",
 			GDBUS_ARGS({ "device", "o" }), NULL,
 			remove_device) },
-	{ GDBUS_METHOD("RegisterAgent",
-			GDBUS_ARGS({ "agent", "o" },
-					{ "capability", "s" }), NULL,
-			register_agent) },
-	{ GDBUS_METHOD("UnregisterAgent",
-			GDBUS_ARGS({ "agent", "o" }), NULL,
-			unregister_agent) },
 	{ }
 };
 
