@@ -2793,6 +2793,8 @@ static void load_config(struct btd_adapter *adapter)
 
 gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 {
+	struct agent *agent;
+
 	adapter->up = up;
 	adapter->already_up = up;
 
@@ -2803,6 +2805,13 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean up)
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
 		error("No address available for hci%d", adapter->dev_id);
 		return FALSE;
+	}
+
+	agent = agent_get(NULL);
+	if (agent) {
+		uint8_t io_cap = agent_get_io_capability(agent);
+		adapter_set_io_capability(adapter, io_cap);
+		agent_unref(agent);
 	}
 
 	sdp_init_services_list(&adapter->bdaddr);
@@ -3599,6 +3608,11 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 	}
 
 	check_oob_bonding_complete(adapter, bdaddr, status);
+}
+
+int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
+{
+	return mgmt_set_io_capability(adapter->dev_id, io_cap);
 }
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)

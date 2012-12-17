@@ -45,6 +45,7 @@
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
+#include "manager.h"
 #include "agent.h"
 
 #define IO_CAPABILITY_DISPLAYONLY	0x00
@@ -140,6 +141,23 @@ static void agent_request_free(struct agent_request *req, gboolean destroy)
 	g_free(req);
 }
 
+static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
+{
+	struct agent *agent = user_data;
+
+	adapter_set_io_capability(adapter, agent->capability);
+}
+
+static void set_default_agent(struct agent *agent)
+{
+	if (default_agent == agent)
+		return;
+
+	default_agent = agent;
+
+	manager_foreach_adapter(set_io_cap, agent);
+}
+
 static void agent_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct agent *agent = user_data;
@@ -152,6 +170,12 @@ static void agent_disconnect(DBusConnection *conn, void *user_data)
 	}
 
 	g_hash_table_remove(agent_list, agent->owner);
+
+	agent = agent_get(NULL);
+	if (agent) {
+		set_default_agent(agent);
+		agent_unref(agent);
+	}
 }
 
 struct agent *agent_ref(struct agent *agent)
@@ -171,9 +195,6 @@ void agent_unref(struct agent *agent)
 
 	if (agent->ref > 0)
 		return;
-
-	if (agent == default_agent)
-		default_agent = NULL;
 
 	if (agent->request) {
 		DBusError err;
@@ -963,7 +984,7 @@ static DBusMessage *request_default(DBusConnection *conn, DBusMessage *msg,
 	if (!agent)
 		return btd_error_does_not_exist(msg);
 
-	default_agent = agent;
+	set_default_agent(agent);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -993,5 +1014,6 @@ void btd_agent_cleanup(void)
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.AgentManager1");
 
+	default_agent = NULL;
 	g_hash_table_destroy(agent_list);
 }

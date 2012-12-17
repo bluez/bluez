@@ -209,6 +209,8 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t status);
 
+int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap);
+
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter);
 void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
 					uint8_t *hash, uint8_t *randomizer);
