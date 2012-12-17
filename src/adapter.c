@@ -3353,8 +3353,7 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 			return ret;
 	}
 
-	return read_pin_code(&adapter->bdaddr, device_get_address(dev),
-								pin_buf);
+	return -1;
 }
 
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,

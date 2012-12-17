@@ -144,26 +144,6 @@ int read_local_name(const bdaddr_t *bdaddr, char *name)
 	return 0;
 }
 
-ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
-{
-	char filename[PATH_MAX + 1], addr[18], *str;
-	ssize_t len;
-
-	create_filename(filename, PATH_MAX, local, "pincodes");
-
-	ba2str(peer, addr);
-	str = textfile_get(filename, addr);
-	if (!str)
-		return -ENOENT;
-
-	strncpy(pin, str, 16);
-	len = strlen(pin);
-
-	free(str);
-
-	return len;
-}
-
 sdp_record_t *record_from_string(const gchar *str)
 {
 	sdp_record_t *rec;
