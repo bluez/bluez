@@ -211,6 +211,20 @@ void agent_unref(struct agent *agent)
 	g_free(agent);
 }
 
+struct agent *agent_get(const char *owner)
+{
+	struct agent *agent;
+
+	agent = g_hash_table_lookup(agent_list, owner);
+	if (!agent)
+		agent = g_hash_table_lookup(agent_list, NULL);
+
+	if (!agent)
+		return NULL;
+
+	return agent_ref(agent);
+}
+
 struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 				const char *path, uint8_t capability,
 				agent_remove_cb cb, void *remove_cb_data)

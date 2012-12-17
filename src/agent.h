@@ -42,6 +42,8 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 struct agent *agent_ref(struct agent *agent);
 void agent_unref(struct agent *agent);
 
+struct agent *agent_get(const char *owner);
+
 int agent_authorize_service(struct agent *agent, const char *path,
 				const char *uuid, agent_cb cb,
 				void *user_data, GDestroyNotify destroy);
