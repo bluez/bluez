@@ -328,10 +328,20 @@ static inline int mgmt_low_energy(uint32_t settings)
 	return (settings & MGMT_SETTING_LE) != 0;
 }
 
+static int mode_changed(uint32_t s1, uint32_t s2)
+{
+	if (mgmt_connectable(s1) != mgmt_connectable(s2))
+		return 1;
+
+	if (mgmt_discoverable(s1) != mgmt_discoverable(s2))
+		return 1;
+
+	return 0;
+}
+
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
-	gboolean pairable;
 	uint16_t index;
 
 	DBG("new settings %x", settings);
@@ -340,14 +350,12 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 
 	info = &controllers[index];
 
-	if (mgmt_powered(settings))
+	if (mode_changed(settings, info->current_settings))
 		adapter_mode_changed(adapter, mgmt_connectable(settings),
 						mgmt_discoverable(settings));
 
-	pairable = btd_adapter_get_pairable(adapter);
-
-	if (mgmt_pairable(settings) != pairable)
-		mgmt_set_pairable(index, pairable);
+	if (mgmt_pairable(settings) != mgmt_pairable(info->current_settings))
+		btd_adapter_pairable_changed(adapter, mgmt_pairable(settings));
 
 	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
 		mgmt_set_ssp(index, TRUE);
@@ -376,23 +384,12 @@ static void mgmt_update_powered(struct btd_adapter *adapter,
 	update_settings(adapter, settings);
 }
 
-static int mode_changed(uint32_t s1, uint32_t s2)
-{
-	if (mgmt_connectable(s1) != mgmt_connectable(s2))
-		return 1;
-
-	if (mgmt_discoverable(s1) != mgmt_discoverable(s2))
-		return 1;
-
-	return 0;
-}
-
 static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 {
 	uint32_t settings, *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	gboolean old_power, new_power, old_pairable, new_pairable;
+	gboolean old_power, new_power;
 
 	if (len < sizeof(*ev)) {
 		error("Too small new settings event");
@@ -421,17 +418,8 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 
 	if (new_power != old_power)
 		mgmt_update_powered(adapter, info, settings);
-	else if (new_power && mode_changed(settings, info->current_settings))
-		adapter_mode_changed(adapter, mgmt_connectable(settings),
-						mgmt_discoverable(settings));
-
-	old_pairable = mgmt_pairable(info->current_settings);
-	new_pairable = mgmt_pairable(settings);
-
-	/* Check for pairable change, except when powered went from True
-	 * to False (in which case we always get all settings as False) */
-	if ((!old_power || new_power) && new_pairable != old_pairable)
-		btd_adapter_pairable_changed(adapter, mgmt_pairable(settings));
+	else
+		update_settings(adapter, settings);
 
 	info->current_settings = settings;
 }
@@ -1212,6 +1200,9 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	btd_adapter_get_major_minor(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
+
+	if (!mgmt_pairable(info->current_settings))
+		mgmt_set_pairable(index, TRUE);
 
 	if (mgmt_powered(info->current_settings)) {
 		get_connections(sk, index);

@@ -3045,28 +3045,25 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 void adapter_mode_changed(struct btd_adapter *adapter, bool connectable,
 							bool discoverable)
 {
-	bool emit_pairable;
+	struct DBusConnection *conn = btd_get_dbus_connection();
 
 	DBG("connectable %u (old %u) discoverable %u (old %u)",
 					connectable, adapter->connectable,
 					discoverable, adapter->discoverable);
 
-	if (connectable == adapter->connectable &&
-			discoverable == adapter->discoverable)
-		return;
+	if (connectable != adapter->connectable) {
+		adapter->connectable = connectable;
+		g_dbus_emit_property_changed(conn, adapter->path,
+						ADAPTER_INTERFACE,
+						"Connectable");
+	}
 
-	/* If connectable gets toggled emit the Pairable property */
-	emit_pairable = adapter->connectable != connectable;
-
-	adapter->connectable = connectable;
-	adapter->discoverable = discoverable;
-
-	if (emit_pairable)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "Pairable");
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-					ADAPTER_INTERFACE, "Discoverable");
+	if (discoverable != adapter->discoverable) {
+		adapter->discoverable = discoverable;
+		g_dbus_emit_property_changed(conn, adapter->path,
+						ADAPTER_INTERFACE,
+						"Discoverable");
+	}
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
