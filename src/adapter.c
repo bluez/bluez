@@ -1435,7 +1435,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
 	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
 		return btd_error_does_not_exist(msg);
 
-	agent_free(adapter->agent);
+	agent_unref(adapter->agent);
 	adapter->agent = NULL;
 
 	return dbus_message_new_method_return(msg);
@@ -2067,7 +2067,7 @@ static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 
-	agent_free(adapter->agent);
+	agent_unref(adapter->agent);
 	adapter->agent = NULL;
 
 	DBG("%p", adapter);

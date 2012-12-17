@@ -69,6 +69,7 @@ typedef enum {
 } agent_request_type_t;
 
 struct agent {
+	int ref;
 	struct btd_adapter *adapter;
 	char *name;
 	char *path;
@@ -149,12 +150,25 @@ static void agent_exited(DBusConnection *conn, void *user_data)
 
 	agent->exited = TRUE;
 
-	agent_free(agent);
+	agent_unref(agent);
 }
 
-void agent_free(struct agent *agent)
+struct agent *agent_ref(struct agent *agent)
 {
-	if (!agent)
+	agent->ref++;
+
+	DBG("%p: ref=%d", agent, agent->ref);
+
+	return agent;
+}
+
+void agent_unref(struct agent *agent)
+{
+	agent->ref--;
+
+	DBG("%p: ref=%d", agent, agent->ref);
+
+	if (agent->ref > 0)
 		return;
 
 	if (agent->remove_cb)
@@ -219,7 +233,7 @@ struct agent *agent_create(struct btd_adapter *adapter, const char *name,
 		g_dbus_add_disconnect_watch(btd_get_dbus_connection(), name,
 						agent_exited, agent, NULL);
 
-	return agent;
+	return agent_ref(agent);
 }
 
 static struct agent_request *agent_request_new(struct agent *agent,

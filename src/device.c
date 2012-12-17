@@ -388,7 +388,7 @@ static void device_free(gpointer user_data)
 	struct agent *agent = adapter_get_agent(adapter);
 
 	if (device->agent)
-		agent_free(device->agent);
+		agent_unref(device->agent);
 
 	if (agent && (agent_is_busy(agent, device) ||
 				agent_is_busy(agent, device->authr)))
@@ -2204,7 +2204,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	DBG("Removing device %s", device->path);
 
 	if (device->agent)
-		agent_free(device->agent);
+		agent_unref(device->agent);
 
 	if (device->bonding) {
 		uint8_t status;
@@ -3126,7 +3126,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 		return;
 
 	agent_cancel(device->agent);
-	agent_free(device->agent);
+	agent_unref(device->agent);
 	device->agent = NULL;
 }
 
