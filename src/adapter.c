@@ -143,7 +143,6 @@ struct btd_adapter {
 					 * limited */
 	uint8_t global_mode;		/* last valid global mode */
 	struct session_req *pending_mode;
-	struct agent *agent;		/* For the new API */
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
 	GSList *connections;		/* Connected devices */
@@ -666,11 +665,8 @@ static void session_free(void *data)
 	if (req->id)
 		g_dbus_remove_watch(btd_get_dbus_connection(), req->id);
 
-	if (req->msg) {
+	if (req->msg)
 		dbus_message_unref(req->msg);
-		if (!req->got_reply && req->mode && req->adapter->agent)
-			agent_cancel(req->adapter->agent);
-	}
 
 	g_free(req->owner);
 	g_free(req);
@@ -1382,13 +1378,6 @@ static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
-static void agent_removed(struct agent *agent, struct btd_adapter *adapter)
-{
-	mgmt_set_io_capability(adapter->dev_id, IO_CAPABILITY_NOINPUTNOOUTPUT);
-
-	adapter->agent = NULL;
-}
-
 static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -1400,17 +1389,11 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 			DBUS_TYPE_STRING, &capability, DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
-	if (adapter->agent)
-		return btd_error_already_exists(msg);
-
 	cap = parse_io_capability(capability);
 	if (cap == IO_CAPABILITY_INVALID)
 		return btd_error_invalid_args(msg);
 
 	name = dbus_message_get_sender(msg);
-
-	adapter->agent = agent_create(adapter, name, path, cap,
-				(agent_remove_cb) agent_removed, adapter);
 
 	DBG("Agent registered for hci%d at %s:%s", adapter->dev_id, name,
 			path);
@@ -1423,20 +1406,11 @@ static DBusMessage *register_agent(DBusConnection *conn, DBusMessage *msg,
 static DBusMessage *unregister_agent(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	const char *path, *name;
-	struct btd_adapter *adapter = data;
+	const char *path;
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
-
-	name = dbus_message_get_sender(msg);
-
-	if (!adapter->agent || !agent_matches(adapter->agent, name, path))
-		return btd_error_does_not_exist(msg);
-
-	agent_unref(adapter->agent);
-	adapter->agent = NULL;
 
 	return dbus_message_new_method_return(msg);
 }
@@ -2066,11 +2040,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
-
-	if (adapter->agent) {
-		agent_unref(adapter->agent);
-		adapter->agent = NULL;
-	}
 
 	DBG("%p", adapter);
 
@@ -3295,10 +3264,7 @@ void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
 {
-	if (!adapter)
-		return NULL;
-
-	return adapter->agent;
+	return agent_get(NULL);
 }
 
 void adapter_add_connection(struct btd_adapter *adapter,
