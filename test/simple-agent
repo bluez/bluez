@@ -106,15 +106,6 @@ class Agent(dbus.service.Object):
 		raise Rejected("Pairing rejected")
 
 	@dbus.service.method(AGENT_INTERFACE,
-					in_signature="s", out_signature="")
-	def ConfirmModeChange(self, mode):
-		print("ConfirmModeChange (%s)" % (mode))
-		authorize = ask("Authorize mode change (yes/no): ")
-		if (authorize == "yes"):
-			return
-		raise Rejected("Mode change by user")
-
-	@dbus.service.method(AGENT_INTERFACE,
 					in_signature="", out_signature="")
 	def Cancel(self):
 		print("Cancel")
