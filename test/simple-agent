@@ -169,9 +169,7 @@ if __name__ == '__main__':
 						options.adapter_pattern)
 		dev_path = device.object_path
 		agent.set_exit_on_release(False)
-		device.Pair(path, capability, timeout=options.timeout,
-					reply_handler=pair_reply,
-					error_handler=pair_error)
+		device.Pair(reply_handler=pair_reply, error_handler=pair_error)
 		device_obj = device
 	else:
 		manager.RequestDefault()
