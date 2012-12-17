@@ -77,6 +77,11 @@
 #define EIR_SIM_HOST                0x10 /* Simultaneous LE and BR/EDR to Same
 					    Device Capable (Host) */
 
+#define MODE_OFF		0x00
+#define MODE_CONNECTABLE	0x01
+#define MODE_DISCOVERABLE	0x02
+#define MODE_UNKNOWN		0xff
+
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 #define PENDING_FOUND_MAX 5
 
@@ -1690,12 +1695,6 @@ static void load_connections(struct btd_adapter *adapter)
 	}
 
 	g_slist_free_full(conns, g_free);
-}
-
-void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode)
-{
-	if (mode)
-		*mode = adapter->mode;
 }
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)

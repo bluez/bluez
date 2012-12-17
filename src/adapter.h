@@ -32,11 +32,6 @@
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 
-#define MODE_OFF		0x00
-#define MODE_CONNECTABLE	0x01
-#define MODE_DISCOVERABLE	0x02
-#define MODE_UNKNOWN		0xff
-
 #define MAX_NAME_LENGTH		248
 
 /* Invalid SSP passkey value used to indicate negative replies */
@@ -79,8 +74,6 @@ struct smp_ltk_info {
 void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);
-
-void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode);
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 
