@@ -350,6 +350,8 @@ gboolean manager_init(void)
 		return FALSE;
 	}
 
+	g_dbus_attach_object_manager(connection);
+
 	return g_dbus_register_interface(connection, OBEX_MANAGER_PATH,
 					OBEX_MANAGER_INTERFACE,
 					manager_methods, manager_signals, NULL,
@@ -367,6 +369,8 @@ void manager_cleanup(void)
 
 	if (agent)
 		agent_free(agent);
+
+	g_dbus_detach_object_manager(connection);
 
 	dbus_connection_unref(connection);
 }
