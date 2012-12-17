@@ -3394,3 +3394,10 @@ void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
 	g_free(adapter->oob_handler);
 	adapter->oob_handler = NULL;
 }
+
+void btd_adapter_for_each_device(struct btd_adapter *adapter,
+			void (*cb)(struct btd_device *device, void *data),
+			void *data)
+{
+	g_slist_foreach(adapter->devices, (GFunc) cb, data);
+}
