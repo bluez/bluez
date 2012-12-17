@@ -47,6 +47,9 @@ struct btdev {
 
 	struct btdev *conn;
 
+	btdev_command_func command_handler;
+	void *command_data;
+
 	btdev_send_func send_handler;
 	void *send_data;
 
@@ -274,6 +277,16 @@ void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr)
 		return;
 
 	memcpy(btdev->bdaddr, bdaddr, 6);
+}
+
+void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
+							void *user_data)
+{
+	if (!btdev)
+		return;
+
+	btdev->command_handler = handler;
+	btdev->command_data = user_data;
 }
 
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
@@ -620,9 +633,9 @@ static void remote_version_complete(struct btdev *btdev, uint16_t handle)
 							&rvc, sizeof(rvc));
 }
 
-static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
+static void default_cmd(struct btdev *btdev, uint16_t opcode,
+						const void *data, uint8_t len)
 {
-	const struct bt_hci_cmd_hdr *hdr = data;
 	const struct bt_hci_cmd_create_conn *cc;
 	const struct bt_hci_cmd_disconnect *dc;
 	const struct bt_hci_cmd_create_conn_cancel *ccc;
@@ -679,13 +692,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 	struct bt_hci_rsp_le_read_local_features lrlf;
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
-	uint16_t opcode;
 	uint8_t status, page;
-
-	if (len < sizeof(*hdr))
-		return;
-
-	opcode = le16_to_cpu(hdr->opcode);
 
 	switch (opcode) {
 	case BT_HCI_CMD_INQUIRY:
@@ -699,43 +706,43 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN:
-		cc = data + sizeof(*hdr);
+		cc = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_request(btdev, cc->bdaddr);
 		break;
 
 	case BT_HCI_CMD_DISCONNECT:
-		dc = data + sizeof(*hdr);
+		dc = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		disconnect_complete(btdev, le16_to_cpu(dc->handle), dc->reason);
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN_CANCEL:
-		ccc = data + sizeof(*hdr);
+		ccc = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, ccc->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
 		break;
 
 	case BT_HCI_CMD_ACCEPT_CONN_REQUEST:
-		acr = data + sizeof(*hdr);
+		acr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, acr->bdaddr, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_REJECT_CONN_REQUEST:
-		rcr = data + sizeof(*hdr);
+		rcr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, rcr->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
-		rnr = data + sizeof(*hdr);
+		rnr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		name_request_complete(btdev, rnr->bdaddr, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST_CANCEL:
-		rnrc = data + sizeof(*hdr);
+		rnrc = data;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		name_request_complete(btdev, rnrc->bdaddr,
@@ -743,20 +750,20 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_FEATURES:
-		rrf = data + sizeof(*hdr);
+		rrf = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		remote_features_complete(btdev, le16_to_cpu(rrf->handle));
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_EXT_FEATURES:
-		rref = data + sizeof(*hdr);
+		rref = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		remote_ext_features_complete(btdev, le16_to_cpu(rref->handle),
 								rref->page);
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_VERSION:
-		rrv = data + sizeof(*hdr);
+		rrv = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		remote_version_complete(btdev, le16_to_cpu(rrv->handle));
 		break;
@@ -768,14 +775,14 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_DEFAULT_LINK_POLICY:
-		wdlp = data + sizeof(*hdr);
+		wdlp = data;
 		btdev->default_link_policy = le16_to_cpu(wdlp->policy);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_MASK:
-		sem = data + sizeof(*hdr);
+		sem = data;
 		memcpy(btdev->event_mask, sem->mask, 8);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -787,7 +794,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_FILTER:
-		sef = data + sizeof(*hdr);
+		sef = data;
 		btdev->event_filter = sef->type;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -813,7 +820,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_LOCAL_NAME:
-		wln = data + sizeof(*hdr);
+		wln = data;
 		memcpy(btdev->name, wln->name, 248);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -832,7 +839,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_CONN_ACCEPT_TIMEOUT:
-		wcat = data + sizeof(*hdr);
+		wcat = data;
 		btdev->conn_accept_timeout = le16_to_cpu(wcat->timeout);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -845,7 +852,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_PAGE_TIMEOUT:
-		wpt = data + sizeof(*hdr);
+		wpt = data;
 		btdev->page_timeout = le16_to_cpu(wpt->timeout);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -858,7 +865,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
-		wse = data + sizeof(*hdr);
+		wse = data;
 		btdev->scan_enable = wse->enable;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -871,7 +878,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_AUTH_ENABLE:
-		wae = data + sizeof(*hdr);
+		wae = data;
 		btdev->auth_enable = wae->enable;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -884,7 +891,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_CLASS_OF_DEV:
-		wcod = data + sizeof(*hdr);
+		wcod = data;
 		memcpy(btdev->dev_class, wcod->dev_class, 3);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -897,7 +904,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_VOICE_SETTING:
-		wvs = data + sizeof(*hdr);
+		wvs = data;
 		btdev->voice_setting = le16_to_cpu(wvs->setting);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -910,7 +917,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_INQUIRY_MODE:
-		wim = data + sizeof(*hdr);
+		wim = data;
 		btdev->inquiry_mode = wim->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -923,7 +930,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_AFH_ASSESS_MODE:
-		waam = data + sizeof(*hdr);
+		waam = data;
 		btdev->afh_assess_mode = waam->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -937,7 +944,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE:
-		weir = data + sizeof(*hdr);
+		weir = data;
 		btdev->ext_inquiry_fec = weir->fec;
 		memcpy(btdev->ext_inquiry_rsp, weir->data, 240);
 		status = BT_HCI_ERR_SUCCESS;
@@ -951,7 +958,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
-		wspm = data + sizeof(*hdr);
+		wspm = data;
 		btdev->simple_pairing_mode = wspm->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -971,7 +978,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED:
-		wlhs = data + sizeof(*hdr);
+		wlhs = data;
 		btdev->le_supported = wlhs->supported;
 		btdev->le_simultaneous = wlhs->simultaneous;
 		status = BT_HCI_ERR_SUCCESS;
@@ -1001,7 +1008,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_EXT_FEATURES:
-		page = ((const uint8_t *) data)[sizeof(*hdr)];
+		page = ((const uint8_t *) data)[0];
 		switch (page) {
 		case 0x00:
 			rlef.status = BT_HCI_ERR_SUCCESS;
@@ -1076,7 +1083,7 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		break;
 
 	case BT_HCI_CMD_LE_SET_EVENT_MASK:
-		lsem = data + sizeof(*hdr);
+		lsem = data;
 		memcpy(btdev->le_event_mask, lsem->mask, 8);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -1123,6 +1130,67 @@ static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
 		cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
 		break;
 	}
+}
+
+struct btdev_callback {
+	void (*function)(btdev_callback callback, uint8_t response,
+				uint8_t status, const void *data, uint8_t len);
+	void *user_data;
+	uint16_t opcode;
+	const void *data;
+	uint8_t len;
+};
+
+void btdev_command_response(btdev_callback callback, uint8_t response,
+                                uint8_t status, const void *data, uint8_t len)
+{
+	callback->function(callback, response, status, data, len);
+}
+
+static void handler_callback(btdev_callback callback, uint8_t response,
+				uint8_t status, const void *data, uint8_t len)
+{
+	struct btdev *btdev = callback->user_data;
+
+	switch (response) {
+	case BTDEV_RESPONSE_DEFAULT:
+		default_cmd(btdev, callback->opcode,
+					callback->data, callback->len);
+		break;
+	case BTDEV_RESPONSE_COMMAND_STATUS:
+		cmd_status(btdev, status, callback->opcode);
+		break;
+	case BTDEV_RESPONSE_COMMAND_COMPLETE:
+		cmd_complete(btdev, callback->opcode, data, len);
+		break;
+	default:
+		cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND,
+						callback->opcode);
+		break;
+	}
+}
+
+static void process_cmd(struct btdev *btdev, const void *data, uint16_t len)
+{
+	struct btdev_callback callback;
+	const struct bt_hci_cmd_hdr *hdr = data;
+
+	if (len < sizeof(*hdr))
+		return;
+
+	callback.function = handler_callback;
+	callback.user_data = btdev;
+	callback.opcode = le16_to_cpu(hdr->opcode);
+	callback.data = data + sizeof(*hdr);
+	callback.len = hdr->plen;
+
+	if (btdev->command_handler)
+		btdev->command_handler(callback.opcode,
+					callback.data, callback.len,
+					&callback, btdev->command_data);
+	else
+		default_cmd(btdev, callback.opcode,
+					callback.data, callback.len);
 }
 
 void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)

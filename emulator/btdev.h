@@ -24,6 +24,32 @@
 
 #include <stdint.h>
 
+#define BTDEV_RESPONSE_DEFAULT		0
+#define BTDEV_RESPONSE_COMMAND_STATUS	1
+#define BTDEV_RESPONSE_COMMAND_COMPLETE	2
+
+typedef struct btdev_callback * btdev_callback;
+
+void btdev_command_response(btdev_callback callback, uint8_t response,
+				uint8_t status, const void *data, uint8_t len);
+
+#define btdev_command_default(callback) \
+		btdev_command_response(callback, \
+			BTDEV_RESPONSE_DEFAULT, 0x00, NULL, 0);
+
+#define btdev_command_status(callback, status) \
+		btdev_command_response(callback, \
+			BTDEV_RESPONSE_COMMAND_STATUS, status, NULL, 0);
+
+#define btdev_command_complete(callback, data, len) \
+		 btdev_command_response(callback, \
+			BTDEV_RESPONSE_COMMAND_COMPLETE, 0x00, data, len);
+
+
+typedef void (*btdev_command_func) (uint16_t opcode,
+				const void *data, uint8_t len,
+				btdev_callback callback, void *user_data);
+
 typedef void (*btdev_send_func) (const void *data, uint16_t len,
 							void *user_data);
 
@@ -39,6 +65,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id);
 void btdev_destroy(struct btdev *btdev);
 
 void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr);
+
+void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
+							void *user_data);
 
 void btdev_set_send_handler(struct btdev *btdev, btdev_send_func handler,
 							void *user_data);
