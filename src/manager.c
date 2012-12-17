@@ -156,7 +156,7 @@ GSList *manager_get_adapters(void)
 	return adapters;
 }
 
-struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
+struct btd_adapter *btd_manager_register_adapter(int id, gboolean powered)
 {
 	struct btd_adapter *adapter;
 	const char *path;
@@ -173,7 +173,7 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean up)
 
 	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_init(adapter, up)) {
+	if (!adapter_init(adapter, powered)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;

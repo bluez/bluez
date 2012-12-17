@@ -35,5 +35,5 @@ struct btd_adapter *manager_find_adapter_by_id(int id);
 struct btd_adapter *manager_get_default_adapter(void);
 void manager_foreach_adapter(adapter_cb func, gpointer user_data);
 GSList *manager_get_adapters(void);
-struct btd_adapter *btd_manager_register_adapter(int id, gboolean up);
+struct btd_adapter *btd_manager_register_adapter(int id, gboolean powered);
 int btd_manager_unregister_adapter(int id);
