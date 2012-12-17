@@ -872,17 +872,6 @@ gboolean agent_matches(struct agent *agent, const char *name, const char *path)
 	return FALSE;
 }
 
-gboolean agent_is_busy(struct agent *agent, void *user_data)
-{
-	if (!agent->request)
-		return FALSE;
-
-	if (user_data && user_data != agent->request->user_data)
-		return FALSE;
-
-	return TRUE;
-}
-
 static void agent_destroy(gpointer data)
 {
 	struct agent *agent = data;
