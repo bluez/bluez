@@ -66,12 +66,7 @@
 #include "storage.h"
 #include "attrib-server.h"
 
-#define IO_CAPABILITY_DISPLAYONLY	0x00
-#define IO_CAPABILITY_DISPLAYYESNO	0x01
-#define IO_CAPABILITY_KEYBOARDONLY	0x02
 #define IO_CAPABILITY_NOINPUTNOOUTPUT	0x03
-#define IO_CAPABILITY_KEYBOARDDISPLAY	0x04
-#define IO_CAPABILITY_INVALID		0xFF
 
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		1
@@ -1455,28 +1450,13 @@ static void create_bond_req_exit(DBusConnection *conn, void *user_data)
 	}
 }
 
-static uint8_t parse_io_capability(const char *capability)
-{
-	if (g_str_equal(capability, ""))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "DisplayOnly"))
-		return IO_CAPABILITY_DISPLAYONLY;
-	if (g_str_equal(capability, "DisplayYesNo"))
-		return IO_CAPABILITY_DISPLAYYESNO;
-	if (g_str_equal(capability, "KeyboardOnly"))
-		return IO_CAPABILITY_KEYBOARDONLY;
-	if (g_str_equal(capability, "NoInputNoOutput"))
-		return IO_CAPABILITY_NOINPUTNOOUTPUT;
-	if (g_str_equal(capability, "KeyboardDisplay"))
-		return IO_CAPABILITY_KEYBOARDDISPLAY;
-	return IO_CAPABILITY_INVALID;
-}
-
 static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	struct btd_device *device = data;
 	struct btd_adapter *adapter = device->adapter;
+	const char *sender;
+	struct agent *agent;
 	struct bonding_req *bonding;
 	uint8_t io_cap;
 	int err;
@@ -1492,15 +1472,22 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (device_is_bonded(device))
 		return btd_error_already_exists(msg);
 
-	io_cap = parse_io_capability("");
+	sender = dbus_message_get_sender(msg);
+
+	agent = agent_get(sender);
+	if (agent) {
+		io_cap = agent_get_io_capability(agent);
+		agent_unref(agent);
+	} else {
+		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+	}
 
 	bonding = bonding_request_new(msg, device, NULL, io_cap);
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(
 						btd_get_dbus_connection(),
-						dbus_message_get_sender(msg),
-						create_bond_req_exit, device,
-						NULL);
+						sender, create_bond_req_exit,
+						device, NULL);
 
 	device->bonding = bonding;
 	bonding->device = device;
