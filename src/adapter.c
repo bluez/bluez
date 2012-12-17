@@ -366,25 +366,8 @@ done:
 static void set_discoverable(struct btd_adapter *adapter,
 			gboolean discoverable, GDBusPendingPropertySet id)
 {
-	uint8_t mode;
-	int err;
-
-	mode = discoverable ? MODE_DISCOVERABLE : MODE_CONNECTABLE;
-
-	if (mode == adapter->mode) {
-		adapter->global_mode = mode;
-		return g_dbus_pending_property_success(id);
-	}
-
-	err = set_mode(adapter, mode);
-	if (err < 0)
-		return g_dbus_pending_property_error(id,
-						ERROR_INTERFACE ".Failed",
-						strerror(-err));
-
-	adapter->pending_mode = create_session(adapter, NULL, mode,
-					SESSION_TYPE_MODE_GLOBAL, NULL);
-	adapter->pending_mode->prop_id = id;
+	mgmt_set_discoverable(adapter->dev_id, discoverable, 0);
+	g_dbus_pending_property_success(id);
 }
 
 static void set_powered(struct btd_adapter *adapter, gboolean powered,
