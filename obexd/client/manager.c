@@ -269,6 +269,8 @@ int manager_init(void)
 		return -1;
 	}
 
+	g_dbus_attach_object_manager(conn);
+
 	if (g_dbus_register_interface(conn, CLIENT_PATH, CLIENT_INTERFACE,
 						client_methods, NULL, NULL,
 							NULL, NULL) == FALSE) {
@@ -299,5 +301,6 @@ void manager_exit(void)
 		module->exit();
 
 	g_dbus_unregister_interface(conn, CLIENT_PATH, CLIENT_INTERFACE);
+	g_dbus_detach_object_manager(conn);
 	dbus_connection_unref(conn);
 }
