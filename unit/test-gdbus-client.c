@@ -72,6 +72,9 @@ static void client_connect_disconnect(void)
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_private(DBUS_BUS_SESSION, SERVICE_NAME, NULL);
 
+	if (dbus_conn == NULL)
+		return;
+
 	g_dbus_register_interface(dbus_conn, SERVICE_PATH, SERVICE_NAME,
 				methods, signals, properties, NULL, NULL);
 
