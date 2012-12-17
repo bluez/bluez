@@ -3662,23 +3662,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pin,
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
-	struct agent *adapter_agent = adapter_get_agent(device->adapter);
 
-	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
-
-		if (auth->agent == adapter_agent || adapter_agent == NULL)
-			goto done;
-
-		if (agent_request_pincode(adapter_agent, device, pincode_cb,
-						auth->secure, auth, NULL) < 0)
-			goto done;
-
-		auth->agent = adapter_agent;
-		return;
-	}
-
-done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->agent == NULL)
 		return;
@@ -3686,6 +3670,7 @@ done:
 	btd_adapter_pincode_reply(device->adapter, device_get_address(device),
 						pin, pin ? strlen(pin) : 0);
 
+	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
 }
 
@@ -3693,24 +3678,7 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
-	struct agent *adapter_agent = adapter_get_agent(device->adapter);
 
-	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
-
-		if (auth->agent == adapter_agent || adapter_agent == NULL)
-			goto done;
-
-		if (agent_request_confirmation(adapter_agent, device,
-						auth->passkey, confirm_cb,
-						auth, NULL) < 0)
-			goto done;
-
-		auth->agent = adapter_agent;
-		return;
-	}
-
-done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->agent == NULL)
 		return;
@@ -3719,6 +3687,7 @@ done:
 						device_get_addr_type(device),
 						err ? FALSE : TRUE);
 
+	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
 }
 
@@ -3727,23 +3696,7 @@ static void passkey_cb(struct agent *agent, DBusError *err,
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
-	struct agent *adapter_agent = adapter_get_agent(device->adapter);
 
-	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
-
-		if (auth->agent == adapter_agent || adapter_agent == NULL)
-			goto done;
-
-		if (agent_request_passkey(adapter_agent, device, passkey_cb,
-							auth, NULL) < 0)
-			goto done;
-
-		auth->agent = adapter_agent;
-		return;
-	}
-
-done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->agent == NULL)
 		return;
@@ -3754,6 +3707,7 @@ done:
 	btd_adapter_passkey_reply(device->adapter, device_get_address(device),
 					device_get_addr_type(device), passkey);
 
+	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
 }
 
@@ -3761,28 +3715,7 @@ static void display_pincode_cb(struct agent *agent, DBusError *err, void *data)
 {
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
-	struct agent *adapter_agent = adapter_get_agent(device->adapter);
 
-	if (err && (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err->name) ||
-				g_str_equal(DBUS_ERROR_NO_REPLY, err->name))) {
-
-		/* Request a pincode if we fail to display one */
-		if (auth->agent == adapter_agent || adapter_agent == NULL) {
-			if (agent_request_pincode(agent, device, pincode_cb,
-						auth->secure, auth, NULL) < 0)
-				goto done;
-			return;
-		}
-
-		if (agent_display_pincode(adapter_agent, device, auth->pincode,
-					display_pincode_cb, auth, NULL) < 0)
-			goto done;
-
-		auth->agent = adapter_agent;
-		return;
-	}
-
-done:
 	/* No need to reply anything if the authentication already failed */
 	if (auth->agent == NULL)
 		return;
@@ -3791,6 +3724,8 @@ done:
 
 	g_free(device->authr->pincode);
 	device->authr->pincode = NULL;
+
+	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
 }
 
