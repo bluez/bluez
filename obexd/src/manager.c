@@ -310,8 +310,6 @@ static const GDBusSignalTable manager_signals[] = {
 	{ GDBUS_SIGNAL("TransferStarted", GDBUS_ARGS({ "transfer", "o"})) },
 	{ GDBUS_SIGNAL("TransferCompleted", GDBUS_ARGS({ "transfer", "o" },
 							{ "success", "b" })) },
-	{ GDBUS_SIGNAL("SessionCreated", GDBUS_ARGS({ "session", "o" })) },
-	{ GDBUS_SIGNAL("SessionRemoved", GDBUS_ARGS({ "session", "o" })) },
 	{ }
 };
 
@@ -606,11 +604,6 @@ void manager_register_session(struct obex_session *os)
 		goto done;
 	}
 
-	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
-			OBEX_MANAGER_INTERFACE, "SessionCreated",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
-
 done:
 	g_free(path);
 }
@@ -618,11 +611,6 @@ done:
 void manager_unregister_session(struct obex_session *os)
 {
 	char *path = g_strdup_printf("/session%u", GPOINTER_TO_UINT(os));
-
-	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
-			OBEX_MANAGER_INTERFACE, "SessionRemoved",
-			DBUS_TYPE_OBJECT_PATH, &path,
-			DBUS_TYPE_INVALID);
 
 	g_dbus_unregister_interface(connection, path,
 				SESSION_INTERFACE);

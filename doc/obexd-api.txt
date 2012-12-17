@@ -29,17 +29,7 @@ Methods
 
 			Possible errors: org.bluez.obex.Error.DoesNotExist
 
-Signals		SessionCreated(object session)
-
-			Signal sent when OBEX connection has been accepted.
-			(FTP only)
-
-		SessionRemoved(object session)
-
-			Sent when the transport is disconnected
-			(FTP only)
-
-		TransferStarted(object transfer)
+Signals		TransferStarted(object transfer)
 
 			Signal sent when an object push operation starts.
 			(OPP only)
