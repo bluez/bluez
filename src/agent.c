@@ -58,6 +58,7 @@
 #define AGENT_INTERFACE "org.bluez.Agent1"
 
 static GHashTable *agent_list;
+static struct agent *default_agent = NULL;
 
 typedef enum {
 	AGENT_REQUEST_PASSKEY,
@@ -174,6 +175,9 @@ void agent_unref(struct agent *agent)
 	if (agent->ref > 0)
 		return;
 
+	if (agent == default_agent)
+		default_agent = NULL;
+
 	if (agent->remove_cb)
 		agent->remove_cb(agent, agent->remove_cb_data);
 
@@ -216,13 +220,17 @@ struct agent *agent_get(const char *owner)
 	struct agent *agent;
 
 	agent = g_hash_table_lookup(agent_list, owner);
-	if (!agent)
-		agent = g_hash_table_lookup(agent_list, NULL);
+	if (agent)
+		return agent_ref(agent);
 
-	if (!agent)
-		return NULL;
+	if (default_agent)
+		return agent_ref(default_agent);
 
-	return agent_ref(agent);
+	agent = g_hash_table_lookup(agent_list, NULL);
+	if (agent)
+		return agent_ref(agent);
+
+	return NULL;
 }
 
 struct agent *agent_create(struct btd_adapter *adapter, const char *name,
@@ -953,12 +961,30 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *request_default(DBusConnection *conn, DBusMessage *msg,
+							void *user_data)
+{
+	struct agent *agent;
+	const char *sender;
+
+	sender = dbus_message_get_sender(msg);
+
+	agent = g_hash_table_lookup(agent_list, sender);
+	if (!agent)
+		return btd_error_does_not_exist(msg);
+
+	default_agent = agent;
+
+	return dbus_message_new_method_return(msg);
+}
+
 static const GDBusMethodTable methods[] = {
 	{ GDBUS_METHOD("RegisterAgent",
 			GDBUS_ARGS({ "agent", "o"}, { "capability", "s" }),
 			NULL, register_agent) },
 	{ GDBUS_METHOD("UnregisterAgent", GDBUS_ARGS({ "agent", "o" }),
 			NULL, unregister_agent) },
+	{ GDBUS_METHOD("RequestDefault", NULL, NULL, request_default ) },
 	{ }
 };
 
