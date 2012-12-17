@@ -2850,10 +2850,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (eir_data.appearance != 0)
-		write_remote_appearance(&adapter->bdaddr, bdaddr, bdaddr_type,
-							eir_data.appearance);
-
 	if (eir_data.name != NULL && eir_data.name_complete)
 		adapter_store_cached_name(&adapter->bdaddr, bdaddr,
 								eir_data.name);
@@ -2876,6 +2872,9 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	device_set_legacy(dev, legacy);
 	device_set_rssi(dev, rssi);
+
+	if (eir_data.appearance != 0)
+		device_set_appearance(dev, eir_data.appearance);
 
 	if (eir_data.name)
 		device_set_name(dev, eir_data.name);

@@ -144,47 +144,6 @@ int read_local_name(const bdaddr_t *bdaddr, char *name)
 	return 0;
 }
 
-int read_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
-				uint8_t bdaddr_type, uint16_t *appearance)
-{
-	char filename[PATH_MAX + 1], key[20], *str;
-
-	create_filename(filename, PATH_MAX, local, "appearances");
-
-	ba2str(peer, key);
-	sprintf(&key[17], "#%hhu", bdaddr_type);
-
-	str = textfile_get(filename, key);
-	if (!str)
-		return -ENOENT;
-
-	if (sscanf(str, "%hx", appearance) != 1) {
-		free(str);
-		return -ENOENT;
-	}
-
-	free(str);
-
-	return 0;
-}
-
-int write_remote_appearance(const bdaddr_t *local, const bdaddr_t *peer,
-				uint8_t bdaddr_type, uint16_t appearance)
-{
-	char filename[PATH_MAX + 1], key[20], str[7];
-
-	create_filename(filename, PATH_MAX, local, "appearances");
-
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-
-	ba2str(peer, key);
-	sprintf(&key[17], "#%hhu", bdaddr_type);
-
-	sprintf(str, "0x%4.4x", appearance);
-
-	return textfile_put(filename, key, str);
-}
-
 ssize_t read_pin_code(const bdaddr_t *local, const bdaddr_t *peer, char *pin)
 {
 	char filename[PATH_MAX + 1], addr[18], *str;

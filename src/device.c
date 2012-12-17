@@ -149,6 +149,7 @@ struct btd_device {
 	uint16_t	vendor;
 	uint16_t	product;
 	uint16_t	version;
+	uint16_t	appearance;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*primaries;		/* List of primary services */
@@ -239,6 +240,13 @@ static gboolean store_device_info_cb(gpointer user_data)
 		g_key_file_set_string(key_file, "General", "Class", class);
 	} else {
 		g_key_file_remove_key(key_file, "General", "Class", NULL);
+	}
+
+	if (device->appearance) {
+		sprintf(class, "0x%4.4x", device->appearance);
+		g_key_file_set_string(key_file, "General", "Appearance", class);
+	} else {
+		g_key_file_remove_key(key_file, "General", "Appearance", NULL);
 	}
 
 	switch (device->bdaddr_type) {
@@ -564,10 +572,10 @@ static gboolean get_appearance(const GDBusPropertyTable *property, void *data,
 	if (dev_property_exists_class(property, data))
 		return FALSE;
 
-	if (read_remote_appearance(adapter_get_address(device->adapter),
-					&device->bdaddr, device->bdaddr_type,
-					appearance) == 0)
+	if (device->appearance) {
+		*appearance = device->appearance;
 		return TRUE;
+	}
 
 	return FALSE;
 }
@@ -1742,6 +1750,13 @@ static void load_info(struct btd_device *device, const gchar *local,
 
 		if (sscanf(str, "%x", &class) == 1)
 			device->class = class;
+		g_free(str);
+	}
+
+	/* Load appearance */
+	str = g_key_file_get_string(key_file, "General", "Appearance", NULL);
+	if (str) {
+		device->appearance = strtol(str, NULL, 16);
 		g_free(str);
 	}
 
@@ -4093,17 +4108,11 @@ void btd_device_unref(struct btd_device *device)
 
 int device_get_appearance(struct btd_device *device, uint16_t *value)
 {
-	uint16_t app;
-	int err;
-
-	err = read_remote_appearance(adapter_get_address(device->adapter),
-					&device->bdaddr, device->bdaddr_type,
-					&app);
-	if (err < 0)
-		return err;
+	if (device->appearance == 0)
+		return -1;
 
 	if (value)
-		*value = app;
+		*value = device->appearance;
 
 	return 0;
 }
@@ -4119,8 +4128,8 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				device->path, DEVICE_INTERFACE, "Icon");
 
-	write_remote_appearance(adapter_get_address(device->adapter),
-				&device->bdaddr, device->bdaddr_type, value);
+	device->appearance = value;
+	store_device_info(device);
 }
 
 static gboolean notify_attios(gpointer user_data)
