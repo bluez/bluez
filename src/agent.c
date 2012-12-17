@@ -169,6 +169,9 @@ static void agent_disconnect(DBusConnection *conn, void *user_data)
 		agent->watch = 0;
 	}
 
+	if (agent == default_agent)
+		default_agent = NULL;
+
 	g_hash_table_remove(agent_list, agent->owner);
 
 	agent = agent_get(NULL);
