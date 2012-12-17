@@ -1997,7 +1997,7 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 		g_free(str);
 	}
 
-	return btd_device_ref(device);
+	return device;
 }
 
 char *btd_device_get_storage_path(struct btd_device *device,
