@@ -323,6 +323,7 @@ static guint setup_signalfd(void)
 static gchar *option_debug = NULL;
 static gchar *option_plugin = NULL;
 static gchar *option_noplugin = NULL;
+static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
 
@@ -408,6 +409,8 @@ static GOptionEntry options[] = {
 				"Specify plugins to load", "NAME,..," },
 	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
 				"Specify plugins not to load", "NAME,..." },
+	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
+				"Provide deprecated command line interfaces" },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Run with logging in foreground" },
@@ -420,7 +423,8 @@ int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
-	uint16_t mtu = 0;
+	uint16_t sdp_mtu = 0;
+	uint32_t sdp_flags = 0;
 	GKeyFile *config;
 	guint signal, watchdog;
 	const char *watchdog_usec;
@@ -471,7 +475,10 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	start_sdp_server(mtu, SDP_SERVER_COMPAT);
+	if (option_compat == TRUE)
+		sdp_flags |= SDP_SERVER_COMPAT;
+
+	start_sdp_server(sdp_mtu, sdp_flags);
 
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
