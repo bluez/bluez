@@ -72,13 +72,10 @@ typedef enum {
 
 struct agent {
 	int ref;
-	struct btd_adapter *adapter;
 	char *owner;
 	char *path;
 	uint8_t capability;
 	struct agent_request *request;
-	agent_remove_cb remove_cb;
-	void *remove_cb_data;
 	guint watch;
 };
 
@@ -178,9 +175,6 @@ void agent_unref(struct agent *agent)
 	if (agent == default_agent)
 		default_agent = NULL;
 
-	if (agent->remove_cb)
-		agent->remove_cb(agent, agent->remove_cb_data);
-
 	if (agent->request) {
 		DBusError err;
 		agent_pincode_cb pincode_cb;
@@ -233,20 +227,16 @@ struct agent *agent_get(const char *owner)
 	return NULL;
 }
 
-struct agent *agent_create(struct btd_adapter *adapter, const char *name,
-				const char *path, uint8_t capability,
-				agent_remove_cb cb, void *remove_cb_data)
+static struct agent *agent_create( const char *name, const char *path,
+							uint8_t capability)
 {
 	struct agent *agent;
 
 	agent = g_new0(struct agent, 1);
 
-	agent->adapter = adapter;
 	agent->owner = g_strdup(name);
 	agent->path = g_strdup(path);
 	agent->capability = capability;
-	agent->remove_cb = cb;
-	agent->remove_cb_data = remove_cb_data;
 
 	agent->watch = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
 							name, agent_disconnect,
@@ -924,7 +914,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	cap = parse_io_capability(capability);
 
-	agent = agent_create(NULL, sender, path, cap, NULL, NULL);
+	agent = agent_create(sender, path, cap);
 	if (!agent)
 		return btd_error_invalid_args(msg);
 
