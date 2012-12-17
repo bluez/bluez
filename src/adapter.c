@@ -1688,7 +1688,6 @@ static void unload_drivers(struct btd_adapter *adapter)
 int btd_adapter_stop(struct btd_adapter *adapter)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
-	bool emit_discoverable = false, emit_pairable = false;
 	bool emit_discovering = false;
 
 	/* check pending requests */
@@ -1711,23 +1710,9 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 		adapter_remove_connection(adapter, device);
 	}
 
-	if (adapter->discoverable)
-		emit_discoverable = true;
-
-	if (adapter->connectable && adapter->pairable == TRUE)
-		emit_pairable = true;
-
-	adapter->discoverable = FALSE;
 	adapter->connectable = false;
 
 	adapter->off_requested = FALSE;
-
-	if (emit_discoverable)
-		g_dbus_emit_property_changed(conn, adapter->path,
-					ADAPTER_INTERFACE, "Discoverable");
-	if (emit_pairable)
-		g_dbus_emit_property_changed(conn, adapter->path,
-					ADAPTER_INTERFACE, "Pairable");
 
 	if (emit_discovering)
 		g_dbus_emit_property_changed(conn, adapter->path,
