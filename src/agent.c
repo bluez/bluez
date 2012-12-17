@@ -144,8 +144,14 @@ static void agent_request_free(struct agent_request *req, gboolean destroy)
 static void set_io_cap(struct btd_adapter *adapter, gpointer user_data)
 {
 	struct agent *agent = user_data;
+	uint8_t io_cap;
 
-	adapter_set_io_capability(adapter, agent->capability);
+	if (agent)
+		io_cap = agent->capability;
+	else
+		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+
+	adapter_set_io_capability(adapter, io_cap);
 }
 
 static void set_default_agent(struct agent *agent)
@@ -170,15 +176,9 @@ static void agent_disconnect(DBusConnection *conn, void *user_data)
 	}
 
 	if (agent == default_agent)
-		default_agent = NULL;
+		set_default_agent(NULL);
 
 	g_hash_table_remove(agent_list, agent->owner);
-
-	agent = agent_get(NULL);
-	if (agent) {
-		set_default_agent(agent);
-		agent_unref(agent);
-	}
 }
 
 struct agent *agent_ref(struct agent *agent)
@@ -233,18 +233,6 @@ void agent_unref(struct agent *agent)
 	g_free(agent);
 }
 
-static struct agent *get_any_agent(void)
-{
-	GHashTableIter iter;
-	gpointer key, value;
-
-	g_hash_table_iter_init(&iter, agent_list);
-	if (g_hash_table_iter_next(&iter, &key, &value))
-		return value;
-
-	return NULL;
-}
-
 struct agent *agent_get(const char *owner)
 {
 	struct agent *agent;
@@ -258,7 +246,7 @@ struct agent *agent_get(const char *owner)
 	if (default_agent)
 		return agent_ref(default_agent);
 
-	return get_any_agent();
+	return NULL;
 }
 
 static struct agent *agent_create( const char *name, const char *path,
@@ -937,9 +925,6 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	g_hash_table_replace(agent_list, agent->owner, agent);
 
-	if (default_agent == NULL)
-		set_default_agent(agent);
-
 	return dbus_message_new_method_return(msg);
 }
 
@@ -1011,6 +996,6 @@ void btd_agent_cleanup(void)
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 				"/org/bluez", "org.bluez.AgentManager1");
 
-	default_agent = NULL;
+	set_default_agent(NULL);
 	g_hash_table_destroy(agent_list);
 }
