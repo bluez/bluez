@@ -80,8 +80,7 @@ void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);
 
-void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-						uint16_t *discoverable_timeout);
+void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode);
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 

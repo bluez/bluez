@@ -1693,14 +1693,10 @@ static void load_connections(struct btd_adapter *adapter)
 	g_slist_free_full(conns, g_free);
 }
 
-void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode,
-						uint16_t *discoverable_timeout)
+void btd_adapter_get_mode(struct btd_adapter *adapter, uint8_t *mode)
 {
 	if (mode)
 		*mode = adapter->mode;
-
-	if (discoverable_timeout)
-		*discoverable_timeout = adapter->discov_timeout;
 }
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)

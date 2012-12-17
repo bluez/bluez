@@ -332,11 +332,9 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
 	gboolean pairable;
-	uint16_t index, discoverable_timeout;
+	uint16_t index;
 
 	DBG("new settings %x", settings);
-
-	btd_adapter_get_mode(adapter, NULL, &discoverable_timeout);
 
 	index = adapter_get_dev_id(adapter);
 
@@ -1215,7 +1213,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	btd_adapter_get_major_minor(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
 
-	btd_adapter_get_mode(adapter, &mode, NULL);
+	btd_adapter_get_mode(adapter, &mode);
 	if (mode == MODE_OFF && mgmt_powered(info->current_settings)) {
 		mgmt_set_powered(index, FALSE);
 		return;
