@@ -156,7 +156,6 @@ struct btd_device {
 	GSList		*pending;		/* Pending profiles */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
-	struct agent	*agent;
 	guint		disconn_timer;
 	guint		discov_timer;
 	struct browse_req *browse;		/* service discover request */
@@ -2163,9 +2162,6 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 
 	DBG("Removing device %s", device->path);
 
-	if (device->agent)
-		agent_unref(device->agent);
-
 	if (device->bonding) {
 		uint8_t status;
 
@@ -3089,6 +3085,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct att_callbacks *attcb = user_data;
 	struct btd_device *device = attcb->user_data;
+	uint8_t io_cap;
 	GAttrib *attrib;
 	int err;
 
@@ -3119,10 +3116,14 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (!device->bonding)
 		goto done;
 
+	if (device->bonding->agent)
+		io_cap = agent_get_io_capability(device->bonding->agent);
+	else
+		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+
 	/* this is a LE device during pairing */
-	err = adapter_create_bonding(device->adapter,
-				&device->bdaddr, device->bdaddr_type,
-				agent_get_io_capability(device->agent));
+	err = adapter_create_bonding(device->adapter, &device->bdaddr,
+					device->bdaddr_type, io_cap);
 	if (err < 0) {
 		DBusMessage *reply = btd_error_failed(device->bonding->msg,
 							strerror(-err));
