@@ -255,42 +255,29 @@ static char *target2str(const uint8_t *t)
 				t[8], t[9], t[10], t[11], t[12], t[13], t[14], t[15]);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-				DBusMessage *msg, void *data)
+static gboolean get_target(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
 {
 	struct obex_session *os = data;
-	DBusMessage *reply;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
 	char *uuid;
-	const char *root;
 
-	reply = dbus_message_new_method_return(msg);
-	if (!reply)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &iter);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	/* Target */
 	uuid = target2str(os->service->target);
-	dbus_message_iter_append_dict_entry(&dict, "Target",
-					DBUS_TYPE_STRING, &uuid);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &uuid);
 	g_free(uuid);
 
-	/* Root folder */
+	return TRUE;
+}
+
+static gboolean get_root(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_session *os = data;
+	const char *root;
+
 	root = obex_option_root_folder();
-	dbus_message_iter_append_dict_entry(&dict, "Root",
-					DBUS_TYPE_STRING, &root);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &root);
 
-	/* FIXME: Added Remote Address or USB */
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	return reply;
+	return TRUE;
 }
 
 static DBusMessage *transfer_cancel(DBusConnection *connection,
@@ -339,10 +326,9 @@ static const GDBusSignalTable transfer_signals[] = {
 	{ }
 };
 
-static const GDBusMethodTable session_methods[] = {
-	{ GDBUS_METHOD("GetProperties",
-				NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
-				get_properties) },
+static const GDBusPropertyTable session_properties[] = {
+	{ "Target", "s", get_target },
+	{ "Root", "s", get_root },
 	{ }
 };
 
@@ -610,8 +596,8 @@ void manager_register_session(struct obex_session *os)
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
-				session_methods, NULL,
-				NULL, os, NULL)) {
+				NULL, NULL,
+				session_properties, os, NULL)) {
 		error("Cannot register Session interface.");
 		goto done;
 	}

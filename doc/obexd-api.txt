@@ -74,14 +74,10 @@ Service		org.bluez.obex
 Interface	org.bluez.obex.Session
 Object path	/session{0, 1, 2, ...}
 
-Methods
-		dict GetProperties()
+Properties	string Target [readonly]
 
+			Target UUID
 
-Signals		TBD
+		string Root [readonly]
 
-
-Properties
-		string Address [readonly]
-
-			Bluetooth device address or USB
+			Root path
