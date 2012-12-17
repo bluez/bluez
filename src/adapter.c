@@ -314,7 +314,7 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 	if (err < 0)
 		return g_dbus_pending_property_error(id,
 						ERROR_INTERFACE ".Failed",
-						strerror(err));
+						strerror(-err));
 
 	if (powered == FALSE)
 		adapter->off_requested = TRUE;
