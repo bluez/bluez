@@ -2206,6 +2206,16 @@ typedef struct {
 #define EVT_FLOW_SPEC_MODIFY_COMPLETE_SIZE 3
 
 #define EVT_NUMBER_COMPLETED_BLOCKS		0x48
+typedef struct {
+	uint16_t		handle;
+	uint16_t		num_cmplt_pkts;
+	uint16_t		num_cmplt_blks;
+} __attribute__ ((packed)) cmplt_handle;
+typedef struct {
+	uint16_t		total_num_blocks;
+	uint8_t			num_handles;
+	cmplt_handle		handles[0];
+}  __attribute__ ((packed)) evt_num_completed_blocks;
 
 #define EVT_AMP_STATUS_CHANGE			0x4D
 typedef struct {
