@@ -1982,7 +1982,7 @@ static void convert_entry(char *key, char *value, void *user_data)
 	char *data;
 	gsize length = 0;
 
-	if (key[17] == '#') {
+	if (strchr(key, '#')) {
 		key[17] = '\0';
 		type = key[18] - '0';
 	}
@@ -2224,7 +2224,7 @@ static void convert_primaries_entry(char *key, char *value, void *user_data)
 	char *data;
 	gsize length = 0;
 
-	if (key[17] == '#') {
+	if (strchr(key, '#')) {
 		key[17] = '\0';
 		device_type = key[18] - '0';
 	}
