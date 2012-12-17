@@ -33,8 +33,7 @@ class PbapClient:
 				signal_name="Error",
 				path_keyword="path")
 
-	def register(self, reply, transfer):
-		(path, properties) = reply
+	def register(self, path, properties, transfer):
 		transfer.path = path
 		transfer.filename = properties["Filename"]
 		self.props[path] = transfer
@@ -73,15 +72,15 @@ class PbapClient:
 	def pull(self, vcard, params, func):
 		req = Transfer(func)
 		self.pbap.Pull(vcard, "", params,
-				reply_handler=lambda r: self.register(r, req),
-				error_handler=self.error)
+			reply_handler=lambda o, p: self.register(o, p, req),
+			error_handler=self.error)
 		self.transfers += 1
 
 	def pull_all(self, params, func):
 		req = Transfer(func)
 		self.pbap.PullAll("", params,
-				reply_handler=lambda r: self.register(r, req),
-				error_handler=self.error)
+			reply_handler=lambda o, p: self.register(o, p, req),
+			error_handler=self.error)
 		self.transfers += 1
 
 	def flush_transfers(self, func):
