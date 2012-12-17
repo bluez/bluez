@@ -60,8 +60,6 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- Convert obexd & obex-client to ObjectManager/Properties
-
 - [pending] Convert storage to user per-remote device directories and
   ini-file format
 
@@ -86,6 +84,8 @@ Completed items:
 - Remove Device.DiscoverServices & Device.CancelDiscovery
 
 - Convert obexd to use org.bluez.Profile
+
+- Convert obexd & obex-client to ObjectManager/Properties
 
 - Remove org.bluez.Service interface (it has become unnecessary thanks
   to org.bluez.Profile). obexd needs to be converted to use the new
