@@ -82,6 +82,7 @@ struct bonding_req {
 	DBusMessage *msg;
 	guint listener_id;
 	struct btd_device *device;
+	struct agent *agent;
 };
 
 typedef enum {
@@ -379,15 +380,6 @@ static void browse_request_cancel(struct browse_req *req)
 static void device_free(gpointer user_data)
 {
 	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device->adapter;
-	struct agent *agent = adapter_get_agent(adapter);
-
-	if (device->agent)
-		agent_unref(device->agent);
-
-	if (agent && (agent_is_busy(agent, device) ||
-				agent_is_busy(agent, device->authr)))
-		agent_cancel(agent);
 
 	g_slist_free_full(device->uuids, g_free);
 	g_slist_free_full(device->primaries, g_free);
@@ -414,9 +406,13 @@ static void device_free(gpointer user_data)
 
 	DBG("%p", device);
 
-	if (device->authr)
+	if (device->authr) {
+		if (device->authr->agent)
+			agent_unref(device->authr->agent);
 		g_free(device->authr->pincode);
-	g_free(device->authr);
+		g_free(device->authr);
+	}
+
 	g_free(device->path);
 	g_free(device->alias);
 	g_free(device);
@@ -1392,43 +1388,20 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 		g_dbus_send_message(conn, reply);
 }
 
-static void device_agent_removed(struct agent *agent, void *user_data)
-{
-	struct btd_device *device = user_data;
-
-	device->agent = NULL;
-
-	if (device->authr)
-		device->authr->agent = NULL;
-}
-
 static struct bonding_req *bonding_request_new(DBusMessage *msg,
 						struct btd_device *device,
-						const char *agent_path,
-						uint8_t capability)
+						struct agent *agent)
 {
 	struct bonding_req *bonding;
-	const char *name = dbus_message_get_sender(msg);
 	char addr[18];
 
 	ba2str(&device->bdaddr, addr);
 	DBG("Requesting bonding for %s", addr);
 
-	if (!agent_path)
-		goto proceed;
-
-	device->agent = agent_create(device->adapter, name, agent_path,
-					capability,
-					device_agent_removed,
-					device);
-
-	DBG("Temporary agent registered for %s at %s:%s",
-			addr, name, agent_path);
-
-proceed:
 	bonding = g_new0(struct bonding_req, 1);
 
 	bonding->msg = dbus_message_ref(msg);
+	bonding->agent = agent_ref(agent);
 
 	return bonding;
 }
@@ -1475,14 +1448,14 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	sender = dbus_message_get_sender(msg);
 
 	agent = agent_get(sender);
-	if (agent) {
+	if (agent)
 		io_cap = agent_get_io_capability(agent);
-		agent_unref(agent);
-	} else {
+	else
 		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
-	}
 
-	bonding = bonding_request_new(msg, device, NULL, io_cap);
+	bonding = bonding_request_new(msg, device, agent);
+
+	agent_unref(agent);
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(
 						btd_get_dbus_connection(),
@@ -3089,8 +3062,6 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 
 static void bonding_request_free(struct bonding_req *bonding)
 {
-	struct btd_device *device;
-
 	if (!bonding)
 		return;
 
@@ -3101,20 +3072,17 @@ static void bonding_request_free(struct bonding_req *bonding)
 	if (bonding->msg)
 		dbus_message_unref(bonding->msg);
 
-	device = bonding->device;
+	if (bonding->agent) {
+		agent_cancel(bonding->agent);
+		agent_unref(bonding->agent);
+		bonding->agent = NULL;
+	}
+
+	if (bonding->device)
+		bonding->device->bonding = NULL;
+
 	g_free(bonding);
 
-	if (!device)
-		return;
-
-	device->bonding = NULL;
-
-	if (!device->agent)
-		return;
-
-	agent_cancel(device->agent);
-	agent_unref(device->agent);
-	device->agent = NULL;
 }
 
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
@@ -3430,17 +3398,6 @@ const gchar *device_get_path(struct btd_device *device)
 		return NULL;
 
 	return device->path;
-}
-
-struct agent *device_get_agent(struct btd_device *device)
-{
-	if (!device)
-		return NULL;
-
-	if (device->agent)
-		return device->agent;
-
-	return adapter_get_agent(device->adapter);
 }
 
 gboolean device_is_temporary(struct btd_device *device)
@@ -3852,7 +3809,11 @@ static struct authentication_req *new_auth(struct btd_device *device,
 		return NULL;
 	}
 
-	agent = device_get_agent(device);
+	if (device->bonding && device->bonding->agent)
+		agent = agent_ref(device->bonding->agent);
+	else
+		agent = agent_get(NULL);
+
 	if (!agent) {
 		error("No agent available for request type %d", type);
 		return NULL;

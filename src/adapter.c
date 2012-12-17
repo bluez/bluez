@@ -3378,6 +3378,9 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr,
 
 	auth->cb(derr, auth->user_data);
 
+	if (auth->agent)
+		agent_unref(auth->agent);
+
 	g_free(auth);
 
 	adapter->auth_idle_id = g_idle_add(process_auth_queue, adapter);
@@ -3403,7 +3406,7 @@ static gboolean process_auth_queue(gpointer user_data)
 			goto next;
 		}
 
-		auth->agent = device_get_agent(device);
+		auth->agent = agent_get(NULL);
 		if (auth->agent == NULL) {
 			warn("Can't find device agent");
 			auth->cb(&err, auth->user_data);
@@ -3421,7 +3424,11 @@ static gboolean process_auth_queue(gpointer user_data)
 		break;
 
 next:
+		if (auth->agent)
+			agent_unref(auth->agent);
+
 		g_free(auth);
+
 		g_queue_pop_head(adapter->auths);
 	}
 
@@ -3529,8 +3536,10 @@ int btd_cancel_authorization(guint id)
 
 	g_queue_remove(auth->adapter->auths, auth);
 
-	if (auth->agent != NULL)
+	if (auth->agent) {
 		agent_cancel(auth->agent);
+		agent_unref(auth->agent);
+	}
 
 	g_free(auth);
 
