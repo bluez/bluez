@@ -2172,7 +2172,7 @@ static void remote_oob_data_request_reply_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_remote_oob_data_request_reply *cmd = data;
 
-        print_bdaddr(cmd->bdaddr);
+	print_bdaddr(cmd->bdaddr);
 	print_hash(cmd->hash);
 	print_randomizer(cmd->randomizer);
 }
