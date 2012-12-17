@@ -230,22 +230,32 @@ void agent_unref(struct agent *agent)
 	g_free(agent);
 }
 
+static struct agent *get_any_agent(void)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&iter, agent_list);
+	if (g_hash_table_iter_next(&iter, &key, &value))
+		return value;
+
+	return NULL;
+}
+
 struct agent *agent_get(const char *owner)
 {
 	struct agent *agent;
 
-	agent = g_hash_table_lookup(agent_list, owner);
-	if (agent)
-		return agent_ref(agent);
+	if (owner) {
+		agent = g_hash_table_lookup(agent_list, owner);
+		if (agent)
+			return agent_ref(agent);
+	}
 
 	if (default_agent)
 		return agent_ref(default_agent);
 
-	agent = g_hash_table_lookup(agent_list, NULL);
-	if (agent)
-		return agent_ref(agent);
-
-	return NULL;
+	return get_any_agent();
 }
 
 static struct agent *agent_create( const char *name, const char *path,
