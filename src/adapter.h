@@ -100,7 +100,7 @@ void adapter_remove_device(struct btd_adapter *adapter,
 						gboolean remove_storage);
 
 struct btd_adapter *adapter_create(int id);
-gboolean adapter_init(struct btd_adapter *adapter, gboolean up);
+gboolean adapter_init(struct btd_adapter *adapter, gboolean powered);
 void adapter_remove(struct btd_adapter *adapter);
 void adapter_set_allow_name_changes(struct btd_adapter *adapter,
 						gboolean allow_name_changes);
