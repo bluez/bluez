@@ -358,9 +358,11 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 						adapter);
 }
 
-void btd_adapter_pairable_changed(struct btd_adapter *adapter,
-							gboolean pairable)
+void adapter_update_pairable(struct btd_adapter *adapter, bool pairable)
 {
+	if (adapter->pairable == pairable)
+		return;
+
 	adapter->pairable = pairable;
 
 	store_adapter_info(adapter);
@@ -3042,28 +3044,33 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	}
 }
 
-void adapter_mode_changed(struct btd_adapter *adapter, bool connectable,
+void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
+{
+	struct DBusConnection *conn = btd_get_dbus_connection();
+
+	if (adapter->connectable == connectable)
+		return;
+
+	adapter->connectable = connectable;
+	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
+								"Connectable");
+
+	store_adapter_info(adapter);
+}
+
+void adapter_update_discoverable(struct btd_adapter *adapter,
 							bool discoverable)
 {
 	struct DBusConnection *conn = btd_get_dbus_connection();
 
-	DBG("connectable %u (old %u) discoverable %u (old %u)",
-					connectable, adapter->connectable,
-					discoverable, adapter->discoverable);
+	if (adapter->discoverable == discoverable)
+		return;
 
-	if (connectable != adapter->connectable) {
-		adapter->connectable = connectable;
-		g_dbus_emit_property_changed(conn, adapter->path,
-						ADAPTER_INTERFACE,
-						"Connectable");
-	}
+	adapter->discoverable = discoverable;
+	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
+								"Discoverable");
 
-	if (discoverable != adapter->discoverable) {
-		adapter->discoverable = discoverable;
-		g_dbus_emit_property_changed(conn, adapter->path,
-						ADAPTER_INTERFACE,
-						"Discoverable");
-	}
+	store_adapter_info(adapter);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)

@@ -107,7 +107,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm_name, bool legacy,
 					uint8_t *data, uint8_t data_len);
-void adapter_mode_changed(struct btd_adapter *adapter, bool connectable,
+void adapter_update_connectable(struct btd_adapter *adapter, bool connectable);
+void adapter_update_discoverable(struct btd_adapter *adapter,
 							bool discoverable);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_name_changed(struct btd_adapter *adapter, const char *name);
@@ -115,8 +116,7 @@ void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 void btd_adapter_class_changed(struct btd_adapter *adapter,
 							uint8_t *new_class);
-void btd_adapter_pairable_changed(struct btd_adapter *adapter,
-							gboolean pairable);
+void adapter_update_pairable(struct btd_adapter *adapter, bool pairable);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,

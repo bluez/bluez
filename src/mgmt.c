@@ -328,17 +328,6 @@ static inline int mgmt_low_energy(uint32_t settings)
 	return (settings & MGMT_SETTING_LE) != 0;
 }
 
-static int mode_changed(uint32_t s1, uint32_t s2)
-{
-	if (mgmt_connectable(s1) != mgmt_connectable(s2))
-		return 1;
-
-	if (mgmt_discoverable(s1) != mgmt_discoverable(s2))
-		return 1;
-
-	return 0;
-}
-
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
@@ -350,12 +339,9 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 
 	info = &controllers[index];
 
-	if (mode_changed(settings, info->current_settings))
-		adapter_mode_changed(adapter, mgmt_connectable(settings),
-						mgmt_discoverable(settings));
-
-	if (mgmt_pairable(settings) != mgmt_pairable(info->current_settings))
-		btd_adapter_pairable_changed(adapter, mgmt_pairable(settings));
+	adapter_update_connectable(adapter, mgmt_connectable(settings));
+	adapter_update_discoverable(adapter, mgmt_discoverable(settings));
+	adapter_update_pairable(adapter, mgmt_pairable(settings));
 
 	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
 		mgmt_set_ssp(index, TRUE);
