@@ -3151,9 +3151,26 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	}
 }
 
-void adapter_mode_changed(struct btd_adapter *adapter, uint8_t scan_mode)
+static uint8_t create_mode(bool connectable, bool discoverable)
+{
+	uint8_t mode = 0;
+
+	if (connectable)
+		mode |= SCAN_PAGE;
+
+	if (discoverable)
+		mode |= SCAN_INQUIRY;
+
+	return mode;
+}
+
+void adapter_mode_changed(struct btd_adapter *adapter, bool connectable,
+							bool discoverable)
 {
 	bool emit_pairable = false;
+	uint8_t scan_mode;
+
+	scan_mode = create_mode(connectable, discoverable);
 
 	DBG("old 0x%02x new 0x%02x", adapter->scan_mode, scan_mode);
 

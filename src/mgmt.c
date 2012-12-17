@@ -328,19 +328,6 @@ static inline int mgmt_low_energy(uint32_t settings)
 	return (settings & MGMT_SETTING_LE) != 0;
 }
 
-static uint8_t create_mode(uint32_t settings)
-{
-	uint8_t mode = 0;
-
-	if (mgmt_connectable(settings))
-		mode |= SCAN_PAGE;
-
-	if (mgmt_discoverable(settings))
-		mode |= SCAN_INQUIRY;
-
-	return mode;
-}
-
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct controller_info *info;
@@ -356,7 +343,8 @@ static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 	info = &controllers[index];
 
 	if (mgmt_powered(settings))
-		adapter_mode_changed(adapter, create_mode(settings));
+		adapter_mode_changed(adapter, mgmt_connectable(settings),
+						mgmt_discoverable(settings));
 
 	if (mgmt_pairable(settings) != pairable)
 		mgmt_set_pairable(index, pairable);
@@ -434,7 +422,8 @@ static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
 	if (new_power != old_power)
 		mgmt_update_powered(adapter, info, settings);
 	else if (new_power && mode_changed(settings, info->current_settings))
-		adapter_mode_changed(adapter, create_mode(settings));
+		adapter_mode_changed(adapter, mgmt_connectable(settings),
+						mgmt_discoverable(settings));
 
 	old_pairable = mgmt_pairable(info->current_settings);
 	new_pairable = mgmt_pairable(settings);
