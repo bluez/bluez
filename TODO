@@ -60,10 +60,9 @@ BlueZ 5
 Priority/Complexity omitted as all items are required before 5.0 is
 released.
 
-- [pending] Convert storage to user per-remote device directories and
-  ini-file format
-
 Completed items:
+
+- Convert storage to user per-remote device directories and ini-file format
 
 - Switch to AgentManager based agent handling
 
