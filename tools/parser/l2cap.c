@@ -35,8 +35,8 @@
 
 #include "parser.h"
 #include "sdp.h"
+#include "l2cap.h"
 #include "lib/hci.h"
-#include "lib/l2cap.h"
 #include "lib/a2mp.h"
 #include "lib/amp.h"
 
