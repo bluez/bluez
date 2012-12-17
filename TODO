@@ -65,6 +65,8 @@ released.
 
 Completed items:
 
+- Switch to AgentManager based agent handling
+
 - Don't install libbluetooth by default (put it behind a configure switch)
 
 - Switch plugins to standard D-Bus properties interface
