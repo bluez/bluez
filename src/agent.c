@@ -934,6 +934,9 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	g_hash_table_replace(agent_list, agent->owner, agent);
 
+	if (default_agent == NULL)
+		set_default_agent(agent);
+
 	return dbus_message_new_method_return(msg);
 }
 
