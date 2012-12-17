@@ -165,6 +165,9 @@ Long term key) related to a remote device.
   Class			String		Device class in hexadecimal,
 					i.e. 0x000000
 
+  Appearance		String		Device appearance in hexadecimal,
+					i.e. 0x0000
+
   SupportedTechnologies	List of		List of technologies supported by
 			strings		device, separated by ";"
 					Technologies can be BR/EDR or LE
