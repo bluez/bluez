@@ -2344,6 +2344,8 @@ void device_remove_profile(gpointer a, gpointer b)
 	if (!g_slist_find(device->profiles, profile))
 		return;
 
+	device->connected_profiles = g_slist_remove(device->connected_profiles,
+								profile);
 	device->profiles = g_slist_remove(device->profiles, profile);
 
 	profile->device_remove(profile, device);
