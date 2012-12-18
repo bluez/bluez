@@ -70,23 +70,19 @@ static void register_agent_reply(DBusMessage *message, void *user_data)
 	DBusConnection *conn = user_data;
 	DBusError error;
 
-	begin_message();
-
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == FALSE) {
 		agent_registered = TRUE;
-		printf("Agent registered\n");
+		rl_printf("Agent registered\n");
 	} else {
-		printf("Failed to register agent: %s\n", error.name);
+		rl_printf("Failed to register agent: %s\n", error.name);
 		dbus_error_free(&error);
 
 		if (g_dbus_unregister_interface(conn, AGENT_PATH,
 						AGENT_INTERFACE) == FALSE)
-			printf("Failed to unregister agent object\n");
+			rl_printf("Failed to unregister agent object\n");
 	}
-
-	end_message();
 }
 
 void agent_register(DBusConnection *conn, GDBusProxy *manager)
@@ -124,23 +120,19 @@ static void unregister_agent_reply(DBusMessage *message, void *user_data)
 	DBusConnection *conn = user_data;
 	DBusError error;
 
-	begin_message();
-
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == FALSE) {
 		agent_registered = FALSE;
-		printf("Agent unregistered\n");
+		rl_printf("Agent unregistered\n");
 
 		if (g_dbus_unregister_interface(conn, AGENT_PATH,
 						AGENT_INTERFACE) == FALSE)
-			printf("Failed to unregister agent object\n");
+			rl_printf("Failed to unregister agent object\n");
 	} else {
-		printf("Failed to unregister agent: %s\n", error.name);
+		rl_printf("Failed to unregister agent: %s\n", error.name);
 		dbus_error_free(&error);
 	}
-
-	end_message();
 }
 
 void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
