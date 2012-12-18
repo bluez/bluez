@@ -25,6 +25,8 @@
 
 #define OBEXD_SERVICE  "org.bluez.obex"
 
+struct obex_session;
+
 void manager_register_session(struct obex_session *os);
 void manager_unregister_session(struct obex_session *os);
 void manager_register_transfer(struct obex_session *os);

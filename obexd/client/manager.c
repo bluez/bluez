@@ -44,8 +44,7 @@
 #include "pbap.h"
 #include "sync.h"
 #include "map.h"
-
-#define CLIENT_SERVICE		"org.bluez.obex.client"
+#include "obexd/src/manager.h"
 
 #define CLIENT_INTERFACE	"org.bluez.obex.Client"
 #define ERROR_INTERFACE		"org.bluez.obex.Error"
@@ -262,14 +261,11 @@ int client_manager_init(void)
 
 	dbus_error_init(&derr);
 
-	conn = g_dbus_setup_bus(DBUS_BUS_SESSION, CLIENT_SERVICE, &derr);
-	if (dbus_error_is_set(&derr) == TRUE) {
-		error("%s: %s", derr.name, derr.message);
-		dbus_error_free(&derr);
+	conn = manager_dbus_get_connection();
+	if (conn == NULL) {
+		error("Can't get client D-Bus connection");
 		return -1;
 	}
-
-	g_dbus_attach_object_manager(conn);
 
 	if (g_dbus_register_interface(conn, CLIENT_PATH, CLIENT_INTERFACE,
 						client_methods, NULL, NULL,
@@ -301,6 +297,6 @@ void client_manager_exit(void)
 		module->exit();
 
 	g_dbus_unregister_interface(conn, CLIENT_PATH, CLIENT_INTERFACE);
-	g_dbus_detach_object_manager(conn);
+
 	dbus_connection_unref(conn);
 }
