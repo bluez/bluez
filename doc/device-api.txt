@@ -38,12 +38,6 @@ Methods		void Connect()
 			this method should be restricted to administrator
 			use.
 
-			A DisconnectRequested signal will be sent and the
-			actual disconnection will only happen 2 seconds later.
-			This enables upper-level applications to terminate
-			their connections gracefully before the ACL connection
-			is terminated.
-
 			Possible errors: org.bluez.Error.NotConnected
 
 		void ConnectProfile(string uuid)
@@ -94,12 +88,6 @@ Methods		void Connect()
 
 			This method can be used to cancel a pairing
 			operation initiated by the Pair method.
-
-Signals		DisconnectRequested()
-
-			This signal will be sent when a low level
-			disconnection to a remote device has been requested.
-			The actual disconnection will happen 2 seconds later.
 
 Properties	string Address [readonly]
 

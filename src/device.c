@@ -1072,11 +1072,6 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 
 	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
 						do_disconnect, device);
-
-	g_dbus_emit_signal(btd_get_dbus_connection(),
-				device->path,
-				DEVICE_INTERFACE, "DisconnectRequested",
-				DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
@@ -1513,11 +1508,6 @@ static const GDBusMethodTable device_methods[] = {
 						NULL, disconnect_profile) },
 	{ GDBUS_ASYNC_METHOD("Pair", NULL, NULL, pair_device) },
 	{ GDBUS_METHOD("CancelPairing", NULL, NULL, cancel_pairing) },
-	{ }
-};
-
-static const GDBusSignalTable device_signals[] = {
-	{ GDBUS_SIGNAL("DisconnectRequested", NULL) },
 	{ }
 };
 
@@ -1960,7 +1950,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
 					device->path, DEVICE_INTERFACE,
-					device_methods, device_signals,
+					device_methods, NULL,
 					device_properties, device,
 					device_free) == FALSE) {
 		device_free(device);
