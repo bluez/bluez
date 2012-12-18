@@ -707,7 +707,7 @@ static void report_free(void *data)
 	g_free(report);
 }
 
-static void hog_device_free(struct hog_device *hogdev)
+static void hog_free_device(struct hog_device *hogdev)
 {
 	btd_device_unref(hogdev->device);
 	g_slist_free_full(hogdev->reports, report_free);
@@ -731,7 +731,7 @@ static struct hog_device *hog_device_register(struct btd_device *device,
 	if (hogdev->uhid_fd < 0) {
 		error("Failed to open uHID device: %s(%d)", strerror(errno),
 									errno);
-		hog_device_free(hogdev);
+		hog_free_device(hogdev);
 		return NULL;
 	}
 
@@ -772,7 +772,7 @@ static int hog_device_unregister(struct hog_device *hogdev)
 	close(hogdev->uhid_fd);
 	hogdev->uhid_fd = -1;
 
-	hog_device_free(hogdev);
+	hog_free_device(hogdev);
 
 	return 0;
 }
