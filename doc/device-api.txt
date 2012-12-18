@@ -43,8 +43,8 @@ Methods		void Connect()
 		void ConnectProfile(string uuid)
 
 			This method connects a specific profile of this
-			device. The profile needs to be registered client
-			profile.
+			device. The UUID provided is the remote service
+			UUID for the profile.
 
 			Possible errors: org.bluez.Error.DoesNotExist
 					 org.bluez.Error.AlreadyConnected
