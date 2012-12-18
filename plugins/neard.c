@@ -599,7 +599,7 @@ static int check_adapter(struct btd_adapter *adapter)
 	if (btd_adapter_check_oob_handler(adapter))
 		return -EINPROGRESS;
 
-	if (!btd_adapter_get_pairable(adapter) || !adapter_get_agent(adapter))
+	if (!btd_adapter_get_pairable(adapter))
 		return -ENONET;
 
 	if (!btd_adapter_ssp_enabled(adapter))
@@ -614,6 +614,7 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 	struct agent *agent;
 	struct oob_handler *handler;
 	bdaddr_t remote;
+	uint8_t io_cap;
 	int err;
 
 	DBG("");
@@ -633,9 +634,13 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 		return error_reply(msg, -err);
 
 	agent = adapter_get_agent(adapter);
+	if (!agent)
+		return error_reply(msg, -ENONET);
 
-	err = adapter_create_bonding(adapter, &remote, BDADDR_BREDR,
-					agent_get_io_capability(agent));
+	io_cap = agent_get_io_capability(agent);
+	agent_unref(agent);
+
+	err = adapter_create_bonding(adapter, &remote, BDADDR_BREDR, io_cap);
 	if (err < 0)
 		return error_reply(msg, -err);
 
