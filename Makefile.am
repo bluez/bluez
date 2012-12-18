@@ -49,7 +49,7 @@ dbussystembusdir = @DBUS_SYSTEMBUSDIR@
 dbussystembus_DATA = src/org.bluez.service
 endif
 
-EXTRA_DIST += src/bluetooth.service.in
+EXTRA_DIST += src/bluetooth.service.in src/org.bluez.service
 
 plugindir = $(libdir)/bluetooth/plugins
 
@@ -164,7 +164,7 @@ CLEANFILES += $(builtin_files) src/bluetooth.service
 
 man_MANS = src/bluetoothd.8
 
-EXTRA_DIST += src/genbuiltin src/bluetooth.conf src/org.bluez.service \
+EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
 			profiles/input/input.conf profiles/proximity/proximity.conf \
 			profiles/audio/audio.conf
