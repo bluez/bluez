@@ -306,10 +306,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 static void message_handler(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	begin_message();
-	printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
+	rl_printf("[SIGNAL] %s.%s\n", dbus_message_get_interface(message),
 					dbus_message_get_member(message));
-	end_message();
 }
 
 static GDBusProxy *find_proxy_by_address(GList *source, const char *address)
@@ -460,14 +458,10 @@ static void generic_callback(const DBusError *error, void *user_data)
 {
 	char *str = user_data;
 
-	begin_message();
-
 	if (dbus_error_is_set(error))
-		printf("Failed to set %s: %s\n", str, error->name);
+		rl_printf("Failed to set %s: %s\n", str, error->name);
 	else
-		printf("Changing %s succeeded\n", str);
-
-	end_message();
+		rl_printf("Changing %s succeeded\n", str);
 }
 
 static void cmd_power(const char *arg)
@@ -563,21 +557,16 @@ static void start_discovery_reply(DBusMessage *message, void *user_data)
 	dbus_bool_t enable = GPOINTER_TO_UINT(user_data);
 	DBusError error;
 
-	begin_message();
-
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		printf("Failed to %s discovery: %s\n",
+		rl_printf("Failed to %s discovery: %s\n",
 				enable == TRUE ? "start" : "stop", error.name);
 		dbus_error_free(&error);
-		goto done;
+		return;
 	}
 
-	printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
-
-done:
-	end_message();
+	rl_printf("Discovery %s\n", enable == TRUE ? "started" : "stopped");
 }
 
 static void cmd_scan(const char *arg)
@@ -609,20 +598,15 @@ static void pair_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
 
-	begin_message();
-
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		printf("Failed to pair: %s\n", error.name);
+		rl_printf("Failed to pair: %s\n", error.name);
 		dbus_error_free(&error);
-		goto done;
+		return;
 	}
 
-	printf("Pairing successful\n");
-
-done:
-	end_message();
+	rl_printf("Pairing successful\n");
 }
 
 static void cmd_pair(const char *arg)
@@ -651,20 +635,15 @@ static void remove_device_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
 
-	begin_message();
-
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == TRUE) {
-		printf("Failed to remove device: %s\n", error.name);
+		rl_printf("Failed to remove device: %s\n", error.name);
 		dbus_error_free(&error);
-		goto done;
+		return;
 	}
 
-	printf("Device has been removed\n");
-
-done:
-	end_message();
+	rl_printf("Device has been removed\n");
 }
 
 static void remove_device_setup(DBusMessageIter *iter, void *user_data)
