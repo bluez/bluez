@@ -53,6 +53,15 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 	if (!pending_message)
 		return FALSE;
 
+	if (!strcmp(input, "yes"))
+		g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
+	else if (!strcmp(input, "no"))
+		g_dbus_send_error(conn, pending_message,
+					"org.bluez.Error.Rejected", NULL);
+	else
+		g_dbus_send_error(conn, pending_message,
+					"org.bluez.Error.Canceled", NULL);
+
 	g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
 
 	dbus_message_unref(pending_message);

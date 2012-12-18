@@ -844,9 +844,6 @@ static void rl_handler(char *input)
 	char *cmd, *arg;
 	int i;
 
-	if (agent_input(dbus_conn, input) == TRUE)
-		goto done;
-
 	if (!input) {
 		rl_insert_text("quit");
 		rl_redisplay();
@@ -856,6 +853,9 @@ static void rl_handler(char *input)
 	}
 
 	if (!strlen(input))
+		goto done;
+
+	if (agent_input(dbus_conn, input) == TRUE)
 		goto done;
 
 	add_history(input);
