@@ -916,6 +916,8 @@ static DBusMessage *register_agent(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	cap = parse_io_capability(capability);
+	if (cap == IO_CAPABILITY_INVALID)
+		return btd_error_invalid_args(msg);
 
 	agent = agent_create(sender, path, cap);
 	if (!agent)
