@@ -680,7 +680,7 @@ static void attio_disconnected_cb(gpointer user_data)
 	hogdev->attrib = NULL;
 }
 
-static struct hog_device *hog_device_new(struct btd_device *device,
+static struct hog_device *hog_new_device(struct btd_device *device,
 								uint16_t id)
 {
 	struct hog_device *hogdev;
@@ -723,7 +723,7 @@ static struct hog_device *hog_device_register(struct btd_device *device,
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
 	GIOChannel *io;
 
-	hogdev = hog_device_new(device, prim->range.start);
+	hogdev = hog_new_device(device, prim->range.start);
 	if (!hogdev)
 		return NULL;
 
