@@ -24,15 +24,4 @@
 #define COLOR_OFF	"\x1B[0m"
 #define COLOR_BLUE	"\x1B[0;34m"
 
-static inline void begin_message(void)
-{
-	rl_message("");
-	printf("\r%*c\r", rl_end, ' ');
-}
-
-static inline void end_message(void)
-{
-	rl_clear_message();
-}
-
 void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
