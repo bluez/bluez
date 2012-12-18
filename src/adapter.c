@@ -290,7 +290,7 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	req->id = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
 							sender, cb, req, NULL);
 
-	info("session %p with %s activated", req, sender);
+	DBG("session %p with %s activated", req, sender);
 
 	return session_ref(req);
 }
@@ -920,7 +920,9 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 		return btd_error_failed(msg, "Invalid discovery session");
 
 	session_unref(req);
-	info("Stopping discovery");
+
+	DBG("stopping discovery");
+
 	return dbus_message_new_method_return(msg);
 }
 
@@ -1628,7 +1630,7 @@ void btd_adapter_start(struct btd_adapter *adapter)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Powered");
 
-	info("Adapter %s has been enabled", adapter->path);
+	DBG("adapter %s has been enabled", adapter->path);
 
 	if (g_slist_length(adapter->connect_list) == 0 ||
 					adapter->disc_sessions != NULL)
@@ -1723,7 +1725,7 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
 								"Powered");
 
-	info("Adapter %s has been disabled", adapter->path);
+	DBG("adapter %s has been disabled", adapter->path);
 
 	return 0;
 }
@@ -3185,7 +3187,7 @@ static gboolean process_auth_queue(gpointer user_data)
 
 		auth->agent = agent_get(NULL);
 		if (auth->agent == NULL) {
-			warn("Can't find device agent");
+			warn("Authentication attempt without agent");
 			auth->cb(&err, auth->user_data);
 			goto next;
 		}
