@@ -46,13 +46,14 @@ dbus_bool_t agent_completion(void)
 	return TRUE;
 }
 
-dbus_bool_t agent_input(DBusConnection *conn, const char *input)
+static void pincode_response(DBusConnection *conn, const char *input)
 {
-	rl_clear_message();
+	g_dbus_send_reply(conn, pending_message, DBUS_TYPE_STRING, &input,
+							DBUS_TYPE_INVALID);
+}
 
-	if (!pending_message)
-		return FALSE;
-
+static void confirm_response(DBusConnection *conn, const char *input)
+{
 	if (!strcmp(input, "yes"))
 		g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
 	else if (!strcmp(input, "no"))
@@ -61,8 +62,26 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 	else
 		g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Canceled", NULL);
+}
 
-	g_dbus_send_reply(conn, pending_message, DBUS_TYPE_INVALID);
+dbus_bool_t agent_input(DBusConnection *conn, const char *input)
+{
+	const char *member;
+
+	rl_clear_message();
+
+	if (!pending_message)
+		return FALSE;
+
+	member = dbus_message_get_member(pending_message);
+
+	if (!strcmp(member, "RequestPinCode"))
+		pincode_response(conn, input);
+	else if (!strcmp(member, "RequestConfirmation"))
+		confirm_response(conn, input);
+	else
+		g_dbus_send_error(conn, pending_message,
+					"org.bluez.Error.Canceled", NULL);
 
 	dbus_message_unref(pending_message);
 	pending_message = NULL;
@@ -88,6 +107,23 @@ static DBusMessage *release_agent(DBusConnection *conn,
 	g_dbus_unregister_interface(conn, AGENT_PATH, AGENT_INTERFACE);
 
 	return dbus_message_new_method_return(msg);
+}
+
+static DBusMessage *request_pincode(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device;
+
+	rl_printf("Request PIN code\n");
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
+							DBUS_TYPE_INVALID);
+
+	rl_message("Enter PIN code: ");
+
+	pending_message = dbus_message_ref(msg);
+
+	return NULL;
 }
 
 static DBusMessage *request_confirmation(DBusConnection *conn,
@@ -126,8 +162,11 @@ static DBusMessage *cancel_request(DBusConnection *conn,
 
 static const GDBusMethodTable methods[] = {
 	{ GDBUS_METHOD("Release", NULL, NULL, release_agent) },
+	{ GDBUS_ASYNC_METHOD("RequestPinCode",
+			GDBUS_ARGS({ "device", "o" }),
+			GDBUS_ARGS({ "pincode", "s" }), request_pincode) },
 	{ GDBUS_ASYNC_METHOD("RequestConfirmation",
-			GDBUS_ARGS({ "device", "o"}, { "passkey", "u" }),
+			GDBUS_ARGS({ "device", "o" }, { "passkey", "u" }),
 			NULL, request_confirmation) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, cancel_request) },
 	{ }
