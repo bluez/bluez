@@ -30,6 +30,8 @@
 
 #include "gdbus.h"
 
+#define METHOD_CALL_TIMEOUT (300 * 1000)
+
 struct GDBusClient {
 	gint ref_count;
 	DBusConnection *dbus_conn;
@@ -498,7 +500,7 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 	}
 
 	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
-							&call, -1) == FALSE) {
+					&call, METHOD_CALL_TIMEOUT) == FALSE) {
 		dbus_message_unref(msg);
 		g_free(data);
 		return FALSE;
