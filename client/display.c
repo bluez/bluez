@@ -21,18 +21,37 @@
  *
  */
 
-#define COLOR_OFF	"\x1B[0m"
-#define COLOR_BLUE	"\x1B[0;34m"
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
-static inline void begin_message(void)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <readline/readline.h>
+
+#include "display.h"
+
+void rl_printf(const char *fmt, ...)
 {
-	rl_message("");
-	printf("\r%*c\r", rl_end, ' ');
-}
+	va_list args;
+	char *saved_line;
+	int saved_point;
 
-static inline void end_message(void)
-{
-	rl_clear_message();
-}
+	saved_point = rl_point;
+	saved_line = rl_copy_text(0, rl_end);
+	rl_save_prompt();
+	rl_replace_line("", 0);
+	rl_redisplay();
 
-void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
+	va_start(args, fmt);
+	vprintf(fmt, args);
+	va_end(args);
+
+	rl_restore_prompt();
+	rl_replace_line(saved_line, 0);
+	rl_point = saved_point;
+	rl_redisplay();
+	free(saved_line);
+}
