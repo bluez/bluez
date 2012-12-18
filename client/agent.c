@@ -165,14 +165,14 @@ static void register_agent_reply(DBusMessage *message, void *user_data)
 void agent_register(DBusConnection *conn, GDBusProxy *manager)
 {
 	if (agent_registered == TRUE) {
-		printf("Agent is already registered\n");
+		rl_printf("Agent is already registered\n");
 		return;
 	}
 
 	if (g_dbus_register_interface(conn, AGENT_PATH,
 					AGENT_INTERFACE, methods,
 					NULL, NULL, NULL, NULL) == FALSE) {
-		printf("Failed to register agent object\n");
+		rl_printf("Failed to register agent object\n");
 		return;
 	}
 
@@ -180,7 +180,7 @@ void agent_register(DBusConnection *conn, GDBusProxy *manager)
 						register_agent_setup,
 						register_agent_reply,
 						conn, NULL) == FALSE) {
-		printf("Failed to call register agent method\n");
+		rl_printf("Failed to call register agent method\n");
 		return;
 	}
 }
@@ -215,7 +215,7 @@ static void unregister_agent_reply(DBusMessage *message, void *user_data)
 void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 {
 	if (agent_registered == FALSE) {
-		printf("No agent is registered\n");
+		rl_printf("No agent is registered\n");
 		return;
 	}
 
@@ -223,7 +223,7 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 						unregister_agent_setup,
 						unregister_agent_reply,
 						conn, NULL) == FALSE) {
-		printf("Failed to call unregister agent method\n");
+		rl_printf("Failed to call unregister agent method\n");
 		return;
 	}
 }

@@ -94,10 +94,11 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
-	if (description != NULL)
-		printf("[%s] ", description);
-
-	printf("Controller %s %s %s\n", address, name,
+	rl_printf("%s%s%sController %s %s %s\n",
+				description ? "[" : "",
+				description ? : "",
+				description ? "] " : "",
+				address, name,
 				default_ctrl == proxy ? "[default]" : "");
 
 }
@@ -117,10 +118,11 @@ static void print_device(GDBusProxy *proxy, const char *description)
 	else
 		name = "<unknown>";
 
-	if (description != NULL)
-		printf("[%s] ", description);
-
-	printf("Device %s %s\n", address, name);
+	rl_printf("%s%s%sDevice %s %s\n",
+				description ? "[" : "",
+				description ? : "",
+				description ? "] " : "",
+				address, name);
 }
 
 static void print_iter(const char *label, const char *name,
@@ -132,34 +134,34 @@ static void print_iter(const char *label, const char *name,
 	const char *valstr;
 
 	if (iter == NULL) {
-		printf("%s%s is nil\n", label, name);
+		rl_printf("%s%s is nil\n", label, name);
 		return;
 	}
 
 	switch (dbus_message_iter_get_arg_type(iter)) {
 	case DBUS_TYPE_INVALID:
-		printf("%s%s is inavlid\n", label, name);
+		rl_printf("%s%s is inavlid\n", label, name);
 		break;
 	case DBUS_TYPE_STRING:
 	case DBUS_TYPE_OBJECT_PATH:
 		dbus_message_iter_get_basic(iter, &valstr);
-		printf("%s%s: %s\n", label, name, valstr);
+		rl_printf("%s%s: %s\n", label, name, valstr);
 		break;
 	case DBUS_TYPE_BOOLEAN:
 		dbus_message_iter_get_basic(iter, &valbool);
-		printf("%s%s: %s\n", label, name,
+		rl_printf("%s%s: %s\n", label, name,
 					valbool == TRUE ? "yes" : "no");
 		break;
 	case DBUS_TYPE_UINT32:
 		dbus_message_iter_get_basic(iter, &valu32);
-		printf("%s%s: 0x%06x\n", label, name, valu32);
+		rl_printf("%s%s: 0x%06x\n", label, name, valu32);
 		break;
 	case DBUS_TYPE_INT16:
 		dbus_message_iter_get_basic(iter, &vals16);
-		printf("%s%s: %d\n", label, name, vals16);
+		rl_printf("%s%s: %d\n", label, name, vals16);
 		break;
 	default:
-		printf("%s%s has unsupported type\n", label, name);
+		rl_printf("%s%s has unsupported type\n", label, name);
 		break;
 	}
 }
@@ -204,9 +206,7 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (device_is_child(proxy, default_ctrl) == TRUE) {
 			dev_list = g_list_append(dev_list, proxy);
 
-			begin_message();
 			print_device(proxy, "NEW");
-			end_message();
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_append(ctrl_list, proxy);
@@ -214,9 +214,7 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (!default_ctrl)
 			default_ctrl = proxy;
 
-		begin_message();
 		print_adapter(proxy, "NEW");
-		end_message();
 	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
 		if (!agent_manager) {
 			agent_manager = proxy;
@@ -237,16 +235,12 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		if (device_is_child(proxy, default_ctrl) == TRUE) {
 			dev_list = g_list_remove(dev_list, proxy);
 
-			begin_message();
 			print_device(proxy, "DEL");
-			end_message();
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_remove(ctrl_list, proxy);
 
-		begin_message();
 		print_adapter(proxy, "DEL");
-		end_message();
 
 		if (default_ctrl == proxy) {
 			default_ctrl = NULL;
@@ -270,8 +264,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 	if (!strcmp(interface, "org.bluez.Device1")) {
 		if (device_is_child(proxy, default_ctrl) == TRUE) {
 			DBusMessageIter addr_iter;
-
-			begin_message();
+			char *str;
 
 			if (g_dbus_proxy_get_property(proxy, "Address",
 							&addr_iter) == TRUE) {
@@ -279,27 +272,29 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 				dbus_message_iter_get_basic(&addr_iter,
 								&address);
-				printf("[CHG] Device %s ", address);
-			}
+				str = g_strdup_printf("[CHG] Device %s ",
+								address);
+			} else
+				str = g_strdup("");
 
-			print_iter("", name, iter);
-			end_message();
+			print_iter(str, name, iter);
+			g_free(str);
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		DBusMessageIter addr_iter;
-
-		begin_message();
+		char *str;
 
 		if (g_dbus_proxy_get_property(proxy, "Address",
 						&addr_iter) == TRUE) {
 			const char *address;
 
 			dbus_message_iter_get_basic(&addr_iter, &address);
-			printf("[CHG] Controller %s ", address);
-		}
+			str = g_strdup_printf("[CHG] Controller %s ", address);
+		} else
+			str = g_strdup("");
 
-		print_iter("", name, iter);
-		end_message();
+		print_iter(str, name, iter);
+		g_free(str);
 	}
 }
 
@@ -334,7 +329,7 @@ static GDBusProxy *find_proxy_by_address(GList *source, const char *address)
 static gboolean check_default_ctrl(void)
 {
 	if (!default_ctrl) {
-		printf("No default controller available\n");
+		rl_printf("No default controller available\n");
 		return FALSE;
 	}
 
@@ -344,7 +339,7 @@ static gboolean check_default_ctrl(void)
 static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
 {
 	if (!arg || !strlen(arg)) {
-		printf("Missing on/off argument\n");
+		rl_printf("Missing on/off argument\n");
 		return FALSE;
 	}
 
@@ -358,7 +353,7 @@ static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
 		return TRUE;
 	}
 
-	printf("Invalid argument %s\n", arg);
+	rl_printf("Invalid argument %s\n", arg);
 	return FALSE;
 }
 
@@ -386,7 +381,7 @@ static void cmd_info(const char *arg)
 	} else {
 		proxy = find_proxy_by_address(ctrl_list, arg);
 		if (!proxy) {
-			printf("Controller %s not available\n", arg);
+			rl_printf("Controller %s not available\n", arg);
 			return;
 		}
 	}
@@ -395,7 +390,7 @@ static void cmd_info(const char *arg)
 		return;
 
 	dbus_message_iter_get_basic(&iter, &address);
-	printf("Controller %s\n", address);
+	rl_printf("Controller %s\n", address);
 
 	print_property(proxy, "Name");
 	print_property(proxy, "Class");
@@ -411,7 +406,7 @@ static void cmd_info(const char *arg)
 	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
 		const char *str;
 		dbus_message_iter_get_basic(&value, &str);
-		printf("\tUUID: %s\n", str);
+		rl_printf("\tUUID: %s\n", str);
 		dbus_message_iter_next(&value);
 	}
 
@@ -424,13 +419,13 @@ static void cmd_select(const char *arg)
 	GDBusProxy *proxy;
 
 	if (!arg || !strlen(arg)) {
-		printf("Missing controller address argument\n");
+		rl_printf("Missing controller address argument\n");
 		return;
 	}
 
 	proxy = find_proxy_by_address(ctrl_list, arg);
 	if (!proxy) {
-		printf("Controller %s not available\n", arg);
+		rl_printf("Controller %s not available\n", arg);
 		return;
 	}
 
@@ -541,14 +536,14 @@ static void cmd_agent(const char *arg)
 		if (agent_manager)
 			agent_register(dbus_conn, agent_manager);
 		else
-			printf("Agent registration enabled\n");
+			rl_printf("Agent registration enabled\n");
 	} else {
 		auto_register_agent = FALSE;
 
 		if (agent_manager)
 			agent_unregister(dbus_conn, agent_manager);
 		else
-			printf("Agent registration disabled\n");
+			rl_printf("Agent registration disabled\n");
 	}
 }
 
@@ -588,7 +583,7 @@ static void cmd_scan(const char *arg)
 	if (g_dbus_proxy_method_call(default_ctrl, method,
 				NULL, start_discovery_reply,
 				GUINT_TO_POINTER(enable), NULL) == FALSE) {
-		printf("Failed to %s discovery\n",
+		rl_printf("Failed to %s discovery\n",
 					enable == TRUE ? "start" : "stop");
 		return;
 	}
@@ -614,19 +609,19 @@ static void cmd_pair(const char *arg)
 	GDBusProxy *proxy;
 
 	if (!arg || !strlen(arg)) {
-		printf("Missing device address argument\n");
+		rl_printf("Missing device address argument\n");
 		return;
 	}
 
 	proxy = find_proxy_by_address(dev_list, arg);
 	if (!proxy) {
-		printf("Device %s not available\n", arg);
+		rl_printf("Device %s not available\n", arg);
 		return;
 	}
 
 	if (g_dbus_proxy_method_call(proxy, "Pair", NULL, pair_reply,
 							NULL, NULL) == FALSE) {
-		printf("Failed to pair\n");
+		rl_printf("Failed to pair\n");
 		return;
 	}
 }
@@ -659,7 +654,7 @@ static void cmd_remove(const char *arg)
 	char *path;
 
 	if (!arg || !strlen(arg)) {
-		printf("Missing device address argument\n");
+		rl_printf("Missing device address argument\n");
 		return;
 	}
 
@@ -668,7 +663,7 @@ static void cmd_remove(const char *arg)
 
 	proxy = find_proxy_by_address(dev_list, arg);
 	if (!proxy) {
-		printf("Device %s not available\n", arg);
+		rl_printf("Device %s not available\n", arg);
 		return;
 	}
 
@@ -678,7 +673,7 @@ static void cmd_remove(const char *arg)
 						remove_device_setup,
 						remove_device_reply,
 						path, g_free) == FALSE) {
-		printf("Failed to remove device\n");
+		rl_printf("Failed to remove device\n");
 		g_free(path);
 		return;
 	}
@@ -689,7 +684,7 @@ static void cmd_name(const char *arg)
 	char *name;
 
 	if (!arg || !strlen(arg)) {
-		printf("Missing name argument\n");
+		rl_printf("Missing name argument\n");
 		return;
 	}
 
