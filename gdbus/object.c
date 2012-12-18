@@ -1446,6 +1446,38 @@ gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message)
 	return result;
 }
 
+gboolean g_dbus_send_error_valist(DBusConnection *connection,
+					DBusMessage *message, const char *name,
+					const char *format, va_list args)
+{
+	DBusMessage *error;
+	char str[1024];
+
+	vsnprintf(str, sizeof(str), format, args);
+
+	error = dbus_message_new_error(message, name, str);
+	if (error == NULL)
+		return FALSE;
+
+	return g_dbus_send_message(connection, error);
+}
+
+gboolean g_dbus_send_error(DBusConnection *connection, DBusMessage *message,
+				const char *name, const char *format, ...)
+{
+	va_list args;
+	gboolean result;
+
+	va_start(args, format);
+
+	result = g_dbus_send_error_valist(connection, message, name,
+							format, args);
+
+	va_end(args);
+
+	return result;
+}
+
 gboolean g_dbus_send_reply_valist(DBusConnection *connection,
 				DBusMessage *message, int type, va_list args)
 {

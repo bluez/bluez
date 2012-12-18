@@ -222,6 +222,12 @@ DBusMessage *g_dbus_create_reply_valist(DBusMessage *message,
 						int type, va_list args);
 
 gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message);
+gboolean g_dbus_send_error(DBusConnection *connection, DBusMessage *message,
+				const char *name, const char *format, ...)
+					 __attribute__((format(printf, 4, 5)));
+gboolean g_dbus_send_error_valist(DBusConnection *connection,
+					DBusMessage *message, const char *name,
+					const char *format, va_list args);
 gboolean g_dbus_send_reply(DBusConnection *connection,
 				DBusMessage *message, int type, ...);
 gboolean g_dbus_send_reply_valist(DBusConnection *connection,
