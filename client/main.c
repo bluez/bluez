@@ -628,6 +628,8 @@ static void cmd_pair(const char *arg)
 		rl_printf("Failed to pair\n");
 		return;
 	}
+
+	rl_printf("Attempting to pair with %s\n", arg);
 }
 
 static void remove_device_reply(DBusMessage *message, void *user_data)
