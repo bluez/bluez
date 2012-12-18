@@ -51,8 +51,20 @@ obexd_src_obexd_SOURCES = $(gdbus_sources) $(btio_sources) $(gobex_sources) \
 			obexd/src/mimetype.h obexd/src/mimetype.c \
 			obexd/src/service.h obexd/src/service.c \
 			obexd/src/transport.h obexd/src/transport.c \
-			obexd/src/server.h obexd/src/server.c
-
+			obexd/src/server.h obexd/src/server.c \
+			obexd/client/manager.h obexd/client/manager.c \
+			obexd/client/session.h obexd/client/session.c \
+			obexd/client/bluetooth.h obexd/client/bluetooth.c \
+			obexd/client/sync.h obexd/client/sync.c \
+			obexd/client/pbap.h obexd/client/pbap.c \
+			obexd/client/ftp.h obexd/client/ftp.c \
+			obexd/client/opp.h obexd/client/opp.c \
+			obexd/client/map.h obexd/client/map.c \
+			obexd/client/transfer.h obexd/client/transfer.c \
+			obexd/client/transport.h obexd/client/transport.c \
+			obexd/client/dbus.h obexd/client/dbus.c \
+			obexd/client/driver.h obexd/client/driver.c \
+			obexd/src/map_ap.h
 obexd_src_obexd_LDADD = lib/libbluetooth-private.la \
 				@ICAL_LIBS@ @DBUS_LIBS@ @GLIB_LIBS@ -ldl
 
@@ -83,17 +95,3 @@ obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
 CLEANFILES += obexd/src/builtin.h $(builtin_files)
 
 EXTRA_DIST += obexd/src/genbuiltin
-
-obexd_src_obexd_SOURCES += obexd/client/manager.h obexd/client/manager.c \
-			obexd/client/session.h obexd/client/session.c \
-			obexd/client/bluetooth.h obexd/client/bluetooth.c \
-			obexd/client/sync.h obexd/client/sync.c \
-			obexd/client/pbap.h obexd/client/pbap.c \
-			obexd/client/ftp.h obexd/client/ftp.c \
-			obexd/client/opp.h obexd/client/opp.c \
-			obexd/client/map.h obexd/client/map.c \
-			obexd/client/transfer.h obexd/client/transfer.c \
-			obexd/client/transport.h obexd/client/transport.c \
-			obexd/client/dbus.h obexd/client/dbus.c \
-			obexd/client/driver.h obexd/client/driver.c \
-			obexd/src/map_ap.h
