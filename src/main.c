@@ -164,6 +164,8 @@ static void check_config(GKeyFile *config)
 		if (!found)
 			warn("Unknown key %s in main.conf", keys[i]);
 	}
+
+	g_strfreev(keys);
 }
 
 static void parse_config(GKeyFile *config)
