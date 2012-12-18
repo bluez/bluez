@@ -8,9 +8,9 @@ Copyright (C) 2011-2012  BMW Car IT GmbH. All rights reserved.
 Client hierarchy
 ================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.Client
-Object path	/
+Object path	/org/bluez/obex
 
 Methods		object CreateSession(string destination, dict args)
 
@@ -39,7 +39,7 @@ Methods		object CreateSession(string destination, dict args)
 Session hierarchy
 =================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.Session
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -56,7 +56,7 @@ Properties	string Source [readonly]
 Object Push hierarchy
 =====================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.ObjectPush
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -106,7 +106,7 @@ Methods		object, dict SendFile(string sourcefile)
 File Transfer hierarchy
 =======================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.FileTransfer
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -179,7 +179,7 @@ Methods		void ChangeFolder(string folder)
 Phonebook Access hierarchy
 =======================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.PhonebookAccess
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -309,7 +309,7 @@ Filter:		string Format:
 Synchronization hierarchy
 =======================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.Synchronization
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -355,7 +355,7 @@ Methods		void SetLocation(string location)
 Message Access hierarchy
 =========================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.MessageAccess
 Object path	[variable prefix]/{session0,session1,...}
 
@@ -517,7 +517,7 @@ Filter:		uint16 Offset:
 Message hierarchy
 =================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.Message
 Object path	[variable prefix]/{session0,session1,...}/{message0,...}
 
@@ -605,7 +605,7 @@ Properties	string Subject [readonly]
 Transfer hierarchy
 ==================
 
-Service		org.bluez.obex.client
+Service		org.bluez.obex
 Interface	org.bluez.obex.Transfer
 Object path	[variable prefix]/{session0,session1,...}/{transfer0,...}
 
