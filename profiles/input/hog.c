@@ -716,7 +716,7 @@ static void hog_free_device(struct hog_device *hogdev)
 	g_free(hogdev);
 }
 
-static struct hog_device *hog_device_register(struct btd_device *device,
+static struct hog_device *hog_register_device(struct btd_device *device,
 						struct gatt_primary *prim)
 {
 	struct hog_device *hogdev;
@@ -841,7 +841,7 @@ static int hog_probe(struct btd_profile *p, struct btd_device *device,
 		if (strcmp(prim->uuid, HOG_UUID) != 0)
 			continue;
 
-		hogdev = hog_device_register(device, prim);
+		hogdev = hog_register_device(device, prim);
 		if (hogdev == NULL)
 			continue;
 
