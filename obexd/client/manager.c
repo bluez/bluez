@@ -48,7 +48,7 @@
 
 #define CLIENT_INTERFACE	"org.bluez.obex.Client"
 #define ERROR_INTERFACE		"org.bluez.obex.Error"
-#define CLIENT_PATH		"/"
+#define CLIENT_PATH		"/org/bluez/obex"
 
 struct send_data {
 	DBusConnection *connection;

@@ -44,7 +44,7 @@
 #include "log.h"
 #include "service.h"
 
-#define OBEX_MANAGER_PATH "/"
+#define OBEX_MANAGER_PATH "/org/bluez/obex"
 #define OBEX_MANAGER_INTERFACE OBEXD_SERVICE ".Manager"
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer"
