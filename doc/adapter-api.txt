@@ -48,34 +48,6 @@ Methods		void StartDiscovery()
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
 
-		void RegisterAgent(object agent, string capability)
-
-			This registers the adapter wide agent.
-
-			The object path defines the path of the agent
-			that will be called when user input is needed.
-
-			If an application disconnects from the bus all
-			of its registered agents will be removed.
-
-			The capability parameter can have the values
-			"DisplayOnly", "DisplayYesNo", "KeyboardOnly",
-			"NoInputNoOutput" and "KeyboardDisplay" which reflects
-			the input and output capabilities of the agent. If an
-			empty string is used it will fallback to
-			"DisplayYesNo".
-
-			Possible errors: org.bluez.Error.InvalidArguments
-					 org.bluez.Error.AlreadyExists
-
-		void UnregisterAgent(object agent)
-
-			This unregisters the agent that has been previously
-			registered. The object path parameter must match the
-			same value that has been used on registration.
-
-			Possible errors: org.bluez.Error.DoesNotExist
-
 Signals		DevicesFound(array{object path, dict values})
 
 			This signal will be sent every time devices have
