@@ -19,6 +19,7 @@ PXP			1.0		Reporter, Monitor
 HOGP			1.0		Host
 HTP			1.0
 TIP			1.0
+CSCP			1.0		Collector
 
 SAP			1.1		Server
 DUN			1.1		Server, Client
