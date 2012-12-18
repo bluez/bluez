@@ -27,9 +27,6 @@
 
 #include <bluetooth/sdp.h>
 
-#define SDP_XML_ENCODING_NORMAL	0
-#define SDP_XML_ENCODING_HEX	1
-
 void convert_sdp_record_to_xml(sdp_record_t *rec,
 		void *user_data, void (*append_func) (void *, const char *));
 

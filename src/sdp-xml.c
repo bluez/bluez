@@ -42,6 +42,9 @@
 #define DBG(...) (void)(0)
 #define error(...) (void)(0)
 
+#define SDP_XML_ENCODING_NORMAL	0
+#define SDP_XML_ENCODING_HEX	1
+
 #define STRBUFSIZE 1024
 #define MAXINDENT 64
 
