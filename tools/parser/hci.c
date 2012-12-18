@@ -791,12 +791,9 @@ static inline void ext_inquiry_data_dump(int level, struct frame *frm,
 		printf("%s service classes:",
 				type == 0x02 ? "Shortened" : "Complete");
 
-		for (i = 0; i < len / 2; i++) {
-			uint16_t val;
+		for (i = 0; i < len / 2; i++)
+			printf(" 0x%4.4x", bt_get_le16(data + i * 2));
 
-			val = btohs(bt_get_unaligned(((uint16_t *) (data + i * 2))));
-			printf(" 0x%4.4x", val);
-		}
 		printf("\n");
 		break;
 
