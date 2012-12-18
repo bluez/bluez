@@ -68,7 +68,6 @@ struct main_opts main_opts;
 
 static const char * const supported_options[] = {
 	"Name",
-	"DisablePlugins",
 	"Class",
 	"DiscoverableTimeout",
 	"PairableTimeout",
@@ -539,7 +538,7 @@ int main(int argc, char *argv[])
 	 * the plugins might wanna expose some paths on the bus. However the
 	 * best order of how to init various subsystems of the Bluetooth
 	 * daemon needs to be re-worked. */
-	plugin_init(config, option_plugin, option_noplugin);
+	plugin_init(option_plugin, option_noplugin);
 
 	/* no need to keep parsed option in memory */
 	free_options();

@@ -50,8 +50,7 @@ enum {
 
 extern struct main_opts main_opts;
 
-gboolean plugin_init(GKeyFile *config, const char *enable,
-							const char *disable);
+gboolean plugin_init(const char *enable, const char *disable);
 void plugin_cleanup(void);
 
 void rfkill_init(void);

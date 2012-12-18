@@ -84,19 +84,9 @@ static gboolean add_plugin(void *handle, struct bluetooth_plugin_desc *desc)
 	return TRUE;
 }
 
-static gboolean enable_plugin(const char *name, char **conf_disable,
-					char **cli_enable, char **cli_disable)
+static gboolean enable_plugin(const char *name, char **cli_enable,
+							char **cli_disable)
 {
-	if (conf_disable) {
-		for (; *conf_disable; conf_disable++)
-			if (g_pattern_match_simple(*conf_disable, name))
-				break;
-		if (*conf_disable) {
-			info("Excluding (conf) %s", name);
-			return FALSE;
-		}
-	}
-
 	if (cli_disable) {
 		for (; *cli_disable; cli_disable++)
 			if (g_pattern_match_simple(*cli_disable, name))
@@ -122,24 +112,17 @@ static gboolean enable_plugin(const char *name, char **conf_disable,
 
 #include "builtin.h"
 
-gboolean plugin_init(GKeyFile *config, const char *enable, const char *disable)
+gboolean plugin_init(const char *enable, const char *disable)
 {
 	GSList *list;
 	GDir *dir;
 	const gchar *file;
-	char **conf_disabled, **cli_disabled, **cli_enabled;
+	char **cli_disabled, **cli_enabled;
 	unsigned int i;
 
 	/* Make a call to BtIO API so its symbols got resolved before the
 	 * plugins are loaded. */
 	bt_io_error_quark();
-
-	if (config)
-		conf_disabled = g_key_file_get_string_list(config, "General",
-							"DisablePlugins",
-							NULL, NULL);
-	else
-		conf_disabled = NULL;
 
 	if (enable)
 		cli_enabled = g_strsplit_set(enable, ", ", -1);
@@ -154,8 +137,8 @@ gboolean plugin_init(GKeyFile *config, const char *enable, const char *disable)
 	DBG("Loading builtin plugins");
 
 	for (i = 0; __bluetooth_builtin[i]; i++) {
-		if (!enable_plugin(__bluetooth_builtin[i]->name, conf_disabled,
-						cli_enabled, cli_disabled))
+		if (!enable_plugin(__bluetooth_builtin[i]->name, cli_enabled,
+								cli_disabled))
 			continue;
 
 		add_plugin(NULL,  __bluetooth_builtin[i]);
@@ -198,8 +181,7 @@ gboolean plugin_init(GKeyFile *config, const char *enable, const char *disable)
 			continue;
 		}
 
-		if (!enable_plugin(desc->name, conf_disabled,
-						cli_enabled, cli_disabled)) {
+		if (!enable_plugin(desc->name, cli_enabled, cli_disabled)) {
 			dlclose(handle);
 			continue;
 		}
@@ -222,7 +204,6 @@ start:
 		plugin->active = TRUE;
 	}
 
-	g_strfreev(conf_disabled);
 	g_strfreev(cli_enabled);
 	g_strfreev(cli_disabled);
 
