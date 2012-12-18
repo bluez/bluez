@@ -80,7 +80,7 @@ AC_ARG_WITH([dbussystembusdir], AC_HELP_STRING([--with-dbussystembusdir=DIR],
 if (test -z "${path_dbussystembusdir}"); then
 	AC_MSG_CHECKING([D-Bus system bus services dir])
 	path_dbussystembusdir="`$PKG_CONFIG --variable=system_bus_services_dir dbus-1`"
-	if (test -z "${path_dbusconfdir}"); then
+	if (test -z "${path_dbussystembusdir}"); then
 		AC_MSG_ERROR([D-Bus system bus services directory is required])
 	fi
 	AC_MSG_RESULT([${path_dbussystembusdir}])
