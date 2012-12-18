@@ -59,7 +59,7 @@ builtin_sources += profiles/input/manager.h profiles/input/manager.c \
 			profiles/input/device.h profiles/input/device.c
 
 builtin_modules += hog
-builtin_sources += profiles/input/hog_device.c profiles/input/uhid_copy.h \
+builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 			profiles/input/suspend.h profiles/input/suspend-dummy.c
 
 builtin_modules += health
