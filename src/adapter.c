@@ -2215,7 +2215,7 @@ failed:
 static void convert_primaries_entry(char *key, char *value, void *user_data)
 {
 	char *address = user_data;
-	char device_type = -1;
+	int device_type = -1;
 	uuid_t uuid;
 	char **services, **service, *prim_uuid;
 	char filename[PATH_MAX + 1];
