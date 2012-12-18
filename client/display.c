@@ -36,22 +36,29 @@
 void rl_printf(const char *fmt, ...)
 {
 	va_list args;
+	bool save_input;
 	char *saved_line;
 	int saved_point;
 
-	saved_point = rl_point;
-	saved_line = rl_copy_text(0, rl_end);
-	rl_save_prompt();
-	rl_replace_line("", 0);
-	rl_redisplay();
+	save_input = !RL_ISSTATE(RL_STATE_DONE);
+
+	if (save_input) {
+		saved_point = rl_point;
+		saved_line = rl_copy_text(0, rl_end);
+		rl_save_prompt();
+		rl_replace_line("", 0);
+		rl_redisplay();
+	}
 
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
 
-	rl_restore_prompt();
-	rl_replace_line(saved_line, 0);
-	rl_point = saved_point;
-	rl_redisplay();
-	free(saved_line);
+	if (save_input) {
+		rl_restore_prompt();
+		rl_replace_line(saved_line, 0);
+		rl_point = saved_point;
+		rl_redisplay();
+		free(saved_line);
+	}
 }
