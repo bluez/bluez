@@ -172,7 +172,7 @@ if __name__ == '__main__':
 		device.Pair(reply_handler=pair_reply, error_handler=pair_error)
 		device_obj = device
 	else:
-		manager.RequestDefault()
+		manager.RequestDefaultAgent(path)
 
 	mainloop.run()
 
