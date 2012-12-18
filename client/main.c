@@ -829,6 +829,11 @@ static char **cmd_completion(const char *text, int start, int end)
 {
 	char **matches = NULL;
 
+	if (agent_completion() == TRUE) {
+		rl_attempted_completion_over = 1;
+		return NULL;
+	}
+
 	if (start > 0) {
 		int i;
 
@@ -859,6 +864,9 @@ static void rl_handler(char *input)
 {
 	char *cmd, *arg;
 	int i;
+
+	if (agent_input(dbus_conn, input) == TRUE)
+		goto done;
 
 	if (!input) {
 		rl_insert_text("quit");
