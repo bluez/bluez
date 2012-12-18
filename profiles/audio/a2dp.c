@@ -1864,14 +1864,6 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 	return TRUE;
 }
 
-gboolean a2dp_sep_is_playing(struct a2dp_sep *sep)
-{
-	if (avdtp_sep_get_state(sep->lsep) == AVDTP_STATE_STREAMING)
-		return TRUE;
-	else
-		return FALSE;
-}
-
 struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep)
 {
 	return sep->stream;
