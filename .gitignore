@@ -83,6 +83,7 @@ src/bluetooth.service
 
 obexd/src/builtin.h
 obexd/src/obexd
+obexd/src/obex.service
 tools/obex-client-tool
 tools/obex-server-tool
 unit/test-gobex

@@ -1,4 +1,14 @@
 
+if SYSTEMD
+systemduserunitdir = @SYSTEMD_USERUNITDIR@
+systemduserunit_DATA = obexd/src/obex.service
+
+dbussessionbusdir = @DBUS_SESSIONBUSDIR@
+dbussessionbus_DATA = obexd/src/org.bluez.obex.service
+endif
+
+EXTRA_DIST += obexd/src/obex.service.in obexd/src/org.bluez.obex.service
+
 obex_plugindir = $(libdir)/obex/plugins
 
 obexd_builtin_modules =
@@ -92,6 +102,6 @@ obexd/src/plugin.$(OBJEXT): obexd/src/builtin.h
 obexd/src/builtin.h: obexd/src/genbuiltin $(obexd_builtin_sources)
 	$(AM_V_GEN)$(srcdir)/obexd/src/genbuiltin $(obexd_builtin_modules) > $@
 
-CLEANFILES += obexd/src/builtin.h $(builtin_files)
+CLEANFILES += obexd/src/builtin.h $(builtin_files) obexd/src/obex.service
 
 EXTRA_DIST += obexd/src/genbuiltin
