@@ -777,8 +777,7 @@ static int hog_device_unregister(struct hog_device *hogdev)
 	return 0;
 }
 
-static int hog_device_set_control_point(struct hog_device *hogdev,
-							gboolean suspend)
+static int set_control_point(struct hog_device *hogdev, gboolean suspend)
 {
 	uint8_t value = suspend ? 0x00 : 0x01;
 
@@ -802,7 +801,7 @@ static void set_suspend(gpointer data, gpointer user_data)
 	struct hog_device *hogdev = data;
 	gboolean suspend = GPOINTER_TO_INT(user_data);
 
-	hog_device_set_control_point(hogdev, suspend);
+	set_control_point(hogdev, suspend);
 }
 
 static void suspend_callback(void)
