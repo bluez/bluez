@@ -53,7 +53,7 @@ Object path	/org/bluez
 
 			Possible errors: org.bluez.Error.DoesNotExist
 
-		void RequestDefaultAgent()
+		void RequestDefaultAgent(object agent)
 
 			This requests is to make the application agent
 			the default agent. The application is required
