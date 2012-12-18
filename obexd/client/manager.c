@@ -255,7 +255,7 @@ static struct obc_module {
 	{ }
 };
 
-int manager_init(void)
+int client_manager_init(void)
 {
 	DBusError derr;
 	struct obc_module *module;
@@ -290,7 +290,7 @@ int manager_init(void)
 	return 0;
 }
 
-void manager_exit(void)
+void client_manager_exit(void)
 {
 	struct obc_module *module;
 

@@ -21,5 +21,5 @@
  *
  */
 
-int manager_init(void);
-void manager_exit(void);
+int client_manager_init(void);
+void client_manager_exit(void);

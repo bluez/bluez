@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
 	__obex_log_init("obex-client", option_debug, !option_stderr);
 
-	if (manager_init() < 0)
+	if (client_manager_init() < 0)
 		exit(EXIT_FAILURE);
 
 	DBG("Entering main loop");
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
-	manager_exit();
+	client_manager_exit();
 
 	g_main_loop_unref(event_loop);
 
