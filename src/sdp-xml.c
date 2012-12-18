@@ -45,6 +45,16 @@
 #define STRBUFSIZE 1024
 #define MAXINDENT 64
 
+struct sdp_xml_data {
+	char *text;			/* Pointer to the current buffer */
+	int size;			/* Size of the current buffer */
+	sdp_data_t *data;		/* The current item being built */
+	struct sdp_xml_data *next;	/* Next item on the stack */
+	char type;			/* 0 = Text or Hexadecimal */
+	char *name;			/* Name, optional in the dtd */
+	/* TODO: What is it used for? */
+};
+
 struct context_data {
 	sdp_record_t *record;
 	sdp_data_t attr_data;
@@ -63,6 +73,367 @@ static int compute_seq_size(sdp_data_t *data)
 	return unit_size;
 }
 
+#define DEFAULT_XML_DATA_SIZE 1024
+
+static struct sdp_xml_data *sdp_xml_data_alloc(void)
+{
+	struct sdp_xml_data *elem;
+
+	elem = malloc(sizeof(struct sdp_xml_data));
+	if (!elem)
+		return NULL;
+
+	memset(elem, 0, sizeof(struct sdp_xml_data));
+
+	/* Null terminate the text */
+	elem->size = DEFAULT_XML_DATA_SIZE;
+	elem->text = malloc(DEFAULT_XML_DATA_SIZE);
+	elem->text[0] = '\0';
+
+	return elem;
+}
+
+static struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem)
+{
+	char *newbuf;
+
+	newbuf = malloc(elem->size * 2);
+	if (!newbuf)
+		return NULL;
+
+	memcpy(newbuf, elem->text, elem->size);
+	elem->size *= 2;
+	free(elem->text);
+
+	elem->text = newbuf;
+
+	return elem;
+}
+
+static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
+{
+	uint128_t val;
+	unsigned int i, j;
+
+	char buf[3];
+
+	memset(&val, 0, sizeof(val));
+
+	buf[2] = '\0';
+
+	for (j = 0, i = 0; i < strlen(data);) {
+		if (data[i] == '-') {
+			i++;
+			continue;
+		}
+
+		buf[0] = data[i];
+		buf[1] = data[i + 1];
+
+		val.data[j++] = strtoul(buf, 0, 16);
+		i += 2;
+	}
+
+	return sdp_data_alloc(SDP_UUID128, &val);
+}
+
+static sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
+{
+	sdp_data_t *ret;
+	char *endptr;
+	uint32_t val;
+	uint16_t val2;
+	int len;
+
+	len = strlen(data);
+
+	if (len == 36) {
+		ret = sdp_xml_parse_uuid128(data);
+		goto result;
+	}
+
+	val = strtoll(data, &endptr, 16);
+
+	/* Couldn't parse */
+	if (*endptr != '\0')
+		return NULL;
+
+	if (val > USHRT_MAX) {
+		ret = sdp_data_alloc(SDP_UUID32, &val);
+		goto result;
+	}
+
+	val2 = val;
+
+	ret = sdp_data_alloc(SDP_UUID16, &val2);
+
+result:
+	if (record && ret)
+		sdp_pattern_add_uuid(record, &ret->val.uuid);
+
+	return ret;
+}
+
+static sdp_data_t *sdp_xml_parse_int(const char *data, uint8_t dtd)
+{
+	char *endptr;
+	sdp_data_t *ret = NULL;
+
+	switch (dtd) {
+	case SDP_BOOL:
+	{
+		uint8_t val = 0;
+
+		if (!strcmp("true", data))
+			val = 1;
+		else if (!strcmp("false", data))
+			val = 0;
+		else
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_INT8:
+	{
+		int8_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_UINT8:
+	{
+		uint8_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_INT16:
+	{
+		int16_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_UINT16:
+	{
+		uint16_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_INT32:
+	{
+		int32_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_UINT32:
+	{
+		uint32_t val = strtoul(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_INT64:
+	{
+		int64_t val = strtoull(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_UINT64:
+	{
+		uint64_t val = strtoull(data, &endptr, 0);
+
+		/* Failed to parse */
+		if ((endptr != data) && (*endptr != '\0'))
+			return NULL;
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	case SDP_INT128:
+	case SDP_UINT128:
+	{
+		uint128_t val;
+		int i = 0;
+		char buf[3];
+
+		buf[2] = '\0';
+
+		for (; i < 32; i += 2) {
+			buf[0] = data[i];
+			buf[1] = data[i + 1];
+
+			val.data[i >> 1] = strtoul(buf, 0, 16);
+		}
+
+		ret = sdp_data_alloc(dtd, &val);
+		break;
+	}
+
+	};
+
+	return ret;
+}
+
+static char *sdp_xml_parse_string_decode(const char *data, char encoding,
+							uint32_t *length)
+{
+	int len = strlen(data);
+	char *text;
+
+	if (encoding == SDP_XML_ENCODING_NORMAL) {
+		text = strdup(data);
+		*length = len;
+	} else {
+		char buf[3], *decoded;
+		int i;
+
+		decoded = malloc((len >> 1) + 1);
+
+		/* Ensure the string is a power of 2 */
+		len = (len >> 1) << 1;
+
+		buf[2] = '\0';
+
+		for (i = 0; i < len; i += 2) {
+			buf[0] = data[i];
+			buf[1] = data[i + 1];
+
+			decoded[i >> 1] = strtoul(buf, 0, 16);
+		}
+
+		decoded[len >> 1] = '\0';
+		text = decoded;
+		*length = len >> 1;
+	}
+
+	return text;
+}
+
+static sdp_data_t *sdp_xml_parse_url(const char *data)
+{
+	uint8_t dtd = SDP_URL_STR8;
+	char *url;
+	uint32_t length;
+	sdp_data_t *ret;
+
+	url = sdp_xml_parse_string_decode(data,
+				SDP_XML_ENCODING_NORMAL, &length);
+
+	if (length > UCHAR_MAX)
+		dtd = SDP_URL_STR16;
+
+	ret = sdp_data_alloc_with_length(dtd, url, length);
+
+	free(url);
+
+	return ret;
+}
+
+static sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
+{
+	uint8_t dtd = SDP_TEXT_STR8;
+	char *text;
+	uint32_t length;
+	sdp_data_t *ret;
+
+	text = sdp_xml_parse_string_decode(data, encoding, &length);
+
+	if (length > UCHAR_MAX)
+		dtd = SDP_TEXT_STR16;
+
+	ret = sdp_data_alloc_with_length(dtd, text, length);
+
+	free(text);
+
+	return ret;
+}
+
+static sdp_data_t *sdp_xml_parse_nil(const char *data)
+{
+	return sdp_data_alloc(SDP_DATA_NIL, 0);
+}
+
+static sdp_data_t *sdp_xml_parse_datatype(const char *el,
+						struct sdp_xml_data *elem,
+						sdp_record_t *record)
+{
+	const char *data = elem->text;
+
+	if (!strcmp(el, "boolean"))
+		return sdp_xml_parse_int(data, SDP_BOOL);
+	else if (!strcmp(el, "uint8"))
+		return sdp_xml_parse_int(data, SDP_UINT8);
+	else if (!strcmp(el, "uint16"))
+		return sdp_xml_parse_int(data, SDP_UINT16);
+	else if (!strcmp(el, "uint32"))
+		return sdp_xml_parse_int(data, SDP_UINT32);
+	else if (!strcmp(el, "uint64"))
+		return sdp_xml_parse_int(data, SDP_UINT64);
+	else if (!strcmp(el, "uint128"))
+		return sdp_xml_parse_int(data, SDP_UINT128);
+	else if (!strcmp(el, "int8"))
+		return sdp_xml_parse_int(data, SDP_INT8);
+	else if (!strcmp(el, "int16"))
+		return sdp_xml_parse_int(data, SDP_INT16);
+	else if (!strcmp(el, "int32"))
+		return sdp_xml_parse_int(data, SDP_INT32);
+	else if (!strcmp(el, "int64"))
+		return sdp_xml_parse_int(data, SDP_INT64);
+	else if (!strcmp(el, "int128"))
+		return sdp_xml_parse_int(data, SDP_INT128);
+	else if (!strcmp(el, "uuid"))
+		return sdp_xml_parse_uuid(data, record);
+	else if (!strcmp(el, "url"))
+		return sdp_xml_parse_url(data);
+	else if (!strcmp(el, "text"))
+		return sdp_xml_parse_text(data, elem->type);
+	else if (!strcmp(el, "nil"))
+		return sdp_xml_parse_nil(data);
+
+	return NULL;
+}
 static void element_start(GMarkupParseContext *context,
 		const gchar *element_name, const gchar **attribute_names,
 		const gchar **attribute_values, gpointer user_data, GError **err)
@@ -106,9 +477,8 @@ static void element_start(GMarkupParseContext *context,
 				int attrlen = strlen(attribute_values[i]);
 
 				/* Ensure we're big enough */
-				while ((curlen + 1 + attrlen) > ctx_data->stack_head->size) {
+				while ((curlen + 1 + attrlen) > ctx_data->stack_head->size)
 					sdp_xml_data_expand(ctx_data->stack_head);
-				}
 
 				memcpy(ctx_data->stack_head->text + curlen,
 						attribute_values[i], attrlen);
@@ -120,9 +490,8 @@ static void element_start(GMarkupParseContext *context,
 					ctx_data->stack_head->type = 1;
 			}
 
-			if (!strcmp(attribute_names[i], "name")) {
+			if (!strcmp(attribute_names[i], "name"))
 				ctx_data->stack_head->name = strdup(attribute_values[i]);
-			}
 		}
 
 		ctx_data->stack_head->data = sdp_xml_parse_datatype(element_name,
@@ -131,6 +500,16 @@ static void element_start(GMarkupParseContext *context,
 		if (ctx_data->stack_head->data == NULL)
 			error("Can't parse element %s", element_name);
 	}
+}
+
+static void sdp_xml_data_free(struct sdp_xml_data *elem)
+{
+	if (elem->data)
+		sdp_data_free(elem->data);
+
+	free(elem->name);
+	free(elem->text);
+	free(elem);
 }
 
 static void element_end(GMarkupParseContext *context,
@@ -479,8 +858,7 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 					(unsigned char) value->val.str[i]);
 
 			strBuf[(value->unitSize-1) * 2] = '\0';
-		}
-		else {
+		} else {
 			int j;
 			/* escape the XML disallowed chars */
 			strBuf = malloc(sizeof(char) *
@@ -491,25 +869,21 @@ static void convert_raw_data_to_xml(sdp_data_t *value, int indent_level,
 					strBuf[j++] = 'a';
 					strBuf[j++] = 'm';
 					strBuf[j++] = 'p';
-				}
-				else if (value->val.str[i] == '<') {
+				} else if (value->val.str[i] == '<') {
 					strBuf[j++] = '&';
 					strBuf[j++] = 'l';
 					strBuf[j++] = 't';
-				}
-				else if (value->val.str[i] == '>') {
+				} else if (value->val.str[i] == '>') {
 					strBuf[j++] = '&';
 					strBuf[j++] = 'g';
 					strBuf[j++] = 't';
-				}
-				else if (value->val.str[i] == '"') {
+				} else if (value->val.str[i] == '"') {
 					strBuf[j++] = '&';
 					strBuf[j++] = 'q';
 					strBuf[j++] = 'u';
 					strBuf[j++] = 'o';
 					strBuf[j++] = 't';
-				}
-				else if (value->val.str[i] == '\0') {
+				} else if (value->val.str[i] == '\0') {
 					strBuf[j++] = ' ';
 				} else {
 					strBuf[j++] = value->val.str[i];
@@ -618,376 +992,3 @@ void convert_sdp_record_to_xml(sdp_record_t *rec,
 	}
 }
 
-static sdp_data_t *sdp_xml_parse_uuid128(const char *data)
-{
-	uint128_t val;
-	unsigned int i, j;
-
-	char buf[3];
-
-	memset(&val, 0, sizeof(val));
-
-	buf[2] = '\0';
-
-	for (j = 0, i = 0; i < strlen(data);) {
-		if (data[i] == '-') {
-			i++;
-			continue;
-		}
-
-		buf[0] = data[i];
-		buf[1] = data[i + 1];
-
-		val.data[j++] = strtoul(buf, 0, 16);
-		i += 2;
-	}
-
-	return sdp_data_alloc(SDP_UUID128, &val);
-}
-
-sdp_data_t *sdp_xml_parse_uuid(const char *data, sdp_record_t *record)
-{
-	sdp_data_t *ret;
-	char *endptr;
-	uint32_t val;
-	uint16_t val2;
-	int len;
-
-	len = strlen(data);
-
-	if (len == 36) {
-		ret = sdp_xml_parse_uuid128(data);
-		goto result;
-	}
-
-	val = strtoll(data, &endptr, 16);
-
-	/* Couldn't parse */
-	if (*endptr != '\0')
-		return NULL;
-
-	if (val > USHRT_MAX) {
-		ret = sdp_data_alloc(SDP_UUID32, &val);
-		goto result;
-	}
-
-	val2 = val;
-
-	ret = sdp_data_alloc(SDP_UUID16, &val2);
-
-result:
-	if (record && ret)
-		sdp_pattern_add_uuid(record, &ret->val.uuid);
-
-	return ret;
-}
-
-sdp_data_t *sdp_xml_parse_int(const char * data, uint8_t dtd)
-{
-	char *endptr;
-	sdp_data_t *ret = NULL;
-
-	switch (dtd) {
-	case SDP_BOOL:
-	{
-		uint8_t val = 0;
-
-		if (!strcmp("true", data)) {
-			val = 1;
-		}
-
-		else if (!strcmp("false", data)) {
-			val = 0;
-		}
-		else {
-			return NULL;
-		}
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_INT8:
-	{
-		int8_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_UINT8:
-	{
-		uint8_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_INT16:
-	{
-		int16_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_UINT16:
-	{
-		uint16_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_INT32:
-	{
-		int32_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_UINT32:
-	{
-		uint32_t val = strtoul(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_INT64:
-	{
-		int64_t val = strtoull(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_UINT64:
-	{
-		uint64_t val = strtoull(data, &endptr, 0);
-
-		/* Failed to parse */
-		if ((endptr != data) && (*endptr != '\0'))
-			return NULL;
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	case SDP_INT128:
-	case SDP_UINT128:
-	{
-		uint128_t val;
-		int i = 0;
-		char buf[3];
-
-		buf[2] = '\0';
-
-		for (; i < 32; i += 2) {
-			buf[0] = data[i];
-			buf[1] = data[i + 1];
-
-			val.data[i >> 1] = strtoul(buf, 0, 16);
-		}
-
-		ret = sdp_data_alloc(dtd, &val);
-		break;
-	}
-
-	};
-
-	return ret;
-}
-
-static char *sdp_xml_parse_string_decode(const char *data, char encoding, uint32_t *length)
-{
-	int len = strlen(data);
-	char *text;
-
-	if (encoding == SDP_XML_ENCODING_NORMAL) {
-		text = strdup(data);
-		*length = len;
-	} else {
-		char buf[3], *decoded;
-		int i;
-
-		decoded = malloc((len >> 1) + 1);
-
-		/* Ensure the string is a power of 2 */
-		len = (len >> 1) << 1;
-
-		buf[2] = '\0';
-
-		for (i = 0; i < len; i += 2) {
-			buf[0] = data[i];
-			buf[1] = data[i + 1];
-
-			decoded[i >> 1] = strtoul(buf, 0, 16);
-		}
-
-		decoded[len >> 1] = '\0';
-		text = decoded;
-		*length = len >> 1;
-	}
-
-	return text;
-}
-
-sdp_data_t *sdp_xml_parse_url(const char *data)
-{
-	uint8_t dtd = SDP_URL_STR8;
-	char *url;
-	uint32_t length;
-	sdp_data_t *ret;
-
-	url = sdp_xml_parse_string_decode(data,
-				SDP_XML_ENCODING_NORMAL, &length);
-
-	if (length > UCHAR_MAX)
-		dtd = SDP_URL_STR16;
-
-	ret = sdp_data_alloc_with_length(dtd, url, length);
-
-	free(url);
-
-	return ret;
-}
-
-sdp_data_t *sdp_xml_parse_text(const char *data, char encoding)
-{
-	uint8_t dtd = SDP_TEXT_STR8;
-	char *text;
-	uint32_t length;
-	sdp_data_t *ret;
-
-	text = sdp_xml_parse_string_decode(data, encoding, &length);
-
-	if (length > UCHAR_MAX)
-		dtd = SDP_TEXT_STR16;
-
-	ret = sdp_data_alloc_with_length(dtd, text, length);
-
-	free(text);
-
-	return ret;
-}
-
-sdp_data_t *sdp_xml_parse_nil(const char *data)
-{
-	return sdp_data_alloc(SDP_DATA_NIL, 0);
-}
-
-#define DEFAULT_XML_DATA_SIZE 1024
-
-struct sdp_xml_data *sdp_xml_data_alloc(void)
-{
-	struct sdp_xml_data *elem;
-
-	elem = malloc(sizeof(struct sdp_xml_data));
-	if (!elem)
-		return NULL;
-
-	memset(elem, 0, sizeof(struct sdp_xml_data));
-
-	/* Null terminate the text */
-	elem->size = DEFAULT_XML_DATA_SIZE;
-	elem->text = malloc(DEFAULT_XML_DATA_SIZE);
-	elem->text[0] = '\0';
-
-	return elem;
-}
-
-void sdp_xml_data_free(struct sdp_xml_data *elem)
-{
-	if (elem->data)
-		sdp_data_free(elem->data);
-
-	free(elem->name);
-	free(elem->text);
-	free(elem);
-}
-
-struct sdp_xml_data *sdp_xml_data_expand(struct sdp_xml_data *elem)
-{
-	char *newbuf;
-
-	newbuf = malloc(elem->size * 2);
-	if (!newbuf)
-		return NULL;
-
-	memcpy(newbuf, elem->text, elem->size);
-	elem->size *= 2;
-	free(elem->text);
-
-	elem->text = newbuf;
-
-	return elem;
-}
-
-sdp_data_t *sdp_xml_parse_datatype(const char *el, struct sdp_xml_data *elem,
-							sdp_record_t *record)
-{
-	const char *data = elem->text;
-
-	if (!strcmp(el, "boolean"))
-		return sdp_xml_parse_int(data, SDP_BOOL);
-	else if (!strcmp(el, "uint8"))
-		return sdp_xml_parse_int(data, SDP_UINT8);
-	else if (!strcmp(el, "uint16"))
-		return sdp_xml_parse_int(data, SDP_UINT16);
-	else if (!strcmp(el, "uint32"))
-		return sdp_xml_parse_int(data, SDP_UINT32);
-	else if (!strcmp(el, "uint64"))
-		return sdp_xml_parse_int(data, SDP_UINT64);
-	else if (!strcmp(el, "uint128"))
-		return sdp_xml_parse_int(data, SDP_UINT128);
-	else if (!strcmp(el, "int8"))
-		return sdp_xml_parse_int(data, SDP_INT8);
-	else if (!strcmp(el, "int16"))
-		return sdp_xml_parse_int(data, SDP_INT16);
-	else if (!strcmp(el, "int32"))
-		return sdp_xml_parse_int(data, SDP_INT32);
-	else if (!strcmp(el, "int64"))
-		return sdp_xml_parse_int(data, SDP_INT64);
-	else if (!strcmp(el, "int128"))
-		return sdp_xml_parse_int(data, SDP_INT128);
-	else if (!strcmp(el, "uuid"))
-		return sdp_xml_parse_uuid(data, record);
-	else if (!strcmp(el, "url"))
-		return sdp_xml_parse_url(data);
-	else if (!strcmp(el, "text"))
-		return sdp_xml_parse_text(data, elem->type);
-	else if (!strcmp(el, "nil"))
-		return sdp_xml_parse_nil(data);
-
-	return NULL;
-}
