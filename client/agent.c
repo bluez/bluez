@@ -79,6 +79,8 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 		pincode_response(conn, input);
 	else if (!strcmp(member, "RequestConfirmation"))
 		confirm_response(conn, input);
+	else if (!strcmp(member, "RequestAuthorization"))
+		confirm_response(conn, input);
 	else
 		g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Canceled", NULL);
@@ -147,6 +149,23 @@ static DBusMessage *request_confirmation(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *request_authorization(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device;
+
+	rl_printf("Request authorization\n");
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
+							DBUS_TYPE_INVALID);
+
+	rl_message("Accept pairing (yes/no): ");
+
+	pending_message = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 static DBusMessage *cancel_request(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -168,6 +187,9 @@ static const GDBusMethodTable methods[] = {
 	{ GDBUS_ASYNC_METHOD("RequestConfirmation",
 			GDBUS_ARGS({ "device", "o" }, { "passkey", "u" }),
 			NULL, request_confirmation) },
+	{ GDBUS_ASYNC_METHOD("RequestAuthorization",
+			GDBUS_ARGS({ "device", "o" }),
+			NULL, request_authorization) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, cancel_request) },
 	{ }
 };
