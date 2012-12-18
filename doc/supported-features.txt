@@ -32,7 +32,7 @@ GAVDTP			1.2		Source, Sink
 AVDTP			1.2		Source, Sink
 A2DP			1.2		Source, Sink
 AVCTP			1.3		CT, TG
-AVRCP			1.4		CT, TG
+AVRCP			1.5		CT, TG
 
 GOEP			2.0		Client, Server
 FTP			1.2		Client, Server
