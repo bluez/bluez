@@ -25,6 +25,7 @@ Methods		void Connect()
 					 org.bluez.Error.Failed
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.AlreadyConnected
+
 		void CancelConnect()
 
 			This method can be used to cancel a preceeding
