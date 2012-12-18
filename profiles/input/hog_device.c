@@ -54,7 +54,7 @@
 #include "attio.h"
 #include "attrib/gatt.h"
 
-#include "hog_device.h"
+#define HOG_UUID		"00001812-0000-1000-8000-00805f9b34fb"
 
 #define HOG_INFO_UUID		0x2A4A
 #define HOG_REPORT_MAP_UUID	0x2A4B
@@ -716,7 +716,7 @@ static void hog_device_free(struct hog_device *hogdev)
 	g_free(hogdev);
 }
 
-struct hog_device *hog_device_register(struct btd_device *device,
+static struct hog_device *hog_device_register(struct btd_device *device,
 						struct gatt_primary *prim)
 {
 	struct hog_device *hogdev;
@@ -753,7 +753,7 @@ struct hog_device *hog_device_register(struct btd_device *device,
 	return hogdev;
 }
 
-int hog_device_unregister(struct hog_device *hogdev)
+static int hog_device_unregister(struct hog_device *hogdev)
 {
 	struct uhid_event ev;
 
@@ -777,7 +777,8 @@ int hog_device_unregister(struct hog_device *hogdev)
 	return 0;
 }
 
-int hog_device_set_control_point(struct hog_device *hogdev, gboolean suspend)
+static int hog_device_set_control_point(struct hog_device *hogdev,
+							gboolean suspend)
 {
 	uint8_t value = suspend ? 0x00 : 0x01;
 
