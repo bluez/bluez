@@ -48,7 +48,8 @@ static GKeyFile *open_config_file(const char *file)
 	g_key_file_set_list_separator(keyfile, ',');
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &gerr)) {
-		error("Parsing %s failed: %s", file, gerr->message);
+		if (!g_error_matches(gerr, G_FILE_ERROR, G_FILE_ERROR_NOENT))
+			error("Parsing %s failed: %s", file, gerr->message);
 		g_error_free(gerr);
 		g_key_file_free(keyfile);
 		return NULL;
