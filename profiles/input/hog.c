@@ -823,7 +823,7 @@ static void resume_callback(void)
 	g_slist_foreach(devices, set_suspend, GINT_TO_POINTER(suspend));
 }
 
-static int hog_device_probe(struct btd_profile *p, struct btd_device *device,
+static int hog_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
 	const char *path = device_get_path(device);
@@ -876,7 +876,7 @@ static void hog_device_remove(struct btd_profile *p, struct btd_device *device)
 static struct btd_profile hog_profile = {
 	.name		= "input-hog",
 	.remote_uuids	= BTD_UUIDS(HOG_UUID),
-	.device_probe	= hog_device_probe,
+	.device_probe	= hog_probe,
 	.device_remove	= hog_device_remove,
 };
 
