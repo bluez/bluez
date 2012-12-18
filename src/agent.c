@@ -958,12 +958,19 @@ static DBusMessage *request_default(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
 	struct agent *agent;
-	const char *sender;
+	const char *sender, *path;
 
 	sender = dbus_message_get_sender(msg);
 
 	agent = g_hash_table_lookup(agent_list, sender);
 	if (!agent)
+		return btd_error_does_not_exist(msg);
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	if (g_str_equal(path, agent->path) == FALSE)
 		return btd_error_does_not_exist(msg);
 
 	set_default_agent(agent);
@@ -977,7 +984,8 @@ static const GDBusMethodTable methods[] = {
 			NULL, register_agent) },
 	{ GDBUS_METHOD("UnregisterAgent", GDBUS_ARGS({ "agent", "o" }),
 			NULL, unregister_agent) },
-	{ GDBUS_METHOD("RequestDefault", NULL, NULL, request_default ) },
+	{ GDBUS_METHOD("RequestDefaultAgent", GDBUS_ARGS({ "agent", "o" }),
+			NULL, request_default ) },
 	{ }
 };
 
