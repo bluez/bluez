@@ -73,6 +73,9 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 static DBusMessage *release_agent(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	if (pending_message)
+		rl_clear_message();
+
 	agent_registered = FALSE;
 
 	rl_printf("Agent released\n");
@@ -111,6 +114,8 @@ static DBusMessage *request_confirmation(DBusConnection *conn,
 static DBusMessage *cancel_request(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
+	rl_clear_message();
+
 	rl_printf("Request canceled\n");
 
 	dbus_message_unref(pending_message);
