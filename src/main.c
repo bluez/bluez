@@ -66,6 +66,20 @@
 
 struct main_opts main_opts;
 
+static const char * const supported_options[] = {
+	"Name",
+	"DisablePlugins",
+	"Class",
+	"DiscoverableTimeout",
+	"PairableTimeout",
+	"PageTimeout",
+	"AutoConnectTimeout",
+	"DeviceID",
+	"ReverseServiceDiscovery",
+	"NameResolving",
+	"DebugKeys",
+};
+
 static GKeyFile *load_config(const char *file)
 {
 	GError *err = NULL;
@@ -115,6 +129,42 @@ done:
 	main_opts.did_version = version;
 }
 
+static void check_config(GKeyFile *config)
+{
+	char **keys;
+	int i;
+
+	if (!config)
+		return;
+
+	keys = g_key_file_get_groups(config, NULL);
+
+	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
+		if (!g_str_equal(keys[i], "General"))
+			warn("Unknown group %s in main.conf", keys[i]);
+	}
+
+	g_strfreev(keys);
+
+	keys = g_key_file_get_keys(config, "General", NULL, NULL);
+
+	for (i = 0; keys != NULL && keys[i] != NULL; i++) {
+		bool found;
+		unsigned int j;
+
+		found = false;
+		for (j = 0; j < G_N_ELEMENTS(supported_options); j++) {
+			if (g_str_equal(keys[i], supported_options[j])) {
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+			warn("Unknown key %s in main.conf", keys[i]);
+	}
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *err = NULL;
@@ -124,6 +174,8 @@ static void parse_config(GKeyFile *config)
 
 	if (!config)
 		return;
+
+	check_config(config);
 
 	DBG("parsing main.conf");
 
