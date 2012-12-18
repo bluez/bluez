@@ -84,13 +84,7 @@ CLEANFILES += obexd/src/builtin.h $(builtin_files)
 
 EXTRA_DIST += obexd/src/genbuiltin
 
-
-libexec_PROGRAMS += obexd/client/obex-client
-
-obexd_client_obex_client_SOURCES = $(gdbus_sources) $(gobex_sources) \
-			$(btio_sources) \
-			obexd/client/main.c obexd/src/log.h obexd/src/log.c \
-			obexd/client/manager.h obexd/client/manager.c \
+obexd_src_obexd_SOURCES += obexd/client/manager.h obexd/client/manager.c \
 			obexd/client/session.h obexd/client/session.c \
 			obexd/client/bluetooth.h obexd/client/bluetooth.c \
 			obexd/client/sync.h obexd/client/sync.c \
@@ -103,15 +97,3 @@ obexd_client_obex_client_SOURCES = $(gdbus_sources) $(gobex_sources) \
 			obexd/client/dbus.h obexd/client/dbus.c \
 			obexd/client/driver.h obexd/client/driver.c \
 			obexd/src/map_ap.h
-
-obexd_client_obex_client_LDADD = lib/libbluetooth-private.la \
-						@GLIB_LIBS@ @DBUS_LIBS@
-
-obexd_client_obex_client_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
-						-fPIC -D_FILE_OFFSET_BITS=64
-
-obexd_client_obex_client_CPPFLAGS = -I$(builddir)/lib -I$(srcdir)/obexd/src \
-				-I$(srcdir)/btio -I$(srcdir)/gobex \
-				-I$(srcdir)/gdbus
-
-obexd_client_obex_client_SHORTNAME = obex-client

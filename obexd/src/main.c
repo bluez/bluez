@@ -44,6 +44,8 @@
 
 #include <gdbus/gdbus.h>
 
+#include "../client/manager.h"
+
 #include "log.h"
 #include "obexd.h"
 #include "server.h"
@@ -314,9 +316,16 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (client_manager_init() < 0) {
+		error("client_manager_init failed");
+		exit(EXIT_FAILURE);
+	}
+
 	g_main_loop_run(main_loop);
 
 	g_source_remove(signal);
+
+	client_manager_exit();
 
 	obex_server_exit();
 
