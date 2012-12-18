@@ -36,6 +36,7 @@
 #define AGENT_INTERFACE "org.bluez.Agent1"
 
 static gboolean agent_registered = FALSE;
+static const char *agent_capability = NULL;
 static DBusMessage *pending_message = NULL;
 
 dbus_bool_t agent_completion(void)
@@ -98,6 +99,7 @@ static DBusMessage *release_agent(DBusConnection *conn,
 		rl_clear_message();
 
 	agent_registered = FALSE;
+	agent_capability = NULL;
 
 	rl_printf("Agent released\n");
 
@@ -197,7 +199,7 @@ static const GDBusMethodTable methods[] = {
 static void register_agent_setup(DBusMessageIter *iter, void *user_data)
 {
 	const char *path = AGENT_PATH;
-	const char *capability = "";
+	const char *capability = agent_capability;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &capability);
@@ -223,12 +225,16 @@ static void register_agent_reply(DBusMessage *message, void *user_data)
 	}
 }
 
-void agent_register(DBusConnection *conn, GDBusProxy *manager)
+void agent_register(DBusConnection *conn, GDBusProxy *manager,
+						const char *capability)
+
 {
 	if (agent_registered == TRUE) {
 		rl_printf("Agent is already registered\n");
 		return;
 	}
+
+	agent_capability = capability;
 
 	if (g_dbus_register_interface(conn, AGENT_PATH,
 					AGENT_INTERFACE, methods,
@@ -244,6 +250,8 @@ void agent_register(DBusConnection *conn, GDBusProxy *manager)
 		rl_printf("Failed to call register agent method\n");
 		return;
 	}
+
+	agent_capability = NULL;
 }
 
 static void unregister_agent_setup(DBusMessageIter *iter, void *user_data)
@@ -262,6 +270,7 @@ static void unregister_agent_reply(DBusMessage *message, void *user_data)
 
 	if (dbus_set_error_from_message(&error, message) == FALSE) {
 		agent_registered = FALSE;
+		agent_capability = NULL;
 		rl_printf("Agent unregistered\n");
 
 		if (g_dbus_unregister_interface(conn, AGENT_PATH,

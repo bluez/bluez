@@ -44,7 +44,7 @@ static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
 static GDBusProxy *agent_manager;
-static gboolean auto_register_agent = FALSE;
+static gchar *auto_register_agent = NULL;
 
 static GDBusProxy *default_ctrl;
 static GList *ctrl_list;
@@ -219,8 +219,9 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (!agent_manager) {
 			agent_manager = proxy;
 
-			if (auto_register_agent == TRUE)
-				agent_register(dbus_conn, agent_manager);
+			if (auto_register_agent)
+				agent_register(dbus_conn, agent_manager,
+							auto_register_agent);
 		}
 	}
 }
@@ -531,14 +532,17 @@ static void cmd_agent(const char *arg)
 		return;
 
 	if (enable == TRUE) {
-		auto_register_agent = TRUE;
+		g_free(auto_register_agent);
+		auto_register_agent = g_strdup("");
 
 		if (agent_manager)
-			agent_register(dbus_conn, agent_manager);
+			agent_register(dbus_conn, agent_manager,
+						auto_register_agent);
 		else
 			rl_printf("Agent registration enabled\n");
 	} else {
-		auto_register_agent = FALSE;
+		g_free(auto_register_agent);
+		auto_register_agent = NULL;
 
 		if (agent_manager)
 			agent_unregister(dbus_conn, agent_manager);
@@ -1000,13 +1004,24 @@ static guint setup_signalfd(void)
 }
 
 static gboolean option_version = FALSE;
-static gboolean option_agent = FALSE;
+
+static gboolean parse_agent(const char *key, const char *value,
+					gpointer user_data, GError **error)
+{
+	if (value)
+		auto_register_agent = g_strdup(value);
+	else
+		auto_register_agent = g_strdup("");
+
+	return TRUE;
+}
 
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
-	{ "agent", 'a', 0, G_OPTION_ARG_NONE, &option_agent,
-				"Automatically register agent handler" },
+	{ "agent", 'a', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_agent,
+				"Register agent handler", "CAPABILITY" },
 	{ NULL },
 };
 
@@ -1035,8 +1050,6 @@ int main(int argc, char *argv[])
 		printf("%s\n", VERSION);
 		exit(0);
 	}
-
-	auto_register_agent = option_agent;
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
@@ -1074,6 +1087,8 @@ int main(int argc, char *argv[])
 
 	g_list_free_full(ctrl_list, proxy_leak);
 	g_list_free_full(dev_list, proxy_leak);
+
+	g_free(auto_register_agent);
 
 	return 0;
 }
