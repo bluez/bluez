@@ -864,7 +864,7 @@ static void remove_device(gpointer a, gpointer b)
 	hog_device_unregister(hogdev);
 }
 
-static void hog_device_remove(struct btd_profile *p, struct btd_device *device)
+static void hog_remove(struct btd_profile *p, struct btd_device *device)
 {
 	const gchar *path = device_get_path(device);
 
@@ -877,7 +877,7 @@ static struct btd_profile hog_profile = {
 	.name		= "input-hog",
 	.remote_uuids	= BTD_UUIDS(HOG_UUID),
 	.device_probe	= hog_probe,
-	.device_remove	= hog_device_remove,
+	.device_remove	= hog_remove,
 };
 
 static int hog_init(void)
