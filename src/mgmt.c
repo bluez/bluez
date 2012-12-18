@@ -330,25 +330,11 @@ static inline int mgmt_low_energy(uint32_t settings)
 
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
-	struct controller_info *info;
-	uint16_t index;
-
 	DBG("new settings %x", settings);
-
-	index = adapter_get_dev_id(adapter);
-
-	info = &controllers[index];
 
 	adapter_update_connectable(adapter, mgmt_connectable(settings));
 	adapter_update_discoverable(adapter, mgmt_discoverable(settings));
 	adapter_update_pairable(adapter, mgmt_pairable(settings));
-
-	if (mgmt_ssp(info->supported_settings) && !mgmt_ssp(settings))
-		mgmt_set_ssp(index, TRUE);
-
-	if (mgmt_low_energy(info->supported_settings) &&
-						!mgmt_low_energy(settings))
-		mgmt_set_low_energy(index, TRUE);
 }
 
 static void mgmt_update_powered(struct btd_adapter *adapter,
@@ -1189,6 +1175,14 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	if (!mgmt_pairable(info->current_settings))
 		mgmt_set_pairable(index, TRUE);
+
+	if (mgmt_ssp(info->supported_settings) &&
+					!mgmt_ssp(info->current_settings))
+		mgmt_set_ssp(index, TRUE);
+
+	if (mgmt_low_energy(info->supported_settings) &&
+				!mgmt_low_energy(info->current_settings))
+		mgmt_set_low_energy(index, TRUE);
 
 	if (mgmt_powered(info->current_settings)) {
 		get_connections(sk, index);
