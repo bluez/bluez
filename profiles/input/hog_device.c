@@ -874,7 +874,7 @@ static struct btd_profile hog_profile = {
 	.device_remove	= hog_device_remove,
 };
 
-static int hog_manager_init(void)
+static int hog_init(void)
 {
 	int err;
 
@@ -887,22 +887,12 @@ static int hog_manager_init(void)
 	return btd_profile_register(&hog_profile);
 }
 
-static void hog_manager_exit(void)
+static void hog_exit(void)
 {
 	if (suspend_supported)
 		suspend_exit();
 
 	btd_profile_unregister(&hog_profile);
-}
-
-static int hog_init(void)
-{
-	return hog_manager_init();
-}
-
-static void hog_exit(void)
-{
-	hog_manager_exit();
 }
 
 BLUETOOTH_PLUGIN_DEFINE(hog, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
