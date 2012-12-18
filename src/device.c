@@ -1408,7 +1408,9 @@ static struct bonding_req *bonding_request_new(DBusMessage *msg,
 	bonding = g_new0(struct bonding_req, 1);
 
 	bonding->msg = dbus_message_ref(msg);
-	bonding->agent = agent_ref(agent);
+
+	if (agent)
+		bonding->agent = agent_ref(agent);
 
 	return bonding;
 }
@@ -1462,7 +1464,8 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 
 	bonding = bonding_request_new(msg, device, agent);
 
-	agent_unref(agent);
+	if (agent)
+		agent_unref(agent);
 
 	bonding->listener_id = g_dbus_add_disconnect_watch(
 						btd_get_dbus_connection(),
