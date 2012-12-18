@@ -1633,7 +1633,7 @@ unsigned int a2dp_config(struct avdtp *session, struct a2dp_sep *sep,
 		}
 
 		if (l != NULL) {
-			if (a2dp_sep_get_lock(tmp))
+			if (tmp->locked)
 				goto failed;
 			setup->reconfigure = TRUE;
 			if (avdtp_close(session, tmp->stream, FALSE) < 0) {
@@ -1870,11 +1870,6 @@ gboolean a2dp_sep_is_playing(struct a2dp_sep *sep)
 		return TRUE;
 	else
 		return FALSE;
-}
-
-gboolean a2dp_sep_get_lock(struct a2dp_sep *sep)
-{
-	return sep->locked;
 }
 
 struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep)
