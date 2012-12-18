@@ -62,6 +62,9 @@
 #define COLOR_HCI_ACLDATA		COLOR_CYAN
 #define COLOR_HCI_SCODATA		COLOR_YELLOW
 
+#define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
+
 static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
@@ -1229,7 +1232,8 @@ static void print_features(uint8_t page, const uint8_t *features_array)
 	}
 
 	if (mask)
-		print_field("  Unknown features (0x%16.16" PRIx64 ")", mask);
+		print_text(COLOR_UNKNOWN_FEATURE_BIT, "  Unknown features "
+						"(0x%16.16" PRIx64 ")", mask);
 }
 
 static void print_le_states(const uint8_t *states)
@@ -1337,7 +1341,8 @@ static void print_event_mask(const uint8_t *events_array)
 	}
 
 	if (mask)
-		print_field("  Unknown mask (0x%16.16" PRIx64 ")", mask);
+		print_text(COLOR_UNKNOWN_EVENT_MASK, "  Unknown mask "
+						"(0x%16.16" PRIx64 ")", mask);
 }
 
 static const struct {
@@ -1381,7 +1386,8 @@ static void print_event_mask_page2(const uint8_t *events_array)
 	}
 
 	if (mask)
-		print_field("  Unknown mask (0x%16.16" PRIx64 ")", mask);
+		print_text(COLOR_UNKNOWN_EVENT_MASK, "  Unknown mask "
+						"(0x%16.16" PRIx64 ")", mask);
 }
 
 static void print_fec(uint8_t fec)
