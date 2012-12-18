@@ -40,7 +40,7 @@ class FtpClient:
 		self.transfer_size = 0
 		self.verbose = verbose
 		bus = dbus.SessionBus()
-		obj = bus.get_object("org.bluez.obex.client", session_path)
+		obj = bus.get_object("org.bluez.obex", session_path)
 		self.session = dbus.Interface(obj, "org.bluez.obex.Session")
 		self.ftp = dbus.Interface(obj, "org.bluez.obex.FileTransfer")
 		bus.add_signal_receiver(self.transfer_complete,
@@ -151,7 +151,7 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+	client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
 				"org.bluez.obex.Client")
 
 	print "Creating Session"

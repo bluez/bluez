@@ -4,7 +4,7 @@ import sys
 import dbus
 
 bus = dbus.SessionBus()
-client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
 					"org.bluez.obex.Client")
 
 if (len(sys.argv) < 3):
@@ -13,7 +13,7 @@ if (len(sys.argv) < 3):
 
 print "Creating Session"
 session_path = client.CreateSession(sys.argv[1], { "Target": sys.argv[2] })
-session = dbus.Interface(bus.get_object("org.bluez.obex.client", session_path),
+session = dbus.Interface(bus.get_object("org.bluez.obex", session_path),
 					"org.bluez.obex.Session")
 
 print session.GetCapabilities()

@@ -67,7 +67,7 @@ class MapClient:
 		self.verbose = verbose
 		self.path = session_path
 		bus = dbus.SessionBus()
-		obj = bus.get_object("org.bluez.obex.client", session_path)
+		obj = bus.get_object("org.bluez.obex", session_path)
 		self.session = dbus.Interface(obj, "org.bluez.obex.Session")
 		self.map = dbus.Interface(obj, "org.bluez.obex.MessageAccess")
 		bus.add_signal_receiver(self.transfer_complete,
@@ -127,7 +127,7 @@ class MapClient:
 	def get_message(self, handle):
 		self.map.ListMessages("", dict())
 		path = self.path + "/message" + handle
-		obj = bus.get_object("org.bluez.obex.client", path)
+		obj = bus.get_object("org.bluez.obex", path)
 		msg = dbus.Interface(obj, "org.bluez.obex.Message")
 		msg.Get("", True, reply_handler=self.create_transfer_reply,
 						error_handler=self.error)
@@ -135,7 +135,7 @@ class MapClient:
 	def get_message_properties(self, handle):
 		self.map.ListMessages("", dict())
 		path = self.path + "/message" + handle
-		obj = bus.get_object("org.bluez.obex.client", path)
+		obj = bus.get_object("org.bluez.obex", path)
 		msg = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
 		ret = msg.GetAll("org.bluez.obex.Message")
 		print pformat(unwrap(ret))
@@ -143,7 +143,7 @@ class MapClient:
 	def set_message_property(self, handle, prop, flag):
 		self.map.ListMessages("", dict())
 		path = self.path + "/message" + handle
-		obj = bus.get_object("org.bluez.obex.client", path)
+		obj = bus.get_object("org.bluez.obex", path)
 		msg = dbus.Interface(obj, "org.bluez.obex.Message")
 		msg.SetProperty (prop, flag);
 
@@ -166,7 +166,7 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+	client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
 				"org.bluez.obex.Client")
 
 	print "Creating Session"

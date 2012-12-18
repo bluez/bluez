@@ -20,7 +20,7 @@ class PbapClient:
 		self.props = dict()
 		self.flush_func = None
 		bus = dbus.SessionBus()
-		obj = bus.get_object("org.bluez.obex.client", session_path)
+		obj = bus.get_object("org.bluez.obex", session_path)
 		self.session = dbus.Interface(obj, "org.bluez.obex.Session")
 		self.pbap = dbus.Interface(obj,
 					"org.bluez.obex.PhonebookAccess")
@@ -98,7 +98,7 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+	client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
 				"org.bluez.obex.Client")
 
 	if (len(sys.argv) < 2):

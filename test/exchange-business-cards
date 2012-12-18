@@ -4,7 +4,7 @@ import sys
 import dbus
 
 bus = dbus.SessionBus()
-client = dbus.Interface(bus.get_object("org.bluez.obex.client", "/"),
+client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
 					"org.bluez.obex.Client")
 
 if (len(sys.argv) < 4):
@@ -13,7 +13,7 @@ if (len(sys.argv) < 4):
 
 print "Creating Session"
 path = client.CreateSession(sys.argv[1], { "Target": "OPP" })
-opp = dbus.Interface(bus.get_object("org.bluez.obex.client", path),
+opp = dbus.Interface(bus.get_object("org.bluez.obex", path),
 					"org.bluez.obex.ObjectPush")
 
 opp.ExchangeBusinessCards(sys.argv[2], sys.argv[3])
