@@ -174,19 +174,15 @@ test_scripts =
 include Makefile.tools
 include Makefile.obexd
 
+if HID2HCI
 rulesdir = @UDEV_DIR@/rules.d
 
-udev_files =
+rules_DATA = tools/97-hid2hci.rules
 
-if HID2HCI
-udev_files += tools/hid2hci.rules
+CLEANFILES += $(rules_DATA)
 endif
 
 EXTRA_DIST += tools/hid2hci.rules
-
-rules_DATA = $(foreach file,$(udev_files), tools/97-$(notdir $(file)))
-
-CLEANFILES += $(rules_DATA)
 
 if TEST
 testdir = $(pkglibdir)/test
