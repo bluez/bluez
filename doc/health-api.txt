@@ -1,9 +1,6 @@
 BlueZ D-Bus Health API description
 **********************************
 
-	Santiago Carot-Nemesio <sancane@gmail.com>
-	José Antonio Santos-Cadenas <santoscadenas@gmail.com>
-	Elvis Pfützenreuter <epx@signove.com>
 
 HealthManager hierarchy
 =======================
@@ -50,6 +47,7 @@ Methods		object CreateApplication(dict config)
 					 org.bluez.Error.NotFound
 					 org.bluez.Error.NotAllowed
 
+
 HealthDevice hierarchy
 ======================
 
@@ -64,7 +62,7 @@ Methods		boolean Echo()
 			error is detected False value is returned.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			org.bluez.Error.OutOfRange
+					 org.bluez.Error.OutOfRange
 
 		object CreateChannel(object application, string configuration)
 
@@ -76,7 +74,7 @@ Methods		boolean Echo()
 			channel that is already connected.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			org.bluez.Error.HealthError
+					 org.bluez.Error.HealthError
 
 		void DestroyChannel(object channel)
 
@@ -86,7 +84,8 @@ Methods		boolean Echo()
 			it.
 
 			Possible errors: org.bluez.Error.InvalidArguments
-			org.bluez.Error.NotFound org.bluez.Error.NotAllowed
+					 org.bluez.Error.NotFound
+				         org.bluez.Error.NotAllowed
 
 Signals		void ChannelConnected(object channel)
 
@@ -107,6 +106,7 @@ Properties	object MainChannel [readonly]
 			upper applications in order to send specific protocol
 			data units. The first reliable can change after a
 			reconnection.
+
 
 HealthChannel hierarchy
 =======================
