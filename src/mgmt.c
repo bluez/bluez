@@ -250,7 +250,8 @@ int mgmt_set_discoverable(int index, gboolean discoverable, uint16_t timeout)
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_set_discoverable *cp = (void *) &buf[sizeof(*hdr)];
 
-	DBG("index %d discoverable %d", index, discoverable);
+	DBG("index %d discoverable %d timeout %d", index,
+					discoverable, timeout);
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(MGMT_OP_SET_DISCOVERABLE);
