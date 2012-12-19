@@ -125,6 +125,56 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 			Unregister sender media player.
 
 
+Media Control hierarchy
+=======================
+
+Service		org.bluez
+Interface	org.bluez.MediaControl1
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX
+
+Methods		void Play()
+
+			Resume playback.
+
+		void Pause()
+
+			Pause playback.
+
+		void Stop()
+
+			Stop playback.
+
+		void Next()
+
+			Next item.
+
+		void Previous()
+
+			Previous item.
+
+		void VolumeUp()
+
+			Adjust remote volume one step up
+
+		void VolumeDown()
+
+			Adjust remote volume one step down
+
+		void FastForward()
+
+			Fast forward playback, this action is only stopped
+			when another method in this interface is called.
+
+		void Rewind()
+
+			Rewind playback, this action is only stopped
+			when another method in this interface is called.
+
+Properties
+
+		boolean Connected [readonly]
+
+
 MediaPlayer1 hierarchy
 ======================
 
