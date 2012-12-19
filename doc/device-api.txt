@@ -84,6 +84,9 @@ Methods		void Connect()
 			This method can be used to cancel a pairing
 			operation initiated by the Pair method.
 
+			Possible errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
+
 Properties	string Address [readonly]
 
 			The Bluetooth device address of the remote device.
