@@ -2601,7 +2601,12 @@ static void load_config(struct btd_adapter *adapter)
 
 	/* Get discoverable mode */
 	adapter->discoverable = g_key_file_get_boolean(key_file, "General",
-							"Discoverable", NULL);
+							"Discoverable", &gerr);
+	if (gerr) {
+		adapter->discoverable = FALSE;
+		g_error_free(gerr);
+		gerr = NULL;
+	}
 
 	/* Get discoverable timeout */
 	adapter->discov_timeout = g_key_file_get_integer(key_file, "General",
