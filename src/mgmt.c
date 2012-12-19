@@ -1155,7 +1155,7 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	adapter = btd_manager_register_adapter(index,
 					mgmt_powered(info->current_settings));
 	if (adapter == NULL) {
-		error("mgmtops: unable to register adapter");
+		error("mgmt: unable to register adapter");
 		return;
 	}
 
