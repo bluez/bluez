@@ -25,10 +25,8 @@
 
 struct main_opts {
 	char		host_name[40];
-	unsigned long	flags;
 	char		*name;
 	uint32_t	class;
-	uint16_t	pageto;
 	uint16_t	autoto;
 	uint32_t	discovto;
 	uint32_t	pairto;
@@ -42,10 +40,6 @@ struct main_opts {
 	uint16_t	did_vendor;
 	uint16_t	did_product;
 	uint16_t	did_version;
-};
-
-enum {
-	HCID_SET_PAGETO,
 };
 
 extern struct main_opts main_opts;

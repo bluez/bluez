@@ -71,7 +71,6 @@ static const char * const supported_options[] = {
 	"Class",
 	"DiscoverableTimeout",
 	"PairableTimeout",
-	"PageTimeout",
 	"AutoConnectTimeout",
 	"DeviceID",
 	"ReverseServiceDiscovery",
@@ -199,16 +198,6 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("pairto=%d", val);
 		main_opts.pairto = val;
-	}
-
-	val = g_key_file_get_integer(config, "General", "PageTimeout", &err);
-	if (err) {
-		DBG("%s", err->message);
-		g_clear_error(&err);
-	} else {
-		DBG("pageto=%d", val);
-		main_opts.pageto = val;
-		main_opts.flags |= 1 << HCID_SET_PAGETO;
 	}
 
 	val = g_key_file_get_integer(config, "General", "AutoConnectTimeout",
