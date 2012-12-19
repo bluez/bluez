@@ -317,20 +317,23 @@ Properties	object Device [readonly]
 
 		boolean NREC [readwrite]
 
-			Optional. Indicates if echo cancelling and noise
-			reduction functions are active in the transport, this
-			property is only writeable when the transport was
-			acquired by the sender.
+			Optional and HFP specific (external to BlueZ).
+			Indicates if echo cancelling and noise reduction
+			functions are active in the transport, this
+			property is only writeable when the transport
+			was acquired by the sender.
 
 		boolean InbandRingtone [readwrite]
 
-			Optional. Indicates if the transport support sending
-			ringtones, this property is only writeable when the
-			transport was acquired by the sender.
+			Optional and HFP specific (external to BlueZ).
+			Indicates if the transport support sending
+			ringtones, this property is only writeable when
+			the transport was acquired by the sender.
 
 		string Routing [readonly]
 
-			Optional. Indicates where is the transport being routed
+			Optional and HFP specific (external to BlueZ).
+			Indicates where is the transport being routed.
 
 			Possible Values: "HCI" or "PCM"
 
