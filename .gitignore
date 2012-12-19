@@ -70,14 +70,6 @@ emulator/btvirt
 emulator/b1ee
 client/bluetoothctl
 
-doc/*.bak
-doc/*.stamp
-doc/bluez.*
-doc/bluez-*.txt
-doc/*.sgml
-doc/version.xml
-doc/xml
-doc/html
 src/bluetoothd.8
 src/bluetooth.service
 
