@@ -117,24 +117,6 @@ if (args[0] == "disconnect"):
 			device.Disconnect()
 	sys.exit(0)
 
-if (args[0] == "discover"):
-	if (len(args) < 2):
-		print("Need address parameter")
-	else:
-		device = bluezutils.find_device(args[1], options.dev_id)
-		if (len(args) < 3):
-			pattern = ""
-		else:
-			pattern = args[2]
-		services = device.DiscoverServices(pattern);
-		for key in services.keys():
-			p = re.compile(">.*?<")
-			xml = p.sub("><", services[key].replace("\n", ""))
-			print("[ 0x%5x ]" % (key))
-			print(xml)
-			print()
-	sys.exit(0)
-
 if (args[0] == "class"):
 	if (len(args) < 2):
 		print("Need address parameter")
@@ -214,19 +196,6 @@ if (args[0] == "blocked"):
 			else:
 				value = dbus.Boolean(args[2])
 			props.Set("org.bluez.Device1", "Blocked", value)
-	sys.exit(0)
-
-if (args[0] == "services"):
-	if (len(args) < 2):
-		print("Need address parameter")
-	else:
-		device = bluezutils.find_device(args[1], options.dev_id)
-		path = device.object_path
-		props = dbus.Interface(bus.get_object("org.bluez", path),
-					"org.freedesktop.DBus.Properties")
-		services = props.Get("org.bluez.Device1", "Services")
-		for path in services:
-			print(path)
 	sys.exit(0)
 
 print("Unknown command")
