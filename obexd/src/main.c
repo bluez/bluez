@@ -158,12 +158,16 @@ static gboolean parse_debug(const char *key, const char *value,
 }
 
 static GOptionEntry options[] = {
-	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
-				G_OPTION_ARG_NONE, &option_detach,
-				"Run with logging in foreground" },
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Enable debug information output", "DEBUG" },
+	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
+				"Specify plugins to load", "NAME,..." },
+	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
+				"Specify plugins not to load", "NAME,..." },
+	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Run with logging in foreground" },
 	{ "root", 'r', 0, G_OPTION_ARG_STRING, &option_root,
 				"Specify root folder location. Both absolute "
 				"and relative can be used, but relative paths "
@@ -179,10 +183,6 @@ static GOptionEntry options[] = {
 				"scripts", "FILE" },
 	{ "auto-accept", 'a', 0, G_OPTION_ARG_NONE, &option_autoaccept,
 				"Automatically accept push requests" },
-	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
-				"Specify plugins to load", "NAME,..." },
-	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
-				"Specify plugins not to load", "NAME,..." },
 	{ NULL },
 };
 
