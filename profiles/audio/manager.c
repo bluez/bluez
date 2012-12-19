@@ -336,6 +336,7 @@ static int a2dp_source_server_probe(struct btd_profile *p,
 {
 	struct audio_adapter *adp;
 	const gchar *path = adapter_get_path(adapter);
+	int err;
 
 	DBG("path %s", path);
 
@@ -343,12 +344,14 @@ static int a2dp_source_server_probe(struct btd_profile *p,
 	if (!adp)
 		return -EINVAL;
 
-	audio_adapter_unref(adp); /* Referenced by a2dp server */
+	err = a2dp_source_register(adapter, config);
+	if (err < 0)
+		audio_adapter_unref(adp);
 
-	return a2dp_source_register(adapter, config);
+	return err;
 }
 
-static int a2dp_sink_server_probe(struct btd_profile *p,
+static void a2dp_source_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
 	struct audio_adapter *adp;
@@ -356,13 +359,48 @@ static int a2dp_sink_server_probe(struct btd_profile *p,
 
 	DBG("path %s", path);
 
+	adp = find_adapter(adapters, adapter);
+	if (!adp)
+		return;
+
+	a2dp_source_unregister(adapter);
+	audio_adapter_unref(adp);
+}
+
+static int a2dp_sink_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+	int err;
+
+	DBG("path %s", path);
+
 	adp = audio_adapter_get(adapter);
 	if (!adp)
 		return -EINVAL;
 
-	audio_adapter_unref(adp); /* Referenced by a2dp server */
+	err = a2dp_sink_register(adapter, config);
+	if (err < 0)
+		audio_adapter_unref(adp);
 
-	return a2dp_sink_register(adapter, config);
+	return err;
+}
+
+static void a2dp_sink_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct audio_adapter *adp;
+	const gchar *path = adapter_get_path(adapter);
+
+	DBG("path %s", path);
+
+	adp = find_adapter(adapters, adapter);
+	if (!adp)
+		return;
+
+	a2dp_sink_unregister(adapter);
+	audio_adapter_unref(adp);
 }
 
 static int avrcp_server_probe(struct btd_profile *p,
@@ -446,6 +484,7 @@ static struct btd_profile a2dp_source_profile = {
 	.disconnect	= a2dp_source_disconnect,
 
 	.adapter_probe	= a2dp_source_server_probe,
+	.adapter_remove	= a2dp_source_server_remove,
 };
 
 static struct btd_profile a2dp_sink_profile = {
@@ -461,6 +500,7 @@ static struct btd_profile a2dp_sink_profile = {
 	.disconnect	= a2dp_sink_disconnect,
 
 	.adapter_probe	= a2dp_sink_server_probe,
+	.adapter_remove	= a2dp_sink_server_remove,
 };
 
 static struct btd_profile avrcp_profile = {

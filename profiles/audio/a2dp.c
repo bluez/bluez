@@ -1224,7 +1224,16 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 	g_free(sep);
 }
 
-void a2dp_unregister(struct btd_adapter *adapter)
+static void a2dp_server_unregister(struct a2dp_server *server)
+{
+	avdtp_exit(server->adapter);
+
+	servers = g_slist_remove(servers, server);
+	btd_adapter_unref(server->adapter);
+	g_free(server);
+}
+
+void a2dp_sink_unregister(struct btd_adapter *adapter)
 {
 	struct a2dp_server *server;
 
@@ -1233,21 +1242,38 @@ void a2dp_unregister(struct btd_adapter *adapter)
 		return;
 
 	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_unregister_sep);
+
+	if (server->sink_record_id) {
+		remove_record_from_server(server->sink_record_id);
+		server->sink_record_id = 0;
+	}
+
+	if (server->source_record_id)
+		return;
+
+	a2dp_server_unregister(server);
+}
+
+void a2dp_source_unregister(struct btd_adapter *adapter)
+{
+	struct a2dp_server *server;
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
 	g_slist_free_full(server->sources,
 					(GDestroyNotify) a2dp_unregister_sep);
 
-	avdtp_exit(adapter);
-
-	servers = g_slist_remove(servers, server);
-
-	if (server->source_record_id)
+	if (server->source_record_id) {
 		remove_record_from_server(server->source_record_id);
+		server->source_record_id = 0;
+	}
 
 	if (server->sink_record_id)
-		remove_record_from_server(server->sink_record_id);
+		return;
 
-	btd_adapter_unref(server->adapter);
-	g_free(server);
+	a2dp_server_unregister(server);
 }
 
 struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
