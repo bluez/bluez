@@ -1163,8 +1163,6 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	name = btd_adapter_get_name(adapter);
 
-	DBG("mgmtops setting name %s", name);
-
 	if (name)
 		mgmt_set_name(index, name);
 	else
