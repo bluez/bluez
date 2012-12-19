@@ -98,7 +98,7 @@ Properties	string Address [readonly]
 			displaying the devices name.
 
 			If the Alias property is unset, it will reflect
-			this value which makes is more convenient.
+			this value which makes it more convenient.
 
 		uint16 Vendor [readonly] [optional]
 
