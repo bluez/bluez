@@ -1,7 +1,5 @@
-BlueZ D-Bus Sim Access Profile API description
-***********************************
-
-Copyright (C) 2010 ST-Ericsson SA
+BlueZ D-Bus Sim Access API description
+**************************************
 
 
 Sim Access Profile hierarchy
