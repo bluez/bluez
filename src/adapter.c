@@ -119,7 +119,6 @@ struct discovery {
 struct btd_adapter {
 	uint16_t dev_id;
 	gboolean powered;
-	gboolean already_powered;
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* Class of Device */
@@ -2625,7 +2624,6 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean powered)
 	struct agent *agent;
 
 	adapter->powered = powered;
-	adapter->already_powered = powered;
 
 	adapter->allow_name_changes = TRUE;
 
@@ -2715,8 +2713,7 @@ void adapter_remove(struct btd_adapter *adapter)
 
 	g_slist_free(adapter->pin_callbacks);
 
-	/* Return adapter to down state if it was not up on init */
-	if (!adapter->already_powered && adapter->powered)
+	if (adapter->powered)
 		mgmt_set_powered(adapter->dev_id, FALSE);
 }
 
