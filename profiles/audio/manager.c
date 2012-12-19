@@ -485,7 +485,7 @@ void audio_sink_connected(struct btd_device *dev, int err)
 
 void audio_sink_disconnected(struct btd_device *dev, int err)
 {
-	device_profile_connected(dev, &a2dp_sink_profile, err);
+	device_profile_disconnected(dev, &a2dp_sink_profile, err);
 }
 
 void audio_source_connected(struct btd_device *dev, int err)
@@ -495,7 +495,7 @@ void audio_source_connected(struct btd_device *dev, int err)
 
 void audio_source_disconnected(struct btd_device *dev, int err)
 {
-	device_profile_connected(dev, &a2dp_source_profile, err);
+	device_profile_disconnected(dev, &a2dp_source_profile, err);
 }
 
 void audio_control_connected(struct btd_device *dev, int err)
