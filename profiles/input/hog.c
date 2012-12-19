@@ -753,7 +753,7 @@ static struct hog_device *hog_register_device(struct btd_device *device,
 	return hogdev;
 }
 
-static int hog_device_unregister(struct hog_device *hogdev)
+static int hog_unregister_device(struct hog_device *hogdev)
 {
 	struct uhid_event ev;
 
@@ -860,7 +860,7 @@ static void remove_device(gpointer a, gpointer b)
 		return;
 
 	devices = g_slist_remove(devices, hogdev);
-	hog_device_unregister(hogdev);
+	hog_unregister_device(hogdev);
 }
 
 static void hog_remove(struct btd_profile *p, struct btd_device *device)
