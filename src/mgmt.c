@@ -2641,6 +2641,7 @@ int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)
 	hdr->index = htobs(index);
 
 	bacpy(&cp->bdaddr, bdaddr);
+	cp->type = addr_type;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
 		return -errno;
