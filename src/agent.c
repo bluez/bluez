@@ -316,12 +316,12 @@ static void simple_agent_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
-		error("Agent replied with an error: %s, %s",
-				err.name, err.message);
+		DBG("agent error reply: %s, %s", err.name, err.message);
 
 		cb(agent, &err, req->user_data);
 
 		if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY)) {
+			error("Timed out waiting for reply from agent");
 			agent_cancel(agent);
 			dbus_message_unref(message);
 			dbus_error_free(&err);
