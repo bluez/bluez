@@ -1112,7 +1112,7 @@ static int connect_next(struct btd_device *dev)
 void device_profile_connected(struct btd_device *dev,
 					struct btd_profile *profile, int err)
 {
-	DBG("%s (%d)", strerror(-err), -err);
+	DBG("%s %s (%d)", profile->name, strerror(-err), -err);
 
 	dev->pending = g_slist_remove(dev->pending, profile);
 
