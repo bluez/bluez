@@ -3582,7 +3582,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	if (status) {
 		device_cancel_authentication(device, TRUE);
-		device_cancel_bonding(device, status);
+		device_bonding_failed(device, status);
 		return;
 	}
 
@@ -3639,6 +3639,25 @@ gboolean device_is_bonding(struct btd_device *device, const char *sender)
 		return TRUE;
 
 	return g_str_equal(sender, dbus_message_get_sender(bonding->msg));
+}
+
+void device_bonding_failed(struct btd_device *device, uint8_t status)
+{
+	struct bonding_req *bonding = device->bonding;
+	DBusMessage *reply;
+
+	DBG("status %u", status);
+
+	if (!bonding)
+		return;
+
+	if (device->authr)
+		device_cancel_authentication(device, FALSE);
+
+	reply = new_authentication_return(bonding->msg, status);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+
+	bonding_request_free(bonding);
 }
 
 void device_cancel_bonding(struct btd_device *device, uint8_t status)

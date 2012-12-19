@@ -75,6 +75,7 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable);
 gboolean device_is_connected(struct btd_device *device);
 void device_bonding_complete(struct btd_device *device, uint8_t status);
 gboolean device_is_bonding(struct btd_device *device, const char *sender);
+void device_bonding_failed(struct btd_device *device, uint8_t status);
 void device_cancel_bonding(struct btd_device *device, uint8_t status);
 int device_request_pincode(struct btd_device *device, gboolean secure);
 int device_request_passkey(struct btd_device *device);

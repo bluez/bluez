@@ -623,7 +623,7 @@ static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
 
 	if (device) {
 		if (device_is_bonding(device, NULL))
-			device_cancel_bonding(device, ev->status);
+			device_bonding_failed(device, ev->status);
 		if (device_is_temporary(device))
 			adapter_remove_device(adapter, device, TRUE);
 	}

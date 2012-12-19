@@ -1597,7 +1597,7 @@ static void reply_pending_requests(struct btd_adapter *adapter)
 		struct btd_device *device = l->data;
 
 		if (device_is_bonding(device, NULL))
-			device_cancel_bonding(device,
+			device_bonding_failed(device,
 						HCI_OE_USER_ENDED_CONNECTION);
 	}
 }
