@@ -939,6 +939,21 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 		memcpy(uuid128, uuid, sizeof(*uuid));
 }
 
+static bool is_16bit_uuid(const uuid_t *uuid)
+{
+	uuid_t tmp;
+
+	uuid_to_uuid128(&tmp, uuid);
+
+	if (!sdp_uuid128_to_uuid(&tmp))
+		return false;
+
+	if (tmp.type != SDP_UUID16)
+		return false;
+
+	return true;
+}
+
 int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_uuid)];
@@ -949,6 +964,11 @@ int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 	uint128_t uint128;
 
 	DBG("index %d", index);
+
+	if (!is_16bit_uuid(uuid)) {
+		warn("mgmt_add_uuid: Ignoring non-16-bit UUID");
+		return 0;
+	}
 
 	if (info->pending_uuid) {
 		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
@@ -992,6 +1012,11 @@ int mgmt_remove_uuid(int index, uuid_t *uuid)
 	uint128_t uint128;
 
 	DBG("index %d", index);
+
+	if (!is_16bit_uuid(uuid)) {
+		warn("mgmt_remove_uuid: Ignoring non-16-bit UUID");
+		return 0;
+	}
 
 	if (info->pending_uuid) {
 		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
