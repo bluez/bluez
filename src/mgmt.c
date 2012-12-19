@@ -129,7 +129,8 @@ static void read_version_complete(int sk, void *buf, size_t len)
 	mgmt_revision = bt_get_le16(&rp->revision);
 	mgmt_version = rp->version;
 
-	DBG("version %u revision %u", mgmt_version, mgmt_revision);
+	info("Bluetooth Management version %u, revision %u", mgmt_version,
+								mgmt_revision);
 
 	if (mgmt_version < 1) {
 		error("Version 1 of mgmt needed (kernel has version %u)",
