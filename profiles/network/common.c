@@ -115,34 +115,6 @@ int bnep_kill_connection(const bdaddr_t *dst)
 	return 0;
 }
 
-int bnep_kill_all_connections(void)
-{
-	struct bnep_connlist_req req;
-	struct bnep_conninfo ci[7];
-	unsigned int i;
-	int err;
-
-	memset(&req, 0, sizeof(req));
-	req.cnum = 7;
-	req.ci   = ci;
-	if (ioctl(ctl, BNEPGETCONNLIST, &req)) {
-		err = -errno;
-		error("Failed to get connection list: %s (%d)",
-						strerror(-err), -err);
-		return err;
-	}
-
-	for (i = 0; i < req.cnum; i++) {
-		struct bnep_conndel_req del;
-
-		memset(&del, 0, sizeof(del));
-		memcpy(del.dst, ci[i].dst, ETH_ALEN);
-		del.flags = 0;
-		ioctl(ctl, BNEPCONNDEL, &del);
-	}
-	return 0;
-}
-
 int bnep_connadd(int sk, uint16_t role, char *dev)
 {
 	struct bnep_connadd_req req;
