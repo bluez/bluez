@@ -1,6 +1,7 @@
 BlueZ D-Bus Media API description
 *********************************
 
+
 Media hierarchy
 ===============
 
@@ -123,15 +124,17 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 			Unregister sender media player.
 
+
 MediaPlayer1 hierarchy
 ======================
 
 Service		unique name (Target role)
-		org.bluez (Controller role)
 Interface	org.bluez.MediaPlayer1
-Object path	freely definable (Target role)
-		[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
-		(Controller role)
+Object path	freely definable
+
+Service		org.bluez (Controller role)
+Interface	org.bluez.MediaPlayer1
+Object path	[variable prefix]/{hci0,hci1,...}/dev_XX_XX_XX_XX_XX_XX/playerX
 
 Methods		dict GetTrack()
 
@@ -219,6 +222,7 @@ Properties	string Equalizer [readwrite]
 			possible to signal its end by setting position to the
 			maximum uint32 value.
 
+
 MediaEndpoint1 hierarchy
 ========================
 
@@ -253,6 +257,7 @@ Methods		void SetConfiguration(object transport, dict properties)
 			cleanup tasks. There is no need to unregister the
 			endpoint, because when this method gets called it has
 			already been unregistered.
+
 
 MediaTransport1 hierarchy
 =========================
