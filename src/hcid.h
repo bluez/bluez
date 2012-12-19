@@ -28,8 +28,8 @@ struct main_opts {
 	char		*name;
 	uint32_t	class;
 	uint16_t	autoto;
-	uint32_t	discovto;
 	uint32_t	pairto;
+	uint32_t	discovto;
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
 	gboolean	debug_keys;

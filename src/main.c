@@ -61,8 +61,9 @@
 
 #define LAST_ADAPTER_EXIT_TIMEOUT 30
 
-#define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 #define DEFAULT_AUTO_CONNECT_TIMEOUT  60 /* 60 seconds */
+#define DEFAULT_PAIRABLE_TIMEOUT       0 /* disabled */
+#define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
 struct main_opts main_opts;
 
@@ -107,13 +108,15 @@ static void parse_did(const char *did)
 	version = 0x0000;
 	source = 0x0002;
 
-	result = sscanf(did, "bluetooth:%4hx:%4hx:%4hx", &vendor, &product, &version);
+	result = sscanf(did, "bluetooth:%4hx:%4hx:%4hx",
+					&vendor, &product, &version);
 	if (result != EOF && result >= 2) {
 		source = 0x0001;
 		goto done;
 	}
 
-	result = sscanf(did, "usb:%4hx:%4hx:%4hx", &vendor, &product, &version);
+	result = sscanf(did, "usb:%4hx:%4hx:%4hx",
+					&vendor, &product, &version);
 	if (result != EOF && result >= 2)
 		goto done;
 
@@ -268,13 +271,17 @@ static void init_defaults(void)
 {
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.name	= g_strdup("BlueZ");
-	main_opts.discovto	= DEFAULT_DISCOVERABLE_TIMEOUT;
+	main_opts.name = g_strdup("BlueZ");
+	main_opts.class = 0x000000;
 	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;
+	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
+	main_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.reverse_sdp = TRUE;
 	main_opts.name_resolv = TRUE;
+	main_opts.debug_keys = FALSE;
 
-	if (gethostname(main_opts.host_name, sizeof(main_opts.host_name) - 1) < 0)
+	if (gethostname(main_opts.host_name,
+				sizeof(main_opts.host_name) - 1) < 0)
 		strcpy(main_opts.host_name, "noname");
 }
 
