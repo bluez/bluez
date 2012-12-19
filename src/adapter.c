@@ -193,7 +193,9 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	g_key_file_set_string(key_file, "General", "Name", adapter->name);
+	if (adapter->name)
+		g_key_file_set_string(key_file, "General", "Name",
+								adapter->name);
 
 	g_key_file_set_boolean(key_file, "General", "Pairable",
 				adapter->pairable);
