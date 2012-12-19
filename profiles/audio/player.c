@@ -313,7 +313,7 @@ struct media_player *media_player_controller_create(const char *path)
 	return mp;
 }
 
-uint32_t media_player_get_position(struct media_player *mp)
+static uint32_t media_player_get_position(struct media_player *mp)
 {
 	double timedelta;
 	uint32_t sec, msec;

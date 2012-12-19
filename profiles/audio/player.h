@@ -32,7 +32,6 @@ struct media_player_callback {
 
 struct media_player *media_player_controller_create(const char *path);
 void media_player_destroy(struct media_player *mp);
-uint32_t media_player_get_position(struct media_player *mp);
 void media_player_set_position(struct media_player *mp, uint32_t position);
 void media_player_set_setting(struct media_player *mp, const char *key,
 							const char *value);
