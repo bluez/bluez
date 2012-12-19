@@ -1483,6 +1483,84 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	return NULL;
 }
 
+static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
+{
+	switch (status) {
+	case MGMT_STATUS_SUCCESS:
+		return dbus_message_new_method_return(msg);
+
+	case MGMT_STATUS_CONNECT_FAILED:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".ConnectionAttemptFailed",
+				"Page Timeout");
+	case MGMT_STATUS_TIMEOUT:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".AuthenticationTimeout",
+				"Authentication Timeout");
+	case MGMT_STATUS_BUSY:
+	case MGMT_STATUS_REJECTED:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".AuthenticationRejected",
+				"Authentication Rejected");
+	case MGMT_STATUS_CANCELLED:
+	case MGMT_STATUS_NO_RESOURCES:
+	case MGMT_STATUS_DISCONNECTED:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".AuthenticationCanceled",
+				"Authentication Canceled");
+	default:
+		return dbus_message_new_error(msg,
+				ERROR_INTERFACE ".AuthenticationFailed",
+				"Authentication Failed");
+	}
+}
+
+static void bonding_request_free(struct bonding_req *bonding)
+{
+	if (!bonding)
+		return;
+
+	if (bonding->listener_id)
+		g_dbus_remove_watch(btd_get_dbus_connection(),
+							bonding->listener_id);
+
+	if (bonding->msg)
+		dbus_message_unref(bonding->msg);
+
+	if (bonding->agent) {
+		agent_cancel(bonding->agent);
+		agent_unref(bonding->agent);
+		bonding->agent = NULL;
+	}
+
+	if (bonding->device)
+		bonding->device->bonding = NULL;
+
+	g_free(bonding);
+}
+
+static void device_cancel_bonding(struct btd_device *device, uint8_t status)
+{
+	struct bonding_req *bonding = device->bonding;
+	DBusMessage *reply;
+	char addr[18];
+
+	if (!bonding)
+		return;
+
+	ba2str(&device->bdaddr, addr);
+	DBG("Canceling bonding request for %s", addr);
+
+	if (device->authr)
+		device_cancel_authentication(device, FALSE);
+
+	reply = new_authentication_return(bonding->msg, status);
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+
+	bonding_request_cancel(bonding);
+	bonding_request_free(bonding);
+}
+
 static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -3066,31 +3144,6 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 	find_included_services(req, services);
 }
 
-static void bonding_request_free(struct bonding_req *bonding)
-{
-	if (!bonding)
-		return;
-
-	if (bonding->listener_id)
-		g_dbus_remove_watch(btd_get_dbus_connection(),
-							bonding->listener_id);
-
-	if (bonding->msg)
-		dbus_message_unref(bonding->msg);
-
-	if (bonding->agent) {
-		agent_cancel(bonding->agent);
-		agent_unref(bonding->agent);
-		bonding->agent = NULL;
-	}
-
-	if (bonding->device)
-		bonding->device->bonding = NULL;
-
-	g_free(bonding);
-
-}
-
 static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct att_callbacks *attcb = user_data;
@@ -3514,38 +3567,6 @@ static gboolean start_discovery(gpointer user_data)
 	return FALSE;
 }
 
-static DBusMessage *new_authentication_return(DBusMessage *msg, uint8_t status)
-{
-	switch (status) {
-	case MGMT_STATUS_SUCCESS:
-		return dbus_message_new_method_return(msg);
-
-	case MGMT_STATUS_CONNECT_FAILED:
-		return dbus_message_new_error(msg,
-				ERROR_INTERFACE ".ConnectionAttemptFailed",
-				"Page Timeout");
-	case MGMT_STATUS_TIMEOUT:
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationTimeout",
-					"Authentication Timeout");
-	case MGMT_STATUS_BUSY:
-	case MGMT_STATUS_REJECTED:
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationRejected",
-					"Authentication Rejected");
-	case MGMT_STATUS_CANCELLED:
-	case MGMT_STATUS_NO_RESOURCES:
-	case MGMT_STATUS_DISCONNECTED:
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationCanceled",
-					"Authentication Canceled");
-	default:
-		return dbus_message_new_error(msg,
-					ERROR_INTERFACE ".AuthenticationFailed",
-					"Authentication Failed");
-	}
-}
-
 void device_set_paired(struct btd_device *device, gboolean value)
 {
 	if (device->paired == value)
@@ -3657,28 +3678,6 @@ void device_bonding_failed(struct btd_device *device, uint8_t status)
 	reply = new_authentication_return(bonding->msg, status);
 	g_dbus_send_message(btd_get_dbus_connection(), reply);
 
-	bonding_request_free(bonding);
-}
-
-void device_cancel_bonding(struct btd_device *device, uint8_t status)
-{
-	struct bonding_req *bonding = device->bonding;
-	DBusMessage *reply;
-	char addr[18];
-
-	if (!bonding)
-		return;
-
-	ba2str(&device->bdaddr, addr);
-	DBG("Canceling bonding request for %s", addr);
-
-	if (device->authr)
-		device_cancel_authentication(device, FALSE);
-
-	reply = new_authentication_return(bonding->msg, status);
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
-
-	bonding_request_cancel(bonding);
 	bonding_request_free(bonding);
 }
 
