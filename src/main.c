@@ -59,8 +59,6 @@
 
 #define BLUEZ_NAME "org.bluez"
 
-#define LAST_ADAPTER_EXIT_TIMEOUT 30
-
 #define DEFAULT_AUTO_CONNECT_TIMEOUT  60 /* 60 seconds */
 #define DEFAULT_PAIRABLE_TIMEOUT       0 /* disabled */
 #define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
