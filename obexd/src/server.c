@@ -118,22 +118,6 @@ void obex_server_exit(void)
 	return;
 }
 
-struct obex_service_driver *obex_server_find_driver(
-						struct obex_server *server,
-						uint8_t channel)
-{
-	GSList *l;
-
-	for (l = server->drivers; l; l = l->next) {
-		struct obex_service_driver *driver = l->data;
-
-		if (driver->channel == channel)
-			return driver;
-	}
-
-	return NULL;
-}
-
 int obex_server_new_connection(struct obex_server *server, GIOChannel *io,
 					uint16_t tx_mtu, uint16_t rx_mtu,
 					gboolean stream)
