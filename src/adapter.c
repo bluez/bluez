@@ -2614,7 +2614,10 @@ static void load_config(struct btd_adapter *adapter)
 
 	mgmt_set_connectable(adapter->dev_id, TRUE);
 
-	if (adapter->discov_timeout == 0)
+	if (adapter->discov_timeout > 0) {
+		/* Ensure that discoverable mode is off */
+		mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
+	} else
 		mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
 						adapter->discov_timeout);
 
