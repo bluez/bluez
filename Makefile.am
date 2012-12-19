@@ -196,7 +196,7 @@ EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
 		doc/network-api.txt doc/health-api.txt \
 		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt \
 		doc/supported-features.txt doc/alert-api.txt doc/mgmt-api.txt \
-		doc/oob-api.txt doc/proximity-api.txt doc/heartrate-api.txt \
+		doc/proximity-api.txt doc/heartrate-api.txt \
 		doc/thermometer-api.txt doc/audio-telephony-design.txt \
 		doc/cyclingspeed-api.txt
 

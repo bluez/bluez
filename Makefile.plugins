@@ -14,9 +14,6 @@ builtin_sources += plugins/gatt-example.c
 endif
 
 if EXPERIMENTAL
-builtin_modules += dbusoob
-builtin_sources += plugins/dbusoob.c
-
 builtin_modules += neard
 builtin_sources += plugins/neard.c
 
