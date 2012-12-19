@@ -2250,7 +2250,8 @@ void l2cap_packet(uint16_t index, bool in, uint16_t handle, uint8_t flags,
 			/* complete frame */
 			l2cap_frame(index, in, handle,
 					index_list[index].frag_cid,
-					data, index_list[index].frag_pos);
+					index_list[index].frag_buf,
+					index_list[index].frag_pos);
 			clear_fragment_buffer(index);
 			return;
 		}
