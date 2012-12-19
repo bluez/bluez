@@ -3678,7 +3678,7 @@ static void pincode_cb(struct agent *agent, DBusError *err, const char *pin,
 	if (auth->agent == NULL)
 		return;
 
-	btd_adapter_pincode_reply(device->adapter, device_get_address(device),
+	btd_adapter_pincode_reply(device->adapter, &device->bdaddr,
 						pin, pin ? strlen(pin) : 0);
 
 	agent_unref(device->authr->agent);
@@ -3694,9 +3694,9 @@ static void confirm_cb(struct agent *agent, DBusError *err, void *data)
 	if (auth->agent == NULL)
 		return;
 
-	btd_adapter_confirm_reply(device->adapter, device_get_address(device),
-						device_get_addr_type(device),
-						err ? FALSE : TRUE);
+	btd_adapter_confirm_reply(device->adapter, &device->bdaddr,
+							device->bdaddr_type,
+							err ? FALSE : TRUE);
 
 	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
@@ -3715,8 +3715,8 @@ static void passkey_cb(struct agent *agent, DBusError *err,
 	if (err)
 		passkey = INVALID_PASSKEY;
 
-	btd_adapter_passkey_reply(device->adapter, device_get_address(device),
-					device_get_addr_type(device), passkey);
+	btd_adapter_passkey_reply(device->adapter, &device->bdaddr,
+						device->bdaddr_type, passkey);
 
 	agent_unref(device->authr->agent);
 	device->authr->agent = NULL;
