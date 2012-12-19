@@ -380,11 +380,6 @@ char *textfile_get(const char *pathname, const char *key)
 	return read_key(pathname, key, 0);
 }
 
-char *textfile_caseget(const char *pathname, const char *key)
-{
-	return read_key(pathname, key, 1);
-}
-
 int textfile_foreach(const char *pathname, textfile_cb func, void *data)
 {
 	struct stat st;
