@@ -33,6 +33,8 @@ void audio_sink_connected(struct btd_device *dev, int err);
 void audio_sink_disconnected(struct btd_device *dev, int err);
 void audio_source_connected(struct btd_device *dev, int err);
 void audio_source_disconnected(struct btd_device *dev, int err);
+void audio_control_connected(struct btd_device *dev, int err);
+void audio_control_disconnected(struct btd_device *dev, int err);
 
 int audio_manager_init(GKeyFile *config);
 void audio_manager_exit(void);

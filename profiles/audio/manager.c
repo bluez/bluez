@@ -270,7 +270,7 @@ static int avrcp_control_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	return control_connect(audio_dev, connect_cb, profile);
+	return control_connect(audio_dev);
 }
 
 static int avrcp_control_disconnect(struct btd_device *dev,
@@ -287,7 +287,7 @@ static int avrcp_control_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	return control_disconnect(audio_dev, disconnect_cb, profile);
+	return control_disconnect(audio_dev);
 }
 
 static struct audio_adapter *audio_adapter_ref(struct audio_adapter *adp)
@@ -510,6 +510,16 @@ void audio_source_connected(struct btd_device *dev, int err)
 void audio_source_disconnected(struct btd_device *dev, int err)
 {
 	device_profile_connected(dev, &a2dp_source_profile, err);
+}
+
+void audio_control_connected(struct btd_device *dev, int err)
+{
+	device_profile_connected(dev, &avrcp_profile, err);
+}
+
+void audio_control_disconnected(struct btd_device *dev, int err)
+{
+	device_profile_disconnected(dev, &avrcp_profile, err);
 }
 
 int audio_manager_init(GKeyFile *conf)

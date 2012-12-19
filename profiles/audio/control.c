@@ -61,27 +61,10 @@
 
 static unsigned int avctp_id = 0;
 
-struct pending_request {
-	audio_device_cb cb;
-	void *data;
-	unsigned int id;
-};
-
 struct control {
 	struct avctp *session;
 	gboolean target;
-	struct pending_request *connect;
 };
-
-static void pending_request_free(struct audio_device *dev,
-					struct pending_request *pending,
-					int err)
-{
-	if (pending->cb)
-		pending->cb(dev, err, pending->data);
-
-	g_free(pending);
-}
 
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 				avctp_state_t new_state, void *user_data)
@@ -94,13 +77,12 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	case AVCTP_STATE_DISCONNECTED:
 		control->session = NULL;
 
-		if (control->connect) {
-			pending_request_free(dev, control->connect, -EIO);
-			control->connect = NULL;
+		if (old_state != AVCTP_STATE_CONNECTED) {
+			audio_control_connected(dev->btd_dev, -EIO);
+			break;
 		}
 
-		if (old_state != AVCTP_STATE_CONNECTED)
-			break;
+		audio_control_disconnected(dev->btd_dev, 0);
 
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
@@ -114,10 +96,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		break;
 	case AVCTP_STATE_CONNECTED:
-		if (control->connect) {
-			pending_request_free(dev, control->connect, 0);
-			control->connect = NULL;
-		}
+		audio_control_connected(dev->btd_dev, 0);
 
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
@@ -127,10 +106,9 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	}
 }
 
-int control_connect(struct audio_device *dev, audio_device_cb cb, void *data)
+int control_connect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
-	struct pending_request *pending;
 
 	if (control->session)
 		return -EALREADY;
@@ -138,42 +116,23 @@ int control_connect(struct audio_device *dev, audio_device_cb cb, void *data)
 	if (!control->target)
 		return -ENOTSUP;
 
-	if (control->connect)
-		return -EINPROGRESS;
-
 	control->session = avctp_connect(dev);
 	if (!control->session)
 		return -EIO;
 
-	pending = g_new0(struct pending_request, 1);
-	pending->cb = cb;
-	pending->data = data;
-	control->connect = pending;
-
 	return 0;
 }
 
-int control_disconnect(struct audio_device *dev, audio_device_cb cb,
-								void *data)
+int control_disconnect(struct audio_device *dev)
 {
 	struct control *control = dev->control;
 
 	if (!control->session)
 		return -ENOTCONN;
 
-	/* cancel pending connect */
-	if (control->connect) {
-		pending_request_free(dev, control->connect, -ECANCELED);
-		control->connect = NULL;
-	}
-
 	avctp_disconnect(control->session);
 
-	if (cb)
-		cb(dev, 0, data);
-
 	return 0;
-
 }
 
 static DBusMessage *key_pressed(DBusConnection *conn, DBusMessage *msg,
@@ -290,9 +249,6 @@ static void path_unregister(void *data)
 
 	if (control->session)
 		avctp_disconnect(control->session);
-
-	if (control->connect)
-		pending_request_free(dev, control->connect, -ECANCELED);
 
 	g_free(control);
 	dev->control = NULL;
