@@ -98,6 +98,13 @@ Properties	string Address [readonly]
 			The Bluetooth remote name. This value can not be
 			changed. Use the Alias property instead.
 
+			This value is only present for completeness. It is
+			better to always use the Alias property when
+			displaying the devices name.
+
+			If the Alias property is unset, it will reflect
+			this value which makes is more convenient.
+
 		uint16 Vendor [readonly] [optional]
 
 			Vendor unique numeric identifier.
