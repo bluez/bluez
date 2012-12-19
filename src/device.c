@@ -3398,11 +3398,6 @@ const bdaddr_t *device_get_address(struct btd_device *device)
 	return &device->bdaddr;
 }
 
-uint8_t device_get_addr_type(struct btd_device *device)
-{
-	return device->bdaddr_type;
-}
-
 const gchar *device_get_path(struct btd_device *device)
 {
 	if (!device)
