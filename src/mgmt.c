@@ -55,6 +55,7 @@
 #define MGMT_BUF_SIZE 1024
 
 struct pending_uuid {
+	bool add;
 	uuid_t uuid;
 	uint8_t svc_hint;
 };
@@ -953,6 +954,7 @@ int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
 
 		memcpy(&pending->uuid, uuid, sizeof(*uuid));
+		pending->add = true;
 		pending->svc_hint = svc_hint;
 
 		info->pending_uuids = g_slist_append(info->pending_uuids,
@@ -985,10 +987,22 @@ int mgmt_remove_uuid(int index, uuid_t *uuid)
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_uuid)];
 	struct mgmt_hdr *hdr = (void *) buf;
 	struct mgmt_cp_remove_uuid *cp = (void *) &buf[sizeof(*hdr)];
+	struct controller_info *info = &controllers[index];
 	uuid_t uuid128;
 	uint128_t uint128;
 
 	DBG("index %d", index);
+
+	if (info->pending_uuid) {
+		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
+
+		memcpy(&pending->uuid, uuid, sizeof(*uuid));
+		pending->add = false;
+
+		info->pending_uuids = g_slist_append(info->pending_uuids,
+								pending);
+		return 0;
+	}
 
 	uuid_to_uuid128(&uuid128, uuid);
 
@@ -1002,6 +1016,8 @@ int mgmt_remove_uuid(int index, uuid_t *uuid)
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
+
+	info->pending_uuid = TRUE;
 
 	return 0;
 }
@@ -1419,7 +1435,10 @@ static void handle_pending_uuids(uint16_t index)
 
 	pending = info->pending_uuids->data;
 
-	mgmt_add_uuid(index, &pending->uuid, pending->svc_hint);
+	if (pending->add)
+		mgmt_add_uuid(index, &pending->uuid, pending->svc_hint);
+	else
+		mgmt_remove_uuid(index, &pending->uuid);
 
 	info->pending_uuids = g_slist_remove(info->pending_uuids, pending);
 	g_free(pending);
@@ -1456,6 +1475,21 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 
 	if (index > max_index) {
 		error("Unexpected index %u in add_uuid_complete event", index);
+		return;
+	}
+
+	mgmt_update_cod(index, buf, len);
+	handle_pending_uuids(index);
+}
+
+static void mgmt_remove_uuid_complete(int sk, uint16_t index, void *buf,
+								size_t len)
+{
+	DBG("index %d", index);
+
+	if (index > max_index) {
+		error("Unexpected index %u in remove_uuid_complete event",
+									index);
 		return;
 	}
 
@@ -1512,7 +1546,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		break;
 	case MGMT_OP_REMOVE_UUID:
 		DBG("remove_uuid complete");
-		mgmt_update_cod(index, buf, len);
+		mgmt_remove_uuid_complete(sk, index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
 		DBG("set_dev_class complete");
