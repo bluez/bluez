@@ -129,12 +129,11 @@ static void read_version_complete(int sk, void *buf, size_t len)
 	mgmt_revision = bt_get_le16(&rp->revision);
 	mgmt_version = rp->version;
 
-	info("Bluetooth Management version %u, revision %u", mgmt_version,
-								mgmt_revision);
+	info("Bluetooth management interface %u.%u initialized",
+						mgmt_version, mgmt_revision);
 
 	if (mgmt_version < 1) {
-		error("Version 1 of mgmt needed (kernel has version %u)",
-								mgmt_version);
+		error("Version 1.0 or later of management interface is needed");
 		abort();
 	}
 
@@ -2218,8 +2217,6 @@ int mgmt_setup(void)
 	g_io_channel_unref(io);
 
 	mgmt_sock = dd;
-
-	info("Bluetooth Management interface initialized");
 
 	return 0;
 
