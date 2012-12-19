@@ -37,27 +37,9 @@ extern "C" {
 void obex_dbus_dict_append(DBusMessageIter *dict, const char *key, int type,
 				void *value);
 
-void obex_dbus_dict_append_array(DBusMessageIter *dict, const char *key,
-					int type, void *val);
-
-void obex_dbus_dict_append_dict(DBusMessageIter *dict, const char *key,
-					int type, void *val);
-
 int obex_dbus_signal_property_changed(DBusConnection *conn, const char *path,
 					const char *interface, const char *name,
 					int type, void *value);
-
-int obex_dbus_signal_array_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name, int type,
-						void *value);
-
-int obex_dbus_signal_dict_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name, int type,
-						void *value);
 
 #ifdef __cplusplus
 }

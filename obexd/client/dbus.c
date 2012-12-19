@@ -94,21 +94,6 @@ static void append_array_variant(DBusMessageIter *iter, int type, void *val)
 	dbus_message_iter_close_container(iter, &variant);
 }
 
-void obex_dbus_dict_append_array(DBusMessageIter *dict, const char *key,
-				int type, void *val)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-						NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_array_variant(&entry, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static void append_dict_variant(DBusMessageIter *iter, int type, void *val)
 {
 	DBusMessageIter variant, array, entry;
@@ -163,21 +148,6 @@ static void append_dict_variant(DBusMessageIter *iter, int type, void *val)
 	dbus_message_iter_close_container(iter, &variant);
 }
 
-void obex_dbus_dict_append_dict(DBusMessageIter *dict, const char *key,
-				int type, void *val)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-						NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	append_dict_variant(&entry, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 int obex_dbus_signal_property_changed(DBusConnection *conn,
 					const char *path,
 					const char *interface,
@@ -199,58 +169,6 @@ int obex_dbus_signal_property_changed(DBusConnection *conn,
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
 
 	append_variant(&iter, type, value);
-
-	return g_dbus_send_message(conn, signal);
-}
-
-int obex_dbus_signal_array_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int type, void *value)
-
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
-	if (signal == NULL) {
-		error("Unable to allocate new %s.PropertyChanged signal",
-				interface);
-		return -1;
-	}
-
-	dbus_message_iter_init_append(signal, &iter);
-
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
-
-	append_array_variant(&iter, type, value);
-
-	return g_dbus_send_message(conn, signal);
-}
-
-int obex_dbus_signal_dict_property_changed(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int type, void *value)
-
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
-	if (signal == NULL) {
-		error("Unable to allocate new %s.PropertyChanged signal",
-				interface);
-		return -1;
-	}
-
-	dbus_message_iter_init_append(signal, &iter);
-
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
-
-	append_dict_variant(&iter, type, value);
 
 	return g_dbus_send_message(conn, signal);
 }
