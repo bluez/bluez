@@ -97,7 +97,8 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SessionBus()
-	manager = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
+	manager = dbus.Interface(bus.get_object("org.bluez.obex",
+						"/org/bluez/obex"),
 						"org.bluez.obex.Manager")
 	bus.add_signal_receiver(new_transfer,
 				dbus_interface="org.bluez.obex.Manager",

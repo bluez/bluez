@@ -98,8 +98,9 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
-				"org.bluez.obex.Client")
+	client = dbus.Interface(bus.get_object("org.bluez.obex",
+						"/org/bluez/obex"),
+						"org.bluez.obex.Client")
 
 	if (len(sys.argv) < 2):
 		print "Usage: %s <device>" % (sys.argv[0])

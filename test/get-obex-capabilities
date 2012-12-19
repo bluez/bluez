@@ -4,7 +4,7 @@ import sys
 import dbus
 
 bus = dbus.SessionBus()
-client = dbus.Interface(bus.get_object("org.bluez.obex", "/"),
+client = dbus.Interface(bus.get_object("org.bluez.obex", "/org/bluez/obex"),
 					"org.bluez.obex.Client")
 
 if (len(sys.argv) < 3):
