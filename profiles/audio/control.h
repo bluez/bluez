@@ -22,7 +22,7 @@
  *
  */
 
-#define AUDIO_CONTROL_INTERFACE "org.bluez.Control1"
+#define AUDIO_CONTROL_INTERFACE "org.bluez.MediaControl1"
 
 struct control *control_init(struct audio_device *dev, GSList *uuids);
 void control_update(struct control *control, GSList *uuids);
