@@ -64,7 +64,7 @@ Properties	string Address [readonly]
 		boolean Powered [readwrite]
 
 			Switch an adapter on or off. This will also set the
-			appropriate connectable state.
+			appropriate connectable state of the controller.
 
 		boolean Discoverable [readwrite]
 
@@ -84,6 +84,8 @@ Properties	string Address [readonly]
 			this property will be updated via a PropertyChanged
 			signal.
 
+			For any new adapter this settings defaults to false.
+
 		boolean Pairable [readwrite]
 
 			Switch an adapter to pairable or non-pairable. This is
@@ -93,11 +95,16 @@ Properties	string Address [readonly]
 			Note that this property only affects incoming pairing
 			requests.
 
+			For any new adapter this settings defaults to true.
+
 		uint32 PairableTimeout [readwrite]
 
 			The pairable timeout in seconds. A value of zero
 			means that the timeout is disabled and it will stay in
 			pairable mode forever.
+
+			The default value for pairable timeout should be
+			disabled (value 0).
 
 		uint32 DiscoverableTimeout [readwrite]
 
