@@ -63,7 +63,7 @@ int mgmt_set_io_capability(int index, uint8_t io_capability);
 
 int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
 							uint8_t io_cap);
-int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr);
+int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type);
 
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len);

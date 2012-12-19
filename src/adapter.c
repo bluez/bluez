@@ -3334,9 +3334,10 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return mgmt_create_bonding(adapter->dev_id, bdaddr, addr_type, io_cap);
 }
 
-int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr)
+int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+							 uint8_t addr_type)
 {
-	return mgmt_cancel_bonding(adapter->dev_id, bdaddr);
+	return mgmt_cancel_bonding(adapter->dev_id, bdaddr, addr_type);
 }
 
 static void check_oob_bonding_complete(struct btd_adapter *adapter,

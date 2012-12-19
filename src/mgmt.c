@@ -2625,7 +2625,7 @@ int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
 	return 0;
 }
 
-int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr)
+int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_addr_info)];
 	struct mgmt_hdr *hdr = (void *) buf;
@@ -2633,7 +2633,7 @@ int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr)
 	char addr[18];
 
 	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s", index, addr);
+	DBG("hci%d bdaddr %s type %d", index, addr, addr_type);
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(MGMT_OP_CANCEL_PAIR_DEVICE);

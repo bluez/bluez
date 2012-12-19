@@ -1009,7 +1009,7 @@ static void bonding_request_cancel(struct bonding_req *bonding)
 	struct btd_device *device = bonding->device;
 	struct btd_adapter *adapter = device->adapter;
 
-	adapter_cancel_bonding(adapter, &device->bdaddr);
+	adapter_cancel_bonding(adapter, &device->bdaddr, device->bdaddr_type);
 }
 
 static void dev_disconn_profile(gpointer a, gpointer b)
