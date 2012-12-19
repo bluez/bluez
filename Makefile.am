@@ -252,7 +252,7 @@ TESTS = $(unit_tests)
 pkgconfigdir = $(libdir)/pkgconfig
 
 if LIBRARY
-pkgconfig_DATA = bluez.pc
+pkgconfig_DATA = lib/bluez.pc
 endif
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --disable-systemd \

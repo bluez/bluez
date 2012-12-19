@@ -26,7 +26,7 @@ missing
 stamp-h1
 autom4te.cache
 
-bluez.pc
+lib/bluez.pc
 lib/bluetooth
 src/builtin.h
 src/bluetoothd

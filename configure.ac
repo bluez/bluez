@@ -254,4 +254,4 @@ fi
 AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}",
 			[Directory for the configuration files])
 
-AC_OUTPUT(Makefile src/bluetoothd.8 bluez.pc)
+AC_OUTPUT(Makefile src/bluetoothd.8 lib/bluez.pc)
