@@ -206,7 +206,7 @@ int btd_manager_unregister_adapter(int id)
 
 	path = adapter_get_path(adapter);
 
-	info("Unregister path: %s", path);
+	DBG("Unregister path: %s", path);
 
 	manager_remove_adapter(adapter);
 
