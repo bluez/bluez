@@ -942,7 +942,13 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 
 static bool is_16bit_uuid(const uuid_t *uuid)
 {
+	static uint8_t any[16] = { 0, 0, 0, 0, 0, 0, 0, 0,
+					0, 0, 0, 0, 0, 0, 0, 0 };
 	uuid_t tmp;
+
+	if (uuid->type == SDP_UUID128 &&
+			memcmp(&uuid->value.uuid128, any, sizeof(any)) == 0)
+		return true;
 
 	uuid_to_uuid128(&tmp, uuid);
 
