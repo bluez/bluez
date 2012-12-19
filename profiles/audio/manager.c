@@ -174,20 +174,6 @@ static int avrcp_probe(struct btd_profile *p, struct btd_device *device,
 	return 0;
 }
 
-static void connect_cb(struct audio_device *dev, int err, void *data)
-{
-	struct btd_profile *profile = data;
-
-	device_profile_connected(dev->btd_dev, profile, err);
-}
-
-static void disconnect_cb(struct audio_device *dev, int err, void *data)
-{
-	struct btd_profile *profile = data;
-
-	device_profile_disconnected(dev->btd_dev, profile, err);
-}
-
 static int a2dp_source_connect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
@@ -236,7 +222,7 @@ static int a2dp_sink_connect(struct btd_device *dev,
 		return -1;
 	}
 
-	return sink_connect(audio_dev, connect_cb, profile);
+	return sink_connect(audio_dev);
 }
 
 static int a2dp_sink_disconnect(struct btd_device *dev,
@@ -253,7 +239,7 @@ static int a2dp_sink_disconnect(struct btd_device *dev,
 		return -1;
 	}
 
-	return sink_disconnect(audio_dev, FALSE, disconnect_cb, profile);
+	return sink_disconnect(audio_dev, FALSE);
 }
 
 static int avrcp_control_connect(struct btd_device *dev,

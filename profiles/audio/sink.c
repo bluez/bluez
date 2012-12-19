@@ -305,7 +305,7 @@ gboolean sink_setup_stream(struct sink *sink, struct avdtp *session)
 	return TRUE;
 }
 
-int sink_connect(struct audio_device *dev, audio_device_cb cb, void *data)
+int sink_connect(struct audio_device *dev)
 {
 	struct sink *sink = dev->sink;
 
@@ -415,8 +415,7 @@ gboolean sink_new_stream(struct audio_device *dev, struct avdtp *session,
 	return TRUE;
 }
 
-int sink_disconnect(struct audio_device *dev, gboolean shutdown,
-						audio_device_cb cb, void *data)
+int sink_disconnect(struct audio_device *dev, gboolean shutdown)
 {
 	struct sink *sink = dev->sink;
 

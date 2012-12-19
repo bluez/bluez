@@ -184,7 +184,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 		avrcp_disconnect(dev);
 
 	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
-		sink_disconnect(dev, TRUE, NULL, NULL);
+		sink_disconnect(dev, TRUE);
 	else
 		priv->disconnecting = FALSE;
 }
