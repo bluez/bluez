@@ -30,7 +30,6 @@ struct main_opts {
 	uint16_t	autoto;
 	uint32_t	discovto;
 	uint32_t	pairto;
-	uint16_t	link_mode;
 	uint16_t	link_policy;
 	gboolean	reverse_sdp;
 	gboolean	name_resolv;
