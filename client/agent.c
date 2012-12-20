@@ -82,6 +82,8 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 		confirm_response(conn, input);
 	else if (!strcmp(member, "RequestAuthorization"))
 		confirm_response(conn, input);
+	else if (!strcmp(member, "AuthorizeService"))
+		confirm_response(conn, input);
 	else
 		g_dbus_send_error(conn, pending_message,
 					"org.bluez.Error.Canceled", NULL);
@@ -168,6 +170,26 @@ static DBusMessage *request_authorization(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *authorize_service(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device, *uuid;
+	char *str;
+
+	rl_printf("Authorize service\n");
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
+				DBUS_TYPE_STRING, &uuid, DBUS_TYPE_INVALID);
+
+	str = g_strdup_printf("Authorize service %s (yes/no): ", uuid);
+	rl_message(str);
+	g_free(str);
+
+	pending_message = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 static DBusMessage *cancel_request(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -192,6 +214,9 @@ static const GDBusMethodTable methods[] = {
 	{ GDBUS_ASYNC_METHOD("RequestAuthorization",
 			GDBUS_ARGS({ "device", "o" }),
 			NULL, request_authorization) },
+	{ GDBUS_ASYNC_METHOD("AuthorizeService",
+			GDBUS_ARGS({ "device", "o" }, { "uuid", "s" }),
+			NULL,  authorize_service) },
 	{ GDBUS_METHOD("Cancel", NULL, NULL, cancel_request) },
 	{ }
 };
