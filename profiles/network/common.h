@@ -24,6 +24,7 @@
 int bnep_init(void);
 int bnep_cleanup(void);
 
+uint16_t bnep_service_id(const char *svc);
 const char *bnep_uuid(uint16_t id);
 const char *bnep_name(uint16_t id);
 

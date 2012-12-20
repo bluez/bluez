@@ -73,6 +73,7 @@ struct network_conn {
 	struct network_peer *peer;
 	guint		attempt_cnt;
 	guint		timeout_source;
+	DBusMessage	*connect;
 };
 
 struct __service_16 {
@@ -147,6 +148,24 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
+static void local_connect_cb(struct network_conn *nc, int err)
+{
+	DBusConnection *conn = btd_get_dbus_connection();
+	const char *pdev = nc->dev;
+
+	if (err < 0) {
+		DBusMessage *reply = btd_error_failed(nc->connect,
+							strerror(-err));
+		g_dbus_send_message(conn, reply);
+	} else {
+		g_dbus_send_reply(conn, nc->connect, DBUS_TYPE_STRING, &pdev,
+							DBUS_TYPE_INVALID);
+	}
+
+	dbus_message_unref(nc->connect);
+	nc->connect = NULL;
+}
+
 static void cancel_connection(struct network_conn *nc, int err)
 {
 	if (nc->timeout_source > 0) {
@@ -155,6 +174,8 @@ static void cancel_connection(struct network_conn *nc, int err)
 	}
 
 	network_connected(nc->peer->device, nc->id, err);
+	if (nc->connect)
+		local_connect_cb(nc, err);
 
 	g_io_channel_shutdown(nc->io, TRUE, NULL);
 	g_io_channel_unref(nc->io);
@@ -259,6 +280,8 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	bnep_if_up(nc->dev);
 
 	network_connected(nc->peer->device, nc->id, 0);
+	if (nc->connect)
+		local_connect_cb(nc, 0);
 
 	conn = btd_get_dbus_connection();
 	path = device_get_path(nc->peer->device);
@@ -374,6 +397,38 @@ failed:
 	cancel_connection(nc, -EIO);
 }
 
+static DBusMessage *local_connect(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct network_peer *peer = data;
+	struct network_conn *nc;
+	const char *svc;
+	uint16_t id;
+	int err;
+
+	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &svc,
+						DBUS_TYPE_INVALID) == FALSE)
+		return btd_error_invalid_args(msg);
+
+	id = bnep_service_id(svc);
+
+	nc = find_connection(peer->connections, id);
+	if (nc && nc->connect)
+		return btd_error_busy(msg);
+
+	err = connection_connect(peer->device, id);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	nc = find_connection(peer->connections, id);
+	if (!nc)
+		return btd_error_failed(msg, strerror(-err));
+
+	nc->connect = dbus_message_ref(msg);
+
+	return NULL;
+}
+
 /* Connect and initiate BNEP session */
 int connection_connect(struct btd_device *device, uint16_t id)
 {
@@ -433,6 +488,29 @@ int connection_disconnect(struct btd_device *device, uint16_t id)
 	connection_destroy(NULL, nc);
 
 	return 0;
+}
+
+static DBusMessage *local_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct network_peer *peer = data;
+	GSList *l;
+
+	for (l = peer->connections; l; l = l->next) {
+		struct network_conn *nc = l->data;
+		int err;
+
+		if (nc->state == DISCONNECTED)
+			continue;
+
+		err = connection_disconnect(peer->device, nc->id);
+		if (err < 0)
+			return btd_error_failed(msg, strerror(-err));
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
+	return btd_error_not_connected(msg);
 }
 
 static gboolean
@@ -510,6 +588,9 @@ static void connection_free(void *data)
 
 	connection_destroy(NULL, nc);
 
+	if (nc->connect)
+		dbus_message_unref(nc->connect);
+
 	g_free(nc);
 	nc = NULL;
 }
@@ -531,6 +612,16 @@ static void path_unregister(void *data)
 	peers = g_slist_remove(peers, peer);
 	peer_free(peer);
 }
+
+static const GDBusMethodTable connection_methods[] = {
+	{ GDBUS_ASYNC_METHOD("Connect",
+				GDBUS_ARGS({"uuid", "s"}),
+				GDBUS_ARGS({"interface", "s"}),
+				local_connect) },
+	{ GDBUS_METHOD("Disconnect",
+			NULL, NULL, local_disconnect) },
+	{ }
+};
 
 static const GDBusPropertyTable connection_properties[] = {
 	{ "Connected", "b", network_property_get_connected },
@@ -569,7 +660,8 @@ static struct network_peer *create_peer(struct btd_device *device)
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(), path,
 					NETWORK_PEER_INTERFACE,
-					NULL, NULL, connection_properties,
+					connection_methods,
+					NULL, connection_properties,
 					peer, path_unregister) == FALSE) {
 		error("D-Bus failed to register %s interface",
 			NETWORK_PEER_INTERFACE);
