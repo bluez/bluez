@@ -777,9 +777,15 @@ static void print_link_key(const uint8_t *link_key)
 	print_key("Link key", link_key);
 }
 
-static void print_pin_code(const uint8_t *pin_code)
+static void print_pin_code(const uint8_t *pin_code, uint8_t pin_len)
 {
-	print_key("PIN code", pin_code);
+	char str[pin_len + 1];
+	uint8_t i;
+
+	for (i = 0; i < pin_len; i++)
+		sprintf(str + i, "%c", (const char) pin_code[i]);
+
+	print_field("PIN code: %s", str);
 }
 
 static void print_hash(const uint8_t *hash)
@@ -1994,7 +2000,7 @@ static void pin_code_request_reply_cmd(const void *data, uint8_t size)
 
 	print_bdaddr(cmd->bdaddr);
 	print_field("PIN length: %d", cmd->pin_len);
-	print_pin_code(cmd->pin_code);
+	print_pin_code(cmd->pin_code, cmd->pin_len);
 }
 
 static void pin_code_request_neg_reply_cmd(const void *data, uint8_t size)
