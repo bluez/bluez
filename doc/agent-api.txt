@@ -97,9 +97,6 @@ Methods		void Release()
 			needs no longer to be displayed, the Cancel method
 			of the agent will be called.
 
-			If this method is not implemented the RequestPinCode
-			method will be used instead.
-
 			This is used during the pairing process of keyboards
 			that don't support Bluetooth 2.1 Secure Simple Pairing,
 			in contrast to DisplayPasskey which is used for those
