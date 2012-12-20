@@ -2333,7 +2333,17 @@ static void exit_park_state_cmd(const void *data, uint8_t size)
 
 static void qos_setup_cmd(const void *data, uint8_t size)
 {
-	packet_hexdump(data, size);
+	const struct bt_hci_cmd_qos_setup *cmd = data;
+
+	print_handle(cmd->handle);
+	print_field("Flags: 0x%2.2x", cmd->flags);
+
+	print_service_type(cmd->service_type);
+
+	print_field("Token rate: %d", btohl(cmd->token_rate));
+	print_field("Peak bandwidth: %d", btohl(cmd->peak_bandwidth));
+	print_field("Latency: %d", btohl(cmd->latency));
+	print_field("Delay variation: %d", btohl(cmd->delay_variation));
 }
 
 static void role_discovery_cmd(const void *data, uint8_t size)
@@ -3760,11 +3770,18 @@ static void remote_version_complete_evt(const void *data, uint8_t size)
 
 static void qos_setup_complete_evt(const void *data, uint8_t size)
 {
-	uint8_t status = *((uint8_t *) data);
+	const struct bt_hci_evt_qos_setup_complete *evt = data;
 
-	print_status(status);
+	print_status(evt->status);
+	print_handle(evt->handle);
+	print_field("Flags: 0x%2.2x", evt->flags);
 
-	packet_hexdump(data + 1, size - 1);
+	print_service_type(evt->service_type);
+
+	print_field("Token rate: %d", btohl(evt->token_rate));
+	print_field("Peak bandwidth: %d", btohl(evt->peak_bandwidth));
+	print_field("Latency: %d", btohl(evt->latency));
+	print_field("Delay variation: %d", btohl(evt->delay_variation));
 }
 
 static void cmd_complete_evt(const void *data, uint8_t size)

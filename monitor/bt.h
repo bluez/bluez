@@ -361,6 +361,15 @@ struct bt_hci_cmd_exit_park_state {
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_QOS_SETUP			0x0807
+struct bt_hci_cmd_qos_setup {
+	uint16_t handle;
+	uint8_t  flags;
+	uint8_t  service_type;
+	uint32_t token_rate;
+	uint32_t peak_bandwidth;
+	uint32_t latency;
+	uint32_t delay_variation;
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_ROLE_DISCOVERY		0x0809
 struct bt_hci_cmd_role_discovery {
@@ -998,6 +1007,16 @@ struct bt_hci_evt_remote_version_complete {
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_QOS_SETUP_COMPLETE		0x0d
+struct bt_hci_evt_qos_setup_complete {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  flags;
+	uint8_t  service_type;
+	uint32_t token_rate;
+	uint32_t peak_bandwidth;
+	uint32_t latency;
+	uint32_t delay_variation;
+} __attribute__ ((packed));
 
 #define BT_HCI_EVT_CMD_COMPLETE			0x0e
 struct bt_hci_evt_cmd_complete {
