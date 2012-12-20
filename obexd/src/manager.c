@@ -44,7 +44,7 @@
 #include "log.h"
 #include "service.h"
 
-#define OBEX_MANAGER_PATH "/org/bluez/obex"
+#define OBEX_BASE_PATH "/org/bluez/obex"
 #define OBEX_MANAGER_INTERFACE OBEXD_SERVICE ".AgentManager1"
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer1"
@@ -467,7 +467,7 @@ gboolean manager_init(void)
 
 	g_dbus_attach_object_manager(connection);
 
-	return g_dbus_register_interface(connection, OBEX_MANAGER_PATH,
+	return g_dbus_register_interface(connection, OBEX_BASE_PATH,
 					OBEX_MANAGER_INTERFACE,
 					manager_methods, NULL, NULL,
 					NULL, NULL);
@@ -477,7 +477,7 @@ void manager_cleanup(void)
 {
 	DBG("");
 
-	g_dbus_unregister_interface(connection, OBEX_MANAGER_PATH,
+	g_dbus_unregister_interface(connection, OBEX_BASE_PATH,
 						OBEX_MANAGER_INTERFACE);
 
 	/* FIXME: Release agent? */
@@ -494,9 +494,9 @@ void manager_emit_transfer_started(struct obex_transfer *transfer)
 {
 	static unsigned int id = 0;
 
-	transfer->path = g_strdup_printf(
-					"/org/bluez/obex/session%u/transfer%u",
-					transfer->session->id, id++);
+	transfer->path = g_strdup_printf("%s/session%u/transfer%u",
+					OBEX_BASE_PATH, transfer->session->id,
+					id++);
 
 	transfer->status = TRANSFER_STATUS_IN_PROGRESS;
 
@@ -545,8 +545,6 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os)
 	static unsigned int id = 0;
 
 	transfer = g_new0(struct obex_transfer, 1);
-	transfer->path = g_strdup_printf("/org/bluez/obex/session%u/transfer%u",
-								os->id, id++);
 	transfer->session = os;
 
 	return transfer;
@@ -715,7 +713,7 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 
 void manager_register_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("org/bluez/obex/session%u", os->id);
+	char *path = g_strdup_printf("%s/session%u", OBEX_BASE_PATH, os->id);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
