@@ -7,12 +7,18 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
+BUS_NAME = 'org.bluez.obex'
+PATH = '/org/bluez/obex'
+AGENT_MANAGER_INTERFACE = 'org.bluez.obex.AgentManager1'
+AGENT_INTERFACE = 'org.bluez.obex.Agent1'
+TRANSFER_INTERFACE = 'org.bluez.obex.Transfer1'
+
 class Agent(dbus.service.Object):
 	def __init__(self, conn=None, obj_path=None):
 		dbus.service.Object.__init__(self, conn, obj_path)
 		self.pending_auth = False
 
-	@dbus.service.method("org.bluez.obex.Agent", in_signature="osssii",
+	@dbus.service.method(AGENT_INTERFACE, in_signature="osssii",
 							out_signature="s")
 	def Authorize(self, dpath, device, filename, ftype, length, time):
 		global transfers
@@ -33,7 +39,7 @@ class Agent(dbus.service.Object):
 		transfers.append(Transfer(dpath, filename, 0, length))
 		return raw_input().strip("\n ")
 
-	@dbus.service.method("org.bluez.obex.Agent", in_signature="",
+	@dbus.service.method(AGENT_INTERFACE, in_signature="",
 							out_signature="")
 	def Cancel(self):
 		print "Authorization Canceled"
@@ -55,7 +61,7 @@ class Transfer(object):
 
 	def cancel(self):
 		transfer_iface = dbus.Interface(bus.get_object(
-						"org.bluez.obex", self.dpath),
+						BUS_NAME, self.dpath),
 						"org.bluez.obex.Transfer")
 		transfer_iface.Cancel()
 
@@ -97,15 +103,14 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SessionBus()
-	manager = dbus.Interface(bus.get_object("org.bluez.obex",
-						"/org/bluez/obex"),
-						"org.bluez.obex.Manager")
+	manager = dbus.Interface(bus.get_object(BUS_NAME, PATH),
+						AGENT_MANAGER_INTERFACE)
 	bus.add_signal_receiver(new_transfer,
-				dbus_interface="org.bluez.obex.Manager",
+				dbus_interface=AGENT_MANAGER_INTERFACE,
 				signal_name="TransferStarted")
 
 	bus.add_signal_receiver(transfer_completed,
-				dbus_interface="org.bluez.obex.Manager",
+				dbus_interface=AGENT_MANAGER_INTERFACE,
 				signal_name="TransferCompleted")
 
 	path = "/test/agent"
