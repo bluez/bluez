@@ -22,8 +22,8 @@ Methods		object CreateApplication(dict config)
 
 				string Role:
 
-					Mandatory. Possible values: "Source",
-									"Sink"
+					Mandatory. Possible values: "source",
+									"sink"
 
 				string Description:
 
@@ -32,7 +32,7 @@ Methods		object CreateApplication(dict config)
 				ChannelType:
 
 					Optional, just for sources. Possible
-					values: "Reliable", "Streaming"
+					values: "reliable", "streaming"
 
 			Possible Errors: org.bluez.Error.InvalidArguments
 
@@ -68,7 +68,7 @@ Methods		boolean Echo()
 
 			Creates a new data channel.  The configuration should
 			indicate the channel quality of service using one of
-			this values "Reliable", "Streaming", "Any".
+			this values "reliable", "streaming", "any".
 
 			Returns the object path that identifies the data
 			channel that is already connected.
@@ -137,8 +137,8 @@ Methods		fd Acquire()
 
 Properties	string Type [readonly]
 
-			The quality of service of the data channel. ("Reliable"
-			or "Streaming")
+			The quality of service of the data channel. ("reliable"
+			or "streaming")
 
 		object Device [readonly]
 

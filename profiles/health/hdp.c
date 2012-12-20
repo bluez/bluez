@@ -448,9 +448,9 @@ static gboolean channel_property_get_type(const GDBusPropertyTable *property,
 	const char *type;
 
 	if (chan->config == HDP_RELIABLE_DC)
-		type = "Reliable";
+		type = "reliable";
 	else
-		type = "Streaming";
+		type = "streaming";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &type);
 
@@ -1916,11 +1916,11 @@ static DBusMessage *device_create_channel(DBusConnection *conn,
 
 	app = l->data;
 
-	if (g_ascii_strcasecmp("Reliable", conf) == 0)
+	if (g_ascii_strcasecmp("reliable", conf) == 0)
 		config = HDP_RELIABLE_DC;
-	else if (g_ascii_strcasecmp("Streaming", conf) == 0)
+	else if (g_ascii_strcasecmp("streaming", conf) == 0)
 		config = HDP_STREAMING_DC;
-	else if (g_ascii_strcasecmp("Any", conf) == 0)
+	else if (g_ascii_strcasecmp("any", conf) == 0)
 		config = HDP_NO_PREFERENCE_DC;
 	else
 		return btd_error_invalid_args(msg);

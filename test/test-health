@@ -64,9 +64,9 @@ while role == None:
 	try:
 		sel = int(sys.stdin.readline())
 		if sel == 1:
-			role = "Source"
+			role = "source"
 		elif sel == 2:
-			role = "Sink"
+			role = "sink"
 		else:
 			raise ValueError
 	except (TypeError, ValueError):
@@ -88,16 +88,16 @@ while dtype == None:
 		sys.exit()
 
 pref = None
-if role == "Source":
+if role == "source":
 	while pref == None:
 		try:
 			print("Select a preferred data channel type 1.",)
 			print("reliable 2. streaming: ",)
 			sel = int(sys.stdin.readline())
 			if sel == 1:
-				pref = "Reliable"
+				pref = "reliable"
 			elif sel == 2:
-				pref = "Streaming"
+				pref = "streaming"
 			else:
 				raise ValueError
 
@@ -217,10 +217,10 @@ if echo:
 
 print("Connecting to device %s" % (select))
 
-if role == "Source":
-	chan = device.CreateChannel(app_path, "Reliable")
+if role == "source":
+	chan = device.CreateChannel(app_path, "reliable")
 else:
-	chan = device.CreateChannel(app_path, "Any")
+	chan = device.CreateChannel(app_path, "any")
 
 print(chan)
 

@@ -275,9 +275,9 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 
 	dbus_message_iter_get_basic(value, &chan_type);
 
-	if (g_ascii_strcasecmp("Reliable", chan_type) == 0)
+	if (g_ascii_strcasecmp("reliable", chan_type) == 0)
 		app->chan_type = HDP_RELIABLE_DC;
-	else if (g_ascii_strcasecmp("Streaming", chan_type) == 0)
+	else if (g_ascii_strcasecmp("streaming", chan_type) == 0)
 		app->chan_type = HDP_STREAMING_DC;
 	else {
 		g_set_error(err, HDP_ERROR, HDP_DIC_ENTRY_PARSE_ERROR,
