@@ -62,7 +62,15 @@ struct agent {
 	unsigned int watch_id;
 };
 
+enum {
+	TRANSFER_STATUS_QUEUED = 0,
+	TRANSFER_STATUS_IN_PROGRESS,
+	TRANSFER_STATUS_COMPLETE,
+	TRANSFER_STATUS_ERROR
+};
+
 struct obex_transfer {
+	uint8_t status;
 	char *path;
 	struct obex_session *session;
 };
@@ -288,7 +296,8 @@ static gboolean get_root(const GDBusPropertyTable *property,
 static DBusMessage *transfer_cancel(DBusConnection *connection,
 				DBusMessage *msg, void *user_data)
 {
-	struct obex_session *os = user_data;
+	struct obex_transfer *transfer = user_data;
+	struct obex_session *os = transfer->session;
 	const char *sender;
 
 	if (!os)
@@ -303,18 +312,36 @@ static DBusMessage *transfer_cancel(DBusConnection *connection,
 	return dbus_message_new_method_return(msg);
 }
 
+static const char *status2str(uint8_t status)
+{
+	switch (status) {
+	case TRANSFER_STATUS_QUEUED:
+		return "queued";
+	case TRANSFER_STATUS_IN_PROGRESS:
+		return "in-progress";
+	case TRANSFER_STATUS_COMPLETE:
+		return "complete";
+	case TRANSFER_STATUS_ERROR:
+		return "error";
+	}
+}
+
+static gboolean transfer_get_status(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	const char *status = status2str(transfer->status);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &status);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("RegisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, register_agent) },
 	{ GDBUS_METHOD("UnregisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, unregister_agent) },
-	{ }
-};
-
-static const GDBusSignalTable manager_signals[] = {
-	{ GDBUS_SIGNAL("TransferStarted", GDBUS_ARGS({ "transfer", "o"})) },
-	{ GDBUS_SIGNAL("TransferCompleted", GDBUS_ARGS({ "transfer", "o" },
-							{ "success", "b" })) },
 	{ }
 };
 
@@ -326,6 +353,11 @@ static const GDBusMethodTable transfer_methods[] = {
 static const GDBusSignalTable transfer_signals[] = {
 	{ GDBUS_SIGNAL("Progress", GDBUS_ARGS({ "total", "i" },
 						{ "transferred", "i" })) },
+	{ }
+};
+
+static const GDBusPropertyTable transfer_properties[] = {
+	{ "Status", "s", transfer_get_status },
 	{ }
 };
 
@@ -357,7 +389,7 @@ gboolean manager_init(void)
 
 	return g_dbus_register_interface(connection, OBEX_MANAGER_PATH,
 					OBEX_MANAGER_INTERFACE,
-					manager_methods, manager_signals, NULL,
+					manager_methods, NULL, NULL,
 					NULL, NULL);
 }
 
@@ -380,25 +412,43 @@ void manager_cleanup(void)
 
 void manager_emit_transfer_started(struct obex_transfer *transfer)
 {
-	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
-			OBEX_MANAGER_INTERFACE, "TransferStarted",
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
-			DBUS_TYPE_INVALID);
+	static unsigned int id = 0;
+
+	transfer->path = g_strdup_printf(
+					"/org/bluez/obex/session%u/transfer%u",
+					transfer->session->id, id++);
+
+	transfer->status = TRANSFER_STATUS_IN_PROGRESS;
+
+	if (!g_dbus_register_interface(connection, transfer->path,
+				TRANSFER_INTERFACE,
+				transfer_methods, transfer_signals,
+				transfer_properties, transfer, NULL)) {
+		error("Cannot register Transfer interface.");
+		g_free(transfer->path);
+		transfer->path = NULL;
+	}
 }
 
 static void emit_transfer_completed(struct obex_transfer *transfer,
 							gboolean success)
 {
-	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
-			OBEX_MANAGER_INTERFACE, "TransferCompleted",
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
-			DBUS_TYPE_BOOLEAN, &success,
-			DBUS_TYPE_INVALID);
+	if (transfer->path == NULL)
+		return;
+
+	transfer->status = success ? TRANSFER_STATUS_COMPLETE :
+						TRANSFER_STATUS_ERROR;
+
+	g_dbus_emit_property_changed(connection, transfer->path,
+					TRANSFER_INTERFACE, "Status");
 }
 
 static void emit_transfer_progress(struct obex_transfer *transfer,
 					uint32_t total, uint32_t transferred)
 {
+	if (transfer->path == NULL)
+		return;
+
 	g_dbus_emit_signal(connection, transfer->path,
 			TRANSFER_INTERFACE, "Progress",
 			DBUS_TYPE_INT32, &total,
@@ -422,15 +472,6 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os)
 								os->id, id++);
 	transfer->session = os;
 
-	if (!g_dbus_register_interface(connection, transfer->path,
-				TRANSFER_INTERFACE,
-				transfer_methods, transfer_signals,
-				NULL, os, NULL)) {
-		error("Cannot register Transfer interface.");
-		transfer_free(transfer);
-		return NULL;
-	}
-
 	return transfer;
 }
 
@@ -438,8 +479,7 @@ void manager_unregister_transfer(struct obex_transfer *transfer)
 {
 	struct obex_session *os = transfer->session;
 
-	/* Got an error during a transfer. */
-	if (os->object)
+	if (transfer->status == TRANSFER_STATUS_IN_PROGRESS)
 		emit_transfer_completed(transfer, os->offset == os->size);
 
 	g_dbus_unregister_interface(connection, transfer->path,

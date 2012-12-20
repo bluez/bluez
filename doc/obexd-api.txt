@@ -28,18 +28,6 @@ Methods		void RegisterAgent(object agent)
 
 			Possible errors: org.bluez.obex.Error.DoesNotExist
 
-Signals		TransferStarted(object transfer)
-
-			Signal sent when an object push operation starts.
-			(OPP only)
-
-		TransferCompleted(object transfer, boolean success)
-
-			Signal sent when the object has been received
-			or an error happens.
-			(OPP only)
-
-
 Transfer hierarchy
 ===============
 
@@ -53,6 +41,12 @@ Methods		void Cancel()
 
 Signals		Progress(int32 total, int32 transfered)
 
+Properties	string Status [readonly]
+
+			Inform the current status of the transfer.
+
+			Possible values: "queued", "in-progress", "complete" or
+					"error"
 
 Session hierarchy
 ===============
