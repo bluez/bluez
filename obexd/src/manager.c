@@ -594,7 +594,7 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 
 void manager_register_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/session%u", GPOINTER_TO_UINT(os));
+	char *path = g_strdup_printf("org/bluez/obex/session%u", os->id);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
@@ -610,7 +610,7 @@ done:
 
 void manager_unregister_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("/session%u", GPOINTER_TO_UINT(os));
+	char *path = g_strdup_printf("org/bluez/obex/session%u", os->id);
 
 	g_dbus_unregister_interface(connection, path,
 				SESSION_INTERFACE);

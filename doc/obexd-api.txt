@@ -59,7 +59,7 @@ Session hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Session1
-Object path	/session{0, 1, 2, ...}
+Object path	/org/bluez/obex/session{0, 1, 2, ...}
 
 Properties	string Target [readonly]
 
