@@ -59,6 +59,37 @@ Methods		object CreateSession(string destination, dict args)
 
 			Unregister session and abort pending transfers.
 
+Session hierarchy
+=================
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.Session1
+Object path	/org/bluez/obex/session{0, 1, 2, ...}
+
+Methods		string GetCapabilities()
+
+			Get remote device capabilities.
+
+Properties	string Source [readonly]
+
+			Bluetooth adapter address
+
+		string Destination [readonly]
+
+			Bluetooth device address
+
+		byte Channel [readonly]
+
+			Bluetooth channel
+
+		string Target [readonly]
+
+			Target UUID
+
+		string Root [readonly]
+
+			Root path
+
 Transfer hierarchy
 ===============
 
@@ -94,18 +125,3 @@ Properties	string Status [readonly]
 
 			Number of bytes transferred. For queued transfers, this
 			value will not be present.
-
-Session hierarchy
-===============
-
-Service		org.bluez.obex
-Interface	org.bluez.obex.Session1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
-
-Properties	string Target [readonly]
-
-			Target UUID
-
-		string Root [readonly]
-
-			Root path

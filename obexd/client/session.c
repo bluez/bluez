@@ -45,7 +45,7 @@
 #include "driver.h"
 #include "transport.h"
 
-#define SESSION_INTERFACE "org.bluez.obex.Session"
+#define SESSION_INTERFACE "org.bluez.obex.Session1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
 #define SESSION_BASEPATH "/org/bluez/obex"
 

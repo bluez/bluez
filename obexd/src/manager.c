@@ -98,6 +98,13 @@ static inline DBusMessage *invalid_args(DBusMessage *msg)
 			"Invalid arguments in method call");
 }
 
+static inline DBusMessage *not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg,
+			ERROR_INTERFACE ".NotSupported",
+			"Operation is not supported");
+}
+
 static inline DBusMessage *agent_already_exists(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg,
@@ -711,13 +718,26 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 	return 0;
 }
 
+static DBusMessage *session_get_capabilities(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	return not_supported(message);
+}
+
+static const GDBusMethodTable session_methods[] = {
+	{ GDBUS_ASYNC_METHOD("GetCapabilities",
+				NULL, GDBUS_ARGS({ "capabilities", "s" }),
+				session_get_capabilities) },
+	{ }
+};
+
 void manager_register_session(struct obex_session *os)
 {
 	char *path = g_strdup_printf("%s/session%u", OBEX_BASE_PATH, os->id);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
-				NULL, NULL,
+				session_methods, NULL,
 				session_properties, os, NULL)) {
 		error("Cannot register Session interface.");
 		goto done;

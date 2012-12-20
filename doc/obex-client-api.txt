@@ -4,23 +4,6 @@ OBEX client API description
 Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
 Copyright (C) 2011-2012  BMW Car IT GmbH. All rights reserved.
 
-Session hierarchy
-=================
-
-Service		org.bluez.obex
-Interface	org.bluez.obex.Session
-Object path	[variable prefix]/{session0,session1,...}
-
-Methods		string GetCapabilities()
-
-			Get remote device capabilities.
-
-Properties	string Source [readonly]
-
-		string Destination [readonly]
-
-		byte Channel [readonly]
-
 Object Push hierarchy
 =====================
 
