@@ -44,16 +44,14 @@ Transfer hierarchy
 ===============
 
 Service		org.bluez.obex
-Interface	org.bluez.obex.Transfer
+Interface	org.bluez.obex.Transfer1
 Object path	/transfer{0, 1, 2, ...}
 
-Methods
-		void Cancel()
+Methods		void Cancel()
 
 			Stops the current transference.
 
-Signals
-		Progress(int32 total, int32 transfered)
+Signals		Progress(int32 total, int32 transfered)
 
 
 Session hierarchy
