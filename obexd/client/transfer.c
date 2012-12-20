@@ -43,7 +43,7 @@
 #include "log.h"
 #include "transfer.h"
 
-#define TRANSFER_INTERFACE "org.bluez.obex.Transfer"
+#define TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
 
 #define OBC_TRANSFER_ERROR obc_transfer_error_quark()
@@ -57,8 +57,16 @@ struct transfer_callback {
 	void *data;
 };
 
+enum {
+	TRANSFER_STATUS_QUEUED = 0,
+	TRANSFER_STATUS_IN_PROGRESS,
+	TRANSFER_STATUS_COMPLETE,
+	TRANSFER_STATUS_ERROR
+};
+
 struct obc_transfer {
 	GObex *obex;
+	uint8_t status;
 	GObexApparam *apparam;
 	guint8 op;
 	struct transfer_callback *callback;
@@ -193,10 +201,20 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 	return NULL;
 }
 
+static gboolean name_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct obc_transfer *transfer = data;
+
+	return transfer->name != NULL;
+}
+
 static gboolean get_name(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct obc_transfer *transfer = data;
+
+	if (transfer->name == NULL)
+		return FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
 							&transfer->name);
@@ -257,21 +275,40 @@ static gboolean get_progress(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static const char *status2str(uint8_t status)
+{
+	switch (status) {
+	case TRANSFER_STATUS_QUEUED:
+		return "queued";
+	case TRANSFER_STATUS_IN_PROGRESS:
+		return "in-progress";
+	case TRANSFER_STATUS_COMPLETE:
+		return "complete";
+	case TRANSFER_STATUS_ERROR:
+		return "error";
+	}
+}
+
+static gboolean get_status(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_transfer *transfer = data;
+	const char *status = status2str(transfer->status);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &status);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable obc_transfer_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Cancel", NULL, NULL,
 				obc_transfer_cancel) },
 	{ }
 };
 
-static const GDBusSignalTable obc_transfer_signals[] = {
-	{ GDBUS_SIGNAL("Complete", NULL) },
-	{ GDBUS_SIGNAL("Error",
-		GDBUS_ARGS({ "code", "s" }, { "message", "s" })) },
-	{ }
-};
-
 static const GDBusPropertyTable obc_transfer_properties[] = {
-	{ "Name", "s", get_name },
+	{ "Status", "s", get_status },
+	{ "Name", "s", get_name, NULL, name_exists },
 	{ "Size", "t", get_size },
 	{ "Filename", "s", get_filename, NULL, filename_exists },
 	{ "Progress", "t", get_progress, NULL, progress_exists },
@@ -353,7 +390,7 @@ gboolean obc_transfer_register(struct obc_transfer *transfer,
 
 	if (g_dbus_register_interface(transfer->conn, transfer->path,
 				TRANSFER_INTERFACE,
-				obc_transfer_methods, obc_transfer_signals,
+				obc_transfer_methods, NULL,
 				obc_transfer_properties, transfer,
 				NULL) == FALSE) {
 		g_set_error(err, OBC_TRANSFER_ERROR, -EFAULT,
@@ -509,6 +546,14 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 	return TRUE;
 }
 
+static void transfer_set_status(struct obc_transfer *transfer, uint8_t status)
+{
+	transfer->status = status;
+
+	g_dbus_emit_property_changed(transfer->conn, transfer->path,
+					TRANSFER_INTERFACE, "Status");
+}
+
 static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 {
 	struct obc_transfer *transfer = user_data;
@@ -521,28 +566,10 @@ static void xfer_complete(GObex *obex, GError *err, gpointer user_data)
 		transfer->progress_id = 0;
 	}
 
-	if (err == NULL) {
-		transfer->size = transfer->transferred;
-
-		if (transfer->path != NULL)
-			g_dbus_emit_signal(transfer->conn, transfer->path,
-						TRANSFER_INTERFACE, "Complete",
-						DBUS_TYPE_INVALID);
-	} else {
-		const char *code = ERROR_INTERFACE ".Failed";
-
-		if (transfer->op == G_OBEX_OP_GET && transfer->filename != NULL)
-			remove(transfer->filename);
-
-		if (transfer->path != NULL)
-			g_dbus_emit_signal(transfer->conn, transfer->path,
-						TRANSFER_INTERFACE, "Error",
-						DBUS_TYPE_STRING,
-						&code,
-						DBUS_TYPE_STRING,
-						&err->message,
-						DBUS_TYPE_INVALID);
-	}
+	if (err)
+		transfer_set_status(transfer, TRANSFER_STATUS_ERROR);
+	else
+		transfer_set_status(transfer, TRANSFER_STATUS_COMPLETE);
 
 	if (callback)
 		callback->func(transfer, err, callback->data);
@@ -648,11 +675,11 @@ static gboolean report_progress(gpointer data)
 		return FALSE;
 	}
 
-	obex_dbus_signal_property_changed(transfer->conn,
-						transfer->path,
-						TRANSFER_INTERFACE, "Progress",
-						DBUS_TYPE_INT64,
-						&transfer->progress);
+	if (transfer->status != TRANSFER_STATUS_IN_PROGRESS)
+		transfer_set_status(transfer, TRANSFER_STATUS_IN_PROGRESS);
+
+	g_dbus_emit_property_changed(transfer->conn, transfer->path,
+					TRANSFER_INTERFACE, "Progress");
 
 	return TRUE;
 }
