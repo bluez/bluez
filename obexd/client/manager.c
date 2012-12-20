@@ -46,7 +46,7 @@
 #include "map.h"
 #include "obexd/src/manager.h"
 
-#define CLIENT_INTERFACE	"org.bluez.obex.Client"
+#define CLIENT_INTERFACE	"org.bluez.obex.Client1"
 #define ERROR_INTERFACE		"org.bluez.obex.Error"
 #define CLIENT_PATH		"/org/bluez/obex"
 

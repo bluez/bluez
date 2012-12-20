@@ -28,6 +28,37 @@ Methods		void RegisterAgent(object agent)
 
 			Possible errors: org.bluez.obex.Error.DoesNotExist
 
+Manager hierarchy
+================
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.Client1
+Object path	/org/bluez/obex
+
+Methods		object CreateSession(string destination, dict args)
+
+			Create a new OBEX session for the given remote address.
+
+			The last parameter is a dictionary to hold optional or
+			type-specific parameters. Typical parameters that can
+			be set in this dictionary include the following:
+
+				string "Target" : type of session to be created
+				string "Source" : local address to be used
+				byte "Channel"
+
+			The currently supported targets are the following:
+
+				"FTP"
+				"MAP"
+				"OPP"
+				"PBAP"
+				"SYNC"
+
+		void RemoveSession(object session)
+
+			Unregister session and abort pending transfers.
+
 Transfer hierarchy
 ===============
 
