@@ -49,7 +49,7 @@
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer"
 #define SESSION_INTERFACE OBEXD_SERVICE ".Session"
-#define AGENT_INTERFACE OBEXD_SERVICE ".Agent"
+#define AGENT_INTERFACE OBEXD_SERVICE ".Agent1"
 
 #define TIMEOUT 60*1000 /* Timeout for user response (miliseconds) */
 

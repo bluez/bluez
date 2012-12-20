@@ -9,11 +9,10 @@ Agent hierarchy
 ===============
 
 Service		unique name
-Interface	org.bluez.obex.Agent
+Interface	org.bluez.obex.Agent1
 Object path	freely definable
 
-Methods
-		string Authorize(object transfer, string bt_address, string name,
+Methods		string Authorize(object transfer, string bt_address, string name,
 					string type, int32 length, int32 time)
 
 			This method gets called when the service daemon
