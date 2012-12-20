@@ -460,6 +460,28 @@ static void generic_callback(const DBusError *error, void *user_data)
 		rl_printf("Changing %s succeeded\n", str);
 }
 
+static void cmd_name(const char *arg)
+{
+	char *name;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing name argument\n");
+		return;
+	}
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	name = g_strdup(arg);
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Name",
+					DBUS_TYPE_STRING, &name,
+					generic_callback, name, g_free) == TRUE)
+		return;
+
+	g_free(name);
+}
+
 static void cmd_power(const char *arg)
 {
 	dbus_bool_t powered;
@@ -763,28 +785,6 @@ static void cmd_disconn(const char *arg)
 	rl_printf("Attempting to disconnect from %s\n", arg);
 }
 
-static void cmd_name(const char *arg)
-{
-	char *name;
-
-	if (!arg || !strlen(arg)) {
-		rl_printf("Missing name argument\n");
-		return;
-	}
-
-	if (check_default_ctrl() == FALSE)
-		return;
-
-	name = g_strdup(arg);
-
-	if (g_dbus_proxy_set_property_basic(default_ctrl, "Name",
-					DBUS_TYPE_STRING, &name,
-					generic_callback, name, g_free) == TRUE)
-		return;
-
-	g_free(name);
-}
-
 static void cmd_version(const char *arg)
 {
 	rl_printf("Version %s\n", VERSION);
@@ -850,8 +850,8 @@ static const struct {
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
 	{ "devices",      NULL,       cmd_devices, "List available devices" },
-	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "name",         "<name>",   cmd_name,  "Set controller local name" },
+	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "pairable",     "<on/off>", cmd_pairable,
 					"Set controller pairable mode" },
 	{ "discoverable", "<on/off>", cmd_discoverable,
