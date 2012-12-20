@@ -886,6 +886,14 @@ static void sig_info_rsp(const struct l2cap_frame *frame)
 	data += sizeof(*pdu);
 	size -= sizeof(*pdu);
 
+	if (btohs(pdu->result) != 0x0000) {
+		if (size > 0) {
+			print_text(COLOR_ERROR, "invalid data size");
+			packet_hexdump(data, size);
+		}
+		return;
+	}
+
 	switch (btohs(pdu->type)) {
 	case 0x0001:
 		if (size != 2) {
