@@ -3740,17 +3740,10 @@ static void display_pincode_cb(struct agent *agent, DBusError *err, void *data)
 	struct authentication_req *auth = data;
 	struct btd_device *device = auth->device;
 
-	/* No need to reply anything if the authentication already failed */
-	if (auth->agent == NULL)
-		return;
-
-	pincode_cb(agent, err, auth->pincode, device);
+	pincode_cb(agent, err, auth->pincode, auth);
 
 	g_free(device->authr->pincode);
 	device->authr->pincode = NULL;
-
-	agent_unref(device->authr->agent);
-	device->authr->agent = NULL;
 }
 
 static struct authentication_req *new_auth(struct btd_device *device,
