@@ -685,6 +685,84 @@ static void cmd_remove(const char *arg)
 	}
 }
 
+static void connect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to connect: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Connection successful\n");
+}
+
+static void cmd_connect(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		rl_printf("Device %s not available\n", arg);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Connect", NULL, connect_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to connect\n");
+		return;
+	}
+
+	rl_printf("Attempting to connect to %s\n", arg);
+}
+
+static void disconn_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to disconnect: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Successful disconnected\n");
+}
+
+static void cmd_disconn(const char *arg)
+{
+	GDBusProxy *proxy;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		rl_printf("Device %s not available\n", arg);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Disconnect", NULL, disconn_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to disconnect\n");
+		return;
+	}
+
+	rl_printf("Attempting to disconnect from %s\n", arg);
+}
+
 static void cmd_name(const char *arg)
 {
 	char *name;
@@ -778,6 +856,10 @@ static const struct {
 	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
 							dev_generator },
 	{ "remove",       "<dev>",    cmd_remove, "Remove device",
+							dev_generator },
+	{ "connect",      "<dev>",    cmd_connect, "Connect device",
+							dev_generator },
+	{ "disconnect",   "<dev>",    cmd_disconn, "Disconnect device",
 							dev_generator },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
