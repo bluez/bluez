@@ -785,6 +785,11 @@ static void cmd_name(const char *arg)
 	g_free(name);
 }
 
+static void cmd_version(const char *arg)
+{
+	rl_printf("Version %s\n", VERSION);
+}
+
 static void cmd_quit(const char *arg)
 {
 	g_main_loop_quit(main_loop);
@@ -861,6 +866,7 @@ static const struct {
 							dev_generator },
 	{ "disconnect",   "<dev>",    cmd_disconn, "Disconnect device",
 							dev_generator },
+	{ "version",      NULL,       cmd_version, "Display version" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
