@@ -9,11 +9,10 @@ Manager hierarchy
 ===============
 
 Service		org.bluez.obex
-Interface	org.bluez.obex.Manager
-Object path	/
+Interface	org.bluez.obex.AgentManager1
+Object path	/org/bluez/obex
 
-Methods
-		void RegisterAgent(object agent)
+Methods		void RegisterAgent(object agent)
 
 			Register an agent to request authorization of
 			the user to accept/reject objects. Object push

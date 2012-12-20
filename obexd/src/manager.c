@@ -45,7 +45,7 @@
 #include "service.h"
 
 #define OBEX_MANAGER_PATH "/org/bluez/obex"
-#define OBEX_MANAGER_INTERFACE OBEXD_SERVICE ".Manager"
+#define OBEX_MANAGER_INTERFACE OBEXD_SERVICE ".AgentManager1"
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer"
 #define SESSION_INTERFACE OBEXD_SERVICE ".Session"
