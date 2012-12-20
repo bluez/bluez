@@ -573,6 +573,11 @@ static void cmd_agent(const char *arg)
 	}
 }
 
+static void cmd_default_agent(const char *arg)
+{
+	agent_default(dbus_conn, agent_manager);
+}
+
 static void start_discovery_reply(DBusMessage *message, void *user_data)
 {
 	dbus_bool_t enable = GPOINTER_TO_UINT(user_data);
@@ -857,6 +862,7 @@ static const struct {
 	{ "discoverable", "<on/off>", cmd_discoverable,
 					"Set controller discoverable mode" },
 	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
+	{ "default-agent",NULL,       cmd_default_agent },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
 	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
 							dev_generator },

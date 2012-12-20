@@ -322,3 +322,41 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 		return;
 	}
 }
+
+static void request_default_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = AGENT_PATH;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void request_default_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to request default agent: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Default agent request successful\n");
+}
+
+void agent_default(DBusConnection *conn, GDBusProxy *manager)
+{
+	if (agent_registered == FALSE) {
+		rl_printf("No agent is registered\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(manager, "RequestDefaultAgent",
+						request_default_setup,
+						request_default_reply,
+						NULL, NULL) == FALSE) {
+		rl_printf("Failed to call request default agent method\n");
+		return;
+	}
+}
