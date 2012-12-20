@@ -175,3 +175,76 @@ Methods		object, dict SendFile(string sourcefile)
 
 			The properties of this transfer are also returned along
 			with the object path, to avoid a call to GetProperties.
+
+File Transfer hierarchy
+=======================
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.FileTransfer
+Object path	/org/bluez/obex/session{0, 1, 2, ...}
+
+Methods		void ChangeFolder(string folder)
+
+			Change the current folder of the remote device.
+
+		void CreateFolder(string folder)
+
+			Create a new folder in the remote device.
+
+		array{dict} ListFolder()
+
+			Returns a dictionary containing information about
+			the current folder content.
+
+			The following keys are defined:
+
+				string Name : Object name in UTF-8 format
+				string Type : Either "folder" or "file"
+				uint64 Size : Object size or number of items in
+						folder
+				string Permission : Group, owner and other
+							permission
+				uint64 Modified : Last change
+				uint64 Accessed : Last access
+				uint64 Created : Creation date
+
+		object, dict GetFile(string targetfile, string sourcefile)
+
+			Copy the source file (from remote device) to the
+			target file (on local filesystem).
+
+			If an empty target file is given, a name will be
+			automatically calculated for the temporary file.
+
+			The returned path represents the newly created transfer,
+			which should be used to find out if the content has been
+			successfully transferred or if the operation fails.
+
+			The properties of this transfer are also returned along
+			with the object path, to avoid a call to GetProperties.
+
+		object, dict PutFile(string sourcefile, string targetfile)
+
+			Copy the source file (from local filesystem) to the
+			target file (on remote device).
+
+			The returned path represents the newly created transfer,
+			which should be used to find out if the content has been
+			successfully transferred or if the operation fails.
+
+			The properties of this transfer are also returned along
+			with the object path, to avoid a call to GetProperties.
+
+		void CopyFile(string sourcefile, string targetfile)
+
+			Copy a file within the remote device from source file
+			to target file.
+
+		void MoveFile(string sourcefile, string targetfile)
+
+			Move a file within the remote device from source file
+			to the target file.
+
+		void Delete(string file)
+
+			Deletes the specified file/folder.
