@@ -592,7 +592,6 @@ static void connection_free(void *data)
 		dbus_message_unref(nc->connect);
 
 	g_free(nc);
-	nc = NULL;
 }
 
 static void peer_free(struct network_peer *peer)
