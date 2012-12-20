@@ -62,6 +62,11 @@ struct agent {
 	unsigned int watch_id;
 };
 
+struct obex_transfer {
+	char *path;
+	struct obex_session *session;
+};
+
 static struct agent *agent = NULL;
 
 static DBusConnection *connection = NULL;
@@ -373,73 +378,74 @@ void manager_cleanup(void)
 	dbus_connection_unref(connection);
 }
 
-void manager_emit_transfer_started(struct obex_session *os)
+void manager_emit_transfer_started(struct obex_transfer *transfer)
 {
-	char *path = g_strdup_printf("/transfer%u", os->id);
-
 	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
 			OBEX_MANAGER_INTERFACE, "TransferStarted",
-			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
 			DBUS_TYPE_INVALID);
-
-	g_free(path);
 }
 
-static void emit_transfer_completed(struct obex_session *os, gboolean success)
+static void emit_transfer_completed(struct obex_transfer *transfer,
+							gboolean success)
 {
-	char *path = g_strdup_printf("/transfer%u", os->id);
-
 	g_dbus_emit_signal(connection, OBEX_MANAGER_PATH,
 			OBEX_MANAGER_INTERFACE, "TransferCompleted",
-			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
 			DBUS_TYPE_BOOLEAN, &success,
 			DBUS_TYPE_INVALID);
-
-	g_free(path);
 }
 
-static void emit_transfer_progress(struct obex_session *os, uint32_t total,
-							uint32_t transferred)
+static void emit_transfer_progress(struct obex_transfer *transfer,
+					uint32_t total, uint32_t transferred)
 {
-	char *path = g_strdup_printf("/transfer%u", os->id);
-
-	g_dbus_emit_signal(connection, path,
+	g_dbus_emit_signal(connection, transfer->path,
 			TRANSFER_INTERFACE, "Progress",
 			DBUS_TYPE_INT32, &total,
 			DBUS_TYPE_INT32, &transferred,
 			DBUS_TYPE_INVALID);
-
-	g_free(path);
 }
 
-void manager_register_transfer(struct obex_session *os)
+static void transfer_free(struct obex_transfer *transfer)
 {
-	char *path = g_strdup_printf("/transfer%u", os->id);
+	g_free(transfer->path);
+	g_free(transfer);
+}
 
-	if (!g_dbus_register_interface(connection, path,
+struct obex_transfer *manager_register_transfer(struct obex_session *os)
+{
+	struct obex_transfer *transfer;
+	static unsigned int id = 0;
+
+	transfer = g_new0(struct obex_transfer, 1);
+	transfer->path = g_strdup_printf("/org/bluez/obex/session%u/transfer%u",
+								os->id, id++);
+	transfer->session = os;
+
+	if (!g_dbus_register_interface(connection, transfer->path,
 				TRANSFER_INTERFACE,
 				transfer_methods, transfer_signals,
 				NULL, os, NULL)) {
 		error("Cannot register Transfer interface.");
-		g_free(path);
-		return;
+		transfer_free(transfer);
+		return NULL;
 	}
 
-	g_free(path);
+	return transfer;
 }
 
-void manager_unregister_transfer(struct obex_session *os)
+void manager_unregister_transfer(struct obex_transfer *transfer)
 {
-	char *path = g_strdup_printf("/transfer%u", os->id);
+	struct obex_session *os = transfer->session;
 
 	/* Got an error during a transfer. */
 	if (os->object)
-		emit_transfer_completed(os, os->offset == os->size);
+		emit_transfer_completed(transfer, os->offset == os->size);
 
-	g_dbus_unregister_interface(connection, path,
-				TRANSFER_INTERFACE);
+	g_dbus_unregister_interface(connection, transfer->path,
+							TRANSFER_INTERFACE);
 
-	g_free(path);
+	transfer_free(transfer);
 }
 
 static void agent_cancel(void)
@@ -508,14 +514,15 @@ static gboolean auth_error(GIOChannel *io, GIOCondition cond, void *user_data)
 	return FALSE;
 }
 
-int manager_request_authorization(struct obex_session *os, int32_t time,
+int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 					char **new_folder, char **new_name)
 {
+	struct obex_session *os = transfer->session;
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	const char *filename = os->name ? os->name : "";
 	const char *type = os->type ? os->type : "";
-	char *path, *address;
+	char *address;
 	unsigned int watch;
 	gboolean got_reply;
 	int err;
@@ -533,13 +540,11 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 	if (err < 0)
 		return err;
 
-	path = g_strdup_printf("/transfer%u", os->id);
-
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 						AGENT_INTERFACE, "Authorize");
 
 	dbus_message_append_args(msg,
-			DBUS_TYPE_OBJECT_PATH, &path,
+			DBUS_TYPE_OBJECT_PATH, &transfer->path,
 			DBUS_TYPE_STRING, &address,
 			DBUS_TYPE_STRING, &filename,
 			DBUS_TYPE_STRING, &type,
@@ -547,7 +552,6 @@ int manager_request_authorization(struct obex_session *os, int32_t time,
 			DBUS_TYPE_INT32, &time,
 			DBUS_TYPE_INVALID);
 
-	g_free(path);
 	g_free(address);
 
 	if (!dbus_connection_send_with_reply(connection,
@@ -618,15 +622,16 @@ void manager_unregister_session(struct obex_session *os)
 	g_free(path);
 }
 
-void manager_emit_transfer_progress(struct obex_session *os)
+void manager_emit_transfer_progress(struct obex_transfer *transfer)
 {
-	emit_transfer_progress(os, os->size, os->offset);
+	emit_transfer_progress(transfer, transfer->session->size,
+						transfer->session->offset);
 }
 
-void manager_emit_transfer_completed(struct obex_session *os)
+void manager_emit_transfer_completed(struct obex_transfer *transfer)
 {
-	if (os->object)
-		emit_transfer_completed(os, !os->aborted);
+	if (transfer->session->object)
+		emit_transfer_completed(transfer, !transfer->session->aborted);
 }
 
 DBusConnection *manager_dbus_get_connection(void)

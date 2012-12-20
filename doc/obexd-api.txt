@@ -45,7 +45,7 @@ Transfer hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Transfer1
-Object path	/transfer{0, 1, 2, ...}
+Object path	/org/bluez/obex/session{0, 1, 2, ...}/transfer{0, 1, 2, ...}
 
 Methods		void Cancel()
 

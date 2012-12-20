@@ -46,17 +46,15 @@
 
 static void *opp_connect(struct obex_session *os, int *err)
 {
-	manager_register_transfer(os);
-
 	if (err)
 		*err = 0;
 
-	return NULL;
+	return manager_register_transfer(os);
 }
 
 static void opp_progress(struct obex_session *os, void *user_data)
 {
-	manager_emit_transfer_progress(os);
+	manager_emit_transfer_progress(user_data);
 }
 
 static int opp_chkput(struct obex_session *os, void *user_data)
@@ -80,7 +78,7 @@ static int opp_chkput(struct obex_session *os, void *user_data)
 	}
 
 	time = 0;
-	err = manager_request_authorization(os, time, &folder, &name);
+	err = manager_request_authorization(user_data, time, &folder, &name);
 	if (err < 0)
 		return -EPERM;
 
@@ -108,7 +106,7 @@ skip_auth:
 	if (err < 0)
 		goto failed;
 
-	manager_emit_transfer_started(os);
+	manager_emit_transfer_started(user_data);
 
 failed:
 	g_free(folder);
@@ -155,12 +153,12 @@ static int opp_get(struct obex_session *os, void *user_data)
 
 static void opp_disconnect(struct obex_session *os, void *user_data)
 {
-	manager_unregister_transfer(os);
+	manager_unregister_transfer(user_data);
 }
 
 static void opp_reset(struct obex_session *os, void *user_data)
 {
-	manager_emit_transfer_completed(os);
+	manager_emit_transfer_completed(user_data);
 }
 
 static struct obex_service_driver driver = {
