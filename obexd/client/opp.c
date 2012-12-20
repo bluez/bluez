@@ -36,7 +36,7 @@
 #include "opp.h"
 
 #define OPP_UUID "00001105-0000-1000-8000-00805f9b34fb"
-#define OPP_INTERFACE "org.bluez.obex.ObjectPush"
+#define OPP_INTERFACE "org.bluez.obex.ObjectPush1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
 
 struct opp_data {
