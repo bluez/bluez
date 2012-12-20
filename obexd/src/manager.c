@@ -337,6 +337,87 @@ static gboolean transfer_get_status(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean transfer_name_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	return session->name != NULL;
+}
+
+static gboolean transfer_get_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	if (session->name == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &session->name);
+
+	return TRUE;
+}
+
+static gboolean transfer_size_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	return session->size != OBJECT_SIZE_UNKNOWN;
+}
+
+static gboolean transfer_get_size(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	if (session->size == OBJECT_SIZE_UNKNOWN)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT64, &session->size);
+
+	return TRUE;
+}
+
+static gboolean transfer_filename_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	return session->path != NULL;
+}
+
+static gboolean transfer_get_filename(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	if (session->path == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &session->path);
+
+	return TRUE;
+}
+
+static gboolean transfer_get_progress(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT64,
+							&session->offset);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("RegisterAgent",
 			GDBUS_ARGS({ "agent", "o" }), NULL, register_agent) },
@@ -350,14 +431,13 @@ static const GDBusMethodTable transfer_methods[] = {
 	{ }
 };
 
-static const GDBusSignalTable transfer_signals[] = {
-	{ GDBUS_SIGNAL("Progress", GDBUS_ARGS({ "total", "i" },
-						{ "transferred", "i" })) },
-	{ }
-};
-
 static const GDBusPropertyTable transfer_properties[] = {
 	{ "Status", "s", transfer_get_status },
+	{ "Name", "s", transfer_get_name, NULL, transfer_name_exists },
+	{ "Size", "t", transfer_get_size, NULL, transfer_size_exists },
+	{ "Filename", "s", transfer_get_filename, NULL,
+						transfer_filename_exists },
+	{ "Progress", "t", transfer_get_progress },
 	{ }
 };
 
@@ -422,7 +502,7 @@ void manager_emit_transfer_started(struct obex_transfer *transfer)
 
 	if (!g_dbus_register_interface(connection, transfer->path,
 				TRANSFER_INTERFACE,
-				transfer_methods, transfer_signals,
+				transfer_methods, NULL,
 				transfer_properties, transfer, NULL)) {
 		error("Cannot register Transfer interface.");
 		g_free(transfer->path);
@@ -449,11 +529,8 @@ static void emit_transfer_progress(struct obex_transfer *transfer,
 	if (transfer->path == NULL)
 		return;
 
-	g_dbus_emit_signal(connection, transfer->path,
-			TRANSFER_INTERFACE, "Progress",
-			DBUS_TYPE_INT32, &total,
-			DBUS_TYPE_INT32, &transferred,
-			DBUS_TYPE_INVALID);
+	g_dbus_emit_property_changed(connection, transfer->path,
+					TRANSFER_INTERFACE, "Progress");
 }
 
 static void transfer_free(struct obex_transfer *transfer)

@@ -39,14 +39,30 @@ Methods		void Cancel()
 
 			Stops the current transference.
 
-Signals		Progress(int32 total, int32 transfered)
-
 Properties	string Status [readonly]
 
 			Inform the current status of the transfer.
 
 			Possible values: "queued", "in-progress", "complete" or
 					"error"
+
+		string Name [readonly]
+
+			Name of the transferred object.
+
+		uint64 Size [readonly]
+
+			Size of the transferred object. If the size is
+			unknown, then this property will not be present.
+
+		string Filename [readonly, optional]
+
+			Complete name of the file being received or sent.
+
+		uint64 Progress [readonly, optional]
+
+			Number of bytes transferred. For queued transfers, this
+			value will not be present.
 
 Session hierarchy
 ===============
