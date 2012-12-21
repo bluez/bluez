@@ -145,6 +145,7 @@ struct btd_adapter {
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	bool connectable;		/* connectable state */
+	bool toggle_discoverable;	/* discoverable needs to be changed */
 	gboolean discoverable;		/* discoverable state */
 	gboolean pairable;		/* pairable state */
 	gboolean initialized;
@@ -2563,6 +2564,7 @@ static void load_config(struct btd_adapter *adapter)
 	char filename[PATH_MAX + 1];
 	char address[18];
 	GError *gerr = NULL;
+	gboolean stored_discoverable;
 
 	ba2str(&adapter->bdaddr, address);
 
@@ -2600,10 +2602,10 @@ static void load_config(struct btd_adapter *adapter)
 	}
 
 	/* Get discoverable mode */
-	adapter->discoverable = g_key_file_get_boolean(key_file, "General",
+	stored_discoverable = g_key_file_get_boolean(key_file, "General",
 							"Discoverable", &gerr);
 	if (gerr) {
-		adapter->discoverable = FALSE;
+		stored_discoverable = FALSE;
 		g_error_free(gerr);
 		gerr = NULL;
 	}
@@ -2617,23 +2619,34 @@ static void load_config(struct btd_adapter *adapter)
 		gerr = NULL;
 	}
 
-	mgmt_set_connectable(adapter->dev_id, TRUE);
+	if (!adapter->connectable)
+		mgmt_set_connectable(adapter->dev_id, TRUE);
 
-	if (adapter->discov_timeout > 0) {
-		/* Ensure that discoverable mode is off */
-		mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
-	} else
-		mgmt_set_discoverable(adapter->dev_id, adapter->discoverable,
+	if (adapter->discov_timeout > 0 && adapter->discoverable) {
+		if (adapter->connectable)
+			mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
+		else
+			adapter->toggle_discoverable = true;
+	} else if (stored_discoverable != adapter->discoverable) {
+		if (adapter->connectable)
+			mgmt_set_discoverable(adapter->dev_id,
+						adapter->discoverable,
 						adapter->discov_timeout);
+		else
+			adapter->toggle_discoverable = true;
+	}
 
 	g_key_file_free(key_file);
 }
 
-gboolean adapter_init(struct btd_adapter *adapter, gboolean powered)
+gboolean adapter_init(struct btd_adapter *adapter, gboolean powered,
+					bool connectable, bool discoverable)
 {
 	struct agent *agent;
 
 	adapter->powered = powered;
+	adapter->connectable = connectable;
+	adapter->discoverable = discoverable;
 
 	adapter->allow_name_changes = TRUE;
 
@@ -2963,6 +2976,14 @@ void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
 
 	if (adapter->connectable == connectable)
 		return;
+
+	if (adapter->toggle_discoverable) {
+		DBG("toggling discoverable from %u to %u",
+				adapter->discoverable, !adapter->discoverable);
+		mgmt_set_discoverable(adapter->dev_id, !adapter->discoverable,
+						adapter->discov_timeout);
+		adapter->toggle_discoverable = false;
+	}
 
 	adapter->connectable = connectable;
 	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,

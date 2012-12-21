@@ -1201,7 +1201,10 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 	clear_uuids(index);
 
 	adapter = btd_manager_register_adapter(index,
-					mgmt_powered(info->current_settings));
+				mgmt_powered(info->current_settings),
+				mgmt_connectable(info->current_settings),
+				mgmt_discoverable(info->current_settings));
+
 	if (adapter == NULL) {
 		error("mgmt: unable to register adapter");
 		return;
