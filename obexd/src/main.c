@@ -270,7 +270,7 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	__obex_log_init("obexd", option_debug, option_detach);
+	__obex_log_init(option_debug, option_detach);
 
 	DBG("Entering main loop");
 

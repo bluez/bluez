@@ -98,7 +98,7 @@ void __obex_log_enable_debug(void)
 		desc->flags |= OBEX_DEBUG_FLAG_PRINT;
 }
 
-void __obex_log_init(const char *label, const char *debug, int detach)
+void __obex_log_init(const char *debug, int detach)
 {
 	int option = LOG_NDELAY | LOG_PID;
 	struct obex_debug_desc *desc;
@@ -123,9 +123,9 @@ void __obex_log_init(const char *label, const char *debug, int detach)
 	if (!detach)
 		option |= LOG_PERROR;
 
-	openlog(label, option, LOG_DAEMON);
+	openlog("obexd", option, LOG_DAEMON);
 
-	syslog(LOG_INFO, "%s daemon %s", label, VERSION);
+	syslog(LOG_INFO, "OBEX daemon %s", VERSION);
 }
 
 void __obex_log_cleanup(void)
