@@ -572,20 +572,10 @@ void manager_emit_transfer_started(struct obex_transfer *transfer)
 {
 	static unsigned int id = 0;
 
-	transfer->path = g_strdup_printf("%s/session%u/transfer%u",
-					OBEX_BASE_PATH, transfer->session->id,
-					id++);
-
 	transfer->status = TRANSFER_STATUS_ACTIVE;
 
-	if (!g_dbus_register_interface(connection, transfer->path,
-				TRANSFER_INTERFACE,
-				transfer_methods, NULL,
-				transfer_properties, transfer, NULL)) {
-		error("Cannot register Transfer interface.");
-		g_free(transfer->path);
-		transfer->path = NULL;
-	}
+	g_dbus_emit_property_changed(connection, transfer->path,
+					TRANSFER_INTERFACE, "Status");
 }
 
 static void emit_transfer_completed(struct obex_transfer *transfer,
@@ -623,7 +613,18 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os)
 	static unsigned int id = 0;
 
 	transfer = g_new0(struct obex_transfer, 1);
+	transfer->path = g_strdup_printf("%s/session%u/transfer%u",
+					OBEX_BASE_PATH, os->id, id++);
 	transfer->session = os;
+
+	if (!g_dbus_register_interface(connection, transfer->path,
+				TRANSFER_INTERFACE,
+				transfer_methods, NULL,
+				transfer_properties, transfer, NULL)) {
+		error("Cannot register Transfer interface.");
+		transfer_free(transfer);
+		return NULL;
+	}
 
 	return transfer;
 }
