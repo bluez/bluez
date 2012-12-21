@@ -72,6 +72,7 @@ struct obc_transfer {
 	struct transfer_callback *callback;
 	DBusConnection *conn;
 	DBusMessage *msg;
+	char *session;		/* Session path */
 	char *owner;		/* Transfer initiator */
 	char *path;		/* Transfer path */
 	gchar *filename;	/* Transfer file location */
@@ -286,6 +287,17 @@ static gboolean get_status(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean get_session(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_transfer *transfer = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+							&transfer->session);
+
+	return TRUE;
+}
+
 static const GDBusMethodTable obc_transfer_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Cancel", NULL, NULL,
 				obc_transfer_cancel) },
@@ -298,6 +310,7 @@ static const GDBusPropertyTable obc_transfer_properties[] = {
 	{ "Size", "t", get_size },
 	{ "Filename", "s", get_filename, NULL, filename_exists },
 	{ "Transferred", "t", get_transferred, NULL, transferred_exists },
+	{ "Session", "o", get_session },
 	{ }
 };
 
@@ -337,6 +350,7 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	g_free(transfer->filename);
 	g_free(transfer->name);
 	g_free(transfer->type);
+	g_free(transfer->session);
 	g_free(transfer->path);
 	g_free(transfer);
 }
@@ -359,13 +373,14 @@ static struct obc_transfer *obc_transfer_create(guint8 op,
 
 gboolean obc_transfer_register(struct obc_transfer *transfer,
 						DBusConnection *conn,
-						const char *path,
+						const char *session,
 						const char *owner,
 						GError **err)
 {
 	transfer->owner = g_strdup(owner);
 
-	transfer->path = g_strdup_printf("%s/transfer%ju", path, counter++);
+	transfer->session = g_strdup(session);
+	transfer->path = g_strdup_printf("%s/transfer%ju", session, counter++);
 
 	transfer->conn = dbus_connection_ref(conn);
 	if (transfer->conn == NULL) {

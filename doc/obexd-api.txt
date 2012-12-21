@@ -121,6 +121,11 @@ Properties	string Status [readonly]
 			Possible values: "queued", "active", "complete" or
 					"error"
 
+		object Session [readonly]
+
+			The object path of the session the transfer belongs
+			to.
+
 		string Name [readonly]
 
 			Name of the transferred object.
