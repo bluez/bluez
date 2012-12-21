@@ -734,16 +734,11 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 		return err;
 
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
-						AGENT_INTERFACE, "Authorize");
+							AGENT_INTERFACE,
+							"AuthorizePush");
 
-	dbus_message_append_args(msg,
-			DBUS_TYPE_OBJECT_PATH, &transfer->path,
-			DBUS_TYPE_STRING, &address,
-			DBUS_TYPE_STRING, &filename,
-			DBUS_TYPE_STRING, &type,
-			DBUS_TYPE_INT32, &os->size,
-			DBUS_TYPE_INT32, &time,
-			DBUS_TYPE_INVALID);
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &transfer->path,
+							DBUS_TYPE_INVALID);
 
 	g_free(address);
 
