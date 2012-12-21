@@ -9,6 +9,13 @@ import dbus.mainloop.glib
 import os.path
 from optparse import OptionParser
 
+BUS_NAME='org.bluez.obex'
+PATH = '/org/bluez/obex'
+CLIENT_INTERFACE='org.bluez.obex.Client1'
+SESSION_INTERFACE='org.bluez.obex.Session1'
+FILE_TRASNFER_INTERFACE='org.bluez.obex.FileTransfer1'
+TRANSFER_INTERFACE='org.bluez.obex.Transfer1'
+
 def parse_options():
 	parser.add_option("-d", "--device", dest="device",
 			help="Device to connect", metavar="DEVICE")
@@ -40,25 +47,15 @@ class FtpClient:
 		self.transfer_size = 0
 		self.verbose = verbose
 		bus = dbus.SessionBus()
-		obj = bus.get_object("org.bluez.obex", session_path)
-		self.session = dbus.Interface(obj, "org.bluez.obex.Session")
-		self.ftp = dbus.Interface(obj, "org.bluez.obex.FileTransfer")
-		bus.add_signal_receiver(self.transfer_complete,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="Complete",
-				path_keyword="path")
-		bus.add_signal_receiver(self.transfer_error,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="Error",
-				path_keyword="path")
-		if self.verbose:
-			bus.add_signal_receiver(self.transfer_progress,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="PropertyChanged",
-				path_keyword="path")
+		obj = bus.get_object(BUS_NAME, session_path)
+		self.session = dbus.Interface(obj, SESSION_INTERFACE)
+		self.ftp = dbus.Interface(obj, FILE_TRASNFER_INTERFACE)
+		bus.add_signal_receiver(self.properties_changed,
+			dbus_interface="org.freedesktop.DBus.Properties",
+			signal_name="PropertiesChanged",
+			path_keyword="path")
 
-	def create_transfer_reply(self, reply):
-		(path, properties) = reply
+	def create_transfer_reply(self, path, properties):
 		self.transfer_path = path
 		self.transfer_size = properties["Size"]
 		if self.verbose:
@@ -72,24 +69,18 @@ class FtpClient:
 		print err
 		mainloop.quit()
 
-	def transfer_complete(self, path):
-		if path != self.transfer_path:
-			return
-		if self.verbose:
-			print "Transfer finished"
-		mainloop.quit()
-
-	def transfer_error(self, code, message, path):
-		if path != self.transfer_path:
-			return
-		print "Transfer finished with error %s: %s" % (code, message)
-		mainloop.quit()
-
-	def transfer_progress(self, prop, value, path):
+	def properties_changed(self, interface, properties, invalidated, path):
 		if path != self.transfer_path:
 			return
 
-		if prop != "Progress":
+		if properties['Status'] == 'complete' or \
+				properties['Status'] == 'error':
+			if self.verbose:
+				print "Transfer %s" % properties['Status']
+			mainloop.quit()
+			return
+
+		if properties["Progress"] == None:
 			return
 
 		speed = (value - self.progress) / 1000
@@ -151,9 +142,8 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex",
-						"/org/bluez/obex"),
-						"org.bluez.obex.Client")
+	client = dbus.Interface(bus.get_object(BUS_NAME, PATH,),
+							CLIENT_INTERFACE)
 
 	print "Creating Session"
 	path = client.CreateSession(options.device, { "Target": "ftp" })
