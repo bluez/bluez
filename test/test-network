@@ -37,7 +37,7 @@ network = dbus.Interface(bus.get_object("org.bluez", device.object_path),
 
 iface = network.Connect(service)
 
-print("Connected %s to %s" % (device, address))
+print("Connected to %s service %s, interface %s" % (args[0], service, iface))
 
 print("Press CTRL-C to disconnect")
 
