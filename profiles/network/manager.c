@@ -238,7 +238,7 @@ void network_connected(struct btd_device *dev, int id, int err)
 		device_profile_connected(dev, &gn_profile, err);
 		break;
 	case BNEP_SVC_NAP:
-		device_profile_connected(dev, &gn_profile, err);
+		device_profile_connected(dev, &nap_profile, err);
 		break;
 	default:
 		error("Invalid id %d passed to network_connected", id);
