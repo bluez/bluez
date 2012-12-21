@@ -103,21 +103,32 @@ Properties	string Status [readonly]
 
 		string Name [readonly]
 
-			Name of the transferred object.
+			Name of the transferred object. Either Name or Type
+			or both will be present.
 
-		uint64 Size [readonly]
+		string Type [readonly]
+
+			Type of the transferred object. Either Name or Type
+			or both will be present.
+
+		uint32 Time [readonly, optional]
+
+			Time of the transferred object if this is
+			provided by the remote party.
+
+		uint64 Size [readonly, optional]
 
 			Size of the transferred object. If the size is
 			unknown, then this property will not be present.
-
-		string Filename [readonly, optional]
-
-			Complete name of the file being received or sent.
 
 		uint64 Transferred [readonly, optional]
 
 			Number of bytes transferred. For queued transfers, this
 			value will not be present.
+
+		string Filename [readonly, optional]
+
+			Complete name of the file being received or sent.
 
 
 Object Push hierarchy
