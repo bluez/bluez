@@ -130,6 +130,11 @@ Properties	string Status [readonly]
 
 			Complete name of the file being received or sent.
 
+			For incoming object push transaction, this will be
+			the proposed default location and name. It can be
+			overwritten by the AuthorizePush agent callback
+			and will be then updated accordingly.
+
 
 Object Push hierarchy
 =====================

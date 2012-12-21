@@ -41,13 +41,15 @@ Methods		void Release()
 			agent, because when this method gets called it has
 			already been unregistered.
 
-		string Authorize(object transfer, string address, string name,
-					string type, int32 length, int32 time)
+		string AuthorizePush(object transfer)
 
 			This method gets called when the service daemon
 			needs to accept/reject a Bluetooth object push request.
+
 			Returns the full path (including the filename) where
-			the object shall be stored.
+			the object shall be stored. The tranfer object will
+			contain a Filename property that contains the default
+			location and name that can be returned.
 
 			Possible errors: org.bluez.obex.Error.Rejected
 			                 org.bluez.obex.Error.Canceled
