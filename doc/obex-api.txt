@@ -486,7 +486,7 @@ Message Access hierarchy
 =========================
 
 Service		org.bluez.obex
-Interface	org.bluez.obex.MessageAccess
+Interface	org.bluez.obex.MessageAccess1
 Object path	[variable prefix]/{session0,session1,...}
 
 Methods		void SetFolder(string name)
@@ -660,7 +660,7 @@ Message hierarchy
 =================
 
 Service		org.bluez.obex
-Interface	org.bluez.obex.Message
+Interface	org.bluez.obex.Message1
 Object path	[variable prefix]/{session0,session1,...}/{message0,...}
 
 Methods		object, dict Get(string targetfile, boolean attachment)
