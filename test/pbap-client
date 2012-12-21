@@ -52,11 +52,14 @@ class PbapClient:
 			return
 		self.transfers -= 1
 		print "Transfer %s complete" % path
-		f = open(req.filename, "r")
-		os.remove(req.filename)
-		lines = f.readlines()
-		del self.props[path]
-		req.callback_func(lines)
+		try:
+			f = open(req.filename, "r")
+			os.remove(req.filename)
+			lines = f.readlines()
+			del self.props[path]
+			req.callback_func(lines)
+		except:
+			pass
 
 		if (len(self.props) == 0) and (self.transfers == 0):
 			if self.flush_func != None:
