@@ -8,6 +8,13 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
+BUS_NAME='org.bluez.obex'
+PATH = '/org/bluez/obex'
+CLIENT_INTERFACE = 'org.bluez.obex.Client1'
+SESSION_INTERFACE = 'org.bluez.obex.Session1'
+PHONEBOOK_ACCESS_INTERFACE = 'org.bluez.obex.PhonebookAccess1'
+TRANSFER_INTERFACE = 'org.bluez.obex.Transfer1'
+
 class Transfer:
 	def __init__(self, callback_func):
 		self.callback_func = callback_func
@@ -20,18 +27,13 @@ class PbapClient:
 		self.props = dict()
 		self.flush_func = None
 		bus = dbus.SessionBus()
-		obj = bus.get_object("org.bluez.obex", session_path)
-		self.session = dbus.Interface(obj, "org.bluez.obex.Session")
-		self.pbap = dbus.Interface(obj,
-					"org.bluez.obex.PhonebookAccess")
-		bus.add_signal_receiver(self.transfer_complete,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="Complete",
-				path_keyword="path")
-		bus.add_signal_receiver(self.transfer_error,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="Error",
-				path_keyword="path")
+		obj = bus.get_object(BUS_NAME, session_path)
+		self.session = dbus.Interface(obj, SESSION_INTERFACE)
+		self.pbap = dbus.Interface(obj, PHONEBOOK_ACCESS_INTERFACE)
+		bus.add_signal_receiver(self.properties_changed,
+			dbus_interface="org.freedesktop.DBus.Properties",
+			signal_name="PropertiesChanged",
+			path_keyword="path")
 
 	def register(self, path, properties, transfer):
 		transfer.path = path
@@ -49,7 +51,7 @@ class PbapClient:
 		if req == None:
 			return
 		self.transfers -= 1
-		print "Transfer %s finished" % path
+		print "Transfer %s complete" % path
 		f = open(req.filename, "r")
 		os.remove(req.filename)
 		lines = f.readlines()
@@ -62,12 +64,22 @@ class PbapClient:
 				self.flush_func = None
 				f()
 
-	def transfer_error(self, code, message, path):
+	def transfer_error(self, path):
+		print "Transfer %s error" % path
+		mainloop.quit()
+
+	def properties_changed(self, interface, properties, invalidated, path):
 		req = self.props.get(path)
 		if req == None:
 			return
-		print "Transfer finished with error %s: %s" % (code, message)
-		mainloop.quit()
+
+		if properties['Status'] == 'complete':
+			self.transfer_complete(path)
+			return
+
+		if properties['Status'] == 'error':
+			self.transfer_error(path)
+			return
 
 	def pull(self, vcard, params, func):
 		req = Transfer(func)
@@ -98,9 +110,8 @@ if  __name__ == '__main__':
 	bus = dbus.SessionBus()
 	mainloop = gobject.MainLoop()
 
-	client = dbus.Interface(bus.get_object("org.bluez.obex",
-						"/org/bluez/obex"),
-						"org.bluez.obex.Client")
+	client = dbus.Interface(bus.get_object(BUS_NAME, PATH),
+							CLIENT_INTERFACE)
 
 	if (len(sys.argv) < 2):
 		print "Usage: %s <device>" % (sys.argv[0])
