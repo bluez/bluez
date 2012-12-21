@@ -349,7 +349,7 @@ static gboolean bnep_conn_req_to(gpointer user_data)
 		error("Too many bnep connection attempts");
 	} else {
 		error("bnep connection setup TO, retrying...");
-		if (!bnep_send_conn_req(nc))
+		if (bnep_send_conn_req(nc) == 0)
 			return TRUE;
 	}
 
@@ -363,7 +363,9 @@ static int bnep_connect(struct network_conn *nc)
 	int err;
 
 	nc->attempt_cnt = 0;
-	if ((err = bnep_send_conn_req(nc)))
+
+	err = bnep_send_conn_req(nc);
+	if (err < 0)
 		return err;
 
 	nc->timeout_source = g_timeout_add_seconds(CON_SETUP_TO,
