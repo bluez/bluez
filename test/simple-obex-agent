@@ -18,26 +18,26 @@ class Agent(dbus.service.Object):
 		dbus.service.Object.__init__(self, conn, obj_path)
 		self.pending_auth = False
 
-	@dbus.service.method(AGENT_INTERFACE, in_signature="osssii",
+	@dbus.service.method(AGENT_INTERFACE, in_signature="o",
 							out_signature="s")
-	def Authorize(self, dpath, device, filename, ftype, length, time):
-		global transfers
+	def AuthorizePush(self, path):
+		transfer = dbus.Interface(bus.get_object(BUS_NAME, path),
+					'org.freedesktop.DBus.Properties')
+		properties = transfer.GetAll(TRANSFER_INTERFACE);
 
 		self.pending_auth = True
-		print "Authorize (%s, %s, %s) Y/n" % (path, device, filename)
-		auth = raw_input().strip("\n ")
+		raw_input("Authorize (%s, %s) (Y/n):" % (path,
+							properties['Name']))
 
 		if auth == "n" or auth == "N":
 			self.pending_auth = False
 			raise dbus.DBusException(
 					"org.bluez.obex.Error.Rejected: "
-					"Not Autorized")
+					"Not Authorized")
 
-		print "Full filename (including path):"
 		self.pending_auth = False
 
-		transfers.append(Transfer(dpath, filename, 0, length))
-		return raw_input().strip("\n ")
+		return properties['Name']
 
 	@dbus.service.method(AGENT_INTERFACE, in_signature="",
 							out_signature="")
@@ -45,73 +45,12 @@ class Agent(dbus.service.Object):
 		print "Authorization Canceled"
 		self.pending_auth = False
 
-
-class Transfer(object):
-	def __init__(self, dpath, filename=None, transfered=-1, size=-1):
-		self.dpath = dpath
-		self.filename = filename
-		self.transfered = transfered
-		self.size = size
-
-	def update(self, filename=None, transfered=-1, total=-1):
-		if filename:
-			self.filename = filename
-		self.transfered = transfered
-		self.size = total
-
-	def cancel(self):
-		transfer_iface = dbus.Interface(bus.get_object(
-						BUS_NAME, self.dpath),
-						"org.bluez.obex.Transfer")
-		transfer_iface.Cancel()
-
-	def __str__(self):
-		p = float(self.transfered) / float(self.size) * 100
-		return "%s (%s) (%.2f%%)" % (self.filename, self.dpath, p)
-
-	__repr__ = __str__
-
-
 if __name__ == '__main__':
-	global transfers
-
-	def new_transfer(dpath):
-		print "new transfer"
-		bus.add_signal_receiver(progress,
-				dbus_interface="org.bluez.obex.Transfer",
-				signal_name="Progress",
-				path_keyword="dpath")
-
-	def transfer_completed(dpath, success):
-		global transfers
-
-		print "\ntransfer completed => %s" % (success and "Success" or "Fail")
-		transfers = [t for t in transfers if t.dpath != dpath]
-
-	def progress(total, current, dpath):
-		s = []
-		for t in transfers:
-			if t.dpath == dpath:
-				t.update(None, current, total)
-			s.append("%s" % (t))
-		sys.stdout.write(" ".join(s) + "\r")
-		sys.stdout.flush()
-
-
-	transfers = []
-
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SessionBus()
 	manager = dbus.Interface(bus.get_object(BUS_NAME, PATH),
 						AGENT_MANAGER_INTERFACE)
-	bus.add_signal_receiver(new_transfer,
-				dbus_interface=AGENT_MANAGER_INTERFACE,
-				signal_name="TransferStarted")
-
-	bus.add_signal_receiver(transfer_completed,
-				dbus_interface=AGENT_MANAGER_INTERFACE,
-				signal_name="TransferCompleted")
 
 	path = "/test/agent"
 	agent = Agent(bus, path)
