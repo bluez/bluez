@@ -23,11 +23,11 @@ Methods		object CreateSession(string destination, dict args)
 
 			The currently supported targets are the following:
 
-				"FTP"
-				"MAP"
-				"OPP"
-				"PBAP"
-				"SYNC"
+				"ftp"
+				"map"
+				"opp"
+				"pbap"
+				"sync"
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
 					 org.bluez.obex.Error.Failed
