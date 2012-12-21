@@ -90,21 +90,6 @@ static GQuark obc_transfer_error_quark(void)
 	return g_quark_from_static_string("obc-transfer-error-quark");
 }
 
-static void obc_transfer_append_dbus_properties(struct obc_transfer *transfer,
-							DBusMessageIter *dict)
-{
-	obex_dbus_dict_append(dict, "Name", DBUS_TYPE_STRING, &transfer->name);
-	obex_dbus_dict_append(dict, "Size", DBUS_TYPE_UINT64, &transfer->size);
-
-	if (transfer->filename != NULL)
-		obex_dbus_dict_append(dict, "Filename", DBUS_TYPE_STRING,
-							&transfer->filename);
-
-	if (transfer->obex != NULL)
-		obex_dbus_dict_append(dict, "Progress", DBUS_TYPE_UINT64,
-						&transfer->progress);
-}
-
 DBusMessage *obc_transfer_create_dbus_reply(struct obc_transfer *transfer,
 							DBusMessage *message)
 {
