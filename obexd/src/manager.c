@@ -413,7 +413,7 @@ static gboolean transfer_get_filename(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean transfer_get_progress(const GDBusPropertyTable *property,
+static gboolean transfer_get_transferred(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct obex_transfer *transfer = data;
@@ -444,7 +444,7 @@ static const GDBusPropertyTable transfer_properties[] = {
 	{ "Size", "t", transfer_get_size, NULL, transfer_size_exists },
 	{ "Filename", "s", transfer_get_filename, NULL,
 						transfer_filename_exists },
-	{ "Progress", "t", transfer_get_progress },
+	{ "Transferred", "t", transfer_get_transferred },
 	{ }
 };
 
@@ -537,7 +537,7 @@ static void emit_transfer_progress(struct obex_transfer *transfer,
 		return;
 
 	g_dbus_emit_property_changed(connection, transfer->path,
-					TRANSFER_INTERFACE, "Progress");
+					TRANSFER_INTERFACE, "Transferred");
 }
 
 static void transfer_free(struct obex_transfer *transfer)

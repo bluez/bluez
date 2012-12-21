@@ -28,7 +28,7 @@ def parse_options():
 
 class OppClient:
 	def __init__(self, session_path, verbose=False):
-		self.progress = 0
+		self.transferred = 0
 		self.transfer_path = None
 		self.verbose = verbose
 		bus = dbus.SessionBus()
@@ -61,14 +61,14 @@ class OppClient:
 			mainloop.quit()
 			return
 
-		if properties["Progress"] == None:
+		if properties["Transferred"] == None:
 			return
 
-		speed = (value - self.progress) / 1000
+		speed = (value - self.transferred) / 1000
 		print "Transfer progress %d/%d at %d kBps" % (value,
 							self.transfer_size,
 							speed)
-		self.progress = value
+		self.transferred = value
 
 	def pull_business_card(self, filename):
 		self.opp.PullBusinessCard(os.path.abspath(filename),

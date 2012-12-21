@@ -121,7 +121,7 @@ Properties	string Status [readonly]
 
 			Complete name of the file being received or sent.
 
-		uint64 Progress [readonly, optional]
+		uint64 Transferred [readonly, optional]
 
 			Number of bytes transferred. For queued transfers, this
 			value will not be present.
