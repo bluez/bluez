@@ -2235,6 +2235,24 @@ static void free_property(gpointer data)
 	g_free(p);
 }
 
+void btd_profile_remove_custom_prop(const char *uuid, const char *name)
+{
+	GSList *l;
+
+	for (l = custom_props; l; l = l->next) {
+		struct btd_profile_custom_property *prop = l->data;
+
+		if (strcasecmp(prop->uuid, uuid) != 0)
+			continue;
+
+		if (g_strcmp0(prop->name, name) != 0)
+			continue;
+
+		custom_props = g_slist_delete_link(custom_props, l);
+		free_property(prop);
+	}
+}
+
 void btd_profile_init(void)
 {
 	g_dbus_register_interface(btd_get_dbus_connection(),
