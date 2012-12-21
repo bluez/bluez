@@ -336,6 +336,8 @@ static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 	sdp_session_t *sdp;
 	GIOChannel *io;
 
+	DBG("");
+
 	sdp = sdp_connect(src, dst, SDP_NON_BLOCKING);
 	if (sdp == NULL)
 		return NULL;
@@ -357,6 +359,8 @@ static sdp_session_t *service_connect(const bdaddr_t *src, const bdaddr_t *dst,
 static int session_connect(struct bluetooth_session *session)
 {
 	int err;
+
+	DBG("session %p", session);
 
 	if (session->port > 0) {
 		session->io = transport_connect(&session->src, &session->dst,
@@ -380,7 +384,8 @@ static guint bluetooth_connect(const char *source, const char *destination,
 	struct bluetooth_session *session;
 	static guint id = 0;
 
-	DBG("");
+	DBG("src %s dest %s service %s port %u",
+				source, destination, service, port);
 
 	if (destination == NULL)
 		return 0;
