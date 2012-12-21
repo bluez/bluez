@@ -203,6 +203,8 @@ EXTRA_DIST += doc/alert-api.txt \
 		doc/proximity-api.txt doc/heartrate-api.txt \
 		doc/thermometer-api.txt doc/cyclingspeed-api.txt
 
+EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
+
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
