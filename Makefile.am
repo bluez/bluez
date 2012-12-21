@@ -191,11 +191,15 @@ endif
 
 EXTRA_DIST += $(test_scripts)
 
-EXTRA_DIST += doc/adapter-api.txt doc/device-api.txt doc/profile-api.txt \
-		doc/agent-api.txt \
-		doc/network-api.txt doc/health-api.txt \
-		doc/sap-api.txt doc/media-api.txt doc/assigned-numbers.txt \
-		doc/supported-features.txt doc/alert-api.txt doc/mgmt-api.txt \
+EXTRA_DIST += doc/assigned-numbers.txt doc/supported-features.txt
+
+EXTRA_DIST += doc/mgmt-api.txt \
+		doc/adapter-api.txt doc/device-api.txt \
+		doc/agent-api.txt doc/profile-api.txt \
+		doc/network-api.txt doc/media-api.txt \
+		doc/health-api.txt doc/sap-api.txt
+
+EXTRA_DIST += doc/alert-api.txt \
 		doc/proximity-api.txt doc/heartrate-api.txt \
 		doc/thermometer-api.txt doc/cyclingspeed-api.txt
 
