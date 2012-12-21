@@ -367,6 +367,29 @@ static gboolean transfer_get_name(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean transfer_type_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	return session->type != NULL;
+}
+
+static gboolean transfer_get_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_transfer *transfer = data;
+	struct obex_session *session = transfer->session;
+
+	if (session->type == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &session->type);
+
+	return TRUE;
+}
+
 static gboolean transfer_size_exists(const GDBusPropertyTable *property,
 								void *data)
 {
@@ -441,6 +464,7 @@ static const GDBusMethodTable transfer_methods[] = {
 static const GDBusPropertyTable transfer_properties[] = {
 	{ "Status", "s", transfer_get_status },
 	{ "Name", "s", transfer_get_name, NULL, transfer_name_exists },
+	{ "Type", "s", transfer_get_type, NULL, transfer_type_exists },
 	{ "Size", "t", transfer_get_size, NULL, transfer_size_exists },
 	{ "Filename", "s", transfer_get_filename, NULL,
 						transfer_filename_exists },
