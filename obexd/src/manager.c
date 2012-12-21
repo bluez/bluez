@@ -64,7 +64,7 @@ struct agent {
 
 enum {
 	TRANSFER_STATUS_QUEUED = 0,
-	TRANSFER_STATUS_IN_PROGRESS,
+	TRANSFER_STATUS_ACTIVE,
 	TRANSFER_STATUS_COMPLETE,
 	TRANSFER_STATUS_ERROR
 };
@@ -324,8 +324,8 @@ static const char *status2str(uint8_t status)
 	switch (status) {
 	case TRANSFER_STATUS_QUEUED:
 		return "queued";
-	case TRANSFER_STATUS_IN_PROGRESS:
-		return "in-progress";
+	case TRANSFER_STATUS_ACTIVE:
+		return "active";
 	case TRANSFER_STATUS_COMPLETE:
 		return "complete";
 	case TRANSFER_STATUS_ERROR:
@@ -505,7 +505,7 @@ void manager_emit_transfer_started(struct obex_transfer *transfer)
 					OBEX_BASE_PATH, transfer->session->id,
 					id++);
 
-	transfer->status = TRANSFER_STATUS_IN_PROGRESS;
+	transfer->status = TRANSFER_STATUS_ACTIVE;
 
 	if (!g_dbus_register_interface(connection, transfer->path,
 				TRANSFER_INTERFACE,
@@ -561,7 +561,7 @@ void manager_unregister_transfer(struct obex_transfer *transfer)
 {
 	struct obex_session *os = transfer->session;
 
-	if (transfer->status == TRANSFER_STATUS_IN_PROGRESS)
+	if (transfer->status == TRANSFER_STATUS_ACTIVE)
 		emit_transfer_completed(transfer, os->offset == os->size);
 
 	g_dbus_unregister_interface(connection, transfer->path,

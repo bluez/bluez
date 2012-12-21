@@ -59,7 +59,7 @@ struct transfer_callback {
 
 enum {
 	TRANSFER_STATUS_QUEUED = 0,
-	TRANSFER_STATUS_IN_PROGRESS,
+	TRANSFER_STATUS_ACTIVE,
 	TRANSFER_STATUS_COMPLETE,
 	TRANSFER_STATUS_ERROR
 };
@@ -280,8 +280,8 @@ static const char *status2str(uint8_t status)
 	switch (status) {
 	case TRANSFER_STATUS_QUEUED:
 		return "queued";
-	case TRANSFER_STATUS_IN_PROGRESS:
-		return "in-progress";
+	case TRANSFER_STATUS_ACTIVE:
+		return "active";
 	case TRANSFER_STATUS_COMPLETE:
 		return "complete";
 	case TRANSFER_STATUS_ERROR:
@@ -675,8 +675,8 @@ static gboolean report_progress(gpointer data)
 		return FALSE;
 	}
 
-	if (transfer->status != TRANSFER_STATUS_IN_PROGRESS)
-		transfer_set_status(transfer, TRANSFER_STATUS_IN_PROGRESS);
+	if (transfer->status != TRANSFER_STATUS_ACTIVE)
+		transfer_set_status(transfer, TRANSFER_STATUS_ACTIVE);
 
 	g_dbus_emit_property_changed(transfer->conn, transfer->path,
 					TRANSFER_INTERFACE, "Progress");

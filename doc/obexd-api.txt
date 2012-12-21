@@ -105,7 +105,7 @@ Properties	string Status [readonly]
 
 			Inform the current status of the transfer.
 
-			Possible values: "queued", "in-progress", "complete" or
+			Possible values: "queued", "active", "complete" or
 					"error"
 
 		string Name [readonly]
