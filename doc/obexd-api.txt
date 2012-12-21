@@ -664,7 +664,7 @@ Filter:		uint16 Offset:
 
 			Filter messages by sender address.
 
-		gboolean Priority:
+		boolean Priority:
 
 			Filter messages by priority flag.
 
