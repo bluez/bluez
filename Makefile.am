@@ -205,6 +205,8 @@ EXTRA_DIST += doc/alert-api.txt \
 
 EXTRA_DIST += doc/obex-api.txt doc/obex-agent-api.txt
 
+EXTRA_DIST += tools/magic.btsnoop
+
 AM_CFLAGS += @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
