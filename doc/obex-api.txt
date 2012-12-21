@@ -111,7 +111,7 @@ Properties	string Status [readonly]
 			Type of the transferred object. Either Name or Type
 			or both will be present.
 
-		uint32 Time [readonly, optional]
+		uint64 Time [readonly, optional]
 
 			Time of the transferred object if this is
 			provided by the remote party.
