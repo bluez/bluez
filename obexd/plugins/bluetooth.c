@@ -104,6 +104,12 @@ drop:
 	return;
 }
 
+static DBusMessage *invalid_args(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
+					"Invalid arguments in method call");
+}
+
 static DBusMessage *profile_new_connection(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -115,26 +121,20 @@ static DBusMessage *profile_new_connection(DBusConnection *conn,
 	dbus_message_iter_init(msg, &args);
 
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_OBJECT_PATH)
-		return g_dbus_create_error(msg,
-					"org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
+		return invalid_args(msg);
 
 	dbus_message_iter_get_basic(&args, &device);
 
 	dbus_message_iter_next(&args);
 
 	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_UNIX_FD)
-		return g_dbus_create_error(msg,
-					"org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
+		return invalid_args(msg);
 
 	dbus_message_iter_get_basic(&args, &fd);
 
 	io = g_io_channel_unix_new(fd);
 	if (io == NULL)
-		return g_dbus_create_error(msg,
-					"org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
+		return invalid_args(msg);
 
 	DBG("device %s", device);
 
