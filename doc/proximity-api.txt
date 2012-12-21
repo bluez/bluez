@@ -1,8 +1,6 @@
 BlueZ D-Bus Proximity API description
 ***********************************
 
-Copyright (C) 2011  Claudio Takahasi <claudio.takahasi@openbossa.org>
-
 
 Proximity Monitor hierarchy
 ===========================

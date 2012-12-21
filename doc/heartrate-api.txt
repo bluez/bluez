@@ -1,8 +1,6 @@
 Heart Rate API description
 **************************
 
-Copyright (C) 2012	Santiago Carot-Nemesio <sancane@gmail.com>
-Copyright (C) 2012	Tieto Poland
 
 Heart Rate Manager hierarchy
 ============================

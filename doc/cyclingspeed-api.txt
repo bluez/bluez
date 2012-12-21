@@ -1,7 +1,6 @@
 Cycling Speed and Cadence API description
 *****************************************
 
-Copyright (C) 2012	Tieto Poland
 
 Cycling Speed and Cadence Manager hierarchy
 ===========================================
