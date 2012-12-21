@@ -800,10 +800,9 @@ done:
 
 void manager_unregister_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("org/bluez/obex/session%u", os->id);
+	char *path = g_strdup_printf("%s/session%u", OBEX_BASE_PATH, os->id);
 
-	g_dbus_unregister_interface(connection, path,
-				SESSION_INTERFACE);
+	g_dbus_unregister_interface(connection, path, SESSION_INTERFACE);
 
 	g_free(path);
 }
