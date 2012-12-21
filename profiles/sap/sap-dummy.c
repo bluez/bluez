@@ -31,6 +31,7 @@
 #include <stdint.h>
 
 #include "dbus-common.h"
+#include "error.h"
 #include "log.h"
 #include "sap.h"
 
@@ -234,12 +235,6 @@ void sap_set_transport_protocol_req(void *sap_device,
 	sap_transport_protocol_rsp(sap_device, SAP_RESULT_NOT_SUPPORTED);
 }
 
-static inline DBusMessage *invalid_args(DBusMessage *msg)
-{
-	return g_dbus_create_error(msg, "org.bluez.Error.InvalidArguments",
-					"Invalid arguments in method call");
-}
-
 static DBusMessage *ongoing_call(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
@@ -247,7 +242,7 @@ static DBusMessage *ongoing_call(DBusConnection *conn, DBusMessage *msg,
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &ongoing,
 						DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	if (ongoing_call_status && !ongoing) {
 		/* An ongoing call has finished. Continue connection.*/
@@ -269,12 +264,12 @@ static DBusMessage *max_msg_size(DBusConnection *conn, DBusMessage *msg,
 	dbus_uint32_t size;
 
 	if (sim_card_conn_status == SIM_CONNECTED)
-		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
+		return btd_error_failed(msg,
 				"Can't change msg size when connected.");
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &size,
 							DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	max_msg_size_supported = size;
 
@@ -287,8 +282,7 @@ static DBusMessage *disconnect_immediate(DBusConnection *conn, DBusMessage *msg,
 						void *data)
 {
 	if (sim_card_conn_status == SIM_DISCONNECTED)
-		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
-				"Already disconnected.");
+		return btd_error_failed(msg, "Already disconnected.");
 
 	sim_card_conn_status = SIM_DISCONNECTED;
 	sap_disconnect_ind(sap_data, SAP_DISCONNECTION_TYPE_IMMEDIATE);
@@ -304,12 +298,12 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 	DBG("status %d", sim_card_conn_status);
 
 	if (sim_card_conn_status != SIM_CONNECTED)
-		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
+		return btd_error_failed(msg,
 				"Can't change msg size when not connected.");
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_UINT32, &status,
 							DBUS_TYPE_INVALID))
-		return invalid_args(msg);
+		return btd_error_invalid_args(msg);
 
 	switch (status) {
 	case 0: /* card removed */
@@ -331,8 +325,8 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 		break;
 
 	default:
-		return g_dbus_create_error(msg, "org.bluez.Error.Failed",
-				"Unknown card status. Use 0, 1 or 2.");
+		return btd_error_failed(msg,
+					"Unknown card status. Use 0, 1 or 2.");
 	}
 
 	DBG("Card status changed to %d", status);

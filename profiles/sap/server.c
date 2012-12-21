@@ -1260,29 +1260,21 @@ static void connect_confirm_cb(GIOChannel *io, gpointer data)
 	DBG("Authorizing incoming SAP connection from %s", dstaddr);
 }
 
-static inline DBusMessage *message_failed(DBusMessage *msg,
-					const char *description)
-{
-	return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed", "%s",
-								description);
-}
-
 static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	struct sap_server *server = data;
 
 	if (!server)
-		return message_failed(msg, "Server internal error.");
+		return btd_error_failed(msg, "Server internal error.");
 
 	DBG("conn %p", server->conn);
 
 	if (!server->conn)
-		return message_failed(msg, "Client already disconnected");
+		return btd_error_failed(msg, "Client already disconnected");
 
 	if (disconnect_req(server, SAP_DISCONNECTION_TYPE_GRACEFUL) < 0)
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-					"There is no active connection");
+		return btd_error_failed(msg, "There is no active connection");
 
 	return dbus_message_new_method_return(msg);
 }
