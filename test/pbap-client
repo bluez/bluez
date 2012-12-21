@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import gobject
 
 import sys
@@ -39,11 +41,11 @@ class PbapClient:
 		transfer.path = path
 		transfer.filename = properties["Filename"]
 		self.props[path] = transfer
-		print "Transfer created: %s (file %s)" % (path,
-							transfer.filename)
+		print("Transfer created: %s (file %s)" % (path,
+							transfer.filename))
 
 	def error(self, err):
-		print err
+		print(err)
 		mainloop.quit()
 
 	def transfer_complete(self, path):
@@ -68,7 +70,7 @@ class PbapClient:
 				f()
 
 	def transfer_error(self, path):
-		print "Transfer %s error" % path
+		print("Transfer %s error" % path)
 		mainloop.quit()
 
 	def properties_changed(self, interface, properties, invalidated, path):
@@ -117,7 +119,7 @@ if  __name__ == '__main__':
 							CLIENT_INTERFACE)
 
 	if (len(sys.argv) < 2):
-		print "Usage: %s <device>" % (sys.argv[0])
+		print("Usage: %s <device>" % (sys.argv[0]))
 		sys.exit(1)
 
 	print "Creating Session"
@@ -127,9 +129,9 @@ if  __name__ == '__main__':
 
 	def process_result(lines, header):
 		if header != None:
-			print header
+			print(header)
 		for line in lines:
-			print line,
+			print(line),
 		print
 
 	def test_paths(paths):

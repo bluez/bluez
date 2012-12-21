@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import gobject
 
 import sys
@@ -88,12 +90,12 @@ class MapClient:
 		self.transfer_path = path
 		self.props[path] = properties
 		if self.verbose:
-			print "Transfer created: %s (file %s)" % (path,
-							properties["Filename"])
+			print("Transfer created: %s (file %s)" % (path,
+							properties["Filename"]))
 
 	def generic_reply(self):
 		if self.verbose:
-			print "Operation succeeded"
+			print("Operation succeeded")
 
 	def error(self, err):
 		print err
@@ -101,16 +103,16 @@ class MapClient:
 
 	def transfer_complete(self, path):
 		if self.verbose:
-			print "Transfer finished"
+			print("Transfer finished")
 		properties = self.props.get(path)
 		if properties == None:
 			return
 		f = open(properties["Filename"], "r")
 		os.remove(properties["Filename"])
-		print f.readlines()
+		print(f.readlines())
 
 	def transfer_error(self, path):
-		print "Transfer %s error" % path
+		print("Transfer %s error" % path)
 		mainloop.quit()
 
 	def properties_changed(self, interface, properties, invalidated, path):
@@ -131,11 +133,11 @@ class MapClient:
 
 	def list_folders(self):
 		for i in self.map.ListFolders(dict()):
-			print "%s/" % (i["Name"])
+			print("%s/" % (i["Name"]))
 
 	def list_messages(self, folder):
 		ret = self.map.ListMessages(folder, dict())
-		print pformat(unwrap(ret))
+		print(pformat(unwrap(ret)))
 
 	def get_message(self, handle):
 		self.map.ListMessages("", dict())
@@ -151,7 +153,7 @@ class MapClient:
 		obj = bus.get_object(BUS_NAME, path)
 		msg = dbus.Interface(obj, "org.freedesktop.DBus.Properties")
 		ret = msg.GetAll(MESSAGE_INTERFACE)
-		print pformat(unwrap(ret))
+		print(pformat(unwrap(ret)))
 
 	def set_message_property(self, handle, prop, flag):
 		self.map.ListMessages("", dict())
@@ -182,7 +184,7 @@ if  __name__ == '__main__':
 	client = dbus.Interface(bus.get_object(BUS_NAME, PATH),
 							CLIENT_INTERFACE)
 
-	print "Creating Session"
+	print("Creating Session")
 	path = client.CreateSession(options.device, { "Target": "map" })
 
 	map_client = MapClient(path, options.verbose)

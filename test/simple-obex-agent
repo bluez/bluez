@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import gobject
 
 import sys
@@ -12,6 +14,12 @@ PATH = '/org/bluez/obex'
 AGENT_MANAGER_INTERFACE = 'org.bluez.obex.AgentManager1'
 AGENT_INTERFACE = 'org.bluez.obex.Agent1'
 TRANSFER_INTERFACE = 'org.bluez.obex.Transfer1'
+
+def ask(prompt):
+	try:
+		return raw_input(prompt)
+	except:
+		return input(prompt)
 
 class Agent(dbus.service.Object):
 	def __init__(self, conn=None, obj_path=None):
@@ -26,7 +34,7 @@ class Agent(dbus.service.Object):
 		properties = transfer.GetAll(TRANSFER_INTERFACE);
 
 		self.pending_auth = True
-		raw_input("Authorize (%s, %s) (Y/n):" % (path,
+		auth = ask("Authorize (%s, %s) (Y/n):" % (path,
 							properties['Name']))
 
 		if auth == "n" or auth == "N":
@@ -42,7 +50,7 @@ class Agent(dbus.service.Object):
 	@dbus.service.method(AGENT_INTERFACE, in_signature="",
 							out_signature="")
 	def Cancel(self):
-		print "Authorization Canceled"
+		print("Authorization Canceled")
 		self.pending_auth = False
 
 if __name__ == '__main__':
@@ -58,7 +66,7 @@ if __name__ == '__main__':
 	mainloop = gobject.MainLoop()
 
 	manager.RegisterAgent(path)
-	print "Agent registered"
+	print("Agent registered")
 
 	cont = True
 	while cont:

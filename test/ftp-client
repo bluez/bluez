@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import gobject
 
 import sys
@@ -59,11 +61,11 @@ class FtpClient:
 		self.transfer_path = path
 		self.transfer_size = properties["Size"]
 		if self.verbose:
-			print "Transfer created: %s" % path
+			print("Transfer created: %s" % path)
 
 	def generic_reply(self):
 		if self.verbose:
-			print "Operation succeeded"
+			print("Operation succeeded")
 
 	def error(self, err):
 		print err
@@ -76,7 +78,7 @@ class FtpClient:
 		if properties['Status'] == 'complete' or \
 				properties['Status'] == 'error':
 			if self.verbose:
-				print "Transfer %s" % properties['Status']
+				print("Transfer %s" % properties['Status'])
 			mainloop.quit()
 			return
 
@@ -84,9 +86,9 @@ class FtpClient:
 			return
 
 		speed = (value - self.transferred) / 1000
-		print "Transfer progress %d/%d at %d kBps" % (value,
+		print("Transfer progress %d/%d at %d kBps" % (value,
 							self.transfer_size,
-							speed)
+							speed))
 		self.transferred = value
 
 	def change_folder(self, new_dir):
@@ -96,9 +98,9 @@ class FtpClient:
 	def list_folder(self):
 		for i in self.ftp.ListFolder():
 			if i["Type"] == "folder":
-				print "%s/" % (i["Name"])
+				print("%s/" % (i["Name"]))
 			else:
-				print "%s" % (i["Name"])
+				print("%s" % (i["Name"]))
 
 	def put_file(self, filename):
 		self.ftp.PutFile(os.path.abspath(filename),
@@ -145,7 +147,7 @@ if  __name__ == '__main__':
 	client = dbus.Interface(bus.get_object(BUS_NAME, PATH,),
 							CLIENT_INTERFACE)
 
-	print "Creating Session"
+	print("Creating Session")
 	path = client.CreateSession(options.device, { "Target": "ftp" })
 
 	ftp_client = FtpClient(path, options.verbose)

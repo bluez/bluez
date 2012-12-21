@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import absolute_import, print_function, unicode_literals
+
 import sys
 import dbus
 import gobject
@@ -44,7 +46,7 @@ class OppClient:
 		self.transfer_path = path
 		self.transfer_size = properties["Size"]
 		if self.verbose:
-			print "Transfer created: %s" % path
+			print("Transfer created: %s" % path)
 
 	def error(self, err):
 		print err
@@ -57,7 +59,7 @@ class OppClient:
 		if properties['Status'] == 'complete' or \
 				properties['Status'] == 'error':
 			if self.verbose:
-				print "Transfer %s" % properties['Status']
+				print("Transfer %s" % properties['Status'])
 			mainloop.quit()
 			return
 
@@ -65,9 +67,9 @@ class OppClient:
 			return
 
 		speed = (value - self.transferred) / 1000
-		print "Transfer progress %d/%d at %d kBps" % (value,
+		print("Transfer progress %d/%d at %d kBps" % (value,
 							self.transfer_size,
-							speed)
+							speed))
 		self.transferred = value
 
 	def pull_business_card(self, filename):
@@ -98,7 +100,7 @@ if  __name__ == '__main__':
 	client = dbus.Interface(bus.get_object(BUS_NAME, PATH),
 							CLIENT_INTERFACE)
 
-	print "Creating Session"
+	print("Creating Session")
 	path = client.CreateSession(options.device, { "Target": "OPP" })
 
 	opp_client = OppClient(path, options.verbose)
