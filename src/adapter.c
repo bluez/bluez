@@ -736,7 +736,7 @@ static void service_auth_cancel(struct service_auth *auth)
 	DBusError derr;
 
 	dbus_error_init(&derr);
-	dbus_set_error_const(&derr, "org.bluez.Error.Canceled", NULL);
+	dbus_set_error_const(&derr, ERROR_INTERFACE ".Canceled", NULL);
 
 	auth->cb(&derr, auth->user_data);
 
@@ -3105,7 +3105,7 @@ static gboolean process_auth_queue(gpointer user_data)
 	adapter->auth_idle_id = 0;
 
 	dbus_error_init(&err);
-	dbus_set_error_const(&err, "org.bluez.Error.Rejected", NULL);
+	dbus_set_error_const(&err, ERROR_INTERFACE ".Rejected", NULL);
 
 	while (!g_queue_is_empty(adapter->auths)) {
 		struct service_auth *auth = adapter->auths->head->data;

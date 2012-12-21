@@ -206,7 +206,8 @@ void agent_unref(struct agent *agent)
 		agent_cb cb;
 
 		dbus_error_init(&err);
-		dbus_set_error_const(&err, "org.bluez.Error.Failed", "Canceled");
+		dbus_set_error_const(&err, ERROR_INTERFACE ".Failed",
+								"Canceled");
 
 		switch (agent->request->type) {
 		case AGENT_REQUEST_PINCODE:
@@ -439,7 +440,7 @@ static void pincode_reply(DBusPendingCall *call, void *user_data)
 
 	if (len > 16 || len < 1) {
 		error("Invalid PIN length (%zu) from agent", len);
-		dbus_set_error_const(&err, "org.bluez.Error.InvalidArgs",
+		dbus_set_error_const(&err, ERROR_INTERFACE ".InvalidArgs",
 					"Invalid passkey length");
 		cb(agent, &err, NULL, req->user_data);
 		dbus_error_free(&err);

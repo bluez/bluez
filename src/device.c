@@ -3908,7 +3908,7 @@ static void cancel_authentication(struct authentication_req *auth)
 	auth->agent = NULL;
 
 	dbus_error_init(&err);
-	dbus_set_error_const(&err, "org.bluez.Error.Canceled", NULL);
+	dbus_set_error_const(&err, ERROR_INTERFACE ".Canceled", NULL);
 
 	switch (auth->type) {
 	case AUTH_TYPE_PINCODE:
