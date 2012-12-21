@@ -217,6 +217,8 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 	const char *path;
 	DBusConnection *conn;
 
+	DBG("cond %u", cond);
+
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
@@ -318,6 +320,8 @@ static int bnep_send_conn_req(struct network_conn *nc)
 	struct __service_16 *s;
 	unsigned char pkt[BNEP_MTU];
 	int fd;
+
+	DBG("");
 
 	/* Send request */
 	req = (void *) pkt;
@@ -439,6 +443,8 @@ int connection_connect(struct btd_device *device, uint16_t id)
 	GError *err = NULL;
 	const bdaddr_t *src;
 	const bdaddr_t *dst;
+
+	DBG("id %u", id);
 
 	peer = find_peer(peers, device);
 	if (!peer)
@@ -681,6 +687,8 @@ int connection_register(struct btd_device *device, uint16_t id)
 	struct network_peer *peer;
 	struct network_conn *nc;
 
+	DBG("id %u", id);
+
 	peer = find_peer(peers, device);
 	if (!peer) {
 		peer = create_peer(device);
@@ -699,6 +707,8 @@ int connection_register(struct btd_device *device, uint16_t id)
 	strcpy(nc->dev, "bnep%d");
 	nc->state = DISCONNECTED;
 	nc->peer = peer;
+
+	DBG("id %u registered", id);
 
 	peer->connections = g_slist_append(peer->connections, nc);
 
