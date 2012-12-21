@@ -25,6 +25,10 @@ if (len(args) < 1):
 	print("Usage: %s <address> [service]" % (sys.argv[0]))
 	sys.exit(1)
 
+# Fix-up in case of "connect" invocation that other scripts use
+if args[0] == "connect":
+	del args[:1]
+
 if (len(args) < 2):
 	service = "panu"
 else:
