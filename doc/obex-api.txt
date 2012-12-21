@@ -87,7 +87,7 @@ Methods		void Cancel()
 
 			Possible errors: org.bluez.obex.Error.NotAuthorized
 					 org.bluez.obex.Error.InProgress
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 Properties	string Status [readonly]
 
@@ -139,7 +139,7 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		object, dict PullBusinessCard(string targetfile)
 
@@ -157,7 +157,7 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		object, dict ExchangeBusinessCards(string clientfile,
 							string targetfile)
@@ -177,7 +177,7 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 
 File Transfer hierarchy
@@ -192,14 +192,14 @@ Methods		void ChangeFolder(string folder)
 			Change the current folder of the remote device.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		void CreateFolder(string folder)
 
 			Create a new folder in the remote device.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		array{dict} ListFolder()
 
@@ -218,7 +218,7 @@ Methods		void ChangeFolder(string folder)
 				uint64 Accessed : Last access
 				uint64 Created : Creation date
 
-			Possible errors: org.bluez.obex.Failed
+			Possible errors: org.bluez.obex.Error.Failed
 
 		object, dict GetFile(string targetfile, string sourcefile)
 
@@ -236,7 +236,7 @@ Methods		void ChangeFolder(string folder)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		object, dict PutFile(string sourcefile, string targetfile)
 
@@ -251,7 +251,7 @@ Methods		void ChangeFolder(string folder)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		void CopyFile(string sourcefile, string targetfile)
 
@@ -259,7 +259,7 @@ Methods		void ChangeFolder(string folder)
 			to target file.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		void MoveFile(string sourcefile, string targetfile)
 
@@ -267,14 +267,14 @@ Methods		void ChangeFolder(string folder)
 			to the target file.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		void Delete(string file)
 
 			Deletes the specified file/folder.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 
 Phonebook Access hierarchy
@@ -304,7 +304,7 @@ Methods		void Select(string location, string phonebook)
 				"cch":	combination of ich och mch
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					 org.bluez.obex.Failed
+					 org.bluez.obex.Error.Failed
 
 		object, dict PullAll(string targetfile, dict filters)
 
@@ -390,7 +390,7 @@ Methods		void Select(string location, string phonebook)
 			correspond to non-NULL entries).
 
 			Possible errors: org.bluez.obex.Error.Forbidden
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		array{string} ListFilterFields()
 
@@ -465,7 +465,7 @@ Methods		void SetLocation(string location)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		object, dict PutPhonebook(string sourcefile)
 
@@ -495,7 +495,7 @@ Methods		void SetFolder(string name)
 			be the directory name or '..[/dir]'.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		array{dict} ListFolders(dict filter)
 
@@ -509,7 +509,7 @@ Methods		void SetFolder(string name)
 			Possible filters: Offset and MaxCount
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		array{string} ListFilterFields()
 
