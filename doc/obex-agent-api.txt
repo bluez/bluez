@@ -1,8 +1,29 @@
-obexd Agent API description
-**********************************
+OBEX D-Bus Agent API description
+********************************
 
-Copyright (C) 2007-2010  Nokia Corporation
-Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+
+Agent Manager hierarchy
+=======================
+
+Service		org.bluez.obex
+Interface	org.bluez.obex.AgentManager1
+Object path	/org/bluez/obex
+
+Methods		void RegisterAgent(object agent)
+
+			Register an agent to request authorization of
+			the user to accept/reject objects. Object push
+			service needs to authorize each received object.
+
+			Possible errors: org.bluez.obex.Error.AlreadyExists
+
+		void UnregisterAgent(object agent)
+
+			This unregisters the agent that has been previously
+			registered. The object path parameter must match the
+			same value that has been used on registration.
+
+			Possible errors: org.bluez.obex.Error.DoesNotExist
 
 
 Agent hierarchy

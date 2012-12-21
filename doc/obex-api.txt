@@ -1,34 +1,8 @@
-obexd API description
-**********************************
-
-Copyright (C) 2007-2010  Nokia Corporation
-Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+OBEX D-Bus API description
+**************************
 
 
-Manager hierarchy
-===============
-
-Service		org.bluez.obex
-Interface	org.bluez.obex.AgentManager1
-Object path	/org/bluez/obex
-
-Methods		void RegisterAgent(object agent)
-
-			Register an agent to request authorization of
-			the user to accept/reject objects. Object push
-			service needs to authorize each received object.
-
-			Possible errors: org.bluez.obex.Error.AlreadyExists
-
-		void UnregisterAgent(object agent)
-
-			This unregisters the agent that has been previously
-			registered. The object path parameter must match the
-			same value that has been used on registration.
-
-			Possible errors: org.bluez.obex.Error.DoesNotExist
-
-Manager hierarchy
+Client hierarchy
 ================
 
 Service		org.bluez.obex
@@ -56,14 +30,14 @@ Methods		object CreateSession(string destination, dict args)
 				"SYNC"
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		void RemoveSession(object session)
 
 			Unregister session and abort pending transfers.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.NotAuthorized
+					 org.bluez.obex.Error.NotAuthorized
 
 Session hierarchy
 =================
@@ -77,7 +51,7 @@ Methods		string GetCapabilities()
 			Get remote device capabilities.
 
 			Possible errors: org.bluez.obex.Error.NotSupported
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 Properties	string Source [readonly]
 
@@ -99,8 +73,9 @@ Properties	string Source [readonly]
 
 			Root path
 
+
 Transfer hierarchy
-===============
+==================
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Transfer1
@@ -111,8 +86,8 @@ Methods		void Cancel()
 			Stops the current transference.
 
 			Possible errors: org.bluez.obex.Error.NotAuthorized
-					org.bluez.obex.Error.InProgress
-					org.bluez.obex.Failed
+					 org.bluez.obex.Error.InProgress
+					 org.bluez.obex.Failed
 
 Properties	string Status [readonly]
 
@@ -144,6 +119,7 @@ Properties	string Status [readonly]
 			Number of bytes transferred. For queued transfers, this
 			value will not be present.
 
+
 Object Push hierarchy
 =====================
 
@@ -163,7 +139,7 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		object, dict PullBusinessCard(string targetfile)
 
@@ -181,7 +157,7 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		object, dict ExchangeBusinessCards(string clientfile,
 							string targetfile)
@@ -201,7 +177,8 @@ Methods		object, dict SendFile(string sourcefile)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
+
 
 File Transfer hierarchy
 =======================
@@ -215,14 +192,14 @@ Methods		void ChangeFolder(string folder)
 			Change the current folder of the remote device.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		void CreateFolder(string folder)
 
 			Create a new folder in the remote device.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		array{dict} ListFolder()
 
@@ -290,17 +267,18 @@ Methods		void ChangeFolder(string folder)
 			to the target file.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		void Delete(string file)
 
 			Deletes the specified file/folder.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
+
 
 Phonebook Access hierarchy
-=========================
+==========================
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.PhonebookAccess1
@@ -326,7 +304,7 @@ Methods		void Select(string location, string phonebook)
 				"cch":	combination of ich och mch
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Failed
+					 org.bluez.obex.Failed
 
 		object, dict PullAll(string targetfile, dict filters)
 
@@ -360,7 +338,7 @@ Methods		void Select(string location, string phonebook)
 			Possible filters: Order, Offset and MaxCount
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Forbidden
+					 org.bluez.obex.Forbidden
 
 		object, dict
 		Pull(string vcard, string targetfile, dict filters)
@@ -381,8 +359,8 @@ Methods		void Select(string location, string phonebook)
 			Possbile filters: Format and Fields
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Forbidden
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Forbidden
+					 org.bluez.obex.Error.Failed
 
 		array{string vcard, string name}
 		Search(string field, string value, dict filters)
@@ -402,8 +380,8 @@ Methods		void Select(string location, string phonebook)
 			Possible filters: Order, Offset and MaxCount
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Forbidden
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Forbidden
+					 org.bluez.obex.Error.Failed
 
 		uint16 GetSize()
 
@@ -448,8 +426,9 @@ Filter:		string Format:
 
 			Possible values can be query with ListFilterFields.
 
+
 Synchronization hierarchy
-=======================
+=========================
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Synchronization1
@@ -500,7 +479,8 @@ Methods		void SetLocation(string location)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
+
 
 Message Access hierarchy
 =========================
@@ -615,7 +595,7 @@ Methods		void SetFolder(string name)
 					Message protected flag
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 		void UpdateInbox(void)
 
@@ -698,7 +678,7 @@ Methods		object, dict Get(string targetfile, boolean attachment)
 			with the object path, to avoid a call to GetProperties.
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
-					org.bluez.obex.Error.Failed
+					 org.bluez.obex.Error.Failed
 
 Properties	string Subject [readonly]
 
