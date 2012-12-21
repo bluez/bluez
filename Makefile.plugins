@@ -59,6 +59,7 @@ builtin_modules += hog
 builtin_sources += profiles/input/hog.c profiles/input/uhid_copy.h \
 			profiles/input/suspend.h profiles/input/suspend-dummy.c
 
+if EXPERIMENTAL
 builtin_modules += health
 builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 			profiles/health/mcap.h profiles/health/mcap.c \
@@ -68,6 +69,7 @@ builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 			profiles/health/hdp_manager.c \
 			profiles/health/hdp.h profiles/health/hdp.c \
 			profiles/health/hdp_util.h profiles/health/hdp_util.c
+endif
 
 builtin_modules += gatt
 builtin_sources += profiles/gatt/main.c profiles/gatt/manager.h \
