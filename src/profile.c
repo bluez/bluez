@@ -2204,13 +2204,35 @@ static const GDBusMethodTable methods[] = {
 	{ }
 };
 
-void btd_profile_add_custom_prop(const char *uuid, const char *type,
+static struct btd_profile_custom_property *find_custom_prop(const char *uuid,
+							const char *name)
+{
+	GSList *l;
+
+	for (l = custom_props; l; l = l->next) {
+		struct btd_profile_custom_property *prop = l->data;
+
+		if (strcasecmp(prop->uuid, uuid) != 0)
+			continue;
+
+		if (g_strcmp0(prop->name, name) == 0)
+			return prop;
+	}
+
+	return NULL;
+}
+
+bool btd_profile_add_custom_prop(const char *uuid, const char *type,
 					const char *name,
 					btd_profile_prop_exists exists,
 					btd_profile_prop_get get,
 					void *user_data)
 {
 	struct btd_profile_custom_property *prop;
+
+	prop = find_custom_prop(uuid, name);
+	if (prop != NULL)
+		return false;
 
 	prop = g_new0(struct btd_profile_custom_property, 1);
 
@@ -2222,6 +2244,8 @@ void btd_profile_add_custom_prop(const char *uuid, const char *type,
 	prop->user_data = user_data;
 
 	custom_props = g_slist_append(custom_props, prop);
+
+	return true;
 }
 
 static void free_property(gpointer data)
@@ -2237,21 +2261,14 @@ static void free_property(gpointer data)
 
 bool btd_profile_remove_custom_prop(const char *uuid, const char *name)
 {
-	GSList *l;
+	struct btd_profile_custom_property *prop;
 
-	for (l = custom_props; l; l = l->next) {
-		struct btd_profile_custom_property *prop = l->data;
+	prop = find_custom_prop(uuid, name);
+	if (prop == NULL)
+		return false;
 
-		if (strcasecmp(prop->uuid, uuid) != 0)
-			continue;
-
-		if (g_strcmp0(prop->name, name) != 0)
-			continue;
-
-		custom_props = g_slist_delete_link(custom_props, l);
-		free_property(prop);
-		return true;
-	}
+	custom_props = g_slist_remove(custom_props, prop);
+	free_property(prop);
 
 	return false;
 }

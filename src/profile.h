@@ -67,7 +67,7 @@ typedef bool (*btd_profile_prop_get)(const char *uuid,
 						DBusMessageIter *iter,
 						void *user_data);
 
-void btd_profile_add_custom_prop(const char *uuid, const char *type,
+bool btd_profile_add_custom_prop(const char *uuid, const char *type,
 					const char *name,
 					btd_profile_prop_exists exists,
 					btd_profile_prop_get get,
