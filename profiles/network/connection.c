@@ -370,7 +370,7 @@ static int bnep_connect(struct network_conn *nc)
 							bnep_conn_req_to, nc);
 
 	g_io_add_watch(nc->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
-			(GIOFunc) bnep_setup_cb, nc);
+							bnep_setup_cb, nc);
 
 	return 0;
 }
