@@ -33,7 +33,15 @@ Service		unique name
 Interface	org.bluez.obex.Agent1
 Object path	freely definable
 
-Methods		string Authorize(object transfer, string bt_address, string name,
+Methods		void Release()
+
+			This method gets called when the service daemon
+			unregisters the agent. An agent can use it to do
+			cleanup tasks. There is no need to unregister the
+			agent, because when this method gets called it has
+			already been unregistered.
+
+		string Authorize(object transfer, string address, string name,
 					string type, int32 length, int32 time)
 
 			This method gets called when the service daemon
