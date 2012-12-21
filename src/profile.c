@@ -2235,7 +2235,7 @@ static void free_property(gpointer data)
 	g_free(p);
 }
 
-void btd_profile_remove_custom_prop(const char *uuid, const char *name)
+bool btd_profile_remove_custom_prop(const char *uuid, const char *name)
 {
 	GSList *l;
 
@@ -2250,7 +2250,10 @@ void btd_profile_remove_custom_prop(const char *uuid, const char *name)
 
 		custom_props = g_slist_delete_link(custom_props, l);
 		free_property(prop);
+		return true;
 	}
+
+	return false;
 }
 
 void btd_profile_init(void)
