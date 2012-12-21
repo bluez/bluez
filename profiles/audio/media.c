@@ -153,6 +153,32 @@ static void media_endpoint_destroy(struct media_endpoint *endpoint)
 	g_free(endpoint);
 }
 
+static struct media_endpoint *media_adapter_find_endpoint(
+						struct media_adapter *adapter,
+						const char *sender,
+						const char *path,
+						const char *uuid)
+{
+	GSList *l;
+
+	for (l = adapter->endpoints; l; l = l->next) {
+		struct media_endpoint *endpoint = l->data;
+
+		if (sender && g_strcmp0(endpoint->sender, sender) != 0)
+			continue;
+
+		if (path && g_strcmp0(endpoint->path, path) != 0)
+			continue;
+
+		if (uuid && g_strcmp0(endpoint->uuid, uuid) != 0)
+			continue;
+
+		return endpoint;
+	}
+
+	return NULL;
+}
+
 static void media_endpoint_remove(struct media_endpoint *endpoint)
 {
 	struct media_adapter *adapter = endpoint->adapter;
@@ -166,6 +192,11 @@ static void media_endpoint_remove(struct media_endpoint *endpoint)
 			endpoint->path);
 
 	adapter->endpoints = g_slist_remove(adapter->endpoints, endpoint);
+
+	if (media_adapter_find_endpoint(adapter, NULL, NULL,
+						endpoint->uuid) == NULL)
+		btd_profile_remove_custom_prop(endpoint->uuid,
+							"MediaEndpoints");
 
 	media_endpoint_destroy(endpoint);
 }
@@ -574,32 +605,6 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 		return FALSE;
 
 	return TRUE;
-}
-
-static struct media_endpoint *media_adapter_find_endpoint(
-						struct media_adapter *adapter,
-						const char *sender,
-						const char *path,
-						const char *uuid)
-{
-	GSList *l;
-
-	for (l = adapter->endpoints; l; l = l->next) {
-		struct media_endpoint *endpoint = l->data;
-
-		if (sender && g_strcmp0(endpoint->sender, sender) != 0)
-			continue;
-
-		if (path && g_strcmp0(endpoint->path, path) != 0)
-			continue;
-
-		if (uuid && g_strcmp0(endpoint->uuid, uuid) != 0)
-			continue;
-
-		return endpoint;
-	}
-
-	return NULL;
 }
 
 static bool endpoint_properties_exists(const char *uuid,
