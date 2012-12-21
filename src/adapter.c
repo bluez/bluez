@@ -2630,7 +2630,7 @@ static void load_config(struct btd_adapter *adapter)
 	} else if (stored_discoverable != adapter->discoverable) {
 		if (adapter->connectable)
 			mgmt_set_discoverable(adapter->dev_id,
-						adapter->discoverable,
+						stored_discoverable,
 						adapter->discov_timeout);
 		else
 			adapter->toggle_discoverable = true;
