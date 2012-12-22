@@ -125,7 +125,7 @@ int suspend_init(suspend_event suspend, resume_event resume)
 							HOG_SUSPEND_FIFO);
 
 			/* remove pre-existing FIFO and retry */
-			if (remove(HOG_SUSPEND_FIFO) < 0) {
+			if (unlink(HOG_SUSPEND_FIFO) < 0) {
 				err = -errno;
 				error("Failed to remove FIFO (%s): %s (%d)",
 					HOG_SUSPEND_FIFO, strerror(-err), -err);
