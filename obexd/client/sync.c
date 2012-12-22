@@ -67,10 +67,10 @@ static DBusMessage *sync_setlocation(DBusConnection *connection,
 		return g_dbus_create_error(message,
 			ERROR_INF ".InvalidArguments", NULL);
 
-	if (!g_ascii_strcasecmp(location, "INT") ||
-			!g_ascii_strcasecmp(location, "INTERNAL"))
+	if (!g_ascii_strcasecmp(location, "int") ||
+			!g_ascii_strcasecmp(location, "internal"))
 		path = g_strdup("telecom/pb.vcf");
-	else if (!g_ascii_strncasecmp(location, "SIM", 3)) {
+	else if (!g_ascii_strncasecmp(location, "sim", 3)) {
 		tmp = g_ascii_strup(location, 4);
 		path = g_build_filename(tmp, "telecom/pb.vcf", NULL);
 		g_free(tmp);

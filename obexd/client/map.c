@@ -1054,11 +1054,11 @@ static GObexApparam *parse_filter_type(GObexApparam *apparam,
 		dbus_message_iter_get_basic(&array, &string);
 
 		if (!g_ascii_strcasecmp(string, "sms"))
-			types |= 0x03; /* SMS_GSM and SMS_CDMA */
+			types |= 0x03; /* sms-gsm and sms-cdma */
 		else if (!g_ascii_strcasecmp(string, "email"))
-			types |= 0x04; /* EMAIL */
+			types |= 0x04; /* email */
 		else if (!g_ascii_strcasecmp(string, "mms"))
-			types |= 0x08; /* MMS */
+			types |= 0x08; /* mms */
 		else
 			return NULL;
 	}

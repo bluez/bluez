@@ -184,12 +184,12 @@ static gchar *build_phonebook_path(const char *location, const char *item)
 {
 	gchar *path = NULL, *tmp, *tmp1;
 
-	if (!g_ascii_strcasecmp(location, "INT") ||
-			!g_ascii_strcasecmp(location, "INTERNAL"))
+	if (!g_ascii_strcasecmp(location, "int") ||
+			!g_ascii_strcasecmp(location, "internal"))
 		path = g_strdup("/telecom");
-	else if (!g_ascii_strncasecmp(location, "SIM", 3)) {
+	else if (!g_ascii_strncasecmp(location, "sim", 3)) {
 		if (strlen(location) == 3)
-			tmp = g_strdup("SIM1");
+			tmp = g_strdup("sim1");
 		else
 			tmp = g_ascii_strup(location, 4);
 
@@ -198,11 +198,11 @@ static gchar *build_phonebook_path(const char *location, const char *item)
 	} else
 		return NULL;
 
-	if (!g_ascii_strcasecmp(item, "PB") ||
-		!g_ascii_strcasecmp(item, "ICH") ||
-		!g_ascii_strcasecmp(item, "OCH") ||
-		!g_ascii_strcasecmp(item, "MCH") ||
-		!g_ascii_strcasecmp(item, "CCH")) {
+	if (!g_ascii_strcasecmp(item, "pb") ||
+		!g_ascii_strcasecmp(item, "ich") ||
+		!g_ascii_strcasecmp(item, "och") ||
+		!g_ascii_strcasecmp(item, "mch") ||
+		!g_ascii_strcasecmp(item, "cch")) {
 		tmp = path;
 		tmp1 = g_ascii_strdown(item, -1);
 		path = g_build_filename(tmp, tmp1, NULL);
