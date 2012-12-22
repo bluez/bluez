@@ -24,7 +24,7 @@ All files are in ini-file format.
 Storage directory structure
 ===========================
 
-There is one directory per adapter, named by its bluetooth address, which
+There is one directory per adapter, named by its Bluetooth address, which
 contains:
  - a settings file for the local adapter
  - an attributes file containing attributes of supported LE services
@@ -55,6 +55,7 @@ So the directory structure is:
             ./attributes
         ...
 
+
 Settings file format
 ====================
 
@@ -64,8 +65,6 @@ Settings file contains one [General] group with adapter info like:
 					this adapter
 
   Discoverable		Boolean		Discoverability of the adapter
-
-  Connectable		Boolean		Connectability of the adapter
 
   Pairable		Boolean		Can the adapter accept pairing
 					request ?
@@ -86,9 +85,9 @@ Sample:
   [General]
   Name=My PC
   Discoverable=false
-  Connectable=true
   Pairable=true
   DiscoverableTimeout=0
+
 
 Attributes file format
 ======================
@@ -120,6 +119,7 @@ Sample:
   UUID=00002a00-0000-1000-8000-00805f9b34fb
   Value=4578616D706C6520446576696365
 
+
 CCC file format
 ======================
 
@@ -133,6 +133,7 @@ Each group contains:
 
   Value			String		CCC descriptor value encoded in
 					hexadecimal
+
 
 Cache directory file format
 ============================
@@ -153,6 +154,7 @@ In ServiceRecords, SDP records are stored using their handle as key
 
   <0x...>	String		SDP record as hexadecimal encoded
 				string
+
 
 Info file format
 ================
