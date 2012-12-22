@@ -112,28 +112,30 @@ static int fifo_open(void)
 
 int suspend_init(suspend_event suspend, resume_event resume)
 {
+	struct stat st;
 	int ret;
+
+	DBG("");
 
 	suspend_cb = suspend;
 	resume_cb = resume;
 
+	if (stat(HOG_SUSPEND_FIFO, &st) == 0) {
+		if (!S_ISFIFO(st.st_mode)) {
+			error("Unexpected non-FIFO %s file", HOG_SUSPEND_FIFO);
+			return -EIO;
+		}
+
+		if (unlink(HOG_SUSPEND_FIFO) < 0) {
+			int err = -errno;
+			error("Failed to remove FIFO (%s): %s (%d)",
+				HOG_SUSPEND_FIFO, strerror(-err), -err);
+			return err;
+		}
+	}
+
 	if (mkfifo(HOG_SUSPEND_FIFO, S_IRUSR | S_IWUSR) < 0) {
 		int err = -errno;
-
-		if (err == -EEXIST) {
-			DBG("FIFO (%s) already exists, trying to remove",
-							HOG_SUSPEND_FIFO);
-
-			/* remove pre-existing FIFO and retry */
-			if (unlink(HOG_SUSPEND_FIFO) < 0) {
-				err = -errno;
-				error("Failed to remove FIFO (%s): %s (%d)",
-					HOG_SUSPEND_FIFO, strerror(-err), -err);
-				return err;
-			}
-
-			return suspend_init(suspend, resume);
-		}
 
 		error("Can't create FIFO (%s): %s (%d)", HOG_SUSPEND_FIFO,
 							strerror(-err), -err);
