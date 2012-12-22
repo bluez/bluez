@@ -640,6 +640,9 @@ static gboolean dev_property_exists_vendor(const GDBusPropertyTable *property,
 {
 	struct btd_device *device = data;
 
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
+
 	return !!device->vendor;
 }
 
@@ -647,6 +650,9 @@ static gboolean dev_property_get_vendor(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
+
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
 
 	if (!device->vendor)
 		return FALSE;
@@ -661,19 +667,31 @@ static gboolean dev_property_exists_vendor_src(
 {
 	struct btd_device *device = data;
 
-	return !!device->vendor_src;
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
+
+	return TRUE;
 }
 
 static gboolean dev_property_get_vendor_src(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
+	const char *str;
 
-	if (!device->vendor_src)
+	switch (device->vendor_src) {
+	case 1:
+		str = "bluetooth";
+		break;
+	case 2:
+		str = "usb";
+		break;
+	default:
 		return FALSE;
+	}
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-							&device->vendor_src);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
+
 	return TRUE;
 }
 
@@ -682,6 +700,9 @@ static gboolean dev_property_exists_product(const GDBusPropertyTable *property,
 {
 	struct btd_device *device = data;
 
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
+
 	return !!device->product;
 }
 
@@ -689,6 +710,9 @@ static gboolean dev_property_get_product(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
+
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
 
 	if (!device->product)
 		return FALSE;
@@ -704,6 +728,9 @@ static gboolean dev_property_exists_version(const GDBusPropertyTable *property,
 {
 	struct btd_device *device = data;
 
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
+
 	return !!device->version;
 }
 
@@ -711,6 +738,9 @@ static gboolean dev_property_get_version(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_device *device = data;
+
+	if (device->vendor_src < 1 || device->vendor_src > 2)
+		return FALSE;
 
 	if (!device->version)
 		return FALSE;
@@ -1601,7 +1631,7 @@ static const GDBusPropertyTable device_properties[] = {
 					dev_property_exists_icon },
 	{ "Vendor", "q", dev_property_get_vendor, NULL,
 					dev_property_exists_vendor },
-	{ "VendorSource", "q", dev_property_get_vendor_src, NULL,
+	{ "VendorSource", "s", dev_property_get_vendor_src, NULL,
 					dev_property_exists_vendor_src },
 	{ "Product", "q", dev_property_get_product, NULL,
 					dev_property_exists_product },
