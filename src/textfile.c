@@ -77,9 +77,7 @@ int create_file(const char *filename, const mode_t mode)
 {
 	int fd;
 
-	umask(S_IWGRP | S_IWOTH);
-	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR |
-					S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	create_dirs(filename, S_IRUSR | S_IWUSR | S_IXUSR);
 
 	fd = open(filename, O_RDWR | O_CREAT, mode);
 	if (fd < 0)
