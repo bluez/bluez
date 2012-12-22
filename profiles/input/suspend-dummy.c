@@ -146,7 +146,7 @@ int suspend_init(suspend_event suspend, resume_event resume)
 
 	ret = fifo_open();
 	if (ret < 0)
-		remove(HOG_SUSPEND_FIFO);
+		unlink(HOG_SUSPEND_FIFO);
 
 	return ret;
 }
