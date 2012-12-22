@@ -103,7 +103,7 @@ static void write_proximity_config(struct btd_device *device, const char *alert,
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
