@@ -130,6 +130,7 @@ static void print_iter(const char *label, const char *name,
 {
 	dbus_bool_t valbool;
 	dbus_uint32_t valu32;
+	dbus_uint16_t valu16;
 	dbus_int16_t vals16;
 	const char *valstr;
 
@@ -155,6 +156,10 @@ static void print_iter(const char *label, const char *name,
 	case DBUS_TYPE_UINT32:
 		dbus_message_iter_get_basic(iter, &valu32);
 		rl_printf("%s%s: 0x%06x\n", label, name, valu32);
+		break;
+	case DBUS_TYPE_UINT16:
+		dbus_message_iter_get_basic(iter, &valu16);
+		rl_printf("%s%s: 0x%04x\n", label, name, valu16);
 		break;
 	case DBUS_TYPE_INT16:
 		dbus_message_iter_get_basic(iter, &vals16);
