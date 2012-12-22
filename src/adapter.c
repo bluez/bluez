@@ -2972,8 +2972,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 
 void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
 {
-	struct DBusConnection *conn = btd_get_dbus_connection();
-
 	if (adapter->connectable == connectable)
 		return;
 
@@ -2986,8 +2984,6 @@ void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
 	}
 
 	adapter->connectable = connectable;
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-								"Connectable");
 
 	store_adapter_info(adapter);
 }
