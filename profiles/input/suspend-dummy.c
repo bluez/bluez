@@ -124,6 +124,8 @@ int suspend_init(suspend_event suspend, resume_event resume)
 		return err;
 	}
 
+	DBG("Created suspend-dummy FIFO on %s", HOG_SUSPEND_FIFO);
+
 	ret = fifo_open();
 	if (ret < 0)
 		remove(HOG_SUSPEND_FIFO);
