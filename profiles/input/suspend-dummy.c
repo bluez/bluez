@@ -117,7 +117,7 @@ int suspend_init(suspend_event suspend, resume_event resume)
 	suspend_cb = suspend;
 	resume_cb = resume;
 
-	if (mkfifo(HOG_SUSPEND_FIFO, S_IRWXU) < 0) {
+	if (mkfifo(HOG_SUSPEND_FIFO, S_IRUSR | S_IWUSR) < 0) {
 		int err = -errno;
 
 		if (err == -EEXIST) {
