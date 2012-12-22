@@ -220,7 +220,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
 	filename[PATH_MAX] = '\0';
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	str = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(filename, str, length, NULL);
@@ -242,7 +242,7 @@ void adapter_store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
 	ba2str(peer, d_addr);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
 	filename[PATH_MAX] = '\0';
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -1963,7 +1963,7 @@ static void convert_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2069,7 +2069,7 @@ static void store_sdp_record(char *local, char *peer, int handle, char *value)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2144,7 +2144,7 @@ static void convert_sdp_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2211,7 +2211,7 @@ static void convert_primaries_entry(char *key, char *value, void *user_data)
 	if (length == 0)
 		goto end;
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 	g_file_set_contents(filename, data, length, NULL);
 
 	if (device_type < 0)
@@ -2229,7 +2229,7 @@ static void convert_primaries_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2281,7 +2281,7 @@ static void convert_ccc_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2331,7 +2331,7 @@ static void convert_gatt_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2379,7 +2379,7 @@ static void convert_proximity_entry(char *key, char *value, void *user_data)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2549,7 +2549,7 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 					mode == MODE_DISCOVERABLE);
 	}
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(filename, data, length, NULL);

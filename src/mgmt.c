@@ -443,7 +443,7 @@ static void store_link_key(struct btd_adapter *adapter,
 	g_key_file_set_integer(key_file, "LinkKey", "Type", type);
 	g_key_file_set_integer(key_file, "LinkKey", "PINLength", pin_length);
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	str = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(filename, str, length, NULL);
@@ -1989,7 +1989,7 @@ static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 
 	g_key_file_set_string(key_file, "LongTermKey", "Rand", rand_str);
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	str = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(filename, str, length, NULL);

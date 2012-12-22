@@ -310,7 +310,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 		g_key_file_remove_group(key_file, "DeviceID", NULL);
 	}
 
-	create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	create_file(filename, S_IRUSR | S_IWUSR);
 
 	str = g_key_file_to_data(key_file, &length, NULL);
 	g_file_set_contents(filename, str, length, NULL);
@@ -2234,8 +2234,7 @@ static void device_remove_stored(struct btd_device *device)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR |
-					S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
@@ -2695,8 +2694,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	if (sdp_key_file) {
 		data = g_key_file_to_data(sdp_key_file, &length, NULL);
 		if (length > 0) {
-			create_file(sdp_file, S_IRUSR | S_IWUSR |
-						S_IRGRP | S_IROTH);
+			create_file(sdp_file, S_IRUSR | S_IWUSR);
 			g_file_set_contents(sdp_file, data, length, NULL);
 		}
 
@@ -2707,8 +2705,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	if (att_key_file) {
 		data = g_key_file_to_data(att_key_file, &length, NULL);
 		if (length > 0) {
-			create_file(att_file, S_IRUSR | S_IWUSR |
-						S_IRGRP | S_IROTH);
+			create_file(att_file, S_IRUSR | S_IWUSR);
 			g_file_set_contents(att_file, data, length, NULL);
 		}
 
@@ -2966,7 +2963,7 @@ static void store_services(struct btd_device *device)
 
 	data = g_key_file_to_data(key_file, &length, NULL);
 	if (length > 0) {
-		create_file(filename, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+		create_file(filename, S_IRUSR | S_IWUSR);
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
