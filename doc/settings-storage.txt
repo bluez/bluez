@@ -4,18 +4,22 @@ BlueZ settings storage
 Purpose
 =======
 
-The purpose of this document is to describe the directory structure of BlueZ
-settings storage. In effect, this document will serve as the primary, up to
-date source of BlueZ storage information.  It is intended for developers,
-managers and users needing to understand the storage directory.
+The purpose of this document is to describe the directory structure of
+BlueZ settings storage. In effect, this document will serve as the primary,
+up to date source of BlueZ storage information.
+
+It is intended as reference for developers. Direct access to the storage
+outside from bluetoothd is highly discouraged.
 
 Adapter and remote device info are read form the storage during object
-initialization.
-Write to storage is performed immediately on every value change.
+initialization. Write to storage is performed immediately on every value
+change.
 
-Default storage directory is /var/lib/bluetooth.
+Default storage directory is /var/lib/bluetooth. This can be adjusted
+by the --localstatedir configure switch. Default is --localstatedir=/var.
 
 All files are in ini-file format.
+
 
 Storage directory structure
 ===========================
