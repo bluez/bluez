@@ -307,9 +307,9 @@ Methods		void Select(string location, string phonebook)
 
 			location : Where the phonebook is stored, possible
 			inputs :
-				"INT" ( "INTERNAL" which is default )
-				"SIM" ( "SIM1" )
-				"SIM2"
+				"int" ( "internal" which is default )
+				"sim" ( "sim1" )
+				"sim2"
 				...
 
 			phonebook : Possible inputs :
@@ -458,9 +458,9 @@ Methods		void SetLocation(string location)
 
 			location: Where the phonebook is stored, possible
 			values:
-				"INT" ( "INTERNAL" which is default )
-				"SIM1"
-				"SIM2"
+				"int" ( "internal" which is default )
+				"sim1"
+				"sim2"
 				......
 
 			Possible errors: org.bluez.obex.Error.InvalidArguments
@@ -580,8 +580,8 @@ Methods		void SetFolder(string name)
 
 					Message type
 
-					Possible values: "EMAIL", "SMS_GSM",
-					"SMS_CDMA" and "MMS"
+					Possible values: "email", "sms-gsm",
+					"sms-cdma" and "mms"
 
 				uint64 Size:
 
@@ -728,8 +728,8 @@ Properties	string Subject [readonly]
 
 			Message type
 
-			Possible values: "EMAIL", "SMS_GSM",
-			"SMS_CDMA" and "MMS"
+			Possible values: "email", "sms-gsm",
+			"sms-cdma" and "mms"
 
 		uint64 Size [readonly]
 
