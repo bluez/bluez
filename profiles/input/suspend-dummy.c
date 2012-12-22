@@ -119,6 +119,22 @@ int suspend_init(suspend_event suspend, resume_event resume)
 
 	if (mkfifo(HOG_SUSPEND_FIFO, S_IRWXU) < 0) {
 		int err = -errno;
+
+		if (err == -EEXIST) {
+			DBG("FIFO (%s) already exists, trying to remove",
+							HOG_SUSPEND_FIFO);
+
+			/* remove pre-existing FIFO and retry */
+			if (remove(HOG_SUSPEND_FIFO) < 0) {
+				err = -errno;
+				error("Failed to remove FIFO (%s): %s (%d)",
+					HOG_SUSPEND_FIFO, strerror(-err), -err);
+				return err;
+			}
+
+			return suspend_init(suspend, resume);
+		}
+
 		error("Can't create FIFO (%s): %s (%d)", HOG_SUSPEND_FIFO,
 							strerror(-err), -err);
 		return err;
