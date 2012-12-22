@@ -368,7 +368,7 @@ static void cmd_list(const char *arg)
 	}
 }
 
-static void cmd_info(const char *arg)
+static void cmd_show(const char *arg)
 {
 	GDBusProxy *proxy;
 	DBusMessageIter iter, value;
@@ -620,6 +620,59 @@ static void cmd_scan(const char *arg)
 	}
 }
 
+static void cmd_info(const char *arg)
+{
+	GDBusProxy *proxy;
+	DBusMessageIter iter, value;
+	const char *address;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		rl_printf("Device %s not available\n", arg);
+		return;
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "Address", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &address);
+	rl_printf("Device %s\n", address);
+
+	print_property(proxy, "Name");
+	print_property(proxy, "Class");
+	print_property(proxy, "Appearance");
+	print_property(proxy, "Icon");
+	print_property(proxy, "Paired");
+	print_property(proxy, "Trusted");
+	print_property(proxy, "Blocked");
+	print_property(proxy, "Connected");
+	print_property(proxy, "LegacyPairing");
+
+	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&iter, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
+		const char *str;
+		dbus_message_iter_get_basic(&value, &str);
+		rl_printf("\tUUID: %s\n", str);
+		dbus_message_iter_next(&value);
+	}
+
+done:
+	print_property(proxy, "VendorSource");
+	print_property(proxy, "Vendor");
+	print_property(proxy, "Product");
+	print_property(proxy, "Version");
+	print_property(proxy, "Alias");
+}
+
 static void pair_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -850,7 +903,7 @@ static const struct {
 	void (*disp) (char **matches, int num_matches, int max_length);
 } cmd_table[] = {
 	{ "list",         NULL,       cmd_list, "List available controllers" },
-	{ "info",         "[ctrl]",   cmd_info, "Controller information",
+	{ "show",         "[ctrl]",   cmd_show, "Controller information",
 							ctrl_generator },
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
@@ -864,6 +917,8 @@ static const struct {
 	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
 	{ "default-agent",NULL,       cmd_default_agent },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
+	{ "info",         "<dev>",    cmd_info, "Device information",
+							dev_generator },
 	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
 							dev_generator },
 	{ "remove",       "<dev>",    cmd_remove, "Remove device",
