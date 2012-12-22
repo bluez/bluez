@@ -158,5 +158,5 @@ void suspend_exit(void)
 		watch = 0;
 	}
 
-	remove(HOG_SUSPEND_FIFO);
+	unlink(HOG_SUSPEND_FIFO);
 }
