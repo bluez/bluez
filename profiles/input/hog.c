@@ -885,7 +885,8 @@ static int hog_init(void)
 
 	err = suspend_init(suspend_callback, resume_callback);
 	if (err < 0)
-		DBG("Suspend: %s(%d)", strerror(-err), -err);
+		error("Loading suspend plugin failed: %s (%d)", strerror(-err),
+									-err);
 	else
 		suspend_supported = TRUE;
 
