@@ -298,6 +298,7 @@ struct media_player *media_player_controller_create(const char *path)
 							g_free, g_free);
 	mp->progress = g_timer_new();
 
+#if 0
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					mp->path, MEDIA_PLAYER_INTERFACE,
 					media_player_methods,
@@ -307,7 +308,7 @@ struct media_player *media_player_controller_create(const char *path)
 		media_player_destroy(mp);
 		return NULL;
 	}
-
+#endif
 	DBG("%s", mp->path);
 
 	return mp;
@@ -409,6 +410,7 @@ void media_player_set_status(struct media_player *mp, const char *status)
 
 static gboolean process_metadata_changed(void *user_data)
 {
+#if 0
 	struct media_player *mp = user_data;
 	DBusMessage *signal;
 	DBusMessageIter iter, dict;
@@ -437,7 +439,7 @@ static gboolean process_metadata_changed(void *user_data)
 	dbus_message_iter_close_container(&iter, &dict);
 
 	g_dbus_send_message(btd_get_dbus_connection(), signal);
-
+#endif
 	return FALSE;
 }
 

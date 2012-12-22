@@ -868,6 +868,7 @@ static DBusMessage *unregister_endpoint(DBusConnection *conn, DBusMessage *msg,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+#if 0
 static struct media_player *media_adapter_find_player(
 						struct media_adapter *adapter,
 						const char *sender,
@@ -1532,6 +1533,7 @@ static DBusMessage *unregister_player(DBusConnection *conn, DBusMessage *msg,
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
+#endif
 
 static const GDBusMethodTable media_methods[] = {
 	{ GDBUS_METHOD("RegisterEndpoint",
@@ -1539,12 +1541,14 @@ static const GDBusMethodTable media_methods[] = {
 		NULL, register_endpoint) },
 	{ GDBUS_METHOD("UnregisterEndpoint",
 		GDBUS_ARGS({ "endpoint", "o" }), NULL, unregister_endpoint) },
+#if 0
 	{ GDBUS_METHOD("RegisterPlayer",
 		GDBUS_ARGS({ "player", "o" }, { "properties", "a{sv}" },
 						{ "metadata", "a{sv}" }),
 		NULL, register_player) },
 	{ GDBUS_METHOD("UnregisterPlayer",
 		GDBUS_ARGS({ "player", "o" }), NULL, unregister_player) },
+#endif
 	{ },
 };
 
@@ -1555,8 +1559,10 @@ static void path_free(void *data)
 	while (adapter->endpoints)
 		release_endpoint(adapter->endpoints->data);
 
+#if 0
 	while (adapter->players)
 		media_player_destroy(adapter->players->data);
+#endif
 
 	adapters = g_slist_remove(adapters, adapter);
 
