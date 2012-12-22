@@ -2231,6 +2231,17 @@ fail:
 
 void mgmt_cleanup(void)
 {
+	int index;
+
+	for (index = 0; index <= max_index; index++) {
+		struct controller_info *info = &controllers[index];
+
+		if (!info->valid)
+			continue;
+
+		g_slist_free_full(info->pending_uuids, g_free);
+	}
+
 	g_free(controllers);
 	controllers = NULL;
 	max_index = -1;
