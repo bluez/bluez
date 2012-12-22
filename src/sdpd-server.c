@@ -147,7 +147,7 @@ static int init_server(uint16_t mtu, int master, int compat)
 		return -1;
 	}
 
-	chmod(SDP_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH);
+	chmod(SDP_UNIX_PATH, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
 	return 0;
 }
