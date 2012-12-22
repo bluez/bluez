@@ -119,7 +119,7 @@ int suspend_init(suspend_event suspend, resume_event resume)
 
 	if (mkfifo(HOG_SUSPEND_FIFO, S_IRWXU) < 0) {
 		int err = -errno;
-		error("Can't create FIFO (%s) : %s(%d)", HOG_SUSPEND_FIFO,
+		error("Can't create FIFO (%s): %s (%d)", HOG_SUSPEND_FIFO,
 							strerror(-err), -err);
 		return err;
 	}
