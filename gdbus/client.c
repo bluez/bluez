@@ -1008,7 +1008,8 @@ GDBusClient *g_dbus_client_new(DBusConnection *connection,
 
 	get_name_owner(client, client->service_name);
 
-	client->match_rules = g_ptr_array_new_full(4, g_free);
+	client->match_rules = g_ptr_array_sized_new(4);
+	g_ptr_array_set_free_func(client->match_rules, g_free);
 
 	g_ptr_array_add(client->match_rules, g_strdup_printf("type='signal',"
 				"sender='%s',path='%s',interface='%s',"
