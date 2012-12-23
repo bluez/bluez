@@ -678,7 +678,19 @@ static int uuid_cmp(const void *a, const void *b)
 void adapter_service_insert(struct btd_adapter *adapter, void *r)
 {
 	sdp_record_t *rec = r;
+	sdp_list_t *browse_list = NULL;
+	uuid_t browse_uuid;
 	gboolean new_uuid;
+
+	/* skip record without a browse group */
+	if (sdp_get_browse_groups(rec, &browse_list) < 0)
+		return;
+
+	sdp_uuid16_create(&browse_uuid, PUBLIC_BROWSE_GROUP);
+
+	/* skip record without public browse group */
+	if (!sdp_list_find(browse_list, &browse_uuid, sdp_uuid_cmp))
+		goto done;
 
 	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp) == NULL)
 		new_uuid = TRUE;
@@ -696,6 +708,9 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 	if (adapter->initialized)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+
+done:
+	sdp_list_free(browse_list, NULL);
 }
 
 void adapter_service_remove(struct btd_adapter *adapter, void *r)
