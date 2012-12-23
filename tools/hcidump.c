@@ -39,9 +39,6 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 
-#include <arpa/inet.h>
-#include <netdb.h>
-
 #include "parser/parser.h"
 #include "parser/sdp.h"
 
@@ -49,14 +46,12 @@
 #include "lib/hci_lib.h"
 
 #define SNAP_LEN	HCI_MAX_FRAME_SIZE
-#define DEFAULT_PORT   "10839"
 
 /* Modes */
 enum {
 	PARSE,
 	READ,
 	WRITE,
-	SERVER,
 	PPPDUMP,
 	AUDIO
 };
@@ -68,9 +63,6 @@ static int  permcheck = 1;
 static char *dump_file = NULL;
 static char *pppdump_file = NULL;
 static char *audio_file = NULL;
-static char *dump_addr;
-static char *dump_port = DEFAULT_PORT;
-static int af = AF_UNSPEC;
 
 struct hcidump_hdr {
 	uint16_t	len;
@@ -192,36 +184,6 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 
 	memset(&msg, 0, sizeof(msg));
 
-	if (mode == SERVER) {
-		struct btsnoop_hdr *hdr = (void *) buf;
-
-		btsnoop_version = 1;
-		btsnoop_type = 1002;
-
-		memcpy(hdr->id, btsnoop_id, sizeof(btsnoop_id));
-		hdr->version = htonl(btsnoop_version);
-		hdr->type = htonl(btsnoop_type);
-
-		printf("btsnoop version: %d datalink type: %d\n",
-						btsnoop_version, btsnoop_type);
-
-		len = write(fd, buf, BTSNOOP_HDR_SIZE);
-		if (len < 0) {
-			perror("Can't create dump header");
-			return -1;
-		}
-
-		if (len != BTSNOOP_HDR_SIZE) {
-			fprintf(stderr, "Header size mismatch\n");
-			return -1;
-		}
-
-		fds[nfds].fd = fd;
-		fds[nfds].events = POLLIN;
-		fds[nfds].revents = 0;
-		nfds++;
-	}
-
 	fds[nfds].fd = sock;
 	fds[nfds].events = POLLIN;
 	fds[nfds].revents = 0;
@@ -239,18 +201,6 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 				else
 					printf("client: disconnect\n");
 				return 0;
-			}
-		}
-
-		if (mode == SERVER) {
-			len = recv(fd, buf, snap_len, MSG_DONTWAIT);
-			if (len == 0) {
-				printf("client: disconnect\n");
-				return 0;
-			}
-			if (len < 0 && errno != EAGAIN && errno != EINTR) {
-				perror("Connection read failure");
-				return -1;
 			}
 		}
 
@@ -298,7 +248,6 @@ static int process_frames(int dev, int sock, int fd, unsigned long flags)
 
 		switch (mode) {
 		case WRITE:
-		case SERVER:
 			/* Save or send dump */
 			if (flags & DUMP_BTSNOOP) {
 				uint64_t ts;
@@ -632,207 +581,12 @@ static int open_socket(int dev, unsigned long flags)
 	addr.hci_family = AF_BLUETOOTH;
 	addr.hci_dev = dev;
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		printf("Can't attach to device hci%d. %s(%d)\n", 
+		printf("Can't attach to device hci%d. %s(%d)\n",
 					dev, strerror(errno), errno);
 		return -1;
 	}
 
 	return sk;
-}
-
-static int create_datagram(unsigned short port)
-{
-	struct sockaddr_in addr;
-	int sk, opt = 1;
-
-	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (sk < 0)
-		return -1;
-
-	if (setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = htonl(INADDR_BROADCAST);
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	return sk;
-}
-
-static unsigned char ping_data[] = { 'p', 'i', 'n', 'g' };
-static unsigned char pong_data[] = { 'p', 'o', 'n', 'g' };
-
-static void handle_datagram(int sk)
-{
-	struct sockaddr_in addr;
-	socklen_t addr_len = sizeof(addr);
-	unsigned char buf[64];
-	ssize_t len;
-
-	len = recvfrom(sk, buf, sizeof(buf), MSG_DONTWAIT,
-				(struct sockaddr *) &addr, &addr_len);
-
-	if (len != sizeof(ping_data))
-		return;
-
-	if (memcmp(buf, ping_data, sizeof(ping_data)) != 0)
-		return;
-
-	len = sendto(sk, pong_data, sizeof(pong_data), 0,
-				(struct sockaddr *) &addr, sizeof(addr));
-}
-
-static int wait_connection(char *addr, char *port)
-{
-	char hname[100], hport[10];
-	struct addrinfo *ai, *runp;
-	struct addrinfo hints;
-	struct pollfd fds[3];
-	unsigned int nfds = 0;
-	int err, opt, datagram;
-
-	memset(&hints, 0, sizeof (hints));
-	hints.ai_flags = AI_PASSIVE | AI_ADDRCONFIG;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_protocol = IPPROTO_TCP;
-
-	err = getaddrinfo(dump_addr, dump_port, &hints, &ai);
-	if (err < 0) {
-		printf("Can't get address info: %s\n", gai_strerror(err));
-		return -1;
-	}
-
-	runp = ai;
-
-	datagram = create_datagram(atoi(dump_port));
-	if (datagram < 0) {
-		printf("server: no discover protocol\n");
-	} else {
-		fds[nfds].fd = datagram;
-		fds[nfds].events = POLLIN;
-		nfds++;
-	}
-
-	while (runp != NULL && nfds < sizeof(fds) / sizeof(fds[0])) {
-		fds[nfds].fd = socket(runp->ai_family, runp->ai_socktype,
-							runp->ai_protocol);
-		if (fds[nfds].fd < 0) {
-			perror("Can't create socket");
-			return -1;
-		}
-
-		fds[nfds].events = POLLIN;
-
-		opt = 1;
-		setsockopt(fds[nfds].fd, SOL_SOCKET, SO_REUSEADDR,
-							&opt, sizeof(opt));
-
-		opt = 0;
-		setsockopt(fds[nfds].fd, SOL_SOCKET, SO_KEEPALIVE,
-							&opt, sizeof(opt));
-
-		if (bind(fds[nfds].fd, runp->ai_addr, runp->ai_addrlen) < 0) {
-			if (errno != EADDRINUSE) {
-				perror("Can't bind socket");
-				return -1;
-			}
-
-			close(fds[nfds].fd);
-		} else {
-			if (listen(fds[nfds].fd, SOMAXCONN) < 0) {
-				perror("Can't listen on socket");
-				return -1;
-			}
-
-			getnameinfo(runp->ai_addr, runp->ai_addrlen,
-							hname, sizeof(hname),
-							hport, sizeof(hport),
-							NI_NUMERICSERV);
-
-			printf("server: %s:%s snap_len: %d filter: 0x%lx\n",
-					hname, hport, snap_len, parser.filter);
-
-			nfds++;
-		}
-
-		runp = runp->ai_next;
-	}
-
-	freeaddrinfo(ai);
-
-	while (1) {
-		unsigned int i;
-		int n = poll(fds, nfds, -1);
-		if (n <= 0)
-			continue;
-
-		for (i = 0; i < nfds; i++) {
-			struct sockaddr_storage rem;
-			socklen_t remlen = sizeof(rem);
-			int sk;
-
-			if (!(fds[i].revents & POLLIN))
-				continue;
-
-			if (fds[i].fd == datagram) {
-				handle_datagram(datagram);
-				continue;
-			}
-
-			sk = accept(fds[i].fd, (struct sockaddr *) &rem, &remlen);
-			if (sk < 0)
-				continue;
-
-			getnameinfo((struct sockaddr *) &rem, remlen,
-							hname, sizeof(hname),
-							hport, sizeof(hport),
-							NI_NUMERICSERV);
-
-			printf("client: %s:%s snap_len: %d filter: 0x%lx\n",
-					hname, hport, snap_len, parser.filter);
-
-			for (n = 0; n < (int) nfds; n++)
-				close(fds[n].fd);
-
-			return sk;
-		}
-	}
-
-	return -1;
-}
-
-static int run_server(int dev, char *addr, char *port, unsigned long flags)
-{
-	while (1) {
-		int dd, sk;
-
-		sk = wait_connection(addr, port);
-		if (sk < 0)
-			continue;
-
-		//fcntl(sk, F_SETFL, O_NONBLOCK);
-
-		dd = open_socket(dev, flags);
-		if (dd < 0) {
-			close(sk);
-			continue;
-		}
-
-		process_frames(dev, dd, sk, flags);
-
-		close(dd);
-		close(sk);
-	}
-
-	return 0;
 }
 
 static struct {
@@ -890,7 +644,6 @@ static void usage(void)
 	"  -m, --manufacturer=compid  Default manufacturer\n"
 	"  -w, --save-dump=file       Save dump to a file\n"
 	"  -r, --read-dump=file       Read dump from a file\n"
-	"  -d, --wait-dump=host       Wait on a host and send\n"
 	"  -t, --ts                   Display time stamps\n"
 	"  -a, --ascii                Dump data in ascii\n"
 	"  -x, --hex                  Dump data in hex\n"
@@ -904,8 +657,6 @@ static void usage(void)
 	"  -D, --pppdump=file         Extract PPP traffic\n"
 	"  -A, --audio=file           Extract SCO audio data\n"
 	"  -Y, --novendor             No vendor commands or events\n"
-	"  -4, --ipv4                 Use IPv4 as transport\n"
-	"  -6  --ipv6                 Use IPv6 as transport\n"
 	"  -h, --help                 Give this help list\n"
 	"  -v, --version              Give version information\n"
 	"      --usage                Give a short usage message\n"
@@ -919,7 +670,6 @@ static struct option main_options[] = {
 	{ "manufacturer",	1, 0, 'm' },
 	{ "save-dump",		1, 0, 'w' },
 	{ "read-dump",		1, 0, 'r' },
-	{ "wait-dump",		1, 0, 'd' },
 	{ "timestamp",		0, 0, 't' },
 	{ "ascii",		0, 0, 'a' },
 	{ "hex",		0, 0, 'x' },
@@ -934,8 +684,6 @@ static struct option main_options[] = {
 	{ "audio",		1, 0, 'A' },
 	{ "novendor",		0, 0, 'Y' },
 	{ "nopermcheck",	0, 0, 'Z' },
-	{ "ipv4",		0, 0, '4' },
-	{ "ipv6",		0, 0, '6' },
 	{ "help",		0, 0, 'h' },
 	{ "version",		0, 0, 'v' },
 	{ 0 }
@@ -952,7 +700,7 @@ int main(int argc, char *argv[])
 	uint16_t obex_port;
 
 	while ((opt = getopt_long(argc, argv,
-				"i:l:p:m:w:r:d:taxXRC:H:O:P:S:D:A:YZ46hv",
+				"i:l:p:m:w:r:taxXRC:H:O:P:S:D:A:YZhv",
 				main_options, NULL)) != -1) {
 		switch(opt) {
 		case 'i':
@@ -962,11 +710,11 @@ int main(int argc, char *argv[])
 				device = HCI_DEV_NONE;
 			break;
 
-		case 'l': 
+		case 'l':
 			snap_len = atoi(optarg);
 			break;
 
-		case 'p': 
+		case 'p':
 			defpsm = atoi(optarg);
 			break;
 
@@ -984,16 +732,11 @@ int main(int argc, char *argv[])
 			dump_file = strdup(optarg);
 			break;
 
-		case 'd':
-			mode = SERVER;
-			dump_addr = optarg;
-			break;
-
-		case 't': 
+		case 't':
 			flags |= DUMP_TSTAMP;
 			break;
 
-		case 'a': 
+		case 'a':
 			flags |= DUMP_ASCII;
 			break;
 
@@ -1005,11 +748,11 @@ int main(int argc, char *argv[])
 			flags |= DUMP_EXT;
 			break;
 
-		case 'R': 
+		case 'R':
 			flags |= DUMP_RAW;
 			break;
 
-		case 'C': 
+		case 'C':
 			set_proto(0, atoi(optarg), 0, SDP_UUID_CMTP);
 			break;
 
@@ -1049,14 +792,6 @@ int main(int argc, char *argv[])
 			permcheck = 0;
 			break;
 
-		case '4':
-			af = AF_INET;
-			break;
-
-		case '6':
-			af = AF_INET6;
-			break;
-
 		case 'v':
 			printf("%s\n", VERSION);
 			exit(0);
@@ -1090,13 +825,15 @@ int main(int argc, char *argv[])
 	switch (mode) {
 	case PARSE:
 		flags |= DUMP_VERBOSE;
-		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
+		init_parser(flags, filter, defpsm, defcompid,
+							pppdump_fd, audio_fd);
 		process_frames(device, open_socket(device, flags), -1, flags);
 		break;
 
 	case READ:
 		flags |= DUMP_VERBOSE;
-		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
+		init_parser(flags, filter, defpsm, defcompid,
+							pppdump_fd, audio_fd);
 		read_dump(open_file(dump_file, mode, flags));
 		break;
 
@@ -1104,12 +841,6 @@ int main(int argc, char *argv[])
 		flags |= DUMP_BTSNOOP;
 		process_frames(device, open_socket(device, flags),
 				open_file(dump_file, mode, flags), flags);
-		break;
-
-	case SERVER:
-		flags |= DUMP_BTSNOOP;
-		init_parser(flags, filter, defpsm, defcompid, pppdump_fd, audio_fd);
-		run_server(device, dump_addr, dump_port, flags);
 		break;
 	}
 
