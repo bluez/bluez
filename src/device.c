@@ -1163,7 +1163,7 @@ void device_profile_connected(struct btd_device *dev,
 
 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
 
-	if (err)
+	if (err && dev->connected_profiles == NULL)
 		g_dbus_send_message(btd_get_dbus_connection(),
 				btd_error_failed(dev->connect, strerror(-err)));
 	else
