@@ -710,7 +710,7 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 				adapter->path, ADAPTER_INTERFACE, "UUIDs");
 
 done:
-	sdp_list_free(browse_list, NULL);
+	sdp_list_free(browse_list, free);
 }
 
 void adapter_service_remove(struct btd_adapter *adapter, void *r)
