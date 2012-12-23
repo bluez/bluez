@@ -26,6 +26,9 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <string.h>
+
 #include "uuid.h"
 
 static struct {
@@ -158,4 +161,23 @@ const char *uuid32_to_str(uint32_t uuid)
 		return uuid16_to_str(uuid & 0x0000ffff);
 
 	return "Unknown";
+}
+
+const char *uuidstr_to_str(const char *uuid)
+{
+	uint32_t val;
+
+	if (!uuid)
+		return NULL;
+
+	if (strlen(uuid) != 36)
+		return NULL;
+
+	if (strncasecmp(uuid + 8, "-0000-1000-8000-00805f9b34fb", 28))
+		return "Vendor specific";
+
+	if (sscanf(uuid, "%08x-0000-1000-8000-00805f9b34fb", &val) != 1)
+		return NULL;
+
+	return uuid32_to_str(val);
 }

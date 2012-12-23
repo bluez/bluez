@@ -26,3 +26,5 @@
 
 const char *uuid16_to_str(uint16_t uuid);
 const char *uuid32_to_str(uint32_t uuid);
+
+const char *uuidstr_to_str(const char *uuid);
