@@ -54,21 +54,6 @@ Data is not read from a Bluetooth device, but from file
 .I
 file
 is created with option
-.BR -w .
-.TP 
-.BI -s " <host>" "\fR,\fP \-\^\-send-dump=" "<host>"
-Parse output is not printed to screen, instead data read from device is sent to host
-.IR host .
-.TP 
-.BI -n " <host>" "\fR,\fP \-\^\-recv-dump=" "<host>"
-Data is not read from a Bluetooth device, but from host
-.IR host .
-.TP
-.BI -d " <host>" "\fR,\fP \-\^\-wait-dump=" "<host>"
-Data is read from a Bluetooth device, but then send to
-.IR host
-for processing. No data is read if no host is connected.
-.TP
 .BR -t ", " "\-\^\-timestamp"
 Prepend a time stamp to every packet.
 .TP
@@ -104,12 +89,6 @@ Extract SCO audio data.
 .TP
 .BR -Y ", " "\-\^\-novendor"
 Don't display any vendor commands or events and don't show any pin code or link key in plain text.
-.TP
-.BR -4 ", " "\-\^\-ipv4"
-Use IPv4 when sending information over the network
-.TP
-.BR -6 ", " "\-\^\-ipv6"
-Use IPv6 when sending information over the network
 .SH FILTERS
 .B
 filter
