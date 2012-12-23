@@ -703,7 +703,7 @@ static gboolean dev_property_exists_product(const GDBusPropertyTable *property,
 	if (device->vendor_src < 1 || device->vendor_src > 2)
 		return FALSE;
 
-	return !!device->product;
+	return !!device->vendor;
 }
 
 static gboolean dev_property_get_product(const GDBusPropertyTable *property,
@@ -714,7 +714,7 @@ static gboolean dev_property_get_product(const GDBusPropertyTable *property,
 	if (device->vendor_src < 1 || device->vendor_src > 2)
 		return FALSE;
 
-	if (!device->product)
+	if (!device->vendor)
 		return FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
@@ -731,7 +731,7 @@ static gboolean dev_property_exists_version(const GDBusPropertyTable *property,
 	if (device->vendor_src < 1 || device->vendor_src > 2)
 		return FALSE;
 
-	return !!device->version;
+	return !!device->vendor;
 }
 
 static gboolean dev_property_get_version(const GDBusPropertyTable *property,
@@ -742,7 +742,7 @@ static gboolean dev_property_get_version(const GDBusPropertyTable *property,
 	if (device->vendor_src < 1 || device->vendor_src > 2)
 		return FALSE;
 
-	if (!device->version)
+	if (!device->vendor)
 		return FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
