@@ -2146,6 +2146,8 @@ static DBusMessage *register_profile(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
+	DBG("sender %s", sender);
+
 	dbus_message_iter_init(msg, &args);
 
 	dbus_message_iter_get_basic(&args, &path);
@@ -2158,9 +2160,10 @@ static DBusMessage *register_profile(DBusConnection *conn,
 	dbus_message_iter_get_basic(&args, &uuid);
 	dbus_message_iter_next(&args);
 
-	dbus_message_iter_recurse(&args, &opts);
-	if (dbus_message_iter_get_arg_type(&opts) != DBUS_TYPE_DICT_ENTRY)
+	if (dbus_message_iter_get_arg_type(&args) != DBUS_TYPE_ARRAY)
 		return btd_error_invalid_args(msg);
+
+	dbus_message_iter_recurse(&args, &opts);
 
 	ext = create_ext(sender, path, uuid, &opts);
 	if (!ext)
@@ -2179,6 +2182,8 @@ static DBusMessage *unregister_profile(DBusConnection *conn,
 	struct ext_profile *ext;
 
 	sender = dbus_message_get_sender(msg);
+
+	DBG("sender %s", sender);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID))
