@@ -285,11 +285,10 @@ static void init_defaults(void)
 
 static GMainLoop *event_loop;
 
-static unsigned int __terminated = 0;
-
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
+	static unsigned int __terminated = 0;
 	struct signalfd_siginfo si;
 	ssize_t result;
 	int fd;
