@@ -732,6 +732,35 @@ static void cmd_pair(const char *arg)
 	rl_printf("Attempting to pair with %s\n", arg);
 }
 
+static void cmd_trust(const char *arg)
+{
+	GDBusProxy *proxy;
+	dbus_bool_t trusted;
+	char *str;
+
+	if (!arg || !strlen(arg)) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	proxy = find_proxy_by_address(dev_list, arg);
+	if (!proxy) {
+		rl_printf("Device %s not available\n", arg);
+		return;
+	}
+
+	trusted = TRUE;
+
+	str = g_strdup_printf("%s trust", arg);
+
+	if (g_dbus_proxy_set_property_basic(proxy, "Trusted",
+					DBUS_TYPE_BOOLEAN, &trusted,
+					generic_callback, str, g_free) == TRUE)
+		return;
+
+	g_free(str);
+}
+
 static void remove_device_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -940,6 +969,8 @@ static const struct {
 	{ "info",         "<dev>",    cmd_info, "Device information",
 							dev_generator },
 	{ "pair",         "<dev>",    cmd_pair, "Pair with device",
+							dev_generator },
+	{ "trust",        "<dev>",    cmd_trust, "Trust device",
 							dev_generator },
 	{ "remove",       "<dev>",    cmd_remove, "Remove device",
 							dev_generator },
