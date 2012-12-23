@@ -559,6 +559,66 @@ char *bt_compidtostr(int compid)
 		return "Universal Electronics, Inc.";
 	case 148:
 		return "Airoha Technology Corp.";
+	case 149:
+		return "NEC Lighting, Ltd.";
+	case 150:
+		return "ODM Technology, Inc.";
+	case 151:
+		return "Bluetrek Technologies Limited";
+	case 152:
+		return "zero1.tv GmbH";
+	case 153:
+		return "i.Tech Dynamic Global Distribution Ltd.";
+	case 154:
+		return "Alpwise";
+	case 155:
+		return "Jiangsu Toppower Automotive Electronics Co., Ltd.";
+	case 156:
+		return "Colorfy, Inc.";
+	case 157:
+		return "Geoforce Inc.";
+	case 158:
+		return "Bose Corporation";
+	case 159:
+		return "Suunto Oy";
+	case 160:
+		return "Kensington Computer Products Group";
+	case 161:
+		return "SR-Medizinelektronik";
+	case 162:
+		return "Vertu Corporation Limited";
+	case 163:
+		return "Meta Watch Ltd.";
+	case 164:
+		return "LINAK A/S";
+	case 165:
+		return "OTL Dynamics LLC";
+	case 166:
+		return "Panda Ocean Inc.";
+	case 167:
+		return "Visteon Corporation";
+	case 168:
+		return "ARP Devices Limited";
+	case 169:
+		return "Magneti Marelli S.p.A.";
+	case 170:
+		return "CAEN RFID srl";
+	case 171:
+		return "Ingenieur-Systemgruppe Zahn GmbH";
+	case 172:
+		return "Green Throttle Games";
+	case 173:
+		return "Peter Systemtechnik GmbH";
+	case 174:
+		return "Omegawave Oy";
+	case 175:
+		return "Cinetix";
+	case 176:
+		return "Passif Semiconductor Corp";
+	case 177:
+		return "Saris Cycling Group, Inc";
+	case 178:
+		return "Bekey A/S";
 	case 65535:
 		return "internal use";
 	default:
