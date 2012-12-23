@@ -37,6 +37,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
+#include "monitor/uuid.h"
 #include "agent.h"
 #include "display.h"
 
@@ -179,6 +180,46 @@ static void print_property(GDBusProxy *proxy, const char *name)
 		return;
 
 	print_iter("\t", name, &iter);
+}
+
+static void print_uuids(GDBusProxy *proxy)
+{
+	DBusMessageIter iter, value;
+
+	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
+		return;
+
+	dbus_message_iter_recurse(&iter, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
+		const char *uuid, *text;
+
+		dbus_message_iter_get_basic(&value, &uuid);
+
+		text = uuidstr_to_str(uuid);
+		if (text) {
+			char str[26];
+			unsigned int n;
+
+			str[sizeof(str) - 1] = '\0';
+
+			n = snprintf(str, sizeof(str), "%s", text);
+			if (n > sizeof(str) - 1) {
+				str[sizeof(str) - 2] = '.';
+				str[sizeof(str) - 3] = '.';
+				if (str[sizeof(str) - 4] == ' ')
+					str[sizeof(str) - 4] = '.';
+
+				n = sizeof(str) - 1;
+			}
+
+			rl_printf("\tUUID: %s%*c(%s)\n",
+						str, 26 - n, ' ', uuid);
+		} else
+			rl_printf("\tUUID: %*c(%s)\n", 26, ' ', uuid);
+
+		dbus_message_iter_next(&value);
+	}
 }
 
 static gboolean device_is_child(GDBusProxy *device, GDBusProxy *master)
@@ -376,7 +417,7 @@ static void cmd_list(const char *arg)
 static void cmd_show(const char *arg)
 {
 	GDBusProxy *proxy;
-	DBusMessageIter iter, value;
+	DBusMessageIter iter;
 	const char *address;
 
 	if (!arg || !strlen(arg)) {
@@ -403,20 +444,7 @@ static void cmd_show(const char *arg)
 	print_property(proxy, "Powered");
 	print_property(proxy, "Discoverable");
 	print_property(proxy, "Pairable");
-
-	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
-		goto done;
-
-	dbus_message_iter_recurse(&iter, &value);
-
-	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
-		const char *str;
-		dbus_message_iter_get_basic(&value, &str);
-		rl_printf("\tUUID: %s\n", str);
-		dbus_message_iter_next(&value);
-	}
-
-done:
+	print_uuids(proxy);
 	print_property(proxy, "Discovering");
 }
 
@@ -628,7 +656,7 @@ static void cmd_scan(const char *arg)
 static void cmd_info(const char *arg)
 {
 	GDBusProxy *proxy;
-	DBusMessageIter iter, value;
+	DBusMessageIter iter;
 	const char *address;
 
 	if (!arg || !strlen(arg)) {
@@ -657,20 +685,7 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "Blocked");
 	print_property(proxy, "Connected");
 	print_property(proxy, "LegacyPairing");
-
-	if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
-		goto done;
-
-	dbus_message_iter_recurse(&iter, &value);
-
-	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
-		const char *str;
-		dbus_message_iter_get_basic(&value, &str);
-		rl_printf("\tUUID: %s\n", str);
-		dbus_message_iter_next(&value);
-	}
-
-done:
+	print_uuids(proxy);
 	print_property(proxy, "VendorSource");
 	print_property(proxy, "Vendor");
 	print_property(proxy, "Product");
