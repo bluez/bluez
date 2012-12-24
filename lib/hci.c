@@ -817,7 +817,7 @@ int hci_for_each_dev(int flag, int (*func)(int dd, int dev_id, long arg),
 	int dev_id = -1;
 	int i, sk, err = 0;
 
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	sk = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (sk < 0)
 		return -1;
 
@@ -909,7 +909,7 @@ int hci_devinfo(int dev_id, struct hci_dev_info *di)
 {
 	int dd, err, ret;
 
-	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	dd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (dd < 0)
 		return dd;
 
@@ -965,7 +965,7 @@ int hci_inquiry(int dev_id, int len, int nrsp, const uint8_t *lap,
 		}
 	}
 
-	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	dd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (dd < 0)
 		return dd;
 
@@ -1021,7 +1021,7 @@ int hci_open_dev(int dev_id)
 	int dd, err;
 
 	/* Create HCI socket */
-	dd = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
+	dd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC, BTPROTO_HCI);
 	if (dd < 0)
 		return dd;
 

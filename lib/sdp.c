@@ -4536,7 +4536,7 @@ static int sdp_connect_local(sdp_session_t *session)
 {
 	struct sockaddr_un sa;
 
-	session->sock = socket(PF_UNIX, SOCK_STREAM, 0);
+	session->sock = socket(PF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (session->sock < 0)
 		return -1;
 	session->local = 1;
@@ -4553,18 +4553,17 @@ static int sdp_connect_l2cap(const bdaddr_t *src,
 	uint32_t flags = session->flags;
 	struct sockaddr_l2 sa;
 	int sk;
+	int sockflags = SOCK_SEQPACKET | SOCK_CLOEXEC;
 
-	session->sock = socket(PF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_L2CAP);
+	if (flags & SDP_NON_BLOCKING)
+		sockflags |= SOCK_NONBLOCK;
+
+	session->sock = socket(PF_BLUETOOTH, sockflags, BTPROTO_L2CAP);
 	if (session->sock < 0)
 		return -1;
 	session->local = 0;
 
 	sk = session->sock;
-
-	if (flags & SDP_NON_BLOCKING) {
-		long arg = fcntl(sk, F_GETFL, 0);
-		fcntl(sk, F_SETFL, arg | O_NONBLOCK);
-	}
 
 	memset(&sa, 0, sizeof(sa));
 
