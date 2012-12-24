@@ -1,3 +1,15 @@
+ver 5.0:
+	Introduce D-Bus Properties and ObjectManager interfaces.
+	Add support for generic profile interface.
+	Add support for global agent interface.
+	Add support for integrated OBEX daemon.
+	Add support for integrated hcidump utility.
+	Add support for Bluetooth tracing and monitor utility.
+	Add support for Bluetooth command line client utility.
+	Remove support for Handsfree gateway handling.
+	Remove support for GStreamer A2DP and SBC elements.
+	Disable default installation of Bluetooth library.
+
 ver 4.101:
 	Fix issue with missing BlueZ service file.
 	Fix issue with aborting A2DP setup during AVDTP start.
