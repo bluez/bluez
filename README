@@ -79,7 +79,7 @@ For a working system, certain configuration options need to be enabled:
 		that don't require any kind of tracing or debugging
 		capabilities, this options allows to disable it.
 
-		The monitor utility should be place in the main package
+		The monitor utility should be placed in the main package
 		along with the daemons. It is universally useful.
 
 	--disable-client
