@@ -2999,8 +2999,6 @@ void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
 	}
 
 	adapter->connectable = connectable;
-
-	store_adapter_info(adapter);
 }
 
 void adapter_update_discoverable(struct btd_adapter *adapter,
