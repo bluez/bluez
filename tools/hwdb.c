@@ -29,6 +29,15 @@
 
 #include <bluetooth/bluetooth.h>
 
+static const struct {
+	uint16_t vendor;
+	uint16_t product;
+	const char *str;
+} product_table[] = {
+	{ 0x0078, 0x0001, "Nike+ FuelBand"	},
+	{ }
+};
+
 int main(int argc, char *argv[])
 {
 	uint16_t id;
@@ -41,6 +50,7 @@ int main(int argc, char *argv[])
 
 	for (id = 0;; id++) {
 		char *str;
+		int i;
 
 		str = bt_compidtostr(id);
 		if (!str)
@@ -55,6 +65,17 @@ int main(int argc, char *argv[])
 		printf("bluetooth:v%04X*\n", id);
 		printf(" ID_VENDOR_FROM_DATABASE=%s\n", str);
 		printf("\n");
+
+		for (i = 0; product_table[i].str; i++) {
+			if (product_table[i].vendor != id)
+				continue;
+
+			printf("bluetooth:v%04Xp%04X*\n",
+						id, product_table[i].product);
+			printf(" ID_PRODUCT_FROM_DATABASE=%s\n",
+							product_table[i].str);
+			printf("\n");
+		}
 	}
 
 	return 0;
