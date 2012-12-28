@@ -1511,6 +1511,15 @@ gboolean g_dbus_send_message(DBusConnection *connection, DBusMessage *message)
 
 	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_METHOD_CALL)
 		dbus_message_set_no_reply(message, TRUE);
+	else if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_SIGNAL) {
+		const char *path = dbus_message_get_path(message);
+		const char *interface = dbus_message_get_interface(message);
+		const char *name = dbus_message_get_member(message);
+		const GDBusArgInfo *args;
+
+		if (!check_signal(connection, path, interface, name, &args))
+			return FALSE;
+	}
 
 	result = dbus_connection_send(connection, message, NULL);
 
