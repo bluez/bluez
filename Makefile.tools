@@ -181,6 +181,13 @@ tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 tools_obex_server_tool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 endif
 
+if EXPERIMENTAL
+noinst_PROGRAMS += profiles/iap/iapd
+
+profiles_iap_iapd_SOURCES = $(gdbus_sources) profiles/iap/main.c
+profiles_iap_iapd_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+endif
+
 if CUPS
 cupsdir = $(libdir)/cups/backend
 
