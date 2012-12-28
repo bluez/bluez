@@ -433,9 +433,15 @@ static void print_config_options(const struct l2cap_frame *frame,
 
 		print_field("Option: %s (0x%2.2x)", str, type);
 
+		if (expect_len == 0) {
+			consumed += 2;
+			break;
+		}
+
 		if (len != expect_len) {
 			print_text(COLOR_ERROR, "wrong option size (%d != %d)",
 							len, expect_len);
+			consumed += 2;
 			break;
 		}
 
