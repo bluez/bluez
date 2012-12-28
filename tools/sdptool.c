@@ -3291,6 +3291,9 @@ static unsigned char ngage_uuid[] = {	0x00, 0x00, 0x13, 0x01, 0x00, 0x00, 0x10, 
 static unsigned char apple_uuid[] = {	0xf0, 0x72, 0x2e, 0x20, 0x0f, 0x8b, 0x4e, 0x90,
 					0x8c, 0xc2, 0x1b, 0x46, 0xf5, 0xf2, 0xef, 0xe2 };
 
+static unsigned char iap_uuid[] = {	0x00, 0x00, 0x00, 0x00, 0xde, 0xca, 0xfa, 0xde,
+					0xde, 0xca, 0xde, 0xaf, 0xde, 0xca, 0xca, 0xfe };
+
 static int add_apple(sdp_session_t *session, svc_info_t *si)
 {
 	sdp_record_t record;
@@ -3544,6 +3547,7 @@ struct {
 	{ "NSYNCML",	0,				NULL,		nsyncml_uuid	},
 	{ "NGAGE",	0,				NULL,		ngage_uuid	},
 	{ "APPLE",	0,				add_apple,	apple_uuid	},
+	{ "IAP",	0,				NULL,		iap_uuid	},
 
 	{ "ISYNC",	APPLE_AGENT_SVCLASS_ID,		add_isync,	},
 	{ "GATT",	GENERIC_ATTRIB_SVCLASS_ID,	add_gatt,	},
