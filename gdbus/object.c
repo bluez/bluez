@@ -84,6 +84,7 @@ struct property_data {
 	DBusMessage *message;
 };
 
+static int global_flags = 0;
 static struct generic_data *root;
 
 static gboolean process_changes(gpointer user_data);
@@ -129,6 +130,12 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 						G_DBUS_METHOD_FLAG_DEPRECATED;
 		gboolean noreply = method->flags &
 						G_DBUS_METHOD_FLAG_NOREPLY;
+		gboolean experimental = method->flags &
+					G_DBUS_METHOD_FLAG_EXPERIMENTAL;
+
+		if (!(global_flags & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) &&
+							experimental)
+			continue;
 
 		if (!deprecated && !noreply &&
 				!(method->in_args && method->in_args->name) &&
@@ -1022,9 +1029,18 @@ static DBusHandlerResult generic_message(DBusConnection *connection,
 
 	for (method = iface->methods; method &&
 			method->name && method->function; method++) {
+		gboolean experimental = method->flags &
+					G_DBUS_METHOD_FLAG_EXPERIMENTAL;
+
 		if (dbus_message_is_method_call(message, iface->name,
 							method->name) == FALSE)
 			continue;
+
+		if (experimental) {
+			const char *env = g_getenv("GDBUS_EXPERIMENTAL");
+			if (g_strcmp0(env, "1") != 0)
+				return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		}
 
 		if (g_dbus_args_have_signature(method->in_args,
 							message) == FALSE)
@@ -1691,4 +1707,9 @@ gboolean g_dbus_detach_object_manager(DBusConnection *connection)
 	root = NULL;
 
 	return TRUE;
+}
+
+void g_dbus_set_flags(int flags)
+{
+	global_flags = flags;
 }

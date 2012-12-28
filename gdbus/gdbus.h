@@ -88,10 +88,15 @@ typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
 						gboolean interaction,
 						GDBusPendingReply pending);
 
+enum GDBusFlags {
+	G_DBUS_FLAG_ENABLE_EXPERIMENTAL = (1 << 0),
+};
+
 enum GDBusMethodFlags {
-	G_DBUS_METHOD_FLAG_DEPRECATED = (1 << 0),
-	G_DBUS_METHOD_FLAG_NOREPLY    = (1 << 1),
-	G_DBUS_METHOD_FLAG_ASYNC      = (1 << 2),
+	G_DBUS_METHOD_FLAG_DEPRECATED   = (1 << 0),
+	G_DBUS_METHOD_FLAG_NOREPLY      = (1 << 1),
+	G_DBUS_METHOD_FLAG_ASYNC        = (1 << 2),
+	G_DBUS_METHOD_FLAG_EXPERIMENTAL = (1 << 3),
 };
 
 enum GDBusSignalFlags {
@@ -173,6 +178,20 @@ struct GDBusSecurityTable {
 	.function = _function, \
 	.flags = G_DBUS_METHOD_FLAG_ASYNC | G_DBUS_METHOD_FLAG_DEPRECATED
 
+#define GDBUS_EXPERIMENTAL_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_EXPERIMENTAL
+
+#define GDBUS_EXPERIMENTAL_ASYNC_METHOD(_name, _in_args, _out_args, _function) \
+	.name = _name, \
+	.in_args = _in_args, \
+	.out_args = _out_args, \
+	.function = _function, \
+	.flags = G_DBUS_METHOD_FLAG_ASYNC | G_DBUS_METHOD_FLAG_EXPERIMENTAL
+
 #define GDBUS_NOREPLY_METHOD(_name, _in_args, _out_args, _function) \
 	.name = _name, \
 	.in_args = _in_args, \
@@ -188,6 +207,8 @@ struct GDBusSecurityTable {
 	.name = _name, \
 	.args = _args, \
 	.flags = G_DBUS_SIGNAL_FLAG_DEPRECATED
+
+void g_dbus_set_flags(int flags);
 
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
