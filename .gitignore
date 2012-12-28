@@ -38,6 +38,7 @@ profiles/cups/bluetooth
 attrib/gatttool
 tools/avinfo
 tools/bccmd
+tools/hwdb
 tools/ciptool
 tools/hciattach
 tools/hciconfig

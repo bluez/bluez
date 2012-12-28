@@ -133,7 +133,7 @@ endif
 
 if EXPERIMENTAL
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest tools/scotest \
-			tools/hcieventmask tools/hcisecfilter \
+			tools/hcieventmask tools/hcisecfilter tools/hwdb \
 			tools/btmgmt tools/btattach tools/btsnoop \
 			tools/btiotest tools/mpris-player
 
@@ -147,6 +147,8 @@ tools_avtest_LDADD = lib/libbluetooth-private.la
 tools_scotest_LDADD = lib/libbluetooth-private.la
 
 tools_hcieventmask_LDADD = lib/libbluetooth-private.la
+
+tools_hwdb_LDADD = lib/libbluetooth-private.la
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c
 tools_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
