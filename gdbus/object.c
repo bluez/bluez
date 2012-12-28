@@ -1174,7 +1174,7 @@ static const GDBusSignalTable manager_signals[] = {
 	{ }
 };
 
-static void add_interface(struct generic_data *data,
+static gboolean add_interface(struct generic_data *data,
 				const char *name,
 				const GDBusMethodTable *methods,
 				const GDBusSignalTable *signals,
@@ -1183,7 +1183,32 @@ static void add_interface(struct generic_data *data,
 				GDBusDestroyFunction destroy)
 {
 	struct interface_data *iface;
+	const GDBusMethodTable *method;
+	const GDBusSignalTable *signal;
+	const GDBusPropertyTable *property;
 
+	for (method = methods; method && method->name; method++) {
+		if (!check_experimental(method->flags,
+					G_DBUS_METHOD_FLAG_EXPERIMENTAL))
+			goto done;
+	}
+
+	for (signal = signals; signal && signal->name; signal++) {
+		if (!check_experimental(signal->flags,
+					G_DBUS_SIGNAL_FLAG_EXPERIMENTAL))
+			goto done;
+	}
+
+	for (property = properties; property && property->name; property++) {
+		if (!check_experimental(property->flags,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL))
+			goto done;
+	}
+
+	/* Nothing to register */
+	return FALSE;
+
+done:
 	iface = g_new0(struct interface_data, 1);
 	iface->name = g_strdup(name);
 	iface->methods = methods;
@@ -1194,13 +1219,15 @@ static void add_interface(struct generic_data *data,
 
 	data->interfaces = g_slist_append(data->interfaces, iface);
 	if (data->parent == NULL)
-		return;
+		return TRUE;
 
 	data->added = g_slist_append(data->added, iface);
 	if (data->process_id > 0)
-		return;
+		return TRUE;
 
 	data->process_id = g_idle_add(process_changes, data);
+
+	return TRUE;
 }
 
 static struct generic_data *object_path_ref(DBusConnection *connection,
@@ -1361,14 +1388,17 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 		return FALSE;
 	}
 
+	if (!add_interface(data, name, methods, signals, properties, user_data,
+								destroy)) {
+		object_path_unref(connection, path);
+		return FALSE;
+	}
+
 	if (properties != NULL && !find_interface(data->interfaces,
 						DBUS_INTERFACE_PROPERTIES))
 		add_interface(data, DBUS_INTERFACE_PROPERTIES,
 				properties_methods, properties_signals, NULL,
 				data, NULL);
-
-	add_interface(data, name, methods, signals, properties, user_data,
-								destroy);
 
 	g_free(data->introspect);
 	data->introspect = NULL;
