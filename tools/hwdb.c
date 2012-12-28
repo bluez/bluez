@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 	printf("#\n");
 	printf("# Data imported from:\n");
 	printf("#  http://www.bluetooth.org/Technical/AssignedNumbers/identifiers.htm\n");
-	printf("\n");
 
 	for (id = 0;; id++) {
 		char *str;
@@ -62,19 +61,19 @@ int main(int argc, char *argv[])
 		if (!strcmp(str, "not assigned"))
 			continue;
 
+		printf("\n");
 		printf("bluetooth:v%04X*\n", id);
 		printf(" ID_VENDOR_FROM_DATABASE=%s\n", str);
-		printf("\n");
 
 		for (i = 0; product_table[i].str; i++) {
 			if (product_table[i].vendor != id)
 				continue;
 
+			printf("\n");
 			printf("bluetooth:v%04Xp%04X*\n",
 						id, product_table[i].product);
 			printf(" ID_PRODUCT_FROM_DATABASE=%s\n",
 							product_table[i].str);
-			printf("\n");
 		}
 	}
 
