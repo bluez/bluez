@@ -871,15 +871,13 @@ static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
 done:
 	dbus_message_unref(reply);
 
-	dbus_pending_call_unref(client->pending_call);
-	client->pending_call = NULL;
-
 	g_dbus_client_unref(client);
 }
 
 static void get_managed_objects(GDBusClient *client)
 {
 	DBusMessage *msg;
+	DBusPendingCall *call;
 
 	msg = dbus_message_new_method_call(client->service_name, "/",
 					DBUS_INTERFACE_DBUS ".ObjectManager",
@@ -890,15 +888,16 @@ static void get_managed_objects(GDBusClient *client)
 	dbus_message_append_args(msg, DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
-					&client->pending_call, -1) == FALSE) {
+							&call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return;
 	}
 
 	g_dbus_client_ref(client);
 
-	dbus_pending_call_set_notify(client->pending_call,
-				get_managed_objects_reply, client, NULL);
+	dbus_pending_call_set_notify(call, get_managed_objects_reply,
+							client, NULL);
+	dbus_pending_call_unref(call);
 
 	dbus_message_unref(msg);
 }
@@ -934,8 +933,6 @@ done:
 
 	dbus_pending_call_unref(client->pending_call);
 	client->pending_call = NULL;
-
-	get_managed_objects(client);
 
 	g_dbus_client_unref(client);
 }
@@ -1219,6 +1216,8 @@ gboolean g_dbus_client_set_proxy_handlers(GDBusClient *client,
 	client->proxy_removed = proxy_removed;
 	client->property_changed = property_changed;
 	client->user_data = user_data;
+
+	get_managed_objects(client);
 
 	return TRUE;
 }
