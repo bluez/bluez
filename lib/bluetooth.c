@@ -290,7 +290,7 @@ char *bt_compidtostr(int compid)
 	case 13:
 		return "Texas Instruments Inc.";
 	case 14:
-		return "Parthus Technologies Inc.";
+		return "Ceva, Inc. (formerly Parthus Technologies Inc.)";
 	case 15:
 		return "Broadcom Corporation";
 	case 16:
@@ -398,7 +398,7 @@ char *bt_compidtostr(int compid)
 	case 67:
 		return "PARROT SA";
 	case 68:
-		return "Socket Communications";
+		return "Socket Mobile";
 	case 69:
 		return "Atheros Communications, Inc.";
 	case 70:
@@ -420,7 +420,7 @@ char *bt_compidtostr(int compid)
 	case 78:
 		return "Avago Technologies";
 	case 79:
-		return "APT Ltd.";
+		return "APT Licensing Ltd.";
 	case 80:
 		return "SiRF Technology, Inc.";
 	case 81:
