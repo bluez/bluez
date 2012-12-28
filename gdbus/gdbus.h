@@ -100,7 +100,8 @@ enum GDBusMethodFlags {
 };
 
 enum GDBusSignalFlags {
-	G_DBUS_SIGNAL_FLAG_DEPRECATED = (1 << 0),
+	G_DBUS_SIGNAL_FLAG_DEPRECATED   = (1 << 0),
+	G_DBUS_SIGNAL_FLAG_EXPERIMENTAL = (1 << 1),
 };
 
 enum GDBusPropertyFlags {
@@ -207,6 +208,11 @@ struct GDBusSecurityTable {
 	.name = _name, \
 	.args = _args, \
 	.flags = G_DBUS_SIGNAL_FLAG_DEPRECATED
+
+#define GDBUS_EXPERIMENTAL_SIGNAL(_name, _args) \
+	.name = _name, \
+	.args = _args, \
+	.flags = G_DBUS_SIGNAL_FLAG_EXPERIMENTAL
 
 void g_dbus_set_flags(int flags);
 

@@ -164,6 +164,12 @@ static void generate_interface_xml(GString *gstr, struct interface_data *iface)
 	for (signal = iface->signals; signal && signal->name; signal++) {
 		gboolean deprecated = signal->flags &
 						G_DBUS_SIGNAL_FLAG_DEPRECATED;
+		gboolean experimental = signal->flags &
+					G_DBUS_SIGNAL_FLAG_EXPERIMENTAL;
+
+		if (!(global_flags & G_DBUS_FLAG_ENABLE_EXPERIMENTAL) &&
+							experimental)
+			continue;
 
 		if (!deprecated && !(signal->args && signal->args->name))
 			g_string_append_printf(gstr,
@@ -1266,10 +1272,17 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	}
 
 	for (signal = iface->signals; signal && signal->name; signal++) {
-		if (!strcmp(signal->name, name)) {
-			*args = signal->args;
-			return TRUE;
+		if (strcmp(signal->name, name) != 0)
+			continue;
+
+		if (signal->flags & G_DBUS_SIGNAL_FLAG_EXPERIMENTAL) {
+			const char *env = g_getenv("GDBUS_EXPERIMENTAL");
+			if (g_strcmp0(env, "1") != 0)
+				break;
 		}
+
+		*args = signal->args;
+		return TRUE;
 	}
 
 	error("No signal named %s on interface %s", name, interface);
