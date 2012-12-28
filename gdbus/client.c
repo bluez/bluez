@@ -881,7 +881,7 @@ static void get_managed_objects(GDBusClient *client)
 {
 	DBusMessage *msg;
 
-	msg = dbus_message_new_method_call("org.bluez", "/",
+	msg = dbus_message_new_method_call(client->service_name, "/",
 					DBUS_INTERFACE_DBUS ".ObjectManager",
 							"GetManagedObjects");
 	if (msg == NULL)
