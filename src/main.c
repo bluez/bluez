@@ -369,6 +369,7 @@ static gchar *option_noplugin = NULL;
 static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;
+static gboolean option_experimental = FALSE;
 
 static void free_options(void)
 {
@@ -454,6 +455,8 @@ static GOptionEntry options[] = {
 				"Specify plugins not to load", "NAME,..." },
 	{ "compat", 'C', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Provide deprecated command line interfaces" },
+	{ "experimental", 'E', 0, G_OPTION_ARG_NONE, &option_experimental,
+				"Enable experimental interfaces" },
 	{ "nodetach", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Run with logging in foreground" },
@@ -468,6 +471,7 @@ int main(int argc, char *argv[])
 	GError *err = NULL;
 	uint16_t sdp_mtu = 0;
 	uint32_t sdp_flags = 0;
+	int gdbus_flags = 0;
 	GKeyFile *config;
 	guint signal, watchdog;
 	const char *watchdog_usec;
@@ -517,6 +521,11 @@ int main(int argc, char *argv[])
 		error("Can't register manager interface");
 		exit(1);
 	}
+
+	if (option_experimental)
+		gdbus_flags = G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
+
+	g_dbus_set_flags(gdbus_flags);
 
 	if (option_compat == TRUE)
 		sdp_flags |= SDP_SERVER_COMPAT;
