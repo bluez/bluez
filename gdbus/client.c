@@ -198,6 +198,128 @@ static void prop_entry_free(gpointer data)
 	g_free(prop);
 }
 
+static void add_property(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter value;
+	struct prop_entry *prop;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_VARIANT)
+		return;
+
+	dbus_message_iter_recurse(iter, &value);
+
+	prop = g_hash_table_lookup(proxy->prop_list, name);
+	if (prop != NULL) {
+		GDBusClient *client = proxy->client;
+
+		prop_entry_update(prop, &value);
+
+		if (client == NULL)
+			return;
+
+		if (client->property_changed)
+			client->property_changed(proxy, name, &value,
+							client->user_data);
+		return;
+	}
+
+	prop = prop_entry_new(name, &value);
+	if (prop == NULL)
+		return;
+
+	g_hash_table_replace(proxy->prop_list, prop->name, prop);
+}
+
+static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *name;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &name);
+		dbus_message_iter_next(&entry);
+
+		add_property(proxy, name, &entry);
+
+		dbus_message_iter_next(&dict);
+	}
+}
+
+static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	GDBusProxy *proxy = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessageIter iter;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	dbus_message_iter_init(reply, &iter);
+
+	update_properties(proxy, &iter);
+
+done:
+	if (proxy->client != NULL) {
+		GDBusClient *client = proxy->client;
+
+		if (client->proxy_added)
+			client->proxy_added(proxy, client->user_data);
+
+		client->proxy_list = g_list_append(client->proxy_list, proxy);
+	} else
+		g_dbus_proxy_unref(proxy);
+
+	dbus_message_unref(reply);
+}
+
+static void get_all_properties(GDBusProxy *proxy)
+{
+	GDBusClient *client = proxy->client;
+	const char *service_name = client->service_name;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+
+	msg = dbus_message_new_method_call(service_name, proxy->obj_path,
+					DBUS_INTERFACE_PROPERTIES, "GetAll");
+	if (msg == NULL)
+		return;
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &proxy->interface,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+							&call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		return;
+	}
+
+	g_dbus_proxy_ref(proxy);
+
+	dbus_pending_call_set_notify(call, get_all_properties_reply,
+							proxy, NULL);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+}
+
 static GDBusProxy *proxy_lookup(GDBusClient *client, const char *path,
 						const char *interface)
 {
@@ -283,6 +405,27 @@ static void proxy_remove(GDBusClient *client, const char *path,
 			break;
 		}
 	}
+}
+
+GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
+							const char *interface)
+{
+	GDBusProxy *proxy;
+
+	if (client == NULL)
+		return NULL;
+
+	proxy = proxy_lookup(client, path, interface);
+	if (proxy)
+		return g_dbus_proxy_ref(proxy);
+
+	proxy = proxy_new(client, path, interface);
+	if (proxy == NULL)
+		return NULL;
+
+	get_all_properties(proxy);
+
+	return proxy;
 }
 
 GDBusProxy *g_dbus_proxy_ref(GDBusProxy *proxy)
@@ -512,66 +655,6 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 	dbus_message_unref(msg);
 
 	return TRUE;
-}
-
-static void add_property(GDBusProxy *proxy, const char *name,
-						DBusMessageIter *iter)
-{
-	DBusMessageIter value;
-	struct prop_entry *prop;
-
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_VARIANT)
-		return;
-
-	dbus_message_iter_recurse(iter, &value);
-
-	prop = g_hash_table_lookup(proxy->prop_list, name);
-	if (prop != NULL) {
-		GDBusClient *client = proxy->client;
-
-		prop_entry_update(prop, &value);
-
-		if (client == NULL)
-			return;
-
-		if (client->property_changed)
-			client->property_changed(proxy, name, &value,
-							client->user_data);
-		return;
-	}
-
-	prop = prop_entry_new(name, &value);
-	if (prop == NULL)
-		return;
-
-	g_hash_table_replace(proxy->prop_list, prop->name, prop);
-}
-
-static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
-{
-	DBusMessageIter dict;
-
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_ARRAY)
-		return;
-
-	dbus_message_iter_recurse(iter, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry;
-		const char *name;
-
-		dbus_message_iter_recurse(&dict, &entry);
-
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			break;
-
-		dbus_message_iter_get_basic(&entry, &name);
-		dbus_message_iter_next(&entry);
-
-		add_property(proxy, name, &entry);
-
-		dbus_message_iter_next(&dict);
-	}
 }
 
 static void properties_changed(GDBusClient *client, const char *path,

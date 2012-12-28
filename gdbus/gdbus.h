@@ -274,7 +274,11 @@ gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
 gboolean g_dbus_attach_object_manager(DBusConnection *connection);
 gboolean g_dbus_detach_object_manager(DBusConnection *connection);
 
+typedef struct GDBusClient GDBusClient;
 typedef struct GDBusProxy GDBusProxy;
+
+GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
+							const char *interface);
 
 GDBusProxy *g_dbus_proxy_ref(GDBusProxy *proxy);
 void g_dbus_proxy_unref(GDBusProxy *proxy);
@@ -299,8 +303,6 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 				GDBusSetupFunction setup,
 				GDBusReturnFunction function, void *user_data,
 				GDBusDestroyFunction destroy);
-
-typedef struct GDBusClient GDBusClient;
 
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
 					const char *service, const char *path);
