@@ -1987,6 +1987,11 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 
 	count = pdu->params[1];
 
+	path = device_get_path(session->dev->btd_dev);
+	mp = media_player_controller_create(path);
+	if (mp == NULL)
+		return FALSE;
+
 	for (; count > 0; count--) {
 		uint8_t event = pdu->params[1 + count];
 
@@ -2001,8 +2006,6 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 		}
 	}
 
-	path = device_get_path(session->dev->btd_dev);
-	mp = media_player_controller_create(path);
 	media_player_set_callbacks(mp, &ct_cbs, player);
 	player->user_data = mp;
 	player->destroy = (GDestroyNotify) media_player_destroy;
