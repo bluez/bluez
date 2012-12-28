@@ -50,6 +50,9 @@ static const GDBusPropertyTable properties[] = {
 
 static gboolean timeout_handler(gpointer data)
 {
+	if (g_test_verbose())
+		g_print("timeout triggered\n");
+
 	timeout_source = 0;
 
 	g_dbus_client_unref(dbus_client);
@@ -59,12 +62,38 @@ static gboolean timeout_handler(gpointer data)
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
+	if (g_test_verbose())
+		g_print("service connected\n");
+
 	g_dbus_client_unref(dbus_client);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
+	if (g_test_verbose())
+		g_print("service disconnected\n");
+
 	g_main_loop_quit(main_loop);
+}
+
+static void simple_client(void)
+{
+	main_loop = g_main_loop_new(NULL, FALSE);
+	dbus_conn = g_dbus_setup_private(DBUS_BUS_SESSION, SERVICE_NAME, NULL);
+
+	if (dbus_conn == NULL)
+		return;
+
+	dbus_client = g_dbus_client_new(dbus_conn, SERVICE_NAME, SERVICE_PATH);
+
+	g_dbus_client_set_connect_watch(dbus_client, connect_handler, NULL);
+	g_dbus_client_set_disconnect_watch(dbus_client,
+						disconnect_handler, NULL);
+
+	g_main_loop_run(main_loop);
+
+	dbus_connection_close(dbus_conn);
+	g_main_loop_unref(main_loop);
 }
 
 static void client_connect_disconnect(void)
@@ -93,13 +122,15 @@ static void client_connect_disconnect(void)
 
 	g_dbus_unregister_interface(dbus_conn, SERVICE_PATH, SERVICE_NAME);
 
-	dbus_connection_unref(dbus_conn);
+	dbus_connection_close(dbus_conn);
 	g_main_loop_unref(main_loop);
 }
 
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
+
+	g_test_add_func("/gdbus/simple_client", simple_client);
 
 	g_test_add_func("/gdbus/client_connect_disconnect",
 						client_connect_disconnect);
