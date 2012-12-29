@@ -123,6 +123,7 @@ struct btd_adapter {
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* Class of Device */
 	char *name;			/* adapter name */
+	char *stored_name;		/* stored adapter name */
 	gboolean allow_name_changes;	/* whether the adapter name can be changed */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
@@ -193,9 +194,9 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	if (adapter->name)
+	if (adapter->stored_name)
 		g_key_file_set_string(key_file, "General", "Name",
-								adapter->name);
+							adapter->stored_name);
 
 	g_key_file_set_boolean(key_file, "General", "Pairable",
 				adapter->pairable);
@@ -554,7 +555,14 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 	g_free(adapter->name);
 	adapter->name = g_strdup(name);
 
-	store_adapter_info(adapter);
+	if (adapter->allow_name_changes == TRUE) {
+		DBG("updating stored name");
+
+		g_free(adapter->stored_name);
+		adapter->stored_name = g_strdup(adapter->name);
+
+		store_adapter_info(adapter);
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Name");
@@ -1705,6 +1713,7 @@ static void adapter_free(gpointer user_data)
 
 	g_free(adapter->path);
 	g_free(adapter->name);
+	g_free(adapter->stored_name);
 	g_free(adapter);
 }
 
@@ -2592,8 +2601,9 @@ static void load_config(struct btd_adapter *adapter)
 		convert_config(adapter, filename, key_file);
 
 	/* Get name */
-	adapter->name = g_key_file_get_string(key_file, "General",
+	adapter->stored_name = g_key_file_get_string(key_file, "General",
 								"Name", NULL);
+	adapter->name = g_strdup(adapter->stored_name);
 
 	/* Set class */
 	adapter->dev_class = main_opts.class;
