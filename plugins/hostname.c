@@ -27,6 +27,7 @@
 
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <gdbus/gdbus.h>
 
 #include "dbus-common.h"
@@ -176,6 +177,60 @@ static struct btd_adapter_driver hostname_driver = {
 	.remove	= hostname_remove,
 };
 
+static void read_dmi_fallback(void)
+{
+	char *contents;
+	int i, type;
+	const char *str;
+
+	if (g_file_get_contents("/sys/class/dmi/id/chassis_type",
+					&contents, NULL, NULL) == FALSE)
+		return;
+
+	type = atoi(contents);
+	if (type < 0 || type > 0x1D)
+		return;
+
+	g_free(contents);
+
+	/* from systemd hostname chassis list */
+	switch (type) {
+	case 0x3:
+	case 0x4:
+	case 0x6:
+	case 0x7:
+		str = "desktop";
+		break;
+	case 0x8:
+	case 0x9:
+	case 0xA:
+	case 0xE:
+		str = "laptop";
+		break;
+	case 0xB:
+		str = "handset";
+		break;
+	case 0x11:
+	case 0x1C:
+		str = "server";
+		break;
+	default:
+		return;
+	}
+
+	DBG("chassis: %s", str);
+
+	for (i = 0; chassis_table[i].chassis; i++) {
+		if (!strcmp(chassis_table[i].chassis, str)) {
+			major_class = chassis_table[i].major_class;
+			minor_class = chassis_table[i].minor_class;
+			break;
+		}
+	}
+
+	DBG("major: 0x%02x minor: 0x%02x", major_class, minor_class);
+}
+
 static GDBusClient *hostname_client = NULL;
 static GDBusProxy *hostname_proxy = NULL;
 
@@ -183,6 +238,8 @@ static int hostname_init(void)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 	int err;
+
+	read_dmi_fallback();
 
 	hostname_client = g_dbus_client_new(conn, "org.freedesktop.hostname1",
 						"/org/freedesktop/hostname1");
