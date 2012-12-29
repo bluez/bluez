@@ -56,13 +56,31 @@ static char *pretty_hostname = NULL;
 
 static void update_name(struct btd_adapter *adapter, gpointer user_data)
 {
+	struct btd_adapter *default_adapter;
+
 	if (pretty_hostname == NULL)
 		return;
 
-	DBG("name: %s", pretty_hostname);
+	default_adapter = manager_get_default_adapter();
 
-	adapter_set_allow_name_changes(adapter, FALSE);
-	adapter_set_name(adapter, pretty_hostname);
+	if (default_adapter == NULL || adapter == default_adapter) {
+		DBG("name: %s", pretty_hostname);
+
+		adapter_set_allow_name_changes(adapter, FALSE);
+		adapter_set_name(adapter, pretty_hostname);
+	} else {
+		int dev_id = adapter_get_dev_id(adapter);
+		char *str;
+
+		str = g_strdup_printf("%s #%u", pretty_hostname, dev_id + 1);
+
+		DBG("name: %s", str);
+
+		adapter_set_allow_name_changes(adapter, FALSE);
+		adapter_set_name(adapter, str);
+
+		g_free(str);
+	}
 }
 
 static void update_class(struct btd_adapter *adapter, gpointer user_data)
