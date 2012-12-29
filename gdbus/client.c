@@ -60,6 +60,8 @@ struct GDBusProxy {
 	char *interface;
 	GHashTable *prop_list;
 	char *match_rule;
+	GDBusPropertyFunction prop_func;
+	void *prop_data;
 };
 
 struct prop_entry {
@@ -215,6 +217,9 @@ static void add_property(GDBusProxy *proxy, const char *name,
 
 		prop_entry_update(prop, &value);
 
+		if (proxy->prop_func)
+			proxy->prop_func(proxy, name, &value, proxy->prop_data);
+
 		if (client == NULL)
 			return;
 
@@ -229,6 +234,9 @@ static void add_property(GDBusProxy *proxy, const char *name,
 		return;
 
 	g_hash_table_replace(proxy->prop_list, prop->name, prop);
+
+	if (proxy->prop_func)
+		proxy->prop_func(proxy, name, &value, proxy->prop_data);
 }
 
 static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
@@ -655,6 +663,18 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 	return TRUE;
 }
 
+gboolean g_dbus_proxy_set_property_watch(GDBusProxy *proxy,
+			GDBusPropertyFunction function, void *user_data)
+{
+	if (proxy == NULL)
+		return FALSE;
+
+	proxy->prop_func = function;
+	proxy->prop_data = user_data;
+
+	return TRUE;
+}
+
 static void properties_changed(GDBusClient *client, const char *path,
 							DBusMessage *msg)
 {
@@ -701,6 +721,9 @@ static void properties_changed(GDBusClient *client, const char *path,
 		dbus_message_iter_get_basic(&entry, &name);
 
 		g_hash_table_remove(proxy->prop_list, name);
+
+		if (proxy->prop_func)
+			proxy->prop_func(proxy, name, NULL, proxy->prop_data);
 
 		if (client->property_changed)
 			client->property_changed(proxy, name, NULL,
