@@ -2,9 +2,6 @@
 builtin_modules += hostname
 builtin_sources += plugins/hostname.c
 
-builtin_modules += formfactor
-builtin_sources += plugins/formfactor.c
-
 builtin_modules += wiimote
 builtin_sources += plugins/wiimote.c
 
