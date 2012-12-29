@@ -261,6 +261,7 @@ static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
 static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	GDBusProxy *proxy = user_data;
+	GDBusClient *client = proxy->client;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusMessageIter iter;
 	DBusError error;
@@ -277,17 +278,14 @@ static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
 	update_properties(proxy, &iter);
 
 done:
-	if (proxy->client != NULL) {
-		GDBusClient *client = proxy->client;
+	if (client->proxy_added)
+		client->proxy_added(proxy, client->user_data);
 
-		if (client->proxy_added)
-			client->proxy_added(proxy, client->user_data);
-
-		client->proxy_list = g_list_append(client->proxy_list, proxy);
-	} else
-		g_dbus_proxy_unref(proxy);
+	client->proxy_list = g_list_append(client->proxy_list, proxy);
 
 	dbus_message_unref(reply);
+
+	g_dbus_client_unref(client);
 }
 
 static void get_all_properties(GDBusProxy *proxy)
@@ -311,7 +309,7 @@ static void get_all_properties(GDBusProxy *proxy)
 		return;
 	}
 
-	g_dbus_proxy_ref(proxy);
+	g_dbus_client_ref(client);
 
 	dbus_pending_call_set_notify(call, get_all_properties_reply,
 							proxy, NULL);
@@ -425,7 +423,7 @@ GDBusProxy *g_dbus_proxy_new(GDBusClient *client, const char *path,
 
 	get_all_properties(proxy);
 
-	return proxy;
+	return g_dbus_proxy_ref(proxy);
 }
 
 GDBusProxy *g_dbus_proxy_ref(GDBusProxy *proxy)
