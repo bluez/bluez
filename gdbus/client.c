@@ -877,6 +877,9 @@ static void get_managed_objects(GDBusClient *client)
 	DBusMessage *msg;
 	DBusPendingCall *call;
 
+	if (!client->proxy_added && !client->proxy_removed)
+		return;
+
 	msg = dbus_message_new_method_call(client->service_name, "/",
 					DBUS_INTERFACE_DBUS ".ObjectManager",
 							"GetManagedObjects");
@@ -918,21 +921,19 @@ static void get_name_owner_reply(DBusPendingCall *call, void *user_data)
 						DBUS_TYPE_INVALID) == FALSE)
 		goto done;
 
-	g_free(client->unique_name);
-	client->unique_name = g_strdup(name);
+	if (client->unique_name == NULL) {
+		client->unique_name = g_strdup(name);
 
-	g_dbus_client_ref(client);
-
-	if (client->connect_func)
-		client->connect_func(client->dbus_conn, client->connect_data);
+		if (client->connect_func)
+			client->connect_func(client->dbus_conn,
+							client->connect_data);
+	}
 
 done:
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(client->pending_call);
 	client->pending_call = NULL;
-
-	g_dbus_client_unref(client);
 }
 
 static void get_name_owner(GDBusClient *client, const char *name)
@@ -994,15 +995,15 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 		if (g_str_equal(name, client->service_name) == FALSE)
 			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-		if (*new == '\0') {
+		if (*new == '\0' && client->unique_name != NULL &&
+				g_str_equal(old, client->unique_name) == TRUE) {
 			if (client->disconn_func)
 				client->disconn_func(client->dbus_conn,
 							client->disconn_data);
 
 			g_free(client->unique_name);
 			client->unique_name = NULL;
-		} else if (*old == '\0') {
-			g_free(client->unique_name);
+		} else if (*old == '\0' && client->unique_name == NULL) {
 			client->unique_name = g_strdup(new);
 
 			if (client->connect_func)
