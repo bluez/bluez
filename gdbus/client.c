@@ -497,6 +497,89 @@ gboolean g_dbus_proxy_get_property(GDBusProxy *proxy, const char *name,
 	return TRUE;
 }
 
+struct refresh_property_data {
+	GDBusProxy *proxy;
+	char *name;
+};
+
+static void refresh_property_free(gpointer user_data)
+{
+	struct refresh_property_data *data = user_data;
+
+	g_free(data->name);
+	g_free(data);
+}
+
+static void refresh_property_reply(DBusPendingCall *call, void *user_data)
+{
+	struct refresh_property_data *data = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == FALSE) {
+		DBusMessageIter iter;
+
+		dbus_message_iter_init(reply, &iter);
+
+		add_property(data->proxy, data->name, &iter);
+	} else
+		dbus_error_free(&error);
+
+	dbus_message_unref(reply);
+}
+
+gboolean g_dbus_proxy_refresh_property(GDBusProxy *proxy, const char *name)
+{
+	struct refresh_property_data *data;
+	GDBusClient *client;
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	DBusPendingCall *call;
+
+	if (proxy == NULL || name == NULL)
+		return FALSE;
+
+	client = proxy->client;
+	if (client == NULL)
+		return FALSE;
+
+	data = g_try_new0(struct refresh_property_data, 1);
+	if (data == NULL)
+		return FALSE;
+
+	data->proxy = proxy;
+	data->name = g_strdup(name);
+
+	msg = dbus_message_new_method_call(client->service_name,
+			proxy->obj_path, DBUS_INTERFACE_PROPERTIES, "Get");
+	if (msg == NULL) {
+		refresh_property_free(data);
+		return FALSE;
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING,
+							&proxy->interface);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
+
+	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+							&call, -1) == FALSE) {
+		dbus_message_unref(msg);
+		refresh_property_free(data);
+		return FALSE;
+	}
+
+	dbus_pending_call_set_notify(call, refresh_property_reply,
+						data, refresh_property_free);
+	dbus_pending_call_unref(call);
+
+	dbus_message_unref(msg);
+
+	return TRUE;
+}
+
 struct set_property_data {
 	GDBusResultFunction function;
 	void *user_data;

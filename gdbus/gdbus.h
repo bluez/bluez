@@ -289,6 +289,8 @@ const char *g_dbus_proxy_get_interface(GDBusProxy *proxy);
 gboolean g_dbus_proxy_get_property(GDBusProxy *proxy, const char *name,
 							DBusMessageIter *iter);
 
+gboolean g_dbus_proxy_refresh_property(GDBusProxy *proxy, const char *name);
+
 typedef void (* GDBusResultFunction) (const DBusError *error, void *user_data);
 
 gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
