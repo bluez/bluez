@@ -286,10 +286,12 @@ static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
 	update_properties(proxy, &iter);
 
 done:
-	if (client->proxy_added)
-		client->proxy_added(proxy, client->user_data);
+	if (g_list_find(client->proxy_list, proxy) == NULL) {
+		if (client->proxy_added)
+			client->proxy_added(proxy, client->user_data);
 
-	client->proxy_list = g_list_append(client->proxy_list, proxy);
+		client->proxy_list = g_list_append(client->proxy_list, proxy);
+	}
 
 	dbus_message_unref(reply);
 
@@ -758,6 +760,18 @@ gboolean g_dbus_proxy_set_property_watch(GDBusProxy *proxy,
 	return TRUE;
 }
 
+static void refresh_properties(GDBusClient *client)
+{
+	GList *list;
+
+	for (list = g_list_first(client->proxy_list); list;
+						list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+
+		get_all_properties(proxy);
+        }
+}
+
 static void properties_changed(GDBusClient *client, const char *path,
 							DBusMessage *msg)
 {
@@ -983,8 +997,10 @@ static void get_managed_objects(GDBusClient *client)
 	DBusMessage *msg;
 	DBusPendingCall *call;
 
-	if (!client->proxy_added && !client->proxy_removed)
+	if (!client->proxy_added && !client->proxy_removed) {
+		refresh_properties(client);
 		return;
+	}
 
 	msg = dbus_message_new_method_call(client->service_name, "/",
 					DBUS_INTERFACE_DBUS ".ObjectManager",
@@ -1033,6 +1049,8 @@ static void get_name_owner_reply(DBusPendingCall *call, void *user_data)
 		if (client->connect_func)
 			client->connect_func(client->dbus_conn,
 							client->connect_data);
+
+		get_managed_objects(client);
 	}
 
 done:
