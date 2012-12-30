@@ -78,6 +78,10 @@ Properties	string Address [readonly]
 
 			The Bluetooth class of device.
 
+			This property represents the value that is either
+			automatically configured by DMI/ACPI information
+			or provided as static configuration.
+
 		boolean Powered [readwrite]
 
 			Switch an adapter on or off. This will also set the
