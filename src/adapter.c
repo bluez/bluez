@@ -124,6 +124,7 @@ struct btd_adapter {
 	uint32_t dev_class;		/* Class of Device */
 	char *name;			/* adapter name */
 	char *stored_name;		/* stored adapter name */
+	char *modalias;			/* device id (modalias) */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
@@ -1073,6 +1074,7 @@ static gboolean adapter_property_get_pairable(
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN,
 							&adapter->pairable);
+
 	return TRUE;
 }
 
@@ -1193,6 +1195,29 @@ static gboolean adapter_property_get_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean adapter_property_exists_modalias(
+				const GDBusPropertyTable *property, void *data)
+{
+	struct btd_adapter *adapter = data;
+
+	return adapter->modalias ? TRUE : FALSE;
+}
+
+static gboolean adapter_property_get_modalias(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_adapter *adapter = data;
+
+	if (!adapter->modalias)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&adapter->modalias);
+
+	return TRUE;
+}
+
 static gint device_path_cmp(struct btd_device *device, const gchar *path)
 {
 	const gchar *dev_path = device_get_path(device);
@@ -1260,6 +1285,8 @@ static const GDBusPropertyTable adapter_properties[] = {
 				adapter_property_set_pairable_timeout },
 	{ "Discovering", "b", adapter_property_get_discovering },
 	{ "UUIDs", "as", adapter_property_get_uuids },
+	{ "Modalias", "s", adapter_property_get_modalias, NULL,
+					adapter_property_exists_modalias },
 	{ }
 };
 
@@ -1773,6 +1800,7 @@ static void adapter_free(gpointer user_data)
 	g_free(adapter->path);
 	g_free(adapter->name);
 	g_free(adapter->stored_name);
+	g_free(adapter->modalias);
 	g_free(adapter);
 }
 
@@ -3429,6 +3457,9 @@ int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version,
 					uint16_t source)
 {
+	g_free(adapter->modalias);
+	adapter->modalias = bt_modalias(source, vendor, product, version);
+
 	return mgmt_set_did(adapter->dev_id, vendor, product, version, source);
 }
 
