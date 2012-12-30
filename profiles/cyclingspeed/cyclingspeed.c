@@ -1022,29 +1022,37 @@ static void property_set_location(const GDBusPropertyTable *property,
 	uint8_t att_val[2];
 	struct controlpoint_req *req;
 
-	if (csc->pending_req != NULL)
-		return g_dbus_pending_property_error(id,
+	if (csc->pending_req != NULL) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InProgress",
 					"Operation already in progress");
+		return;
+	}
 
-	if (!(csc->feature & MULTI_SENSOR_LOC_SUPPORT))
-		return g_dbus_pending_property_error(id,
+	if (!(csc->feature & MULTI_SENSOR_LOC_SUPPORT)) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".NotSupported",
 					"Feature is not supported");
+		return;
+	}
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &loc);
 
 	loc_val = str2location(loc);
 
-	if (loc_val < 0)
-		return g_dbus_pending_property_error(id,
+	if (loc_val < 0) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	req = g_new(struct controlpoint_req, 1);
 	req->csc = csc;
