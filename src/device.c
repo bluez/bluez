@@ -820,17 +820,6 @@ static gboolean dev_property_get_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean dev_property_exists_uuids(const GDBusPropertyTable *property,
-								void *data)
-{
-	struct btd_device *dev = data;
-
-	if (dev->svc_resolved)
-		return dev->uuids ? TRUE : FALSE;
-	else
-		return dev->eir_uuids ? TRUE : FALSE;
-}
-
 static gboolean dev_property_get_modalias(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1554,8 +1543,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "LegacyPairing", "b", dev_property_get_legacy },
 	{ "RSSI", "n", dev_property_get_rssi, NULL, dev_property_exists_rssi },
 	{ "Connected", "b", dev_property_get_connected },
-	{ "UUIDs", "as", dev_property_get_uuids, NULL,
-						dev_property_exists_uuids },
+	{ "UUIDs", "as", dev_property_get_uuids },
 	{ "Modalias", "s", dev_property_get_modalias, NULL,
 						dev_property_exists_modalias },
 	{ "Adapter", "o", dev_property_get_adapter },
