@@ -172,8 +172,7 @@ Properties	string Address [readonly]
 			convert it back to the remote device name.
 
 			When resetting the alias with an empty string, the
-			emitted PropertiesChanged signal will show the remote
-			name again.
+			property will default back to the remote name.
 
 		object Adapter [readonly]
 
