@@ -188,3 +188,8 @@ Properties	string Address [readonly]
 			Note that this property can exhibit false-positives
 			in the case of Bluetooth 2.1 (or newer) devices that
 			have disabled Extended Inquiry Response support.
+
+		string Modalias [readonly, optional]
+
+			Remote Device ID information in modalias format
+			used by the kernel and udev.

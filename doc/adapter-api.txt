@@ -148,3 +148,8 @@ Properties	string Address [readonly]
 
 			List of 128-bit UUIDs that represents the available
 			local services.
+
+		string Modalias [readonly, optional]
+
+			Local Device ID information in modalias format
+			used by the kernel and udev.
