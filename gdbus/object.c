@@ -1634,6 +1634,9 @@ void g_dbus_emit_property_changed(DBusConnection *connection,
 		return;
 	}
 
+	if (g_slist_find(iface->pending_prop, (void *) property) != NULL)
+		return;
+
 	data->pending_prop = TRUE;
 	iface->pending_prop = g_slist_prepend(iface->pending_prop,
 						(void *) property);
