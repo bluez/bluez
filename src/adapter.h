@@ -96,8 +96,6 @@ struct btd_adapter *adapter_create(int id);
 gboolean adapter_init(struct btd_adapter *adapter, gboolean powered,
 					bool connectable, bool discoverable);
 void adapter_remove(struct btd_adapter *adapter);
-void adapter_set_allow_name_changes(struct btd_adapter *adapter,
-						gboolean allow_name_changes);
 void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);

@@ -124,7 +124,6 @@ struct btd_adapter {
 	uint32_t dev_class;		/* Class of Device */
 	char *name;			/* adapter name */
 	char *stored_name;		/* stored adapter name */
-	gboolean allow_name_changes;	/* whether the adapter name can be changed */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
@@ -2720,8 +2719,6 @@ gboolean adapter_init(struct btd_adapter *adapter, gboolean powered,
 	adapter->connectable = connectable;
 	adapter->discoverable = discoverable;
 
-	adapter->allow_name_changes = TRUE;
-
 	mgmt_read_bdaddr(adapter->dev_id, &adapter->bdaddr);
 
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
@@ -2828,12 +2825,6 @@ const gchar *adapter_get_path(struct btd_adapter *adapter)
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter)
 {
 	return &adapter->bdaddr;
-}
-
-void adapter_set_allow_name_changes(struct btd_adapter *adapter,
-						gboolean allow_name_changes)
-{
-	adapter->allow_name_changes = allow_name_changes;
 }
 
 static gboolean adapter_remove_temp(gpointer data)
