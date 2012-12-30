@@ -47,17 +47,32 @@ Properties	string Address [readonly]
 
 			The Bluetooth device address.
 
-		string Name [readwrite]
+		string Name [readonly]
+
+			The Bluetooth system name (pretty hostname).
+
+			This property is either a static system default
+			or controlled by an external daemon providing
+			access to the pretty hostname configuration.
+
+		string Alias [readwrite]
 
 			The Bluetooth friendly name. This value can be
-			changed and a PropertyChanged signal will be emitted.
+			changed.
 
-			This property might be controlled by an external
-			daemon (for example hostnamed) and then every write
-			attempt will fail.
+			In case no alias is set, it will return the system
+			provided name. Setting an empty string as alias will
+			convert it back to the system provided name.
 
-			On a well configured system this property will be
-			automatically set to the pretty hostname.
+			When resetting the alias with an empty string, the
+			property will default back to system name.
+
+			On a well configured system, this property never
+			needs to be changed since it defaults to the system
+			name and provides the pretty hostname. Only if the
+			local name needs to be different from the pretty
+			hostname, this property should be used as last
+			resort.
 
 		uint32 Class [readonly]
 
