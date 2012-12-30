@@ -173,6 +173,8 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 	if (adapter->major_class == major && adapter->minor_class == minor)
 		return 0;
 
+	DBG("class: major %u minor %u", major, minor);
+
 	adapter->major_class = major;
 	adapter->minor_class = minor;
 
@@ -595,6 +597,8 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	if (g_strcmp0(adapter->name, name) == 0)
 		return 0;
 
+	DBG("name: %s", name);
+
 	g_free(adapter->name);
 	adapter->name = g_strdup(name);
 
@@ -604,6 +608,8 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	/* alias is preferred over system name */
 	if (adapter->stored_name)
 		return 0;
+
+	DBG("alias: %s", name);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Alias");
