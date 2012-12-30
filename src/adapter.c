@@ -542,15 +542,17 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 
 void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 {
-	uint32_t class;
+	uint32_t dev_class;
 	uint8_t cls[3];
 
-	class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
+	dev_class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
 
-	if (class == adapter->dev_class)
+	DBG("class: 0x%06x", dev_class);
+
+	if (dev_class == adapter->dev_class)
 		return;
 
-	adapter->dev_class = class;
+	adapter->dev_class = dev_class;
 
 	memcpy(cls, new_class, sizeof(cls));
 
@@ -564,6 +566,8 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 
 void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 {
+	DBG("name: %s", name);
+
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Alias");
 
