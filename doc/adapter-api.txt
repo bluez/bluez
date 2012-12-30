@@ -52,6 +52,13 @@ Properties	string Address [readonly]
 			The Bluetooth friendly name. This value can be
 			changed and a PropertyChanged signal will be emitted.
 
+			This property might be controlled by an external
+			daemon (for example hostnamed) and then every write
+			attempt will fail.
+
+			On a well configured system this property will be
+			automatically set to the pretty hostname.
+
 		uint32 Class [readonly]
 
 			The Bluetooth class of device.
