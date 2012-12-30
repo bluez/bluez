@@ -106,9 +106,8 @@ void btd_device_unref(struct btd_device *device);
 int device_block(struct btd_device *device, gboolean update_only);
 int device_unblock(struct btd_device *device, gboolean silent,
 							gboolean update_only);
-void btd_device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
-			uint16_t vendor_id, uint16_t product_id,
-			uint16_t product_ver);
+void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
+			uint16_t vendor, uint16_t product, uint16_t version);
 GIOChannel *device_att_connect(gpointer user_data);
 
 struct btd_profile;

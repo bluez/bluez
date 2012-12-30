@@ -150,6 +150,7 @@ struct btd_device {
 	uint16_t	product;
 	uint16_t	version;
 	uint16_t	appearance;
+	char		*modalias;
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*primaries;		/* List of primary services */
@@ -422,6 +423,7 @@ static void device_free(gpointer user_data)
 
 	g_free(device->path);
 	g_free(device->alias);
+	g_free(device->modalias);
 	g_free(device);
 }
 
@@ -942,6 +944,28 @@ static gboolean dev_property_exists_uuids(const GDBusPropertyTable *property,
 		return dev->uuids ? TRUE : FALSE;
 	else
 		return dev->eir_uuids ? TRUE : FALSE;
+}
+
+static gboolean dev_property_get_modalias(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_device *device = data;
+
+	if (!device->modalias)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&device->modalias);
+
+	return TRUE;
+}
+
+static gboolean dev_property_exists_modalias(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct btd_device *device = data;
+
+	return device->modalias ? TRUE : FALSE;
 }
 
 static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
@@ -1655,6 +1679,8 @@ static const GDBusPropertyTable device_properties[] = {
 	{ "Connected", "b", dev_property_get_connected },
 	{ "UUIDs", "as", dev_property_get_uuids, NULL,
 						dev_property_exists_uuids },
+	{ "Modalias", "s", dev_property_get_modalias, NULL,
+						dev_property_exists_modalias },
 	{ "Adapter", "o", dev_property_get_adapter },
 	{ }
 };
@@ -1940,19 +1966,16 @@ next:
 	/* Load device id */
 	source = g_key_file_get_integer(key_file, "DeviceID", "Source", NULL);
 	if (source) {
-		device_set_vendor_src(device, source);
-
 		vendor = g_key_file_get_integer(key_file, "DeviceID",
 							"Vendor", NULL);
-		device_set_vendor(device, vendor);
 
 		product = g_key_file_get_integer(key_file, "DeviceID",
 							"Product", NULL);
-		device_set_product(device, product);
 
 		version = g_key_file_get_integer(key_file, "DeviceID",
 							"Version", NULL);
-		device_set_version(device, version);
+
+		btd_device_set_pnpid(device, source, vendor, product, version);
 	}
 
 	if (store_needed)
@@ -4251,14 +4274,19 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 	return TRUE;
 }
 
-void btd_device_set_pnpid(struct btd_device *device, uint8_t vendor_id_src,
-			uint16_t vendor_id, uint16_t product_id,
-			uint16_t product_ver)
+void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
+			uint16_t vendor, uint16_t product, uint16_t version)
 {
-	device_set_vendor(device, vendor_id);
-	device_set_vendor_src(device, vendor_id_src);
-	device_set_product(device, product_id);
-	device_set_version(device, product_ver);
+	device_set_vendor_src(device, source);
+	device_set_vendor(device, vendor);
+	device_set_product(device, product);
+	device_set_version(device, version);
+
+	g_free(device->modalias);
+	device->modalias = bt_modalias(source, vendor, product, version);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+						DEVICE_INTERFACE, "Modalias");
 
 	store_device_info(device);
 }
