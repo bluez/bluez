@@ -258,7 +258,7 @@ int bt_error(uint16_t code)
 	}
 }
 
-char *bt_compidtostr(int compid)
+const char *bt_compidtostr(int compid)
 {
 	switch (compid) {
 	case 0:

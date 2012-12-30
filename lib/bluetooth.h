@@ -319,7 +319,7 @@ void *bt_malloc(size_t size);
 void bt_free(void *ptr);
 
 int bt_error(uint16_t code);
-char *bt_compidtostr(int id);
+const char *bt_compidtostr(int id);
 
 typedef struct {
 	uint8_t data[16];
