@@ -103,16 +103,16 @@ Properties	string Address [readonly]
 			If the Alias property is unset, it will reflect
 			this value which makes it more convenient.
 
-		string Icon [readonly] [optional]
+		string Icon [readonly, optional]
 
 			Proposed icon name according to the freedesktop.org
 			icon naming specification.
 
-		uint32 Class [readonly] [optional]
+		uint32 Class [readonly, optional]
 
 			The Bluetooth class of device of the remote device.
 
-		uint16 Appearance [readonly] [optional]
+		uint16 Appearance [readonly, optional]
 
 			External appearance of device, as found on GAP service.
 
