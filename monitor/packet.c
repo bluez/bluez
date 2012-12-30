@@ -411,7 +411,21 @@ static void print_pkt_type(uint16_t pkt_type)
 
 static void print_iac(const uint8_t *lap)
 {
-	print_field("Access code: 0x%2.2x%2.2x%2.2x", lap[2], lap[1], lap[0]);
+	const char *str = "";
+
+	if (lap[2] == 0x9e && lap[1] == 0x8b) {
+		switch (lap[0]) {
+		case 0x33:
+			str = " (General Inquiry)";
+			break;
+		case 0x00:
+			str = " (Limited Inquiry)";
+			break;
+		}
+	}
+
+	print_field("Access code: 0x%2.2x%2.2x%2.2x%s",
+						lap[2], lap[1], lap[0], str);
 }
 
 static void print_dev_class(const uint8_t *dev_class)
