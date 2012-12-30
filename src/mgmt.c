@@ -1155,8 +1155,18 @@ int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 	hdr->len = htobs(sizeof(*cp));
 	hdr->index = htobs(index);
 
-	cp->major = major;
-	cp->minor = minor;
+	/*
+	 * Silly workaround for a really stupid kernel bug :(
+	 *
+	 * All current kernel versions assign the major and minor numbers
+	 * straight to dev_class[0] and dev_class[1] without considering
+	 * the proper bit shifting.
+	 *
+	 * To make this work, shift the value in userspace for now until
+	 * we get a fixed kernel version.
+	 */
+	cp->major = major & 0x1f;
+	cp->minor = minor << 2;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;
