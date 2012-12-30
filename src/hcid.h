@@ -24,7 +24,6 @@
  */
 
 struct main_opts {
-	char		host_name[40];
 	char		*name;
 	uint32_t	class;
 	uint16_t	autoto;
