@@ -335,15 +335,15 @@ static DBusMessage *card_status(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable dummy_methods[] = {
-	{ GDBUS_METHOD("OngoingCall",
+	{ GDBUS_EXPERIMENTAL_METHOD("OngoingCall",
 				GDBUS_ARGS({ "ongoing", "b" }), NULL,
 				ongoing_call) },
-	{ GDBUS_METHOD("MaxMessageSize",
+	{ GDBUS_EXPERIMENTAL_METHOD("MaxMessageSize",
 				GDBUS_ARGS({ "size", "u" }), NULL,
 				max_msg_size) },
-	{ GDBUS_METHOD("DisconnectImmediate", NULL, NULL,
+	{ GDBUS_EXPERIMENTAL_METHOD("DisconnectImmediate", NULL, NULL,
 				disconnect_immediate) },
-	{ GDBUS_METHOD("CardStatus",
+	{ GDBUS_EXPERIMENTAL_METHOD("CardStatus",
 				GDBUS_ARGS({ "status", "" }), NULL,
 				card_status) },
 	{ }
