@@ -1139,14 +1139,16 @@ int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
 	struct controller_info *info = &controllers[index];
 
-	DBG("index %d major %u minor %u", index, major, minor);
-
 	if (info->pending_uuid) {
+		DBG("postponed: index %d major %u minor %u",
+						index, major, minor);
 		info->major = major;
 		info->minor = minor;
 		info->pending_class = TRUE;
 		return 0;
 	}
+
+	DBG("setting: index %d major %u minor %u", index, major, minor);
 
 	memset(buf, 0, sizeof(buf));
 	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
