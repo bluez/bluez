@@ -200,21 +200,27 @@ static void player_set_setting(struct media_player *mp,
 	struct player_callback *cb = mp->cb;
 	struct pending_req *p;
 
-	if (cb == NULL || cb->cbs->set_setting == NULL)
-		return g_dbus_pending_property_error(id,
+	if (cb == NULL || cb->cbs->set_setting == NULL) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".NotSupported",
 					"Operation is not supported");
+		return;
+	}
 
 	p = find_pending(mp, key);
-	if (p != NULL)
-		return g_dbus_pending_property_error(id,
+	if (p != NULL) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InProgress",
 					"Operation already in progress");
+		return;
+	}
 
-	if (!cb->cbs->set_setting(mp, key, value, cb->user_data))
-		return g_dbus_pending_property_error(id,
+	if (!cb->cbs->set_setting(mp, key, value, cb->user_data)) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	p = pending_new(id, key, value);
 
@@ -228,10 +234,12 @@ static void set_setting(const GDBusPropertyTable *property,
 	struct media_player *mp = data;
 	const char *value;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &value);
 

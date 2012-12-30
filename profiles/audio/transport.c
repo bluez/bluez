@@ -640,17 +640,21 @@ static void set_volume(const GDBusPropertyTable *property,
 	struct a2dp_transport *a2dp = transport->data;
 	uint16_t volume;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &volume);
 
-	if (volume > 127)
-		return g_dbus_pending_property_error(id,
+	if (volume > 127) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	if (a2dp->volume != volume)
 		avrcp_set_volume(transport->device, volume);
