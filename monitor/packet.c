@@ -64,6 +64,7 @@
 
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_SERVICE_CLASS	COLOR_WHITE_BG
 
 static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
@@ -428,10 +429,92 @@ static void print_iac(const uint8_t *lap)
 						lap[2], lap[1], lap[0], str);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} svc_class_table[] = {
+	{ 0, "Positioning (Location identification)"		},
+	{ 1, "Networking (LAN, Ad hoc)"				},
+	{ 2, "Rendering (Printing, Speaker)"			},
+	{ 3, "Capturing (Scanner, Microphone)"			},
+	{ 4, "Object Transfer (v-Inbox, v-Folder)"		},
+	{ 5, "Audio (Speaker, Microphone, Headset)"		},
+	{ 6, "Telephony (Cordless telephony, Modem, Headset)"	},
+	{ 7, "Information (WEB-server, WAP-server)"		},
+	{ }
+};
+
+static const struct {
+	uint8_t val;
+	const char *str;
+} major_class_table[] = {
+	{ 0x00, "Miscellaneous"						},
+	{ 0x01, "Computer (desktop, notebook, PDA, organizers)"		},
+	{ 0x02, "Phone (cellular, cordless, payphone, modem)"		},
+	{ 0x03, "LAN /Network Access point"				},
+	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)"	},
+	{ 0x05, "Peripheral (mouse, joystick, keyboards)"		},
+	{ 0x06, "Imaging (printing, scanner, camera, display)"		},
+	{ 0x07, "Wearable"						},
+	{ 0x08, "Toy"							},
+	{ 0x09, "Health"						},
+	{ 0x1f, "Uncategorized, specific device code not specified"	},
+	{ }
+};
+
 static void print_dev_class(const uint8_t *dev_class)
 {
+	uint8_t mask, major_cls, minor_cls;
+	const char *major_str = NULL;
+	int i;
+
 	print_field("Class: 0x%2.2x%2.2x%2.2x",
 			dev_class[2], dev_class[1], dev_class[0]);
+
+	if ((dev_class[0] & 0x03) != 0x00) {
+		print_field("  Format type: 0x%2.2x", dev_class[0] & 0x03);
+		print_text(COLOR_ERROR, "  invalid format type");
+		return;
+	}
+
+	major_cls = dev_class[1] & 0x1f;
+	minor_cls = (dev_class[0] & 0xfc) >> 2;
+
+	for (i = 0; major_class_table[i].str; i++) {
+		if (major_class_table[i].val == major_cls) {
+			major_str = major_class_table[i].str;
+			break;
+		}
+	}
+
+	if (major_str) {
+		print_field("  Major class: %s", major_str);
+		print_field("  Minor class: 0x%2.2x", minor_cls);
+	} else {
+		print_field("  Major class: 0x%2.2x", major_cls);
+		print_field("  Minor class: 0x%2.2x", minor_cls);
+	}
+
+	if (dev_class[1] & 0x20)
+		print_field("  Limited Discoverable Mode");
+
+	if ((dev_class[1] & 0xc0) != 0x00) {
+		print_text(COLOR_ERROR, "  invalid service class");
+		return;
+	}
+
+	mask = dev_class[2];
+
+	for (i = 0; svc_class_table[i].str; i++) {
+		if (dev_class[2] & (1 << svc_class_table[i].bit)) {
+			print_field("  %s", svc_class_table[i].str);
+			mask &= ~(1 << svc_class_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_SERVICE_CLASS,
+				"  Unknown service class (0x%2.2x)", mask);
 }
 
 static void print_voice_setting(uint16_t setting)
