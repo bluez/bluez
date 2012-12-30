@@ -121,7 +121,9 @@ struct btd_adapter {
 	gboolean powered;
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
-	uint32_t dev_class;		/* Class of Device */
+	uint32_t dev_class;		/* current class of device */
+	uint8_t major_class;		/* configured major class */
+	uint8_t minor_class;		/* configured minor class */
 	char *name;			/* adapter name */
 	char *stored_name;		/* stored adapter name */
 	char *modalias;			/* device id (modalias) */
@@ -168,6 +170,12 @@ static gboolean process_auth_queue(gpointer user_data);
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor)
 {
+	if (adapter->major_class == major && adapter->minor_class == minor)
+		return 0;
+
+	adapter->major_class = major;
+	adapter->minor_class = minor;
+
 	return mgmt_set_dev_class(adapter->dev_id, major, minor);
 }
 
@@ -1610,8 +1618,8 @@ bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
 								uint8_t *minor)
 {
-	*major = (adapter->dev_class >> 8) & 0xFF;
-	*minor = adapter->dev_class & 0xFF;
+	*major = adapter->major_class;
+	*minor = adapter->minor_class;
 }
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
