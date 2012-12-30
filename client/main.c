@@ -494,7 +494,7 @@ static void generic_callback(const DBusError *error, void *user_data)
 		rl_printf("Changing %s succeeded\n", str);
 }
 
-static void cmd_name(const char *arg)
+static void cmd_system_alias(const char *arg)
 {
 	char *name;
 
@@ -508,7 +508,24 @@ static void cmd_name(const char *arg)
 
 	name = g_strdup(arg);
 
-	if (g_dbus_proxy_set_property_basic(default_ctrl, "Name",
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Alias",
+					DBUS_TYPE_STRING, &name,
+					generic_callback, name, g_free) == TRUE)
+		return;
+
+	g_free(name);
+}
+
+static void cmd_reset_alias(const char *arg)
+{
+	char *name;
+
+	if (check_default_ctrl() == FALSE)
+		return;
+
+	name = g_strdup("");
+
+	if (g_dbus_proxy_set_property_basic(default_ctrl, "Alias",
 					DBUS_TYPE_STRING, &name,
 					generic_callback, name, g_free) == TRUE)
 		return;
@@ -958,7 +975,8 @@ static const struct {
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
 	{ "devices",      NULL,       cmd_devices, "List available devices" },
-	{ "name",         "<name>",   cmd_name,  "Set controller local name" },
+	{ "system-alias", "<name>",   cmd_system_alias },
+	{ "reset-alias",  NULL,       cmd_reset_alias },
 	{ "power",        "<on/off>", cmd_power, "Set controller power" },
 	{ "pairable",     "<on/off>", cmd_pairable,
 					"Set controller pairable mode" },
