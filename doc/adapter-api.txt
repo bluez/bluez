@@ -68,6 +68,10 @@ Properties	string Address [readonly]
 			Switch an adapter on or off. This will also set the
 			appropriate connectable state of the controller.
 
+			The value of this property is not persistent. After
+			restart of unplugging of the adapter it will reset
+			back to false.
+
 		boolean Discoverable [readwrite]
 
 			Switch an adapter to discoverable or non-discoverable
