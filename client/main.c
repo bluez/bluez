@@ -90,7 +90,7 @@ static void print_adapter(GDBusProxy *proxy, const char *description)
 
 	dbus_message_iter_get_basic(&iter, &address);
 
-	if (g_dbus_proxy_get_property(proxy, "Name", &iter) == TRUE)
+	if (g_dbus_proxy_get_property(proxy, "Alias", &iter) == TRUE)
 		dbus_message_iter_get_basic(&iter, &name);
 	else
 		name = "<unknown>";
@@ -440,6 +440,7 @@ static void cmd_show(const char *arg)
 	rl_printf("Controller %s\n", address);
 
 	print_property(proxy, "Name");
+	print_property(proxy, "Alias");
 	print_property(proxy, "Class");
 	print_property(proxy, "Powered");
 	print_property(proxy, "Discoverable");
