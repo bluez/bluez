@@ -446,6 +446,7 @@ static void cmd_show(const char *arg)
 	print_property(proxy, "Discoverable");
 	print_property(proxy, "Pairable");
 	print_uuids(proxy);
+	print_property(proxy, "Modalias");
 	print_property(proxy, "Discovering");
 }
 
@@ -695,6 +696,7 @@ static void cmd_info(const char *arg)
 	rl_printf("Device %s\n", address);
 
 	print_property(proxy, "Name");
+	print_property(proxy, "Alias");
 	print_property(proxy, "Class");
 	print_property(proxy, "Appearance");
 	print_property(proxy, "Icon");
@@ -704,11 +706,11 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "Connected");
 	print_property(proxy, "LegacyPairing");
 	print_uuids(proxy);
+	print_property(proxy, "Modalias");
 	print_property(proxy, "VendorSource");
 	print_property(proxy, "Vendor");
 	print_property(proxy, "Product");
 	print_property(proxy, "Version");
-	print_property(proxy, "Alias");
 }
 
 static void pair_reply(DBusMessage *message, void *user_data)
