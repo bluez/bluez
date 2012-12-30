@@ -1047,22 +1047,28 @@ static void property_set_interval(const GDBusPropertyTable *property,
 	uint16_t val;
 	uint8_t atval[2];
 
-	if (t->interval_val_handle == 0)
-		return g_dbus_pending_property_error(id,
+	if (t->interval_val_handle == 0) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".NotSupported",
 					"Operation is not supported");
+		return;
+	}
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_UINT16) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &val);
 
-	if (val < t->min || val > t->max)
-		return g_dbus_pending_property_error(id,
+	if (val < t->min || val > t->max) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	att_put_u16(val, &atval[0]);
 
