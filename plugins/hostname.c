@@ -67,7 +67,6 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 	if (default_adapter == NULL || adapter == default_adapter) {
 		DBG("name: %s", pretty_hostname);
 
-		adapter_set_allow_name_changes(adapter, FALSE);
 		adapter_set_name(adapter, pretty_hostname);
 	} else {
 		int dev_id = adapter_get_dev_id(adapter);
@@ -77,7 +76,6 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 
 		DBG("name: %s", str);
 
-		adapter_set_allow_name_changes(adapter, FALSE);
 		adapter_set_name(adapter, str);
 
 		g_free(str);
