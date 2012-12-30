@@ -641,121 +641,6 @@ static gboolean dev_property_get_icon(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean dev_property_exists_vendor(const GDBusPropertyTable *property,
-								void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	return !!device->vendor;
-}
-
-static gboolean dev_property_get_vendor(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	if (!device->vendor)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-							&device->vendor);
-	return TRUE;
-}
-
-static gboolean dev_property_exists_vendor_src(
-				const GDBusPropertyTable *property, void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	return TRUE;
-}
-
-static gboolean dev_property_get_vendor_src(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_device *device = data;
-	const char *str;
-
-	switch (device->vendor_src) {
-	case 1:
-		str = "bluetooth";
-		break;
-	case 2:
-		str = "usb";
-		break;
-	default:
-		return FALSE;
-	}
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
-
-	return TRUE;
-}
-
-static gboolean dev_property_exists_product(const GDBusPropertyTable *property,
-								void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	return !!device->vendor;
-}
-
-static gboolean dev_property_get_product(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	if (!device->vendor)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-							&device->product);
-
-	return TRUE;
-}
-
-static gboolean dev_property_exists_version(const GDBusPropertyTable *property,
-								void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	return !!device->vendor;
-}
-
-static gboolean dev_property_get_version(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_device *device = data;
-
-	if (device->vendor_src < 1 || device->vendor_src > 2)
-		return FALSE;
-
-	if (!device->vendor)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16,
-							&device->version);
-	return TRUE;
-}
-
 static gboolean dev_property_get_paired(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -1663,14 +1548,6 @@ static const GDBusPropertyTable device_properties[] = {
 					dev_property_exists_appearance },
 	{ "Icon", "s", dev_property_get_icon, NULL,
 					dev_property_exists_icon },
-	{ "Vendor", "q", dev_property_get_vendor, NULL,
-					dev_property_exists_vendor },
-	{ "VendorSource", "s", dev_property_get_vendor_src, NULL,
-					dev_property_exists_vendor_src },
-	{ "Product", "q", dev_property_get_product, NULL,
-					dev_property_exists_product },
-	{ "Version", "q", dev_property_get_version, NULL,
-					dev_property_exists_version },
 	{ "Paired", "b", dev_property_get_paired },
 	{ "Trusted", "b", dev_property_get_trusted, dev_property_set_trusted },
 	{ "Blocked", "b", dev_property_get_blocked, dev_property_set_blocked },
@@ -1774,50 +1651,6 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 			return;
 		}
 	}
-}
-
-static void device_set_vendor(struct btd_device *device, uint16_t value)
-{
-	if (device->vendor == value)
-		return;
-
-	device->vendor = value;
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
-						DEVICE_INTERFACE, "Vendor");
-}
-
-static void device_set_vendor_src(struct btd_device *device, uint16_t value)
-{
-	if (device->vendor_src == value)
-		return;
-
-	device->vendor_src = value;
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
-					DEVICE_INTERFACE, "VendorSource");
-}
-
-static void device_set_product(struct btd_device *device, uint16_t value)
-{
-	if (device->product == value)
-		return;
-
-	device->product = value;
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
-						DEVICE_INTERFACE, "Product");
-}
-
-static void device_set_version(struct btd_device *device, uint16_t value)
-{
-	if (device->version == value)
-		return;
-
-	device->version = value;
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
-						DEVICE_INTERFACE, "Version");
 }
 
 static char *load_cached_name(struct btd_device *device, const char *local,
@@ -4277,10 +4110,10 @@ gboolean btd_device_remove_attio_callback(struct btd_device *device, guint id)
 void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 			uint16_t vendor, uint16_t product, uint16_t version)
 {
-	device_set_vendor_src(device, source);
-	device_set_vendor(device, vendor);
-	device_set_product(device, product);
-	device_set_version(device, version);
+	device->vendor_src = source;
+	device->vendor = vendor;
+	device->product = product;
+	device->version = version;
 
 	g_free(device->modalias);
 	device->modalias = bt_modalias(source, vendor, product, version);
