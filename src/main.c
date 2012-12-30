@@ -218,8 +218,7 @@ static void parse_config(GKeyFile *config)
 	} else {
 		DBG("name=%s", str);
 		g_free(main_opts.name);
-		main_opts.name = g_strdup(str);
-		g_free(str);
+		main_opts.name = str;
 	}
 
 	str = g_key_file_get_string(config, "General", "Class", &err);
@@ -271,7 +270,7 @@ static void init_defaults(void)
 
 	/* Default HCId settings */
 	memset(&main_opts, 0, sizeof(main_opts));
-	main_opts.name = g_strdup("BlueZ");
+	main_opts.name = g_strdup_printf("BlueZ %s", VERSION);
 	main_opts.class = 0x000000;
 	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;
 	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
