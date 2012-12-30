@@ -194,10 +194,6 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	if (adapter->stored_name)
-		g_key_file_set_string(key_file, "General", "Name",
-							adapter->stored_name);
-
 	g_key_file_set_boolean(key_file, "General", "Pairable",
 				adapter->pairable);
 
@@ -216,6 +212,10 @@ static void store_adapter_info(struct btd_adapter *adapter)
 		g_key_file_set_integer(key_file, "General",
 					"DiscoverableTimeout",
 					adapter->discov_timeout);
+
+	if (adapter->stored_name)
+		g_key_file_set_string(key_file, "General", "Alias",
+							adapter->stored_name);
 
 	ba2str(&adapter->bdaddr, address);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
@@ -549,37 +549,20 @@ void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
 
 void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 {
-	if (g_strcmp0(adapter->name, name) == 0)
-		return;
-
-	g_free(adapter->name);
-	adapter->name = g_strdup(name);
-
-	if (adapter->allow_name_changes == TRUE) {
-		DBG("updating stored name");
-
-		g_free(adapter->stored_name);
-		adapter->stored_name = g_strdup(adapter->name);
-
-		store_adapter_info(adapter);
-	}
-
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-						ADAPTER_INTERFACE, "Name");
+						ADAPTER_INTERFACE, "Alias");
 
 	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
 				(const uint8_t *) name, strlen(name));
 }
 
-int adapter_set_name(struct btd_adapter *adapter, const char *name)
+static int set_name(struct btd_adapter *adapter, const char *name)
 {
 	char maxname[MAX_NAME_LENGTH + 1];
 
-	if (g_strcmp0(adapter->name, name) == 0)
-		return 0;
-
 	memset(maxname, 0, sizeof(maxname));
 	strncpy(maxname, name, MAX_NAME_LENGTH);
+
 	if (!g_utf8_validate(maxname, -1, NULL)) {
 		error("Name change failed: supplied name isn't valid UTF-8");
 		return -EINVAL;
@@ -588,27 +571,25 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	return mgmt_set_name(adapter->dev_id, maxname);
 }
 
-static void set_name(struct btd_adapter *adapter, const char *name,
-						GDBusPendingPropertySet id)
+int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
-	int ret;
+	if (g_strcmp0(adapter->name, name) == 0)
+		return 0;
 
-	if (adapter->allow_name_changes == FALSE)
-		return g_dbus_pending_property_error(id,
-						ERROR_INTERFACE ".Failed",
-						strerror(EPERM));
+	g_free(adapter->name);
+	adapter->name = g_strdup(name);
 
-	ret = adapter_set_name(adapter, name);
-	if (ret >= 0)
-		return g_dbus_pending_property_success(id);
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+						ADAPTER_INTERFACE, "Name");
 
-	if (ret == -EINVAL)
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-	else
-		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
-							strerror(-ret));
+	/* alias is preferred over system name */
+	if (adapter->stored_name)
+		return 0;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+						ADAPTER_INTERFACE, "Alias");
+
+	return set_name(adapter, name);
 }
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter,
@@ -947,16 +928,60 @@ static void adapter_property_set_alias(const GDBusPropertyTable *property,
 					DBusMessageIter *value,
 					GDBusPendingPropertySet id, void *data)
 {
+	struct btd_adapter *adapter = data;
 	const char *name;
+	int ret;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &name);
 
-	set_name(data, name, id);
+	if (g_str_equal(name, "")  == TRUE) {
+		if (adapter->stored_name == NULL) {
+			/* no alias set, nothing to restore */
+			g_dbus_pending_property_success(id);
+			return;
+		}
+
+		/* restore to system name */
+		ret = set_name(adapter, adapter->name);
+	} else {
+		if (g_strcmp0(adapter->stored_name, name) == 0) {
+			/* alias already set, nothing to do */
+			g_dbus_pending_property_success(id);
+			return;
+		}
+
+		/* set to alias */
+		ret = set_name(adapter, name);
+	}
+
+	if (ret >= 0) {
+		g_free(adapter->stored_name);
+
+		if (g_str_equal(name, "")  == TRUE)
+			adapter->stored_name = NULL;
+		else
+			adapter->stored_name = g_strdup(name);
+
+		store_adapter_info(adapter);
+
+		g_dbus_pending_property_success(id);
+		return;
+	}
+
+	if (ret == -EINVAL)
+		g_dbus_pending_property_error(id,
+					ERROR_INTERFACE ".InvalidArguments",
+					"Invalid arguments in method call");
+	else
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+							strerror(-ret));
 }
 
 static gboolean adapter_property_get_class(const GDBusPropertyTable *property,
@@ -2571,9 +2596,6 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 		free(converted);
 	}
 
-	if (read_local_name(&adapter->bdaddr, str) == 0)
-		g_key_file_set_string(key_file, "General", "Name", str);
-
 	if (read_device_pairable(&adapter->bdaddr, &flag) == 0)
 		g_key_file_set_boolean(key_file, "General", "Pairable", flag);
 
@@ -2590,6 +2612,9 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 		g_key_file_set_boolean(key_file, "General", "Discoverable",
 					mode == MODE_DISCOVERABLE);
 	}
+
+	if (read_local_name(&adapter->bdaddr, str) == 0)
+		g_key_file_set_string(key_file, "General", "Alias", str);
 
 	create_file(filename, S_IRUSR | S_IWUSR);
 
@@ -2618,10 +2643,14 @@ static void load_config(struct btd_adapter *adapter)
 	if (!g_key_file_load_from_file(key_file, filename, 0, NULL))
 		convert_config(adapter, filename, key_file);
 
-	/* Get name */
+	/* Get alias */
 	adapter->stored_name = g_key_file_get_string(key_file, "General",
-								"Name", NULL);
-	adapter->name = g_strdup(adapter->stored_name);
+								"Alias", NULL);
+	if (!adapter->stored_name) {
+		/* fallback */
+		adapter->stored_name = g_key_file_get_string(key_file,
+						"General", "Name", NULL);
+	}
 
 	/* Set class */
 	adapter->dev_class = main_opts.class;
