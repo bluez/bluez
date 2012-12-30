@@ -574,10 +574,12 @@ static void set_status(const GDBusPropertyTable *property,
 	GObexApparam *apparam;
 	char contents[2];
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &value);
 
