@@ -36,6 +36,21 @@
 
 #include "glib-helper.h"
 
+char *bt_modalias(uint16_t source, uint16_t vendor,
+					uint16_t product, uint16_t version)
+{
+	switch (source) {
+	case 0x0001:
+		return g_strdup_printf("%s:v%04Xp%04Xd%04X",
+					"bluetooth", vendor, product, version);
+	case 0x0002:
+		return g_strdup_printf("%s:v%04Xp%04Xd%04X",
+					"usb", vendor, product, version);
+	}
+
+	return NULL;
+}
+
 char *bt_uuid2string(uuid_t *uuid)
 {
 	gchar *str;
