@@ -61,8 +61,11 @@ Settings file format
 
 Settings file contains one [General] group with adapter info like:
 
-  Name			String		Friendly name advertised for
-					this adapter
+  Alias			String		Friendly user provided name advertised
+					for this adapter
+
+					This value overwrites the system
+					name (pretty hostname)
 
   Discoverable		Boolean		Discoverability of the adapter
 
