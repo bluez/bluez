@@ -513,8 +513,10 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	/* No change */
 	if ((device->alias == NULL && g_str_equal(alias, "")) ||
-					g_strcmp0(device->alias, alias) == 0)
-		return g_dbus_pending_property_success(id);
+					g_strcmp0(device->alias, alias) == 0) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	g_free(device->alias);
 	device->alias = g_str_equal(alias, "") ? NULL : g_strdup(alias);
@@ -533,10 +535,12 @@ static void dev_property_set_alias(const GDBusPropertyTable *property,
 {
 	const char *alias;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &alias);
 
@@ -806,8 +810,10 @@ static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 {
 	struct btd_device *device = data;
 
-	if (device->trusted == value)
-		return g_dbus_pending_property_success(id);
+	if (device->trusted == value) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	device->trusted = value;
 
@@ -825,10 +831,12 @@ static void dev_property_set_trusted(const GDBusPropertyTable *property,
 {
 	dbus_bool_t b;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &b);
 
@@ -878,10 +886,12 @@ static void dev_property_set_blocked(const GDBusPropertyTable *property,
 {
 	dbus_bool_t b;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &b);
 

@@ -306,14 +306,17 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 {
 	int err;
 
-	if (adapter->powered == powered)
-		return g_dbus_pending_property_success(id);
+	if (adapter->powered == powered) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	err = mgmt_set_powered(adapter->dev_id, powered);
-	if (err < 0)
-		return g_dbus_pending_property_error(id,
-						ERROR_INTERFACE ".Failed",
-						strerror(-err));
+	if (err < 0) {
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+							strerror(-err));
+		return;
+	}
 
 	if (powered == FALSE)
 		adapter->off_requested = TRUE;
@@ -489,8 +492,10 @@ static void set_discoverable_timeout(struct btd_adapter *adapter,
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 
-	if (adapter->discov_timeout == timeout && timeout == 0)
-		return g_dbus_pending_property_success(id);
+	if (adapter->discov_timeout == timeout && timeout == 0) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	if (adapter->discoverable)
 		mgmt_set_discoverable(adapter->dev_id, TRUE, timeout);
@@ -509,8 +514,10 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 
-	if (adapter->pairable_timeout == timeout && timeout == 0)
-		return g_dbus_pending_property_success(id);
+	if (adapter->pairable_timeout == timeout && timeout == 0) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	if (adapter->pairable)
 		adapter_set_pairable_timeout(adapter, timeout);
@@ -1014,10 +1021,12 @@ static void adapter_property_set_powered(
 {
 	dbus_bool_t powered;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &powered);
 
@@ -1044,10 +1053,12 @@ static void adapter_property_set_discoverable(
 {
 	dbus_bool_t discoverable;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &discoverable);
 
@@ -1071,10 +1082,12 @@ static void adapter_property_set_pairable(const GDBusPropertyTable *property,
 {
 	dbus_bool_t pairable;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &pairable);
 
@@ -1100,10 +1113,12 @@ static void adapter_property_set_discoverable_timeout(
 {
 	uint32_t timeout;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &timeout);
 	set_discoverable_timeout(data, timeout, id);
@@ -1127,10 +1142,12 @@ static void adapter_property_set_pairable_timeout(
 {
 	uint32_t timeout;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(value, &timeout);
 	set_pairable_timeout(data, timeout, id);
