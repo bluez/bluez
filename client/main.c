@@ -707,10 +707,6 @@ static void cmd_info(const char *arg)
 	print_property(proxy, "LegacyPairing");
 	print_uuids(proxy);
 	print_property(proxy, "Modalias");
-	print_property(proxy, "VendorSource");
-	print_property(proxy, "Vendor");
-	print_property(proxy, "Product");
-	print_property(proxy, "Version");
 }
 
 static void pair_reply(DBusMessage *message, void *user_data)
