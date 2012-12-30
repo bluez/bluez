@@ -357,9 +357,6 @@ int sap_init(void)
 	if (g_dbus_register_interface(btd_get_dbus_connection(), SAP_DUMMY_PATH,
 				SAP_DUMMY_IFACE, dummy_methods, NULL, NULL,
 				NULL, NULL) == FALSE) {
-		error("sap-dummy interface %s init failed on path %s",
-					SAP_DUMMY_IFACE, SAP_DUMMY_PATH);
-
 		init_cnt--;
 		return -1;
 	}
