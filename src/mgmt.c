@@ -333,7 +333,7 @@ static inline int mgmt_low_energy(uint32_t settings)
 
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
-	DBG("new settings %x", settings);
+	DBG("new settings 0x%08x", settings);
 
 	adapter_update_connectable(adapter, mgmt_connectable(settings));
 	adapter_update_discoverable(adapter, mgmt_discoverable(settings));
@@ -371,8 +371,6 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	DBG("hci%u new settings", index);
-
 	if (index > max_index) {
 		error("Unexpected index %u in new_settings event", index);
 		return;
@@ -387,6 +385,8 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 	}
 
 	settings = bt_get_le32(ev);
+
+	DBG("index %d settings 0x%08x", index, settings);
 
 	old_power = mgmt_powered(info->current_settings);
 	new_power = mgmt_powered(settings);
@@ -1484,12 +1484,13 @@ static void mgmt_update_cod(uint16_t index, void *buf, size_t len)
 	struct controller_info *info;
 	struct btd_adapter *adapter;
 
-	DBG("index %d", index);
-
 	if (len < sizeof(*rp)) {
 		error("Too small class of device reply");
 		return;
 	}
+
+	DBG("index %d class 0x%02x%02x%02x", index,
+					rp->val[2], rp->val[1], rp->val[0]);
 
 	info = &controllers[index];
 
@@ -1529,12 +1530,23 @@ static void mgmt_remove_uuid_complete(uint16_t index, void *buf, size_t len)
 	handle_pending_uuids(index);
 }
 
+static void mgmt_set_dev_class_complete(uint16_t index, void *buf, size_t len)
+{
+        DBG("index %d", index);
+
+	if (index > max_index) {
+		error("Unexpected index %u in set_dev_class_complete event",
+									index);
+		return;
+	}
+
+	mgmt_update_cod(index, buf, len);
+}
+
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
 	uint16_t opcode;
-
-	DBG("");
 
 	if (len < sizeof(*ev)) {
 		error("Too small management command complete event packet");
@@ -1544,6 +1556,8 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 	opcode = bt_get_le16(&ev->opcode);
 
 	len -= sizeof(*ev);
+
+	DBG("opcode 0x%04x status 0x%02x len %zu", opcode, ev->status, len);
 
 	switch (opcode) {
 	case MGMT_OP_READ_VERSION:
@@ -1580,7 +1594,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		mgmt_remove_uuid_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
-		mgmt_update_cod(index, buf, len);
+		mgmt_set_dev_class_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
@@ -2066,8 +2080,6 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 	ssize_t ret;
 	uint16_t len, opcode, index;
 
-	DBG("cond %d", cond);
-
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
@@ -2082,8 +2094,6 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 						strerror(errno), errno);
 		return TRUE;
 	}
-
-	DBG("Received %zd bytes from management socket", ret);
 
 	if (ret < MGMT_HDR_SIZE) {
 		error("Too small Management packet");
