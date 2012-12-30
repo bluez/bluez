@@ -927,7 +927,23 @@ static gboolean adapter_property_get_name(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void adapter_property_set_name(const GDBusPropertyTable *property,
+static gboolean adapter_property_get_alias(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct btd_adapter *adapter = data;
+	const char *ptr;
+
+	if (adapter->stored_name)
+		ptr = adapter->stored_name;
+	else
+		ptr = adapter->name ?: "";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
+
+	return TRUE;
+}
+
+static void adapter_property_set_alias(const GDBusPropertyTable *property,
 					DBusMessageIter *value,
 					GDBusPendingPropertySet id, void *data)
 {
@@ -1186,7 +1202,9 @@ static const GDBusMethodTable adapter_methods[] = {
 
 static const GDBusPropertyTable adapter_properties[] = {
 	{ "Address", "s", adapter_property_get_address },
-	{ "Name", "s", adapter_property_get_name, adapter_property_set_name },
+	{ "Name", "s", adapter_property_get_name },
+	{ "Alias", "s", adapter_property_get_alias,
+					adapter_property_set_alias },
 	{ "Class", "u", adapter_property_get_class },
 	{ "Powered", "b", adapter_property_get_powered,
 					adapter_property_set_powered },
