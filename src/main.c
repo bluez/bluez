@@ -277,10 +277,6 @@ static void init_defaults(void)
 	main_opts.reverse_sdp = TRUE;
 	main_opts.name_resolv = TRUE;
 	main_opts.debug_keys = FALSE;
-
-	if (gethostname(main_opts.host_name,
-				sizeof(main_opts.host_name) - 1) < 0)
-		strcpy(main_opts.host_name, "noname");
 }
 
 static GMainLoop *event_loop;
