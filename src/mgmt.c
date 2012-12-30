@@ -115,7 +115,7 @@ static bool get_adapter_and_device(const bdaddr_t *src,
 	return true;
 }
 
-static void read_version_complete(int sk, void *buf, size_t len)
+static void read_version_complete(void *buf, size_t len)
 {
 	struct mgmt_hdr hdr;
 	struct mgmt_rp_read_version *rp = buf;
@@ -140,7 +140,8 @@ static void read_version_complete(int sk, void *buf, size_t len)
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = htobs(MGMT_OP_READ_INDEX_LIST);
 	hdr.index = htobs(MGMT_INDEX_NONE);
-	if (write(sk, &hdr, sizeof(hdr)) < 0)
+
+	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
 		error("Unable to read controller index list: %s (%d)",
 						strerror(errno), errno);
 }
@@ -164,7 +165,7 @@ static void add_controller(uint16_t index)
 	DBG("Added controller %u", index);
 }
 
-static void read_info(int sk, uint16_t index)
+static void read_info(uint16_t index)
 {
 	struct mgmt_hdr hdr;
 
@@ -172,12 +173,12 @@ static void read_info(int sk, uint16_t index)
 	hdr.opcode = htobs(MGMT_OP_READ_INFO);
 	hdr.index = htobs(index);
 
-	if (write(sk, &hdr, sizeof(hdr)) < 0)
+	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
 		error("Unable to send read_info command: %s (%d)",
 						strerror(errno), errno);
 }
 
-static void get_connections(int sk, uint16_t index)
+static void get_connections(uint16_t index)
 {
 	struct mgmt_hdr hdr;
 
@@ -185,15 +186,15 @@ static void get_connections(int sk, uint16_t index)
 	hdr.opcode = htobs(MGMT_OP_GET_CONNECTIONS);
 	hdr.index = htobs(index);
 
-	if (write(sk, &hdr, sizeof(hdr)) < 0)
+	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
 		error("Unable to send get_connections command: %s (%d)",
 						strerror(errno), errno);
 }
 
-static void mgmt_index_added(int sk, uint16_t index)
+static void mgmt_index_added(uint16_t index)
 {
 	add_controller(index);
-	read_info(sk, index);
+	read_info(index);
 }
 
 static void remove_controller(uint16_t index)
@@ -214,7 +215,7 @@ static void remove_controller(uint16_t index)
 	DBG("Removed controller %u", index);
 }
 
-static void mgmt_index_removed(int sk, uint16_t index)
+static void mgmt_index_removed(uint16_t index)
 {
 	remove_controller(index);
 }
@@ -358,7 +359,7 @@ static void mgmt_update_powered(struct btd_adapter *adapter,
 	update_settings(adapter, settings);
 }
 
-static void mgmt_new_settings(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 {
 	uint32_t settings, *ev = buf;
 	struct controller_info *info;
@@ -452,7 +453,7 @@ static void store_link_key(struct btd_adapter *adapter,
 	g_key_file_free(key_file);
 }
 
-static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_link_key *ev = buf;
 	struct controller_info *info;
@@ -500,7 +501,7 @@ static void mgmt_new_link_key(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->key.addr, 0);
 }
 
-static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_connected *ev = buf;
 	struct eir_data eir_data;
@@ -554,8 +555,7 @@ static void mgmt_device_connected(int sk, uint16_t index, void *buf, size_t len)
 	eir_data_free(&eir_data);
 }
 
-static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
-								size_t len)
+static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_disconnected *ev = buf;
 	struct controller_info *info;
@@ -593,7 +593,7 @@ static void mgmt_device_disconnected(int sk, uint16_t index, void *buf,
 		adapter_remove_connection(adapter, device);
 }
 
-static void mgmt_connect_failed(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_connect_failed *ev = buf;
 	struct controller_info *info;
@@ -683,7 +683,7 @@ int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 	return 0;
 }
 
-static void mgmt_pin_code_request(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_pin_code_request(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_pin_code_request *ev = buf;
 	struct controller_info *info;
@@ -814,7 +814,7 @@ int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	return 0;
 }
 
-static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_user_passkey_request *ev = buf;
 	struct controller_info *info;
@@ -851,7 +851,7 @@ static void mgmt_passkey_request(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
-static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_passkey_notify *ev = buf;
 	struct controller_info *info;
@@ -890,7 +890,7 @@ static void mgmt_passkey_notify(int sk, uint16_t index, void *buf, size_t len)
 		error("device_notify_passkey: %s", strerror(-err));
 }
 
-static void mgmt_user_confirm_request(int sk, uint16_t index, void *buf,
+static void mgmt_user_confirm_request(uint16_t index, void *buf,
 								size_t len)
 {
 	struct mgmt_ev_user_confirm_request *ev = buf;
@@ -1064,7 +1064,7 @@ static int clear_uuids(int index)
 	return mgmt_remove_uuid(index, &uuid_any);
 }
 
-static void read_index_list_complete(int sk, void *buf, size_t len)
+static void read_index_list_complete(void *buf, size_t len)
 {
 	struct mgmt_rp_read_index_list *rp = buf;
 	uint16_t num;
@@ -1088,7 +1088,7 @@ static void read_index_list_complete(int sk, void *buf, size_t len)
 		index = bt_get_le16(&rp->index[i]);
 
 		add_controller(index);
-		read_info(sk, index);
+		read_info(index);
 	}
 }
 
@@ -1164,7 +1164,7 @@ int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 	return 0;
 }
 
-static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
+static void read_info_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
@@ -1236,14 +1236,14 @@ static void read_info_complete(int sk, uint16_t index, void *buf, size_t len)
 		mgmt_set_low_energy(index, TRUE);
 
 	if (mgmt_powered(info->current_settings)) {
-		get_connections(sk, index);
+		get_connections(index);
 		btd_adapter_start(adapter);
 	}
 
 	btd_adapter_unref(adapter);
 }
 
-static void disconnect_complete(int sk, uint16_t index, uint8_t status,
+static void disconnect_complete(uint16_t index, uint8_t status,
 							void *buf, size_t len)
 {
 	struct mgmt_rp_disconnect *rp = buf;
@@ -1284,7 +1284,7 @@ static void disconnect_complete(int sk, uint16_t index, uint8_t status,
 						MGMT_STATUS_DISCONNECTED);
 }
 
-static void pair_device_complete(int sk, uint16_t index, uint8_t status,
+static void pair_device_complete(uint16_t index, uint8_t status,
 							void *buf, size_t len)
 {
 	struct mgmt_rp_pair_device *rp = buf;
@@ -1310,8 +1310,7 @@ static void pair_device_complete(int sk, uint16_t index, uint8_t status,
 	bonding_complete(info, &rp->addr, status);
 }
 
-static void get_connections_complete(int sk, uint16_t index, void *buf,
-								size_t len)
+static void get_connections_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_get_connections *rp = buf;
 	struct controller_info *info;
@@ -1344,8 +1343,7 @@ static void get_connections_complete(int sk, uint16_t index, void *buf,
 	}
 }
 
-static void set_local_name_complete(int sk, uint16_t index, void *buf,
-								size_t len)
+static void set_local_name_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_cp_set_local_name *rp = buf;
 	struct controller_info *info;
@@ -1374,8 +1372,7 @@ static void set_local_name_complete(int sk, uint16_t index, void *buf,
 	adapter_name_changed(adapter, (char *) rp->name);
 }
 
-static void read_local_oob_data_complete(int sk, uint16_t index, void *buf,
-								size_t len)
+static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_local_oob_data *rp = buf;
 	struct btd_adapter *adapter;
@@ -1400,7 +1397,7 @@ static void read_local_oob_data_complete(int sk, uint16_t index, void *buf,
 							rp->randomizer);
 }
 
-static void start_discovery_complete(int sk, uint16_t index, uint8_t status,
+static void start_discovery_complete(uint16_t index, uint8_t status,
 						     void *buf, size_t len)
 {
 	uint8_t *type = buf;
@@ -1428,7 +1425,7 @@ static void start_discovery_complete(int sk, uint16_t index, uint8_t status,
 		adapter_set_discovering(adapter, FALSE);
 }
 
-static void read_local_oob_data_failed(int sk, uint16_t index)
+static void read_local_oob_data_failed(uint16_t index)
 {
 	struct btd_adapter *adapter;
 
@@ -1505,8 +1502,7 @@ static void mgmt_update_cod(uint16_t index, void *buf, size_t len)
 	btd_adapter_class_changed(adapter, rp->val);
 }
 
-static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
-								size_t len)
+static void mgmt_add_uuid_complete(uint16_t index, void *buf, size_t len)
 {
 	DBG("index %d", index);
 
@@ -1519,8 +1515,7 @@ static void mgmt_add_uuid_complete(int sk, uint16_t index, void *buf,
 	handle_pending_uuids(index);
 }
 
-static void mgmt_remove_uuid_complete(int sk, uint16_t index, void *buf,
-								size_t len)
+static void mgmt_remove_uuid_complete(uint16_t index, void *buf, size_t len)
 {
 	DBG("index %d", index);
 
@@ -1534,7 +1529,7 @@ static void mgmt_remove_uuid_complete(int sk, uint16_t index, void *buf,
 	handle_pending_uuids(index);
 }
 
-static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
 	uint16_t opcode;
@@ -1552,41 +1547,39 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 
 	switch (opcode) {
 	case MGMT_OP_READ_VERSION:
-		read_version_complete(sk, ev->data, len);
+		read_version_complete(ev->data, len);
 		break;
 	case MGMT_OP_READ_INDEX_LIST:
-		read_index_list_complete(sk, ev->data, len);
+		read_index_list_complete(ev->data, len);
 		break;
 	case MGMT_OP_READ_INFO:
-		read_info_complete(sk, index, ev->data, len);
+		read_info_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_POWERED:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DISCOVERABLE:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_CONNECTABLE:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_PAIRABLE:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_SSP:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_LE:
-		mgmt_new_settings(sk, index, ev->data, len);
+		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_ADD_UUID:
-		mgmt_add_uuid_complete(sk, index, ev->data, len);
+		mgmt_add_uuid_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_REMOVE_UUID:
-		DBG("remove_uuid complete");
-		mgmt_remove_uuid_complete(sk, index, ev->data, len);
+		mgmt_remove_uuid_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
-		DBG("set_dev_class complete");
 		mgmt_update_cod(index, buf, len);
 		break;
 	case MGMT_OP_LOAD_LINK_KEYS:
@@ -1599,11 +1592,10 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("unpair_device complete");
 		break;
 	case MGMT_OP_DISCONNECT:
-		DBG("disconnect complete");
-		disconnect_complete(sk, index, ev->status, ev->data, len);
+		disconnect_complete(index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_GET_CONNECTIONS:
-		get_connections_complete(sk, index, ev->data, len);
+		get_connections_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_PIN_CODE_REPLY:
 		DBG("pin_code_reply complete");
@@ -1615,7 +1607,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_io_capability complete");
 		break;
 	case MGMT_OP_PAIR_DEVICE:
-		pair_device_complete(sk, index, ev->status, ev->data, len);
+		pair_device_complete(index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_USER_CONFIRM_REPLY:
 		DBG("user_confirm_reply complete");
@@ -1624,10 +1616,10 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("user_confirm_net_reply complete");
 		break;
 	case MGMT_OP_SET_LOCAL_NAME:
-		set_local_name_complete(sk, index, ev->data, len);
+		set_local_name_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		read_local_oob_data_complete(sk, index, ev->data, len);
+		read_local_oob_data_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_ADD_REMOTE_OOB_DATA:
 		DBG("add_remote_oob_data complete");
@@ -1645,7 +1637,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 		DBG("set_fast_connectable complete");
 		break;
 	case MGMT_OP_START_DISCOVERY:
-		start_discovery_complete(sk, index, ev->status, ev->data, len);
+		start_discovery_complete(index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_STOP_DISCOVERY:
 		DBG("stop_discovery complete");
@@ -1659,7 +1651,7 @@ static void mgmt_cmd_complete(int sk, uint16_t index, void *buf, size_t len)
 	}
 }
 
-static void mgmt_add_uuid_busy(int sk, uint16_t index)
+static void mgmt_add_uuid_busy(uint16_t index)
 {
 	struct controller_info *info;
 
@@ -1669,7 +1661,7 @@ static void mgmt_add_uuid_busy(int sk, uint16_t index)
 	info->pending_cod_change = TRUE;
 }
 
-static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_status *ev = buf;
 	uint16_t opcode;
@@ -1689,11 +1681,11 @@ static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
 
 	switch (opcode) {
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		read_local_oob_data_failed(sk, index);
+		read_local_oob_data_failed(index);
 		break;
 	case MGMT_OP_ADD_UUID:
 		if (ev->status == MGMT_STATUS_BUSY) {
-			mgmt_add_uuid_busy(sk, index);
+			mgmt_add_uuid_busy(index);
 			return;
 		}
 		break;
@@ -1704,7 +1696,7 @@ static void mgmt_cmd_status(int sk, uint16_t index, void *buf, size_t len)
 			ev->status);
 }
 
-static void mgmt_controller_error(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_controller_error(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_controller_error *ev = buf;
 
@@ -1716,7 +1708,7 @@ static void mgmt_controller_error(int sk, uint16_t index, void *buf, size_t len)
 	DBG("index %u error_code %u", index, ev->error_code);
 }
 
-static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 	struct mgmt_ev_auth_failed *ev = buf;
@@ -1738,7 +1730,7 @@ static void mgmt_auth_failed(int sk, uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->addr, ev->status);
 }
 
-static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_local_name_changed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_cp_set_local_name *ev = buf;
 	struct controller_info *info;
@@ -1763,7 +1755,7 @@ static void mgmt_local_name_changed(int sk, uint16_t index, void *buf, size_t le
 		adapter_name_changed(adapter, (char *) ev->name);
 }
 
-static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_found *ev = buf;
 	struct controller_info *info;
@@ -1817,7 +1809,7 @@ static void mgmt_device_found(int sk, uint16_t index, void *buf, size_t len)
 					eir, eir_len);
 }
 
-static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_discovering *ev = buf;
 	struct controller_info *info;
@@ -1845,7 +1837,7 @@ static void mgmt_discovering(int sk, uint16_t index, void *buf, size_t len)
 	adapter_set_discovering(adapter, ev->discovering);
 }
 
-static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 	struct btd_adapter *adapter;
@@ -1876,7 +1868,7 @@ static void mgmt_device_blocked(int sk, uint16_t index, void *buf, size_t len)
 		device_block(device, TRUE);
 }
 
-static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 	struct btd_adapter *adapter;
@@ -1907,7 +1899,7 @@ static void mgmt_device_unblocked(int sk, uint16_t index, void *buf, size_t len)
 		device_unblock(device, FALSE, TRUE);
 }
 
-static void mgmt_device_unpaired(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 	struct btd_adapter *adapter;
@@ -2000,7 +1992,7 @@ static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 	g_key_file_free(key_file);
 }
 
-static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_long_term_key *ev = buf;
 	struct controller_info *info;
@@ -2045,7 +2037,7 @@ static void mgmt_new_ltk(int sk, uint16_t index, void *buf, size_t len)
 		bonding_complete(info, &ev->key.addr, 0);
 }
 
-static void mgmt_cod_changed(int sk, uint16_t index, void *buf, size_t len)
+static void mgmt_cod_changed(uint16_t index, void *buf, size_t len)
 {
 	struct controller_info *info;
 
@@ -2066,11 +2058,11 @@ static void mgmt_cod_changed(int sk, uint16_t index, void *buf, size_t len)
 	mgmt_update_cod(index, buf, len);
 }
 
-static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data)
+static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
 {
 	char buf[MGMT_BUF_SIZE];
 	struct mgmt_hdr *hdr = (void *) buf;
-	int sk;
 	ssize_t ret;
 	uint16_t len, opcode, index;
 
@@ -2079,14 +2071,12 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 	if (cond & G_IO_NVAL)
 		return FALSE;
 
-	sk = g_io_channel_unix_get_fd(io);
-
 	if (cond & (G_IO_ERR | G_IO_HUP)) {
 		error("Error on management socket");
 		return FALSE;
 	}
 
-	ret = read(sk, buf, sizeof(buf));
+	ret = read(mgmt_sock, buf, sizeof(buf));
 	if (ret < 0) {
 		error("Unable to read from management socket: %s (%d)",
 						strerror(errno), errno);
@@ -2111,73 +2101,73 @@ static gboolean mgmt_event(GIOChannel *io, GIOCondition cond, gpointer user_data
 
 	switch (opcode) {
 	case MGMT_EV_CMD_COMPLETE:
-		mgmt_cmd_complete(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_cmd_complete(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CMD_STATUS:
-		mgmt_cmd_status(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_cmd_status(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CONTROLLER_ERROR:
-		mgmt_controller_error(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_controller_error(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_INDEX_ADDED:
-		mgmt_index_added(sk, index);
+		mgmt_index_added(index);
 		break;
 	case MGMT_EV_INDEX_REMOVED:
-		mgmt_index_removed(sk, index);
+		mgmt_index_removed(index);
 		break;
 	case MGMT_EV_NEW_SETTINGS:
-		mgmt_new_settings(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_new_settings(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CLASS_OF_DEV_CHANGED:
-		mgmt_cod_changed(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_cod_changed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
-		mgmt_new_link_key(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_new_link_key(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_CONNECTED:
-		mgmt_device_connected(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_connected(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_DISCONNECTED:
-		mgmt_device_disconnected(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_disconnected(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CONNECT_FAILED:
-		mgmt_connect_failed(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_connect_failed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_PIN_CODE_REQUEST:
-		mgmt_pin_code_request(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_pin_code_request(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_USER_CONFIRM_REQUEST:
-		mgmt_user_confirm_request(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_user_confirm_request(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_AUTH_FAILED:
-		mgmt_auth_failed(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_auth_failed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_LOCAL_NAME_CHANGED:
-		mgmt_local_name_changed(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_local_name_changed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_FOUND:
-		mgmt_device_found(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_found(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DISCOVERING:
-		mgmt_discovering(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_discovering(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_BLOCKED:
-		mgmt_device_blocked(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_blocked(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_UNBLOCKED:
-		mgmt_device_unblocked(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_unblocked(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_UNPAIRED:
-		mgmt_device_unpaired(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_device_unpaired(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
-		mgmt_passkey_request(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_passkey_request(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_PASSKEY_NOTIFY:
-		mgmt_passkey_notify(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_passkey_notify(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LONG_TERM_KEY:
-		mgmt_new_ltk(sk, index, buf + MGMT_HDR_SIZE, len);
+		mgmt_new_ltk(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
