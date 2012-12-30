@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 	printf("#  http://www.bluetooth.org/Technical/AssignedNumbers/identifiers.htm\n");
 
 	for (id = 0;; id++) {
-		char *str;
+		const char *str;
 		int i;
 
 		str = bt_compidtostr(id);
