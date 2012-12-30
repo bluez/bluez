@@ -2717,7 +2717,11 @@ static void load_config(struct btd_adapter *adapter)
 	}
 
 	/* Set class */
-	adapter->dev_class = main_opts.class;
+	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
+	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
+
+	DBG("class: major %u minor %u",
+			adapter->major_class, adapter->minor_class);
 
 	/* Get pairable mode */
 	adapter->pairable = g_key_file_get_boolean(key_file, "General",
