@@ -1112,7 +1112,8 @@ static void print_lmp_version(uint8_t lmp_ver, uint16_t lmp_subver)
 
 static void print_manufacturer(uint16_t manufacturer)
 {
-	print_field("Manufacturer: %d", manufacturer);
+	print_field("Manufacturer: %s (%d)",
+				bt_compidtostr(manufacturer), manufacturer);
 }
 
 static void print_commands(const uint8_t *commands)
