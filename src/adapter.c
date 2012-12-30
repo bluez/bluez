@@ -1786,6 +1786,14 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 		g_dbus_emit_property_changed(conn, adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
 
+	if (adapter->dev_class) {
+		/* the kernel should reset the class of device when powering
+		 * down, but it does not. So force it here ... */
+		adapter->dev_class = 0;
+		g_dbus_emit_property_changed(conn, adapter->path,
+						ADAPTER_INTERFACE, "Class");
+	}
+
 	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
 								"Powered");
 
