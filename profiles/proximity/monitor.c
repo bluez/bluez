@@ -420,17 +420,21 @@ static void property_set_link_loss_level(const GDBusPropertyTable *property,
 	struct monitor *monitor = data;
 	const char *level;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &level);
 
-	if (!level_is_valid(level))
-		return g_dbus_pending_property_error(id,
+	if (!level_is_valid(level)) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	if (g_strcmp0(monitor->linklosslevel, level) == 0)
 		goto done;
@@ -478,17 +482,21 @@ static void property_set_immediate_alert_level(
 	struct btd_device *device = monitor->device;
 	const char *level;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING)
-		return g_dbus_pending_property_error(id,
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	dbus_message_iter_get_basic(iter, &level);
 
-	if (!level_is_valid(level))
-		return g_dbus_pending_property_error(id,
+	if (!level_is_valid(level)) {
+		g_dbus_pending_property_error(id,
 					ERROR_INTERFACE ".InvalidArguments",
 					"Invalid arguments in method call");
+		return;
+	}
 
 	if (g_strcmp0(monitor->immediatelevel, level) == 0)
 		goto done;
