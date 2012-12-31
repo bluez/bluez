@@ -1225,11 +1225,8 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 	update_settings(adapter, info->current_settings);
 
 	name = btd_adapter_get_name(adapter);
-
 	if (name)
 		mgmt_set_name(index, name);
-	else
-		adapter_name_changed(adapter, (char *) rp->name);
 
 	btd_adapter_get_major_minor(adapter, &major, &minor);
 	mgmt_set_dev_class(index, major, minor);
