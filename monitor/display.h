@@ -46,7 +46,7 @@ do { \
 		use_color() ? (color1) : "", prefix, title, \
 		use_color() ? (color2) : "", ## args, \
 		use_color() ? COLOR_OFF : ""); \
-} while (0);
+} while (0)
 
 #define print_text(color, fmt, args...) \
 		print_indent(8, COLOR_OFF, "", "", color, fmt, ## args)
