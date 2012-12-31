@@ -59,9 +59,14 @@ static GSList *sessions = NULL;
 
 static void shutdown_session(struct obc_session *session)
 {
-	sessions = g_slist_remove(sessions, session);
 	obc_session_shutdown(session);
 	obc_session_unref(session);
+}
+
+static void release_session(struct obc_session *session)
+{
+	sessions = g_slist_remove(sessions, session);
+	shutdown_session(session);
 }
 
 static void unregister_session(void *data)
@@ -93,7 +98,16 @@ static void create_callback(struct obc_session *session,
 
 
 	path = obc_session_register(session, unregister_session);
+	if (path == NULL) {
+		DBusMessage *error = g_dbus_create_error(data->message,
+					ERROR_INTERFACE ".Failed",
+					NULL);
+		g_dbus_send_message(data->connection, error);
+		shutdown_session(session);
+		goto done;
+	}
 
+	sessions = g_slist_append(sessions, session);
 	g_dbus_send_reply(data->connection, data->message,
 				DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
@@ -190,7 +204,6 @@ static DBusMessage *create_session(DBusConnection *connection,
 					dbus_message_get_sender(message),
 					create_callback, data);
 	if (session != NULL) {
-		sessions = g_slist_append(sessions, session);
 		return NULL;
 	}
 
@@ -224,7 +237,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 				ERROR_INTERFACE ".NotAuthorized",
 				"Not Authorized");
 
-	shutdown_session(session);
+	release_session(session);
 
 	return dbus_message_new_method_return(message);
 }
