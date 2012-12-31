@@ -1642,7 +1642,10 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	if (adapter->stored_name)
 		return adapter->stored_name;
 
-	return adapter->name;
+	if (adapter->name)
+		return adapter->name;
+
+	return main_opts.name;
 }
 
 void adapter_connect_list_add(struct btd_adapter *adapter,
