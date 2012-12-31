@@ -447,9 +447,38 @@ static const struct {
 static const struct {
 	uint8_t val;
 	const char *str;
+} major_class_computer_table[] = {
+	{ 0x00, "Uncategorized, code for device not assigned"	},
+	{ 0x01, "Desktop workstation"				},
+	{ 0x02, "Server-class computer"				},
+	{ 0x03, "Laptop"					},
+	{ 0x04, "Handheld PC/PDA (clam shell)"			},
+	{ 0x05, "Palm sized PC/PDA"				},
+	{ 0x06, "Wearable computer (Watch sized)"		},
+	{ 0x07, "Tablet"					},
+	{ }
+};
+
+static const char *major_class_computer(uint8_t minor)
+{
+	int i;
+
+	for (i = 0; major_class_computer_table[i].str; i++) {
+		if (major_class_computer_table[i].val == minor)
+			return major_class_computer_table[i].str;
+	}
+
+	return NULL;
+}
+
+static const struct {
+	uint8_t val;
+	const char *str;
+	const char *(*func)(uint8_t minor);
 } major_class_table[] = {
 	{ 0x00, "Miscellaneous"						},
-	{ 0x01, "Computer (desktop, notebook, PDA, organizers)"		},
+	{ 0x01, "Computer (desktop, notebook, PDA, organizers)",
+						major_class_computer	},
 	{ 0x02, "Phone (cellular, cordless, payphone, modem)"		},
 	{ 0x03, "LAN /Network Access point"				},
 	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)"	},
@@ -466,6 +495,7 @@ static void print_dev_class(const uint8_t *dev_class)
 {
 	uint8_t mask, major_cls, minor_cls;
 	const char *major_str = NULL;
+	const char *minor_str = NULL;
 	int i;
 
 	print_field("Class: 0x%2.2x%2.2x%2.2x",
@@ -483,13 +513,21 @@ static void print_dev_class(const uint8_t *dev_class)
 	for (i = 0; major_class_table[i].str; i++) {
 		if (major_class_table[i].val == major_cls) {
 			major_str = major_class_table[i].str;
+
+			if (!major_class_table[i].func)
+				break;
+
+			minor_str = major_class_table[i].func(minor_cls);
 			break;
 		}
 	}
 
 	if (major_str) {
 		print_field("  Major class: %s", major_str);
-		print_field("  Minor class: 0x%2.2x", minor_cls);
+		if (minor_str)
+			print_field("  Minor class: %s", minor_str);
+		else
+			print_field("  Minor class: 0x%2.2x", minor_cls);
 	} else {
 		print_field("  Major class: 0x%2.2x", major_cls);
 		print_field("  Minor class: 0x%2.2x", minor_cls);
