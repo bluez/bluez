@@ -1639,6 +1639,9 @@ uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
 
 const char *btd_adapter_get_name(struct btd_adapter *adapter)
 {
+	if (adapter->stored_name)
+		return adapter->stored_name;
+
 	return adapter->name;
 }
 
