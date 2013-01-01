@@ -23,5 +23,9 @@
 
 typedef void (*util_debug_func_t)(const char *str, void *user_data);
 
+void util_debug(util_debug_func_t function, void *user_data,
+						const char *format, ...)
+					__attribute__((format(printf, 3, 4)));
+
 void util_hexdump(const char dir, const unsigned char *buf, size_t len,
 				util_debug_func_t function, void *user_data);
