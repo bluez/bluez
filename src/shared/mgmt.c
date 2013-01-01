@@ -47,8 +47,11 @@ struct mgmt {
 	GQueue *request_queue;
 	GList *pending_list;
 	GList *notify_list;
+	GList *notify_destroyed;
 	unsigned int next_request_id;
 	unsigned int next_notify_id;
+	bool in_notify;
+	bool destroyed;
 	void *buf;
 	uint16_t len;
 	mgmt_debug_func_t debug_callback;
@@ -208,6 +211,8 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 {
 	GList *list;
 
+	mgmt->in_notify = true;
+
 	for (list = g_list_first(mgmt->notify_list); list;
 						list = g_list_next(list)) {
 		struct mgmt_notify *notify = list->data;
@@ -222,6 +227,16 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 			notify->callback(index, length, param,
 							notify->user_data);
 	}
+
+	mgmt->in_notify = false;
+
+	g_list_foreach(mgmt->notify_destroyed, destroy_notify, NULL);
+	g_list_free(mgmt->notify_destroyed);
+
+	mgmt->notify_destroyed = NULL;
+
+	if (mgmt->destroyed)
+		g_free(mgmt);
 }
 
 static void read_watch_destroy(gpointer user_data)
@@ -381,22 +396,21 @@ void mgmt_unref(struct mgmt *mgmt)
 	if (__sync_sub_and_fetch(&mgmt->ref_count, 1))
 		return;
 
-	g_list_foreach(mgmt->notify_list, destroy_notify, NULL);
-	g_list_free(mgmt->notify_list);
+	mgmt_unregister_all(mgmt);
+	mgmt_cancel_all(mgmt);
 
-	g_list_foreach(mgmt->pending_list, destroy_request, NULL);
-	g_list_free(mgmt->pending_list);
-
-	g_queue_foreach(mgmt->request_queue, destroy_request, NULL);
-	g_queue_free(mgmt->request_queue);
-
-	if (mgmt->write_watch > 0)
+	if (mgmt->write_watch > 0) {
 		g_source_remove(mgmt->write_watch);
+		mgmt->write_watch = 0;
+	}
 
-	if (mgmt->read_watch > 0)
+	if (mgmt->read_watch > 0) {
 		g_source_remove(mgmt->read_watch);
+		mgmt->read_watch = 0;
+	}
 
 	g_io_channel_unref(mgmt->io);
+	mgmt->io = NULL;
 
 	if (mgmt->close_on_unref)
 		close(mgmt->fd);
@@ -405,7 +419,14 @@ void mgmt_unref(struct mgmt *mgmt)
 		mgmt->debug_destroy(mgmt->debug_data);
 
 	g_free(mgmt->buf);
-	g_free(mgmt);
+	mgmt->buf = NULL;
+
+	if (!mgmt->in_notify) {
+		g_free(mgmt);
+		return;
+	}
+
+	mgmt->destroyed = true;
 }
 
 bool mgmt_set_debug(struct mgmt *mgmt, mgmt_debug_func_t callback,
@@ -517,6 +538,20 @@ bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
 	return true;
 }
 
+bool mgmt_cancel_all(struct mgmt *mgmt)
+{
+	if (!mgmt)
+		return false;
+
+	g_list_foreach(mgmt->pending_list, destroy_request, NULL);
+	g_list_free(mgmt->pending_list);
+
+	g_queue_foreach(mgmt->request_queue, destroy_request, NULL);
+	g_queue_free(mgmt->request_queue);
+
+	return true;
+}
+
 unsigned int mgmt_register(struct mgmt *mgmt, uint16_t event, uint16_t index,
 				mgmt_notify_func_t callback,
 				void *user_data, mgmt_destroy_func_t destroy)
@@ -562,9 +597,15 @@ bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 
 	notify = list->data;
 
-	mgmt->notify_list = g_list_delete_link(mgmt->notify_list, list);
+	mgmt->notify_list = g_list_remove_link(mgmt->notify_list, list);
 
-	destroy_notify(notify, NULL);
+	if (!mgmt->in_notify) {
+		g_list_free_1(list);
+		destroy_notify(notify, NULL);
+		return true;
+	}
+
+	mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed, list);
 
 	return true;
 }
@@ -584,9 +625,16 @@ bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index)
 		if (notify->index != index)
 			continue;
 
-		mgmt->notify_list = g_list_delete_link(mgmt->notify_list, list);
+		mgmt->notify_list = g_list_remove_link(mgmt->notify_list, list);
 
-		destroy_notify(notify, NULL);
+		if (!mgmt->in_notify) {
+			g_list_free_1(list);
+			destroy_notify(notify, NULL);
+			continue;
+		}
+
+		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
+									list);
 	}
 
 	return true;
@@ -597,8 +645,12 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 	if (!mgmt)
 		return false;
 
-	g_list_foreach(mgmt->notify_list, destroy_notify, NULL);
-	g_list_free(mgmt->notify_list);
+	if (!mgmt->in_notify) {
+		g_list_foreach(mgmt->notify_list, destroy_notify, NULL);
+		g_list_free(mgmt->notify_list);
+	} else
+		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
+							mgmt->notify_list);
 
 	mgmt->notify_list = NULL;
 
