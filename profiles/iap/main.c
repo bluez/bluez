@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
 	main_loop = g_main_loop_new(NULL, FALSE);
 	dbus_conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 
-        signal = setup_signalfd();
+	signal = setup_signalfd();
 
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
