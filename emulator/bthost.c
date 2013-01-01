@@ -117,7 +117,17 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 	if (len < sizeof(*hdr))
 		return;
 
-	printf("Unsupported event 0x%2.2x\n", hdr->evt);
+	switch (hdr->evt) {
+	case BT_HCI_EVT_CMD_COMPLETE:
+		break;
+
+	case BT_HCI_EVT_CMD_STATUS:
+		break;
+
+	default:
+		printf("Unsupported event 0x%2.2x\n", hdr->evt);
+		break;
+	}
 }
 
 void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
