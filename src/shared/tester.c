@@ -50,12 +50,13 @@
 #define print_text(color, fmt, args...) \
 		printf(color fmt COLOR_OFF "\n", ## args)
 
-#define print_summary(label, color, value) \
-		printf("%-45s " color "%-10s" COLOR_OFF "\n", label, value)
+#define print_summary(label, color, value, fmt, args...) \
+			printf("%-45s " color "%-10s" COLOR_OFF fmt "\n", \
+							label, value, ## args)
  
 #define print_progress(name, color, fmt, args...) \
 		printf(COLOR_HIGHLIGHT "%s" COLOR_OFF " - " \
-				color fmt COLOR_OFF "\n", name, ##args)
+				color fmt COLOR_OFF "\n", name, ## args)
 
 enum test_result {
 	TEST_RESULT_NOT_RUN,
@@ -82,12 +83,15 @@ struct test_case {
 	tester_data_func_t test_func;
 	tester_data_func_t teardown_func;
 	tester_data_func_t post_teardown_func;
+	gdouble start_time;
+	gdouble end_time;
 };
 
 static GMainLoop *main_loop;
 
 static GList *test_list;
 static GList *test_current;
+static GTimer *test_timer;
 
 static void test_destroy(gpointer data)
 {
@@ -199,6 +203,7 @@ void tester_add(const char *name, const void *test_data,
 static void tester_summarize(void)
 {
 	unsigned int not_run = 0, passed = 0, failed = 0;
+	gdouble execution_time;
 	GList *list;
 
 	printf("\n");
@@ -208,18 +213,23 @@ static void tester_summarize(void)
 
 	for (list = g_list_first(test_list); list; list = g_list_next(list)) {
 		struct test_case *test = list->data;
+		gdouble exec_time;
+
+		exec_time = test->end_time - test->start_time;
 
 		switch (test->result) {
 		case TEST_RESULT_NOT_RUN:
-			print_summary(test->name, COLOR_YELLOW, "Not Run");
+			print_summary(test->name, COLOR_YELLOW, "Not Run", "");
 			not_run++;
 			break;
 		case TEST_RESULT_PASSED:
-			print_summary(test->name, COLOR_GREEN, "Passed");
+			print_summary(test->name, COLOR_GREEN, "Passed",
+						"%8.3f seconds", exec_time);
 			passed++;
 			break;
 		case TEST_RESULT_FAILED:
-			print_summary(test->name, COLOR_RED, "Failed");
+			print_summary(test->name, COLOR_RED, "Failed",
+						"%8.3f seconds", exec_time);
 			failed++;
 			break;
 		}
@@ -233,6 +243,9 @@ static void tester_summarize(void)
 			(float) passed * 100 / (not_run + passed + failed),
 			failed, not_run);
 
+	execution_time = g_timer_elapsed(test_timer, NULL);
+	printf("Overall execution time: %.3g seconds\n", execution_time);
+
 }
 
 static void next_test_case(void)
@@ -245,6 +258,8 @@ static void next_test_case(void)
 		test_current = test_list;
 
 	if (!test_current) {
+		g_timer_stop(test_timer);
+
 		g_main_loop_quit(main_loop);
 		return;
 	}
@@ -253,6 +268,8 @@ static void next_test_case(void)
 
 	printf("\n");
 	print_progress(test->name, COLOR_BLACK, "init");
+
+	test->start_time = g_timer_elapsed(test_timer, NULL);
 
 	test->stage = TEST_STAGE_PRE_SETUP;
 
@@ -298,6 +315,8 @@ static gboolean teardown_callback(gpointer user_data)
 static gboolean done_callback(gpointer user_data)
 {
 	struct test_case *test = user_data;
+
+	test->end_time = g_timer_elapsed(test_timer, NULL);
 
 	print_progress(test->name, COLOR_BLACK, "done");
 	next_test_case();
@@ -477,6 +496,8 @@ void tester_post_teardown_failed(void)
 
 static gboolean start_tester(gpointer user_data)
 {
+	test_timer = g_timer_new();
+
 	next_test_case();
 
 	return FALSE;
@@ -497,7 +518,7 @@ static gboolean wait_callback(gpointer user_data)
 	wait->seconds--;
 
 	if (wait->seconds > 0) {
-		print_progress(test->name, COLOR_BLACK, "%u sec left",
+		print_progress(test->name, COLOR_BLACK, "%u seconds left",
 								wait->seconds);
 		return TRUE;
 	}
@@ -525,7 +546,7 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 
 	test = test_current->data;
 
-	print_progress(test->name, COLOR_BLACK, "waiting %u sec", seconds);
+	print_progress(test->name, COLOR_BLACK, "waiting %u seconds", seconds);
 
 	wait = g_new0(struct wait_data, 1);
 
@@ -534,7 +555,7 @@ void tester_wait(unsigned int seconds, tester_wait_func_t func,
 	wait->func = func;
 	wait->user_data = user_data;
 
-	g_timeout_add_seconds(1, wait_callback, wait);
+	g_timeout_add(1000, wait_callback, wait);
 }
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
