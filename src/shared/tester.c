@@ -85,6 +85,8 @@ struct test_case {
 	tester_data_func_t post_teardown_func;
 	gdouble start_time;
 	gdouble end_time;
+	tester_destroy_func_t destroy;
+	void *user_data;
 };
 
 static GMainLoop *main_loop;
@@ -96,6 +98,9 @@ static GTimer *test_timer;
 static void test_destroy(gpointer data)
 {
 	struct test_case *test = data;
+
+	if (test->destroy)
+		test->destroy(test->user_data);
 
 	g_free(test->name);
 	g_free(test);
@@ -147,11 +152,12 @@ static void default_post_teardown(const void *test_data)
 }
 
 void tester_add_full(const char *name, const void *test_data,
-					tester_data_func_t pre_setup_func,
-					tester_data_func_t setup_func,
-					tester_data_func_t test_func,
-					tester_data_func_t teardown_func,
-					tester_data_func_t post_teardown_func)
+				tester_data_func_t pre_setup_func,
+				tester_data_func_t setup_func,
+				tester_data_func_t test_func,
+				tester_data_func_t teardown_func,
+				tester_data_func_t post_teardown_func,
+				void *user_data, tester_destroy_func_t destroy)
 {
 	struct test_case *test;
 
@@ -188,6 +194,9 @@ void tester_add_full(const char *name, const void *test_data,
 	else
 		test->post_teardown_func = default_post_teardown;
 
+	test->destroy = destroy;
+	test->user_data = user_data;
+
 	test_list = g_list_append(test_list, test);
 }
 
@@ -197,7 +206,19 @@ void tester_add(const char *name, const void *test_data,
 					tester_data_func_t teardown_func)
 {
 	tester_add_full(name, test_data, NULL, setup_func, test_func,
-							teardown_func, NULL);
+					teardown_func, NULL, NULL, NULL);
+}
+
+void *tester_get_data(void)
+{
+	struct test_case *test;
+
+	if (!test_current)
+		return NULL;
+
+	test = test_current->data;
+
+	return test->user_data;
 }
 
 static void tester_summarize(void)

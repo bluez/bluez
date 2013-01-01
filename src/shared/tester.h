@@ -34,18 +34,23 @@ void tester_print(const char *format, ...)
 void tester_warn(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 
+typedef void (*tester_destroy_func_t)(void *user_data);
 typedef void (*tester_data_func_t)(const void *test_data);
 
 void tester_add_full(const char *name, const void *test_data,
-					tester_data_func_t pre_setup_func,
-					tester_data_func_t setup_func,
-					tester_data_func_t test_func,
-					tester_data_func_t teardown_func,
-					tester_data_func_t post_teardown_func);
+				tester_data_func_t pre_setup_func,
+				tester_data_func_t setup_func,
+				tester_data_func_t test_func,
+				tester_data_func_t teardown_func,
+				tester_data_func_t post_teardown_func,
+				void *user_data, tester_destroy_func_t destroy);
+
 void tester_add(const char *name, const void *test_data,
 					tester_data_func_t setup_func,
 					tester_data_func_t test_func,
 					tester_data_func_t teardown_func);
+
+void *tester_get_data(void);
 
 void tester_pre_setup_complete(void);
 void tester_pre_setup_failed(void);
