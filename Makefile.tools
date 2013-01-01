@@ -46,7 +46,7 @@ tools_mgmt_tester_SOURCES = tools/mgmt-tester.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/tester.h src/shared/tester.c
-tools_mgmt_tester_LDADD = @GLIB_LIBS@
+tools_mgmt_tester_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 tools_gap_tester_SOURCES = $(gdbus_sources) \
 				tools/gap-tester.c \
