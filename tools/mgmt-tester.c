@@ -32,7 +32,7 @@
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
-#include "tools/hciemu.h"
+#include "src/shared/hciemu.h"
 
 struct test_data {
 	const void *test_data;

@@ -35,7 +35,7 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "hciemu.h"
+#include "src/shared/hciemu.h"
 
 static GMainLoop *main_loop;
 

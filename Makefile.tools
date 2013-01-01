@@ -38,22 +38,20 @@ emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 
 emulator_b1ee_SOURCES = emulator/b1ee.c monitor/mainloop.h monitor/mainloop.c
 
-tools_mgmt_tester_SOURCES = tools/mgmt-tester.c \
-				monitor/bt.h \
+tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
-				tools/hciemu.h tools/hciemu.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
 tools_mgmt_tester_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 tools_gap_tester_SOURCES = $(gdbus_sources) \
-				tools/gap-tester.c \
-				tools/hciemu.h tools/hciemu.c \
-				monitor/bt.h \
+				tools/gap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
-				emulator/bthost.h emulator/bthost.c
+				emulator/bthost.h emulator/bthost.c \
+				src/shared/hciemu.h src/shared/hciemu.c
 tools_gap_tester_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 endif
 
