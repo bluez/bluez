@@ -126,15 +126,15 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 	struct mgmt *mgmt = user_data;
 	struct mgmt_request *request;
 	ssize_t bytes_written;
-	int fd;
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+		return FALSE;
 
 	request = g_queue_pop_head(mgmt->request_queue);
 	if (!request)
 		return FALSE;
 
-	fd = g_io_channel_unix_get_fd(mgmt->io);
-
-	bytes_written = write(fd, request->buf, request->len);
+	bytes_written = write(mgmt->fd, request->buf, request->len);
 	if (bytes_written < 0) {
 		g_queue_push_head(mgmt->request_queue, request);
 		return FALSE;
@@ -240,14 +240,11 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	struct mgmt_ev_cmd_status *cs;
 	ssize_t bytes_read;
 	uint16_t opcode, event, index, length;
-	int fd;
 
-	if (cond & G_IO_NVAL)
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
 		return FALSE;
 
-	fd = g_io_channel_unix_get_fd(mgmt->io);
-
-	bytes_read = read(fd, mgmt->buf, mgmt->len);
+	bytes_read = read(mgmt->fd, mgmt->buf, mgmt->len);
 	if (bytes_read < 0)
 		return TRUE;
 
@@ -302,6 +299,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 struct mgmt *mgmt_new(int fd)
 {
 	struct mgmt *mgmt;
+
+	if (fd < 0)
+		return NULL;
 
 	mgmt = g_try_new0(struct mgmt, 1);
 	if (!mgmt)
