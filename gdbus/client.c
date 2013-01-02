@@ -1032,6 +1032,8 @@ static void get_name_owner_reply(DBusPendingCall *call, void *user_data)
 	DBusError error;
 	const char *name;
 
+	g_dbus_client_ref(client);
+
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
@@ -1058,6 +1060,8 @@ done:
 
 	dbus_pending_call_unref(client->pending_call);
 	client->pending_call = NULL;
+
+	g_dbus_client_unref(client);
 }
 
 static void get_name_owner(GDBusClient *client, const char *name)
