@@ -150,6 +150,8 @@ static void add_controller(uint16_t index)
 {
 	struct controller_info *info;
 
+	DBG("Adding controller %u", index);
+
 	if (index > max_index) {
 		size_t size = sizeof(struct controller_info) * (index + 1);
 		max_index = index;
@@ -169,6 +171,8 @@ static void read_info(uint16_t index)
 {
 	struct mgmt_hdr hdr;
 
+	DBG("index %u", index);
+
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = htobs(MGMT_OP_READ_INFO);
 	hdr.index = htobs(index);
@@ -182,6 +186,8 @@ static void get_connections(uint16_t index)
 {
 	struct mgmt_hdr hdr;
 
+	DBG("index %u", index);
+
 	memset(&hdr, 0, sizeof(hdr));
 	hdr.opcode = htobs(MGMT_OP_GET_CONNECTIONS);
 	hdr.index = htobs(index);
@@ -193,6 +199,8 @@ static void get_connections(uint16_t index)
 
 static void mgmt_index_added(uint16_t index)
 {
+	DBG("index %u", index);
+
 	add_controller(index);
 	read_info(index);
 }
@@ -204,6 +212,8 @@ static void remove_controller(uint16_t index)
 
 	if (!controllers[index].valid)
 		return;
+
+	DBG("Removing controller %u", index);
 
 	btd_manager_unregister_adapter(index);
 
@@ -217,6 +227,8 @@ static void remove_controller(uint16_t index)
 
 static void mgmt_index_removed(uint16_t index)
 {
+	DBG("index %u", index);
+
 	remove_controller(index);
 }
 

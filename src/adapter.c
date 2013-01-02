@@ -696,6 +696,8 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 	uuid_t browse_uuid;
 	gboolean new_uuid;
 
+	DBG("%s", adapter->path);
+
 	/* skip record without a browse group */
 	if (sdp_get_browse_groups(rec, &browse_list) < 0)
 		return;
@@ -730,6 +732,8 @@ done:
 void adapter_service_remove(struct btd_adapter *adapter, void *r)
 {
 	sdp_record_t *rec = r;
+
+	DBG("%s", adapter->path);
 
 	adapter->services = sdp_list_remove(adapter->services, rec);
 
