@@ -25,129 +25,115 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <sys/signalfd.h>
-
-#include <glib.h>
 #include <gdbus.h>
 
+#include "src/shared/tester.h"
 #include "src/shared/hciemu.h"
 
-static GMainLoop *main_loop;
+static DBusConnection *dbus_conn = NULL;
+static GDBusClient *dbus_client = NULL;
+static GDBusProxy *adapter_proxy = NULL;
 
-static gboolean signal_handler(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+static struct hciemu *hciemu_stack = NULL;
+
+static void connect_handler(DBusConnection *connection, void *user_data)
 {
-	static unsigned int __terminated = 0;
-	struct signalfd_siginfo si;
-	ssize_t result;
-	int fd;
+	tester_print("Connected to daemon");
 
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	fd = g_io_channel_unix_get_fd(channel);
-
-	result = read(fd, &si, sizeof(si));
-	if (result != sizeof(si))
-		return FALSE;
-
-	switch (si.ssi_signo) {
-	case SIGINT:
-	case SIGTERM:
-		if (__terminated == 0)
-			g_main_loop_quit(main_loop);
-
-		__terminated = 1;
-		break;
-	}
-
-	return TRUE;
+	hciemu_stack = hciemu_new();
 }
 
-static guint setup_signalfd(void)
+static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
-	GIOChannel *channel;
-	guint source;
-	sigset_t mask;
-	int fd;
+	tester_print("Disconnected from daemon");
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGINT);
-	sigaddset(&mask, SIGTERM);
+	dbus_connection_unref(dbus_conn);
+	dbus_conn = NULL;
 
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		perror("Failed to set signal mask");
-		return 0;
-	}
-
-	fd = signalfd(-1, &mask, 0);
-	if (fd < 0) {
-		perror("Failed to create signal descriptor");
-		return 0;
-	}
-
-	channel = g_io_channel_unix_new(fd);
-
-	g_io_channel_set_close_on_unref(channel, TRUE);
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
-
-	source = g_io_add_watch(channel,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				signal_handler, NULL);
-
-	g_io_channel_unref(channel);
-
-	return source;
+	tester_teardown_complete();
 }
 
-static gboolean option_version = FALSE;
+static gboolean compare_string_property(GDBusProxy *proxy, const char *name,
+							const char *value)
+{
+	DBusMessageIter iter;
+	const char *str;
 
-static GOptionEntry options[] = {
-	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
-				"Show version information and exit" },
-	{ NULL },
-};
+	if (g_dbus_proxy_get_property(proxy, name, &iter) == FALSE)
+		return FALSE;
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return FALSE;
+
+	dbus_message_iter_get_basic(&iter, &str);
+
+	return g_str_equal(str, value);
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (g_str_equal(interface, "org.bluez.Adapter1") == TRUE) {
+		if (compare_string_property(proxy, "Address",
+				hciemu_get_address(hciemu_stack)) == TRUE) {
+			adapter_proxy = proxy;
+			tester_print("Found adapter");
+
+			tester_setup_complete();
+		}
+	}
+}
+
+static void proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (g_str_equal(interface, "org.bluez.Adapter1") == TRUE) {
+		if (adapter_proxy == proxy) {
+			adapter_proxy = NULL;
+			tester_print("Adapter removed");
+
+			g_dbus_client_unref(dbus_client);
+			dbus_client = NULL;
+		}
+	}
+}
+
+static void test_setup(const void *test_data)
+{
+	dbus_conn = g_dbus_setup_private(DBUS_BUS_SYSTEM, NULL, NULL);
+
+	dbus_client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
+
+	g_dbus_client_set_connect_watch(dbus_client, connect_handler, NULL);
+	g_dbus_client_set_disconnect_watch(dbus_client,
+						disconnect_handler, NULL);
+
+	g_dbus_client_set_proxy_handlers(dbus_client, proxy_added,
+						proxy_removed, NULL, NULL);
+}
+
+static void test_run(const void *test_data)
+{
+	tester_test_passed();
+}
+
+static void test_teardown(const void *test_data)
+{
+	hciemu_unref(hciemu_stack);
+	hciemu_stack = NULL;
+}
 
 int main(int argc, char *argv[])
 {
-	GOptionContext *context;
-	GError *error = NULL;
-	guint signal;
+	tester_init(&argc, &argv);
 
-	context = g_option_context_new(NULL);
-	g_option_context_add_main_entries(context, options, NULL);
+	tester_add("Adapter setup", NULL, test_setup, test_run, test_teardown);
 
-	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
-		if (error != NULL) {
-			g_printerr("%s\n", error->message);
-			g_error_free(error);
-		} else
-			g_printerr("An unknown error occurred\n");
-		exit(1);
-	}
-
-	g_option_context_free(context);
-
-	if (option_version == TRUE) {
-		printf("%s\n", VERSION);
-		exit(0);
-	}
-
-	main_loop = g_main_loop_new(NULL, FALSE);
-        signal = setup_signalfd();
-
-	g_main_loop_run(main_loop);
-
-	g_source_remove(signal);
-	g_main_loop_unref(main_loop);
-
-	return 0;
+	return tester_run();
 }
