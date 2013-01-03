@@ -3748,7 +3748,6 @@ void adapter_cleanup(void)
 		btd_adapter_unref(adapter);
 	}
 
-	mgmt_unregister_all(mgmt);
 	mgmt_unref(mgmt);
 	mgmt = NULL;
 }
