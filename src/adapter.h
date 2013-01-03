@@ -71,6 +71,8 @@ struct smp_ltk_info {
 	uint8_t val[16];
 };
 
+void adapter_cleanup(void);
+
 void btd_adapter_start(struct btd_adapter *adapter);
 
 int btd_adapter_stop(struct btd_adapter *adapter);

@@ -27,7 +27,7 @@
 
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
 
-void manager_cleanup(const char *path);
+void manager_cleanup(void);
 
 struct btd_adapter *manager_find_adapter(const bdaddr_t *sba);
 struct btd_adapter *manager_find_adapter_by_id(int id);

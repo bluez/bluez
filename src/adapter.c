@@ -3615,3 +3615,8 @@ void btd_adapter_for_each_device(struct btd_adapter *adapter,
 {
 	g_slist_foreach(adapter->devices, (GFunc) cb, data);
 }
+
+void adapter_cleanup(void)
+{
+	manager_cleanup();
+}

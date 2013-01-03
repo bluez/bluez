@@ -82,7 +82,7 @@ static void manager_remove_adapter(struct btd_adapter *adapter)
 	btd_adapter_unref(adapter);
 }
 
-void manager_cleanup(const char *path)
+void manager_cleanup(void)
 {
 	while (adapters) {
 		struct btd_adapter *adapter = adapters->data;

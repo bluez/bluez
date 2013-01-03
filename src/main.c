@@ -578,7 +578,7 @@ int main(int argc, char *argv[])
 	btd_profile_cleanup();
 	btd_agent_cleanup();
 
-	manager_cleanup("/");
+	adapter_cleanup();
 
 	rfkill_exit();
 
