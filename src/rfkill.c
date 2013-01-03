@@ -37,7 +37,6 @@
 
 #include "log.h"
 #include "adapter.h"
-#include "manager.h"
 #include "hcid.h"
 
 enum rfkill_type {
@@ -128,7 +127,7 @@ static gboolean rfkill_event(GIOChannel *chan,
 	if (id < 0)
 		return TRUE;
 
-	adapter = manager_find_adapter_by_id(id);
+	adapter = adapter_find_by_id(id);
 	if (!adapter)
 		return TRUE;
 

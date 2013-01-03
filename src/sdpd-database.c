@@ -192,7 +192,7 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 		return;
 	}
 
-	adapter = manager_find_adapter(device);
+	adapter = adapter_find(device);
 	if (adapter)
 		adapter_service_insert(adapter, rec);
 }
@@ -267,7 +267,7 @@ int sdp_record_remove(uint32_t handle)
 	a = p->data;
 
 	if (bacmp(&a->device, BDADDR_ANY) != 0) {
-		struct btd_adapter *adapter = manager_find_adapter(&a->device);
+		struct btd_adapter *adapter = adapter_find(&a->device);
 		if (adapter)
 			adapter_service_remove(adapter, r);
 	} else
