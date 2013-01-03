@@ -41,6 +41,7 @@ struct test_data {
 	uint32_t expected_supported_settings;
 	uint32_t initial_settings;
 	struct mgmt *mgmt;
+	struct mgmt *mgmt_alt;
 	uint8_t mgmt_version;
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
@@ -179,9 +180,13 @@ static void index_removed_callback(uint16_t index, uint16_t length,
 		return;
 
 	mgmt_unregister_index(data->mgmt, data->mgmt_index);
+	mgmt_unregister_index(data->mgmt_alt, data->mgmt_index);
 
 	mgmt_unref(data->mgmt);
 	data->mgmt = NULL;
+
+	mgmt_unref(data->mgmt_alt);
+	data->mgmt_alt = NULL;
 
 	tester_post_teardown_complete();
 }
@@ -219,8 +224,20 @@ static void test_pre_setup(const void *test_data)
 		return;
 	}
 
-	if (tester_use_debug())
+	data->mgmt_alt = mgmt_new_default();
+	if (!data->mgmt_alt) {
+		tester_warn("Failed to setup alternate management interface");
+		tester_pre_setup_failed();
+
+		mgmt_unref(data->mgmt);
+		data->mgmt = NULL;
+		return;
+	}
+
+	if (tester_use_debug()) {
 		mgmt_set_debug(data->mgmt, mgmt_debug, "mgmt: ", NULL);
+		mgmt_set_debug(data->mgmt_alt, mgmt_debug, "mgmt-alt: ", NULL);
+	}
 
 	mgmt_send(data->mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
 					read_version_callback, NULL, NULL);
@@ -385,7 +402,7 @@ static const struct generic_data set_connectable_on_success_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_connectable_settings_param,
 	.expect_len = sizeof(set_connectable_settings_param),
-	//.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+	.expect_settings_set = MGMT_SETTING_CONNECTABLE,
 };
 
 static const struct generic_data set_connectable_on_invalid_param_test_1 = {
@@ -427,7 +444,7 @@ static const struct generic_data set_pairable_on_success_test = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_pairable_settings_param,
 	.expect_len = sizeof(set_pairable_settings_param),
-	//.expect_settings_set = MGMT_SETTING_PAIRABLE,
+	.expect_settings_set = MGMT_SETTING_PAIRABLE,
 };
 
 static const struct generic_data set_pairable_on_invalid_param_test_1 = {
@@ -461,6 +478,18 @@ static void command_generic_new_settings(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
+
+	tester_print("New settings event received");
+
+	mgmt_unregister_index(data->mgmt, index);
+
+	tester_test_failed();
+}
+
+static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
 	uint32_t settings;
 
@@ -482,7 +511,7 @@ static void command_generic_new_settings(uint16_t index, uint16_t length,
 
 	tester_print("Unregistering new settings notification");
 
-	mgmt_unregister_index(data->mgmt, index);
+	mgmt_unregister_index(data->mgmt_alt, index);
 
 	tester_test_passed();
 }
@@ -531,6 +560,9 @@ static void test_command_generic(const void *test_data)
 
 		mgmt_register(data->mgmt, MGMT_EV_NEW_SETTINGS, index,
 				command_generic_new_settings, NULL, NULL);
+
+		mgmt_register(data->mgmt_alt, MGMT_EV_NEW_SETTINGS, index,
+				command_generic_new_settings_alt, NULL, NULL);
 	}
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
