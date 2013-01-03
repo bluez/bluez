@@ -277,16 +277,13 @@ static void encrypt_completed(uint8_t status, gpointer user_data)
 	int err;
 
 	err = ioctl_connadd(req);
-	if (err == 0)
-		goto cleanup;
+	if (err < 0) {
+		error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
+		close(req->intr_sock);
+		close(req->ctrl_sock);
+	}
 
-	error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
-	close(req->intr_sock);
-	close(req->ctrl_sock);
-
-cleanup:
 	g_free(req->rd_data);
-
 	g_free(req);
 }
 
