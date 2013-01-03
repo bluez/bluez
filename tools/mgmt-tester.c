@@ -153,12 +153,6 @@ static void read_info_callback(uint8_t status, uint16_t length,
 	tester_pre_setup_complete();
 }
 
-static void new_settings_callback(uint16_t index, uint16_t length,
-					const void *param, void *user_data)
-{
-	tester_print("New Settings callback");
-}
-
 static void index_added_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -168,9 +162,6 @@ static void index_added_callback(uint16_t index, uint16_t length,
 	tester_print("  Index: 0x%04x", index);
 
 	data->mgmt_index = index;
-
-	mgmt_register(data->mgmt, MGMT_EV_NEW_SETTINGS, data->mgmt_index,
-					new_settings_callback, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_READ_INFO, data->mgmt_index, 0, NULL,
 					read_info_callback, NULL, NULL);
@@ -276,6 +267,7 @@ struct generic_data {
 	const void *send_param;
 	uint16_t send_len;
 	uint8_t expect_status;
+	uint32_t expect_settings_set;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -337,16 +329,145 @@ static const struct generic_data read_info_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_powered_on_param[] = { 0x01 };
+static const char set_powered_invalid_param[] = { 0x02 };
+
+static const struct generic_data set_powered_on_success_test = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_settings_set = MGMT_SETTING_POWERED,
+};
+
+static const struct generic_data set_powered_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_powered_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_invalid_param,
+	.send_len = sizeof(set_powered_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_powered_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const char set_connectable_on_param[] = { 0x01 };
+static const char set_connectable_invalid_param[] = { 0x02 };
+
+static const struct generic_data set_connectable_on_success_test = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_on_param,
+	.send_len = sizeof(set_connectable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	//.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+};
+
+static const struct generic_data set_connectable_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_connectable_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_invalid_param,
+	.send_len = sizeof(set_connectable_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_connectable_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_on_param,
+	.send_len = sizeof(set_connectable_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static const char set_pairable_on_param[] = { 0x01 };
+static const char set_pairable_invalid_param[] = { 0x02 };
+
+static const struct generic_data set_pairable_on_success_test = {
+	.send_opcode = MGMT_OP_SET_PAIRABLE,
+	.send_param = set_pairable_on_param,
+	.send_len = sizeof(set_pairable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	//.expect_settings_set = MGMT_SETTING_PAIRABLE,
+};
+
+static const struct generic_data set_pairable_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_PAIRABLE,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_pairable_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_PAIRABLE,
+	.send_param = set_pairable_invalid_param,
+	.send_len = sizeof(set_pairable_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_pairable_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_PAIRABLE,
+	.send_param = set_pairable_on_param,
+	.send_len = sizeof(set_pairable_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
+static void command_generic_new_settings(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	uint32_t settings;
+
+	if (length != 4) {
+		tester_warn("Invalid parameter size for new settings event");
+		tester_test_failed();
+		return;
+	}
+
+	settings = bt_get_le32(param);
+
+	tester_print("New settings 0x%08x received", settings);
+
+	if (!test->expect_settings_set)
+		return;
+
+	if ((settings & test->expect_settings_set) != test->expect_settings_set)
+		return;
+
+	tester_print("Unregistering new settings notification");
+
+	mgmt_unregister_index(data->mgmt, index);
+
+	tester_test_passed();
+}
+
 static void command_generic_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
 
+	tester_print("Command 0x%04x finished with status 0x%02x",
+						test->send_opcode, status);
+
 	if (status != test->expect_status) {
 		tester_test_failed();
 		return;
 	}
+
+	if (test->expect_settings_set)
+		return;
 
 	tester_test_passed();
 }
@@ -358,6 +479,15 @@ static void test_command_generic(const void *test_data)
 	uint16_t index;
 
 	index = test->send_index_none ? MGMT_INDEX_NONE : data->mgmt_index;
+
+	if (test->expect_settings_set) {
+		tester_print("Registering new settings notification");
+
+		mgmt_register(data->mgmt, MGMT_EV_NEW_SETTINGS, index,
+				command_generic_new_settings, NULL, NULL);
+	}
+
+	tester_print("Sending command 0x%04x", test->send_opcode);
 
 	mgmt_send(data->mgmt, test->send_opcode, index,
 					test->send_len, test->send_param,
@@ -395,6 +525,45 @@ int main(int argc, char *argv[])
 					NULL, test_command_generic);
 	test_bredr("Read info - Invalid index",
 					&read_info_invalid_index_test,
+					NULL, test_command_generic);
+
+	test_bredr("Set powered on - Success",
+					&set_powered_on_success_test,
+					NULL, test_command_generic);
+	test_bredr("Set powered on - Invalid parameters 1",
+					&set_powered_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set powered on - Invalid parameters 2",
+					&set_powered_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set powered on - Invalid index",
+					&set_powered_on_invalid_index_test,
+					NULL, test_command_generic);
+
+	test_bredr("Set connectable on - Success",
+					&set_connectable_on_success_test,
+					NULL, test_command_generic);
+	test_bredr("Set connectable on - Invalid parameters 1",
+					&set_connectable_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set connectable on - Invalid parameters 2",
+					&set_connectable_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set connectable on - Invalid index",
+					&set_connectable_on_invalid_index_test,
+					NULL, test_command_generic);
+
+	test_bredr("Set pairable on - Success",
+					&set_pairable_on_success_test,
+					NULL, test_command_generic);
+	test_bredr("Set pairable on - Invalid parameters 1",
+					&set_pairable_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set pairable on - Invalid parameters 2",
+					&set_pairable_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set pairable on - Invalid index",
+					&set_pairable_on_invalid_index_test,
 					NULL, test_command_generic);
 
 	return tester_run();
