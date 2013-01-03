@@ -1054,13 +1054,13 @@ void device_profile_connected(struct btd_device *dev,
 
 	dev->pending = g_slist_remove(dev->pending, profile);
 
-	if (!err) {
+	if (!err)
 		dev->connected_profiles =
 				g_slist_append(dev->connected_profiles,
 								profile);
-		if (connect_next(dev) == 0)
-			return;
-	}
+
+	if (connect_next(dev) == 0)
+		return;
 
 	if (!dev->connect)
 		return;
