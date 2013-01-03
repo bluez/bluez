@@ -267,6 +267,8 @@ struct generic_data {
 	const void *send_param;
 	uint16_t send_len;
 	uint8_t expect_status;
+	const void *expect_param;
+	uint16_t expect_len;
 	uint32_t expect_settings_set;
 };
 
@@ -332,12 +334,15 @@ static const struct generic_data read_info_invalid_index_test = {
 static const char set_powered_on_param[] = { 0x01 };
 static const char set_powered_invalid_param[] = { 0x02 };
 static const char set_powered_garbage_param[] = { 0x01, 0x00 };
+static const char set_powered_settings_param[] = { 0x81, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_powered_on_success_test = {
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_powered_settings_param,
+	.expect_len = sizeof(set_powered_settings_param),
 	.expect_settings_set = MGMT_SETTING_POWERED,
 };
 
@@ -371,12 +376,15 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 static const char set_connectable_on_param[] = { 0x01 };
 static const char set_connectable_invalid_param[] = { 0x02 };
 static const char set_connectable_garbage_param[] = { 0x01, 0x00 };
+static const char set_connectable_settings_param[] = { 0x82, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_connectable_on_success_test = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
 	.send_len = sizeof(set_connectable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_settings_param,
+	.expect_len = sizeof(set_connectable_settings_param),
 	//.expect_settings_set = MGMT_SETTING_CONNECTABLE,
 };
 
@@ -410,12 +418,15 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 static const char set_pairable_on_param[] = { 0x01 };
 static const char set_pairable_invalid_param[] = { 0x02 };
 static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
+static const char set_pairable_settings_param[] = { 0x90, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_pairable_on_success_test = {
 	.send_opcode = MGMT_OP_SET_PAIRABLE,
 	.send_param = set_pairable_on_param,
 	.send_len = sizeof(set_pairable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_pairable_settings_param,
+	.expect_len = sizeof(set_pairable_settings_param),
 	//.expect_settings_set = MGMT_SETTING_PAIRABLE,
 };
 
@@ -486,6 +497,17 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 						test->send_opcode, status);
 
 	if (status != test->expect_status) {
+		tester_test_failed();
+		return;
+	}
+
+	if (length != test->expect_len) {
+		tester_test_failed();
+		return;
+	}
+
+	if (test->expect_param && test->expect_len > 0 &&
+				memcmp(param, test->expect_param, length)) {
 		tester_test_failed();
 		return;
 	}
