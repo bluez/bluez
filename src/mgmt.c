@@ -94,7 +94,7 @@ static bool get_adapter_and_device(const bdaddr_t *src,
 {
 	char peer_addr[18];
 
-	*adapter = manager_find_adapter(src);
+	*adapter = adapter_find(src);
 	if (!*adapter) {
 		error("Unable to find matching adapter");
 		return false;
@@ -390,7 +390,7 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (adapter == NULL) {
 		DBG("Adapter not found");
 		return;
@@ -417,7 +417,7 @@ static void bonding_complete(struct controller_info *info,
 {
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (adapter != NULL)
 		adapter_bonding_complete(adapter, &addr->bdaddr, addr->type,
 								status);
@@ -1382,7 +1382,7 @@ static void set_local_name_complete(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (adapter == NULL) {
 		DBG("Adapter not found");
 		return;
@@ -1410,7 +1410,7 @@ static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
 
 	DBG("hci%u", index);
 
-	adapter = manager_find_adapter_by_id(index);
+	adapter = adapter_find_by_id(index);
 	if (adapter)
 		adapter_read_local_oob_data_complete(adapter, rp->hash,
 							rp->randomizer);
@@ -1438,7 +1438,7 @@ static void start_discovery_complete(uint16_t index, uint8_t status,
 	if (!status)
 		return;
 
-	adapter = manager_find_adapter_by_id(index);
+	adapter = adapter_find_by_id(index);
 	if (adapter)
 		/* Start discovery failed, inform upper layers. */
 		adapter_set_discovering(adapter, FALSE);
@@ -1456,7 +1456,7 @@ static void read_local_oob_data_failed(uint16_t index)
 
 	DBG("hci%u", index);
 
-	adapter = manager_find_adapter_by_id(index);
+	adapter = adapter_find_by_id(index);
 	if (adapter)
 		adapter_read_local_oob_data_complete(adapter, NULL, NULL);
 }
@@ -1513,7 +1513,7 @@ static void mgmt_update_cod(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (adapter == NULL) {
 		DBG("Adapter not found");
 		return;
@@ -1783,7 +1783,7 @@ static void mgmt_local_name_changed(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (adapter)
 		adapter_name_changed(adapter, (char *) ev->name);
 }
@@ -1819,7 +1819,7 @@ static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (!adapter)
 		return;
 
@@ -1863,7 +1863,7 @@ static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = manager_find_adapter(&info->bdaddr);
+	adapter = adapter_find(&info->bdaddr);
 	if (!adapter)
 		return;
 

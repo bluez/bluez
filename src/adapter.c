@@ -3340,7 +3340,7 @@ guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 	GSList *l;
 
 	if (bacmp(src, BDADDR_ANY) != 0) {
-		adapter = manager_find_adapter(src);
+		adapter = adapter_find(src);
 		if (!adapter)
 			return 0;
 
@@ -3624,4 +3624,9 @@ void adapter_cleanup(void)
 struct btd_adapter *adapter_find(const bdaddr_t *sba)
 {
 	return manager_find_adapter(sba);
+}
+
+struct btd_adapter *adapter_find_by_id(int id)
+{
+	return manager_find_adapter_by_id(id);
 }
