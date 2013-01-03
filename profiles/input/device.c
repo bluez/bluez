@@ -285,7 +285,7 @@ static void encrypt_completed(uint8_t status, gpointer user_data)
 	close(req->ctrl_sock);
 
 cleanup:
-	free(req->rd_data);
+	g_free(req->rd_data);
 
 	g_free(req);
 }
@@ -376,7 +376,7 @@ static int hidp_add_connection(struct input_device *idev)
 	err = ioctl_connadd(req);
 
 cleanup:
-	free(req->rd_data);
+	g_free(req->rd_data);
 	g_free(req);
 
 	return err;
