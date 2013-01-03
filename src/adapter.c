@@ -3731,10 +3731,39 @@ int adapter_unregister(int id)
 	return 0;
 }
 
+static void read_index_list_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_index_list *rp = param;
+	uint16_t num;
+	int i;
+
+	if (length < sizeof(*rp)) {
+		error("Unexpected length for mgmt_read_index_list response");
+		return;
+	}
+
+	num = bt_get_le16(&rp->num_controllers);
+
+	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
+		error("Incorrect packet size for index list response");
+		return;
+	}
+
+	for (i = 0; i < num; i++) {
+		uint16_t index;
+
+		index = bt_get_le16(&rp->index[i]);
+
+		DBG("index %u", index);
+	}
+}
+
 static void read_version_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_version *rp = param;
+	unsigned int id;
 
 	if (length < sizeof(*rp)) {
 		error("Unexpected length for mgmt_read_version response");
@@ -3745,6 +3774,11 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	mgmt_version = rp->version;
 
 	DBG("version %u.%u", mgmt_version, mgmt_revision);
+
+	id = mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0, NULL,
+					read_index_list_complete, NULL, NULL);
+	if (id == 0)
+		error("mgmt_send(READ_INDEX_LIST) failed");
 }
 
 int adapter_init(void)
