@@ -34,7 +34,6 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <adapter.h>
-#include <manager.h>
 #include <btio/btio.h>
 #include <log.h>
 
@@ -231,8 +230,7 @@ static gboolean read_btclock(struct mcap_mcl *mcl, uint32_t *btclock,
 	int which = 1;
 	struct btd_adapter *adapter;
 
-	adapter = manager_find_adapter(&mcl->mi->src);
-
+	adapter = adapter_find(&mcl->mi->src);
 	if (!adapter)
 		return FALSE;
 
