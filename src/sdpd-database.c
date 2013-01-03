@@ -41,7 +41,6 @@
 #include "sdpd.h"
 #include "log.h"
 #include "adapter.h"
-#include "manager.h"
 
 static sdp_list_t *service_db;
 static sdp_list_t *access_db;
@@ -188,7 +187,7 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 	access_db = sdp_list_insert_sorted(access_db, dev, access_sort);
 
 	if (bacmp(device, BDADDR_ANY) == 0) {
-		manager_foreach_adapter(adapter_service_insert, rec);
+		adapter_foreach(adapter_service_insert, rec);
 		return;
 	}
 
@@ -271,7 +270,7 @@ int sdp_record_remove(uint32_t handle)
 		if (adapter)
 			adapter_service_remove(adapter, r);
 	} else
-		manager_foreach_adapter(adapter_service_remove, r);
+		adapter_foreach(adapter_service_remove, r);
 
 	access_db = sdp_list_remove(access_db, a);
 	access_free(a);
@@ -336,6 +335,6 @@ void sdp_init_services_list(bdaddr_t *device)
 
 		SDPDBG("adding record with handle %x", access->handle);
 
-		manager_foreach_adapter(adapter_service_insert, rec);
+		adapter_foreach(adapter_service_insert, rec);
 	}
 }

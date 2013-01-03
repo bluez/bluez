@@ -48,7 +48,6 @@
 #include "sdp-client.h"
 #include "sdp-xml.h"
 #include "adapter.h"
-#include "manager.h"
 #include "device.h"
 #include "profile.h"
 
@@ -2097,14 +2096,14 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext_profiles = g_slist_append(ext_profiles, ext);
 
-	manager_foreach_adapter(adapter_add_profile, &ext->p);
+	adapter_foreach(adapter_add_profile, &ext->p);
 
 	return ext;
 }
 
 static void remove_ext(struct ext_profile *ext)
 {
-	manager_foreach_adapter(adapter_remove_profile, &ext->p);
+	adapter_foreach(adapter_remove_profile, &ext->p);
 
 	ext_profiles = g_slist_remove(ext_profiles, ext);
 

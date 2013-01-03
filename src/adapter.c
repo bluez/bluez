@@ -3199,7 +3199,7 @@ int btd_register_adapter_driver(struct btd_adapter_driver *driver)
 	if (driver->probe == NULL)
 		return 0;
 
-	manager_foreach_adapter(probe_driver, driver);
+	adapter_foreach(probe_driver, driver);
 
 	return 0;
 }
@@ -3218,7 +3218,7 @@ void btd_unregister_adapter_driver(struct btd_adapter_driver *driver)
 {
 	adapter_drivers = g_slist_remove(adapter_drivers, driver);
 
-	manager_foreach_adapter(unload_driver, driver);
+	adapter_foreach(unload_driver, driver);
 }
 
 static void agent_auth_cb(struct agent *agent, DBusError *derr,

@@ -45,7 +45,6 @@
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
-#include "manager.h"
 #include "agent.h"
 
 #define IO_CAPABILITY_DISPLAYONLY	0x00
@@ -161,7 +160,7 @@ static void set_default_agent(struct agent *agent)
 
 	default_agent = agent;
 
-	manager_foreach_adapter(set_io_cap, agent);
+	adapter_foreach(set_io_cap, agent);
 }
 
 static void agent_disconnect(DBusConnection *conn, void *user_data)
