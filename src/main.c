@@ -54,7 +54,6 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
-#include "manager.h"
 #include "mgmt.h"
 #include "systemd.h"
 
