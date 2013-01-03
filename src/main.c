@@ -517,6 +517,11 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	if (adapter_init() < 0) {
+		error("adapter init failed");
+		exit(1);
+	}
+
 	btd_agent_init();
 	btd_profile_init();
 

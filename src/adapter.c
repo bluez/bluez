@@ -50,6 +50,8 @@
 #include "log.h"
 #include "textfile.h"
 
+#include "src/shared/mgmt.h"
+
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
@@ -85,6 +87,8 @@
 
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
+
+struct mgmt *mgmt = NULL;
 
 static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
@@ -165,6 +169,8 @@ struct btd_adapter {
 	GSList *profiles;
 
 	struct oob_handler *oob_handler;
+
+	struct mgmt *mgmt;
 };
 
 static gboolean process_auth_queue(gpointer user_data);
@@ -3617,17 +3623,6 @@ void btd_adapter_for_each_device(struct btd_adapter *adapter,
 	g_slist_foreach(adapter->devices, (GFunc) cb, data);
 }
 
-void adapter_cleanup(void)
-{
-	while (adapters) {
-		struct btd_adapter *adapter = adapters->data;
-
-		adapter_remove(adapter);
-		adapters = g_slist_remove(adapters, adapter);
-		btd_adapter_unref(adapter);
-	}
-}
-
 static int adapter_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_adapter *adapter = (struct btd_adapter *) a;
@@ -3732,4 +3727,28 @@ int adapter_unregister(int id)
 	btd_adapter_unref(adapter);
 
 	return 0;
+}
+
+int adapter_init(void)
+{
+	mgmt = mgmt_new_default();
+	if (!mgmt)
+		return -EIO;
+
+	return 0;
+}
+
+void adapter_cleanup(void)
+{
+	while (adapters) {
+		struct btd_adapter *adapter = adapters->data;
+
+		adapter_remove(adapter);
+		adapters = g_slist_remove(adapters, adapter);
+		btd_adapter_unref(adapter);
+	}
+
+	mgmt_unregister_all(mgmt);
+	mgmt_unref(mgmt);
+	mgmt = NULL;
 }

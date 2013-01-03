@@ -142,7 +142,9 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/profile.h src/profile.c \
 			src/device.h src/device.c src/attio.h \
 			src/dbus-common.c src/dbus-common.h \
-			src/eir.h src/eir.c src/mgmt.c src/mgmt.h
+			src/eir.h src/eir.c src/mgmt.c src/mgmt.h \
+			src/shared/util.h src/shared/util.c \
+			src/shared/mgmt.h src/shared/mgmt.c
 src_bluetoothd_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @DBUS_LIBS@ \
 								-ldl -lrt
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \

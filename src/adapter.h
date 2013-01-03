@@ -74,6 +74,7 @@ struct smp_ltk_info {
 };
 
 void adapter_cleanup(void);
+int adapter_init(void);
 struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 struct btd_adapter *adapter_get_default(void);
