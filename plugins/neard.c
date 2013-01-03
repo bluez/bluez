@@ -36,7 +36,6 @@
 #include "log.h"
 #include "dbus-common.h"
 #include "adapter.h"
-#include "manager.h"
 #include "device.h"
 #include "eir.h"
 #include "agent.h"
@@ -619,7 +618,7 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 
 	DBG("");
 
-	adapter = manager_get_default_adapter();
+	adapter = adapter_get_default();
 	err = check_adapter(adapter);
 	if (err < 0)
 		return error_reply(msg, -err);
@@ -663,7 +662,7 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 
 	DBG("");
 
-	adapter = manager_get_default_adapter();
+	adapter = adapter_get_default();
 	err = check_adapter(adapter);
 	if (err < 0)
 		return error_reply(msg, -err);
@@ -727,7 +726,7 @@ static void neard_appeared(DBusConnection *conn, void *user_data)
 	 * due to neard crash or release before action was completed, postpone
 	 * register until action is finished.
 	 */
-	adapter = manager_get_default_adapter();
+	adapter = adapter_get_default();
 	if (adapter && btd_adapter_check_oob_handler(adapter))
 		agent_register_postpone = TRUE;
 	else
