@@ -3755,7 +3755,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	num = bt_get_le16(&rp->num_controllers);
+	num = btohs(rp->num_controllers);
 
 	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
 		error("Incorrect packet size for index list response");
@@ -3765,7 +3765,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	for (i = 0; i < num; i++) {
 		uint16_t index;
 
-		index = bt_get_le16(&rp->index[i]);
+		index = btohs(rp->index[i]);
 
 		DBG("index %u", index);
 	}
@@ -3782,7 +3782,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	mgmt_revision = bt_get_le16(&rp->revision);
+	mgmt_revision = btohs(rp->revision);
 	mgmt_version = rp->version;
 
 	DBG("version %u.%u", mgmt_version, mgmt_revision);
