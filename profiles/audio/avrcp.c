@@ -649,7 +649,7 @@ static const char *metadata_to_str(uint32_t id)
 	case AVRCP_MEDIA_ATTRIBUTE_GENRE:
 		return "Genre";
 	case AVRCP_MEDIA_ATTRIBUTE_TRACK:
-		return "Track";
+		return "TrackNumber";
 	case AVRCP_MEDIA_ATTRIBUTE_N_TRACKS:
 		return "NumberOfTracks";
 	case AVRCP_MEDIA_ATTRIBUTE_DURATION:

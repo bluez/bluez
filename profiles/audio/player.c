@@ -72,7 +72,7 @@ static void append_metadata(void *key, void *value, void *user_data)
 	DBusMessageIter *dict = user_data;
 
 	if (strcasecmp((char *) key, "Duration") == 0 ||
-			strcasecmp((char *) key, "Track") == 0 ||
+			strcasecmp((char *) key, "TrackNumber") == 0 ||
 			strcasecmp((char *) key, "NumberOfTracks") == 0)  {
 		uint32_t num = atoi(value);
 		dict_append_entry(dict, key, DBUS_TYPE_UINT32, &num);

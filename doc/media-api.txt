@@ -272,7 +272,7 @@ Properties	string Equalizer [readwrite]
 
 					Number of tracks in total
 
-				uint32 Number:
+				uint32 TrackNumber:
 
 					Track number
 
