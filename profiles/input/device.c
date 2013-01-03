@@ -136,8 +136,10 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 
 	idev->intr_watch = 0;
 
-	g_io_channel_unref(idev->intr_io);
-	idev->intr_io = NULL;
+	if (idev->intr_io) {
+		g_io_channel_unref(idev->intr_io);
+		idev->intr_io = NULL;
+	}
 
 	/* Close control channel */
 	if (idev->ctrl_io && !(cond & G_IO_NVAL))
@@ -163,8 +165,10 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 
 	idev->ctrl_watch = 0;
 
-	g_io_channel_unref(idev->ctrl_io);
-	idev->ctrl_io = NULL;
+	if (idev->ctrl_io) {
+		g_io_channel_unref(idev->ctrl_io);
+		idev->ctrl_io = NULL;
+	}
 
 	/* Close interrupt channel */
 	if (idev->intr_io && !(cond & G_IO_NVAL))
@@ -282,8 +286,18 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 	err = ioctl_connadd(idev->req);
 	if (err < 0) {
 		error("ioctl_connadd(): %s (%d)", strerror(-err), -err);
-		close(idev->req->intr_sock);
-		close(idev->req->ctrl_sock);
+
+		if (idev->ctrl_io) {
+			g_io_channel_shutdown(idev->ctrl_io, FALSE, NULL);
+			g_io_channel_unref(idev->ctrl_io);
+			idev->ctrl_io = NULL;
+		}
+
+		if (idev->intr_io) {
+			g_io_channel_shutdown(idev->intr_io, FALSE, NULL);
+			g_io_channel_unref(idev->intr_io);
+			idev->intr_io = NULL;
+		}
 	}
 
 	idev->sec_watch = 0;
