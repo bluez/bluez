@@ -3620,3 +3620,8 @@ void adapter_cleanup(void)
 {
 	manager_cleanup();
 }
+
+struct btd_adapter *adapter_find(const bdaddr_t *sba)
+{
+	return manager_find_adapter(sba);
+}
