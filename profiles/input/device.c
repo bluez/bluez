@@ -277,11 +277,11 @@ static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 	struct input_device *idev = data;
 	int err;
 
-	DBG(" ");
+	DBG("");
 
 	err = ioctl_connadd(idev->req);
 	if (err < 0) {
-		error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
+		error("ioctl_connadd(): %s (%d)", strerror(-err), -err);
 		close(idev->req->intr_sock);
 		close(idev->req->ctrl_sock);
 	}
