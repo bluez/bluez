@@ -3731,6 +3731,18 @@ int adapter_unregister(int id)
 	return 0;
 }
 
+static void index_added(uint16_t index, uint16_t length, const void *param,
+							void *user_data)
+{
+	DBG("index %u", index);
+}
+
+static void index_removed(uint16_t index, uint16_t length, const void *param,
+							void *user_data)
+{
+	DBG("index %u", index);
+}
+
 static void read_index_list_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3774,6 +3786,11 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	mgmt_version = rp->version;
 
 	DBG("version %u.%u", mgmt_version, mgmt_revision);
+
+	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
+						index_added, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
+						index_removed, NULL, NULL);
 
 	id = mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0, NULL,
 					read_index_list_complete, NULL, NULL);
