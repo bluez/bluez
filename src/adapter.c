@@ -3640,3 +3640,15 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 {
 	manager_foreach_adapter(func, user_data);
 }
+
+struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
+							bool discoverable)
+{
+	return btd_manager_register_adapter(id, powered, connectable,
+								discoverable);
+}
+
+void adapter_unregister(int id)
+{
+	btd_manager_unregister_adapter(id);
+}
