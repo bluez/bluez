@@ -2840,7 +2840,7 @@ gboolean adapter_setup(struct btd_adapter *adapter, gboolean powered,
 	return TRUE;
 }
 
-struct btd_adapter *adapter_create(int id)
+static struct btd_adapter *adapter_create(int id)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;

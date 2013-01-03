@@ -103,7 +103,6 @@ void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *device,
 						gboolean remove_storage);
 
-struct btd_adapter *adapter_create(int id);
 gboolean adapter_setup(struct btd_adapter *adapter, gboolean powered,
 					bool connectable, bool discoverable);
 void adapter_remove(struct btd_adapter *adapter);
