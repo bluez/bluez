@@ -33,7 +33,6 @@
 #include "dbus-common.h"
 #include "plugin.h"
 #include "adapter.h"
-#include "manager.h"
 #include "log.h"
 
 /* http://www.bluetooth.org/Technical/AssignedNumbers/baseband.htm */
@@ -62,7 +61,7 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 	if (pretty_hostname == NULL)
 		return;
 
-	default_adapter = manager_get_default_adapter();
+	default_adapter = adapter_get_default();
 
 	if (default_adapter == NULL || adapter == default_adapter) {
 		DBG("name: %s", pretty_hostname);
