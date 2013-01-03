@@ -1828,6 +1828,13 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	return 0;
 }
 
+static void free_service_auth(gpointer data, gpointer user_data)
+{
+	struct service_auth *auth = data;
+
+	g_free(auth);
+}
+
 static void adapter_free(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -1837,7 +1844,8 @@ static void adapter_free(gpointer user_data)
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
 
-	g_queue_free_full(adapter->auths, g_free);
+	g_queue_foreach(adapter->auths, free_service_auth, NULL);
+	g_queue_free(adapter->auths);
 
 	sdp_list_free(adapter->services, NULL);
 
