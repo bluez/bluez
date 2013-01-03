@@ -3495,7 +3495,7 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 								passkey);
 }
 
-int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
+static int adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
 					uint16_t product, uint16_t version,
 					uint16_t source)
 {
@@ -3705,7 +3705,7 @@ struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
 		default_adapter_id = id;
 
 	if (main_opts.did_source)
-		btd_adapter_set_did(adapter, main_opts.did_vendor,
+		adapter_set_did(adapter, main_opts.did_vendor,
 						main_opts.did_product,
 						main_opts.did_version,
 						main_opts.did_source);

@@ -195,10 +195,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 				uint32_t passkey);
 
-int btd_adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
-					uint16_t product, uint16_t version,
-					uint16_t source);
-
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap);
 
