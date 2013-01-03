@@ -276,18 +276,11 @@ static void encrypt_completed(uint8_t status, gpointer user_data)
 	struct hidp_connadd_req *req = user_data;
 	int err;
 
-	if (status) {
-		error("Encryption failed: %s(0x%x)",
-				strerror(bt_error(status)), status);
-		goto failed;
-	}
-
 	err = ioctl_connadd(req);
 	if (err == 0)
 		goto cleanup;
 
 	error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
-failed:
 	close(req->intr_sock);
 	close(req->ctrl_sock);
 
