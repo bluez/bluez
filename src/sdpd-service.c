@@ -48,7 +48,6 @@
 #include "sdpd.h"
 #include "log.h"
 #include "adapter.h"
-#include "manager.h"
 
 static sdp_record_t *server = NULL;
 

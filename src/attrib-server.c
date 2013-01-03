@@ -46,7 +46,6 @@
 #include "hcid.h"
 #include "adapter.h"
 #include "device.h"
-#include "manager.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
