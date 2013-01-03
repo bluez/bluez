@@ -331,6 +331,7 @@ static const struct generic_data read_info_invalid_index_test = {
 
 static const char set_powered_on_param[] = { 0x01 };
 static const char set_powered_invalid_param[] = { 0x02 };
+static const char set_powered_garbage_param[] = { 0x01, 0x00 };
 
 static const struct generic_data set_powered_on_success_test = {
 	.send_opcode = MGMT_OP_SET_POWERED,
@@ -352,6 +353,13 @@ static const struct generic_data set_powered_on_invalid_param_test_2 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const struct generic_data set_powered_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_garbage_param,
+	.send_len = sizeof(set_powered_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const struct generic_data set_powered_on_invalid_index_test = {
 	.send_index_none = true,
 	.send_opcode = MGMT_OP_SET_POWERED,
@@ -362,6 +370,7 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 
 static const char set_connectable_on_param[] = { 0x01 };
 static const char set_connectable_invalid_param[] = { 0x02 };
+static const char set_connectable_garbage_param[] = { 0x01, 0x00 };
 
 static const struct generic_data set_connectable_on_success_test = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
@@ -383,6 +392,13 @@ static const struct generic_data set_connectable_on_invalid_param_test_2 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const struct generic_data set_connectable_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_garbage_param,
+	.send_len = sizeof(set_connectable_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const struct generic_data set_connectable_on_invalid_index_test = {
 	.send_index_none = true,
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
@@ -393,6 +409,7 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 
 static const char set_pairable_on_param[] = { 0x01 };
 static const char set_pairable_invalid_param[] = { 0x02 };
+static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
 
 static const struct generic_data set_pairable_on_success_test = {
 	.send_opcode = MGMT_OP_SET_PAIRABLE,
@@ -411,6 +428,13 @@ static const struct generic_data set_pairable_on_invalid_param_test_2 = {
 	.send_opcode = MGMT_OP_SET_PAIRABLE,
 	.send_param = set_pairable_invalid_param,
 	.send_len = sizeof(set_pairable_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_pairable_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_PAIRABLE,
+	.send_param = set_pairable_garbage_param,
+	.send_len = sizeof(set_pairable_garbage_param),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
@@ -536,6 +560,9 @@ int main(int argc, char *argv[])
 	test_bredr("Set powered on - Invalid parameters 2",
 					&set_powered_on_invalid_param_test_2,
 					NULL, test_command_generic);
+	test_bredr("Set powered on - Invalid parameters 3",
+					&set_powered_on_invalid_param_test_3,
+					NULL, test_command_generic);
 	test_bredr("Set powered on - Invalid index",
 					&set_powered_on_invalid_index_test,
 					NULL, test_command_generic);
@@ -549,6 +576,9 @@ int main(int argc, char *argv[])
 	test_bredr("Set connectable on - Invalid parameters 2",
 					&set_connectable_on_invalid_param_test_2,
 					NULL, test_command_generic);
+	test_bredr("Set connectable on - Invalid parameters 3",
+					&set_connectable_on_invalid_param_test_3,
+					NULL, test_command_generic);
 	test_bredr("Set connectable on - Invalid index",
 					&set_connectable_on_invalid_index_test,
 					NULL, test_command_generic);
@@ -561,6 +591,9 @@ int main(int argc, char *argv[])
 					NULL, test_command_generic);
 	test_bredr("Set pairable on - Invalid parameters 2",
 					&set_pairable_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set pairable on - Invalid parameters 3",
+					&set_pairable_on_invalid_param_test_3,
 					NULL, test_command_generic);
 	test_bredr("Set pairable on - Invalid index",
 					&set_pairable_on_invalid_index_test,
