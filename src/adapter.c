@@ -89,6 +89,8 @@ static GSList *adapters = NULL;
 static int default_adapter_id = -1;
 
 struct mgmt *mgmt = NULL;
+uint8_t mgmt_version = 0;
+uint8_t mgmt_revision = 0;
 
 static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
@@ -3729,11 +3731,36 @@ int adapter_unregister(int id)
 	return 0;
 }
 
+static void read_version_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_version *rp = param;
+
+	if (length < sizeof(*rp)) {
+		error("Unexpected length for mgmt_read_version response");
+		return;
+	}
+
+	mgmt_revision = bt_get_le16(&rp->revision);
+	mgmt_version = rp->version;
+
+	DBG("version %u.%u", mgmt_version, mgmt_revision);
+}
+
 int adapter_init(void)
 {
+	unsigned int id;
+
 	mgmt = mgmt_new_default();
 	if (!mgmt)
 		return -EIO;
+
+	id = mgmt_send(mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
+					read_version_complete, NULL, NULL);
+	if (id == 0) {
+		error("mgmt_send(READ_VERSION) failed");
+		return -EIO;
+	}
 
 	return 0;
 }
