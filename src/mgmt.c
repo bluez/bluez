@@ -46,7 +46,6 @@
 
 #include "log.h"
 #include "adapter.h"
-#include "manager.h"
 #include "device.h"
 #include "eir.h"
 #include "storage.h"
@@ -215,7 +214,7 @@ static void remove_controller(uint16_t index)
 
 	DBG("Removing controller %u", index);
 
-	btd_manager_unregister_adapter(index);
+	adapter_unregister(index);
 
 	g_slist_free_full(controllers[index].pending_uuids, g_free);
 	controllers[index].pending_uuids = NULL;
@@ -1224,8 +1223,7 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 
 	clear_uuids(index);
 
-	adapter = btd_manager_register_adapter(index,
-				mgmt_powered(info->current_settings),
+	adapter = adapter_register(index, mgmt_powered(info->current_settings),
 				mgmt_connectable(info->current_settings),
 				mgmt_discoverable(info->current_settings));
 
