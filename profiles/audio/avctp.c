@@ -49,7 +49,6 @@
 
 #include "adapter.h"
 #include "../src/device.h"
-#include "../src/manager.h"
 
 #include "log.h"
 #include "error.h"
@@ -1124,7 +1123,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVCTP: incoming connect from %s", address);
 
-	device = adapter_find_device(manager_find_adapter(&src), address);
+	device = adapter_find_device(adapter_find(&src), address);
 	if (!device)
 		return;
 

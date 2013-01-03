@@ -48,7 +48,6 @@
 #include "log.h"
 
 #include "../src/adapter.h"
-#include "../src/manager.h"
 #include "../src/device.h"
 
 #include "device.h"
@@ -2477,7 +2476,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVDTP: incoming connect from %s", address);
 
-	device = adapter_find_device(manager_find_adapter(&src), address);
+	device = adapter_find_device(adapter_find(&src), address);
 	if (!device)
 		goto drop;
 
