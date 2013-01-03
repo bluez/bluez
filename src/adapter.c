@@ -2797,7 +2797,7 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-gboolean adapter_setup(struct btd_adapter *adapter, gboolean powered,
+static gboolean adapter_setup(struct btd_adapter *adapter, gboolean powered,
 					bool connectable, bool discoverable)
 {
 	struct agent *agent;
