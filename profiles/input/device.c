@@ -271,33 +271,25 @@ static int ioctl_connadd(struct hidp_connadd_req *req)
 	return err;
 }
 
-static void encrypt_completed(uint8_t status, gpointer user_data)
-{
-	struct hidp_connadd_req *req = user_data;
-	int err;
-
-	err = ioctl_connadd(req);
-	if (err < 0) {
-		error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
-		close(req->intr_sock);
-		close(req->ctrl_sock);
-	}
-
-	g_free(req->rd_data);
-	g_free(req);
-}
-
 static gboolean encrypt_notify(GIOChannel *io, GIOCondition condition,
 								gpointer data)
 {
 	struct input_device *idev = data;
-	struct hidp_connadd_req *req = idev->req;
+	int err;
 
 	DBG(" ");
 
-	encrypt_completed(0, req);
+	err = ioctl_connadd(idev->req);
+	if (err < 0) {
+		error("ioctl_connadd(): %s(%d)", strerror(-err), -err);
+		close(idev->req->intr_sock);
+		close(idev->req->ctrl_sock);
+	}
 
 	idev->sec_watch = 0;
+
+	g_free(idev->req->rd_data);
+	g_free(idev->req);
 	idev->req = NULL;
 
 	return FALSE;
