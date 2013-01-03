@@ -28,6 +28,13 @@ struct media_player;
 struct media_player_callback {
 	bool (*set_setting) (struct media_player *mp, const char *key,
 				const char *value, void *user_data);
+	int (*play) (struct media_player *mp, void *user_data);
+	int (*pause) (struct media_player *mp, void *user_data);
+	int (*stop) (struct media_player *mp, void *user_data);
+	int (*next) (struct media_player *mp, void *user_data);
+	int (*previous) (struct media_player *mp, void *user_data);
+	int (*fast_forward) (struct media_player *mp, void *user_data);
+	int (*rewind) (struct media_player *mp, void *user_data);
 };
 
 struct media_player *media_player_controller_create(const char *path);

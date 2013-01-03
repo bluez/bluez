@@ -1965,8 +1965,80 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 	return true;
 }
 
+static int ct_press(struct avrcp_player *player, uint8_t op)
+{
+	int err;
+	struct avrcp *session;
+
+	session = player->sessions->data;
+	if (session == NULL)
+		return -ENOTCONN;
+
+	err = avctp_send_passthrough(session->conn, op);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
+static int ct_play(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_PLAY);
+}
+
+static int ct_pause(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_PAUSE);
+}
+
+static int ct_stop(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_STOP);
+}
+
+static int ct_next(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_FORWARD);
+}
+
+static int ct_previous(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_BACKWARD);
+}
+
+static int ct_fast_forward(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_FAST_FORWARD);
+}
+
+static int ct_rewind(struct media_player *mp, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+
+	return ct_press(player, AVC_REWIND);
+}
+
 static const struct media_player_callback ct_cbs = {
-	.set_setting = ct_set_setting,
+	.set_setting	= ct_set_setting,
+	.play		= ct_play,
+	.pause		= ct_pause,
+	.stop		= ct_stop,
+	.next		= ct_next,
+	.previous	= ct_previous,
+	.fast_forward	= ct_fast_forward,
+	.rewind		= ct_rewind,
 };
 
 static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
@@ -1988,6 +2060,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 	count = pdu->params[1];
 
 	path = device_get_path(session->dev->btd_dev);
+
 	mp = media_player_controller_create(path);
 	if (mp == NULL)
 		return FALSE;

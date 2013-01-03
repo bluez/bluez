@@ -242,7 +242,136 @@ static gboolean get_track(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static DBusMessage *media_player_play(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->play == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->play(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_pause(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->pause == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->pause(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_stop(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->stop == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->stop(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_next(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->next == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->next(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_previous(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->previous == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->previous(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_fast_forward(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->fast_forward == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->fast_forward(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *media_player_rewind(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	struct media_player *mp = data;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (cb->cbs->rewind == NULL)
+		return btd_error_not_supported(msg);
+
+	err = cb->cbs->rewind(mp, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static const GDBusMethodTable media_player_methods[] = {
+	{ GDBUS_EXPERIMENTAL_METHOD("Play", NULL, NULL, media_player_play) },
+	{ GDBUS_EXPERIMENTAL_METHOD("Pause", NULL, NULL, media_player_pause) },
+	{ GDBUS_EXPERIMENTAL_METHOD("Stop", NULL, NULL, media_player_stop) },
+	{ GDBUS_EXPERIMENTAL_METHOD("Next", NULL, NULL, media_player_next) },
+	{ GDBUS_EXPERIMENTAL_METHOD("Previous", NULL, NULL,
+						media_player_previous) },
+	{ GDBUS_EXPERIMENTAL_METHOD("FastForward", NULL, NULL,
+						media_player_fast_forward) },
+	{ GDBUS_EXPERIMENTAL_METHOD("Rewind", NULL, NULL,
+						media_player_rewind) },
 	{ }
 };
 
