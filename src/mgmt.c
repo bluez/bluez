@@ -1178,10 +1178,7 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 
 	clear_uuids(index);
 
-	adapter = adapter_register(index, mgmt_powered(info->current_settings),
-				mgmt_connectable(info->current_settings),
-				mgmt_discoverable(info->current_settings));
-
+	adapter = adapter_register(index, info->current_settings);
 	if (adapter == NULL) {
 		error("mgmt: unable to register adapter");
 		return;

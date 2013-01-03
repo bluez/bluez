@@ -2797,14 +2797,13 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-static gboolean adapter_setup(struct btd_adapter *adapter, gboolean powered,
-					bool connectable, bool discoverable)
+static gboolean adapter_setup(struct btd_adapter *adapter, uint32_t settings)
 {
 	struct agent *agent;
 
-	adapter->powered = powered;
-	adapter->connectable = connectable;
-	adapter->discoverable = discoverable;
+	adapter->powered = mgmt_powered(settings);
+	adapter->connectable = mgmt_connectable(settings);
+	adapter->discoverable = mgmt_discoverable(settings);
 
 	mgmt_read_bdaddr(adapter->dev_id, &adapter->bdaddr);
 
@@ -3678,8 +3677,7 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
-struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
-							bool discoverable)
+struct btd_adapter *adapter_register(int id, uint32_t settings)
 {
 	struct btd_adapter *adapter;
 
@@ -3695,7 +3693,7 @@ struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
 
 	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_setup(adapter, powered, connectable, discoverable)) {
+	if (!adapter_setup(adapter, settings)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;
