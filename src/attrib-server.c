@@ -1131,10 +1131,16 @@ guint attrib_channel_attach(GAttrib *attrib)
 	ba2str(&channel->dst, addr);
 
 	device = adapter_find_device(server->adapter, addr);
-	if (device == NULL || device_is_bonded(device) == FALSE) {
+	if (device == NULL) {
+		error("Device object not found for attrib server");
+		g_free(channel);
+		return 0;
+	}
+
+	if (device_is_bonded(device) == FALSE) {
 		char *filename;
 
-		filename = btd_device_get_storage_path(channel->device, "ccc");
+		filename = btd_device_get_storage_path(device, "ccc");
 		unlink(filename);
 		g_free(filename);
 	}
