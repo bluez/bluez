@@ -162,7 +162,7 @@ struct btd_adapter *btd_manager_register_adapter(int id, gboolean powered,
 
 	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_init(adapter, powered, connectable, discoverable)) {
+	if (!adapter_setup(adapter, powered, connectable, discoverable)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;
