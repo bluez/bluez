@@ -3631,6 +3631,11 @@ struct btd_adapter *adapter_find_by_id(int id)
 	return manager_find_adapter_by_id(id);
 }
 
+struct btd_adapter *adapter_get_default(void)
+{
+	return manager_get_default_adapter();
+}
+
 void adapter_foreach(adapter_cb func, gpointer user_data)
 {
 	manager_foreach_adapter(func, user_data);
