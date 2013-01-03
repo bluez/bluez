@@ -124,7 +124,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			g_free(pretty_hostname);
 			pretty_hostname = g_strdup(str);
 
-			manager_foreach_adapter(update_name, NULL);
+			adapter_foreach(update_name, NULL);
 		}
 	} else if (g_str_equal(name, "Chassis") == TRUE) {
 		if (iter == NULL) {
@@ -147,7 +147,7 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 				major_class = chassis_table[i].major_class;
 				minor_class = chassis_table[i].minor_class;
 
-				manager_foreach_adapter(update_class, NULL);
+				adapter_foreach(update_class, NULL);
 				break;
 			}
 		}
