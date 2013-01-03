@@ -570,3 +570,48 @@ static inline const char *mgmt_errstr(uint8_t status)
 		return "<unknown status>";
 	return mgmt_status[status];
 }
+
+static inline bool mgmt_powered(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_POWERED);
+}
+
+static inline bool mgmt_connectable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_CONNECTABLE);
+}
+
+static inline bool mgmt_fast_connectable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_FAST_CONNECTABLE);
+}
+
+static inline bool mgmt_discoverable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_DISCOVERABLE);
+}
+
+static inline bool mgmt_pairable(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_PAIRABLE);
+}
+
+static inline bool mgmt_ssp(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_SSP);
+}
+
+static inline int mgmt_bredr(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_BREDR) != 0;
+}
+
+static inline int mgmt_high_speed(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_HS) != 0;
+}
+
+static inline int mgmt_low_energy(uint32_t settings)
+{
+	return (settings & MGMT_SETTING_LE) != 0;
+}

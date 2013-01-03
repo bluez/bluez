@@ -297,51 +297,6 @@ static int mgmt_set_low_energy(int index, gboolean le)
 	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
 }
 
-static inline int mgmt_powered(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_POWERED) != 0;
-}
-
-static inline int mgmt_connectable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_CONNECTABLE) != 0;
-}
-
-static inline int mgmt_fast_connectable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_FAST_CONNECTABLE) != 0;
-}
-
-static inline int mgmt_discoverable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_DISCOVERABLE) != 0;
-}
-
-static inline int mgmt_pairable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_PAIRABLE) != 0;
-}
-
-static inline int mgmt_ssp(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_SSP) != 0;
-}
-
-static inline int mgmt_bredr(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_BREDR) != 0;
-}
-
-static inline int mgmt_high_speed(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_HS) != 0;
-}
-
-static inline int mgmt_low_energy(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_LE) != 0;
-}
-
 static void update_settings(struct btd_adapter *adapter, uint32_t settings)
 {
 	DBG("new settings 0x%08x", settings);
