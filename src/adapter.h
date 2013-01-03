@@ -39,6 +39,8 @@
 
 struct btd_adapter;
 
+typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
+
 typedef void (*oob_read_local_cb_t) (struct btd_adapter *adapter,
 					uint8_t *hash, uint8_t *randomizer,
 					void *user_data);
@@ -74,6 +76,7 @@ struct smp_ltk_info {
 void adapter_cleanup(void);
 struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
+void adapter_foreach(adapter_cb func, gpointer user_data);
 
 void btd_adapter_start(struct btd_adapter *adapter);
 
