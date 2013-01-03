@@ -53,6 +53,7 @@
 #include "adapter.h"
 #include "dbus-common.h"
 #include "agent.h"
+#include "profile.h"
 #include "manager.h"
 #include "mgmt.h"
 #include "systemd.h"
@@ -517,10 +518,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (!manager_init("/")) {
-		error("Can't register manager interface");
-		exit(1);
-	}
+	btd_agent_init();
+	btd_profile_init();
 
 	if (option_experimental)
 		gdbus_flags = G_DBUS_FLAG_ENABLE_EXPERIMENTAL;
@@ -575,6 +574,9 @@ int main(int argc, char *argv[])
 	g_source_remove(signal);
 
 	plugin_cleanup();
+
+	btd_profile_cleanup();
+	btd_agent_cleanup();
 
 	manager_cleanup("/");
 
