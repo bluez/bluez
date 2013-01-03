@@ -53,7 +53,6 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
-#include "manager.h"
 #include "device.h"
 #include "profile.h"
 #include "dbus-common.h"
@@ -83,6 +82,9 @@
 #define MODE_UNKNOWN		0xff
 
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
+
+static GSList *adapters = NULL;
+static int default_adapter_id = -1;
 
 static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
@@ -3347,7 +3349,7 @@ guint btd_request_authorization(const bdaddr_t *src, const bdaddr_t *dst,
 		return adapter_authorize(adapter, dst, uuid, cb, user_data);
 	}
 
-	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
+	for (l = adapters; l != NULL; l = g_slist_next(l)) {
 		guint id;
 
 		adapter = l->data;
@@ -3365,7 +3367,7 @@ static struct service_auth *find_authorization(guint id)
 	GSList *l;
 	GList *l2;
 
-	for (l = manager_get_adapters(); l != NULL; l = g_slist_next(l)) {
+	for (l = adapters; l != NULL; l = g_slist_next(l)) {
 		struct btd_adapter *adapter = l->data;
 
 		for (l2 = adapter->auths->head; l2 != NULL; l2 = l2->next) {
@@ -3618,37 +3620,118 @@ void btd_adapter_for_each_device(struct btd_adapter *adapter,
 
 void adapter_cleanup(void)
 {
-	manager_cleanup();
+	while (adapters) {
+		struct btd_adapter *adapter = adapters->data;
+
+		adapter_remove(adapter);
+		adapters = g_slist_remove(adapters, adapter);
+		btd_adapter_unref(adapter);
+	}
+}
+
+static int adapter_cmp(gconstpointer a, gconstpointer b)
+{
+	struct btd_adapter *adapter = (struct btd_adapter *) a;
+	const bdaddr_t *bdaddr = b;
+
+	return bacmp(&adapter->bdaddr, bdaddr);
+}
+
+static int adapter_id_cmp(gconstpointer a, gconstpointer b)
+{
+	struct btd_adapter *adapter = (struct btd_adapter *) a;
+	uint16_t id = GPOINTER_TO_UINT(b);
+
+	return adapter->dev_id == id ? 0 : -1;
 }
 
 struct btd_adapter *adapter_find(const bdaddr_t *sba)
 {
-	return manager_find_adapter(sba);
+	GSList *match;
+
+	match = g_slist_find_custom(adapters, sba, adapter_cmp);
+	if (!match)
+		return NULL;
+
+	return match->data;
 }
 
 struct btd_adapter *adapter_find_by_id(int id)
 {
-	return manager_find_adapter_by_id(id);
+	GSList *match;
+
+	match = g_slist_find_custom(adapters, GINT_TO_POINTER(id),
+							adapter_id_cmp);
+	if (!match)
+		return NULL;
+
+	return match->data;
 }
 
 struct btd_adapter *adapter_get_default(void)
 {
-	return manager_get_default_adapter();
+	return adapter_find_by_id(default_adapter_id);
 }
 
 void adapter_foreach(adapter_cb func, gpointer user_data)
 {
-	manager_foreach_adapter(func, user_data);
+	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
 struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
 							bool discoverable)
 {
-	return btd_manager_register_adapter(id, powered, connectable,
-								discoverable);
+	struct btd_adapter *adapter;
+
+	adapter = adapter_find_by_id(id);
+	if (adapter) {
+		error("Unable to register adapter: hci%d already exist", id);
+		return NULL;
+	}
+
+	adapter = adapter_create(id);
+	if (!adapter)
+		return NULL;
+
+	adapters = g_slist_append(adapters, adapter);
+
+	if (!adapter_setup(adapter, powered, connectable, discoverable)) {
+		adapters = g_slist_remove(adapters, adapter);
+		btd_adapter_unref(adapter);
+		return NULL;
+	}
+
+	if (default_adapter_id < 0)
+		default_adapter_id = id;
+
+	if (main_opts.did_source)
+		btd_adapter_set_did(adapter, main_opts.did_vendor,
+						main_opts.did_product,
+						main_opts.did_version,
+						main_opts.did_source);
+
+	DBG("Adapter %s registered", adapter->path);
+
+	return btd_adapter_ref(adapter);
 }
 
-void adapter_unregister(int id)
+int adapter_unregister(int id)
 {
-	btd_manager_unregister_adapter(id);
+	struct btd_adapter *adapter;
+
+	adapter = adapter_find_by_id(id);
+	if (!adapter)
+		return -ENOENT;
+
+	DBG("Unregister path: %s", adapter->path);
+
+	adapters = g_slist_remove(adapters, adapter);
+
+	if (default_adapter_id == adapter->dev_id || default_adapter_id < 0)
+		default_adapter_id = hci_get_route(NULL);
+
+	adapter_remove(adapter);
+	btd_adapter_unref(adapter);
+
+	return 0;
 }

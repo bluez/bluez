@@ -80,7 +80,7 @@ struct btd_adapter *adapter_get_default(void);
 void adapter_foreach(adapter_cb func, gpointer user_data);
 struct btd_adapter *adapter_register(int id, bool powered, bool connectable,
 							bool discoverable);
-void adapter_unregister(int id);
+int adapter_unregister(int id);
 
 void btd_adapter_start(struct btd_adapter *adapter);
 
