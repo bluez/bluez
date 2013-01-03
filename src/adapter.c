@@ -2870,7 +2870,7 @@ static struct btd_adapter *adapter_create(int id)
 	return btd_adapter_ref(adapter);
 }
 
-void adapter_remove(struct btd_adapter *adapter)
+static void adapter_remove(struct btd_adapter *adapter)
 {
 	GSList *l;
 
