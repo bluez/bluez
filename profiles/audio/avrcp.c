@@ -1952,6 +1952,9 @@ static bool ct_set_setting(struct media_player *mp, const char *key,
 	if (session == NULL)
 		return false;
 
+	if (session->version < 0x0103)
+		return false;
+
 	attr = attr_to_val(key);
 	if (attr < 0)
 		return false;
@@ -2047,23 +2050,14 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 					void *user_data)
 {
 	struct avrcp *session = user_data;
-	struct avrcp_player *player = session->player;
-	struct media_player *mp;
 	struct avrcp_header *pdu = (void *) operands;
 	uint16_t events = 0;
 	uint8_t count;
-	const char *path;
 
 	if (pdu->params[0] != CAP_EVENTS_SUPPORTED)
 		return FALSE;
 
 	count = pdu->params[1];
-
-	path = device_get_path(session->dev->btd_dev);
-
-	mp = media_player_controller_create(path);
-	if (mp == NULL)
-		return FALSE;
 
 	for (; count > 0; count--) {
 		uint8_t event = pdu->params[1 + count];
@@ -2078,10 +2072,6 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 			break;
 		}
 	}
-
-	media_player_set_callbacks(mp, &ct_cbs, player);
-	player->user_data = mp;
-	player->destroy = (GDestroyNotify) media_player_destroy;
 
 	if (!(events & (1 << AVRCP_EVENT_SETTINGS_CHANGED)))
 		avrcp_list_player_attributes(session);
@@ -2169,6 +2159,8 @@ static void session_tg_init(struct avrcp *session)
 static void session_ct_init(struct avrcp *session)
 {
 	struct avrcp_player *player;
+	struct media_player *mp;
+	const char *path;
 
 	session->control_handlers = ct_control_handlers;
 
@@ -2179,12 +2171,21 @@ static void session_ct_init(struct avrcp *session)
 							handle_vendordep_pdu,
 							session);
 
-	if (session->version < 0x0103)
-		return;
-
 	player = g_new0(struct avrcp_player, 1);
 	player->sessions = g_slist_prepend(player->sessions, session);
 	session->player = player;
+
+	path = device_get_path(session->dev->btd_dev);
+
+	mp = media_player_controller_create(path);
+	if (mp != NULL) {
+		media_player_set_callbacks(mp, &ct_cbs, player);
+		player->user_data = mp;
+		player->destroy = (GDestroyNotify) media_player_destroy;
+	}
+
+	if (session->version < 0x0103)
+		return;
 
 	avrcp_get_capabilities(session);
 }
