@@ -51,7 +51,6 @@
 
 #include "glib-helper.h"
 #include "../src/adapter.h"
-#include "../src/manager.h"
 #include "../src/device.h"
 #include "../src/profile.h"
 
@@ -516,6 +515,5 @@ static void set_fast_connectable(struct btd_adapter *adapter,
 
 void manager_set_fast_connectable(gboolean enable)
 {
-	manager_foreach_adapter(set_fast_connectable,
-						GUINT_TO_POINTER(enable));
+	adapter_foreach(set_fast_connectable, GUINT_TO_POINTER(enable));
 }
