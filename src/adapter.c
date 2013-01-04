@@ -3751,8 +3751,9 @@ static void index_removed(uint16_t index, uint16_t length, const void *param,
 	DBG("index %u", index);
 }
 
-static void read_index_list_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
+static void read_index_list_complete(uint16_t index, uint8_t status,
+					uint16_t length, const void *param,
+					void *user_data)
 {
 	const struct mgmt_rp_read_index_list *rp = param;
 	uint16_t num;
@@ -3779,8 +3780,9 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	}
 }
 
-static void read_version_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
+static void read_version_complete(uint16_t index, uint8_t status,
+					uint16_t length, const void *param,
+					void *user_data)
 {
 	const struct mgmt_rp_read_version *rp = param;
 	unsigned int id;
