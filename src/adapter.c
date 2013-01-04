@@ -385,6 +385,24 @@ static void set_discoverable(struct btd_adapter *adapter,
 	g_dbus_pending_property_success(id);
 }
 
+static void new_settings_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	uint32_t settings;
+
+	if (length < sizeof(settings)) {
+		error("Wrong size of new settings parameters");
+		return;
+	}
+
+	settings = bt_get_le32(param);
+
+	DBG("Settings: 0x%08x", settings);
+
+	adapter_update_settings(adapter, settings);
+}
+
 static void set_powered(struct btd_adapter *adapter, gboolean powered,
 						GDBusPendingPropertySet id)
 {
@@ -1964,6 +1982,8 @@ void adapter_update_settings(struct btd_adapter *adapter,
 	if (adapter->current_settings == new_settings)
 		return;
 
+	DBG("settings 0x%08x", new_settings);
+
 	if (mgmt_pairable(new_settings) !=
 				mgmt_pairable(adapter->current_settings))
 		adapter_pairable_changed(adapter, new_settings);
@@ -3033,6 +3053,9 @@ static struct btd_adapter *adapter_create(int id)
 
 	adapter->dev_id = id;
 	adapter->mgmt = mgmt_ref(mgmt_master);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->dev_id,
+					new_settings_callback, adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
 						adapter->dev_id,
