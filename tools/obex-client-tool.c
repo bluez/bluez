@@ -225,7 +225,7 @@ static void cmd_help(int argc, char **argv)
 
 static void parse_line(char *line_read)
 {
-	gchar **argvp;
+	char **argvp;
 	int argcp;
 	int i;
 
