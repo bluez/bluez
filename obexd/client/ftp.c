@@ -98,14 +98,14 @@ static DBusMessage *change_folder(DBusConnection *connection,
 }
 
 static void xml_element(GMarkupParseContext *ctxt,
-			const gchar *element,
-			const gchar **names,
-			const gchar **values,
+			const char *element,
+			const char **names,
+			const char **values,
 			gpointer user_data,
 			GError **gerr)
 {
 	DBusMessageIter dict, *iter = user_data;
-	gchar *key;
+	char *key;
 	gint i;
 
 	if (strcasecmp("folder", element) != 0 && strcasecmp("file", element) != 0)
@@ -121,7 +121,7 @@ static void xml_element(GMarkupParseContext *ctxt,
 	/* FIXME: User, Group, Other permission must be reviewed */
 
 	i = 0;
-	for (key = (gchar *) names[i]; key; key = (gchar *) names[++i]) {
+	for (key = (char *) names[i]; key; key = (char *) names[++i]) {
 		key[0] = g_ascii_toupper(key[0]);
 		if (g_str_equal("Size", key) == TRUE) {
 			guint64 size;
@@ -271,7 +271,7 @@ static DBusMessage *put_file(DBusConnection *connection,
 	struct ftp_data *ftp = user_data;
 	struct obc_session *session = ftp->session;
 	struct obc_transfer *transfer;
-	gchar *sourcefile, *targetfile;
+	char *sourcefile, *targetfile;
 	GError *err = NULL;
 	DBusMessage *reply;
 

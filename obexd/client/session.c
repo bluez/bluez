@@ -89,11 +89,11 @@ struct obc_session {
 	uint8_t channel;
 	struct obc_transport *transport;
 	struct obc_driver *driver;
-	gchar *path;		/* Session path */
+	char *path;		/* Session path */
 	DBusConnection *conn;
 	GObex *obex;
 	struct pending_request *p;
-	gchar *owner;		/* Session owner */
+	char *owner;		/* Session owner */
 	guint watch;
 	GQueue *queue;
 	guint queue_complete_id;

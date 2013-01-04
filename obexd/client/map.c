@@ -163,12 +163,12 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 	return NULL;
 }
 
-static void folder_element(GMarkupParseContext *ctxt, const gchar *element,
-				const gchar **names, const gchar **values,
+static void folder_element(GMarkupParseContext *ctxt, const char *element,
+				const char **names, const char **values,
 				gpointer user_data, GError **gerr)
 {
 	DBusMessageIter dict, *iter = user_data;
-	const gchar *key;
+	const char *key;
 	gint i;
 
 	if (strcasecmp("folder", element) != 0)
@@ -831,15 +831,15 @@ static struct map_msg_parser {
 		{ }
 };
 
-static void msg_element(GMarkupParseContext *ctxt, const gchar *element,
-				const gchar **names, const gchar **values,
+static void msg_element(GMarkupParseContext *ctxt, const char *element,
+				const char **names, const char **values,
 				gpointer user_data, GError **gerr)
 {
 	struct map_parser *parser = user_data;
 	struct map_data *data = parser->data;
 	DBusMessageIter entry, dict, *iter = parser->iter;
 	struct map_msg *msg;
-	const gchar *key;
+	const char *key;
 	gint i;
 
 	if (strcasecmp("msg", element) != 0)
@@ -1249,12 +1249,12 @@ static DBusMessage *map_list_messages(DBusConnection *connection,
 	return get_message_listing(map, message, folder, apparam);
 }
 
-static gchar **get_filter_strs(uint64_t filter, gint *size)
+static char **get_filter_strs(uint64_t filter, gint *size)
 {
-	gchar **list, **item;
+	char **list, **item;
 	gint i;
 
-	list = g_malloc0(sizeof(gchar **) * (FILTER_BIT_MAX + 2));
+	list = g_malloc0(sizeof(char **) * (FILTER_BIT_MAX + 2));
 
 	item = list;
 
@@ -1270,7 +1270,7 @@ static gchar **get_filter_strs(uint64_t filter, gint *size)
 static DBusMessage *map_list_filter_fields(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	gchar **filters = NULL;
+	char **filters = NULL;
 	gint size;
 	DBusMessage *reply;
 

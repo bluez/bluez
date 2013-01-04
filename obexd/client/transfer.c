@@ -75,7 +75,7 @@ struct obc_transfer {
 	char *session;		/* Session path */
 	char *owner;		/* Transfer initiator */
 	char *path;		/* Transfer path */
-	gchar *filename;	/* Transfer file location */
+	char *filename;		/* Transfer file location */
 	char *name;		/* Transfer object name */
 	char *type;		/* Transfer object type */
 	int fd;
@@ -144,7 +144,7 @@ static DBusMessage *obc_transfer_cancel(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	struct obc_transfer *transfer = user_data;
-	const gchar *sender;
+	const char *sender;
 
 	sender = dbus_message_get_sender(message);
 	if (g_strcmp0(transfer->owner, sender) != 0)

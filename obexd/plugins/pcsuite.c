@@ -261,7 +261,7 @@ static struct obex_service_driver pcsuite = {
 };
 
 struct backup_object {
-	gchar *cmd;
+	char *cmd;
 	int fd;
 	int oflag;
 	int error_code;

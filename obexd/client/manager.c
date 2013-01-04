@@ -218,7 +218,7 @@ static DBusMessage *remove_session(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	struct obc_session *session;
-	const gchar *sender, *path;
+	const char *sender, *path;
 
 	if (dbus_message_get_args(message, NULL,
 			DBUS_TYPE_OBJECT_PATH, &path,

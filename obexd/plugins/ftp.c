@@ -316,7 +316,7 @@ done:
 
 static gboolean is_valid_path(const char *path)
 {
-	gchar **elements, **cur;
+	char **elements, **cur;
 	int depth = 0;
 
 	elements = g_strsplit(path, "/", 0);

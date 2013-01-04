@@ -216,7 +216,7 @@ failed:
 
 /* FIXME: Preserve whitespaces */
 static void g_string_append_escaped_printf(GString *string,
-						const gchar *format, ...)
+						const char *format, ...)
 {
 	va_list ap;
 	char *escaped;

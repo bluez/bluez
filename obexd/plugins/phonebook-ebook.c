@@ -420,7 +420,7 @@ static GSList *open_ebooks(void)
 	GError *gerr = NULL;
 	ESourceList *src_list;
 	GSList *list;
-	gchar *default_src = NULL;
+	char *default_src = NULL;
 	GSList *ebooks = NULL;
 
 	if (e_book_get_addressbooks(&src_list, &gerr) == FALSE) {

@@ -144,20 +144,20 @@ static void pending_request_free(struct pending_request *p)
 }
 
 static void listing_element(GMarkupParseContext *ctxt,
-				const gchar *element,
-				const gchar **names,
-				const gchar **values,
+				const char *element,
+				const char **names,
+				const char **values,
 				gpointer user_data,
 				GError **gerr)
 {
 	DBusMessageIter *item = user_data, entry;
-	gchar **key;
-	const gchar *handle = NULL, *vcardname = NULL;
+	char **key;
+	const char *handle = NULL, *vcardname = NULL;
 
 	if (g_str_equal(element, "card") != TRUE)
 		return;
 
-	for (key = (gchar **) names; *key; key++, values++) {
+	for (key = (char **) names; *key; key++, values++) {
 		if (g_str_equal(*key, "handle") == TRUE)
 			handle = *values;
 		else if (g_str_equal(*key, "name") == TRUE)
@@ -180,9 +180,9 @@ static const GMarkupParser listing_parser = {
 	NULL,
 	NULL
 };
-static gchar *build_phonebook_path(const char *location, const char *item)
+static char *build_phonebook_path(const char *location, const char *item)
 {
-	gchar *path = NULL, *tmp, *tmp1;
+	char *path = NULL, *tmp, *tmp1;
 
 	if (!g_ascii_strcasecmp(location, "int") ||
 			!g_ascii_strcasecmp(location, "internal"))
@@ -876,12 +876,12 @@ static DBusMessage *pbap_get_size(DBusConnection *connection,
 	return pull_phonebook(pbap, message, GETPHONEBOOKSIZE, NULL, apparam);
 }
 
-static gchar **get_filter_strs(uint64_t filter, gint *size)
+static char **get_filter_strs(uint64_t filter, gint *size)
 {
-	gchar **list, **item;
+	char **list, **item;
 	gint i;
 
-	list = g_malloc0(sizeof(gchar **) * (FILTER_BIT_MAX + 2));
+	list = g_malloc0(sizeof(char **) * (FILTER_BIT_MAX + 2));
 
 	item = list;
 
@@ -901,7 +901,7 @@ static gchar **get_filter_strs(uint64_t filter, gint *size)
 static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	gchar **filters = NULL;
+	char **filters = NULL;
 	gint size;
 	DBusMessage *reply;
 
