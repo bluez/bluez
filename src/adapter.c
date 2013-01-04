@@ -200,7 +200,6 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor)
 {
 	struct mgmt_cp_set_dev_class cp;
-	unsigned int id;
 
 	memset(&cp, 0, sizeof(cp));
 
@@ -217,13 +216,14 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 	cp.major = major & 0x1f;
 	cp.minor = minor << 2;
 
-	id = mgmt_send(adapter->mgmt, MGMT_OP_SET_DEV_CLASS, adapter->dev_id,
-				sizeof(cp), &cp, set_dev_class_complete,
-				adapter, NULL);
-	if (id == 0)
-		return -EIO;
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEV_CLASS,
+				adapter->dev_id, sizeof(cp), &cp,
+				set_dev_class_complete, adapter, NULL) > 0)
+		return 0;
 
-	return 0;
+	error("Failed to set class of device for index %u", adapter->dev_id);
+
+	return -EIO;
 }
 
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
@@ -621,7 +621,6 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct mgmt_cp_set_local_name cp;
 	char maxname[MAX_NAME_LENGTH + 1];
-	unsigned int id;
 
 	memset(maxname, 0, sizeof(maxname));
 	strncpy(maxname, name, MAX_NAME_LENGTH);
@@ -634,14 +633,14 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, maxname, sizeof(cp.name) - 1);
 
-	id = mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME, adapter->dev_id,
-					sizeof(cp), &cp, NULL, NULL, NULL);
-	if (id == 0) {
-		error("mgmt_send(READ_INDEX_LIST) failed");
-		return -EIO;
-	}
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, adapter, NULL) > 0)
+		return 0;
 
-	return 0;
+	error("Failed to set local name for index %u", adapter->dev_id);
+
+	return -EIO;
 }
 
 int adapter_set_name(struct btd_adapter *adapter, const char *name)
@@ -3867,13 +3866,12 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
 	struct btd_adapter *adapter;
-	unsigned int id;
 
 	DBG("index %u", index);
 
 	adapter = adapter_find_by_id(index);
 	if (adapter != NULL) {
-		warn("Got index_added for an already existing adapter");
+		warn("Ignoring index added for an already existing adapter");
 		return;
 	}
 
@@ -3883,11 +3881,14 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		return;
 	}
 
-	id = mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
-						read_info_complete, adapter,
-						adapter_destroy);
-	if (id == 0)
-		error("mgmt_send(READ_INFO, %u) failed", index);
+	if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
+						read_info_complete,
+						adapter, adapter_destroy) > 0)
+		return;
+
+	error("Failed to read controller info for index %u", index);
+
+	adapter_destroy(adapter);
 }
 
 static void index_removed(uint16_t index, uint16_t length, const void *param,
@@ -3933,7 +3934,6 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 	for (i = 0; i < num; i++) {
 		struct btd_adapter *adapter;
-		unsigned int id;
 		uint16_t index;
 
 		index = btohs(rp->index[i]);
@@ -3942,7 +3942,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 		adapter = adapter_find_by_id(index);
 		if (adapter != NULL) {
-			warn("Got an index for an already existing adapter");
+			warn("Ignoring index for an already existing adapter");
 			continue;
 		}
 
@@ -3953,11 +3953,14 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 			continue;
 		}
 
-		id = mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
-						read_info_complete, adapter,
-						adapter_destroy);
-		if (id == 0)
-			error("mgmt_send(READ_INFO, %u) failed", index);
+		if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
+						read_info_complete,
+						adapter, adapter_destroy) > 0)
+			continue;
+
+		error("Failed to read controller info for index %u", index);
+
+		adapter_destroy(adapter);
 	}
 }
 
@@ -3965,7 +3968,6 @@ static void read_version_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_version *rp = param;
-	unsigned int id;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("mgmt_read_version() failed: %s (0x%02x)",
@@ -3988,30 +3990,28 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	mgmt_register(mgmt_master, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
 						index_removed, NULL, NULL);
 
-	id = mgmt_send(mgmt_master, MGMT_OP_READ_INDEX_LIST,
-					MGMT_INDEX_NONE, 0, NULL,
-					read_index_list_complete, NULL, NULL);
-	if (id == 0)
-		error("mgmt_send(READ_INDEX_LIST) failed");
+	if (mgmt_send(mgmt_master, MGMT_OP_READ_INDEX_LIST,
+				MGMT_INDEX_NONE, 0, NULL,
+				read_index_list_complete, NULL, NULL) > 0)
+		return;
+
+	error("Failed to read controller index list");
 }
 
 int adapter_init(void)
 {
-	unsigned int id;
-
 	mgmt_master = mgmt_new_default();
 	if (!mgmt_master)
 		return -EIO;
 
-	id = mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
-					MGMT_INDEX_NONE, 0, NULL,
-					read_version_complete, NULL, NULL);
-	if (id == 0) {
-		error("mgmt_send(READ_VERSION) failed");
-		return -EIO;
-	}
+	if (mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
+				MGMT_INDEX_NONE, 0, NULL,
+				read_version_complete, NULL, NULL) > 0)
+		return 0;
 
-	return 0;
+	error("Failed to read management version information");
+
+	return -EIO;
 }
 
 void adapter_cleanup(void)
