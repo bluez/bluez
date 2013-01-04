@@ -4240,6 +4240,14 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	mgmt_version = rp->version;
 	mgmt_revision = btohs(rp->revision);
 
+	info("Bluetooth management interface %u.%u initialized",
+						mgmt_version, mgmt_revision);
+
+	if (mgmt_version < 1) {
+		error("Version 1.0 or later of management interface required");
+		abort();
+	}
+
 	DBG("version %u.%u", mgmt_version, mgmt_revision);
 
 	mgmt_register(mgmt_master, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,

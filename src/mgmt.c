@@ -65,9 +65,6 @@ static struct controller_info {
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
-static uint8_t mgmt_version = 0;
-static uint16_t mgmt_revision = 0;
-
 static bool get_adapter_and_device(uint16_t index,
 					struct mgmt_addr_info *addr,
 					struct btd_adapter **adapter,
@@ -95,37 +92,6 @@ static bool get_adapter_and_device(uint16_t index,
 	}
 
 	return true;
-}
-
-static void read_version_complete(void *buf, size_t len)
-{
-	struct mgmt_hdr hdr;
-	struct mgmt_rp_read_version *rp = buf;
-
-	if (len < sizeof(*rp)) {
-		error("Too small read version complete event"
-				" (probably an old kernel)");
-		abort();
-	}
-
-	mgmt_revision = bt_get_le16(&rp->revision);
-	mgmt_version = rp->version;
-
-	info("Bluetooth management interface %u.%u initialized",
-						mgmt_version, mgmt_revision);
-
-	if (mgmt_version < 1) {
-		error("Version 1.0 or later of management interface is needed");
-		abort();
-	}
-
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_READ_INDEX_LIST);
-	hdr.index = htobs(MGMT_INDEX_NONE);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
-		error("Unable to read controller index list: %s (%d)",
-						strerror(errno), errno);
 }
 
 static void add_controller(uint16_t index)
@@ -1080,7 +1046,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 
 	switch (opcode) {
 	case MGMT_OP_READ_VERSION:
-		read_version_complete(ev->data, len);
+		DBG("read_version complete");
 		break;
 	case MGMT_OP_READ_INDEX_LIST:
 		read_index_list_complete(ev->data, len);
@@ -1644,7 +1610,7 @@ int mgmt_setup(void)
 	}
 
 	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_READ_VERSION);
+	hdr.opcode = htobs(MGMT_OP_READ_INDEX_LIST);
 	hdr.index = htobs(MGMT_INDEX_NONE);
 	if (write(dd, &hdr, sizeof(hdr)) < 0) {
 		err = -errno;
