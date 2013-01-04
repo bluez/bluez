@@ -3856,7 +3856,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	DBG("index %u status 0x%02x", adapter->dev_id, status);
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("mgmt_read_info(%u) failed: %s (0x%02x)",
+		error("Failed to read info for index %u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
 		return;
 	}
@@ -3926,7 +3926,7 @@ static void index_removed(uint16_t index, uint16_t length, const void *param,
 
 	adapter = adapter_find_by_id(index);
 	if (adapter == NULL) {
-		warn("mgmt_index_removed for a non-existent adapter");
+		warn("Ignoring index removal for a non-existent adapter");
 		return;
 	}
 
@@ -3941,13 +3941,13 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	int i;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("mgmt_read_index_list() failed: %s (0x%02x)",
+		error("Failed to read index list: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Unexpected length for mgmt_read_index_list response");
+		error("Wrong size of read index list response");
 		return;
 	}
 
@@ -3996,13 +3996,13 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	const struct mgmt_rp_read_version *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("mgmt_read_version() failed: %s (0x%02x)",
+		error("Failed to read version information: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Unexpected length for mgmt_read_version response");
+		error("Wrong size of read version response");
 		return;
 	}
 
