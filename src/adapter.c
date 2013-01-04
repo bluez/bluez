@@ -4193,7 +4193,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 		index = btohs(rp->index[i]);
 
-		DBG("index %u", index);
+		DBG("Found index %u", index);
 
 		adapter = adapter_find_by_id(index);
 		if (adapter != NULL) {
@@ -4219,6 +4219,30 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 		adapter_destroy(adapter);
 	}
+}
+
+static void read_commands_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_commands *rp = param;
+	uint16_t num_commands, num_events;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to read supported commands: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of read commands response");
+		return;
+	}
+
+	num_commands = btohs(rp->num_commands);
+	num_events = btohs(rp->num_events);
+
+	DBG("Number of commands: %d", num_commands);
+	DBG("Number of events: %d", num_events);
 }
 
 static void read_version_complete(uint8_t status, uint16_t length,
@@ -4248,7 +4272,11 @@ static void read_version_complete(uint8_t status, uint16_t length,
 		abort();
 	}
 
-	DBG("version %u.%u", mgmt_version, mgmt_revision);
+	DBG("sending read supported commands command");
+
+	mgmt_send(mgmt_master, MGMT_OP_READ_COMMANDS,
+				MGMT_INDEX_NONE, 0, NULL,
+				read_commands_complete, NULL, NULL);
 
 	mgmt_register(mgmt_master, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
 						index_added, NULL, NULL);
