@@ -113,7 +113,7 @@ static gboolean rfkill_event(GIOChannel *chan,
 
 	memset(sysname, 0, sizeof(sysname));
 
-	if (read(fd, sysname, sizeof(sysname)) < 4) {
+	if (read(fd, sysname, sizeof(sysname) - 1) < 4) {
 		close(fd);
 		return TRUE;
 	}
