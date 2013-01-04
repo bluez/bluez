@@ -233,6 +233,8 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 	cp.major = major & 0x1f;
 	cp.minor = minor << 2;
 
+	DBG("sending set device class command for index %u", adapter->dev_id);
+
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEV_CLASS,
 				adapter->dev_id, sizeof(cp), &cp,
 				set_dev_class_complete, adapter, NULL) > 0)
@@ -707,6 +709,8 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, maxname, sizeof(cp.name) - 1);
+
+	DBG("sending set local name command for index %u", adapter->dev_id);
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME,
 				adapter->dev_id, sizeof(cp), &cp,
@@ -3960,6 +3964,8 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		return;
 	}
 
+	DBG("sending read info command for index %u", index);
+
 	if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
 						read_info_complete,
 						adapter, adapter_destroy) > 0)
@@ -4032,6 +4038,8 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 			continue;
 		}
 
+		DBG("sending read info command for index %u", index);
+
 		if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
 						read_info_complete,
 						adapter, adapter_destroy) > 0)
@@ -4069,6 +4077,8 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	mgmt_register(mgmt_master, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
 						index_removed, NULL, NULL);
 
+	DBG("sending read index list command");
+
 	if (mgmt_send(mgmt_master, MGMT_OP_READ_INDEX_LIST,
 				MGMT_INDEX_NONE, 0, NULL,
 				read_index_list_complete, NULL, NULL) > 0)
@@ -4084,6 +4094,8 @@ int adapter_init(void)
 		error("Failed to access management interface");
 		return -EIO;
 	}
+
+	DBG("sending read version command");
 
 	if (mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
 				MGMT_INDEX_NONE, 0, NULL,
