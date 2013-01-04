@@ -1096,7 +1096,7 @@ int mgmt_set_name(int index, const char *name)
 	return 0;
 }
 
-int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
+static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
 	struct mgmt_hdr *hdr = (void *) buf;
