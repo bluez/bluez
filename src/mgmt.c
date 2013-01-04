@@ -1144,9 +1144,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
-	struct btd_adapter *adapter;
-	const char *name;
-	uint8_t major, minor;
 	char addr[18];
 
 	if (len < sizeof(*rp)) {
@@ -1178,21 +1175,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 
 	clear_uuids(index);
 
-	adapter = adapter_register(index, info->current_settings);
-	if (adapter == NULL) {
-		error("mgmt: unable to register adapter");
-		return;
-	}
-
-	update_settings(adapter, info->current_settings);
-
-	name = btd_adapter_get_name(adapter);
-	if (name)
-		mgmt_set_name(index, name);
-
-	btd_adapter_get_major_minor(adapter, &major, &minor);
-	mgmt_set_dev_class(index, major, minor);
-
 	if (!mgmt_pairable(info->current_settings))
 		mgmt_set_pairable(index, TRUE);
 
@@ -1204,12 +1186,8 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 				!mgmt_low_energy(info->current_settings))
 		mgmt_set_low_energy(index, TRUE);
 
-	if (mgmt_powered(info->current_settings)) {
+	if (mgmt_powered(info->current_settings))
 		get_connections(index);
-		btd_adapter_start(adapter);
-	}
-
-	btd_adapter_unref(adapter);
 }
 
 static void disconnect_complete(uint16_t index, uint8_t status,

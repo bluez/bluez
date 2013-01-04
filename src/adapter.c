@@ -177,6 +177,57 @@ struct btd_adapter {
 
 static gboolean process_auth_queue(gpointer user_data);
 
+static void set_dev_class_complete(uint16_t index, uint8_t status,
+					uint16_t length, const void *param,
+					void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cod *rp = param;
+
+	if (status != 0) {
+		error("mgmt_set_dev_class failed: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Unexpected length in mgmt_set_dev_class response");
+		return;
+	}
+
+	btd_adapter_class_changed(adapter, rp->val);
+}
+
+static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
+							uint8_t minor)
+{
+	struct mgmt_cp_set_dev_class cp;
+	unsigned int id;
+
+	memset(&cp, 0, sizeof(cp));
+
+	/*
+	 * Silly workaround for a really stupid kernel bug :(
+	 *
+	 * All current kernel versions assign the major and minor numbers
+	 * straight to dev_class[0] and dev_class[1] without considering
+	 * the proper bit shifting.
+	 *
+	 * To make this work, shift the value in userspace for now until
+	 * we get a fixed kernel version.
+	 */
+	cp.major = major & 0x1f;
+	cp.minor = minor << 2;
+
+	id = mgmt_send(mgmt, MGMT_OP_SET_DEV_CLASS, adapter->dev_id,
+				sizeof(cp), &cp, set_dev_class_complete,
+				adapter, NULL);
+	if (id == 0)
+		return -EIO;
+
+	return 0;
+}
+
 int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor)
 {
@@ -188,7 +239,7 @@ int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 	adapter->major_class = major;
 	adapter->minor_class = minor;
 
-	return mgmt_set_dev_class(adapter->dev_id, major, minor);
+	return set_dev_class(adapter, major, minor);
 }
 
 static uint8_t get_mode(const char *mode)
@@ -552,7 +603,8 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 	g_dbus_pending_property_success(id);
 }
 
-void btd_adapter_class_changed(struct btd_adapter *adapter, uint8_t *new_class)
+void btd_adapter_class_changed(struct btd_adapter *adapter,
+						const uint8_t *new_class)
 {
 	uint32_t dev_class;
 	uint8_t cls[3];
@@ -589,7 +641,9 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 
 static int set_name(struct btd_adapter *adapter, const char *name)
 {
+	struct mgmt_cp_set_local_name cp;
 	char maxname[MAX_NAME_LENGTH + 1];
+	unsigned int id;
 
 	memset(maxname, 0, sizeof(maxname));
 	strncpy(maxname, name, MAX_NAME_LENGTH);
@@ -599,7 +653,17 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 		return -EINVAL;
 	}
 
-	return mgmt_set_name(adapter->dev_id, maxname);
+	memset(&cp, 0, sizeof(cp));
+	strncpy((char *) cp.name, maxname, sizeof(cp.name) - 1);
+
+	id = mgmt_send(mgmt, MGMT_OP_SET_LOCAL_NAME, adapter->dev_id,
+					sizeof(cp), &cp, NULL, NULL, NULL);
+	if (id == 0) {
+		error("mgmt_send(READ_INDEX_LIST) failed");
+		return -EIO;
+	}
+
+	return 0;
 }
 
 int adapter_set_name(struct btd_adapter *adapter, const char *name)
@@ -1847,6 +1911,8 @@ static void adapter_free(gpointer user_data)
 	g_queue_foreach(adapter->auths, free_service_auth, NULL);
 	g_queue_free(adapter->auths);
 
+	mgmt_unref(adapter->mgmt);
+
 	sdp_list_free(adapter->services, NULL);
 
 	g_slist_free(adapter->connections);
@@ -2820,8 +2886,7 @@ static gboolean adapter_setup(struct btd_adapter *adapter, uint32_t settings)
 	adapter->powered = mgmt_powered(settings);
 	adapter->connectable = mgmt_connectable(settings);
 	adapter->discoverable = mgmt_discoverable(settings);
-
-	mgmt_read_bdaddr(adapter->dev_id, &adapter->bdaddr);
+	adapter->pairable = mgmt_pairable(settings);
 
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
 		error("No address available for hci%d", adapter->dev_id);
@@ -2855,7 +2920,7 @@ static gboolean adapter_setup(struct btd_adapter *adapter, uint32_t settings)
 	return TRUE;
 }
 
-static struct btd_adapter *adapter_create(int id)
+static struct btd_adapter *adapter_create(int id, const bdaddr_t *bdaddr)
 {
 	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
@@ -2868,6 +2933,9 @@ static struct btd_adapter *adapter_create(int id)
 
 	adapter->dev_id = id;
 	adapter->auths = g_queue_new();
+	adapter->mgmt = mgmt_ref(mgmt);
+
+	bacpy(&adapter->bdaddr, bdaddr);
 
 	snprintf(path, sizeof(path), "%s/hci%d", base_path, id);
 	adapter->path = g_strdup(path);
@@ -3682,7 +3750,8 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
-struct btd_adapter *adapter_register(int id, uint32_t settings)
+static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
+							uint32_t settings)
 {
 	struct btd_adapter *adapter;
 
@@ -3692,7 +3761,7 @@ struct btd_adapter *adapter_register(int id, uint32_t settings)
 		return NULL;
 	}
 
-	adapter = adapter_create(id);
+	adapter = adapter_create(id, bdaddr);
 	if (!adapter)
 		return NULL;
 
@@ -3742,6 +3811,7 @@ int adapter_unregister(int id)
 static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
+	const struct mgmt_rp_read_info *rp = param;
 	struct btd_adapter *adapter;
 
 	DBG("index %u", index);
@@ -3752,11 +3822,31 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 		return;
 	}
 
+	if (length < sizeof(*rp)) {
+		error("Too small read info complete response");
+		return;
+	}
+
 	adapter = adapter_find_by_id(index);
 	if (adapter != NULL) {
 		warn("mgmt_read_info for an already existing adapter");
 		return;
 	}
+
+	adapter = adapter_register(index, &rp->bdaddr, rp->current_settings);
+	if (adapter == NULL) {
+		error("Unable to register new adapter");
+		return;
+	}
+
+	set_name(adapter, btd_adapter_get_name(adapter));
+
+	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
+
+	if (mgmt_powered(rp->current_settings))
+		btd_adapter_start(adapter);
+
+	btd_adapter_unref(adapter);
 }
 
 static void index_added(uint16_t index, uint16_t length, const void *param,

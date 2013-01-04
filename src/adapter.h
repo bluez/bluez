@@ -79,7 +79,6 @@ struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 struct btd_adapter *adapter_get_default(void);
 void adapter_foreach(adapter_cb func, gpointer user_data);
-struct btd_adapter *adapter_register(int id, uint32_t settings);
 int adapter_unregister(int id);
 
 void btd_adapter_start(struct btd_adapter *adapter);
@@ -121,7 +120,7 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 void btd_adapter_class_changed(struct btd_adapter *adapter,
-							uint8_t *new_class);
+						const uint8_t *new_class);
 void adapter_update_pairable(struct btd_adapter *adapter, bool pairable);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
