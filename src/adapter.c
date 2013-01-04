@@ -1960,6 +1960,12 @@ static void adapter_free(gpointer user_data)
 	 */
 	mgmt_unregister_index(adapter->mgmt, adapter->dev_id);
 
+	/*
+	 * Cancel all pending commands for this specific index
+	 * since the adapter bound to them is no longer valid.
+	 */
+	mgmt_cancel_index(adapter->mgmt, adapter->dev_id);
+
 	mgmt_unref(adapter->mgmt);
 
 	sdp_list_free(adapter->services, NULL);
