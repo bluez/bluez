@@ -125,6 +125,8 @@ struct discovery {
 };
 
 struct btd_adapter {
+	unsigned int ref_count;
+
 	uint16_t dev_id;
 
 	uint32_t current_settings;
@@ -162,8 +164,6 @@ struct btd_adapter {
 	gboolean initialized;
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
-
-	gint ref;
 
 	GSList *pin_callbacks;
 
@@ -1967,9 +1967,9 @@ static void adapter_free(gpointer user_data)
 
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 {
-	adapter->ref++;
+	adapter->ref_count++;
 
-	DBG("%p: ref=%d", adapter, adapter->ref);
+	DBG("%p: ref_count=%u", adapter, adapter->ref_count);
 
 	return adapter;
 }
@@ -1978,11 +1978,11 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 {
 	gchar *path;
 
-	adapter->ref--;
+	adapter->ref_count--;
 
-	DBG("%p: ref=%d", adapter, adapter->ref);
+	DBG("%p: ref_count=%u", adapter, adapter->ref_count);
 
-	if (adapter->ref > 0)
+	if (adapter->ref_count > 0)
 		return;
 
 	if (!adapter->path) {
