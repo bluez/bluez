@@ -891,7 +891,7 @@ void adapter_remove_device(struct btd_adapter *adapter,
 }
 
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
-				const gchar *address, uint8_t addr_type)
+				const char *address, uint8_t addr_type)
 {
 	struct btd_device *device;
 
@@ -1317,9 +1317,9 @@ static gboolean adapter_property_get_modalias(
 	return TRUE;
 }
 
-static gint device_path_cmp(struct btd_device *device, const gchar *path)
+static gint device_path_cmp(struct btd_device *device, const char *path)
 {
-	const gchar *dev_path = device_get_path(device);
+	const char *dev_path = device_get_path(device);
 
 	return strcasecmp(dev_path, path);
 }
@@ -3038,7 +3038,7 @@ uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
 	return adapter->dev_id;
 }
 
-const gchar *adapter_get_path(struct btd_adapter *adapter)
+const char *adapter_get_path(struct btd_adapter *adapter)
 {
 	if (!adapter)
 		return NULL;
@@ -3360,7 +3360,7 @@ static gboolean process_auth_queue(gpointer user_data)
 	while (!g_queue_is_empty(adapter->auths)) {
 		struct service_auth *auth = adapter->auths->head->data;
 		struct btd_device *device = auth->device;
-		const gchar *dev_path;
+		const char *dev_path;
 
 		if (device_is_trusted(device) == TRUE) {
 			auth->cb(NULL, auth->user_data);

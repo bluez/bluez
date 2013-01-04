@@ -139,7 +139,7 @@ struct att_callbacks {
 struct btd_device {
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
-	gchar		*path;
+	char		*path;
 	bool		svc_resolved;
 	GSList		*eir_uuids;
 	char		name[MAX_NAME_LENGTH + 1];
@@ -214,7 +214,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 	char device_addr[18];
 	char *str;
 	char class[9];
-	gchar **uuids = NULL;
+	char **uuids = NULL;
 	gsize length = 0;
 
 	device->store_id = 0;
@@ -289,11 +289,11 @@ static gboolean store_device_info_cb(gpointer user_data)
 		GSList *l;
 		int i;
 
-		uuids = g_new0(gchar *, g_slist_length(device->uuids) + 1);
+		uuids = g_new0(char *, g_slist_length(device->uuids) + 1);
 		for (i = 0, l = device->uuids; l; l = g_slist_next(l), i++)
 			uuids[i] = l->data;
 		g_key_file_set_string_list(key_file, "General", "Services",
-						(const gchar **)uuids, i);
+						(const char **)uuids, i);
 	} else {
 		g_key_file_remove_key(key_file, "General", "Services", NULL);
 	}
@@ -1642,7 +1642,7 @@ void device_remove_disconnect_watch(struct btd_device *device, guint id)
 }
 
 static char *load_cached_name(struct btd_device *device, const char *local,
-				const gchar *peer)
+				const char *peer)
 {
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
@@ -1670,13 +1670,13 @@ failed:
 	return str;
 }
 
-static void load_info(struct btd_device *device, const gchar *local,
-			const gchar *peer, GKeyFile *key_file)
+static void load_info(struct btd_device *device, const char *local,
+			const char *peer, GKeyFile *key_file)
 {
 	char *str;
 	gboolean store_needed = FALSE;
 	gboolean blocked;
-	gchar **uuids;
+	char **uuids;
 	int source, vendor, product, version;
 	char **techno, **t;
 	gboolean bredr = FALSE;
@@ -1767,7 +1767,7 @@ next:
 	uuids = g_key_file_get_string_list(key_file, "General", "Services",
 						NULL, NULL);
 	if (uuids) {
-		gchar **uuid;
+		char **uuid;
 
 		for (uuid = uuids; *uuid; uuid++) {
 			GSList *match;
@@ -1803,8 +1803,8 @@ next:
 		store_device_info(device);
 }
 
-static void load_att_info(struct btd_device *device, const gchar *local,
-				const gchar *peer)
+static void load_att_info(struct btd_device *device, const char *local,
+				const char *peer)
 {
 	char filename[PATH_MAX + 1];
 	GKeyFile *key_file;
@@ -1893,11 +1893,11 @@ static void load_att_info(struct btd_device *device, const gchar *local,
 }
 
 static struct btd_device *device_new(struct btd_adapter *adapter,
-				const gchar *address)
+				const char *address)
 {
-	gchar *address_up;
+	char *address_up;
 	struct btd_device *device;
-	const gchar *adapter_path = adapter_get_path(adapter);
+	const char *adapter_path = adapter_get_path(adapter);
 
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
@@ -1946,7 +1946,7 @@ struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 }
 
 struct btd_device *device_create(struct btd_adapter *adapter,
-				const gchar *address, uint8_t bdaddr_type)
+				const char *address, uint8_t bdaddr_type)
 {
 	struct btd_device *device;
 	const bdaddr_t *src;
@@ -2174,7 +2174,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	btd_device_unref(device);
 }
 
-gint device_address_cmp(struct btd_device *device, const gchar *address)
+gint device_address_cmp(struct btd_device *device, const char *address)
 {
 	char addr[18];
 
@@ -2499,7 +2499,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	for (seq = recs; seq; seq = seq->next) {
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		sdp_list_t *svcclass = NULL;
-		gchar *profile_uuid;
+		char *profile_uuid;
 		GSList *l;
 
 		if (!rec)
@@ -3332,7 +3332,7 @@ const bdaddr_t *device_get_address(struct btd_device *device)
 	return &device->bdaddr;
 }
 
-const gchar *device_get_path(struct btd_device *device)
+const char *device_get_path(struct btd_device *device)
 {
 	if (!device)
 		return NULL;
@@ -3969,7 +3969,7 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 
 void btd_device_unref(struct btd_device *device)
 {
-	gchar *path;
+	char *path;
 
 	device->ref--;
 

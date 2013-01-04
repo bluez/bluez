@@ -144,7 +144,7 @@ int read_local_name(const bdaddr_t *bdaddr, char *name)
 	return 0;
 }
 
-sdp_record_t *record_from_string(const gchar *str)
+sdp_record_t *record_from_string(const char *str)
 {
 	sdp_record_t *rec;
 	int size, i, len;

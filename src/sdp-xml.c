@@ -438,8 +438,8 @@ static sdp_data_t *sdp_xml_parse_datatype(const char *el,
 	return NULL;
 }
 static void element_start(GMarkupParseContext *context,
-		const gchar *element_name, const gchar **attribute_names,
-		const gchar **attribute_values, gpointer user_data, GError **err)
+		const char *element_name, const char **attribute_names,
+		const char **attribute_values, gpointer user_data, GError **err)
 {
 	struct context_data *ctx_data = user_data;
 
@@ -516,7 +516,7 @@ static void sdp_xml_data_free(struct sdp_xml_data *elem)
 }
 
 static void element_end(GMarkupParseContext *context,
-		const gchar *element_name, gpointer user_data, GError **err)
+		const char *element_name, gpointer user_data, GError **err)
 {
 	struct context_data *ctx_data = user_data;
 	struct sdp_xml_data *elem;

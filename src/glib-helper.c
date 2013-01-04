@@ -53,7 +53,7 @@ char *bt_modalias(uint16_t source, uint16_t vendor,
 
 char *bt_uuid2string(uuid_t *uuid)
 {
-	gchar *str;
+	char *str;
 	uuid_t uuid128;
 	unsigned int data0;
 	unsigned short data1;

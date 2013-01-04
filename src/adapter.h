@@ -85,7 +85,7 @@ bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
-				const gchar *address, uint8_t addr_type);
+				const char *address, uint8_t addr_type);
 sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter);
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
@@ -97,7 +97,7 @@ void adapter_remove_device(struct btd_adapter *adapter,
 void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering);
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter);
-const gchar *adapter_get_path(struct btd_adapter *adapter);
+const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
