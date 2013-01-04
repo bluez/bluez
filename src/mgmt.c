@@ -277,7 +277,6 @@ static int mgmt_set_low_energy(int index, gboolean le)
 }
 
 static void mgmt_update_powered(struct btd_adapter *adapter,
-						struct controller_info *info,
 						uint32_t settings)
 {
 	adapter_update_settings(adapter, settings);
@@ -302,7 +301,7 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	adapter = adapter_find(&info->bdaddr);
+	adapter = adapter_find_by_id(index);
 	if (adapter == NULL) {
 		DBG("Adapter not found");
 		return;
@@ -316,20 +315,19 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 	new_power = mgmt_powered(settings);
 
 	if (new_power != old_power)
-		mgmt_update_powered(adapter, info, settings);
+		mgmt_update_powered(adapter, settings);
 	else
 		adapter_update_settings(adapter, settings);
 
 	info->current_settings = settings;
 }
 
-static void bonding_complete(struct controller_info *info,
-					const struct mgmt_addr_info *addr,
-					uint8_t status)
+static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
+								uint8_t status)
 {
 	struct btd_adapter *adapter;
 
-	adapter = adapter_find(&info->bdaddr);
+	adapter = adapter_find_by_id(index);
 	if (adapter != NULL)
 		adapter_bonding_complete(adapter, &addr->bdaddr, addr->type,
 								status);
@@ -422,7 +420,7 @@ static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 			device_set_temporary(device, FALSE);
 	}
 
-	bonding_complete(info, &ev->key.addr, 0);
+	bonding_complete(index, &ev->key.addr, 0);
 }
 
 static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
@@ -981,7 +979,6 @@ static void pair_device_complete(uint16_t index, uint8_t status,
 							void *buf, size_t len)
 {
 	struct mgmt_rp_pair_device *rp = buf;
-	struct controller_info *info;
 	char addr[18];
 
 	if (len < sizeof(*rp)) {
@@ -998,9 +995,7 @@ static void pair_device_complete(uint16_t index, uint8_t status,
 		return;
 	}
 
-	info = &controllers[index];
-
-	bonding_complete(info, &rp->addr, status);
+	bonding_complete(index, &rp->addr, status);
 }
 
 static void get_connections_complete(uint16_t index, void *buf, size_t len)
@@ -1271,7 +1266,6 @@ static void mgmt_controller_error(uint16_t index, void *buf, size_t len)
 
 static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 {
-	struct controller_info *info;
 	struct mgmt_ev_auth_failed *ev = buf;
 
 	if (len < sizeof(*ev)) {
@@ -1286,15 +1280,12 @@ static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	bonding_complete(info, &ev->addr, ev->status);
+	bonding_complete(index, &ev->addr, ev->status);
 }
 
 static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_found *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	char addr[18];
 	uint32_t flags;
@@ -1320,9 +1311,7 @@ static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	adapter = adapter_find(&info->bdaddr);
+	adapter = adapter_find_by_id(index);
 	if (!adapter)
 		return;
 
@@ -1348,7 +1337,6 @@ static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_discovering *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 
 	if (len < sizeof(*ev)) {
@@ -1364,9 +1352,7 @@ static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	adapter = adapter_find(&info->bdaddr);
+	adapter = adapter_find_by_id(index);
 	if (!adapter)
 		return;
 
@@ -1570,7 +1556,7 @@ static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 	}
 
 	if (ev->key.master)
-		bonding_complete(info, &ev->key.addr, 0);
+		bonding_complete(index, &ev->key.addr, 0);
 }
 
 static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
