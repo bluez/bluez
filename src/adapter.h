@@ -79,7 +79,6 @@ struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 struct btd_adapter *adapter_get_default(void);
 void adapter_foreach(adapter_cb func, gpointer user_data);
-int adapter_unregister(int id);
 
 void btd_adapter_start(struct btd_adapter *adapter);
 

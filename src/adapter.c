@@ -3787,14 +3787,8 @@ static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
 	return btd_adapter_ref(adapter);
 }
 
-int adapter_unregister(int id)
+static int adapter_unregister(struct btd_adapter *adapter)
 {
-	struct btd_adapter *adapter;
-
-	adapter = adapter_find_by_id(id);
-	if (!adapter)
-		return -ENOENT;
-
 	DBG("Unregister path: %s", adapter->path);
 
 	adapters = g_slist_remove(adapters, adapter);
@@ -3874,6 +3868,8 @@ static void index_removed(uint16_t index, uint16_t length, const void *param,
 		warn("mgmt_index_removed for a non-existent adapter");
 		return;
 	}
+
+	adapter_unregister(adapter);
 }
 
 static void read_index_list_complete(uint16_t index, uint8_t status,

@@ -214,8 +214,6 @@ static void remove_controller(uint16_t index)
 
 	DBG("Removing controller %u", index);
 
-	adapter_unregister(index);
-
 	g_slist_free_full(controllers[index].pending_uuids, g_free);
 	controllers[index].pending_uuids = NULL;
 
