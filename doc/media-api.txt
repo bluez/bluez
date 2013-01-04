@@ -280,6 +280,10 @@ Properties	string Equalizer [readwrite]
 
 					Track duration in milliseconds
 
+		object Device [readonly]
+
+			Device object path.
+
 MediaEndpoint1 hierarchy
 ========================
 

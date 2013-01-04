@@ -56,6 +56,7 @@ struct pending_req {
 };
 
 struct media_player {
+	char			*device;	/* Device path */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
 	GHashTable		*track;		/* Player current track */
@@ -242,6 +243,16 @@ static gboolean get_track(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean get_device(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->device);
+
+	return TRUE;
+}
+
 static DBusMessage *media_player_play(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -394,6 +405,8 @@ static const GDBusPropertyTable media_player_properties[] = {
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Track", "a{sv}", get_track, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Device", "s", get_device, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
 
@@ -419,6 +432,7 @@ void media_player_destroy(struct media_player *mp)
 	g_free(mp->cb);
 	g_free(mp->status);
 	g_free(mp->path);
+	g_free(mp->device);
 	g_free(mp);
 }
 
@@ -427,6 +441,7 @@ struct media_player *media_player_controller_create(const char *path)
 	struct media_player *mp;
 
 	mp = g_new0(struct media_player, 1);
+	mp->device = g_strdup(path);
 	mp->path = g_strdup_printf("%s/player1", path);
 	mp->settings = g_hash_table_new_full(g_str_hash, g_str_equal,
 							g_free, g_free);
