@@ -4007,6 +4007,15 @@ void adapter_cleanup(void)
 		btd_adapter_unref(adapter);
 	}
 
+	/*
+	 * In case there is another reference active, clear out
+	 * registered handlers for index added and index removed.
+	 *
+	 * This is just an extra precaution to be safe, and in
+	 * reality should not make a difference.
+	 */
+	mgmt_unregister_index(mgmt, MGMT_INDEX_NONE);
+
 	mgmt_unref(mgmt);
 	mgmt = NULL;
 }
