@@ -3739,16 +3739,45 @@ int adapter_unregister(int id)
 	return 0;
 }
 
+static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter;
+
+	DBG("index %u", index);
+
+	adapter = adapter_find_by_id(index);
+	if (adapter == NULL) {
+		warn("mgmt_read_info for an already existing adapter");
+		return;
+	}
+}
+
 static void index_added(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
+	unsigned int id;
+
 	DBG("index %u", index);
+
+	id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+					read_info_complete, NULL, NULL);
+	if (id == 0)
+		error("mgmt_send(READ_INFO, %u) failed", index);
 }
 
 static void index_removed(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
+	struct btd_adapter *adapter;
+
 	DBG("index %u", index);
+
+	adapter = adapter_find_by_id(index);
+	if (adapter == NULL) {
+		warn("mgmt_index_removed for a non-existent adapter");
+		return;
+	}
 }
 
 static void read_index_list_complete(uint16_t index, uint8_t status,
@@ -3772,11 +3801,17 @@ static void read_index_list_complete(uint16_t index, uint8_t status,
 	}
 
 	for (i = 0; i < num; i++) {
+		unsigned int id;
 		uint16_t index;
 
 		index = btohs(rp->index[i]);
 
 		DBG("index %u", index);
+
+		id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+						read_info_complete, NULL, NULL);
+		if (id == 0)
+			error("mgmt_send(READ_INFO, %u) failed", index);
 	}
 }
 
