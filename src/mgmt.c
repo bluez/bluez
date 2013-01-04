@@ -881,79 +881,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 	}
 }
 
-static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
-{
-	if (uuid->type == SDP_UUID16)
-		sdp_uuid16_to_uuid128(uuid128, uuid);
-	else if (uuid->type == SDP_UUID32)
-		sdp_uuid32_to_uuid128(uuid128, uuid);
-	else
-		memcpy(uuid128, uuid, sizeof(*uuid));
-}
-
-static bool is_16bit_uuid(const uuid_t *uuid)
-{
-	uuid_t tmp;
-
-	uuid_to_uuid128(&tmp, uuid);
-
-	if (!sdp_uuid128_to_uuid(&tmp))
-		return false;
-
-	if (tmp.type != SDP_UUID16)
-		return false;
-
-	return true;
-}
-
-int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_uuid)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_add_uuid *cp = (void *) &buf[sizeof(*hdr)];
-	struct controller_info *info = &controllers[index];
-	uuid_t uuid128;
-	uint128_t uint128;
-
-	DBG("index %d", index);
-
-	if (!is_16bit_uuid(uuid)) {
-		warn("mgmt_add_uuid: Ignoring non-16-bit UUID");
-		return 0;
-	}
-
-	if (info->pending_uuid) {
-		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
-
-		memcpy(&pending->uuid, uuid, sizeof(*uuid));
-		pending->add = true;
-		pending->svc_hint = svc_hint;
-
-		info->pending_uuids = g_slist_append(info->pending_uuids,
-								pending);
-		return 0;
-	}
-
-	uuid_to_uuid128(&uuid128, uuid);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_ADD_UUID);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
-	htob128(&uint128, (uint128_t *) cp->uuid);
-
-	cp->svc_hint = svc_hint;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	info->pending_uuid = TRUE;
-
-	return 0;
-}
-
 static void read_index_list_complete(void *buf, size_t len)
 {
 	struct mgmt_rp_read_index_list *rp = buf;
@@ -999,48 +926,6 @@ int mgmt_set_powered(int index, gboolean powered)
 	}
 
 	return mgmt_set_mode(index, MGMT_OP_SET_POWERED, powered);
-}
-
-static int mgmt_set_dev_class(int index, uint8_t major, uint8_t minor)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_dev_class)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_dev_class *cp = (void *) &buf[sizeof(*hdr)];
-	struct controller_info *info = &controllers[index];
-
-	if (info->pending_uuid) {
-		DBG("postponed: index %d major %u minor %u",
-						index, major, minor);
-		info->major = major;
-		info->minor = minor;
-		info->pending_class = TRUE;
-		return 0;
-	}
-
-	DBG("setting: index %d major %u minor %u", index, major, minor);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_DEV_CLASS);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	/*
-	 * Silly workaround for a really stupid kernel bug :(
-	 *
-	 * All current kernel versions assign the major and minor numbers
-	 * straight to dev_class[0] and dev_class[1] without considering
-	 * the proper bit shifting.
-	 *
-	 * To make this work, shift the value in userspace for now until
-	 * we get a fixed kernel version.
-	 */
-	cp->major = major & 0x1f;
-	cp->minor = minor << 2;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 static void read_info_complete(uint16_t index, void *buf, size_t len)
@@ -1261,78 +1146,6 @@ static void read_local_oob_data_failed(uint16_t index)
 		adapter_read_local_oob_data_complete(adapter, NULL, NULL);
 }
 
-static void handle_pending_uuids(uint16_t index)
-{
-	struct controller_info *info;
-	struct pending_uuid *pending;
-
-	DBG("index %d", index);
-
-	info = &controllers[index];
-
-	info->pending_uuid = FALSE;
-
-	if (g_slist_length(info->pending_uuids) == 0) {
-		if (info->pending_class) {
-			info->pending_class = FALSE;
-			mgmt_set_dev_class(index, info->major, info->minor);
-		}
-
-		if (info->pending_powered) {
-			info->pending_powered = FALSE;
-			mgmt_set_powered(index, TRUE);
-		}
-
-		return;
-	}
-
-	pending = info->pending_uuids->data;
-
-	if (pending->add)
-		mgmt_add_uuid(index, &pending->uuid, pending->svc_hint);
-
-	info->pending_uuids = g_slist_remove(info->pending_uuids, pending);
-	g_free(pending);
-}
-
-static void mgmt_update_cod(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_cod *rp = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*rp)) {
-		error("Too small class of device reply");
-		return;
-	}
-
-	DBG("index %d class 0x%02x%02x%02x", index,
-					rp->val[2], rp->val[1], rp->val[0]);
-
-	info = &controllers[index];
-
-	adapter = adapter_find(&info->bdaddr);
-	if (adapter == NULL) {
-		DBG("Adapter not found");
-		return;
-	}
-
-	btd_adapter_class_changed(adapter, rp->val);
-}
-
-static void mgmt_add_uuid_complete(uint16_t index, void *buf, size_t len)
-{
-	DBG("index %d", index);
-
-	if (index > max_index) {
-		error("Unexpected index %u in add_uuid_complete event", index);
-		return;
-	}
-
-	mgmt_update_cod(index, buf, len);
-	handle_pending_uuids(index);
-}
-
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -1378,7 +1191,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		mgmt_new_settings(index, ev->data, len);
 		break;
 	case MGMT_OP_ADD_UUID:
-		mgmt_add_uuid_complete(index, ev->data, len);
+		DBG("add_uuid complete");
 		break;
 	case MGMT_OP_REMOVE_UUID:
 		DBG("remove_uuid complete");
