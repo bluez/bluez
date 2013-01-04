@@ -618,6 +618,22 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 				(const uint8_t *) name, strlen(name));
 }
 
+static void local_name_changed_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cp_set_local_name *rp = param;
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of local name changed parameters");
+		return;
+	}
+
+	DBG("Name: %s", rp->name);
+	DBG("Short name: %s", rp->short_name);
+
+	adapter_name_changed(adapter, (const char *) rp->name);
+}
 
 static void set_local_name_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
@@ -3001,6 +3017,11 @@ static struct btd_adapter *adapter_create(int id)
 
 	adapter->dev_id = id;
 	adapter->mgmt = mgmt_ref(mgmt_master);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
+						adapter->dev_id,
+						local_name_changed_callback,
+						adapter, NULL);
 
 	adapter->auths = g_queue_new();
 
