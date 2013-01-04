@@ -1254,35 +1254,6 @@ static void get_connections_complete(uint16_t index, void *buf, size_t len)
 	}
 }
 
-static void set_local_name_complete(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_cp_set_local_name *rp = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*rp)) {
-		error("Too small set_local_name complete event");
-		return;
-	}
-
-	DBG("hci%d name %s", index, (char *) rp->name);
-
-	if (index > max_index) {
-		error("Unexpected index %u in set_local_name complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	adapter = adapter_find(&info->bdaddr);
-	if (adapter == NULL) {
-		DBG("Adapter not found");
-		return;
-	}
-
-	adapter_name_changed(adapter, (char *) rp->name);
-}
-
 static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_local_oob_data *rp = buf;
@@ -1541,7 +1512,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("user_confirm_net_reply complete");
 		break;
 	case MGMT_OP_SET_LOCAL_NAME:
-		set_local_name_complete(index, ev->data, len);
+		DBG("set_local_name complete");
 		break;
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
 		read_local_oob_data_complete(index, ev->data, len);
