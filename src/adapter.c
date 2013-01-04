@@ -607,7 +607,7 @@ void btd_adapter_class_changed(struct btd_adapter *adapter,
 						ADAPTER_INTERFACE, "Class");
 }
 
-void adapter_name_changed(struct btd_adapter *adapter, const char *name)
+static void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 {
 	DBG("name: %s", name);
 

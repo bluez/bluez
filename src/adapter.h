@@ -107,7 +107,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 void adapter_update_settings(struct btd_adapter *adapter,
 						uint32_t new_settings);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
-void adapter_name_changed(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 void btd_adapter_class_changed(struct btd_adapter *adapter,
