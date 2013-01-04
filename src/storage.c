@@ -180,8 +180,10 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 
 		/* Extract the uuid */
 		uuid_str = bt_uuid2string(svcclass->data);
-		if (!uuid_str)
+		if (!uuid_str) {
+			sdp_list_free(svcclass, free);
 			continue;
+		}
 
 		if (!strcasecmp(uuid_str, uuid)) {
 			sdp_list_free(svcclass, free);
