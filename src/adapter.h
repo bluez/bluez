@@ -109,8 +109,6 @@ void adapter_update_settings(struct btd_adapter *adapter,
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
-void btd_adapter_class_changed(struct btd_adapter *adapter,
-						const uint8_t *new_class);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,

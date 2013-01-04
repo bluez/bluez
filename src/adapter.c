@@ -175,6 +175,31 @@ struct btd_adapter {
 
 static gboolean process_auth_queue(gpointer user_data);
 
+static void adapter_class_changed(struct btd_adapter *adapter,
+						const uint8_t *new_class)
+{
+	uint32_t dev_class;
+	uint8_t cls[3];
+
+	dev_class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
+
+	if (dev_class == adapter->dev_class)
+		return;
+
+	DBG("class 0x%06x", dev_class);
+
+	adapter->dev_class = dev_class;
+
+	memcpy(cls, new_class, sizeof(cls));
+
+	/* Removes service class */
+	cls[1] = cls[1] & 0x1f;
+	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+						ADAPTER_INTERFACE, "Class");
+}
+
 static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -188,7 +213,7 @@ static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
 
 	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
-	btd_adapter_class_changed(adapter, rp->val);
+	adapter_class_changed(adapter, rp->val);
 }
 
 static void set_dev_class_complete(uint8_t status, uint16_t length,
@@ -210,7 +235,7 @@ static void set_dev_class_complete(uint8_t status, uint16_t length,
 
 	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
-	btd_adapter_class_changed(adapter, rp->val);
+	adapter_class_changed(adapter, rp->val);
 }
 
 static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
@@ -618,31 +643,6 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 	g_dbus_pending_property_success(id);
 }
 
-void btd_adapter_class_changed(struct btd_adapter *adapter,
-						const uint8_t *new_class)
-{
-	uint32_t dev_class;
-	uint8_t cls[3];
-
-	dev_class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
-
-	if (dev_class == adapter->dev_class)
-		return;
-
-	DBG("class 0x%06x", dev_class);
-
-	adapter->dev_class = dev_class;
-
-	memcpy(cls, new_class, sizeof(cls));
-
-	/* Removes service class */
-	cls[1] = cls[1] & 0x1f;
-	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-						ADAPTER_INTERFACE, "Class");
-}
-
 static void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 {
 	DBG("name: %s", name);
@@ -810,7 +810,7 @@ static void add_uuid_complete(uint8_t status, uint16_t length,
 
 	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
-	btd_adapter_class_changed(adapter, rp->val);
+	adapter_class_changed(adapter, rp->val);
 
 	if (adapter->initialized)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
@@ -865,7 +865,7 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 
 	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
-	btd_adapter_class_changed(adapter, rp->val);
+	adapter_class_changed(adapter, rp->val);
 
 	if (adapter->initialized)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
@@ -919,7 +919,7 @@ static void clear_uuids_complete(uint8_t status, uint16_t length,
 
 	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
-	btd_adapter_class_changed(adapter, rp->val);
+	adapter_class_changed(adapter, rp->val);
 }
 
 static int clear_uuids(struct btd_adapter *adapter)
