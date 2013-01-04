@@ -518,7 +518,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (adapter_init() < 0) {
-		error("adapter init failed");
+		error("Adapter handling initialization failed");
 		exit(1);
 	}
 

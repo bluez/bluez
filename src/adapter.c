@@ -4027,8 +4027,10 @@ static void read_version_complete(uint8_t status, uint16_t length,
 int adapter_init(void)
 {
 	mgmt_master = mgmt_new_default();
-	if (!mgmt_master)
+	if (!mgmt_master) {
+		error("Failed to access management interface");
 		return -EIO;
+	}
 
 	if (mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
 				MGMT_INDEX_NONE, 0, NULL,
