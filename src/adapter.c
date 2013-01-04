@@ -626,10 +626,10 @@ void btd_adapter_class_changed(struct btd_adapter *adapter,
 
 	dev_class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
 
-	DBG("class: 0x%06x", dev_class);
-
 	if (dev_class == adapter->dev_class)
 		return;
+
+	DBG("class 0x%06x", dev_class);
 
 	adapter->dev_class = dev_class;
 
@@ -859,6 +859,125 @@ done:
 	sdp_list_free(browse_list, free);
 }
 
+static void remove_uuid_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cod *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to remove UUID: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of remove UUID response");
+		return;
+	}
+
+	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
+
+	btd_adapter_class_changed(adapter, rp->val);
+
+	if (adapter->initialized)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+}
+
+static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
+{
+	if (uuid->type == SDP_UUID16)
+		sdp_uuid16_to_uuid128(uuid128, uuid);
+	else if (uuid->type == SDP_UUID32)
+		sdp_uuid32_to_uuid128(uuid128, uuid);
+	else
+		memcpy(uuid128, uuid, sizeof(*uuid));
+}
+
+static bool is_supported_uuid(const uuid_t *uuid)
+{
+	uuid_t tmp;
+
+	uuid_to_uuid128(&tmp, uuid);
+
+	if (!sdp_uuid128_to_uuid(&tmp))
+		return false;
+
+	if (tmp.type != SDP_UUID16)
+		return false;
+
+	return true;
+}
+
+static int remove_uuid(struct btd_adapter *adapter, uuid_t *uuid)
+{
+	struct mgmt_cp_remove_uuid cp;
+	uuid_t uuid128;
+	uint128_t uint128;
+
+	if (!is_supported_uuid(uuid)) {
+		warn("Ignoring unsupported UUID for removal");
+		return 0;
+	}
+
+	uuid_to_uuid128(&uuid128, uuid);
+
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp.uuid);
+
+	DBG("sending remove uuid command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_UUID,
+				adapter->dev_id, sizeof(cp), &cp,
+				remove_uuid_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to remove UUID for index %u", adapter->dev_id);
+
+	return -EIO;
+}
+
+static void clear_uuids_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cod *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to clear UUIDs: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of remove UUID response");
+		return;
+	}
+
+	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
+
+	btd_adapter_class_changed(adapter, rp->val);
+}
+
+static int clear_uuids(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_remove_uuid cp;
+
+	memset(&cp, 0, sizeof(cp));
+
+	DBG("sending clear uuids command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_UUID,
+				adapter->dev_id, sizeof(cp), &cp,
+				clear_uuids_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to clear UUIDs for index %u", adapter->dev_id);
+
+	return -EIO;
+}
+
 void adapter_service_remove(struct btd_adapter *adapter, void *r)
 {
 	sdp_record_t *rec = r;
@@ -867,12 +986,10 @@ void adapter_service_remove(struct btd_adapter *adapter, void *r)
 
 	adapter->services = sdp_list_remove(adapter->services, rec);
 
-	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp) == NULL)
-		mgmt_remove_uuid(adapter->dev_id, &rec->svclass);
+	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp))
+		return;
 
-	if (adapter->initialized)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+	remove_uuid(adapter, &rec->svclass);
 }
 
 static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
@@ -3930,9 +4047,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	set_name(adapter, btd_adapter_get_name(adapter));
+	clear_uuids(adapter);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
+
+	set_name(adapter, btd_adapter_get_name(adapter));
 
 	if (mgmt_powered(rp->current_settings))
 		adapter_start(adapter);
