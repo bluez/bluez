@@ -1064,6 +1064,7 @@ static const GDBusMethodTable introspect_methods[] = {
 static void append_interfaces(struct generic_data *data, DBusMessageIter *iter)
 {
 	DBusMessageIter array;
+	GSList *l;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -1075,7 +1076,12 @@ static void append_interfaces(struct generic_data *data, DBusMessageIter *iter)
 				DBUS_DICT_ENTRY_END_CHAR_AS_STRING
 				DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &array);
 
-	g_slist_foreach(data->interfaces, append_interface, &array);
+	for (l = data->interfaces; l != NULL; l = l->next) {
+		if (g_slist_find(data->added, l->data))
+			continue;
+
+		append_interface(l->data, &array);
+	}
 
 	dbus_message_iter_close_container(iter, &array);
 }
