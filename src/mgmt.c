@@ -1412,19 +1412,6 @@ static void mgmt_remove_uuid_complete(uint16_t index, void *buf, size_t len)
 	handle_pending_uuids(index);
 }
 
-static void mgmt_set_dev_class_complete(uint16_t index, void *buf, size_t len)
-{
-        DBG("index %d", index);
-
-	if (index > max_index) {
-		error("Unexpected index %u in set_dev_class_complete event",
-									index);
-		return;
-	}
-
-	mgmt_update_cod(index, buf, len);
-}
-
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -1476,7 +1463,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		mgmt_remove_uuid_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
-		mgmt_set_dev_class_complete(index, ev->data, len);
+		DBG("set_dev_class complete");
 		break;
 	case MGMT_OP_LOAD_LINK_KEYS:
 		DBG("load_link_keys complete");
