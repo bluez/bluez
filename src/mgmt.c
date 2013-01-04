@@ -53,12 +53,6 @@
 
 #define MGMT_BUF_SIZE 1024
 
-struct pending_uuid {
-	bool add;
-	uuid_t uuid;
-	uint8_t svc_hint;
-};
-
 static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
@@ -67,16 +61,6 @@ static struct controller_info {
 	uint32_t current_settings;
 	GSList *connections;
 	uint8_t discov_type;
-
-	gboolean pending_uuid;
-	GSList *pending_uuids;
-
-	gboolean pending_class;
-	uint8_t major;
-	uint8_t minor;
-
-	gboolean pending_powered;
-	gboolean pending_cod_change;
 } *controllers = NULL;
 
 static int mgmt_sock = -1;
@@ -214,9 +198,6 @@ static void remove_controller(uint16_t index)
 
 	DBG("Removing controller %u", index);
 
-	g_slist_free_full(controllers[index].pending_uuids, g_free);
-	controllers[index].pending_uuids = NULL;
-
 	memset(&controllers[index], 0, sizeof(struct controller_info));
 
 	DBG("Removed controller %u", index);
@@ -299,14 +280,6 @@ static void mgmt_update_powered(struct btd_adapter *adapter,
 						struct controller_info *info,
 						uint32_t settings)
 {
-	if (!mgmt_powered(settings)) {
-		g_slist_free_full(info->pending_uuids, g_free);
-		info->pending_uuids = NULL;
-		info->pending_uuid = FALSE;
-		info->pending_class = FALSE;
-		info->pending_cod_change = FALSE;
-	}
-
 	adapter_update_settings(adapter, settings);
 }
 
@@ -911,20 +884,7 @@ static void read_index_list_complete(void *buf, size_t len)
 
 int mgmt_set_powered(int index, gboolean powered)
 {
-	struct controller_info *info = &controllers[index];
-
-	DBG("index %d powered %d pending_uuid %u", index, powered,
-							info->pending_uuid);
-
-	if (powered) {
-		if (info->pending_uuid) {
-			info->pending_powered = TRUE;
-			return 0;
-		}
-	} else {
-		info->pending_powered = FALSE;
-	}
-
+	DBG("index %d powered %d", index, powered);
 	return mgmt_set_mode(index, MGMT_OP_SET_POWERED, powered);
 }
 
@@ -1268,16 +1228,6 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 	}
 }
 
-static void mgmt_add_uuid_busy(uint16_t index)
-{
-	struct controller_info *info;
-
-	DBG("index %d", index);
-
-	info = &controllers[index];
-	info->pending_cod_change = TRUE;
-}
-
 static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_status *ev = buf;
@@ -1299,12 +1249,6 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 	switch (opcode) {
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
 		read_local_oob_data_failed(index);
-		break;
-	case MGMT_OP_ADD_UUID:
-		if (ev->status == MGMT_STATUS_BUSY) {
-			mgmt_add_uuid_busy(index);
-			return;
-		}
 		break;
 	}
 
@@ -1797,8 +1741,6 @@ void mgmt_cleanup(void)
 
 		if (!info->valid)
 			continue;
-
-		g_slist_free_full(info->pending_uuids, g_free);
 	}
 
 	g_free(controllers);
