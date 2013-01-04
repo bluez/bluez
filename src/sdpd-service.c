@@ -172,7 +172,8 @@ void register_server_service(void)
 	update_db_timestamp();
 }
 
-void register_device_id(void)
+void register_device_id(uint16_t source, uint16_t vendor,
+					uint16_t product, uint16_t version)
 {
 	const uint16_t spec = 0x0103;
 	const uint8_t primary = 1;
@@ -184,8 +185,7 @@ void register_device_id(void)
 	sdp_record_t *record = sdp_record_alloc();
 
 	info("Adding device id record for %04x:%04x:%04x:%04x",
-				main_opts.did_source, main_opts.did_vendor,
-				main_opts.did_product, main_opts.did_version);
+					source, vendor, product, version);
 
 	record->handle = sdp_next_handle();
 
@@ -212,19 +212,19 @@ void register_device_id(void)
 	spec_data = sdp_data_alloc(SDP_UINT16, &spec);
 	sdp_attr_add(record, 0x0200, spec_data);
 
-	vendor_data = sdp_data_alloc(SDP_UINT16, &main_opts.did_vendor);
+	vendor_data = sdp_data_alloc(SDP_UINT16, &vendor);
 	sdp_attr_add(record, 0x0201, vendor_data);
 
-	product_data = sdp_data_alloc(SDP_UINT16, &main_opts.did_product);
+	product_data = sdp_data_alloc(SDP_UINT16, &product);
 	sdp_attr_add(record, 0x0202, product_data);
 
-	version_data = sdp_data_alloc(SDP_UINT16, &main_opts.did_version);
+	version_data = sdp_data_alloc(SDP_UINT16, &version);
 	sdp_attr_add(record, 0x0203, version_data);
 
 	primary_data = sdp_data_alloc(SDP_BOOL, &primary);
 	sdp_attr_add(record, 0x0204, primary_data);
 
-	source_data = sdp_data_alloc(SDP_UINT16, &main_opts.did_source);
+	source_data = sdp_data_alloc(SDP_UINT16, &source);
 	sdp_attr_add(record, 0x0205, source_data);
 
 	update_db_timestamp();

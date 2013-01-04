@@ -242,7 +242,8 @@ int start_sdp_server(uint16_t mtu, uint32_t flags)
 	}
 
 	if (main_opts.did_source > 0)
-		register_device_id();
+		register_device_id(main_opts.did_source, main_opts.did_vendor,
+				main_opts.did_product, main_opts.did_version);
 
 	io = g_io_channel_unix_new(l2cap_sock);
 	g_io_channel_set_close_on_unref(io, TRUE);
