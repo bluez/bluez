@@ -1895,27 +1895,6 @@ static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 		bonding_complete(info, &ev->key.addr, 0);
 }
 
-static void mgmt_cod_changed(uint16_t index, void *buf, size_t len)
-{
-	struct controller_info *info;
-
-	DBG("index %d", index);
-
-	if (index > max_index) {
-		error("Unexpected index %u in mgmt_cod_changed event", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	if (info->pending_cod_change) {
-		info->pending_cod_change = FALSE;
-		handle_pending_uuids(index);
-	}
-
-	mgmt_update_cod(index, buf, len);
-}
-
 static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -1973,7 +1952,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_new_settings(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CLASS_OF_DEV_CHANGED:
-		mgmt_cod_changed(index, buf + MGMT_HDR_SIZE, len);
+		DBG("class_of_dev_changed event");
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
 		mgmt_new_link_key(index, buf + MGMT_HDR_SIZE, len);
