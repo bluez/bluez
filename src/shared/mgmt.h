@@ -41,9 +41,8 @@ bool mgmt_set_debug(struct mgmt *mgmt, mgmt_debug_func_t callback,
 
 bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close);
 
-typedef void (*mgmt_request_func_t)(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data);
+typedef void (*mgmt_request_func_t)(uint8_t status, uint16_t length,
+					const void *param, void *user_data);
 
 unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 				uint16_t length, const void *param,

@@ -200,8 +200,7 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 	mgmt->pending_list = g_list_delete_link(mgmt->pending_list, list);
 
 	if (request->callback)
-		request->callback(index, status, length, param,
-							request->user_data);
+		request->callback(status, length, param, request->user_data);
 
 	destroy_request(request, NULL);
 
