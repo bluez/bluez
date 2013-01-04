@@ -69,7 +69,7 @@ static guint mgmt_watch = 0;
 static uint8_t mgmt_version = 0;
 static uint16_t mgmt_revision = 0;
 
-static bool get_adapter_and_device(const bdaddr_t *src,
+static bool get_adapter_and_device(uint16_t index,
 					struct mgmt_addr_info *addr,
 					struct btd_adapter **adapter,
 					struct btd_device **device,
@@ -77,7 +77,7 @@ static bool get_adapter_and_device(const bdaddr_t *src,
 {
 	char peer_addr[18];
 
-	*adapter = adapter_find(src);
+	*adapter = adapter_find_by_id(index);
 	if (!*adapter) {
 		error("Unable to find matching adapter");
 		return false;
@@ -378,7 +378,6 @@ static void store_link_key(struct btd_adapter *adapter,
 static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_link_key *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
@@ -402,9 +401,7 @@ static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr,
+	if (!get_adapter_and_device(index, &ev->key.addr,
 						&adapter, &device, true))
 		return;
 
@@ -427,7 +424,6 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_connected *ev = buf;
 	struct eir_data eir_data;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	uint16_t eir_len;
@@ -453,10 +449,7 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr, &adapter,
-								&device, true))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
 	memset(&eir_data, 0, sizeof(eir_data));
@@ -469,7 +462,8 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 	adapter_add_connection(adapter, device);
 
 	if (eir_data.name != NULL) {
-		adapter_store_cached_name(&info->bdaddr, &ev->addr.bdaddr,
+		const bdaddr_t *bdaddr = adapter_get_address(adapter);
+		adapter_store_cached_name(bdaddr, &ev->addr.bdaddr,
 								eir_data.name);
 		device_set_name(device, eir_data.name);
 	}
@@ -480,7 +474,6 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_disconnected *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
@@ -505,10 +498,7 @@ static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
 	if (device)
@@ -518,7 +508,6 @@ static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
 static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_connect_failed *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
@@ -537,10 +526,7 @@ static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
 	if (device) {
@@ -608,7 +594,6 @@ int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 static void mgmt_pin_code_request(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_pin_code_request *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	gboolean display = FALSE;
@@ -631,10 +616,7 @@ static void mgmt_pin_code_request(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, true))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
 	memset(pin, 0, sizeof(pin));
@@ -739,7 +721,6 @@ int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_user_passkey_request *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
@@ -759,10 +740,7 @@ static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, true))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
 	err = device_request_passkey(device);
@@ -776,7 +754,6 @@ static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
 static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_passkey_notify *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	uint32_t passkey;
@@ -797,10 +774,7 @@ static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, true))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
 	passkey = bt_get_le32(&ev->passkey);
@@ -816,7 +790,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 								size_t len)
 {
 	struct mgmt_ev_user_confirm_request *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
@@ -837,10 +810,7 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, true))
+	if (!get_adapter_and_device(index, &ev->addr,  &adapter, &device, true))
 		return;
 
 	err = device_confirm_passkey(device, btohl(ev->value),
@@ -938,7 +908,6 @@ static void disconnect_complete(uint16_t index, uint8_t status,
 							void *buf, size_t len)
 {
 	struct mgmt_rp_disconnect *rp = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	char addr[18];
@@ -962,10 +931,7 @@ static void disconnect_complete(uint16_t index, uint8_t status,
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &rp->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &rp->addr, &adapter, &device, false))
 		return;
 
 	if (device)
@@ -1361,7 +1327,6 @@ static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 
 static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 {
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct mgmt_ev_device_blocked *ev = buf;
@@ -1380,10 +1345,7 @@ static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
 	if (device)
@@ -1392,7 +1354,6 @@ static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 
 static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 {
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct mgmt_ev_device_unblocked *ev = buf;
@@ -1411,10 +1372,7 @@ static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
 	if (device)
@@ -1423,7 +1381,6 @@ static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 
 static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
 {
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 	struct mgmt_ev_device_unpaired *ev = buf;
@@ -1442,10 +1399,7 @@ static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->addr,
-						&adapter, &device, false))
+	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
 	if (!device)
@@ -1459,7 +1413,7 @@ static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
 		adapter_remove_device(adapter, device, TRUE);
 }
 
-static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
+static void store_longtermkey(const bdaddr_t *local, bdaddr_t *peer,
 				uint8_t bdaddr_type, unsigned char *key,
 				uint8_t master, uint8_t authenticated,
 				uint8_t enc_size, uint16_t ediv,
@@ -1517,7 +1471,6 @@ static void store_longtermkey(bdaddr_t *local, bdaddr_t *peer,
 static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_new_long_term_key *ev = buf;
-	struct controller_info *info;
 	struct btd_adapter *adapter;
 	struct btd_device *device;
 
@@ -1535,16 +1488,15 @@ static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 		return;
 	}
 
-	info = &controllers[index];
-
-	if (!get_adapter_and_device(&info->bdaddr, &ev->key.addr,
+	if (!get_adapter_and_device(index, &ev->key.addr,
 						&adapter, &device, true))
 		return;
 
 	if (ev->store_hint) {
 		struct mgmt_ltk_info *key = &ev->key;
+		const bdaddr_t *bdaddr = adapter_get_address(adapter);
 
-		store_longtermkey(&info->bdaddr, &key->addr.bdaddr,
+		store_longtermkey(bdaddr, &key->addr.bdaddr,
 					key->addr.type, key->val, key->master,
 					key->authenticated, key->enc_size,
 					key->ediv, key->rand);
