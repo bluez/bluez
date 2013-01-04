@@ -107,7 +107,7 @@ static void register_agent(void)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
-	const gchar *path = AGENT_PATH;
+	const char *path = AGENT_PATH;
 
 	message = dbus_message_new_method_call(NEARD_NAME, NEARD_PATH,
 			NEARD_MANAGER_INTERFACE, "RegisterHandoverAgent");
@@ -132,7 +132,7 @@ static void register_agent(void)
 static void unregister_agent(void)
 {
 	DBusMessage *message;
-	const gchar *path = AGENT_PATH;
+	const char *path = AGENT_PATH;
 
 	agent_registered = FALSE;
 
