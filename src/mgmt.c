@@ -295,21 +295,11 @@ static int mgmt_set_low_energy(int index, gboolean le)
 	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
 }
 
-static void update_settings(struct btd_adapter *adapter, uint32_t settings)
-{
-	DBG("new settings 0x%08x", settings);
-
-	adapter_update_connectable(adapter, mgmt_connectable(settings));
-	adapter_update_discoverable(adapter, mgmt_discoverable(settings));
-	adapter_update_pairable(adapter, mgmt_pairable(settings));
-}
-
 static void mgmt_update_powered(struct btd_adapter *adapter,
 						struct controller_info *info,
 						uint32_t settings)
 {
 	if (!mgmt_powered(settings)) {
-		btd_adapter_stop(adapter);
 		g_slist_free_full(info->pending_uuids, g_free);
 		info->pending_uuids = NULL;
 		info->pending_uuid = FALSE;
@@ -318,9 +308,7 @@ static void mgmt_update_powered(struct btd_adapter *adapter,
 		return;
 	}
 
-	btd_adapter_start(adapter);
-
-	update_settings(adapter, settings);
+	adapter_update_settings(adapter, settings);
 }
 
 static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
@@ -358,7 +346,7 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 	if (new_power != old_power)
 		mgmt_update_powered(adapter, info, settings);
 	else
-		update_settings(adapter, settings);
+		adapter_update_settings(adapter, settings);
 
 	info->current_settings = settings;
 }

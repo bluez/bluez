@@ -126,7 +126,10 @@ struct discovery {
 
 struct btd_adapter {
 	uint16_t dev_id;
-	gboolean powered;
+
+	uint32_t current_settings;
+	uint32_t supported_settings;
+
 	char *path;			/* adapter object path */
 	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
 	uint32_t dev_class;		/* current class of device */
@@ -155,10 +158,7 @@ struct btd_adapter {
 	guint auto_timeout_id;		/* Automatic connections timeout */
 	sdp_list_t *services;		/* Services associated to adapter */
 
-	bool connectable;		/* connectable state */
 	bool toggle_discoverable;	/* discoverable needs to be changed */
-	gboolean discoverable;		/* discoverable state */
-	gboolean pairable;		/* pairable state */
 	gboolean initialized;
 
 	gboolean off_requested;		/* DEVDOWN ioctl was called */
@@ -272,7 +272,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	if (adapter->discov_timeout > 0)
 		discov = FALSE;
 	else
-		discov = adapter->discoverable;
+		discov = mgmt_discoverable(adapter->current_settings);
 
 	g_key_file_set_boolean(key_file, "General", "Discoverable", discov);
 
@@ -375,7 +375,7 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 {
 	int err;
 
-	if (adapter->powered == powered) {
+	if (mgmt_powered(adapter->current_settings) == powered) {
 		g_dbus_pending_property_success(id);
 		return;
 	}
@@ -396,7 +396,7 @@ static void set_powered(struct btd_adapter *adapter, gboolean powered,
 static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
 				bool reply, GDBusPendingPropertySet id)
 {
-	if (pairable == adapter->pairable)
+	if (pairable == mgmt_pairable(adapter->current_settings))
 		goto done;
 
 	mgmt_set_pairable(adapter->dev_id, pairable);
@@ -427,23 +427,6 @@ static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
 	adapter->pairable_timeout_id = g_timeout_add_seconds(interval,
 						pairable_timeout_handler,
 						adapter);
-}
-
-void adapter_update_pairable(struct btd_adapter *adapter, bool pairable)
-{
-	if (adapter->pairable == pairable)
-		return;
-
-	adapter->pairable = pairable;
-
-	store_adapter_info(adapter);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-					ADAPTER_INTERFACE, "Pairable");
-
-	if (pairable && adapter->pairable_timeout)
-		adapter_set_pairable_timeout(adapter,
-						adapter->pairable_timeout);
 }
 
 static struct session_req *find_session(GSList *list, const char *sender)
@@ -497,7 +480,7 @@ static void stop_discovery(struct btd_adapter *adapter)
 		return;
 	}
 
-	if (adapter->powered)
+	if (mgmt_powered(adapter->current_settings))
 		mgmt_stop_discovery(adapter->dev_id);
 	else
 		discovery_cleanup(adapter);
@@ -566,7 +549,7 @@ static void set_discoverable_timeout(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (adapter->discoverable)
+	if (mgmt_discoverable(adapter->current_settings))
 		mgmt_set_discoverable(adapter->dev_id, TRUE, timeout);
 
 	adapter->discov_timeout = timeout;
@@ -588,7 +571,7 @@ static void set_pairable_timeout(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (adapter->pairable)
+	if (mgmt_pairable(adapter->current_settings))
 		adapter_set_pairable_timeout(adapter, timeout);
 
 	adapter->pairable_timeout = timeout;
@@ -930,7 +913,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 	int err;
 
-	if (!adapter->powered)
+	if (!mgmt_powered(adapter->current_settings))
 		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
@@ -965,7 +948,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	struct session_req *req;
 	const char *sender = dbus_message_get_sender(msg);
 
-	if (!adapter->powered)
+	if (!mgmt_powered(adapter->current_settings))
 		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
@@ -1101,8 +1084,9 @@ static gboolean adapter_property_get_powered(
 {
 	struct btd_adapter *adapter = data;
 	dbus_bool_t value;
+	bool powered = mgmt_powered(adapter->current_settings);
 
-	value = (adapter->powered && !adapter->off_requested) ? TRUE : FALSE;
+	value = (powered && !adapter->off_requested) ? TRUE : FALSE;
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
 
 	return TRUE;
@@ -1134,7 +1118,7 @@ static gboolean adapter_property_get_discoverable(
 	struct btd_adapter *adapter = data;
 	dbus_bool_t value;
 
-	value = adapter->discoverable ? TRUE : FALSE;
+	value = mgmt_discoverable(adapter->current_settings) ? TRUE : FALSE;
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
 
 	return TRUE;
@@ -1164,9 +1148,9 @@ static gboolean adapter_property_get_pairable(
 					DBusMessageIter *iter, void *data)
 {
 	struct btd_adapter *adapter = data;
+	dbus_bool_t pairable = mgmt_pairable(adapter->current_settings);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN,
-							&adapter->pairable);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &pairable);
 
 	return TRUE;
 }
@@ -1697,7 +1681,7 @@ static void load_connections(struct btd_adapter *adapter)
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 {
-	return adapter->pairable;
+	return mgmt_pairable(adapter->current_settings);
 }
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
@@ -1732,7 +1716,7 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	DBG("%s added to %s's connect_list", device_get_path(device),
 								adapter->name);
 
-	if (!adapter->powered)
+	if (!mgmt_powered(adapter->current_settings))
 		return;
 
 	if (adapter->off_requested)
@@ -1764,12 +1748,11 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	btd_device_unref(device);
 }
 
-void btd_adapter_start(struct btd_adapter *adapter)
+static void adapter_start(struct btd_adapter *adapter)
 {
 	struct session_req *req;
 
 	adapter->off_requested = FALSE;
-	adapter->powered = TRUE;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Powered");
@@ -1833,15 +1816,13 @@ static void unload_drivers(struct btd_adapter *adapter)
 	adapter->profiles = NULL;
 }
 
-int btd_adapter_stop(struct btd_adapter *adapter)
+static int adapter_stop(struct btd_adapter *adapter)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 	bool emit_discovering = false;
 
 	/* check pending requests */
 	reply_pending_requests(adapter);
-
-	adapter->powered = FALSE;
 
 	if (adapter->discovery) {
 		emit_discovering = true;
@@ -1857,8 +1838,6 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 		struct btd_device *device = adapter->connections->data;
 		adapter_remove_connection(adapter, device);
 	}
-
-	adapter->connectable = false;
 
 	adapter->off_requested = FALSE;
 
@@ -1880,6 +1859,79 @@ int btd_adapter_stop(struct btd_adapter *adapter)
 	DBG("adapter %s has been disabled", adapter->path);
 
 	return 0;
+}
+
+static void adapter_pairable_changed(struct btd_adapter *adapter,
+							uint32_t new_settings)
+{
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+						ADAPTER_INTERFACE, "Pairable");
+
+	if (mgmt_pairable(new_settings) && adapter->pairable_timeout)
+		adapter_set_pairable_timeout(adapter,
+						adapter->pairable_timeout);
+}
+
+static void adapter_connectable_changed(struct btd_adapter *adapter,
+							uint32_t new_settings)
+{
+	if (adapter->toggle_discoverable) {
+		bool discov = mgmt_discoverable(adapter->current_settings);
+		DBG("toggling discoverable from %u to %u", discov, !discov);
+		mgmt_set_discoverable(adapter->dev_id, !discov,
+						adapter->discov_timeout);
+		adapter->toggle_discoverable = false;
+	}
+}
+
+static void adapter_discoverable_changed(struct btd_adapter *adapter,
+							uint32_t new_settings)
+{
+	struct DBusConnection *conn = btd_get_dbus_connection();
+
+	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
+							"Discoverable");
+}
+
+static void adapter_powered_changed(struct btd_adapter *adapter,
+							uint32_t new_settings)
+{
+	if (mgmt_powered(new_settings))
+		adapter_start(adapter);
+	else
+		adapter_stop(adapter);
+}
+
+void adapter_update_settings(struct btd_adapter *adapter,
+							uint32_t new_settings)
+{
+	bool store_info = false;
+
+	if (adapter->current_settings == new_settings)
+		return;
+
+	if (mgmt_pairable(new_settings) !=
+				mgmt_pairable(adapter->current_settings))
+		adapter_pairable_changed(adapter, new_settings);
+
+	if (mgmt_connectable(new_settings) !=
+				mgmt_connectable(adapter->current_settings))
+		adapter_connectable_changed(adapter, new_settings);
+
+	if (mgmt_discoverable(new_settings) !=
+				mgmt_discoverable(adapter->current_settings)) {
+		adapter_discoverable_changed(adapter, new_settings);
+		store_info = true;
+	}
+
+	if (mgmt_powered(new_settings) !=
+				mgmt_powered(adapter->current_settings))
+		adapter_powered_changed(adapter, new_settings);
+
+	adapter->current_settings = new_settings;
+
+	if (store_info)
+		store_adapter_info(adapter);
 }
 
 static void free_service_auth(gpointer data, gpointer user_data)
@@ -2840,16 +2892,18 @@ static void load_config(struct btd_adapter *adapter)
 		gerr = NULL;
 	}
 
-	if (!adapter->connectable)
+	if (!mgmt_connectable(adapter->current_settings))
 		mgmt_set_connectable(adapter->dev_id, TRUE);
 
-	if (adapter->discov_timeout > 0 && adapter->discoverable) {
-		if (adapter->connectable)
+	if (adapter->discov_timeout > 0 &&
+				mgmt_discoverable(adapter->current_settings)) {
+		if (mgmt_connectable(adapter->current_settings))
 			mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
 		else
 			adapter->toggle_discoverable = true;
-	} else if (stored_discoverable != adapter->discoverable) {
-		if (adapter->connectable)
+	} else if (stored_discoverable !=
+				mgmt_discoverable(adapter->current_settings)) {
+		if (mgmt_connectable(adapter->current_settings))
 			mgmt_set_discoverable(adapter->dev_id,
 						stored_discoverable,
 						adapter->discov_timeout);
@@ -2860,14 +2914,14 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-static gboolean adapter_setup(struct btd_adapter *adapter, uint32_t settings)
+static gboolean adapter_setup(struct btd_adapter *adapter,
+						uint32_t current_settings,
+						uint32_t supported_settings)
 {
 	struct agent *agent;
 
-	adapter->powered = mgmt_powered(settings);
-	adapter->connectable = mgmt_connectable(settings);
-	adapter->discoverable = mgmt_discoverable(settings);
-	adapter->pairable = mgmt_pairable(settings);
+	adapter->current_settings = current_settings;
+	adapter->supported_settings = supported_settings;
 
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
 		error("No address available for hci%d", adapter->dev_id);
@@ -2956,7 +3010,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	g_slist_free(adapter->pin_callbacks);
 
-	if (adapter->powered)
+	if (mgmt_powered(adapter->current_settings))
 		mgmt_set_powered(adapter->dev_id, FALSE);
 }
 
@@ -3182,37 +3236,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 		stop_discovery(adapter);
 		adapter->waiting_to_connect++;
 	}
-}
-
-void adapter_update_connectable(struct btd_adapter *adapter, bool connectable)
-{
-	if (adapter->connectable == connectable)
-		return;
-
-	if (adapter->toggle_discoverable) {
-		DBG("toggling discoverable from %u to %u",
-				adapter->discoverable, !adapter->discoverable);
-		mgmt_set_discoverable(adapter->dev_id, !adapter->discoverable,
-						adapter->discov_timeout);
-		adapter->toggle_discoverable = false;
-	}
-
-	adapter->connectable = connectable;
-}
-
-void adapter_update_discoverable(struct btd_adapter *adapter,
-							bool discoverable)
-{
-	struct DBusConnection *conn = btd_get_dbus_connection();
-
-	if (adapter->discoverable == discoverable)
-		return;
-
-	adapter->discoverable = discoverable;
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-								"Discoverable");
-
-	store_adapter_info(adapter);
 }
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
@@ -3467,7 +3490,7 @@ int btd_cancel_authorization(guint id)
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
-	if (adapter->powered)
+	if (mgmt_powered(adapter->current_settings))
 		return 0;
 
 	return mgmt_set_powered(adapter->dev_id, TRUE);
@@ -3505,7 +3528,7 @@ ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable)
 {
-	if (!adapter->powered)
+	if (!mgmt_powered(adapter->current_settings))
 		return -EINVAL;
 
 	return mgmt_set_fast_connectable(adapter->dev_id, enable);
@@ -3515,7 +3538,7 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy)
 {
-	if (!adapter->powered)
+	if (!mgmt_powered(adapter->current_settings))
 		return -EINVAL;
 
 	return mgmt_read_clock(adapter->dev_id, bdaddr, which,
@@ -3732,7 +3755,8 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 }
 
 static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
-							uint32_t settings)
+						uint32_t current_settings,
+						uint32_t supported_settings)
 {
 	struct btd_adapter *adapter;
 
@@ -3748,7 +3772,7 @@ static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
 
 	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_setup(adapter, settings)) {
+	if (!adapter_setup(adapter, current_settings, supported_settings)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return NULL;
@@ -3808,7 +3832,8 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 		return;
 	}
 
-	adapter = adapter_register(index, &rp->bdaddr, rp->current_settings);
+	adapter = adapter_register(index, &rp->bdaddr, rp->current_settings,
+						rp->supported_settings);
 	if (adapter == NULL) {
 		error("Unable to register new adapter");
 		return;
@@ -3819,7 +3844,7 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
 
 	if (mgmt_powered(rp->current_settings))
-		btd_adapter_start(adapter);
+		adapter_start(adapter);
 
 	btd_adapter_unref(adapter);
 }

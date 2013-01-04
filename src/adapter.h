@@ -80,10 +80,6 @@ struct btd_adapter *adapter_find_by_id(int id);
 struct btd_adapter *adapter_get_default(void);
 void adapter_foreach(adapter_cb func, gpointer user_data);
 
-void btd_adapter_start(struct btd_adapter *adapter);
-
-int btd_adapter_stop(struct btd_adapter *adapter);
-
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
@@ -108,16 +104,14 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm_name, bool legacy,
 					uint8_t *data, uint8_t data_len);
-void adapter_update_connectable(struct btd_adapter *adapter, bool connectable);
-void adapter_update_discoverable(struct btd_adapter *adapter,
-							bool discoverable);
+void adapter_update_settings(struct btd_adapter *adapter,
+						uint32_t new_settings);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_name_changed(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 void btd_adapter_class_changed(struct btd_adapter *adapter,
 						const uint8_t *new_class);
-void adapter_update_pairable(struct btd_adapter *adapter, bool pairable);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,
