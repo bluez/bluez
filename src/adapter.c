@@ -265,9 +265,6 @@ static void store_adapter_info(struct btd_adapter *adapter)
 
 	key_file = g_key_file_new();
 
-	g_key_file_set_boolean(key_file, "General", "Pairable",
-				adapter->pairable);
-
 	if (adapter->pairable_timeout != main_opts.pairto)
 		g_key_file_set_integer(key_file, "General", "PairableTimeout",
 					adapter->pairable_timeout);
@@ -2815,15 +2812,6 @@ static void load_config(struct btd_adapter *adapter)
 
 	DBG("class: major %u minor %u",
 			adapter->major_class, adapter->minor_class);
-
-	/* Get pairable mode */
-	adapter->pairable = g_key_file_get_boolean(key_file, "General",
-							"Pairable", &gerr);
-	if (gerr) {
-		adapter->pairable = TRUE;
-		g_error_free(gerr);
-		gerr = NULL;
-	}
 
 	/* Get pairable timeout */
 	adapter->pairable_timeout = g_key_file_get_integer(key_file, "General",
