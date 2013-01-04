@@ -1703,13 +1703,6 @@ bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 	return adapter->pairable;
 }
 
-void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
-								uint8_t *minor)
-{
-	*major = adapter->major_class;
-	*minor = adapter->minor_class;
-}
-
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
 {
 	return adapter->dev_class;

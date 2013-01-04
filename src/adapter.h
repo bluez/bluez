@@ -86,9 +86,6 @@ int btd_adapter_stop(struct btd_adapter *adapter);
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter);
 
-void btd_adapter_get_major_minor(struct btd_adapter *adapter, uint8_t *major,
-							uint8_t *minor);
-
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter);
 const char *btd_adapter_get_name(struct btd_adapter *adapter);
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
