@@ -617,6 +617,30 @@ void adapter_name_changed(struct btd_adapter *adapter, const char *name)
 				(const uint8_t *) name, strlen(name));
 }
 
+
+static void set_local_name_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cp_set_local_name *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set local name: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of set local name response");
+		return;
+	}
+
+	DBG("Name: %s", rp->name);
+	DBG("Short name: %s", rp->short_name);
+
+	adapter_name_changed(adapter, (const char *) rp->name);
+}
+
 static int set_name(struct btd_adapter *adapter, const char *name)
 {
 	struct mgmt_cp_set_local_name cp;
@@ -634,8 +658,8 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 	strncpy((char *) cp.name, maxname, sizeof(cp.name) - 1);
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME,
-					adapter->dev_id, sizeof(cp), &cp,
-					NULL, adapter, NULL) > 0)
+				adapter->dev_id, sizeof(cp), &cp,
+				set_local_name_complete, adapter, NULL) > 0)
 		return 0;
 
 	error("Failed to set local name for index %u", adapter->dev_id);
