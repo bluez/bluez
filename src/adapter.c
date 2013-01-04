@@ -92,7 +92,6 @@ static struct mgmt *mgmt_master = NULL;
 static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
 
-static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
 
 enum session_req_type {
@@ -3795,7 +3794,7 @@ static int adapter_register(struct btd_adapter *adapter,
 		return -EALREADY;
 	}
 
-	snprintf(path, sizeof(path), "%s/hci%d", base_path, adapter->dev_id);
+	snprintf(path, sizeof(path), "/org/bluez/hci%d", adapter->dev_id);
 	adapter->path = g_strdup(path);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
