@@ -49,6 +49,7 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 				mgmt_request_func_t callback,
 				void *user_data, mgmt_destroy_func_t destroy);
 bool mgmt_cancel(struct mgmt *mgmt, unsigned int id);
+bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index);
 bool mgmt_cancel_all(struct mgmt *mgmt);
 
 typedef void (*mgmt_notify_func_t)(uint16_t index, uint16_t length,

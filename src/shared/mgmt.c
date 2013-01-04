@@ -99,6 +99,14 @@ static gint compare_request_id(gconstpointer a, gconstpointer b)
 	return request->id - id;
 }
 
+static gint compare_request_index(gconstpointer a, gconstpointer b)
+{
+	const struct mgmt_request *request = a;
+	uint16_t index = GPOINTER_TO_UINT(b);
+
+	return request->index - index;
+}
+
 static void destroy_notify(gpointer data, gpointer user_data)
 {
 	struct mgmt_notify *notify = data;
@@ -508,23 +516,19 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	return request->id;
 }
 
-bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
+static bool cancel_request(struct mgmt *mgmt, gconstpointer data,
+							GCompareFunc func)
 {
 	struct mgmt_request *request;
 	GList *list;
 
-	if (!mgmt || !id)
-		return false;
-
-	list = g_queue_find_custom(mgmt->request_queue,
-				GUINT_TO_POINTER(id), compare_request_id);
+	list = g_queue_find_custom(mgmt->request_queue, data, func);
 	if (list) {
 		request = list->data;
 
 		g_queue_delete_link(mgmt->request_queue, list);
 	} else {
-		list = g_list_find_custom(mgmt->pending_list,
-				GUINT_TO_POINTER(id), compare_request_id);
+		list = g_list_find_custom(mgmt->pending_list, data, func);
 		if (!list)
 			return false;
 
@@ -537,6 +541,23 @@ bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
 	destroy_request(request, NULL);
 
 	return true;
+}
+
+bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
+{
+	if (!mgmt || !id)
+		return false;
+
+	return cancel_request(mgmt, GUINT_TO_POINTER(id), compare_request_id);
+}
+
+bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index)
+{
+	if (!mgmt)
+		return false;
+
+	return cancel_request(mgmt, GUINT_TO_POINTER(index),
+						compare_request_index);
 }
 
 bool mgmt_cancel_all(struct mgmt *mgmt)
