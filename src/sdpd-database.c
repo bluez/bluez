@@ -92,7 +92,10 @@ static void access_free(void *p)
 void sdp_svcdb_reset(void)
 {
 	sdp_list_free(service_db, (sdp_free_func_t) sdp_record_free);
+	service_db = NULL;
+
 	sdp_list_free(access_db, access_free);
+	access_db = NULL;
 }
 
 typedef struct _indexed {
