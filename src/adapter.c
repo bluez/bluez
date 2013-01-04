@@ -1951,6 +1951,15 @@ static void adapter_free(gpointer user_data)
 	g_queue_foreach(adapter->auths, free_service_auth, NULL);
 	g_queue_free(adapter->auths);
 
+	/*
+	 * Unregister all handlers for this specific index since
+	 * the adapter bound to them is no longer valid.
+	 *
+	 * This also avoids having multiple instances of the same
+	 * handler in case indexes got removed and re-added.
+	 */
+	mgmt_unregister_index(adapter->mgmt, adapter->dev_id);
+
 	mgmt_unref(adapter->mgmt);
 
 	sdp_list_free(adapter->services, NULL);
