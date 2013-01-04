@@ -305,7 +305,6 @@ static void mgmt_update_powered(struct btd_adapter *adapter,
 		info->pending_uuid = FALSE;
 		info->pending_class = FALSE;
 		info->pending_cod_change = FALSE;
-		return;
 	}
 
 	adapter_update_settings(adapter, settings);
