@@ -63,9 +63,9 @@ struct context_data {
 };
 
 static void element_start(GMarkupParseContext *context,
-				const gchar *element_name,
-				const gchar **attribute_names,
-				const gchar **attribute_values,
+				const char *element_name,
+				const char **attribute_names,
+				const char **attribute_values,
 				gpointer user_data, GError **err)
 {
 	struct context_data *ctx_data = user_data;

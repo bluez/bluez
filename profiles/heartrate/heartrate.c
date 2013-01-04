@@ -104,7 +104,7 @@ static const char * const location_enum[] = {
 	"foot",
 };
 
-static const gchar *location2str(uint8_t value)
+static const char *location2str(uint8_t value)
 {
 	 if (value < G_N_ELEMENTS(location_enum))
 		return location_enum[value];
@@ -265,7 +265,7 @@ static void update_watcher(gpointer data, gpointer user_data)
 	struct watcher *w = data;
 	struct measurement *m = user_data;
 	struct heartrate *hr = m->hr;
-	const gchar *path = device_get_path(hr->dev);
+	const char *path = device_get_path(hr->dev);
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusMessage *msg;

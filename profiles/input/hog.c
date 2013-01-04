@@ -865,7 +865,7 @@ static void remove_device(gpointer a, gpointer b)
 
 static void hog_remove(struct btd_profile *p, struct btd_device *device)
 {
-	const gchar *path = device_get_path(device);
+	const char *path = device_get_path(device);
 
 	DBG("path %s", path);
 

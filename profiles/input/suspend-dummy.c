@@ -50,7 +50,7 @@ static int fifo_open(void);
 
 static gboolean read_fifo(GIOChannel *io, GIOCondition cond, gpointer user_data)
 {
-	gchar buffer[12];
+	char buffer[12];
 	gsize offset, left, bread;
 	GIOStatus iostatus;
 

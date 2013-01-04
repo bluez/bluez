@@ -2124,7 +2124,7 @@ static const GDBusPropertyTable health_device_properties[] = {
 static struct hdp_device *create_health_device(struct btd_device *device)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
-	const gchar *path = device_get_path(device);
+	const char *path = device_get_path(device);
 	struct hdp_device *dev;
 	GSList *l;
 

@@ -47,7 +47,7 @@ static int idle_timeout = 0;
 
 static void input_remove(struct btd_device *device, const char *uuid)
 {
-	const gchar *path = device_get_path(device);
+	const char *path = device_get_path(device);
 
 	DBG("path %s", path);
 
@@ -57,7 +57,7 @@ static void input_remove(struct btd_device *device, const char *uuid)
 static int hid_device_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
-	const gchar *path = device_get_path(device);
+	const char *path = device_get_path(device);
 	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
 
 	DBG("path %s", path);

@@ -101,7 +101,7 @@ static int panu_disconnect(struct btd_device *dev, struct btd_profile *profile)
 
 static int panu_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
@@ -111,7 +111,7 @@ static int panu_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 static void panu_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
@@ -138,7 +138,7 @@ static int gn_disconnect(struct btd_device *dev, struct btd_profile *profile)
 
 static int gn_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
@@ -148,7 +148,7 @@ static int gn_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 static void gn_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
@@ -175,7 +175,7 @@ static int nap_disconnect(struct btd_device *dev, struct btd_profile *profile)
 
 static int nap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 
@@ -185,7 +185,7 @@ static int nap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 static void nap_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
-	const gchar *path = adapter_get_path(adapter);
+	const char *path = adapter_get_path(adapter);
 
 	DBG("path %s", path);
 

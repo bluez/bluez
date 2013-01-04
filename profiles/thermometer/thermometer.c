@@ -133,7 +133,7 @@ static const char * const temp_type[] = {
 	"tympanum"
 };
 
-static const gchar *temptype2str(uint8_t value)
+static const char *temptype2str(uint8_t value)
 {
 	 if (value > 0 && value < G_N_ELEMENTS(temp_type))
 		return temp_type[value];
@@ -277,7 +277,7 @@ static void update_watcher(gpointer data, gpointer user_data)
 {
 	struct watcher *w = data;
 	struct measurement *m = user_data;
-	const gchar *path = device_get_path(m->t->dev);
+	const char *path = device_get_path(m->t->dev);
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusMessage *msg;
@@ -1164,7 +1164,7 @@ static void attio_disconnected_cb(gpointer user_data)
 static int thermometer_register(struct btd_device *device,
 						struct gatt_primary *tattr)
 {
-	const gchar *path = device_get_path(device);
+	const char *path = device_get_path(device);
 	struct thermometer *t;
 	struct btd_adapter *adapter;
 	struct thermometer_adapter *tadapter;

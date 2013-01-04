@@ -170,7 +170,7 @@ static int avrcp_probe(struct btd_profile *p, struct btd_device *device,
 static int a2dp_source_connect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
@@ -187,7 +187,7 @@ static int a2dp_source_connect(struct btd_device *dev,
 static int a2dp_source_disconnect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
@@ -204,7 +204,7 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 static int a2dp_sink_connect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
@@ -221,7 +221,7 @@ static int a2dp_sink_connect(struct btd_device *dev,
 static int a2dp_sink_disconnect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
@@ -238,7 +238,7 @@ static int a2dp_sink_disconnect(struct btd_device *dev,
 static int avrcp_control_connect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
@@ -255,7 +255,7 @@ static int avrcp_control_connect(struct btd_device *dev,
 static int avrcp_control_disconnect(struct btd_device *dev,
 						struct btd_profile *profile)
 {
-	const gchar *path = device_get_path(dev);
+	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
