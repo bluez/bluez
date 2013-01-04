@@ -27,7 +27,8 @@ if (len(args) < 1):
 	print("")
 	print("  address")
 	print("  list")
-	print("  name [name]")
+	print("  name")
+	print("  alias [alias]")
 	print("  powered [on/off]")
 	print("  pairable [on/off]")
 	print("  pairabletimeout [timeout]")
@@ -42,11 +43,16 @@ if (args[0] == "address"):
 	sys.exit(0)
 
 if (args[0] == "name"):
+	name = adapter.Get("org.bluez.Adapter1", "Name")
+	print(name)
+	sys.exit(0)
+
+if (args[0] == "alias"):
 	if (len(args) < 2):
-		name = adapter.Get("org.bluez.Adapter1", "Name")
-		print(name)
+		alias = adapter.Get("org.bluez.Adapter1", "Alias")
+		print(alias)
 	else:
-		adapter.Set("org.bluez.Adapter1", "Name", args[1])
+		adapter.Set("org.bluez.Adapter1", "Alias", args[1])
 	sys.exit(0)
 
 if (args[0] == "list"):
