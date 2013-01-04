@@ -56,15 +56,13 @@ static void mgmt_debug(const char *str, void *user_data)
 	tester_print("%s%s", prefix, str);
 }
 
-static void read_version_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void read_version_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct mgmt_rp_read_version *rp = param;
 
 	tester_print("Read Version callback");
-	tester_print("  Index: 0x%04x", index);
 	tester_print("  Status: 0x%02x", status);
 
 	if (status || !param) {
@@ -79,12 +77,10 @@ static void read_version_callback(uint16_t index, uint8_t status,
 				data->mgmt_version, data->mgmt_revision);
 }
 
-static void read_commands_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void read_commands_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	tester_print("Read Commands callback");
-	tester_print("  Index: 0x%04x", index);
 	tester_print("  Status: 0x%02x", status);
 
 	if (status || !param) {
@@ -93,7 +89,7 @@ static void read_commands_callback(uint16_t index, uint8_t status,
 	}
 }
 
-static void read_info_callback(uint16_t index, uint8_t status, uint16_t length,
+static void read_info_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
@@ -103,7 +99,6 @@ static void read_info_callback(uint16_t index, uint8_t status, uint16_t length,
 	uint32_t supported_settings, current_settings;
 
 	tester_print("Read Info callback");
-	tester_print("  Index: 0x%04x", index);
 	tester_print("  Status: 0x%02x", status);
 
 	if (status || !param) {
@@ -197,14 +192,12 @@ static void index_removed_callback(uint16_t index, uint16_t length,
 	tester_post_teardown_complete();
 }
 
-static void read_index_list_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void read_index_list_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 
 	tester_print("Read Index List callback");
-	tester_print("  Index: 0x%04x", index);
 	tester_print("  Status: 0x%02x", status);
 
 	if (status || !param) {
@@ -545,16 +538,15 @@ static const struct generic_data set_discoverable_on_success_test = {
 	.expect_settings_set = MGMT_SETTING_DISCOVERABLE,
 };
 
-static void setup_powered_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void setup_powered_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
 		return;
 	}
 
-	tester_print("Controller %u powered on", index);
+	tester_print("Controller powered on");
 
 	tester_setup_complete();
 }
@@ -587,16 +579,15 @@ static void setup_powered(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_connectable_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void setup_connectable_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
 		return;
 	}
 
-	tester_print("Controller %u connectable on", index);
+	tester_print("Controller connectable on");
 
 	tester_setup_complete();
 }
@@ -655,15 +646,14 @@ static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
 	tester_test_passed();
 }
 
-static void command_generic_callback(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void command_generic_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
 
-	tester_print("Command 0x%04x (index 0x%04x) finished with status 0x%02x",
-					test->send_opcode, index, status);
+	tester_print("Command 0x%04x finished with status 0x%02x",
+						test->send_opcode, status);
 
 	if (status != test->expect_status) {
 		tester_test_failed();
