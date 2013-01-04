@@ -175,6 +175,22 @@ struct btd_adapter {
 
 static gboolean process_auth_queue(gpointer user_data);
 
+static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cod *rp = param;
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of class of device changed parameters");
+		return;
+	}
+
+	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
+
+	btd_adapter_class_changed(adapter, rp->val);
+}
+
 static void set_dev_class_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3018,6 +3034,10 @@ static struct btd_adapter *adapter_create(int id)
 	adapter->dev_id = id;
 	adapter->mgmt = mgmt_ref(mgmt_master);
 
+	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
+						adapter->dev_id,
+						class_of_dev_changed_callback,
+						adapter, NULL);
 	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
 						adapter->dev_id,
 						local_name_changed_callback,
