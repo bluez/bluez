@@ -4257,6 +4257,13 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	error("Failed to read controller index list");
 }
 
+static void mgmt_debug(const char *str, void *user_data)
+{
+	const char *prefix = user_data;
+
+	info("%s%s", prefix, str);
+}
+
 int adapter_init(void)
 {
 	mgmt_master = mgmt_new_default();
@@ -4264,6 +4271,9 @@ int adapter_init(void)
 		error("Failed to access management interface");
 		return -EIO;
 	}
+
+	if (getenv("MGMT_DEBUG"))
+		mgmt_set_debug(mgmt_master, mgmt_debug, "mgmt: ", NULL);
 
 	DBG("sending read version command");
 
