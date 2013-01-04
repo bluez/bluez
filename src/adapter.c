@@ -88,9 +88,9 @@
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
 
-struct mgmt *mgmt = NULL;
-uint8_t mgmt_version = 0;
-uint8_t mgmt_revision = 0;
+static struct mgmt *mgmt = NULL;
+static uint8_t mgmt_version = 0;
+static uint8_t mgmt_revision = 0;
 
 static const char *base_path = "/org/bluez";
 static GSList *adapter_drivers = NULL;
