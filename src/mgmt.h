@@ -39,7 +39,6 @@ int mgmt_stop_discovery(int index);
 
 int mgmt_read_clock(int index, const bdaddr_t *bdaddr, int which, int timeout,
 					uint32_t *clock, uint16_t *accuracy);
-int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr);
 
 int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);

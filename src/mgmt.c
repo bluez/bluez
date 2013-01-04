@@ -2328,22 +2328,6 @@ int mgmt_read_clock(int index, const bdaddr_t *bdaddr, int which, int timeout,
 	return -ENOSYS;
 }
 
-int mgmt_read_bdaddr(int index, bdaddr_t *bdaddr)
-{
-	char addr[18];
-	struct controller_info *info = &controllers[index];
-
-	ba2str(&info->bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	if (!info->valid)
-		return -ENODEV;
-
-	bacpy(bdaddr, &info->bdaddr);
-
-	return 0;
-}
-
 int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
