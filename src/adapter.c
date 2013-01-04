@@ -766,6 +766,86 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter,
 	return device;
 }
 
+static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
+{
+	if (uuid->type == SDP_UUID16)
+		sdp_uuid16_to_uuid128(uuid128, uuid);
+	else if (uuid->type == SDP_UUID32)
+		sdp_uuid32_to_uuid128(uuid128, uuid);
+	else
+		memcpy(uuid128, uuid, sizeof(*uuid));
+}
+
+static bool is_supported_uuid(const uuid_t *uuid)
+{
+	uuid_t tmp;
+
+	uuid_to_uuid128(&tmp, uuid);
+
+	if (!sdp_uuid128_to_uuid(&tmp))
+		return false;
+
+	if (tmp.type != SDP_UUID16)
+		return false;
+
+	return true;
+}
+
+static void add_uuid_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cod *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to add UUID: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size of add UUID response");
+		return;
+	}
+
+	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
+
+	btd_adapter_class_changed(adapter, rp->val);
+
+	if (adapter->initialized)
+		g_dbus_emit_property_changed(btd_get_dbus_connection(),
+				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+}
+
+static int add_uuid(struct btd_adapter *adapter, uuid_t *uuid, uint8_t svc_hint)
+{
+	struct mgmt_cp_add_uuid cp;
+	uuid_t uuid128;
+	uint128_t uint128;
+
+	if (!is_supported_uuid(uuid)) {
+		warn("Ignoring unsupported UUID for addition");
+		return 0;
+	}
+
+	uuid_to_uuid128(&uuid128, uuid);
+
+	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
+	htob128(&uint128, (uint128_t *) cp.uuid);
+	cp.svc_hint = svc_hint;
+
+	DBG("sending add uuid command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_ADD_UUID,
+				adapter->dev_id, sizeof(cp), &cp,
+				add_uuid_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to add UUID for index %u", adapter->dev_id);
+
+	return -EIO;
+}
+
 static void remove_uuid_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -790,31 +870,6 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 	if (adapter->initialized)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
 				adapter->path, ADAPTER_INTERFACE, "UUIDs");
-}
-
-static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
-{
-	if (uuid->type == SDP_UUID16)
-		sdp_uuid16_to_uuid128(uuid128, uuid);
-	else if (uuid->type == SDP_UUID32)
-		sdp_uuid32_to_uuid128(uuid128, uuid);
-	else
-		memcpy(uuid128, uuid, sizeof(*uuid));
-}
-
-static bool is_supported_uuid(const uuid_t *uuid)
-{
-	uuid_t tmp;
-
-	uuid_to_uuid128(&tmp, uuid);
-
-	if (!sdp_uuid128_to_uuid(&tmp))
-		return false;
-
-	if (tmp.type != SDP_UUID16)
-		return false;
-
-	return true;
 }
 
 static int remove_uuid(struct btd_adapter *adapter, uuid_t *uuid)
@@ -967,12 +1022,8 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 
 	if (new_uuid) {
 		uint8_t svc_hint = get_uuid_mask(&rec->svclass);
-		mgmt_add_uuid(adapter->dev_id, &rec->svclass, svc_hint);
+		add_uuid(adapter, &rec->svclass, svc_hint);
 	}
-
-	if (adapter->initialized)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "UUIDs");
 
 done:
 	sdp_list_free(browse_list, free);
