@@ -124,7 +124,7 @@ struct discovery {
 };
 
 struct btd_adapter {
-	unsigned int ref_count;
+	int ref_count;
 
 	uint16_t dev_id;
 	struct mgmt *mgmt;
@@ -2005,22 +2005,16 @@ static void adapter_free(gpointer user_data)
 
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 {
-	adapter->ref_count++;
-
-	DBG("%p: ref_count=%u", adapter, adapter->ref_count);
+	__sync_fetch_and_add(&adapter->ref_count, 1);
 
 	return adapter;
 }
 
 void btd_adapter_unref(struct btd_adapter *adapter)
 {
-	gchar *path;
+	char *path;
 
-	adapter->ref_count--;
-
-	DBG("%p: ref_count=%u", adapter, adapter->ref_count);
-
-	if (adapter->ref_count > 0)
+	if (__sync_sub_and_fetch(&adapter->ref_count, 1))
 		return;
 
 	if (!adapter->path) {
