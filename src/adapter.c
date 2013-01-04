@@ -4033,6 +4033,16 @@ void adapter_cleanup(void)
 	 */
 	mgmt_unregister_index(mgmt_master, MGMT_INDEX_NONE);
 
+	/*
+	 * In case there is another reference active, cancel
+	 * all pending global commands.
+	 *
+	 * This is just an extra precaution to avoid callbacks
+	 * that potentially then could leak memory or access
+	 * an invalid structure.
+	 */
+	mgmt_cancel_index(mgmt_master, MGMT_INDEX_NONE);
+
 	mgmt_unref(mgmt_master);
 	mgmt_master = NULL;
 }
