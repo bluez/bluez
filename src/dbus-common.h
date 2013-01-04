@@ -21,8 +21,6 @@
  *
  */
 
-#define MAX_PATH_LENGTH 64
-
 void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val);
 

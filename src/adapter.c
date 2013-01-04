@@ -3786,23 +3786,21 @@ static int adapter_register(struct btd_adapter *adapter,
 						uint32_t current_settings,
 						uint32_t supported_settings)
 {
-	char path[MAX_PATH_LENGTH];
-
 	if (adapter_find_by_id(adapter->dev_id)) {
 		error("Unable to register adapter: hci%d already exist",
 							adapter->dev_id);
 		return -EALREADY;
 	}
 
-	snprintf(path, sizeof(path), "/org/bluez/hci%d", adapter->dev_id);
-	adapter->path = g_strdup(path);
+	adapter->path = g_strdup_printf("/org/bluez/hci%d", adapter->dev_id);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					path, ADAPTER_INTERFACE,
+					adapter->path, ADAPTER_INTERFACE,
 					adapter_methods, NULL,
 					adapter_properties, adapter,
 					adapter_free)) {
-		error("Adapter interface init failed on path %s", path);
+		error("Adapter interface init failed on path %s",
+							adapter->path);
 		return -EINVAL;
 	}
 
