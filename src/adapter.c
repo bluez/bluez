@@ -182,16 +182,18 @@ static void set_dev_class_complete(uint8_t status, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
 
-	if (status != 0) {
-		error("mgmt_set_dev_class failed: %s (0x%02x)",
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set device class: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		return;
 	}
 
 	if (length < sizeof(*rp)) {
-		error("Unexpected length in mgmt_set_dev_class response");
+		error("Wrong size of set device class response");
 		return;
 	}
+
+	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
 
 	btd_adapter_class_changed(adapter, rp->val);
 }
