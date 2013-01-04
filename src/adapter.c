@@ -3753,7 +3753,7 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 	}
 
 	adapter = adapter_find_by_id(index);
-	if (adapter == NULL) {
+	if (adapter != NULL) {
 		warn("mgmt_read_info for an already existing adapter");
 		return;
 	}
