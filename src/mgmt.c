@@ -893,13 +893,7 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 
 static bool is_16bit_uuid(const uuid_t *uuid)
 {
-	static uint8_t any[16] = { 0, 0, 0, 0, 0, 0, 0, 0,
-					0, 0, 0, 0, 0, 0, 0, 0 };
 	uuid_t tmp;
-
-	if (uuid->type == SDP_UUID128 &&
-			memcmp(&uuid->value.uuid128, any, sizeof(any)) == 0)
-		return true;
 
 	uuid_to_uuid128(&tmp, uuid);
 
@@ -958,61 +952,6 @@ int mgmt_add_uuid(int index, uuid_t *uuid, uint8_t svc_hint)
 	info->pending_uuid = TRUE;
 
 	return 0;
-}
-
-int mgmt_remove_uuid(int index, uuid_t *uuid)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_uuid)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_remove_uuid *cp = (void *) &buf[sizeof(*hdr)];
-	struct controller_info *info = &controllers[index];
-	uuid_t uuid128;
-	uint128_t uint128;
-
-	DBG("index %d", index);
-
-	if (!is_16bit_uuid(uuid)) {
-		warn("mgmt_remove_uuid: Ignoring non-16-bit UUID");
-		return 0;
-	}
-
-	if (info->pending_uuid) {
-		struct pending_uuid *pending = g_new0(struct pending_uuid, 1);
-
-		memcpy(&pending->uuid, uuid, sizeof(*uuid));
-		pending->add = false;
-
-		info->pending_uuids = g_slist_append(info->pending_uuids,
-								pending);
-		return 0;
-	}
-
-	uuid_to_uuid128(&uuid128, uuid);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_REMOVE_UUID);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
-	htob128(&uint128, (uint128_t *) cp->uuid);
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	info->pending_uuid = TRUE;
-
-	return 0;
-}
-
-static int clear_uuids(int index)
-{
-	uuid_t uuid_any;
-
-	memset(&uuid_any, 0, sizeof(uuid_any));
-	uuid_any.type = SDP_UUID128;
-
-	return mgmt_remove_uuid(index, &uuid_any);
 }
 
 static void read_index_list_complete(void *buf, size_t len)
@@ -1136,8 +1075,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
-
-	clear_uuids(index);
 
 	if (!mgmt_pairable(info->current_settings))
 		mgmt_set_pairable(index, TRUE);
@@ -1353,8 +1290,6 @@ static void handle_pending_uuids(uint16_t index)
 
 	if (pending->add)
 		mgmt_add_uuid(index, &pending->uuid, pending->svc_hint);
-	else
-		mgmt_remove_uuid(index, &pending->uuid);
 
 	info->pending_uuids = g_slist_remove(info->pending_uuids, pending);
 	g_free(pending);
@@ -1391,20 +1326,6 @@ static void mgmt_add_uuid_complete(uint16_t index, void *buf, size_t len)
 
 	if (index > max_index) {
 		error("Unexpected index %u in add_uuid_complete event", index);
-		return;
-	}
-
-	mgmt_update_cod(index, buf, len);
-	handle_pending_uuids(index);
-}
-
-static void mgmt_remove_uuid_complete(uint16_t index, void *buf, size_t len)
-{
-	DBG("index %d", index);
-
-	if (index > max_index) {
-		error("Unexpected index %u in remove_uuid_complete event",
-									index);
 		return;
 	}
 
@@ -1460,7 +1381,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		mgmt_add_uuid_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_REMOVE_UUID:
-		mgmt_remove_uuid_complete(index, ev->data, len);
+		DBG("remove_uuid complete");
 		break;
 	case MGMT_OP_SET_DEV_CLASS:
 		DBG("set_dev_class complete");
