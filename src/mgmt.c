@@ -1949,10 +1949,13 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_index_removed(index);
 		break;
 	case MGMT_EV_NEW_SETTINGS:
-		mgmt_new_settings(index, buf + MGMT_HDR_SIZE, len);
+		DBG("new_settings event");
 		break;
 	case MGMT_EV_CLASS_OF_DEV_CHANGED:
 		DBG("class_of_dev_changed event");
+		break;
+	case MGMT_EV_LOCAL_NAME_CHANGED:
+		DBG("local_name_changed event");
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
 		mgmt_new_link_key(index, buf + MGMT_HDR_SIZE, len);
@@ -1974,9 +1977,6 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		break;
 	case MGMT_EV_AUTH_FAILED:
 		mgmt_auth_failed(index, buf + MGMT_HDR_SIZE, len);
-		break;
-	case MGMT_EV_LOCAL_NAME_CHANGED:
-		DBG("local_name_changed event");
 		break;
 	case MGMT_EV_DEVICE_FOUND:
 		mgmt_device_found(index, buf + MGMT_HDR_SIZE, len);
