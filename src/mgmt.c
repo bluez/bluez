@@ -56,7 +56,6 @@
 static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
-	bdaddr_t bdaddr;
 	uint32_t supported_settings;
 	uint32_t current_settings;
 	GSList *connections;
@@ -860,7 +859,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
 	struct controller_info *info;
-	char addr[18];
 
 	if (len < sizeof(*rp)) {
 		error("Too small read info complete event");
@@ -874,16 +872,13 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	bacpy(&info->bdaddr, &rp->bdaddr);
-
 	memcpy(&info->supported_settings, &rp->supported_settings,
 					sizeof(info->supported_settings));
 	memcpy(&info->current_settings, &rp->current_settings,
 					sizeof(info->current_settings));
 
-	ba2str(&info->bdaddr, addr);
-	DBG("hci%u addr %s version %u manufacturer %u class 0x%02x%02x%02x\n",
-		index, addr, rp->version, bt_get_le16(&rp->manufacturer),
+	DBG("hci%u version %u manufacturer %u class 0x%02x%02x%02x\n",
+		index, rp->version, bt_get_le16(&rp->manufacturer),
 		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
 	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
