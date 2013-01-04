@@ -1613,31 +1613,6 @@ static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 	bonding_complete(info, &ev->addr, ev->status);
 }
 
-static void mgmt_local_name_changed(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_cp_set_local_name *ev = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_local_name_changed event packet");
-		return;
-	}
-
-	DBG("hci%u local name changed: %s", index, (char *) ev->name);
-
-	if (index > max_index) {
-		error("Unexpected index %u in name_changed event", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	adapter = adapter_find(&info->bdaddr);
-	if (adapter)
-		adapter_name_changed(adapter, (char *) ev->name);
-}
-
 static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_device_found *ev = buf;
@@ -2022,7 +1997,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_auth_failed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_LOCAL_NAME_CHANGED:
-		mgmt_local_name_changed(index, buf + MGMT_HDR_SIZE, len);
+		DBG("local_name_changed event");
 		break;
 	case MGMT_EV_DEVICE_FOUND:
 		mgmt_device_found(index, buf + MGMT_HDR_SIZE, len);
