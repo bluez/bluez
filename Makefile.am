@@ -232,6 +232,14 @@ unit_test_mgmt_SOURCES = unit/test-mgmt.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 unit_test_mgmt_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-sdp
+
+unit_test_sdp_SOURCES = unit/test-sdp.c \
+				src/shared/util.h src/shared/util.c \
+				src/sdpd.h src/sdpd-database.c \
+				src/sdpd-service.c src/sdpd-request.c
+unit_test_sdp_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+
 unit_tests += unit/test-gdbus-client
 
 unit_test_gdbus_client_SOURCES = $(gdbus_sources) unit/test-gdbus-client.c

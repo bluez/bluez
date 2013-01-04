@@ -64,6 +64,7 @@ unit/test-eir
 unit/test-uuid
 unit/test-textfile
 unit/test-gdbus-client
+unit/test-sdp
 unit/test-mgmt
 tools/mgmt-tester
 tools/gap-tester
