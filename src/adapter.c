@@ -88,7 +88,7 @@
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
 
-static struct mgmt *mgmt = NULL;
+static struct mgmt *mgmt_master = NULL;
 static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
 
@@ -128,6 +128,7 @@ struct btd_adapter {
 	unsigned int ref_count;
 
 	uint16_t dev_id;
+	struct mgmt *mgmt;
 
 	uint32_t current_settings;
 	uint32_t supported_settings;
@@ -171,8 +172,6 @@ struct btd_adapter {
 	GSList *profiles;
 
 	struct oob_handler *oob_handler;
-
-	struct mgmt *mgmt;
 };
 
 static gboolean process_auth_queue(gpointer user_data);
@@ -218,7 +217,7 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 	cp.major = major & 0x1f;
 	cp.minor = minor << 2;
 
-	id = mgmt_send(mgmt, MGMT_OP_SET_DEV_CLASS, adapter->dev_id,
+	id = mgmt_send(adapter->mgmt, MGMT_OP_SET_DEV_CLASS, adapter->dev_id,
 				sizeof(cp), &cp, set_dev_class_complete,
 				adapter, NULL);
 	if (id == 0)
@@ -635,7 +634,7 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 	memset(&cp, 0, sizeof(cp));
 	strncpy((char *) cp.name, maxname, sizeof(cp.name) - 1);
 
-	id = mgmt_send(mgmt, MGMT_OP_SET_LOCAL_NAME, adapter->dev_id,
+	id = mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME, adapter->dev_id,
 					sizeof(cp), &cp, NULL, NULL, NULL);
 	if (id == 0) {
 		error("mgmt_send(READ_INDEX_LIST) failed");
@@ -2970,8 +2969,9 @@ static struct btd_adapter *adapter_create(int id)
 	}
 
 	adapter->dev_id = id;
+	adapter->mgmt = mgmt_ref(mgmt_master);
+
 	adapter->auths = g_queue_new();
-	adapter->mgmt = mgmt_ref(mgmt);
 
 	return btd_adapter_ref(adapter);
 }
@@ -3868,7 +3868,7 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		return;
 	}
 
-	id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+	id = mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
 						read_info_complete, adapter,
 						adapter_destroy);
 	if (id == 0)
@@ -3938,7 +3938,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 			continue;
 		}
 
-		id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+		id = mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
 						read_info_complete, adapter,
 						adapter_destroy);
 		if (id == 0)
@@ -3963,17 +3963,18 @@ static void read_version_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	mgmt_revision = btohs(rp->revision);
 	mgmt_version = rp->version;
+	mgmt_revision = btohs(rp->revision);
 
 	DBG("version %u.%u", mgmt_version, mgmt_revision);
 
-	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
+	mgmt_register(mgmt_master, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
 						index_added, NULL, NULL);
-	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
+	mgmt_register(mgmt_master, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
 						index_removed, NULL, NULL);
 
-	id = mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0, NULL,
+	id = mgmt_send(mgmt_master, MGMT_OP_READ_INDEX_LIST,
+					MGMT_INDEX_NONE, 0, NULL,
 					read_index_list_complete, NULL, NULL);
 	if (id == 0)
 		error("mgmt_send(READ_INDEX_LIST) failed");
@@ -3983,11 +3984,12 @@ int adapter_init(void)
 {
 	unsigned int id;
 
-	mgmt = mgmt_new_default();
-	if (!mgmt)
+	mgmt_master = mgmt_new_default();
+	if (!mgmt_master)
 		return -EIO;
 
-	id = mgmt_send(mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
+	id = mgmt_send(mgmt_master, MGMT_OP_READ_VERSION,
+					MGMT_INDEX_NONE, 0, NULL,
 					read_version_complete, NULL, NULL);
 	if (id == 0) {
 		error("mgmt_send(READ_VERSION) failed");
@@ -4014,8 +4016,8 @@ void adapter_cleanup(void)
 	 * This is just an extra precaution to be safe, and in
 	 * reality should not make a difference.
 	 */
-	mgmt_unregister_index(mgmt, MGMT_INDEX_NONE);
+	mgmt_unregister_index(mgmt_master, MGMT_INDEX_NONE);
 
-	mgmt_unref(mgmt);
-	mgmt = NULL;
+	mgmt_unref(mgmt_master);
+	mgmt_master = NULL;
 }
