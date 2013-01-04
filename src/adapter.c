@@ -4091,14 +4091,14 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
+	clear_uuids(adapter);
+
 	err = adapter_register(adapter, &rp->bdaddr, rp->current_settings,
 						rp->supported_settings);
 	if (err < 0) {
 		error("Unable to register new adapter");
 		return;
 	}
-
-	clear_uuids(adapter);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
 
