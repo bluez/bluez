@@ -2012,22 +2012,20 @@ struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter)
 
 void btd_adapter_unref(struct btd_adapter *adapter)
 {
-	char *path;
-
 	if (__sync_sub_and_fetch(&adapter->ref_count, 1))
 		return;
 
 	if (!adapter->path) {
+		DBG("Freeing adapter %u", adapter->dev_id);
+
 		adapter_free(adapter);
 		return;
 	}
 
-	path = g_strdup(adapter->path);
+	DBG("Freeing adapter %s", adapter->path);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
-						path, ADAPTER_INTERFACE);
-
-	g_free(path);
+					adapter->path, ADAPTER_INTERFACE);
 }
 
 static void convert_names_entry(char *key, char *value, void *user_data)
