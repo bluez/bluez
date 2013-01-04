@@ -177,9 +177,8 @@ struct btd_adapter {
 
 static gboolean process_auth_queue(gpointer user_data);
 
-static void set_dev_class_complete(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void set_dev_class_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
@@ -1986,6 +1985,11 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 	if (adapter->ref > 0)
 		return;
 
+	if (!adapter->path) {
+		adapter_free(adapter);
+		return;
+	}
+
 	path = g_strdup(adapter->path);
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
@@ -2955,9 +2959,8 @@ static gboolean adapter_setup(struct btd_adapter *adapter,
 	return TRUE;
 }
 
-static struct btd_adapter *adapter_create(int id, const bdaddr_t *bdaddr)
+static struct btd_adapter *adapter_create(int id)
 {
-	char path[MAX_PATH_LENGTH];
 	struct btd_adapter *adapter;
 
 	adapter = g_try_new0(struct btd_adapter, 1);
@@ -2969,21 +2972,6 @@ static struct btd_adapter *adapter_create(int id, const bdaddr_t *bdaddr)
 	adapter->dev_id = id;
 	adapter->auths = g_queue_new();
 	adapter->mgmt = mgmt_ref(mgmt);
-
-	bacpy(&adapter->bdaddr, bdaddr);
-
-	snprintf(path, sizeof(path), "%s/hci%d", base_path, id);
-	adapter->path = g_strdup(path);
-
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					path, ADAPTER_INTERFACE,
-					adapter_methods, NULL,
-					adapter_properties, adapter,
-					adapter_free)) {
-		error("Adapter interface init failed on path %s", path);
-		adapter_free(adapter);
-		return NULL;
-	}
 
 	return btd_adapter_ref(adapter);
 }
@@ -3754,32 +3742,43 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
-static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
+static int adapter_register(struct btd_adapter *adapter,
+						const bdaddr_t *bdaddr,
 						uint32_t current_settings,
 						uint32_t supported_settings)
 {
-	struct btd_adapter *adapter;
+	char path[MAX_PATH_LENGTH];
 
-	adapter = adapter_find_by_id(id);
-	if (adapter) {
-		error("Unable to register adapter: hci%d already exist", id);
-		return NULL;
+	if (adapter_find_by_id(adapter->dev_id)) {
+		error("Unable to register adapter: hci%d already exist",
+							adapter->dev_id);
+		return -EALREADY;
 	}
 
-	adapter = adapter_create(id, bdaddr);
-	if (!adapter)
-		return NULL;
+	snprintf(path, sizeof(path), "%s/hci%d", base_path, adapter->dev_id);
+	adapter->path = g_strdup(path);
 
-	adapters = g_slist_append(adapters, adapter);
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					path, ADAPTER_INTERFACE,
+					adapter_methods, NULL,
+					adapter_properties, adapter,
+					adapter_free)) {
+		error("Adapter interface init failed on path %s", path);
+		return -EINVAL;
+	}
+
+	bacpy(&adapter->bdaddr, bdaddr);
+
+	adapters = g_slist_append(adapters, btd_adapter_ref(adapter));
 
 	if (!adapter_setup(adapter, current_settings, supported_settings)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
-		return NULL;
+		return -EIO;
 	}
 
 	if (default_adapter_id < 0)
-		default_adapter_id = id;
+		default_adapter_id = adapter->dev_id;
 
 	if (main_opts.did_source)
 		adapter_set_did(adapter, main_opts.did_vendor,
@@ -3789,7 +3788,7 @@ static struct btd_adapter *adapter_register(int id, const bdaddr_t *bdaddr,
 
 	DBG("Adapter %s registered", adapter->path);
 
-	return btd_adapter_ref(adapter);
+	return 0;
 }
 
 static int adapter_unregister(struct btd_adapter *adapter)
@@ -3807,17 +3806,18 @@ static int adapter_unregister(struct btd_adapter *adapter)
 	return 0;
 }
 
-static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
+static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_info *rp = param;
-	struct btd_adapter *adapter;
+	struct btd_adapter *adapter = user_data;
+	int err;
 
-	DBG("index %u", index);
+	DBG("index %u status 0x%02x", adapter->dev_id, status);
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("mgmt_read_info(%u) failed: %s (0x%02x)", index,
-						mgmt_errstr(status), status);
+		error("mgmt_read_info(%u) failed: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
 		return;
 	}
 
@@ -3826,15 +3826,9 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 		return;
 	}
 
-	adapter = adapter_find_by_id(index);
-	if (adapter != NULL) {
-		warn("mgmt_read_info for an already existing adapter");
-		return;
-	}
-
-	adapter = adapter_register(index, &rp->bdaddr, rp->current_settings,
+	err = adapter_register(adapter, &rp->bdaddr, rp->current_settings,
 						rp->supported_settings);
-	if (adapter == NULL) {
+	if (err < 0) {
 		error("Unable to register new adapter");
 		return;
 	}
@@ -3845,6 +3839,11 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 
 	if (mgmt_powered(rp->current_settings))
 		adapter_start(adapter);
+}
+
+static void adapter_destroy(void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
 
 	btd_adapter_unref(adapter);
 }
@@ -3852,12 +3851,26 @@ static void read_info_complete(uint16_t index, uint8_t status, uint16_t length,
 static void index_added(uint16_t index, uint16_t length, const void *param,
 							void *user_data)
 {
+	struct btd_adapter *adapter;
 	unsigned int id;
 
 	DBG("index %u", index);
 
+	adapter = adapter_find_by_id(index);
+	if (adapter != NULL) {
+		warn("Got index_added for an already existing adapter");
+		return;
+	}
+
+	adapter = adapter_create(index);
+	if (!adapter) {
+		error("Unable to create new adapter for index %u", index);
+		return;
+	}
+
 	id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
-					read_info_complete, NULL, NULL);
+						read_info_complete, adapter,
+						adapter_destroy);
 	if (id == 0)
 		error("mgmt_send(READ_INFO, %u) failed", index);
 }
@@ -3878,9 +3891,8 @@ static void index_removed(uint16_t index, uint16_t length, const void *param,
 	adapter_unregister(adapter);
 }
 
-static void read_index_list_complete(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void read_index_list_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_index_list *rp = param;
 	uint16_t num;
@@ -3905,6 +3917,7 @@ static void read_index_list_complete(uint16_t index, uint8_t status,
 	}
 
 	for (i = 0; i < num; i++) {
+		struct btd_adapter *adapter;
 		unsigned int id;
 		uint16_t index;
 
@@ -3912,16 +3925,29 @@ static void read_index_list_complete(uint16_t index, uint8_t status,
 
 		DBG("index %u", index);
 
+		adapter = adapter_find_by_id(index);
+		if (adapter != NULL) {
+			warn("Got an index for an already existing adapter");
+			continue;
+		}
+
+		adapter = adapter_create(index);
+		if (!adapter) {
+			error("Unable to create new adapter for index %u",
+									index);
+			continue;
+		}
+
 		id = mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
-						read_info_complete, NULL, NULL);
+						read_info_complete, adapter,
+						adapter_destroy);
 		if (id == 0)
 			error("mgmt_send(READ_INFO, %u) failed", index);
 	}
 }
 
-static void read_version_complete(uint16_t index, uint8_t status,
-					uint16_t length, const void *param,
-					void *user_data)
+static void read_version_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_version *rp = param;
 	unsigned int id;
