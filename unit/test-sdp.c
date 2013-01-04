@@ -596,8 +596,10 @@ struct test_data {
 static gboolean send_pdu(gpointer user_data)
 {
 	struct context *context = user_data;
+	ssize_t len;
 
-	write(context->fd, context->req_data, context->req_size);
+	len = write(context->fd, context->req_data, context->req_size);
+	g_assert(len > 0 && (size_t) len == context->req_size);
 
 	return FALSE;
 }
