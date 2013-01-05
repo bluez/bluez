@@ -144,10 +144,12 @@ struct btd_adapter {
 	uint8_t major_class;		/* configured major class */
 	uint8_t minor_class;		/* configured minor class */
 	char *system_name;		/* configured system name */
-	char *stored_name;		/* stored adapter name */
 	char *modalias;			/* device id (modalias) */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
+
+	char *current_alias;		/* current adapter name alias */
+	char *stored_alias;		/* stored adapter name alias */
 
 	guint pairable_timeout_id;	/* pairable timeout id */
 	struct session_req *pending_mode;
@@ -342,9 +344,9 @@ static void store_adapter_info(struct btd_adapter *adapter)
 					"DiscoverableTimeout",
 					adapter->discov_timeout);
 
-	if (adapter->stored_name)
+	if (adapter->stored_alias)
 		g_key_file_set_string(key_file, "General", "Alias",
-							adapter->stored_name);
+							adapter->stored_alias);
 
 	ba2str(&adapter->bdaddr, address);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/settings", address);
@@ -692,17 +694,6 @@ static void session_unref(struct session_req *req)
 	session_free(req);
 }
 
-static void adapter_name_changed(struct btd_adapter *adapter, const char *name)
-{
-	DBG("name: %s", name);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-						ADAPTER_INTERFACE, "Alias");
-
-	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
-				(const uint8_t *) name, strlen(name));
-}
-
 static void local_name_changed_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -723,14 +714,41 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 	g_free(adapter->short_name);
 	adapter->short_name = g_strdup((const char *) rp->short_name);
 
-	adapter_name_changed(adapter, (const char *) rp->name);
+	/*
+	 * Changing the name (even manually via HCI) will update the
+	 * current alias property.
+	 *
+	 * In case the name is empty, use the short name.
+	 *
+	 * There is a difference between the stored alias (which is
+	 * configured by the user) and the current alias. The current
+	 * alias is temporary for the lifetime of the daemon.
+	 */
+	if (adapter->name && adapter->name[0] != '\0') {
+		g_free(adapter->current_alias);
+		adapter->current_alias = g_strdup(adapter->name);
+	} else {
+		g_free(adapter->current_alias);
+		adapter->current_alias = g_strdup(adapter->short_name);
+	}
+
+	DBG("Current alias: %s", adapter->current_alias);
+
+	if (!adapter->current_alias)
+		return;
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Alias");
+
+	attrib_gap_set(adapter, GATT_CHARAC_DEVICE_NAME,
+				(const uint8_t *) adapter->current_alias,
+					strlen(adapter->current_alias));
 }
 
 static void set_local_name_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	const struct mgmt_cp_set_local_name *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to set local name: %s (0x%02x)",
@@ -738,15 +756,14 @@ static void set_local_name_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(*rp)) {
-		error("Wrong size of set local name response");
-		return;
-	}
-
-	DBG("Name: %s", rp->name);
-	DBG("Short name: %s", rp->short_name);
-
-	adapter_name_changed(adapter, (const char *) rp->name);
+	/*
+	 * Call function to indicate local name changed.
+	 *
+	 * The parameters are idential and that also the task that
+	 * is required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	local_name_changed_callback(adapter->dev_id, length, param, adapter);
 }
 
 static int set_name(struct btd_adapter *adapter, const char *name)
@@ -791,7 +808,7 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 						ADAPTER_INTERFACE, "Name");
 
 	/* alias is preferred over system name */
-	if (adapter->stored_name)
+	if (adapter->stored_alias)
 		return 0;
 
 	DBG("alias: %s", name);
@@ -1292,8 +1309,10 @@ static gboolean property_get_alias(const GDBusPropertyTable *property,
 	struct btd_adapter *adapter = user_data;
 	const char *str;
 
-	if (adapter->stored_name)
-		str = adapter->stored_name;
+	if (adapter->current_alias)
+		str = adapter->current_alias;
+	else if (adapter->stored_alias)
+		str = adapter->stored_alias;
 	else
 		str = adapter->system_name ? : "";
 
@@ -1313,7 +1332,7 @@ static void property_set_alias(const GDBusPropertyTable *property,
 	dbus_message_iter_get_basic(iter, &name);
 
 	if (g_str_equal(name, "")  == TRUE) {
-		if (adapter->stored_name == NULL) {
+		if (adapter->stored_alias == NULL) {
 			/* no alias set, nothing to restore */
 			g_dbus_pending_property_success(id);
 			return;
@@ -1322,7 +1341,7 @@ static void property_set_alias(const GDBusPropertyTable *property,
 		/* restore to system name */
 		ret = set_name(adapter, adapter->system_name);
 	} else {
-		if (g_strcmp0(adapter->stored_name, name) == 0) {
+		if (g_strcmp0(adapter->stored_alias, name) == 0) {
 			/* alias already set, nothing to do */
 			g_dbus_pending_property_success(id);
 			return;
@@ -1333,12 +1352,12 @@ static void property_set_alias(const GDBusPropertyTable *property,
 	}
 
 	if (ret >= 0) {
-		g_free(adapter->stored_name);
+		g_free(adapter->stored_alias);
 
 		if (g_str_equal(name, "")  == TRUE)
-			adapter->stored_name = NULL;
+			adapter->stored_alias = NULL;
 		else
-			adapter->stored_name = g_strdup(name);
+			adapter->stored_alias = g_strdup(name);
 
 		store_adapter_info(adapter);
 
@@ -2080,8 +2099,8 @@ uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
 
 const char *btd_adapter_get_name(struct btd_adapter *adapter)
 {
-	if (adapter->stored_name)
-		return adapter->stored_name;
+	if (adapter->stored_alias)
+		return adapter->stored_alias;
 
 	if (adapter->system_name)
 		return adapter->system_name;
@@ -2285,7 +2304,8 @@ static void adapter_free(gpointer user_data)
 	g_free(adapter->name);
 	g_free(adapter->short_name);
 	g_free(adapter->system_name);
-	g_free(adapter->stored_name);
+	g_free(adapter->stored_alias);
+	g_free(adapter->current_alias);
 	g_free(adapter->modalias);
 	g_free(adapter);
 }
@@ -3171,11 +3191,11 @@ static void load_config(struct btd_adapter *adapter)
 		convert_config(adapter, filename, key_file);
 
 	/* Get alias */
-	adapter->stored_name = g_key_file_get_string(key_file, "General",
+	adapter->stored_alias = g_key_file_get_string(key_file, "General",
 								"Alias", NULL);
-	if (!adapter->stored_name) {
+	if (!adapter->stored_alias) {
 		/* fallback */
-		adapter->stored_name = g_key_file_get_string(key_file,
+		adapter->stored_alias = g_key_file_get_string(key_file,
 						"General", "Name", NULL);
 	}
 
