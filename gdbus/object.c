@@ -896,6 +896,11 @@ static DBusMessage *properties_set(DBusConnection *connection,
 						DBUS_ERROR_UNKNOWN_PROPERTY,
 						"No such property '%s'", name);
 
+	if (strcmp(dbus_message_iter_get_signature(&sub), property->type))
+		return g_dbus_create_error(message,
+					DBUS_ERROR_INVALID_SIGNATURE,
+					"Invalid signature for '%s'", name);
+
 	propdata = g_new(struct property_data, 1);
 	propdata->id = next_pending_property++;
 	propdata->message = dbus_message_ref(message);
