@@ -64,10 +64,11 @@ static void update_name(struct btd_adapter *adapter, gpointer user_data)
 
 		adapter_set_name(adapter, pretty_hostname);
 	} else {
-		int dev_id = adapter_get_dev_id(adapter);
+		uint16_t index = btd_adapter_get_index(adapter);
 		char *str;
 
-		str = g_strdup_printf("%s #%u", pretty_hostname, dev_id + 1);
+		/* Avoid "some device #0" names, start at #1 */
+		str = g_strdup_printf("%s #%u", pretty_hostname, index + 1);
 
 		DBG("name: %s", str);
 

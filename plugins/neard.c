@@ -295,7 +295,7 @@ static int process_eir(struct btd_adapter *adapter, uint8_t *eir, size_t size,
 
 	ba2str(&eir_data.addr, remote_address);
 
-	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
+	DBG("hci%u remote:%s", btd_adapter_get_index(adapter), remote_address);
 
 	device = adapter_get_device(adapter, remote_address, BDADDR_BREDR);
 
@@ -494,7 +494,7 @@ static int process_nokia_com_bt(struct btd_adapter *adapter, void *data,
 		return ret;
 
 	ba2str(&nokia.address, remote_address);
-	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
+	DBG("hci%u remote:%s", btd_adapter_get_index(adapter), remote_address);
 
 	device = adapter_get_device(adapter, remote_address, BDADDR_BREDR);
 
@@ -504,7 +504,7 @@ static int process_nokia_com_bt(struct btd_adapter *adapter, void *data,
 		return ret;
 	}
 
-	DBG("hci%u remote:%s", adapter_get_dev_id(adapter), remote_address);
+	DBG("hci%u remote:%s", btd_adapter_get_index(adapter), remote_address);
 
 	if (nokia.name) {
 		adapter_store_cached_name(adapter_get_address(adapter), remote,
