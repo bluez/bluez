@@ -139,7 +139,7 @@ struct btd_adapter {
 	char *path;			/* adapter object path */
 	uint8_t major_class;		/* configured major class */
 	uint8_t minor_class;		/* configured minor class */
-	char *name;			/* adapter name */
+	char *system_name;		/* configured system name */
 	char *stored_name;		/* stored adapter name */
 	char *modalias;			/* device id (modalias) */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
@@ -762,13 +762,13 @@ static int set_name(struct btd_adapter *adapter, const char *name)
 
 int adapter_set_name(struct btd_adapter *adapter, const char *name)
 {
-	if (g_strcmp0(adapter->name, name) == 0)
+	if (g_strcmp0(adapter->system_name, name) == 0)
 		return 0;
 
 	DBG("name: %s", name);
 
-	g_free(adapter->name);
-	adapter->name = g_strdup(name);
+	g_free(adapter->system_name);
+	adapter->system_name = g_strdup(name);
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Name");
@@ -1266,7 +1266,7 @@ static gboolean adapter_property_get_name(const GDBusPropertyTable *property,
 	struct btd_adapter *adapter = data;
 	const char *ptr;
 
-	ptr = adapter->name ?: "";
+	ptr = adapter->system_name ? : "";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
 
@@ -1282,7 +1282,7 @@ static gboolean adapter_property_get_alias(const GDBusPropertyTable *property,
 	if (adapter->stored_name)
 		ptr = adapter->stored_name;
 	else
-		ptr = adapter->name ?: "";
+		ptr = adapter->system_name ? : "";
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
 
@@ -1314,7 +1314,7 @@ static void adapter_property_set_alias(const GDBusPropertyTable *property,
 		}
 
 		/* restore to system name */
-		ret = set_name(adapter, adapter->name);
+		ret = set_name(adapter, adapter->system_name);
 	} else {
 		if (g_strcmp0(adapter->stored_name, name) == 0) {
 			/* alias already set, nothing to do */
@@ -2083,8 +2083,8 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	if (adapter->stored_name)
 		return adapter->stored_name;
 
-	if (adapter->name)
-		return adapter->name;
+	if (adapter->system_name)
+		return adapter->system_name;
 
 	return main_opts.name;
 }
@@ -2103,7 +2103,7 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	adapter->connect_list = g_slist_append(adapter->connect_list,
 						btd_device_ref(device));
 	DBG("%s added to %s's connect_list", device_get_path(device),
-								adapter->name);
+							adapter->system_name);
 
 	if (!mgmt_powered(adapter->current_settings))
 		return;
@@ -2130,7 +2130,7 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 
 	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
 	DBG("%s removed from %s's connect_list", device_get_path(device),
-								adapter->name);
+							adapter->system_name);
 	btd_device_unref(device);
 }
 
@@ -2282,7 +2282,7 @@ static void adapter_free(gpointer user_data)
 	g_slist_free(adapter->connections);
 
 	g_free(adapter->path);
-	g_free(adapter->name);
+	g_free(adapter->system_name);
 	g_free(adapter->stored_name);
 	g_free(adapter->modalias);
 	g_free(adapter);
