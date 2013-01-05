@@ -159,7 +159,6 @@ struct btd_adapter {
 	gboolean connecting;		/* Connect active */
 	guint waiting_to_connect;	/* # of devices waiting to connect */
 	gboolean discov_suspended;	/* Discovery suspended */
-	guint auto_timeout_id;		/* Automatic connections timeout */
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	bool toggle_discoverable;	/* discoverable needs to be changed */
