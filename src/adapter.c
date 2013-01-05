@@ -226,6 +226,14 @@ bool btd_adapter_is_default(struct btd_adapter *adapter)
 	return false;
 }
 
+uint16_t btd_adapter_get_index(struct btd_adapter *adapter)
+{
+	if (!adapter)
+		return MGMT_INDEX_NONE;
+
+	return adapter->dev_id;
+}
+
 static gboolean process_auth_queue(gpointer user_data);
 
 static void dev_class_changed_callback(uint16_t index, uint16_t length,
