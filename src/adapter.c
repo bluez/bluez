@@ -133,6 +133,8 @@ struct btd_adapter {
 
 	bdaddr_t bdaddr;		/* controller Bluetooth address */
 	uint32_t dev_class;		/* controller class of device */
+	char *name;			/* controller device name */
+	char *short_name;		/* controller short name */
 	uint32_t supported_settings;	/* controller supported settings */
 	uint32_t current_settings;	/* current controller settings */
 
@@ -705,6 +707,12 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 
 	DBG("Name: %s", rp->name);
 	DBG("Short name: %s", rp->short_name);
+
+	g_free(adapter->name);
+	adapter->name = g_strdup((const char *) rp->name);
+
+	g_free(adapter->short_name);
+	adapter->short_name = g_strdup((const char *) rp->short_name);
 
 	adapter_name_changed(adapter, (const char *) rp->name);
 }
@@ -2282,6 +2290,8 @@ static void adapter_free(gpointer user_data)
 	g_slist_free(adapter->connections);
 
 	g_free(adapter->path);
+	g_free(adapter->name);
+	g_free(adapter->short_name);
 	g_free(adapter->system_name);
 	g_free(adapter->stored_name);
 	g_free(adapter->modalias);
@@ -4147,6 +4157,8 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	bacpy(&adapter->bdaddr, &rp->bdaddr);
 	adapter->dev_class = rp->dev_class[0] | (rp->dev_class[1] << 8) |
 						(rp->dev_class[2] << 16);
+	adapter->name = g_strdup((const char *) rp->name);
+	adapter->short_name = g_strdup((const char *) rp->short_name);
 
 	adapter->supported_settings = btohs(rp->supported_settings);
 	adapter->current_settings = btohs(rp->current_settings);
