@@ -206,39 +206,6 @@ static int mgmt_set_low_energy(int index, gboolean le)
 	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
 }
 
-static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
-{
-	uint32_t settings, *ev = buf;
-	struct controller_info *info;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*ev)) {
-		error("Too small new settings event");
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in new_settings event", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	adapter = adapter_find_by_id(index);
-	if (adapter == NULL) {
-		DBG("Adapter not found");
-		return;
-	}
-
-	settings = bt_get_le32(ev);
-
-	DBG("index %d settings 0x%08x", index, settings);
-
-	adapter_update_settings(adapter, settings);
-
-	info->current_settings = settings;
-}
-
 static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
 								uint8_t status)
 {
@@ -1010,10 +977,10 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("set_pairable complete");
 		break;
 	case MGMT_OP_SET_SSP:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_ssp complete");
 		break;
 	case MGMT_OP_SET_LE:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_le complete");
 		break;
 	case MGMT_OP_ADD_UUID:
 		DBG("add_uuid complete");
