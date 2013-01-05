@@ -251,10 +251,10 @@ static void dev_class_changed_callback(uint16_t index, uint16_t length,
 
 	dev_class = rp->val[0] | (rp->val[1] << 8) | (rp->val[2] << 16);
 
-	DBG("Class: 0x%06x", dev_class);
-
 	if (dev_class == adapter->dev_class)
 		return;
+
+	DBG("Class: 0x%06x", dev_class);
 
 	adapter->dev_class = dev_class;
 
@@ -462,14 +462,11 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 {
 	uint32_t changed_mask;
 
-	if (adapter->current_settings == settings)
-		return;
-
-	DBG("Settings: 0x%08x", settings);
-
 	changed_mask = adapter->current_settings ^ settings;
 
 	adapter->current_settings = settings;
+
+	DBG("Changed settings: 0x%08x", changed_mask);
 
 	if (changed_mask & MGMT_SETTING_POWERED) {
 	        g_dbus_emit_property_changed(dbus_conn, adapter->path,
@@ -513,6 +510,9 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 
 	settings = bt_get_le32(param);
 
+	if (settings == adapter->current_settings)
+		return;
+
 	DBG("Settings: 0x%08x", settings);
 
 	settings_changed(adapter, settings);
@@ -522,7 +522,6 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	uint32_t settings;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to set mode: %s (0x%02x)",
@@ -530,16 +529,12 @@ static void set_mode_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(settings)) {
-		error("Wrong size of set mode response");
-		return;
-	}
-
-	settings = bt_get_le32(param);
-
-	DBG("Settings: 0x%08x", settings);
-
-	settings_changed(adapter, settings);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	new_settings_callback(adapter->dev_id, length, param, adapter);
 }
 
 static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
@@ -733,12 +728,12 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	DBG("Name: %s", rp->name);
-	DBG("Short name: %s", rp->short_name);
-
 	if (!g_strcmp0(adapter->short_name, (const char *) rp->short_name) &&
 			!g_strcmp0(adapter->name, (const char *) rp->name))
 		return;
+
+	DBG("Name: %s", rp->name);
+	DBG("Short name: %s", rp->short_name);
 
 	g_free(adapter->name);
 	adapter->name = g_strdup((const char *) rp->name);
@@ -1444,7 +1439,6 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 {
 	struct property_set_data *data = user_data;
 	struct btd_adapter *adapter = data->adapter;
-	uint32_t settings;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to set mode: %s (0x%02x)",
@@ -1455,21 +1449,14 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(settings)) {
-		error("Wrong size of set mode response");
-		g_dbus_pending_property_error(data->id,
-						ERROR_INTERFACE ".Failed",
-						"Invalid response data");
-		return;
-	}
-
-	settings = bt_get_le32(param);
-
-	DBG("Settings: 0x%08x", settings);
-
 	g_dbus_pending_property_success(data->id);
 
-	settings_changed(adapter, settings);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	new_settings_callback(adapter->dev_id, length, param, adapter);
 }
 
 static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
