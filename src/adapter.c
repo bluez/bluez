@@ -197,6 +197,35 @@ static struct btd_adapter *btd_adapter_lookup(uint16_t index)
 	return NULL;
 }
 
+struct btd_adapter *btd_adapter_get_default(void)
+{
+	GList *list;
+
+	if (default_adapter_id < 0)
+		return NULL;
+
+	for (list = g_list_first(adapter_list); list;
+						list = g_list_next(list)) {
+		struct btd_adapter *adapter = list->data;
+
+		if (adapter->dev_id == default_adapter_id)
+			return adapter;
+	}
+
+	return NULL;
+}
+
+bool btd_adapter_is_default(struct btd_adapter *adapter)
+{
+	if (!adapter)
+		return false;
+
+	if (adapter->dev_id == default_adapter_id)
+		return true;
+
+	return false;
+}
+
 static gboolean process_auth_queue(gpointer user_data);
 
 static void dev_class_changed_callback(uint16_t index, uint16_t length,
@@ -4037,7 +4066,7 @@ struct btd_adapter *adapter_find_by_id(int id)
 
 struct btd_adapter *adapter_get_default(void)
 {
-	return adapter_find_by_id(default_adapter_id);
+	return btd_adapter_get_default();
 }
 
 void adapter_foreach(adapter_cb func, gpointer user_data)
@@ -4112,6 +4141,8 @@ static int adapter_unregister(struct btd_adapter *adapter)
 
 	if (default_adapter_id == adapter->dev_id || default_adapter_id < 0)
 		default_adapter_id = hci_get_route(NULL);
+
+	adapter_list = g_list_remove(adapter_list, adapter);
 
 	adapter_remove(adapter);
 	btd_adapter_unref(adapter);
