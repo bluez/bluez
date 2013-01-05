@@ -56,14 +56,10 @@ static char *pretty_hostname = NULL;
 
 static void update_name(struct btd_adapter *adapter, gpointer user_data)
 {
-	struct btd_adapter *default_adapter;
-
 	if (pretty_hostname == NULL)
 		return;
 
-	default_adapter = adapter_get_default();
-
-	if (default_adapter == NULL || adapter == default_adapter) {
+	if (btd_adapter_is_default(adapter)) {
 		DBG("name: %s", pretty_hostname);
 
 		adapter_set_name(adapter, pretty_hostname);

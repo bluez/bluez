@@ -618,7 +618,8 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 
 	DBG("");
 
-	adapter = adapter_get_default();
+	adapter = btd_adapter_get_default();
+
 	err = check_adapter(adapter);
 	if (err < 0)
 		return error_reply(msg, -err);
@@ -662,7 +663,8 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 
 	DBG("");
 
-	adapter = adapter_get_default();
+	adapter = btd_adapter_get_default();
+
 	err = check_adapter(adapter);
 	if (err < 0)
 		return error_reply(msg, -err);
@@ -726,7 +728,8 @@ static void neard_appeared(DBusConnection *conn, void *user_data)
 	 * due to neard crash or release before action was completed, postpone
 	 * register until action is finished.
 	 */
-	adapter = adapter_get_default();
+	adapter = btd_adapter_get_default();
+
 	if (adapter && btd_adapter_check_oob_handler(adapter))
 		agent_register_postpone = TRUE;
 	else
