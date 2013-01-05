@@ -1261,67 +1261,56 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
-static gboolean adapter_property_get_address(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_address(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
-	char srcaddr[18];
-	const char *ptr;
+	struct btd_adapter *adapter = user_data;
+	char addr[18];
+	const char *str = addr;
 
-	ba2str(&adapter->bdaddr, srcaddr);
-	ptr = srcaddr;
+	ba2str(&adapter->bdaddr, addr);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
 
 	return TRUE;
 }
 
-static gboolean adapter_property_get_name(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
-	const char *ptr;
+	struct btd_adapter *adapter = user_data;
+	const char *str = adapter->system_name ? : "";
 
-	ptr = adapter->system_name ? : "";
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
 
 	return TRUE;
 }
 
-static gboolean adapter_property_get_alias(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_alias(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
-	const char *ptr;
+	struct btd_adapter *adapter = user_data;
+	const char *str;
 
 	if (adapter->stored_name)
-		ptr = adapter->stored_name;
+		str = adapter->stored_name;
 	else
-		ptr = adapter->system_name ? : "";
+		str = adapter->system_name ? : "";
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &ptr);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
 
 	return TRUE;
 }
 
-static void adapter_property_set_alias(const GDBusPropertyTable *property,
-					DBusMessageIter *value,
-					GDBusPendingPropertySet id, void *data)
+static void property_set_alias(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	const char *name;
 	int ret;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_STRING) {
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-		return;
-	}
-
-	dbus_message_iter_get_basic(value, &name);
+	dbus_message_iter_get_basic(iter, &name);
 
 	if (g_str_equal(name, "")  == TRUE) {
 		if (adapter->stored_name == NULL) {
@@ -1366,13 +1355,13 @@ static void adapter_property_set_alias(const GDBusPropertyTable *property,
 							strerror(-ret));
 }
 
-static gboolean adapter_property_get_class(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_class(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
+	dbus_uint32_t val = adapter->dev_class;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-							&adapter->dev_class);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &val);
 
 	return TRUE;
 }
@@ -1616,11 +1605,10 @@ static void property_set_pairable_timeout(const GDBusPropertyTable *property,
 	trigger_pairable_timeout(adapter);
 }
 
-static gboolean adapter_property_get_discovering(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_discovering(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	dbus_bool_t discovering = adapter->discovery ? TRUE : FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &discovering);
@@ -1628,10 +1616,10 @@ static gboolean adapter_property_get_discovering(
 	return TRUE;
 }
 
-static gboolean adapter_property_get_uuids(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_uuids(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	DBusMessageIter entry;
 	sdp_list_t *l;
 
@@ -1656,25 +1644,21 @@ static gboolean adapter_property_get_uuids(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean adapter_property_exists_modalias(
-				const GDBusPropertyTable *property, void *data)
+static gboolean property_exists_modalias(const GDBusPropertyTable *property,
+							void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 
 	return adapter->modalias ? TRUE : FALSE;
 }
 
-static gboolean adapter_property_get_modalias(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_modalias(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
+	const char *str = adapter->modalias ? : "";
 
-	if (!adapter->modalias)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-							&adapter->modalias);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
 
 	return TRUE;
 }
@@ -1728,11 +1712,10 @@ static const GDBusMethodTable adapter_methods[] = {
 };
 
 static const GDBusPropertyTable adapter_properties[] = {
-	{ "Address", "s", adapter_property_get_address },
-	{ "Name", "s", adapter_property_get_name },
-	{ "Alias", "s", adapter_property_get_alias,
-					adapter_property_set_alias },
-	{ "Class", "u", adapter_property_get_class },
+	{ "Address", "s", property_get_address },
+	{ "Name", "s", property_get_name },
+	{ "Alias", "s", property_get_alias, property_set_alias },
+	{ "Class", "u", property_get_class },
 	{ "Powered", "b", property_get_powered, property_set_powered },
 	{ "Discoverable", "b", property_get_discoverable,
 					property_set_discoverable },
@@ -1741,10 +1724,10 @@ static const GDBusPropertyTable adapter_properties[] = {
 	{ "Pairable", "b", property_get_pairable, property_set_pairable },
 	{ "PairableTimeout", "u", property_get_pairable_timeout,
 					property_set_pairable_timeout },
-	{ "Discovering", "b", adapter_property_get_discovering },
-	{ "UUIDs", "as", adapter_property_get_uuids },
-	{ "Modalias", "s", adapter_property_get_modalias, NULL,
-					adapter_property_exists_modalias },
+	{ "Discovering", "b", property_get_discovering },
+	{ "UUIDs", "as", property_get_uuids },
+	{ "Modalias", "s", property_get_modalias, NULL,
+					property_exists_modalias },
 	{ }
 };
 
