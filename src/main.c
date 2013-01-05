@@ -59,7 +59,6 @@
 
 #define BLUEZ_NAME "org.bluez"
 
-#define DEFAULT_AUTO_CONNECT_TIMEOUT  60 /* 60 seconds */
 #define DEFAULT_PAIRABLE_TIMEOUT       0 /* disabled */
 #define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
@@ -272,7 +271,6 @@ static void init_defaults(void)
 	memset(&main_opts, 0, sizeof(main_opts));
 	main_opts.name = g_strdup_printf("BlueZ %s", VERSION);
 	main_opts.class = 0x000000;
-	main_opts.autoto = DEFAULT_AUTO_CONNECT_TIMEOUT;
 	main_opts.pairto = DEFAULT_PAIRABLE_TIMEOUT;
 	main_opts.discovto = DEFAULT_DISCOVERABLE_TIMEOUT;
 	main_opts.reverse_sdp = TRUE;
