@@ -56,7 +56,6 @@
 static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
-	uint32_t supported_settings;
 	uint32_t current_settings;
 	GSList *connections;
 	uint8_t discov_type;
@@ -720,8 +719,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 
 	info = &controllers[index];
 
-	memcpy(&info->supported_settings, &rp->supported_settings,
-					sizeof(info->supported_settings));
 	memcpy(&info->current_settings, &rp->current_settings,
 					sizeof(info->current_settings));
 
