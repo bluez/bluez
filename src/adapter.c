@@ -165,8 +165,6 @@ struct btd_adapter {
 	bool toggle_discoverable;	/* discoverable needs to be changed */
 	gboolean initialized;
 
-	gboolean off_requested;		/* DEVDOWN ioctl was called */
-
 	GSList *pin_callbacks;
 
 	GSList *drivers;
@@ -2102,9 +2100,6 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	if (!mgmt_powered(adapter->current_settings))
 		return;
 
-	if (adapter->off_requested)
-		return;
-
 	if (adapter->scanning_session)
 		return;
 
@@ -2134,8 +2129,6 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 static void adapter_start(struct btd_adapter *adapter)
 {
 	struct session_req *req;
-
-	adapter->off_requested = FALSE;
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
 						ADAPTER_INTERFACE, "Powered");
@@ -2221,8 +2214,6 @@ static void adapter_stop(struct btd_adapter *adapter)
 		struct btd_device *device = adapter->connections->data;
 		adapter_remove_connection(adapter, device);
 	}
-
-	adapter->off_requested = FALSE;
 
 	if (emit_discovering)
 		g_dbus_emit_property_changed(conn, adapter->path,
