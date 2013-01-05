@@ -696,6 +696,10 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 	DBG("Name: %s", rp->name);
 	DBG("Short name: %s", rp->short_name);
 
+	if (!g_strcmp0(adapter->short_name, (const char *) rp->short_name) &&
+			!g_strcmp0(adapter->name, (const char *) rp->name))
+		return;
+
 	g_free(adapter->name);
 	adapter->name = g_strdup((const char *) rp->name);
 
@@ -745,10 +749,8 @@ static void set_local_name_complete(uint8_t status, uint16_t length,
 	}
 
 	/*
-	 * Call function to indicate local name changed.
-	 *
-	 * The parameters are idential and that also the task that
-	 * is required in both cases. So it is safe to just call the
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
 	 * event handling functions here.
 	 */
 	local_name_changed_callback(adapter->dev_id, length, param, adapter);
