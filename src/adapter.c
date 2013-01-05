@@ -407,11 +407,34 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	return session_ref(req);
 }
 
-static void set_discoverable(struct btd_adapter *adapter,
-			gboolean discoverable, GDBusPendingPropertySet id)
+static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 {
-	mgmt_set_discoverable(adapter->dev_id, discoverable, 0);
-	g_dbus_pending_property_success(id);
+	uint32_t changed_mask;
+
+	if (adapter->current_settings == settings)
+		return;
+
+	DBG("Settings: 0x%08x", settings);
+
+	changed_mask = adapter->current_settings ^ settings;
+
+	adapter->current_settings = settings;
+
+	if (changed_mask & MGMT_SETTING_POWERED)
+	        g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Powered");
+
+	if (changed_mask & MGMT_SETTING_CONNECTABLE)
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Connectable");
+
+	if (changed_mask & MGMT_SETTING_DISCOVERABLE)
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Discoverable");
+
+	if (changed_mask & MGMT_SETTING_PAIRABLE)
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Pairable");
 }
 
 static void new_settings_callback(uint16_t index, uint16_t length,
@@ -429,7 +452,72 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 
 	DBG("Settings: 0x%08x", settings);
 
-	adapter_update_settings(adapter, settings);
+	settings_changed(adapter, settings);
+}
+
+static void set_mode_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	uint32_t settings;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set mode: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(settings)) {
+		error("Wrong size of set mode response");
+		return;
+	}
+
+	settings = bt_get_le32(param);
+
+	DBG("Settings: 0x%08x", settings);
+
+	settings_changed(adapter, settings);
+}
+
+static bool set_mode(struct btd_adapter *adapter, uint16_t opcode,
+							uint8_t mode)
+{
+	struct mgmt_mode cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = mode;
+
+	DBG("sending set mode command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, opcode,
+				adapter->dev_id, sizeof(cp), &cp,
+				set_mode_complete, adapter, NULL) > 0)
+		return true;
+
+	error("Failed to set mode for index %u", adapter->dev_id);
+
+	return false;
+}
+
+static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
+							uint16_t timeout)
+{
+	struct mgmt_cp_set_discoverable cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = mode;
+	cp.timeout = htobs(timeout);
+
+	DBG("sending set mode command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DISCOVERABLE,
+				adapter->dev_id, sizeof(cp), &cp,
+				set_mode_complete, adapter, NULL) > 0)
+		return true;
+
+	error("Failed to set mode for index %u", adapter->dev_id);
+
+	return false;
 }
 
 static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
@@ -438,7 +526,7 @@ static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
 	if (pairable == mgmt_pairable(adapter->current_settings))
 		goto done;
 
-	/* TODO: disable pairable setting */
+	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
 
 done:
 	if (reply)
@@ -589,7 +677,7 @@ static void set_discoverable_timeout(struct btd_adapter *adapter,
 	}
 
 	if (mgmt_discoverable(adapter->current_settings))
-		mgmt_set_discoverable(adapter->dev_id, TRUE, timeout);
+		set_discoverable(adapter, 0x01, timeout);
 
 	adapter->discov_timeout = timeout;
 
@@ -1301,18 +1389,14 @@ static gboolean adapter_property_get_class(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gboolean property_get_powered(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *user_data)
+static gboolean property_get_mode(struct btd_adapter *adapter,
+				uint32_t setting, DBusMessageIter *iter)
 {
-	struct btd_adapter *adapter = user_data;
-	dbus_bool_t powered;
+	dbus_bool_t enable;
 
-	if (adapter->current_settings & MGMT_SETTING_POWERED)
-		powered = TRUE;
-	else
-		powered = FALSE;
+	enable = (adapter->current_settings & setting) ? TRUE : FALSE;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &powered);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &enable);
 
 	return TRUE;
 }
@@ -1322,7 +1406,7 @@ struct property_set_data {
 	GDBusPendingPropertySet id;
 };
 
-static void set_powered_complete(uint8_t status, uint16_t length,
+static void property_set_mode_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct property_set_data *data = user_data;
@@ -1330,7 +1414,7 @@ static void set_powered_complete(uint8_t status, uint16_t length,
 	uint32_t settings;
 
 	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set powered: %s (0x%02x)",
+		error("Failed to set mode: %s (0x%02x)",
 						mgmt_errstr(status), status);
 		g_dbus_pending_property_error(data->id,
 						ERROR_INTERFACE ".Failed",
@@ -1339,7 +1423,7 @@ static void set_powered_complete(uint8_t status, uint16_t length,
 	}
 
 	if (length < sizeof(settings)) {
-		error("Wrong size of set powered response");
+		error("Wrong size of set mode response");
 		g_dbus_pending_property_error(data->id,
 						ERROR_INTERFACE ".Failed",
 						"Invalid response data");
@@ -1350,39 +1434,64 @@ static void set_powered_complete(uint8_t status, uint16_t length,
 
 	DBG("Settings: 0x%08x", settings);
 
-	adapter->current_settings = settings;
-
 	g_dbus_pending_property_success(data->id);
 
-	g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "Powered");
+	settings_changed(adapter, settings);
 }
 
-static void property_set_powered(const GDBusPropertyTable *property,
-				DBusMessageIter *value,
-				GDBusPendingPropertySet id, void *user_data)
+static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
+						DBusMessageIter *value,
+						GDBusPendingPropertySet id)
 {
-	struct btd_adapter *adapter = user_data;
 	struct property_set_data *data;
-	struct mgmt_mode cp;
-	dbus_bool_t powered, current_powered;
+	struct mgmt_cp_set_discoverable cp;
+	void *param;
+	dbus_bool_t enable, current_enable;
+	uint16_t opcode, len;
+	uint8_t mode;
 
-	dbus_message_iter_get_basic(value, &powered);
+	dbus_message_iter_get_basic(value, &enable);
 
-	if (adapter->current_settings & MGMT_SETTING_POWERED)
-		current_powered = TRUE;
+	if (adapter->current_settings & setting)
+		current_enable = TRUE;
 	else
-		current_powered = FALSE;
+		current_enable = FALSE;
 
-	if (powered == current_powered) {
+	if (enable == current_enable) {
 		g_dbus_pending_property_success(id);
 		return;
 	}
 
-	memset(&cp, 0, sizeof(cp));
-	cp.val = (powered == TRUE) ? 0x01 : 0x00;
+	mode = (enable == TRUE) ? 0x01 : 0x00;
 
-	DBG("sending set powered command for index %u", adapter->dev_id);
+	switch (setting) {
+	case MGMT_SETTING_POWERED:
+		opcode = MGMT_OP_SET_POWERED;
+		param = &mode;
+		len = sizeof(mode);
+		break;
+	case MGMT_SETTING_DISCOVERABLE:
+		memset(&cp, 0, sizeof(cp));
+		cp.val = mode;
+		cp.timeout = htobs(0);
+
+		opcode = MGMT_OP_SET_DISCOVERABLE;
+		param = &cp;
+		len = sizeof(cp);
+		break;
+	case MGMT_SETTING_PAIRABLE:
+		opcode = MGMT_OP_SET_PAIRABLE;
+		param = &mode;
+		len = sizeof(mode);
+		break;
+	default:
+		goto failed;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = (enable == TRUE) ? 0x01 : 0x00;
+
+	DBG("sending set mode command for index %u", adapter->dev_id);
 
 	data = g_try_new0(struct property_set_data, 1);
 	if (!data)
@@ -1391,147 +1500,67 @@ static void property_set_powered(const GDBusPropertyTable *property,
 	data->adapter = adapter;
 	data->id = id;
 
-	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_POWERED,
-				adapter->dev_id, sizeof(cp), &cp,
-				set_powered_complete, data, g_free) > 0)
+	if (mgmt_send(adapter->mgmt, opcode, adapter->dev_id, len, param,
+				property_set_mode_complete, data, g_free) > 0)
 		return;
 
 	g_free(data);
 
 failed:
-	error("Failed to set powered for index %u", adapter->dev_id);
+	error("Failed to set mode for index %u", adapter->dev_id);
 
 	g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed", NULL);
+}
+
+static gboolean property_get_powered(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	return property_get_mode(adapter, MGMT_SETTING_POWERED, iter);
+}
+
+static void property_set_powered(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	property_set_mode(adapter, MGMT_SETTING_POWERED, iter, id);
 }
 
 static gboolean property_get_pairable(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	dbus_bool_t pairable;
 
-	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
-		pairable = TRUE;
-	else
-		pairable = FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &pairable);
-
-	return TRUE;
-}
-
-static void set_pairable_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	struct property_set_data *data = user_data;
-	struct btd_adapter *adapter = data->adapter;
-	uint32_t settings;
-
-	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set pairable: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		g_dbus_pending_property_error(data->id,
-						ERROR_INTERFACE ".Failed",
-						mgmt_errstr(status));
-		return;
-	}
-
-	if (length < sizeof(settings)) {
-		error("Wrong size of set pairable response");
-		g_dbus_pending_property_error(data->id,
-						ERROR_INTERFACE ".Failed",
-						"Invalid response data");
-		return;
-	}
-
-	settings = bt_get_le32(param);
-
-	DBG("Settings: 0x%08x", settings);
-
-	adapter->current_settings = settings;
-
-	g_dbus_pending_property_success(data->id);
-
-	g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "Pairable");
+	return property_get_mode(adapter, MGMT_SETTING_PAIRABLE, iter);
 }
 
 static void property_set_pairable(const GDBusPropertyTable *property,
-				DBusMessageIter *value,
+				DBusMessageIter *iter,
 				GDBusPendingPropertySet id, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	struct property_set_data *data;
-	struct mgmt_mode cp;
-	dbus_bool_t pairable, current_pairable;
 
-	dbus_message_iter_get_basic(value, &pairable);
-
-	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
-		current_pairable = TRUE;
-	else
-		current_pairable = FALSE;
-
-	if (pairable == current_pairable) {
-		g_dbus_pending_property_success(id);
-		return;
-	}
-
-	memset(&cp, 0, sizeof(cp));
-	cp.val = (pairable == TRUE) ? 0x01 : 0x00;
-
-	DBG("sending set pairable command for index %u", adapter->dev_id);
-
-	data = g_try_new0(struct property_set_data, 1);
-	if (!data)
-		goto failed;
-
-	data->adapter = adapter;
-	data->id = id;
-
-	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_PAIRABLE,
-				adapter->dev_id, sizeof(cp), &cp,
-				set_pairable_complete, data, g_free) > 0)
-		return;
-
-	g_free(data);
-
-failed:
-	error("Failed to set pairable for index %u", adapter->dev_id);
-
-	g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed", NULL);
+	property_set_mode(adapter, MGMT_SETTING_PAIRABLE, iter, id);
 }
 
-static gboolean adapter_property_get_discoverable(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_discoverable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
-	dbus_bool_t value;
+	struct btd_adapter *adapter = user_data;
 
-	value = mgmt_discoverable(adapter->current_settings) ? TRUE : FALSE;
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
-
-	return TRUE;
+	return property_get_mode(adapter, MGMT_SETTING_DISCOVERABLE, iter);
 }
 
-static void adapter_property_set_discoverable(
-				const GDBusPropertyTable *property,
-				DBusMessageIter *value,
-				GDBusPendingPropertySet id, void *data)
+static void property_set_discoverable(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
 {
-	dbus_bool_t discoverable;
+	struct btd_adapter *adapter = user_data;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-		return;
-	}
-
-	dbus_message_iter_get_basic(value, &discoverable);
-
-	set_discoverable(data, discoverable, id);
+	property_set_mode(adapter, MGMT_SETTING_DISCOVERABLE, iter, id);
 }
 
 static gboolean adapter_property_get_discoverable_timeout(
@@ -1712,8 +1741,8 @@ static const GDBusPropertyTable adapter_properties[] = {
 	{ "Class", "u", adapter_property_get_class },
 	{ "Powered", "b", property_get_powered, property_set_powered },
 	{ "Pairable", "b", property_get_pairable, property_set_pairable },
-	{ "Discoverable", "b", adapter_property_get_discoverable,
-					adapter_property_set_discoverable },
+	{ "Discoverable", "b", property_get_discoverable,
+						property_set_discoverable },
 	{ "DiscoverableTimeout", "u",
 			adapter_property_get_discoverable_timeout,
 			adapter_property_set_discoverable_timeout },
@@ -2237,8 +2266,7 @@ static void adapter_connectable_changed(struct btd_adapter *adapter,
 	if (adapter->toggle_discoverable) {
 		bool discov = mgmt_discoverable(adapter->current_settings);
 		DBG("toggling discoverable from %u to %u", discov, !discov);
-		mgmt_set_discoverable(adapter->dev_id, !discov,
-						adapter->discov_timeout);
+		set_discoverable(adapter, !discov, adapter->discov_timeout);
 		adapter->toggle_discoverable = false;
 	}
 }
@@ -3265,20 +3293,16 @@ static void load_config(struct btd_adapter *adapter)
 		gerr = NULL;
 	}
 
-	if (!mgmt_connectable(adapter->current_settings))
-		mgmt_set_connectable(adapter->dev_id, TRUE);
-
 	if (adapter->discov_timeout > 0 &&
 				mgmt_discoverable(adapter->current_settings)) {
 		if (mgmt_connectable(adapter->current_settings))
-			mgmt_set_discoverable(adapter->dev_id, FALSE, 0);
+			set_discoverable(adapter, 0x00, 0);
 		else
 			adapter->toggle_discoverable = true;
 	} else if (stored_discoverable !=
 				mgmt_discoverable(adapter->current_settings)) {
 		if (mgmt_connectable(adapter->current_settings))
-			mgmt_set_discoverable(adapter->dev_id,
-						stored_discoverable,
+			set_discoverable(adapter, stored_discoverable,
 						adapter->discov_timeout);
 		else
 			adapter->toggle_discoverable = true;
@@ -3380,7 +3404,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	g_slist_free(adapter->pin_callbacks);
 
-	/* TODO: power off controller */
+	set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
 }
 
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
@@ -3862,7 +3886,7 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	if (mgmt_powered(adapter->current_settings))
 		return 0;
 
-	/* TODO: power on controller */
+	set_mode(adapter, MGMT_OP_SET_POWERED, 0x01);
 
 	return 0;
 }
@@ -3902,7 +3926,9 @@ int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 	if (!mgmt_powered(adapter->current_settings))
 		return -EINVAL;
 
-	return mgmt_set_fast_connectable(adapter->dev_id, enable);
+	set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, enable ? 0x01 : 0x00);
+
+	return 0;
 }
 
 int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
@@ -4219,6 +4245,9 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
 
 	set_name(adapter, btd_adapter_get_name(adapter));
+
+	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
+	set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 
 	if (mgmt_powered(rp->current_settings))
 		adapter_start(adapter);
