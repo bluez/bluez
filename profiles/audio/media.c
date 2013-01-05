@@ -1181,6 +1181,132 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 	return TRUE;
 }
 
+static gboolean parse_player_metadata(struct media_player *mp,
+							DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+	DBusMessageIter var;
+	GHashTable *track;
+	int ctype;
+	gboolean title = FALSE;
+	uint64_t uid;
+
+	ctype = dbus_message_iter_get_arg_type(iter);
+	if (ctype != DBUS_TYPE_ARRAY)
+		return FALSE;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	track = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
+								g_free);
+
+	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
+							DBUS_TYPE_INVALID) {
+		DBusMessageIter entry;
+		const char *key;
+		const char *string;
+		char valstr[20];
+		char *value;
+		uint32_t num;
+		int type;
+
+		if (ctype != DBUS_TYPE_DICT_ENTRY)
+			goto parse_error;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			goto parse_error;
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			goto parse_error;
+
+		dbus_message_iter_recurse(&entry, &var);
+
+		type = dbus_message_iter_get_arg_type(&var);
+
+		if (strcasecmp(key, "Title") == 0) {
+			if (type != DBUS_TYPE_STRING)
+				goto parse_error;
+			title = TRUE;
+			dbus_message_iter_get_basic(&var, &string);
+		} else if (strcasecmp(key, "Artist") == 0) {
+			if (type != DBUS_TYPE_STRING)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &string);
+		} else if (strcasecmp(key, "Album") == 0) {
+			if (type != DBUS_TYPE_STRING)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &string);
+		} else if (strcasecmp(key, "Genre") == 0) {
+			if (type != DBUS_TYPE_STRING)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &string);
+		} else if (strcasecmp(key, "Duration") == 0) {
+			if (type != DBUS_TYPE_UINT32)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &num);
+			mp->duration = num;
+		} else if (strcasecmp(key, "TrackNumber") == 0) {
+			if (type != DBUS_TYPE_UINT32)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &num);
+		} else if (strcasecmp(key, "NumberOfTracks") == 0) {
+			if (type != DBUS_TYPE_UINT32)
+				goto parse_error;
+
+			dbus_message_iter_get_basic(&var, &num);
+		} else
+			goto parse_error;
+
+		switch (type) {
+		case DBUS_TYPE_STRING:
+			value = g_strdup(string);
+			break;
+		default:
+			snprintf(valstr, 20, "%u", num);
+			value = g_strdup(valstr);
+		}
+
+		DBG("%s=%s", key, value);
+		g_hash_table_replace(track, g_strdup(key), value);
+		dbus_message_iter_next(&dict);
+	}
+
+	if (g_hash_table_size(track) == 0) {
+		g_hash_table_unref(track);
+		track = NULL;
+	} else if (title == FALSE)
+		g_hash_table_insert(track, g_strdup("Title"), g_strdup(""));
+
+	if (mp->track != NULL)
+		g_hash_table_unref(mp->track);
+
+	mp->track = track;
+	mp->position = 0;
+	g_timer_start(mp->timer);
+	uid = get_uid(mp);
+
+	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, &uid);
+	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_START,
+								NULL);
+
+	return TRUE;
+
+parse_error:
+	if (track)
+		g_hash_table_unref(track);
+
+	return FALSE;
+}
+
 static gboolean set_player_property(struct media_player *mp, const char *key,
 							DBusMessageIter *entry)
 {
@@ -1198,6 +1324,9 @@ static gboolean set_player_property(struct media_player *mp, const char *key,
 
 	if (strcasecmp(key, "Position") == 0)
 		return set_position(mp, &var);
+
+	if (strcasecmp(key, "Track") == 0)
+		return parse_player_metadata(mp, &var);
 
 	if (dbus_message_iter_get_arg_type(&var) != DBUS_TYPE_STRING)
 		return FALSE;
@@ -1274,151 +1403,6 @@ static gboolean properties_changed(DBusConnection *connection, DBusMessage *msg,
 	return TRUE;
 }
 
-static gboolean parse_player_metadata(struct media_player *mp,
-							DBusMessageIter *iter)
-{
-	DBusMessageIter dict;
-	DBusMessageIter var;
-	GHashTable *track;
-	int ctype;
-	gboolean title = FALSE;
-	uint64_t uid;
-
-	ctype = dbus_message_iter_get_arg_type(iter);
-	if (ctype != DBUS_TYPE_ARRAY)
-		return FALSE;
-
-	dbus_message_iter_recurse(iter, &dict);
-
-	track = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
-								g_free);
-
-	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
-							DBUS_TYPE_INVALID) {
-		DBusMessageIter entry;
-		const char *key;
-		const char *string;
-		char valstr[20];
-		char *value;
-		uint32_t num;
-		int type;
-
-		if (ctype != DBUS_TYPE_DICT_ENTRY)
-			goto parse_error;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			goto parse_error;
-
-		dbus_message_iter_get_basic(&entry, &key);
-		dbus_message_iter_next(&entry);
-
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
-			goto parse_error;
-
-		dbus_message_iter_recurse(&entry, &var);
-
-		type = dbus_message_iter_get_arg_type(&var);
-
-		if (strcasecmp(key, "Title") == 0) {
-			if (type != DBUS_TYPE_STRING)
-				goto parse_error;
-			title = TRUE;
-			dbus_message_iter_get_basic(&var, &string);
-		} else if (strcasecmp(key, "Artist") == 0) {
-			if (type != DBUS_TYPE_STRING)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &string);
-		} else if (strcasecmp(key, "Album") == 0) {
-			if (type != DBUS_TYPE_STRING)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &string);
-		} else if (strcasecmp(key, "Genre") == 0) {
-			if (type != DBUS_TYPE_STRING)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &string);
-		} else if (strcasecmp(key, "Duration") == 0) {
-			if (type != DBUS_TYPE_UINT32)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &num);
-			mp->duration = num;
-		} else if (strcasecmp(key, "Track") == 0) {
-			if (type != DBUS_TYPE_UINT32)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &num);
-		} else if (strcasecmp(key, "NumberOfTracks") == 0) {
-			if (type != DBUS_TYPE_UINT32)
-				goto parse_error;
-
-			dbus_message_iter_get_basic(&var, &num);
-		} else
-			goto parse_error;
-
-		switch (type) {
-		case DBUS_TYPE_STRING:
-			value = g_strdup(string);
-			break;
-		default:
-			snprintf(valstr, 20, "%u", num);
-			value = g_strdup(valstr);
-		}
-
-		DBG("%s=%s", key, value);
-		g_hash_table_replace(track, g_strdup(key), value);
-		dbus_message_iter_next(&dict);
-	}
-
-	if (g_hash_table_size(track) == 0) {
-		g_hash_table_unref(track);
-		track = NULL;
-	} else if (title == FALSE)
-		g_hash_table_insert(track, g_strdup("Title"), g_strdup(""));
-
-	if (mp->track != NULL)
-		g_hash_table_unref(mp->track);
-
-	mp->track = track;
-	mp->position = 0;
-	g_timer_start(mp->timer);
-	uid = get_uid(mp);
-
-	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_CHANGED, &uid);
-	avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_START,
-								NULL);
-
-	return TRUE;
-
-parse_error:
-	if (track)
-		g_hash_table_unref(track);
-
-	return FALSE;
-}
-
-static gboolean track_changed(DBusConnection *connection, DBusMessage *msg,
-							void *user_data)
-{
-	struct media_player *mp = user_data;
-	DBusMessageIter iter;
-
-	DBG("sender=%s path=%s", mp->sender, mp->path);
-
-	dbus_message_iter_init(msg, &iter);
-
-	if (parse_player_metadata(mp, &iter) == FALSE) {
-		error("Unexpected signature in %s.%s signal",
-					dbus_message_get_interface(msg),
-					dbus_message_get_member(msg));
-	}
-
-	return TRUE;
-}
-
 static struct media_player *media_player_create(struct media_adapter *adapter,
 						const char *sender,
 						const char *path,
@@ -1439,11 +1423,6 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 	mp->properties_watch = g_dbus_add_properties_watch(conn, sender,
 						path, MEDIA_PLAYER_INTERFACE,
 						properties_changed,
-						mp, NULL);
-	mp->track_watch = g_dbus_add_signal_watch(conn, sender,
-						path, MEDIA_PLAYER_INTERFACE,
-						"TrackChanged",
-						track_changed,
 						mp, NULL);
 	mp->player = avrcp_register_player(adapter->btd_adapter, &player_cb,
 							mp, media_player_free);
@@ -1499,13 +1478,6 @@ static DBusMessage *register_player(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 	}
 
-	dbus_message_iter_next(&args);
-
-	if (parse_player_metadata(mp, &args) == FALSE) {
-		media_player_destroy(mp);
-		return btd_error_invalid_args(msg);
-	}
-
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -1539,8 +1511,7 @@ static const GDBusMethodTable media_methods[] = {
 	{ GDBUS_METHOD("UnregisterEndpoint",
 		GDBUS_ARGS({ "endpoint", "o" }), NULL, unregister_endpoint) },
 	{ GDBUS_EXPERIMENTAL_METHOD("RegisterPlayer",
-		GDBUS_ARGS({ "player", "o" }, { "properties", "a{sv}" },
-						{ "metadata", "a{sv}" }),
+		GDBUS_ARGS({ "player", "o" }, { "properties", "a{sv}" }),
 		NULL, register_player) },
 	{ GDBUS_EXPERIMENTAL_METHOD("UnregisterPlayer",
 		GDBUS_ARGS({ "player", "o" }), NULL, unregister_player) },
