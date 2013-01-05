@@ -4064,11 +4064,6 @@ struct btd_adapter *adapter_find_by_id(int id)
 	return match->data;
 }
 
-struct btd_adapter *adapter_get_default(void)
-{
-	return btd_adapter_get_default();
-}
-
 void adapter_foreach(adapter_cb func, gpointer user_data)
 {
 	g_slist_foreach(adapters, (GFunc) func, user_data);
@@ -4306,8 +4301,8 @@ static void index_removed(uint16_t index, uint16_t length, const void *param,
 
 	DBG("index %u", index);
 
-	adapter = adapter_find_by_id(index);
-	if (adapter == NULL) {
+	adapter = btd_adapter_lookup(index);
+	if (!adapter) {
 		warn("Ignoring index removal for a non-existent adapter");
 		return;
 	}
