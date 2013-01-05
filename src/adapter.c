@@ -3313,8 +3313,7 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	g_slist_free(adapter->pin_callbacks);
 
-	if (mgmt_powered(adapter->current_settings))
-		mgmt_set_powered(adapter->dev_id, FALSE);
+	/* TODO: power off controller */
 }
 
 uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
@@ -3796,7 +3795,9 @@ int btd_adapter_restore_powered(struct btd_adapter *adapter)
 	if (mgmt_powered(adapter->current_settings))
 		return 0;
 
-	return mgmt_set_powered(adapter->dev_id, TRUE);
+	/* TODO: power on controller */
+
+	return 0;
 }
 
 void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
