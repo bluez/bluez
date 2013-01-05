@@ -69,6 +69,8 @@
 #include "eir.h"
 #include "mgmt.h"
 
+#define ADAPTER_INTERFACE	"org.bluez.Adapter1"
+
 /* Flags Descriptions */
 #define EIR_LIM_DISC                0x01 /* LE Limited Discoverable Mode */
 #define EIR_GEN_DISC                0x02 /* LE General Discoverable Mode */
