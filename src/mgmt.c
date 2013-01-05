@@ -53,12 +53,6 @@
 
 #define MGMT_BUF_SIZE 1024
 
-static int max_index = -1;
-static struct controller_info {
-	gboolean valid;
-	uint32_t current_settings;
-} *controllers = NULL;
-
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
@@ -89,72 +83,6 @@ static bool get_adapter_and_device(uint16_t index,
 	}
 
 	return true;
-}
-
-static void add_controller(uint16_t index)
-{
-	struct controller_info *info;
-
-	DBG("Adding controller %u", index);
-
-	if (index > max_index) {
-		size_t size = sizeof(struct controller_info) * (index + 1);
-		max_index = index;
-		controllers = g_realloc(controllers, size);
-	}
-
-	info = &controllers[index];
-
-	memset(info, 0, sizeof(*info));
-
-	info->valid = TRUE;
-
-	DBG("Added controller %u", index);
-}
-
-static void read_info(uint16_t index)
-{
-	struct mgmt_hdr hdr;
-
-	DBG("index %u", index);
-
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_READ_INFO);
-	hdr.index = htobs(index);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
-		error("Unable to send read_info command: %s (%d)",
-						strerror(errno), errno);
-}
-
-static void mgmt_index_added(uint16_t index)
-{
-	DBG("index %u", index);
-
-	add_controller(index);
-	read_info(index);
-}
-
-static void remove_controller(uint16_t index)
-{
-	if (index > max_index)
-		return;
-
-	if (!controllers[index].valid)
-		return;
-
-	DBG("Removing controller %u", index);
-
-	memset(&controllers[index], 0, sizeof(struct controller_info));
-
-	DBG("Removed controller %u", index);
-}
-
-static void mgmt_index_removed(uint16_t index)
-{
-	DBG("index %u", index);
-
-	remove_controller(index);
 }
 
 static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
@@ -225,11 +153,6 @@ static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 	DBG("Controller %u new key of type %u pin_len %u", index,
 					ev->key.type, ev->key.pin_len);
 
-	if (index > max_index) {
-		error("Unexpected index %u in new_key event", index);
-		return;
-	}
-
 	if (ev->key.pin_len > 16) {
 		error("Invalid PIN length (%u) in new_key event",
 							ev->key.pin_len);
@@ -279,11 +202,6 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 
 	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
 
-	if (index > max_index) {
-		error("Unexpected index %u in device_connected event", index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
@@ -328,11 +246,6 @@ static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
 
 	DBG("hci%u device %s disconnected reason %u", index, addr, reason);
 
-	if (index > max_index) {
-		error("Unexpected index %u in device_disconnected event", index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
@@ -355,11 +268,6 @@ static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s status %u", index, addr, ev->status);
-
-	if (index > max_index) {
-		error("Unexpected index %u in connect_failed event", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
@@ -445,11 +353,6 @@ static void mgmt_pin_code_request(uint16_t index, void *buf, size_t len)
 	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s", index, addr);
-
-	if (index > max_index) {
-		error("Unexpected index %u in pin_code_request event", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
@@ -570,11 +473,6 @@ static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
 
 	DBG("hci%u %s", index, addr);
 
-	if (index > max_index) {
-		error("Unexpected index %u in passkey_request event", index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
 
@@ -603,11 +501,6 @@ static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 	ba2str(&ev->addr.bdaddr, addr);
 
 	DBG("hci%u %s", index, addr);
-
-	if (index > max_index) {
-		error("Unexpected index %u in passkey_notify event", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
 		return;
@@ -639,12 +532,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 
 	DBG("hci%u %s confirm_hint %u", index, addr, ev->confirm_hint);
 
-	if (index > max_index) {
-		error("Unexpected index %u in user_confirm_request event",
-									index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->addr,  &adapter, &device, true))
 		return;
 
@@ -655,62 +542,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 		mgmt_confirm_reply(index, &ev->addr.bdaddr, ev->addr.type,
 									FALSE);
 	}
-}
-
-static void read_index_list_complete(void *buf, size_t len)
-{
-	struct mgmt_rp_read_index_list *rp = buf;
-	uint16_t num;
-	int i;
-
-	if (len < sizeof(*rp)) {
-		error("Too small read index list complete event");
-		return;
-	}
-
-	num = bt_get_le16(&rp->num_controllers);
-
-	if (num * sizeof(uint16_t) + sizeof(*rp) != len) {
-		error("Incorrect packet size for index list event");
-		return;
-	}
-
-	for (i = 0; i < num; i++) {
-		uint16_t index;
-
-		index = bt_get_le16(&rp->index[i]);
-
-		add_controller(index);
-		read_info(index);
-	}
-}
-
-static void read_info_complete(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_rp_read_info *rp = buf;
-	struct controller_info *info;
-
-	if (len < sizeof(*rp)) {
-		error("Too small read info complete event");
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in read info complete", index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	memcpy(&info->current_settings, &rp->current_settings,
-					sizeof(info->current_settings));
-
-	DBG("hci%u version %u manufacturer %u class 0x%02x%02x%02x\n",
-		index, rp->version, bt_get_le16(&rp->manufacturer),
-		rp->dev_class[2], rp->dev_class[1], rp->dev_class[0]);
-	DBG("hci%u settings", index);
-	DBG("hci%u name %s", index, (char *) rp->name);
-	DBG("hci%u short name %s", index, (char *) rp->short_name);
 }
 
 static void disconnect_complete(uint16_t index, uint8_t status,
@@ -734,11 +565,6 @@ static void disconnect_complete(uint16_t index, uint8_t status,
 	}
 
 	DBG("hci%d %s disconnected", index, addr);
-
-	if (index > max_index) {
-		error("Unexpected index %u in disconnect complete", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &rp->addr, &adapter, &device, false))
 		return;
@@ -765,11 +591,6 @@ static void pair_device_complete(uint16_t index, uint8_t status,
 
 	DBG("hci%d %s pairing complete status %u", index, addr, status);
 
-	if (index > max_index) {
-		error("Unexpected index %u in pair_device complete", index);
-		return;
-	}
-
 	bonding_complete(index, &rp->addr, status);
 }
 
@@ -781,12 +602,6 @@ static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
 	if (len != sizeof(*rp)) {
 		error("read_local_oob_data_complete event size mismatch "
 					"(%zu != %zu)", len, sizeof(*rp));
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in read_local_oob_data_complete",
-								index);
 		return;
 	}
 
@@ -812,11 +627,6 @@ static void start_discovery_complete(uint16_t index, uint8_t status,
 
 	DBG("hci%u type %u status %u", index, *type, status);
 
-	if (index > max_index) {
-		error("Invalid index %u in start_discovery_complete", index);
-		return;
-	}
-
 	if (!status)
 		return;
 
@@ -829,12 +639,6 @@ static void start_discovery_complete(uint16_t index, uint8_t status,
 static void read_local_oob_data_failed(uint16_t index)
 {
 	struct btd_adapter *adapter;
-
-	if (index > max_index) {
-		error("Unexpected index %u in read_local_oob_data_failed",
-								index);
-		return;
-	}
 
 	DBG("hci%u", index);
 
@@ -864,10 +668,10 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("read_version complete");
 		break;
 	case MGMT_OP_READ_INDEX_LIST:
-		read_index_list_complete(ev->data, len);
+		DBG("read_index_list complete");
 		break;
 	case MGMT_OP_READ_INFO:
-		read_info_complete(index, ev->data, len);
+		DBG("read_info complete");
 		break;
 	case MGMT_OP_SET_POWERED:
 		DBG("set_powered complete");
@@ -994,18 +798,6 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 			ev->status);
 }
 
-static void mgmt_controller_error(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_controller_error *ev = buf;
-
-	if (len < sizeof(*ev)) {
-		error("Too small management controller error event packet");
-		return;
-	}
-
-	DBG("index %u error_code %u", index, ev->error_code);
-}
-
 static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_auth_failed *ev = buf;
@@ -1016,11 +808,6 @@ static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 	}
 
 	DBG("hci%u auth failed status %u", index, ev->status);
-
-	if (index > max_index) {
-		error("Unexpected index %u in auth_failed event", index);
-		return;
-	}
 
 	bonding_complete(index, &ev->addr, ev->status);
 }
@@ -1045,11 +832,6 @@ static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 	if (len != sizeof(*ev) + eir_len) {
 		error("mgmt_device_found event size mismatch (%zu != %zu)",
 						len, sizeof(*ev) + eir_len);
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in device_found event", index);
 		return;
 	}
 
@@ -1089,11 +871,6 @@ static void mgmt_discovering(uint16_t index, void *buf, size_t len)
 	DBG("Controller %u type %u discovering %u", index,
 					ev->type, ev->discovering);
 
-	if (index > max_index) {
-		error("Unexpected index %u in discovering event", index);
-		return;
-	}
-
 	adapter = adapter_find_by_id(index);
 	if (!adapter)
 		return;
@@ -1115,11 +892,6 @@ static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("Device blocked, index %u, addr %s", index, addr);
-
-	if (index > max_index) {
-		error("Unexpected index %u in device_blocked event", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
@@ -1143,11 +915,6 @@ static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("Device unblocked, index %u, addr %s", index, addr);
 
-	if (index > max_index) {
-		error("Unexpected index %u in device_unblocked event", index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
 
@@ -1169,11 +936,6 @@ static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
 
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("Device upaired, index %u, addr %s", index, addr);
-
-	if (index > max_index) {
-		error("Unexpected index %u in device_unpaired event", index);
-		return;
-	}
 
 	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
 		return;
@@ -1259,11 +1021,6 @@ static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
 	DBG("Controller %u new LTK authenticated %u enc_size %u", index,
 				ev->key.authenticated, ev->key.enc_size);
 
-	if (index > max_index) {
-		error("Unexpected index %u in new_key event", index);
-		return;
-	}
-
 	if (!get_adapter_and_device(index, &ev->key.addr,
 						&adapter, &device, true))
 		return;
@@ -1332,13 +1089,13 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_cmd_status(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_CONTROLLER_ERROR:
-		mgmt_controller_error(index, buf + MGMT_HDR_SIZE, len);
+		DBG("controller_error event");
 		break;
 	case MGMT_EV_INDEX_ADDED:
-		mgmt_index_added(index);
+		DBG("index_added event");
 		break;
 	case MGMT_EV_INDEX_REMOVED:
-		mgmt_index_removed(index);
+		DBG("index_removed event");
 		break;
 	case MGMT_EV_NEW_SETTINGS:
 		DBG("new_settings event");
@@ -1448,10 +1205,6 @@ fail:
 
 void mgmt_cleanup(void)
 {
-	g_free(controllers);
-	controllers = NULL;
-	max_index = -1;
-
 	if (mgmt_sock >= 0) {
 		close(mgmt_sock);
 		mgmt_sock = -1;
