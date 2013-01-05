@@ -175,37 +175,6 @@ static void mgmt_index_removed(uint16_t index)
 	remove_controller(index);
 }
 
-static int mgmt_set_mode(int index, uint16_t opcode, uint8_t val)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_mode)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_mode *cp = (void *) &buf[sizeof(*hdr)];
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(opcode);
-	hdr->index = htobs(index);
-	hdr->len = htobs(sizeof(*cp));
-
-	cp->val = val;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static int mgmt_set_ssp(int index, gboolean ssp)
-{
-	DBG("index %d ssp %d", index, ssp);
-	return mgmt_set_mode(index, MGMT_OP_SET_SSP, ssp);
-}
-
-static int mgmt_set_low_energy(int index, gboolean le)
-{
-	DBG("index %d le %d", index, le);
-	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
-}
-
 static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
 								uint8_t status)
 {
@@ -763,15 +732,7 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
 
-	if (mgmt_ssp(info->supported_settings) &&
-					!mgmt_ssp(info->current_settings))
-		mgmt_set_ssp(index, TRUE);
-
-	if (mgmt_low_energy(info->supported_settings) &&
-				!mgmt_low_energy(info->current_settings))
-		mgmt_set_low_energy(index, TRUE);
-
-	if (mgmt_powered(info->current_settings))
+	if (mgmt_powered(rp->current_settings))
 		get_connections(index);
 }
 
@@ -2081,11 +2042,4 @@ int mgmt_load_ltks(int index, GSList *keys)
 	g_free(buf);
 
 	return err;
-}
-
-int mgmt_ssp_enabled(int index)
-{
-	struct controller_info *info = &controllers[index];
-
-	return mgmt_ssp(info->current_settings);
 }

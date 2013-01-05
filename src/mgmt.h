@@ -68,5 +68,3 @@ int mgmt_remove_remote_oob_data(int index, const bdaddr_t *bdaddr);
 
 int mgmt_confirm_name(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean name_known);
-
-int mgmt_ssp_enabled(int index);
