@@ -407,8 +407,8 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 
 	sender = dbus_message_get_sender(msg);
 	req->owner = g_strdup(sender);
-	req->id = g_dbus_add_disconnect_watch(btd_get_dbus_connection(),
-							sender, cb, req, NULL);
+	req->id = g_dbus_add_disconnect_watch(dbus_conn, sender,
+							cb, req, NULL);
 
 	DBG("session %p with %s activated", req, sender);
 
@@ -651,7 +651,7 @@ static void session_free(void *data)
 	struct session_req *req = data;
 
 	if (req->id)
-		g_dbus_remove_watch(btd_get_dbus_connection(), req->id);
+		g_dbus_remove_watch(dbus_conn, req->id);
 
 	if (req->msg)
 		dbus_message_unref(req->msg);
@@ -795,7 +795,7 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	g_free(adapter->system_name);
 	adapter->system_name = g_strdup(name);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Name");
 
 	/* alias is preferred over system name */
@@ -804,7 +804,7 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 
 	DBG("alias: %s", name);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Alias");
 
 	return set_name(adapter, name);
@@ -925,8 +925,8 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 
 	if (adapter->initialized)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "UUIDs");
 }
 
 static int remove_uuid(struct btd_adapter *adapter, uuid_t *uuid)
@@ -2155,7 +2155,7 @@ static void adapter_start(struct btd_adapter *adapter)
 {
 	struct session_req *req;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Powered");
 
 	DBG("adapter %s has been enabled", adapter->path);
@@ -2219,7 +2219,6 @@ static void unload_drivers(struct btd_adapter *adapter)
 
 static void adapter_stop(struct btd_adapter *adapter)
 {
-	DBusConnection *conn = btd_get_dbus_connection();
 	bool emit_discovering = false;
 
 	/* check pending requests */
@@ -2241,19 +2240,19 @@ static void adapter_stop(struct btd_adapter *adapter)
 	}
 
 	if (emit_discovering)
-		g_dbus_emit_property_changed(conn, adapter->path,
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
 
 	if (adapter->dev_class) {
 		/* the kernel should reset the class of device when powering
 		 * down, but it does not. So force it here ... */
 		adapter->dev_class = 0;
-		g_dbus_emit_property_changed(conn, adapter->path,
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 						ADAPTER_INTERFACE, "Class");
 	}
 
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-								"Powered");
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Powered");
 
 	DBG("adapter %s has been disabled", adapter->path);
 }
@@ -2329,8 +2328,8 @@ void btd_adapter_unref(struct btd_adapter *adapter)
 
 	DBG("Freeing adapter %s", adapter->path);
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-					adapter->path, ADAPTER_INTERFACE);
+	g_dbus_unregister_interface(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE);
 }
 
 static void convert_names_entry(char *key, char *value, void *user_data)
@@ -3355,7 +3354,7 @@ void adapter_set_discovering(struct btd_adapter *adapter,
 	if (discovering && !adapter->discovery)
 		adapter->discovery = g_new0(struct discovery, 1);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
 
 	if (discovering) {
@@ -4050,7 +4049,7 @@ static int adapter_register(struct btd_adapter *adapter)
 
 	adapter->path = g_strdup_printf("/org/bluez/hci%d", adapter->dev_id);
 
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+	if (!g_dbus_register_interface(dbus_conn,
 					adapter->path, ADAPTER_INTERFACE,
 					adapter_methods, NULL,
 					adapter_properties, adapter,
