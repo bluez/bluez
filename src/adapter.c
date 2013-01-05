@@ -205,6 +205,9 @@ static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
 
+	if (!adapter->initialized)
+		return;
+
 	if (length < sizeof(*rp)) {
 		error("Wrong size of class of device changed parameters");
 		return;
@@ -456,6 +459,9 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	uint32_t settings;
 
+	if (!adapter->initialized)
+		return;
+
 	if (length < sizeof(settings)) {
 		error("Wrong size of new settings parameters");
 		return;
@@ -688,6 +694,9 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cp_set_local_name *rp = param;
+
+	if (!adapter->initialized)
+		return;
 
 	if (length < sizeof(*rp)) {
 		error("Wrong size of local name changed parameters");
