@@ -3250,38 +3250,6 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-static gboolean adapter_setup(struct btd_adapter *adapter)
-{
-	struct agent *agent;
-
-	agent = agent_get(NULL);
-	if (agent) {
-		uint8_t io_cap = agent_get_io_capability(agent);
-		adapter_set_io_capability(adapter, io_cap);
-		agent_unref(agent);
-	}
-
-	sdp_init_services_list(&adapter->bdaddr);
-
-	btd_adapter_gatt_server_start(adapter);
-
-	load_config(adapter);
-	convert_device_storage(adapter);
-	load_drivers(adapter);
-	btd_profile_foreach(probe_profile, adapter);
-	clear_blocked(adapter);
-	load_devices(adapter);
-
-	/* retrieve the active connections: address the scenario where
-	 * the are active connections before the daemon've started */
-	if (adapter->current_settings & MGMT_SETTING_POWERED)
-		load_connections(adapter);
-
-	adapter->initialized = TRUE;
-
-	return TRUE;
-}
-
 static struct btd_adapter *btd_adapter_new(uint16_t index)
 {
 	struct btd_adapter *adapter;
@@ -4073,6 +4041,8 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 
 static int adapter_register(struct btd_adapter *adapter)
 {
+	struct agent *agent;
+
 	adapter->path = g_strdup_printf("/org/bluez/hci%d", adapter->dev_id);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
@@ -4082,16 +4052,37 @@ static int adapter_register(struct btd_adapter *adapter)
 					adapter_free)) {
 		error("Adapter interface init failed on path %s",
 							adapter->path);
+		g_free(adapter->path);
+		adapter->path = NULL;
 		return -EINVAL;
 	}
 
-	adapters = g_slist_append(adapters, btd_adapter_ref(adapter));
+	adapters = g_slist_append(adapters, adapter);
 
-	if (!adapter_setup(adapter)) {
-		adapters = g_slist_remove(adapters, adapter);
-		btd_adapter_unref(adapter);
-		return -EIO;
+	agent = agent_get(NULL);
+	if (agent) {
+		uint8_t io_cap = agent_get_io_capability(agent);
+		adapter_set_io_capability(adapter, io_cap);
+		agent_unref(agent);
 	}
+
+	sdp_init_services_list(&adapter->bdaddr);
+
+	btd_adapter_gatt_server_start(adapter);
+
+	load_config(adapter);
+	convert_device_storage(adapter);
+	load_drivers(adapter);
+	btd_profile_foreach(probe_profile, adapter);
+	clear_blocked(adapter);
+	load_devices(adapter);
+
+	/* retrieve the active connections: address the scenario where
+	 * the are active connections before the daemon've started */
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
+		load_connections(adapter);
+
+	adapter->initialized = TRUE;
 
 	if (default_adapter_id < 0)
 		default_adapter_id = adapter->dev_id;
