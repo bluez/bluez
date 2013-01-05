@@ -104,8 +104,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm_name, bool legacy,
 					uint8_t *data, uint8_t data_len);
-void adapter_update_settings(struct btd_adapter *adapter,
-						uint32_t new_settings);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);

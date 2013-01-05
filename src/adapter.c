@@ -407,6 +407,10 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	return session_ref(req);
 }
 
+static void trigger_pairable_timeout(struct btd_adapter *adapter);
+static void adapter_start(struct btd_adapter *adapter);
+static void adapter_stop(struct btd_adapter *adapter);
+
 static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 {
 	uint32_t changed_mask;
@@ -420,21 +424,33 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 
 	adapter->current_settings = settings;
 
-	if (changed_mask & MGMT_SETTING_POWERED)
+	if (changed_mask & MGMT_SETTING_POWERED) {
 	        g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Powered");
+
+		if (adapter->current_settings & MGMT_SETTING_POWERED)
+			adapter_start(adapter);
+		else
+			adapter_stop(adapter);
+	}
 
 	if (changed_mask & MGMT_SETTING_CONNECTABLE)
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Connectable");
 
-	if (changed_mask & MGMT_SETTING_DISCOVERABLE)
+	if (changed_mask & MGMT_SETTING_DISCOVERABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discoverable");
 
-	if (changed_mask & MGMT_SETTING_PAIRABLE)
+		store_adapter_info(adapter);
+	}
+
+	if (changed_mask & MGMT_SETTING_PAIRABLE) {
 		g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Pairable");
+
+		trigger_pairable_timeout(adapter);
+	}
 }
 
 static void new_settings_callback(uint16_t index, uint16_t length,
@@ -520,40 +536,33 @@ static bool set_discoverable(struct btd_adapter *adapter, uint8_t mode,
 	return false;
 }
 
-static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
-				bool reply, GDBusPendingPropertySet id)
+static gboolean pairable_timeout_handler(gpointer user_data)
 {
-	if (pairable == mgmt_pairable(adapter->current_settings))
-		goto done;
+	struct btd_adapter *adapter = user_data;
+
+	adapter->pairable_timeout_id = 0;
 
 	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x00);
-
-done:
-	if (reply)
-		g_dbus_pending_property_success(id);
-}
-
-static gboolean pairable_timeout_handler(void *data)
-{
-	set_pairable(data, FALSE, false, 0);
 
 	return FALSE;
 }
 
-static void adapter_set_pairable_timeout(struct btd_adapter *adapter,
-					guint interval)
+static void trigger_pairable_timeout(struct btd_adapter *adapter)
 {
-	if (adapter->pairable_timeout_id) {
+	if (adapter->pairable_timeout_id > 0) {
 		g_source_remove(adapter->pairable_timeout_id);
 		adapter->pairable_timeout_id = 0;
 	}
 
-	if (interval == 0)
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "PairableTimeout");
+
+	if (!(adapter->current_settings & MGMT_SETTING_PAIRABLE))
 		return;
 
-	adapter->pairable_timeout_id = g_timeout_add_seconds(interval,
-						pairable_timeout_handler,
-						adapter);
+	if (adapter->pairable_timeout > 0)
+		g_timeout_add_seconds(adapter->pairable_timeout,
+					pairable_timeout_handler, adapter);
 }
 
 static struct session_req *find_session(GSList *list, const char *sender)
@@ -664,50 +673,6 @@ static void session_unref(struct session_req *req)
 
 	session_remove(req);
 	session_free(req);
-}
-
-static void set_discoverable_timeout(struct btd_adapter *adapter,
-				uint32_t timeout, GDBusPendingPropertySet id)
-{
-	DBusConnection *conn = btd_get_dbus_connection();
-
-	if (adapter->discov_timeout == timeout && timeout == 0) {
-		g_dbus_pending_property_success(id);
-		return;
-	}
-
-	if (mgmt_discoverable(adapter->current_settings))
-		set_discoverable(adapter, 0x01, timeout);
-
-	adapter->discov_timeout = timeout;
-
-	store_adapter_info(adapter);
-
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-						"DiscoverableTimeout");
-	g_dbus_pending_property_success(id);
-}
-
-static void set_pairable_timeout(struct btd_adapter *adapter,
-				uint32_t timeout, GDBusPendingPropertySet id)
-{
-	DBusConnection *conn = btd_get_dbus_connection();
-
-	if (adapter->pairable_timeout == timeout && timeout == 0) {
-		g_dbus_pending_property_success(id);
-		return;
-	}
-
-	if (mgmt_pairable(adapter->current_settings))
-		adapter_set_pairable_timeout(adapter, timeout);
-
-	adapter->pairable_timeout = timeout;
-
-	store_adapter_info(adapter);
-
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-							"PairableTimeout");
-	g_dbus_pending_property_success(id);
 }
 
 static void adapter_name_changed(struct btd_adapter *adapter, const char *name)
@@ -1473,7 +1438,7 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 	case MGMT_SETTING_DISCOVERABLE:
 		memset(&cp, 0, sizeof(cp));
 		cp.val = mode;
-		cp.timeout = htobs(0);
+		cp.timeout = htobs(adapter->discov_timeout);
 
 		opcode = MGMT_OP_SET_DISCOVERABLE;
 		param = &cp;
@@ -1529,23 +1494,6 @@ static void property_set_powered(const GDBusPropertyTable *property,
 	property_set_mode(adapter, MGMT_SETTING_POWERED, iter, id);
 }
 
-static gboolean property_get_pairable(const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	return property_get_mode(adapter, MGMT_SETTING_PAIRABLE, iter);
-}
-
-static void property_set_pairable(const GDBusPropertyTable *property,
-				DBusMessageIter *iter,
-				GDBusPendingPropertySet id, void *user_data)
-{
-	struct btd_adapter *adapter = user_data;
-
-	property_set_mode(adapter, MGMT_SETTING_PAIRABLE, iter, id);
-}
-
 static gboolean property_get_discoverable(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -1563,63 +1511,86 @@ static void property_set_discoverable(const GDBusPropertyTable *property,
 	property_set_mode(adapter, MGMT_SETTING_DISCOVERABLE, iter, id);
 }
 
-static gboolean adapter_property_get_discoverable_timeout(
+static gboolean property_get_discoverable_timeout(
 					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
+	dbus_uint32_t value = adapter->discov_timeout;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-						&adapter->discov_timeout);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &value);
 
 	return TRUE;
 }
 
-
-static void adapter_property_set_discoverable_timeout(
-		const GDBusPropertyTable *property, DBusMessageIter *value,
-		GDBusPendingPropertySet id, void *data)
+static void property_set_discoverable_timeout(
+				const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
 {
-	uint32_t timeout;
+	struct btd_adapter *adapter = user_data;
+	dbus_uint32_t value;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32) {
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-		return;
-	}
+	dbus_message_iter_get_basic(iter, &value);
 
-	dbus_message_iter_get_basic(value, &timeout);
-	set_discoverable_timeout(data, timeout, id);
+	adapter->discov_timeout = value;
+
+	g_dbus_pending_property_success(id);
+
+	store_adapter_info(adapter);
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+				ADAPTER_INTERFACE, "DiscoverableTimeout");
+
+	if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
+		set_discoverable(adapter, 0x01, adapter->discov_timeout);
 }
 
-static gboolean adapter_property_get_pairable_timeout(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
+static gboolean property_get_pairable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
-						&adapter->pairable_timeout);
+	return property_get_mode(adapter, MGMT_SETTING_PAIRABLE, iter);
+}
+
+static void property_set_pairable(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	property_set_mode(adapter, MGMT_SETTING_PAIRABLE, iter, id);
+}
+
+static gboolean property_get_pairable_timeout(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	dbus_uint32_t value = adapter->pairable_timeout;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &value);
 
 	return TRUE;
 }
 
-static void adapter_property_set_pairable_timeout(
-		const GDBusPropertyTable *property, DBusMessageIter *value,
-		GDBusPendingPropertySet id, void *data)
+static void property_set_pairable_timeout(const GDBusPropertyTable *property,
+				DBusMessageIter *iter,
+				GDBusPendingPropertySet id, void *user_data)
 {
-	uint32_t timeout;
+	struct btd_adapter *adapter = user_data;
+	dbus_uint32_t value;
 
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_UINT32) {
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-		return;
-	}
+	dbus_message_iter_get_basic(iter, &value);
 
-	dbus_message_iter_get_basic(value, &timeout);
-	set_pairable_timeout(data, timeout, id);
+	adapter->pairable_timeout = value;
+
+	g_dbus_pending_property_success(id);
+
+	store_adapter_info(adapter);
+
+	trigger_pairable_timeout(adapter);
 }
 
 static gboolean adapter_property_get_discovering(
@@ -1740,14 +1711,13 @@ static const GDBusPropertyTable adapter_properties[] = {
 					adapter_property_set_alias },
 	{ "Class", "u", adapter_property_get_class },
 	{ "Powered", "b", property_get_powered, property_set_powered },
-	{ "Pairable", "b", property_get_pairable, property_set_pairable },
 	{ "Discoverable", "b", property_get_discoverable,
-						property_set_discoverable },
-	{ "DiscoverableTimeout", "u",
-			adapter_property_get_discoverable_timeout,
-			adapter_property_set_discoverable_timeout },
-	{ "PairableTimeout", "u", adapter_property_get_pairable_timeout,
-				adapter_property_set_pairable_timeout },
+					property_set_discoverable },
+	{ "DiscoverableTimeout", "u", property_get_discoverable_timeout,
+					property_set_discoverable_timeout },
+	{ "Pairable", "b", property_get_pairable, property_set_pairable },
+	{ "PairableTimeout", "u", property_get_pairable_timeout,
+					property_set_pairable_timeout },
 	{ "Discovering", "b", adapter_property_get_discovering },
 	{ "UUIDs", "as", adapter_property_get_uuids },
 	{ "Modalias", "s", adapter_property_get_modalias, NULL,
@@ -2204,7 +2174,7 @@ static void unload_drivers(struct btd_adapter *adapter)
 	adapter->profiles = NULL;
 }
 
-static int adapter_stop(struct btd_adapter *adapter)
+static void adapter_stop(struct btd_adapter *adapter)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 	bool emit_discovering = false;
@@ -2245,82 +2215,6 @@ static int adapter_stop(struct btd_adapter *adapter)
 								"Powered");
 
 	DBG("adapter %s has been disabled", adapter->path);
-
-	return 0;
-}
-
-static void adapter_pairable_changed(struct btd_adapter *adapter,
-							uint32_t new_settings)
-{
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-						ADAPTER_INTERFACE, "Pairable");
-
-	if (mgmt_pairable(new_settings) && adapter->pairable_timeout)
-		adapter_set_pairable_timeout(adapter,
-						adapter->pairable_timeout);
-}
-
-static void adapter_connectable_changed(struct btd_adapter *adapter,
-							uint32_t new_settings)
-{
-	if (adapter->toggle_discoverable) {
-		bool discov = mgmt_discoverable(adapter->current_settings);
-		DBG("toggling discoverable from %u to %u", discov, !discov);
-		set_discoverable(adapter, !discov, adapter->discov_timeout);
-		adapter->toggle_discoverable = false;
-	}
-}
-
-static void adapter_discoverable_changed(struct btd_adapter *adapter,
-							uint32_t new_settings)
-{
-	struct DBusConnection *conn = btd_get_dbus_connection();
-
-	g_dbus_emit_property_changed(conn, adapter->path, ADAPTER_INTERFACE,
-							"Discoverable");
-}
-
-static void adapter_powered_changed(struct btd_adapter *adapter,
-							uint32_t new_settings)
-{
-	if (mgmt_powered(new_settings))
-		adapter_start(adapter);
-	else
-		adapter_stop(adapter);
-}
-
-void adapter_update_settings(struct btd_adapter *adapter,
-							uint32_t new_settings)
-{
-	bool store_info = false;
-
-	if (adapter->current_settings == new_settings)
-		return;
-
-	DBG("settings 0x%08x", new_settings);
-
-	if (mgmt_pairable(new_settings) !=
-				mgmt_pairable(adapter->current_settings))
-		adapter_pairable_changed(adapter, new_settings);
-
-	if (mgmt_connectable(new_settings) !=
-				mgmt_connectable(adapter->current_settings))
-		adapter_connectable_changed(adapter, new_settings);
-
-	if (mgmt_discoverable(new_settings) !=
-				mgmt_discoverable(adapter->current_settings)) {
-		adapter_discoverable_changed(adapter, new_settings);
-		store_info = true;
-	}
-
-	if (mgmt_powered(new_settings) !=
-				mgmt_powered(adapter->current_settings))
-		adapter_powered_changed(adapter, new_settings);
-
-	adapter->current_settings = new_settings;
-
-	if (store_info)
-		store_adapter_info(adapter);
 }
 
 static void free_service_auth(gpointer data, gpointer user_data)
