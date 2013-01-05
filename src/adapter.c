@@ -196,52 +196,42 @@ static struct btd_adapter *btd_adapter_lookup(uint16_t index)
 
 static gboolean process_auth_queue(gpointer user_data);
 
-static void adapter_class_changed(struct btd_adapter *adapter,
-						const uint8_t *new_class)
-{
-	uint32_t dev_class;
-	uint8_t cls[3];
-
-	dev_class = new_class[0] | (new_class[1] << 8) | (new_class[2] << 16);
-
-	if (dev_class == adapter->dev_class)
-		return;
-
-	DBG("class 0x%06x", dev_class);
-
-	adapter->dev_class = dev_class;
-
-	memcpy(cls, new_class, sizeof(cls));
-
-	/* Removes service class */
-	cls[1] = cls[1] & 0x1f;
-	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, cls, 2);
-
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), adapter->path,
-						ADAPTER_INTERFACE, "Class");
-}
-
-static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
+static void dev_class_changed_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
+	uint8_t appearance[3];
+	uint32_t dev_class;
 
 	if (length < sizeof(*rp)) {
 		error("Wrong size of class of device changed parameters");
 		return;
 	}
 
-	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
+	dev_class = rp->val[0] | (rp->val[1] << 8) | (rp->val[2] << 16);
 
-	adapter_class_changed(adapter, rp->val);
+	DBG("Class: 0x%06x", dev_class);
+
+	if (dev_class == adapter->dev_class)
+		return;
+
+	adapter->dev_class = dev_class;
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Class");
+
+	appearance[0] = rp->val[0];
+	appearance[1] = rp->val[1] & 0x1f;	/* removes service class */
+	appearance[2] = rp->val[2];
+
+	attrib_gap_set(adapter, GATT_CHARAC_APPEARANCE, appearance, 2);
 }
 
 static void set_dev_class_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	const struct mgmt_cod *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to set device class: %s (0x%02x)",
@@ -249,14 +239,12 @@ static void set_dev_class_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(*rp)) {
-		error("Wrong size of set device class response");
-		return;
-	}
-
-	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
-
-	adapter_class_changed(adapter, rp->val);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 }
 
 static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
@@ -867,7 +855,6 @@ static void add_uuid_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	const struct mgmt_cod *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to add UUID: %s (0x%02x)",
@@ -875,18 +862,16 @@ static void add_uuid_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(*rp)) {
-		error("Wrong size of add UUID response");
-		return;
-	}
-
-	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
-
-	adapter_class_changed(adapter, rp->val);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 
 	if (adapter->initialized)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				adapter->path, ADAPTER_INTERFACE, "UUIDs");
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "UUIDs");
 }
 
 static int add_uuid(struct btd_adapter *adapter, uuid_t *uuid, uint8_t svc_hint)
@@ -922,7 +907,6 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	const struct mgmt_cod *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to remove UUID: %s (0x%02x)",
@@ -930,14 +914,12 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(*rp)) {
-		error("Wrong size of remove UUID response");
-		return;
-	}
-
-	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
-
-	adapter_class_changed(adapter, rp->val);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 
 	if (adapter->initialized)
 		g_dbus_emit_property_changed(btd_get_dbus_connection(),
@@ -976,7 +958,6 @@ static void clear_uuids_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	const struct mgmt_cod *rp = param;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to clear UUIDs: %s (0x%02x)",
@@ -984,14 +965,12 @@ static void clear_uuids_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (length < sizeof(*rp)) {
-		error("Wrong size of remove UUID response");
-		return;
-	}
-
-	DBG("Class: 0x%02x%02x%02x", rp->val[2], rp->val[1], rp->val[0]);
-
-	adapter_class_changed(adapter, rp->val);
+	/*
+	 * The parameters are idential and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 }
 
 static int clear_uuids(struct btd_adapter *adapter)
@@ -4182,7 +4161,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
 						adapter->dev_id,
-						class_of_dev_changed_callback,
+						dev_class_changed_callback,
 						adapter, NULL);
 	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
 						adapter->dev_id,
