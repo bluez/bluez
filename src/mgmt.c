@@ -1616,18 +1616,6 @@ int mgmt_stop_discovery(int index)
 	return 0;
 }
 
-int mgmt_read_clock(int index, const bdaddr_t *bdaddr, int which, int timeout,
-					uint32_t *clock, uint16_t *accuracy)
-{
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s which %d timeout %d", index, addr, which,
-								timeout);
-
-	return -ENOSYS;
-}
-
 int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];

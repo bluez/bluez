@@ -3832,8 +3832,7 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	if (!mgmt_powered(adapter->current_settings))
 		return -EINVAL;
 
-	return mgmt_read_clock(adapter->dev_id, bdaddr, which,
-						timeout, clock, accuracy);
+	return -ENOSYS;
 }
 
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
