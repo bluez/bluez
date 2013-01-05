@@ -1307,7 +1307,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	GError *gerr = NULL;
 	const bdaddr_t *addr;
 
-	DBG("Start GATT server in hci%d", adapter_get_dev_id(adapter));
+	DBG("Start GATT server in hci%d", btd_adapter_get_index(adapter));
 
 	server = g_new0(struct gatt_server, 1);
 	server->adapter = btd_adapter_ref(adapter);
@@ -1361,7 +1361,7 @@ void btd_adapter_gatt_server_stop(struct btd_adapter *adapter)
 	if (l == NULL)
 		return;
 
-	DBG("Stop GATT server in hci%d", adapter_get_dev_id(adapter));
+	DBG("Stop GATT server in hci%d", btd_adapter_get_index(adapter));
 
 	server = l->data;
 	servers = g_slist_remove(servers, server);
