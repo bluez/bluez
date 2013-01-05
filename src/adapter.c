@@ -3252,6 +3252,31 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 	adapter->dev_id = index;
 	adapter->mgmt = mgmt_ref(mgmt_master);
 
+	/*
+	 * Setup default configuration values. These are either adapter
+	 * defaults or from a system wide configuration file.
+	 *
+	 * Some value might be overwritten later on by adapter specific
+	 * configuration. This is to make sure that sane defaults are
+	 * always present.
+	 */
+	adapter->system_name = g_strdup(main_opts.name);
+	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
+	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
+	adapter->modalias = bt_modalias(main_opts.did_source,
+						main_opts.did_vendor,
+						main_opts.did_product,
+						main_opts.did_version);
+	adapter->discov_timeout = main_opts.discovto;
+	adapter->pairable_timeout = main_opts.pairto;
+
+	DBG("System name: %s", adapter->system_name);
+	DBG("Major class: %u", adapter->major_class);
+	DBG("Minor class: %u", adapter->minor_class);
+	DBG("Modalias: %s", adapter->modalias);
+	DBG("Discoverable timeout: %u seconds", adapter->discov_timeout);
+	DBG("Pairable timeout: %u seconds", adapter->pairable_timeout);
+
 	adapter->auths = g_queue_new();
 
 	return btd_adapter_ref(adapter);
@@ -4214,31 +4239,6 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		error("Unable to create new adapter for index %u", index);
 		return;
 	}
-
-	/*
-	 * Setup default configuration values. These are either adapter
-	 * defaults or from a system wide configuration file.
-	 *
-	 * Some value might be overwritten later on by adapter specific
-	 * configuration. This is to make sure that sane defaults are
-	 * always present.
-	 */
-	adapter->system_name = g_strdup(main_opts.name);
-	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
-	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
-	adapter->modalias = bt_modalias(main_opts.did_source,
-						main_opts.did_vendor,
-						main_opts.did_product,
-						main_opts.did_version);
-	adapter->discov_timeout = main_opts.discovto;
-	adapter->pairable_timeout = main_opts.pairto;
-
-	DBG("System name: %s", adapter->system_name);
-	DBG("Major class: %u", adapter->major_class);
-	DBG("Minor class: %u", adapter->minor_class);
-	DBG("Modalias: %s", adapter->modalias);
-	DBG("Discoverable timeout: %u seconds", adapter->discov_timeout);
-	DBG("Pairable timeout: %u seconds", adapter->pairable_timeout);
 
 	/*
 	 * Protect against potential two executions of read controller info.
