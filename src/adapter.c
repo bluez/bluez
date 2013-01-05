@@ -4264,36 +4264,13 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	}
 
 	for (i = 0; i < num; i++) {
-		struct btd_adapter *adapter;
 		uint16_t index;
 
 		index = btohs(rp->index[i]);
 
 		DBG("Found index %u", index);
 
-		adapter = adapter_find_by_id(index);
-		if (adapter != NULL) {
-			warn("Ignoring index for an already existing adapter");
-			continue;
-		}
-
-		adapter = adapter_create(index);
-		if (!adapter) {
-			error("Unable to create new adapter for index %u",
-									index);
-			continue;
-		}
-
-		DBG("sending read info command for index %u", index);
-
-		if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
-						read_info_complete,
-						adapter, adapter_destroy) > 0)
-			continue;
-
-		error("Failed to read controller info for index %u", index);
-
-		adapter_destroy(adapter);
+		index_added(index, 0, NULL, NULL);
 	}
 }
 
