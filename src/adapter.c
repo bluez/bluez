@@ -2009,20 +2009,35 @@ void adapter_remove_profile(struct btd_adapter *adapter, gpointer p)
 		profile->adapter_remove(profile, adapter);
 }
 
-static void load_connections(struct btd_adapter *adapter)
+static void get_connections_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
-	GSList *l, *conns;
-	int err;
+	struct btd_adapter *adapter = user_data;
+	const struct mgmt_rp_get_connections *rp = param;
+	uint16_t i, conn_count;
 
-	err = mgmt_get_conn_list(adapter->dev_id, &conns);
-	if (err < 0) {
-		error("Unable to fetch existing connections: %s (%d)",
-							strerror(-err), -err);
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to get connections: %s (0x%02x)",
+						mgmt_errstr(status), status);
 		return;
 	}
 
-	for (l = conns; l != NULL; l = g_slist_next(l)) {
-		struct mgmt_addr_info *addr = l->data;
+	if (length < sizeof(*rp)) {
+		error("Wrong size of get connections response");
+		return;
+	}
+
+	conn_count = btohs(rp->conn_count);
+
+	DBG("Connection count: %d", conn_count);
+
+	if (conn_count * sizeof(bdaddr_t) + sizeof(*rp) != length) {
+		error("Incorrect packet size for get connections response");
+		return;
+	}
+
+	for (i = 0; i < conn_count; i++) {
+		const struct mgmt_addr_info *addr = &rp->addr[i];
 		struct btd_device *device;
 		char address[18];
 
@@ -2033,8 +2048,18 @@ static void load_connections(struct btd_adapter *adapter)
 		if (device)
 			adapter_add_connection(adapter, device);
 	}
+}
 
-	g_slist_free_full(conns, g_free);
+static void load_connections(struct btd_adapter *adapter)
+{
+	DBG("sending get connections command for index %u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_GET_CONNECTIONS,
+				adapter->dev_id, 0, NULL,
+				get_connections_complete, adapter, NULL) > 0)
+		return;
+
+	error("Failed to get connections for index %u", adapter->dev_id);
 }
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)
@@ -3239,7 +3264,8 @@ static gboolean adapter_setup(struct btd_adapter *adapter,
 
 	/* retrieve the active connections: address the scenario where
 	 * the are active connections before the daemon've started */
-	load_connections(adapter);
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
+		load_connections(adapter);
 
 	adapter->initialized = TRUE;
 
@@ -4230,6 +4256,8 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	}
 
 	num = btohs(rp->num_controllers);
+
+	DBG("Number of controllers: %d", num);
 
 	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
 		error("Incorrect packet size for index list response");
