@@ -241,18 +241,11 @@ static int mgmt_set_low_energy(int index, gboolean le)
 	return mgmt_set_mode(index, MGMT_OP_SET_LE, le);
 }
 
-static void mgmt_update_powered(struct btd_adapter *adapter,
-						uint32_t settings)
-{
-	adapter_update_settings(adapter, settings);
-}
-
 static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 {
 	uint32_t settings, *ev = buf;
 	struct controller_info *info;
 	struct btd_adapter *adapter;
-	gboolean old_power, new_power;
 
 	if (len < sizeof(*ev)) {
 		error("Too small new settings event");
@@ -276,13 +269,7 @@ static void mgmt_new_settings(uint16_t index, void *buf, size_t len)
 
 	DBG("index %d settings 0x%08x", index, settings);
 
-	old_power = mgmt_powered(info->current_settings);
-	new_power = mgmt_powered(settings);
-
-	if (new_power != old_power)
-		mgmt_update_powered(adapter, settings);
-	else
-		adapter_update_settings(adapter, settings);
+	adapter_update_settings(adapter, settings);
 
 	info->current_settings = settings;
 }
@@ -815,12 +802,6 @@ static void read_index_list_complete(void *buf, size_t len)
 	}
 }
 
-int mgmt_set_powered(int index, gboolean powered)
-{
-	DBG("index %d powered %d", index, powered);
-	return mgmt_set_mode(index, MGMT_OP_SET_POWERED, powered);
-}
-
 static void read_info_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_rp_read_info *rp = buf;
@@ -1055,7 +1036,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		read_info_complete(index, ev->data, len);
 		break;
 	case MGMT_OP_SET_POWERED:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_powered complete");
 		break;
 	case MGMT_OP_SET_DISCOVERABLE:
 		mgmt_new_settings(index, ev->data, len);
