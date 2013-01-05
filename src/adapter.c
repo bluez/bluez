@@ -4143,6 +4143,14 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	set_name(adapter, btd_adapter_get_name(adapter));
 
+	if ((adapter->supported_settings & MGMT_SETTING_SSP) &&
+			!(adapter->current_settings & MGMT_SETTING_SSP))
+		set_mode(adapter, MGMT_OP_SET_SSP, 0x01);
+
+	if ((adapter->supported_settings & MGMT_SETTING_LE) &&
+			!(adapter->current_settings & MGMT_SETTING_LE))
+		set_mode(adapter, MGMT_OP_SET_LE, 0x01);
+
 	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
 	set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 
