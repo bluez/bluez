@@ -223,12 +223,6 @@ int mgmt_set_discoverable(int index, gboolean discoverable, uint16_t timeout)
 	return 0;
 }
 
-int mgmt_set_pairable(int index, gboolean pairable)
-{
-	DBG("index %d pairable %d", index, pairable);
-	return mgmt_set_mode(index, MGMT_OP_SET_PAIRABLE, pairable);
-}
-
 static int mgmt_set_ssp(int index, gboolean ssp)
 {
 	DBG("index %d ssp %d", index, ssp);
@@ -830,9 +824,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
-
-	if (!mgmt_pairable(info->current_settings))
-		mgmt_set_pairable(index, TRUE);
 
 	if (mgmt_ssp(info->supported_settings) &&
 					!mgmt_ssp(info->current_settings))
