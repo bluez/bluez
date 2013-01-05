@@ -1404,6 +1404,104 @@ failed:
 	g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed", NULL);
 }
 
+static gboolean property_get_pairable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	dbus_bool_t pairable;
+
+	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
+		pairable = TRUE;
+	else
+		pairable = FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &pairable);
+
+	return TRUE;
+}
+
+static void set_pairable_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct property_set_data *data = user_data;
+	struct btd_adapter *adapter = data->adapter;
+	uint32_t settings;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set pairable: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		g_dbus_pending_property_error(data->id,
+						ERROR_INTERFACE ".Failed",
+						mgmt_errstr(status));
+		return;
+	}
+
+	if (length < sizeof(settings)) {
+		error("Wrong size of set pairable response");
+		g_dbus_pending_property_error(data->id,
+						ERROR_INTERFACE ".Failed",
+						"Invalid response data");
+		return;
+	}
+
+	settings = bt_get_le32(param);
+
+	DBG("Settings: 0x%08x", settings);
+
+	adapter->current_settings = settings;
+
+	g_dbus_pending_property_success(data->id);
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Pairable");
+}
+
+static void property_set_pairable(const GDBusPropertyTable *property,
+				DBusMessageIter *value,
+				GDBusPendingPropertySet id, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	struct property_set_data *data;
+	struct mgmt_mode cp;
+	dbus_bool_t pairable, current_pairable;
+
+	dbus_message_iter_get_basic(value, &pairable);
+
+	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
+		current_pairable = TRUE;
+	else
+		current_pairable = FALSE;
+
+	if (pairable == current_pairable) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = (pairable == TRUE) ? 0x01 : 0x00;
+
+	DBG("sending set pairable command for index %u", adapter->dev_id);
+
+	data = g_try_new0(struct property_set_data, 1);
+	if (!data)
+		goto failed;
+
+	data->adapter = adapter;
+	data->id = id;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_PAIRABLE,
+				adapter->dev_id, sizeof(cp), &cp,
+				set_pairable_complete, data, g_free) > 0)
+		return;
+
+	g_free(data);
+
+failed:
+	error("Failed to set pairable for index %u", adapter->dev_id);
+
+	g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed", NULL);
+}
+
 static gboolean adapter_property_get_discoverable(
 					const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
@@ -1434,36 +1532,6 @@ static void adapter_property_set_discoverable(
 	dbus_message_iter_get_basic(value, &discoverable);
 
 	set_discoverable(data, discoverable, id);
-}
-
-static gboolean adapter_property_get_pairable(
-					const GDBusPropertyTable *property,
-					DBusMessageIter *iter, void *data)
-{
-	struct btd_adapter *adapter = data;
-	dbus_bool_t pairable = mgmt_pairable(adapter->current_settings);
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &pairable);
-
-	return TRUE;
-}
-
-static void adapter_property_set_pairable(const GDBusPropertyTable *property,
-		DBusMessageIter *value,
-		GDBusPendingPropertySet id, void *data)
-{
-	dbus_bool_t pairable;
-
-	if (dbus_message_iter_get_arg_type(value) != DBUS_TYPE_BOOLEAN) {
-		g_dbus_pending_property_error(id,
-					ERROR_INTERFACE ".InvalidArguments",
-					"Invalid arguments in method call");
-		return;
-	}
-
-	dbus_message_iter_get_basic(value, &pairable);
-
-	set_pairable(data, pairable, true, id);
 }
 
 static gboolean adapter_property_get_discoverable_timeout(
@@ -1643,10 +1711,9 @@ static const GDBusPropertyTable adapter_properties[] = {
 					adapter_property_set_alias },
 	{ "Class", "u", adapter_property_get_class },
 	{ "Powered", "b", property_get_powered, property_set_powered },
+	{ "Pairable", "b", property_get_pairable, property_set_pairable },
 	{ "Discoverable", "b", adapter_property_get_discoverable,
 					adapter_property_set_discoverable },
-	{ "Pairable", "b", adapter_property_get_pairable,
-					adapter_property_set_pairable },
 	{ "DiscoverableTimeout", "u",
 			adapter_property_get_discoverable_timeout,
 			adapter_property_set_discoverable_timeout },
