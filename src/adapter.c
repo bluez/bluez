@@ -131,12 +131,12 @@ struct btd_adapter {
 	uint16_t dev_id;
 	struct mgmt *mgmt;
 
-	uint32_t current_settings;
-	uint32_t supported_settings;
+	bdaddr_t bdaddr;		/* controller Bluetooth address */
+	uint32_t dev_class;		/* controller class of device */
+	uint32_t supported_settings;	/* controller supported settings */
+	uint32_t current_settings;	/* current controller settings */
 
 	char *path;			/* adapter object path */
-	bdaddr_t bdaddr;		/* adapter Bluetooth Address */
-	uint32_t dev_class;		/* current class of device */
 	uint8_t major_class;		/* configured major class */
 	uint8_t minor_class;		/* configured minor class */
 	char *name;			/* adapter name */
@@ -3229,14 +3229,9 @@ static void load_config(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-static gboolean adapter_setup(struct btd_adapter *adapter,
-						uint32_t current_settings,
-						uint32_t supported_settings)
+static gboolean adapter_setup(struct btd_adapter *adapter)
 {
 	struct agent *agent;
-
-	adapter->current_settings = current_settings;
-	adapter->supported_settings = supported_settings;
 
 	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
 		error("No address available for hci%d", adapter->dev_id);
@@ -4072,10 +4067,7 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
-static int adapter_register(struct btd_adapter *adapter,
-						const bdaddr_t *bdaddr,
-						uint32_t current_settings,
-						uint32_t supported_settings)
+static int adapter_register(struct btd_adapter *adapter)
 {
 	if (adapter_find_by_id(adapter->dev_id)) {
 		error("Unable to register adapter: hci%d already exist",
@@ -4095,11 +4087,9 @@ static int adapter_register(struct btd_adapter *adapter,
 		return -EINVAL;
 	}
 
-	bacpy(&adapter->bdaddr, bdaddr);
-
 	adapters = g_slist_append(adapters, btd_adapter_ref(adapter));
 
-	if (!adapter_setup(adapter, current_settings, supported_settings)) {
+	if (!adapter_setup(adapter)) {
 		adapters = g_slist_remove(adapters, adapter);
 		btd_adapter_unref(adapter);
 		return -EIO;
@@ -4137,8 +4127,8 @@ static int adapter_unregister(struct btd_adapter *adapter)
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
-	const struct mgmt_rp_read_info *rp = param;
 	struct btd_adapter *adapter = user_data;
+	const struct mgmt_rp_read_info *rp = param;
 	int err;
 
 	DBG("index %u status 0x%02x", adapter->dev_id, status);
@@ -4154,10 +4144,16 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
+	bacpy(&adapter->bdaddr, &rp->bdaddr);
+	adapter->dev_class = rp->dev_class[0] | (rp->dev_class[1] << 8) |
+						(rp->dev_class[2] << 16);
+
+	adapter->supported_settings = btohs(rp->supported_settings);
+	adapter->current_settings = btohs(rp->current_settings);
+
 	clear_uuids(adapter);
 
-	err = adapter_register(adapter, &rp->bdaddr, rp->current_settings,
-						rp->supported_settings);
+	err = adapter_register(adapter);
 	if (err < 0) {
 		error("Unable to register new adapter");
 		return;
