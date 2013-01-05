@@ -32,8 +32,6 @@ int mgmt_stop_discovery(int index);
 int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
-int mgmt_get_conn_list(int index, GSList **conns);
-
 int mgmt_disconnect(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
 
 int mgmt_unpair_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);

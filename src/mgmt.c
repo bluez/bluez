@@ -57,7 +57,6 @@ static int max_index = -1;
 static struct controller_info {
 	gboolean valid;
 	uint32_t current_settings;
-	GSList *connections;
 	uint8_t discov_type;
 } *controllers = NULL;
 
@@ -126,21 +125,6 @@ static void read_info(uint16_t index)
 
 	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
 		error("Unable to send read_info command: %s (%d)",
-						strerror(errno), errno);
-}
-
-static void get_connections(uint16_t index)
-{
-	struct mgmt_hdr hdr;
-
-	DBG("index %u", index);
-
-	memset(&hdr, 0, sizeof(hdr));
-	hdr.opcode = htobs(MGMT_OP_GET_CONNECTIONS);
-	hdr.index = htobs(index);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
-		error("Unable to send get_connections command: %s (%d)",
 						strerror(errno), errno);
 }
 
@@ -728,9 +712,6 @@ static void read_info_complete(uint16_t index, void *buf, size_t len)
 	DBG("hci%u settings", index);
 	DBG("hci%u name %s", index, (char *) rp->name);
 	DBG("hci%u short name %s", index, (char *) rp->short_name);
-
-	if (mgmt_powered(rp->current_settings))
-		get_connections(index);
 }
 
 static void disconnect_complete(uint16_t index, uint8_t status,
@@ -791,39 +772,6 @@ static void pair_device_complete(uint16_t index, uint8_t status,
 	}
 
 	bonding_complete(index, &rp->addr, status);
-}
-
-static void get_connections_complete(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_rp_get_connections *rp = buf;
-	struct controller_info *info;
-	int i;
-
-	if (len < sizeof(*rp)) {
-		error("Too small get_connections complete event");
-		return;
-	}
-
-	if (len < (sizeof(*rp) + (rp->conn_count * sizeof(bdaddr_t)))) {
-		error("Too small get_connections complete event");
-		return;
-	}
-
-	if (index > max_index) {
-		error("Unexpected index %u in get_connections complete",
-								index);
-		return;
-	}
-
-	info = &controllers[index];
-
-	for (i = 0; i < rp->conn_count; i++) {
-		struct mgmt_addr_info *addr;
-
-		addr = g_memdup(&rp->addr[i], sizeof(*addr));
-
-		info->connections = g_slist_append(info->connections, addr);
-	}
 }
 
 static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
@@ -962,7 +910,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		disconnect_complete(index, ev->status, ev->data, len);
 		break;
 	case MGMT_OP_GET_CONNECTIONS:
-		get_connections_complete(index, ev->data, len);
+		DBG("get_connections complete");
 		break;
 	case MGMT_OP_PIN_CODE_REPLY:
 		DBG("pin_code_reply complete");
@@ -1670,18 +1618,6 @@ int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 
 	if (write(mgmt_sock, buf, buf_len) < 0)
 		return -errno;
-
-	return 0;
-}
-
-int mgmt_get_conn_list(int index, GSList **conns)
-{
-	struct controller_info *info = &controllers[index];
-
-	DBG("index %d", index);
-
-	*conns = info->connections;
-	info->connections = NULL;
 
 	return 0;
 }
