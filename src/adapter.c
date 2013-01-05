@@ -87,6 +87,8 @@
 
 static DBusConnection *dbus_conn = NULL;
 
+static GList *adapter_list = NULL;
+
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
 
@@ -173,6 +175,21 @@ struct btd_adapter {
 
 	struct oob_handler *oob_handler;
 };
+
+static struct btd_adapter *btd_adapter_lookup(uint16_t index)
+{
+	GList *list;
+
+	for (list = g_list_first(adapter_list); list;
+						list = g_list_next(list)) {
+		struct btd_adapter *adapter = list->data;
+
+		if (adapter->dev_id == index)
+			return adapter;
+	}
+
+	return NULL;
+}
 
 static gboolean process_auth_queue(gpointer user_data);
 
@@ -3243,11 +3260,6 @@ static gboolean adapter_setup(struct btd_adapter *adapter)
 {
 	struct agent *agent;
 
-	if (bacmp(&adapter->bdaddr, BDADDR_ANY) == 0) {
-		error("No address available for hci%d", adapter->dev_id);
-		return FALSE;
-	}
-
 	agent = agent_get(NULL);
 	if (agent) {
 		uint8_t io_cap = agent_get_io_capability(agent);
@@ -3276,17 +3288,15 @@ static gboolean adapter_setup(struct btd_adapter *adapter)
 	return TRUE;
 }
 
-static struct btd_adapter *adapter_create(int id)
+static struct btd_adapter *btd_adapter_new(uint16_t index)
 {
 	struct btd_adapter *adapter;
 
 	adapter = g_try_new0(struct btd_adapter, 1);
-	if (!adapter) {
-		error("adapter_create: failed to alloc memory for hci%d", id);
+	if (!adapter)
 		return NULL;
-	}
 
-	adapter->dev_id = id;
+	adapter->dev_id = index;
 	adapter->mgmt = mgmt_ref(mgmt_master);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->dev_id,
@@ -4079,12 +4089,6 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 
 static int adapter_register(struct btd_adapter *adapter)
 {
-	if (adapter_find_by_id(adapter->dev_id)) {
-		error("Unable to register adapter: hci%d already exist",
-							adapter->dev_id);
-		return -EALREADY;
-	}
-
 	adapter->path = g_strdup_printf("/org/bluez/hci%d", adapter->dev_id);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
@@ -4146,14 +4150,27 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to read info for index %u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
-		return;
+		goto failed;
 	}
 
 	if (length < sizeof(*rp)) {
 		error("Too small read info complete response");
-		return;
+		goto failed;
 	}
 
+	if (bacmp(&adapter->bdaddr, BDADDR_ANY)) {
+		error("No Bluetooth address for index %u", adapter->dev_id);
+		goto failed;
+	}
+
+	/*
+	 * Store controller information for device address, class of device,
+	 * device name, short name and settings.
+	 *
+	 * During the lifetime of the controller these will be updated by
+	 * events and the information is required to keep the current
+	 * state of the controller.
+	 */
 	bacpy(&adapter->bdaddr, &rp->bdaddr);
 	adapter->dev_class = rp->dev_class[0] | (rp->dev_class[1] << 8) |
 						(rp->dev_class[2] << 16);
@@ -4168,7 +4185,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	err = adapter_register(adapter);
 	if (err < 0) {
 		error("Unable to register new adapter");
-		return;
+		goto failed;
 	}
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
@@ -4188,11 +4205,20 @@ static void read_info_complete(uint8_t status, uint16_t length,
 
 	if (mgmt_powered(rp->current_settings))
 		adapter_start(adapter);
-}
 
-static void adapter_destroy(void *user_data)
-{
-	struct btd_adapter *adapter = user_data;
+	return;
+
+failed:
+	/*
+	 * Remove adapter from list in case of a failure.
+	 *
+	 * Leaving an adapter structure around for a controller that can
+	 * not be initilized makes no sense at the moment.
+	 *
+	 * This is a simplification to avoid constant checks if the
+	 * adapter is ready to do anything.
+	 */
+	adapter_list = g_list_remove(adapter_list, adapter);
 
 	btd_adapter_unref(adapter);
 }
@@ -4204,28 +4230,42 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 
 	DBG("index %u", index);
 
-	adapter = adapter_find_by_id(index);
-	if (adapter != NULL) {
+	adapter = btd_adapter_lookup(index);
+	if (adapter) {
 		warn("Ignoring index added for an already existing adapter");
 		return;
 	}
 
-	adapter = adapter_create(index);
+	adapter = btd_adapter_new(index);
 	if (!adapter) {
 		error("Unable to create new adapter for index %u", index);
 		return;
 	}
 
+	/*
+	 * Protect against potential two executions of read controller info.
+	 *
+	 * In case the start of the daemon and the action of adding a new
+	 * controller coincide this function might be called twice.
+	 *
+	 * To avoid the double execution of reading the controller info,
+	 * add the adapter already to the list. If an adapter is already
+	 * present, the second notification will cause a warning. If the
+	 * command fails the adapter is removed from the list again.
+	 */
+	adapter_list = g_list_append(adapter_list, adapter);
+
 	DBG("sending read info command for index %u", index);
 
 	if (mgmt_send(mgmt_master, MGMT_OP_READ_INFO, index, 0, NULL,
-						read_info_complete,
-						adapter, adapter_destroy) > 0)
+					read_info_complete, adapter, NULL) > 0)
 		return;
 
 	error("Failed to read controller info for index %u", index);
 
-	adapter_destroy(adapter);
+	adapter_list = g_list_remove(adapter_list, adapter);
+
+	btd_adapter_unref(adapter);
 }
 
 static void index_removed(uint16_t index, uint16_t length, const void *param,
@@ -4278,6 +4318,12 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 		DBG("Found index %u", index);
 
+		/*
+		 * Pretend to be index added event notification.
+		 *
+		 * It is safe to just trigger the procedure for index
+		 * added notification. It does check against itself.
+		 */
 		index_added(index, 0, NULL, NULL);
 	}
 }
@@ -4335,6 +4381,10 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 	DBG("sending read supported commands command");
 
+	/*
+	 * It is irrelevant if this command succeeds or fails. In case of
+	 * failure safe settings are assumed.
+	 */
 	mgmt_send(mgmt_master, MGMT_OP_READ_COMMANDS,
 				MGMT_INDEX_NONE, 0, NULL,
 				read_commands_complete, NULL, NULL);
@@ -4388,6 +4438,8 @@ int adapter_init(void)
 
 void adapter_cleanup(void)
 {
+	g_list_free(adapter_list);
+
 	while (adapters) {
 		struct btd_adapter *adapter = adapters->data;
 
