@@ -147,8 +147,9 @@ struct btd_adapter {
 	char *stored_name;		/* stored adapter name */
 	char *modalias;			/* device id (modalias) */
 	uint32_t discov_timeout;	/* discoverable time(sec) */
-	guint pairable_timeout_id;	/* pairable timeout id */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
+
+	guint pairable_timeout_id;	/* pairable timeout id */
 	struct session_req *pending_mode;
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
@@ -2111,7 +2112,7 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	if (adapter->system_name)
 		return adapter->system_name;
 
-	return main_opts.name;
+	return NULL;
 }
 
 void adapter_connect_list_add(struct btd_adapter *adapter,
@@ -3204,13 +3205,6 @@ static void load_config(struct btd_adapter *adapter)
 						"General", "Name", NULL);
 	}
 
-	/* Set class */
-	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
-	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
-
-	DBG("class: major %u minor %u",
-			adapter->major_class, adapter->minor_class);
-
 	/* Get pairable timeout */
 	adapter->pairable_timeout = g_key_file_get_integer(key_file, "General",
 						"PairableTimeout", &gerr);
@@ -3912,16 +3906,6 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 								passkey);
 }
 
-static int adapter_set_did(struct btd_adapter *adapter, uint16_t vendor,
-					uint16_t product, uint16_t version,
-					uint16_t source)
-{
-	g_free(adapter->modalias);
-	adapter->modalias = bt_modalias(source, vendor, product, version);
-
-	return mgmt_set_did(adapter->dev_id, vendor, product, version, source);
-}
-
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap)
 {
@@ -4113,7 +4097,7 @@ static int adapter_register(struct btd_adapter *adapter)
 		default_adapter_id = adapter->dev_id;
 
 	if (main_opts.did_source)
-		adapter_set_did(adapter, main_opts.did_vendor,
+		mgmt_set_did(adapter->dev_id, main_opts.did_vendor,
 						main_opts.did_product,
 						main_opts.did_version,
 						main_opts.did_source);
@@ -4241,6 +4225,31 @@ static void index_added(uint16_t index, uint16_t length, const void *param,
 		error("Unable to create new adapter for index %u", index);
 		return;
 	}
+
+	/*
+	 * Setup default configuration values. These are either adapter
+	 * defaults or from a system wide configuration file.
+	 *
+	 * Some value might be overwritten later on by adapter specific
+	 * configuration. This is to make sure that sane defaults are
+	 * always present.
+	 */
+	adapter->system_name = g_strdup(main_opts.name);
+	adapter->major_class = (main_opts.class & 0x001f00) >> 8;
+	adapter->minor_class = (main_opts.class & 0x0000fc) >> 2;
+	adapter->modalias = bt_modalias(main_opts.did_source,
+						main_opts.did_vendor,
+						main_opts.did_product,
+						main_opts.did_version);
+	adapter->discov_timeout = main_opts.discovto;
+	adapter->pairable_timeout = main_opts.pairto;
+
+	DBG("System name: %s", adapter->system_name);
+	DBG("Major class: %u", adapter->major_class);
+	DBG("Minor class: %u", adapter->minor_class);
+	DBG("Modalias: %s", adapter->modalias);
+	DBG("Discoverable timeout: %u seconds", adapter->discov_timeout);
+	DBG("Pairable timeout: %u seconds", adapter->pairable_timeout);
 
 	/*
 	 * Protect against potential two executions of read controller info.
