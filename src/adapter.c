@@ -3960,9 +3960,12 @@ int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
 	return mgmt_remove_remote_oob_data(adapter->dev_id, bdaddr);
 }
 
-int btd_adapter_ssp_enabled(struct btd_adapter *adapter)
+bool btd_adapter_ssp_enabled(struct btd_adapter *adapter)
 {
-	return mgmt_ssp_enabled(adapter->dev_id);
+	if (adapter->current_settings & MGMT_SETTING_SSP)
+		return true;
+
+	return false;
 }
 
 void btd_adapter_set_oob_handler(struct btd_adapter *adapter,
