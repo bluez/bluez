@@ -85,6 +85,8 @@
 
 #define REMOVE_TEMP_TIMEOUT (3 * 60)
 
+static DBusConnection *dbus_conn = NULL;
+
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
 
@@ -4302,6 +4304,8 @@ static void mgmt_debug(const char *str, void *user_data)
 
 int adapter_init(void)
 {
+	dbus_conn = btd_get_dbus_connection();
+
 	mgmt_master = mgmt_new_default();
 	if (!mgmt_master) {
 		error("Failed to access management interface");
@@ -4354,4 +4358,6 @@ void adapter_cleanup(void)
 
 	mgmt_unref(mgmt_master);
 	mgmt_master = NULL;
+
+	dbus_conn = NULL;
 }
