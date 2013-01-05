@@ -225,9 +225,6 @@ static void class_of_dev_changed_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cod *rp = param;
 
-	if (!adapter->initialized)
-		return;
-
 	if (length < sizeof(*rp)) {
 		error("Wrong size of class of device changed parameters");
 		return;
@@ -479,9 +476,6 @@ static void new_settings_callback(uint16_t index, uint16_t length,
 	struct btd_adapter *adapter = user_data;
 	uint32_t settings;
 
-	if (!adapter->initialized)
-		return;
-
 	if (length < sizeof(settings)) {
 		error("Wrong size of new settings parameters");
 		return;
@@ -714,9 +708,6 @@ static void local_name_changed_callback(uint16_t index, uint16_t length,
 {
 	struct btd_adapter *adapter = user_data;
 	const struct mgmt_cp_set_local_name *rp = param;
-
-	if (!adapter->initialized)
-		return;
 
 	if (length < sizeof(*rp)) {
 		error("Wrong size of local name changed parameters");
@@ -3261,18 +3252,6 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 	adapter->dev_id = index;
 	adapter->mgmt = mgmt_ref(mgmt_master);
 
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->dev_id,
-					new_settings_callback, adapter, NULL);
-
-	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
-						adapter->dev_id,
-						class_of_dev_changed_callback,
-						adapter, NULL);
-	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
-						adapter->dev_id,
-						local_name_changed_callback,
-						adapter, NULL);
-
 	adapter->auths = g_queue_new();
 
 	return btd_adapter_ref(adapter);
@@ -4162,6 +4141,25 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		error("Unable to register new adapter");
 		goto failed;
 	}
+
+	/*
+	 * Register all event notification handlers for controller.
+	 *
+	 * The handlers are registered after a succcesful read of the
+	 * controller info. From now on they can track updates and
+	 * notifications.
+	 */
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->dev_id,
+					new_settings_callback, adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
+						adapter->dev_id,
+						class_of_dev_changed_callback,
+						adapter, NULL);
+	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
+						adapter->dev_id,
+						local_name_changed_callback,
+						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
 
