@@ -194,35 +194,6 @@ static int mgmt_set_mode(int index, uint16_t opcode, uint8_t val)
 	return 0;
 }
 
-int mgmt_set_connectable(int index, gboolean connectable)
-{
-	DBG("index %d connectable %d", index, connectable);
-	return mgmt_set_mode(index, MGMT_OP_SET_CONNECTABLE, connectable);
-}
-
-int mgmt_set_discoverable(int index, gboolean discoverable, uint16_t timeout)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_discoverable)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_discoverable *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d discoverable %d timeout %d", index,
-					discoverable, timeout);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_DISCOVERABLE);
-	hdr->index = htobs(index);
-	hdr->len = htobs(sizeof(*cp));
-
-	cp->val = discoverable;
-	cp->timeout = timeout;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 static int mgmt_set_ssp(int index, gboolean ssp)
 {
 	DBG("index %d ssp %d", index, ssp);
@@ -1030,13 +1001,13 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("set_powered complete");
 		break;
 	case MGMT_OP_SET_DISCOVERABLE:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_discoverable complete");
 		break;
 	case MGMT_OP_SET_CONNECTABLE:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_connectable complete");
 		break;
 	case MGMT_OP_SET_PAIRABLE:
-		mgmt_new_settings(index, ev->data, len);
+		DBG("set_pairable complete");
 		break;
 	case MGMT_OP_SET_SSP:
 		mgmt_new_settings(index, ev->data, len);
@@ -1713,27 +1684,6 @@ int mgmt_stop_discovery(int index)
 	hdr->index = htobs(index);
 
 	cp->type = info->discov_type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-int mgmt_set_fast_connectable(int index, gboolean enable)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_mode)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_mode *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d enable %d", index, enable);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_FAST_CONNECTABLE);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->val = enable;
 
 	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
 		return -errno;

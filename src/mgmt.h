@@ -25,10 +25,6 @@
 int mgmt_setup(void);
 void mgmt_cleanup(void);
 
-int mgmt_set_connectable(int index, gboolean connectable);
-int mgmt_set_discoverable(int index, gboolean discoverable, uint16_t timeout);
-int mgmt_set_fast_connectable(int index, gboolean enable);
-
 int mgmt_start_discovery(int index);
 int mgmt_start_le_scanning(int index);
 int mgmt_stop_discovery(int index);
