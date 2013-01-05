@@ -159,6 +159,7 @@ struct btd_adapter {
 	GSList *devices;		/* Devices structure pointers */
 	guint	remove_temp;		/* Remove devices timer */
 	GSList *disc_sessions;		/* Discovery sessions */
+	uint8_t discov_type;
 	struct session_req *scanning_session;
 	GSList *connect_list;		/* Devices to connect when found */
 	guint discov_id;		/* Discovery timer */
@@ -624,7 +625,7 @@ static void stop_discovery(struct btd_adapter *adapter)
 	}
 
 	if (mgmt_powered(adapter->current_settings))
-		mgmt_stop_discovery(adapter->dev_id);
+		mgmt_stop_discovery(adapter->dev_id, adapter->discov_type);
 	else
 		discovery_cleanup(adapter);
 }
@@ -1192,12 +1193,18 @@ static gboolean discovery_cb(gpointer user_data)
 	struct btd_adapter *adapter = user_data;
 
 	adapter->discov_id = 0;
+	adapter->discov_type = 0;
 
-	if (adapter->scanning_session &&
-				g_slist_length(adapter->disc_sessions) == 1)
-		mgmt_start_le_scanning(adapter->dev_id);
-	else
-		mgmt_start_discovery(adapter->dev_id);
+	if (adapter->current_settings & MGMT_SETTING_LE) {
+		hci_set_bit(BDADDR_LE_PUBLIC, &adapter->discov_type);
+		hci_set_bit(BDADDR_LE_RANDOM, &adapter->discov_type);
+	}
+
+	if (!adapter->scanning_session ||
+				g_slist_length(adapter->disc_sessions) != 1)
+		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
+
+	mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
 
 	return FALSE;
 }
@@ -1225,7 +1232,17 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	if (adapter->discov_suspended)
 		goto done;
 
-	err = mgmt_start_discovery(adapter->dev_id);
+	adapter->discov_type = 0;
+
+	if (adapter->current_settings & MGMT_SETTING_BREDR)
+		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
+
+	if (adapter->current_settings & MGMT_SETTING_LE) {
+		hci_set_bit(BDADDR_LE_PUBLIC, &adapter->discov_type);
+		hci_set_bit(BDADDR_LE_RANDOM, &adapter->discov_type);
+	}
+
+	err = mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -3388,7 +3405,7 @@ static void suspend_discovery(struct btd_adapter *adapter)
 		g_source_remove(adapter->discov_id);
 		adapter->discov_id = 0;
 	} else
-		mgmt_stop_discovery(adapter->dev_id);
+		mgmt_stop_discovery(adapter->dev_id, adapter->discov_type);
 }
 
 static gboolean clean_connecting_state(GIOChannel *io, GIOCondition cond,
@@ -3909,7 +3926,7 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 
 	if (adapter->discov_suspended) {
 		adapter->discov_suspended = FALSE;
-		mgmt_start_discovery(adapter->dev_id);
+		mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
 	}
 
 	check_oob_bonding_complete(adapter, bdaddr, status);
