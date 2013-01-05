@@ -510,7 +510,7 @@ static void set_fast_connectable(struct btd_adapter *adapter,
 
 	if (btd_adapter_set_fast_connectable(adapter, enable))
 		error("Changing fast connectable for hci%d failed",
-						adapter_get_dev_id(adapter));
+					btd_adapter_get_index(adapter));
 }
 
 void manager_set_fast_connectable(gboolean enable)
