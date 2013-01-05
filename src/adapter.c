@@ -438,7 +438,7 @@ static void set_pairable(struct btd_adapter *adapter, gboolean pairable,
 	if (pairable == mgmt_pairable(adapter->current_settings))
 		goto done;
 
-	mgmt_set_pairable(adapter->dev_id, pairable);
+	/* TODO: disable pairable setting */
 
 done:
 	if (reply)
