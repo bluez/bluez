@@ -3346,11 +3346,6 @@ static void adapter_remove(struct btd_adapter *adapter)
 	set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
 }
 
-uint16_t adapter_get_dev_id(struct btd_adapter *adapter)
-{
-	return adapter->dev_id;
-}
-
 const char *adapter_get_path(struct btd_adapter *adapter)
 {
 	if (!adapter)
