@@ -48,6 +48,8 @@ typedef struct request {
 void handle_internal_request(int sk, int mtu, void *data, int len);
 void handle_request(int sk, uint8_t *data, int len);
 
+void set_fixed_db_timestamp(uint32_t dbts);
+
 int service_register_req(sdp_req_t *req, sdp_buf_t *rsp);
 int service_update_req(sdp_req_t *req, sdp_buf_t *rsp);
 int service_remove_req(sdp_req_t *req, sdp_buf_t *rsp);

@@ -50,6 +50,7 @@
 #include "adapter.h"
 
 static sdp_record_t *server = NULL;
+static uint32_t fixed_dbts = 0;
 
 /*
  * List of version numbers supported by the SDP server.
@@ -88,9 +89,19 @@ uint32_t sdp_get_time(void)
  */
 static void update_db_timestamp(void)
 {
-	uint32_t dbts = sdp_get_time();
-	sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &dbts);
-	sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
+	if (fixed_dbts) {
+		sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &fixed_dbts);
+		sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
+	} else {
+		uint32_t dbts = sdp_get_time();
+		sdp_data_t *d = sdp_data_alloc(SDP_UINT32, &dbts);
+		sdp_attr_replace(server, SDP_ATTR_SVCDB_STATE, d);
+	}
+}
+
+void set_fixed_db_timestamp(uint32_t dbts)
+{
+	fixed_dbts = dbts;
 }
 
 void register_public_browse_group(void)
