@@ -25,9 +25,6 @@
 int mgmt_setup(void);
 void mgmt_cleanup(void);
 
-int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
-int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type);
-
 int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 					uint16_t version, uint16_t source);
 

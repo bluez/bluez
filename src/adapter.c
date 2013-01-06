@@ -2027,24 +2027,48 @@ free:
 int btd_adapter_block_address(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
-	return mgmt_block_device(adapter->dev_id, bdaddr, bdaddr_type);
+	struct mgmt_cp_block_device cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u %s", adapter->dev_id, addr);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_BLOCK_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 int btd_adapter_unblock_address(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
-	return mgmt_unblock_device(adapter->dev_id, bdaddr,
-								bdaddr_type);
+	struct mgmt_cp_unblock_device cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u %s", adapter->dev_id, addr);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_UNBLOCK_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
-static void clear_blocked(struct btd_adapter *adapter)
+static int clear_blocked(struct btd_adapter *adapter)
 {
-	int err;
-
-	err = mgmt_unblock_device(adapter->dev_id, BDADDR_ANY, 0);
-	if (err < 0)
-		error("Clearing blocked list failed: %s (%d)",
-						strerror(-err), -err);
+	return btd_adapter_unblock_address(adapter, BDADDR_ANY, 0);
 }
 
 static void probe_driver(struct btd_adapter *adapter, gpointer user_data)

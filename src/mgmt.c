@@ -1006,64 +1006,6 @@ void mgmt_cleanup(void)
 	}
 }
 
-int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_block_device)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_block_device *cp;
-	size_t buf_len;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	memset(buf, 0, sizeof(buf));
-
-	hdr->opcode = htobs(MGMT_OP_BLOCK_DEVICE);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = bdaddr_type;
-
-	buf_len = sizeof(*hdr) + sizeof(*cp);
-
-	if (write(mgmt_sock, buf, buf_len) < 0)
-		return -errno;
-
-	return 0;
-}
-
-int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unblock_device)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_unblock_device *cp;
-	size_t buf_len;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s", index, addr);
-
-	memset(buf, 0, sizeof(buf));
-
-	hdr->opcode = htobs(MGMT_OP_UNBLOCK_DEVICE);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = bdaddr_type;
-
-	buf_len = sizeof(*hdr) + sizeof(*cp);
-
-	if (write(mgmt_sock, buf, buf_len) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 					uint16_t version, uint16_t source)
 {
