@@ -204,21 +204,19 @@ static void epox_endian_quirk(unsigned char *data, int size)
 
 static int create_hid_dev_name(sdp_record_t *rec, struct hidp_connadd_req *req)
 {
-	sdp_data_t *pdlist, *pdlist2;
+	char sdesc[sizeof(req->name)];
 
-	pdlist = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
-	pdlist2 = sdp_data_get(rec, SDP_ATTR_PROVNAME_PRIMARY);
-	if (pdlist && pdlist2 &&
-			strncmp(pdlist->val.str, pdlist2->val.str, 5) != 0) {
-		snprintf(req->name, sizeof(req->name), "%s %s",
-					pdlist2->val.str, pdlist->val.str);
+	if (sdp_get_service_desc(rec, sdesc, sizeof(sdesc)) == 0) {
+		char pname[sizeof(req->name)];
+
+		if (sdp_get_provider_name(rec, pname, sizeof(pname)) == 0 &&
+						strncmp(sdesc, pname, 5) != 0)
+			snprintf(req->name, sizeof(req->name), "%s %s", pname,
+									sdesc);
+		else
+			snprintf(req->name, sizeof(req->name), "%s", sdesc);
 	} else {
-		if (!pdlist)
-			pdlist = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
-
-		if (pdlist)
-			snprintf(req->name, sizeof(req->name), "%s",
-							pdlist->val.str);
+		return sdp_get_service_name(rec, req->name, sizeof(req->name));
 	}
 
 	return 0;
