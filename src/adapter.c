@@ -4135,11 +4135,6 @@ int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 	return -EIO;
 }
 
-int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)
-{
-	return mgmt_read_local_oob_data(adapter->dev_id);
-}
-
 int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t *hash, uint8_t *randomizer)
@@ -4173,9 +4168,26 @@ gboolean btd_adapter_check_oob_handler(struct btd_adapter *adapter)
 	return adapter->oob_handler != NULL;
 }
 
-void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
-					uint8_t *hash, uint8_t *randomizer)
+static void read_local_oob_data_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
+	const struct mgmt_rp_read_local_oob_data *rp = param;
+	struct btd_adapter *adapter = user_data;
+	const uint8_t *hash, *randomizer;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Read local OOB data failed: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		hash = NULL;
+		randomizer = NULL;
+	} else if (length < sizeof(*rp)) {
+		error("Too small read local OOB data response");
+		return;
+	} else {
+		hash = rp->hash;
+		randomizer = rp->randomizer;
+	}
+
 	if (!adapter->oob_handler || !adapter->oob_handler->read_local_cb)
 		return;
 
@@ -4184,6 +4196,18 @@ void adapter_read_local_oob_data_complete(struct btd_adapter *adapter,
 
 	g_free(adapter->oob_handler);
 	adapter->oob_handler = NULL;
+}
+
+int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)
+{
+	DBG("hci%u", adapter->dev_id);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_READ_LOCAL_OOB_DATA,
+			adapter->dev_id, 0, NULL, read_local_oob_data_complete,
+			adapter, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 void btd_adapter_for_each_device(struct btd_adapter *adapter,

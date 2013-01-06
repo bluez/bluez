@@ -456,36 +456,6 @@ static void pair_device_complete(uint16_t index, uint8_t status,
 	bonding_complete(index, &rp->addr, status);
 }
 
-static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_rp_read_local_oob_data *rp = buf;
-	struct btd_adapter *adapter;
-
-	if (len != sizeof(*rp)) {
-		error("read_local_oob_data_complete event size mismatch "
-					"(%zu != %zu)", len, sizeof(*rp));
-		return;
-	}
-
-	DBG("hci%u", index);
-
-	adapter = adapter_find_by_id(index);
-	if (adapter)
-		adapter_read_local_oob_data_complete(adapter, rp->hash,
-							rp->randomizer);
-}
-
-static void read_local_oob_data_failed(uint16_t index)
-{
-	struct btd_adapter *adapter;
-
-	DBG("hci%u", index);
-
-	adapter = adapter_find_by_id(index);
-	if (adapter)
-		adapter_read_local_oob_data_complete(adapter, NULL, NULL);
-}
-
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -576,7 +546,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("set_local_name complete");
 		break;
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		read_local_oob_data_complete(index, ev->data, len);
+		DBG("read_local_oob_data complete");
 		break;
 	case MGMT_OP_ADD_REMOTE_OOB_DATA:
 		DBG("add_remote_oob_data complete");
@@ -628,7 +598,7 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 
 	switch (opcode) {
 	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		read_local_oob_data_failed(index);
+		DBG("read_local_oob_data failed");
 		break;
 	}
 
@@ -1101,22 +1071,6 @@ int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)
 	cp->type = addr_type;
 
 	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-int mgmt_read_local_oob_data(int index)
-{
-	struct mgmt_hdr hdr;
-
-	DBG("hci%d", index);
-
-	hdr.opcode = htobs(MGMT_OP_READ_LOCAL_OOB_DATA);
-	hdr.len = 0;
-	hdr.index = htobs(index);
-
-	if (write(mgmt_sock, &hdr, sizeof(hdr)) < 0)
 		return -errno;
 
 	return 0;
