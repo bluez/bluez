@@ -45,6 +45,7 @@ typedef struct request {
 	int      len;
 } sdp_req_t;
 
+void handle_internal_request(int sk, int mtu, void *data, int len);
 void handle_request(int sk, uint8_t *data, int len);
 
 int service_register_req(sdp_req_t *req, sdp_buf_t *rsp);

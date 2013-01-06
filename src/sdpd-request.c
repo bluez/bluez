@@ -1055,6 +1055,22 @@ send_rsp:
 	free(req->buf);
 }
 
+void handle_internal_request(int sk, int mtu, void *data, int len)
+{
+	sdp_req_t req;
+
+	bacpy(&req.device, BDADDR_ANY);
+	bacpy(&req.bdaddr, BDADDR_LOCAL);
+	req.local = 0;
+	req.sock = sk;
+	req.mtu = mtu;
+	req.flags = 0;
+	req.buf = data;
+	req.len = len;
+
+	process_request(&req);
+}
+
 void handle_request(int sk, uint8_t *data, int len)
 {
 	struct sockaddr_l2 sa;
