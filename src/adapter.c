@@ -2117,6 +2117,19 @@ void adapter_remove_profile(struct btd_adapter *adapter, gpointer p)
 		profile->adapter_remove(profile, adapter);
 }
 
+static void adapter_add_connection(struct btd_adapter *adapter,
+						struct btd_device *device)
+{
+	if (g_slist_find(adapter->connections, device)) {
+		error("Device is already marked as connected");
+		return;
+	}
+
+	device_add_connection(device);
+
+	adapter->connections = g_slist_append(adapter->connections, device);
+}
+
 static void get_connections_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -3574,19 +3587,6 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
 {
 	return agent_get(NULL);
-}
-
-void adapter_add_connection(struct btd_adapter *adapter,
-						struct btd_device *device)
-{
-	if (g_slist_find(adapter->connections, device)) {
-		error("Device is already marked as connected");
-		return;
-	}
-
-	device_add_connection(device);
-
-	adapter->connections = g_slist_append(adapter->connections, device);
 }
 
 static void adapter_remove_connection(struct btd_adapter *adapter,
