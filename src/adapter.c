@@ -3530,10 +3530,33 @@ static gboolean connect_pending_cb(gpointer user_data)
 	return FALSE;
 }
 
+static int confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+					uint8_t bdaddr_type, bool name_known)
+{
+	struct mgmt_cp_confirm_name cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s name_known %u", adapter->dev_id, addr,
+								name_known);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+	cp.name_known = name_known;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_CONFIRM_NAME,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
 void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
-					bool confirm_name, bool legacy,
+					bool confirm, bool legacy,
 					uint8_t *data, uint8_t data_len)
 {
 	struct discovery *discovery = adapter->discovery;
@@ -3594,8 +3617,8 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	if (g_slist_find(discovery->found, dev))
 		return;
 
-	if (confirm_name)
-		mgmt_confirm_name(adapter->dev_id, bdaddr, bdaddr_type,
+	if (confirm)
+		confirm_name(adapter, bdaddr, bdaddr_type,
 						device_name_known(dev));
 
 	discovery->found = g_slist_prepend(discovery->found, dev);
