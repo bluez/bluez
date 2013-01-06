@@ -3982,7 +3982,19 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 int btd_adapter_remove_bonding(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
-	return mgmt_unpair_device(adapter->dev_id, bdaddr, bdaddr_type);
+	struct mgmt_cp_unpair_device cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+	cp.disconnect = 1;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_UNPAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 int btd_adapter_pincode_reply(struct btd_adapter *adapter,
