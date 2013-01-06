@@ -53,9 +53,10 @@ void eir_data_free(struct eir_data *eir)
 	eir->randomizer = NULL;
 }
 
-static void eir_parse_uuid16(struct eir_data *eir, void *data, uint8_t len)
+static void eir_parse_uuid16(struct eir_data *eir, const void *data,
+								uint8_t len)
 {
-	uint16_t *uuid16 = data;
+	const uint16_t *uuid16 = data;
 	uuid_t service;
 	char *uuid_str;
 	unsigned int i;
@@ -69,9 +70,10 @@ static void eir_parse_uuid16(struct eir_data *eir, void *data, uint8_t len)
 	}
 }
 
-static void eir_parse_uuid32(struct eir_data *eir, void *data, uint8_t len)
+static void eir_parse_uuid32(struct eir_data *eir, const void *data,
+								uint8_t len)
 {
-	uint32_t *uuid32 = data;
+	const uint32_t *uuid32 = data;
 	uuid_t service;
 	char *uuid_str;
 	unsigned int i;
@@ -85,9 +87,10 @@ static void eir_parse_uuid32(struct eir_data *eir, void *data, uint8_t len)
 	}
 }
 
-static void eir_parse_uuid128(struct eir_data *eir, uint8_t *data, uint8_t len)
+static void eir_parse_uuid128(struct eir_data *eir, const uint8_t *data,
+								uint8_t len)
 {
-	uint8_t *uuid_ptr = data;
+	const uint8_t *uuid_ptr = data;
 	uuid_t service;
 	char *uuid_str;
 	unsigned int i;
@@ -126,7 +129,7 @@ static char *name2utf8(const uint8_t *name, uint8_t len)
 	return g_strdup(utf8_name);
 }
 
-int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
+int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 {
 	uint16_t len = 0;
 
@@ -138,7 +141,8 @@ int eir_parse(struct eir_data *eir, uint8_t *eir_data, uint8_t eir_len)
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
-		uint8_t data_len, *data = &eir_data[2];
+		const uint8_t *data = &eir_data[2];
+		uint8_t data_len;
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
