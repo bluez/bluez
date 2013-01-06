@@ -27,6 +27,7 @@
 
 #include <unistd.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 
 #include <glib.h>
@@ -38,15 +39,62 @@
 #include "src/shared/util.h"
 #include "src/sdpd.h"
 
+struct sdp_pdu {
+	bool valid;
+	uint8_t pdu_id;
+	const void *raw_data;
+	size_t raw_size;
+	uint8_t cont_len;
+};
+
+struct test_data {
+	const struct sdp_pdu *pdu_list;
+};
+
+#define x_pdu(args...) (const unsigned char[]) { args }
+
+#define raw_pdu(args...) \
+	{							\
+		.valid = true,					\
+		.pdu_id = 0x00,					\
+		.raw_data = x_pdu(args),			\
+		.raw_size = sizeof(x_pdu(args)),		\
+	}
+
+#define raw_pdu_cont(cont, args...) \
+	{							\
+		.valid = true,					\
+		.pdu_id = 0x00,					\
+		.raw_data = x_pdu(args),			\
+		.raw_size = sizeof(x_pdu(args)),		\
+		.cont_len = cont,				\
+	}
+
+#define define_test(name, args...) \
+	do {								\
+		const struct sdp_pdu pdus[] = {				\
+			args, { }, { }					\
+		};							\
+		struct test_data *data;					\
+		data = g_new0(struct test_data, 1);			\
+		data->pdu_list = pdus;					\
+		g_test_add_data_func(name, data, test_sdp);		\
+	} while (0)
+
+#define define_ss(name, args...) define_test("/TP/SERVER/SS/" name, args)
+#define define_sa(name, args...) define_test("/TP/SERVER/SA/" name, args)
+#define define_ssa(name, args...) define_test("/TP/SERVER/SSA/" name, args)
+#define define_brw(name, args...) define_test("/TP/SERVER/BRW/" name, args)
+
 struct context {
 	GMainLoop *main_loop;
 	guint server_source;
 	guint client_source;
 	int fd;
-	const void *req_data;
-	size_t req_size;
-	const void *rsp_data;
-	size_t rsp_size;
+	uint8_t cont_data[16];
+	uint8_t cont_size;
+	unsigned int pdu_offset;
+	const struct sdp_pdu *pdu_list;
 };
 
 static void sdp_debug(const char *str, void *user_data)
@@ -141,18 +189,62 @@ static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 	if (g_test_verbose() == TRUE)
 		util_hexdump('<', buf, len, sdp_debug, "SDP: ");
 
-	handle_request(fd, buf, len);
+	handle_internal_request(fd, 48, buf, len);
 
 	return TRUE;
+}
+
+static gboolean send_pdu(gpointer user_data)
+{
+	struct context *context = user_data;
+	const struct sdp_pdu *req_pdu;
+	uint16_t pdu_len;
+	unsigned char *buf;
+	ssize_t len;
+
+	req_pdu = &context->pdu_list[context->pdu_offset];
+
+	pdu_len = req_pdu->raw_size + context->cont_size;
+
+	buf = g_malloc0(pdu_len);
+
+	memcpy(buf, req_pdu->raw_data, req_pdu->raw_size);
+
+	if (context->cont_size > 0)
+		memcpy(buf + req_pdu->raw_size, context->cont_data,
+							context->cont_size);
+
+	len = write(context->fd, buf, pdu_len);
+
+	g_free(buf);
+
+	g_assert(len == pdu_len);
+
+	return FALSE;
+}
+
+static void context_increment(struct context *context)
+{
+	context->pdu_offset += 2;
+
+	if (!context->pdu_list[context->pdu_offset].valid) {
+		context_quit(context);
+		return;
+	}
+
+	g_idle_add(send_pdu, context);
 }
 
 static gboolean client_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct context *context = user_data;
+	const struct sdp_pdu *rsp_pdu;
 	unsigned char buf[512];
 	ssize_t len;
 	int fd;
+
+	rsp_pdu = &context->pdu_list[context->pdu_offset + 1];
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
 		return FALSE;
@@ -166,12 +258,18 @@ static gboolean client_handler(GIOChannel *channel, GIOCondition cond,
 	if (g_test_verbose() == TRUE)
 		util_hexdump('>', buf, len, sdp_debug, "SDP: ");
 
-	if ((size_t) len != context->rsp_size)
-		g_test_fail();
-	else if (memcmp(context->rsp_data, buf, len))
-		g_test_fail();
+	g_assert(len > 0);
+	g_assert((size_t) len == rsp_pdu->raw_size + rsp_pdu->cont_len);
 
-	context_quit(context);
+	g_assert(memcmp(buf, rsp_pdu->raw_data,	rsp_pdu->raw_size) == 0);
+
+	if (rsp_pdu->cont_len > 0)
+		memcpy(context->cont_data, buf + rsp_pdu->raw_size,
+							rsp_pdu->cont_len);
+
+	context->cont_size = rsp_pdu->cont_len;
+
+	context_increment(context);
 
 	return TRUE;
 }
@@ -556,6 +654,8 @@ static struct context *create_context(void)
 
 	context->fd = sv[1];
 
+	set_fixed_db_timestamp(0x496f0654);
+
 	register_public_browse_group();
 	register_server_service();
 
@@ -586,80 +686,45 @@ static void execute_context(struct context *context)
 	g_free(context);
 }
 
-struct test_data {
-	const void *req_data;
-	size_t req_size;
-	const void *rsp_data;
-	size_t rsp_size;
-};
-
-static gboolean send_pdu(gpointer user_data)
-{
-	struct context *context = user_data;
-	ssize_t len;
-
-	len = write(context->fd, context->req_data, context->req_size);
-	g_assert(len > 0 && (size_t) len == context->req_size);
-
-	return FALSE;
-}
-
 static void test_sdp(gconstpointer data)
 {
 	const struct test_data *test = data;
 	struct context *context = create_context();
 
-	context->req_data = test->req_data;
-	context->req_size = test->req_size;
-	context->rsp_data = test->rsp_data;
-	context->rsp_size = test->rsp_size;
+	context->pdu_list = test->pdu_list;
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
 }
 
-#define makepdu(args...) (const unsigned char[]) { args }
-
-#define sdp_test(name, req, rsp) \
-	do {								\
-		static const unsigned char req_data[] = req;		\
-		static const unsigned char rsp_data[] = rsp;		\
-		static const struct test_data test_data = {		\
-			.req_data = req_data,				\
-			.req_size = sizeof(req_data),			\
-			.rsp_data = rsp_data,				\
-			.rsp_size = sizeof(rsp_data),			\
-		};							\
-		g_test_add_data_func(name, &test_data, test_sdp);	\
-	} while (0)
-
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
-	/* Service Search Request
+	/*
+	 * Service Search Request
 	 *
 	 * Verify the correct behaviour of the IUT when searching for
 	 * existing service(s).
 	 */
-	sdp_test("/TP/SERVER/SS/BV-01-C/UUID-128",
-		makepdu(0x02, 0x00, 0x01, 0x00, 0x16, 0x35, 0x11, 0x1c,
+	define_ss("BV-01-C/UUID-16",
+		raw_pdu(0x02, 0x00, 0x01, 0x00, 0x08, 0x35, 0x03, 0x19,
+			0x11, 0x05, 0x00, 0x01, 0x00),
+		raw_pdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
+			0x01, 0x00, 0x01, 0x00, 0x01, 0x00));
+	define_ss("BV-01-C/UUID-32",
+		raw_pdu(0x02, 0x00, 0x01, 0x00, 0x0a, 0x35, 0x05, 0x1a,
+			0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00),
+		raw_pdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
+			0x01, 0x00, 0x01, 0x00, 0x00, 0x00));
+	define_ss("BV-01-C/UUID-128",
+		raw_pdu(0x02, 0x00, 0x01, 0x00, 0x16, 0x35, 0x11, 0x1c,
 			0x00, 0x00, 0x11, 0x05, 0x00, 0x00, 0x10, 0x00,
 			0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb,
 			0x00, 0x01, 0x00),
-		makepdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
+		raw_pdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
 			0x01, 0x00, 0x01, 0x00, 0x01, 0x00));
-	sdp_test("/TP/SERVER/SS/BV-01-C/UUID-16",
-		makepdu(0x02, 0x00, 0x01, 0x00, 0x08, 0x35, 0x03, 0x19,
-			0x11, 0x05, 0x00, 0x01, 0x00),
-		makepdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
-			0x01, 0x00, 0x01, 0x00, 0x01, 0x00));
-	sdp_test("/TP/SERVER/SS/BV-01-C/UUID-32",
-		makepdu(0x02, 0x00, 0x01, 0x00, 0x0a, 0x35, 0x05, 0x1a,
-			0x00, 0x00, 0x00, 0x03, 0x00, 0x01, 0x00),
-		makepdu(0x03, 0x00, 0x01, 0x00, 0x09, 0x00, 0x01, 0x00,
-			0x01, 0x00, 0x01, 0x00, 0x00, 0x00));
 
 	return g_test_run();
 }
