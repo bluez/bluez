@@ -1006,32 +1006,6 @@ void mgmt_cleanup(void)
 	}
 }
 
-int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
-					uint16_t version, uint16_t source)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_device_id)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_device_id *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d source %x vendor %x product %x version %x",
-				index, source, vendor, product, version);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_DEVICE_ID);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->source = htobs(source);
-	cp->vendor = htobs(vendor);
-	cp->product = htobs(product);
-	cp->version = htobs(version);
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 {
 	char *buf;

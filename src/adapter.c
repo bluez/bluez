@@ -4214,6 +4214,29 @@ void adapter_foreach(adapter_cb func, gpointer user_data)
 	g_slist_foreach(adapters, (GFunc) func, user_data);
 }
 
+static int set_did(struct btd_adapter *adapter, uint16_t vendor,
+			uint16_t product, uint16_t version, uint16_t source)
+{
+	struct mgmt_cp_set_device_id cp;
+
+	DBG("hci%u source %x vendor %x product %x version %x",
+			adapter->dev_id, source, vendor, product, version);
+
+	memset(&cp, 0, sizeof(cp));
+
+	cp.source = htobs(source);
+	cp.vendor = htobs(vendor);
+	cp.product = htobs(product);
+	cp.version = htobs(version);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEVICE_ID,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
 static int adapter_register(struct btd_adapter *adapter)
 {
 	struct agent *agent;
@@ -4263,10 +4286,8 @@ static int adapter_register(struct btd_adapter *adapter)
 		default_adapter_id = adapter->dev_id;
 
 	if (main_opts.did_source)
-		mgmt_set_did(adapter->dev_id, main_opts.did_vendor,
-						main_opts.did_product,
-						main_opts.did_version,
-						main_opts.did_source);
+		set_did(adapter, main_opts.did_vendor, main_opts.did_product,
+				main_opts.did_version, main_opts.did_source);
 
 	DBG("Adapter %s registered", adapter->path);
 

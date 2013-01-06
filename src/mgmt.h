@@ -25,9 +25,6 @@
 int mgmt_setup(void);
 void mgmt_cleanup(void);
 
-int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
-					uint16_t version, uint16_t source);
-
 int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys);
 int mgmt_load_ltks(int index, GSList *keys);
 
