@@ -178,52 +178,6 @@ static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 	bonding_complete(index, &ev->key.addr, 0);
 }
 
-static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_device_connected *ev = buf;
-	struct eir_data eir_data;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	uint16_t eir_len;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small device_connected event");
-		return;
-	}
-
-	eir_len = bt_get_le16(&ev->eir_len);
-	if (len < sizeof(*ev) + eir_len) {
-		error("Too small device_connected event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
-		return;
-
-	memset(&eir_data, 0, sizeof(eir_data));
-	if (eir_len > 0)
-		eir_parse(&eir_data, ev->eir, eir_len);
-
-	if (eir_data.class != 0)
-		device_set_class(device, eir_data.class);
-
-	adapter_add_connection(adapter, device);
-
-	if (eir_data.name != NULL) {
-		const bdaddr_t *bdaddr = adapter_get_address(adapter);
-		adapter_store_cached_name(bdaddr, &ev->addr.bdaddr,
-								eir_data.name);
-		device_set_name(device, eir_data.name);
-	}
-
-	eir_data_free(&eir_data);
-}
-
 static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_connect_failed *ev = buf;
@@ -1006,7 +960,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_new_link_key(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_CONNECTED:
-		mgmt_device_connected(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_connected event");
 		break;
 	case MGMT_EV_DEVICE_DISCONNECTED:
 		DBG("device_disconnected event");

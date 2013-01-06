@@ -4264,6 +4264,56 @@ static void disconnected_callback(uint16_t index, uint16_t length,
 	dev_disconnected(adapter, &ev->addr, reason);
 }
 
+static void connected_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_connected *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	struct eir_data eir_data;
+	uint16_t eir_len;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small device connected event");
+		return;
+	}
+
+	eir_len = btohs(ev->eir_len);
+	if (length < sizeof(*ev) + eir_len) {
+		error("Too small device connected event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
+
+	device = adapter_get_device(adapter, addr, ev->addr.type);
+	if (!device) {
+		error("Unable to get device object for %s", addr);
+		return;
+	}
+
+	memset(&eir_data, 0, sizeof(eir_data));
+	if (eir_len > 0)
+		eir_parse(&eir_data, ev->eir, eir_len);
+
+	if (eir_data.class != 0)
+		device_set_class(device, eir_data.class);
+
+	adapter_add_connection(adapter, device);
+
+	if (eir_data.name != NULL) {
+		const bdaddr_t *bdaddr = adapter_get_address(adapter);
+		adapter_store_cached_name(bdaddr, &ev->addr.bdaddr,
+								eir_data.name);
+		device_set_name(device, eir_data.name);
+	}
+
+	eir_data_free(&eir_data);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4341,6 +4391,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_DISCONNECTED,
 						adapter->dev_id,
 						disconnected_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_CONNECTED,
+						adapter->dev_id,
+						connected_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
