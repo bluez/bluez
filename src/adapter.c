@@ -4314,6 +4314,36 @@ static void connected_callback(uint16_t index, uint16_t length,
 	eir_data_free(&eir_data);
 }
 
+static void connect_failed_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_connect_failed *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small connect failed event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u %s status %u", index, addr, ev->status);
+
+	device = adapter_find_device(adapter, addr);
+	if (device) {
+		if (device_is_bonding(device, NULL))
+			device_bonding_failed(device, ev->status);
+		if (device_is_temporary(device))
+			adapter_remove_device(adapter, device, TRUE);
+	}
+
+	/* In the case of security mode 3 devices */
+	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
+								ev->status);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4396,6 +4426,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_CONNECTED,
 						adapter->dev_id,
 						connected_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_CONNECT_FAILED,
+						adapter->dev_id,
+						connect_failed_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

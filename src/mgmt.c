@@ -178,37 +178,6 @@ static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
 	bonding_complete(index, &ev->key.addr, 0);
 }
 
-static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_connect_failed *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small connect_failed event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u %s status %u", index, addr, ev->status);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
-		return;
-
-	if (device) {
-		if (device_is_bonding(device, NULL))
-			device_bonding_failed(device, ev->status);
-		if (device_is_temporary(device))
-			adapter_remove_device(adapter, device, TRUE);
-	}
-
-	/* In the case of security mode 3 devices */
-	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
-								ev->status);
-}
-
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len)
 {
@@ -966,7 +935,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("device_disconnected event");
 		break;
 	case MGMT_EV_CONNECT_FAILED:
-		mgmt_connect_failed(index, buf + MGMT_HDR_SIZE, len);
+		DBG("connect_failed event");
 		break;
 	case MGMT_EV_PIN_CODE_REQUEST:
 		mgmt_pin_code_request(index, buf + MGMT_HDR_SIZE, len);
