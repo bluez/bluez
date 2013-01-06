@@ -224,35 +224,6 @@ static void mgmt_device_connected(uint16_t index, void *buf, size_t len)
 	eir_data_free(&eir_data);
 }
 
-static void mgmt_device_disconnected(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_device_disconnected *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
-	uint8_t reason;
-
-	if (len < sizeof(struct mgmt_addr_info)) {
-		error("Too small device_disconnected event");
-		return;
-	}
-
-	if (len < sizeof(*ev))
-		reason = MGMT_DEV_DISCONN_UNKNOWN;
-	else
-		reason = ev->reason;
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u device %s disconnected reason %u", index, addr, reason);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
-		return;
-
-	if (device)
-		adapter_remove_connection(adapter, device);
-}
-
 static void mgmt_connect_failed(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_connect_failed *ev = buf;
@@ -544,38 +515,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 	}
 }
 
-static void disconnect_complete(uint16_t index, uint8_t status,
-							void *buf, size_t len)
-{
-	struct mgmt_rp_disconnect *rp = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
-
-	if (len < sizeof(*rp)) {
-		error("Too small disconnect complete event");
-		return;
-	}
-
-	ba2str(&rp->addr.bdaddr, addr);
-
-	if (status != 0) {
-		error("Disconnecting %s failed with status %u", addr, status);
-		return;
-	}
-
-	DBG("hci%d %s disconnected", index, addr);
-
-	if (!get_adapter_and_device(index, &rp->addr, &adapter, &device, false))
-		return;
-
-	if (device)
-		adapter_remove_connection(adapter, device);
-
-	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
-						MGMT_STATUS_DISCONNECTED);
-}
-
 static void pair_device_complete(uint16_t index, uint8_t status,
 							void *buf, size_t len)
 {
@@ -687,7 +626,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("unpair_device complete");
 		break;
 	case MGMT_OP_DISCONNECT:
-		disconnect_complete(index, ev->status, ev->data, len);
+		DBG("disconnect complete event");
 		break;
 	case MGMT_OP_GET_CONNECTIONS:
 		DBG("get_connections complete");
@@ -1070,7 +1009,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_device_connected(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_DISCONNECTED:
-		mgmt_device_disconnected(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_disconnected event");
 		break;
 	case MGMT_EV_CONNECT_FAILED:
 		mgmt_connect_failed(index, buf + MGMT_HDR_SIZE, len);

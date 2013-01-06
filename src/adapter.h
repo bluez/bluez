@@ -110,8 +110,6 @@ void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 void adapter_add_connection(struct btd_adapter *adapter,
 						struct btd_device *device);
-void adapter_remove_connection(struct btd_adapter *adapter,
-						struct btd_device *device);
 
 struct btd_adapter *btd_adapter_ref(struct btd_adapter *adapter);
 void btd_adapter_unref(struct btd_adapter *adapter);

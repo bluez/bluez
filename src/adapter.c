@@ -2302,46 +2302,6 @@ static void unload_drivers(struct btd_adapter *adapter)
 	adapter->profiles = NULL;
 }
 
-static void adapter_stop(struct btd_adapter *adapter)
-{
-	bool emit_discovering = false;
-
-	/* check pending requests */
-	reply_pending_requests(adapter);
-
-	if (adapter->discovery) {
-		emit_discovering = true;
-		stop_discovery(adapter);
-	}
-
-	if (adapter->disc_sessions) {
-		g_slist_free_full(adapter->disc_sessions, session_free);
-		adapter->disc_sessions = NULL;
-	}
-
-	while (adapter->connections) {
-		struct btd_device *device = adapter->connections->data;
-		adapter_remove_connection(adapter, device);
-	}
-
-	if (emit_discovering)
-		g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "Discovering");
-
-	if (adapter->dev_class) {
-		/* the kernel should reset the class of device when powering
-		 * down, but it does not. So force it here ... */
-		adapter->dev_class = 0;
-		g_dbus_emit_property_changed(dbus_conn, adapter->path,
-						ADAPTER_INTERFACE, "Class");
-	}
-
-	g_dbus_emit_property_changed(dbus_conn, adapter->path,
-						ADAPTER_INTERFACE, "Powered");
-
-	DBG("adapter %s has been disabled", adapter->path);
-}
-
 static void free_service_auth(gpointer data, gpointer user_data)
 {
 	struct service_auth *auth = data;
@@ -3629,7 +3589,7 @@ void adapter_add_connection(struct btd_adapter *adapter,
 	adapter->connections = g_slist_append(adapter->connections, device);
 }
 
-void adapter_remove_connection(struct btd_adapter *adapter,
+static void adapter_remove_connection(struct btd_adapter *adapter,
 						struct btd_device *device)
 {
 	DBG("");
@@ -3652,6 +3612,46 @@ void adapter_remove_connection(struct btd_adapter *adapter,
 		DBG("Removing temporary device %s", path);
 		adapter_remove_device(adapter, device, TRUE);
 	}
+}
+
+static void adapter_stop(struct btd_adapter *adapter)
+{
+	bool emit_discovering = false;
+
+	/* check pending requests */
+	reply_pending_requests(adapter);
+
+	if (adapter->discovery) {
+		emit_discovering = true;
+		stop_discovery(adapter);
+	}
+
+	if (adapter->disc_sessions) {
+		g_slist_free_full(adapter->disc_sessions, session_free);
+		adapter->disc_sessions = NULL;
+	}
+
+	while (adapter->connections) {
+		struct btd_device *device = adapter->connections->data;
+		adapter_remove_connection(adapter, device);
+	}
+
+	if (emit_discovering)
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Discovering");
+
+	if (adapter->dev_class) {
+		/* the kernel should reset the class of device when powering
+		 * down, but it does not. So force it here ... */
+		adapter->dev_class = 0;
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Class");
+	}
+
+	g_dbus_emit_property_changed(dbus_conn, adapter->path,
+						ADAPTER_INTERFACE, "Powered");
+
+	DBG("adapter %s has been disabled", adapter->path);
 }
 
 int btd_register_adapter_driver(struct btd_adapter_driver *driver)
@@ -3921,12 +3921,62 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return -ENOSYS;
 }
 
+static void dev_disconnected(struct btd_adapter *adapter,
+					const struct mgmt_addr_info *addr,
+					uint8_t reason)
+{
+	struct btd_device *device;
+	char dst[18];
+
+	ba2str(&addr->bdaddr, dst);
+
+	DBG("Device %s disconnected, reason %u", dst, reason);
+
+	device = adapter_find_device(adapter, dst);
+	if (device)
+		adapter_remove_connection(adapter, device);
+
+	adapter_bonding_complete(adapter, &addr->bdaddr, addr->type,
+						MGMT_STATUS_DISCONNECTED);
+}
+
+static void disconnect_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_disconnect *rp = param;
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to disconnect device: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Too small device disconnect response");
+		return;
+	}
+
+	dev_disconnected(adapter, &rp->addr, MGMT_DEV_DISCONN_LOCAL_HOST);
+}
+
 int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 						const bdaddr_t *bdaddr,
 						uint8_t bdaddr_type)
 
 {
-	return mgmt_disconnect(adapter->dev_id, bdaddr, bdaddr_type);
+	struct mgmt_cp_disconnect cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_DISCONNECT,
+				adapter->dev_id, sizeof(cp), &cp,
+				disconnect_complete, adapter, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 int btd_adapter_remove_bonding(struct btd_adapter *adapter,
@@ -4194,6 +4244,26 @@ static int adapter_unregister(struct btd_adapter *adapter)
 	return 0;
 }
 
+static void disconnected_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_disconnected *ev = param;
+	struct btd_adapter *adapter = user_data;
+	uint8_t reason;
+
+	if (length < sizeof(struct mgmt_addr_info)) {
+		error("Too small device disconnected event");
+		return;
+	}
+
+	if (length < sizeof(*ev))
+		reason = MGMT_DEV_DISCONN_UNKNOWN;
+	else
+		reason = ev->reason;
+
+	dev_disconnected(adapter, &ev->addr, reason);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4266,6 +4336,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DISCOVERING,
 						adapter->dev_id,
 						discovering_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_DISCONNECTED,
+						adapter->dev_id,
+						disconnected_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
