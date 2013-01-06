@@ -156,9 +156,9 @@ unregister:
 }
 
 static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
-							uint8_t *hash,
-							uint8_t *randomizer,
-							DBusMessage *msg)
+						const uint8_t *hash,
+						const uint8_t *randomizer,
+						DBusMessage *msg)
 {
 	DBusMessage *reply;
 	DBusMessageIter iter;
@@ -195,8 +195,9 @@ static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
 	return reply;
 }
 
-static void read_local_complete(struct btd_adapter *adapter, uint8_t *hash,
-					uint8_t *randomizer, void *user_data)
+static void read_local_complete(struct btd_adapter *adapter,
+				const uint8_t *hash, const uint8_t *randomizer,
+				void *user_data)
 {
 	DBusMessage *msg = user_data;
 	DBusMessage *reply;

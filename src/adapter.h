@@ -44,7 +44,8 @@ uint16_t btd_adapter_get_index(struct btd_adapter *adapter);
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
 
 typedef void (*oob_read_local_cb_t) (struct btd_adapter *adapter,
-					uint8_t *hash, uint8_t *randomizer,
+					const uint8_t *hash,
+					const uint8_t *randomizer,
 					void *user_data);
 typedef void (*oob_bonding_cb_t) (struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr, uint8_t status,
