@@ -1124,30 +1124,6 @@ int mgmt_unblock_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 	return 0;
 }
 
-int mgmt_disconnect(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_disconnect)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_disconnect *cp = (void *) &buf[sizeof(*hdr)];
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d %s", index, addr);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_DISCONNECT);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = bdaddr_type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		error("write: %s (%d)", strerror(errno), errno);
-
-	return 0;
-}
-
 int mgmt_unpair_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_unpair_device)];
