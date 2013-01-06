@@ -48,6 +48,7 @@ struct sdp_pdu {
 };
 
 struct test_data {
+	int mtu;
 	const struct sdp_pdu *pdu_list;
 };
 
@@ -77,6 +78,7 @@ struct test_data {
 		};							\
 		struct test_data *data;					\
 		data = g_new0(struct test_data, 1);			\
+		data->mtu = 48;					\
 		data->pdu_list = pdus;					\
 		g_test_add_data_func(name, data, test_sdp);		\
 	} while (0)
@@ -91,6 +93,7 @@ struct context {
 	guint server_source;
 	guint client_source;
 	int fd;
+	int mtu;
 	uint8_t cont_data[16];
 	uint8_t cont_size;
 	unsigned int pdu_offset;
@@ -153,7 +156,7 @@ static void context_quit(struct context *context)
 static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
-	//struct context *context = user_data;
+	struct context *context = user_data;
 	sdp_pdu_hdr_t hdr;
 	void *buf;
 	size_t size;
@@ -189,7 +192,7 @@ static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 	if (g_test_verbose() == TRUE)
 		util_hexdump('<', buf, len, sdp_debug, "SDP: ");
 
-	handle_internal_request(fd, 48, buf, len);
+	handle_internal_request(fd, context->mtu, buf, len);
 
 	return TRUE;
 }
@@ -691,6 +694,7 @@ static void test_sdp(gconstpointer data)
 	const struct test_data *test = data;
 	struct context *context = create_context();
 
+	context->mtu = test->mtu;
 	context->pdu_list = test->pdu_list;
 
 	g_idle_add(send_pdu, context);
