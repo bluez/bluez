@@ -1076,59 +1076,6 @@ int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)
 	return 0;
 }
 
-int mgmt_add_remote_oob_data(int index, const bdaddr_t *bdaddr,
-					uint8_t *hash, uint8_t *randomizer)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_add_remote_oob_data)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_add_remote_oob_data *cp = (void *) &buf[sizeof(*hdr)];
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s", index, addr);
-
-	memset(buf, 0, sizeof(buf));
-
-	hdr->opcode = htobs(MGMT_OP_ADD_REMOTE_OOB_DATA);
-	hdr->index = htobs(index);
-	hdr->len = htobs(sizeof(*cp));
-
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	memcpy(cp->hash, hash, 16);
-
-	if (randomizer)
-		memcpy(cp->randomizer, randomizer, 16);
-
-	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
-int mgmt_remove_remote_oob_data(int index, const bdaddr_t *bdaddr)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_remove_remote_oob_data)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_remove_remote_oob_data *cp = (void *) &buf[sizeof(*hdr)];
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s", index, addr);
-
-	memset(buf, 0, sizeof(buf));
-
-	hdr->opcode = htobs(MGMT_OP_REMOVE_REMOTE_OOB_DATA);
-	hdr->index = htobs(index);
-	hdr->len = htobs(sizeof(*cp));
-
-	bacpy(&cp->addr.bdaddr, bdaddr);
-
-	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int mgmt_load_ltks(int index, GSList *keys)
 {
 	char *buf;

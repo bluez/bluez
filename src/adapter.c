@@ -4139,14 +4139,45 @@ int btd_adapter_add_remote_oob_data(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t *hash, uint8_t *randomizer)
 {
-	return mgmt_add_remote_oob_data(adapter->dev_id, bdaddr, hash,
-								randomizer);
+	struct mgmt_cp_add_remote_oob_data cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", adapter->dev_id, addr);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	memcpy(cp.hash, hash, 16);
+
+	if (randomizer)
+		memcpy(cp.randomizer, randomizer, 16);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_ADD_REMOTE_OOB_DATA,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 int btd_adapter_remove_remote_oob_data(struct btd_adapter *adapter,
 							const bdaddr_t *bdaddr)
 {
-	return mgmt_remove_remote_oob_data(adapter->dev_id, bdaddr);
+	struct mgmt_cp_remove_remote_oob_data cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%d bdaddr %s", adapter->dev_id, addr);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_REMOTE_OOB_DATA,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 bool btd_adapter_ssp_enabled(struct btd_adapter *adapter)

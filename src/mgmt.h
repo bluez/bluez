@@ -38,7 +38,3 @@ int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success);
 int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							uint32_t passkey);
-
-int mgmt_add_remote_oob_data(int index, const bdaddr_t *bdaddr,
-					uint8_t *hash, uint8_t *randomizer);
-int mgmt_remove_remote_oob_data(int index, const bdaddr_t *bdaddr);
