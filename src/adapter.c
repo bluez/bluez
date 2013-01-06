@@ -1181,7 +1181,7 @@ static void service_auth_cancel(struct service_auth *auth)
 	g_free(auth);
 }
 
-void adapter_remove_device(struct btd_adapter *adapter,
+static void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *dev,
 						gboolean remove_storage)
 {

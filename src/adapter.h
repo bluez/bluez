@@ -92,10 +92,6 @@ sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter);
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *dest);
 
-void adapter_remove_device(struct btd_adapter *adapter,
-						struct btd_device *device,
-						gboolean remove_storage);
-
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 void adapter_update_found_devices(struct btd_adapter *adapter,
