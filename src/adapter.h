@@ -96,8 +96,6 @@ void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *device,
 						gboolean remove_storage);
 
-void adapter_set_discovering(struct btd_adapter *adapter,
-						gboolean discovering);
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 void adapter_update_found_devices(struct btd_adapter *adapter,

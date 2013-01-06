@@ -642,6 +642,20 @@ static void discovery_cleanup(struct btd_adapter *adapter)
 	g_free(discovery);
 }
 
+static int mgmt_stop_discovery(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_stop_discovery cp;
+
+	cp.type = adapter->discov_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
 /* Called when a session gets removed or the adapter is stopped */
 static void stop_discovery(struct btd_adapter *adapter)
 {
@@ -659,7 +673,7 @@ static void stop_discovery(struct btd_adapter *adapter)
 	}
 
 	if (mgmt_powered(adapter->current_settings))
-		mgmt_stop_discovery(adapter->dev_id, adapter->discov_type);
+		mgmt_stop_discovery(adapter);
 	else
 		discovery_cleanup(adapter);
 }
@@ -1222,6 +1236,51 @@ sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter)
 	return adapter->services;
 }
 
+static void adapter_set_discovering(struct btd_adapter *adapter,
+						gboolean discovering);
+
+static void discovering_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_discovering *ev = param;
+	struct btd_adapter *adapter = user_data;
+
+	if (length < sizeof(*ev)) {
+		error("Too small discovering event");
+		return;
+	}
+
+	DBG("hci%u type %u discovering %u", index,
+					ev->type, ev->discovering);
+
+	adapter_set_discovering(adapter, ev->discovering);
+}
+
+static void start_discovery_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	DBG("%s (0x%02x)", mgmt_errstr(status), status);
+
+	if (status != MGMT_STATUS_SUCCESS)
+		adapter_set_discovering(adapter, FALSE);
+}
+
+static int mgmt_start_discovery(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_start_discovery cp;
+
+	cp.type = adapter->discov_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
+				adapter->dev_id, sizeof(cp), &cp,
+				start_discovery_complete, adapter, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
 static gboolean discovery_cb(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
@@ -1238,7 +1297,7 @@ static gboolean discovery_cb(gpointer user_data)
 				g_slist_length(adapter->disc_sessions) != 1)
 		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
 
-	mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
+	mgmt_start_discovery(adapter);
 
 	return FALSE;
 }
@@ -1276,7 +1335,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 		hci_set_bit(BDADDR_LE_RANDOM, &adapter->discov_type);
 	}
 
-	err = mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
+	err = mgmt_start_discovery(adapter);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -3367,7 +3426,7 @@ static gboolean adapter_remove_temp(gpointer data)
 	return FALSE;
 }
 
-void adapter_set_discovering(struct btd_adapter *adapter,
+static void adapter_set_discovering(struct btd_adapter *adapter,
 						gboolean discovering)
 {
 	guint connect_list_len;
@@ -3425,7 +3484,7 @@ static void suspend_discovery(struct btd_adapter *adapter)
 		g_source_remove(adapter->discov_id);
 		adapter->discov_id = 0;
 	} else
-		mgmt_stop_discovery(adapter->dev_id, adapter->discov_type);
+		mgmt_stop_discovery(adapter);
 }
 
 static gboolean clean_connecting_state(GIOChannel *io, GIOCondition cond,
@@ -3946,7 +4005,7 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 
 	if (adapter->discov_suspended) {
 		adapter->discov_suspended = FALSE;
-		mgmt_start_discovery(adapter->dev_id, adapter->discov_type);
+		mgmt_start_discovery(adapter);
 	}
 
 	check_oob_bonding_complete(adapter, bdaddr, status);
@@ -4202,6 +4261,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
 						adapter->dev_id,
 						local_name_changed_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DISCOVERING,
+						adapter->dev_id,
+						discovering_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

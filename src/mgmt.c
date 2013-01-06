@@ -613,29 +613,6 @@ static void read_local_oob_data_complete(uint16_t index, void *buf, size_t len)
 							rp->randomizer);
 }
 
-static void start_discovery_complete(uint16_t index, uint8_t status,
-						     void *buf, size_t len)
-{
-	uint8_t *type = buf;
-	struct btd_adapter *adapter;
-
-	if (len != sizeof(*type)) {
-		error("start_discovery_complete event size mismatch "
-					"(%zu != %zu)", len, sizeof(*type));
-		return;
-	}
-
-	DBG("hci%u type %u status %u", index, *type, status);
-
-	if (!status)
-		return;
-
-	adapter = adapter_find_by_id(index);
-	if (adapter)
-		/* Start discovery failed, inform upper layers. */
-		adapter_set_discovering(adapter, FALSE);
-}
-
 static void read_local_oob_data_failed(uint16_t index)
 {
 	struct btd_adapter *adapter;
@@ -755,7 +732,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("set_fast_connectable complete");
 		break;
 	case MGMT_OP_START_DISCOVERY:
-		start_discovery_complete(index, ev->status, ev->data, len);
+		DBG("start_discovery complete");
 		break;
 	case MGMT_OP_STOP_DISCOVERY:
 		DBG("stop_discovery complete");
@@ -856,26 +833,6 @@ static void mgmt_device_found(uint16_t index, void *buf, size_t len)
 	adapter_update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
 					ev->rssi, confirm_name, legacy,
 					eir, eir_len);
-}
-
-static void mgmt_discovering(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_discovering *ev = buf;
-	struct btd_adapter *adapter;
-
-	if (len < sizeof(*ev)) {
-		error("Too small discovering event");
-		return;
-	}
-
-	DBG("Controller %u type %u discovering %u", index,
-					ev->type, ev->discovering);
-
-	adapter = adapter_find_by_id(index);
-	if (!adapter)
-		return;
-
-	adapter_set_discovering(adapter, ev->discovering);
 }
 
 static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
@@ -1131,7 +1088,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_device_found(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DISCOVERING:
-		mgmt_discovering(index, buf + MGMT_HDR_SIZE, len);
+		DBG("discovering event");
 		break;
 	case MGMT_EV_DEVICE_BLOCKED:
 		mgmt_device_blocked(index, buf + MGMT_HDR_SIZE, len);
@@ -1214,51 +1171,6 @@ void mgmt_cleanup(void)
 		g_source_remove(mgmt_watch);
 		mgmt_watch = 0;
 	}
-}
-
-int mgmt_start_discovery(int index, uint8_t type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d", index);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_START_DISCOVERY);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->type = type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0) {
-		int err = -errno;
-		error("failed to write to MGMT socket: %s", strerror(-err));
-		return err;
-	}
-
-	return 0;
-}
-
-int mgmt_stop_discovery(int index, uint8_t type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_start_discovery)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_start_discovery *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("index %d", index);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_STOP_DISCOVERY);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->type = type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 int mgmt_block_device(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type)
