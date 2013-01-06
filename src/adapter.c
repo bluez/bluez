@@ -4344,6 +4344,37 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 								ev->status);
 }
 
+static void unpaired_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_unpaired *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small device unpaired event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u addr %s", index, addr);
+
+	device = adapter_find_device(adapter, addr);
+	if (!device) {
+		warn("No device object for unpaired device %s", addr);
+		return;
+	}
+
+	device_set_temporary(device, TRUE);
+
+	if (device_is_connected(device))
+		device_request_disconnect(device, NULL);
+	else
+		adapter_remove_device(adapter, device, TRUE);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4431,6 +4462,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_CONNECT_FAILED,
 						adapter->dev_id,
 						connect_failed_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNPAIRED,
+						adapter->dev_id,
+						unpaired_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

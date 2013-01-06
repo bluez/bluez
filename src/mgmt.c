@@ -741,35 +741,6 @@ static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 		device_unblock(device, FALSE, TRUE);
 }
 
-static void mgmt_device_unpaired(uint16_t index, void *buf, size_t len)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	struct mgmt_ev_device_unpaired *ev = buf;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_device_unpaired event packet");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-	DBG("Device upaired, index %u, addr %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
-		return;
-
-	if (!device)
-		return;
-
-	device_set_temporary(device, TRUE);
-
-	if (device_is_connected(device))
-		device_request_disconnect(device, NULL);
-	else
-		adapter_remove_device(adapter, device, TRUE);
-}
-
 static void store_longtermkey(const bdaddr_t *local, bdaddr_t *peer,
 				uint8_t bdaddr_type, unsigned char *key,
 				uint8_t master, uint8_t authenticated,
@@ -959,7 +930,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_device_unblocked(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_UNPAIRED:
-		mgmt_device_unpaired(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_unpaired event");
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
 		mgmt_passkey_request(index, buf + MGMT_HDR_SIZE, len);
