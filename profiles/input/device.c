@@ -202,7 +202,7 @@ static void epox_endian_quirk(unsigned char *data, int size)
 	}
 }
 
-static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
+static int extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 {
 	sdp_data_t *pdlist, *pdlist2;
 	uint8_t attr_val;
@@ -255,6 +255,8 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 			epox_endian_quirk(req->rd_data, req->rd_size);
 		}
 	}
+
+	return 0;
 }
 
 static int ioctl_connadd(struct hidp_connadd_req *req)
@@ -346,8 +348,13 @@ static int hidp_add_connection(struct input_device *idev)
 	rec = record_from_string(str);
 	g_free(str);
 
-	extract_hid_record(rec, req);
+	err = extract_hid_record(rec, req);
 	sdp_record_free(rec);
+	if (err < 0) {
+		error("Could not parse HID SDP record: %s (%d)", strerror(-err),
+									-err);
+		goto cleanup;
+	}
 
 	req->vendor = btd_device_get_vendor(idev->device);
 	req->product = btd_device_get_product(idev->device);
