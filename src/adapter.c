@@ -4075,7 +4075,17 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
-	return mgmt_set_io_capability(adapter->dev_id, io_cap);
+	struct mgmt_cp_set_io_capability cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.io_capability = io_cap;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_IO_CAPABILITY,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 int btd_adapter_read_local_oob_data(struct btd_adapter *adapter)

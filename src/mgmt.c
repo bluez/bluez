@@ -1139,27 +1139,6 @@ int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys)
 	return err;
 }
 
-int mgmt_set_io_capability(int index, uint8_t io_capability)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_set_io_capability)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_set_io_capability *cp = (void *) &buf[sizeof(*hdr)];
-
-	DBG("hci%d io_capability 0x%02x", index, io_capability);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_SET_IO_CAPABILITY);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp->io_capability = io_capability;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
 								uint8_t io_cap)
 {

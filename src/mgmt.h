@@ -34,8 +34,6 @@ int mgmt_set_did(int index, uint16_t vendor, uint16_t product,
 int mgmt_load_link_keys(int index, GSList *keys, gboolean debug_keys);
 int mgmt_load_ltks(int index, GSList *keys);
 
-int mgmt_set_io_capability(int index, uint8_t io_capability);
-
 int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
 							uint8_t io_cap);
 int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type);
