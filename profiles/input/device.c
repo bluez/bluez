@@ -207,15 +207,15 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	sdp_data_t *pdlist, *pdlist2;
 	uint8_t attr_val;
 
-	pdlist = sdp_data_get(rec, 0x0101);
-	pdlist2 = sdp_data_get(rec, 0x0102);
+	pdlist = sdp_data_get(rec, SDP_ATTR_SVCDESC_PRIMARY);
+	pdlist2 = sdp_data_get(rec, SDP_ATTR_PROVNAME_PRIMARY);
 	if (pdlist && pdlist2 &&
 				strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
 		snprintf(req->name, sizeof(req->name), "%s %s",
 					pdlist2->val.str, pdlist->val.str);
 	} else {
 		if (!pdlist)
-			pdlist = sdp_data_get(rec, 0x0100);
+			pdlist = sdp_data_get(rec, SDP_ATTR_SVCNAME_PRIMARY);
 
 		if (pdlist)
 			snprintf(req->name, sizeof(req->name), "%s",
