@@ -846,6 +846,8 @@ static DBusMessage *properties_set(DBusConnection *connection,
 	const GDBusPropertyTable *property;
 	const char *name, *interface;
 	struct property_data *propdata;
+	gboolean valid_signature;
+	char *signature;
 
 	if (!dbus_message_iter_init(message, &iter))
 		return g_dbus_create_error(message, DBUS_ERROR_INVALID_ARGS,
@@ -896,7 +898,10 @@ static DBusMessage *properties_set(DBusConnection *connection,
 						DBUS_ERROR_UNKNOWN_PROPERTY,
 						"No such property '%s'", name);
 
-	if (strcmp(dbus_message_iter_get_signature(&sub), property->type))
+	signature = dbus_message_iter_get_signature(&sub);
+	valid_signature = strcmp(signature, property->type) ? FALSE : TRUE;
+	dbus_free(signature);
+	if (!valid_signature)
 		return g_dbus_create_error(message,
 					DBUS_ERROR_INVALID_SIGNATURE,
 					"Invalid signature for '%s'", name);
