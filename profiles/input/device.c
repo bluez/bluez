@@ -212,7 +212,7 @@ static void extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	if (pdlist) {
 		if (pdlist2) {
 			if (strncmp(pdlist->val.str, pdlist2->val.str, 5)) {
-				strncpy(req->name, pdlist2->val.str, 127);
+				strncpy(req->name, pdlist2->val.str, 126);
 				strcat(req->name, " ");
 			}
 			strncat(req->name, pdlist->val.str, 127 - strlen(req->name));
