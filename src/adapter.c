@@ -3768,6 +3768,49 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 	}
 }
 
+static void device_found_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_found *ev = param;
+	struct btd_adapter *adapter = user_data;
+	const uint8_t *eir;
+	uint16_t eir_len;
+	uint32_t flags;
+	bool confirm_name;
+	bool legacy;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too short device found event (%u bytes)", length);
+		return;
+	}
+
+	eir_len = btohs(ev->eir_len);
+	if (length != sizeof(*ev) + eir_len) {
+		error("Device found event size mismatch (%u != %zu)",
+					length, sizeof(*ev) + eir_len);
+		return;
+	}
+
+	if (eir_len == 0)
+		eir = NULL;
+	else
+		eir = ev->eir;
+
+	flags = btohl(ev->flags);
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
+			index, addr, ev->rssi, flags, eir_len);
+
+	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
+	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
+
+	adapter_update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
+					ev->rssi, confirm_name, legacy,
+					eir, eir_len);
+}
+
 struct agent *adapter_get_agent(struct btd_adapter *adapter)
 {
 	return agent_get(NULL);
@@ -4787,6 +4830,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DISCOVERING,
 						adapter->dev_id,
 						discovering_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_FOUND,
+						adapter->dev_id,
+						device_found_callback,
 						adapter, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_DISCONNECTED,

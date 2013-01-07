@@ -603,52 +603,6 @@ static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
 	bonding_complete(index, &ev->addr, ev->status);
 }
 
-static void mgmt_device_found(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_device_found *ev = buf;
-	struct btd_adapter *adapter;
-	char addr[18];
-	uint32_t flags;
-	uint16_t eir_len;
-	uint8_t *eir;
-	bool confirm_name;
-	bool legacy;
-
-	if (len < sizeof(*ev)) {
-		error("mgmt_device_found too short (%zu bytes)", len);
-		return;
-	}
-
-	eir_len = bt_get_le16(&ev->eir_len);
-	if (len != sizeof(*ev) + eir_len) {
-		error("mgmt_device_found event size mismatch (%zu != %zu)",
-						len, sizeof(*ev) + eir_len);
-		return;
-	}
-
-	adapter = adapter_find_by_id(index);
-	if (!adapter)
-		return;
-
-	if (eir_len == 0)
-		eir = NULL;
-	else
-		eir = ev->eir;
-
-	flags = btohl(ev->flags);
-
-	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
-			index, addr, ev->rssi, flags, eir_len);
-
-	confirm_name = (flags & MGMT_DEV_FOUND_CONFIRM_NAME);
-	legacy = (flags & MGMT_DEV_FOUND_LEGACY_PAIRING);
-
-	adapter_update_found_devices(adapter, &ev->addr.bdaddr, ev->addr.type,
-					ev->rssi, confirm_name, legacy,
-					eir, eir_len);
-}
-
 static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 {
 	struct btd_adapter *adapter;
@@ -870,7 +824,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_auth_failed(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_DEVICE_FOUND:
-		mgmt_device_found(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_found event");
 		break;
 	case MGMT_EV_DISCOVERING:
 		DBG("discovering event");
