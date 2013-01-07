@@ -4373,6 +4373,94 @@ static void auth_failed_callback(uint16_t index, uint16_t length,
 								ev->status);
 }
 
+static void store_link_key(struct btd_adapter *adapter,
+				struct btd_device *device, const uint8_t *key,
+				uint8_t type, uint8_t pin_length)
+{
+	char adapter_addr[18];
+	char device_addr[18];
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	gsize length = 0;
+	char key_str[35];
+	char *str;
+	int i;
+
+	ba2str(adapter_get_address(adapter), adapter_addr);
+	ba2str(device_get_address(device), device_addr);
+
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
+								device_addr);
+	filename[PATH_MAX] = '\0';
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+
+	key_str[0] = '0';
+	key_str[1] = 'x';
+	for (i = 0; i < 16; i++)
+		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
+
+	g_key_file_set_string(key_file, "LinkKey", "Key", key_str);
+
+	g_key_file_set_integer(key_file, "LinkKey", "Type", type);
+	g_key_file_set_integer(key_file, "LinkKey", "PINLength", pin_length);
+
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	str = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, str, length, NULL);
+	g_free(str);
+
+	g_key_file_free(key_file);
+}
+
+static void new_link_key_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_new_link_key *ev = param;
+	const struct mgmt_addr_info *addr = &ev->key.addr;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char dst[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small new link key event");
+		return;
+	}
+
+	ba2str(&addr->bdaddr, dst);
+
+	DBG("hci%u new key for %s type %u pin_len %u", adapter->dev_id,
+					dst, ev->key.type, ev->key.pin_len);
+
+	if (ev->key.pin_len > 16) {
+		error("Invalid PIN length (%u) in new_key event",
+							ev->key.pin_len);
+		return;
+	}
+
+	device = adapter_get_device(adapter, dst, addr->type);
+	if (!device) {
+		error("Unable to get device object for %s", dst);
+		return;
+	}
+
+	if (ev->store_hint) {
+		const struct mgmt_link_key_info *key = &ev->key;
+
+		store_link_key(adapter, device, key->val, key->type,
+								key->pin_len);
+
+		device_set_bonded(device, TRUE);
+
+		if (device_is_temporary(device))
+			device_set_temporary(device, FALSE);
+	}
+
+	adapter_bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
+}
+
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
@@ -4875,6 +4963,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_AUTH_FAILED,
 						adapter->dev_id,
 						auth_failed_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_LINK_KEY,
+						adapter->dev_id,
+						new_link_key_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

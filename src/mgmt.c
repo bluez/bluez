@@ -96,88 +96,6 @@ static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
 								status);
 }
 
-static void store_link_key(struct btd_adapter *adapter,
-				struct btd_device *device, uint8_t *key,
-				uint8_t type, uint8_t pin_length)
-{
-	char adapter_addr[18];
-	char device_addr[18];
-	char filename[PATH_MAX + 1];
-	GKeyFile *key_file;
-	char key_str[35];
-	char *str;
-	int i;
-	gsize length = 0;
-
-	ba2str(adapter_get_address(adapter), adapter_addr);
-	ba2str(device_get_address(device), device_addr);
-
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
-	filename[PATH_MAX] = '\0';
-
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
-
-	key_str[0] = '0';
-	key_str[1] = 'x';
-	for (i = 0; i < 16; i++)
-		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
-
-	g_key_file_set_string(key_file, "LinkKey", "Key", key_str);
-
-	g_key_file_set_integer(key_file, "LinkKey", "Type", type);
-	g_key_file_set_integer(key_file, "LinkKey", "PINLength", pin_length);
-
-	create_file(filename, S_IRUSR | S_IWUSR);
-
-	str = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, str, length, NULL);
-	g_free(str);
-
-	g_key_file_free(key_file);
-}
-
-static void mgmt_new_link_key(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_new_link_key *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (len != sizeof(*ev)) {
-		error("mgmt_new_link_key event size mismatch (%zu != %zu)",
-							len, sizeof(*ev));
-		return;
-	}
-
-	DBG("Controller %u new key of type %u pin_len %u", index,
-					ev->key.type, ev->key.pin_len);
-
-	if (ev->key.pin_len > 16) {
-		error("Invalid PIN length (%u) in new_key event",
-							ev->key.pin_len);
-		return;
-	}
-
-	if (!get_adapter_and_device(index, &ev->key.addr,
-						&adapter, &device, true))
-		return;
-
-	if (ev->store_hint) {
-		struct mgmt_link_key_info *key = &ev->key;
-
-		store_link_key(adapter, device, key->val, key->type,
-								key->pin_len);
-
-		device_set_bonded(device, TRUE);
-
-		if (device_is_temporary(device))
-			device_set_temporary(device, FALSE);
-	}
-
-	bonding_complete(index, &ev->key.addr, 0);
-}
-
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len)
 {
@@ -789,7 +707,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("local_name_changed event");
 		break;
 	case MGMT_EV_NEW_LINK_KEY:
-		mgmt_new_link_key(index, buf + MGMT_HDR_SIZE, len);
+		DBG("new_link_key event");
 		break;
 	case MGMT_EV_DEVICE_CONNECTED:
 		DBG("device_connected event");
