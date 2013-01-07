@@ -4358,6 +4358,21 @@ void adapter_bonding_complete(struct btd_adapter *adapter,
 	check_oob_bonding_complete(adapter, bdaddr, status);
 }
 
+static void auth_failed_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_auth_failed *ev = param;
+	struct btd_adapter *adapter = user_data;
+
+	if (length < sizeof(*ev)) {
+		error("Too small auth failed mgmt event");
+		return;
+	}
+
+	adapter_bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
+								ev->status);
+}
+
 int adapter_set_io_capability(struct btd_adapter *adapter, uint8_t io_cap)
 {
 	struct mgmt_cp_set_io_capability cp;
@@ -4855,6 +4870,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNPAIRED,
 						adapter->dev_id,
 						unpaired_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_AUTH_FAILED,
+						adapter->dev_id,
+						auth_failed_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

@@ -589,20 +589,6 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 			ev->status);
 }
 
-static void mgmt_auth_failed(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_auth_failed *ev = buf;
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_auth_failed event packet");
-		return;
-	}
-
-	DBG("hci%u auth failed status %u", index, ev->status);
-
-	bonding_complete(index, &ev->addr, ev->status);
-}
-
 static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
 {
 	struct btd_adapter *adapter;
@@ -821,7 +807,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_user_confirm_request(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_AUTH_FAILED:
-		mgmt_auth_failed(index, buf + MGMT_HDR_SIZE, len);
+		DBG("auth_failed event");
 		break;
 	case MGMT_EV_DEVICE_FOUND:
 		DBG("device_found event");
