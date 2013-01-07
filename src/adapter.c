@@ -3694,7 +3694,7 @@ void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
-					uint8_t *data, uint8_t data_len)
+					const uint8_t *data, uint8_t data_len)
 {
 	struct discovery *discovery = adapter->discovery;
 	struct btd_device *dev;
