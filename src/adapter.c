@@ -4148,6 +4148,158 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return -ENOSYS;
 }
 
+int btd_adapter_remove_bonding(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
+{
+	struct mgmt_cp_unpair_device cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+	cp.disconnect = 1;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_UNPAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
+int btd_adapter_pincode_reply(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr,
+					const char *pin, size_t pin_len)
+{
+	return mgmt_pincode_reply(adapter->dev_id, bdaddr, pin, pin_len);
+}
+
+int btd_adapter_confirm_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				gboolean success)
+{
+	return mgmt_confirm_reply(adapter->dev_id, bdaddr, bdaddr_type,
+								success);
+}
+
+int btd_adapter_passkey_reply(struct btd_adapter *adapter,
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+				uint32_t passkey)
+{
+	return mgmt_passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
+								passkey);
+}
+
+int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+							 uint8_t addr_type)
+{
+	struct mgmt_addr_info cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u bdaddr %s type %u", adapter->dev_id, addr, addr_type);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.type = addr_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
+static void check_oob_bonding_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr, uint8_t status)
+{
+	if (!adapter->oob_handler || !adapter->oob_handler->bonding_cb)
+		return;
+
+	if (bacmp(bdaddr, &adapter->oob_handler->remote_addr) != 0)
+		return;
+
+	adapter->oob_handler->bonding_cb(adapter, bdaddr, status,
+					adapter->oob_handler->user_data);
+
+	g_free(adapter->oob_handler);
+	adapter->oob_handler = NULL;
+}
+
+static void adapter_bonding_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t status)
+{
+	struct btd_device *device;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	if (status == 0)
+		device = adapter_get_device(adapter, addr, addr_type);
+	else
+		device = adapter_find_device(adapter, addr);
+
+	if (device != NULL)
+		device_bonding_complete(device, status);
+
+	if (adapter->discov_suspended) {
+		adapter->discov_suspended = FALSE;
+		mgmt_start_discovery(adapter);
+	}
+
+	check_oob_bonding_complete(adapter, bdaddr, status);
+}
+
+static void pair_device_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_pair_device *rp = param;
+	struct btd_adapter *adapter = user_data;
+
+	DBG("%s (0x%02x)", mgmt_errstr(status), status);
+
+	if (status != MGMT_STATUS_SUCCESS && length < sizeof(*rp)) {
+		error("Pair device failed: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Too small pair device response");
+		return;
+	}
+
+	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
+								status);
+}
+
+int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t io_cap)
+{
+	struct mgmt_cp_pair_device cp;
+	char addr[18];
+
+	suspend_discovery(adapter);
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u bdaddr %s type %d io_cap 0x%02x",
+				adapter->dev_id, addr, addr_type, io_cap);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = addr_type;
+	cp.io_cap = io_cap;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				pair_device_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+
+	return -EIO;
+}
+
 static void dev_disconnected(struct btd_adapter *adapter,
 					const struct mgmt_addr_info *addr,
 					uint8_t reason)
@@ -4204,158 +4356,6 @@ int btd_adapter_disconnect_device(struct btd_adapter *adapter,
 		return 0;
 
 	return -EIO;
-}
-
-int btd_adapter_remove_bonding(struct btd_adapter *adapter,
-				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
-{
-	struct mgmt_cp_unpair_device cp;
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.addr.bdaddr, bdaddr);
-	cp.addr.type = bdaddr_type;
-	cp.disconnect = 1;
-
-	if (mgmt_send(adapter->mgmt, MGMT_OP_UNPAIR_DEVICE,
-				adapter->dev_id, sizeof(cp), &cp,
-				NULL, NULL, NULL) > 0)
-		return 0;
-
-	return -EIO;
-}
-
-int btd_adapter_pincode_reply(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr,
-					const char *pin, size_t pin_len)
-{
-	return mgmt_pincode_reply(adapter->dev_id, bdaddr, pin, pin_len);
-}
-
-int btd_adapter_confirm_reply(struct btd_adapter *adapter,
-				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
-				gboolean success)
-{
-	return mgmt_confirm_reply(adapter->dev_id, bdaddr, bdaddr_type,
-								success);
-}
-
-int btd_adapter_passkey_reply(struct btd_adapter *adapter,
-				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
-				uint32_t passkey)
-{
-	return mgmt_passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
-								passkey);
-}
-
-static void pair_device_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	const struct mgmt_rp_pair_device *rp = param;
-	struct btd_adapter *adapter = user_data;
-
-	DBG("%s (0x%02x)", mgmt_errstr(status), status);
-
-	if (status != MGMT_STATUS_SUCCESS && length < sizeof(*rp)) {
-		error("Pair device failed: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		return;
-	}
-
-	if (length < sizeof(*rp)) {
-		error("Too small pair device response");
-		return;
-	}
-
-	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
-								status);
-}
-
-int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
-					uint8_t addr_type, uint8_t io_cap)
-{
-	struct mgmt_cp_pair_device cp;
-	char addr[18];
-
-	suspend_discovery(adapter);
-
-	ba2str(bdaddr, addr);
-	DBG("hci%u bdaddr %s type %d io_cap 0x%02x",
-				adapter->dev_id, addr, addr_type, io_cap);
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.addr.bdaddr, bdaddr);
-	cp.addr.type = addr_type;
-	cp.io_cap = io_cap;
-
-	if (mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
-				adapter->dev_id, sizeof(cp), &cp,
-				pair_device_complete, adapter, NULL) > 0)
-		return 0;
-
-	error("Failed to pair %s for hci%u", addr, adapter->dev_id);
-
-	return -EIO;
-}
-
-int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
-							 uint8_t addr_type)
-{
-	struct mgmt_addr_info cp;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%u bdaddr %s type %u", adapter->dev_id, addr, addr_type);
-
-	memset(&cp, 0, sizeof(cp));
-	bacpy(&cp.bdaddr, bdaddr);
-	cp.type = addr_type;
-
-	if (mgmt_send(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
-				adapter->dev_id, sizeof(cp), &cp,
-				NULL, NULL, NULL) > 0)
-		return 0;
-
-	return -EIO;
-}
-
-static void check_oob_bonding_complete(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr, uint8_t status)
-{
-	if (!adapter->oob_handler || !adapter->oob_handler->bonding_cb)
-		return;
-
-	if (bacmp(bdaddr, &adapter->oob_handler->remote_addr) != 0)
-		return;
-
-	adapter->oob_handler->bonding_cb(adapter, bdaddr, status,
-					adapter->oob_handler->user_data);
-
-	g_free(adapter->oob_handler);
-	adapter->oob_handler = NULL;
-}
-
-void adapter_bonding_complete(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr,
-					uint8_t addr_type, uint8_t status)
-{
-	struct btd_device *device;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	if (status == 0)
-		device = adapter_get_device(adapter, addr, addr_type);
-	else
-		device = adapter_find_device(adapter, addr);
-
-	if (device != NULL)
-		device_bonding_complete(device, status);
-
-	if (adapter->discov_suspended) {
-		adapter->discov_suspended = FALSE;
-		mgmt_start_discovery(adapter);
-	}
-
-	check_oob_bonding_complete(adapter, bdaddr, status);
 }
 
 static void auth_failed_callback(uint16_t index, uint16_t length,
