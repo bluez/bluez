@@ -4241,7 +4241,22 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 							 uint8_t addr_type)
 {
-	return mgmt_cancel_bonding(adapter->dev_id, bdaddr, addr_type);
+	struct mgmt_addr_info cp;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u bdaddr %s type %u", adapter->dev_id, addr, addr_type);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.bdaddr, bdaddr);
+	cp.type = addr_type;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
 }
 
 static void check_oob_bonding_complete(struct btd_adapter *adapter,

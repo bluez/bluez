@@ -957,27 +957,3 @@ void mgmt_cleanup(void)
 		mgmt_watch = 0;
 	}
 }
-
-int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_addr_info)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_addr_info *cp = (void *) &buf[sizeof(*hdr)];
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s type %d", index, addr, addr_type);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_CANCEL_PAIR_DEVICE);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	bacpy(&cp->bdaddr, bdaddr);
-	cp->type = addr_type;
-
-	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
