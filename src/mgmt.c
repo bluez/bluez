@@ -359,112 +359,8 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 
 	len -= sizeof(*ev);
 
-	DBG("opcode 0x%04x status 0x%02x len %zu", opcode, ev->status, len);
-
-	switch (opcode) {
-	case MGMT_OP_READ_VERSION:
-		DBG("read_version complete");
-		break;
-	case MGMT_OP_READ_INDEX_LIST:
-		DBG("read_index_list complete");
-		break;
-	case MGMT_OP_READ_INFO:
-		DBG("read_info complete");
-		break;
-	case MGMT_OP_SET_POWERED:
-		DBG("set_powered complete");
-		break;
-	case MGMT_OP_SET_DISCOVERABLE:
-		DBG("set_discoverable complete");
-		break;
-	case MGMT_OP_SET_CONNECTABLE:
-		DBG("set_connectable complete");
-		break;
-	case MGMT_OP_SET_PAIRABLE:
-		DBG("set_pairable complete");
-		break;
-	case MGMT_OP_SET_SSP:
-		DBG("set_ssp complete");
-		break;
-	case MGMT_OP_SET_LE:
-		DBG("set_le complete");
-		break;
-	case MGMT_OP_ADD_UUID:
-		DBG("add_uuid complete");
-		break;
-	case MGMT_OP_REMOVE_UUID:
-		DBG("remove_uuid complete");
-		break;
-	case MGMT_OP_SET_DEV_CLASS:
-		DBG("set_dev_class complete");
-		break;
-	case MGMT_OP_LOAD_LINK_KEYS:
-		DBG("load_link_keys complete");
-		break;
-	case MGMT_OP_CANCEL_PAIR_DEVICE:
-		DBG("cancel_pair_device complete");
-		break;
-	case MGMT_OP_UNPAIR_DEVICE:
-		DBG("unpair_device complete");
-		break;
-	case MGMT_OP_DISCONNECT:
-		DBG("disconnect complete event");
-		break;
-	case MGMT_OP_GET_CONNECTIONS:
-		DBG("get_connections complete");
-		break;
-	case MGMT_OP_PIN_CODE_REPLY:
-		DBG("pin_code_reply complete");
-		break;
-	case MGMT_OP_PIN_CODE_NEG_REPLY:
-		DBG("pin_code_neg_reply complete");
-		break;
-	case MGMT_OP_SET_IO_CAPABILITY:
-		DBG("set_io_capability complete");
-		break;
-	case MGMT_OP_PAIR_DEVICE:
-		DBG("pair_device complete");
-		break;
-	case MGMT_OP_USER_CONFIRM_REPLY:
-		DBG("user_confirm_reply complete");
-		break;
-	case MGMT_OP_USER_CONFIRM_NEG_REPLY:
-		DBG("user_confirm_net_reply complete");
-		break;
-	case MGMT_OP_SET_LOCAL_NAME:
-		DBG("set_local_name complete");
-		break;
-	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		DBG("read_local_oob_data complete");
-		break;
-	case MGMT_OP_ADD_REMOTE_OOB_DATA:
-		DBG("add_remote_oob_data complete");
-		break;
-	case MGMT_OP_REMOVE_REMOTE_OOB_DATA:
-		DBG("remove_remote_oob_data complete");
-		break;
-	case MGMT_OP_BLOCK_DEVICE:
-		DBG("block_device complete");
-		break;
-	case MGMT_OP_UNBLOCK_DEVICE:
-		DBG("unblock_device complete");
-		break;
-	case MGMT_OP_SET_FAST_CONNECTABLE:
-		DBG("set_fast_connectable complete");
-		break;
-	case MGMT_OP_START_DISCOVERY:
-		DBG("start_discovery complete");
-		break;
-	case MGMT_OP_STOP_DISCOVERY:
-		DBG("stop_discovery complete");
-		break;
-	case MGMT_OP_SET_DEVICE_ID:
-		DBG("set_did complete");
-		break;
-	default:
-		error("Unknown command complete for opcode %u", opcode);
-		break;
-	}
+	DBG("%s (0x%04x) status 0x%02x len %zu", mgmt_opstr(opcode), opcode,
+							ev->status, len);
 }
 
 static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
@@ -479,19 +375,7 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 
 	opcode = bt_get_le16(&ev->opcode);
 
-	if (!ev->status) {
-		DBG("%s (0x%04x) cmd_status %u", mgmt_opstr(opcode), opcode,
-								ev->status);
-		return;
-	}
-
-	switch (opcode) {
-	case MGMT_OP_READ_LOCAL_OOB_DATA:
-		DBG("read_local_oob_data failed");
-		break;
-	}
-
-	error("hci%u: %s (0x%04x) failed: %s (0x%02x)", index,
+	DBG("hci%u: %s (0x%04x) status: %s (0x%02x)", index,
 			mgmt_opstr(opcode), opcode, mgmt_errstr(ev->status),
 			ev->status);
 }
