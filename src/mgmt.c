@@ -438,24 +438,6 @@ static void mgmt_user_confirm_request(uint16_t index, void *buf,
 	}
 }
 
-static void pair_device_complete(uint16_t index, uint8_t status,
-							void *buf, size_t len)
-{
-	struct mgmt_rp_pair_device *rp = buf;
-	char addr[18];
-
-	if (len < sizeof(*rp)) {
-		error("Too small pair_device complete event");
-		return;
-	}
-
-	ba2str(&rp->addr.bdaddr, addr);
-
-	DBG("hci%d %s pairing complete status %u", index, addr, status);
-
-	bonding_complete(index, &rp->addr, status);
-}
-
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -534,7 +516,7 @@ static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 		DBG("set_io_capability complete");
 		break;
 	case MGMT_OP_PAIR_DEVICE:
-		pair_device_complete(index, ev->status, ev->data, len);
+		DBG("pair_device complete");
 		break;
 	case MGMT_OP_USER_CONFIRM_REPLY:
 		DBG("user_confirm_reply complete");
@@ -974,33 +956,6 @@ void mgmt_cleanup(void)
 		g_source_remove(mgmt_watch);
 		mgmt_watch = 0;
 	}
-}
-
-int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
-								uint8_t io_cap)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pair_device)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_pair_device *cp = (void *) &buf[sizeof(*hdr)];
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("hci%d bdaddr %s type %d io_cap 0x%02x",
-					index, addr, addr_type, io_cap);
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(MGMT_OP_PAIR_DEVICE);
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = addr_type;
-	cp->io_cap = io_cap;
-
-	if (write(mgmt_sock, &buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
 }
 
 int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type)

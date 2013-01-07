@@ -25,8 +25,6 @@
 int mgmt_setup(void);
 void mgmt_cleanup(void);
 
-int mgmt_create_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type,
-							uint8_t io_cap);
 int mgmt_cancel_bonding(int index, const bdaddr_t *bdaddr, uint8_t addr_type);
 
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,

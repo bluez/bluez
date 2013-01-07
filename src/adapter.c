@@ -4188,11 +4188,54 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 								passkey);
 }
 
+static void pair_device_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_pair_device *rp = param;
+	struct btd_adapter *adapter = user_data;
+
+	DBG("%s (0x%02x)", mgmt_errstr(status), status);
+
+	if (status != MGMT_STATUS_SUCCESS && length < sizeof(*rp)) {
+		error("Pair device failed: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Too small pair device response");
+		return;
+	}
+
+	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
+								status);
+}
+
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap)
 {
+	struct mgmt_cp_pair_device cp;
+	char addr[18];
+
 	suspend_discovery(adapter);
-	return mgmt_create_bonding(adapter->dev_id, bdaddr, addr_type, io_cap);
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u bdaddr %s type %d io_cap 0x%02x",
+				adapter->dev_id, addr, addr_type, io_cap);
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = addr_type;
+	cp.io_cap = io_cap;
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
+				adapter->dev_id, sizeof(cp), &cp,
+				pair_device_complete, adapter, NULL) > 0)
+		return 0;
+
+	error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+
+	return -EIO;
 }
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
