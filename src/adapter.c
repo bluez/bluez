@@ -1930,6 +1930,67 @@ failed:
 	return ltk;
 }
 
+static void load_link_keys_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to load link keys for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("link keys loaded for hci%u", adapter->dev_id);
+}
+
+static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
+							bool debug_keys)
+{
+	struct mgmt_cp_load_link_keys *cp;
+	struct mgmt_link_key_info *key;
+	size_t key_count, cp_size;
+	unsigned int id;
+	GSList *l;
+
+	key_count = g_slist_length(keys);
+
+	DBG("hci%u keys %zu debug_keys %d", adapter->dev_id, key_count,
+								debug_keys);
+
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
+
+	cp = g_try_malloc0(cp_size);
+	if (cp == NULL)
+		return -ENOMEM;
+
+	cp->debug_keys = debug_keys;
+	cp->key_count = htobs(key_count);
+
+	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
+		struct link_key_info *info = l->data;
+
+		bacpy(&key->addr.bdaddr, &info->bdaddr);
+		key->addr.type = BDADDR_BREDR;
+		key->type = info->type;
+		memcpy(key->val, info->key, 16);
+		key->pin_len = info->pin_len;
+	}
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LINK_KEYS,
+				adapter->dev_id, cp_size, cp,
+				load_link_keys_complete, adapter, NULL);
+
+	g_free(cp);
+
+	if (id == 0) {
+		error("Failed to load link keys for hci%u", adapter->dev_id);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -2009,8 +2070,7 @@ free:
 
 	closedir(dir);
 
-	err = mgmt_load_link_keys(adapter->dev_id, keys.keys,
-							main_opts.debug_keys);
+	err = load_link_keys(adapter, keys.keys, main_opts.debug_keys);
 	if (err < 0)
 		error("Unable to load link keys: %s (%d)",
 							strerror(-err), -err);
