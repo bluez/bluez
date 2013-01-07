@@ -85,17 +85,6 @@ static bool get_adapter_and_device(uint16_t index,
 	return true;
 }
 
-static void bonding_complete(uint16_t index, const struct mgmt_addr_info *addr,
-								uint8_t status)
-{
-	struct btd_adapter *adapter;
-
-	adapter = adapter_find_by_id(index);
-	if (adapter != NULL)
-		adapter_bonding_complete(adapter, &addr->bdaddr, addr->type,
-								status);
-}
-
 int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
 								size_t pin_len)
 {
@@ -551,99 +540,6 @@ static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
 		device_unblock(device, FALSE, TRUE);
 }
 
-static void store_longtermkey(const bdaddr_t *local, bdaddr_t *peer,
-				uint8_t bdaddr_type, unsigned char *key,
-				uint8_t master, uint8_t authenticated,
-				uint8_t enc_size, uint16_t ediv,
-				uint8_t rand[8])
-{
-	char adapter_addr[18];
-	char device_addr[18];
-	char filename[PATH_MAX + 1];
-	GKeyFile *key_file;
-	char key_str[35];
-	char rand_str[19];
-	char *str;
-	int i;
-	gsize length = 0;
-
-	ba2str(local, adapter_addr);
-	ba2str(peer, device_addr);
-
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
-								device_addr);
-	filename[PATH_MAX] = '\0';
-
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
-
-	key_str[0] = '0';
-	key_str[1] = 'x';
-	for (i = 0; i < 16; i++)
-		sprintf(key_str + 2 + (i * 2), "%2.2X", key[i]);
-
-	g_key_file_set_string(key_file, "LongTermKey", "Key", key_str);
-
-	g_key_file_set_integer(key_file, "LongTermKey", "Authenticated",
-				authenticated);
-	g_key_file_set_integer(key_file, "LongTermKey", "Master", master);
-	g_key_file_set_integer(key_file, "LongTermKey", "EncSize", enc_size);
-	g_key_file_set_integer(key_file, "LongTermKey", "EDiv", ediv);
-
-	rand_str[0] = '0';
-	rand_str[1] = 'x';
-	for (i = 0; i < 8; i++)
-		sprintf(rand_str + 2 + (i * 2), "%2.2X", rand[i]);
-
-	g_key_file_set_string(key_file, "LongTermKey", "Rand", rand_str);
-
-	create_file(filename, S_IRUSR | S_IWUSR);
-
-	str = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, str, length, NULL);
-	g_free(str);
-
-	g_key_file_free(key_file);
-}
-
-static void mgmt_new_ltk(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_new_long_term_key *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-
-	if (len != sizeof(*ev)) {
-		error("mgmt_new_ltk event size mismatch (%zu != %zu)",
-							len, sizeof(*ev));
-		return;
-	}
-
-	DBG("Controller %u new LTK authenticated %u enc_size %u", index,
-				ev->key.authenticated, ev->key.enc_size);
-
-	if (!get_adapter_and_device(index, &ev->key.addr,
-						&adapter, &device, true))
-		return;
-
-	if (ev->store_hint) {
-		struct mgmt_ltk_info *key = &ev->key;
-		const bdaddr_t *bdaddr = adapter_get_address(adapter);
-
-		store_longtermkey(bdaddr, &key->addr.bdaddr,
-					key->addr.type, key->val, key->master,
-					key->authenticated, key->enc_size,
-					key->ediv, key->rand);
-
-		device_set_bonded(device, TRUE);
-
-		if (device_is_temporary(device))
-			device_set_temporary(device, FALSE);
-	}
-
-	if (ev->key.master)
-		bonding_complete(index, &ev->key.addr, 0);
-}
-
 static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -749,7 +645,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		mgmt_passkey_notify(index, buf + MGMT_HDR_SIZE, len);
 		break;
 	case MGMT_EV_NEW_LONG_TERM_KEY:
-		mgmt_new_ltk(index, buf + MGMT_HDR_SIZE, len);
+		DBG("new_long_term_key event");
 		break;
 	default:
 		error("Unknown Management opcode %u (index %u)", opcode, index);
