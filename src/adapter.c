@@ -4899,6 +4899,48 @@ static void connected_callback(uint16_t index, uint16_t length,
 	eir_data_free(&eir_data);
 }
 
+static void device_blocked_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_blocked *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small device blocked event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u %s blocked", index, addr);
+
+	device = adapter_find_device(adapter, addr);
+	if (device)
+		device_block(device, TRUE);
+}
+
+static void device_unblocked_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_unblocked *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small device unblocked event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u %s unblocked", index, addr);
+
+	device = adapter_find_device(adapter, addr);
+	if (device)
+		device_unblock(device, FALSE, TRUE);
+}
+
 static void connect_failed_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -5073,6 +5115,16 @@ static void read_info_complete(uint8_t status, uint16_t length,
 						adapter->dev_id,
 						new_long_term_key_callback,
 						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_BLOCKED,
+						adapter->dev_id,
+						device_blocked_callback,
+						adapter, NULL);
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNBLOCKED,
+						adapter->dev_id,
+						device_unblocked_callback,
+						adapter, NULL);
+
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
 
 	set_name(adapter, btd_adapter_get_name(adapter));

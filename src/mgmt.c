@@ -380,50 +380,6 @@ static void mgmt_cmd_status(uint16_t index, void *buf, size_t len)
 			ev->status);
 }
 
-static void mgmt_device_blocked(uint16_t index, void *buf, size_t len)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	struct mgmt_ev_device_blocked *ev = buf;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_device_blocked event packet");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-	DBG("Device blocked, index %u, addr %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
-		return;
-
-	if (device)
-		device_block(device, TRUE);
-}
-
-static void mgmt_device_unblocked(uint16_t index, void *buf, size_t len)
-{
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	struct mgmt_ev_device_unblocked *ev = buf;
-	char addr[18];
-
-	if (len < sizeof(*ev)) {
-		error("Too small mgmt_device_unblocked event packet");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-	DBG("Device unblocked, index %u, addr %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, false))
-		return;
-
-	if (device)
-		device_unblock(device, FALSE, TRUE);
-}
-
 static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -514,10 +470,10 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("discovering event");
 		break;
 	case MGMT_EV_DEVICE_BLOCKED:
-		mgmt_device_blocked(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_blocked event");
 		break;
 	case MGMT_EV_DEVICE_UNBLOCKED:
-		mgmt_device_unblocked(index, buf + MGMT_HDR_SIZE, len);
+		DBG("device_unblocked event");
 		break;
 	case MGMT_EV_DEVICE_UNPAIRED:
 		DBG("device_unpaired event");
