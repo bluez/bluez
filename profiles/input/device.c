@@ -222,6 +222,49 @@ static int create_hid_dev_name(sdp_record_t *rec, struct hidp_connadd_req *req)
 	return 0;
 }
 
+/* See HID profile specification v1.0, "7.11.6 HIDDescriptorList" for details
+ * on the attribute format. */
+static int extract_hid_desc_data(sdp_record_t *rec,
+						struct hidp_connadd_req *req)
+{
+	sdp_data_t *d;
+
+	d = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
+	if (!d)
+		goto invalid_desc;
+
+	if (!SDP_IS_SEQ(d->dtd))
+		goto invalid_desc;
+
+	/* First HIDDescriptor */
+	d = d->val.dataseq;
+	if (!SDP_IS_SEQ(d->dtd))
+		goto invalid_desc;
+
+	/* ClassDescriptorType */
+	d = d->val.dataseq;
+	if (d->dtd != SDP_UINT8)
+		goto invalid_desc;
+
+	/* ClassDescriptorData */
+	d = d->next;
+	if (!d || !SDP_IS_TEXT_STR(d->dtd))
+		goto invalid_desc;
+
+	req->rd_data = g_try_malloc0(d->unitSize);
+	if (req->rd_data) {
+		memcpy(req->rd_data, d->val.str, d->unitSize);
+		req->rd_size = d->unitSize;
+		epox_endian_quirk(req->rd_data, req->rd_size);
+	}
+
+	return 0;
+
+invalid_desc:
+	error("Missing or invalid HIDDescriptorList SDP attribute");
+	return -EINVAL;
+}
+
 static int extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 {
 	sdp_data_t *pdlist;
@@ -251,20 +294,9 @@ static int extract_hid_record(sdp_record_t *rec, struct hidp_connadd_req *req)
 	if (attr_val)
 		req->flags |= (1 << HIDP_BOOT_PROTOCOL_MODE);
 
-	pdlist = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
-	if (pdlist) {
-		pdlist = pdlist->val.dataseq;
-		pdlist = pdlist->val.dataseq;
-		pdlist = pdlist->next;
-
-		req->rd_data = g_try_malloc0(pdlist->unitSize);
-		if (req->rd_data) {
-			memcpy(req->rd_data, (unsigned char *) pdlist->val.str,
-								pdlist->unitSize);
-			req->rd_size = pdlist->unitSize;
-			epox_endian_quirk(req->rd_data, req->rd_size);
-		}
-	}
+	err = extract_hid_desc_data(rec, req);
+	if (err < 0)
+		return err;
 
 	return 0;
 }
