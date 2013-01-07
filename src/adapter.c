@@ -1991,6 +1991,67 @@ static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
 	return 0;
 }
 
+static void load_ltks_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to load LTKs for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+		return;
+	}
+
+	DBG("LTKs loaded for hci%u", adapter->dev_id);
+}
+
+static int load_ltks(struct btd_adapter *adapter, GSList *keys)
+{
+	struct mgmt_cp_load_long_term_keys *cp;
+	struct mgmt_ltk_info *key;
+	size_t key_count, cp_size;
+	unsigned int id;
+	GSList *l;
+
+	key_count = g_slist_length(keys);
+
+	DBG("hci%u keys %zu", adapter->dev_id, key_count);
+
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
+
+	cp = g_try_malloc0(cp_size);
+	if (cp == NULL)
+		return -ENOMEM;
+
+	cp->key_count = htobs(key_count);
+
+	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
+		struct smp_ltk_info *info = l->data;
+
+		bacpy(&key->addr.bdaddr, &info->bdaddr);
+		key->addr.type = info->bdaddr_type;
+		memcpy(key->val, info->val, sizeof(info->val));
+		memcpy(key->rand, info->rand, sizeof(info->rand));
+		memcpy(&key->ediv, &info->ediv, sizeof(key->ediv));
+		key->authenticated = info->authenticated;
+		key->master = info->master;
+		key->enc_size = info->enc_size;
+	}
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LONG_TERM_KEYS,
+				adapter->dev_id, cp_size, cp,
+				load_ltks_complete, adapter, NULL);
+
+	g_free(cp);
+
+	if (id == 0) {
+		error("Failed to load LTKs for hci%u", adapter->dev_id);
+		return -EIO;
+	}
+
+	return 0;
+}
+
 static void load_devices(struct btd_adapter *adapter)
 {
 	char filename[PATH_MAX + 1];
@@ -2077,7 +2138,7 @@ free:
 
 	g_slist_free_full(keys.keys, g_free);
 
-	err = mgmt_load_ltks(adapter->dev_id, ltks.keys);
+	err = load_ltks(adapter, ltks.keys);
 	if (err < 0)
 		error("Unable to load ltks: %s (%d)", strerror(-err), -err);
 
