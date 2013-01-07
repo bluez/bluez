@@ -349,6 +349,12 @@ static void register_serial_port(void)
 	sdp_set_service_avail(record, 0xff);
 	sdp_set_record_state(record, 0x00001234);
 
+	sdp_data_free(channel);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+
 	update_db_timestamp();
 }
 
@@ -411,6 +417,16 @@ static void register_object_push(void)
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FORMATS_LIST, sflist);
 
 	sdp_set_info_attr(record, "OBEX Object Push", 0, 0);
+
+	sdp_data_free(channel);
+	sdp_list_free(root, 0);
+	sdp_list_free(svclass_id, 0);
+	sdp_list_free(pfseq, 0);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto[2], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
 
 	update_db_timestamp();
 }
@@ -503,17 +519,20 @@ static void register_hid_keyboard(void)
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(record, root);
+	sdp_list_free(root, 0);
 
 	sdp_add_lang_attr(record);
 
 	sdp_uuid16_create(&hidkb_uuid, HID_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &hidkb_uuid);
 	sdp_set_service_classes(record, svclass_id);
+	sdp_list_free(svclass_id, 0);
 
 	sdp_uuid16_create(&profile[0].uuid, HID_PROFILE_ID);
 	profile[0].version = 0x0100;
 	pfseq = sdp_list_append(0, profile);
 	sdp_set_profile_descs(record, pfseq);
+	sdp_list_free(pfseq, 0);
 
 	/* protocols */
 	sdp_uuid16_create(&l2cap_uuid, L2CAP_UUID);
@@ -529,6 +548,12 @@ static void register_hid_keyboard(void)
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_access_protos(record, aproto);
 
+	sdp_data_free(psm);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto[2], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
+
 	/* additional protocols */
 	proto[1] = sdp_list_append(0, &l2cap_uuid);
 	psm = sdp_data_alloc(SDP_UINT16, &intr);
@@ -541,6 +566,12 @@ static void register_hid_keyboard(void)
 
 	aproto = sdp_list_append(0, apseq);
 	sdp_set_add_access_protos(record, aproto);
+
+	sdp_data_free(psm);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto[2], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
 
 	sdp_set_info_attr(record, "HID Keyboard", NULL, NULL);
 
@@ -625,6 +656,16 @@ static void register_file_transfer(void)
 	sdp_set_access_protos(record, aproto);
 
 	sdp_set_info_attr(record, "OBEX File Transfer", 0, 0);
+
+	sdp_data_free(channel);
+	sdp_list_free(root, 0);
+	sdp_list_free(svclass_id, 0);
+	sdp_list_free(pfseq, 0);
+	sdp_list_free(proto[0], 0);
+	sdp_list_free(proto[1], 0);
+	sdp_list_free(proto[2], 0);
+	sdp_list_free(apseq, 0);
+	sdp_list_free(aproto, 0);
 
 	update_db_timestamp();
 }
