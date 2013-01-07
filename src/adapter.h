@@ -95,11 +95,6 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter, const char *
 
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
-void adapter_update_found_devices(struct btd_adapter *adapter,
-					const bdaddr_t *bdaddr,
-					uint8_t bdaddr_type, int8_t rssi,
-					bool confirm_name, bool legacy,
-					const uint8_t *data, uint8_t data_len);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 void adapter_service_insert(struct btd_adapter *adapter, void *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);

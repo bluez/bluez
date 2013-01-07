@@ -3690,7 +3690,7 @@ static int confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	return -EIO;
 }
 
-void adapter_update_found_devices(struct btd_adapter *adapter,
+static void adapter_update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
 					bool confirm, bool legacy,
