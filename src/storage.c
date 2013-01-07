@@ -196,20 +196,3 @@ sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid)
 	}
 	return NULL;
 }
-
-int read_device_pairable(const bdaddr_t *bdaddr, gboolean *mode)
-{
-	char filename[PATH_MAX + 1], *str;
-
-	create_filename(filename, PATH_MAX, bdaddr, "config");
-
-	str = textfile_get(filename, "pairable");
-	if (!str)
-		return -ENOENT;
-
-	*mode = strcmp(str, "yes") == 0 ? TRUE : FALSE;
-
-	free(str);
-
-	return 0;
-}

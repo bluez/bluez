@@ -29,4 +29,3 @@ int read_on_mode(const char *src, char *mode, int length);
 int read_local_name(const bdaddr_t *bdaddr, char *name);
 sdp_record_t *record_from_string(const char *str);
 sdp_record_t *find_record_in_list(sdp_list_t *recs, const char *uuid);
-int read_device_pairable(const bdaddr_t *local, gboolean *mode);
