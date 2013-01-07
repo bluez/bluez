@@ -1994,6 +1994,7 @@ static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
 	return 0;
 }
 
+#if 0
 static void load_ltks_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2054,6 +2055,7 @@ static int load_ltks(struct btd_adapter *adapter, GSList *keys)
 
 	return 0;
 }
+#endif
 
 static void load_devices(struct btd_adapter *adapter)
 {
@@ -2141,9 +2143,11 @@ free:
 
 	g_slist_free_full(keys.keys, g_free);
 
+#if 0
 	err = load_ltks(adapter, ltks.keys);
 	if (err < 0)
 		error("Unable to load ltks: %s (%d)", strerror(-err), -err);
+#endif
 
 	g_slist_free_full(ltks.keys, g_free);
 }
