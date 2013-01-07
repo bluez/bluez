@@ -619,10 +619,12 @@ bool mgmt_cancel(struct mgmt *mgmt, unsigned int id)
 
 bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index)
 {
+	unsigned int id = index;
+
 	if (!mgmt)
 		return false;
 
-	return cancel_request(mgmt, GUINT_TO_POINTER(index),
+	return cancel_request(mgmt, GUINT_TO_POINTER(id),
 						compare_request_index);
 }
 
