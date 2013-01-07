@@ -3271,7 +3271,6 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 	char address[18];
 	char str[MAX_NAME_LENGTH + 1];
 	char config_path[PATH_MAX + 1];
-	gboolean flag;
 	int timeout;
 	uint8_t mode;
 	char *data;
@@ -3280,9 +3279,6 @@ static void convert_config(struct btd_adapter *adapter, const char *filename,
 	ba2str(&adapter->bdaddr, address);
 	snprintf(config_path, PATH_MAX, STORAGEDIR "/%s/config", address);
 	config_path[PATH_MAX] = '\0';
-
-	if (read_device_pairable(&adapter->bdaddr, &flag) == 0)
-		g_key_file_set_boolean(key_file, "General", "Pairable", flag);
 
 	if (read_pairable_timeout(address, &timeout) == 0)
 		g_key_file_set_integer(key_file, "General",

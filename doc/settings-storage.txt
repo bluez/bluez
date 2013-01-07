@@ -69,9 +69,6 @@ Settings file contains one [General] group with adapter info like:
 
   Discoverable		Boolean		Discoverability of the adapter
 
-  Pairable		Boolean		Can the adapter accept pairing
-					request ?
-
   PairableTimeout	Integer		How long to stay in pairable mode
 					before going back to non-pairable.
 					The value is in seconds.
