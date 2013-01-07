@@ -49,7 +49,7 @@ struct sdp_pdu {
 
 struct test_data {
 	int mtu;
-	const struct sdp_pdu *pdu_list;
+	struct sdp_pdu *pdu_list;
 };
 
 #define x_pdu(args...) (const unsigned char[]) { args }
@@ -76,17 +76,29 @@ struct test_data {
 		const struct sdp_pdu pdus[] = {				\
 			args, { }, { }					\
 		};							\
-		struct test_data *data;					\
-		data = g_new0(struct test_data, 1);			\
-		data->mtu = 48;						\
-		data->pdu_list = pdus;					\
-		g_test_add_data_func(name, data, test_sdp);		\
+		static struct test_data data;				\
+		data.mtu = 48;						\
+		data.pdu_list = g_malloc(sizeof(pdus));			\
+		memcpy(data.pdu_list, pdus, sizeof(pdus));		\
+		g_test_add_data_func(name, &data, test_sdp);		\
 	} while (0)
 
 #define define_ss(name, args...) define_test("/TP/SERVER/SS/" name, args)
 #define define_sa(name, args...) define_test("/TP/SERVER/SA/" name, args)
 #define define_ssa(name, args...) define_test("/TP/SERVER/SSA/" name, args)
-#define define_brw(name, args...)
+
+#define define_brw(name, args...) \
+	do {								\
+		const struct sdp_pdu pdus[] = {				\
+			args, { }, { }					\
+		};							\
+		static struct test_data data;				\
+		data.mtu = 672;						\
+		data.pdu_list = g_malloc(sizeof(pdus));			\
+		memcpy(data.pdu_list, pdus, sizeof(pdus));		\
+		g_test_add_data_func("/TP/SERVER/BRW/" name,		\
+						&data, test_sdp);	\
+	} while (0)
 
 struct context {
 	GMainLoop *main_loop;
@@ -700,6 +712,8 @@ static void test_sdp(gconstpointer data)
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
+
+	g_free(test->pdu_list);
 }
 
 int main(int argc, char *argv[])
