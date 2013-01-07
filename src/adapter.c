@@ -1499,6 +1499,8 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 	struct property_set_data *data = user_data;
 	struct btd_adapter *adapter = data->adapter;
 
+	DBG("%s (0x%02x)", mgmt_errstr(status), status);
+
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to set mode: %s (0x%02x)",
 						mgmt_errstr(status), status);
