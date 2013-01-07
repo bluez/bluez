@@ -41,7 +41,6 @@
 
 struct sdp_pdu {
 	bool valid;
-	uint8_t pdu_id;
 	const void *raw_data;
 	size_t raw_size;
 	uint8_t cont_len;
@@ -57,7 +56,6 @@ struct test_data {
 #define raw_pdu(args...) \
 	{							\
 		.valid = true,					\
-		.pdu_id = 0x00,					\
 		.raw_data = x_pdu(args),			\
 		.raw_size = sizeof(x_pdu(args)),		\
 	}
@@ -65,7 +63,6 @@ struct test_data {
 #define raw_pdu_cont(cont, args...) \
 	{							\
 		.valid = true,					\
-		.pdu_id = 0x00,					\
 		.raw_data = x_pdu(args),			\
 		.raw_size = sizeof(x_pdu(args)),		\
 		.cont_len = cont,				\
