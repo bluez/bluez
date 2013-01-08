@@ -180,6 +180,9 @@ struct btd_adapter {
 	GSList *profiles;
 
 	struct oob_handler *oob_handler;
+
+	unsigned int load_ltks_id;
+	guint load_ltks_timeout;
 };
 
 static struct btd_adapter *btd_adapter_lookup(uint16_t index)
@@ -1947,7 +1950,7 @@ static void load_link_keys_complete(uint8_t status, uint16_t length,
 	DBG("link keys loaded for hci%u", adapter->dev_id);
 }
 
-static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
+static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 							bool debug_keys)
 {
 	struct mgmt_cp_load_link_keys *cp;
@@ -1964,8 +1967,10 @@ static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
 	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
 
 	cp = g_try_malloc0(cp_size);
-	if (cp == NULL)
-		return -ENOMEM;
+	if (cp == NULL) {
+		error("No memory for link keys for hci%u", adapter->dev_id);
+		return;
+	}
 
 	cp->debug_keys = debug_keys;
 	cp->key_count = htobs(key_count);
@@ -1986,15 +1991,24 @@ static int load_link_keys(struct btd_adapter *adapter, GSList *keys,
 
 	g_free(cp);
 
-	if (id == 0) {
+	if (id == 0)
 		error("Failed to load link keys for hci%u", adapter->dev_id);
-		return -EIO;
-	}
-
-	return 0;
 }
 
-#if 0
+static gboolean load_ltks_timeout(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	error("Loading LTKs timed out for hci%u", adapter->dev_id);
+
+	adapter->load_ltks_timeout = 0;
+
+	mgmt_cancel(adapter->mgmt, adapter->load_ltks_id);
+	adapter->load_ltks_id = 0;
+
+	return FALSE;
+}
+
 static void load_ltks_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2003,18 +2017,21 @@ static void load_ltks_complete(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS) {
 		error("Failed to load LTKs for hci%u: %s (0x%02x)",
 				adapter->dev_id, mgmt_errstr(status), status);
-		return;
 	}
+
+	adapter->load_ltks_id = 0;
+
+	g_source_remove(adapter->load_ltks_timeout);
+	adapter->load_ltks_timeout = 0;
 
 	DBG("LTKs loaded for hci%u", adapter->dev_id);
 }
 
-static int load_ltks(struct btd_adapter *adapter, GSList *keys)
+static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 {
 	struct mgmt_cp_load_long_term_keys *cp;
 	struct mgmt_ltk_info *key;
 	size_t key_count, cp_size;
-	unsigned int id;
 	GSList *l;
 
 	key_count = g_slist_length(keys);
@@ -2024,8 +2041,10 @@ static int load_ltks(struct btd_adapter *adapter, GSList *keys)
 	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
 
 	cp = g_try_malloc0(cp_size);
-	if (cp == NULL)
-		return -ENOMEM;
+	if (cp == NULL) {
+		error("No memory for LTKs for hci%u", adapter->dev_id);
+		return;
+	}
 
 	cp->key_count = htobs(key_count);
 
@@ -2042,20 +2061,26 @@ static int load_ltks(struct btd_adapter *adapter, GSList *keys)
 		key->enc_size = info->enc_size;
 	}
 
-	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LONG_TERM_KEYS,
-				adapter->dev_id, cp_size, cp,
-				load_ltks_complete, adapter, NULL);
+	adapter->load_ltks_id = mgmt_send(adapter->mgmt,
+					MGMT_OP_LOAD_LONG_TERM_KEYS,
+					adapter->dev_id, cp_size, cp,
+					load_ltks_complete, adapter, NULL);
 
 	g_free(cp);
 
-	if (id == 0) {
+	if (adapter->load_ltks_id == 0) {
 		error("Failed to load LTKs for hci%u", adapter->dev_id);
-		return -EIO;
+		return;
 	}
 
-	return 0;
+	/*
+	 * This timeout handling is needed since the kernel is stupid
+	 * and forgets to send a command complete response. However in
+	 * case of failures it does send a command status.
+	 */
+	adapter->load_ltks_timeout = g_timeout_add_seconds(2,
+						load_ltks_timeout, adapter);
 }
-#endif
 
 static void load_devices(struct btd_adapter *adapter)
 {
@@ -2063,7 +2088,6 @@ static void load_devices(struct btd_adapter *adapter)
 	char srcaddr[18];
 	struct adapter_keys keys = { adapter, NULL };
 	struct adapter_keys ltks = { adapter, NULL };
-	int err;
 	DIR *dir;
 	struct dirent *entry;
 
@@ -2136,19 +2160,10 @@ free:
 
 	closedir(dir);
 
-	err = load_link_keys(adapter, keys.keys, main_opts.debug_keys);
-	if (err < 0)
-		error("Unable to load link keys: %s (%d)",
-							strerror(-err), -err);
-
+	load_link_keys(adapter, keys.keys, main_opts.debug_keys);
 	g_slist_free_full(keys.keys, g_free);
 
-#if 0
-	err = load_ltks(adapter, ltks.keys);
-	if (err < 0)
-		error("Unable to load ltks: %s (%d)", strerror(-err), -err);
-#endif
-
+	load_ltks(adapter, ltks.keys);
 	g_slist_free_full(ltks.keys, g_free);
 }
 
@@ -2479,6 +2494,9 @@ static void adapter_free(gpointer user_data)
 	struct btd_adapter *adapter = user_data;
 
 	DBG("%p", adapter);
+
+	if (adapter->load_ltks_timeout > 0)
+		g_source_remove(adapter->load_ltks_timeout);
 
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
