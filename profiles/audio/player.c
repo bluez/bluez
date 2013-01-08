@@ -172,8 +172,11 @@ static gboolean get_status(const GDBusPropertyTable *property,
 static gboolean setting_exists(const GDBusPropertyTable *property, void *data)
 {
 	struct media_player *mp = data;
+	const char *value;
 
-	return g_hash_table_contains(mp->settings, property->name);
+	value = g_hash_table_lookup(mp->settings, property->name);
+
+	return value ? TRUE : FALSE;
 }
 
 static gboolean get_setting(const GDBusPropertyTable *property,
