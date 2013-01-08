@@ -994,4 +994,3 @@ void convert_sdp_record_to_xml(sdp_record_t *rec,
 		appender(data, "</record>\n");
 	}
 }
-
