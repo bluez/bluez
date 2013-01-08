@@ -54,7 +54,6 @@
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
-#include "mgmt.h"
 #include "systemd.h"
 
 #define BLUEZ_NAME "org.bluez"
@@ -473,7 +472,6 @@ int main(int argc, char *argv[])
 	GKeyFile *config;
 	guint signal, watchdog;
 	const char *watchdog_usec;
-	int mgmt_err;
 
 	init_defaults();
 
@@ -542,12 +540,6 @@ int main(int argc, char *argv[])
 	/* no need to keep parsed option in memory */
 	free_options();
 
-	mgmt_err = mgmt_setup();
-	if (mgmt_err < 0) {
-		error("mgmt setup failed: %s", strerror(-mgmt_err));
-		exit(1);
-	}
-
 	rfkill_init();
 
 	DBG("Entering main loop");
@@ -590,8 +582,6 @@ int main(int argc, char *argv[])
 
 	if (config)
 		g_key_file_free(config);
-
-	mgmt_cleanup();
 
 	disconnect_dbus();
 

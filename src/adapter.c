@@ -67,7 +67,6 @@
 #include "attrib/gatt.h"
 #include "attrib-server.h"
 #include "eir.h"
-#include "mgmt.h"
 
 #define ADAPTER_INTERFACE	"org.bluez.Adapter1"
 
