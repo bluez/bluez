@@ -45,77 +45,19 @@ Methods		void RegisterEndpoint(object endpoint, dict properties)
 
 			Unregister sender end point.
 
-		void RegisterPlayer(object player, dict properties,
-								dict metadata)
+		void RegisterPlayer(object player, dict properties)
 
 			Register a media player object to sender, the sender
 			can register as many objects as it likes.
 
+			Object must implement at least
+			org.mpris.MediaPlayer2.Player as defined in MPRIS 2.2
+			spec:
+
+			http://specifications.freedesktop.org/mpris-spec/latest/
+
 			Note: If the sender disconnects its objects are
 			automatically unregistered.
-
-			Properties:
-
-				string Equalizer:
-
-					Possible values: "off" or "on"
-
-				string Repeat:
-
-					Possible values: "off", "singletrack",
-							"alltracks" or "group"
-
-				string Shuffle:
-
-					Possible values: "off", "alltracks" or
-							"group"
-
-				string Scan:
-
-					Possible values: "off", "alltracks" or
-							"group"
-
-				string Status:
-
-					Possible values: "playing", "stopped",
-							"paused",
-							"forward-seek",
-							"reverse-seek" or
-							"error"
-
-				uint32 Position
-
-					Playback position in milliseconds
-
-			Metadata:
-
-				string Title:
-
-					Track title name
-
-				string Artist:
-
-					Track artist name
-
-				string Album:
-
-					Track album name
-
-				string Genre:
-
-					Track genre name
-
-				uint32 NumberOfTracks:
-
-					Number of tracks in total
-
-				uint32 Number:
-
-					Track number
-
-				uint32 Duration:
-
-					Track duration in milliseconds
 
 			Possible Errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.NotSupported
