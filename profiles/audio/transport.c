@@ -477,7 +477,7 @@ static DBusMessage *try_acquire(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_not_authorized(msg);
 
 	if (transport->state != TRANSPORT_STATE_PENDING)
-		return btd_error_failed(msg, "Transport not playing");
+		return btd_error_not_available(msg);
 
 	owner = media_owner_create(msg);
 	id = transport->resume(transport, owner);

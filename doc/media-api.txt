@@ -321,12 +321,20 @@ Methods		fd, uint16, uint16 Acquire()
 			Acquire transport file descriptor and the MTU for read
 			and write respectively.
 
+			Possible Errors: org.bluez.Error.NotAuthorized
+					 org.bluez.Error.Failed
+
 		fd, uint16, uint16 TryAcquire()
 
 			Acquire transport file descriptor only if the transport
 			is in "pending" state at the time the message is
 			received by BlueZ. Otherwise no request will be sent
-			to the remote device and the function will just fail.
+			to the remote device and the function will just fail
+			with org.bluez.Error.NotAvailable.
+
+			Possible Errors: org.bluez.Error.NotAuthorized
+					 org.bluez.Error.Failed
+					 org.bluez.Error.NotAvailable
 
 		void Release()
 
