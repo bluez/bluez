@@ -67,6 +67,11 @@ Read Management Version Information Command
 	Return Parameters:	Version (1 Octets)
 				Revision (2 Octets)
 
+	This command returns the Management version and revision.
+	Besides, being informational the information can be used to
+	determine whether certain behavior has changed or bugs fixed
+	when interacting with the kernel.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -85,6 +90,9 @@ Read Management Supported Commands Command
 				Event1 (2 Octets)
 				Event2 (2 Octets)
 				...
+
+	This command returns the list of supported Management commands
+	and events.
 
 	The commands Read Management Version Information and Read
 	management Supported Commands are not included in this list.
@@ -106,6 +114,10 @@ Read Controller Index List Command
 	Return Parameters:	Num_Controllers (2 Octets)
 				Controller_Index[i] (2 Octets)
 
+	This command returns the list of currently known controllers.
+	Controllers added or removed after calling this command can be
+	monitored using the Index Added and Index Removed events.
+
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
@@ -124,6 +136,11 @@ Read Controller Information Command
 				Class_Of_Device (3 Octets)
 				Name (249 Octets)
 				Short_Name (11 Octets)
+
+	This command is used to retreive the current state and basic
+	information of a controller. It is typically used right after
+	getting the response to the Read Controller Index List command
+	or an Index Added event.
 
 	If not short name is set the Short_Name parameter will be empty
 	(begin with a nul byte).
@@ -145,6 +162,9 @@ Read Controller Information Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
 
 Set Powered Command
 ===================
@@ -154,12 +174,19 @@ Set Powered Command
 	Command Parameters:	Powered (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command is used to power on or off a controller. The
+	allowed Powered command parameter values are 0x00 and 0x01.
+
 	If discoverable setting is activated with a timeout, then
 	switching the controller off will expire this timeout and
 	disable discoverable.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Busy
+				Invalid Parameters
+				Invalid Index
 
 
 Set Discoverable Command
@@ -171,8 +198,15 @@ Set Discoverable Command
 				Timeout (2 Octets)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command is used to set the discoverable property of a
+	controller. The allowed Discoverable command parameter values
+	are 0x00 and 0x01.
+
 	Timeout is the time in seconds and is only meaningful when
 	Discoverable is set to 1.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -186,6 +220,13 @@ Set Discoverable Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Busy
+				Rejected
+				Not Supported
+				Invalid Parameters
+				Not Powered
+				Invalid Index
+
 
 Set Connectable Command
 =======================
@@ -194,6 +235,13 @@ Set Connectable Command
 	Controller Index:	<controller id>
 	Command Parameters:	Connectable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to set the connectable property of a
+	controller. The allowed Connectable command parameter values are
+	0x00 and 0x01.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -209,6 +257,11 @@ Set Connectable Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
 
 Set Fast Connectable Command
 ============================
@@ -218,13 +271,31 @@ Set Fast Connectable Command
 	Command Parameters:	Enable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
-	This command can be used when the controller is not powered and
-	all settings will be programmed once powered.
+	This command is used to set the controller into a connectable
+	state where the page scan parameters have been set in a way to
+	favor faster connect times with the expense of higher power
+	consumption.
+
+	The allowed values of the Enable command parameter are 0x00 and
+	0x01.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
+
+	This command can only be used when the controller is powered on.
 
 	If connectable is not set, then this command will fail.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Failed
+				Busy
+				Rejected
+				Not Supported
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Set Pairable Command
@@ -234,6 +305,10 @@ Set Pairable Command
 	Controller Index:	<controller id>
 	Command Parameters:	Pairable (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to set the pairable property of an
+	controller. The allowed values for the Pairable command
+	parameter are 0x00 and 0x01.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -246,6 +321,9 @@ Set Pairable Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
 
 Set Link Security Command
 =========================
@@ -255,11 +333,24 @@ Set Link Security Command
 	Command Parameters:	Link_Security (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command is used to either enable or disable link level
+	security for an controller (also known as Security Mode 3). The
+	allowed values for the Link_Security command parameter are 0x00
+	and 0x01.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
+
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Invalid Index
 
 
 Set Secure Simple Pairing Command
@@ -270,6 +361,14 @@ Set Secure Simple Pairing Command
 	Command Parameters:	Secure_Simple_Pairing (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command is used to enable/disable Secure Simple Pairing
+	support for a controller. The allowed values for the
+	Secure_Simple_Pairing command parameter are 0x00 and 0x01.
+
+	This command is only available for BR/EDR capable controllers
+	supporting the core specification version 2.1 or greater
+	(e.g. not for single-mode LE controllers or pre-2.1 ones).
+
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
@@ -279,6 +378,10 @@ Set Secure Simple Pairing Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Invalid Index
 
 Set High Speed Command
 ======================
@@ -287,6 +390,13 @@ Set High Speed Command
 	Controller Index:	<controller id>
 	Command Parameters:	High_Speed (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to enable/disable Bluetooth High Speed
+	support for a controller. The allowed values for the High_Speed
+	command parameter are 0x00 and 0x01.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -297,6 +407,10 @@ Set High Speed Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Not Supported
+				Invalid Parameters
+				Invalid Index
+
 
 Set Low Energy Command
 ======================
@@ -306,6 +420,14 @@ Set Low Energy Command
 	Command Parameters:	Low_Energy (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
+	This command is used to enable/disable Low Energy support for a
+	controller. The allowed values of the Low_Energy command
+	parameter are 0x00 and 0x01.
+
+	This command is only available for LE capable controllers and
+	attempting to call it on anything else will yield a "Not
+	Supported" error.
+
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
@@ -314,6 +436,10 @@ Set Low Energy Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Not Supported
+				Invalid Parameters
+				Invalid Index
 
 
 Set Device Class
@@ -325,8 +451,14 @@ Set Device Class
 				Minor_Class (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
 
+	This command is used to set the major and minor device class for
+	BR/EDR capable controllers.
+
 	This command will also implicitly disable caching of pending CoD
 	and EIR updates.
+
+	This command is only available for BR/EDR capable controllers
+	(e.g. not for single-mode LE ones).
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -338,6 +470,11 @@ Set Device Class
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
 
 Set Local Name Command
 ======================
@@ -348,6 +485,10 @@ Set Local Name Command
 				Short_Name (11 Octets)
 	Return Parameters:	Name (249 Octets)
 				Short_Name (11 Octets)
+
+	This command is used to set the local name of a controller. The
+	command parameters also include a short name which will be used
+	in case the full name doesn't fit within EIR/AD data.
 
 	The name parameters need to always end with a null byte (failure
 	to do so will cause the command to fail).
@@ -363,6 +504,9 @@ Set Local Name Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Invalid Parameters
+				Invalid Index
+
 
 Add UUID Command
 ================
@@ -372,6 +516,11 @@ Add UUID Command
 	Command Parameters:	UUID (16 Octets)
 				SVC_Hint (1 Octet)
 	Return Parameters:	Class_Of_Device (3 Octets)
+
+	This command is used to add a UUID to be published in EIR
+	and/or AD data. The accompanied SVC_Hint parameter is used to
+	tell the kernel whether the service class bits of the Class of
+	Device value need modifying due to this UUID.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -383,6 +532,10 @@ Add UUID Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Busy
+				Invalid Parameters
+				Invalid Index
+
 
 Remove UUID Command
 ===================
@@ -391,6 +544,9 @@ Remove UUID Command
 	Controller Index:	<controller id>
 	Command Parameters:	UUID (16 Octets)
 	Return Parameters:	Class_Of_Device (3 Octets)
+
+	This command is used to remove a UUID previously added using the
+	Add UUID command.
 
 	When the UUID parameter is an empty UUID (16 x 0x00), then all
 	previously loaded UUIDs will be removed.
@@ -404,6 +560,10 @@ Remove UUID Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Busy
+				Invalid Parameters
+				Invalid Index
 
 
 Load Link Keys Command
@@ -424,10 +584,18 @@ Load Link Keys Command
 				...
 	Return Parameters:
 
+	This command is used to feed the kernel with currently known
+	link keys. The command does not need to be called again upon the
+	receiption of new link key events since the kernel updates its
+	list automatically.
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
 
 
 Load Long Term Keys Command
@@ -449,10 +617,18 @@ Load Long Term Keys Command
 				Key2 {  }
 				...
 
+	This command is used to feed the kernel with currently known
+	(SMP) Long Term Keys. The command does not need to be called
+	again upon the receiption of new Long Term Key events since the
+	kernel updates its list automatically.
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
 
 
 Disconnect Command
@@ -465,10 +641,19 @@ Disconnect Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to force the disconnection of a currently
+	connected device.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Busy
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Get Connections Command
@@ -485,6 +670,9 @@ Get Connections Command
 				Address2 { }
 				...
 
+	This command is used to retreive a list of currently connected
+	devices.
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
@@ -494,6 +682,10 @@ Get Connections Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 PIN Code Reply Command
@@ -508,10 +700,17 @@ PIN Code Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to respond to a PIN Code request event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 PIN Code Negative Reply Command
@@ -524,10 +723,18 @@ PIN Code Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to return a negative response to a PIN Code
+	Request event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Set IO Capability Command
@@ -538,11 +745,18 @@ Set IO Capability Command
 	Command Parameters:	IO_Capability (1 Octet)
 	Return Parameters:
 
+	This command is used to set the IO Capability used for pairing.
+	The command accepts both SSP and SMP values. The KeyboardDisplay
+	SMP value (which doesn't exist for SSP will) automatically be
+	downgraded to DisplayYesNo by the kernel for SSP pairing events.
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
+	Possible errors:	Invalid Parameters
+				Invalid Index
 
 Pair Device Command
 ===================
@@ -555,6 +769,11 @@ Pair Device Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to trigger pairing with a remote device.
+	The IO_Capability command parameter is used to temporarily (for
+	this pairing event only) override the global IO Capaility (set
+	using the Set IO Capability command).
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
@@ -564,6 +783,12 @@ Pair Device Command
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Connect Failed
+				Busy
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Cancel Pair Device
@@ -583,6 +808,10 @@ Cancel Pair Device
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Unpair Device Command
@@ -608,6 +837,11 @@ Unpair Device Command
 	This command generates a Command Complete event on success
 	or failure.
 
+	Possible errors:	Not Paired
+				Invalid Parameters
+				Not Powered
+				Invalid Index
+
 
 User Confirmation Reply Command
 ===============================
@@ -619,10 +853,18 @@ User Confirmation Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to respond to a User Confirmation Request
+	event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 User Confirmation Negative Reply Command
@@ -635,10 +877,18 @@ User Confirmation Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to return a negative response to a User
+	Confirmation Request event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 User Passkey Reply Command
@@ -652,10 +902,18 @@ User Passkey Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to respond to a User Confirmation Passkey
+	Request event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 User Passkey Negative Reply Command
@@ -668,10 +926,18 @@ User Passkey Negative Reply Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to return a negative response to a User
+	Passkey Request event.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Not Connected
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Read Local Out Of Band Data Command
@@ -683,10 +949,18 @@ Read Local Out Of Band Data Command
 	Return Parameters:	Hash (16 Octets)
 				Randomizer (16 Octets)
 
+	This command is used to read the local Out of Band data.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Not Supported
+				Busy
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Add Remote Out Of Band Data Command
@@ -701,10 +975,18 @@ Add Remote Out Of Band Data Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to provide Out of Band data for a remote
+	device.
+
 	Provided Out Of Band data is persistent over power down/up toggles.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Failed
+				Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Remove Remote Out Of Band Data Command
@@ -717,8 +999,15 @@ Remove Remote Out Of Band Data Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to remove data added using the Add Remote
+	Out Of Band Data command.
+
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Invalid Parameters
+				Not Powered
+				Invalid Index
 
 
 Start Discovery Command
@@ -728,6 +1017,10 @@ Start Discovery Command
 	Controller Index:	<controller id>
 	Command Parameters:	Address_Type (1 Octet)
 	Return Parameters:	Address_Type (1 Octet)
+
+	This command is used to start the process of discovering remote
+	devices. A Device Found event will be sent for each discovered
+	device.
 
 	Possible values for the Address_Type parameter are a bit-wise or
 	of the following bits:
@@ -747,6 +1040,12 @@ Start Discovery Command
 	This command generates a Command Complete event on success
 	or failure.
 
+	Possible errors:	Busy
+				Not Supported
+				Invalid Parameters
+				Not Powered
+				Invalid Index
+
 
 Stop Discovery Command
 ======================
@@ -756,10 +1055,17 @@ Stop Discovery Command
 	Command Parameters:	Address_Type (1 Octet)
 	Return Parameters:	Address_Type (1 Octet)
 
+	This command is used to stop the discovery process started using
+	the Start Discovery command.
+
 	This command can only be used when the controller is powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Rejected
+				Invalid Parameters
+				Invalid Index
 
 
 Confirm Name Command
@@ -782,6 +1088,10 @@ Confirm Name Command
 	This command generates a Command Complete event on success
 	or failure.
 
+	Possible errors:	Failed
+				Invalid Parameters
+				Invalid Index
+
 
 Block Device Command
 ====================
@@ -793,10 +1103,18 @@ Block Device Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to add a device to the list of devices
+	which should be blocked from being connect to the local
+	controller.
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Failed
+				Invalid Parameters
+				Invalid Index
 
 
 Unblock Device Command
@@ -809,10 +1127,16 @@ Unblock Device Command
 	Return Parameters:	Address (6 Octets)
 				Address_Type (1 Octet)
 
+	This command is used to remove a device from the list of blocked
+	devices (where it was added to using the Block Device command).
+
 	This command can be used when the controller is not powered.
 
 	This command generates a Command Complete event on success
 	or failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
 
 
 Set Device ID Command
@@ -843,6 +1167,9 @@ Set Device ID Command
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
+
+	Possible errors:	Invalid Parameters
+				Invalid Index
 
 
 Command Complete Event
