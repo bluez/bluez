@@ -85,37 +85,6 @@ static bool get_adapter_and_device(uint16_t index,
 	return true;
 }
 
-int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							gboolean success)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_confirm_reply)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	struct mgmt_cp_user_confirm_reply *cp;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s success %d", index, addr, success);
-
-	memset(buf, 0, sizeof(buf));
-
-	if (success)
-		hdr->opcode = htobs(MGMT_OP_USER_CONFIRM_REPLY);
-	else
-		hdr->opcode = htobs(MGMT_OP_USER_CONFIRM_NEG_REPLY);
-
-	hdr->len = htobs(sizeof(*cp));
-	hdr->index = htobs(index);
-
-	cp = (void *) &buf[sizeof(*hdr)];
-	bacpy(&cp->addr.bdaddr, bdaddr);
-	cp->addr.type = bdaddr_type;
-
-	if (write(mgmt_sock, buf, sizeof(buf)) < 0)
-		return -errno;
-
-	return 0;
-}
-
 int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							uint32_t passkey)
 {
@@ -217,36 +186,6 @@ static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 	err = device_notify_passkey(device, passkey, ev->entered);
 	if (err < 0)
 		error("device_notify_passkey: %s", strerror(-err));
-}
-
-static void mgmt_user_confirm_request(uint16_t index, void *buf,
-								size_t len)
-{
-	struct mgmt_ev_user_confirm_request *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
-	int err;
-
-	if (len < sizeof(*ev)) {
-		error("Too small user_confirm_request event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u %s confirm_hint %u", index, addr, ev->confirm_hint);
-
-	if (!get_adapter_and_device(index, &ev->addr,  &adapter, &device, true))
-		return;
-
-	err = device_confirm_passkey(device, btohl(ev->value),
-							ev->confirm_hint);
-	if (err < 0) {
-		error("device_confirm_passkey: %s", strerror(-err));
-		mgmt_confirm_reply(index, &ev->addr.bdaddr, ev->addr.type,
-									FALSE);
-	}
 }
 
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
@@ -362,7 +301,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("pin_code_request event");
 		break;
 	case MGMT_EV_USER_CONFIRM_REQUEST:
-		mgmt_user_confirm_request(index, buf + MGMT_HDR_SIZE, len);
+		DBG("user_confirm_request event");
 		break;
 	case MGMT_EV_AUTH_FAILED:
 		DBG("auth_failed event");

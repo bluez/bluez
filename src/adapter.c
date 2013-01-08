@@ -4280,8 +4280,59 @@ int btd_adapter_confirm_reply(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 				gboolean success)
 {
-	return mgmt_confirm_reply(adapter->dev_id, bdaddr, bdaddr_type,
-								success);
+	struct mgmt_cp_user_confirm_reply cp;
+	uint16_t opcode;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u addr %s success %d", adapter->dev_id, addr, success);
+
+	if (success)
+		opcode = MGMT_OP_USER_CONFIRM_REPLY;
+	else
+		opcode = MGMT_OP_USER_CONFIRM_NEG_REPLY;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, bdaddr);
+	cp.addr.type = bdaddr_type;
+
+	if (mgmt_reply(adapter->mgmt, opcode, adapter->dev_id, sizeof(cp), &cp,
+							NULL, NULL, NULL) > 0)
+		return 0;
+
+	return -EIO;
+}
+
+static void user_confirm_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_user_confirm_request *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+	int err;
+
+	if (length < sizeof(*ev)) {
+		error("Too small user confirm request event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u %s confirm_hint %u", adapter->dev_id, addr,
+							ev->confirm_hint);
+	device = adapter_get_device(adapter, addr, ev->addr.type);
+	if (!device) {
+		error("Unable to get device object for %s", addr);
+		return;
+	}
+
+	err = device_confirm_passkey(device, btohl(ev->value),
+							ev->confirm_hint);
+	if (err < 0) {
+		error("device_confirm_passkey: %s", strerror(-err));
+		btd_adapter_confirm_reply(adapter, &ev->addr.bdaddr,
+							ev->addr.type, FALSE);
+	}
 }
 
 int btd_adapter_passkey_reply(struct btd_adapter *adapter,
@@ -5301,6 +5352,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_PIN_CODE_REQUEST,
 						adapter->dev_id,
 						pin_code_request_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
+						adapter->dev_id,
+						user_confirm_request_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
