@@ -146,7 +146,7 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 	request = g_queue_pop_head(mgmt->reply_queue);
 	if (!request) {
 		/* only reply commands can jump the queue */
-		if (!mgmt->pending_list)
+		if (mgmt->pending_list)
 			return FALSE;
 
 		request = g_queue_pop_head(mgmt->request_queue);
