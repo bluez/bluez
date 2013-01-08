@@ -466,7 +466,7 @@ bool mgmt_set_close_on_unref(struct mgmt *mgmt, bool do_close)
 	return true;
 }
 
-unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
+static struct mgmt_request *create_request(uint16_t opcode, uint16_t index,
 				uint16_t length, const void *param,
 				mgmt_request_func_t callback,
 				void *user_data, mgmt_destroy_func_t destroy)
@@ -474,21 +474,21 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	struct mgmt_request *request;
 	struct mgmt_hdr *hdr;
 
-	if (!mgmt || !opcode)
-		return 0;
+	if (!opcode)
+		return NULL;
 
 	if (length > 0 && !param)
-		return 0;
+		return NULL;
 
 	request = g_try_new0(struct mgmt_request, 1);
 	if (!request)
-		return 0;
+		return NULL;
 
 	request->len = length + MGMT_HDR_SIZE;
 	request->buf = g_try_malloc(request->len);
 	if (!request->buf) {
 		g_free(request);
-		return 0;
+		return NULL;
 	}
 
 	if (length > 0)
@@ -505,6 +505,24 @@ unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
 	request->callback = callback;
 	request->destroy = destroy;
 	request->user_data = user_data;
+
+	return request;
+}
+
+unsigned int mgmt_send(struct mgmt *mgmt, uint16_t opcode, uint16_t index,
+				uint16_t length, const void *param,
+				mgmt_request_func_t callback,
+				void *user_data, mgmt_destroy_func_t destroy)
+{
+	struct mgmt_request *request;
+
+	if (!mgmt)
+		return 0;
+
+	request = create_request(opcode, index, length, param,
+					callback, user_data, destroy);
+	if (!request)
+		return 0;
 
 	if (mgmt->next_request_id < 1)
 		mgmt->next_request_id = 1;
