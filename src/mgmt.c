@@ -85,102 +85,6 @@ static bool get_adapter_and_device(uint16_t index,
 	return true;
 }
 
-int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
-								size_t pin_len)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_pin_code_reply)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	size_t buf_len;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s pinlen %zu", index, addr, pin_len);
-
-	memset(buf, 0, sizeof(buf));
-
-	if (pin == NULL) {
-		struct mgmt_cp_pin_code_neg_reply *cp;
-
-		hdr->opcode = htobs(MGMT_OP_PIN_CODE_NEG_REPLY);
-		hdr->len = htobs(sizeof(*cp));
-		hdr->index = htobs(index);
-
-		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = BDADDR_BREDR;
-
-		buf_len = sizeof(*hdr) + sizeof(*cp);
-	} else {
-		struct mgmt_cp_pin_code_reply *cp;
-
-		if (pin_len > 16)
-			return -EINVAL;
-
-		hdr->opcode = htobs(MGMT_OP_PIN_CODE_REPLY);
-		hdr->len = htobs(sizeof(*cp));
-		hdr->index = htobs(index);
-
-		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = BDADDR_BREDR;
-		cp->pin_len = pin_len;
-		memcpy(cp->pin_code, pin, pin_len);
-
-		buf_len = sizeof(*hdr) + sizeof(*cp);
-	}
-
-	if (write(mgmt_sock, buf, buf_len) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static void mgmt_pin_code_request(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_pin_code_request *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	gboolean display = FALSE;
-	char pin[17];
-	ssize_t pinlen;
-	char addr[18];
-	int err;
-
-	if (len < sizeof(*ev)) {
-		error("Too small pin_code_request event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
-		return;
-
-	memset(pin, 0, sizeof(pin));
-	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
-	if (pinlen > 0 && (!ev->secure || pinlen == 16)) {
-		if (display && device_is_bonding(device, NULL)) {
-			err = device_notify_pincode(device, ev->secure, pin);
-			if (err < 0) {
-				error("device_notify_pin: %s", strerror(-err));
-				mgmt_pincode_reply(index, &ev->addr.bdaddr,
-								NULL, 0);
-			}
-		} else {
-			mgmt_pincode_reply(index, &ev->addr.bdaddr, pin, pinlen);
-		}
-		return;
-	}
-
-	err = device_request_pincode(device, ev->secure);
-	if (err < 0) {
-		error("device_request_pin: %s", strerror(-err));
-		mgmt_pincode_reply(index, &ev->addr.bdaddr, NULL, 0);
-	}
-}
-
 int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success)
 {
@@ -455,7 +359,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("connect_failed event");
 		break;
 	case MGMT_EV_PIN_CODE_REQUEST:
-		mgmt_pin_code_request(index, buf + MGMT_HDR_SIZE, len);
+		DBG("pin_code_request event");
 		break;
 	case MGMT_EV_USER_CONFIRM_REQUEST:
 		mgmt_user_confirm_request(index, buf + MGMT_HDR_SIZE, len);

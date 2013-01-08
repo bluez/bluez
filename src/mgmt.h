@@ -25,8 +25,6 @@
 int mgmt_setup(void);
 void mgmt_cleanup(void);
 
-int mgmt_pincode_reply(int index, const bdaddr_t *bdaddr, const char *pin,
-								size_t pin_len);
 int mgmt_confirm_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 							gboolean success);
 int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,

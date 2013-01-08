@@ -4254,7 +4254,43 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					const char *pin, size_t pin_len)
 {
-	return mgmt_pincode_reply(adapter->dev_id, bdaddr, pin, pin_len);
+	unsigned int id;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u addr %s pinlen %zu", adapter->dev_id, addr, pin_len);
+
+	if (pin == NULL) {
+		struct mgmt_cp_pin_code_neg_reply cp;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = BDADDR_BREDR;
+
+		id = mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_NEG_REPLY,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL);
+	} else {
+		struct mgmt_cp_pin_code_reply cp;
+
+		if (pin_len > 16)
+			return -EINVAL;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = BDADDR_BREDR;
+		cp.pin_len = pin_len;
+		memcpy(cp.pin_code, pin, pin_len);
+
+		id = mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_REPLY,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL);
+	}
+
+	if (id == 0)
+		return -EIO;
+
+	return 0;
 }
 
 int btd_adapter_confirm_reply(struct btd_adapter *adapter,
@@ -4271,6 +4307,58 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 {
 	return mgmt_passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
 								passkey);
+}
+
+static void pin_code_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_pin_code_request *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	gboolean display = FALSE;
+	char pin[17];
+	ssize_t pinlen;
+	char addr[18];
+	int err;
+
+	if (length < sizeof(*ev)) {
+		error("Too small PIN code request event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+
+	DBG("hci%u %s", adapter->dev_id, addr);
+
+	device = adapter_get_device(adapter, addr, ev->addr.type);
+	if (!device) {
+		error("Unable to get device object for %s", addr);
+		return;
+	}
+
+	memset(pin, 0, sizeof(pin));
+	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
+	if (pinlen > 0 && (!ev->secure || pinlen == 16)) {
+		if (display && device_is_bonding(device, NULL)) {
+			err = device_notify_pincode(device, ev->secure, pin);
+			if (err < 0) {
+				error("device_notify_pin: %s", strerror(-err));
+				btd_adapter_pincode_reply(adapter,
+							&ev->addr.bdaddr,
+							NULL, 0);
+			}
+		} else {
+			btd_adapter_pincode_reply(adapter, &ev->addr.bdaddr,
+								pin, pinlen);
+		}
+		return;
+	}
+
+	err = device_request_pincode(device, ev->secure);
+	if (err < 0) {
+		error("device_request_pin: %s", strerror(-err));
+		btd_adapter_pincode_reply(adapter, &ev->addr.bdaddr, NULL, 0);
+	}
 }
 
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
@@ -5207,6 +5295,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNBLOCKED,
 						adapter->dev_id,
 						device_unblocked_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_PIN_CODE_REQUEST,
+						adapter->dev_id,
+						pin_code_request_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
