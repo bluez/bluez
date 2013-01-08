@@ -408,6 +408,8 @@ void mgmt_unref(struct mgmt *mgmt)
 	mgmt_unregister_all(mgmt);
 	mgmt_cancel_all(mgmt);
 
+	g_queue_free(mgmt->request_queue);
+
 	if (mgmt->write_watch > 0) {
 		g_source_remove(mgmt->write_watch);
 		mgmt->write_watch = 0;
@@ -567,9 +569,10 @@ bool mgmt_cancel_all(struct mgmt *mgmt)
 
 	g_list_foreach(mgmt->pending_list, destroy_request, NULL);
 	g_list_free(mgmt->pending_list);
+	mgmt->pending_list = NULL;
 
 	g_queue_foreach(mgmt->request_queue, destroy_request, NULL);
-	g_queue_free(mgmt->request_queue);
+	g_queue_clear(mgmt->request_queue);
 
 	return true;
 }
