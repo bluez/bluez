@@ -1176,7 +1176,7 @@ static sdp_data_t *extract_str(const void *p, int bufsize, int *len)
 		}
 		n = bt_get_be16(p);
 		p += sizeof(uint16_t);
-		*len += sizeof(uint16_t) + n;
+		*len += sizeof(uint16_t);
 		bufsize -= sizeof(uint16_t);
 		break;
 	default:
