@@ -97,7 +97,7 @@ static void check_actions(struct context *context,
 	}
 
 	g_test_message("Command not handled\n");
-	g_test_fail();
+	g_assert_not_reached();
 }
 
 static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
