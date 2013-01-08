@@ -1181,6 +1181,13 @@ Event Parameters	Command_Opcode (2 Octets)
 			Status (1 Octet)
 			Return_Parameters
 
+	This event is an indication that a command has completed. The
+	fixed set of parameters includes the opcode to identify the
+	command that completed as well as a status value to indicate
+	success or failure. The rest of the parameters are command
+	specific and documented in the section for each command
+	separately.
+
 
 Command Status Event
 ====================
@@ -1190,6 +1197,11 @@ Controller Index:	<controller id> or <non-controller>
 Event Parameters	Command_Opcode (2 Octets)
 			Status (1 Octet)
 
+	The command status event is used to indicate an early status for
+	a pending command. In the case that the status indicates failure
+	(anything else except success status) this also means that the
+	command has finished executing.
+
 
 Controller Error Event
 ======================
@@ -1197,6 +1209,9 @@ Controller Error Event
 Event Code		0x0003
 Controller Index:	<controller id>
 Event Parameters	Error_Code (1 Octet)
+
+	This event maps straight to the HCI Hardware Error event and is
+	used to indicate something wrong with the controller hardware.
 
 
 Index Added Event
@@ -1206,6 +1221,10 @@ Event Code		0x0004
 Controller Index:	<controller id>
 Event Parameters
 
+	This event indicates that a new controller has been added to the
+	system. It is usually followed by a Read Controller Information
+	command.
+
 
 Index Removed Event
 ===================
@@ -1213,6 +1232,9 @@ Index Removed Event
 Event Code		0x0005
 Controller Index:	<controller id>
 Event Parameters
+
+	This event indicates that a controller has been removed from the
+	system.
 
 
 New Settings Event
@@ -1222,6 +1244,9 @@ Event Code		0x0006
 Controller Index:	<controller id>
 Event Parameters:	Current_Settings (4 Octets)
 
+	This event indicates that one or more of the settings for a
+	controller has changed.
+
 
 Class Of Device Changed Event
 =============================
@@ -1229,6 +1254,10 @@ Class Of Device Changed Event
 Event Code		0x0007
 Controller Index:	<controller id>
 Event Parameters:	Class_Of_Device (3 Octets)
+
+	This event indicates that the Class of Device value for the
+	controller has changed. When the controller is powered off the
+	Class of Device value will always be reported as zero.
 
 
 Local Name Changed Event
@@ -1239,13 +1268,17 @@ Controller Index	<controller id>
 Event Parameters	Name (249 Octets)
 			Short_Name (11 Octets)
 
+	This event indicates that the local name of the controller has
+	changed.
+
 
 New Link Key Event
 ==================
 
 Event Code		0x0009
 Controller Index:	<controller id>
-Event Parameters	Key {
+Event Parametersa	Store_Hint (1 Octet)
+			Key {
 				Address (6 Octets)
 				Address_Type (1 Octet)
 				Key_Type (1 Octet)
@@ -1253,13 +1286,19 @@ Event Parameters	Key {
 				PIN_Length (1 Octet)
 			}
 
+	This event indicates that a new link key has bee generated for a
+	remote device. The Store_Hint parameter indicates whether the
+	host is expected to store the key persistently or not (e.g. this
+	would not be set if the authentication requirement was "No
+	Bonding").
+
 
 New Long Term Key Event
 =======================
 
 Event Code		0x000A
 Controller Index	<controller id>
-Event Parameters	Store Hint (1 Octet)
+Event Parameters	Store_Hint (1 Octet)
 			Key {
 				Address (6 Octets)
 				Address_Type (1 Octet)
@@ -1270,6 +1309,12 @@ Event Parameters	Store Hint (1 Octet)
 				Random Number (8 Octets)
 				Value (16 Octets)
 			}
+
+	This event indicates that a new long term key has bee generated
+	for a remote device. The Store_Hint parameter indicates whether
+	the host is expected to store the key persistently or not (e.g.
+	this would not be set if the authentication requirement was "No
+	Bonding").
 
 
 Device Connected Event
@@ -1292,6 +1337,9 @@ Event Parameters	Address (6 Octets)
 		0	Reserved (not in use)
 		1	Legacy Pairing
 
+	This event indicates that a successful baseband connection has
+	been created to the remote device.
+
 
 Device Disconnected Event
 =========================
@@ -1301,6 +1349,9 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Reason (1 Octet)
+
+	This event indicates that the baseband connection was lost to a
+	remote device.
 
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
@@ -1332,6 +1383,9 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Status (1 Octet)
 
+	This event indicates that a connection attempt failed to a
+	remote device.
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
@@ -1347,6 +1401,10 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Secure (1 Octet)
 
+	This event is used to request a PIN Code reply from user space.
+	The reply should either be returned using the PIN Code Reply or
+	the PIN Code Negative Reply command.
+
 	Secure: 0x01  secure PIN code required
 		0x00  secure PIN code not required
 
@@ -1361,6 +1419,16 @@ Event Parameters	Address (6 Octets)
 			Confirm_Hint (1 Octet)
 			Value (4 Octets)
 
+	This event is used to request a user confirmation request from
+	user space. If the Confirm_Hint parameter value is 0x01 this
+	means that a simple "Yes/No" confirmation should be presented to
+	the user instead of a full numerical confirmation (in which case
+	the parameter value will be 0x00).
+
+	User space should respond to this command either using the User
+	Confirmation Reply or the User Confirmation Negative Reply
+	command.
+
 
 User Passkey Request Event
 ==========================
@@ -1369,6 +1437,10 @@ Event Code		0x0010
 Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+
+	This event is used to request a passkey from user space. The
+	response to this event should either be the User Passkey Reply
+	command or the User Passkey Negative Reply command.
 
 
 Authentication Failed Event
@@ -1379,6 +1451,9 @@ Controller Index:	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Status (1 Octet)
+
+	This event indicates that there was an authentication failure
+	with a remote device.
 
 
 Device Found Event
@@ -1393,6 +1468,9 @@ Event Parameters	Address (6 Octets)
 			EIR_Data_Length (2 Octets)
 			EIR_Data (0-65535 Octets)
 
+	This event indicates that a device was found during device
+	discovery.
+
 	Possible values for the Address_Type parameter:
 		0	BR/EDR
 		1	LE Public
@@ -1401,6 +1479,19 @@ Event Parameters	Address (6 Octets)
 	The following bits are defined for the Flags parameter:
 		0	Confirm name
 		1	Legacy Pairing
+
+	The Confirm name flag indicates that the kernel wants to know
+	whether user space knows the name for this device or not. If
+	this flag is set user space should respond to it using the
+	Confirm Name command.
+
+	The Legacy Pairing flag indicates that Legacy Pairing is likely
+	to occur when pairing with this device. An application could use
+	this information to optimize the pairing process by locally
+	pre-generating a PIN code and thereby eliminate the risk of
+	local input timeout when pairing. Note that there is a risk of
+	false-positives for this flag so user space should be able to
+	handle getting something else as a PIN Request when pairing.
 
 
 Discovering Event
@@ -1411,6 +1502,13 @@ Controller Index	<controller id>
 Event Parameters	Address_Type (1 Octet)
 			Discovering (1 Octet)
 
+	This event indicates that the controller has started discovering
+	devices. This discovering state can come and go multiple times
+	between a StartDiscover and a StopDiscovery command.
+
+	The valid values for the Discovering parameter are 0x01
+	(enabled) and 0x00 (disabled).
+
 
 Device Blocked Event
 ====================
@@ -1419,6 +1517,10 @@ Event Code		0x0014
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+
+	This event indicates that a device has been blocked using the
+	Block Device command. The event will only be sent to Management
+	sockets other than the one through which the command was sent.
 
 
 Device Unblocked Event
@@ -1429,6 +1531,11 @@ Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 
+	This event indicates that a device has been unblocked using the
+	Unblock Device command. The event will only be sent to
+	Management sockets other than the one through which the command
+	was sent.
+
 
 Device Unpaired Event
 =====================
@@ -1437,6 +1544,12 @@ Event Code		0x0016
 Controller Index	<controller id>
 Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
+
+	This event indicates that a device has been unpaired (i.e. all
+	its keys have been removed from the kernel) using the Unpair
+	Device command. The event will only be sent to Management
+	sockets other than the one through which the Unpair Device
+	command was sent.
 
 
 Passkey Notify Event
@@ -1448,3 +1561,11 @@ Event Parameters	Address (6 Octets)
 			Address_Type (1 Octet)
 			Passkey (4 Octets)
 			Entered (1 Octet)
+
+	This event is used to request passkey notification to the user.
+	Unlike the other authentication events it does not need
+	responding to using any Management command.
+
+	The Passkey parameter indicates the passkey to be shown to the
+	user whereas the Entered parameter indicates how many characters
+	the user has entered on the remote side.
