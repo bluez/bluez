@@ -32,7 +32,7 @@ AC_DEFUN([MISC_FLAGS], [
 	AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 			[disable code optimization through compiler]), [
 		if (test "${enableval}" = "no"); then
-			misc_cflags="$misc_cflags -D_FORTIFY_SOURCE=2"
+			misc_cflags="$misc_cflags -O0"
 		fi
 	])
 	AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
