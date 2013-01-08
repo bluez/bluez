@@ -67,12 +67,6 @@
 #include "manager.h"
 #include "sdpd.h"
 
-struct audio_adapter {
-	struct btd_adapter *btd_adapter;
-	gboolean powered;
-	gint ref;
-};
-
 static GKeyFile *config = NULL;
 static GSList *devices = NULL;
 
