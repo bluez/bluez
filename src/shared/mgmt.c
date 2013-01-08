@@ -358,6 +358,7 @@ struct mgmt *mgmt_new(int fd)
 	g_io_channel_set_buffered(mgmt->io, FALSE);
 
 	mgmt->request_queue = g_queue_new();
+	mgmt->reply_queue = g_queue_new();
 
 	mgmt->read_watch = g_io_add_watch_full(mgmt->io, G_PRIORITY_DEFAULT,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
