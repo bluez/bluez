@@ -3733,6 +3733,23 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	DBG("hci%d bdaddr %s name_known %u", adapter->dev_id, addr,
 								name_known);
 
+	/*
+	 * If the kernel does not answer the confirm name command with
+	 * a command complete or command status in time, this might
+	 * race against another device found event that also requires
+	 * to confirm the name. If there is a pending command, just
+	 * cancel it to be safe here.
+	 */
+	if (adapter->confirm_name_id > 0) {
+		warn("Found pending confirm name for hci%u", adapter->dev_id);
+		mgmt_cancel(adapter->mgmt, adapter->confirm_name_id);
+	}
+
+	if (adapter->confirm_name_timeout > 0) {
+		g_source_remove(adapter->confirm_name_timeout);
+		adapter->confirm_name_timeout = 0;
+	}
+
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
 	cp.addr.type = bdaddr_type;
