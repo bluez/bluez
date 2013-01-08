@@ -609,10 +609,10 @@ static DBusMessage *channel_acquire_continue(struct hdp_tmp_dc_data *data,
 					data, hdp_tmp_dc_data_destroy, &gerr))
 		return NULL;
 
-	hdp_tmp_dc_data_unref(data);
 	reply = g_dbus_create_error(data->msg, ERROR_INTERFACE ".HealthError",
 					"Cannot reconnect: %s", gerr->message);
 	g_error_free(gerr);
+	hdp_tmp_dc_data_unref(data);
 
 	return reply;
 }
