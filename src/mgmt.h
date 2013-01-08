@@ -24,6 +24,3 @@
 
 int mgmt_setup(void);
 void mgmt_cleanup(void);
-
-int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							uint32_t passkey);

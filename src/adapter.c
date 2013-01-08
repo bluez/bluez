@@ -4339,8 +4339,70 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 				const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 				uint32_t passkey)
 {
-	return mgmt_passkey_reply(adapter->dev_id, bdaddr, bdaddr_type,
-								passkey);
+	unsigned int id;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u addr %s passkey %06u", adapter->dev_id, addr, passkey);
+
+	if (passkey == INVALID_PASSKEY) {
+		struct mgmt_cp_user_passkey_neg_reply cp;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = bdaddr_type;
+
+		id = mgmt_reply(adapter->mgmt, MGMT_OP_USER_PASSKEY_NEG_REPLY,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL);
+	} else {
+		struct mgmt_cp_user_passkey_reply cp;
+
+		memset(&cp, 0, sizeof(cp));
+		bacpy(&cp.addr.bdaddr, bdaddr);
+		cp.addr.type = bdaddr_type;
+		cp.passkey = htobl(passkey);
+
+		id = mgmt_reply(adapter->mgmt, MGMT_OP_USER_PASSKEY_REPLY,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL);
+	}
+
+	if (id == 0)
+		return -EIO;
+
+	return 0;
+}
+
+static void user_passkey_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_user_passkey_request *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	char addr[18];
+	int err;
+
+	if (length < sizeof(*ev)) {
+		error("Too small passkey request event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u %s", index, addr);
+
+	device = adapter_get_device(adapter, addr, ev->addr.type);
+	if (!device) {
+		error("Unable to get device object for %s", addr);
+		return;
+	}
+
+	err = device_request_passkey(device);
+	if (err < 0) {
+		error("device_request_passkey: %s", strerror(-err));
+		btd_adapter_passkey_reply(adapter, &ev->addr.bdaddr,
+					ev->addr.type, INVALID_PASSKEY);
+	}
 }
 
 static ssize_t adapter_get_pin(struct btd_adapter *adapter,
@@ -5357,6 +5419,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 						adapter->dev_id,
 						user_confirm_request_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_USER_PASSKEY_REQUEST,
+						adapter->dev_id,
+						user_passkey_request_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);

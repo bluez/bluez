@@ -85,79 +85,6 @@ static bool get_adapter_and_device(uint16_t index,
 	return true;
 }
 
-int mgmt_passkey_reply(int index, const bdaddr_t *bdaddr, uint8_t bdaddr_type,
-							uint32_t passkey)
-{
-	char buf[MGMT_HDR_SIZE + sizeof(struct mgmt_cp_user_passkey_reply)];
-	struct mgmt_hdr *hdr = (void *) buf;
-	size_t buf_len;
-	char addr[18];
-
-	ba2str(bdaddr, addr);
-	DBG("index %d addr %s passkey %06u", index, addr, passkey);
-
-	memset(buf, 0, sizeof(buf));
-
-	hdr->index = htobs(index);
-	if (passkey == INVALID_PASSKEY) {
-		struct mgmt_cp_user_passkey_neg_reply *cp;
-
-		hdr->opcode = htobs(MGMT_OP_USER_PASSKEY_NEG_REPLY);
-		hdr->len = htobs(sizeof(*cp));
-
-		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = bdaddr_type;
-
-		buf_len = sizeof(*hdr) + sizeof(*cp);
-	} else {
-		struct mgmt_cp_user_passkey_reply *cp;
-
-		hdr->opcode = htobs(MGMT_OP_USER_PASSKEY_REPLY);
-		hdr->len = htobs(sizeof(*cp));
-
-		cp = (void *) &buf[sizeof(*hdr)];
-		bacpy(&cp->addr.bdaddr, bdaddr);
-		cp->addr.type = bdaddr_type;
-		cp->passkey = htobl(passkey);
-
-		buf_len = sizeof(*hdr) + sizeof(*cp);
-	}
-
-	if (write(mgmt_sock, buf, buf_len) < 0)
-		return -errno;
-
-	return 0;
-}
-
-static void mgmt_passkey_request(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_user_passkey_request *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	char addr[18];
-	int err;
-
-	if (len < sizeof(*ev)) {
-		error("Too small passkey_request event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
-		return;
-
-	err = device_request_passkey(device);
-	if (err < 0) {
-		error("device_request_passkey: %s", strerror(-err));
-		mgmt_passkey_reply(index, &ev->addr.bdaddr, ev->addr.type,
-							INVALID_PASSKEY);
-	}
-}
-
 static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_passkey_notify *ev = buf;
@@ -322,7 +249,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("device_unpaired event");
 		break;
 	case MGMT_EV_USER_PASSKEY_REQUEST:
-		mgmt_passkey_request(index, buf + MGMT_HDR_SIZE, len);
+		DBG("passkey_request event");
 		break;
 	case MGMT_EV_PASSKEY_NOTIFY:
 		mgmt_passkey_notify(index, buf + MGMT_HDR_SIZE, len);
