@@ -607,6 +607,8 @@ static bool cancel_request(struct mgmt *mgmt, gconstpointer data,
 done:
 	destroy_request(request, NULL);
 
+	wakeup_writer(mgmt);
+
 	return true;
 }
 
