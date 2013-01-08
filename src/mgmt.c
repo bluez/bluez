@@ -56,65 +56,6 @@
 static int mgmt_sock = -1;
 static guint mgmt_watch = 0;
 
-static bool get_adapter_and_device(uint16_t index,
-					struct mgmt_addr_info *addr,
-					struct btd_adapter **adapter,
-					struct btd_device **device,
-					bool create)
-{
-	char peer_addr[18];
-
-	*adapter = adapter_find_by_id(index);
-	if (!*adapter) {
-		error("Unable to find matching adapter");
-		return false;
-	}
-
-	ba2str(&addr->bdaddr, peer_addr);
-
-	if (create)
-		*device = adapter_get_device(*adapter, peer_addr, addr->type);
-	else
-		*device = adapter_find_device(*adapter, peer_addr);
-
-	if (create && !*device) {
-		error("Unable to get device object!");
-		return false;
-	}
-
-	return true;
-}
-
-static void mgmt_passkey_notify(uint16_t index, void *buf, size_t len)
-{
-	struct mgmt_ev_passkey_notify *ev = buf;
-	struct btd_adapter *adapter;
-	struct btd_device *device;
-	uint32_t passkey;
-	char addr[18];
-	int err;
-
-	if (len < sizeof(*ev)) {
-		error("Too small passkey_notify event");
-		return;
-	}
-
-	ba2str(&ev->addr.bdaddr, addr);
-
-	DBG("hci%u %s", index, addr);
-
-	if (!get_adapter_and_device(index, &ev->addr, &adapter, &device, true))
-		return;
-
-	passkey = bt_get_le32(&ev->passkey);
-
-	DBG("passkey %06u entered %u", passkey, ev->entered);
-
-	err = device_notify_passkey(device, passkey, ev->entered);
-	if (err < 0)
-		error("device_notify_passkey: %s", strerror(-err));
-}
-
 static void mgmt_cmd_complete(uint16_t index, void *buf, size_t len)
 {
 	struct mgmt_ev_cmd_complete *ev = buf;
@@ -252,7 +193,7 @@ static gboolean mgmt_event(GIOChannel *channel, GIOCondition cond,
 		DBG("passkey_request event");
 		break;
 	case MGMT_EV_PASSKEY_NOTIFY:
-		mgmt_passkey_notify(index, buf + MGMT_HDR_SIZE, len);
+		DBG("passkey_notify event");
 		break;
 	case MGMT_EV_NEW_LONG_TERM_KEY:
 		DBG("new_long_term_key event");

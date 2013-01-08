@@ -4405,6 +4405,39 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	}
 }
 
+static void user_passkey_notify_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_passkey_notify *ev = param;
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *device;
+	uint32_t passkey;
+	char addr[18];
+	int err;
+
+	if (length < sizeof(*ev)) {
+		error("Too small passkey notify event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u %s", index, addr);
+
+	device = adapter_get_device(adapter, addr, ev->addr.type);
+	if (!device) {
+		error("Unable to get device object for %s", addr);
+		return;
+	}
+
+	passkey = bt_get_le32(&ev->passkey);
+
+	DBG("passkey %06u entered %u", passkey, ev->entered);
+
+	err = device_notify_passkey(device, passkey, ev->entered);
+	if (err < 0)
+		error("device_notify_passkey: %s", strerror(-err));
+}
+
 static ssize_t adapter_get_pin(struct btd_adapter *adapter,
 					struct btd_device *dev, char *pin_buf,
 					gboolean *display)
@@ -5424,6 +5457,11 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	mgmt_register(adapter->mgmt, MGMT_EV_USER_PASSKEY_REQUEST,
 						adapter->dev_id,
 						user_passkey_request_callback,
+						adapter, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_PASSKEY_NOTIFY,
+						adapter->dev_id,
+						user_passkey_notify_callback,
 						adapter, NULL);
 
 	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
