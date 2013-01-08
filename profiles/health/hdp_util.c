@@ -153,13 +153,12 @@ static gboolean parse_data_type(DBusMessageIter *iter, gpointer data,
 {
 	struct hdp_application *app = data;
 	DBusMessageIter *value;
+	DBusMessageIter variant;
 	int ctype;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	value = iter;
 	if (ctype == DBUS_TYPE_VARIANT) {
-		DBusMessageIter variant;
-
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
@@ -181,13 +180,12 @@ static gboolean parse_role(DBusMessageIter *iter, gpointer data, GError **err)
 {
 	struct hdp_application *app = data;
 	DBusMessageIter *string;
+	DBusMessageIter value;
 	int ctype;
 	const char *role;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype == DBUS_TYPE_VARIANT) {
-		DBusMessageIter value;
-
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &value);
 		ctype = dbus_message_iter_get_arg_type(&value);
@@ -222,13 +220,12 @@ static gboolean parse_desc(DBusMessageIter *iter, gpointer data, GError **err)
 {
 	struct hdp_application *app = data;
 	DBusMessageIter *string;
+	DBusMessageIter variant;
 	int ctype;
 	const char *desc;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype == DBUS_TYPE_VARIANT) {
-		DBusMessageIter variant;
-
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
@@ -253,14 +250,13 @@ static gboolean parse_chan_type(DBusMessageIter *iter, gpointer data,
 {
 	struct hdp_application *app = data;
 	DBusMessageIter *value;
+	DBusMessageIter variant;
 	char *chan_type;
 	int ctype;
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	value = iter;
 	if (ctype == DBUS_TYPE_VARIANT) {
-		DBusMessageIter variant;
-
 		/* Get value inside the variable */
 		dbus_message_iter_recurse(iter, &variant);
 		ctype = dbus_message_iter_get_arg_type(&variant);
