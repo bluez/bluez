@@ -151,7 +151,7 @@ uint16_t enc_read_by_grp_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 uint16_t dec_read_by_grp_req(const uint8_t *pdu, size_t len, uint16_t *start,
 						uint16_t *end, bt_uuid_t *uuid)
 {
-	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
+	const size_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
 
 	if (pdu == NULL)
 		return 0;
@@ -382,7 +382,7 @@ uint16_t enc_read_by_type_req(uint16_t start, uint16_t end, bt_uuid_t *uuid,
 uint16_t dec_read_by_type_req(const uint8_t *pdu, size_t len, uint16_t *start,
 						uint16_t *end, bt_uuid_t *uuid)
 {
-	const uint16_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
+	const size_t min_len = sizeof(pdu[0]) + sizeof(*start) + sizeof(*end);
 
 	if (pdu == NULL)
 		return 0;
