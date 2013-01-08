@@ -393,4 +393,26 @@ Properties	object Device [readonly]
 			this property is only writeable when the transport was
 			acquired by the sender.
 
+			Note: the property will not be present for HSP/HFP
+			transports and MicrophoneGain/SpeakerGain should be
+			used instead.
+
 			Possible Values: 0-127
+
+		byte MicrophoneGain [readwrite]
+
+			Optional. Indicates volume level of the transport's
+			incoming audio stream for HSP/HFP transports. This
+			property is only writeable when the transport was
+			acquired by the sender.
+
+			Possible Values: 0-15
+
+		byte SpeakerGain [readwrite]
+
+			Optional. Indicates volume level of the transport's
+			outgoing audio stream for HSP/HFP transports. This
+			property is only writeable when the transport was
+			acquired by the sender.
+
+			Possible Values: 0-15
