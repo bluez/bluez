@@ -29,23 +29,30 @@ class Player(dbus.service.Object):
 				signal_name = "PropertiesChanged")
 		else:
 			track = dbus.Dictionary({
-					"Title" : "Title",
-					"Artist" : "Artist",
-					"Album" : "Album",
-					"Genre" : "Genre",
-					"NumberOfTracks" : dbus.UInt32(10),
-					"TrackNumber" : dbus.UInt32(1),
-					"Duration" : dbus.UInt32(10000) },
+					"xesam:title" : "Title",
+					"xesam:artist" : "Artist",
+					"xesam:album" : "Album",
+					"xesam:genre" : "Genre",
+					"xesam:trackNumber" : dbus.Int32(1),
+					"mpris:length" : dbus.Int64(10000) },
 					signature="sv")
 
 			self.properties = dbus.Dictionary({
-					"Equalizer" : "off",
-					"Repeat" : "off",
-					"Shuffle" : "off",
-					"Scan" : "off",
-					"Status" : "playing",
+					"PlaybackStatus" : "playing",
+					"LoopStatus" : "None",
+					"Rate" : dbus.Double(1.0),
+					"Shuffle" : dbus.Boolean(False),
+					"Metadata" : track,
+					"Volume" : dbus.Double(1.0),
 					"Position" : dbus.UInt32(0),
-					"Track" : track },
+					"MinimumRate" : dbus.Double(1.0),
+					"MaximumRate" : dbus.Double(1.0),
+					"CanGoNext" : dbus.Boolean(False),
+					"CanGoPrevious" : dbus.Boolean(False),
+					"CanPlay" : dbus.Boolean(False),
+					"CanSeek" : dbus.Boolean(False),
+					"CanControl" : dbus.Boolean(False),
+					},
 					signature="sv")
 
 			handler = InputHandler(self)
@@ -87,7 +94,7 @@ class InputHandler:
 			print('\t', cmd, self.commands[cmd], sep='')
 
 		print("\nUse python syntax to pass arguments to available methods.\n" \
-                "E.g.: PropertiesChanged({'Track' : {'Title': 'My title', \
+                "E.g.: PropertiesChanged({'Metadata' : {'Title': 'My title', \
 		'Album': 'my album' }})")
 		self.prompt()
 
