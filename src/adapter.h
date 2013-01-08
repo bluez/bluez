@@ -131,8 +131,6 @@ void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 						btd_adapter_pin_cb_t cb);
 void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 						btd_adapter_pin_cb_t cb);
-ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
-					char *pin_buf, gboolean *display);
 
 /* If TRUE, enables fast connectabe, i.e. reduces page scan interval and changes
  * type. If FALSE, disables fast connectable, i.e. sets page scan interval and

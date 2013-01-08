@@ -4194,23 +4194,6 @@ void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 	adapter->pin_callbacks = g_slist_remove(adapter->pin_callbacks, cb);
 }
 
-ssize_t btd_adapter_get_pin(struct btd_adapter *adapter, struct btd_device *dev,
-					char *pin_buf, gboolean *display)
-{
-	GSList *l;
-	btd_adapter_pin_cb_t cb;
-	ssize_t ret;
-
-	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
-		cb = l->data;
-		ret = cb(adapter, dev, pin_buf, display);
-		if (ret > 0)
-			return ret;
-	}
-
-	return -1;
-}
-
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable)
 {
@@ -4309,6 +4292,24 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 								passkey);
 }
 
+static ssize_t adapter_get_pin(struct btd_adapter *adapter,
+					struct btd_device *dev, char *pin_buf,
+					gboolean *display)
+{
+	btd_adapter_pin_cb_t cb;
+	ssize_t ret;
+	GSList *l;
+
+	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
+		cb = l->data;
+		ret = cb(adapter, dev, pin_buf, display);
+		if (ret > 0)
+			return ret;
+	}
+
+	return -1;
+}
+
 static void pin_code_request_callback(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -4337,7 +4338,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	}
 
 	memset(pin, 0, sizeof(pin));
-	pinlen = btd_adapter_get_pin(adapter, device, pin, &display);
+	pinlen = adapter_get_pin(adapter, device, pin, &display);
 	if (pinlen > 0 && (!ev->secure || pinlen == 16)) {
 		if (display && device_is_bonding(device, NULL)) {
 			err = device_notify_pincode(device, ev->secure, pin);
