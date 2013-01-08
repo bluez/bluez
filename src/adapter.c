@@ -183,6 +183,9 @@ struct btd_adapter {
 
 	unsigned int load_ltks_id;
 	guint load_ltks_timeout;
+
+	unsigned int confirm_name_id;
+	guint confirm_name_timeout;
 };
 
 static struct btd_adapter *btd_adapter_lookup(uint16_t index)
@@ -2498,6 +2501,9 @@ static void adapter_free(gpointer user_data)
 	if (adapter->load_ltks_timeout > 0)
 		g_source_remove(adapter->load_ltks_timeout);
 
+	if (adapter->confirm_name_timeout > 0)
+		g_source_remove(adapter->confirm_name_timeout);
+
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
 
@@ -3685,7 +3691,39 @@ static gboolean connect_pending_cb(gpointer user_data)
 	return FALSE;
 }
 
-static int confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+static gboolean confirm_name_timeout(gpointer user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	error("Confirm name timed out for hci%u", adapter->dev_id);
+
+	adapter->confirm_name_timeout = 0;
+
+	mgmt_cancel(adapter->mgmt, adapter->confirm_name_id);
+	adapter->confirm_name_id = 0;
+
+	return FALSE;
+}
+
+static void confirm_name_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to confirm name for hci%u: %s (0x%02x)",
+				adapter->dev_id, mgmt_errstr(status), status);
+	}
+
+	adapter->confirm_name_id = 0;
+
+	g_source_remove(adapter->confirm_name_timeout);
+	adapter->confirm_name_timeout = 0;
+
+	DBG("Confirm name complete for hci%u", adapter->dev_id);
+}
+
+static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, bool name_known)
 {
 	struct mgmt_cp_confirm_name cp;
@@ -3700,12 +3738,23 @@ static int confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	cp.addr.type = bdaddr_type;
 	cp.name_known = name_known;
 
-	if (mgmt_send(adapter->mgmt, MGMT_OP_CONFIRM_NAME,
-				adapter->dev_id, sizeof(cp), &cp,
-				NULL, NULL, NULL) > 0)
-		return 0;
+	adapter->confirm_name_id = mgmt_reply(adapter->mgmt,
+					MGMT_OP_CONFIRM_NAME,
+					adapter->dev_id, sizeof(cp), &cp,
+					confirm_name_complete, adapter, NULL);
 
-	return -EIO;
+	if (adapter->confirm_name_id == 0) {
+		error("Failed to confirm name for hci%u", adapter->dev_id);
+		return;
+	}
+
+	/*
+	 * This timeout handling is needed since the kernel is stupid
+	 * and forgets to send a command complete response. However in
+	 * case of failures it does send a command status.
+	 */
+	adapter->confirm_name_timeout = g_timeout_add_seconds(2,
+						confirm_name_timeout, adapter);
 }
 
 static void adapter_update_found_devices(struct btd_adapter *adapter,
