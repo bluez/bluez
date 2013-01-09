@@ -109,7 +109,7 @@ static int btsnoop_create(const char *path)
 	return fd;
 }
 
-static int btsnoop_open(const char *path)
+static int btsnoop_open(const char *path, uint32_t *type)
 {
 	struct btsnoop_hdr hdr;
 	ssize_t len;
@@ -140,11 +140,8 @@ static int btsnoop_open(const char *path)
 		return -1;
 	}
 
-	if (ntohl(hdr.type) != 1002) {
-		fprintf(stderr, "unsupported link data type\n");
-		close(fd);
-		return -1;
-	}
+	if (type)
+		*type = ntohl(hdr.type);
 
 	return fd;
 }
@@ -167,11 +164,19 @@ static void command_merge(const char *output, int argc, char *argv[])
 	}
 
 	for (i = 0; i < argc; i++) {
+		uint32_t type;
 		int fd;
 
-		fd = btsnoop_open(argv[i]);
+		fd = btsnoop_open(argv[i], &type);
 		if (fd < 0)
 			break;
+
+		if (type != 1002) {
+			fprintf(stderr, "unsupported link data type %u\n",
+									type);
+			close(fd);
+			break;
+		}
 
 		input_fd[num_input++] = fd;
 	}
@@ -285,6 +290,79 @@ close_input:
 		close(input_fd[i]);
 }
 
+static void command_extract_eir(const char *input)
+{
+	struct btsnoop_pkt pkt;
+	unsigned char buf[2048];
+	ssize_t len;
+	uint32_t type, toread, flags;
+	uint16_t opcode;
+	int fd, count = 0;
+
+	fd = btsnoop_open(input, &type);
+	if (fd < 0)
+		return;
+
+	if (type != 2001) {
+		fprintf(stderr, "unsupported link data type %u\n", type);
+		close(fd);
+		return;
+	}
+
+next_packet:
+	len = read(fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (len < 0 || len != BTSNOOP_PKT_SIZE)
+		goto close_input;
+
+	toread = ntohl(pkt.size);
+	flags = ntohl(pkt.flags);
+
+	opcode = flags & 0x00ff;
+
+	len = read(fd, buf, toread);
+	if (len < 0 || len != (ssize_t) toread) {
+		fprintf(stderr, "failed to read packet data\n");
+		goto close_input;
+	}
+
+	switch (opcode) {
+	case MONITOR_EVENT_PKT:
+		/* extended inquiry result event */
+		if (buf[0] == 0x2f) {
+			uint8_t *eir_ptr, eir_len, i;
+
+			eir_len = buf[1] - 15;
+			eir_ptr = buf + 17;
+
+			if (eir_len < 1 || eir_len > 240)
+				break;
+
+			printf("\t[Extended Inquiry Data with %u bytes]\n",
+								eir_len);
+			printf("\t\t");
+			for (i = 0; i < eir_len; i++) {
+				printf("0x%02x", eir_ptr[i]);
+				if (((i + 1) % 8) == 0) {
+					if (i < eir_len - 1)
+						printf(",\n\t\t");
+				} else {
+					if (i < eir_len - 1)
+						printf(", ");
+				}
+			}
+			printf("\n");
+
+			count++;
+		}
+		break;
+	}
+
+	goto next_packet;
+
+close_input:
+	close(fd);
+}
+
 static const uint8_t conn_complete[] = { 0x04, 0x03, 0x0B, 0x00 };
 static const uint8_t disc_complete[] = { 0x04, 0x05, 0x04, 0x00 };
 
@@ -293,16 +371,22 @@ static void command_extract_sdp(const char *input)
 	struct btsnoop_pkt pkt;
 	unsigned char buf[2048];
 	ssize_t len;
-	uint32_t toread;
+	uint32_t type, toread;
 	uint16_t current_cid = 0x0000;
 	uint8_t pdu_buf[512];
 	uint16_t pdu_len = 0;
 	bool pdu_first = false;
 	int fd, count = 0;
 
-	fd = btsnoop_open(input);
+	fd = btsnoop_open(input, &type);
 	if (fd < 0)
 		return;
+
+	if (type != 1002) {
+		fprintf(stderr, "unsupported link data type %u\n", type);
+		close(fd);
+		return;
+	}
 
 next_packet:
 	len = read(fd, &pkt, BTSNOOP_PKT_SIZE);
@@ -453,7 +537,9 @@ int main(int argc, char *argv[])
 			return EXIT_FAILURE;
 		}
 
-		if (!strcasecmp(type, "sdp"))
+		if (!strcasecmp(type, "eir"))
+			command_extract_eir(input_path);
+		else if (!strcasecmp(type, "sdp"))
 			command_extract_sdp(input_path);
 		else
 			fprintf(stderr, "extract type not supported\n");
