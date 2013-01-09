@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <getopt.h>
 #include <arpa/inet.h>
@@ -284,6 +285,94 @@ close_input:
 		close(input_fd[i]);
 }
 
+static const uint8_t conn_complete[] = { 0x04, 0x03, 0x0B, 0x00 };
+static const uint8_t disc_complete[] = { 0x04, 0x05, 0x04, 0x00 };
+
+static void command_extract_sdp(const char *input)
+{
+	struct btsnoop_pkt pkt;
+	unsigned char buf[2048];
+	ssize_t len;
+	uint32_t toread;
+	uint16_t current_cid = 0x0000;
+	uint8_t pdu_buf[512];
+	uint16_t pdu_len = 0;
+	bool pdu_first = false;
+	int fd, count = 0;
+
+	fd = btsnoop_open(input);
+	if (fd < 0)
+		return;
+
+next_packet:
+	len = read(fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (len < 0 || len != BTSNOOP_PKT_SIZE)
+		goto close_input;
+
+	toread = ntohl(pkt.size);
+
+	len = read(fd, buf, toread);
+	if (len < 0 || len != (ssize_t) toread) {
+		fprintf(stderr, "failed to read packet data\n");
+		goto close_input;
+	}
+
+	if (buf[0] == 0x02) {
+		uint8_t acl_flags;
+
+		/* first 4 bytes are handle and data len */
+		acl_flags = buf[2] >> 4;
+
+		/* use only packet with ACL start flag */
+		if (acl_flags & 0x02) {
+			if (current_cid == 0x0040 && pdu_len > 0) {
+				int i;
+				if (!pdu_first)
+					printf(",\n");
+				printf("\t\traw_pdu(");
+				for (i = 0; i < pdu_len; i++) {
+					printf("0x%02x", pdu_buf[i]);
+					if (((i + 1) % 8) == 0) {
+						if (i < pdu_len - 1)
+							printf(",\n\t\t\t");
+					} else {
+						if (i < pdu_len - 1)
+							printf(", ");
+					}
+				}
+				printf(")");
+				pdu_first = false;
+			}
+
+			/* next 4 bytes are data len and cid */
+			current_cid = buf[8] << 8 | buf[7];
+			memcpy(pdu_buf, buf + 9, len - 9);
+			pdu_len = len - 9;
+		} else if (acl_flags & 0x01) {
+			memcpy(pdu_buf + pdu_len, buf + 5, len - 5);
+			pdu_len += len - 5;
+		}
+	}
+
+	if ((size_t) len > sizeof(conn_complete)) {
+		if (memcmp(buf, conn_complete, sizeof(conn_complete)) == 0) {
+			printf("\tdefine_test(\"/test/%u\",\n", ++count);
+			pdu_first = true;
+		}
+	}
+
+	if ((size_t) len > sizeof(disc_complete)) {
+		if (memcmp(buf, disc_complete, sizeof(disc_complete)) == 0) {
+			printf(");\n");
+		}
+	}
+
+	goto next_packet;
+
+close_input:
+	close(fd);
+}
+
 static void usage(void)
 {
 	printf("btsnoop trace file handling tool\n"
@@ -291,27 +380,32 @@ static void usage(void)
 	printf("\tbtsnoop <command> [files]\n");
 	printf("commands:\n"
 		"\t-m, --merge <output>   Merge multiple btsnoop files\n"
+		"\t-e, --extract <input>  Extract data from btsnoop file\n"
 		"\t-h, --help             Show help options\n");
 }
 
 static const struct option main_options[] = {
 	{ "merge",   required_argument, NULL, 'm' },
+	{ "extract", required_argument, NULL, 'e' },
+	{ "type",    required_argument, NULL, 't' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
 };
 
-enum { INVALID, MERGE };
+enum { INVALID, MERGE, EXTRACT };
 
 int main(int argc, char *argv[])
 {
 	const char *output_path = NULL;
+	const char *input_path = NULL;
+	const char *type = NULL;
 	unsigned short command = INVALID;
 
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "m:vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "m:e:t:vh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -319,6 +413,13 @@ int main(int argc, char *argv[])
 		case 'm':
 			command = MERGE;
 			output_path = optarg;
+			break;
+		case 'e':
+			command = EXTRACT;
+			input_path = optarg;
+			break;
+		case 't':
+			type = optarg;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -339,6 +440,23 @@ int main(int argc, char *argv[])
 		}
 
 		command_merge(output_path, argc - optind, argv + optind);
+		break;
+
+	case EXTRACT:
+		if (argc - optind > 0) {
+			fprintf(stderr, "extra arguments not allowed\n");
+			return EXIT_FAILURE;
+		}
+
+		if (!type) {
+			fprintf(stderr, "not extract type specified\n");
+			return EXIT_FAILURE;
+		}
+
+		if (!strcasecmp(type, "sdp"))
+			command_extract_sdp(input_path);
+		else
+			fprintf(stderr, "extract type not supported\n");
 		break;
 
 	default:
