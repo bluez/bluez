@@ -256,7 +256,7 @@ static void test_parsing(gconstpointer data)
 
 	g_assert(eir.flags == test->flags);
 	g_assert(g_str_equal(eir.name, test->name) == TRUE);
-	g_assert(eir.name_complete == TRUE);
+	g_assert(eir.name_complete == test->name_complete);
 
 	eir_data_free(&eir);
 }
