@@ -616,6 +616,7 @@ Load Long Term Keys Command
 				}
 				Key2 {  }
 				...
+	Return Parameters:
 
 	This command is used to feed the kernel with currently known
 	(SMP) Long Term Keys. The command does not need to be called
