@@ -51,20 +51,20 @@ struct test_data {
 	struct sdp_pdu *pdu_list;
 };
 
-#define x_pdu(args...) (const unsigned char[]) { args }
+#define raw_data(args...) ((const unsigned char[]) { args })
 
 #define raw_pdu(args...) \
 	{							\
 		.valid = true,					\
-		.raw_data = x_pdu(args),			\
-		.raw_size = sizeof(x_pdu(args)),		\
+		.raw_data = raw_data(args),			\
+		.raw_size = sizeof(raw_data(args)),		\
 	}
 
 #define raw_pdu_cont(cont, args...) \
 	{							\
 		.valid = true,					\
-		.raw_data = x_pdu(args),			\
-		.raw_size = sizeof(x_pdu(args)),		\
+		.raw_data = raw_data(args),			\
+		.raw_size = sizeof(raw_data(args)),		\
 		.cont_len = cont,				\
 	}
 
