@@ -363,6 +363,77 @@ close_input:
 	close(fd);
 }
 
+static void command_extract_ad(const char *input)
+{
+	struct btsnoop_pkt pkt;
+	unsigned char buf[2048];
+	ssize_t len;
+	uint32_t type, toread, flags;
+	uint16_t opcode;
+	int fd, count = 0;
+
+	fd = btsnoop_open(input, &type);
+	if (fd < 0)
+		return;
+
+	if (type != 2001) {
+		fprintf(stderr, "unsupported link data type %u\n", type);
+		close(fd);
+		return;
+	}
+
+next_packet:
+	len = read(fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (len < 0 || len != BTSNOOP_PKT_SIZE)
+		goto close_input;
+
+	toread = ntohl(pkt.size);
+	flags = ntohl(pkt.flags);
+
+	opcode = flags & 0x00ff;
+
+	len = read(fd, buf, toread);
+	if (len < 0 || len != (ssize_t) toread) {
+		fprintf(stderr, "failed to read packet data\n");
+		goto close_input;
+	}
+
+	switch (opcode) {
+	case MONITOR_EVENT_PKT:
+		/* advertising report */
+		if (buf[0] == 0x3e && buf[2] == 0x02) {
+			uint8_t *ad_ptr, ad_len, i;
+
+			ad_len = buf[12];
+			ad_ptr = buf + 13;
+
+			if (ad_len < 1 || ad_len > 40)
+				break;
+
+			printf("\t[Advertising Data with %u bytes]\n", ad_len);
+			printf("\t\t");
+			for (i = 0; i < ad_len; i++) {
+				printf("0x%02x", ad_ptr[i]);
+				if (((i + 1) % 8) == 0) {
+					if (i < ad_len - 1)
+						printf(",\n\t\t");
+				} else {
+					if (i < ad_len - 1)
+						printf(", ");
+				}
+			}
+			printf("\n");
+
+			count++;
+		}
+		break;
+	}
+
+	goto next_packet;
+
+close_input:
+	close(fd);
+}
 static const uint8_t conn_complete[] = { 0x04, 0x03, 0x0B, 0x00 };
 static const uint8_t disc_complete[] = { 0x04, 0x05, 0x04, 0x00 };
 
@@ -539,6 +610,8 @@ int main(int argc, char *argv[])
 
 		if (!strcasecmp(type, "eir"))
 			command_extract_eir(input_path);
+		else if (!strcasecmp(type, "ad"))
+			command_extract_ad(input_path);
 		else if (!strcasecmp(type, "sdp"))
 			command_extract_sdp(input_path);
 		else
