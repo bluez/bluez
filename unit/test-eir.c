@@ -220,6 +220,20 @@ static const struct test_data bluesc_test = {
 	.name_complete = TRUE,
 };
 
+static const unsigned char cookoo_data[] = {
+		0x02, 0x01, 0x05, 0x05, 0x02, 0x02, 0x18, 0x0a,
+		0x18, 0x0d, 0x09, 0x43, 0x4f, 0x4f, 0x4b, 0x4f,
+		0x4f, 0x20, 0x77, 0x61, 0x74, 0x63, 0x68,
+};
+
+static const struct test_data cookoo_test = {
+	.eir_data = cookoo_data,
+	.eir_size = sizeof(cookoo_data),
+	.flags = 0x05,
+	.name = "COOKOO watch",
+	.name_complete = TRUE,
+};
+
 static void test_basic(void)
 {
 	struct eir_data data;
@@ -272,6 +286,7 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/eir/ipadmini", &ipadmini_test, test_parsing);
 	g_test_add_data_func("/eir/fuelband", &fuelband_test, test_parsing);
 	g_test_add_data_func("/ad/bluesc", &bluesc_test, test_parsing);
+	g_test_add_data_func("/ad/cookoo", &cookoo_test, test_parsing);
 
 	return g_test_run();
 }
