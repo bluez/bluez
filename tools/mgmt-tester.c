@@ -26,7 +26,6 @@
 #endif
 
 #include <stdlib.h>
-#include <stdbool.h>
 
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
