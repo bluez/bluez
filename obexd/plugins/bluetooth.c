@@ -36,7 +36,7 @@
 #include <gdbus/gdbus.h>
 #include <btio/btio.h>
 
-#include <bluetooth/uuid.h>
+#include "lib/uuid.h"
 
 #include "obexd.h"
 #include "plugin.h"
