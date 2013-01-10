@@ -595,23 +595,3 @@ static inline bool mgmt_pairable(uint32_t settings)
 {
 	return (settings & MGMT_SETTING_PAIRABLE);
 }
-
-static inline bool mgmt_ssp(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_SSP);
-}
-
-static inline int mgmt_bredr(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_BREDR) != 0;
-}
-
-static inline int mgmt_high_speed(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_HS) != 0;
-}
-
-static inline int mgmt_low_energy(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_LE) != 0;
-}
