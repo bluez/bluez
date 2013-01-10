@@ -175,7 +175,8 @@ Set Powered Command
 	Return Parameters:	Current_Settings (4 Octets)
 
 	This command is used to power on or off a controller. The
-	allowed Powered command parameter values are 0x00 and 0x01.
+	allowed Powered command parameter values are 0x00 and 0x01. All
+	other values will return Invalid Parameters.
 
 	If discoverable setting is activated with a timeout, then
 	switching the controller off will expire this timeout and
@@ -200,22 +201,24 @@ Set Discoverable Command
 
 	This command is used to set the discoverable property of a
 	controller. The allowed Discoverable command parameter values
-	are 0x00 and 0x01.
+	are 0x00 and 0x01. All other values will return Invalid Parameters.
 
 	Timeout is the time in seconds and is only meaningful when
-	Discoverable is set to 1.
+	Discoverable is set to 0x01. Providing a timeout with 0x00 will
+	return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
-	(e.g. not for single-mode LE ones).
+	(e.g. not for single-mode LE ones). It will return Not Supported
+	otherwise.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
 	However using a timeout when the controller is not powered will
-	return an error.
+	return Not Powered error.
 
 	When switching discoverable on and the connectable setting is
-	off it will return an error.
+	off it will return Rejected error.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -238,10 +241,11 @@ Set Connectable Command
 
 	This command is used to set the connectable property of a
 	controller. The allowed Connectable command parameter values are
-	0x00 and 0x01.
+	0x00 and 0x01. All other values will return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
-	(e.g. not for single-mode LE ones).
+	(e.g. not for single-mode LE ones). It will return Not Supported
+	otherwise.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -277,14 +281,17 @@ Set Fast Connectable Command
 	consumption.
 
 	The allowed values of the Enable command parameter are 0x00 and
-	0x01.
+	0x01. All other values will return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
-	(e.g. not for single-mode LE ones).
+	(e.g. not for single-mode LE ones). It will return Not Supported
+	otherwise.
 
-	This command can only be used when the controller is powered on.
+	This command can only be used when the controller is powered on
+	and will return Not Powerd otherwise.
 
-	If connectable is not set, then this command will fail.
+	If connectable is not set, then this command will fail with
+	Rejected error.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -308,7 +315,8 @@ Set Pairable Command
 
 	This command is used to set the pairable property of an
 	controller. The allowed values for the Pairable command
-	parameter are 0x00 and 0x01.
+	parameter are 0x00 and 0x01. All other values will return
+	Invalid Parameters.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -336,10 +344,11 @@ Set Link Security Command
 	This command is used to either enable or disable link level
 	security for an controller (also known as Security Mode 3). The
 	allowed values for the Link_Security command parameter are 0x00
-	and 0x01.
+	and 0x01. All other values will return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
-	(e.g. not for single-mode LE ones).
+	(e.g. not for single-mode LE ones). It will return Not Supported
+	otherwise.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
@@ -363,7 +372,8 @@ Set Secure Simple Pairing Command
 
 	This command is used to enable/disable Secure Simple Pairing
 	support for a controller. The allowed values for the
-	Secure_Simple_Pairing command parameter are 0x00 and 0x01.
+	Secure_Simple_Pairing command parameter are 0x00 and 0x01. All
+	other values will return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
 	supporting the core specification version 2.1 or greater
@@ -373,7 +383,7 @@ Set Secure Simple Pairing Command
 	all settings will be programmed once powered.
 
 	In case the controller does not support Secure Simple Pairing,
-	the command will fail regardless.
+	the command will fail regardless with Not Supported error.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -393,7 +403,8 @@ Set High Speed Command
 
 	This command is used to enable/disable Bluetooth High Speed
 	support for a controller. The allowed values for the High_Speed
-	command parameter are 0x00 and 0x01.
+	command parameter are 0x00 and 0x01. All other values will
+	return Invalid Parameters.
 
 	This command is only available for BR/EDR capable controllers
 	(e.g. not for single-mode LE ones).
@@ -402,7 +413,7 @@ Set High Speed Command
 	all settings will be programmed once powered.
 
 	In case the kernel subsystem does not support High Speed, the
-	command will fail regardless.
+	command will fail regardless with Not Supported error.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
@@ -422,11 +433,11 @@ Set Low Energy Command
 
 	This command is used to enable/disable Low Energy support for a
 	controller. The allowed values of the Low_Energy command
-	parameter are 0x00 and 0x01.
+	parameter are 0x00 and 0x01. All other values will return
+	Invalid Parameters.
 
 	This command is only available for LE capable controllers and
-	attempting to call it on anything else will yield a "Not
-	Supported" error.
+	will yield in a Not Supported error otherwise.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
