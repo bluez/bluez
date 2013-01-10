@@ -32,9 +32,9 @@
 #include <errno.h>
 
 #include <glib.h>
-#include <bluetooth/uuid.h>
 #include <btio/btio.h>
 
+#include "lib/uuid.h"
 #include "adapter.h"
 #include "device.h"
 #include "attrib/att.h"
