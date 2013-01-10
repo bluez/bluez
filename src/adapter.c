@@ -297,6 +297,16 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 {
 	struct mgmt_cp_set_dev_class cp;
 
+	/*
+	 * If the controller does not support BR/EDR operation,
+	 * there is no point in trying to set a major and minor
+	 * class value.
+	 *
+	 * This is an optimization for Low Energy only controllers.
+	 */
+	if (!(adapter->supported_settings & MGMT_SETTING_BREDR))
+		return -ENOTSUP;
+
 	memset(&cp, 0, sizeof(cp));
 
 	/*
