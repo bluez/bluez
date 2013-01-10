@@ -30,9 +30,9 @@
 #include <errno.h>
 #include <gdbus/gdbus.h>
 #include <glib.h>
-#include <bluetooth/uuid.h>
 #include <stdlib.h>
 
+#include "lib/uuid.h"
 #include "plugin.h"
 #include "dbus-common.h"
 #include "attrib/att.h"
