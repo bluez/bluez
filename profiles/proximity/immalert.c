@@ -27,12 +27,12 @@
 #include <stdbool.h>
 
 #include <glib.h>
-#include <bluetooth/uuid.h>
 #include <adapter.h>
 
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
+#include "lib/uuid.h"
 #include "log.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"

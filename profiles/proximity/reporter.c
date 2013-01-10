@@ -30,7 +30,6 @@
 #include <errno.h>
 
 #include <glib.h>
-#include <bluetooth/uuid.h>
 #include <adapter.h>
 
 #include <dbus/dbus.h>
@@ -38,6 +37,7 @@
 
 #include "log.h"
 
+#include "lib/uuid.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "device.h"

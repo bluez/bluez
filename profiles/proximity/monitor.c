@@ -36,8 +36,8 @@
 #include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
 
+#include "lib/uuid.h"
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
