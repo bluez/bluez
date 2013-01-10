@@ -474,11 +474,14 @@ static const struct generic_data set_pairable_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
-static const char set_discoverable_on_param[] = { 0x01, 0x00, 0x00 };
-static const char set_discoverable_timeout_param[] = { 0x01, 0x0a, 0x00 };
-static const char set_discoverable_invalid_param[] = { 0x02, 0x00, 0x00 };
-static const char set_discoverable_garbage_param[] = { 0x01, 0x00, 0x00, 0x00 };
-static const char set_discoverable_settings_param[] = { 0x8b, 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_on_param[] = { 0x01, 0x00, 0x00 };
+static const uint8_t set_discoverable_timeout_param[] = { 0x01, 0x0a, 0x00 };
+static const uint8_t set_discoverable_invalid_param[] = { 0x02, 0x00, 0x00 };
+static const uint8_t set_discoverable_off_param[] = { 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_offtimeout_param[] = { 0x00, 0x01, 0x00 };
+static const uint8_t set_discoverable_garbage_param[] = { 0x01, 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_on_settings_param[] = { 0x8b, 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_off_settings_param[] = { 0x82, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_discoverable_on_invalid_param_test_1 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
@@ -499,14 +502,14 @@ static const struct generic_data set_discoverable_on_invalid_param_test_3 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
-static const struct generic_data set_discoverable_on_not_powered_test_1 = {
+static const struct generic_data set_discoverable_on_invalid_param_test_4 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
-	.send_param = set_discoverable_on_param,
-	.send_len = sizeof(set_discoverable_on_param),
-	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.send_param = set_discoverable_offtimeout_param,
+	.send_len = sizeof(set_discoverable_offtimeout_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
-static const struct generic_data set_discoverable_on_not_powered_test_2 = {
+static const struct generic_data set_discoverable_on_not_powered_test_1 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_timeout_param,
 	.send_len = sizeof(set_discoverable_timeout_param),
@@ -522,6 +525,13 @@ static const struct generic_data set_discoverable_on_rejected_test_1 = {
 
 static const struct generic_data set_discoverable_on_rejected_test_2 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_discoverable_on_param,
+	.send_len = sizeof(set_discoverable_on_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const struct generic_data set_discoverable_on_rejected_test_3 = {
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_timeout_param,
 	.send_len = sizeof(set_discoverable_timeout_param),
 	.expect_status = MGMT_STATUS_REJECTED,
@@ -532,9 +542,18 @@ static const struct generic_data set_discoverable_on_success_test = {
 	.send_param = set_discoverable_on_param,
 	.send_len = sizeof(set_discoverable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_discoverable_settings_param,
-	.expect_len = sizeof(set_discoverable_settings_param),
+	.expect_param = set_discoverable_on_settings_param,
+	.expect_len = sizeof(set_discoverable_on_settings_param),
 	.expect_settings_set = MGMT_SETTING_DISCOVERABLE,
+};
+
+static const struct generic_data set_discoverable_off_success_test = {
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_discoverable_off_param,
+	.send_len = sizeof(set_discoverable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discoverable_off_settings_param,
+	.expect_len = sizeof(set_discoverable_off_settings_param),
 };
 
 static void setup_powered_callback(uint8_t status, uint16_t length,
@@ -791,14 +810,17 @@ int main(int argc, char *argv[])
 	test_bredr("Set discoverable on - Invalid parameters 3",
 				&set_discoverable_on_invalid_param_test_3,
 				NULL, test_command_generic);
+	test_bredr("Set discoverable on - Invalid parameters 4",
+				&set_discoverable_on_invalid_param_test_4,
+				NULL, test_command_generic);
+	test_bredr("Set discoverable on - Not powered 1",
+				&set_discoverable_on_not_powered_test_1,
+				NULL, test_command_generic);
 	test_bredr("Set discoverable on - Not powered 1",
 				&set_discoverable_on_not_powered_test_1,
 				NULL, test_command_generic);
 	test_bredr("Set discoverable on - Not powered 2",
-				&set_discoverable_on_not_powered_test_2,
-				NULL, test_command_generic);
-	test_bredr("Set discoverable on - Not powered 3",
-				&set_discoverable_on_not_powered_test_2,
+				&set_discoverable_on_not_powered_test_1,
 				setup_connectable, test_command_generic);
 	test_bredr("Set discoverable on - Rejected 1",
 				&set_discoverable_on_rejected_test_1,
@@ -806,10 +828,16 @@ int main(int argc, char *argv[])
 	test_bredr("Set discoverable on - Rejected 2",
 				&set_discoverable_on_rejected_test_2,
 				setup_powered, test_command_generic);
+	test_bredr("Set discoverable on - Rejected 3",
+				&set_discoverable_on_rejected_test_3,
+				setup_powered, test_command_generic);
 	test_bredr("Set discoverable on - Success 1",
 				&set_discoverable_on_success_test,
 				setup_connectable, test_command_generic);
 	test_bredr("Set discoverable on - Success 2",
+				&set_discoverable_off_success_test,
+				setup_connectable, test_command_generic);
+	test_bredr("Set discoverable on - Success 3",
 				&set_discoverable_on_success_test,
 				setup_powered_connectable, test_command_generic);
 
