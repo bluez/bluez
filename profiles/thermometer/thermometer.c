@@ -27,10 +27,9 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <bluetooth/uuid.h>
-
 #include <gdbus/gdbus.h>
 
+#include "lib/uuid.h"
 #include "plugin.h"
 #include "dbus-common.h"
 #include "adapter.h"

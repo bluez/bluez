@@ -31,7 +31,6 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
-#include <bluetooth/uuid.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -39,7 +38,8 @@
 #include "log.h"
 
 #include "glib-helper.h"
-#include <btio/btio.h>
+#include "btio/btio.h"
+#include "lib/uuid.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"

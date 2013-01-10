@@ -30,8 +30,8 @@
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
-#include <bluetooth/uuid.h>
 
+#include "lib/uuid.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"

@@ -36,13 +36,13 @@
 
 #include <sdpd.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/uuid.h>
 #include <sdp-client.h>
 #include <glib-helper.h>
 
-#include <btio/btio.h>
+#include "lib/uuid.h"
+#include "btio/btio.h"
 
-#include <log.h>
+#include "log.h"
 
 #include "dbus-common.h"
 #include "mcap.h"

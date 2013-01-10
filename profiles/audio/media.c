@@ -29,11 +29,10 @@
 
 #include <errno.h>
 
-#include <bluetooth/uuid.h>
-
 #include <glib.h>
 #include <gdbus/gdbus.h>
 
+#include "lib/uuid.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/dbus-common.h"

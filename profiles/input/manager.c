@@ -31,10 +31,11 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/uuid.h>
 
 #include "log.h"
 #include "plugin.h"
+
+#include "lib/uuid.h"
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"

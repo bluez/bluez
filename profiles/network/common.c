@@ -39,12 +39,12 @@
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
 #include <bluetooth/bnep.h>
-#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
 #include "log.h"
 #include "common.h"
+#include "lib/uuid.h"
 
 static int ctl;
 

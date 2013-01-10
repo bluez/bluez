@@ -28,8 +28,8 @@
 
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/uuid.h>
 
+#include "lib/uuid.h"
 #include <btio/btio.h>
 #include <adapter.h>
 #include <device.h>

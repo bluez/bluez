@@ -27,8 +27,8 @@
 #include <glib.h>
 #include <errno.h>
 #include <stdbool.h>
-#include <bluetooth/uuid.h>
 
+#include "lib/uuid.h"
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"

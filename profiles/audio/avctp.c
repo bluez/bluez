@@ -41,12 +41,12 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
-#include <bluetooth/uuid.h>
 #include <bluetooth/l2cap.h>
 
 #include <glib.h>
 #include <btio/btio.h>
 
+#include "lib/uuid.h"
 #include "adapter.h"
 #include "../src/device.h"
 

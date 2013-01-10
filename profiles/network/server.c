@@ -34,13 +34,13 @@
 #include <bluetooth/bnep.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/uuid.h>
 #include <netinet/in.h>
 
 #include <glib.h>
 #include <gdbus/gdbus.h>
 #include <btio/btio.h>
 
+#include "lib/uuid.h"
 #include "../src/dbus-common.h"
 #include "../src/adapter.h"
 
