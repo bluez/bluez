@@ -38,8 +38,6 @@
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/hci.h>
-#include <bluetooth/uuid.h>
-#include <bluetooth/mgmt.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
@@ -50,6 +48,8 @@
 #include "log.h"
 #include "textfile.h"
 
+#include "lib/uuid.h"
+#include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
 
 #include "hcid.h"

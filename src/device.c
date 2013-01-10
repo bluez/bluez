@@ -37,10 +37,8 @@
 #include <dirent.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/mgmt.h>
 
 #include <glib.h>
 #include <dbus/dbus.h>
@@ -49,6 +47,8 @@
 
 #include "log.h"
 
+#include "lib/uuid.h"
+#include "lib/mgmt.h"
 #include "attrib/att.h"
 #include "hcid.h"
 #include "adapter.h"
