@@ -1961,6 +1961,16 @@ static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 	unsigned int id;
 	GSList *l;
 
+	/*
+	 * If the controller does not support BR/EDR operation,
+	 * there is no point in trying to load the link keys into
+	 * the kernel.
+	 *
+	 * This is an optimization for Low Energy only controllers.
+	 */
+	if (!(adapter->supported_settings & MGMT_SETTING_BREDR))
+		return;
+
 	key_count = g_slist_length(keys);
 
 	DBG("hci%u keys %zu debug_keys %d", adapter->dev_id, key_count,
@@ -2035,6 +2045,19 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 	struct mgmt_ltk_info *key;
 	size_t key_count, cp_size;
 	GSList *l;
+
+	/*
+	 * If the controller does not support Low Energy operation,
+	 * there is no point in trying to load the long term keys
+	 * into the kernel.
+	 *
+	 * While there is no harm in loading keys into the kernel,
+	 * this is an optimization to avoid a confusing warning
+	 * message when the loading of the keys timed out due to
+	 * a kernel bug (see comment below).
+	 */
+	if (!(adapter->supported_settings & MGMT_SETTING_LE))
+		return;
 
 	key_count = g_slist_length(keys);
 
