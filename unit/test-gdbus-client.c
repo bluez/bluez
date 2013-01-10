@@ -78,6 +78,9 @@ static struct context *create_context(void)
 		return NULL;
 	}
 
+	/* Avoid D-Bus library calling _exit() before next test finishes. */
+	dbus_connection_set_exit_on_disconnect(context->dbus_conn, FALSE);
+
 	return context;
 }
 
