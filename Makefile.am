@@ -62,11 +62,14 @@ endif
 
 plugin_LTLIBRARIES =
 
+lib_sources = lib/bluetooth.c lib/hci.c lib/sdp.c
+lib_headers = lib/bluetooth.h lib/hci.h lib/hci_lib.h \
+		lib/sco.h lib/l2cap.h lib/sdp.h lib/sdp_lib.h \
+		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h
 
-lib_headers = lib/bluetooth.h lib/hci.h lib/hci_lib.h lib/mgmt.h \
-		lib/sco.h lib/l2cap.h lib/sdp.h lib/sdp_lib.h lib/uuid.h \
-		lib/rfcomm.h lib/bnep.h lib/cmtp.h lib/hidp.h lib/a2mp.h \
-		lib/amp.h
+extra_headers = lib/mgmt.h lib/uuid.h lib/a2mp.h lib/amp.h
+extra_sources = lib/uuid.c
+
 local_headers = $(foreach file,$(lib_headers), lib/bluetooth/$(notdir $(file)))
 
 BUILT_SOURCES = $(local_headers) src/builtin.h
@@ -76,16 +79,15 @@ include_HEADERS += $(lib_headers)
 
 lib_LTLIBRARIES += lib/libbluetooth.la
 
-lib_libbluetooth_la_SOURCES = $(lib_headers) \
-				lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
+lib_libbluetooth_la_SOURCES = $(lib_headers) $(lib_sources)
 lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 17:0:14
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 endif
 
 noinst_LTLIBRARIES += lib/libbluetooth-private.la
 
-lib_libbluetooth_private_la_SOURCES = $(lib_headers) \
-				lib/bluetooth.c lib/hci.c lib/sdp.c lib/uuid.c
+lib_libbluetooth_private_la_SOURCES = $(lib_headers) $(lib_sources) \
+					$(extra_headers) $(extra_sources)
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
