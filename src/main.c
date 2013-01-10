@@ -38,7 +38,6 @@
 #include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
@@ -48,6 +47,7 @@
 
 #include "log.h"
 
+#include "lib/uuid.h"
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
