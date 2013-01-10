@@ -89,6 +89,8 @@
 static DBusConnection *dbus_conn = NULL;
 
 static GList *adapter_list = NULL;
+static unsigned int adapter_remaining = 0;
+static bool powering_down = false;
 
 static GSList *adapters = NULL;
 static int default_adapter_id = -1;
@@ -484,10 +486,18 @@ static void settings_changed(struct btd_adapter *adapter, uint32_t settings)
 	        g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Powered");
 
-		if (adapter->current_settings & MGMT_SETTING_POWERED)
+		if (adapter->current_settings & MGMT_SETTING_POWERED) {
 			adapter_start(adapter);
-		else
+		} else {
 			adapter_stop(adapter);
+
+			if (powering_down) {
+				adapter_remaining--;
+
+				if (!adapter_remaining)
+					btd_exit();
+			}
+		}
 	}
 
 	if (changed_mask & MGMT_SETTING_CONNECTABLE)
@@ -1619,6 +1629,12 @@ static void property_set_powered(const GDBusPropertyTable *property,
 				GDBusPendingPropertySet id, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
+
+	if (powering_down) {
+		g_dbus_pending_property_error(id, ERROR_INTERFACE ".Failed",
+							"Powering down");
+		return;
+	}
 
 	property_set_mode(adapter, MGMT_SETTING_POWERED, iter, id);
 }
@@ -3575,8 +3591,6 @@ static void adapter_remove(struct btd_adapter *adapter)
 	btd_adapter_gatt_server_stop(adapter);
 
 	g_slist_free(adapter->pin_callbacks);
-
-	set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
 }
 
 const char *adapter_get_path(struct btd_adapter *adapter)
@@ -5107,6 +5121,9 @@ static int adapter_register(struct btd_adapter *adapter)
 {
 	struct agent *agent;
 
+	if (powering_down)
+		return -EBUSY;
+
 	adapter->path = g_strdup_printf("/org/bluez/hci%d", adapter->dev_id);
 
 	if (!g_dbus_register_interface(dbus_conn,
@@ -5776,4 +5793,28 @@ void adapter_cleanup(void)
 	mgmt_master = NULL;
 
 	dbus_conn = NULL;
+}
+
+void adapter_shutdown(void)
+{
+	GList *list;
+
+	DBG("");
+
+	powering_down = true;
+
+	for (list = g_list_first(adapter_list); list;
+						list = g_list_next(list)) {
+		struct btd_adapter *adapter = list->data;
+
+		if (!(adapter->current_settings & MGMT_SETTING_POWERED))
+			continue;
+
+		set_mode(adapter, MGMT_OP_SET_POWERED, 0x00);
+
+		adapter_remaining++;
+	}
+
+	if (!adapter_remaining)
+		btd_exit();
 }

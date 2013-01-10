@@ -76,8 +76,10 @@ struct smp_ltk_info {
 	uint8_t val[16];
 };
 
-void adapter_cleanup(void);
 int adapter_init(void);
+void adapter_cleanup(void);
+void adapter_shutdown(void);
+
 struct btd_adapter *adapter_find(const bdaddr_t *sba);
 struct btd_adapter *adapter_find_by_id(int id);
 struct btd_adapter *adapter_get_default(void);

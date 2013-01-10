@@ -61,6 +61,8 @@
 #define DEFAULT_PAIRABLE_TIMEOUT       0 /* disabled */
 #define DEFAULT_DISCOVERABLE_TIMEOUT 180 /* 3 minutes */
 
+#define SHUTDOWN_GRACE_SECONDS 10
+
 struct main_opts main_opts;
 
 static const char * const supported_options[] = {
@@ -287,6 +289,17 @@ static void init_defaults(void)
 
 static GMainLoop *event_loop;
 
+void btd_exit(void)
+{
+	g_main_loop_quit(event_loop);
+}
+
+static gboolean quit_eventloop(gpointer user_data)
+{
+	btd_exit();
+	return FALSE;
+}
+
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -309,7 +322,11 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	case SIGTERM:
 		if (__terminated == 0) {
 			info("Terminating");
-			g_main_loop_quit(event_loop);
+			g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
+							quit_eventloop, NULL);
+
+			sd_notify(0, "STATUS=Powering down");
+			adapter_shutdown();
 		}
 
 		__terminated = 1;
