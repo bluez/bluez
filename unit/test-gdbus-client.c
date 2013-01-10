@@ -53,6 +53,7 @@ static const GDBusPropertyTable properties[] = {
 static struct context *create_context(void)
 {
 	struct context *context = g_new0(struct context, 1);
+	DBusError err;
 
 	context->main_loop = g_main_loop_new(NULL, FALSE);
 	if (context->main_loop == NULL) {
@@ -60,9 +61,18 @@ static struct context *create_context(void)
 		return NULL;
 	}
 
+	dbus_error_init(&err);
+
 	context->dbus_conn = g_dbus_setup_private(DBUS_BUS_SESSION,
-							SERVICE_NAME, NULL);
+							SERVICE_NAME, &err);
 	if (context->dbus_conn == NULL) {
+		if (dbus_error_is_set(&err)) {
+			if (g_test_verbose())
+				g_printerr("D-Bus setup failed: %s\n",
+								err.message);
+			dbus_error_free(&err);
+		}
+
 		g_main_loop_unref(context->main_loop);
 		g_free(context);
 		return NULL;
