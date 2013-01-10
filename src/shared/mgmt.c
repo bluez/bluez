@@ -164,7 +164,7 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 				"[0x%04x] command 0x%04x",
 				request->index, request->opcode);
 
-	util_hexdump('>', request->buf, bytes_written,
+	util_hexdump('<', request->buf, bytes_written,
 				mgmt->debug_callback, mgmt->debug_data);
 
 	mgmt->pending_list = g_list_append(mgmt->pending_list, request);
@@ -283,7 +283,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	if (bytes_read < 0)
 		return TRUE;
 
-	util_hexdump('<', mgmt->buf, bytes_read,
+	util_hexdump('>', mgmt->buf, bytes_read,
 				mgmt->debug_callback, mgmt->debug_data);
 
 	if (bytes_read < MGMT_HDR_SIZE)
