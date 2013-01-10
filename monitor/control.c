@@ -36,9 +36,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include <bluetooth/bluetooth.h>
-#include <bluetooth/hci.h>
-#include <bluetooth/mgmt.h>
+#include "lib/bluetooth.h"
+#include "lib/hci.h"
+#include "lib/mgmt.h"
 
 #include "mainloop.h"
 #include "display.h"
