@@ -570,28 +570,3 @@ static inline const char *mgmt_errstr(uint8_t status)
 		return "<unknown status>";
 	return mgmt_status[status];
 }
-
-static inline bool mgmt_powered(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_POWERED);
-}
-
-static inline bool mgmt_connectable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_CONNECTABLE);
-}
-
-static inline bool mgmt_fast_connectable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_FAST_CONNECTABLE);
-}
-
-static inline bool mgmt_discoverable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_DISCOVERABLE);
-}
-
-static inline bool mgmt_pairable(uint32_t settings)
-{
-	return (settings & MGMT_SETTING_PAIRABLE);
-}
