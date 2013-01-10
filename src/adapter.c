@@ -148,7 +148,8 @@ struct btd_adapter {
 	uint8_t minor_class;		/* configured minor class */
 	char *system_name;		/* configured system name */
 	char *modalias;			/* device id (modalias) */
-	uint32_t discov_timeout;	/* discoverable time(sec) */
+	bool stored_discoverable;	/* stored discoverable mode */
+	uint32_t discoverable_timeout;	/* discoverable time(sec) */
 	uint32_t pairable_timeout;	/* pairable time(sec) */
 
 	char *current_alias;		/* current adapter name alias */
@@ -366,7 +367,7 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	char address[18];
 	char *str;
 	gsize length = 0;
-	gboolean discov;
+	gboolean discoverable;
 
 	key_file = g_key_file_new();
 
@@ -374,17 +375,19 @@ static void store_adapter_info(struct btd_adapter *adapter)
 		g_key_file_set_integer(key_file, "General", "PairableTimeout",
 					adapter->pairable_timeout);
 
-	if (adapter->discov_timeout > 0)
-		discov = FALSE;
+	if ((adapter->current_settings & MGMT_SETTING_DISCOVERABLE) &&
+						!adapter->discoverable_timeout)
+		discoverable = TRUE;
 	else
-		discov = mgmt_discoverable(adapter->current_settings);
+		discoverable = FALSE;
 
-	g_key_file_set_boolean(key_file, "General", "Discoverable", discov);
+	g_key_file_set_boolean(key_file, "General", "Discoverable",
+							discoverable);
 
-	if (adapter->discov_timeout != main_opts.discovto)
+	if (adapter->discoverable_timeout != main_opts.discovto)
 		g_key_file_set_integer(key_file, "General",
 					"DiscoverableTimeout",
-					adapter->discov_timeout);
+					adapter->discoverable_timeout);
 
 	if (adapter->stored_alias)
 		g_key_file_set_string(key_file, "General", "Alias",
@@ -694,7 +697,7 @@ static void stop_discovery(struct btd_adapter *adapter)
 		return;
 	}
 
-	if (mgmt_powered(adapter->current_settings))
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
 		mgmt_stop_discovery(adapter);
 	else
 		discovery_cleanup(adapter);
@@ -1332,7 +1335,7 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	const char *sender = dbus_message_get_sender(msg);
 	int err;
 
-	if (!mgmt_powered(adapter->current_settings))
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
@@ -1377,7 +1380,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	struct session_req *req;
 	const char *sender = dbus_message_get_sender(msg);
 
-	if (!mgmt_powered(adapter->current_settings))
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->disc_sessions, sender);
@@ -1576,7 +1579,7 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 	case MGMT_SETTING_DISCOVERABLE:
 		memset(&cp, 0, sizeof(cp));
 		cp.val = mode;
-		cp.timeout = htobs(adapter->discov_timeout);
+		cp.timeout = htobs(adapter->discoverable_timeout);
 
 		opcode = MGMT_OP_SET_DISCOVERABLE;
 		param = &cp;
@@ -1661,7 +1664,7 @@ static gboolean property_get_discoverable_timeout(
 					DBusMessageIter *iter, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	dbus_uint32_t value = adapter->discov_timeout;
+	dbus_uint32_t value = adapter->discoverable_timeout;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &value);
 
@@ -1678,7 +1681,7 @@ static void property_set_discoverable_timeout(
 
 	dbus_message_iter_get_basic(iter, &value);
 
-	adapter->discov_timeout = value;
+	adapter->discoverable_timeout = value;
 
 	g_dbus_pending_property_success(id);
 
@@ -1688,7 +1691,7 @@ static void property_set_discoverable_timeout(
 				ADAPTER_INTERFACE, "DiscoverableTimeout");
 
 	if (adapter->current_settings & MGMT_SETTING_DISCOVERABLE)
-		set_discoverable(adapter, 0x01, adapter->discov_timeout);
+		set_discoverable(adapter, 0x01, adapter->discoverable_timeout);
 }
 
 static gboolean property_get_pairable(const GDBusPropertyTable *property,
@@ -2400,7 +2403,10 @@ static void load_connections(struct btd_adapter *adapter)
 
 bool btd_adapter_get_pairable(struct btd_adapter *adapter)
 {
-	return mgmt_pairable(adapter->current_settings);
+	if (adapter->current_settings & MGMT_SETTING_PAIRABLE)
+		return true;
+
+	return false;
 }
 
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
@@ -2435,7 +2441,7 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	DBG("%s added to %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
-	if (!mgmt_powered(adapter->current_settings))
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return;
 
 	if (adapter->scanning_session)
@@ -3459,7 +3465,6 @@ static void load_config(struct btd_adapter *adapter)
 	char address[18];
 	struct stat st;
 	GError *gerr = NULL;
-	gboolean stored_discoverable;
 
 	ba2str(&adapter->bdaddr, address);
 
@@ -3494,36 +3499,21 @@ static void load_config(struct btd_adapter *adapter)
 	}
 
 	/* Get discoverable mode */
-	stored_discoverable = g_key_file_get_boolean(key_file, "General",
-							"Discoverable", &gerr);
+	adapter->stored_discoverable = g_key_file_get_boolean(key_file,
+					"General", "Discoverable", &gerr);
 	if (gerr) {
-		stored_discoverable = FALSE;
+		adapter->stored_discoverable = false;
 		g_error_free(gerr);
 		gerr = NULL;
 	}
 
 	/* Get discoverable timeout */
-	adapter->discov_timeout = g_key_file_get_integer(key_file, "General",
-						"DiscoverableTimeout", &gerr);
+	adapter->discoverable_timeout = g_key_file_get_integer(key_file,
+				"General", "DiscoverableTimeout", &gerr);
 	if (gerr) {
-		adapter->discov_timeout = main_opts.discovto;
+		adapter->discoverable_timeout = main_opts.discovto;
 		g_error_free(gerr);
 		gerr = NULL;
-	}
-
-	if (adapter->discov_timeout > 0 &&
-				mgmt_discoverable(adapter->current_settings)) {
-		if (mgmt_connectable(adapter->current_settings))
-			set_discoverable(adapter, 0x00, 0);
-		else
-			adapter->toggle_discoverable = true;
-	} else if (stored_discoverable !=
-				mgmt_discoverable(adapter->current_settings)) {
-		if (mgmt_connectable(adapter->current_settings))
-			set_discoverable(adapter, stored_discoverable,
-						adapter->discov_timeout);
-		else
-			adapter->toggle_discoverable = true;
 	}
 
 	g_key_file_free(key_file);
@@ -3555,14 +3545,14 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 						main_opts.did_vendor,
 						main_opts.did_product,
 						main_opts.did_version);
-	adapter->discov_timeout = main_opts.discovto;
+	adapter->discoverable_timeout = main_opts.discovto;
 	adapter->pairable_timeout = main_opts.pairto;
 
 	DBG("System name: %s", adapter->system_name);
 	DBG("Major class: %u", adapter->major_class);
 	DBG("Minor class: %u", adapter->minor_class);
 	DBG("Modalias: %s", adapter->modalias);
-	DBG("Discoverable timeout: %u seconds", adapter->discov_timeout);
+	DBG("Discoverable timeout: %u seconds", adapter->discoverable_timeout);
 	DBG("Pairable timeout: %u seconds", adapter->pairable_timeout);
 
 	adapter->auths = g_queue_new();
@@ -4217,7 +4207,7 @@ int btd_cancel_authorization(guint id)
 
 int btd_adapter_restore_powered(struct btd_adapter *adapter)
 {
-	if (mgmt_powered(adapter->current_settings))
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
 		return 0;
 
 	set_mode(adapter, MGMT_OP_SET_POWERED, 0x01);
@@ -4240,7 +4230,7 @@ void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 int btd_adapter_set_fast_connectable(struct btd_adapter *adapter,
 							gboolean enable)
 {
-	if (!mgmt_powered(adapter->current_settings))
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return -EINVAL;
 
 	set_mode(adapter, MGMT_OP_SET_FAST_CONNECTABLE, enable ? 0x01 : 0x00);
@@ -4252,7 +4242,7 @@ int btd_adapter_read_clock(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 				int which, int timeout, uint32_t *clock,
 				uint16_t *accuracy)
 {
-	if (!mgmt_powered(adapter->current_settings))
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return -EINVAL;
 
 	return -ENOSYS;
@@ -5525,7 +5515,10 @@ static void read_info_complete(uint8_t status, uint16_t length,
 	set_mode(adapter, MGMT_OP_SET_PAIRABLE, 0x01);
 	set_mode(adapter, MGMT_OP_SET_CONNECTABLE, 0x01);
 
-	if (mgmt_powered(rp->current_settings))
+	if (adapter->stored_discoverable && !adapter->discoverable_timeout)
+		set_discoverable(adapter, 0x01, 0);
+
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
 		adapter_start(adapter);
 
 	return;
