@@ -37,12 +37,12 @@
 #include "uhid_copy.h"
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
 
 #include <glib.h>
 
 #include "log.h"
 
+#include "lib/uuid.h"
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"
