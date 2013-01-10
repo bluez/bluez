@@ -30,8 +30,8 @@
 #include <errno.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
 
+#include "lib/uuid.h"
 #include "log.h"
 #include "plugin.h"
 #include "adapter.h"
