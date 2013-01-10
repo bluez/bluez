@@ -39,10 +39,11 @@
 #include <bluetooth/hci_lib.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
-#include <bluetooth/mgmt.h>
 
 #include <glib.h>
+
 #include "glib-helper.h"
+#include "lib/mgmt.h"
 #include "eir.h"
 
 static bool monitor = false;
