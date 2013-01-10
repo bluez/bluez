@@ -31,11 +31,10 @@
 #include <stdio.h>
 #include <glib.h>
 
-#include <bluetooth/uuid.h>
-
 #include <readline/readline.h>
 #include <readline/history.h>
 
+#include "lib/uuid.h"
 #include <btio/btio.h>
 #include "att.h"
 #include "gattrib.h"

@@ -27,10 +27,10 @@
 #endif
 
 #include <glib.h>
-#include <bluetooth/uuid.h>
 #include <bluetooth/sdp.h>
 #include <adapter.h>
 
+#include "lib/uuid.h"
 #include "gattrib.h"
 #include "att.h"
 #include "gatt.h"

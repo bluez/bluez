@@ -33,9 +33,9 @@
 #include <stdio.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/uuid.h>
-
 #include <btio/btio.h>
+
+#include "lib/uuid.h"
 #include "log.h"
 #include "att.h"
 #include "gattrib.h"
