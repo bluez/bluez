@@ -31,13 +31,12 @@
 #include <errno.h>
 #include <stdbool.h>
 
-#include <bluetooth/uuid.h>
-
 #include <adapter.h>
 #include <device.h>
 #include <profile.h>
 #include <plugin.h>
 
+#include "lib/uuid.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
 #include "attrib/gatt.h"
