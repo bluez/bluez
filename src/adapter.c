@@ -292,8 +292,7 @@ static void set_dev_class_complete(uint8_t status, uint16_t length,
 	dev_class_changed_callback(adapter->dev_id, length, param, adapter);
 }
 
-static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
-							uint8_t minor)
+static void set_dev_class(struct btd_adapter *adapter)
 {
 	struct mgmt_cp_set_dev_class cp;
 
@@ -305,7 +304,7 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 	 * This is an optimization for Low Energy only controllers.
 	 */
 	if (!(adapter->supported_settings & MGMT_SETTING_BREDR))
-		return -ENOTSUP;
+		return;
 
 	memset(&cp, 0, sizeof(cp));
 
@@ -319,33 +318,31 @@ static int set_dev_class(struct btd_adapter *adapter, uint8_t major,
 	 * To make this work, shift the value in userspace for now until
 	 * we get a fixed kernel version.
 	 */
-	cp.major = major & 0x1f;
-	cp.minor = minor << 2;
+	cp.major = adapter->major_class & 0x1f;
+	cp.minor = adapter->minor_class << 2;
 
 	DBG("sending set device class command for index %u", adapter->dev_id);
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEV_CLASS,
 				adapter->dev_id, sizeof(cp), &cp,
 				set_dev_class_complete, adapter, NULL) > 0)
-		return 0;
+		return;
 
 	error("Failed to set class of device for index %u", adapter->dev_id);
-
-	return -EIO;
 }
 
-int btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
+void btd_adapter_set_class(struct btd_adapter *adapter, uint8_t major,
 							uint8_t minor)
 {
 	if (adapter->major_class == major && adapter->minor_class == minor)
-		return 0;
+		return;
 
 	DBG("class: major %u minor %u", major, minor);
 
 	adapter->major_class = major;
 	adapter->minor_class = minor;
 
-	return set_dev_class(adapter, major, minor);
+	set_dev_class(adapter);
 }
 
 static uint8_t get_mode(const char *mode)
@@ -5496,7 +5493,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 						user_passkey_notify_callback,
 						adapter, NULL);
 
-	set_dev_class(adapter, adapter->major_class, adapter->minor_class);
+	set_dev_class(adapter);
 
 	set_name(adapter, btd_adapter_get_name(adapter));
 
