@@ -151,7 +151,6 @@ static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 						DBusMessageIter *metadata)
 {
 	DBusMessageIter var;
-	DBusBasicValue value;
 	int type;
 
 	printf("metadata %s found\n", key);
@@ -181,6 +180,8 @@ static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 		dict_append_array(metadata, key, DBUS_TYPE_STRING, &values, i);
 		dbus_free(values);
 	} else if (dbus_type_is_basic(type)) {
+		const void *value;
+
 		dbus_message_iter_get_basic(&var, &value);
 		dict_append_entry(metadata, key, type, &value);
 	} else
@@ -312,7 +313,7 @@ static int parse_property(DBusConnection *conn, const char *path,
 						DBusMessageIter *properties)
 {
 	DBusMessageIter var;
-	DBusBasicValue value;
+	const void *value;
 	int type;
 
 	printf("property %s found\n", key);
