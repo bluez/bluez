@@ -612,6 +612,7 @@ static const char set_link_sec_invalid_param[] = { 0x02 };
 static const char set_link_sec_garbage_param[] = { 0x01, 0x00 };
 static const char set_link_sec_settings_param_1[] = { 0xa0, 0x00, 0x00, 0x00 };
 static const char set_link_sec_settings_param_2[] = { 0xa1, 0x00, 0x00, 0x00 };
+static const char set_link_sec_auth_enable_param[] = { 0x01 };
 
 static const struct generic_data set_link_sec_on_success_test_1 = {
 	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
@@ -631,6 +632,9 @@ static const struct generic_data set_link_sec_on_success_test_2 = {
 	.expect_param = set_link_sec_settings_param_2,
 	.expect_len = sizeof(set_link_sec_settings_param_2),
 	.expect_settings_set = MGMT_SETTING_LINK_SECURITY,
+	.expect_hci_command = BT_HCI_CMD_WRITE_AUTH_ENABLE,
+	.expect_hci_param = set_link_sec_auth_enable_param,
+	.expect_hci_len = sizeof(set_link_sec_auth_enable_param),
 };
 
 static const struct generic_data set_link_sec_on_invalid_param_test_1 = {
