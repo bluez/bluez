@@ -40,3 +40,5 @@ void transport_get_properties(struct media_transport *transport,
 							DBusMessageIter *iter);
 
 uint8_t media_transport_get_device_volume(struct audio_device *dev);
+void media_transport_update_device_volume(struct audio_device *dev,
+								uint8_t volume);
