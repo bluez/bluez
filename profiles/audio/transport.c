@@ -878,3 +878,23 @@ void media_transport_update_volume(struct media_transport *transport,
 					transport->path,
 					MEDIA_TRANSPORT_INTERFACE, "Volume");
 }
+
+uint8_t media_transport_get_device_volume(struct audio_device *dev)
+{
+	GSList *l;
+
+	if (dev == NULL)
+		return 128;
+
+	for (l = transports; l; l = l->next) {
+		struct media_transport *transport = l->data;
+		if (transport->device != dev)
+			continue;
+
+		/* Volume is A2DP only */
+		if (media_endpoint_get_sep(transport->endpoint))
+			return media_transport_get_volume(transport);
+	}
+
+	return 128;
+}
