@@ -83,6 +83,7 @@ struct btdev {
 	uint8_t  le_supported;
 	uint8_t  le_simultaneous;
 	uint8_t  le_event_mask[8];
+	uint8_t  le_adv_data[31];
 };
 
 #define MAX_BTDEV_ENTRIES 16
@@ -662,6 +663,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
+	const struct bt_hci_cmd_le_set_adv_data *lsad;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -1122,6 +1124,13 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lrss.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lrss.states, btdev->le_states, 8);
 		cmd_complete(btdev, opcode, &lrss, sizeof(lrss));
+		break;
+
+	case BT_HCI_CMD_LE_SET_ADV_DATA:
+		lsad = data;
+		memcpy(btdev->le_adv_data, lsad->data, 31);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	default:
