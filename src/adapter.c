@@ -2010,6 +2010,14 @@ static void load_link_keys(struct btd_adapter *adapter, GSList *keys,
 		return;
 	}
 
+	/*
+	 * Even if the list of stored keys is empty, it is important to
+	 * load an empty list into the kernel. That way it is ensured
+	 * that no old keys from a previous daemon are present.
+	 *
+	 * In addition it is also the only way to toggle the different
+	 * behavior for debug keys.
+	 */
 	cp->debug_keys = debug_keys;
 	cp->key_count = htobs(key_count);
 
@@ -2097,6 +2105,11 @@ static void load_ltks(struct btd_adapter *adapter, GSList *keys)
 		return;
 	}
 
+	/*
+	 * Even if the list of stored keys is empty, it is important to
+	 * load an empty list into the kernel. That way it is ensured
+	 * that no old keys from a previous daemon are present.
+	 */
 	cp->key_count = htobs(key_count);
 
 	for (l = keys, key = cp->keys; l != NULL; l = g_slist_next(l), key++) {
