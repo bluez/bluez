@@ -1,3 +1,17 @@
+ver 5.1:
+	Fix issue with crash when removing OBEX session.
+	Fix issue with HID device disconnected from kernel.
+	Fix issue with buffer overflow when parsing HID SDP record.
+	Fix issue with SDP_TEXT_STR16 and SDP_URL_STR16 parsing.
+	Add support for integration with systemd's hostname daemon.
+	Add support for separate adapter alias property.
+	Add support for adapter and device modalias properties.
+	Add support for official BlueZ device information.
+	Add support for asynchronous management interface handling.
+	Add tool for testing management interface compliance.
+	Add tool for testing SDP qualification requirements.
+	Add tool for testing various EIR and AD data records.
+
 ver 5.0:
 	Introduce D-Bus Properties and ObjectManager interfaces.
 	Add support for generic profile interface.
