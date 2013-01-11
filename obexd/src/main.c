@@ -86,9 +86,6 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	case SIGUSR2:
 		__obex_log_enable_debug();
 		break;
-	case SIGPIPE:
-		/* ignore */
-		break;
 	}
 
 	return TRUE;
@@ -105,7 +102,6 @@ static guint setup_signalfd(void)
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
 	sigaddset(&mask, SIGUSR2);
-	sigaddset(&mask, SIGPIPE);
 
 	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
 		perror("Failed to set signal mask");
