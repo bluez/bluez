@@ -610,15 +610,26 @@ static const struct generic_data set_discoverable_off_success_test_2 = {
 static const char set_link_sec_on_param[] = { 0x01 };
 static const char set_link_sec_invalid_param[] = { 0x02 };
 static const char set_link_sec_garbage_param[] = { 0x01, 0x00 };
-static const char set_link_sec_settings_param[] = { 0xa0, 0x00, 0x00, 0x00 };
+static const char set_link_sec_settings_param_1[] = { 0xa0, 0x00, 0x00, 0x00 };
+static const char set_link_sec_settings_param_2[] = { 0xa1, 0x00, 0x00, 0x00 };
 
-static const struct generic_data set_link_sec_on_success_test = {
+static const struct generic_data set_link_sec_on_success_test_1 = {
 	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
 	.send_param = set_link_sec_on_param,
 	.send_len = sizeof(set_link_sec_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_link_sec_settings_param,
-	.expect_len = sizeof(set_link_sec_settings_param),
+	.expect_param = set_link_sec_settings_param_1,
+	.expect_len = sizeof(set_link_sec_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_LINK_SECURITY,
+};
+
+static const struct generic_data set_link_sec_on_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_on_param,
+	.send_len = sizeof(set_link_sec_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_link_sec_settings_param_2,
+	.expect_len = sizeof(set_link_sec_settings_param_2),
 	.expect_settings_set = MGMT_SETTING_LINK_SECURITY,
 };
 
@@ -1006,9 +1017,12 @@ int main(int argc, char *argv[])
 				setup_powered_discoverable,
 				test_command_generic);
 
-	test_bredr("Set link security on - Success",
-					&set_link_sec_on_success_test,
+	test_bredr("Set link security on - Success 1",
+					&set_link_sec_on_success_test_1,
 					NULL, test_command_generic);
+	test_bredr("Set link security on - Success 2",
+					&set_link_sec_on_success_test_2,
+					setup_powered, test_command_generic);
 	test_bredr("Set link security on - Invalid parameters 1",
 					&set_link_sec_on_invalid_param_test_1,
 					NULL, test_command_generic);
