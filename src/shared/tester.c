@@ -95,6 +95,11 @@ static GList *test_list;
 static GList *test_current;
 static GTimer *test_timer;
 
+static gboolean option_version = FALSE;
+static gboolean option_quiet = FALSE;
+static gboolean option_debug = FALSE;
+static const char *option_prefix = NULL;
+
 static void test_destroy(gpointer data)
 {
 	struct test_case *test = data;
@@ -163,6 +168,12 @@ void tester_add_full(const char *name, const void *test_data,
 
 	if (!test_func)
 		return;
+
+	if (option_prefix && !g_str_has_prefix(name, option_prefix)) {
+		if (destroy)
+			destroy(user_data);
+		return;
+	}
 
 	test = g_new0(struct test_case, 1);
 
@@ -648,10 +659,6 @@ static guint setup_signalfd(void)
 	return source;
 }
 
-static gboolean option_version = FALSE;
-static gboolean option_quiet = FALSE;
-static gboolean option_debug = FALSE;
-
 bool tester_use_quiet(void)
 {
 	return option_quiet == TRUE ? true : false;
@@ -669,6 +676,8 @@ static GOptionEntry options[] = {
 				"Run tests without logging" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 				"Run tests with debug output" },
+	{ "prefix", 'p', 0, G_OPTION_ARG_STRING, &option_prefix,
+				"Run tests matching provided prefix" },
 	{ NULL },
 };
 
