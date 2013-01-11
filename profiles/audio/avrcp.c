@@ -2178,11 +2178,12 @@ static void session_ct_init(struct avrcp *session)
 	path = device_get_path(session->dev->btd_dev);
 
 	mp = media_player_controller_create(path);
-	if (mp != NULL) {
-		media_player_set_callbacks(mp, &ct_cbs, player);
-		player->user_data = mp;
-		player->destroy = (GDestroyNotify) media_player_destroy;
-	}
+	if (mp == NULL)
+		return;
+
+	media_player_set_callbacks(mp, &ct_cbs, player);
+	player->user_data = mp;
+	player->destroy = (GDestroyNotify) media_player_destroy;
 
 	if (session->version < 0x0103)
 		return;
