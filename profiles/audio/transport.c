@@ -851,6 +851,12 @@ struct audio_device *media_transport_get_dev(struct media_transport *transport)
 	return transport->device;
 }
 
+uint16_t media_transport_get_volume(struct media_transport *transport)
+{
+	struct a2dp_transport *a2dp = transport->data;
+	return a2dp->volume;
+}
+
 void media_transport_update_volume(struct media_transport *transport,
 								uint8_t volume)
 {
