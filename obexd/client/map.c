@@ -77,6 +77,14 @@ static const char * const filter_list[] = {
 #define FILTER_BIT_MAX	15
 #define FILTER_ALL	0x0000FFFF
 
+#define FILTER_READ_STATUS_NONE		0x00
+#define FILTER_READ_STATUS_ONLY_UNREAD	0x01
+#define FILTER_READ_STATUS_ONLY_READ	0x02
+
+#define FILTER_PRIORITY_NONE		0x00
+#define FILTER_PRIORITY_ONLY_HIGH	0x01
+#define FILTER_PRIORITY_ONLY_NONHIGH	0x02
+
 #define STATUS_READ 0
 #define STATUS_DELETE 1
 #define FILLER_BYTE 0x30
@@ -1162,7 +1170,7 @@ static GObexApparam *parse_period_end(GObexApparam *apparam,
 static GObexApparam *parse_filter_read(GObexApparam *apparam,
 							DBusMessageIter *iter)
 {
-	guint8 status = 0;
+	guint8 status = FILTER_READ_STATUS_NONE;
 	dbus_bool_t dbus_status = FALSE;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN)
@@ -1170,7 +1178,10 @@ static GObexApparam *parse_filter_read(GObexApparam *apparam,
 
 	dbus_message_iter_get_basic(iter, &dbus_status);
 
-	status = (dbus_status) ? 0x01 : 0x02;
+	if (dbus_status)
+		status = FILTER_READ_STATUS_ONLY_UNREAD;
+	else
+		status = FILTER_READ_STATUS_ONLY_READ;
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERREADSTATUS,
 								status);
@@ -1207,7 +1218,7 @@ static GObexApparam *parse_filter_sender(GObexApparam *apparam,
 static GObexApparam *parse_filter_priority(GObexApparam *apparam,
 							DBusMessageIter *iter)
 {
-	guint8 priority;
+	guint8 priority = FILTER_PRIORITY_NONE;
 	dbus_bool_t dbus_priority = FALSE;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN)
@@ -1215,7 +1226,10 @@ static GObexApparam *parse_filter_priority(GObexApparam *apparam,
 
 	dbus_message_iter_get_basic(iter, &dbus_priority);
 
-	priority = (dbus_priority) ? 0x01 : 0x02;
+	if (dbus_priority)
+		priority = FILTER_PRIORITY_ONLY_HIGH;
+	else
+		priority = FILTER_PRIORITY_ONLY_NONHIGH;
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERPRIORITY,
 								priority);
