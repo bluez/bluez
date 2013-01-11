@@ -2164,6 +2164,9 @@ static void session_ct_init(struct avrcp *session)
 
 	session->control_handlers = ct_control_handlers;
 
+	if (session->version >= 0x0104)
+		session->supported_events = (1 << AVRCP_EVENT_VOLUME_CHANGED);
+
 	DBG("%p version 0x%04x", session, session->version);
 
 	session->control_id = avctp_register_pdu_handler(session->conn,
