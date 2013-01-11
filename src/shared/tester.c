@@ -98,6 +98,7 @@ static GTimer *test_timer;
 static gboolean option_version = FALSE;
 static gboolean option_quiet = FALSE;
 static gboolean option_debug = FALSE;
+static gboolean option_list = FALSE;
 static const char *option_prefix = NULL;
 
 static void test_destroy(gpointer data)
@@ -170,6 +171,13 @@ void tester_add_full(const char *name, const void *test_data,
 		return;
 
 	if (option_prefix && !g_str_has_prefix(name, option_prefix)) {
+		if (destroy)
+			destroy(user_data);
+		return;
+	}
+
+	if (option_list) {
+		printf("%s\n", name);
 		if (destroy)
 			destroy(user_data);
 		return;
@@ -676,6 +684,8 @@ static GOptionEntry options[] = {
 				"Run tests without logging" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 				"Run tests with debug output" },
+	{ "list", 'l', 0, G_OPTION_ARG_NONE, &option_list,
+				"Only list the tests to be run" },
 	{ "prefix", 'p', 0, G_OPTION_ARG_STRING, &option_prefix,
 				"Run tests matching provided prefix" },
 	{ NULL },
@@ -717,6 +727,11 @@ int tester_run(void)
 
 	if (!main_loop)
 		return EXIT_FAILURE;
+
+	if (option_list) {
+		g_main_loop_unref(main_loop);
+		return EXIT_SUCCESS;
+	}
 
 	signal = setup_signalfd();
 
