@@ -658,6 +658,8 @@ static void set_volume(const GDBusPropertyTable *property,
 	if (a2dp->volume != volume)
 		avrcp_set_volume(transport->device, volume);
 
+	a2dp->volume = volume;
+
 	g_dbus_pending_property_success(id);
 }
 
