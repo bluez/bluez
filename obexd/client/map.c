@@ -1163,13 +1163,14 @@ static GObexApparam *parse_filter_read(GObexApparam *apparam,
 							DBusMessageIter *iter)
 {
 	guint8 status = 0;
+	dbus_bool_t dbus_status = FALSE;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN)
 		return NULL;
 
-	dbus_message_iter_get_basic(iter, &status);
+	dbus_message_iter_get_basic(iter, &dbus_status);
 
-	status = (status) ? 0x01 : 0x02;
+	status = (dbus_status) ? 0x01 : 0x02;
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERREADSTATUS,
 								status);
@@ -1207,13 +1208,14 @@ static GObexApparam *parse_filter_priority(GObexApparam *apparam,
 							DBusMessageIter *iter)
 {
 	guint8 priority;
+	dbus_bool_t dbus_priority = FALSE;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN)
 		return NULL;
 
-	dbus_message_iter_get_basic(iter, &priority);
+	dbus_message_iter_get_basic(iter, &dbus_priority);
 
-	priority = (priority) ? 0x01 : 0x02;
+	priority = (dbus_priority) ? 0x01 : 0x02;
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERPRIORITY,
 								priority);
