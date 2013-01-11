@@ -400,16 +400,31 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 static const char set_connectable_on_param[] = { 0x01 };
 static const char set_connectable_invalid_param[] = { 0x02 };
 static const char set_connectable_garbage_param[] = { 0x01, 0x00 };
-static const char set_connectable_settings_param[] = { 0x82, 0x00, 0x00, 0x00 };
+static const char set_connectable_settings_param_1[] = { 0x82, 0x00, 0x00, 0x00 };
+static const char set_connectable_settings_param_2[] = { 0x83, 0x00, 0x00, 0x00 };
+static const char set_connectable_scan_enable_param[] = { 0x02 };
 
-static const struct generic_data set_connectable_on_success_test = {
+static const struct generic_data set_connectable_on_success_test_1 = {
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
 	.send_len = sizeof(set_connectable_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_connectable_settings_param,
-	.expect_len = sizeof(set_connectable_settings_param),
+	.expect_param = set_connectable_settings_param_1,
+	.expect_len = sizeof(set_connectable_settings_param_1),
 	.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+};
+
+static const struct generic_data set_connectable_on_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_on_param,
+	.send_len = sizeof(set_connectable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_settings_param_2,
+	.expect_len = sizeof(set_connectable_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_scan_enable_param),
 };
 
 static const struct generic_data set_connectable_on_invalid_param_test_1 = {
@@ -862,9 +877,12 @@ int main(int argc, char *argv[])
 					&set_powered_on_invalid_index_test,
 					NULL, test_command_generic);
 
-	test_bredr("Set connectable on - Success",
-					&set_connectable_on_success_test,
+	test_bredr("Set connectable on - Success 1",
+					&set_connectable_on_success_test_1,
 					NULL, test_command_generic);
+	test_bredr("Set connectable on - Success 2",
+					&set_connectable_on_success_test_2,
+					setup_powered, test_command_generic);
 	test_bredr("Set connectable on - Invalid parameters 1",
 					&set_connectable_on_invalid_param_test_1,
 					NULL, test_command_generic);
