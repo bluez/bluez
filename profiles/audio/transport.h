@@ -24,10 +24,9 @@
 
 struct media_transport;
 
-struct media_transport *media_transport_create(struct media_endpoint *endpoint,
-						struct audio_device *device,
+struct media_transport *media_transport_create(struct audio_device *device,
 						uint8_t *configuration,
-						size_t size);
+						size_t size, void *data);
 
 void media_transport_destroy(struct media_transport *transport);
 const char *media_transport_get_path(struct media_transport *transport);

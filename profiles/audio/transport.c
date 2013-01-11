@@ -768,11 +768,11 @@ static void source_state_changed(struct audio_device *dev,
 		transport_update_playing(transport, FALSE);
 }
 
-struct media_transport *media_transport_create(struct media_endpoint *endpoint,
-						struct audio_device *device,
+struct media_transport *media_transport_create(struct audio_device *device,
 						uint8_t *configuration,
-						size_t size)
+						size_t size, void *data)
 {
+	struct media_endpoint *endpoint = data;
 	struct media_transport *transport;
 	const char *uuid;
 	static int fd = 0;

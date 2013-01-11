@@ -411,8 +411,8 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	if (transport != NULL)
 		return FALSE;
 
-	transport = media_transport_create(endpoint, device,
-						configuration, size);
+	transport = media_transport_create(device, configuration, size,
+								endpoint);
 	if (transport == NULL)
 		return FALSE;
 

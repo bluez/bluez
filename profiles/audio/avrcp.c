@@ -62,6 +62,7 @@
 #include "avdtp.h"
 #include "sink.h"
 #include "player.h"
+#include "transport.h"
 
 /* Company IDs for vendor dependent commands */
 #define IEEEID_BTSIG		0x001958
@@ -1247,6 +1248,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 						uint8_t transaction)
 {
 	struct avrcp_player *player = session->player;
+	struct audio_device *dev = session->dev;
 	uint16_t len = ntohs(pdu->params_len);
 	uint64_t uid;
 	GList *settings;
@@ -1291,6 +1293,17 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 			pdu->params[++len] = attr;
 			pdu->params[++len] = val;
 		}
+
+		break;
+	case AVRCP_EVENT_VOLUME_CHANGED:
+		if (session->version < 0x0104)
+			goto err;
+
+		pdu->params[1] = media_transport_get_device_volume(dev);
+		if (pdu->params[1] > 127)
+			goto err;
+
+		len = 2;
 
 		break;
 	default:
@@ -1414,6 +1427,8 @@ static const struct control_pdu_handler tg_control_handlers[] = {
 static const struct control_pdu_handler ct_control_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES, AVC_CTYPE_STATUS,
 					avrcp_handle_get_capabilities },
+		{ AVRCP_REGISTER_NOTIFICATION, AVC_CTYPE_NOTIFY,
+					avrcp_handle_register_notification },
 		{ },
 };
 
