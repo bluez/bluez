@@ -30,6 +30,8 @@
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
+#include "monitor/bt.h"
+
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
@@ -46,6 +48,7 @@ struct test_data {
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
+	bool hci_commands_complete;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -268,6 +271,7 @@ static void test_post_teardown(const void *test_data)
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x000002ff; \
 		user->initial_settings = 0x00000080; \
+		user->hci_commands_complete = false; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, user, free); \
@@ -287,6 +291,9 @@ struct generic_data {
 	const void *expect_param;
 	uint16_t expect_len;
 	uint32_t expect_settings_set;
+	uint16_t expect_hci_command;
+	const void *expect_hci_param;
+	uint8_t expect_hci_len;
 };
 
 static const char dummy_data[] = { 0x00 };
@@ -703,6 +710,12 @@ static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
 
 	mgmt_unregister_index(data->mgmt_alt, index);
 
+	if (test->expect_hci_command && !data->hci_commands_complete) {
+		tester_warn("Settings received without expected HCI command");
+		tester_test_failed();
+		return;
+	}
+
 	tester_test_passed();
 }
 
@@ -734,7 +747,39 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 	if (test->expect_settings_set)
 		return;
 
+	if (test->expect_hci_command && !data->hci_commands_complete) {
+		tester_warn("Command completed without expected HCI command");
+		tester_test_failed();
+		return;
+	}
+
 	tester_test_passed();
+}
+
+static void command_hci_callback(uint16_t opcode, const void *param,
+					uint8_t length, void *user_data)
+{
+	struct test_data *data = user_data;
+	const struct generic_data *test = data->test_data;
+
+	tester_print("HCI Command 0x%04x length %u", opcode, length);
+
+	if (opcode != test->expect_hci_command)
+		return;
+
+	if (length != test->expect_hci_len) {
+		tester_warn("Invalid parameter size for HCI command");
+		tester_test_failed();
+		return;
+	}
+
+	if (memcmp(param, test->expect_hci_param, length) != 0) {
+		tester_warn("Unexpected HCI command parameter value");
+		tester_test_failed();
+		return;
+	}
+
+	data->hci_commands_complete = true;
 }
 
 static void test_command_generic(const void *test_data)
@@ -753,6 +798,12 @@ static void test_command_generic(const void *test_data)
 
 		mgmt_register(data->mgmt_alt, MGMT_EV_NEW_SETTINGS, index,
 				command_generic_new_settings_alt, NULL, NULL);
+	}
+
+	if (test->expect_hci_command) {
+		tester_print("Registering HCI command callback");
+		hciemu_add_master_post_command_hook(data->hciemu,
+						command_hci_callback, data);
 	}
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
