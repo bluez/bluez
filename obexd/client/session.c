@@ -934,7 +934,7 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	p = pending_request_new(session, NULL, setpath_complete, data);
 
 	/* Relative path */
-	if (path[0] != '/') {
+	if (path[0] != '/' && path[0] != 0) {
 		first = data->remaining[data->index];
 		data->index++;
 	}
