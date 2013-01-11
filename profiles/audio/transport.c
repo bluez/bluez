@@ -107,6 +107,8 @@ struct media_transport {
 	void			*data;
 };
 
+static GSList *transports = NULL;
+
 static const char *state2str(transport_state_t state)
 {
 	switch (state) {
@@ -703,6 +705,8 @@ static void media_transport_free(void *data)
 {
 	struct media_transport *transport = data;
 
+	transports = g_slist_remove(transports, transport);
+
 	if (transport->owner)
 		media_transport_remove_owner(transport);
 
@@ -817,6 +821,8 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		error("Could not register transport %s", transport->path);
 		goto fail;
 	}
+
+	transports = g_slist_append(transports, transport);
 
 	return transport;
 
