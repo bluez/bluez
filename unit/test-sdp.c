@@ -110,12 +110,6 @@ void btd_debug(const char *format, ...)
 {
 }
 
-void info(const char *format, ...);
-
-void info(const char *format, ...)
-{
-}
-
 struct btd_adapter;
 
 typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
