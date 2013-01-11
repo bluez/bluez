@@ -503,7 +503,8 @@ static const uint8_t set_discoverable_off_param[] = { 0x00, 0x00, 0x00 };
 static const uint8_t set_discoverable_offtimeout_param[] = { 0x00, 0x01, 0x00 };
 static const uint8_t set_discoverable_garbage_param[] = { 0x01, 0x00, 0x00, 0x00 };
 static const uint8_t set_discoverable_on_settings_param[] = { 0x8b, 0x00, 0x00, 0x00 };
-static const uint8_t set_discoverable_off_settings_param[] = { 0x82, 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_off_settings_param_1[] = { 0x82, 0x00, 0x00, 0x00 };
+static const uint8_t set_discoverable_off_settings_param_2[] = { 0x83, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_discoverable_on_invalid_param_test_1 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
@@ -569,13 +570,22 @@ static const struct generic_data set_discoverable_on_success_test = {
 	.expect_settings_set = MGMT_SETTING_DISCOVERABLE,
 };
 
-static const struct generic_data set_discoverable_off_success_test = {
+static const struct generic_data set_discoverable_off_success_test_1 = {
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_off_param,
 	.send_len = sizeof(set_discoverable_off_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_discoverable_off_settings_param,
-	.expect_len = sizeof(set_discoverable_off_settings_param),
+	.expect_param = set_discoverable_off_settings_param_1,
+	.expect_len = sizeof(set_discoverable_off_settings_param_1),
+};
+
+static const struct generic_data set_discoverable_off_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_discoverable_off_param,
+	.send_len = sizeof(set_discoverable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discoverable_off_settings_param_2,
+	.expect_len = sizeof(set_discoverable_off_settings_param_2),
 };
 
 static const char set_link_sec_on_param[] = { 0x01 };
@@ -631,6 +641,27 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	tester_print("Controller powered on");
 
 	tester_setup_complete();
+}
+
+static void setup_powered_discoverable(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+	unsigned char discov_param[] = { 0x01, 0x00, 0x00 };
+
+	tester_print("Powering on connectable controller");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
+					sizeof(param), param,
+					NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_DISCOVERABLE, data->mgmt_index,
+					sizeof(discov_param), discov_param,
+					NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
 }
 
 static void setup_powered_connectable(const void *test_data)
@@ -945,12 +976,16 @@ int main(int argc, char *argv[])
 	test_bredr("Set discoverable on - Success 1",
 				&set_discoverable_on_success_test,
 				setup_connectable, test_command_generic);
-	test_bredr("Set discoverable off - Success 2",
-				&set_discoverable_off_success_test,
-				setup_connectable, test_command_generic);
-	test_bredr("Set discoverable on - Success 3",
+	test_bredr("Set discoverable on - Success 2",
 				&set_discoverable_on_success_test,
 				setup_powered_connectable, test_command_generic);
+	test_bredr("Set discoverable off - Success 1",
+				&set_discoverable_off_success_test_1,
+				setup_connectable, test_command_generic);
+	test_bredr("Set discoverable off - Success 2",
+				&set_discoverable_off_success_test_2,
+				setup_powered_discoverable,
+				test_command_generic);
 
 	test_bredr("Set link security on - Success",
 					&set_link_sec_on_success_test,
