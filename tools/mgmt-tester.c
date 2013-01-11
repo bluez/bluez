@@ -945,7 +945,7 @@ int main(int argc, char *argv[])
 	test_bredr("Set discoverable on - Success 1",
 				&set_discoverable_on_success_test,
 				setup_connectable, test_command_generic);
-	test_bredr("Set discoverable on - Success 2",
+	test_bredr("Set discoverable off - Success 2",
 				&set_discoverable_off_success_test,
 				setup_connectable, test_command_generic);
 	test_bredr("Set discoverable on - Success 3",
