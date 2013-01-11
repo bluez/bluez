@@ -1392,6 +1392,32 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
+static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
+						struct avrcp_header *pdu,
+						uint8_t transaction)
+{
+	struct avrcp_player *player = session->player;
+	uint16_t len = ntohs(pdu->params_len);
+
+	if (len != 1)
+		goto err;
+
+	if (pdu->params[0] > 127)
+		goto err;
+
+	if (!player)
+		goto err;
+
+	media_transport_update_device_volume(session->dev, pdu->params[0]);
+
+	return AVC_CTYPE_ACCEPTED;
+
+err:
+	pdu->params_len = htons(1);
+	pdu->params[0] = AVRCP_STATUS_INVALID_PARAM;
+	return AVC_CTYPE_REJECTED;
+}
+
 static const struct control_pdu_handler tg_control_handlers[] = {
 		{ AVRCP_GET_CAPABILITIES, AVC_CTYPE_STATUS,
 					avrcp_handle_get_capabilities },
@@ -1429,6 +1455,8 @@ static const struct control_pdu_handler ct_control_handlers[] = {
 					avrcp_handle_get_capabilities },
 		{ AVRCP_REGISTER_NOTIFICATION, AVC_CTYPE_NOTIFY,
 					avrcp_handle_register_notification },
+		{ AVRCP_SET_ABSOLUTE_VOLUME, AVC_CTYPE_CONTROL,
+					avrcp_handle_set_absolute_volume },
 		{ },
 };
 
