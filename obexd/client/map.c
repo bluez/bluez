@@ -435,6 +435,13 @@ done:
 	msg->pending = 0;
 }
 
+static gboolean subject_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->subject != NULL;
+}
+
 static gboolean get_subject(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -443,6 +450,13 @@ static gboolean get_subject(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &msg->subject);
 
 	return TRUE;
+}
+
+static gboolean timestamp_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->timestamp != NULL;
 }
 
 static gboolean get_timestamp(const GDBusPropertyTable *property,
@@ -455,6 +469,13 @@ static gboolean get_timestamp(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean sender_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->sender != NULL;
+}
+
 static gboolean get_sender(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -463,6 +484,14 @@ static gboolean get_sender(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &msg->sender);
 
 	return TRUE;
+}
+
+static gboolean sender_address_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->sender_address != NULL;
 }
 
 static gboolean get_sender_address(const GDBusPropertyTable *property,
@@ -476,6 +505,13 @@ static gboolean get_sender_address(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean replyto_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->replyto != NULL;
+}
+
 static gboolean get_replyto(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -484,6 +520,13 @@ static gboolean get_replyto(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &msg->replyto);
 
 	return TRUE;
+}
+
+static gboolean recipient_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->recipient != NULL;
 }
 
 static gboolean get_recipient(const GDBusPropertyTable *property,
@@ -496,6 +539,14 @@ static gboolean get_recipient(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean recipient_address_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->recipient_address != NULL;
+}
+
 static gboolean get_recipient_address(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -505,6 +556,13 @@ static gboolean get_recipient_address(const GDBusPropertyTable *property,
 						&msg->recipient_address);
 
 	return TRUE;
+}
+
+static gboolean type_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->type != NULL;
 }
 
 static gboolean get_type(const GDBusPropertyTable *property,
@@ -635,14 +693,16 @@ static const GDBusMethodTable map_msg_methods[] = {
 };
 
 static const GDBusPropertyTable map_msg_properties[] = {
-	{ "Subject", "s", get_subject },
-	{ "Timestamp", "s", get_timestamp },
-	{ "Sender", "s", get_sender },
-	{ "SenderAddress", "s", get_sender_address },
-	{ "ReplyTo", "s", get_replyto },
-	{ "Recipient", "s", get_recipient },
-	{ "RecipientAddress", "s", get_recipient_address },
-	{ "Type", "s", get_type },
+	{ "Subject", "s", get_subject, NULL, subject_exists },
+	{ "Timestamp", "s", get_timestamp, NULL, timestamp_exists },
+	{ "Sender", "s", get_sender, NULL, sender_exists },
+	{ "SenderAddress", "s", get_sender_address, NULL,
+						sender_address_exists },
+	{ "ReplyTo", "s", get_replyto, NULL, replyto_exists },
+	{ "Recipient", "s", get_recipient, NULL, recipient_exists },
+	{ "RecipientAddress", "s", get_recipient_address, NULL,
+						recipient_address_exists },
+	{ "Type", "s", get_type, NULL, type_exists },
 	{ "Size", "t", get_size },
 	{ "Priority", "b", get_priority },
 	{ "Read", "b", get_read, set_read },
