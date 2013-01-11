@@ -1123,6 +1123,8 @@ static GObexApparam *parse_filter_type(GObexApparam *apparam,
 			types |= 0x08; /* mms */
 		else
 			return NULL;
+
+		dbus_message_iter_next(&array);
 	}
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERMESSAGETYPE,
