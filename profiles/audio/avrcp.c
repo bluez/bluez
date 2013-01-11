@@ -2540,7 +2540,7 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
-	uint8_t buf[AVRCP_HEADER_LENGTH + 1];
+	uint8_t buf[AVRCP_HEADER_LENGTH + 2];
 	struct avrcp_header *pdu = (void *) buf;
 
 	server = find_server(servers, device_get_adapter(dev->btd_dev));
@@ -2555,13 +2555,27 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 
 	set_company_id(pdu->company_id, IEEEID_BTSIG);
 
-	pdu->pdu_id = AVRCP_SET_ABSOLUTE_VOLUME;
-	pdu->params[0] = volume;
-	pdu->params_len = htons(1);
-
 	DBG("volume=%u", volume);
 
-	return avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
-					AVC_SUBUNIT_PANEL, buf, sizeof(buf),
+	if (session->target) {
+		pdu->pdu_id = AVRCP_SET_ABSOLUTE_VOLUME;
+		pdu->params[0] = volume;
+		pdu->params_len = htons(1);
+
+		return avctp_send_vendordep_req(session->conn,
+					AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
+					buf, sizeof(buf),
 					avrcp_handle_set_volume, session);
+	} else {
+		uint8_t id = AVRCP_EVENT_VOLUME_CHANGED;
+		pdu->pdu_id = AVRCP_REGISTER_NOTIFICATION;
+		pdu->params[0] = AVRCP_EVENT_VOLUME_CHANGED;
+		pdu->params[1] = volume;
+		pdu->params_len = htons(2);
+
+		return avctp_send_vendordep(session->conn,
+					session->transaction_events[id],
+					AVC_CTYPE_CHANGED, AVC_SUBUNIT_PANEL,
+					buf, sizeof(buf));
+	}
 }
