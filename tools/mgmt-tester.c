@@ -556,6 +556,48 @@ static const struct generic_data set_discoverable_off_success_test = {
 	.expect_len = sizeof(set_discoverable_off_settings_param),
 };
 
+static const char set_link_sec_on_param[] = { 0x01 };
+static const char set_link_sec_invalid_param[] = { 0x02 };
+static const char set_link_sec_garbage_param[] = { 0x01, 0x00 };
+static const char set_link_sec_settings_param[] = { 0xa0, 0x00, 0x00, 0x00 };
+
+static const struct generic_data set_link_sec_on_success_test = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_on_param,
+	.send_len = sizeof(set_link_sec_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_link_sec_settings_param,
+	.expect_len = sizeof(set_link_sec_settings_param),
+	.expect_settings_set = MGMT_SETTING_LINK_SECURITY,
+};
+
+static const struct generic_data set_link_sec_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_link_sec_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_invalid_param,
+	.send_len = sizeof(set_link_sec_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_link_sec_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_garbage_param,
+	.send_len = sizeof(set_link_sec_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_link_sec_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_on_param,
+	.send_len = sizeof(set_link_sec_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -840,6 +882,22 @@ int main(int argc, char *argv[])
 	test_bredr("Set discoverable on - Success 3",
 				&set_discoverable_on_success_test,
 				setup_powered_connectable, test_command_generic);
+
+	test_bredr("Set link security on - Success",
+					&set_link_sec_on_success_test,
+					NULL, test_command_generic);
+	test_bredr("Set link security on - Invalid parameters 1",
+					&set_link_sec_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set link security on - Invalid parameters 2",
+					&set_link_sec_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set link security on - Invalid parameters 3",
+					&set_link_sec_on_invalid_param_test_3,
+					NULL, test_command_generic);
+	test_bredr("Set link security on - Invalid index",
+					&set_link_sec_on_invalid_index_test,
+					NULL, test_command_generic);
 
 	return tester_run();
 }
