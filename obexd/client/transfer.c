@@ -327,7 +327,8 @@ static void obc_transfer_free(struct obc_transfer *transfer)
 	}
 
 	if (transfer->op == G_OBEX_OP_GET &&
-					transfer->transferred != transfer->size)
+				transfer->status != TRANSFER_STATUS_COMPLETE &&
+				transfer->filename)
 		remove(transfer->filename);
 
 	if (transfer->fd > 0)
