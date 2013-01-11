@@ -75,7 +75,7 @@ static const char * const filter_list[] = {
 };
 
 #define FILTER_BIT_MAX	15
-#define FILTER_ALL	0xFF
+#define FILTER_ALL	0x0000FFFF
 
 #define STATUS_READ 0
 #define STATUS_DELETE 1
