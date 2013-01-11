@@ -1179,9 +1179,9 @@ static GObexApparam *parse_filter_read(GObexApparam *apparam,
 	dbus_message_iter_get_basic(iter, &dbus_status);
 
 	if (dbus_status)
-		status = FILTER_READ_STATUS_ONLY_UNREAD;
-	else
 		status = FILTER_READ_STATUS_ONLY_READ;
+	else
+		status = FILTER_READ_STATUS_ONLY_UNREAD;
 
 	return g_obex_apparam_set_uint8(apparam, MAP_AP_FILTERREADSTATUS,
 								status);
