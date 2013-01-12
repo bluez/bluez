@@ -372,7 +372,7 @@ struct mgmt *mgmt_new_default(void)
 	struct sockaddr_hci addr;
 	int fd;
 
-	fd = socket(AF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
+	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
 								BTPROTO_HCI);
 	if (fd < 0)
 		return NULL;
