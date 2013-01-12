@@ -422,15 +422,11 @@ void mgmt_unref(struct mgmt *mgmt)
 	g_queue_free(mgmt->reply_queue);
 	g_queue_free(mgmt->request_queue);
 
-	if (mgmt->write_watch > 0) {
+	if (mgmt->write_watch > 0)
 		g_source_remove(mgmt->write_watch);
-		mgmt->write_watch = 0;
-	}
 
-	if (mgmt->read_watch > 0) {
+	if (mgmt->read_watch > 0)
 		g_source_remove(mgmt->read_watch);
-		mgmt->read_watch = 0;
-	}
 
 	g_io_channel_unref(mgmt->io);
 	mgmt->io = NULL;
