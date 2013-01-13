@@ -619,6 +619,12 @@ const char *bt_compidtostr(int compid)
 		return "Saris Cycling Group, Inc";
 	case 178:
 		return "Bekey A/S";
+	case 179:
+		return "Clarinox Technologies Pty. Ltd.";
+	case 180:
+		return "BDE Technology Co., Ltd.";
+	case 181:
+		return "Swirl Networks";
 	case 65535:
 		return "internal use";
 	default:
