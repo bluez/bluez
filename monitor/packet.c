@@ -1650,7 +1650,6 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		const uint8_t *data = &eir[2];
 		uint8_t data_len;
 		char name[239], label[100];
-		uint32_t cls;
 		uint8_t flags, mask;
 		int i;
 
@@ -1749,8 +1748,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_CLASS_OF_DEV:
 			if (data_len < 3)
 				break;
-			cls = data[0] | (data[1] << 8) | (data[2] << 16);
-			print_field("Class Of Device: 0x%6.6x", cls);
+			print_dev_class(data);
 			break;
 
 		case BT_EIR_SSP_HASH:
