@@ -234,6 +234,33 @@ static const struct test_data cookoo_test = {
 	.name_complete = TRUE,
 };
 
+static const unsigned char citizen_adv_data[] = {
+		0x02, 0x01, 0x05, 0x05, 0x12, 0x7f, 0x01, 0x8f,
+		0x01, 0x14, 0x09, 0x45, 0x63, 0x6f, 0x2d, 0x44,
+		0x72, 0x69, 0x76, 0x65, 0x20, 0x50, 0x72, 0x6f,
+		0x78, 0x69, 0x6d, 0x69, 0x74, 0x79,
+};
+
+static const struct test_data citizen_adv_test = {
+	.eir_data = citizen_adv_data,
+	.eir_size = sizeof(citizen_adv_data),
+	.flags = 0x05,
+	.name = "Eco-Drive Proximity",
+	.name_complete = TRUE,
+};
+
+static const unsigned char citizen_scan_data[] = {
+		0x02, 0x0a, 0x00, 0x11, 0x07, 0x1b, 0xc5, 0xd5,
+		0xa5, 0x02, 0x00, 0x46, 0x9a, 0xe1, 0x11, 0xb7,
+		0x8d, 0x60, 0xb4, 0x45, 0x2d,
+};
+
+static const struct test_data citizen_scan_test = {
+	.eir_data = citizen_scan_data,
+	.eir_size = sizeof(citizen_scan_data),
+	.flags = -1,
+};
+
 static void test_basic(void)
 {
 	struct eir_data data;
@@ -269,8 +296,13 @@ static void test_parsing(gconstpointer data)
 		g_print("Name: %s\n", eir.name);
 
 	g_assert(eir.flags == test->flags);
-	g_assert(g_str_equal(eir.name, test->name) == TRUE);
-	g_assert(eir.name_complete == test->name_complete);
+
+	if (test->name) {
+		g_assert(g_str_equal(eir.name, test->name) == TRUE);
+		g_assert(eir.name_complete == test->name_complete);
+	} else {
+		g_assert(eir.name == NULL);
+	}
 
 	eir_data_free(&eir);
 }
@@ -287,6 +319,8 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/eir/fuelband", &fuelband_test, test_parsing);
 	g_test_add_data_func("/ad/bluesc", &bluesc_test, test_parsing);
 	g_test_add_data_func("/ad/cookoo", &cookoo_test, test_parsing);
+	g_test_add_data_func("/ad/citizen1", &citizen_adv_test, test_parsing);
+	g_test_add_data_func("/ad/citizen2", &citizen_scan_test, test_parsing);
 
 	return g_test_run();
 }
