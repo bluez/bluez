@@ -28,6 +28,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <getopt.h>
 
 #include "monitor/mainloop.h"
@@ -54,6 +55,7 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
+	{ "local",   no_argument, NULL, 'l' },
 	{ "version", no_argument, NULL, 'v' },
 	{ "help",    no_argument, NULL, 'h' },
 	{ }
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
 	struct server *server2;
 	struct server *server3;
 	struct server *server4;
+	bool enable_vhci = false;
 	sigset_t mask;
 
 	mainloop_init();
@@ -73,11 +76,14 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "vh", main_options, NULL);
+		opt = getopt_long(argc, argv, "lvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 'l':
+			enable_vhci = true;
+			break;
 		case 'v':
 			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
@@ -97,9 +103,11 @@ int main(int argc, char *argv[])
 
 	printf("Bluetooth emulator ver %s\n", VERSION);
 
-	vhci = vhci_open(VHCI_TYPE_BREDR);
-	if (!vhci)
-		fprintf(stderr, "Failed to open Virtual HCI device\n");
+	if (enable_vhci) {
+		vhci = vhci_open(VHCI_TYPE_BREDR);
+		if (!vhci)
+			fprintf(stderr, "Failed to open Virtual HCI device\n");
+	}
 
 	server1 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-bredr");
 	if (!server1)
