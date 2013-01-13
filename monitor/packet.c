@@ -1828,7 +1828,10 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
-			print_hex_field("Manufacturer Data", data, data_len);
+			if (data_len < 2)
+				break;
+			print_manufacturer(bt_get_le16(data));
+			print_hex_field("  Data", data + 2, data_len - 2);
 			break;
 
 		default:
