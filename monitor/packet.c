@@ -1626,6 +1626,18 @@ static void print_uuid128_list(const char *label, const void *data,
 	print_field("%s: %s", label, str);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} eir_flags_table[] = {
+	{ 0, "LE Limited Discoverable Mode"		},
+	{ 1, "LE General Discoverable Mode"		},
+	{ 2, "BR/EDR Not Supported"			},
+	{ 3, "Simultaneous LE and BR/EDR (Controller)"	},
+	{ 4, "Simultaneous LE and BR/EDR (Host)"	},
+	{ }
+};
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint8_t len = 0;
@@ -1639,6 +1651,8 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		uint8_t data_len;
 		char name[239], label[100];
 		uint32_t cls;
+		uint8_t flags, mask;
+		int i;
 
 		/* Check for the end of EIR */
 		if (field_len == 0)
@@ -1656,7 +1670,22 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 
 		switch (eir[1]) {
 		case BT_EIR_FLAGS:
-			print_field("Flags: 0x%2.2x", *data);
+			flags = *data;
+			mask = flags;
+
+			print_field("Flags: 0x%2.2x", flags);
+
+			for (i = 0; eir_flags_table[i].str; i++) {
+				if (flags & (1 << eir_flags_table[i].bit)) {
+					print_field("  %s",
+							eir_flags_table[i].str);
+					mask &= ~(1 << eir_flags_table[i].bit);
+				}
+			}
+
+			if (mask)
+				print_text(COLOR_UNKNOWN_SERVICE_CLASS,
+					"  Unknown flags (0x%2.2x)", mask);
 			break;
 
 		case BT_EIR_UUID16_SOME:
@@ -1686,6 +1715,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_uuid32_list("32-bit Service UUIDs (complete)",
 							data, data_len);
 			break;
+
 		case BT_EIR_UUID128_SOME:
 			if (data_len < 16)
 				break;
