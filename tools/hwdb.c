@@ -35,6 +35,7 @@ static const struct {
 	const char *str;
 } product_table[] = {
 	{ 0x0078, 0x0001, "Nike+ FuelBand"	},
+	{ 0x0097, 0x0002, "COOKOO watch"	},
 	{ }
 };
 
