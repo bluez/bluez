@@ -1655,6 +1655,18 @@ static void att_read_type_rsp(const struct l2cap_frame *frame)
 					frame->data + 1, frame->size - 1);
 }
 
+static void att_read_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_read_req *pdu = frame->data;
+
+	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+}
+
+static void att_read_rsp(const struct l2cap_frame *frame)
+{
+	print_hex_field("Value", frame->data, frame->size);
+}
+
 static void att_read_group_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -1668,6 +1680,26 @@ static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 	print_field("Attribute data length: %d", pdu->length);
 	print_data_list("Attribute data list", pdu->length,
 					frame->data + 1, frame->size - 1);
+}
+
+static void att_handle_value_notify(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
+
+	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+}
+
+static void att_handle_value_ind(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_att_handle_value_ind *pdu = frame->data;
+
+	print_field("Handle: 0x%4.4x", btohs(pdu->handle));
+	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+}
+
+static void att_handle_value_conf(const struct l2cap_frame *frame)
+{
 }
 
 struct att_opcode_data {
@@ -1693,8 +1725,10 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_read_type_req, 6, false },
 	{ 0x09, "Read By Type Response",
 			att_read_type_rsp, 4, false },
-	{ 0x0a, "Read Request"			},
-	{ 0x0b, "Read Response"			},
+	{ 0x0a, "Read Request",
+			att_read_req, 2, true },
+	{ 0x0b, "Read Response",
+			att_read_rsp, 0, false },
 	{ 0x0c, "Read Blob Request"		},
 	{ 0x0d, "Read Blob Response"		},
 	{ 0x0e, "Read Multiple Request"		},
@@ -1709,9 +1743,12 @@ static const struct att_opcode_data att_opcode_table[] = {
 	{ 0x17, "Prepare Write Response"	},
 	{ 0x18, "Execute Write Request"		},
 	{ 0x19, "Execute Write Response"	},
-	{ 0x1b, "Handle Value Notification"	},
-	{ 0x1d, "Handle Value Indication"	},
-	{ 0x1e, "Handle Value Confirmation"	},
+	{ 0x1b, "Handle Value Notification",
+			att_handle_value_notify, 2, false },
+	{ 0x1d, "Handle Value Indication",
+			att_handle_value_ind, 2, false },
+	{ 0x1e, "Handle Value Confirmation",
+			att_handle_value_conf, 0, true },
 	{ 0x52, "Write Command"			},
 	{ 0xd2, "Signed Write Command"		},
 	{ }

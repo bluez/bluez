@@ -1634,6 +1634,13 @@ struct bt_l2cap_att_read_type_rsp {
 	uint8_t  length;
 } __attribute__ ((packed));
 
+#define BT_L2CAP_ATT_READ_REQ			0x0a
+struct bt_l2cap_att_read_req {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_READ_RSP			0x0b
+
 #define BT_L2CAP_ATT_READ_GROUP_TYPE_REQ	0x10
 struct bt_l2cap_att_read_group_type_req {
 	uint16_t start_handle;
@@ -1644,6 +1651,18 @@ struct bt_l2cap_att_read_group_type_req {
 struct bt_l2cap_att_read_group_type_rsp {
 	uint8_t  length;
 } __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_HANDLE_VALUE_NOTIFY	0x1b
+struct bt_l2cap_att_handle_value_notify {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_HANDLE_VALUE_IND		0x1d
+struct bt_l2cap_att_handle_value_ind {
+	uint16_t handle;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_ATT_HANDLE_VALUE_CONF		0x1e
 
 struct bt_l2cap_hdr_smp {
 	uint8_t  code;
