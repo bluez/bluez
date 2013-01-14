@@ -787,7 +787,6 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		struct a2dp_transport *a2dp;
 
 		a2dp = g_new0(struct a2dp_transport, 1);
-		a2dp->volume = -1;
 
 		transport->resume = resume_a2dp;
 		transport->suspend = suspend_a2dp;
@@ -795,14 +794,17 @@ struct media_transport *media_transport_create(struct media_endpoint *endpoint,
 		transport->data = a2dp;
 		transport->destroy = destroy_a2dp;
 
-		if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0)
+		if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
+			a2dp->volume = -1;
 			transport->sink_watch = sink_add_state_cb(
 							sink_state_changed,
 							transport);
-		else
+		} else {
+			a2dp->volume = 127;
 			transport->source_watch = source_add_state_cb(
 							source_state_changed,
 							transport);
+		}
 	} else
 		goto fail;
 
