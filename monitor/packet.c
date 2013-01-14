@@ -43,6 +43,7 @@
 
 #include "display.h"
 #include "bt.h"
+#include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
 #include "packet.h"
@@ -1582,48 +1583,47 @@ static void print_fec(uint8_t fec)
 static void print_uuid16_list(const char *label, const void *data,
 							uint8_t data_len)
 {
-	const uint16_t *uuids = data;
 	uint8_t count = data_len / sizeof(uint16_t);
-	char str[count * 7 + 1];
 	unsigned int i;
 
-	for (i = 0; i < count; i++)
-		sprintf(str + (i * 7), "0x%4.4x ", bt_get_le16(&uuids[i]));
+	print_field("%s: %u entries", label, count);
 
-	print_field("%s: %s", label, str);
+	for (i = 0; i < count; i++) {
+		uint16_t uuid = bt_get_le16(data + (i * 2));
+		print_field("  %s (0x%4.4x)", uuid16_to_str(uuid), uuid);
+	}
 }
 
 static void print_uuid32_list(const char *label, const void *data,
 							uint8_t data_len)
 {
-	const uint32_t *uuids = data;
 	uint8_t count = data_len / sizeof(uint32_t);
-	char str[count * 11 + 1];
 	unsigned int i;
 
-	for (i = 0; i < count; i++)
-		sprintf(str + (i * 11), "0x%8.8x ", bt_get_le32(&uuids[i]));
+	print_field("%s: %u entries", label, count);
 
-	print_field("%s: %s", label, str);
+	for (i = 0; i < count; i++) {
+		uint32_t uuid = bt_get_le32(data + (i * 4));
+		print_field("  %s (0x%8.8x)", uuid32_to_str(uuid), uuid);
+	}
 }
 
 static void print_uuid128_list(const char *label, const void *data,
 							uint8_t data_len)
 {
 	uint8_t count = data_len / 16;
-	char str[count * 38 + 1];
 	unsigned int i;
+
+	print_field("%s: %u entries", label, count);
 
 	for (i = 0; i < count; i++) {
 		const uint8_t *uuid = data + (i * 16);
 
-		sprintf(str + (i * 38), "%.8x-%.4x-%.4x-%.4x-%.8x%.4x ",
+		print_field("  %.8x-%.4x-%.4x-%.4x-%.8x%.4x",
 				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
 				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
 				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
 	}
-
-	print_field("%s: %s", label, str);
 }
 
 static const struct {
