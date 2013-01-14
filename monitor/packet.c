@@ -1612,7 +1612,7 @@ static void print_uuid16_list(const char *label, const void *data,
 	uint8_t count = data_len / sizeof(uint16_t);
 	unsigned int i;
 
-	print_field("%s: %u entries", label, count);
+	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
 		uint16_t uuid = bt_get_le16(data + (i * 2));
@@ -1626,7 +1626,7 @@ static void print_uuid32_list(const char *label, const void *data,
 	uint8_t count = data_len / sizeof(uint32_t);
 	unsigned int i;
 
-	print_field("%s: %u entries", label, count);
+	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
 		uint32_t uuid = bt_get_le32(data + (i * 4));
@@ -1640,7 +1640,7 @@ static void print_uuid128_list(const char *label, const void *data,
 	uint8_t count = data_len / 16;
 	unsigned int i;
 
-	print_field("%s: %u entries", label, count);
+	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	for (i = 0; i < count; i++) {
 		const uint8_t *uuid = data + (i * 16);
