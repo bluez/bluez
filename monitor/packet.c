@@ -500,6 +500,30 @@ static const char *major_class_phone(uint8_t minor)
 static const struct {
 	uint8_t val;
 	const char *str;
+} major_class_wearable_table[] = {
+	{ 0x01, "Wrist Watch"	},
+	{ 0x02, "Pager"		},
+	{ 0x03, "Jacket"	},
+	{ 0x04, "Helmet"	},
+	{ 0x05, "Glasses"	},
+	{ }
+};
+
+static const char *major_class_wearable(uint8_t minor)
+{
+	int i;
+
+	for (i = 0; major_class_wearable_table[i].str; i++) {
+		if (major_class_wearable_table[i].val == minor)
+			return major_class_wearable_table[i].str;
+	}
+
+	return NULL;
+}
+
+static const struct {
+	uint8_t val;
+	const char *str;
 	const char *(*func)(uint8_t minor);
 } major_class_table[] = {
 	{ 0x00, "Miscellaneous"						},
@@ -511,7 +535,7 @@ static const struct {
 	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)"	},
 	{ 0x05, "Peripheral (mouse, joystick, keyboards)"		},
 	{ 0x06, "Imaging (printing, scanner, camera, display)"		},
-	{ 0x07, "Wearable"						},
+	{ 0x07, "Wearable",			major_class_wearable	},
 	{ 0x08, "Toy"							},
 	{ 0x09, "Health"						},
 	{ 0x1f, "Uncategorized, specific device code not specified"	},
