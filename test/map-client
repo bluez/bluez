@@ -98,7 +98,7 @@ class MapClient:
 			print("Operation succeeded")
 
 	def error(self, err):
-		print err
+		print(err)
 		mainloop.quit()
 
 	def transfer_complete(self, path):
