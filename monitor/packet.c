@@ -475,12 +475,38 @@ static const char *major_class_computer(uint8_t minor)
 static const struct {
 	uint8_t val;
 	const char *str;
+} major_class_phone_table[] = {
+	{ 0x00, "Uncategorized, code for device not assigned"	},
+	{ 0x01, "Cellular"					},
+	{ 0x02, "Cordless"					},
+	{ 0x03, "Smart phone"					},
+	{ 0x04, "Wired modem or voice gateway"			},
+	{ 0x05, "Common ISDN Access"				},
+	{ }
+};
+
+static const char *major_class_phone(uint8_t minor)
+{
+	int i;
+
+	for (i = 0; major_class_phone_table[i].str; i++) {
+		if (major_class_phone_table[i].val == minor)
+			return major_class_phone_table[i].str;
+	}
+
+	return NULL;
+}
+
+static const struct {
+	uint8_t val;
+	const char *str;
 	const char *(*func)(uint8_t minor);
 } major_class_table[] = {
 	{ 0x00, "Miscellaneous"						},
 	{ 0x01, "Computer (desktop, notebook, PDA, organizers)",
 						major_class_computer	},
-	{ 0x02, "Phone (cellular, cordless, payphone, modem)"		},
+	{ 0x02, "Phone (cellular, cordless, payphone, modem)",
+						major_class_phone	},
 	{ 0x03, "LAN /Network Access point"				},
 	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)"	},
 	{ 0x05, "Peripheral (mouse, joystick, keyboards)"		},
