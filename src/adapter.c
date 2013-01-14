@@ -162,7 +162,7 @@ struct btd_adapter {
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
 	guint	remove_temp;		/* Remove devices timer */
-	GSList *disc_sessions;		/* Discovery sessions */
+	GSList *discov_sessions;	/* Discovery sessions */
 	uint8_t discov_type;
 	struct session_req *scanning_session;
 	GSList *connect_list;		/* Devices to connect when found */
@@ -709,9 +709,10 @@ static void session_remove(struct session_req *req)
 
 	DBG("session %p with %s deactivated", req, req->owner);
 
-	adapter->disc_sessions = g_slist_remove(adapter->disc_sessions, req);
+	adapter->discov_sessions = g_slist_remove(adapter->discov_sessions,
+									req);
 
-	if (adapter->disc_sessions)
+	if (adapter->discov_sessions)
 		return;
 
 	DBG("Stopping discovery");
@@ -1319,7 +1320,7 @@ static gboolean discovery_cb(gpointer user_data)
 	}
 
 	if (!adapter->scanning_session ||
-				g_slist_length(adapter->disc_sessions) != 1)
+				g_slist_length(adapter->discov_sessions) != 1)
 		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
 
 	mgmt_start_discovery(adapter);
@@ -1338,13 +1339,13 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
 
-	req = find_session(adapter->disc_sessions, sender);
+	req = find_session(adapter->discov_sessions, sender);
 	if (req) {
 		session_ref(req);
 		return dbus_message_new_method_return(msg);
 	}
 
-	if (adapter->disc_sessions)
+	if (adapter->discov_sessions)
 		goto done;
 
 	if (adapter->discov_suspended)
@@ -1368,7 +1369,8 @@ done:
 	req = create_session(adapter, msg, SESSION_TYPE_DISC_INTERLEAVED,
 							session_owner_exit);
 
-	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
+	adapter->discov_sessions = g_slist_append(adapter->discov_sessions,
+									req);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -1383,7 +1385,7 @@ static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
 
-	req = find_session(adapter->disc_sessions, sender);
+	req = find_session(adapter->discov_sessions, sender);
 	if (!req)
 		return btd_error_failed(msg, "Invalid discovery session");
 
@@ -2460,11 +2462,11 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	if (adapter->scanning_session)
 		return;
 
-	if (adapter->disc_sessions == NULL)
+	if (adapter->discov_sessions == NULL)
 		adapter->discov_id = g_idle_add(discovery_cb, adapter);
 
 	req = create_session(adapter, NULL, SESSION_TYPE_DISC_LE_SCAN, NULL);
-	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
+	adapter->discov_sessions = g_slist_append(adapter->discov_sessions, req);
 	adapter->scanning_session = req;
 }
 
@@ -2493,11 +2495,12 @@ static void adapter_start(struct btd_adapter *adapter)
 	DBG("adapter %s has been enabled", adapter->path);
 
 	if (g_slist_length(adapter->connect_list) == 0 ||
-					adapter->disc_sessions != NULL)
+					adapter->discov_sessions != NULL)
 		return;
 
 	req = create_session(adapter, NULL, SESSION_TYPE_DISC_LE_SCAN, NULL);
-	adapter->disc_sessions = g_slist_append(adapter->disc_sessions, req);
+	adapter->discov_sessions = g_slist_append(adapter->discov_sessions,
+									req);
 	adapter->scanning_session = req;
 
 	adapter->discov_id = g_idle_add(discovery_cb, adapter);
@@ -3665,19 +3668,19 @@ static void adapter_set_discovering(struct btd_adapter *adapter,
 		adapter->scanning_session = NULL;
 	}
 
-	if (adapter->disc_sessions != NULL) {
+	if (adapter->discov_sessions != NULL) {
 		adapter->discov_id = g_idle_add(discovery_cb, adapter);
 
-		DBG("hci%u restarting discovery: disc_sessions %u",
+		DBG("hci%u restarting discovery: discov_sessions %u",
 				adapter->dev_id,
-				g_slist_length(adapter->disc_sessions));
+				g_slist_length(adapter->discov_sessions));
 		return;
 	}
 }
 
 static void suspend_discovery(struct btd_adapter *adapter)
 {
-	if (adapter->disc_sessions == NULL || adapter->discov_suspended)
+	if (adapter->discov_sessions == NULL || adapter->discov_suspended)
 		return;
 
 	DBG("Suspending discovery");
@@ -3983,9 +3986,9 @@ static void adapter_stop(struct btd_adapter *adapter)
 		stop_discovery(adapter);
 	}
 
-	if (adapter->disc_sessions) {
-		g_slist_free_full(adapter->disc_sessions, session_free);
-		adapter->disc_sessions = NULL;
+	if (adapter->discov_sessions) {
+		g_slist_free_full(adapter->discov_sessions, session_free);
+		adapter->discov_sessions = NULL;
 	}
 
 	while (adapter->connections) {
