@@ -1299,6 +1299,11 @@ static int mgmt_start_discovery(struct btd_adapter *adapter)
 
 	DBG("%s type 0x%02x", adapter->path, adapter->discov_type);
 
+	if (adapter->discov_type == 0) {
+		error("Invalid discovery type specified");
+		return -EINVAL;
+	}
+
 	cp.type = adapter->discov_type;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
@@ -1326,11 +1331,6 @@ static gboolean discovery_cb(gpointer user_data)
 	if (!adapter->scanning_session ||
 				g_slist_length(adapter->discov_sessions) != 1)
 		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
-
-	if (adapter->discov_type == 0) {
-		warn("Neither LE nor BR/EDR discovery is needed");
-		return FALSE;
-	}
 
 	mgmt_start_discovery(adapter);
 
