@@ -587,6 +587,13 @@ Methods		void SetFolder(string name)
 
 					Message size in bytes
 
+				boolean Text:
+
+					Message text flag
+
+					Specifies whether message has textual
+					content or is binary only
+
 				string Status:
 
 					Message reception status

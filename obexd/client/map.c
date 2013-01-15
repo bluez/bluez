@@ -99,6 +99,7 @@ struct map_data {
 #define MAP_MSG_FLAG_READ	0x02
 #define MAP_MSG_FLAG_SENT	0x04
 #define MAP_MSG_FLAG_PROTECTED	0x08
+#define MAP_MSG_FLAG_TEXT	0x10
 
 struct map_msg {
 	struct map_data *data;
@@ -629,6 +630,12 @@ static gboolean get_protected(const GDBusPropertyTable *property,
 	return get_flag(property, iter, MAP_MSG_FLAG_PROTECTED, data);
 }
 
+static gboolean get_text(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	return get_flag(property, iter, MAP_MSG_FLAG_TEXT, data);
+}
+
 static void set_status(const GDBusPropertyTable *property,
 			DBusMessageIter *iter, GDBusPendingPropertySet id,
 			uint8_t status, void *data)
@@ -712,6 +719,7 @@ static const GDBusPropertyTable map_msg_properties[] = {
 						recipient_address_exists },
 	{ "Type", "s", get_type, NULL, type_exists },
 	{ "Size", "t", get_size },
+	{ "Text", "b", get_text },
 	{ "Priority", "b", get_priority },
 	{ "Read", "b", get_read, set_read },
 	{ "Sent", "b", get_sent },
@@ -817,6 +825,19 @@ static void parse_size(struct map_msg *msg, const char *value,
 	obex_dbus_dict_append(iter, "Size", DBUS_TYPE_UINT64, &msg->size);
 }
 
+static void parse_text(struct map_msg *msg, const char *value,
+							DBusMessageIter *iter)
+{
+	gboolean flag = strcasecmp(value, "no") != 0;
+
+	if (flag)
+		msg->flags |= MAP_MSG_FLAG_TEXT;
+	else
+		msg->flags &= ~MAP_MSG_FLAG_TEXT;
+
+	obex_dbus_dict_append(iter, "Text", DBUS_TYPE_BOOLEAN, &flag);
+}
+
 static void parse_status(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
@@ -891,6 +912,7 @@ static struct map_msg_parser {
 		{ "recipient_addressing", parse_recipient_address },
 		{ "type", parse_type },
 		{ "size", parse_size },
+		{ "text", parse_text },
 		{ "reception_status", parse_status },
 		{ "priority", parse_priority },
 		{ "read", parse_read },
