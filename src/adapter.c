@@ -2451,7 +2451,7 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 	return NULL;
 }
 
-void adapter_connect_list_add(struct btd_adapter *adapter,
+int adapter_connect_list_add(struct btd_adapter *adapter,
 					struct btd_device *device)
 {
 	struct session_req *req;
@@ -2459,7 +2459,13 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	if (g_slist_find(adapter->connect_list, device)) {
 		DBG("ignoring already added device %s",
 						device_get_path(device));
-		return;
+		return 0;
+	}
+
+	if (!(adapter->supported_settings & MGMT_SETTING_LE)) {
+		error("Can't add %s to non-LE capable adapter connect list",
+						device_get_path(device));
+		return -ENOTSUP;
 	}
 
 	adapter->connect_list = g_slist_append(adapter->connect_list,
@@ -2468,10 +2474,10 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 							adapter->system_name);
 
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
-		return;
+		return 0;
 
 	if (adapter->scanning_session)
-		return;
+		return 0;
 
 	if (adapter->discov_sessions == NULL)
 		adapter->discov_id = g_idle_add(discovery_cb, adapter);
@@ -2479,6 +2485,8 @@ void adapter_connect_list_add(struct btd_adapter *adapter,
 	req = create_session(adapter, NULL, SESSION_TYPE_DISC_LE_SCAN, NULL);
 	adapter->discov_sessions = g_slist_append(adapter->discov_sessions, req);
 	adapter->scanning_session = req;
+
+	return 0;
 }
 
 void adapter_connect_list_remove(struct btd_adapter *adapter,

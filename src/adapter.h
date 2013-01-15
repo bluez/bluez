@@ -188,8 +188,8 @@ void btd_adapter_gatt_server_stop(struct btd_adapter *adapter);
 
 bool btd_adapter_ssp_enabled(struct btd_adapter *adapter);
 
-void adapter_connect_list_add(struct btd_adapter *adapter,
-						struct btd_device *device);
+int adapter_connect_list_add(struct btd_adapter *adapter,
+					struct btd_device *device);
 void adapter_connect_list_remove(struct btd_adapter *adapter,
 						struct btd_device *device);
 
