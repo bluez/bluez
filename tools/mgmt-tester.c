@@ -664,6 +664,31 @@ static const struct generic_data set_link_sec_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char start_discovery_invalid_param[] = { 0x00 };
+static const char start_discovery_bredr_param[] = { 0x01 };
+static const char start_discovery_le_param[] = { 0x06 };
+
+static const struct generic_data start_discovery_not_powered_test_1 = {
+	.send_opcode = MGMT_OP_START_DISCOVERY,
+	.send_param = start_discovery_bredr_param,
+	.send_len = sizeof(start_discovery_bredr_param),
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+};
+
+static const struct generic_data start_discovery_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_START_DISCOVERY,
+	.send_param = start_discovery_invalid_param,
+	.send_len = sizeof(start_discovery_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data start_discovery_not_supported_test_1 = {
+	.send_opcode = MGMT_OP_START_DISCOVERY,
+	.send_param = start_discovery_le_param,
+	.send_len = sizeof(start_discovery_le_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -1039,6 +1064,16 @@ int main(int argc, char *argv[])
 	test_bredr("Set link security on - Invalid index",
 					&set_link_sec_on_invalid_index_test,
 					NULL, test_command_generic);
+
+	test_bredr("Start Discovery - Not powered 1",
+				&start_discovery_not_powered_test_1,
+				NULL, test_command_generic);
+	test_bredr("Start Discovery - Invalid parameters 1",
+				&start_discovery_invalid_param_test_1,
+				setup_powered, test_command_generic);
+	test_bredr("Start Discovery - Not supported 1",
+				&start_discovery_not_supported_test_1,
+				setup_powered, test_command_generic);
 
 	return tester_run();
 }
