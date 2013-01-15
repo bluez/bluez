@@ -1327,6 +1327,11 @@ static gboolean discovery_cb(gpointer user_data)
 				g_slist_length(adapter->discov_sessions) != 1)
 		hci_set_bit(BDADDR_BREDR, &adapter->discov_type);
 
+	if (adapter->discov_type == 0) {
+		warn("Neither LE nor BR/EDR discovery is needed");
+		return FALSE;
+	}
+
 	mgmt_start_discovery(adapter);
 
 	return FALSE;
