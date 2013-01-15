@@ -1297,6 +1297,8 @@ static int mgmt_start_discovery(struct btd_adapter *adapter)
 {
 	struct mgmt_cp_start_discovery cp;
 
+	DBG("%s type 0x%02x", adapter->path, adapter->discov_type);
+
 	cp.type = adapter->discov_type;
 
 	if (mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
