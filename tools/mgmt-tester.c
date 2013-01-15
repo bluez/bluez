@@ -689,6 +689,36 @@ static const struct generic_data start_discovery_not_supported_test_1 = {
 	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
 };
 
+static const char set_dev_class_valid_param[] = { 0x01, 0x0c };
+static const char set_dev_class_zero_rsp[] = { 0x00, 0x00, 0x00 };
+static const char set_dev_class_valid_rsp[] = { 0x0c, 0x01, 0x00 };
+static const char set_dev_class_invalid_param[] = { 0x01, 0x01 };
+
+static const struct generic_data set_dev_class_valid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_DEV_CLASS,
+	.send_param = set_dev_class_valid_param,
+	.send_len = sizeof(set_dev_class_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_class_zero_rsp,
+	.expect_len = sizeof(set_dev_class_zero_rsp),
+};
+
+static const struct generic_data set_dev_class_valid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_DEV_CLASS,
+	.send_param = set_dev_class_valid_param,
+	.send_len = sizeof(set_dev_class_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_dev_class_valid_rsp,
+	.expect_len = sizeof(set_dev_class_valid_rsp),
+};
+
+static const struct generic_data set_dev_class_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_DEV_CLASS,
+	.send_param = set_dev_class_invalid_param,
+	.send_len = sizeof(set_dev_class_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -1074,6 +1104,16 @@ int main(int argc, char *argv[])
 	test_bredr("Start Discovery - Not supported 1",
 				&start_discovery_not_supported_test_1,
 				setup_powered, test_command_generic);
+
+	test_bredr("Set Device Class - Success 1",
+				&set_dev_class_valid_param_test_1,
+				NULL, test_command_generic);
+	test_bredr("Set Device Class - Success 2",
+				&set_dev_class_valid_param_test_2,
+				setup_powered, test_command_generic);
+	test_bredr("Set Device Class - Invalid parameters 1",
+				&set_dev_class_invalid_param_test_1,
+				NULL, test_command_generic);
 
 	return tester_run();
 }
