@@ -1052,6 +1052,19 @@ fail:
 	return reply;
 }
 
+static GObexApparam *parse_subject_length(GObexApparam *apparam,
+							DBusMessageIter *iter)
+{
+	guint8 num;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BYTE)
+		return NULL;
+
+	dbus_message_iter_get_basic(iter, &num);
+
+	return g_obex_apparam_set_uint8(apparam, MAP_AP_SUBJECTLENGTH, num);
+}
+
 static uint64_t get_filter_mask(const char *filterstr)
 {
 	int i;
@@ -1262,6 +1275,9 @@ static GObexApparam *parse_message_filters(GObexApparam *apparam,
 				return NULL;
 		} else if (strcasecmp(key, "MaxCount") == 0) {
 			if (parse_max_count(apparam, &value) == NULL)
+				return NULL;
+		} else if (strcasecmp(key, "SubjectLength") == 0) {
+			if (parse_subject_length(apparam, &value) == NULL)
 				return NULL;
 		} else if (strcasecmp(key, "Fields") == 0) {
 			if (parse_fields(apparam, &value) == NULL)

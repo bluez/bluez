@@ -539,8 +539,8 @@ Methods		void SetFolder(string name)
 			Returns an array containing the messages found in the
 			given folder.
 
-			Possible Filters: Offset, MaxCount, Fields, Type,
-			PeriodStart, PeriodEnd, Status, Recipient, Sender,
+			Possible Filters: Offset, MaxCount, SubjectLength, Fields,
+			Type, PeriodStart, PeriodEnd, Status, Recipient, Sender,
 			Priority
 
 			Each message is represented by an object path followed
@@ -626,6 +626,11 @@ Filter:		uint16 Offset:
 		uint16 MaxCount:
 
 			Maximum number of items, default is 1024
+
+		byte SubjectLength:
+
+			Maximum length of the Subject property in the
+			message, default is 256
 
 		array{string} Fields:
 
