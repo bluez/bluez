@@ -601,6 +601,10 @@ Methods		void SetFolder(string name)
 					Possible values: "complete",
 					"fractioned" and "notification"
 
+				uint64 AttachmentSize:
+
+					Message overall attachment size in bytes
+
 				boolean Priority:
 
 					Message priority flag
