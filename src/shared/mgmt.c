@@ -27,6 +27,8 @@
 
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
+#include <errno.h>
 
 #include <glib.h>
 
@@ -155,8 +157,13 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 
 	bytes_written = write(mgmt->fd, request->buf, request->len);
 	if (bytes_written < 0) {
-		g_queue_push_head(mgmt->request_queue, request);
-		return FALSE;
+		util_debug(mgmt->debug_callback, mgmt->debug_data,
+				"write failed: %s", strerror(errno));
+		if (request->callback)
+			request->callback(MGMT_STATUS_FAILED, 0, NULL,
+							request->user_data);
+		destroy_request(request, NULL);
+		return TRUE;
 	}
 
 	util_debug(mgmt->debug_callback, mgmt->debug_data,
