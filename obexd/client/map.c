@@ -595,6 +595,24 @@ static gboolean get_size(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean reception_status_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct map_msg *msg = data;
+
+	return msg->status != NULL;
+}
+
+static gboolean get_reception_status(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &msg->status);
+
+	return TRUE;
+}
+
 static gboolean get_attachment_size(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -732,6 +750,7 @@ static const GDBusPropertyTable map_msg_properties[] = {
 	{ "Type", "s", get_type, NULL, type_exists },
 	{ "Size", "t", get_size },
 	{ "Text", "b", get_text },
+	{ "Status", "s", get_reception_status, NULL, reception_status_exists },
 	{ "AttachmentSize", "t", get_attachment_size },
 	{ "Priority", "b", get_priority },
 	{ "Read", "b", get_read, set_read },
