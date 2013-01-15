@@ -2579,6 +2579,9 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 	if (session == NULL)
 		return -ENOTCONN;
 
+	if (session->version < 0x0104)
+		return -ENOTSUP;
+
 	memset(buf, 0, sizeof(buf));
 
 	set_company_id(pdu->company_id, IEEEID_BTSIG);
