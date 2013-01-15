@@ -2597,7 +2597,8 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 					AVC_CTYPE_CONTROL, AVC_SUBUNIT_PANEL,
 					buf, sizeof(buf),
 					avrcp_handle_set_volume, session);
-	} else {
+	} else if (session->registered_events &
+					(1 << AVRCP_EVENT_VOLUME_CHANGED)) {
 		uint8_t id = AVRCP_EVENT_VOLUME_CHANGED;
 		pdu->pdu_id = AVRCP_REGISTER_NOTIFICATION;
 		pdu->params[0] = AVRCP_EVENT_VOLUME_CHANGED;
@@ -2609,4 +2610,6 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 					AVC_CTYPE_CHANGED, AVC_SUBUNIT_PANEL,
 					buf, sizeof(buf));
 	}
+
+	return 0;
 }
