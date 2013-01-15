@@ -1316,6 +1316,8 @@ static gboolean discovery_cb(gpointer user_data)
 	adapter->discov_id = 0;
 	adapter->discov_type = 0;
 
+	DBG("");
+
 	if (adapter->current_settings & MGMT_SETTING_LE) {
 		hci_set_bit(BDADDR_LE_PUBLIC, &adapter->discov_type);
 		hci_set_bit(BDADDR_LE_RANDOM, &adapter->discov_type);
@@ -1337,6 +1339,8 @@ static DBusMessage *adapter_start_discovery(DBusConnection *conn,
 	struct btd_adapter *adapter = data;
 	const char *sender = dbus_message_get_sender(msg);
 	int err;
+
+	DBG("");
 
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
