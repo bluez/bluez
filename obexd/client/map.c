@@ -810,19 +810,19 @@ static void parse_type(struct map_msg *msg, const char *value,
 	obex_dbus_dict_append(iter, "Type", DBUS_TYPE_STRING, &value);
 }
 
+static void parse_size(struct map_msg *msg, const char *value,
+							DBusMessageIter *iter)
+{
+	msg->size = g_ascii_strtoll(value, NULL, 10);
+	obex_dbus_dict_append(iter, "Size", DBUS_TYPE_UINT64, &msg->size);
+}
+
 static void parse_status(struct map_msg *msg, const char *value,
 							DBusMessageIter *iter)
 {
 	g_free(msg->status);
 	msg->status = g_strdup(value);
 	obex_dbus_dict_append(iter, "Status", DBUS_TYPE_STRING, &value);
-}
-
-static void parse_size(struct map_msg *msg, const char *value,
-							DBusMessageIter *iter)
-{
-	msg->size = g_ascii_strtoll(value, NULL, 10);
-	obex_dbus_dict_append(iter, "Size", DBUS_TYPE_UINT64, &msg->size);
 }
 
 static void parse_priority(struct map_msg *msg, const char *value,
@@ -890,8 +890,8 @@ static struct map_msg_parser {
 		{ "recipient_name", parse_recipient },
 		{ "recipient_addressing", parse_recipient_address },
 		{ "type", parse_type },
-		{ "reception_status", parse_status },
 		{ "size", parse_size },
+		{ "reception_status", parse_status },
 		{ "priority", parse_priority },
 		{ "read", parse_read },
 		{ "sent", parse_sent },
