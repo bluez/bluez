@@ -72,6 +72,53 @@ static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_number = 0;
 
+#define MAX_CONN 16
+
+struct conn_data {
+	uint16_t handle;
+	uint8_t  type;
+};
+
+static struct conn_data conn_list[MAX_CONN];
+
+static void assign_handle(uint16_t handle, uint8_t type)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++) {
+		if (conn_list[i].handle == 0x0000) {
+			conn_list[i].handle = handle;
+			conn_list[i].type = type;
+			break;
+		}
+	}
+}
+
+static void release_handle(uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++) {
+		if (conn_list[i].handle == handle) {
+			conn_list[i].handle = 0x0000;
+			conn_list[i].type = 0x00;
+			break;
+		}
+	}
+}
+
+static uint8_t get_type(uint16_t handle)
+{
+	int i;
+
+	for (i = 0; i < MAX_CONN; i++) {
+		if (conn_list[i].handle == handle)
+			return conn_list[i].type;
+	}
+
+	return 0xff;
+}
+
 void packet_set_filter(unsigned long filter)
 {
 	filter_mask = filter;
@@ -839,6 +886,38 @@ static void print_encr_mode(uint8_t encr_mode)
 		break;
 	case 0x01:
 		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Encryption: %s (0x%2.2x)", str, encr_mode);
+}
+
+static void print_encr_mode_change(uint8_t encr_mode, uint16_t handle)
+{
+	const char *str;
+	uint8_t conn_type;
+
+	conn_type = get_type(btohs(handle));
+
+	switch (encr_mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		switch (conn_type) {
+		case 0x00:
+			str = "Enabled with E0";
+			break;
+		case 0x01:
+			str = "Enabled with AES-CCM";
+			break;
+		default:
+			str = "Enabled";
+			break;
+		}
 		break;
 	default:
 		str = "Reserved";
@@ -3903,6 +3982,9 @@ static void conn_complete_evt(const void *data, uint8_t size)
 	print_bdaddr(evt->bdaddr);
 	print_link_type(evt->link_type);
 	print_encr_mode(evt->encr_mode);
+
+	if (evt->status == 0x00)
+		assign_handle(btohs(evt->handle), 0x00);
 }
 
 static void conn_request_evt(const void *data, uint8_t size)
@@ -3921,6 +4003,9 @@ static void disconnect_complete_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_reason(evt->reason);
+
+	if (evt->status == 0x00)
+		release_handle(btohs(evt->handle));
 }
 
 static void auth_complete_evt(const void *data, uint8_t size)
@@ -3946,7 +4031,7 @@ static void encrypt_change_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_encr_mode(evt->encr_mode);
+	print_encr_mode_change(evt->encr_mode, evt->handle);
 }
 
 static void change_conn_link_key_complete_evt(const void *data, uint8_t size)
@@ -4570,6 +4655,9 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 	print_field("Supervision timeout: %d msec (0x%4.4x)",
 		btohs(evt->supv_timeout) * 10, btohs(evt->supv_timeout));
 	print_field("Master clock accuracy: 0x%2.2x", evt->clock_accuracy);
+
+	if (evt->status == 0x00)
+		assign_handle(btohs(evt->handle), 0x01);
 }
 
 static void le_adv_report_evt(const void *data, uint8_t size)
