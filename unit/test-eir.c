@@ -220,6 +220,19 @@ static const struct test_data bluesc_test = {
 	.name_complete = TRUE,
 };
 
+static const unsigned char mio_alpha_data[] = {
+		0x02, 0x01, 0x06, 0x03, 0x02, 0x0d, 0x18, 0x06,
+		0x09, 0x41, 0x4c, 0x50, 0x48, 0x41,
+};
+
+static const struct test_data mio_alpha_test = {
+	.eir_data = mio_alpha_data,
+	.eir_size = sizeof(mio_alpha_data),
+	.flags = 0x06,
+	.name = "ALPHA",
+	.name_complete = TRUE,
+};
+
 static const unsigned char cookoo_data[] = {
 		0x02, 0x01, 0x05, 0x05, 0x02, 0x02, 0x18, 0x0a,
 		0x18, 0x0d, 0x09, 0x43, 0x4f, 0x4f, 0x4b, 0x4f,
@@ -318,6 +331,7 @@ int main(int argc, char *argv[])
 	g_test_add_data_func("/eir/ipadmini", &ipadmini_test, test_parsing);
 	g_test_add_data_func("/eir/fuelband", &fuelband_test, test_parsing);
 	g_test_add_data_func("/ad/bluesc", &bluesc_test, test_parsing);
+	g_test_add_data_func("/ad/mioalpha", &mio_alpha_test, test_parsing);
 	g_test_add_data_func("/ad/cookoo", &cookoo_test, test_parsing);
 	g_test_add_data_func("/ad/citizen1", &citizen_adv_test, test_parsing);
 	g_test_add_data_func("/ad/citizen2", &citizen_scan_test, test_parsing);
