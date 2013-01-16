@@ -291,6 +291,7 @@ struct generic_data {
 	const void *expect_param;
 	uint16_t expect_len;
 	uint32_t expect_settings_set;
+	uint32_t expect_settings_unset;
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
@@ -839,12 +840,19 @@ static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
 
 	tester_print("New settings 0x%08x received", settings);
 
+	if (test->expect_settings_unset) {
+		if ((settings & ~test->expect_settings_unset) != 0)
+			return;
+		goto done;
+	}
+
 	if (!test->expect_settings_set)
 		return;
 
 	if ((settings & test->expect_settings_set) != test->expect_settings_set)
 		return;
 
+done:
 	tester_print("Unregistering new settings notification");
 
 	mgmt_unregister_index(data->mgmt_alt, index);
