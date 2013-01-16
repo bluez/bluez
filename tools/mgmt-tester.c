@@ -945,14 +945,17 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (test->expect_settings_set)
-		return;
-
 	if (test->expect_hci_command && !data->hci_commands_complete) {
 		tester_warn("Command completed without expected HCI command");
 		tester_test_failed();
 		return;
 	}
+
+	if (test->expect_settings_set)
+		return;
+
+	if (test->expect_class_of_dev)
+		return;
 
 	tester_test_passed();
 }
