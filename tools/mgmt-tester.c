@@ -888,7 +888,7 @@ static void command_generic_new_settings_alt(uint16_t index, uint16_t length,
 	tester_print("New settings 0x%08x received", settings);
 
 	if (test->expect_settings_unset) {
-		if ((settings & ~test->expect_settings_unset) != 0)
+		if ((settings & test->expect_settings_unset) != 0)
 			return;
 		goto done;
 	}
