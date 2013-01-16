@@ -51,7 +51,7 @@ struct test_data {
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
-	bool hci_commands_complete;
+	int unmet_conditions;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -263,6 +263,26 @@ static void test_post_teardown(const void *test_data)
 	data->hciemu = NULL;
 }
 
+static void test_add_condition(struct test_data *data)
+{
+	data->unmet_conditions++;
+
+	tester_print("Test condition added, total %d", data->unmet_conditions);
+}
+
+static void test_condition_complete(struct test_data *data)
+{
+	data->unmet_conditions--;
+
+	tester_print("Test condition complete, %d left",
+						data->unmet_conditions);
+
+	if (data->unmet_conditions > 0)
+		return;
+
+	tester_test_passed();
+}
+
 #define test_bredr(name, data, setup, func) \
 	do { \
 		struct test_data *user; \
@@ -274,7 +294,7 @@ static void test_post_teardown(const void *test_data)
 		user->expected_manufacturer = 0x003f; \
 		user->expected_supported_settings = 0x000002ff; \
 		user->initial_settings = 0x00000080; \
-		user->hci_commands_complete = false; \
+		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, user, free); \
@@ -904,13 +924,7 @@ done:
 
 	mgmt_unregister(data->mgmt_alt, data->mgmt_alt_settings_id);
 
-	if (test->expect_hci_command && !data->hci_commands_complete) {
-		tester_warn("Settings received without expected HCI command");
-		tester_test_failed();
-		return;
-	}
-
-	tester_test_passed();
+	test_condition_complete(data);
 }
 
 static void command_generic_class_changed_alt(uint16_t index, uint16_t length,
@@ -940,13 +954,7 @@ static void command_generic_class_changed_alt(uint16_t index, uint16_t length,
 
 	mgmt_unregister(data->mgmt_alt, data->mgmt_alt_class_id);
 
-	if (test->expect_hci_command && !data->hci_commands_complete) {
-		tester_warn("CoD changed without expected HCI command");
-		tester_test_failed();
-		return;
-	}
-
-	tester_test_passed();
+	test_condition_complete(data);
 }
 
 static void command_generic_callback(uint8_t status, uint16_t length,
@@ -974,19 +982,7 @@ static void command_generic_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	if (test->expect_hci_command && !data->hci_commands_complete) {
-		tester_warn("Command completed without expected HCI command");
-		tester_test_failed();
-		return;
-	}
-
-	if (test->expect_settings_set)
-		return;
-
-	if (test->expect_class_of_dev)
-		return;
-
-	tester_test_passed();
+	test_condition_complete(data);
 }
 
 static void command_hci_callback(uint16_t opcode, const void *param,
@@ -1012,7 +1008,7 @@ static void command_hci_callback(uint16_t opcode, const void *param,
 		return;
 	}
 
-	data->hci_commands_complete = true;
+	test_condition_complete(data);
 }
 
 static void test_command_generic(const void *test_data)
@@ -1024,7 +1020,7 @@ static void test_command_generic(const void *test_data)
 
 	index = test->send_index_none ? MGMT_INDEX_NONE : data->mgmt_index;
 
-	if (test->expect_settings_set) {
+	if (test->expect_settings_set || test->expect_settings_unset) {
 		tester_print("Registering new settings notification");
 
 		id = mgmt_register(data->mgmt, MGMT_EV_NEW_SETTINGS, index,
@@ -1034,6 +1030,7 @@ static void test_command_generic(const void *test_data)
 		id = mgmt_register(data->mgmt_alt, MGMT_EV_NEW_SETTINGS, index,
 				command_generic_new_settings_alt, NULL, NULL);
 		data->mgmt_alt_settings_id = id;
+		test_add_condition(data);
 	}
 
 	if (test->expect_class_of_dev) {
@@ -1043,12 +1040,14 @@ static void test_command_generic(const void *test_data)
 					command_generic_class_changed_alt,
 					NULL, NULL);
 		data->mgmt_alt_class_id = id;
+		test_add_condition(data);
 	}
 
 	if (test->expect_hci_command) {
 		tester_print("Registering HCI command callback");
 		hciemu_add_master_post_command_hook(data->hciemu,
 						command_hci_callback, data);
+		test_add_condition(data);
 	}
 
 	tester_print("Sending command 0x%04x", test->send_opcode);
@@ -1056,6 +1055,7 @@ static void test_command_generic(const void *test_data)
 	mgmt_send(data->mgmt, test->send_opcode, index,
 					test->send_len, test->send_param,
 					command_generic_callback, NULL, NULL);
+	test_add_condition(data);
 }
 
 int main(int argc, char *argv[])
