@@ -3887,6 +3887,12 @@ static void adapter_update_found_devices(struct btd_adapter *adapter,
 	else
 		dev = adapter_create_device(adapter, addr, bdaddr_type);
 
+	if (!dev) {
+		error("Unable to create object for found device %s", addr);
+		eir_data_free(&eir_data);
+		return;
+	}
+
 	device_set_legacy(dev, legacy);
 	device_set_rssi(dev, rssi);
 
