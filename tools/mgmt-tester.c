@@ -692,6 +692,7 @@ static const struct generic_data start_discovery_not_supported_test_1 = {
 static const char set_dev_class_valid_param[] = { 0x01, 0x0c };
 static const char set_dev_class_zero_rsp[] = { 0x00, 0x00, 0x00 };
 static const char set_dev_class_valid_rsp[] = { 0x0c, 0x01, 0x00 };
+static const char set_dev_class_valid_hci[] = { 0x0c, 0x01, 0x00 };
 static const char set_dev_class_invalid_param[] = { 0x01, 0x01 };
 
 static const struct generic_data set_dev_class_valid_param_test_1 = {
@@ -710,6 +711,9 @@ static const struct generic_data set_dev_class_valid_param_test_2 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_dev_class_valid_rsp,
 	.expect_len = sizeof(set_dev_class_valid_rsp),
+	.expect_hci_command = BT_HCI_CMD_WRITE_CLASS_OF_DEV,
+	.expect_hci_param = set_dev_class_valid_hci,
+	.expect_hci_len = sizeof(set_dev_class_valid_hci),
 };
 
 static const struct generic_data set_dev_class_invalid_param_test_1 = {
