@@ -297,7 +297,24 @@ static void test_condition_complete(struct test_data *data)
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, user, free); \
+				test_post_teardown, 0, user, free); \
+	} while (0)
+
+#define test_bredr_timeout(name, data, setup, func, timeout) \
+	do { \
+		struct test_data *user; \
+		user = malloc(sizeof(struct test_data)); \
+		if (!user) \
+			break; \
+		user->test_data = data; \
+		user->expected_version = 0x06; \
+		user->expected_manufacturer = 0x003f; \
+		user->expected_supported_settings = 0x000002ff; \
+		user->initial_settings = 0x00000080; \
+		user->unmet_conditions = 0; \
+		tester_add_full(name, data, \
+				test_pre_setup, setup, func, NULL, \
+				test_post_teardown, timeout, user, free); \
 	} while (0)
 
 static void controller_setup(const void *test_data)
