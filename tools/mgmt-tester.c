@@ -1126,9 +1126,9 @@ int main(int argc, char *argv[])
 
 	test_bredr("Set powered off - Success", &set_powered_off_success_test,
 					setup_powered, test_command_generic);
-	test_bredr("Set powered off - Class of Device",
+	test_bredr_timeout("Set powered off - Class of Device",
 					&set_powered_off_class_test,
-					setup_class, test_command_generic);
+					setup_class, test_command_generic, 1);
 
 	test_bredr("Set connectable on - Success 1",
 					&set_connectable_on_success_test_1,
