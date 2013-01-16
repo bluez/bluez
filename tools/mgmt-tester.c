@@ -404,6 +404,7 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 
 static const char set_powered_off_param[] = { 0x00 };
 static const char set_powered_off_settings_param[] = { 0x80, 0x00, 0x00, 0x00 };
+static const char set_powered_off_class_of_dev[] = { 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_powered_off_success_test = {
 	.send_opcode = MGMT_OP_SET_POWERED,
@@ -413,6 +414,17 @@ static const struct generic_data set_powered_off_success_test = {
 	.expect_param = set_powered_off_settings_param,
 	.expect_len = sizeof(set_powered_off_settings_param),
 	.expect_settings_unset = MGMT_SETTING_POWERED,
+};
+
+static const struct generic_data set_powered_off_class_test = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_off_param,
+	.send_len = sizeof(set_powered_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_powered_off_settings_param,
+	.expect_len = sizeof(set_powered_off_settings_param),
+	.expect_settings_unset = MGMT_SETTING_POWERED,
+	.expect_class_of_dev = set_powered_off_class_of_dev,
 };
 
 static const char set_connectable_on_param[] = { 0x01 };
@@ -792,6 +804,23 @@ static void setup_powered_connectable(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void setup_class(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+	unsigned char class_param[] = { 0x01, 0x0c };
+
+	tester_print("Powering on controller");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_DEV_CLASS, data->mgmt_index,
+				sizeof(class_param), class_param,
+				NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
 static void setup_powered(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -1080,6 +1109,9 @@ int main(int argc, char *argv[])
 
 	test_bredr("Set powered off - Success", &set_powered_off_success_test,
 					setup_powered, test_command_generic);
+	test_bredr("Set powered off - Class of Device",
+					&set_powered_off_class_test,
+					setup_class, test_command_generic);
 
 	test_bredr("Set connectable on - Success 1",
 					&set_connectable_on_success_test_1,
