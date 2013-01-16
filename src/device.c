@@ -1915,6 +1915,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 					device_methods, NULL,
 					device_properties, device,
 					device_free) == FALSE) {
+		error("Unable to register device interface for %s", address);
 		device_free(device);
 		return NULL;
 	}
