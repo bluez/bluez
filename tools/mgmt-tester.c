@@ -398,6 +398,19 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_powered_off_param[] = { 0x00 };
+static const char set_powered_off_settings_param[] = { 0x80, 0x00, 0x00, 0x00 };
+
+static const struct generic_data set_powered_off_success_test = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_off_param,
+	.send_len = sizeof(set_powered_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_powered_off_settings_param,
+	.expect_len = sizeof(set_powered_off_settings_param),
+	.expect_settings_unset = MGMT_SETTING_POWERED,
+};
+
 static const char set_connectable_on_param[] = { 0x01 };
 static const char set_connectable_invalid_param[] = { 0x02 };
 static const char set_connectable_garbage_param[] = { 0x01, 0x00 };
@@ -1008,6 +1021,9 @@ int main(int argc, char *argv[])
 	test_bredr("Set powered on - Invalid index",
 					&set_powered_on_invalid_index_test,
 					NULL, test_command_generic);
+
+	test_bredr("Set powered off - Success", &set_powered_off_success_test,
+					setup_powered, test_command_generic);
 
 	test_bredr("Set connectable on - Success 1",
 					&set_connectable_on_success_test_1,
