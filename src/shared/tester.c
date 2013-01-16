@@ -85,6 +85,8 @@ struct test_case {
 	tester_data_func_t post_teardown_func;
 	gdouble start_time;
 	gdouble end_time;
+	unsigned int timeout;
+	unsigned int timeout_id;
 	tester_destroy_func_t destroy;
 	void *user_data;
 };
@@ -104,6 +106,9 @@ static const char *option_prefix = NULL;
 static void test_destroy(gpointer data)
 {
 	struct test_case *test = data;
+
+	if (test->timeout_id > 0)
+		g_source_remove(test->timeout_id);
 
 	if (test->destroy)
 		test->destroy(test->user_data);
@@ -163,6 +168,7 @@ void tester_add_full(const char *name, const void *test_data,
 				tester_data_func_t test_func,
 				tester_data_func_t teardown_func,
 				tester_data_func_t post_teardown_func,
+				unsigned int timeout,
 				void *user_data, tester_destroy_func_t destroy)
 {
 	struct test_case *test;
@@ -213,6 +219,8 @@ void tester_add_full(const char *name, const void *test_data,
 	else
 		test->post_teardown_func = default_post_teardown;
 
+	test->timeout = timeout;
+
 	test->destroy = destroy;
 	test->user_data = user_data;
 
@@ -225,7 +233,7 @@ void tester_add(const char *name, const void *test_data,
 					tester_data_func_t teardown_func)
 {
 	tester_add_full(name, test_data, NULL, setup_func, test_func,
-					teardown_func, NULL, NULL, NULL);
+					teardown_func, NULL, 0, NULL, NULL);
 }
 
 void *tester_get_data(void)
@@ -288,6 +296,35 @@ static void tester_summarize(void)
 
 }
 
+static gboolean teardown_callback(gpointer user_data)
+{
+	struct test_case *test = user_data;
+
+	test->stage = TEST_STAGE_TEARDOWN;
+
+	print_progress(test->name, COLOR_MAGENTA, "teardown");
+	test->teardown_func(test->test_data);
+
+	return FALSE;
+}
+
+static gboolean test_timeout(gpointer user_data)
+{
+	struct test_case *test = user_data;
+
+	test->timeout_id = 0;
+
+	if (!test_current)
+		return FALSE;
+
+	test->result = TEST_RESULT_FAILED;
+	print_progress(test->name, COLOR_RED, "test timed out");
+
+	g_idle_add(teardown_callback, test);
+
+	return FALSE;
+}
+
 static void next_test_case(void)
 {
 	struct test_case *test;
@@ -310,6 +347,10 @@ static void next_test_case(void)
 	print_progress(test->name, COLOR_BLACK, "init");
 
 	test->start_time = g_timer_elapsed(test_timer, NULL);
+
+	if (test->timeout > 0)
+		test->timeout_id = g_timeout_add_seconds(test->timeout,
+							test_timeout, test);
 
 	test->stage = TEST_STAGE_PRE_SETUP;
 
@@ -336,18 +377,6 @@ static gboolean run_callback(gpointer user_data)
 
 	print_progress(test->name, COLOR_BLACK, "run");
 	test->test_func(test->test_data);
-
-	return FALSE;
-}
-
-static gboolean teardown_callback(gpointer user_data)
-{
-	struct test_case *test = user_data;
-
-	test->stage = TEST_STAGE_TEARDOWN;
-
-	print_progress(test->name, COLOR_MAGENTA, "teardown");
-	test->teardown_func(test->test_data);
 
 	return FALSE;
 }

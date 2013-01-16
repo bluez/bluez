@@ -43,6 +43,7 @@ void tester_add_full(const char *name, const void *test_data,
 				tester_data_func_t test_func,
 				tester_data_func_t teardown_func,
 				tester_data_func_t post_teardown_func,
+				unsigned int timeout,
 				void *user_data, tester_destroy_func_t destroy);
 
 void tester_add(const char *name, const void *test_data,
