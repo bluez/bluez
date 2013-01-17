@@ -807,6 +807,7 @@ struct media_transport *media_transport_create(struct audio_device *device,
 							transport);
 		} else {
 			a2dp->volume = 127;
+			avrcp_set_volume(device, a2dp->volume);
 			transport->source_watch = source_add_state_cb(
 							source_state_changed,
 							transport);
@@ -896,7 +897,7 @@ uint8_t media_transport_get_device_volume(struct audio_device *dev)
 			return media_transport_get_volume(transport);
 	}
 
-	return 128;
+	return 0;
 }
 
 void media_transport_update_device_volume(struct audio_device *dev,
