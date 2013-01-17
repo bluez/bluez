@@ -62,6 +62,7 @@ enum test_result {
 	TEST_RESULT_NOT_RUN,
 	TEST_RESULT_PASSED,
 	TEST_RESULT_FAILED,
+	TEST_RESULT_TIMED_OUT,
 };
 
 enum test_stage {
@@ -280,6 +281,11 @@ static void tester_summarize(void)
 						"%8.3f seconds", exec_time);
 			failed++;
 			break;
+		case TEST_RESULT_TIMED_OUT:
+			print_summary(test->name, COLOR_RED, "Timed out",
+						"%8.3f seconds", exec_time);
+			failed++;
+			break;
 		}
         }
 
@@ -317,7 +323,7 @@ static gboolean test_timeout(gpointer user_data)
 	if (!test_current)
 		return FALSE;
 
-	test->result = TEST_RESULT_FAILED;
+	test->result = TEST_RESULT_TIMED_OUT;
 	print_progress(test->name, COLOR_RED, "test timed out");
 
 	g_idle_add(teardown_callback, test);
