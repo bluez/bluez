@@ -297,24 +297,7 @@ static void test_condition_complete(struct test_data *data)
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 0, user, free); \
-	} while (0)
-
-#define test_bredr_timeout(name, data, setup, func, timeout) \
-	do { \
-		struct test_data *user; \
-		user = malloc(sizeof(struct test_data)); \
-		if (!user) \
-			break; \
-		user->test_data = data; \
-		user->expected_version = 0x06; \
-		user->expected_manufacturer = 0x003f; \
-		user->expected_supported_settings = 0x000002ff; \
-		user->initial_settings = 0x00000080; \
-		user->unmet_conditions = 0; \
-		tester_add_full(name, data, \
-				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, timeout, user, free); \
+				test_post_teardown, 2, user, free); \
 	} while (0)
 
 static void controller_setup(const void *test_data)
@@ -1302,9 +1285,9 @@ int main(int argc, char *argv[])
 
 	test_bredr("Set powered off - Success", &set_powered_off_success_test,
 					setup_powered, test_command_generic);
-	test_bredr_timeout("Set powered off - Class of Device",
+	test_bredr("Set powered off - Class of Device",
 					&set_powered_off_class_test,
-					setup_class, test_command_generic, 1);
+					setup_class, test_command_generic);
 
 	test_bredr("Set connectable on - Success 1",
 					&set_connectable_on_success_test_1,
@@ -1426,11 +1409,10 @@ int main(int argc, char *argv[])
 
 	test_bredr("Add UUID - UUID-16 1", &add_uuid16_test_1,
 				setup_ssp, test_command_generic);
-	test_bredr_timeout("Add UUID - UUID-16 multiple 1",
-				&add_multi_uuid16_test_1,
-				setup_multi_uuid16, test_command_generic, 1);
-	test_bredr_timeout("Add UUID - UUID-32 1", &add_uuid32_test_1,
-				setup_ssp, test_command_generic, 1);
+	test_bredr("Add UUID - UUID-16 multiple 1", &add_multi_uuid16_test_1,
+				setup_multi_uuid16, test_command_generic);
+	test_bredr("Add UUID - UUID-32 1", &add_uuid32_test_1, setup_ssp,
+				test_command_generic);
 
 	return tester_run();
 }
