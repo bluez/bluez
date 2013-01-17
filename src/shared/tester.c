@@ -471,6 +471,11 @@ void tester_test_passed(void)
 	if (test->stage != TEST_STAGE_RUN)
 		return;
 
+	if (test->timeout_id > 0) {
+		g_source_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
+
 	test->result = TEST_RESULT_PASSED;
 	print_progress(test->name, COLOR_GREEN, "test passed");
 
@@ -488,6 +493,11 @@ void tester_test_failed(void)
 
 	if (test->stage != TEST_STAGE_RUN)
 		return;
+
+	if (test->timeout_id > 0) {
+		g_source_remove(test->timeout_id);
+		test->timeout_id = 0;
+	}
 
 	test->result = TEST_RESULT_FAILED;
 	print_progress(test->name, COLOR_RED, "test failed");
