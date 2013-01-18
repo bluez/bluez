@@ -1714,7 +1714,7 @@ int main(int argc, char *argv[])
 			test_command_generic);
 
 	test_bredr("Unblock Device - Invalid Parameters 1",
-			&block_device_invalid_param_test_1, NULL,
+			&unblock_device_invalid_param_test_1, NULL,
 			test_command_generic);
 
 	return tester_run();
