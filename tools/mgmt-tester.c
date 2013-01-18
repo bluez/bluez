@@ -949,6 +949,15 @@ static const struct generic_data load_link_keys_invalid_params_test_2 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const char load_ltks_valid_param_1[] = { 0x00, 0x00 };
+
+static const struct generic_data load_ltks_success_test_1 = {
+	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
+	.send_param = load_ltks_valid_param_1,
+	.send_len = sizeof(load_ltks_valid_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -1466,6 +1475,9 @@ int main(int argc, char *argv[])
 	test_bredr("Load Link Keys - Invalid Parameters 2",
 			&load_link_keys_invalid_params_test_2, NULL,
 			test_command_generic);
+
+	test_bredr("Load Long Term Keys - Success 1",
+			&load_ltks_success_test_1, NULL, test_command_generic);
 
 	return tester_run();
 }
