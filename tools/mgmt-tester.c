@@ -1070,6 +1070,46 @@ static const struct generic_data pair_device_invalid_param_test_1 = {
 	.expect_len = sizeof(pair_device_invalid_param_rsp_1),
 };
 
+static const char unpair_device_param[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
+static const char unpair_device_rsp[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00 };
+static const char unpair_device_invalid_param_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff, 0x00 };
+static const char unpair_device_invalid_param_rsp_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff };
+static const char unpair_device_invalid_param_2[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x02 };
+static const char unpair_device_invalid_param_rsp_2[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00 };
+
+static const struct generic_data unpair_device_not_powered_test_1 = {
+	.send_opcode = MGMT_OP_UNPAIR_DEVICE,
+	.send_param = unpair_device_param,
+	.send_len = sizeof(unpair_device_param),
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_param = unpair_device_rsp,
+	.expect_len = sizeof(unpair_device_rsp),
+};
+
+static const struct generic_data unpair_device_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_UNPAIR_DEVICE,
+	.send_param = unpair_device_invalid_param_1,
+	.send_len = sizeof(unpair_device_invalid_param_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = unpair_device_invalid_param_rsp_1,
+	.expect_len = sizeof(unpair_device_invalid_param_rsp_1),
+};
+
+static const struct generic_data unpair_device_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_UNPAIR_DEVICE,
+	.send_param = unpair_device_invalid_param_2,
+	.send_len = sizeof(unpair_device_invalid_param_2),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = unpair_device_invalid_param_rsp_2,
+	.expect_len = sizeof(unpair_device_invalid_param_rsp_2),
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -1611,6 +1651,16 @@ int main(int argc, char *argv[])
 			test_command_generic);
 	test_bredr("Pair Device - Invalid Parameters 1",
 			&pair_device_invalid_param_test_1, NULL,
+			test_command_generic);
+
+	test_bredr("Unpair Device - Not Powered 1",
+			&unpair_device_not_powered_test_1, NULL,
+			test_command_generic);
+	test_bredr("Unpair Device - Invalid Parameters 1",
+			&unpair_device_invalid_param_test_1, NULL,
+			test_command_generic);
+	test_bredr("Unpair Device - Invalid Parameters 2",
+			&unpair_device_invalid_param_test_2, NULL,
 			test_command_generic);
 
 	return tester_run();
