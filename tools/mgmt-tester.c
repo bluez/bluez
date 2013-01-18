@@ -1043,6 +1043,20 @@ static const struct generic_data load_ltks_invalid_params_test_4 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static const char pair_device_param[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
+static const char pair_device_rsp[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00 };
+
+static const struct generic_data pair_device_not_powered_test_1 = {
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_param = pair_device_param,
+	.send_len = sizeof(pair_device_param),
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+	.expect_param = pair_device_rsp,
+	.expect_len = sizeof(pair_device_rsp),
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -1577,6 +1591,10 @@ int main(int argc, char *argv[])
 			test_command_generic);
 	test_bredr("Load Long Term Keys - Invalid Parameters 4",
 			&load_ltks_invalid_params_test_4, NULL,
+			test_command_generic);
+
+	test_bredr("Pair Device - Not Powered 1",
+			&pair_device_not_powered_test_1, NULL,
 			test_command_generic);
 
 	return tester_run();
