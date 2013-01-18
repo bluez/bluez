@@ -1399,11 +1399,13 @@ static uint8_t avrcp_handle_set_absolute_volume(struct avrcp *session,
 {
 	struct avrcp_player *player = session->player;
 	uint16_t len = ntohs(pdu->params_len);
+	uint8_t volume;
 
 	if (len != 1)
 		goto err;
 
-	if (pdu->params[0] > 127)
+	volume = pdu->params[0] & 0x7F;
+	if (volume > 127)
 		goto err;
 
 	if (!player)
