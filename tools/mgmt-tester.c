@@ -1124,6 +1124,20 @@ static const struct generic_data disconnect_invalid_param_test_1 = {
 	.expect_len = sizeof(disconnect_invalid_param_rsp_1),
 };
 
+static const char block_device_invalid_param_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff };
+static const char block_device_invalid_param_rsp_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff };
+
+static const struct generic_data block_device_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_BLOCK_DEVICE,
+	.send_param = block_device_invalid_param_1,
+	.send_len = sizeof(block_device_invalid_param_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = block_device_invalid_param_rsp_1,
+	.expect_len = sizeof(block_device_invalid_param_rsp_1),
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -1679,6 +1693,10 @@ int main(int argc, char *argv[])
 
 	test_bredr("Disconnect - Invalid Parameters 1",
 			&disconnect_invalid_param_test_1, NULL,
+			test_command_generic);
+
+	test_bredr("Block Device - Invalid Parameters 1",
+			&block_device_invalid_param_test_1, NULL,
 			test_command_generic);
 
 	return tester_run();
