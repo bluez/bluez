@@ -916,6 +916,11 @@ static const struct generic_data add_uuid32_test_1 = {
 	.expect_hci_len = sizeof(write_eir_uuid32_hci),
 };
 
+static void powered_delay(void *user_data)
+{
+	tester_setup_complete();
+}
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -926,7 +931,9 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	tester_setup_complete();
+	/* FIXME: Delay here to not get confused by existing kernel bug
+	 * with missing synchronization of some HCI commands */
+	tester_wait(1, powered_delay, NULL);
 }
 
 static void setup_powered_discoverable(const void *test_data)
