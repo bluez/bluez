@@ -4643,17 +4643,39 @@ static void adapter_bonding_complete(struct btd_adapter *adapter,
 	check_oob_bonding_complete(adapter, bdaddr, status);
 }
 
+struct pair_device_data {
+	struct btd_adapter *adapter;
+	bdaddr_t bdaddr;
+	uint8_t addr_type;
+};
+
+static void free_pair_device_data(void *user_data)
+{
+	struct pair_device_data *data = user_data;
+
+	g_free(data);
+}
+
 static void pair_device_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_pair_device *rp = param;
-	struct btd_adapter *adapter = user_data;
+	struct pair_device_data *data = user_data;
 
 	DBG("%s (0x%02x)", mgmt_errstr(status), status);
 
+	/* Workaround for a kernel bug
+	 *
+	 * Broken kernels may reply to device pairing command with command
+	 * status instead of command complete event e.g. if adapter was not
+	 * powered.
+	 */
 	if (status != MGMT_STATUS_SUCCESS && length < sizeof(*rp)) {
 		error("Pair device failed: %s (0x%02x)",
 						mgmt_errstr(status), status);
+
+		adapter_bonding_complete(data->adapter, &data->bdaddr,
+						data->addr_type, status);
 		return;
 	}
 
@@ -4662,8 +4684,8 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	adapter_bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
-								status);
+	adapter_bonding_complete(data->adapter, &rp->addr.bdaddr,
+						rp->addr.type, status);
 }
 
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
@@ -4671,6 +4693,7 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 {
 	struct mgmt_cp_pair_device cp;
 	char addr[18];
+	struct pair_device_data *data;
 
 	suspend_discovery(adapter);
 
@@ -4683,12 +4706,20 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	cp.addr.type = addr_type;
 	cp.io_cap = io_cap;
 
+	data = g_new0(struct pair_device_data, 1);
+	data->adapter = adapter;
+	bacpy(&data->bdaddr, bdaddr);
+	data->addr_type = addr_type;
+
 	if (mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
 				adapter->dev_id, sizeof(cp), &cp,
-				pair_device_complete, adapter, NULL) > 0)
+				pair_device_complete, data,
+				free_pair_device_data) > 0)
 		return 0;
 
 	error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+
+	free_pair_device_data(data);
 
 	return -EIO;
 }
