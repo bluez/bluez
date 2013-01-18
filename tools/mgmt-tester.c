@@ -950,7 +950,47 @@ static const struct generic_data load_link_keys_invalid_params_test_2 = {
 };
 
 static const char load_ltks_valid_param_1[] = { 0x00, 0x00 };
+/* Invalid key count */
 static const char load_ltks_invalid_param_1[] = { 0x01, 0x00 };
+/* Invalid addr type */
+static const char load_ltks_invalid_param_2[] = {
+	0x01, 0x00,					/* count */
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,		/* bdaddr */
+	0x00,						/* addr type */
+	0x00,						/* authenticated */
+	0x00,						/* master */
+	0x00,						/* encryption size */
+	0x00, 0x00,					/* diversifier */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* rand */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (1/2) */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (2/2 */
+};
+/* Invalid authenticated value */
+static const char load_ltks_invalid_param_3[] = {
+	0x01, 0x00,					/* count */
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,		/* bdaddr */
+	0x01,						/* addr type */
+	0x02,						/* authenticated */
+	0x00,						/* master */
+	0x00,						/* encryption size */
+	0x00, 0x00,					/* diversifier */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* rand */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (1/2) */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (2/2 */
+};
+/* Invalid master value */
+static const char load_ltks_invalid_param_4[] = {
+	0x01, 0x00,					/* count */
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05,		/* bdaddr */
+	0x01,						/* addr type */
+	0x00,						/* authunticated */
+	0x02,						/* master */
+	0x00,						/* encryption size */
+	0x00, 0x00,					/* diversifier */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* rand */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (1/2) */
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* value (2/2 */
+};
 
 static const struct generic_data load_ltks_success_test_1 = {
 	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
@@ -963,6 +1003,27 @@ static const struct generic_data load_ltks_invalid_params_test_1 = {
 	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
 	.send_param = load_ltks_invalid_param_1,
 	.send_len = sizeof(load_ltks_invalid_param_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data load_ltks_invalid_params_test_2 = {
+	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
+	.send_param = load_ltks_invalid_param_2,
+	.send_len = sizeof(load_ltks_invalid_param_2),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data load_ltks_invalid_params_test_3 = {
+	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
+	.send_param = load_ltks_invalid_param_3,
+	.send_len = sizeof(load_ltks_invalid_param_3),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data load_ltks_invalid_params_test_4 = {
+	.send_opcode = MGMT_OP_LOAD_LONG_TERM_KEYS,
+	.send_param = load_ltks_invalid_param_4,
+	.send_len = sizeof(load_ltks_invalid_param_4),
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
@@ -1488,6 +1549,15 @@ int main(int argc, char *argv[])
 			&load_ltks_success_test_1, NULL, test_command_generic);
 	test_bredr("Load Long Term Keys - Invalid Parameters 1",
 			&load_ltks_invalid_params_test_1, NULL,
+			test_command_generic);
+	test_bredr("Load Long Term Keys - Invalid Parameters 2",
+			&load_ltks_invalid_params_test_2, NULL,
+			test_command_generic);
+	test_bredr("Load Long Term Keys - Invalid Parameters 3",
+			&load_ltks_invalid_params_test_3, NULL,
+			test_command_generic);
+	test_bredr("Load Long Term Keys - Invalid Parameters 4",
+			&load_ltks_invalid_params_test_4, NULL,
 			test_command_generic);
 
 	return tester_run();
