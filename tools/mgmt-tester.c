@@ -1047,6 +1047,10 @@ static const char pair_device_param[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00, 0x00 };
 static const char pair_device_rsp[] = {
 			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x00 };
+static const char pair_device_invalid_param_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff, 0x00 };
+static const char pair_device_invalid_param_rsp_1[] = {
+			0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0xff };
 
 static const struct generic_data pair_device_not_powered_test_1 = {
 	.send_opcode = MGMT_OP_PAIR_DEVICE,
@@ -1055,6 +1059,15 @@ static const struct generic_data pair_device_not_powered_test_1 = {
 	.expect_status = MGMT_STATUS_NOT_POWERED,
 	.expect_param = pair_device_rsp,
 	.expect_len = sizeof(pair_device_rsp),
+};
+
+static const struct generic_data pair_device_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_PAIR_DEVICE,
+	.send_param = pair_device_invalid_param_1,
+	.send_len = sizeof(pair_device_invalid_param_1),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+	.expect_param = pair_device_invalid_param_rsp_1,
+	.expect_len = sizeof(pair_device_invalid_param_rsp_1),
 };
 
 static void powered_delay(void *user_data)
@@ -1595,6 +1608,9 @@ int main(int argc, char *argv[])
 
 	test_bredr("Pair Device - Not Powered 1",
 			&pair_device_not_powered_test_1, NULL,
+			test_command_generic);
+	test_bredr("Pair Device - Invalid Parameters 1",
+			&pair_device_invalid_param_test_1, NULL,
 			test_command_generic);
 
 	return tester_run();
