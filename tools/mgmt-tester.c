@@ -916,6 +916,23 @@ static const struct generic_data add_uuid32_test_1 = {
 	.expect_hci_len = sizeof(write_eir_uuid32_hci),
 };
 
+static const char load_link_keys_valid_param_1[] = { 0x00, 0x00, 0x00 };
+static const char load_link_keys_valid_param_2[] = { 0x01, 0x00, 0x00 };
+
+static const struct generic_data load_link_keys_success_test_1 = {
+	.send_opcode = MGMT_OP_LOAD_LINK_KEYS,
+	.send_param = load_link_keys_valid_param_1,
+	.send_len = sizeof(load_link_keys_valid_param_1),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const struct generic_data load_link_keys_success_test_2 = {
+	.send_opcode = MGMT_OP_LOAD_LINK_KEYS,
+	.send_param = load_link_keys_valid_param_2,
+	.send_len = sizeof(load_link_keys_valid_param_2),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -1420,6 +1437,13 @@ int main(int argc, char *argv[])
 				setup_multi_uuid16, test_command_generic);
 	test_bredr("Add UUID - UUID-32 1", &add_uuid32_test_1, setup_ssp,
 				test_command_generic);
+
+	test_bredr("Load Link Keys - Empty List Success 1",
+			&load_link_keys_success_test_1, NULL,
+			test_command_generic);
+	test_bredr("Load Link Keys - Empty List Success 2",
+			&load_link_keys_success_test_2, NULL,
+			test_command_generic);
 
 	return tester_run();
 }
