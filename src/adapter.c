@@ -681,7 +681,7 @@ static int mgmt_stop_discovery(struct btd_adapter *adapter)
 }
 
 /* Called when a session gets removed or the adapter is stopped */
-static void stop_discovery(struct btd_adapter *adapter)
+static void session_stop_discovery(struct btd_adapter *adapter)
 {
 	/* Reset if suspended, otherwise remove timer (software scheduler)
 	 * or request inquiry to stop */
@@ -716,7 +716,7 @@ static void session_remove(struct session_req *req)
 
 	DBG("Stopping discovery");
 
-	stop_discovery(adapter);
+	session_stop_discovery(adapter);
 }
 
 static void session_free(void *data)
@@ -1336,12 +1336,12 @@ static gboolean discovery_cb(gpointer user_data)
 	return FALSE;
 }
 
-static DBusMessage *adapter_start_discovery(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *start_discovery(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
-	struct session_req *req;
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	const char *sender = dbus_message_get_sender(msg);
+	struct session_req *req;
 	int err;
 
 	DBG("");
@@ -1385,12 +1385,12 @@ done:
 	return dbus_message_new_method_return(msg);
 }
 
-static DBusMessage *adapter_stop_discovery(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static DBusMessage *stop_discovery(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
-	struct btd_adapter *adapter = data;
-	struct session_req *req;
+	struct btd_adapter *adapter = user_data;
 	const char *sender = dbus_message_get_sender(msg);
+	struct session_req *req;
 
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return btd_error_not_ready(msg);
@@ -1818,10 +1818,10 @@ static gint device_path_cmp(struct btd_device *device, const char *path)
 	return strcasecmp(dev_path, path);
 }
 
-static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
-								void *data)
+static DBusMessage *remove_device(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
-	struct btd_adapter *adapter = data;
+	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
 	const char *path;
 	GSList *l;
@@ -1849,13 +1849,10 @@ static DBusMessage *remove_device(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable adapter_methods[] = {
-	{ GDBUS_METHOD("StartDiscovery", NULL, NULL,
-			adapter_start_discovery) },
-	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL,
-			adapter_stop_discovery) },
+	{ GDBUS_METHOD("StartDiscovery", NULL, NULL, start_discovery) },
+	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL, stop_discovery) },
 	{ GDBUS_ASYNC_METHOD("RemoveDevice",
-			GDBUS_ARGS({ "device", "o" }), NULL,
-			remove_device) },
+			GDBUS_ARGS({ "device", "o" }), NULL, remove_device) },
 	{ }
 };
 
@@ -3920,7 +3917,7 @@ static void adapter_update_found_devices(struct btd_adapter *adapter,
 	if (device_is_le(dev) && g_slist_find(adapter->connect_list, dev)) {
 		adapter_connect_list_remove(adapter, dev);
 		g_idle_add(connect_pending_cb, btd_device_ref(dev));
-		stop_discovery(adapter);
+		session_stop_discovery(adapter);
 		adapter->waiting_to_connect++;
 	}
 }
@@ -4007,7 +4004,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 
 	if (adapter->discovery) {
 		emit_discovering = true;
-		stop_discovery(adapter);
+		session_stop_discovery(adapter);
 	}
 
 	if (adapter->discov_sessions) {
