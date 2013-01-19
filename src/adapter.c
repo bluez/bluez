@@ -113,7 +113,6 @@ struct session_req {
 	char			*owner;		/* Bus name of the owner */
 	guint			id;		/* Listener id */
 	int			refcount;	/* Session refcount */
-	gboolean		got_reply;	/* Agent reply received */
 };
 
 struct service_auth {
