@@ -106,7 +106,6 @@ struct session_req {
 	DBusMessage		*msg;		/* Unreplied message ref */
 	char			*owner;		/* Bus name of the owner */
 	guint			id;		/* Listener id */
-	int			refcount;	/* Session refcount */
 };
 
 struct service_auth {
@@ -425,15 +424,6 @@ void adapter_store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
 	g_key_file_free(key_file);
 }
 
-static struct session_req *session_ref(struct session_req *req)
-{
-	req->refcount++;
-
-	DBG("%p: ref=%d", req, req->refcount);
-
-	return req;
-}
-
 static struct session_req *create_session(struct btd_adapter *adapter,
 						DBusMessage *msg,
 						GDBusWatchFunction cb)
@@ -445,12 +435,12 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 	req->adapter = adapter;
 
 	if (msg == NULL)
-		return session_ref(req);
+		return req;
 
 	req->msg = dbus_message_ref(msg);
 
 	if (cb == NULL)
-		return session_ref(req);
+		return req;
 
 	sender = dbus_message_get_sender(msg);
 	req->owner = g_strdup(sender);
@@ -459,7 +449,7 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 
 	DBG("session %p with %s activated", req, sender);
 
-	return session_ref(req);
+	return req;
 }
 
 static void trigger_pairable_timeout(struct btd_adapter *adapter);
@@ -730,19 +720,6 @@ static void session_owner_exit(DBusConnection *conn, void *user_data)
 	struct session_req *req = user_data;
 
 	req->id = 0;
-
-	session_remove(req);
-	session_free(req);
-}
-
-static void session_unref(struct session_req *req)
-{
-	req->refcount--;
-
-	DBG("%p: ref=%d", req, req->refcount);
-
-	if (req->refcount)
-		return;
 
 	session_remove(req);
 	session_free(req);
@@ -1342,10 +1319,8 @@ static DBusMessage *start_discovery(DBusConnection *conn,
 		return btd_error_not_ready(msg);
 
 	req = find_session(adapter->discov_sessions, sender);
-	if (req) {
-		session_ref(req);
-		return dbus_message_new_method_return(msg);
-	}
+	if (req)
+		return btd_error_busy(msg);
 
 	if (adapter->discov_sessions)
 		goto done;
@@ -1390,7 +1365,8 @@ static DBusMessage *stop_discovery(DBusConnection *conn,
 	if (!req)
 		return btd_error_failed(msg, "Invalid discovery session");
 
-	session_unref(req);
+	session_remove(req);
+	session_free(req);
 
 	DBG("stopping discovery");
 
@@ -3670,7 +3646,8 @@ static void adapter_set_discovering(struct btd_adapter *adapter,
 	connect_list_len = g_slist_length(adapter->connect_list);
 
 	if (connect_list_len == 0 && adapter->scanning_session) {
-		session_unref(adapter->scanning_session);
+		session_remove(adapter->scanning_session);
+		session_free(adapter->scanning_session);
 		adapter->scanning_session = NULL;
 	}
 
