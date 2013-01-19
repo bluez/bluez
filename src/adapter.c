@@ -118,10 +118,6 @@ struct service_auth {
 	struct agent *agent;		/* NULL for queued auths */
 };
 
-struct discovery {
-	GSList *found;
-};
-
 struct btd_adapter {
 	int ref_count;
 
@@ -158,7 +154,7 @@ struct btd_adapter {
 	struct session_req *scanning_session;
 	GSList *connect_list;		/* Devices to connect when found */
 	guint discov_id;		/* Discovery timer */
-	struct discovery *discovery;	/* Discovery active */
+	GSList *discovery_found;	/* Discovery found list */
 	gboolean connecting;		/* Connect active */
 	guint waiting_to_connect;	/* # of devices waiting to connect */
 	gboolean discov_suspended;	/* Discovery suspended */
@@ -635,16 +631,8 @@ static void invalidate_rssi(gpointer a)
 
 static void discovery_cleanup(struct btd_adapter *adapter)
 {
-	struct discovery *discovery = adapter->discovery;
-
-	if (!discovery)
-		return;
-
-	adapter->discovery = NULL;
-
-	g_slist_free_full(discovery->found, invalidate_rssi);
-
-	g_free(discovery);
+	g_slist_free_full(adapter->discovery_found, invalidate_rssi);
+	adapter->discovery_found = NULL;
 }
 
 static int mgmt_stop_discovery(struct btd_adapter *adapter)
@@ -1178,13 +1166,12 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 						struct btd_device *dev,
 						gboolean remove_storage)
 {
-	struct discovery *discovery = adapter->discovery;
 	GList *l;
 
 	adapter->devices = g_slist_remove(adapter->devices, dev);
 
-	if (discovery)
-		discovery->found = g_slist_remove(discovery->found, dev);
+	adapter->discovery_found = g_slist_remove(adapter->discovery_found,
+									dev);
 
 	adapter->connections = g_slist_remove(adapter->connections, dev);
 
@@ -1723,7 +1710,7 @@ static gboolean property_get_discovering(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	dbus_bool_t discovering = adapter->discovery ? TRUE : FALSE;
+	dbus_bool_t discovering = adapter->discovery_found ? TRUE : FALSE;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &discovering);
 
@@ -3619,9 +3606,6 @@ static void adapter_set_discovering(struct btd_adapter *adapter,
 {
 	guint connect_list_len;
 
-	if (discovering && !adapter->discovery)
-		adapter->discovery = g_new0(struct discovery, 1);
-
 	g_dbus_emit_property_changed(dbus_conn, adapter->path,
 					ADAPTER_INTERFACE, "Discovering");
 
@@ -3701,7 +3685,7 @@ static gboolean connect_pending_cb(gpointer user_data)
 
 	/* in the future we may want to check here if the controller supports
 	 * scanning and connecting at the same time */
-	if (adapter->discovery)
+	if (adapter->discovery_found)
 		return TRUE;
 
 	if (adapter->connecting)
@@ -3811,14 +3795,13 @@ static void adapter_update_found_devices(struct btd_adapter *adapter,
 					bool confirm, bool legacy,
 					const uint8_t *data, uint8_t data_len)
 {
-	struct discovery *discovery = adapter->discovery;
 	struct btd_device *dev;
 	struct eir_data eir_data;
 	char addr[18];
 	int err;
 	GSList *l;
 
-	if (!discovery) {
+	if (adapter->discovery_found) {
 		error("Device found event while no discovery in progress");
 		return;
 	}
@@ -3872,14 +3855,15 @@ static void adapter_update_found_devices(struct btd_adapter *adapter,
 
 	eir_data_free(&eir_data);
 
-	if (g_slist_find(discovery->found, dev))
+	if (g_slist_find(adapter->discovery_found, dev))
 		return;
 
 	if (confirm)
 		confirm_name(adapter, bdaddr, bdaddr_type,
 						device_name_known(dev));
 
-	discovery->found = g_slist_prepend(discovery->found, dev);
+	adapter->discovery_found = g_slist_prepend(adapter->discovery_found,
+									dev);
 
 	if (device_is_le(dev) && g_slist_find(adapter->connect_list, dev)) {
 		adapter_connect_list_remove(adapter, dev);
@@ -3969,7 +3953,7 @@ static void adapter_stop(struct btd_adapter *adapter)
 	/* check pending requests */
 	reply_pending_requests(adapter);
 
-	if (adapter->discovery) {
+	if (adapter->discovery_found) {
 		emit_discovering = true;
 		session_stop_discovery(adapter);
 	}
