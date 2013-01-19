@@ -101,14 +101,8 @@ static uint8_t mgmt_revision = 0;
 
 static GSList *adapter_drivers = NULL;
 
-enum session_req_type {
-	SESSION_TYPE_DISC_INTERLEAVED,
-	SESSION_TYPE_DISC_LE_SCAN
-};
-
 struct session_req {
 	struct btd_adapter	*adapter;
-	enum session_req_type	type;
 	DBusMessage		*msg;		/* Unreplied message ref */
 	char			*owner;		/* Bus name of the owner */
 	guint			id;		/* Listener id */
@@ -442,7 +436,6 @@ static struct session_req *session_ref(struct session_req *req)
 
 static struct session_req *create_session(struct btd_adapter *adapter,
 						DBusMessage *msg,
-						enum session_req_type type,
 						GDBusWatchFunction cb)
 {
 	const char *sender;
@@ -450,7 +443,6 @@ static struct session_req *create_session(struct btd_adapter *adapter,
 
 	req = g_new0(struct session_req, 1);
 	req->adapter = adapter;
-	req->type = type;
 
 	if (msg == NULL)
 		return session_ref(req);
@@ -1376,8 +1368,7 @@ static DBusMessage *start_discovery(DBusConnection *conn,
 		return btd_error_failed(msg, strerror(-err));
 
 done:
-	req = create_session(adapter, msg, SESSION_TYPE_DISC_INTERLEAVED,
-							session_owner_exit);
+	req = create_session(adapter, msg, session_owner_exit);
 
 	adapter->discov_sessions = g_slist_append(adapter->discov_sessions,
 									req);
@@ -2478,7 +2469,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 	if (adapter->discov_sessions == NULL)
 		adapter->discov_id = g_idle_add(discovery_cb, adapter);
 
-	req = create_session(adapter, NULL, SESSION_TYPE_DISC_LE_SCAN, NULL);
+	req = create_session(adapter, NULL, NULL);
 	adapter->discov_sessions = g_slist_append(adapter->discov_sessions, req);
 	adapter->scanning_session = req;
 
@@ -2513,7 +2504,7 @@ static void adapter_start(struct btd_adapter *adapter)
 					adapter->discov_sessions != NULL)
 		return;
 
-	req = create_session(adapter, NULL, SESSION_TYPE_DISC_LE_SCAN, NULL);
+	req = create_session(adapter, NULL, NULL);
 	adapter->discov_sessions = g_slist_append(adapter->discov_sessions,
 									req);
 	adapter->scanning_session = req;
