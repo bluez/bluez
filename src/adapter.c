@@ -148,7 +148,6 @@ struct btd_adapter {
 	char *stored_alias;		/* stored adapter name alias */
 
 	guint pairable_timeout_id;	/* pairable timeout id */
-	struct session_req *pending_mode;
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
 	GSList *connections;		/* Connected devices */
