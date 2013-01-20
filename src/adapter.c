@@ -713,17 +713,16 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter,
 							const char *dest)
 {
 	struct btd_device *device;
-	GSList *l;
+	GSList *list;
 
 	if (!adapter)
 		return NULL;
 
-	l = g_slist_find_custom(adapter->devices, dest,
-					(GCompareFunc) device_address_cmp);
-	if (!l)
+	list = g_slist_find_custom(adapter->devices, dest, device_address_cmp);
+	if (!list)
 		return NULL;
 
-	device = l->data;
+	device = list->data;
 
 	return device;
 }
@@ -2062,8 +2061,10 @@ static gboolean property_get_modalias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gint device_path_cmp(struct btd_device *device, const char *path)
+static gint device_path_cmp(gconstpointer a, gconstpointer b)
 {
+	const struct btd_device *device = a;
+	const char *path = b;
 	const char *dev_path = device_get_path(device);
 
 	return strcasecmp(dev_path, path);
@@ -2075,18 +2076,17 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
 	const char *path;
-	GSList *l;
+	GSList *list;
 
 	if (dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID) == FALSE)
 		return btd_error_invalid_args(msg);
 
-	l = g_slist_find_custom(adapter->devices,
-			path, (GCompareFunc) device_path_cmp);
-	if (!l)
+	list = g_slist_find_custom(adapter->devices, path, device_path_cmp);
+	if (!list)
 		return btd_error_does_not_exist(msg);
 
-	device = l->data;
+	device = list->data;
 
 	device_set_temporary(device, TRUE);
 
@@ -2096,6 +2096,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	}
 
 	device_request_disconnect(device, msg);
+
 	return NULL;
 }
 
@@ -2432,7 +2433,7 @@ static void load_devices(struct btd_adapter *adapter)
 		GKeyFile *key_file;
 		struct link_key_info *key_info;
 		struct smp_ltk_info *ltk_info;
-		GSList *l;
+		GSList *list;
 
 		if (entry->d_type != DT_DIR || bachk(entry->d_name) < 0)
 			continue;
@@ -2451,10 +2452,10 @@ static void load_devices(struct btd_adapter *adapter)
 		if (ltk_info)
 			ltks.keys = g_slist_append(ltks.keys, ltk_info);
 
-		l = g_slist_find_custom(adapter->devices, entry->d_name,
-					(GCompareFunc) device_address_cmp);
-		if (l) {
-			device = l->data;
+		list = g_slist_find_custom(adapter->devices, entry->d_name,
+							device_address_cmp);
+		if (list) {
+			device = list->data;
 			goto device_exist;
 		}
 
@@ -2468,9 +2469,9 @@ static void load_devices(struct btd_adapter *adapter)
 
 		/* TODO: register services from pre-loaded list of primaries */
 
-		l = device_get_uuids(device);
-		if (l)
-			device_probe_profiles(device, l);
+		list = device_get_uuids(device);
+		if (list)
+			device_probe_profiles(device, list);
 
 device_exist:
 		if (key_info || ltk_info) {

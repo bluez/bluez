@@ -2175,16 +2175,21 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	btd_device_unref(device);
 }
 
-gint device_address_cmp(struct btd_device *device, const char *address)
+gint device_address_cmp(gconstpointer a, gconstpointer b)
 {
+	const struct btd_device *device = a;
+	const char *address = b;
 	char addr[18];
 
 	ba2str(&device->bdaddr, addr);
 	return strcasecmp(addr, address);
 }
 
-gint device_bdaddr_cmp(struct btd_device *device, bdaddr_t *bdaddr)
+gint device_bdaddr_cmp(gconstpointer a, gconstpointer b)
 {
+	const struct btd_device *device = a;
+	const bdaddr_t *bdaddr = b;
+
 	return bacmp(&device->bdaddr, bdaddr);
 }
 
@@ -3333,7 +3338,7 @@ const bdaddr_t *device_get_address(struct btd_device *device)
 	return &device->bdaddr;
 }
 
-const char *device_get_path(struct btd_device *device)
+const char *device_get_path(const struct btd_device *device)
 {
 	if (!device)
 		return NULL;
