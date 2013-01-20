@@ -3961,14 +3961,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	struct eir_data eir_data;
 	char addr[18];
 	int err;
-	GSList *l;
-
-	/*
-	 * If no client has requested discovery, then also do not send
-	 * out signals for new devices.
-	 */
-	if (!adapter->discovery_list)
-		return;
+	GSList *list;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = eir_parse(&eir_data, data, data_len);
@@ -3990,15 +3983,32 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	ba2str(bdaddr, addr);
 
-	l = g_slist_find_custom(adapter->devices, bdaddr,
-					(GCompareFunc) device_bdaddr_cmp);
-	if (l)
-		dev = l->data;
-	else
+	list = g_slist_find_custom(adapter->devices, bdaddr, device_bdaddr_cmp);
+	if (!list) {
+		/*
+		 * If no client has requested discovery, then do not
+		 * create new device objects.
+		 */
+		if (!adapter->discovery_list) {
+			eir_data_free(&eir_data);
+			return;
+		}
+
 		dev = adapter_create_device(adapter, addr, bdaddr_type);
+	} else
+		dev = list->data;
 
 	if (!dev) {
 		error("Unable to create object for found device %s", addr);
+		eir_data_free(&eir_data);
+		return;
+	}
+
+	/*
+	 * If no client has requested discovery, then only update
+	 * already paired devices (skip temporary ones).
+	 */
+	if (device_is_temporary(dev) && !adapter->discovery_list) {
 		eir_data_free(&eir_data);
 		return;
 	}
@@ -4018,6 +4028,13 @@ static void update_found_devices(struct btd_adapter *adapter,
 	device_add_eir_uuids(dev, eir_data.services);
 
 	eir_data_free(&eir_data);
+
+	/*
+	 * Only if at least one client has requested discovery, maintain
+	 * list of found devices and name confirming for legacy devices.
+	 */
+	if (!adapter->discovery_list)
+		return;
 
 	if (g_slist_find(adapter->discovery_found, dev))
 		return;
