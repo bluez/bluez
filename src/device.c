@@ -3990,8 +3990,6 @@ struct btd_device *btd_device_ref(struct btd_device *device)
 
 void btd_device_unref(struct btd_device *device)
 {
-	char *path;
-
 	device->ref--;
 
 	DBG("%p: ref=%d", device, device->ref);
@@ -3999,11 +3997,7 @@ void btd_device_unref(struct btd_device *device)
 	if (device->ref > 0)
 		return;
 
-	path = g_strdup(device->path);
-
-	g_dbus_unregister_interface(dbus_conn, path, DEVICE_INTERFACE);
-
-	g_free(path);
+	g_dbus_unregister_interface(dbus_conn, device->path, DEVICE_INTERFACE);
 }
 
 int device_get_appearance(struct btd_device *device, uint16_t *value)
