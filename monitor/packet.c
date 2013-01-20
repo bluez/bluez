@@ -1469,7 +1469,13 @@ static const struct features_data features_page2[] = {
 	{ }
 };
 
-static void print_features(uint8_t page, const uint8_t *features_array)
+static const struct features_data features_le[] = {
+	{  0, "LE Encryption"				},
+	{ }
+};
+
+static void print_features(uint8_t page, const uint8_t *features_array,
+								uint8_t type)
 {
 	const struct features_data *features_table = NULL;
 	uint64_t mask, features = 0;
@@ -1483,15 +1489,26 @@ static void print_features(uint8_t page, const uint8_t *features_array)
 
 	print_field("Features:%s", str);
 
-	switch (page) {
-	case 0:
-		features_table = features_page0;
+	switch (type) {
+	case 0x00:
+		switch (page) {
+		case 0:
+			features_table = features_page0;
+			break;
+		case 1:
+			features_table = features_page1;
+			break;
+		case 2:
+			features_table = features_page2;
+			break;
+		}
 		break;
-	case 1:
-		features_table = features_page1;
-		break;
-	case 2:
-		features_table = features_page2;
+	case 0x01:
+		switch (page) {
+		case 0:
+			features_table = features_le;
+			break;
+		}
 		break;
 	}
 
@@ -3161,7 +3178,7 @@ static void read_local_features_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_features *rsp = data;
 
 	print_status(rsp->status);
-	print_features(0, rsp->features);
+	print_features(0, rsp->features, 0x00);
 }
 
 static void read_local_ext_features_cmd(const void *data, uint8_t size)
@@ -3177,7 +3194,7 @@ static void read_local_ext_features_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_field("Page: %d/%d", rsp->page, rsp->max_page);
-	print_features(rsp->page, rsp->features);
+	print_features(rsp->page, rsp->features, 0x00);
 }
 
 static void read_buffer_size_rsp(const void *data, uint8_t size)
@@ -3340,7 +3357,7 @@ static void le_read_local_features_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_le_read_local_features *rsp = data;
 
 	print_status(rsp->status);
-	print_features(0, rsp->features);
+	print_features(0, rsp->features, 0x01);
 }
 
 static void le_set_random_address_cmd(const void *data, uint8_t size)
@@ -4157,7 +4174,7 @@ static void remote_features_complete_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_features(0, evt->features);
+	print_features(0, evt->features, 0x00);
 }
 
 static void remote_version_complete_evt(const void *data, uint8_t size)
@@ -4448,7 +4465,7 @@ static void remote_ext_features_complete_evt(const void *data, uint8_t size)
 	print_status(evt->status);
 	print_handle(evt->handle);
 	print_field("Page: %d/%d", evt->page, evt->max_page);
-	print_features(evt->page, evt->features);
+	print_features(evt->page, evt->features, 0x00);
 }
 
 static void sync_conn_complete_evt(const void *data, uint8_t size)
@@ -4618,7 +4635,7 @@ static void remote_host_features_notify_evt(const void *data, uint8_t size)
 	const struct bt_hci_evt_remote_host_features_notify *evt = data;
 
 	print_bdaddr(evt->bdaddr);
-	print_features(1, evt->features);
+	print_features(1, evt->features, 0x00);
 }
 
 static void phy_link_complete_evt(const void *data, uint8_t size)
@@ -4823,7 +4840,7 @@ static void le_remote_features_complete_evt(const void *data, uint8_t size)
 
 	print_status(evt->status);
 	print_handle(evt->handle);
-	print_features(0, evt->features);
+	print_features(0, evt->features, 0x01);
 }
 
 static void le_long_term_key_request_evt(const void *data, uint8_t size)
