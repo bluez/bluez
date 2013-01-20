@@ -71,6 +71,8 @@
 #define DISCONNECT_TIMER	2
 #define DISCOVERY_TIMER		1
 
+static DBusConnection *dbus_conn = NULL;
+
 struct btd_disconnect_data {
 	guint id;
 	disconnect_watch watch;
@@ -334,8 +336,7 @@ static void store_device_info(struct btd_device *device)
 static void browse_request_free(struct browse_req *req)
 {
 	if (req->listener_id)
-		g_dbus_remove_watch(btd_get_dbus_connection(),
-							req->listener_id);
+		g_dbus_remove_watch(dbus_conn, req->listener_id);
 	if (req->msg)
 		dbus_message_unref(req->msg);
 	if (req->device)
@@ -525,8 +526,8 @@ static void set_alias(GDBusPendingPropertySet id, const char *alias,
 
 	store_device_info(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				device->path, DEVICE_INTERFACE, "Alias");
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Alias");
 
 	g_dbus_pending_property_success(id);
 }
@@ -709,8 +710,8 @@ static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 
 	store_device_info(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				device->path, DEVICE_INTERFACE, "Trusted");
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Trusted");
 
 	g_dbus_pending_property_success(id);
 }
@@ -901,7 +902,7 @@ int device_block(struct btd_device *device, gboolean update_only)
 
 	device_set_temporary(device, FALSE);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Blocked");
 
 	return 0;
@@ -927,9 +928,8 @@ int device_unblock(struct btd_device *device, gboolean silent,
 	store_device_info(device);
 
 	if (!silent) {
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-						device->path, DEVICE_INTERFACE,
-						"Blocked");
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Blocked");
 		device_probe_profiles(device, device->uuids);
 	}
 
@@ -975,7 +975,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	if (device->connect) {
 		DBusMessage *reply = btd_error_failed(device->connect,
 								"Cancelled");
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		g_dbus_send_message(dbus_conn, reply);
 		dbus_message_unref(device->connect);
 		device->connect = NULL;
 	}
@@ -1075,11 +1075,10 @@ void device_profile_connected(struct btd_device *dev,
 	DBG("returning response to %s", dbus_message_get_sender(dev->connect));
 
 	if (err && dev->connected_profiles == NULL)
-		g_dbus_send_message(btd_get_dbus_connection(),
+		g_dbus_send_message(dbus_conn,
 				btd_error_failed(dev->connect, strerror(-err)));
 	else
-		g_dbus_send_reply(btd_get_dbus_connection(), dev->connect,
-							DBUS_TYPE_INVALID);
+		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 
 	g_slist_free(dev->pending);
 	dev->pending = NULL;
@@ -1105,9 +1104,8 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
 	}
 
 	if (added)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-						dev->path, DEVICE_INTERFACE,
-						"UUIDs");
+		g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE, "UUIDs");
 }
 
 static int device_resolve_svc(struct btd_device *dev, DBusMessage *msg)
@@ -1244,11 +1242,11 @@ void device_profile_disconnected(struct btd_device *dev,
 		return;
 
 	if (err)
-		g_dbus_send_message(btd_get_dbus_connection(),
+		g_dbus_send_message(dbus_conn,
 					btd_error_failed(dev->disconnect,
 							strerror(-err)));
 	else
-		g_dbus_send_reply(btd_get_dbus_connection(), dev->disconnect,
+		g_dbus_send_reply(dbus_conn, dev->disconnect,
 							DBUS_TYPE_INVALID);
 
 	dbus_message_unref(dev->disconnect);
@@ -1291,7 +1289,6 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 static void device_svc_resolved(struct btd_device *dev, int err)
 {
 	DBusMessage *reply;
-	DBusConnection *conn = btd_get_dbus_connection();
 	struct browse_req *req = dev->browse;
 
 	dev->svc_resolved = true;
@@ -1306,21 +1303,21 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 								"Pair")) {
 		reply = dbus_message_new_method_return(req->msg);
-		g_dbus_send_message(conn, reply);
+		g_dbus_send_message(dbus_conn, reply);
 		return;
 	}
 
 	if (err) {
 		reply = btd_error_failed(req->msg, strerror(-err));
-		g_dbus_send_message(conn, reply);
+		g_dbus_send_message(dbus_conn, reply);
 		return;
 	}
 
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE, "Connect"))
-		reply = dev_connect(conn, req->msg, dev);
+		reply = dev_connect(dbus_conn, req->msg, dev);
 	else if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 							"ConnectProfile"))
-		reply = connect_profile(conn, req->msg, dev);
+		reply = connect_profile(dbus_conn, req->msg, dev);
 	else
 		return;
 
@@ -1328,7 +1325,7 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	req->msg = NULL;
 
 	if (reply)
-		g_dbus_send_message(conn, reply);
+		g_dbus_send_message(dbus_conn, reply);
 }
 
 static struct bonding_req *bonding_request_new(DBusMessage *msg,
@@ -1403,8 +1400,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	if (agent)
 		agent_unref(agent);
 
-	bonding->listener_id = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
+	bonding->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
 						sender, create_bond_req_exit,
 						device, NULL);
 
@@ -1462,8 +1458,7 @@ static void bonding_request_free(struct bonding_req *bonding)
 		return;
 
 	if (bonding->listener_id)
-		g_dbus_remove_watch(btd_get_dbus_connection(),
-							bonding->listener_id);
+		g_dbus_remove_watch(dbus_conn, bonding->listener_id);
 
 	if (bonding->msg)
 		dbus_message_unref(bonding->msg);
@@ -1496,7 +1491,7 @@ static void device_cancel_bonding(struct btd_device *device, uint8_t status)
 		device_cancel_authentication(device, FALSE);
 
 	reply = new_authentication_return(bonding->msg, status);
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	g_dbus_send_message(dbus_conn, reply);
 
 	bonding_request_cancel(bonding);
 	bonding_request_free(bonding);
@@ -1571,7 +1566,7 @@ void device_add_connection(struct btd_device *device)
 
 	device->connected = TRUE;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
 }
 
@@ -1595,8 +1590,7 @@ void device_remove_connection(struct btd_device *device)
 	while (device->disconnects) {
 		DBusMessage *msg = device->disconnects->data;
 
-		g_dbus_send_reply(btd_get_dbus_connection(),
-							msg, DBUS_TYPE_INVALID);
+		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
 		device->disconnects = g_slist_remove(device->disconnects, msg);
 		dbus_message_unref(msg);
 	}
@@ -1604,7 +1598,7 @@ void device_remove_connection(struct btd_device *device)
 	if (device_is_paired(device) && !device_is_bonded(device))
 		device_set_paired(device, FALSE);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Connected");
 }
 
@@ -1915,7 +1909,7 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 
 	DBG("Creating device %s", device->path);
 
-	if (g_dbus_register_interface(btd_get_dbus_connection(),
+	if (g_dbus_register_interface(dbus_conn,
 					device->path, DEVICE_INTERFACE,
 					device_methods, NULL,
 					device_properties, device,
@@ -2006,13 +2000,13 @@ void device_set_name(struct btd_device *device, const char *name)
 
 	store_device_info(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Name");
 
 	if (device->alias != NULL)
 		return;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Alias");
 }
 
@@ -2037,7 +2031,7 @@ void device_set_class(struct btd_device *device, uint32_t class)
 
 	store_device_info(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Class");
 }
 
@@ -2364,9 +2358,8 @@ add_uuids:
 	}
 
 	device->svc_resolved = true;
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-						device->path, DEVICE_INTERFACE,
-						"UUIDs");
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "UUIDs");
 }
 
 static void device_remove_profiles(struct btd_device *device, GSList *uuids)
@@ -2743,9 +2736,8 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		device_remove_profiles(device, req->profiles_removed);
 
 	/* Propagate services changes */
-	g_dbus_emit_property_changed(btd_get_dbus_connection(),
-					req->device->path, DEVICE_INTERFACE,
-					"UUIDs");
+	g_dbus_emit_property_changed(dbus_conn, req->device->path,
+						DEVICE_INTERFACE, "UUIDs");
 
 send_reply:
 	device_svc_resolved(device, err);
@@ -2941,7 +2933,7 @@ static void register_all_services(struct browse_req *req, GSList *services)
 	if (device->attios == NULL && device->attios_offline == NULL)
 		attio_cleanup(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "UUIDs");
 
 	device_svc_resolved(device, 0);
@@ -3029,7 +3021,7 @@ static void primary_cb(GSList *services, guint8 status, gpointer user_data)
 			DBusMessage *reply;
 			reply = btd_error_failed(req->msg,
 							att_ecode2str(status));
-			g_dbus_send_message(btd_get_dbus_connection(), reply);
+			g_dbus_send_message(dbus_conn, reply);
 		}
 
 		device->browse = NULL;
@@ -3086,7 +3078,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (err < 0) {
 		DBusMessage *reply = btd_error_failed(device->bonding->msg,
 							strerror(-err));
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		g_dbus_send_message(dbus_conn, reply);
 		bonding_request_cancel(device->bonding);
 		bonding_request_free(device->bonding);
 	}
@@ -3162,7 +3154,7 @@ GIOChannel *device_att_connect(gpointer user_data)
 		if (io == NULL) {
 			DBusMessage *reply = btd_error_failed(
 					device->bonding->msg, gerr->message);
-			g_dbus_send_message(btd_get_dbus_connection(), reply);
+			g_dbus_send_message(dbus_conn, reply);
 			bonding_request_cancel(device->bonding);
 			bonding_request_free(device->bonding);
 		}
@@ -3207,7 +3199,7 @@ static void att_browse_error_cb(const GError *gerr, gpointer user_data)
 		DBusMessage *reply;
 
 		reply = btd_error_failed(req->msg, gerr->message);
-		g_dbus_send_message(btd_get_dbus_connection(), reply);
+		g_dbus_send_message(dbus_conn, reply);
 	}
 
 	device->browse = NULL;
@@ -3276,8 +3268,7 @@ done:
 		req->msg = dbus_message_ref(msg);
 		/* Track the request owner to cancel it
 		 * automatically if the owner exits */
-		req->listener_id = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
+		req->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
 						sender,
 						discover_services_req_exit,
 						req, NULL);
@@ -3324,8 +3315,7 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
 		req->msg = dbus_message_ref(msg);
 		/* Track the request owner to cancel it
 		 * automatically if the owner exits */
-		req->listener_id = g_dbus_add_disconnect_watch(
-						btd_get_dbus_connection(),
+		req->listener_id = g_dbus_add_disconnect_watch(dbus_conn,
 						sender,
 						discover_services_req_exit,
 						req, NULL);
@@ -3398,7 +3388,7 @@ void device_set_legacy(struct btd_device *device, bool legacy)
 
 	device->legacy = legacy;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "LegacyPairing");
 }
 
@@ -3431,7 +3421,7 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 		device->rssi = rssi;
 	}
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "RSSI");
 }
 
@@ -3491,7 +3481,7 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	device->paired = value;
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Paired");
 }
 
@@ -3588,7 +3578,7 @@ void device_bonding_failed(struct btd_device *device, uint8_t status)
 		device_cancel_authentication(device, FALSE);
 
 	reply = new_authentication_return(bonding->msg, status);
-	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	g_dbus_send_message(dbus_conn, reply);
 
 	bonding_request_free(bonding);
 }
@@ -3926,7 +3916,7 @@ void btd_device_add_uuid(struct btd_device *device, const char *uuid)
 
 	store_device_info(device);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "UUIDs");
 }
 
@@ -4011,8 +4001,7 @@ void btd_device_unref(struct btd_device *device)
 
 	path = g_strdup(device->path);
 
-	g_dbus_unregister_interface(btd_get_dbus_connection(),
-							path, DEVICE_INTERFACE);
+	g_dbus_unregister_interface(dbus_conn, path, DEVICE_INTERFACE);
 
 	g_free(path);
 }
@@ -4032,12 +4021,12 @@ void device_set_appearance(struct btd_device *device, uint16_t value)
 {
 	const char *icon = gap_appearance_to_icon(value);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 					DEVICE_INTERFACE, "Appearance");
 
 	if (icon)
-		g_dbus_emit_property_changed(btd_get_dbus_connection(),
-				device->path, DEVICE_INTERFACE, "Icon");
+		g_dbus_emit_property_changed(dbus_conn, device->path,
+						DEVICE_INTERFACE, "Icon");
 
 	device->appearance = value;
 	store_device_info(device);
@@ -4137,7 +4126,7 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 	g_free(device->modalias);
 	device->modalias = bt_modalias(source, vendor, product, version);
 
-	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
+	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Modalias");
 
 	store_device_info(device);
@@ -4145,8 +4134,10 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 
 void btd_device_init(void)
 {
+	dbus_conn = btd_get_dbus_connection();
 }
 
 void btd_device_cleanup(void)
 {
+	dbus_conn = NULL;
 }
