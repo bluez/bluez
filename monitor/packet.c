@@ -3502,6 +3502,30 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 	print_slot_625("Max connection length", cmd->max_length);
 }
 
+static void le_read_white_list_size_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_read_white_list_size *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Size: %u", rsp->size);
+}
+
+static void le_add_to_white_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr(cmd->addr, cmd->addr_type);
+}
+
+static void le_remove_from_white_list_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
+
+	print_addr_type("Address type", cmd->addr_type);
+	print_addr(cmd->addr, cmd->addr_type);
+}
+
 static void le_conn_update_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_conn_update *cmd = data;
@@ -4034,10 +4058,18 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x200e, "LE Create Connection Cancel",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	{ 0x200f, "LE Read White List Size"		},
-	{ 0x2010, "LE Clear White List"			},
-	{ 0x2011, "LE Add Device To White List"		},
-	{ 0x2012, "LE Remove Device From White List"	},
+	{ 0x200f, "LE Read White List Size",
+				null_cmd, 0, true,
+				le_read_white_list_size_rsp, 2, true },
+	{ 0x2010, "LE Clear White List",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
+	{ 0x2011, "LE Add Device To White List",
+				le_add_to_white_list_cmd, 7, true,
+				status_rsp, 1, true },
+	{ 0x2012, "LE Remove Device From White List",
+				le_remove_from_white_list_cmd, 7, true,
+				status_rsp, 1, true },
 	{ 0x2013, "LE Connection Update",
 				le_conn_update_cmd, 14, true },
 	{ 0x2014, "LE Set Host Channel Classification",

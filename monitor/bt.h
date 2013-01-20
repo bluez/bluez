@@ -857,6 +857,26 @@ struct bt_hci_cmd_le_create_conn {
 
 #define BT_HCI_CMD_LE_CREATE_CONN_CANCEL	0x200e
 
+#define BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE	0x200f
+struct bt_hci_rsp_le_read_white_list_size {
+	uint8_t  status;
+	uint8_t  size;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_CLEAR_WHITE_LIST		0x2010
+
+#define BT_HCI_CMD_LE_ADD_TO_WHITE_LIST		0x2011
+struct bt_hci_cmd_le_add_to_white_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_REMOVE_FROM_WHITE_LIST	0x2012
+struct bt_hci_cmd_le_remove_from_white_list {
+	uint8_t  addr_type;
+	uint8_t  addr[6];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_CONN_UPDATE		0x2013
 struct bt_hci_cmd_le_conn_update {
 	uint16_t handle;
