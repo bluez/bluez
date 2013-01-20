@@ -1902,6 +1902,8 @@ static struct btd_device *device_new(struct btd_adapter *adapter,
 	struct btd_device *device;
 	const char *adapter_path = adapter_get_path(adapter);
 
+	DBG("address %s", address);
+
 	device = g_try_malloc0(sizeof(struct btd_device));
 	if (device == NULL)
 		return NULL;
@@ -1936,6 +1938,8 @@ struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 	const bdaddr_t *src;
 	char srcaddr[18];
 
+	DBG("address %s", address);
+
 	device = device_new(adapter, address);
 	if (device == NULL)
 		return NULL;
@@ -1956,6 +1960,8 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 	const bdaddr_t *src;
 	char srcaddr[18];
 	char *str;
+
+	DBG("address %s", address);
 
 	device = device_new(adapter, address);
 	if (device == NULL)
