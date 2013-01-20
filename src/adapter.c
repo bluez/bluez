@@ -84,6 +84,7 @@
 #define MODE_DISCOVERABLE	0x02
 #define MODE_UNKNOWN		0xff
 
+#define IDLE_DISCOV_TIMEOUT (5)
 #define TEMP_DEV_TIMEOUT (3 * 60)
 
 static DBusConnection *dbus_conn = NULL;
@@ -105,8 +106,6 @@ struct discovery_client {
 	struct btd_adapter *adapter;
 	char *owner;
 	guint watch;
-	DBusMessage *msg;
-	unsigned int mgmt_id;
 };
 
 struct service_auth {
@@ -1085,26 +1084,42 @@ sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter)
 	return adapter->services;
 }
 
-static void trigger_restart_discovery(struct btd_adapter *adapter);
+static void trigger_start_discovery(struct btd_adapter *adapter, guint delay);
 
-static void restart_discovery_complete(uint8_t status, uint16_t length,
+static void start_discovery_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
+	const struct mgmt_cp_start_discovery *rp = param;
 
 	DBG("status 0x%02x", status);
 
-	if (status == MGMT_STATUS_SUCCESS)
+	if (length < sizeof(*rp)) {
+		error("Wrong size of start discovery return parameters");
 		return;
+	}
+
+	if (status == MGMT_STATUS_SUCCESS) {
+		adapter->discovery_type = rp->type;
+		adapter->discovery_enable = 0x01;
+
+		if (adapter->discovering)
+			return;
+
+		adapter->discovering = true;
+		g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Discovering");
+		return;
+	}
 
 	/*
 	 * In case the restart of the discovery failed, then just trigger
 	 * it for the next idle timeout again.
 	 */
-	trigger_restart_discovery(adapter);
+	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT * 2);
 }
 
-static gboolean restart_discovery(gpointer user_data)
+static gboolean start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_discovery cp;
@@ -1113,19 +1128,28 @@ static gboolean restart_discovery(gpointer user_data)
 
 	adapter->discovery_idle_timeout = 0;
 
-	cp.type = adapter->discovery_type;
+	if (adapter->current_settings & MGMT_SETTING_BREDR)
+		cp.type = (1 << BDADDR_BREDR);
+	else
+		cp.type = 0;
+
+	if (adapter->current_settings & MGMT_SETTING_LE)
+		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
 
 	mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
 				adapter->dev_id, sizeof(cp), &cp,
-				restart_discovery_complete, adapter, NULL);
+				start_discovery_complete, adapter, NULL);
 
 	return FALSE;
 }
 
-static void trigger_restart_discovery(struct btd_adapter *adapter)
+static void trigger_start_discovery(struct btd_adapter *adapter, guint delay)
 {
 
 	DBG("");
+
+	if (adapter->discovery_enable == 0x01)
+		return;
 
 	if (adapter->discovery_idle_timeout > 0) {
 		g_source_remove(adapter->discovery_idle_timeout);
@@ -1141,8 +1165,8 @@ static void trigger_restart_discovery(struct btd_adapter *adapter)
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return;
 
-	adapter->discovery_idle_timeout = g_timeout_add_seconds(5,
-						restart_discovery, adapter);
+	adapter->discovery_idle_timeout = g_timeout_add_seconds(delay,
+					start_discovery_timeout, adapter);
 }
 
 static void suspend_discovery_complete(uint8_t status, uint16_t length,
@@ -1153,6 +1177,7 @@ static void suspend_discovery_complete(uint8_t status, uint16_t length,
 	DBG("status 0x%02x", status);
 
 	if (status == MGMT_STATUS_SUCCESS) {
+		adapter->discovery_type = 0x00;
 		adapter->discovery_enable = 0x00;
 		return;
 	}
@@ -1212,7 +1237,7 @@ static void resume_discovery(struct btd_adapter *adapter)
 	 * idle time for a normal discovery. So just trigger the default
 	 * restart procedure.
 	 */
-	trigger_restart_discovery(adapter);
+	trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT);
 }
 
 static void discovering_callback(uint16_t index, uint16_t length,
@@ -1232,6 +1257,7 @@ static void discovering_callback(uint16_t index, uint16_t length,
 	if (adapter->discovery_enable == ev->discovering)
 		return;
 
+	adapter->discovery_type = ev->type;
 	adapter->discovery_enable = ev->discovering;
 
 	/*
@@ -1246,7 +1272,7 @@ static void discovering_callback(uint16_t index, uint16_t length,
 
 	switch (adapter->discovery_enable) {
 	case 0x00:
-		trigger_restart_discovery(adapter);
+		trigger_start_discovery(adapter, IDLE_DISCOV_TIMEOUT);
 		break;
 
 	case 0x01:
@@ -1266,6 +1292,7 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 	DBG("status 0x%02x", status);
 
 	if (status == MGMT_STATUS_SUCCESS) {
+		adapter->discovery_type = 0x00;
 		adapter->discovery_enable = 0x00;
 
 		adapter->discovering = false;
@@ -1331,12 +1358,6 @@ static void discovery_destroy(void *user_data)
 	struct btd_adapter *adapter = client->adapter;
 
 	DBG("owner %s", client->owner);
-
-	if (client->msg)
-		dbus_message_unref(client->msg);
-
-	if (client->mgmt_id > 0)
-		mgmt_cancel(adapter->mgmt, client->mgmt_id);
 
 	adapter->discovery_list = g_slist_remove(adapter->discovery_list,
 								client);
@@ -1408,43 +1429,11 @@ static void discovery_disconnect(DBusConnection *conn, void *user_data)
 				stop_discovery_complete, adapter, NULL);
 }
 
-static void start_discovery_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	struct discovery_client *client = user_data;
-	struct btd_adapter *adapter = client->adapter;
-
-	DBG("owner %s", client->owner);
-
-	client->mgmt_id = 0;
-
-	if (status == MGMT_STATUS_SUCCESS) {
-		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
-
-		dbus_message_unref(client->msg);
-		client->msg = NULL;
-
-		adapter->discovery_enable = 0x01;
-
-		adapter->discovering = true;
-		g_dbus_emit_property_changed(dbus_conn, adapter->path,
-					ADAPTER_INTERFACE, "Discovering");
-	} else {
-		DBusMessage *reply;
-
-		reply = btd_error_failed(client->msg, "Start discovery failed");
-		g_dbus_send_message(dbus_conn, reply);
-
-		g_dbus_remove_watch(dbus_conn, client->watch);
-	}
-}
-
 static DBusMessage *start_discovery(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	const char *sender = dbus_message_get_sender(msg);
-	struct mgmt_cp_start_discovery cp;
 	struct discovery_client *client;
 	GSList *list;
 
@@ -1474,37 +1463,13 @@ static DBusMessage *start_discovery(DBusConnection *conn,
 								client);
 
 	/*
-	 * If the discovery type is set, then it means another discovery
-	 * is already active. Just return with success in that case.
+	 * Just trigger the discovery here. In case an already running
+	 * discovery in idle phase exists, it will be restarted right
+	 * away.
 	 */
-	if (adapter->discovery_type)
-		return dbus_message_new_method_return(msg);
+	trigger_start_discovery(adapter, 0);
 
-	if (adapter->current_settings & MGMT_SETTING_BREDR)
-		cp.type = (1 << BDADDR_BREDR);
-	else
-		cp.type = 0;
-
-	if (adapter->current_settings & MGMT_SETTING_LE)
-		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
-
-	client->msg = dbus_message_ref(msg);
-
-	adapter->discovery_type = cp.type;
-
-	client->mgmt_id = mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
-					adapter->dev_id, sizeof(cp), &cp,
-					start_discovery_complete, client, NULL);
-	if (client->mgmt_id > 0)
-		return NULL;
-
-	/*
-	 * The destroy handling of the watch will do all the work to
-	 * remove and free the client information.
-	 */
-	g_dbus_remove_watch(dbus_conn, client->watch);
-
-	return btd_error_failed(msg, "Failed to start discovery");
+	return dbus_message_new_method_return(msg);
 }
 
 static DBusMessage *stop_discovery(DBusConnection *conn,
@@ -1527,14 +1492,6 @@ static DBusMessage *stop_discovery(DBusConnection *conn,
 		return btd_error_failed(msg, "No discovery started");
 
 	client = list->data;
-
-	/*
-	 * In the rare case that a client tries to stop the discovery
-	 * before the start discovery command completed, just return
-	 * success for the start discovery command here.
-	 */
-	if (client->msg)
-		g_dbus_send_reply(dbus_conn, client->msg, DBUS_TYPE_INVALID);
 
 	cp.type = adapter->discovery_type;
 
@@ -2013,8 +1970,8 @@ static DBusMessage *remove_device(DBusConnection *conn,
 }
 
 static const GDBusMethodTable adapter_methods[] = {
-	{ GDBUS_ASYNC_METHOD("StartDiscovery", NULL, NULL, start_discovery) },
-	{ GDBUS_ASYNC_METHOD("StopDiscovery", NULL, NULL, stop_discovery) },
+	{ GDBUS_METHOD("StartDiscovery", NULL, NULL, start_discovery) },
+	{ GDBUS_METHOD("StopDiscovery", NULL, NULL, stop_discovery) },
 	{ GDBUS_ASYNC_METHOD("RemoveDevice",
 			GDBUS_ARGS({ "device", "o" }), NULL, remove_device) },
 	{ }
