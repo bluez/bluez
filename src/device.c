@@ -3398,12 +3398,29 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 	if (!device)
 		return;
 
-	DBG("rssi %d", rssi);
+	if (rssi < 0 && device->rssi < 0) {
+		int delta;
 
-	if (device->rssi == rssi)
-		return;
+		if (device->rssi > rssi)
+			delta = device->rssi - rssi;
+		else
+			delta = rssi - device->rssi;
 
-	device->rssi = rssi;
+		/* only report changes of 8 dBm or more */
+		if (delta < 8)
+			return;
+
+		DBG("rssi %d delta %d", rssi, delta);
+
+		device->rssi = rssi;
+	} else {
+		if (device->rssi == rssi)
+			return;
+
+		DBG("rssi %d", rssi);
+
+		device->rssi = rssi;
+	}
 
 	g_dbus_emit_property_changed(btd_get_dbus_connection(), device->path,
 						DEVICE_INTERFACE, "RSSI");
