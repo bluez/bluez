@@ -679,7 +679,10 @@ static gboolean dev_property_exists_rssi(const GDBusPropertyTable *property,
 {
 	struct btd_device *dev = data;
 
-	return dev->rssi ? TRUE : FALSE;
+	if (dev->rssi == 0)
+		return FALSE;
+
+	return TRUE;
 }
 
 static gboolean dev_property_get_trusted(const GDBusPropertyTable *property,
@@ -3398,7 +3401,14 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 	if (!device)
 		return;
 
-	if (rssi < 0 && device->rssi < 0) {
+	if (rssi == 0 || device->rssi == 0) {
+		if (device->rssi == rssi)
+			return;
+
+		DBG("rssi %d", rssi);
+
+		device->rssi = rssi;
+	} else {
 		int delta;
 
 		if (device->rssi > rssi)
@@ -3411,13 +3421,6 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 			return;
 
 		DBG("rssi %d delta %d", rssi, delta);
-
-		device->rssi = rssi;
-	} else {
-		if (device->rssi == rssi)
-			return;
-
-		DBG("rssi %d", rssi);
 
 		device->rssi = rssi;
 	}
