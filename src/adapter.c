@@ -4034,7 +4034,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	 * list of found devices and name confirming for legacy devices.
 	 */
 	if (!adapter->discovery_list)
-		return;
+		goto done;
 
 	if (g_slist_find(adapter->discovery_found, dev))
 		return;
@@ -4045,6 +4045,10 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 	adapter->discovery_found = g_slist_prepend(adapter->discovery_found,
 									dev);
+
+done:
+	if (device_is_le(dev) && g_slist_find(adapter->connect_list, dev)) {
+	}
 }
 
 static void device_found_callback(uint16_t index, uint16_t length,
