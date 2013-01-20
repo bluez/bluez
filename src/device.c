@@ -193,7 +193,7 @@ struct btd_device {
 	guint		store_id;
 };
 
-static uint16_t uuid_list[] = {
+static const uint16_t uuid_list[] = {
 	L2CAP_UUID,
 	PNP_INFO_SVCLASS_ID,
 	PUBLIC_BROWSE_GROUP,
