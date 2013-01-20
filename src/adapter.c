@@ -1123,18 +1123,50 @@ static gboolean start_discovery_timeout(gpointer user_data)
 {
 	struct btd_adapter *adapter = user_data;
 	struct mgmt_cp_start_discovery cp;
+	uint8_t new_type;
 
 	DBG("");
 
 	adapter->discovery_idle_timeout = 0;
 
 	if (adapter->current_settings & MGMT_SETTING_BREDR)
-		cp.type = (1 << BDADDR_BREDR);
+		new_type = (1 << BDADDR_BREDR);
 	else
-		cp.type = 0;
+		new_type = 0;
 
 	if (adapter->current_settings & MGMT_SETTING_LE)
-		cp.type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
+		new_type |= (1 << BDADDR_LE_PUBLIC) | (1 << BDADDR_LE_RANDOM);
+
+	if (adapter->discovery_enable == 0x01) {
+		/*
+		 * If there is an already running discovery and it has the
+		 * same type, then just keep it.
+		 */
+		if (adapter->discovery_type == new_type) {
+			if (adapter->discovering)
+				return FALSE;
+
+			adapter->discovering = true;
+			g_dbus_emit_property_changed(dbus_conn, adapter->path,
+					ADAPTER_INTERFACE, "Discovering");
+			return FALSE;
+		}
+
+		/*
+		 * Otherwise the current discovery must be stopped. So
+		 * queue up a stop discovery command.
+		 *
+		 * This can happen if a passive scanning for Low Energy
+		 * devices is ongoing.
+		 */
+		cp.type = adapter->discovery_type;
+
+		mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
+					adapter->dev_id, sizeof(cp), &cp,
+					NULL, NULL, NULL);
+	}
+
+	cp.type = new_type;
 
 	mgmt_send(adapter->mgmt, MGMT_OP_START_DISCOVERY,
 				adapter->dev_id, sizeof(cp), &cp,
@@ -1147,9 +1179,6 @@ static void trigger_start_discovery(struct btd_adapter *adapter, guint delay)
 {
 
 	DBG("");
-
-	if (adapter->discovery_enable == 0x01)
-		return;
 
 	if (adapter->discovery_idle_timeout > 0) {
 		g_source_remove(adapter->discovery_idle_timeout);
