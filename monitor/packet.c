@@ -1729,6 +1729,42 @@ static void print_event_mask_page2(const uint8_t *events_array)
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} events_le_table[] = {
+	{  0, "LE Connection Complete"		},
+	{  1, "LE Advertising Report"		},
+	{  2, "LE Connection Update Complete"	},
+	{  3, "LE Read Remote Used Features"	},
+	{  4, "LE Long Term Key Request"	},
+	{ }
+};
+
+static void print_event_mask_le(const uint8_t *events_array)
+{
+	uint64_t mask, events = 0;
+	int i;
+
+	for (i = 0; i < 8; i++)
+		events |= ((uint64_t) events_array[i]) << (i * 8);
+
+	print_field("Mask: 0x%16.16" PRIx64, events);
+
+	mask = events;
+
+	for (i = 0; events_le_table[i].str; i++) {
+		if (events & (((uint64_t) 1) << events_le_table[i].bit)) {
+			print_field("  %s", events_le_table[i].str);
+			mask &= ~(((uint64_t) 1) << events_le_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_EVENT_MASK, "  Unknown mask "
+						"(0x%16.16" PRIx64 ")", mask);
+}
+
 static void print_fec(uint8_t fec)
 {
 	const char *str;
@@ -3287,7 +3323,7 @@ static void le_set_event_mask_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_event_mask *cmd = data;
 
-	print_event_mask(cmd->mask);
+	print_event_mask_le(cmd->mask);
 }
 
 static void le_read_buffer_size_rsp(const void *data, uint8_t size)
