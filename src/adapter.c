@@ -1165,6 +1165,11 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 
 static void cancel_passive_scanning(struct btd_adapter *adapter)
 {
+	if (!(adapter->current_settings & MGMT_SETTING_LE))
+		return;
+
+	DBG("");
+
 	if (adapter->passive_scan_timeout > 0) {
 		g_source_remove(adapter->passive_scan_timeout);
 		adapter->passive_scan_timeout = 0;
