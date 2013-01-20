@@ -51,6 +51,7 @@
 #include "hcid.h"
 #include "sdpd.h"
 #include "adapter.h"
+#include "device.h"
 #include "dbus-common.h"
 #include "agent.h"
 #include "profile.h"
@@ -535,6 +536,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	btd_device_init();
 	btd_agent_init();
 	btd_profile_init();
 
@@ -588,6 +590,7 @@ int main(int argc, char *argv[])
 
 	btd_profile_cleanup();
 	btd_agent_cleanup();
+	btd_device_cleanup();
 
 	adapter_cleanup();
 

@@ -4142,3 +4142,11 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 
 	store_device_info(device);
 }
+
+void btd_device_init(void)
+{
+}
+
+void btd_device_cleanup(void)
+{
+}
