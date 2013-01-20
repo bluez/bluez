@@ -65,6 +65,7 @@
 
 #define COLOR_UNKNOWN_FEATURE_BIT	COLOR_WHITE_BG
 #define COLOR_UNKNOWN_EVENT_MASK	COLOR_WHITE_BG
+#define COLOR_UNKNOWN_LE_STATES		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_SERVICE_CLASS	COLOR_WHITE_BG
 
 static time_t time_offset = ((time_t) -1);
@@ -1511,15 +1512,78 @@ static void print_features(uint8_t page, const uint8_t *features_array)
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
-static void print_le_states(const uint8_t *states)
+static const struct {
+	uint8_t bit;
+	const char *str;
+} le_states_table[] = {
+	{  0, "Non-connectable Advertising State"			},
+	{  1, "Scannable Advertising State"				},
+	{  2, "Connectable Advertising State"				},
+	{  3, "Directed Advertising State"				},
+	{  4, "Passive Scanning State"					},
+	{  5, "Active Scanning State"					},
+	{  6, "Initiating State"					},
+	{  7, "Connection State in Salve Role"				},
+	{  8, "Non-connectable Advertising State and "
+				"Passive Scanning State combination"	},
+	{  9, "Scannable Advertising State and "
+				"Passive Scanning State combination"	},
+	{ 10, "Connectable Advertising State and "
+				"Passive Scanning State combination"	},
+	{ 11, "Directed Advertising State and "
+				"Passive Scanning State combination"	},
+	{ 12, "Non-connectable Advertising State and "
+				"Active Scanning State combination"	},
+	{ 13, "Scannable Advertising State and "
+				"Active Scanning State combination"	},
+	{ 14, "Connectable Advertising State and "
+				"Active Scanning State combination"	},
+	{ 15, "Directed Advertising State and "
+				"Active Scanning State combination"	},
+	{ 16, "Non-connectable Advertising State and "
+				"Initiating State combination"		},
+	{ 17, "Scannable Advertising State and "
+				"Initiating State combination"		},
+	{ 18, "Non-connectable Advertising State and "
+				"Mater Role combination"		},
+	{ 19, "Scannable Advertising State and "
+				"Master Role combination"		},
+	{ 20, "Non-connectable Advertising State and "
+				"Slave Role combination"		},
+	{ 21, "Scannable Advertising State and "
+				"Slave Role combination"		},
+	{ 22, "Passive Scanning State and Initiating State combination"	},
+	{ 23, "Active Scanning State and Initiating State combination"	},
+	{ 24, "Passive Scanning State and Master Role combination"	},
+	{ 25, "Active Scanning State and Master Role combination"	},
+	{ 26, "Passive Scanning State and Slave Role combination"	},
+	{ 27, "Active Scanning State and Slave Role combination"	},
+	{ 28, "Initiating State and Master Role combination"		},
+	{ }
+};
+
+static void print_le_states(const uint8_t *states_array)
 {
-	char str[17];
+	uint64_t mask, states = 0;
 	int i;
 
 	for (i = 0; i < 8; i++)
-		sprintf(str + (i * 2), "%2.2x", states[i]);
+		states |= ((uint64_t) states_array[i]) << (i * 8);
 
-	print_field("States: 0x%s", str);
+	print_field("States: 0x%16.16" PRIx64, states);
+
+	mask = states;
+
+	for (i = 0; le_states_table[i].str; i++) {
+		if (states & (((uint64_t) 1) << le_states_table[i].bit)) {
+			print_field("  %s", le_states_table[i].str);
+			mask &= ~(((uint64_t) 1) << le_states_table[i].bit);
+		}
+	}
+
+	if (mask)
+		print_text(COLOR_UNKNOWN_LE_STATES, "  Unknown states "
+						"(0x%16.16" PRIx64 ")", mask);
 }
 
 static void print_le_channel_map(const uint8_t *map)
