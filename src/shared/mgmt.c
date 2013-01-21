@@ -77,6 +77,7 @@ struct mgmt_notify {
 	unsigned int id;
 	uint16_t event;
 	uint16_t index;
+	bool destroyed;
 	mgmt_notify_func_t callback;
 	mgmt_destroy_func_t destroy;
 	void *user_data;
@@ -234,6 +235,9 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 	for (list = g_list_first(mgmt->notify_list); list;
 						list = g_list_next(list)) {
 		struct mgmt_notify *notify = list->data;
+
+		if (notify->destroyed)
+			continue;
 
 		if (notify->event != event)
 			continue;
@@ -709,6 +713,8 @@ bool mgmt_unregister(struct mgmt *mgmt, unsigned int id)
 		return true;
 	}
 
+	notify->destroyed = true;
+
 	mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed, list);
 
 	return true;
@@ -737,11 +743,20 @@ bool mgmt_unregister_index(struct mgmt *mgmt, uint16_t index)
 			continue;
 		}
 
+		notify->destroyed = true;
+
 		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
 									list);
 	}
 
 	return true;
+}
+
+static void mark_notify(gpointer data, gpointer user_data)
+{
+	struct mgmt_notify *notify = data;
+
+	notify->destroyed = true;
 }
 
 bool mgmt_unregister_all(struct mgmt *mgmt)
@@ -752,9 +767,11 @@ bool mgmt_unregister_all(struct mgmt *mgmt)
 	if (!mgmt->in_notify) {
 		g_list_foreach(mgmt->notify_list, destroy_notify, NULL);
 		g_list_free(mgmt->notify_list);
-	} else
+	} else {
+		g_list_foreach(mgmt->notify_list, mark_notify, NULL);
 		mgmt->notify_destroyed = g_list_concat(mgmt->notify_destroyed,
 							mgmt->notify_list);
+	}
 
 	mgmt->notify_list = NULL;
 
