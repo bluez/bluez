@@ -957,7 +957,7 @@ static void abort_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	finalize_setup_errno(setup, -ECONNRESET, finalize_suspend,
 							finalize_resume,
-							finalize_config);
+							finalize_config, NULL);
 
 	return;
 }
