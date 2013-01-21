@@ -630,6 +630,34 @@ bool mgmt_cancel_index(struct mgmt *mgmt, uint16_t index)
 	if (!mgmt)
 		return false;
 
+	for (list = g_queue_peek_head_link(mgmt->request_queue); list;
+								list = next) {
+		struct mgmt_request *request = list->data;
+
+		next = g_list_next(list);
+
+		if (request->index != index)
+			continue;
+
+		g_queue_delete_link(mgmt->request_queue, list);
+
+		destroy_request(request, NULL);
+	}
+
+	for (list = g_queue_peek_head_link(mgmt->reply_queue); list;
+								list = next) {
+		struct mgmt_request *request = list->data;
+
+		next = g_list_next(list);
+
+		if (request->index != index)
+			continue;
+
+		g_queue_delete_link(mgmt->reply_queue, list);
+
+		destroy_request(request, NULL);
+	}
+
 	for (list = g_list_first(mgmt->pending_list); list; list = next) {
 		struct mgmt_request *request = list->data;
 
