@@ -652,7 +652,7 @@ static gboolean session_browsing_cb(GIOChannel *chan, GIOCondition cond,
 
 	sock = g_io_channel_unix_get_fd(chan);
 
-	ret = read(sock, buf, sizeof(browsing->imtu));
+	ret = read(sock, buf, browsing->imtu);
 	if (ret <= 0)
 		goto failed;
 
