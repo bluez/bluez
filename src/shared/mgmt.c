@@ -222,6 +222,9 @@ static void request_complete(struct mgmt *mgmt, uint8_t status,
 
 	destroy_request(request, NULL);
 
+	if (mgmt->destroyed)
+		return;
+
 	wakeup_writer(mgmt);
 }
 
@@ -259,9 +262,6 @@ static void process_notify(struct mgmt *mgmt, uint16_t event, uint16_t index,
 	g_list_free(mgmt->notify_destroyed);
 
 	mgmt->notify_destroyed = NULL;
-
-	if (mgmt->destroyed)
-		g_free(mgmt);
 }
 
 static void read_watch_destroy(gpointer user_data)
@@ -331,6 +331,11 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		process_notify(mgmt, event, index, length,
 						mgmt->buf + MGMT_HDR_SIZE);
 		break;
+	}
+
+	if (mgmt->destroyed) {
+		g_free(mgmt);
+		return FALSE;
 	}
 
 	return TRUE;
