@@ -1572,7 +1572,7 @@ gboolean avctp_unregister_browsing_pdu_handler(unsigned int id)
 		GSList *s;
 
 		for (s = server->sessions; s; s = s->next) {
-			struct avctp *session = l->data;
+			struct avctp *session = s->data;
 			struct avctp_channel *browsing = session->browsing;
 			GSList *h;
 
