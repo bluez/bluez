@@ -139,6 +139,8 @@ struct att_callbacks {
 };
 
 struct btd_device {
+	int ref_count;
+
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
 	char		*path;
@@ -187,8 +189,6 @@ struct btd_device {
 
 	bool		legacy;
 	int8_t		rssi;
-
-	gint		ref;
 
 	GIOChannel	*att_io;
 	guint		cleanup_id;
@@ -3981,21 +3981,22 @@ const sdp_record_t *btd_device_get_record(struct btd_device *device,
 
 struct btd_device *btd_device_ref(struct btd_device *device)
 {
-	device->ref++;
-
-	DBG("%p: ref=%d", device, device->ref);
+	__sync_fetch_and_add(&device->ref_count, 1);
 
 	return device;
 }
 
 void btd_device_unref(struct btd_device *device)
 {
-	device->ref--;
-
-	DBG("%p: ref=%d", device, device->ref);
-
-	if (device->ref > 0)
+	if (__sync_sub_and_fetch(&device->ref_count, 1))
 		return;
+
+	if (!device->path) {
+		error("freeing device without an object path");
+		return;
+	}
+
+	DBG("Freeing device %s", device->path);
 
 	g_dbus_unregister_interface(dbus_conn, device->path, DEVICE_INTERFACE);
 }
