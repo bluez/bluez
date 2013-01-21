@@ -607,13 +607,28 @@ static gboolean endpoint_init_a2dp_sink(struct media_endpoint *endpoint,
 	return TRUE;
 }
 
+static struct media_adapter *find_adapter(struct btd_device *device)
+{
+	GSList *l;
+
+	for (l = adapters; l; l = l->next) {
+		struct media_adapter *adapter = l->data;
+
+		if (adapter->btd_adapter == device_get_adapter(device))
+			return adapter;
+	}
+
+	return NULL;
+}
+
 static bool endpoint_properties_exists(const char *uuid,
 						struct btd_device *dev,
 						void *user_data)
 {
-	struct media_adapter *adapter = user_data;
+	struct media_adapter *adapter;
 
-	if (adapter->btd_adapter != device_get_adapter(dev))
+	adapter = find_adapter(dev);
+	if (adapter == NULL)
 		return false;
 
 	if (media_adapter_find_endpoint(adapter, NULL, NULL, uuid) == NULL)
@@ -659,9 +674,13 @@ static bool endpoint_properties_get(const char *uuid,
 						DBusMessageIter *iter,
 						void *user_data)
 {
-	struct media_adapter *adapter = user_data;
+	struct media_adapter *adapter;
 	DBusMessageIter dict;
 	GSList *l;
+
+	adapter = find_adapter(dev);
+	if (adapter == NULL)
+		return false;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
@@ -743,7 +762,7 @@ static struct media_endpoint *media_endpoint_create(struct media_adapter *adapte
 		btd_profile_add_custom_prop(uuid, "a{sv}", "MediaEndpoints",
 						endpoint_properties_exists,
 						endpoint_properties_get,
-						adapter);
+						NULL);
 	}
 
 	adapter->endpoints = g_slist_append(adapter->endpoints, endpoint);
