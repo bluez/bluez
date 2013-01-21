@@ -1269,6 +1269,8 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 		return btd_error_invalid_args(msg);
 
 	uuid = bt_name2string(pattern);
+	if (uuid == NULL)
+		return btd_error_invalid_args(msg);
 
 	p = find_connectable_profile(dev, uuid);
 	g_free(uuid);
