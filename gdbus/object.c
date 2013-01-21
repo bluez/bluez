@@ -1690,6 +1690,9 @@ void g_dbus_emit_property_changed(DBusConnection *connection,
 	struct generic_data *data;
 	struct interface_data *iface;
 
+	if (path == NULL)
+		return;
+
 	if (!dbus_connection_get_object_path_data(connection, path,
 					(void **) &data) || data == NULL)
 		return;
@@ -1723,6 +1726,9 @@ gboolean g_dbus_get_properties(DBusConnection *connection, const char *path,
 {
 	struct generic_data *data;
 	struct interface_data *iface;
+
+	if (path == NULL)
+		return FALSE;
 
 	if (!dbus_connection_get_object_path_data(connection, path,
 					(void **) &data) || data == NULL)
