@@ -857,9 +857,11 @@ static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void profile_remove(struct btd_profile *profile,
-						struct btd_device *device)
+static void profile_remove(gpointer data, gpointer user_data)
 {
+	struct btd_profile *profile = data;
+	struct btd_device *device = user_data;
+
 	profile->device_remove(profile, device);
 }
 
@@ -885,7 +887,7 @@ int device_block(struct btd_device *device, gboolean update_only)
 	if (device->connected)
 		do_disconnect(device);
 
-	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
+	g_slist_foreach(device->profiles, profile_remove, device);
 	g_slist_free(device->profiles);
 	device->profiles = NULL;
 
@@ -2171,7 +2173,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (remove_stored)
 		device_remove_stored(device);
 
-	g_slist_foreach(device->profiles, (GFunc) profile_remove, device);
+	g_slist_foreach(device->profiles, profile_remove, device);
 	g_slist_free(device->profiles);
 	device->profiles = NULL;
 
