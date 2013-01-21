@@ -4134,5 +4134,4 @@ void btd_device_init(void)
 
 void btd_device_cleanup(void)
 {
-	dbus_conn = NULL;
 }
