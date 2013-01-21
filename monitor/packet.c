@@ -4266,7 +4266,7 @@ static void cmd_complete_evt(const void *data, uint8_t size)
 	print_indent(6, opcode_color, "", opcode_str, COLOR_OFF,
 			" (0x%2.2x|0x%4.4x) ncmd %d", ogf, ocf, evt->ncmd);
 
-	if (!opcode_data->rsp_func) {
+	if (!opcode_data || !opcode_data->rsp_func) {
 		packet_hexdump(data + 3, size - 3);
 		return;
 	}
