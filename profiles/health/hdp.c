@@ -542,9 +542,9 @@ static void hdp_get_dcpsm_cb(uint16_t dcpsm, gpointer user_data, GError *err)
 					hdp_tmp_dc_data_destroy, &gerr))
 		return;
 
-	hdp_tmp_dc_data_unref(hdp_conn);
 	hdp_conn->cb(hdp_chann->mdl, err, hdp_conn);
 	g_error_free(gerr);
+	hdp_tmp_dc_data_unref(hdp_conn);
 }
 
 static void device_reconnect_mdl_cb(struct mcap_mdl *mdl, GError *err,
