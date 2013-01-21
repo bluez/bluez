@@ -801,7 +801,7 @@ static gboolean suspend_ind(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (start_err < 0 && start_err != -EINPROGRESS) {
 		error("avdtp_start: %s (%d)", strerror(-start_err),
 								-start_err);
-		finalize_setup_errno(setup, start_err, finalize_resume);
+		finalize_setup_errno(setup, start_err, finalize_resume, NULL);
 	}
 
 	return TRUE;
