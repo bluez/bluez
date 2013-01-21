@@ -188,7 +188,7 @@ static guint create_source_btdev(int fd, struct btdev *btdev)
 	return source;
 }
 
-static void create_vhci(struct hciemu *hciemu)
+static bool create_vhci(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
 	uint8_t bdaddr[6];
@@ -197,7 +197,7 @@ static void create_vhci(struct hciemu *hciemu)
 
 	btdev = btdev_create(BTDEV_TYPE_BREDR, 0x00);
 	if (!btdev)
-		return;
+		return false;
 
 	str = hciemu_get_address(hciemu);
 
@@ -210,15 +210,17 @@ static void create_vhci(struct hciemu *hciemu)
 	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	if (fd < 0) {
 		btdev_destroy(btdev);
-		return;
+		return false;
 	}
 
 	hciemu->master_dev = btdev;
 
 	hciemu->master_source = create_source_btdev(fd, btdev);
+
+	return true;
 }
 
-static void create_stack(struct hciemu *hciemu)
+static bool create_stack(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
 	struct bthost *bthost;
@@ -226,12 +228,12 @@ static void create_stack(struct hciemu *hciemu)
 
 	btdev = btdev_create(BTDEV_TYPE_BREDR, 0x00);
 	if (!btdev)
-		return;
+		return false;
 
 	bthost = bthost_create();
 	if (!bthost) {
 		btdev_destroy(btdev);
-		return;
+		return false;
 	}
 
 	btdev_set_command_handler(btdev, client_command_callback, hciemu);
@@ -240,7 +242,7 @@ static void create_stack(struct hciemu *hciemu)
 								0, sv) < 0) {
 		bthost_destroy(bthost);
 		btdev_destroy(btdev);
-		return;
+		return false;
 	}
 
 	hciemu->client_dev = btdev;
@@ -248,6 +250,8 @@ static void create_stack(struct hciemu *hciemu)
 
 	hciemu->client_source = create_source_btdev(sv[0], btdev);
 	hciemu->host_source = create_source_bthost(sv[1], bthost);
+
+	return true;
 }
 
 static gboolean start_stack(gpointer user_data)
@@ -267,8 +271,17 @@ struct hciemu *hciemu_new(void)
 	if (!hciemu)
 		return NULL;
 
-	create_vhci(hciemu);
-	create_stack(hciemu);
+	if (!create_vhci(hciemu)) {
+		g_free(hciemu);
+		return NULL;
+	}
+
+	if (!create_stack(hciemu)) {
+		g_source_remove(hciemu->master_source);
+		btdev_destroy(hciemu->master_dev);
+		g_free(hciemu);
+		return NULL;
+	}
 
 	g_idle_add(start_stack, hciemu);
 
