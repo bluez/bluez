@@ -111,12 +111,31 @@ static struct pending_req *pending_new(GDBusPendingPropertySet id,
 	return p;
 }
 
+static uint32_t media_player_get_position(struct media_player *mp)
+{
+	double timedelta;
+	uint32_t sec, msec;
+
+	if (g_strcmp0(mp->status, "playing") != 0)
+		return mp->position;
+
+	timedelta = g_timer_elapsed(mp->progress, NULL);
+
+	sec = (uint32_t) timedelta;
+	msec = (uint32_t) ((timedelta - sec) * 1000);
+
+	return mp->position + sec * 1000 + msec;
+}
+
 static gboolean get_position(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_player *mp = data;
+	uint32_t position;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &mp->position);
+	position = media_player_get_position(mp);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &position);
 
 	return TRUE;
 }
@@ -462,22 +481,6 @@ struct media_player *media_player_controller_create(const char *path)
 	DBG("%s", mp->path);
 
 	return mp;
-}
-
-static uint32_t media_player_get_position(struct media_player *mp)
-{
-	double timedelta;
-	uint32_t sec, msec;
-
-	if (g_strcmp0(mp->status, "playing") != 0)
-		return mp->position;
-
-	timedelta = g_timer_elapsed(mp->progress, NULL);
-
-	sec = (uint32_t) timedelta;
-	msec = (uint32_t) ((timedelta - sec) * 1000);
-
-	return mp->position + sec * 1000 + msec;
 }
 
 void media_player_set_position(struct media_player *mp, uint32_t position)
