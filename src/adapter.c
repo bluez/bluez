@@ -1037,6 +1037,8 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 {
 	GList *l;
 
+	adapter->connect_list = g_slist_remove(adapter->connect_list, dev);
+
 	adapter->devices = g_slist_remove(adapter->devices, dev);
 
 	adapter->discovery_found = g_slist_remove(adapter->discovery_found,
@@ -2719,8 +2721,7 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 		return -ENOTSUP;
 	}
 
-	adapter->connect_list = g_slist_append(adapter->connect_list,
-						btd_device_ref(device));
+	adapter->connect_list = g_slist_append(adapter->connect_list, device);
 	DBG("%s added to %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
@@ -2744,7 +2745,6 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	adapter->connect_list = g_slist_remove(adapter->connect_list, device);
 	DBG("%s removed from %s's connect_list", device_get_path(device),
 							adapter->system_name);
-	btd_device_unref(device);
 }
 
 static void adapter_start(struct btd_adapter *adapter)
@@ -3845,14 +3845,20 @@ static void adapter_remove(struct btd_adapter *adapter)
 
 	discovery_cleanup(adapter);
 
+	g_slist_free(adapter->connect_list);
+	adapter->connect_list = NULL;
+
 	for (l = adapter->devices; l; l = l->next)
 		device_remove(l->data, FALSE);
+
 	g_slist_free(adapter->devices);
+	adapter->devices = NULL;
 
 	unload_drivers(adapter);
 	btd_adapter_gatt_server_stop(adapter);
 
 	g_slist_free(adapter->pin_callbacks);
+	adapter->pin_callbacks = NULL;
 }
 
 const char *adapter_get_path(struct btd_adapter *adapter)
