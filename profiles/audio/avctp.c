@@ -390,6 +390,9 @@ static void avctp_channel_destroy(struct avctp_channel *chan)
 	if (chan->watch)
 		g_source_remove(chan->watch);
 
+	if (chan->p)
+		pending_destroy(chan->p, NULL);
+
 	if (chan->process_id > 0)
 		g_source_remove(chan->process_id);
 
