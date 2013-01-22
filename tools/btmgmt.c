@@ -1454,6 +1454,93 @@ static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 	}
 }
 
+static void cancel_pair_rsp(int mgmt_sk, uint16_t op, uint16_t id,
+				uint8_t status, void *rsp, uint16_t len,
+				void *user_data)
+{
+	struct mgmt_addr_info *rp = rsp;
+	char addr[18];
+
+	if (len == 0 && status != 0) {
+		fprintf(stderr, "Cancel Pairing failed with 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	if (len != sizeof(*rp)) {
+		fprintf(stderr, "Unexpected cancel_pair_rsp len %u\n", len);
+		exit(EXIT_FAILURE);
+	}
+
+	ba2str(&rp->bdaddr, addr);
+
+	if (status != 0) {
+		fprintf(stderr,
+			"Cancel Pairing with %s (%s) failed. 0x%02x (%s)\n",
+			addr, typestr(rp->type), status,
+			mgmt_errstr(status));
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Pairing Cancelled with %s\n", addr);
+
+	exit(EXIT_SUCCESS);
+}
+
+static void cancel_pair_usage(void)
+{
+	printf("Usage: btmgmt cancelpair [-t type] <remote address>\n");
+}
+
+static struct option cancel_pair_options[] = {
+	{ "help",	0, 0, 'h' },
+	{ "type",	1, 0, 't' },
+	{ 0, 0, 0, 0 }
+};
+
+static void cmd_cancel_pair(int mgmt_sk, uint16_t index, int argc,
+								char **argv)
+{
+	struct mgmt_addr_info cp;
+	uint8_t type = BDADDR_BREDR;
+	int opt;
+
+	while ((opt = getopt_long(argc, argv, "+t:h", cancel_pair_options,
+								NULL)) != -1) {
+		switch (opt) {
+		case 't':
+			type = strtol(optarg, NULL, 0);
+			break;
+		case 'h':
+		default:
+			cancel_pair_usage();
+			exit(EXIT_SUCCESS);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (argc < 1) {
+		cancel_pair_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	memset(&cp, 0, sizeof(cp));
+	str2ba(argv[0], &cp.bdaddr);
+	cp.type = type;
+
+	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_CANCEL_PAIR_DEVICE, index,
+				&cp, sizeof(cp), cancel_pair_rsp, NULL) < 0) {
+		fprintf(stderr, "Unable to send cancel_pair_device cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
@@ -1841,6 +1928,7 @@ static struct {
 	{ "find",	cmd_find,	"Discover nearby devices"	},
 	{ "name",	cmd_name,	"Set local name"		},
 	{ "pair",	cmd_pair,	"Pair with a remote device"	},
+	{ "cancelpair",	cmd_cancel_pair,"Cancel pairing"		},
 	{ "unpair",	cmd_unpair,	"Unpair device"			},
 	{ "keys",	cmd_keys,	"Load Keys"			},
 	{ "block",	cmd_block,	"Block Device"			},
