@@ -82,6 +82,9 @@ typedef size_t (*avctp_control_pdu_cb) (struct avctp *session,
 typedef gboolean (*avctp_rsp_cb) (struct avctp *session, uint8_t code,
 					uint8_t subunit, uint8_t *operands,
 					size_t operand_count, void *user_data);
+typedef gboolean (*avctp_browsing_rsp_cb) (struct avctp *session,
+					uint8_t *operands, size_t operand_count,
+					void *user_data);
 typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 					uint8_t transaction,
 					uint8_t *operands, size_t operand_count,
@@ -116,3 +119,6 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 					uint8_t subunit, uint8_t *operands,
 					size_t operand_count,
 					avctp_rsp_cb func, void *user_data);
+int avctp_send_browsing_req(struct avctp *session,
+				uint8_t *operands, size_t operand_count,
+				avctp_browsing_rsp_cb func, void *user_data);
