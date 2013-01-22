@@ -141,7 +141,7 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 
 	while (len < eir_len - 1) {
 		uint8_t field_len = eir_data[0];
-		const uint8_t *data = &eir_data[2];
+		const uint8_t *data;
 		uint8_t data_len;
 
 		/* Check for the end of EIR */
@@ -154,6 +154,7 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 		if (len > eir_len)
 			break;
 
+		data = &eir_data[2];
 		data_len = field_len - 1;
 
 		switch (eir_data[1]) {
