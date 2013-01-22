@@ -444,6 +444,25 @@ static void print_addr_type(const char *label, uint8_t addr_type)
 	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
 }
 
+static void print_filter_policy(uint8_t filter_policy)
+{
+	const char *str;
+
+	switch (filter_policy) {
+	case 0x00:
+		str = "Accept all advertisement";
+		break;
+	case 0x01:
+		str = "Ignore not in white list";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, filter_policy);
+}
+
 static void print_handle(uint16_t handle)
 {
 	print_field("Handle: %d", btohs(handle));
@@ -3433,20 +3452,7 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 	print_interval(cmd->interval);
 	print_window(cmd->window);
 	print_addr_type("Own address type", cmd->own_addr_type);
-
-	switch (cmd->filter_policy) {
-	case 0x00:
-		str = "Accept all advertisement";
-		break;
-	case 0x01:
-		str = "Ignore not in white list";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+	print_filter_policy(cmd->filter_policy);
 }
 
 static void le_set_scan_enable_cmd(const void *data, uint8_t size)
@@ -3489,7 +3495,7 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 
 	print_slot_625("Scan interval", cmd->scan_interval);
 	print_slot_625("Scan window", cmd->scan_window);
-	print_field("Filter policy: 0x%2.2x", cmd->filter_policy);
+	print_filter_policy(cmd->filter_policy);
 	print_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr(cmd->peer_addr, cmd->peer_addr_type);
 	print_addr_type("Own address type", cmd->own_addr_type);
