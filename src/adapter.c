@@ -4723,7 +4723,7 @@ int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	bacpy(&cp.bdaddr, bdaddr);
 	cp.type = addr_type;
 
-	if (mgmt_send(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
+	if (mgmt_reply(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
 				adapter->dev_id, sizeof(cp), &cp,
 				NULL, NULL, NULL) > 0)
 		return 0;
