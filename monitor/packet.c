@@ -444,25 +444,6 @@ static void print_addr_type(const char *label, uint8_t addr_type)
 	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
 }
 
-static void print_filter_policy(uint8_t filter_policy)
-{
-	const char *str;
-
-	switch (filter_policy) {
-	case 0x00:
-		str = "Accept all advertisement";
-		break;
-	case 0x01:
-		str = "Ignore not in white list";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("Filter policy: %s (0x%2.2x)", str, filter_policy);
-}
-
 static void print_handle(uint16_t handle)
 {
 	print_field("Handle: %d", btohs(handle));
@@ -3452,7 +3433,20 @@ static void le_set_scan_parameters_cmd(const void *data, uint8_t size)
 	print_interval(cmd->interval);
 	print_window(cmd->window);
 	print_addr_type("Own address type", cmd->own_addr_type);
-	print_filter_policy(cmd->filter_policy);
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "Accept all advertisement";
+		break;
+	case 0x01:
+		str = "Ignore not in white list";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
 }
 
 static void le_set_scan_enable_cmd(const void *data, uint8_t size)
@@ -3492,13 +3486,29 @@ static void le_set_scan_enable_cmd(const void *data, uint8_t size)
 static void le_create_conn_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_create_conn *cmd = data;
+	const char *str;
 
 	print_slot_625("Scan interval", cmd->scan_interval);
 	print_slot_625("Scan window", cmd->scan_window);
-	print_filter_policy(cmd->filter_policy);
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "White list is not used";
+		break;
+	case 0x01:
+		str = "White list is used";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+
 	print_addr_type("Peer address type", cmd->peer_addr_type);
 	print_addr(cmd->peer_addr, cmd->peer_addr_type);
 	print_addr_type("Own address type", cmd->own_addr_type);
+
 	print_slot_125("Min connection interval", cmd->min_interval);
 	print_slot_125("Max connection interval", cmd->max_interval);
 	print_field("Connection latency: 0x%4.4x", btohs(cmd->latency));
