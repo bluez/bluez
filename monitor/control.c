@@ -469,6 +469,30 @@ static void mgmt_device_unpaired(uint16_t len, const void *buf)
 	packet_hexdump(buf, len);
 }
 
+static void mgmt_passkey_notify(uint16_t len, const void *buf)
+{
+	const struct mgmt_ev_passkey_notify *ev = buf;
+	uint32_t passkey;
+	char str[18];
+
+	if (len < sizeof(*ev)) {
+		printf("* Malformed Passkey Notify control\n");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, str);
+
+	passkey = btohl(ev->passkey);
+
+	printf("@ Passkey Notify: %s (%d) passkey %06u entered %u\n",
+				str, ev->addr.type, passkey, ev->entered);
+
+	buf += sizeof(*ev);
+	len -= sizeof(*ev);
+
+	packet_hexdump(buf, len);
+}
+
 void control_message(uint16_t opcode, const void *data, uint16_t size)
 {
 	switch (opcode) {
@@ -531,6 +555,9 @@ void control_message(uint16_t opcode, const void *data, uint16_t size)
 		break;
 	case MGMT_EV_DEVICE_UNPAIRED:
 		mgmt_device_unpaired(size, data);
+		break;
+	case MGMT_EV_PASSKEY_NOTIFY:
+		mgmt_passkey_notify(size, data);
 		break;
 	default:
 		printf("* Unknown control (code %d len %d)\n", opcode, size);
