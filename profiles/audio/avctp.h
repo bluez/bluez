@@ -67,7 +67,9 @@ struct avctp;
 typedef enum {
 	AVCTP_STATE_DISCONNECTED = 0,
 	AVCTP_STATE_CONNECTING,
-	AVCTP_STATE_CONNECTED
+	AVCTP_STATE_CONNECTED,
+	AVCTP_STATE_BROWSING_CONNECTING,
+	AVCTP_STATE_BROWSING_CONNECTED
 } avctp_state_t;
 
 typedef void (*avctp_state_cb) (struct audio_device *dev,

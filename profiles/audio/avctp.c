@@ -484,6 +484,12 @@ static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
 	case AVCTP_STATE_CONNECTED:
 		DBG("AVCTP Connected");
 		break;
+	case AVCTP_STATE_BROWSING_CONNECTING:
+		DBG("AVCTP Browsing Connecting");
+		break;
+	case AVCTP_STATE_BROWSING_CONNECTED:
+		DBG("AVCTP Browsing Connected");
+		break;
 	default:
 		error("Invalid AVCTP state %d", new_state);
 		return;
@@ -1023,9 +1029,12 @@ static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_browsing_cb, session);
 
+	avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTED);
 	return;
 
 fail:
+	avctp_set_state(session, AVCTP_STATE_CONNECTED);
+
 	if (session->browsing) {
 		avctp_channel_destroy(session->browsing);
 		session->browsing = NULL;
@@ -1787,6 +1796,8 @@ int avctp_connect_browsing(struct avctp *session)
 
 	if (session->browsing != NULL)
 		return 0;
+
+	avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTING);
 
 	io = bt_io_connect(avctp_connect_browsing_cb, session, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR,

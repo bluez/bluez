@@ -190,6 +190,7 @@ struct avrcp {
 	gboolean target;
 	uint16_t version;
 	int features;
+	bool initialized;
 
 	void (*init) (struct avrcp *session);
 	void (*destroy) (struct avrcp *sesion);
@@ -2169,6 +2170,8 @@ static void session_tg_init(struct avrcp *session)
 
 	DBG("%p version 0x%04x", session, session->version);
 
+	session->initialized = true;
+
 	player = g_slist_nth_data(server->players, 0);
 	if (player != NULL) {
 		session->player = player;
@@ -2182,12 +2185,9 @@ static void session_tg_init(struct avrcp *session)
 				(1 << AVRCP_EVENT_TRACK_REACHED_END) |
 				(1 << AVRCP_EVENT_SETTINGS_CHANGED);
 
-	if (session->version >= 0x0104) {
+	if (session->version >= 0x0104)
 		avrcp_register_notification(session,
 						AVRCP_EVENT_VOLUME_CHANGED);
-		if (session->features & AVRCP_FEATURE_BROWSING)
-			avctp_connect_browsing(session->conn);
-	}
 
 	session->control_id = avctp_register_pdu_handler(session->conn,
 							AVC_OP_VENDORDEP,
@@ -2211,6 +2211,8 @@ static void session_ct_init(struct avrcp *session)
 		session->supported_events = (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
 	DBG("%p version 0x%04x", session, session->version);
+
+	session->initialized = true;
 
 	session->control_id = avctp_register_pdu_handler(session->conn,
 							AVC_OP_VENDORDEP,
@@ -2364,11 +2366,27 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		break;
 	case AVCTP_STATE_CONNECTED:
-		if (session == NULL)
+		if (session == NULL || session->initialized)
+			break;
+
+		/* Initialize session if browsing cannot be used */
+		if (session->version <= 0x0103 ||
+				old_state == AVCTP_STATE_BROWSING_CONNECTING ||
+				!(session->features & AVRCP_FEATURE_BROWSING)) {
+			session->init(session);
+			break;
+		}
+
+		if (avctp_connect_browsing(session->conn) != 0)
+			session->init(session);
+
+		break;
+	case AVCTP_STATE_BROWSING_CONNECTED:
+		if (session == NULL || session->initialized)
 			break;
 
 		session->init(session);
-
+		break;
 	default:
 		return;
 	}

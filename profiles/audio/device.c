@@ -289,6 +289,10 @@ static void device_avctp_cb(struct audio_device *dev,
 		break;
 	case AVCTP_STATE_CONNECTED:
 		break;
+	case AVCTP_STATE_BROWSING_CONNECTING:
+		break;
+	case AVCTP_STATE_BROWSING_CONNECTED:
+		break;
 	}
 }
 
