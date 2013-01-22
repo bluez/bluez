@@ -2651,7 +2651,8 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 
 	DBG("Connection count: %d", conn_count);
 
-	if (conn_count * sizeof(bdaddr_t) + sizeof(*rp) != length) {
+	if (conn_count * sizeof(struct mgmt_addr_info) +
+						sizeof(*rp) != length) {
 		error("Incorrect packet size for get connections response");
 		return;
 	}
