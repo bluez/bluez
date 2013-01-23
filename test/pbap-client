@@ -53,7 +53,7 @@ class PbapClient:
 		if req == None:
 			return
 		self.transfers -= 1
-		print "Transfer %s complete" % path
+		print("Transfer %s complete" % path)
 		try:
 			f = open(req.filename, "r")
 			os.remove(req.filename)
@@ -122,7 +122,7 @@ if  __name__ == '__main__':
 		print("Usage: %s <device>" % (sys.argv[0]))
 		sys.exit(1)
 
-	print "Creating Session"
+	print("Creating Session")
 	session_path = client.CreateSession(sys.argv[1], { "Target": "PBAP" })
 
 	pbap_client = PbapClient(session_path)
@@ -137,29 +137,29 @@ if  __name__ == '__main__':
 	def test_paths(paths):
 		if len(paths) == 0:
 			print
-			print "FINISHED"
+			print("FINISHED")
 			mainloop.quit()
 			return
 
 		path = paths[0]
 
-		print "\n--- Select Phonebook %s ---\n" % (path)
+		print("\n--- Select Phonebook %s ---\n" % (path))
 		pbap_client.interface().Select("int", path)
 
-		print "\n--- GetSize ---\n"
+		print("\n--- GetSize ---\n")
 		ret = pbap_client.interface().GetSize()
-		print "Size = %d\n" % (ret)
+		print("Size = %d\n" % (ret))
 
-		print "\n--- List vCard ---\n"
+		print("\n--- List vCard ---\n")
 		try:
 			ret = pbap_client.interface().List(dbus.Dictionary())
 		except:
 			ret = []
 
 		params = dbus.Dictionary({ "Format" : "vcard30",
-					"Fields" : [ "VERSION", "FN", "TEL"] })
+						"Fields" : ["PHOTO"] })
 		for item in ret:
-			print "%s : %s" % (item[0], item[1])
+			print("%s : %s" % (item[0], item[1]))
 			pbap_client.pull(item[0], params,
 					lambda x: process_result(x, None))
 
