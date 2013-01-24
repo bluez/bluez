@@ -1448,6 +1448,46 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 	}
 }
 
+static const char *property_to_mpris(const char *property)
+{
+	if (strcasecmp(property, "Repeat") == 0)
+		return "LoopStatus";
+	else if (strcasecmp(property, "Shuffle") == 0)
+		return "Shuffle";
+	else if (strcasecmp(property, "Status") == 0)
+		return "PlaybackStatus";
+	else if (strcasecmp(property, "Position") == 0)
+		return "Position";
+	else if (strcasecmp(property, "Track") == 0)
+		return "Metadata";
+
+	return NULL;
+}
+
+static void property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct player *player;
+	const char *interface, *property;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE) != 0)
+		return;
+
+	player = find_player(proxy);
+	if (player == NULL)
+		return;
+
+	property = property_to_mpris(name);
+	if (property == NULL)
+		return;
+
+	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
+						MPRIS_PLAYER_INTERFACE,
+						property);
+}
+
 int main(int argc, char *argv[])
 {
 	guint owner_watch, properties_watch;
@@ -1503,7 +1543,7 @@ int main(int argc, char *argv[])
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
 
 	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
-								NULL, NULL);
+						property_changed, NULL);
 
 	g_main_loop_run(main_loop);
 
