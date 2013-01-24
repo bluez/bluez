@@ -44,6 +44,7 @@
 #define BLUEZ_MEDIA_INTERFACE "org.bluez.Media1"
 #define BLUEZ_MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 #define MPRIS_BUS_NAME "org.mpris.MediaPlayer2."
+#define MPRIS_INTERFACE "org.mpris.MediaPlayer2"
 #define MPRIS_PLAYER_INTERFACE "org.mpris.MediaPlayer2.Player"
 #define MPRIS_PLAYER_PATH "/org/mpris/MediaPlayer2"
 #define ERROR_INTERFACE "org.mpris.MediaPlayer2.Error"
@@ -1275,6 +1276,7 @@ static gboolean get_enable(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+
 static const GDBusMethodTable player_methods[] = {
 	{ GDBUS_ASYNC_METHOD("PlayPause", NULL, NULL, player_toggle) },
 	{ GDBUS_ASYNC_METHOD("Play", NULL, NULL, player_play) },
@@ -1309,6 +1311,39 @@ static const GDBusPropertyTable player_properties[] = {
 	{ }
 };
 
+static gboolean get_disable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	dbus_bool_t value = FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
+
+	return TRUE;
+}
+
+static gboolean get_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct player *player = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &player->name);
+
+	return TRUE;
+}
+
+static const GDBusMethodTable mpris_methods[] = {
+	{ }
+};
+
+static const GDBusPropertyTable mpris_properties[] = {
+	{ "CanQuit", "b", get_disable, NULL, NULL },
+	{ "Fullscreen", "b", get_disable, NULL, NULL },
+	{ "CanSetFullscreen", "b", get_disable, NULL, NULL },
+	{ "CanRaise", "b", get_disable, NULL, NULL },
+	{ "HasTrackList", "b", get_disable, NULL, NULL },
+	{ "Identity", "s", get_name, NULL, NULL },
+	{ }
+};
 
 #define a_z "abcdefghijklmnopqrstuvwxyz"
 #define A_Z "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -1356,6 +1391,17 @@ static void register_player(GDBusProxy *proxy)
 	if (!session) {
 		fprintf(stderr, "Could not register bus name %s",
 							player->bus_name);
+		goto fail;
+	}
+
+	if (!g_dbus_register_interface(player->conn, MPRIS_PLAYER_PATH,
+						MPRIS_INTERFACE,
+						mpris_methods,
+						NULL,
+						mpris_properties,
+						player, NULL)) {
+		fprintf(stderr, "Could not register interface %s",
+						MPRIS_INTERFACE);
 		goto fail;
 	}
 
