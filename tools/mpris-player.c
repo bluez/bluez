@@ -1650,6 +1650,8 @@ static void player_property_changed(GDBusProxy *proxy, const char *name,
 {
 	struct player *player;
 	const char *property;
+	uint32_t position;
+	uint64_t value;
 
 	player = find_player(proxy);
 	if (player == NULL)
@@ -1662,6 +1664,18 @@ static void player_property_changed(GDBusProxy *proxy, const char *name,
 	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
 						MPRIS_PLAYER_INTERFACE,
 						property);
+
+	if (strcasecmp(name, "Position") != 0)
+		return;
+
+	dbus_message_iter_get_basic(iter, &position);
+
+	value = position * 1000;
+
+	g_dbus_emit_signal(player->conn, MPRIS_PLAYER_PATH,
+					MPRIS_PLAYER_INTERFACE, "Seeked",
+					DBUS_TYPE_INT64, &value,
+					DBUS_TYPE_INVALID);
 }
 
 static void transport_property_changed(GDBusProxy *proxy, const char *name,
