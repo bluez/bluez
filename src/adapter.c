@@ -2097,6 +2097,9 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	if (!list)
 		return btd_error_does_not_exist(msg);
 
+	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
+		return btd_error_not_ready(msg);
+
 	device = list->data;
 
 	device_set_temporary(device, TRUE);
