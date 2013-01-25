@@ -2476,7 +2476,7 @@ static void avdtp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVDTP: incoming connect from %s", address);
 
-	device = adapter_find_device(adapter_find(&src), address);
+	device = adapter_find_device(adapter_find(&src), &dst);
 	if (!device)
 		goto drop;
 

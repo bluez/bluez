@@ -1228,13 +1228,14 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	struct avctp *session;
 	struct audio_device *dev;
 	char address[18];
-	bdaddr_t src;
+	bdaddr_t src, dst;
 	GError *err = NULL;
 	uint16_t psm;
 	struct btd_device *device;
 
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
+			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_DEST, address,
 			BT_IO_OPT_PSM, &psm,
 			BT_IO_OPT_INVALID);
@@ -1247,7 +1248,7 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	DBG("AVCTP: incoming connect from %s", address);
 
-	device = adapter_find_device(adapter_find(&src), address);
+	device = adapter_find_device(adapter_find(&src), &dst);
 	if (!device)
 		return;
 
