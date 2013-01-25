@@ -87,6 +87,7 @@
 #define CONN_SCAN_TIMEOUT (3)
 #define IDLE_DISCOV_TIMEOUT (5)
 #define TEMP_DEV_TIMEOUT (3 * 60)
+#define BONDING_TIMEOUT (60)
 
 static DBusConnection *dbus_conn = NULL;
 
@@ -177,6 +178,9 @@ struct btd_adapter {
 
 	unsigned int confirm_name_id;
 	guint confirm_name_timeout;
+
+	unsigned int pair_device_id;
+	guint pair_device_timeout;
 };
 
 static struct btd_adapter *btd_adapter_lookup(uint16_t index)
@@ -2823,6 +2827,9 @@ static void adapter_free(gpointer user_data)
 	if (adapter->confirm_name_timeout > 0)
 		g_source_remove(adapter->confirm_name_timeout);
 
+	if (adapter->pair_device_timeout > 0)
+		g_source_remove(adapter->pair_device_timeout);
+
 	if (adapter->auth_idle_id)
 		g_source_remove(adapter->auth_idle_id);
 
@@ -4777,13 +4784,35 @@ static void free_pair_device_data(void *user_data)
 	g_free(data);
 }
 
+static gboolean pair_device_timeout(gpointer user_data)
+{
+	struct pair_device_data *data = user_data;
+	struct btd_adapter *adapter = data->adapter;
+
+	error("Pair device timed out for hci%u", adapter->dev_id);
+
+	adapter->pair_device_timeout = 0;
+
+	adapter_cancel_bonding(adapter, &data->bdaddr, data->addr_type);
+
+	return FALSE;
+}
+
 static void pair_device_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_pair_device *rp = param;
 	struct pair_device_data *data = user_data;
+	struct btd_adapter *adapter = data->adapter;
 
 	DBG("%s (0x%02x)", mgmt_errstr(status), status);
+
+	adapter->pair_device_id = 0;
+
+	if (adapter->pair_device_timeout > 0) {
+		g_source_remove(adapter->pair_device_timeout);
+		adapter->pair_device_timeout = 0;
+	}
 
 	/* Workaround for a kernel bug
 	 *
@@ -4795,7 +4824,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 		error("Pair device failed: %s (0x%02x)",
 						mgmt_errstr(status), status);
 
-		bonding_complete(data->adapter, &data->bdaddr,
+		bonding_complete(adapter, &data->bdaddr,
 						data->addr_type, status);
 		return;
 	}
@@ -4805,8 +4834,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	bonding_complete(data->adapter, &rp->addr.bdaddr,
-						rp->addr.type, status);
+	bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type, status);
 }
 
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
@@ -4815,6 +4843,12 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	struct mgmt_cp_pair_device cp;
 	char addr[18];
 	struct pair_device_data *data;
+	unsigned int id;
+
+	if (adapter->pair_device_id > 0) {
+		error("Unable pair since another pairing is in progress");
+		return -EBUSY;
+	}
 
 	suspend_discovery(adapter);
 
@@ -4832,17 +4866,22 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	bacpy(&data->bdaddr, bdaddr);
 	data->addr_type = addr_type;
 
-	if (mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
+	id = mgmt_send(adapter->mgmt, MGMT_OP_PAIR_DEVICE,
 				adapter->dev_id, sizeof(cp), &cp,
 				pair_device_complete, data,
-				free_pair_device_data) > 0)
-		return 0;
+				free_pair_device_data);
 
-	error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+	if (id == 0) {
+		error("Failed to pair %s for hci%u", addr, adapter->dev_id);
+		free_pair_device_data(data);
+		return -EIO;
+	}
 
-	free_pair_device_data(data);
+	adapter->pair_device_id = id;
+	adapter->pair_device_timeout = g_timeout_add_seconds(BONDING_TIMEOUT,
+						pair_device_timeout, data);
 
-	return -EIO;
+	return 0;
 }
 
 static void dev_disconnected(struct btd_adapter *adapter,

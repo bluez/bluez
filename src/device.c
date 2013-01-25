@@ -1411,11 +1411,6 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	device->bonding = bonding;
 	bonding->device = device;
 
-	if (device_is_le(device) && !device_is_connected(device)) {
-		adapter_connect_list_add(adapter, device);
-		return NULL;
-	}
-
 	err = adapter_create_bonding(adapter, &device->bdaddr,
 					device->bdaddr_type, io_cap);
 	if (err < 0)
