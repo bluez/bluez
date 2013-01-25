@@ -3116,7 +3116,7 @@ static void att_success_cb(gpointer user_data)
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
 
-GIOChannel *device_connect_le(struct btd_device *dev)
+int device_connect_le(struct btd_device *dev)
 {
 	struct btd_adapter *adapter = dev->adapter;
 	struct att_callbacks *attcb;
@@ -3127,7 +3127,7 @@ GIOChannel *device_connect_le(struct btd_device *dev)
 
 	/* There is one connection attempt going on */
 	if (dev->att_io)
-		return NULL;
+		return -EALREADY;
 
 	ba2str(&dev->bdaddr, addr);
 
@@ -3168,13 +3168,13 @@ GIOChannel *device_connect_le(struct btd_device *dev)
 		error("ATT bt_io_connect(%s): %s", addr, gerr->message);
 		g_error_free(gerr);
 		g_free(attcb);
-		return NULL;
+		return -EIO;
 	}
 
 	/* Keep this, so we can cancel the connection */
-	dev->att_io = g_io_channel_ref(io);
+	dev->att_io = io;
 
-	return io;
+	return 0;
 }
 
 static void att_browse_error_cb(const GError *gerr, gpointer user_data)
