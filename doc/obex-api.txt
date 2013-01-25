@@ -630,6 +630,28 @@ Methods		void SetFolder(string name)
 
 			Possible errors: org.bluez.obex.Error.Failed
 
+		object, dict
+		PushMessage(string sourcefile, string folder, dict args)
+
+			Transfer a message (in bMessage format) to the
+			remote device.
+
+			The message is transferred either to the given folder,
+			or to the current folder if folder is omitted.
+
+			Possible args: Transparent, Retry, Charset
+
+			The returned path represents the newly created transfer,
+			which should be used to find out if the content has been
+			successfully transferred or if the operation fails.
+
+			The properties of this transfer are also returned along
+			with the object path, to avoid a call to GetAll.
+
+			Possible errors: org.bluez.obex.Error.InvalidArguments
+					 org.bluez.obex.Error.Failed
+
+
 Filter:		uint16 Offset:
 
 			Offset of the first item, default is 0
