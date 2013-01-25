@@ -4878,6 +4878,11 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 	}
 
 	adapter->pair_device_id = id;
+
+	/* Due to a bug in the kernel it is possible that a LE pairing
+	 * request never times out. Therefore, add a timer to clean up
+	 * if no response arrives
+	 */
 	adapter->pair_device_timeout = g_timeout_add_seconds(BONDING_TIMEOUT,
 						pair_device_timeout, data);
 
