@@ -1428,6 +1428,11 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	device->bonding = bonding;
 	bonding->device = device;
 
+	/* Due to a bug in the kernel we might loose out on ATT commands
+	 * that arrive during the SMP procedure, so connect the ATT
+	 * channel first and only then start pairing (there's code for
+	 * this in the ATT connect callback)
+	 */
 	if (device_is_le(device) && !device_is_connected(device))
 		err = device_connect_le(device);
 	else
