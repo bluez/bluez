@@ -27,7 +27,7 @@
 struct btd_device;
 
 struct btd_device *device_create(struct btd_adapter *adapter,
-				const char *address, uint8_t bdaddr_type);
+				const bdaddr_t *address, uint8_t bdaddr_type);
 struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 				const char *address, GKeyFile *key_file);
 char *btd_device_get_storage_path(struct btd_device *device,

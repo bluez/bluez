@@ -1952,24 +1952,25 @@ struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 }
 
 struct btd_device *device_create(struct btd_adapter *adapter,
-				const char *address, uint8_t bdaddr_type)
+				const bdaddr_t *bdaddr, uint8_t bdaddr_type)
 {
 	struct btd_device *device;
-	const bdaddr_t *src;
-	char srcaddr[18];
+	const bdaddr_t *sba;
+	char src[18], dst[18];
 	char *str;
 
-	DBG("address %s", address);
+	ba2str(bdaddr, dst);
+	DBG("dst %s", dst);
 
-	device = device_new(adapter, address);
+	device = device_new(adapter, dst);
 	if (device == NULL)
 		return NULL;
 
 	device->bdaddr_type = bdaddr_type;
-	src = adapter_get_address(adapter);
-	ba2str(src, srcaddr);
+	sba = adapter_get_address(adapter);
+	ba2str(sba, src);
 
-	str = load_cached_name(device, srcaddr, address);
+	str = load_cached_name(device, src, dst);
 	if (str) {
 		strcpy(device->name, str);
 		g_free(str);

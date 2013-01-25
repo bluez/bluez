@@ -1095,7 +1095,6 @@ guint attrib_channel_attach(GAttrib *attrib)
 	struct gatt_channel *channel;
 	GIOChannel *io;
 	GError *gerr = NULL;
-	char addr[18];
 	uint16_t cid;
 	guint mtu = 0;
 
@@ -1128,9 +1127,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 
 	channel->server = server;
 
-	ba2str(&channel->dst, addr);
-
-	device = adapter_find_device(server->adapter, addr);
+	device = adapter_find_device(server->adapter, &channel->dst);
 	if (device == NULL) {
 		error("Device object not found for attrib server");
 		g_free(channel);

@@ -981,7 +981,6 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct btd_device *device;
-	char addr[18];
 	struct ext_io *conn;
 	GIOCondition cond;
 	const char *remote_uuid = server->ext->remote_uuids[0];
@@ -992,8 +991,7 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 	conn->ext = server->ext;
 	conn->adapter = btd_adapter_ref(server->adapter);
 
-	ba2str(dst, addr);
-	device = adapter_find_device(server->adapter, addr);
+	device = adapter_find_device(server->adapter, dst);
 
 	if (device)
 		conn->device = btd_device_ref(device);

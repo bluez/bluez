@@ -710,15 +710,18 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 }
 
 struct btd_device *adapter_find_device(struct btd_adapter *adapter,
-							const char *dest)
+							const bdaddr_t *dst)
 {
 	struct btd_device *device;
+	char addr[18];
 	GSList *list;
 
 	if (!adapter)
 		return NULL;
 
-	list = g_slist_find_custom(adapter->devices, dest, device_address_cmp);
+	ba2str(dst, addr);
+
+	list = g_slist_find_custom(adapter->devices, addr, device_address_cmp);
 	if (!list)
 		return NULL;
 
@@ -996,14 +999,12 @@ void adapter_service_remove(struct btd_adapter *adapter, void *r)
 }
 
 static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
-						const char *address,
+						const bdaddr_t *bdaddr,
 						uint8_t bdaddr_type)
 {
 	struct btd_device *device;
 
-	DBG("%s", address);
-
-	device = device_create(adapter, address, bdaddr_type);
+	device = device_create(adapter, bdaddr, bdaddr_type);
 	if (!device)
 		return NULL;
 
@@ -1066,20 +1067,19 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 }
 
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
-				const char *address, uint8_t addr_type)
+					const bdaddr_t *addr,
+					uint8_t addr_type)
 {
 	struct btd_device *device;
-
-	DBG("%s", address);
 
 	if (!adapter)
 		return NULL;
 
-	device = adapter_find_device(adapter, address);
+	device = adapter_find_device(adapter, addr);
 	if (device)
 		return device;
 
-	return adapter_create_device(adapter, address, addr_type);
+	return adapter_create_device(adapter, addr, addr_type);
 }
 
 sdp_list_t *btd_adapter_get_services(struct btd_adapter *adapter)
@@ -2665,7 +2665,7 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 		ba2str(&addr->bdaddr, address);
 		DBG("Adding existing connection to %s", address);
 
-		device = adapter_get_device(adapter, address, addr->type);
+		device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
 		if (device)
 			adapter_add_connection(adapter, device);
 	}
@@ -4001,7 +4001,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 			return;
 		}
 
-		dev = adapter_create_device(adapter, addr, bdaddr_type);
+		dev = adapter_create_device(adapter, bdaddr, bdaddr_type);
 	} else
 		dev = list->data;
 
@@ -4271,11 +4271,9 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 {
 	struct service_auth *auth;
 	struct btd_device *device;
-	char address[18];
 	static guint id = 0;
 
-	ba2str(dst, address);
-	device = adapter_find_device(adapter, address);
+	device = adapter_find_device(adapter, dst);
 	if (!device)
 		return 0;
 
@@ -4522,7 +4520,7 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s confirm_hint %u", adapter->dev_id, addr,
 							ev->confirm_hint);
-	device = adapter_get_device(adapter, addr, ev->addr.type);
+	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4593,7 +4591,7 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s", index, addr);
 
-	device = adapter_get_device(adapter, addr, ev->addr.type);
+	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4625,7 +4623,7 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s", index, addr);
 
-	device = adapter_get_device(adapter, addr, ev->addr.type);
+	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4679,7 +4677,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u %s", adapter->dev_id, addr);
 
-	device = adapter_get_device(adapter, addr, ev->addr.type);
+	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4752,13 +4750,11 @@ static void bonding_complete(struct btd_adapter *adapter,
 					uint8_t addr_type, uint8_t status)
 {
 	struct btd_device *device;
-	char addr[18];
 
-	ba2str(bdaddr, addr);
 	if (status == 0)
-		device = adapter_get_device(adapter, addr, addr_type);
+		device = adapter_get_device(adapter, bdaddr, addr_type);
 	else
-		device = adapter_find_device(adapter, addr);
+		device = adapter_find_device(adapter, bdaddr);
 
 	if (device != NULL)
 		device_bonding_complete(device, status);
@@ -4860,7 +4856,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	DBG("Device %s disconnected, reason %u", dst, reason);
 
-	device = adapter_find_device(adapter, dst);
+	device = adapter_find_device(adapter, &addr->bdaddr);
 	if (device)
 		adapter_remove_connection(adapter, device);
 
@@ -4988,7 +4984,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	device = adapter_get_device(adapter, dst, addr->type);
+	device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
 		error("Unable to get device object for %s", dst);
 		return;
@@ -5083,7 +5079,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	DBG("hci%u new LTK for %s authenticated %u enc_size %u",
 		adapter->dev_id, dst, ev->key.authenticated, ev->key.enc_size);
 
-	device = adapter_get_device(adapter, dst, addr->type);
+	device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
 		error("Unable to get device object for %s", dst);
 		return;
@@ -5425,7 +5421,7 @@ static void connected_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
 
-	device = adapter_get_device(adapter, addr, ev->addr.type);
+	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -5466,7 +5462,7 @@ static void device_blocked_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s blocked", index, addr);
 
-	device = adapter_find_device(adapter, addr);
+	device = adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device)
 		device_block(device, TRUE);
 }
@@ -5487,7 +5483,7 @@ static void device_unblocked_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s unblocked", index, addr);
 
-	device = adapter_find_device(adapter, addr);
+	device = adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device)
 		device_unblock(device, FALSE, TRUE);
 }
@@ -5509,7 +5505,7 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u %s status %u", index, addr, ev->status);
 
-	device = adapter_find_device(adapter, addr);
+	device = adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device) {
 		if (device_is_bonding(device, NULL))
 			device_bonding_failed(device, ev->status);
@@ -5538,7 +5534,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u addr %s", index, addr);
 
-	device = adapter_find_device(adapter, addr);
+	device = adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (!device) {
 		warn("No device object for unpaired device %s", addr);
 		return;
