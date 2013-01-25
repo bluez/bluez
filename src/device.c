@@ -1212,6 +1212,23 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *dev = user_data;
 
+	if (device_is_le(dev)) {
+		int err;
+
+		if (device_is_connected(dev))
+			return dbus_message_new_method_return(msg);
+
+		device_set_temporary(dev, FALSE);
+
+		err = device_connect_le(dev);
+		if (err < 0)
+			return btd_error_failed(msg, strerror(-err));
+
+		dev->connect = dbus_message_ref(msg);
+
+		return NULL;
+	}
+
 	return connect_profiles(dev, msg, NULL);
 }
 
@@ -3043,6 +3060,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 {
 	struct att_callbacks *attcb = user_data;
 	struct btd_device *device = attcb->user_data;
+	DBusMessage *reply;
 	uint8_t io_cap;
 	GAttrib *attrib;
 	int err = 0;
@@ -3084,11 +3102,25 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 					device->bdaddr_type, io_cap);
 done:
 	if (device->bonding && err < 0) {
-		DBusMessage *reply = btd_error_failed(device->bonding->msg,
-							strerror(-err));
+		reply = btd_error_failed(device->bonding->msg, strerror(-err));
 		g_dbus_send_message(dbus_conn, reply);
 		bonding_request_cancel(device->bonding);
 		bonding_request_free(device->bonding);
+	}
+
+	if (device->connect) {
+		if (!device->svc_resolved)
+			device_browse_primary(device, NULL, FALSE);
+
+		if (err < 0)
+			reply = btd_error_failed(device->connect,
+							strerror(-err));
+		else
+			reply = dbus_message_new_method_return(device->connect);
+
+		g_dbus_send_message(dbus_conn, reply);
+		dbus_message_unref(device->connect);
+		device->connect = NULL;
 	}
 
 	g_free(attcb);
