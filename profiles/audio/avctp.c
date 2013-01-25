@@ -213,6 +213,8 @@ static struct {
 	uint8_t avc;
 	uint16_t uinput;
 } key_map[] = {
+	{ "VOLUME UP",		AVC_VOLUME_UP,		KEY_VOLUMEUP },
+	{ "VOLUME DOWN",	AVC_VOLUME_DOWN,	KEY_VOLUMEDOWN },
 	{ "PLAY",		AVC_PLAY,		KEY_PLAYCD },
 	{ "STOP",		AVC_STOP,		KEY_STOPCD },
 	{ "PAUSE",		AVC_PAUSE,		KEY_PAUSECD },
