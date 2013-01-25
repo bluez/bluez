@@ -87,7 +87,7 @@
 #define CONN_SCAN_TIMEOUT (3)
 #define IDLE_DISCOV_TIMEOUT (5)
 #define TEMP_DEV_TIMEOUT (3 * 60)
-#define BONDING_TIMEOUT (60)
+#define BONDING_TIMEOUT (2 * 60)
 
 static DBusConnection *dbus_conn = NULL;
 
