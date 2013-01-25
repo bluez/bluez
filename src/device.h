@@ -108,7 +108,8 @@ int device_unblock(struct btd_device *device, gboolean silent,
 							gboolean update_only);
 void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 			uint16_t vendor, uint16_t product, uint16_t version);
-GIOChannel *device_att_connect(gpointer user_data);
+
+GIOChannel *device_att_connect(struct btd_device *dev);
 
 struct btd_profile;
 

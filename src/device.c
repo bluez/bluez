@@ -3045,7 +3045,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	struct btd_device *device = attcb->user_data;
 	uint8_t io_cap;
 	GAttrib *attrib;
-	int err;
+	int err = 0;
 
 	g_io_channel_unref(device->att_io);
 	device->att_io = NULL;
@@ -3056,6 +3056,7 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		if (attcb->error)
 			attcb->error(gerr, user_data);
 
+		err = -ECONNABORTED;
 		goto done;
 	}
 
@@ -3079,10 +3080,10 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	else
 		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
 
-	/* this is a LE device during pairing */
 	err = adapter_create_bonding(device->adapter, &device->bdaddr,
 					device->bdaddr_type, io_cap);
-	if (err < 0) {
+done:
+	if (device->bonding && err < 0) {
 		DBusMessage *reply = btd_error_failed(device->bonding->msg,
 							strerror(-err));
 		g_dbus_send_message(dbus_conn, reply);
@@ -3090,7 +3091,6 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 		bonding_request_free(device->bonding);
 	}
 
-done:
 	g_free(attcb);
 }
 
@@ -3120,80 +3120,65 @@ static void att_success_cb(gpointer user_data)
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
 
-GIOChannel *device_att_connect(gpointer user_data)
+GIOChannel *device_att_connect(struct btd_device *dev)
 {
-	struct btd_device *device = user_data;
-	struct btd_adapter *adapter = device->adapter;
+	struct btd_adapter *adapter = dev->adapter;
 	struct att_callbacks *attcb;
+	BtIOSecLevel sec_level;
 	GIOChannel *io;
 	GError *gerr = NULL;
 	char addr[18];
 
-	ba2str(&device->bdaddr, addr);
+	/* There is one connection attempt going on */
+	if (dev->att_io)
+		return NULL;
+
+	ba2str(&dev->bdaddr, addr);
 
 	DBG("Connection attempt to: %s", addr);
 
 	attcb = g_new0(struct att_callbacks, 1);
 	attcb->error = att_error_cb;
 	attcb->success = att_success_cb;
-	attcb->user_data = device;
+	attcb->user_data = dev;
 
-	if (device_is_bredr(device)) {
-		io = bt_io_connect(att_connect_cb,
-					attcb, NULL, &gerr,
-					BT_IO_OPT_SOURCE_BDADDR,
-					adapter_get_address(adapter),
-					BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-					BT_IO_OPT_PSM, ATT_PSM,
-					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
-					BT_IO_OPT_INVALID);
-	} else if (device->bonding) {
-		/* this is a LE device during pairing, using low sec level */
-		io = bt_io_connect(att_connect_cb,
-				attcb, NULL, &gerr,
-				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(adapter),
-				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
-				BT_IO_OPT_CID, ATT_CID,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
-				BT_IO_OPT_INVALID);
-		if (io == NULL) {
-			DBusMessage *reply = btd_error_failed(
-					device->bonding->msg, gerr->message);
-			g_dbus_send_message(dbus_conn, reply);
-			bonding_request_cancel(device->bonding);
-			bonding_request_free(device->bonding);
-		}
-	} else {
-		BtIOSecLevel sec_level;
+	if (dev->paired)
+		sec_level = BT_IO_SEC_MEDIUM;
+	else
+		sec_level = BT_IO_SEC_LOW;
 
-		if (device->paired)
-			sec_level = BT_IO_SEC_MEDIUM;
-		else
-			sec_level = BT_IO_SEC_LOW;
-
-		io = bt_io_connect(att_connect_cb,
-				attcb, NULL, &gerr,
-				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(adapter),
-				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
-				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
-				BT_IO_OPT_CID, ATT_CID,
-				BT_IO_OPT_SEC_LEVEL, sec_level,
-				BT_IO_OPT_INVALID);
-	}
+	/*
+	 * This connection will help us catch any PDUs that comes before
+	 * pairing finishes
+	 */
+	io = bt_io_connect(att_connect_cb, attcb, NULL, &gerr,
+			BT_IO_OPT_SOURCE_BDADDR, adapter_get_address(adapter),
+			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
+			BT_IO_OPT_DEST_TYPE, dev->bdaddr_type,
+			BT_IO_OPT_CID, ATT_CID,
+			BT_IO_OPT_SEC_LEVEL, sec_level,
+			BT_IO_OPT_INVALID);
 
 	if (io == NULL) {
+		if (dev->bonding) {
+			DBusMessage *reply = btd_error_failed(
+					dev->bonding->msg, gerr->message);
+
+			g_dbus_send_message(dbus_conn, reply);
+			bonding_request_cancel(dev->bonding);
+			bonding_request_free(dev->bonding);
+		}
+
 		error("ATT bt_io_connect(%s): %s", addr, gerr->message);
 		g_error_free(gerr);
 		g_free(attcb);
 		return NULL;
 	}
 
-	device->att_io = io;
+	/* Keep this, so we can cancel the connection */
+	dev->att_io = g_io_channel_ref(io);
 
-	return g_io_channel_ref(io);
+	return io;
 }
 
 static void att_browse_error_cb(const GError *gerr, gpointer user_data)
