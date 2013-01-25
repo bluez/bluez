@@ -830,7 +830,7 @@ static void player_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&err);
 	if (dbus_set_error_from_message(&err, message)) {
 		fprintf(stderr, "error: %s", err.name);
-		reply = g_dbus_create_error(msg, err.name, err.message);
+		reply = g_dbus_create_error(msg, err.name, "%s", err.message);
 		dbus_error_free(&err);
 	} else
 		reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
