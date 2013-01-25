@@ -3120,7 +3120,7 @@ static void att_success_cb(gpointer user_data)
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
 
-GIOChannel *device_att_connect(struct btd_device *dev)
+GIOChannel *device_connect_le(struct btd_device *dev)
 {
 	struct btd_adapter *adapter = dev->adapter;
 	struct att_callbacks *attcb;
