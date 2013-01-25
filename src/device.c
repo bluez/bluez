@@ -2814,6 +2814,8 @@ static void store_services(struct btd_device *device)
 
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	prim_uuid = bt_uuid2string(&uuid);
+	if (prim_uuid == NULL)
+		return;
 
 	ba2str(adapter_get_address(adapter), src_addr);
 	ba2str(&device->bdaddr, dst_addr);
@@ -2862,6 +2864,7 @@ static void store_services(struct btd_device *device)
 		g_file_set_contents(filename, data, length, NULL);
 	}
 
+	g_free(prim_uuid);
 	g_free(data);
 	g_key_file_free(key_file);
 }
