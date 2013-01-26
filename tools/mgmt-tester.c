@@ -332,6 +332,13 @@ static const struct generic_data invalid_command_test = {
 	.expect_status = MGMT_STATUS_UNKNOWN_COMMAND,
 };
 
+static const struct generic_data read_version_success_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_READ_VERSION,
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_len = 3,
+};
+
 static const struct generic_data read_version_invalid_param_test = {
 	.send_index_none = true,
 	.send_opcode = MGMT_OP_READ_VERSION,
@@ -1908,6 +1915,8 @@ int main(int argc, char *argv[])
 	test_bredr("Invalid command", &invalid_command_test,
 					NULL, test_command_generic);
 
+	test_bredr("Read version - Success", &read_version_success_test,
+					NULL, test_command_generic);
 	test_bredr("Read version - Invalid parameters",
 					&read_version_invalid_param_test,
 					NULL, test_command_generic);
