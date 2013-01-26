@@ -458,6 +458,25 @@ static const struct generic_data set_powered_off_class_test = {
 	.expect_class_of_dev = set_powered_off_class_of_dev,
 };
 
+static const struct generic_data set_powered_off_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_powered_off_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_invalid_param,
+	.send_len = sizeof(set_powered_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_powered_off_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_garbage_param,
+	.send_len = sizeof(set_powered_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const char set_connectable_on_param[] = { 0x01 };
 static const char set_connectable_invalid_param[] = { 0x02 };
 static const char set_connectable_garbage_param[] = { 0x01, 0x00 };
@@ -1963,6 +1982,15 @@ int main(int argc, char *argv[])
 	test_bredr("Set powered off - Class of Device",
 					&set_powered_off_class_test,
 					setup_class, test_command_generic);
+	test_bredr("Set powered off - Invalid parameters 1",
+					&set_powered_off_invalid_param_test_1,
+					setup_powered, test_command_generic);
+	test_bredr("Set powered off - Invalid parameters 2",
+					&set_powered_off_invalid_param_test_2,
+					setup_powered, test_command_generic);
+	test_bredr("Set powered off - Invalid parameters 3",
+					&set_powered_off_invalid_param_test_3,
+					setup_powered, test_command_generic);
 
 	test_bredr("Set connectable on - Success 1",
 					&set_connectable_on_success_test_1,
