@@ -534,6 +534,34 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_connectable_off_param[] = { 0x00 };
+static const char set_connectable_off_settings_1[] = { 0x80, 0x00, 0x00, 0x00 };
+static const char set_connectable_off_settings_2[] = { 0x81, 0x00, 0x00, 0x00 };
+static const char set_connectable_off_scan_enable_param[] = { 0x00 };
+
+static const struct generic_data set_connectable_off_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_settings_1,
+	.expect_len = sizeof(set_connectable_off_settings_1),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+};
+
+static const struct generic_data set_connectable_off_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_settings_2,
+	.expect_len = sizeof(set_connectable_off_settings_2),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_off_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
+};
+
 static const char set_pairable_on_param[] = { 0x01 };
 static const char set_pairable_invalid_param[] = { 0x02 };
 static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
@@ -1746,6 +1774,21 @@ static void setup_connectable(const void *test_data)
 					setup_connectable_callback, NULL, NULL);
 }
 
+static void setup_connectable_powered(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Setting controller powered and connectable");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
+			sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
 static void command_generic_new_settings(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2010,6 +2053,14 @@ int main(int argc, char *argv[])
 	test_bredr("Set connectable on - Invalid index",
 					&set_connectable_on_invalid_index_test,
 					NULL, test_command_generic);
+
+	test_bredr("Set connectable off - Success 1",
+				&set_connectable_off_success_test_1,
+				setup_connectable, test_command_generic);
+	test_bredr("Set connectable off - Success 2",
+					&set_connectable_off_success_test_2,
+					setup_connectable_powered,
+					test_command_generic);
 
 	test_bredr("Set pairable on - Success",
 					&set_pairable_on_success_test,
