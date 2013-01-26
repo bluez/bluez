@@ -883,6 +883,76 @@ static const struct generic_data set_ssp_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_le_on_param[] = { 0x01 };
+static const char set_le_invalid_param[] = { 0x02 };
+static const char set_le_garbage_param[] = { 0x01, 0x00 };
+static const char set_le_settings_param_1[] = { 0x80, 0x02, 0x00, 0x00 };
+static const char set_le_settings_param_2[] = { 0x81, 0x02, 0x00, 0x00 };
+static const char set_le_on_write_le_host_param[] = { 0x01, 0x01 };
+
+static const struct generic_data set_le_on_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_on_param,
+	.send_len = sizeof(set_le_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_1,
+	.expect_len = sizeof(set_le_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_LE,
+};
+
+static const struct generic_data set_le_on_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_on_param,
+	.send_len = sizeof(set_le_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_2,
+	.expect_len = sizeof(set_le_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_LE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+	.expect_hci_param = set_le_on_write_le_host_param,
+	.expect_hci_len = sizeof(set_le_on_write_le_host_param),
+};
+
+static const struct generic_data set_le_on_success_test_3 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_le_settings_param_2,
+	.expect_len = sizeof(set_le_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_LE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED,
+	.expect_hci_param = set_le_on_write_le_host_param,
+	.expect_hci_len = sizeof(set_le_on_write_le_host_param),
+};
+
+static const struct generic_data set_le_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_le_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_invalid_param,
+	.send_len = sizeof(set_le_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_le_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_garbage_param,
+	.send_len = sizeof(set_le_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_le_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_LE,
+	.send_param = set_le_on_param,
+	.send_len = sizeof(set_le_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static const char start_discovery_invalid_param[] = { 0x00 };
 static const char start_discovery_bredr_param[] = { 0x01 };
 static const char start_discovery_le_param[] = { 0x06 };
@@ -1721,6 +1791,31 @@ static void setup_ssp(const void *test_data)
 				NULL, NULL);
 }
 
+static void setup_le_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Low Energy enabled");
+
+	tester_setup_complete();
+}
+
+static void setup_le(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Enabling Low Energy");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, setup_le_callback,
+				NULL, NULL);
+}
+
 static void setup_multi_uuid32(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2345,6 +2440,25 @@ int main(int argc, char *argv[])
 					NULL, test_command_generic);
 	test_bredr("Set SSP on - Invalid index",
 					&set_ssp_on_invalid_index_test,
+					NULL, test_command_generic);
+
+	test_bredr("Set Low Energy on - Success 1", &set_le_on_success_test_1,
+						NULL, test_command_generic);
+	test_bredr("Set Low Energy on - Success 2", &set_le_on_success_test_2,
+					setup_powered, test_command_generic);
+	test_bredr("Set Low Energy on - Success 3", &set_le_on_success_test_3,
+					setup_le, test_command_generic);
+	test_bredr("Set Low Energy on - Invalid parameters 1",
+					&set_le_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set Low Energy on - Invalid parameters 2",
+					&set_le_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set Low Energy on - Invalid parameters 3",
+					&set_le_on_invalid_param_test_3,
+					NULL, test_command_generic);
+	test_bredr("Set Low Energy on - Invalid index",
+					&set_le_on_invalid_index_test,
 					NULL, test_command_generic);
 
 	test_bredr("Start Discovery - Not powered 1",
