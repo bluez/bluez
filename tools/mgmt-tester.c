@@ -772,6 +772,34 @@ static const struct generic_data set_link_sec_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_link_sec_off_param[] = { 0x00 };
+static const char set_link_sec_off_settings_1[] = { 0x80, 0x00, 0x00, 0x00 };
+static const char set_link_sec_off_settings_2[] = { 0x81, 0x00, 0x00, 0x00 };
+static const char set_link_sec_off_auth_enable_param[] = { 0x00 };
+
+static const struct generic_data set_link_sec_off_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_off_param,
+	.send_len = sizeof(set_link_sec_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_link_sec_off_settings_1,
+	.expect_len = sizeof(set_link_sec_off_settings_1),
+	.expect_settings_unset = MGMT_SETTING_LINK_SECURITY,
+};
+
+static const struct generic_data set_link_sec_off_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
+	.send_param = set_link_sec_off_param,
+	.send_len = sizeof(set_link_sec_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_link_sec_off_settings_2,
+	.expect_len = sizeof(set_link_sec_off_settings_2),
+	.expect_settings_unset = MGMT_SETTING_LINK_SECURITY,
+	.expect_hci_command = BT_HCI_CMD_WRITE_AUTH_ENABLE,
+	.expect_hci_param = set_link_sec_off_auth_enable_param,
+	.expect_hci_len = sizeof(set_link_sec_off_auth_enable_param),
+};
+
 static const char start_discovery_invalid_param[] = { 0x00 };
 static const char start_discovery_bredr_param[] = { 0x01 };
 static const char start_discovery_le_param[] = { 0x06 };
@@ -1789,6 +1817,46 @@ static void setup_connectable_powered(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void setup_link_sec_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Link security enabled");
+
+	tester_setup_complete();
+}
+
+static void setup_link_sec(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Enabling link security");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LINK_SECURITY, data->mgmt_index,
+			sizeof(param), param, setup_link_sec_callback,
+			NULL, NULL);
+}
+
+static void setup_link_sec_powered(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Enabling link security and powering on");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LINK_SECURITY, data->mgmt_index,
+			sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(param), param,
+					setup_powered_callback, NULL, NULL);
+}
+
 static void command_generic_new_settings(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2140,6 +2208,14 @@ int main(int argc, char *argv[])
 	test_bredr("Set link security on - Invalid index",
 					&set_link_sec_on_invalid_index_test,
 					NULL, test_command_generic);
+
+	test_bredr("Set link security off - Success 1",
+					&set_link_sec_off_success_test_1,
+					setup_link_sec, test_command_generic);
+	test_bredr("Set link security off - Success 2",
+					&set_link_sec_off_success_test_2,
+					setup_link_sec_powered,
+					test_command_generic);
 
 	test_bredr("Start Discovery - Not powered 1",
 				&start_discovery_not_powered_test_1,
