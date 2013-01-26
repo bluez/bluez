@@ -1522,7 +1522,7 @@ static void setup_powered_discoverable(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	unsigned char discov_param[] = { 0x01, 0x00, 0x00 };
 
-	tester_print("Powering on connectable controller");
+	tester_print("Enabling connectable, discoverable and powered");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 					sizeof(param), param,
@@ -1542,7 +1542,7 @@ static void setup_powered_connectable(const void *test_data)
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
 
-	tester_print("Powering on connectable controller");
+	tester_print("Enabling connectable and powered");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
 					sizeof(param), param,
@@ -1559,7 +1559,7 @@ static void setup_class(const void *test_data)
 	unsigned char param[] = { 0x01 };
 	unsigned char class_param[] = { 0x01, 0x0c };
 
-	tester_print("Powering on controller");
+	tester_print("Setting device class and powering on");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEV_CLASS, data->mgmt_index,
 				sizeof(class_param), class_param,
