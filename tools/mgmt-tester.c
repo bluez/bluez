@@ -1611,7 +1611,7 @@ static void setup_class(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_ssp(const void *test_data)
+static void setup_ssp_powered(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
@@ -2254,19 +2254,19 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 
 	test_bredr("Add UUID - UUID-16 1", &add_uuid16_test_1,
-				setup_ssp, test_command_generic);
+				setup_ssp_powered, test_command_generic);
 	test_bredr("Add UUID - UUID-16 multiple 1", &add_multi_uuid16_test_1,
 				setup_multi_uuid16, test_command_generic);
 	test_bredr("Add UUID - UUID-16 partial 1", &add_multi_uuid16_test_2,
 				setup_multi_uuid16_2, test_command_generic);
-	test_bredr("Add UUID - UUID-32 1", &add_uuid32_test_1, setup_ssp,
-				test_command_generic);
+	test_bredr("Add UUID - UUID-32 1", &add_uuid32_test_1,
+				setup_ssp_powered, test_command_generic);
 	test_bredr("Add UUID - UUID-32 multiple 1", &add_uuid32_multi_test_1,
 				setup_multi_uuid32, test_command_generic);
 	test_bredr("Add UUID - UUID-32 partial 1", &add_uuid32_multi_test_2,
 				setup_multi_uuid32_2, test_command_generic);
 	test_bredr("Add UUID - UUID-128 1", &add_uuid128_test_1,
-				setup_ssp, test_command_generic);
+				setup_ssp_powered, test_command_generic);
 	test_bredr("Add UUID - UUID-128 multiple 1", &add_uuid128_multi_test_1,
 				setup_multi_uuid128, test_command_generic);
 	test_bredr("Add UUID - UUID-128 partial 1", &add_uuid128_multi_test_2,
