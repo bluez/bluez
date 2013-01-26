@@ -813,6 +813,76 @@ static const struct generic_data set_link_sec_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_link_sec_off_auth_enable_param),
 };
 
+static const char set_ssp_on_param[] = { 0x01 };
+static const char set_ssp_invalid_param[] = { 0x02 };
+static const char set_ssp_garbage_param[] = { 0x01, 0x00 };
+static const char set_ssp_settings_param_1[] = { 0xc0, 0x00, 0x00, 0x00 };
+static const char set_ssp_settings_param_2[] = { 0xc1, 0x00, 0x00, 0x00 };
+static const char set_ssp_on_write_ssp_mode_param[] = { 0x01 };
+
+static const struct generic_data set_ssp_on_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_on_param,
+	.send_len = sizeof(set_ssp_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_1,
+	.expect_len = sizeof(set_ssp_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_SSP,
+};
+
+static const struct generic_data set_ssp_on_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_on_param,
+	.send_len = sizeof(set_ssp_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_2,
+	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_SSP,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE,
+	.expect_hci_param = set_ssp_on_write_ssp_mode_param,
+	.expect_hci_len = sizeof(set_ssp_on_write_ssp_mode_param),
+};
+
+static const struct generic_data set_ssp_on_success_test_3 = {
+	.send_opcode = MGMT_OP_SET_POWERED,
+	.send_param = set_powered_on_param,
+	.send_len = sizeof(set_powered_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_ssp_settings_param_2,
+	.expect_len = sizeof(set_ssp_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_SSP,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE,
+	.expect_hci_param = set_ssp_on_write_ssp_mode_param,
+	.expect_hci_len = sizeof(set_ssp_on_write_ssp_mode_param),
+};
+
+static const struct generic_data set_ssp_on_invalid_param_test_1 = {
+	.send_opcode = MGMT_OP_SET_SSP,
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_ssp_on_invalid_param_test_2 = {
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_invalid_param,
+	.send_len = sizeof(set_ssp_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_ssp_on_invalid_param_test_3 = {
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_garbage_param,
+	.send_len = sizeof(set_ssp_garbage_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
+static const struct generic_data set_ssp_on_invalid_index_test = {
+	.send_index_none = true,
+	.send_opcode = MGMT_OP_SET_SSP,
+	.send_param = set_ssp_on_param,
+	.send_len = sizeof(set_ssp_on_param),
+	.expect_status = MGMT_STATUS_INVALID_INDEX,
+};
+
 static const char start_discovery_invalid_param[] = { 0x00 };
 static const char start_discovery_bredr_param[] = { 0x01 };
 static const char start_discovery_le_param[] = { 0x06 };
@@ -1626,6 +1696,31 @@ static void setup_ssp_powered(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void setup_ssp_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("SSP enabled");
+
+	tester_setup_complete();
+}
+
+static void setup_ssp(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Enabling SSP");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, setup_ssp_callback,
+				NULL, NULL);
+}
+
 static void setup_multi_uuid32(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2232,6 +2327,25 @@ int main(int argc, char *argv[])
 					&set_link_sec_off_success_test_2,
 					setup_link_sec_powered,
 					test_command_generic);
+
+	test_bredr("Set SSP on - Success 1", &set_ssp_on_success_test_1,
+						NULL, test_command_generic);
+	test_bredr("Set SSP on - Success 2", &set_ssp_on_success_test_2,
+					setup_powered, test_command_generic);
+	test_bredr("Set SSP on - Success 3", &set_ssp_on_success_test_3,
+					setup_ssp, test_command_generic);
+	test_bredr("Set SSP on - Invalid parameters 1",
+					&set_ssp_on_invalid_param_test_1,
+					NULL, test_command_generic);
+	test_bredr("Set SSP on - Invalid parameters 2",
+					&set_ssp_on_invalid_param_test_2,
+					NULL, test_command_generic);
+	test_bredr("Set SSP on - Invalid parameters 3",
+					&set_ssp_on_invalid_param_test_3,
+					NULL, test_command_generic);
+	test_bredr("Set SSP on - Invalid index",
+					&set_ssp_on_invalid_index_test,
+					NULL, test_command_generic);
 
 	test_bredr("Start Discovery - Not powered 1",
 				&start_discovery_not_powered_test_1,
