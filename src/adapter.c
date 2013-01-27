@@ -750,6 +750,10 @@ static bool is_supported_uuid(const uuid_t *uuid)
 {
 	uuid_t tmp;
 
+	/* mgmt versions from 1.3 onwards support all types of UUIDs */
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) >= MGMT_VERSION(1, 3))
+		return true;
+
 	uuid_to_uuid128(&tmp, uuid);
 
 	if (!sdp_uuid128_to_uuid(&tmp))
