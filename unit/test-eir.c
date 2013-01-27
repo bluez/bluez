@@ -76,6 +76,18 @@ static const unsigned char macbookair_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *macbookair_uuid[] = {
+		"00001112-0000-1000-8000-00805f9b34fb",
+		"0000110c-0000-1000-8000-00805f9b34fb",
+		"0000110a-0000-1000-8000-00805f9b34fb",
+		"0000111f-0000-1000-8000-00805f9b34fb",
+		"00001101-0000-1000-8000-00805f9b34fb",
+		"00001000-0000-1000-8000-00805f9b34fb",
+		"0000110a-0000-1000-8000-00805f9b34fb",
+		"00001117-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data macbookair_test = {
 	.eir_data = macbookair_data,
 	.eir_size = sizeof(macbookair_data),
@@ -83,6 +95,7 @@ static const struct test_data macbookair_test = {
 	.name = "Marcel’s MacBook Air",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = macbookair_uuid,
 };
 
 static const unsigned char iphone5_data[] = {
@@ -118,6 +131,18 @@ static const unsigned char iphone5_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *iphone5_uuid[] = {
+		"00001200-0000-1000-8000-00805f9b34fb",
+		"0000111f-0000-1000-8000-00805f9b34fb",
+		"0000112f-0000-1000-8000-00805f9b34fb",
+		"0000110a-0000-1000-8000-00805f9b34fb",
+		"0000110c-0000-1000-8000-00805f9b34fb",
+		"00001116-0000-1000-8000-00805f9b34fb",
+		"00001132-0000-1000-8000-00805f9b34fb",
+		"00000000-deca-fade-deca-deafdecacafe",
+		NULL
+};
+
 static const struct test_data iphone5_test = {
 	.eir_data = iphone5_data,
 	.eir_size = sizeof(iphone5_data),
@@ -125,6 +150,7 @@ static const struct test_data iphone5_test = {
 	.name = "Marcel’s iPhone 5",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = iphone5_uuid,
 };
 
 static const unsigned char ipadmini_data[] = {
@@ -160,6 +186,16 @@ static const unsigned char ipadmini_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *ipadmini_uuid[] = {
+		"00001200-0000-1000-8000-00805f9b34fb",
+		"0000111f-0000-1000-8000-00805f9b34fb",
+		"0000110a-0000-1000-8000-00805f9b34fb",
+		"0000110c-0000-1000-8000-00805f9b34fb",
+		"00001132-0000-1000-8000-00805f9b34fb",
+		"00000000-deca-fade-deca-deafdecacafe",
+		NULL
+};
+
 static const struct test_data ipadmini_test = {
 	.eir_data = ipadmini_data,
 	.eir_size = sizeof(ipadmini_data),
@@ -167,6 +203,7 @@ static const struct test_data ipadmini_test = {
 	.name = "Marcel's iPad mini",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = ipadmini_uuid,
 };
 
 static const unsigned char gigaset_sl400h_data[] = {
@@ -202,6 +239,15 @@ static const unsigned char gigaset_sl400h_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *gigaset_sl400h_uuid[] = {
+		"00001101-0000-1000-8000-00805f9b34fb",
+		"00001105-0000-1000-8000-00805f9b34fb",
+		"00001112-0000-1000-8000-00805f9b34fb",
+		"00001203-0000-1000-8000-00805f9b34fb",
+		"0000111f-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data gigaset_sl400h_test = {
 	.eir_data = gigaset_sl400h_data,
 	.eir_size = sizeof(gigaset_sl400h_data),
@@ -209,6 +255,7 @@ static const struct test_data gigaset_sl400h_test = {
 	.name = "Marcel's SL400H",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = gigaset_sl400h_uuid,
 };
 
 static const unsigned char gigaset_sl910_data[] = {
@@ -244,6 +291,15 @@ static const unsigned char gigaset_sl910_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *gigaset_sl910_uuid[] = {
+		"00001101-0000-1000-8000-00805f9b34fb",
+		"00001105-0000-1000-8000-00805f9b34fb",
+		"00001112-0000-1000-8000-00805f9b34fb",
+		"00001203-0000-1000-8000-00805f9b34fb",
+		"0000111f-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data gigaset_sl910_test = {
 	.eir_data = gigaset_sl910_data,
 	.eir_size = sizeof(gigaset_sl910_data),
@@ -251,6 +307,7 @@ static const struct test_data gigaset_sl910_test = {
 	.name = "Marcel's SL910",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = gigaset_sl910_uuid,
 };
 
 static const unsigned char nokia_bh907_data[] = {
@@ -286,6 +343,17 @@ static const unsigned char nokia_bh907_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *nokia_bh907_uuid[] = {
+		"0000110d-0000-1000-8000-00805f9b34fb",
+		"0000110b-0000-1000-8000-00805f9b34fb",
+		"0000110e-0000-1000-8000-00805f9b34fb",
+		"0000110f-0000-1000-8000-00805f9b34fb",
+		"0000111e-0000-1000-8000-00805f9b34fb",
+		"00001108-0000-1000-8000-00805f9b34fb",
+		"00001131-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data nokia_bh907_test = {
 	.eir_data = nokia_bh907_data,
 	.eir_size = sizeof(nokia_bh907_data),
@@ -293,6 +361,7 @@ static const struct test_data nokia_bh907_test = {
 	.name = "Nokia Reaction BH-907",
 	.name_complete = TRUE,
 	.tx_power = 4,
+	.uuid = nokia_bh907_uuid,
 };
 
 static const unsigned char fuelband_data[] = {
@@ -328,6 +397,11 @@ static const unsigned char fuelband_data[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 };
 
+static const char *fuelband_uuid[] = {
+		"ffcacade-afde-cade-defa-cade00000000",
+		NULL
+};
+
 static const struct test_data fuelband_test = {
 	.eir_data = fuelband_data,
 	.eir_size = sizeof(fuelband_data),
@@ -335,6 +409,7 @@ static const struct test_data fuelband_test = {
 	.name = "Nike+ FuelBand",
 	.name_complete = TRUE,
 	.tx_power = 0,
+	.uuid = fuelband_uuid,
 };
 
 static const unsigned char bluesc_data[] = {
@@ -344,6 +419,11 @@ static const unsigned char bluesc_data[] = {
 		0x2e, 0x34,
 };
 
+static const char *bluesc_uuid[] = {
+		"00001816-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data bluesc_test = {
 	.eir_data = bluesc_data,
 	.eir_size = sizeof(bluesc_data),
@@ -351,6 +431,7 @@ static const struct test_data bluesc_test = {
 	.name = "Wahoo BlueSC v1.4",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = bluesc_uuid,
 };
 
 static const unsigned char wahoo_scale_data[] = {
@@ -360,6 +441,11 @@ static const unsigned char wahoo_scale_data[] = {
 		0x33, 0x05, 0xff, 0x00, 0x00, 0x00, 0x9c,
 };
 
+static const char *wahoo_scale_uuid[] = {
+		"00001901-0000-1000-8000-00805f9b34fb",
+		NULL
+};
+
 static const struct test_data wahoo_scale_test = {
 	.eir_data = wahoo_scale_data,
 	.eir_size = sizeof(wahoo_scale_data),
@@ -367,11 +453,17 @@ static const struct test_data wahoo_scale_test = {
 	.name = "Wahoo Scale v1.3",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = wahoo_scale_uuid,
 };
 
 static const unsigned char mio_alpha_data[] = {
 		0x02, 0x01, 0x06, 0x03, 0x02, 0x0d, 0x18, 0x06,
 		0x09, 0x41, 0x4c, 0x50, 0x48, 0x41,
+};
+
+static const char *mio_alpha_uuid[] = {
+		"0000180d-0000-1000-8000-00805f9b34fb",
+		NULL
 };
 
 static const struct test_data mio_alpha_test = {
@@ -381,12 +473,19 @@ static const struct test_data mio_alpha_test = {
 	.name = "ALPHA",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = mio_alpha_uuid,
 };
 
 static const unsigned char cookoo_data[] = {
 		0x02, 0x01, 0x05, 0x05, 0x02, 0x02, 0x18, 0x0a,
 		0x18, 0x0d, 0x09, 0x43, 0x4f, 0x4f, 0x4b, 0x4f,
 		0x4f, 0x20, 0x77, 0x61, 0x74, 0x63, 0x68,
+};
+
+static const char *cookoo_uuid[] = {
+		"00001802-0000-1000-8000-00805f9b34fb",
+		"0000180a-0000-1000-8000-00805f9b34fb",
+		NULL
 };
 
 static const struct test_data cookoo_test = {
@@ -396,6 +495,7 @@ static const struct test_data cookoo_test = {
 	.name = "COOKOO watch",
 	.name_complete = TRUE,
 	.tx_power = 127,
+	.uuid = cookoo_uuid,
 };
 
 static const unsigned char citizen_adv_data[] = {
@@ -420,11 +520,17 @@ static const unsigned char citizen_scan_data[] = {
 		0x8d, 0x60, 0xb4, 0x45, 0x2d,
 };
 
+static const char *citizen_scan_uuid[] = {
+		"2d45b460-8db7-11e1-9a46-0002a5d5c51b",
+		NULL
+};
+
 static const struct test_data citizen_scan_test = {
 	.eir_data = citizen_scan_data,
 	.eir_size = sizeof(citizen_scan_data),
 	.flags = -1,
 	.tx_power = 0,
+	.uuid = citizen_scan_uuid,
 };
 
 static void test_basic(void)
