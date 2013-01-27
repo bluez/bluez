@@ -134,6 +134,7 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 	uint16_t len = 0;
 
 	eir->flags = -1;
+	eir->tx_power = 127;
 
 	/* No EIR data to parse */
 	if (eir_data == NULL)
@@ -189,6 +190,12 @@ int eir_parse(struct eir_data *eir, const uint8_t *eir_data, uint8_t eir_len)
 
 			eir->name = name2utf8(data, data_len);
 			eir->name_complete = eir_data[1] == EIR_NAME_COMPLETE;
+			break;
+
+		case EIR_TX_POWER:
+			if (data_len < 1)
+				break;
+			eir->tx_power = (int8_t) data[0];
 			break;
 
 		case EIR_CLASS_OF_DEV:

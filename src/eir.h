@@ -45,6 +45,7 @@ struct eir_data {
 	uint32_t class;
 	uint16_t appearance;
 	gboolean name_complete;
+	int8_t tx_power;
 	uint8_t *hash;
 	uint8_t *randomizer;
 	bdaddr_t addr;
