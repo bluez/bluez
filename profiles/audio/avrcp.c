@@ -2165,12 +2165,20 @@ static struct avrcp *find_session(GSList *list, struct audio_device *dev)
 	return NULL;
 }
 
+static void destroy_browsing(void *data)
+{
+	struct avrcp *session = data;
+
+	session->browsing_id = 0;
+}
+
 static void session_tg_init_browsing(struct avrcp *session)
 {
 	session->browsing_id = avctp_register_browsing_pdu_handler(
 							session->conn,
 							handle_browsing_pdu,
-							session);
+							session,
+							destroy_browsing);
 }
 
 static void session_tg_init_control(struct avrcp *session)
@@ -2210,7 +2218,8 @@ static void session_ct_init_browsing(struct avrcp *session)
 	session->browsing_id = avctp_register_browsing_pdu_handler(
 							session->conn,
 							handle_browsing_pdu,
-							session);
+							session,
+							destroy_browsing);
 }
 
 static void session_ct_init_control(struct avrcp *session)
@@ -2378,14 +2387,8 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		break;
 	case AVCTP_STATE_CONNECTED:
-		if (session == NULL)
+		if (session == NULL || session->control_id > 0)
 			break;
-
-		if (session->browsing_id > 0)
-			session->browsing_id = 0;
-
-		if (session->control_id > 0)
-			return;
 
 		session->init_control(session);
 

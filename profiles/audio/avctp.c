@@ -168,6 +168,7 @@ struct avctp_channel {
 	GQueue *queue;
 	GSList *processed;
 	guint process_id;
+	GDestroyNotify destroy;
 };
 
 struct key_pressed {
@@ -206,6 +207,7 @@ struct avctp_browsing_pdu_handler {
 	avctp_browsing_pdu_cb cb;
 	void *user_data;
 	unsigned int id;
+	GDestroyNotify destroy;
 };
 
 static struct {
@@ -405,6 +407,9 @@ static void avctp_channel_destroy(struct avctp_channel *chan)
 
 	if (chan->process_id > 0)
 		g_source_remove(chan->process_id);
+
+	if (chan->destroy)
+		chan->destroy(chan);
 
 	g_free(chan->buffer);
 	g_queue_foreach(chan->queue, pending_destroy, NULL);
@@ -985,7 +990,8 @@ static void init_uinput(struct avctp *session)
 }
 
 static struct avctp_channel *avctp_channel_create(struct avctp *session,
-							GIOChannel *io)
+							GIOChannel *io,
+							GDestroyNotify destroy)
 {
 	struct avctp_channel *chan;
 
@@ -993,8 +999,28 @@ static struct avctp_channel *avctp_channel_create(struct avctp *session,
 	chan->session = session;
 	chan->io = g_io_channel_ref(io);
 	chan->queue = g_queue_new();
+	chan->destroy = destroy;
 
 	return chan;
+}
+
+static void handler_free(void *data)
+{
+	struct avctp_browsing_pdu_handler *handler = data;
+
+	if (handler->destroy)
+		handler->destroy(handler->user_data);
+
+	g_free(data);
+}
+
+static void avctp_destroy_browsing(void *data)
+{
+	struct avctp_channel *chan = data;
+
+	g_slist_free_full(chan->handlers, handler_free);
+
+	chan->handlers = NULL;
 }
 
 static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
@@ -1026,7 +1052,8 @@ static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
 	DBG("AVCTP Browsing: connected to %s", address);
 
 	if (session->browsing == NULL)
-		session->browsing = avctp_channel_create(session, chan);
+		session->browsing = avctp_channel_create(session, chan,
+						avctp_destroy_browsing);
 
 	session->browsing->imtu = imtu;
 	session->browsing->omtu = omtu;
@@ -1075,7 +1102,7 @@ static void avctp_connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	DBG("AVCTP: connected to %s", address);
 
 	if (session->control == NULL)
-		session->control = avctp_channel_create(session, chan);
+		session->control = avctp_channel_create(session, chan, NULL);
 
 	session->control->imtu = imtu;
 	session->control->omtu = omtu;
@@ -1189,7 +1216,7 @@ static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 	}
 
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
-	session->control = avctp_channel_create(session, chan);
+	session->control = avctp_channel_create(session, chan, NULL);
 
 	src = adapter_get_address(device_get_adapter(dev->btd_dev));
 	dst = device_get_address(dev->btd_dev);
@@ -1666,7 +1693,8 @@ unsigned int avctp_register_pdu_handler(struct avctp *session, uint8_t opcode,
 
 unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 						avctp_browsing_pdu_cb cb,
-						void *user_data)
+						void *user_data,
+						GDestroyNotify destroy)
 {
 	struct avctp_channel *browsing = session->browsing;
 	struct avctp_browsing_pdu_handler *handler;
@@ -1682,6 +1710,7 @@ unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 	handler->cb = cb;
 	handler->user_data = user_data;
 	handler->id = ++id;
+	handler->destroy = destroy;
 
 	browsing->handlers = g_slist_append(browsing->handlers, handler);
 
@@ -1787,7 +1816,7 @@ struct avctp *avctp_connect(struct audio_device *device)
 		return NULL;
 	}
 
-	session->control = avctp_channel_create(session, io);
+	session->control = avctp_channel_create(session, io, NULL);
 	g_io_channel_unref(io);
 
 	return session;
@@ -1821,7 +1850,8 @@ int avctp_connect_browsing(struct avctp *session)
 		return -EIO;
 	}
 
-	session->browsing = avctp_channel_create(session, io);
+	session->browsing = avctp_channel_create(session, io,
+						avctp_destroy_browsing);
 	g_io_channel_unref(io);
 
 	return 0;

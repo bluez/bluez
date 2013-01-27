@@ -110,7 +110,8 @@ gboolean avctp_unregister_pdu_handler(unsigned int id);
 
 unsigned int avctp_register_browsing_pdu_handler(struct avctp *session,
 						avctp_browsing_pdu_cb cb,
-						void *user_data);
+						void *user_data,
+						GDestroyNotify destroy);
 gboolean avctp_unregister_browsing_pdu_handler(unsigned int id);
 
 int avctp_send_passthrough(struct avctp *session, uint8_t op);
