@@ -40,6 +40,7 @@ struct test_data {
 	const char *name;
 	gboolean name_complete;
 	int8_t tx_power;
+	const char **uuid;
 };
 
 static const unsigned char macbookair_data[] = {
@@ -470,13 +471,26 @@ static void test_parsing(gconstpointer data)
 	g_assert(eir.flags == test->flags);
 
 	if (test->name) {
-		g_assert(g_str_equal(eir.name, test->name) == TRUE);
+		g_assert_cmpstr(eir.name, ==, test->name);
 		g_assert(eir.name_complete == test->name_complete);
 	} else {
 		g_assert(eir.name == NULL);
 	}
 
 	g_assert(eir.tx_power == test->tx_power);
+
+	if (test->uuid) {
+		GSList *list;
+		int n = 0;
+
+		for (list = eir.services; list; list = list->next, n++) {
+			char *uuid_str = list->data;
+			g_assert(test->uuid[n]);
+			g_assert_cmpstr(test->uuid[n], ==, uuid_str);
+		}
+	} else {
+		g_assert(eir.services == NULL);
+	}
 
 	eir_data_free(&eir);
 }
