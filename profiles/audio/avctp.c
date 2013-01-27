@@ -485,6 +485,10 @@ static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
 		break;
 	case AVCTP_STATE_CONNECTED:
 		DBG("AVCTP Connected");
+		if (session->browsing) {
+			avctp_channel_destroy(session->browsing);
+			session->browsing = NULL;
+		}
 		break;
 	case AVCTP_STATE_BROWSING_CONNECTING:
 		DBG("AVCTP Browsing Connecting");
