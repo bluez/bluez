@@ -694,7 +694,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_read_local_features lrlf;
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
-	struct bt_hci_rsp_le_read_white_list_size lrws;
+	struct bt_hci_rsp_le_read_white_list_size lrwls;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -1122,9 +1122,9 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE:
-		lrws.status = 0;
-		lrws.size = 0;
-		cmd_complete(btdev, opcode, &lrws, sizeof(lrws));
+		lrwls.status = 0;
+		lrwls.size = 0;
+		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
 
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
 		lrss.status = BT_HCI_ERR_SUCCESS;
