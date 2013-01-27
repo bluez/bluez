@@ -455,9 +455,16 @@ static void test_parsing(gconstpointer data)
 	g_assert(err == 0);
 
 	if (g_test_verbose() == TRUE) {
+		GSList *list;
+
 		g_print("Flags: %d\n", eir.flags);
 		g_print("Name: %s\n", eir.name);
 		g_print("TX power: %d\n", eir.tx_power);
+
+		for (list = eir.services; list; list = list->next) {
+			char *uuid_str = list->data;
+			g_print("UUID: %s\n", uuid_str);
+		}
 	}
 
 	g_assert(eir.flags == test->flags);
