@@ -39,6 +39,7 @@ struct test_data {
 	int flags;
 	const char *name;
 	gboolean name_complete;
+	int8_t tx_power;
 };
 
 static const unsigned char macbookair_data[] = {
@@ -80,6 +81,7 @@ static const struct test_data macbookair_test = {
 	.flags = -1,
 	.name = "Marcel’s MacBook Air",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char iphone5_data[] = {
@@ -121,6 +123,7 @@ static const struct test_data iphone5_test = {
 	.flags = -1,
 	.name = "Marcel’s iPhone 5",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char ipadmini_data[] = {
@@ -162,6 +165,7 @@ static const struct test_data ipadmini_test = {
 	.flags = -1,
 	.name = "Marcel's iPad mini",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char gigaset_sl400h_data[] = {
@@ -203,6 +207,7 @@ static const struct test_data gigaset_sl400h_test = {
 	.flags = -1,
 	.name = "Marcel's SL400H",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char gigaset_sl910_data[] = {
@@ -244,6 +249,7 @@ static const struct test_data gigaset_sl910_test = {
 	.flags = -1,
 	.name = "Marcel's SL910",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char fuelband_data[] = {
@@ -285,6 +291,7 @@ static const struct test_data fuelband_test = {
 	.flags = -1,
 	.name = "Nike+ FuelBand",
 	.name_complete = TRUE,
+	.tx_power = 0,
 };
 
 static const unsigned char bluesc_data[] = {
@@ -300,6 +307,7 @@ static const struct test_data bluesc_test = {
 	.flags = 0x06,
 	.name = "Wahoo BlueSC v1.4",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char wahoo_scale_data[] = {
@@ -315,6 +323,7 @@ static const struct test_data wahoo_scale_test = {
 	.flags = 0x06,
 	.name = "Wahoo Scale v1.3",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char mio_alpha_data[] = {
@@ -328,6 +337,7 @@ static const struct test_data mio_alpha_test = {
 	.flags = 0x06,
 	.name = "ALPHA",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char cookoo_data[] = {
@@ -342,6 +352,7 @@ static const struct test_data cookoo_test = {
 	.flags = 0x05,
 	.name = "COOKOO watch",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char citizen_adv_data[] = {
@@ -357,6 +368,7 @@ static const struct test_data citizen_adv_test = {
 	.flags = 0x05,
 	.name = "Eco-Drive Proximity",
 	.name_complete = TRUE,
+	.tx_power = 127,
 };
 
 static const unsigned char citizen_scan_data[] = {
@@ -369,6 +381,7 @@ static const struct test_data citizen_scan_test = {
 	.eir_data = citizen_scan_data,
 	.eir_size = sizeof(citizen_scan_data),
 	.flags = -1,
+	.tx_power = 0,
 };
 
 static void test_basic(void)
@@ -399,11 +412,11 @@ static void test_parsing(gconstpointer data)
 	err = eir_parse(&eir, test->eir_data, test->eir_size);
 	g_assert(err == 0);
 
-	if (g_test_verbose() == TRUE)
+	if (g_test_verbose() == TRUE) {
 		g_print("Flags: %d\n", eir.flags);
-
-	if (g_test_verbose() == TRUE)
 		g_print("Name: %s\n", eir.name);
+		g_print("TX power: %d\n", eir.tx_power);
+	}
 
 	g_assert(eir.flags == test->flags);
 
@@ -413,6 +426,8 @@ static void test_parsing(gconstpointer data)
 	} else {
 		g_assert(eir.name == NULL);
 	}
+
+	g_assert(eir.tx_power == test->tx_power);
 
 	eir_data_free(&eir);
 }
