@@ -4070,7 +4070,12 @@ static void update_found_devices(struct btd_adapter *adapter,
 									dev);
 
 done:
-	if (device_is_le(dev) && g_slist_find(adapter->connect_list, dev)) {
+	if (device_is_le(dev) && !device_is_connected(dev) &&
+				g_slist_find(adapter->connect_list, dev)) {
+		err = device_connect_le(dev);
+		if (err < 0)
+			error("LE auto connection failed: %s (%d)",
+							strerror(-err), -err);
 	}
 }
 
