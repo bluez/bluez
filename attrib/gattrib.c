@@ -719,6 +719,11 @@ gboolean g_attrib_unregister(GAttrib *attrib, guint id)
 	struct event *evt;
 	GSList *l;
 
+	if (id == 0) {
+		warn("%s: invalid id", __FUNCTION__);
+		return FALSE;
+	}
+
 	l = g_slist_find_custom(attrib->events, GUINT_TO_POINTER(id),
 							event_cmp_by_id);
 	if (l == NULL)
