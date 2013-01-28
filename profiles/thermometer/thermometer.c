@@ -164,12 +164,12 @@ static void destroy_thermometer(gpointer user_data)
 	if (t->attioid > 0)
 		btd_device_remove_attio_callback(t->dev, t->attioid);
 
-	g_attrib_unregister(t->attrib, t->attio_measurement_id);
-	g_attrib_unregister(t->attrib, t->attio_intermediate_id);
-	g_attrib_unregister(t->attrib, t->attio_interval_id);
-
-	if (t->attrib != NULL)
+	if (t->attrib != NULL) {
+		g_attrib_unregister(t->attrib, t->attio_measurement_id);
+		g_attrib_unregister(t->attrib, t->attio_intermediate_id);
+		g_attrib_unregister(t->attrib, t->attio_interval_id);
 		g_attrib_unref(t->attrib);
+	}
 
 	btd_device_unref(t->dev);
 	g_free(t->svc_range);
