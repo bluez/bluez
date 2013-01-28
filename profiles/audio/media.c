@@ -170,7 +170,7 @@ static struct media_endpoint *media_adapter_find_endpoint(
 		if (path && g_strcmp0(endpoint->path, path) != 0)
 			continue;
 
-		if (uuid && g_strcmp0(endpoint->uuid, uuid) != 0)
+		if (uuid && strcasecmp(endpoint->uuid, uuid) != 0)
 			continue;
 
 		return endpoint;
@@ -692,7 +692,7 @@ static bool endpoint_properties_get(const char *uuid,
 	for (l = adapter->endpoints; l; l = l->next) {
 		struct media_endpoint *endpoint = l->data;
 
-		if (g_strcmp0(endpoint->uuid, uuid) != 0)
+		if (strcasecmp(endpoint->uuid, uuid) != 0)
 			continue;
 
 		append_endpoint(endpoint, &dict);
