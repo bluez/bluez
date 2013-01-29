@@ -35,15 +35,16 @@
 #include <btio/btio.h>
 
 #include "lib/uuid.h"
+#include "plugin.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "attrib/gatt.h"
 #include "log.h"
 #include "textfile.h"
-#include "gas.h"
 
 /* Generic Attribute/Access Service */
 struct gas {
@@ -367,7 +368,7 @@ static void attio_disconnected_cb(gpointer user_data)
 	gas->attrib = NULL;
 }
 
-int gas_register(struct btd_device *device, struct att_range *gap,
+static int gas_register(struct btd_device *device, struct att_range *gap,
 						struct att_range *gatt)
 {
 	struct gas *gas;
@@ -392,7 +393,7 @@ int gas_register(struct btd_device *device, struct att_range *gap,
 	return 0;
 }
 
-void gas_unregister(struct btd_device *device)
+static void gas_unregister(struct btd_device *device)
 {
 	struct gas *gas;
 	GSList *l;
@@ -405,3 +406,47 @@ void gas_unregister(struct btd_device *device)
 	devices = g_slist_remove(devices, gas);
 	gas_free(gas);
 }
+
+static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device,
+								GSList *uuids)
+{
+	struct gatt_primary *gap, *gatt;
+
+	gap = btd_device_get_primary(device, GAP_UUID);
+	gatt = btd_device_get_primary(device, GATT_UUID);
+
+	if (gap == NULL || gatt == NULL) {
+		error("GAP and GATT are mandatory");
+		return -EINVAL;
+	}
+
+	return gas_register(device, &gap->range, &gatt->range);
+}
+
+static void gatt_driver_remove(struct btd_profile *p,
+						struct btd_device *device)
+{
+	gas_unregister(device);
+}
+
+static struct btd_profile gatt_profile = {
+	.name		= "gap-gatt-profile",
+	.remote_uuids	= BTD_UUIDS(GAP_UUID, GATT_UUID),
+	.device_probe	= gatt_driver_probe,
+	.device_remove	= gatt_driver_remove
+};
+
+static int gatt_init(void)
+{
+	btd_profile_register(&gatt_profile);
+
+	return 0;
+}
+
+static void gatt_exit(void)
+{
+	btd_profile_unregister(&gatt_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(gatt, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+					gatt_init, gatt_exit)

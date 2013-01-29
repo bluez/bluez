@@ -69,9 +69,7 @@ builtin_sources += profiles/health/mcap_lib.h profiles/health/mcap_internal.h \
 endif
 
 builtin_modules += gatt
-builtin_sources += profiles/gatt/main.c profiles/gatt/manager.h \
-			profiles/gatt/manager.c profiles/gatt/gas.h \
-			profiles/gatt/gas.c
+builtin_sources += profiles/gatt/gas.c
 
 builtin_modules += scanparam
 builtin_sources += profiles/scanparam/scan.c
