@@ -3484,7 +3484,7 @@ void device_set_rssi(struct btd_device *device, int8_t rssi)
 						DEVICE_INTERFACE, "RSSI");
 }
 
-void device_set_auto_connect(struct btd_device *device, gboolean enable)
+static void device_set_auto_connect(struct btd_device *device, gboolean enable)
 {
 	char addr[18];
 
