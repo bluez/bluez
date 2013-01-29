@@ -3485,6 +3485,11 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 	adapter_connect_list_add(device->adapter, device);
 }
 
+bool device_get_auto_connect(struct btd_device *device)
+{
+	return device->auto_connect;
+}
+
 static gboolean start_discovery(gpointer user_data)
 {
 	struct btd_device *device = user_data;
