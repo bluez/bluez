@@ -2197,11 +2197,11 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 		do_disconnect(device);
 
 	if (device->store_id > 0) {
-		if (!remove_stored)
-			store_device_info_cb(device);
-
 		g_source_remove(device->store_id);
 		device->store_id = 0;
+
+		if (!remove_stored)
+			store_device_info_cb(device);
 	}
 
 	if (remove_stored)
