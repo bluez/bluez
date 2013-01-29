@@ -2732,6 +2732,14 @@ const char *btd_adapter_get_name(struct btd_adapter *adapter)
 int adapter_connect_list_add(struct btd_adapter *adapter,
 					struct btd_device *device)
 {
+	/*
+	 * If the adapter->connect_le device is getting added back to
+	 * the connect list it probably means that the connect attempt
+	 * failed and hence we should clear this pointer
+	 */
+	if (device == adapter->connect_le)
+		adapter->connect_le = NULL;
+
 	if (g_slist_find(adapter->connect_list, device)) {
 		DBG("ignoring already added device %s",
 						device_get_path(device));
@@ -2759,6 +2767,14 @@ int adapter_connect_list_add(struct btd_adapter *adapter,
 void adapter_connect_list_remove(struct btd_adapter *adapter,
 					struct btd_device *device)
 {
+	/*
+	 * If the adapter->connect_le device is being removed from the
+	 * connect list it means the connection was successful and hence
+	 * the pointer should be cleared
+	 */
+	if (device == adapter->connect_le)
+		adapter->connect_le = NULL;
+
 	if (!g_slist_find(adapter->connect_list, device)) {
 		DBG("device %s is not on the list, ignoring",
 						device_get_path(device));
