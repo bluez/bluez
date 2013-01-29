@@ -2998,6 +2998,12 @@ static void find_included_cb(GSList *includes, uint8_t status,
 	struct gatt_primary *prim;
 	GSList *l;
 
+	if (status != 0) {
+		error("Find included services failed: %s (%d)",
+					att_ecode2str(status), status);
+		goto done;
+	}
+
 	if (includes == NULL)
 		goto done;
 

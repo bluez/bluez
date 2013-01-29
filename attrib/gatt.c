@@ -89,7 +89,10 @@ static void isd_unref(struct included_discovery *isd)
 	if (g_atomic_int_dec_and_test(&isd->refs) == FALSE)
 		return;
 
-	isd->cb(isd->includes, isd->err, isd->user_data);
+	if (isd->err)
+		isd->cb(NULL, isd->err, isd->user_data);
+	else
+		isd->cb(isd->includes, isd->err, isd->user_data);
 
 	g_slist_free_full(isd->includes, g_free);
 	g_attrib_unref(isd->attrib);
