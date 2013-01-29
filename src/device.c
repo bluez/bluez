@@ -3508,9 +3508,6 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 		return;
 	}
 
-	if (device->attios == NULL && device->attios_offline == NULL)
-		return;
-
 	/* Enabling auto connect */
 	adapter_connect_list_add(device->adapter, device);
 }
@@ -4116,6 +4113,8 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	attio->dcfunc = dcfunc;
 	attio->user_data = user_data;
 
+	device_set_auto_connect(device, TRUE);
+
 	if (device->attrib && cfunc) {
 		device->attios_offline = g_slist_append(device->attios_offline,
 									attio);
@@ -4124,8 +4123,6 @@ guint btd_device_add_attio_callback(struct btd_device *device,
 	}
 
 	device->attios = g_slist_append(device->attios, attio);
-
-	adapter_connect_list_add(device->adapter, device);
 
 	return attio->id;
 }
