@@ -748,8 +748,6 @@ static struct hog_device *hog_register_device(struct btd_device *device,
 							attio_disconnected_cb,
 							hogdev);
 
-	device_set_auto_connect(device, TRUE);
-
 	return hogdev;
 }
 
