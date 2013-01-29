@@ -2901,6 +2901,14 @@ static void store_services(struct btd_device *device)
 	g_key_file_free(key_file);
 }
 
+static bool device_get_auto_connect(struct btd_device *device)
+{
+	if (device->disable_auto_connect)
+		return false;
+
+	return device->auto_connect;
+}
+
 static void attio_connected(gpointer data, gpointer user_data)
 {
 	struct attio_data *attio = data;
@@ -3505,14 +3513,6 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 	/* Enabling auto connect */
 	adapter_connect_list_add(device->adapter, device);
-}
-
-bool device_get_auto_connect(struct btd_device *device)
-{
-	if (device->disable_auto_connect)
-		return false;
-
-	return device->auto_connect;
 }
 
 static gboolean start_discovery(gpointer user_data)
