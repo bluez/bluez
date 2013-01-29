@@ -164,6 +164,7 @@ struct btd_adapter {
 	GSList *devices;		/* Devices structure pointers */
 	GSList *connect_list;		/* Devices to connect when found */
 	bool passive_scanning;		/* Passive (LE) scanning enabled */
+	struct btd_device *connect_le;	/* LE device waiting to be connected */
 	sdp_list_t *services;		/* Services associated to adapter */
 
 	bool toggle_discoverable;	/* discoverable needs to be changed */
@@ -1057,6 +1058,9 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 									dev);
 
 	adapter->connections = g_slist_remove(adapter->connections, dev);
+
+	if (adapter->connect_le == dev)
+		adapter->connect_le = NULL;
 
 	l = adapter->auths->head;
 	while (l != NULL) {
@@ -3979,6 +3983,36 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 						confirm_name_timeout, adapter);
 }
 
+static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	int err;
+
+	dev = adapter->connect_le;
+	adapter->connect_le = NULL;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Stopping passive scanning failed: %s",
+							mgmt_errstr(status));
+		return;
+	}
+
+	if (!dev) {
+		DBG("Device removed while stopping passive scanning");
+		trigger_passive_scanning(adapter);
+		return;
+	}
+
+	err = device_connect_le(dev);
+	if (err < 0) {
+		error("LE auto connection failed: %s (%d)",
+						strerror(-err), -err);
+		trigger_passive_scanning(adapter);
+	}
+}
+
 static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
@@ -4079,12 +4113,21 @@ done:
 	if (!adapter->passive_scanning)
 		return;
 
+	/*
+	 * If this is an LE device that's not connected and part of the
+	 * connect_list stop passive scanning so that a connection
+	 * attempt to it can be made
+	 */
 	if (device_is_le(dev) && !device_is_connected(dev) &&
 				g_slist_find(adapter->connect_list, dev)) {
-		err = device_connect_le(dev);
-		if (err < 0)
-			error("LE auto connection failed: %s (%d)",
-							strerror(-err), -err);
+		struct mgmt_cp_stop_discovery cp;
+
+		adapter->connect_le = dev;
+
+		cp.type = adapter->discovery_type;
+		mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
+				adapter->dev_id, sizeof(cp), &cp,
+				stop_passive_scanning_complete, adapter, NULL);
 	}
 }
 
@@ -4929,6 +4972,11 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
+
+	/* If this device should be connected through passive scanning
+	 * add it back to the connect_list */
+	if (device && device_get_auto_connect(device))
+		adapter_connect_list_add(adapter, device);
 }
 
 static void disconnect_complete(uint8_t status, uint16_t length,
@@ -5511,6 +5559,19 @@ static void connected_callback(uint16_t index, uint16_t length,
 	}
 
 	eir_data_free(&eir_data);
+
+	/*
+	 * If this was an LE device being connected through passive
+	 * scanning remove the device from the connect_list and give the
+	 * passive scanning another chance to be restarted in case
+	 * there are other devices in the connect_list.
+	 */
+	if (device == adapter->connect_le) {
+		adapter->connect_le = NULL;
+		adapter->connect_list = g_slist_remove(adapter->connect_list,
+								device);
+		trigger_passive_scanning(adapter);
+	}
 }
 
 static void device_blocked_callback(uint16_t index, uint16_t length,
@@ -5578,6 +5639,12 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 			device_bonding_failed(device, ev->status);
 		if (device_is_temporary(device))
 			adapter_remove_device(adapter, device, TRUE);
+		if (device_is_le(device)) {
+			if (device == adapter->connect_le)
+				adapter->connect_le = NULL;
+			if (device_get_auto_connect(device))
+				adapter_connect_list_add(adapter, device);
+		}
 	}
 
 	/* In the case of security mode 3 devices */
