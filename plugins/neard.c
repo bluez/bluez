@@ -121,12 +121,15 @@ static void register_agent(void)
 
 	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
 							message, &call, -1)) {
+		dbus_message_unref(message);
 		error("D-Bus send failed");
 		return;
 	}
 
 	dbus_pending_call_set_notify(call, register_agent_cb, NULL, NULL);
 	dbus_pending_call_unref(call);
+
+	dbus_message_unref(message);
 }
 
 static void unregister_agent(void)
