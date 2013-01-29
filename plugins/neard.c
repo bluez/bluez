@@ -636,7 +636,7 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 
 	agent = adapter_get_agent(adapter);
 	if (!agent)
-		return error_reply(msg, -ENONET);
+		return error_reply(msg, ENONET);
 
 	io_cap = agent_get_io_capability(agent);
 	agent_unref(agent);
