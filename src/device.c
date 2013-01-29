@@ -185,6 +185,7 @@ struct btd_device {
 	gboolean	blocked;
 	gboolean	bonded;
 	gboolean	auto_connect;
+	gboolean	disable_auto_connect;
 	gboolean	general_connect;
 
 	bool		legacy;
@@ -1025,6 +1026,13 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 	if (!device->connected)
 		return btd_error_not_connected(msg);
 
+	/*
+	 * Disable connections through passive scanning until
+	 * Device1.Connect is called
+	 */
+	if (device->auto_connect)
+		device->disable_auto_connect = TRUE;
+
 	device_request_disconnect(device, msg);
 
 	return NULL;
@@ -1219,6 +1227,8 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 			return dbus_message_new_method_return(msg);
 
 		device_set_temporary(dev, FALSE);
+
+		dev->disable_auto_connect = FALSE;
 
 		err = device_connect_le(dev);
 		if (err < 0)
@@ -3487,6 +3497,9 @@ void device_set_auto_connect(struct btd_device *device, gboolean enable)
 
 bool device_get_auto_connect(struct btd_device *device)
 {
+	if (device->disable_auto_connect)
+		return false;
+
 	return device->auto_connect;
 }
 
