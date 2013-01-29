@@ -4996,11 +4996,6 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
-
-	/* If this device should be connected through passive scanning
-	 * add it back to the connect_list */
-	if (device && device_get_auto_connect(device))
-		adapter_connect_list_add(adapter, device);
 }
 
 static void disconnect_complete(uint8_t status, uint16_t length,
@@ -5583,19 +5578,6 @@ static void connected_callback(uint16_t index, uint16_t length,
 	}
 
 	eir_data_free(&eir_data);
-
-	/*
-	 * If this was an LE device being connected through passive
-	 * scanning remove the device from the connect_list and give the
-	 * passive scanning another chance to be restarted in case
-	 * there are other devices in the connect_list.
-	 */
-	if (device == adapter->connect_le) {
-		adapter->connect_le = NULL;
-		adapter->connect_list = g_slist_remove(adapter->connect_list,
-								device);
-		trigger_passive_scanning(adapter);
-	}
 }
 
 static void device_blocked_callback(uint16_t index, uint16_t length,
@@ -5663,12 +5645,6 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 			device_bonding_failed(device, ev->status);
 		if (device_is_temporary(device))
 			adapter_remove_device(adapter, device, TRUE);
-		if (device_is_le(device)) {
-			if (device == adapter->connect_le)
-				adapter->connect_le = NULL;
-			if (device_get_auto_connect(device))
-				adapter_connect_list_add(adapter, device);
-		}
 	}
 
 	/* In the case of security mode 3 devices */

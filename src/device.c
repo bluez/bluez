@@ -2934,7 +2934,7 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
-	if (device->auto_connect == FALSE) {
+	if (!device_get_auto_connect(device)) {
 		DBG("Automatic connection disabled");
 		goto done;
 	}
@@ -3155,11 +3155,10 @@ static void att_error_cb(const GError *gerr, gpointer user_data)
 	if (g_error_matches(gerr, BT_IO_ERROR, ECONNABORTED))
 		return;
 
-	if (device->auto_connect == FALSE)
-		return;
-
-	adapter_connect_list_add(device->adapter, device);
-	DBG("Enabling automatic connections");
+	if (device_get_auto_connect(device)) {
+		DBG("Enabling automatic connections");
+		adapter_connect_list_add(device->adapter, device);
+	}
 }
 
 static void att_success_cb(gpointer user_data)
@@ -3169,6 +3168,13 @@ static void att_success_cb(gpointer user_data)
 
 	if (device->attios == NULL)
 		return;
+
+	/*
+	 * Remove the device from the connect_list and give the passive
+	 * scanning another chance to be restarted in case there are
+	 * other devices in the connect_list.
+	 */
+	adapter_connect_list_remove(device->adapter, device);
 
 	g_slist_foreach(device->attios, attio_connected, device->attrib);
 }
