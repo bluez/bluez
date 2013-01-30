@@ -163,7 +163,6 @@ struct btd_adapter {
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
 	GSList *connect_list;		/* Devices to connect when found */
-	bool passive_scanning;		/* Passive (LE) scanning enabled */
 	struct btd_device *connect_le;	/* LE device waiting to be connected */
 	sdp_list_t *services;		/* Services associated to adapter */
 
@@ -1118,7 +1117,6 @@ static void passive_scanning_complete(uint8_t status, uint16_t length,
 	if (status == MGMT_STATUS_SUCCESS) {
 		adapter->discovery_type = rp->type;
 		adapter->discovery_enable = 0x01;
-		adapter->passive_scanning = true;
 	}
 }
 
@@ -1400,9 +1398,6 @@ static void discovering_callback(uint16_t index, uint16_t length,
 
 	adapter->discovery_type = ev->type;
 	adapter->discovery_enable = ev->discovering;
-
-	if (!adapter->discovery_enable)
-		adapter->passive_scanning = false;
 
 	/*
 	 * Check for existing discoveries triggered by client applications
@@ -4118,9 +4113,11 @@ static void update_found_devices(struct btd_adapter *adapter,
 	/*
 	 * Only if at least one client has requested discovery, maintain
 	 * list of found devices and name confirming for legacy devices.
+	 * Otherwise, this is an event from passive discovery and we
+	 * should check if the device needs connecting to.
 	 */
 	if (!adapter->discovery_list)
-		goto done;
+		goto connect_le;
 
 	if (g_slist_find(adapter->discovery_found, dev))
 		return;
@@ -4132,11 +4129,9 @@ static void update_found_devices(struct btd_adapter *adapter,
 	adapter->discovery_found = g_slist_prepend(adapter->discovery_found,
 									dev);
 
-done:
-	/* Don't trigger LE connections through normal discovery */
-	if (!adapter->passive_scanning)
-		return;
+	return;
 
+connect_le:
 	/*
 	 * If this is an LE device that's not connected and part of the
 	 * connect_list stop passive scanning so that a connection
