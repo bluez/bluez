@@ -4018,6 +4018,9 @@ static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
+	adapter->discovery_type = 0x00;
+	adapter->discovery_enable = 0x00;
+
 	if (!dev) {
 		DBG("Device removed while stopping passive scanning");
 		trigger_passive_scanning(adapter);
