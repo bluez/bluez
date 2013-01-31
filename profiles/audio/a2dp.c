@@ -366,16 +366,13 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean auto_config(gpointer data)
 {
 	struct a2dp_setup *setup = data;
-	struct avdtp_error *err = NULL;
 
 	/* Check if configuration was aborted */
 	if (setup->sep->stream == NULL)
 		return FALSE;
 
-	if (setup->err != NULL) {
-		err = setup->err;
+	if (setup->err != NULL)
 		goto done;
-	}
 
 	avdtp_stream_add_cb(setup->session, setup->stream,
 				stream_state_changed, setup->sep);
@@ -391,8 +388,10 @@ done:
 
 	finalize_config(setup);
 
-	if (err)
-		g_free(err);
+	if (setup->err) {
+		g_free(setup->err);
+		setup->err = NULL;
+	}
 
 	setup_unref(setup);
 
@@ -565,6 +564,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		if (setup) {
 			setup->err = err;
 			finalize_config(setup);
+			setup->err = NULL;
 		}
 		return;
 	}
