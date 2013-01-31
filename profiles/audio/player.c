@@ -483,6 +483,27 @@ struct media_player *media_player_controller_create(const char *path)
 	return mp;
 }
 
+void media_player_set_duration(struct media_player *mp, uint32_t duration)
+{
+	char *value, *curval;
+
+	DBG("%u", duration);
+
+	value = g_strdup_printf("%u", duration);
+
+	curval = g_hash_table_lookup(mp->track, "Duration");
+	if (g_strcmp0(curval, value) == 0) {
+		g_free(value);
+		return;
+	}
+
+	g_hash_table_replace(mp->track, g_strdup("Duration"), value);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Track");
+}
+
 void media_player_set_position(struct media_player *mp, uint32_t position)
 {
 	DBG("%u", position);

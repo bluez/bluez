@@ -1632,6 +1632,7 @@ static gboolean avrcp_get_play_status_rsp(struct avctp *conn,
 
 	memcpy(&duration, pdu->params, sizeof(uint32_t));
 	duration = ntohl(duration);
+	media_player_set_duration(mp, duration);
 
 	memcpy(&position, pdu->params + 4, sizeof(uint32_t));
 	position = ntohl(position);
@@ -1900,10 +1901,11 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
 		mp = player->user_data;
-		if (code == AVC_CTYPE_CHANGED)
-			media_player_set_position(mp, 0);
 
 		avrcp_get_element_attributes(session);
+
+		if (code == AVC_CTYPE_CHANGED)
+			avrcp_get_play_status(session);
 
 		break;
 
