@@ -563,6 +563,7 @@ struct ext_io {
 	uint8_t chan;
 
 	guint auth_id;
+	unsigned int svc_id;
 	DBusPendingCall *pending;
 };
 
@@ -661,6 +662,10 @@ static void ext_io_destroy(gpointer p)
 
 	if (ext_io->auth_id != 0)
 		btd_cancel_authorization(ext_io->auth_id);
+
+	if (ext_io->svc_id != 0)
+		device_remove_svc_complete_callback(ext_io->device,
+							ext_io->svc_id);
 
 	if (ext_io->pending) {
 		dbus_pending_call_cancel(ext_io->pending);
@@ -909,6 +914,38 @@ drop:
 	ext_io_destroy(conn);
 }
 
+static void ext_svc_complete(struct btd_device *dev, int err, void *user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	const bdaddr_t *bdaddr;
+	GError *gerr = NULL;
+	char addr[18];
+
+	conn->svc_id = 0;
+
+	bdaddr = device_get_address(dev);
+	ba2str(bdaddr, addr);
+
+	if (err < 0) {
+		error("Service resolving failed for %s: %s (%d)",
+						addr, strerror(-err), -err);
+		goto drop;
+	}
+
+	DBG("Services resolved for %s. Accepting connection", addr);
+
+	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
+		error("bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+drop:
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
 static void ext_auth(DBusError *err, void *user_data)
 {
 	struct ext_io *conn = user_data;
@@ -931,13 +968,11 @@ static void ext_auth(DBusError *err, void *user_data)
 		goto drop;
 	}
 
-	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
-		error("bt_io_accept: %s", gerr->message);
-		g_error_free(gerr);
-		goto drop;
-	}
-
 	DBG("%s authorized to connect to %s", addr, ext->name);
+
+	conn->svc_id = device_wait_for_svc_complete(conn->device,
+							ext_svc_complete,
+							conn);
 
 	return;
 
