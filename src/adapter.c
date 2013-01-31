@@ -1179,6 +1179,60 @@ static void trigger_passive_scanning(struct btd_adapter *adapter)
 					passive_scanning_timeout, adapter);
 }
 
+static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_adapter *adapter = user_data;
+	struct btd_device *dev;
+	int err;
+
+	dev = adapter->connect_le;
+	adapter->connect_le = NULL;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Stopping passive scanning failed: %s",
+							mgmt_errstr(status));
+		return;
+	}
+
+	adapter->discovery_type = 0x00;
+	adapter->discovery_enable = 0x00;
+
+	if (!dev) {
+		DBG("Device removed while stopping passive scanning");
+		trigger_passive_scanning(adapter);
+		return;
+	}
+
+	err = device_connect_le(dev);
+	if (err < 0) {
+		error("LE auto connection failed: %s (%d)",
+						strerror(-err), -err);
+		trigger_passive_scanning(adapter);
+	}
+}
+
+static void stop_passive_scanning(struct btd_adapter *adapter)
+{
+	struct mgmt_cp_stop_discovery cp;
+
+	DBG("");
+
+	/* If there are any normal discovery clients passive scanning
+	 * wont be running */
+	if (adapter->discovery_list)
+		return;
+
+	if (adapter->discovery_enable == 0x00)
+		return;
+
+	cp.type = adapter->discovery_type;
+
+	mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
+			adapter->dev_id, sizeof(cp), &cp,
+			stop_passive_scanning_complete, adapter, NULL);
+}
+
 static void cancel_passive_scanning(struct btd_adapter *adapter)
 {
 	if (!(adapter->current_settings & MGMT_SETTING_LE))
@@ -4002,39 +4056,6 @@ static void confirm_name(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 						confirm_name_timeout, adapter);
 }
 
-static void stop_passive_scanning_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	struct btd_adapter *adapter = user_data;
-	struct btd_device *dev;
-	int err;
-
-	dev = adapter->connect_le;
-	adapter->connect_le = NULL;
-
-	if (status != MGMT_STATUS_SUCCESS) {
-		error("Stopping passive scanning failed: %s",
-							mgmt_errstr(status));
-		return;
-	}
-
-	adapter->discovery_type = 0x00;
-	adapter->discovery_enable = 0x00;
-
-	if (!dev) {
-		DBG("Device removed while stopping passive scanning");
-		trigger_passive_scanning(adapter);
-		return;
-	}
-
-	err = device_connect_le(dev);
-	if (err < 0) {
-		error("LE auto connection failed: %s (%d)",
-						strerror(-err), -err);
-		trigger_passive_scanning(adapter);
-	}
-}
-
 static void update_found_devices(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					uint8_t bdaddr_type, int8_t rssi,
@@ -4142,14 +4163,8 @@ connect_le:
 	 */
 	if (device_is_le(dev) && !device_is_connected(dev) &&
 				g_slist_find(adapter->connect_list, dev)) {
-		struct mgmt_cp_stop_discovery cp;
-
 		adapter->connect_le = dev;
-
-		cp.type = adapter->discovery_type;
-		mgmt_send(adapter->mgmt, MGMT_OP_STOP_DISCOVERY,
-				adapter->dev_id, sizeof(cp), &cp,
-				stop_passive_scanning_complete, adapter, NULL);
+		stop_passive_scanning(adapter);
 	}
 }
 
