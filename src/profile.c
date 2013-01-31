@@ -815,11 +815,44 @@ static void append_prop(gpointer a, gpointer b)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static uint16_t get_supported_features(const sdp_record_t *rec)
+{
+	sdp_data_t *data;
+
+	data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
+	if (!data || data->dtd != SDP_UINT16)
+		return 0;
+
+	return data->val.uint16;
+}
+
+static uint16_t get_profile_version(const sdp_record_t *rec)
+{
+	sdp_list_t *descs;
+	uint16_t version;
+
+	if (sdp_get_profile_descs(rec, &descs) < 0)
+		return 0;
+
+	if (descs && descs->data) {
+		sdp_profile_desc_t *desc = descs->data;
+		version = desc->version;
+	} else {
+		version = 0;
+	}
+
+	sdp_list_free(descs, free);
+
+	return version;
+}
+
 static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 {
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	struct prop_append_data data = { &dict, conn };
+	const char *remote_uuid = ext->remote_uuids[0];
+	const sdp_record_t *rec;
 	const char *path;
 	int fd;
 
@@ -829,6 +862,14 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	if (!msg) {
 		error("Unable to create NewConnection call for %s", ext->name);
 		return false;
+	}
+
+	if (remote_uuid) {
+		rec = btd_device_get_record(conn->device, remote_uuid);
+		if (rec) {
+			conn->features = get_supported_features(rec);
+			conn->version = get_profile_version(rec);
+		}
 	}
 
 	dbus_message_iter_init_append(msg, &iter);
@@ -957,44 +998,12 @@ drop:
 	ext_io_destroy(conn);
 }
 
-static uint16_t get_supported_features(const sdp_record_t *rec)
-{
-	sdp_data_t *data;
-
-	data = sdp_data_get(rec, SDP_ATTR_SUPPORTED_FEATURES);
-	if (!data || data->dtd != SDP_UINT16)
-		return 0;
-
-	return data->val.uint16;
-}
-
-static uint16_t get_profile_version(const sdp_record_t *rec)
-{
-	sdp_list_t *descs;
-	uint16_t version;
-
-	if (sdp_get_profile_descs(rec, &descs) < 0)
-		return 0;
-
-	if (descs && descs->data) {
-		sdp_profile_desc_t *desc = descs->data;
-		version = desc->version;
-	} else {
-		version = 0;
-	}
-
-	sdp_list_free(descs, free);
-
-	return version;
-}
-
 static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct btd_device *device;
 	struct ext_io *conn;
 	GIOCondition cond;
-	const char *remote_uuid = server->ext->remote_uuids[0];
 
 	conn = g_new0(struct ext_io, 1);
 	conn->io = g_io_channel_ref(io);
@@ -1006,16 +1015,6 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 
 	if (device)
 		conn->device = btd_device_ref(device);
-
-	if (conn->device && remote_uuid) {
-		const sdp_record_t *rec;
-
-		rec = btd_device_get_record(device, remote_uuid);
-		if (rec) {
-			conn->features = get_supported_features(rec);
-			conn->version = get_profile_version(rec);
-		}
-	}
 
 	cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected, conn);
