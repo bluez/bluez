@@ -17,6 +17,11 @@ Background
 General
 ==========
 
+- Stop passive scanning immediately if the last device in connect_list
+  is removed, instead of waiting for the current cycle to complete. This
+  will require factoring out the passive scanning stopping into its own
+  function.
+
 - UUID handling: Use the new functions created for UUID handling in all parts
   of BlueZ code.  Currently, the new bt_uuid_* functions are being used by
   GATT-related code only.
