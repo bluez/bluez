@@ -25,7 +25,9 @@
 #include <stdint.h>
 
 enum vhci_type {
+	VHCI_TYPE_BREDRLE,
 	VHCI_TYPE_BREDR,
+	VHCI_TYPE_LE,
 	VHCI_TYPE_AMP,
 };
 

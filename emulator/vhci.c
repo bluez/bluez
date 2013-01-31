@@ -37,6 +37,8 @@
 #include "btdev.h"
 #include "vhci.h"
 
+#define uninitialized_var(x) x = x
+
 struct vhci {
 	enum vhci_type type;
 	int fd;
@@ -83,9 +85,17 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 struct vhci *vhci_open(enum vhci_type type)
 {
 	struct vhci *vhci;
+	enum btdev_type uninitialized_var(btdev_type);
 
 	switch (type) {
+	case VHCI_TYPE_BREDRLE:
+		btdev_type = BTDEV_TYPE_BREDRLE;
+		break;
 	case VHCI_TYPE_BREDR:
+		btdev_type = BTDEV_TYPE_BREDR;
+		break;
+	case VHCI_TYPE_LE:
+		btdev_type = BTDEV_TYPE_LE;
 		break;
 	case VHCI_TYPE_AMP:
 		return NULL;
@@ -104,7 +114,7 @@ struct vhci *vhci_open(enum vhci_type type)
 		return NULL;
 	}
 
-	vhci->btdev = btdev_create(BTDEV_TYPE_BREDR, 0x23);
+	vhci->btdev = btdev_create(btdev_type, 0x23);
 	if (!vhci->btdev) {
 		close(vhci->fd);
 		free(vhci);
