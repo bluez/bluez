@@ -195,7 +195,7 @@ static bool create_vhci(struct hciemu *hciemu)
 	const char *str;
 	int fd, i;
 
-	btdev = btdev_create(BTDEV_TYPE_BREDR, 0x00);
+	btdev = btdev_create(BTDEV_TYPE_BREDRLE, 0x00);
 	if (!btdev)
 		return false;
 
@@ -226,7 +226,7 @@ static bool create_stack(struct hciemu *hciemu)
 	struct bthost *bthost;
 	int sv[2];
 
-	btdev = btdev_create(BTDEV_TYPE_BREDR, 0x00);
+	btdev = btdev_create(BTDEV_TYPE_BREDRLE, 0x00);
 	if (!btdev)
 		return false;
 
