@@ -129,6 +129,14 @@ struct attio_data {
 	gpointer user_data;
 };
 
+struct svc_callback {
+	unsigned int id;
+	guint idle_id;
+	struct btd_device *dev;
+	device_svc_cb_t func;
+	void *user_data;
+};
+
 typedef void (*attio_error_cb) (const GError *gerr, gpointer user_data);
 typedef void (*attio_success_cb) (gpointer user_data);
 
@@ -145,6 +153,7 @@ struct btd_device {
 	uint8_t		bdaddr_type;
 	char		*path;
 	bool		svc_resolved;
+	GSList		*svc_callbacks;
 	GSList		*eir_uuids;
 	char		name[MAX_NAME_LENGTH + 1];
 	char		*alias;
@@ -387,6 +396,18 @@ static void browse_request_cancel(struct browse_req *req)
 	browse_request_free(req);
 }
 
+static void svc_dev_remove(gpointer user_data)
+{
+	struct svc_callback *cb = user_data;
+
+	if (cb->idle_id > 0)
+		g_source_remove(cb->idle_id);
+
+	cb->func(cb->dev, -ENODEV, cb->user_data);
+
+	g_free(cb);
+}
+
 static void device_free(gpointer user_data)
 {
 	struct btd_device *device = user_data;
@@ -395,6 +416,7 @@ static void device_free(gpointer user_data)
 	g_slist_free_full(device->primaries, g_free);
 	g_slist_free_full(device->attios, g_free);
 	g_slist_free_full(device->attios_offline, g_free);
+	g_slist_free_full(device->svc_callbacks, svc_dev_remove);
 
 	attio_cleanup(device);
 
@@ -1327,6 +1349,19 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 
 	g_slist_free_full(dev->eir_uuids, g_free);
 	dev->eir_uuids = NULL;
+
+	while (dev->svc_callbacks) {
+		struct svc_callback *cb = dev->svc_callbacks->data;
+
+		if (cb->idle_id > 0)
+			g_source_remove(cb->idle_id);
+
+		cb->func(dev, err, cb->user_data);
+
+		dev->svc_callbacks = g_slist_delete_link(dev->svc_callbacks,
+							dev->svc_callbacks);
+		g_free(cb);
+	}
 
 	if (!req || !req->msg)
 		return;
@@ -3604,6 +3639,64 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 							device);
 		}
 	}
+}
+
+static gboolean svc_idle_cb(gpointer user_data)
+{
+	struct svc_callback *cb = user_data;
+	struct btd_device *dev = cb->dev;
+
+	dev->svc_callbacks = g_slist_remove(dev->svc_callbacks, cb);
+
+	cb->func(cb->dev, 0, cb->user_data);
+
+	g_free(cb);
+
+	return FALSE;
+}
+
+unsigned int device_wait_for_svc_complete(struct btd_device *dev,
+							device_svc_cb_t func,
+							void *user_data)
+{
+	static unsigned int id = 0;
+	struct svc_callback *cb;
+
+	cb = g_new0(struct svc_callback, 1);
+	cb->func = func;
+	cb->user_data = user_data;
+	cb->dev = dev;
+	cb->id = ++id;
+
+	dev->svc_callbacks = g_slist_prepend(dev->svc_callbacks, cb);
+
+	if (dev->svc_resolved)
+		cb->idle_id = g_idle_add(svc_idle_cb, cb);
+
+	return cb->id;
+}
+
+bool device_remove_svc_complete_callback(struct btd_device *dev,
+							unsigned int id)
+{
+	GSList *l;
+
+	for (l = dev->svc_callbacks; l != NULL; l = g_slist_next(l)) {
+		struct svc_callback *cb = l->data;
+
+		if (cb->id != id)
+			continue;
+
+		if (cb->idle_id > 0)
+			g_source_remove(cb->idle_id);
+
+		dev->svc_callbacks = g_slist_remove(dev->svc_callbacks, cb);
+		g_free(cb);
+
+		return true;
+	}
+
+	return false;
 }
 
 gboolean device_is_bonding(struct btd_device *device, const char *sender)

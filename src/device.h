@@ -110,6 +110,15 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 
 int device_connect_le(struct btd_device *dev);
 
+typedef void (*device_svc_cb_t) (struct btd_device *dev, int err,
+							void *user_data);
+
+unsigned int device_wait_for_svc_complete(struct btd_device *dev,
+							device_svc_cb_t func,
+							void *user_data);
+bool device_remove_svc_complete_callback(struct btd_device *dev,
+							unsigned int id);
+
 struct btd_profile;
 
 void device_profile_connected(struct btd_device *dev,
