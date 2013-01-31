@@ -41,6 +41,7 @@
 
 struct hciemu {
 	gint ref_count;
+	enum btdev_type btdev_type;
 	struct bthost *host_stack;
 	struct btdev *master_dev;
 	struct btdev *client_dev;
@@ -195,7 +196,7 @@ static bool create_vhci(struct hciemu *hciemu)
 	const char *str;
 	int fd, i;
 
-	btdev = btdev_create(BTDEV_TYPE_BREDRLE, 0x00);
+	btdev = btdev_create(hciemu->btdev_type, 0x00);
 	if (!btdev)
 		return false;
 
@@ -226,7 +227,7 @@ static bool create_stack(struct hciemu *hciemu)
 	struct bthost *bthost;
 	int sv[2];
 
-	btdev = btdev_create(BTDEV_TYPE_BREDRLE, 0x00);
+	btdev = btdev_create(hciemu->btdev_type, 0x00);
 	if (!btdev)
 		return false;
 
@@ -263,13 +264,27 @@ static gboolean start_stack(gpointer user_data)
 	return FALSE;
 }
 
-struct hciemu *hciemu_new(void)
+struct hciemu *hciemu_new(enum hciemu_type type)
 {
 	struct hciemu *hciemu;
 
 	hciemu = g_try_new0(struct hciemu, 1);
 	if (!hciemu)
 		return NULL;
+
+	switch (type) {
+	case HCIEMU_TYPE_BREDRLE:
+		hciemu->btdev_type = BTDEV_TYPE_BREDRLE;
+		break;
+	case HCIEMU_TYPE_BREDR:
+		hciemu->btdev_type = BTDEV_TYPE_BREDR;
+		break;
+	case HCIEMU_TYPE_LE:
+		hciemu->btdev_type = BTDEV_TYPE_LE;
+		break;
+	default:
+		return NULL;
+	}
 
 	if (!create_vhci(hciemu)) {
 		g_free(hciemu);

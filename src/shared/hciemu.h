@@ -26,7 +26,13 @@
 
 struct hciemu;
 
-struct hciemu *hciemu_new(void);
+enum hciemu_type {
+	HCIEMU_TYPE_BREDRLE,
+	HCIEMU_TYPE_BREDR,
+	HCIEMU_TYPE_LE,
+};
+
+struct hciemu *hciemu_new(enum hciemu_type type);
 
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
