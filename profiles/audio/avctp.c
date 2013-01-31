@@ -749,6 +749,7 @@ static void browsing_response(struct avctp_channel *browsing,
 			return;
 
 		browsing->processed = g_slist_remove(browsing->processed, p);
+		pending_destroy(p, NULL);
 
 		return;
 	}
