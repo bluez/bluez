@@ -3672,6 +3672,10 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 
 	if (dev->svc_resolved)
 		cb->idle_id = g_idle_add(svc_idle_cb, cb);
+	else if (dev->discov_timer > 0) {
+		g_source_remove(dev->discov_timer);
+		dev->discov_timer = g_idle_add(start_discovery, dev);
+	}
 
 	return cb->id;
 }
