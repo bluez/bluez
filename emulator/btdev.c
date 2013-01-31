@@ -255,7 +255,12 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->type = type;
 
 	btdev->manufacturer = 63;
-	btdev->version = 0x06;
+
+	if (type == BTDEV_TYPE_BREDR)
+		btdev->version = 0x05;
+	else
+		btdev->version = 0x06;
+
 	btdev->revision = 0x0000;
 
 	switch (btdev->type) {
