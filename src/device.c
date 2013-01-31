@@ -2393,7 +2393,6 @@ add_uuids:
 						bt_uuid_strcmp);
 	}
 
-	device->svc_resolved = true;
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "UUIDs");
 }
