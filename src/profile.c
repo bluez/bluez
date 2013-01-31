@@ -914,38 +914,6 @@ drop:
 	ext_io_destroy(conn);
 }
 
-static void ext_svc_complete(struct btd_device *dev, int err, void *user_data)
-{
-	struct ext_io *conn = user_data;
-	struct ext_profile *ext = conn->ext;
-	const bdaddr_t *bdaddr;
-	GError *gerr = NULL;
-	char addr[18];
-
-	conn->svc_id = 0;
-
-	bdaddr = device_get_address(dev);
-	ba2str(bdaddr, addr);
-
-	if (err < 0) {
-		error("Service resolving failed for %s: %s (%d)",
-						addr, strerror(-err), -err);
-		goto drop;
-	}
-
-	DBG("Services resolved for %s. Accepting connection", addr);
-
-	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
-		error("bt_io_accept: %s", gerr->message);
-		g_error_free(gerr);
-		goto drop;
-	}
-
-drop:
-	ext->conns = g_slist_remove(ext->conns, conn);
-	ext_io_destroy(conn);
-}
-
 static void ext_auth(DBusError *err, void *user_data)
 {
 	struct ext_io *conn = user_data;
@@ -968,11 +936,19 @@ static void ext_auth(DBusError *err, void *user_data)
 		goto drop;
 	}
 
-	DBG("%s authorized to connect to %s", addr, ext->name);
+	if (conn->auth_id > 0) {
+		DBG("Connection from %s authorized but still waiting for SDP",
+									addr);
+		return;
+	}
 
-	conn->svc_id = device_wait_for_svc_complete(conn->device,
-							ext_svc_complete,
-							conn);
+	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
+		error("bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+	DBG("%s authorized to connect to %s", addr, ext->name);
 
 	return;
 
@@ -1047,6 +1023,43 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 	return conn;
 }
 
+static void ext_svc_complete(struct btd_device *dev, int err, void *user_data)
+{
+	struct ext_io *conn = user_data;
+	struct ext_profile *ext = conn->ext;
+	const bdaddr_t *bdaddr;
+	GError *gerr = NULL;
+	char addr[18];
+
+	conn->svc_id = 0;
+
+	bdaddr = device_get_address(dev);
+	ba2str(bdaddr, addr);
+
+	if (err < 0) {
+		error("Service resolving failed for %s: %s (%d)",
+						addr, strerror(-err), -err);
+		goto drop;
+	}
+
+	DBG("Services resolved for %s", addr);
+
+	if (conn->auth_id > 0) {
+		DBG("Services resolved but still waiting for authorization");
+		return;
+	}
+
+	if (!bt_io_accept(conn->io, ext_connect, conn, NULL, &gerr)) {
+		error("bt_io_accept: %s", gerr->message);
+		g_error_free(gerr);
+		goto drop;
+	}
+
+drop:
+	ext->conns = g_slist_remove(ext->conns, conn);
+	ext_io_destroy(conn);
+}
+
 static void ext_confirm(GIOChannel *io, gpointer user_data)
 {
 	struct ext_io *server = user_data;
@@ -1082,6 +1095,10 @@ static void ext_confirm(GIOChannel *io, gpointer user_data)
 	}
 
 	ext->conns = g_slist_append(ext->conns, conn);
+
+	conn->svc_id = device_wait_for_svc_complete(conn->device,
+							ext_svc_complete,
+							conn);
 
 	DBG("%s authorizing connection from %s", ext->name, addr);
 }
