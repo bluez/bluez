@@ -2834,8 +2834,10 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 	DBG("%s removed from %s's connect_list", device_get_path(device),
 							adapter->system_name);
 
-	if (!adapter->connect_list)
+	if (!adapter->connect_list) {
+		stop_passive_scanning(adapter);
 		return;
+	}
 
 	if (!(adapter->current_settings & MGMT_SETTING_POWERED))
 		return;
