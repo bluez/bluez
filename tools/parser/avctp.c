@@ -60,7 +60,8 @@ void avctp_dump(int level, struct frame *frm, uint16_t psm)
 	hdr = get_u8(frm);
 	pid = get_u16(frm);
 
-	printf("AVCTP: %s %s: pt 0x%02x transaction %d pid 0x%04x \n",
+	printf("AVCTP %s: %s %s: pt 0x%02x transaction %d pid 0x%04x\n",
+				psm == 23 ? "Control" : "Browsing",
 				hdr & 0x02 ? "Response" : "Command",
 				pt2str(hdr), hdr & 0x0c, hdr >> 4, pid);
 
