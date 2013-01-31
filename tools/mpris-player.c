@@ -1381,7 +1381,11 @@ static const GDBusPropertyTable mpris_properties[] = {
 
 static char *mpris_busname(char *name)
 {
-	return g_strconcat(MPRIS_BUS_NAME,
+	if (g_ascii_isdigit(name[0]))
+		return g_strconcat(MPRIS_BUS_NAME, "bt_",
+				g_strcanon(name, A_Z a_z _0_9, '_'), NULL);
+	else
+		return g_strconcat(MPRIS_BUS_NAME,
 				g_strcanon(name, A_Z a_z _0_9, '_'), NULL);
 }
 
