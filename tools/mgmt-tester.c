@@ -324,6 +324,24 @@ static void test_condition_complete(struct test_data *data)
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
+#define test_le(name, data, setup, func) \
+	do { \
+		struct test_data *user; \
+		user = malloc(sizeof(struct test_data)); \
+		if (!user) \
+			break; \
+		user->hciemu_type = HCIEMU_TYPE_LE; \
+		user->test_data = data; \
+		user->expected_version = 0x06; \
+		user->expected_manufacturer = 0x003f; \
+		user->expected_supported_settings = 0x0000021f; \
+		user->initial_settings = 0x00000000; \
+		user->unmet_conditions = 0; \
+		tester_add_full(name, data, \
+				test_pre_setup, setup, func, NULL, \
+				test_post_teardown, 2, user, free); \
+	} while (0)
+
 static void controller_setup(const void *test_data)
 {
 	tester_test_passed();
@@ -2342,6 +2360,7 @@ int main(int argc, char *argv[])
 	test_bredrle("Controller setup", NULL, NULL, controller_setup);
 	test_bredr("Controller setup (BR/EDR-only)", NULL, NULL,
 							controller_setup);
+	test_le("Controller setup (LE-only)", NULL, NULL, controller_setup);
 	test_bredrle("Invalid command", &invalid_command_test,
 					NULL, test_command_generic);
 
