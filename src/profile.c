@@ -977,7 +977,7 @@ static void ext_auth(DBusError *err, void *user_data)
 		goto drop;
 	}
 
-	if (conn->auth_id > 0) {
+	if (conn->svc_id > 0) {
 		DBG("Connection from %s authorized but still waiting for SDP",
 									addr);
 		return;
