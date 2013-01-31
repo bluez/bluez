@@ -68,6 +68,7 @@ int main(int argc, char *argv[])
 	struct server *server2;
 	struct server *server3;
 	struct server *server4;
+	struct server *server5;
 	bool enable_vhci = false;
 	sigset_t mask;
 
@@ -109,20 +110,25 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
 	}
 
-	server1 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-bredr");
+	server1 = server_open_unix(SERVER_TYPE_BREDRLE,
+						"/tmp/bt-server-bredrle");
 	if (!server1)
+		fprintf(stderr, "Failed to open BR/EDR/LE server channel\n");
+
+	server2 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-bredr");
+	if (!server2)
 		fprintf(stderr, "Failed to open BR/EDR server channel\n");
 
-	server2 = server_open_unix(SERVER_TYPE_AMP, "/tmp/bt-server-amp");
-	if (!server2)
+	server3 = server_open_unix(SERVER_TYPE_AMP, "/tmp/bt-server-amp");
+	if (!server3)
 		fprintf(stderr, "Failed to open AMP server channel\n");
 
-	server3 = server_open_unix(SERVER_TYPE_LE, "/tmp/bt-server-le");
-	if (!server3)
+	server4 = server_open_unix(SERVER_TYPE_LE, "/tmp/bt-server-le");
+	if (!server4)
 		fprintf(stderr, "Failed to open LE server channel\n");
 
-	server4 = server_open_unix(SERVER_TYPE_MONITOR, "/tmp/bt-server-mon");
-	if (!server4)
+	server5 = server_open_unix(SERVER_TYPE_MONITOR, "/tmp/bt-server-mon");
+	if (!server5)
 		fprintf(stderr, "Failed to open monitor server channel\n");
 
 	return mainloop_run();

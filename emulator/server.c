@@ -217,6 +217,9 @@ static void server_accept_callback(int fd, uint32_t events, void *user_data)
 	}
 
 	switch (server->type) {
+	case SERVER_TYPE_BREDRLE:
+		type = BTDEV_TYPE_BREDRLE;
+		break;
 	case SERVER_TYPE_BREDR:
 		type = BTDEV_TYPE_BREDR;
 		break;
