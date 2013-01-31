@@ -618,7 +618,7 @@ static void avrcp_get_current_player_value_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	if (len < 2) {
+	if (len < 1) {
 		printf("PDU Malformed\n");
 		raw_dump(level, frm);
 		return;
