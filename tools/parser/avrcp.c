@@ -1294,7 +1294,7 @@ static void avrcp_set_browsed_player_dump(int level, struct frame *frm,
 	}
 
 	id = get_u16(frm);
-	printf("PlayerID: 0x%04x (%u)", id, id);
+	printf("PlayerID: 0x%04x (%u)\n", id, id);
 	return;
 
 response:
@@ -1313,12 +1313,12 @@ response:
 	p_indent(level, frm);
 
 	uids = get_u16(frm);
-	printf("UIDCounter: 0x%04x (%u)", uids, uids);
+	printf("UIDCounter: 0x%04x (%u)\n", uids, uids);
 
 	p_indent(level, frm);
 
 	items = get_u32(frm);
-	printf("Number of Items: 0x%04x (%u)", items, items);
+	printf("Number of Items: 0x%04x (%u)\n", items, items);
 
 	p_indent(level, frm);
 
@@ -1328,7 +1328,7 @@ response:
 	p_indent(level, frm);
 
 	folders = get_u8(frm);
-	printf("Folder Depth: 0x%02x (%u)", folders, folders);
+	printf("Folder Depth: 0x%02x (%u)\n", folders, folders);
 
 	for (; folders > 0; folders--) {
 		uint16_t len;
