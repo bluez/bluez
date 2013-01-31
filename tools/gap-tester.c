@@ -40,7 +40,7 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	tester_print("Connected to daemon");
 
-	hciemu_stack = hciemu_new();
+	hciemu_stack = hciemu_new(HCIEMU_TYPE_BREDRLE);
 }
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)

@@ -51,6 +51,7 @@ struct test_data {
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
+	enum hciemu_type hciemu_type;
 	int unmet_conditions;
 };
 
@@ -216,7 +217,7 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	mgmt_register(data->mgmt, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
 					index_removed_callback, NULL, NULL);
 
-	data->hciemu = hciemu_new();
+	data->hciemu = hciemu_new(data->hciemu_type);
 	if (!data->hciemu) {
 		tester_warn("Failed to setup HCI emulation");
 		tester_pre_setup_failed();
@@ -293,6 +294,7 @@ static void test_condition_complete(struct test_data *data)
 		user = malloc(sizeof(struct test_data)); \
 		if (!user) \
 			break; \
+		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->test_data = data; \
 		user->expected_version = 0x06; \
 		user->expected_manufacturer = 0x003f; \
