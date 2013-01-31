@@ -181,7 +181,7 @@ static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
 	bdaddr[5] = 0x00;
 }
 
-static void set_bredr_features(struct btdev *btdev)
+static void set_bredrle_features(struct btdev *btdev)
 {
 	btdev->features[0] |= 0x04;	/* Encryption */
 	btdev->features[0] |= 0x20;	/* Role switch */
@@ -198,6 +198,30 @@ static void set_bredr_features(struct btdev *btdev)
 	btdev->features[5] |= 0x10;	/* AFH classification master */
 	btdev->features[6] |= 0x01;	/* Extended Inquiry Response */
 	btdev->features[6] |= 0x02;	/* Simultaneous LE and BR/EDR */
+	btdev->features[6] |= 0x08;	/* Secure Simple Pairing */
+	btdev->features[6] |= 0x10;	/* Encapsulated PDU */
+	btdev->features[6] |= 0x20;	/* Erroneous Data Reporting */
+	btdev->features[6] |= 0x40;	/* Non-flushable Packet Boundary Flag */
+	btdev->features[7] |= 0x01;	/* Link Supervision Timeout Event */
+	btdev->features[7] |= 0x02;	/* Inquiry TX Power Level */
+	btdev->features[7] |= 0x80;	/* Extended features */
+}
+
+static void set_bredr_features(struct btdev *btdev)
+{
+	btdev->features[0] |= 0x04;	/* Encryption */
+	btdev->features[0] |= 0x20;	/* Role switch */
+	btdev->features[0] |= 0x80;	/* Sniff mode */
+	btdev->features[1] |= 0x08;	/* SCO link */
+	btdev->features[3] |= 0x40;	/* RSSI with inquiry results */
+	btdev->features[3] |= 0x80;	/* Extended SCO link */
+	btdev->features[4] |= 0x08;	/* AFH capable slave */
+	btdev->features[4] |= 0x10;	/* AFH classification slave */
+	btdev->features[5] |= 0x02;	/* Sniff subrating */
+	btdev->features[5] |= 0x04;	/* Pause encryption */
+	btdev->features[5] |= 0x08;	/* AFH capable master */
+	btdev->features[5] |= 0x10;	/* AFH classification master */
+	btdev->features[6] |= 0x01;	/* Extended Inquiry Response */
 	btdev->features[6] |= 0x08;	/* Secure Simple Pairing */
 	btdev->features[6] |= 0x10;	/* Encapsulated PDU */
 	btdev->features[6] |= 0x20;	/* Erroneous Data Reporting */
@@ -235,6 +259,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->revision = 0x0000;
 
 	switch (btdev->type) {
+	case BTDEV_TYPE_BREDRLE:
+		set_bredrle_features(btdev);
+		break;
 	case BTDEV_TYPE_BREDR:
 		set_bredr_features(btdev);
 		break;

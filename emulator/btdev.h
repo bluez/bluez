@@ -54,6 +54,7 @@ typedef void (*btdev_send_func) (const void *data, uint16_t len,
 							void *user_data);
 
 enum btdev_type {
+	BTDEV_TYPE_BREDRLE,
 	BTDEV_TYPE_BREDR,
 	BTDEV_TYPE_LE,
 	BTDEV_TYPE_AMP,
