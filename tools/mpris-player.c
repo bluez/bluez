@@ -1422,7 +1422,7 @@ static void register_player(GDBusProxy *proxy)
 	if (device == NULL)
 		return;
 
-	if (!g_dbus_proxy_get_property(device, "Name", &iter))
+	if (!g_dbus_proxy_get_property(device, "Alias", &iter))
 		return;
 
 	dbus_message_iter_get_basic(&iter, &name);
