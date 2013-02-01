@@ -731,16 +731,22 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	switch (opcode) {
 	case BT_HCI_CMD_INQUIRY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		inquiry_complete(btdev, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_INQUIRY_CANCEL:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		cc = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_request(btdev, cc->bdaddr);
@@ -753,30 +759,40 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_CREATE_CONN_CANCEL:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		ccc = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, ccc->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
 		break;
 
 	case BT_HCI_CMD_ACCEPT_CONN_REQUEST:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		acr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, acr->bdaddr, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_REJECT_CONN_REQUEST:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rcr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		conn_complete(btdev, rcr->bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rnr = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		name_request_complete(btdev, rnr->bdaddr, BT_HCI_ERR_SUCCESS);
 		break;
 
 	case BT_HCI_CMD_REMOTE_NAME_REQUEST_CANCEL:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rnrc = data;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
@@ -785,12 +801,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_FEATURES:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rrf = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		remote_features_complete(btdev, le16_to_cpu(rrf->handle));
 		break;
 
 	case BT_HCI_CMD_READ_REMOTE_EXT_FEATURES:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rref = data;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
 		remote_ext_features_complete(btdev, le16_to_cpu(rref->handle),
@@ -804,12 +824,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_DEFAULT_LINK_POLICY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rdlp.status = BT_HCI_ERR_SUCCESS;
 		rdlp.policy = cpu_to_le16(btdev->default_link_policy);
 		cmd_complete(btdev, opcode, &rdlp, sizeof(rdlp));
 		break;
 
 	case BT_HCI_CMD_WRITE_DEFAULT_LINK_POLICY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wdlp = data;
 		btdev->default_link_policy = le16_to_cpu(wdlp->policy);
 		status = BT_HCI_ERR_SUCCESS;
@@ -829,6 +853,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_FILTER:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		sef = data;
 		btdev->event_filter = sef->type;
 		status = BT_HCI_ERR_SUCCESS;
@@ -836,6 +862,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_STORED_LINK_KEY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rslk.status = BT_HCI_ERR_SUCCESS;
 		rslk.max_num_keys = cpu_to_le16(0);
 		rslk.num_keys = cpu_to_le16(0);
@@ -843,18 +871,24 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_STORED_LINK_KEY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wslk.status = BT_HCI_ERR_SUCCESS;
 		wslk.num_keys = 0;
 		cmd_complete(btdev, opcode, &wslk, sizeof(wslk));
 		break;
 
 	case BT_HCI_CMD_DELETE_STORED_LINK_KEY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		dslk.status = BT_HCI_ERR_SUCCESS;
 		dslk.num_keys = cpu_to_le16(0);
 		cmd_complete(btdev, opcode, &dslk, sizeof(dslk));
 		break;
 
 	case BT_HCI_CMD_WRITE_LOCAL_NAME:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wln = data;
 		memcpy(btdev->name, wln->name, 248);
 		status = BT_HCI_ERR_SUCCESS;
@@ -862,18 +896,24 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_NAME:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rln.status = BT_HCI_ERR_SUCCESS;
 		memcpy(rln.name, btdev->name, 248);
 		cmd_complete(btdev, opcode, &rln, sizeof(rln));
 		break;
 
 	case BT_HCI_CMD_READ_CONN_ACCEPT_TIMEOUT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rcat.status = BT_HCI_ERR_SUCCESS;
 		rcat.timeout = cpu_to_le16(btdev->conn_accept_timeout);
 		cmd_complete(btdev, opcode, &rcat, sizeof(rcat));
 		break;
 
 	case BT_HCI_CMD_WRITE_CONN_ACCEPT_TIMEOUT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wcat = data;
 		btdev->conn_accept_timeout = le16_to_cpu(wcat->timeout);
 		status = BT_HCI_ERR_SUCCESS;
@@ -881,12 +921,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_PAGE_TIMEOUT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rpt.status = BT_HCI_ERR_SUCCESS;
 		rpt.timeout = cpu_to_le16(btdev->page_timeout);
 		cmd_complete(btdev, opcode, &rpt, sizeof(rpt));
 		break;
 
 	case BT_HCI_CMD_WRITE_PAGE_TIMEOUT:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wpt = data;
 		btdev->page_timeout = le16_to_cpu(wpt->timeout);
 		status = BT_HCI_ERR_SUCCESS;
@@ -894,12 +938,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_SCAN_ENABLE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rse.status = BT_HCI_ERR_SUCCESS;
 		rse.enable = btdev->scan_enable;
 		cmd_complete(btdev, opcode, &rse, sizeof(rse));
 		break;
 
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wse = data;
 		btdev->scan_enable = wse->enable;
 		status = BT_HCI_ERR_SUCCESS;
@@ -907,12 +955,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_AUTH_ENABLE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rae.status = BT_HCI_ERR_SUCCESS;
 		rae.enable = btdev->auth_enable;
 		cmd_complete(btdev, opcode, &rae, sizeof(rae));
 		break;
 
 	case BT_HCI_CMD_WRITE_AUTH_ENABLE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wae = data;
 		btdev->auth_enable = wae->enable;
 		status = BT_HCI_ERR_SUCCESS;
@@ -920,12 +972,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_CLASS_OF_DEV:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rcod.status = BT_HCI_ERR_SUCCESS;
 		memcpy(rcod.dev_class, btdev->dev_class, 3);
 		cmd_complete(btdev, opcode, &rcod, sizeof(rcod));
 		break;
 
 	case BT_HCI_CMD_WRITE_CLASS_OF_DEV:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wcod = data;
 		memcpy(btdev->dev_class, wcod->dev_class, 3);
 		status = BT_HCI_ERR_SUCCESS;
@@ -933,12 +989,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_VOICE_SETTING:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rvs.status = BT_HCI_ERR_SUCCESS;
 		rvs.setting = cpu_to_le16(btdev->voice_setting);
 		cmd_complete(btdev, opcode, &rvs, sizeof(rvs));
 		break;
 
 	case BT_HCI_CMD_WRITE_VOICE_SETTING:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wvs = data;
 		btdev->voice_setting = le16_to_cpu(wvs->setting);
 		status = BT_HCI_ERR_SUCCESS;
@@ -946,6 +1006,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_INQUIRY_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rim.status = BT_HCI_ERR_SUCCESS;
 		rim.mode = btdev->inquiry_mode;
 		cmd_complete(btdev, opcode, &rim, sizeof(rim));
@@ -959,12 +1021,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_AFH_ASSESS_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		raam.status = BT_HCI_ERR_SUCCESS;
 		raam.mode = btdev->afh_assess_mode;
 		cmd_complete(btdev, opcode, &raam, sizeof(raam));
 		break;
 
 	case BT_HCI_CMD_WRITE_AFH_ASSESS_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		waam = data;
 		btdev->afh_assess_mode = waam->mode;
 		status = BT_HCI_ERR_SUCCESS;
@@ -972,6 +1038,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_EXT_INQUIRY_RESPONSE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		reir.status = BT_HCI_ERR_SUCCESS;
 		reir.fec = btdev->ext_inquiry_fec;
 		memcpy(reir.data, btdev->ext_inquiry_rsp, 240);
@@ -979,6 +1047,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		weir = data;
 		btdev->ext_inquiry_fec = weir->fec;
 		memcpy(btdev->ext_inquiry_rsp, weir->data, 240);
@@ -987,12 +1057,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_SIMPLE_PAIRING_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rspm.status = BT_HCI_ERR_SUCCESS;
 		rspm.mode = btdev->simple_pairing_mode;
 		cmd_complete(btdev, opcode, &rspm, sizeof(rspm));
 		break;
 
 	case BT_HCI_CMD_WRITE_SIMPLE_PAIRING_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wspm = data;
 		btdev->simple_pairing_mode = wspm->mode;
 		status = BT_HCI_ERR_SUCCESS;
@@ -1000,12 +1074,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rirtp.status = BT_HCI_ERR_SUCCESS;
 		rirtp.level = 0;
 		cmd_complete(btdev, opcode, &rirtp, sizeof(rirtp));
 		break;
 
 	case BT_HCI_CMD_READ_LE_HOST_SUPPORTED:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		rlhs.status = BT_HCI_ERR_SUCCESS;
 		rlhs.supported = btdev->le_supported;
 		rlhs.simultaneous = btdev->le_simultaneous;
@@ -1013,6 +1091,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		wlhs = data;
 		btdev->le_supported = wlhs->supported;
 		btdev->le_simultaneous = wlhs->simultaneous;
@@ -1118,6 +1198,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_LE_SET_EVENT_MASK:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lsem = data;
 		memcpy(btdev->le_event_mask, lsem->mask, 8);
 		status = BT_HCI_ERR_SUCCESS;
@@ -1125,6 +1207,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_LE_READ_BUFFER_SIZE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lrbs.status = BT_HCI_ERR_SUCCESS;
 		lrbs.le_mtu = cpu_to_le16(btdev->acl_mtu);
 		lrbs.le_max_pkt = btdev->acl_max_pkt;
@@ -1132,39 +1216,53 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_LE_READ_LOCAL_FEATURES:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lrlf.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lrlf.features, btdev->le_features, 8);
 		cmd_complete(btdev, opcode, &lrlf, sizeof(lrlf));
 		break;
 
 	case BT_HCI_CMD_LE_READ_ADV_TX_POWER:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lratp.status = BT_HCI_ERR_SUCCESS;
 		lratp.level = 0;
 		cmd_complete(btdev, opcode, &lratp, sizeof(lratp));
 		break;
 
 	case BT_HCI_CMD_LE_SET_SCAN_PARAMETERS:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_SET_SCAN_ENABLE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lrwls.status = 0;
 		lrwls.size = 0;
 		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
 
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lrss.status = BT_HCI_ERR_SUCCESS;
 		memcpy(lrss.states, btdev->le_states, 8);
 		cmd_complete(btdev, opcode, &lrss, sizeof(lrss));
 		break;
 
 	case BT_HCI_CMD_LE_SET_ADV_DATA:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
 		lsad = data;
 		memcpy(btdev->le_adv_data, lsad->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
@@ -1172,11 +1270,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	default:
-		printf("Unsupported command 0x%4.4x\n", opcode);
-		hexdump(data, len);
-		cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
-		break;
+		goto unsupported;
 	}
+
+	return;
+
+unsupported:
+	printf("Unsupported command 0x%4.4x\n", opcode);
+	hexdump(data, len);
+	cmd_status(btdev, BT_HCI_ERR_UNKNOWN_COMMAND, opcode);
 }
 
 struct btdev_callback {
