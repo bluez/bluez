@@ -676,7 +676,8 @@ static DBusMessage *register_server(DBusConnection *conn,
 static DBusMessage *unregister_server(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct network_server *ns = data;
+	struct network_adapter *na = data;
+	struct network_server *ns;
 	DBusMessage *reply;
 	const char *uuid;
 
@@ -684,7 +685,8 @@ static DBusMessage *unregister_server(DBusConnection *conn,
 							DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
 
-	if (g_strcmp0(uuid, "nap"))
+	ns = find_server_by_uuid(na->servers, uuid);
+	if (!ns)
 		return btd_error_failed(msg, "Invalid UUID");
 
 	reply = dbus_message_new_method_return(msg);
