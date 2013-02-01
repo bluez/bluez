@@ -99,6 +99,7 @@
 #define AVRCP_REQUEST_CONTINUING	0x40
 #define AVRCP_ABORT_CONTINUING		0x41
 #define AVRCP_SET_ABSOLUTE_VOLUME	0x50
+#define AVRCP_GET_FOLDER_ITEMS		0x71
 #define AVRCP_GENERAL_REJECT		0xA0
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
@@ -1859,6 +1860,151 @@ static void avrcp_get_element_attributes(struct avrcp *session)
 					session);
 }
 
+static const char *type_to_string(uint8_t type)
+{
+	switch (type & 0x0F) {
+	case 0x01:
+		return "Audio";
+	case 0x02:
+		return "Video";
+	case 0x03:
+		return "Audio, Video";
+	case 0x04:
+		return "Audio Broadcasting";
+	case 0x05:
+		return "Audio, Audio Broadcasting";
+	case 0x06:
+		return "Video, Audio Broadcasting";
+	case 0x07:
+		return "Audio, Video, Audio Broadcasting";
+	case 0x08:
+		return "Video Broadcasting";
+	case 0x09:
+		return "Audio, Video Broadcasting";
+	case 0x0A:
+		return "Video, Video Broadcasting";
+	case 0x0B:
+		return "Audio, Video, Video Broadcasting";
+	case 0x0C:
+		return "Audio Broadcasting, Video Broadcasting";
+	case 0x0D:
+		return "Audio, Audio Broadcasting, Video Broadcasting";
+	case 0x0E:
+		return "Video, Audio Broadcasting, Video Broadcasting";
+	case 0x0F:
+		return "Audio, Video, Audio Broadcasting, Video Broadcasting";
+	}
+
+	return "None";
+}
+
+static const char *subtype_to_string(uint32_t subtype)
+{
+	switch (subtype & 0x03) {
+	case 0x01:
+		return "Audio Book";
+	case 0x02:
+		return "Podcast";
+	case 0x03:
+		return "Audio Book, Podcast";
+	}
+
+	return "None";
+}
+
+static void avrcp_parse_media_player_item(struct avrcp *session,
+					uint8_t *operands, uint16_t len)
+{
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
+	uint16_t id;
+	uint32_t subtype;
+	const char *curval, *strval;
+	uint64_t features[2];
+	char name[255];
+
+	if (len < 28)
+		return;
+
+	id = bt_get_be16(&operands[0]);
+
+	if (player->id != id)
+		return;
+
+	media_player_set_type(mp, type_to_string(operands[2]));
+
+	subtype = bt_get_be32(&operands[3]);
+
+	media_player_set_subtype(mp, subtype_to_string(subtype));
+
+	curval = media_player_get_status(mp);
+	strval = status_to_string(operands[7]);
+
+	if (g_strcmp0(curval, strval) != 0) {
+		media_player_set_status(mp, strval);
+		avrcp_get_play_status(session);
+	}
+
+	features[0] = bt_get_be64(&operands[8]);
+	features[1] = bt_get_be64(&operands[16]);
+
+	media_player_set_features(mp, features);
+
+	if (operands[26] == 0)
+		return;
+
+	memcpy(name, &operands[27], operands[26]);
+
+	media_player_set_name(mp, name);
+}
+
+static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
+						uint8_t *operands,
+						size_t operand_count,
+						void *user_data)
+{
+	struct avrcp *session = user_data;
+	uint16_t count;
+	int i;
+
+	if (operands[3] != AVRCP_STATUS_SUCCESS || operand_count < 5)
+		return FALSE;
+
+	count = bt_get_be16(&operands[6]);
+
+	for (i = 8; count; count--) {
+		uint8_t type;
+		uint16_t len;
+
+		type = operands[i++];
+		len = bt_get_be16(&operands[i]);
+		i += 2;
+
+		if (type != 0x01) {
+			i += len;
+			continue;
+		}
+
+		avrcp_parse_media_player_item(session, &operands[i], len);
+	}
+
+	return FALSE;
+}
+
+static void avrcp_get_media_player_list(struct avrcp *session)
+{
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 10];
+	struct avrcp_browsing_header *pdu = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	pdu->pdu_id = AVRCP_GET_FOLDER_ITEMS;
+	pdu->param_len = htons(10);
+
+	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
+				avrcp_get_media_player_list_rsp, session);
+}
+
 static gboolean avrcp_handle_event(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
@@ -1944,6 +2090,7 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 
 		player->id = id;
 		player->uid_counter = bt_get_be16(&pdu->params[3]);
+		avrcp_get_media_player_list(session);
 		break;
 	}
 

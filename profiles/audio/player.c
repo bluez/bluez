@@ -57,6 +57,10 @@ struct pending_req {
 
 struct media_player {
 	char			*device;	/* Device path */
+	char			*name;		/* Player name */
+	char			*type;		/* Player type */
+	char			*subtype;	/* Player subtype */
+	uint64_t		features[2];	/* Player features */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
 	GHashTable		*track;		/* Player current track */
@@ -272,6 +276,72 @@ static gboolean get_device(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean name_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->name != NULL;
+}
+
+static gboolean get_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->name == NULL)
+		return FALSE;
+
+	DBG("%s", mp->name);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->name);
+
+	return TRUE;
+}
+
+static gboolean type_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->type != NULL;
+}
+
+static gboolean get_type(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->type == NULL)
+		return FALSE;
+
+	DBG("%s", mp->type);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->type);
+
+	return TRUE;
+}
+
+static gboolean subtype_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->subtype != NULL;
+}
+
+static gboolean get_subtype(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->subtype == NULL)
+		return FALSE;
+
+	DBG("%s", mp->subtype);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->subtype);
+
+	return TRUE;
+}
+
 static DBusMessage *media_player_play(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -410,6 +480,12 @@ static const GDBusSignalTable media_player_signals[] = {
 };
 
 static const GDBusPropertyTable media_player_properties[] = {
+	{ "Name", "s", get_name, NULL, name_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Type", "s", get_type, NULL, type_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Subtype", "s", get_subtype, NULL, subtype_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Position", "u", get_position, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Status", "s", get_status, NULL, status_exists,
@@ -452,6 +528,9 @@ void media_player_destroy(struct media_player *mp)
 	g_free(mp->status);
 	g_free(mp->path);
 	g_free(mp->device);
+	g_free(mp->subtype);
+	g_free(mp->type);
+	g_free(mp->name);
 	g_free(mp);
 }
 
@@ -616,6 +695,46 @@ void media_player_set_metadata(struct media_player *mp, const char *key,
 	}
 
 	g_hash_table_replace(mp->track, g_strdup(key), value);
+}
+
+void media_player_set_type(struct media_player *mp, const char *type)
+{
+	DBG("%s", type);
+
+	mp->type = g_strdup(type);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Type");
+}
+
+void media_player_set_subtype(struct media_player *mp, const char *subtype)
+{
+	DBG("%s", subtype);
+
+	mp->subtype = g_strdup(subtype);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Subtype");
+}
+
+void media_player_set_name(struct media_player *mp, const char *name)
+{
+	DBG("%s", name);
+
+	mp->name = g_strdup(name);
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Name");
+}
+
+void media_player_set_features(struct media_player *mp, uint64_t *features)
+{
+	DBG("0x%08zx %08zx", features[0], features[1]);
+
+	memcpy(features, mp->features, sizeof(mp->features));
 }
 
 void media_player_set_callbacks(struct media_player *mp,

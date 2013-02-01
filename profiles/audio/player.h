@@ -47,6 +47,10 @@ const char *media_player_get_status(struct media_player *mp);
 void media_player_set_status(struct media_player *mp, const char *status);
 void media_player_set_metadata(struct media_player *mp, const char *key,
 						void *data, size_t len);
+void media_player_set_type(struct media_player *mp, const char *type);
+void media_player_set_subtype(struct media_player *mp, const char *subtype);
+void media_player_set_features(struct media_player *mp, uint64_t *features);
+void media_player_set_name(struct media_player *mp, const char *name);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,
