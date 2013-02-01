@@ -1849,6 +1849,9 @@ next:
 								bt_uuid_strcmp);
 		}
 		g_strfreev(uuids);
+
+		/* Discovered services restored from storage */
+		device->svc_resolved = true;
 	}
 
 	/* Load device id */
