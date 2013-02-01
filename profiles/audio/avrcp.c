@@ -176,6 +176,8 @@ struct pending_pdu {
 struct avrcp_player {
 	struct avrcp_server *server;
 	GSList *sessions;
+	uint16_t id;
+	uint16_t uid_counter;
 
 	struct avrcp_player_cb *cb;
 	void *user_data;
@@ -1869,6 +1871,7 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 	uint8_t event;
 	uint8_t value;
 	uint8_t count;
+	uint16_t id;
 	const char *curval, *strval;
 	int i;
 
@@ -1931,6 +1934,16 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 			media_player_set_setting(mp, key, value);
 		}
 
+		break;
+
+	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+		id = bt_get_be16(&pdu->params[1]);
+
+		if (player->id == id)
+			break;
+
+		player->id = id;
+		player->uid_counter = bt_get_be16(&pdu->params[3]);
 		break;
 	}
 
@@ -2112,6 +2125,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 		case AVRCP_EVENT_STATUS_CHANGED:
 		case AVRCP_EVENT_TRACK_CHANGED:
 		case AVRCP_EVENT_SETTINGS_CHANGED:
+		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 			avrcp_register_notification(session, event);
 			break;
 		}
