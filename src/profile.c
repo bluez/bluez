@@ -1054,6 +1054,10 @@ static void ext_svc_complete(struct btd_device *dev, int err, void *user_data)
 		goto drop;
 	}
 
+	DBG("%s authorized to connect to %s", addr, ext->name);
+
+	return;
+
 drop:
 	ext->conns = g_slist_remove(ext->conns, conn);
 	ext_io_destroy(conn);
