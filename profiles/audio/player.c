@@ -43,6 +43,7 @@
 #include "error.h"
 
 #define MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
+#define MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
 
 struct player_callback {
 	const struct media_player_callback *cbs;
@@ -55,12 +56,18 @@ struct pending_req {
 	const char *value;
 };
 
+struct media_folder {
+	char			*name;		/* Folder name */
+	uint32_t		items;		/* Number of items */
+};
+
 struct media_player {
 	char			*device;	/* Device path */
 	char			*name;		/* Player name */
 	char			*type;		/* Player type */
 	char			*subtype;	/* Player subtype */
 	uint64_t		features[2];	/* Player features */
+	struct media_folder	*folder;	/* Player currenct folder */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
 	GHashTable		*track;		/* Player current track */
@@ -505,6 +512,104 @@ static const GDBusPropertyTable media_player_properties[] = {
 	{ }
 };
 
+static DBusMessage *media_folder_search(DBusConnection *conn, DBusMessage *msg,
+								void *data)
+{
+	return btd_error_failed(msg, strerror(ENOTSUP));
+}
+
+static DBusMessage *media_folder_list_items(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return btd_error_failed(msg, strerror(ENOTSUP));
+}
+
+
+static DBusMessage *media_folder_change_folder(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	return btd_error_failed(msg, strerror(ENOTSUP));
+}
+
+static gboolean folder_name_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->folder == NULL)
+		return FALSE;
+
+	return mp->folder->name != NULL;
+}
+
+static gboolean get_folder_name(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->folder == NULL || mp->folder->name == NULL)
+		return FALSE;
+
+	DBG("%s", mp->folder->name);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&mp->folder->name);
+
+	return TRUE;
+}
+
+static gboolean items_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->folder != NULL;
+}
+
+static gboolean get_items(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+
+	if (mp->folder == NULL)
+		return FALSE;
+
+	DBG("%u", mp->folder->items);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32,
+							&mp->folder->items);
+
+	return TRUE;
+}
+
+static const GDBusMethodTable media_folder_methods[] = {
+	{ GDBUS_EXPERIMENTAL_METHOD("Search",
+			GDBUS_ARGS({ "string", "s" }, { "filter", "a{sv}" }),
+			GDBUS_ARGS({ "folder", "o" }),
+			media_folder_search) },
+	{ GDBUS_EXPERIMENTAL_METHOD("ListItems",
+			GDBUS_ARGS({ "filter", "a{sv}" }),
+			GDBUS_ARGS({ "items", "a{oa{sv}}" }),
+			media_folder_list_items) },
+	{ GDBUS_EXPERIMENTAL_METHOD("ChangeFolder",
+			GDBUS_ARGS({ "folder", "o" }), NULL,
+			media_folder_change_folder) },
+	{ }
+};
+
+static const GDBusPropertyTable media_folder_properties[] = {
+	{ "Name", "s", get_folder_name, NULL, folder_name_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "NumberOfItems", "u", get_items, NULL, items_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ }
+};
+
+static void media_folder_destroy(struct media_folder *folder)
+{
+	g_free(folder->name);
+	g_free(folder);
+}
+
 void media_player_destroy(struct media_player *mp)
 {
 	DBG("%s", mp->path);
@@ -520,6 +625,13 @@ void media_player_destroy(struct media_player *mp)
 
 	if (mp->process_id > 0)
 		g_source_remove(mp->process_id);
+
+	if (mp->folder) {
+		g_dbus_unregister_interface(btd_get_dbus_connection(),
+						mp->path,
+						MEDIA_FOLDER_INTERFACE);
+		media_folder_destroy(mp->folder);
+	}
 
 	g_slist_free_full(mp->pending, g_free);
 
@@ -728,6 +840,33 @@ void media_player_set_name(struct media_player *mp, const char *name)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					mp->path, MEDIA_PLAYER_INTERFACE,
 					"Name");
+}
+
+void media_player_set_folder(struct media_player *mp, const char *path,
+								uint32_t items)
+{
+	struct media_folder *folder;
+
+	DBG("%s items %u", path, items);
+
+	if (mp->folder != NULL)
+		media_folder_destroy(mp->folder);
+
+	folder = g_new0(struct media_folder, 1);
+	folder->name = g_strdup(path);
+	folder->items = items;
+	mp->folder = folder;
+
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					mp->path, MEDIA_FOLDER_INTERFACE,
+					media_folder_methods,
+					NULL,
+					media_folder_properties, mp, NULL)) {
+		error("D-Bus failed to register %s on %s path",
+					MEDIA_FOLDER_INTERFACE, mp->path);
+		media_folder_destroy(mp->folder);
+		mp->folder = NULL;
+	}
 }
 
 void media_player_set_features(struct media_player *mp, uint64_t *features)

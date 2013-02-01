@@ -99,6 +99,7 @@
 #define AVRCP_REQUEST_CONTINUING	0x40
 #define AVRCP_ABORT_CONTINUING		0x41
 #define AVRCP_SET_ABSOLUTE_VOLUME	0x50
+#define AVRCP_SET_BROWSED_PLAYER	0x70
 #define AVRCP_GET_FOLDER_ITEMS		0x71
 #define AVRCP_GENERAL_REJECT		0xA0
 
@@ -1912,6 +1913,68 @@ static const char *subtype_to_string(uint32_t subtype)
 	return "None";
 }
 
+static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
+						uint8_t *operands,
+						size_t operand_count,
+						void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
+	uint32_t items;
+	char **folders, *path;
+	uint8_t depth, count;
+	int i;
+
+	if (operands[3] != AVRCP_STATUS_SUCCESS || operand_count < 13)
+		return FALSE;
+
+	player->uid_counter = bt_get_be16(&operands[4]);
+
+	items = bt_get_be32(&operands[6]);
+
+	depth = operands[13];
+
+	folders = g_new0(char *, depth + 1);
+
+	for (i = 14, count = 0; count < depth; count++) {
+		char *part;
+		uint8_t len;
+
+		len = operands[i++];
+		part = g_memdup(&operands[i], len);
+		i += len;
+		folders[count] = part;
+	}
+
+	path = g_build_pathv("/", folders);
+	g_strfreev(folders);
+
+	media_player_set_folder(mp, path, items);
+
+	g_free(path);
+
+	return FALSE;
+}
+
+static void avrcp_set_browsed_player(struct avrcp *session,
+						struct avrcp_player *player)
+{
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 2];
+	struct avrcp_browsing_header *pdu = (void *) buf;
+	uint16_t id;
+
+	memset(buf, 0, sizeof(buf));
+
+	pdu->pdu_id = AVRCP_SET_BROWSED_PLAYER;
+	id = htons(player->id);
+	memcpy(pdu->params, &id, 2);
+	pdu->param_len = htons(2);
+
+	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
+				avrcp_set_browsed_player_rsp, session);
+}
+
 static void avrcp_parse_media_player_item(struct avrcp *session,
 					uint8_t *operands, uint16_t len)
 {
@@ -1950,12 +2013,12 @@ static void avrcp_parse_media_player_item(struct avrcp *session,
 
 	media_player_set_features(mp, features);
 
-	if (operands[26] == 0)
-		return;
+	if (operands[26] != 0) {
+		memcpy(name, &operands[27], operands[26]);
+		media_player_set_name(mp, name);
+	}
 
-	memcpy(name, &operands[27], operands[26]);
-
-	media_player_set_name(mp, name);
+	avrcp_set_browsed_player(session, player);
 }
 
 static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
