@@ -4161,6 +4161,14 @@ static void update_found_devices(struct btd_adapter *adapter,
 
 connect_le:
 	/*
+	 * If we're in the process of stopping passive scanning and
+	 * connecting another (or maybe even the same) LE device just
+	 * ignore this one.
+	 */
+	if (adapter->connect_le)
+		return;
+
+	/*
 	 * If this is an LE device that's not connected and part of the
 	 * connect_list stop passive scanning so that a connection
 	 * attempt to it can be made
