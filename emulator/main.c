@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
 	struct server *server4;
 	struct server *server5;
 	bool enable_vhci = false;
+	enum vhci_type vhci_type = VHCI_TYPE_BREDRLE;
 	sigset_t mask;
 
 	mainloop_init();
@@ -77,13 +78,19 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "lvh", main_options, NULL);
+		opt = getopt_long(argc, argv, "lLBvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
 		case 'l':
 			enable_vhci = true;
+			break;
+		case 'L':
+			vhci_type = VHCI_TYPE_LE;
+			break;
+		case 'B':
+			vhci_type = VHCI_TYPE_BREDR;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
@@ -105,7 +112,7 @@ int main(int argc, char *argv[])
 	printf("Bluetooth emulator ver %s\n", VERSION);
 
 	if (enable_vhci) {
-		vhci = vhci_open(VHCI_TYPE_BREDRLE);
+		vhci = vhci_open(vhci_type);
 		if (!vhci)
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
 	}
