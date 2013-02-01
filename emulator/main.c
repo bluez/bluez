@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	printf("Bluetooth emulator ver %s\n", VERSION);
 
 	if (enable_vhci) {
-		vhci = vhci_open(VHCI_TYPE_BREDR);
+		vhci = vhci_open(VHCI_TYPE_BREDRLE);
 		if (!vhci)
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
 	}
