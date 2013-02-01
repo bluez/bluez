@@ -1877,6 +1877,12 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 
 	event = pdu->params[0];
 
+	if (code == AVC_CTYPE_CHANGED) {
+		session->registered_events ^= (1 << event);
+		avrcp_register_notification(session, event);
+		return FALSE;
+	}
+
 	switch (event) {
 	case AVRCP_EVENT_VOLUME_CHANGED:
 		value = pdu->params[1] & 0x7F;
@@ -1900,12 +1906,8 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
-		mp = player->user_data;
-
 		avrcp_get_element_attributes(session);
-
-		if (code == AVC_CTYPE_CHANGED)
-			avrcp_get_play_status(session);
+		avrcp_get_play_status(session);
 
 		break;
 
@@ -1930,12 +1932,6 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 		}
 
 		break;
-	}
-
-	if (code == AVC_CTYPE_CHANGED) {
-		session->registered_events ^= (1 << event);
-		avrcp_register_notification(session, event);
-		return FALSE;
 	}
 
 	session->registered_events |= (1 << event);
