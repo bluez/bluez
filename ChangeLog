@@ -1,3 +1,15 @@
+ver 5.2:
+	Fix issue with connection handling for Low Energy.
+	Fix issue with broken device discovery handling.
+	Fix issue with invalid memory access within A2DP.
+	Fix issue with handling empty path name of SetPath.
+	Fix issue with handling Message Access Profile filters.
+	Fix issue with handling network service unregistration.
+	Fix issue with not handling bogus device pairing results.
+	Fix issue with initial service discovery and profile manager.
+	Add support for AVRCP volume notifications.
+	Add support for AVRCP browsing commands.
+
 ver 5.1:
 	Fix issue with crash when removing OBEX session.
 	Fix issue with HID device disconnected from kernel.
