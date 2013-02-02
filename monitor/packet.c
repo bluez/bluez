@@ -1382,15 +1382,33 @@ static void print_manufacturer(uint16_t manufacturer)
 				bt_compidtostr(manufacturer), manufacturer);
 }
 
+static const char *get_supported_command(int bit);
+
 static void print_commands(const uint8_t *commands)
 {
-	char str[129];
-	int i;
+	unsigned int count = 0;
+	int i, n;
 
-	for (i = 0; i < 64; i++)
-		sprintf(str + (i * 2), "%2.2x", commands[i]);
+	for (i = 0; i < 64; i++) {
+		for (n = 0; n < 8; n++) {
+			if (commands[i] & (1 << n))
+				count++;
+		}
+	}
 
-	print_field("Commands: 0x%s", str);
+	print_field("Commands: %u entr%s", count, count == 1 ? "y" : "ies");
+
+	for (i = 0; i < 64; i++) {
+		for (n = 0; n < 8; n++) {
+			const char *cmd;
+
+			if (!(commands[i] & (1 << n)))
+				continue;
+
+			cmd = get_supported_command((i * 8) + n);
+			print_field("  %s (Octet %d - Bit %d)", cmd, i, n);
+		}
+	}
 }
 
 struct features_data {
@@ -4115,6 +4133,18 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x201f, 230, "LE Test End" },
 	{ }
 };
+
+static const char *get_supported_command(int bit)
+{
+	int i;
+
+	for (i = 0; opcode_table[i].str; i++) {
+		if (opcode_table[i].bit == bit)
+			return opcode_table[i].str;
+	}
+
+	return NULL;
+}
 
 static void status_evt(const void *data, uint8_t size)
 {
