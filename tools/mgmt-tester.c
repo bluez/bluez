@@ -995,6 +995,38 @@ static const struct generic_data set_le_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_local_name_param[260] = { 'T', 'e', 's', 't', ' ',
+						'n', 'a', 'm', 'e' };
+static const char write_local_name_hci[248] = { 'T', 'e', 's', 't', ' ',
+						'n', 'a', 'm', 'e' };
+
+static const struct generic_data set_local_name_test_1 = {
+	.send_opcode = MGMT_OP_SET_LOCAL_NAME,
+	.send_param = set_local_name_param,
+	.send_len = sizeof(set_local_name_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_local_name_param,
+	.expect_len = sizeof(set_local_name_param),
+	.expect_alt_ev = MGMT_EV_LOCAL_NAME_CHANGED,
+	.expect_alt_ev_param = set_local_name_param,
+	.expect_alt_ev_len = sizeof(set_local_name_param),
+};
+
+static const struct generic_data set_local_name_test_2 = {
+	.send_opcode = MGMT_OP_SET_LOCAL_NAME,
+	.send_param = set_local_name_param,
+	.send_len = sizeof(set_local_name_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_local_name_param,
+	.expect_len = sizeof(set_local_name_param),
+	.expect_hci_command = BT_HCI_CMD_WRITE_LOCAL_NAME,
+	.expect_hci_param = write_local_name_hci,
+	.expect_hci_len = sizeof(write_local_name_hci),
+	.expect_alt_ev = MGMT_EV_LOCAL_NAME_CHANGED,
+	.expect_alt_ev_param = set_local_name_param,
+	.expect_alt_ev_len = sizeof(set_local_name_param),
+};
+
 static const char start_discovery_invalid_param[] = { 0x00 };
 static const char start_discovery_bredr_param[] = { 0x01 };
 static const char start_discovery_le_param[] = { 0x06 };
@@ -2582,6 +2614,11 @@ int main(int argc, char *argv[])
 	test_bredrle("Set Low Energy on - Invalid index",
 					&set_le_on_invalid_index_test,
 					NULL, test_command_generic);
+
+	test_bredr("Set Local Name - Success 1", &set_local_name_test_1,
+						NULL, test_command_generic);
+	test_bredr("Set Local Name - Success 2", &set_local_name_test_2,
+					setup_powered, test_command_generic);
 
 	test_bredrle("Start Discovery - Not powered 1",
 				&start_discovery_not_powered_test_1,
