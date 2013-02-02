@@ -28,6 +28,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
@@ -871,7 +872,7 @@ void media_player_set_folder(struct media_player *mp, const char *path,
 
 void media_player_set_features(struct media_player *mp, uint64_t *features)
 {
-	DBG("0x%08zx %08zx", features[0], features[1]);
+	DBG("0x%016" PRIx64 "%016" PRIx64, features[0], features[1]);
 
 	memcpy(features, mp->features, sizeof(mp->features));
 }
