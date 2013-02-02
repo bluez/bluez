@@ -3945,7 +3945,7 @@ static const struct opcode_data opcode_table[] = {
 				read_inquiry_resp_tx_power_rsp, 2, true },
 	{ 0x0c59, 145, "Write Inquiry Transmit Power Level" },
 	{ 0x0c5a, 146, "Read Default Erroneous Reporting" },
-	{ 0x0c5b, 146, "Write Default Erroneous Reporting" },
+	{ 0x0c5b, 147, "Write Default Erroneous Reporting" },
 	/* reserved commands */
 	{ 0x0c5f, 158, "Enhanced Flush",
 				enhanced_flush_cmd, 3, true },
