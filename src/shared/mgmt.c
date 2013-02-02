@@ -268,6 +268,11 @@ static void read_watch_destroy(gpointer user_data)
 {
 	struct mgmt *mgmt = user_data;
 
+	if (mgmt->destroyed) {
+		g_free(mgmt);
+		return;
+	}
+
 	mgmt->read_watch = 0;
 }
 
@@ -333,10 +338,8 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		break;
 	}
 
-	if (mgmt->destroyed) {
-		g_free(mgmt);
+	if (mgmt->destroyed)
 		return FALSE;
-	}
 
 	return TRUE;
 }
