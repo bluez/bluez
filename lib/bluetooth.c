@@ -625,6 +625,10 @@ const char *bt_compidtostr(int compid)
 		return "BDE Technology Co., Ltd.";
 	case 181:
 		return "Swirl Networks";
+	case 182:
+		return "Meso international";
+	case 183:
+		return "TreLab Ltd";
 	case 65535:
 		return "internal use";
 	default:
