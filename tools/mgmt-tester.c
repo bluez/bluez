@@ -46,7 +46,7 @@ struct test_data {
 	struct mgmt *mgmt_alt;
 	unsigned int mgmt_settings_id;
 	unsigned int mgmt_alt_settings_id;
-	unsigned int mgmt_alt_class_id;
+	unsigned int mgmt_alt_ev_id;
 	uint8_t mgmt_version;
 	uint16_t mgmt_revision;
 	uint16_t mgmt_index;
@@ -357,7 +357,9 @@ struct generic_data {
 	uint16_t expect_len;
 	uint32_t expect_settings_set;
 	uint32_t expect_settings_unset;
-	const void *expect_class_of_dev;
+	uint16_t expect_alt_ev;
+	const void *expect_alt_ev_param;
+	uint16_t expect_alt_ev_len;
 	uint16_t expect_hci_command;
 	const void *expect_hci_param;
 	uint8_t expect_hci_len;
@@ -493,7 +495,9 @@ static const struct generic_data set_powered_off_class_test = {
 	.expect_param = set_powered_off_settings_param,
 	.expect_len = sizeof(set_powered_off_settings_param),
 	.expect_settings_unset = MGMT_SETTING_POWERED,
-	.expect_class_of_dev = set_powered_off_class_of_dev,
+	.expect_alt_ev = MGMT_EV_CLASS_OF_DEV_CHANGED,
+	.expect_alt_ev_param = set_powered_off_class_of_dev,
+	.expect_alt_ev_len = sizeof(set_powered_off_class_of_dev),
 };
 
 static const struct generic_data set_powered_off_invalid_param_test_1 = {
@@ -1038,7 +1042,9 @@ static const struct generic_data set_dev_class_valid_param_test_2 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = set_dev_class_valid_rsp,
 	.expect_len = sizeof(set_dev_class_valid_rsp),
-	.expect_class_of_dev = set_dev_class_valid_rsp,
+	.expect_alt_ev = MGMT_EV_CLASS_OF_DEV_CHANGED,
+	.expect_alt_ev_param = set_dev_class_valid_rsp,
+	.expect_alt_ev_len = sizeof(set_dev_class_valid_rsp),
 	.expect_hci_command = BT_HCI_CMD_WRITE_CLASS_OF_DEV,
 	.expect_hci_param = set_dev_class_valid_hci,
 	.expect_hci_len = sizeof(set_dev_class_valid_hci),
@@ -2222,32 +2228,30 @@ done:
 	test_condition_complete(data);
 }
 
-static void command_generic_class_changed_alt(uint16_t index, uint16_t length,
-					const void *param, void *user_data)
+static void command_generic_event_alt(uint16_t index, uint16_t length,
+							const void *param,
+							void *user_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
-	const struct mgmt_ev_class_of_dev_changed *ev = param;
 
-	if (length != sizeof(*ev)) {
-		tester_warn("Invalid length Class of Device changed event");
+	if (length != test->expect_alt_ev_len) {
+		tester_warn("Invalid length %s event",
+					mgmt_evstr(test->expect_alt_ev));
 		tester_test_failed();
 		return;
 	}
 
-	tester_print("New Class of Device 0x%02x%02x%02x received",
-				ev->class_of_dev[2], ev->class_of_dev[1],
-				ev->class_of_dev[0]);
+	tester_print("New %s event received", mgmt_evstr(test->expect_alt_ev));
 
-	if (!test->expect_class_of_dev)
+	if (memcmp(param, test->expect_alt_ev_param,
+						test->expect_alt_ev_len) != 0)
 		return;
 
-	if (memcmp(ev->class_of_dev, test->expect_class_of_dev, 3) != 0)
-		return;
+	tester_print("Unregistering %s notification",
+					mgmt_evstr(test->expect_alt_ev));
 
-	tester_print("Unregistering Class of Device notification");
-
-	mgmt_unregister(data->mgmt_alt, data->mgmt_alt_class_id);
+	mgmt_unregister(data->mgmt_alt, data->mgmt_alt_ev_id);
 
 	test_condition_complete(data);
 }
@@ -2328,13 +2332,12 @@ static void test_command_generic(const void *test_data)
 		test_add_condition(data);
 	}
 
-	if (test->expect_class_of_dev) {
-		tester_print("Registering Class of Device notification");
-		id = mgmt_register(data->mgmt_alt,
-					MGMT_EV_CLASS_OF_DEV_CHANGED, index,
-					command_generic_class_changed_alt,
-					NULL, NULL);
-		data->mgmt_alt_class_id = id;
+	if (test->expect_alt_ev) {
+		tester_print("Registering %s notification",
+					mgmt_evstr(test->expect_alt_ev));
+		id = mgmt_register(data->mgmt_alt, test->expect_alt_ev, index,
+					command_generic_event_alt, NULL, NULL);
+		data->mgmt_alt_ev_id = id;
 		test_add_condition(data);
 	}
 
