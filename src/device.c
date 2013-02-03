@@ -724,17 +724,7 @@ static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 {
 	struct btd_device *device = data;
 
-	if (device->trusted == value) {
-		g_dbus_pending_property_success(id);
-		return;
-	}
-
-	device->trusted = value;
-
-	store_device_info(device);
-
-	g_dbus_emit_property_changed(dbus_conn, device->path,
-						DEVICE_INTERFACE, "Trusted");
+	device_set_trusted(device, value);
 
 	g_dbus_pending_property_success(id);
 }
