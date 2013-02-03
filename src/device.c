@@ -3462,6 +3462,24 @@ void device_set_temporary(struct btd_device *device, gboolean temporary)
 	device->temporary = temporary;
 }
 
+void device_set_trusted(struct btd_device *device, gboolean trusted)
+{
+	if (!device)
+		return;
+
+	if (device->trusted == trusted)
+		return;
+
+	DBG("trusted %d", trusted);
+
+	device->trusted = trusted;
+
+	store_device_info(device);
+
+	g_dbus_emit_property_changed(dbus_conn, device->path,
+					DEVICE_INTERFACE, "Trusted");
+}
+
 void device_set_bonded(struct btd_device *device, gboolean bonded)
 {
 	if (!device)
