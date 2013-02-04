@@ -4189,6 +4189,17 @@ int sdp_process(sdp_session_t *session)
 		goto end;
 	}
 
+	/* Out of bound check before using rsp_count as offset for
+	 * continuation state, which has at least a one byte size
+	 * field.
+	 */
+	if ((n - (int) sizeof(sdp_pdu_hdr_t)) < plen + 1) {
+		t->err = EPROTO;
+		SDPERR("Protocol error: invalid PDU size");
+		status = SDP_INVALID_PDU_SIZE;
+		goto end;
+	}
+
 	pcstate = (sdp_cstate_t *) (pdata + rsp_count);
 
 	SDPDBG("Cstate length : %d\n", pcstate->length);
