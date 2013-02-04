@@ -4144,7 +4144,7 @@ int sdp_process(sdp_session_t *session)
 		if (t->rsp_concat_buf.data_size == 0) {
 			/* first fragment */
 			rsp_count = sizeof(tsrc) + sizeof(csrc) + csrc * 4;
-		} else {
+		} else if (t->rsp_concat_buf.data_size >= sizeof(uint16_t) * 2) {
 			/* point to the first csrc */
 			uint8_t *pcsrc = t->rsp_concat_buf.data + 2;
 			uint16_t tcsrc, tcsrc2;
@@ -4161,6 +4161,11 @@ int sdp_process(sdp_session_t *session)
 
 			pdata += sizeof(uint16_t); /* point to the first handle */
 			rsp_count = csrc * 4;
+		} else {
+			t->err = EPROTO;
+			SDPERR("Protocol error: invalid PDU size");
+			status = SDP_INVALID_PDU_SIZE;
+			goto end;
 		}
 		status = 0x0000;
 		break;
