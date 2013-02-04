@@ -38,6 +38,8 @@ if __name__ == "__main__":
 		]
 	parser = OptionParser(option_list=option_list)
 
+	(options, args) = parser.parse_args()
+
 	if (len(args) < 1):
 		print("Usage: %s <command>" % (sys.argv[0]))
 		print("")
