@@ -5539,8 +5539,10 @@ static int adapter_unregister(struct btd_adapter *adapter)
 		struct btd_adapter *new_default;
 
 		new_default = adapter_find_by_id(hci_get_route(NULL));
-		if (new_default)
-			new_default->is_default = true;
+		if (new_default == NULL)
+			new_default = adapters->data;
+
+		new_default->is_default = true;
 	}
 
 	adapter_list = g_list_remove(adapter_list, adapter);
