@@ -5490,6 +5490,9 @@ static int adapter_register(struct btd_adapter *adapter)
 		return -EINVAL;
 	}
 
+	if (adapters == NULL)
+		adapter->is_default = true;
+
 	adapters = g_slist_append(adapters, adapter);
 
 	agent = agent_get(NULL);
@@ -5516,9 +5519,6 @@ static int adapter_register(struct btd_adapter *adapter)
 		load_connections(adapter);
 
 	adapter->initialized = TRUE;
-
-	if (g_slist_length(adapters) == 1)
-		adapter->is_default = true;
 
 	if (main_opts.did_source)
 		set_did(adapter, main_opts.did_vendor, main_opts.did_product,
