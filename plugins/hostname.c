@@ -117,6 +117,12 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 			DBG("pretty hostname: %s", str);
 
+			if (g_str_equal(str, "") == TRUE) {
+				g_free(pretty_hostname);
+				pretty_hostname = NULL;
+				return;
+			}
+
 			g_free(pretty_hostname);
 			pretty_hostname = g_strdup(str);
 
