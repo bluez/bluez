@@ -1701,8 +1701,11 @@ void g_dbus_emit_property_changed(DBusConnection *connection,
 	if (iface == NULL)
 		return;
 
-	/* Don't emit property changed if interface is not yet published */
-	if (g_slist_find(data->added, iface))
+	/*
+	 * If ObjectManager is attached, don't emit property changed if
+	 * interface is not yet published
+	 */
+	if (root && g_slist_find(data->added, iface))
 		return;
 
 	property = find_property(iface->properties, name);
