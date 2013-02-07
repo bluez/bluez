@@ -51,6 +51,8 @@ def parse_options():
 			help="List messages in supplied CWD subdir")
 	parser.add_option("-g", "--get", action="store", dest="get_msg",
 			help="Get message contents")
+	parser.add_option("-p", "--push", action="store", dest="push_msg",
+			help="Push message")
 	parser.add_option("--get-properties", action="store", dest="get_msg_properties",
 			help="Get message properties")
 	parser.add_option("--mark-read", action="store", dest="mark_msg_read",
@@ -85,8 +87,7 @@ class MapClient:
 			signal_name="PropertiesChanged",
 			path_keyword="path")
 
-	def create_transfer_reply(self, reply):
-		(path, properties) = reply
+	def create_transfer_reply(self, path, properties):
 		self.transfer_path = path
 		self.props[path] = properties
 		if self.verbose:
@@ -147,6 +148,11 @@ class MapClient:
 		msg.Get("", True, reply_handler=self.create_transfer_reply,
 						error_handler=self.error)
 
+	def push_message(self, filename):
+		self.map.PushMessage(filename, "telecom/msg/outbox", dict(),
+				reply_handler=self.create_transfer_reply,
+				error_handler=self.error)
+
 	def get_message_properties(self, handle):
 		self.map.ListMessages("", dict())
 		path = self.path + "/message" + handle
@@ -200,6 +206,9 @@ if  __name__ == '__main__':
 
 	if options.get_msg is not None:
 		map_client.get_message(options.get_msg)
+
+	if options.push_msg is not None:
+		map_client.push_message(options.push_msg)
 
 	if options.get_msg_properties is not None:
 		map_client.get_message_properties(options.get_msg_properties)
