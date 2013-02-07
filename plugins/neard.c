@@ -629,6 +629,9 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 	if (err < 0)
 		return error_reply(msg, -err);
 
+	if (!btd_adapter_get_powered(adapter))
+		return error_reply(msg, ENONET);
+
 	agent = adapter_get_agent(adapter);
 	if (!agent)
 		return error_reply(msg, ENONET);
