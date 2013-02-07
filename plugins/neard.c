@@ -579,9 +579,6 @@ static int check_adapter(struct btd_adapter *adapter)
 	if (btd_adapter_check_oob_handler(adapter))
 		return -EINPROGRESS;
 
-	if (!btd_adapter_get_pairable(adapter))
-		return -ENONET;
-
 	if (!btd_adapter_ssp_enabled(adapter))
 		return -ENOTSUP;
 
@@ -664,6 +661,12 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 		return error_reply(msg, -err);
 	}
 
+	if (!btd_adapter_get_pairable(adapter)) {
+		free_oob_params(&remote);
+
+		return error_reply(msg, ENONET);
+	}
+
 	store_params(adapter, device, &remote);
 
 	free_oob_params(&remote);
@@ -720,6 +723,12 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 									msg);
 
 		return error_reply(msg, -err);
+	}
+
+	if (!btd_adapter_get_pairable(adapter)) {
+		free_oob_params(&remote);
+
+		return error_reply(msg, ENONET);
 	}
 
 	store_params(adapter, device, &remote);
