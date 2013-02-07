@@ -2772,6 +2772,14 @@ bool btd_adapter_get_powered(struct btd_adapter *adapter)
 	return false;
 }
 
+bool btd_adapter_get_connectable(struct btd_adapter *adapter)
+{
+	if (adapter->current_settings & MGMT_SETTING_CONNECTABLE)
+		return true;
+
+	return false;
+}
+
 uint32_t btd_adapter_get_class(struct btd_adapter *adapter)
 {
 	return adapter->dev_class;
