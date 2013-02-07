@@ -57,27 +57,14 @@ static gboolean agent_register_postpone = FALSE;
 
 static DBusMessage *error_reply(DBusMessage *msg, int error)
 {
-	switch (error) {
-	case ENOTSUP:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NotSupported",
-						"Operation is not supported");
+	const char *name;
 
-	case ENOENT:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".NoSuchDevice",
-							"No such device");
+	if (error == EINPROGRESS)
+		name = ERROR_INTERFACE ".InProgress";
+	else
+		name = ERROR_INTERFACE ".Failed";
 
-	case EINPROGRESS:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".InProgress",
-						"Operation already in progress");
-
-	case ENONET:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Disabled",
-							"Device disabled");
-
-	default:
-		return g_dbus_create_error(msg, ERROR_INTERFACE ".Failed",
-							"%s", strerror(error));
-	}
+	return g_dbus_create_error(msg, name , "%s", strerror(error));
 }
 
 static void register_agent_cb(DBusPendingCall *call, void *user_data)
