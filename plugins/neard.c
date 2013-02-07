@@ -173,6 +173,19 @@ unregister:
 							AGENT_INTERFACE);
 }
 
+static void add_power_state(DBusMessageIter *dict, struct btd_adapter *adapter)
+{
+	const char *state;
+
+	if (btd_adapter_get_powered(adapter) &&
+					btd_adapter_get_connectable(adapter))
+		state = "active";
+	else
+		state = "inactive";
+
+	dict_append_entry(dict, "State", DBUS_TYPE_STRING, &state);
+}
+
 static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
 						const uint8_t *hash,
 						const uint8_t *randomizer,
@@ -207,6 +220,8 @@ static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
 				&dict);
 
 	dict_append_array(&dict, "EIR", DBUS_TYPE_BYTE, &peir, len);
+
+	add_power_state(&dict, adapter);
 
 	dbus_message_iter_close_container(&iter, &dict);
 
