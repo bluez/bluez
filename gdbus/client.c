@@ -62,6 +62,8 @@ struct GDBusProxy {
 	char *match_rule;
 	GDBusPropertyFunction prop_func;
 	void *prop_data;
+	GDBusProxyFunction removed_func;
+	void *removed_data;
 };
 
 struct prop_entry {
@@ -393,6 +395,9 @@ static void proxy_free(gpointer data)
 
 		proxy->client = NULL;
 	}
+
+	if (proxy->removed_func)
+		proxy->removed_func(proxy, proxy->removed_data);
 
 	g_dbus_proxy_unref(proxy);
 }
@@ -757,6 +762,18 @@ gboolean g_dbus_proxy_set_property_watch(GDBusProxy *proxy,
 
 	proxy->prop_func = function;
 	proxy->prop_data = user_data;
+
+	return TRUE;
+}
+
+gboolean g_dbus_proxy_set_removed_watch(GDBusProxy *proxy,
+				GDBusProxyFunction function, void *user_data)
+{
+	if (proxy == NULL)
+		return FALSE;
+
+	proxy->removed_func = function;
+	proxy->removed_data = user_data;
 
 	return TRUE;
 }

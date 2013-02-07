@@ -341,6 +341,9 @@ typedef void (* GDBusPropertyFunction) (GDBusProxy *proxy, const char *name,
 gboolean g_dbus_proxy_set_property_watch(GDBusProxy *proxy,
 			GDBusPropertyFunction function, void *user_data);
 
+gboolean g_dbus_proxy_set_removed_watch(GDBusProxy *proxy,
+			GDBusProxyFunction destroy, void *user_data);
+
 GDBusClient *g_dbus_client_new(DBusConnection *connection,
 					const char *service, const char *path);
 
