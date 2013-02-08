@@ -1075,14 +1075,27 @@ static int connect_next(struct btd_device *dev)
 void device_profile_connected(struct btd_device *dev,
 					struct btd_profile *profile, int err)
 {
+	struct btd_profile *pending;
+
 	DBG("%s %s (%d)", profile->name, strerror(-err), -err);
 
+	if (dev->pending == NULL)
+		return;
+
+	pending = dev->pending->data;
 	dev->pending = g_slist_remove(dev->pending, profile);
 
 	if (!err)
 		dev->connected_profiles =
 				g_slist_append(dev->connected_profiles,
 								profile);
+
+	/* Only continue connecting the next profile if it matches the first
+	 * pending, otherwise it will trigger another connect to the same
+	 * profile
+	 */
+	if (profile != pending)
+		return;
 
 	if (connect_next(dev) == 0)
 		return;
