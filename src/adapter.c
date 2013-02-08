@@ -5745,7 +5745,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 		goto failed;
 	}
 
-	if (bacmp(&adapter->bdaddr, BDADDR_ANY)) {
+	if (bacmp(&rp->bdaddr, BDADDR_ANY) == 0) {
 		error("No Bluetooth address for index %u", adapter->dev_id);
 		goto failed;
 	}
