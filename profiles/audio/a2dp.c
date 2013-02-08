@@ -562,9 +562,11 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	if (err) {
 		if (setup) {
+			setup_ref(setup);
 			setup->err = err;
 			finalize_config(setup);
 			setup->err = NULL;
+			setup_unref(setup);
 		}
 		return;
 	}
