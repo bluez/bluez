@@ -71,8 +71,8 @@ if (test -z "${path_dbusconfdir}"); then
 		AC_MSG_ERROR([D-Bus configuration directory is required])
 	fi
 	AC_MSG_RESULT([${path_dbusconfdir}])
-	AC_SUBST(DBUS_CONFDIR, [${path_dbusconfdir}])
 fi
+AC_SUBST(DBUS_CONFDIR, [${path_dbusconfdir}])
 
 AC_ARG_WITH([dbussystembusdir], AC_HELP_STRING([--with-dbussystembusdir=DIR],
 				[path to D-Bus system bus services directory]),
@@ -84,8 +84,8 @@ if (test -z "${path_dbussystembusdir}"); then
 		AC_MSG_ERROR([D-Bus system bus services directory is required])
 	fi
 	AC_MSG_RESULT([${path_dbussystembusdir}])
-	AC_SUBST(DBUS_SYSTEMBUSDIR, [${path_dbussystembusdir}])
 fi
+AC_SUBST(DBUS_SYSTEMBUSDIR, [${path_dbussystembusdir}])
 
 AC_ARG_WITH([dbussessionbusdir], AC_HELP_STRING([--with-dbussessionbusdir=DIR],
 				[path to D-Bus session bus services directory]),
@@ -97,8 +97,8 @@ if (test -z "${path_dbussessionbusdir}"); then
 		AC_MSG_ERROR([D-Bus session bus services directory is required])
 	fi
 	AC_MSG_RESULT([${path_dbussessionbusdir}])
-	AC_SUBST(DBUS_SESSIONBUSDIR, [${path_dbussessionbusdir}])
 fi
+AC_SUBST(DBUS_SESSIONBUSDIR, [${path_dbussessionbusdir}])
 
 AC_ARG_ENABLE(library, AC_HELP_STRING([--enable-library],
 		[install Bluetooth library]), [enable_library=${enableval}])
@@ -157,8 +157,8 @@ if (test "${enable_udev}" != "no" && test -z "${path_udevdir}"); then
 		AC_MSG_ERROR([udev directory is required])
 	fi
 	AC_MSG_RESULT([${path_udevdir}])
-	AC_SUBST(UDEV_DIR, [${path_udevdir}])
 fi
+AC_SUBST(UDEV_DIR, [${path_udevdir}])
 
 AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
 		test "${enable_udev}" != "no" && test "${enable_usb}" != "no")
@@ -202,8 +202,8 @@ if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
 		AC_MSG_ERROR([systemd system unit directory is required])
 	fi
 	AC_MSG_RESULT([${path_systemunitdir}])
-	AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
 fi
+AC_SUBST(SYSTEMD_SYSTEMUNITDIR, [${path_systemunitdir}])
 
 AC_ARG_WITH([systemduserunitdir],
 			AC_HELP_STRING([--with-systemduserunitdir=DIR],
@@ -216,8 +216,8 @@ if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
 		AC_MSG_ERROR([systemd user unit directory is required])
 	fi
 	AC_MSG_RESULT([${path_userunitdir}])
-	AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
 fi
+AC_SUBST(SYSTEMD_USERUNITDIR, [${path_userunitdir}])
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[do not install configuration and data files]),
