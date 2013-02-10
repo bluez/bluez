@@ -140,12 +140,12 @@ AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
 if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
 	PKG_CHECK_MODULES(UDEV, libudev >= 143, dummy=yes,
 				AC_MSG_ERROR(libudev >= 143 is required))
+	AC_SUBST(UDEV_CFLAGS)
+	AC_SUBST(UDEV_LIBS)
 	AC_CHECK_LIB(udev, udev_hwdb_new,
 		AC_DEFINE(HAVE_UDEV_HWDB_NEW, 1,
 			[Define to 1 if you have the udev_hwdb_new() function.]))
 fi
-AC_SUBST(UDEV_CFLAGS)
-AC_SUBST(UDEV_LIBS)
 AM_CONDITIONAL(UDEV, test "${enable_udev}" != "no")
 
 AC_ARG_WITH([udevdir], AC_HELP_STRING([--with-udevdir=DIR],
@@ -172,9 +172,9 @@ AC_ARG_ENABLE(obex, AC_HELP_STRING([--disable-obex],
 if (test "${enable_obex}" != "no"); then
 	PKG_CHECK_MODULES(ICAL, libical, dummy=yes,
 					AC_MSG_ERROR(libical is required))
+	AC_SUBST(ICAL_CFLAGS)
+	AC_SUBST(ICAL_LIBS)
 fi
-AC_SUBST(ICAL_CFLAGS)
-AC_SUBST(ICAL_LIBS)
 AM_CONDITIONAL(OBEX, test "${enable_obex}" != "no")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
