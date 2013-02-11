@@ -201,7 +201,7 @@ static void prop_entry_free(gpointer data)
 }
 
 static void add_property(GDBusProxy *proxy, const char *name,
-						DBusMessageIter *iter)
+				DBusMessageIter *iter, gboolean send_changed)
 {
 	DBusMessageIter value;
 	struct prop_entry *prop;
@@ -220,7 +220,7 @@ static void add_property(GDBusProxy *proxy, const char *name,
 		if (proxy->prop_func)
 			proxy->prop_func(proxy, name, &value, proxy->prop_data);
 
-		if (client == NULL)
+		if (client == NULL || send_changed == FALSE)
 			return;
 
 		if (client->property_changed)
@@ -239,7 +239,8 @@ static void add_property(GDBusProxy *proxy, const char *name,
 		proxy->prop_func(proxy, name, &value, proxy->prop_data);
 }
 
-static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
+static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter,
+							gboolean send_changed)
 {
 	DBusMessageIter dict;
 
@@ -260,7 +261,7 @@ static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter)
 		dbus_message_iter_get_basic(&entry, &name);
 		dbus_message_iter_next(&entry);
 
-		add_property(proxy, name, &entry);
+		add_property(proxy, name, &entry, send_changed);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -283,7 +284,7 @@ static void get_all_properties_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_init(reply, &iter);
 
-	update_properties(proxy, &iter);
+	update_properties(proxy, &iter, FALSE);
 
 done:
 	if (g_list_find(client->proxy_list, proxy) == NULL) {
@@ -525,7 +526,7 @@ static void refresh_property_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_init(reply, &iter);
 
-		add_property(data->proxy, data->name, &iter);
+		add_property(data->proxy, data->name, &iter, TRUE);
 	} else
 		dbus_error_free(&error);
 
@@ -803,7 +804,7 @@ static void properties_changed(GDBusClient *client, const char *path,
 	if (proxy == NULL)
 		return;
 
-	update_properties(proxy, &iter);
+	update_properties(proxy, &iter, TRUE);
 
 	dbus_message_iter_next(&iter);
 
@@ -843,7 +844,7 @@ static void parse_properties(GDBusClient *client, const char *path,
 
 	proxy = proxy_lookup(client, path, interface);
 	if (proxy) {
-		update_properties(proxy, iter);
+		update_properties(proxy, iter, FALSE);
 		return;
 	}
 
@@ -851,7 +852,7 @@ static void parse_properties(GDBusClient *client, const char *path,
 	if (proxy == NULL)
 		return;
 
-	update_properties(proxy, iter);
+	update_properties(proxy, iter, FALSE);
 
 	if (client->proxy_added)
 		client->proxy_added(proxy, client->user_data);
