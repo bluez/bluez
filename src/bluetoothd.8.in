@@ -14,11 +14,6 @@ This manual page documents briefly the
 .B bluetoothd
 daemon, which manages all the Bluetooth devices.
 .B bluetoothd
-itself does not accept many command\-line options, as most of its
-configuration is done in the
-.B @CONFIGDIR@/main.conf
-file, which has its own man page.
-.B bluetoothd
 can also provide a number of services via the D-Bus message bus
 system.
 .SH "OPTIONS"
