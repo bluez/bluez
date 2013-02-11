@@ -27,6 +27,8 @@
 
 #include <stdlib.h>
 
+#include <glib.h>
+
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
 
@@ -35,6 +37,8 @@
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
+
+static gboolean option_wait_powered = FALSE;
 
 struct test_data {
 	const void *test_data;
@@ -1642,9 +1646,10 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	/* FIXME: Delay here to not get confused by existing kernel bug
-	 * with missing synchronization of some HCI commands */
-	tester_wait(1, powered_delay, NULL);
+	if (option_wait_powered)
+		tester_wait(1, powered_delay, NULL);
+	else
+		tester_setup_complete();
 }
 
 static void setup_powered_discoverable(const void *test_data)
@@ -2219,8 +2224,32 @@ static void test_command_generic(const void *test_data)
 	test_add_condition(data);
 }
 
+static GOptionEntry options[] = {
+	{ "wait-powered", 'P', 0, G_OPTION_ARG_NONE, &option_wait_powered,
+					"Add a delay after powering on" },
+	{ NULL },
+};
+
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
+
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+	g_option_context_set_ignore_unknown_options(context, TRUE);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
+	}
+
+	g_option_context_free(context);
+
 	tester_init(&argc, &argv);
 
 	test_bredrle("Controller setup", NULL, NULL, controller_setup);
