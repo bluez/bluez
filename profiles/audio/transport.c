@@ -329,6 +329,7 @@ static guint resume_a2dp(struct media_transport *transport,
 	struct a2dp_transport *a2dp = transport->data;
 	struct media_endpoint *endpoint = transport->endpoint;
 	struct a2dp_sep *sep = media_endpoint_get_sep(endpoint);
+	guint id;
 
 	if (a2dp->session == NULL) {
 		a2dp->session = avdtp_get(transport->device);
@@ -337,16 +338,23 @@ static guint resume_a2dp(struct media_transport *transport,
 	}
 
 	if (state_in_use(transport->state))
-		goto done;
+		return a2dp_resume(a2dp->session, sep, a2dp_resume_complete,
+									owner);
 
 	if (a2dp_sep_lock(sep, a2dp->session) == FALSE)
 		return 0;
 
+	id = a2dp_resume(a2dp->session, sep, a2dp_resume_complete, owner);
+
+	if (id == 0) {
+		a2dp_sep_unlock(sep, a2dp->session);
+		return 0;
+	}
+
 	if (transport->state == TRANSPORT_STATE_IDLE)
 		transport_set_state(transport, TRANSPORT_STATE_REQUESTING);
 
-done:
-	return a2dp_resume(a2dp->session, sep, a2dp_resume_complete, owner);
+	return id;
 }
 
 static void a2dp_suspend_complete(struct avdtp *session,
