@@ -929,7 +929,7 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	data = g_new0(struct setpath_data, 1);
 	data->func = func;
 	data->user_data = user_data;
-	data->remaining = g_strsplit(path, "/", 3);
+	data->remaining = g_strsplit(path, "/", 0);
 
 	p = pending_request_new(session, NULL, setpath_complete, data);
 
