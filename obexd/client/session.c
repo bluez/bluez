@@ -891,7 +891,10 @@ static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
-	next = data->remaining[data->index];
+	/* Ignore empty folder names to avoid resetting the current path */
+	while ((next = data->remaining[data->index]) && strlen(next) == 0)
+		data->index++;
+
 	if (next == NULL) {
 		setpath_complete(p->session, NULL, NULL, user_data);
 		return;
@@ -929,15 +932,15 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	data = g_new0(struct setpath_data, 1);
 	data->func = func;
 	data->user_data = user_data;
-	data->remaining = g_strsplit(path, "/", 0);
+	data->remaining = g_strsplit(strlen(path) ? path : "/", "/", 0);
 
 	p = pending_request_new(session, NULL, setpath_complete, data);
 
 	/* Relative path */
-	if (path[0] != '/' && path[0] != 0) {
+	if (path[0] != '/')
 		first = data->remaining[data->index];
-		data->index++;
-	}
+
+	data->index++;
 
 	p->req_id = g_obex_setpath(session->obex, first, setpath_cb, p, err);
 	if (*err != NULL)
