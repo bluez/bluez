@@ -851,17 +851,48 @@ static void player_control(struct player *player, DBusMessage *msg,
 						p, pending_call_free);
 }
 
+static const char *status_to_playback(const char *status)
+{
+	if (strcasecmp(status, "playing") == 0)
+		return "Playing";
+	else if (strcasecmp(status, "paused") == 0)
+		return "Paused";
+	else
+		return "Stopped";
+}
+
+static const char *player_get_status(struct player *player)
+{
+	const char *status;
+	DBusMessageIter value;
+
+	if (g_dbus_proxy_get_property(player->proxy, "Status", &value)) {
+		dbus_message_iter_get_basic(&value, &status);
+		return status_to_playback(status);
+	}
+
+	if (player->transport == NULL)
+		goto done;
+
+	if (!g_dbus_proxy_get_property(player->transport, "State", &value))
+		goto done;
+
+	dbus_message_iter_get_basic(&value, &status);
+
+	if (strcasecmp(status, "active") == 0)
+		return "Playing";
+
+done:
+	return "Stopped";
+}
+
 static DBusMessage *player_toggle(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
 	struct player *player = data;
-	DBusMessageIter value;
 	const char *status;
 
-	if (!g_dbus_proxy_get_property(player->proxy, "Status", &value))
-		return FALSE;
-
-	dbus_message_iter_get_basic(&value, &status);
+	status = player_get_status(player);
 
 	if (strcasecmp(status, "Playing") == 0)
 		player_control(player, msg, "Pause");
@@ -923,35 +954,18 @@ static DBusMessage *player_previous(DBusConnection *conn, DBusMessage *msg,
 
 static gboolean status_exists(const GDBusPropertyTable *property, void *data)
 {
-	DBusMessageIter iter;
 	struct player *player = data;
 
-	return g_dbus_proxy_get_property(player->proxy, "Status", &iter);
-}
-
-static const char *status_to_playback(const char *status)
-{
-	if (strcasecmp(status, "playing") == 0)
-		return "Playing";
-	else if (strcasecmp(status, "paused") == 0)
-		return "Paused";
-	else
-		return "Stopped";
+	return player_get_status(player) != NULL;
 }
 
 static gboolean get_status(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct player *player = data;
-	DBusMessageIter value;
 	const char *status;
 
-	if (!g_dbus_proxy_get_property(player->proxy, "Status", &value))
-		return FALSE;
-
-	dbus_message_iter_get_basic(&value, &status);
-
-	status = status_to_playback(status);
+	status = player_get_status(player);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &status);
 
@@ -1689,7 +1703,7 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 	DBusMessageIter var;
 	const char *path;
 
-	if (strcasecmp(name, "Volume") != 0)
+	if (strcasecmp(name, "Volume") != 0 && strcasecmp(name, "State") != 0)
 		return;
 
 	if (!g_dbus_proxy_get_property(proxy, "Device", &var))
@@ -1700,6 +1714,15 @@ static void transport_property_changed(GDBusProxy *proxy, const char *name,
 	player = find_player_by_device(path);
 	if (player == NULL)
 		return;
+
+	if (strcasecmp(name, "State") == 0) {
+		if (!g_dbus_proxy_get_property(player->proxy, "Status", &var))
+			g_dbus_emit_property_changed(player->conn,
+						MPRIS_PLAYER_PATH,
+						MPRIS_PLAYER_INTERFACE,
+						"PlaybackStatus");
+		return;
+	}
 
 	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
 						MPRIS_PLAYER_INTERFACE,
