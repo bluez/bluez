@@ -180,3 +180,8 @@ Properties	string Address [readonly]
 
 			Remote Device ID information in modalias format
 			used by the kernel and udev.
+
+		int16 RSSI [readonly, optional]
+
+			Received Signal Strength Indicator of the remote
+			device.
