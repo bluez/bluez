@@ -14,7 +14,12 @@ Methods		void Connect()
 			This is a generic method to connect any profiles
 			the remote device supports that can be connected
 			to and have been flagged as auto-connectable on
-			our side.
+			our side. If only subset of profiles is already
+			connected it will try to connect currently disconnected
+			ones.
+
+			If at least one profile was connected successfully this
+			method will indicate success.
 
 			Possible errors: org.bluez.Error.NotReady
 					 org.bluez.Error.Failed
