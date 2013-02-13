@@ -33,10 +33,12 @@ Methods		void Connect()
 
 		void Disconnect()
 
-			This method disconnects a specific remote device by
-			terminating the low-level ACL connection. The use of
-			this method should be restricted to administrator
-			use.
+			This method gracefully disconnects all connected
+			profiles and then terminates low-level ACL connection.
+
+			ACL connection will be terminated even if some profiles
+			were not disconnected properly e.g. due to misbehaving
+			device.
 
 			Possible errors: org.bluez.Error.NotConnected
 
