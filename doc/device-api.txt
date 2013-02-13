@@ -26,11 +26,6 @@ Methods		void Connect()
 					 org.bluez.Error.InProgress
 					 org.bluez.Error.AlreadyConnected
 
-		void CancelConnect()
-
-			This method can be used to cancel a preceeding
-			Connect call before a reply to it has been received.
-
 		void Disconnect()
 
 			This method gracefully disconnects all connected
@@ -39,6 +34,9 @@ Methods		void Connect()
 			ACL connection will be terminated even if some profiles
 			were not disconnected properly e.g. due to misbehaving
 			device.
+
+			This method can be also used to cancel a preceding
+			Connect call before a reply to it has been received.
 
 			Possible errors: org.bluez.Error.NotConnected
 
