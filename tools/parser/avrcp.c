@@ -1162,8 +1162,7 @@ response:
 		break;
 	case AVRCP_EVENT_TRACK_CHANGED:
 		id = get_u64(frm);
-		printf("Identifier: 0x%jx (%s)\n", id,
-						id ? "Reserved" : "PLAYING");
+		printf("Identifier: 0x%16" PRIx64 " (%" PRIu64 ")\n", id, id);
 		break;
 	case AVRCP_EVENT_PLAYBACK_POS_CHANGED:
 		interval = get_u32(frm);
