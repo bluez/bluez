@@ -1823,8 +1823,8 @@ static void avrcp_attribute_entry_list_dump(int level, struct frame *frm,
 
 		p_indent(level, frm);
 
-		len = get_u8(frm);
-		printf("AttributeLength: 0x%02x (%u)\n", len, len);
+		len = get_u16(frm);
+		printf("AttributeLength: 0x%04x (%u)\n", len, len);
 
 		p_indent(level, frm);
 
