@@ -2069,8 +2069,8 @@ static void avrcp_get_item_attributes_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	count = get_u32(frm);
-	printf("AttributeCount: 0x%04x (%u)", count, count);
+	count = get_u8(frm);
+	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	for (; count > 0; count--) {
 		uint32_t attr;
@@ -2092,8 +2092,8 @@ response:
 
 	p_indent(level, frm);
 
-	count = get_u32(frm);
-	printf("AttributeCount: 0x%04x (%u)", count, count);
+	count = get_u8(frm);
+	printf("AttributeCount: 0x%02x (%u)\n", count, count);
 
 	avrcp_attribute_entry_list_dump(level, frm, count);
 }
