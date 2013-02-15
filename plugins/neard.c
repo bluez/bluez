@@ -637,6 +637,10 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 	uint8_t io_cap;
 	int err;
 
+	if (neard_service == NULL ||
+			!g_str_equal(neard_service, dbus_message_get_sender(msg)))
+		return error_reply(msg, EPERM);
+
 	DBG("");
 
 	adapter = btd_adapter_get_default();
@@ -714,6 +718,10 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 	struct btd_device *device;
 	int err;
 
+	if (neard_service == NULL ||
+			!g_str_equal(neard_service, dbus_message_get_sender(msg)))
+		return error_reply(msg, EPERM);
+
 	DBG("");
 
 	adapter = btd_adapter_get_default();
@@ -776,6 +784,10 @@ read_local:
 static DBusMessage *release(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
+	if (neard_service == NULL ||
+			!g_str_equal(neard_service, dbus_message_get_sender(msg)))
+		return error_reply(msg, EPERM);
+
 	DBG("");
 
 	g_free(neard_service);
