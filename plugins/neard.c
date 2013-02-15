@@ -50,7 +50,7 @@
 
 static guint watcher_id = 0;
 static char *neard_service = NULL;
-static gboolean agent_register_postpone = FALSE;
+static bool agent_register_postpone = false;
 
 /* For NFC mimetype limits max OOB EIR size */
 #define NFC_OOB_EIR_MAX UINT8_MAX
@@ -242,7 +242,7 @@ static void read_local_complete(struct btd_adapter *adapter,
 		dbus_message_unref(msg);
 
 		if (agent_register_postpone) {
-			agent_register_postpone = FALSE;
+			agent_register_postpone = false;
 			register_agent();
 		}
 
@@ -274,7 +274,7 @@ static void bonding_complete(struct btd_adapter *adapter,
 		dbus_message_unref(msg);
 
 		if (agent_register_postpone) {
-			agent_register_postpone = FALSE;
+			agent_register_postpone = false;
 			register_agent();
 		}
 
@@ -829,7 +829,7 @@ static void neard_appeared(DBusConnection *conn, void *user_data)
 	adapter = btd_adapter_get_default();
 
 	if (adapter && btd_adapter_check_oob_handler(adapter))
-		agent_register_postpone = TRUE;
+		agent_register_postpone = true;
 	else
 		register_agent();
 }
