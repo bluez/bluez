@@ -100,6 +100,7 @@
 #define AVRCP_ABORT_CONTINUING		0x41
 #define AVRCP_SET_ABSOLUTE_VOLUME	0x50
 #define AVRCP_SET_BROWSED_PLAYER	0x70
+#define AVRCP_GET_ITEM_ATTRIBUTES	0x73
 #define AVRCP_GET_FOLDER_ITEMS		0x71
 #define AVRCP_GENERAL_REJECT		0xA0
 
@@ -1788,17 +1789,48 @@ static void avrcp_list_player_attributes(struct avrcp *session)
 					session);
 }
 
-static gboolean avrcp_get_attributes_rsp(struct avctp *conn,
-					uint8_t code, uint8_t subunit,
-					uint8_t *operands, size_t operand_count,
-					void *user_data)
+static void avrcp_parse_attribute_list(struct avrcp_player *player,
+					uint8_t *operands, uint8_t count)
+{
+	struct media_player *mp = player->user_data;
+	int i;
+
+	for (i = 0; count > 0; count--) {
+		uint32_t id;
+		uint16_t charset, len;
+
+		id = bt_get_be32(&operands[i]);
+		i += sizeof(uint32_t);
+
+		charset = bt_get_be16(&operands[i]);
+		i += sizeof(uint16_t);
+
+		len = bt_get_be16(&operands[i]);
+		i += sizeof(uint16_t);
+
+		if (charset == 106) {
+			const char *key = metadata_to_str(id);
+
+			if (key != NULL)
+				media_player_set_metadata(mp,
+							metadata_to_str(id),
+							&operands[i], len);
+		}
+
+		i += len;
+	}
+}
+
+static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
+						uint8_t code, uint8_t subunit,
+						uint8_t *operands,
+						size_t operand_count,
+						void *user_data)
 {
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
-	struct media_player *mp = player->user_data;
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t count;
-	int i;
 
 	if (code == AVC_CTYPE_REJECTED)
 		return FALSE;
@@ -1810,33 +1842,7 @@ static gboolean avrcp_get_attributes_rsp(struct avctp *conn,
 		return FALSE;
 	}
 
-	for (i = 1; count > 0; count--) {
-		uint32_t id;
-		uint16_t charset, len;
-
-		memcpy(&id, &pdu->params[i], sizeof(uint32_t));
-		id = ntohl(id);
-		i += sizeof(uint32_t);
-
-		memcpy(&charset, &pdu->params[i], sizeof(uint16_t));
-		charset = ntohs(charset);
-		i += sizeof(uint16_t);
-
-		memcpy(&len, &pdu->params[i], sizeof(uint16_t));
-		len = ntohs(len);
-		i += sizeof(uint16_t);
-
-		if (charset == 106) {
-			const char *key = metadata_to_str(id);
-
-			if (key != NULL)
-				media_player_set_metadata(mp,
-							metadata_to_str(id),
-							&pdu->params[i], len);
-		}
-
-		i += len;
-	}
+	avrcp_parse_attribute_list(player, &pdu->params[1], count);
 
 	return FALSE;
 }
@@ -1858,7 +1864,7 @@ static void avrcp_get_element_attributes(struct avrcp *session)
 
 	avctp_send_vendordep_req(session->conn, AVC_CTYPE_STATUS,
 					AVC_SUBUNIT_PANEL, buf, length,
-					avrcp_get_attributes_rsp,
+					avrcp_get_element_attributes_rsp,
 					session);
 }
 
@@ -1975,6 +1981,48 @@ static void avrcp_set_browsed_player(struct avrcp *session,
 
 	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
 				avrcp_set_browsed_player_rsp, session);
+}
+
+static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
+						uint8_t *operands,
+						size_t operand_count,
+						void *user_data)
+{
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	uint8_t count;
+
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4)
+		return FALSE;
+
+	count = pdu->params[1];
+
+	if (ntohs(pdu->param_len) - 1 < count * 8) {
+		error("Invalid parameters");
+		return FALSE;
+	}
+
+	avrcp_parse_attribute_list(player, &pdu->params[2], count);
+
+	return FALSE;
+}
+
+static void avrcp_get_item_attributes(struct avrcp *session, uint64_t uid)
+{
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 12];
+	struct avrcp_browsing_header *pdu = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+
+	pdu->pdu_id = AVRCP_GET_ITEM_ATTRIBUTES;
+	pdu->params[0] = 0x03;
+	bt_put_be64(uid, &pdu->params[1]);
+	bt_put_be16(session->player->uid_counter, &pdu->params[9]);
+	pdu->param_len = htons(12);
+
+	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
+				avrcp_get_item_attributes_rsp, session);
 }
 
 static void avrcp_player_parse_features(struct avrcp_player *player,
@@ -2122,9 +2170,15 @@ static void avrcp_status_changed(struct avrcp *session,
 static void avrcp_track_changed(struct avrcp *session,
 						struct avrcp_header *pdu)
 {
-	avrcp_get_element_attributes(session);
-	avrcp_get_play_status(session);
+	uint64_t uid;
 
+	if (session->browsing_id) {
+		uid = bt_get_be64(&pdu->params[1]);
+		avrcp_get_item_attributes(session, uid);
+	} else
+		avrcp_get_element_attributes(session);
+
+	avrcp_get_play_status(session);
 }
 
 static void avrcp_setting_changed(struct avrcp *session,
