@@ -67,7 +67,9 @@ struct media_player {
 	char			*name;		/* Player name */
 	char			*type;		/* Player type */
 	char			*subtype;	/* Player subtype */
-	uint64_t		features[2];	/* Player features */
+	bool			browsable;	/* Player browsing feature */
+	bool			searchable;	/* Player searching feature */
+	uint8_t			*features;	/* Player features */
 	struct media_folder	*folder;	/* Player currenct folder */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
@@ -350,6 +352,57 @@ static gboolean get_subtype(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean browsable_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->folder != NULL;
+}
+
+static gboolean get_browsable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+	dbus_bool_t value;
+
+	if (mp->folder == NULL)
+		return FALSE;
+
+	DBG("%s", mp->browsable ? "true" : "false");
+
+	value = mp->browsable;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
+
+	return TRUE;
+}
+
+static gboolean searchable_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->folder != NULL;
+}
+
+static gboolean get_searchable(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+	dbus_bool_t value;
+
+	if (mp->folder == NULL)
+		return FALSE;
+
+	DBG("%s", mp->searchable ? "true" : "false");
+
+	value = mp->searchable;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
+
+	return TRUE;
+}
+
 static DBusMessage *media_player_play(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -509,6 +562,10 @@ static const GDBusPropertyTable media_player_properties[] = {
 	{ "Track", "a{sv}", get_track, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Device", "s", get_device, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Browsable", "b", get_browsable, NULL, browsable_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Searchable", "b", get_searchable, NULL, searchable_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -841,6 +898,20 @@ void media_player_set_name(struct media_player *mp, const char *name)
 	g_dbus_emit_property_changed(btd_get_dbus_connection(),
 					mp->path, MEDIA_PLAYER_INTERFACE,
 					"Name");
+}
+
+void media_player_set_browsable(struct media_player *mp, bool enabled)
+{
+	DBG("%s", enabled ? "true" : "false");
+
+	mp->browsable = enabled;
+}
+
+void media_player_set_searchable(struct media_player *mp, bool enabled)
+{
+	DBG("%s", enabled ? "true" : "false");
+
+	mp->searchable = enabled;
 }
 
 void media_player_set_folder(struct media_player *mp, const char *path,

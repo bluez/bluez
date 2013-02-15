@@ -1976,6 +1976,18 @@ static void avrcp_set_browsed_player(struct avrcp *session,
 				avrcp_set_browsed_player_rsp, session);
 }
 
+static void avrcp_player_parse_features(struct avrcp_player *player,
+							uint8_t *features)
+{
+	struct media_player *mp = player->user_data;
+
+	if (features[7] & 0x08)
+		media_player_set_browsable(mp, true);
+
+	if (features[7] & 0x10)
+		media_player_set_searchable(mp, true);
+}
+
 static void avrcp_parse_media_player_item(struct avrcp *session,
 					uint8_t *operands, uint16_t len)
 {
@@ -1984,7 +1996,6 @@ static void avrcp_parse_media_player_item(struct avrcp *session,
 	uint16_t id;
 	uint32_t subtype;
 	const char *curval, *strval;
-	uint64_t features[2];
 	char name[255];
 
 	if (len < 28)
@@ -2009,10 +2020,7 @@ static void avrcp_parse_media_player_item(struct avrcp *session,
 		avrcp_get_play_status(session);
 	}
 
-	features[0] = bt_get_be64(&operands[8]);
-	features[1] = bt_get_be64(&operands[16]);
-
-	media_player_set_features(mp, features);
+	avrcp_player_parse_features(player, &operands[8]);
 
 	if (operands[26] != 0) {
 		memcpy(name, &operands[27], operands[26]);
