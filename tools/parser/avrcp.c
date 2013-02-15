@@ -1317,7 +1317,7 @@ response:
 	p_indent(level, frm);
 
 	items = get_u32(frm);
-	printf("Number of Items: 0x%04x (%u)\n", items, items);
+	printf("Number of Items: 0x%08x (%u)\n", items, items);
 
 	p_indent(level, frm);
 
