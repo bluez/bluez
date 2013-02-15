@@ -49,7 +49,6 @@ void media_player_set_metadata(struct media_player *mp, const char *key,
 						void *data, size_t len);
 void media_player_set_type(struct media_player *mp, const char *type);
 void media_player_set_subtype(struct media_player *mp, const char *subtype);
-void media_player_set_features(struct media_player *mp, uint64_t *features);
 void media_player_set_name(struct media_player *mp, const char *name);
 void media_player_set_browsable(struct media_player *mp, bool enabled);
 void media_player_set_searchable(struct media_player *mp, bool enabled);

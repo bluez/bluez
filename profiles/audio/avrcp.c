@@ -180,6 +180,7 @@ struct avrcp_player {
 	GSList *sessions;
 	uint16_t id;
 	uint16_t uid_counter;
+	uint8_t *features;
 
 	struct avrcp_player_cb *cb;
 	void *user_data;
@@ -1981,6 +1982,8 @@ static void avrcp_player_parse_features(struct avrcp_player *player,
 {
 	struct media_player *mp = player->user_data;
 
+	player->features = g_memdup(features, 16);
+
 	if (features[7] & 0x08)
 		media_player_set_browsable(mp, true);
 
@@ -2553,6 +2556,7 @@ static void player_destroy(gpointer data)
 		player->destroy(player->user_data);
 
 	g_slist_free(player->sessions);
+	g_free(player->features);
 	g_free(player);
 }
 

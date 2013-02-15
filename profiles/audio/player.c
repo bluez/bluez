@@ -69,7 +69,6 @@ struct media_player {
 	char			*subtype;	/* Player subtype */
 	bool			browsable;	/* Player browsing feature */
 	bool			searchable;	/* Player searching feature */
-	uint8_t			*features;	/* Player features */
 	struct media_folder	*folder;	/* Player currenct folder */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
@@ -939,13 +938,6 @@ void media_player_set_folder(struct media_player *mp, const char *path,
 		media_folder_destroy(mp->folder);
 		mp->folder = NULL;
 	}
-}
-
-void media_player_set_features(struct media_player *mp, uint64_t *features)
-{
-	DBG("0x%016" PRIx64 "%016" PRIx64, features[0], features[1]);
-
-	memcpy(features, mp->features, sizeof(mp->features));
 }
 
 void media_player_set_callbacks(struct media_player *mp,
