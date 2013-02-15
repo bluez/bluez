@@ -110,7 +110,7 @@ static void register_agent_cb(DBusPendingCall *call, void *user_data)
 	if (dbus_set_error_from_message(&err, reply)) {
 		if (g_str_equal(DBUS_ERROR_UNKNOWN_METHOD, err.name) &&
 				try_fallback) {
-			info("Register to neard failed, trying legacy way");
+			DBG("Register to neard failed, trying legacy way");
 
 			register_agent(false);
 			try_fallback = false;
@@ -498,7 +498,7 @@ static int process_nokia_com_bt(uint8_t *data, size_t size,
 	case 0x24:
 		return process_nokia_short(data, size, remote);
 	default:
-		info("Not supported Nokia NFC extension (0x%.2x)", marker);
+		warn("Not supported Nokia NFC extension (0x%.2x)", marker);
 		return -EPROTONOSUPPORT;
 	}
 }
