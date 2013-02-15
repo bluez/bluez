@@ -1935,9 +1935,10 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 
 	depth = operands[13];
 
-	folders = g_new0(char *, depth + 1);
+	folders = g_new0(char *, depth + 2);
+	folders[0] = g_strdup("/Filesystem");
 
-	for (i = 14, count = 0; count < depth; count++) {
+	for (i = 14, count = 1; count - 1 < depth; count++) {
 		char *part;
 		uint8_t len;
 
