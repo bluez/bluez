@@ -2091,6 +2091,11 @@ int sdp_get_profile_descs(const sdp_record_t *rec, sdp_list_t **profDescSeq)
 		uint16_t version = 0x100;
 
 		if (SDP_IS_UUID(seq->dtd)) {
+			/* Mac OS X 10.7.3 and old Samsung phones do not comply
+			 * to the SDP specification for
+			 * BluetoothProfileDescriptorList. This workaround
+			 * allows to properly parse UUID/version from SDP
+			 * record published by these systems. */
 			sdp_data_t *next = seq->next;
 			uuid = &seq->val.uuid;
 			if (next && next->dtd == SDP_UINT16) {
