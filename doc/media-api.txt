@@ -233,7 +233,7 @@ Properties	string Equalizer [readwrite]
 		boolean Browsable [readonly]
 
 			If present indicates the player can be browsed using
-			MediaLibrary interface.
+			MediaFolder interface.
 
 			Possible values:
 
@@ -248,7 +248,7 @@ Properties	string Equalizer [readwrite]
 		boolean Searchable [readonly]
 
 			If present indicates the player can be searched using
-			MediaLibrary interface.
+			MediaFolder interface.
 
 			Possible values:
 
