@@ -2,7 +2,7 @@
  *
  *  BlueZ - Bluetooth protocol stack for Linux
  *
- *  Copyright (C) 2012  Tieto Poland
+ *  Copyright (C) 2012-2013  Tieto Poland
  *
  *
  *  This program is free software; you can redistribute it and/or modify
