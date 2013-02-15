@@ -2155,9 +2155,24 @@ int sdp_get_server_ver(const sdp_record_t *rec, sdp_list_t **u16)
 		errno = ENODATA;
 		return -1;
 	}
-	for (curr = d->val.dataseq; curr; curr = curr->next)
+
+	if (!SDP_IS_SEQ(d->dtd) || d->val.dataseq == NULL)
+		goto invalid;
+
+	for (curr = d->val.dataseq; curr; curr = curr->next) {
+		if (curr->dtd != SDP_UINT16)
+			goto invalid;
 		*u16 = sdp_list_append(*u16, &curr->val.uint16);
+	}
+
 	return 0;
+
+invalid:
+	sdp_list_free(*u16, NULL);
+	*u16 = NULL;
+	errno = EINVAL;
+
+	return -1;
 }
 
 /* flexible extraction of basic attributes - Jean II */
