@@ -270,6 +270,11 @@ unit_test_gobex_apparam_SOURCES = $(gobex_sources) unit/util.c unit/util.h \
 						unit/test-gobex-apparam.c
 unit_test_gobex_apparam_LDADD = @GLIB_LIBS@
 
+unit_tests += unit/test-lib
+
+unit_test_lib_SOURCES = unit/test-lib.c
+unit_test_lib_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+
 noinst_PROGRAMS += $(unit_tests)
 
 TESTS = $(unit_tests)
