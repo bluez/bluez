@@ -46,6 +46,7 @@
 #define NEARD_MANAGER_INTERFACE "org.neard.Manager"
 #define AGENT_INTERFACE "org.neard.HandoverAgent"
 #define AGENT_PATH "/org/bluez/neard_handover_agent"
+#define AGENT_CARRIER_TYPE "bluetooth"
 #define ERROR_INTERFACE "org.neard.HandoverAgent.Error"
 
 static guint watcher_id = 0;
@@ -123,6 +124,7 @@ static void register_agent(void)
 	DBusMessage *message;
 	DBusPendingCall *call;
 	const char *path = AGENT_PATH;
+	const char *carrier = AGENT_CARRIER_TYPE;
 
 	message = dbus_message_new_method_call(NEARD_NAME, NEARD_PATH,
 			NEARD_MANAGER_INTERFACE, "RegisterHandoverAgent");
@@ -132,6 +134,9 @@ static void register_agent(void)
 	}
 
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &carrier,
 							DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
@@ -151,6 +156,7 @@ static void unregister_agent(void)
 {
 	DBusMessage *message;
 	const char *path = AGENT_PATH;
+	const char *carrier = AGENT_CARRIER_TYPE;
 
 	g_free(neard_service);
 	neard_service = NULL;
@@ -165,6 +171,9 @@ static void unregister_agent(void)
 
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &path,
 						DBUS_TYPE_INVALID);
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &carrier,
+							DBUS_TYPE_INVALID);
 
 	if (!g_dbus_send_message(btd_get_dbus_connection(), message))
 		error("D-Bus send failed");
