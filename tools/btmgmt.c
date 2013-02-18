@@ -765,16 +765,17 @@ static gboolean mgmt_process_data(GIOChannel *io, GIOCondition cond,
 	return TRUE;
 }
 
-static void cmd_monitor(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	printf("Monitoring mgmt events...\n");
 	monitor = true;
 }
 
-static void version_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void version_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_read_version *rp = rsp;
+	const struct mgmt_rp_read_version *rp = param;
 
 	if (status != 0) {
 		fprintf(stderr, "Reading mgmt version failed with status"
@@ -794,20 +795,22 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_version(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_version(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE,
-					NULL, 0, version_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE,
+				0, NULL, version_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send read_version cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void commands_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_read_commands *rp = rsp;
-	uint16_t num_commands, num_events, *opcode;
+	const struct mgmt_rp_read_commands *rp = param;
+	uint16_t num_commands, num_events;
+	const uint16_t *opcode;
 	size_t expected_len;
 	int i;
 
@@ -852,19 +855,21 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_commands(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_commands(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE,
-					NULL, 0, commands_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE,
+				0, NULL, commands_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send read_commands cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void info_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_read_info *rp = rsp;
+	const struct mgmt_rp_read_info *rp = param;
+	int id = GPOINTER_TO_INT(user_data);
 	char addr[18];
 
 	if (status != 0) {
@@ -901,10 +906,11 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void index_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_read_index_list *rp = rsp;
+	const struct mgmt_rp_read_index_list *rp = param;
+	struct mgmt *mgmt = user_data;
 	uint16_t count;
 	unsigned int i;
 
@@ -942,14 +948,17 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 
 	for (i = 0; i < count; i++) {
 		uint16_t index;
+		void *data;
 
 		index = bt_get_le16(&rp->index[i]);
 
 		if (monitor)
 			printf("hci%u ", index);
 
-		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
-					0, info_rsp, NULL) < 0) {
+		data = GINT_TO_POINTER(index);
+
+		if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+						info_rsp, data, NULL) == 0) {
 			fprintf(stderr, "Unable to send read_info cmd\n");
 			goto done;
 		}
@@ -964,12 +973,14 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_info(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
+	void *data;
+
 	if (index == MGMT_INDEX_NONE) {
-		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INDEX_LIST,
-					MGMT_INDEX_NONE, NULL, 0,
-					index_rsp, NULL) < 0) {
+		if (mgmt_send(mgmt, MGMT_OP_READ_INDEX_LIST,
+					MGMT_INDEX_NONE, 0, NULL,
+					index_rsp, mgmt, NULL) == 0) {
 			fprintf(stderr, "Unable to send index_list cmd\n");
 			exit(EXIT_FAILURE);
 		}
@@ -977,17 +988,56 @@ static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
 		return;
 	}
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
-						0, info_rsp, NULL) < 0) {
+	data = GINT_TO_POINTER(index);
+
+	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL, info_rsp,
+							data, NULL) == 0) {
 		fprintf(stderr, "Unable to send read_info cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+/* Wrapper to get the index and opcode to the response callback */
+struct command_data {
+	uint16_t id;
+	uint16_t op;
+	void (*callback) (uint16_t id, uint16_t op, uint8_t status,
+					uint16_t len, const void *param);
+};
+
+static void cmd_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	uint32_t *rp = rsp;
+	struct command_data *data = user_data;
+
+	data->callback(data->op, data->id, status, len, param);
+}
+
+static unsigned int send_cmd(struct mgmt *mgmt, uint16_t op, uint16_t id,
+				uint16_t len, const void *param,
+				void (*cb)(uint16_t id, uint16_t op,
+						uint8_t status, uint16_t len,
+						const void *param))
+{
+	struct command_data *data;
+	unsigned int send_id;
+
+	data = g_new0(struct command_data, 1);
+	data->id = id;
+	data->op = op;
+	data->callback = cb;
+
+	send_id = mgmt_send(mgmt, op, id, len, param, cmd_rsp, data, g_free);
+	if (send_id == 0)
+		g_free(data);
+
+	return id;
+}
+
+static void setting_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
+							const void *param)
+{
+	const uint32_t *rp = param;
 
 	if (status != 0) {
 		fprintf(stderr,
@@ -1010,7 +1060,7 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_setting(int mgmt_sk, uint16_t index, uint16_t op,
+static void cmd_setting(struct mgmt *mgmt, uint16_t index, uint16_t op,
 							int argc, char **argv)
 {
 	uint8_t val;
@@ -1030,19 +1080,19 @@ static void cmd_setting(int mgmt_sk, uint16_t index, uint16_t op,
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, op, index, &val, sizeof(val),
-						setting_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, op, index, sizeof(val), &val, setting_rsp) == 0) {
 		fprintf(stderr, "Unable to send %s cmd\n", mgmt_opstr(op));
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void cmd_power(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_power(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_POWERED, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_POWERED, argc, argv);
 }
 
-static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_discov(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	struct mgmt_cp_set_discoverable cp;
 
@@ -1066,47 +1116,50 @@ static void cmd_discov(int mgmt_sk, uint16_t index, int argc, char **argv)
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DISCOVERABLE, index,
-				&cp, sizeof(cp), setting_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_SET_DISCOVERABLE, index, sizeof(cp), &cp,
+							setting_rsp) == 0) {
 		fprintf(stderr, "Unable to send set_discoverable cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void cmd_connectable(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_connectable(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_CONNECTABLE, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_CONNECTABLE, argc, argv);
 }
 
-static void cmd_pairable(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_pairable(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_PAIRABLE, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_PAIRABLE, argc, argv);
 }
 
-static void cmd_linksec(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_linksec(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_LINK_SECURITY, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_LINK_SECURITY, argc, argv);
 }
 
-static void cmd_ssp(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_ssp(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_SSP, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_SSP, argc, argv);
 }
 
-static void cmd_hs(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_hs(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_HS, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_HS, argc, argv);
 }
 
-static void cmd_le(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_le(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
-	cmd_setting(mgmt_sk, index, MGMT_OP_SET_LE, argc, argv);
+	cmd_setting(mgmt, index, MGMT_OP_SET_LE, argc, argv);
 }
 
-static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
+							const void *param)
 {
-	struct mgmt_ev_class_of_dev_changed *rp = rsp;
+	const struct mgmt_ev_class_of_dev_changed *rp = param;
 
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "%s failed, status 0x%02x (%s)\n",
@@ -1126,7 +1179,7 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_class(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_class(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	uint8_t class[2];
 
@@ -1141,18 +1194,17 @@ static void cmd_class(int mgmt_sk, uint16_t index, int argc, char **argv)
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DEV_CLASS, index,
-				class, sizeof(class), class_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_SET_DEV_CLASS, index, sizeof(class), class,
+							class_rsp) == 0) {
 		fprintf(stderr, "Unable to send set_dev_class cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
-				uint8_t status, void *rsp, uint16_t len,
-				void *user_data)
+static void disconnect_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_disconnect *rp = rsp;
+	const struct mgmt_rp_disconnect *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
@@ -1180,7 +1232,8 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_disconnect(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	struct mgmt_cp_disconnect cp;
 
@@ -1194,17 +1247,17 @@ static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_DISCONNECT, index,
-				&cp, sizeof(cp), disconnect_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_DISCONNECT, index, sizeof(cp), &cp,
+					disconnect_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send disconnect cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void con_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void con_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_get_connections *rp = rsp;
+	const struct mgmt_rp_get_connections *rp = param;
 	uint16_t count, i;
 
 	if (len < sizeof(*rp)) {
@@ -1232,20 +1285,20 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_con(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_con(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	if (index == MGMT_INDEX_NONE)
 		index = 0;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_GET_CONNECTIONS, index, NULL, 0,
-							con_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_GET_CONNECTIONS, index, 0, NULL,
+						con_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send get_connections cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void find_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0) {
 		fprintf(stderr,
@@ -1271,7 +1324,7 @@ static struct option find_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_find(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_start_discovery cp;
 	uint8_t type;
@@ -1312,15 +1365,15 @@ static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 	memset(&cp, 0, sizeof(cp));
 	cp.type = type;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_START_DISCOVERY, index,
-				&cp, sizeof(cp), find_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_START_DISCOVERY, index, sizeof(cp), &cp,
+						find_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send start_discovery cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void name_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0)
 		fprintf(stderr, "Unable to set local name "
@@ -1330,7 +1383,7 @@ static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_name(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_set_local_name cp;
 
@@ -1348,17 +1401,17 @@ static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
 		strncpy((char *) cp.short_name, argv[2],
 					MGMT_MAX_SHORT_NAME_LENGTH);
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_LOCAL_NAME, index,
-					&cp, sizeof(cp), name_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_SET_LOCAL_NAME, index, sizeof(cp), &cp,
+						name_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send set_name cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void pair_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_pair_device *rp = rsp;
+	const struct mgmt_rp_pair_device *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
@@ -1400,7 +1453,7 @@ static struct option pair_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_pair(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_pair_device cp;
 	uint8_t cap = 0x01;
@@ -1440,18 +1493,17 @@ static void cmd_pair(int mgmt_sk, uint16_t index, int argc, char **argv)
 	cp.addr.type = type;
 	cp.io_cap = cap;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_PAIR_DEVICE, index, &cp, sizeof(cp),
-							pair_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_PAIR_DEVICE, index, sizeof(cp), &cp,
+						pair_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send pair_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void cancel_pair_rsp(int mgmt_sk, uint16_t op, uint16_t id,
-				uint8_t status, void *rsp, uint16_t len,
-				void *user_data)
+static void cancel_pair_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_addr_info *rp = rsp;
+	const struct mgmt_addr_info *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
@@ -1492,7 +1544,7 @@ static struct option cancel_pair_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static void cmd_cancel_pair(int mgmt_sk, uint16_t index, int argc,
+static void cmd_cancel_pair(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
 	struct mgmt_addr_info cp;
@@ -1528,17 +1580,17 @@ static void cmd_cancel_pair(int mgmt_sk, uint16_t index, int argc,
 	str2ba(argv[0], &cp.bdaddr);
 	cp.type = type;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_CANCEL_PAIR_DEVICE, index,
-				&cp, sizeof(cp), cancel_pair_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_CANCEL_PAIR_DEVICE, index, sizeof(cp), &cp,
+					cancel_pair_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send cancel_pair_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void unpair_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
-	struct mgmt_rp_unpair_device *rp = rsp;
+	const struct mgmt_rp_unpair_device *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
@@ -1567,7 +1619,8 @@ done:
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_unpair(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_unpair(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	struct mgmt_cp_unpair_device cp;
 
@@ -1583,15 +1636,15 @@ static void cmd_unpair(int mgmt_sk, uint16_t index, int argc, char **argv)
 	str2ba(argv[1], &cp.addr.bdaddr);
 	cp.disconnect = 1;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_UNPAIR_DEVICE, index, &cp,
-					sizeof(cp), unpair_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_UNPAIR_DEVICE, index, sizeof(cp), &cp,
+						unpair_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send unpair_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void keys_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void keys_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0)
 		fprintf(stderr, "Load keys failed with status 0x%02x (%s)\n",
@@ -1602,7 +1655,7 @@ static void keys_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	g_main_loop_quit(event_loop);
 }
 
-static void cmd_keys(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_keys(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_load_link_keys cp;
 
@@ -1611,17 +1664,17 @@ static void cmd_keys(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 	memset(&cp, 0, sizeof(cp));
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_LOAD_LINK_KEYS, index,
-				&cp, sizeof(cp), keys_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_LOAD_LINK_KEYS, index, sizeof(cp), &cp,
+						keys_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send load_keys cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void block_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void block_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
+							const void *param)
 {
-	struct mgmt_addr_info *rp = rsp;
+	const struct mgmt_addr_info *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
@@ -1661,7 +1714,7 @@ static struct option block_options[] = {
 	{ 0, 0, 0, 0 }
 };
 
-static void cmd_block(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_block(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_block_device cp;
 	uint8_t type = BDADDR_BREDR;
@@ -1696,8 +1749,8 @@ static void cmd_block(int mgmt_sk, uint16_t index, int argc, char **argv)
 	str2ba(argv[0], &cp.addr.bdaddr);
 	cp.addr.type = type;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_BLOCK_DEVICE, index,
-				&cp, sizeof(cp), block_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_BLOCK_DEVICE, index, sizeof(cp), &cp,
+							block_rsp) == 0) {
 		fprintf(stderr, "Unable to send block_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1708,7 +1761,8 @@ static void unblock_usage(void)
 	printf("Usage: btmgmt unblock [-t type] <remote address>\n");
 }
 
-static void cmd_unblock(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_unblock(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	struct mgmt_cp_unblock_device cp;
 	uint8_t type = BDADDR_BREDR;
@@ -1743,8 +1797,8 @@ static void cmd_unblock(int mgmt_sk, uint16_t index, int argc, char **argv)
 	str2ba(argv[0], &cp.addr.bdaddr);
 	cp.addr.type = type;
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_UNBLOCK_DEVICE, index,
-				&cp, sizeof(cp), block_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_UNBLOCK_DEVICE, index, sizeof(cp), &cp,
+							block_rsp) == 0) {
 		fprintf(stderr, "Unable to send unblock_device cmd\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1760,7 +1814,8 @@ static void uuid_to_uuid128(uuid_t *uuid128, const uuid_t *uuid)
 		memcpy(uuid128, uuid, sizeof(*uuid));
 }
 
-static void cmd_add_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_add_uuid(struct mgmt *mgmt, uint16_t index, int argc,
+							char **argv)
 {
 	struct mgmt_cp_add_uuid cp;
 	uint128_t uint128;
@@ -1787,14 +1842,15 @@ static void cmd_add_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
 
 	cp.svc_hint = atoi(argv[2]);
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_ADD_UUID, index,
-				&cp, sizeof(cp), class_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_ADD_UUID, index, sizeof(cp), &cp,
+							class_rsp) == 0) {
 		fprintf(stderr, "Unable to send add_uuid cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void cmd_remove_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_remove_uuid(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	struct mgmt_cp_remove_uuid cp;
 	uint128_t uint128;
@@ -1819,23 +1875,24 @@ static void cmd_remove_uuid(int mgmt_sk, uint16_t index, int argc, char **argv)
 	ntoh128((uint128_t *) uuid128.value.uuid128.data, &uint128);
 	htob128(&uint128, (uint128_t *) cp.uuid);
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_REMOVE_UUID, index,
-				&cp, sizeof(cp), class_rsp, NULL) < 0) {
+	if (send_cmd(mgmt, MGMT_OP_REMOVE_UUID, index, sizeof(cp), &cp,
+							class_rsp) == 0) {
 		fprintf(stderr, "Unable to send remove_uuid cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
 
-static void cmd_clr_uuids(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_clr_uuids(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
 {
 	char *uuid_any = "00000000-0000-0000-0000-000000000000";
 	char *rm_argv[] = { "rm-uuid", uuid_any, NULL };
 
-	cmd_remove_uuid(mgmt_sk, index, 2, rm_argv);
+	cmd_remove_uuid(mgmt, index, 2, rm_argv);
 }
 
-static void did_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void did_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0)
 		fprintf(stderr, "Set Device ID failed "
@@ -1853,7 +1910,7 @@ static void did_usage(void)
 	printf("       possible source values: bluetooth, usb\n");
 }
 
-static void cmd_did(int mgmt_sk, uint16_t index, int argc, char **argv)
+static void cmd_did(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 {
 	struct mgmt_cp_set_device_id cp;
 	uint16_t vendor, product, version , source;
@@ -1890,8 +1947,8 @@ done:
 	cp.product = htobs(product);
 	cp.version = htobs(version);
 
-	if (mgmt_send_cmd(mgmt_sk, MGMT_OP_SET_DEVICE_ID, index,
-				&cp, sizeof(cp), did_rsp, NULL) < 0) {
+	if (mgmt_send(mgmt, MGMT_OP_SET_DEVICE_ID, index, sizeof(cp), &cp,
+						did_rsp, NULL, NULL) == 0) {
 		fprintf(stderr, "Unable to send set_dev_class cmd\n");
 		exit(EXIT_FAILURE);
 	}
@@ -1899,7 +1956,7 @@ done:
 
 static struct {
 	char *cmd;
-	void (*func)(int mgmt_sk, uint16_t index, int argc, char **argv);
+	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
 	char *doc;
 } command[] = {
 	{ "monitor",	cmd_monitor,	"Monitor events"		},
@@ -2004,24 +2061,25 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	mgmt = mgmt_new_default();
+	if (!mgmt) {
+		fprintf(stderr, "Unable to open mgmt_socket\n");
+		close(mgmt_sk);
+		return -1;
+	}
+
 	for (i = 0; command[i].cmd; i++) {
 		if (strcmp(command[i].cmd, argv[0]) != 0)
 			continue;
 
-		command[i].func(mgmt_sk, index, argc, argv);
+		command[i].func(mgmt, index, argc, argv);
 		break;
 	}
 
 	if (command[i].cmd == NULL) {
 		fprintf(stderr, "Unknown command: %s\n", argv[0]);
 		close(mgmt_sk);
-		return -1;
-	}
-
-	mgmt = mgmt_new_default();
-	if (!mgmt) {
-		fprintf(stderr, "Unable to open mgmt_socket\n");
-		close(mgmt_sk);
+		mgmt_unref(mgmt);
 		return -1;
 	}
 
