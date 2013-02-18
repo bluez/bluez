@@ -42,6 +42,7 @@
 
 #include <glib.h>
 
+#include "src/shared/mgmt.h"
 #include "glib-helper.h"
 #include "lib/mgmt.h"
 #include "eir.h"
@@ -1974,6 +1975,7 @@ int main(int argc, char *argv[])
 	int opt, i, mgmt_sk;
 	uint16_t index = MGMT_INDEX_NONE;
 	struct pollfd pollfd;
+	struct mgmt *mgmt;
 
 	while ((opt = getopt_long(argc, argv, "+hvi:",
 						main_options, NULL)) != -1) {
@@ -2024,6 +2026,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	mgmt = mgmt_new_default();
+	if (!mgmt) {
+		fprintf(stderr, "Unable to open mgmt_socket\n");
+		close(mgmt_sk);
+		return -1;
+	}
+
 	pollfd.fd = mgmt_sk;
 	pollfd.events = POLLIN;
 	pollfd.revents = 0;
@@ -2037,6 +2046,10 @@ int main(int argc, char *argv[])
 
 		pollfd.revents = 0;
 	}
+
+	mgmt_cancel_all(mgmt);
+	mgmt_unregister_all(mgmt);
+	mgmt_unref(mgmt);
 
 	close(mgmt_sk);
 

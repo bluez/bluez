@@ -168,7 +168,9 @@ tools_hcieventmask_LDADD = lib/libbluetooth-private.la
 
 tools_hwdb_LDADD = lib/libbluetooth-private.la
 
-tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c
+tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
 
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
