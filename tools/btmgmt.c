@@ -602,21 +602,21 @@ static void request_pin(uint16_t index, uint16_t len, const void *param,
 	mgmt_pin_reply(mgmt, index, &ev->addr, pin, pin_len);
 }
 
-static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void confirm_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u User Confirm reply failed. status 0x%02x (%s)\n",
-					id, status, mgmt_errstr(status));
+			"User Confirm reply failed. status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		g_main_loop_quit(event_loop);
 		return;
 	}
 
-	printf("hci%u User Confirm Reply successful\n", id);
+	printf("User Confirm Reply successful\n");
 }
 
-static int mgmt_confirm_reply(int mgmt_sk, uint16_t index,
+static int mgmt_confirm_reply(struct mgmt *mgmt, uint16_t index,
 							const bdaddr_t *bdaddr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
@@ -624,26 +624,25 @@ static int mgmt_confirm_reply(int mgmt_sk, uint16_t index,
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
 
-	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_REPLY, index,
-					&cp, sizeof(cp), confirm_rsp, NULL);
+	return mgmt_reply(mgmt, MGMT_OP_USER_CONFIRM_REPLY, index,
+				sizeof(cp), &cp, confirm_rsp, NULL, NULL);
 }
 
-static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
-				uint8_t status, void *rsp, uint16_t len,
-				void *user_data)
+static void confirm_neg_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u Confirm Neg reply failed. status 0x%02x (%s)\n",
-					id, status, mgmt_errstr(status));
+			"Confirm Neg reply failed. status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		g_main_loop_quit(event_loop);
 		return;
 	}
 
-	printf("hci%u User Confirm Negative Reply successful\n", id);
+	printf("User Confirm Negative Reply successful\n");
 }
 
-static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
+static int mgmt_confirm_neg_reply(struct mgmt *mgmt, uint16_t index,
 							const bdaddr_t *bdaddr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
@@ -651,8 +650,8 @@ static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
 
-	return mgmt_send_cmd(mgmt_sk, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
-				&cp, sizeof(cp), confirm_neg_rsp, NULL);
+	return mgmt_reply(mgmt, MGMT_OP_USER_CONFIRM_NEG_REPLY, index,
+				sizeof(cp), &cp, confirm_neg_rsp, NULL, NULL);
 }
 
 
@@ -660,7 +659,7 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_user_confirm_request *ev = param;
-	int *mgmt_sk = user_data;
+	struct mgmt *mgmt = user_data;
 	char rsp[5];
 	size_t rsp_len;
 	uint32_t val;
@@ -689,7 +688,7 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	memset(rsp, 0, sizeof(rsp));
 
 	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n') {
-		mgmt_confirm_neg_reply(*mgmt_sk, index, &ev->addr.bdaddr);
+		mgmt_confirm_neg_reply(mgmt, index, &ev->addr.bdaddr);
 		return;
 	}
 
@@ -700,9 +699,9 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 	}
 
 	if (rsp[0] == 'y' || rsp[0] == 'Y')
-		mgmt_confirm_reply(*mgmt_sk, index, &ev->addr.bdaddr);
+		mgmt_confirm_reply(mgmt, index, &ev->addr.bdaddr);
 	else
-		mgmt_confirm_neg_reply(*mgmt_sk, index, &ev->addr.bdaddr);
+		mgmt_confirm_neg_reply(mgmt, index, &ev->addr.bdaddr);
 }
 
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
@@ -2106,7 +2105,7 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
 								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
-							&mgmt_sk, NULL);
+								mgmt, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 	mgmt_io = g_io_channel_unix_new(mgmt_sk);
