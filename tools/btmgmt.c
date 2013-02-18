@@ -753,7 +753,7 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 		if (monitor)
 			printf("hci%u ", index);
 
-		data = GINT_TO_POINTER(index);
+		data = GINT_TO_POINTER((int) index);
 
 		if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
 						info_rsp, data, NULL) == 0) {
@@ -788,7 +788,7 @@ static void cmd_info(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 		return;
 	}
 
-	data = GINT_TO_POINTER(index);
+	data = GINT_TO_POINTER((int) index);
 
 	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL, info_rsp,
 							data, NULL) == 0) {
