@@ -508,21 +508,21 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 	}
 }
 
-static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void pin_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u PIN Code reply failed with status 0x%02x (%s)\n",
-					id, status, mgmt_errstr(status));
+			"PIN Code reply failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		g_main_loop_quit(event_loop);
 		return;
 	}
 
-	printf("hci%u PIN Reply successful\n", id);
+	printf("PIN Reply successful\n");
 }
 
-static int mgmt_pin_reply(int mgmt_sk, uint16_t index,
+static int mgmt_pin_reply(struct mgmt *mgmt, uint16_t index,
 					const struct mgmt_addr_info *addr,
 					const char *pin, size_t len)
 {
@@ -533,25 +533,25 @@ static int mgmt_pin_reply(int mgmt_sk, uint16_t index,
 	cp.pin_len = len;
 	memcpy(cp.pin_code, pin, len);
 
-	return mgmt_send_cmd(mgmt_sk, MGMT_OP_PIN_CODE_REPLY, index,
-					&cp, sizeof(cp), pin_rsp, NULL);
+	return mgmt_reply(mgmt, MGMT_OP_PIN_CODE_REPLY, index, sizeof(cp), &cp,
+							pin_rsp, NULL, NULL);
 }
 
-static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data)
+static void pin_neg_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
 {
 	if (status != 0) {
 		fprintf(stderr,
-			"hci%u PIN Neg reply failed with status 0x%02x (%s)\n",
-					id, status, mgmt_errstr(status));
+			"PIN Neg reply failed with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
 		g_main_loop_quit(event_loop);
 		return;
 	}
 
-	printf("hci%u PIN Negative Reply successful\n", id);
+	printf("PIN Negative Reply successful\n");
 }
 
-static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index,
+static int mgmt_pin_neg_reply(struct mgmt *mgmt, uint16_t index,
 					const struct mgmt_addr_info *addr)
 {
 	struct mgmt_cp_pin_code_neg_reply cp;
@@ -559,15 +559,15 @@ static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index,
 	memset(&cp, 0, sizeof(cp));
 	memcpy(&cp.addr, addr, sizeof(cp.addr));
 
-	return mgmt_send_cmd(mgmt_sk, MGMT_OP_PIN_CODE_NEG_REPLY, index,
-					&cp, sizeof(cp), pin_neg_rsp, NULL);
+	return mgmt_reply(mgmt, MGMT_OP_PIN_CODE_NEG_REPLY, index,
+				sizeof(cp), &cp, pin_neg_rsp, NULL, NULL);
 }
 
 static void request_pin(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_pin_code_request *ev = param;
-	int *mgmt_sk = user_data;
+	struct mgmt *mgmt = user_data;
 	char pin[18];
 	size_t pin_len;
 
@@ -589,7 +589,7 @@ static void request_pin(uint16_t index, uint16_t len, const void *param,
 	memset(pin, 0, sizeof(pin));
 
 	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n') {
-		mgmt_pin_neg_reply(*mgmt_sk, index, &ev->addr);
+		mgmt_pin_neg_reply(mgmt, index, &ev->addr);
 		return;
 	}
 
@@ -599,7 +599,7 @@ static void request_pin(uint16_t index, uint16_t len, const void *param,
 		pin_len--;
 	}
 
-	mgmt_pin_reply(*mgmt_sk, index, &ev->addr, pin, pin_len);
+	mgmt_pin_reply(mgmt, index, &ev->addr, pin, pin_len);
 }
 
 static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -2104,7 +2104,7 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
 								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
-							&mgmt_sk, NULL);
+								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
 							&mgmt_sk, NULL);
 
