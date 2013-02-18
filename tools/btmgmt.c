@@ -316,23 +316,23 @@ static const char *typestr(uint8_t type)
 	return "(unknown)";
 }
 
-static int mgmt_connected(int mgmt_sk, uint16_t index,
-					struct mgmt_ev_device_connected *ev,
-					uint16_t len)
+static void connected(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_device_connected *ev = param;
 	uint16_t eir_len;
 
 	if (len < sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid connected event length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	eir_len = bt_get_le16(&ev->eir_len);
 	if (len != sizeof(*ev) + eir_len) {
 		fprintf(stderr, "Invalid connected event length "
 			"(%u bytes, eir_len %u bytes)\n", len, eir_len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -341,18 +341,17 @@ static int mgmt_connected(int mgmt_sk, uint16_t index,
 		printf("hci%u %s type %s connected eir_len %u\n", index, addr,
 					typestr(ev->addr.type), eir_len);
 	}
-
-	return 0;
 }
 
-static int mgmt_disconnected(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_device_disconnected *ev,
-				uint16_t len)
+static void disconnected(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_device_disconnected *ev = param;
+
 	if (len < sizeof(struct mgmt_addr_info)) {
 		fprintf(stderr,
 			"Invalid disconnected event length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -368,18 +367,17 @@ static int mgmt_disconnected(int mgmt_sk, uint16_t index,
 		printf("hci%u %s type %s disconnected with reason %u\n",
 				index, addr, typestr(ev->addr.type), reason);
 	}
-
-	return 0;
 }
 
-static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_connect_failed *ev,
-				uint16_t len)
+static void conn_failed(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_connect_failed *ev = param;
+
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid connect_failed event length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -389,8 +387,6 @@ static int mgmt_conn_failed(int mgmt_sk, uint16_t index,
 				index, addr, typestr(ev->addr.type), ev->status,
 				mgmt_errstr(ev->status));
 	}
-
-	return 0;
 }
 
 static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
@@ -719,12 +715,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_DEVICE_CONNECTED:
-		return mgmt_connected(mgmt_sk, index, data, len);
-	case MGMT_EV_DEVICE_DISCONNECTED:
-		return mgmt_disconnected(mgmt_sk, index, data, len);
-	case MGMT_EV_CONNECT_FAILED:
-		return mgmt_conn_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_AUTH_FAILED:
 		return mgmt_auth_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_LOCAL_NAME_CHANGED:
@@ -2051,6 +2041,12 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_DISCOVERING, index, discovering,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index, new_link_key,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_CONNECTED, index, connected,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_DISCONNECTED, index, disconnected,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_CONNECT_FAILED, index, conn_failed,
 								NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
