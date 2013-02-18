@@ -248,12 +248,14 @@ static void print_settings(uint32_t settings)
 	}
 }
 
-static int mgmt_new_settings(int mgmt_sk, uint16_t index,
-					uint32_t *ev, uint16_t len)
+static void new_settings(uint16_t index, uint16_t len,
+					const void *param, void *user_data)
 {
+	const uint32_t *ev = param;
+
 	if (len < sizeof(*ev)) {
 		fprintf(stderr, "Too short new_settings event (%u)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -261,8 +263,6 @@ static int mgmt_new_settings(int mgmt_sk, uint16_t index,
 		print_settings(bt_get_le32(ev));
 		printf("\n");
 	}
-
-	return 0;
 }
 
 static int mgmt_discovering(int mgmt_sk, uint16_t index,
@@ -714,8 +714,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_NEW_SETTINGS:
-		return mgmt_new_settings(mgmt_sk, index, data, len);
 	case MGMT_EV_DISCOVERING:
 		return mgmt_discovering(mgmt_sk, index, data, len);
 	case MGMT_EV_NEW_LINK_KEY:
@@ -2035,6 +2033,8 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, index, index_added,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_SETTINGS, index, new_settings,
 								NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
