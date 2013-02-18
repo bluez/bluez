@@ -1201,6 +1201,7 @@ static struct avctp *avctp_get_internal(struct btd_device *device)
 	session->server = server;
 	session->device = btd_device_ref(device);
 	session->state = AVCTP_STATE_DISCONNECTED;
+	session->uinput = -1;
 
 	server->sessions = g_slist_append(server->sessions, session);
 
