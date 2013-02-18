@@ -408,20 +408,19 @@ static void auth_failed(uint16_t index, uint16_t len, const void *param,
 	}
 }
 
-static int mgmt_name_changed(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_local_name_changed *ev,
-				uint16_t len)
+static void local_name_changed(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_local_name_changed *ev = param;
+
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid local_name_changed length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor)
 		printf("hci%u name changed: %s\n", index, ev->name);
-
-	return 0;
 }
 
 static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
@@ -714,8 +713,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_LOCAL_NAME_CHANGED:
-		return mgmt_name_changed(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_FOUND:
 		return mgmt_device_found(mgmt_sk, index, data, len);
 	case MGMT_EV_PIN_CODE_REQUEST:
@@ -2047,6 +2044,8 @@ int main(int argc, char *argv[])
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_AUTH_FAILED, index, auth_failed,
 								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
+					local_name_changed, NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 	mgmt_io = g_io_channel_unix_new(mgmt_sk);
