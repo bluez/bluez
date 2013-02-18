@@ -527,8 +527,8 @@ static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 }
 
 static int mgmt_pin_reply(int mgmt_sk, uint16_t index,
-						struct mgmt_addr_info *addr,
-						const char *pin, size_t len)
+					const struct mgmt_addr_info *addr,
+					const char *pin, size_t len)
 {
 	struct mgmt_cp_pin_code_reply cp;
 
@@ -556,7 +556,7 @@ static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 }
 
 static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index,
-						struct mgmt_addr_info *addr)
+					const struct mgmt_addr_info *addr)
 {
 	struct mgmt_cp_pin_code_neg_reply cp;
 
@@ -567,17 +567,18 @@ static int mgmt_pin_neg_reply(int mgmt_sk, uint16_t index,
 					&cp, sizeof(cp), pin_neg_rsp, NULL);
 }
 
-static int mgmt_request_pin(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_pin_code_request *ev,
-				uint16_t len)
+static void request_pin(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_pin_code_request *ev = param;
+	int *mgmt_sk = user_data;
 	char pin[18];
 	size_t pin_len;
 
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid pin_code request length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -591,8 +592,10 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 
 	memset(pin, 0, sizeof(pin));
 
-	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n')
-		return mgmt_pin_neg_reply(mgmt_sk, index, &ev->addr);
+	if (fgets(pin, sizeof(pin), stdin) == NULL || pin[0] == '\n') {
+		mgmt_pin_neg_reply(*mgmt_sk, index, &ev->addr);
+		return;
+	}
 
 	pin_len = strlen(pin);
 	if (pin[pin_len - 1] == '\n') {
@@ -600,7 +603,7 @@ static int mgmt_request_pin(int mgmt_sk, uint16_t index,
 		pin_len--;
 	}
 
-	return mgmt_pin_reply(mgmt_sk, index, &ev->addr, pin, pin_len);
+	mgmt_pin_reply(*mgmt_sk, index, &ev->addr, pin, pin_len);
 }
 
 static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -617,7 +620,8 @@ static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	printf("hci%u User Confirm Reply successful\n", id);
 }
 
-static int mgmt_confirm_reply(int mgmt_sk, uint16_t index, bdaddr_t *bdaddr)
+static int mgmt_confirm_reply(int mgmt_sk, uint16_t index,
+							const bdaddr_t *bdaddr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
 
@@ -644,7 +648,7 @@ static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 }
 
 static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
-							bdaddr_t *bdaddr)
+							const bdaddr_t *bdaddr)
 {
 	struct mgmt_cp_user_confirm_reply cp;
 
@@ -656,10 +660,11 @@ static int mgmt_confirm_neg_reply(int mgmt_sk, uint16_t index,
 }
 
 
-static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_user_confirm_request *ev,
-				uint16_t len)
+static void user_confirm(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_user_confirm_request *ev = param;
+	int *mgmt_sk = user_data;
 	char rsp[5];
 	size_t rsp_len;
 	uint32_t val;
@@ -668,7 +673,7 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid user_confirm request length (%u)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	ba2str(&ev->addr.bdaddr, addr);
@@ -687,8 +692,10 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 
 	memset(rsp, 0, sizeof(rsp));
 
-	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n')
-		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->addr.bdaddr);
+	if (fgets(rsp, sizeof(rsp), stdin) == NULL || rsp[0] == '\n') {
+		mgmt_confirm_neg_reply(*mgmt_sk, index, &ev->addr.bdaddr);
+		return;
+	}
 
 	rsp_len = strlen(rsp);
 	if (rsp[rsp_len - 1] == '\n') {
@@ -697,9 +704,9 @@ static int mgmt_user_confirm(int mgmt_sk, uint16_t index,
 	}
 
 	if (rsp[0] == 'y' || rsp[0] == 'Y')
-		return mgmt_confirm_reply(mgmt_sk, index, &ev->addr.bdaddr);
+		mgmt_confirm_reply(*mgmt_sk, index, &ev->addr.bdaddr);
 	else
-		return mgmt_confirm_neg_reply(mgmt_sk, index, &ev->addr.bdaddr);
+		mgmt_confirm_neg_reply(*mgmt_sk, index, &ev->addr.bdaddr);
 }
 
 static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
@@ -713,10 +720,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_PIN_CODE_REQUEST:
-		return mgmt_request_pin(mgmt_sk, index, data, len);
-	case MGMT_EV_USER_CONFIRM_REQUEST:
-		return mgmt_user_confirm(mgmt_sk, index, data, len);
 	default:
 		if (monitor)
 			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
@@ -2045,6 +2048,10 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
 					local_name_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
+							&mgmt_sk, NULL);
+	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
+							&mgmt_sk, NULL);
+	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
 							&mgmt_sk, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
