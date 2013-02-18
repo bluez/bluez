@@ -454,9 +454,11 @@ static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 		printf("hci%u confirm_name succeeded for %s\n", id, addr);
 }
 
-static int mgmt_device_found(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_device_found *ev, uint16_t len)
+static void device_found(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_device_found *ev = param;
+	int *mgmt_sk = user_data;
 	uint32_t flags;
 	uint16_t eir_len;
 	struct eir_data eir;
@@ -464,7 +466,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 	if (len < sizeof(*ev)) {
 		fprintf(stderr,
 			"Too short device_found length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	flags = btohl(ev->flags);
@@ -473,7 +475,7 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 	if (len != sizeof(*ev) + eir_len) {
 		fprintf(stderr, "dev_found: expected %zu bytes, got %u bytes\n",
 						sizeof(*ev) + eir_len, len);
-		return -EINVAL;
+		return;
 	}
 
 	memset(&eir, 0, sizeof(eir));
@@ -504,12 +506,10 @@ static int mgmt_device_found(int mgmt_sk, uint16_t index,
 		else
 			cp.name_known = 1;
 
-		mgmt_send_cmd(mgmt_sk, MGMT_OP_CONFIRM_NAME, index,
+		mgmt_send_cmd(*mgmt_sk, MGMT_OP_CONFIRM_NAME, index,
 					&cp, sizeof(cp), confirm_name_rsp,
 					NULL);
 	}
-
-	return 0;
 }
 
 static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -713,8 +713,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_DEVICE_FOUND:
-		return mgmt_device_found(mgmt_sk, index, data, len);
 	case MGMT_EV_PIN_CODE_REQUEST:
 		return mgmt_request_pin(mgmt_sk, index, data, len);
 	case MGMT_EV_USER_CONFIRM_REQUEST:
@@ -2046,6 +2044,8 @@ int main(int argc, char *argv[])
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
 					local_name_changed, NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
+							&mgmt_sk, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 	mgmt_io = g_io_channel_unix_new(mgmt_sk);
