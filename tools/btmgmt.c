@@ -265,13 +265,15 @@ static void new_settings(uint16_t index, uint16_t len,
 	}
 }
 
-static int mgmt_discovering(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_discovering *ev, uint16_t len)
+static void discovering(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_discovering *ev = param;
+
 	if (len < sizeof(*ev)) {
 		fprintf(stderr, "Too short (%u bytes) discovering event\n",
 									len);
-		return -EINVAL;
+		return;
 	}
 
 	if (ev->discovering == 0 && discovery)
@@ -280,8 +282,6 @@ static int mgmt_discovering(int mgmt_sk, uint16_t index,
 	if (monitor)
 		printf("hci%u type %u discovering %s\n", index,
 				ev->type, ev->discovering ? "on" : "off");
-
-	return 0;
 }
 
 static int mgmt_new_link_key(int mgmt_sk, uint16_t index,
@@ -714,8 +714,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_DISCOVERING:
-		return mgmt_discovering(mgmt_sk, index, data, len);
 	case MGMT_EV_NEW_LINK_KEY:
 		return mgmt_new_link_key(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_CONNECTED:
@@ -2035,6 +2033,8 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_NEW_SETTINGS, index, new_settings,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_DISCOVERING, index, discovering,
 								NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
