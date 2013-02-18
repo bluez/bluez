@@ -53,150 +53,7 @@ static bool monitor = false;
 static bool discovery = false;
 static bool resolve_names = true;
 
-typedef void (*cmd_cb)(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
-				void *rsp, uint16_t len, void *user_data);
-
-static struct pending_cmd {
-	uint16_t op;
-	uint16_t id;
-	cmd_cb cb;
-	void *user_data;
-	struct pending_cmd *next;
-} *pending = NULL;
-
-static int mgmt_send_cmd(int mgmt_sk, uint16_t op, uint16_t id, void *data,
-				size_t len, cmd_cb func, void *user_data)
-{
-	char buf[1024];
-	struct pending_cmd *cmd;
-	struct mgmt_hdr *hdr = (void *) buf;
-
-	if (len + MGMT_HDR_SIZE > sizeof(buf))
-		return -EINVAL;
-
-	cmd = calloc(1, sizeof(struct pending_cmd));
-	if (cmd == NULL)
-		return -errno;
-
-	cmd->op = op;
-	cmd->id = id;
-	cmd->cb = func;
-	cmd->user_data = user_data;
-
-	memset(buf, 0, sizeof(buf));
-	hdr->opcode = htobs(op);
-	hdr->index = htobs(id);
-	hdr->len = htobs(len);
-	memcpy(buf + MGMT_HDR_SIZE, data, len);
-
-	if (write(mgmt_sk, buf, MGMT_HDR_SIZE + len) < 0) {
-		fprintf(stderr, "Unable to write to socket: %s\n",
-							strerror(errno));
-		free(cmd);
-		return -1;
-	}
-
-	cmd->next = pending;
-	pending = cmd;
-
-	return 0;
-}
-
-static int mgmt_open(void)
-{
-	struct sockaddr_hci addr;
-	int sk;
-
-	sk = socket(AF_BLUETOOTH, SOCK_RAW, BTPROTO_HCI);
-	if (sk < 0) {
-		fprintf(stderr, "socket: %s\n", strerror(errno));
-		return sk;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.hci_family = AF_BLUETOOTH;
-	addr.hci_dev = HCI_DEV_NONE;
-	addr.hci_channel = HCI_CHANNEL_CONTROL;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		fprintf(stderr, "bind: %s\n", strerror(errno));
-		close(sk);
-		return -1;
-	}
-
-	return sk;
-}
-
-static void mgmt_check_pending(int mgmt_sk, uint16_t op, uint16_t index,
-				uint16_t status, void *data, uint16_t len)
-{
-	struct pending_cmd *c, *prev;
-
-	for (c = pending, prev = NULL; c != NULL; prev = c, c = c->next) {
-		if (c->op != op)
-			continue;
-		if (c->id != index)
-			continue;
-
-		if (c == pending)
-			pending = c->next;
-		else
-			prev->next = c->next;
-
-		c->cb(mgmt_sk, op, index, status, data, len, c->user_data);
-
-		free(c);
-		break;
-	}
-}
-
-static int mgmt_cmd_complete(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_cmd_complete *ev, uint16_t len)
-{
-	uint16_t op;
-
-	if (len < sizeof(*ev)) {
-		fprintf(stderr, "Too short (%u bytes) cmd complete event\n",
-									len);
-		return -EINVAL;
-	}
-
-	op = bt_get_le16(&ev->opcode);
-
-	len -= sizeof(*ev);
-
-	if (monitor)
-		printf("%s complete, opcode 0x%04x len %u\n", mgmt_opstr(op),
-								op, len);
-
-	mgmt_check_pending(mgmt_sk, op, index, ev->status, ev->data, len);
-
-	return 0;
-}
-
-static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_cmd_status *ev, uint16_t len)
-{
-	uint16_t opcode;
-
-	if (len < sizeof(*ev)) {
-		fprintf(stderr, "Too short (%u bytes) cmd status event\n",
-									len);
-		return -EINVAL;
-	}
-
-	opcode = bt_get_le16(&ev->opcode);
-
-	if (monitor)
-		printf("cmd status, opcode 0x%04x status 0x%02x (%s)\n",
-				opcode, ev->status, mgmt_errstr(ev->status));
-
-	if (ev->status != 0)
-		mgmt_check_pending(mgmt_sk, opcode, index, ev->status,
-								NULL, 0);
-
-	return 0;
-}
+static int pending = 0;
 
 static void controller_error(uint16_t index, uint16_t len,
 				const void *param, void *user_data)
@@ -704,62 +561,6 @@ static void user_confirm(uint16_t index, uint16_t len, const void *param,
 		mgmt_confirm_neg_reply(mgmt, index, &ev->addr.bdaddr);
 }
 
-static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
-						void *data, uint16_t len)
-{
-	if (monitor)
-		printf("event: %s\n", mgmt_evstr(ev));
-
-	switch (ev) {
-	case MGMT_EV_CMD_COMPLETE:
-		return mgmt_cmd_complete(mgmt_sk, index, data, len);
-	case MGMT_EV_CMD_STATUS:
-		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	default:
-		if (monitor)
-			printf("Unhandled event 0x%04x (%s)\n", ev, mgmt_evstr(ev));
-		return 0;
-	}
-}
-
-static gboolean mgmt_process_data(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	char buf[1024];
-	struct mgmt_hdr *hdr = (void *) buf;
-	uint16_t len, ev, index;
-	ssize_t ret;
-	int mgmt_sk = g_io_channel_unix_get_fd(io);
-
-	ret = read(mgmt_sk, buf, sizeof(buf));
-	if (ret < 0) {
-		fprintf(stderr, "read: %s\n", strerror(errno));
-		return FALSE;
-	}
-
-	if (ret < MGMT_HDR_SIZE) {
-		fprintf(stderr, "Too small mgmt packet (%zd bytes)\n", ret);
-		return TRUE;
-	}
-
-	ev = bt_get_le16(&hdr->opcode);
-	index = bt_get_le16(&hdr->index);
-	len = bt_get_le16(&hdr->len);
-
-	if (monitor)
-		printf("event 0x%04x len 0x%04x index 0x%04x\n", ev, len, index);
-
-	if (ret != MGMT_HDR_SIZE + len) {
-		fprintf(stderr, "Packet length mismatch. ret %zd len %u\n",
-								ret, len);
-		return TRUE;
-	}
-
-	mgmt_handle_event(mgmt_sk, ev, index, buf + MGMT_HDR_SIZE, len);
-
-	return TRUE;
-}
-
 static void cmd_monitor(struct mgmt *mgmt, uint16_t index, int argc,
 								char **argv)
 {
@@ -867,6 +668,8 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 	int id = GPOINTER_TO_INT(user_data);
 	char addr[18];
 
+	pending--;
+
 	if (status != 0) {
 		fprintf(stderr,
 			"Reading hci%u info failed with status 0x%02x (%s)\n",
@@ -894,7 +697,7 @@ static void info_rsp(uint8_t status, uint16_t len, const void *param,
 	printf("\n\tname %s\n", rp->name);
 	printf("\tshort name %s\n", rp->short_name);
 
-	if (pending)
+	if (pending > 0)
 		return;
 
 done:
@@ -957,6 +760,8 @@ static void index_rsp(uint8_t status, uint16_t len, const void *param,
 			fprintf(stderr, "Unable to send read_info cmd\n");
 			goto done;
 		}
+
+		pending++;
 	}
 
 	if (monitor && count > 0)
@@ -2015,11 +1820,9 @@ static struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	int opt, i, mgmt_sk;
+	int opt, i;
 	uint16_t index = MGMT_INDEX_NONE;
 	struct mgmt *mgmt;
-	GIOChannel *mgmt_io;
-	guint io_id;
 
 	while ((opt = getopt_long(argc, argv, "+hvi:",
 						main_options, NULL)) != -1) {
@@ -2050,16 +1853,12 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	mgmt_sk = mgmt_open();
-	if (mgmt_sk < 0) {
-		fprintf(stderr, "Unable to open mgmt socket\n");
-		return -1;
-	}
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	mgmt = mgmt_new_default();
 	if (!mgmt) {
 		fprintf(stderr, "Unable to open mgmt_socket\n");
-		close(mgmt_sk);
+		g_main_loop_unref(event_loop);
 		return -1;
 	}
 
@@ -2073,8 +1872,8 @@ int main(int argc, char *argv[])
 
 	if (command[i].cmd == NULL) {
 		fprintf(stderr, "Unknown command: %s\n", argv[0]);
-		close(mgmt_sk);
 		mgmt_unref(mgmt);
+		g_main_loop_unref(event_loop);
 		return -1;
 	}
 
@@ -2107,19 +1906,11 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
 								mgmt, NULL);
 
-	event_loop = g_main_loop_new(NULL, FALSE);
-	mgmt_io = g_io_channel_unix_new(mgmt_sk);
-	io_id = g_io_add_watch(mgmt_io, G_IO_IN, mgmt_process_data, NULL);
-
 	g_main_loop_run(event_loop);
 
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
 	mgmt_unref(mgmt);
-
-	g_source_remove(io_id);
-	g_io_channel_unref(mgmt_io);
-	close(mgmt_sk);
 
 	g_main_loop_unref(event_loop);
 
