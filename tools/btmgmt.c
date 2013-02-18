@@ -389,14 +389,15 @@ static void conn_failed(uint16_t index, uint16_t len, const void *param,
 	}
 }
 
-static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_auth_failed *ev,
-				uint16_t len)
+static void auth_failed(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_auth_failed *ev = param;
+
 	if (len != sizeof(*ev)) {
 		fprintf(stderr,
 			"Invalid auth_failed event length (%u bytes)\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -405,8 +406,6 @@ static int mgmt_auth_failed(int mgmt_sk, uint16_t index,
 		printf("hci%u %s auth failed with status 0x%02x (%s)\n",
 			index, addr, ev->status, mgmt_errstr(ev->status));
 	}
-
-	return 0;
 }
 
 static int mgmt_name_changed(int mgmt_sk, uint16_t index,
@@ -715,8 +714,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_AUTH_FAILED:
-		return mgmt_auth_failed(mgmt_sk, index, data, len);
 	case MGMT_EV_LOCAL_NAME_CHANGED:
 		return mgmt_name_changed(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_FOUND:
@@ -2047,6 +2044,8 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_DEVICE_DISCONNECTED, index, disconnected,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_CONNECT_FAILED, index, conn_failed,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_AUTH_FAILED, index, auth_failed,
 								NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
