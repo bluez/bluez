@@ -47,6 +47,8 @@
 #include "lib/mgmt.h"
 #include "eir.h"
 
+static GMainLoop *event_loop = NULL;
+
 static bool monitor = false;
 static bool discovery = false;
 static bool resolve_names = true;
@@ -277,7 +279,7 @@ static void discovering(uint16_t index, uint16_t len, const void *param,
 	}
 
 	if (ev->discovering == 0 && discovery)
-		exit(EXIT_SUCCESS);
+		g_main_loop_quit(event_loop);
 
 	if (monitor)
 		printf("hci%u type %u discovering %s\n", index,
@@ -524,7 +526,8 @@ static void pin_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"hci%u PIN Code reply failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		g_main_loop_quit(event_loop);
+		return;
 	}
 
 	printf("hci%u PIN Reply successful\n", id);
@@ -552,7 +555,8 @@ static void pin_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"hci%u PIN Neg reply failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		g_main_loop_quit(event_loop);
+		return;
 	}
 
 	printf("hci%u PIN Negative Reply successful\n", id);
@@ -613,7 +617,8 @@ static void confirm_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"hci%u User Confirm reply failed. status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		g_main_loop_quit(event_loop);
+		return;
 	}
 
 	printf("hci%u User Confirm Reply successful\n", id);
@@ -638,7 +643,8 @@ static void confirm_neg_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 		fprintf(stderr,
 			"hci%u Confirm Neg reply failed. status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		g_main_loop_quit(event_loop);
+		return;
 	}
 
 	printf("hci%u User Confirm Negative Reply successful\n", id);
@@ -791,18 +797,19 @@ static void version_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (status != 0) {
 		fprintf(stderr, "Reading mgmt version failed with status"
 			" 0x%02x (%s)\n", status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small version reply (%u bytes)\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("MGMT Version %u, revision %u\n", rp->version,
 						bt_get_le16(&rp->revision));
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_version(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -825,12 +832,12 @@ static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (status != 0) {
 		fprintf(stderr, "Reading supported commands failed with status"
 			" 0x%02x (%s)\n", status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small commands reply (%u bytes)\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	num_commands = bt_get_le16(&rp->num_commands);
@@ -842,7 +849,7 @@ static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len < expected_len) {
 		fprintf(stderr, "Too small commands reply (%u != %zu)\n",
 							len, expected_len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	opcode = rp->opcodes;
@@ -859,7 +866,8 @@ static void commands_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		printf("\t%s (0x%04x)\n", mgmt_evstr(ev), ev);
 	}
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_commands(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -881,12 +889,12 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"Reading hci%u info failed with status 0x%02x (%s)\n",
 					id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small info reply (%u bytes)\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->bdaddr, addr);
@@ -904,8 +912,11 @@ static void info_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	printf("\n\tname %s\n", rp->name);
 	printf("\tshort name %s\n", rp->short_name);
 
-	if (pending == NULL)
-		exit(EXIT_SUCCESS);
+	if (pending)
+		return;
+
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
@@ -919,13 +930,13 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"Reading index list failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small index list reply (%u bytes)\n",
 									len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	count = bt_get_le16(&rp->num_controllers);
@@ -934,7 +945,7 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"Index count (%u) doesn't match reply length (%u)\n",
 								count, len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (monitor)
@@ -942,7 +953,7 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 						count, count > 1 ? "s" : "");
 
 	if (count == 0)
-		exit(EXIT_SUCCESS);
+		goto done;
 
 	if (monitor && count > 0)
 		printf("\t");
@@ -958,12 +969,17 @@ static void index_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		if (mgmt_send_cmd(mgmt_sk, MGMT_OP_READ_INFO, index, NULL,
 					0, info_rsp, NULL) < 0) {
 			fprintf(stderr, "Unable to send read_info cmd\n");
-			exit(EXIT_FAILURE);
+			goto done;
 		}
 	}
 
 	if (monitor && count > 0)
 		printf("\n");
+
+	return;
+
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_info(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -995,20 +1011,21 @@ static void setting_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"%s for hci%u failed with status 0x%02x (%s)\n",
 			mgmt_opstr(op), id, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small %s response (%u bytes)\n",
 							mgmt_opstr(op), len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("hci%u %s complete, settings: ", id, mgmt_opstr(op));
 	print_settings(bt_get_le32(rp));
 	printf("\n");
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_setting(int mgmt_sk, uint16_t index, uint16_t op,
@@ -1112,18 +1129,19 @@ static void class_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "%s failed, status 0x%02x (%s)\n",
 				mgmt_opstr(op), status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Unexpected %s len %u\n", mgmt_opstr(op), len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("%s succeeded. Class 0x%02x%02x%02x\n", mgmt_opstr(op),
 		rp->class_of_dev[2], rp->class_of_dev[1], rp->class_of_dev[0]);
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_class(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1158,26 +1176,26 @@ static void disconnect_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "Disconnect failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Invalid disconnect response length (%u)\n",
 									len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->addr.bdaddr, addr);
 
-	if (status == 0) {
+	if (status == 0)
 		printf("%s disconnected\n", addr);
-		exit(EXIT_SUCCESS);
-	} else {
+	else
 		fprintf(stderr,
 			"Disconnecting %s failed with status 0x%02x (%s)\n",
 				addr, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
-	}
+
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_disconnect(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1210,14 +1228,14 @@ static void con_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len < sizeof(*rp)) {
 		fprintf(stderr, "Too small (%u bytes) get_connections rsp\n",
 									len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	count = bt_get_le16(&rp->conn_count);
 	if (len != sizeof(*rp) + count * sizeof(struct mgmt_addr_info)) {
 		fprintf(stderr, "Invalid get_connections length "
 					" (count=%u, len=%u)\n", count, len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	for (i = 0; i < count; i++) {
@@ -1228,7 +1246,8 @@ static void con_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		printf("%s type %s\n", addr, typestr(rp->addr[i].type));
 	}
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_con(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1250,7 +1269,8 @@ static void find_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"Unable to start discovery. status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		g_main_loop_quit(event_loop);
+		return;
 	}
 
 	printf("Discovery started\n");
@@ -1320,14 +1340,12 @@ static void cmd_find(int mgmt_sk, uint16_t index, int argc, char **argv)
 static void name_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	if (status != 0) {
+	if (status != 0)
 		fprintf(stderr, "Unable to set local name "
 						"with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
-	}
 
-	exit(EXIT_SUCCESS);
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_name(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1364,12 +1382,12 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "Pairing failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Unexpected pair_rsp len %u\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->addr.bdaddr, addr);
@@ -1379,12 +1397,13 @@ static void pair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 			"Pairing with %s (%s) failed. status 0x%02x (%s)\n",
 			addr, typestr(rp->addr.type), status,
 			mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("Paired with %s\n", addr);
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void pair_usage(void)
@@ -1456,12 +1475,12 @@ static void cancel_pair_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "Cancel Pairing failed with 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Unexpected cancel_pair_rsp len %u\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->bdaddr, addr);
@@ -1471,12 +1490,13 @@ static void cancel_pair_rsp(int mgmt_sk, uint16_t op, uint16_t id,
 			"Cancel Pairing with %s (%s) failed. 0x%02x (%s)\n",
 			addr, typestr(rp->type), status,
 			mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("Pairing Cancelled with %s\n", addr);
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cancel_pair_usage(void)
@@ -1542,12 +1562,12 @@ static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "Unpair device failed. status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Unexpected unpair_device_rsp len %u\n", len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->addr.bdaddr, addr);
@@ -1556,12 +1576,13 @@ static void unpair_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr,
 			"Unpairing %s failed. status 0x%02x (%s)\n",
 				addr, status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("%s unpaired\n", addr);
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_unpair(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1590,15 +1611,13 @@ static void cmd_unpair(int mgmt_sk, uint16_t index, int argc, char **argv)
 static void keys_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	if (status != 0) {
+	if (status != 0)
 		fprintf(stderr, "Load keys failed with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
-	}
+	else
+		printf("Keys successfully loaded\n");
 
-	printf("Keys successfully loaded\n");
-
-	exit(EXIT_SUCCESS);
+	g_main_loop_quit(event_loop);
 }
 
 static void cmd_keys(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1626,12 +1645,12 @@ static void block_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 	if (len == 0 && status != 0) {
 		fprintf(stderr, "%s failed, status 0x%02x (%s)\n",
 				mgmt_opstr(op), status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	if (len != sizeof(*rp)) {
 		fprintf(stderr, "Unexpected %s len %u\n", mgmt_opstr(op), len);
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	ba2str(&rp->bdaddr, addr);
@@ -1640,12 +1659,13 @@ static void block_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 		fprintf(stderr, "%s %s (%s) failed. status 0x%02x (%s)\n",
 				mgmt_opstr(op), addr, typestr(rp->type),
 				status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
+		goto done;
 	}
 
 	printf("%s %s succeeded\n", mgmt_opstr(op), addr);
 
-	exit(EXIT_SUCCESS);
+done:
+	g_main_loop_quit(event_loop);
 }
 
 static void block_usage(void)
@@ -1835,16 +1855,14 @@ static void cmd_clr_uuids(int mgmt_sk, uint16_t index, int argc, char **argv)
 static void did_rsp(int mgmt_sk, uint16_t op, uint16_t id, uint8_t status,
 				void *rsp, uint16_t len, void *user_data)
 {
-	if (status != 0) {
+	if (status != 0)
 		fprintf(stderr, "Set Device ID failed "
 						"with status 0x%02x (%s)\n",
 						status, mgmt_errstr(status));
-		exit(EXIT_FAILURE);
-	}
+	else
+		printf("Device ID successfully set\n");
 
-	printf("Device ID successfully set\n");
-
-	exit(EXIT_SUCCESS);
+	g_main_loop_quit(event_loop);
 }
 
 static void did_usage(void)
@@ -1966,7 +1984,6 @@ int main(int argc, char *argv[])
 	int opt, i, mgmt_sk;
 	uint16_t index = MGMT_INDEX_NONE;
 	struct mgmt *mgmt;
-	GMainLoop *event_loop;
 	GIOChannel *mgmt_io;
 	guint io_id;
 
