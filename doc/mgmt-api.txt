@@ -4,6 +4,41 @@ Bluetooth Management API
 Copyright (C) 2008-2009  Marcel Holtmann <marcel@holtmann.org>
 
 
+This document describes the format of data used for communicating with
+the kernel using a so-called Bluetooth Management sockets. These sockets
+are available starting with Linux kernel version 3.4, and can be created
+by setting the hci_channel member of struct sockaddr_hci to
+HCI_CHANNEL_CONTROL (3) when creating a raw HCI socket. In C the needed
+code would look something like the following:
+
+int mgmt_create(void)
+{
+	struct sockaddr_hci addr;
+	int fd;
+
+	fd = socket(PF_BLUETOOTH, SOCK_RAW | SOCK_CLOEXEC | SOCK_NONBLOCK,
+                                                                BTPROTO_HCI);
+	if (fd < 0)
+		return -errno;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.hci_family = AF_BLUETOOTH;
+	addr.hci_dev = HCI_DEV_NONE;
+	addr.hci_channel = HCI_CHANNEL_CONTROL;
+
+	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		int err = -errno;
+		close(fd);
+		return err;
+	}
+
+	return fd;
+}
+
+The process creating the mgmt socket is required to have the
+CAP_NET_ADMIN capability (e.g. root would have this).
+
+
 Packet Structures
 =================
 
