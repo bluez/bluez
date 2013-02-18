@@ -196,20 +196,19 @@ static int mgmt_cmd_status(int mgmt_sk, uint16_t index,
 	return 0;
 }
 
-static int mgmt_controller_error(uint16_t index,
-					struct mgmt_ev_controller_error *ev,
-					uint16_t len)
+static void controller_error(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
 {
+	const struct mgmt_ev_controller_error *ev = param;
+
 	if (len < sizeof(*ev)) {
 		fprintf(stderr,
 			"Too short (%u bytes) controller error event\n", len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor)
 		printf("hci%u error 0x%02x\n", index, ev->error_code);
-
-	return 0;
 }
 
 static int mgmt_index_added(int mgmt_sk, uint16_t index)
@@ -715,8 +714,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_CONTROLLER_ERROR:
-		return mgmt_controller_error(index, data, len);
 	case MGMT_EV_INDEX_ADDED:
 		return mgmt_index_added(mgmt_sk, index);
 	case MGMT_EV_INDEX_REMOVED:
@@ -2032,6 +2029,9 @@ int main(int argc, char *argv[])
 		close(mgmt_sk);
 		return -1;
 	}
+
+	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
+								NULL, NULL);
 
 	pollfd.fd = mgmt_sk;
 	pollfd.events = POLLIN;
