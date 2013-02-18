@@ -211,18 +211,18 @@ static void controller_error(uint16_t index, uint16_t len,
 		printf("hci%u error 0x%02x\n", index, ev->error_code);
 }
 
-static int mgmt_index_added(int mgmt_sk, uint16_t index)
+static void index_added(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
 {
 	if (monitor)
 		printf("hci%u added\n", index);
-	return 0;
 }
 
-static int mgmt_index_removed(int mgmt_sk, uint16_t index)
+static void index_removed(uint16_t index, uint16_t len,
+				const void *param, void *user_data)
 {
 	if (monitor)
 		printf("hci%u removed\n", index);
-	return 0;
 }
 
 static const char *settings_str[] = {
@@ -714,10 +714,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_INDEX_ADDED:
-		return mgmt_index_added(mgmt_sk, index);
-	case MGMT_EV_INDEX_REMOVED:
-		return mgmt_index_removed(mgmt_sk, index);
 	case MGMT_EV_NEW_SETTINGS:
 		return mgmt_new_settings(mgmt_sk, index, data, len);
 	case MGMT_EV_DISCOVERING:
@@ -2031,6 +2027,10 @@ int main(int argc, char *argv[])
 	}
 
 	mgmt_register(mgmt, MGMT_EV_CONTROLLER_ERROR, index, controller_error,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_INDEX_ADDED, index, index_added,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
 								NULL, NULL);
 
 	pollfd.fd = mgmt_sk;
