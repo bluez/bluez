@@ -743,22 +743,24 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 	}
 }
 
-static int mgmt_process_data(int mgmt_sk)
+static gboolean mgmt_process_data(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
 {
 	char buf[1024];
 	struct mgmt_hdr *hdr = (void *) buf;
 	uint16_t len, ev, index;
 	ssize_t ret;
+	int mgmt_sk = g_io_channel_unix_get_fd(io);
 
 	ret = read(mgmt_sk, buf, sizeof(buf));
 	if (ret < 0) {
 		fprintf(stderr, "read: %s\n", strerror(errno));
-		return ret;
+		return FALSE;
 	}
 
 	if (ret < MGMT_HDR_SIZE) {
 		fprintf(stderr, "Too small mgmt packet (%zd bytes)\n", ret);
-		return 0;
+		return TRUE;
 	}
 
 	ev = bt_get_le16(&hdr->opcode);
@@ -771,12 +773,12 @@ static int mgmt_process_data(int mgmt_sk)
 	if (ret != MGMT_HDR_SIZE + len) {
 		fprintf(stderr, "Packet length mismatch. ret %zd len %u\n",
 								ret, len);
-		return 0;
+		return TRUE;
 	}
 
 	mgmt_handle_event(mgmt_sk, ev, index, buf + MGMT_HDR_SIZE, len);
 
-	return 0;
+	return TRUE;
 }
 
 static void cmd_monitor(int mgmt_sk, uint16_t index, int argc, char **argv)
@@ -1967,8 +1969,10 @@ int main(int argc, char *argv[])
 {
 	int opt, i, mgmt_sk;
 	uint16_t index = MGMT_INDEX_NONE;
-	struct pollfd pollfd;
 	struct mgmt *mgmt;
+	GMainLoop *event_loop;
+	GIOChannel *mgmt_io;
+	guint io_id;
 
 	while ((opt = getopt_long(argc, argv, "+hvi:",
 						main_options, NULL)) != -1) {
@@ -2033,25 +2037,21 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_INDEX_REMOVED, index, index_removed,
 								NULL, NULL);
 
-	pollfd.fd = mgmt_sk;
-	pollfd.events = POLLIN;
-	pollfd.revents = 0;
+	event_loop = g_main_loop_new(NULL, FALSE);
+	mgmt_io = g_io_channel_unix_new(mgmt_sk);
+	io_id = g_io_add_watch(mgmt_io, G_IO_IN, mgmt_process_data, NULL);
 
-	while (poll(&pollfd, 1, -1) >= 0) {
-		if (pollfd.revents & (POLLHUP | POLLERR | POLLNVAL))
-			break;
-
-		if (pollfd.revents & POLLIN)
-			mgmt_process_data(mgmt_sk);
-
-		pollfd.revents = 0;
-	}
+	g_main_loop_run(event_loop);
 
 	mgmt_cancel_all(mgmt);
 	mgmt_unregister_all(mgmt);
 	mgmt_unref(mgmt);
 
+	g_source_remove(io_id);
+	g_io_channel_unref(mgmt_io);
 	close(mgmt_sk);
+
+	g_main_loop_unref(event_loop);
 
 	return 0;
 }
