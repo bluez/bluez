@@ -423,42 +423,39 @@ static void local_name_changed(uint16_t index, uint16_t len, const void *param,
 		printf("hci%u name changed: %s\n", index, ev->name);
 }
 
-static void confirm_name_rsp(int mgmt_sk, uint16_t op, uint16_t id,
-				uint8_t status, void *rsp, uint16_t len,
-				void *user_data)
+static void confirm_name_rsp(uint8_t status, uint16_t len,
+					const void *param, void *user_data)
 {
-	struct mgmt_rp_confirm_name *rp = rsp;
+	const struct mgmt_rp_confirm_name *rp = param;
 	char addr[18];
 
 	if (len == 0 && status != 0) {
 		fprintf(stderr,
-			"hci%u confirm_name failed with status 0x%02x (%s)\n",
-					id, status, mgmt_errstr(status));
+			"confirm_name failed with status 0x%02x (%s)\n",
+					status, mgmt_errstr(status));
 		return;
 	}
 
 	if (len != sizeof(*rp)) {
-		fprintf(stderr,
-			"hci%u confirm_name rsp length %u instead of %zu\n",
-			id, len, sizeof(*rp));
+		fprintf(stderr, "confirm_name rsp length %u instead of %zu\n",
+			len, sizeof(*rp));
 		return;
 	}
 
 	ba2str(&rp->addr.bdaddr, addr);
 
 	if (status != 0)
-		fprintf(stderr,
-			"hci%u confirm_name for %s failed: 0x%02x (%s)\n",
-			id, addr, status, mgmt_errstr(status));
+		fprintf(stderr, "confirm_name for %s failed: 0x%02x (%s)\n",
+			addr, status, mgmt_errstr(status));
 	else
-		printf("hci%u confirm_name succeeded for %s\n", id, addr);
+		printf("confirm_name succeeded for %s\n", addr);
 }
 
 static void device_found(uint16_t index, uint16_t len, const void *param,
 							void *user_data)
 {
 	const struct mgmt_ev_device_found *ev = param;
-	int *mgmt_sk = user_data;
+	struct mgmt *mgmt = user_data;
 	uint32_t flags;
 	uint16_t eir_len;
 	struct eir_data eir;
@@ -506,9 +503,8 @@ static void device_found(uint16_t index, uint16_t len, const void *param,
 		else
 			cp.name_known = 1;
 
-		mgmt_send_cmd(*mgmt_sk, MGMT_OP_CONFIRM_NAME, index,
-					&cp, sizeof(cp), confirm_name_rsp,
-					NULL);
+		mgmt_reply(mgmt, MGMT_OP_CONFIRM_NAME, index, sizeof(cp), &cp,
+						confirm_name_rsp, NULL, NULL);
 	}
 }
 
@@ -2106,7 +2102,7 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_LOCAL_NAME_CHANGED, index,
 					local_name_changed, NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_DEVICE_FOUND, index, device_found,
-							&mgmt_sk, NULL);
+								mgmt, NULL);
 	mgmt_register(mgmt, MGMT_EV_PIN_CODE_REQUEST, index, request_pin,
 							&mgmt_sk, NULL);
 	mgmt_register(mgmt, MGMT_EV_USER_CONFIRM_REQUEST, index, user_confirm,
