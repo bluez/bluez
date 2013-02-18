@@ -286,14 +286,15 @@ static void discovering(uint16_t index, uint16_t len, const void *param,
 				ev->type, ev->discovering ? "on" : "off");
 }
 
-static int mgmt_new_link_key(int mgmt_sk, uint16_t index,
-				struct mgmt_ev_new_link_key *ev, uint16_t len)
+static void new_link_key(uint16_t index, uint16_t len, const void *param,
+							void *user_data)
 {
+	const struct mgmt_ev_new_link_key *ev = param;
 
 	if (len != sizeof(*ev)) {
 		fprintf(stderr, "Invalid new_link_key length (%u bytes)\n",
 									len);
-		return -EINVAL;
+		return;
 	}
 
 	if (monitor) {
@@ -303,8 +304,6 @@ static int mgmt_new_link_key(int mgmt_sk, uint16_t index,
 				"store_hint %u\n", index, addr, ev->key.type,
 				ev->key.pin_len, ev->store_hint);
 	}
-
-	return 0;
 }
 
 static const char *typestr(uint8_t type)
@@ -720,8 +719,6 @@ static int mgmt_handle_event(int mgmt_sk, uint16_t ev, uint16_t index,
 		return mgmt_cmd_complete(mgmt_sk, index, data, len);
 	case MGMT_EV_CMD_STATUS:
 		return mgmt_cmd_status(mgmt_sk, index, data, len);
-	case MGMT_EV_NEW_LINK_KEY:
-		return mgmt_new_link_key(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_CONNECTED:
 		return mgmt_connected(mgmt_sk, index, data, len);
 	case MGMT_EV_DEVICE_DISCONNECTED:
@@ -2052,6 +2049,8 @@ int main(int argc, char *argv[])
 	mgmt_register(mgmt, MGMT_EV_NEW_SETTINGS, index, new_settings,
 								NULL, NULL);
 	mgmt_register(mgmt, MGMT_EV_DISCOVERING, index, discovering,
+								NULL, NULL);
+	mgmt_register(mgmt, MGMT_EV_NEW_LINK_KEY, index, new_link_key,
 								NULL, NULL);
 
 	event_loop = g_main_loop_new(NULL, FALSE);
