@@ -32,7 +32,6 @@ src/builtin.h
 src/bluetoothd
 tools/97-hid2hci.rules
 
-profiles/sap/sap.c
 profiles/cups/bluetooth
 profiles/iap/iapd
 
