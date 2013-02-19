@@ -58,6 +58,9 @@ static GDBusClient *client = NULL;
 static GSList *players = NULL;
 static GSList *transports = NULL;
 
+static gboolean option_version = FALSE;
+static gboolean option_export = FALSE;
+
 struct player {
 	char *name;
 	char *bus_name;
@@ -452,6 +455,20 @@ static DBusHandlerResult player_message(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static struct player *find_player_by_bus_name(const char *name)
+{
+	GSList *l;
+
+	for (l = players; l; l = l->next) {
+		struct player *player = l->data;
+
+		if (strcmp(player->bus_name, name) == 0)
+			return player;
+	}
+
+	return NULL;
+}
+
 static const DBusObjectPathVTable player_table = {
 	.message_function = player_message,
 };
@@ -459,14 +476,23 @@ static const DBusObjectPathVTable player_table = {
 static void add_player(DBusConnection *conn, const char *name,
 							const char *sender)
 {
-	DBusMessage *reply = get_all(conn, name);
+	DBusMessage *reply = NULL;
 	DBusMessage *msg;
 	DBusMessageIter iter, args, properties;
 	DBusError err;
 	char *path, *owner;
+	struct player *player;
 
-	if (!reply || !adapter)
+	if (!adapter)
 		return;
+
+	player = find_player_by_bus_name(name);
+	if (player == NULL) {
+		reply = get_all(conn, name);
+		if (reply == NULL)
+			return;
+		dbus_message_iter_init(reply, &args);
+	}
 
 	msg = dbus_message_new_method_call(BLUEZ_BUS_NAME,
 					g_dbus_proxy_get_path(adapter),
@@ -487,19 +513,24 @@ static void add_player(DBusConnection *conn, const char *name,
 
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &properties);
-
-	dbus_message_iter_init(reply, &args);
-
-	if (parse_properties(conn, path, &args, &properties) < 0)
-		goto done;
-
-	dbus_message_iter_close_container(&iter, &properties);
-
-	dbus_message_unref(reply);
+	if (player != NULL) {
+		if (!g_dbus_get_properties(player->conn,
+						MPRIS_PLAYER_PATH,
+						MPRIS_PLAYER_INTERFACE,
+						&iter))
+			goto done;
+	} else {
+		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+				DBUS_TYPE_STRING_AS_STRING
+				DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+				&properties);
+		if (parse_properties(conn, path, &args, &properties) < 0)
+			goto done;
+		dbus_message_iter_close_container(&iter, &properties);
+		dbus_message_unref(reply);
+	}
 
 	dbus_error_init(&err);
 
@@ -598,20 +629,6 @@ done:
 	return TRUE;
 }
 
-static struct player *find_player_by_bus_name(const char *name)
-{
-	GSList *l;
-
-	for (l = players; l; l = l->next) {
-		struct player *player = l->data;
-
-		if (strcmp(player->bus_name, name) == 0)
-			return player;
-	}
-
-	return NULL;
-}
-
 static gboolean name_owner_changed(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -632,7 +649,7 @@ static gboolean name_owner_changed(DBusConnection *conn,
 	if (*new == '\0') {
 		printf("player %s at %s disappear\n", name, old);
 		remove_player(conn, old);
-	} else if (find_player_by_bus_name(name) == NULL) {
+	} else if (option_export || find_player_by_bus_name(name) == NULL) {
 		printf("player %s at %s found\n", name, new);
 		add_player(conn, name, new);
 	}
@@ -770,8 +787,12 @@ static void usage(void)
 	printf("Usage:\n");
 }
 
-static struct option main_options[] = {
-	{ 0, 0, 0, 0 }
+static GOptionEntry options[] = {
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
+				"Show version information and exit" },
+	{ "export", 'e', 0, G_OPTION_ARG_NONE, &option_export,
+				"Export remote players" },
+	{ NULL },
 };
 
 static void connect_handler(DBusConnection *connection, void *user_data)
@@ -1746,19 +1767,28 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
 	guint owner_watch, properties_watch;
 	struct sigaction sa;
-	int opt;
 
-	while ((opt = getopt_long(argc, argv, "h", main_options,
-							NULL)) != EOF) {
-		switch(opt) {
-		case 'h':
-			usage();
-			exit(0);
-		default:
-			exit(1);
-		}
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
+	}
+
+	g_option_context_free(context);
+
+	if (option_version == TRUE) {
+		usage();
+		exit(0);
 	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);

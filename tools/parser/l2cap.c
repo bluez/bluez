@@ -587,7 +587,7 @@ static void conf_rfc(void *ptr, int len, int in, uint16_t handle,
 	uint8_t mode;
 
 	mode = *((uint8_t *) ptr);
-	set_mode(in, handle, cid, mode);
+	set_mode(!in, handle, cid, mode);
 
 	printf("RFC 0x%02x (%s", mode, mode2str(mode));
 	if (mode >= 0x01 && mode <= 0x04) {
