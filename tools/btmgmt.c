@@ -135,8 +135,10 @@ static void discovering(uint16_t index, uint16_t len, const void *param,
 		return;
 	}
 
-	if (ev->discovering == 0 && discovery)
+	if (ev->discovering == 0 && discovery) {
 		g_main_loop_quit(event_loop);
+		return;
+	}
 
 	if (monitor)
 		printf("hci%u type %u discovering %s\n", index,
