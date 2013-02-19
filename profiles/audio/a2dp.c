@@ -336,6 +336,20 @@ static struct a2dp_setup *find_setup_by_dev(struct audio_device *dev)
 	return NULL;
 }
 
+static struct a2dp_setup *find_setup_by_stream(struct avdtp_stream *stream)
+{
+	GSList *l;
+
+	for (l = setups; l != NULL; l = l->next) {
+		struct a2dp_setup *setup = l->data;
+
+		if (setup->stream == stream)
+			return setup;
+	}
+
+	return NULL;
+}
+
 static void stream_state_changed(struct avdtp_stream *stream,
 					avdtp_state_t old_state,
 					avdtp_state_t new_state,
@@ -343,6 +357,29 @@ static void stream_state_changed(struct avdtp_stream *stream,
 					void *user_data)
 {
 	struct a2dp_sep *sep = user_data;
+
+	if (new_state == AVDTP_STATE_OPEN) {
+		struct a2dp_setup *setup;
+		int err;
+
+		setup = find_setup_by_stream(stream);
+		if (!setup || !setup->start)
+			return;
+
+		setup->start = FALSE;
+
+		err = avdtp_start(setup->session, stream);
+		if (err < 0 && err != -EINPROGRESS) {
+			error("avdtp_start: %s (%d)", strerror(-err), -err);
+			finalize_setup_errno(setup, err, finalize_resume,
+									NULL);
+			return;
+		}
+
+		sep->starting = TRUE;
+
+		return;
+	}
 
 	if (new_state != AVDTP_STATE_IDLE)
 		return;
@@ -689,6 +726,14 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	}
 
 	finalize_config(setup);
+
+	if (!setup->start || !err)
+		return;
+
+	setup->start = FALSE;
+	finalize_resume(setup);
+
+	return;
 }
 
 static gboolean suspend_timeout(struct a2dp_sep *sep)
@@ -1717,6 +1762,9 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 	switch (avdtp_sep_get_state(sep->lsep)) {
 	case AVDTP_STATE_IDLE:
 		goto failed;
+		break;
+	case AVDTP_STATE_CONFIGURED:
+		setup->start = TRUE;
 		break;
 	case AVDTP_STATE_OPEN:
 		if (avdtp_start(session, sep->stream) < 0) {
