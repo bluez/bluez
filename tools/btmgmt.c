@@ -833,7 +833,7 @@ static unsigned int send_cmd(struct mgmt *mgmt, uint16_t op, uint16_t id,
 	if (send_id == 0)
 		g_free(data);
 
-	return id;
+	return send_id;
 }
 
 static void setting_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
