@@ -2086,9 +2086,14 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 
 	ext = g_new0(struct ext_profile, 1);
 
+	ext->uuid = bt_name2string(uuid);
+	if (ext->uuid == NULL) {
+		g_free(ext);
+		return NULL;
+	}
+
 	ext->owner = g_strdup(owner);
 	ext->path = g_strdup(path);
-	ext->uuid = bt_name2string(uuid);
 
 	ext_set_defaults(ext);
 
