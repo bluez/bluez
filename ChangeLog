@@ -1,3 +1,13 @@
+ver 5.3:
+	Fix issue with registering invalid profiles.
+	Fix issue with inconsistent A2DP transport state.
+	Fix issue with A2DP resume while in configured state.
+	Fix issue with buffer overflow when processing SDP response.
+	Fix issue with missing range check for SDP attribute response.
+	Fix issue with missing validation of SDP data elements.
+	Fix issue with missing fallback to static hostname.
+	Fix issue with default adapter assignment.
+
 ver 5.2:
 	Fix issue with connection handling for Low Energy.
 	Fix issue with broken device discovery handling.
