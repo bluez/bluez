@@ -629,6 +629,14 @@ const char *bt_compidtostr(int compid)
 		return "Meso international";
 	case 183:
 		return "TreLab Ltd";
+	case 184:
+		return "Qualcomm Innovation Center, Inc. (QuIC)";
+	case 185:
+		return "Johnson Controls, Inc.";
+	case 186:
+		return "Starkey Laboratories Inc.";
+	case 187:
+		return "S-Power Electronics Limited";
 	case 65535:
 		return "internal use";
 	default:
