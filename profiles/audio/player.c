@@ -290,7 +290,8 @@ static gboolean get_device(const GDBusPropertyTable *property,
 {
 	struct media_player *mp = data;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &mp->device);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+								&mp->device);
 
 	return TRUE;
 }
@@ -570,7 +571,7 @@ static const GDBusPropertyTable media_player_properties[] = {
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Track", "a{sv}", get_track, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Device", "s", get_device, NULL, NULL,
+	{ "Device", "o", get_device, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Browsable", "b", get_browsable, NULL, browsable_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
