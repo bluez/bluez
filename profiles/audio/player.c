@@ -792,13 +792,16 @@ void media_player_set_duration(struct media_player *mp, uint32_t duration)
 
 	DBG("%u", duration);
 
-	value = g_strdup_printf("%u", duration);
-
-	curval = g_hash_table_lookup(mp->track, "Duration");
-	if (g_strcmp0(curval, value) == 0) {
-		g_free(value);
+	/* Only update duration if track exists */
+	if (g_hash_table_size(mp->track) == 0)
 		return;
-	}
+
+	/* Ignore if duration is already set */
+	curval = g_hash_table_lookup(mp->track, "Duration");
+	if (curval != NULL)
+		return;
+
+	value = g_strdup_printf("%u", duration);
 
 	g_hash_table_replace(mp->track, g_strdup("Duration"), value);
 

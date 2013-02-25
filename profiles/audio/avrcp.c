@@ -1844,6 +1844,8 @@ static gboolean avrcp_get_element_attributes_rsp(struct avctp *conn,
 
 	avrcp_parse_attribute_list(player, &pdu->params[1], count);
 
+	avrcp_get_play_status(session);
+
 	return FALSE;
 }
 
@@ -2005,6 +2007,8 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 	}
 
 	avrcp_parse_attribute_list(player, &pdu->params[2], count);
+
+	avrcp_get_play_status(session);
 
 	return FALSE;
 }
@@ -2182,8 +2186,6 @@ static void avrcp_track_changed(struct avrcp *session,
 		avrcp_get_item_attributes(session, uid);
 	} else
 		avrcp_get_element_attributes(session);
-
-	avrcp_get_play_status(session);
 }
 
 static void avrcp_setting_changed(struct avrcp *session,
