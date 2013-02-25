@@ -72,6 +72,7 @@ void media_player_set_browsable(struct media_player *mp, bool enabled);
 void media_player_set_searchable(struct media_player *mp, bool enabled);
 void media_player_set_folder(struct media_player *mp, const char *path,
 								uint32_t items);
+void media_player_set_playlist(struct media_player *mp, const char *name);
 
 int media_player_create_folder(struct media_player *mp, const char *name,
 						player_folder_type_t type);

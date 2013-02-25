@@ -2042,9 +2042,11 @@ static void avrcp_player_parse_features(struct avrcp_player *player,
 	if (features[7] & 0x10)
 		media_player_set_searchable(mp, true);
 
-	if (features[8] & 0x02)
+	if (features[8] & 0x02) {
 		media_player_create_folder(mp, "/NowPlaying",
 						PLAYER_FOLDER_TYPE_MIXED);
+		media_player_set_playlist(mp, "/NowPlaying");
+	}
 }
 
 static void avrcp_parse_media_player_item(struct avrcp *session,

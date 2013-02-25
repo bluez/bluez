@@ -259,6 +259,10 @@ Properties	string Equalizer [readwrite]
 			by using MediaLibrary interface but it might interfere
 			in the playback of other players.
 
+		object Playlist
+
+			Playlist object path.
+
 MediaFolder1 hierarchy
 ======================
 

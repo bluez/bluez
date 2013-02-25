@@ -79,7 +79,8 @@ struct media_player {
 	char			*subtype;	/* Player subtype */
 	bool			browsable;	/* Player browsing feature */
 	bool			searchable;	/* Player searching feature */
-	struct media_folder	*folder;	/* Player currenct folder */
+	struct media_folder	*folder;	/* Player current folder */
+	struct media_item	*playlist;	/* Player current playlist */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
 	GHashTable		*track;		/* Player current track */
@@ -414,6 +415,29 @@ static gboolean get_searchable(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static gboolean playlist_exists(const GDBusPropertyTable *property,
+								void *data)
+{
+	struct media_player *mp = data;
+
+	return mp->playlist != NULL;
+}
+
+static gboolean get_playlist(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_player *mp = data;
+	struct media_item *playlist = mp->playlist;
+
+	if (playlist == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+							&playlist->path);
+
+	return TRUE;
+}
+
 static DBusMessage *media_player_play(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -577,6 +601,8 @@ static const GDBusPropertyTable media_player_properties[] = {
 	{ "Browsable", "b", get_browsable, NULL, browsable_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Searchable", "b", get_searchable, NULL, searchable_exists,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
+	{ "Playlist", "o", get_playlist, NULL, playlist_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ }
 };
@@ -1008,6 +1034,24 @@ void media_player_set_folder(struct media_player *mp, const char *name,
 	}
 
 	media_player_set_folder_item(mp, item, number_of_items);
+}
+
+void media_player_set_playlist(struct media_player *mp, const char *name)
+{
+	struct media_item *item;
+
+	DBG("%s", name);
+
+	item = media_player_find_folder(mp, name);
+	if (item == NULL) {
+		error("Unknown folder: %s", name);
+		return;
+	}
+
+	mp->playlist = item;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), mp->path,
+					MEDIA_PLAYER_INTERFACE, "Playlist");
 }
 
 static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
