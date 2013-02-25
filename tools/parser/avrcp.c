@@ -1222,6 +1222,10 @@ response:
 		uid = get_u16(frm);
 		printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
 		break;
+	case AVRCP_EVENT_UIDS_CHANGED:
+		uid = get_u16(frm);
+		printf("UIDCounter: 0x%04x (%u)\n", uid, uid);
+		break;
 	}
 }
 
