@@ -959,6 +959,10 @@ void media_player_set_browsable(struct media_player *mp, bool enabled)
 	DBG("%s", enabled ? "true" : "false");
 
 	mp->browsable = enabled;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Browsable");
 }
 
 void media_player_set_searchable(struct media_player *mp, bool enabled)
@@ -966,6 +970,10 @@ void media_player_set_searchable(struct media_player *mp, bool enabled)
 	DBG("%s", enabled ? "true" : "false");
 
 	mp->searchable = enabled;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(),
+					mp->path, MEDIA_PLAYER_INTERFACE,
+					"Searchable");
 }
 
 static void media_player_set_folder_item(struct media_player *mp,
