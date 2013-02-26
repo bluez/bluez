@@ -814,6 +814,10 @@ void media_player_set_position(struct media_player *mp, uint32_t position)
 {
 	DBG("%u", position);
 
+	/* Only update duration if track exists */
+	if (g_hash_table_size(mp->track) == 0)
+		return;
+
 	mp->position = position;
 	g_timer_start(mp->progress);
 
