@@ -267,6 +267,13 @@ static void set_setting(const GDBusPropertyTable *property,
 	player_set_setting(mp, id, property->name, value);
 }
 
+static gboolean track_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct media_player *mp = data;
+
+	return g_hash_table_size(mp->track) != 0;
+}
+
 static gboolean get_track(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
@@ -594,7 +601,7 @@ static const GDBusPropertyTable media_player_properties[] = {
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Scan", "s", get_setting, set_setting, setting_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
-	{ "Track", "a{sv}", get_track, NULL, NULL,
+	{ "Track", "a{sv}", get_track, NULL, track_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Device", "o", get_device, NULL, NULL,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
