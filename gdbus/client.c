@@ -205,6 +205,7 @@ static void prop_entry_free(gpointer data)
 static void add_property(GDBusProxy *proxy, const char *name,
 				DBusMessageIter *iter, gboolean send_changed)
 {
+	GDBusClient *client = proxy->client;
 	DBusMessageIter value;
 	struct prop_entry *prop;
 
@@ -215,20 +216,8 @@ static void add_property(GDBusProxy *proxy, const char *name,
 
 	prop = g_hash_table_lookup(proxy->prop_list, name);
 	if (prop != NULL) {
-		GDBusClient *client = proxy->client;
-
 		prop_entry_update(prop, &value);
-
-		if (proxy->prop_func)
-			proxy->prop_func(proxy, name, &value, proxy->prop_data);
-
-		if (client == NULL || send_changed == FALSE)
-			return;
-
-		if (client->property_changed)
-			client->property_changed(proxy, name, &value,
-							client->user_data);
-		return;
+		goto done;
 	}
 
 	prop = prop_entry_new(name, &value);
@@ -237,8 +226,16 @@ static void add_property(GDBusProxy *proxy, const char *name,
 
 	g_hash_table_replace(proxy->prop_list, prop->name, prop);
 
+done:
 	if (proxy->prop_func)
 		proxy->prop_func(proxy, name, &value, proxy->prop_data);
+
+	if (client == NULL || send_changed == FALSE)
+		return;
+
+	if (client->property_changed)
+		client->property_changed(proxy, name, &value,
+							client->user_data);
 }
 
 static void update_properties(GDBusProxy *proxy, DBusMessageIter *iter,
