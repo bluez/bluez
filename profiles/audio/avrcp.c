@@ -2226,6 +2226,13 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	avrcp_get_media_player_list(session);
 }
 
+static void avrcp_uids_changed(struct avrcp *session, struct avrcp_header *pdu)
+{
+	struct avrcp_player *player = session->player;
+
+	player->uid_counter = bt_get_be16(&pdu->params[1]);
+}
+
 static gboolean avrcp_handle_event(struct avctp *conn,
 					uint8_t code, uint8_t subunit,
 					uint8_t *operands, size_t operand_count,
@@ -2261,6 +2268,9 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 		break;
 	case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		avrcp_addressed_player_changed(session, pdu);
+		break;
+	case AVRCP_EVENT_UIDS_CHANGED:
+		avrcp_uids_changed(session, pdu);
 		break;
 	}
 
@@ -2443,6 +2453,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 		case AVRCP_EVENT_TRACK_CHANGED:
 		case AVRCP_EVENT_SETTINGS_CHANGED:
 		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
+		case AVRCP_EVENT_UIDS_CHANGED:
 			avrcp_register_notification(session, event);
 			break;
 		}
