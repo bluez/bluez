@@ -2222,7 +2222,7 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 		return;
 
 	player->id = id;
-	player->uid_counter = bt_get_le16(&pdu->params[3]);
+	player->uid_counter = bt_get_be16(&pdu->params[3]);
 	avrcp_get_media_player_list(session);
 }
 
