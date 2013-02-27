@@ -1081,7 +1081,7 @@ static void set_repeat(const GDBusPropertyTable *property,
 	}
 
 	g_dbus_proxy_set_property_basic(player->proxy, "Repeat",
-					DBUS_TYPE_STRING, value,
+					DBUS_TYPE_STRING, &value,
 					property_result, GUINT_TO_POINTER(id),
 					NULL);
 }
@@ -1143,7 +1143,7 @@ static void set_shuffle(const GDBusPropertyTable *property,
 	value = shuffle ? "alltracks" : "off";
 
 	g_dbus_proxy_set_property_basic(player->proxy, "Shuffle",
-					DBUS_TYPE_STRING, value,
+					DBUS_TYPE_STRING, &value,
 					property_result, GUINT_TO_POINTER(id),
 					NULL);
 }
