@@ -352,50 +352,67 @@ Properties	string Name [readonly]
 
 			Item displayable name
 
-		boolean Folder [readonly]
-
-			Indicates whether the item is a folder
-
 		string Type [readonly]
 
 			Item type
 
-			Possible values:
+			Possible values: "video", "audio", "folder"
 
-				Folder: "Mixed", "Titles", "Albums", "Artists"
-				Other Items: "Video", "Audio"
+		string FolderType [readonly, optional]
 
-		boolean Playable [readonly]
+			Folder type.
+
+			Possible values: "mixed", "titles", "albums", "artists"
+
+			Available if property Type is "Folder"
+
+		boolean Playable [readonly, optional]
 
 			Indicates if the item can be played
 
-		string Title:
+			Available if property Type is "folder"
+
+		string Title [readonly, optional]
 
 			Item title name
 
-		string Artist:
+			Available if property Type is "audio" or "video"
+
+		string Artist [readonly, optional]
 
 			Item artist name
 
-		string Album:
+			Available if property Type is "audio" or "video"
+
+		string Album [readonly, optional]
 
 			Item album name
 
-		string Genre:
+			Available if property Type is "audio" or "video"
+
+		string Genre [readonly, optional]
 
 			Item genre name
 
-		uint32 NumberOfTracks:
+			Available if property Type is "audio" or "video"
+
+		uint32 NumberOfTracks [readonly, optional]
 
 			Item album number of tracks in total
 
-		uint32 Number:
+			Available if property Type is "audio" or "video"
+
+		uint32 Number [readonly, optional]
 
 			Item album number
 
-		uint32 Duration:
+			Available if property Type is "audio" or "video"
+
+		uint32 Duration [readonly, optional]
 
 			Item duration in milliseconds
+
+			Available if property Type is "audio" or "video"
 
 MediaEndpoint1 hierarchy
 ========================
