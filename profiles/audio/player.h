@@ -23,6 +23,24 @@
  *
  */
 
+typedef enum {
+	PLAYER_ITEM_TYPE_AUDIO,
+	PLAYER_ITEM_TYPE_VIDEO,
+	PLAYER_ITEM_TYPE_FOLDER,
+	PLAYER_ITEM_TYPE_INVALID,
+} player_item_type_t;
+
+typedef enum {
+	PLAYER_FOLDER_TYPE_MIXED,
+	PLAYER_FOLDER_TYPE_TITLES,
+	PLAYER_FOLDER_TYPE_ALBUMS,
+	PLAYER_FOLDER_TYPE_ARTISTS,
+	PLAYER_FOLDER_TYPE_GENRES,
+	PLAYER_FOLDER_TYPE_PLAYLISTS,
+	PLAYER_FOLDER_TYPE_YEARS,
+	PLAYER_FOLDER_TYPE_INVALID,
+} player_folder_type_t;
+
 struct media_player;
 
 struct media_player_callback {
@@ -56,7 +74,7 @@ void media_player_set_folder(struct media_player *mp, const char *path,
 								uint32_t items);
 
 int media_player_create_folder(struct media_player *mp, const char *name,
-							const char *type);
+						player_folder_type_t type);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,

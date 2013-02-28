@@ -62,8 +62,8 @@ struct media_item {
 	struct media_player	*player;
 	char			*path;		/* Item object path */
 	char			*name;		/* Item name */
-	char			*type;		/* Item type */
-	char			*folder_type;	/* Folder type */
+	player_item_type_t	type;		/* Item type */
+	player_folder_type_t	folder_type;	/* Folder type */
 	bool			playable;	/* Item playable flag */
 };
 
@@ -687,8 +687,6 @@ static void media_item_destroy(void *data)
 
 	g_free(item->path);
 	g_free(item->name);
-	g_free(item->type);
-	g_free(item->folder_type);
 	g_free(item);
 }
 
@@ -986,7 +984,7 @@ static struct media_item *media_player_find_folder(struct media_player *mp,
 	for (l = mp->folders; l; l = l->next) {
 		struct media_item *item = l->data;
 
-		if (g_strcmp0(item->type, "folder") != 0)
+		if (item->type != PLAYER_ITEM_TYPE_FOLDER)
 			continue;
 
 		if (g_str_equal(item->name, name))
@@ -1047,14 +1045,31 @@ static gboolean get_item_name(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static const char *type_to_string(uint8_t type)
+{
+	switch (type) {
+	case PLAYER_ITEM_TYPE_AUDIO:
+		return "audio";
+	case PLAYER_ITEM_TYPE_VIDEO:
+		return "video";
+	case PLAYER_ITEM_TYPE_FOLDER:
+		return "folder";
+	}
+
+	return NULL;
+}
+
 static gboolean get_item_type(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_item *item = data;
+	const char *string;
 
-	DBG("%s", item->type);
+	string = type_to_string(item->type);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &item->type);
+	DBG("%s", string);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &string);
 
 	return TRUE;
 }
@@ -1074,26 +1089,49 @@ static gboolean get_playable(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
+static const char *folder_type_to_string(uint8_t type)
+{
+	switch (type) {
+	case PLAYER_FOLDER_TYPE_MIXED:
+		return "mixed";
+	case PLAYER_FOLDER_TYPE_TITLES:
+		return "titles";
+	case PLAYER_FOLDER_TYPE_ALBUMS:
+		return "albums";
+	case PLAYER_FOLDER_TYPE_ARTISTS:
+		return "artists";
+	case PLAYER_FOLDER_TYPE_GENRES:
+		return "genres";
+	case PLAYER_FOLDER_TYPE_PLAYLISTS:
+		return "playlists";
+	case PLAYER_FOLDER_TYPE_YEARS:
+		return "years";
+	}
+
+	return NULL;
+}
+
 static gboolean folder_type_exists(const GDBusPropertyTable *property,
 								void *data)
 {
 	struct media_item *item = data;
 
-	return item->folder_type != NULL;
+	return folder_type_to_string(item->folder_type) != NULL;
 }
 
 static gboolean get_folder_type(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_item *item = data;
+	const char *string;
 
-	if (item->folder_type == NULL)
+	string = folder_type_to_string(item->folder_type);
+	if (string == NULL)
 		return FALSE;
 
-	DBG("%s", item->folder_type);
+	DBG("%s", string);
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-							&item->folder_type);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &string);
 
 	return TRUE;
 }
@@ -1119,18 +1157,24 @@ static const GDBusPropertyTable media_item_properties[] = {
 };
 
 static struct media_item *media_player_create_item(struct media_player *mp,
-							const char *name,
-							const char *type)
+						const char *name,
+						player_item_type_t type)
 {
 	struct media_item *item;
+	const char *strtype;
 
-	DBG("%s type %s", name, type);
+	strtype = type_to_string(type);
+	if (strtype == NULL)
+		return NULL;
+
+	DBG("%s type %s", name, strtype);
 
 	item = g_new0(struct media_item, 1);
 	item->player = mp;
 	item->path = g_strdup_printf("%s%s", mp->path, name);
 	item->name = g_strdup(name);
-	item->type = g_strdup(type);
+	item->type = type;
+	item->folder_type = PLAYER_FOLDER_TYPE_INVALID;
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					item->path, MEDIA_ITEM_INTERFACE,
@@ -1147,15 +1191,16 @@ static struct media_item *media_player_create_item(struct media_player *mp,
 }
 
 int media_player_create_folder(struct media_player *mp, const char *name,
-							const char *type)
+						player_folder_type_t type)
 {
 	struct media_item *item;
 
-	item = media_player_create_item(mp, name, "folder");
+	item = media_player_create_item(mp, name,
+					PLAYER_ITEM_TYPE_FOLDER);
 	if (item == NULL)
 		return -EINVAL;
 
-	item->folder_type = g_strdup(type);
+	item->folder_type = type;
 
 	if (mp->folder == NULL)
 		media_player_set_folder_item(mp, item, 0);
