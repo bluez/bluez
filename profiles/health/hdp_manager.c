@@ -65,9 +65,9 @@ static void hdp_driver_remove(struct btd_profile *p, struct btd_device *device)
 	hdp_device_unregister(device);
 }
 
-static struct btd_profile hdp_profile = {
-	.name		= "hdp-profile",
-	.remote_uuids	= BTD_UUIDS(HDP_UUID, HDP_SOURCE_UUID, HDP_SINK_UUID),
+static struct btd_profile hdp_source_profile = {
+	.name		= "hdp-source",
+	.remote_uuids	= BTD_UUIDS(HDP_SOURCE_UUID),
 
 	.device_probe	= hdp_driver_probe,
 	.device_remove	= hdp_driver_remove,
@@ -76,19 +76,29 @@ static struct btd_profile hdp_profile = {
 	.adapter_remove	= hdp_adapter_remove,
 };
 
+static struct btd_profile hdp_sink_profile = {
+	.name		= "hdp-sink",
+	.remote_uuids	= BTD_UUIDS(HDP_SINK_UUID),
+
+	.device_probe	= hdp_driver_probe,
+	.device_remove	= hdp_driver_remove,
+};
+
 int hdp_manager_init(void)
 {
 	if (hdp_manager_start() < 0)
 		return -1;
 
-	btd_profile_register(&hdp_profile);
+	btd_profile_register(&hdp_source_profile);
+	btd_profile_register(&hdp_sink_profile);
 
 	return 0;
 }
 
 void hdp_manager_exit(void)
 {
-	btd_profile_unregister(&hdp_profile);
+	btd_profile_unregister(&hdp_sink_profile);
+	btd_profile_unregister(&hdp_source_profile);
 
 	hdp_manager_stop();
 }
