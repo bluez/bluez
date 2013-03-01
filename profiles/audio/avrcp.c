@@ -2818,41 +2818,63 @@ static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter,
 	return server;
 }
 
-int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
+int avrcp_target_register(struct btd_adapter *adapter, GKeyFile *config)
 {
 	sdp_record_t *record;
 	struct avrcp_server *server;
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
 
 	server = avrcp_server_register(adapter, config);
 	if (server == NULL)
 		return -EPROTONOSUPPORT;
 
+done:
 	record = avrcp_tg_record();
 	if (!record) {
 		error("Unable to allocate new service record");
-		avrcp_unregister(adapter);
+		avrcp_target_unregister(adapter);
 		return -1;
 	}
 
 	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
 		error("Unable to register AVRCP target service record");
-		avrcp_unregister(adapter);
+		avrcp_target_unregister(adapter);
 		sdp_record_free(record);
 		return -1;
 	}
 	server->tg_record_id = record->handle;
 
+	return 0;
+}
+
+int avrcp_remote_register(struct btd_adapter *adapter, GKeyFile *config)
+{
+	sdp_record_t *record;
+	struct avrcp_server *server;
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
+
+	server = avrcp_server_register(adapter, config);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
+
+done:
 	record = avrcp_ct_record();
 	if (!record) {
 		error("Unable to allocate new service record");
-		avrcp_unregister(adapter);
+		avrcp_remote_unregister(adapter);
 		return -1;
 	}
 
 	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
 		error("Unable to register AVRCP service record");
 		sdp_record_free(record);
-		avrcp_unregister(adapter);
+		avrcp_remote_unregister(adapter);
 		return -1;
 	}
 	server->ct_record_id = record->handle;
@@ -2860,24 +2882,12 @@ int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
 	return 0;
 }
 
-void avrcp_unregister(struct btd_adapter *adapter)
+static void avrcp_server_unregister(struct avrcp_server *server)
 {
-	struct avrcp_server *server;
-
-	server = find_server(servers, adapter);
-	if (!server)
-		return;
-
 	g_slist_free_full(server->sessions, g_free);
 	g_slist_free_full(server->players, player_destroy);
 
 	servers = g_slist_remove(servers, server);
-
-	if (server->ct_record_id != 0)
-		remove_record_from_server(server->ct_record_id);
-
-	if (server->tg_record_id != 0)
-		remove_record_from_server(server->tg_record_id);
 
 	avctp_unregister(server->adapter);
 	btd_adapter_unref(server->adapter);
@@ -2890,6 +2900,40 @@ void avrcp_unregister(struct btd_adapter *adapter)
 		avctp_remove_state_cb(avctp_id);
 		avctp_id = 0;
 	}
+}
+
+void avrcp_target_unregister(struct btd_adapter *adapter)
+{
+	struct avrcp_server *server;
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	if (server->tg_record_id != 0) {
+		remove_record_from_server(server->tg_record_id);
+		server->tg_record_id = 0;
+	}
+
+	if (server->ct_record_id == 0)
+		avrcp_server_unregister(server);
+}
+
+void avrcp_remote_unregister(struct btd_adapter *adapter)
+{
+	struct avrcp_server *server;
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	if (server->ct_record_id != 0) {
+		remove_record_from_server(server->ct_record_id);
+		server->ct_record_id = 0;
+	}
+
+	if (server->tg_record_id == 0)
+		avrcp_server_unregister(server);
 }
 
 struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,

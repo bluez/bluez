@@ -94,8 +94,10 @@ struct avrcp_player_cb {
 							void *user_data);
 };
 
-int avrcp_register(struct btd_adapter *adapter, GKeyFile *config);
-void avrcp_unregister(struct btd_adapter *adapter);
+int avrcp_target_register(struct btd_adapter *adapter, GKeyFile *config);
+void avrcp_target_unregister(struct btd_adapter *adapter);
+int avrcp_remote_register(struct btd_adapter *adapter, GKeyFile *config);
+void avrcp_remote_unregister(struct btd_adapter *adapter);
 
 gboolean avrcp_connect(struct audio_device *dev);
 void avrcp_disconnect(struct audio_device *dev);
