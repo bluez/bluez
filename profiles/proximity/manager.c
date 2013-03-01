@@ -52,18 +52,30 @@ static int monitor_device_probe(struct btd_profile *p,
 				struct btd_device *device, GSList *uuids)
 {
 	struct gatt_primary *linkloss, *txpower, *immediate;
+	int err = 0;
 
 	immediate = btd_device_get_primary(device, IMMEDIATE_ALERT_UUID);
 	txpower = btd_device_get_primary(device, TX_POWER_UUID);
 	linkloss = btd_device_get_primary(device, LINK_LOSS_UUID);
 
-	return monitor_register(device, linkloss, txpower, immediate, &enabled);
+	if (linkloss)
+		err = monitor_register_linkloss(device, &enabled, linkloss);
+
+	if (err >= 0 && immediate)
+		err = monitor_register_immediate(device, &enabled, immediate);
+
+	if (err >= 0 && txpower)
+		err = monitor_register_txpower(device, &enabled, txpower);
+
+	return err;
 }
 
 static void monitor_device_remove(struct btd_profile *p,
 						struct btd_device *device)
 {
-	monitor_unregister(device);
+	monitor_unregister_txpower(device);
+	monitor_unregister_immediate(device);
+	monitor_unregister_linkloss(device);
 }
 
 static struct btd_profile pxp_monitor_profile = {
