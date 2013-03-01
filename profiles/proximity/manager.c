@@ -104,28 +104,28 @@ static void monitor_txpower_remove(struct btd_profile *p,
 
 static struct btd_profile pxp_monitor_linkloss_profile = {
 	.name		= "proximity-linkloss",
-	.remote_uuids	= BTD_UUIDS(LINK_LOSS_UUID),
+	.remote_uuid	= LINK_LOSS_UUID,
 	.device_probe	= monitor_linkloss_probe,
 	.device_remove	= monitor_linkloss_remove,
 };
 
 static struct btd_profile pxp_monitor_immediate_profile = {
 	.name		= "proximity-immediate",
-	.remote_uuids	= BTD_UUIDS(IMMEDIATE_ALERT_UUID),
+	.remote_uuid	= IMMEDIATE_ALERT_UUID,
 	.device_probe	= monitor_immediate_probe,
 	.device_remove	= monitor_immediate_remove,
 };
 
 static struct btd_profile pxp_monitor_txpower_profile = {
 	.name		= "proximity-txpower",
-	.remote_uuids	= BTD_UUIDS(TX_POWER_UUID),
+	.remote_uuid	= TX_POWER_UUID,
 	.device_probe	= monitor_txpower_probe,
 	.device_remove	= monitor_txpower_remove,
 };
 
 static struct btd_profile pxp_reporter_profile = {
 	.name		= "Proximity Reporter GATT Driver",
-	.remote_uuids	= BTD_UUIDS(GATT_UUID),
+	.remote_uuid	= GATT_UUID,
 	.device_probe	= reporter_device_probe,
 	.device_remove	= reporter_device_remove,
 

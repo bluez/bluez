@@ -872,7 +872,7 @@ static void hog_remove(struct btd_profile *p, struct btd_device *device)
 
 static struct btd_profile hog_profile = {
 	.name		= "input-hog",
-	.remote_uuids	= BTD_UUIDS(HOG_UUID),
+	.remote_uuid	= HOG_UUID,
 	.device_probe	= hog_probe,
 	.device_remove	= hog_remove,
 };

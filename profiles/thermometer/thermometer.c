@@ -1313,7 +1313,7 @@ static void thermometer_adapter_remove(struct btd_profile *p,
 
 static struct btd_profile thermometer_profile = {
 	.name		= "Health Thermometer GATT driver",
-	.remote_uuids	= BTD_UUIDS(HEALTH_THERMOMETER_UUID),
+	.remote_uuid	= HEALTH_THERMOMETER_UUID,
 	.device_probe	= thermometer_device_probe,
 	.device_remove	= thermometer_device_remove,
 	.adapter_probe	= thermometer_adapter_probe,

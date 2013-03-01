@@ -339,7 +339,7 @@ static struct btd_profile a2dp_source_profile = {
 	.name		= "audio-source",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 
-	.remote_uuids	= BTD_UUIDS(A2DP_SOURCE_UUID),
+	.remote_uuid	= A2DP_SOURCE_UUID,
 	.device_probe	= a2dp_source_probe,
 	.device_remove	= audio_remove,
 
@@ -355,7 +355,7 @@ static struct btd_profile a2dp_sink_profile = {
 	.name		= "audio-sink",
 	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
 
-	.remote_uuids	= BTD_UUIDS(A2DP_SINK_UUID),
+	.remote_uuid	= A2DP_SINK_UUID,
 	.device_probe	= a2dp_sink_probe,
 	.device_remove	= audio_remove,
 
@@ -370,7 +370,7 @@ static struct btd_profile a2dp_sink_profile = {
 static struct btd_profile avrcp_target_profile = {
 	.name		= "audio-avrcp-target",
 
-	.remote_uuids	= BTD_UUIDS(AVRCP_TARGET_UUID),
+	.remote_uuid	= AVRCP_TARGET_UUID,
 	.device_probe	= avrcp_probe,
 	.device_remove	= audio_remove,
 
@@ -385,7 +385,7 @@ static struct btd_profile avrcp_target_profile = {
 static struct btd_profile avrcp_remote_profile = {
 	.name		= "audio-avrcp-control",
 
-	.remote_uuids	= BTD_UUIDS(AVRCP_REMOTE_UUID),
+	.remote_uuid	= AVRCP_REMOTE_UUID,
 	.device_probe	= avrcp_probe,
 	.device_remove	= audio_remove,
 

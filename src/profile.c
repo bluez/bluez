@@ -519,7 +519,7 @@ struct ext_profile {
 	char *(*get_record)(struct ext_profile *ext, struct ext_io *l2cap,
 							struct ext_io *rfcomm);
 
-	char **remote_uuids;
+	char *remote_uuid;
 
 	guint id;
 
@@ -851,7 +851,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	struct prop_append_data data = { &dict, conn };
-	const char *remote_uuid = ext->remote_uuids[0];
+	const char *remote_uuid = ext->remote_uuid;
 	const sdp_record_t *rec;
 	const char *path;
 	int fd;
@@ -1540,7 +1540,7 @@ static int resolve_service(struct ext_io *conn, const bdaddr_t *src,
 	uuid_t uuid;
 	int err;
 
-	bt_string2uuid(&uuid, ext->remote_uuids[0]);
+	bt_string2uuid(&uuid, ext->remote_uuid);
 	sdp_uuid128_to_uuid(&uuid);
 
 	err = bt_search_service(src, dst, &uuid, record_cb, conn, NULL);
@@ -1910,8 +1910,7 @@ static void ext_set_defaults(struct ext_profile *ext)
 	ext->authorize = true;
 	ext->enable_client = true;
 	ext->enable_server = true;
-
-	ext->remote_uuids = g_new0(char *, 2);
+	ext->remote_uuid = NULL;
 
 	for (i = 0; i < G_N_ELEMENTS(defaults); i++) {
 		struct default_settings *settings = &defaults[i];
@@ -1925,7 +1924,7 @@ static void ext_set_defaults(struct ext_profile *ext)
 		else
 			remote_uuid = ext->uuid;
 
-		ext->remote_uuids[0] = g_strdup(remote_uuid);
+		ext->remote_uuid = g_strdup(remote_uuid);
 
 		if (settings->channel)
 			ext->local_chan = settings->channel;
@@ -2122,21 +2121,18 @@ static struct ext_profile *create_ext(const char *owner, const char *path,
 	if (!ext->name)
 		ext->name = g_strdup_printf("%s%s/%s", owner, path, uuid);
 
-	if (!ext->remote_uuids[0]) {
+	if (!ext->remote_uuid) {
 		if (ext->service)
-			ext->remote_uuids[0] = g_strdup(ext->service);
+			ext->remote_uuid = g_strdup(ext->service);
 		else
-			ext->remote_uuids[0] = g_strdup(ext->uuid);
+			ext->remote_uuid = g_strdup(ext->uuid);
 	}
 
 	p = &ext->p;
 
 	p->name = ext->name;
 	p->local_uuid = ext->service ? ext->service : ext->uuid;
-
-	/* Typecast can't really be avoided here:
-	 * http://c-faq.com/ansi/constmismatch.html */
-	p->remote_uuids = (const char **) ext->remote_uuids;
+	p->remote_uuid = ext->remote_uuid;
 
 	if (ext->enable_server || ext->record || ext->get_record) {
 		p->adapter_probe = ext_adapter_probe;
@@ -2172,8 +2168,7 @@ static void remove_ext(struct ext_profile *ext)
 	g_slist_free_full(ext->servers, ext_io_destroy);
 	g_slist_free_full(ext->conns, ext_io_destroy);
 
-	g_strfreev(ext->remote_uuids);
-
+	g_free(ext->remote_uuid);
 	g_free(ext->name);
 	g_free(ext->owner);
 	g_free(ext->uuid);

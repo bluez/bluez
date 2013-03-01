@@ -287,7 +287,7 @@ static void scan_param_remove(struct btd_profile *p, struct btd_device *device)
 
 static struct btd_profile scan_profile = {
 	.name = "Scan Parameters Client Driver",
-	.remote_uuids = BTD_UUIDS(SCAN_PARAMETERS_UUID),
+	.remote_uuid = SCAN_PARAMETERS_UUID,
 	.device_probe = scan_param_probe,
 	.device_remove = scan_param_remove,
 };

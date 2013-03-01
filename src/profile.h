@@ -21,8 +21,6 @@
  *
  */
 
-#define BTD_UUIDS(args...) ((const char *[]) { args, NULL } )
-
 #define BTD_PROFILE_PRIORITY_LOW	0
 #define BTD_PROFILE_PRIORITY_MEDIUM	1
 #define BTD_PROFILE_PRIORITY_HIGH	2
@@ -32,7 +30,7 @@ struct btd_profile {
 	int priority;
 
 	const char *local_uuid;
-	const char **remote_uuids;
+	const char *remote_uuid;
 
 	bool auto_connect;
 

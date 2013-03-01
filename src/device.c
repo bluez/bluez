@@ -1158,15 +1158,12 @@ static struct btd_profile *find_connectable_profile(struct btd_device *dev,
 
 	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
 		struct btd_profile *p = l->data;
-		int i;
 
-		if (!p->connect || !p->remote_uuids)
+		if (!p->connect || !p->remote_uuid)
 			continue;
 
-		for (i = 0; p->remote_uuids[i] != NULL; i++) {
-			if (strcasecmp(uuid, p->remote_uuids[i]) == 0)
-				return p;
-		}
+		if (strcasecmp(uuid, p->remote_uuid) == 0)
+			return p;
 	}
 
 	return NULL;
@@ -2302,27 +2299,18 @@ GSList *device_get_uuids(struct btd_device *device)
 	return device->uuids;
 }
 
-static GSList *device_match_profile(struct btd_device *device,
+static bool device_match_profile(struct btd_device *device,
 					struct btd_profile *profile,
 					GSList *uuids)
 {
-	const char **uuid;
-	GSList *match_uuids = NULL;
+	if (profile->remote_uuid == NULL)
+		return false;
 
-	for (uuid = profile->remote_uuids; *uuid; uuid++) {
-		GSList *match;
+	if (g_slist_find_custom(uuids, profile->remote_uuid,
+							bt_uuid_strcmp) == NULL)
+		return false;
 
-		/* skip duplicated uuids */
-		if (g_slist_find_custom(match_uuids, *uuid, bt_uuid_strcmp))
-			continue;
-
-		/* match profile uuid */
-		match = g_slist_find_custom(uuids, *uuid, bt_uuid_strcmp);
-		if (match)
-			match_uuids = g_slist_append(match_uuids, match->data);
-	}
-
-	return match_uuids;
+	return true;
 }
 
 struct probe_data {
@@ -2340,9 +2328,10 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 	if (p->device_probe == NULL)
 		return;
 
-	probe_uuids = device_match_profile(d->dev, p, d->uuids);
-	if (!probe_uuids)
+	if (!device_match_profile(d->dev, p, d->uuids))
 		return;
+
+	probe_uuids = g_slist_append(NULL, (char *) p->remote_uuid);
 
 	err = p->device_probe(p, d->dev, probe_uuids);
 	if (err < 0) {
@@ -2366,9 +2355,10 @@ void device_probe_profile(gpointer a, gpointer b)
 	if (profile->device_probe == NULL)
 		return;
 
-	probe_uuids = device_match_profile(device, profile, device->uuids);
-	if (!probe_uuids)
+	if (!device_match_profile(device, profile, device->uuids))
 		return;
+
+	probe_uuids = g_slist_append(NULL, (char *) profile->remote_uuid);
 
 	ba2str(&device->bdaddr, addr);
 
@@ -2454,15 +2444,10 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 	for (l = device->profiles; l != NULL; l = next) {
 		struct btd_profile *profile = l->data;
-		GSList *probe_uuids;
 
 		next = l->next;
-		probe_uuids = device_match_profile(device, profile,
-								device->uuids);
-		if (probe_uuids != NULL) {
-			g_slist_free(probe_uuids);
+		if (device_match_profile(device, profile, device->uuids))
 			continue;
-		}
 
 		profile->device_remove(profile, device);
 		device->profiles = g_slist_remove(device->profiles, profile);

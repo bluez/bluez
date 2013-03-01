@@ -861,7 +861,7 @@ static void heartrate_device_remove(struct btd_profile *p,
 
 static struct btd_profile hrp_profile = {
 	.name		= "Heart Rate GATT Driver",
-	.remote_uuids	= BTD_UUIDS(HEART_RATE_UUID),
+	.remote_uuid	= HEART_RATE_UUID,
 
 	.device_probe	= heartrate_device_probe,
 	.device_remove	= heartrate_device_remove,

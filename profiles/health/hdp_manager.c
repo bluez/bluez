@@ -67,7 +67,7 @@ static void hdp_driver_remove(struct btd_profile *p, struct btd_device *device)
 
 static struct btd_profile hdp_source_profile = {
 	.name		= "hdp-source",
-	.remote_uuids	= BTD_UUIDS(HDP_SOURCE_UUID),
+	.remote_uuid	= HDP_SOURCE_UUID,
 
 	.device_probe	= hdp_driver_probe,
 	.device_remove	= hdp_driver_remove,
@@ -78,7 +78,7 @@ static struct btd_profile hdp_source_profile = {
 
 static struct btd_profile hdp_sink_profile = {
 	.name		= "hdp-sink",
-	.remote_uuids	= BTD_UUIDS(HDP_SINK_UUID),
+	.remote_uuid	= HDP_SINK_UUID,
 
 	.device_probe	= hdp_driver_probe,
 	.device_remove	= hdp_driver_remove,

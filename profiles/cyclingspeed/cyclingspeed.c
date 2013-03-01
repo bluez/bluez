@@ -1256,7 +1256,7 @@ static void csc_device_remove(struct btd_profile *p,
 
 static struct btd_profile cscp_profile = {
 	.name		= "Cycling Speed and Cadence GATT Driver",
-	.remote_uuids	= BTD_UUIDS(CYCLING_SC_UUID),
+	.remote_uuid	= CYCLING_SC_UUID,
 
 	.adapter_probe	= csc_adapter_probe,
 	.adapter_remove	= csc_adapter_remove,

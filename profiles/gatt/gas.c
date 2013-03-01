@@ -431,7 +431,7 @@ static void gatt_driver_remove(struct btd_profile *p,
 
 static struct btd_profile gatt_profile = {
 	.name		= "gap-gatt-profile",
-	.remote_uuids	= BTD_UUIDS(GATT_UUID),
+	.remote_uuid	= GATT_UUID,
 	.device_probe	= gatt_driver_probe,
 	.device_remove	= gatt_driver_remove
 };

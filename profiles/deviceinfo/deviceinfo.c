@@ -219,7 +219,7 @@ static void deviceinfo_driver_remove(struct btd_profile *p,
 
 static struct btd_profile deviceinfo_profile = {
 	.name		= "deviceinfo",
-	.remote_uuids	= BTD_UUIDS(DEVICE_INFORMATION_UUID),
+	.remote_uuid	= DEVICE_INFORMATION_UUID,
 	.device_probe	= deviceinfo_driver_probe,
 	.device_remove	= deviceinfo_driver_remove
 };
