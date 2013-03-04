@@ -1298,6 +1298,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lrwls.status = 0;
 		lrwls.size = 0;
 		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
+		break;
 
 	case BT_HCI_CMD_LE_READ_SUPPORTED_STATES:
 		if (btdev->type == BTDEV_TYPE_BREDR)
