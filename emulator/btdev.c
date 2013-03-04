@@ -76,6 +76,7 @@ struct btdev {
 	uint8_t  scan_enable;
 	uint16_t page_scan_interval;
 	uint16_t page_scan_window;
+	uint16_t page_scan_type;
 	uint8_t  auth_enable;
 	uint8_t  inquiry_mode;
 	uint8_t  afh_assess_mode;
@@ -282,6 +283,7 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 
 	btdev->page_scan_interval = 0x0800;
 	btdev->page_scan_window = 0x0012;
+	btdev->page_scan_type = 0x00;
 
 	btdev->acl_mtu = 192;
 	btdev->acl_max_pkt = 1;
@@ -692,6 +694,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_page_timeout *wpt;
 	const struct bt_hci_cmd_write_scan_enable *wse;
 	const struct bt_hci_cmd_write_page_scan_activity *wpsa;
+	const struct bt_hci_cmd_write_page_scan_type *wpst;
 	const struct bt_hci_cmd_write_auth_enable *wae;
 	const struct bt_hci_cmd_write_class_of_dev *wcod;
 	const struct bt_hci_cmd_write_voice_setting *wvs;
@@ -711,6 +714,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_page_timeout rpt;
 	struct bt_hci_rsp_read_scan_enable rse;
 	struct bt_hci_rsp_read_page_scan_activity rpsa;
+	struct bt_hci_rsp_read_page_scan_type rpst;
 	struct bt_hci_rsp_read_auth_enable rae;
 	struct bt_hci_rsp_read_class_of_dev rcod;
 	struct bt_hci_rsp_read_voice_setting rvs;
@@ -976,6 +980,23 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		wpsa = data;
 		btdev->page_scan_interval = le16_to_cpu(wpsa->interval);
 		btdev->page_scan_window = le16_to_cpu(wpsa->window);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_PAGE_SCAN_TYPE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		rpst.status = BT_HCI_ERR_SUCCESS;
+		rpst.type = btdev->page_scan_type;
+		cmd_complete(btdev, opcode, &rpst, sizeof(rpst));
+		break;
+
+	case BT_HCI_CMD_WRITE_PAGE_SCAN_TYPE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		wpst = data;
+		btdev->page_scan_type = wpst->type;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
