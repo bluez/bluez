@@ -22,7 +22,7 @@
  */
 
 int interactive(const gchar *src, const gchar *dst, const gchar *dst_type,
-		gboolean le);
+								int psm);
 GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 			const gchar *dst_type, const gchar *sec_level,
 			int psm, int mtu, BtIOConnect connect_cb);
