@@ -74,6 +74,8 @@ struct btdev {
 	uint16_t conn_accept_timeout;
 	uint16_t page_timeout;
 	uint8_t  scan_enable;
+	uint16_t page_scan_interval;
+	uint16_t page_scan_window;
 	uint8_t  auth_enable;
 	uint8_t  inquiry_mode;
 	uint8_t  afh_assess_mode;
@@ -277,6 +279,9 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 		set_amp_features(btdev);
 		break;
 	}
+
+	btdev->page_scan_interval = 0x0800;
+	btdev->page_scan_window = 0x0012;
 
 	btdev->acl_mtu = 192;
 	btdev->acl_max_pkt = 1;
@@ -686,6 +691,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_conn_accept_timeout *wcat;
 	const struct bt_hci_cmd_write_page_timeout *wpt;
 	const struct bt_hci_cmd_write_scan_enable *wse;
+	const struct bt_hci_cmd_write_page_scan_activity *wpsa;
 	const struct bt_hci_cmd_write_auth_enable *wae;
 	const struct bt_hci_cmd_write_class_of_dev *wcod;
 	const struct bt_hci_cmd_write_voice_setting *wvs;
@@ -704,6 +710,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_conn_accept_timeout rcat;
 	struct bt_hci_rsp_read_page_timeout rpt;
 	struct bt_hci_rsp_read_scan_enable rse;
+	struct bt_hci_rsp_read_page_scan_activity rpsa;
 	struct bt_hci_rsp_read_auth_enable rae;
 	struct bt_hci_rsp_read_class_of_dev rcod;
 	struct bt_hci_rsp_read_voice_setting rvs;
@@ -950,6 +957,25 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			goto unsupported;
 		wse = data;
 		btdev->scan_enable = wse->enable;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_PAGE_SCAN_ACTIVITY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		rpsa.status = BT_HCI_ERR_SUCCESS;
+		rpsa.interval = cpu_to_le16(btdev->page_scan_interval);
+		rpsa.window = cpu_to_le16(btdev->page_scan_window);
+		cmd_complete(btdev, opcode, &rpsa, sizeof(rpsa));
+		break;
+
+	case BT_HCI_CMD_WRITE_PAGE_SCAN_ACTIVITY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		wpsa = data;
+		btdev->page_scan_interval = le16_to_cpu(wpsa->interval);
+		btdev->page_scan_window = le16_to_cpu(wpsa->window);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
