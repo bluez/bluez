@@ -3062,6 +3062,23 @@ static void write_scan_enable_cmd(const void *data, uint8_t size)
 	print_scan_enable(cmd->enable);
 }
 
+static void read_page_scan_activity_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_page_scan_activity *rsp = data;
+
+	print_status(rsp->status);
+	print_interval(rsp->interval);
+	print_window(rsp->window);
+}
+
+static void write_page_scan_activity_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_page_scan_activity *cmd = data;
+
+	print_interval(cmd->interval);
+	print_window(cmd->window);
+}
+
 static void read_class_of_dev_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_class_of_dev *rsp = data;
@@ -3913,8 +3930,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c1a,  63, "Write Scan Enable",
 				write_scan_enable_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c1b,  64, "Read Page Scan Activity" },
-	{ 0x0c1c,  65, "Write Page Scan Activity" },
+	{ 0x0c1b,  64, "Read Page Scan Activity",
+				null_cmd, 0, true,
+				read_page_scan_activity_rsp, 5, true },
+	{ 0x0c1c,  65, "Write Page Scan Activity",
+				write_page_scan_activity_cmd, 4, true,
+				status_rsp, 1, true },
 	{ 0x0c1d,  66, "Read Inquiry Scan Activity" },
 	{ 0x0c1e,  67, "Write Inquiry Scan Activity" },
 	{ 0x0c1f,  68, "Read Authentication Enable" },

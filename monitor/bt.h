@@ -552,6 +552,19 @@ struct bt_hci_cmd_write_scan_enable {
 	uint8_t  enable;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_PAGE_SCAN_ACTIVITY	0x0c1b
+struct bt_hci_rsp_read_page_scan_activity {
+	uint8_t  status;
+	uint16_t interval;
+	uint16_t window;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_PAGE_SCAN_ACTIVITY	0x0c1c
+struct bt_hci_cmd_write_page_scan_activity {
+	uint16_t interval;
+	uint16_t window;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_AUTH_ENABLE		0x0c1f
 struct bt_hci_rsp_read_auth_enable {
 	uint8_t  status;
