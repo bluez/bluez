@@ -761,6 +761,25 @@ static void print_inquiry_mode(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
+static void print_pscan_type(uint8_t type)
+{
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "Standard Scan";
+		break;
+	case 0x01:
+		str = "Interlaced Scan";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, type);
+}
+
 static void print_simple_pairing_mode(uint8_t mode)
 {
 	const char *str;
@@ -3124,6 +3143,21 @@ static void write_inquiry_mode_cmd(const void *data, uint8_t size)
 	print_inquiry_mode(cmd->mode);
 }
 
+static void read_page_scan_type_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_page_scan_type *rsp = data;
+
+	print_status(rsp->status);
+	print_pscan_type(rsp->type);
+}
+
+static void write_page_scan_type_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_page_scan_type *cmd = data;
+
+	print_pscan_type(cmd->type);
+}
+
 static void read_ext_inquiry_response_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_ext_inquiry_response *rsp = data;
@@ -3988,8 +4022,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c45, 103, "Write Inquiry Mode",
 				write_inquiry_mode_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c46, 104, "Read Page Scan Type" },
-	{ 0x0c47, 105, "Write Page Scan Type" },
+	{ 0x0c46, 104, "Read Page Scan Type",
+				null_cmd, 0, true,
+				read_page_scan_type_rsp, 2, true },
+	{ 0x0c47, 105, "Write Page Scan Type",
+				write_page_scan_type_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c48, 106, "Read AFH Channel Assessment Mode" },
 	{ 0x0c49, 107, "Write AFH Channel Assessment Mode" },
 	/* reserved commands */

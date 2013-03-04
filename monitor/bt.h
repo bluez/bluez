@@ -609,6 +609,17 @@ struct bt_hci_cmd_write_inquiry_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_PAGE_SCAN_TYPE		0x0c46
+struct bt_hci_rsp_read_page_scan_type {
+	uint8_t status;
+	uint8_t type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_PAGE_SCAN_TYPE		0x0c47
+struct bt_hci_cmd_write_page_scan_type {
+	uint8_t type;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_AFH_ASSESS_MODE		0x0c48
 struct bt_hci_rsp_read_afh_assess_mode {
 	uint8_t  status;
