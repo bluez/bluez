@@ -608,6 +608,19 @@ static const struct generic_data set_connectable_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const char set_fast_conn_on_param[] = { 0x01 };
+static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
+
+static const struct generic_data set_fast_conn_on_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
+	.send_param = set_fast_conn_on_param,
+	.send_len = sizeof(set_fast_conn_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_fast_conn_on_settings_1,
+	.expect_len = sizeof(set_fast_conn_on_settings_1),
+	.expect_settings_set = MGMT_SETTING_FAST_CONNECTABLE,
+};
+
 static const char set_pairable_on_param[] = { 0x01 };
 static const char set_pairable_invalid_param[] = { 0x02 };
 static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
@@ -2344,6 +2357,10 @@ int main(int argc, char *argv[])
 					&set_connectable_off_success_test_2,
 					setup_connectable_powered,
 					test_command_generic);
+
+	test_bredrle("Set fast connectable on - Success 1",
+			&set_fast_conn_on_success_test_1,
+			setup_powered_connectable, test_command_generic);
 
 	test_bredrle("Set pairable on - Success",
 					&set_pairable_on_success_test,
