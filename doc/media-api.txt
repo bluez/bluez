@@ -241,7 +241,7 @@ Properties	string Equalizer [readwrite]
 				False: Supported but inactive
 
 			Note: If supported but inactive clients can enable it
-			by using MediaLibrary interface but it might interfere
+			by using MediaFolder interface but it might interfere
 			in the playback of other players.
 
 
@@ -256,7 +256,7 @@ Properties	string Equalizer [readwrite]
 				False: Supported but inactive
 
 			Note: If supported but inactive clients can enable it
-			by using MediaLibrary interface but it might interfere
+			by using MediaFolder interface but it might interfere
 			in the playback of other players.
 
 		object Playlist
