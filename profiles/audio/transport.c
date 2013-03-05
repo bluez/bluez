@@ -751,9 +751,6 @@ static void sink_state_changed(struct audio_device *dev,
 {
 	struct media_transport *transport = user_data;
 
-	if (dev != transport->device)
-		return;
-
 	if (new_state == SINK_STATE_PLAYING)
 		transport_update_playing(transport, TRUE);
 	else
@@ -810,7 +807,7 @@ struct media_transport *media_transport_create(struct audio_device *device,
 
 		if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
 			a2dp->volume = -1;
-			transport->sink_watch = sink_add_state_cb(
+			transport->sink_watch = sink_add_state_cb(device,
 							sink_state_changed,
 							transport);
 		} else {

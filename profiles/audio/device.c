@@ -82,9 +82,8 @@ struct dev_priv {
 
 	unsigned int avdtp_callback_id;
 	unsigned int avctp_callback_id;
+	unsigned int sink_callback_id;
 };
-
-static unsigned int sink_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
 {
@@ -101,6 +100,7 @@ static void device_free(struct audio_device *dev)
 
 		avdtp_remove_state_cb(priv->avdtp_callback_id);
 		avctp_remove_state_cb(priv->avctp_callback_id);
+		sink_remove_state_cb(priv->sink_callback_id);
 
 		g_free(priv);
 	}
@@ -310,9 +310,8 @@ struct audio_device *audio_device_register(struct btd_device *device)
 	dev->priv = g_new0(struct dev_priv, 1);
 	dev->priv->state = AUDIO_STATE_DISCONNECTED;
 
-	if (sink_callback_id == 0)
-		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
-
+	dev->priv->sink_callback_id = sink_add_state_cb(dev, device_sink_cb,
+									NULL);
 	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
 	dev->priv->avctp_callback_id = avctp_add_state_cb(dev, device_avctp_cb);
 

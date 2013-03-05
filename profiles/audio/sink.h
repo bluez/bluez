@@ -36,7 +36,8 @@ typedef void (*sink_state_cb) (struct audio_device *dev,
 				sink_state_t new_state,
 				void *user_data);
 
-unsigned int sink_add_state_cb(sink_state_cb cb, void *user_data);
+unsigned int sink_add_state_cb(struct audio_device *dev, sink_state_cb cb,
+							void *user_data);
 gboolean sink_remove_state_cb(unsigned int id);
 
 struct sink *sink_init(struct audio_device *dev);

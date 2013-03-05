@@ -69,6 +69,7 @@ struct sink {
 
 struct sink_state_callback {
 	sink_state_cb cb;
+	struct audio_device *dev;
 	void *user_data;
 	unsigned int id;
 };
@@ -95,6 +96,10 @@ static void sink_set_state(struct audio_device *dev, sink_state_t new_state)
 
 	for (l = sink_callbacks; l != NULL; l = l->next) {
 		struct sink_state_callback *cb = l->data;
+
+		if (cb->dev != dev)
+			continue;
+
 		cb->cb(dev, old_state, new_state, cb->user_data);
 	}
 
@@ -443,13 +448,15 @@ int sink_disconnect(struct audio_device *dev, gboolean shutdown)
 	return avdtp_close(sink->session, sink->stream, FALSE);
 }
 
-unsigned int sink_add_state_cb(sink_state_cb cb, void *user_data)
+unsigned int sink_add_state_cb(struct audio_device *dev, sink_state_cb cb,
+								void *user_data)
 {
 	struct sink_state_callback *state_cb;
 	static unsigned int id = 0;
 
 	state_cb = g_new(struct sink_state_callback, 1);
 	state_cb->cb = cb;
+	state_cb->dev = dev;
 	state_cb->user_data = user_data;
 	state_cb->id = ++id;
 
