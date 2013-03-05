@@ -66,7 +66,7 @@ struct control {
 };
 
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
-				avctp_state_t new_state, void *user_data)
+							avctp_state_t new_state)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
 	struct control *control = dev->control;
@@ -287,7 +287,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 
 	control_update(control, uuids);
 
-	control->avctp_id = avctp_add_state_cb(dev, state_changed, NULL);
+	control->avctp_id = avctp_add_state_cb(dev, state_changed);
 
 	return control;
 }

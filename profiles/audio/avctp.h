@@ -74,8 +74,7 @@ typedef enum {
 
 typedef void (*avctp_state_cb) (struct audio_device *dev,
 				avctp_state_t old_state,
-				avctp_state_t new_state,
-				void *user_data);
+				avctp_state_t new_state);
 
 typedef size_t (*avctp_control_pdu_cb) (struct avctp *session,
 					uint8_t transaction, uint8_t *code,
@@ -92,8 +91,7 @@ typedef size_t (*avctp_browsing_pdu_cb) (struct avctp *session,
 					uint8_t *operands, size_t operand_count,
 					void *user_data);
 
-unsigned int avctp_add_state_cb(struct audio_device *dev, avctp_state_cb cb,
-							void *user_data);
+unsigned int avctp_add_state_cb(struct audio_device *dev, avctp_state_cb cb);
 gboolean avctp_remove_state_cb(unsigned int id);
 
 int avctp_register(struct btd_adapter *adapter, gboolean master);

@@ -2701,7 +2701,7 @@ static struct avrcp *session_create(struct avrcp_server *server,
 }
 
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
-				avctp_state_t new_state, void *user_data)
+							avctp_state_t new_state)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
@@ -2832,7 +2832,7 @@ int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
 	servers = g_slist_append(servers, server);
 
 	if (!avctp_id)
-		avctp_id = avctp_add_state_cb(NULL, state_changed, NULL);
+		avctp_id = avctp_add_state_cb(NULL, state_changed);
 
 	return 0;
 }
