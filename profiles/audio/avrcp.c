@@ -2832,7 +2832,7 @@ int avrcp_register(struct btd_adapter *adapter, GKeyFile *config)
 	servers = g_slist_append(servers, server);
 
 	if (!avctp_id)
-		avctp_id = avctp_add_state_cb(state_changed, NULL);
+		avctp_id = avctp_add_state_cb(NULL, state_changed, NULL);
 
 	return 0;
 }

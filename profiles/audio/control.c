@@ -59,11 +59,10 @@
 #include "glib-helper.h"
 #include "dbus-common.h"
 
-static unsigned int avctp_id = 0;
-
 struct control {
 	struct avctp *session;
 	gboolean target;
+	unsigned int avctp_id;
 };
 
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
@@ -250,6 +249,8 @@ static void path_unregister(void *data)
 	if (control->session)
 		avctp_disconnect(control->session);
 
+	avctp_remove_state_cb(control->avctp_id);
+
 	g_free(control);
 	dev->control = NULL;
 }
@@ -286,8 +287,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 
 	control_update(control, uuids);
 
-	if (!avctp_id)
-		avctp_id = avctp_add_state_cb(state_changed, NULL);
+	control->avctp_id = avctp_add_state_cb(dev, state_changed, NULL);
 
 	return control;
 }
