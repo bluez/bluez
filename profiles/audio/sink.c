@@ -64,6 +64,7 @@ struct sink {
 	sink_state_t state;
 	unsigned int connect_id;
 	unsigned int disconnect_id;
+	unsigned int avdtp_callback_id;
 };
 
 struct sink_state_callback {
@@ -73,8 +74,6 @@ struct sink_state_callback {
 };
 
 static GSList *sink_callbacks = NULL;
-
-static unsigned int avdtp_callback_id = 0;
 
 static char *str_state[] = {
 	"SINK_STATE_DISCONNECTED",
@@ -115,9 +114,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 					void *user_data)
 {
 	struct sink *sink = dev->sink;
-
-	if (sink == NULL)
-		return;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
@@ -360,6 +356,8 @@ static void sink_free(struct audio_device *dev)
 	if (sink->retry_id)
 		g_source_remove(sink->retry_id);
 
+	avdtp_remove_state_cb(sink->avdtp_callback_id);
+
 	g_free(sink);
 	dev->sink = NULL;
 }
@@ -376,13 +374,12 @@ struct sink *sink_init(struct audio_device *dev)
 
 	DBG("%s", device_get_path(dev->btd_dev));
 
-	if (avdtp_callback_id == 0)
-		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
-									NULL);
-
 	sink = g_new0(struct sink, 1);
 
 	sink->dev = dev;
+
+	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback,
+									NULL);
 
 	return sink;
 }

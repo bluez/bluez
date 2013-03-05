@@ -65,6 +65,7 @@ struct source {
 	source_state_t state;
 	unsigned int connect_id;
 	unsigned int disconnect_id;
+	unsigned int avdtp_callback_id;
 };
 
 struct source_state_callback {
@@ -74,8 +75,6 @@ struct source_state_callback {
 };
 
 static GSList *source_callbacks = NULL;
-
-static unsigned int avdtp_callback_id = 0;
 
 static char *str_state[] = {
 	"SOURCE_STATE_DISCONNECTED",
@@ -116,9 +115,6 @@ static void avdtp_state_callback(struct audio_device *dev,
 					void *user_data)
 {
 	struct source *source = dev->source;
-
-	if (source == NULL)
-		return;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
@@ -364,6 +360,8 @@ static void source_free(struct audio_device *dev)
 	if (source->retry_id)
 		g_source_remove(source->retry_id);
 
+	avdtp_remove_state_cb(source->avdtp_callback_id);
+
 	g_free(source);
 	dev->source = NULL;
 }
@@ -381,13 +379,13 @@ struct source *source_init(struct audio_device *dev)
 
 	DBG("%s", device_get_path(dev->btd_dev));
 
-	if (avdtp_callback_id == 0)
-		avdtp_callback_id = avdtp_add_state_cb(avdtp_state_callback,
-									NULL);
-
 	source = g_new0(struct source, 1);
 
 	source->dev = dev;
+
+	source->avdtp_callback_id = avdtp_add_state_cb(dev,
+							avdtp_state_callback,
+							NULL);
 
 	return source;
 }

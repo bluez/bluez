@@ -79,11 +79,12 @@ struct dev_priv {
 	guint dc_id;
 
 	gboolean disconnecting;
+
+	unsigned int avdtp_callback_id;
 };
 
 static unsigned int sink_callback_id = 0;
 static unsigned int avctp_callback_id = 0;
-static unsigned int avdtp_callback_id = 0;
 
 static void device_free(struct audio_device *dev)
 {
@@ -97,6 +98,9 @@ static void device_free(struct audio_device *dev)
 		if (priv->dc_id)
 			device_remove_disconnect_watch(dev->btd_dev,
 							priv->dc_id);
+
+		avdtp_remove_state_cb(priv->avdtp_callback_id);
+
 		g_free(priv);
 	}
 
@@ -311,8 +315,9 @@ struct audio_device *audio_device_register(struct btd_device *device)
 	if (sink_callback_id == 0)
 		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
 
-	if (avdtp_callback_id == 0)
-		avdtp_callback_id = avdtp_add_state_cb(device_avdtp_cb, NULL);
+	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb,
+									NULL);
+
 	if (avctp_callback_id == 0)
 		avctp_callback_id = avctp_add_state_cb(device_avctp_cb, NULL);
 
