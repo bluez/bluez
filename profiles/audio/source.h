@@ -37,7 +37,8 @@ typedef void (*source_state_cb) (struct audio_device *dev,
 				source_state_t new_state,
 				void *user_data);
 
-unsigned int source_add_state_cb(source_state_cb cb, void *user_data);
+unsigned int source_add_state_cb(struct audio_device *dev, source_state_cb cb,
+							void *user_data);
 gboolean source_remove_state_cb(unsigned int id);
 
 struct source *source_init(struct audio_device *dev);
