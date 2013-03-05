@@ -357,7 +357,6 @@ struct stream_callback {
 struct avdtp_state_callback {
 	avdtp_session_state_cb cb;
 	struct audio_device *dev;
-	void *user_data;
 	unsigned int id;
 };
 
@@ -732,7 +731,7 @@ static void avdtp_set_state(struct avdtp *session,
 		if (dev != cb->dev)
 			continue;
 
-		cb->cb(dev, session, old_state, new_state, cb->user_data);
+		cb->cb(dev, session, old_state, new_state);
 	}
 }
 
@@ -3924,7 +3923,7 @@ void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc)
 }
 
 unsigned int avdtp_add_state_cb(struct audio_device *dev,
-				avdtp_session_state_cb cb, void *user_data)
+				avdtp_session_state_cb cb)
 {
 	struct avdtp_state_callback *state_cb;
 	static unsigned int id = 0;
@@ -3932,7 +3931,6 @@ unsigned int avdtp_add_state_cb(struct audio_device *dev,
 	state_cb = g_new(struct avdtp_state_callback, 1);
 	state_cb->cb = cb;
 	state_cb->dev = dev;
-	state_cb->user_data = user_data;
 	state_cb->id = ++id;
 
 	avdtp_callbacks = g_slist_append(avdtp_callbacks, state_cb);

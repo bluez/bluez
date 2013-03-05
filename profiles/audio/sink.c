@@ -110,8 +110,7 @@ static void sink_set_state(struct audio_device *dev, sink_state_t new_state)
 static void avdtp_state_callback(struct audio_device *dev,
 					struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state,
-					void *user_data)
+					avdtp_session_state_t new_state)
 {
 	struct sink *sink = dev->sink;
 
@@ -378,8 +377,7 @@ struct sink *sink_init(struct audio_device *dev)
 
 	sink->dev = dev;
 
-	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback,
-									NULL);
+	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback);
 
 	return sink;
 }

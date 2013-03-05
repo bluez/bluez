@@ -119,8 +119,7 @@ struct avdtp_media_codec_capability {
 typedef void (*avdtp_session_state_cb) (struct audio_device *dev,
 					struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state,
-					void *user_data);
+					avdtp_session_state_t new_state);
 
 typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					avdtp_state_t old_state,
@@ -261,7 +260,7 @@ struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream);
 
 unsigned int avdtp_add_state_cb(struct audio_device *dev,
-				avdtp_session_state_cb cb, void *user_data);
+				avdtp_session_state_cb cb);
 
 gboolean avdtp_remove_state_cb(unsigned int id);
 

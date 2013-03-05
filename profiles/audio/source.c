@@ -111,8 +111,7 @@ static void source_set_state(struct audio_device *dev, source_state_t new_state)
 static void avdtp_state_callback(struct audio_device *dev,
 					struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state,
-					void *user_data)
+					avdtp_session_state_t new_state)
 {
 	struct source *source = dev->source;
 
@@ -384,8 +383,7 @@ struct source *source_init(struct audio_device *dev)
 	source->dev = dev;
 
 	source->avdtp_callback_id = avdtp_add_state_cb(dev,
-							avdtp_state_callback,
-							NULL);
+							avdtp_state_callback);
 
 	return source;
 }

@@ -226,8 +226,7 @@ static void device_set_state(struct audio_device *dev, audio_state_t new_state)
 
 static void device_avdtp_cb(struct audio_device *dev, struct avdtp *session,
 				avdtp_session_state_t old_state,
-				avdtp_session_state_t new_state,
-				void *user_data)
+				avdtp_session_state_t new_state)
 {
 	if (!dev->control)
 		return;
@@ -315,8 +314,7 @@ struct audio_device *audio_device_register(struct btd_device *device)
 	if (sink_callback_id == 0)
 		sink_callback_id = sink_add_state_cb(device_sink_cb, NULL);
 
-	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb,
-									NULL);
+	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
 
 	if (avctp_callback_id == 0)
 		avctp_callback_id = avctp_add_state_cb(device_avctp_cb, NULL);
