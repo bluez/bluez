@@ -1666,8 +1666,8 @@ static const char *playersubtype2str(uint32_t subtype)
 static void avrcp_media_player_item_dump(int level, struct frame *frm,
 								uint16_t len)
 {
-	uint16_t id, charset;
-	uint8_t type, status, namelen;
+	uint16_t id, charset, namelen;
+	uint8_t type, status;
 	uint32_t subtype;
 	uint64_t features[2];
 
@@ -1711,8 +1711,8 @@ static void avrcp_media_player_item_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	namelen = get_u8(frm);
-	printf("NameLength: 0x%02x (%u)\n", namelen, namelen);
+	namelen = get_u16(frm);
+	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
