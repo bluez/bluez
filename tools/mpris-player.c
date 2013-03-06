@@ -1588,6 +1588,9 @@ static void unregister_player(struct player *player)
 	players = g_slist_remove(players, player);
 
 	g_dbus_unregister_interface(player->conn, MPRIS_PLAYER_PATH,
+						MPRIS_INTERFACE);
+
+	g_dbus_unregister_interface(player->conn, MPRIS_PLAYER_PATH,
 						MPRIS_PLAYER_INTERFACE);
 }
 
