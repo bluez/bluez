@@ -1943,7 +1943,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 
 	items = bt_get_be32(&pdu->params[3]);
 
-	depth = operands[9];
+	depth = pdu->params[9];
 
 	folders = g_new0(char *, depth + 2);
 	folders[0] = g_strdup("/Filesystem");
