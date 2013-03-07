@@ -331,8 +331,8 @@ static struct btd_profile a2dp_source_profile = {
 	.connect	= a2dp_source_connect,
 	.disconnect	= a2dp_source_disconnect,
 
-	.adapter_probe	= a2dp_source_server_probe,
-	.adapter_remove	= a2dp_source_server_remove,
+	.adapter_probe	= a2dp_sink_server_probe,
+	.adapter_remove	= a2dp_sink_server_remove,
 };
 
 static struct btd_profile a2dp_sink_profile = {
@@ -347,8 +347,8 @@ static struct btd_profile a2dp_sink_profile = {
 	.connect	= a2dp_sink_connect,
 	.disconnect	= a2dp_sink_disconnect,
 
-	.adapter_probe	= a2dp_sink_server_probe,
-	.adapter_remove	= a2dp_sink_server_remove,
+	.adapter_probe	= a2dp_source_server_probe,
+	.adapter_remove	= a2dp_source_server_remove,
 };
 
 static struct btd_profile avrcp_profile = {
