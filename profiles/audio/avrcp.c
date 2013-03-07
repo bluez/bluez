@@ -1934,7 +1934,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	uint32_t items;
 	char **folders, *path;
 	uint8_t depth, count;
-	int i;
+	size_t i;
 
 	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 13)
 		return FALSE;
@@ -1948,14 +1948,19 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	folders = g_new0(char *, depth + 2);
 	folders[0] = g_strdup("/Filesystem");
 
-	for (i = 10, count = 1; count - 1 < depth; count++) {
-		char *part;
+	for (i = 10, count = 1; count - 1 < depth && i < operand_count;
+								count++) {
 		uint8_t len;
 
 		len = pdu->params[i++];
-		part = g_memdup(&pdu->params[i], len);
+
+		if (i + len > operand_count || len == 0) {
+			error("Invalid folder length");
+			break;
+		}
+
+		folders[count] = g_memdup(&pdu->params[i], len);
 		i += len;
-		folders[count] = part;
 	}
 
 	path = g_build_pathv("/", folders);
