@@ -86,6 +86,7 @@ struct vhci *vhci_open(enum vhci_type type)
 {
 	struct vhci *vhci;
 	enum btdev_type uninitialized_var(btdev_type);
+	static uint8_t id = 0x23;
 
 	switch (type) {
 	case VHCI_TYPE_BREDRLE:
@@ -114,7 +115,7 @@ struct vhci *vhci_open(enum vhci_type type)
 		return NULL;
 	}
 
-	vhci->btdev = btdev_create(btdev_type, 0x23);
+	vhci->btdev = btdev_create(btdev_type, id++);
 	if (!vhci->btdev) {
 		close(vhci->fd);
 		free(vhci);
