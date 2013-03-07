@@ -2093,7 +2093,7 @@ static void avrcp_parse_media_player_item(struct avrcp *session,
 	avrcp_player_parse_features(player, &operands[8]);
 
 	namelen = bt_get_be16(&operands[26]);
-	if (namelen > 0) {
+	if (namelen > 0 && namelen + 28 == len) {
 		namelen = MIN(namelen, sizeof(name) - 1);
 		memcpy(name, &operands[28], namelen);
 		name[namelen] = '\0';
