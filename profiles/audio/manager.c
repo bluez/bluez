@@ -70,12 +70,6 @@
 static GKeyFile *config = NULL;
 static GSList *devices = NULL;
 
-static struct enabled_interfaces enabled = {
-	.sink		= TRUE,
-	.source		= FALSE,
-	.control	= TRUE,
-};
-
 static struct audio_device *get_audio_dev(struct btd_device *device)
 {
 	return manager_get_audio_device(device, TRUE);
@@ -410,47 +404,12 @@ void audio_control_disconnected(struct btd_device *dev, int err)
 
 int audio_manager_init(GKeyFile *conf)
 {
-	char **list;
-	int i;
+	if (conf)
+		config = conf;
 
-	if (!conf)
-		goto proceed;
-
-	config = conf;
-
-	list = g_key_file_get_string_list(config, "General", "Enable",
-						NULL, NULL);
-	for (i = 0; list && list[i] != NULL; i++) {
-		if (g_str_equal(list[i], "Sink"))
-			enabled.sink = TRUE;
-		else if (g_str_equal(list[i], "Source"))
-			enabled.source = TRUE;
-		else if (g_str_equal(list[i], "Control"))
-			enabled.control = TRUE;
-	}
-	g_strfreev(list);
-
-	list = g_key_file_get_string_list(config, "General", "Disable",
-						NULL, NULL);
-	for (i = 0; list && list[i] != NULL; i++) {
-		if (g_str_equal(list[i], "Sink"))
-			enabled.sink = FALSE;
-		else if (g_str_equal(list[i], "Source"))
-			enabled.source = FALSE;
-		else if (g_str_equal(list[i], "Control"))
-			enabled.control = FALSE;
-	}
-	g_strfreev(list);
-
-proceed:
-	if (enabled.source)
-		btd_profile_register(&a2dp_source_profile);
-
-	if (enabled.sink)
-		btd_profile_register(&a2dp_sink_profile);
-
-	if (enabled.control)
-		btd_profile_register(&avrcp_profile);
+	btd_profile_register(&a2dp_source_profile);
+	btd_profile_register(&a2dp_sink_profile);
+	btd_profile_register(&avrcp_profile);
 
 	btd_register_adapter_driver(&media_driver);
 
@@ -464,14 +423,9 @@ void audio_manager_exit(void)
 		config = NULL;
 	}
 
-	if (enabled.source)
-		btd_profile_unregister(&a2dp_source_profile);
-
-	if (enabled.sink)
-		btd_profile_unregister(&a2dp_sink_profile);
-
-	if (enabled.control)
-		btd_profile_unregister(&avrcp_profile);
+	btd_profile_unregister(&a2dp_source_profile);
+	btd_profile_unregister(&a2dp_sink_profile);
+	btd_profile_unregister(&avrcp_profile);
 
 	btd_unregister_adapter_driver(&media_driver);
 }
