@@ -176,8 +176,6 @@ static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 	DBusMessageIter var;
 	int type;
 
-	printf("metadata %s found\n", key);
-
 	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
 		return -EINVAL;
 
@@ -1253,8 +1251,6 @@ static int parse_track_entry(DBusMessageIter *entry, const char *key,
 						DBusMessageIter *metadata)
 {
 	DBusMessageIter var;
-
-	printf("metadata %s found\n", key);
 
 	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
 		return -EINVAL;
