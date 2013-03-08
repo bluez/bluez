@@ -62,7 +62,6 @@ static gboolean option_version = FALSE;
 static gboolean option_export = FALSE;
 
 struct player {
-	char *name;
 	char *bus_name;
 	DBusConnection *conn;
 	GDBusProxy *proxy;
@@ -820,7 +819,6 @@ static void player_free(void *data)
 	if (player->transport)
 		g_dbus_proxy_unref(player->transport);
 
-	g_free(player->name);
 	g_free(player->bus_name);
 	g_free(player);
 }
@@ -1390,8 +1388,24 @@ static gboolean get_name(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct player *player = data;
+	DBusMessageIter var;
+	const char *alias;
+	char *name;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &player->name);
+	if (!g_dbus_proxy_get_property(player->device, "Alias", &var))
+		return FALSE;
+
+	dbus_message_iter_get_basic(&var, &alias);
+
+	if (g_dbus_proxy_get_property(player->proxy, "Name", &var)) {
+		dbus_message_iter_get_basic(&var, &name);
+		name = g_strconcat(alias, " ", name, NULL);
+	} else
+		name = g_strdup(alias);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &name);
+
+	g_free(name);
 
 	return TRUE;
 }
@@ -1449,7 +1463,8 @@ static void register_player(GDBusProxy *proxy)
 {
 	struct player *player;
 	DBusMessageIter iter;
-	const char *path, *name;
+	const char *path, *alias, *name;
+	char *busname;
 	GDBusProxy *device, *transport;
 
 	if (!g_dbus_proxy_get_property(proxy, "Device", &iter))
@@ -1464,13 +1479,20 @@ static void register_player(GDBusProxy *proxy)
 	if (!g_dbus_proxy_get_property(device, "Alias", &iter))
 		return;
 
-	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_get_basic(&iter, &alias);
+
+	if (g_dbus_proxy_get_property(proxy, "Name", &iter)) {
+		dbus_message_iter_get_basic(&iter, &name);
+		busname = g_strconcat(alias, " ", name, NULL);
+	} else
+		busname = g_strdup(alias);
 
 	player = g_new0(struct player, 1);
-	player->name = g_strdup(name);
-	player->bus_name = mpris_busname(player->name);
+	player->bus_name = mpris_busname(busname);
 	player->proxy = g_dbus_proxy_ref(proxy);
 	player->device = device;
+
+	g_free(busname);
 
 	players = g_slist_prepend(players, player);
 
