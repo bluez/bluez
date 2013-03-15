@@ -335,7 +335,7 @@ static char *read_key(const char *pathname, const char *key, int icase)
 		goto unmap;
 	}
 
-	end = strnpbrk(off, size - (map - off), "\r\n");
+	end = strnpbrk(off, size - (off - map), "\r\n");
 	if (!end) {
 		err = -EILSEQ;
 		goto unmap;
