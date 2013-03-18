@@ -3812,9 +3812,10 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 			break;
 		}
 
+		/* Set the subcontext for browsing the sub tree */
+		memcpy(&sub_context, context, sizeof(struct search_context));
+
 		if (sdp_get_group_id(rec, &sub_context.group) != -1) {
-			/* Set the subcontext for browsing the sub tree */
-			memcpy(&sub_context, context, sizeof(struct search_context));
 			/* Browse the next level down if not done */
 			if (sub_context.group.value.uuid16 != context->group.value.uuid16)
 				do_search(bdaddr, &sub_context);
