@@ -2456,6 +2456,9 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	player->uid_counter = bt_get_be16(&pdu->params[3]);
 	session->player = player;
 
+	if (player->features != NULL)
+		return;
+
 	avrcp_get_media_player_list(session);
 }
 
