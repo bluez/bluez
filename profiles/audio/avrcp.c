@@ -74,6 +74,7 @@
 #define AVRCP_STATUS_INTERNAL_ERROR		0x03
 #define AVRCP_STATUS_SUCCESS			0x04
 #define AVRCP_STATUS_INVALID_PLAYER_ID		0x11
+#define AVRCP_STATUS_PLAYER_NOT_BROWSABLE	0x12
 #define AVRCP_STATUS_NO_AVAILABLE_PLAYERS	0x15
 #define AVRCP_STATUS_ADDRESSED_PLAYER_CHANGED	0x16
 
@@ -2002,8 +2003,11 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 	struct avrcp_browsing_header *pdu = (void *) operands;
 	uint8_t count;
 
-	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4)
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4) {
+		if (pdu->params[0] == AVRCP_STATUS_PLAYER_NOT_BROWSABLE)
+			avrcp_get_element_attributes(session);
 		return FALSE;
+	}
 
 	count = pdu->params[1];
 
