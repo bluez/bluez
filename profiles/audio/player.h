@@ -55,7 +55,8 @@ struct media_player_callback {
 	int (*rewind) (struct media_player *mp, void *user_data);
 };
 
-struct media_player *media_player_controller_create(const char *path);
+struct media_player *media_player_controller_create(const char *path,
+								uint16_t id);
 void media_player_destroy(struct media_player *mp);
 void media_player_set_duration(struct media_player *mp, uint32_t duration);
 void media_player_set_position(struct media_player *mp, uint32_t position);
