@@ -1097,6 +1097,17 @@ static const struct generic_data start_discovery_valid_param_test_1 = {
 	.expect_len = sizeof(start_discovery_bredr_param),
 };
 
+static const char stop_discovery_bredrle_param[] = { 0x07 };
+
+static const struct generic_data stop_discovery_success_test_1 = {
+	.send_opcode = MGMT_OP_STOP_DISCOVERY,
+	.send_param = stop_discovery_bredrle_param,
+	.send_len = sizeof(stop_discovery_bredrle_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = stop_discovery_bredrle_param,
+	.expect_len = sizeof(stop_discovery_bredrle_param),
+};
+
 static const char set_dev_class_valid_param[] = { 0x01, 0x0c };
 static const char set_dev_class_zero_rsp[] = { 0x00, 0x00, 0x00 };
 static const char set_dev_class_valid_rsp[] = { 0x0c, 0x01, 0x00 };
@@ -1757,6 +1768,54 @@ static void setup_le_powered(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
 					setup_powered_callback, NULL, NULL);
+}
+
+static void setup_discovery_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Discovery started");
+	tester_setup_complete();
+}
+
+static void setup_start_discovery_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char disc_param[] = { 0x07 };
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Controller powered on");
+
+	mgmt_send(data->mgmt, MGMT_OP_START_DISCOVERY, data->mgmt_index,
+					sizeof(disc_param), disc_param,
+					setup_discovery_callback, NULL, NULL);
+
+	if (option_wait_powered)
+		tester_wait(1, NULL, NULL);
+}
+
+static void setup_start_discovery(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Powering on controller (with LE enabled)");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+				sizeof(param), param,
+				setup_start_discovery_callback, NULL, NULL);
 }
 
 static void setup_ssp_callback(uint8_t status, uint16_t length,
@@ -2536,6 +2595,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Start Discovery - Success 1",
 				&start_discovery_valid_param_test_1,
 				setup_le_powered, test_command_generic);
+
+	test_bredrle("Stop Discovery - Success 1",
+				&stop_discovery_success_test_1,
+				setup_start_discovery, test_command_generic);
 
 	test_bredrle("Set Device Class - Success 1",
 				&set_dev_class_valid_param_test_1,
