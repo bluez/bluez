@@ -76,13 +76,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 	case AVCTP_STATE_DISCONNECTED:
 		control->session = NULL;
 
-		if (old_state != AVCTP_STATE_CONNECTED) {
-			audio_control_connected(dev->btd_dev, -EIO);
-			break;
-		}
-
-		audio_control_disconnected(dev->btd_dev, 0);
-
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 
@@ -95,8 +88,6 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 		break;
 	case AVCTP_STATE_CONNECTED:
-		audio_control_connected(dev->btd_dev, 0);
-
 		g_dbus_emit_property_changed(conn, path,
 					AUDIO_CONTROL_INTERFACE, "Connected");
 		break;
