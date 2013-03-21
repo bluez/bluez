@@ -3952,14 +3952,12 @@ int device_notify_pincode(struct btd_device *device, gboolean secure,
 
 static void cancel_authentication(struct authentication_req *auth)
 {
-	struct btd_device *device;
 	struct agent *agent;
 	DBusError err;
 
 	if (!auth || !auth->agent)
 		return;
 
-	device = auth->device;
 	agent = auth->agent;
 	auth->agent = NULL;
 
@@ -3968,19 +3966,19 @@ static void cancel_authentication(struct authentication_req *auth)
 
 	switch (auth->type) {
 	case AUTH_TYPE_PINCODE:
-		pincode_cb(agent, &err, NULL, device);
+		pincode_cb(agent, &err, NULL, auth);
 		break;
 	case AUTH_TYPE_CONFIRM:
-		confirm_cb(agent, &err, device);
+		confirm_cb(agent, &err, auth);
 		break;
 	case AUTH_TYPE_PASSKEY:
-		passkey_cb(agent, &err, 0, device);
+		passkey_cb(agent, &err, 0, auth);
 		break;
 	case AUTH_TYPE_NOTIFY_PASSKEY:
 		/* User Notify doesn't require any reply */
 		break;
 	case AUTH_TYPE_NOTIFY_PINCODE:
-		pincode_cb(agent, &err, NULL, device);
+		pincode_cb(agent, &err, NULL, auth);
 		break;
 	}
 
