@@ -175,6 +175,20 @@ static DBusMessage *request_pincode(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *display_pincode(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device;
+	const char *pincode;
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
+				DBUS_TYPE_STRING, &pincode, DBUS_TYPE_INVALID);
+
+	rl_printf(AGENT_PROMPT "PIN code: %s\n", pincode);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static DBusMessage *request_confirmation(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -250,6 +264,9 @@ static const GDBusMethodTable methods[] = {
 	{ GDBUS_ASYNC_METHOD("RequestPinCode",
 			GDBUS_ARGS({ "device", "o" }),
 			GDBUS_ARGS({ "pincode", "s" }), request_pincode) },
+	{ GDBUS_METHOD("DisplayPinCode",
+			GDBUS_ARGS({ "device", "o" }, { "pincode", "s" }),
+			NULL, display_pincode) },
 	{ GDBUS_ASYNC_METHOD("RequestConfirmation",
 			GDBUS_ARGS({ "device", "o" }, { "passkey", "u" }),
 			NULL, request_confirmation) },
