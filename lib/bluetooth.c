@@ -637,6 +637,10 @@ const char *bt_compidtostr(int compid)
 		return "Starkey Laboratories Inc.";
 	case 187:
 		return "S-Power Electronics Limited";
+	case 188:
+		return "Ace Sensor Inc.";
+	case 189:
+		return "Aplix Corporation";
 	case 65535:
 		return "internal use";
 	default:
