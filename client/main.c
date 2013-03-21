@@ -41,6 +41,11 @@
 #include "agent.h"
 #include "display.h"
 
+/* String display constants */
+#define COLORED_NEW	COLOR_GREEN "NEW" COLOR_OFF
+#define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
+#define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
+
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
@@ -252,7 +257,7 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (device_is_child(proxy, default_ctrl) == TRUE) {
 			dev_list = g_list_append(dev_list, proxy);
 
-			print_device(proxy, "NEW");
+			print_device(proxy, COLORED_NEW);
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_append(ctrl_list, proxy);
@@ -260,7 +265,7 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		if (!default_ctrl)
 			default_ctrl = proxy;
 
-		print_adapter(proxy, "NEW");
+		print_adapter(proxy, COLORED_NEW);
 	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
 		if (!agent_manager) {
 			agent_manager = proxy;
@@ -282,12 +287,12 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		if (device_is_child(proxy, default_ctrl) == TRUE) {
 			dev_list = g_list_remove(dev_list, proxy);
 
-			print_device(proxy, "DEL");
+			print_device(proxy, COLORED_DEL);
 		}
 	} else if (!strcmp(interface, "org.bluez.Adapter1")) {
 		ctrl_list = g_list_remove(ctrl_list, proxy);
 
-		print_adapter(proxy, "DEL");
+		print_adapter(proxy, COLORED_DEL);
 
 		if (default_ctrl == proxy) {
 			default_ctrl = NULL;
@@ -319,8 +324,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 				dbus_message_iter_get_basic(&addr_iter,
 								&address);
-				str = g_strdup_printf("[CHG] Device %s ",
-								address);
+				str = g_strdup_printf("[" COLORED_CHG
+						"] Device %s ", address);
 			} else
 				str = g_strdup("");
 
@@ -336,7 +341,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 			const char *address;
 
 			dbus_message_iter_get_basic(&addr_iter, &address);
-			str = g_strdup_printf("[CHG] Controller %s ", address);
+			str = g_strdup_printf("[" COLORED_CHG
+						"] Controller %s ", address);
 		} else
 			str = g_strdup("");
 
