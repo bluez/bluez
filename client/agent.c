@@ -189,6 +189,31 @@ static DBusMessage *display_pincode(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static DBusMessage *display_passkey(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	const char *device;
+	dbus_uint32_t passkey;
+	dbus_uint16_t entered;
+	char passkey_full[7];
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &device,
+			DBUS_TYPE_UINT32, &passkey, DBUS_TYPE_UINT16, &entered,
+							DBUS_TYPE_INVALID);
+
+	snprintf(passkey_full, sizeof(passkey_full), "%.6u", passkey);
+	passkey_full[6] = '\0';
+
+	if (entered > strlen(passkey_full))
+		entered = strlen(passkey_full);
+
+	rl_printf(AGENT_PROMPT "Passkey: "
+			COLOR_BOLDGRAY "%.*s" COLOR_BOLDWHITE "%s\n" COLOR_OFF,
+				entered, passkey_full, passkey_full + entered);
+
+	return dbus_message_new_method_return(msg);
+}
+
 static DBusMessage *request_confirmation(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -267,6 +292,10 @@ static const GDBusMethodTable methods[] = {
 	{ GDBUS_METHOD("DisplayPinCode",
 			GDBUS_ARGS({ "device", "o" }, { "pincode", "s" }),
 			NULL, display_pincode) },
+	{ GDBUS_METHOD("DisplayPasskey",
+			GDBUS_ARGS({ "device", "o" }, { "passkey", "u" },
+							{ "entered", "q" }),
+			NULL, display_passkey) },
 	{ GDBUS_ASYNC_METHOD("RequestConfirmation",
 			GDBUS_ARGS({ "device", "o" }, { "passkey", "u" }),
 			NULL, request_confirmation) },

@@ -26,5 +26,7 @@
 #define COLOR_GREEN	"\x1B[0;92m"
 #define COLOR_YELLOW	"\x1B[0;93m"
 #define COLOR_BLUE	"\x1B[0;94m"
+#define COLOR_BOLDGRAY	"\x1B[1;30m"
+#define COLOR_BOLDWHITE	"\x1B[1;37m"
 
 void rl_printf(const char *fmt, ...) __attribute__((format(printf, 1, 2)));
