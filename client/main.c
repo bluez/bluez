@@ -59,6 +59,17 @@ static GDBusProxy *default_ctrl;
 static GList *ctrl_list;
 static GList *dev_list;
 
+static const char * const agent_arguments[] = {
+	"on",
+	"off",
+	"DisplayOnly",
+	"DisplayYesNo",
+	"KeyboardDisplay",
+	"KeyboardOnly",
+	"NoInputNoOutput",
+	NULL
+};
+
 static void proxy_leak(gpointer data)
 {
 	printf("Leaking proxy %p\n", data);
@@ -413,6 +424,39 @@ static gboolean parse_argument_on_off(const char *arg, dbus_bool_t *value)
 	return FALSE;
 }
 
+static gboolean parse_argument_agent(const char *arg, dbus_bool_t *value,
+							const char **capability)
+{
+	const char * const *opt;
+
+	if (arg == NULL || strlen(arg) == 0) {
+		rl_printf("Missing on/off/capability argument\n");
+		return FALSE;
+	}
+
+	if (strcmp(arg, "on") == 0 || strcmp(arg, "yes") == 0) {
+		*value = TRUE;
+		*capability = "";
+		return TRUE;
+	}
+
+	if (strcmp(arg, "off") == 0 || strcmp(arg, "no") == 0) {
+		*value = FALSE;
+		return TRUE;
+	}
+
+	for (opt = agent_arguments; *opt; opt++) {
+		if (strcmp(arg, *opt) == 0) {
+			*value = TRUE;
+			*capability = *opt;
+			return TRUE;
+		}
+	}
+
+	rl_printf("Invalid argument %s\n", arg);
+	return FALSE;
+}
+
 static void cmd_list(const char *arg)
 {
 	GList *list;
@@ -610,13 +654,14 @@ static void cmd_discoverable(const char *arg)
 static void cmd_agent(const char *arg)
 {
 	dbus_bool_t enable;
+	const char *capability;
 
-	if (parse_argument_on_off(arg, &enable) == FALSE)
+	if (parse_argument_agent(arg, &enable, &capability) == FALSE)
 		return;
 
 	if (enable == TRUE) {
 		g_free(auto_register_agent);
-		auto_register_agent = g_strdup("");
+		auto_register_agent = g_strdup(capability);
 
 		if (agent_manager)
 			agent_register(dbus_conn, agent_manager,
@@ -968,6 +1013,26 @@ static char *dev_generator(const char *text, int state)
 	return generic_generator(text, state, dev_list, "Address");
 }
 
+static char *capability_generator(const char *text, int state)
+{
+	static int index, len;
+	const char *arg;
+
+	if (!state) {
+		index = 0;
+		len = strlen(text);
+	}
+
+	while ((arg = agent_arguments[index])) {
+		index++;
+
+		if (!strncmp(arg, text, len))
+			return strdup(arg);
+	}
+
+	return NULL;
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -989,7 +1054,9 @@ static const struct {
 					"Set controller pairable mode" },
 	{ "discoverable", "<on/off>", cmd_discoverable,
 					"Set controller discoverable mode" },
-	{ "agent",        "<on/off>", cmd_agent, "Enable/disable agent" },
+	{ "agent",        "<on/off/capability>", cmd_agent,
+				"Enable/disable agent with given capability",
+							capability_generator},
 	{ "default-agent",NULL,       cmd_default_agent },
 	{ "scan",         "<on/off>", cmd_scan, "Scan for devices" },
 	{ "info",         "<dev>",    cmd_info, "Device information",
