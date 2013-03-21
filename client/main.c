@@ -46,6 +46,9 @@
 #define COLORED_CHG	COLOR_YELLOW "CHG" COLOR_OFF
 #define COLORED_DEL	COLOR_RED "DEL" COLOR_OFF
 
+#define PROMPT_ON	COLOR_BLUE "[bluetooth]" COLOR_OFF "# "
+#define PROMPT_OFF	"[bluetooth]# "
+
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
@@ -63,7 +66,7 @@ static void proxy_leak(gpointer data)
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
-	rl_set_prompt(COLOR_BLUE "[bluetooth]" COLOR_OFF "# ");
+	rl_set_prompt(PROMPT_ON);
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
@@ -71,7 +74,7 @@ static void connect_handler(DBusConnection *connection, void *user_data)
 
 static void disconnect_handler(DBusConnection *connection, void *user_data)
 {
-	rl_set_prompt("[bluetooth]# ");
+	rl_set_prompt(PROMPT_OFF);
 	printf("\r");
 	rl_on_new_line();
 	rl_redisplay();
@@ -1283,11 +1286,11 @@ int main(int argc, char *argv[])
 	rl_erase_empty_line = 1;
 	rl_callback_handler_install(NULL, rl_handler);
 
-	rl_set_prompt("[bluetooth]# ");
+	rl_set_prompt(PROMPT_OFF);
 	rl_redisplay();
 
-        input = setup_standard_input();
-        signal = setup_signalfd();
+	input = setup_standard_input();
+	signal = setup_signalfd();
 	client = g_dbus_client_new(dbus_conn, "org.bluez", "/org/bluez");
 
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
