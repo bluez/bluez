@@ -3781,6 +3781,8 @@ static int do_search(bdaddr_t *bdaddr, struct search_context *context)
 	search = sdp_list_append(0, &context->group);
 	if (sdp_service_search_attr_req(sess, search, SDP_ATTR_REQ_RANGE, attrid, &seq)) {
 		printf("Service Search failed: %s\n", strerror(errno));
+		sdp_list_free(attrid, 0);
+		sdp_list_free(search, 0);
 		sdp_close(sess);
 		return -1;
 	}
