@@ -445,6 +445,9 @@ static void device_free(gpointer user_data)
 		g_free(device->authr);
 	}
 
+	if (device->eir_uuids)
+		g_slist_free_full(device->eir_uuids, g_free);
+
 	g_free(device->path);
 	g_free(device->alias);
 	g_free(device->modalias);
