@@ -1540,15 +1540,6 @@ static gboolean remove_temp_devices(gpointer user_data)
 	return FALSE;
 }
 
-static void discovery_free(void *data)
-{
-	struct discovery_client *client = data;
-
-	DBG("owner %s", client->owner);
-
-	g_dbus_remove_watch(dbus_conn, client->watch);
-}
-
 static void discovery_destroy(void *user_data)
 {
 	struct discovery_client *client = user_data;
@@ -4271,12 +4262,19 @@ static void adapter_stop(struct btd_adapter *adapter)
 
 	cancel_passive_scanning(adapter);
 
-	if (adapter->discovery_list) {
-		g_slist_free_full(adapter->discovery_list, discovery_free);
-		adapter->discovery_list = NULL;
+	while (adapter->discovery_list) {
+		struct discovery_client *client;
 
-		adapter->discovering = false;
+		client = adapter->discovery_list->data;
+
+		/* g_dbus_remove_watch will remove the client from the
+		 * adapter's list and free it using the discovery_destroy
+		 * function.
+		 */
+		g_dbus_remove_watch(dbus_conn, client->watch);
 	}
+
+	adapter->discovering = false;
 
 	while (adapter->connections) {
 		struct btd_device *device = adapter->connections->data;
