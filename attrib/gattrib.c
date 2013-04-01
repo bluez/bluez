@@ -446,16 +446,16 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 	status = 0;
 
 done:
+	if (!g_queue_is_empty(attrib->requests) ||
+					!g_queue_is_empty(attrib->responses))
+		wake_up_sender(attrib);
+
 	if (cmd) {
 		if (cmd->func)
 			cmd->func(status, buf, len, cmd->user_data);
 
 		command_destroy(cmd);
 	}
-
-	if (!g_queue_is_empty(attrib->requests) ||
-					!g_queue_is_empty(attrib->responses))
-		wake_up_sender(attrib);
 
 	return TRUE;
 }
