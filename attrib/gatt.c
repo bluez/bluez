@@ -651,7 +651,6 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 		goto done;
 
 	long_read->buffer = g_malloc(rlen);
-
 	if (long_read->buffer == NULL)
 		goto done;
 
@@ -659,9 +658,9 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 	long_read->size = rlen;
 
 	plen = enc_read_blob_req(long_read->handle, rlen - 1, buf, buflen);
-	id = g_attrib_send(long_read->attrib, long_read->id, buf, plen,
-			read_blob_helper, long_read, read_long_destroy);
 
+	id = g_attrib_send(long_read->attrib, long_read->id, buf, plen,
+				read_blob_helper, long_read, read_long_destroy);
 	if (id != 0) {
 		g_atomic_int_inc(&long_read->ref);
 		return;
