@@ -79,14 +79,14 @@ static char *get_prompt(void)
 	}
 
 	if (conn_state == STATE_CONNECTED)
-		g_string_assign(prompt, "[CON]");
-	else
-		g_string_assign(prompt, "[   ]");
+		g_string_append(prompt, COLOR_BLUE);
 
 	if (opt_dst)
 		g_string_append_printf(prompt, "[%17s]", opt_dst);
 	else
 		g_string_append_printf(prompt, "[%17s]", "");
+
+	g_string_append(prompt, COLOR_OFF);
 
 	if (opt_psm)
 		g_string_append(prompt, "[BR]");
