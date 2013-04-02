@@ -603,6 +603,12 @@ int main(int argc, char *argv[])
 		goto done;
 	}
 
+	if (opt_dst == NULL) {
+		g_print("Remote Bluetooth address required\n");
+		got_error = TRUE;
+		goto done;
+	}
+
 	chan = gatt_connect(opt_src, opt_dst, opt_dst_type, opt_sec_level,
 					opt_psm, opt_mtu, connect_cb);
 	if (chan == NULL) {
