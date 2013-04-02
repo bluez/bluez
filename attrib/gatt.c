@@ -651,8 +651,10 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 		goto done;
 
 	long_read->buffer = g_malloc(rlen);
-	if (long_read->buffer == NULL)
+	if (long_read->buffer == NULL) {
+		status = ATT_ECODE_INSUFF_RESOURCES;
 		goto done;
+	}
 
 	memcpy(long_read->buffer, rpdu, rlen);
 	long_read->size = rlen;
