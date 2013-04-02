@@ -226,6 +226,7 @@ static void primary_all_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 
 		primary = g_try_new0(struct gatt_primary, 1);
 		if (!primary) {
+			att_data_list_free(list);
 			err = ATT_ECODE_INSUFF_RESOURCES;
 			goto done;
 		}
