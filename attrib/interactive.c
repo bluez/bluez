@@ -930,6 +930,7 @@ int interactive(const gchar *src, const gchar *dst,
 	g_io_add_watch(pchan, events, prompt_read, NULL);
 
 	rl_attempted_completion_function = commands_completion;
+	rl_erase_empty_line = 1;
 	rl_callback_handler_install(get_prompt(), parse_line);
 
 	g_main_loop_run(event_loop);
