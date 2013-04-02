@@ -190,6 +190,11 @@ static void primary_all_cb(GSList *services, guint8 status, gpointer user_data)
 		return;
 	}
 
+	if (services == NULL) {
+		rl_printf("No primary service found\n");
+		return;
+	}
+
 	for (l = services; l; l = l->next) {
 		struct gatt_primary *prim = l->data;
 		rl_printf("attr handle: 0x%04x, end grp handle: 0x%04x uuid: %s\n",
@@ -205,6 +210,11 @@ static void primary_by_uuid_cb(GSList *ranges, guint8 status,
 	if (status) {
 		rl_printf("Discover primary services by UUID failed: %s\n",
 							att_ecode2str(status));
+		return;
+	}
+
+	if (ranges == NULL) {
+		rl_printf("No service UUID found\n");
 		return;
 	}
 
