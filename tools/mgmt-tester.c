@@ -1107,6 +1107,8 @@ static const struct generic_data start_discovery_valid_param_test_1 = {
 
 static const char stop_discovery_bredrle_param[] = { 0x07 };
 static const char stop_discovery_bredrle_invalid_param[] = { 0x06 };
+static const char stop_discovery_valid_hci[] = { 0x00, 0x00 };
+static const char stop_discovery_evt[] = { 0x07, 0x00 };
 
 static const struct generic_data stop_discovery_success_test_1 = {
 	.send_opcode = MGMT_OP_STOP_DISCOVERY,
@@ -1115,6 +1117,12 @@ static const struct generic_data stop_discovery_success_test_1 = {
 	.expect_status = MGMT_STATUS_SUCCESS,
 	.expect_param = stop_discovery_bredrle_param,
 	.expect_len = sizeof(stop_discovery_bredrle_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+	.expect_hci_param = stop_discovery_valid_hci,
+	.expect_hci_len = sizeof(stop_discovery_valid_hci),
+	.expect_alt_ev = MGMT_EV_DISCOVERING,
+	.expect_alt_ev_param = stop_discovery_evt,
+	.expect_alt_ev_len = sizeof(stop_discovery_evt),
 };
 
 static const struct generic_data stop_discovery_rejected_test_1 = {
