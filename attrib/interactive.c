@@ -850,7 +850,7 @@ static void parse_line(char *line_read)
 	line_read = g_strstrip(line_read);
 
 	if (*line_read == '\0')
-		return;
+		goto done;
 
 	add_history(line_read);
 
@@ -866,6 +866,9 @@ static void parse_line(char *line_read)
 		printf("%s: command not found\n", argvp[0]);
 
 	g_strfreev(argvp);
+
+done:
+	free(line_read);
 }
 
 static gboolean prompt_read(GIOChannel *chan, GIOCondition cond,
