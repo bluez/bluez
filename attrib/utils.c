@@ -50,11 +50,6 @@ GIOChannel *gatt_connect(const gchar *src, const gchar *dst,
 	GError *err = NULL;
 	BtIOSecLevel sec;
 
-	/* Remote device */
-	if (dst == NULL) {
-		g_printerr("Remote Bluetooth address required\n");
-		return NULL;
-	}
 	str2ba(dst, &dba);
 
 	/* Local adapter */
