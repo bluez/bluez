@@ -40,6 +40,7 @@
 #include "gattrib.h"
 #include "gatt.h"
 #include "gatttool.h"
+#include "client/display.h"
 
 static GIOChannel *iochannel = NULL;
 static GAttrib *attrib = NULL;
@@ -102,7 +103,6 @@ static void set_state(enum state st)
 {
 	conn_state = st;
 	rl_set_prompt(get_prompt());
-	rl_redisplay();
 }
 
 static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
@@ -145,8 +145,8 @@ static void events_handler(const uint8_t *pdu, uint16_t len, gpointer user_data)
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	if (err) {
-		printf("connect error: %s\n", err->message);
 		set_state(STATE_DISCONNECTED);
+		rl_printf("%s\n", err->message);
 		return;
 	}
 
@@ -156,6 +156,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	g_attrib_register(attrib, ATT_OP_HANDLE_IND, GATTRIB_ALL_HANDLES,
 						events_handler, attrib, NULL);
 	set_state(STATE_CONNECTED);
+	rl_redisplay();
 }
 
 static void disconnect_io()
@@ -412,7 +413,7 @@ static void cmd_connect(int argcp, char **argvp)
 	}
 
 	if (opt_dst == NULL) {
-		printf("Remote Bluetooth address required\n");
+		rl_printf("Remote Bluetooth address required\n");
 		return;
 	}
 
@@ -420,8 +421,8 @@ static void cmd_connect(int argcp, char **argvp)
 	iochannel = gatt_connect(opt_src, opt_dst, opt_dst_type, opt_sec_level,
 					opt_psm, opt_mtu, connect_cb, &gerr);
 	if (iochannel == NULL) {
-		printf("%s\n", gerr->message);
 		set_state(STATE_DISCONNECTED);
+		rl_printf("%s\n", gerr->message);
 		g_error_free(gerr);
 	} else
 		g_io_add_watch(iochannel, G_IO_HUP, channel_watcher, NULL);

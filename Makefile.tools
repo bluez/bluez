@@ -189,7 +189,8 @@ noinst_PROGRAMS += attrib/gatttool \
 attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
 				attrib/gattrib.c btio/btio.c \
 				attrib/gatttool.h attrib/interactive.c \
-				attrib/utils.c src/log.c
+				attrib/utils.c src/log.c client/display.c \
+				client/display.h
 attrib_gatttool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ -lreadline
 
 tools_obex_client_tool_SOURCES = $(gobex_sources) $(btio_sources) \
