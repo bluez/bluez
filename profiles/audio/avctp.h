@@ -49,6 +49,20 @@
 #define AVC_SUBUNIT_PANEL		0x09
 
 /* operands in passthrough commands */
+#define AVC_SELECT			0x00
+#define AVC_UP				0x01
+#define AVC_DOWN			0x02
+#define AVC_LEFT			0x03
+#define AVC_RIGHT			0x04
+#define AVC_ROOT_MENU			0x09
+#define AVC_CONTENTS_MENU		0x0b
+#define AVC_FAVORITE_MENU		0x0c
+#define AVC_ENTER			0x2b
+#define AVC_CHANNEL_UP			0x30
+#define AVC_CHANNEL_DOWN		0x31
+#define AVC_INPUT_SELECT		0x34
+#define AVC_HELP			0x36
+#define AVC_POWER			0x40
 #define AVC_VOLUME_UP			0x41
 #define AVC_VOLUME_DOWN			0x42
 #define AVC_MUTE			0x43
@@ -61,6 +75,10 @@
 #define AVC_EJECT			0x4a
 #define AVC_FORWARD			0x4b
 #define AVC_BACKWARD			0x4c
+#define AVC_F1				0x71
+#define AVC_F2				0x72
+#define AVC_F3				0x73
+#define AVC_F4				0x74
 
 struct avctp;
 
