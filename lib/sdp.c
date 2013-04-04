@@ -4429,6 +4429,11 @@ int sdp_service_search_attr_req(sdp_session_t *session, const sdp_list_t *search
 
 	/* add service class IDs for search */
 	seqlen = gen_searchseq_pdu(pdata, search);
+	if (seqlen < 0) {
+		errno = EINVAL;
+		status = -1;
+		goto end;
+	}
 
 	SDPDBG("Data seq added : %d\n", seqlen);
 
