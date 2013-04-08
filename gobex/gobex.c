@@ -1315,25 +1315,27 @@ GObex *g_obex_new(GIOChannel *io, GObexTransportType transport_type,
 
 GObex *g_obex_ref(GObex *obex)
 {
+	int refs;
+
 	if (obex == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&obex->ref_count);
+	refs = __sync_add_and_fetch(&obex->ref_count, 1);
 
-	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", obex->ref_count);
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", refs);
 
 	return obex;
 }
 
 void g_obex_unref(GObex *obex)
 {
-	gboolean last_ref;
+	int refs;
 
-	last_ref = g_atomic_int_dec_and_test(&obex->ref_count);
+	refs = __sync_sub_and_fetch(&obex->ref_count, 1);
 
-	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", obex->ref_count);
+	g_obex_debug(G_OBEX_DEBUG_COMMAND, "ref %u", refs);
 
-	if (!last_ref)
+	if (refs > 0)
 		return;
 
 	g_slist_free_full(obex->req_handlers, g_free);
