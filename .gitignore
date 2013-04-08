@@ -25,6 +25,8 @@ ltmain.sh
 missing
 stamp-h1
 autom4te.cache
+test-driver
+test-suite.log
 
 lib/bluez.pc
 lib/bluetooth
@@ -89,3 +91,5 @@ unit/test-gobex-apparam
 unit/test-gobex-header
 unit/test-gobex-packet
 unit/test-gobex-transfer
+unit/test-*.log
+unit/test-*.trs
