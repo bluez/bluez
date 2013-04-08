@@ -147,12 +147,14 @@ static gboolean is_response(guint8 opcode)
 
 GAttrib *g_attrib_ref(GAttrib *attrib)
 {
+	int refs;
+
 	if (!attrib)
 		return NULL;
 
-	g_atomic_int_inc(&attrib->refs);
+	refs = __sync_add_and_fetch(&attrib->refs, 1);
 
-	DBG("%p: ref=%d", attrib, attrib->refs);
+	DBG("%p: ref=%d", attrib, refs);
 
 	return attrib;
 }
@@ -219,16 +221,16 @@ static void attrib_destroy(GAttrib *attrib)
 
 void g_attrib_unref(GAttrib *attrib)
 {
-	gboolean ret;
+	int refs;
 
 	if (!attrib)
 		return;
 
-	ret = g_atomic_int_dec_and_test(&attrib->refs);
+	refs = __sync_sub_and_fetch(&attrib->refs, 1);
 
-	DBG("%p: ref=%d", attrib, attrib->refs);
+	DBG("%p: ref=%d", attrib, refs);
 
-	if (ret == FALSE)
+	if (refs > 0)
 		return;
 
 	attrib_destroy(attrib);

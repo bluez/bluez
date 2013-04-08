@@ -79,14 +79,14 @@ static void discover_primary_free(struct discover_primary *dp)
 
 static struct included_discovery *isd_ref(struct included_discovery *isd)
 {
-	g_atomic_int_inc(&isd->refs);
+	__sync_fetch_and_add(&isd->refs, 1);
 
 	return isd;
 }
 
 static void isd_unref(struct included_discovery *isd)
 {
-	if (g_atomic_int_dec_and_test(&isd->refs) == FALSE)
+	if (__sync_sub_and_fetch(&isd->refs, 1) > 0)
 		return;
 
 	if (isd->err)
@@ -582,7 +582,7 @@ static void read_long_destroy(gpointer user_data)
 {
 	struct read_long_data *long_read = user_data;
 
-	if (g_atomic_int_dec_and_test(&long_read->ref) == FALSE)
+	if (__sync_sub_and_fetch(&long_read->ref, 1) > 0)
 		return;
 
 	if (long_read->buffer != NULL)
@@ -627,7 +627,7 @@ static void read_blob_helper(guint8 status, const guint8 *rpdu, guint16 rlen,
 				read_blob_helper, long_read, read_long_destroy);
 
 	if (id != 0) {
-		g_atomic_int_inc(&long_read->ref);
+		__sync_fetch_and_add(&long_read->ref, 1);
 		return;
 	}
 
@@ -664,7 +664,7 @@ static void read_char_helper(guint8 status, const guint8 *rpdu,
 	id = g_attrib_send(long_read->attrib, long_read->id, buf, plen,
 				read_blob_helper, long_read, read_long_destroy);
 	if (id != 0) {
-		g_atomic_int_inc(&long_read->ref);
+		__sync_fetch_and_add(&long_read->ref, 1);
 		return;
 	}
 
@@ -700,7 +700,7 @@ guint gatt_read_char(GAttrib *attrib, uint16_t handle, GAttribResultFunc func,
 	if (id == 0)
 		g_free(long_read);
 	else {
-		g_atomic_int_inc(&long_read->ref);
+		__sync_fetch_and_add(&long_read->ref, 1);
 		long_read->id = id;
 	}
 
