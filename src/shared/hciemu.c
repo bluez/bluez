@@ -308,7 +308,7 @@ struct hciemu *hciemu_ref(struct hciemu *hciemu)
 	if (!hciemu)
 		return NULL;
 
-	g_atomic_int_inc(&hciemu->ref_count);
+	__sync_fetch_and_add(&hciemu->ref_count, 1);
 
 	return hciemu;
 }
@@ -318,7 +318,7 @@ void hciemu_unref(struct hciemu *hciemu)
 	if (!hciemu)
 		return;
 
-	if (g_atomic_int_dec_and_test(&hciemu->ref_count) == FALSE)
+	if (__sync_sub_and_fetch(&hciemu->ref_count, 1) > 0)
 		return;
 
 	g_list_foreach(hciemu->post_command_hooks, destroy_command_hook, NULL);
