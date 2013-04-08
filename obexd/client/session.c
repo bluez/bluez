@@ -115,9 +115,9 @@ static GQuark obex_io_error_quark(void)
 
 struct obc_session *obc_session_ref(struct obc_session *session)
 {
-	g_atomic_int_inc(&session->refcount);
+	int refs = __sync_add_and_fetch(&session->refcount, 1);
 
-	DBG("%p: ref=%d", session, session->refcount);
+	DBG("%p: ref=%d", session, refs);
 
 	return session;
 }
@@ -210,13 +210,13 @@ static void session_free(struct obc_session *session)
 
 void obc_session_unref(struct obc_session *session)
 {
-	gboolean ret;
+	int refs;
 
-	ret = g_atomic_int_dec_and_test(&session->refcount);
+	refs = __sync_sub_and_fetch(&session->refcount, 1);
 
-	DBG("%p: ref=%d", session, session->refcount);
+	DBG("%p: ref=%d", session, refs);
 
-	if (ret == FALSE)
+	if (refs > 0)
 		return;
 
 	session_free(session);
