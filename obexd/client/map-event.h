@@ -1,8 +1,8 @@
 /*
  *
- *  OBEX Server
+ *  OBEX
  *
- *  Copyright (C) 2007-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2013  BMW Car IT GmbH. All rights reserved.
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,23 +21,22 @@
  *
  */
 
-#define OBEX_OPP	(1 << 1)
-#define OBEX_FTP	(1 << 2)
-#define OBEX_BIP	(1 << 3)
-#define OBEX_PBAP	(1 << 4)
-#define OBEX_IRMC	(1 << 5)
-#define OBEX_PCSUITE	(1 << 6)
-#define OBEX_SYNCEVOLUTION	(1 << 7)
-#define OBEX_MAS	(1 << 8)
-#define OBEX_MNS	(1 << 9)
+enum map_event_type {
+	MAP_ET_NEW_MESSAGE,
+	MAP_ET_DELIVERY_SUCCESS,
+	MAP_ET_SENDING_SUCCESS,
+	MAP_ET_DELIVERY_FAILURE,
+	MAP_ET_SENDING_FAILURE,
+	MAP_ET_MEMORY_FULL,
+	MAP_ET_MEMORY_AVAILABLE,
+	MAP_ET_MESSAGE_DELETED,
+	MAP_ET_MESSAGE_SHIFT
+};
 
-gboolean plugin_init(const char *pattern, const char *exclude);
-void plugin_cleanup(void);
-
-gboolean manager_init(void);
-void manager_cleanup(void);
-
-gboolean obex_option_auto_accept(void);
-const char *obex_option_root_folder(void);
-gboolean obex_option_symlinks(void);
-const char *obex_option_capability(void);
+struct map_event {
+	enum map_event_type type;
+	char *handle;
+	char *folder;
+	char *old_folder;
+	char *msg_type;
+};
