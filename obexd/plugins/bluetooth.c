@@ -336,6 +336,8 @@ static const char *service2uuid(uint16_t service)
 		return "00000002-0000-1000-8000-0002ee000002";
 	case OBEX_MAS:
 		return OBEX_MAS_UUID;
+	case OBEX_MNS:
+		return OBEX_MNS_UUID;
 	}
 
 	return NULL;
