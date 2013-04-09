@@ -27,6 +27,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <glib.h>
 #include <gdbus/gdbus.h>
 #include <gobex/gobex-apparam.h>
@@ -1690,9 +1691,38 @@ static void map_msg_remove(void *data)
 	g_free(path);
 }
 
+static bool set_notification_registration(struct map_data *map, bool status)
+{
+	struct obc_transfer *transfer;
+	GError *err = NULL;
+	GObexApparam *apparam;
+	char contents[2];
+
+	contents[0] = FILLER_BYTE;
+	contents[1] = '\0';
+
+	transfer = obc_transfer_put("x-bt/MAP-NotificationRegistration", NULL,
+					NULL, contents, sizeof(contents), &err);
+
+	if (transfer == NULL)
+		return false;
+
+	apparam = g_obex_apparam_set_uint8(NULL, MAP_AP_NOTIFICATIONSTATUS,
+									status);
+
+	obc_transfer_set_apparam(transfer, apparam);
+
+	if (obc_session_queue(map->session, transfer, NULL, map, &err))
+		return true;
+
+	return false;
+}
+
 static void map_free(void *data)
 {
 	struct map_data *map = data;
+
+	set_notification_registration(map, false);
 
 	obc_session_unref(map->session);
 	g_hash_table_unref(map->messages);
@@ -1715,6 +1745,8 @@ static int map_probe(struct obc_session *session)
 	map->session = obc_session_ref(session);
 	map->messages = g_hash_table_new_full(g_str_hash, g_str_equal, NULL,
 								map_msg_remove);
+
+	set_notification_registration(map, true);
 
 	if (!g_dbus_register_interface(conn, path, MAP_INTERFACE, map_methods,
 					NULL, NULL, map, map_free)) {
