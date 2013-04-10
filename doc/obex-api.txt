@@ -44,7 +44,8 @@ Session hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Session1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
+Object path	/org/bluez/obex/server/session{0, 1, 2, ...} or
+		/org/bluez/obex/client/session{0, 1, 2, ...}
 
 Methods		string GetCapabilities()
 
@@ -79,7 +80,7 @@ Transfer hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Transfer1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}/transfer{0, 1, 2, ...}
+Object path	[Session object path]/transfer{0, 1, 2, ...}
 
 Methods		void Cancel()
 
@@ -141,7 +142,7 @@ Object Push hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.ObjectPush1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
+Object path	[Session object path]
 
 Methods		object, dict SendFile(string sourcefile)
 
@@ -201,7 +202,7 @@ File Transfer hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.FileTransfer
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
+Object path	[Session object path]
 
 Methods		void ChangeFolder(string folder)
 
@@ -298,7 +299,7 @@ Phonebook Access hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.PhonebookAccess1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
+Object path	[Session object path]
 
 Methods		void Select(string location, string phonebook)
 
@@ -448,7 +449,7 @@ Synchronization hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Synchronization1
-Object path	/org/bluez/obex/session{0, 1, 2, ...}
+Object path	[Session object path]
 
 Methods		void SetLocation(string location)
 
@@ -503,7 +504,7 @@ Message Access hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.MessageAccess1
-Object path	[variable prefix]/{session0,session1,...}
+Object path	[Session object path]
 
 Methods		void SetFolder(string name)
 
@@ -715,7 +716,7 @@ Message hierarchy
 
 Service		org.bluez.obex
 Interface	org.bluez.obex.Message1
-Object path	[variable prefix]/{session0,session1,...}/{message0,...}
+Object path	[Session object path]/{message0,...}
 
 Methods		object, dict Get(string targetfile, boolean attachment)
 

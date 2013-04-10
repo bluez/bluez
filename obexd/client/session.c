@@ -47,7 +47,7 @@
 
 #define SESSION_INTERFACE "org.bluez.obex.Session1"
 #define ERROR_INTERFACE "org.bluez.obex.Error"
-#define SESSION_BASEPATH "/org/bluez/obex"
+#define SESSION_BASEPATH "/org/bluez/obex/client"
 
 #define OBEX_IO_ERROR obex_io_error_quark()
 #define OBEX_IO_ERROR_FIRST (0xff + 1)

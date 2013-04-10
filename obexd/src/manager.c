@@ -45,6 +45,7 @@
 #include "service.h"
 
 #define OBEX_BASE_PATH "/org/bluez/obex"
+#define SESSION_BASE_PATH OBEX_BASE_PATH "/server"
 #define OBEX_MANAGER_INTERFACE OBEXD_SERVICE ".AgentManager1"
 #define ERROR_INTERFACE OBEXD_SERVICE ".Error"
 #define TRANSFER_INTERFACE OBEXD_SERVICE ".Transfer1"
@@ -354,7 +355,7 @@ static gboolean transfer_get_session(const GDBusPropertyTable *property,
 	if (session == NULL)
 		return FALSE;
 
-	path = g_strdup_printf("%s/session%u", OBEX_BASE_PATH, session->id);
+	path = g_strdup_printf("%s/session%u", SESSION_BASE_PATH, session->id);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
@@ -614,7 +615,7 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os)
 
 	transfer = g_new0(struct obex_transfer, 1);
 	transfer->path = g_strdup_printf("%s/session%u/transfer%u",
-					OBEX_BASE_PATH, os->id, id++);
+					SESSION_BASE_PATH, os->id, id++);
 	transfer->session = os;
 
 	if (!g_dbus_register_interface(connection, transfer->path,
@@ -800,7 +801,9 @@ static const GDBusMethodTable session_methods[] = {
 
 void manager_register_session(struct obex_session *os)
 {
-	char *path = g_strdup_printf("%s/session%u", OBEX_BASE_PATH, os->id);
+	char *path;
+
+	path = g_strdup_printf("%s/session%u", SESSION_BASE_PATH, os->id);
 
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
