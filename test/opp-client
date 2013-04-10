@@ -49,23 +49,25 @@ class OppClient:
 			print("Transfer created: %s" % path)
 
 	def error(self, err):
-		print err
+		print(err)
 		mainloop.quit()
 
 	def properties_changed(self, interface, properties, invalidated, path):
 		if path != self.transfer_path:
 			return
 
-		if properties['Status'] == 'complete' or \
-				properties['Status'] == 'error':
+		if "Status" in properties and \
+				(properties["Status"] == "complete" or \
+				properties["Status"] == "error"):
 			if self.verbose:
-				print("Transfer %s" % properties['Status'])
+				print("Transfer %s" % properties["Status"])
 			mainloop.quit()
 			return
 
-		if properties["Transferred"] == None:
+		if "Transferred" not in properties:
 			return
 
+		value = properties["Transferred"]
 		speed = (value - self.transferred) / 1000
 		print("Transfer progress %d/%d at %d kBps" % (value,
 							self.transfer_size,
