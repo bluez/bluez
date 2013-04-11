@@ -194,20 +194,12 @@ static guint create_source_btdev(int fd, struct btdev *btdev)
 static bool create_vhci(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
-	uint8_t bdaddr[6];
-	const char *str;
-	int fd, i;
+	int fd;
 
 	btdev = btdev_create(hciemu->btdev_type, 0x00);
 	if (!btdev)
 		return false;
 
-	str = hciemu_get_address(hciemu);
-
-	for (i = 5; i >= 0; i--, str += 3)
-		bdaddr[i] = strtol(str, NULL, 16);
-
-	btdev_set_bdaddr(btdev, bdaddr);
 	btdev_set_command_handler(btdev, master_command_callback, hciemu);
 
 	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
