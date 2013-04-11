@@ -641,6 +641,20 @@ const char *bt_compidtostr(int compid)
 		return "Ace Sensor Inc.";
 	case 189:
 		return "Aplix Corporation";
+	case 190:
+		return "AAMP of America";
+	case 191:
+		return "Stalmart Technology Limited";
+	case 192:
+		return "AMICCOM Electronics Corporation";
+	case 193:
+		return "Shenzhen Excelsecu Data Technology Co.,Ltd";
+	case 194:
+		return "Geneq Inc.";
+	case 195:
+		return "adidas AG";
+	case 196:
+		return "LG Electronics";
 	case 65535:
 		return "internal use";
 	default:
