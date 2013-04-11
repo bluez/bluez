@@ -453,6 +453,11 @@ void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr)
 	memcpy(btdev->bdaddr, bdaddr, 6);
 }
 
+const uint8_t *btdev_get_bdaddr(struct btdev *btdev)
+{
+	return btdev->bdaddr;
+}
+
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
 							void *user_data)
 {
