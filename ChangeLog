@@ -1,3 +1,11 @@
+ver 5.4:
+	Fix issue with invalid memory access and SDP service search.
+	Add support for available player changed event for controller.
+	Add support for UIDs changed event for AVRCP controller.
+	Add support for mandatory AVRCP pass-through operations.
+	Add support for Message Notification Service (MNS) server.
+	Add support for agent methods within command line client.
+
 ver 5.3:
 	Fix issue with registering invalid profiles.
 	Fix issue with inconsistent A2DP transport state.
