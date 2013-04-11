@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -49,6 +50,7 @@ struct hciemu {
 	guint master_source;
 	guint client_source;
 	GList *post_command_hooks;
+	char bdaddr_str[18];
 };
 
 struct hciemu_command_hook {
@@ -339,10 +341,15 @@ void hciemu_unref(struct hciemu *hciemu)
 
 const char *hciemu_get_address(struct hciemu *hciemu)
 {
-	if (!hciemu)
+	const uint8_t *addr;
+
+	if (!hciemu || !hciemu->master_dev)
 		return NULL;
 
-	return "00:FA:CE:1E:55:00";
+	addr = btdev_get_bdaddr(hciemu->master_dev);
+	sprintf(hciemu->bdaddr_str, "%2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X",
+			addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+	return hciemu->bdaddr_str;
 }
 
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
