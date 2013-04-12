@@ -43,6 +43,3 @@ struct audio_device {
 struct audio_device *audio_device_register(struct btd_device *device);
 
 void audio_device_unregister(struct audio_device *device);
-
-gboolean audio_device_is_active(struct audio_device *dev,
-						const char *interface);

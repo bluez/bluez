@@ -316,25 +316,6 @@ struct audio_device *audio_device_register(struct btd_device *device)
 	return dev;
 }
 
-gboolean audio_device_is_active(struct audio_device *dev,
-						const char *interface)
-{
-	if (!interface) {
-		if ((dev->sink || dev->source) && avdtp_is_connected(dev))
-			return TRUE;
-	} else if (!strcmp(interface, AUDIO_SINK_INTERFACE) && dev->sink &&
-				avdtp_is_connected(dev))
-		return TRUE;
-	else if (!strcmp(interface, AUDIO_SOURCE_INTERFACE) && dev->source &&
-				avdtp_is_connected(dev))
-		return TRUE;
-	else if (!strcmp(interface, AUDIO_CONTROL_INTERFACE) && dev->control &&
-				control_is_active(dev))
-		return TRUE;
-
-	return FALSE;
-}
-
 void audio_device_unregister(struct audio_device *device)
 {
 	DBG("%s", device_get_path(device->btd_dev));
