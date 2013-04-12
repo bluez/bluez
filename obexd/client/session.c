@@ -827,6 +827,15 @@ fail:
 	return NULL;
 }
 
+const void *obc_session_get_attribute(struct obc_session *session,
+							int attribute_id)
+{
+	if (session == NULL || session->id == 0)
+		return NULL;
+
+	return session->transport->getattribute(session->id, attribute_id);
+}
+
 const char *obc_session_get_owner(struct obc_session *session)
 {
 	if (session == NULL)
