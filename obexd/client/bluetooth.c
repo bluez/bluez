@@ -467,11 +467,35 @@ static int bluetooth_getpacketopt(GIOChannel *io, int *tx_mtu, int *rx_mtu)
 	return 0;
 }
 
+static const void *bluetooth_getattribute(guint id, int attribute_id)
+{
+	GSList *l;
+	sdp_data_t *data;
+
+	for (l = sessions; l; l = l->next) {
+		struct bluetooth_session *session = l->data;
+
+		if (session->id != id)
+			continue;
+
+		if (session->sdp_record == NULL)
+			break;
+
+		data = sdp_data_get(session->sdp_record, attribute_id);
+		if (!data)
+			break;
+
+		return &data->val;
+	}
+	return NULL;
+}
+
 static struct obc_transport bluetooth = {
 	.name = "Bluetooth",
 	.connect = bluetooth_connect,
 	.getpacketopt = bluetooth_getpacketopt,
 	.disconnect = bluetooth_disconnect,
+	.getattribute = bluetooth_getattribute,
 };
 
 int bluetooth_init(void)
