@@ -52,6 +52,7 @@ struct bluetooth_session {
 	bdaddr_t dst;
 	uint16_t port;
 	sdp_session_t *sdp;
+	sdp_record_t *sdp_record;
 	GIOChannel *io;
 	char *service;
 	obc_transport_func func;
@@ -81,6 +82,9 @@ static void session_destroy(struct bluetooth_session *session)
 
 	if (session->sdp)
 		sdp_close(session->sdp);
+
+	if (session->sdp_record)
+		sdp_record_free(session->sdp_record);
 
 	g_free(session->service);
 	g_free(session);
@@ -185,12 +189,16 @@ static void search_callback(uint8_t type, uint16_t status,
 		if (data != NULL && (data->val.uint16 & 0x0101) == 0x0001)
 			ch = data->val.uint16;
 
-		sdp_record_free(rec);
-
+		/* Cache the sdp record associated with the service that we
+		 * attempt to connect. This allows reading its application
+		 * specific service attributes. */
 		if (ch > 0) {
 			port = ch;
+			session->sdp_record = rec;
 			break;
 		}
+
+		sdp_record_free(rec);
 
 		scanned += recsize;
 		rsp += recsize;
