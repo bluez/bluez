@@ -56,8 +56,6 @@
 #include "sink.h"
 #include "source.h"
 
-#define AUDIO_INTERFACE "org.bluez.Audio"
-
 #define CONTROL_CONNECT_TIMEOUT 2
 #define AVDTP_CONNECT_TIMEOUT 1
 #define AVDTP_CONNECT_TIMEOUT_BOOST 1
