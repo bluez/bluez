@@ -23,8 +23,6 @@
  *
  */
 
-#define AUDIO_SOURCE_INTERFACE "org.bluez.AudioSource"
-
 typedef enum {
 	SOURCE_STATE_DISCONNECTED,
 	SOURCE_STATE_CONNECTING,

@@ -22,8 +22,6 @@
  *
  */
 
-#define AUDIO_SINK_INTERFACE "org.bluez.AudioSink"
-
 typedef enum {
 	SINK_STATE_DISCONNECTED,
 	SINK_STATE_CONNECTING,
