@@ -40,6 +40,7 @@
 #include "transfer.h"
 #include "session.h"
 #include "driver.h"
+#include "sdp.h"
 
 #define OBEX_MAS_UUID \
 	"\xBB\x58\x2B\x40\x42\x0C\x11\xDB\xB0\xDE\x08\x00\x20\x0C\x9A\x66"
@@ -95,6 +96,8 @@ struct map_data {
 	struct obc_session *session;
 	DBusMessage *msg;
 	GHashTable *messages;
+	int16_t mas_instance_id;
+	uint8_t supported_message_types;
 };
 
 #define MAP_MSG_FLAG_PRIORITY	0x01
@@ -1729,14 +1732,34 @@ static void map_free(void *data)
 	g_free(map);
 }
 
+static void parse_service_record(struct map_data *map)
+{
+	const void *data;
+
+	/* MAS instance id */
+	map->mas_instance_id = -1;
+	data = obc_session_get_attribute(map->session,
+						SDP_ATTR_MAS_INSTANCE_ID);
+	if (data != NULL)
+		map->mas_instance_id = *(uint8_t *)data;
+	else
+		DBG("Failed to read MAS instance id");
+
+	/* Supported Message Types */
+	data = obc_session_get_attribute(map->session,
+					SDP_ATTR_SUPPORTED_MESSAGE_TYPES);
+	if (data != NULL)
+		map->supported_message_types = *(uint8_t *)data;
+	else
+		DBG("Failed to read supported message types");
+}
+
 static int map_probe(struct obc_session *session)
 {
 	struct map_data *map;
 	const char *path;
 
 	path = obc_session_get_path(session);
-
-	DBG("%s", path);
 
 	map = g_try_new0(struct map_data, 1);
 	if (!map)
@@ -1745,6 +1768,10 @@ static int map_probe(struct obc_session *session)
 	map->session = obc_session_ref(session);
 	map->messages = g_hash_table_new_full(g_str_hash, g_str_equal, NULL,
 								map_msg_remove);
+
+	parse_service_record(map);
+
+	DBG("%s, instance id %d", path, map->mas_instance_id);
 
 	set_notification_registration(map, true);
 
