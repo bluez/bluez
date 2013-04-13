@@ -170,43 +170,70 @@ static void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_iter(DBusMessageIter *base, DBusMessageIter *iter)
+{
+	int type;
+
+	type = dbus_message_iter_get_arg_type(iter);
+
+	if (dbus_type_is_basic(type)) {
+		const void *value;
+
+		dbus_message_iter_get_basic(iter, &value);
+		dbus_message_iter_append_basic(base, type, &value);
+	} else if (dbus_type_is_container(type)) {
+		DBusMessageIter iter_sub, base_sub;
+		char *sig;
+
+		dbus_message_iter_recurse(iter, &iter_sub);
+
+		switch (type) {
+		case DBUS_TYPE_ARRAY:
+		case DBUS_TYPE_VARIANT:
+			sig = dbus_message_iter_get_signature(&iter_sub);
+			break;
+		default:
+			sig = NULL;
+			break;
+		}
+
+		dbus_message_iter_open_container(base, type, sig, &base_sub);
+
+		if (sig != NULL)
+			dbus_free(sig);
+
+		while (dbus_message_iter_get_arg_type(&iter_sub) !=
+							DBUS_TYPE_INVALID) {
+			append_iter(&base_sub, &iter_sub);
+			dbus_message_iter_next(&iter_sub);
+		}
+
+		dbus_message_iter_close_container(base, &base_sub);
+	}
+}
+
+static void dict_append_iter(DBusMessageIter *dict, const char *key,
+						DBusMessageIter *iter)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+						NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	append_iter(&entry, iter);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static int parse_metadata_entry(DBusMessageIter *entry, const char *key,
 						DBusMessageIter *metadata)
 {
-	DBusMessageIter var;
-	int type;
-
 	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
 		return -EINVAL;
 
-	dbus_message_iter_recurse(entry, &var);
-
-	type = dbus_message_iter_get_arg_type(&var);
-	if (type == DBUS_TYPE_ARRAY) {
-		char **values;
-		int i;
-		DBusMessageIter array;
-
-		dbus_message_iter_recurse(&var, &array);
-
-		values = dbus_malloc0(sizeof(char *) * 8);
-
-		i = 0;
-		while (dbus_message_iter_get_arg_type(&array) !=
-							DBUS_TYPE_INVALID) {
-			dbus_message_iter_get_basic(&array, &(values[i++]));
-			dbus_message_iter_next(&array);
-		}
-
-		dict_append_array(metadata, key, DBUS_TYPE_STRING, &values, i);
-		dbus_free(values);
-	} else if (dbus_type_is_basic(type)) {
-		const void *value;
-
-		dbus_message_iter_get_basic(&var, &value);
-		dict_append_entry(metadata, key, type, &value);
-	} else
-		return -EINVAL;
+	dict_append_iter(metadata, key, entry);
 
 	return 0;
 }
@@ -419,35 +446,62 @@ static char *sender2path(const char *sender)
 	return g_strdelimit(path, ":.", '_');
 }
 
+static void copy_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *msg = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	DBusMessage *copy;
+	DBusMessageIter args, iter;
+
+	copy = dbus_message_new_method_return(msg);
+	if (copy == NULL) {
+		dbus_message_unref(reply);
+		return;
+	}
+
+	dbus_message_iter_init_append(msg, &iter);
+
+	if (!dbus_message_iter_init(reply, &args))
+		goto done;
+
+	append_iter(&iter, &args);
+
+	dbus_connection_send(sys, copy, NULL);
+
+done:
+	dbus_message_unref(copy);
+	dbus_message_unref(reply);
+}
+
 static DBusHandlerResult player_message(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	char *owner = data;
-	dbus_uint32_t serial;
-	DBusMessage *copy, *reply;
-	DBusError err;
+	DBusMessage *copy;
+	DBusMessageIter args, iter;
+	DBusPendingCall *call;
 
-	copy = dbus_message_copy(msg);
-	dbus_message_set_destination(copy, owner);
-	reply = dbus_connection_send_with_reply_and_block(session, copy, -1,
-									&err);
-	if (!reply) {
-		if (dbus_error_is_set(&err)) {
-			fprintf(stderr, "%s\n", err.message);
-			dbus_error_free(&err);
-		}
-		dbus_message_unref(copy);
+	dbus_message_iter_init(msg, &args);
+
+	copy = dbus_message_new_method_call(owner,
+					MPRIS_PLAYER_PATH,
+					dbus_message_get_interface(msg),
+					dbus_message_get_member(msg));
+	if (copy == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-	}
 
+	dbus_message_iter_init_append(msg, &iter);
+	append_iter(&iter, &args);
+
+	if (!dbus_connection_send_with_reply(session, copy, &call, -1))
+		goto done;
+
+	dbus_message_ref(msg);
+	dbus_pending_call_set_notify(call, copy_reply, msg, NULL);
+	dbus_pending_call_unref(call);
+
+done:
 	dbus_message_unref(copy);
-
-	copy = dbus_message_copy(reply);
-	serial = dbus_message_get_serial(msg);
-	dbus_message_set_serial(copy, serial);
-
-	dbus_message_unref(copy);
-	dbus_message_unref(reply);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
