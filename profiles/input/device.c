@@ -54,6 +54,15 @@
 
 #include "sdp-client.h"
 
+#define INPUT_INTERFACE "org.bluez.Input1"
+
+enum reconnect_mode_t {
+	RECONNECT_NONE = 0,
+	RECONNECT_DEVICE,
+	RECONNECT_HOST,
+	RECONNECT_ANY
+};
+
 struct input_device {
 	struct btd_device	*device;
 	char			*path;
@@ -71,6 +80,7 @@ struct input_device {
 	guint			dc_id;
 	gboolean		disable_sdp;
 	char			*name;
+	enum reconnect_mode_t	reconnect_mode;
 };
 
 static GSList *devices = NULL;
@@ -706,6 +716,68 @@ static gboolean is_device_sdp_disable(const sdp_record_t *rec)
 	return data && data->val.uint8;
 }
 
+static enum reconnect_mode_t hid_reconnection_mode(bool reconnect_initiate,
+						bool normally_connectable)
+{
+	if (!reconnect_initiate && !normally_connectable)
+		return RECONNECT_NONE;
+	else if (!reconnect_initiate && normally_connectable)
+		return RECONNECT_HOST;
+	else if (reconnect_initiate && !normally_connectable)
+		return RECONNECT_DEVICE;
+	else /* (reconnect_initiate && normally_connectable) */
+		return RECONNECT_ANY;
+}
+
+static void extract_hid_props(struct input_device *idev,
+					const sdp_record_t *rec)
+{
+	/* Extract HID connectability */
+	bool reconnect_initiate, normally_connectable;
+	sdp_data_t *pdlist;
+
+	/* HIDNormallyConnectable is optional and assumed FALSE
+	* if not present. */
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_RECONNECT_INITIATE);
+	reconnect_initiate = pdlist ? pdlist->val.uint8 : TRUE;
+
+	pdlist = sdp_data_get(rec, SDP_ATTR_HID_NORMALLY_CONNECTABLE);
+	normally_connectable = pdlist ? pdlist->val.uint8 : FALSE;
+
+	/* Update local values */
+	idev->reconnect_mode =
+		hid_reconnection_mode(reconnect_initiate, normally_connectable);
+}
+
+static const char * const _reconnect_mode_str[] = {
+	"none",
+	"device",
+	"host",
+	"any"
+};
+
+static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode)
+{
+	return _reconnect_mode_str[mode];
+}
+
+static gboolean property_get_reconnect_mode(
+					const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct input_device *idev = data;
+	const char *str_mode = reconnect_mode_to_string(idev->reconnect_mode);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str_mode);
+
+	return TRUE;
+}
+
+static const GDBusPropertyTable input_properties[] = {
+	{ "ReconnectMode", "s", property_get_reconnect_mode },
+	{ }
+};
+
 int input_device_register(struct btd_device *device,
 					const char *path, const char *uuid,
 					const sdp_record_t *rec, int timeout)
@@ -722,6 +794,19 @@ int input_device_register(struct btd_device *device,
 			is_device_sdp_disable(rec));
 	if (!idev)
 		return -EINVAL;
+
+	/* Initialize device properties */
+	extract_hid_props(idev, rec);
+
+	if (g_dbus_register_interface(btd_get_dbus_connection(),
+					idev->path, INPUT_INTERFACE,
+					NULL, NULL,
+					input_properties, idev,
+					NULL) == FALSE) {
+		error("Unable to register %s interface", INPUT_INTERFACE);
+		input_device_free(idev);
+		return -EINVAL;
+	}
 
 	idev->timeout = timeout;
 	idev->uuid = g_strdup(uuid);
@@ -760,6 +845,9 @@ int input_device_unregister(const char *path, const char *uuid)
 		/* Pending connection running */
 		return -EBUSY;
 	}
+
+	g_dbus_unregister_interface(btd_get_dbus_connection(),
+						idev->path, INPUT_INTERFACE);
 
 	devices = g_slist_remove(devices, idev);
 	input_device_free(idev);
