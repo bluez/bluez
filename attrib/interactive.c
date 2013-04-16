@@ -395,6 +395,8 @@ static gboolean channel_watcher(GIOChannel *chan, GIOCondition cond,
 
 static void cmd_connect(int argcp, char **argvp)
 {
+	GError *gerr = NULL;
+
 	if (conn_state != STATE_DISCONNECTED)
 		return;
 
@@ -416,10 +418,12 @@ static void cmd_connect(int argcp, char **argvp)
 
 	set_state(STATE_CONNECTING);
 	iochannel = gatt_connect(opt_src, opt_dst, opt_dst_type, opt_sec_level,
-						opt_psm, opt_mtu, connect_cb);
-	if (iochannel == NULL)
+					opt_psm, opt_mtu, connect_cb, &gerr);
+	if (iochannel == NULL) {
+		printf("%s\n", gerr->message);
 		set_state(STATE_DISCONNECTED);
-	else
+		g_error_free(gerr);
+	} else
 		g_io_add_watch(iochannel, G_IO_HUP, channel_watcher, NULL);
 }
 

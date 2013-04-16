@@ -575,7 +575,7 @@ int main(int argc, char *argv[])
 
 	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
 		g_printerr("%s\n", gerr->message);
-		g_error_free(gerr);
+		g_clear_error(&gerr);
 	}
 
 	if (opt_interactive) {
@@ -610,8 +610,10 @@ int main(int argc, char *argv[])
 	}
 
 	chan = gatt_connect(opt_src, opt_dst, opt_dst_type, opt_sec_level,
-					opt_psm, opt_mtu, connect_cb);
+					opt_psm, opt_mtu, connect_cb, &gerr);
 	if (chan == NULL) {
+		g_printerr("%s\n", gerr->message);
+		g_clear_error(&gerr);
 		got_error = TRUE;
 		goto done;
 	}
