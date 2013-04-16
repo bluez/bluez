@@ -121,6 +121,11 @@ static void input_device_free(struct input_device *idev)
 	if (idev->ctrl_io)
 		g_io_channel_unref(idev->ctrl_io);
 
+	if (idev->req) {
+		g_free(idev->req->rd_data);
+		g_free(idev->req);
+	}
+
 	g_free(idev->uuid);
 
 	g_free(idev);
