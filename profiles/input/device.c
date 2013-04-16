@@ -81,9 +81,14 @@ struct input_device {
 	bool			disable_sdp;
 	char			*name;
 	enum reconnect_mode_t	reconnect_mode;
+	guint			reconnect_timer;
+	uint32_t		reconnect_attempt;
 };
 
 static GSList *devices = NULL;
+
+static void input_device_enter_reconnect_mode(struct input_device *idev);
+static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode);
 
 static struct input_device *find_device_by_path(GSList *list, const char *path)
 {
@@ -126,6 +131,9 @@ static void input_device_free(struct input_device *idev)
 		g_free(idev->req);
 	}
 
+	if (idev->reconnect_timer > 0)
+		g_source_remove(idev->reconnect_timer);
+
 	g_free(idev->uuid);
 
 	g_free(idev);
@@ -159,6 +167,9 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	/* Close control channel */
 	if (idev->ctrl_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(idev->ctrl_io, TRUE, NULL);
+
+	/* Enter the auto-reconnect mode if needed */
+	input_device_enter_reconnect_mode(idev);
 
 	return FALSE;
 }
@@ -652,6 +663,62 @@ static int dev_connect(struct input_device *idev)
 	g_error_free(err);
 
 	return -EIO;
+}
+
+static gboolean input_device_auto_reconnect(gpointer user_data)
+{
+	struct input_device *idev = user_data;
+
+	DBG("path=%s, attempt=%d", idev->path, idev->reconnect_attempt);
+
+	/* Stop the recurrent reconnection attempts if the device is reconnected
+	 * or is marked for removal. */
+	if (device_is_temporary(idev->device) ||
+					device_is_connected(idev->device))
+		return FALSE;
+
+	/* Only attempt an auto-reconnect for at most 3 minutes (6 * 30s). */
+	if (idev->reconnect_attempt >= 6)
+		return FALSE;
+
+	/* Check if the profile is already connected. */
+	if (idev->ctrl_io)
+		return FALSE;
+
+	if (is_connected(idev))
+		return FALSE;
+
+	idev->reconnect_attempt++;
+	dev_connect(idev);
+
+	return TRUE;
+}
+
+static void input_device_enter_reconnect_mode(struct input_device *idev)
+{
+	DBG("path=%s reconnect_mode=%s", idev->path,
+				reconnect_mode_to_string(idev->reconnect_mode));
+
+	/* Only attempt an auto-reconnect when the device is required to accept
+	 * reconnections from the host. */
+	if (idev->reconnect_mode != RECONNECT_ANY &&
+				idev->reconnect_mode != RECONNECT_HOST)
+		return;
+
+	/* If the device is temporary we are not required to reconnect with the
+	 * device. This is likely the case of a removing device. */
+	if (device_is_temporary(idev->device) ||
+					device_is_connected(idev->device))
+		return;
+
+	if (idev->reconnect_timer > 0)
+		g_source_remove(idev->reconnect_timer);
+
+	DBG("registering auto-reconnect");
+	idev->reconnect_attempt = 0;
+	idev->reconnect_timer = g_timeout_add_seconds(30,
+					input_device_auto_reconnect, idev);
+
 }
 
 int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
