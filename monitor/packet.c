@@ -1716,16 +1716,6 @@ static const struct {
 	{ 59, "Keypress Notification"					},
 	{ 60, "Remote Host Supported Features Notification"		},
 	{ 61, "LE Meta"							},
-	/* reserved events */
-	{ 78, "Triggered Clock Capture"					},
-	/* reserved event */
-	{ 80, "Synchronization Train Received"				},
-	{ 81, "Connectionless Slave Broadcast Receive"			},
-	{ 82, "Connectionless Slave Broadcast Timeout"			},
-	{ 83, "Truncated Page Complete"					},
-	{ 84, "Slave Page Response Timeout"				},
-	{ 85, "Connectionless Slave Broadcast Channel Map Change"	},
-	{ 86, "Inquiry Response Notification"				},
 	{ }
 };
 
