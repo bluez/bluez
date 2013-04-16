@@ -78,7 +78,7 @@ struct input_device {
 	int			timeout;
 	struct hidp_connadd_req *req;
 	guint			dc_id;
-	gboolean		disable_sdp;
+	bool			disable_sdp;
 	char			*name;
 	enum reconnect_mode_t	reconnect_mode;
 };
@@ -686,7 +686,7 @@ int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile)
 
 static struct input_device *input_device_new(struct btd_device *device,
 				const char *path, const uint32_t handle,
-				gboolean disable_sdp)
+				bool disable_sdp)
 {
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
@@ -707,7 +707,7 @@ static struct input_device *input_device_new(struct btd_device *device,
 	return idev;
 }
 
-static gboolean is_device_sdp_disable(const sdp_record_t *rec)
+static bool is_device_sdp_disable(const sdp_record_t *rec)
 {
 	sdp_data_t *data;
 
