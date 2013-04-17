@@ -31,6 +31,7 @@
 #include <glib.h>
 #include <gdbus/gdbus.h>
 #include <gobex/gobex-apparam.h>
+#include <bluetooth/sdp.h>
 
 #include "dbus.h"
 #include "log.h"
@@ -40,7 +41,6 @@
 #include "transfer.h"
 #include "session.h"
 #include "driver.h"
-#include "sdp.h"
 
 #define OBEX_MAS_UUID \
 	"\xBB\x58\x2B\x40\x42\x0C\x11\xDB\xB0\xDE\x08\x00\x20\x0C\x9A\x66"
