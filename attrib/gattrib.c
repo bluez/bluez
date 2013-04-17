@@ -124,7 +124,7 @@ static guint8 opcode2expected(guint8 opcode)
 	return 0;
 }
 
-static gboolean is_response(guint8 opcode)
+static bool is_response(guint8 opcode)
 {
 	switch (opcode) {
 	case ATT_OP_ERROR:
@@ -140,10 +140,10 @@ static gboolean is_response(guint8 opcode)
 	case ATT_OP_PREP_WRITE_RESP:
 	case ATT_OP_EXEC_WRITE_RESP:
 	case ATT_OP_HANDLE_CNF:
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 GAttrib *g_attrib_ref(GAttrib *attrib)
