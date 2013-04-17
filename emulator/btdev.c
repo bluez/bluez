@@ -58,6 +58,7 @@ struct btdev {
 	uint16_t revision;
 	uint8_t  commands[64];
 	uint8_t  features[8];
+	uint8_t  feat_page_2[8];
 	uint16_t acl_mtu;
 	uint16_t acl_max_pkt;
 	uint8_t  country_code;
@@ -208,6 +209,12 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->features[7] |= 0x01;	/* Link Supervision Timeout Event */
 	btdev->features[7] |= 0x02;	/* Inquiry TX Power Level */
 	btdev->features[7] |= 0x80;	/* Extended features */
+
+	btdev->feat_page_2[0] |= 0x01;	/* CSB - Master Operation */
+	btdev->feat_page_2[0] |= 0x02;	/* CSB - Slave Operation */
+	btdev->feat_page_2[0] |= 0x04;	/* Synchronization Train */
+	btdev->feat_page_2[0] |= 0x08;	/* Synchronization Scan */
+	btdev->feat_page_2[0] |= 0x10;	/* Inquiry Response Notification */
 }
 
 static void set_bredr_features(struct btdev *btdev)
@@ -1175,13 +1182,13 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		case 0x00:
 			rlef.status = BT_HCI_ERR_SUCCESS;
 			rlef.page = 0x00;
-			rlef.max_page = 0x01;
+			rlef.max_page = 0x02;
 			memcpy(rlef.features, btdev->features, 8);
 			break;
 		case 0x01:
 			rlef.status = BT_HCI_ERR_SUCCESS;
 			rlef.page = 0x01;
-			rlef.max_page = 0x01;
+			rlef.max_page = 0x02;
 			memset(rlef.features, 0, 8);
 			if (btdev->simple_pairing_mode)
 				rlef.features[0] |= 0x01;
@@ -1189,6 +1196,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 				rlef.features[0] |= 0x02;
 			if (btdev->le_simultaneous)
 				rlef.features[0] |= 0x04;
+			break;
+		case 0x02:
+			rlef.status = BT_HCI_ERR_SUCCESS;
+			rlef.page = 0x02;
+			rlef.max_page = 0x02;
+			memcpy(rlef.features, btdev->feat_page_2, 8);
 			break;
 		default:
 			rlef.status = BT_HCI_ERR_INVALID_PARAMETERS;
