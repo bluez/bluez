@@ -231,6 +231,12 @@ static struct attrib_def goep_attrib_names[] = {
 	{ 0x200, "GoepL2capPsm", NULL, 0 },
 };
 
+/* Name of the various MAS attributes. See BT assigned numbers */
+static struct attrib_def mas_attrib_names[] = {
+	{ 0x0315, "MASInstanceID", NULL, 0 },
+	{ 0x0316, "SupportedMessageTypes", NULL, 0 },
+};
+
 /* Same for the UUIDs. See BT assigned numbers */
 static struct uuid_def uuid16_names[] = {
 	/* -- Protocols -- */
@@ -318,7 +324,8 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x112f, "Phonebook Access (PBAP) - PSE", NULL, 0 },
 	{ 0x1130, "Phonebook Access (PBAP)", NULL, 0 },
 	{ 0x1131, "Headset (HSP)", NULL, 0 },
-	{ 0x1132, "Message Access (MAP) - MAS", NULL, 0 },
+	{ 0x1132, "Message Access (MAP) - MAS",
+		mas_attrib_names, sizeof(mas_attrib_names)/sizeof(struct attrib_def) },
 	{ 0x1133, "Message Access (MAP) - MNS", NULL, 0 },
 	{ 0x1134, "Message Access (MAP)", NULL, 0 },
 	/* ... */
