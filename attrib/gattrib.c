@@ -371,7 +371,7 @@ static gboolean match_event(struct event *evt, const uint8_t *pdu, gsize len)
 	if (evt->expected == GATTRIB_ALL_EVENTS)
 		return TRUE;
 
-	if (is_response(pdu[0]) == FALSE && evt->expected == GATTRIB_ALL_REQS)
+	if (!is_response(pdu[0]) && evt->expected == GATTRIB_ALL_REQS)
 		return TRUE;
 
 	if (evt->expected == pdu[0] && evt->handle == GATTRIB_ALL_HANDLES)
@@ -421,7 +421,7 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 			evt->func(buf, len, evt->user_data);
 	}
 
-	if (is_response(buf[0]) == FALSE)
+	if (!is_response(buf[0]))
 		return TRUE;
 
 	if (attrib->timeout_watch > 0) {

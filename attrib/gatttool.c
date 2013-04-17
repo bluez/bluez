@@ -248,7 +248,7 @@ static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	g_print("\n");
 
 done:
-	if (opt_listen == FALSE)
+	if (!opt_listen)
 		g_main_loop_quit(event_loop);
 }
 
@@ -378,7 +378,7 @@ static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	g_print("Characteristic value was written successfully\n");
 
 done:
-	if (opt_listen == FALSE)
+	if (!opt_listen)
 		g_main_loop_quit(event_loop);
 }
 
@@ -452,7 +452,7 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	att_data_list_free(list);
 
 done:
-	if (opt_listen == FALSE)
+	if (!opt_listen)
 		g_main_loop_quit(event_loop);
 }
 
@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
 	g_option_context_add_group(context, char_rw_group);
 	g_option_group_add_entries(char_rw_group, char_rw_options);
 
-	if (g_option_context_parse(context, &argc, &argv, &gerr) == FALSE) {
+	if (!g_option_context_parse(context, &argc, &argv, &gerr)) {
 		g_printerr("%s\n", gerr->message);
 		g_clear_error(&gerr);
 	}
