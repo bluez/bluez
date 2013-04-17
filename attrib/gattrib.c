@@ -66,7 +66,7 @@ struct command {
 	guint8 *pdu;
 	guint16 len;
 	guint8 expected;
-	gboolean sent;
+	bool sent;
 	GAttribResultFunc func;
 	gpointer user_data;
 	GDestroyNotify notify;
@@ -337,7 +337,7 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 		return TRUE;
 	}
 
-	cmd->sent = TRUE;
+	cmd->sent = true;
 
 	if (attrib->timeout_watch == 0)
 		attrib->timeout_watch = g_timeout_add_seconds(GATT_TIMEOUT,
