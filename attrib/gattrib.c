@@ -27,6 +27,7 @@
 #endif
 
 #include <stdint.h>
+#include <stdbool.h>
 #include <string.h>
 #include <glib.h>
 
@@ -56,7 +57,7 @@ struct _GAttrib {
 	guint next_cmd_id;
 	GDestroyNotify destroy;
 	gpointer destroy_user_data;
-	gboolean stale;
+	bool stale;
 };
 
 struct command {
@@ -279,7 +280,7 @@ static gboolean disconnect_timeout(gpointer data)
 	}
 
 done:
-	attrib->stale = TRUE;
+	attrib->stale = true;
 
 	g_attrib_unref(attrib);
 
