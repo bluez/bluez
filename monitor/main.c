@@ -59,6 +59,7 @@ static void usage(void)
 		"\t-i, --index <num>      Show only specified controller\n"
 		"\t-t, --time             Show time instead of time offset\n"
 		"\t-T, --date             Show time and date information\n"
+		"\t-S, --sco              Dump SCO traffic\n"
 		"\t-h, --help             Show help options\n");
 }
 
@@ -69,6 +70,7 @@ static const struct option main_options[] = {
 	{ "index",   required_argument, NULL, 'i' },
 	{ "time",    no_argument,       NULL, 't' },
 	{ "date",    no_argument,       NULL, 'T' },
+	{ "sco",     no_argument,	NULL, 'S' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -87,7 +89,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "r:w:s:i:tTvh",
+		opt = getopt_long(argc, argv, "r:w:s:i:tTSvh",
 						main_options, NULL);
 		if (opt < 0)
 			break;
@@ -121,6 +123,9 @@ int main(int argc, char *argv[])
 			filter_mask &= ~PACKET_FILTER_SHOW_TIME_OFFSET;
 			filter_mask |= PACKET_FILTER_SHOW_TIME;
 			filter_mask |= PACKET_FILTER_SHOW_DATE;
+			break;
+		case 'S':
+			filter_mask |= PACKET_FILTER_SHOW_SCO_DATA;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
