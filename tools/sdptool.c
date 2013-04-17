@@ -52,6 +52,7 @@
 #endif
 
 #define for_each_opt(opt, long, short) while ((opt=getopt_long(argc, argv, short ? short:"+", long, 0)) != -1)
+#define N_ELEMENTS(x) (sizeof(x) / sizeof((x)[0]))
 
 /*
  * Convert a string to a BDADDR, with a few "enhancements" - Jean II
@@ -152,14 +153,14 @@ static struct attrib_def attrib_names[] = {
 	{ 0x2, "ServiceRecordState", NULL, 0 },
 	{ 0x3, "ServiceID", NULL, 0 },
 	{ 0x4, "ProtocolDescriptorList",
-		protocol_members, sizeof(protocol_members)/sizeof(struct member_def) },
+		protocol_members, N_ELEMENTS(protocol_members) },
 	{ 0x5, "BrowseGroupList", NULL, 0 },
 	{ 0x6, "LanguageBaseAttributeIDList",
-		language_members, sizeof(language_members)/sizeof(struct member_def) },
+		language_members, N_ELEMENTS(language_members) },
 	{ 0x7, "ServiceInfoTimeToLive", NULL, 0 },
 	{ 0x8, "ServiceAvailability", NULL, 0 },
 	{ 0x9, "BluetoothProfileDescriptorList",
-		profile_members, sizeof(profile_members)/sizeof(struct member_def) },
+		profile_members, N_ELEMENTS(profile_members) },
 	{ 0xA, "DocumentationURL", NULL, 0 },
 	{ 0xB, "ClientExecutableURL", NULL, 0 },
 	{ 0xC, "IconURL", NULL, 0 },
@@ -167,7 +168,7 @@ static struct attrib_def attrib_names[] = {
 	/* Definitions after that are tricky (per profile or offset) */
 };
 
-const int attrib_max = sizeof(attrib_names)/sizeof(struct attrib_def);
+const int attrib_max = N_ELEMENTS(attrib_names);
 
 /* Name of the various SPD attributes. See BT assigned numbers */
 static struct attrib_def sdp_attrib_names[] = {
@@ -264,21 +265,21 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x0100, "L2CAP", NULL, 0 },
 	/* -- Services -- */
 	{ 0x1000, "ServiceDiscoveryServerServiceClassID",
-		sdp_attrib_names, sizeof(sdp_attrib_names)/sizeof(struct attrib_def) },
+		sdp_attrib_names, N_ELEMENTS(sdp_attrib_names) },
 	{ 0x1001, "BrowseGroupDescriptorServiceClassID",
-		browse_attrib_names, sizeof(browse_attrib_names)/sizeof(struct attrib_def) },
+		browse_attrib_names, N_ELEMENTS(browse_attrib_names) },
 	{ 0x1002, "PublicBrowseGroup", NULL, 0 },
 	{ 0x1101, "SerialPort", NULL, 0 },
 	{ 0x1102, "LANAccessUsingPPP", NULL, 0 },
 	{ 0x1103, "DialupNetworking (DUN)", NULL, 0 },
 	{ 0x1104, "IrMCSync", NULL, 0 },
 	{ 0x1105, "OBEXObjectPush",
-		goep_attrib_names, sizeof(goep_attrib_names)/sizeof(struct attrib_def) },
+		goep_attrib_names, N_ELEMENTS(goep_attrib_names) },
 	{ 0x1106, "OBEXFileTransfer",
-		goep_attrib_names, sizeof(goep_attrib_names)/sizeof(struct attrib_def) },
+		goep_attrib_names, N_ELEMENTS(goep_attrib_names) },
 	{ 0x1107, "IrMCSyncCommand", NULL, 0 },
 	{ 0x1108, "Headset",
-		audio_attrib_names, sizeof(audio_attrib_names)/sizeof(struct attrib_def) },
+		audio_attrib_names, N_ELEMENTS(audio_attrib_names) },
 	{ 0x1109, "CordlessTelephony", NULL, 0 },
 	{ 0x110a, "AudioSource", NULL, 0 },
 	{ 0x110b, "AudioSink", NULL, 0 },
@@ -292,11 +293,11 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1113, "WAP", NULL, 0 },
 	{ 0x1114, "WAP Client", NULL, 0 },
 	{ 0x1115, "PANU (PAN/BNEP)",
-		pan_attrib_names, sizeof(pan_attrib_names)/sizeof(struct attrib_def) },
+		pan_attrib_names, N_ELEMENTS(pan_attrib_names) },
 	{ 0x1116, "NAP (PAN/BNEP)",
-		pan_attrib_names, sizeof(pan_attrib_names)/sizeof(struct attrib_def) },
+		pan_attrib_names, N_ELEMENTS(pan_attrib_names) },
 	{ 0x1117, "GN (PAN/BNEP)",
-		pan_attrib_names, sizeof(pan_attrib_names)/sizeof(struct attrib_def) },
+		pan_attrib_names, N_ELEMENTS(pan_attrib_names) },
 	{ 0x1118, "DirectPrinting (BPP)", NULL, 0 },
 	{ 0x1119, "ReferencePrinting (BPP)", NULL, 0 },
 	{ 0x111a, "Imaging (BIP)", NULL, 0 },
@@ -310,7 +311,7 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1122, "BasicPrinting (BPP)", NULL, 0 },
 	{ 0x1123, "PrintingStatus (BPP)", NULL, 0 },
 	{ 0x1124, "HumanInterfaceDeviceService (HID)",
-		hid_attrib_names, sizeof(hid_attrib_names)/sizeof(struct attrib_def) },
+		hid_attrib_names, N_ELEMENTS(hid_attrib_names) },
 	{ 0x1125, "HardcopyCableReplacement (HCR)", NULL, 0 },
 	{ 0x1126, "HCR_Print (HCR)", NULL, 0 },
 	{ 0x1127, "HCR_Scan (HCR)", NULL, 0 },
@@ -325,16 +326,16 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x1130, "Phonebook Access (PBAP)", NULL, 0 },
 	{ 0x1131, "Headset (HSP)", NULL, 0 },
 	{ 0x1132, "Message Access (MAP) - MAS",
-		mas_attrib_names, sizeof(mas_attrib_names)/sizeof(struct attrib_def) },
+		mas_attrib_names, N_ELEMENTS(mas_attrib_names) },
 	{ 0x1133, "Message Access (MAP) - MNS", NULL, 0 },
 	{ 0x1134, "Message Access (MAP)", NULL, 0 },
 	/* ... */
 	{ 0x1200, "PnPInformation",
-		did_attrib_names, sizeof(did_attrib_names)/sizeof(struct attrib_def) },
+		did_attrib_names, N_ELEMENTS(did_attrib_names) },
 	{ 0x1201, "GenericNetworking", NULL, 0 },
 	{ 0x1202, "GenericFileTransfer", NULL, 0 },
 	{ 0x1203, "GenericAudio",
-		audio_attrib_names, sizeof(audio_attrib_names)/sizeof(struct attrib_def) },
+		audio_attrib_names, N_ELEMENTS(audio_attrib_names) },
 	{ 0x1204, "GenericTelephony", NULL, 0 },
 	/* ... */
 	{ 0x1303, "VideoSource", NULL, 0 },
@@ -346,7 +347,7 @@ static struct uuid_def uuid16_names[] = {
 	{ 0x2112, "AppleAgent", NULL, 0 },
 };
 
-static const int uuid16_max = sizeof(uuid16_names)/sizeof(struct uuid_def);
+static const int uuid16_max = N_ELEMENTS(uuid16_names);
 
 static void sdp_data_printf(sdp_data_t *, struct attrib_context *, int);
 
