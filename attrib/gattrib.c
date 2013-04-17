@@ -365,28 +365,28 @@ static void wake_up_sender(struct _GAttrib *attrib)
 				can_write_data, attrib, destroy_sender);
 }
 
-static gboolean match_event(struct event *evt, const uint8_t *pdu, gsize len)
+static bool match_event(struct event *evt, const uint8_t *pdu, gsize len)
 {
 	guint16 handle;
 
 	if (evt->expected == GATTRIB_ALL_EVENTS)
-		return TRUE;
+		return true;
 
 	if (!is_response(pdu[0]) && evt->expected == GATTRIB_ALL_REQS)
-		return TRUE;
+		return true;
 
 	if (evt->expected == pdu[0] && evt->handle == GATTRIB_ALL_HANDLES)
-		return TRUE;
+		return true;
 
 	if (len < 3)
-		return FALSE;
+		return false;
 
 	handle = att_get_u16(&pdu[1]);
 
 	if (evt->expected == pdu[0] && evt->handle == handle)
-		return TRUE;
+		return true;
 
-	return FALSE;
+	return false;
 }
 
 static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
