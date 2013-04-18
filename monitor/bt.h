@@ -690,6 +690,14 @@ struct bt_hci_cmd_write_le_host_supported {
 	uint8_t  simultaneous;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS	0x0c77
+struct bt_hci_rsp_read_sync_train_params {
+	uint8_t  status;
+	uint16_t interval;
+	uint32_t timeout;
+	uint8_t  service_data;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LOCAL_VERSION		0x1001
 struct bt_hci_rsp_read_local_version {
 	uint8_t  status;

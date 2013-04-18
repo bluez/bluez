@@ -3238,6 +3238,17 @@ static void write_le_host_supported_cmd(const void *data, uint8_t size)
 	print_field("Simultaneous: 0x%2.2x", cmd->simultaneous);
 }
 
+static void read_sync_train_params_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_sync_train_params *rsp = data;
+
+	print_status(rsp->status);
+	print_interval(rsp->interval);
+	print_field("Timeout: %.3f msec (0x%8.8x)",
+			btohl(rsp->timeout) * 0.625, btohl(rsp->timeout));
+	print_field("Service Data: 0x%2.2x", rsp->service_data);
+}
+
 static void read_local_version_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_local_version *rsp = data;
@@ -4075,7 +4086,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c74, 252, "Set Reserved LT_ADDR" },
 	{ 0x0c75, 253, "Delete Reserved LT_ADDR" },
 	{ 0x0c76, 254, "Set Connectionless Slave Broadcast Data" },
-	{ 0x0c77, 255, "Read Synchronization Train Parameters" },
+	{ 0x0c77, 255, "Read Synchronization Train Parameters",
+				null_cmd, 0, true,
+				read_sync_train_params_rsp, 8, true },
 	{ 0x0c78, 256, "Write Synchronization Train Parameters" },
 
 	/* OGF 4 - Information Parameter */
