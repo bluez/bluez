@@ -1302,13 +1302,13 @@ static void print_rssi(int8_t rssi)
 static void print_slot_625(const char *label, uint16_t value)
 {
 	 print_field("%s: %.3f msec (0x%4.4x)", label,
-					btohs(value) * 0.625, value);
+					btohs(value) * 0.625, btohs(value));
 }
 
 static void print_slot_125(const char *label, uint16_t value)
 {
 	print_field("%s: %.2f msec (0x%4.4x)", label,
-					btohs(value) * 1.25, value);
+					btohs(value) * 1.25, btohs(value));
 }
 
 static void print_timeout(uint16_t timeout)
