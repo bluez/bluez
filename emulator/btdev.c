@@ -89,6 +89,10 @@ struct btdev {
 	uint8_t  le_simultaneous;
 	uint8_t  le_event_mask[8];
 	uint8_t  le_adv_data[31];
+
+	uint16_t sync_train_interval;
+	uint32_t sync_train_timeout;
+	uint8_t  sync_train_service_data;
 };
 
 #define MAX_BTDEV_ENTRIES 16
@@ -298,6 +302,10 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	btdev->page_scan_interval = 0x0800;
 	btdev->page_scan_window = 0x0012;
 	btdev->page_scan_type = 0x00;
+
+	btdev->sync_train_interval = 0x0080;
+	btdev->sync_train_timeout = 0x0002ee00;
+	btdev->sync_train_service_data = 0x00;
 
 	btdev->acl_mtu = 192;
 	btdev->acl_max_pkt = 1;
@@ -738,6 +746,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_simple_pairing_mode rspm;
 	struct bt_hci_rsp_read_inquiry_resp_tx_power rirtp;
 	struct bt_hci_rsp_read_le_host_supported rlhs;
+	struct bt_hci_rsp_read_sync_train_params rstp;
 	struct bt_hci_rsp_read_local_version rlv;
 	struct bt_hci_rsp_read_local_commands rlc;
 	struct bt_hci_rsp_read_local_features rlf;
@@ -1159,6 +1168,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		btdev->le_simultaneous = wlhs->simultaneous;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS:
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
+			goto unsupported;
+		rstp.status = BT_HCI_ERR_SUCCESS;
+		rstp.interval = cpu_to_le16(btdev->sync_train_interval);
+		rstp.timeout = cpu_to_le32(btdev->sync_train_timeout);
+		rstp.service_data = btdev->sync_train_service_data;
+		cmd_complete(btdev, opcode, &rstp, sizeof(rstp));
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_VERSION:
