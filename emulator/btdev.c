@@ -57,6 +57,7 @@ struct btdev {
         uint8_t  version;
 	uint16_t revision;
 	uint8_t  commands[64];
+	uint8_t  max_page;
 	uint8_t  features[8];
 	uint8_t  feat_page_2[8];
 	uint16_t acl_mtu;
@@ -215,6 +216,8 @@ static void set_bredrle_features(struct btdev *btdev)
 	btdev->feat_page_2[0] |= 0x04;	/* Synchronization Train */
 	btdev->feat_page_2[0] |= 0x08;	/* Synchronization Scan */
 	btdev->feat_page_2[0] |= 0x10;	/* Inquiry Response Notification */
+
+	btdev->max_page = 2;
 }
 
 static void set_bredr_features(struct btdev *btdev)
@@ -239,6 +242,8 @@ static void set_bredr_features(struct btdev *btdev)
 	btdev->features[7] |= 0x01;	/* Link Supervision Timeout Event */
 	btdev->features[7] |= 0x02;	/* Inquiry TX Power Level */
 	btdev->features[7] |= 0x80;	/* Extended features */
+
+	btdev->max_page = 1;
 }
 
 static void set_le_features(struct btdev *btdev)
@@ -246,6 +251,8 @@ static void set_le_features(struct btdev *btdev)
 	btdev->features[4] |= 0x20;	/* BR/EDR Not Supported */
 	btdev->features[4] |= 0x40;	/* LE Supported */
 	btdev->features[7] |= 0x80;	/* Extended features */
+
+	btdev->max_page = 1;
 }
 
 static void set_amp_features(struct btdev *btdev)
@@ -1178,17 +1185,24 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_READ_LOCAL_EXT_FEATURES:
 		page = ((const uint8_t *) data)[0];
+
+		rlef.page = page;
+		rlef.max_page = btdev->max_page;
+
+		if (page > btdev->max_page) {
+			rlef.status = BT_HCI_ERR_INVALID_PARAMETERS;
+			memset(rlef.features, 0, 8);
+			cmd_complete(btdev, opcode, &rlef, sizeof(rlef));
+			break;
+		}
+
 		switch (page) {
 		case 0x00:
 			rlef.status = BT_HCI_ERR_SUCCESS;
-			rlef.page = 0x00;
-			rlef.max_page = 0x02;
 			memcpy(rlef.features, btdev->features, 8);
 			break;
 		case 0x01:
 			rlef.status = BT_HCI_ERR_SUCCESS;
-			rlef.page = 0x01;
-			rlef.max_page = 0x02;
 			memset(rlef.features, 0, 8);
 			if (btdev->simple_pairing_mode)
 				rlef.features[0] |= 0x01;
@@ -1199,14 +1213,10 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			break;
 		case 0x02:
 			rlef.status = BT_HCI_ERR_SUCCESS;
-			rlef.page = 0x02;
-			rlef.max_page = 0x02;
 			memcpy(rlef.features, btdev->feat_page_2, 8);
 			break;
 		default:
 			rlef.status = BT_HCI_ERR_INVALID_PARAMETERS;
-			rlef.page = page;
-			rlef.max_page = 0x01;
 			memset(rlef.features, 0, 8);
 			break;
 		}
