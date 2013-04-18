@@ -40,6 +40,7 @@ struct GDBusClient {
 	char *base_path;
 	GPtrArray *match_rules;
 	DBusPendingCall *pending_call;
+	DBusPendingCall *get_objects_call;
 	GDBusWatchFunction connect_func;
 	void *connect_data;
 	GDBusWatchFunction disconn_func;
@@ -992,6 +993,8 @@ static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError error;
 
+	g_dbus_client_ref(client);
+
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
@@ -1004,18 +1007,23 @@ static void get_managed_objects_reply(DBusPendingCall *call, void *user_data)
 done:
 	dbus_message_unref(reply);
 
+	dbus_pending_call_unref(client->get_objects_call);
+	client->get_objects_call = NULL;
+
 	g_dbus_client_unref(client);
 }
 
 static void get_managed_objects(GDBusClient *client)
 {
 	DBusMessage *msg;
-	DBusPendingCall *call;
 
 	if (!client->proxy_added && !client->proxy_removed) {
 		refresh_properties(client);
 		return;
 	}
+
+	if (client->get_objects_call != NULL)
+		return;
 
 	msg = dbus_message_new_method_call(client->service_name, "/",
 					DBUS_INTERFACE_DBUS ".ObjectManager",
@@ -1026,16 +1034,14 @@ static void get_managed_objects(GDBusClient *client)
 	dbus_message_append_args(msg, DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
-							&call, -1) == FALSE) {
+				&client->get_objects_call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return;
 	}
 
-	g_dbus_client_ref(client);
-
-	dbus_pending_call_set_notify(call, get_managed_objects_reply,
-							client, NULL);
-	dbus_pending_call_unref(call);
+	dbus_pending_call_set_notify(client->get_objects_call,
+						get_managed_objects_reply,
+						client, NULL);
 
 	dbus_message_unref(msg);
 }
@@ -1283,6 +1289,11 @@ void g_dbus_client_unref(GDBusClient *client)
 	if (client->pending_call != NULL) {
 		dbus_pending_call_cancel(client->pending_call);
 		dbus_pending_call_unref(client->pending_call);
+	}
+
+	if (client->get_objects_call != NULL) {
+		dbus_pending_call_cancel(client->get_objects_call);
+		dbus_pending_call_unref(client->get_objects_call);
 	}
 
 	for (i = 0; i < client->match_rules->len; i++) {
