@@ -191,6 +191,114 @@ static void get_bdaddr(uint16_t id, uint8_t index, uint8_t *bdaddr)
 	bdaddr[5] = 0x00;
 }
 
+static void set_common_commands_all(struct btdev *btdev)
+{
+	btdev->commands[5]  |= 0x40;	/* Set Event Mask */
+	btdev->commands[5]  |= 0x80;	/* Reset */
+	btdev->commands[14] |= 0x08;	/* Read Local Version */
+	btdev->commands[14] |= 0x10;	/* Read Local Supported Commands */
+	btdev->commands[14] |= 0x20;	/* Read Local Supported Features */
+	btdev->commands[14] |= 0x80;	/* Read Buffer Size */
+}
+
+static void set_common_commands_bredrle(struct btdev *btdev)
+{
+	btdev->commands[0]  |= 0x20;	/* Disconnect */
+	btdev->commands[2]  |= 0x80;	/* Read Remote Version Information */
+	btdev->commands[15] |= 0x02;	/* Read BD ADDR */
+}
+
+static void set_bredr_commands(struct btdev *btdev)
+{
+	set_common_commands_all(btdev);
+	set_common_commands_bredrle(btdev);
+
+	btdev->commands[0]  |= 0x01;	/* Inquiry */
+	btdev->commands[0]  |= 0x02;	/* Inquiry Cancel */
+	btdev->commands[0]  |= 0x10;	/* Create Connection */
+	btdev->commands[0]  |= 0x80;	/* Cancel Create Connection */
+	btdev->commands[1]  |= 0x01;	/* Accept Connection Request */
+	btdev->commands[1]  |= 0x02;	/* Reject Connection Request */
+	btdev->commands[2]  |= 0x08;	/* Remote Name Request */
+	btdev->commands[2]  |= 0x10;	/* Cancel Remote Name Request */
+	btdev->commands[2]  |= 0x20;	/* Read Remote Supported Features */
+	btdev->commands[2]  |= 0x40;	/* Read Remote Extended Features */
+	btdev->commands[5]  |= 0x08;	/* Read Default Link Policy */
+	btdev->commands[5]  |= 0x10;	/* Write Default Link Policy */
+	btdev->commands[6]  |= 0x01;	/* Set Event Filter */
+	btdev->commands[6]  |= 0x20;	/* Read Stored Link Key */
+	btdev->commands[6]  |= 0x40;	/* Write Stored Link Key */
+	btdev->commands[6]  |= 0x80;	/* Write Stored Link Key */
+	btdev->commands[7]  |= 0x01;	/* Write Local Name */
+	btdev->commands[7]  |= 0x02;	/* Read Local Name */
+	btdev->commands[7]  |= 0x04;	/* Read Connection Accept Timeout */
+	btdev->commands[7]  |= 0x08;	/* Write Connection Accept Timeout */
+	btdev->commands[7]  |= 0x10;	/* Read Page Timeout */
+	btdev->commands[7]  |= 0x20;	/* Write Page Timeout */
+	btdev->commands[7]  |= 0x40;	/* Read Scan Enable */
+	btdev->commands[7]  |= 0x80;	/* Write Scan Enable */
+	btdev->commands[8]  |= 0x01;	/* Read Page Scan Activity */
+	btdev->commands[8]  |= 0x02;	/* Write Page Scan Activity */
+	btdev->commands[8]  |= 0x10;	/* Read Authentication Enable */
+	btdev->commands[8]  |= 0x20;	/* Write Authentication Enable */
+	btdev->commands[9]  |= 0x01;	/* Read Class Of Device */
+	btdev->commands[9]  |= 0x02;	/* Write Class Of Device */
+	btdev->commands[9]  |= 0x04;	/* Read Voice Setting */
+	btdev->commands[9]  |= 0x08;	/* Write Voice Setting */
+	btdev->commands[12] |= 0x40;	/* Read Inquiry Mode */
+	btdev->commands[12] |= 0x80;	/* Write Inquiry Mode */
+	btdev->commands[13] |= 0x01;	/* Read Page Scan Type */
+	btdev->commands[13] |= 0x02;	/* Write Page Scan Type */
+	btdev->commands[13] |= 0x04;	/* Read AFH Assess Mode */
+	btdev->commands[13] |= 0x08;	/* Write AFH Assess Mode */
+	btdev->commands[14] |= 0x40;	/* Read Local Extended Features */
+	btdev->commands[15] |= 0x01;	/* Read Country Code */
+	btdev->commands[17] |= 0x01;	/* Read Extended Inquiry Response */
+	btdev->commands[17] |= 0x02;	/* Write Extended Inquiry Response */
+	btdev->commands[17] |= 0x20;	/* Read Simple Pairing Mode */
+	btdev->commands[17] |= 0x40;	/* Write Simple Pairing Mode */
+	btdev->commands[18] |= 0x01;	/* Read Inquiry Response TX Power */
+	btdev->commands[18] |= 0x02;	/* Write Inquiry Response TX Power */
+	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
+	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
+}
+
+static void set_le_commands(struct btdev *btdev)
+{
+	set_common_commands_all(btdev);
+	set_common_commands_bredrle(btdev);
+
+	btdev->commands[24] |= 0x20;	/* Read LE Host Supported */
+	btdev->commands[24] |= 0x20;	/* Write LE Host Supported */
+	btdev->commands[25] |= 0x01;	/* LE Set Event Mask */
+	btdev->commands[25] |= 0x02;	/* LE Read Buffer Size */
+	btdev->commands[25] |= 0x04;	/* LE Read Local Features */
+	btdev->commands[25] |= 0x40;	/* LE Read Adv TX Power */
+	btdev->commands[25] |= 0x80;	/* LE Set Adv Data */
+	btdev->commands[26] |= 0x04;	/* LE Set Scan Parameters */
+	btdev->commands[26] |= 0x08;	/* LE Set Scan Enable */
+	btdev->commands[26] |= 0x40;	/* LE Read White List Size */
+	btdev->commands[28] |= 0x08;	/* LE Read Supported States */
+}
+
+static void set_bredrle_commands(struct btdev *btdev)
+{
+	set_bredr_commands(btdev);
+	set_le_commands(btdev);
+
+	/* Extra BR/EDR commands we want to only support for >= 4.0
+	 * adapters.
+	 */
+	btdev->commands[31] |= 0x80;	/* Read Sync Train Parameters */
+}
+
+static void set_amp_commands(struct btdev *btdev)
+{
+	set_common_commands_all(btdev);
+
+	btdev->commands[22] |= 0x20;	/* Read Local AMP Info */
+}
+
 static void set_bredrle_features(struct btdev *btdev)
 {
 	btdev->features[0] |= 0x04;	/* Encryption */
@@ -288,15 +396,19 @@ struct btdev *btdev_create(enum btdev_type type, uint16_t id)
 	switch (btdev->type) {
 	case BTDEV_TYPE_BREDRLE:
 		set_bredrle_features(btdev);
+		set_bredrle_commands(btdev);
 		break;
 	case BTDEV_TYPE_BREDR:
 		set_bredr_features(btdev);
+		set_bredr_commands(btdev);
 		break;
 	case BTDEV_TYPE_LE:
 		set_le_features(btdev);
+		set_le_commands(btdev);
 		break;
 	case BTDEV_TYPE_AMP:
 		set_amp_features(btdev);
+		set_amp_commands(btdev);
 		break;
 	}
 
