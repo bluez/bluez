@@ -1086,6 +1086,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_INQUIRY_MODE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		wim = data;
 		btdev->inquiry_mode = wim->mode;
 		status = BT_HCI_ERR_SUCCESS;
@@ -1266,6 +1268,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_DATA_BLOCK_SIZE:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		rdbs.status = BT_HCI_ERR_SUCCESS;
 		rdbs.max_acl_len = cpu_to_le16(btdev->acl_mtu);
 		rdbs.block_len = cpu_to_le16(btdev->acl_mtu);
@@ -1274,6 +1278,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_AMP_INFO:
+		if (btdev->type != BTDEV_TYPE_AMP)
+			goto unsupported;
 		rlai.status = BT_HCI_ERR_SUCCESS;
 		rlai.amp_status = 0x01;		/* Used for Bluetooth only */
 		rlai.total_bw = cpu_to_le32(0);
