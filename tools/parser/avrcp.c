@@ -1748,8 +1748,8 @@ static const char *foldertype2str(uint8_t type)
 
 static void avrcp_folder_item_dump(int level, struct frame *frm, uint16_t len)
 {
-	uint8_t type, playable, namelen;
-	uint16_t charset;
+	uint8_t type, playable;
+	uint16_t charset, namelen;
 	uint64_t uid;
 
 	p_indent(level, frm);
@@ -1781,8 +1781,8 @@ static void avrcp_folder_item_dump(int level, struct frame *frm, uint16_t len)
 
 	p_indent(level, frm);
 
-	namelen = get_u8(frm);
-	printf("NameLength: 0x%02x (%u)\n", namelen, namelen);
+	namelen = get_u16(frm);
+	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
@@ -1845,8 +1845,8 @@ static void avrcp_media_element_item_dump(int level, struct frame *frm,
 								uint16_t len)
 {
 	uint64_t uid;
-	uint16_t charset;
-	uint8_t type, namelen, count;
+	uint16_t charset, namelen;
+	uint8_t type, count;
 
 	if (len < 14) {
 		printf("PDU Malformed\n");
@@ -1869,8 +1869,8 @@ static void avrcp_media_element_item_dump(int level, struct frame *frm,
 
 	p_indent(level, frm);
 
-	namelen = get_u8(frm);
-	printf("NameLength: 0x%02x (%u)\n", namelen, namelen);
+	namelen = get_u16(frm);
+	printf("NameLength: 0x%04x (%u)\n", namelen, namelen);
 
 	p_indent(level, frm);
 
