@@ -259,7 +259,6 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[17] |= 0x40;	/* Write Simple Pairing Mode */
 	btdev->commands[18] |= 0x01;	/* Read Inquiry Response TX Power */
 	btdev->commands[18] |= 0x02;	/* Write Inquiry Response TX Power */
-	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
 }
 
@@ -289,6 +288,7 @@ static void set_bredrle_commands(struct btdev *btdev)
 	/* Extra BR/EDR commands we want to only support for >= 4.0
 	 * adapters.
 	 */
+	btdev->commands[22] |= 0x04;	/* Set Event Mask Page 2 */
 	btdev->commands[31] |= 0x80;	/* Read Sync Train Parameters */
 }
 
