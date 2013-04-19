@@ -363,7 +363,6 @@ static void set_le_features(struct btdev *btdev)
 {
 	btdev->features[4] |= 0x20;	/* BR/EDR Not Supported */
 	btdev->features[4] |= 0x40;	/* LE Supported */
-	btdev->features[7] |= 0x80;	/* Extended features */
 
 	btdev->max_page = 1;
 }
@@ -1268,7 +1267,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_LE_HOST_SUPPORTED:
-		if (btdev->type == BTDEV_TYPE_BREDR)
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
 			goto unsupported;
 		rlhs.status = BT_HCI_ERR_SUCCESS;
 		rlhs.supported = btdev->le_supported;
@@ -1277,7 +1276,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_LE_HOST_SUPPORTED:
-		if (btdev->type == BTDEV_TYPE_BREDR)
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
 			goto unsupported;
 		wlhs = data;
 		btdev->le_supported = wlhs->supported;
@@ -1319,6 +1318,9 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_READ_LOCAL_EXT_FEATURES:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+
 		page = ((const uint8_t *) data)[0];
 
 		rlef.page = page;
