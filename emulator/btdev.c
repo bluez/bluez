@@ -69,6 +69,7 @@ struct btdev {
 
 	uint16_t default_link_policy;
 	uint8_t  event_mask[8];
+	uint8_t  event_mask_page2[8];
 	uint8_t  event_filter;
 	uint8_t  name[248];
 	uint8_t  dev_class[3];
@@ -725,6 +726,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
+	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
@@ -1284,6 +1286,15 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		rlai.max_flush_to = cpu_to_le32(0xffffffff);
 		rlai.be_flush_to = cpu_to_le32(0xffffffff);
 		cmd_complete(btdev, opcode, &rlai, sizeof(rlai));
+		break;
+
+	case BT_HCI_CMD_SET_EVENT_MASK_PAGE2:
+		if (btdev->type != BTDEV_TYPE_BREDRLE)
+			goto unsupported;
+		semp2 = data;
+		memcpy(btdev->event_mask_page2, semp2->mask, 8);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	case BT_HCI_CMD_LE_SET_EVENT_MASK:
