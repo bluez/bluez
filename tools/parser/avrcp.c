@@ -1848,6 +1848,8 @@ static void avrcp_media_element_item_dump(int level, struct frame *frm,
 	uint16_t charset, namelen;
 	uint8_t type, count;
 
+	p_indent(level, frm);
+
 	if (len < 14) {
 		printf("PDU Malformed\n");
 		raw_dump(level, frm);
