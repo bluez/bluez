@@ -152,6 +152,7 @@ struct btd_device {
 	bdaddr_t	bdaddr;
 	uint8_t		bdaddr_type;
 	char		*path;
+	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_resolved;
 	GSList		*svc_callbacks;
 	GSList		*eir_uuids;
@@ -1352,6 +1353,12 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 
 	g_slist_free_full(dev->eir_uuids, g_free);
 	dev->eir_uuids = NULL;
+
+	if (dev->pending_paired) {
+		g_dbus_emit_property_changed(dbus_conn, dev->path,
+						DEVICE_INTERFACE, "Paired");
+		dev->pending_paired = false;
+	}
 
 	while (dev->svc_callbacks) {
 		struct svc_callback *cb = dev->svc_callbacks->data;
@@ -3576,7 +3583,10 @@ void device_set_paired(struct btd_device *device, gboolean value)
 
 	device->paired = value;
 
-	g_dbus_emit_property_changed(dbus_conn, device->path,
+	if (device->paired && !device->svc_resolved)
+		device->pending_paired = true;
+	else
+		g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Paired");
 }
 
