@@ -1693,6 +1693,7 @@ static const GDBusMethodTable tracklist_methods[] = {
 static const GDBusSignalTable tracklist_signals[] = {
 	{ GDBUS_SIGNAL("TrackAdded", GDBUS_ARGS({"metadata", "a{sv}"},
 						{"after", "o"})) },
+	{ GDBUS_SIGNAL("TrackRemoved", GDBUS_ARGS({"track", "o"})) },
 	{ }
 };
 
@@ -2135,16 +2136,21 @@ static void unregister_item(struct player *player, GDBusProxy *proxy)
 	if (tracklist == NULL)
 		return;
 
-	path = g_dbus_proxy_get_path(proxy);
-	if (g_str_equal(path, tracklist->playlist) ||
-				!g_str_has_prefix(path, tracklist->playlist))
+	if (g_slist_find(tracklist->items, proxy) == NULL)
 		return;
+
+	path = g_dbus_proxy_get_path(proxy);
 
 	tracklist->items = g_slist_remove(tracklist->items, proxy);
 
 	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
 						MPRIS_TRACKLIST_INTERFACE,
 						"Tracks");
+
+	g_dbus_emit_signal(player->conn, MPRIS_PLAYER_PATH,
+				MPRIS_TRACKLIST_INTERFACE, "TrackRemoved",
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
 }
 
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
