@@ -1068,6 +1068,7 @@ static const char start_discovery_le_param[] = { 0x06 };
 static const char start_discovery_bredrle_param[] = { 0x07 };
 static const char start_discovery_valid_hci[] = { 0x01, 0x01 };
 static const char start_discovery_evt[] = { 0x07, 0x01 };
+static const char start_discovery_le_evt[] = { 0x06, 0x01 };
 
 static const struct generic_data start_discovery_not_powered_test_1 = {
 	.send_opcode = MGMT_OP_START_DISCOVERY,
@@ -1103,6 +1104,21 @@ static const struct generic_data start_discovery_valid_param_test_1 = {
 	.expect_alt_ev = MGMT_EV_DISCOVERING,
 	.expect_alt_ev_param = start_discovery_evt,
 	.expect_alt_ev_len = sizeof(start_discovery_evt),
+};
+
+static const struct generic_data start_discovery_valid_param_test_2 = {
+	.send_opcode = MGMT_OP_START_DISCOVERY,
+	.send_param = start_discovery_le_param,
+	.send_len = sizeof(start_discovery_le_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = start_discovery_le_param,
+	.expect_len = sizeof(start_discovery_le_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_SCAN_ENABLE,
+	.expect_hci_param = start_discovery_valid_hci,
+	.expect_hci_len = sizeof(start_discovery_valid_hci),
+	.expect_alt_ev = MGMT_EV_DISCOVERING,
+	.expect_alt_ev_param = start_discovery_le_evt,
+	.expect_alt_ev_len = sizeof(start_discovery_le_evt),
 };
 
 static const char stop_discovery_bredrle_param[] = { 0x07 };
@@ -2630,6 +2646,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Start Discovery - Success 1",
 				&start_discovery_valid_param_test_1,
 				setup_le_powered, test_command_generic);
+	test_le("Start Discovery - Success 2",
+				&start_discovery_valid_param_test_2,
+				setup_powered, test_command_generic);
 
 	test_bredrle("Stop Discovery - Success 1",
 				&stop_discovery_success_test_1,
