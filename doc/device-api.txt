@@ -96,7 +96,7 @@ Properties	string Address [readonly]
 
 			The Bluetooth device address of the remote device.
 
-		string Name [readonly]
+		string Name [readonly, optional]
 
 			The Bluetooth remote name. This value can not be
 			changed. Use the Alias property instead.
@@ -121,7 +121,7 @@ Properties	string Address [readonly]
 
 			External appearance of device, as found on GAP service.
 
-		array{string} UUIDs [readonly]
+		array{string} UUIDs [readonly, optional]
 
 			List of 128-bit UUIDs that represents the available
 			remote services.
