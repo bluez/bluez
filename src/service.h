@@ -32,6 +32,9 @@ void btd_service_unref(struct btd_service *service);
 struct btd_service *service_create(struct btd_device *device,
 						struct btd_profile *profile);
 
+int service_probe(struct btd_service *service);
+void service_shutdown(struct btd_service *service);
+
 /* Public member access */
 struct btd_device *btd_service_get_device(const struct btd_service *service);
 struct btd_profile *btd_service_get_profile(const struct btd_service *service);

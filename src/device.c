@@ -892,10 +892,8 @@ static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
 static void remove_service(gpointer data)
 {
 	struct btd_service *service = data;
-	struct btd_profile *profile = btd_service_get_profile(service);
-	struct btd_device *device = btd_service_get_device(service);
 
-	profile->device_remove(profile, device);
+	service_shutdown(service);
 	btd_service_unref(service);
 }
 
@@ -2349,7 +2347,6 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 {
 	struct probe_data *d = user_data;
 	struct btd_service *service;
-	int err;
 
 	if (p->device_probe == NULL)
 		return;
@@ -2359,9 +2356,7 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 
 	service = service_create(d->dev, p);
 
-	err = p->device_probe(p, d->dev);
-	if (err < 0) {
-		error("%s profile probe failed for %s", p->name, d->addr);
+	if (service_probe(service) < 0) {
 		btd_service_unref(service);
 		return;
 	}
@@ -2374,8 +2369,6 @@ void device_probe_profile(gpointer a, gpointer b)
 	struct btd_device *device = a;
 	struct btd_profile *profile = b;
 	struct btd_service *service;
-	char addr[18];
-	int err;
 
 	if (profile->device_probe == NULL)
 		return;
@@ -2383,13 +2376,9 @@ void device_probe_profile(gpointer a, gpointer b)
 	if (!device_match_profile(device, profile, device->uuids))
 		return;
 
-	ba2str(&device->bdaddr, addr);
-
 	service = service_create(device, profile);
 
-	err = profile->device_probe(profile, device);
-	if (err < 0) {
-		error("%s profile probe failed for %s", profile->name, addr);
+	if (service_probe(service) < 0) {
 		btd_service_unref(service);
 		return;
 	}

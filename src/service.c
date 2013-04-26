@@ -91,6 +91,28 @@ struct btd_service *service_create(struct btd_device *device,
 	return service;
 }
 
+int service_probe(struct btd_service *service)
+{
+	char addr[18];
+	int err;
+
+	err = service->profile->device_probe(service->profile, service->device);
+	if (err == 0)
+		return 0;
+
+	ba2str(device_get_address(service->device), addr);
+	error("%s profile probe failed for %s", service->profile->name, addr);
+
+	return err;
+}
+
+void service_shutdown(struct btd_service *service)
+{
+	service->profile->device_remove(service->profile, service->device);
+	service->device = NULL;
+	service->profile = NULL;
+}
+
 struct btd_device *btd_service_get_device(const struct btd_service *service)
 {
 	return service->device;
