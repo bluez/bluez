@@ -56,6 +56,7 @@
 #include "attio.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "dbus-common.h"
 #include "error.h"
 #include "glib-helper.h"
@@ -168,7 +169,7 @@ struct btd_device {
 	struct btd_adapter	*adapter;
 	GSList		*uuids;
 	GSList		*primaries;		/* List of primary services */
-	GSList		*profiles;		/* Probed profiles */
+	GSList		*services;		/* List of btd_service */
 	GSList		*pending;		/* Pending profiles */
 	GSList		*watches;		/* List of disconnect_data */
 	gboolean	temporary;
@@ -217,6 +218,20 @@ static int device_browse_primary(struct btd_device *device, DBusMessage *msg,
 							gboolean secure);
 static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
 							gboolean reverse);
+
+static GSList *find_service_with_profile(GSList *list, struct btd_profile *p)
+{
+	GSList *l;
+
+	for (l = list; l != NULL; l = g_slist_next(l)) {
+		struct btd_service *service = l->data;
+
+		if (btd_service_get_profile(service) == p)
+			return l;
+	}
+
+	return NULL;
+}
 
 static gboolean store_device_info_cb(gpointer user_data)
 {
@@ -874,12 +889,14 @@ static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static void profile_remove(gpointer data, gpointer user_data)
+static void remove_service(gpointer data)
 {
-	struct btd_profile *profile = data;
-	struct btd_device *device = user_data;
+	struct btd_service *service = data;
+	struct btd_profile *profile = btd_service_get_profile(service);
+	struct btd_device *device = btd_service_get_device(service);
 
 	profile->device_remove(profile, device);
+	btd_service_unref(service);
 }
 
 static gboolean do_disconnect(gpointer user_data)
@@ -904,9 +921,8 @@ int device_block(struct btd_device *device, gboolean update_only)
 	if (device->connected)
 		do_disconnect(device);
 
-	g_slist_foreach(device->profiles, profile_remove, device);
-	g_slist_free(device->profiles);
-	device->profiles = NULL;
+	g_slist_free_full(device->services, remove_service);
+	device->services = NULL;
 
 	if (!update_only)
 		err = btd_adapter_block_address(device->adapter,
@@ -1158,8 +1174,9 @@ static struct btd_profile *find_connectable_profile(struct btd_device *dev,
 {
 	GSList *l;
 
-	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
-		struct btd_profile *p = l->data;
+	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
+		struct btd_service *service = l->data;
+		struct btd_profile *p = btd_service_get_profile(service);
 
 		if (!p->connect || !p->remote_uuid)
 			continue;
@@ -1181,6 +1198,7 @@ static gint profile_prio_cmp(gconstpointer a, gconstpointer b)
 static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 							const char *uuid)
 {
+	struct btd_service *service;
 	struct btd_profile *p;
 	GSList *l;
 	int err;
@@ -1210,8 +1228,9 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 		goto start_connect;
 	}
 
-	for (l = dev->profiles; l != NULL; l = g_slist_next(l)) {
-		p = l->data;
+	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
+		service = l->data;
+		p = btd_service_get_profile(service);
 
 		if (!p->auto_connect)
 			continue;
@@ -2253,9 +2272,8 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (remove_stored)
 		device_remove_stored(device);
 
-	g_slist_foreach(device->profiles, profile_remove, device);
-	g_slist_free(device->profiles);
-	device->profiles = NULL;
+	g_slist_free_full(device->services, remove_service);
+	device->services = NULL;
 
 	btd_device_unref(device);
 }
@@ -2330,6 +2348,7 @@ struct probe_data {
 static void dev_probe(struct btd_profile *p, void *user_data)
 {
 	struct probe_data *d = user_data;
+	struct btd_service *service;
 	int err;
 
 	if (p->device_probe == NULL)
@@ -2338,19 +2357,23 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 	if (!device_match_profile(d->dev, p, d->uuids))
 		return;
 
+	service = service_create(d->dev, p);
+
 	err = p->device_probe(p, d->dev);
 	if (err < 0) {
 		error("%s profile probe failed for %s", p->name, d->addr);
+		btd_service_unref(service);
 		return;
 	}
 
-	d->dev->profiles = g_slist_append(d->dev->profiles, p);
+	d->dev->services = g_slist_append(d->dev->services, service);
 }
 
 void device_probe_profile(gpointer a, gpointer b)
 {
 	struct btd_device *device = a;
 	struct btd_profile *profile = b;
+	struct btd_service *service;
 	char addr[18];
 	int err;
 
@@ -2362,13 +2385,16 @@ void device_probe_profile(gpointer a, gpointer b)
 
 	ba2str(&device->bdaddr, addr);
 
+	service = service_create(device, profile);
+
 	err = profile->device_probe(profile, device);
 	if (err < 0) {
 		error("%s profile probe failed for %s", profile->name, addr);
+		btd_service_unref(service);
 		return;
 	}
 
-	device->profiles = g_slist_append(device->profiles, profile);
+	device->services = g_slist_append(device->services, service);
 
 	if (!profile->auto_connect || !device->general_connect)
 		return;
@@ -2383,15 +2409,19 @@ void device_remove_profile(gpointer a, gpointer b)
 {
 	struct btd_device *device = a;
 	struct btd_profile *profile = b;
+	struct btd_service *service;
+	GSList *l;
 
-	if (!g_slist_find(device->profiles, profile))
+	l = find_service_with_profile(device->services, profile);
+	if (l == NULL)
 		return;
 
 	device->connected_profiles = g_slist_remove(device->connected_profiles,
 								profile);
-	device->profiles = g_slist_remove(device->profiles, profile);
 
-	profile->device_remove(profile, device);
+	service = l->data;
+	device->services = g_slist_delete_link(device->services, l);
+	remove_service(service);
 }
 
 void device_probe_profiles(struct btd_device *device, GSList *uuids)
@@ -2440,15 +2470,16 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 	device->uuids = NULL;
 	store_device_info(device);
 
-	for (l = device->profiles; l != NULL; l = next) {
-		struct btd_profile *profile = l->data;
+	for (l = device->services; l != NULL; l = next) {
+		struct btd_service *service = l->data;
+		struct btd_profile *profile = btd_service_get_profile(service);
 
 		next = l->next;
 		if (device_match_profile(device, profile, device->uuids))
 			continue;
 
-		profile->device_remove(profile, device);
-		device->profiles = g_slist_remove(device->profiles, profile);
+		device->services = g_slist_delete_link(device->services, l);
+		remove_service(service);
 	}
 }
 
