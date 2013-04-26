@@ -59,7 +59,7 @@ static int hid_device_probe(struct btd_profile *p, struct btd_device *device,
 								GSList *uuids)
 {
 	const char *path = device_get_path(device);
-	const sdp_record_t *rec = btd_device_get_record(device, uuids->data);
+	const sdp_record_t *rec = btd_device_get_record(device, HID_UUID);
 
 	DBG("path %s", path);
 
