@@ -1212,6 +1212,8 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 {
 	GAttrib *attrib;
 
+	DBG("");
+
 	if (gerr) {
 		error("%s", gerr->message);
 		return;
@@ -1220,19 +1222,6 @@ static void connect_event(GIOChannel *io, GError *gerr, void *user_data)
 	attrib = g_attrib_new(io);
 	attrib_channel_attach(attrib);
 	g_attrib_unref(attrib);
-}
-
-static void confirm_event(GIOChannel *io, void *user_data)
-{
-	GError *gerr = NULL;
-
-	if (bt_io_accept(io, connect_event, user_data, NULL, &gerr) == FALSE) {
-		error("bt_io_accept: %s", gerr->message);
-		g_error_free(gerr);
-		g_io_channel_unref(io);
-	}
-
-	return;
 }
 
 static gboolean register_core_services(struct gatt_server *server)
@@ -1312,8 +1301,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	addr = adapter_get_address(server->adapter);
 
 	/* BR/EDR socket */
-	server->l2cap_io = bt_io_listen(NULL, confirm_event,
-					NULL, NULL, &gerr,
+	server->l2cap_io = bt_io_listen(connect_event, NULL, NULL, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_PSM, ATT_PSM,
 					BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
@@ -1332,7 +1320,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	}
 
 	/* LE socket */
-	server->le_io = bt_io_listen(NULL, confirm_event,
+	server->le_io = bt_io_listen(connect_event, NULL,
 					&server->le_io, NULL, &gerr,
 					BT_IO_OPT_SOURCE_BDADDR, addr,
 					BT_IO_OPT_CID, ATT_CID,
