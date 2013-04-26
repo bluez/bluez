@@ -67,6 +67,7 @@ struct network_peer {
 };
 
 struct network_conn {
+	struct btd_service *service;
 	char		dev[16];	/* Interface name */
 	uint16_t	id;		/* Role: Service Class Identifier */
 	conn_state	state;
@@ -606,6 +607,7 @@ static void connection_free(void *data)
 	if (nc->connect)
 		dbus_message_unref(nc->connect);
 
+	btd_service_unref(nc->service);
 	g_free(nc);
 }
 
@@ -649,14 +651,11 @@ static const GDBusPropertyTable connection_properties[] = {
 void connection_unregister(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
-	struct network_peer *peer;
+	struct network_conn *conn = btd_service_get_user_data(service);
+	struct network_peer *peer = conn->peer;
 	uint16_t id = get_service_id(service);
 
 	DBG("%s id %u", device_get_path(device), id);
-
-	peer = find_peer(peers, device);
-	if (!peer)
-		return;
 
 	g_slist_free_full(peer->connections, connection_free);
 	peer->connections = NULL;
@@ -721,8 +720,11 @@ int connection_register(struct btd_service *service)
 	nc->id = id;
 	memset(nc->dev, 0, sizeof(nc->dev));
 	strcpy(nc->dev, "bnep%d");
+	nc->service = btd_service_ref(service);
 	nc->state = DISCONNECTED;
 	nc->peer = peer;
+
+	btd_service_set_user_data(service, nc);
 
 	DBG("id %u registered", id);
 
