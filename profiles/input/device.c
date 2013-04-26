@@ -66,7 +66,6 @@ enum reconnect_mode_t {
 struct input_device {
 	struct btd_device	*device;
 	char			*path;
-	char			*uuid;
 	bdaddr_t		src;
 	bdaddr_t		dst;
 	uint32_t		handle;
@@ -138,8 +137,6 @@ static void input_device_free(struct input_device *idev)
 
 	if (idev->reconnect_timer > 0)
 		g_source_remove(idev->reconnect_timer);
-
-	g_free(idev->uuid);
 
 	g_free(idev);
 }
@@ -884,8 +881,6 @@ int input_device_register(struct btd_device *device,
 		input_device_free(idev);
 		return -EINVAL;
 	}
-
-	idev->uuid = g_strdup(uuid);
 
 	devices = g_slist_append(devices, idev);
 
