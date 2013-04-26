@@ -1060,8 +1060,6 @@ static int connect_next(struct btd_device *dev)
 	int err = -ENOENT;
 
 	while (dev->pending) {
-		int err;
-
 		profile = dev->pending->data;
 
 		err = profile->connect(dev, profile);
