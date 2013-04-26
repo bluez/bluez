@@ -21,6 +21,14 @@
  *
  */
 
+typedef enum {
+	BTD_SERVICE_STATE_UNAVAILABLE, /* Not probed */
+	BTD_SERVICE_STATE_DISCONNECTED,
+	BTD_SERVICE_STATE_CONNECTING,
+	BTD_SERVICE_STATE_CONNECTED,
+	BTD_SERVICE_STATE_DISCONNECTING,
+} btd_service_state_t;
+
 struct btd_service;
 struct btd_device;
 struct btd_profile;
@@ -42,3 +50,8 @@ int btd_service_disconnect(struct btd_service *service);
 /* Public member access */
 struct btd_device *btd_service_get_device(const struct btd_service *service);
 struct btd_profile *btd_service_get_profile(const struct btd_service *service);
+btd_service_state_t btd_service_get_state(const struct btd_service *service);
+
+/* Functions used by profile implementation */
+void btd_service_connecting_complete(struct btd_service *service, int err);
+void btd_service_disconnecting_complete(struct btd_service *service, int err);
