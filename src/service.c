@@ -113,6 +113,46 @@ void service_shutdown(struct btd_service *service)
 	service->profile = NULL;
 }
 
+int btd_service_connect(struct btd_service *service)
+{
+	struct btd_profile *profile = service->profile;
+	char addr[18];
+	int err;
+
+	if (!profile->connect)
+		return -ENOTSUP;
+
+	err = profile->connect(service->device, service->profile);
+	if (err == 0)
+		return 0;
+
+	ba2str(device_get_address(service->device), addr);
+	error("%s profile connect failed for %s: %s", profile->name, addr,
+								strerror(-err));
+
+	return err;
+}
+
+int btd_service_disconnect(struct btd_service *service)
+{
+	struct btd_profile *profile = service->profile;
+	char addr[18];
+	int err;
+
+	if (!profile->disconnect)
+		return -ENOTSUP;
+
+	err = profile->disconnect(service->device, service->profile);
+	if (err == 0)
+		return 0;
+
+	ba2str(device_get_address(service->device), addr);
+	error("%s profile disconnect failed for %s: %s", profile->name, addr,
+								strerror(-err));
+
+	return err;
+}
+
 struct btd_device *btd_service_get_device(const struct btd_service *service)
 {
 	return service->device;

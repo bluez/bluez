@@ -990,11 +990,12 @@ static void dev_disconn_profile(gpointer a, gpointer b)
 {
 	struct btd_profile *profile = a;
 	struct btd_device *dev = b;
+	struct btd_service *service;
+	GSList *l;
 
-	if (!profile->disconnect)
-		return;
-
-	profile->disconnect(dev, profile);
+	l = find_service_with_profile(dev->services, profile);
+	service = l->data;
+	btd_service_disconnect(service);
 }
 
 void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
@@ -1071,17 +1072,20 @@ static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
 static int connect_next(struct btd_device *dev)
 {
 	struct btd_profile *profile;
+	struct btd_service *service;
 	int err = -ENOENT;
 
 	while (dev->pending) {
+		GSList *l;
+
 		profile = dev->pending->data;
 
-		err = profile->connect(dev, profile);
-		if (err == 0)
+		l = find_service_with_profile(dev->services, profile);
+		service = l->data;
+
+		if (btd_service_connect(service) == 0)
 			return 0;
 
-		error("Failed to connect %s: %s", profile->name,
-							strerror(-err));
 		dev->pending = g_slist_remove(dev->pending, profile);
 	}
 
@@ -1328,6 +1332,8 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 {
 	struct btd_device *dev = user_data;
 	struct btd_profile *p;
+	struct btd_service *service;
+	GSList *l;
 	const char *pattern;
 	char *uuid;
 	int err;
@@ -1346,16 +1352,19 @@ static DBusMessage *disconnect_profile(DBusConnection *conn, DBusMessage *msg,
 	if (!p)
 		return btd_error_invalid_args(msg);
 
-	if (!p->disconnect)
+	l = find_service_with_profile(dev->services, p);
+	service = l->data;
+
+	err = btd_service_disconnect(service);
+	if (err == 0) {
+		dev->disconnect = dbus_message_ref(msg);
+		return NULL;
+	}
+
+	if (err == -ENOTSUP)
 		return btd_error_not_supported(msg);
 
-	err = p->disconnect(dev, p);
-	if (err < 0)
-		return btd_error_failed(msg, strerror(-err));
-
-	dev->disconnect = dbus_message_ref(msg);
-
-	return NULL;
+	return btd_error_failed(msg, strerror(-err));
 }
 
 static void device_svc_resolved(struct btd_device *dev, int err)
