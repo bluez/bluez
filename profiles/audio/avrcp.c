@@ -2668,7 +2668,7 @@ static void session_tg_init_control(struct avrcp *session)
 		avrcp_register_notification(session,
 						AVRCP_EVENT_VOLUME_CHANGED);
 
-	audio_controller_connected(session->dev->btd_dev, 0);
+	control_remote_connected(session->dev->control, 0);
 }
 
 static void session_ct_init_browsing(struct avrcp *session)
@@ -2694,7 +2694,7 @@ static void session_ct_init_control(struct avrcp *session)
 	if (session->version >= 0x0104)
 		session->supported_events = (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
-	audio_target_connected(session->dev->btd_dev, 0);
+	control_target_connected(session->dev->control, 0);
 
 	player = create_ct_player(session, 0);
 	if (player == NULL)
@@ -2731,9 +2731,9 @@ static void session_tg_destroy(struct avrcp *session)
 		player->sessions = g_slist_remove(player->sessions, session);
 
 	if (session->control_id == 0)
-		audio_controller_connected(session->dev->btd_dev, -EIO);
-
-	audio_controller_disconnected(session->dev->btd_dev, 0);
+		control_remote_connected(session->dev->control, -EIO);
+	else
+		control_remote_disconnected(session->dev->control, 0);
 
 	session_destroy(session);
 }
@@ -2745,9 +2745,9 @@ static void session_ct_destroy(struct avrcp *session)
 	g_slist_free_full(session->players, player_destroy);
 
 	if (session->control_id == 0)
-		audio_target_connected(session->dev->btd_dev, -EIO);
-
-	audio_target_disconnected(session->dev->btd_dev, 0);
+		control_target_connected(session->dev->control, -EIO);
+	else
+		control_target_disconnected(session->dev->control, 0);
 
 	session_destroy(session);
 }

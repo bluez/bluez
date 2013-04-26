@@ -421,26 +421,6 @@ void audio_source_disconnected(struct btd_device *dev, int err)
 	device_profile_disconnected(dev, &a2dp_source_profile, err);
 }
 
-void audio_target_connected(struct btd_device *dev, int err)
-{
-	device_profile_connected(dev, &avrcp_target_profile, err);
-}
-
-void audio_target_disconnected(struct btd_device *dev, int err)
-{
-	device_profile_disconnected(dev, &avrcp_target_profile, err);
-}
-
-void audio_controller_connected(struct btd_device *dev, int err)
-{
-	device_profile_connected(dev, &avrcp_remote_profile, err);
-}
-
-void audio_controller_disconnected(struct btd_device *dev, int err)
-{
-	device_profile_disconnected(dev, &avrcp_remote_profile, err);
-}
-
 int audio_manager_init(GKeyFile *conf)
 {
 	if (conf)

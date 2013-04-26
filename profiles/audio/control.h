@@ -34,3 +34,8 @@ gboolean control_is_active(struct audio_device *dev);
 
 int control_connect(struct audio_device *dev);
 int control_disconnect(struct audio_device *dev);
+
+void control_target_connected(struct control *control, int err);
+void control_target_disconnected(struct control *control, int err);
+void control_remote_connected(struct control *control, int err);
+void control_remote_disconnected(struct control *control, int err);

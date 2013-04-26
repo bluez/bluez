@@ -68,6 +68,38 @@ struct control {
 	unsigned int avctp_id;
 };
 
+void control_target_connected(struct control *control, int err)
+{
+	struct btd_device *device = btd_service_get_device(control->target);
+	struct btd_profile *profile = btd_service_get_profile(control->target);
+
+	device_profile_connected(device, profile, err);
+}
+
+void control_target_disconnected(struct control *control, int err)
+{
+	struct btd_device *device = btd_service_get_device(control->target);
+	struct btd_profile *profile = btd_service_get_profile(control->target);
+
+	device_profile_disconnected(device, profile, err);
+}
+
+void control_remote_connected(struct control *control, int err)
+{
+	struct btd_device *device = btd_service_get_device(control->remote);
+	struct btd_profile *profile = btd_service_get_profile(control->remote);
+
+	device_profile_connected(device, profile, err);
+}
+
+void control_remote_disconnected(struct control *control, int err)
+{
+	struct btd_device *device = btd_service_get_device(control->remote);
+	struct btd_profile *profile = btd_service_get_profile(control->remote);
+
+	device_profile_disconnected(device, profile, err);
+}
+
 static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 							avctp_state_t new_state)
 {
