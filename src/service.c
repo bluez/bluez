@@ -50,6 +50,7 @@ struct btd_service {
 	gint			ref;
 	struct btd_device	*device;
 	struct btd_profile	*profile;
+	void			*user_data;
 	btd_service_state_t	state;
 };
 
@@ -237,6 +238,17 @@ struct btd_device *btd_service_get_device(const struct btd_service *service)
 struct btd_profile *btd_service_get_profile(const struct btd_service *service)
 {
 	return service->profile;
+}
+
+void btd_service_set_user_data(struct btd_service *service, void *user_data)
+{
+	assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
+	service->user_data = user_data;
+}
+
+void *btd_service_get_user_data(const struct btd_service *service)
+{
+	return service->user_data;
 }
 
 btd_service_state_t btd_service_get_state(const struct btd_service *service)
