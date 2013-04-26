@@ -1724,7 +1724,7 @@ static const struct att_opcode_data att_opcode_table[] = {
 	{ 0x08, "Read By Type Request",
 			att_read_type_req, 6, false },
 	{ 0x09, "Read By Type Response",
-			att_read_type_rsp, 4, false },
+			att_read_type_rsp, 3, false },
 	{ 0x0a, "Read Request",
 			att_read_req, 2, true },
 	{ 0x0b, "Read Response",
