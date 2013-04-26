@@ -698,8 +698,11 @@ int connection_register(struct btd_device *device, uint16_t id)
 	}
 
 	nc = find_connection(peer->connections, id);
-	if (nc)
-		return 0;
+	if (nc) {
+		error("Device %s has multiple connection instances of %d",
+						device_get_path(device), id);
+		return -1;
+	}
 
 	nc = g_new0(struct network_conn, 1);
 	nc->id = id;
