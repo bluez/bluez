@@ -30,7 +30,7 @@ struct input_conn;
 int input_device_register(struct btd_device *device, const char *path,
 				const char *uuid, const sdp_record_t *rec,
 				int timeout);
-int input_device_unregister(const char *path, const char *uuid);
+void input_device_unregister(const char *path, const char *uuid);
 
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 							GIOChannel *io);

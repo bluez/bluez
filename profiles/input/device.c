@@ -903,7 +903,7 @@ static struct input_device *find_device(const bdaddr_t *src,
 	return NULL;
 }
 
-int input_device_unregister(const char *path, const char *uuid)
+void input_device_unregister(const char *path, const char *uuid)
 {
 	struct input_device *idev;
 
@@ -911,20 +911,13 @@ int input_device_unregister(const char *path, const char *uuid)
 
 	idev = find_device_by_path(devices, path);
 	if (idev == NULL)
-		return -EINVAL;
-
-	if (idev->ctrl_io) {
-		/* Pending connection running */
-		return -EBUSY;
-	}
+		return;
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 						idev->path, INPUT_INTERFACE);
 
 	devices = g_slist_remove(devices, idev);
 	input_device_free(idev);
-
-	return 0;
 }
 
 static int input_device_connadd(struct input_device *idev)
