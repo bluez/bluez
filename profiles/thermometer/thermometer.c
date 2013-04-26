@@ -35,6 +35,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "error.h"
 #include "log.h"
 #include "attrib/gattrib.h"
@@ -1280,9 +1281,9 @@ static void thermometer_adapter_unregister(struct btd_adapter *adapter)
 					THERMOMETER_MANAGER_INTERFACE);
 }
 
-static int thermometer_device_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int thermometer_device_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *tattr;
 
 	tattr = btd_device_get_primary(device, HEALTH_THERMOMETER_UUID);
@@ -1292,9 +1293,10 @@ static int thermometer_device_probe(struct btd_profile *p,
 	return thermometer_register(device, tattr);
 }
 
-static void thermometer_device_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void thermometer_device_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	thermometer_unregister(device);
 }
 

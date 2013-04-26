@@ -138,7 +138,7 @@ int service_probe(struct btd_service *service)
 
 	assert(service->state == BTD_SERVICE_STATE_UNAVAILABLE);
 
-	err = service->profile->device_probe(service->profile, service->device);
+	err = service->profile->device_probe(service);
 	if (err == 0) {
 		change_state(service, BTD_SERVICE_STATE_DISCONNECTED, 0);
 		return 0;
@@ -153,7 +153,7 @@ int service_probe(struct btd_service *service)
 void service_shutdown(struct btd_service *service)
 {
 	change_state(service, BTD_SERVICE_STATE_UNAVAILABLE, 0);
-	service->profile->device_remove(service->profile, service->device);
+	service->profile->device_remove(service);
 	service->device = NULL;
 	service->profile = NULL;
 }

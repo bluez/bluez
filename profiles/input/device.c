@@ -44,6 +44,7 @@
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"
+#include "../src/service.h"
 #include "../src/storage.h"
 #include "../src/dbus-common.h"
 
@@ -811,9 +812,10 @@ static void extract_hid_props(struct input_device *idev,
 		hid_reconnection_mode(reconnect_initiate, normally_connectable);
 }
 
-static struct input_device *input_device_new(struct btd_device *device,
-							struct btd_profile *p)
+static struct input_device *input_device_new(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+	struct btd_profile *p = btd_service_get_profile(service);
 	const char *path = device_get_path(device);
 	const sdp_record_t *rec = btd_device_get_record(device, p->remote_uuid);
 	struct btd_adapter *adapter = device_get_adapter(device);
@@ -855,8 +857,9 @@ static const GDBusPropertyTable input_properties[] = {
 	{ }
 };
 
-int input_device_register(struct btd_profile *p, struct btd_device *device)
+int input_device_register(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	const char *path = device_get_path(device);
 	struct input_device *idev;
 
@@ -866,7 +869,7 @@ int input_device_register(struct btd_profile *p, struct btd_device *device)
 	if (idev)
 		return -EEXIST;
 
-	idev = input_device_new(device, p);
+	idev = input_device_new(service);
 	if (!idev)
 		return -EINVAL;
 
@@ -900,8 +903,9 @@ static struct input_device *find_device(const bdaddr_t *src,
 	return NULL;
 }
 
-void input_device_unregister(struct btd_profile *p, struct btd_device *device)
+void input_device_unregister(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	const char *path = device_get_path(device);
 	struct input_device *idev;
 

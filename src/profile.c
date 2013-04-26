@@ -50,6 +50,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 
 #define DUN_DEFAULT_CHANNEL	1
 #define SPP_DEFAULT_CHANNEL	3
@@ -1397,8 +1398,9 @@ static void ext_adapter_remove(struct btd_profile *p,
 	}
 }
 
-static int ext_device_probe(struct btd_profile *p, struct btd_device *dev)
+static int ext_device_probe(struct btd_service *service)
 {
+	struct btd_profile *p = btd_service_get_profile(service);
 	struct ext_profile *ext;
 
 	ext = find_ext(p);
@@ -1425,8 +1427,10 @@ static struct ext_io *find_connection(struct ext_profile *ext,
 	return NULL;
 }
 
-static void ext_device_remove(struct btd_profile *p, struct btd_device *dev)
+static void ext_device_remove(struct btd_service *service)
 {
+	struct btd_profile *p = btd_service_get_profile(service);
+	struct btd_device *dev = btd_service_get_device(service);
 	struct ext_profile *ext;
 	struct ext_io *conn;
 

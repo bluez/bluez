@@ -46,6 +46,7 @@
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/profile.h"
+#include "src/service.h"
 
 #include "plugin.h"
 #include "suspend.h"
@@ -820,8 +821,9 @@ static void resume_callback(void)
 	g_slist_foreach(devices, set_suspend, GINT_TO_POINTER(suspend));
 }
 
-static int hog_probe(struct btd_profile *p, struct btd_device *device)
+static int hog_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	const char *path = device_get_path(device);
 	GSList *primaries, *l;
 
@@ -860,8 +862,9 @@ static void remove_device(gpointer a, gpointer b)
 	hog_unregister_device(hogdev);
 }
 
-static void hog_remove(struct btd_profile *p, struct btd_device *device)
+static void hog_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	const char *path = device_get_path(device);
 
 	DBG("path %s", path);

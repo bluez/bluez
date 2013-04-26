@@ -39,6 +39,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
@@ -407,8 +408,9 @@ static void gas_unregister(struct btd_device *device)
 	gas_free(gas);
 }
 
-static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device)
+static int gatt_driver_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *gap, *gatt;
 
 	gap = btd_device_get_primary(device, GAP_UUID);
@@ -422,9 +424,10 @@ static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device)
 	return gas_register(device, &gap->range, &gatt->range);
 }
 
-static void gatt_driver_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void gatt_driver_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	gas_unregister(device);
 }
 

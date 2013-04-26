@@ -34,6 +34,7 @@
 #include <adapter.h>
 #include <device.h>
 #include <profile.h>
+#include <service.h>
 #include <glib-helper.h>
 #include <log.h>
 
@@ -54,13 +55,17 @@ static void hdp_adapter_remove(struct btd_profile *p,
 	hdp_adapter_unregister(adapter);
 }
 
-static int hdp_driver_probe(struct btd_profile *p, struct btd_device *device)
+static int hdp_driver_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	return hdp_device_register(device);
 }
 
-static void hdp_driver_remove(struct btd_profile *p, struct btd_device *device)
+static void hdp_driver_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	hdp_device_unregister(device);
 }
 

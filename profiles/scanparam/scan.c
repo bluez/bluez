@@ -37,6 +37,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
@@ -266,8 +267,9 @@ static void scan_unregister(struct btd_device *device)
 	g_free(scan);
 }
 
-static int scan_param_probe(struct btd_profile *p, struct btd_device *device)
+static int scan_param_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *prim;
 
 	DBG("Probing Scan Parameters");
@@ -279,8 +281,10 @@ static int scan_param_probe(struct btd_profile *p, struct btd_device *device)
 	return scan_register(device, prim);
 }
 
-static void scan_param_remove(struct btd_profile *p, struct btd_device *device)
+static void scan_param_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	scan_unregister(device);
 }
 

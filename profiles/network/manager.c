@@ -41,6 +41,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "manager.h"
 #include "common.h"
 #include "connection.h"

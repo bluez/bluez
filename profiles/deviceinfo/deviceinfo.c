@@ -34,6 +34,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "attrib/gattrib.h"
 #include "attio.h"
 #include "attrib/att.h"
@@ -198,9 +199,9 @@ static void deviceinfo_unregister(struct btd_device *device)
 	deviceinfo_free(d);
 }
 
-static int deviceinfo_driver_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int deviceinfo_driver_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *prim;
 
 	prim = btd_device_get_primary(device, DEVICE_INFORMATION_UUID);
@@ -210,9 +211,10 @@ static int deviceinfo_driver_probe(struct btd_profile *p,
 	return deviceinfo_register(device, prim);
 }
 
-static void deviceinfo_driver_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void deviceinfo_driver_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	deviceinfo_unregister(device);
 }
 

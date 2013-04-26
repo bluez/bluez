@@ -44,6 +44,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 
 #include "error.h"
 #include "common.h"
@@ -640,8 +641,10 @@ static const GDBusPropertyTable connection_properties[] = {
 	{ }
 };
 
-void connection_unregister(struct btd_profile *p, struct btd_device *device)
+void connection_unregister(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+	struct btd_profile *p = btd_service_get_profile(service);
 	struct network_peer *peer;
 	uint16_t id = bnep_service_id(p->remote_uuid);
 
@@ -686,8 +689,10 @@ static struct network_peer *create_peer(struct btd_device *device)
 	return peer;
 }
 
-int connection_register(struct btd_profile *p, struct btd_device *device)
+int connection_register(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+	struct btd_profile *p = btd_service_get_profile(service);
 	struct network_peer *peer;
 	struct network_conn *nc;
 	uint16_t id = bnep_service_id(p->remote_uuid);

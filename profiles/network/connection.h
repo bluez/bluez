@@ -21,7 +21,7 @@
  *
  */
 
-int connection_register(struct btd_profile *p, struct btd_device *device);
-void connection_unregister(struct btd_profile *p, struct btd_device *device);
+int connection_register(struct btd_service *service);
+void connection_unregister(struct btd_service *service);
 int connection_connect(struct btd_device *device, uint16_t id);
 int connection_disconnect(struct btd_device *device, uint16_t id);

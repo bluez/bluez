@@ -35,6 +35,7 @@
 #include "dbus-common.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "error.h"
 #include "attrib/gattrib.h"
 #include "attrib/att.h"
@@ -841,9 +842,9 @@ static void heartrate_adapter_remove(struct btd_profile *p,
 	heartrate_adapter_unregister(adapter);
 }
 
-static int heartrate_device_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int heartrate_device_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *prim;
 
 	prim = btd_device_get_primary(device, HEART_RATE_UUID);
@@ -853,9 +854,10 @@ static int heartrate_device_probe(struct btd_profile *p,
 	return heartrate_device_register(device, prim);
 }
 
-static void heartrate_device_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void heartrate_device_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	heartrate_device_unregister(device);
 }
 

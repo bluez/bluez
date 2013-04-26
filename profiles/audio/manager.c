@@ -53,6 +53,7 @@
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"
+#include "../src/service.h"
 
 #include "log.h"
 #include "device.h"
@@ -89,8 +90,9 @@ static struct audio_device *manager_find_device(struct btd_device *device)
 	return NULL;
 }
 
-static void audio_remove(struct btd_profile *p, struct btd_device *device)
+static void audio_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *dev;
 
 	dev = manager_find_device(device);
@@ -101,8 +103,9 @@ static void audio_remove(struct btd_profile *p, struct btd_device *device)
 	audio_device_unregister(dev);
 }
 
-static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device)
+static int a2dp_source_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *audio_dev;
 
 	audio_dev = get_audio_dev(device);
@@ -116,8 +119,9 @@ static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device)
 	return 0;
 }
 
-static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device)
+static int a2dp_sink_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *audio_dev;
 
 	audio_dev = get_audio_dev(device);
@@ -131,8 +135,10 @@ static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device)
 	return 0;
 }
 
-static int avrcp_probe(struct btd_profile *p, struct btd_device *device)
+static int avrcp_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+	struct btd_profile *p = btd_service_get_profile(service);
 	struct audio_device *audio_dev;
 
 	audio_dev = get_audio_dev(device);

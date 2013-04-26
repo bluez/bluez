@@ -29,8 +29,8 @@ struct input_conn;
 
 void input_set_idle_timeout(int timeout);
 
-int input_device_register(struct btd_profile *p, struct btd_device *device);
-void input_device_unregister(struct btd_profile *p, struct btd_device *device);
+int input_device_register(struct btd_service *service);
+void input_device_unregister(struct btd_service *service);
 
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 							GIOChannel *io);

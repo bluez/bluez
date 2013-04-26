@@ -35,6 +35,7 @@
 #include "adapter.h"
 #include "device.h"
 #include "profile.h"
+#include "service.h"
 #include "attrib/att.h"
 #include "attrib/gattrib.h"
 #include "attrib/gatt.h"
@@ -48,9 +49,9 @@ static struct enabled enabled  = {
 	.findme = TRUE,
 };
 
-static int monitor_linkloss_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int monitor_linkloss_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *linkloss;
 
 	linkloss = btd_device_get_primary(device, LINK_LOSS_UUID);
@@ -60,9 +61,9 @@ static int monitor_linkloss_probe(struct btd_profile *p,
 	return monitor_register_linkloss(device, &enabled, linkloss);
 }
 
-static int monitor_immediate_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int monitor_immediate_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *immediate;
 
 	immediate = btd_device_get_primary(device, IMMEDIATE_ALERT_UUID);
@@ -72,9 +73,9 @@ static int monitor_immediate_probe(struct btd_profile *p,
 	return monitor_register_immediate(device, &enabled, immediate);
 }
 
-static int monitor_txpower_probe(struct btd_profile *p,
-						struct btd_device *device)
+static int monitor_txpower_probe(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
 	struct gatt_primary *txpower;
 
 	txpower = btd_device_get_primary(device, TX_POWER_UUID);
@@ -84,21 +85,24 @@ static int monitor_txpower_probe(struct btd_profile *p,
 	return monitor_register_txpower(device, &enabled, txpower);
 }
 
-static void monitor_linkloss_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void monitor_linkloss_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	monitor_unregister_linkloss(device);
 }
 
-static void monitor_immediate_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void monitor_immediate_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	monitor_unregister_immediate(device);
 }
 
-static void monitor_txpower_remove(struct btd_profile *p,
-						struct btd_device *device)
+static void monitor_txpower_remove(struct btd_service *service)
 {
+	struct btd_device *device = btd_service_get_device(service);
+
 	monitor_unregister_txpower(device);
 }
 

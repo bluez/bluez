@@ -25,6 +25,8 @@
 #define BTD_PROFILE_PRIORITY_MEDIUM	1
 #define BTD_PROFILE_PRIORITY_HIGH	2
 
+struct btd_service;
+
 struct btd_profile {
 	const char *name;
 	int priority;
@@ -34,9 +36,8 @@ struct btd_profile {
 
 	bool auto_connect;
 
-	int (*device_probe) (struct btd_profile *p, struct btd_device *device);
-	void (*device_remove) (struct btd_profile *p,
-						struct btd_device *device);
+	int (*device_probe) (struct btd_service *service);
+	void (*device_remove) (struct btd_service *service);
 
 	int (*connect) (struct btd_device *device,
 						struct btd_profile *profile);

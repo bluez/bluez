@@ -39,6 +39,7 @@
 #include "../src/adapter.h"
 #include "../src/device.h"
 #include "../src/profile.h"
+#include "../src/service.h"
 
 #include "device.h"
 #include "server.h"
