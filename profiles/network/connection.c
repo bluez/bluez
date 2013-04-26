@@ -85,6 +85,11 @@ struct __service_16 {
 
 static GSList *peers = NULL;
 
+static uint16_t get_service_id(struct btd_service *service)
+{
+	return bnep_service_id(btd_service_get_profile(service)->remote_uuid);
+}
+
 static struct network_peer *find_peer(GSList *list, struct btd_device *device)
 {
 	for (; list; list = list->next) {
@@ -644,9 +649,8 @@ static const GDBusPropertyTable connection_properties[] = {
 void connection_unregister(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
-	struct btd_profile *p = btd_service_get_profile(service);
 	struct network_peer *peer;
-	uint16_t id = bnep_service_id(p->remote_uuid);
+	uint16_t id = get_service_id(service);
 
 	DBG("%s id %u", device_get_path(device), id);
 
@@ -692,10 +696,9 @@ static struct network_peer *create_peer(struct btd_device *device)
 int connection_register(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
-	struct btd_profile *p = btd_service_get_profile(service);
 	struct network_peer *peer;
 	struct network_conn *nc;
-	uint16_t id = bnep_service_id(p->remote_uuid);
+	uint16_t id = get_service_id(service);
 
 	DBG("%s id %u", device_get_path(device), id);
 
