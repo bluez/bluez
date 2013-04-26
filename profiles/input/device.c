@@ -92,10 +92,6 @@ void input_set_idle_timeout(int timeout)
 }
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
-static bool is_device_sdp_disable(const sdp_record_t *rec);
-static void extract_hid_props(struct input_device *idev,
-						const sdp_record_t *rec);
-static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode);
 
 static struct input_device *find_device_by_path(GSList *list, const char *path)
 {
@@ -699,6 +695,18 @@ static gboolean input_device_auto_reconnect(gpointer user_data)
 	return TRUE;
 }
 
+static const char * const _reconnect_mode_str[] = {
+	"none",
+	"device",
+	"host",
+	"any"
+};
+
+static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode)
+{
+	return _reconnect_mode_str[mode];
+}
+
 static void input_device_enter_reconnect_mode(struct input_device *idev)
 {
 	DBG("path=%s reconnect_mode=%s", idev->path,
@@ -761,33 +769,6 @@ int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile)
 	return 0;
 }
 
-static struct input_device *input_device_new(struct btd_device *device,
-							struct btd_profile *p)
-{
-	const char *path = device_get_path(device);
-	const sdp_record_t *rec = btd_device_get_record(device, p->remote_uuid);
-	struct btd_adapter *adapter = device_get_adapter(device);
-	struct input_device *idev;
-	char name[HCI_MAX_NAME_LENGTH + 1];
-
-	idev = g_new0(struct input_device, 1);
-	bacpy(&idev->src, adapter_get_address(adapter));
-	bacpy(&idev->dst, device_get_address(device));
-	idev->device = btd_device_ref(device);
-	idev->path = g_strdup(path);
-	idev->handle = rec->handle;
-	idev->disable_sdp = is_device_sdp_disable(rec);
-
-	device_get_name(device, name, HCI_MAX_NAME_LENGTH);
-	if (strlen(name) > 0)
-		idev->name = g_strdup(name);
-
-	/* Initialize device properties */
-	extract_hid_props(idev, rec);
-
-	return idev;
-}
-
 static bool is_device_sdp_disable(const sdp_record_t *rec)
 {
 	sdp_data_t *data;
@@ -830,16 +811,31 @@ static void extract_hid_props(struct input_device *idev,
 		hid_reconnection_mode(reconnect_initiate, normally_connectable);
 }
 
-static const char * const _reconnect_mode_str[] = {
-	"none",
-	"device",
-	"host",
-	"any"
-};
-
-static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode)
+static struct input_device *input_device_new(struct btd_device *device,
+							struct btd_profile *p)
 {
-	return _reconnect_mode_str[mode];
+	const char *path = device_get_path(device);
+	const sdp_record_t *rec = btd_device_get_record(device, p->remote_uuid);
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct input_device *idev;
+	char name[HCI_MAX_NAME_LENGTH + 1];
+
+	idev = g_new0(struct input_device, 1);
+	bacpy(&idev->src, adapter_get_address(adapter));
+	bacpy(&idev->dst, device_get_address(device));
+	idev->device = btd_device_ref(device);
+	idev->path = g_strdup(path);
+	idev->handle = rec->handle;
+	idev->disable_sdp = is_device_sdp_disable(rec);
+
+	device_get_name(device, name, HCI_MAX_NAME_LENGTH);
+	if (strlen(name) > 0)
+		idev->name = g_strdup(name);
+
+	/* Initialize device properties */
+	extract_hid_props(idev, rec);
+
+	return idev;
 }
 
 static gboolean property_get_reconnect_mode(
