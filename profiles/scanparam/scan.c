@@ -266,8 +266,7 @@ static void scan_unregister(struct btd_device *device)
 	g_free(scan);
 }
 
-static int scan_param_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int scan_param_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct gatt_primary *prim;
 

@@ -1281,8 +1281,7 @@ static void thermometer_adapter_unregister(struct btd_adapter *adapter)
 }
 
 static int thermometer_device_probe(struct btd_profile *p,
-					struct btd_device *device,
-					GSList *uuids)
+						struct btd_device *device)
 {
 	struct gatt_primary *tattr;
 

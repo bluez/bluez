@@ -2330,7 +2330,6 @@ struct probe_data {
 static void dev_probe(struct btd_profile *p, void *user_data)
 {
 	struct probe_data *d = user_data;
-	GSList *probe_uuids;
 	int err;
 
 	if (p->device_probe == NULL)
@@ -2339,24 +2338,19 @@ static void dev_probe(struct btd_profile *p, void *user_data)
 	if (!device_match_profile(d->dev, p, d->uuids))
 		return;
 
-	probe_uuids = g_slist_append(NULL, (char *) p->remote_uuid);
-
-	err = p->device_probe(p, d->dev, probe_uuids);
+	err = p->device_probe(p, d->dev);
 	if (err < 0) {
 		error("%s profile probe failed for %s", p->name, d->addr);
-		g_slist_free(probe_uuids);
 		return;
 	}
 
 	d->dev->profiles = g_slist_append(d->dev->profiles, p);
-	g_slist_free(probe_uuids);
 }
 
 void device_probe_profile(gpointer a, gpointer b)
 {
 	struct btd_device *device = a;
 	struct btd_profile *profile = b;
-	GSList *probe_uuids;
 	char addr[18];
 	int err;
 
@@ -2366,19 +2360,15 @@ void device_probe_profile(gpointer a, gpointer b)
 	if (!device_match_profile(device, profile, device->uuids))
 		return;
 
-	probe_uuids = g_slist_append(NULL, (char *) profile->remote_uuid);
-
 	ba2str(&device->bdaddr, addr);
 
-	err = profile->device_probe(profile, device, probe_uuids);
+	err = profile->device_probe(profile, device);
 	if (err < 0) {
 		error("%s profile probe failed for %s", profile->name, addr);
-		g_slist_free(probe_uuids);
 		return;
 	}
 
 	device->profiles = g_slist_append(device->profiles, profile);
-	g_slist_free(probe_uuids);
 
 	if (!profile->auto_connect || !device->general_connect)
 		return;

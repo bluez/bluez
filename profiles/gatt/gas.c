@@ -407,8 +407,7 @@ static void gas_unregister(struct btd_device *device)
 	gas_free(gas);
 }
 
-static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int gatt_driver_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct gatt_primary *gap, *gatt;
 

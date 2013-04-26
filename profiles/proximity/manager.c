@@ -49,7 +49,7 @@ static struct enabled enabled  = {
 };
 
 static int monitor_linkloss_probe(struct btd_profile *p,
-				struct btd_device *device, GSList *uuids)
+						struct btd_device *device)
 {
 	struct gatt_primary *linkloss;
 
@@ -61,7 +61,7 @@ static int monitor_linkloss_probe(struct btd_profile *p,
 }
 
 static int monitor_immediate_probe(struct btd_profile *p,
-				struct btd_device *device, GSList *uuids)
+						struct btd_device *device)
 {
 	struct gatt_primary *immediate;
 
@@ -73,7 +73,7 @@ static int monitor_immediate_probe(struct btd_profile *p,
 }
 
 static int monitor_txpower_probe(struct btd_profile *p,
-				struct btd_device *device, GSList *uuids)
+						struct btd_device *device)
 {
 	struct gatt_primary *txpower;
 

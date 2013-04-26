@@ -34,8 +34,7 @@ struct btd_profile {
 
 	bool auto_connect;
 
-	int (*device_probe) (struct btd_profile *p, struct btd_device *device,
-								GSList *uuids);
+	int (*device_probe) (struct btd_profile *p, struct btd_device *device);
 	void (*device_remove) (struct btd_profile *p,
 						struct btd_device *device);
 

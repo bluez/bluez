@@ -54,8 +54,7 @@ static void hdp_adapter_remove(struct btd_profile *p,
 	hdp_adapter_unregister(adapter);
 }
 
-static int hdp_driver_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int hdp_driver_probe(struct btd_profile *p, struct btd_device *device)
 {
 	return hdp_device_register(device);
 }

@@ -820,8 +820,7 @@ static void resume_callback(void)
 	g_slist_foreach(devices, set_suspend, GINT_TO_POINTER(suspend));
 }
 
-static int hog_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int hog_probe(struct btd_profile *p, struct btd_device *device)
 {
 	const char *path = device_get_path(device);
 	GSList *primaries, *l;

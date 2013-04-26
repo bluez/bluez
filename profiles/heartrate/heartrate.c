@@ -842,7 +842,7 @@ static void heartrate_adapter_remove(struct btd_profile *p,
 }
 
 static int heartrate_device_probe(struct btd_profile *p,
-				struct btd_device *device, GSList *uuids)
+						struct btd_device *device)
 {
 	struct gatt_primary *prim;
 

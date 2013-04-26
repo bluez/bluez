@@ -1180,8 +1180,7 @@ static const GDBusMethodTable cyclingspeed_device_methods[] = {
 	{ }
 };
 
-static int csc_device_probe(struct btd_profile *p,
-				struct btd_device *device, GSList *uuids)
+static int csc_device_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct btd_adapter *adapter;
 	struct csc_adapter *cadapter;

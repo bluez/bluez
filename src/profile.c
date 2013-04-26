@@ -1397,8 +1397,7 @@ static void ext_adapter_remove(struct btd_profile *p,
 	}
 }
 
-static int ext_device_probe(struct btd_profile *p, struct btd_device *dev,
-								GSList *uuids)
+static int ext_device_probe(struct btd_profile *p, struct btd_device *dev)
 {
 	struct ext_profile *ext;
 
@@ -1406,7 +1405,7 @@ static int ext_device_probe(struct btd_profile *p, struct btd_device *dev,
 	if (!ext)
 		return -ENOENT;
 
-	DBG("%s probed with %u UUIDs", ext->name, g_slist_length(uuids));
+	DBG("%s probed with UUID %s", ext->name, p->remote_uuid);
 
 	return 0;
 }

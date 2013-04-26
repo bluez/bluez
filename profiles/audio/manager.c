@@ -101,8 +101,7 @@ static void audio_remove(struct btd_profile *p, struct btd_device *device)
 	audio_device_unregister(dev);
 }
 
-static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct audio_device *audio_dev;
 
@@ -117,8 +116,7 @@ static int a2dp_source_probe(struct btd_profile *p, struct btd_device *device,
 	return 0;
 }
 
-static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct audio_device *audio_dev;
 
@@ -133,8 +131,7 @@ static int a2dp_sink_probe(struct btd_profile *p, struct btd_device *device,
 	return 0;
 }
 
-static int avrcp_probe(struct btd_profile *p, struct btd_device *device,
-								GSList *uuids)
+static int avrcp_probe(struct btd_profile *p, struct btd_device *device)
 {
 	struct audio_device *audio_dev;
 
