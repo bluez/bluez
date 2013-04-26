@@ -65,6 +65,7 @@ enum reconnect_mode_t {
 };
 
 struct input_device {
+	struct btd_service	*service;
 	struct btd_device	*device;
 	char			*path;
 	bdaddr_t		src;
@@ -111,6 +112,7 @@ static void input_device_free(struct input_device *idev)
 	if (idev->dc_id)
 		device_remove_disconnect_watch(idev->device, idev->dc_id);
 
+	btd_service_unref(idev->service);
 	btd_device_unref(idev->device);
 	g_free(idev->name);
 	g_free(idev->path);
@@ -825,6 +827,7 @@ static struct input_device *input_device_new(struct btd_service *service)
 	idev = g_new0(struct input_device, 1);
 	bacpy(&idev->src, adapter_get_address(adapter));
 	bacpy(&idev->dst, device_get_address(device));
+	idev->service = btd_service_ref(service);
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
 	idev->handle = rec->handle;
@@ -883,6 +886,8 @@ int input_device_register(struct btd_service *service)
 		return -EINVAL;
 	}
 
+	btd_service_set_user_data(service, idev);
+
 	devices = g_slist_append(devices, idev);
 
 	return 0;
@@ -907,13 +912,9 @@ void input_device_unregister(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	const char *path = device_get_path(device);
-	struct input_device *idev;
+	struct input_device *idev = btd_service_get_user_data(service);
 
 	DBG("%s", path);
-
-	idev = find_device_by_path(devices, path);
-	if (idev == NULL)
-		return;
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 						idev->path, INPUT_INTERFACE);
