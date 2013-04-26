@@ -199,7 +199,7 @@ int btd_service_connect(struct btd_service *service)
 
 	change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
 
-	err = profile->connect(service->device, service->profile);
+	err = profile->connect(service);
 	if (err == 0)
 		return 0;
 
@@ -234,7 +234,7 @@ int btd_service_disconnect(struct btd_service *service)
 
 	change_state(service, BTD_SERVICE_STATE_DISCONNECTING, 0);
 
-	err = profile->disconnect(service->device, service->profile);
+	err = profile->disconnect(service);
 	if (err == 0)
 		return 0;
 

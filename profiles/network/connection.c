@@ -48,7 +48,6 @@
 
 #include "error.h"
 #include "common.h"
-#include "manager.h"
 #include "connection.h"
 
 #define NETWORK_PEER_INTERFACE "org.bluez.Network1"
@@ -144,7 +143,7 @@ static gboolean bnep_watchdog_cb(GIOChannel *chan, GIOCondition cond,
 	device_remove_disconnect_watch(nc->peer->device, nc->dc_id);
 	nc->dc_id = 0;
 
-	network_disconnected(nc->peer->device, nc->id, 0);
+	btd_service_disconnecting_complete(nc->service, 0);
 
 	info("%s disconnected", nc->dev);
 
@@ -181,7 +180,7 @@ static void cancel_connection(struct network_conn *nc, int err)
 		nc->timeout_source = 0;
 	}
 
-	network_connected(nc->peer->device, nc->id, err);
+	btd_service_connecting_complete(nc->service, err);
 	if (nc->connect)
 		local_connect_cb(nc, err);
 
@@ -289,7 +288,7 @@ static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
 
 	bnep_if_up(nc->dev);
 
-	network_connected(nc->peer->device, nc->id, 0);
+	btd_service_connecting_complete(nc->service, 0);
 	if (nc->connect)
 		local_connect_cb(nc, 0);
 
@@ -430,7 +429,7 @@ static DBusMessage *local_connect(DBusConnection *conn,
 	if (nc && nc->connect)
 		return btd_error_busy(msg);
 
-	err = connection_connect(peer->device, id);
+	err = connection_connect(nc->service);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
@@ -444,23 +443,16 @@ static DBusMessage *local_connect(DBusConnection *conn,
 }
 
 /* Connect and initiate BNEP session */
-int connection_connect(struct btd_device *device, uint16_t id)
+int connection_connect(struct btd_service *service)
 {
-	struct network_peer *peer;
-	struct network_conn *nc;
+	struct network_conn *nc = btd_service_get_user_data(service);
+	struct network_peer *peer = nc->peer;
+	uint16_t id = get_service_id(service);
 	GError *err = NULL;
 	const bdaddr_t *src;
 	const bdaddr_t *dst;
 
 	DBG("id %u", id);
-
-	peer = find_peer(peers, device);
-	if (!peer)
-		return -ENOENT;
-
-	nc = find_connection(peer->connections, id);
-	if (!nc)
-		return -ENOTSUP;
 
 	if (nc->state != DISCONNECTED)
 		return -EALREADY;
@@ -485,18 +477,9 @@ int connection_connect(struct btd_device *device, uint16_t id)
 	return 0;
 }
 
-int connection_disconnect(struct btd_device *device, uint16_t id)
+int connection_disconnect(struct btd_service *service)
 {
-	struct network_peer *peer;
-	struct network_conn *nc;
-
-	peer = find_peer(peers, device);
-	if (!peer)
-		return -ENOENT;
-
-	nc = find_connection(peer->connections, id);
-	if (!nc)
-		return -ENOTSUP;
+	struct network_conn *nc = btd_service_get_user_data(service);
 
 	if (nc->state == DISCONNECTED)
 		return 0;
@@ -519,7 +502,7 @@ static DBusMessage *local_disconnect(DBusConnection *conn,
 		if (nc->state == DISCONNECTED)
 			continue;
 
-		err = connection_disconnect(peer->device, nc->id);
+		err = connection_disconnect(nc->service);
 		if (err < 0)
 			return btd_error_failed(msg, strerror(-err));
 

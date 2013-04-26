@@ -48,7 +48,6 @@
 #include "../src/storage.h"
 #include "../src/dbus-common.h"
 
-#include "manager.h"
 #include "device.h"
 #include "error.h"
 #include <btio/btio.h>
@@ -559,7 +558,7 @@ static int input_device_connected(struct input_device *idev)
 	idev->dc_id = device_add_disconnect_watch(idev->device, disconnect_cb,
 							idev, NULL);
 
-	input_manager_device_connected(idev->device, 0);
+	btd_service_connecting_complete(idev->service, 0);
 
 	return 0;
 }
@@ -586,7 +585,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	input_manager_device_connected(idev->device, err);
+	btd_service_connecting_complete(idev->service, err);
 
 	/* So we guarantee the interrupt channel is closed before the
 	 * control channel (if we only do unref GLib will close it only
@@ -638,7 +637,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	input_manager_device_connected(idev->device, -EIO);
+	btd_service_connecting_complete(idev->service, -EIO);
 	g_io_channel_unref(idev->ctrl_io);
 	idev->ctrl_io = NULL;
 }
@@ -737,13 +736,11 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 
 }
 
-int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
+int input_device_connect(struct btd_service *service)
 {
 	struct input_device *idev;
 
-	idev = find_device_by_path(devices, device_get_path(dev));
-	if (!idev)
-		return -ENOENT;
+	idev = btd_service_get_user_data(service);
 
 	if (idev->ctrl_io)
 		return -EBUSY;
@@ -754,20 +751,18 @@ int input_device_connect(struct btd_device *dev, struct btd_profile *profile)
 	return dev_connect(idev);
 }
 
-int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile)
+int input_device_disconnect(struct btd_service *service)
 {
 	struct input_device *idev;
 	int err;
 
-	idev = find_device_by_path(devices, device_get_path(dev));
-	if (!idev)
-		return -ENOENT;
+	idev = btd_service_get_user_data(service);
 
 	err = connection_disconnect(idev, 0);
 	if (err < 0)
 		return err;
 
-	device_profile_disconnected(dev, profile, 0);
+	btd_service_disconnecting_complete(service, 0);
 
 	return 0;
 }

@@ -157,9 +157,9 @@ static int avrcp_probe(struct btd_service *service)
 	return 0;
 }
 
-static int a2dp_source_connect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int a2dp_source_connect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -174,9 +174,9 @@ static int a2dp_source_connect(struct btd_device *dev,
 	return source_connect(audio_dev);
 }
 
-static int a2dp_source_disconnect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int a2dp_source_disconnect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -191,9 +191,9 @@ static int a2dp_source_disconnect(struct btd_device *dev,
 	return source_disconnect(audio_dev, FALSE);
 }
 
-static int a2dp_sink_connect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int a2dp_sink_connect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -208,9 +208,9 @@ static int a2dp_sink_connect(struct btd_device *dev,
 	return sink_connect(audio_dev);
 }
 
-static int a2dp_sink_disconnect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int a2dp_sink_disconnect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -225,9 +225,9 @@ static int a2dp_sink_disconnect(struct btd_device *dev,
 	return sink_disconnect(audio_dev, FALSE);
 }
 
-static int avrcp_target_connect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int avrcp_target_connect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -242,9 +242,9 @@ static int avrcp_target_connect(struct btd_device *dev,
 	return control_connect(audio_dev);
 }
 
-static int avrcp_target_disconnect(struct btd_device *dev,
-						struct btd_profile *profile)
+static int avrcp_target_disconnect(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
 	struct audio_device *audio_dev;
 
@@ -400,26 +400,6 @@ static struct btd_adapter_driver media_driver = {
 	.probe	= media_server_probe,
 	.remove	= media_server_remove,
 };
-
-void audio_sink_connected(struct btd_device *dev, int err)
-{
-	device_profile_connected(dev, &a2dp_sink_profile, err);
-}
-
-void audio_sink_disconnected(struct btd_device *dev, int err)
-{
-	device_profile_disconnected(dev, &a2dp_sink_profile, err);
-}
-
-void audio_source_connected(struct btd_device *dev, int err)
-{
-	device_profile_connected(dev, &a2dp_source_profile, err);
-}
-
-void audio_source_disconnected(struct btd_device *dev, int err)
-{
-	device_profile_disconnected(dev, &a2dp_source_profile, err);
-}
 
 int audio_manager_init(GKeyFile *conf)
 {

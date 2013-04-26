@@ -120,12 +120,5 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 bool device_remove_svc_complete_callback(struct btd_device *dev,
 							unsigned int id);
 
-struct btd_profile;
-
-void device_profile_connected(struct btd_device *dev,
-					struct btd_profile *profile, int err);
-void device_profile_disconnected(struct btd_device *dev,
-					struct btd_profile *profile, int err);
-
 void btd_device_init(void);
 void btd_device_cleanup(void);

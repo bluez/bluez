@@ -150,7 +150,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 
 	switch (new_state) {
 	case AVDTP_STATE_IDLE:
-		audio_source_disconnected(dev->btd_dev, 0);
+		btd_service_disconnecting_complete(source->service, 0);
 
 		if (source->disconnect_id > 0) {
 			a2dp_cancel(dev, source->disconnect_id);
@@ -195,7 +195,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 		err = -EIO;
 	}
 
-	audio_source_connected(source->dev->btd_dev, err);
+	btd_service_connecting_complete(source->service, err);
 
 	if (source->connect_id > 0) {
 		a2dp_cancel(source->dev, source->connect_id);
@@ -215,7 +215,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	if (stream) {
 		DBG("Stream successfully created");
-		audio_source_connected(source->dev->btd_dev, 0);
+		btd_service_connecting_complete(source->service, 0);
 		return;
 	}
 
@@ -229,7 +229,7 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 							source);
 	} else {
 		DBG("Stream setup failed : %s", avdtp_strerror(err));
-		audio_source_connected(source->dev->btd_dev, -EIO);
+		btd_service_connecting_complete(source->service, -EIO);
 	}
 }
 
@@ -252,7 +252,7 @@ static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
 	return;
 
 failed:
-	audio_source_connected(source->dev->btd_dev, -EIO);
+	btd_service_connecting_complete(source->service, -EIO);
 
 	avdtp_unref(source->session);
 	source->session = NULL;
@@ -290,7 +290,7 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 	return;
 
 failed:
-	audio_source_connected(source->dev->btd_dev, -EIO);
+	btd_service_connecting_complete(source->service, -EIO);
 	avdtp_unref(source->session);
 	source->session = NULL;
 }
@@ -352,13 +352,13 @@ static void source_free(struct audio_device *dev)
 		avdtp_unref(source->session);
 
 	if (source->connect_id > 0) {
-		audio_source_connected(dev->btd_dev, -ECANCELED);
+		btd_service_connecting_complete(source->service, -ECANCELED);
 		a2dp_cancel(dev, source->connect_id);
 		source->connect_id = 0;
 	}
 
 	if (source->disconnect_id > 0) {
-		audio_source_disconnected(dev->btd_dev, -ECANCELED);
+		btd_service_disconnecting_complete(source->service, -ECANCELED);
 		a2dp_cancel(dev, source->disconnect_id);
 		source->disconnect_id = 0;
 	}
@@ -431,7 +431,7 @@ int source_disconnect(struct audio_device *dev, gboolean shutdown)
 	if (source->connect_id > 0) {
 		a2dp_cancel(dev, source->connect_id);
 		source->connect_id = 0;
-		audio_source_connected(dev->btd_dev, -ECANCELED);
+		btd_service_connecting_complete(source->service, -ECANCELED);
 
 		avdtp_unref(source->session);
 		source->session = NULL;

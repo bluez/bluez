@@ -41,14 +41,14 @@ builtin_sources += profiles/audio/main.c \
 			profiles/audio/a2dp-codecs.h
 
 builtin_modules += network
-builtin_sources += profiles/network/manager.h profiles/network/manager.c \
+builtin_sources += profiles/network/manager.c \
 			profiles/network/common.h profiles/network/common.c \
 			profiles/network/server.h profiles/network/server.c \
 			profiles/network/connection.h \
 			profiles/network/connection.c
 
 builtin_modules += input
-builtin_sources += profiles/input/manager.h profiles/input/manager.c \
+builtin_sources += profiles/input/manager.c \
 			profiles/input/server.h profiles/input/server.c \
 			profiles/input/device.h profiles/input/device.c
 

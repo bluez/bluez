@@ -73,6 +73,7 @@
 #define DISCOVERY_TIMER		1
 
 static DBusConnection *dbus_conn = NULL;
+unsigned service_state_cb_id;
 
 struct btd_disconnect_data {
 	guint id;
@@ -1092,7 +1093,7 @@ static int connect_next(struct btd_device *dev)
 	return err;
 }
 
-void device_profile_connected(struct btd_device *dev,
+static void device_profile_connected(struct btd_device *dev,
 					struct btd_profile *profile, int err)
 {
 	struct btd_service *pending;
@@ -1107,10 +1108,6 @@ void device_profile_connected(struct btd_device *dev,
 	l = find_service_with_profile(dev->pending, profile);
 	if (l != NULL)
 		dev->pending = g_slist_delete_link(dev->pending, l);
-
-	l = find_service_with_profile(dev->services, profile);
-	if (l != NULL)
-		btd_service_connecting_complete(l->data, err);
 
 	/* Only continue connecting the next profile if it matches the first
 	 * pending, otherwise it will trigger another connect to the same
@@ -1312,15 +1309,9 @@ static DBusMessage *connect_profile(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
-void device_profile_disconnected(struct btd_device *dev,
+static void device_profile_disconnected(struct btd_device *dev,
 					struct btd_profile *profile, int err)
 {
-	GSList *l;
-
-	l = find_service_with_profile(dev->services, profile);
-	if (l != NULL)
-		btd_service_disconnecting_complete(l->data, err);
-
 	if (!dev->disconnect)
 		return;
 
@@ -4307,11 +4298,29 @@ void btd_device_set_pnpid(struct btd_device *device, uint16_t source,
 	store_device_info(device);
 }
 
+static void service_state_changed(struct btd_service *service,
+						btd_service_state_t old_state,
+						btd_service_state_t new_state,
+						void *user_data)
+{
+	struct btd_profile *profile = btd_service_get_profile(service);
+	struct btd_device *device = btd_service_get_device(service);
+	int err = btd_service_get_error(service);
+
+	if (old_state == BTD_SERVICE_STATE_CONNECTING)
+		device_profile_connected(device, profile, err);
+	else if (old_state == BTD_SERVICE_STATE_DISCONNECTING)
+		device_profile_disconnected(device, profile, err);
+}
+
 void btd_device_init(void)
 {
 	dbus_conn = btd_get_dbus_connection();
+	service_state_cb_id = btd_service_add_state_cb(
+						service_state_changed, NULL);
 }
 
 void btd_device_cleanup(void)
 {
+	btd_service_remove_state_cb(service_state_cb_id);
 }

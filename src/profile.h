@@ -39,10 +39,8 @@ struct btd_profile {
 	int (*device_probe) (struct btd_service *service);
 	void (*device_remove) (struct btd_service *service);
 
-	int (*connect) (struct btd_device *device,
-						struct btd_profile *profile);
-	int (*disconnect) (struct btd_device *device,
-						struct btd_profile *profile);
+	int (*connect) (struct btd_service *service);
+	int (*disconnect) (struct btd_service *service);
 
 	int (*adapter_probe) (struct btd_profile *p,
 						struct btd_adapter *adapter);

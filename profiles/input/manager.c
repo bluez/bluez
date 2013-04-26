@@ -43,7 +43,6 @@
 
 #include "device.h"
 #include "server.h"
-#include "manager.h"
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
@@ -71,16 +70,6 @@ static struct btd_profile input_profile = {
 	.adapter_probe	= hid_server_probe,
 	.adapter_remove = hid_server_remove,
 };
-
-void input_manager_device_connected(struct btd_device *dev, int err)
-{
-	device_profile_connected(dev, &input_profile, err);
-}
-
-void input_manager_device_disconnected(struct btd_device *dev, int err)
-{
-	device_profile_disconnected(dev, &input_profile, err);
-}
 
 static GKeyFile *load_config_file(const char *file)
 {

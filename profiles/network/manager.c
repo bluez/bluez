@@ -42,7 +42,6 @@
 #include "device.h"
 #include "profile.h"
 #include "service.h"
-#include "manager.h"
 #include "common.h"
 #include "connection.h"
 #include "server.h"
@@ -75,16 +74,6 @@ done:
 				conf_security ? "true" : "false");
 }
 
-static int panu_connect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_connect(dev, BNEP_SVC_PANU);
-}
-
-static int panu_disconnect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_disconnect(dev, BNEP_SVC_PANU);
-}
-
 static int panu_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
@@ -104,16 +93,6 @@ static void panu_server_remove(struct btd_profile *p,
 	server_unregister(adapter, BNEP_SVC_PANU);
 }
 
-static int gn_connect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_connect(dev, BNEP_SVC_GN);
-}
-
-static int gn_disconnect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_disconnect(dev, BNEP_SVC_GN);
-}
-
 static int gn_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	const char *path = adapter_get_path(adapter);
@@ -131,16 +110,6 @@ static void gn_server_remove(struct btd_profile *p,
 	DBG("path %s", path);
 
 	server_unregister(adapter, BNEP_SVC_GN);
-}
-
-static int nap_connect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_connect(dev, BNEP_SVC_NAP);
-}
-
-static int nap_disconnect(struct btd_device *dev, struct btd_profile *profile)
-{
-	return connection_disconnect(dev, BNEP_SVC_NAP);
 }
 
 static int nap_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
@@ -168,8 +137,8 @@ static struct btd_profile panu_profile = {
 	.remote_uuid	= PANU_UUID,
 	.device_probe	= connection_register,
 	.device_remove	= connection_unregister,
-	.connect	= panu_connect,
-	.disconnect	= panu_disconnect,
+	.connect	= connection_connect,
+	.disconnect	= connection_disconnect,
 	.adapter_probe	= panu_server_probe,
 	.adapter_remove	= panu_server_remove,
 };
@@ -180,8 +149,8 @@ static struct btd_profile gn_profile = {
 	.remote_uuid	= GN_UUID,
 	.device_probe	= connection_register,
 	.device_remove	= connection_unregister,
-	.connect	= gn_connect,
-	.disconnect	= gn_disconnect,
+	.connect	= connection_connect,
+	.disconnect	= connection_disconnect,
 	.adapter_probe	= gn_server_probe,
 	.adapter_remove	= gn_server_remove,
 };
@@ -192,47 +161,11 @@ static struct btd_profile nap_profile = {
 	.remote_uuid	= NAP_UUID,
 	.device_probe	= connection_register,
 	.device_remove	= connection_unregister,
-	.connect	= nap_connect,
-	.disconnect	= nap_disconnect,
+	.connect	= connection_connect,
+	.disconnect	= connection_disconnect,
 	.adapter_probe	= nap_server_probe,
 	.adapter_remove	= nap_server_remove,
 };
-
-void network_connected(struct btd_device *dev, int id, int err)
-{
-	switch (id) {
-	case BNEP_SVC_PANU:
-		device_profile_connected(dev, &panu_profile, err);
-		break;
-	case BNEP_SVC_GN:
-		device_profile_connected(dev, &gn_profile, err);
-		break;
-	case BNEP_SVC_NAP:
-		device_profile_connected(dev, &nap_profile, err);
-		break;
-	default:
-		error("Invalid id %d passed to network_connected", id);
-		break;
-	}
-}
-
-void network_disconnected(struct btd_device *dev, int id, int err)
-{
-	switch (id) {
-	case BNEP_SVC_PANU:
-		device_profile_disconnected(dev, &panu_profile, err);
-		break;
-	case BNEP_SVC_GN:
-		device_profile_disconnected(dev, &gn_profile, err);
-		break;
-	case BNEP_SVC_NAP:
-		device_profile_disconnected(dev, &gn_profile, err);
-		break;
-	default:
-		error("Invalid id %d passed to network_disconnected", id);
-		break;
-	}
-}
 
 static int network_init(void)
 {
