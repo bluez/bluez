@@ -52,6 +52,7 @@ struct btd_service {
 	struct btd_profile	*profile;
 	void			*user_data;
 	btd_service_state_t	state;
+	int			err;
 };
 
 static const char *state2str(btd_service_state_t state)
@@ -85,6 +86,7 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 	assert(service->profile != NULL);
 
 	service->state = state;
+	service->err = err;
 
 	ba2str(device_get_address(service->device), addr);
 	DBG("%p: device %s profile %s state changed: %s -> %s (%d)", service,
@@ -254,6 +256,11 @@ void *btd_service_get_user_data(const struct btd_service *service)
 btd_service_state_t btd_service_get_state(const struct btd_service *service)
 {
 	return service->state;
+}
+
+int btd_service_get_error(const struct btd_service *service)
+{
+	return service->err;
 }
 
 void btd_service_connecting_complete(struct btd_service *service, int err)
