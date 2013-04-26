@@ -114,7 +114,7 @@ static int a2dp_source_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->source = source_init(audio_dev);
+	audio_dev->source = source_init(audio_dev, service);
 
 	return 0;
 }
@@ -130,7 +130,7 @@ static int a2dp_sink_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->sink = sink_init(audio_dev);
+	audio_dev->sink = sink_init(audio_dev, service);
 
 	return 0;
 }
@@ -138,7 +138,6 @@ static int a2dp_sink_probe(struct btd_service *service)
 static int avrcp_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
-	struct btd_profile *p = btd_service_get_profile(service);
 	struct audio_device *audio_dev;
 
 	audio_dev = get_audio_dev(device);
@@ -148,9 +147,9 @@ static int avrcp_probe(struct btd_service *service)
 	}
 
 	if (audio_dev->control)
-		control_update(audio_dev->control, p->remote_uuid);
+		control_update(audio_dev->control, service);
 	else
-		audio_dev->control = control_init(audio_dev, p->remote_uuid);
+		audio_dev->control = control_init(audio_dev, service);
 
 	if (audio_dev->sink && sink_is_active(audio_dev))
 		avrcp_connect(audio_dev);

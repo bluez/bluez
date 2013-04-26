@@ -35,11 +35,14 @@ typedef void (*source_state_cb) (struct audio_device *dev,
 				source_state_t new_state,
 				void *user_data);
 
+struct btd_service;
+
 unsigned int source_add_state_cb(struct audio_device *dev, source_state_cb cb,
 							void *user_data);
 gboolean source_remove_state_cb(unsigned int id);
 
-struct source *source_init(struct audio_device *dev);
+struct source *source_init(struct audio_device *dev,
+				struct btd_service *service);
 void source_unregister(struct audio_device *dev);
 int source_connect(struct audio_device *dev);
 gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,

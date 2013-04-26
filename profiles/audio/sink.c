@@ -41,6 +41,7 @@
 
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "../src/service.h"
 
 #include "device.h"
 #include "avdtp.h"
@@ -55,6 +56,7 @@
 
 struct sink {
 	struct audio_device *dev;
+	struct btd_service *service;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
@@ -361,6 +363,7 @@ static void sink_free(struct audio_device *dev)
 		g_source_remove(sink->retry_id);
 
 	avdtp_remove_state_cb(sink->avdtp_callback_id);
+	btd_service_unref(sink->service);
 
 	g_free(sink);
 	dev->sink = NULL;
@@ -372,7 +375,7 @@ void sink_unregister(struct audio_device *dev)
 	sink_free(dev);
 }
 
-struct sink *sink_init(struct audio_device *dev)
+struct sink *sink_init(struct audio_device *dev, struct btd_service *service)
 {
 	struct sink *sink;
 
@@ -381,6 +384,7 @@ struct sink *sink_init(struct audio_device *dev)
 	sink = g_new0(struct sink, 1);
 
 	sink->dev = dev;
+	sink->service = btd_service_ref(service);
 
 	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback);
 

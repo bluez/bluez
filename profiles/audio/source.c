@@ -42,6 +42,7 @@
 
 #include "../src/adapter.h"
 #include "../src/device.h"
+#include "../src/service.h"
 
 #include "device.h"
 #include "avdtp.h"
@@ -56,6 +57,7 @@
 
 struct source {
 	struct audio_device *dev;
+	struct btd_service *service;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
@@ -365,6 +367,7 @@ static void source_free(struct audio_device *dev)
 		g_source_remove(source->retry_id);
 
 	avdtp_remove_state_cb(source->avdtp_callback_id);
+	btd_service_unref(source->service);
 
 	g_free(source);
 	dev->source = NULL;
@@ -377,7 +380,8 @@ void source_unregister(struct audio_device *dev)
 	source_free(dev);
 }
 
-struct source *source_init(struct audio_device *dev)
+struct source *source_init(struct audio_device *dev,
+						struct btd_service *service)
 {
 	struct source *source;
 
@@ -386,6 +390,7 @@ struct source *source_init(struct audio_device *dev)
 	source = g_new0(struct source, 1);
 
 	source->dev = dev;
+	source->service = btd_service_ref(service);
 
 	source->avdtp_callback_id = avdtp_add_state_cb(dev,
 							avdtp_state_callback);
