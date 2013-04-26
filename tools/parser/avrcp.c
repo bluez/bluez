@@ -1376,7 +1376,7 @@ static void avrcp_play_item_dump(int level, struct frame *frm,
 	if (ctype > AVC_CTYPE_GENERAL_INQUIRY)
 		goto response;
 
-	if (len < 13) {
+	if (len < 11) {
 		printf("PDU Malformed\n");
 		raw_dump(level, frm);
 		return;
