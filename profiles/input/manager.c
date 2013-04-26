@@ -44,8 +44,6 @@
 #include "server.h"
 #include "manager.h"
 
-static int idle_timeout = 0;
-
 static void input_remove(struct btd_device *device, const char *uuid)
 {
 	const char *path = device_get_path(device);
@@ -65,8 +63,7 @@ static int hid_device_probe(struct btd_profile *p, struct btd_device *device)
 	if (!rec)
 		return -1;
 
-	return input_device_register(device, path, HID_UUID, rec,
-							idle_timeout * 60);
+	return input_device_register(device, path, HID_UUID, rec);
 }
 
 static void hid_device_remove(struct btd_profile *p, struct btd_device *device)
@@ -136,12 +133,16 @@ static int input_init(void)
 
 	config = load_config_file(CONFIGDIR "/input.conf");
 	if (config) {
+		int idle_timeout;
+
 		idle_timeout = g_key_file_get_integer(config, "General",
 						"IdleTimeout", &err);
 		if (err) {
 			DBG("input.conf: %s", err->message);
 			g_error_free(err);
 		}
+
+		input_set_idle_timeout(idle_timeout * 60);
 	}
 
 	btd_profile_register(&input_profile);

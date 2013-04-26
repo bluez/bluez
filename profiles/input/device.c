@@ -75,7 +75,6 @@ struct input_device {
 	guint			ctrl_watch;
 	guint			intr_watch;
 	guint			sec_watch;
-	int			timeout;
 	struct hidp_connadd_req *req;
 	guint			dc_id;
 	bool			disable_sdp;
@@ -86,6 +85,12 @@ struct input_device {
 };
 
 static GSList *devices = NULL;
+static int idle_timeout = 0;
+
+void input_set_idle_timeout(int timeout)
+{
+	idle_timeout = timeout;
+}
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
 static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode);
@@ -392,7 +397,7 @@ static int hidp_add_connection(struct input_device *idev)
 	req->ctrl_sock = g_io_channel_unix_get_fd(idev->ctrl_io);
 	req->intr_sock = g_io_channel_unix_get_fd(idev->intr_io);
 	req->flags     = 0;
-	req->idle_to   = idev->timeout;
+	req->idle_to   = idle_timeout;
 
 	ba2str(&idev->src, src_addr);
 	ba2str(&idev->dst, dst_addr);
@@ -852,7 +857,7 @@ static const GDBusPropertyTable input_properties[] = {
 
 int input_device_register(struct btd_device *device,
 					const char *path, const char *uuid,
-					const sdp_record_t *rec, int timeout)
+					const sdp_record_t *rec)
 {
 	struct input_device *idev;
 
@@ -880,7 +885,6 @@ int input_device_register(struct btd_device *device,
 		return -EINVAL;
 	}
 
-	idev->timeout = timeout;
 	idev->uuid = g_strdup(uuid);
 
 	devices = g_slist_append(devices, idev);
