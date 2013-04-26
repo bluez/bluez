@@ -145,9 +145,9 @@ static int avrcp_probe(struct btd_profile *p, struct btd_device *device,
 	}
 
 	if (audio_dev->control)
-		control_update(audio_dev->control, uuids);
+		control_update(audio_dev->control, p->remote_uuid);
 	else
-		audio_dev->control = control_init(audio_dev, uuids);
+		audio_dev->control = control_init(audio_dev, p->remote_uuid);
 
 	if (audio_dev->sink && sink_is_active(audio_dev))
 		avrcp_connect(audio_dev);

@@ -253,13 +253,13 @@ void control_unregister(struct audio_device *dev)
 						AUDIO_CONTROL_INTERFACE);
 }
 
-void control_update(struct control *control, GSList *uuids)
+void control_update(struct control *control, const char *uuid)
 {
-	if (g_slist_find_custom(uuids, AVRCP_TARGET_UUID, bt_uuid_strcmp))
+	if (bt_uuid_strcmp(uuid, AVRCP_TARGET_UUID) == 0)
 		control->target = TRUE;
 }
 
-struct control *control_init(struct audio_device *dev, GSList *uuids)
+struct control *control_init(struct audio_device *dev, const char *uuid)
 {
 	struct control *control;
 
@@ -276,7 +276,7 @@ struct control *control_init(struct audio_device *dev, GSList *uuids)
 
 	control = g_new0(struct control, 1);
 
-	control_update(control, uuids);
+	control_update(control, uuid);
 
 	control->avctp_id = avctp_add_state_cb(dev, state_changed);
 
