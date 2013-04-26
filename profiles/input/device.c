@@ -92,6 +92,9 @@ void input_set_idle_timeout(int timeout)
 }
 
 static void input_device_enter_reconnect_mode(struct input_device *idev);
+static bool is_device_sdp_disable(const sdp_record_t *rec);
+static void extract_hid_props(struct input_device *idev,
+						const sdp_record_t *rec);
 static const char *reconnect_mode_to_string(const enum reconnect_mode_t mode);
 
 static struct input_device *find_device_by_path(GSList *list, const char *path)
@@ -759,9 +762,10 @@ int input_device_disconnect(struct btd_device *dev, struct btd_profile *profile)
 }
 
 static struct input_device *input_device_new(struct btd_device *device,
-				const char *path, const uint32_t handle,
-				bool disable_sdp)
+							struct btd_profile *p)
 {
+	const char *path = device_get_path(device);
+	const sdp_record_t *rec = btd_device_get_record(device, p->remote_uuid);
 	struct btd_adapter *adapter = device_get_adapter(device);
 	struct input_device *idev;
 	char name[HCI_MAX_NAME_LENGTH + 1];
@@ -771,12 +775,15 @@ static struct input_device *input_device_new(struct btd_device *device,
 	bacpy(&idev->dst, device_get_address(device));
 	idev->device = btd_device_ref(device);
 	idev->path = g_strdup(path);
-	idev->handle = handle;
-	idev->disable_sdp = disable_sdp;
+	idev->handle = rec->handle;
+	idev->disable_sdp = is_device_sdp_disable(rec);
 
 	device_get_name(device, name, HCI_MAX_NAME_LENGTH);
 	if (strlen(name) > 0)
 		idev->name = g_strdup(name);
+
+	/* Initialize device properties */
+	extract_hid_props(idev, rec);
 
 	return idev;
 }
@@ -852,10 +859,9 @@ static const GDBusPropertyTable input_properties[] = {
 	{ }
 };
 
-int input_device_register(struct btd_device *device,
-					const char *path, const char *uuid,
-					const sdp_record_t *rec)
+int input_device_register(struct btd_profile *p, struct btd_device *device)
 {
+	const char *path = device_get_path(device);
 	struct input_device *idev;
 
 	DBG("%s", path);
@@ -864,13 +870,9 @@ int input_device_register(struct btd_device *device,
 	if (idev)
 		return -EEXIST;
 
-	idev = input_device_new(device, path, rec->handle,
-			is_device_sdp_disable(rec));
+	idev = input_device_new(device, p);
 	if (!idev)
 		return -EINVAL;
-
-	/* Initialize device properties */
-	extract_hid_props(idev, rec);
 
 	if (g_dbus_register_interface(btd_get_dbus_connection(),
 					idev->path, INPUT_INTERFACE,
@@ -902,8 +904,9 @@ static struct input_device *find_device(const bdaddr_t *src,
 	return NULL;
 }
 
-void input_device_unregister(const char *path, const char *uuid)
+void input_device_unregister(struct btd_profile *p, struct btd_device *device)
 {
+	const char *path = device_get_path(device);
 	struct input_device *idev;
 
 	DBG("%s", path);

@@ -44,33 +44,6 @@
 #include "server.h"
 #include "manager.h"
 
-static void input_remove(struct btd_device *device, const char *uuid)
-{
-	const char *path = device_get_path(device);
-
-	DBG("path %s", path);
-
-	input_device_unregister(path, uuid);
-}
-
-static int hid_device_probe(struct btd_profile *p, struct btd_device *device)
-{
-	const char *path = device_get_path(device);
-	const sdp_record_t *rec = btd_device_get_record(device, HID_UUID);
-
-	DBG("path %s", path);
-
-	if (!rec)
-		return -1;
-
-	return input_device_register(device, path, HID_UUID, rec);
-}
-
-static void hid_device_remove(struct btd_profile *p, struct btd_device *device)
-{
-	input_remove(device, HID_UUID);
-}
-
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
 	return server_start(adapter_get_address(adapter));
@@ -91,8 +64,8 @@ static struct btd_profile input_profile = {
 	.connect	= input_device_connect,
 	.disconnect	= input_device_disconnect,
 
-	.device_probe	= hid_device_probe,
-	.device_remove	= hid_device_remove,
+	.device_probe	= input_device_register,
+	.device_remove	= input_device_unregister,
 
 	.adapter_probe	= hid_server_probe,
 	.adapter_remove = hid_server_remove,
