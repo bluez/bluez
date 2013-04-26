@@ -74,20 +74,6 @@ done:
 				conf_security ? "true" : "false");
 }
 
-static int panu_probe(struct btd_profile *p, struct btd_device *device)
-{
-	DBG("path %s", device_get_path(device));
-
-	return connection_register(device, BNEP_SVC_PANU);
-}
-
-static void network_remove(struct btd_profile *p, struct btd_device *device)
-{
-	DBG("path %s", device_get_path(device));
-
-	connection_unregister(device);
-}
-
 static int panu_connect(struct btd_device *dev, struct btd_profile *profile)
 {
 	return connection_connect(dev, BNEP_SVC_PANU);
@@ -117,13 +103,6 @@ static void panu_server_remove(struct btd_profile *p,
 	server_unregister(adapter, BNEP_SVC_PANU);
 }
 
-static int gn_probe(struct btd_profile *p, struct btd_device *device)
-{
-	DBG("path %s", device_get_path(device));
-
-	return connection_register(device, BNEP_SVC_GN);
-}
-
 static int gn_connect(struct btd_device *dev, struct btd_profile *profile)
 {
 	return connection_connect(dev, BNEP_SVC_GN);
@@ -151,13 +130,6 @@ static void gn_server_remove(struct btd_profile *p,
 	DBG("path %s", path);
 
 	server_unregister(adapter, BNEP_SVC_GN);
-}
-
-static int nap_probe(struct btd_profile *p, struct btd_device *device)
-{
-	DBG("path %s", device_get_path(device));
-
-	return connection_register(device, BNEP_SVC_NAP);
 }
 
 static int nap_connect(struct btd_device *dev, struct btd_profile *profile)
@@ -193,8 +165,8 @@ static struct btd_profile panu_profile = {
 	.name		= "network-panu",
 	.local_uuid	= NAP_UUID,
 	.remote_uuid	= PANU_UUID,
-	.device_probe	= panu_probe,
-	.device_remove	= network_remove,
+	.device_probe	= connection_register,
+	.device_remove	= connection_unregister,
 	.connect	= panu_connect,
 	.disconnect	= panu_disconnect,
 	.adapter_probe	= panu_server_probe,
@@ -205,8 +177,8 @@ static struct btd_profile gn_profile = {
 	.name		= "network-gn",
 	.local_uuid	= PANU_UUID,
 	.remote_uuid	= GN_UUID,
-	.device_probe	= gn_probe,
-	.device_remove	= network_remove,
+	.device_probe	= connection_register,
+	.device_remove	= connection_unregister,
 	.connect	= gn_connect,
 	.disconnect	= gn_disconnect,
 	.adapter_probe	= gn_server_probe,
@@ -217,8 +189,8 @@ static struct btd_profile nap_profile = {
 	.name		= "network-nap",
 	.local_uuid	= PANU_UUID,
 	.remote_uuid	= NAP_UUID,
-	.device_probe	= nap_probe,
-	.device_remove	= network_remove,
+	.device_probe	= connection_register,
+	.device_remove	= connection_unregister,
 	.connect	= nap_connect,
 	.disconnect	= nap_disconnect,
 	.adapter_probe	= nap_server_probe,

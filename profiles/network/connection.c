@@ -43,6 +43,7 @@
 #include "dbus-common.h"
 #include "adapter.h"
 #include "device.h"
+#include "profile.h"
 
 #include "error.h"
 #include "common.h"
@@ -639,9 +640,12 @@ static const GDBusPropertyTable connection_properties[] = {
 	{ }
 };
 
-void connection_unregister(struct btd_device *device)
+void connection_unregister(struct btd_profile *p, struct btd_device *device)
 {
 	struct network_peer *peer;
+	uint16_t id = bnep_service_id(p->remote_uuid);
+
+	DBG("%s id %u", device_get_path(device), id);
 
 	peer = find_peer(peers, device);
 	if (!peer)
@@ -682,12 +686,13 @@ static struct network_peer *create_peer(struct btd_device *device)
 	return peer;
 }
 
-int connection_register(struct btd_device *device, uint16_t id)
+int connection_register(struct btd_profile *p, struct btd_device *device)
 {
 	struct network_peer *peer;
 	struct network_conn *nc;
+	uint16_t id = bnep_service_id(p->remote_uuid);
 
-	DBG("id %u", id);
+	DBG("%s id %u", device_get_path(device), id);
 
 	peer = find_peer(peers, device);
 	if (!peer) {
