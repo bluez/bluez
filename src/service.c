@@ -55,6 +55,14 @@ struct btd_service {
 	int			err;
 };
 
+struct service_state_callback {
+	btd_service_state_cb	cb;
+	void			*user_data;
+	unsigned int		id;
+};
+
+static GSList *state_callbacks = NULL;
+
 static const char *state2str(btd_service_state_t state)
 {
 	switch (state) {
@@ -78,6 +86,7 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 {
 	btd_service_state_t old = service->state;
 	char addr[18];
+	GSList *l;
 
 	if (state == old)
 		return;
@@ -92,6 +101,12 @@ static void change_state(struct btd_service *service, btd_service_state_t state,
 	DBG("%p: device %s profile %s state changed: %s -> %s (%d)", service,
 					addr, service->profile->name,
 					state2str(old), state2str(state), err);
+
+	for (l = state_callbacks; l != NULL; l = g_slist_next(l)) {
+		struct service_state_callback *cb = l->data;
+
+		cb->cb(service, old, state, cb->user_data);
+	}
 }
 
 struct btd_service *btd_service_ref(struct btd_service *service)
@@ -261,6 +276,38 @@ btd_service_state_t btd_service_get_state(const struct btd_service *service)
 int btd_service_get_error(const struct btd_service *service)
 {
 	return service->err;
+}
+
+unsigned int btd_service_add_state_cb(btd_service_state_cb cb, void *user_data)
+{
+	struct service_state_callback *state_cb;
+	static unsigned int id = 0;
+
+	state_cb = g_new0(struct service_state_callback, 1);
+	state_cb->cb = cb;
+	state_cb->user_data = user_data;
+	state_cb->id = ++id;
+
+	state_callbacks = g_slist_append(state_callbacks, state_cb);
+
+	return state_cb->id;
+}
+
+bool btd_service_remove_state_cb(unsigned int id)
+{
+	GSList *l;
+
+	for (l = state_callbacks; l != NULL; l = g_slist_next(l)) {
+		struct service_state_callback *cb = l->data;
+
+		if (cb && cb->id == id) {
+			state_callbacks = g_slist_remove(state_callbacks, cb);
+			g_free(cb);
+			return true;
+		}
+	}
+
+	return false;
 }
 
 void btd_service_connecting_complete(struct btd_service *service, int err)
