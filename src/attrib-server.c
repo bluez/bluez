@@ -757,6 +757,10 @@ static int read_device_ccc(struct btd_device *device, uint16_t handle,
 	int err = 0;
 
 	filename = btd_device_get_storage_path(device, "ccc");
+	if (!filename) {
+		warn("Unable to get ccc storage path for device");
+		return -ENOENT;
+	}
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -898,6 +902,12 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		gsize length = 0;
 
 		filename = btd_device_get_storage_path(channel->device, "ccc");
+		if (!filename) {
+			warn("Unable to get ccc storage path for device");
+			return enc_error_resp(ATT_OP_WRITE_REQ, handle,
+						ATT_ECODE_WRITE_NOT_PERM,
+						pdu, len);
+		}
 
 		key_file = g_key_file_new();
 		g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -1138,8 +1148,10 @@ guint attrib_channel_attach(GAttrib *attrib)
 		char *filename;
 
 		filename = btd_device_get_storage_path(device, "ccc");
-		unlink(filename);
-		g_free(filename);
+		if (filename) {
+			unlink(filename);
+			g_free(filename);
+		}
 	}
 
 	if (cid != ATT_CID) {
