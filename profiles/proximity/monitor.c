@@ -109,6 +109,10 @@ static void write_proximity_config(struct btd_device *device, const char *alert,
 	gsize length = 0;
 
 	filename = btd_device_get_storage_path(device, "proximity");
+	if (!filename) {
+		warn("Unable to get proximity storage path for device");
+		return;
+	}
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -136,6 +140,10 @@ static char *read_proximity_config(struct btd_device *device, const char *alert)
 	char *str;
 
 	filename = btd_device_get_storage_path(device, "proximity");
+	if (!filename) {
+		warn("Unable to get proximity storage path for device");
+		return NULL;
+	}
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
