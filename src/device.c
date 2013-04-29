@@ -366,12 +366,63 @@ static gboolean store_device_info_cb(gpointer user_data)
 	return FALSE;
 }
 
+static bool device_address_is_private(struct btd_device *dev)
+{
+	if (dev->bdaddr_type != BDADDR_LE_RANDOM)
+		return false;
+
+	switch (dev->bdaddr.b[5] >> 6) {
+	case 0x00:	/* Private non-resolvable */
+	case 0x01:	/* Private resolvable */
+		return true;
+	default:
+		return false;
+	}
+}
+
 static void store_device_info(struct btd_device *device)
 {
 	if (device->temporary || device->store_id > 0)
 		return;
 
+	if (device_address_is_private(device)) {
+		warn("Can't store info for private addressed device %s",
+								device->path);
+		return;
+	}
+
 	device->store_id = g_idle_add(store_device_info_cb, device);
+}
+
+void device_store_cached_name(struct btd_device *dev, const char *name)
+{
+	char filename[PATH_MAX + 1];
+	char s_addr[18], d_addr[18];
+	GKeyFile *key_file;
+	char *data;
+	gsize length = 0;
+
+	if (device_address_is_private(dev)) {
+		warn("Can't store name for private addressed device %s",
+								dev->path);
+		return;
+	}
+
+	ba2str(adapter_get_address(dev->adapter), s_addr);
+	ba2str(&dev->bdaddr, d_addr);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
+	filename[PATH_MAX] = '\0';
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	g_key_file_set_string(key_file, "General", "Name", name);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, data, length, NULL);
+	g_free(data);
+
+	g_key_file_free(key_file);
 }
 
 static void browse_request_free(struct browse_req *req)
@@ -2884,6 +2935,12 @@ static void store_services(struct btd_device *device)
 	GSList *l;
 	char *data;
 	gsize length = 0;
+
+	if (device_address_is_private(device)) {
+		warn("Can't store services for private addressed device %s",
+								device->path);
+		return;
+	}
 
 	sdp_uuid16_create(&uuid, GATT_PRIM_SVC_UUID);
 	prim_uuid = bt_uuid2string(&uuid);

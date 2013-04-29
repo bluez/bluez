@@ -397,32 +397,6 @@ static void store_adapter_info(struct btd_adapter *adapter)
 	g_key_file_free(key_file);
 }
 
-void adapter_store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
-							const char *name)
-{
-	char filename[PATH_MAX + 1];
-	char s_addr[18], d_addr[18];
-	GKeyFile *key_file;
-	char *data;
-	gsize length = 0;
-
-	ba2str(local, s_addr);
-	ba2str(peer, d_addr);
-	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
-	filename[PATH_MAX] = '\0';
-	create_file(filename, S_IRUSR | S_IWUSR);
-
-	key_file = g_key_file_new();
-	g_key_file_load_from_file(key_file, filename, 0, NULL);
-	g_key_file_set_string(key_file, "General", "Name", name);
-
-	data = g_key_file_to_data(key_file, &length, NULL);
-	g_file_set_contents(filename, data, length, NULL);
-	g_free(data);
-
-	g_key_file_free(key_file);
-}
-
 static void trigger_pairable_timeout(struct btd_adapter *adapter);
 static void adapter_start(struct btd_adapter *adapter);
 static void adapter_stop(struct btd_adapter *adapter);
@@ -2993,7 +2967,10 @@ static void convert_names_entry(char *key, char *value, void *user_data)
 {
 	char *address = user_data;
 	char *str = key;
-	bdaddr_t local, peer;
+	char filename[PATH_MAX + 1];
+	GKeyFile *key_file;
+	char *data;
+	gsize length = 0;
 
 	if (strchr(key, '#'))
 		str[17] = '\0';
@@ -3001,9 +2978,19 @@ static void convert_names_entry(char *key, char *value, void *user_data)
 	if (bachk(str) != 0)
 		return;
 
-	str2ba(address, &local);
-	str2ba(str, &peer);
-	adapter_store_cached_name(&local, &peer, value);
+	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", address, str);
+	filename[PATH_MAX] = '\0';
+	create_file(filename, S_IRUSR | S_IWUSR);
+
+	key_file = g_key_file_new();
+	g_key_file_load_from_file(key_file, filename, 0, NULL);
+	g_key_file_set_string(key_file, "General", "Name", value);
+
+	data = g_key_file_to_data(key_file, &length, NULL);
+	g_file_set_contents(filename, data, length, NULL);
+	g_free(data);
+
+	g_key_file_free(key_file);
 }
 
 struct device_converter {
@@ -4081,10 +4068,6 @@ static void update_found_devices(struct btd_adapter *adapter,
 		return;
 	}
 
-	if (eir_data.name != NULL && eir_data.name_complete)
-		adapter_store_cached_name(&adapter->bdaddr, bdaddr,
-								eir_data.name);
-
 	/* Avoid creating LE device if it's not discoverable */
 	if (bdaddr_type != BDADDR_BREDR &&
 			!(eir_data.flags & (EIR_LIM_DISC | EIR_GEN_DISC))) {
@@ -4114,6 +4097,9 @@ static void update_found_devices(struct btd_adapter *adapter,
 		eir_data_free(&eir_data);
 		return;
 	}
+
+	if (eir_data.name != NULL && eir_data.name_complete)
+		device_store_cached_name(dev, eir_data.name);
 
 	/*
 	 * If no client has requested discovery, then only update
@@ -5612,9 +5598,7 @@ static void connected_callback(uint16_t index, uint16_t length,
 	adapter_add_connection(adapter, device);
 
 	if (eir_data.name != NULL) {
-		const bdaddr_t *bdaddr = adapter_get_address(adapter);
-		adapter_store_cached_name(bdaddr, &ev->addr.bdaddr,
-								eir_data.name);
+		device_store_cached_name(device, eir_data.name);
 		device_set_name(device, eir_data.name);
 	}
 

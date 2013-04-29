@@ -200,8 +200,6 @@ void adapter_connect_list_remove(struct btd_adapter *adapter,
 void btd_adapter_set_oob_handler(struct btd_adapter *adapter,
 						struct oob_handler *handler);
 gboolean btd_adapter_check_oob_handler(struct btd_adapter *adapter);
-void adapter_store_cached_name(const bdaddr_t *local, const bdaddr_t *peer,
-							const char *name);
 
 void btd_adapter_for_each_device(struct btd_adapter *adapter,
 			void (*cb)(struct btd_device *device, void *data),

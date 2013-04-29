@@ -636,8 +636,7 @@ static void store_params(struct btd_adapter *adapter, struct btd_device *device,
 		device_set_class(device, params->class);
 
 	if (params->name) {
-		adapter_store_cached_name(adapter_get_address(adapter),
-						&params->address, params->name);
+		device_store_cached_name(device, params->name);
 		device_set_name(device, params->name);
 	}
 
