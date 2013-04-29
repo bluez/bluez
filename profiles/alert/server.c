@@ -334,6 +334,10 @@ static gboolean is_notifiable_device(struct btd_device *device, uint16_t ccc)
 	sprintf(handle, "%hu", ccc);
 
 	filename = btd_device_get_storage_path(device, "ccc");
+	if (!filename) {
+		warn("Unable to get ccc storage path for device");
+		return FALSE;
+	}
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
