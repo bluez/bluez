@@ -88,6 +88,10 @@ static void write_ctp_handle(struct btd_device *device, uint16_t uuid,
 	gsize length = 0;
 
 	filename = btd_device_get_storage_path(device, "gatt");
+	if (!filename) {
+		warn("Unable to get gatt storage path for device");
+		return;
+	}
 
 	key_file = g_key_file_new();
 	g_key_file_load_from_file(key_file, filename, 0, NULL);
@@ -116,6 +120,10 @@ static int read_ctp_handle(struct btd_device *device, uint16_t uuid,
 	int err = 0;
 
 	filename = btd_device_get_storage_path(device, "gatt");
+	if (!filename) {
+		warn("Unable to get gatt storage path for device");
+		return -ENOENT;
+	}
 
 	snprintf(group, sizeof(group), "%hu", uuid);
 
