@@ -445,14 +445,6 @@ void btdev_destroy(struct btdev *btdev)
 	free(btdev);
 }
 
-void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr)
-{
-	if (!btdev)
-		return;
-
-	memcpy(btdev->bdaddr, bdaddr, 6);
-}
-
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev)
 {
 	return btdev->bdaddr;

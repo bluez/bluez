@@ -65,7 +65,6 @@ struct btdev;
 struct btdev *btdev_create(enum btdev_type type, uint16_t id);
 void btdev_destroy(struct btdev *btdev);
 
-void btdev_set_bdaddr(struct btdev *btdev, uint8_t *bdaddr);
 const uint8_t *btdev_get_bdaddr(struct btdev *btdev);
 
 void btdev_set_command_handler(struct btdev *btdev, btdev_command_func handler,
