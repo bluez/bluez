@@ -536,7 +536,7 @@ static gboolean get_xfer_progress(const void *buf, gsize len,
 	struct obc_transfer *transfer = user_data;
 
 	if (transfer->fd > 0) {
-		gint w;
+		int w;
 
 		w = write(transfer->fd, buf, len);
 		if (w < 0)

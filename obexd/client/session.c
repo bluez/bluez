@@ -83,7 +83,7 @@ struct setpath_data {
 
 struct obc_session {
 	guint id;
-	gint refcount;
+	int refcount;
 	char *source;
 	char *destination;
 	uint8_t channel;
@@ -721,7 +721,7 @@ static void session_process_queue(struct obc_session *session)
 	obc_session_unref(session);
 }
 
-static gint pending_transfer_cmptransfer(gconstpointer a, gconstpointer b)
+static int pending_transfer_cmptransfer(gconstpointer a, gconstpointer b)
 {
 	const struct pending_request *p = a;
 	const struct obc_transfer *transfer = b;

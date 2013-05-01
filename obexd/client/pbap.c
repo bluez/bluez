@@ -876,10 +876,10 @@ static DBusMessage *pbap_get_size(DBusConnection *connection,
 	return pull_phonebook(pbap, message, GETPHONEBOOKSIZE, NULL, apparam);
 }
 
-static char **get_filter_strs(uint64_t filter, gint *size)
+static char **get_filter_strs(uint64_t filter, int *size)
 {
 	char **list, **item;
-	gint i;
+	int i;
 
 	list = g_malloc0(sizeof(char **) * (FILTER_BIT_MAX + 2));
 
@@ -902,7 +902,7 @@ static DBusMessage *pbap_list_filter_fields(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	char **filters = NULL;
-	gint size;
+	int size;
 	DBusMessage *reply;
 
 	filters = get_filter_strs(FILTER_ALL, &size);

@@ -184,7 +184,7 @@ static void folder_element(GMarkupParseContext *ctxt, const char *element,
 {
 	DBusMessageIter dict, *iter = user_data;
 	const char *key;
-	gint i;
+	int i;
 
 	if (strcasecmp("folder", element) != 0)
 		return;
@@ -976,7 +976,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 	DBusMessageIter entry, dict, *iter = parser->iter;
 	struct map_msg *msg;
 	const char *key;
-	gint i;
+	int i;
 
 	if (strcasecmp("msg", element) != 0)
 		return;
@@ -1411,10 +1411,10 @@ static DBusMessage *map_list_messages(DBusConnection *connection,
 	return get_message_listing(map, message, folder, apparam);
 }
 
-static char **get_filter_strs(uint64_t filter, gint *size)
+static char **get_filter_strs(uint64_t filter, int *size)
 {
 	char **list, **item;
-	gint i;
+	int i;
 
 	list = g_malloc0(sizeof(char **) * (FILTER_BIT_MAX + 2));
 
@@ -1433,7 +1433,7 @@ static DBusMessage *map_list_filter_fields(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	char **filters = NULL;
-	gint size;
+	int size;
 	DBusMessage *reply;
 
 	filters = get_filter_strs(FILTER_ALL, &size);

@@ -57,7 +57,7 @@ struct folder_listing_data {
  * seem to follow the fig. 3-2 from MAP specification v1.0, and I've seen a
  * test suite requiring folder listing to be in that order.
  */
-static gint folder_names_cmp(gconstpointer a, gconstpointer b,
+static int folder_names_cmp(gconstpointer a, gconstpointer b,
 						gpointer user_data)
 {
 	static const char *order[] = {

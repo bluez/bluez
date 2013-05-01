@@ -220,7 +220,7 @@ static void event_report_element(GMarkupParseContext *ctxt,
 {
 	struct map_event *event = user_data;
 	const gchar *key;
-	gint i;
+	int i;
 
 	if (strcasecmp("event", element) != 0)
 		return;

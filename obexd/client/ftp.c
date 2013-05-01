@@ -106,7 +106,7 @@ static void xml_element(GMarkupParseContext *ctxt,
 {
 	DBusMessageIter dict, *iter = user_data;
 	char *key;
-	gint i;
+	int i;
 
 	if (strcasecmp("folder", element) != 0 && strcasecmp("file", element) != 0)
 		return;
