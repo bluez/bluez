@@ -166,7 +166,7 @@ static int str2location(const char *location)
 	return -1;
 }
 
-static gint cmp_adapter(gconstpointer a, gconstpointer b)
+static int cmp_adapter(gconstpointer a, gconstpointer b)
 {
 	const struct csc_adapter *cadapter = a;
 	const struct btd_adapter *adapter = b;
@@ -177,7 +177,7 @@ static gint cmp_adapter(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
-static gint cmp_device(gconstpointer a, gconstpointer b)
+static int cmp_device(gconstpointer a, gconstpointer b)
 {
 	const struct csc *csc = a;
 	const struct btd_device *dev = b;
@@ -188,7 +188,7 @@ static gint cmp_device(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
-static gint cmp_watcher(gconstpointer a, gconstpointer b)
+static int cmp_watcher(gconstpointer a, gconstpointer b)
 {
 	const struct watcher *watcher = a;
 	const struct watcher *match = b;
