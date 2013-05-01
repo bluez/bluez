@@ -110,8 +110,8 @@ static gboolean check_plugin(struct obex_plugin_desc *desc,
 
 gboolean plugin_init(const char *pattern, const char *exclude)
 {
-	gchar **patterns = NULL;
-	gchar **excludes = NULL;
+	char **patterns = NULL;
+	char **excludes = NULL;
 	GDir *dir;
 	const char *file;
 	unsigned int i;

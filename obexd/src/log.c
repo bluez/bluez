@@ -69,7 +69,7 @@ void obex_debug(const char *format, ...)
 extern struct obex_debug_desc __start___debug[];
 extern struct obex_debug_desc __stop___debug[];
 
-static gchar **enabled = NULL;
+static char **enabled = NULL;
 
 static gboolean is_enabled(struct obex_debug_desc *desc)
 {

@@ -214,12 +214,12 @@ static struct map_event_report_parser {
 };
 
 static void event_report_element(GMarkupParseContext *ctxt,
-				const gchar *element, const gchar **names,
-				const gchar **values, gpointer user_data,
+				const char *element, const char **names,
+				const char **values, gpointer user_data,
 								GError **gerr)
 {
 	struct map_event *event = user_data;
-	const gchar *key;
+	const char *key;
 	int i;
 
 	if (strcasecmp("event", element) != 0)
