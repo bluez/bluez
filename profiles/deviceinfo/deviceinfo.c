@@ -75,7 +75,7 @@ static void deviceinfo_free(gpointer user_data)
 	g_free(d);
 }
 
-static gint cmp_device(gconstpointer a, gconstpointer b)
+static int cmp_device(gconstpointer a, gconstpointer b)
 {
 	const struct deviceinfo *d = a;
 	const struct btd_device *dev = b;
