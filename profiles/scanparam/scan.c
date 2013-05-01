@@ -66,7 +66,7 @@ struct scan {
 
 static GSList *servers = NULL;
 
-static gint scan_device_cmp(gconstpointer a, gconstpointer b)
+static int scan_device_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct scan *scan = a;
 	const struct btd_device *device = b;
