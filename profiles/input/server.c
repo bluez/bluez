@@ -55,7 +55,7 @@ struct input_server {
 	GIOChannel *confirm;
 };
 
-static gint server_cmp(gconstpointer s, gconstpointer user_data)
+static int server_cmp(gconstpointer s, gconstpointer user_data)
 {
 	const struct input_server *server = s;
 	const bdaddr_t *src = user_data;

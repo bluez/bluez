@@ -539,7 +539,7 @@ static void output_written_cb(guint8 status, const guint8 *pdu,
 	}
 }
 
-static gint report_type_cmp(gconstpointer a, gconstpointer b)
+static int report_type_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct report *report = a;
 	uint8_t type = GPOINTER_TO_UINT(b);
