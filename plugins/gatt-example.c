@@ -83,7 +83,7 @@ static void gatt_example_adapter_free(struct gatt_example_adapter *gadapter)
 	g_free(gadapter);
 }
 
-static gint adapter_cmp(gconstpointer a, gconstpointer b)
+static int adapter_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct gatt_example_adapter *gatt_adapter = a;
 	const struct btd_adapter *adapter = b;
