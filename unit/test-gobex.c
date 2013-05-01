@@ -229,7 +229,7 @@ static gboolean send_nothing(GIOChannel *io, GIOCondition cond,
 }
 
 static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
-				GIOFunc send_rsp_func, gint req_timeout,
+				GIOFunc send_rsp_func, int req_timeout,
 				int transport_type)
 {
 	GError *gerr = NULL;
@@ -269,7 +269,7 @@ static void send_req(GObexPacket *req, GObexResponseFunc rsp_func,
 }
 
 static void send_connect(GObexResponseFunc rsp_func, GIOFunc send_rsp_func,
-					gint req_timeout, int transport_type)
+					int req_timeout, int transport_type)
 {
 	GObexPacket *req;
 	guint8 connect_data[] = { 0x10, 0x00, 0x10, 0x00 };
