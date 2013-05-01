@@ -71,7 +71,7 @@ static void gas_free(struct gas *gas)
 	g_free(gas);
 }
 
-static gint cmp_device(gconstpointer a, gconstpointer b)
+static int cmp_device(gconstpointer a, gconstpointer b)
 {
 	const struct gas *gas = a;
 	const struct btd_device *device = b;
