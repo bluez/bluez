@@ -74,7 +74,7 @@ struct mcap_instance {
 	mcap_mcl_event_cb	mcl_uncached_cb;	/* MCL has been removed from MCAP cache */
 	mcap_info_ind_event_cb	mcl_sync_infoind_cb;	/* (CSP Master) Received info indication */
 	gpointer		user_data;		/* Data to be provided in callbacks */
-	gint			ref;			/* Reference counter */
+	int			ref;			/* Reference counter */
 
 	gboolean		csp_enabled;		/* CSP: functionality enabled */
 };
@@ -95,7 +95,7 @@ struct mcap_mcl {
 	struct mcap_mdl_cb	*cb;		/* MDL callbacks */
 	guint			tid;		/* Timer id for waiting for a response */
 	uint8_t			*lcmd;		/* Last command sent */
-	gint			ref;		/* References counter */
+	int			ref;		/* References counter */
 	uint8_t			ctrl;		/* MCL control flag */
 	uint16_t		next_mdl;	/* id used to create next MDL */
 	struct mcap_csp		*csp;		/* CSP control structure */
@@ -115,7 +115,7 @@ struct mcap_mdl {
 	uint16_t		mdlid;		/* MDL id */
 	uint8_t			mdep_id;	/* MCAP Data End Point */
 	MDLState		state;		/* MDL state */
-	gint			ref;		/* References counter */
+	int			ref;		/* References counter */
 };
 
 struct sync_info_ind_data {

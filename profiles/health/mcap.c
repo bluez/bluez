@@ -253,7 +253,7 @@ static void free_mdl(struct mcap_mdl *mdl)
 	g_free(mdl);
 }
 
-static gint cmp_mdl_state(gconstpointer a, gconstpointer b)
+static int cmp_mdl_state(gconstpointer a, gconstpointer b)
 {
 	const struct mcap_mdl *mdl = a;
 	const MDLState *st = b;
@@ -433,7 +433,7 @@ static mcap_md_create_mdl_req *create_mdl_req(uint16_t mdl_id, uint8_t mdep,
 	return req_mdl;
 }
 
-static gint compare_mdl(gconstpointer a, gconstpointer b)
+static int compare_mdl(gconstpointer a, gconstpointer b)
 {
 	const struct mcap_mdl *mdla = a;
 	const struct mcap_mdl *mdlb = b;
@@ -1274,7 +1274,7 @@ static gboolean check_err_rsp(struct mcap_mcl *mcl, mcap_rsp *rsp,
 				uint32_t rlen, uint32_t len, GError **gerr)
 {
 	mcap_md_req *cmdlast = (mcap_md_req *) mcl->lcmd;
-	gint err = MCAP_ERROR_FAILED;
+	int err = MCAP_ERROR_FAILED;
 	gboolean close = FALSE;
 	char *msg;
 

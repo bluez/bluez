@@ -211,14 +211,14 @@ static int cmp_device(gconstpointer a, gconstpointer b)
 	return -1;
 }
 
-static gint cmp_dev_addr(gconstpointer a, gconstpointer dst)
+static int cmp_dev_addr(gconstpointer a, gconstpointer dst)
 {
 	const struct hdp_device *device = a;
 
 	return bacmp(device_get_address(device->dev), dst);
 }
 
-static gint cmp_dev_mcl(gconstpointer a, gconstpointer mcl)
+static int cmp_dev_mcl(gconstpointer a, gconstpointer mcl)
 {
 	const struct hdp_device *device = a;
 
@@ -227,7 +227,7 @@ static gint cmp_dev_mcl(gconstpointer a, gconstpointer mcl)
 	return -1;
 }
 
-static gint cmp_chan_mdlid(gconstpointer a, gconstpointer b)
+static int cmp_chan_mdlid(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_channel *chan = a;
 	const uint16_t *mdlid = b;
@@ -235,7 +235,7 @@ static gint cmp_chan_mdlid(gconstpointer a, gconstpointer b)
 	return chan->mdlid - *mdlid;
 }
 
-static gint cmp_chan_path(gconstpointer a, gconstpointer b)
+static int cmp_chan_path(gconstpointer a, gconstpointer b)
 {
 	const struct hdp_channel *chan = a;
 	const char *path = b;
@@ -243,7 +243,7 @@ static gint cmp_chan_path(gconstpointer a, gconstpointer b)
 	return g_ascii_strcasecmp(chan->path, path);
 }
 
-static gint cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
+static int cmp_chan_mdl(gconstpointer a, gconstpointer mdl)
 {
 	const struct hdp_channel *chan = a;
 

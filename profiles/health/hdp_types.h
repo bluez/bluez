@@ -77,7 +77,7 @@ struct hdp_application {
 	uint8_t			id;		/* The identification is also the mdepid */
 	char			*oname;		/* Name of the owner application */
 	guint			dbus_watcher;	/* Watch for clients disconnection */
-	gint			ref;		/* Reference counter */
+	int			ref;		/* Reference counter */
 };
 
 struct hdp_adapter {
@@ -98,7 +98,7 @@ struct hdp_device {
 	GSList			*channels;	/* Data Channel list */
 	struct hdp_channel	*ndc;		/* Data channel being negotiated */
 	struct hdp_channel	*fr;		/* First reliable data channel */
-	gint			ref;		/* Reference counting */
+	int			ref;		/* Reference counting */
 };
 
 struct hdp_echo_data;
@@ -114,7 +114,7 @@ struct hdp_channel {
 	uint16_t		imtu;		/* Channel incoming MTU */
 	uint16_t		omtu;		/* Channel outgoing MTU */
 	struct hdp_echo_data	*edata;		/* private data used by echo channels */
-	gint			ref;		/* Reference counter */
+	int			ref;		/* Reference counter */
 };
 
 #endif /* __HDP_TYPES_H__ */
