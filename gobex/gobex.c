@@ -55,7 +55,7 @@ struct srm_config {
 };
 
 struct _GObex {
-	gint ref_count;
+	int ref_count;
 	GIOChannel *io;
 	guint io_source;
 
@@ -623,7 +623,7 @@ static void prepare_srm_req(GObex *obex, GObexPacket *pkt)
 	g_obex_packet_prepend_header(pkt, hdr);
 }
 
-guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
+guint g_obex_send_req(GObex *obex, GObexPacket *req, int timeout,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err)
 {
@@ -677,7 +677,7 @@ create_pending:
 	return p->id;
 }
 
-static gint pending_pkt_cmp(gconstpointer a, gconstpointer b)
+static int pending_pkt_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct pending_pkt *p = a;
 	guint id = GPOINTER_TO_UINT(b);
@@ -782,20 +782,20 @@ void g_obex_set_disconnect_function(GObex *obex, GObexFunc func,
 	obex->disconn_func_data = user_data;
 }
 
-static gint req_handler_cmpop(gconstpointer a, gconstpointer b)
+static int req_handler_cmpop(gconstpointer a, gconstpointer b)
 {
 	const struct req_handler *handler = a;
 	guint opcode = GPOINTER_TO_UINT(b);
 
-	return (gint) handler->opcode - (gint) opcode;
+	return (int) handler->opcode - (int) opcode;
 }
 
-static gint req_handler_cmpid(gconstpointer a, gconstpointer b)
+static int req_handler_cmpid(gconstpointer a, gconstpointer b)
 {
 	const struct req_handler *handler = a;
 	guint id = GPOINTER_TO_UINT(b);
 
-	return (gint) handler->id - (gint) id;
+	return (int) handler->id - (int) id;
 }
 
 guint g_obex_add_request_function(GObex *obex, guint8 opcode,

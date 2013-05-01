@@ -44,7 +44,7 @@ typedef void (*GObexResponseFunc) (GObex *obex, GError *err, GObexPacket *rsp,
 
 gboolean g_obex_send(GObex *obex, GObexPacket *pkt, GError **err);
 
-guint g_obex_send_req(GObex *obex, GObexPacket *req, gint timeout,
+guint g_obex_send_req(GObex *obex, GObexPacket *req, int timeout,
 			GObexResponseFunc func, gpointer user_data,
 			GError **err);
 gboolean g_obex_cancel_req(GObex *obex, guint req_id,
