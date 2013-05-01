@@ -53,7 +53,7 @@ static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 
 static GDBusProxy *agent_manager;
-static gchar *auto_register_agent = NULL;
+static char *auto_register_agent = NULL;
 
 static GDBusProxy *default_ctrl;
 static GList *ctrl_list;
