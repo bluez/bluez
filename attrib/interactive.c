@@ -51,10 +51,10 @@ static GAttrib *attrib = NULL;
 static GMainLoop *event_loop;
 static GString *prompt;
 
-static gchar *opt_src = NULL;
-static gchar *opt_dst = NULL;
-static gchar *opt_dst_type = NULL;
-static gchar *opt_sec_level = NULL;
+static char *opt_src = NULL;
+static char *opt_dst = NULL;
+static char *opt_dst_type = NULL;
+static char *opt_sec_level = NULL;
 static int opt_psm = 0;
 static int opt_mtu = 0;
 static int start;
@@ -850,7 +850,7 @@ static void cmd_help(int argcp, char **argvp)
 
 static void parse_line(char *line_read)
 {
-	gchar **argvp;
+	char **argvp;
 	int argcp;
 	int i;
 
@@ -1017,8 +1017,8 @@ static guint setup_signalfd(void)
 	return source;
 }
 
-int interactive(const gchar *src, const gchar *dst,
-		const gchar *dst_type, int psm)
+int interactive(const char *src, const char *dst,
+		const char *dst_type, int psm)
 {
 	guint input;
 	guint signal;

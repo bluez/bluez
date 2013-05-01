@@ -319,7 +319,7 @@ static gboolean can_write_data(GIOChannel *io, GIOCondition cond,
 	if (cmd->sent)
 		return FALSE;
 
-	iostat = g_io_channel_write_chars(io, (gchar *) cmd->pdu, cmd->len,
+	iostat = g_io_channel_write_chars(io, (char *) cmd->pdu, cmd->len,
 								&len, &gerr);
 	if (iostat != G_IO_STATUS_NORMAL) {
 		if (gerr) {
@@ -408,7 +408,7 @@ static gboolean received_data(GIOChannel *io, GIOCondition cond, gpointer data)
 
 	memset(buf, 0, sizeof(buf));
 
-	iostat = g_io_channel_read_chars(io, (gchar *) buf, sizeof(buf),
+	iostat = g_io_channel_read_chars(io, (char *) buf, sizeof(buf),
 								&len, NULL);
 	if (iostat != G_IO_STATUS_NORMAL) {
 		status = ATT_ECODE_IO;

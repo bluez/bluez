@@ -42,11 +42,11 @@
 #include "gatt.h"
 #include "gatttool.h"
 
-static gchar *opt_src = NULL;
-static gchar *opt_dst = NULL;
-static gchar *opt_dst_type = NULL;
-static gchar *opt_value = NULL;
-static gchar *opt_sec_level = NULL;
+static char *opt_src = NULL;
+static char *opt_dst = NULL;
+static char *opt_dst_type = NULL;
+static char *opt_value = NULL;
+static char *opt_sec_level = NULL;
 static bt_uuid_t *opt_uuid = NULL;
 static int opt_start = 0x0001;
 static int opt_end = 0xffff;
@@ -596,7 +596,7 @@ int main(int argc, char *argv[])
 	else if (opt_char_desc)
 		operation = characteristics_desc;
 	else {
-		gchar *help = g_option_context_get_help(context, TRUE, NULL);
+		char *help = g_option_context_get_help(context, TRUE, NULL);
 		g_print("%s\n", help);
 		g_free(help);
 		got_error = TRUE;
