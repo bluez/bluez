@@ -402,7 +402,7 @@ static gboolean cancel_server(GIOChannel *io, GIOCondition cond,
 		goto failed;
 	}
 
-	g_io_channel_write_chars(io, (gchar *) pkt_abort_rsp,
+	g_io_channel_write_chars(io, (char *) pkt_abort_rsp,
 				sizeof(pkt_abort_rsp), &bytes_written, NULL);
 	if (bytes_written != sizeof(pkt_abort_rsp)) {
 		g_set_error(&r->err, TEST_ERROR, TEST_ERROR_UNEXPECTED,
@@ -592,7 +592,7 @@ static void test_recv_unexpected(void)
 	g_obex_packet_free(req);
 	g_assert_cmpint(len, >=, 0);
 
-	g_io_channel_write_chars(io, (gchar *) buf, len, NULL, &err);
+	g_io_channel_write_chars(io, (char *) buf, len, NULL, &err);
 	g_assert_no_error(err);
 
 	mainloop = g_main_loop_new(NULL, FALSE);
@@ -727,7 +727,7 @@ static void recv_connect(int transport_type)
 						handle_connect_req, &gerr);
 	g_obex_set_disconnect_function(obex, handle_connect_err, &gerr);
 
-	status = g_io_channel_write_chars(io, (gchar *) pkt_connect_req,
+	status = g_io_channel_write_chars(io, (char *) pkt_connect_req,
 						sizeof(pkt_connect_req),
 						&bytes_written, NULL);
 	g_assert_cmpint(status, ==, G_IO_STATUS_NORMAL);
