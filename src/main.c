@@ -378,9 +378,9 @@ static guint setup_signalfd(void)
 	return source;
 }
 
-static gchar *option_debug = NULL;
-static gchar *option_plugin = NULL;
-static gchar *option_noplugin = NULL;
+static char *option_debug = NULL;
+static char *option_plugin = NULL;
+static char *option_noplugin = NULL;
 static gboolean option_compat = FALSE;
 static gboolean option_detach = TRUE;
 static gboolean option_version = FALSE;

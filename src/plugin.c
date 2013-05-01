@@ -116,7 +116,7 @@ gboolean plugin_init(const char *enable, const char *disable)
 {
 	GSList *list;
 	GDir *dir;
-	const gchar *file;
+	const char *file;
 	char **cli_disabled, **cli_enabled;
 	unsigned int i;
 
@@ -156,7 +156,7 @@ gboolean plugin_init(const char *enable, const char *disable)
 	while ((file = g_dir_read_name(dir)) != NULL) {
 		struct bluetooth_plugin_desc *desc;
 		void *handle;
-		gchar *filename;
+		char *filename;
 
 		if (g_str_has_prefix(file, "lib") == TRUE ||
 				g_str_has_suffix(file, ".so") == FALSE)
