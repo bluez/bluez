@@ -94,7 +94,7 @@ static void destroy_request(gpointer data, gpointer user_data)
 	g_free(request);
 }
 
-static gint compare_request_id(gconstpointer a, gconstpointer b)
+static int compare_request_id(gconstpointer a, gconstpointer b)
 {
 	const struct mgmt_request *request = a;
 	unsigned int id = GPOINTER_TO_UINT(b);
@@ -112,7 +112,7 @@ static void destroy_notify(gpointer data, gpointer user_data)
 	g_free(notify);
 }
 
-static gint compare_notify_id(gconstpointer a, gconstpointer b)
+static int compare_notify_id(gconstpointer a, gconstpointer b)
 {
 	const struct mgmt_notify *notify = a;
 	unsigned int id = GPOINTER_TO_UINT(b);

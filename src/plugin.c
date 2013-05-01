@@ -47,7 +47,7 @@ struct bluetooth_plugin {
 	struct bluetooth_plugin_desc *desc;
 };
 
-static gint compare_priority(gconstpointer a, gconstpointer b)
+static int compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct bluetooth_plugin *plugin1 = a;
 	const struct bluetooth_plugin *plugin2 = b;

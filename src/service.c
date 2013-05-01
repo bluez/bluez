@@ -47,7 +47,7 @@
 #include "service.h"
 
 struct btd_service {
-	gint			ref;
+	int			ref;
 	struct btd_device	*device;
 	struct btd_profile	*profile;
 	void			*user_data;

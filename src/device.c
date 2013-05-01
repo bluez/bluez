@@ -1242,7 +1242,7 @@ static struct btd_service *find_connectable_service(struct btd_device *dev,
 	return NULL;
 }
 
-static gint service_prio_cmp(gconstpointer a, gconstpointer b)
+static int service_prio_cmp(gconstpointer a, gconstpointer b)
 {
 	struct btd_profile *p1 = btd_service_get_profile(a);
 	struct btd_profile *p2 = btd_service_get_profile(b);
@@ -1978,7 +1978,7 @@ static void load_att_info(struct btd_device *device, const char *local,
 
 	for (handle = groups; *handle; handle++) {
 		gboolean uuid_ok;
-		gint end;
+		int end;
 
 		str = g_key_file_get_string(key_file, *handle, "UUID", NULL);
 		if (!str)
@@ -2334,7 +2334,7 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	btd_device_unref(device);
 }
 
-gint device_address_cmp(gconstpointer a, gconstpointer b)
+int device_address_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *device = a;
 	const char *address = b;
@@ -2344,7 +2344,7 @@ gint device_address_cmp(gconstpointer a, gconstpointer b)
 	return strcasecmp(addr, address);
 }
 
-gint device_bdaddr_cmp(gconstpointer a, gconstpointer b)
+int device_bdaddr_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *device = a;
 	const bdaddr_t *bdaddr = b;
@@ -2740,7 +2740,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	}
 }
 
-static gint primary_cmp(gconstpointer a, gconstpointer b)
+static int primary_cmp(gconstpointer a, gconstpointer b)
 {
 	return memcmp(a, b, sizeof(struct gatt_primary));
 }

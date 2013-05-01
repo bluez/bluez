@@ -43,8 +43,8 @@ uint16_t btd_device_get_vendor_src(struct btd_device *device);
 uint16_t btd_device_get_product(struct btd_device *device);
 uint16_t btd_device_get_version(struct btd_device *device);
 void device_remove(struct btd_device *device, gboolean remove_stored);
-gint device_address_cmp(gconstpointer a, gconstpointer b);
-gint device_bdaddr_cmp(gconstpointer a, gconstpointer b);
+int device_address_cmp(gconstpointer a, gconstpointer b);
+int device_bdaddr_cmp(gconstpointer a, gconstpointer b);
 GSList *device_get_uuids(struct btd_device *device);
 void device_probe_profiles(struct btd_device *device, GSList *profiles);
 const sdp_record_t *btd_device_get_record(struct btd_device *device,

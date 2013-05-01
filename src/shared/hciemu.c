@@ -41,7 +41,7 @@
 #include "hciemu.h"
 
 struct hciemu {
-	gint ref_count;
+	int ref_count;
 	enum btdev_type btdev_type;
 	struct bthost *host_stack;
 	struct btdev *master_dev;

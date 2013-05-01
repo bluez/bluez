@@ -150,7 +150,7 @@ static void gatt_server_free(struct gatt_server *server)
 	g_free(server);
 }
 
-static gint adapter_cmp_addr(gconstpointer a, gconstpointer b)
+static int adapter_cmp_addr(gconstpointer a, gconstpointer b)
 {
 	const struct gatt_server *server = a;
 	const bdaddr_t *bdaddr = b;
@@ -158,7 +158,7 @@ static gint adapter_cmp_addr(gconstpointer a, gconstpointer b)
 	return bacmp(adapter_get_address(server->adapter), bdaddr);
 }
 
-static gint adapter_cmp(gconstpointer a, gconstpointer b)
+static int adapter_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct gatt_server *server = a;
 	const struct btd_adapter *adapter = b;
@@ -1176,7 +1176,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 	return channel->id;
 }
 
-static gint channel_id_cmp(gconstpointer data, gconstpointer user_data)
+static int channel_id_cmp(gconstpointer data, gconstpointer user_data)
 {
 	const struct gatt_channel *channel = data;
 	guint id = GPOINTER_TO_UINT(user_data);

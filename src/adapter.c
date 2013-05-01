@@ -1472,7 +1472,7 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 	}
 }
 
-static gint compare_discovery_sender(gconstpointer a, gconstpointer b)
+static int compare_discovery_sender(gconstpointer a, gconstpointer b)
 {
 	const struct discovery_client *client = a;
 	const char *sender = b;
@@ -2098,7 +2098,7 @@ static gboolean property_get_modalias(const GDBusPropertyTable *property,
 	return TRUE;
 }
 
-static gint device_path_cmp(gconstpointer a, gconstpointer b)
+static int device_path_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct btd_device *device = a;
 	const char *path = b;
@@ -3099,7 +3099,7 @@ static void convert_did_entry(GKeyFile *key_file, void *value)
 static void convert_linkkey_entry(GKeyFile *key_file, void *value)
 {
 	char *type_str, *length_str, *str;
-	gint val;
+	int val;
 
 	type_str = strchr(value, ' ');
 	if (!type_str)

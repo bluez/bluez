@@ -336,7 +336,7 @@ int bt_search_service(const bdaddr_t *src, const bdaddr_t *dst,
 	return 0;
 }
 
-static gint find_by_bdaddr(gconstpointer data, gconstpointer user_data)
+static int find_by_bdaddr(gconstpointer data, gconstpointer user_data)
 {
 	const struct search_context *ctxt = data, *search = user_data;
 	int ret;
