@@ -368,7 +368,7 @@ static gboolean select_configuration(struct media_endpoint *endpoint,
 	return media_endpoint_async_call(msg, endpoint, cb, user_data, destroy);
 }
 
-static gint transport_device_cmp(gconstpointer data, gconstpointer user_data)
+static int transport_device_cmp(gconstpointer data, gconstpointer user_data)
 {
 	struct media_transport *transport = (struct media_transport *) data;
 	const struct audio_device *device = user_data;
