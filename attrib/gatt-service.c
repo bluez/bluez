@@ -168,7 +168,7 @@ static int att_write_req(int authorization, int authentication, uint8_t props)
 	return ATT_NONE;
 }
 
-static gint find_callback(gconstpointer a, gconstpointer b)
+static int find_callback(gconstpointer a, gconstpointer b)
 {
 	const struct attrib_cb *cb = a;
 	unsigned int event = GPOINTER_TO_UINT(b);

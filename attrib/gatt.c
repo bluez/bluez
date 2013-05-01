@@ -575,7 +575,7 @@ struct read_long_data {
 	guint16 size;
 	guint16 handle;
 	guint id;
-	gint ref;
+	int ref;
 };
 
 static void read_long_destroy(gpointer user_data)

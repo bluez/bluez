@@ -45,7 +45,7 @@
 
 struct _GAttrib {
 	GIOChannel *io;
-	gint refs;
+	int refs;
 	uint8_t *buf;
 	size_t buflen;
 	guint read_watch;
@@ -556,7 +556,7 @@ guint g_attrib_send(GAttrib *attrib, guint id, const guint8 *pdu, guint16 len,
 	return c->id;
 }
 
-static gint command_cmp_by_id(gconstpointer a, gconstpointer b)
+static int command_cmp_by_id(gconstpointer a, gconstpointer b)
 {
 	const struct command *cmd = a;
 	guint id = GPOINTER_TO_UINT(b);
@@ -692,7 +692,7 @@ guint g_attrib_register(GAttrib *attrib, guint8 opcode, guint16 handle,
 	return event->id;
 }
 
-static gint event_cmp_by_id(gconstpointer a, gconstpointer b)
+static int event_cmp_by_id(gconstpointer a, gconstpointer b)
 {
 	const struct event *evt = a;
 	guint id = GPOINTER_TO_UINT(b);
