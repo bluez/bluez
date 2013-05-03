@@ -73,7 +73,6 @@ struct dev_priv {
 	avctp_state_t avctp_state;
 
 	guint control_timer;
-	guint avdtp_timer;
 	guint dc_id;
 
 	gboolean disconnecting;
@@ -90,8 +89,6 @@ static void device_free(struct audio_device *dev)
 	if (priv) {
 		if (priv->control_timer)
 			g_source_remove(priv->control_timer);
-		if (priv->avdtp_timer)
-			g_source_remove(priv->avdtp_timer);
 		if (priv->dc_id)
 			device_remove_disconnect_watch(dev->btd_dev,
 							priv->dc_id);
@@ -159,13 +156,6 @@ static void device_remove_control_timer(struct audio_device *dev)
 	dev->priv->control_timer = 0;
 }
 
-static void device_remove_avdtp_timer(struct audio_device *dev)
-{
-	if (dev->priv->avdtp_timer)
-		g_source_remove(dev->priv->avdtp_timer);
-	dev->priv->avdtp_timer = 0;
-}
-
 static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 				void *user_data)
 {
@@ -181,7 +171,6 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	priv->disconnecting = TRUE;
 
 	device_remove_control_timer(dev);
-	device_remove_avdtp_timer(dev);
 
 	if (dev->control)
 		avrcp_disconnect(dev);
@@ -260,7 +249,6 @@ static void device_sink_cb(struct audio_device *dev,
 		device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		break;
 	case SINK_STATE_CONNECTING:
-		device_remove_avdtp_timer(dev);
 		device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
 	case SINK_STATE_CONNECTED:
