@@ -60,15 +60,7 @@
 #define AVDTP_CONNECT_TIMEOUT 1
 #define AVDTP_CONNECT_TIMEOUT_BOOST 1
 
-typedef enum {
-	AUDIO_STATE_DISCONNECTED,
-	AUDIO_STATE_CONNECTING,
-	AUDIO_STATE_CONNECTED,
-} audio_state_t;
-
 struct dev_priv {
-	audio_state_t state;
-
 	sink_state_t sink_state;
 	avctp_state_t avctp_state;
 
@@ -103,21 +95,6 @@ static void device_free(struct audio_device *dev)
 	btd_device_unref(dev->btd_dev);
 
 	g_free(dev);
-}
-
-static const char *state2str(audio_state_t state)
-{
-	switch (state) {
-	case AUDIO_STATE_DISCONNECTED:
-		return "disconnected";
-	case AUDIO_STATE_CONNECTING:
-		return "connecting";
-	case AUDIO_STATE_CONNECTED:
-		return "connected";
-	default:
-		error("Invalid audio state %d", state);
-		return NULL;
-	}
 }
 
 static gboolean control_connect_timeout(gpointer user_data)
@@ -162,9 +139,6 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	struct audio_device *dev = user_data;
 	struct dev_priv *priv = dev->priv;
 
-	if (priv->state == AUDIO_STATE_DISCONNECTED)
-		return;
-
 	if (priv->disconnecting)
 		return;
 
@@ -178,37 +152,6 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
 		sink_disconnect(dev, TRUE);
 	else
-		priv->disconnecting = FALSE;
-}
-
-static void device_set_state(struct audio_device *dev, audio_state_t new_state)
-{
-	struct dev_priv *priv = dev->priv;
-	const char *state_str;
-
-	state_str = state2str(new_state);
-	if (!state_str)
-		return;
-
-	if (new_state == AUDIO_STATE_DISCONNECTED) {
-		if (priv->dc_id) {
-			device_remove_disconnect_watch(dev->btd_dev,
-							priv->dc_id);
-			priv->dc_id = 0;
-		}
-	} else if (new_state == AUDIO_STATE_CONNECTING)
-		priv->dc_id = device_add_disconnect_watch(dev->btd_dev,
-						disconnect_cb, dev, NULL);
-
-	if (dev->priv->state == new_state) {
-		DBG("state change attempted from %s to %s",
-							state_str, state_str);
-		return;
-	}
-
-	dev->priv->state = new_state;
-
-	if (new_state == AUDIO_STATE_DISCONNECTED)
 		priv->disconnecting = FALSE;
 }
 
@@ -246,16 +189,10 @@ static void device_sink_cb(struct audio_device *dev,
 			if (priv->avctp_state != AVCTP_STATE_DISCONNECTED)
 				avrcp_disconnect(dev);
 		}
-
-		device_set_state(dev, AUDIO_STATE_DISCONNECTED);
 		break;
 	case SINK_STATE_CONNECTING:
-		device_set_state(dev, AUDIO_STATE_CONNECTING);
 		break;
 	case SINK_STATE_CONNECTED:
-		if (old_state == SINK_STATE_PLAYING)
-			break;
-		device_set_state(dev, AUDIO_STATE_CONNECTED);
 		break;
 	case SINK_STATE_PLAYING:
 		break;
@@ -295,8 +232,10 @@ struct audio_device *audio_device_register(struct btd_device *device)
 
 	dev->btd_dev = btd_device_ref(device);
 	dev->priv = g_new0(struct dev_priv, 1);
-	dev->priv->state = AUDIO_STATE_DISCONNECTED;
 
+	dev->priv->dc_id = device_add_disconnect_watch(dev->btd_dev,
+							disconnect_cb, dev,
+							NULL);
 	dev->priv->sink_callback_id = sink_add_state_cb(dev, device_sink_cb,
 									NULL);
 	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
