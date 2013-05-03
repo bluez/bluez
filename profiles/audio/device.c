@@ -172,7 +172,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	device_remove_control_timer(dev);
 
-	if (dev->control)
+	if (dev->control && priv->avctp_state != AVCTP_STATE_DISCONNECTED)
 		avrcp_disconnect(dev);
 
 	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
@@ -243,7 +243,8 @@ static void device_sink_cb(struct audio_device *dev,
 	case SINK_STATE_DISCONNECTED:
 		if (dev->control) {
 			device_remove_control_timer(dev);
-			avrcp_disconnect(dev);
+			if (priv->avctp_state != AVCTP_STATE_DISCONNECTED)
+				avrcp_disconnect(dev);
 		}
 
 		device_set_state(dev, AUDIO_STATE_DISCONNECTED);
