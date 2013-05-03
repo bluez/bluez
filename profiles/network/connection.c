@@ -640,8 +640,11 @@ void connection_unregister(struct btd_service *service)
 
 	DBG("%s id %u", device_get_path(device), id);
 
-	g_slist_free_full(peer->connections, connection_free);
-	peer->connections = NULL;
+	peer->connections = g_slist_remove(peer->connections, conn);
+	connection_free(conn);
+
+	if (peer->connections != NULL)
+		return;
 
 	g_dbus_unregister_interface(btd_get_dbus_connection(),
 						device_get_path(device),
