@@ -1119,6 +1119,8 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	sender = dbus_message_get_sender(message);
+	if (sender == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	if (g_str_equal(sender, DBUS_SERVICE_DBUS) == TRUE) {
 		const char *interface, *member;
