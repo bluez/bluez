@@ -127,6 +127,9 @@ static void media_endpoint_cancel(struct endpoint_request *request)
 
 	endpoint->requests = g_slist_remove(endpoint->requests, request);
 
+	if (request->cb)
+		request->cb(endpoint, NULL, -1, request->user_data);
+
 	endpoint_request_free(request);
 }
 
