@@ -527,6 +527,9 @@ static int process_message(DBusMessage *msg, struct oob_params *remote)
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
 		return -EINVAL;
 
+	/* set CPS to unknown in case State was not provided */
+	remote->power_state = CPS_UNKNOWN;
+
 	dbus_message_iter_recurse(&iter, &dict);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
