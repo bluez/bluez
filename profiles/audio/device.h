@@ -28,8 +28,6 @@ struct control;
 struct sink;
 struct dev_priv;
 
-typedef void (*audio_device_cb) (struct audio_device *dev, int err, void *data);
-
 struct audio_device {
 	struct btd_device *btd_dev;
 
