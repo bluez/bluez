@@ -790,13 +790,16 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 
 	store_params(adapter, device, &remote);
 
-	if (!remote.hash) {
+	if (!remote.hash || !btd_adapter_get_powered(adapter)) {
 		free_oob_params(&remote);
 		return create_request_oob_reply(adapter, NULL, NULL, msg);
 	}
 
 read_local:
 	free_oob_params(&remote);
+
+	if (!btd_adapter_get_powered(adapter))
+		return create_request_oob_reply(adapter, NULL, NULL, msg);
 
 	err = btd_adapter_read_local_oob_data(adapter);
 	if (err < 0)
