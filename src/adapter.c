@@ -4060,6 +4060,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	char addr[18];
 	int err;
 	GSList *list;
+	bool name_known;
 
 	memset(&eir_data, 0, sizeof(eir_data));
 	err = eir_parse(&eir_data, data, data_len);
@@ -4116,7 +4117,11 @@ static void update_found_devices(struct btd_adapter *adapter,
 	if (eir_data.appearance != 0)
 		device_set_appearance(dev, eir_data.appearance);
 
-	if (eir_data.name)
+	/* Report an unknown name to the kernel even if there is a short name
+	 * known, but still update the name with the known short name. */
+	name_known = device_name_known(dev);
+
+	if (eir_data.name && (eir_data.name_complete || !name_known))
 		device_set_name(dev, eir_data.name);
 
 	if (eir_data.class != 0)
@@ -4139,8 +4144,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 		return;
 
 	if (confirm)
-		confirm_name(adapter, bdaddr, bdaddr_type,
-						device_name_known(dev));
+		confirm_name(adapter, bdaddr, bdaddr_type, name_known);
 
 	adapter->discovery_found = g_slist_prepend(adapter->discovery_found,
 									dev);
