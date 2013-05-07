@@ -121,5 +121,8 @@ unsigned int device_wait_for_svc_complete(struct btd_device *dev,
 bool device_remove_svc_complete_callback(struct btd_device *dev,
 							unsigned int id);
 
+struct btd_service *btd_device_get_service(struct btd_device *dev,
+						const char *remote_uuid);
+
 void btd_device_init(void);
 void btd_device_cleanup(void);

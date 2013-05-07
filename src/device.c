@@ -4376,6 +4376,22 @@ static void service_state_changed(struct btd_service *service,
 		device_profile_disconnected(device, profile, err);
 }
 
+struct btd_service *btd_device_get_service(struct btd_device *dev,
+						const char *remote_uuid)
+{
+	GSList *l;
+
+	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
+		struct btd_service *service = l->data;
+		struct btd_profile *p = btd_service_get_profile(service);
+
+		if (g_str_equal(p->remote_uuid, remote_uuid))
+			return service;
+	}
+
+	return NULL;
+}
+
 void btd_device_init(void)
 {
 	dbus_conn = btd_get_dbus_connection();
