@@ -1044,6 +1044,7 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 						bdaddr_t *src, bdaddr_t *dst)
 {
 	struct btd_device *device;
+	struct btd_service *service;
 	struct ext_io *conn;
 	GIOCondition cond;
 
@@ -1055,8 +1056,14 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 
 	device = adapter_find_device(server->adapter, dst);
 
-	if (device)
+	if (device) {
 		conn->device = btd_device_ref(device);
+
+		service = btd_device_get_service(device,
+						server->ext->remote_uuid);
+		if (service)
+			conn->service = btd_service_ref(service);
+	}
 
 	cond = G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	conn->io_id = g_io_add_watch(io, cond, ext_io_disconnected, conn);
