@@ -70,11 +70,16 @@ static const char *wii_names[] = {
 };
 
 static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
-						char *pinbuf, gboolean *display)
+			char *pinbuf, gboolean *display, unsigned int attempt)
 {
 	uint16_t vendor, product;
 	char addr[18], name[25];
 	unsigned int i;
+
+	/* Only try the pin code once per device. If it's not correct then it's
+	 * an unknown device. */
+	if (attempt > 1)
+		return 0;
 
 	ba2str(device_get_address(device), addr);
 

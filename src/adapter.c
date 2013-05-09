@@ -4799,7 +4799,7 @@ static ssize_t btd_adapter_pin_cb_iter_next(
 
 	while (iter->it != NULL) {
 		cb = iter->it->data;
-		ret = cb(adapter, device, pin_buf, display);
+		ret = cb(adapter, device, pin_buf, display, iter->attempt);
 		iter->attempt++;
 		if (ret > 0)
 			return ret;
