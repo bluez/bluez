@@ -138,6 +138,11 @@ void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 void btd_adapter_unregister_pin_cb(struct btd_adapter *adapter,
 						btd_adapter_pin_cb_t cb);
 
+struct btd_adapter_pin_cb_iter *btd_adapter_pin_cb_iter_new(
+						struct btd_adapter *adapter);
+void btd_adapter_pin_cb_iter_free(struct btd_adapter_pin_cb_iter *iter);
+bool btd_adapter_pin_cb_iter_end(struct btd_adapter_pin_cb_iter *iter);
+
 /* If TRUE, enables fast connectabe, i.e. reduces page scan interval and changes
  * type. If FALSE, disables fast connectable, i.e. sets page scan interval and
  * type to default values. Valid for both connectable and discoverable modes. */

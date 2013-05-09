@@ -87,6 +87,7 @@ struct bonding_req {
 	guint listener_id;
 	struct btd_device *device;
 	struct agent *agent;
+	struct btd_adapter_pin_cb_iter *cb_iter;
 };
 
 typedef enum {
@@ -1488,6 +1489,8 @@ static struct bonding_req *bonding_request_new(DBusMessage *msg,
 
 	bonding->msg = dbus_message_ref(msg);
 
+	bonding->cb_iter = btd_adapter_pin_cb_iter_new(device->adapter);
+
 	if (agent)
 		bonding->agent = agent_ref(agent);
 
@@ -1612,6 +1615,9 @@ static void bonding_request_free(struct bonding_req *bonding)
 
 	if (bonding->msg)
 		dbus_message_unref(bonding->msg);
+
+	if (bonding->cb_iter)
+		g_free(bonding->cb_iter);
 
 	if (bonding->agent) {
 		agent_cancel(bonding->agent);
@@ -3817,6 +3823,14 @@ void device_bonding_failed(struct btd_device *device, uint8_t status)
 	g_dbus_send_message(dbus_conn, reply);
 
 	bonding_request_free(bonding);
+}
+
+struct btd_adapter_pin_cb_iter *device_bonding_iter(struct btd_device *device)
+{
+	if (device->bonding == NULL)
+		return NULL;
+
+	return device->bonding->cb_iter;
 }
 
 static void pincode_cb(struct agent *agent, DBusError *err, const char *pin,

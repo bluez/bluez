@@ -121,6 +121,12 @@ struct service_auth {
 	struct agent *agent;		/* NULL for queued auths */
 };
 
+struct btd_adapter_pin_cb_iter {
+	GSList *it;			/* current callback function */
+	unsigned int attempt;		/* numer of times it() was called */
+	/* When the iterator reaches the end, it is NULL and attempt is 0 */
+};
+
 struct btd_adapter {
 	int ref_count;
 
@@ -4759,22 +4765,50 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 		error("device_notify_passkey: %s", strerror(-err));
 }
 
-static ssize_t adapter_get_pin(struct btd_adapter *adapter,
-					struct btd_device *dev, char *pin_buf,
+struct btd_adapter_pin_cb_iter *btd_adapter_pin_cb_iter_new(
+						struct btd_adapter *adapter)
+{
+	struct btd_adapter_pin_cb_iter *iter =
+				g_new0(struct btd_adapter_pin_cb_iter, 1);
+
+	iter->it = adapter->pin_callbacks;
+	iter->attempt = 1;
+
+	return iter;
+}
+
+void btd_adapter_pin_cb_iter_free(struct btd_adapter_pin_cb_iter *iter)
+{
+	g_free(iter);
+}
+
+bool btd_adapter_pin_cb_iter_end(struct btd_adapter_pin_cb_iter *iter)
+{
+	return iter->it == NULL && iter->attempt == 0;
+}
+
+static ssize_t btd_adapter_pin_cb_iter_next(
+					struct btd_adapter_pin_cb_iter *iter,
+					struct btd_adapter *adapter,
+					struct btd_device *device,
+					char *pin_buf,
 					gboolean *display)
 {
 	btd_adapter_pin_cb_t cb;
 	ssize_t ret;
-	GSList *l;
 
-	for (l = adapter->pin_callbacks; l != NULL; l = g_slist_next(l)) {
-		cb = l->data;
-		ret = cb(adapter, dev, pin_buf, display);
+	while (iter->it != NULL) {
+		cb = iter->it->data;
+		ret = cb(adapter, device, pin_buf, display);
+		iter->attempt++;
 		if (ret > 0)
 			return ret;
+		iter->attempt = 1;
+		iter->it = g_slist_next(iter->it);
 	}
+	iter->attempt = 0;
 
-	return -1;
+	return 0;
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
@@ -4788,6 +4822,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	ssize_t pinlen;
 	char addr[18];
 	int err;
+	struct btd_adapter_pin_cb_iter *iter;
 
 	if (length < sizeof(*ev)) {
 		error("Too small PIN code request event");
@@ -4805,7 +4840,14 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	}
 
 	memset(pin, 0, sizeof(pin));
-	pinlen = adapter_get_pin(adapter, device, pin, &display);
+
+	iter = device_bonding_iter(device);
+	if (iter == NULL)
+		pinlen = 0;
+	else
+		pinlen = btd_adapter_pin_cb_iter_next(iter, adapter, device,
+								pin, &display);
+
 	if (pinlen > 0 && (!ev->secure || pinlen == 16)) {
 		if (display && device_is_bonding(device, NULL)) {
 			err = device_notify_pincode(device, ev->secure, pin);
