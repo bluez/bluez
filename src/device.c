@@ -2206,6 +2206,11 @@ void device_set_class(struct btd_device *device, uint32_t class)
 						DEVICE_INTERFACE, "Class");
 }
 
+uint32_t btd_device_get_class(struct btd_device *device)
+{
+	return device->class;
+}
+
 uint16_t btd_device_get_vendor(struct btd_device *device)
 {
 	return device->vendor;
