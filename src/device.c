@@ -88,6 +88,8 @@ struct bonding_req {
 	struct btd_device *device;
 	struct agent *agent;
 	struct btd_adapter_pin_cb_iter *cb_iter;
+	uint8_t status;
+	guint retry_timer;
 };
 
 typedef enum {
@@ -1624,6 +1626,9 @@ static void bonding_request_free(struct bonding_req *bonding)
 		agent_unref(bonding->agent);
 		bonding->agent = NULL;
 	}
+
+	if (bonding->retry_timer)
+		g_source_remove(bonding->retry_timer);
 
 	if (bonding->device)
 		bonding->device->bonding = NULL;
@@ -3671,6 +3676,13 @@ static void device_auth_req_free(struct btd_device *device)
 		g_free(device->authr->pincode);
 	g_free(device->authr);
 	device->authr = NULL;
+}
+
+bool device_is_retrying(struct btd_device *device)
+{
+	struct bonding_req *bonding = device->bonding;
+
+	return bonding && bonding->retry_timer > 0;
 }
 
 void device_bonding_complete(struct btd_device *device, uint8_t status)
