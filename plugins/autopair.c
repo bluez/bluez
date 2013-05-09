@@ -87,8 +87,23 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 		switch ((class & 0xc0) >> 6) {
 		case 0x01:		/* Keyboard */
 		case 0x03:		/* Combo keyboard/pointing device */
-			if (attempt > 1)
+			/* For keyboards rejecting the first random code
+			 * in less than 500ms, try a fixed code. */
+			if (attempt > 1 &&
+				device_bonding_last_duration(device) < 500) {
+				/* Don't try more than one dumb code */
+				if (attempt > 2)
+					return 0;
+				/* Try "0000" as the code for the second
+				 * attempt. */
+				memcpy(pinbuf, "0000", 4);
+				return 4;
+			}
+
+			/* Never try more than 3 random pincodes. */
+			if (attempt >= 4)
 				return 0;
+
 			snprintf(pinstr, sizeof(pinstr), "%06d",
 						rand() % 1000000);
 			*display = TRUE;
