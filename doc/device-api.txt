@@ -61,7 +61,9 @@ Methods		void Connect()
 			succeed.
 
 			Possible errors: org.bluez.Error.DoesNotExist
+					 org.bluez.Error.Failed
 					 org.bluez.Error.NotConnected
+					 org.bluez.Error.NotSupported
 
 		void Pair()
 
@@ -83,6 +85,11 @@ Methods		void Connect()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
+					 org.bluez.Error.AuthenticationCanceled
+					 org.bluez.Error.AuthenticationFailed
+					 org.bluez.Error.AuthenticationRejected
+					 org.bluez.Error.AuthenticationTimeout
+					 org.bluez.Error.ConnectionAttemptFailed
 
 		void CancelPairing()
 
