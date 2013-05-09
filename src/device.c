@@ -3818,6 +3818,53 @@ gboolean device_is_bonding(struct btd_device *device, const char *sender)
 	return g_str_equal(sender, dbus_message_get_sender(bonding->msg));
 }
 
+static gboolean device_bonding_retry(gpointer data)
+{
+	struct btd_device *device = data;
+	struct btd_adapter *adapter = device_get_adapter(device);
+	struct bonding_req *bonding = device->bonding;
+	uint8_t io_cap;
+	int err;
+
+	if (!bonding)
+		return FALSE;
+
+	DBG("retrying bonding");
+	bonding->retry_timer = 0;
+
+	if (bonding->agent)
+		io_cap = agent_get_io_capability(bonding->agent);
+	else
+		io_cap = IO_CAPABILITY_NOINPUTNOOUTPUT;
+
+	err = adapter_bonding_attempt(adapter, &device->bdaddr,
+				device->bdaddr_type, io_cap);
+	if (err < 0)
+		device_bonding_complete(device, bonding->status);
+
+	return FALSE;
+}
+
+int device_bonding_attempt_retry(struct btd_device *device)
+{
+	struct bonding_req *bonding = device->bonding;
+
+	/* Ignore other failure events while retrying */
+	if (device_is_retrying(device))
+		return 0;
+
+	if (!bonding)
+		return -EINVAL;
+
+	if (btd_adapter_pin_cb_iter_end(bonding->cb_iter))
+		return -EINVAL;
+
+	DBG("scheduling retry");
+	bonding->retry_timer = g_timeout_add(3000,
+						device_bonding_retry, device);
+	return 0;
+}
+
 void device_bonding_failed(struct btd_device *device, uint8_t status)
 {
 	struct bonding_req *bonding = device->bonding;

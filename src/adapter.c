@@ -165,6 +165,7 @@ struct btd_adapter {
 	guint pairable_timeout_id;	/* pairable timeout id */
 	guint auth_idle_id;		/* Pending authorization dequeue */
 	GQueue *auths;			/* Ongoing and pending auths */
+	bool pincode_requested;		/* PIN requested during last bonding */
 	GSList *connections;		/* Connected devices */
 	GSList *devices;		/* Devices structure pointers */
 	GSList *connect_list;		/* Devices to connect when found */
@@ -3894,6 +3895,7 @@ static struct btd_adapter *btd_adapter_new(uint16_t index)
 
 	adapter->dev_id = index;
 	adapter->mgmt = mgmt_ref(mgmt_master);
+	adapter->pincode_requested = false;
 
 	/*
 	 * Setup default configuration values. These are either adapter
@@ -4839,6 +4841,9 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
+	/* Flag the request of a pincode to allow a bonding retry. */
+	adapter->pincode_requested = true;
+
 	memset(pin, 0, sizeof(pin));
 
 	iter = device_bonding_iter(device);
@@ -4927,6 +4932,42 @@ static void bonding_complete(struct btd_adapter *adapter,
 	check_oob_bonding_complete(adapter, bdaddr, status);
 }
 
+/* bonding_attempt_complete() handles the end of a "bonding attempt" checking if
+ * it should begin a new attempt or complete the bonding.
+ */
+static void bonding_attempt_complete(struct btd_adapter *adapter,
+					const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t status)
+{
+	struct btd_device *device;
+	char addr[18];
+
+	ba2str(bdaddr, addr);
+	DBG("hci%u bdaddr %s type %u status 0x%x", adapter->dev_id, addr,
+							addr_type, status);
+
+	if (status == 0)
+		device = adapter_get_device(adapter, bdaddr, addr_type);
+	else
+		device = adapter_find_device(adapter, bdaddr);
+
+	if (status == MGMT_STATUS_AUTH_FAILED && adapter->pincode_requested) {
+		/* On faliure, issue a bonding_retry if possible. */
+		if (device != NULL) {
+			if (device_bonding_attempt_retry(device) == 0)
+				return;
+		}
+	}
+
+	/* Ignore disconnects during retry. */
+	if (status == MGMT_STATUS_DISCONNECTED &&
+					device && device_is_retrying(device))
+		return;
+
+	/* In any other case, finish the bonding. */
+	bonding_complete(adapter, bdaddr, addr_type, status);
+}
+
 struct pair_device_data {
 	struct btd_adapter *adapter;
 	bdaddr_t bdaddr;
@@ -4980,7 +5021,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 		error("Pair device failed: %s (0x%02x)",
 						mgmt_errstr(status), status);
 
-		bonding_complete(adapter, &data->bdaddr,
+		bonding_attempt_complete(adapter, &data->bdaddr,
 						data->addr_type, status);
 		return;
 	}
@@ -4990,17 +5031,13 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	bonding_complete(adapter, &rp->addr.bdaddr, rp->addr.type, status);
+	bonding_attempt_complete(adapter, &rp->addr.bdaddr, rp->addr.type,
+									status);
 }
 
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap)
 {
-	struct mgmt_cp_pair_device cp;
-	char addr[18];
-	struct pair_device_data *data;
-	unsigned int id;
-
 	if (adapter->pair_device_id > 0) {
 		error("Unable pair since another pairing is in progress");
 		return -EBUSY;
@@ -5008,9 +5045,24 @@ int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 
 	suspend_discovery(adapter);
 
+	return adapter_bonding_attempt(adapter, bdaddr, addr_type, io_cap);
+}
+
+/* Starts a new bonding attempt in a fresh new bonding_req or a retried one. */
+int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t io_cap)
+{
+	struct mgmt_cp_pair_device cp;
+	char addr[18];
+	struct pair_device_data *data;
+	unsigned int id;
+
 	ba2str(bdaddr, addr);
 	DBG("hci%u bdaddr %s type %d io_cap 0x%02x",
 				adapter->dev_id, addr, addr_type, io_cap);
+
+	/* Reset the pincode_requested flag for a new bonding attempt. */
+	adapter->pincode_requested = false;
 
 	memset(&cp, 0, sizeof(cp));
 	bacpy(&cp.addr.bdaddr, bdaddr);
@@ -5060,7 +5112,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 	if (device)
 		adapter_remove_connection(adapter, device);
 
-	bonding_complete(adapter, &addr->bdaddr, addr->type,
+	bonding_attempt_complete(adapter, &addr->bdaddr, addr->type,
 						MGMT_STATUS_DISCONNECTED);
 }
 
@@ -5114,7 +5166,8 @@ static void auth_failed_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type, ev->status);
+	bonding_attempt_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
+								ev->status);
 }
 
 static void store_link_key(struct btd_adapter *adapter,
@@ -5712,14 +5765,31 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 
 	device = adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device) {
+		/* If the device is in a bonding process cancel any auth request
+		 * sent to the agent before proceeding, but keep the bonding
+		 * request structure. */
 		if (device_is_bonding(device, NULL))
-			device_bonding_failed(device, ev->status);
-		if (device_is_temporary(device))
-			adapter_remove_device(adapter, device, TRUE);
+			device_cancel_authentication(device, FALSE);
 	}
 
 	/* In the case of security mode 3 devices */
-	bonding_complete(adapter, &ev->addr.bdaddr, ev->addr.type, ev->status);
+	bonding_attempt_complete(adapter, &ev->addr.bdaddr, ev->addr.type,
+								ev->status);
+
+	/* If the device is scheduled to retry the bonding wait until the retry
+	 * happens. In other case, proceed with cancel the bondig.
+	 */
+	if (device && device_is_bonding(device, NULL)
+					&& !device_is_retrying(device)) {
+		device_cancel_authentication(device, TRUE);
+		device_bonding_failed(device, ev->status);
+	}
+
+	/* In the case the bonding was canceled or did exists, remove the device
+	 * when it is temporary. */
+	if (device && !device_is_bonding(device, NULL)
+						&& device_is_temporary(device))
+		adapter_remove_device(adapter, device, TRUE);
 }
 
 static void unpaired_callback(uint16_t index, uint16_t length,

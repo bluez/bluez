@@ -179,6 +179,9 @@ int btd_adapter_passkey_reply(struct btd_adapter *adapter,
 int adapter_create_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 					uint8_t addr_type, uint8_t io_cap);
 
+int adapter_bonding_attempt(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
+					uint8_t addr_type, uint8_t io_cap);
+
 int adapter_cancel_bonding(struct btd_adapter *adapter, const bdaddr_t *bdaddr,
 							uint8_t addr_type);
 
