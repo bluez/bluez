@@ -35,6 +35,7 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 #include <dirent.h>
+#include <time.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -90,6 +91,8 @@ struct bonding_req {
 	struct btd_adapter_pin_cb_iter *cb_iter;
 	uint8_t status;
 	guint retry_timer;
+	struct timespec attempt_start_time;
+	long last_attempt_duration_ms;
 };
 
 typedef enum {
@@ -1493,10 +1496,54 @@ static struct bonding_req *bonding_request_new(DBusMessage *msg,
 
 	bonding->cb_iter = btd_adapter_pin_cb_iter_new(device->adapter);
 
+	/* Marks the bonding start time for the first attempt on request
+	 * construction. The following attempts will be updated on
+	 * device_bonding_retry. */
+	clock_gettime(CLOCK_MONOTONIC, &bonding->attempt_start_time);
+
 	if (agent)
 		bonding->agent = agent_ref(agent);
 
 	return bonding;
+}
+
+void device_bonding_restart_timer(struct btd_device *device)
+{
+	if (!device || !device->bonding)
+		return;
+
+	clock_gettime(CLOCK_MONOTONIC, &device->bonding->attempt_start_time);
+}
+
+static void bonding_request_stop_timer(struct bonding_req *bonding)
+{
+	struct timespec current;
+
+	clock_gettime(CLOCK_MONOTONIC, &current);
+
+	/* Compute the time difference in ms. */
+	bonding->last_attempt_duration_ms =
+		(current.tv_sec - bonding->attempt_start_time.tv_sec) * 1000L +
+		(current.tv_nsec - bonding->attempt_start_time.tv_nsec)
+								/ 1000000L;
+}
+
+/* Returns the duration of the last bonding attempt in milliseconds. The
+ * duration is measured starting from the latest of the following three
+ * events and finishing when the Command complete event is received for the
+ * authentication request:
+ *  - MGMT_OP_PAIR_DEVICE is sent,
+ *  - MGMT_OP_PIN_CODE_REPLY is sent and
+ *  - Command complete event is received for the sent MGMT_OP_PIN_CODE_REPLY.
+ */
+long device_bonding_last_duration(struct btd_device *device)
+{
+	struct bonding_req *bonding = device->bonding;
+
+	if (!bonding)
+		return 0;
+
+	return bonding->last_attempt_duration_ms;
 }
 
 static void create_bond_req_exit(DBusConnection *conn, void *user_data)
@@ -3837,6 +3884,12 @@ static gboolean device_bonding_retry(gpointer data)
 	DBG("retrying bonding");
 	bonding->retry_timer = 0;
 
+	/* Restart the bonding timer to the begining of the pairing. If not
+	 * pincode request/reply occurs during this retry,
+	 * device_bonding_last_duration() will return a consistent value from
+	 * this point. */
+	device_bonding_restart_timer(device);
+
 	if (bonding->agent)
 		io_cap = agent_get_io_capability(bonding->agent);
 	else
@@ -3860,6 +3913,10 @@ int device_bonding_attempt_retry(struct btd_device *device)
 
 	if (!bonding)
 		return -EINVAL;
+
+	/* Mark the end of a bonding attempt to compute the delta for the
+	 * retry. */
+	bonding_request_stop_timer(bonding);
 
 	if (btd_adapter_pin_cb_iter_end(bonding->cb_iter))
 		return -EINVAL;

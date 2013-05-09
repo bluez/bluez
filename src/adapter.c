@@ -4562,10 +4562,22 @@ int btd_adapter_remove_bonding(struct btd_adapter *adapter,
 	return -EIO;
 }
 
+static void pincode_reply_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct btd_device *device = user_data;
+
+	/* If the MGMT_OP_PIN_CODE_REPLY command is acknowledged, move the
+	 * starting time to that point. This give a better sense of time
+	 * evaluating the pincode. */
+	device_bonding_restart_timer(device);
+}
+
 int btd_adapter_pincode_reply(struct btd_adapter *adapter,
 					const bdaddr_t *bdaddr,
 					const char *pin, size_t pin_len)
 {
+	struct btd_device *device;
 	unsigned int id;
 	char addr[18];
 
@@ -4594,9 +4606,14 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter,
 		cp.pin_len = pin_len;
 		memcpy(cp.pin_code, pin, pin_len);
 
+		/* Since a pincode was requested, update the starting time to
+		 * the point where the pincode is provided. */
+		device = adapter_find_device(adapter, bdaddr);
+		device_bonding_restart_timer(device);
+
 		id = mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_REPLY,
 					adapter->dev_id, sizeof(cp), &cp,
-					NULL, NULL, NULL);
+					pincode_reply_complete, device, NULL);
 	}
 
 	if (id == 0)
