@@ -203,8 +203,10 @@ struct avrcp {
 	void (*init_browsing) (struct avrcp *session);
 	void (*destroy) (struct avrcp *sesion);
 
+	const struct passthrough_handler *passthrough_handlers;
 	const struct control_pdu_handler *control_handlers;
 
+	unsigned int passthrough_id;
 	unsigned int control_id;
 	unsigned int browsing_id;
 	uint16_t supported_events;
@@ -212,6 +214,11 @@ struct avrcp {
 	uint8_t transaction;
 	uint8_t transaction_events[AVRCP_EVENT_LAST + 1];
 	struct pending_pdu *pending_pdu;
+};
+
+struct passthrough_handler {
+	uint8_t op;
+	bool (*func) (struct avrcp *session);
 };
 
 struct control_pdu_handler {
@@ -1250,6 +1257,87 @@ static GList *player_list_settings(struct avrcp_player *player)
 		return NULL;
 
 	return player->cb->list_settings(player->user_data);
+}
+
+static bool avrcp_handle_play(struct avrcp *session)
+{
+	struct avrcp_player *player = session->player;
+
+	if (session->player == NULL)
+		return false;
+
+	return player->cb->play(player->user_data);
+}
+
+static bool avrcp_handle_stop(struct avrcp *session)
+{
+	struct avrcp_player *player = session->player;
+
+	if (session->player == NULL)
+		return false;
+
+	return player->cb->stop(player->user_data);
+}
+
+static bool avrcp_handle_pause(struct avrcp *session)
+{
+	struct avrcp_player *player = session->player;
+
+	if (session->player == NULL)
+		return false;
+
+	return player->cb->pause(player->user_data);
+}
+
+static bool avrcp_handle_next(struct avrcp *session)
+{
+	struct avrcp_player *player = session->player;
+
+	if (session->player == NULL)
+		return false;
+
+	return player->cb->next(player->user_data);
+}
+
+static bool avrcp_handle_previous(struct avrcp *session)
+{
+	struct avrcp_player *player = session->player;
+
+	if (session->player == NULL)
+		return false;
+
+	return player->cb->previous(player->user_data);
+}
+
+static const struct passthrough_handler tg_passthrough_handlers[] = {
+		{ AVC_PLAY, avrcp_handle_play },
+		{ AVC_STOP, avrcp_handle_stop },
+		{ AVC_PAUSE, avrcp_handle_pause },
+		{ AVC_FORWARD, avrcp_handle_next },
+		{ AVC_BACKWARD, avrcp_handle_previous },
+		{ },
+};
+
+static bool handle_passthrough(struct avctp *conn, uint8_t op, bool pressed,
+							void *user_data)
+{
+	struct avrcp *session = user_data;
+	const struct passthrough_handler *handler;
+
+	for (handler = session->passthrough_handlers; handler->func;
+								handler++) {
+		if (handler->op == op)
+			break;
+	}
+
+	if (handler->func == NULL)
+		return false;
+
+	/* Do not trigger handler on release */
+	if (!pressed)
+		return true;
+
+	return handler->func(session);
 }
 
 static uint8_t avrcp_handle_register_notification(struct avrcp *session,
@@ -2653,6 +2741,11 @@ static void session_tg_init_control(struct avrcp *session)
 		player->sessions = g_slist_prepend(player->sessions, session);
 	}
 
+	session->passthrough_id = avctp_register_passthrough_handler(
+							session->conn,
+							handle_passthrough,
+							session);
+	session->passthrough_handlers = tg_passthrough_handlers;
 	session->control_id = avctp_register_pdu_handler(session->conn,
 							AVC_OP_VENDORDEP,
 							handle_vendordep_pdu,
@@ -2711,6 +2804,9 @@ static void session_destroy(struct avrcp *session)
 	struct avrcp_server *server = session->server;
 
 	server->sessions = g_slist_remove(server->sessions, session);
+
+	if (session->passthrough_id > 0)
+		avctp_unregister_passthrough_handler(session->passthrough_id);
 
 	if (session->control_id > 0)
 		avctp_unregister_pdu_handler(session->control_id);

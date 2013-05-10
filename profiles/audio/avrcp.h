@@ -93,6 +93,11 @@ struct avrcp_player_cb {
 	uint32_t (*get_duration) (void *user_data);
 	void (*set_volume) (uint8_t volume, struct audio_device *dev,
 							void *user_data);
+	bool (*play) (void *user_data);
+	bool (*stop) (void *user_data);
+	bool (*pause) (void *user_data);
+	bool (*next) (void *user_data);
+	bool (*previous) (void *user_data);
 };
 
 int avrcp_target_register(struct btd_adapter *adapter, GKeyFile *config);
