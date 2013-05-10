@@ -1322,8 +1322,12 @@ static gboolean parse_int64_metadata(struct media_player *mp, const char *key,
 {
 	uint64_t value;
 	char valstr[20];
+	int type;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INT64)
+	type = dbus_message_iter_get_arg_type(iter);
+	if (type == DBUS_TYPE_UINT64)
+		warn("expected DBUS_TYPE_INT64 got DBUS_TYPE_UINT64");
+	else if (type != DBUS_TYPE_INT64)
 		return FALSE;
 
 	dbus_message_iter_get_basic(iter, &value);
@@ -1345,8 +1349,12 @@ static gboolean parse_int32_metadata(struct media_player *mp, const char *key,
 {
 	uint32_t value;
 	char valstr[20];
+	int type;
 
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INT32)
+	type = dbus_message_iter_get_arg_type(iter);
+	if (type == DBUS_TYPE_UINT32)
+		warn("expected DBUS_TYPE_INT32 got DBUS_TYPE_UINT32");
+	else if (type != DBUS_TYPE_INT32)
 		return FALSE;
 
 	dbus_message_iter_get_basic(iter, &value);
