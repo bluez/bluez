@@ -94,6 +94,9 @@ typedef void (*avctp_state_cb) (struct audio_device *dev,
 				avctp_state_t old_state,
 				avctp_state_t new_state);
 
+typedef bool (*avctp_passthrough_cb) (struct avctp *session,
+					uint8_t op, bool pressed,
+					void *user_data);
 typedef size_t (*avctp_control_pdu_cb) (struct avctp *session,
 					uint8_t transaction, uint8_t *code,
 					uint8_t *subunit, uint8_t *operands,
@@ -119,6 +122,11 @@ struct avctp *avctp_connect(struct audio_device *device);
 struct avctp *avctp_get(struct audio_device *device);
 int avctp_connect_browsing(struct avctp *session);
 void avctp_disconnect(struct avctp *session);
+
+unsigned int avctp_register_passthrough_handler(struct avctp *session,
+						avctp_passthrough_cb cb,
+						void *user_data);
+bool avctp_unregister_passthrough_handler(unsigned int id);
 
 unsigned int avctp_register_pdu_handler(struct avctp *session, uint8_t opcode,
 						avctp_control_pdu_cb cb,

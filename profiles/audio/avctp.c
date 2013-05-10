@@ -192,8 +192,16 @@ struct avctp {
 	struct avctp_channel *control;
 	struct avctp_channel *browsing;
 
+	struct avctp_passthrough_handler *handler;
+
 	uint8_t key_quirks[256];
 	struct key_pressed *key;
+};
+
+struct avctp_passthrough_handler {
+	avctp_passthrough_cb cb;
+	void *user_data;
+	unsigned int id;
 };
 
 struct avctp_pdu_handler {
@@ -280,6 +288,8 @@ static size_t handle_panel_passthrough(struct avctp *session,
 					uint8_t *subunit, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
+	struct key_pressed *key = session->key;
+	struct avctp_passthrough_handler *handler = session->handler;
 	const char *status;
 	int pressed, i;
 
@@ -297,6 +307,12 @@ static size_t handle_panel_passthrough(struct avctp *session,
 	} else {
 		status = "pressed";
 		pressed = 1;
+	}
+
+	if (key == NULL && handler != NULL) {
+		if (handler->cb(session, operands[0] & 0x7F,
+						pressed, handler->user_data))
+			goto done;
 	}
 
 	for (i = 0; key_map[i].name != NULL; i++) {
@@ -319,6 +335,16 @@ static size_t handle_panel_passthrough(struct avctp *session,
 			send_key(session->uinput, key_map[i].uinput, 1);
 			send_key(session->uinput, key_map[i].uinput, 0);
 			break;
+		}
+
+		if (pressed) {
+			if (key == NULL)
+				key = g_new0(struct key_pressed, 1);
+			key->op = key_map[i].avc;
+			session->key = key;
+		} else if (key && key->op == key_map[i].avc) {
+			g_free(key);
+			session->key = NULL;
 		}
 
 		send_key(session->uinput, key_map[i].uinput, pressed);
@@ -1690,6 +1716,52 @@ gboolean avctp_remove_state_cb(unsigned int id)
 	}
 
 	return FALSE;
+}
+
+unsigned int avctp_register_passthrough_handler(struct avctp *session,
+						avctp_passthrough_cb cb,
+						void *user_data)
+{
+	struct avctp_channel *control = session->control;
+	struct avctp_passthrough_handler *handler;
+	static unsigned int id = 0;
+
+	if (control == NULL || session->handler != NULL)
+		return 0;
+
+	handler = g_new(struct avctp_passthrough_handler, 1);
+	handler->cb = cb;
+	handler->user_data = user_data;
+	handler->id = ++id;
+
+	session->handler = handler;
+
+	return handler->id;
+}
+
+bool avctp_unregister_passthrough_handler(unsigned int id)
+{
+	GSList *l;
+
+	for (l = servers; l; l = l->next) {
+		struct avctp_server *server = l->data;
+		GSList *s;
+
+		for (s = server->sessions; s; s = s->next) {
+			struct avctp *session = s->data;
+
+			if (session->handler == NULL)
+				continue;
+
+			if (session->handler->id == id) {
+				g_free(session->handler);
+				session->handler = NULL;
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 unsigned int avctp_register_pdu_handler(struct avctp *session, uint8_t opcode,
