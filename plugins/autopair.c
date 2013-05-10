@@ -63,8 +63,9 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 
 	DBG("device %s 0x%x", addr, class);
 
-	/* This is a class-based pincode guesser. Ignore devices with an unknown
-	 * class. */
+	/* This is a class-based pincode guesser. Ignore devices with an
+	 * unknown class.
+	 */
 	if (class == 0)
 		return 0;
 
@@ -80,9 +81,9 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 				return 0;
 			memcpy(pinbuf, "0000", 4);
 			return 4;
-			break;
 		}
 		break;
+
 	case 0x05:		/* Peripheral */
 		switch ((class & 0xc0) >> 6) {
 		case 0x01:		/* Keyboard */
@@ -109,14 +110,14 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 			*display = TRUE;
 			memcpy(pinbuf, pinstr, 6);
 			return 6;
-			break;
+
 		case 0x02: /* Pointing device */
 			if (attempt > 1)
 				return 0;
 			memcpy(pinbuf, "0000", 4);
 			return 4;
-			break;
 		}
+
 		break;
 	}
 
@@ -146,11 +147,14 @@ static int autopair_init(void)
 {
 	/* Initialize the random seed from /dev/urandom */
 	unsigned int seed = time(NULL);
-	FILE *f = fopen("/dev/urandom", "rb");
+	FILE *f;
+
+	f = fopen("/dev/urandom", "rb");
 	if (f != NULL) {
 		fread(&seed, sizeof(seed), 1, f);
 		fclose(f);
 	}
+
 	srand(seed);
 
 	return btd_register_adapter_driver(&autopair_driver);
@@ -161,5 +165,5 @@ static void autopair_exit(void)
 	btd_unregister_adapter_driver(&autopair_driver);
 }
 
-BLUETOOTH_PLUGIN_DEFINE(autopair, VERSION,
-		BLUETOOTH_PLUGIN_PRIORITY_DEFAULT, autopair_init, autopair_exit)
+BLUETOOTH_PLUGIN_DEFINE(autopair, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+						autopair_init, autopair_exit)
