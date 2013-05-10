@@ -1370,6 +1370,8 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 
 	if (dev->control == NULL) {
 		btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
+		btd_device_add_uuid(dev->btd_dev, AVRCP_TARGET_UUID);
+
 		if (dev->control == NULL)
 			goto drop;
 	}
