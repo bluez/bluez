@@ -1129,6 +1129,67 @@ static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data
 	}
 }
 
+static bool media_player_send(struct media_player *mp, const char *name)
+{
+	DBusMessage *msg;
+
+	msg = dbus_message_new_method_call(mp->sender, mp->path,
+					MEDIA_PLAYER_INTERFACE, name);
+	if (msg == NULL) {
+		error("Couldn't allocate D-Bus message");
+		return false;
+	}
+
+	g_dbus_send_message(btd_get_dbus_connection(), msg);
+
+	return true;
+}
+
+static bool play(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	return media_player_send(mp, "Play");
+}
+
+static bool stop(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	return media_player_send(mp, "Stop");
+}
+
+static bool pause(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	return media_player_send(mp, "Pause");
+}
+
+static bool next(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	return media_player_send(mp, "Next");
+}
+
+static bool previous(void *user_data)
+{
+	struct media_player *mp = user_data;
+
+	DBG("");
+
+	return media_player_send(mp, "Previous");
+}
+
 static struct avrcp_player_cb player_cb = {
 	.list_settings = list_settings,
 	.get_setting = get_setting,
@@ -1139,7 +1200,12 @@ static struct avrcp_player_cb player_cb = {
 	.get_position = get_position,
 	.get_duration = get_duration,
 	.get_status = get_status,
-	.set_volume = set_volume
+	.set_volume = set_volume,
+	.play = play,
+	.stop = stop,
+	.pause = pause,
+	.next = next,
+	.previous = previous,
 };
 
 static void media_player_exit(DBusConnection *connection, void *user_data)
