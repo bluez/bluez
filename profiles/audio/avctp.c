@@ -195,7 +195,7 @@ struct avctp {
 	struct avctp_passthrough_handler *handler;
 
 	uint8_t key_quirks[256];
-	struct key_pressed *key;
+	struct key_pressed key;
 };
 
 struct avctp_passthrough_handler {
@@ -288,7 +288,6 @@ static size_t handle_panel_passthrough(struct avctp *session,
 					uint8_t *subunit, uint8_t *operands,
 					size_t operand_count, void *user_data)
 {
-	struct key_pressed *key = session->key;
 	struct avctp_passthrough_handler *handler = session->handler;
 	const char *status;
 	int pressed, i;
@@ -309,7 +308,7 @@ static size_t handle_panel_passthrough(struct avctp *session,
 		pressed = 1;
 	}
 
-	if (key == NULL && handler != NULL) {
+	if (session->key.timer == 0 && handler != NULL) {
 		if (handler->cb(session, operands[0] & 0x7F,
 						pressed, handler->user_data))
 			goto done;
@@ -337,15 +336,8 @@ static size_t handle_panel_passthrough(struct avctp *session,
 			break;
 		}
 
-		if (pressed) {
-			if (key == NULL)
-				key = g_new0(struct key_pressed, 1);
-			key->op = key_map[i].avc;
-			session->key = key;
-		} else if (key && key->op == key_map[i].avc) {
-			g_free(key);
-			session->key = NULL;
-		}
+		if (pressed)
+			session->key.op = key_map[i].avc;
 
 		send_key(session->uinput, key_map[i].uinput, pressed);
 		break;
@@ -482,11 +474,8 @@ static void avctp_disconnected(struct avctp *session)
 		session->auth_id = 0;
 	}
 
-	if (session->key != NULL) {
-		if (session->key->timer > 0)
-			g_source_remove(session->key->timer);
-		g_free(session->key);
-	}
+	if (session->key.timer > 0)
+		g_source_remove(session->key.timer);
 
 	if (session->uinput >= 0) {
 		char address[18];
@@ -1597,33 +1586,27 @@ static int avctp_passthrough_release(struct avctp *session, uint8_t op)
 static gboolean repeat_timeout(gpointer user_data)
 {
 	struct avctp *session = user_data;
-	struct key_pressed *key = session->key;
 
-	avctp_passthrough_release(session, key->op);
-	avctp_passthrough_press(session, key->op);
+	avctp_passthrough_release(session, session->key.op);
+	avctp_passthrough_press(session, session->key.op);
 
 	return TRUE;
 }
 
 static void release_pressed(struct avctp *session)
 {
-	struct key_pressed *key = session->key;
+	avctp_passthrough_release(session, session->key.op);
 
-	avctp_passthrough_release(session, key->op);
+	if (session->key.timer > 0)
+		g_source_remove(session->key.timer);
 
-	if (key->timer > 0)
-		g_source_remove(key->timer);
-
-	g_free(key);
-	session->key = NULL;
+	session->key.timer = 0;
 }
 
 static bool set_pressed(struct avctp *session, uint8_t op)
 {
-	struct key_pressed *key;
-
-	if (session->key != NULL) {
-		if (session->key->op == op)
+	if (session->key.timer > 0) {
+		if (session->key.op == op)
 			return TRUE;
 		release_pressed(session);
 	}
@@ -1631,11 +1614,8 @@ static bool set_pressed(struct avctp *session, uint8_t op)
 	if (op != AVC_FAST_FORWARD && op != AVC_REWIND)
 		return FALSE;
 
-	key = g_new0(struct key_pressed, 1);
-	key->op = op;
-	key->timer = g_timeout_add_seconds(2, repeat_timeout, session);
-
-	session->key = key;
+	session->key.op = op;
+	session->key.timer = g_timeout_add_seconds(2, repeat_timeout, session);
 
 	return TRUE;
 }
@@ -1658,7 +1638,7 @@ static gboolean avctp_passthrough_rsp(struct avctp *session, uint8_t code,
 int avctp_send_passthrough(struct avctp *session, uint8_t op)
 {
 	/* Auto release if key pressed */
-	if (session->key != NULL)
+	if (session->key.timer > 0)
 		release_pressed(session);
 
 	return avctp_passthrough_press(session, op);
