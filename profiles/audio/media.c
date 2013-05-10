@@ -1482,7 +1482,7 @@ static const char *loop_status_to_repeat(const char *value)
 		return "off";
 	else if (strcasecmp(value, "Track") == 0)
 		return "singletrack";
-	else if (strcasecmp(value, "Track") == 0)
+	else if (strcasecmp(value, "Playlist") == 0)
 		return "alltracks";
 
 	return NULL;
