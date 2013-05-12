@@ -201,6 +201,7 @@ struct avctp {
 
 	uint8_t key_quirks[256];
 	struct key_pressed key;
+	bool initiator;
 };
 
 struct avctp_passthrough_handler {
@@ -1931,6 +1932,7 @@ struct avctp *avctp_connect(struct audio_device *device)
 	}
 
 	session->control = avctp_channel_create(session, io, NULL);
+	session->initiator = true;
 	g_io_channel_unref(io);
 
 	return session;
@@ -1982,4 +1984,9 @@ void avctp_disconnect(struct avctp *session)
 struct avctp *avctp_get(struct audio_device *device)
 {
 	return avctp_get_internal(device->btd_dev);
+}
+
+bool avctp_is_initiator(struct avctp *session)
+{
+	return session->initiator;
 }

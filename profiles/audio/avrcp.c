@@ -2863,7 +2863,12 @@ static struct avrcp *session_create(struct avrcp_server *server,
 
 	server->sessions = g_slist_append(server->sessions, session);
 
-	if (dev->sink && !dev->source)
+	/* If sink and source are not supported assume the controller must
+	 * be the initiator
+	 */
+	if (dev->sink == NULL && dev->source == NULL)
+		session->target = !avctp_is_initiator(session->conn);
+	else if (dev->sink && !dev->source)
 		session->target = TRUE;
 	else if (dev->source && !dev->sink)
 		session->target = FALSE;

@@ -120,6 +120,7 @@ void avctp_unregister(struct btd_adapter *adapter);
 
 struct avctp *avctp_connect(struct audio_device *device);
 struct avctp *avctp_get(struct audio_device *device);
+bool avctp_is_initiator(struct avctp *session);
 int avctp_connect_browsing(struct avctp *session);
 void avctp_disconnect(struct avctp *session);
 
