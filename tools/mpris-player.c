@@ -1326,6 +1326,21 @@ static gboolean parse_int32_metadata(DBusMessageIter *iter, const char *key,
 	return TRUE;
 }
 
+static gboolean parse_path_metadata(DBusMessageIter *iter, const char *key,
+						DBusMessageIter *metadata)
+{
+	const char *value;
+
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_OBJECT_PATH)
+		return FALSE;
+
+	dbus_message_iter_get_basic(iter, &value);
+
+	dict_append_entry(metadata, key, DBUS_TYPE_OBJECT_PATH, &value);
+
+	return TRUE;
+}
+
 static int parse_track_entry(DBusMessageIter *entry, const char *key,
 						DBusMessageIter *metadata)
 {
@@ -1353,6 +1368,9 @@ static int parse_track_entry(DBusMessageIter *entry, const char *key,
 			return -EINVAL;
 	} else if (strcasecmp(key, "TrackNumber") == 0) {
 		if (!parse_int32_metadata(&var, "xesam:trackNumber", metadata))
+			return -EINVAL;
+	} else if (strcasecmp(key, "Item") == 0) {
+		if (!parse_path_metadata(&var, "mpris:trackid", metadata))
 			return -EINVAL;
 	}
 
@@ -1533,11 +1551,15 @@ static void append_item_metadata(void *data, void *user_data)
 	GDBusProxy *item = data;
 	DBusMessageIter *iter = user_data;
 	DBusMessageIter var, metadata;
+	const char *path = g_dbus_proxy_get_path(item);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &metadata);
+
+	dict_append_entry(&metadata, "mpris:trackid", DBUS_TYPE_OBJECT_PATH,
+									&path);
 
 	if (g_dbus_proxy_get_property(item, "Metadata", &var))
 		parse_metadata(&var, &metadata, parse_track_entry);
