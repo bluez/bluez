@@ -1383,7 +1383,7 @@ static void avrcp_play_item_dump(int level, struct frame *frm,
 	}
 
 	scope = get_u8(frm);
-	printf("Scope: 0x%02x (%s)", scope, scope2str(scope));
+	printf("Scope: 0x%02x (%s)\n", scope, scope2str(scope));
 
 	p_indent(level, frm);
 
