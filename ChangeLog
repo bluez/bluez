@@ -1,3 +1,13 @@
+ver 5.5:
+	Fix issue with race condition between SDP and properties.
+	Fix issue with handling storage of private device addresses.
+	Fix issue with NFC out-of-band pairing and power states.
+	Fix issue with short name during device update handling.
+	Fix issue with handling AVRCP without A2DP being present.
+	Add support for handling AVRCP pass-through operations.
+	Add support for automatically reconnecting HID devices.
+	Add support for automatically pairing of devices.
+
 ver 5.4:
 	Fix issue with invalid memory access and SDP service search.
 	Add support for available player changed event for controller.
