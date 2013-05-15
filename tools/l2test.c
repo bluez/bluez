@@ -267,6 +267,7 @@ static int do_connect(char *svr)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
+	addr.l2_bdaddr_type = bdaddr_type;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
@@ -454,6 +455,7 @@ static void do_listen(void (*handler)(int sk))
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
+	addr.l2_bdaddr_type = bdaddr_type;
 	if (cid)
 		addr.l2_cid = htobs(cid);
 	else if (psm)
@@ -1019,6 +1021,7 @@ static void info_request(char *svr)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
+	addr.l2_bdaddr_type = bdaddr_type;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Can't bind socket");
@@ -1157,6 +1160,7 @@ static void do_pairing(char *svr)
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
+	addr.l2_bdaddr_type = bdaddr_type;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		perror("Can't bind socket");
