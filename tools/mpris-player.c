@@ -2048,6 +2048,10 @@ static void register_tracklist(GDBusProxy *proxy)
 
 	player->tracklist = tracklist;
 
+	g_dbus_emit_property_changed(player->conn, MPRIS_PLAYER_PATH,
+						MPRIS_INTERFACE,
+						"HasTrackList");
+
 	if (player->playlist == NULL)
 		return;
 
