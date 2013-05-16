@@ -723,15 +723,11 @@ static void open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (err) {
 		setup->stream = NULL;
 		setup->err = err;
+		if (setup->start)
+			finalize_resume(setup);
 	}
 
 	finalize_config(setup);
-
-	if (!setup->start || !err)
-		return;
-
-	setup->start = FALSE;
-	finalize_resume(setup);
 
 	return;
 }
