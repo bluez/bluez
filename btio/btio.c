@@ -64,6 +64,7 @@ struct set_opts {
 	bdaddr_t src;
 	bdaddr_t dst;
 	BtIOType type;
+	uint8_t src_type;
 	uint8_t dst_type;
 	int defer;
 	int sec_level;
@@ -316,8 +317,8 @@ static void accept_add(GIOChannel *io, BtIOConnect connect, gpointer user_data,
 					(GDestroyNotify) accept_remove);
 }
 
-static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm,
-						uint16_t cid, GError **err)
+static int l2cap_bind(int sock, const bdaddr_t *src, uint8_t src_type,
+				uint16_t psm, uint16_t cid, GError **err)
 {
 	struct sockaddr_l2 addr;
 
@@ -329,6 +330,8 @@ static int l2cap_bind(int sock, const bdaddr_t *src, uint16_t psm,
 		addr.l2_cid = htobs(cid);
 	else
 		addr.l2_psm = htobs(psm);
+
+	addr.l2_bdaddr_type = src_type;
 
 	if (bind(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		int error = -errno;
@@ -760,6 +763,7 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 	opts->mode = L2CAP_MODE_BASIC;
 	opts->flushable = -1;
 	opts->priority = 0;
+	opts->src_type = BDADDR_BREDR;
 	opts->dst_type = BDADDR_BREDR;
 
 	while (opt != BT_IO_OPT_INVALID) {
@@ -770,6 +774,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_SOURCE_BDADDR:
 			bacpy(&opts->src, va_arg(args, const bdaddr_t *));
+			break;
+		case BT_IO_OPT_SOURCE_TYPE:
+			opts->src_type = va_arg(args, int);
 			break;
 		case BT_IO_OPT_DEST:
 			str2ba(va_arg(args, const char *), &opts->dst);
@@ -1342,8 +1349,8 @@ static GIOChannel *create_io(gboolean server, struct set_opts *opts,
 			ERROR_FAILED(err, "socket(SEQPACKET, L2CAP)", errno);
 			return NULL;
 		}
-		if (l2cap_bind(sock, &opts->src, server ? opts->psm : 0,
-							opts->cid, err) < 0)
+		if (l2cap_bind(sock, &opts->src, opts->src_type,
+				server ? opts->psm : 0, opts->cid, err) < 0)
 			goto failed;
 		if (!l2cap_set(sock, opts->sec_level, opts->imtu, opts->omtu,
 				opts->mode, opts->master, opts->flushable,
