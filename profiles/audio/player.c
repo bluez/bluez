@@ -1387,7 +1387,22 @@ void media_player_set_playlist_item(struct media_player *mp, uint64_t uid)
 static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	return btd_error_failed(msg, strerror(ENOTSUP));
+	struct media_item *item = data;
+	struct media_player *mp = item->player;
+	struct player_callback *cb = mp->cb;
+	int err;
+
+	if (!item->playable)
+		return btd_error_failed(msg, strerror(ENOTSUP));
+
+	if (cb->cbs->play_item == NULL)
+		return btd_error_failed(msg, strerror(ENOTSUP));
+
+	err = cb->cbs->play_item(mp, item->path, item->uid, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *media_item_add_to_nowplaying(DBusConnection *conn,
