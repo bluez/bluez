@@ -60,6 +60,8 @@ struct media_player_callback {
 						uint64_t uid, void *user_data);
 	int (*play_item) (struct media_player *mp, const char *name,
 					uint64_t uid, void *user_data);
+	int (*add_to_nowplaying) (struct media_player *mp, const char *name,
+					uint64_t uid, void *user_data);
 };
 
 struct media_player *media_player_controller_create(const char *path,
