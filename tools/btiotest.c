@@ -301,9 +301,10 @@ static void l2cap_connect(const char *src, const char *dst, uint8_t addr_type,
 	}
 }
 
-static void l2cap_listen(const char *src, uint16_t psm, uint16_t cid,
-				int defer, int reject, int disconn,
-				int accept, int sec, gboolean master)
+static void l2cap_listen(const char *src, uint8_t addr_type, uint16_t psm,
+				uint16_t cid, int defer, int reject,
+				int disconn, int accept, int sec,
+				gboolean master)
 {
 	struct io_data *data;
 	BtIOConnect conn;
@@ -332,6 +333,7 @@ static void l2cap_listen(const char *src, uint16_t psm, uint16_t cid,
 					(GDestroyNotify) io_data_unref,
 					&err,
 					BT_IO_OPT_SOURCE, src,
+					BT_IO_OPT_SOURCE_TYPE, addr_type,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_CID, cid,
 					BT_IO_OPT_SEC_LEVEL, sec,
@@ -341,6 +343,7 @@ static void l2cap_listen(const char *src, uint16_t psm, uint16_t cid,
 		l2_srv = bt_io_listen(conn, cfm, data,
 					(GDestroyNotify) io_data_unref,
 					&err,
+					BT_IO_OPT_SOURCE_TYPE, addr_type,
 					BT_IO_OPT_PSM, psm,
 					BT_IO_OPT_CID, cid,
 					BT_IO_OPT_SEC_LEVEL, sec,
@@ -591,9 +594,9 @@ int main(int argc, char *argv[])
 					opt_psm, opt_cid, opt_disconn,
 					opt_sec, opt_priority);
 		else
-			l2cap_listen(opt_dev, opt_psm, opt_cid, opt_defer,
-					opt_reject, opt_disconn, opt_accept,
-					opt_sec, opt_master);
+			l2cap_listen(opt_dev, opt_addr_type, opt_psm, opt_cid,
+					opt_defer, opt_reject, opt_disconn,
+					opt_accept, opt_sec, opt_master);
 	}
 
 	if (opt_channel != -1) {
