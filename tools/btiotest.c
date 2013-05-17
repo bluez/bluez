@@ -323,7 +323,7 @@ static void l2cap_listen(const char *src, uint8_t addr_type, uint16_t psm,
 	if (cid)
 		printf("Listening on L2CAP CID 0x%04x (%u)\n", cid, cid);
 	else
-		printf("Listening on L2CAP PSM 0x%04x (%u)\n", psm, cid);
+		printf("Listening on L2CAP PSM 0x%04x (%u)\n", psm, psm);
 
 
 	data = io_data_new(NULL, reject, disconn, accept);
