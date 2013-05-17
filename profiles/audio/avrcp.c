@@ -102,8 +102,9 @@
 #define AVRCP_ABORT_CONTINUING		0x41
 #define AVRCP_SET_ABSOLUTE_VOLUME	0x50
 #define AVRCP_SET_BROWSED_PLAYER	0x70
-#define AVRCP_GET_ITEM_ATTRIBUTES	0x73
 #define AVRCP_GET_FOLDER_ITEMS		0x71
+#define AVRCP_CHANGE_PATH		0x72
+#define AVRCP_GET_ITEM_ATTRIBUTES	0x73
 #define AVRCP_GENERAL_REJECT		0xA0
 
 /* Capabilities for AVRCP_GET_CAPABILITIES pdu */
@@ -193,8 +194,10 @@ struct avrcp_player {
 	uint16_t uid_counter;
 	bool browsed;
 	uint8_t *features;
+	char *path;
 
 	struct pending_list_items *p;
+	char *change_path;
 
 	struct avrcp_player_cb *cb;
 	void *user_data;
@@ -2268,6 +2271,32 @@ static void avrcp_list_items(struct avrcp *session, uint32_t start,
 					avrcp_list_items_rsp, session);
 }
 
+static gboolean avrcp_change_path_rsp(struct avctp *conn,
+					uint8_t *operands, size_t operand_count,
+					void *user_data)
+{
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct avrcp *session = user_data;
+	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
+	uint8_t status;
+	uint32_t num_of_items;
+
+	status = pdu->params[0];
+	if (status != AVRCP_STATUS_SUCCESS)
+		return FALSE;
+
+	num_of_items = bt_get_be32(&pdu->params[1]);
+
+	g_free(player->path);
+	player->path = player->change_path;
+	player->change_path = NULL;
+
+	media_player_set_folder(mp, player->path, num_of_items);
+
+	return FALSE;
+}
+
 static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 						uint8_t *operands,
 						size_t operand_count,
@@ -2278,7 +2307,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	struct media_player *mp = player->user_data;
 	struct avrcp_browsing_header *pdu = (void *) operands;
 	uint32_t items;
-	char **folders, *path;
+	char **folders;
 	uint8_t depth, count;
 	size_t i;
 
@@ -2311,12 +2340,10 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 		i += len;
 	}
 
-	path = g_build_pathv("/", folders);
+	player->path = g_build_pathv("/", folders);
 	g_strfreev(folders);
 
-	media_player_set_folder(mp, path, items);
-
-	g_free(path);
+	media_player_set_folder(mp, player->path, items);
 
 	return FALSE;
 }
@@ -2557,6 +2584,41 @@ static int ct_list_items(struct media_player *mp, const char *name,
 	return 0;
 }
 
+static void avrcp_change_path(struct avrcp *session, uint8_t direction,
+								uint64_t uid)
+{
+	struct avrcp_player *player = session->player;
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 11];
+	struct avrcp_browsing_header *pdu = (void *) buf;
+
+	memset(buf, 0, sizeof(buf));
+	bt_put_be16(player->uid_counter, &pdu->params[0]);
+	pdu->params[2] = direction;
+	bt_put_be64(uid, &pdu->params[3]);
+	pdu->pdu_id = AVRCP_CHANGE_PATH;
+	pdu->param_len = htons(11);
+
+	avctp_send_browsing_req(session->conn, buf, sizeof(buf),
+					avrcp_change_path_rsp, session);
+}
+
+static int ct_change_folder(struct media_player *mp, const char *path,
+					uint64_t uid, void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct avrcp *session;
+	uint8_t direction;
+
+	session = player->sessions->data;
+	player->change_path = g_strdup(path);
+
+	direction = g_str_has_prefix(path, player->path) ? 0x01 : 0x00;
+
+	avrcp_change_path(session, direction, uid);
+
+	return 0;
+}
+
 static const struct media_player_callback ct_cbs = {
 	.set_setting	= ct_set_setting,
 	.play		= ct_play,
@@ -2567,6 +2629,7 @@ static const struct media_player_callback ct_cbs = {
 	.fast_forward	= ct_fast_forward,
 	.rewind		= ct_rewind,
 	.list_items	= ct_list_items,
+	.change_folder	= ct_change_folder,
 };
 
 static struct avrcp_player *create_ct_player(struct avrcp *session,
@@ -2679,6 +2742,8 @@ static void player_destroy(gpointer data)
 		player->destroy(player->user_data);
 
 	g_slist_free(player->sessions);
+	g_free(player->path);
+	g_free(player->change_path);
 	g_free(player->features);
 	g_free(player);
 }
