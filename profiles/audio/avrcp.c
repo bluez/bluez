@@ -2279,20 +2279,31 @@ static gboolean avrcp_change_path_rsp(struct avctp *conn,
 	struct avrcp *session = user_data;
 	struct avrcp_player *player = session->player;
 	struct media_player *mp = player->user_data;
-	uint8_t status;
-	uint32_t num_of_items;
+	int ret;
 
-	status = pdu->params[0];
-	if (status != AVRCP_STATUS_SUCCESS)
-		return FALSE;
+	if (pdu == NULL) {
+		ret = -ETIMEDOUT;
+		goto done;
+	}
 
-	num_of_items = bt_get_be32(&pdu->params[1]);
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS) {
+		ret = -EINVAL;
+		goto done;
+	}
 
-	g_free(player->path);
-	player->path = player->change_path;
-	player->change_path = NULL;
+	ret = bt_get_be32(&pdu->params[1]);
 
-	media_player_set_folder(mp, player->path, num_of_items);
+done:
+	if (ret < 0) {
+		g_free(player->change_path);
+		player->change_path = NULL;
+	} else {
+		g_free(player->path);
+		player->path = player->change_path;
+		player->change_path = NULL;
+	}
+
+	media_player_change_folder_complete(mp, player->path, ret);
 
 	return FALSE;
 }

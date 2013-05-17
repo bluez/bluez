@@ -591,6 +591,30 @@ static void parse_folder_list(gpointer data, gpointer user_data)
 	dbus_message_iter_close_container(array, &entry);
 }
 
+void media_player_change_folder_complete(struct media_player *mp,
+						const char *path, int ret)
+{
+	struct media_folder *folder = mp->scope;
+	DBusMessage *reply;
+
+	if (folder == NULL || folder->msg == NULL)
+		return;
+
+	if (ret < 0) {
+		reply = btd_error_failed(folder->msg, strerror(-ret));
+		goto done;
+	}
+
+	media_player_set_folder(mp, path, ret);
+
+	reply = g_dbus_create_reply(folder->msg, DBUS_TYPE_INVALID);
+
+done:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(folder->msg);
+	folder->msg = NULL;
+}
+
 void media_player_list_complete(struct media_player *mp, GSList *items,
 								int err)
 {
@@ -867,7 +891,43 @@ static struct media_folder *media_player_find_folder(struct media_player *mp,
 static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	return btd_error_failed(msg, strerror(ENOTSUP));
+	struct media_player *mp = data;
+	struct media_folder *folder = mp->scope;
+	struct player_callback *cb = mp->cb;
+	const char *path;
+	int err;
+
+	if (!dbus_message_get_args(msg, NULL,
+					DBUS_TYPE_OBJECT_PATH, &path,
+					DBUS_TYPE_INVALID))
+		return btd_error_failed(msg, strerror(EINVAL));
+
+	if (folder->msg != NULL)
+		return btd_error_failed(msg, strerror(EBUSY));
+
+	folder = media_player_find_folder(mp, path);
+	if (folder == NULL)
+		return btd_error_failed(msg, strerror(EINVAL));
+
+	if (mp->scope == folder)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (folder == mp->playlist || folder == mp->folder) {
+		media_player_change_scope(mp, folder);
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
+	if (cb->cbs->change_folder == NULL)
+		return btd_error_failed(msg, strerror(ENOTSUP));
+
+	err = cb->cbs->change_folder(mp, folder->item->name, folder->item->uid,
+								cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	mp->scope->msg = dbus_message_ref(msg);
+
+	return NULL;
 }
 
 static gboolean folder_name_exists(const GDBusPropertyTable *property,
@@ -932,7 +992,7 @@ static const GDBusMethodTable media_folder_methods[] = {
 			GDBUS_ARGS({ "filter", "a{sv}" }),
 			GDBUS_ARGS({ "items", "a{oa{sv}}" }),
 			media_folder_list_items) },
-	{ GDBUS_EXPERIMENTAL_METHOD("ChangeFolder",
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("ChangeFolder",
 			GDBUS_ARGS({ "folder", "o" }), NULL,
 			media_folder_change_folder) },
 	{ }

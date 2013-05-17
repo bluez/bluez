@@ -93,6 +93,8 @@ struct media_item *media_player_create_item(struct media_player *mp,
 void media_item_set_playable(struct media_item *item, bool value);
 void media_player_list_complete(struct media_player *mp, GSList *items,
 								int err);
+void media_player_change_folder_complete(struct media_player *player,
+						const char *path, int ret);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,
