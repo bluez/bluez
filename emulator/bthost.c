@@ -39,9 +39,22 @@
 #define cpu_to_le16(val) (val)
 #define cpu_to_le32(val) (val)
 
+struct cmd {
+	struct cmd *next;
+	struct cmd *prev;
+	uint8_t data[256 + sizeof(struct bt_hci_cmd_hdr)];
+	uint16_t len;
+};
+
+struct cmd_queue {
+	struct cmd *head;
+	struct cmd *tail;
+};
+
 struct bthost {
 	bthost_send_func send_handler;
 	void *send_data;
+	struct cmd_queue cmd_q;
 	uint8_t ncmd;
 };
 
@@ -60,8 +73,13 @@ struct bthost *bthost_create(void)
 
 void bthost_destroy(struct bthost *bthost)
 {
+	struct cmd *cmd;
+
 	if (!bthost)
 		return;
+
+	for (cmd = bthost->cmd_q.tail; cmd != NULL; cmd = cmd->next)
+		free(cmd);
 
 	free(bthost);
 }
@@ -74,6 +92,28 @@ void bthost_set_send_handler(struct bthost *bthost, bthost_send_func handler,
 
 	bthost->send_handler = handler;
 	bthost->send_data = user_data;
+}
+
+static void queue_command(struct bthost *bthost, const void *data,
+								uint16_t len)
+{
+	struct cmd_queue *cmd_q = &bthost->cmd_q;
+	struct cmd *cmd;
+
+	cmd = malloc(sizeof(*cmd));
+	if (!cmd)
+		return;
+
+	memset(cmd, 0, sizeof(*cmd));
+
+	memcpy(cmd->data, data, len);
+	cmd->len = len;
+
+	if (cmd_q->tail)
+		cmd_q->tail->next = cmd;
+
+	cmd->prev = cmd_q->tail;
+	cmd_q->tail = cmd;
 }
 
 static void send_packet(struct bthost *bthost, const void *data, uint16_t len)
@@ -106,9 +146,39 @@ static void send_command(struct bthost *bthost, uint16_t opcode,
 	if (len > 0)
 		memcpy(pkt_data + 1 + sizeof(*hdr), data, len);
 
-	send_packet(bthost, pkt_data, pkt_len);
+	if (bthost->ncmd) {
+		send_packet(bthost, pkt_data, pkt_len);
+		bthost->ncmd--;
+	} else {
+		queue_command(bthost, pkt_data, pkt_len);
+	}
 
 	free(pkt_data);
+}
+
+static void next_cmd(struct bthost *bthost)
+{
+	struct cmd_queue *cmd_q = &bthost->cmd_q;
+	struct cmd *cmd = cmd_q->tail;
+	struct cmd *next;
+
+	if (!cmd)
+		return;
+
+	next = cmd->next;
+
+	if (!bthost->ncmd)
+		return;
+
+	send_packet(bthost, cmd->data, cmd->len);
+	bthost->ncmd--;
+
+	if (next)
+		next->prev = NULL;
+
+	cmd_q->tail = next;
+
+	free(cmd);
 }
 
 static void evt_cmd_complete(struct bthost *bthost, const void *data,
@@ -120,6 +190,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		return;
 
 	bthost->ncmd = ev->ncmd;
+
+	next_cmd(bthost);
 }
 
 static void evt_cmd_status(struct bthost *bthost, const void *data,
@@ -131,6 +203,8 @@ static void evt_cmd_status(struct bthost *bthost, const void *data,
 		return;
 
 	bthost->ncmd = ev->ncmd;
+
+	next_cmd(bthost);
 }
 
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
