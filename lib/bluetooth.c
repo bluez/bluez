@@ -655,6 +655,24 @@ const char *bt_compidtostr(int compid)
 		return "adidas AG";
 	case 196:
 		return "LG Electronics";
+	case 197:
+		return "Onset Computer Corporation";
+	case 198:
+		return "Selfly BV";
+	case 199:
+		return "Quuppa Oy.";
+	case 200:
+		return "GeLo Inc";
+	case 201:
+		return "Evluma";
+	case 202:
+		return "MC10";
+	case 203:
+		return "Binauric SE";
+	case 204:
+		return "Beats Electronics";
+	case 205:
+		return "Microchip Technology Inc.";
 	case 65535:
 		return "internal use";
 	default:
