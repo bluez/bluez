@@ -30,6 +30,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <endian.h>
 
 #include "monitor/bt.h"
 #include "bthost.h"
@@ -52,6 +53,7 @@ struct cmd_queue {
 };
 
 struct bthost {
+	uint8_t bdaddr[6];
 	bthost_send_func send_handler;
 	void *send_data;
 	struct cmd_queue cmd_q;
@@ -181,15 +183,46 @@ static void next_cmd(struct bthost *bthost)
 	free(cmd);
 }
 
-static void evt_cmd_complete(struct bthost *bthost, const void *data,
+static void read_bd_addr_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
-	const struct bt_hci_evt_cmd_complete *ev = data;
+	const struct bt_hci_rsp_read_bd_addr *ev = data;
 
 	if (len < sizeof(*ev))
 		return;
 
+	if (ev->status)
+		return;
+
+	memcpy(bthost->bdaddr, ev->bdaddr, 6);
+}
+
+static void evt_cmd_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_cmd_complete *ev = data;
+	const void *param;
+	uint16_t opcode;
+
+	if (len < sizeof(*ev))
+		return;
+
+	param = data + sizeof(*ev);
+
 	bthost->ncmd = ev->ncmd;
+
+	opcode = le16toh(ev->opcode);
+
+	switch (opcode) {
+	case BT_HCI_CMD_RESET:
+		break;
+	case BT_HCI_CMD_READ_BD_ADDR:
+		read_bd_addr_complete(bthost, param, len - sizeof(*ev));
+		break;
+	default:
+		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
+		break;
+	}
 
 	next_cmd(bthost);
 }
@@ -262,7 +295,11 @@ void bthost_start(struct bthost *bthost)
 	if (!bthost)
 		return;
 
+	bthost->ncmd = 1;
+
 	send_command(bthost, BT_HCI_CMD_RESET, NULL, 0);
+
+	send_command(bthost, BT_HCI_CMD_READ_BD_ADDR, NULL, 0);
 }
 
 void bthost_stop(struct bthost *bthost)
