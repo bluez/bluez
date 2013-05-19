@@ -42,6 +42,7 @@
 struct bthost {
 	bthost_send_func send_handler;
 	void *send_data;
+	uint8_t ncmd;
 };
 
 struct bthost *bthost_create(void)
@@ -110,18 +111,48 @@ static void send_command(struct bthost *bthost, uint16_t opcode,
 	free(pkt_data);
 }
 
+static void evt_cmd_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_cmd_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	bthost->ncmd = ev->ncmd;
+}
+
+static void evt_cmd_status(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_cmd_status *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	bthost->ncmd = ev->ncmd;
+}
+
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
+	const void *param;
 
 	if (len < sizeof(*hdr))
 		return;
 
+	if (sizeof(*hdr) + hdr->plen != len)
+		return;
+
+	param = data + sizeof(*hdr);
+
 	switch (hdr->evt) {
 	case BT_HCI_EVT_CMD_COMPLETE:
+		evt_cmd_complete(bthost, param, hdr->plen);
 		break;
 
 	case BT_HCI_EVT_CMD_STATUS:
+		evt_cmd_status(bthost, param, hdr->plen);
 		break;
 
 	default:
