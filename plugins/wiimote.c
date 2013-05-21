@@ -70,7 +70,8 @@ static const char *wii_names[] = {
 };
 
 static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
-			char *pinbuf, gboolean *display, unsigned int attempt)
+						char *pinbuf, bool *display,
+						unsigned int attempt)
 {
 	uint16_t vendor, product;
 	char addr[18], name[25];

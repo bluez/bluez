@@ -51,9 +51,9 @@
  */
 
 static ssize_t autopair_pincb(struct btd_adapter *adapter,
-					struct btd_device *device,
-					char *pinbuf, gboolean *display,
-					unsigned int attempt)
+						struct btd_device *device,
+						char *pinbuf, bool *display,
+						unsigned int attempt)
 {
 	char addr[18];
 	char pinstr[7];
@@ -109,7 +109,7 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 
 			snprintf(pinstr, sizeof(pinstr), "%06d",
 						rand() % 1000000);
-			*display = TRUE;
+			*display = true;
 			memcpy(pinbuf, pinstr, 6);
 			return 6;
 

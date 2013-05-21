@@ -132,7 +132,7 @@ int btd_cancel_authorization(guint id);
 int btd_adapter_restore_powered(struct btd_adapter *adapter);
 
 typedef ssize_t (*btd_adapter_pin_cb_t) (struct btd_adapter *adapter,
-			struct btd_device *dev, char *out, gboolean *display,
+			struct btd_device *dev, char *out, bool *display,
 							unsigned int attempt);
 void btd_adapter_register_pin_cb(struct btd_adapter *adapter,
 						btd_adapter_pin_cb_t cb);

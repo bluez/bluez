@@ -4817,8 +4817,7 @@ static ssize_t btd_adapter_pin_cb_iter_next(
 					struct btd_adapter_pin_cb_iter *iter,
 					struct btd_adapter *adapter,
 					struct btd_device *device,
-					char *pin_buf,
-					gboolean *display)
+					char *pin_buf, bool *display)
 {
 	btd_adapter_pin_cb_t cb;
 	ssize_t ret;
@@ -4843,7 +4842,7 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	const struct mgmt_ev_pin_code_request *ev = param;
 	struct btd_adapter *adapter = user_data;
 	struct btd_device *device;
-	gboolean display = FALSE;
+	bool display = false;
 	char pin[17];
 	ssize_t pinlen;
 	char addr[18];
