@@ -27,6 +27,8 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <bluetooth/bluetooth.h>
 #include <glib.h>
@@ -146,14 +148,20 @@ static struct btd_adapter_driver autopair_driver = {
 static int autopair_init(void)
 {
 	/* Initialize the random seed from /dev/urandom */
-	unsigned int seed = time(NULL);
-	FILE *f;
+	unsigned int seed;
+	int fd;
 
-	f = fopen("/dev/urandom", "rb");
-	if (f != NULL) {
-		fread(&seed, sizeof(seed), 1, f);
-		fclose(f);
-	}
+	fd = open("/dev/urandom", O_RDONLY);
+	if (fd >= 0) {
+		ssize_t n;
+
+		n = read(fd, &seed, sizeof(seed));
+		if (n < (ssize_t) sizeof(seed))
+			seed = time(NULL);
+
+		close(fd);
+	} else
+		seed = time(NULL);
 
 	srand(seed);
 
