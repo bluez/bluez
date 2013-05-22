@@ -51,6 +51,8 @@ struct hciemu {
 	guint client_source;
 	GList *post_command_hooks;
 	char bdaddr_str[18];
+	hciemu_scan_enable_cb scan_enable_cb;
+	void *scan_enable_data;
 };
 
 struct hciemu_command_hook {
@@ -215,6 +217,29 @@ static bool create_vhci(struct hciemu *hciemu)
 	return true;
 }
 
+static void client_cmd_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
+{
+	struct hciemu *hciemu = user_data;
+
+	switch (opcode) {
+	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+		if (!hciemu->scan_enable_cb)
+			break;
+
+		hciemu->scan_enable_cb(status, hciemu->scan_enable_data);
+
+		hciemu->scan_enable_cb = NULL;
+		hciemu->scan_enable_data = NULL;
+
+		break;
+
+	default:
+		break;
+	}
+}
+
 static bool create_stack(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
@@ -230,6 +255,8 @@ static bool create_stack(struct hciemu *hciemu)
 		btdev_destroy(btdev);
 		return false;
 	}
+
+	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, hciemu);
 
 	btdev_set_command_handler(btdev, client_command_callback, hciemu);
 
@@ -329,6 +356,15 @@ void hciemu_unref(struct hciemu *hciemu)
 	btdev_destroy(hciemu->master_dev);
 
 	g_free(hciemu);
+}
+
+void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
+				hciemu_scan_enable_cb cb, void *user_data)
+{
+	hciemu->scan_enable_cb = cb;
+	hciemu->scan_enable_data = user_data;
+
+	bthost_write_scan_enable(hciemu->host_stack, scan);
 }
 
 const char *hciemu_get_address(struct hciemu *hciemu)

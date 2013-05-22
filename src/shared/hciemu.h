@@ -37,6 +37,11 @@ struct hciemu *hciemu_new(enum hciemu_type type);
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
 
+typedef void (*hciemu_scan_enable_cb)(uint8_t status, void *user_data);
+
+void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
+				hciemu_scan_enable_cb cb, void *user_data);
+
 const char *hciemu_get_address(struct hciemu *hciemu);
 
 typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,

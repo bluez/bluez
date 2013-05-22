@@ -58,6 +58,8 @@ struct bthost {
 	void *send_data;
 	struct cmd_queue cmd_q;
 	uint8_t ncmd;
+	bthost_cmd_complete_cb cmd_complete_cb;
+	void *cmd_complete_data;
 };
 
 struct bthost *bthost_create(void)
@@ -224,6 +226,10 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	}
 
+	if (bthost->cmd_complete_cb)
+		bthost->cmd_complete_cb(opcode, 0, param, len - sizeof(*ev),
+						bthost->cmd_complete_data);
+
 	next_cmd(bthost);
 }
 
@@ -231,11 +237,18 @@ static void evt_cmd_status(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const struct bt_hci_evt_cmd_status *ev = data;
+	uint16_t opcode;
 
 	if (len < sizeof(*ev))
 		return;
 
 	bthost->ncmd = ev->ncmd;
+
+	opcode = le16toh(ev->opcode);
+
+	if (ev->status && bthost->cmd_complete_cb)
+		bthost->cmd_complete_cb(opcode, ev->status, NULL, 0,
+						bthost->cmd_complete_data);
 
 	next_cmd(bthost);
 }
@@ -288,6 +301,18 @@ void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 		printf("Unsupported packet 0x%2.2x\n", pkt_type);
 		break;
 	}
+}
+
+void bthost_set_cmd_complete_cb(struct bthost *bthost,
+				bthost_cmd_complete_cb cb, void *user_data)
+{
+	bthost->cmd_complete_cb = cb;
+	bthost->cmd_complete_data = user_data;
+}
+
+void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
+{
+	send_command(bthost, BT_HCI_CMD_WRITE_SCAN_ENABLE, &scan, 1);
 }
 
 void bthost_start(struct bthost *bthost)
