@@ -535,7 +535,7 @@ sdp_data_t *sdp_seq_alloc_with_length(void **dtds, void **values, int *length,
 		curr = data;
 	}
 
-	return sdp_data_alloc_with_length(SDP_SEQ8, seq, length[i]);
+	return sdp_data_alloc(SDP_SEQ8, seq);
 }
 
 sdp_data_t *sdp_seq_alloc(void **dtds, void **values, int len)
