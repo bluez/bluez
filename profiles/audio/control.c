@@ -294,10 +294,12 @@ void control_update(struct control *control, struct btd_service *service)
 		control->remote = btd_service_ref(service);
 }
 
-struct control *control_init(struct audio_device *dev,
-						struct btd_service *service)
+static struct control *control_init(struct audio_device *dev)
 {
 	struct control *control;
+
+	if (dev->control != NULL)
+		return dev->control;
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					device_get_path(dev->btd_dev),
@@ -312,9 +314,35 @@ struct control *control_init(struct audio_device *dev,
 
 	control = g_new0(struct control, 1);
 
-	control_update(control, service);
-
 	control->avctp_id = avctp_add_state_cb(dev, state_changed);
+
+	return control;
+}
+
+struct control *control_init_target(struct audio_device *dev,
+						struct btd_service *service)
+{
+	struct control *control;
+
+	control = control_init(dev);
+	if (control == NULL)
+		return NULL;
+
+	control->target = btd_service_ref(service);
+
+	return control;
+}
+
+struct control *control_init_remote(struct audio_device *dev,
+						struct btd_service *service)
+{
+	struct control *control;
+
+	control = control_init(dev);
+	if (control == NULL)
+		return NULL;
+
+	control->remote = btd_service_ref(service);
 
 	return control;
 }

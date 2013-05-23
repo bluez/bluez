@@ -135,7 +135,7 @@ static int a2dp_sink_probe(struct btd_service *service)
 	return 0;
 }
 
-static int avrcp_probe(struct btd_service *service)
+static int avrcp_target_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *audio_dev;
@@ -146,13 +146,26 @@ static int avrcp_probe(struct btd_service *service)
 		return -1;
 	}
 
-	if (audio_dev->control)
-		control_update(audio_dev->control, service);
-	else
-		audio_dev->control = control_init(audio_dev, service);
+	audio_dev->control = control_init_target(audio_dev, service);
 
 	if (audio_dev->sink && sink_is_active(audio_dev))
 		avrcp_connect(audio_dev);
+
+	return 0;
+}
+
+static int avrcp_remote_probe(struct btd_service *service)
+{
+	struct btd_device *device = btd_service_get_device(service);
+	struct audio_device *audio_dev;
+
+	audio_dev = get_audio_dev(device);
+	if (!audio_dev) {
+		DBG("unable to get a device object");
+		return -1;
+	}
+
+	audio_dev->control = control_init_remote(audio_dev, service);
 
 	return 0;
 }
@@ -373,7 +386,7 @@ static struct btd_profile avrcp_target_profile = {
 	.name		= "audio-avrcp-target",
 
 	.remote_uuid	= AVRCP_TARGET_UUID,
-	.device_probe	= avrcp_probe,
+	.device_probe	= avrcp_target_probe,
 	.device_remove	= audio_remove,
 
 	.connect	= avrcp_target_connect,
@@ -387,7 +400,7 @@ static struct btd_profile avrcp_remote_profile = {
 	.name		= "audio-avrcp-control",
 
 	.remote_uuid	= AVRCP_REMOTE_UUID,
-	.device_probe	= avrcp_probe,
+	.device_probe	= avrcp_remote_probe,
 	.device_remove	= audio_remove,
 
 	.adapter_probe	= avrcp_remote_server_probe,
