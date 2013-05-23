@@ -376,7 +376,6 @@ static struct btd_profile avrcp_target_profile = {
 	.device_probe	= avrcp_probe,
 	.device_remove	= audio_remove,
 
-	.auto_connect	= true,
 	.connect	= avrcp_target_connect,
 	.disconnect	= avrcp_target_disconnect,
 
