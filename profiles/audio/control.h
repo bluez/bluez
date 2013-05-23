@@ -30,7 +30,6 @@ struct control *control_init_target(struct audio_device *dev,
 						struct btd_service *service);
 struct control *control_init_remote(struct audio_device *dev,
 						struct btd_service *service);
-void control_update(struct control *control, struct btd_service *service);
 void control_unregister(struct audio_device *dev);
 gboolean control_is_active(struct audio_device *dev);
 

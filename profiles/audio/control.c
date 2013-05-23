@@ -282,18 +282,6 @@ void control_unregister(struct audio_device *dev)
 						AUDIO_CONTROL_INTERFACE);
 }
 
-void control_update(struct control *control, struct btd_service *service)
-{
-	struct btd_profile *p = btd_service_get_profile(service);
-	const char *uuid = p->remote_uuid;
-
-	if (!control->target && bt_uuid_strcmp(uuid, AVRCP_TARGET_UUID) == 0)
-		control->target = btd_service_ref(service);
-	else if (!control->remote &&
-				bt_uuid_strcmp(uuid, AVRCP_REMOTE_UUID) == 0)
-		control->remote = btd_service_ref(service);
-}
-
 static struct control *control_init(struct audio_device *dev)
 {
 	struct control *control;
