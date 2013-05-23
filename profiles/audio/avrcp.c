@@ -2207,7 +2207,7 @@ static void avrcp_player_parse_features(struct avrcp_player *player,
 	if (features[7] & 0x08) {
 		media_player_set_browsable(mp, true);
 		media_player_create_folder(mp, "/Filesystem",
-						PLAYER_FOLDER_TYPE_MIXED);
+						PLAYER_FOLDER_TYPE_MIXED, 0);
 	}
 
 	if (features[7] & 0x10)
@@ -2215,7 +2215,7 @@ static void avrcp_player_parse_features(struct avrcp_player *player,
 
 	if (features[8] & 0x02) {
 		media_player_create_folder(mp, "/NowPlaying",
-						PLAYER_FOLDER_TYPE_MIXED);
+						PLAYER_FOLDER_TYPE_MIXED, 0);
 		media_player_set_playlist(mp, "/NowPlaying");
 	}
 }

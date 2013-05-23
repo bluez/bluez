@@ -42,6 +42,7 @@ typedef enum {
 } player_folder_type_t;
 
 struct media_player;
+struct media_item;
 
 struct media_player_callback {
 	bool (*set_setting) (struct media_player *mp, const char *key,
@@ -75,8 +76,14 @@ void media_player_set_folder(struct media_player *mp, const char *path,
 								uint32_t items);
 void media_player_set_playlist(struct media_player *mp, const char *name);
 
-int media_player_create_folder(struct media_player *mp, const char *name,
-						player_folder_type_t type);
+struct media_item *media_player_create_folder(struct media_player *mp,
+						const char *name,
+						player_folder_type_t type,
+						uint64_t uid);
+struct media_item *media_player_create_item(struct media_player *mp,
+						const char *name,
+						player_item_type_t type,
+						uint64_t uid);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,
