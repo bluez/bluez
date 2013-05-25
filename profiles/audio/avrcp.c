@@ -73,6 +73,7 @@
 #define AVRCP_STATUS_PARAM_NOT_FOUND		0x02
 #define AVRCP_STATUS_INTERNAL_ERROR		0x03
 #define AVRCP_STATUS_SUCCESS			0x04
+#define AVRCP_STATUS_OUT_OF_BOUNDS		0x0b
 #define AVRCP_STATUS_INVALID_PLAYER_ID		0x11
 #define AVRCP_STATUS_PLAYER_NOT_BROWSABLE	0x12
 #define AVRCP_STATUS_NO_AVAILABLE_PLAYERS	0x15
@@ -2150,9 +2151,25 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	uint16_t count;
 	uint32_t items, total;
 	size_t i;
+	int err = 0;
 
-	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 5)
+	if (pdu == NULL) {
+		err = -ETIMEDOUT;
 		goto done;
+	}
+
+	/* AVRCP 1.5 - Page 76:
+	 * If the TG receives a GetFolderItems command for an empty folder then
+	 * the TG shall return the error (= Range Out of Bounds) in the status
+	 * field of the GetFolderItems response.
+	 */
+	if (pdu->params[0] == AVRCP_STATUS_OUT_OF_BOUNDS)
+		goto done;
+
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 5) {
+		err = -EINVAL;
+		goto done;
+	}
 
 	count = bt_get_be16(&operands[6]);
 	if (count == 0)
@@ -2199,6 +2216,8 @@ static gboolean avrcp_list_items_rsp(struct avctp *conn, uint8_t *operands,
 	}
 
 done:
+	media_player_list_complete(player->user_data, p->items, err);
+
 	g_slist_free(p->items);
 	g_free(p);
 	player->p = NULL;

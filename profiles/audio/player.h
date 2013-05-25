@@ -87,6 +87,9 @@ struct media_item *media_player_create_item(struct media_player *mp,
 						player_item_type_t type,
 						uint64_t uid);
 
+void media_player_list_complete(struct media_player *mp, GSList *items,
+								int err);
+
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,
 				void *user_data);
