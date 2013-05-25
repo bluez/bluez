@@ -2096,6 +2096,7 @@ static struct media_item *parse_media_element(struct avrcp *session,
 {
 	struct avrcp_player *player;
 	struct media_player *mp;
+	struct media_item *item;
 	uint16_t namelen;
 	char name[255];
 	uint64_t uid;
@@ -2114,7 +2115,13 @@ static struct media_item *parse_media_element(struct avrcp *session,
 	player = session->player;
 	mp = player->user_data;
 
-	return media_player_create_item(mp, name, PLAYER_ITEM_TYPE_AUDIO, uid);
+	item = media_player_create_item(mp, name, PLAYER_ITEM_TYPE_AUDIO, uid);
+	if (item == NULL)
+		return NULL;
+
+	media_item_set_playable(item, true);
+
+	return item;
 }
 
 static struct media_item *parse_media_folder(struct avrcp *session,

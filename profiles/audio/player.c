@@ -1466,6 +1466,17 @@ static const GDBusPropertyTable media_item_properties[] = {
 	{ }
 };
 
+void media_item_set_playable(struct media_item *item, bool value)
+{
+	if (item->playable == value)
+		return;
+
+	item->playable = value;
+
+	g_dbus_emit_property_changed(btd_get_dbus_connection(), item->path,
+					MEDIA_ITEM_INTERFACE, "Playable");
+}
+
 struct media_item *media_player_create_item(struct media_player *mp,
 						const char *name,
 						player_item_type_t type,
