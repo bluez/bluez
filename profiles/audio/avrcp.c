@@ -1961,6 +1961,9 @@ static void avrcp_parse_attribute_list(struct avrcp_player *player,
 	struct media_player *mp = player->user_data;
 	int i;
 
+	if (player->uid > 0)
+		media_player_set_playlist_item(mp, player->uid);
+
 	for (i = 0; count > 0; count--) {
 		uint32_t id;
 		uint16_t charset, len;

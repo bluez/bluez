@@ -102,16 +102,18 @@ struct media_player {
 static void append_metadata(void *key, void *value, void *user_data)
 {
 	DBusMessageIter *dict = user_data;
+	const char *strkey = key;
 
-	if (strcasecmp((char *) key, "Duration") == 0 ||
-			strcasecmp((char *) key, "TrackNumber") == 0 ||
-			strcasecmp((char *) key, "NumberOfTracks") == 0)  {
+	if (strcasecmp(strkey, "Duration") == 0 ||
+			strcasecmp(strkey, "TrackNumber") == 0 ||
+			strcasecmp(strkey, "NumberOfTracks") == 0)  {
 		uint32_t num = atoi(value);
 		dict_append_entry(dict, key, DBUS_TYPE_UINT32, &num);
-		return;
+	} else if (strcasecmp(strkey, "Item") == 0) {
+		dict_append_entry(dict, key, DBUS_TYPE_OBJECT_PATH, &value);
+	} else {
+		dict_append_entry(dict, key, DBUS_TYPE_STRING, &value);
 	}
-
-	dict_append_entry(dict, key, DBUS_TYPE_STRING, &value);
 }
 
 static struct pending_req *find_pending(struct media_player *mp,
@@ -1288,6 +1290,34 @@ static struct media_item *media_folder_find_item(struct media_folder *folder,
 	}
 
 	return NULL;
+}
+
+void media_player_set_playlist_item(struct media_player *mp, uint64_t uid)
+{
+	struct media_folder *folder = mp->playlist;
+	struct media_item *item;
+
+	DBG("%" PRIu64 "", uid);
+
+	if (folder == NULL)
+		return;
+
+	item = media_folder_find_item(folder, uid);
+	if (item == NULL) {
+		warn("Item not found");
+		return;
+	}
+
+	if (item == g_hash_table_lookup(mp->track, "Item"))
+		return;
+
+	if (mp->process_id == 0) {
+		g_hash_table_remove_all(mp->track);
+		mp->process_id = g_idle_add(process_metadata_changed, mp);
+	}
+
+	g_hash_table_replace(mp->track, g_strdup("Item"),
+						g_strdup(item->path));
 }
 
 static DBusMessage *media_item_play(DBusConnection *conn, DBusMessage *msg,
