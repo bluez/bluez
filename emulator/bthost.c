@@ -436,6 +436,7 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 			goto reject;
 		break;
 	default:
+		printf("Unknown L2CAP code 0x%02x\n", hdr->code);
 		goto reject;
 	}
 
