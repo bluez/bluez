@@ -31,6 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <endian.h>
+#include <stdbool.h>
 
 #include "monitor/bt.h"
 #include "bthost.h"
@@ -126,6 +127,72 @@ static void send_packet(struct bthost *bthost, const void *data, uint16_t len)
 		return;
 
 	bthost->send_handler(data, len, bthost->send_data);
+}
+
+static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
+						const void *data, uint16_t len)
+{
+	struct bt_hci_acl_hdr *acl_hdr;
+	struct bt_l2cap_hdr *l2_hdr;
+	uint16_t pkt_len;
+	void *pkt_data;
+
+	pkt_len = 1 + sizeof(*acl_hdr) + sizeof(*l2_hdr) + len;
+
+	pkt_data = malloc(pkt_len);
+	if (!pkt_data)
+		return;
+
+	((uint8_t *) pkt_data)[0] = BT_H4_ACL_PKT;
+
+	acl_hdr = pkt_data + 1;
+	acl_hdr->handle = cpu_to_le16(handle);
+	acl_hdr->dlen = cpu_to_le16(len + sizeof(*l2_hdr));
+
+	l2_hdr = pkt_data + 1 + sizeof(*acl_hdr);
+	l2_hdr->cid = cpu_to_le16(cid);
+	l2_hdr->len = cpu_to_le16(len);
+
+	if (len > 0)
+		memcpy(pkt_data + 1 + sizeof(*acl_hdr) + sizeof(*l2_hdr),
+								data, len);
+
+	send_packet(bthost, pkt_data, pkt_len);
+
+	free(pkt_data);
+}
+
+static void send_l2cap_sig(struct bthost *bthost, uint16_t handle, uint8_t code,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	static uint8_t next_ident = 1;
+	struct bt_l2cap_hdr_sig *hdr;
+	uint16_t pkt_len;
+	void *pkt_data;
+
+	pkt_len = sizeof(*hdr) + len;
+
+	pkt_data = malloc(pkt_len);
+	if (!pkt_data)
+		return;
+
+	if (!ident) {
+		ident = next_ident++;
+		if (!ident)
+			ident = next_ident++;
+	}
+
+	hdr = pkt_data;
+	hdr->code  = code;
+	hdr->ident = ident;
+	hdr->len   = cpu_to_le16(len);
+
+	if (len > 0)
+		memcpy(pkt_data + sizeof(*hdr), data, len);
+
+	send_acl(bthost, handle, 0x0001, pkt_data, pkt_len);
+
+	free(pkt_data);
 }
 
 static void send_command(struct bthost *bthost, uint16_t opcode,
@@ -316,15 +383,89 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 	}
 }
 
-static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
+static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
 {
-	const struct bt_l2cap_hdr *hdr = data;
+	const struct bt_l2cap_pdu_info_req *req = data;
+	struct bt_l2cap_pdu_info_rsp rsp;
+
+	if (len < sizeof(*req))
+		return false;
+
+	rsp.type = req->type;
+	rsp.result = cpu_to_le16(0x0001); /* Not Supported */
+
+	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
+								sizeof(rsp));
+
+	return true;
+}
+
+static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
+								uint16_t len)
+{
+	const struct bt_l2cap_hdr_sig *hdr = data;
+	struct bt_l2cap_pdu_cmd_reject rej;
+	uint16_t hdr_len;
 
 	if (len < sizeof(*hdr))
+		goto reject;
+
+	hdr_len = le16_to_cpu(hdr->len);
+
+	if (sizeof(*hdr) + hdr_len != len)
+		goto reject;
+
+	switch (hdr->code) {
+	case BT_L2CAP_PDU_INFO_REQ:
+		if (!l2cap_info_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len))
+			goto reject;
+		break;
+	default:
+		goto reject;
+	}
+
+	return;
+
+reject:
+	memset(&rej, 0, sizeof(rej));
+	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
+							&rej, sizeof(rej));
+}
+
+static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
+{
+	const struct bt_hci_acl_hdr *acl_hdr = data;
+	const struct bt_l2cap_hdr *l2_hdr = data + sizeof(*acl_hdr);
+	uint16_t handle, cid, acl_len, l2_len;
+	const void *l2_data;
+
+	if (len < sizeof(*acl_hdr) + sizeof(*l2_hdr))
 		return;
 
-	if (len != sizeof(*hdr) + hdr->len)
+	acl_len = le16_to_cpu(acl_hdr->dlen);
+	if (len != sizeof(*acl_hdr) + acl_len)
 		return;
+
+	handle = le16_to_cpu(acl_hdr->handle);
+
+	l2_len = le16_to_cpu(l2_hdr->len);
+	if (len - sizeof(*acl_hdr) != sizeof(*l2_hdr) + l2_len)
+		return;
+
+	l2_data = data + sizeof(*acl_hdr) + sizeof(*l2_hdr);
+
+	cid = le16_to_cpu(l2_hdr->cid);
+
+	switch (cid) {
+	case 0x0001:
+		l2cap_sig(bthost, handle, l2_data, l2_len);
+		break;
+	default:
+		printf("Packet for unknown CID 0x%04x (%u)\n", cid, cid);
+		break;
+	}
 }
 
 void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
