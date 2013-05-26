@@ -32,6 +32,7 @@
 #include <glib.h>
 
 #include "lib/bluetooth.h"
+#include "lib/l2cap.h"
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
@@ -46,6 +47,7 @@ struct test_data {
 	uint16_t mgmt_index;
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
+	unsigned int io_id;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -182,6 +184,16 @@ static void test_post_teardown(const void *test_data)
 	data->hciemu = NULL;
 }
 
+static void test_data_free(void *test_data)
+{
+	struct test_data *data = test_data;
+
+	if (data->io_id > 0)
+		g_source_remove(data->io_id);
+
+	free(data);
+}
+
 #define test_l2cap(name, data, setup, func) \
 	do { \
 		struct test_data *user; \
@@ -189,10 +201,11 @@ static void test_post_teardown(const void *test_data)
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
+		user->io_id = 0; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
-				test_post_teardown, 2, user, free); \
+				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
 static void client_connectable_complete(uint8_t status, void *user_data)
@@ -260,12 +273,112 @@ static void test_basic(const void *test_data)
 	tester_test_passed();
 }
 
+static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int err, sk_err, sk;
+	socklen_t len = sizeof(sk_err);
+
+	data->io_id = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	if (getsockopt(sk, SOL_SOCKET, SO_ERROR, &sk_err, &len) < 0)
+		err = -errno;
+	else
+		err = -sk_err;
+
+	if (err < 0) {
+		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
+		tester_test_failed();
+	} else {
+		tester_print("Successfully connected");
+		tester_test_passed();
+	}
+
+	return FALSE;
+}
+
+static void test_bredr_connect_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct sockaddr_l2 addr;
+	const uint8_t *master_bdaddr, *client_bdaddr;
+	uint16_t psm = 0x0001;
+	GIOChannel *io;
+	int sk, err;
+
+	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET | SOCK_NONBLOCK,
+							BTPROTO_L2CAP);
+	if (sk < 0) {
+		tester_warn("Can't create socket: %s (%d)", strerror(errno),
+									errno);
+		tester_test_failed();
+		return;
+	}
+
+	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	if (!master_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	if (!client_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, (void *) master_bdaddr);
+
+	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		tester_warn("Can't bind socket: %s (%d)", strerror(errno),
+									errno);
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	hciemu_client_set_server_psm(data->hciemu, psm);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.l2_family = AF_BLUETOOTH;
+	bacpy(&addr.l2_bdaddr, (void *) client_bdaddr);
+	addr.l2_psm = htobs(psm);
+
+	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
+	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
+		tester_warn("Can't connect socket: %s (%d)", strerror(errno),
+									errno);
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	data->io_id = g_io_add_watch(io, G_IO_OUT, l2cap_connect_cb, NULL);
+
+	g_io_channel_unref(io);
+
+	tester_print("Connect in progress");
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
 	test_l2cap("Basic L2CAP Socket - Success", NULL, setup_powered,
 								test_basic);
+
+	test_l2cap("L2CAP BR/EDR Connect - Success", NULL, setup_powered,
+						test_bredr_connect_success);
 
 	return tester_run();
 }
