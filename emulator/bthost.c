@@ -221,6 +221,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 	case BT_HCI_CMD_READ_BD_ADDR:
 		read_bd_addr_complete(bthost, param, len - sizeof(*ev));
 		break;
+	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
