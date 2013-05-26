@@ -396,6 +396,25 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 	}
 }
 
+static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_conn_req *req = data;
+	struct bt_l2cap_pdu_conn_rsp rsp;
+
+	if (len < sizeof(*req))
+		return false;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.scid = req->scid;
+	rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
+
+	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
+								sizeof(rsp));
+
+	return true;
+}
+
 static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
 				uint8_t ident, const void *data, uint16_t len)
 {
@@ -430,6 +449,12 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 		goto reject;
 
 	switch (hdr->code) {
+	case BT_L2CAP_PDU_CONN_REQ:
+		if (!l2cap_conn_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len))
+			goto reject;
+		break;
+
 	case BT_L2CAP_PDU_INFO_REQ:
 		if (!l2cap_info_req(bthost, handle, hdr->ident,
 						data + sizeof(*hdr), hdr_len))
