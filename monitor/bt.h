@@ -29,6 +29,11 @@
 #define BT_H4_SCO_PKT	0x03
 #define BT_H4_EVT_PKT	0x04
 
+struct bt_hci_acl_hdr {
+	uint16_t handle;
+	uint16_t dlen;
+} __attribute__ ((packed));
+
 struct bt_hci_cmd_hdr {
 	uint16_t opcode;
 	uint8_t	 plen;
