@@ -303,6 +303,17 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 	}
 }
 
+static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_hdr *hdr = data;
+
+	if (len < sizeof(*hdr))
+		return;
+
+	if (len != sizeof(*hdr) + hdr->len)
+		return;
+}
+
 void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 {
 	uint8_t pkt_type;
@@ -318,6 +329,9 @@ void bthost_receive_h4(struct bthost *bthost, const void *data, uint16_t len)
 	switch (pkt_type) {
 	case BT_H4_EVT_PKT:
 		process_evt(bthost, data + 1, len - 1);
+		break;
+	case BT_H4_ACL_PKT:
+		process_acl(bthost, data + 1, len - 1);
 		break;
 	default:
 		printf("Unsupported packet 0x%2.2x\n", pkt_type);
