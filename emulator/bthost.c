@@ -255,6 +255,22 @@ static void evt_cmd_status(struct bthost *bthost, const void *data,
 	next_cmd(bthost);
 }
 
+static void evt_conn_request(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_conn_request *ev = data;
+	struct bt_hci_cmd_accept_conn_request cmd;
+
+	if (len < sizeof(*ev))
+		return;
+
+	memset(&cmd, 0, sizeof(cmd));
+	memcpy(cmd.bdaddr, ev->bdaddr, sizeof(ev->bdaddr));
+
+	send_command(bthost, BT_HCI_CMD_ACCEPT_CONN_REQUEST, &cmd,
+								sizeof(cmd));
+}
+
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
@@ -275,6 +291,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_CMD_STATUS:
 		evt_cmd_status(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_CONN_REQUEST:
+		evt_conn_request(bthost, param, hdr->plen);
 		break;
 
 	default:
