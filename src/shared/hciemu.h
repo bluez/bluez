@@ -44,6 +44,9 @@ void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
 
 const char *hciemu_get_address(struct hciemu *hciemu);
 
+const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu);
+const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu);
+
 typedef void (*hciemu_command_func_t)(uint16_t opcode, const void *data,
 						uint8_t len, void *user_data);
 

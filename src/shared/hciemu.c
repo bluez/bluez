@@ -380,6 +380,22 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 	return hciemu->bdaddr_str;
 }
 
+const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu)
+{
+	if (!hciemu || !hciemu->master_dev)
+		return NULL;
+
+	return btdev_get_bdaddr(hciemu->master_dev);
+}
+
+const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu)
+{
+	if (!hciemu || !hciemu->client_dev)
+		return NULL;
+
+	return btdev_get_bdaddr(hciemu->client_dev);
+}
+
 bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 			hciemu_command_func_t function, void *user_data)
 {
