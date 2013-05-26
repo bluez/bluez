@@ -271,6 +271,15 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 								sizeof(cmd));
 }
 
+static void evt_conn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_conn_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+}
+
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
@@ -295,6 +304,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_CONN_REQUEST:
 		evt_conn_request(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_CONN_COMPLETE:
+		evt_conn_complete(bthost, param, hdr->plen);
 		break;
 
 	default:
