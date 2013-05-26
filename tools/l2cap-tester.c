@@ -195,9 +195,21 @@ static void test_post_teardown(const void *test_data)
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
+static void client_connectable_complete(uint8_t status, void *user_data)
+{
+	tester_print("Client set connectable status 0x%02x", status);
+
+	if (status)
+		tester_setup_failed();
+	else
+		tester_setup_complete();
+}
+
 static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
+	struct test_data *data = tester_get_data();
+
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
 		return;
@@ -205,7 +217,8 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	tester_setup_complete();
+	hciemu_client_scan_enable(data->hciemu, 0x03,
+					client_connectable_complete, data);
 }
 
 static void setup_powered(const void *test_data)
