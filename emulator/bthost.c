@@ -347,6 +347,15 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_num_completed_packets(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_num_completed_packets *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+}
+
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
@@ -375,6 +384,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_CONN_COMPLETE:
 		evt_conn_complete(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
+		evt_num_completed_packets(bthost, param, hdr->plen);
 		break;
 
 	default:
