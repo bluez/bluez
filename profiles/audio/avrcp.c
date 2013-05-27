@@ -182,6 +182,7 @@ struct avrcp_player {
 	GSList *sessions;
 	uint16_t id;
 	uint16_t uid_counter;
+	bool browsed;
 	uint8_t *features;
 
 	struct avrcp_player_cb *cb;
@@ -2095,6 +2096,7 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 		return FALSE;
 
 	player->uid_counter = bt_get_be16(&pdu->params[1]);
+	player->browsed = true;
 
 	items = bt_get_be32(&pdu->params[3]);
 
@@ -2444,7 +2446,7 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 		media_player_set_name(mp, name);
 	}
 
-	if (session->player == player)
+	if (session->player == player && !player->browsed)
 		avrcp_set_browsed_player(session, player);
 
 	return player;
