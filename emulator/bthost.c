@@ -483,6 +483,7 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 	const struct bt_l2cap_hdr_sig *hdr = data;
 	struct bt_l2cap_pdu_cmd_reject rej;
 	uint16_t hdr_len;
+	bool ret;
 
 	if (len < sizeof(*hdr))
 		goto reject;
@@ -494,34 +495,32 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 
 	switch (hdr->code) {
 	case BT_L2CAP_PDU_CONN_REQ:
-		if (!l2cap_conn_req(bthost, handle, hdr->ident,
-						data + sizeof(*hdr), hdr_len))
-			goto reject;
+		ret = l2cap_conn_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
 		break;
 
 	case BT_L2CAP_PDU_CONFIG_REQ:
-		if (!l2cap_config_req(bthost, handle, hdr->ident,
-						data + sizeof(*hdr), hdr_len))
-			goto reject;
+		ret = l2cap_config_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
 		break;
 
 	case BT_L2CAP_PDU_CONFIG_RSP:
-		if (!l2cap_config_rsp(bthost, handle, hdr->ident,
-						data + sizeof(*hdr), hdr_len))
-			goto reject;
+		ret = l2cap_config_rsp(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
 		break;
 
 	case BT_L2CAP_PDU_INFO_REQ:
-		if (!l2cap_info_req(bthost, handle, hdr->ident,
-						data + sizeof(*hdr), hdr_len))
-			goto reject;
+		ret = l2cap_info_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
 		break;
+
 	default:
 		printf("Unknown L2CAP code 0x%02x\n", hdr->code);
-		goto reject;
+		ret = false;
 	}
 
-	return;
+	if (ret)
+		return;
 
 reject:
 	memset(&rej, 0, sizeof(rej));
