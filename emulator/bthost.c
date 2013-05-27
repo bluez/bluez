@@ -61,6 +61,8 @@ struct bthost {
 	uint8_t ncmd;
 	bthost_cmd_complete_cb cmd_complete_cb;
 	void *cmd_complete_data;
+	bthost_new_conn_cb new_conn_cb;
+	void *new_conn_data;
 	uint16_t server_psm;
 	uint16_t next_cid;
 };
@@ -346,9 +348,18 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const struct bt_hci_evt_conn_complete *ev = data;
+	uint16_t handle;
 
 	if (len < sizeof(*ev))
 		return;
+
+	if (ev->status)
+		return;
+
+	handle = le16_to_cpu(ev->handle);
+
+	if (bthost->new_conn_cb)
+		bthost->new_conn_cb(handle, bthost->new_conn_data);
 }
 
 static void evt_num_completed_packets(struct bthost *bthost, const void *data,
@@ -616,6 +627,13 @@ void bthost_set_cmd_complete_cb(struct bthost *bthost,
 {
 	bthost->cmd_complete_cb = cb;
 	bthost->cmd_complete_data = user_data;
+}
+
+void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
+							void *user_data)
+{
+	bthost->new_conn_cb = cb;
+	bthost->new_conn_data = user_data;
 }
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)

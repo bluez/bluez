@@ -44,6 +44,11 @@ typedef void (*bthost_cmd_complete_cb) (uint16_t opcode, uint8_t status,
 void bthost_set_cmd_complete_cb(struct bthost *bthost,
 				bthost_cmd_complete_cb cb, void *user_data);
 
+typedef void (*bthost_new_conn_cb) (uint16_t handle, void *user_data);
+
+void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
+							void *user_data);
+
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan);
 
 void bthost_set_server_psm(struct bthost *bthost, uint16_t psm);
