@@ -434,6 +434,37 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
 								sizeof(rsp));
 
+	if (!rsp.result) {
+		struct bt_l2cap_pdu_config_req conf_req;
+
+		memset(&conf_req, 0, sizeof(conf_req));
+		conf_req.dcid = rsp.dcid;
+
+		bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
+						&conf_req, sizeof(conf_req));
+	}
+
+	return true;
+}
+
+static bool l2cap_conn_rsp(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_conn_rsp *rsp = data;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	if (le16_to_cpu(rsp->result) == 0x0001) {
+		struct bt_l2cap_pdu_config_req req;
+
+		memset(&req, 0, sizeof(req));
+		req.dcid = rsp->dcid;
+
+		bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
+							&req, sizeof(req));
+	}
+
 	return true;
 }
 
@@ -452,9 +483,6 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 
 	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
 								sizeof(rsp));
-
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0, req,
-								sizeof(*req));
 
 	return true;
 }
@@ -526,6 +554,11 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 	switch (hdr->code) {
 	case BT_L2CAP_PDU_CONN_REQ:
 		ret = l2cap_conn_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_CONN_RSP:
+		ret = l2cap_conn_rsp(bthost, handle, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
