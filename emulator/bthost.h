@@ -46,5 +46,7 @@ void bthost_set_cmd_complete_cb(struct bthost *bthost,
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan);
 
+void bthost_set_server_psm(struct bthost *bthost, uint16_t psm);
+
 void bthost_start(struct bthost *bthost);
 void bthost_stop(struct bthost *bthost);

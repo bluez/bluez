@@ -61,6 +61,8 @@ struct bthost {
 	uint8_t ncmd;
 	bthost_cmd_complete_cb cmd_complete_cb;
 	void *cmd_complete_data;
+	uint16_t server_psm;
+	uint16_t next_cid;
 };
 
 struct bthost *bthost_create(void)
@@ -72,6 +74,8 @@ struct bthost *bthost_create(void)
 		return NULL;
 
 	memset(bthost, 0, sizeof(*bthost));
+
+	bthost->next_cid = 0x0040;
 
 	return bthost;
 }
@@ -401,13 +405,20 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 {
 	const struct bt_l2cap_pdu_conn_req *req = data;
 	struct bt_l2cap_pdu_conn_rsp rsp;
+	uint16_t psm;
 
 	if (len < sizeof(*req))
 		return false;
 
+	psm = le16_to_cpu(req->psm);
+
 	memset(&rsp, 0, sizeof(rsp));
 	rsp.scid = req->scid;
-	rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
+
+	if (bthost->server_psm && bthost->server_psm == psm)
+		rsp.dcid = cpu_to_le16(bthost->next_cid++);
+	else
+		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
 	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
 								sizeof(rsp));
@@ -542,6 +553,11 @@ void bthost_set_cmd_complete_cb(struct bthost *bthost,
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
 {
 	send_command(bthost, BT_HCI_CMD_WRITE_SCAN_ENABLE, &scan, 1);
+}
+
+void bthost_set_server_psm(struct bthost *bthost, uint16_t psm)
+{
+	bthost->server_psm = psm;
 }
 
 void bthost_start(struct bthost *bthost)
