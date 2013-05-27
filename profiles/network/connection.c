@@ -433,10 +433,6 @@ static DBusMessage *local_connect(DBusConnection *conn,
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
-	nc = find_connection(peer->connections, id);
-	if (!nc)
-		return btd_error_failed(msg, strerror(-err));
-
 	nc->connect = dbus_message_ref(msg);
 
 	return NULL;
