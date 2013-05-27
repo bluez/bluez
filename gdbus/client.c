@@ -1153,6 +1153,10 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 
 		if (*new == '\0' && client->unique_name != NULL &&
 				g_str_equal(old, client->unique_name) == TRUE) {
+
+			g_list_free_full(client->proxy_list, proxy_free);
+			client->proxy_list = NULL;
+
 			if (client->disconn_func)
 				client->disconn_func(client->dbus_conn,
 							client->disconn_data);
