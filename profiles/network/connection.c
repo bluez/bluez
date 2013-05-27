@@ -102,18 +102,6 @@ static struct network_peer *find_peer(GSList *list, struct btd_device *device)
 	return NULL;
 }
 
-static struct network_conn *find_connection(GSList *list, uint16_t id)
-{
-	for (; list; list = list->next) {
-		struct network_conn *nc = list->data;
-
-		if (nc->id == id)
-			return nc;
-	}
-
-	return NULL;
-}
-
 static struct network_conn *find_connection_by_state(GSList *list,
 							conn_state state)
 {
@@ -414,8 +402,10 @@ static DBusMessage *local_connect(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct network_peer *peer = data;
+	struct btd_service *service;
 	struct network_conn *nc;
 	const char *svc;
+	const char *uuid;
 	uint16_t id;
 	int err;
 
@@ -424,10 +414,16 @@ static DBusMessage *local_connect(DBusConnection *conn,
 		return btd_error_invalid_args(msg);
 
 	id = bnep_service_id(svc);
+	uuid = bnep_uuid(id);
 
-	nc = find_connection(peer->connections, id);
-	if (nc == NULL)
+	if (uuid == NULL)
 		return btd_error_invalid_args(msg);
+
+	service = btd_device_get_service(peer->device, uuid);
+	if (service == NULL)
+		return btd_error_not_supported(msg);
+
+	nc = btd_service_get_user_data(service);
 
 	if (nc->connect != NULL)
 		return btd_error_busy(msg);
@@ -692,13 +688,6 @@ int connection_register(struct btd_service *service)
 		if (!peer)
 			return -1;
 		peers = g_slist_append(peers, peer);
-	}
-
-	nc = find_connection(peer->connections, id);
-	if (nc) {
-		error("Device %s has multiple connection instances of %d",
-						device_get_path(device), id);
-		return -1;
 	}
 
 	nc = g_new0(struct network_conn, 1);
