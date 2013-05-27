@@ -636,6 +636,16 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 	bthost->new_conn_data = user_data;
 }
 
+void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr)
+{
+	struct bt_hci_cmd_create_conn cmd;
+
+	memset(&cmd, 0, sizeof(cmd));
+	memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
+
+	send_command(bthost, BT_HCI_CMD_CREATE_CONN, &cmd, sizeof(cmd));
+}
+
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
 {
 	send_command(bthost, BT_HCI_CMD_WRITE_SCAN_ENABLE, &scan, 1);
