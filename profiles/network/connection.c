@@ -426,7 +426,10 @@ static DBusMessage *local_connect(DBusConnection *conn,
 	id = bnep_service_id(svc);
 
 	nc = find_connection(peer->connections, id);
-	if (nc && nc->connect)
+	if (nc == NULL)
+		return btd_error_invalid_args(msg);
+
+	if (nc->connect != NULL)
 		return btd_error_busy(msg);
 
 	err = connection_connect(nc->service);
