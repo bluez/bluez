@@ -442,6 +442,20 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
 								sizeof(rsp));
 
+	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0, req,
+								sizeof(*req));
+
+	return true;
+}
+
+static bool l2cap_config_rsp(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_config_rsp *rsp = data;
+
+	if (len < sizeof(*rsp))
+		return false;
+
 	return true;
 }
 
@@ -491,6 +505,11 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 			goto reject;
 		break;
 
+	case BT_L2CAP_PDU_CONFIG_RSP:
+		if (!l2cap_config_rsp(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len))
+			goto reject;
+		break;
 
 	case BT_L2CAP_PDU_INFO_REQ:
 		if (!l2cap_info_req(bthost, handle, hdr->ident,
