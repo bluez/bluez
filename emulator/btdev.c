@@ -662,7 +662,7 @@ static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
 	if (remote) {
-		if (remote->scan_enable & 0x01) {
+		if (remote->scan_enable & 0x02) {
 			struct bt_hci_evt_conn_request cr;
 
 			memcpy(cr.bdaddr, btdev->bdaddr, 6);
