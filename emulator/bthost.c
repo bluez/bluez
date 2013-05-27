@@ -168,7 +168,7 @@ static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
 	free(pkt_data);
 }
 
-static void send_l2cap_sig(struct bthost *bthost, uint16_t handle, uint8_t code,
+void bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	static uint8_t next_ident = 1;
@@ -431,7 +431,7 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 	else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -450,10 +450,10 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 	rsp.scid  = req->dcid;
 	rsp.flags = req->flags;
 
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
 								sizeof(rsp));
 
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0, req,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0, req,
 								sizeof(*req));
 
 	return true;
@@ -483,7 +483,7 @@ static bool l2cap_disconn_req(struct bthost *bthost, uint16_t handle,
 	rsp.dcid = req->dcid;
 	rsp.scid = req->scid;
 
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -501,7 +501,7 @@ static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
 	rsp.type = req->type;
 	rsp.result = cpu_to_le16(0x0001); /* Not Supported */
 
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -559,7 +559,7 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 
 reject:
 	memset(&rej, 0, sizeof(rej));
-	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
 							&rej, sizeof(rej));
 }
 
