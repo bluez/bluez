@@ -48,6 +48,7 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+	int expect_err;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -202,6 +203,7 @@ static void test_data_free(void *test_data)
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->io_id = 0; \
+		user->expect_err = 0; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
@@ -289,13 +291,15 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	else
 		err = -sk_err;
 
-	if (err < 0) {
+	if (err < 0)
 		tester_warn("Connect failed: %s (%d)", strerror(-err), -err);
-		tester_test_failed();
-	} else {
+	else
 		tester_print("Successfully connected");
+
+	if (-err != data->expect_err)
+		tester_test_failed();
+	else
 		tester_test_passed();
-	}
 
 	return FALSE;
 }
@@ -395,6 +399,37 @@ static void test_bredr_connect_success(const void *test_data)
 	tester_print("Connect in progress");
 }
 
+static void test_bredr_connect_failure(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	uint16_t psm = 0x0001;
+	GIOChannel *io;
+	int sk;
+
+	sk = create_l2cap_sock(data);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	data->expect_err = ECONNREFUSED;
+
+	if (connect_l2cap_sock(data, sk, psm) < 0) {
+		close(sk);
+		tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	data->io_id = g_io_add_watch(io, G_IO_OUT, l2cap_connect_cb, NULL);
+
+	g_io_channel_unref(io);
+
+	tester_print("Connect in progress");
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -404,6 +439,9 @@ int main(int argc, char *argv[])
 
 	test_l2cap("L2CAP BR/EDR Connect - Success", NULL, setup_powered,
 						test_bredr_connect_success);
+
+	test_l2cap("L2CAP BR/EDR Connect - Failure", NULL, setup_powered,
+						test_bredr_connect_failure);
 
 	return tester_run();
 }
