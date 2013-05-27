@@ -367,6 +367,11 @@ void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
 	bthost_write_scan_enable(hciemu->host_stack, scan);
 }
 
+void hciemu_client_set_server_psm(struct hciemu *hciemu, uint16_t psm)
+{
+	bthost_set_server_psm(hciemu->host_stack, psm);
+}
+
 const char *hciemu_get_address(struct hciemu *hciemu)
 {
 	const uint8_t *addr;
