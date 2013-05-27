@@ -1496,7 +1496,7 @@ struct bt_l2cap_pdu_config_req {
 
 #define BT_L2CAP_PDU_CONFIG_RSP		0x05
 struct bt_l2cap_pdu_config_rsp {
-	uint16_t dcid;
+	uint16_t scid;
 	uint16_t flags;
 	uint16_t result;
 } __attribute__ ((packed));

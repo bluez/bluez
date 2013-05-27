@@ -436,7 +436,7 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 		return false;
 
 	memset(&rsp, 0, sizeof(rsp));
-	rsp.dcid  = req->dcid;
+	rsp.scid  = req->dcid;
 	rsp.flags = req->flags;
 
 	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,

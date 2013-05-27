@@ -828,7 +828,7 @@ static void sig_conn_rsp(const struct l2cap_frame *frame)
 
 static void sig_config_req(const struct l2cap_frame *frame)
 {
-	const struct bt_l2cap_pdu_config_rsp *pdu = frame->data;
+	const struct bt_l2cap_pdu_config_req *pdu = frame->data;
 
 	print_cid("Destination", pdu->dcid);
 	print_config_flags(pdu->flags);
@@ -839,10 +839,10 @@ static void sig_config_rsp(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_pdu_config_rsp *pdu = frame->data;
 
-	print_cid("Destination", pdu->dcid);
+	print_cid("Source", pdu->scid);
 	print_config_flags(pdu->flags);
 	print_config_result(pdu->result);
-	print_config_options(frame, 6, btohs(pdu->dcid), true);
+	print_config_options(frame, 6, btohs(pdu->scid), true);
 }
 
 static void sig_disconn_req(const struct l2cap_frame *frame)
