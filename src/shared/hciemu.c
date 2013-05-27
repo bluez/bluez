@@ -242,6 +242,17 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	}
 }
 
+void hciemu_l2cap_cmd(struct hciemu *hciemu, uint16_t handle, uint8_t code,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	bthost_l2cap_cmd(hciemu->host_stack, handle, code, ident, data, len);
+}
+
+void hciemu_client_connect(struct hciemu *hciemu, const uint8_t *bdaddr)
+{
+	bthost_hci_connect(hciemu->host_stack, bdaddr);
+}
+
 static void client_new_conn(uint16_t handle, void *user_data)
 {
 	struct hciemu *hciemu = user_data;
