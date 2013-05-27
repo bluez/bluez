@@ -51,6 +51,8 @@ struct hciemu {
 	guint client_source;
 	GList *post_command_hooks;
 	char bdaddr_str[18];
+	hciemu_new_conn_cb new_conn_cb;
+	void *new_conn_data;
 	hciemu_scan_enable_cb scan_enable_cb;
 	void *scan_enable_data;
 };
@@ -240,6 +242,21 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	}
 }
 
+static void client_new_conn(uint16_t handle, void *user_data)
+{
+	struct hciemu *hciemu = user_data;
+
+	if (hciemu->new_conn_cb)
+		hciemu->new_conn_cb(handle, hciemu->new_conn_data);
+}
+
+void hciemu_set_new_conn_cb(struct hciemu *hciemu, hciemu_new_conn_cb cb,
+							void *user_data)
+{
+	hciemu->new_conn_cb = cb;
+	hciemu->new_conn_data = user_data;
+}
+
 static bool create_stack(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
@@ -257,6 +274,8 @@ static bool create_stack(struct hciemu *hciemu)
 	}
 
 	bthost_set_cmd_complete_cb(bthost, client_cmd_complete, hciemu);
+
+	bthost_set_connect_cb(bthost, client_new_conn, hciemu);
 
 	btdev_set_command_handler(btdev, client_command_callback, hciemu);
 

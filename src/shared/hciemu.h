@@ -37,6 +37,11 @@ struct hciemu *hciemu_new(enum hciemu_type type);
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
 
+typedef void (*hciemu_new_conn_cb) (uint16_t handle, void *user_data);
+
+void hciemu_set_new_conn_cb(struct hciemu *hciemu, hciemu_new_conn_cb cb,
+							void *user_data);
+
 typedef void (*hciemu_scan_enable_cb)(uint8_t status, void *user_data);
 
 void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
