@@ -300,36 +300,25 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void test_bredr_connect_success(const void *test_data)
+static int create_l2cap_sock(struct test_data *data)
 {
-	struct test_data *data = tester_get_data();
+	const uint8_t *master_bdaddr;
 	struct sockaddr_l2 addr;
-	const uint8_t *master_bdaddr, *client_bdaddr;
-	uint16_t psm = 0x0001;
-	GIOChannel *io;
 	int sk, err;
 
 	sk = socket(PF_BLUETOOTH, SOCK_SEQPACKET | SOCK_NONBLOCK,
 							BTPROTO_L2CAP);
 	if (sk < 0) {
+		err = -errno;
 		tester_warn("Can't create socket: %s (%d)", strerror(errno),
 									errno);
-		tester_test_failed();
-		return;
+		return err;
 	}
 
 	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
 		tester_warn("No master bdaddr");
-		tester_test_failed();
-		return;
-	}
-
-	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
-	if (!client_bdaddr) {
-		tester_warn("No master bdaddr");
-		tester_test_failed();
-		return;
+		return -ENODEV;
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -337,14 +326,27 @@ static void test_bredr_connect_success(const void *test_data)
 	bacpy(&addr.l2_bdaddr, (void *) master_bdaddr);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		err = -errno;
 		tester_warn("Can't bind socket: %s (%d)", strerror(errno),
 									errno);
 		close(sk);
-		tester_test_failed();
-		return;
+		return err;
 	}
 
-	hciemu_client_set_server_psm(data->hciemu, psm);
+	return sk;
+}
+
+static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm)
+{
+	const uint8_t *client_bdaddr;
+	struct sockaddr_l2 addr;
+	int err;
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	if (!client_bdaddr) {
+		tester_warn("No client bdaddr");
+		return -ENODEV;
+	}
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
@@ -353,8 +355,31 @@ static void test_bredr_connect_success(const void *test_data)
 
 	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
 	if (err < 0 && !(errno == EAGAIN || errno == EINPROGRESS)) {
+		err = -errno;
 		tester_warn("Can't connect socket: %s (%d)", strerror(errno),
 									errno);
+		return err;
+	}
+
+	return 0;
+}
+
+static void test_bredr_connect_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	uint16_t psm = 0x0001;
+	GIOChannel *io;
+	int sk;
+
+	sk = create_l2cap_sock(data);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	hciemu_client_set_server_psm(data->hciemu, psm);
+
+	if (connect_l2cap_sock(data, sk, psm) < 0) {
 		close(sk);
 		tester_test_failed();
 		return;
