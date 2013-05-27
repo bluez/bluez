@@ -304,7 +304,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static int create_l2cap_sock(struct test_data *data)
+static int create_l2cap_sock(struct test_data *data, uint16_t psm)
 {
 	const uint8_t *master_bdaddr;
 	struct sockaddr_l2 addr;
@@ -327,6 +327,7 @@ static int create_l2cap_sock(struct test_data *data)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.l2_family = AF_BLUETOOTH;
+	addr.l2_psm = htobs(psm);
 	bacpy(&addr.l2_bdaddr, (void *) master_bdaddr);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
@@ -375,7 +376,7 @@ static void test_bredr_connect_success(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	sk = create_l2cap_sock(data);
+	sk = create_l2cap_sock(data, 0);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -406,7 +407,7 @@ static void test_bredr_connect_failure(const void *test_data)
 	GIOChannel *io;
 	int sk;
 
-	sk = create_l2cap_sock(data);
+	sk = create_l2cap_sock(data, 0);
 	if (sk < 0) {
 		tester_test_failed();
 		return;
@@ -430,6 +431,86 @@ static void test_bredr_connect_failure(const void *test_data)
 	tester_print("Connect in progress");
 }
 
+static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	struct test_data *data = tester_get_data();
+	int sk, new_sk;
+
+	data->io_id = 0;
+
+	sk = g_io_channel_unix_get_fd(io);
+
+	new_sk = accept(sk, NULL, NULL);
+	if (new_sk < 0) {
+		tester_warn("accept failed: %s (%u)", strerror(errno), errno);
+		tester_test_failed();
+		return FALSE;
+	}
+
+	tester_print("Successfully connected");
+
+	close(new_sk);
+
+	tester_test_passed();
+
+	return FALSE;
+}
+
+static void client_new_conn(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bt_l2cap_pdu_conn_req req;
+
+	tester_print("Sending L2CAP Connect Request from client");
+
+	req.psm = htobs(0x0001);
+	req.scid = htobs(0x0041);
+
+	hciemu_l2cap_cmd(data->hciemu, handle, BT_L2CAP_PDU_CONN_REQ, 0,
+							&req, sizeof(req));
+}
+
+static void test_bredr_accept_success(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *master_bdaddr;
+	GIOChannel *io;
+	int sk;
+
+	sk = create_l2cap_sock(data, 0x0001);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	if (listen(sk, 5) < 0) {
+		tester_warn("listening on socket failed: %s (%u)",
+						strerror(errno), errno);
+		tester_test_failed();
+		return;
+	}
+
+	io = g_io_channel_unix_new(sk);
+	g_io_channel_set_close_on_unref(io, TRUE);
+
+	data->io_id = g_io_add_watch(io, G_IO_IN, l2cap_listen_cb, NULL);
+
+	g_io_channel_unref(io);
+
+	tester_print("Listening for connections");
+
+	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	if (!master_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	hciemu_set_new_conn_cb(data->hciemu, client_new_conn, data);
+	hciemu_client_connect(data->hciemu, master_bdaddr);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -439,9 +520,11 @@ int main(int argc, char *argv[])
 
 	test_l2cap("L2CAP BR/EDR Connect - Success", NULL, setup_powered,
 						test_bredr_connect_success);
-
 	test_l2cap("L2CAP BR/EDR Connect - Failure", NULL, setup_powered,
 						test_bredr_connect_failure);
+
+	test_l2cap("L2CAP BR/EDR Accept - Success", NULL, setup_powered,
+						test_bredr_accept_success);
 
 	return tester_run();
 }
