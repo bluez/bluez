@@ -46,6 +46,8 @@
 
 static void *opp_connect(struct obex_session *os, int *err)
 {
+	manager_register_session(os);
+
 	if (err)
 		*err = 0;
 
@@ -154,6 +156,7 @@ static int opp_get(struct obex_session *os, void *user_data)
 static void opp_disconnect(struct obex_session *os, void *user_data)
 {
 	manager_unregister_transfer(user_data);
+	manager_unregister_session(os);
 }
 
 static void opp_reset(struct obex_session *os, void *user_data)
