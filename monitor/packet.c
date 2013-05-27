@@ -5403,13 +5403,13 @@ void packet_hci_event(struct timeval *tv, uint16_t index,
 void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 					const void *data, uint16_t size)
 {
-	const hci_acl_hdr *hdr = data;
+	const struct bt_hci_acl_hdr *hdr = data;
 	uint16_t handle = btohs(hdr->handle);
 	uint16_t dlen = btohs(hdr->dlen);
 	uint8_t flags = acl_flags(handle);
 	char handle_str[16], extra_str[32];
 
-	if (size < HCI_ACL_HDR_SIZE) {
+	if (size < sizeof(*hdr)) {
 		if (in)
 			print_packet(tv, index, '*', COLOR_ERROR,
 				"Malformed ACL Data RX packet", NULL, NULL);
@@ -5420,8 +5420,8 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 		return;
 	}
 
-	data += HCI_ACL_HDR_SIZE;
-	size -= HCI_ACL_HDR_SIZE;
+	data += sizeof(*hdr);
+	size -= sizeof(*hdr);
 
 	sprintf(handle_str, "Handle %d", acl_handle(handle));
 	sprintf(extra_str, "flags 0x%2.2x dlen %d", flags, dlen);
