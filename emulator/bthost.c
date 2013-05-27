@@ -459,6 +459,25 @@ static bool l2cap_config_rsp(struct bthost *bthost, uint16_t handle,
 	return true;
 }
 
+static bool l2cap_disconn_req(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_disconn_req *req = data;
+	struct bt_l2cap_pdu_disconn_rsp rsp;
+
+	if (len < sizeof(*req))
+		return false;
+
+	memset(&rsp, 0, sizeof(rsp));
+	rsp.dcid = req->dcid;
+	rsp.scid = req->scid;
+
+	send_l2cap_sig(bthost, handle, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
+								sizeof(rsp));
+
+	return true;
+}
+
 static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
 				uint8_t ident, const void *data, uint16_t len)
 {
@@ -506,6 +525,11 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 
 	case BT_L2CAP_PDU_CONFIG_RSP:
 		ret = l2cap_config_rsp(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_DISCONN_REQ:
+		ret = l2cap_disconn_req(bthost, handle, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
