@@ -265,6 +265,30 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return dbus_message_new_method_return(msg);
 }
 
+static gboolean get_source(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_session *os = data;
+	char *s;
+
+	s = os->src;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &s);
+
+	return TRUE;
+}
+
+static gboolean get_destination(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obex_session *os = data;
+	char *s;
+
+	s = os->dst;
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &s);
+
+	return TRUE;
+}
+
 static gboolean session_target_exists(const GDBusPropertyTable *property,
 								void *data)
 {
@@ -529,6 +553,8 @@ static const GDBusPropertyTable transfer_properties[] = {
 };
 
 static const GDBusPropertyTable session_properties[] = {
+	{ "Source", "s", get_source },
+	{ "Destination", "s", get_destination },
 	{ "Target", "s", get_target, NULL, session_target_exists },
 	{ "Root", "s", get_root },
 	{ }
