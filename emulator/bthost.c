@@ -53,18 +53,31 @@ struct cmd_queue {
 	struct cmd *tail;
 };
 
+struct btconn {
+	uint16_t handle;
+	uint16_t next_cid;
+	struct l2conn *l2conns;
+	struct btconn *next;
+};
+
+struct l2conn {
+	uint16_t scid;
+	uint16_t dcid;
+	struct l2conn *next;
+};
+
 struct bthost {
 	uint8_t bdaddr[6];
 	bthost_send_func send_handler;
 	void *send_data;
 	struct cmd_queue cmd_q;
 	uint8_t ncmd;
+	struct btconn *conns;
 	bthost_cmd_complete_cb cmd_complete_cb;
 	void *cmd_complete_data;
 	bthost_new_conn_cb new_conn_cb;
 	void *new_conn_data;
 	uint16_t server_psm;
-	uint16_t next_cid;
 };
 
 struct bthost *bthost_create(void)
@@ -77,9 +90,36 @@ struct bthost *bthost_create(void)
 
 	memset(bthost, 0, sizeof(*bthost));
 
-	bthost->next_cid = 0x0040;
-
 	return bthost;
+}
+
+static void l2conn_free(struct l2conn *conn)
+{
+	free(conn);
+}
+
+static void btconn_free(struct btconn *conn)
+{
+	while (conn->l2conns) {
+		struct l2conn *l2conn = conn->l2conns;
+
+		conn->l2conns = l2conn->next;
+		l2conn_free(l2conn);
+	}
+
+	free(conn);
+}
+
+static struct btconn *bthost_find_conn(struct bthost *bthost, uint16_t handle)
+{
+	struct btconn *conn;
+
+	for (conn = bthost->conns; conn != NULL; conn = conn->next) {
+		if (conn->handle == handle)
+			return conn;
+	}
+
+	return NULL;
 }
 
 void bthost_destroy(struct bthost *bthost)
@@ -91,6 +131,13 @@ void bthost_destroy(struct bthost *bthost)
 
 	for (cmd = bthost->cmd_q.tail; cmd != NULL; cmd = cmd->next)
 		free(cmd);
+
+	while (bthost->conns) {
+		struct btconn *conn = bthost->conns;
+
+		bthost->conns = conn->next;
+		btconn_free(conn);
+	}
 
 	free(bthost);
 }
@@ -348,6 +395,34 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const struct bt_hci_evt_conn_complete *ev = data;
+	struct btconn *conn;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	conn = malloc(sizeof(*conn));
+	if (!conn)
+		return;
+
+	memset(conn, 0, sizeof(*conn));
+	conn->handle = le16_to_cpu(ev->handle);
+	conn->next_cid = 0x0040;
+
+	conn->next = bthost->conns;
+	bthost->conns = conn;
+
+	if (bthost->new_conn_cb)
+		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);
+}
+
+static void evt_disconn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_disconnect_complete *ev = data;
+	struct btconn **curr;
 	uint16_t handle;
 
 	if (len < sizeof(*ev))
@@ -358,8 +433,16 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 
 	handle = le16_to_cpu(ev->handle);
 
-	if (bthost->new_conn_cb)
-		bthost->new_conn_cb(handle, bthost->new_conn_data);
+	for (curr = &bthost->conns; *curr;) {
+		struct btconn *conn = *curr;
+
+		if (conn->handle == handle) {
+			*curr = conn->next;
+			btconn_free(conn);
+		} else {
+			curr = &conn->next;
+		}
+	}
 }
 
 static void evt_num_completed_packets(struct bthost *bthost, const void *data,
@@ -401,6 +484,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 		evt_conn_complete(bthost, param, hdr->plen);
 		break;
 
+	case BT_HCI_EVT_DISCONNECT_COMPLETE:
+		evt_disconn_complete(bthost, param, hdr->plen);
+		break;
+
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(bthost, param, hdr->plen);
 		break;
@@ -416,9 +503,14 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 {
 	const struct bt_l2cap_pdu_conn_req *req = data;
 	struct bt_l2cap_pdu_conn_rsp rsp;
+	struct btconn *conn;
 	uint16_t psm;
 
 	if (len < sizeof(*req))
+		return false;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
 		return false;
 
 	psm = le16_to_cpu(req->psm);
@@ -427,7 +519,7 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 	rsp.scid = req->scid;
 
 	if (bthost->server_psm && bthost->server_psm == psm)
-		rsp.dcid = cpu_to_le16(bthost->next_cid++);
+		rsp.dcid = cpu_to_le16(conn->next_cid++);
 	else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
