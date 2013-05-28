@@ -252,6 +252,9 @@ static void obex_session_free(struct obex_session *os)
 	if (os->obex)
 		g_obex_unref(os->obex);
 
+	g_free(os->src);
+	g_free(os->dst);
+
 	g_free(os);
 }
 
@@ -1133,6 +1136,9 @@ int obex_session_start(GIOChannel *io, uint16_t tx_mtu, uint16_t rx_mtu,
 
 	os->obex = obex;
 	os->io = g_io_channel_ref(io);
+
+	obex_getsockname(os, &os->src);
+	obex_getpeername(os, &os->dst);
 
 	sessions = g_slist_prepend(sessions, os);
 

@@ -27,6 +27,8 @@ struct obex_session {
 	uint32_t id;
 	uint8_t cmd;
 	uint8_t action_id;
+	char *src;
+	char *dst;
 	char *name;
 	char *destname;
 	char *type;
