@@ -751,10 +751,8 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 	DBusPendingCall *call;
 	const char *filename = os->name ? os->name : "";
 	const char *type = os->type ? os->type : "";
-	char *address;
 	unsigned int watch;
 	gboolean got_reply;
-	int err;
 
 	if (!agent)
 		return -1;
@@ -765,18 +763,12 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 	if (!new_folder || !new_name)
 		return -EINVAL;
 
-	err = obex_getpeername(os, &address);
-	if (err < 0)
-		return err;
-
 	msg = dbus_message_new_method_call(agent->bus_name, agent->path,
 							AGENT_INTERFACE,
 							"AuthorizePush");
 
 	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &transfer->path,
 							DBUS_TYPE_INVALID);
-
-	g_free(address);
 
 	if (!dbus_connection_send_with_reply(connection,
 					msg, &call, TIMEOUT)) {
