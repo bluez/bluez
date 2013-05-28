@@ -87,6 +87,13 @@ struct setpath_data {
 	void *user_data;
 };
 
+struct file_data {
+	char *srcname;
+	char *destname;
+	session_callback_t func;
+	void *user_data;
+};
+
 struct obc_session {
 	guint id;
 	int refcount;
@@ -186,6 +193,15 @@ static void setpath_data_free(void *process_data)
 	struct setpath_data *data = process_data;
 
 	g_strfreev(data->remaining);
+	g_free(data);
+}
+
+static void file_data_free(void *process_data)
+{
+	struct file_data *data = process_data;
+
+	g_free(data->srcname);
+	g_free(data->destname);
 	g_free(data);
 }
 
@@ -1026,6 +1042,17 @@ done:
 	session->p = NULL;
 
 	session_process_queue(session);
+}
+
+static void file_op_complete(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
+{
+	struct pending_request *p = user_data;
+	struct file_data *data = p->data;
+
+	if (data->func)
+		data->func(session, NULL, err, data->user_data);
 }
 
 guint obc_session_mkdir(struct obc_session *session, const char *folder,
