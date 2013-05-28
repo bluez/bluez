@@ -1226,6 +1226,16 @@ int obex_getpeername(struct obex_session *os, char **name)
 	return transport->getpeername(os->io, name);
 }
 
+int obex_getsockname(struct obex_session *os, char **name)
+{
+	struct obex_transport_driver *transport = os->server->transport;
+
+	if (transport == NULL || transport->getsockname == NULL)
+		return -ENOTSUP;
+
+	return transport->getsockname(os->io, name);
+}
+
 int memncmp0(const void *a, size_t na, const void *b, size_t nb)
 {
 	if (na != nb)
