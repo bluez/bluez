@@ -431,10 +431,29 @@ static int bluetooth_getpeername(GIOChannel *io, char **name)
 	return 0;
 }
 
+static int bluetooth_getsockname(GIOChannel *io, char **name)
+{
+	GError *gerr = NULL;
+	char address[18];
+
+	bt_io_get(io, &gerr, BT_IO_OPT_SOURCE, address, BT_IO_OPT_INVALID);
+
+	if (gerr) {
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		return -EINVAL;
+	}
+
+	*name = g_strdup(address);
+
+	return 0;
+}
+
 static struct obex_transport_driver driver = {
 	.name = "bluetooth",
 	.start = bluetooth_start,
 	.getpeername = bluetooth_getpeername,
+	.getsockname = bluetooth_getsockname,
 	.stop = bluetooth_stop
 };
 
