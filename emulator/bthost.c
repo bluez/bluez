@@ -122,6 +122,48 @@ static struct btconn *bthost_find_conn(struct bthost *bthost, uint16_t handle)
 	return NULL;
 }
 
+static void bthost_add_l2cap_conn(struct bthost *bthost, uint16_t handle,
+						uint16_t scid, uint16_t dcid)
+{
+	struct btconn *conn;
+	struct l2conn *l2conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	l2conn = malloc(sizeof(*l2conn));
+	if (!l2conn)
+		return;
+
+	memset(l2conn, 0, sizeof(*l2conn));
+
+	l2conn->scid = scid;
+	l2conn->dcid = dcid;
+
+	l2conn->next = conn->l2conns;
+	conn->l2conns = l2conn;
+}
+
+static struct l2conn *bthost_find_l2cap_conn_by_scid(struct bthost *bthost,
+							uint16_t handle,
+							uint16_t scid)
+{
+	struct btconn *conn;
+	struct l2conn *l2conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return NULL;
+
+	for (l2conn = conn->l2conns; l2conn != NULL; l2conn = l2conn->next) {
+		if (l2conn->scid == scid)
+			return l2conn;
+	}
+
+	return NULL;
+}
+
 void bthost_destroy(struct bthost *bthost)
 {
 	struct cmd *cmd;
@@ -529,6 +571,9 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 	if (!rsp.result) {
 		struct bt_l2cap_pdu_config_req conf_req;
 
+		bthost_add_l2cap_conn(bthost, handle, le16_to_cpu(rsp.dcid),
+							le16_to_cpu(rsp.scid));
+
 		memset(&conf_req, 0, sizeof(conf_req));
 		conf_req.dcid = rsp.dcid;
 
@@ -546,6 +591,9 @@ static bool l2cap_conn_rsp(struct bthost *bthost, uint16_t handle,
 
 	if (len < sizeof(*rsp))
 		return false;
+
+	bthost_add_l2cap_conn(bthost, handle, le16_to_cpu(rsp->scid),
+						le16_to_cpu(rsp->dcid));
 
 	if (le16_to_cpu(rsp->result) == 0x0001) {
 		struct bt_l2cap_pdu_config_req req;
@@ -565,12 +613,20 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 {
 	const struct bt_l2cap_pdu_config_req *req = data;
 	struct bt_l2cap_pdu_config_rsp rsp;
+	struct l2conn *l2conn;
+	uint16_t dcid;
 
 	if (len < sizeof(*req))
 		return false;
 
+	dcid = le16_to_cpu(req->dcid);
+
+	l2conn = bthost_find_l2cap_conn_by_scid(bthost, handle, dcid);
+	if (!l2conn)
+		return false;
+
 	memset(&rsp, 0, sizeof(rsp));
-	rsp.scid  = req->dcid;
+	rsp.scid  = cpu_to_le16(l2conn->dcid);
 	rsp.flags = req->flags;
 
 	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
