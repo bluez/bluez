@@ -669,6 +669,15 @@ static gboolean session_process(gpointer data)
 	return FALSE;
 }
 
+static void session_queue(struct pending_request *p)
+{
+	g_queue_push_tail(p->session->queue, p);
+
+	if (p->session->process_id == 0)
+		p->session->process_id = g_idle_add(session_process,
+								p->session);
+}
+
 guint obc_session_queue(struct obc_session *session,
 				struct obc_transfer *transfer,
 				session_callback_t func, void *user_data,
@@ -691,13 +700,8 @@ guint obc_session_queue(struct obc_session *session,
 
 	obc_transfer_set_callback(transfer, transfer_complete, session);
 
-	p = pending_request_new(session, NULL, transfer, func, user_data,
-									NULL);
-	g_queue_push_tail(session->queue, p);
-
-	if (session->process_id == 0)
-		session->process_id = g_idle_add(session_process, session);
-
+	p = pending_request_new(session, NULL, transfer, func, user_data, NULL);
+	session_queue(p);
 	return p->id;
 }
 
