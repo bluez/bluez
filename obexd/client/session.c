@@ -1097,10 +1097,29 @@ guint obc_session_mkdir(struct obc_session *session, const char *folder,
 	return p->id;
 }
 
+static int session_process_copy(struct pending_request *p, GError **err)
+{
+	struct file_data *req = p->data;
+
+	p->req_id = g_obex_copy(p->session->obex, req->srcname, req->destname,
+							async_cb, p, err);
+	if (*err != NULL)
+		goto fail;
+
+	p->session->p = p;
+
+	return 0;
+
+fail:
+	pending_request_free(p);
+	return (*err)->code;
+}
+
 guint obc_session_copy(struct obc_session *session, const char *srcname,
 				const char *destname, session_callback_t func,
 				void *user_data, GError **err)
 {
+	struct file_data *data;
 	struct pending_request *p;
 
 	if (session->obex == NULL) {
@@ -1109,21 +1128,15 @@ guint obc_session_copy(struct obc_session *session, const char *srcname,
 		return 0;
 	}
 
-	if (session->p != NULL) {
-		g_set_error(err, OBEX_IO_ERROR, OBEX_IO_BUSY, "Session busy");
-		return 0;
-	}
+	data = g_new0(struct file_data, 1);
+	data->srcname = g_strdup(srcname);
+	data->destname = g_strdup(destname);
+	data->func = func;
+	data->user_data = user_data;
 
-	p = pending_request_new(session, NULL, NULL, func, user_data, NULL);
-
-	p->req_id = g_obex_copy(session->obex, srcname, destname, async_cb, p,
-									err);
-	if (*err != NULL) {
-		pending_request_free(p);
-		return 0;
-	}
-
-	session->p = p;
+	p = pending_request_new(session, session_process_copy, NULL,
+				file_op_complete, data, file_data_free);
+	session_queue(p);
 	return p->id;
 }
 
