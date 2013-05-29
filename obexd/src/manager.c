@@ -834,12 +834,9 @@ void manager_register_session(struct obex_session *os)
 	if (!g_dbus_register_interface(connection, path,
 				SESSION_INTERFACE,
 				session_methods, NULL,
-				session_properties, os, NULL)) {
+				session_properties, os, NULL))
 		error("Cannot register Session interface.");
-		goto done;
-	}
 
-done:
 	g_free(path);
 }
 
