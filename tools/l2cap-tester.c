@@ -62,8 +62,10 @@ struct l2cap_server_data {
 	uint16_t server_psm;
 	uint8_t send_req_code;
 	const void *send_req;
-	const uint16_t send_req_len;
+	uint16_t send_req_len;
 	uint8_t expect_rsp_code;
+	const void *expect_rsp;
+	uint16_t expect_rsp_len;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -242,6 +244,21 @@ static const struct l2cap_server_data l2cap_server_success_test = {
 	.send_req = l2cap_connect_req,
 	.send_req_len = sizeof(l2cap_connect_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
+};
+
+static const uint8_t l2cap_nval_psm_rsp[] = {	0x00, 0x00,	/* dcid */
+						0x41, 0x00,	/* scid */
+						0x02, 0x00,	/* nval PSM */
+						0x00, 0x00	/* status */
+					};
+
+static const struct l2cap_server_data l2cap_server_nval_psm_test = {
+	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_req = l2cap_connect_req,
+	.send_req_len = sizeof(l2cap_connect_req),
+	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
+	.expect_rsp = l2cap_nval_psm_rsp,
+	.expect_rsp_len = sizeof(l2cap_nval_psm_rsp),
 };
 
 static const uint8_t l2cap_nval_conn_req[] = { 0x00 };
@@ -488,10 +505,33 @@ static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 
 	tester_print("Client received response code 0x%02x", code);
 
-	if (code == l2data->expect_rsp_code)
+	if (code != l2data->expect_rsp_code) {
+		tester_warn("Unexpected L2CAP response code (expected 0x%02x)",
+						l2data->expect_rsp_code);
+		goto failed;
+	}
+
+	if (!l2data->expect_rsp) {
 		tester_test_passed();
-	else
-		tester_test_failed();
+		return;
+	}
+
+	if (l2data->expect_rsp_len != len) {
+		tester_warn("Unexpected L2CAP response length (%u != %u)",
+						len, l2data->expect_rsp_len);
+		goto failed;
+	}
+
+	if (memcmp(l2data->expect_rsp, data, len) != 0) {
+		tester_warn("Unexpected L2CAP response");
+		goto failed;
+	}
+
+	tester_test_passed();
+	return;
+
+failed:
+	tester_test_failed();
 }
 
 static void client_new_conn(uint16_t handle, void *user_data)
@@ -579,6 +619,9 @@ int main(int argc, char *argv[])
 					setup_powered, test_bredr_connect);
 
 	test_l2cap("L2CAP BR/EDR Server - Success", &l2cap_server_success_test,
+					setup_powered, test_bredr_server);
+	test_l2cap("L2CAP BR/EDR Server - Invalid PSM",
+					&l2cap_server_nval_psm_test,
 					setup_powered, test_bredr_server);
 	test_l2cap("L2CAP BR/EDR Server - Invalid PDU",
 				&l2cap_server_nval_pdu_test1, setup_powered,
