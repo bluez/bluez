@@ -1833,11 +1833,18 @@ static void property_set_mode_complete(uint8_t status, uint16_t length,
 	DBG("%s (0x%02x)", mgmt_errstr(status), status);
 
 	if (status != MGMT_STATUS_SUCCESS) {
+		const char *dbus_err;
+
 		error("Failed to set mode: %s (0x%02x)",
 						mgmt_errstr(status), status);
-		g_dbus_pending_property_error(data->id,
-						ERROR_INTERFACE ".Failed",
-						mgmt_errstr(status));
+
+		if (status == MGMT_STATUS_RFKILLED)
+			dbus_err = ERROR_INTERFACE ".Blocked";
+		else
+			dbus_err = ERROR_INTERFACE ".Failed";
+
+		g_dbus_pending_property_error(data->id, dbus_err,
+							mgmt_errstr(status));
 		return;
 	}
 
