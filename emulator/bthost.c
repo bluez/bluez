@@ -257,7 +257,7 @@ static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
 	free(pkt_data);
 }
 
-void bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
+uint8_t bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 				uint8_t ident, const void *data, uint16_t len)
 {
 	static uint8_t next_ident = 1;
@@ -269,7 +269,7 @@ void bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 
 	pkt_data = malloc(pkt_len);
 	if (!pkt_data)
-		return;
+		return 0;
 
 	if (!ident) {
 		ident = next_ident++;
@@ -288,6 +288,8 @@ void bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 	send_acl(bthost, handle, 0x0001, pkt_data, pkt_len);
 
 	free(pkt_data);
+
+	return ident;
 }
 
 static void send_command(struct bthost *bthost, uint16_t opcode,

@@ -51,7 +51,7 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 
 void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr);
 
-void bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
+uint8_t bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 				uint8_t ident, const void *data, uint16_t len);
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan);
