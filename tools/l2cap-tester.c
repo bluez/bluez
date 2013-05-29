@@ -50,7 +50,20 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+};
+
+struct l2cap_client_data {
+	uint16_t client_psm;
+	uint16_t server_psm;
 	int expect_err;
+};
+
+struct l2cap_server_data {
+	uint16_t server_psm;
+	uint8_t send_req_code;
+	const void *send_req;
+	const uint16_t send_req_len;
+	uint8_t expect_rsp_code;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -205,12 +218,40 @@ static void test_data_free(void *test_data)
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->io_id = 0; \
-		user->expect_err = 0; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
+
+static const struct l2cap_client_data client_connect_success_test = {
+	.client_psm = 0x0001,
+	.server_psm = 0x0001,
+};
+
+static const struct l2cap_client_data client_connect_nval_psm_test = {
+	.client_psm = 0x0001,
+	.expect_err = ECONNREFUSED,
+};
+
+static const uint8_t l2cap_connect_req[] = { 0x01, 0x00, 0x41, 0x00 };
+
+static const struct l2cap_server_data l2cap_server_success_test = {
+	.server_psm = 0x0001,
+	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_req = l2cap_connect_req,
+	.send_req_len = sizeof(l2cap_connect_req),
+	.expect_rsp_code = BT_L2CAP_PDU_CONN_RSP,
+};
+
+static const uint8_t l2cap_nval_conn_req[] = { 0x00 };
+
+static const struct l2cap_server_data l2cap_server_nval_pdu_test1 = {
+	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
+	.send_req = l2cap_nval_conn_req,
+	.send_req_len = sizeof(l2cap_nval_conn_req),
+	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
+};
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
@@ -288,6 +329,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_client_data *l2data = data->test_data;
 	int err, sk_err, sk;
 	socklen_t len = sizeof(sk_err);
 
@@ -305,7 +347,7 @@ static gboolean l2cap_connect_cb(GIOChannel *io, GIOCondition cond,
 	else
 		tester_print("Successfully connected");
 
-	if (-err != data->expect_err)
+	if (-err != l2data->expect_err)
 		tester_test_failed();
 	else
 		tester_test_passed();
@@ -378,13 +420,17 @@ static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm)
 	return 0;
 }
 
-static void test_bredr_connect_success(const void *test_data)
+static void test_bredr_connect(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	struct bthost *bthost;
-	uint16_t psm = 0x0001;
+	const struct l2cap_client_data *l2data = data->test_data;
 	GIOChannel *io;
 	int sk;
+
+	if (l2data->server_psm) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+		bthost_set_server_psm(bthost, l2data->server_psm);
+	}
 
 	sk = create_l2cap_sock(data, 0);
 	if (sk < 0) {
@@ -392,41 +438,7 @@ static void test_bredr_connect_success(const void *test_data)
 		return;
 	}
 
-	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_server_psm(bthost, psm);
-
-	if (connect_l2cap_sock(data, sk, psm) < 0) {
-		close(sk);
-		tester_test_failed();
-		return;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-
-	data->io_id = g_io_add_watch(io, G_IO_OUT, l2cap_connect_cb, NULL);
-
-	g_io_channel_unref(io);
-
-	tester_print("Connect in progress");
-}
-
-static void test_bredr_connect_failure(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	uint16_t psm = 0x0001;
-	GIOChannel *io;
-	int sk;
-
-	sk = create_l2cap_sock(data, 0);
-	if (sk < 0) {
-		tester_test_failed();
-		return;
-	}
-
-	data->expect_err = ECONNREFUSED;
-
-	if (connect_l2cap_sock(data, sk, psm) < 0) {
+	if (connect_l2cap_sock(data, sk, l2data->client_psm) < 0) {
 		close(sk);
 		tester_test_failed();
 		return;
@@ -468,94 +480,77 @@ static gboolean l2cap_listen_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void client_new_conn(uint16_t handle, void *user_data)
-{
-	struct test_data *data = user_data;
-	struct bt_l2cap_pdu_conn_req req;
-	struct bthost *bthost;
-
-	tester_print("Sending L2CAP Connect Request from client");
-
-	req.psm = htobs(0x0001);
-	req.scid = htobs(0x0041);
-
-	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
-						&req, sizeof(req), NULL, NULL);
-}
-
-static void test_bredr_accept_success(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	const uint8_t *master_bdaddr;
-	struct bthost *bthost;
-	GIOChannel *io;
-	int sk;
-
-	sk = create_l2cap_sock(data, 0x0001);
-	if (sk < 0) {
-		tester_test_failed();
-		return;
-	}
-
-	if (listen(sk, 5) < 0) {
-		tester_warn("listening on socket failed: %s (%u)",
-						strerror(errno), errno);
-		tester_test_failed();
-		return;
-	}
-
-	io = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(io, TRUE);
-
-	data->io_id = g_io_add_watch(io, G_IO_IN, l2cap_listen_cb, NULL);
-
-	g_io_channel_unref(io);
-
-	tester_print("Listening for connections");
-
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
-	if (!master_bdaddr) {
-		tester_warn("No master bdaddr");
-		tester_test_failed();
-		return;
-	}
-
-
-	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, client_new_conn, data);
-	bthost_hci_connect(bthost, master_bdaddr);
-}
-
-static void nval_pdu_rsp(uint8_t code, const void *data, uint16_t len,
+static void client_l2cap_rsp(uint8_t code, const void *data, uint16_t len,
 							void *user_data)
 {
-	tester_print("Got response code 0x%02x to invalid PDU", code);
+	struct test_data *test_data = user_data;
+	const struct l2cap_server_data *l2data = test_data->test_data;
 
-	if (code == BT_L2CAP_PDU_CMD_REJECT)
+	tester_print("Client received response code 0x%02x", code);
+
+	if (code == l2data->expect_rsp_code)
 		tester_test_passed();
 	else
 		tester_test_failed();
 }
 
-static void client_new_conn_nval_pdu(uint16_t handle, void *user_data)
+static void client_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
+	const struct l2cap_server_data *l2data = data->test_data;
 	struct bthost *bthost;
-	uint8_t req = 0x00;
 
-	tester_print("Sending invalid PDU from client");
+	tester_print("New client connection with handle 0x%04x", handle);
 
-	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
-					&req, sizeof(req), nval_pdu_rsp, data);
+	if (l2data->send_req) {
+		bthost_l2cap_rsp_cb cb;
+
+		if (l2data->expect_rsp_code)
+			cb = client_l2cap_rsp;
+		else
+			cb = NULL;
+
+		tester_print("Sending L2CAP Request from client");
+
+		bthost = hciemu_client_get_host(data->hciemu);
+		bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
+					l2data->send_req, l2data->send_req_len,
+					cb, data);
+	}
 }
 
-static void test_bredr_invalid_pdu(const void *test_data)
+static void test_bredr_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	const struct l2cap_server_data *l2data = data->test_data;
 	const uint8_t *master_bdaddr;
 	struct bthost *bthost;
+	GIOChannel *io;
+	int sk;
+
+	if (l2data->server_psm) {
+		sk = create_l2cap_sock(data, 0x0001);
+		if (sk < 0) {
+			tester_test_failed();
+			return;
+		}
+
+		if (listen(sk, 5) < 0) {
+			tester_warn("listening on socket failed: %s (%u)",
+					strerror(errno), errno);
+			tester_test_failed();
+			return;
+		}
+
+		io = g_io_channel_unix_new(sk);
+		g_io_channel_set_close_on_unref(io, TRUE);
+
+		data->io_id = g_io_add_watch(io, G_IO_IN, l2cap_listen_cb,
+									NULL);
+		g_io_channel_unref(io);
+
+		tester_print("Listening for connections");
+	}
 
 	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
 	if (!master_bdaddr) {
@@ -565,7 +560,7 @@ static void test_bredr_invalid_pdu(const void *test_data)
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, client_new_conn_nval_pdu, data);
+	bthost_set_connect_cb(bthost, client_new_conn, data);
 	bthost_hci_connect(bthost, master_bdaddr);
 }
 
@@ -576,16 +571,18 @@ int main(int argc, char *argv[])
 	test_l2cap("Basic L2CAP Socket - Success", NULL, setup_powered,
 								test_basic);
 
-	test_l2cap("L2CAP BR/EDR Connect - Success", NULL, setup_powered,
-						test_bredr_connect_success);
-	test_l2cap("L2CAP BR/EDR Connect - Failure", NULL, setup_powered,
-						test_bredr_connect_failure);
+	test_l2cap("L2CAP BR/EDR Client - Success",
+					&client_connect_success_test,
+					setup_powered, test_bredr_connect);
+	test_l2cap("L2CAP BR/EDR Client - Invalid PSM",
+					&client_connect_nval_psm_test,
+					setup_powered, test_bredr_connect);
 
-	test_l2cap("L2CAP BR/EDR Accept - Success", NULL, setup_powered,
-						test_bredr_accept_success);
-
-	test_l2cap("L2CAP BR/EDR Invalid PDU", NULL, setup_powered,
-						test_bredr_invalid_pdu);
+	test_l2cap("L2CAP BR/EDR Server - Success", &l2cap_server_success_test,
+					setup_powered, test_bredr_server);
+	test_l2cap("L2CAP BR/EDR Server - Invalid PDU",
+				&l2cap_server_nval_pdu_test1, setup_powered,
+				test_bredr_server);
 
 	return tester_run();
 }
