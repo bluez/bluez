@@ -730,8 +730,6 @@ static int heartrate_adapter_register(struct btd_adapter *adapter)
 	hradapter = g_new0(struct heartrate_adapter, 1);
 	hradapter->adapter = adapter;
 
-	heartrate_adapters = g_slist_prepend(heartrate_adapters, hradapter);
-
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 						adapter_get_path(adapter),
 						HEART_RATE_MANAGER_INTERFACE,
@@ -743,6 +741,8 @@ static int heartrate_adapter_register(struct btd_adapter *adapter)
 		destroy_heartrate_adapter(hradapter);
 		return -EIO;
 	}
+
+	heartrate_adapters = g_slist_prepend(heartrate_adapters, hradapter);
 
 	return 0;
 }
