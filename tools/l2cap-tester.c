@@ -36,6 +36,7 @@
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
+#include "emulator/bthost.h"
 
 #include "src/shared/tester.h"
 #include "src/shared/mgmt.h"
@@ -210,8 +211,13 @@ static void test_data_free(void *test_data)
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
 
-static void client_connectable_complete(uint8_t status, void *user_data)
+static void client_connectable_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
 {
+	if (opcode != BT_HCI_CMD_WRITE_SCAN_ENABLE)
+		return;
+
 	tester_print("Client set connectable status 0x%02x", status);
 
 	if (status)
@@ -224,6 +230,7 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
 
 	if (status != MGMT_STATUS_SUCCESS) {
 		tester_setup_failed();
@@ -232,8 +239,9 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 
 	tester_print("Controller powered on");
 
-	hciemu_client_scan_enable(data->hciemu, 0x03,
-					client_connectable_complete, data);
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
+	bthost_write_scan_enable(bthost, 0x03);
 }
 
 static void setup_powered(const void *test_data)
@@ -372,6 +380,7 @@ static int connect_l2cap_sock(struct test_data *data, int sk, uint16_t psm)
 static void test_bredr_connect_success(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
 	uint16_t psm = 0x0001;
 	GIOChannel *io;
 	int sk;
@@ -382,7 +391,8 @@ static void test_bredr_connect_success(const void *test_data)
 		return;
 	}
 
-	hciemu_client_set_server_psm(data->hciemu, psm);
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_server_psm(bthost, psm);
 
 	if (connect_l2cap_sock(data, sk, psm) < 0) {
 		close(sk);
@@ -461,13 +471,15 @@ static void client_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
 	struct bt_l2cap_pdu_conn_req req;
+	struct bthost *bthost;
 
 	tester_print("Sending L2CAP Connect Request from client");
 
 	req.psm = htobs(0x0001);
 	req.scid = htobs(0x0041);
 
-	hciemu_l2cap_cmd(data->hciemu, handle, BT_L2CAP_PDU_CONN_REQ, 0,
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONN_REQ, 0,
 							&req, sizeof(req));
 }
 
@@ -475,6 +487,7 @@ static void test_bredr_accept_success(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const uint8_t *master_bdaddr;
+	struct bthost *bthost;
 	GIOChannel *io;
 	int sk;
 
@@ -507,8 +520,10 @@ static void test_bredr_accept_success(const void *test_data)
 		return;
 	}
 
-	hciemu_set_new_conn_cb(data->hciemu, client_new_conn, data);
-	hciemu_client_connect(data->hciemu, master_bdaddr);
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_connect_cb(bthost, client_new_conn, data);
+	bthost_hci_connect(bthost, master_bdaddr);
 }
 
 int main(int argc, char *argv[])
