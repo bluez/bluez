@@ -37,6 +37,8 @@ struct hciemu *hciemu_new(enum hciemu_type type);
 struct hciemu *hciemu_ref(struct hciemu *hciemu);
 void hciemu_unref(struct hciemu *hciemu);
 
+struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
+
 void hciemu_l2cap_cmd(struct hciemu *hciemu, uint16_t handle, uint8_t code,
 				uint8_t ident, const void *data, uint16_t len);
 

@@ -242,6 +242,14 @@ static void client_cmd_complete(uint16_t opcode, uint8_t status,
 	}
 }
 
+struct bthost *hciemu_client_get_host(struct hciemu *hciemu)
+{
+	if (!hciemu)
+		return NULL;
+
+	return hciemu->host_stack;
+}
+
 void hciemu_l2cap_cmd(struct hciemu *hciemu, uint16_t handle, uint8_t code,
 				uint8_t ident, const void *data, uint16_t len)
 {
