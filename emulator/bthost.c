@@ -588,6 +588,17 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 	}
 }
 
+static bool l2cap_cmd_rej(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_cmd_reject *rsp = data;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	return true;
+}
+
 static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 				uint8_t ident, const void *data, uint16_t len)
 {
@@ -768,6 +779,11 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 		goto reject;
 
 	switch (hdr->code) {
+	case BT_L2CAP_PDU_CMD_REJECT:
+		ret = l2cap_cmd_rej(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
 	case BT_L2CAP_PDU_CONN_REQ:
 		ret = l2cap_conn_req(bthost, handle, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
