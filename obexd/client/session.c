@@ -678,6 +678,16 @@ static void session_queue(struct pending_request *p)
 								p->session);
 }
 
+static int session_process_transfer(struct pending_request *p, GError **err)
+{
+	if (!obc_transfer_start(p->transfer, p->session->obex, err))
+		return -1;
+
+	DBG("Tranfer(%p) started", p->transfer);
+	p->session->p = p;
+	return 0;
+}
+
 guint obc_session_queue(struct obc_session *session,
 				struct obc_transfer *transfer,
 				session_callback_t func, void *user_data,
@@ -700,7 +710,8 @@ guint obc_session_queue(struct obc_session *session,
 
 	obc_transfer_set_callback(transfer, transfer_complete, session);
 
-	p = pending_request_new(session, NULL, transfer, func, user_data, NULL);
+	p = pending_request_new(session, session_process_transfer, transfer,
+							func, user_data, NULL);
 	session_queue(p);
 	return p->id;
 }
@@ -720,12 +731,8 @@ static void session_process_queue(struct obc_session *session)
 	while ((p = g_queue_pop_head(session->queue))) {
 		GError *gerr = NULL;
 
-		DBG("Transfer(%p) started", p->transfer);
-
-		if (obc_transfer_start(p->transfer, session->obex, &gerr)) {
-			session->p = p;
+		if (p->process(p, &gerr) == 0)
 			break;
-		}
 
 		if (p->func)
 			p->func(session, p->transfer, gerr, p->data);
