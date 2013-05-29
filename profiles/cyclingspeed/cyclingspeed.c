@@ -964,8 +964,6 @@ static int csc_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 	cadapter = g_new0(struct csc_adapter, 1);
 	cadapter->adapter = adapter;
 
-	csc_adapters = g_slist_prepend(csc_adapters, cadapter);
-
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 						adapter_get_path(adapter),
 						CYCLINGSPEED_MANAGER_INTERFACE,
@@ -977,6 +975,8 @@ static int csc_adapter_probe(struct btd_profile *p, struct btd_adapter *adapter)
 		destroy_csc_adapter(cadapter);
 		return -EIO;
 	}
+
+	csc_adapters = g_slist_prepend(csc_adapters, cadapter);
 
 	return 0;
 }
