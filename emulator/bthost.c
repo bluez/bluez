@@ -66,6 +66,13 @@ struct l2conn {
 	struct l2conn *next;
 };
 
+struct l2cap_pending_req {
+	uint8_t ident;
+	bthost_l2cap_rsp_cb cb;
+	void *user_data;
+	struct l2cap_pending_req *next;
+};
+
 struct bthost {
 	uint8_t bdaddr[6];
 	bthost_send_func send_handler;
@@ -78,6 +85,7 @@ struct bthost {
 	bthost_new_conn_cb new_conn_cb;
 	void *new_conn_data;
 	uint16_t server_psm;
+	struct l2cap_pending_req *l2reqs;
 };
 
 struct bthost *bthost_create(void)
@@ -179,6 +187,14 @@ void bthost_destroy(struct bthost *bthost)
 
 		bthost->conns = conn->next;
 		btconn_free(conn);
+	}
+
+	while (bthost->l2reqs) {
+		struct l2cap_pending_req *req = bthost->l2reqs;
+
+		bthost->l2reqs = req->next;
+		req->cb(0, NULL, 0, req->user_data);
+		free(req);
 	}
 
 	free(bthost);
@@ -293,14 +309,31 @@ static uint8_t l2cap_sig_send(struct bthost *bthost, uint16_t handle,
 	return ident;
 }
 
-bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t req,
-					const void *data, uint16_t len)
+bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t code,
+				const void *data, uint16_t len,
+				bthost_l2cap_rsp_cb cb, void *user_data)
 {
+	struct l2cap_pending_req *req;
 	uint8_t ident;
 
-	ident = l2cap_sig_send(bthost, handle, req, 0, data, len);
+	ident = l2cap_sig_send(bthost, handle, code, 0, data, len);
 	if (!ident)
 		return false;
+
+	if (!cb)
+		return true;
+
+	req = malloc(sizeof(*req));
+	if (!req)
+		return false;
+
+	memset(req, 0, sizeof(*req));
+	req->ident = ident;
+	req->cb = cb;
+	req->user_data = user_data;
+
+	req->next = bthost->l2reqs;
+	bthost->l2reqs = req;
 
 	return true;
 }
@@ -698,6 +731,26 @@ static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
 	return true;
 }
 
+static void handle_pending_l2reqs(struct bthost *bthost, uint16_t handle,
+						uint8_t ident, uint8_t code,
+						const void *data, uint16_t len)
+{
+	struct l2cap_pending_req **curr;
+
+	for (curr = &bthost->l2reqs; *curr != NULL;) {
+		struct l2cap_pending_req *req = *curr;
+
+		if (req->ident != ident) {
+			curr = &req->next;
+			continue;
+		}
+
+		*curr = req->next;
+		req->cb(code, data, len, req->user_data);
+		free(req);
+	}
+}
+
 static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 								uint16_t len)
 {
@@ -749,6 +802,9 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 		printf("Unknown L2CAP code 0x%02x\n", hdr->code);
 		ret = false;
 	}
+
+	handle_pending_l2reqs(bthost, handle, hdr->ident, hdr->code,
+						data + sizeof(*hdr), hdr_len);
 
 	if (ret)
 		return;

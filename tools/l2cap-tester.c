@@ -481,7 +481,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
-							&req, sizeof(req));
+						&req, sizeof(req), NULL, NULL);
 }
 
 static void test_bredr_accept_success(const void *test_data)
