@@ -527,6 +527,48 @@ static void test_bredr_accept_success(const void *test_data)
 	bthost_hci_connect(bthost, master_bdaddr);
 }
 
+static void nval_pdu_rsp(uint8_t code, const void *data, uint16_t len,
+							void *user_data)
+{
+	tester_print("Got response code 0x%02x to invalid PDU", code);
+
+	if (code == BT_L2CAP_PDU_CMD_REJECT)
+		tester_test_passed();
+	else
+		tester_test_failed();
+}
+
+static void client_new_conn_nval_pdu(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bthost *bthost;
+	uint8_t req = 0x00;
+
+	tester_print("Sending invalid PDU from client");
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
+					&req, sizeof(req), nval_pdu_rsp, data);
+}
+
+static void test_bredr_invalid_pdu(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *master_bdaddr;
+	struct bthost *bthost;
+
+	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	if (!master_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_connect_cb(bthost, client_new_conn_nval_pdu, data);
+	bthost_hci_connect(bthost, master_bdaddr);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -541,6 +583,9 @@ int main(int argc, char *argv[])
 
 	test_l2cap("L2CAP BR/EDR Accept - Success", NULL, setup_powered,
 						test_bredr_accept_success);
+
+	test_l2cap("L2CAP BR/EDR Invalid PDU", NULL, setup_powered,
+						test_bredr_invalid_pdu);
 
 	return tester_run();
 }
