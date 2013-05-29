@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <stdbool.h>
 
 #include <glib.h>
 
@@ -479,7 +480,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 	req.scid = htobs(0x0041);
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONN_REQ, 0,
+	bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
 							&req, sizeof(req));
 }
 

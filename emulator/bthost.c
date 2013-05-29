@@ -257,8 +257,9 @@ static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
 	free(pkt_data);
 }
 
-uint8_t bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
-				uint8_t ident, const void *data, uint16_t len)
+static uint8_t l2cap_sig_send(struct bthost *bthost, uint16_t handle,
+					uint8_t code, uint8_t ident,
+					const void *data, uint16_t len)
 {
 	static uint8_t next_ident = 1;
 	struct bt_l2cap_hdr_sig *hdr;
@@ -290,6 +291,18 @@ uint8_t bthost_l2cap_cmd(struct bthost *bthost, uint16_t handle, uint8_t code,
 	free(pkt_data);
 
 	return ident;
+}
+
+bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t req,
+					const void *data, uint16_t len)
+{
+	uint8_t ident;
+
+	ident = l2cap_sig_send(bthost, handle, req, 0, data, len);
+	if (!ident)
+		return false;
+
+	return true;
 }
 
 static void send_command(struct bthost *bthost, uint16_t opcode,
@@ -567,7 +580,7 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 	else
 		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
 
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CONN_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	if (!rsp.result) {
@@ -579,7 +592,7 @@ static bool l2cap_conn_req(struct bthost *bthost, uint16_t handle,
 		memset(&conf_req, 0, sizeof(conf_req));
 		conf_req.dcid = rsp.dcid;
 
-		bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
+		l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
 						&conf_req, sizeof(conf_req));
 	}
 
@@ -603,7 +616,7 @@ static bool l2cap_conn_rsp(struct bthost *bthost, uint16_t handle,
 		memset(&req, 0, sizeof(req));
 		req.dcid = rsp->dcid;
 
-		bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
+		l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CONFIG_REQ, 0,
 							&req, sizeof(req));
 	}
 
@@ -631,7 +644,7 @@ static bool l2cap_config_req(struct bthost *bthost, uint16_t handle,
 	rsp.scid  = cpu_to_le16(l2conn->dcid);
 	rsp.flags = req->flags;
 
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CONFIG_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -661,7 +674,7 @@ static bool l2cap_disconn_req(struct bthost *bthost, uint16_t handle,
 	rsp.dcid = req->dcid;
 	rsp.scid = req->scid;
 
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_DISCONN_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -679,7 +692,7 @@ static bool l2cap_info_req(struct bthost *bthost, uint16_t handle,
 	rsp.type = req->type;
 	rsp.result = cpu_to_le16(0x0001); /* Not Supported */
 
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_INFO_RSP, ident, &rsp,
 								sizeof(rsp));
 
 	return true;
@@ -742,7 +755,7 @@ static void l2cap_sig(struct bthost *bthost, uint16_t handle, const void *data,
 
 reject:
 	memset(&rej, 0, sizeof(rej));
-	bthost_l2cap_cmd(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
 							&rej, sizeof(rej));
 }
 
