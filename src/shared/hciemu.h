@@ -39,23 +39,6 @@ void hciemu_unref(struct hciemu *hciemu);
 
 struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
 
-void hciemu_l2cap_cmd(struct hciemu *hciemu, uint16_t handle, uint8_t code,
-				uint8_t ident, const void *data, uint16_t len);
-
-void hciemu_client_connect(struct hciemu *hciemu, const uint8_t *bdaddr);
-
-typedef void (*hciemu_new_conn_cb) (uint16_t handle, void *user_data);
-
-void hciemu_set_new_conn_cb(struct hciemu *hciemu, hciemu_new_conn_cb cb,
-							void *user_data);
-
-typedef void (*hciemu_scan_enable_cb)(uint8_t status, void *user_data);
-
-void hciemu_client_scan_enable(struct hciemu *hciemu, uint8_t scan,
-				hciemu_scan_enable_cb cb, void *user_data);
-
-void hciemu_client_set_server_psm(struct hciemu *hciemu, uint16_t psm);
-
 const char *hciemu_get_address(struct hciemu *hciemu);
 
 const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu);
