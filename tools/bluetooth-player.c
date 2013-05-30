@@ -260,6 +260,35 @@ static void cmd_fast_forward(int argc, char *argv[])
 	rl_printf("Fast forward playback\n");
 }
 
+static void rewind_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to rewind: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Rewind successful\n");
+}
+
+static void cmd_rewind(int argc, char *argv[])
+{
+	if (!check_default_player())
+		return;
+
+	if (g_dbus_proxy_method_call(default_player, "Rewind", NULL,
+					rewind_reply, NULL, NULL) == FALSE) {
+		rl_printf("Failed to rewind\n");
+		return;
+	}
+
+	rl_printf("Rewind playback\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -273,6 +302,7 @@ static const struct {
 	{ "previous",     NULL,       cmd_previous, "Jump to previous item" },
 	{ "fast-forward", NULL,       cmd_fast_forward,
 						"Fast forward playback" },
+	{ "rewind",       NULL,       cmd_rewind, "Rewind playback" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
