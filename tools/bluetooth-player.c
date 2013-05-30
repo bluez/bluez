@@ -115,6 +115,35 @@ static void cmd_play(int argc, char *argv[])
 	rl_printf("Attempting to play\n");
 }
 
+static void pause_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to pause: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Pause successful\n");
+}
+
+static void cmd_pause(int argc, char *argv[])
+{
+	if (!check_default_player())
+		return;
+
+	if (g_dbus_proxy_method_call(default_player, "Pause", NULL,
+					pause_reply, NULL, NULL) == FALSE) {
+		rl_printf("Failed to play\n");
+		return;
+	}
+
+	rl_printf("Attempting to pause\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -122,6 +151,7 @@ static const struct {
 	const char *desc;
 } cmd_table[] = {
 	{ "play",         NULL,       cmd_play, "Start playback" },
+	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
