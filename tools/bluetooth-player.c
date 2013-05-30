@@ -231,6 +231,35 @@ static void cmd_previous(int argc, char *argv[])
 	rl_printf("Attempting to jump to previous\n");
 }
 
+static void fast_forward_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to fast forward: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("FastForward successful\n");
+}
+
+static void cmd_fast_forward(int argc, char *argv[])
+{
+	if (!check_default_player())
+		return;
+
+	if (g_dbus_proxy_method_call(default_player, "FastForward", NULL,
+				fast_forward_reply, NULL, NULL) == FALSE) {
+		rl_printf("Failed to jump to previous\n");
+		return;
+	}
+
+	rl_printf("Fast forward playback\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -242,6 +271,8 @@ static const struct {
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
 	{ "next",         NULL,       cmd_next, "Jump to next item" },
 	{ "previous",     NULL,       cmd_previous, "Jump to previous item" },
+	{ "fast-forward", NULL,       cmd_fast_forward,
+						"Fast forward playback" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
