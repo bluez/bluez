@@ -173,6 +173,35 @@ static void cmd_stop(int argc, char *argv[])
 	rl_printf("Attempting to stop\n");
 }
 
+static void next_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to jump to next: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Next successful\n");
+}
+
+static void cmd_next(int argc, char *argv[])
+{
+	if (!check_default_player())
+		return;
+
+	if (g_dbus_proxy_method_call(default_player, "Next", NULL, next_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to jump to next\n");
+		return;
+	}
+
+	rl_printf("Attempting to jump to next\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -182,6 +211,7 @@ static const struct {
 	{ "play",         NULL,       cmd_play, "Start playback" },
 	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
+	{ "next",         NULL,       cmd_next, "Jump to next item" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
