@@ -253,5 +253,6 @@ else
 fi
 AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}",
 			[Directory for the configuration files])
+AC_SUBST(CONFIGDIR, "${configdir}")
 
 AC_OUTPUT(Makefile src/bluetoothd.8 lib/bluez.pc)
