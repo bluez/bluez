@@ -49,20 +49,9 @@ Prints information about all configured RFCOMM devices.
 Switch TTY into raw mode (doesn't work with "bind").
 .TP
 .BI -i " <hciX> | <bdaddr>"
-The command is applied to device
-.BI -A
-Enable authentication.
-.BI -E
-Enable encryption.
-.BI -S
-Secure connection.
-.BI -M
-Become the master of a piconet.
-.I
-hciX
-, which must be the name or the address of an installed Bluetooth
-device. If not specified, the command will be use the first
-available Bluetooth device.
+The command is applied to device hciX, which must be the name or the address of
+an installed Bluetooth device. If not specified, the command will be use the
+first available Bluetooth device.
 .TP
 .BI -A
 Enable authentification
