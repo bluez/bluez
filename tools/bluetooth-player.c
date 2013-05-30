@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -75,12 +76,52 @@ static void cmd_quit(int argc, char *argv[])
 	g_main_loop_quit(main_loop);
 }
 
+static bool check_default_player(void)
+{
+	if (!default_player) {
+		rl_printf("No default player available\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static void play_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to play: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Play successful\n");
+}
+
+static void cmd_play(int argc, char *argv[])
+{
+	if (!check_default_player())
+		return;
+
+	if (g_dbus_proxy_method_call(default_player, "Play", NULL, play_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to play\n");
+		return;
+	}
+
+	rl_printf("Attempting to play\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
 	void (*func) (int argc, char *argv[]);
 	const char *desc;
 } cmd_table[] = {
+	{ "play",         NULL,       cmd_play, "Start playback" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
