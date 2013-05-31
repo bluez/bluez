@@ -289,12 +289,47 @@ static void cmd_rewind(int argc, char *argv[])
 	rl_printf("Rewind playback\n");
 }
 
+static char *player_description(GDBusProxy *proxy, const char *description)
+{
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	return g_strdup_printf("%s%s%sPlayer %s ",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					path);
+}
+
+static void print_player(GDBusProxy *proxy, const char *description)
+{
+	char *str;
+
+	str = player_description(proxy, description);
+
+	rl_printf("%s%s\n", str, default_player == proxy ? "[default]" : "");
+
+	g_free(str);
+}
+
+static void cmd_list(int argc, char *arg[])
+{
+	GSList *l;
+
+	for (l = players; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+		print_player(proxy, NULL);
+	}
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
 	void (*func) (int argc, char *argv[]);
 	const char *desc;
 } cmd_table[] = {
+	{ "list",         NULL,       cmd_list, "List available players" },
 	{ "play",         NULL,       cmd_play, "Start playback" },
 	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
@@ -513,30 +548,6 @@ static guint setup_standard_input(void)
 	g_io_channel_unref(channel);
 
 	return source;
-}
-
-static char *player_description(GDBusProxy *proxy, const char *description)
-{
-	const char *path;
-
-	path = g_dbus_proxy_get_path(proxy);
-
-	return g_strdup_printf("%s%s%sPlayer %s ",
-					description ? "[" : "",
-					description ? : "",
-					description ? "] " : "",
-					path);
-}
-
-static void print_player(GDBusProxy *proxy, const char *description)
-{
-	char *str;
-
-	str = player_description(proxy, description);
-
-	rl_printf("%s%s\n", str, default_player == proxy ? "[default]" : "");
-
-	g_free(str);
 }
 
 static void player_added(GDBusProxy *proxy)
