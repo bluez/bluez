@@ -227,19 +227,19 @@ static void test_data_free(void *test_data)
 	} while (0)
 
 static const struct l2cap_client_data client_connect_success_test = {
-	.client_psm = 0x0001,
-	.server_psm = 0x0001,
+	.client_psm = 0x1001,
+	.server_psm = 0x1001,
 };
 
 static const struct l2cap_client_data client_connect_nval_psm_test = {
-	.client_psm = 0x0001,
+	.client_psm = 0x1001,
 	.expect_err = ECONNREFUSED,
 };
 
-static const uint8_t l2cap_connect_req[] = { 0x01, 0x00, 0x41, 0x00 };
+static const uint8_t l2cap_connect_req[] = { 0x01, 0x10, 0x41, 0x00 };
 
 static const struct l2cap_server_data l2cap_server_success_test = {
-	.server_psm = 0x0001,
+	.server_psm = 0x1001,
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_connect_req,
 	.send_req_len = sizeof(l2cap_connect_req),
