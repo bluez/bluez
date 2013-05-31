@@ -441,6 +441,28 @@ static void cmd_show(int argc, char *argv[])
 	print_property(proxy, "Track");
 }
 
+static void cmd_select(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing player address argument\n");
+		return;
+	}
+
+	proxy = find_player(argv[1]);
+	if (proxy == NULL) {
+		rl_printf("Player %s not available\n", argv[1]);
+		return;
+	}
+
+	if (default_player == proxy)
+		return;
+
+	default_player = proxy,
+	print_player(proxy, NULL);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -449,6 +471,7 @@ static const struct {
 } cmd_table[] = {
 	{ "list",         NULL,       cmd_list, "List available players" },
 	{ "show",         "[player]", cmd_show, "Player information" },
+	{ "select",       "<player>", cmd_select, "Select default player" },
 	{ "play",         NULL,       cmd_play, "Start playback" },
 	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
