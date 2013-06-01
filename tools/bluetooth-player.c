@@ -522,6 +522,55 @@ static void cmd_select(int argc, char *argv[])
 	print_player(proxy, NULL);
 }
 
+static void change_folder_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to change folder: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("ChangeFolder successful\n");
+}
+
+static void change_folder_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static void cmd_change_folder(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing item argument\n");
+		return;
+	}
+
+	if (check_default_player() == FALSE)
+		return;
+
+	proxy = find_folder(g_dbus_proxy_get_path(default_player));
+	if (proxy == NULL) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "ChangeFolder", change_folder_setup,
+				change_folder_reply, argv[1], NULL) == FALSE) {
+		rl_printf("Failed to change current folder\n");
+		return;
+	}
+
+	rl_printf("Attempting to change folder\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -539,6 +588,8 @@ static const struct {
 	{ "fast-forward", NULL,       cmd_fast_forward,
 						"Fast forward playback" },
 	{ "rewind",       NULL,       cmd_rewind, "Rewind playback" },
+	{ "change-folder", "<item>",  cmd_change_folder,
+						"Change current folder" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
