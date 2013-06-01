@@ -431,10 +431,27 @@ static GDBusProxy *find_folder(const char *path)
 	return NULL;
 }
 
+static GDBusProxy *find_item(const char *path)
+{
+	GSList *l;
+
+	for (l = items; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
 static void cmd_show(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
 	GDBusProxy *folder;
+	GDBusProxy *item;
+	DBusMessageIter iter;
+	const char *path;
 
 	if (argc < 2) {
 		if (check_default_player() == FALSE)
@@ -468,6 +485,19 @@ static void cmd_show(int argc, char *argv[])
 
 	print_property(folder, "Name");
 	print_property(folder, "NumberOfItems");
+
+	if (!g_dbus_proxy_get_property(proxy, "Playlist", &iter))
+		return;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	item = find_item(path);
+	if (item == NULL)
+		return;
+
+	rl_printf("Playlist %s\n", path);
+
+	print_property(item, "Name");
 }
 
 static void cmd_select(int argc, char *argv[])
