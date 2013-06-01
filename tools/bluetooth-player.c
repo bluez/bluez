@@ -415,9 +415,24 @@ static void print_property(GDBusProxy *proxy, const char *name)
 	print_iter("\t", name, &iter);
 }
 
+static GDBusProxy *find_folder(const char *path)
+{
+	GSList *l;
+
+	for (l = folders; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
 static void cmd_show(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
+	GDBusProxy *folder;
 
 	if (argc < 2) {
 		if (check_default_player() == FALSE)
@@ -442,6 +457,15 @@ static void cmd_show(int argc, char *argv[])
 	print_property(proxy, "Status");
 	print_property(proxy, "Position");
 	print_property(proxy, "Track");
+
+	folder = find_folder(g_dbus_proxy_get_path(proxy));
+	if (folder == NULL)
+		return;
+
+	rl_printf("Folder %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(folder, "Name");
+	print_property(folder, "NumberOfItems");
 }
 
 static void cmd_select(int argc, char *argv[])
