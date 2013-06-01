@@ -196,7 +196,7 @@ AC_ARG_WITH([systemdsystemunitdir],
 			[path to systemd system unit directory]),
 					[path_systemunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_systemunitdir}"); then
-	AC_MSG_CHECKING([sytemd system unit dir])
+	AC_MSG_CHECKING([systemd system unit dir])
 	path_systemunitdir="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
 	if (test -z "${path_systemunitdir}"); then
 		AC_MSG_ERROR([systemd system unit directory is required])
@@ -210,7 +210,7 @@ AC_ARG_WITH([systemduserunitdir],
 			[path to systemd user unit directory]),
 					[path_userunitdir=${withval}])
 if (test "${enable_systemd}" != "no" && test -z "${path_userunitdir}"); then
-	AC_MSG_CHECKING([sytemd user unit dir])
+	AC_MSG_CHECKING([systemd user unit dir])
 	path_userunitdir="`$PKG_CONFIG --variable=systemduserunitdir systemd`"
 	if (test -z "${path_userunitdir}"); then
 		AC_MSG_ERROR([systemd user unit directory is required])
