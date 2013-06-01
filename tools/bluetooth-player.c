@@ -49,11 +49,13 @@
 #define PROMPT_OFF	"[bluetooth]# "
 
 #define BLUEZ_MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
+#define BLUEZ_MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_player;
 static GSList *players = NULL;
+static GSList *folders = NULL;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -289,24 +291,25 @@ static void cmd_rewind(int argc, char *argv[])
 	rl_printf("Rewind playback\n");
 }
 
-static char *player_description(GDBusProxy *proxy, const char *description)
+static char *proxy_description(GDBusProxy *proxy, const char *title,
+						const char *description)
 {
 	const char *path;
 
 	path = g_dbus_proxy_get_path(proxy);
 
-	return g_strdup_printf("%s%s%sPlayer %s ",
+	return g_strdup_printf("%s%s%s%s %s ",
 					description ? "[" : "",
 					description ? : "",
 					description ? "] " : "",
-					path);
+					title, path);
 }
 
 static void print_player(GDBusProxy *proxy, const char *description)
 {
 	char *str;
 
-	str = player_description(proxy, description);
+	str = proxy_description(proxy, "Player", description);
 
 	rl_printf("%s%s\n", str, default_player == proxy ? "[default]" : "");
 
@@ -702,6 +705,25 @@ static void player_added(GDBusProxy *proxy)
 	print_player(proxy, COLORED_NEW);
 }
 
+static void print_folder(GDBusProxy *proxy, const char *description)
+{
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	rl_printf("%s%s%sFolder %s\n", description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					path);
+}
+
+static void folder_added(GDBusProxy *proxy)
+{
+	folders = g_slist_append(folders, proxy);
+
+	print_folder(proxy, COLORED_NEW);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -710,6 +732,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 
 	if (!strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE))
 		player_added(proxy);
+	else if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
+		folder_added(proxy);
 }
 
 static void player_removed(GDBusProxy *proxy)
@@ -722,6 +746,13 @@ static void player_removed(GDBusProxy *proxy)
 	players = g_slist_remove(players, proxy);
 }
 
+static void folder_removed(GDBusProxy *proxy)
+{
+	folders = g_slist_remove(folders, proxy);
+
+	print_folder(proxy, COLORED_DEL);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -730,6 +761,28 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 	if (!strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE))
 		player_removed(proxy);
+	if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
+		folder_removed(proxy);
+}
+
+static void player_property_changed(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Player", COLORED_CHG);
+	print_iter(str, name, iter);
+	g_free(str);
+}
+
+static void folder_property_changed(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Folder", COLORED_CHG);
+	print_iter(str, name, iter);
+	g_free(str);
 }
 
 static void property_changed(GDBusProxy *proxy, const char *name,
@@ -739,13 +792,10 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE)) {
-		char *str;
-
-		str = player_description(proxy, COLORED_CHG);
-		print_iter(str, name, iter);
-		g_free(str);
-	}
+	if (!strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE))
+		player_property_changed(proxy, name, iter);
+	else if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
+		folder_property_changed(proxy, name, iter);
 }
 
 int main(int argc, char *argv[])
