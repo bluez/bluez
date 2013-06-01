@@ -50,12 +50,14 @@
 
 #define BLUEZ_MEDIA_PLAYER_INTERFACE "org.bluez.MediaPlayer1"
 #define BLUEZ_MEDIA_FOLDER_INTERFACE "org.bluez.MediaFolder1"
+#define BLUEZ_MEDIA_ITEM_INTERFACE "org.bluez.MediaItem1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_player;
 static GSList *players = NULL;
 static GSList *folders = NULL;
+static GSList *items = NULL;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -748,6 +750,31 @@ static void folder_added(GDBusProxy *proxy)
 	print_folder(proxy, COLORED_NEW);
 }
 
+static void print_item(GDBusProxy *proxy, const char *description)
+{
+	const char *path, *name;
+	DBusMessageIter iter;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	if (g_dbus_proxy_get_property(proxy, "Name", &iter))
+		dbus_message_iter_get_basic(&iter, &name);
+	else
+		name = "<unknown>";
+
+	rl_printf("%s%s%sItem %s %s\n", description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					path, name);
+}
+
+static void item_added(GDBusProxy *proxy)
+{
+	items = g_slist_append(items, proxy);
+
+	print_item(proxy, COLORED_NEW);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -758,6 +785,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		player_added(proxy);
 	else if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
 		folder_added(proxy);
+	else if (!strcmp(interface, BLUEZ_MEDIA_ITEM_INTERFACE))
+		item_added(proxy);
 }
 
 static void player_removed(GDBusProxy *proxy)
@@ -777,6 +806,13 @@ static void folder_removed(GDBusProxy *proxy)
 	print_folder(proxy, COLORED_DEL);
 }
 
+static void item_removed(GDBusProxy *proxy)
+{
+	items = g_slist_remove(items, proxy);
+
+	print_item(proxy, COLORED_DEL);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -787,6 +823,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		player_removed(proxy);
 	if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
 		folder_removed(proxy);
+	if (!strcmp(interface, BLUEZ_MEDIA_ITEM_INTERFACE))
+		item_removed(proxy);
 }
 
 static void player_property_changed(GDBusProxy *proxy, const char *name,
@@ -809,6 +847,16 @@ static void folder_property_changed(GDBusProxy *proxy, const char *name,
 	g_free(str);
 }
 
+static void item_property_changed(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Item", COLORED_CHG);
+	print_iter(str, name, iter);
+	g_free(str);
+}
+
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -820,6 +868,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 		player_property_changed(proxy, name, iter);
 	else if (!strcmp(interface, BLUEZ_MEDIA_FOLDER_INTERFACE))
 		folder_property_changed(proxy, name, iter);
+	else if (!strcmp(interface, BLUEZ_MEDIA_ITEM_INTERFACE))
+		item_property_changed(proxy, name, iter);
 }
 
 int main(int argc, char *argv[])
