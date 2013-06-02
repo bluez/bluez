@@ -571,6 +571,136 @@ static void cmd_change_folder(int argc, char *argv[])
 	rl_printf("Attempting to change folder\n");
 }
 
+static void append_variant(DBusMessageIter *iter, int type, void *val)
+{
+	DBusMessageIter value;
+	char sig[2] = { type, '\0' };
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
+
+	dbus_message_iter_append_basic(&value, type, val);
+
+	dbus_message_iter_close_container(iter, &value);
+}
+
+static void dict_append_entry(DBusMessageIter *dict,
+			const char *key, int type, void *val)
+{
+	DBusMessageIter entry;
+
+	if (type == DBUS_TYPE_STRING) {
+		const char *str = *((const char **) val);
+		if (str == NULL)
+			return;
+	}
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	append_variant(&entry, type, val);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+struct list_items_args {
+	int start;
+	int end;
+};
+
+static void list_items_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct list_items_args *args = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	if (args->start < 0)
+		goto done;
+
+	dict_append_entry(&dict, "Start", DBUS_TYPE_UINT32, &args->start);
+
+	if (args->end < 0)
+		goto done;
+
+	dict_append_entry(&dict, "End", DBUS_TYPE_UINT32, &args->end);
+
+done:
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void list_items_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to list items: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("ListItems successful\n");
+}
+
+static void cmd_list_items(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct list_items_args *args;
+
+	if (check_default_player() == FALSE)
+		return;
+
+	proxy = find_folder(g_dbus_proxy_get_path(default_player));
+	if (proxy == NULL) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	args = g_new0(struct list_items_args, 1);
+	args->start = -1;
+	args->end = -1;
+
+	if (argc < 2)
+		goto done;
+
+	errno = 0;
+	args->start = strtol(argv[1], NULL, 10);
+	if (errno != 0) {
+		rl_printf("%s(%d)\n", strerror(errno), errno);
+		g_free(args);
+		return;
+	}
+
+	if (argc < 3)
+		goto done;
+
+	errno = 0;
+	args->end = strtol(argv[2], NULL, 10);
+	if (errno != 0) {
+		rl_printf("%s(%d)\n", strerror(errno), errno);
+		g_free(args);
+		return;
+	}
+
+done:
+	if (g_dbus_proxy_method_call(proxy, "ListItems", list_items_setup,
+				list_items_reply, args, g_free) == FALSE) {
+		rl_printf("Failed to change current folder\n");
+		g_free(args);
+		return;
+	}
+
+	rl_printf("Attempting to list items\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -590,6 +720,8 @@ static const struct {
 	{ "rewind",       NULL,       cmd_rewind, "Rewind playback" },
 	{ "change-folder", "<item>",  cmd_change_folder,
 						"Change current folder" },
+	{ "list-items", "[start] [end]",  cmd_list_items,
+					"List items of current folder" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
