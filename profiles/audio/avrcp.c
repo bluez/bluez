@@ -1727,7 +1727,8 @@ static gboolean avrcp_get_play_status_rsp(struct avctp *conn,
 	uint32_t position;
 	uint8_t status;
 
-	if (code == AVC_CTYPE_REJECTED || ntohs(pdu->params_len) != 9)
+	if (pdu == NULL || code == AVC_CTYPE_REJECTED ||
+						ntohs(pdu->params_len) != 9)
 		return FALSE;
 
 	memcpy(&duration, pdu->params, sizeof(uint32_t));
@@ -1788,6 +1789,11 @@ static gboolean avrcp_player_value_rsp(struct avctp *conn,
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t count;
 	int i;
+
+	if (pdu == NULL) {
+		media_player_set_setting(mp, "Error", "Timeout");
+		return FALSE;
+	}
 
 	if (code == AVC_CTYPE_REJECTED) {
 		media_player_set_setting(mp, "Error",
@@ -2030,7 +2036,8 @@ static gboolean avrcp_set_browsed_player_rsp(struct avctp *conn,
 	uint8_t depth, count;
 	size_t i;
 
-	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 13)
+	if (pdu == NULL || pdu->params[0] != AVRCP_STATUS_SUCCESS ||
+							operand_count < 13)
 		return FALSE;
 
 	player->uid_counter = bt_get_be16(&pdu->params[1]);
@@ -2094,6 +2101,11 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 	struct avrcp_player *player = session->player;
 	struct avrcp_browsing_header *pdu = (void *) operands;
 	uint8_t count;
+
+	if (pdu == NULL) {
+		avrcp_get_element_attributes(session);
+		return FALSE;
+	}
 
 	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4) {
 		if (pdu->params[0] == AVRCP_STATUS_PLAYER_NOT_BROWSABLE)
@@ -2408,7 +2420,8 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 	size_t i;
 	GSList *removed;
 
-	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 5)
+	if (pdu == NULL || pdu->params[0] != AVRCP_STATUS_SUCCESS ||
+							operand_count < 5)
 		return FALSE;
 
 	removed = g_slist_copy(session->players);
@@ -2574,7 +2587,8 @@ static gboolean avrcp_handle_event(struct avctp *conn,
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t event;
 
-	if (code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED)
+	if ((code != AVC_CTYPE_INTERIM && code != AVC_CTYPE_CHANGED) ||
+								pdu == NULL)
 		return FALSE;
 
 	event = pdu->params[0];
@@ -2645,7 +2659,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 	uint16_t events = 0;
 	uint8_t count;
 
-	if (pdu->params[0] != CAP_EVENTS_SUPPORTED)
+	if (pdu == NULL || pdu->params[0] != CAP_EVENTS_SUPPORTED)
 		return FALSE;
 
 	count = pdu->params[1];
@@ -3191,7 +3205,8 @@ static gboolean avrcp_handle_set_volume(struct avctp *conn,
 	struct avrcp_header *pdu = (void *) operands;
 	uint8_t volume;
 
-	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED)
+	if (code == AVC_CTYPE_REJECTED || code == AVC_CTYPE_NOT_IMPLEMENTED ||
+								pdu == NULL)
 		return FALSE;
 
 	volume = pdu->params[0] & 0x7F;

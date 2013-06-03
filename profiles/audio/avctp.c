@@ -155,6 +155,7 @@ struct avctp_pending_req {
 	struct avctp_channel *chan;
 	uint8_t transaction;
 	guint timeout;
+	int err;
 	avctp_process_cb process;
 	void *data;
 	GDestroyNotify destroy;
@@ -658,7 +659,16 @@ static int avctp_browsing_send(struct avctp_channel *browsing,
 static void control_req_destroy(void *data)
 {
 	struct avctp_control_req *req = data;
+	struct avctp_pending_req *p = req->p;
+	struct avctp *session = p->chan->session;
 
+	if (p->err == 0 || req->func == NULL)
+		goto done;
+
+	req->func(session, AVC_CTYPE_REJECTED, req->subunit, NULL, 0,
+							req->user_data);
+
+done:
 	g_free(req->operands);
 	g_free(req);
 }
@@ -666,7 +676,15 @@ static void control_req_destroy(void *data)
 static void browsing_req_destroy(void *data)
 {
 	struct avctp_browsing_req *req = data;
+	struct avctp_pending_req *p = req->p;
+	struct avctp *session = p->chan->session;
 
+	if (p->err == 0 || req->func == NULL)
+		goto done;
+
+	req->func(session, NULL, 0, req->user_data);
+
+done:
 	g_free(req->operands);
 	g_free(req);
 }
@@ -679,6 +697,7 @@ static gboolean req_timeout(gpointer user_data)
 	DBG("transaction %u", p->transaction);
 
 	p->timeout = 0;
+	p->err = -ETIMEDOUT;
 
 	pending_destroy(p, NULL);
 	chan->p = NULL;
