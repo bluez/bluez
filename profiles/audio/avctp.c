@@ -812,9 +812,8 @@ static void browsing_response(struct avctp_channel *browsing,
 		if (p->transaction != avctp->transaction)
 			continue;
 
-		if (req->func && req->func(browsing->session,
-						operands, operand_count,
-						req->user_data))
+		if (req->func && req->func(browsing->session, operands,
+						operand_count, req->user_data))
 			return;
 
 		browsing->processed = g_slist_remove(browsing->processed, p);
