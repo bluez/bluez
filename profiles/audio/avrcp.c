@@ -1358,6 +1358,10 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 	if (len != 5)
 		goto err;
 
+	/* Check if event is supported otherwise reject */
+	if (!(session->supported_events & (1 << pdu->params[0])))
+		goto err;
+
 	switch (pdu->params[0]) {
 	case AVRCP_EVENT_STATUS_CHANGED:
 		len = 2;
