@@ -105,8 +105,44 @@ static void play_reply(DBusMessage *message, void *user_data)
 	rl_printf("Play successful\n");
 }
 
+static GDBusProxy *find_item(const char *path)
+{
+	GSList *l;
+
+	for (l = items; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void cmd_play_item(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	proxy = find_item(argv[1]);
+	if (proxy == NULL) {
+		rl_printf("Item %s not available\n", argv[1]);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Play", NULL, play_reply,
+							NULL, NULL) == FALSE) {
+		rl_printf("Failed to play\n");
+		return;
+	}
+
+	rl_printf("Attempting to play %s\n", argv[1]);
+}
+
 static void cmd_play(int argc, char *argv[])
 {
+	if (argc > 1)
+		return cmd_play_item(argc, argv);
+
 	if (!check_default_player())
 		return;
 
@@ -431,20 +467,6 @@ static GDBusProxy *find_folder(const char *path)
 	return NULL;
 }
 
-static GDBusProxy *find_item(const char *path)
-{
-	GSList *l;
-
-	for (l = items; l; l = g_slist_next(l)) {
-		GDBusProxy *proxy = l->data;
-
-		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
-			return proxy;
-	}
-
-	return NULL;
-}
-
 static void cmd_show(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -710,7 +732,7 @@ static const struct {
 	{ "list",         NULL,       cmd_list, "List available players" },
 	{ "show",         "[player]", cmd_show, "Player information" },
 	{ "select",       "<player>", cmd_select, "Select default player" },
-	{ "play",         NULL,       cmd_play, "Start playback" },
+	{ "play",         "[item]",   cmd_play, "Start playback" },
 	{ "pause",        NULL,       cmd_pause, "Pause playback" },
 	{ "stop",         NULL,       cmd_stop, "Stop playback" },
 	{ "next",         NULL,       cmd_next, "Jump to next item" },
