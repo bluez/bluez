@@ -723,6 +723,46 @@ done:
 	rl_printf("Attempting to list items\n");
 }
 
+static void add_to_nowplaying_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to queue: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("AddToNowPlaying successful\n");
+}
+
+static void cmd_queue(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing item address argument\n");
+		return;
+	}
+
+	proxy = find_item(argv[1]);
+	if (proxy == NULL) {
+		rl_printf("Item %s not available\n", argv[1]);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "AddtoNowPlaying", NULL,
+					add_to_nowplaying_reply, NULL,
+					NULL) == FALSE) {
+		rl_printf("Failed to play\n");
+		return;
+	}
+
+	rl_printf("Attempting to queue %s\n", argv[1]);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -744,6 +784,7 @@ static const struct {
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
 					"List items of current folder" },
+	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
