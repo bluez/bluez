@@ -371,6 +371,38 @@ static void cmd_equalizer(int argc, char *argv[])
 	rl_printf("Attempting to set equalizer\n");
 }
 
+static void cmd_repeat(int argc, char *argv[])
+{
+	char *value;
+	DBusMessageIter iter;
+
+	if (!check_default_player())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing mode argument\n");
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(default_player, "Repeat", &iter)) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	value = g_strdup(argv[1]);
+
+	if (g_dbus_proxy_set_property_basic(default_player, "Repeat",
+						DBUS_TYPE_STRING, &value,
+						generic_callback, value,
+						g_free) == FALSE) {
+		rl_printf("Failed to set repeat\n");
+		g_free(value);
+		return;
+	}
+
+	rl_printf("Attempting to set repeat\n");
+}
+
 static char *proxy_description(GDBusProxy *proxy, const char *title,
 						const char *description)
 {
@@ -824,6 +856,8 @@ static const struct {
 	{ "rewind",       NULL,       cmd_rewind, "Rewind playback" },
 	{ "equalizer",    "<on/off>", cmd_equalizer,
 						"Enable/Disable equalizer"},
+	{ "repeat",       "<singletrack/alltrack/group/off>", cmd_repeat,
+						"Set repeat mode"},
 	{ "change-folder", "<item>",  cmd_change_folder,
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
