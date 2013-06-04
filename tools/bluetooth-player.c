@@ -435,6 +435,38 @@ static void cmd_shuffle(int argc, char *argv[])
 	rl_printf("Attempting to set shuffle\n");
 }
 
+static void cmd_scan(int argc, char *argv[])
+{
+	char *value;
+	DBusMessageIter iter;
+
+	if (!check_default_player())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing mode argument\n");
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(default_player, "Shuffle", &iter)) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	value = g_strdup(argv[1]);
+
+	if (g_dbus_proxy_set_property_basic(default_player, "Shuffle",
+						DBUS_TYPE_STRING, &value,
+						generic_callback, value,
+						g_free) == FALSE) {
+		rl_printf("Failed to set scan\n");
+		g_free(value);
+		return;
+	}
+
+	rl_printf("Attempting to set scan\n");
+}
+
 static char *proxy_description(GDBusProxy *proxy, const char *title,
 						const char *description)
 {
@@ -892,6 +924,8 @@ static const struct {
 						"Set repeat mode"},
 	{ "shuffle",      "<alltracks/group/off>", cmd_shuffle,
 						"Set shuffle mode"},
+	{ "scan",         "<alltracks/group/off>", cmd_scan,
+						"Set scan mode"},
 	{ "change-folder", "<item>",  cmd_change_folder,
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
