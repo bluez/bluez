@@ -329,6 +329,48 @@ static void cmd_rewind(int argc, char *argv[])
 	rl_printf("Rewind playback\n");
 }
 
+static void generic_callback(const DBusError *error, void *user_data)
+{
+	char *str = user_data;
+
+	if (dbus_error_is_set(error))
+		rl_printf("Failed to set %s: %s\n", str, error->name);
+	else
+		rl_printf("Changing %s succeeded\n", str);
+}
+
+static void cmd_equalizer(int argc, char *argv[])
+{
+	char *value;
+	DBusMessageIter iter;
+
+	if (!check_default_player())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing on/off argument\n");
+		return;
+	}
+
+	if (!g_dbus_proxy_get_property(default_player, "Equalizer", &iter)) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	value = g_strdup(argv[1]);
+
+	if (g_dbus_proxy_set_property_basic(default_player, "Equalizer",
+						DBUS_TYPE_STRING, &value,
+						generic_callback, value,
+						g_free) == FALSE) {
+		rl_printf("Failed to setting equalizer\n");
+		g_free(value);
+		return;
+	}
+
+	rl_printf("Attempting to set equalizer\n");
+}
+
 static char *proxy_description(GDBusProxy *proxy, const char *title,
 						const char *description)
 {
@@ -780,6 +822,8 @@ static const struct {
 	{ "fast-forward", NULL,       cmd_fast_forward,
 						"Fast forward playback" },
 	{ "rewind",       NULL,       cmd_rewind, "Rewind playback" },
+	{ "equalizer",    "<on/off>", cmd_equalizer,
+						"Enable/Disable equalizer"},
 	{ "change-folder", "<item>",  cmd_change_folder,
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
