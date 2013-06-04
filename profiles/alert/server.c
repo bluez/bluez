@@ -854,6 +854,9 @@ static uint8_t alert_notif_cp_write(struct attribute *a,
 {
 	DBG("a = %p", a);
 
+	if (a->len < 2)
+		return 0;
+
 	switch (a->data[0]) {
 	case ENABLE_NEW_INCOMING:
 		DBG("ENABLE_NEW_INCOMING: 0x%02x", a->data[1]);
