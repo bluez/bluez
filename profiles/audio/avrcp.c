@@ -548,6 +548,8 @@ static int player_get_setting(struct avrcp_player *player, uint8_t id)
 		return -EINVAL;
 
 	value = player->cb->get_setting(key, player->user_data);
+	if (value == NULL)
+		return -EINVAL;
 
 	return attrval_to_val(id, value);
 }
