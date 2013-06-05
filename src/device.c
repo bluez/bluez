@@ -2574,7 +2574,7 @@ static void device_remove_profiles(struct btd_device *device, GSList *uuids)
 
 	DBG("Removing profiles for %s", dstaddr);
 
-	g_slist_free(device->uuids);
+	g_slist_free_full(device->uuids, g_free);
 	device->uuids = NULL;
 	store_device_info(device);
 
