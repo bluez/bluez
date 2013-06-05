@@ -3258,7 +3258,8 @@ static gboolean avrcp_handle_set_volume(struct avctp *conn,
 
 	volume = pdu->params[0] & 0x7F;
 
-	player->cb->set_volume(volume, session->dev, player->user_data);
+	if (player != NULL)
+		player->cb->set_volume(volume, session->dev, player->user_data);
 
 	return FALSE;
 }
