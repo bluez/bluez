@@ -2941,12 +2941,17 @@ static struct avrcp *session_create(struct avrcp_server *server,
 		session->init_control = session_tg_init_control;
 		session->init_browsing = session_tg_init_browsing;
 		session->destroy = session_tg_destroy;
+
 		rec = btd_device_get_record(dev->btd_dev, AVRCP_REMOTE_UUID);
+		if (rec == NULL)
+			btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
 	} else {
 		session->init_control = session_ct_init_control;
 		session->init_browsing = session_ct_init_browsing;
 		session->destroy = session_ct_destroy;
 		rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
+		if (rec == NULL)
+			btd_device_add_uuid(dev->btd_dev, AVRCP_TARGET_UUID);
 	}
 
 	if (rec == NULL)
