@@ -3177,6 +3177,13 @@ static void find_included_cb(GSList *includes, uint8_t status,
 	struct gatt_primary *prim;
 	GSList *l;
 
+	if (device->attrib == NULL) {
+		error("Disconnected while doing included discovery");
+		g_slist_free(search->services);
+		g_free(search);
+		return;
+	}
+
 	if (status != 0) {
 		error("Find included services failed: %s (%d)",
 					att_ecode2str(status), status);
