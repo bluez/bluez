@@ -2429,6 +2429,20 @@ static void player_destroy(gpointer data)
 	g_free(player);
 }
 
+static void player_remove(gpointer data)
+{
+	struct avrcp_player *player = data;
+	GSList *l;
+
+	for (l = player->sessions; l; l = l->next) {
+		struct avrcp *session = l->data;
+
+		session->players = g_slist_remove(session->players, player);
+	}
+
+	player_destroy(player);
+}
+
 static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 						uint8_t *operands,
 						size_t operand_count,
@@ -2474,7 +2488,10 @@ static gboolean avrcp_get_media_player_list_rsp(struct avctp *conn,
 		i += len;
 	}
 
-	g_slist_free_full(removed, player_destroy);
+	if (g_slist_find(removed, session->player))
+		session->player = NULL;
+
+	g_slist_free_full(removed, player_remove);
 
 	return FALSE;
 }
@@ -2575,12 +2592,15 @@ static void avrcp_addressed_player_changed(struct avrcp *session,
 	struct avrcp_player *player = session->player;
 	uint16_t id = bt_get_be16(&pdu->params[1]);
 
-	if (player->id == id)
+	if (player != NULL && player->id == id)
 		return;
 
 	player = find_ct_player(session, id);
-	if (player == NULL)
-		return;
+	if (player == NULL) {
+		player = create_ct_player(session, id);
+		if (player == NULL)
+			return;
+	}
 
 	player->uid_counter = bt_get_be16(&pdu->params[3]);
 	session->player = player;
