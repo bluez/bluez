@@ -583,6 +583,7 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 			ir.pscan_rep_mode = 0x00;
 			ir.pscan_period_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
+			ir.clock_offset = 0x0000;
 			ir.rssi = -60;
 			memcpy(ir.data, btdev_list[i]->ext_inquiry_rsp, 240);
 
@@ -599,6 +600,7 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 			ir.pscan_rep_mode = 0x00;
 			ir.pscan_period_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
+			ir.clock_offset = 0x0000;
 			ir.rssi = -60;
 
 			send_event(btdev, BT_HCI_EVT_INQUIRY_RESULT_WITH_RSSI,
@@ -612,6 +614,7 @@ static void inquiry_complete(struct btdev *btdev, uint8_t status)
 			ir.pscan_period_mode = 0x00;
 			ir.pscan_mode = 0x00;
 			memcpy(ir.dev_class, btdev_list[i]->dev_class, 3);
+			ir.clock_offset = 0x0000;
 
 			send_event(btdev, BT_HCI_EVT_INQUIRY_RESULT,
 							&ir, sizeof(ir));
