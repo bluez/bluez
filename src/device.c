@@ -440,7 +440,7 @@ static void browse_request_free(struct browse_req *req)
 	if (req->device)
 		btd_device_unref(req->device);
 	g_slist_free_full(req->profiles_added, g_free);
-	g_slist_free(req->profiles_removed);
+	g_slist_free_full(req->profiles_removed, g_free);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
 
@@ -2772,9 +2772,12 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 					g_slist_append(req->profiles_added,
 							profile_uuid);
 		else {
+			l = g_slist_find_custom(req->profiles_removed,
+							profile_uuid,
+							(GCompareFunc) strcmp);
+			g_free(l->data);
 			req->profiles_removed =
-					g_slist_remove(req->profiles_removed,
-							l->data);
+				g_slist_delete_link(req->profiles_removed, l);
 			g_free(profile_uuid);
 		}
 
@@ -2991,7 +2994,7 @@ static void init_browse(struct browse_req *req, gboolean reverse)
 
 	for (l = req->device->uuids; l; l = l->next)
 		req->profiles_removed = g_slist_append(req->profiles_removed,
-						l->data);
+							g_strdup(l->data));
 }
 
 static void store_services(struct btd_device *device)
