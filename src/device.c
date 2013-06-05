@@ -2766,7 +2766,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 							sdp_copy_record(rec));
 
 		l = g_slist_find_custom(device->uuids, profile_uuid,
-							(GCompareFunc) strcmp);
+							bt_uuid_strcmp);
 		if (!l)
 			req->profiles_added =
 					g_slist_append(req->profiles_added,
@@ -2774,7 +2774,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 		else {
 			l = g_slist_find_custom(req->profiles_removed,
 							profile_uuid,
-							(GCompareFunc) strcmp);
+							bt_uuid_strcmp);
 			g_free(l->data);
 			req->profiles_removed =
 				g_slist_delete_link(req->profiles_removed, l);
@@ -4231,20 +4231,12 @@ gboolean device_is_authenticating(struct btd_device *device)
 	return (device->authr != NULL);
 }
 
-static int primary_uuid_cmp(gconstpointer a, gconstpointer b)
-{
-	const struct gatt_primary *prim = a;
-	const char *uuid = b;
-
-	return strcasecmp(prim->uuid, uuid);
-}
-
 struct gatt_primary *btd_device_get_primary(struct btd_device *device,
 							const char *uuid)
 {
 	GSList *match;
 
-	match = g_slist_find_custom(device->primaries, uuid, primary_uuid_cmp);
+	match = g_slist_find_custom(device->primaries, uuid, bt_uuid_strcmp);
 	if (match)
 		return match->data;
 
