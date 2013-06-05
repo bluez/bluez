@@ -874,6 +874,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
 	struct bt_hci_rsp_le_read_white_list_size lrwls;
+	struct bt_hci_rsp_remote_name_request_cancel rnrc_rsp;
 	uint8_t status, page;
 
 	switch (opcode) {
@@ -941,8 +942,9 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		rnrc = data;
-		status = BT_HCI_ERR_SUCCESS;
-		cmd_complete(btdev, opcode, &status, sizeof(status));
+		rnrc_rsp.status = BT_HCI_ERR_SUCCESS;
+		memcpy(rnrc_rsp.bdaddr, rnrc->bdaddr, 6);
+		cmd_complete(btdev, opcode, &rnrc_rsp, sizeof(rnrc_rsp));
 		name_request_complete(btdev, rnrc->bdaddr,
 						BT_HCI_ERR_UNKNOWN_CONN_ID);
 		break;
