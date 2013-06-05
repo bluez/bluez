@@ -329,127 +329,6 @@ static void dict_append_entry(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static dbus_bool_t emit_properties_changed(DBusConnection *conn,
-					const char *path,
-					const char *interface,
-					const char *name,
-					int type, void *value)
-{
-	DBusMessage *signal;
-	DBusMessageIter iter, dict, array;
-	dbus_bool_t result;
-
-	signal = dbus_message_new_signal(path, DBUS_INTERFACE_PROPERTIES,
-							"PropertiesChanged");
-
-	if (!signal) {
-		fprintf(stderr, "Unable to allocate new %s.PropertyChanged"
-							" signal", interface);
-		return FALSE;
-	}
-
-	dbus_message_iter_init_append(signal, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &interface);
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	dict_append_entry(&dict, name, type, value);
-
-	dbus_message_iter_close_container(&iter, &dict);
-
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_STRING_AS_STRING, &array);
-	dbus_message_iter_close_container(&iter, &array);
-
-	result = dbus_connection_send(conn, signal, NULL);
-	dbus_message_unref(signal);
-
-	return result;
-}
-
-static int parse_property(DBusConnection *conn, const char *path,
-						const char *key,
-						DBusMessageIter *entry,
-						DBusMessageIter *properties)
-{
-	DBusMessageIter var;
-	const void *value;
-	int type;
-
-	printf("property %s found\n", key);
-
-	if (dbus_message_iter_get_arg_type(entry) != DBUS_TYPE_VARIANT)
-		return -EINVAL;
-
-	dbus_message_iter_recurse(entry, &var);
-
-	if (strcasecmp(key, "Metadata") == 0) {
-		if (properties)
-			dict_append_entry(properties, key,
-						DBUS_TYPE_DICT_ENTRY, &var);
-		else
-			emit_properties_changed(sys, path,
-					MPRIS_PLAYER_INTERFACE, key,
-					DBUS_TYPE_DICT_ENTRY, &var);
-
-		return 0;
-	}
-
-	type = dbus_message_iter_get_arg_type(&var);
-	if (!dbus_type_is_basic(type))
-		return -EINVAL;
-
-	dbus_message_iter_get_basic(&var, &value);
-
-	if (properties)
-		dict_append_entry(properties, key, type, &value);
-	else
-		emit_properties_changed(sys, path,
-					MPRIS_PLAYER_INTERFACE, key,
-					type, &value);
-
-	return 0;
-}
-
-static int parse_properties(DBusConnection *conn, const char *path,
-						DBusMessageIter *args,
-						DBusMessageIter *properties)
-{
-	DBusMessageIter dict;
-	int ctype;
-
-	ctype = dbus_message_iter_get_arg_type(args);
-	if (ctype != DBUS_TYPE_ARRAY)
-		return -EINVAL;
-
-	dbus_message_iter_recurse(args, &dict);
-
-	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
-							DBUS_TYPE_INVALID) {
-		DBusMessageIter entry;
-		const char *key;
-
-		if (ctype != DBUS_TYPE_DICT_ENTRY)
-			return -EINVAL;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			return -EINVAL;
-
-		dbus_message_iter_get_basic(&entry, &key);
-		dbus_message_iter_next(&entry);
-
-		if (parse_property(conn, path, key, &entry, properties) < 0)
-			return -EINVAL;
-
-		dbus_message_iter_next(&dict);
-	}
-
-	return 0;
-}
-
 static char *sender2path(const char *sender)
 {
 	char *path;
@@ -541,7 +420,7 @@ static void add_player(DBusConnection *conn, const char *name,
 {
 	DBusMessage *reply = NULL;
 	DBusMessage *msg;
-	DBusMessageIter iter, args, properties;
+	DBusMessageIter iter, args;
 	DBusError err;
 	char *path, *owner;
 	struct player *player;
@@ -583,15 +462,7 @@ static void add_player(DBusConnection *conn, const char *name,
 						&iter))
 			goto done;
 	} else {
-		dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-				DBUS_TYPE_STRING_AS_STRING
-				DBUS_TYPE_VARIANT_AS_STRING
-				DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
-				&properties);
-		if (parse_properties(conn, path, &args, &properties) < 0)
-			goto done;
-		dbus_message_iter_close_container(&iter, &properties);
+		append_iter(&iter, &args);
 		dbus_message_unref(reply);
 	}
 
@@ -663,7 +534,8 @@ static void remove_player(DBusConnection *conn, const char *sender)
 static gboolean properties_changed(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	DBusMessageIter iter;
+	DBusMessage *signal;
+	DBusMessageIter iter, args;
 	const char *iface;
 	char *path, *owner;
 
@@ -675,16 +547,28 @@ static gboolean properties_changed(DBusConnection *conn,
 	if (owner == NULL)
 		goto done;
 
+	signal = dbus_message_new_signal(path, DBUS_INTERFACE_PROPERTIES,
+							"PropertiesChanged");
+	if (signal == NULL) {
+		fprintf(stderr, "Unable to allocate new %s.PropertisChanged"
+					" signal", DBUS_INTERFACE_PROPERTIES);
+		goto done;
+	}
+
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	dbus_message_iter_get_basic(&iter, &iface);
 
-	printf("PropertiesChanged interface %s\n", iface);
+	dbus_message_iter_init_append(signal, &args);
+	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
 
 	dbus_message_iter_next(&iter);
 
-	parse_properties(conn, path, &iter, NULL);
+	append_iter(&args, &iter);
+
+	dbus_connection_send(sys, signal, NULL);
+	dbus_message_unref(signal);
 
 done:
 	g_free(path);
