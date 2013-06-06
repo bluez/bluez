@@ -667,7 +667,12 @@ struct obex_transfer *manager_register_transfer(struct obex_session *os)
 
 void manager_unregister_transfer(struct obex_transfer *transfer)
 {
-	struct obex_session *os = transfer->session;
+	struct obex_session *os;
+
+	if (transfer == NULL)
+		return;
+
+	os = transfer->session;
 
 	if (transfer->status == TRANSFER_STATUS_ACTIVE)
 		emit_transfer_completed(transfer, os->offset == os->size);
@@ -860,8 +865,17 @@ void manager_emit_transfer_progress(struct obex_transfer *transfer)
 
 void manager_emit_transfer_completed(struct obex_transfer *transfer)
 {
-	if (transfer->session->object)
-		emit_transfer_completed(transfer, !transfer->session->aborted);
+	struct obex_session *session;
+
+	if (transfer == NULL)
+		return;
+
+	session = transfer->session;
+
+	if (session == NULL || session->object == NULL)
+		return;
+
+	emit_transfer_completed(transfer, !session->aborted);
 }
 
 DBusConnection *manager_dbus_get_connection(void)
