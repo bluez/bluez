@@ -976,13 +976,43 @@ err:
 	return AVC_CTYPE_REJECTED;
 }
 
+static uint32_t str_to_metadata(const char *str)
+{
+	if (strcasecmp(str, "Title") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_TITLE;
+	else if (strcasecmp(str, "Artist") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_ARTIST;
+	else if (strcasecmp(str, "Album") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_ALBUM;
+	else if (strcasecmp(str, "Genre") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_GENRE;
+	else if (strcasecmp(str, "TrackNumber") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_TRACK;
+	else if (strcasecmp(str, "NumberOfTracks") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_N_TRACKS;
+	else if (strcasecmp(str, "Duration") == 0)
+		return AVRCP_MEDIA_ATTRIBUTE_DURATION;
+
+	return 0;
+}
+
 static GList *player_list_metadata(struct avrcp_player *player)
 {
-	if (player != NULL)
-		return player->cb->list_metadata(player->user_data);
+	GList *l, *attrs = NULL;
 
-	return g_list_prepend(NULL,
+	if (player == NULL)
+		return g_list_prepend(NULL,
 				GUINT_TO_POINTER(AVRCP_MEDIA_ATTRIBUTE_TITLE));
+
+	l = player->cb->list_metadata(player->user_data);
+	for (; l; l = l->next) {
+		const char *key = l->data;
+
+		attrs = g_list_append(attrs,
+					GUINT_TO_POINTER(str_to_metadata(key)));
+	}
+
+	return attrs;
 }
 
 static uint8_t avrcp_handle_get_element_attributes(struct avrcp *session,
