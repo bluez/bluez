@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <inttypes.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 
 #include <glib.h>
@@ -131,6 +132,18 @@ static DBusMessage *profile_new_connection(DBusConnection *conn,
 		return invalid_args(msg);
 
 	dbus_message_iter_get_basic(&args, &fd);
+
+	if (fd < 0) {
+		error("bluetooth: NewConnection invalid fd");
+		return invalid_args(msg);
+	}
+
+	/* Read fd flags to make sure it can be used */
+	if (fcntl(fd, F_GETFD) < 0) {
+		error("bluetooth: fcntl(%d, F_GETFD): %s (%d)", fd,
+						strerror(errno), errno);
+		return invalid_args(msg);
+	}
 
 	io = g_io_channel_unix_new(fd);
 	if (io == NULL)
