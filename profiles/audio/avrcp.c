@@ -2237,7 +2237,7 @@ static void avrcp_set_player_value(struct avrcp *session, uint8_t attr,
 
 	length = AVRCP_HEADER_LENGTH + ntohs(pdu->params_len);
 
-	avctp_send_vendordep_req(session->conn, AVC_CTYPE_NOTIFY,
+	avctp_send_vendordep_req(session->conn, AVC_CTYPE_CONTROL,
 					AVC_SUBUNIT_PANEL, buf, length,
 					avrcp_player_value_rsp, session);
 }
