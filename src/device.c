@@ -1082,7 +1082,7 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		device->connect = NULL;
 	}
 
-	if (msg)
+	if (device->connected && msg)
 		device->disconnects = g_slist_append(device->disconnects,
 						dbus_message_ref(msg));
 
@@ -1110,17 +1110,19 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 		g_free(data);
 	}
 
+	if (!device->connected) {
+		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
+		return;
+	}
+
 	device->disconn_timer = g_timeout_add_seconds(DISCONNECT_TIMER,
 						do_disconnect, device);
 }
 
-static DBusMessage *disconnect(DBusConnection *conn, DBusMessage *msg,
+static DBusMessage *dev_disconnect(DBusConnection *conn, DBusMessage *msg,
 							void *user_data)
 {
 	struct btd_device *device = user_data;
-
-	if (!device->connected)
-		return btd_error_not_connected(msg);
 
 	/*
 	 * Disable connections through passive scanning until
@@ -1723,7 +1725,7 @@ static DBusMessage *cancel_pairing(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable device_methods[] = {
-	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, disconnect) },
+	{ GDBUS_ASYNC_METHOD("Disconnect", NULL, NULL, dev_disconnect) },
 	{ GDBUS_ASYNC_METHOD("Connect", NULL, NULL, dev_connect) },
 	{ GDBUS_ASYNC_METHOD("ConnectProfile", GDBUS_ARGS({ "UUID", "s" }),
 						NULL, connect_profile) },
@@ -4507,6 +4509,10 @@ static void service_state_changed(struct btd_service *service,
 	struct btd_profile *profile = btd_service_get_profile(service);
 	struct btd_device *device = btd_service_get_device(service);
 	int err = btd_service_get_error(service);
+
+	if (new_state == BTD_SERVICE_STATE_CONNECTING ||
+				new_state == BTD_SERVICE_STATE_DISCONNECTING)
+		return;
 
 	if (old_state == BTD_SERVICE_STATE_CONNECTING)
 		device_profile_connected(device, profile, err);
