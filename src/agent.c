@@ -158,6 +158,11 @@ static void set_default_agent(struct agent *agent)
 	if (default_agent == agent)
 		return;
 
+	if (agent)
+		DBG("Default agent set to %s %s", agent->owner, agent->path);
+	else
+		DBG("Default agent cleared");
+
 	default_agent = agent;
 
 	adapter_foreach(set_io_cap, agent);
