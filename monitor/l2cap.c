@@ -1563,6 +1563,27 @@ static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
 	print_field("%s: %s (0x%4.4x)", "Attribute type", str, type);
 
 	switch (type) {
+	case 0x2800:	/* Primary Service */
+	case 0x2801:	/* Secondary Service */
+		print_uuid("  UUID", data, len);
+		break;
+	case 0x2802:	/* Include */
+		if (len < 4) {
+			print_hex_field("  Value", data, len);
+			break;
+		}
+		print_handle_range("  Handle range", data);
+		print_uuid("  UUID", data + 4, len - 4);
+		break;
+	case 0x2803:	/* Characteristic */
+		if (len < 3) {
+			print_hex_field("  Value", data, len);
+			break;
+		}
+		print_field("  Properties: 0x%2.2x", *((uint8_t *) data));
+		print_field("  Handle: 0x%2.2x", bt_get_le16(data + 1));
+		print_uuid("  UUID", data + 3, len - 3);
+		break;
 	default:
 		print_hex_field("Value", data, len);
 		break;
