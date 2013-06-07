@@ -3725,6 +3725,13 @@ static void le_ltk_req_reply(const void *data, uint8_t size)
 
 }
 
+static void le_ltk_req_neg_reply(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_ltk_req_neg_reply *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
 static void le_read_supported_states_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_supported_states *rsp = data;
@@ -4232,7 +4239,8 @@ static const struct opcode_data opcode_table[] = {
 				le_start_encrypt, 28, true },
 	{ 0x201a, 225, "LE Long Term Key Request Reply",
 				le_ltk_req_reply, 18, true },
-	{ 0x201b, 226, "LE Long Term Key Request Neg Reply" },
+	{ 0x201b, 226, "LE Long Term Key Request Neg Reply",
+				le_ltk_req_neg_reply, 2, true },
 	{ 0x201c, 227, "LE Read Supported States",
 				null_cmd, 0, true,
 				le_read_supported_states_rsp, 9, true },
