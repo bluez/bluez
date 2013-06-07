@@ -861,6 +861,69 @@ done:
 	rl_printf("Attempting to list items\n");
 }
 
+static void search_setup(DBusMessageIter *iter, void *user_data)
+{
+	char *string = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, string);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void search_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to search: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Search successful\n");
+}
+
+static void cmd_search(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	char *string;
+
+	if (argc < 2) {
+		rl_printf("Missing string argument\n");
+		return;
+	}
+
+	if (check_default_player() == FALSE)
+		return;
+
+	proxy = find_folder(g_dbus_proxy_get_path(default_player));
+	if (proxy == NULL) {
+		rl_printf("Operation not supported\n");
+		return;
+	}
+
+	string = g_strdup(argv[1]);
+
+	if (g_dbus_proxy_method_call(proxy, "Search", search_setup,
+				search_reply, string, g_free) == FALSE) {
+		rl_printf("Failed to search\n");
+		g_free(string);
+		return;
+	}
+
+	rl_printf("Attempting to search\n");
+}
+
 static void add_to_nowplaying_reply(DBusMessage *message, void *user_data)
 {
 	DBusError error;
@@ -930,6 +993,8 @@ static const struct {
 						"Change current folder" },
 	{ "list-items", "[start] [end]",  cmd_list_items,
 					"List items of current folder" },
+	{ "search",     "string",     cmd_search,
+					"Search items containing string" },
 	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
