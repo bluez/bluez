@@ -974,9 +974,17 @@ struct bt_hci_cmd_le_ltk_req_reply {
 	uint16_t handle;
 	uint8_t  ltk[16];
 } __attribute__ ((packed));
+struct bt_hci_cmd_le_ltk_req_reply_rsp {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_LTK_REQ_NEG_REPLY		0x201b
 struct bt_hci_cmd_le_ltk_req_neg_reply {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_cmd_le_ltk_req_neg_reply_rsp {
+	uint8_t  status;
 	uint16_t handle;
 } __attribute__ ((packed));
 
