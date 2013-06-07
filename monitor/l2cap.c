@@ -1722,7 +1722,7 @@ static void att_find_by_type_val_rsp(const struct l2cap_frame *frame)
 static void att_read_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
-	print_uuid("Attribute group type", frame->data + 4, frame->size - 4);
+	print_uuid("Attribute type", frame->data + 4, frame->size - 4);
 }
 
 static void att_read_type_rsp(const struct l2cap_frame *frame)
