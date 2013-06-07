@@ -1645,6 +1645,59 @@ static void att_find_info_req(const struct l2cap_frame *frame)
 	print_handle_range("Handle range", frame->data);
 }
 
+static const char *att_format_str(uint8_t format)
+{
+	switch (format) {
+	case 0x01:
+		return "UUID-16";
+	case 0x02:
+		return "UUID-128";
+	default:
+		return "unknown";
+	}
+}
+
+static uint16_t print_info_data_16(const uint16_t *data, uint16_t len)
+{
+	while (len >= 4) {
+		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_uuid("UUID", data + 2, 2);
+		data += 4;
+		len -= 4;
+	}
+
+	return len;
+}
+
+static uint16_t print_info_data_128(const uint16_t *data, uint16_t len)
+{
+	while (len >= 18) {
+		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_uuid("UUID", data + 2, 16);
+		data += 18;
+		len -= 18;
+	}
+
+	return len;
+}
+
+static void att_find_info_rsp(const struct l2cap_frame *frame)
+{
+	const uint8_t *format = frame->data;
+	uint16_t len;
+
+	print_field("Format: %s (0x%2.2x)", att_format_str(*format), *format);
+
+	if (*format == 0x01)
+		len = print_info_data_16(frame->data + 1, frame->size - 1);
+	else if (*format == 0x02)
+		len = print_info_data_128(frame->data + 1, frame->size - 1);
+	else
+		len = frame->size - 1;
+
+	packet_hexdump(frame->data + (frame->size - len), len);
+}
+
 static void att_read_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -1724,7 +1777,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_exchange_mtu_rsp, 2, true },
 	{ 0x04, "Find Information Request",
 			att_find_info_req, 4, true },
-	{ 0x05, "Find Information Response"	},
+	{ 0x05, "Find Information Response",
+			att_find_info_rsp, 5, false },
 	{ 0x06, "Find By Type Value Request"	},
 	{ 0x07, "Find By Type Value Response"	},
 	{ 0x08, "Read By Type Request",
