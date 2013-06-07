@@ -1698,6 +1698,13 @@ static void att_find_info_rsp(const struct l2cap_frame *frame)
 	packet_hexdump(frame->data + (frame->size - len), len);
 }
 
+static void att_find_by_type_val_req(const struct l2cap_frame *frame)
+{
+	print_handle_range("Handle range", frame->data);
+	print_uuid("Attribute type", frame->data + 4, 2);
+	print_hex_field("Value", frame->data + 6, frame->size - 6);
+}
+
 static void att_read_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -1806,7 +1813,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_find_info_req, 4, true },
 	{ 0x05, "Find Information Response",
 			att_find_info_rsp, 5, false },
-	{ 0x06, "Find By Type Value Request"	},
+	{ 0x06, "Find By Type Value Request",
+			att_find_by_type_val_req, 6, false },
 	{ 0x07, "Find By Type Value Response"	},
 	{ 0x08, "Read By Type Request",
 			att_read_type_req, 6, false },
