@@ -1725,6 +1725,12 @@ static void att_read_rsp(const struct l2cap_frame *frame)
 	print_hex_field("Value", frame->data, frame->size);
 }
 
+static void att_read_blob_req(const struct l2cap_frame *frame)
+{
+	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
+	print_field("Offset: 0x%4.4x", bt_get_le16(frame->data + 2));
+}
+
 static void att_read_group_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -1799,7 +1805,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_read_req, 2, true },
 	{ 0x0b, "Read Response",
 			att_read_rsp, 0, false },
-	{ 0x0c, "Read Blob Request"		},
+	{ 0x0c, "Read Blob Request",
+			att_read_blob_req, 4, true },
 	{ 0x0d, "Read Blob Response"		},
 	{ 0x0e, "Read Multiple Request"		},
 	{ 0x0f, "Read Multiple Response"	},
