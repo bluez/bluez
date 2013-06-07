@@ -1740,6 +1740,12 @@ static void att_read_group_type_rsp(const struct l2cap_frame *frame)
 					frame->data + 1, frame->size - 1);
 }
 
+static void att_write_req(const struct l2cap_frame *frame)
+{
+	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
+	print_hex_field("  Data", frame->data + 2, frame->size - 2);
+}
+
 static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
@@ -1797,7 +1803,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_read_group_type_req, 6, false },
 	{ 0x11, "Read By Group Type Response",
 			att_read_group_type_rsp, 4, false },
-	{ 0x12, "Write Request"			},
+	{ 0x12, "Write Request"	,
+			att_write_req, 2, false	},
 	{ 0x13, "Write Response"		},
 	{ 0x16, "Prepare Write Request"		},
 	{ 0x17, "Prepare Write Response"	},
