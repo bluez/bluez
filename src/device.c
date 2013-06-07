@@ -466,6 +466,7 @@ static void attio_cleanup(struct btd_device *device)
 	}
 
 	if (device->attrib) {
+		g_attrib_cancel_all(device->attrib);
 		g_attrib_unref(device->attrib);
 		device->attrib = NULL;
 	}
