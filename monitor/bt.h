@@ -969,6 +969,12 @@ struct bt_hci_cmd_le_start_encrypt {
 	uint8_t  ltk[16];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_LTK_REQ_REPLY		0x201a
+struct bt_hci_cmd_le_ltk_req_reply {
+	uint16_t handle;
+	uint8_t  ltk[16];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_SUPPORTED_STATES	0x201c
 struct bt_hci_rsp_le_read_supported_states {
 	uint8_t  status;
