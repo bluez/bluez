@@ -1640,6 +1640,11 @@ static void att_exchange_mtu_rsp(const struct l2cap_frame *frame)
 	print_field("Server RX MTU: %d", btohs(pdu->mtu));
 }
 
+static void att_find_info_req(const struct l2cap_frame *frame)
+{
+	print_handle_range("Handle range", frame->data);
+}
+
 static void att_read_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -1717,7 +1722,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_exchange_mtu_req, 2, true },
 	{ 0x03, "Exchange MTU Response",
 			att_exchange_mtu_rsp, 2, true },
-	{ 0x04, "Find Information Request"	},
+	{ 0x04, "Find Information Request",
+			att_find_info_req, 4, true },
 	{ 0x05, "Find Information Response"	},
 	{ 0x06, "Find By Type Value Request"	},
 	{ 0x07, "Find By Type Value Response"	},
