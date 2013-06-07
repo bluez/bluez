@@ -372,7 +372,7 @@ static guint find_included(struct included_discovery *isd, uint16_t start)
 							buf, buflen);
 
 	return g_attrib_send(isd->attrib, 0, buf, oplen, find_included_cb,
-							isd_ref(isd), NULL);
+				isd_ref(isd), (GDestroyNotify) isd_unref);
 }
 
 static void find_included_cb(uint8_t status, const uint8_t *pdu, uint16_t len,
@@ -425,8 +425,6 @@ static void find_included_cb(uint8_t status, const uint8_t *pdu, uint16_t len,
 done:
 	if (isd->err == 0)
 		isd->err = err;
-
-	isd_unref(isd);
 }
 
 unsigned int gatt_find_included(GAttrib *attrib, uint16_t start, uint16_t end,
