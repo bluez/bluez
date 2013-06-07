@@ -3228,7 +3228,6 @@ static void find_included_services(struct browse_req *req, GSList *services)
 	prim = search->current->data;
 	gatt_find_included(device->attrib, prim->range.start, prim->range.end,
 					find_included_cb, search);
-
 }
 
 static void primary_cb(GSList *services, guint8 status, gpointer user_data)
