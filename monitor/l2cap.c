@@ -1556,6 +1556,19 @@ static void print_data_list(const char *label, uint8_t length,
 	packet_hexdump(data, size);
 }
 
+static void print_attribute_info(uint16_t type, const void *data, uint16_t len)
+{
+	const char *str = uuid16_to_str(type);
+
+	print_field("%s: %s (0x%4.4x)", "Attribute type", str, type);
+
+	switch (type) {
+	default:
+		print_hex_field("Value", data, len);
+		break;
+	}
+}
+
 static const char *att_opcode_to_str(uint8_t opcode);
 
 static void att_error_response(const struct l2cap_frame *frame)
@@ -1700,9 +1713,12 @@ static void att_find_info_rsp(const struct l2cap_frame *frame)
 
 static void att_find_by_type_val_req(const struct l2cap_frame *frame)
 {
+	uint16_t type;
+
 	print_handle_range("Handle range", frame->data);
-	print_uuid("Attribute type", frame->data + 4, 2);
-	print_hex_field("Value", frame->data + 6, frame->size - 6);
+
+	type = bt_get_le16(frame->data + 4);
+	print_attribute_info(type, frame->data + 6, frame->size - 6);
 }
 
 static void att_find_by_type_val_rsp(const struct l2cap_frame *frame)
