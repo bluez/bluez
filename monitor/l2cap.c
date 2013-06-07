@@ -1746,6 +1746,10 @@ static void att_write_req(const struct l2cap_frame *frame)
 	print_hex_field("  Data", frame->data + 2, frame->size - 2);
 }
 
+static void att_write_rsp(const struct l2cap_frame *frame)
+{
+}
+
 static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
@@ -1805,7 +1809,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_read_group_type_rsp, 4, false },
 	{ 0x12, "Write Request"	,
 			att_write_req, 2, false	},
-	{ 0x13, "Write Response"		},
+	{ 0x13, "Write Response",
+			att_write_rsp, 0, true	},
 	{ 0x16, "Prepare Write Request"		},
 	{ 0x17, "Prepare Write Response"	},
 	{ 0x18, "Execute Write Request"		},
