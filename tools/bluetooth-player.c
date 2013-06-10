@@ -605,6 +605,30 @@ static GDBusProxy *find_folder(const char *path)
 	return NULL;
 }
 
+static void cmd_show_item(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing item address argument\n");
+		return;
+	}
+
+	proxy = find_item(argv[1]);
+	if (!proxy) {
+		rl_printf("Item %s not available\n", argv[1]);
+		return;
+	}
+
+	rl_printf("Item %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "Name");
+	print_property(proxy, "Type");
+	print_property(proxy, "FolderType");
+	print_property(proxy, "Playable");
+	print_property(proxy, "Metadata");
+}
+
 static void cmd_show(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -996,6 +1020,7 @@ static const struct {
 	{ "search",     "string",     cmd_search,
 					"Search items containing string" },
 	{ "queue",       "<item>",    cmd_queue, "Add item to playlist queue" },
+	{ "show-item",   "<item>",    cmd_show_item, "Show item information" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
