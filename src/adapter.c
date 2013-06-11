@@ -1907,9 +1907,6 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 		goto failed;
 	}
 
-	memset(&cp, 0, sizeof(cp));
-	cp.val = (enable == TRUE) ? 0x01 : 0x00;
-
 	DBG("sending %s command for index %u", mgmt_opstr(opcode),
 							adapter->dev_id);
 
