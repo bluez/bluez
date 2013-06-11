@@ -172,7 +172,6 @@ struct btd_adapter {
 	struct btd_device *connect_le;	/* LE device waiting to be connected */
 	sdp_list_t *services;		/* Services associated to adapter */
 
-	bool toggle_discoverable;	/* discoverable needs to be changed */
 	gboolean initialized;
 
 	GSList *pin_callbacks;
