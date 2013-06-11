@@ -2160,8 +2160,7 @@ static gboolean avrcp_get_item_attributes_rsp(struct avctp *conn,
 	}
 
 	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 4) {
-		if (pdu->params[0] == AVRCP_STATUS_PLAYER_NOT_BROWSABLE)
-			avrcp_get_element_attributes(session);
+		avrcp_get_element_attributes(session);
 		return FALSE;
 	}
 
