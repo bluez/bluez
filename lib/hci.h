@@ -1350,7 +1350,7 @@ typedef struct {
 	uint8_t		status;
 	uint16_t	handle;
 } __attribute__ ((packed)) reset_failed_contact_counter_rp;
-#define RESET_FAILED_CONTACT_COUNTER_RP_SIZE 4
+#define RESET_FAILED_CONTACT_COUNTER_RP_SIZE 3
 
 #define OCF_READ_LINK_QUALITY		0x0003
 typedef struct {
@@ -1764,7 +1764,7 @@ typedef struct {
 	uint16_t	handle;
 	uint8_t		encrypt;
 } __attribute__ ((packed)) evt_encrypt_change;
-#define EVT_ENCRYPT_CHANGE_SIZE 5
+#define EVT_ENCRYPT_CHANGE_SIZE 4
 
 #define EVT_CHANGE_CONN_LINK_KEY_COMPLETE	0x09
 typedef struct {
