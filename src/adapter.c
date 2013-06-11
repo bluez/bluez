@@ -1478,7 +1478,7 @@ static void stop_discovery_complete(uint8_t status, uint16_t length,
 	}
 }
 
-static int compare_discovery_sender(gconstpointer a, gconstpointer b)
+static int compare_sender(gconstpointer a, gconstpointer b)
 {
 	const struct watch_client *client = a;
 	const char *sender = b;
@@ -1617,7 +1617,7 @@ static DBusMessage *start_discovery(DBusConnection *conn,
 	 * already started a discovery then return an error.
 	 */
 	list = g_slist_find_custom(adapter->discovery_list, sender,
-						compare_discovery_sender);
+						compare_sender);
 	if (list)
 		return btd_error_busy(msg);
 
@@ -1657,7 +1657,7 @@ static DBusMessage *stop_discovery(DBusConnection *conn,
 		return btd_error_not_ready(msg);
 
 	list = g_slist_find_custom(adapter->discovery_list, sender,
-						compare_discovery_sender);
+						compare_sender);
 	if (!list)
 		return btd_error_failed(msg, "No discovery started");
 
