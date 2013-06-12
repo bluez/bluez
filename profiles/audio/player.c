@@ -87,6 +87,7 @@ struct media_player {
 	bool			searchable;	/* Player searching feature */
 	struct media_folder	*scope;		/* Player current scope */
 	struct media_folder	*folder;	/* Player current folder */
+	struct media_folder	*search;	/* Player search folder */
 	struct media_folder	*playlist;	/* Player current playlist */
 	char			*path;		/* Player object path */
 	GHashTable		*settings;	/* Player settings */
@@ -654,6 +655,58 @@ done:
 	folder->msg = NULL;
 }
 
+static struct media_item *
+media_player_create_subfolder(struct media_player *mp, const char *name,
+								uint64_t uid)
+{
+	struct media_folder *folder = mp->scope;
+	struct media_item *item;
+	char *path;
+
+	path = g_strdup_printf("%s/%s", folder->item->name, name);
+
+	DBG("%s", path);
+
+	item = media_player_create_item(mp, path, PLAYER_ITEM_TYPE_FOLDER,
+									uid);
+	g_free(path);
+
+	return item;
+}
+
+void media_player_search_complete(struct media_player *mp, int ret)
+{
+	struct media_folder *folder = mp->scope;
+	struct media_folder *search = mp->search;
+	DBusMessage *reply;
+
+	if (folder == NULL || folder->msg == NULL)
+		return;
+
+	if (ret < 0) {
+		reply = btd_error_failed(folder->msg, strerror(-ret));
+		goto done;
+	}
+
+	if (search == NULL) {
+		search = g_new0(struct media_folder, 1);
+		search->item = media_player_create_subfolder(mp, "search", 0);
+		mp->search = search;
+		mp->folders = g_slist_prepend(mp->folders, search);
+	}
+
+	search->number_of_items = ret;
+
+	reply = g_dbus_create_reply(folder->msg,
+				DBUS_TYPE_OBJECT_PATH, &search->item->path,
+				DBUS_TYPE_INVALID);
+
+done:
+	g_dbus_send_message(btd_get_dbus_connection(), reply);
+	dbus_message_unref(folder->msg);
+	folder->msg = NULL;
+}
+
 static const GDBusMethodTable media_player_methods[] = {
 	{ GDBUS_EXPERIMENTAL_METHOD("Play", NULL, NULL, media_player_play) },
 	{ GDBUS_EXPERIMENTAL_METHOD("Pause", NULL, NULL, media_player_pause) },
@@ -707,7 +760,36 @@ static const GDBusPropertyTable media_player_properties[] = {
 static DBusMessage *media_folder_search(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
-	return btd_error_failed(msg, strerror(ENOTSUP));
+	struct media_player *mp = data;
+	struct media_folder *folder = mp->scope;
+	struct player_callback *cb = mp->cb;
+	DBusMessageIter iter;
+	const char *string;
+	int err;
+
+	dbus_message_iter_init(msg, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
+		return btd_error_failed(msg, strerror(EINVAL));
+
+	dbus_message_iter_get_basic(&iter, &string);
+
+	if (!mp->searchable || folder != mp->folder)
+		return btd_error_failed(msg, strerror(ENOTSUP));
+
+	if (folder->msg != NULL)
+		return btd_error_failed(msg, strerror(EINVAL));
+
+	if (cb->cbs->search == NULL)
+		return btd_error_failed(msg, strerror(ENOTSUP));
+
+	err = cb->cbs->search(mp, string, cb->user_data);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
+
+	folder->msg = dbus_message_ref(msg);
+
+	return NULL;
 }
 
 static int parse_filters(struct media_player *player, DBusMessageIter *iter,
@@ -838,8 +920,8 @@ static void media_player_change_scope(struct media_player *mp,
 
 	DBG("%s", folder->item->name);
 
-	/* Skip setting current folder if folder is current playlist */
-	if (folder == mp->playlist)
+	/* Skip setting current folder if folder is current playlist/search */
+	if (folder == mp->playlist || folder == mp->search)
 		goto cleanup;
 
 	mp->folder = folder;
@@ -851,6 +933,13 @@ static void media_player_change_scope(struct media_player *mp,
 cleanup:
 	g_slist_free_full(mp->scope->items, media_item_destroy);
 	mp->scope->items = NULL;
+
+	/* Destroy search folder if it exists and is not being set as scope */
+	if (mp->search != NULL && folder != mp->search) {
+		mp->folders = g_slist_remove(mp->folders, mp->search);
+		media_folder_destroy(mp->search);
+		mp->search = NULL;
+	}
 
 done:
 	mp->scope = folder;
@@ -912,7 +1001,8 @@ static DBusMessage *media_folder_change_folder(DBusConnection *conn,
 	if (mp->scope == folder)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (folder == mp->playlist || folder == mp->folder) {
+	if (folder == mp->playlist || folder == mp->folder ||
+						folder == mp->search) {
 		media_player_change_scope(mp, folder);
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
@@ -984,7 +1074,7 @@ static gboolean get_items(const GDBusPropertyTable *property,
 }
 
 static const GDBusMethodTable media_folder_methods[] = {
-	{ GDBUS_EXPERIMENTAL_METHOD("Search",
+	{ GDBUS_EXPERIMENTAL_ASYNC_METHOD("Search",
 			GDBUS_ARGS({ "string", "s" }, { "filter", "a{sv}" }),
 			GDBUS_ARGS({ "folder", "o" }),
 			media_folder_search) },
@@ -1656,25 +1746,6 @@ struct media_item *media_player_create_item(struct media_player *mp,
 	}
 
 	DBG("%s", item->path);
-
-	return item;
-}
-
-static struct media_item *
-media_player_create_subfolder(struct media_player *mp, const char *name,
-								uint64_t uid)
-{
-	struct media_folder *folder = mp->scope;
-	struct media_item *item;
-	char *path;
-
-	path = g_strdup_printf("%s/%s", folder->item->name, name);
-
-	DBG("%s", path);
-
-	item = media_player_create_item(mp, path, PLAYER_ITEM_TYPE_FOLDER,
-									uid);
-	g_free(path);
 
 	return item;
 }

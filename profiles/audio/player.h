@@ -101,6 +101,7 @@ void media_player_list_complete(struct media_player *mp, GSList *items,
 								int err);
 void media_player_change_folder_complete(struct media_player *player,
 						const char *path, int ret);
+void media_player_search_complete(struct media_player *mp, int ret);
 
 void media_player_set_callbacks(struct media_player *mp,
 				const struct media_player_callback *cbs,

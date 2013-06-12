@@ -2588,6 +2588,8 @@ static int ct_list_items(struct media_player *mp, const char *name,
 
 	if (g_str_has_prefix(name, "/NowPlaying"))
 		player->scope = 0x03;
+	else if (g_str_has_suffix(name, "/search"))
+		player->scope = 0x02;
 	else
 		player->scope = 0x01;
 
@@ -2642,12 +2644,24 @@ static gboolean avrcp_search_rsp(struct avctp *conn, uint8_t *operands,
 	struct avrcp_browsing_header *pdu = (void *) operands;
 	struct avrcp *session = (void *) user_data;
 	struct avrcp_player *player = session->player;
+	struct media_player *mp = player->user_data;
+	int ret;
 
-	if (pdu == NULL || pdu->params[0] != AVRCP_STATUS_SUCCESS ||
-							operand_count < 7)
-		return FALSE;
+	if (pdu == NULL) {
+		ret = -ETIMEDOUT;
+		goto done;
+	}
+
+	if (pdu->params[0] != AVRCP_STATUS_SUCCESS || operand_count < 7) {
+		ret = -EINVAL;
+		goto done;
+	}
 
 	player->uid_counter = bt_get_be16(&pdu->params[1]);
+	ret = bt_get_be32(&pdu->params[3]);
+
+done:
+	media_player_search_complete(mp, ret);
 
 	return FALSE;
 }
