@@ -890,7 +890,7 @@ static void search_setup(DBusMessageIter *iter, void *user_data)
 	char *string = user_data;
 	DBusMessageIter dict;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, string);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &string);
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
