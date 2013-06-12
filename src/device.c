@@ -1164,6 +1164,9 @@ static void device_profile_connected(struct btd_device *dev,
 	if (dev->pending == NULL)
 		return;
 
+	if (!dev->connected && err == -EHOSTDOWN)
+		goto done;
+
 	pending = dev->pending->data;
 	l = find_service_with_profile(dev->pending, profile);
 	if (l != NULL)
@@ -1179,6 +1182,7 @@ static void device_profile_connected(struct btd_device *dev,
 	if (connect_next(dev) == 0)
 		return;
 
+done:
 	if (!dev->connect)
 		return;
 
