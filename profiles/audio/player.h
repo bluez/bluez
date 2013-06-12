@@ -58,6 +58,8 @@ struct media_player_callback {
 				uint32_t start, uint32_t end, void *user_data);
 	int (*change_folder) (struct media_player *mp, const char *path,
 						uint64_t uid, void *user_data);
+	int (*search) (struct media_player *mp, const char *string,
+						void *user_data);
 	int (*play_item) (struct media_player *mp, const char *name,
 					uint64_t uid, void *user_data);
 	int (*add_to_nowplaying) (struct media_player *mp, const char *name,

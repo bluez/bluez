@@ -106,6 +106,7 @@
 #define AVRCP_CHANGE_PATH		0x72
 #define AVRCP_GET_ITEM_ATTRIBUTES	0x73
 #define AVRCP_PLAY_ITEM			0x74
+#define AVRCP_SEARCH			0x80
 #define AVRCP_ADD_TO_NOW_PLAYING	0x90
 #define AVRCP_GENERAL_REJECT		0xA0
 
@@ -128,6 +129,8 @@
 #define AVRCP_BATTERY_STATUS_CRITICAL		2
 #define AVRCP_BATTERY_STATUS_EXTERNAL		3
 #define AVRCP_BATTERY_STATUS_FULL_CHARGE	4
+
+#define AVRCP_CHARSET_UTF8		106
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 
@@ -788,7 +791,8 @@ static GList *player_fill_media_attribute(struct avrcp_player *player,
 
 			hdr = (void *) &buf[*pos];
 			hdr->id = htonl(attr);
-			hdr->charset = htons(0x6A); /* Always use UTF-8 */
+			/* Always use UTF-8 */
+			hdr->charset = htons(AVRCP_CHARSET_UTF8);
 			*pos += sizeof(*hdr);
 		}
 
@@ -2632,6 +2636,56 @@ static int ct_change_folder(struct media_player *mp, const char *path,
 	return 0;
 }
 
+static gboolean avrcp_search_rsp(struct avctp *conn, uint8_t *operands,
+					size_t operand_count, void *user_data)
+{
+	struct avrcp_browsing_header *pdu = (void *) operands;
+	struct avrcp *session = (void *) user_data;
+	struct avrcp_player *player = session->player;
+
+	if (pdu == NULL || pdu->params[0] != AVRCP_STATUS_SUCCESS ||
+							operand_count < 7)
+		return FALSE;
+
+	player->uid_counter = bt_get_be16(&pdu->params[1]);
+
+	return FALSE;
+}
+
+static void avrcp_search(struct avrcp *session, const char *string)
+{
+	uint8_t buf[AVRCP_BROWSING_HEADER_LENGTH + 255];
+	struct avrcp_browsing_header *pdu = (void *) buf;
+	uint16_t len, stringlen;
+
+	memset(buf, 0, sizeof(buf));
+	len = AVRCP_BROWSING_HEADER_LENGTH + 4;
+	stringlen = strnlen(string, sizeof(buf) - len);
+	len += stringlen;
+
+	bt_put_be16(AVRCP_CHARSET_UTF8, &pdu->params[0]);
+	bt_put_be16(stringlen, &pdu->params[2]);
+	memcpy(&pdu->params[4], string, stringlen);
+	pdu->pdu_id = AVRCP_SEARCH;
+	pdu->param_len = htons(len - AVRCP_BROWSING_HEADER_LENGTH);
+
+	avctp_send_browsing_req(session->conn, buf, len, avrcp_search_rsp,
+								session);
+}
+
+static int ct_search(struct media_player *mp, const char *string,
+							void *user_data)
+{
+	struct avrcp_player *player = user_data;
+	struct avrcp *session;
+
+	session = player->sessions->data;
+
+	avrcp_search(session, string);
+
+	return 0;
+}
+
 static void avrcp_play_item(struct avrcp *session, uint64_t uid)
 {
 	uint8_t buf[AVRCP_HEADER_LENGTH + 11];
@@ -2735,6 +2789,7 @@ static const struct media_player_callback ct_cbs = {
 	.rewind		= ct_rewind,
 	.list_items	= ct_list_items,
 	.change_folder	= ct_change_folder,
+	.search		= ct_search,
 	.play_item	= ct_play_item,
 	.add_to_nowplaying = ct_add_to_nowplaying,
 };
