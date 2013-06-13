@@ -228,7 +228,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[6]  |= 0x01;	/* Set Event Filter */
 	btdev->commands[6]  |= 0x20;	/* Read Stored Link Key */
 	btdev->commands[6]  |= 0x40;	/* Write Stored Link Key */
-	btdev->commands[6]  |= 0x80;	/* Write Stored Link Key */
+	btdev->commands[6]  |= 0x80;	/* Delete Stored Link Key */
 	btdev->commands[7]  |= 0x01;	/* Write Local Name */
 	btdev->commands[7]  |= 0x02;	/* Read Local Name */
 	btdev->commands[7]  |= 0x04;	/* Read Connection Accept Timeout */
