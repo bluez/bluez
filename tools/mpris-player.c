@@ -182,45 +182,56 @@ static void dict_append_array(DBusMessageIter *dict, const char *key, int type,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_basic(DBusMessageIter *base, DBusMessageIter *iter,
+								int type)
+{
+	const void *value;
+
+	dbus_message_iter_get_basic(iter, &value);
+	dbus_message_iter_append_basic(base, type, &value);
+}
+
+static void append_iter(DBusMessageIter *base, DBusMessageIter *iter);
+static void append_container(DBusMessageIter *base, DBusMessageIter *iter,
+								int type)
+{
+	DBusMessageIter iter_sub, base_sub;
+	char *sig;
+
+	dbus_message_iter_recurse(iter, &iter_sub);
+
+	switch (type) {
+	case DBUS_TYPE_ARRAY:
+	case DBUS_TYPE_VARIANT:
+		sig = dbus_message_iter_get_signature(&iter_sub);
+		break;
+	default:
+		sig = NULL;
+		break;
+	}
+
+	dbus_message_iter_open_container(base, type, sig, &base_sub);
+
+	if (sig != NULL)
+		dbus_free(sig);
+
+	append_iter(&base_sub, &iter_sub);
+
+	dbus_message_iter_close_container(base, &base_sub);
+}
+
 static void append_iter(DBusMessageIter *base, DBusMessageIter *iter)
 {
 	int type;
 
-	type = dbus_message_iter_get_arg_type(iter);
-
-	if (dbus_type_is_basic(type)) {
-		const void *value;
-
-		dbus_message_iter_get_basic(iter, &value);
-		dbus_message_iter_append_basic(base, type, &value);
-	} else if (dbus_type_is_container(type)) {
-		DBusMessageIter iter_sub, base_sub;
-		char *sig;
-
-		dbus_message_iter_recurse(iter, &iter_sub);
-
-		switch (type) {
-		case DBUS_TYPE_ARRAY:
-		case DBUS_TYPE_VARIANT:
-			sig = dbus_message_iter_get_signature(&iter_sub);
-			break;
-		default:
-			sig = NULL;
-			break;
-		}
-
-		dbus_message_iter_open_container(base, type, sig, &base_sub);
-
-		if (sig != NULL)
-			dbus_free(sig);
-
-		while (dbus_message_iter_get_arg_type(&iter_sub) !=
+	while ((type = dbus_message_iter_get_arg_type(iter)) !=
 							DBUS_TYPE_INVALID) {
-			append_iter(&base_sub, &iter_sub);
-			dbus_message_iter_next(&iter_sub);
-		}
+		if (dbus_type_is_basic(type))
+			append_basic(base, iter, type);
+		else if (dbus_type_is_container(type))
+			append_container(base, iter, type);
 
-		dbus_message_iter_close_container(base, &base_sub);
+		dbus_message_iter_next(iter);
 	}
 }
 
@@ -536,7 +547,6 @@ static gboolean properties_changed(DBusConnection *conn,
 {
 	DBusMessage *signal;
 	DBusMessageIter iter, args;
-	const char *iface;
 	char *path, *owner;
 
 	dbus_message_iter_init(msg, &iter);
@@ -558,12 +568,7 @@ static gboolean properties_changed(DBusConnection *conn,
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_STRING)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	dbus_message_iter_get_basic(&iter, &iface);
-
 	dbus_message_iter_init_append(signal, &args);
-	dbus_message_iter_append_basic(&args, DBUS_TYPE_STRING, &iface);
-
-	dbus_message_iter_next(&iter);
 
 	append_iter(&args, &iter);
 
