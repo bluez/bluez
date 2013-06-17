@@ -361,7 +361,7 @@ static void copy_reply(DBusPendingCall *call, void *user_data)
 		return;
 	}
 
-	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_init_append(copy, &iter);
 
 	if (!dbus_message_iter_init(reply, &args))
 		goto done;
@@ -392,7 +392,7 @@ static DBusHandlerResult player_message(DBusConnection *conn,
 	if (copy == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	dbus_message_iter_init_append(msg, &iter);
+	dbus_message_iter_init_append(copy, &iter);
 	append_iter(&iter, &args);
 
 	if (!dbus_connection_send_with_reply(session, copy, &call, -1))
