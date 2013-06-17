@@ -83,14 +83,15 @@ static void reset_request(struct mns_session *mns)
 		g_obex_apparam_free(mns->inparams);
 		mns->inparams = NULL;
 	}
-
-	if (mns->remote_address)
-		g_free(mns->remote_address);
 }
 
 static void mns_session_free(struct mns_session *mns)
 {
 	reset_request(mns);
+
+	if (mns->remote_address)
+		g_free(mns->remote_address);
+
 	g_free(mns);
 }
 
