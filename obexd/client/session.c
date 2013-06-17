@@ -967,7 +967,7 @@ static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
 
 	p->req_id = g_obex_setpath(obex, next, setpath_cb, p, &err);
 	if (err != NULL) {
-		setpath_complete(p->session, NULL, err, data);
+		setpath_complete(p->session, NULL, err, user_data);
 		g_error_free(err);
 	}
 }
