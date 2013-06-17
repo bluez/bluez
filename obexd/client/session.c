@@ -1100,7 +1100,7 @@ guint obc_session_mkdir(struct obc_session *session, const char *folder,
 	data->user_data = user_data;
 
 	p = pending_request_new(session, session_process_mkdir, NULL,
-						func, data, file_data_free);
+					file_op_complete, data, file_data_free);
 	session_queue(p);
 	return p->id;
 }
