@@ -892,6 +892,11 @@ const char *obc_session_get_owner(struct obc_session *session)
 	return session->owner;
 }
 
+const char *obc_session_get_destination(struct obc_session *session)
+{
+	return session->destination;
+}
+
 const char *obc_session_get_path(struct obc_session *session)
 {
 	return session->path;

@@ -48,6 +48,7 @@ int obc_session_set_owner(struct obc_session *session, const char *name,
 			GDBusWatchFunction func);
 const char *obc_session_get_owner(struct obc_session *session);
 
+const char *obc_session_get_destination(struct obc_session *session);
 const char *obc_session_get_path(struct obc_session *session);
 const char *obc_session_get_target(struct obc_session *session);
 
