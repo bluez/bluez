@@ -907,10 +907,9 @@ static void setpath_complete(struct obc_session *session,
 						GError *err, void *user_data)
 {
 	struct pending_request *p = user_data;
-	struct setpath_data *data = p->data;
 
-	if (data->func)
-		data->func(session, NULL, err, data->user_data);
+	if (p->func)
+		p->func(session, NULL, err, p->data);
 
 	if (session->p == p)
 		session->p = NULL;
@@ -918,6 +917,16 @@ static void setpath_complete(struct obc_session *session,
 	pending_request_free(p);
 
 	session_process_queue(session);
+}
+
+static void setpath_op_complete(struct obc_session *session,
+						struct obc_transfer *transfer,
+						GError *err, void *user_data)
+{
+	struct setpath_data *data = user_data;
+
+	if (data->func)
+		data->func(session, NULL, err, data->user_data);
 }
 
 static void setpath_cb(GObex *obex, GError *err, GObexPacket *rsp,
@@ -1005,7 +1014,7 @@ guint obc_session_setpath(struct obc_session *session, const char *path,
 	data->remaining = g_strsplit(strlen(path) ? path : "/", "/", 0);
 
 	p = pending_request_new(session, session_process_setpath, NULL,
-				setpath_complete, data, setpath_data_free);
+				setpath_op_complete, data, setpath_data_free);
 	session_queue(p);
 	return p->id;
 }
