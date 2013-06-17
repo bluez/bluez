@@ -281,6 +281,8 @@ static int event_report_close(void *obj)
 	GMarkupParseContext *ctxt;
 	struct map_event *event;
 
+	DBG("");
+
 	event = g_new0(struct map_event, 1);
 	ctxt = g_markup_parse_context_new(&event_report_parser, 0, event,
 									NULL);
@@ -288,13 +290,7 @@ static int event_report_close(void *obj)
 									NULL);
 	g_markup_parse_context_free(ctxt);
 
-	DBG("Event report for %s:%d", mns->remote_address,
-							mns->mas_instance_id);
-
-	DBG("type=%x, handle=%s, folder=%s, old_folder=%s, msg_type=%s",
-				event->type, event->handle, event->folder,
-					event->old_folder, event->msg_type);
-
+	map_dispatch_event(mns->mas_instance_id, mns->remote_address, event);
 	map_event_free(event);
 
 	reset_request(mns);
