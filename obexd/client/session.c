@@ -1057,8 +1057,7 @@ static void file_op_complete(struct obc_session *session,
 						struct obc_transfer *transfer,
 						GError *err, void *user_data)
 {
-	struct pending_request *p = user_data;
-	struct file_data *data = p->data;
+	struct file_data *data = user_data;
 
 	if (data->func)
 		data->func(session, NULL, err, data->user_data);
