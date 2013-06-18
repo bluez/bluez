@@ -1470,7 +1470,6 @@ static gboolean set_property(struct media_player *mp, const char *key,
 							const char *value)
 {
 	const char *curval;
-	GList *settings;
 
 	curval = g_hash_table_lookup(mp->settings, key);
 	if (g_strcmp0(curval, value) == 0)
@@ -1480,11 +1479,7 @@ static gboolean set_property(struct media_player *mp, const char *key,
 
 	g_hash_table_replace(mp->settings, g_strdup(key), g_strdup(value));
 
-	settings = list_settings(mp);
-
-	avrcp_player_event(mp->player, AVRCP_EVENT_SETTINGS_CHANGED, settings);
-
-	g_list_free(settings);
+	avrcp_player_event(mp->player, AVRCP_EVENT_SETTINGS_CHANGED, key);
 
 	return TRUE;
 }

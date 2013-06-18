@@ -612,13 +612,15 @@ static int play_status_to_val(const char *status)
 	return -EINVAL;
 }
 
-void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
+void avrcp_player_event(struct avrcp_player *player, uint8_t id,
+							const void *data)
 {
 	uint8_t buf[AVRCP_HEADER_LENGTH + 9];
 	struct avrcp_header *pdu = (void *) buf;
 	uint16_t size;
 	GSList *l;
-	GList *settings;
+	int attr;
+	int val;
 
 	if (player->sessions == NULL)
 		return;
@@ -649,24 +651,18 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data)
 		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
 		size = 2;
-		settings = data;
-		pdu->params[1] = g_list_length(settings);
-		for (; settings; settings = settings->next) {
-			const char *key = settings->data;
-			int attr;
-			int val;
+		pdu->params[1] = 1;
 
-			attr = attr_to_val(key);
-			if (attr < 0)
-				continue;
+		attr = attr_to_val(data);
+		if (attr < 0)
+			return;
 
-			val = player_get_setting(player, attr);
-			if (val < 0)
-				continue;
+		val = player_get_setting(player, attr);
+		if (val < 0)
+			return;
 
-			pdu->params[++size] = attr;
-			pdu->params[++size] = val;
-		}
+		pdu->params[++size] = attr;
+		pdu->params[++size] = val;
 		break;
 	default:
 		error("Unknown event %u", id);

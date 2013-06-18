@@ -115,7 +115,8 @@ struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 						GDestroyNotify destroy);
 void avrcp_unregister_player(struct avrcp_player *player);
 
-void avrcp_player_event(struct avrcp_player *player, uint8_t id, void *data);
+void avrcp_player_event(struct avrcp_player *player, uint8_t id,
+							const void *data);
 
 
 size_t avrcp_handle_vendor_reject(uint8_t *code, uint8_t *operands);
