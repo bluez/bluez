@@ -1007,12 +1007,54 @@ static const char *get_setting(const char *key, void *user_data)
 	return g_hash_table_lookup(mp->settings, key);
 }
 
+static void set_shuffle_setting(DBusMessageIter *iter, const char *value)
+{
+	const char *key = "Shuffle";
+	dbus_bool_t val;
+	DBusMessageIter var;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+						DBUS_TYPE_BOOLEAN_AS_STRING,
+						&var);
+	val = strcasecmp(value, "off") != 0;
+	dbus_message_iter_append_basic(&var, DBUS_TYPE_BOOLEAN, &val);
+	dbus_message_iter_close_container(iter, &var);
+}
+
+static const char *repeat_to_loop_status(const char *value)
+{
+	if (strcasecmp(value, "off") == 0)
+		return "None";
+	else if (strcasecmp(value, "singletrack") == 0)
+		return "Track";
+	else if (strcasecmp(value, "alltracks") == 0)
+		return "Playlist";
+
+	return NULL;
+}
+
+static void set_repeat_setting(DBusMessageIter *iter, const char *value)
+{
+	const char *key = "LoopStatus";
+	const char *val;
+	DBusMessageIter var;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+						DBUS_TYPE_STRING_AS_STRING,
+						&var);
+	val = repeat_to_loop_status(value);
+	dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &val);
+	dbus_message_iter_close_container(iter, &var);
+}
+
 static int set_setting(const char *key, const char *value, void *user_data)
 {
 	struct media_player *mp = user_data;
 	const char *iface = MEDIA_PLAYER_INTERFACE;
 	DBusMessage *msg;
-	DBusMessageIter iter, var;
+	DBusMessageIter iter;
 
 	DBG("%s = %s", key, value);
 
@@ -1028,13 +1070,11 @@ static int set_setting(const char *key, const char *value, void *user_data)
 
 	dbus_message_iter_init_append(msg, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &iface);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &key);
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-						DBUS_TYPE_STRING_AS_STRING,
-						&var);
-	dbus_message_iter_append_basic(&var, DBUS_TYPE_STRING, &value);
-	dbus_message_iter_close_container(&iter, &var);
+	if (strcasecmp(key, "Shuffle") == 0)
+		set_shuffle_setting(&iter, value);
+	else if (strcasecmp(key, "Repeat") == 0)
+		set_repeat_setting(&iter, value);
 
 	g_dbus_send_message(btd_get_dbus_connection(), msg);
 

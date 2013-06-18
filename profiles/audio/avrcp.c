@@ -661,8 +661,8 @@ void avrcp_player_event(struct avrcp_player *player, uint8_t id,
 		if (val < 0)
 			return;
 
-		pdu->params[++size] = attr;
-		pdu->params[++size] = val;
+		pdu->params[size++] = attr;
+		pdu->params[size++] = val;
 		break;
 	default:
 		error("Unknown event %u", id);
