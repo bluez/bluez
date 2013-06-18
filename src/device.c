@@ -2677,6 +2677,40 @@ static int rec_cmp(const void *a, const void *b)
 	return r1->handle - r2->handle;
 }
 
+static int update_record(struct browse_req *req, const char *uuid,
+							sdp_record_t *rec)
+{
+	GSList *l;
+
+	/* Check for duplicates */
+	if (sdp_list_find(req->records, rec, rec_cmp))
+		return -EALREADY;
+
+	/* Copy record */
+	req->records = sdp_list_append(req->records, sdp_copy_record(rec));
+
+	/* Check if UUID is duplicated */
+	l = g_slist_find_custom(req->device->uuids, uuid, bt_uuid_strcmp);
+	if (l == NULL) {
+		l = g_slist_find_custom(req->profiles_added, uuid,
+							bt_uuid_strcmp);
+		if (l == NULL)
+			return 0;
+		req->profiles_added = g_slist_append(req->profiles_added,
+							g_strdup(uuid));
+		return 0;
+	}
+
+	l = g_slist_find_custom(req->profiles_removed, uuid, bt_uuid_strcmp);
+	if (l == NULL)
+		return 0;
+
+	g_free(l->data);
+	req->profiles_removed = g_slist_delete_link(req->profiles_removed, l);
+
+	return 0;
+}
+
 static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 {
 	struct btd_device *device = req->device;
@@ -2712,7 +2746,6 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 		sdp_record_t *rec = (sdp_record_t *) seq->data;
 		sdp_list_t *svcclass = NULL;
 		char *profile_uuid;
-		GSList *l;
 
 		if (!rec)
 			break;
@@ -2754,12 +2787,8 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 							product, version);
 		}
 
-		/* Check for duplicates */
-		if (sdp_list_find(req->records, rec, rec_cmp)) {
-			g_free(profile_uuid);
-			sdp_list_free(svcclass, free);
-			continue;
-		}
+		if (update_record(req, profile_uuid, rec) < 0)
+			goto next;
 
 		if (sdp_key_file)
 			store_sdp_record(sdp_key_file, rec);
@@ -2767,26 +2796,8 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 		if (att_key_file)
 			store_primaries_from_sdp_record(att_key_file, rec);
 
-		/* Copy record */
-		req->records = sdp_list_append(req->records,
-							sdp_copy_record(rec));
-
-		l = g_slist_find_custom(device->uuids, profile_uuid,
-							bt_uuid_strcmp);
-		if (!l)
-			req->profiles_added =
-					g_slist_append(req->profiles_added,
-							profile_uuid);
-		else {
-			l = g_slist_find_custom(req->profiles_removed,
-							profile_uuid,
-							bt_uuid_strcmp);
-			g_free(l->data);
-			req->profiles_removed =
-				g_slist_delete_link(req->profiles_removed, l);
-			g_free(profile_uuid);
-		}
-
+next:
+		g_free(profile_uuid);
 		sdp_list_free(svcclass, free);
 	}
 
