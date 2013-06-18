@@ -1450,20 +1450,25 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 		len = 1;
 		break;
 	case AVRCP_EVENT_SETTINGS_CHANGED:
+		len = 1;
 		settings = player_list_settings(player);
 
-		pdu->params[++len] = g_list_length(settings);
+		pdu->params[len++] = g_list_length(settings);
 		for (; settings; settings = settings->next) {
 			const char *key = settings->data;
-			uint8_t attr = attr_to_val(key);
+			int attr;
 			int val;
+
+			attr = attr_to_val(key);
+			if (attr < 0)
+				continue;
 
 			val = player_get_setting(player, attr);
 			if (val < 0)
 				continue;
 
-			pdu->params[++len] = attr;
-			pdu->params[++len] = val;
+			pdu->params[len++] = attr;
+			pdu->params[len++] = val;
 		}
 
 		break;
