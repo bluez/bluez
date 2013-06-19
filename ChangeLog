@@ -1,3 +1,15 @@
+ver 5.6:
+	Fix issue with incoming connections without SDP record.
+	Fix issue with canceling ongoing device connections.
+	Fix issue with handling failed connection attempts.
+	Fix issue with pending resume during A2DP open failures.
+	Fix issue with registering AVRCP unsupported notification.
+	Fix issue with listing available AVRCP target settings.
+	Fix issue with missing error for OBEX SetPath commands.
+	Fix issue with missing OBEX session command queue.
+	Fix issue with retrieving multiple MAP event reports.
+	Add support for command line player utility.
+
 ver 5.5:
 	Fix issue with race condition between SDP and properties.
 	Fix issue with handling storage of private device addresses.
