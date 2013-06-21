@@ -59,6 +59,8 @@ tools/avtest
 tools/bdaddr
 tools/btiotest
 tools/mpris-player
+tools/bluetooth-player
+tools/l2cap-tester
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir
