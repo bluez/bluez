@@ -1184,9 +1184,10 @@ static void rl_handler(char *input)
 
 	for (i = 0; cmd_table[i].cmd; i++) {
 		if (cmd_table[i].desc)
-			printf("\t%s %s\t%s\n", cmd_table[i].cmd,
-						cmd_table[i].arg ? : "    ",
-						cmd_table[i].desc);
+			printf("  %s %-*s %s\n", cmd_table[i].cmd,
+					(int)(25 - strlen(cmd_table[i].cmd)),
+					cmd_table[i].arg ? : "",
+					cmd_table[i].desc ? : "");
 	}
 
 done:
