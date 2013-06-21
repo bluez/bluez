@@ -1019,8 +1019,7 @@ static void service_auth_cancel(struct service_auth *auth)
 }
 
 static void adapter_remove_device(struct btd_adapter *adapter,
-						struct btd_device *dev,
-						gboolean remove_storage)
+						struct btd_device *dev)
 {
 	GList *l;
 
@@ -1052,7 +1051,7 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 		service_auth_cancel(auth);
 	}
 
-	device_remove(dev, remove_storage);
+	device_remove(dev, TRUE);
 }
 
 struct btd_device *adapter_get_device(struct btd_adapter *adapter,
@@ -1514,7 +1513,7 @@ static gboolean remove_temp_devices(gpointer user_data)
 		next = g_slist_next(l);
 
 		if (device_is_temporary(dev))
-			adapter_remove_device(adapter, dev, TRUE);
+			adapter_remove_device(adapter, dev);
 	}
 
 	return FALSE;
@@ -2141,7 +2140,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 	device_set_temporary(device, TRUE);
 
 	if (!device_is_connected(device)) {
-		adapter_remove_device(adapter, device, TRUE);
+		adapter_remove_device(adapter, device);
 		return dbus_message_new_method_return(msg);
 	}
 
@@ -4252,7 +4251,7 @@ static void adapter_remove_connection(struct btd_adapter *adapter,
 		const char *path = device_get_path(device);
 
 		DBG("Removing temporary device %s", path);
-		adapter_remove_device(adapter, device, TRUE);
+		adapter_remove_device(adapter, device);
 	}
 }
 
@@ -5808,7 +5807,7 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 	 * when it is temporary. */
 	if (device && !device_is_bonding(device, NULL)
 						&& device_is_temporary(device))
-		adapter_remove_device(adapter, device, TRUE);
+		adapter_remove_device(adapter, device);
 }
 
 static void unpaired_callback(uint16_t index, uint16_t length,
@@ -5839,7 +5838,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 	if (device_is_connected(device))
 		device_request_disconnect(device, NULL);
 	else
-		adapter_remove_device(adapter, device, TRUE);
+		adapter_remove_device(adapter, device);
 }
 
 static void read_info_complete(uint8_t status, uint16_t length,
