@@ -42,10 +42,12 @@
 #include <dbus/dbus.h>
 #include <gdbus/gdbus.h>
 
-#include "log.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
+#include "lib/uuid.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/service.h"
 
+#include "log.h"
 #include "error.h"
 #include "dbus-common.h"
 #include "device.h"
@@ -61,7 +63,7 @@
 #define AVDTP_CONNECT_TIMEOUT_BOOST 1
 
 struct dev_priv {
-	sink_state_t sink_state;
+	btd_service_state_t sink_state;
 	avctp_state_t avctp_state;
 
 	guint control_timer;
@@ -69,9 +71,9 @@ struct dev_priv {
 
 	gboolean disconnecting;
 
+	unsigned int service_cb_id;
 	unsigned int avdtp_callback_id;
 	unsigned int avctp_callback_id;
-	unsigned int sink_callback_id;
 };
 
 static void device_free(struct audio_device *dev)
@@ -87,7 +89,7 @@ static void device_free(struct audio_device *dev)
 
 		avdtp_remove_state_cb(priv->avdtp_callback_id);
 		avctp_remove_state_cb(priv->avctp_callback_id);
-		sink_remove_state_cb(priv->sink_callback_id);
+		btd_service_remove_state_cb(priv->service_cb_id);
 
 		g_free(priv);
 	}
@@ -138,6 +140,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 {
 	struct audio_device *dev = user_data;
 	struct dev_priv *priv = dev->priv;
+	struct btd_service *sink;
 
 	if (priv->disconnecting)
 		return;
@@ -149,7 +152,8 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	if (dev->control && priv->avctp_state != AVCTP_STATE_DISCONNECTED)
 		avrcp_disconnect(dev);
 
-	if (dev->sink && priv->sink_state != SINK_STATE_DISCONNECTED)
+	sink = btd_device_get_service(btd_dev, A2DP_SINK_UUID);
+	if (sink)
 		sink_disconnect(dev, TRUE);
 	else
 		priv->disconnecting = FALSE;
@@ -171,30 +175,25 @@ static void device_avdtp_cb(struct audio_device *dev, struct avdtp *session,
 }
 
 static void device_sink_cb(struct audio_device *dev,
-				sink_state_t old_state,
-				sink_state_t new_state,
-				void *user_data)
+				btd_service_state_t old_state,
+				btd_service_state_t new_state)
 {
 	struct dev_priv *priv = dev->priv;
-
-	if (!dev->sink)
-		return;
 
 	priv->sink_state = new_state;
 
 	switch (new_state) {
-	case SINK_STATE_DISCONNECTED:
+	case BTD_SERVICE_STATE_UNAVAILABLE:
+	case BTD_SERVICE_STATE_DISCONNECTED:
 		if (dev->control) {
 			device_remove_control_timer(dev);
 			if (priv->avctp_state != AVCTP_STATE_DISCONNECTED)
 				avrcp_disconnect(dev);
 		}
 		break;
-	case SINK_STATE_CONNECTING:
-		break;
-	case SINK_STATE_CONNECTED:
-		break;
-	case SINK_STATE_PLAYING:
+	case BTD_SERVICE_STATE_CONNECTING:
+	case BTD_SERVICE_STATE_CONNECTED:
+	case BTD_SERVICE_STATE_DISCONNECTING:
 		break;
 	}
 }
@@ -222,6 +221,20 @@ static void device_avctp_cb(struct audio_device *dev, avctp_state_t old_state,
 	}
 }
 
+static void service_cb(struct btd_service *service,
+						btd_service_state_t old_state,
+						btd_service_state_t new_state,
+						void *user_data)
+{
+	struct audio_device *dev = user_data;
+
+	if (dev->btd_dev != btd_service_get_device(service))
+		return;
+
+	if (service == dev->sink)
+		device_sink_cb(dev, old_state, new_state);
+}
+
 struct audio_device *audio_device_register(struct btd_device *device)
 {
 	struct audio_device *dev;
@@ -236,8 +249,7 @@ struct audio_device *audio_device_register(struct btd_device *device)
 	dev->priv->dc_id = device_add_disconnect_watch(dev->btd_dev,
 							disconnect_cb, dev,
 							NULL);
-	dev->priv->sink_callback_id = sink_add_state_cb(dev, device_sink_cb,
-									NULL);
+	dev->priv->service_cb_id = btd_service_add_state_cb(service_cb, dev);
 	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
 	dev->priv->avctp_callback_id = avctp_add_state_cb(dev, device_avctp_cb);
 

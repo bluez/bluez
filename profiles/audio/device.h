@@ -25,13 +25,12 @@
 struct audio_device;
 struct source;
 struct control;
-struct sink;
 struct dev_priv;
 
 struct audio_device {
 	struct btd_device *btd_dev;
 
-	struct sink *sink;
+	struct btd_service *sink;
 	struct source *source;
 	struct control *control;
 

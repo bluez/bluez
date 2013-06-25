@@ -130,9 +130,9 @@ static int a2dp_sink_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->sink = sink_init(audio_dev, service);
+	audio_dev->sink = service;
 
-	return 0;
+	return sink_init(audio_dev, service);
 }
 
 static int avrcp_target_probe(struct btd_service *service)
