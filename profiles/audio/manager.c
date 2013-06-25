@@ -139,6 +139,7 @@ static int avrcp_target_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *audio_dev;
+	int err;
 
 	audio_dev = get_audio_dev(device);
 	if (!audio_dev) {
@@ -146,7 +147,11 @@ static int avrcp_target_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->control = control_init_target(audio_dev, service);
+	err = control_init_target(audio_dev, service);
+	if (err < 0)
+		return 0;
+
+	audio_dev->control = service;
 
 	if (audio_dev->sink && sink_is_active(audio_dev))
 		avrcp_connect(audio_dev);
@@ -158,6 +163,7 @@ static int avrcp_remote_probe(struct btd_service *service)
 {
 	struct btd_device *device = btd_service_get_device(service);
 	struct audio_device *audio_dev;
+	int err;
 
 	audio_dev = get_audio_dev(device);
 	if (!audio_dev) {
@@ -165,7 +171,11 @@ static int avrcp_remote_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->control = control_init_remote(audio_dev, service);
+	err = control_init_remote(audio_dev, service);
+	if (err < 0)
+		return err;
+
+	audio_dev->control = service;
 
 	return 0;
 }

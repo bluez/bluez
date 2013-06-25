@@ -68,23 +68,31 @@ struct control {
 	unsigned int avctp_id;
 };
 
-void control_target_connected(struct control *control, int err)
+void control_target_connected(struct audio_device *dev, int err)
 {
+	struct control *control = btd_service_get_user_data(dev->control);
+
 	btd_service_connecting_complete(control->target, err);
 }
 
-void control_target_disconnected(struct control *control, int err)
+void control_target_disconnected(struct audio_device *dev, int err)
 {
+	struct control *control = btd_service_get_user_data(dev->control);
+
 	btd_service_disconnecting_complete(control->target, err);
 }
 
-void control_remote_connected(struct control *control, int err)
+void control_remote_connected(struct audio_device *dev, int err)
 {
+	struct control *control = btd_service_get_user_data(dev->control);
+
 	btd_service_connecting_complete(control->remote, err);
 }
 
-void control_remote_disconnected(struct control *control, int err)
+void control_remote_disconnected(struct audio_device *dev, int err)
 {
+	struct control *control = btd_service_get_user_data(dev->control);
+
 	btd_service_disconnecting_complete(control->remote, err);
 }
 
@@ -92,7 +100,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 							avctp_state_t new_state)
 {
 	DBusConnection *conn = btd_get_dbus_connection();
-	struct control *control = dev->control;
+	struct control *control = btd_service_get_user_data(dev->control);
 	const char *path = device_get_path(dev->btd_dev);
 
 	switch (new_state) {
@@ -121,7 +129,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 
 int control_connect(struct audio_device *dev)
 {
-	struct control *control = dev->control;
+	struct control *control = btd_service_get_user_data(dev->control);
 
 	if (control->session)
 		return -EALREADY;
@@ -138,7 +146,7 @@ int control_connect(struct audio_device *dev)
 
 int control_disconnect(struct audio_device *dev)
 {
-	struct control *control = dev->control;
+	struct control *control = btd_service_get_user_data(dev->control);
 
 	if (!control->session)
 		return -ENOTCONN;
@@ -152,7 +160,7 @@ static DBusMessage *key_pressed(DBusConnection *conn, DBusMessage *msg,
 						uint8_t op, void *data)
 {
 	struct audio_device *device = data;
-	struct control *control = device->control;
+	struct control *control = btd_service_get_user_data(device->control);
 	int err;
 
 	if (!control->session)
@@ -227,7 +235,8 @@ static gboolean control_property_get_connected(
 					DBusMessageIter *iter, void *data)
 {
 	struct audio_device *device = data;
-	dbus_bool_t value = (device->control->session != NULL);
+	struct control *control = btd_service_get_user_data(device->control);
+	dbus_bool_t value = (control->session != NULL);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
 
@@ -255,7 +264,7 @@ static const GDBusPropertyTable control_properties[] = {
 static void path_unregister(void *data)
 {
 	struct audio_device *dev = data;
-	struct control *control = dev->control;
+	struct control *control = btd_service_get_user_data(dev->control);
 
 	DBG("Unregistered interface %s on path %s",
 		AUDIO_CONTROL_INTERFACE, device_get_path(dev->btd_dev));
@@ -287,7 +296,7 @@ static struct control *control_init(struct audio_device *dev)
 	struct control *control;
 
 	if (dev->control != NULL)
-		return dev->control;
+		return btd_service_get_user_data(dev->control);
 
 	if (!g_dbus_register_interface(btd_get_dbus_connection(),
 					device_get_path(dev->btd_dev),
@@ -307,37 +316,39 @@ static struct control *control_init(struct audio_device *dev)
 	return control;
 }
 
-struct control *control_init_target(struct audio_device *dev,
-						struct btd_service *service)
+int control_init_target(struct audio_device *dev, struct btd_service *service)
 {
 	struct control *control;
 
 	control = control_init(dev);
 	if (control == NULL)
-		return NULL;
+		return -EINVAL;
 
 	control->target = btd_service_ref(service);
 
-	return control;
+	btd_service_set_user_data(service, control);
+
+	return 0;
 }
 
-struct control *control_init_remote(struct audio_device *dev,
-						struct btd_service *service)
+int control_init_remote(struct audio_device *dev, struct btd_service *service)
 {
 	struct control *control;
 
 	control = control_init(dev);
 	if (control == NULL)
-		return NULL;
+		return -EINVAL;
 
 	control->remote = btd_service_ref(service);
 
-	return control;
+	btd_service_set_user_data(service, control);
+
+	return 0;
 }
 
 gboolean control_is_active(struct audio_device *dev)
 {
-	struct control *control = dev->control;
+	struct control *control = btd_service_get_user_data(dev->control);
 
 	if (control && control->session)
 		return TRUE;

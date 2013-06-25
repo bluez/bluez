@@ -23,7 +23,6 @@
  */
 
 struct audio_device;
-struct control;
 struct dev_priv;
 
 struct audio_device {
@@ -31,7 +30,7 @@ struct audio_device {
 
 	struct btd_service *sink;
 	struct btd_service *source;
-	struct control *control;
+	struct btd_service *control;
 
 	struct dev_priv *priv;
 };
