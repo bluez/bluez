@@ -2694,7 +2694,7 @@ static int update_record(struct browse_req *req, const char *uuid,
 	if (l == NULL) {
 		l = g_slist_find_custom(req->profiles_added, uuid,
 							bt_uuid_strcmp);
-		if (l == NULL)
+		if (l != NULL)
 			return 0;
 		req->profiles_added = g_slist_append(req->profiles_added,
 							g_strdup(uuid));
