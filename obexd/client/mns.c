@@ -269,10 +269,10 @@ static void *event_report_open(const char *name, int oflag, mode_t mode,
 
 	mns->buffer = g_string_new("");
 
-	if (*err < 0)
-		return NULL;
-	else
-		return mns;
+	if (err != NULL)
+		err = 0;
+
+	return mns;
 }
 
 static int event_report_close(void *obj)
