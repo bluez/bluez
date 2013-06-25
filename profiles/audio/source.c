@@ -88,7 +88,7 @@ static char *str_state[] = {
 
 static void source_set_state(struct audio_device *dev, source_state_t new_state)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 	source_state_t old_state = source->state;
 	GSList *l;
 
@@ -120,7 +120,7 @@ static void avdtp_state_callback(struct audio_device *dev,
 					avdtp_session_state_t old_state,
 					avdtp_session_state_t new_state)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
@@ -143,7 +143,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 					void *user_data)
 {
 	struct audio_device *dev = user_data;
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	if (err)
 		return;
@@ -287,8 +287,11 @@ failed:
 	source->session = NULL;
 }
 
-gboolean source_setup_stream(struct source *source, struct avdtp *session)
+gboolean source_setup_stream(struct btd_service *service,
+							struct avdtp *session)
 {
+	struct source *source = btd_service_get_user_data(service);
+
 	if (source->connect_id > 0 || source->disconnect_id > 0)
 		return FALSE;
 
@@ -306,7 +309,7 @@ gboolean source_setup_stream(struct source *source, struct avdtp *session)
 
 int source_connect(struct audio_device *dev)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	if (!source->session)
 		source->session = avdtp_get(dev);
@@ -322,7 +325,7 @@ int source_connect(struct audio_device *dev)
 	if (source->stream_state >= AVDTP_STATE_OPEN)
 		return -EALREADY;
 
-	if (!source_setup_stream(source, NULL)) {
+	if (!source_setup_stream(source->service, NULL)) {
 		DBG("Failed to create a stream");
 		return -EIO;
 	}
@@ -334,7 +337,7 @@ int source_connect(struct audio_device *dev)
 
 static void source_free(struct audio_device *dev)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	if (source->cb_id)
 		avdtp_stream_remove_cb(source->session, source->stream,
@@ -372,8 +375,7 @@ void source_unregister(struct audio_device *dev)
 	source_free(dev);
 }
 
-struct source *source_init(struct audio_device *dev,
-						struct btd_service *service)
+int source_init(struct audio_device *dev, struct btd_service *service)
 {
 	struct source *source;
 
@@ -387,13 +389,15 @@ struct source *source_init(struct audio_device *dev,
 	source->avdtp_callback_id = avdtp_add_state_cb(dev,
 							avdtp_state_callback);
 
-	return source;
+	btd_service_set_user_data(service, source);
+
+	return 0;
 }
 
 gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	if (source->stream)
 		return FALSE;
@@ -411,7 +415,7 @@ gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 
 int source_disconnect(struct audio_device *dev, gboolean shutdown)
 {
-	struct source *source = dev->source;
+	struct source *source = btd_service_get_user_data(dev->source);
 
 	if (!source->session)
 		return -ENOTCONN;

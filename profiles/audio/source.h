@@ -41,11 +41,11 @@ unsigned int source_add_state_cb(struct audio_device *dev, source_state_cb cb,
 							void *user_data);
 gboolean source_remove_state_cb(unsigned int id);
 
-struct source *source_init(struct audio_device *dev,
-				struct btd_service *service);
+int source_init(struct audio_device *dev, struct btd_service *service);
 void source_unregister(struct audio_device *dev);
 int source_connect(struct audio_device *dev);
 gboolean source_new_stream(struct audio_device *dev, struct avdtp *session,
 				struct avdtp_stream *stream);
-gboolean source_setup_stream(struct source *source, struct avdtp *session);
+gboolean source_setup_stream(struct btd_service *service,
+							struct avdtp *session);
 int source_disconnect(struct audio_device *dev, gboolean shutdown);

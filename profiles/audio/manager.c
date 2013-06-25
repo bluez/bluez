@@ -114,9 +114,9 @@ static int a2dp_source_probe(struct btd_service *service)
 		return -1;
 	}
 
-	audio_dev->source = source_init(audio_dev, service);
+	audio_dev->source = service;
 
-	return 0;
+	return source_init(audio_dev, service);
 }
 
 static int a2dp_sink_probe(struct btd_service *service)
