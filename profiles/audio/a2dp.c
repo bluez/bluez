@@ -403,6 +403,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean auto_config(gpointer data)
 {
 	struct a2dp_setup *setup = data;
+	struct audio_device *dev = setup->dev;
 
 	/* Check if configuration was aborted */
 	if (setup->sep->stream == NULL)
@@ -415,7 +416,7 @@ static gboolean auto_config(gpointer data)
 				stream_state_changed, setup->sep);
 
 	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE)
-		sink_new_stream(setup->dev, setup->session, setup->stream);
+		sink_new_stream(dev->sink, setup->session, setup->stream);
 	else
 		source_new_stream(setup->dev, setup->session, setup->stream);
 
@@ -618,7 +619,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	/* Notify D-Bus interface of the new stream */
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
-		sink_new_stream(dev, session, setup->stream);
+		sink_new_stream(dev->sink, session, setup->stream);
 	else
 		source_new_stream(dev, session, setup->stream);
 

@@ -154,7 +154,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 
 	sink = btd_device_get_service(btd_dev, A2DP_SINK_UUID);
 	if (sink)
-		sink_disconnect(dev, TRUE);
+		sink_disconnect(sink, TRUE);
 	else
 		priv->disconnecting = FALSE;
 }
@@ -261,7 +261,7 @@ void audio_device_unregister(struct audio_device *device)
 	DBG("%s", device_get_path(device->btd_dev));
 
 	if (device->sink)
-		sink_unregister(device);
+		sink_unregister(device->sink);
 
 	if (device->source)
 		source_unregister(device);

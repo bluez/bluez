@@ -744,7 +744,7 @@ static void transport_update_playing(struct media_transport *transport,
 		transport_set_state(transport, TRANSPORT_STATE_PENDING);
 }
 
-static void sink_state_changed(struct audio_device *dev,
+static void sink_state_changed(struct btd_service *service,
 						sink_state_t old_state,
 						sink_state_t new_state,
 						void *user_data)
@@ -804,7 +804,7 @@ struct media_transport *media_transport_create(struct audio_device *device,
 
 		if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
 			a2dp->volume = -1;
-			transport->sink_watch = sink_add_state_cb(device,
+			transport->sink_watch = sink_add_state_cb(device->sink,
 							sink_state_changed,
 							transport);
 		} else {

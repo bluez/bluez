@@ -153,7 +153,7 @@ static int avrcp_target_probe(struct btd_service *service)
 
 	audio_dev->control = service;
 
-	if (audio_dev->sink && sink_is_active(audio_dev))
+	if (audio_dev->sink && sink_is_active(audio_dev->sink))
 		avrcp_connect(audio_dev);
 
 	return 0;
@@ -218,34 +218,20 @@ static int a2dp_sink_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
-	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
 
-	audio_dev = get_audio_dev(dev);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	return sink_connect(audio_dev);
+	return sink_connect(service);
 }
 
 static int a2dp_sink_disconnect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
-	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
 
-	audio_dev = get_audio_dev(dev);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	return sink_disconnect(audio_dev, FALSE);
+	return sink_disconnect(service, FALSE);
 }
 
 static int avrcp_target_connect(struct btd_service *service)

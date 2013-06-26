@@ -3425,7 +3425,7 @@ static struct avrcp *session_create(struct avrcp_server *server,
 		session->target = TRUE;
 	else if (dev->source && !dev->sink)
 		session->target = FALSE;
-	else if (dev->sink && sink_is_active(dev))
+	else if (dev->sink && sink_is_active(dev->sink))
 		session->target = TRUE;
 	else
 		session->target = FALSE;
