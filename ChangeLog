@@ -1,3 +1,9 @@
+ver 5.7:
+	Fix issue with missing UUID discovery during pairing.
+	Fix issue with broken patch for SDP range check handling.
+	Fix issue with AVRCP usage of UID=0 for paused/stopped.
+	Add support MAP notification dispatching.
+
 ver 5.6:
 	Fix issue with incoming connections without SDP record.
 	Fix issue with canceling ongoing device connections.
