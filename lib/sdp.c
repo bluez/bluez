@@ -4243,6 +4243,14 @@ int sdp_process(sdp_session_t *session)
 		rsp_count = bt_get_be16(pdata);
 		SDPDBG("Attrlist byte count : %d", rsp_count);
 
+		/* Valid range for rsp_count is 0x0002-0xFFFF */
+		if (t->rsp_concat_buf.data_size == 0 && rsp_count < 0x0002) {
+			t->err = EPROTO;
+			SDPERR("Protocol error: invalid AttrList size");
+			status = SDP_INVALID_PDU_SIZE;
+			goto end;
+		}
+
 		/*
 		 * Number of bytes in the AttributeLists parameter(without
 		 * continuation state) + AttributeListsByteCount field size.
