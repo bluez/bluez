@@ -673,6 +673,14 @@ const char *bt_compidtostr(int compid)
 		return "Beats Electronics";
 	case 205:
 		return "Microchip Technology Inc.";
+	case 206:
+		return "Elgato Systems GmbH";
+	case 207:
+		return "ARCHOS SA";
+	case 209:
+		return "Polar Electro Europe B.V.";
+	case 210:
+		return "Dialog Semiconductor B.V.";
 	case 65535:
 		return "internal use";
 	default:
