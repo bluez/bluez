@@ -1845,7 +1845,7 @@ struct media_item *media_player_set_playlist_item(struct media_player *mp,
 
 	DBG("%" PRIu64 "", uid);
 
-	if (folder == NULL)
+	if (folder == NULL || uid == 0)
 		return NULL;
 
 	item = media_folder_create_item(mp, folder, NULL,
