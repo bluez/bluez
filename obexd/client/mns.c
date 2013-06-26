@@ -270,7 +270,7 @@ static void *event_report_open(const char *name, int oflag, mode_t mode,
 	mns->buffer = g_string_new("");
 
 	if (err != NULL)
-		err = 0;
+		*err = 0;
 
 	return mns;
 }
