@@ -267,7 +267,7 @@ void audio_device_unregister(struct audio_device *device)
 		source_unregister(device->source);
 
 	if (device->control)
-		control_unregister(device);
+		control_unregister(device->control);
 
 	device_free(device);
 }

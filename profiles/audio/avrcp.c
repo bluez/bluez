@@ -47,8 +47,9 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/service.h"
 
 #include "log.h"
 #include "error.h"
@@ -3282,6 +3283,7 @@ static void session_tg_init_control(struct avrcp *session)
 {
 	struct avrcp_server *server = session->server;
 	struct avrcp_player *player;
+	struct btd_service *service;
 
 	if (session->version < 0x0103)
 		return;
@@ -3314,7 +3316,10 @@ static void session_tg_init_control(struct avrcp *session)
 		avrcp_register_notification(session,
 						AVRCP_EVENT_VOLUME_CHANGED);
 
-	control_remote_connected(session->dev, 0);
+	service = btd_device_get_service(session->dev->btd_dev,
+							AVRCP_REMOTE_UUID);
+	if (service != NULL)
+		btd_service_connecting_complete(service, 0);
 }
 
 static void session_ct_init_browsing(struct avrcp *session)
@@ -3329,6 +3334,7 @@ static void session_ct_init_browsing(struct avrcp *session)
 static void session_ct_init_control(struct avrcp *session)
 {
 	struct avrcp_player *player;
+	struct btd_service *service;
 
 	DBG("%p version 0x%04x", session, session->version);
 
@@ -3340,7 +3346,11 @@ static void session_ct_init_control(struct avrcp *session)
 	if (session->version >= 0x0104)
 		session->supported_events = (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
-	control_target_connected(session->dev, 0);
+
+	service = btd_device_get_service(session->dev->btd_dev,
+							AVRCP_TARGET_UUID);
+	if (service != NULL)
+		btd_service_connecting_complete(service, 0);
 
 	player = create_ct_player(session, 0);
 	if (player == NULL)
@@ -3373,30 +3383,43 @@ static void session_destroy(struct avrcp *session)
 static void session_tg_destroy(struct avrcp *session)
 {
 	struct avrcp_player *player = session->player;
+	struct btd_service *service;
 
 	DBG("%p", session);
 
 	if (player != NULL)
 		player->sessions = g_slist_remove(player->sessions, session);
 
+	service = btd_device_get_service(session->dev->btd_dev,
+							AVRCP_REMOTE_UUID);
+	if (service == NULL)
+		return session_destroy(session);
+
 	if (session->control_id == 0)
-		control_remote_connected(session->dev, -EIO);
+		btd_service_connecting_complete(service, -EIO);
 	else
-		control_remote_disconnected(session->dev, 0);
+		btd_service_disconnecting_complete(service, 0);
 
 	session_destroy(session);
 }
 
 static void session_ct_destroy(struct avrcp *session)
 {
+	struct btd_service *service;
+
 	DBG("%p", session);
 
 	g_slist_free_full(session->players, player_destroy);
 
+	service = btd_device_get_service(session->dev->btd_dev,
+							AVRCP_TARGET_UUID);
+	if (service == NULL)
+		return session_destroy(session);
+
 	if (session->control_id == 0)
-		control_target_connected(session->dev, -EIO);
+		btd_service_connecting_complete(service, -EIO);
 	else
-		control_target_disconnected(session->dev, 0);
+		btd_service_disconnecting_complete(service, 0);
 
 	session_destroy(session);
 }
