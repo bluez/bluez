@@ -757,7 +757,7 @@ static void sink_state_changed(struct btd_service *service,
 		transport_update_playing(transport, FALSE);
 }
 
-static void source_state_changed(struct audio_device *dev,
+static void source_state_changed(struct btd_service *service,
 						source_state_t old_state,
 						source_state_t new_state,
 						void *user_data)
@@ -810,7 +810,8 @@ struct media_transport *media_transport_create(struct audio_device *device,
 		} else {
 			a2dp->volume = 127;
 			avrcp_set_volume(device, a2dp->volume);
-			transport->source_watch = source_add_state_cb(device,
+			transport->source_watch = source_add_state_cb(
+							device->source,
 							source_state_changed,
 							transport);
 		}

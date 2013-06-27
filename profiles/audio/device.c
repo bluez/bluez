@@ -264,7 +264,7 @@ void audio_device_unregister(struct audio_device *device)
 		sink_unregister(device->sink);
 
 	if (device->source)
-		source_unregister(device);
+		source_unregister(device->source);
 
 	if (device->control)
 		control_unregister(device);

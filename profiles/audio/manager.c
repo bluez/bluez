@@ -184,34 +184,20 @@ static int a2dp_source_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
-	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
 
-	audio_dev = get_audio_dev(dev);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	return source_connect(audio_dev);
+	return source_connect(service);
 }
 
 static int a2dp_source_disconnect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
-	struct audio_device *audio_dev;
 
 	DBG("path %s", path);
 
-	audio_dev = get_audio_dev(dev);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	return source_disconnect(audio_dev, FALSE);
+	return source_disconnect(service, FALSE);
 }
 
 static int a2dp_sink_connect(struct btd_service *service)
