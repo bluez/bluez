@@ -1530,6 +1530,14 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 		str = uuid16_to_str(bt_get_le16(data));
 		print_field("%s: %s (0x%4.4x)", label, str, bt_get_le16(data));
 		break;
+	case 4:
+		str = uuid32_to_str(bt_get_le32(data));
+		print_field("%s: %s (0x%8.8x)", label, str, bt_get_le32(data));
+		break;
+	case 16:
+		str = uuid128_to_str(data);
+		print_field("%s: %s", label, str);
+		break;
 	default:
 		packet_hexdump(data, size);
 		break;
