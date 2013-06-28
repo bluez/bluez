@@ -856,7 +856,8 @@ const char *obc_session_register(struct obc_session *session,
 
 	if (g_dbus_register_interface(session->conn, session->path,
 					SESSION_INTERFACE, session_methods,
-					NULL, NULL, session, destroy) == FALSE)
+					NULL, session_properties, session,
+					destroy) == FALSE)
 		goto fail;
 
 	if (session->driver->probe && session->driver->probe(session) < 0) {
