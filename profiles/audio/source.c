@@ -86,10 +86,8 @@ static char *str_state[] = {
 	"SOURCE_STATE_PLAYING",
 };
 
-static void source_set_state(struct btd_service *service,
-						source_state_t new_state)
+static void source_set_state(struct source *source, source_state_t new_state)
 {
-	struct source *source = btd_service_get_user_data(service);
 	struct audio_device *dev = source->dev;
 	source_state_t old_state = source->state;
 	GSList *l;
@@ -102,10 +100,10 @@ static void source_set_state(struct btd_service *service,
 	for (l = source_callbacks; l != NULL; l = l->next) {
 		struct source_state_callback *cb = l->data;
 
-		if (cb->service != service)
+		if (cb->service != source->service)
 			continue;
 
-		cb->cb(service, old_state, new_state, cb->user_data);
+		cb->cb(source->service, old_state, new_state, cb->user_data);
 	}
 
 	if (new_state != SOURCE_STATE_DISCONNECTED)
@@ -117,19 +115,19 @@ static void source_set_state(struct btd_service *service,
 	}
 }
 
-static void avdtp_state_callback(struct audio_device *dev,
-					struct avdtp *session,
+static void avdtp_state_callback(struct btd_device *dev, struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state)
+					avdtp_session_state_t new_state,
+					void *user_data)
 {
-	struct source *source = btd_service_get_user_data(dev->source);
+	struct source *source = user_data;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		source_set_state(dev->source, SOURCE_STATE_DISCONNECTED);
+		source_set_state(source, SOURCE_STATE_DISCONNECTED);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
-		source_set_state(dev->source, SOURCE_STATE_CONNECTING);
+		source_set_state(source, SOURCE_STATE_CONNECTING);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTED:
 		break;
@@ -168,10 +166,10 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	case AVDTP_STATE_OPEN:
 		btd_service_connecting_complete(source->service, 0);
-		source_set_state(service, SOURCE_STATE_CONNECTED);
+		source_set_state(source, SOURCE_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
-		source_set_state(service, SOURCE_STATE_PLAYING);
+		source_set_state(source, SOURCE_STATE_PLAYING);
 		break;
 	case AVDTP_STATE_CONFIGURED:
 	case AVDTP_STATE_CLOSING:
@@ -314,7 +312,7 @@ int source_connect(struct btd_service *service)
 	struct source *source = btd_service_get_user_data(service);
 
 	if (!source->session)
-		source->session = avdtp_get(source->dev);
+		source->session = avdtp_get(btd_service_get_device(service));
 
 	if (!source->session) {
 		DBG("Unable to get a session");
@@ -391,8 +389,9 @@ int source_init(struct audio_device *dev, struct btd_service *service)
 	source->dev = dev;
 	source->service = btd_service_ref(service);
 
-	source->avdtp_callback_id = avdtp_add_state_cb(dev,
-							avdtp_state_callback);
+	source->avdtp_callback_id = avdtp_add_state_cb(dev->btd_dev,
+							avdtp_state_callback,
+							source);
 
 	btd_service_set_user_data(service, source);
 

@@ -116,10 +116,11 @@ struct avdtp_media_codec_capability {
 #error "Unknown byte order"
 #endif
 
-typedef void (*avdtp_session_state_cb) (struct audio_device *dev,
+typedef void (*avdtp_session_state_cb) (struct btd_device *dev,
 					struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state);
+					avdtp_session_state_t new_state,
+					void *user_data);
 
 typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					avdtp_state_t old_state,
@@ -212,12 +213,12 @@ struct avdtp_sep_ind {
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
 					struct avdtp_error *err, void *user_data);
 
-struct avdtp *avdtp_get(struct audio_device *device);
+struct avdtp *avdtp_get(struct btd_device *device);
 
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
-gboolean avdtp_is_connected(struct audio_device *device);
+gboolean avdtp_is_connected(struct btd_device *device);
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
@@ -259,8 +260,8 @@ gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream);
 
-unsigned int avdtp_add_state_cb(struct audio_device *dev,
-				avdtp_session_state_cb cb);
+unsigned int avdtp_add_state_cb(struct btd_device *dev,
+				avdtp_session_state_cb cb, void *user_data);
 
 gboolean avdtp_remove_state_cb(unsigned int id);
 

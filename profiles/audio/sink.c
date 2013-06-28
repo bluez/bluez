@@ -85,9 +85,9 @@ static char *str_state[] = {
 	"SINK_STATE_PLAYING",
 };
 
-static void sink_set_state(struct btd_service *service, sink_state_t new_state)
+static void sink_set_state(struct sink *sink, sink_state_t new_state)
 {
-	struct sink *sink = btd_service_get_user_data(service);
+	struct btd_service *service = sink->service;
 	struct btd_device *dev = btd_service_get_device(service);
 	sink_state_t old_state = sink->state;
 	GSList *l;
@@ -115,19 +115,20 @@ static void sink_set_state(struct btd_service *service, sink_state_t new_state)
 	}
 }
 
-static void avdtp_state_callback(struct audio_device *dev,
+static void avdtp_state_callback(struct btd_device *dev,
 					struct avdtp *session,
 					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state)
+					avdtp_session_state_t new_state,
+					void *user_data)
 {
-	struct sink *sink = btd_service_get_user_data(dev->sink);
+	struct sink *sink = user_data;
 
 	switch (new_state) {
 	case AVDTP_SESSION_STATE_DISCONNECTED:
-		sink_set_state(dev->sink, SINK_STATE_DISCONNECTED);
+		sink_set_state(sink, SINK_STATE_DISCONNECTED);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTING:
-		sink_set_state(dev->sink, SINK_STATE_CONNECTING);
+		sink_set_state(sink, SINK_STATE_CONNECTING);
 		break;
 	case AVDTP_SESSION_STATE_CONNECTED:
 		break;
@@ -166,10 +167,10 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		break;
 	case AVDTP_STATE_OPEN:
 		btd_service_connecting_complete(sink->service, 0);
-		sink_set_state(service, SINK_STATE_CONNECTED);
+		sink_set_state(sink, SINK_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
-		sink_set_state(service, SINK_STATE_PLAYING);
+		sink_set_state(sink, SINK_STATE_PLAYING);
 		break;
 	case AVDTP_STATE_CONFIGURED:
 	case AVDTP_STATE_CLOSING:
@@ -308,7 +309,7 @@ int sink_connect(struct btd_service *service)
 	struct sink *sink = btd_service_get_user_data(service);
 
 	if (!sink->session)
-		sink->session = avdtp_get(sink->dev);
+		sink->session = avdtp_get(btd_service_get_device(service));
 
 	if (!sink->session) {
 		DBG("Unable to get a session");
@@ -385,7 +386,8 @@ int sink_init(struct audio_device *dev, struct btd_service *service)
 	sink->dev = dev;
 	sink->service = btd_service_ref(service);
 
-	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback);
+	sink->avdtp_callback_id = avdtp_add_state_cb(dev->btd_dev,
+						avdtp_state_callback, sink);
 
 	btd_service_set_user_data(service, sink);
 

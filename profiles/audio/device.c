@@ -159,10 +159,13 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 		priv->disconnecting = FALSE;
 }
 
-static void device_avdtp_cb(struct audio_device *dev, struct avdtp *session,
+static void device_avdtp_cb(struct btd_device *device, struct avdtp *session,
 				avdtp_session_state_t old_state,
-				avdtp_session_state_t new_state)
+				avdtp_session_state_t new_state,
+				void *user_data)
 {
+	struct audio_device *dev = user_data;
+
 	if (!dev->control)
 		return;
 
@@ -252,7 +255,8 @@ struct audio_device *audio_device_register(struct btd_device *device)
 							disconnect_cb, dev,
 							NULL);
 	dev->priv->service_cb_id = btd_service_add_state_cb(service_cb, dev);
-	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
+	dev->priv->avdtp_callback_id = avdtp_add_state_cb(device,
+							device_avdtp_cb, dev);
 	dev->priv->avctp_callback_id = avctp_add_state_cb(device,
 							device_avctp_cb, dev);
 
