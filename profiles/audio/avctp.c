@@ -47,14 +47,13 @@
 #include <btio/btio.h>
 
 #include "lib/uuid.h"
-#include "adapter.h"
-#include "../src/device.h"
+#include "src/adapter.h"
+#include "src/device.h"
 
 #include "log.h"
 #include "error.h"
 #include "uinput.h"
 #include "manager.h"
-#include "device.h"
 #include "avctp.h"
 #include "avrcp.h"
 
@@ -119,8 +118,9 @@ struct avc_header {
 
 struct avctp_state_callback {
 	avctp_state_cb cb;
-	struct audio_device *dev;
+	struct btd_device *dev;
 	unsigned int id;
+	void *user_data;
 };
 
 struct avctp_server {
@@ -530,24 +530,17 @@ static void avctp_disconnected(struct avctp *session)
 static void avctp_set_state(struct avctp *session, avctp_state_t new_state)
 {
 	GSList *l;
-	struct audio_device *dev;
 	avctp_state_t old_state = session->state;
-
-	dev = manager_get_audio_device(session->device, FALSE);
-	if (dev == NULL) {
-		error("%s(): No matching audio device", __func__);
-		return;
-	}
 
 	session->state = new_state;
 
 	for (l = callbacks; l != NULL; l = l->next) {
 		struct avctp_state_callback *cb = l->data;
 
-		if (cb->dev && cb->dev != dev)
+		if (cb->dev && cb->dev != session->device)
 			continue;
 
-		cb->cb(dev, old_state, new_state);
+		cb->cb(session->device, old_state, new_state, cb->user_data);
 	}
 
 	switch (new_state) {
@@ -1059,12 +1052,9 @@ static int uinput_create(char *name)
 
 static void init_uinput(struct avctp *session)
 {
-	struct audio_device *dev;
 	char address[18], name[248 + 1];
 
-	dev = manager_get_audio_device(session->device, FALSE);
-
-	device_get_name(dev->btd_dev, name, sizeof(name));
+	device_get_name(session->device, name, sizeof(name));
 	if (g_str_equal(name, "Nokia CK-20W")) {
 		session->key_quirks[AVC_FORWARD] |= QUIRK_NO_RELEASE;
 		session->key_quirks[AVC_BACKWARD] |= QUIRK_NO_RELEASE;
@@ -1296,7 +1286,7 @@ static struct avctp *avctp_get_internal(struct btd_device *device)
 }
 
 static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
-						struct audio_device *dev)
+						struct btd_device *dev)
 {
 	const bdaddr_t *src;
 	const bdaddr_t *dst;
@@ -1310,8 +1300,8 @@ static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 	session->control = avctp_channel_create(session, chan, NULL);
 
-	src = adapter_get_address(device_get_adapter(dev->btd_dev));
-	dst = device_get_address(dev->btd_dev);
+	src = adapter_get_address(device_get_adapter(dev));
+	dst = device_get_address(dev);
 
 	session->auth_id = btd_request_authorization(src, dst,
 							AVRCP_TARGET_UUID,
@@ -1328,7 +1318,7 @@ drop:
 }
 
 static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
-						struct audio_device *dev)
+						struct btd_device *dev)
 {
 	GError *err = NULL;
 
@@ -1351,7 +1341,6 @@ static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
 static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 {
 	struct avctp *session;
-	struct audio_device *dev;
 	char address[18];
 	bdaddr_t src, dst;
 	GError *err = NULL;
@@ -1381,34 +1370,22 @@ static void avctp_confirm_cb(GIOChannel *chan, gpointer data)
 	if (session == NULL)
 		return;
 
-	dev = manager_get_audio_device(device, TRUE);
-	if (!dev) {
-		error("Unable to get audio device object for %s", address);
-		goto drop;
-	}
+	if (btd_device_get_service(device, AVRCP_REMOTE_UUID) == NULL)
+		btd_device_add_uuid(device, AVRCP_REMOTE_UUID);
 
-	if (dev->control == NULL) {
-		btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
-		btd_device_add_uuid(dev->btd_dev, AVRCP_TARGET_UUID);
-
-		if (dev->control == NULL)
-			goto drop;
-	}
+	if (btd_device_get_service(device, AVRCP_TARGET_UUID) == NULL)
+		btd_device_add_uuid(device, AVRCP_TARGET_UUID);
 
 	switch (psm) {
 	case AVCTP_CONTROL_PSM:
-		avctp_control_confirm(session, chan, dev);
+		avctp_control_confirm(session, chan, device);
 		break;
 	case AVCTP_BROWSING_PSM:
-		avctp_browsing_confirm(session, chan, dev);
+		avctp_browsing_confirm(session, chan, device);
 		break;
 	}
 
 	return;
-
-drop:
-	if (psm == AVCTP_CONTROL_PSM)
-		avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
 }
 
 static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master,
@@ -1721,7 +1698,8 @@ int avctp_send_vendordep_req(struct avctp *session, uint8_t code,
 						func, user_data);
 }
 
-unsigned int avctp_add_state_cb(struct audio_device *dev, avctp_state_cb cb)
+unsigned int avctp_add_state_cb(struct btd_device *dev, avctp_state_cb cb,
+							void *user_data)
 {
 	struct avctp_state_callback *state_cb;
 	static unsigned int id = 0;
@@ -1730,6 +1708,7 @@ unsigned int avctp_add_state_cb(struct audio_device *dev, avctp_state_cb cb)
 	state_cb->cb = cb;
 	state_cb->dev = dev;
 	state_cb->id = ++id;
+	state_cb->user_data = user_data;
 
 	callbacks = g_slist_append(callbacks, state_cb);
 
@@ -1919,13 +1898,13 @@ gboolean avctp_unregister_browsing_pdu_handler(unsigned int id)
 	return FALSE;
 }
 
-struct avctp *avctp_connect(struct audio_device *device)
+struct avctp *avctp_connect(struct btd_device *device)
 {
 	struct avctp *session;
 	GError *err = NULL;
 	GIOChannel *io;
 
-	session = avctp_get_internal(device->btd_dev);
+	session = avctp_get_internal(device);
 	if (!session)
 		return NULL;
 
@@ -1999,9 +1978,9 @@ void avctp_disconnect(struct avctp *session)
 	avctp_set_state(session, AVCTP_STATE_DISCONNECTED);
 }
 
-struct avctp *avctp_get(struct audio_device *device)
+struct avctp *avctp_get(struct btd_device *device)
 {
-	return avctp_get_internal(device->btd_dev);
+	return avctp_get_internal(device);
 }
 
 bool avctp_is_initiator(struct avctp *session)

@@ -3251,12 +3251,12 @@ static void avrcp_get_capabilities(struct avrcp *session)
 					session);
 }
 
-static struct avrcp *find_session(GSList *list, struct audio_device *dev)
+static struct avrcp *find_session(GSList *list, struct btd_device *dev)
 {
 	for (; list; list = list->next) {
 		struct avrcp *session = list->data;
 
-		if (session->dev == dev)
+		if (session->dev->btd_dev == dev)
 			return session;
 	}
 
@@ -3425,16 +3425,17 @@ static void session_ct_destroy(struct avrcp *session)
 }
 
 static struct avrcp *session_create(struct avrcp_server *server,
-						struct audio_device *dev)
+						struct btd_device *device)
 {
 	struct avrcp *session;
 	const sdp_record_t *rec;
 	sdp_list_t *list;
 	sdp_profile_desc_t *desc;
+	struct audio_device *dev = manager_get_audio_device(device, FALSE);
 
 	session = g_new0(struct avrcp, 1);
 	session->server = server;
-	session->conn = avctp_connect(dev);
+	session->conn = avctp_connect(device);
 	session->dev = dev;
 
 	server->sessions = g_slist_append(server->sessions, session);
@@ -3458,16 +3459,16 @@ static struct avrcp *session_create(struct avrcp_server *server,
 		session->init_browsing = session_tg_init_browsing;
 		session->destroy = session_tg_destroy;
 
-		rec = btd_device_get_record(dev->btd_dev, AVRCP_REMOTE_UUID);
+		rec = btd_device_get_record(device, AVRCP_REMOTE_UUID);
 		if (rec == NULL)
-			btd_device_add_uuid(dev->btd_dev, AVRCP_REMOTE_UUID);
+			btd_device_add_uuid(device, AVRCP_REMOTE_UUID);
 	} else {
 		session->init_control = session_ct_init_control;
 		session->init_browsing = session_ct_init_browsing;
 		session->destroy = session_ct_destroy;
-		rec = btd_device_get_record(dev->btd_dev, AVRCP_TARGET_UUID);
+		rec = btd_device_get_record(device, AVRCP_TARGET_UUID);
 		if (rec == NULL)
-			btd_device_add_uuid(dev->btd_dev, AVRCP_TARGET_UUID);
+			btd_device_add_uuid(device, AVRCP_TARGET_UUID);
 	}
 
 	if (rec == NULL)
@@ -3485,17 +3486,17 @@ static struct avrcp *session_create(struct avrcp_server *server,
 	return session;
 }
 
-static void state_changed(struct audio_device *dev, avctp_state_t old_state,
-							avctp_state_t new_state)
+static void state_changed(struct btd_device *device, avctp_state_t old_state,
+				avctp_state_t new_state, void *user_data)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
 
-	server = find_server(servers, device_get_adapter(dev->btd_dev));
+	server = find_server(servers, device_get_adapter(device));
 	if (!server)
 		return;
 
-	session = find_session(server->sessions, dev);
+	session = find_session(server->sessions, device);
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
@@ -3509,7 +3510,7 @@ static void state_changed(struct audio_device *dev, avctp_state_t old_state,
 		if (session != NULL)
 			break;
 
-		session_create(server, dev);
+		session_create(server, device);
 
 		break;
 	case AVCTP_STATE_CONNECTED:
@@ -3538,7 +3539,7 @@ gboolean avrcp_connect(struct audio_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_connect(dev);
+	session = avctp_connect(dev->btd_dev);
 	if (session)
 		return FALSE;
 
@@ -3549,7 +3550,7 @@ void avrcp_disconnect(struct audio_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_get(dev);
+	session = avctp_get(dev->btd_dev);
 	if (!session)
 		return;
 
@@ -3582,7 +3583,7 @@ static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter,
 	servers = g_slist_append(servers, server);
 
 	if (!avctp_id)
-		avctp_id = avctp_add_state_cb(NULL, state_changed);
+		avctp_id = avctp_add_state_cb(NULL, state_changed, NULL);
 
 	return server;
 }
@@ -3791,7 +3792,7 @@ int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
 	if (server == NULL)
 		return -EINVAL;
 
-	session = find_session(server->sessions, dev);
+	session = find_session(server->sessions, dev->btd_dev);
 	if (session == NULL)
 		return -ENOTCONN;
 

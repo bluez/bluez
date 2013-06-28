@@ -69,12 +69,12 @@ struct control {
 	unsigned int avctp_id;
 };
 
-static void state_changed(struct audio_device *dev, avctp_state_t old_state,
-							avctp_state_t new_state)
+static void state_changed(struct btd_device *dev, avctp_state_t old_state,
+				avctp_state_t new_state, void *user_data)
 {
+	struct control *control = user_data;
 	DBusConnection *conn = btd_get_dbus_connection();
-	struct control *control = btd_service_get_user_data(dev->control);
-	const char *path = device_get_path(dev->btd_dev);
+	const char *path = device_get_path(dev);
 
 	switch (new_state) {
 	case AVCTP_STATE_DISCONNECTED:
@@ -110,7 +110,7 @@ int control_connect(struct btd_service *service)
 	if (!control->target)
 		return -ENOTSUP;
 
-	control->session = avctp_connect(control->dev);
+	control->session = avctp_connect(control->dev->btd_dev);
 	if (!control->session)
 		return -EIO;
 
@@ -287,7 +287,8 @@ static struct control *control_init(struct audio_device *dev)
 	control = g_new0(struct control, 1);
 
 	control->dev = dev;
-	control->avctp_id = avctp_add_state_cb(dev, state_changed);
+	control->avctp_id = avctp_add_state_cb(dev->btd_dev, state_changed,
+								control);
 
 	return control;
 }

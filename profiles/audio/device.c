@@ -198,9 +198,11 @@ static void device_sink_cb(struct audio_device *dev,
 	}
 }
 
-static void device_avctp_cb(struct audio_device *dev, avctp_state_t old_state,
-							avctp_state_t new_state)
+static void device_avctp_cb(struct btd_device *device, avctp_state_t old_state,
+				avctp_state_t new_state, void *user_data)
 {
+	struct audio_device *dev = user_data;
+
 	if (!dev->control)
 		return;
 
@@ -251,7 +253,8 @@ struct audio_device *audio_device_register(struct btd_device *device)
 							NULL);
 	dev->priv->service_cb_id = btd_service_add_state_cb(service_cb, dev);
 	dev->priv->avdtp_callback_id = avdtp_add_state_cb(dev, device_avdtp_cb);
-	dev->priv->avctp_callback_id = avctp_add_state_cb(dev, device_avctp_cb);
+	dev->priv->avctp_callback_id = avctp_add_state_cb(device,
+							device_avctp_cb, dev);
 
 	return dev;
 }
