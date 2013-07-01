@@ -46,14 +46,13 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/profile.h"
-#include "../src/service.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
 
 #include "log.h"
 #include "error.h"
-#include "device.h"
 #include "manager.h"
 #include "avctp.h"
 #include "control.h"
@@ -61,8 +60,10 @@
 #include "glib-helper.h"
 #include "dbus-common.h"
 
+static GSList *devices = NULL;
+
 struct control {
-	struct audio_device *dev;
+	struct btd_device *dev;
 	struct avctp *session;
 	struct btd_service *target;
 	struct btd_service *remote;
@@ -110,7 +111,7 @@ int control_connect(struct btd_service *service)
 	if (!control->target)
 		return -ENOTSUP;
 
-	control->session = avctp_connect(control->dev->btd_dev);
+	control->session = avctp_connect(control->dev);
 	if (!control->session)
 		return -EIO;
 
@@ -132,8 +133,7 @@ int control_disconnect(struct btd_service *service)
 static DBusMessage *key_pressed(DBusConnection *conn, DBusMessage *msg,
 						uint8_t op, void *data)
 {
-	struct audio_device *device = data;
-	struct control *control = btd_service_get_user_data(device->control);
+	struct control *control = data;
 	int err;
 
 	if (!control->session)
@@ -207,8 +207,7 @@ static gboolean control_property_get_connected(
 					const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
-	struct audio_device *device = data;
-	struct control *control = btd_service_get_user_data(device->control);
+	struct control *control = data;
 	dbus_bool_t value = (control->session != NULL);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &value);
@@ -236,11 +235,10 @@ static const GDBusPropertyTable control_properties[] = {
 
 static void path_unregister(void *data)
 {
-	struct audio_device *dev = data;
-	struct control *control = btd_service_get_user_data(dev->control);
+	struct control *control = data;
 
-	DBG("Unregistered interface %s on path %s",
-		AUDIO_CONTROL_INTERFACE, device_get_path(dev->btd_dev));
+	DBG("Unregistered interface %s on path %s",  AUDIO_CONTROL_INTERFACE,
+						device_get_path(control->dev));
 
 	if (control->session)
 		avctp_disconnect(control->session);
@@ -253,8 +251,8 @@ static void path_unregister(void *data)
 	if (control->remote)
 		btd_service_unref(control->remote);
 
+	devices = g_slist_remove(devices, control);
 	g_free(control);
-	dev->control = NULL;
 }
 
 void control_unregister(struct btd_service *service)
@@ -266,38 +264,56 @@ void control_unregister(struct btd_service *service)
 						AUDIO_CONTROL_INTERFACE);
 }
 
-static struct control *control_init(struct audio_device *dev)
+static struct control *find_control(struct btd_device *dev)
+{
+	GSList *l;
+
+	for (l = devices; l; l = l->next) {
+		struct control *control = l->data;
+
+		if (control->dev == dev)
+			return control;
+	}
+
+	return NULL;
+}
+
+static struct control *control_init(struct btd_service *service)
 {
 	struct control *control;
+	struct btd_device *dev = btd_service_get_device(service);
 
-	if (dev->control != NULL)
-		return btd_service_get_user_data(dev->control);
-
-	if (!g_dbus_register_interface(btd_get_dbus_connection(),
-					device_get_path(dev->btd_dev),
-					AUDIO_CONTROL_INTERFACE,
-					control_methods, NULL,
-					control_properties, dev,
-					path_unregister))
-		return NULL;
-
-	DBG("Registered interface %s on path %s",
-		AUDIO_CONTROL_INTERFACE, device_get_path(dev->btd_dev));
+	control = find_control(dev);
+	if (control != NULL)
+		return control;
 
 	control = g_new0(struct control, 1);
 
+	if (!g_dbus_register_interface(btd_get_dbus_connection(),
+					device_get_path(dev),
+					AUDIO_CONTROL_INTERFACE,
+					control_methods, NULL,
+					control_properties, control,
+					path_unregister)) {
+		g_free(control);
+		return NULL;
+	}
+
+	DBG("Registered interface %s on path %s", AUDIO_CONTROL_INTERFACE,
+							device_get_path(dev));
+
 	control->dev = dev;
-	control->avctp_id = avctp_add_state_cb(dev->btd_dev, state_changed,
-								control);
+	control->avctp_id = avctp_add_state_cb(dev, state_changed, control);
+	devices = g_slist_prepend(devices, control);
 
 	return control;
 }
 
-int control_init_target(struct audio_device *dev, struct btd_service *service)
+int control_init_target(struct btd_service *service)
 {
 	struct control *control;
 
-	control = control_init(dev);
+	control = control_init(service);
 	if (control == NULL)
 		return -EINVAL;
 
@@ -308,11 +324,11 @@ int control_init_target(struct audio_device *dev, struct btd_service *service)
 	return 0;
 }
 
-int control_init_remote(struct audio_device *dev, struct btd_service *service)
+int control_init_remote(struct btd_service *service)
 {
 	struct control *control;
 
-	control = control_init(dev);
+	control = control_init(service);
 	if (control == NULL)
 		return -EINVAL;
 

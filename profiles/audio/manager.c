@@ -147,7 +147,7 @@ static int avrcp_target_probe(struct btd_service *service)
 		return -1;
 	}
 
-	err = control_init_target(audio_dev, service);
+	err = control_init_target(service);
 	if (err < 0)
 		return 0;
 
@@ -171,7 +171,7 @@ static int avrcp_remote_probe(struct btd_service *service)
 		return -1;
 	}
 
-	err = control_init_remote(audio_dev, service);
+	err = control_init_remote(service);
 	if (err < 0)
 		return err;
 
