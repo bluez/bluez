@@ -106,7 +106,7 @@ static gboolean control_connect_timeout(gpointer user_data)
 	dev->priv->control_timer = 0;
 
 	if (dev->control)
-		avrcp_connect(dev);
+		avrcp_connect(dev->btd_dev);
 
 	return FALSE;
 }
@@ -150,7 +150,7 @@ static void disconnect_cb(struct btd_device *btd_dev, gboolean removal,
 	device_remove_control_timer(dev);
 
 	if (dev->control && priv->avctp_state != AVCTP_STATE_DISCONNECTED)
-		avrcp_disconnect(dev);
+		avrcp_disconnect(dev->btd_dev);
 
 	sink = btd_device_get_service(btd_dev, A2DP_SINK_UUID);
 	if (sink)
@@ -173,7 +173,7 @@ static void device_avdtp_cb(struct btd_device *device, struct avdtp *session,
 		if (avdtp_stream_setup_active(session))
 			device_set_control_timer(dev);
 		else
-			avrcp_connect(dev);
+			avrcp_connect(dev->btd_dev);
 	}
 }
 
@@ -191,7 +191,7 @@ static void device_sink_cb(struct audio_device *dev,
 		if (dev->control) {
 			device_remove_control_timer(dev);
 			if (priv->avctp_state != AVCTP_STATE_DISCONNECTED)
-				avrcp_disconnect(dev);
+				avrcp_disconnect(dev->btd_dev);
 		}
 		break;
 	case BTD_SERVICE_STATE_CONNECTING:

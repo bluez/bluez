@@ -379,9 +379,10 @@ static gboolean select_configuration(struct media_endpoint *endpoint,
 static int transport_device_cmp(gconstpointer data, gconstpointer user_data)
 {
 	struct media_transport *transport = (struct media_transport *) data;
-	const struct audio_device *device = user_data;
+	const struct btd_device *device = user_data;
+	const struct audio_device *dev = media_transport_get_dev(transport);
 
-	if (device == media_transport_get_dev(transport))
+	if (device == dev->btd_dev)
 		return 0;
 
 	return -1;
@@ -389,7 +390,7 @@ static int transport_device_cmp(gconstpointer data, gconstpointer user_data)
 
 static struct media_transport *find_device_transport(
 					struct media_endpoint *endpoint,
-					struct audio_device *device)
+					struct btd_device *device)
 {
 	GSList *match;
 
@@ -414,7 +415,7 @@ static gboolean set_configuration(struct media_endpoint *endpoint,
 	DBusMessageIter iter;
 	struct media_transport *transport;
 
-	transport = find_device_transport(endpoint, device);
+	transport = find_device_transport(endpoint, device->btd_dev);
 
 	if (transport != NULL)
 		return FALSE;
@@ -1148,7 +1149,7 @@ static uint32_t get_duration(void *user_data)
 	return mp->duration;
 }
 
-static void set_volume(uint8_t volume, struct audio_device *dev, void *user_data)
+static void set_volume(uint8_t volume, struct btd_device *dev, void *user_data)
 {
 	struct media_player *mp = user_data;
 	GSList *l;

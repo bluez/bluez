@@ -154,7 +154,7 @@ static int avrcp_target_probe(struct btd_service *service)
 	audio_dev->control = service;
 
 	if (audio_dev->sink && sink_is_active(audio_dev->sink))
-		avrcp_connect(audio_dev);
+		avrcp_connect(audio_dev->btd_dev);
 
 	return 0;
 }

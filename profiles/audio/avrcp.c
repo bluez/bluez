@@ -53,7 +53,6 @@
 
 #include "log.h"
 #include "error.h"
-#include "device.h"
 #include "manager.h"
 #include "avctp.h"
 #include "avrcp.h"
@@ -213,7 +212,7 @@ struct avrcp_player {
 struct avrcp {
 	struct avrcp_server *server;
 	struct avctp *conn;
-	struct audio_device *dev;
+	struct btd_device *dev;
 	struct avrcp_player *player;
 	gboolean target;
 	uint16_t version;
@@ -1417,7 +1416,7 @@ static uint8_t avrcp_handle_register_notification(struct avrcp *session,
 						uint8_t transaction)
 {
 	struct avrcp_player *player = session->player;
-	struct audio_device *dev = session->dev;
+	struct btd_device *dev = session->dev;
 	uint16_t len = ntohs(pdu->params_len);
 	uint64_t uid;
 	GList *settings;
@@ -2820,7 +2819,7 @@ static struct avrcp_player *create_ct_player(struct avrcp *session,
 	player = g_new0(struct avrcp_player, 1);
 	player->sessions = g_slist_prepend(player->sessions, session);
 
-	path = device_get_path(session->dev->btd_dev);
+	path = device_get_path(session->dev);
 
 	mp = media_player_controller_create(path, id);
 	if (mp == NULL)
@@ -3256,7 +3255,7 @@ static struct avrcp *find_session(GSList *list, struct btd_device *dev)
 	for (; list; list = list->next) {
 		struct avrcp *session = list->data;
 
-		if (session->dev->btd_dev == dev)
+		if (session->dev == dev)
 			return session;
 	}
 
@@ -3316,8 +3315,7 @@ static void session_tg_init_control(struct avrcp *session)
 		avrcp_register_notification(session,
 						AVRCP_EVENT_VOLUME_CHANGED);
 
-	service = btd_device_get_service(session->dev->btd_dev,
-							AVRCP_REMOTE_UUID);
+	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
 	if (service != NULL)
 		btd_service_connecting_complete(service, 0);
 }
@@ -3346,9 +3344,7 @@ static void session_ct_init_control(struct avrcp *session)
 	if (session->version >= 0x0104)
 		session->supported_events = (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
-
-	service = btd_device_get_service(session->dev->btd_dev,
-							AVRCP_TARGET_UUID);
+	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	if (service != NULL)
 		btd_service_connecting_complete(service, 0);
 
@@ -3390,8 +3386,7 @@ static void session_tg_destroy(struct avrcp *session)
 	if (player != NULL)
 		player->sessions = g_slist_remove(player->sessions, session);
 
-	service = btd_device_get_service(session->dev->btd_dev,
-							AVRCP_REMOTE_UUID);
+	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
 	if (service == NULL)
 		return session_destroy(session);
 
@@ -3411,8 +3406,7 @@ static void session_ct_destroy(struct avrcp *session)
 
 	g_slist_free_full(session->players, player_destroy);
 
-	service = btd_device_get_service(session->dev->btd_dev,
-							AVRCP_TARGET_UUID);
+	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
 	if (service == NULL)
 		return session_destroy(session);
 
@@ -3431,25 +3425,28 @@ static struct avrcp *session_create(struct avrcp_server *server,
 	const sdp_record_t *rec;
 	sdp_list_t *list;
 	sdp_profile_desc_t *desc;
-	struct audio_device *dev = manager_get_audio_device(device, FALSE);
+	struct btd_service *sink, *source;
 
 	session = g_new0(struct avrcp, 1);
 	session->server = server;
 	session->conn = avctp_connect(device);
-	session->dev = dev;
+	session->dev = device;
 
 	server->sessions = g_slist_append(server->sessions, session);
+
+	sink = btd_device_get_service(device, A2DP_SINK_UUID);
+	source = btd_device_get_service(device, A2DP_SOURCE_UUID);
 
 	/* If sink and source are not supported assume the controller must
 	 * be the initiator
 	 */
-	if (dev->sink == NULL && dev->source == NULL)
+	if (sink == NULL && source == NULL)
 		session->target = !avctp_is_initiator(session->conn);
-	else if (dev->sink && !dev->source)
+	else if (sink && !source)
 		session->target = TRUE;
-	else if (dev->source && !dev->sink)
+	else if (source && !sink)
 		session->target = FALSE;
-	else if (dev->sink && sink_is_active(dev->sink))
+	else if (sink && sink_is_active(sink))
 		session->target = TRUE;
 	else
 		session->target = FALSE;
@@ -3535,22 +3532,22 @@ static void state_changed(struct btd_device *device, avctp_state_t old_state,
 	}
 }
 
-gboolean avrcp_connect(struct audio_device *dev)
+gboolean avrcp_connect(struct btd_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_connect(dev->btd_dev);
+	session = avctp_connect(dev);
 	if (session)
 		return FALSE;
 
 	return TRUE;
 }
 
-void avrcp_disconnect(struct audio_device *dev)
+void avrcp_disconnect(struct btd_device *dev)
 {
 	struct avctp *session;
 
-	session = avctp_get(dev->btd_dev);
+	session = avctp_get(dev);
 	if (!session)
 		return;
 
@@ -3781,18 +3778,18 @@ static gboolean avrcp_handle_set_volume(struct avctp *conn,
 	return FALSE;
 }
 
-int avrcp_set_volume(struct audio_device *dev, uint8_t volume)
+int avrcp_set_volume(struct btd_device *dev, uint8_t volume)
 {
 	struct avrcp_server *server;
 	struct avrcp *session;
 	uint8_t buf[AVRCP_HEADER_LENGTH + 2];
 	struct avrcp_header *pdu = (void *) buf;
 
-	server = find_server(servers, device_get_adapter(dev->btd_dev));
+	server = find_server(servers, device_get_adapter(dev));
 	if (server == NULL)
 		return -EINVAL;
 
-	session = find_session(server->sessions, dev->btd_dev);
+	session = find_session(server->sessions, dev);
 	if (session == NULL)
 		return -ENOTCONN;
 

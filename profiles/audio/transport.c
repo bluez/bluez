@@ -666,7 +666,7 @@ static void set_volume(const GDBusPropertyTable *property,
 	}
 
 	if (a2dp->volume != volume)
-		avrcp_set_volume(transport->device, volume);
+		avrcp_set_volume(transport->device->btd_dev, volume);
 
 	a2dp->volume = volume;
 
@@ -809,7 +809,7 @@ struct media_transport *media_transport_create(struct audio_device *device,
 							transport);
 		} else {
 			a2dp->volume = 127;
-			avrcp_set_volume(device, a2dp->volume);
+			avrcp_set_volume(device->btd_dev, a2dp->volume);
 			transport->source_watch = source_add_state_cb(
 							device->source,
 							source_state_changed,
@@ -883,7 +883,7 @@ void media_transport_update_volume(struct media_transport *transport,
 					MEDIA_TRANSPORT_INTERFACE, "Volume");
 }
 
-uint8_t media_transport_get_device_volume(struct audio_device *dev)
+uint8_t media_transport_get_device_volume(struct btd_device *dev)
 {
 	GSList *l;
 
@@ -892,7 +892,7 @@ uint8_t media_transport_get_device_volume(struct audio_device *dev)
 
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
-		if (transport->device != dev)
+		if (transport->device->btd_dev != dev)
 			continue;
 
 		/* Volume is A2DP only */
@@ -903,7 +903,7 @@ uint8_t media_transport_get_device_volume(struct audio_device *dev)
 	return 0;
 }
 
-void media_transport_update_device_volume(struct audio_device *dev,
+void media_transport_update_device_volume(struct btd_device *dev,
 								uint8_t volume)
 {
 	GSList *l;
@@ -913,7 +913,7 @@ void media_transport_update_device_volume(struct audio_device *dev,
 
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
-		if (transport->device != dev)
+		if (transport->device->btd_dev != dev)
 			continue;
 
 		/* Volume is A2DP only */

@@ -91,7 +91,7 @@ struct avrcp_player_cb {
 	const char *(*get_status) (void *user_data);
 	uint32_t (*get_position) (void *user_data);
 	uint32_t (*get_duration) (void *user_data);
-	void (*set_volume) (uint8_t volume, struct audio_device *dev,
+	void (*set_volume) (uint8_t volume, struct btd_device *dev,
 							void *user_data);
 	bool (*play) (void *user_data);
 	bool (*stop) (void *user_data);
@@ -105,9 +105,9 @@ void avrcp_target_unregister(struct btd_adapter *adapter);
 int avrcp_remote_register(struct btd_adapter *adapter, GKeyFile *config);
 void avrcp_remote_unregister(struct btd_adapter *adapter);
 
-gboolean avrcp_connect(struct audio_device *dev);
-void avrcp_disconnect(struct audio_device *dev);
-int avrcp_set_volume(struct audio_device *dev, uint8_t volume);
+gboolean avrcp_connect(struct btd_device *dev);
+void avrcp_disconnect(struct btd_device *dev);
+int avrcp_set_volume(struct btd_device *dev, uint8_t volume);
 
 struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
 						struct avrcp_player_cb *cb,
