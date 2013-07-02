@@ -41,7 +41,6 @@
 #include "glib-helper.h"
 #include "plugin.h"
 #include "log.h"
-#include "device.h"
 #include "manager.h"
 
 static GKeyFile *load_config_file(const char *file)
