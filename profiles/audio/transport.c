@@ -38,7 +38,6 @@
 
 #include "log.h"
 #include "error.h"
-#include "device.h"
 #include "avdtp.h"
 #include "media.h"
 #include "transport.h"
