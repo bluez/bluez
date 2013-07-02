@@ -34,15 +34,14 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/dbus-common.h"
-#include "../src/profile.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/dbus-common.h"
+#include "src/profile.h"
 
 #include "glib-helper.h"
 #include "log.h"
 #include "error.h"
-#include "device.h"
 #include "avdtp.h"
 #include "media.h"
 #include "transport.h"
