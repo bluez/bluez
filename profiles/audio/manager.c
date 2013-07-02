@@ -50,13 +50,12 @@
 
 #include "lib/uuid.h"
 #include "glib-helper.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/profile.h"
-#include "../src/service.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/profile.h"
+#include "src/service.h"
 
 #include "log.h"
-#include "device.h"
 #include "error.h"
 #include "avdtp.h"
 #include "media.h"
@@ -69,115 +68,63 @@
 #include "sdpd.h"
 
 static GKeyFile *config = NULL;
-static GSList *devices = NULL;
-
-static struct audio_device *get_audio_dev(struct btd_device *device)
-{
-	return manager_get_audio_device(device, TRUE);
-}
-
-static struct audio_device *manager_find_device(struct btd_device *device)
-{
-	GSList *l;
-
-	for (l = devices; l != NULL; l = l->next) {
-		struct audio_device *dev = l->data;
-
-		if (dev->btd_dev == device)
-			return dev;
-	}
-
-	return NULL;
-}
-
-static void audio_remove(struct btd_service *service)
-{
-	struct btd_device *device = btd_service_get_device(service);
-	struct audio_device *dev;
-
-	dev = manager_find_device(device);
-	if (dev == NULL)
-		return;
-
-	devices = g_slist_remove(devices, dev);
-	audio_device_unregister(dev);
-}
 
 static int a2dp_source_probe(struct btd_service *service)
 {
-	struct btd_device *device = btd_service_get_device(service);
-	struct audio_device *audio_dev;
+	struct btd_device *dev = btd_service_get_device(service);
 
-	audio_dev = get_audio_dev(device);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
+	DBG("path %s", device_get_path(dev));
 
-	audio_dev->source = service;
+	source_init(service);
 
-	return source_init(service);
+	return 0;
+}
+
+static void a2dp_source_remove(struct btd_service *service)
+{
+	source_unregister(service);
 }
 
 static int a2dp_sink_probe(struct btd_service *service)
 {
-	struct btd_device *device = btd_service_get_device(service);
-	struct audio_device *audio_dev;
+	struct btd_device *dev = btd_service_get_device(service);
 
-	audio_dev = get_audio_dev(device);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
-
-	audio_dev->sink = service;
+	DBG("path %s", device_get_path(dev));
 
 	return sink_init(service);
 }
 
+static void a2dp_sink_remove(struct btd_service *service)
+{
+	sink_unregister(service);
+}
+
 static int avrcp_target_probe(struct btd_service *service)
 {
-	struct btd_device *device = btd_service_get_device(service);
-	struct audio_device *audio_dev;
-	int err;
+	struct btd_device *dev = btd_service_get_device(service);
 
-	audio_dev = get_audio_dev(device);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
+	DBG("path %s", device_get_path(dev));
 
-	err = control_init_target(service);
-	if (err < 0)
-		return 0;
+	return control_init_target(service);
+}
 
-	audio_dev->control = service;
-
-	if (audio_dev->sink && sink_is_active(audio_dev->sink))
-		avrcp_connect(audio_dev->btd_dev);
-
-	return 0;
+static void avrcp_target_remove(struct btd_service *service)
+{
+	control_unregister(service);
 }
 
 static int avrcp_remote_probe(struct btd_service *service)
 {
-	struct btd_device *device = btd_service_get_device(service);
-	struct audio_device *audio_dev;
-	int err;
+	struct btd_device *dev = btd_service_get_device(service);
 
-	audio_dev = get_audio_dev(device);
-	if (!audio_dev) {
-		DBG("unable to get a device object");
-		return -1;
-	}
+	DBG("path %s", device_get_path(dev));
 
-	err = control_init_remote(service);
-	if (err < 0)
-		return err;
+	return control_init_remote(service);
+}
 
-	audio_dev->control = service;
-
-	return 0;
+static void avrcp_remote_remove(struct btd_service *service)
+{
+	control_unregister(service);
 }
 
 static int a2dp_source_connect(struct btd_service *service)
@@ -324,7 +271,7 @@ static struct btd_profile a2dp_source_profile = {
 
 	.remote_uuid	= A2DP_SOURCE_UUID,
 	.device_probe	= a2dp_source_probe,
-	.device_remove	= audio_remove,
+	.device_remove	= a2dp_source_remove,
 
 	.auto_connect	= true,
 	.connect	= a2dp_source_connect,
@@ -340,7 +287,7 @@ static struct btd_profile a2dp_sink_profile = {
 
 	.remote_uuid	= A2DP_SINK_UUID,
 	.device_probe	= a2dp_sink_probe,
-	.device_remove	= audio_remove,
+	.device_remove	= a2dp_sink_remove,
 
 	.auto_connect	= true,
 	.connect	= a2dp_sink_connect,
@@ -355,7 +302,7 @@ static struct btd_profile avrcp_target_profile = {
 
 	.remote_uuid	= AVRCP_TARGET_UUID,
 	.device_probe	= avrcp_target_probe,
-	.device_remove	= audio_remove,
+	.device_remove	= avrcp_target_remove,
 
 	.connect	= avrcp_target_connect,
 	.disconnect	= avrcp_target_disconnect,
@@ -369,7 +316,7 @@ static struct btd_profile avrcp_remote_profile = {
 
 	.remote_uuid	= AVRCP_REMOTE_UUID,
 	.device_probe	= avrcp_remote_probe,
-	.device_remove	= audio_remove,
+	.device_remove	= avrcp_remote_remove,
 
 	.adapter_probe	= avrcp_remote_server_probe,
 	.adapter_remove = avrcp_remote_server_remove,
@@ -409,27 +356,6 @@ void audio_manager_exit(void)
 	btd_profile_unregister(&avrcp_target_profile);
 
 	btd_unregister_adapter_driver(&media_driver);
-}
-
-struct audio_device *manager_get_audio_device(struct btd_device *device,
-							gboolean create)
-{
-	struct audio_device *dev;
-
-	dev = manager_find_device(device);
-	if (dev)
-		return dev;
-
-	if (!create)
-		return NULL;
-
-	dev = audio_device_register(device);
-	if (!dev)
-		return NULL;
-
-	devices = g_slist_append(devices, dev);
-
-	return dev;
 }
 
 static void set_fast_connectable(struct btd_adapter *adapter,

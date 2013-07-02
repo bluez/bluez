@@ -22,18 +22,8 @@
  *
  */
 
-struct enabled_interfaces {
-	gboolean sink;
-	gboolean source;
-	gboolean control;
-	gboolean media_player;
-};
-
 int audio_manager_init(GKeyFile *config);
 void audio_manager_exit(void);
-
-struct audio_device *manager_get_audio_device(struct btd_device *device,
-							gboolean create);
 
 /* TRUE to enable fast connectable and FALSE to disable fast connectable for all
  * audio adapters. */
