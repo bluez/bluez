@@ -40,7 +40,7 @@ unsigned int sink_add_state_cb(struct btd_service *service, sink_state_cb cb,
 							void *user_data);
 gboolean sink_remove_state_cb(unsigned int id);
 
-int sink_init(struct audio_device *dev, struct btd_service *service);
+int sink_init(struct btd_service *service);
 void sink_unregister(struct btd_service *service);
 gboolean sink_is_active(struct btd_service *service);
 int sink_connect(struct btd_service *service);

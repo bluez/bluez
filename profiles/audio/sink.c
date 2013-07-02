@@ -39,11 +39,10 @@
 
 #include "log.h"
 
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/service.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/service.h"
 
-#include "device.h"
 #include "avdtp.h"
 #include "media.h"
 #include "a2dp.h"
@@ -55,7 +54,6 @@
 #define STREAM_SETUP_RETRY_TIMER 2
 
 struct sink {
-	struct audio_device *dev;
 	struct btd_service *service;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
@@ -335,7 +333,6 @@ int sink_connect(struct btd_service *service)
 static void sink_free(struct btd_service *service)
 {
 	struct sink *sink = btd_service_get_user_data(service);
-	struct audio_device *dev = sink->dev;
 
 	if (sink->cb_id)
 		avdtp_stream_remove_cb(sink->session, sink->stream,
@@ -363,7 +360,6 @@ static void sink_free(struct btd_service *service)
 	btd_service_unref(sink->service);
 
 	g_free(sink);
-	dev->sink = NULL;
 }
 
 void sink_unregister(struct btd_service *service)
@@ -375,19 +371,19 @@ void sink_unregister(struct btd_service *service)
 	sink_free(service);
 }
 
-int sink_init(struct audio_device *dev, struct btd_service *service)
+int sink_init(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	struct sink *sink;
 
-	DBG("%s", device_get_path(dev->btd_dev));
+	DBG("%s", device_get_path(dev));
 
 	sink = g_new0(struct sink, 1);
 
-	sink->dev = dev;
 	sink->service = btd_service_ref(service);
 
-	sink->avdtp_callback_id = avdtp_add_state_cb(dev->btd_dev,
-						avdtp_state_callback, sink);
+	sink->avdtp_callback_id = avdtp_add_state_cb(dev, avdtp_state_callback,
+									sink);
 
 	btd_service_set_user_data(service, sink);
 
