@@ -40,11 +40,10 @@
 
 #include "log.h"
 
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/service.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/service.h"
 
-#include "device.h"
 #include "avdtp.h"
 #include "media.h"
 #include "a2dp.h"
@@ -56,7 +55,6 @@
 #define STREAM_SETUP_RETRY_TIMER 2
 
 struct source {
-	struct audio_device *dev;
 	struct btd_service *service;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
@@ -88,13 +86,13 @@ static char *str_state[] = {
 
 static void source_set_state(struct source *source, source_state_t new_state)
 {
-	struct audio_device *dev = source->dev;
+	struct btd_device *dev = btd_service_get_device(source->service);
 	source_state_t old_state = source->state;
 	GSList *l;
 
 	source->state = new_state;
 
-	DBG("State changed %s: %s -> %s", device_get_path(dev->btd_dev),
+	DBG("State changed %s: %s -> %s", device_get_path(dev),
 				str_state[old_state], str_state[new_state]);
 
 	for (l = source_callbacks; l != NULL; l = l->next) {
@@ -338,7 +336,6 @@ int source_connect(struct btd_service *service)
 static void source_free(struct btd_service *service)
 {
 	struct source *source = btd_service_get_user_data(service);
-	struct audio_device *dev = source->dev;
 
 	if (source->cb_id)
 		avdtp_stream_remove_cb(source->session, source->stream,
@@ -366,7 +363,6 @@ static void source_free(struct btd_service *service)
 	btd_service_unref(source->service);
 
 	g_free(source);
-	dev->source = NULL;
 }
 
 void source_unregister(struct btd_service *service)
@@ -378,18 +374,18 @@ void source_unregister(struct btd_service *service)
 	source_free(service);
 }
 
-int source_init(struct audio_device *dev, struct btd_service *service)
+int source_init(struct btd_service *service)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	struct source *source;
 
-	DBG("%s", device_get_path(dev->btd_dev));
+	DBG("%s", device_get_path(dev));
 
 	source = g_new0(struct source, 1);
 
-	source->dev = dev;
 	source->service = btd_service_ref(service);
 
-	source->avdtp_callback_id = avdtp_add_state_cb(dev->btd_dev,
+	source->avdtp_callback_id = avdtp_add_state_cb(dev,
 							avdtp_state_callback,
 							source);
 
