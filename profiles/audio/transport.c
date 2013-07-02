@@ -32,9 +32,9 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
-#include "../src/adapter.h"
-#include "../src/device.h"
-#include "../src/dbus-common.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/dbus-common.h"
 
 #include "log.h"
 #include "error.h"
@@ -85,7 +85,7 @@ struct a2dp_transport {
 
 struct media_transport {
 	char			*path;		/* Transport object path */
-	struct audio_device	*device;	/* Transport device */
+	struct btd_device	*device;	/* Transport device */
 	struct media_endpoint	*endpoint;	/* Transport endpoint */
 	struct media_owner	*owner;		/* Transport owner */
 	uint8_t			*configuration; /* Transport configuration */
@@ -332,7 +332,7 @@ static guint resume_a2dp(struct media_transport *transport,
 	guint id;
 
 	if (a2dp->session == NULL) {
-		a2dp->session = avdtp_get(transport->device->btd_dev);
+		a2dp->session = avdtp_get(transport->device);
 		if (a2dp->session == NULL)
 			return 0;
 	}
@@ -396,7 +396,7 @@ static guint suspend_a2dp(struct media_transport *transport,
 
 static void cancel_a2dp(struct media_transport *transport, guint id)
 {
-	a2dp_cancel(transport->device, id);
+	a2dp_cancel(id);
 }
 
 static void media_owner_exit(DBusConnection *connection, void *user_data)
@@ -545,7 +545,7 @@ static gboolean get_device(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
 	struct media_transport *transport = data;
-	const char *path = device_get_path(transport->device->btd_dev);
+	const char *path = device_get_path(transport->device);
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 
@@ -666,7 +666,7 @@ static void set_volume(const GDBusPropertyTable *property,
 	}
 
 	if (a2dp->volume != volume)
-		avrcp_set_volume(transport->device->btd_dev, volume);
+		avrcp_set_volume(transport->device, volume);
 
 	a2dp->volume = volume;
 
@@ -770,7 +770,57 @@ static void source_state_changed(struct btd_service *service,
 		transport_update_playing(transport, FALSE);
 }
 
-struct media_transport *media_transport_create(struct audio_device *device,
+static int media_transport_init_source(struct media_transport *transport)
+{
+	struct btd_service *service;
+	struct a2dp_transport *a2dp;
+
+	service = btd_device_get_service(transport->device, A2DP_SINK_UUID);
+	if (service == NULL)
+		return -EINVAL;
+
+	a2dp = g_new0(struct a2dp_transport, 1);
+
+	transport->resume = resume_a2dp;
+	transport->suspend = suspend_a2dp;
+	transport->cancel = cancel_a2dp;
+	transport->data = a2dp;
+	transport->destroy = destroy_a2dp;
+
+	a2dp->volume = -1;
+	transport->sink_watch = sink_add_state_cb(service, sink_state_changed,
+								transport);
+
+	return 0;
+}
+
+static int media_transport_init_sink(struct media_transport *transport)
+{
+	struct btd_service *service;
+	struct a2dp_transport *a2dp;
+
+	service = btd_device_get_service(transport->device, A2DP_SOURCE_UUID);
+	if (service == NULL)
+		return -EINVAL;
+
+	a2dp = g_new0(struct a2dp_transport, 1);
+
+	transport->resume = resume_a2dp;
+	transport->suspend = suspend_a2dp;
+	transport->cancel = cancel_a2dp;
+	transport->data = a2dp;
+	transport->destroy = destroy_a2dp;
+
+	a2dp->volume = 127;
+	avrcp_set_volume(transport->device, a2dp->volume);
+	transport->source_watch = source_add_state_cb(service,
+							source_state_changed,
+							transport);
+
+	return 0;
+}
+
+struct media_transport *media_transport_create(struct btd_device *device,
 						uint8_t *configuration,
 						size_t size, void *data)
 {
@@ -785,36 +835,17 @@ struct media_transport *media_transport_create(struct audio_device *device,
 	transport->configuration = g_new(uint8_t, size);
 	memcpy(transport->configuration, configuration, size);
 	transport->size = size;
-	transport->path = g_strdup_printf("%s/fd%d",
-				device_get_path(device->btd_dev), fd++);
+	transport->path = g_strdup_printf("%s/fd%d", device_get_path(device),
+									fd++);
 	transport->fd = -1;
 
 	uuid = media_endpoint_get_uuid(endpoint);
-	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0 ||
-			strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
-		struct a2dp_transport *a2dp;
-
-		a2dp = g_new0(struct a2dp_transport, 1);
-
-		transport->resume = resume_a2dp;
-		transport->suspend = suspend_a2dp;
-		transport->cancel = cancel_a2dp;
-		transport->data = a2dp;
-		transport->destroy = destroy_a2dp;
-
-		if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
-			a2dp->volume = -1;
-			transport->sink_watch = sink_add_state_cb(device->sink,
-							sink_state_changed,
-							transport);
-		} else {
-			a2dp->volume = 127;
-			avrcp_set_volume(device->btd_dev, a2dp->volume);
-			transport->source_watch = source_add_state_cb(
-							device->source,
-							source_state_changed,
-							transport);
-		}
+	if (strcasecmp(uuid, A2DP_SOURCE_UUID) == 0) {
+		if (media_transport_init_source(transport) < 0)
+			goto fail;
+	} else if (strcasecmp(uuid, A2DP_SINK_UUID) == 0) {
+		if (media_transport_init_sink(transport) < 0)
+			goto fail;
 	} else
 		goto fail;
 
@@ -856,7 +887,7 @@ void media_transport_update_delay(struct media_transport *transport,
 					MEDIA_TRANSPORT_INTERFACE, "Delay");
 }
 
-struct audio_device *media_transport_get_dev(struct media_transport *transport)
+struct btd_device *media_transport_get_dev(struct media_transport *transport)
 {
 	return transport->device;
 }
@@ -892,7 +923,7 @@ uint8_t media_transport_get_device_volume(struct btd_device *dev)
 
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
-		if (transport->device->btd_dev != dev)
+		if (transport->device != dev)
 			continue;
 
 		/* Volume is A2DP only */
@@ -913,7 +944,7 @@ void media_transport_update_device_volume(struct btd_device *dev,
 
 	for (l = transports; l; l = l->next) {
 		struct media_transport *transport = l->data;
-		if (transport->device->btd_dev != dev)
+		if (transport->device != dev)
 			continue;
 
 		/* Volume is A2DP only */

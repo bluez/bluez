@@ -380,9 +380,9 @@ static int transport_device_cmp(gconstpointer data, gconstpointer user_data)
 {
 	struct media_transport *transport = (struct media_transport *) data;
 	const struct btd_device *device = user_data;
-	const struct audio_device *dev = media_transport_get_dev(transport);
+	const struct btd_device *dev = media_transport_get_dev(transport);
 
-	if (device == dev->btd_dev)
+	if (device == dev)
 		return 0;
 
 	return -1;
@@ -402,20 +402,26 @@ static struct media_transport *find_device_transport(
 	return match->data;
 }
 
+struct a2dp_config_data {
+	struct a2dp_setup *setup;
+	a2dp_endpoint_config_t cb;
+};
+
 static gboolean set_configuration(struct media_endpoint *endpoint,
-					struct audio_device *device,
 					uint8_t *configuration, size_t size,
 					media_endpoint_cb_t cb,
 					void *user_data,
 					GDestroyNotify destroy)
 {
+	struct a2dp_config_data *data = user_data;
+	struct btd_device *device = a2dp_setup_get_device(data->setup);
 	DBusConnection *conn = btd_get_dbus_connection();
 	DBusMessage *msg;
 	const char *path;
 	DBusMessageIter iter;
 	struct media_transport *transport;
 
-	transport = find_device_transport(endpoint, device->btd_dev);
+	transport = find_device_transport(endpoint, device);
 
 	if (transport != NULL)
 		return FALSE;
@@ -488,11 +494,6 @@ static size_t get_capabilities(struct a2dp_sep *sep, uint8_t **capabilities,
 	return endpoint->size;
 }
 
-struct a2dp_config_data {
-	struct a2dp_setup *setup;
-	a2dp_endpoint_config_t cb;
-};
-
 struct a2dp_select_data {
 	struct a2dp_setup *setup;
 	a2dp_endpoint_select_t cb;
@@ -533,8 +534,8 @@ static void config_cb(struct media_endpoint *endpoint, void *ret, int size,
 	data->cb(data->setup, ret ? TRUE : FALSE);
 }
 
-static int set_config(struct a2dp_sep *sep, struct audio_device *dev,
-				uint8_t *configuration, size_t length,
+static int set_config(struct a2dp_sep *sep, uint8_t *configuration,
+				size_t length,
 				struct a2dp_setup *setup,
 				a2dp_endpoint_config_t cb,
 				void *user_data)
@@ -546,8 +547,8 @@ static int set_config(struct a2dp_sep *sep, struct audio_device *dev,
 	data->setup = setup;
 	data->cb = cb;
 
-	if (set_configuration(endpoint, dev, configuration, length,
-					config_cb, data, g_free) == TRUE)
+	if (set_configuration(endpoint, configuration, length, config_cb, data,
+							g_free) == TRUE)
 		return 0;
 
 	g_free(data);

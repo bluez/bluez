@@ -42,7 +42,6 @@ struct a2dp_endpoint {
 						a2dp_endpoint_select_t cb,
 						void *user_data);
 	int (*set_configuration) (struct a2dp_sep *sep,
-						struct audio_device *dev,
 						uint8_t *configuration,
 						size_t length,
 						struct a2dp_setup *setup,
@@ -87,8 +86,9 @@ unsigned int a2dp_resume(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data);
 unsigned int a2dp_suspend(struct avdtp *session, struct a2dp_sep *sep,
 				a2dp_stream_cb_t cb, void *user_data);
-gboolean a2dp_cancel(struct audio_device *dev, unsigned int id);
+gboolean a2dp_cancel(unsigned int id);
 
 gboolean a2dp_sep_lock(struct a2dp_sep *sep, struct avdtp *session);
 gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session);
 struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep);
+struct btd_device *a2dp_setup_get_device(struct a2dp_setup *setup);

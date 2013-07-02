@@ -154,7 +154,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		btd_service_disconnecting_complete(sink->service, 0);
 
 		if (sink->disconnect_id > 0) {
-			a2dp_cancel(sink->dev, sink->disconnect_id);
+			a2dp_cancel(sink->disconnect_id);
 			sink->disconnect_id = 0;
 		}
 
@@ -194,7 +194,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 	}
 
 	if (sink->connect_id > 0) {
-		a2dp_cancel(sink->dev, sink->connect_id);
+		a2dp_cancel(sink->connect_id);
 		sink->connect_id = 0;
 	}
 
@@ -346,13 +346,13 @@ static void sink_free(struct btd_service *service)
 
 	if (sink->connect_id > 0) {
 		btd_service_connecting_complete(sink->service, -ECANCELED);
-		a2dp_cancel(dev, sink->connect_id);
+		a2dp_cancel(sink->connect_id);
 		sink->connect_id = 0;
 	}
 
 	if (sink->disconnect_id > 0) {
 		btd_service_disconnecting_complete(sink->service, -ECANCELED);
-		a2dp_cancel(dev, sink->disconnect_id);
+		a2dp_cancel(sink->disconnect_id);
 		sink->disconnect_id = 0;
 	}
 
@@ -426,7 +426,6 @@ gboolean sink_new_stream(struct btd_service *service, struct avdtp *session,
 int sink_disconnect(struct btd_service *service, gboolean shutdown)
 {
 	struct sink *sink = btd_service_get_user_data(service);
-	struct audio_device *dev = sink->dev;
 
 	if (!sink->session)
 		return -ENOTCONN;
@@ -436,7 +435,7 @@ int sink_disconnect(struct btd_service *service, gboolean shutdown)
 
 	/* cancel pending connect */
 	if (sink->connect_id > 0) {
-		a2dp_cancel(dev, sink->connect_id);
+		a2dp_cancel(sink->connect_id);
 		sink->connect_id = 0;
 		btd_service_connecting_complete(sink->service, -ECANCELED);
 

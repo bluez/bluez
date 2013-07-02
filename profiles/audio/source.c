@@ -153,7 +153,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		btd_service_disconnecting_complete(source->service, 0);
 
 		if (source->disconnect_id > 0) {
-			a2dp_cancel(source->dev, source->disconnect_id);
+			a2dp_cancel(source->disconnect_id);
 			source->disconnect_id = 0;
 		}
 
@@ -193,7 +193,7 @@ static gboolean stream_setup_retry(gpointer user_data)
 	}
 
 	if (source->connect_id > 0) {
-		a2dp_cancel(source->dev, source->connect_id);
+		a2dp_cancel(source->connect_id);
 		source->connect_id = 0;
 	}
 
@@ -349,13 +349,13 @@ static void source_free(struct btd_service *service)
 
 	if (source->connect_id > 0) {
 		btd_service_connecting_complete(source->service, -ECANCELED);
-		a2dp_cancel(dev, source->connect_id);
+		a2dp_cancel(source->connect_id);
 		source->connect_id = 0;
 	}
 
 	if (source->disconnect_id > 0) {
 		btd_service_disconnecting_complete(source->service, -ECANCELED);
-		a2dp_cancel(dev, source->disconnect_id);
+		a2dp_cancel(source->disconnect_id);
 		source->disconnect_id = 0;
 	}
 
@@ -429,7 +429,7 @@ int source_disconnect(struct btd_service *service, gboolean shutdown)
 
 	/* cancel pending connect */
 	if (source->connect_id > 0) {
-		a2dp_cancel(source->dev, source->connect_id);
+		a2dp_cancel(source->connect_id);
 		source->connect_id = 0;
 		btd_service_connecting_complete(source->service, -ECANCELED);
 

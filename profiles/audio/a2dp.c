@@ -37,10 +37,12 @@
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include "../src/adapter.h"
+#include "lib/uuid.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/service.h"
 
 #include "log.h"
-#include "device.h"
 #include "manager.h"
 #include "avdtp.h"
 #include "sink.h"
@@ -83,7 +85,6 @@ struct a2dp_setup_cb {
 };
 
 struct a2dp_setup {
-	struct audio_device *dev;
 	struct avdtp *session;
 	struct a2dp_sep *sep;
 	struct avdtp_remote_sep *rsep;
@@ -120,25 +121,12 @@ static struct a2dp_setup *setup_ref(struct a2dp_setup *setup)
 	return setup;
 }
 
-static struct audio_device *a2dp_get_dev(struct avdtp *session)
-{
-	return manager_get_audio_device(avdtp_get_device(session), FALSE);
-}
-
 static struct a2dp_setup *setup_new(struct avdtp *session)
 {
-	struct audio_device *dev;
 	struct a2dp_setup *setup;
-
-	dev = a2dp_get_dev(session);
-	if (!dev) {
-		error("Unable to create setup");
-		return NULL;
-	}
 
 	setup = g_new0(struct a2dp_setup, 1);
 	setup->session = avdtp_ref(session);
-	setup->dev = a2dp_get_dev(session);
 	setups = g_slist_append(setups, setup);
 
 	return setup;
@@ -322,20 +310,6 @@ static struct a2dp_setup *a2dp_setup_get(struct avdtp *session)
 	return setup_ref(setup);
 }
 
-static struct a2dp_setup *find_setup_by_dev(struct audio_device *dev)
-{
-	GSList *l;
-
-	for (l = setups; l != NULL; l = l->next) {
-		struct a2dp_setup *setup = l->data;
-
-		if (setup->dev == dev)
-			return setup;
-	}
-
-	return NULL;
-}
-
 static struct a2dp_setup *find_setup_by_stream(struct avdtp_stream *stream)
 {
 	GSList *l;
@@ -403,7 +377,8 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean auto_config(gpointer data)
 {
 	struct a2dp_setup *setup = data;
-	struct audio_device *dev = setup->dev;
+	struct btd_device *dev = avdtp_get_device(setup->session);
+	struct btd_service *service;
 
 	/* Check if configuration was aborted */
 	if (setup->sep->stream == NULL)
@@ -415,10 +390,13 @@ static gboolean auto_config(gpointer data)
 	avdtp_stream_add_cb(setup->session, setup->stream,
 				stream_state_changed, setup->sep);
 
-	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE)
-		sink_new_stream(dev->sink, setup->session, setup->stream);
-	else
-		source_new_stream(dev->source, setup->session, setup->stream);
+	if (setup->sep->type == AVDTP_SEP_TYPE_SOURCE) {
+		service = btd_device_get_service(dev, A2DP_SINK_UUID);
+		sink_new_stream(service, setup->session, setup->stream);
+	} else {
+		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
+		source_new_stream(service, setup->session, setup->stream);
+	}
 
 done:
 	if (setup->setconf_cb)
@@ -497,7 +475,7 @@ static gboolean endpoint_setconf_ind(struct avdtp *session,
 		}
 
 		ret = a2dp_sep->endpoint->set_configuration(a2dp_sep,
-						setup->dev, codec->data,
+						codec->data,
 						cap->length - sizeof(*codec),
 						setup,
 						endpoint_setconf_cb,
@@ -588,7 +566,8 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 {
 	struct a2dp_sep *a2dp_sep = user_data;
 	struct a2dp_setup *setup;
-	struct audio_device *dev;
+	struct btd_device *dev;
+	struct btd_service *service;
 	int ret;
 
 	if (a2dp_sep->type == AVDTP_SEP_TYPE_SINK)
@@ -615,13 +594,16 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	if (!setup)
 		return;
 
-	dev = a2dp_get_dev(session);
+	dev = avdtp_get_device(session);
 
 	/* Notify D-Bus interface of the new stream */
-	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE)
-		sink_new_stream(dev->sink, session, setup->stream);
-	else
-		source_new_stream(dev->source, session, setup->stream);
+	if (a2dp_sep->type == AVDTP_SEP_TYPE_SOURCE) {
+		service = btd_device_get_service(dev, A2DP_SINK_UUID);
+		sink_new_stream(service, session, setup->stream);
+	} else {
+		service = btd_device_get_service(dev, A2DP_SOURCE_UUID);
+		source_new_stream(service, session, setup->stream);
+	}
 
 	/* Notify Endpoint */
 	if (a2dp_sep->endpoint) {
@@ -632,7 +614,7 @@ static void setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		service = avdtp_stream_get_codec(stream);
 		codec = (struct avdtp_media_codec_capability *) service->data;
 
-		err = a2dp_sep->endpoint->set_configuration(a2dp_sep, dev,
+		err = a2dp_sep->endpoint->set_configuration(a2dp_sep,
 						codec->data, service->length -
 						sizeof(*codec),
 						setup,
@@ -1839,32 +1821,31 @@ failed:
 	return 0;
 }
 
-gboolean a2dp_cancel(struct audio_device *dev, unsigned int id)
+gboolean a2dp_cancel(unsigned int id)
 {
-	struct a2dp_setup *setup;
-	GSList *l;
+	GSList *ls;
 
-	setup = find_setup_by_dev(dev);
-	if (!setup)
-		return FALSE;
+	for (ls = setups; ls != NULL; ls = g_slist_next(ls)) {
+		struct a2dp_setup *setup = ls->data;
+		GSList *l;
+		for (l = setup->cb; l != NULL; l = g_slist_next(l)) {
+			struct a2dp_setup_cb *cb = l->data;
 
-	for (l = setup->cb; l != NULL; l = g_slist_next(l)) {
-		struct a2dp_setup_cb *cb = l->data;
+			if (cb->id != id)
+				continue;
 
-		if (cb->id != id)
-			continue;
+			setup_ref(setup);
+			setup_cb_free(cb);
 
-		setup_ref(setup);
-		setup_cb_free(cb);
+			if (!setup->cb) {
+				DBG("aborting setup %p", setup);
+				avdtp_abort(setup->session, setup->stream);
+				return TRUE;
+			}
 
-		if (!setup->cb) {
-			DBG("aborting setup %p", setup);
-			avdtp_abort(setup->session, setup->stream);
+			setup_unref(setup);
 			return TRUE;
 		}
-
-		setup_unref(setup);
-		return TRUE;
 	}
 
 	return FALSE;
@@ -1925,4 +1906,12 @@ gboolean a2dp_sep_unlock(struct a2dp_sep *sep, struct avdtp *session)
 struct avdtp_stream *a2dp_sep_get_stream(struct a2dp_sep *sep)
 {
 	return sep->stream;
+}
+
+struct btd_device *a2dp_setup_get_device(struct a2dp_setup *setup)
+{
+	if (setup->session == NULL)
+		return NULL;
+
+	return avdtp_get_device(setup->session);
 }
