@@ -22,7 +22,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/l2cap.h monitor/l2cap.c \
 					monitor/uuid.h monitor/uuid.c \
 					monitor/sdp.h monitor/sdp.c
-monitor_btmon_LDADD = lib/libbluetooth-private.la
+monitor_btmon_LDADD = lib/libbluetooth-internal.la
 endif
 
 if EXPERIMENTAL
@@ -46,7 +46,7 @@ tools_mgmt_tester_SOURCES = tools/mgmt-tester.c monitor/bt.h \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
-tools_mgmt_tester_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_mgmt_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
@@ -55,7 +55,7 @@ tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
-tools_l2cap_tester_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 tools_gap_tester_SOURCES = $(gdbus_sources) \
 				tools/gap-tester.c monitor/bt.h \
@@ -79,13 +79,13 @@ tools_hciattach_SOURCES = tools/hciattach.c tools/hciattach.h \
 						tools/hciattach_ath3k.c \
 						tools/hciattach_qualcomm.c \
 						tools/hciattach_intel.c
-tools_hciattach_LDADD = lib/libbluetooth-private.la
+tools_hciattach_LDADD = lib/libbluetooth-internal.la
 
 tools_hciconfig_SOURCES = tools/hciconfig.c tools/csr.h tools/csr.c
-tools_hciconfig_LDADD = lib/libbluetooth-private.la
+tools_hciconfig_LDADD = lib/libbluetooth-internal.la
 
 tools_hcitool_SOURCES = tools/hcitool.c src/oui.h src/oui.c
-tools_hcitool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @UDEV_LIBS@
+tools_hcitool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ @UDEV_LIBS@
 
 tools_hcidump_SOURCES = tools/hcidump.c \
 				tools/parser/parser.h tools/parser/parser.c \
@@ -112,25 +112,25 @@ tools_hcidump_SOURCES = tools/hcidump.c \
 				tools/parser/ericsson.c \
 				tools/parser/csr.c \
 				tools/parser/bpa.c
-tools_hcidump_LDADD = lib/libbluetooth-private.la
+tools_hcidump_LDADD = lib/libbluetooth-internal.la
 
-tools_rfcomm_LDADD = lib/libbluetooth-private.la
+tools_rfcomm_LDADD = lib/libbluetooth-internal.la
 
-tools_rctest_LDADD = lib/libbluetooth-private.la
+tools_rctest_LDADD = lib/libbluetooth-internal.la
 
-tools_l2test_LDADD = lib/libbluetooth-private.la
+tools_l2test_LDADD = lib/libbluetooth-internal.la
 
-tools_l2ping_LDADD = lib/libbluetooth-private.la
+tools_l2ping_LDADD = lib/libbluetooth-internal.la
 
 tools_sdptool_SOURCES = tools/sdptool.c src/sdp-xml.h src/sdp-xml.c
-tools_sdptool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_sdptool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_ciptool_LDADD = lib/libbluetooth-private.la
+tools_ciptool_LDADD = lib/libbluetooth-internal.la
 
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
 			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
 			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
-tools_bccmd_LDADD = lib/libbluetooth-private.la
+tools_bccmd_LDADD = lib/libbluetooth-internal.la
 
 if USB
 tools_bccmd_SOURCES += tools/csr_usb.c
@@ -168,25 +168,25 @@ noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest tools/scotest \
 			tools/bluetooth-player
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
-tools_bdaddr_LDADD = lib/libbluetooth-private.la @UDEV_LIBS@
+tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
 
-tools_avinfo_LDADD = lib/libbluetooth-private.la
+tools_avinfo_LDADD = lib/libbluetooth-internal.la
 
-tools_avtest_LDADD = lib/libbluetooth-private.la
+tools_avtest_LDADD = lib/libbluetooth-internal.la
 
-tools_scotest_LDADD = lib/libbluetooth-private.la
+tools_scotest_LDADD = lib/libbluetooth-internal.la
 
-tools_hcieventmask_LDADD = lib/libbluetooth-private.la
+tools_hcieventmask_LDADD = lib/libbluetooth-internal.la
 
-tools_hwdb_LDADD = lib/libbluetooth-private.la
+tools_hwdb_LDADD = lib/libbluetooth-internal.la
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c
-tools_btmgmt_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_btmgmt_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
-tools_btiotest_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_btiotest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 tools_mpris_player_SOURCES = $(gdbus_sources) tools/mpris-player.c
 tools_mpris_player_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
@@ -207,16 +207,16 @@ attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
 				attrib/gatttool.h attrib/interactive.c \
 				attrib/utils.c src/log.c client/display.c \
 				client/display.h
-attrib_gatttool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ -lreadline
+attrib_gatttool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ -lreadline
 
 tools_obex_client_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-client-tool.c
-tools_obex_client_tool_LDADD = lib/libbluetooth-private.la \
+tools_obex_client_tool_LDADD = lib/libbluetooth-internal.la \
 						@GLIB_LIBS@ -lreadline
 
 tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-server-tool.c
-tools_obex_server_tool_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 endif
 
 if EXPERIMENTAL
@@ -238,7 +238,7 @@ profiles_cups_bluetooth_SOURCES = $(gdbus_sources) profiles/cups/main.c \
 					profiles/cups/hcrp.c
 
 profiles_cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ \
-				lib/libbluetooth-private.la
+				lib/libbluetooth-internal.la
 endif
 
 test_scripts += test/sap_client.py test/bluezutils.py \

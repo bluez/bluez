@@ -84,9 +84,9 @@ lib_libbluetooth_la_LDFLAGS = $(AM_LDFLAGS) -version-info 19:4:16
 lib_libbluetooth_la_DEPENDENCIES = $(local_headers)
 endif
 
-noinst_LTLIBRARIES += lib/libbluetooth-private.la
+noinst_LTLIBRARIES += lib/libbluetooth-internal.la
 
-lib_libbluetooth_private_la_SOURCES = $(lib_headers) $(lib_sources) \
+lib_libbluetooth_internal_la_SOURCES = $(lib_headers) $(lib_sources) \
 					$(extra_headers) $(extra_sources)
 
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
@@ -148,12 +148,12 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/eir.h src/eir.c \
 			src/shared/util.h src/shared/util.c \
 			src/shared/mgmt.h src/shared/mgmt.c
-src_bluetoothd_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@ @DBUS_LIBS@ \
+src_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ @DBUS_LIBS@ \
 								-ldl -lrt
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
 
-src_bluetoothd_DEPENDENCIES = lib/libbluetooth-private.la \
+src_bluetoothd_DEPENDENCIES = lib/libbluetooth-internal.la \
 						src/bluetooth.service
 
 src_bluetoothd_CFLAGS = $(AM_CFLAGS) -DBLUETOOTH_PLUGIN_BUILTIN \
@@ -220,10 +220,10 @@ AM_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/src -I$(srcdir)/src \
 unit_tests = unit/test-eir unit/test-uuid unit/test-textfile
 
 unit_test_eir_SOURCES = unit/test-eir.c src/eir.c src/glib-helper.c
-unit_test_eir_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+unit_test_eir_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 unit_test_uuid_SOURCES = unit/test-uuid.c
-unit_test_uuid_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+unit_test_uuid_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 unit_test_textfile_SOURCES = unit/test-textfile.c src/textfile.h src/textfile.c
 unit_test_textfile_LDADD = @GLIB_LIBS@
@@ -241,7 +241,7 @@ unit_test_sdp_SOURCES = unit/test-sdp.c \
 				src/shared/util.h src/shared/util.c \
 				src/sdpd.h src/sdpd-database.c \
 				src/sdpd-service.c src/sdpd-request.c
-unit_test_sdp_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+unit_test_sdp_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 unit_tests += unit/test-gdbus-client
 
@@ -274,7 +274,7 @@ unit_test_gobex_apparam_LDADD = @GLIB_LIBS@
 unit_tests += unit/test-lib
 
 unit_test_lib_SOURCES = unit/test-lib.c
-unit_test_lib_LDADD = lib/libbluetooth-private.la @GLIB_LIBS@
+unit_test_lib_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 noinst_PROGRAMS += $(unit_tests)
 
