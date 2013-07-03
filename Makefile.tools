@@ -2,11 +2,12 @@
 if CLIENT
 bin_PROGRAMS += client/bluetoothctl
 
-client_bluetoothctl_SOURCES = $(gdbus_sources) client/main.c \
+client_bluetoothctl_SOURCES = client/main.c \
 					client/display.h client/display.c \
 					client/agent.h client/agent.c \
 					monitor/uuid.h monitor/uuid.c
-client_bluetoothctl_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -lreadline
+client_bluetoothctl_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@ \
+				-lreadline
 endif
 
 if MONITOR
@@ -57,14 +58,12 @@ tools_l2cap_tester_SOURCES = tools/l2cap-tester.c monitor/bt.h \
 				src/shared/tester.h src/shared/tester.c
 tools_l2cap_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_gap_tester_SOURCES = $(gdbus_sources) \
-				tools/gap-tester.c monitor/bt.h \
+tools_gap_tester_SOURCES = tools/gap-tester.c monitor/bt.h \
 				emulator/btdev.h emulator/btdev.c \
 				emulator/bthost.h emulator/bthost.c \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
-
-tools_gap_tester_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+tools_gap_tester_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 endif
 
 if TOOLS
@@ -188,12 +187,13 @@ tools_btmgmt_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
 tools_btiotest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_mpris_player_SOURCES = $(gdbus_sources) tools/mpris-player.c
-tools_mpris_player_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+tools_mpris_player_SOURCES = tools/mpris-player.c
+tools_mpris_player_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 
-tools_bluetooth_player_SOURCES = $(gdbus_sources) tools/bluetooth-player.c \
+tools_bluetooth_player_SOURCES = tools/bluetooth-player.c \
 				client/display.h client/display.c
-tools_bluetooth_player_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -lreadline
+tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 
 EXTRA_DIST += tools/bdaddr.1
 endif
@@ -222,8 +222,8 @@ endif
 if EXPERIMENTAL
 noinst_PROGRAMS += profiles/iap/iapd
 
-profiles_iap_iapd_SOURCES = $(gdbus_sources) profiles/iap/main.c
-profiles_iap_iapd_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+profiles_iap_iapd_SOURCES = profiles/iap/main.c
+profiles_iap_iapd_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 endif
 
 if CUPS
@@ -231,14 +231,15 @@ cupsdir = $(libdir)/cups/backend
 
 cups_PROGRAMS = profiles/cups/bluetooth
 
-profiles_cups_bluetooth_SOURCES = $(gdbus_sources) profiles/cups/main.c \
+profiles_cups_bluetooth_SOURCES = profiles/cups/main.c \
 					profiles/cups/cups.h \
 					profiles/cups/sdp.c \
 					profiles/cups/spp.c \
 					profiles/cups/hcrp.c
 
 profiles_cups_bluetooth_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ \
-				lib/libbluetooth-internal.la
+				lib/libbluetooth-internal.la \
+				gdbus/libgdbus-internal.la
 endif
 
 test_scripts += test/sap_client.py test/bluezutils.py \

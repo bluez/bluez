@@ -54,7 +54,7 @@ obexd_builtin_sources += obexd/client/mns.c obexd/src/map_ap.h \
 
 libexec_PROGRAMS += obexd/src/obexd
 
-obexd_src_obexd_SOURCES = $(gdbus_sources) $(btio_sources) $(gobex_sources) \
+obexd_src_obexd_SOURCES = $(btio_sources) $(gobex_sources) \
 			$(obexd_builtin_sources) \
 			obexd/src/main.c obexd/src/obexd.h \
 			obexd/src/plugin.h obexd/src/plugin.c \
@@ -80,7 +80,8 @@ obexd_src_obexd_SOURCES = $(gdbus_sources) $(btio_sources) $(gobex_sources) \
 			obexd/client/driver.h obexd/client/driver.c \
 			obexd/src/map_ap.h
 obexd_src_obexd_LDADD = lib/libbluetooth-internal.la \
-				@ICAL_LIBS@ @DBUS_LIBS@ @GLIB_LIBS@ -ldl
+			gdbus/libgdbus-internal.la \
+			@ICAL_LIBS@ @DBUS_LIBS@ @GLIB_LIBS@ -ldl
 
 obexd_src_obexd_LDFLAGS = -Wl,--export-dynamic
 

@@ -112,6 +112,11 @@ builtin_nodist =
 
 include Makefile.plugins
 
+noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
+gdbus_libgdbus_internal_la_SOURCES = $(gdbus_sources)
+gdbus_libgdbus_internal_la_LDFLAGS = $(AM_LDFLAGS) @DBUS_LIBS@ @GLIB_LIBS@
+gdbus_libgdbus_internal_la_CFLAGS = $(AM_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@
+
 if MAINTAINER_MODE
 plugin_LTLIBRARIES += plugins/external-dummy.la
 plugins_external_dummy_la_SOURCES = plugins/external-dummy.c
@@ -122,7 +127,7 @@ endif
 
 libexec_PROGRAMS += src/bluetoothd
 
-src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
+src_bluetoothd_SOURCES = $(builtin_sources) \
 			$(attrib_sources) $(btio_sources) \
 			src/bluetooth.ver \
 			src/main.c src/log.h src/log.c \
@@ -148,8 +153,8 @@ src_bluetoothd_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/eir.h src/eir.c \
 			src/shared/util.h src/shared/util.c \
 			src/shared/mgmt.h src/shared/mgmt.c
-src_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@ @DBUS_LIBS@ \
-								-ldl -lrt
+src_bluetoothd_LDADD = lib/libbluetooth-internal.la gdbus/libgdbus-internal.la \
+			@GLIB_LIBS@ @DBUS_LIBS@ -ldl -lrt
 src_bluetoothd_LDFLAGS = $(AM_LDFLAGS) -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/bluetooth.ver
 
@@ -245,8 +250,9 @@ unit_test_sdp_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
 unit_tests += unit/test-gdbus-client
 
-unit_test_gdbus_client_SOURCES = $(gdbus_sources) unit/test-gdbus-client.c
-unit_test_gdbus_client_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
+unit_test_gdbus_client_LDADD = gdbus/libgdbus-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@
 
 unit_tests += unit/test-gobex-header unit/test-gobex-packet unit/test-gobex \
 			unit/test-gobex-transfer unit/test-gobex-apparam
