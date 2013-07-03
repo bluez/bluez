@@ -1451,6 +1451,16 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &lrlf, sizeof(lrlf));
 		break;
 
+	case BT_HCI_CMD_LE_SET_ADV_PARAMETERS:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		if (btdev->le_adv_enable)
+			status = BT_HCI_ERR_COMMAND_DISALLOWED;
+		else
+			status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
 	case BT_HCI_CMD_LE_READ_ADV_TX_POWER:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;

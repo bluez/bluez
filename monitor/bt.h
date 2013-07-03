@@ -842,6 +842,18 @@ struct bt_hci_cmd_le_set_random_address {
 	uint8_t  addr[6];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_SET_ADV_PARAMETERS	0x2006
+struct bt_hci_cmd_le_set_adv_parameters {
+	uint16_t adv_interval_min;
+	uint16_t adv_interval_max;
+	uint8_t adv_type;
+	uint8_t own_address_type;
+	uint8_t direct_address_type;
+	uint8_t direct_address[6];
+	uint8_t adv_channel_map;
+	uint8_t adv_filter_policy;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_READ_ADV_TX_POWER		0x2007
 struct bt_hci_rsp_le_read_adv_tx_power {
 	uint8_t  status;
