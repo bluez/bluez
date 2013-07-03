@@ -1479,6 +1479,7 @@ struct bt_hci_evt_le_long_term_key_request {
 #define BT_HCI_ERR_UNKNOWN_CONN_ID		0x02
 #define BT_HCI_ERR_HARDWARE_FAILURE		0x03
 #define BT_HCI_ERR_PAGE_TIMEOUT			0x04
+#define BT_HCI_ERR_COMMAND_DISALLOWED		0x0c
 #define BT_HCI_ERR_INVALID_PARAMETERS		0x12
 
 struct bt_l2cap_hdr {
