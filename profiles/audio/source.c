@@ -165,6 +165,7 @@ static void stream_state_changed(struct avdtp_stream *stream,
 		source->cb_id = 0;
 		break;
 	case AVDTP_STATE_OPEN:
+		btd_service_connecting_complete(source->service, 0);
 		source_set_state(dev, SOURCE_STATE_CONNECTED);
 		break;
 	case AVDTP_STATE_STREAMING:
@@ -183,19 +184,13 @@ static void stream_state_changed(struct avdtp_stream *stream,
 static gboolean stream_setup_retry(gpointer user_data)
 {
 	struct source *source = user_data;
-	int err;
 
 	source->retry_id = 0;
 
-	if (source->stream_state >= AVDTP_STATE_OPEN) {
-		DBG("Stream successfully created, after XCASE connect:connect");
-		err = 0;
-	} else {
+	if (source->stream_state < AVDTP_STATE_OPEN) {
 		DBG("Stream setup failed, after XCASE connect:connect");
-		err = -EIO;
+		btd_service_connecting_complete(source->service, -EIO);
 	}
-
-	btd_service_connecting_complete(source->service, err);
 
 	if (source->connect_id > 0) {
 		a2dp_cancel(source->dev, source->connect_id);
@@ -213,11 +208,8 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 
 	source->connect_id = 0;
 
-	if (stream) {
-		DBG("Stream successfully created");
-		btd_service_connecting_complete(source->service, 0);
+	if (stream)
 		return;
-	}
 
 	avdtp_unref(source->session);
 	source->session = NULL;
