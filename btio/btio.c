@@ -78,6 +78,7 @@ struct set_opts {
 	uint8_t mode;
 	int flushable;
 	uint32_t priority;
+	uint16_t voice;
 };
 
 struct connect {
@@ -723,13 +724,14 @@ static int sco_connect(int sock, const bdaddr_t *dst)
 	return 0;
 }
 
-static gboolean sco_set(int sock, uint16_t mtu, GError **err)
+static gboolean sco_set(int sock, uint16_t mtu, uint16_t voice, GError **err)
 {
 	struct sco_options sco_opt;
+	struct bt_voice bt_voice;
 	socklen_t len;
 
 	if (!mtu)
-		return TRUE;
+		goto voice;
 
 	len = sizeof(sco_opt);
 	memset(&sco_opt, 0, len);
@@ -742,6 +744,17 @@ static gboolean sco_set(int sock, uint16_t mtu, GError **err)
 	if (setsockopt(sock, SOL_SCO, SCO_OPTIONS, &sco_opt,
 						sizeof(sco_opt)) < 0) {
 		ERROR_FAILED(err, "setsockopt(SCO_OPTIONS)", errno);
+		return FALSE;
+	}
+
+voice:
+	if (!voice)
+		return TRUE;
+
+	bt_voice.setting = voice;
+	if (setsockopt(sock, SOL_BLUETOOTH, BT_VOICE, &bt_voice,
+						sizeof(bt_voice)) < 0) {
+		ERROR_FAILED(err, "setsockopt(BT_VOICE)", errno);
 		return FALSE;
 	}
 
@@ -831,6 +844,9 @@ static gboolean parse_set_opts(struct set_opts *opts, GError **err,
 			break;
 		case BT_IO_OPT_PRIORITY:
 			opts->priority = va_arg(args, int);
+			break;
+		case BT_IO_OPT_VOICE:
+			opts->voice = va_arg(args, int);
 			break;
 		default:
 			g_set_error(err, BT_IO_ERROR, EINVAL,
@@ -1310,7 +1326,7 @@ gboolean bt_io_set(GIOChannel *io, GError **err, BtIOOption opt1, ...)
 	case BT_IO_RFCOMM:
 		return rfcomm_set(sock, opts.sec_level, opts.master, err);
 	case BT_IO_SCO:
-		return sco_set(sock, opts.mtu, err);
+		return sco_set(sock, opts.mtu, opts.voice, err);
 	default:
 		g_set_error(err, BT_IO_ERROR, EINVAL,
 				"Unknown BtIO type %d", type);
@@ -1377,7 +1393,7 @@ static GIOChannel *create_io(gboolean server, struct set_opts *opts,
 		}
 		if (sco_bind(sock, &opts->src, err) < 0)
 			goto failed;
-		if (!sco_set(sock, opts->mtu, err))
+		if (!sco_set(sock, opts->mtu, opts->voice, err))
 			goto failed;
 		break;
 	default:
