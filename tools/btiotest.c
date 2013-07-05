@@ -445,7 +445,8 @@ static void rfcomm_listen(const char *src, uint8_t ch, gboolean defer,
 	g_io_channel_unref(rc_srv);
 }
 
-static void sco_connect(const char *src, const char *dst, int disconn, int voice)
+static void sco_connect(const char *src, const char *dst, int disconn,
+								int voice)
 {
 	struct io_data *data;
 	GError *err = NULL;

@@ -58,6 +58,7 @@ static long data_size = 672;
 static bdaddr_t bdaddr;
 
 static int defer_setup = 0;
+static int voice = 0;
 
 static float tv2fl(struct timeval tv)
 {
@@ -68,6 +69,7 @@ static int do_connect(char *svr)
 {
 	struct sockaddr_sco addr;
 	struct sco_conninfo conn;
+	struct bt_voice opts;
 	socklen_t optlen;
 	int sk;
 
@@ -86,6 +88,15 @@ static int do_connect(char *svr)
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
+							strerror(errno), errno);
+		goto error;
+	}
+
+	/* SCO voice setting */
+	memset(&opts, 0, sizeof(opts));
+	opts.setting = voice;
+	if (setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &opts, sizeof(opts)) < 0) {
+		syslog(LOG_ERR, "Can't set socket options: %s (%d)",
 							strerror(errno), errno);
 		goto error;
 	}
@@ -229,7 +240,15 @@ error:
 
 static void dump_mode(int sk)
 {
+	struct bt_voice opts;
 	int len;
+
+	/* SCO voice setting */
+	memset(&opts, 0, sizeof(opts));
+	opts.setting = voice;
+	if (setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &opts, sizeof(opts)) < 0)
+		syslog(LOG_ERR, "Can't set socket options: %s (%d)",
+							strerror(errno), errno);
 
 	if (defer_setup) {
 		len = read(sk, buf, sizeof(buf));
@@ -248,8 +267,16 @@ static void dump_mode(int sk)
 static void recv_mode(int sk)
 {
 	struct timeval tv_beg,tv_end,tv_diff;
+	struct bt_voice opts;
 	long total;
 	int len;
+
+	/* SCO voice setting */
+	memset(&opts, 0, sizeof(opts));
+	opts.setting = voice;
+	if (setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &opts, sizeof(opts)) < 0)
+		syslog(LOG_ERR, "Can't set socket options: %s (%d)",
+							strerror(errno), errno);
 
 	if (defer_setup) {
 		len = read(sk, buf, sizeof(buf));
@@ -271,7 +298,9 @@ static void recv_mode(int sk)
 				if (r < 0)
 					syslog(LOG_ERR, "Read failed: %s (%d)",
 							strerror(errno), errno);
-				return;
+				if (errno != ENOTCONN)
+					return;
+				r = 0;
 			}
 			total += r;
 		}
@@ -381,7 +410,8 @@ static void usage(void)
 		"\t-n connect and be silent (client)\n"
 		"Options:\n"
 		"\t[-b bytes]\n"
-		"\t[-W seconds] enable deferred setup\n");
+		"\t[-W seconds] enable deferred setup\n"
+		"\t[-V voice] select SCO voice setting (0x0060 cvsd, 0x0003 transparent)\n");
 }
 
 int main(int argc ,char *argv[])
@@ -389,7 +419,7 @@ int main(int argc ,char *argv[])
 	struct sigaction sa;
 	int opt, sk, mode = RECV;
 
-	while ((opt = getopt(argc, argv, "rdscmnb:W:")) != EOF) {
+	while ((opt = getopt(argc, argv, "rdscmnb:W:V:")) != EOF) {
 		switch(opt) {
 		case 'r':
 			mode = RECV;
@@ -421,6 +451,10 @@ int main(int argc ,char *argv[])
 
 		case 'W':
 			defer_setup = atoi(optarg);
+			break;
+
+		case 'V':
+			voice = atoi(optarg);
 			break;
 
 		default:
