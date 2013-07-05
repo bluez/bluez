@@ -52,14 +52,11 @@
 #include "source.h"
 #include "dbus-common.h"
 
-#define STREAM_SETUP_RETRY_TIMER 2
-
 struct source {
 	struct btd_service *service;
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
-	guint retry_id;
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
 	source_state_t state;
@@ -179,25 +176,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	source->stream_state = new_state;
 }
 
-static gboolean stream_setup_retry(gpointer user_data)
-{
-	struct source *source = user_data;
-
-	source->retry_id = 0;
-
-	if (source->stream_state < AVDTP_STATE_OPEN) {
-		DBG("Stream setup failed, after XCASE connect:connect");
-		btd_service_connecting_complete(source->service, -EIO);
-	}
-
-	if (source->connect_id > 0) {
-		a2dp_cancel(source->connect_id);
-		source->connect_id = 0;
-	}
-
-	return FALSE;
-}
-
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					struct avdtp_error *err, void *user_data)
@@ -212,15 +190,10 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	avdtp_unref(source->session);
 	source->session = NULL;
 	if (avdtp_error_category(err) == AVDTP_ERRNO
-			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-		DBG("connect:connect XCASE detected");
-		source->retry_id = g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-							stream_setup_retry,
-							source);
-	} else {
-		DBG("Stream setup failed : %s", avdtp_strerror(err));
+				&& avdtp_error_posix_errno(err) != EHOSTDOWN)
+		btd_service_connecting_complete(source->service, -EAGAIN);
+	else
 		btd_service_connecting_complete(source->service, -EIO);
-	}
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
@@ -252,35 +225,33 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 				void *user_data)
 {
 	struct source *source = user_data;
-	int id;
+	int id, perr;
 
 	if (err) {
 		avdtp_unref(source->session);
 		source->session = NULL;
 		if (avdtp_error_category(err) == AVDTP_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			DBG("connect:connect XCASE detected");
-			source->retry_id =
-				g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-							stream_setup_retry,
-							source);
+			perr = -EAGAIN;
 		} else
-			goto failed;
-		return;
+			perr = -EIO;
+		goto failed;
 	}
 
 	DBG("Discovery complete");
 
 	id = a2dp_select_capabilities(source->session, AVDTP_SEP_TYPE_SOURCE, NULL,
 						select_complete, source);
-	if (id == 0)
+	if (id == 0) {
+		perr = -EIO;
 		goto failed;
+	}
 
 	source->connect_id = id;
 	return;
 
 failed:
-	btd_service_connecting_complete(source->service, -EIO);
+	btd_service_connecting_complete(source->service, perr);
 	avdtp_unref(source->session);
 	source->session = NULL;
 }
@@ -355,9 +326,6 @@ static void source_free(struct btd_service *service)
 		a2dp_cancel(source->disconnect_id);
 		source->disconnect_id = 0;
 	}
-
-	if (source->retry_id)
-		g_source_remove(source->retry_id);
 
 	avdtp_remove_state_cb(source->avdtp_callback_id);
 	btd_service_unref(source->service);
