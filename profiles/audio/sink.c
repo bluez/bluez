@@ -58,7 +58,6 @@ struct sink {
 	struct avdtp *session;
 	struct avdtp_stream *stream;
 	unsigned int cb_id;
-	guint retry_id;
 	avdtp_session_state_t session_state;
 	avdtp_state_t stream_state;
 	sink_state_t state;
@@ -180,25 +179,6 @@ static void stream_state_changed(struct avdtp_stream *stream,
 	sink->stream_state = new_state;
 }
 
-static gboolean stream_setup_retry(gpointer user_data)
-{
-	struct sink *sink = user_data;
-
-	sink->retry_id = 0;
-
-	if (sink->stream_state < AVDTP_STATE_OPEN) {
-		DBG("Stream setup failed, after XCASE connect:connect");
-		btd_service_connecting_complete(sink->service, -EIO);
-	}
-
-	if (sink->connect_id > 0) {
-		a2dp_cancel(sink->connect_id);
-		sink->connect_id = 0;
-	}
-
-	return FALSE;
-}
-
 static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 					struct avdtp_stream *stream,
 					struct avdtp_error *err, void *user_data)
@@ -213,15 +193,10 @@ static void stream_setup_complete(struct avdtp *session, struct a2dp_sep *sep,
 	avdtp_unref(sink->session);
 	sink->session = NULL;
 	if (avdtp_error_category(err) == AVDTP_ERRNO
-			&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-		DBG("connect:connect XCASE detected");
-		sink->retry_id = g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-							stream_setup_retry,
-							sink);
-	} else {
-		DBG("Stream setup failed : %s", avdtp_strerror(err));
+				&& avdtp_error_posix_errno(err) != EHOSTDOWN)
+		btd_service_connecting_complete(sink->service, -EAGAIN);
+	else
 		btd_service_connecting_complete(sink->service, -EIO);
-	}
 }
 
 static void select_complete(struct avdtp *session, struct a2dp_sep *sep,
@@ -250,35 +225,33 @@ static void discovery_complete(struct avdtp *session, GSList *seps, struct avdtp
 				void *user_data)
 {
 	struct sink *sink = user_data;
-	int id;
+	int id, perr;
 
 	if (err) {
 		avdtp_unref(sink->session);
 		sink->session = NULL;
 		if (avdtp_error_category(err) == AVDTP_ERRNO
 				&& avdtp_error_posix_errno(err) != EHOSTDOWN) {
-			DBG("connect:connect XCASE detected");
-			sink->retry_id =
-				g_timeout_add_seconds(STREAM_SETUP_RETRY_TIMER,
-							stream_setup_retry,
-							sink);
+			perr = -EAGAIN;
 		} else
-			goto failed;
-		return;
+			perr = -EIO;
+		goto failed;
 	}
 
 	DBG("Discovery complete");
 
 	id = a2dp_select_capabilities(sink->session, AVDTP_SEP_TYPE_SINK, NULL,
 						select_complete, sink);
-	if (id == 0)
+	if (id == 0) {
+		perr = -EIO;
 		goto failed;
+	}
 
 	sink->connect_id = id;
 	return;
 
 failed:
-	btd_service_connecting_complete(sink->service, -EIO);
+	btd_service_connecting_complete(sink->service, perr);
 	avdtp_unref(sink->session);
 	sink->session = NULL;
 }
@@ -352,9 +325,6 @@ static void sink_free(struct btd_service *service)
 		a2dp_cancel(sink->disconnect_id);
 		sink->disconnect_id = 0;
 	}
-
-	if (sink->retry_id)
-		g_source_remove(sink->retry_id);
 
 	avdtp_remove_state_cb(sink->avdtp_callback_id);
 	btd_service_unref(sink->service);

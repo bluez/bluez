@@ -41,6 +41,7 @@
 
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2
+#define SINK_RETRY_TIMEOUT SOURCE_RETRY_TIMEOUT
 
 static unsigned int service_id = 0;
 static GSList *devices = NULL;
@@ -49,6 +50,7 @@ struct policy_data {
 	struct btd_device *dev;
 
 	guint source_timer;
+	guint sink_timer;
 	guint ct_timer;
 	guint tg_timer;
 };
@@ -117,6 +119,9 @@ static void policy_remove(void *user_data)
 	if (data->source_timer > 0)
 		g_source_remove(data->source_timer);
 
+	if (data->sink_timer > 0)
+		g_source_remove(data->sink_timer);
+
 	if (data->ct_timer > 0)
 		g_source_remove(data->ct_timer);
 
@@ -142,9 +147,34 @@ static struct policy_data *policy_get_data(struct btd_device *dev)
 	return data;
 }
 
-static void sink_cb(struct btd_device *dev, btd_service_state_t old_state,
+static gboolean policy_connect_sink(gpointer user_data)
+{
+	struct policy_data *data = user_data;
+	struct btd_service *service;
+
+	data->source_timer = 0;
+
+	service = btd_device_get_service(data->dev, A2DP_SINK_UUID);
+	if (service != NULL)
+		policy_connect(data, service);
+
+	return FALSE;
+}
+
+static void policy_set_sink_timer(struct policy_data *data)
+{
+	if (data->sink_timer > 0)
+		g_source_remove(data->sink_timer);
+
+	data->sink_timer = g_timeout_add_seconds(SINK_RETRY_TIMEOUT,
+							policy_connect_sink,
+							data);
+}
+
+static void sink_cb(struct btd_service *service, btd_service_state_t old_state,
 						btd_service_state_t new_state)
 {
+	struct btd_device *dev = btd_service_get_device(service);
 	struct policy_data *data;
 	struct btd_service *controller;
 
@@ -157,6 +187,18 @@ static void sink_cb(struct btd_device *dev, btd_service_state_t old_state,
 	switch (new_state) {
 	case BTD_SERVICE_STATE_UNAVAILABLE:
 	case BTD_SERVICE_STATE_DISCONNECTED:
+		if (old_state == BTD_SERVICE_STATE_CONNECTING) {
+			int err = btd_service_get_error(service);
+
+			if (err == -EAGAIN) {
+				policy_set_sink_timer(data);
+				break;
+			} else if (data->sink_timer > 0) {
+				g_source_remove(data->sink_timer);
+				data->sink_timer = 0;
+			}
+		}
+
 		if (data->ct_timer > 0) {
 			g_source_remove(data->ct_timer);
 			data->ct_timer = 0;
@@ -167,6 +209,11 @@ static void sink_cb(struct btd_device *dev, btd_service_state_t old_state,
 	case BTD_SERVICE_STATE_CONNECTING:
 		break;
 	case BTD_SERVICE_STATE_CONNECTED:
+		if (data->sink_timer > 0) {
+			g_source_remove(data->sink_timer);
+			data->sink_timer = 0;
+		}
+
 		/* Check if service initiate the connection then proceed
 		 * immediatelly otherwise set timer
 		 */
@@ -351,7 +398,7 @@ static void service_cb(struct btd_service *service,
 	struct btd_profile *profile = btd_service_get_profile(service);
 
 	if (g_str_equal(profile->remote_uuid, A2DP_SINK_UUID))
-		sink_cb(dev, old_state, new_state);
+		sink_cb(service, old_state, new_state);
 	else if (g_str_equal(profile->remote_uuid, A2DP_SOURCE_UUID))
 		source_cb(service, old_state, new_state);
 	else if (g_str_equal(profile->remote_uuid, AVRCP_REMOTE_UUID))
