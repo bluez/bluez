@@ -967,9 +967,8 @@ static void remove_service(gpointer data)
 	struct btd_service *service = data;
 	struct btd_device *device = btd_service_get_device(service);
 
-	service_shutdown(service);
 	device->pending = g_slist_remove(device->pending, service);
-	btd_service_unref(service);
+	service_remove(service);
 }
 
 static gboolean do_disconnect(gpointer user_data)

@@ -168,12 +168,13 @@ int service_probe(struct btd_service *service)
 	return err;
 }
 
-void service_shutdown(struct btd_service *service)
+void service_remove(struct btd_service *service)
 {
 	change_state(service, BTD_SERVICE_STATE_UNAVAILABLE, 0);
 	service->profile->device_remove(service);
 	service->device = NULL;
 	service->profile = NULL;
+	btd_service_unref(service);
 }
 
 int btd_service_connect(struct btd_service *service)
