@@ -993,8 +993,12 @@ int device_block(struct btd_device *device, gboolean update_only)
 	if (device->connected)
 		do_disconnect(device);
 
-	g_slist_free_full(device->services, remove_service);
-	device->services = NULL;
+	while (device->services != NULL) {
+		struct btd_service *service = device->services->data;
+
+		device->services = g_slist_remove(device->services, service);
+		service_remove(service);
+	}
 
 	if (!update_only)
 		err = btd_adapter_block_address(device->adapter,
@@ -2361,7 +2365,6 @@ static void device_remove_stored(struct btd_device *device)
 
 void device_remove(struct btd_device *device, gboolean remove_stored)
 {
-
 	DBG("Removing device %s", device->path);
 
 	if (device->bonding) {
@@ -2380,6 +2383,13 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 
 	g_slist_foreach(device->services, dev_disconn_service, NULL);
 
+	while (device->services != NULL) {
+		struct btd_service *service = device->services->data;
+
+		device->services = g_slist_remove(device->services, service);
+		service_remove(service);
+	}
+
 	g_slist_free(device->pending);
 	device->pending = NULL;
 
@@ -2396,9 +2406,6 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 
 	if (remove_stored)
 		device_remove_stored(device);
-
-	g_slist_free_full(device->services, remove_service);
-	device->services = NULL;
 
 	btd_device_unref(device);
 }
