@@ -675,10 +675,32 @@ static const GDBusMethodTable session_methods[] = {
 	{ }
 };
 
+static gboolean get_target(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct obc_session *session = data;
+
+	if (session->driver->uuid == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&session->driver->uuid);
+
+	return TRUE;
+}
+
+static gboolean target_exists(const GDBusPropertyTable *property, void *data)
+{
+	struct obc_session *session = data;
+
+	return session->driver->uuid != NULL;
+}
+
 static const GDBusPropertyTable session_properties[] = {
 	{ "Source", "s", get_source, NULL, source_exists },
 	{ "Destination", "s", get_destination },
 	{ "Channel", "y", get_channel },
+	{ "Target", "s", get_target, NULL, target_exists },
 	{ }
 };
 
