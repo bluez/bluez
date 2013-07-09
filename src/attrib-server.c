@@ -32,7 +32,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <glib.h>
-#include <sys/file.h>
+#include <sys/stat.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
