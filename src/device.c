@@ -2381,8 +2381,6 @@ void device_remove(struct btd_device *device, gboolean remove_stored)
 	if (device->browse)
 		browse_request_cancel(device->browse);
 
-	g_slist_foreach(device->services, dev_disconn_service, NULL);
-
 	while (device->services != NULL) {
 		struct btd_service *service = device->services->data;
 
