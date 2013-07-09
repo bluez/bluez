@@ -167,7 +167,7 @@ static int a2dp_sink_disconnect(struct btd_service *service)
 	return sink_disconnect(service, FALSE);
 }
 
-static int avrcp_target_connect(struct btd_service *service)
+static int avrcp_control_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
@@ -177,7 +177,7 @@ static int avrcp_target_connect(struct btd_service *service)
 	return control_connect(service);
 }
 
-static int avrcp_target_disconnect(struct btd_service *service)
+static int avrcp_control_disconnect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
 	const char *path = device_get_path(dev);
@@ -304,8 +304,8 @@ static struct btd_profile avrcp_target_profile = {
 	.device_probe	= avrcp_target_probe,
 	.device_remove	= avrcp_target_remove,
 
-	.connect	= avrcp_target_connect,
-	.disconnect	= avrcp_target_disconnect,
+	.connect	= avrcp_control_connect,
+	.disconnect	= avrcp_control_disconnect,
 
 	.adapter_probe	= avrcp_target_server_probe,
 	.adapter_remove = avrcp_target_server_remove,
@@ -317,6 +317,9 @@ static struct btd_profile avrcp_remote_profile = {
 	.remote_uuid	= AVRCP_REMOTE_UUID,
 	.device_probe	= avrcp_remote_probe,
 	.device_remove	= avrcp_remote_remove,
+
+	.connect	= avrcp_control_connect,
+	.disconnect	= avrcp_control_disconnect,
 
 	.adapter_probe	= avrcp_remote_server_probe,
 	.adapter_remove = avrcp_remote_server_remove,

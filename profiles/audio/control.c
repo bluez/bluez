@@ -108,9 +108,6 @@ int control_connect(struct btd_service *service)
 	if (control->session)
 		return -EALREADY;
 
-	if (!control->target)
-		return -ENOTSUP;
-
 	control->session = avctp_connect(control->dev);
 	if (!control->session)
 		return -EIO;
