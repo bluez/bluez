@@ -3793,6 +3793,20 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 
 	device_set_paired(device, TRUE);
 
+	/* If services are already resolved just reply to the pairing
+	 * request
+	 */
+	if (device->svc_resolved && bonding) {
+		DBusMessage *reply;
+
+		reply = dbus_message_new_method_return(bonding->msg);
+		g_dbus_send_message(dbus_conn, reply);
+
+		bonding_request_free(bonding);
+
+		return;
+	}
+
 	/* If we were initiators start service discovery immediately.
 	 * However if the other end was the initator wait a few seconds
 	 * before SDP. This is due to potential IOP issues if the other
