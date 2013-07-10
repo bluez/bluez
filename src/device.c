@@ -117,7 +117,6 @@ struct browse_req {
 	struct btd_device *device;
 	GSList *match_uuids;
 	GSList *profiles_added;
-	GSList *profiles_removed;
 	sdp_list_t *records;
 	int search_uuid;
 	int reconnect_attempt;
@@ -440,7 +439,6 @@ static void browse_request_free(struct browse_req *req)
 	if (req->device)
 		btd_device_unref(req->device);
 	g_slist_free_full(req->profiles_added, g_free);
-	g_slist_free_full(req->profiles_removed, g_free);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
 
@@ -960,15 +958,6 @@ static gboolean dev_property_get_adapter(const GDBusPropertyTable *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &str);
 
 	return TRUE;
-}
-
-static void remove_service(gpointer data)
-{
-	struct btd_service *service = data;
-	struct btd_device *device = btd_service_get_device(service);
-
-	device->pending = g_slist_remove(device->pending, service);
-	service_remove(service);
 }
 
 static gboolean do_disconnect(gpointer user_data)
@@ -2539,7 +2528,8 @@ void device_remove_profile(gpointer a, gpointer b)
 
 	service = l->data;
 	device->services = g_slist_delete_link(device->services, l);
-	remove_service(service);
+	device->pending = g_slist_remove(device->pending, service);
+	service_remove(service);
 }
 
 void device_probe_profiles(struct btd_device *device, GSList *uuids)
@@ -2572,33 +2562,6 @@ add_uuids:
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "UUIDs");
-}
-
-static void device_remove_profiles(struct btd_device *device, GSList *uuids)
-{
-	char srcaddr[18], dstaddr[18];
-	GSList *l, *next;
-
-	ba2str(adapter_get_address(device->adapter), srcaddr);
-	ba2str(&device->bdaddr, dstaddr);
-
-	DBG("Removing profiles for %s", dstaddr);
-
-	g_slist_free_full(device->uuids, g_free);
-	device->uuids = NULL;
-	store_device_info(device);
-
-	for (l = device->services; l != NULL; l = next) {
-		struct btd_service *service = l->data;
-		struct btd_profile *profile = btd_service_get_profile(service);
-
-		next = l->next;
-		if (device_match_profile(device, profile, device->uuids))
-			continue;
-
-		device->services = g_slist_delete_link(device->services, l);
-		remove_service(service);
-	}
 }
 
 static void store_sdp_record(GKeyFile *key_file, sdp_record_t *rec)
@@ -2702,15 +2665,7 @@ static int update_record(struct browse_req *req, const char *uuid,
 			return 0;
 		req->profiles_added = g_slist_append(req->profiles_added,
 							g_strdup(uuid));
-		return 0;
 	}
-
-	l = g_slist_find_custom(req->profiles_removed, uuid, bt_uuid_strcmp);
-	if (l == NULL)
-		return 0;
-
-	g_free(l->data);
-	req->profiles_removed = g_slist_delete_link(req->profiles_removed, l);
 
 	return 0;
 }
@@ -2836,7 +2791,7 @@ static int primary_cmp(gconstpointer a, gconstpointer b)
 static void update_gatt_services(struct browse_req *req, GSList *current,
 								GSList *found)
 {
-	GSList *l, *lmatch, *left = g_slist_copy(current);
+	GSList *l, *lmatch;
 
 	/* Added Profiles */
 	for (l = found; l; l = g_slist_next(l)) {
@@ -2844,10 +2799,8 @@ static void update_gatt_services(struct browse_req *req, GSList *current,
 
 		/* Entry found ? */
 		lmatch = g_slist_find_custom(current, prim, primary_cmp);
-		if (lmatch) {
-			left = g_slist_remove(left, lmatch->data);
+		if (lmatch)
 			continue;
-		}
 
 		/* New entry */
 		req->profiles_added = g_slist_append(req->profiles_added,
@@ -2855,17 +2808,6 @@ static void update_gatt_services(struct browse_req *req, GSList *current,
 
 		DBG("UUID Added: %s", prim->uuid);
 	}
-
-	/* Removed Profiles */
-	for (l = left; l; l = g_slist_next(l)) {
-		struct gatt_primary *prim = l->data;
-		req->profiles_removed = g_slist_append(req->profiles_removed,
-							g_strdup(prim->uuid));
-
-		DBG("UUID Removed: %s", prim->uuid);
-	}
-
-	g_slist_free(left);
 }
 
 static GSList *device_services_from_record(struct btd_device *device,
@@ -2937,7 +2879,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 	device->tmp_records = req->records;
 	req->records = NULL;
 
-	if (!req->profiles_added && !req->profiles_removed) {
+	if (!req->profiles_added) {
 		DBG("%s: No service update", addr);
 		goto send_reply;
 	}
@@ -2952,10 +2894,6 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 		device_probe_profiles(device, req->profiles_added);
 	}
-
-	/* Remove profiles for services removed */
-	if (req->profiles_removed)
-		device_remove_profiles(device, req->profiles_removed);
 
 	/* Propagate services changes */
 	g_dbus_emit_property_changed(dbus_conn, req->device->path,
@@ -3000,22 +2938,6 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 
 done:
 	search_cb(recs, err, user_data);
-}
-
-static void init_browse(struct browse_req *req, gboolean reverse)
-{
-	GSList *l;
-
-	/* If we are doing reverse-SDP don't try to detect removed profiles
-	 * since some devices hide their service records while they are
-	 * connected
-	 */
-	if (reverse)
-		return;
-
-	for (l = req->device->uuids; l; l = l->next)
-		req->profiles_removed = g_slist_append(req->profiles_removed,
-							g_strdup(l->data));
 }
 
 static void store_services(struct btd_device *device)
@@ -3164,8 +3086,6 @@ static void register_all_services(struct browse_req *req, GSList *services)
 	device->primaries = NULL;
 
 	device_register_primaries(device, g_slist_copy(services), -1);
-	if (req->profiles_removed)
-		device_remove_profiles(device, req->profiles_removed);
 
 	device_probe_profiles(device, req->profiles_added);
 
@@ -3549,7 +3469,6 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
 	req = g_new0(struct browse_req, 1);
 	req->device = btd_device_ref(device);
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
-	init_browse(req, reverse);
 
 	err = bt_search_service(adapter_get_address(adapter), &device->bdaddr,
 						&uuid, browse_cb, req, NULL);
