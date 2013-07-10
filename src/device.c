@@ -1453,8 +1453,7 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 
 	if (dbus_message_is_method_call(req->msg, DEVICE_INTERFACE,
 								"Pair")) {
-		reply = dbus_message_new_method_return(req->msg);
-		g_dbus_send_message(dbus_conn, reply);
+		g_dbus_send_reply(dbus_conn, req->msg, DBUS_TYPE_INVALID);
 		return;
 	}
 
@@ -3716,13 +3715,8 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 	 * request
 	 */
 	if (device->svc_resolved && bonding) {
-		DBusMessage *reply;
-
-		reply = dbus_message_new_method_return(bonding->msg);
-		g_dbus_send_message(dbus_conn, reply);
-
+		g_dbus_send_reply(dbus_conn, bonding->msg, DBUS_TYPE_INVALID);
 		bonding_request_free(bonding);
-
 		return;
 	}
 
