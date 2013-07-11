@@ -2861,6 +2861,7 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 {
 	struct browse_req *req = user_data;
 	struct btd_device *device = req->device;
+	GSList *primaries;
 	char addr[18];
 
 	ba2str(&device->bdaddr, addr);
@@ -2885,16 +2886,11 @@ static void search_cb(sdp_list_t *recs, int err, gpointer user_data)
 		goto send_reply;
 	}
 
-	/* Probe matching profiles for services added */
-	if (req->profiles_added) {
-		GSList *list;
+	primaries = device_services_from_record(device, req->profiles_added);
+	if (primaries)
+		device_register_primaries(device, primaries, ATT_PSM);
 
-		list = device_services_from_record(device, req->profiles_added);
-		if (list)
-			device_register_primaries(device, list, ATT_PSM);
-
-		device_probe_profiles(device, req->profiles_added);
-	}
+	device_probe_profiles(device, req->profiles_added);
 
 	/* Propagate services changes */
 	g_dbus_emit_property_changed(dbus_conn, req->device->path,
