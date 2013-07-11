@@ -221,8 +221,7 @@ static const uint16_t uuid_list[] = {
 
 static int device_browse_primary(struct btd_device *device, DBusMessage *msg,
 							gboolean secure);
-static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
-							gboolean reverse);
+static int device_browse_sdp(struct btd_device *device, DBusMessage *msg);
 
 static GSList *find_service_with_profile(GSList *list, struct btd_profile *p)
 {
@@ -1223,7 +1222,7 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
 static int device_resolve_svc(struct btd_device *dev, DBusMessage *msg)
 {
 	if (device_is_bredr(dev))
-		return device_browse_sdp(dev, msg, FALSE);
+		return device_browse_sdp(dev, msg);
 	else
 		return device_browse_primary(dev, msg, FALSE);
 }
@@ -3454,8 +3453,7 @@ done:
 	return 0;
 }
 
-static int device_browse_sdp(struct btd_device *device, DBusMessage *msg,
-							gboolean reverse)
+static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 {
 	struct btd_adapter *adapter = device->adapter;
 	struct browse_req *req;
@@ -3645,7 +3643,7 @@ static gboolean start_discovery(gpointer user_data)
 	struct btd_device *device = user_data;
 
 	if (device_is_bredr(device))
-		device_browse_sdp(device, NULL, TRUE);
+		device_browse_sdp(device, NULL);
 	else
 		device_browse_primary(device, NULL, FALSE);
 
@@ -3734,7 +3732,7 @@ void device_bonding_complete(struct btd_device *device, uint8_t status)
 		}
 
 		if (device_is_bredr(device))
-			device_browse_sdp(device, bonding->msg, FALSE);
+			device_browse_sdp(device, bonding->msg);
 		else
 			device_browse_primary(device, bonding->msg, FALSE);
 
