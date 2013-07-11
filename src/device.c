@@ -161,6 +161,7 @@ struct btd_device {
 	char		*path;
 	bool		pending_paired;		/* "Paired" waiting for SDP */
 	bool		svc_resolved;
+	bool		svc_refreshed;
 	GSList		*svc_callbacks;
 	GSList		*eir_uuids;
 	char		name[MAX_NAME_LENGTH + 1];
@@ -1189,7 +1190,7 @@ done:
 				btd_error_failed(dev->connect, strerror(-err)));
 	else {
 		/* Start passive SDP discovery to update known services */
-		if (device_is_bredr(dev))
+		if (device_is_bredr(dev) && !dev->svc_refreshed)
 			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
 	}
@@ -1257,37 +1258,18 @@ static int service_prio_cmp(gconstpointer a, gconstpointer b)
 	return p2->priority - p1->priority;
 }
 
-static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
-							const char *uuid)
+static GSList *create_pending_list(struct btd_device *dev, const char *uuid)
 {
 	struct btd_service *service;
 	struct btd_profile *p;
 	GSList *l;
-	int err;
-
-	DBG("%s %s, client %s", dev->path, uuid ? uuid : "(all)",
-						dbus_message_get_sender(msg));
-
-	if (dev->pending || dev->connect || dev->browse)
-		return btd_error_in_progress(msg);
-
-	device_set_temporary(dev, FALSE);
-
-	if (!dev->svc_resolved) {
-		err = device_resolve_svc(dev, msg);
-		if (err < 0)
-			return btd_error_failed(msg, strerror(-err));
-		return NULL;
-	}
 
 	if (uuid) {
 		service = find_connectable_service(dev, uuid);
-		if (!service)
-			return btd_error_invalid_args(msg);
+		if (service)
+			return g_slist_prepend(dev->pending, service);
 
-		dev->pending = g_slist_prepend(dev->pending, service);
-
-		goto start_connect;
+		return dev->pending;
 	}
 
 	for (l = dev->services; l != NULL; l = g_slist_next(l)) {
@@ -1308,15 +1290,45 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 							service_prio_cmp);
 	}
 
-	if (!dev->pending)
-		return btd_error_not_available(msg);
+	return dev->pending;
+}
 
-start_connect:
+static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
+							const char *uuid)
+{
+	int err;
+
+	DBG("%s %s, client %s", dev->path, uuid ? uuid : "(all)",
+						dbus_message_get_sender(msg));
+
+	if (dev->pending || dev->connect || dev->browse)
+		return btd_error_in_progress(msg);
+
+	device_set_temporary(dev, FALSE);
+
+	if (!dev->svc_resolved)
+		goto resolve_services;
+
+	dev->pending = create_pending_list(dev, uuid);
+	if (!dev->pending) {
+		if (dev->svc_refreshed)
+			return btd_error_not_available(msg);
+
+		goto resolve_services;
+	}
+
 	err = connect_next(dev);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
 	dev->connect = dbus_message_ref(msg);
+
+	return NULL;
+
+resolve_services:
+	err = device_resolve_svc(dev, msg);
+	if (err < 0)
+		return btd_error_failed(msg, strerror(-err));
 
 	return NULL;
 }
@@ -1426,6 +1438,7 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	struct browse_req *req = dev->browse;
 
 	dev->svc_resolved = true;
+	dev->svc_refreshed = true;
 	dev->browse = NULL;
 
 	g_slist_free_full(dev->eir_uuids, g_free);
@@ -1789,6 +1802,7 @@ void device_remove_connection(struct btd_device *device)
 
 	device->connected = FALSE;
 	device->general_connect = FALSE;
+	device->svc_refreshed = false;
 
 	if (device->disconn_timer > 0) {
 		g_source_remove(device->disconn_timer);
