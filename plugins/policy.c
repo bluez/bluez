@@ -42,6 +42,7 @@
 #define CONTROL_CONNECT_TIMEOUT 2
 #define SOURCE_RETRY_TIMEOUT 2
 #define SINK_RETRY_TIMEOUT SOURCE_RETRY_TIMEOUT
+#define SOURCE_RETRIES 1
 
 static unsigned int service_id = 0;
 static GSList *devices = NULL;
@@ -50,6 +51,7 @@ struct policy_data {
 	struct btd_device *dev;
 
 	guint source_timer;
+	uint8_t source_retries;
 	guint sink_timer;
 	guint ct_timer;
 	guint tg_timer;
@@ -258,6 +260,7 @@ static gboolean policy_connect_source(gpointer user_data)
 	struct btd_service *service;
 
 	data->source_timer = 0;
+	data->source_retries++;
 
 	service = btd_device_get_service(data->dev, A2DP_SOURCE_UUID);
 	if (service != NULL)
@@ -297,7 +300,10 @@ static void source_cb(struct btd_service *service,
 			int err = btd_service_get_error(service);
 
 			if (err == -EAGAIN) {
-				policy_set_source_timer(data);
+				if (data->source_retries < SOURCE_RETRIES)
+					policy_set_source_timer(data);
+				else
+					data->source_retries = 0;
 				break;
 			} else if (data->source_timer > 0) {
 				g_source_remove(data->source_timer);
