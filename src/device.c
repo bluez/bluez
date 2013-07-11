@@ -1187,8 +1187,12 @@ done:
 	if (err && l == NULL)
 		g_dbus_send_message(dbus_conn,
 				btd_error_failed(dev->connect, strerror(-err)));
-	else
+	else {
+		/* Start passive SDP discovery to update known services */
+		if (device_is_bredr(dev))
+			device_browse_sdp(dev, NULL);
 		g_dbus_send_reply(dbus_conn, dev->connect, DBUS_TYPE_INVALID);
+	}
 
 	g_slist_free(dev->pending);
 	dev->pending = NULL;
