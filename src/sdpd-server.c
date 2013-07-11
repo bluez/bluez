@@ -28,12 +28,10 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <sys/stat.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/l2cap.h>
@@ -41,7 +39,6 @@
 #include <bluetooth/sdp_lib.h>
 
 #include <sys/un.h>
-#include <netinet/in.h>
 
 #include <glib.h>
 

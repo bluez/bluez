@@ -28,13 +28,9 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
 #include <stdlib.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
-#include <bluetooth/l2cap.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 

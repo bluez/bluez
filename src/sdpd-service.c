@@ -28,26 +28,19 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/time.h>
-#include <sys/socket.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
 #include <bluetooth/sdp_lib.h>
 
-#include <netinet/in.h>
-
 #include <glib.h>
-#include <dbus/dbus.h>
 
-#include "hcid.h"
 #include "sdpd.h"
 #include "log.h"
-#include "adapter.h"
 
 static sdp_record_t *server = NULL;
 static uint32_t fixed_dbts = 0;
