@@ -1224,14 +1224,6 @@ void device_add_eir_uuids(struct btd_device *dev, GSList *uuids)
 						DEVICE_INTERFACE, "UUIDs");
 }
 
-static int device_resolve_svc(struct btd_device *dev, DBusMessage *msg)
-{
-	if (device_is_bredr(dev))
-		return device_browse_sdp(dev, msg);
-	else
-		return device_browse_primary(dev, msg);
-}
-
 static struct btd_service *find_connectable_service(struct btd_device *dev,
 							const char *uuid)
 {
@@ -1332,7 +1324,12 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 	return NULL;
 
 resolve_services:
-	err = device_resolve_svc(dev, msg);
+	DBG("Resolving services for %s", dev->path);
+
+	if (device_is_bredr(dev))
+		err = device_browse_sdp(dev, msg);
+	else
+		err = device_browse_primary(dev, msg);
 	if (err < 0)
 		return btd_error_failed(msg, strerror(-err));
 
