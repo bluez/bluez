@@ -168,12 +168,15 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 		goto drop;
 	}
 
-	if (server->confirm) {
-		char address[18];
+	ba2str(&dst, addr);
 
-		ba2str(&dst, address);
-		error("Refusing connection from %s: setup in progress",
-								address);
+	if (server->confirm) {
+		error("Refusing connection from %s: setup in progress", addr);
+		goto drop;
+	}
+
+	if (!input_device_exists(&src, &dst)) {
+		error("Refusing connection from %s: unknown device", addr);
 		goto drop;
 	}
 
@@ -184,8 +187,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	if (ret != 0)
 		return;
 
-	ba2str(&src, addr);
-	error("input: authorization for %s failed", addr);
+	error("input: authorization for device %s failed", addr);
 
 	g_io_channel_unref(server->confirm);
 	server->confirm = NULL;

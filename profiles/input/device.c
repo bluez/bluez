@@ -930,6 +930,14 @@ error:
 	return err;
 }
 
+bool input_device_exists(const bdaddr_t *src, const bdaddr_t *dst)
+{
+	if (find_device(src, dst))
+		return true;
+
+	return false;
+}
+
 int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 								GIOChannel *io)
 {
