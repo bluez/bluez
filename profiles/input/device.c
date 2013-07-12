@@ -159,6 +159,8 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data
 	if (idev->ctrl_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(idev->ctrl_io, TRUE, NULL);
 
+	btd_service_disconnecting_complete(idev->service, 0);
+
 	/* Enter the auto-reconnect mode if needed */
 	input_device_enter_reconnect_mode(idev);
 
@@ -753,8 +755,6 @@ int input_device_disconnect(struct btd_service *service)
 	err = connection_disconnect(idev, 0);
 	if (err < 0)
 		return err;
-
-	btd_service_disconnecting_complete(service, 0);
 
 	return 0;
 }
