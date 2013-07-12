@@ -1440,9 +1440,17 @@ static void device_svc_resolved(struct btd_device *dev, int err)
 	DBusMessage *reply;
 	struct browse_req *req = dev->browse;
 
+	DBG("%s err %d", dev->path, err);
+
 	dev->svc_resolved = true;
-	dev->svc_refreshed = true;
 	dev->browse = NULL;
+
+	/* Disconnection notification can happen before this function
+	 * gets called, so don't set svc_refreshed for a disconnected
+	 * device.
+	 */
+	if (dev->connected)
+		dev->svc_refreshed = true;
 
 	g_slist_free_full(dev->eir_uuids, g_free);
 	dev->eir_uuids = NULL;
