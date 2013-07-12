@@ -1153,6 +1153,9 @@ static void device_profile_connected(struct btd_device *dev,
 
 	DBG("%s %s (%d)", profile->name, strerror(-err), -err);
 
+	if (!err)
+		device_set_temporary(dev, FALSE);
+
 	if (dev->pending == NULL)
 		return;
 
@@ -1793,8 +1796,6 @@ void device_add_connection(struct btd_device *device)
 		error("Device %s is already connected", addr);
 		return;
 	}
-
-	device_set_temporary(device, FALSE);
 
 	device->connected = TRUE;
 
