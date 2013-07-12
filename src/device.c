@@ -1312,8 +1312,13 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 
 	dev->pending = create_pending_list(dev, uuid);
 	if (!dev->pending) {
-		if (dev->svc_refreshed)
-			return btd_error_not_available(msg);
+		if (dev->svc_refreshed) {
+			if (find_service_with_state(dev->services,
+						BTD_SERVICE_STATE_CONNECTED))
+				return dbus_message_new_method_return(msg);
+			else
+				return btd_error_not_available(msg);
+		}
 
 		goto resolve_services;
 	}
