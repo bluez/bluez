@@ -728,6 +728,8 @@ int input_device_connect(struct btd_service *service)
 {
 	struct input_device *idev;
 
+	DBG("");
+
 	idev = btd_service_get_user_data(service);
 
 	if (idev->ctrl_io)
@@ -743,6 +745,8 @@ int input_device_disconnect(struct btd_service *service)
 {
 	struct input_device *idev;
 	int err;
+
+	DBG("");
 
 	idev = btd_service_get_user_data(service);
 
@@ -930,6 +934,8 @@ int input_device_set_channel(const bdaddr_t *src, const bdaddr_t *dst, int psm,
 								GIOChannel *io)
 {
 	struct input_device *idev = find_device(src, dst);
+
+	DBG("idev %p psm %d", idev, psm);
 
 	if (!idev)
 		return -ENOENT;

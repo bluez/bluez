@@ -156,6 +156,8 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 	char addr[18];
 	guint ret;
 
+	DBG("");
+
 	bt_io_get(chan, &err,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
