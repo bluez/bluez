@@ -435,8 +435,6 @@ static void browse_request_free(struct browse_req *req)
 		g_dbus_remove_watch(dbus_conn, req->listener_id);
 	if (req->msg)
 		dbus_message_unref(req->msg);
-	if (req->device)
-		btd_device_unref(req->device);
 	g_slist_free_full(req->profiles_added, g_free);
 	if (req->records)
 		sdp_list_free(req->records, (sdp_free_func_t) sdp_record_free);
@@ -3426,7 +3424,7 @@ static int device_browse_primary(struct btd_device *device, DBusMessage *msg)
 		return -EBUSY;
 
 	req = g_new0(struct browse_req, 1);
-	req->device = btd_device_ref(device);
+	req->device = device;
 
 	device->browse = req;
 
@@ -3485,7 +3483,7 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 		return -EBUSY;
 
 	req = g_new0(struct browse_req, 1);
-	req->device = btd_device_ref(device);
+	req->device = device;
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 
 	err = bt_search_service(adapter_get_address(adapter), &device->bdaddr,
