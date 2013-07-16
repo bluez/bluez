@@ -3075,6 +3075,8 @@ static gboolean attrib_disconnected_cb(GIOChannel *io, GIOCondition cond,
 	len = sizeof(err);
 	getsockopt(sock, SOL_SOCKET, SO_ERROR, &err, &len);
 
+	DBG("%s (%d)", strerror(err), err);
+
 	g_slist_foreach(device->attios, attio_disconnected, NULL);
 
 	if (!device_get_auto_connect(device)) {
