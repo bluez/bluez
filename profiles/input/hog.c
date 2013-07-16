@@ -466,8 +466,8 @@ static void char_discovered_cb(GSList *chars, guint8 status, gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	struct gatt_primary *prim = hogdev->hog_primary;
-	bt_uuid_t report_uuid, report_map_uuid, info_uuid, proto_mode_uuid,
-		  ctrlpt_uuid;
+	bt_uuid_t report_uuid, report_map_uuid, info_uuid;
+	bt_uuid_t proto_mode_uuid, ctrlpt_uuid;
 	struct report *report;
 	GSList *l;
 	uint16_t info_handle = 0, proto_mode_handle = 0;
