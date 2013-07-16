@@ -230,6 +230,26 @@ Properties	string Equalizer [readwrite]
 
 			Player name
 
+		string Type [readonly]
+
+			Player type
+
+			Possible values:
+
+				"Audio"
+				"Video"
+				"Audio Broadcasting"
+				"Video Broadcasting"
+
+		string Subtype [readonly]
+
+			Player subtype
+
+			Possible values:
+
+				"Audio Book"
+				"Podcast"
+
 		boolean Browsable [readonly]
 
 			If present indicates the player can be browsed using
