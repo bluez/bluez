@@ -647,6 +647,8 @@ static void attio_connected_cb(GAttrib *attrib, gpointer user_data)
 	struct gatt_primary *prim = hogdev->hog_primary;
 	GSList *l;
 
+	DBG("HoG connected");
+
 	hogdev->attrib = g_attrib_ref(attrib);
 
 	if (hogdev->reports == NULL) {
@@ -670,6 +672,8 @@ static void attio_disconnected_cb(gpointer user_data)
 {
 	struct hog_device *hogdev = user_data;
 	GSList *l;
+
+	DBG("HoG disconnected");
 
 	for (l = hogdev->reports; l; l = l->next) {
 		struct report *r = l->data;
