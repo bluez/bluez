@@ -313,11 +313,11 @@ Methods		object Search(string value, dict filter)
 			exception is NowPlaying folder which should be always
 			present while the player is active.
 
-Properties	uint32 NumberOfItems:
+Properties	uint32 NumberOfItems [readonly]
 
 			Number of items in the folder
 
-		string Name:
+		string Name [readonly]
 
 			Folder name:
 
