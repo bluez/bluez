@@ -622,6 +622,7 @@ static void cmd_show_item(int argc, char *argv[])
 
 	rl_printf("Item %s\n", g_dbus_proxy_get_path(proxy));
 
+	print_property(proxy, "Player");
 	print_property(proxy, "Name");
 	print_property(proxy, "Type");
 	print_property(proxy, "FolderType");
