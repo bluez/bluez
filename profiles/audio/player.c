@@ -1499,6 +1499,19 @@ static DBusMessage *media_item_add_to_nowplaying(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static gboolean get_player(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct media_item *item = data;
+
+	DBG("%s", item->player->path);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+							&item->player->path);
+
+	return TRUE;
+}
+
 static gboolean item_name_exists(const GDBusPropertyTable *property,
 								void *data)
 {
@@ -1671,6 +1684,8 @@ static const GDBusMethodTable media_item_methods[] = {
 };
 
 static const GDBusPropertyTable media_item_properties[] = {
+	{ "Player", "o", get_player, NULL, NULL,
+					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Name", "s", get_item_name, NULL, item_name_exists,
 					G_DBUS_PROPERTY_FLAG_EXPERIMENTAL },
 	{ "Type", "s", get_item_type, NULL, NULL,
