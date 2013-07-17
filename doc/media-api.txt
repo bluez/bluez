@@ -372,7 +372,11 @@ Methods		void Play()
 
 			Add item to now playing list
 
-Properties	string Name [readonly]
+Properties	object Player [readonly]
+
+			Player object path the item belongs to
+
+		string Name [readonly]
 
 			Item displayable name
 
