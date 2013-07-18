@@ -89,13 +89,16 @@ noinst_LTLIBRARIES += lib/libbluetooth-internal.la
 lib_libbluetooth_internal_la_SOURCES = $(lib_headers) $(lib_sources) \
 					$(extra_headers) $(extra_sources)
 
+noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
+
+gdbus_libgdbus_internal_la_SOURCES = gdbus/gdbus.h \
+				gdbus/mainloop.c gdbus/watch.c \
+				gdbus/object.c gdbus/client.c gdbus/polkit.c
+
 attrib_sources = attrib/att.h attrib/att-database.h attrib/att.c \
 		attrib/gatt.h attrib/gatt.c \
 		attrib/gattrib.h attrib/gattrib.c \
 		attrib/gatt-service.h attrib/gatt-service.c
-
-gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
-				gdbus/object.c gdbus/client.c gdbus/polkit.c
 
 btio_sources = btio/btio.h btio/btio.c
 
@@ -111,11 +114,6 @@ builtin_sources =
 builtin_nodist =
 
 include Makefile.plugins
-
-noinst_LTLIBRARIES += gdbus/libgdbus-internal.la
-gdbus_libgdbus_internal_la_SOURCES = $(gdbus_sources)
-gdbus_libgdbus_internal_la_LDFLAGS = $(AM_LDFLAGS) @DBUS_LIBS@ @GLIB_LIBS@
-gdbus_libgdbus_internal_la_CFLAGS = $(AM_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@
 
 if MAINTAINER_MODE
 plugin_LTLIBRARIES += plugins/external-dummy.la
