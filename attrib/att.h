@@ -272,6 +272,11 @@ uint16_t dec_mtu_resp(const uint8_t *pdu, size_t len, uint16_t *mtu);
 uint16_t enc_prep_write_req(uint16_t handle, uint16_t offset,
 					const uint8_t *value, size_t vlen,
 					uint8_t *pdu, size_t len);
+uint16_t dec_prep_write_req(const uint8_t *pdu, size_t len, uint16_t *handle,
+				uint16_t *offset, uint8_t *value, size_t *vlen);
+uint16_t enc_prep_write_resp(uint16_t handle, uint16_t offset,
+					const uint8_t *value, size_t vlen,
+					uint8_t *pdu, size_t len);
 uint16_t dec_prep_write_resp(const uint8_t *pdu, size_t len, uint16_t *handle,
 						uint16_t *offset, uint8_t *value,
 						size_t *vlen);
