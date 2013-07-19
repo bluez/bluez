@@ -233,7 +233,7 @@ uint16_t enc_write_req(uint16_t handle, const uint8_t *value, size_t vlen,
 						uint8_t *pdu, size_t len);
 uint16_t dec_write_req(const uint8_t *pdu, size_t len, uint16_t *handle,
 						uint8_t *value, size_t *vlen);
-uint16_t enc_write_resp(uint8_t *pdu, size_t len);
+uint16_t enc_write_resp(uint8_t *pdu);
 uint16_t dec_write_resp(const uint8_t *pdu, size_t len);
 uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, size_t len);
 uint16_t enc_read_blob_req(uint16_t handle, uint16_t offset, uint8_t *pdu,

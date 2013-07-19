@@ -559,7 +559,7 @@ uint16_t dec_write_req(const uint8_t *pdu, size_t len, uint16_t *handle,
 	return len;
 }
 
-uint16_t enc_write_resp(uint8_t *pdu, size_t len)
+uint16_t enc_write_resp(uint8_t *pdu)
 {
 	if (pdu == NULL)
 		return 0;

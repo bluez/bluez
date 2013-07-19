@@ -927,7 +927,7 @@ static uint16_t write_value(struct gatt_channel *channel, uint16_t handle,
 		g_key_file_free(key_file);
 	}
 
-	return enc_write_resp(pdu, len);
+	return enc_write_resp(pdu);
 }
 
 static uint16_t mtu_exchange(struct gatt_channel *channel, uint16_t mtu,
