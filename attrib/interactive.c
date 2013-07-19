@@ -867,7 +867,8 @@ static void parse_line(char *line_read)
 
 	add_history(line_read);
 
-	g_shell_parse_argv(line_read, &argcp, &argvp, NULL);
+	if (g_shell_parse_argv(line_read, &argcp, &argvp, NULL) == FALSE)
+		goto done;
 
 	for (i = 0; commands[i].cmd; i++)
 		if (strcasecmp(commands[i].cmd, argvp[0]) == 0)
