@@ -734,8 +734,8 @@ static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
 			uint8_t *value, size_t vlen, GAttribResultFunc func,
 			gpointer user_data);
 
-static void prepare_write_cb(guint8 status, const guint8 *rpdu,
-					guint16 rlen, gpointer user_data)
+static void prepare_write_cb(guint8 status, const guint8 *rpdu, guint16 rlen,
+							gpointer user_data)
 {
 	struct write_long_data *long_write = user_data;
 
@@ -747,7 +747,7 @@ static void prepare_write_cb(guint8 status, const guint8 *rpdu,
 	/* Skip Prepare Write Response PDU header (5 bytes) */
 	long_write->offset += rlen - 5;
 
-	if (long_write->offset == long_write->vlen){
+	if (long_write->offset == long_write->vlen) {
 		execute_write(long_write->attrib, ATT_WRITE_ALL_PREP_WRITES,
 				long_write->func, long_write->user_data);
 		g_free(long_write->value);
@@ -757,8 +757,8 @@ static void prepare_write_cb(guint8 status, const guint8 *rpdu,
 	}
 
 	prepare_write(long_write->attrib, long_write->handle,
-		long_write->offset, long_write->value, long_write->vlen,
-		long_write->func, long_write);
+			long_write->offset, long_write->value, long_write->vlen,
+			long_write->func, long_write);
 }
 
 static guint prepare_write(GAttrib *attrib, uint16_t handle, uint16_t offset,
