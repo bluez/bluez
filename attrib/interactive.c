@@ -307,7 +307,8 @@ static void char_desc_cb(guint8 status, const guint8 *pdu, guint16 plen,
 	att_data_list_free(list);
 
 	if (handle != 0xffff && handle < end)
-		gatt_find_info(attrib, handle + 1, end, char_desc_cb, NULL);
+		gatt_discover_char_desc(attrib, handle + 1, end, char_desc_cb,
+									NULL);
 }
 
 static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
@@ -558,7 +559,7 @@ static void cmd_char_desc(int argcp, char **argvp)
 	} else
 		end = 0xffff;
 
-	gatt_find_info(attrib, start, end, char_desc_cb, NULL);
+	gatt_discover_char_desc(attrib, start, end, char_desc_cb, NULL);
 }
 
 static void cmd_read_hnd(int argcp, char **argvp)

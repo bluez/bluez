@@ -163,8 +163,8 @@ static void refresh_discovered_cb(GSList *chars, guint8 status,
 
 	scan->refresh_handle = chr->value_handle;
 
-	gatt_find_info(scan->attrib, start, end,
-				discover_descriptor_cb, user_data);
+	gatt_discover_char_desc(scan->attrib, start, end,
+					discover_descriptor_cb, user_data);
 }
 
 static void iwin_discovered_cb(GSList *chars, guint8 status,

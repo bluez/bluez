@@ -261,8 +261,8 @@ done:
 	att_data_list_free(list);
 
 	if (handle != 0xffff && handle < end)
-		gatt_find_info(attrib, handle + 1, end, discover_descriptor_cb,
-								ddcb_data);
+		gatt_discover_char_desc(attrib, handle + 1, end,
+					discover_descriptor_cb, ddcb_data);
 	else
 		g_free(ddcb_data);
 }
@@ -279,7 +279,8 @@ static void discover_descriptor(GAttrib *attrib, uint16_t start, uint16_t end,
 	ddcb_data->end = end;
 	ddcb_data->data = user_data;
 
-	gatt_find_info(attrib, start, end, discover_descriptor_cb, ddcb_data);
+	gatt_discover_char_desc(attrib, start, end, discover_descriptor_cb,
+								ddcb_data);
 }
 
 static void external_service_char_cb(GSList *chars, guint8 status,

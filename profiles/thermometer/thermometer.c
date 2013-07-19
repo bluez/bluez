@@ -633,7 +633,7 @@ static void discover_desc(struct thermometer *t, struct gatt_char *c,
 	ch->t = t;
 	memcpy(ch->uuid, c->uuid, sizeof(c->uuid));
 
-	gatt_find_info(t->attrib, start, end, discover_desc_cb, ch);
+	gatt_discover_char_desc(t->attrib, start, end, discover_desc_cb, ch);
 }
 
 static void read_temp_type_cb(guint8 status, const guint8 *pdu, guint16 len,

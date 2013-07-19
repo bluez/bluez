@@ -446,7 +446,7 @@ static gboolean characteristics_desc(gpointer user_data)
 {
 	GAttrib *attrib = user_data;
 
-	gatt_find_info(attrib, opt_start, opt_end, char_desc_cb, NULL);
+	gatt_discover_char_desc(attrib, opt_start, opt_end, char_desc_cb, NULL);
 
 	return FALSE;
 }

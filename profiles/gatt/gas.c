@@ -294,7 +294,8 @@ static void gatt_characteristic_cb(GSList *characteristics, guint8 status,
 	}
 
 	gas->changed_handle = chr->value_handle;
-	gatt_find_info(gas->attrib, start, end, gatt_descriptors_cb, gas);
+	gatt_discover_char_desc(gas->attrib, start, end, gatt_descriptors_cb,
+									gas);
 }
 
 static void exchange_mtu_cb(guint8 status, const guint8 *pdu, guint16 plen,

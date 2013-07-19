@@ -461,7 +461,7 @@ static void discover_measurement_ccc(struct heartrate *hr,
 		return;
 	}
 
-	gatt_find_info(hr->attrib, start, end, discover_ccc_cb, hr);
+	gatt_discover_char_desc(hr->attrib, start, end, discover_ccc_cb, hr);
 }
 
 static void discover_char_cb(GSList *chars, guint8 status, gpointer user_data)

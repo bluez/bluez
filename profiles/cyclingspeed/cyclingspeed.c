@@ -506,7 +506,7 @@ static void discover_desc(struct csc *csc, struct gatt_char *c,
 	ch->csc = csc;
 	memcpy(ch->uuid, c->uuid, sizeof(c->uuid));
 
-	gatt_find_info(csc->attrib, start, end, discover_desc_cb, ch);
+	gatt_discover_char_desc(csc->attrib, start, end, discover_desc_cb, ch);
 }
 
 static void update_watcher(gpointer data, gpointer user_data)
