@@ -675,7 +675,7 @@ static void cmd_char_write(int argcp, char **argvp)
 		gatt_write_char(attrib, handle, value, plen,
 					char_write_req_cb, NULL);
 	else
-		gatt_write_char(attrib, handle, value, plen, NULL, NULL);
+		gatt_write_cmd(attrib, handle, value, plen, NULL, NULL);
 
 	g_free(value);
 }

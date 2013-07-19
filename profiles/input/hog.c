@@ -456,7 +456,7 @@ static void proto_mode_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 		DBG("HoG device 0x%04X is operating in Boot Procotol Mode",
 								hogdev->id);
 
-		gatt_write_char(hogdev->attrib, hogdev->proto_mode_handle, &nval,
+		gatt_write_cmd(hogdev->attrib, hogdev->proto_mode_handle, &nval,
 						sizeof(nval), NULL, NULL);
 	} else if (value == HOG_PROTO_MODE_REPORT)
 		DBG("HoG device 0x%04X is operating in Report Protocol Mode",
@@ -593,7 +593,7 @@ static void forward_report(struct hog_device *hogdev,
 		gatt_write_char(hogdev->attrib, report->decl->value_handle,
 				data, size, output_written_cb, hogdev);
 	else if (report->decl->properties & ATT_CHAR_PROPER_WRITE_WITHOUT_RESP)
-		gatt_write_char(hogdev->attrib, report->decl->value_handle,
+		gatt_write_cmd(hogdev->attrib, report->decl->value_handle,
 						data, size, NULL, NULL);
 }
 
@@ -794,7 +794,7 @@ static int set_control_point(struct hog_device *hogdev, gboolean suspend)
 	if (hogdev->ctrlpt_handle == 0)
 		return -ENOTSUP;
 
-	gatt_write_char(hogdev->attrib, hogdev->ctrlpt_handle, &value,
+	gatt_write_cmd(hogdev->attrib, hogdev->ctrlpt_handle, &value,
 					sizeof(value), NULL, NULL);
 
 	return 0;

@@ -71,7 +71,7 @@ static void write_scan_params(GAttrib *attrib, uint16_t handle)
 	att_put_u16(SCAN_INTERVAL, &value[0]);
 	att_put_u16(SCAN_WINDOW, &value[2]);
 
-	gatt_write_char(attrib, handle, value, sizeof(value), NULL, NULL);
+	gatt_write_cmd(attrib, handle, value, sizeof(value), NULL, NULL);
 }
 
 static void refresh_value_cb(const uint8_t *pdu, uint16_t len,

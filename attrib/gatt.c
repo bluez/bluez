@@ -785,23 +785,21 @@ guint gatt_write_char(GAttrib *attrib, uint16_t handle, uint8_t *value,
 {
 	uint8_t *buf;
 	size_t buflen;
-	guint16 plen;
 	struct write_long_data *long_write;
 
 	buf = g_attrib_get_buffer(attrib, &buflen);
 
-	/* Only use Write Request/Command if payload fits on a single transfer,
-	 * including 3 bytes for the header. */
+	/* Use Write Request if payload fits on a single transfer, including 3
+	 * bytes for the header. */
 	if (vlen <= buflen - 3) {
-		if (func)
-			plen = enc_write_req(handle, value, vlen, buf,
-								buflen);
-		else
-			plen = enc_write_cmd(handle, value, vlen, buf,
-								buflen);
+		uint16_t plen;
 
-		return g_attrib_send(attrib, 0, buf, plen, func,
-							user_data, NULL);
+		plen = enc_write_req(handle, value, vlen, buf, buflen);
+		if (plen == 0)
+			return 0;
+
+		return g_attrib_send(attrib, 0, buf, plen, func, user_data,
+									NULL);
 	}
 
 	/* Write Long Characteristic Values */
