@@ -597,7 +597,7 @@ uint16_t enc_read_req(uint16_t handle, uint8_t *pdu, size_t len)
 }
 
 uint16_t enc_read_blob_req(uint16_t handle, uint16_t offset, uint8_t *pdu,
-									size_t len)
+								size_t len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle) +
 							sizeof(offset);
@@ -682,7 +682,7 @@ uint16_t enc_read_resp(uint8_t *value, size_t vlen, uint8_t *pdu, size_t len)
 }
 
 uint16_t enc_read_blob_resp(uint8_t *value, size_t vlen, uint16_t offset,
-							uint8_t *pdu, size_t len)
+						uint8_t *pdu, size_t len)
 {
 	if (pdu == NULL)
 		return 0;
@@ -698,7 +698,8 @@ uint16_t enc_read_blob_resp(uint8_t *value, size_t vlen, uint16_t offset,
 	return vlen + 1;
 }
 
-ssize_t dec_read_resp(const uint8_t *pdu, size_t len, uint8_t *value, size_t vlen)
+ssize_t dec_read_resp(const uint8_t *pdu, size_t len, uint8_t *value,
+								size_t vlen)
 {
 	if (pdu == NULL)
 		return -EINVAL;
@@ -718,7 +719,7 @@ ssize_t dec_read_resp(const uint8_t *pdu, size_t len, uint8_t *value, size_t vle
 }
 
 uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
-							uint8_t *pdu, size_t len)
+						uint8_t *pdu, size_t len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(opcode) +
 						sizeof(handle) + sizeof(status);
@@ -736,7 +737,8 @@ uint16_t enc_error_resp(uint8_t opcode, uint16_t handle, uint8_t status,
 	return min_len;
 }
 
-uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu, size_t len)
+uint16_t enc_find_info_req(uint16_t start, uint16_t end, uint8_t *pdu,
+								size_t len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(start) + sizeof(end);
 
@@ -777,7 +779,7 @@ uint16_t dec_find_info_req(const uint8_t *pdu, size_t len, uint16_t *start,
 }
 
 uint16_t enc_find_info_resp(uint8_t format, struct att_data_list *list,
-							uint8_t *pdu, size_t len)
+						uint8_t *pdu, size_t len)
 {
 	uint8_t *ptr;
 	size_t i, w;
@@ -995,7 +997,8 @@ uint16_t dec_mtu_resp(const uint8_t *pdu, size_t len, uint16_t *mtu)
 }
 
 uint16_t enc_prep_write_req(uint16_t handle, uint16_t offset,
-			const uint8_t *value, size_t vlen, uint8_t *pdu, size_t len)
+					const uint8_t *value, size_t vlen,
+					uint8_t *pdu, size_t len)
 {
 	const uint16_t min_len = sizeof(pdu[0]) + sizeof(handle) +
 								sizeof(offset);
