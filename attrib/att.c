@@ -704,11 +704,11 @@ ssize_t dec_read_resp(const uint8_t *pdu, size_t len, uint8_t *value,
 	if (pdu == NULL)
 		return -EINVAL;
 
-	if (value == NULL)
-		return -EINVAL;
-
 	if (pdu[0] != ATT_OP_READ_RESP)
 		return -EINVAL;
+
+	if (value == NULL)
+		return len - 1;
 
 	if (vlen < (len - 1))
 		return -ENOBUFS;
