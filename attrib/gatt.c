@@ -447,10 +447,6 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	struct discover_char *dc = user_data;
 	struct att_data_list *list;
 	unsigned int i, err = ATT_ECODE_ATTR_NOT_FOUND;
-	size_t buflen;
-	uint8_t *buf;
-	guint16 oplen;
-	bt_uuid_t uuid;
 	uint16_t last = 0;
 
 	if (status) {
@@ -497,6 +493,11 @@ static void char_discovered_cb(guint8 status, const guint8 *ipdu, guint16 iplen,
 	att_data_list_free(list);
 
 	if (last != 0 && (last + 1 < dc->end)) {
+		bt_uuid_t uuid;
+		guint16 oplen;
+		size_t buflen;
+		uint8_t *buf;
+
 		buf = g_attrib_get_buffer(dc->attrib, &buflen);
 
 		bt_uuid16_create(&uuid, GATT_CHARAC_UUID);
