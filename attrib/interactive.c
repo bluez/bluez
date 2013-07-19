@@ -60,13 +60,6 @@ static int opt_mtu = 0;
 static int start;
 static int end;
 
-struct characteristic_data {
-	uint16_t orig_start;
-	uint16_t start;
-	uint16_t end;
-	bt_uuid_t uuid;
-};
-
 static void cmd_help(int argcp, char **argvp);
 
 static enum state {
@@ -348,31 +341,25 @@ static void char_read_cb(guint8 status, const guint8 *pdu, guint16 plen,
 static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
 					guint16 plen, gpointer user_data)
 {
-	struct characteristic_data *char_data = user_data;
 	struct att_data_list *list;
 	int i;
 	GString *s;
 
-	if (status == ATT_ECODE_ATTR_NOT_FOUND &&
-				char_data->start != char_data->orig_start)
-		goto done;
-
 	if (status != 0) {
 		error("Read characteristics by UUID failed: %s\n",
 							att_ecode2str(status));
-		goto done;
+		return;
 	}
 
 	list = dec_read_by_type_resp(pdu, plen);
 	if (list == NULL)
-		goto done;
+		return;
 
 	s = g_string_new(NULL);
 	for (i = 0; i < list->num; i++) {
 		uint8_t *value = list->data[i];
 		int j;
 
-		char_data->start = att_get_u16(value) + 1;
 		g_string_printf(s, "handle: 0x%04x \t value: ",
 							att_get_u16(value));
 		value += 2;
@@ -384,9 +371,6 @@ static void char_read_by_uuid_cb(guint8 status, const guint8 *pdu,
 
 	att_data_list_free(list);
 	g_string_free(s, TRUE);
-
-done:
-	g_free(char_data);
 }
 
 static void cmd_exit(int argcp, char **argvp)
@@ -602,7 +586,6 @@ static void cmd_read_hnd(int argcp, char **argvp)
 
 static void cmd_read_uuid(int argcp, char **argvp)
 {
-	struct characteristic_data *char_data;
 	int start = 0x0001;
 	int end = 0xffff;
 	bt_uuid_t uuid;
@@ -638,14 +621,8 @@ static void cmd_read_uuid(int argcp, char **argvp)
 		}
 	}
 
-	char_data = g_new(struct characteristic_data, 1);
-	char_data->orig_start = start;
-	char_data->start = start;
-	char_data->end = end;
-	char_data->uuid = uuid;
-
-	gatt_read_char_by_uuid(attrib, start, end, &char_data->uuid,
-					char_read_by_uuid_cb, char_data);
+	gatt_read_char_by_uuid(attrib, start, end, &uuid, char_read_by_uuid_cb,
+									NULL);
 }
 
 static void char_write_req_cb(guint8 status, const guint8 *pdu, guint16 plen,
