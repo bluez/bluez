@@ -115,6 +115,23 @@ struct btdev {
 
 static struct btdev *btdev_list[MAX_BTDEV_ENTRIES] = { };
 
+static int get_hook_index(struct btdev *btdev, enum btdev_hook_type type,
+								uint16_t opcode)
+{
+	int i;
+
+	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
+		if (btdev->hook_list[i] == NULL)
+			continue;
+
+		if (btdev->hook_list[i]->type == type &&
+					btdev->hook_list[i]->opcode == opcode)
+			return i;
+	}
+
+	return -1;
+}
+
 static inline int add_btdev(struct btdev *btdev)
 {
 	int i, index = -1;
@@ -1708,6 +1725,9 @@ int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
 	int i;
 
 	if (!btdev)
+		return -1;
+
+	if (get_hook_index(btdev, type, opcode) > 0)
 		return -1;
 
 	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
