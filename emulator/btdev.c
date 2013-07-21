@@ -42,6 +42,15 @@
 #define has_bredr(btdev)	(!((btdev)->features[4] & 0x20))
 #define has_le(btdev)		(!!((btdev)->features[4] & 0x40))
 
+struct hook {
+	btdev_hook_func handler;
+	void *user_data;
+	enum btdev_hook_type type;
+	uint16_t opcode;
+};
+
+#define MAX_HOOK_ENTRIES 16
+
 struct btdev {
 	enum btdev_type type;
 
@@ -52,6 +61,8 @@ struct btdev {
 
 	btdev_send_func send_handler;
 	void *send_data;
+
+	struct hook *hook_list[MAX_HOOK_ENTRIES];
 
         uint16_t manufacturer;
         uint8_t  version;
@@ -1688,4 +1699,30 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len)
 		printf("Unsupported packet 0x%2.2x\n", pkt_type);
 		break;
 	}
+}
+
+int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
+				uint16_t opcode, btdev_hook_func handler,
+				void *user_data)
+{
+	int i;
+
+	if (!btdev)
+		return -1;
+
+	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
+		if (btdev->hook_list[i] == NULL) {
+			btdev->hook_list[i] = malloc(sizeof(struct hook));
+			if (btdev->hook_list[i] == NULL)
+				return -1;
+
+			btdev->hook_list[i]->handler = handler;
+			btdev->hook_list[i]->user_data = user_data;
+			btdev->hook_list[i]->opcode = opcode;
+			btdev->hook_list[i]->type = type;
+			return i;
+		}
+	}
+
+	return -1;
 }
