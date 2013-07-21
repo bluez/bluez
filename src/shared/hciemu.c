@@ -419,3 +419,31 @@ int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 	return btdev_add_hook(hciemu->master_dev, hook_type, opcode, function,
 								user_data);
 }
+
+bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
+								uint16_t opcode)
+{
+	enum btdev_hook_type hook_type;
+
+	if (!hciemu)
+		return false;
+
+	switch (type) {
+	case HCIEMU_HOOK_PRE_CMD:
+		hook_type = BTDEV_HOOK_PRE_CMD;
+		break;
+	case HCIEMU_HOOK_POST_CMD:
+		hook_type = BTDEV_HOOK_POST_CMD;
+		break;
+	case HCIEMU_HOOK_PRE_EVT:
+		hook_type = BTDEV_HOOK_PRE_EVT;
+		break;
+	case HCIEMU_HOOK_POST_EVT:
+		hook_type = BTDEV_HOOK_POST_EVT;
+		break;
+	default:
+		return false;
+	}
+
+	return btdev_del_hook(hciemu->master_dev, hook_type, opcode);
+}

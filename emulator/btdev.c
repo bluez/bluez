@@ -1746,3 +1746,28 @@ int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
 
 	return -1;
 }
+
+bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
+								uint16_t opcode)
+{
+	int i;
+
+	if (!btdev)
+		return false;
+
+	for (i = 0; i < MAX_HOOK_ENTRIES; i++) {
+		if (btdev->hook_list[i] == NULL)
+			continue;
+
+		if (btdev->hook_list[i]->type != type ||
+					btdev->hook_list[i]->opcode != opcode)
+			continue;
+
+		free(btdev->hook_list[i]);
+		btdev->hook_list[i] = NULL;
+
+		return true;
+	}
+
+	return false;
+}

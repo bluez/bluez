@@ -89,3 +89,6 @@ void btdev_receive_h4(struct btdev *btdev, const void *data, uint16_t len);
 int btdev_add_hook(struct btdev *btdev, enum btdev_hook_type type,
 				uint16_t opcode, btdev_hook_func handler,
 				void *user_data);
+
+bool btdev_del_hook(struct btdev *btdev, enum btdev_hook_type type,
+							uint16_t opcode);

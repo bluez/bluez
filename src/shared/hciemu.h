@@ -63,3 +63,6 @@ bool hciemu_add_master_post_command_hook(struct hciemu *hciemu,
 int hciemu_add_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
 				uint16_t opcode, hciemu_hook_func_t function,
 				void *user_data);
+
+bool hciemu_del_hook(struct hciemu *hciemu, enum hciemu_hook_type type,
+							uint16_t opcode);
