@@ -571,13 +571,31 @@ static void cmd_complete(struct btdev *btdev, uint16_t opcode,
 
 static void cmd_status(struct btdev *btdev, uint8_t status, uint16_t opcode)
 {
-	struct bt_hci_evt_cmd_status cs;
+	struct bt_hci_evt_hdr *hdr;
+	struct bt_hci_evt_cmd_status *cs;
+	uint16_t pkt_len;
+	void *pkt_data;
 
-	cs.status = status;
-	cs.ncmd = 0x01;
-	cs.opcode = cpu_to_le16(opcode);
+	pkt_len = 1 + sizeof(*hdr) + sizeof(*cs);
 
-	send_event(btdev, BT_HCI_EVT_CMD_STATUS, &cs, sizeof(cs));
+	pkt_data = malloc(pkt_len);
+	if (!pkt_data)
+		return;
+
+	((uint8_t *) pkt_data)[0] = BT_H4_EVT_PKT;
+
+	hdr = pkt_data + 1;
+	hdr->evt = BT_HCI_EVT_CMD_STATUS;
+	hdr->plen = sizeof(*cs);
+
+	cs = pkt_data + 1 + sizeof(*hdr);
+	cs->status = status;
+	cs->ncmd = 0x01;
+	cs->opcode = cpu_to_le16(opcode);
+
+	send_packet(btdev, pkt_data, pkt_len);
+
+	free(pkt_data);
 }
 
 static void num_completed_packets(struct btdev *btdev)
