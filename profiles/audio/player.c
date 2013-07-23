@@ -263,7 +263,7 @@ static void set_setting(const GDBusPropertyTable *property,
 			void *data)
 {
 	struct media_player *mp = data;
-	const char *value;
+	const char *value, *current;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_STRING) {
 		g_dbus_pending_property_error(id,
@@ -273,6 +273,12 @@ static void set_setting(const GDBusPropertyTable *property,
 	}
 
 	dbus_message_iter_get_basic(iter, &value);
+
+	current = g_hash_table_lookup(mp->settings, property->name);
+	if (g_strcmp0(current, value) == 0) {
+		g_dbus_pending_property_success(id);
+		return;
+	}
 
 	player_set_setting(mp, id, property->name, value);
 }
