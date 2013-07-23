@@ -58,7 +58,7 @@ Properties	string Location (optional) [readwrite]
 			true if sensor can read and set Cumulative Wheel
 			Revolutions value, false otherwise.
 
-		boolean MultipleSensorLocationsSupported [readonly]
+		boolean MultipleLocationsSupported [readonly]
 
 			true if sensor supports Multiple Sensor Locations
 			feature and can set Location, false otherwise.

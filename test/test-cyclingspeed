@@ -169,13 +169,13 @@ if __name__ == "__main__":
 
 	if len(args) > 0:
 		if args[0] == "ShowSupportedLocations":
-			if properties["MultipleSensorLocationsSupported"]:
+			if properties["MultipleLocationsSupported"]:
 				print("Supported locations: ", properties["SupportedLocations"])
 			else:
 				print("Multiple sensor locations not supported")
 
 		elif args[0] == "SetLocation":
-			if properties["MultipleSensorLocationsSupported"]:
+			if properties["MultipleLocationsSupported"]:
 				device_prop.Set(CYCLINGSPEED_INTERFACE, "Location", args[1])
 			else:
 				print("Multiple sensor locations not supported")
