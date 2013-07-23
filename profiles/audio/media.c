@@ -1131,7 +1131,7 @@ static uint32_t get_position(void *user_data)
 	double timedelta;
 	uint32_t sec, msec;
 
-	if (g_strcmp0(mp->status, "playing") != 0)
+	if (mp->status == NULL || strcasecmp(mp->status, "Playing") != 0)
 		return mp->position;
 
 	timedelta = g_timer_elapsed(mp->timer, NULL);
