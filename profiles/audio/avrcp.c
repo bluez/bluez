@@ -3205,6 +3205,7 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 		case AVRCP_EVENT_ADDRESSED_PLAYER_CHANGED:
 		case AVRCP_EVENT_UIDS_CHANGED:
 		case AVRCP_EVENT_AVAILABLE_PLAYERS_CHANGED:
+		case AVRCP_EVENT_VOLUME_CHANGED:
 			avrcp_register_notification(session, event);
 			break;
 		}
@@ -3336,7 +3337,9 @@ static void target_init(struct avrcp *session)
 	if (target->version < 0x0104)
 		return;
 
-	avrcp_register_notification(session, AVRCP_EVENT_VOLUME_CHANGED);
+	/* Only check capabilities if controller is not supported */
+	if (session->controller == NULL)
+		avrcp_get_capabilities(session);
 
 	/* Auto-connect browsing channel only if initiator */
 	if (old_state == BTD_SERVICE_STATE_CONNECTING &&
