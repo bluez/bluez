@@ -312,5 +312,5 @@ struct btd_device *avdtp_get_device(struct avdtp *session);
 gboolean avdtp_stream_setup_active(struct avdtp *session);
 void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc);
 
-int avdtp_init(struct btd_adapter *adapter, GKeyFile *config);
+int avdtp_init(struct btd_adapter *adapter);
 void avdtp_exit(struct btd_adapter *adapter);

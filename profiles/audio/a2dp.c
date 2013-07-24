@@ -38,8 +38,10 @@
 #include <bluetooth/sdp_lib.h>
 
 #include "lib/uuid.h"
+#include "src/plugin.h"
 #include "src/adapter.h"
 #include "src/device.h"
+#include "src/profile.h"
 #include "src/service.h"
 
 #include "log.h"
@@ -50,6 +52,7 @@
 #include "a2dp.h"
 #include "a2dp-codecs.h"
 #include "sdpd.h"
+#include "media.h"
 
 /* The duration that streams without users are allowed to stay in
  * STREAMING state. */
@@ -1182,15 +1185,14 @@ static struct a2dp_server *find_server(GSList *list, struct btd_adapter *a)
 	return NULL;
 }
 
-static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter,
-							GKeyFile *config)
+static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter)
 {
 	struct a2dp_server *server;
 	int av_err;
 
 	server = g_new0(struct a2dp_server, 1);
 
-	av_err = avdtp_init(adapter, config);
+	av_err = avdtp_init(adapter);
 	if (av_err < 0) {
 		DBG("AVDTP not registered");
 		g_free(server);
@@ -1201,42 +1203,6 @@ static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter,
 	servers = g_slist_append(servers, server);
 
 	return server;
-}
-
-int a2dp_source_register(struct btd_adapter *adapter, GKeyFile *config)
-{
-	struct a2dp_server *server;
-
-	server = find_server(servers, adapter);
-	if (server != NULL)
-		goto done;
-
-	server = a2dp_server_register(adapter, config);
-	if (server == NULL)
-		return -EPROTONOSUPPORT;
-
-done:
-	server->source_enabled = TRUE;
-
-	return 0;
-}
-
-int a2dp_sink_register(struct btd_adapter *adapter, GKeyFile *config)
-{
-	struct a2dp_server *server;
-
-	server = find_server(servers, adapter);
-	if (server != NULL)
-		goto done;
-
-	server = a2dp_server_register(adapter, config);
-	if (server == NULL)
-		return -EPROTONOSUPPORT;
-
-done:
-	server->sink_enabled = TRUE;
-
-	return 0;
 }
 
 static void a2dp_unregister_sep(struct a2dp_sep *sep)
@@ -1257,49 +1223,6 @@ static void a2dp_server_unregister(struct a2dp_server *server)
 	servers = g_slist_remove(servers, server);
 	btd_adapter_unref(server->adapter);
 	g_free(server);
-}
-
-void a2dp_sink_unregister(struct btd_adapter *adapter)
-{
-	struct a2dp_server *server;
-
-	server = find_server(servers, adapter);
-	if (!server)
-		return;
-
-	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_unregister_sep);
-
-	if (server->sink_record_id) {
-		remove_record_from_server(server->sink_record_id);
-		server->sink_record_id = 0;
-	}
-
-	if (server->source_record_id)
-		return;
-
-	a2dp_server_unregister(server);
-}
-
-void a2dp_source_unregister(struct btd_adapter *adapter)
-{
-	struct a2dp_server *server;
-
-	server = find_server(servers, adapter);
-	if (!server)
-		return;
-
-	g_slist_free_full(server->sources,
-					(GDestroyNotify) a2dp_unregister_sep);
-
-	if (server->source_record_id) {
-		remove_record_from_server(server->source_record_id);
-		server->source_record_id = 0;
-	}
-
-	if (server->sink_record_id)
-		return;
-
-	a2dp_server_unregister(server);
 }
 
 struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
@@ -1915,3 +1838,235 @@ struct btd_device *a2dp_setup_get_device(struct a2dp_setup *setup)
 
 	return avdtp_get_device(setup->session);
 }
+
+static int a2dp_source_probe(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	DBG("path %s", device_get_path(dev));
+
+	source_init(service);
+
+	return 0;
+}
+
+static void a2dp_source_remove(struct btd_service *service)
+{
+	source_unregister(service);
+}
+
+static int a2dp_sink_probe(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	DBG("path %s", device_get_path(dev));
+
+	return sink_init(service);
+}
+
+static void a2dp_sink_remove(struct btd_service *service)
+{
+	sink_unregister(service);
+}
+
+static int a2dp_source_connect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return source_connect(service);
+}
+
+static int a2dp_source_disconnect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return source_disconnect(service, FALSE);
+}
+
+static int a2dp_sink_connect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return sink_connect(service);
+}
+
+static int a2dp_sink_disconnect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return sink_disconnect(service, FALSE);
+}
+
+static int a2dp_source_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct a2dp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
+
+	server = a2dp_server_register(adapter);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
+
+done:
+	server->source_enabled = TRUE;
+
+	return 0;
+}
+
+static void a2dp_source_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct a2dp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	g_slist_free_full(server->sources,
+					(GDestroyNotify) a2dp_unregister_sep);
+
+	if (server->source_record_id) {
+		remove_record_from_server(server->source_record_id);
+		server->source_record_id = 0;
+	}
+
+	if (server->sink_record_id)
+		return;
+
+	a2dp_server_unregister(server);
+}
+
+static int a2dp_sink_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct a2dp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
+
+	server = a2dp_server_register(adapter);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
+
+done:
+	server->sink_enabled = TRUE;
+
+	return 0;
+}
+
+static void a2dp_sink_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct a2dp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	g_slist_free_full(server->sinks, (GDestroyNotify) a2dp_unregister_sep);
+
+	if (server->sink_record_id) {
+		remove_record_from_server(server->sink_record_id);
+		server->sink_record_id = 0;
+	}
+
+	if (server->source_record_id)
+		return;
+
+	a2dp_server_unregister(server);
+}
+
+static int media_server_probe(struct btd_adapter *adapter)
+{
+	DBG("path %s", adapter_get_path(adapter));
+
+	return media_register(adapter);
+}
+
+static void media_server_remove(struct btd_adapter *adapter)
+{
+	DBG("path %s", adapter_get_path(adapter));
+
+	media_unregister(adapter);
+}
+
+static struct btd_profile a2dp_source_profile = {
+	.name		= "a2dp-source",
+	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+
+	.remote_uuid	= A2DP_SOURCE_UUID,
+	.device_probe	= a2dp_source_probe,
+	.device_remove	= a2dp_source_remove,
+
+	.auto_connect	= true,
+	.connect	= a2dp_source_connect,
+	.disconnect	= a2dp_source_disconnect,
+
+	.adapter_probe	= a2dp_sink_server_probe,
+	.adapter_remove	= a2dp_sink_server_remove,
+};
+
+static struct btd_profile a2dp_sink_profile = {
+	.name		= "a2dp-sink",
+	.priority	= BTD_PROFILE_PRIORITY_MEDIUM,
+
+	.remote_uuid	= A2DP_SINK_UUID,
+	.device_probe	= a2dp_sink_probe,
+	.device_remove	= a2dp_sink_remove,
+
+	.auto_connect	= true,
+	.connect	= a2dp_sink_connect,
+	.disconnect	= a2dp_sink_disconnect,
+
+	.adapter_probe	= a2dp_source_server_probe,
+	.adapter_remove	= a2dp_source_server_remove,
+};
+
+static struct btd_adapter_driver media_driver = {
+	.name		= "media",
+	.probe		= media_server_probe,
+	.remove		= media_server_remove,
+};
+
+static int a2dp_init(void)
+{
+	btd_register_adapter_driver(&media_driver);
+	btd_profile_register(&a2dp_source_profile);
+	btd_profile_register(&a2dp_sink_profile);
+
+	return 0;
+}
+
+static void a2dp_exit(void)
+{
+	btd_unregister_adapter_driver(&media_driver);
+	btd_profile_unregister(&a2dp_source_profile);
+	btd_profile_unregister(&a2dp_sink_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(a2dp, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+							a2dp_init, a2dp_exit)

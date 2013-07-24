@@ -34,6 +34,7 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
+#include "src/plugin.h"
 #include "src/adapter.h"
 #include "src/device.h"
 #include "src/dbus-common.h"
@@ -47,7 +48,6 @@
 #include "transport.h"
 #include "a2dp.h"
 #include "avrcp.h"
-#include "manager.h"
 
 #define MEDIA_INTERFACE "org.bluez.Media1"
 #define MEDIA_ENDPOINT_INTERFACE "org.bluez.MediaEndpoint1"
