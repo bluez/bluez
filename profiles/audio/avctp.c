@@ -53,7 +53,6 @@
 #include "log.h"
 #include "error.h"
 #include "uinput.h"
-#include "manager.h"
 #include "avctp.h"
 #include "avrcp.h"
 

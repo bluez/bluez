@@ -50,7 +50,6 @@
 #include "src/adapter.h"
 #include "src/device.h"
 
-#include "manager.h"
 #include "control.h"
 #include "avdtp.h"
 #include "sink.h"

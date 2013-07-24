@@ -45,7 +45,6 @@
 #include "src/service.h"
 
 #include "log.h"
-#include "manager.h"
 #include "avdtp.h"
 #include "sink.h"
 #include "source.h"

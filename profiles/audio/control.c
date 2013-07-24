@@ -53,7 +53,6 @@
 
 #include "log.h"
 #include "error.h"
-#include "manager.h"
 #include "avctp.h"
 #include "control.h"
 #include "sdpd.h"

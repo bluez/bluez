@@ -30,10 +30,6 @@ noinst_LIBRARIES += profiles/sap/libsap.a
 profiles_sap_libsap_a_SOURCES = profiles/sap/sap.h profiles/sap/sap-u8500.c
 endif
 
-builtin_modules += audio
-builtin_sources += profiles/audio/main.c \
-			profiles/audio/manager.h profiles/audio/manager.c
-
 builtin_modules += a2dp
 builtin_sources += profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/sink.h profiles/audio/sink.c \

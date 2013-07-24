@@ -48,7 +48,6 @@
 #include "media.h"
 #include "a2dp.h"
 #include "error.h"
-#include "manager.h"
 #include "source.h"
 #include "dbus-common.h"
 
