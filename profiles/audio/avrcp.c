@@ -47,20 +47,19 @@
 #include <gdbus/gdbus.h>
 
 #include "lib/uuid.h"
+#include "src/plugin.h"
 #include "src/adapter.h"
 #include "src/device.h"
+#include "src/profile.h"
 #include "src/service.h"
 
 #include "log.h"
 #include "error.h"
-#include "manager.h"
 #include "avctp.h"
 #include "avrcp.h"
 #include "sdpd.h"
 #include "dbus-common.h"
 #include "control.h"
-#include "avdtp.h"
-#include "sink.h"
 #include "player.h"
 #include "transport.h"
 
@@ -3538,46 +3537,11 @@ static void state_changed(struct btd_device *device, avctp_state_t old_state,
 	}
 }
 
-gboolean avrcp_connect(struct btd_device *dev)
+static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter)
 {
-	struct avctp *session;
-
-	session = avctp_connect(dev);
-	if (session)
-		return FALSE;
-
-	return TRUE;
-}
-
-void avrcp_disconnect(struct btd_device *dev)
-{
-	struct avctp *session;
-
-	session = avctp_get(dev);
-	if (!session)
-		return;
-
-	avctp_disconnect(session);
-}
-
-static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter,
-							GKeyFile *config)
-{
-	gboolean tmp, master = TRUE;
-	GError *err = NULL;
 	struct avrcp_server *server;
 
-	if (config) {
-		tmp = g_key_file_get_boolean(config, "General",
-							"Master", &err);
-		if (err) {
-			DBG("audio.conf: %s", err->message);
-			g_error_free(err);
-		} else
-			master = tmp;
-	}
-
-	if (avctp_register(adapter, master) < 0)
+	if (avctp_register(adapter, TRUE) < 0)
 		return NULL;
 
 	server = g_new0(struct avrcp_server, 1);
@@ -3589,70 +3553,6 @@ static struct avrcp_server *avrcp_server_register(struct btd_adapter *adapter,
 		avctp_id = avctp_add_state_cb(NULL, state_changed, NULL);
 
 	return server;
-}
-
-int avrcp_target_register(struct btd_adapter *adapter, GKeyFile *config)
-{
-	sdp_record_t *record;
-	struct avrcp_server *server;
-
-	server = find_server(servers, adapter);
-	if (server != NULL)
-		goto done;
-
-	server = avrcp_server_register(adapter, config);
-	if (server == NULL)
-		return -EPROTONOSUPPORT;
-
-done:
-	record = avrcp_tg_record();
-	if (!record) {
-		error("Unable to allocate new service record");
-		avrcp_target_unregister(adapter);
-		return -1;
-	}
-
-	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
-		error("Unable to register AVRCP target service record");
-		avrcp_target_unregister(adapter);
-		sdp_record_free(record);
-		return -1;
-	}
-	server->tg_record_id = record->handle;
-
-	return 0;
-}
-
-int avrcp_remote_register(struct btd_adapter *adapter, GKeyFile *config)
-{
-	sdp_record_t *record;
-	struct avrcp_server *server;
-
-	server = find_server(servers, adapter);
-	if (server != NULL)
-		goto done;
-
-	server = avrcp_server_register(adapter, config);
-	if (server == NULL)
-		return -EPROTONOSUPPORT;
-
-done:
-	record = avrcp_ct_record();
-	if (!record) {
-		error("Unable to allocate new service record");
-		avrcp_remote_unregister(adapter);
-		return -1;
-	}
-
-	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
-		error("Unable to register AVRCP service record");
-		sdp_record_free(record);
-		avrcp_remote_unregister(adapter);
-		return -1;
-	}
-	server->ct_record_id = record->handle;
-
-	return 0;
 }
 
 static void avrcp_server_unregister(struct avrcp_server *server)
@@ -3673,40 +3573,6 @@ static void avrcp_server_unregister(struct avrcp_server *server)
 		avctp_remove_state_cb(avctp_id);
 		avctp_id = 0;
 	}
-}
-
-void avrcp_target_unregister(struct btd_adapter *adapter)
-{
-	struct avrcp_server *server;
-
-	server = find_server(servers, adapter);
-	if (!server)
-		return;
-
-	if (server->tg_record_id != 0) {
-		remove_record_from_server(server->tg_record_id);
-		server->tg_record_id = 0;
-	}
-
-	if (server->ct_record_id == 0)
-		avrcp_server_unregister(server);
-}
-
-void avrcp_remote_unregister(struct btd_adapter *adapter)
-{
-	struct avrcp_server *server;
-
-	server = find_server(servers, adapter);
-	if (!server)
-		return;
-
-	if (server->ct_record_id != 0) {
-		remove_record_from_server(server->ct_record_id);
-		server->ct_record_id = 0;
-	}
-
-	if (server->tg_record_id == 0)
-		avrcp_server_unregister(server);
 }
 
 struct avrcp_player *avrcp_register_player(struct btd_adapter *adapter,
@@ -3841,3 +3707,206 @@ int avrcp_set_volume(struct btd_device *dev, uint8_t volume)
 
 	return 0;
 }
+
+static int avrcp_connect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return control_connect(service);
+}
+
+static int avrcp_disconnect(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+	const char *path = device_get_path(dev);
+
+	DBG("path %s", path);
+
+	return control_disconnect(service);
+}
+
+static int avrcp_target_probe(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	DBG("path %s", device_get_path(dev));
+
+	return control_init_target(service);
+}
+
+static void avrcp_target_remove(struct btd_service *service)
+{
+	control_unregister(service);
+}
+
+static void avrcp_target_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct avrcp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	if (server->tg_record_id != 0) {
+		remove_record_from_server(server->tg_record_id);
+		server->tg_record_id = 0;
+	}
+
+	if (server->ct_record_id == 0)
+		avrcp_server_unregister(server);
+}
+
+static int avrcp_target_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	sdp_record_t *record;
+	struct avrcp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
+
+	server = avrcp_server_register(adapter);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
+
+done:
+	record = avrcp_tg_record();
+	if (!record) {
+		error("Unable to allocate new service record");
+		avrcp_target_server_remove(p, adapter);
+		return -1;
+	}
+
+	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
+		error("Unable to register AVRCP target service record");
+		avrcp_target_server_remove(p, adapter);
+		sdp_record_free(record);
+		return -1;
+	}
+	server->tg_record_id = record->handle;
+
+	return 0;
+}
+
+static struct btd_profile avrcp_target_profile = {
+	.name		= "audio-avrcp-target",
+
+	.remote_uuid	= AVRCP_TARGET_UUID,
+	.device_probe	= avrcp_target_probe,
+	.device_remove	= avrcp_target_remove,
+
+	.connect	= avrcp_connect,
+	.disconnect	= avrcp_disconnect,
+
+	.adapter_probe	= avrcp_target_server_probe,
+	.adapter_remove = avrcp_target_server_remove,
+};
+
+static int avrcp_controller_probe(struct btd_service *service)
+{
+	struct btd_device *dev = btd_service_get_device(service);
+
+	DBG("path %s", device_get_path(dev));
+
+	return control_init_remote(service);
+}
+
+static void avrcp_controller_remove(struct btd_service *service)
+{
+	control_unregister(service);
+}
+
+static void avrcp_controller_server_remove(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	struct avrcp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (!server)
+		return;
+
+	if (server->ct_record_id != 0) {
+		remove_record_from_server(server->ct_record_id);
+		server->ct_record_id = 0;
+	}
+
+	if (server->tg_record_id == 0)
+		avrcp_server_unregister(server);
+}
+
+static int avrcp_controller_server_probe(struct btd_profile *p,
+						struct btd_adapter *adapter)
+{
+	sdp_record_t *record;
+	struct avrcp_server *server;
+
+	DBG("path %s", adapter_get_path(adapter));
+
+	server = find_server(servers, adapter);
+	if (server != NULL)
+		goto done;
+
+	server = avrcp_server_register(adapter);
+	if (server == NULL)
+		return -EPROTONOSUPPORT;
+
+done:
+	record = avrcp_ct_record();
+	if (!record) {
+		error("Unable to allocate new service record");
+		avrcp_controller_server_remove(p, adapter);
+		return -1;
+	}
+
+	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
+		error("Unable to register AVRCP service record");
+		avrcp_controller_server_remove(p, adapter);
+		sdp_record_free(record);
+		return -1;
+	}
+	server->ct_record_id = record->handle;
+
+	return 0;
+}
+
+static struct btd_profile avrcp_controller_profile = {
+	.name		= "avrcp-controller",
+
+	.remote_uuid	= AVRCP_REMOTE_UUID,
+	.device_probe	= avrcp_controller_probe,
+	.device_remove	= avrcp_controller_remove,
+
+	.connect	= avrcp_connect,
+	.disconnect	= avrcp_disconnect,
+
+	.adapter_probe	= avrcp_controller_server_probe,
+	.adapter_remove = avrcp_controller_server_remove,
+};
+
+static int avrcp_init(void)
+{
+	btd_profile_register(&avrcp_controller_profile);
+	btd_profile_register(&avrcp_target_profile);
+
+	return 0;
+}
+
+static void avrcp_exit(void)
+{
+	btd_profile_unregister(&avrcp_controller_profile);
+	btd_profile_unregister(&avrcp_target_profile);
+}
+
+BLUETOOTH_PLUGIN_DEFINE(avrcp, VERSION, BLUETOOTH_PLUGIN_PRIORITY_DEFAULT,
+							avrcp_init, avrcp_exit)

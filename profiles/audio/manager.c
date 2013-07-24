@@ -99,34 +99,6 @@ static void a2dp_sink_remove(struct btd_service *service)
 	sink_unregister(service);
 }
 
-static int avrcp_target_probe(struct btd_service *service)
-{
-	struct btd_device *dev = btd_service_get_device(service);
-
-	DBG("path %s", device_get_path(dev));
-
-	return control_init_target(service);
-}
-
-static void avrcp_target_remove(struct btd_service *service)
-{
-	control_unregister(service);
-}
-
-static int avrcp_remote_probe(struct btd_service *service)
-{
-	struct btd_device *dev = btd_service_get_device(service);
-
-	DBG("path %s", device_get_path(dev));
-
-	return control_init_remote(service);
-}
-
-static void avrcp_remote_remove(struct btd_service *service)
-{
-	control_unregister(service);
-}
-
 static int a2dp_source_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
@@ -167,26 +139,6 @@ static int a2dp_sink_disconnect(struct btd_service *service)
 	return sink_disconnect(service, FALSE);
 }
 
-static int avrcp_control_connect(struct btd_service *service)
-{
-	struct btd_device *dev = btd_service_get_device(service);
-	const char *path = device_get_path(dev);
-
-	DBG("path %s", path);
-
-	return control_connect(service);
-}
-
-static int avrcp_control_disconnect(struct btd_service *service)
-{
-	struct btd_device *dev = btd_service_get_device(service);
-	const char *path = device_get_path(dev);
-
-	DBG("path %s", path);
-
-	return control_disconnect(service);
-}
-
 static int a2dp_source_server_probe(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
@@ -217,38 +169,6 @@ static void a2dp_sink_server_remove(struct btd_profile *p,
 	DBG("path %s", adapter_get_path(adapter));
 
 	a2dp_sink_unregister(adapter);
-}
-
-static int avrcp_target_server_probe(struct btd_profile *p,
-						struct btd_adapter *adapter)
-{
-	DBG("path %s", adapter_get_path(adapter));
-
-	return avrcp_target_register(adapter, config);
-}
-
-static int avrcp_remote_server_probe(struct btd_profile *p,
-						struct btd_adapter *adapter)
-{
-	DBG("path %s", adapter_get_path(adapter));
-
-	return avrcp_remote_register(adapter, config);
-}
-
-static void avrcp_target_server_remove(struct btd_profile *p,
-						struct btd_adapter *adapter)
-{
-	DBG("path %s", adapter_get_path(adapter));
-
-	avrcp_target_unregister(adapter);
-}
-
-static void avrcp_remote_server_remove(struct btd_profile *p,
-						struct btd_adapter *adapter)
-{
-	DBG("path %s", adapter_get_path(adapter));
-
-	avrcp_remote_unregister(adapter);
 }
 
 static int media_server_probe(struct btd_adapter *adapter)
@@ -297,34 +217,6 @@ static struct btd_profile a2dp_sink_profile = {
 	.adapter_remove	= a2dp_source_server_remove,
 };
 
-static struct btd_profile avrcp_target_profile = {
-	.name		= "audio-avrcp-target",
-
-	.remote_uuid	= AVRCP_TARGET_UUID,
-	.device_probe	= avrcp_target_probe,
-	.device_remove	= avrcp_target_remove,
-
-	.connect	= avrcp_control_connect,
-	.disconnect	= avrcp_control_disconnect,
-
-	.adapter_probe	= avrcp_target_server_probe,
-	.adapter_remove = avrcp_target_server_remove,
-};
-
-static struct btd_profile avrcp_remote_profile = {
-	.name		= "audio-avrcp-control",
-
-	.remote_uuid	= AVRCP_REMOTE_UUID,
-	.device_probe	= avrcp_remote_probe,
-	.device_remove	= avrcp_remote_remove,
-
-	.connect	= avrcp_control_connect,
-	.disconnect	= avrcp_control_disconnect,
-
-	.adapter_probe	= avrcp_remote_server_probe,
-	.adapter_remove = avrcp_remote_server_remove,
-};
-
 static struct btd_adapter_driver media_driver = {
 	.name	= "media",
 	.probe	= media_server_probe,
@@ -338,8 +230,7 @@ int audio_manager_init(GKeyFile *conf)
 
 	btd_profile_register(&a2dp_source_profile);
 	btd_profile_register(&a2dp_sink_profile);
-	btd_profile_register(&avrcp_remote_profile);
-	btd_profile_register(&avrcp_target_profile);
+
 
 	btd_register_adapter_driver(&media_driver);
 
@@ -355,8 +246,6 @@ void audio_manager_exit(void)
 
 	btd_profile_unregister(&a2dp_source_profile);
 	btd_profile_unregister(&a2dp_sink_profile);
-	btd_profile_unregister(&avrcp_remote_profile);
-	btd_profile_unregister(&avrcp_target_profile);
 
 	btd_unregister_adapter_driver(&media_driver);
 }

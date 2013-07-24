@@ -33,17 +33,19 @@ endif
 builtin_modules += audio
 builtin_sources += profiles/audio/main.c \
 			profiles/audio/manager.h profiles/audio/manager.c \
-			profiles/audio/control.h profiles/audio/control.c \
-			profiles/audio/avctp.h profiles/audio/avctp.c \
-			profiles/audio/avrcp.h profiles/audio/avrcp.c \
 			profiles/audio/source.h profiles/audio/source.c \
 			profiles/audio/sink.h profiles/audio/sink.c \
 			profiles/audio/a2dp.h profiles/audio/a2dp.c \
 			profiles/audio/avdtp.h profiles/audio/avdtp.c \
 			profiles/audio/media.h profiles/audio/media.c \
 			profiles/audio/transport.h profiles/audio/transport.c \
-			profiles/audio/player.h profiles/audio/player.c \
 			profiles/audio/a2dp-codecs.h
+
+builtin_modules += avrcp
+builtin_sources += profiles/audio/control.h profiles/audio/control.c \
+			profiles/audio/avctp.h profiles/audio/avctp.c \
+			profiles/audio/avrcp.h profiles/audio/avrcp.c \
+			profiles/audio/player.h profiles/audio/player.c
 
 builtin_modules += network
 builtin_sources += profiles/network/manager.c \
