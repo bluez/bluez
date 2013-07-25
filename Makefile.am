@@ -173,8 +173,7 @@ man_MANS = src/bluetoothd.8
 
 EXTRA_DIST += src/genbuiltin src/bluetooth.conf \
 			src/main.conf profiles/network/network.conf \
-			profiles/input/input.conf profiles/proximity/proximity.conf \
-			profiles/audio/audio.conf
+			profiles/input/input.conf profiles/proximity/proximity.conf
 
 test_scripts =
 
