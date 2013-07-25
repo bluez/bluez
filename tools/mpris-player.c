@@ -540,6 +540,7 @@ static void remove_player(DBusConnection *conn, const char *sender)
 
 	dbus_message_unref(msg);
 	g_free(path);
+	g_free(owner);
 }
 
 static gboolean properties_changed(DBusConnection *conn,
