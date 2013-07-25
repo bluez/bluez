@@ -2309,6 +2309,28 @@ static void unregister_item(struct player *player, GDBusProxy *proxy)
 				DBUS_TYPE_INVALID);
 }
 
+static void remove_players(DBusConnection *conn)
+{
+	char **paths;
+	int i;
+
+	dbus_connection_list_registered(conn, "/", &paths);
+
+	for (i = 0; paths[i]; i++) {
+		char *path;
+		void *data;
+
+		path = g_strdup_printf("/%s", paths[i]);
+		dbus_connection_get_object_path_data(sys, path, &data);
+		dbus_connection_unregister_object_path(sys, path);
+
+		g_free(path);
+		g_free(data);
+	}
+
+	dbus_free_string_array(paths);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -2325,6 +2347,7 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			return;
 		printf("Bluetooth Adapter %s removed\n", path);
 		adapter = NULL;
+		remove_players(sys);
 	} else if (strcmp(interface, BLUEZ_MEDIA_PLAYER_INTERFACE) == 0) {
 		struct player *player;
 
