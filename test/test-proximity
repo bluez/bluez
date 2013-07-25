@@ -15,7 +15,7 @@ from optparse import OptionParser, make_option
 import bluezutils
 
 BUS_NAME = 'org.bluez'
-PROXIMITY_MONITOR_INTERFACE = 'org.bluez.ProxymityMonitor1'
+PROXIMITY_MONITOR_INTERFACE = 'org.bluez.ProximityMonitor1'
 
 def properties_changed(interface, changed, invalidated):
 	if interface != PROXIMITY_MONITOR_INTERFACE:
