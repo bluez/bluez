@@ -1874,6 +1874,8 @@ struct media_item *media_player_set_playlist_item(struct media_player *mp,
 	if (item == NULL)
 		return NULL;
 
+	media_item_set_playable(item, true);
+
 	if (mp->track != item->metadata) {
 		g_hash_table_unref(mp->track);
 		mp->track = g_hash_table_ref(item->metadata);
