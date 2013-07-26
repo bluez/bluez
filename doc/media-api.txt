@@ -400,47 +400,60 @@ Properties	object Player [readonly]
 
 			Available if property Type is "folder"
 
-		string Title [readonly, optional]
+		dict Metadata [readonly]
 
-			Item title name
+			Item metadata.
 
-			Available if property Type is "audio" or "video"
+			Possible values:
 
-		string Artist [readonly, optional]
+				string Title
 
-			Item artist name
+					Item title name
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
 
-		string Album [readonly, optional]
+				string Artist
 
-			Item album name
+					Item artist name
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
 
-		string Genre [readonly, optional]
+				string Album
 
-			Item genre name
+					Item album name
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
 
-		uint32 NumberOfTracks [readonly, optional]
+				string Genre
 
-			Item album number of tracks in total
+					Item genre name
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
 
-		uint32 Number [readonly, optional]
+				uint32 NumberOfTracks
 
-			Item album number
+					Item album number of tracks in total
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
 
-		uint32 Duration [readonly, optional]
+				uint32 Number
 
-			Item duration in milliseconds
+					Item album number
 
-			Available if property Type is "audio" or "video"
+					Available if property Type is "audio"
+					or "video"
+
+				uint32 Duration
+
+					Item duration in milliseconds
+
+					Available if property Type is "audio"
+					or "video"
 
 MediaEndpoint1 hierarchy
 ========================
