@@ -2868,7 +2868,8 @@ avrcp_parse_media_player_item(struct avrcp *session, uint8_t *operands,
 		player = create_ct_player(session, id);
 		if (player == NULL)
 			return NULL;
-	}
+	} else if (player->features != NULL)
+		return player;
 
 	mp = player->user_data;
 
