@@ -341,7 +341,7 @@ gboolean gatt_service_add(struct btd_adapter *adapter, uint16_t uuid,
 	}
 
 	g_assert(size < USHRT_MAX);
-	g_assert(h - start_handle == (uint16_t) size);
+	g_assert(h == 0 || (h - start_handle == (uint16_t) size));
 	g_slist_free_full(chrs, free_gatt_info);
 
 	return TRUE;
