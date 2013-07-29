@@ -61,7 +61,7 @@ struct scan {
 	uint16_t window;
 	uint16_t iwhandle;
 	uint16_t refresh_handle;
-	uint16_t refresh_cb_id;
+	guint refresh_cb_id;
 };
 
 static void write_scan_params(GAttrib *attrib, uint16_t handle)
@@ -239,7 +239,7 @@ static void scan_param_remove(struct btd_service *service)
 {
 	struct scan *scan = btd_service_get_user_data(service);
 
-	if (scan->attrib != NULL && scan->refresh_cb_id)
+	if (scan->attrib != NULL && scan->refresh_cb_id > 0)
 		g_attrib_unregister(scan->attrib, scan->refresh_cb_id);
 
 	btd_device_remove_attio_callback(scan->device, scan->attioid);
