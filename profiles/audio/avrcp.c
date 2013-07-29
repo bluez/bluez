@@ -3195,6 +3195,13 @@ static gboolean avrcp_get_capabilities_resp(struct avctp *conn,
 	if (pdu == NULL || pdu->params[0] != CAP_EVENTS_SUPPORTED)
 		return FALSE;
 
+	/* Connect browsing if pending */
+	if (session->browsing_timer > 0) {
+		g_source_remove(session->browsing_timer);
+		session->browsing_timer = 0;
+		avctp_connect_browsing(session->conn);
+	}
+
 	count = pdu->params[1];
 
 	for (; count > 0; count--) {
