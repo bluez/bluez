@@ -29,8 +29,6 @@
 #include <stdbool.h>
 #include <errno.h>
 
-#include <bluetooth/bluetooth.h>
-
 #include "lib/uuid.h"
 #include "log.h"
 #include "plugin.h"
