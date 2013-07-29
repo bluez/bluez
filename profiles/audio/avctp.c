@@ -1107,6 +1107,7 @@ static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
 							gpointer data)
 {
 	struct avctp *session = data;
+	struct avctp_channel *browsing = session->browsing;
 	char address[18];
 	uint16_t imtu, omtu;
 	GError *gerr = NULL;
@@ -1131,18 +1132,25 @@ static void avctp_connect_browsing_cb(GIOChannel *chan, GError *err,
 
 	DBG("AVCTP Browsing: connected to %s", address);
 
-	if (session->browsing == NULL)
-		session->browsing = avctp_channel_create(session, chan,
+	if (browsing == NULL) {
+		browsing = avctp_channel_create(session, chan,
 						avctp_destroy_browsing);
+		session->browsing = browsing;
+	}
 
-	session->browsing->imtu = imtu;
-	session->browsing->omtu = omtu;
-	session->browsing->buffer = g_malloc0(MAX(imtu, omtu));
-	session->browsing->watch = g_io_add_watch(session->browsing->io,
+	browsing->imtu = imtu;
+	browsing->omtu = omtu;
+	browsing->buffer = g_malloc0(MAX(imtu, omtu));
+	browsing->watch = g_io_add_watch(session->browsing->io,
 				G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
 				(GIOFunc) session_browsing_cb, session);
 
 	avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTED);
+
+	/* Process any request that was pending the connection to complete */
+	if (browsing->process_id == 0 && !g_queue_is_empty(browsing->queue))
+		browsing->process_id = g_idle_add(process_queue, browsing);
+
 	return;
 
 fail:
@@ -1542,6 +1550,10 @@ int avctp_send_browsing_req(struct avctp *session,
 	req->p = p;
 
 	g_queue_push_tail(browsing->queue, p);
+
+	/* Connection did not complete, delay process of the request */
+	if (browsing->watch == 0)
+		return 0;
 
 	if (browsing->process_id == 0)
 		browsing->process_id = g_idle_add(process_queue, browsing);
