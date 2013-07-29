@@ -158,7 +158,7 @@ static void refresh_discovered_cb(GSList *chars, guint8 status,
 	start = chr->value_handle + 1;
 	end = scan->range.end;
 
-	if (start >= end)
+	if (start > end)
 		return;
 
 	scan->refresh_handle = chr->value_handle;
