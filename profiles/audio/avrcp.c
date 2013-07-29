@@ -3303,7 +3303,6 @@ static void target_init(struct avrcp *session)
 	struct avrcp_data *target;
 	struct avrcp_player *player;
 	struct btd_service *service;
-	btd_service_state_t old_state = BTD_SERVICE_STATE_UNAVAILABLE;
 
 	if (session->target != NULL)
 		return;
@@ -3314,10 +3313,8 @@ static void target_init(struct avrcp *session)
 	DBG("%p version 0x%04x", target, target->version);
 
 	service = btd_device_get_service(session->dev, AVRCP_REMOTE_UUID);
-	if (service != NULL) {
-		old_state = btd_service_get_state(service);
+	if (service != NULL)
 		btd_service_connecting_complete(service, 0);
-	}
 
 	if (target->version < 0x0103)
 		return;
@@ -3342,7 +3339,7 @@ static void target_init(struct avrcp *session)
 		avrcp_get_capabilities(session);
 
 	/* Auto-connect browsing channel only if initiator */
-	if (old_state == BTD_SERVICE_STATE_CONNECTING &&
+	if (avctp_is_initiator(session->conn) &&
 				target->features & AVRCP_FEATURE_BROWSING)
 		avctp_connect_browsing(session->conn);
 }
@@ -3352,7 +3349,6 @@ static void controller_init(struct avrcp *session)
 	struct avrcp_player *player;
 	struct btd_service *service;
 	struct avrcp_data *controller;
-	btd_service_state_t old_state = BTD_SERVICE_STATE_UNAVAILABLE;
 
 	if (session->controller != NULL)
 		return;
@@ -3366,10 +3362,8 @@ static void controller_init(struct avrcp *session)
 		session->supported_events |= (1 << AVRCP_EVENT_VOLUME_CHANGED);
 
 	service = btd_device_get_service(session->dev, AVRCP_TARGET_UUID);
-	if (service != NULL) {
-		old_state = btd_service_get_state(service);
+	if (service != NULL)
 		btd_service_connecting_complete(service, 0);
-	}
 
 	/* Only create player if category 1 is supported */
 	if (!(controller->features & AVRCP_FEATURE_CATEGORY_1))
@@ -3388,7 +3382,7 @@ static void controller_init(struct avrcp *session)
 		return;
 
 	/* Auto-connect browsing channel only if initiator */
-	if (old_state == BTD_SERVICE_STATE_CONNECTING &&
+	if (avctp_is_initiator(session->conn) &&
 				controller->features & AVRCP_FEATURE_BROWSING)
 		avctp_connect_browsing(session->conn);
 }
