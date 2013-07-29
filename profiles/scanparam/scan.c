@@ -239,7 +239,7 @@ static void scan_param_remove(struct btd_service *service)
 {
 	struct scan *scan = btd_service_get_user_data(service);
 
-	if (scan->refresh_cb_id)
+	if (scan->attrib != NULL && scan->refresh_cb_id)
 		g_attrib_unregister(scan->attrib, scan->refresh_cb_id);
 
 	btd_device_remove_attio_callback(scan->device, scan->attioid);
