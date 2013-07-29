@@ -1328,8 +1328,10 @@ static void avctp_browsing_confirm(struct avctp *session, GIOChannel *chan,
 	}
 
 	if (bt_io_accept(chan, avctp_connect_browsing_cb, session, NULL,
-								&err))
+								&err)) {
+		avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTING);
 		return;
+	}
 
 	error("Browsing: %s", err->message);
 	g_error_free(err);
