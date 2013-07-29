@@ -24,7 +24,13 @@
 
 typedef enum {
 	GATT_OPT_INVALID = 0,
+
+	/* bt_uuid_t* value */
+	GATT_OPT_CHR_UUID,
+
+	/* a uint16 value */
 	GATT_OPT_CHR_UUID16,
+
 	GATT_OPT_CHR_PROPS,
 	GATT_OPT_CHR_VALUE_CB,
 	GATT_OPT_CHR_AUTHENTICATION,
