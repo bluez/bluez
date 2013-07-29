@@ -270,7 +270,8 @@ static sdp_record_t *avrcp_ct_record(void)
 	uint16_t feat = ( AVRCP_FEATURE_CATEGORY_1 |
 						AVRCP_FEATURE_CATEGORY_2 |
 						AVRCP_FEATURE_CATEGORY_3 |
-						AVRCP_FEATURE_CATEGORY_4 );
+						AVRCP_FEATURE_CATEGORY_4 |
+						AVRCP_FEATURE_BROWSING);
 
 	record = sdp_record_alloc();
 	if (!record)
