@@ -249,7 +249,7 @@ void imm_alert_register(struct btd_adapter *adapter)
 	svc_added = gatt_service_add(adapter,
 				GATT_PRIM_SVC_UUID, &uuid,
 				/* Alert level characteristic */
-				GATT_OPT_CHR_UUID, ALERT_LEVEL_CHR_UUID,
+				GATT_OPT_CHR_UUID16, ALERT_LEVEL_CHR_UUID,
 				GATT_OPT_CHR_PROPS,
 					ATT_CHAR_PROPER_WRITE_WITHOUT_RESP,
 				GATT_OPT_CHR_VALUE_CB, ATTRIB_WRITE,

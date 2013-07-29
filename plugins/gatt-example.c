@@ -114,7 +114,7 @@ static gboolean register_battery_service(struct btd_adapter *adapter)
 
 	return gatt_service_add(adapter, GATT_PRIM_SVC_UUID, &uuid,
 			/* battery state characteristic */
-			GATT_OPT_CHR_UUID, BATTERY_STATE_UUID,
+			GATT_OPT_CHR_UUID16, BATTERY_STATE_UUID,
 			GATT_OPT_CHR_PROPS, ATT_CHAR_PROPER_READ |
 							ATT_CHAR_PROPER_NOTIFY,
 			GATT_OPT_CHR_VALUE_CB, ATTRIB_READ,

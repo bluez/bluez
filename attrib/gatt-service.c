@@ -68,7 +68,7 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 
 	while (opt != GATT_OPT_INVALID) {
 		switch (opt) {
-		case GATT_OPT_CHR_UUID:
+		case GATT_OPT_CHR_UUID16:
 			bt_uuid16_create(&info->uuid, va_arg(args, int));
 			/* characteristic declaration and value */
 			info->num_attrs += 2;
@@ -108,7 +108,7 @@ static GSList *parse_opts(gatt_option opt1, va_list args)
 		}
 
 		opt = va_arg(args, gatt_option);
-		if (opt == GATT_OPT_CHR_UUID) {
+		if (opt == GATT_OPT_CHR_UUID16) {
 			info = g_new0(struct gatt_info, 1);
 			l = g_slist_append(l, info);
 		}
