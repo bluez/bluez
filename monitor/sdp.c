@@ -143,7 +143,11 @@ static void print_uuid(uint8_t indent, const uint8_t *data, uint32_t size)
 
 static void print_string(uint8_t indent, const uint8_t *data, uint32_t size)
 {
-	char *str = strndupa((const char *) data, size);
+	char *str = alloca(size + 1);
+
+	str[size] = '\0';
+	strncpy(str, (const char *) data, size);
+
 	print_field("%*c%s [len %d]", indent, ' ', str, size);
 }
 
