@@ -151,7 +151,8 @@ static uint32_t media_player_get_position(struct media_player *mp)
 	double timedelta;
 	uint32_t sec, msec;
 
-	if (g_strcmp0(mp->status, "playing") != 0)
+	if (g_strcmp0(mp->status, "playing") != 0 ||
+						mp->position == UINT32_MAX)
 		return mp->position;
 
 	timedelta = g_timer_elapsed(mp->progress, NULL);
