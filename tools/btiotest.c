@@ -594,9 +594,9 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	printf("accept=%d, reject=%d, discon=%d, defer=%d, sec=%d,"
-		" update_sec=%d, prio=%d\n", opt_accept, opt_reject,
-		opt_disconn, opt_defer, opt_sec, opt_update_sec, opt_priority);
+	printf("accept=%d reject=%d discon=%d defer=%d sec=%d update_sec=%d"
+		" prio=%d voice=0x%04x\n", opt_accept, opt_reject, opt_disconn,
+		opt_defer, opt_sec, opt_update_sec, opt_priority, opt_voice);
 
 	if (opt_psm || opt_cid) {
 		if (argc > 1)
