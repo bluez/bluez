@@ -29,7 +29,7 @@ endif
 if EXPERIMENTAL
 noinst_PROGRAMS += emulator/btvirt emulator/b1ee \
 					tools/mgmt-tester tools/gap-tester \
-					tools/l2cap-tester
+					tools/l2cap-tester tools/sco-tester
 
 emulator_btvirt_SOURCES = emulator/main.c monitor/bt.h \
 					monitor/mainloop.h monitor/mainloop.c \
@@ -64,6 +64,15 @@ tools_gap_tester_SOURCES = tools/gap-tester.c monitor/bt.h \
 				src/shared/hciemu.h src/shared/hciemu.c \
 				src/shared/tester.h src/shared/tester.c
 tools_gap_tester_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_sco_tester_SOURCES = tools/sco-tester.c monitor/bt.h \
+				emulator/btdev.h emulator/btdev.c \
+				emulator/bthost.h emulator/bthost.c \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c \
+				src/shared/hciemu.h src/shared/hciemu.c \
+				src/shared/tester.h src/shared/tester.c
+tools_sco_tester_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 endif
 
 if TOOLS
