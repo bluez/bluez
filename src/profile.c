@@ -1010,7 +1010,7 @@ static void ext_auth(DBusError *err, void *user_data)
 	bt_io_get(conn->io, &gerr, BT_IO_OPT_DEST, addr, BT_IO_OPT_INVALID);
 	if (gerr != NULL) {
 		error("Unable to get connect data for %s: %s",
-						ext->name, err->message);
+						ext->name, gerr->message);
 		g_error_free(gerr);
 		goto drop;
 	}
