@@ -724,6 +724,45 @@ static void conn_complete(struct btdev *btdev,
 	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 }
 
+
+static void sync_conn_complete(struct btdev *btdev, uint16_t voice_setting,
+								uint8_t status)
+{
+	struct bt_hci_evt_sync_conn_complete cc;
+
+	if (!btdev->conn)
+		return;
+
+	cc.status = status;
+	memcpy(cc.bdaddr, btdev->conn->bdaddr, 6);
+
+	cc.handle = cpu_to_le16(status == BT_HCI_ERR_SUCCESS ? 257 : 0);
+	cc.link_type = 0x02;
+	cc.tx_interval = 0x000c;
+	cc.retrans_window = 0x06;
+	cc.rx_pkt_len = 60;
+	cc.tx_pkt_len = 60;
+	cc.air_mode = (voice_setting == 0x0060) ? 0x02 : 0x03;
+
+	send_event(btdev, BT_HCI_EVT_SYNC_CONN_COMPLETE, &cc, sizeof(cc));
+}
+
+static void sco_conn_complete(struct btdev *btdev, uint8_t status)
+{
+	struct bt_hci_evt_conn_complete cc;
+
+	if (!btdev->conn)
+		return;
+
+	cc.status = status;
+	memcpy(cc.bdaddr, btdev->conn->bdaddr, 6);
+	cc.handle = cpu_to_le16(status == BT_HCI_ERR_SUCCESS ? 257 : 0);
+	cc.link_type = 0x00;
+	cc.encr_mode = 0x00;
+
+	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
+}
+
 static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 {
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
@@ -949,6 +988,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_set_event_mask_page2 *semp2;
 	const struct bt_hci_cmd_le_set_event_mask *lsem;
 	const struct bt_hci_cmd_le_set_adv_data *lsad;
+	const struct bt_hci_cmd_setup_sync_conn *ssc;
 	const struct bt_hci_cmd_le_set_adv_enable *lsae;
 	const struct bt_hci_cmd_le_set_scan_enable *lsse;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
@@ -1617,6 +1657,18 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		memcpy(btdev->le_adv_data, lsad->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_SETUP_SYNC_CONN:
+		ssc = data;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		sync_conn_complete(btdev, ssc->voice_setting,
+							BT_HCI_ERR_SUCCESS);
+		break;
+
+	case BT_HCI_CMD_ADD_SCO_CONN:
+		sco_conn_complete(btdev, BT_HCI_ERR_SUCCESS);
 		break;
 
 	default:
