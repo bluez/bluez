@@ -50,6 +50,7 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+	bool disable_esco;
 };
 
 struct sco_client_data {
@@ -162,6 +163,16 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	}
 
 	tester_print("New hciemu instance created");
+
+	if (data->disable_esco) {
+		uint8_t *features;
+
+		tester_print("Disabling eSCO packet type support");
+
+		features = hciemu_get_features(data->hciemu);
+		if (features)
+			features[3] &= ~0x80;
+	}
 }
 
 static void test_pre_setup(const void *test_data)
@@ -200,7 +211,7 @@ static void test_data_free(void *test_data)
 	free(data);
 }
 
-#define test_sco(name, data, setup, func) \
+#define test_sco_full(name, data, setup, func, _disable_esco) \
 	do { \
 		struct test_data *user; \
 		user = malloc(sizeof(struct test_data)); \
@@ -209,10 +220,17 @@ static void test_data_free(void *test_data)
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
 		user->io_id = 0; \
 		user->test_data = data; \
+		user->disable_esco = _disable_esco; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
 				test_post_teardown, 2, user, test_data_free); \
 	} while (0)
+
+#define test_sco(name, data, setup, func) \
+	test_sco_full(name, data, setup, func, false)
+
+#define test_sco_11(name, data, setup, func) \
+	test_sco_full(name, data, setup, func, true)
 
 static const struct sco_client_data connect_success = {
 	.expect_err = 0
@@ -518,6 +536,43 @@ static void test_connect(const void *test_data)
 	tester_print("Connect in progress");
 }
 
+static void test_connect_transp(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct sco_client_data *scodata = data->test_data;
+	int sk, err;
+	struct bt_voice voice;
+
+	sk = create_sco_sock(data, 0);
+	if (sk < 0) {
+		tester_test_failed();
+		return;
+	}
+
+	voice.setting = BT_VOICE_TRANSPARENT;
+	err = setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &voice, sizeof(voice));
+	if (err < 0) {
+		tester_warn("Can't set socket option : %s (%d)",
+							strerror(errno), errno);
+		tester_test_failed();
+		goto end;
+	}
+
+	err = connect_sco_sock(data, sk);
+
+	tester_warn("Connect returned %s (%d), expected %s (%d)",
+			strerror(-err), -err,
+			strerror(scodata->expect_err), scodata->expect_err);
+
+	if (-err != scodata->expect_err)
+		tester_test_failed();
+	else
+		tester_test_passed();
+
+end:
+	close(sk);
+}
+
 int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
@@ -536,6 +591,15 @@ int main(int argc, char *argv[])
 
 	test_sco("eSCO CVSD - Success", &connect_success, setup_powered,
 							test_connect);
+
+	test_sco("eSCO MSBC - Success", &connect_success, setup_powered,
+							test_connect_transp);
+
+	test_sco_11("SCO CVSD 1.1 - Success", &connect_success, setup_powered,
+							test_connect);
+
+	test_sco_11("SCO MSBC 1.1 - Failure", &connect_failure, setup_powered,
+							test_connect_transp);
 
 	return tester_run();
 }
