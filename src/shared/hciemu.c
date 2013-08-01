@@ -353,6 +353,14 @@ const char *hciemu_get_address(struct hciemu *hciemu)
 	return hciemu->bdaddr_str;
 }
 
+uint8_t *hciemu_get_features(struct hciemu *hciemu)
+{
+	if (!hciemu || !hciemu->master_dev)
+		return NULL;
+
+	return btdev_get_features(hciemu->master_dev);
+}
+
 const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu)
 {
 	if (!hciemu || !hciemu->master_dev)

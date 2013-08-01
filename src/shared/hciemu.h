@@ -47,6 +47,7 @@ void hciemu_unref(struct hciemu *hciemu);
 struct bthost *hciemu_client_get_host(struct hciemu *hciemu);
 
 const char *hciemu_get_address(struct hciemu *hciemu);
+uint8_t *hciemu_get_features(struct hciemu *hciemu);
 
 const uint8_t *hciemu_get_master_bdaddr(struct hciemu *hciemu);
 const uint8_t *hciemu_get_client_bdaddr(struct hciemu *hciemu);
