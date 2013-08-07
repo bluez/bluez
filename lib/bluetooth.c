@@ -681,6 +681,24 @@ const char *bt_compidtostr(int compid)
 		return "Polar Electro Europe B.V.";
 	case 210:
 		return "Dialog Semiconductor B.V.";
+	case 211:
+		return "Taixingbang Technology (HK) Co,. LTD.";
+	case 212:
+		return "Kawantech";
+	case 213:
+		return "Austco Communication Systems";
+	case 214:
+		return "Timex Group USA, Inc.";
+	case 215:
+		return "Qualcomm Technologies, Inc.";
+	case 216:
+		return "Qualcomm Connected Experiences, Inc.";
+	case 217:
+		return "Voyetra Turtle Beach";
+	case 218:
+		return "txtr GmbH";
+	case 219:
+		return "Biosentronics";
 	case 65535:
 		return "internal use";
 	default:
