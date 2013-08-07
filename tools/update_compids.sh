@@ -19,7 +19,7 @@ cp lib/bluetooth.c $tmpdir/lib/bluetooth.c
 
 cd $tmpdir
 
-path=en-us/specification/assigned-numbers-overview/company-identifiers
+path=en-us/specification/assigned-numbers/company-identifiers
 # Use "iconv -c" to strip unwanted unicode characters
 # Also strip <input> tags of type checkbox because html2text generates UTF-8
 # for them in some distros even when using -ascii (e.g. Fedora 18)
