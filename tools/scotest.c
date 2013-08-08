@@ -458,7 +458,7 @@ int main(int argc ,char *argv[])
 			break;
 
 		case 'V':
-			voice = atoi(optarg);
+			voice = strtol(optarg, NULL, 0);
 			break;
 
 		default:
