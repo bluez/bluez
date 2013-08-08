@@ -1,3 +1,15 @@
+ver 5.8:
+	Fix issue with missing OBEX session properties.
+	Fix issue with missing SDP service refresh.
+	Fix issue with SDP attribute range check.
+	Fix issue with priority for SDP transactions.
+	Fix issue with service discovery after pairing.
+	Fix issue with race condition in service list.
+	Fix issue with input service state transition.
+	Fix issue with default authorization for profiles.
+	Fix issue with AVRCP browsing channel connections.
+	Add support for AVRCP role agnostic sessions.
+
 ver 5.7:
 	Fix issue with missing UUID discovery during pairing.
 	Fix issue with broken patch for SDP range check handling.
