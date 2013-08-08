@@ -207,8 +207,8 @@ static void transfer_response(GObex *obex, GError *err, GObexPacket *rsp,
 
 	rspcode = g_obex_packet_get_operation(rsp, &final);
 	if (rspcode != G_OBEX_RSP_SUCCESS && rspcode != G_OBEX_RSP_CONTINUE) {
-		err = g_error_new(G_OBEX_ERROR, rspcode,
-					"Transfer failed (0x%02x)", rspcode);
+		err = g_error_new(G_OBEX_ERROR, rspcode, "%s",
+						g_obex_strerror(rspcode));
 		goto failed;
 	}
 
