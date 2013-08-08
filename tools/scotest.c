@@ -69,7 +69,6 @@ static int do_connect(char *svr)
 {
 	struct sockaddr_sco addr;
 	struct sco_conninfo conn;
-	struct bt_voice opts;
 	socklen_t optlen;
 	int sk;
 
@@ -92,13 +91,18 @@ static int do_connect(char *svr)
 		goto error;
 	}
 
-	/* SCO voice setting */
-	memset(&opts, 0, sizeof(opts));
-	opts.setting = voice;
-	if (setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &opts, sizeof(opts)) < 0) {
-		syslog(LOG_ERR, "Can't set socket options: %s (%d)",
-							strerror(errno), errno);
-		goto error;
+	if (voice) {
+		struct bt_voice opts;
+
+		/* SCO voice setting */
+		memset(&opts, 0, sizeof(opts));
+		opts.setting = voice;
+		if (setsockopt(sk, SOL_BLUETOOTH, BT_VOICE, &opts, sizeof(opts)) < 0) {
+			syslog(LOG_ERR,
+				"Can't set voice socket option: %s (%d)",
+				strerror(errno), errno);
+			goto error;
+		}
 	}
 
 	/* Connect to remote device */
