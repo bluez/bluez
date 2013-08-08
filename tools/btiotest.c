@@ -46,6 +46,7 @@ struct io_data {
 	int reject;
 	int disconn;
 	int accept;
+	int voice;
 };
 
 static void io_data_unref(struct io_data *data)
@@ -236,6 +237,14 @@ static void confirm_cb(GIOChannel *io, gpointer user_data)
 		printf("Rejecting connection\n");
 		g_io_channel_shutdown(io, TRUE, NULL);
 		return;
+	}
+
+	if (data->voice) {
+		if (!bt_io_set(io, &err, BT_IO_OPT_VOICE, data->voice,
+							BT_IO_OPT_INVALID)) {
+			printf("bt_io_set(OPT_VOICE): %s\n", err->message);
+			g_clear_error(&err);
+		}
 	}
 
 	data->io = g_io_channel_ref(io);
@@ -498,6 +507,8 @@ static void sco_listen(const char *src, gboolean defer, int reject,
 	}
 
 	data = io_data_new(NULL, reject, disconn, accept);
+
+	data->voice = voice;
 
 	if (src)
 		sco_srv = bt_io_listen(conn, cfm, data,
