@@ -237,7 +237,7 @@ static const struct sco_client_data connect_success = {
 };
 
 static const struct sco_client_data connect_failure = {
-	.expect_err = ECONNABORTED
+	.expect_err = EOPNOTSUPP
 };
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
