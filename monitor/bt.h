@@ -844,14 +844,14 @@ struct bt_hci_cmd_le_set_random_address {
 
 #define BT_HCI_CMD_LE_SET_ADV_PARAMETERS	0x2006
 struct bt_hci_cmd_le_set_adv_parameters {
-	uint16_t adv_interval_min;
-	uint16_t adv_interval_max;
-	uint8_t adv_type;
-	uint8_t own_address_type;
-	uint8_t direct_address_type;
-	uint8_t direct_address[6];
-	uint8_t adv_channel_map;
-	uint8_t adv_filter_policy;
+	uint16_t min_interval;
+	uint16_t max_interval;
+	uint8_t  type;
+	uint8_t  own_addr_type;
+	uint8_t  direct_addr_type;
+	uint8_t  direct_addr[6];
+	uint8_t  channel_map;
+	uint8_t  filter_policy;
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_LE_READ_ADV_TX_POWER		0x2007
