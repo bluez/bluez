@@ -172,8 +172,7 @@ if EXPERIMENTAL
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter tools/hwdb \
 			tools/btmgmt tools/btattach tools/btsnoop \
-			tools/btiotest tools/mpris-player \
-			tools/bluetooth-player
+			tools/btiotest tools/mpris-player
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
@@ -199,17 +198,13 @@ tools_btiotest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_mpris_player_SOURCES = tools/mpris-player.c
 tools_mpris_player_LDADD = gdbus/libgdbus-internal.la @GLIB_LIBS@ @DBUS_LIBS@
 
-tools_bluetooth_player_SOURCES = tools/bluetooth-player.c \
-				client/display.h client/display.c
-tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
-				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
-
 EXTRA_DIST += tools/bdaddr.1
 endif
 
 if READLINE
 noinst_PROGRAMS += attrib/gatttool \
-			tools/obex-client-tool tools/obex-server-tool
+			tools/obex-client-tool tools/obex-server-tool \
+			tools/bluetooth-player
 
 attrib_gatttool_SOURCES = attrib/gatttool.c attrib/att.c attrib/gatt.c \
 				attrib/gattrib.c btio/btio.c \
@@ -226,6 +221,11 @@ tools_obex_client_tool_LDADD = lib/libbluetooth-internal.la \
 tools_obex_server_tool_SOURCES = $(gobex_sources) $(btio_sources) \
 						tools/obex-server-tool.c
 tools_obex_server_tool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+tools_bluetooth_player_SOURCES = tools/bluetooth-player.c \
+				client/display.h client/display.c
+tools_bluetooth_player_LDADD = gdbus/libgdbus-internal.la \
+				@GLIB_LIBS@ @DBUS_LIBS@ -lreadline
 endif
 
 if EXPERIMENTAL
