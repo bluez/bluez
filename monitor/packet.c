@@ -4986,7 +4986,7 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 	print_addr_type("Peer address type", evt->peer_addr_type);
 	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
 	print_slot_125("Connection interval", evt->interval);
-        print_slot_125("Connection latency", evt->latency);
+	print_slot_125("Connection latency", evt->latency);
 	print_field("Supervision timeout: %d msec (0x%4.4x)",
 		btohs(evt->supv_timeout) * 10, btohs(evt->supv_timeout));
 	print_field("Master clock accuracy: 0x%2.2x", evt->clock_accuracy);
