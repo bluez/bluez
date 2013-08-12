@@ -3466,6 +3466,91 @@ static void le_set_random_address_cmd(const void *data, uint8_t size)
 	print_addr("Address", cmd->addr, 0x01);
 }
 
+static void le_set_adv_parameters_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_set_adv_parameters *cmd = data;
+	const char *str;
+
+	print_slot_625("Min advertising interval", cmd->min_interval);
+	print_slot_625("Max advertising interval", cmd->max_interval);
+
+	switch (cmd->type) {
+	case 0x00:
+		str = "Connectable undirected - ADV_IND";
+		break;
+	case 0x01:
+		str = "Connectable directed - ADV_DIRECT_IND";
+		break;
+	case 0x02:
+		str = "Scannable undirected - ADV_SCAN_IND";
+		break;
+	case 0x03:
+		str = "Non connectable undirect - ADV_NONCONN_IND";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+
+	print_addr_type("Own address type", cmd->own_addr_type);
+	print_addr_type("Direct address type", cmd->direct_addr_type);
+	print_addr("Direct address", cmd->direct_addr, cmd->direct_addr_type);
+
+	switch (cmd->channel_map) {
+	case 0x01:
+		str = "37";
+		break;
+	case 0x02:
+		str = "38";
+		break;
+	case 0x03:
+		str = "37, 38";
+		break;
+	case 0x04:
+		str = "39";
+		break;
+	case 0x05:
+		str = "37, 39";
+		break;
+	case 0x06:
+		str = "38, 39";
+		break;
+	case 0x07:
+		str = "37, 38, 39";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Channel map: %s (0x%2.2x)", str, cmd->channel_map);
+
+	switch (cmd->filter_policy) {
+	case 0x00:
+		str = "Allow Scan Request from Any, "
+			"Allow Connect Request from Any";
+		break;
+	case 0x01:
+		str = "Allow Scan Request from White List Only, "
+			"Allow Connect Request from Any";
+		break;
+	case 0x02:
+		str = "Allow Scan Request from Any, "
+			"Allow Connect Request from White List Only";
+		break;
+	case 0x03:
+		str = "Allow Scan Request from White List Only, "
+			"Allow Connect Request from White List Only";
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
+}
+
 static void le_read_adv_tx_power_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_le_read_adv_tx_power *rsp = data;
@@ -4204,7 +4289,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2005, 204, "LE Set Random Address",
 				le_set_random_address_cmd, 6, true,
 				status_rsp, 1, true },
-	{ 0x2006, 205, "LE Set Advertising Parameters"	},
+	{ 0x2006, 205, "LE Set Advertising Parameters",
+				le_set_adv_parameters_cmd, 15, true,
+				status_rsp, 1, true },
 	{ 0x2007, 206, "LE Read Advertising Channel TX Power",
 				null_cmd, 0, true,
 				le_read_adv_tx_power_rsp, 2, true },
