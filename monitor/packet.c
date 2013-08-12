@@ -389,13 +389,18 @@ static void print_bdaddr(const uint8_t *bdaddr)
 					bdaddr[5], bdaddr[4], bdaddr[3]);
 }
 
-static void print_addr(const uint8_t *addr, uint8_t addr_type)
+static void print_addr(const char *label, const uint8_t *addr,
+						uint8_t addr_type)
 {
 	const char *str;
 
 	switch (addr_type) {
 	case 0x00:
-		print_bdaddr(addr);
+		print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
+				" (OUI %2.2X-%2.2X-%2.2X)", label,
+					addr[5], addr[4], addr[3],
+					addr[2], addr[1], addr[0],
+					addr[5], addr[4], addr[3]);
 		break;
 	case 0x01:
 		switch ((addr[5] & 0xc0) >> 6) {
@@ -413,14 +418,14 @@ static void print_addr(const uint8_t *addr, uint8_t addr_type)
 			break;
 		}
 
-		print_field("Address: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X"
-					" (%s)", addr[5], addr[4], addr[3],
+		print_field("%s: %2.2X:%2.2X:%2.2X:%2.2X:%2.2X:%2.2X (%s)",
+					label, addr[5], addr[4], addr[3],
 					addr[2], addr[1], addr[0], str);
 		break;
 	default:
-		print_field("Address: %2.2X-%2.2X-%2.2X-%2.2X-%2.2X-%2.2X",
-						addr[5], addr[4], addr[3],
-						addr[2], addr[1], addr[0]);
+		print_field("%s: %2.2X-%2.2X-%2.2X-%2.2X-%2.2X-%2.2X",
+					label, addr[5], addr[4], addr[3],
+					addr[2], addr[1], addr[0]);
 		break;
 	}
 }
@@ -2109,13 +2114,13 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_RANDOM_ADDRESS:
 			if (data_len < 6)
 				break;
-			print_addr(data, 0x01);
+			print_addr("Address", data, 0x01);
 			break;
 
 		case BT_EIR_PUBLIC_ADDRESS:
 			if (data_len < 6)
 				break;
-			print_addr(data, 0x00);
+			print_addr("Address", data, 0x00);
 			break;
 
 		case BT_EIR_GAP_APPEARANCE:
@@ -3458,7 +3463,7 @@ static void le_set_random_address_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_random_address *cmd = data;
 
-	print_addr(cmd->addr, 0x01);
+	print_addr("Address", cmd->addr, 0x01);
 }
 
 static void le_read_adv_tx_power_rsp(const void *data, uint8_t size)
@@ -3600,7 +3605,7 @@ static void le_create_conn_cmd(const void *data, uint8_t size)
 	print_field("Filter policy: %s (0x%2.2x)", str, cmd->filter_policy);
 
 	print_addr_type("Peer address type", cmd->peer_addr_type);
-	print_addr(cmd->peer_addr, cmd->peer_addr_type);
+	print_addr("Peer address", cmd->peer_addr, cmd->peer_addr_type);
 	print_addr_type("Own address type", cmd->own_addr_type);
 
 	print_slot_125("Min connection interval", cmd->min_interval);
@@ -3625,7 +3630,7 @@ static void le_add_to_white_list_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_add_to_white_list *cmd = data;
 
 	print_addr_type("Address type", cmd->addr_type);
-	print_addr(cmd->addr, cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
 }
 
 static void le_remove_from_white_list_cmd(const void *data, uint8_t size)
@@ -3633,7 +3638,7 @@ static void le_remove_from_white_list_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_le_remove_from_white_list *cmd = data;
 
 	print_addr_type("Address type", cmd->addr_type);
-	print_addr(cmd->addr, cmd->addr_type);
+	print_addr("Address", cmd->addr, cmd->addr_type);
 }
 
 static void le_conn_update_cmd(const void *data, uint8_t size)
@@ -4979,7 +4984,7 @@ static void le_conn_complete_evt(const void *data, uint8_t size)
 	print_handle(evt->handle);
 	print_role(evt->role);
 	print_addr_type("Peer address type", evt->peer_addr_type);
-	print_addr(evt->peer_addr, evt->peer_addr_type);
+	print_addr("Peer address", evt->peer_addr, evt->peer_addr_type);
 	print_slot_125("Connection interval", evt->interval);
         print_slot_125("Connection latency", evt->latency);
 	print_field("Supervision timeout: %d msec (0x%4.4x)",
@@ -5022,7 +5027,7 @@ static void le_adv_report_evt(const void *data, uint8_t size)
 
 	print_field("Event type: %s (0x%2.2x)", str, evt->event_type);
 	print_addr_type("Address type", evt->addr_type);
-	print_addr(evt->addr, evt->addr_type);
+	print_addr("Address", evt->addr, evt->addr_type);
 	print_field("Data length: %d", evt->data_len);
 	print_eir(evt->data, evt->data_len, true);
 
