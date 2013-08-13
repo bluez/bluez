@@ -3844,6 +3844,32 @@ static void le_read_supported_states_rsp(const void *data, uint8_t size)
 	print_le_states(rsp->states);
 }
 
+static void le_receiver_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_receiver_test *cmd = data;
+
+	print_field("RX frequency: %d MHz (0x%2.2x)",
+				(cmd->frequency * 2) + 2402, cmd->frequency);
+}
+
+static void le_transmitter_test_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_le_transmitter_test *cmd = data;
+
+	print_field("TX frequency: %d MHz (0x%2.2x)",
+				(cmd->frequency * 2) + 2402, cmd->frequency);
+	print_field("Test data length: %d bytes", cmd->data_len);
+	print_field("Packet payload: 0x%2.2x", cmd->payload);
+}
+
+static void le_test_end_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_le_test_end *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Number of packets: %d", rsp->num_packets);
+}
+
 struct opcode_data {
 	uint16_t opcode;
 	int bit;
@@ -4352,9 +4378,15 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x201c, 227, "LE Read Supported States",
 				null_cmd, 0, true,
 				le_read_supported_states_rsp, 9, true },
-	{ 0x201d, 228, "LE Receiver Test" },
-	{ 0x201e, 229, "LE Transmitter Test" },
-	{ 0x201f, 230, "LE Test End" },
+	{ 0x201d, 228, "LE Receiver Test",
+				le_receiver_test_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x201e, 229, "LE Transmitter Test",
+				le_transmitter_test_cmd, 3, true,
+				status_rsp, 1, true },
+	{ 0x201f, 230, "LE Test End",
+				null_cmd, 0, true,
+				le_test_end_rsp, 2, true },
 	{ }
 };
 
