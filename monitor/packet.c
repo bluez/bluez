@@ -3817,7 +3817,7 @@ static void le_ltk_req_reply(const void *data, uint8_t size)
 
 static void le_ltk_req_reply_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_ltk_req_reply_rsp *rsp = data;
+	const struct bt_hci_rsp_le_ltk_req_reply *rsp = data;
 
 	print_status(rsp->status);
 	print_handle(rsp->handle);
@@ -3832,7 +3832,7 @@ static void le_ltk_req_neg_reply(const void *data, uint8_t size)
 
 static void le_ltk_req_neg_reply_rsp(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_ltk_req_neg_reply_rsp *rsp = data;
+	const struct bt_hci_rsp_le_ltk_req_neg_reply *rsp = data;
 
 	print_status(rsp->status);
 	print_handle(rsp->handle);

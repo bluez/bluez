@@ -990,7 +990,7 @@ struct bt_hci_cmd_le_ltk_req_reply {
 	uint16_t handle;
 	uint8_t  ltk[16];
 } __attribute__ ((packed));
-struct bt_hci_cmd_le_ltk_req_reply_rsp {
+struct bt_hci_rsp_le_ltk_req_reply {
 	uint8_t  status;
 	uint16_t handle;
 } __attribute__ ((packed));
@@ -999,7 +999,7 @@ struct bt_hci_cmd_le_ltk_req_reply_rsp {
 struct bt_hci_cmd_le_ltk_req_neg_reply {
 	uint16_t handle;
 } __attribute__ ((packed));
-struct bt_hci_cmd_le_ltk_req_neg_reply_rsp {
+struct bt_hci_rsp_le_ltk_req_neg_reply {
 	uint8_t  status;
 	uint16_t handle;
 } __attribute__ ((packed));
