@@ -1010,6 +1010,24 @@ struct bt_hci_rsp_le_read_supported_states {
 	uint8_t  states[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_LE_RECEIVER_TEST		0x201d
+struct bt_hci_cmd_le_receiver_test {
+	uint8_t  frequency;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_TRANSMITTER_TEST		0x201e
+struct bt_hci_cmd_le_transmitter_test {
+	uint8_t  frequency;
+	uint8_t  data_len;
+	uint8_t  payload;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_LE_TEST_END			0x201f
+struct bt_hci_rsp_le_test_end {
+	uint8_t  status;
+	uint8_t  num_packets;
+} __attribute__ ((packed));
+
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
 struct bt_hci_evt_inquiry_complete {
 	uint8_t  status;
