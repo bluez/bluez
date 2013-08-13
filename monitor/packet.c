@@ -3794,7 +3794,7 @@ static void le_rand_rsp(const void *data, uint8_t size)
 	print_random_number(rsp->number);
 }
 
-static void le_start_encrypt(const void *data, uint8_t size)
+static void le_start_encrypt_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_start_encrypt *cmd = data;
 
@@ -3806,7 +3806,7 @@ static void le_start_encrypt(const void *data, uint8_t size)
 
 }
 
-static void le_ltk_req_reply(const void *data, uint8_t size)
+static void le_ltk_req_reply_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_ltk_req_reply *cmd = data;
 
@@ -3823,7 +3823,7 @@ static void le_ltk_req_reply_rsp(const void *data, uint8_t size)
 	print_handle(rsp->handle);
 }
 
-static void le_ltk_req_neg_reply(const void *data, uint8_t size)
+static void le_ltk_req_neg_reply_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_ltk_req_neg_reply *cmd = data;
 
@@ -4344,12 +4344,12 @@ static const struct opcode_data opcode_table[] = {
 				null_cmd, 0, true,
 				le_rand_rsp, 9, true },
 	{ 0x2019, 224, "LE Start Encryption",
-				le_start_encrypt, 28, true },
+				le_start_encrypt_cmd, 28, true },
 	{ 0x201a, 225, "LE Long Term Key Request Reply",
-				le_ltk_req_reply, 18, true,
+				le_ltk_req_reply_cmd, 18, true,
 				le_ltk_req_reply_rsp, 3, true },
 	{ 0x201b, 226, "LE Long Term Key Request Neg Reply",
-				le_ltk_req_neg_reply, 2, true,
+				le_ltk_req_neg_reply_cmd, 2, true,
 				le_ltk_req_neg_reply_rsp, 3, true },
 	{ 0x201c, 227, "LE Read Supported States",
 				null_cmd, 0, true,
