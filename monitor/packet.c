@@ -3803,7 +3803,6 @@ static void le_start_encrypt_cmd(const void *data, uint8_t size)
 	print_field("Encryption diversifier: 0x%4.4x",
 					btohs(cmd->diversifier));
 	print_key("Long term key", cmd->ltk);
-
 }
 
 static void le_ltk_req_reply_cmd(const void *data, uint8_t size)
@@ -3812,7 +3811,6 @@ static void le_ltk_req_reply_cmd(const void *data, uint8_t size)
 
 	print_handle(cmd->handle);
 	print_key("Long term key", cmd->ltk);
-
 }
 
 static void le_ltk_req_reply_rsp(const void *data, uint8_t size)
