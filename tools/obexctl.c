@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/signalfd.h>
+#include <inttypes.h>
 
 #include <readline/readline.h>
 #include <readline/history.h>
@@ -48,8 +49,12 @@
 #define PROMPT_ON	COLOR_BLUE "[obex]" COLOR_OFF "# "
 #define PROMPT_OFF	"[obex]# "
 
+#define OBEX_SESSION_INTERFACE "org.bluez.obex.Session1"
+
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
+static GDBusProxy *default_session;
+static GSList *sessions = NULL;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -291,6 +296,163 @@ static guint setup_standard_input(void)
 	return source;
 }
 
+static char *proxy_description(GDBusProxy *proxy, const char *title,
+						const char *description)
+{
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	return g_strdup_printf("%s%s%s%s %s ",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					title, path);
+}
+
+static void print_proxy(GDBusProxy *proxy, const char *title,
+							const char *description)
+{
+	char *str;
+
+	str = proxy_description(proxy, title, description);
+
+	rl_printf("%s%s\n", str, default_session == proxy ? "[default]" : "");
+
+	g_free(str);
+}
+
+static void session_added(GDBusProxy *proxy)
+{
+	sessions = g_slist_append(sessions, proxy);
+
+	if (default_session == NULL)
+		default_session = proxy;
+
+	print_proxy(proxy, "Session", COLORED_NEW);
+}
+
+static void proxy_added(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
+		session_added(proxy);
+}
+
+static void session_removed(GDBusProxy *proxy)
+{
+	print_proxy(proxy, "Session", COLORED_DEL);
+
+	if (default_session == proxy)
+		default_session = NULL;
+
+	sessions = g_slist_remove(sessions, proxy);
+}
+
+static void proxy_removed(GDBusProxy *proxy, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
+		session_removed(proxy);
+}
+
+static void print_iter(const char *label, const char *name,
+						DBusMessageIter *iter)
+{
+	dbus_bool_t valbool;
+	dbus_uint64_t valu64;
+	dbus_uint32_t valu32;
+	dbus_uint16_t valu16;
+	dbus_int16_t vals16;
+	const char *valstr;
+	DBusMessageIter subiter;
+
+	if (iter == NULL) {
+		rl_printf("%s%s is nil\n", label, name);
+		return;
+	}
+
+	switch (dbus_message_iter_get_arg_type(iter)) {
+	case DBUS_TYPE_INVALID:
+		rl_printf("%s%s is invalid\n", label, name);
+		break;
+	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_OBJECT_PATH:
+		dbus_message_iter_get_basic(iter, &valstr);
+		rl_printf("%s%s: %s\n", label, name, valstr);
+		break;
+	case DBUS_TYPE_BOOLEAN:
+		dbus_message_iter_get_basic(iter, &valbool);
+		rl_printf("%s%s: %s\n", label, name,
+					valbool == TRUE ? "yes" : "no");
+		break;
+	case DBUS_TYPE_UINT64:
+		dbus_message_iter_get_basic(iter, &valu64);
+		rl_printf("%s%s: %" PRIu64 "\n", label, name, valu64);
+		break;
+	case DBUS_TYPE_UINT32:
+		dbus_message_iter_get_basic(iter, &valu32);
+		rl_printf("%s%s: 0x%08x\n", label, name, valu32);
+		break;
+	case DBUS_TYPE_UINT16:
+		dbus_message_iter_get_basic(iter, &valu16);
+		rl_printf("%s%s: 0x%04x\n", label, name, valu16);
+		break;
+	case DBUS_TYPE_INT16:
+		dbus_message_iter_get_basic(iter, &vals16);
+		rl_printf("%s%s: %d\n", label, name, vals16);
+		break;
+	case DBUS_TYPE_VARIANT:
+		dbus_message_iter_recurse(iter, &subiter);
+		print_iter(label, name, &subiter);
+		break;
+	case DBUS_TYPE_ARRAY:
+		dbus_message_iter_recurse(iter, &subiter);
+		while (dbus_message_iter_get_arg_type(&subiter) !=
+							DBUS_TYPE_INVALID) {
+			print_iter(label, name, &subiter);
+			dbus_message_iter_next(&subiter);
+		}
+		break;
+	case DBUS_TYPE_DICT_ENTRY:
+		dbus_message_iter_recurse(iter, &subiter);
+		dbus_message_iter_get_basic(&subiter, &valstr);
+		dbus_message_iter_next(&subiter);
+		print_iter(label, valstr, &subiter);
+		break;
+	default:
+		rl_printf("%s%s has unsupported type\n", label, name);
+		break;
+	}
+}
+
+static void session_property_changed(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Session", COLORED_CHG);
+	print_iter(str, name, iter);
+	g_free(str);
+}
+
+static void property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	const char *interface;
+
+	interface = g_dbus_proxy_get_interface(proxy);
+
+	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
+		session_property_changed(proxy, name, iter);
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
@@ -335,6 +497,9 @@ int main(int argc, char *argv[])
 
 	g_dbus_client_set_connect_watch(client, connect_handler, NULL);
 	g_dbus_client_set_disconnect_watch(client, disconnect_handler, NULL);
+
+	g_dbus_client_set_proxy_handlers(client, proxy_added, proxy_removed,
+							property_changed, NULL);
 
 	g_main_loop_run(main_loop);
 
