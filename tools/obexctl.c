@@ -50,11 +50,13 @@
 #define PROMPT_OFF	"[obex]# "
 
 #define OBEX_SESSION_INTERFACE "org.bluez.obex.Session1"
+#define OBEX_TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_session;
 static GSList *sessions = NULL;
+static GSList *transfers = NULL;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -332,6 +334,13 @@ static void session_added(GDBusProxy *proxy)
 	print_proxy(proxy, "Session", COLORED_NEW);
 }
 
+static void transfer_added(GDBusProxy *proxy)
+{
+	transfers = g_slist_append(transfers, proxy);
+
+	print_proxy(proxy, "Transfer", COLORED_NEW);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -340,6 +349,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 
 	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_added(proxy);
+	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
+		transfer_added(proxy);
 }
 
 static void session_removed(GDBusProxy *proxy)
@@ -352,6 +363,13 @@ static void session_removed(GDBusProxy *proxy)
 	sessions = g_slist_remove(sessions, proxy);
 }
 
+static void transfer_removed(GDBusProxy *proxy)
+{
+	print_proxy(proxy, "Transfer", COLORED_DEL);
+
+	transfers = g_slist_remove(transfers, proxy);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -360,6 +378,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_removed(proxy);
+	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
+		transfer_removed(proxy);
 }
 
 static void print_iter(const char *label, const char *name,
@@ -442,6 +462,16 @@ static void session_property_changed(GDBusProxy *proxy, const char *name,
 	g_free(str);
 }
 
+static void transfer_property_changed(GDBusProxy *proxy, const char *name,
+						DBusMessageIter *iter)
+{
+	char *str;
+
+	str = proxy_description(proxy, "Transfer", COLORED_CHG);
+	print_iter(str, name, iter);
+	g_free(str);
+}
+
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -451,6 +481,8 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_property_changed(proxy, name, iter);
+	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
+		transfer_property_changed(proxy, name, iter);
 }
 
 int main(int argc, char *argv[])
