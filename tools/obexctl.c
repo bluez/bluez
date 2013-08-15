@@ -296,6 +296,119 @@ static void cmd_list(int argc, char *arg[])
 	}
 }
 
+static bool check_default_session(void)
+{
+	if (!default_session) {
+		rl_printf("No default session available\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static void print_iter(const char *label, const char *name,
+						DBusMessageIter *iter)
+{
+	dbus_bool_t valbool;
+	dbus_uint64_t valu64;
+	dbus_uint32_t valu32;
+	dbus_uint16_t valu16;
+	dbus_int16_t vals16;
+	const char *valstr;
+	DBusMessageIter subiter;
+
+	if (iter == NULL) {
+		rl_printf("%s%s is nil\n", label, name);
+		return;
+	}
+
+	switch (dbus_message_iter_get_arg_type(iter)) {
+	case DBUS_TYPE_INVALID:
+		rl_printf("%s%s is invalid\n", label, name);
+		break;
+	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_OBJECT_PATH:
+		dbus_message_iter_get_basic(iter, &valstr);
+		rl_printf("%s%s: %s\n", label, name, valstr);
+		break;
+	case DBUS_TYPE_BOOLEAN:
+		dbus_message_iter_get_basic(iter, &valbool);
+		rl_printf("%s%s: %s\n", label, name,
+					valbool == TRUE ? "yes" : "no");
+		break;
+	case DBUS_TYPE_UINT64:
+		dbus_message_iter_get_basic(iter, &valu64);
+		rl_printf("%s%s: %" PRIu64 "\n", label, name, valu64);
+		break;
+	case DBUS_TYPE_UINT32:
+		dbus_message_iter_get_basic(iter, &valu32);
+		rl_printf("%s%s: 0x%08x\n", label, name, valu32);
+		break;
+	case DBUS_TYPE_UINT16:
+		dbus_message_iter_get_basic(iter, &valu16);
+		rl_printf("%s%s: 0x%04x\n", label, name, valu16);
+		break;
+	case DBUS_TYPE_INT16:
+		dbus_message_iter_get_basic(iter, &vals16);
+		rl_printf("%s%s: %d\n", label, name, vals16);
+		break;
+	case DBUS_TYPE_VARIANT:
+		dbus_message_iter_recurse(iter, &subiter);
+		print_iter(label, name, &subiter);
+		break;
+	case DBUS_TYPE_ARRAY:
+		dbus_message_iter_recurse(iter, &subiter);
+		while (dbus_message_iter_get_arg_type(&subiter) !=
+							DBUS_TYPE_INVALID) {
+			print_iter(label, name, &subiter);
+			dbus_message_iter_next(&subiter);
+		}
+		break;
+	case DBUS_TYPE_DICT_ENTRY:
+		dbus_message_iter_recurse(iter, &subiter);
+		dbus_message_iter_get_basic(&subiter, &valstr);
+		dbus_message_iter_next(&subiter);
+		print_iter(label, valstr, &subiter);
+		break;
+	default:
+		rl_printf("%s%s has unsupported type\n", label, name);
+		break;
+	}
+}
+
+static void print_property(GDBusProxy *proxy, const char *name)
+{
+	DBusMessageIter iter;
+
+	if (g_dbus_proxy_get_property(proxy, name, &iter) == FALSE)
+		return;
+
+	print_iter("\t", name, &iter);
+}
+
+static void cmd_show(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		if (check_default_session() == FALSE)
+			return;
+
+		proxy = default_session;
+	} else {
+		proxy = find_session(argv[1]);
+		if (!proxy) {
+			rl_printf("Session %s not available\n", argv[1]);
+			return;
+		}
+	}
+
+	rl_printf("Session %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "Destination");
+	print_property(proxy, "Target");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -305,6 +418,7 @@ static const struct {
 	{ "connect",      "<dev> [uuid]", cmd_connect, "Connect session" },
 	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session" },
 	{ "list",         NULL,       cmd_list, "List available sessions" },
+	{ "show",         "[session]", cmd_show, "Session information" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
@@ -594,76 +708,6 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		session_removed(proxy);
 	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
 		transfer_removed(proxy);
-}
-
-static void print_iter(const char *label, const char *name,
-						DBusMessageIter *iter)
-{
-	dbus_bool_t valbool;
-	dbus_uint64_t valu64;
-	dbus_uint32_t valu32;
-	dbus_uint16_t valu16;
-	dbus_int16_t vals16;
-	const char *valstr;
-	DBusMessageIter subiter;
-
-	if (iter == NULL) {
-		rl_printf("%s%s is nil\n", label, name);
-		return;
-	}
-
-	switch (dbus_message_iter_get_arg_type(iter)) {
-	case DBUS_TYPE_INVALID:
-		rl_printf("%s%s is invalid\n", label, name);
-		break;
-	case DBUS_TYPE_STRING:
-	case DBUS_TYPE_OBJECT_PATH:
-		dbus_message_iter_get_basic(iter, &valstr);
-		rl_printf("%s%s: %s\n", label, name, valstr);
-		break;
-	case DBUS_TYPE_BOOLEAN:
-		dbus_message_iter_get_basic(iter, &valbool);
-		rl_printf("%s%s: %s\n", label, name,
-					valbool == TRUE ? "yes" : "no");
-		break;
-	case DBUS_TYPE_UINT64:
-		dbus_message_iter_get_basic(iter, &valu64);
-		rl_printf("%s%s: %" PRIu64 "\n", label, name, valu64);
-		break;
-	case DBUS_TYPE_UINT32:
-		dbus_message_iter_get_basic(iter, &valu32);
-		rl_printf("%s%s: 0x%08x\n", label, name, valu32);
-		break;
-	case DBUS_TYPE_UINT16:
-		dbus_message_iter_get_basic(iter, &valu16);
-		rl_printf("%s%s: 0x%04x\n", label, name, valu16);
-		break;
-	case DBUS_TYPE_INT16:
-		dbus_message_iter_get_basic(iter, &vals16);
-		rl_printf("%s%s: %d\n", label, name, vals16);
-		break;
-	case DBUS_TYPE_VARIANT:
-		dbus_message_iter_recurse(iter, &subiter);
-		print_iter(label, name, &subiter);
-		break;
-	case DBUS_TYPE_ARRAY:
-		dbus_message_iter_recurse(iter, &subiter);
-		while (dbus_message_iter_get_arg_type(&subiter) !=
-							DBUS_TYPE_INVALID) {
-			print_iter(label, name, &subiter);
-			dbus_message_iter_next(&subiter);
-		}
-		break;
-	case DBUS_TYPE_DICT_ENTRY:
-		dbus_message_iter_recurse(iter, &subiter);
-		dbus_message_iter_get_basic(&subiter, &valstr);
-		dbus_message_iter_next(&subiter);
-		print_iter(label, valstr, &subiter);
-		break;
-	default:
-		rl_printf("%s%s has unsupported type\n", label, name);
-		break;
-	}
 }
 
 static void session_property_changed(GDBusProxy *proxy, const char *name,
