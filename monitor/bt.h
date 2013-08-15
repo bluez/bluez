@@ -1025,7 +1025,7 @@ struct bt_hci_cmd_le_transmitter_test {
 #define BT_HCI_CMD_LE_TEST_END			0x201f
 struct bt_hci_rsp_le_test_end {
 	uint8_t  status;
-	uint8_t  num_packets;
+	uint16_t num_packets;
 } __attribute__ ((packed));
 
 #define BT_HCI_EVT_INQUIRY_COMPLETE		0x01
