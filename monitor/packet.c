@@ -3868,7 +3868,7 @@ static void le_test_end_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_le_test_end *rsp = data;
 
 	print_status(rsp->status);
-	print_field("Number of packets: %d", rsp->num_packets);
+	print_field("Number of packets: %d", btohs(rsp->num_packets));
 }
 
 struct opcode_data {
@@ -4387,7 +4387,7 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x201f, 230, "LE Test End",
 				null_cmd, 0, true,
-				le_test_end_rsp, 2, true },
+				le_test_end_rsp, 3, true },
 	{ }
 };
 
