@@ -431,6 +431,47 @@ static void cmd_select(int argc, char *argv[])
 	print_proxy(proxy, "Session", NULL);
 }
 
+static GDBusProxy *find_transfer(const char *path)
+{
+	GSList *l;
+
+	for (l = transfers; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void cmd_info(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing transfer address argument\n");
+		return;
+	}
+
+	proxy = find_transfer(argv[1]);
+	if (!proxy) {
+		rl_printf("Transfer %s not available\n", argv[1]);
+		return;
+	}
+
+	rl_printf("Transfer %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "Session");
+	print_property(proxy, "Name");
+	print_property(proxy, "Type");
+	print_property(proxy, "Status");
+	print_property(proxy, "Time");
+	print_property(proxy, "Size");
+	print_property(proxy, "Transferred");
+	print_property(proxy, "Filename");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -442,6 +483,7 @@ static const struct {
 	{ "list",         NULL,       cmd_list, "List available sessions" },
 	{ "show",         "[session]", cmd_show, "Session information" },
 	{ "select",       "<session>", cmd_select, "Select default session" },
+	{ "info",         "<transfer>", cmd_info, "Transfer information" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
