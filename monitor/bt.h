@@ -866,8 +866,8 @@ struct bt_hci_cmd_le_set_adv_data {
 	uint8_t  data[31];
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_LE_SCAN_RESPONSE_DATA	0x2009
-struct bt_hci_cmd_le_set_scan_response_data {
+#define BT_HCI_CMD_LE_SET_SCAN_RSP_DATA		0x2009
+struct bt_hci_cmd_le_set_scan_rsp_data {
 	uint8_t  len;
 	uint8_t  data[31];
 } __attribute__ ((packed));

@@ -3568,9 +3568,9 @@ static void le_set_adv_data_cmd(const void *data, uint8_t size)
 	print_eir(cmd->data, cmd->len, true);
 }
 
-static void le_set_scan_response_data_cmd(const void *data, uint8_t size)
+static void le_set_scan_rsp_data_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_le_set_scan_response_data *cmd = data;
+	const struct bt_hci_cmd_le_set_scan_rsp_data *cmd = data;
 
 	print_field("Length: %d", cmd->len);
 	print_eir(cmd->data, cmd->len, true);
@@ -4324,7 +4324,7 @@ static const struct opcode_data opcode_table[] = {
 				le_set_adv_data_cmd, 32, true,
 				status_rsp, 1, true },
 	{ 0x2009, 208, "LE Set Scan Response Data",
-				le_set_scan_response_data_cmd, 32, true,
+				le_set_scan_rsp_data_cmd, 32, true,
 				status_rsp, 1, true },
 	{ 0x200a, 209, "LE Set Advertise Enable",
 				le_set_adv_enable_cmd, 1, true,
