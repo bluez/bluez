@@ -409,6 +409,28 @@ static void cmd_show(int argc, char *argv[])
 	print_property(proxy, "Target");
 }
 
+static void cmd_select(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing session address argument\n");
+		return;
+	}
+
+	proxy = find_session(argv[1]);
+	if (proxy == NULL) {
+		rl_printf("Session %s not available\n", argv[1]);
+		return;
+	}
+
+	if (default_session == proxy)
+		return;
+
+	default_session = proxy,
+	print_proxy(proxy, "Session", NULL);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -419,6 +441,7 @@ static const struct {
 	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session" },
 	{ "list",         NULL,       cmd_list, "List available sessions" },
 	{ "show",         "[session]", cmd_show, "Session information" },
+	{ "select",       "<session>", cmd_select, "Select default session" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
