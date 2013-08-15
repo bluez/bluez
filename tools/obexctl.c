@@ -197,6 +197,69 @@ static void cmd_connect(int argc, char *argv[])
 	rl_printf("Attempting to connect to %s\n", argv[1]);
 }
 
+static void disconnect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to disconnect: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Disconnection successful\n");
+}
+
+static void disconnect_setup(DBusMessageIter *iter, void *user_data)
+{
+	GDBusProxy *proxy = user_data;
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static GDBusProxy *find_session(const char *path)
+{
+	GSList *l;
+
+	for (l = sessions; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void cmd_disconnect(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc > 1)
+		proxy = find_session(argv[1]);
+	else
+		proxy = default_session;
+
+	if (proxy == NULL) {
+		rl_printf("Session not available\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(client, "RemoveSession", disconnect_setup,
+				disconnect_reply, proxy, NULL) == FALSE) {
+		rl_printf("Failed to disconnect\n");
+		return;
+	}
+
+	rl_printf("Attempting to disconnect to %s\n",
+						g_dbus_proxy_get_path(proxy));
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -204,6 +267,7 @@ static const struct {
 	const char *desc;
 } cmd_table[] = {
 	{ "connect",      "<dev> [uuid]", cmd_connect, "Connect session" },
+	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
