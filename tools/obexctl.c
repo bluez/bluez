@@ -260,6 +260,42 @@ static void cmd_disconnect(int argc, char *argv[])
 						g_dbus_proxy_get_path(proxy));
 }
 
+static char *proxy_description(GDBusProxy *proxy, const char *title,
+						const char *description)
+{
+	const char *path;
+
+	path = g_dbus_proxy_get_path(proxy);
+
+	return g_strdup_printf("%s%s%s%s %s ",
+					description ? "[" : "",
+					description ? : "",
+					description ? "] " : "",
+					title, path);
+}
+
+static void print_proxy(GDBusProxy *proxy, const char *title,
+							const char *description)
+{
+	char *str;
+
+	str = proxy_description(proxy, title, description);
+
+	rl_printf("%s%s\n", str, default_session == proxy ? "[default]" : "");
+
+	g_free(str);
+}
+
+static void cmd_list(int argc, char *arg[])
+{
+	GSList *l;
+
+	for (l = sessions; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+		print_proxy(proxy, "Session", NULL);
+	}
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -268,6 +304,7 @@ static const struct {
 } cmd_table[] = {
 	{ "connect",      "<dev> [uuid]", cmd_connect, "Connect session" },
 	{ "disconnect",   "[session]", cmd_disconnect, "Disconnect session" },
+	{ "list",         NULL,       cmd_list, "List available sessions" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
@@ -479,32 +516,6 @@ static guint setup_standard_input(void)
 	g_io_channel_unref(channel);
 
 	return source;
-}
-
-static char *proxy_description(GDBusProxy *proxy, const char *title,
-						const char *description)
-{
-	const char *path;
-
-	path = g_dbus_proxy_get_path(proxy);
-
-	return g_strdup_printf("%s%s%s%s %s ",
-					description ? "[" : "",
-					description ? : "",
-					description ? "] " : "",
-					title, path);
-}
-
-static void print_proxy(GDBusProxy *proxy, const char *title,
-							const char *description)
-{
-	char *str;
-
-	str = proxy_description(proxy, title, description);
-
-	rl_printf("%s%s\n", str, default_session == proxy ? "[default]" : "");
-
-	g_free(str);
 }
 
 static void client_added(GDBusProxy *proxy)
