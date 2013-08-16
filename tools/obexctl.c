@@ -514,6 +514,112 @@ static void cmd_cancel(int argc, char *argv[])
 						g_dbus_proxy_get_path(proxy));
 }
 
+static GDBusProxy *find_opp(const char *path)
+{
+	GSList *l;
+
+	for (l = opps; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void print_transfer_iter(DBusMessageIter *iter)
+{
+	DBusMessageIter dict;
+	const char *path;
+	int ctype;
+
+	dbus_message_iter_get_basic(iter, &path);
+
+	rl_printf("Transfer %s\n", path);
+
+	dbus_message_iter_next(iter);
+
+	ctype = dbus_message_iter_get_arg_type(iter);
+	if (ctype != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(iter, &dict);
+
+	while ((ctype = dbus_message_iter_get_arg_type(&dict)) !=
+							DBUS_TYPE_INVALID) {
+		DBusMessageIter entry;
+		const char *key;
+
+		if (ctype != DBUS_TYPE_DICT_ENTRY)
+			return;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return;
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		print_iter("\t", key, &entry);
+
+		dbus_message_iter_next(&dict);
+	}
+}
+
+static void send_reply(DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to send: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_transfer_iter(&iter);
+}
+
+static void send_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *file = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
+}
+
+static void cmd_send(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_opp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	if (argc < 2) {
+		rl_printf("Missing file argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "SendFile", send_setup, send_reply,
+					g_strdup(argv[1]), g_free) == FALSE) {
+		rl_printf("Failed to send\n");
+		return;
+	}
+
+	rl_printf("Attempting to send %s to %s\n", argv[1],
+						g_dbus_proxy_get_path(proxy));
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -527,6 +633,7 @@ static const struct {
 	{ "select",       "<session>", cmd_select, "Select default session" },
 	{ "info",         "<transfer>", cmd_info, "Transfer information" },
 	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
+	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
