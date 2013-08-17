@@ -1586,8 +1586,8 @@ static const struct {
 	{  3, "Directed Advertising State"				},
 	{  4, "Passive Scanning State"					},
 	{  5, "Active Scanning State"					},
-	{  6, "Initiating State"					},
-	{  7, "Connection State in Salve Role"				},
+	{  6, "Initiating State and Connection State in Master Role"	},
+	{  7, "Connection State in Slave Role"				},
 	{  8, "Non-connectable Advertising State and "
 				"Passive Scanning State combination"	},
 	{  9, "Scannable Advertising State and "
