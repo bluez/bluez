@@ -61,6 +61,7 @@ tools/btiotest
 tools/mpris-player
 tools/bluetooth-player
 tools/l2cap-tester
+tools/sco-tester
 test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir
