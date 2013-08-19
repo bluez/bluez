@@ -158,7 +158,7 @@ static void register_agent(bool append_carrier)
 		dbus_message_append_args(message, DBUS_TYPE_STRING, &carrier,
 							DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
+	if (!g_dbus_send_message_with_reply(btd_get_dbus_connection(),
 							message, &call, -1)) {
 		dbus_message_unref(message);
 		error("D-Bus send failed");
