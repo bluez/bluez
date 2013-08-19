@@ -938,7 +938,7 @@ static bool send_new_connection(struct ext_profile *ext, struct ext_io *conn)
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
+	if (!g_dbus_send_message_with_reply(btd_get_dbus_connection(),
 						msg, &conn->pending, -1)) {
 		error("%s: sending NewConnection failed", ext->name);
 		dbus_message_unref(msg);
@@ -1682,7 +1682,7 @@ static int send_disconn_req(struct ext_profile *ext, struct ext_io *conn)
 	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(btd_get_dbus_connection(),
+	if (!g_dbus_send_message_with_reply(btd_get_dbus_connection(),
 						msg, &conn->pending, -1)) {
 		error("%s: sending RequestDisconnection failed", ext->name);
 		dbus_message_unref(msg);
