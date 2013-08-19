@@ -1642,6 +1642,8 @@ static void process_properties_from_interface(struct generic_data *data,
 	DBusMessageIter iter, dict, array;
 	GSList *invalidated;
 
+	data->pending_prop = FALSE;
+
 	if (iface->pending_prop == NULL)
 		return;
 
@@ -1708,8 +1710,6 @@ static void process_property_changes(struct generic_data *data)
 
 		process_properties_from_interface(data, iface);
 	}
-
-	data->pending_prop = FALSE;
 }
 
 void g_dbus_emit_property_changed(DBusConnection *connection,
