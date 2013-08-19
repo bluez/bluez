@@ -314,7 +314,7 @@ static int synce_close(void *object)
 	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &normal,
 				DBUS_TYPE_STRING, &error, DBUS_TYPE_INVALID);
 
-	dbus_connection_send_with_reply(context->dbus_conn, msg, &call, -1);
+	g_dbus_send_message_with_reply(context->dbus_conn, msg, &call, -1);
 	dbus_pending_call_set_notify(call, close_cb, NULL, NULL);
 	dbus_message_unref(msg);
 	dbus_pending_call_unref(call);
@@ -380,7 +380,7 @@ static ssize_t synce_read(void *object, void *buf, size_t count)
 	dbus_message_append_args(msg, DBUS_TYPE_BOOLEAN, &authenticate,
 			DBUS_TYPE_STRING, &session, DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(conn, msg, &call, -1)) {
+	if (!g_dbus_send_message_with_reply(conn, msg, &call, -1)) {
 		error("D-Bus call to %s failed.", SYNCE_SERVER_INTERFACE);
 		dbus_message_unref(msg);
 		return -EPERM;
@@ -424,7 +424,7 @@ static ssize_t synce_write(void *object, const void *buf, size_t count)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &type,
 						DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(context->dbus_conn, msg,
+	if (!g_dbus_send_message_with_reply(context->dbus_conn, msg,
 								&call, -1)) {
 		error("D-Bus call to %s failed.", SYNCE_CONN_INTERFACE);
 		dbus_message_unref(msg);

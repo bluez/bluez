@@ -317,7 +317,7 @@ static int register_profile(struct bluetooth_profile *profile)
 	}
 	dbus_message_iter_close_container(&iter, &opt);
 
-	if (!dbus_connection_send_with_reply(connection, msg, &call, -1)) {
+	if (!g_dbus_send_message_with_reply(connection, msg, &call, -1)) {
 		ret = -1;
 		unregister_profile(profile);
 		goto failed;

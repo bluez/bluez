@@ -351,7 +351,7 @@ static gboolean send_backup_dbus_message(const char *oper,
 					DBUS_TYPE_INVALID);
 
 	if (strcmp(oper, "open") == 0) {
-		ret = dbus_connection_send_with_reply(conn, msg, &pending_call,
+		ret = g_dbus_send_message_with_reply(conn, msg, &pending_call,
 							BACKUP_DBUS_TIMEOUT);
 		dbus_message_unref(msg);
 		if (ret) {
@@ -363,8 +363,7 @@ static gboolean send_backup_dbus_message(const char *oper,
 		} else
 			dbus_connection_unref(conn);
 	} else {
-		ret = dbus_connection_send(conn, msg, NULL);
-		dbus_message_unref(msg);
+		g_dbus_send_message(conn, msg);
 		dbus_connection_unref(conn);
 	}
 

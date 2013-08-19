@@ -776,8 +776,7 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH, &transfer->path,
 							DBUS_TYPE_INVALID);
 
-	if (!dbus_connection_send_with_reply(connection,
-					msg, &call, TIMEOUT)) {
+	if (!g_dbus_send_message_with_reply(connection, msg, &call, TIMEOUT)) {
 		dbus_message_unref(msg);
 		return -EPERM;
 	}
