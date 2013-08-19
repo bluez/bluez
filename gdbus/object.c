@@ -1556,6 +1556,17 @@ out:
 	return result;
 }
 
+gboolean g_dbus_send_message_with_reply(DBusConnection *connection,
+					DBusMessage *message,
+					DBusPendingCall **call, int timeout)
+{
+	/* Flush pending signal to guarantee message order */
+	g_dbus_flush(connection);
+
+	return dbus_connection_send_with_reply(connection, message, call,
+								timeout);
+}
+
 gboolean g_dbus_send_error_valist(DBusConnection *connection,
 					DBusMessage *message, const char *name,
 					const char *format, va_list args)
