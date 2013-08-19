@@ -100,7 +100,7 @@ static gboolean modify_match(DBusConnection *conn, const char *member,
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &rule,
 						DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(conn, msg, &call, -1) == FALSE) {
+	if (g_dbus_send_message_with_reply(conn, msg, &call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return FALSE;
 	}
@@ -319,7 +319,7 @@ static void get_all_properties(GDBusProxy *proxy)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &proxy->interface,
 							DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 							&call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return;
@@ -575,7 +575,7 @@ gboolean g_dbus_proxy_refresh_property(GDBusProxy *proxy, const char *name)
 							&proxy->interface);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &name);
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 							&call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		refresh_property_free(data);
@@ -668,7 +668,7 @@ gboolean g_dbus_proxy_set_property_basic(GDBusProxy *proxy,
 	dbus_message_iter_append_basic(&variant, type, value);
 	dbus_message_iter_close_container(&iter, &variant);
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 							&call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		g_free(data);
@@ -742,7 +742,7 @@ gboolean g_dbus_proxy_method_call(GDBusProxy *proxy, const char *method,
 		setup(&iter, data->user_data);
 	}
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 					&call, METHOD_CALL_TIMEOUT) == FALSE) {
 		dbus_message_unref(msg);
 		g_free(data);
@@ -1038,7 +1038,7 @@ static void get_managed_objects(GDBusClient *client)
 
 	dbus_message_append_args(msg, DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 				&client->get_objects_call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return;
@@ -1102,7 +1102,7 @@ static void get_name_owner(GDBusClient *client, const char *name)
 	dbus_message_append_args(msg, DBUS_TYPE_STRING, &name,
 						DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(client->dbus_conn, msg,
+	if (g_dbus_send_message_with_reply(client->dbus_conn, msg,
 					&client->pending_call, -1) == FALSE) {
 		dbus_message_unref(msg);
 		return;

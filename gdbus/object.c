@@ -272,8 +272,7 @@ static DBusHandlerResult process_message(DBusConnection *connection,
 	if (reply == NULL)
 		return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-	dbus_connection_send(connection, reply, NULL);
-	dbus_message_unref(reply);
+	g_dbus_send_message(connection, reply);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
@@ -313,19 +312,14 @@ void g_dbus_pending_error_valist(DBusConnection *connection,
 
 	for (list = pending_security; list; list = list->next) {
 		struct security_data *secdata = list->data;
-		DBusMessage *reply;
 
 		if (secdata->pending != pending)
 			continue;
 
 		pending_security = g_slist_remove(pending_security, secdata);
 
-		reply = g_dbus_create_error_valist(secdata->message,
+		g_dbus_send_error_valist(connection, secdata->message,
 							name, format, args);
-		if (reply != NULL) {
-			dbus_connection_send(connection, reply, NULL);
-			dbus_message_unref(reply);
-		}
 
 		dbus_message_unref(secdata->message);
 		g_free(secdata);
@@ -470,18 +464,13 @@ void g_dbus_pending_property_error_valist(GDBusPendingReply id,
 					va_list args)
 {
 	struct property_data *propdata;
-	DBusMessage *reply;
 
 	propdata = remove_pending_property_data(id);
 	if (propdata == NULL)
 		return;
 
-	reply = g_dbus_create_error_valist(propdata->message, name, format,
-									args);
-	if (reply != NULL) {
-		dbus_connection_send(propdata->conn, reply, NULL);
-		dbus_message_unref(reply);
-	}
+	g_dbus_send_error_valist(propdata->conn, propdata->message, name,
+								format, args);
 
 	dbus_message_unref(propdata->message);
 	g_free(propdata);
@@ -1339,45 +1328,6 @@ static gboolean check_signal(DBusConnection *conn, const char *path,
 	return FALSE;
 }
 
-static dbus_bool_t emit_signal_valist(DBusConnection *conn,
-						const char *path,
-						const char *interface,
-						const char *name,
-						int first,
-						va_list var_args)
-{
-	DBusMessage *signal;
-	dbus_bool_t ret;
-	const GDBusArgInfo *args;
-
-	if (!check_signal(conn, path, interface, name, &args))
-		return FALSE;
-
-	signal = dbus_message_new_signal(path, interface, name);
-	if (signal == NULL) {
-		error("Unable to allocate new %s.%s signal", interface,  name);
-		return FALSE;
-	}
-
-	ret = dbus_message_append_args_valist(signal, first, var_args);
-	if (!ret)
-		goto fail;
-
-	if (g_dbus_args_have_signature(args, signal) == FALSE) {
-		error("%s.%s: got unexpected signature '%s'", interface, name,
-					dbus_message_get_signature(signal));
-		ret = FALSE;
-		goto fail;
-	}
-
-	ret = dbus_connection_send(conn, signal, NULL);
-
-fail:
-	dbus_message_unref(signal);
-
-	return ret;
-}
-
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					const GDBusMethodTable *methods,
@@ -1640,7 +1590,7 @@ gboolean g_dbus_emit_signal(DBusConnection *connection,
 
 	va_start(args, type);
 
-	result = emit_signal_valist(connection, path, interface,
+	result = g_dbus_emit_signal_valist(connection, path, interface,
 							name, type, args);
 
 	va_end(args);
@@ -1652,8 +1602,36 @@ gboolean g_dbus_emit_signal_valist(DBusConnection *connection,
 				const char *path, const char *interface,
 				const char *name, int type, va_list args)
 {
-	return emit_signal_valist(connection, path, interface,
-							name, type, args);
+	DBusMessage *signal;
+	dbus_bool_t ret;
+	const GDBusArgInfo *args_info;
+
+	if (!check_signal(connection, path, interface, name, &args_info))
+		return FALSE;
+
+	signal = dbus_message_new_signal(path, interface, name);
+	if (signal == NULL) {
+		error("Unable to allocate new %s.%s signal", interface,  name);
+		return FALSE;
+	}
+
+	ret = dbus_message_append_args_valist(signal, type, args);
+	if (!ret)
+		goto fail;
+
+	if (g_dbus_args_have_signature(args_info, signal) == FALSE) {
+		error("%s.%s: got unexpected signature '%s'", interface, name,
+					dbus_message_get_signature(signal));
+		ret = FALSE;
+		goto fail;
+	}
+
+	return g_dbus_send_message(connection, signal);
+
+fail:
+	dbus_message_unref(signal);
+
+	return ret;
 }
 
 static void process_properties_from_interface(struct generic_data *data,
