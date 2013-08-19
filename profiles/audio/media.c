@@ -325,7 +325,7 @@ static gboolean media_endpoint_async_call(DBusMessage *msg,
 	request = g_new0(struct endpoint_request, 1);
 
 	/* Timeout should be less than avdtp request timeout (4 seconds) */
-	if (dbus_connection_send_with_reply(btd_get_dbus_connection(),
+	if (g_dbus_send_message_with_reply(btd_get_dbus_connection(),
 						msg, &request->call,
 						REQUEST_TIMEOUT) == FALSE) {
 		error("D-Bus send failed");
