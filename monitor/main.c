@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 			reader_path = optarg;
 			break;
 		case 'w':
-			btsnoop_create(optarg);
+			btsnoop_create(optarg, BTSNOOP_TYPE_EXTENDED_HCI);
 			break;
 		case 's':
 			control_server(optarg);
