@@ -104,13 +104,36 @@ void btsnoop_create(const char *path)
 	}
 }
 
-void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
+static void do_write(struct timeval *tv, uint32_t flags,
 					const void *data, uint16_t size)
 {
 	struct btsnoop_pkt pkt;
-	uint32_t flags;
 	uint64_t ts;
 	ssize_t written;
+
+	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
+
+	pkt.size  = htonl(size);
+	pkt.len   = htonl(size);
+	pkt.flags = htonl(flags);
+	pkt.drops = htonl(0);
+	pkt.ts    = hton64(ts + 0x00E03AB44A676000ll);
+
+	written = write(btsnoop_fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (written < 0)
+		return;
+
+	if (data && size > 0) {
+		written = write(btsnoop_fd, data, size);
+		if (written < 0)
+			return;
+	}
+}
+
+void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
+					const void *data, uint16_t size)
+{
+	uint32_t flags;
 
 	if (!tv)
 		return;
@@ -139,23 +162,7 @@ void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 		return;
 	}
 
-	ts = (tv->tv_sec - 946684800ll) * 1000000ll + tv->tv_usec;
-
-	pkt.size  = htonl(size);
-	pkt.len   = htonl(size);
-	pkt.flags = htonl(flags);
-	pkt.drops = htonl(0);
-	pkt.ts    = hton64(ts + 0x00E03AB44A676000ll);
-
-	written = write(btsnoop_fd, &pkt, BTSNOOP_PKT_SIZE);
-	if (written < 0)
-		return;
-
-	if (data && size > 0) {
-		written = write(btsnoop_fd, data, size);
-		if (written < 0)
-			return;
-	}
+	do_write(tv, flags, data, size);
 }
 
 int btsnoop_open(const char *path)
