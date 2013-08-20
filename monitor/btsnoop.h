@@ -22,6 +22,7 @@
  *
  */
 
+#include <stdint.h>
 #include <sys/time.h>
 
 #define BTSNOOP_TYPE_HCI		1001
