@@ -205,17 +205,6 @@ int btsnoop_open(const char *path, uint32_t *type)
 
 	btsnoop_type = ntohl(hdr.type);
 
-	switch (btsnoop_type) {
-	case BTSNOOP_TYPE_HCI:
-	case BTSNOOP_TYPE_UART:
-		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
-		break;
-
-	case BTSNOOP_TYPE_EXTENDED_HCI:
-		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
-		break;
-	}
-
 	if (type)
 		*type = btsnoop_type;
 

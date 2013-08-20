@@ -816,6 +816,17 @@ void control_reader(const char *path)
 	if (btsnoop_open(path, &type) < 0)
 		return;
 
+	switch (type) {
+	case BTSNOOP_TYPE_HCI:
+	case BTSNOOP_TYPE_UART:
+		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
+		break;
+
+	case BTSNOOP_TYPE_EXTENDED_HCI:
+		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
+		break;
+	}
+
 	open_pager();
 
 	while (1) {
