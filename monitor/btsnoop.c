@@ -90,7 +90,7 @@ void btsnoop_create(const char *path)
 	if (btsnoop_fd < 0)
 		return;
 
-	btsnoop_type = 2001;
+	btsnoop_type = BTSNOOP_TYPE_EXTENDED_HCI;
 
 	memcpy(hdr.id, btsnoop_id, sizeof(btsnoop_id));
 	hdr.version = htonl(btsnoop_version);
@@ -142,7 +142,7 @@ void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 		return;
 
 	switch (btsnoop_type) {
-	case 1001:
+	case BTSNOOP_TYPE_HCI:
 		if (btsnoop_index == 0xffff)
 			btsnoop_index = index;
 
@@ -154,7 +154,7 @@ void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 			return;
 		break;
 
-	case 2001:
+	case BTSNOOP_TYPE_EXTENDED_HCI:
 		flags = (index << 16) | opcode;
 		break;
 
@@ -206,12 +206,12 @@ int btsnoop_open(const char *path, uint32_t *type)
 	btsnoop_type = ntohl(hdr.type);
 
 	switch (btsnoop_type) {
-	case 1001:
-	case 1002:
+	case BTSNOOP_TYPE_HCI:
+	case BTSNOOP_TYPE_UART:
 		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 
-	case 2001:
+	case BTSNOOP_TYPE_EXTENDED_HCI:
 		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 	}
@@ -253,12 +253,12 @@ int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	tv->tv_usec = ts % 1000000ll;
 
 	switch (btsnoop_type) {
-	case 1001:
+	case BTSNOOP_TYPE_HCI:
 		*index = 0;
 		*opcode = packet_get_opcode(0xff, flags);
 		break;
 
-	case 1002:
+	case BTSNOOP_TYPE_UART:
 		len = read(btsnoop_fd, &pkt_type, 1);
 		if (len < 0) {
 			perror("Failed to read packet type");
@@ -272,7 +272,7 @@ int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 		*opcode = packet_get_opcode(pkt_type, flags);
 		break;
 
-	case 2001:
+	case BTSNOOP_TYPE_EXTENDED_HCI:
 		*index = flags >> 16;
 		*opcode = flags & 0xffff;
 		break;

@@ -24,6 +24,13 @@
 
 #include <sys/time.h>
 
+#define BTSNOOP_TYPE_HCI		1001
+#define BTSNOOP_TYPE_UART		1002
+#define BTSNOOP_TYPE_BCSP		1003
+#define BTSNOOP_TYPE_3WIRE		1004
+
+#define BTSNOOP_TYPE_EXTENDED_HCI	2001
+
 void btsnoop_create(const char *path);
 void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
