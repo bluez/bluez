@@ -46,9 +46,6 @@ void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
 
-uint32_t packet_get_flags(uint16_t opcode);
-uint16_t packet_get_opcode(uint8_t type, uint32_t flags);
-
 void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 				uint8_t type, uint8_t bus, const char *name);
 void packet_del_index(struct timeval *tv, uint16_t index, const char *label);

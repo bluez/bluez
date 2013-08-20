@@ -2226,63 +2226,6 @@ struct index_data {
 
 static struct index_data index_list[MAX_INDEX];
 
-uint32_t packet_get_flags(uint16_t opcode)
-{
-	switch (opcode) {
-	case MONITOR_NEW_INDEX:
-	case MONITOR_DEL_INDEX:
-		break;
-	case MONITOR_COMMAND_PKT:
-		return 0x02;
-	case MONITOR_EVENT_PKT:
-		return 0x03;
-	case MONITOR_ACL_TX_PKT:
-		return 0x00;
-	case MONITOR_ACL_RX_PKT:
-		return 0x01;
-	case MONITOR_SCO_TX_PKT:
-	case MONITOR_SCO_RX_PKT:
-		break;
-	}
-
-	return 0xff;
-}
-
-uint16_t packet_get_opcode(uint8_t type, uint32_t flags)
-{
-	switch (type) {
-	case HCI_COMMAND_PKT:
-		return MONITOR_COMMAND_PKT;
-	case HCI_ACLDATA_PKT:
-		if (flags & 0x01)
-			return MONITOR_ACL_RX_PKT;
-		else
-			return MONITOR_ACL_TX_PKT;
-	case HCI_SCODATA_PKT:
-		if (flags & 0x01)
-			return MONITOR_SCO_RX_PKT;
-		else
-			return MONITOR_SCO_TX_PKT;
-	case HCI_EVENT_PKT:
-		return MONITOR_EVENT_PKT;
-	case 0xff:
-		if (flags & 0x02) {
-			if (flags & 0x01)
-				return MONITOR_EVENT_PKT;
-			else
-				return MONITOR_COMMAND_PKT;
-		} else {
-			if (flags & 0x01)
-				return MONITOR_ACL_RX_PKT;
-			else
-				return MONITOR_ACL_TX_PKT;
-		}
-		break;
-	}
-
-	return 0xff;
-}
-
 void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
