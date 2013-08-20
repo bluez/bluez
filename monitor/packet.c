@@ -46,6 +46,7 @@
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
+#include "btsnoop.h"
 #include "vendor.h"
 #include "packet.h"
 
@@ -2199,15 +2200,6 @@ void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 	control_message(opcode, data, size);
 }
 
-#define MONITOR_NEW_INDEX	0
-#define MONITOR_DEL_INDEX	1
-#define MONITOR_COMMAND_PKT	2
-#define MONITOR_EVENT_PKT	3
-#define MONITOR_ACL_TX_PKT	4
-#define MONITOR_ACL_RX_PKT	5
-#define MONITOR_SCO_TX_PKT	6
-#define MONITOR_SCO_RX_PKT	7
-
 struct monitor_new_index {
 	uint8_t  type;
 	uint8_t  bus;
@@ -2240,7 +2232,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		time_offset = tv->tv_sec;
 
 	switch (opcode) {
-	case MONITOR_NEW_INDEX:
+	case BTSNOOP_OPCODE_NEW_INDEX:
 		ni = data;
 
 		if (index < MAX_INDEX) {
@@ -2250,7 +2242,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		ba2str(&ni->bdaddr, str);
 		packet_new_index(tv, index, str, ni->type, ni->bus, ni->name);
 		break;
-	case MONITOR_DEL_INDEX:
+	case BTSNOOP_OPCODE_DEL_INDEX:
 		if (index < MAX_INDEX)
 			ba2str(&index_list[index].bdaddr, str);
 		else
@@ -2258,22 +2250,22 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 
 		packet_del_index(tv, index, str);
 		break;
-	case MONITOR_COMMAND_PKT:
+	case BTSNOOP_OPCODE_COMMAND_PKT:
 		packet_hci_command(tv, index, data, size);
 		break;
-	case MONITOR_EVENT_PKT:
+	case BTSNOOP_OPCODE_EVENT_PKT:
 		packet_hci_event(tv, index, data, size);
 		break;
-	case MONITOR_ACL_TX_PKT:
+	case BTSNOOP_OPCODE_ACL_TX_PKT:
 		packet_hci_acldata(tv, index, false, data, size);
 		break;
-	case MONITOR_ACL_RX_PKT:
+	case BTSNOOP_OPCODE_ACL_RX_PKT:
 		packet_hci_acldata(tv, index, true, data, size);
 		break;
-	case MONITOR_SCO_TX_PKT:
+	case BTSNOOP_OPCODE_SCO_TX_PKT:
 		packet_hci_scodata(tv, index, false, data, size);
 		break;
-	case MONITOR_SCO_RX_PKT:
+	case BTSNOOP_OPCODE_SCO_RX_PKT:
 		packet_hci_scodata(tv, index, true, data, size);
 		break;
 	default:
