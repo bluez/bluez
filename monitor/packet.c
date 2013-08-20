@@ -46,6 +46,7 @@
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
+#include "vendor.h"
 #include "packet.h"
 
 #define COLOR_INDEX_LABEL		COLOR_WHITE
@@ -5204,6 +5205,11 @@ static void le_meta_event_evt(const void *data, uint8_t size)
 	subevent_data->func(data + 1, size - 1);
 }
 
+static void vendor_evt(const void *data, uint8_t size)
+{
+	vendor_event(0xffff, data, size);
+}
+
 struct event_data {
 	uint8_t event;
 	const char *str;
@@ -5346,8 +5352,8 @@ static const struct event_data event_table[] = {
 				short_range_mode_change_evt, 3, true },
 	{ 0x4d, "AMP Status Change",
 				amp_status_change_evt, 2, true },
-	{ 0xfe, "Testing"				},
-	{ 0xff, "Vendor"				},
+	{ 0xfe, "Testing" },
+	{ 0xff, "Vendor", vendor_evt, 0, false },
 	{ }
 };
 
