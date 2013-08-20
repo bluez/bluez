@@ -810,9 +810,10 @@ void control_reader(const char *path)
 {
 	unsigned char buf[MAX_PACKET_SIZE];
 	uint16_t index, opcode, pktlen;
+	uint32_t type;
 	struct timeval tv;
 
-	if (btsnoop_open(path) < 0)
+	if (btsnoop_open(path, &type) < 0)
 		return;
 
 	open_pager();

@@ -165,7 +165,7 @@ void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
 	do_write(tv, flags, data, size);
 }
 
-int btsnoop_open(const char *path)
+int btsnoop_open(const char *path, uint32_t *type)
 {
 	struct btsnoop_hdr hdr;
 	ssize_t len;
@@ -215,6 +215,9 @@ int btsnoop_open(const char *path)
 		packet_add_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 	}
+
+	if (type)
+		*type = btsnoop_type;
 
 	return 0;
 }
