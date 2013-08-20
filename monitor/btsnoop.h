@@ -31,6 +31,15 @@
 
 #define BTSNOOP_TYPE_EXTENDED_HCI	2001
 
+#define BTSNOOP_OPCODE_NEW_INDEX	0
+#define BTSNOOP_OPCODE_DEL_INDEX	1
+#define BTSNOOP_OPCODE_COMMAND_PKT	2
+#define BTSNOOP_OPCODE_EVENT_PKT	3
+#define BTSNOOP_OPCODE_ACL_TX_PKT	4
+#define BTSNOOP_OPCODE_ACL_RX_PKT	5
+#define BTSNOOP_OPCODE_SCO_TX_PKT	6
+#define BTSNOOP_OPCODE_SCO_RX_PKT	7
+
 void btsnoop_create(const char *path, uint32_t type);
 void btsnoop_write(struct timeval *tv, uint32_t flags,
 					const void *data, uint16_t size);

@@ -35,21 +35,10 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 
-#include "packet.h"
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+
 #include "btsnoop.h"
-
-static inline uint64_t ntoh64(uint64_t n)
-{
-	uint64_t h;
-	uint64_t tmp = ntohl(n & 0x00000000ffffffff);
-
-	h = ntohl(n >> 32);
-	h |= tmp << 32;
-
-	return h;
-}
-
-#define hton64(x)     ntoh64(x)
 
 struct btsnoop_hdr {
 	uint8_t		id[8];		/* Identification Pattern */
@@ -139,6 +128,28 @@ void btsnoop_write(struct timeval *tv, uint32_t flags,
 	}
 }
 
+static uint32_t get_flags_from_opcode(uint16_t opcode)
+{
+	switch (opcode) {
+	case BTSNOOP_OPCODE_NEW_INDEX:
+	case BTSNOOP_OPCODE_DEL_INDEX:
+		break;
+	case BTSNOOP_OPCODE_COMMAND_PKT:
+		return 0x02;
+	case BTSNOOP_OPCODE_EVENT_PKT:
+		return 0x03;
+	case BTSNOOP_OPCODE_ACL_TX_PKT:
+		return 0x00;
+	case BTSNOOP_OPCODE_ACL_RX_PKT:
+		return 0x01;
+	case BTSNOOP_OPCODE_SCO_TX_PKT:
+	case BTSNOOP_OPCODE_SCO_RX_PKT:
+		break;
+	}
+
+	return 0xff;
+}
+
 void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
@@ -158,7 +169,7 @@ void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 		if (index != btsnoop_index)
 			return;
 
-		flags = packet_get_flags(opcode);
+		flags = get_flags_from_opcode(opcode);
 		if (flags == 0xff)
 			return;
 		break;
@@ -220,6 +231,41 @@ int btsnoop_open(const char *path, uint32_t *type)
 	return 0;
 }
 
+static uint16_t get_opcode_from_flags(uint8_t type, uint32_t flags)
+{
+	switch (type) {
+	case HCI_COMMAND_PKT:
+		return BTSNOOP_OPCODE_COMMAND_PKT;
+	case HCI_ACLDATA_PKT:
+		if (flags & 0x01)
+			return BTSNOOP_OPCODE_ACL_RX_PKT;
+		else
+			return BTSNOOP_OPCODE_ACL_TX_PKT;
+	case HCI_SCODATA_PKT:
+		if (flags & 0x01)
+			return BTSNOOP_OPCODE_SCO_RX_PKT;
+		else
+			return BTSNOOP_OPCODE_SCO_TX_PKT;
+	case HCI_EVENT_PKT:
+		return BTSNOOP_OPCODE_EVENT_PKT;
+	case 0xff:
+		if (flags & 0x02) {
+			if (flags & 0x01)
+				return BTSNOOP_OPCODE_EVENT_PKT;
+			else
+				return BTSNOOP_OPCODE_COMMAND_PKT;
+		} else {
+			if (flags & 0x01)
+				return BTSNOOP_OPCODE_ACL_RX_PKT;
+			else
+				return BTSNOOP_OPCODE_ACL_TX_PKT;
+		}
+		break;
+	}
+
+	return 0xff;
+}
+
 int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 						void *data, uint16_t *size)
 {
@@ -253,7 +299,7 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	switch (btsnoop_type) {
 	case BTSNOOP_TYPE_HCI:
 		*index = 0;
-		*opcode = packet_get_opcode(0xff, flags);
+		*opcode = get_opcode_from_flags(0xff, flags);
 		break;
 
 	case BTSNOOP_TYPE_UART:
@@ -267,7 +313,7 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 		toread--;
 
 		*index = 0;
-		*opcode = packet_get_opcode(pkt_type, flags);
+		*opcode = get_opcode_from_flags(pkt_type, flags);
 		break;
 
 	case BTSNOOP_TYPE_EXTENDED_HCI:
