@@ -139,7 +139,7 @@ static void do_write(struct timeval *tv, uint32_t flags,
 	}
 }
 
-void btsnoop_write(struct timeval *tv, uint16_t index, uint16_t opcode,
+void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size)
 {
 	uint32_t flags;
@@ -220,7 +220,7 @@ int btsnoop_open(const char *path, uint32_t *type)
 	return 0;
 }
 
-int btsnoop_read(struct timeval *tv, uint16_t *index, uint16_t *opcode,
+int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 						void *data, uint16_t *size)
 {
 	struct btsnoop_pkt pkt;

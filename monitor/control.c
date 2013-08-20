@@ -625,7 +625,7 @@ static void data_callback(int fd, uint32_t events, void *user_data)
 			break;
 		case HCI_CHANNEL_MONITOR:
 			packet_monitor(tv, index, opcode, data->buf, pktlen);
-			btsnoop_write(tv, index, opcode, data->buf, pktlen);
+			btsnoop_write_hci(tv, index, opcode, data->buf, pktlen);
 			break;
 		}
 	}
@@ -830,7 +830,7 @@ void control_reader(const char *path)
 	open_pager();
 
 	while (1) {
-		if (btsnoop_read(&tv, &index, &opcode, buf, &pktlen) < 0)
+		if (btsnoop_read_hci(&tv, &index, &opcode, buf, &pktlen) < 0)
 			break;
 
 		packet_monitor(&tv, index, opcode, buf, pktlen);
