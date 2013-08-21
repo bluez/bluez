@@ -724,6 +724,7 @@ static void server_free(void *data)
 	if (ns->record_id)
 		remove_record_from_server(ns->record_id);
 
+	g_dbus_remove_watch(btd_get_dbus_connection(), ns->watch_id);
 	g_free(ns->name);
 	g_free(ns->bridge);
 
