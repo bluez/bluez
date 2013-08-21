@@ -43,6 +43,7 @@
 
 #include "display.h"
 #include "bt.h"
+#include "ll.h"
 #include "uuid.h"
 #include "l2cap.h"
 #include "control.h"
@@ -2293,7 +2294,7 @@ void packet_simulator(struct timeval *tv, uint16_t frequency,
 
 	print_packet(tv, 0, '*', COLOR_PHY_PACKET, label, NULL, extra);
 
-	packet_hexdump(data, size);
+	ll_packet(frequency, data, size);
 }
 
 static void null_cmd(const void *data, uint8_t size)
