@@ -74,15 +74,6 @@ void btsnoop_create(const char *path, uint32_t type)
 	if (btsnoop_fd >= 0)
 		return;
 
-	switch (type) {
-	case BTSNOOP_TYPE_HCI:
-	case BTSNOOP_TYPE_EXTENDED_HCI:
-		break;
-
-	default:
-		return;
-	}
-
 	btsnoop_fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC,
 				S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (btsnoop_fd < 0)
