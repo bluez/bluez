@@ -20,7 +20,7 @@ parser = OptionParser(option_list=option_list)
 
 adapter_path = bluezutils.find_adapter(options.dev_id).object_path
 server = dbus.Interface(bus.get_object("org.bluez", adapter_path),
-						"org.bluez.NetworkServer")
+						"org.bluez.NetworkServer1")
 
 service = "nap"
 
