@@ -911,7 +911,9 @@ static gboolean dev_property_get_uuids(const GDBusPropertyTable *property,
 	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_STRING_AS_STRING, &entry);
 
-	if (!device->svc_resolved)
+	if (device->svc_resolved)
+		l = device->uuids;
+	else if (device->eir_uuids)
 		l = device->eir_uuids;
 	else
 		l = device->uuids;
