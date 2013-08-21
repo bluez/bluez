@@ -176,6 +176,29 @@ void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 	btsnoop_write(tv, flags, data, size);
 }
 
+void btsnoop_write_phy(struct timeval *tv, uint16_t frequency,
+					const void *data, uint16_t size)
+{
+	uint32_t flags;
+
+	if (!tv)
+		return;
+
+	if (btsnoop_fd < 0)
+		return;
+
+	switch (btsnoop_type) {
+	case BTSNOOP_TYPE_EXTENDED_PHY:
+		flags = (1 << 16) | frequency;
+		break;
+
+	default:
+		return;
+	}
+
+	btsnoop_write(tv, flags, data, size);
+}
+
 int btsnoop_open(const char *path, uint32_t *type)
 {
 	struct btsnoop_hdr hdr;
@@ -310,6 +333,62 @@ int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
 	case BTSNOOP_TYPE_EXTENDED_HCI:
 		*index = flags >> 16;
 		*opcode = flags & 0xffff;
+		break;
+
+	default:
+		fprintf(stderr, "Unknown packet type\n");
+		close(btsnoop_fd);
+		btsnoop_fd = -1;
+		return -1;
+	}
+
+	len = read(btsnoop_fd, data, toread);
+	if (len < 0) {
+		perror("Failed to read data");
+		close(btsnoop_fd);
+		btsnoop_fd = -1;
+		return -1;
+	}
+
+	*size = toread;
+
+	return 0;
+}
+
+int btsnoop_read_phy(struct timeval *tv, uint16_t *frequency,
+						void *data, uint16_t *size)
+{
+	struct btsnoop_pkt pkt;
+	uint32_t toread, flags;
+	uint64_t ts;
+	ssize_t len;
+
+	if (btsnoop_fd < 0)
+		return -1;
+
+	len = read(btsnoop_fd, &pkt, BTSNOOP_PKT_SIZE);
+	if (len == 0)
+		return -1;
+
+	if (len < 0 || len != BTSNOOP_PKT_SIZE) {
+		perror("Failed to read packet");
+		close(btsnoop_fd);
+		btsnoop_fd = -1;
+		return -1;
+	}
+
+	toread = ntohl(pkt.size);
+	flags = ntohl(pkt.flags);
+
+	ts = ntoh64(pkt.ts) - 0x00E03AB44A676000ll;
+	tv->tv_sec = (ts / 1000000ll) + 946684800ll;
+	tv->tv_usec = ts % 1000000ll;
+
+	switch (btsnoop_type) {
+	case BTSNOOP_TYPE_EXTENDED_PHY:
+		if ((flags >> 16) != 1)
+			break;
+		*frequency = flags & 0xffff;
 		break;
 
 	default:

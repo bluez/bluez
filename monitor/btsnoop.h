@@ -31,6 +31,7 @@
 #define BTSNOOP_TYPE_3WIRE		1004
 
 #define BTSNOOP_TYPE_EXTENDED_HCI	2001
+#define BTSNOOP_TYPE_EXTENDED_PHY	2002
 
 #define BTSNOOP_OPCODE_NEW_INDEX	0
 #define BTSNOOP_OPCODE_DEL_INDEX	1
@@ -46,7 +47,11 @@ void btsnoop_write(struct timeval *tv, uint32_t flags,
 					const void *data, uint16_t size);
 void btsnoop_write_hci(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
+void btsnoop_write_phy(struct timeval *tv, uint16_t frequency,
+					const void *data, uint16_t size);
 int btsnoop_open(const char *path, uint32_t *type);
 int btsnoop_read_hci(struct timeval *tv, uint16_t *index, uint16_t *opcode,
+						void *data, uint16_t *size);
+int btsnoop_read_phy(struct timeval *tv, uint16_t *frequency,
 						void *data, uint16_t *size);
 void btsnoop_close(void);
