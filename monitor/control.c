@@ -809,7 +809,7 @@ void control_server(const char *path)
 void control_reader(const char *path)
 {
 	unsigned char buf[MAX_PACKET_SIZE];
-	uint16_t index, opcode, pktlen;
+	uint16_t pktlen;
 	uint32_t type;
 	struct timeval tv;
 
@@ -819,6 +819,7 @@ void control_reader(const char *path)
 	switch (type) {
 	case BTSNOOP_TYPE_HCI:
 	case BTSNOOP_TYPE_UART:
+	case BTSNOOP_TYPE_EXTENDED_PHY:
 		packet_del_filter(PACKET_FILTER_SHOW_INDEX);
 		break;
 
@@ -829,11 +830,32 @@ void control_reader(const char *path)
 
 	open_pager();
 
-	while (1) {
-		if (btsnoop_read_hci(&tv, &index, &opcode, buf, &pktlen) < 0)
-			break;
+	switch (type) {
+	case BTSNOOP_TYPE_HCI:
+	case BTSNOOP_TYPE_UART:
+	case BTSNOOP_TYPE_EXTENDED_HCI:
+		while (1) {
+			uint16_t index, opcode;
 
-		packet_monitor(&tv, index, opcode, buf, pktlen);
+			if (btsnoop_read_hci(&tv, &index, &opcode,
+							buf, &pktlen) < 0)
+				break;
+
+			packet_monitor(&tv, index, opcode, buf, pktlen);
+		}
+		break;
+
+	case BTSNOOP_TYPE_EXTENDED_PHY:
+		while (1) {
+			uint16_t frequency;
+
+			if (btsnoop_read_phy(&tv, &frequency,
+							buf, &pktlen) < 0)
+				break;
+
+			packet_simulator(&tv, frequency, buf, pktlen);
+		}
+		break;
 	}
 
 	close_pager();
