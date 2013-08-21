@@ -70,6 +70,8 @@
 #define COLOR_UNKNOWN_LE_STATES		COLOR_WHITE_BG
 #define COLOR_UNKNOWN_SERVICE_CLASS	COLOR_WHITE_BG
 
+#define COLOR_PHY_PACKET		COLOR_BLUE
+
 static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
@@ -2275,6 +2277,23 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		packet_hexdump(data, size);
 		break;
 	}
+}
+
+void packet_simulator(struct timeval *tv, uint16_t frequency,
+					const void *data, uint16_t size)
+{
+	char label[20];
+	char extra[20];
+
+	if (tv && time_offset == ((time_t) -1))
+		time_offset = tv->tv_sec;
+
+	sprintf(label, "Physical packet: %u MHz", frequency);
+	sprintf(extra, "(Channel %u)", (frequency - 2402) / 2);
+
+	print_packet(tv, 0, '*', COLOR_PHY_PACKET, label, NULL, extra);
+
+	packet_hexdump(data, size);
 }
 
 static void null_cmd(const void *data, uint8_t size)

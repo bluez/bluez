@@ -45,6 +45,8 @@ void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
 void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 					const void *data, uint16_t size);
+void packet_simulator(struct timeval *tv, uint16_t frequency,
+					const void *data, uint16_t size);
 
 void packet_new_index(struct timeval *tv, uint16_t index, const char *label,
 				uint8_t type, uint8_t bus, const char *name);
