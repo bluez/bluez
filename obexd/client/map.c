@@ -806,121 +806,211 @@ static struct map_msg *map_msg_create(struct map_data *data, const char *handle)
 
 static void parse_subject(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->subject, value) == 0)
+		return;
+
 	g_free(msg->subject);
 	msg->subject = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Subject");
 }
 
 static void parse_datetime(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->timestamp, value) == 0)
+		return;
+
 	g_free(msg->timestamp);
 	msg->timestamp = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Timestamp");
 }
 
 static void parse_sender(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->sender, value) == 0)
+		return;
+
 	g_free(msg->sender);
 	msg->sender = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Sender");
 }
 
 static void parse_sender_address(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->sender_address, value) == 0)
+		return;
+
 	g_free(msg->sender_address);
 	msg->sender_address = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+					MAP_MSG_INTERFACE, "SenderAddress");
 }
 
 static void parse_replyto(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->replyto, value) == 0)
+		return;
+
 	g_free(msg->replyto);
 	msg->replyto = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "ReplyTo");
 }
 
 static void parse_recipient(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->recipient, value) == 0)
+		return;
+
 	g_free(msg->recipient);
 	msg->recipient = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Recipient");
 }
 
 static void parse_recipient_address(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->recipient_address, value) == 0)
+		return;
+
 	g_free(msg->recipient_address);
 	msg->recipient_address = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+					MAP_MSG_INTERFACE, "RecipientAddress");
 }
 
 static void parse_type(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->type, value) == 0)
+		return;
+
 	g_free(msg->type);
 	msg->type = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Type");
 }
 
 static void parse_size(struct map_msg *msg, const char *value)
 {
-	msg->size = g_ascii_strtoll(value, NULL, 10);
+	uint64_t size = g_ascii_strtoll(value, NULL, 10);
+
+	if (msg->size == size)
+		return;
+
+	msg->size = size;
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Size");
 }
 
 static void parse_text(struct map_msg *msg, const char *value)
 {
 	gboolean flag = strcasecmp(value, "no") != 0;
+	uint8_t oldflags = msg->flags;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_TEXT;
 	else
 		msg->flags &= ~MAP_MSG_FLAG_TEXT;
 
+	if (msg->flags != oldflags)
+		g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Text");
 }
 
 static void parse_status(struct map_msg *msg, const char *value)
 {
+	if (g_strcmp0(msg->status, value) == 0)
+		return;
+
 	g_free(msg->status);
 	msg->status = g_strdup(value);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Status");
 }
 
 static void parse_attachment_size(struct map_msg *msg, const char *value)
 {
-	msg->attachment_size = g_ascii_strtoll(value, NULL, 10);
+	uint64_t attachment_size = g_ascii_strtoll(value, NULL, 10);
+
+	if (msg->attachment_size == attachment_size)
+		return;
+
+	msg->attachment_size = attachment_size;
+
+	g_dbus_emit_property_changed(conn, msg->path,
+					MAP_MSG_INTERFACE, "AttachmentSize");
 }
 
 static void parse_priority(struct map_msg *msg, const char *value)
 {
 	gboolean flag = strcasecmp(value, "no") != 0;
+	uint8_t oldflags = msg->flags;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_PRIORITY;
 	else
 		msg->flags &= ~MAP_MSG_FLAG_PRIORITY;
 
+	if (msg->flags != oldflags)
+		g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Priority");
 }
 
 static void parse_read(struct map_msg *msg, const char *value)
 {
 	gboolean flag = strcasecmp(value, "no") != 0;
+	uint8_t oldflags = msg->flags;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_READ;
 	else
 		msg->flags &= ~MAP_MSG_FLAG_READ;
 
+	if (msg->flags != oldflags)
+		g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Read");
 }
 
 static void parse_sent(struct map_msg *msg, const char *value)
 {
 	gboolean flag = strcasecmp(value, "no") != 0;
+	uint8_t oldflags = msg->flags;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_SENT;
 	else
 		msg->flags &= ~MAP_MSG_FLAG_SENT;
 
+	if (msg->flags != oldflags)
+		g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Sent");
 }
 
 static void parse_protected(struct map_msg *msg, const char *value)
 {
 	gboolean flag = strcasecmp(value, "no") != 0;
+	uint8_t oldflags = msg->flags;
 
 	if (flag)
 		msg->flags |= MAP_MSG_FLAG_PROTECTED;
 	else
 		msg->flags &= ~MAP_MSG_FLAG_PROTECTED;
 
+	if (msg->flags != oldflags)
+		g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Protected");
 }
 
 static struct map_msg_parser {
