@@ -97,6 +97,7 @@ void map_unregister_event_handler(struct obc_session *session, int mas_id)
 	handlers = g_slist_remove(handlers, handler);
 	DBG("Handler %p for %s:%d unregistered", handler,
 			obc_session_get_destination(session), mas_id);
+	g_free(handler);
 }
 
 void map_dispatch_event(int mas_id, const char *device,
