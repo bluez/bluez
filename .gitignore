@@ -66,6 +66,7 @@ test/sap_client.pyc
 test/bluezutils.pyc
 unit/test-eir
 unit/test-uuid
+unit/test-crc
 unit/test-textfile
 unit/test-gdbus-client
 unit/test-sdp
