@@ -38,14 +38,7 @@
 #include <arpa/inet.h>
 #include <sys/stat.h>
 
-#define MONITOR_NEW_INDEX	0
-#define MONITOR_DEL_INDEX	1
-#define MONITOR_COMMAND_PKT	2
-#define MONITOR_EVENT_PKT	3
-#define MONITOR_ACL_TX_PKT	4
-#define MONITOR_ACL_RX_PKT	5
-#define MONITOR_SCO_TX_PKT	6
-#define MONITOR_SCO_RX_PKT	7
+#include "monitor/btsnoop.h"
 
 static inline uint64_t ntoh64(uint64_t n)
 {
@@ -82,7 +75,7 @@ static const uint8_t btsnoop_id[] = { 0x62, 0x74, 0x73, 0x6e,
 
 static const uint32_t btsnoop_version = 1;
 
-static int btsnoop_create(const char *path)
+static int create_btsnoop(const char *path)
 {
 	struct btsnoop_hdr hdr;
 	ssize_t written;
@@ -109,7 +102,7 @@ static int btsnoop_create(const char *path)
 	return fd;
 }
 
-static int btsnoop_open(const char *path, uint32_t *type)
+static int open_btsnoop(const char *path, uint32_t *type)
 {
 	struct btsnoop_hdr hdr;
 	ssize_t len;
@@ -167,7 +160,7 @@ static void command_merge(const char *output, int argc, char *argv[])
 		uint32_t type;
 		int fd;
 
-		fd = btsnoop_open(argv[i], &type);
+		fd = open_btsnoop(argv[i], &type);
 		if (fd < 0)
 			break;
 
@@ -186,7 +179,7 @@ static void command_merge(const char *output, int argc, char *argv[])
 		goto close_input;
 	}
 
-	output_fd = btsnoop_create(output);
+	output_fd = create_btsnoop(output);
 	if (output_fd < 0)
 		goto close_input;
 
@@ -236,22 +229,22 @@ next_packet:
 
 	switch (buf[0]) {
 	case 0x01:
-		opcode = MONITOR_COMMAND_PKT;
+		opcode = BTSNOOP_OPCODE_COMMAND_PKT;
 		break;
 	case 0x02:
 		if (flags & 0x01)
-			opcode = MONITOR_ACL_RX_PKT;
+			opcode = BTSNOOP_OPCODE_ACL_RX_PKT;
 		else
-			opcode = MONITOR_ACL_TX_PKT;
+			opcode = BTSNOOP_OPCODE_ACL_TX_PKT;
 		break;
 	case 0x03:
 		if (flags & 0x01)
-			opcode = MONITOR_SCO_RX_PKT;
+			opcode = BTSNOOP_OPCODE_SCO_RX_PKT;
 		else
-			opcode = MONITOR_ACL_TX_PKT;
+			opcode = BTSNOOP_OPCODE_ACL_TX_PKT;
 		break;
 	case 0x04:
-		opcode = MONITOR_EVENT_PKT;
+		opcode = BTSNOOP_OPCODE_EVENT_PKT;
 		break;
 	default:
 		goto skip_write;
@@ -299,7 +292,7 @@ static void command_extract_eir(const char *input)
 	uint16_t opcode;
 	int fd, count = 0;
 
-	fd = btsnoop_open(input, &type);
+	fd = open_btsnoop(input, &type);
 	if (fd < 0)
 		return;
 
@@ -326,7 +319,7 @@ next_packet:
 	}
 
 	switch (opcode) {
-	case MONITOR_EVENT_PKT:
+	case BTSNOOP_OPCODE_EVENT_PKT:
 		/* extended inquiry result event */
 		if (buf[0] == 0x2f) {
 			uint8_t *eir_ptr, eir_len, i;
@@ -372,7 +365,7 @@ static void command_extract_ad(const char *input)
 	uint16_t opcode;
 	int fd, count = 0;
 
-	fd = btsnoop_open(input, &type);
+	fd = open_btsnoop(input, &type);
 	if (fd < 0)
 		return;
 
@@ -399,7 +392,7 @@ next_packet:
 	}
 
 	switch (opcode) {
-	case MONITOR_EVENT_PKT:
+	case BTSNOOP_OPCODE_EVENT_PKT:
 		/* advertising report */
 		if (buf[0] == 0x3e && buf[2] == 0x02) {
 			uint8_t *ad_ptr, ad_len, i;
@@ -449,7 +442,7 @@ static void command_extract_sdp(const char *input)
 	bool pdu_first = false;
 	int fd, count = 0;
 
-	fd = btsnoop_open(input, &type);
+	fd = open_btsnoop(input, &type);
 	if (fd < 0)
 		return;
 
