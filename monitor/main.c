@@ -35,7 +35,6 @@
 #include "mainloop.h"
 #include "packet.h"
 #include "control.h"
-#include "btsnoop.h"
 
 static void signal_callback(int signum, void *user_data)
 {
@@ -79,7 +78,7 @@ static const struct option main_options[] = {
 int main(int argc, char *argv[])
 {
 	unsigned long filter_mask = 0;
-	const char *str, *reader_path = NULL;
+	const char *str, *reader_path = NULL, *writer_path = NULL;
 	sigset_t mask;
 
 	mainloop_init();
@@ -99,7 +98,7 @@ int main(int argc, char *argv[])
 			reader_path = optarg;
 			break;
 		case 'w':
-			btsnoop_create(optarg, BTSNOOP_TYPE_EXTENDED_HCI);
+			writer_path = optarg;
 			break;
 		case 's':
 			control_server(optarg);
@@ -152,6 +151,9 @@ int main(int argc, char *argv[])
 		control_reader(reader_path);
 		return EXIT_SUCCESS;
 	}
+
+	if (writer_path)
+		control_writer(writer_path);
 
 	if (control_tracing() < 0)
 		return EXIT_FAILURE;

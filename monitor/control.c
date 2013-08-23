@@ -806,6 +806,11 @@ void control_server(const char *path)
 	server_fd = fd;
 }
 
+void control_writer(const char *path)
+{
+	btsnoop_create(path, BTSNOOP_TYPE_EXTENDED_PHY);
+}
+
 void control_reader(const char *path)
 {
 	unsigned char buf[MAX_PACKET_SIZE];
