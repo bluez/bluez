@@ -2155,6 +2155,11 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		packet_hexdump(eir, eir_len - len);
 }
 
+void packet_print_ad(const void *data, uint8_t size)
+{
+	print_eir(data, size, true);
+}
+
 void packet_hexdump(const unsigned char *buf, uint16_t len)
 {
 	static const char hexdigits[] = "0123456789abcdef";
