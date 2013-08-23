@@ -40,6 +40,7 @@ void packet_del_filter(unsigned long filter);
 void packet_select_index(uint16_t index);
 
 void packet_hexdump(const unsigned char *buf, uint16_t len);
+void packet_print_addr(const void *data, bool random);
 void packet_print_ad(const void *data, uint8_t size);
 
 void packet_control(struct timeval *tv, uint16_t index, uint16_t opcode,
