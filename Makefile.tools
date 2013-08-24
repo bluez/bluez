@@ -21,6 +21,7 @@ monitor_btmon_SOURCES = monitor/main.c monitor/bt.h \
 					monitor/control.h monitor/control.c \
 					monitor/packet.h monitor/packet.c \
 					monitor/vendor.h monitor/vendor.c \
+					monitor/lmp.h monitor/lmp.c \
 					monitor/l2cap.h monitor/l2cap.c \
 					monitor/uuid.h monitor/uuid.c \
 					monitor/sdp.h monitor/sdp.c \
