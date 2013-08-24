@@ -24,6 +24,11 @@
 
 #include <stdint.h>
 
+struct bt_ll_hdr {
+	uint8_t  preamble;
+	uint32_t access_addr;
+} __attribute__ ((packed));
+
 #define BT_H4_CMD_PKT	0x01
 #define BT_H4_ACL_PKT	0x02
 #define BT_H4_SCO_PKT	0x03
