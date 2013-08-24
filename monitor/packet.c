@@ -2155,9 +2155,9 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		packet_hexdump(eir, eir_len - len);
 }
 
-void packet_print_addr(const void *data, bool random)
+void packet_print_addr(const char *label, const void *data, bool random)
 {
-	print_addr("Address", data, random ? 0x01 : 0x00);
+	print_addr(label ? : "Address", data, random ? 0x01 : 0x00);
 }
 
 void packet_print_ad(const void *data, uint8_t size)
