@@ -196,7 +196,9 @@ tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
-tools_btsnoop_SOURCES = tools/btsnoop.c monitor/btsnoop.h monitor/btsnoop.c
+tools_btsnoop_SOURCES = tools/btsnoop.c \
+				src/shared/pcap.h src/shared/pcap.c \
+				src/shared/btsnoop.h src/shared/btsnoop.c
 
 tools_btiotest_SOURCES = tools/btiotest.c btio/btio.h btio/btio.c
 tools_btiotest_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
