@@ -808,7 +808,7 @@ void control_server(const char *path)
 
 void control_writer(const char *path)
 {
-	btsnoop_create(path, BTSNOOP_TYPE_EXTENDED_PHY);
+	btsnoop_create(path, BTSNOOP_TYPE_EXTENDED_HCI);
 }
 
 void control_reader(const char *path)
