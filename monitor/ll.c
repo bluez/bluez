@@ -51,7 +51,8 @@ static void set_crc_init(uint32_t access_addr, uint32_t crc_init)
 	int i;
 
 	for (i = 0; i < MAX_CHANNEL; i++) {
-		if (channel_list[i].access_addr == 0x00000000) {
+		if (channel_list[i].access_addr == 0x00000000 ||
+				channel_list[i].access_addr == access_addr) {
 			channel_list[i].access_addr = access_addr;
 			channel_list[i].crc_init = crc_init;
 			break;
