@@ -597,7 +597,7 @@ int main(int argc, char *argv[])
 		}
 
 		if (!type) {
-			fprintf(stderr, "not extract type specified\n");
+			fprintf(stderr, "no extract type specified\n");
 			return EXIT_FAILURE;
 		}
 
