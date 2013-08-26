@@ -77,7 +77,7 @@ static uint32_t get_crc_init(uint32_t access_addr)
 static void advertising_packet(const void *data, uint8_t size)
 {
 	const uint8_t *ptr = data;
-	uint8_t pdu_type, length, win_size;
+	uint8_t pdu_type, length, win_size, hop, sca;
 	bool tx_add, rx_add;
 	uint32_t access_addr, crc_init;
 	uint16_t win_offset, interval, latency, timeout;
@@ -200,7 +200,43 @@ static void advertising_packet(const void *data, uint8_t size)
 		print_field("Connection slave latency: %u", latency);
 		print_field("Connection supervision timeout: %u", timeout);
 
-		packet_hexdump(data + 30, length - 28);
+		packet_print_channel_map_ll(ptr + 30);
+
+		hop = ptr[35] & 0x1f;
+		sca = (ptr[35] & 0xe0) >> 5;
+
+		switch (sca) {
+		case 0:
+			str = "251 ppm to 500 ppm";
+			break;
+		case 1:
+			str = "151 ppm to 250 ppm";
+			break;
+		case 2:
+			str = "101 ppm to 150ppm";
+			break;
+		case 3:
+			str = "76 ppm to 100 ppm";
+			break;
+		case 4:
+			str = "51 ppm to 75 ppm";
+			break;
+		case 5:
+			str = "31 ppm to 50 ppm";
+			break;
+		case 6:
+			str = "21 ppm to 30 ppm";
+			break;
+		case 7:
+			str = "0 ppm to 20 ppm";
+			break;
+		default:
+			str = "Invalid";
+			break;
+		}
+
+		print_field("Hop increment: %u", hop);
+		print_field("Sleep clock accuracy: %s (%u)", str, sca);
 		break;
 
 	default:
