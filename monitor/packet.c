@@ -1585,6 +1585,11 @@ static void print_features(uint8_t page, const uint8_t *features_array,
 						"(0x%16.16" PRIx64 ")", mask);
 }
 
+void packet_print_features_ll(const uint8_t *features)
+{
+	print_features(0, features, 0x01);
+}
+
 static const struct {
 	uint8_t bit;
 	const char *str;
@@ -1668,6 +1673,11 @@ static void print_le_channel_map(const uint8_t *map)
 		sprintf(str + (i * 2), "%2.2x", map[i]);
 
 	print_field("Channel map: 0x%s", str);
+}
+
+void packet_print_channel_map_ll(const uint8_t *map)
+{
+	print_le_channel_map(map);
 }
 
 static void print_random_number(const uint8_t *number)
