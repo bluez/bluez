@@ -1390,25 +1390,29 @@ static void print_name(const uint8_t *name)
 	print_field("Name: %s", str);
 }
 
-static void print_version(const char *label, uint8_t version, uint16_t revision)
+void packet_print_version(const char *label, uint8_t version, uint16_t revision)
 {
 	print_field("%s: %d - 0x%4.4x", label, version, revision);
 }
 
 static void print_hci_version(uint8_t hci_ver, uint16_t hci_rev)
 {
-	print_version("HCI version", hci_ver, hci_rev);
+	packet_print_version("HCI version", hci_ver, btohs(hci_rev));
 }
 
 static void print_lmp_version(uint8_t lmp_ver, uint16_t lmp_subver)
 {
-	print_version("LMP version", lmp_ver, lmp_subver);
+	packet_print_version("LMP version", lmp_ver, btohs(lmp_subver));
+}
+
+void packet_print_company(const char *label, uint16_t company)
+{
+	print_field("%s: %s (%d)", label, bt_compidtostr(company), company);
 }
 
 static void print_manufacturer(uint16_t manufacturer)
 {
-	print_field("Manufacturer: %s (%d)",
-				bt_compidtostr(manufacturer), manufacturer);
+	packet_print_company("Manufacturer", btohs(manufacturer));
 }
 
 static const char *get_supported_command(int bit);
@@ -2138,7 +2142,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_MANUFACTURER_DATA:
 			if (data_len < 2)
 				break;
-			print_manufacturer(bt_get_le16(data));
+			packet_print_company("Company", bt_get_le16(data));
 			print_hex_field("  Data", data + 2, data_len - 2);
 			break;
 
