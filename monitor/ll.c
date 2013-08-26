@@ -26,6 +26,8 @@
 #include <config.h>
 #endif
 
+#include <inttypes.h>
+
 #include <bluetooth/bluetooth.h>
 
 #include "display.h"
@@ -333,6 +335,94 @@ void ll_packet(uint16_t frequency, const void *data, uint8_t size)
 		data_packet(pdu_data, pdu_len);
 }
 
+static void null_pdu(const void *data, uint8_t size)
+{
+}
+
+static void conn_update_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_conn_update_req *pdu = data;
+
+	print_field("Transmit window size: %u", pdu->win_size);
+	print_field("Transmit window offset: %u", btohs(pdu->win_offset));
+	print_field("Connection interval: %u", btohs(pdu->interval));
+	print_field("Connection slave latency: %u", btohs(pdu->latency));
+	print_field("Connection supervision timeout: %u", btohs(pdu->timeout));;
+	print_field("Connection instant: %u", btohs(pdu->instant));
+}
+
+static void channel_map_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_channel_map_req *pdu = data;
+
+	packet_print_channel_map_ll(pdu->map);
+	print_field("Connection instant: %u", btohs(pdu->instant));
+}
+
+static void terminate_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_terminate_ind *pdu = data;
+
+	print_field("Error code: 0x%2.2x", pdu->error);
+}
+
+static void enc_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_req *pdu = data;
+
+	print_field("Rand: 0x%16.16" PRIx64, btohll(pdu->rand));
+	print_field("EDIV: 0x%4.4x", btohs(pdu->ediv));
+	print_field("SKD (master): 0x%16.16" PRIx64, btohll(pdu->skd));
+	print_field("IV (master): 0x%8.8x", btohl(pdu->iv));
+}
+
+static void enc_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_enc_rsp *pdu = data;
+
+	print_field("SKD (slave): 0x%16.16" PRIx64, btohll(pdu->skd));
+	print_field("IV (slave): 0x%8.8x", btohl(pdu->iv));
+}
+
+static const char *opcode_to_string(uint8_t opcode);
+
+static void unknown_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_unknown_rsp *pdu = data;
+
+	print_field("Unknown type: %s (0x%2.2x)",
+				opcode_to_string(pdu->type), pdu->type);
+}
+
+static void feature_req(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_req *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void feature_rsp(const void *data, uint8_t size)
+{
+	const struct bt_ll_feature_rsp *pdu = data;
+
+	packet_print_features_ll(pdu->features);
+}
+
+static void version_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_version_ind *pdu = data;
+
+	packet_print_version("Version", pdu->version, btohs(pdu->subversion));
+	packet_print_company("Company", btohs(pdu->company));
+}
+
+static void reject_ind(const void *data, uint8_t size)
+{
+	const struct bt_ll_reject_ind *pdu = data;
+
+	print_field("Error code: 0x%2.2x", pdu->error);
+}
+
 struct llcp_data {
 	uint8_t opcode;
 	const char *str;
@@ -342,22 +432,34 @@ struct llcp_data {
 };
 
 static const struct llcp_data llcp_table[] = {
-	{ 0x00, "LL_CONNECTION_UPDATE_REQ" },
-	{ 0x01, "LL_CHANNEL_MAP_REQ" },
-	{ 0x02, "LL_TERMINATE_IND" },
-	{ 0x03, "LL_ENC_REQ" },
-	{ 0x04, "LL_ENC_RSP" },
-	{ 0x05, "LL_START_ENC_REQ" },
-	{ 0x06, "LL_START_ENC_RSP" },
-	{ 0x07, "LL_UNKNOWN_RSP" },
-	{ 0x08, "LL_FEATURE_REQ" },
-	{ 0x09, "LL_FEATURE_RSP" },
-	{ 0x0a, "LL_PAUSE_ENC_REQ" },
-	{ 0x0b, "LL_PAUSE_ENC_RSP" },
-	{ 0x0c, "LL_VERSION_IND" },
-	{ 0x0d, "LL_REJECT_IND" },
+	{ 0x00, "LL_CONNECTION_UPDATE_REQ", conn_update_req, 11, true },
+	{ 0x01, "LL_CHANNEL_MAP_REQ",       channel_map_req,  7, true },
+	{ 0x02, "LL_TERMINATE_IND",         terminate_ind,    1, true },
+	{ 0x03, "LL_ENC_REQ",               enc_req,         22, true },
+	{ 0x04, "LL_ENC_RSP",               enc_rsp,         12, true },
+	{ 0x05, "LL_START_ENC_REQ",         null_pdu,         0, true },
+	{ 0x06, "LL_START_ENC_RSP",         null_pdu,         0, true },
+	{ 0x07, "LL_UNKNOWN_RSP",           unknown_rsp,      1, true },
+	{ 0x08, "LL_FEATURE_REQ",           feature_req,      8, true },
+	{ 0x09, "LL_FEATURE_RSP",           feature_rsp,      8, true },
+	{ 0x0a, "LL_PAUSE_ENC_REQ",         null_pdu,         0, true },
+	{ 0x0b, "LL_PAUSE_ENC_RSP",         null_pdu,         0, true },
+	{ 0x0c, "LL_VERSION_IND",           version_ind,      5, true },
+	{ 0x0d, "LL_REJECT_IND",            reject_ind,       1, true },
 	{ }
 };
+
+static const char *opcode_to_string(uint8_t opcode)
+{
+	int i;
+
+	for (i = 0; llcp_table[i].str; i++) {
+		if (llcp_table[i].opcode == opcode)
+			return llcp_table[i].str;
+	}
+
+	return "Unknown";
+}
 
 void llcp_packet(const void *data, uint8_t size)
 {
