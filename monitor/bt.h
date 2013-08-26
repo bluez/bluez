@@ -29,6 +29,76 @@ struct bt_ll_hdr {
 	uint32_t access_addr;
 } __attribute__ ((packed));
 
+#define BT_LL_CONN_UPDATE_REQ	0x00
+struct bt_ll_conn_update_req {
+	uint8_t  win_size;
+	uint16_t win_offset;
+	uint16_t interval;
+	uint16_t latency;
+	uint16_t timeout;
+	uint16_t instant;
+} __attribute__ ((packed));
+
+#define BT_LL_CHANNEL_MAP_REQ	0x01
+struct bt_ll_channel_map_req {
+	uint8_t  map[5];
+	uint16_t instant;
+} __attribute__ ((packed));
+
+#define BT_LL_TERMINATE_IND	0x02
+struct bt_ll_terminate_ind {
+	uint8_t  error;
+} __attribute__ ((packed));
+
+#define BT_LL_ENC_REQ		0x03
+struct bt_ll_enc_req {
+	uint64_t rand;
+	uint16_t ediv;
+	uint64_t skd;
+	uint32_t iv;
+} __attribute__ ((packed));
+
+#define BT_LL_ENC_RSP		0x04
+struct bt_ll_enc_rsp {
+	uint64_t skd;
+	uint32_t iv;
+} __attribute__ ((packed));
+
+#define BT_LL_START_ENC_REQ	0x05
+
+#define BT_LL_START_ENC_RSP	0x06
+
+#define BT_LL_UNKNOWN_RSP	0x07
+struct bt_ll_unknown_rsp {
+	uint8_t  type;
+} __attribute__ ((packed));
+
+#define BT_LL_FEATURE_REQ	0x08
+struct bt_ll_feature_req {
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LL_FEATURE_RSP	0x09
+struct bt_ll_feature_rsp {
+	uint8_t  features[8];
+} __attribute__ ((packed));
+
+#define BT_LL_PAUSE_ENC_REQ	0x0a
+
+#define BT_LL_PAUSE_ENC_RSP	0x0b
+
+#define BT_LL_VERSION_IND	0x0c
+struct bt_ll_version_ind {
+	uint8_t  version;
+	uint16_t company;
+	uint16_t subversion;
+} __attribute__ ((packed));
+
+#define BT_LL_REJECT_IND	0x0d
+struct bt_ll_reject_ind {
+	uint8_t  error;
+} __attribute__ ((packed));
+
 #define BT_H4_CMD_PKT	0x01
 #define BT_H4_ACL_PKT	0x02
 #define BT_H4_SCO_PKT	0x03
