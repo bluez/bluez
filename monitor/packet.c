@@ -1320,7 +1320,10 @@ static void print_num_reports(uint8_t num_reports)
 
 static void print_rssi(int8_t rssi)
 {
-	print_field("RSSI: %d dBm", rssi);
+	if ((uint8_t) rssi == 0x99 || rssi == 127)
+		print_field("RSSI: invalid (0x%2.2x)", (uint8_t) rssi);
+	else
+		print_field("RSSI: %d dBm (0x%2.2x)", rssi, (uint8_t) rssi);
 }
 
 static void print_slot_625(const char *label, uint16_t value)
@@ -3341,6 +3344,38 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", btohs(rsp->num_blocks));
 }
 
+static void read_link_quality_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_link_quality *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_link_quality_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_link_quality *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_field("Link quality: 0x%2.2x", rsp->link_quality);
+}
+
+static void read_rssi_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_rssi *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_rssi_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_rssi *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_rssi(rsp->rssi);
+}
+
 static void read_clock_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_clock *cmd = data;
@@ -4295,9 +4330,13 @@ static const struct opcode_data opcode_table[] = {
 	/* OGF 5 - Status Parameter */
 	{ 0x1401, 122, "Read Failed Contact Counter" },
 	{ 0x1402, 123, "Reset Failed Contact Counter" },
-	{ 0x1403, 124, "Read Link Quality" },
+	{ 0x1403, 124, "Read Link Quality",
+				read_link_quality_cmd, 2, true,
+				read_link_quality_rsp, 4, true },
 	/* reserved command */
-	{ 0x1405, 125, "Read RSSI" },
+	{ 0x1405, 125, "Read RSSI",
+				read_rssi_cmd, 2, true,
+				read_rssi_rsp, 4, true },
 	{ 0x1406, 126, "Read AFH Channel Map" },
 	{ 0x1407, 127, "Read Clock",
 				read_clock_cmd, 3, true,
