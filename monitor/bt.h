@@ -864,6 +864,17 @@ struct bt_hci_rsp_read_rssi {
 	int8_t   rssi;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_AFH_CHANNEL_MAP		0x1406
+struct bt_hci_cmd_read_afh_channel_map {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_afh_channel_map {
+	uint8_t  status;
+	uint16_t handle;
+	uint8_t  mode;
+	uint8_t  map[10];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_CLOCK			0x1407
 struct bt_hci_cmd_read_clock {
 	uint16_t handle;
