@@ -1407,6 +1407,17 @@ static void print_name(const uint8_t *name)
 	print_field("Name: %s", str);
 }
 
+static void print_channel_map(const uint8_t *map)
+{
+	char str[21];
+	int i;
+
+	for (i = 0; i < 10; i++)
+		sprintf(str + (i * 2), "%2.2x", map[i]);
+
+	print_field("Channel map: 0x%s", str);
+}
+
 void packet_print_version(const char *label, uint8_t version, uint16_t revision)
 {
 	print_field("%s: %d - 0x%4.4x", label, version, revision);
@@ -3376,6 +3387,38 @@ static void read_rssi_rsp(const void *data, uint8_t size)
 	print_rssi(rsp->rssi);
 }
 
+static void read_afh_channel_map_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_afh_channel_map *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_afh_channel_map_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_afh_channel_map *rsp = data;
+	const char *str;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+
+	switch (rsp->mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("AFH mode: %s (0x%2.2x)", str, rsp->mode);
+
+	print_channel_map(rsp->map);
+}
+
 static void read_clock_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_clock *cmd = data;
@@ -4337,7 +4380,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1405, 125, "Read RSSI",
 				read_rssi_cmd, 2, true,
 				read_rssi_rsp, 4, true },
-	{ 0x1406, 126, "Read AFH Channel Map" },
+	{ 0x1406, 126, "Read AFH Channel Map",
+				read_afh_channel_map_cmd, 2, true,
+				read_afh_channel_map_rsp, 14, true },
 	{ 0x1407, 127, "Read Clock",
 				read_clock_cmd, 3, true,
 				read_clock_rsp, 9, true },
