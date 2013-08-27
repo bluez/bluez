@@ -844,6 +844,25 @@ struct bt_hci_rsp_read_data_block_size {
 	uint16_t num_blocks;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_FAILED_CONTACT_COUNTER	0x1401
+struct bt_hci_cmd_read_failed_contact_counter {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_failed_contact_counter {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t counter;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_RESET_FAILED_CONTACT_COUNTER	0x1402
+struct bt_hci_cmd_reset_failed_contact_counter {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_reset_failed_contact_counter {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LINK_QUALITY		0x1403
 struct bt_hci_cmd_read_link_quality {
 	uint16_t handle;
