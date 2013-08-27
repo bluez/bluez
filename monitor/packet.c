@@ -3355,6 +3355,37 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", btohs(rsp->num_blocks));
 }
 
+static void read_failed_contact_counter_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_failed_contact_counter *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_failed_contact_counter_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_failed_contact_counter *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_field("Counter: %u", htobs(rsp->counter));
+}
+
+static void reset_failed_contact_counter_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_reset_failed_contact_counter *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void reset_failed_contact_counter_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_reset_failed_contact_counter *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
 static void read_link_quality_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_link_quality *cmd = data;
@@ -4371,8 +4402,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x100b, 237, "Read Local Supported Codecs" },
 
 	/* OGF 5 - Status Parameter */
-	{ 0x1401, 122, "Read Failed Contact Counter" },
-	{ 0x1402, 123, "Reset Failed Contact Counter" },
+	{ 0x1401, 122, "Read Failed Contact Counter",
+				read_failed_contact_counter_cmd, 2, true,
+				read_failed_contact_counter_rsp, 5, true },
+	{ 0x1402, 123, "Reset Failed Contact Counter",
+				reset_failed_contact_counter_cmd, 2, true,
+				reset_failed_contact_counter_rsp, 3, true },
 	{ 0x1403, 124, "Read Link Quality",
 				read_link_quality_cmd, 2, true,
 				read_link_quality_rsp, 4, true },
