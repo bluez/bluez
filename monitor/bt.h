@@ -844,6 +844,18 @@ struct bt_hci_rsp_read_data_block_size {
 	uint16_t num_blocks;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_CLOCK			0x1407
+struct bt_hci_cmd_read_clock {
+	uint16_t handle;
+	uint8_t  type;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_clock {
+	uint8_t  status;
+	uint16_t handle;
+	uint32_t clock;
+	uint16_t accuracy;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_ENCRYPT_KEY_SIZE	0x1408
 struct bt_hci_cmd_read_encrypt_key_size {
 	uint16_t handle;
