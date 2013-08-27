@@ -884,6 +884,20 @@ static void print_clock_offset(uint16_t clock_offset)
 	print_field("Clock offset: 0x%4.4x", btohs(clock_offset));
 }
 
+static void print_clock(uint32_t clock)
+{
+	print_field("Clock: 0x%8.8x", btohl(clock));
+}
+
+static void print_clock_accuracy(uint16_t accuracy)
+{
+	if (btohs(accuracy) == 0xffff)
+		print_field("Accuracy: Unknown (0x%4.4x)", btohs(accuracy));
+	else
+		print_field("Accuracy: %.4f msec (0x%4.4x)",
+				btohs(accuracy) * 0.3125, btohs(accuracy));
+}
+
 static void print_link_type(uint8_t link_type)
 {
 	const char *str;
@@ -3327,6 +3341,38 @@ static void read_data_block_size_rsp(const void *data, uint8_t size)
 	print_field("Num blocks: %d", btohs(rsp->num_blocks));
 }
 
+static void read_clock_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_clock *cmd = data;
+	const char *str;
+
+	print_handle(cmd->handle);
+
+	switch (cmd->type) {
+	case 0x00:
+		str = "Local clock";
+		break;
+	case 0x01:
+		str = "Piconet clock";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+}
+
+static void read_clock_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_clock *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_clock(rsp->clock);
+	print_clock_accuracy(rsp->accuracy);
+}
+
 static void read_encrypt_key_size_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_read_encrypt_key_size *cmd = data;
@@ -4253,7 +4299,9 @@ static const struct opcode_data opcode_table[] = {
 	/* reserved command */
 	{ 0x1405, 125, "Read RSSI" },
 	{ 0x1406, 126, "Read AFH Channel Map" },
-	{ 0x1407, 127, "Read Clock" },
+	{ 0x1407, 127, "Read Clock",
+				read_clock_cmd, 3, true,
+				read_clock_rsp, 9, true },
 	{ 0x1408, 164, "Read Encryption Key Size",
 				read_encrypt_key_size_cmd, 2, true,
 				read_encrypt_key_size_rsp, 4, true },
