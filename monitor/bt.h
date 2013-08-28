@@ -757,6 +757,11 @@ struct bt_hci_rsp_read_inquiry_resp_tx_power {
 	int8_t   level;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_WRITE_INQUIRY_TX_POWER	0x0c59
+struct bt_hci_cmd_write_inquiry_tx_power {
+	int8_t   level;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_ENHANCED_FLUSH		0x0c5f
 struct bt_hci_cmd_enhanced_flush {
 	uint16_t handle;
