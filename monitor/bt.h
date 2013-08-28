@@ -744,6 +744,13 @@ struct bt_hci_cmd_write_simple_pairing_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCAL_OOB_DATA		0x0c57
+struct bt_hci_rsp_read_local_oob_data {
+	uint8_t  status;
+	uint8_t  hash[16];
+	uint8_t  randomizer[16];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER	0x0c58
 struct bt_hci_rsp_read_inquiry_resp_tx_power {
 	uint8_t  status;
