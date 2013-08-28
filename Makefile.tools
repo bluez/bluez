@@ -161,7 +161,7 @@ udevdir = @UDEV_DIR@
 
 udev_PROGRAMS = tools/hid2hci
 
-tools_hid2hci_LDADD = @USB_LIBS@ @UDEV_LIBS@
+tools_hid2hci_LDADD = @UDEV_LIBS@
 
 dist_man_MANS += tools/hid2hci.1
 else

@@ -116,16 +116,6 @@ AC_ARG_ENABLE(monitor, AC_HELP_STRING([--disable-monitor],
 		[disable Bluetooth monitor]), [enable_monitor=${enableval}])
 AM_CONDITIONAL(MONITOR, test "${enable_monitor}" != "no")
 
-AC_ARG_ENABLE(usb, AC_HELP_STRING([--disable-usb],
-			[disable USB support]), [enable_usb=${enableval}])
-if (test "${enable_tools}" != "no" && test "${enable_usb}" != "no"  ); then
-	PKG_CHECK_MODULES(USB, libusb, dummy=yes,
-			AC_MSG_ERROR(USB library support is required))
-	AC_SUBST(USB_CFLAGS)
-	AC_SUBST(USB_LIBS)
-fi
-AM_CONDITIONAL(USB, test "${enable_usb}" != "no")
-
 AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
 		[disable udev device support]), [enable_udev=${enableval}])
 if (test "${enable_tools}" != "no" && test "${enable_udev}" != "no"); then
@@ -152,7 +142,7 @@ fi
 AC_SUBST(UDEV_DIR, [${path_udevdir}])
 
 AM_CONDITIONAL(HID2HCI, test "${enable_tools}" != "no" &&
-		test "${enable_udev}" != "no" && test "${enable_usb}" != "no")
+						test "${enable_udev}" != "no")
 
 AC_ARG_ENABLE(cups, AC_HELP_STRING([--disable-cups],
                 [disable CUPS printer support]), [enable_cups=${enableval}])

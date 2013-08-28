@@ -293,7 +293,7 @@ pkgconfig_DATA = lib/bluez.pc
 endif
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-datafiles --enable-library \
-				--disable-systemd --disable-udev --disable-usb
+					--disable-systemd --disable-udev
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
