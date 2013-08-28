@@ -30,21 +30,16 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
 
 #include "csr.h"
 
-#define USB_TYPE_STANDARD		(0x00 << 5)
 #define USB_TYPE_CLASS			(0x01 << 5)
-#define USB_TYPE_VENDOR			(0x02 << 5)
-#define USB_TYPE_RESERVED		(0x03 << 5)
 
 #define USB_RECIP_DEVICE		0x00
-#define USB_RECIP_INTERFACE		0x01
-#define USB_RECIP_ENDPOINT		0x02
-#define USB_RECIP_OTHER			0x03
 
 #define USB_ENDPOINT_IN			0x80
 #define USB_ENDPOINT_OUT		0x00
@@ -56,14 +51,14 @@ struct usbfs_ctrltransfer {
 	uint16_t wIndex;
 	uint16_t wLength;
 	uint32_t timeout;	/* in milliseconds */
-        void *data;		/* pointer to data */
+	void *data;		/* pointer to data */
 };
 
 struct usbfs_bulktransfer {
 	unsigned int ep;
 	unsigned int len;
 	unsigned int timeout;   /* in milliseconds */
-        void *data;		/* pointer to data */
+	void *data;		/* pointer to data */
 };
 
 #define USBFS_IOCTL_CONTROL	_IOWR('U', 0, struct usbfs_ctrltransfer)
@@ -164,6 +159,9 @@ int csr_open_usb(char *device)
 	}
 
 	handle = open(path, O_RDWR, O_CLOEXEC | O_NONBLOCK);
+
+	free(path);
+
 	if (handle < 0) {
 		fprintf(stderr, "Can't open device: %s (%d)\n",
 						strerror(errno), errno);
@@ -245,7 +243,7 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid,
 	memcpy(cp + 4, cmd, sizeof(cmd));
 	memcpy(cp + 14, value, length);
 
-	interrupt_read(handle, 0x81, rp, sizeof(rp));
+	interrupt_read(handle, USB_ENDPOINT_IN | 0x01, rp, sizeof(rp));
 
 	control_write(handle, cp, (size * 2) + 4);
 
@@ -258,7 +256,7 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid,
 	}
 
 	do {
-		len = interrupt_read(handle, 0x81,
+		len = interrupt_read(handle, USB_ENDPOINT_IN | 0x01,
 					rp + offset, sizeof(rp) - offset);
 		if (len < 0)
 			break;
