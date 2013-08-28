@@ -682,6 +682,11 @@ struct bt_hci_cmd_write_voice_setting {
 	uint16_t setting;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SET_AFH_HOST_CLASSIFICATION	0x0c3f
+struct bt_hci_cmd_set_afh_host_classification {
+	uint8_t  map[10];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_INQUIRY_MODE		0x0c44
 struct bt_hci_rsp_read_inquiry_mode {
 	uint8_t  status;
@@ -704,14 +709,14 @@ struct bt_hci_cmd_write_page_scan_type {
 	uint8_t type;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_READ_AFH_ASSESS_MODE		0x0c48
-struct bt_hci_rsp_read_afh_assess_mode {
+#define BT_HCI_CMD_READ_AFH_ASSESSMENT_MODE	0x0c48
+struct bt_hci_rsp_read_afh_assessment_mode {
 	uint8_t  status;
 	uint8_t  mode;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_WRITE_AFH_ASSESS_MODE	0x0c49
-struct bt_hci_cmd_write_afh_assess_mode {
+#define BT_HCI_CMD_WRITE_AFH_ASSESSMENT_MODE	0x0c49
+struct bt_hci_cmd_write_afh_assessment_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 

@@ -93,7 +93,7 @@ struct btdev {
 	uint16_t page_scan_type;
 	uint8_t  auth_enable;
 	uint8_t  inquiry_mode;
-	uint8_t  afh_assess_mode;
+	uint8_t  afh_assessment_mode;
 	uint8_t  ext_inquiry_fec;
 	uint8_t  ext_inquiry_rsp[240];
 	uint8_t  simple_pairing_mode;
@@ -986,7 +986,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_class_of_dev *wcod;
 	const struct bt_hci_cmd_write_voice_setting *wvs;
 	const struct bt_hci_cmd_write_inquiry_mode *wim;
-	const struct bt_hci_cmd_write_afh_assess_mode *waam;
+	const struct bt_hci_cmd_write_afh_assessment_mode *waam;
 	const struct bt_hci_cmd_write_ext_inquiry_response *weir;
 	const struct bt_hci_cmd_write_simple_pairing_mode *wspm;
 	const struct bt_hci_cmd_write_le_host_supported *wlhs;
@@ -1010,7 +1010,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_class_of_dev rcod;
 	struct bt_hci_rsp_read_voice_setting rvs;
 	struct bt_hci_rsp_read_inquiry_mode rim;
-	struct bt_hci_rsp_read_afh_assess_mode raam;
+	struct bt_hci_rsp_read_afh_assessment_mode raam;
 	struct bt_hci_rsp_read_ext_inquiry_response reir;
 	struct bt_hci_rsp_read_simple_pairing_mode rspm;
 	struct bt_hci_rsp_read_inquiry_resp_tx_power rirtp;
@@ -1341,19 +1341,19 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
-	case BT_HCI_CMD_READ_AFH_ASSESS_MODE:
+	case BT_HCI_CMD_READ_AFH_ASSESSMENT_MODE:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		raam.status = BT_HCI_ERR_SUCCESS;
-		raam.mode = btdev->afh_assess_mode;
+		raam.mode = btdev->afh_assessment_mode;
 		cmd_complete(btdev, opcode, &raam, sizeof(raam));
 		break;
 
-	case BT_HCI_CMD_WRITE_AFH_ASSESS_MODE:
+	case BT_HCI_CMD_WRITE_AFH_ASSESSMENT_MODE:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
 		waam = data;
-		btdev->afh_assess_mode = waam->mode;
+		btdev->afh_assessment_mode = waam->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
