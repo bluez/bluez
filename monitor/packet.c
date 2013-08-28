@@ -3200,6 +3200,15 @@ static void write_simple_pairing_mode_cmd(const void *data, uint8_t size)
 	print_simple_pairing_mode(cmd->mode);
 }
 
+static void read_local_oob_data_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_local_oob_data *rsp = data;
+
+	print_status(rsp->status);
+	print_hash(rsp->hash);
+	print_randomizer(rsp->randomizer);
+}
+
 static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_inquiry_resp_tx_power *rsp = data;
@@ -4328,7 +4337,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c56, 142, "Write Simple Pairing Mode",
 				write_simple_pairing_mode_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c57, 143, "Read Local OOB Data" },
+	{ 0x0c57, 143, "Read Local OOB Data",
+				null_cmd, 0, true,
+				read_local_oob_data_rsp, 33, true },
 	{ 0x0c58, 144, "Read Inquiry Response TX Power Level",
 				null_cmd, 0, true,
 				read_inquiry_resp_tx_power_rsp, 2, true },
