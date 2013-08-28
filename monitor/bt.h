@@ -687,6 +687,17 @@ struct bt_hci_cmd_set_afh_host_classification {
 	uint8_t  map[10];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_INQUIRY_SCAN_TYPE	0x0c42
+struct bt_hci_rsp_read_inquiry_scan_type {
+	uint8_t status;
+	uint8_t type;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_INQUIRY_SCAN_TYPE	0x0c43
+struct bt_hci_cmd_write_inquiry_scan_type {
+	uint8_t type;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_INQUIRY_MODE		0x0c44
 struct bt_hci_rsp_read_inquiry_mode {
 	uint8_t  status;
