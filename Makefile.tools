@@ -140,14 +140,10 @@ tools_sdptool_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 tools_ciptool_LDADD = lib/libbluetooth-internal.la
 
 tools_bccmd_SOURCES = tools/bccmd.c tools/csr.h tools/csr.c \
-			tools/csr_hci.c tools/csr_h4.c tools/csr_3wire.c \
+			tools/csr_hci.c tools/csr_usb.c \
+			tools/csr_h4.c tools/csr_3wire.c \
 			tools/csr_bcsp.c tools/ubcsp.h tools/ubcsp.c
 tools_bccmd_LDADD = lib/libbluetooth-internal.la
-
-if USB
-tools_bccmd_SOURCES += tools/csr_usb.c
-tools_bccmd_LDADD += @USB_LIBS@
-endif
 
 dist_man_MANS += tools/hciattach.1 tools/hciconfig.1 \
 			tools/hcitool.1 tools/hcidump.1 \

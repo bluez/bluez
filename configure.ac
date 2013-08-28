@@ -123,15 +123,6 @@ if (test "${enable_tools}" != "no" && test "${enable_usb}" != "no"  ); then
 			AC_MSG_ERROR(USB library support is required))
 	AC_SUBST(USB_CFLAGS)
 	AC_SUBST(USB_LIBS)
-	AC_CHECK_LIB(usb, usb_get_busses, dummy=yes,
-		AC_DEFINE(NEED_USB_GET_BUSSES, 1,
-			[Define to 1 if you need the usb_get_busses() function.]
-))
-	AC_CHECK_LIB(usb, usb_interrupt_read, dummy=yes,
-		AC_DEFINE(NEED_USB_INTERRUPT_READ, 1,
-			[Define to 1 if you need the usb_interrupt_read() functi
-on.]))
-	AC_DEFINE(HAVE_LIBUSB, 1, [Define to 1 if you have USB library.])
 fi
 AM_CONDITIONAL(USB, test "${enable_usb}" != "no")
 
