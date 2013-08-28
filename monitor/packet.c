@@ -790,6 +790,26 @@ static void print_pscan_type(uint8_t type)
 	print_field("Type: %s (0x%2.2x)", str, type);
 }
 
+static void print_afh_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_simple_pairing_mode(uint8_t mode)
 {
 	const char *str;
@@ -3131,6 +3151,13 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void set_afh_host_classification_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_afh_host_classification *cmd = data;
+
+	print_channel_map(cmd->map);
+}
+
 static void read_inquiry_mode_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_inquiry_mode *rsp = data;
@@ -3159,6 +3186,21 @@ static void write_page_scan_type_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_write_page_scan_type *cmd = data;
 
 	print_pscan_type(cmd->type);
+}
+
+static void read_afh_assessment_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_afh_assessment_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_afh_mode(rsp->mode);
+}
+
+static void write_afh_assessment_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_afh_assessment_mode *cmd = data;
+
+	print_afh_mode(cmd->mode);
 }
 
 static void read_ext_inquiry_response_rsp(const void *data, uint8_t size)
@@ -3444,25 +3486,10 @@ static void read_afh_channel_map_cmd(const void *data, uint8_t size)
 static void read_afh_channel_map_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_afh_channel_map *rsp = data;
-	const char *str;
 
 	print_status(rsp->status);
 	print_handle(rsp->handle);
-
-	switch (rsp->mode) {
-	case 0x00:
-		str = "Disabled";
-		break;
-	case 0x01:
-		str = "Enabled";
-		break;
-	default:
-		str = "Reserved";
-		break;
-	}
-
-	print_field("AFH mode: %s (0x%2.2x)", str, rsp->mode);
-
+	print_afh_mode(rsp->mode);
 	print_channel_map(rsp->map);
 }
 
@@ -4310,7 +4337,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c3c,  94, "Write Page Scan Period Mode" },
 	{ 0x0c3d,  95, "Read Page Scan Mode" },
 	{ 0x0c3e,  96, "Write Page Scan Mode" },
-	{ 0x0c3f,  97, "Set AFH Host Channel Classification" },
+	{ 0x0c3f,  97, "Set AFH Host Channel Classification",
+				set_afh_host_classification_cmd, 10, true,
+				status_rsp, 1, true },
 	/* reserved commands */
 	{ 0x0c42, 100, "Read Inquiry Scan Type" },
 	{ 0x0c43, 101, "Write Inquiry Scan Type" },
@@ -4326,8 +4355,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c47, 105, "Write Page Scan Type",
 				write_page_scan_type_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c48, 106, "Read AFH Channel Assessment Mode" },
-	{ 0x0c49, 107, "Write AFH Channel Assessment Mode" },
+	{ 0x0c48, 106, "Read AFH Channel Assessment Mode",
+				null_cmd, 0, true,
+				read_afh_assessment_mode_rsp, 2, true },
+	{ 0x0c49, 107, "Write AFH Channel Assessment Mode",
+				write_afh_assessment_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	/* reserved commands */
 	{ 0x0c51, 136, "Read Extended Inquiry Response",
 				null_cmd, 0, true,
