@@ -27,80 +27,197 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <string.h>
-
-#include <usb.h>
+#include <dirent.h>
+#include <sys/ioctl.h>
 
 #include "csr.h"
 
-#ifdef NEED_USB_GET_BUSSES
-static inline struct usb_bus *usb_get_busses(void)
-{
-	return usb_busses;
-}
-#endif
+#define USB_TYPE_STANDARD		(0x00 << 5)
+#define USB_TYPE_CLASS			(0x01 << 5)
+#define USB_TYPE_VENDOR			(0x02 << 5)
+#define USB_TYPE_RESERVED		(0x03 << 5)
 
-#ifdef NEED_USB_INTERRUPT_READ
-static inline int usb_interrupt_read(usb_dev_handle *dev, int ep, char *bytes, int size, int timeout)
-{
-	return usb_bulk_read(dev, ep, bytes, size, timeout);
-}
-#endif
+#define USB_RECIP_DEVICE		0x00
+#define USB_RECIP_INTERFACE		0x01
+#define USB_RECIP_ENDPOINT		0x02
+#define USB_RECIP_OTHER			0x03
 
-#ifndef USB_DIR_OUT
-#define USB_DIR_OUT	0x00
-#endif
+#define USB_ENDPOINT_IN			0x80
+#define USB_ENDPOINT_OUT		0x00
+
+struct usbfs_ctrltransfer {
+	uint8_t  bmRequestType;
+	uint8_t  bRequest;
+	uint16_t wValue;
+	uint16_t wIndex;
+	uint16_t wLength;
+	uint32_t timeout;	/* in milliseconds */
+        void *data;		/* pointer to data */
+};
+
+struct usbfs_bulktransfer {
+	unsigned int ep;
+	unsigned int len;
+	unsigned int timeout;   /* in milliseconds */
+        void *data;		/* pointer to data */
+};
+
+#define USBFS_IOCTL_CONTROL	_IOWR('U', 0, struct usbfs_ctrltransfer)
+#define USBFS_IOCTL_BULK	_IOWR('U', 2, struct usbfs_bulktransfer)
+#define USBFS_IOCTL_CLAIMINTF	_IOR('U', 15, unsigned int)
+#define USBFS_IOCTL_RELEASEINTF	_IOR('U', 16, unsigned int)
+
+static int read_value(const char *name, const char *attr, const char *format)
+{
+	char path[PATH_MAX];
+	FILE *file;
+	int n, value;
+
+	snprintf(path, sizeof(path), "/sys/bus/usb/devices/%s/%s", name, attr);
+
+	file = fopen(path, "r");
+	if (!file)
+		return -1;
+
+	n = fscanf(file, format, &value);
+	if (n != 1)
+		return -1;
+
+	return value;
+}
+
+static char *check_device(const char *name)
+{
+	char path[PATH_MAX];
+	int busnum, devnum, vendor, product;
+
+	busnum = read_value(name, "busnum", "%d");
+	if (busnum < 0)
+		return NULL;
+
+	devnum = read_value(name, "devnum", "%d");
+	if (devnum < 0)
+		return NULL;
+
+	snprintf(path, sizeof(path), "/dev/bus/usb/%03u/%03u", busnum, devnum);
+
+	vendor = read_value(name, "idVendor", "%04x");
+	if (vendor < 0)
+		return NULL;
+
+	product = read_value(name, "idProduct", "%04x");
+	if (product < 0)
+		return NULL;
+
+	if (vendor != 0x0a12 || product != 0x0001)
+		return NULL;
+
+	return strdup(path);
+}
+
+static char *find_device(void)
+{
+	char *path = NULL;
+	DIR *dir;
+
+	dir = opendir("/sys/bus/usb/devices");
+	if (!dir)
+		return NULL;
+
+	while (1) {
+		struct dirent *d;
+
+		d = readdir(dir);
+		if (!d)
+			break;
+
+		if ((!isdigit(d->d_name[0]) && strncmp(d->d_name, "usb", 3))
+						|| strchr(d->d_name, ':'))
+			continue;
+
+		path = check_device(d->d_name);
+		if (path)
+			break;
+	}
+
+	closedir(dir);
+
+	return path;
+}
 
 static uint16_t seqnum = 0x0000;
-
-static struct usb_dev_handle *udev = NULL;
+static int handle = -1;
 
 int csr_open_usb(char *device)
 {
-	struct usb_bus *bus;
-	struct usb_device *dev;
+	int interface = 0;
+	char *path;
 
-	usb_init();
-
-	usb_find_busses();
-	usb_find_devices();
-
-	for (bus = usb_get_busses(); bus; bus = bus->next) {
-		for (dev = bus->devices; dev; dev = dev->next) {
-			if (dev->descriptor.bDeviceClass == USB_CLASS_HUB)
-				continue;
-
-			if (dev->descriptor.idVendor != 0x0a12 ||
-					dev->descriptor.idProduct != 0x0001)
-				continue;
-
-			goto found;
-		}
+	path = find_device();
+	if (!path) {
+		fprintf(stderr, "Device not available\n");
+		return -1;
 	}
 
-	fprintf(stderr, "Device not available\n");
-
-	return -1;
-
-found:
-	udev = usb_open(dev);
-	if (!udev) {
+	handle = open(path, O_RDWR, O_CLOEXEC | O_NONBLOCK);
+	if (handle < 0) {
 		fprintf(stderr, "Can't open device: %s (%d)\n",
 						strerror(errno), errno);
 		return -1;
 	}
 
-	if (usb_claim_interface(udev, 0) < 0) {
+	if (ioctl(handle, USBFS_IOCTL_CLAIMINTF, &interface) < 0) {
 		fprintf(stderr, "Can't claim interface: %s (%d)\n",
 						strerror(errno), errno);
-		usb_close(udev);
+		close(handle);
+		handle = -1;
 		return -1;
 	}
 
 	return 0;
 }
 
-static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t *value, uint16_t length)
+static int control_write(int fd, void *data, unsigned short size)
+{
+	struct usbfs_ctrltransfer transfer;
+
+	transfer.bmRequestType = USB_TYPE_CLASS | USB_ENDPOINT_OUT |
+							USB_RECIP_DEVICE;
+	transfer.bRequest = 0;
+	transfer.wValue = 0;
+	transfer.wIndex = 0;
+	transfer.wLength = size,
+	transfer.timeout = 2000;
+	transfer.data = data;
+
+	if (ioctl(fd, USBFS_IOCTL_CONTROL, &transfer) < 0) {
+		fprintf(stderr, "Control transfer failed: %s (%d)\n",
+						strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+}
+
+static int interrupt_read(int fd, unsigned char endpoint,
+					void *data, unsigned short size)
+{
+	struct usbfs_bulktransfer transfer;
+
+	transfer.ep = endpoint;
+	transfer.len = size,
+	transfer.timeout = 20;
+	transfer.data = data;
+
+	return ioctl(fd, USBFS_IOCTL_BULK, &transfer);
+}
+
+static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid,
+					uint8_t *value, uint16_t length)
 {
 	unsigned char cp[254], rp[254];
 	uint8_t cmd[10];
@@ -128,11 +245,9 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t
 	memcpy(cp + 4, cmd, sizeof(cmd));
 	memcpy(cp + 14, value, length);
 
-	usb_interrupt_read(udev, 0x81, (void *) rp, sizeof(rp), 2);
+	interrupt_read(handle, 0x81, rp, sizeof(rp));
 
-	if (usb_control_msg(udev, USB_TYPE_CLASS | USB_DIR_OUT | USB_RECIP_DEVICE,
-				0, 0, 0, (void *) cp, (size * 2) + 4, 1000) < 0)
-		return -1;
+	control_write(handle, cp, (size * 2) + 4);
 
 	switch (varid) {
 	case CSR_VARID_COLD_RESET:
@@ -143,8 +258,10 @@ static int do_command(uint16_t command, uint16_t seqnum, uint16_t varid, uint8_t
 	}
 
 	do {
-		len = usb_interrupt_read(udev, 0x81,
-			(void *) (rp + offset), sizeof(rp) - offset, 10);
+		len = interrupt_read(handle, 0x81,
+					rp + offset, sizeof(rp) - offset);
+		if (len < 0)
+			break;
 		offset += len;
 	} while (len > 0);
 
@@ -175,6 +292,10 @@ int csr_write_usb(uint16_t varid, uint8_t *value, uint16_t length)
 
 void csr_close_usb(void)
 {
-	usb_release_interface(udev, 0);
-	usb_close(udev);
+	int interface = 0;
+
+	ioctl(handle, USBFS_IOCTL_RELEASEINTF, &interface);
+
+	close(handle);
+	handle = -1;
 }
