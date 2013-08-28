@@ -216,7 +216,7 @@ bool btsnoop_write_phy(struct btsnoop *btsnoop, struct timeval *tv,
 		return false;
 
 	switch (btsnoop->type) {
-	case BTSNOOP_TYPE_EXTENDED_PHY:
+	case BTSNOOP_TYPE_SIMULATOR:
 		flags = (1 << 16) | frequency;
 		break;
 
