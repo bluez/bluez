@@ -3217,6 +3217,13 @@ static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
 	print_field("TX power: %d dBm", rsp->level);
 }
 
+static void write_inquiry_tx_power_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_inquiry_tx_power *cmd = data;
+
+	print_field("TX power: %d dBm", cmd->level);
+}
+
 static void enhanced_flush_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_enhanced_flush *cmd = data;
@@ -4343,7 +4350,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c58, 144, "Read Inquiry Response TX Power Level",
 				null_cmd, 0, true,
 				read_inquiry_resp_tx_power_rsp, 2, true },
-	{ 0x0c59, 145, "Write Inquiry Transmit Power Level" },
+	{ 0x0c59, 145, "Write Inquiry Transmit Power Level",
+				write_inquiry_tx_power_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c5a, 146, "Read Default Erroneous Reporting" },
 	{ 0x0c5b, 147, "Write Default Erroneous Reporting" },
 	/* reserved commands */
