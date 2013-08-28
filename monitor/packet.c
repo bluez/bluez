@@ -4427,7 +4427,7 @@ static const struct opcode_data opcode_table[] = {
 				write_le_host_supported_cmd, 2, true,
 				status_rsp, 1, true },
 	{ 0x0c6e, 238, "Set MWS Channel Parameters" },
-	{ 0x0c6f, 239, "Set External Fram Configuration" },
+	{ 0x0c6f, 239, "Set External Frame Configuration" },
 	{ 0x0c70, 240, "Set MWS Signaling" },
 	{ 0x0c71, 241, "Set MWS Transport Layer" },
 	{ 0x0c72, 242, "Set MWS Scan Frequency Table" },
