@@ -4136,19 +4136,14 @@ static const struct opcode_data opcode_table[] = {
 				status_bdaddr_rsp, 7, true },
 	{ 0x040f,  14, "Change Connection Packet Type",
 				change_conn_pkt_type_cmd, 4, true },
-	/* reserved command */
 	{ 0x0411,  15, "Authentication Requested",
 				auth_requested_cmd, 2, true },
-	/* reserved command */
 	{ 0x0413,  16, "Set Connection Encryption",
 				set_conn_encrypt_cmd, 3, true },
-	/* reserved command */
 	{ 0x0415,  17, "Change Connection Link Key",
 				change_conn_link_key_cmd, 2, true },
-	/* reserved command */
 	{ 0x0417,  18, "Master Link Key",
 				master_link_key_cmd, 1, true },
-	/* reserved command */
 	{ 0x0419,  19, "Remote Name Request",
 				remote_name_request_cmd, 10, true },
 	{ 0x041a,  20, "Remote Name Request Cancel",
@@ -4160,13 +4155,11 @@ static const struct opcode_data opcode_table[] = {
 				read_remote_ext_features_cmd, 3, true },
 	{ 0x041d,  23, "Read Remote Version Information",
 				read_remote_version_cmd, 2, true },
-	/* reserved command */
 	{ 0x041f,  24, "Read Clock Offset",
 				read_clock_offset_cmd, 2, true },
 	{ 0x0420,  25, "Read LMP Handle",
 				read_lmp_handle_cmd, 2, true,
 				read_lmp_handle_rsp, 8, true },
-	/* reserved commands */
 	{ 0x0428, 131, "Setup Synchronous Connection",
 				setup_sync_conn_cmd, 17, true },
 	{ 0x0429, 132, "Accept Synchronous Connection",
@@ -4191,7 +4184,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0430, 156, "Remote OOB Data Request Reply",
 				remote_oob_data_request_reply_cmd, 38, true,
 				status_bdaddr_rsp, 7, true },
-	/* reserved commands */
 	{ 0x0433, 159, "Remote OOB Data Request Neg Reply",
 				remote_oob_data_request_neg_reply_cmd, 6, true,
 				status_bdaddr_rsp, 7, true },
@@ -4227,7 +4219,6 @@ static const struct opcode_data opcode_table[] = {
 	/* OGF 2 - Link Policy */
 	{ 0x0801,  33, "Holde Mode",
 				hold_mode_cmd, 6, true },
-	/* reserved command */
 	{ 0x0803,  34, "Sniff Mode",
 				sniff_mode_cmd, 10, true },
 	{ 0x0804,  35, "Exit Sniff Mode",
@@ -4238,11 +4229,9 @@ static const struct opcode_data opcode_table[] = {
 				exit_park_state_cmd, 2, true },
 	{ 0x0807,  38, "QoS Setup",
 				qos_setup_cmd, 20, true },
-	/* reserved command */
 	{ 0x0809,  39, "Role Discovery",
 				role_discovery_cmd, 2, true,
 				role_discovery_rsp, 4, true },
-	/* reserved command */
 	{ 0x080b,  40, "Switch Role",
 				switch_role_cmd, 7, true },
 	{ 0x080c,  41, "Read Link Policy Settings",
@@ -4267,15 +4256,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c01,  46, "Set Event Mask",
 				set_event_mask_cmd, 8, true,
 				status_rsp, 1, true },
-	/* reserved command */
 	{ 0x0c03,  47, "Reset",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	/* reserved command */
 	{ 0x0c05,  48, "Set Event Filter",
 				set_event_filter_cmd, 1, false,
 				status_rsp, 1, true },
-	/* reserved commands */
 	{ 0x0c08,  49, "Flush",
 				flush_cmd, 2, true,
 				flush_rsp, 3, true },
@@ -4288,11 +4274,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c0b,  52, "Create New Unit Key",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	/* reserved command */
 	{ 0x0c0d,  53, "Read Stored Link Key",
 				read_stored_link_key_cmd, 7, true,
 				read_stored_link_key_rsp, 5, true },
-	/* reserved commands */
 	{ 0x0c11,  54, "Write Stored Link Key",
 				write_stored_link_key_cmd, 1, false,
 				write_stored_link_key_rsp, 2, true },
@@ -4356,11 +4340,8 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c2d,  82, "Read Transmit Power Level" },
 	{ 0x0c2e,  83, "Read Sync Flow Control Enable" },
 	{ 0x0c2f,  84, "Write Sync Flow Control Enable" },
-	/* reserved command */
 	{ 0x0c31,  85, "Set Host Controller To Host Flow" },
-	/* reserved command */
 	{ 0x0c33,  86, "Host Buffer Size" },
-	/* reserved command */
 	{ 0x0c35,  87, "Host Number of Completed Packets" },
 	{ 0x0c36,  88, "Read Link Supervision Timeout" },
 	{ 0x0c37,  89, "Write Link Supervision Timeout" },
@@ -4374,7 +4355,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c3f,  97, "Set AFH Host Channel Classification",
 				set_afh_host_classification_cmd, 10, true,
 				status_rsp, 1, true },
-	/* reserved commands */
 	{ 0x0c42, 100, "Read Inquiry Scan Type",
 				null_cmd, 0, true,
 				read_inquiry_scan_type_rsp, 2, true },
@@ -4399,7 +4379,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c49, 107, "Write AFH Channel Assessment Mode",
 				write_afh_assessment_mode_cmd, 1, true,
 				status_rsp, 1, true },
-	/* reserved commands */
 	{ 0x0c51, 136, "Read Extended Inquiry Response",
 				null_cmd, 0, true,
 				read_ext_inquiry_response_rsp, 242, true },
@@ -4408,7 +4387,6 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x0c53, 138, "Refresh Encryption Key",
 				refresh_encrypt_key_cmd, 2, true },
-	/* reserved command */
 	{ 0x0c55, 141, "Read Simple Pairing Mode",
 				null_cmd, 0, true,
 				read_simple_pairing_mode_rsp, 2, true },
@@ -4426,7 +4404,6 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x0c5a, 146, "Read Default Erroneous Reporting" },
 	{ 0x0c5b, 147, "Write Default Erroneous Reporting" },
-	/* reserved commands */
 	{ 0x0c5f, 158, "Enhanced Flush",
 				enhanced_flush_cmd, 3, true },
 	{ 0x0c60, 162, "Send Keypress Notification" },
@@ -4479,11 +4456,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1005, 119, "Read Buffer Size",
 				null_cmd, 0, true,
 				read_buffer_size_rsp, 8, true },
-	/* reserved command */
 	{ 0x1007, 120, "Read Country Code",
 				null_cmd, 0, true,
 				read_country_code_rsp, 2, true },
-	/* reserved command */
 	{ 0x1009, 121, "Read BD ADDR",
 				null_cmd, 0, true,
 				read_bd_addr_rsp, 7, true },
@@ -4502,7 +4477,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1403, 124, "Read Link Quality",
 				read_link_quality_cmd, 2, true,
 				read_link_quality_rsp, 4, true },
-	/* reserved command */
 	{ 0x1405, 125, "Read RSSI",
 				read_rssi_cmd, 2, true,
 				read_rssi_rsp, 4, true },
@@ -4532,7 +4506,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1802, 129, "Write Loopback Mode" },
 	{ 0x1803, 130, "Enable Device Under Test Mode" },
 	{ 0x1804, 157, "Write Simple Pairing Debug Mode" },
-	/* reserved commands */
 	{ 0x1807, 189, "Enable AMP Receiver Reports" },
 	{ 0x1808, 190, "AMP Test End" },
 	{ 0x1809, 191, "AMP Test" },
@@ -4547,7 +4520,6 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x2003, 202, "LE Read Local Supported Features",
 				null_cmd, 0, true,
 				le_read_local_features_rsp, 9, true },
-	/* reserved command */
 	{ 0x2005, 204, "LE Set Random Address",
 				le_set_random_address_cmd, 6, true,
 				status_rsp, 1, true },
@@ -5582,7 +5554,6 @@ static const struct event_data event_table[] = {
 				inquiry_result_with_rssi_evt, 1, false },
 	{ 0x23, "Read Remote Extended Features",
 				remote_ext_features_complete_evt, 13, true },
-	/* reserved events */
 	{ 0x2c, "Synchronous Connect Complete",
 				sync_conn_complete_evt, 17, true },
 	{ 0x2d, "Synchronous Connect Changed",
@@ -5605,12 +5576,10 @@ static const struct event_data event_table[] = {
 				remote_oob_data_request_evt, 6, true },
 	{ 0x36, "Simple Pairing Complete",
 				simple_pairing_complete_evt, 7, true },
-	/* reserved event */
 	{ 0x38, "Link Supervision Timeout Changed",
 				link_supv_timeout_changed_evt, 4, true },
 	{ 0x39, "Enhanced Flush Complete",
 				enhanced_flush_complete_evt, 2, true },
-	/* reserved event */
 	{ 0x3b, "User Passkey Notification",
 				user_passkey_notify_evt, 10, true },
 	{ 0x3c, "Keypress Notification",
@@ -5619,7 +5588,6 @@ static const struct event_data event_table[] = {
 				remote_host_features_notify_evt, 14, true },
 	{ 0x3e, "LE Meta Event",
 				le_meta_event_evt, 1, false },
-	/* reserved event */
 	{ 0x40, "Physical Link Complete",
 				phy_link_complete_evt, 2, true },
 	{ 0x41, "Channel Selected",
@@ -5638,9 +5606,9 @@ static const struct event_data event_table[] = {
 				flow_spec_modify_complete_evt, 3, true },
 	{ 0x48, "Number of Completed Data Blocks",
 				num_completed_data_blocks_evt, 3, false },
-	{ 0x49, "AMP Start Test"			},
-	{ 0x4a, "AMP Test End"				},
-	{ 0x4b, "AMP Receiver Report"			},
+	{ 0x49, "AMP Start Test" },
+	{ 0x4a, "AMP Test End" },
+	{ 0x4b, "AMP Receiver Report" },
 	{ 0x4c, "Short Range Mode Change Complete",
 				short_range_mode_change_evt, 3, true },
 	{ 0x4d, "AMP Status Change",
