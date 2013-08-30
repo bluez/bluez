@@ -735,7 +735,11 @@ Methods		object, dict Get(string targetfile, boolean attachment)
 			Possible errors: org.bluez.obex.Error.InvalidArguments
 					 org.bluez.obex.Error.Failed
 
-Properties	string Subject [readonly]
+Properties	string Folder [readonly]
+
+			Folder which the message belongs to
+
+		string Subject [readonly]
 
 			Message subject
 

@@ -123,6 +123,7 @@ struct map_msg {
 	char *status;
 	uint64_t attachment_size;
 	uint8_t flags;
+	char *folder;
 	GDBusPendingPropertySet pending;
 };
 
@@ -379,6 +380,7 @@ static void map_msg_free(void *data)
 	g_free(msg->path);
 	g_free(msg->subject);
 	g_free(msg->handle);
+	g_free(msg->folder);
 	g_free(msg->timestamp);
 	g_free(msg->sender);
 	g_free(msg->sender_address);
@@ -449,6 +451,16 @@ static void set_message_status_cb(struct obc_session *session,
 
 done:
 	msg->pending = 0;
+}
+
+static gboolean get_folder(const GDBusPropertyTable *property,
+					DBusMessageIter *iter, void *data)
+{
+	struct map_msg *msg = data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &msg->folder);
+
+	return TRUE;
 }
 
 static gboolean subject_exists(const GDBusPropertyTable *property, void *data)
@@ -744,6 +756,7 @@ static const GDBusMethodTable map_msg_methods[] = {
 };
 
 static const GDBusPropertyTable map_msg_properties[] = {
+	{ "Folder", "s", get_folder },
 	{ "Subject", "s", get_subject, NULL, subject_exists },
 	{ "Timestamp", "s", get_timestamp, NULL, timestamp_exists },
 	{ "Sender", "s", get_sender, NULL, sender_exists },
@@ -775,6 +788,7 @@ static struct map_msg *map_msg_create(struct map_data *data, const char *handle)
 	msg->path = g_strdup_printf("%s/message%s",
 					obc_session_get_path(data->session),
 					handle);
+	msg->folder = g_strdup(obc_session_get_folder(data->session));
 
 	if (!g_dbus_register_interface(conn, msg->path, MAP_MSG_INTERFACE,
 						map_msg_methods, NULL,
