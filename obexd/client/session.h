@@ -58,6 +58,8 @@ const char *obc_session_register(struct obc_session *session,
 const void *obc_session_get_attribute(struct obc_session *session,
 							int attribute_id);
 
+const char *obc_session_get_folder(struct obc_session *session);
+
 guint obc_session_queue(struct obc_session *session,
 				struct obc_transfer *transfer,
 				session_callback_t func, void *user_data,
