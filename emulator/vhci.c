@@ -34,6 +34,7 @@
 #include <string.h>
 
 #include "monitor/mainloop.h"
+#include "monitor/bt.h"
 #include "btdev.h"
 #include "vhci.h"
 
@@ -76,10 +77,16 @@ static void vhci_read_callback(int fd, uint32_t events, void *user_data)
 		return;
 
 	len = read(vhci->fd, buf, sizeof(buf));
-	if (len < 0)
+	if (len < 1)
 		return;
 
-	btdev_receive_h4(vhci->btdev, buf, len);
+	switch (buf[0]) {
+	case BT_H4_CMD_PKT:
+	case BT_H4_ACL_PKT:
+	case BT_H4_SCO_PKT:
+		btdev_receive_h4(vhci->btdev, buf, len);
+		break;
+	}
 }
 
 struct vhci *vhci_open(enum vhci_type type)
