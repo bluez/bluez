@@ -1536,7 +1536,11 @@ static void print_uuid(const char *label, const void *data, uint16_t size)
 		break;
 	case 16:
 		str = uuid128_to_str(data);
-		print_field("%s: %s", label, str);
+		print_field("%s: %s (%8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x)",
+				label, str,
+				bt_get_le32(data + 12), bt_get_le16(data + 10),
+				bt_get_le16(data + 8), bt_get_le16(data + 6),
+				bt_get_le32(data + 2), bt_get_le16(data + 0));
 		break;
 	default:
 		packet_hexdump(data, size);
@@ -1553,9 +1557,18 @@ static void print_handle_range(const char *label, const void *data)
 static void print_data_list(const char *label, uint8_t length,
 					const void *data, uint16_t size)
 {
-	while (size > length) {
-		print_handle_range("Handle", data);
-		print_hex_field("  Data", data + 4, length - 4);
+	uint8_t count;
+
+	if (length == 0)
+		return;
+
+	count = size / length;
+
+	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
+
+	while (size >= length) {
+		print_handle_range("  Handle", data);
+		print_uuid("        ", data + 4, length - 4);
 
 		data += length;
 		size -= length;
