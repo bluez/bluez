@@ -2008,7 +2008,7 @@ static void print_uuid128_list(const char *label, const void *data,
 	for (i = 0; i < count; i++) {
 		const uint8_t *uuid = data + (i * 16);
 
-		print_field("  %.8x-%.4x-%.4x-%.4x-%.8x%.4x",
+		print_field("  %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
 				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
 				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
 				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
