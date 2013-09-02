@@ -32,6 +32,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <getopt.h>
 #include <termios.h>
 #include <sys/ioctl.h>
 #include <sys/poll.h>
@@ -104,29 +105,102 @@ static int attach_proto(const char *path, unsigned int proto,
 	return fd;
 }
 
+static void usage(void)
+{
+	printf("btattach - Bluetooth serial utility\n"
+		"Usage:\n");
+	printf("\tbtattach [options]\n");
+	printf("options:\n"
+		"\t-B, --bredr <device>   Attach BR/EDR controller\n"
+		"\t-A, --amp <device>     Attach AMP controller\n"
+		"\t-h, --help             Show help options\n");
+}
+
+static const struct option main_options[] = {
+	{ "bredr",   required_argument, NULL, 'B' },
+	{ "amp",     required_argument, NULL, 'A' },
+	{ "version", no_argument,       NULL, 'v' },
+	{ "help",    no_argument,       NULL, 'h' },
+	{ }
+};
+
 int main(int argc, char *argv[])
 {
+	char *bredr_path = NULL, *amp_path = NULL;
 	struct pollfd p[5];
-	unsigned long flags = 0;
-	int fd, i, count = 0;
+	int i, count = 0;
 
-	flags |= (1 << HCI_UART_RESET_ON_INIT);
+	for (;;) {
+		int opt;
 
-	fd = attach_proto("/dev/ttyS0", HCI_UART_H4, flags);
-	if (fd >= 0)
-		p[count++].fd = fd;
+		opt = getopt_long(argc, argv, "B:A:vh",
+						main_options, NULL);
+		if (opt < 0)
+			break;
 
-	flags |= (1 << HCI_UART_CREATE_AMP);
+		switch (opt) {
+		case 'B':
+			bredr_path = optarg;
+			break;
+		case 'A':
+			amp_path = optarg;
+			break;
+		case 'v':
+			printf("%s\n", VERSION);
+			return EXIT_SUCCESS;
+		case 'h':
+			usage();
+			return EXIT_SUCCESS;
+		default:
+			return EXIT_FAILURE;
+		}
+	}
 
-	fd = attach_proto("/dev/ttyS1", HCI_UART_H4, flags);
-	if (fd >= 0)
-		p[count++].fd = fd;
+	if (argc - optind > 0) {
+		fprintf(stderr, "Invalid command line parameters\n");
+		return EXIT_FAILURE;
+	}
 
-	for (i = 0; i < count; i++)
+	if (bredr_path) {
+		unsigned long flags;
+		int fd;
+
+		printf("Attaching BR/EDR controller to %s\n", bredr_path);
+
+		flags = (1 << HCI_UART_RESET_ON_INIT);
+
+		fd = attach_proto(bredr_path, HCI_UART_H4, flags);
+		if (fd >= 0)
+			p[count++].fd = fd;
+	}
+
+	if (amp_path) {
+		unsigned long flags;
+		int fd;
+
+		printf("Attaching AMP controller to %s\n", amp_path);
+
+		flags = (1 << HCI_UART_RESET_ON_INIT) |
+			(1 << HCI_UART_CREATE_AMP);
+
+		fd = attach_proto(amp_path, HCI_UART_H4, flags);
+		if (fd >= 0)
+			p[count++].fd = fd;
+	}
+
+	if (count < 1) {
+		fprintf(stderr, "No controller attached\n");
+		return EXIT_FAILURE;
+	}
+
+	for (i = 0; i < count; i++) {
 		p[i].events = POLLERR | POLLHUP;
+		p[i].revents = 0;
+	}
 
 	while (1) {
-		poll(p, count, -1);
+		if (poll(p, count, -1) < 0)
+			break;
         }
 
 	for (i = 0; i < count; i++)
