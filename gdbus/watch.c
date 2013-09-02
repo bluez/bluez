@@ -593,12 +593,16 @@ static gboolean update_service(void *user_data)
 {
 	struct service_data *data = user_data;
 	struct filter_callback *cb = data->callback;
+	DBusConnection *conn;
 
 	update_name_cache(data->name, data->owner);
-	if (cb->conn_func)
-		cb->conn_func(data->conn, cb->user_data);
-
+	conn = dbus_connection_ref(data->conn);
 	service_data_free(data);
+
+	if (cb->conn_func)
+		cb->conn_func(conn, cb->user_data);
+
+	dbus_connection_unref(conn);
 
 	return FALSE;
 }
