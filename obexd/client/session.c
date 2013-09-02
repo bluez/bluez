@@ -258,6 +258,12 @@ void obc_session_unref(struct obc_session *session)
 	if (refs > 0)
 		return;
 
+	/* Disconnect transport */
+	if (session->id > 0 && session->transport != NULL) {
+		session->transport->disconnect(session->id);
+		session->id = 0;
+	}
+
 	session_free(session);
 }
 
@@ -554,12 +560,6 @@ void obc_session_shutdown(struct obc_session *session)
 	/* Unregister interfaces */
 	if (session->path)
 		session_unregistered(session);
-
-	/* Disconnect transport */
-	if (session->id > 0 && session->transport != NULL) {
-		session->transport->disconnect(session->id);
-		session->id = 0;
-	}
 
 	obc_session_unref(session);
 }
