@@ -281,6 +281,11 @@ static void filter_data_free(struct filter_data *data)
 {
 	GSList *l;
 
+	/* Remove filter if there are no listeners left for the connection */
+	if (filter_data_find(data->connection) == NULL)
+		dbus_connection_remove_filter(data->connection, message_filter,
+									NULL);
+
 	for (l = data->callbacks; l != NULL; l = l->next)
 		g_free(l->data);
 
@@ -360,8 +365,6 @@ static void service_data_free(struct service_data *data)
 static gboolean filter_data_remove_callback(struct filter_data *data,
 						struct filter_callback *cb)
 {
-	DBusConnection *connection;
-
 	data->callbacks = g_slist_remove(data->callbacks, cb);
 	data->processed = g_slist_remove(data->processed, cb);
 
@@ -385,16 +388,8 @@ static gboolean filter_data_remove_callback(struct filter_data *data,
 	if (data->registered && !remove_match(data))
 		return FALSE;
 
-	connection = dbus_connection_ref(data->connection);
 	listeners = g_slist_remove(listeners, data);
-
-	/* Remove filter if there are no listeners left for the connection */
-	if (filter_data_find(connection) == NULL)
-		dbus_connection_remove_filter(connection, message_filter,
-						NULL);
-
 	filter_data_free(data);
-	dbus_connection_unref(connection);
 
 	return TRUE;
 }
@@ -563,6 +558,9 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 								current);
 	}
 
+	if (delete_listener == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 	for (current = delete_listener; current != NULL;
 					current = delete_listener->next) {
 		GSList *l = current->data;
@@ -580,11 +578,6 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	}
 
 	g_slist_free(delete_listener);
-
-	/* Remove filter if there are no listeners left for the connection */
-	if (filter_data_find(connection) == NULL)
-		dbus_connection_remove_filter(connection, message_filter,
-						NULL);
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -814,6 +807,4 @@ void g_dbus_remove_all_watches(DBusConnection *connection)
 		listeners = g_slist_remove(listeners, data);
 		filter_data_call_and_free(data);
 	}
-
-	dbus_connection_remove_filter(connection, message_filter, NULL);
 }
