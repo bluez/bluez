@@ -126,7 +126,7 @@ static const struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	char *bredr_path = NULL, *amp_path = NULL;
+	const char *bredr_path = NULL, *amp_path = NULL;
 	struct pollfd p[5];
 	int i, count = 0;
 
