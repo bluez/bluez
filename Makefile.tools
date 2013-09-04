@@ -171,8 +171,8 @@ endif
 if EXPERIMENTAL
 noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest tools/scotest \
 			tools/hcieventmask tools/hcisecfilter tools/hwdb \
-			tools/btmgmt tools/btattach tools/btsnoop \
-			tools/btiotest tools/mpris-player
+			tools/btmgmt tools/btinfo tools/btattach \
+			tools/btsnoop tools/btiotest tools/mpris-player
 
 tools_bdaddr_SOURCES = tools/bdaddr.c src/oui.h src/oui.c
 tools_bdaddr_LDADD = lib/libbluetooth-internal.la @UDEV_LIBS@
@@ -191,6 +191,8 @@ tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 tools_btmgmt_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+tools_btinfo_SOURCES = tools/btinfo.c
 
 tools_btsnoop_SOURCES = tools/btsnoop.c \
 				src/shared/pcap.h src/shared/pcap.c \
