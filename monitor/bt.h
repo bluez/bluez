@@ -111,7 +111,7 @@ struct bt_hci_acl_hdr {
 
 struct bt_hci_cmd_hdr {
 	uint16_t opcode;
-	uint8_t	 plen;
+	uint8_t  plen;
 } __attribute__ ((packed));
 
 struct bt_hci_evt_hdr {
@@ -741,7 +741,7 @@ struct bt_hci_rsp_read_ext_inquiry_response {
 #define BT_HCI_CMD_WRITE_EXT_INQUIRY_RESPONSE	0x0c52
 struct bt_hci_cmd_write_ext_inquiry_response {
 	uint8_t  fec;
-	uint8_t	 data[240];
+	uint8_t  data[240];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_REFRESH_ENCRYPT_KEY		0x0c53
