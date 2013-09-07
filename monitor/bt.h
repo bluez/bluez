@@ -682,6 +682,14 @@ struct bt_hci_cmd_write_voice_setting {
 	uint16_t setting;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_HOST_BUFFER_SIZE		0x0c33
+struct bt_hci_cmd_host_buffer_size {
+	uint16_t acl_mtu;
+	uint8_t  sco_mtu;
+	uint16_t acl_max_pkt;
+	uint16_t sco_max_pkt;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_SET_AFH_HOST_CLASSIFICATION	0x0c3f
 struct bt_hci_cmd_set_afh_host_classification {
 	uint8_t  map[10];
