@@ -1030,6 +1030,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
 	struct bt_hci_rsp_le_read_supported_states lrss;
 	struct bt_hci_rsp_le_read_white_list_size lrwls;
+	struct bt_hci_rsp_le_rand lr;
 	struct bt_hci_rsp_remote_name_request_cancel rnrc_rsp;
 	uint8_t status, page;
 
@@ -1320,6 +1321,11 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			goto unsupported;
 		wvs = data;
 		btdev->voice_setting = le16_to_cpu(wvs->setting);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_HOST_BUFFER_SIZE:
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
@@ -1641,7 +1647,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
-		lrwls.status = 0;
+		lrwls.status = BT_HCI_ERR_SUCCESS;
 		lrwls.size = 0;
 		cmd_complete(btdev, opcode, &lrwls, sizeof(lrwls));
 		break;
@@ -1662,6 +1668,21 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		memcpy(btdev->le_adv_data, lsad->data, 31);
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_LE_RAND:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		lr.status = BT_HCI_ERR_SUCCESS;
+		lr.number[0] = rand();
+		lr.number[1] = rand();
+		lr.number[2] = rand();
+		lr.number[3] = rand();
+		lr.number[4] = rand();
+		lr.number[5] = rand();
+		lr.number[6] = rand();
+		lr.number[7] = rand();
+		cmd_complete(btdev, opcode, &lr, sizeof(lr));
 		break;
 
 	case BT_HCI_CMD_SETUP_SYNC_CONN:
