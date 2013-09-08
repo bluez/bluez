@@ -734,6 +734,12 @@ struct bt_hci_rsp_write_link_supv_timeout {
 	uint16_t handle;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_NUM_SUPPORTED_IAC	0x0c38
+struct bt_hci_rsp_read_num_supported_iac {
+	uint8_t  status;
+	uint8_t  num_iac;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_CURRENT_IAC_LAP		0x0c39
 
 #define BT_HCI_CMD_WRITE_CURRENT_IAC_LAP	0x0c3a
