@@ -714,6 +714,26 @@ struct bt_hci_cmd_host_buffer_size {
 	uint16_t sco_max_pkt;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LINK_SUPV_TIMEOUT	0x0c36
+struct bt_hci_cmd_read_link_supv_timeout {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_link_supv_timeout {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_LINK_SUPV_TIMEOUT	0x0c37
+struct bt_hci_cmd_write_link_supv_timeout {
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_link_supv_timeout {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_CURRENT_IAC_LAP		0x0c39
 
 #define BT_HCI_CMD_WRITE_CURRENT_IAC_LAP	0x0c3a
