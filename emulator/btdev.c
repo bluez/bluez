@@ -1035,6 +1035,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_le_read_supported_states lrss;
 	struct bt_hci_rsp_le_read_white_list_size lrwls;
 	struct bt_hci_rsp_le_rand lr;
+	struct bt_hci_rsp_le_test_end lte;
 	struct bt_hci_rsp_remote_name_request_cancel rnrc_rsp;
 	uint8_t status, page;
 
@@ -1728,6 +1729,28 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_ENABLE_DUT_MODE:
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_LE_RECEIVER_TEST:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_LE_TRANSMITTER_TEST:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_LE_TEST_END:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		lte.status = BT_HCI_ERR_SUCCESS;
+		lte.num_packets = 0;
+		cmd_complete(btdev, opcode, &lte, sizeof(lte));
 		break;
 
 	default:
