@@ -3297,6 +3297,14 @@ static void write_link_supv_timeout_rsp(const void *data, uint8_t size)
 	print_handle(rsp->handle);
 }
 
+static void read_num_supported_iac_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_num_supported_iac *rsp = data;
+
+	print_status(rsp->status);
+	print_field("Number of IAC: %d", rsp->num_iac);
+}
+
 static void set_afh_host_classification_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_afh_host_classification *cmd = data;
@@ -4490,7 +4498,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c37,  89, "Write Link Supervision Timeout",
 				write_link_supv_timeout_cmd, 4, true,
 				write_link_supv_timeout_rsp, 3, true },
-	{ 0x0c38,  90, "Read Number of Supported IAC" },
+	{ 0x0c38,  90, "Read Number of Supported IAC",
+				null_cmd, 0, true,
+				read_num_supported_iac_rsp, 2, true },
 	{ 0x0c39,  91, "Read Current IAC LAP" },
 	{ 0x0c3a,  92, "Write Current IAC LAP" },
 	{ 0x0c3b,  93, "Read Page Scan Period Mode" },
