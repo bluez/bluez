@@ -3255,6 +3255,16 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void host_buffer_size_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_host_buffer_size *cmd = data;
+
+	print_field("ACL MTU: %-4d ACL max packet: %d",
+				btohs(cmd->acl_mtu), btohs(cmd->acl_max_pkt));
+	print_field("SCO MTU: %-4d SCO max packet: %d",
+				cmd->sco_mtu, btohs(cmd->sco_max_pkt));
+}
+
 static void set_afh_host_classification_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_afh_host_classification *cmd = data;
@@ -4438,7 +4448,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c2e,  83, "Read Sync Flow Control Enable" },
 	{ 0x0c2f,  84, "Write Sync Flow Control Enable" },
 	{ 0x0c31,  85, "Set Host Controller To Host Flow" },
-	{ 0x0c33,  86, "Host Buffer Size" },
+	{ 0x0c33,  86, "Host Buffer Size",
+				host_buffer_size_cmd, 7, true,
+				status_rsp, 1, true },
 	{ 0x0c35,  87, "Host Number of Completed Packets" },
 	{ 0x0c36,  88, "Read Link Supervision Timeout" },
 	{ 0x0c37,  89, "Write Link Supervision Timeout" },
@@ -4601,7 +4613,9 @@ static const struct opcode_data opcode_table[] = {
 	/* OGF 6 - Testing */
 	{ 0x1801, 128, "Read Loopback Mode" },
 	{ 0x1802, 129, "Write Loopback Mode" },
-	{ 0x1803, 130, "Enable Device Under Test Mode" },
+	{ 0x1803, 130, "Enable Device Under Test Mode",
+				null_cmd, 0, true,
+				status_rsp, 1, true },
 	{ 0x1804, 157, "Write Simple Pairing Debug Mode" },
 	{ 0x1807, 189, "Enable AMP Receiver Reports" },
 	{ 0x1808, 190, "AMP Test End" },
