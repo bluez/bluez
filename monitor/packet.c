@@ -488,6 +488,44 @@ static void print_iac(const uint8_t *lap)
 						lap[2], lap[1], lap[0], str);
 }
 
+static void print_auth_enable(uint8_t enable)
+{
+	const char *str;
+
+	switch (enable) {
+	case 0x00:
+		str = "Authentication not required";
+		break;
+	case 0x01:
+		str = "Authentication required for all connections";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Enable: %s (0x%2.2x)", str, enable);
+}
+
+static void print_encrypt_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Encryption not required";
+		break;
+	case 0x01:
+		str = "Encryption required for all connections";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Mode: %s (0x%2.2x)", str, mode);
+}
+
 static const struct {
 	uint8_t bit;
 	const char *str;
@@ -3140,6 +3178,36 @@ static void write_page_scan_activity_cmd(const void *data, uint8_t size)
 	print_window(cmd->window);
 }
 
+static void read_auth_enable_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_auth_enable *rsp = data;
+
+	print_status(rsp->status);
+	print_auth_enable(rsp->enable);
+}
+
+static void write_auth_enable_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_auth_enable *cmd = data;
+
+	print_auth_enable(cmd->enable);
+}
+
+static void read_encrypt_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_encrypt_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_encrypt_mode(rsp->mode);
+}
+
+static void write_encrypt_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_encrypt_mode *cmd = data;
+
+	print_encrypt_mode(cmd->mode);
+}
+
 static void read_class_of_dev_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_class_of_dev *rsp = data;
@@ -4315,10 +4383,18 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x0c1d,  66, "Read Inquiry Scan Activity" },
 	{ 0x0c1e,  67, "Write Inquiry Scan Activity" },
-	{ 0x0c1f,  68, "Read Authentication Enable" },
-	{ 0x0c20,  69, "Write Authentication Enable" },
-	{ 0x0c21,  70, "Read Encryption Mode" },
-	{ 0x0c22,  71, "Write Encryption Mode" },
+	{ 0x0c1f,  68, "Read Authentication Enable",
+				null_cmd, 0, true,
+				read_auth_enable_rsp, 2, true },
+	{ 0x0c20,  69, "Write Authentication Enable",
+				write_auth_enable_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x0c21,  70, "Read Encryption Mode",
+				null_cmd, 0, true,
+				read_encrypt_mode_rsp, 2, true },
+	{ 0x0c22,  71, "Write Encryption Mode",
+				write_encrypt_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c23,  72, "Read Class of Device",
 				null_cmd, 0, true,
 				read_class_of_dev_rsp, 4, true },
