@@ -3265,6 +3265,38 @@ static void host_buffer_size_cmd(const void *data, uint8_t size)
 				cmd->sco_mtu, btohs(cmd->sco_max_pkt));
 }
 
+static void read_link_supv_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_link_supv_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_link_supv_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_link_supv_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_timeout(rsp->timeout);
+}
+
+static void write_link_supv_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_link_supv_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+	print_timeout(cmd->timeout);
+}
+
+static void write_link_supv_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_link_supv_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
 static void set_afh_host_classification_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_afh_host_classification *cmd = data;
@@ -4452,8 +4484,12 @@ static const struct opcode_data opcode_table[] = {
 				host_buffer_size_cmd, 7, true,
 				status_rsp, 1, true },
 	{ 0x0c35,  87, "Host Number of Completed Packets" },
-	{ 0x0c36,  88, "Read Link Supervision Timeout" },
-	{ 0x0c37,  89, "Write Link Supervision Timeout" },
+	{ 0x0c36,  88, "Read Link Supervision Timeout",
+				read_link_supv_timeout_cmd, 2, true,
+				read_link_supv_timeout_rsp, 5, true },
+	{ 0x0c37,  89, "Write Link Supervision Timeout",
+				write_link_supv_timeout_cmd, 4, true,
+				write_link_supv_timeout_rsp, 3, true },
 	{ 0x0c38,  90, "Read Number of Supported IAC" },
 	{ 0x0c39,  91, "Read Current IAC LAP" },
 	{ 0x0c3a,  92, "Write Current IAC LAP" },
