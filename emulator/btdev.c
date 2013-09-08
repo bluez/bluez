@@ -92,6 +92,8 @@ struct btdev {
 	uint16_t page_scan_window;
 	uint16_t page_scan_type;
 	uint8_t  auth_enable;
+	uint16_t inquiry_scan_interval;
+	uint16_t inquiry_scan_window;
 	uint8_t  inquiry_mode;
 	uint8_t  afh_assessment_mode;
 	uint8_t  ext_inquiry_fec;
@@ -981,6 +983,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_write_page_timeout *wpt;
 	const struct bt_hci_cmd_write_scan_enable *wse;
 	const struct bt_hci_cmd_write_page_scan_activity *wpsa;
+	const struct bt_hci_cmd_write_inquiry_scan_activity *wisa;
 	const struct bt_hci_cmd_write_page_scan_type *wpst;
 	const struct bt_hci_cmd_write_auth_enable *wae;
 	const struct bt_hci_cmd_write_class_of_dev *wcod;
@@ -1005,6 +1008,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_page_timeout rpt;
 	struct bt_hci_rsp_read_scan_enable rse;
 	struct bt_hci_rsp_read_page_scan_activity rpsa;
+	struct bt_hci_rsp_read_inquiry_scan_activity risa;
 	struct bt_hci_rsp_read_page_scan_type rpst;
 	struct bt_hci_rsp_read_auth_enable rae;
 	struct bt_hci_rsp_read_class_of_dev rcod;
@@ -1257,6 +1261,25 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
+	case BT_HCI_CMD_READ_INQUIRY_SCAN_ACTIVITY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		risa.status = BT_HCI_ERR_SUCCESS;
+		risa.interval = cpu_to_le16(btdev->inquiry_scan_interval);
+		risa.window = cpu_to_le16(btdev->inquiry_scan_window);
+		cmd_complete(btdev, opcode, &risa, sizeof(risa));
+		break;
+
+	case BT_HCI_CMD_WRITE_INQUIRY_SCAN_ACTIVITY:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		wisa = data;
+		btdev->inquiry_scan_interval = le16_to_cpu(wisa->interval);
+		btdev->inquiry_scan_window = le16_to_cpu(wisa->window);
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
 	case BT_HCI_CMD_READ_PAGE_SCAN_TYPE:
 		if (btdev->type == BTDEV_TYPE_LE)
 			goto unsupported;
@@ -1326,6 +1349,11 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_HOST_BUFFER_SIZE:
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_WRITE_CURRENT_IAC_LAP:
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
@@ -1695,6 +1723,11 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 
 	case BT_HCI_CMD_ADD_SCO_CONN:
 		sco_conn_complete(btdev, BT_HCI_ERR_SUCCESS);
+		break;
+
+	case BT_HCI_CMD_ENABLE_DUT_MODE:
+		status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
 
 	default:
