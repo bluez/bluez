@@ -3015,10 +3015,85 @@ static void set_event_mask_cmd(const void *data, uint8_t size)
 static void set_event_filter_cmd(const void *data, uint8_t size)
 {
 	uint8_t type = *((const uint8_t *) data);
+	uint8_t filter;
+	const char *str;
 
-	print_field("Type: 0x%2.2x", type);
+	switch (type) {
+	case 0x00:
+		str = "Clear All Filters";
+		break;
+	case 0x01:
+		str = "Inquiry Result";
+		break;
+	case 0x02:
+		str = "Connection Setup";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
 
-	packet_hexdump(data + 1, size - 1);
+	print_field("Type: %s (0x%2.2x)", str, type);
+
+	switch (type) {
+	case 0x00:
+		if (size > 1) {
+			print_text(COLOR_ERROR, "  invalid parameter size");
+			packet_hexdump(data + 1, size - 1);
+		}
+		break;
+
+	case 0x01:
+		filter = *((const uint8_t *) (data + 1));
+
+		switch (filter) {
+		case 0x00:
+			str = "Return responses from all devices";
+			break;
+		case 0x01:
+			str = "Device with specific Class of Device";
+			break;
+		case 0x02:
+			str = "Device with specific BD_ADDR";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("Filter: %s (0x%2.2x)", str, filter);
+		packet_hexdump(data + 2, size - 2);
+		break;
+
+	case 0x02:
+		filter = *((const uint8_t *) (data + 1));
+
+		switch (filter) {
+		case 0x00:
+			str = "Allow connections all devices";
+			break;
+		case 0x01:
+			str = "Allow connections with specific Class of Device";
+			break;
+		case 0x02:
+			str = "Allow connections with specific BD_ADDR";
+			break;
+		default:
+			str = "Reserved";
+			break;
+		}
+
+		print_field("Filter: %s (0x%2.2x)", str, filter);
+		packet_hexdump(data + 2, size - 2);
+		break;
+
+	default:
+		filter = *((const uint8_t *) (data + 1));
+
+		print_field("Filter: Reserved (0x%2.2x)", filter);
+		packet_hexdump(data + 2, size - 2);
+		break;
+	}
 }
 
 static void flush_cmd(const void *data, uint8_t size)
