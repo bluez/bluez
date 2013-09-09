@@ -744,6 +744,28 @@ struct bt_hci_rsp_read_num_supported_iac {
 
 #define BT_HCI_CMD_WRITE_CURRENT_IAC_LAP	0x0c3a
 
+#define BT_HCI_CMD_READ_PAGE_SCAN_PERIOD_MODE	0x0c3b
+struct bt_hci_rsp_read_page_scan_period_mode {
+	uint8_t  status;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_PAGE_SCAN_PERIOD_MODE	0x0c3c
+struct bt_hci_cmd_write_page_scan_period_mode {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_READ_PAGE_SCAN_MODE		0x0c3d
+struct bt_hci_rsp_read_page_scan_mode {
+	uint8_t  status;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_PAGE_SCAN_MODE		0x0c3e
+struct bt_hci_cmd_write_page_scan_mode {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_SET_AFH_HOST_CLASSIFICATION	0x0c3f
 struct bt_hci_cmd_set_afh_host_classification {
 	uint8_t  map[10];
