@@ -472,6 +472,46 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "Filename");
 }
 
+static void cancel_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to cancel: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Cancel successful\n");
+}
+
+static void cmd_cancel(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing transfer address argument\n");
+		return;
+	}
+
+	proxy = find_transfer(argv[1]);
+	if (!proxy) {
+		rl_printf("Transfer %s not available\n", argv[1]);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Cancel", NULL, cancel_reply, NULL,
+							NULL) == FALSE) {
+		rl_printf("Failed to cancel transfer\n");
+		return;
+	}
+
+	rl_printf("Attempting to cancel transfer %s\n",
+						g_dbus_proxy_get_path(proxy));
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -484,6 +524,7 @@ static const struct {
 	{ "show",         "[session]", cmd_show, "Session information" },
 	{ "select",       "<session>", cmd_select, "Select default session" },
 	{ "info",         "<transfer>", cmd_info, "Transfer information" },
+	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
