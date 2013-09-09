@@ -22,7 +22,6 @@ AC_DEFUN([COMPILER_FLAGS], [
 		with_cflags="$with_cflags -Wcast-align"
 		with_cflags="$with_cflags -DG_DISABLE_DEPRECATED"
 	fi
-
 	AC_SUBST([WARNING_CFLAGS], $with_cflags)
 ])
 
