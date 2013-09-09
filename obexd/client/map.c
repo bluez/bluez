@@ -894,7 +894,17 @@ static void parse_type(struct map_msg *msg, const char *value)
 		return;
 
 	g_free(msg->type);
-	msg->type = g_strdup(value);
+
+	if (strcasecmp(value, "SMS_GSM") == 0)
+		msg->type = g_strdup("sms-gsm");
+	else if (strcasecmp(value, "SMS_CDMA") == 0)
+		msg->type = g_strdup("sms-cdma");
+	else if (strcasecmp(value, "EMAIL") == 0)
+		msg->type = g_strdup("email");
+	else if (strcasecmp(value, "MMS") == 0)
+		msg->type = g_strdup("mms");
+	else
+		msg->type = NULL;
 
 	g_dbus_emit_property_changed(conn, msg->path,
 						MAP_MSG_INTERFACE, "Type");
