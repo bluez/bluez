@@ -519,6 +519,8 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &arg, DBUS_TYPE_INVALID);
 
 	/* Sender is always the owner */
+	if (sender == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	for (current = listeners; current != NULL; current = current->next) {
 		data = current->data;
