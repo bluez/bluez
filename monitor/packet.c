@@ -3380,6 +3380,36 @@ static void read_num_supported_iac_rsp(const void *data, uint8_t size)
 	print_field("Number of IAC: %d", rsp->num_iac);
 }
 
+static void read_page_scan_period_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_page_scan_period_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_pscan_period_mode(rsp->mode);
+}
+
+static void write_page_scan_period_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_page_scan_period_mode *cmd = data;
+
+	print_pscan_period_mode(cmd->mode);
+}
+
+static void read_page_scan_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_page_scan_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_pscan_mode(rsp->mode);
+}
+
+static void write_page_scan_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_page_scan_mode *cmd = data;
+
+	print_pscan_mode(cmd->mode);
+}
+
 static void set_afh_host_classification_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_afh_host_classification *cmd = data;
@@ -4578,10 +4608,18 @@ static const struct opcode_data opcode_table[] = {
 				read_num_supported_iac_rsp, 2, true },
 	{ 0x0c39,  91, "Read Current IAC LAP" },
 	{ 0x0c3a,  92, "Write Current IAC LAP" },
-	{ 0x0c3b,  93, "Read Page Scan Period Mode" },
-	{ 0x0c3c,  94, "Write Page Scan Period Mode" },
-	{ 0x0c3d,  95, "Read Page Scan Mode" },
-	{ 0x0c3e,  96, "Write Page Scan Mode" },
+	{ 0x0c3b,  93, "Read Page Scan Period Mode",
+				null_cmd, 0, true,
+				read_page_scan_period_mode_rsp, 2, true },
+	{ 0x0c3c,  94, "Write Page Scan Period Mode",
+				write_page_scan_period_mode_cmd, 1, true,
+				status_rsp, 1, true },
+	{ 0x0c3d,  95, "Read Page Scan Mode",
+				null_cmd, 0, true,
+				read_page_scan_mode_rsp, 2, true },
+	{ 0x0c3e,  96, "Write Page Scan Mode",
+				write_page_scan_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c3f,  97, "Set AFH Host Channel Classification",
 				set_afh_host_classification_cmd, 10, true,
 				status_rsp, 1, true },
