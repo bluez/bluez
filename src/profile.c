@@ -678,20 +678,9 @@ static struct ext_profile *find_ext_profile(const char *owner,
 	return NULL;
 }
 
-static void ext_cancel(struct ext_profile *ext)
-{
-	DBusMessage *msg;
-
-	msg = dbus_message_new_method_call(ext->owner, ext->path,
-						"org.bluez.Profile1", "Cancel");
-	if (msg)
-		g_dbus_send_message(btd_get_dbus_connection(), msg);
-}
-
 static void ext_io_destroy(gpointer p)
 {
 	struct ext_io *ext_io = p;
-	struct ext_profile *ext = ext_io->ext;
 
 	if (ext_io->io_id > 0)
 		g_source_remove(ext_io->io_id);
@@ -711,7 +700,6 @@ static void ext_io_destroy(gpointer p)
 	if (ext_io->pending) {
 		dbus_pending_call_cancel(ext_io->pending);
 		dbus_pending_call_unref(ext_io->pending);
-		ext_cancel(ext);
 	}
 
 	if (ext_io->resolving)
@@ -783,9 +771,6 @@ static void new_conn_reply(DBusPendingCall *call, void *user_data)
 
 	btd_service_connecting_complete(conn->service, -ECONNREFUSED);
 
-	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
-		ext_cancel(ext);
-
 	dbus_error_free(&err);
 
 	ext->conns = g_slist_remove(ext->conns, conn);
@@ -816,9 +801,6 @@ static void disconn_reply(DBusPendingCall *call, void *user_data)
 						err.name, err.message);
 
 	btd_service_disconnecting_complete(conn->service, -ECONNREFUSED);
-
-	if (dbus_error_has_name(&err, DBUS_ERROR_NO_REPLY))
-		ext_cancel(ext);
 
 	dbus_error_free(&err);
 
