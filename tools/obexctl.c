@@ -530,17 +530,10 @@ static GDBusProxy *find_opp(const char *path)
 	return NULL;
 }
 
-static void print_transfer_iter(DBusMessageIter *iter)
+static void print_dict_iter(DBusMessageIter *iter)
 {
 	DBusMessageIter dict;
-	const char *path;
 	int ctype;
-
-	dbus_message_iter_get_basic(iter, &path);
-
-	rl_printf("Transfer %s\n", path);
-
-	dbus_message_iter_next(iter);
 
 	ctype = dbus_message_iter_get_arg_type(iter);
 	if (ctype != DBUS_TYPE_ARRAY)
@@ -567,6 +560,19 @@ static void print_transfer_iter(DBusMessageIter *iter)
 
 		dbus_message_iter_next(&dict);
 	}
+}
+
+static void print_transfer_iter(DBusMessageIter *iter)
+{
+	const char *path;
+
+	dbus_message_iter_get_basic(iter, &path);
+
+	rl_printf("Transfer %s\n", path);
+
+	dbus_message_iter_next(iter);
+
+	print_dict_iter(iter);
 }
 
 static void send_reply(DBusMessage *message, void *user_data)
@@ -686,6 +692,55 @@ static void cmd_cd(int argc, char *argv[])
 	rl_printf("Attempting to ChangeFolder to %s\n", argv[1]);
 }
 
+static void list_folder_reply(DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter, array;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to ListFolder: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_INVALID) {
+		print_dict_iter(&array);
+		dbus_message_iter_next(&array);
+	}
+}
+
+static void cmd_ls(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "ListFolder", NULL,
+						list_folder_reply, NULL,
+						NULL) == FALSE) {
+		rl_printf("Failed to ls\n");
+		return;
+	}
+
+	rl_printf("Attempting to ListFolder\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -701,6 +756,7 @@ static const struct {
 	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
+	{ "ls",           NULL,       cmd_ls, "List current folder" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
