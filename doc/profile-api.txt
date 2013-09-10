@@ -108,7 +108,7 @@ Service		unique name
 Interface	org.bluez.Profile1
 Object path	freely definable
 
-Methods		void Release()
+Methods		void Release() [noreply]
 
 			This method gets called when the service daemon
 			unregisters the profile. A profile can use it to do
