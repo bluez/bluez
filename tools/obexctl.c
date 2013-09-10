@@ -53,12 +53,14 @@
 #define OBEX_TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
 #define OBEX_CLIENT_INTERFACE "org.bluez.obex.Client1"
 #define OBEX_OPP_INTERFACE "org.bluez.obex.ObjectPush1"
+#define OBEX_FTP_INTERFACE "org.bluez.obex.FileTransfer1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_session;
 static GSList *sessions = NULL;
 static GSList *opps = NULL;
+static GSList *ftps = NULL;
 static GSList *transfers = NULL;
 static GDBusProxy *client = NULL;
 
@@ -879,6 +881,13 @@ static void opp_added(GDBusProxy *proxy)
 	print_proxy(proxy, "ObjectPush", COLORED_NEW);
 }
 
+static void ftp_added(GDBusProxy *proxy)
+{
+	ftps = g_slist_append(ftps, proxy);
+
+	print_proxy(proxy, "FileTransfer", COLORED_NEW);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -893,6 +902,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		transfer_added(proxy);
 	else if (!strcmp(interface, OBEX_OPP_INTERFACE))
 		opp_added(proxy);
+	else if (!strcmp(interface, OBEX_FTP_INTERFACE))
+		ftp_added(proxy);
 }
 
 static void client_removed(GDBusProxy *proxy)
@@ -927,6 +938,13 @@ static void opp_removed(GDBusProxy *proxy)
 	opps = g_slist_remove(opps, proxy);
 }
 
+static void ftp_removed(GDBusProxy *proxy)
+{
+	print_proxy(proxy, "FileTransfer", COLORED_DEL);
+
+	ftps = g_slist_remove(ftps, proxy);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -941,6 +959,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		transfer_removed(proxy);
 	else if (!strcmp(interface, OBEX_OPP_INTERFACE))
 		opp_removed(proxy);
+	else if (!strcmp(interface, OBEX_FTP_INTERFACE))
+		ftp_removed(proxy);
 }
 
 static void session_property_changed(GDBusProxy *proxy, const char *name,
