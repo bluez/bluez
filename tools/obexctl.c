@@ -622,6 +622,70 @@ static void cmd_send(int argc, char *argv[])
 						g_dbus_proxy_get_path(proxy));
 }
 
+static void change_folder_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to ChangeFolder: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("ChangeFolder successful\n");
+}
+
+static void change_folder_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *folder = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+}
+
+static GDBusProxy *find_ftp(const char *path)
+{
+	GSList *l;
+
+	for (l = ftps; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static void cmd_cd(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	if (argc < 2) {
+		rl_printf("Missing path argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "ChangeFolder", change_folder_setup,
+					change_folder_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to ChangeFolder\n");
+		return;
+	}
+
+	rl_printf("Attempting to ChangeFolder to %s\n", argv[1]);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -636,6 +700,7 @@ static const struct {
 	{ "info",         "<transfer>", cmd_info, "Transfer information" },
 	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
+	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
