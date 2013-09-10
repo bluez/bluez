@@ -145,11 +145,3 @@ Methods		void Release() [noreply]
 
 			Possible errors: org.bluez.Error.Rejected
 			                 org.bluez.Error.Canceled
-
-		void Cancel()
-
-			This method gets called to indicate that the profile
-			request failed before a reply was returned.
-
-			All request are queued and there will be only one
-			pending pequest at a time per profile.
