@@ -718,7 +718,7 @@ gboolean g_attrib_unregister(GAttrib *attrib, guint id)
 	GSList *l;
 
 	if (id == 0) {
-		warn("%s: invalid id", __FUNCTION__);
+		warn("%s: invalid id", __func__);
 		return FALSE;
 	}
 

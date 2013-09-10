@@ -40,7 +40,7 @@ extern guint gobex_debug;
 #define g_obex_debug(level, format, ...) \
 	if (gobex_debug & level) \
 		g_log("gobex", G_LOG_LEVEL_DEBUG, "%s:%s() " format, __FILE__, \
-						__FUNCTION__, ## __VA_ARGS__)
+						__func__, ## __VA_ARGS__)
 
 static inline void g_obex_dump(guint level, const char *prefix,
 					const void *buf, gsize len)

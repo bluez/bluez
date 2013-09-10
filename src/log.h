@@ -55,5 +55,5 @@ void __btd_enable_debug(struct btd_debug_desc *start,
 		.file = __FILE__, .flags = BTD_DEBUG_FLAG_DEFAULT, \
 	}; \
 	if (__btd_debug_desc.flags & BTD_DEBUG_FLAG_PRINT) \
-		btd_debug("%s:%s() " fmt,  __FILE__, __FUNCTION__ , ## arg); \
+		btd_debug("%s:%s() " fmt,  __FILE__, __func__ , ## arg); \
 } while (0)
