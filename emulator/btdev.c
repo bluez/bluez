@@ -1017,6 +1017,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_afh_assessment_mode raam;
 	struct bt_hci_rsp_read_ext_inquiry_response reir;
 	struct bt_hci_rsp_read_simple_pairing_mode rspm;
+	struct bt_hci_rsp_read_local_oob_data rlod;
 	struct bt_hci_rsp_read_inquiry_resp_tx_power rirtp;
 	struct bt_hci_rsp_read_le_host_supported rlhs;
 	struct bt_hci_rsp_read_sync_train_params rstp;
@@ -1427,6 +1428,13 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		btdev->simple_pairing_mode = wspm->mode;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_LOCAL_OOB_DATA:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		rlod.status = BT_HCI_ERR_SUCCESS;
+		cmd_complete(btdev, opcode, &rlod, sizeof(rlod));
 		break;
 
 	case BT_HCI_CMD_READ_INQUIRY_RESP_TX_POWER:
