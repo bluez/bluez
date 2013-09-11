@@ -35,6 +35,7 @@
 #include <sys/wait.h>
 #include <sys/prctl.h>
 #include <sys/ioctl.h>
+#include <termios.h>
 
 #include "display.h"
 
