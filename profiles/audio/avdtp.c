@@ -41,7 +41,6 @@
 #include <bluetooth/sdp_lib.h>
 
 #include <glib.h>
-#include <dbus/dbus.h>
 #include <btio/btio.h>
 
 #include "log.h"
@@ -426,8 +425,6 @@ struct avdtp {
 
 	/* Attempt stream setup instead of disconnecting */
 	gboolean stream_setup;
-
-	DBusPendingCall *pending_auth;
 };
 
 static GSList *servers = NULL;
@@ -2325,12 +2322,8 @@ static struct avdtp *avdtp_get_internal(struct btd_device *device)
 		return NULL;
 
 	session = find_session(server->sessions, device);
-	if (session) {
-		if (session->pending_auth)
-			return NULL;
-		else
-			return session;
-	}
+	if (session)
+		return session;
 
 	session = g_new0(struct avdtp, 1);
 
