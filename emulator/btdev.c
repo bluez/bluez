@@ -1356,6 +1356,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_WRITE_CURRENT_IAC_LAP:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
 		break;
