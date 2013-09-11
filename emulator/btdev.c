@@ -250,6 +250,7 @@ static void set_common_commands_bredrle(struct btdev *btdev)
 {
 	btdev->commands[0]  |= 0x20;	/* Disconnect */
 	btdev->commands[2]  |= 0x80;	/* Read Remote Version Information */
+	btdev->commands[10] |= 0x40;	/* Host Buffer Size */
 	btdev->commands[15] |= 0x02;	/* Read BD ADDR */
 }
 
@@ -261,6 +262,7 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[0]  |= 0x01;	/* Inquiry */
 	btdev->commands[0]  |= 0x02;	/* Inquiry Cancel */
 	btdev->commands[0]  |= 0x10;	/* Create Connection */
+	btdev->commands[0]  |= 0x40;	/* Add SCO Connection */
 	btdev->commands[0]  |= 0x80;	/* Cancel Create Connection */
 	btdev->commands[1]  |= 0x01;	/* Accept Connection Request */
 	btdev->commands[1]  |= 0x02;	/* Reject Connection Request */
@@ -284,12 +286,15 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[7]  |= 0x80;	/* Write Scan Enable */
 	btdev->commands[8]  |= 0x01;	/* Read Page Scan Activity */
 	btdev->commands[8]  |= 0x02;	/* Write Page Scan Activity */
+	btdev->commands[8]  |= 0x04;	/* Read Inquiry Scan Activity */
+	btdev->commands[8]  |= 0x08;	/* Write Inquiry Scan Activity */
 	btdev->commands[8]  |= 0x10;	/* Read Authentication Enable */
 	btdev->commands[8]  |= 0x20;	/* Write Authentication Enable */
 	btdev->commands[9]  |= 0x01;	/* Read Class Of Device */
 	btdev->commands[9]  |= 0x02;	/* Write Class Of Device */
 	btdev->commands[9]  |= 0x04;	/* Read Voice Setting */
 	btdev->commands[9]  |= 0x08;	/* Write Voice Setting */
+	btdev->commands[11] |= 0x10;	/* Write Current IAC LAP */
 	btdev->commands[12] |= 0x40;	/* Read Inquiry Mode */
 	btdev->commands[12] |= 0x80;	/* Write Inquiry Mode */
 	btdev->commands[13] |= 0x01;	/* Read Page Scan Type */
@@ -298,10 +303,13 @@ static void set_bredr_commands(struct btdev *btdev)
 	btdev->commands[13] |= 0x08;	/* Write AFH Assess Mode */
 	btdev->commands[14] |= 0x40;	/* Read Local Extended Features */
 	btdev->commands[15] |= 0x01;	/* Read Country Code */
+	btdev->commands[16] |= 0x04;	/* Enable Device Under Test Mode */
+	btdev->commands[16] |= 0x08;	/* Setup Synchronous Connection */
 	btdev->commands[17] |= 0x01;	/* Read Extended Inquiry Response */
 	btdev->commands[17] |= 0x02;	/* Write Extended Inquiry Response */
 	btdev->commands[17] |= 0x20;	/* Read Simple Pairing Mode */
 	btdev->commands[17] |= 0x40;	/* Write Simple Pairing Mode */
+	btdev->commands[17] |= 0x80;	/* Read Local OOB Data */
 	btdev->commands[18] |= 0x01;	/* Read Inquiry Response TX Power */
 	btdev->commands[18] |= 0x02;	/* Write Inquiry Response TX Power */
 	btdev->commands[23] |= 0x04;	/* Read Data Block Size */
@@ -317,12 +325,18 @@ static void set_le_commands(struct btdev *btdev)
 	btdev->commands[25] |= 0x01;	/* LE Set Event Mask */
 	btdev->commands[25] |= 0x02;	/* LE Read Buffer Size */
 	btdev->commands[25] |= 0x04;	/* LE Read Local Features */
+	btdev->commands[25] |= 0x20;	/* LE Set Adv Parameters */
 	btdev->commands[25] |= 0x40;	/* LE Read Adv TX Power */
 	btdev->commands[25] |= 0x80;	/* LE Set Adv Data */
+	btdev->commands[26] |= 0x02;	/* LE Set Adv Enable */
 	btdev->commands[26] |= 0x04;	/* LE Set Scan Parameters */
 	btdev->commands[26] |= 0x08;	/* LE Set Scan Enable */
 	btdev->commands[26] |= 0x40;	/* LE Read White List Size */
+	btdev->commands[27] |= 0x80;	/* LE Rand */
 	btdev->commands[28] |= 0x08;	/* LE Read Supported States */
+	btdev->commands[28] |= 0x10;	/* LE Receiver Test */
+	btdev->commands[28] |= 0x20;	/* LE Transmitter Test */
+	btdev->commands[28] |= 0x40;	/* LE Test End */
 }
 
 static void set_bredrle_commands(struct btdev *btdev)
