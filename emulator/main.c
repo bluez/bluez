@@ -51,6 +51,9 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbtvirt [options]\n");
 	printf("options:\n"
+		"\t-l [num]              Number of local controllers\n"
+		"\t-L                    Create LE only controller\n"
+		"\t-B                    Create BR/EDR only controller\n"
 		"\t-h, --help            Show help options\n");
 }
 
