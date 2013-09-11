@@ -33,8 +33,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <assert.h>
-#include <signal.h>
-#include <netinet/in.h>
 
 #include <bluetooth/bluetooth.h>
 #include <bluetooth/sdp.h>
@@ -49,7 +47,6 @@
 #include "src/adapter.h"
 #include "src/device.h"
 
-#include "control.h"
 #include "avdtp.h"
 #include "sink.h"
 #include "source.h"
