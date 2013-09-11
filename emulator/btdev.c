@@ -1725,6 +1725,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_SETUP_SYNC_CONN:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		ssc = data;
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
@@ -1733,6 +1735,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		break;
 
 	case BT_HCI_CMD_ADD_SCO_CONN:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
 		sco_conn_complete(btdev, BT_HCI_ERR_SUCCESS);
 		break;
 
