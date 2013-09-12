@@ -942,6 +942,56 @@ static void cmd_cp(int argc, char *argv[])
 	return cmd_put(argc, argv);
 }
 
+static void move_file_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to MoveFile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("MoveFile successful\n");
+}
+
+static void cmd_mv(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct cp_args *args;
+
+	if (!check_default_session())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing source file argument\n");
+		return;
+	}
+
+	if (argc < 3) {
+		rl_printf("Missing target file argument\n");
+		return;
+	}
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	args = cp_new(argv);
+
+	if (g_dbus_proxy_method_call(proxy, "MoveFile", cp_setup,
+				move_file_reply, args, cp_free) == FALSE) {
+		rl_printf("Failed to MoveFile\n");
+		return;
+	}
+
+	rl_printf("Attempting to MoveFile\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -960,6 +1010,8 @@ static const struct {
 	{ "ls",           NULL,       cmd_ls, "List current folder" },
 	{ "cp",          "<source file> <destination file>",   cmd_cp,
 				"Copy source file to destination file" },
+	{ "mv",          "<source file> <destination file>",   cmd_mv,
+				"Move source file to destination file" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
