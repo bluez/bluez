@@ -35,6 +35,9 @@
 
 #include <glib.h>
 
+#include <bluetooth/bluetooth.h>
+#include <bluetooth/hci.h>
+
 #include "monitor/bt.h"
 #include "emulator/btdev.h"
 #include "emulator/bthost.h"
@@ -201,6 +204,8 @@ static guint create_source_btdev(int fd, struct btdev *btdev)
 static bool create_vhci(struct hciemu *hciemu)
 {
 	struct btdev *btdev;
+	uint8_t create_req[2];
+	ssize_t written;
 	int fd;
 
 	btdev = btdev_create(hciemu->btdev_type, 0x00);
@@ -211,6 +216,15 @@ static bool create_vhci(struct hciemu *hciemu)
 
 	fd = open("/dev/vhci", O_RDWR | O_NONBLOCK | O_CLOEXEC);
 	if (fd < 0) {
+		btdev_destroy(btdev);
+		return false;
+	}
+
+	create_req[0] = HCI_VENDOR_PKT;
+	create_req[1] = HCI_BREDR;
+	written = write(fd, create_req, sizeof(create_req));
+	if (written < 0) {
+		close(fd);
 		btdev_destroy(btdev);
 		return false;
 	}
