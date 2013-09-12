@@ -741,6 +741,207 @@ static void cmd_ls(int argc, char *argv[])
 	rl_printf("Attempting to ListFolder\n");
 }
 
+struct cp_args {
+	char *source;
+	char *target;
+};
+
+static void cp_free(void *data)
+{
+	struct cp_args *args = data;
+
+	g_free(args->source);
+	g_free(args->target);
+	g_free(args);
+}
+
+static struct cp_args *cp_new(char *argv[])
+{
+	struct cp_args *args;
+	const char *source;
+	const char *target;
+
+	source = rindex(argv[1], ':');
+	if (source == NULL)
+		source = argv[1];
+	else
+		source++;
+
+	target = rindex(argv[2], ':');
+	if (target == NULL)
+		target = argv[2];
+	else
+		target++;
+
+	args = g_new0(struct cp_args, 1);
+	args->source = g_strdup(source);
+	args->target = g_strdup(target);
+
+	return args;
+}
+
+static void cp_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct cp_args *args = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->source);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->target);
+}
+
+static void copy_file_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to CopyFile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("CopyFile successful\n");
+}
+
+static void cmd_copy(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct cp_args *args;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	args = cp_new(argv);
+
+	if (g_dbus_proxy_method_call(proxy, "CopyFile", cp_setup,
+				copy_file_reply, args, cp_free) == FALSE) {
+		rl_printf("Failed to CopyFile\n");
+		return;
+	}
+
+	rl_printf("Attempting to CopyFile\n");
+}
+
+static void get_file_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to GetFile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_transfer_iter(&iter);
+}
+
+static void get_file_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct cp_args *args = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->target);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->source);
+}
+
+static void cmd_get(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct cp_args *args;
+
+	if (rindex(argv[2], ':') == NULL)
+		return cmd_copy(argc, argv);
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	args = cp_new(argv);
+
+	if (g_dbus_proxy_method_call(proxy, "GetFile", get_file_setup,
+				get_file_reply, args, cp_free) == FALSE) {
+		rl_printf("Failed to GetFile\n");
+		return;
+	}
+
+	rl_printf("Attempting to GetFile\n");
+}
+
+static void put_file_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to PutFile: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_transfer_iter(&iter);
+}
+
+static void cmd_put(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+	struct cp_args *args;
+
+	if (rindex(argv[2], ':') != NULL) {
+		rl_printf("Invalid target file argument\n");
+		return;
+	}
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	args = cp_new(argv);
+
+	if (g_dbus_proxy_method_call(proxy, "PutFile", cp_setup, put_file_reply,
+						args, cp_free) == FALSE) {
+		rl_printf("Failed to PutFile\n");
+		return;
+	}
+
+	rl_printf("Attempting to PutFile\n");
+}
+
+static void cmd_cp(int argc, char *argv[])
+{
+	if (!check_default_session())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing source file argument\n");
+		return;
+	}
+
+	if (argc < 3) {
+		rl_printf("Missing target file argument\n");
+		return;
+	}
+
+	if (rindex(argv[1], ':') == NULL)
+		return cmd_get(argc, argv);
+
+	return cmd_put(argc, argv);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -757,6 +958,8 @@ static const struct {
 	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
 	{ "ls",           NULL,       cmd_ls, "List current folder" },
+	{ "cp",          "<source file> <destination file>",   cmd_cp,
+				"Copy source file to destination file" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
