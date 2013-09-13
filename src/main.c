@@ -282,10 +282,10 @@ static void init_defaults(void)
 	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
 		return;
 
-        main_opts.did_source = 0x0002;		/* USB */
-        main_opts.did_vendor = 0x1d6b;		/* Linux Foundation */
-        main_opts.did_product = 0x0246;		/* BlueZ */
-        main_opts.did_version = (major << 8 | minor);
+	main_opts.did_source = 0x0002;		/* USB */
+	main_opts.did_vendor = 0x1d6b;		/* Linux Foundation */
+	main_opts.did_product = 0x0246;		/* BlueZ */
+	main_opts.did_version = (major << 8 | minor);
 }
 
 static GMainLoop *event_loop;
