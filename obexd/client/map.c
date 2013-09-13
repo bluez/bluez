@@ -162,18 +162,18 @@ static void simple_cb(struct obc_session *session,
 						struct obc_transfer *transfer,
 						GError *err, void *user_data)
 {
+	struct pending_request *request = user_data;
 	DBusMessage *reply;
-	struct map_data *map = user_data;
 
 	if (err != NULL)
-		reply = g_dbus_create_error(map->msg,
+		reply = g_dbus_create_error(request->msg,
 						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 	else
-		reply = dbus_message_new_method_return(map->msg);
+		reply = dbus_message_new_method_return(request->msg);
 
 	g_dbus_send_message(conn, reply);
-	dbus_message_unref(map->msg);
+	pending_request_free(request);
 }
 
 static DBusMessage *map_setpath(DBusConnection *connection,
@@ -181,6 +181,7 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 {
 	struct map_data *map = user_data;
 	const char *folder;
+	struct pending_request *request;
 	GError *err = NULL;
 
 	if (dbus_message_get_args(message, NULL, DBUS_TYPE_STRING, &folder,
@@ -189,17 +190,18 @@ static DBusMessage *map_setpath(DBusConnection *connection,
 					ERROR_INTERFACE ".InvalidArguments",
 					NULL);
 
-	obc_session_setpath(map->session, folder, simple_cb, map, &err);
+	request = pending_request_new(map, message);
+
+	obc_session_setpath(map->session, folder, simple_cb, request, &err);
 	if (err != NULL) {
 		DBusMessage *reply;
 		reply =  g_dbus_create_error(message,
 						ERROR_INTERFACE ".Failed",
 						"%s", err->message);
 		g_error_free(err);
+		pending_request_free(request);
 		return reply;
 	}
-
-	map->msg = dbus_message_ref(message);
 
 	return NULL;
 }
