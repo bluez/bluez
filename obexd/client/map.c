@@ -101,6 +101,11 @@ struct map_data {
 	uint8_t supported_message_types;
 };
 
+struct pending_request {
+	struct map_data *map;
+	DBusMessage *msg;
+};
+
 #define MAP_MSG_FLAG_PRIORITY	0x01
 #define MAP_MSG_FLAG_READ	0x02
 #define MAP_MSG_FLAG_SENT	0x04
@@ -133,6 +138,25 @@ struct map_parser {
 };
 
 static DBusConnection *conn = NULL;
+
+static struct pending_request *pending_request_new(struct map_data *map,
+							DBusMessage *message)
+{
+	struct pending_request *p;
+
+	p = g_new0(struct pending_request, 1);
+	p->map = map;
+	p->msg = dbus_message_ref(message);
+
+	return p;
+}
+
+static void pending_request_free(struct pending_request *p)
+{
+	dbus_message_unref(p->msg);
+
+	g_free(p);
+}
 
 static void simple_cb(struct obc_session *session,
 						struct obc_transfer *transfer,
