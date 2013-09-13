@@ -95,7 +95,6 @@ static const char * const filter_list[] = {
 
 struct map_data {
 	struct obc_session *session;
-	DBusMessage *msg;
 	GHashTable *messages;
 	int16_t mas_instance_id;
 	uint8_t supported_message_types;
