@@ -152,6 +152,7 @@ static DBusMessage *profile_new_connection(DBusConnection *conn,
 	DBG("device %s", device);
 
 	connect_event(io, NULL, data);
+	g_io_channel_unref(io);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
