@@ -1,3 +1,14 @@
+ver 5.9:
+	Fix issue with network service and adapter removal.
+	Fix issue with misleading OBEX error messages.
+	Fix issue with OBEX transport reference handling.
+	Fix issue with memory leak with MAP event handler.
+	Fix issue with missing MAP property changed signal.
+	Fix issue with message type property values.
+	Fix issue with empty UUID list for devices.
+	Fix issue with profile agent cancel method.
+	Remove dependency on USB library.
+
 ver 5.8:
 	Fix issue with missing OBEX session properties.
 	Fix issue with missing SDP service refresh.
