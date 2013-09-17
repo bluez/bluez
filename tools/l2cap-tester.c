@@ -285,6 +285,18 @@ static const struct l2cap_server_data l2cap_server_nval_cid_test1 = {
 	.expect_rsp_len = sizeof(l2cap_nval_cid_rsp),
 };
 
+static const uint8_t l2cap_nval_cfg_req[] = { 0x12, 0x34, 0x00, 0x00 };
+static const uint8_t l2cap_nval_cfg_rsp[] = { 0x02, 0x00 };
+
+static const struct l2cap_server_data l2cap_server_nval_cid_test2 = {
+	.send_req_code = BT_L2CAP_PDU_CONFIG_REQ,
+	.send_req = l2cap_nval_cfg_req,
+	.send_req_len = sizeof(l2cap_nval_cfg_req),
+	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
+	.expect_rsp = l2cap_nval_cfg_rsp,
+	.expect_rsp_len = sizeof(l2cap_nval_cfg_rsp),
+};
+
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
 					const void *param, uint8_t len,
 					void *user_data)
@@ -641,8 +653,11 @@ int main(int argc, char *argv[])
 	test_l2cap("L2CAP BR/EDR Server - Invalid PDU",
 				&l2cap_server_nval_pdu_test1, setup_powered,
 				test_bredr_server);
-	test_l2cap("L2CAP BR/EDR Server - Invalid CID",
+	test_l2cap("L2CAP BR/EDR Server - Invalid Disconnect CID",
 				&l2cap_server_nval_cid_test1, setup_powered,
+				test_bredr_server);
+	test_l2cap("L2CAP BR/EDR Server - Invalid Config CID",
+				&l2cap_server_nval_cid_test2, setup_powered,
 				test_bredr_server);
 
 	return tester_run();
