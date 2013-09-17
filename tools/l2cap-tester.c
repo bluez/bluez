@@ -262,12 +262,15 @@ static const struct l2cap_server_data l2cap_server_nval_psm_test = {
 };
 
 static const uint8_t l2cap_nval_conn_req[] = { 0x00 };
+static const uint8_t l2cap_nval_pdu_rsp[] = { 0x00, 0x00 };
 
 static const struct l2cap_server_data l2cap_server_nval_pdu_test1 = {
 	.send_req_code = BT_L2CAP_PDU_CONN_REQ,
 	.send_req = l2cap_nval_conn_req,
 	.send_req_len = sizeof(l2cap_nval_conn_req),
 	.expect_rsp_code = BT_L2CAP_PDU_CMD_REJECT,
+	.expect_rsp = l2cap_nval_pdu_rsp,
+	.expect_rsp_len = sizeof(l2cap_nval_pdu_rsp),
 };
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
