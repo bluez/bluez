@@ -556,7 +556,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 		tester_print("Sending L2CAP Request from client");
 
 		bthost = hciemu_client_get_host(data->hciemu);
-		bthost_l2cap_req(bthost, handle, BT_L2CAP_PDU_CONN_REQ,
+		bthost_l2cap_req(bthost, handle, l2data->send_req_code,
 					l2data->send_req, l2data->send_req_len,
 					cb, data);
 	}
