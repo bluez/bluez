@@ -29,8 +29,8 @@ DID			1.3		Server, Client
 HFP			1.5		AG, HF
 HSP			1.2		AG, HS
 GAVDTP			1.2		Source, Sink
-AVDTP			1.2		Source, Sink
-A2DP			1.2		Source, Sink
+AVDTP			1.3		Source, Sink
+A2DP			1.3		Source, Sink
 AVCTP			1.3		CT, TG
 AVRCP			1.5		CT, TG
 
