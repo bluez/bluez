@@ -483,24 +483,16 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 								sizeof(cmd));
 }
 
-static void evt_conn_complete(struct bthost *bthost, const void *data,
-								uint8_t len)
+static void init_conn(struct bthost *bthost, uint16_t handle)
 {
-	const struct bt_hci_evt_conn_complete *ev = data;
 	struct btconn *conn;
-
-	if (len < sizeof(*ev))
-		return;
-
-	if (ev->status)
-		return;
 
 	conn = malloc(sizeof(*conn));
 	if (!conn)
 		return;
 
 	memset(conn, 0, sizeof(*conn));
-	conn->handle = le16_to_cpu(ev->handle);
+	conn->handle = handle;
 	conn->next_cid = 0x0040;
 
 	conn->next = bthost->conns;
@@ -508,6 +500,20 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 
 	if (bthost->new_conn_cb)
 		bthost->new_conn_cb(conn->handle, bthost->new_conn_data);
+}
+
+static void evt_conn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_conn_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	init_conn(bthost, le16_to_cpu(ev->handle));
 }
 
 static void evt_disconn_complete(struct bthost *bthost, const void *data,
