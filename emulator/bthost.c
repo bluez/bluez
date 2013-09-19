@@ -268,7 +268,7 @@ static uint8_t l2cap_sig_send(struct bthost *bthost, struct btconn *conn,
 {
 	static uint8_t next_ident = 1;
 	struct bt_l2cap_hdr_sig *hdr;
-	uint16_t pkt_len;
+	uint16_t pkt_len, cid;
 	void *pkt_data;
 
 	pkt_len = sizeof(*hdr) + len;
@@ -291,7 +291,12 @@ static uint8_t l2cap_sig_send(struct bthost *bthost, struct btconn *conn,
 	if (len > 0)
 		memcpy(pkt_data + sizeof(*hdr), data, len);
 
-	send_acl(bthost, conn->handle, 0x0001, pkt_data, pkt_len);
+	if (conn->addr_type == BDADDR_BREDR)
+		cid = 0x0001;
+	else
+		cid = 0x0005;
+
+	send_acl(bthost, conn->handle, cid, pkt_data, pkt_len);
 
 	free(pkt_data);
 
