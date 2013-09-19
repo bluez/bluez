@@ -783,6 +783,51 @@ static void sco_conn_complete(struct btdev *btdev, uint8_t status)
 	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 }
 
+static void le_conn_complete(struct btdev *btdev,
+					const uint8_t *bdaddr, uint8_t status)
+{
+	char buf[1 + sizeof(struct bt_hci_evt_le_conn_complete)];
+	struct bt_hci_evt_le_conn_complete *cc = (void *) &buf[1];
+
+	memset(buf, 0, sizeof(buf));
+
+	buf[0] = BT_HCI_EVT_LE_CONN_COMPLETE;
+
+	if (!status) {
+		struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
+
+		btdev->conn = remote;
+		remote->conn = btdev;
+
+		cc->status = status;
+		memcpy(cc->peer_addr, btdev->bdaddr, 6);
+
+		cc->role = 0x01;
+		cc->handle = cpu_to_le16(42);
+
+		send_event(remote, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
+
+		cc->handle = cpu_to_le16(42);
+	}
+
+	cc->status = status;
+	memcpy(cc->peer_addr, bdaddr, 6);
+	cc->role = 0x00;
+
+	send_event(btdev, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
+}
+
+static void le_conn_request(struct btdev *btdev, const uint8_t *bdaddr)
+{
+	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
+
+	if (remote && remote->le_adv_enable)
+		le_conn_complete(btdev, bdaddr, 0);
+	else
+		le_conn_complete(btdev, bdaddr,
+					BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH);
+}
+
 static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 {
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
@@ -1696,6 +1741,12 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 			le_set_scan_enable_complete(btdev);
 		break;
 
+	case BT_HCI_CMD_LE_CREATE_CONN:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		cmd_status(btdev, BT_HCI_ERR_SUCCESS, opcode);
+		break;
+
 	case BT_HCI_CMD_LE_READ_WHITE_LIST_SIZE:
 		if (btdev->type == BTDEV_TYPE_BREDR)
 			goto unsupported;
@@ -1805,6 +1856,7 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_read_remote_features *rrf;
 	const struct bt_hci_cmd_read_remote_ext_features *rref;
 	const struct bt_hci_cmd_read_remote_version *rrv;
+	const struct bt_hci_cmd_le_create_conn *lecc;
 
 	switch (opcode) {
 	case BT_HCI_CMD_INQUIRY:
@@ -1879,6 +1931,13 @@ static void default_cmd_completion(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_READ_REMOTE_VERSION:
 		rrv = data;
 		remote_version_complete(btdev, le16_to_cpu(rrv->handle));
+		break;
+
+	case BT_HCI_CMD_LE_CREATE_CONN:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			return;
+		lecc = data;
+		le_conn_request(btdev, lecc->peer_addr);
 		break;
 	}
 }
