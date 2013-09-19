@@ -33,6 +33,8 @@
 #include <endian.h>
 #include <stdbool.h>
 
+#include "bluetooth/bluetooth.h"
+
 #include "monitor/bt.h"
 #include "bthost.h"
 
@@ -55,6 +57,7 @@ struct cmd_queue {
 
 struct btconn {
 	uint16_t handle;
+	uint8_t addr_type;
 	uint16_t next_cid;
 	struct l2conn *l2conns;
 	struct btconn *next;
@@ -482,7 +485,7 @@ static void evt_conn_request(struct bthost *bthost, const void *data,
 								sizeof(cmd));
 }
 
-static void init_conn(struct bthost *bthost, uint16_t handle)
+static void init_conn(struct bthost *bthost, uint16_t handle, uint8_t addr_type)
 {
 	struct btconn *conn;
 
@@ -492,6 +495,7 @@ static void init_conn(struct bthost *bthost, uint16_t handle)
 
 	memset(conn, 0, sizeof(*conn));
 	conn->handle = handle;
+	conn->addr_type = addr_type;
 	conn->next_cid = 0x0040;
 
 	conn->next = bthost->conns;
@@ -512,7 +516,7 @@ static void evt_conn_complete(struct bthost *bthost, const void *data,
 	if (ev->status)
 		return;
 
-	init_conn(bthost, le16_to_cpu(ev->handle));
+	init_conn(bthost, le16_to_cpu(ev->handle), BDADDR_BREDR);
 }
 
 static void evt_disconn_complete(struct bthost *bthost, const void *data,
@@ -562,7 +566,7 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	if (ev->status)
 		return;
 
-	init_conn(bthost, le16_to_cpu(ev->handle));
+	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr_type);
 }
 
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
