@@ -1765,6 +1765,7 @@ struct bt_hci_evt_le_long_term_key_request {
 #define BT_HCI_ERR_UNSUPPORTED_FEATURE		0x11
 #define BT_HCI_ERR_INVALID_PARAMETERS		0x12
 #define BT_HCI_ERR_UNSPECIFIED_ERROR		0x1f
+#define BT_HCI_ERR_CONN_FAILED_TO_ESTABLISH	0x3e
 
 struct bt_l2cap_hdr {
 	uint16_t len;
