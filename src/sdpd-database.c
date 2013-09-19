@@ -36,7 +36,6 @@
 
 #include "sdpd.h"
 #include "log.h"
-#include "adapter.h"
 
 static sdp_list_t *service_db;
 static sdp_list_t *access_db;
@@ -253,13 +252,6 @@ int sdp_record_remove(uint32_t handle)
 		return 0;
 
 	a = p->data;
-
-	if (bacmp(&a->device, BDADDR_ANY) != 0) {
-		struct btd_adapter *adapter = adapter_find(&a->device);
-		if (adapter)
-			adapter_service_remove(adapter, r);
-	} else
-		adapter_foreach(adapter_service_remove, r);
 
 	access_db = sdp_list_remove(access_db, a);
 	access_free(a);

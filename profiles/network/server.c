@@ -628,7 +628,7 @@ static void server_disconnect(DBusConnection *conn, void *user_data)
 	ns->watch_id = 0;
 
 	if (ns->record_id) {
-		remove_record_from_server(ns->record_id);
+		adapter_service_remove(ns->na->adapter, ns->record_id);
 		ns->record_id = 0;
 	}
 
@@ -722,7 +722,7 @@ static void server_free(void *data)
 	server_remove_sessions(ns);
 
 	if (ns->record_id)
-		remove_record_from_server(ns->record_id);
+		adapter_service_remove(ns->na->adapter, ns->record_id);
 
 	g_dbus_remove_watch(btd_get_dbus_connection(), ns->watch_id);
 	g_free(ns->name);

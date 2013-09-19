@@ -104,7 +104,7 @@ const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
 
 int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec);
-void adapter_service_remove(struct btd_adapter *adapter, void *rec);
+void adapter_service_remove(struct btd_adapter *adapter, uint32_t handle);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);
 

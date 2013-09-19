@@ -72,7 +72,7 @@ static void gatt_example_adapter_free(struct gatt_example_adapter *gadapter)
 	while (gadapter->sdp_handles != NULL) {
 		uint32_t handle = GPOINTER_TO_UINT(gadapter->sdp_handles->data);
 
-		attrib_free_sdp(handle);
+		attrib_free_sdp(gadapter->adapter, handle);
 		gadapter->sdp_handles = g_slist_remove(gadapter->sdp_handles,
 						gadapter->sdp_handles->data);
 	}

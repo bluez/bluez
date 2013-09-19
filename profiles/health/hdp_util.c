@@ -693,7 +693,8 @@ gboolean hdp_update_sdp_record(struct hdp_adapter *adapter, GSList *app_list)
 	sdp_record_t *sdp_record;
 
 	if (adapter->sdp_handler > 0)
-		remove_record_from_server(adapter->sdp_handler);
+		adapter_service_remove(adapter->btd_adapter,
+					adapter->sdp_handler);
 
 	if (app_list == NULL) {
 		adapter->sdp_handler = 0;

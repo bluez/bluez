@@ -3797,7 +3797,7 @@ static void avrcp_target_server_remove(struct btd_profile *p,
 		return;
 
 	if (server->tg_record_id != 0) {
-		remove_record_from_server(server->tg_record_id);
+		adapter_service_remove(adapter, server->tg_record_id);
 		server->tg_record_id = 0;
 	}
 
@@ -3880,7 +3880,7 @@ static void avrcp_controller_server_remove(struct btd_profile *p,
 		return;
 
 	if (server->ct_record_id != 0) {
-		remove_record_from_server(server->ct_record_id);
+		adapter_service_remove(adapter, server->ct_record_id);
 		server->ct_record_id = 0;
 	}
 

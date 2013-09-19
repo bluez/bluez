@@ -986,18 +986,21 @@ int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
 	return 0;
 }
 
-void adapter_service_remove(struct btd_adapter *adapter, void *r)
+void adapter_service_remove(struct btd_adapter *adapter, uint32_t handle)
 {
-	sdp_record_t *rec = r;
+	sdp_record_t *rec = sdp_record_find(handle);
 
 	DBG("%s", adapter->path);
 
-	adapter->services = sdp_list_remove(adapter->services, rec);
-
-	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp))
+	if (!rec)
 		return;
 
-	remove_uuid(adapter, &rec->svclass);
+	adapter->services = sdp_list_remove(adapter->services, rec);
+
+	if (sdp_list_find(adapter->services, &rec->svclass, uuid_cmp) == NULL)
+		remove_uuid(adapter, &rec->svclass);
+
+	remove_record_from_server(rec->handle);
 }
 
 static struct btd_device *adapter_create_device(struct btd_adapter *adapter,

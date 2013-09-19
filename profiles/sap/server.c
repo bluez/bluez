@@ -1320,7 +1320,7 @@ static void server_remove(struct sap_server *server)
 
 	sap_server_remove_conn(server);
 
-	remove_record_from_server(server->record_id);
+	adapter_service_remove(server->adapter, server->record_id);
 
 	if (server->listen_io) {
 		g_io_channel_shutdown(server->listen_io, TRUE, NULL);

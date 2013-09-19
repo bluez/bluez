@@ -1403,7 +1403,7 @@ void hdp_adapter_unregister(struct btd_adapter *adapter)
 	hdp_adapter = l->data;
 	adapters = g_slist_remove(adapters, hdp_adapter);
 	if (hdp_adapter->sdp_handler > 0)
-		remove_record_from_server(hdp_adapter->sdp_handler);
+		adapter_service_remove(adapter, hdp_adapter->sdp_handler);
 	release_adapter_instance(hdp_adapter);
 	btd_adapter_unref(hdp_adapter->btd_adapter);
 	g_free(hdp_adapter);
