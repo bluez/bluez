@@ -331,7 +331,7 @@ static void client_connectable_complete(uint16_t opcode, uint8_t status,
 		tester_setup_complete();
 }
 
-static void setup_powered_callback(uint8_t status, uint16_t length,
+static void setup_powered_client_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	struct test_data *data = tester_get_data();
@@ -352,7 +352,39 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 		bthost_write_scan_enable(bthost, 0x03);
 }
 
-static void setup_powered(const void *test_data)
+static void setup_powered_server_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Controller powered on");
+
+	tester_setup_complete();
+}
+
+static void setup_powered_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Powering on controller");
+
+	if (data->hciemu_type == HCIEMU_TYPE_BREDR)
+		mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+	else
+		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+			sizeof(param), param, setup_powered_client_callback,
+			NULL, NULL);
+}
+
+static void setup_powered_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char param[] = { 0x01 };
@@ -371,8 +403,8 @@ static void setup_powered(const void *test_data)
 	}
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
+			sizeof(param), param, setup_powered_server_callback,
+			NULL, NULL);
 }
 
 static void test_basic(const void *test_data)
@@ -673,31 +705,33 @@ int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
-	test_l2cap_bredr("Basic L2CAP Socket - Success", NULL, setup_powered,
-								test_basic);
+	test_l2cap_bredr("Basic L2CAP Socket - Success", NULL,
+					setup_powered_client, test_basic);
 
 	test_l2cap_bredr("L2CAP BR/EDR Client - Success",
 					&client_connect_success_test,
-					setup_powered, test_connect);
+					setup_powered_client, test_connect);
 	test_l2cap_bredr("L2CAP BR/EDR Client - Invalid PSM",
 					&client_connect_nval_psm_test,
-					setup_powered, test_connect);
+					setup_powered_client, test_connect);
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",
 					&l2cap_server_success_test,
-					setup_powered, test_bredr_server);
+					setup_powered_server,
+					test_bredr_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid PSM",
 					&l2cap_server_nval_psm_test,
-					setup_powered, test_bredr_server);
+					setup_powered_server,
+					test_bredr_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid PDU",
-				&l2cap_server_nval_pdu_test1, setup_powered,
-				test_bredr_server);
+				&l2cap_server_nval_pdu_test1,
+				setup_powered_server, test_bredr_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Disconnect CID",
-				&l2cap_server_nval_cid_test1, setup_powered,
-				test_bredr_server);
+				&l2cap_server_nval_cid_test1,
+				setup_powered_server, test_bredr_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Config CID",
-				&l2cap_server_nval_cid_test2, setup_powered,
-				test_bredr_server);
+				&l2cap_server_nval_cid_test2,
+				setup_powered_server, test_bredr_server);
 
 	return tester_run();
 }
