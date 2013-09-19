@@ -745,7 +745,6 @@ static void conn_complete(struct btdev *btdev,
 	send_event(btdev, BT_HCI_EVT_CONN_COMPLETE, &cc, sizeof(cc));
 }
 
-
 static void sync_conn_complete(struct btdev *btdev, uint16_t voice_setting,
 								uint8_t status)
 {
