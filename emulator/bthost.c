@@ -433,6 +433,8 @@ static void evt_cmd_complete(struct bthost *bthost, const void *data,
 		break;
 	case BT_HCI_CMD_WRITE_SCAN_ENABLE:
 		break;
+	case BT_HCI_CMD_LE_SET_ADV_ENABLE:
+		break;
 	default:
 		printf("Unhandled cmd_complete opcode 0x%04x\n", opcode);
 		break;
@@ -917,6 +919,11 @@ void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr)
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
 {
 	send_command(bthost, BT_HCI_CMD_WRITE_SCAN_ENABLE, &scan, 1);
+}
+
+void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
+{
+	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
 }
 
 void bthost_set_server_psm(struct bthost *bthost, uint16_t psm)
