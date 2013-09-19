@@ -552,15 +552,33 @@ static void evt_num_completed_packets(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_le_conn_complete(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const struct bt_hci_evt_le_conn_complete *ev = data;
+
+	if (len < sizeof(*ev))
+		return;
+
+	if (ev->status)
+		return;
+
+	init_conn(bthost, le16_to_cpu(ev->handle));
+}
+
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const uint8_t *event = data;
+	const void *evt_data = data + 1;
 
 	if (len < 1)
 		return;
 
 	switch (*event) {
+	case BT_HCI_EVT_LE_CONN_COMPLETE:
+		evt_le_conn_complete(bthost, evt_data, len - 1);
+		break;
 	default:
 		break;
 	}
