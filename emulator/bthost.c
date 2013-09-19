@@ -975,6 +975,48 @@ static bool l2cap_conn_param_rsp(struct bthost *bthost, struct btconn *conn,
 	return true;
 }
 
+static bool l2cap_le_conn_req(struct bthost *bthost, struct btconn *conn,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_le_conn_req *req = data;
+	struct bt_l2cap_pdu_le_conn_rsp rsp;
+	uint16_t psm;
+
+	if (len < sizeof(*req))
+		return false;
+
+	psm = le16_to_cpu(req->psm);
+
+	memset(&rsp, 0, sizeof(rsp));
+
+	rsp.mtu = 23;
+	rsp.mps = 23;
+	rsp.credits = 1;
+
+	if (bthost->server_psm && bthost->server_psm == psm)
+		rsp.dcid = cpu_to_le16(conn->next_cid++);
+	else
+		rsp.result = cpu_to_le16(0x0002); /* PSM Not Supported */
+
+	l2cap_sig_send(bthost, conn, BT_L2CAP_PDU_LE_CONN_RSP, ident, &rsp,
+								sizeof(rsp));
+
+	return true;
+}
+
+static bool l2cap_le_conn_rsp(struct bthost *bthost, struct btconn *conn,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_le_conn_rsp *rsp = data;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	bthost_add_l2cap_conn(bthost, conn, 0, le16_to_cpu(rsp->dcid));
+
+	return true;
+}
+
 static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 						const void *data, uint16_t len)
 {
@@ -1009,6 +1051,16 @@ static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 
 	case BT_L2CAP_PDU_CONN_PARAM_RSP:
 		ret = l2cap_conn_param_rsp(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_LE_CONN_REQ:
+		ret = l2cap_le_conn_req(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_LE_CONN_RSP:
+		ret = l2cap_le_conn_rsp(bthost, conn, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
