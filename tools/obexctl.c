@@ -1042,6 +1042,56 @@ static void cmd_rm(int argc, char *argv[])
 	rl_printf("Attempting to Delete\n");
 }
 
+static void create_folder_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to CreateFolder: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("CreateFolder successful\n");
+}
+
+static void create_folder_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *folder = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+}
+
+static void cmd_mkdir(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	if (argc < 2) {
+		rl_printf("Missing folder argument\n");
+		return;
+	}
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy == NULL) {
+		rl_printf("Command not supported\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "CreateFolder", create_folder_setup,
+					create_folder_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to CreateFolder\n");
+		return;
+	}
+
+	rl_printf("Attempting to CreateFolder\n");
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
@@ -1063,6 +1113,7 @@ static const struct {
 	{ "mv",          "<source file> <destination file>",   cmd_mv,
 				"Move source file to destination file" },
 	{ "rm",          "<file>",    cmd_rm, "Delete file" },
+	{ "mkdir",       "<folder>",    cmd_mkdir, "Create folder" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
