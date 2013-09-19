@@ -5622,9 +5622,13 @@ static int adapter_register(struct btd_adapter *adapter)
 
 	adapter->initialized = TRUE;
 
-	if (main_opts.did_source)
+	if (main_opts.did_source) {
+		/* DeviceID record is added by sdpd-server before any other
+		 * record is registered. */
+		adapter_service_insert(adapter, sdp_record_find(0x10000));
 		set_did(adapter, main_opts.did_vendor, main_opts.did_product,
 				main_opts.did_version, main_opts.did_source);
+	}
 
 	DBG("Adapter %s registered", adapter->path);
 
