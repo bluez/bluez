@@ -134,35 +134,6 @@ void btd_debug(const char *format, ...)
 {
 }
 
-struct btd_adapter;
-
-typedef void (*adapter_cb) (struct btd_adapter *adapter, gpointer user_data);
-
-void adapter_foreach(adapter_cb func, gpointer user_data);
-
-void adapter_foreach(adapter_cb func, gpointer user_data)
-{
-}
-
-struct btd_adapter *adapter_find(const bdaddr_t *sba);
-
-struct btd_adapter *adapter_find(const bdaddr_t *sba)
-{
-	return NULL;
-}
-
-void adapter_service_insert(struct btd_adapter *adapter, void *rec);
-
-void adapter_service_insert(struct btd_adapter *adapter, void *rec)
-{
-}
-
-void adapter_service_remove(struct btd_adapter *adapter, void *rec);
-
-void adapter_service_remove(struct btd_adapter *adapter, void *rec)
-{
-}
-
 static void context_quit(struct context *context)
 {
 	g_main_loop_quit(context->main_loop);
