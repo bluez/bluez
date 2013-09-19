@@ -5623,8 +5623,6 @@ static int adapter_register(struct btd_adapter *adapter)
 		agent_unref(agent);
 	}
 
-	sdp_init_services_list(&adapter->bdaddr);
-
 	btd_adapter_gatt_server_start(adapter);
 
 	load_config(adapter);
