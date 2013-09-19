@@ -875,6 +875,95 @@ reject:
 							&rej, sizeof(rej));
 }
 
+static bool l2cap_conn_param_req(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_conn_param_req *req = data;
+	struct bt_l2cap_pdu_conn_param_rsp rsp;
+	struct bt_hci_cmd_le_conn_update hci_cmd;
+
+	if (len < sizeof(*req))
+		return false;
+
+	memset(&hci_cmd, 0, sizeof(hci_cmd));
+	hci_cmd.handle = cpu_to_le16(handle);
+	hci_cmd.min_interval = req->min_interval;
+	hci_cmd.max_interval = req->max_interval;
+	hci_cmd.latency = req->latency;
+	hci_cmd.supv_timeout = req->timeout;
+	hci_cmd.min_length = cpu_to_le16(0x0001);
+	hci_cmd.max_length = cpu_to_le16(0x0001);
+
+	send_command(bthost, BT_HCI_CMD_LE_CONN_UPDATE,
+						&hci_cmd, sizeof(hci_cmd));
+
+	memset(&rsp, 0, sizeof(rsp));
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CONN_PARAM_RSP, ident,
+							&rsp, sizeof(rsp));
+
+	return true;
+}
+
+static bool l2cap_conn_param_rsp(struct bthost *bthost, uint16_t handle,
+				uint8_t ident, const void *data, uint16_t len)
+{
+	const struct bt_l2cap_pdu_conn_param_req *rsp = data;
+
+	if (len < sizeof(*rsp))
+		return false;
+
+	return true;
+}
+
+static void l2cap_le_sig(struct bthost *bthost, uint16_t handle,
+						const void *data, uint16_t len)
+{
+	const struct bt_l2cap_hdr_sig *hdr = data;
+	struct bt_l2cap_pdu_cmd_reject rej;
+	uint16_t hdr_len;
+	bool ret;
+
+	if (len < sizeof(*hdr))
+		goto reject;
+
+	hdr_len = le16_to_cpu(hdr->len);
+
+	if (sizeof(*hdr) + hdr_len != len)
+		goto reject;
+
+	switch (hdr->code) {
+	case BT_L2CAP_PDU_CMD_REJECT:
+		ret = l2cap_cmd_rej(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_CONN_PARAM_REQ:
+		ret = l2cap_conn_param_req(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	case BT_L2CAP_PDU_CONN_PARAM_RSP:
+		ret = l2cap_conn_param_rsp(bthost, handle, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
+	default:
+		printf("Unknown L2CAP code 0x%02x\n", hdr->code);
+		ret = false;
+	}
+
+	handle_pending_l2reqs(bthost, handle, hdr->ident, hdr->code,
+						data + sizeof(*hdr), hdr_len);
+
+	if (ret)
+		return;
+
+reject:
+	memset(&rej, 0, sizeof(rej));
+	l2cap_sig_send(bthost, handle, BT_L2CAP_PDU_CMD_REJECT, 0,
+							&rej, sizeof(rej));
+}
+
 static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_acl_hdr *acl_hdr = data;
@@ -902,6 +991,9 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	switch (cid) {
 	case 0x0001:
 		l2cap_sig(bthost, handle, l2_data, l2_len);
+		break;
+	case 0x0005:
+		l2cap_le_sig(bthost, handle, l2_data, l2_len);
 		break;
 	default:
 		printf("Packet for unknown CID 0x%04x (%u)\n", cid, cid);
