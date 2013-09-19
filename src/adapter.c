@@ -934,9 +934,8 @@ static int uuid_cmp(const void *a, const void *b)
 	return sdp_uuid_cmp(&rec->svclass, uuid);
 }
 
-void adapter_service_insert(struct btd_adapter *adapter, void *r)
+static void adapter_service_insert(struct btd_adapter *adapter, sdp_record_t *rec)
 {
-	sdp_record_t *rec = r;
 	sdp_list_t *browse_list = NULL;
 	uuid_t browse_uuid;
 	gboolean new_uuid;
@@ -944,8 +943,10 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 	DBG("%s", adapter->path);
 
 	/* skip record without a browse group */
-	if (sdp_get_browse_groups(rec, &browse_list) < 0)
+	if (sdp_get_browse_groups(rec, &browse_list) < 0) {
+		DBG("skipping record without browse group");
 		return;
+	}
 
 	sdp_uuid16_create(&browse_uuid, PUBLIC_BROWSE_GROUP);
 
@@ -968,6 +969,21 @@ void adapter_service_insert(struct btd_adapter *adapter, void *r)
 
 done:
 	sdp_list_free(browse_list, free);
+}
+
+int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec)
+{
+	int ret;
+
+	DBG("%s", adapter->path);
+
+	ret = add_record_to_server(&adapter->bdaddr, rec);
+	if (ret < 0)
+		return ret;
+
+	adapter_service_insert(adapter, rec);
+
+	return 0;
 }
 
 void adapter_service_remove(struct btd_adapter *adapter, void *r)

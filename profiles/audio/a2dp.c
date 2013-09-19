@@ -1298,8 +1298,7 @@ struct a2dp_sep *a2dp_add_sep(struct btd_adapter *adapter, uint8_t type,
 		return NULL;
 	}
 
-	if (add_record_to_server(adapter_get_address(server->adapter),
-								record) < 0) {
+	if (adapter_service_add(server->adapter, record) < 0) {
 		error("Unable to register A2DP service record");
 		sdp_record_free(record);
 		avdtp_unregister_sep(sep->lsep);

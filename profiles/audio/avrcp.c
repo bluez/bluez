@@ -3829,7 +3829,7 @@ done:
 		return -1;
 	}
 
-	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
+	if (adapter_service_add(adapter, record) < 0) {
 		error("Unable to register AVRCP target service record");
 		avrcp_target_server_remove(p, adapter);
 		sdp_record_free(record);
@@ -3912,7 +3912,7 @@ done:
 		return -1;
 	}
 
-	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
+	if (adapter_service_add(adapter, record) < 0) {
 		error("Unable to register AVRCP service record");
 		avrcp_controller_server_remove(p, adapter);
 		sdp_record_free(record);

@@ -587,7 +587,7 @@ static uint32_t register_server_record(struct network_server *ns)
 		return 0;
 	}
 
-	if (add_record_to_server(&ns->src, record) < 0) {
+	if (adapter_service_add(ns->na->adapter, record) < 0) {
 		error("Failed to register service record");
 		sdp_record_free(record);
 		return 0;

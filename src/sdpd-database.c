@@ -168,7 +168,6 @@ void sdp_svcdb_set_collectable(sdp_record_t *record, int sock)
  */
 void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 {
-	struct btd_adapter *adapter;
 	sdp_access_t *dev;
 
 	SDPDBG("Adding rec : 0x%lx", (long) rec);
@@ -184,15 +183,6 @@ void sdp_record_add(const bdaddr_t *device, sdp_record_t *rec)
 	dev->handle = rec->handle;
 
 	access_db = sdp_list_insert_sorted(access_db, dev, access_sort);
-
-	if (bacmp(device, BDADDR_ANY) == 0) {
-		adapter_foreach(adapter_service_insert, rec);
-		return;
-	}
-
-	adapter = adapter_find(device);
-	if (adapter)
-		adapter_service_insert(adapter, rec);
 }
 
 static sdp_list_t *record_locate(uint32_t handle)
@@ -333,7 +323,5 @@ void sdp_init_services_list(bdaddr_t *device)
 			continue;
 
 		SDPDBG("adding record with handle %x", access->handle);
-
-		adapter_foreach(adapter_service_insert, rec);
 	}
 }

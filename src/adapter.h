@@ -102,7 +102,8 @@ struct btd_device *adapter_find_device(struct btd_adapter *adapter,
 const char *adapter_get_path(struct btd_adapter *adapter);
 const bdaddr_t *adapter_get_address(struct btd_adapter *adapter);
 int adapter_set_name(struct btd_adapter *adapter, const char *name);
-void adapter_service_insert(struct btd_adapter *adapter, void *rec);
+
+int adapter_service_add(struct btd_adapter *adapter, sdp_record_t *rec);
 void adapter_service_remove(struct btd_adapter *adapter, void *rec);
 
 struct agent *adapter_get_agent(struct btd_adapter *adapter);

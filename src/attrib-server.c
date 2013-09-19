@@ -326,8 +326,7 @@ static uint32_t attrib_create_sdp_new(struct gatt_server *server,
 				"http://www.bluez.org/");
 	}
 
-	if (add_record_to_server(adapter_get_address(server->adapter), record)
-			== 0)
+	if (adapter_service_add(server->adapter, record) == 0)
 		return record->handle;
 
 	sdp_record_free(record);

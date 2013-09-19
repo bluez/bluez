@@ -1360,7 +1360,7 @@ int sap_server_register(struct btd_adapter *adapter)
 		goto sdp_err;
 	}
 
-	if (add_record_to_server(adapter_get_address(adapter), record) < 0) {
+	if (adapter_service_add(adapter, record) < 0) {
 		error("Adding SAP SDP record to the SDP server failed.");
 		sdp_record_free(record);
 		goto sdp_err;
