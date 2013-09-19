@@ -546,6 +546,20 @@ static void evt_num_completed_packets(struct bthost *bthost, const void *data,
 		return;
 }
 
+static void evt_le_meta_event(struct bthost *bthost, const void *data,
+								uint8_t len)
+{
+	const uint8_t *event = data;
+
+	if (len < 1)
+		return;
+
+	switch (*event) {
+	default:
+		break;
+	}
+}
+
 static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_evt_hdr *hdr = data;
@@ -582,6 +596,10 @@ static void process_evt(struct bthost *bthost, const void *data, uint16_t len)
 
 	case BT_HCI_EVT_NUM_COMPLETED_PACKETS:
 		evt_num_completed_packets(bthost, param, hdr->plen);
+		break;
+
+	case BT_HCI_EVT_LE_META_EVENT:
+		evt_le_meta_event(bthost, param, hdr->plen);
 		break;
 
 	default:
