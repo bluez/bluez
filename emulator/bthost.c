@@ -997,6 +997,11 @@ static void l2cap_le_sig(struct bthost *bthost, struct btconn *conn,
 						data + sizeof(*hdr), hdr_len);
 		break;
 
+	case BT_L2CAP_PDU_DISCONN_REQ:
+		ret = l2cap_disconn_req(bthost, conn, hdr->ident,
+						data + sizeof(*hdr), hdr_len);
+		break;
+
 	case BT_L2CAP_PDU_CONN_PARAM_REQ:
 		ret = l2cap_conn_param_req(bthost, conn, hdr->ident,
 						data + sizeof(*hdr), hdr_len);
