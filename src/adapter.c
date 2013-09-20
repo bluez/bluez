@@ -1890,7 +1890,8 @@ static void property_set_mode(struct btd_adapter *adapter, uint32_t setting,
 	case MGMT_SETTING_DISCOVERABLE:
 		memset(&cp, 0, sizeof(cp));
 		cp.val = mode;
-		cp.timeout = htobs(adapter->discoverable_timeout);
+		if (cp.val)
+			cp.timeout = htobs(adapter->discoverable_timeout);
 
 		opcode = MGMT_OP_SET_DISCOVERABLE;
 		param = &cp;
