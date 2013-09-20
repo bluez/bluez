@@ -564,6 +564,7 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 								uint8_t len)
 {
 	const struct bt_hci_evt_le_conn_complete *ev = data;
+	uint8_t addr_type;
 
 	if (len < sizeof(*ev))
 		return;
@@ -571,7 +572,12 @@ static void evt_le_conn_complete(struct bthost *bthost, const void *data,
 	if (ev->status)
 		return;
 
-	init_conn(bthost, le16_to_cpu(ev->handle), ev->peer_addr_type);
+	if (ev->peer_addr_type == 0x00)
+		addr_type = BDADDR_LE_PUBLIC;
+	else
+		addr_type = BDADDR_LE_RANDOM;
+
+	init_conn(bthost, le16_to_cpu(ev->handle), addr_type);
 }
 
 static void evt_le_meta_event(struct bthost *bthost, const void *data,
