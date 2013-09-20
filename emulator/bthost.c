@@ -38,6 +38,11 @@
 #include "monitor/bt.h"
 #include "bthost.h"
 
+/* ACL handle and flags pack/unpack */
+#define acl_handle_pack(h, f)	(uint16_t)((h & 0x0fff)|(f << 12))
+#define acl_handle(h)		(h & 0x0fff)
+#define acl_flags(h)		(h >> 12)
+
 #define le16_to_cpu(val) (val)
 #define le32_to_cpu(val) (val)
 #define cpu_to_le16(val) (val)
@@ -249,7 +254,7 @@ static void send_acl(struct bthost *bthost, uint16_t handle, uint16_t cid,
 	((uint8_t *) pkt_data)[0] = BT_H4_ACL_PKT;
 
 	acl_hdr = pkt_data + 1;
-	acl_hdr->handle = cpu_to_le16(handle);
+	acl_hdr->handle = acl_handle_pack(handle, 0);
 	acl_hdr->dlen = cpu_to_le16(len + sizeof(*l2_hdr));
 
 	l2_hdr = pkt_data + 1 + sizeof(*acl_hdr);
@@ -977,7 +982,7 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	if (len != sizeof(*acl_hdr) + acl_len)
 		return;
 
-	handle = le16_to_cpu(acl_hdr->handle);
+	handle = acl_handle(acl_hdr->handle);
 	conn = bthost_find_conn(bthost, handle);
 	if (!conn) {
 		printf("ACL data for unknown handle 0x%04x\n", handle);
