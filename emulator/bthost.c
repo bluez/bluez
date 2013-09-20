@@ -1055,14 +1055,28 @@ void bthost_set_connect_cb(struct bthost *bthost, bthost_new_conn_cb cb,
 	bthost->new_conn_data = user_data;
 }
 
-void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr)
+void bthost_hci_connect(struct bthost *bthost, const uint8_t *bdaddr,
+							uint8_t addr_type)
 {
-	struct bt_hci_cmd_create_conn cmd;
+	if (addr_type == BDADDR_BREDR) {
+		struct bt_hci_cmd_create_conn cc;
 
-	memset(&cmd, 0, sizeof(cmd));
-	memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
+		memset(&cc, 0, sizeof(cc));
+		memcpy(cc.bdaddr, bdaddr, sizeof(cc.bdaddr));
 
-	send_command(bthost, BT_HCI_CMD_CREATE_CONN, &cmd, sizeof(cmd));
+		send_command(bthost, BT_HCI_CMD_CREATE_CONN, &cc, sizeof(cc));
+	} else {
+		struct bt_hci_cmd_le_create_conn cc;
+
+		memset(&cc, 0, sizeof(cc));
+		memcpy(cc.peer_addr, bdaddr, sizeof(cc.peer_addr));
+
+		if (addr_type == BDADDR_LE_RANDOM)
+			cc.peer_addr_type = 0x01;
+
+		send_command(bthost, BT_HCI_CMD_LE_CREATE_CONN,
+							&cc, sizeof(cc));
+	}
 }
 
 void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan)
