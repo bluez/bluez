@@ -699,6 +699,44 @@ const char *bt_compidtostr(int compid)
 		return "txtr GmbH";
 	case 219:
 		return "Biosentronics";
+	case 220:
+		return "Procter & Gamble";
+	case 221:
+		return "Hosiden Corporation";
+	case 222:
+		return "Muzik LLC";
+	case 223:
+		return "Misfit Wearables Corp";
+	case 224:
+		return "Google";
+	case 225:
+		return "Danlers Ltd";
+	case 226:
+		return "Semilink Inc";
+	case 227:
+		return "inMusic Brands, Inc";
+	case 228:
+		return "L.S. Research Inc.";
+	case 229:
+		return "Eden Software Consultants Ltd.";
+	case 230:
+		return "Freshtemp";
+	case 231:
+		return "KS Technologies";
+	case 232:
+		return "ACTS Technologies";
+	case 233:
+		return "Vtrack Systems";
+	case 234:
+		return "Nielsen-Kellerman Company";
+	case 235:
+		return "Server Technology, Inc.";
+	case 236:
+		return "BioResearch Associates";
+	case 237:
+		return "Jolly Logic, LLC";
+	case 238:
+		return "Above Average Outcomes, Inc.";
 	case 65535:
 		return "internal use";
 	default:
