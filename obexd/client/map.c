@@ -809,7 +809,8 @@ static const GDBusPropertyTable map_msg_properties[] = {
 	{ }
 };
 
-static struct map_msg *map_msg_create(struct map_data *data, const char *handle)
+static struct map_msg *map_msg_create(struct map_data *data, const char *handle,
+							const char *folder)
 {
 	struct map_msg *msg;
 
@@ -818,7 +819,7 @@ static struct map_msg *map_msg_create(struct map_data *data, const char *handle)
 	msg->path = g_strdup_printf("%s/message%s",
 					obc_session_get_path(data->session),
 					handle);
-	msg->folder = g_strdup(obc_session_get_folder(data->session));
+	msg->folder = g_strdup(folder);
 
 	if (!g_dbus_register_interface(conn, msg->path, MAP_MSG_INTERFACE,
 						map_msg_methods, NULL,
@@ -1097,7 +1098,8 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 
 	msg = g_hash_table_lookup(data->messages, values[i]);
 	if (msg == NULL) {
-		msg = map_msg_create(data, values[i]);
+		msg = map_msg_create(data, values[i],
+					obc_session_get_folder(data->session));
 		if (msg == NULL)
 			return;
 	}
