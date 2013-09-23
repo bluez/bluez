@@ -538,7 +538,8 @@ Methods		void SetFolder(string name)
 		array{object, dict} ListMessages(string folder, dict filter)
 
 			Returns an array containing the messages found in the
-			given folder.
+			given subfolder of the current folder, or in the
+			current folder if folder is empty.
 
 			Possible Filters: Offset, MaxCount, SubjectLength, Fields,
 			Type, PeriodStart, PeriodEnd, Status, Recipient, Sender,
