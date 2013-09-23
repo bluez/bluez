@@ -64,6 +64,10 @@ static GSList *ftps = NULL;
 static GSList *transfers = NULL;
 static GDBusProxy *client = NULL;
 
+struct transfer_data {
+	uint64_t transferred;
+};
+
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
 	rl_set_prompt(PROMPT_ON);
@@ -1345,11 +1349,48 @@ static void session_added(GDBusProxy *proxy)
 	print_proxy(proxy, "Session", COLORED_NEW);
 }
 
+static void transfer_property_changed(GDBusProxy *proxy, const char *name,
+					DBusMessageIter *iter, void *user_data)
+{
+	struct transfer_data *data = user_data;
+	char *str;
+
+	str = proxy_description(proxy, "Transfer", COLORED_CHG);
+	if (strcmp(name, "Transferred") == 0) {
+		dbus_uint64_t valu64;
+		dbus_message_iter_get_basic(iter, &valu64);
+		rl_printf("%s%s: %" PRIu64 " (@%" PRIu64 "KB/s)\n", str, name,
+				valu64, (valu64 - data->transferred) / 1000);
+		data->transferred = valu64;
+	} else
+		print_iter(str, name, iter);
+
+	g_free(str);
+}
+
+static void transfer_destroy(GDBusProxy *proxy, void *user_data)
+{
+	struct transfer_data *data = user_data;
+
+	g_free(data);
+}
+
 static void transfer_added(GDBusProxy *proxy)
 {
+	struct transfer_data *data;
+	DBusMessageIter iter;
+
 	transfers = g_slist_append(transfers, proxy);
 
 	print_proxy(proxy, "Transfer", COLORED_NEW);
+
+	data = g_new0(struct transfer_data, 1);
+
+	if (g_dbus_proxy_get_property(proxy, "Transfered", &iter))
+		dbus_message_iter_get_basic(&iter, &data->transferred);
+
+	g_dbus_proxy_set_property_watch(proxy, transfer_property_changed, data);
+	g_dbus_proxy_set_removed_watch(proxy, transfer_destroy, data);
 }
 
 static void opp_added(GDBusProxy *proxy)
@@ -1451,16 +1492,6 @@ static void session_property_changed(GDBusProxy *proxy, const char *name,
 	g_free(str);
 }
 
-static void transfer_property_changed(GDBusProxy *proxy, const char *name,
-						DBusMessageIter *iter)
-{
-	char *str;
-
-	str = proxy_description(proxy, "Transfer", COLORED_CHG);
-	print_iter(str, name, iter);
-	g_free(str);
-}
-
 static void property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -1470,8 +1501,6 @@ static void property_changed(GDBusProxy *proxy, const char *name,
 
 	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_property_changed(proxy, name, iter);
-	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
-		transfer_property_changed(proxy, name, iter);
 }
 
 int main(int argc, char *argv[])
