@@ -638,8 +638,9 @@ Methods		void SetFolder(string name)
 			Transfer a message (in bMessage format) to the
 			remote device.
 
-			The message is transferred either to the given folder,
-			or to the current folder if folder is omitted.
+			The message is transferred either to the given
+			subfolder of the current folder, or to the current
+			folder if folder is empty.
 
 			Possible args: Transparent, Retry, Charset
 
