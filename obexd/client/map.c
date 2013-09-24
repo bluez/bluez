@@ -1857,6 +1857,29 @@ static void map_handle_status_changed(struct map_data *map,
 								"Status");
 }
 
+static void map_handle_folder_changed(struct map_data *map,
+							struct map_event *event,
+							const char *folder)
+{
+	struct map_msg *msg;
+
+	if (!folder)
+		return;
+
+	msg = g_hash_table_lookup(map->messages, event->handle);
+	if (!msg)
+		return;
+
+	if (g_strcmp0(msg->folder, folder) == 0)
+		return;
+
+	g_free(msg->folder);
+	msg->folder = g_strdup(folder);
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+								"Folder");
+}
+
 static void map_handle_notification(struct map_event *event, void *user_data)
 {
 	struct map_data *map = user_data;
@@ -1882,6 +1905,12 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 		break;
 	case MAP_ET_SENDING_FAILURE:
 		map_handle_status_changed(map, event, "sending-failure");
+		break;
+	case MAP_ET_MESSAGE_DELETED:
+		map_handle_folder_changed(map, event, "/telecom/msg/deleted");
+		break;
+	case MAP_ET_MESSAGE_SHIFT:
+		map_handle_folder_changed(map, event, event->folder);
 		break;
 	default:
 		break;
