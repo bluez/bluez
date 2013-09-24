@@ -400,6 +400,8 @@ static void setup_powered_server(const void *test_data)
 	} else {
 		mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
+		mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
 	}
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
