@@ -660,7 +660,7 @@ static void test_bredr_server(const void *test_data)
 	int sk;
 
 	if (l2data->server_psm) {
-		sk = create_l2cap_sock(data, 0x0001);
+		sk = create_l2cap_sock(data, l2data->server_psm);
 		if (sk < 0) {
 			tester_test_failed();
 			return;
