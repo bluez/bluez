@@ -104,7 +104,8 @@ static void mgmt_controller_error(uint16_t len, const void *buf)
 
 static const char *settings_str[] = {
 	"powered", "connectable", "fast-connectable", "discoverable",
-	"pairable", "link-security", "ssp", "br/edr", "hs", "le"
+	"pairable", "link-security", "ssp", "br/edr", "hs", "le",
+	"advertising",
 };
 
 static void mgmt_new_settings(uint16_t len, const void *buf)
