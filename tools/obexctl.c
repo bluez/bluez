@@ -66,6 +66,7 @@ static GDBusProxy *client = NULL;
 
 struct transfer_data {
 	uint64_t transferred;
+	uint64_t size;
 };
 
 static void connect_handler(DBusConnection *connection, void *user_data)
@@ -1349,6 +1350,30 @@ static void session_added(GDBusProxy *proxy)
 	print_proxy(proxy, "Session", COLORED_NEW);
 }
 
+static void print_transferred(struct transfer_data *data, const char *str,
+							DBusMessageIter *iter)
+{
+	dbus_uint64_t valu64;
+	uint64_t speed;
+	int seconds, minutes;
+
+	dbus_message_iter_get_basic(iter, &valu64);
+	speed = valu64 - data->transferred;
+	data->transferred = valu64;
+
+	if (data->size == 0) {
+		rl_printf("%sTransferred: %" PRIu64 " (@%" PRIu64 "KB/s)\n",
+						str, valu64, speed / 1000);
+		return;
+	}
+
+	seconds = (data->size - data->transferred) / speed;
+	minutes = seconds / 60;
+	seconds %= 60;
+	rl_printf("%sTransferred: %" PRIu64 " (@%" PRIu64 "KB/s %02u:%02u)\n",
+				str, valu64, speed / 1000, minutes, seconds);
+}
+
 static void transfer_property_changed(GDBusProxy *proxy, const char *name,
 					DBusMessageIter *iter, void *user_data)
 {
@@ -1356,15 +1381,18 @@ static void transfer_property_changed(GDBusProxy *proxy, const char *name,
 	char *str;
 
 	str = proxy_description(proxy, "Transfer", COLORED_CHG);
-	if (strcmp(name, "Transferred") == 0) {
-		dbus_uint64_t valu64;
-		dbus_message_iter_get_basic(iter, &valu64);
-		rl_printf("%s%s: %" PRIu64 " (@%" PRIu64 "KB/s)\n", str, name,
-				valu64, (valu64 - data->transferred) / 1000);
-		data->transferred = valu64;
-	} else
-		print_iter(str, name, iter);
 
+	if (strcmp(name, "Transferred") == 0) {
+		print_transferred(data, str, iter);
+		goto done;
+	}
+
+	if (strcmp(name, "Size") == 0)
+		dbus_message_iter_get_basic(iter, &data->size);
+
+	print_iter(str, name, iter);
+
+done:
 	g_free(str);
 }
 
@@ -1388,6 +1416,9 @@ static void transfer_added(GDBusProxy *proxy)
 
 	if (g_dbus_proxy_get_property(proxy, "Transfered", &iter))
 		dbus_message_iter_get_basic(&iter, &data->transferred);
+
+	if (g_dbus_proxy_get_property(proxy, "Size", &iter))
+		dbus_message_iter_get_basic(&iter, &data->size);
 
 	g_dbus_proxy_set_property_watch(proxy, transfer_property_changed, data);
 	g_dbus_proxy_set_removed_watch(proxy, transfer_destroy, data);
