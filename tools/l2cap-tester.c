@@ -649,7 +649,7 @@ static void client_new_conn(uint16_t handle, void *user_data)
 	}
 }
 
-static void test_bredr_server(const void *test_data)
+static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct l2cap_server_data *l2data = data->test_data;
@@ -717,21 +717,19 @@ int main(int argc, char *argv[])
 
 	test_l2cap_bredr("L2CAP BR/EDR Server - Success",
 					&l2cap_server_success_test,
-					setup_powered_server,
-					test_bredr_server);
+					setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid PSM",
 					&l2cap_server_nval_psm_test,
-					setup_powered_server,
-					test_bredr_server);
+					setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid PDU",
 				&l2cap_server_nval_pdu_test1,
-				setup_powered_server, test_bredr_server);
+				setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Disconnect CID",
 				&l2cap_server_nval_cid_test1,
-				setup_powered_server, test_bredr_server);
+				setup_powered_server, test_server);
 	test_l2cap_bredr("L2CAP BR/EDR Server - Invalid Config CID",
 				&l2cap_server_nval_cid_test2,
-				setup_powered_server, test_bredr_server);
+				setup_powered_server, test_server);
 
 	return tester_run();
 }
