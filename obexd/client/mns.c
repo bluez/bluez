@@ -188,13 +188,25 @@ static void parse_event_report_handle(struct map_event *event,
 static void parse_event_report_folder(struct map_event *event,
 							const char *value)
 {
-	event->folder = g_strdup(value);
+	if (!value)
+		return;
+
+	if (g_str_has_prefix(value, "/"))
+		event->folder = g_strdup(value);
+	else
+		event->folder = g_strconcat("/", value, NULL);
 }
 
 static void parse_event_report_old_folder(struct map_event *event,
 							const char *value)
 {
-	event->old_folder = g_strdup(value);
+	if (!value)
+		return;
+
+	if (g_str_has_prefix(value, "/"))
+		event->old_folder = g_strdup(value);
+	else
+		event->old_folder = g_strconcat("/", value, NULL);
 }
 
 static void parse_event_report_msg_type(struct map_event *event,
