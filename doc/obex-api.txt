@@ -598,10 +598,14 @@ Methods		void SetFolder(string name)
 
 				string Status:
 
-					Message reception status
+					Message status
 
-					Possible values: "complete",
-					"fractioned" and "notification"
+					Possible values for received messages:
+					"complete", "fractioned", "notification"
+
+					Possible values for sent messages:
+					"delivery-success", "sending-success",
+					"delivery-failure", "sending-failure"
 
 				uint64 AttachmentSize:
 
