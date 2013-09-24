@@ -95,6 +95,7 @@ static const char *settings_str[] = {
 				"br/edr",
 				"hs",
 				"le" ,
+				"advertising" ,
 };
 
 static void print_settings(uint32_t settings)
@@ -964,6 +965,12 @@ static void cmd_le(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
 	cmd_setting(mgmt, index, MGMT_OP_SET_LE, argc, argv);
 }
 
+static void cmd_advertising(struct mgmt *mgmt, uint16_t index, int argc,
+								char **argv)
+{
+	cmd_setting(mgmt, index, MGMT_OP_SET_ADVERTISING, argc, argv);
+}
+
 static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 							const void *param)
 {
@@ -1780,6 +1787,7 @@ static struct {
 	{ "ssp",	cmd_ssp,	"Toggle SSP mode"		},
 	{ "hs",		cmd_hs,		"Toggle HS Support"		},
 	{ "le",		cmd_le,		"Toggle LE Support"		},
+	{ "advertising",cmd_advertising,"Toggle LE advertising",	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
