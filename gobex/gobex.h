@@ -50,8 +50,6 @@ guint g_obex_send_req(GObex *obex, GObexPacket *req, int timeout,
 gboolean g_obex_cancel_req(GObex *obex, guint req_id,
 						gboolean remove_callback);
 
-gboolean g_obex_pending_req_abort(GObex *obex, GError **err);
-
 gboolean g_obex_send_rsp(GObex *obex, guint8 rspcode, GError **err,
 						guint8 first_hdr_type, ...);
 
