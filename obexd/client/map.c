@@ -1838,6 +1838,25 @@ static void map_handle_new_message(struct map_data *map,
 	map_msg_create(map, event->handle, event->folder, event->msg_type);
 }
 
+static void map_handle_status_changed(struct map_data *map,
+							struct map_event *event,
+							const char *status)
+{
+	struct map_msg *msg = g_hash_table_lookup(map->messages, event->handle);
+
+	if (msg == NULL)
+		return;
+
+	if (g_strcmp0(msg->status, status) == 0)
+		return;
+
+	g_free(msg->status);
+	msg->status = g_strdup(status);
+
+	g_dbus_emit_property_changed(conn, msg->path, MAP_MSG_INTERFACE,
+								"Status");
+}
+
 static void map_handle_notification(struct map_event *event, void *user_data)
 {
 	struct map_data *map = user_data;
@@ -1851,6 +1870,18 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 	switch (event->type) {
 	case MAP_ET_NEW_MESSAGE:
 		map_handle_new_message(map, event);
+		break;
+	case MAP_ET_DELIVERY_SUCCESS:
+		map_handle_status_changed(map, event, "delivery-success");
+		break;
+	case MAP_ET_SENDING_SUCCESS:
+		map_handle_status_changed(map, event, "sending-success");
+		break;
+	case MAP_ET_DELIVERY_FAILURE:
+		map_handle_status_changed(map, event, "delivery-failure");
+		break;
+	case MAP_ET_SENDING_FAILURE:
+		map_handle_status_changed(map, event, "sending-failure");
 		break;
 	default:
 		break;
