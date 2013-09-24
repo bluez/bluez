@@ -1043,6 +1043,13 @@ static const struct generic_data set_adv_on_success_test_2 = {
 	.expect_hci_len = sizeof(set_adv_on_set_adv_enable_param),
 };
 
+static const struct generic_data set_adv_on_rejected_test_1 = {
+	.send_opcode = MGMT_OP_SET_ADVERTISING,
+	.send_param = set_adv_on_param,
+	.send_len = sizeof(set_adv_on_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
 static const char set_local_name_param[260] = { 'T', 'e', 's', 't', ' ',
 						'n', 'a', 'm', 'e' };
 static const char write_local_name_hci[248] = { 'T', 'e', 's', 't', ' ',
@@ -2725,6 +2732,9 @@ int main(int argc, char *argv[])
 			test_command_generic);
 	test_bredrle("Set Advertising on - Success 2",
 			&set_adv_on_success_test_2, setup_le_powered,
+			test_command_generic);
+	test_bredrle("Set Advertising on - Rejected 1",
+			&set_adv_on_rejected_test_1, setup_powered,
 			test_command_generic);
 
 	test_bredr("Set Local Name - Success 1", &set_local_name_test_1,
