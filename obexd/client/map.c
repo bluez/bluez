@@ -811,8 +811,31 @@ static const GDBusPropertyTable map_msg_properties[] = {
 	{ }
 };
 
+static void parse_type(struct map_msg *msg, const char *value)
+{
+	const char *type = NULL;
+
+	if (strcasecmp(value, "SMS_GSM") == 0)
+		type = "sms-gsm";
+	else if (strcasecmp(value, "SMS_CDMA") == 0)
+		type = "sms-cdma";
+	else if (strcasecmp(value, "EMAIL") == 0)
+		type = "email";
+	else if (strcasecmp(value, "MMS") == 0)
+		type = "mms";
+
+	if (g_strcmp0(msg->type, type) == 0)
+		return;
+
+	g_free(msg->type);
+	msg->type = g_strdup(type);
+
+	g_dbus_emit_property_changed(conn, msg->path,
+						MAP_MSG_INTERFACE, "Type");
+}
+
 static struct map_msg *map_msg_create(struct map_data *data, const char *handle,
-							const char *folder)
+					const char *folder, const char *type)
 {
 	struct map_msg *msg;
 
@@ -833,6 +856,9 @@ static struct map_msg *map_msg_create(struct map_data *data, const char *handle,
 
 	msg->handle = g_strdup(handle);
 	g_hash_table_insert(data->messages, msg->handle, msg);
+
+	if (type)
+		parse_type(msg, type);
 
 	return msg;
 }
@@ -919,29 +945,6 @@ static void parse_recipient_address(struct map_msg *msg, const char *value)
 
 	g_dbus_emit_property_changed(conn, msg->path,
 					MAP_MSG_INTERFACE, "RecipientAddress");
-}
-
-static void parse_type(struct map_msg *msg, const char *value)
-{
-	const char *type = NULL;
-
-	if (strcasecmp(value, "SMS_GSM") == 0)
-		type = "sms-gsm";
-	else if (strcasecmp(value, "SMS_CDMA") == 0)
-		type = "sms-cdma";
-	else if (strcasecmp(value, "EMAIL") == 0)
-		type = "email";
-	else if (strcasecmp(value, "MMS") == 0)
-		type = "mms";
-
-	if (g_strcmp0(msg->type, type) == 0)
-		return;
-
-	g_free(msg->type);
-	msg->type = g_strdup(type);
-
-	g_dbus_emit_property_changed(conn, msg->path,
-						MAP_MSG_INTERFACE, "Type");
 }
 
 static void parse_size(struct map_msg *msg, const char *value)
@@ -1101,7 +1104,8 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 
 	msg = g_hash_table_lookup(data->messages, values[i]);
 	if (msg == NULL) {
-		msg = map_msg_create(data, values[i], parser->request->folder);
+		msg = map_msg_create(data, values[i], parser->request->folder,
+									NULL);
 		if (msg == NULL)
 			return;
 	}
@@ -1822,6 +1826,18 @@ static void map_msg_remove(void *data)
 	g_free(path);
 }
 
+static void map_handle_new_message(struct map_data *map,
+							struct map_event *event)
+{
+	struct map_msg *msg = g_hash_table_lookup(map->messages, event->handle);
+
+	/* New message event can be used if a new message replaces an old one */
+	if (msg)
+		g_hash_table_remove(map->messages, event->handle);
+
+	map_msg_create(map, event->handle, event->folder, event->msg_type);
+}
+
 static void map_handle_notification(struct map_event *event, void *user_data)
 {
 	struct map_data *map = user_data;
@@ -1831,6 +1847,14 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 	DBG("type=%x, handle=%s, folder=%s, old_folder=%s, msg_type=%s",
 				event->type, event->handle, event->folder,
 					event->old_folder, event->msg_type);
+
+	switch (event->type) {
+	case MAP_ET_NEW_MESSAGE:
+		map_handle_new_message(map, event);
+		break;
+	default:
+		break;
+	}
 }
 
 static bool set_notification_registration(struct map_data *map, bool status)
