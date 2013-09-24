@@ -923,21 +923,22 @@ static void parse_recipient_address(struct map_msg *msg, const char *value)
 
 static void parse_type(struct map_msg *msg, const char *value)
 {
-	if (g_strcmp0(msg->type, value) == 0)
+	const char *type = NULL;
+
+	if (strcasecmp(value, "SMS_GSM") == 0)
+		type = "sms-gsm";
+	else if (strcasecmp(value, "SMS_CDMA") == 0)
+		type = "sms-cdma";
+	else if (strcasecmp(value, "EMAIL") == 0)
+		type = "email";
+	else if (strcasecmp(value, "MMS") == 0)
+		type = "mms";
+
+	if (g_strcmp0(msg->type, type) == 0)
 		return;
 
 	g_free(msg->type);
-
-	if (strcasecmp(value, "SMS_GSM") == 0)
-		msg->type = g_strdup("sms-gsm");
-	else if (strcasecmp(value, "SMS_CDMA") == 0)
-		msg->type = g_strdup("sms-cdma");
-	else if (strcasecmp(value, "EMAIL") == 0)
-		msg->type = g_strdup("email");
-	else if (strcasecmp(value, "MMS") == 0)
-		msg->type = g_strdup("mms");
-	else
-		msg->type = NULL;
+	msg->type = g_strdup(type);
 
 	g_dbus_emit_property_changed(conn, msg->path,
 						MAP_MSG_INTERFACE, "Type");
