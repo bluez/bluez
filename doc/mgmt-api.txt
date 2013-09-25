@@ -1235,8 +1235,12 @@ Set Advertising Command
 	Return Parameters:	Current_Settings (4 Octets)
 
 	This command is used to enable LE advertising on a controller
-	that supports it. A pre-requisite is that LE is already enabled,
-	otherwise command will return a "rejected" response.
+	that supports it. The allowed values for the Advertising
+	command parameter are 0x00 and 0x01. All other values will
+	return Invalid Parameters.
+
+	A pre-requisite is that LE is already enabled, otherwise
+	this command will return a "rejected" response.
 
 	This command generates a Command Complete event on success or a
 	Command Status event on failure.
@@ -1246,6 +1250,7 @@ Set Advertising Command
 				Not Supported
 				Invalid Parameters
 				Invalid Index
+
 
 Command Complete Event
 ======================
