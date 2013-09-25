@@ -81,14 +81,30 @@ GSList *obex_service_driver_list(uint16_t services)
 	return list;
 }
 
+static struct obex_service_driver *find_driver(uint16_t service)
+{
+	GSList *l;
+
+	for (l = drivers; l; l = l->next) {
+		struct obex_service_driver *driver = l->data;
+
+		if (driver->service == service)
+			return driver;
+	}
+
+	return NULL;
+}
+
 int obex_service_driver_register(struct obex_service_driver *driver)
 {
+	GSList *l;
+
 	if (!driver) {
 		error("Invalid driver");
 		return -EINVAL;
 	}
 
-	if (obex_service_driver_list(driver->service)) {
+	if (find_driver(driver->service)) {
 		error("Permission denied: service %s already registered",
 			driver->name);
 		return -EPERM;
