@@ -484,7 +484,8 @@ Set Low Energy Command
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
 
-	Possible errors:	Not Supported
+	Possible errors:	Busy
+				Not Supported
 				Invalid Parameters
 				Invalid Index
 
