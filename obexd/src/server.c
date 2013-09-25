@@ -110,6 +110,7 @@ void obex_server_exit(void)
 		struct obex_server *server = l->data;
 
 		server->transport->stop(server->transport_data);
+		g_slist_free(server->drivers);
 		g_free(server);
 	}
 
