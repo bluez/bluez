@@ -1510,11 +1510,20 @@ gboolean g_dbus_send_message_with_reply(DBusConnection *connection,
 					DBusMessage *message,
 					DBusPendingCall **call, int timeout)
 {
+	dbus_bool_t ret;
+
 	/* Flush pending signal to guarantee message order */
 	g_dbus_flush(connection);
 
-	return dbus_connection_send_with_reply(connection, message, call,
+	ret = dbus_connection_send_with_reply(connection, message, call,
 								timeout);
+
+	if (ret == TRUE && call != NULL && *call == NULL) {
+		error("Unable to send message (passing fd blocked?)");
+		return FALSE;
+	}
+
+	return ret;
 }
 
 gboolean g_dbus_send_error_valist(DBusConnection *connection,
