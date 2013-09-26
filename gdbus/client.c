@@ -112,11 +112,6 @@ static gboolean modify_match(DBusConnection *conn, const char *member,
 		return FALSE;
 	}
 
-	if (call == NULL) {
-		dbus_message_unref(msg);
-		return FALSE;
-	}
-
 	dbus_pending_call_set_notify(call, modify_match_reply, NULL, NULL);
 	dbus_pending_call_unref(call);
 
