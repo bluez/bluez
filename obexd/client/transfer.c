@@ -603,6 +603,17 @@ static void get_xfer_progress_first(GObex *obex, GError *err, GObexPacket *rsp,
 		return;
 	}
 
+	hdr = g_obex_packet_get_header(rsp, G_OBEX_HDR_LENGTH);
+	if (hdr) {
+		uint32_t len;
+		if (g_obex_header_get_uint32(hdr, &len)) {
+			transfer->size = len;
+			g_dbus_emit_property_changed(transfer->conn,
+						transfer->path,
+						TRANSFER_INTERFACE, "Size");
+		}
+	}
+
 	hdr = g_obex_packet_get_header(rsp, G_OBEX_HDR_APPARAM);
 	if (hdr) {
 		apparam = g_obex_header_get_apparam(hdr);
