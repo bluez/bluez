@@ -233,7 +233,7 @@ if __name__ == '__main__':
 	if audio_supported:
 		sco = socket(AF_BLUETOOTH, SOCK_SEQPACKET, BTPROTO_SCO)
 		sco.bind(BDADDR_ANY)
-		sco.listen()
+		sco.listen(1)
 	else:
 		sco = None
 
