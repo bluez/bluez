@@ -737,6 +737,16 @@ const char *bt_compidtostr(int compid)
 		return "Jolly Logic, LLC";
 	case 238:
 		return "Above Average Outcomes, Inc.";
+	case 239:
+		return "Bitsplitters GmbH";
+	case 240:
+		return "PayPal, Inc.";
+	case 241:
+		return "Witron Technology Limited";
+	case 242:
+		return "Morse Project Inc.";
+	case 243:
+		return "Kent Displays Inc.";
 	case 65535:
 		return "internal use";
 	default:
