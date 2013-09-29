@@ -1844,7 +1844,7 @@ static void print_dev_hdr(struct hci_dev_info *di)
 	ba2str(&di->bdaddr, addr);
 
 	printf("%s:\tType: %s  Bus: %s\n", di->name,
-					hci_typetostr(di->type >> 4),
+					hci_typetostr((di->type & 0x30) >> 4),
 					hci_bustostr(di->type & 0x0f));
 	printf("\tBD Address: %s  ACL MTU: %d:%d  SCO MTU: %d:%d\n",
 					addr, di->acl_mtu, di->acl_pkts,
@@ -1869,7 +1869,7 @@ static void print_dev_info(int ctl, struct hci_dev_info *di)
 		st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
 
 	if (all && !hci_test_bit(HCI_RAW, &di->flags) &&
-			(bacmp(&di->bdaddr, BDADDR_ANY) || (di->type >> 4))) {
+			(bacmp(&di->bdaddr, BDADDR_ANY) || (di->type & 0x30))) {
 		print_dev_features(di, 0);
 		print_pkt_type(di);
 		print_link_policy(di);
