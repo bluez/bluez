@@ -794,19 +794,8 @@ static void list_folder_reply(DBusMessage *message, void *user_data)
 	}
 }
 
-static void cmd_ls(int argc, char *argv[])
+static void ftp_ls(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
-
-	if (!check_default_session())
-		return;
-
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
-		return;
-	}
-
 	if (g_dbus_proxy_method_call(proxy, "ListFolder", NULL,
 						list_folder_reply, NULL,
 						NULL) == FALSE) {
@@ -815,6 +804,148 @@ static void cmd_ls(int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to ListFolder\n");
+}
+
+static void parse_list_reply(DBusMessage *message)
+{
+	DBusMessageIter iter, array;
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_INVALID) {
+		DBusMessageIter entry;
+		const char *vcard;
+
+		if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_STRUCT)
+			return;
+
+		dbus_message_iter_recurse(&array, &entry);
+
+		dbus_message_iter_get_basic(&entry, &vcard);
+		dbus_message_iter_next(&entry);
+		print_iter("\t", vcard, &entry);
+		dbus_message_iter_next(&array);
+	}
+}
+
+static void list_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to List: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	parse_list_reply(message);
+}
+
+static void list_setup(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void search_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to Search: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	parse_list_reply(message);
+}
+
+static void search_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *value = user_data;
+	const char *field;
+	DBusMessageIter dict;
+
+	field = isalpha(value[0]) ? "name" : "number";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &field);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &value);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void pbap_search(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (g_dbus_proxy_method_call(proxy, "Search", search_setup,
+					search_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to Search\n");
+		return;
+	}
+
+	rl_printf("Attempting to Search\n");
+}
+
+static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc > 1) {
+		pbap_search(proxy, argc, argv);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "List", list_setup, list_reply,
+						NULL, NULL) == FALSE) {
+		rl_printf("Failed to List\n");
+		return;
+	}
+
+	rl_printf("Attempting to List\n");
+}
+
+static void cmd_ls(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		ftp_ls(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		pbap_ls(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
 }
 
 struct cp_args {
