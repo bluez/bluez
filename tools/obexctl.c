@@ -657,6 +657,33 @@ static void change_folder_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
 }
 
+static void select_reply(DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to Select: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	rl_printf("Select successful\n");
+}
+
+static void select_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *folder = user_data;
+	const char *location = "int";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &location);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+}
+
 static GDBusProxy *find_ftp(const char *path)
 {
 	GSList *l;
@@ -671,19 +698,22 @@ static GDBusProxy *find_ftp(const char *path)
 	return NULL;
 }
 
-static void cmd_cd(int argc, char *argv[])
+static GDBusProxy *find_pbap(const char *path)
 {
-	GDBusProxy *proxy;
+	GSList *l;
 
-	if (!check_default_session())
-		return;
+	for (l = pbaps; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
 
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
-		return;
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
 	}
 
+	return NULL;
+}
+
+static void ftp_cd(GDBusProxy *proxy, int argc, char *argv[])
+{
 	if (argc < 2) {
 		rl_printf("Missing path argument\n");
 		return;
@@ -697,6 +727,45 @@ static void cmd_cd(int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to ChangeFolder to %s\n", argv[1]);
+}
+
+static void pbap_cd(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc < 2) {
+		rl_printf("Missing path argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "Select", select_setup,
+					select_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to Select\n");
+		return;
+	}
+
+	rl_printf("Attempting to Select to %s\n", argv[1]);
+}
+
+static void cmd_cd(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		ftp_cd(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		pbap_cd(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
 }
 
 static void list_folder_reply(DBusMessage *message, void *user_data)
