@@ -21,13 +21,16 @@ cd $tmpdir
 
 path=en-us/specification/assigned-numbers/company-identifiers
 # Use "iconv -c" to strip unwanted unicode characters
-# Also strip <input> tags of type checkbox because html2text generates UTF-8
-# for them in some distros even when using -ascii (e.g. Fedora 18)
+# Fixups:
+# - strip <input> tags of type "checkbox" because html2text generates UTF-8 for
+#   them in some distros even when using -ascii (e.g. Fedora)
+# - replace "&#160;" (non-breaking space) with whitespace manually, because
+#   some versions incorrectly convert it into "\xC2\xA0"
 curl https://www.bluetooth.org/$path | iconv -c -f utf8 -t ascii | \
-    sed '/<input.*type="checkbox"/d' | \
+    sed '/<input.*type="checkbox"/d; s/&#160;/ /g' | \
     html2text -ascii -o identifiers.txt >/dev/null
 
-# Some versions of html2text do not replace &amp; (e.g. Fedora 18)
+# Some versions of html2text do not replace &amp; (e.g. Fedora)
 sed -i 's/&amp;/\&/g' identifiers.txt
 
 sed -n '/^const char \*bt_compidtostr(int compid)/,/^}/p' \
@@ -39,6 +42,12 @@ cat identifiers.txt |
         print "\tcase $1:\n\t\treturn \"$2\";\n"' >> new.c
 if ! grep -q "return \"" new.c; then
     echo "ERROR: could not parse company IDs from bluetooth.org" >&2
+    exit 1
+fi
+if [ -n "$(tr -d '[:print:]\t\n' < new.c)" ]; then
+    echo -n "ERROR: invalid non-ASCII characters found while parsing" >&2
+    echo -n " company IDs. Please identify offending sequence and fix" >&2
+    echo " tools/update_compids.sh accordingly." >&2
     exit 1
 fi
 echo -e '\tcase 65535:\n\t\treturn "internal use";' >> new.c
