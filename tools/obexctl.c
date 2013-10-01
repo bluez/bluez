@@ -971,6 +971,99 @@ static void pbap_search(GDBusProxy *proxy, int argc, char *argv[])
 	rl_printf("Attempting to Search\n");
 }
 
+static void list_folders_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter, array;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to ListFolders: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_INVALID) {
+		print_dict_iter(&array);
+		dbus_message_iter_next(&array);
+	}
+}
+
+static void list_folders_setup(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void list_messages_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+	DBusMessageIter iter, array;
+	int ctype;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to ListFolders: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(&iter, &array);
+
+	while ((ctype = dbus_message_iter_get_arg_type(&array)) ==
+							DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *obj;
+
+		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_get_basic(&entry, &obj);
+		rl_printf("\t%s\n", obj);
+		dbus_message_iter_next(&array);
+	}
+}
+
+static void list_messages_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *folder = user_data;
+	DBusMessageIter dict;
+
+	if (strcmp(folder, "*") == 0)
+		folder = "";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
 static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
 {
 	if (argc > 1) {
@@ -985,6 +1078,35 @@ static void pbap_ls(GDBusProxy *proxy, int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to List\n");
+}
+
+static void map_ls_messages(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (g_dbus_proxy_method_call(proxy, "ListMessages", list_messages_setup,
+					list_messages_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to ListMessages\n");
+		return;
+	}
+
+	rl_printf("Attempting to ListMessages\n");
+}
+
+static void map_ls(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc > 1) {
+		map_ls_messages(proxy, argc, argv);
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "ListFolders", list_folders_setup,
+						list_folders_reply, NULL,
+						NULL) == FALSE) {
+		rl_printf("Failed to ListFolders\n");
+		return;
+	}
+
+	rl_printf("Attempting to ListFolders\n");
 }
 
 static void cmd_ls(int argc, char *argv[])
@@ -1003,6 +1125,12 @@ static void cmd_ls(int argc, char *argv[])
 	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
 	if (proxy) {
 		pbap_ls(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_map(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		map_ls(proxy, argc, argv);
 		return;
 	}
 
