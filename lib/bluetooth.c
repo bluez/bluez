@@ -682,7 +682,7 @@ const char *bt_compidtostr(int compid)
 	case 210:
 		return "Dialog Semiconductor B.V.";
 	case 211:
-		return "Taixingbang Technology (HK) Co,. LTD.";
+		return "Taixingbang Technology (HK) Co,. LTD.";
 	case 212:
 		return "Kawantech";
 	case 213:
