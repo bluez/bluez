@@ -686,6 +686,28 @@ static void select_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
 }
 
+static void setfolder_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to SetFolder: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("SetFolder successful\n");
+}
+
+static void setfolder_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *folder = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+}
+
 static GDBusProxy *find_ftp(const char *path)
 {
 	GSList *l;
@@ -705,6 +727,20 @@ static GDBusProxy *find_pbap(const char *path)
 	GSList *l;
 
 	for (l = pbaps; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
+static GDBusProxy *find_map(const char *path)
+{
+	GSList *l;
+
+	for (l = maps; l; l = g_slist_next(l)) {
 		GDBusProxy *proxy = l->data;
 
 		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
@@ -748,6 +784,23 @@ static void pbap_cd(GDBusProxy *proxy, int argc, char *argv[])
 	rl_printf("Attempting to Select to %s\n", argv[1]);
 }
 
+static void map_cd(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc < 2) {
+		rl_printf("Missing path argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "SetFolder", setfolder_setup,
+					setfolder_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to SetFolder\n");
+		return;
+	}
+
+	rl_printf("Attempting to SetFolder to %s\n", argv[1]);
+}
+
 static void cmd_cd(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -764,6 +817,12 @@ static void cmd_cd(int argc, char *argv[])
 	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
 	if (proxy) {
 		pbap_cd(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_map(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		map_cd(proxy, argc, argv);
 		return;
 	}
 
