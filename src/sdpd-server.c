@@ -166,7 +166,7 @@ static gboolean io_session_event(GIOChannel *chan, GIOCondition cond, gpointer d
 	}
 
 	len = recv(sk, &hdr, sizeof(sdp_pdu_hdr_t), MSG_PEEK);
-	if (len <= 0) {
+	if (len != sizeof(sdp_pdu_hdr_t)) {
 		sdp_svcdb_collect_all(sk);
 		return FALSE;
 	}
