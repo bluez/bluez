@@ -2500,118 +2500,122 @@ int main(int argc, char *argv[])
 
 	tester_init(&argc, &argv);
 
-	test_bredrle("Controller setup", NULL, NULL, controller_setup);
-	test_bredr("Controller setup (BR/EDR-only)", NULL, NULL,
-							controller_setup);
-	test_le("Controller setup (LE-only)", NULL, NULL, controller_setup);
-	test_bredrle("Invalid command", &invalid_command_test,
-					NULL, test_command_generic);
+	test_bredrle("Controller setup",
+				NULL, NULL, controller_setup);
+	test_bredr("Controller setup (BR/EDR-only)",
+				NULL, NULL, controller_setup);
+	test_le("Controller setup (LE-only)",
+				NULL, NULL, controller_setup);
 
-	test_bredrle("Read version - Success", &read_version_success_test,
-					NULL, test_command_generic);
+	test_bredrle("Invalid command",
+				&invalid_command_test,
+				NULL, test_command_generic);
+
+	test_bredrle("Read version - Success",
+				&read_version_success_test,
+				NULL, test_command_generic);
 	test_bredrle("Read version - Invalid parameters",
-					&read_version_invalid_param_test,
-					NULL, test_command_generic);
+				&read_version_invalid_param_test,
+				NULL, test_command_generic);
 	test_bredrle("Read version - Invalid index",
-					&read_version_invalid_index_test,
-					NULL, test_command_generic);
+				&read_version_invalid_index_test,
+				NULL, test_command_generic);
 	test_bredrle("Read commands - Invalid parameters",
-					&read_commands_invalid_param_test,
-					NULL, test_command_generic);
+				&read_commands_invalid_param_test,
+				NULL, test_command_generic);
 	test_bredrle("Read commands - Invalid index",
-					&read_commands_invalid_index_test,
-					NULL, test_command_generic);
+				&read_commands_invalid_index_test,
+				NULL, test_command_generic);
 	test_bredrle("Read index list - Invalid parameters",
-					&read_index_list_invalid_param_test,
-					NULL, test_command_generic);
+				&read_index_list_invalid_param_test,
+				NULL, test_command_generic);
 	test_bredrle("Read index list - Invalid index",
-					&read_index_list_invalid_index_test,
-					NULL, test_command_generic);
+				&read_index_list_invalid_index_test,
+				NULL, test_command_generic);
 	test_bredrle("Read info - Invalid parameters",
-					&read_info_invalid_param_test,
-					NULL, test_command_generic);
+				&read_info_invalid_param_test,
+				NULL, test_command_generic);
 	test_bredrle("Read info - Invalid index",
-					&read_info_invalid_index_test,
-					NULL, test_command_generic);
+				&read_info_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set powered on - Success",
-					&set_powered_on_success_test,
-					NULL, test_command_generic);
+				&set_powered_on_success_test,
+				NULL, test_command_generic);
 	test_bredrle("Set powered on - Invalid parameters 1",
-					&set_powered_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_powered_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set powered on - Invalid parameters 2",
-					&set_powered_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_powered_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set powered on - Invalid parameters 3",
-					&set_powered_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_powered_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set powered on - Invalid index",
-					&set_powered_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_powered_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set powered off - Success",
-					&set_powered_off_success_test,
-					setup_powered, test_command_generic);
+				&set_powered_off_success_test,
+				setup_powered, test_command_generic);
 	test_bredrle("Set powered off - Class of Device",
-					&set_powered_off_class_test,
-					setup_class, test_command_generic);
+				&set_powered_off_class_test,
+				setup_class, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 1",
-					&set_powered_off_invalid_param_test_1,
-					setup_powered, test_command_generic);
+				&set_powered_off_invalid_param_test_1,
+				setup_powered, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 2",
-					&set_powered_off_invalid_param_test_2,
-					setup_powered, test_command_generic);
+				&set_powered_off_invalid_param_test_2,
+				setup_powered, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 3",
-					&set_powered_off_invalid_param_test_3,
-					setup_powered, test_command_generic);
+				&set_powered_off_invalid_param_test_3,
+				setup_powered, test_command_generic);
 
 	test_bredrle("Set connectable on - Success 1",
-					&set_connectable_on_success_test_1,
-					NULL, test_command_generic);
+				&set_connectable_on_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Success 2",
-					&set_connectable_on_success_test_2,
-					setup_powered, test_command_generic);
+				&set_connectable_on_success_test_2,
+				setup_powered, test_command_generic);
 	test_bredrle("Set connectable on - Invalid parameters 1",
-					&set_connectable_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_connectable_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Invalid parameters 2",
-					&set_connectable_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_connectable_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Invalid parameters 3",
-					&set_connectable_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_connectable_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Invalid index",
-					&set_connectable_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_connectable_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set connectable off - Success 1",
-				&set_connectable_off_success_test_1,
-				setup_connectable, test_command_generic);
+			&set_connectable_off_success_test_1,
+			setup_connectable, test_command_generic);
 	test_bredrle("Set connectable off - Success 2",
-					&set_connectable_off_success_test_2,
-					setup_connectable_powered,
-					test_command_generic);
+			&set_connectable_off_success_test_2,
+			setup_connectable_powered, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
 			&set_fast_conn_on_success_test_1,
 			setup_powered_connectable, test_command_generic);
 
 	test_bredrle("Set pairable on - Success",
-					&set_pairable_on_success_test,
-					NULL, test_command_generic);
+				&set_pairable_on_success_test,
+				NULL, test_command_generic);
 	test_bredrle("Set pairable on - Invalid parameters 1",
-					&set_pairable_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_pairable_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set pairable on - Invalid parameters 2",
-					&set_pairable_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_pairable_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set pairable on - Invalid parameters 3",
-					&set_pairable_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_pairable_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set pairable on - Invalid index",
-					&set_pairable_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_pairable_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set discoverable on - Invalid parameters 1",
 				&set_discoverable_on_invalid_param_test_1,
@@ -2658,90 +2662,96 @@ int main(int argc, char *argv[])
 				test_command_generic);
 
 	test_bredrle("Set link security on - Success 1",
-					&set_link_sec_on_success_test_1,
-					NULL, test_command_generic);
+				&set_link_sec_on_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Success 2",
-					&set_link_sec_on_success_test_2,
-					setup_powered, test_command_generic);
+				&set_link_sec_on_success_test_2,
+				setup_powered, test_command_generic);
 	test_bredrle("Set link security on - Success 3",
-					&set_link_sec_on_success_test_3,
-					setup_link_sec, test_command_generic);
+				&set_link_sec_on_success_test_3,
+				setup_link_sec, test_command_generic);
 	test_bredrle("Set link security on - Invalid parameters 1",
-					&set_link_sec_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_link_sec_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Invalid parameters 2",
-					&set_link_sec_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_link_sec_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Invalid parameters 3",
-					&set_link_sec_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_link_sec_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Invalid index",
-					&set_link_sec_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_link_sec_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set link security off - Success 1",
-					&set_link_sec_off_success_test_1,
-					setup_link_sec, test_command_generic);
+				&set_link_sec_off_success_test_1,
+				setup_link_sec, test_command_generic);
 	test_bredrle("Set link security off - Success 2",
-					&set_link_sec_off_success_test_2,
-					setup_link_sec_powered,
-					test_command_generic);
+				&set_link_sec_off_success_test_2,
+				setup_link_sec_powered, test_command_generic);
 
-	test_bredrle("Set SSP on - Success 1", &set_ssp_on_success_test_1,
-						NULL, test_command_generic);
-	test_bredrle("Set SSP on - Success 2", &set_ssp_on_success_test_2,
-					setup_powered, test_command_generic);
-	test_bredrle("Set SSP on - Success 3", &set_ssp_on_success_test_3,
-					setup_ssp, test_command_generic);
+	test_bredrle("Set SSP on - Success 1",
+				&set_ssp_on_success_test_1,
+				NULL, test_command_generic);
+	test_bredrle("Set SSP on - Success 2",
+				&set_ssp_on_success_test_2,
+				setup_powered, test_command_generic);
+	test_bredrle("Set SSP on - Success 3",
+				&set_ssp_on_success_test_3,
+				setup_ssp, test_command_generic);
 	test_bredrle("Set SSP on - Invalid parameters 1",
-					&set_ssp_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_ssp_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Invalid parameters 2",
-					&set_ssp_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_ssp_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Invalid parameters 3",
-					&set_ssp_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_ssp_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Invalid index",
-					&set_ssp_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_ssp_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set Low Energy on - Success 1",
-			&set_le_on_success_test_1, NULL, test_command_generic);
+				&set_le_on_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 2",
-					&set_le_on_success_test_2,
-					setup_powered, test_command_generic);
+				&set_le_on_success_test_2,
+				setup_powered, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 3",
-					&set_le_on_success_test_3,
-					setup_le, test_command_generic);
+				&set_le_on_success_test_3,
+				setup_le, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 1",
-					&set_le_on_invalid_param_test_1,
-					NULL, test_command_generic);
+				&set_le_on_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 2",
-					&set_le_on_invalid_param_test_2,
-					NULL, test_command_generic);
+				&set_le_on_invalid_param_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 3",
-					&set_le_on_invalid_param_test_3,
-					NULL, test_command_generic);
+				&set_le_on_invalid_param_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid index",
-					&set_le_on_invalid_index_test,
-					NULL, test_command_generic);
+				&set_le_on_invalid_index_test,
+				NULL, test_command_generic);
 
 	test_bredrle("Set Advertising on - Success 1",
-			&set_adv_on_success_test_1, setup_le,
-			test_command_generic);
+				&set_adv_on_success_test_1,
+				setup_le, test_command_generic);
 	test_bredrle("Set Advertising on - Success 2",
-			&set_adv_on_success_test_2, setup_le_powered,
-			test_command_generic);
+				&set_adv_on_success_test_2,
+				setup_le_powered, test_command_generic);
 	test_bredrle("Set Advertising on - Rejected 1",
-			&set_adv_on_rejected_test_1, setup_powered,
-			test_command_generic);
+				&set_adv_on_rejected_test_1,
+				setup_powered, test_command_generic);
 
-	test_bredr("Set Local Name - Success 1", &set_local_name_test_1,
-						NULL, test_command_generic);
-	test_bredr("Set Local Name - Success 2", &set_local_name_test_2,
-					setup_powered, test_command_generic);
-	test_bredr("Set Local Name - Success 3", &set_local_name_test_3,
+	test_bredr("Set Local Name - Success 1",
+				&set_local_name_test_1,
+				NULL, test_command_generic);
+	test_bredr("Set Local Name - Success 2",
+				&set_local_name_test_2,
+				setup_powered, test_command_generic);
+	test_bredr("Set Local Name - Success 3",
+				&set_local_name_test_3,
 				setup_ssp_powered, test_command_generic);
 
 	test_bredrle("Start Discovery - Not powered 1",
@@ -2783,87 +2793,97 @@ int main(int argc, char *argv[])
 				&set_dev_class_invalid_param_test_1,
 				NULL, test_command_generic);
 
-	test_bredrle("Add UUID - UUID-16 1", &add_uuid16_test_1,
+	test_bredrle("Add UUID - UUID-16 1",
+				&add_uuid16_test_1,
 				setup_ssp_powered, test_command_generic);
-	test_bredrle("Add UUID - UUID-16 multiple 1", &add_multi_uuid16_test_1,
+	test_bredrle("Add UUID - UUID-16 multiple 1",
+				&add_multi_uuid16_test_1,
 				setup_multi_uuid16, test_command_generic);
-	test_bredrle("Add UUID - UUID-16 partial 1", &add_multi_uuid16_test_2,
+	test_bredrle("Add UUID - UUID-16 partial 1",
+				&add_multi_uuid16_test_2,
 				setup_multi_uuid16_2, test_command_generic);
-	test_bredrle("Add UUID - UUID-32 1", &add_uuid32_test_1,
+	test_bredrle("Add UUID - UUID-32 1",
+				&add_uuid32_test_1,
 				setup_ssp_powered, test_command_generic);
-	test_bredrle("Add UUID - UUID-32 multiple 1", &add_uuid32_multi_test_1,
+	test_bredrle("Add UUID - UUID-32 multiple 1",
+				&add_uuid32_multi_test_1,
 				setup_multi_uuid32, test_command_generic);
-	test_bredrle("Add UUID - UUID-32 partial 1", &add_uuid32_multi_test_2,
+	test_bredrle("Add UUID - UUID-32 partial 1",
+				&add_uuid32_multi_test_2,
 				setup_multi_uuid32_2, test_command_generic);
-	test_bredrle("Add UUID - UUID-128 1", &add_uuid128_test_1,
+	test_bredrle("Add UUID - UUID-128 1",
+				&add_uuid128_test_1,
 				setup_ssp_powered, test_command_generic);
 	test_bredrle("Add UUID - UUID-128 multiple 1",
-				&add_uuid128_multi_test_1, setup_multi_uuid128,
-				test_command_generic);
-	test_bredrle("Add UUID - UUID-128 partial 1", &add_uuid128_multi_test_2,
+				&add_uuid128_multi_test_1,
+				setup_multi_uuid128, test_command_generic);
+	test_bredrle("Add UUID - UUID-128 partial 1",
+				&add_uuid128_multi_test_2,
 				setup_multi_uuid128_2, test_command_generic);
-	test_bredrle("Add UUID - UUID mix", &add_uuid_mix_test_1,
+	test_bredrle("Add UUID - UUID mix",
+				&add_uuid_mix_test_1,
 				setup_uuid_mix, test_command_generic);
 
 	test_bredrle("Load Link Keys - Empty List Success 1",
-			&load_link_keys_success_test_1, NULL,
-			test_command_generic);
+				&load_link_keys_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Load Link Keys - Empty List Success 2",
-			&load_link_keys_success_test_2, NULL,
-			test_command_generic);
+				&load_link_keys_success_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Load Link Keys - Invalid Parameters 1",
-			&load_link_keys_invalid_params_test_1, NULL,
-			test_command_generic);
+				&load_link_keys_invalid_params_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Load Link Keys - Invalid Parameters 2",
-			&load_link_keys_invalid_params_test_2, NULL,
-			test_command_generic);
+				&load_link_keys_invalid_params_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Load Link Keys - Invalid Parameters 3",
-			&load_link_keys_invalid_params_test_3, NULL,
-			test_command_generic);
+				&load_link_keys_invalid_params_test_3,
+				NULL, test_command_generic);
 
 	test_bredrle("Load Long Term Keys - Success 1",
-			&load_ltks_success_test_1, NULL, test_command_generic);
+				&load_ltks_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Load Long Term Keys - Invalid Parameters 1",
-			&load_ltks_invalid_params_test_1, NULL,
-			test_command_generic);
+				&load_ltks_invalid_params_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Load Long Term Keys - Invalid Parameters 2",
-			&load_ltks_invalid_params_test_2, NULL,
-			test_command_generic);
+				&load_ltks_invalid_params_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Load Long Term Keys - Invalid Parameters 3",
-			&load_ltks_invalid_params_test_3, NULL,
-			test_command_generic);
+				&load_ltks_invalid_params_test_3,
+				NULL, test_command_generic);
 	test_bredrle("Load Long Term Keys - Invalid Parameters 4",
-			&load_ltks_invalid_params_test_4, NULL,
-			test_command_generic);
+				&load_ltks_invalid_params_test_4,
+				NULL, test_command_generic);
 
 	test_bredrle("Pair Device - Not Powered 1",
-			&pair_device_not_powered_test_1, NULL,
-			test_command_generic);
+				&pair_device_not_powered_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Pair Device - Invalid Parameters 1",
-			&pair_device_invalid_param_test_1, NULL,
-			test_command_generic);
+				&pair_device_invalid_param_test_1,
+				NULL, test_command_generic);
 
 	test_bredrle("Unpair Device - Not Powered 1",
-			&unpair_device_not_powered_test_1, NULL,
-			test_command_generic);
+				&unpair_device_not_powered_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Unpair Device - Invalid Parameters 1",
-			&unpair_device_invalid_param_test_1, NULL,
-			test_command_generic);
+				&unpair_device_invalid_param_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Unpair Device - Invalid Parameters 2",
-			&unpair_device_invalid_param_test_2, NULL,
-			test_command_generic);
+				&unpair_device_invalid_param_test_2,
+				NULL, test_command_generic);
 
 	test_bredrle("Disconnect - Invalid Parameters 1",
-			&disconnect_invalid_param_test_1, NULL,
-			test_command_generic);
+				&disconnect_invalid_param_test_1,
+				NULL, test_command_generic);
 
 	test_bredrle("Block Device - Invalid Parameters 1",
-			&block_device_invalid_param_test_1, NULL,
-			test_command_generic);
+				&block_device_invalid_param_test_1,
+				NULL, test_command_generic);
 
 	test_bredrle("Unblock Device - Invalid Parameters 1",
-			&unblock_device_invalid_param_test_1, NULL,
-			test_command_generic);
+				&unblock_device_invalid_param_test_1,
+				NULL, test_command_generic);
 
 	return tester_run();
 }
