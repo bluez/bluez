@@ -1010,16 +1010,9 @@ static void copy_file_reply(DBusMessage *message, void *user_data)
 	rl_printf("CopyFile successful\n");
 }
 
-static void cmd_copy(int argc, char *argv[])
+static void ftp_copy(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
 	struct cp_args *args;
-
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
-		return;
-	}
 
 	args = cp_new(argv);
 
@@ -1058,19 +1051,12 @@ static void get_file_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->source);
 }
 
-static void cmd_get(int argc, char *argv[])
+static void ftp_get(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
 	struct cp_args *args;
 
 	if (rindex(argv[2], ':') == NULL)
-		return cmd_copy(argc, argv);
-
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
-		return;
-	}
+		return ftp_copy(proxy, argc, argv);
 
 	args = cp_new(argv);
 
@@ -1101,19 +1087,12 @@ static void put_file_reply(DBusMessage *message, void *user_data)
 	print_transfer_iter(&iter);
 }
 
-static void cmd_put(int argc, char *argv[])
+static void ftp_put(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
 	struct cp_args *args;
 
 	if (rindex(argv[2], ':') != NULL) {
 		rl_printf("Invalid target file argument\n");
-		return;
-	}
-
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
 		return;
 	}
 
@@ -1128,11 +1107,8 @@ static void cmd_put(int argc, char *argv[])
 	rl_printf("Attempting to PutFile\n");
 }
 
-static void cmd_cp(int argc, char *argv[])
+static void ftp_cp(GDBusProxy *proxy, int argc, char *argv[])
 {
-	if (!check_default_session())
-		return;
-
 	if (argc < 2) {
 		rl_printf("Missing source file argument\n");
 		return;
@@ -1144,9 +1120,144 @@ static void cmd_cp(int argc, char *argv[])
 	}
 
 	if (rindex(argv[1], ':') == NULL)
-		return cmd_get(argc, argv);
+		return ftp_get(proxy, argc, argv);
 
-	return cmd_put(argc, argv);
+	return ftp_put(proxy, argc, argv);
+}
+
+static void pull_all_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to PullAll: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+
+	rl_printf("PullAll successful\n");
+}
+
+static void pull_all_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *file = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void pbap_pull_all(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (g_dbus_proxy_method_call(proxy, "PullAll", pull_all_setup,
+					pull_all_reply, g_strdup(argv[2]),
+					g_free) == FALSE) {
+		rl_printf("Failed to PullAll\n");
+		return;
+	}
+
+	rl_printf("Attempting to PullAll\n");
+}
+
+static void pull_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to Pull: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+
+	rl_printf("Pull successful\n");
+}
+
+static void pull_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct cp_args *args = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->source);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->target);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void pbap_pull(GDBusProxy *proxy, int argc, char *argv[])
+{
+	struct cp_args *args;
+
+	args = cp_new(argv);
+
+	if (g_dbus_proxy_method_call(proxy, "Pull", pull_setup, pull_reply,
+						args, cp_free) == FALSE) {
+		rl_printf("Failed to Pull\n");
+		return;
+	}
+
+	rl_printf("Attempting to Pull\n");
+}
+
+static void pbap_cp(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc < 2) {
+		rl_printf("Missing source file argument\n");
+		return;
+	}
+
+	if (argc < 3) {
+		rl_printf("Missing target file argument\n");
+		return;
+	}
+
+	if (strcmp(argv[1], "*") == 0)
+		return pbap_pull_all(proxy, argc, argv);
+
+	return pbap_pull(proxy, argc, argv);
+}
+
+static void cmd_cp(int argc, char *argv[])
+{
+
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		ftp_cp(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		pbap_cp(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
 }
 
 static void move_file_reply(DBusMessage *message, void *user_data)
