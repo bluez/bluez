@@ -195,9 +195,16 @@ gboolean plugin_init(const char *enable, const char *disable)
 start:
 	for (list = plugins; list; list = list->next) {
 		struct bluetooth_plugin *plugin = list->data;
+		int err;
 
-		if (plugin->desc->init() < 0) {
-			error("Failed to init %s plugin", plugin->desc->name);
+		err = plugin->desc->init();
+		if (err < 0) {
+			if (err == -ENOSYS)
+				warn("System does not support %s plugin",
+							plugin->desc->name);
+			else
+				error("Failed to init %s plugin",
+							plugin->desc->name);
 			continue;
 		}
 
