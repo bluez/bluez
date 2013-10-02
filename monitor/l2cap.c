@@ -1010,7 +1010,7 @@ struct sig_opcode_data {
 	bool fixed;
 };
 
-static const struct sig_opcode_data sig_opcode_table[] = {
+static const struct sig_opcode_data bredr_sig_opcode_table[] = {
 	{ 0x01, "Command Reject",
 			sig_cmd_reject, 2, false },
 	{ 0x02, "Connection Request",
@@ -1045,6 +1045,12 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 			sig_move_chan_cfm, 4, true },
 	{ 0x11, "Move Channel Confirmation Response",
 			sig_move_chan_cfm_rsp, 2, true },
+	{ },
+};
+
+static const struct sig_opcode_data le_sig_opcode_table[] = {
+	{ 0x01, "Command Reject",
+			sig_cmd_reject, 2, false },
 	{ 0x12, "Connection Parameter Update Request",
 			sig_conn_param_req, 8, true },
 	{ 0x13, "Connection Parameter Update Response",
@@ -1052,16 +1058,16 @@ static const struct sig_opcode_data sig_opcode_table[] = {
 	{ },
 };
 
-static void sig_packet(uint16_t index, bool in, uint16_t handle,
-			uint16_t cid, const void *data, uint16_t size)
+static void bredr_sig_packet(uint16_t index, bool in, uint16_t handle,
+				uint16_t cid, const void *data, uint16_t size)
 {
 	struct l2cap_frame frame;
 
 	while (size > 0) {
-		uint16_t len;
 		const struct bt_l2cap_hdr_sig *hdr = data;
 		const struct sig_opcode_data *opcode_data = NULL;
 		const char *opcode_color, *opcode_str;
+		uint16_t len;
 		int i;
 
 		if (size < 4) {
@@ -1081,9 +1087,9 @@ static void sig_packet(uint16_t index, bool in, uint16_t handle,
 			return;
 		}
 
-		for (i = 0; sig_opcode_table[i].str; i++) {
-			if (sig_opcode_table[i].opcode == hdr->code) {
-				opcode_data = &sig_opcode_table[i];
+		for (i = 0; bredr_sig_opcode_table[i].str; i++) {
+			if (bredr_sig_opcode_table[i].opcode == hdr->code) {
+				opcode_data = &bredr_sig_opcode_table[i];
 				break;
 			}
 		}
@@ -1140,6 +1146,81 @@ static void sig_packet(uint16_t index, bool in, uint16_t handle,
 	}
 
 	packet_hexdump(data, size);
+}
+
+static void le_sig_packet(uint16_t index, bool in, uint16_t handle,
+				uint16_t cid, const void *data, uint16_t size)
+{
+	struct l2cap_frame frame;
+	const struct bt_l2cap_hdr_sig *hdr = data;
+	const struct sig_opcode_data *opcode_data = NULL;
+	const char *opcode_color, *opcode_str;
+	uint16_t len;
+	int i;
+
+	if (size < 4) {
+		print_text(COLOR_ERROR, "malformed signal packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	len = btohs(hdr->len);
+
+	data += 4;
+	size -= 4;
+
+	if (size != len) {
+		print_text(COLOR_ERROR, "invalid signal packet size");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	for (i = 0; le_sig_opcode_table[i].str; i++) {
+		if (le_sig_opcode_table[i].opcode == hdr->code) {
+			opcode_data = &le_sig_opcode_table[i];
+			break;
+		}
+	}
+
+	if (opcode_data) {
+		if (opcode_data->func) {
+			if (in)
+				opcode_color = COLOR_MAGENTA;
+			else
+				opcode_color = COLOR_BLUE;
+		} else
+			opcode_color = COLOR_WHITE_BG;
+		opcode_str = opcode_data->str;
+	} else {
+		opcode_color = COLOR_WHITE_BG;
+		opcode_str = "Unknown";
+	}
+
+	print_indent(6, opcode_color, "LE L2CAP: ", opcode_str, COLOR_OFF,
+					" (0x%2.2x) ident %d len %d",
+					hdr->code, hdr->ident, len);
+
+	if (!opcode_data || !opcode_data->func) {
+		packet_hexdump(data, len);
+		return;
+	}
+
+	if (opcode_data->fixed) {
+		if (len != opcode_data->size) {
+			print_text(COLOR_ERROR, "invalid size");
+			packet_hexdump(data, len);
+			return;
+		}
+	} else {
+		if (len < opcode_data->size) {
+			print_text(COLOR_ERROR, "too short packet");
+			packet_hexdump(data, size);
+			return;
+		}
+	}
+
+	l2cap_frame_init(&frame, index, in, handle, cid, data, len);
+	opcode_data->func(&frame);
 }
 
 static void print_controller_list(const uint8_t *data, uint16_t size)
@@ -2358,14 +2439,16 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 
 	switch (cid) {
 	case 0x0001:
-	case 0x0005:
-		sig_packet(index, in, handle, cid, data, size);
+		bredr_sig_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0003:
 		amp_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0004:
 		att_packet(index, in, handle, cid, data, size);
+		break;
+	case 0x0005:
+		le_sig_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0006:
 		smp_packet(index, in, handle, cid, data, size);
