@@ -1475,6 +1475,62 @@ static void pbap_cp(GDBusProxy *proxy, int argc, char *argv[])
 	return pbap_pull(proxy, argc, argv);
 }
 
+static void get_reply(DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to Get: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_transfer_iter(&iter);
+}
+
+static void get_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *file = user_data;
+	dbus_bool_t attachment = TRUE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &attachment);
+}
+
+static void map_cp(GDBusProxy *proxy, int argc, char *argv[])
+{
+	GDBusProxy *obj;
+
+	if (argc < 2) {
+		rl_printf("Missing message argument\n");
+		return;
+	}
+
+	obj = find_message(argv[1]);
+	if (obj == NULL) {
+		rl_printf("Invalid message argument\n");
+		return;
+	}
+
+	if (argc < 3) {
+		rl_printf("Missing target file argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(obj, "Get", get_setup, get_reply,
+					g_strdup(argv[2]), g_free) == FALSE) {
+		rl_printf("Failed to Get\n");
+		return;
+	}
+
+	rl_printf("Attempting to Get\n");
+}
+
 static void cmd_cp(int argc, char *argv[])
 {
 
@@ -1492,6 +1548,12 @@ static void cmd_cp(int argc, char *argv[])
 	proxy = find_pbap(g_dbus_proxy_get_path(default_session));
 	if (proxy) {
 		pbap_cp(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_map(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		map_cp(proxy, argc, argv);
 		return;
 	}
 
