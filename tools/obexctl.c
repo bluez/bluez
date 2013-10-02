@@ -460,21 +460,22 @@ static GDBusProxy *find_transfer(const char *path)
 	return NULL;
 }
 
-static void cmd_info(int argc, char *argv[])
+static GDBusProxy *find_message(const char *path)
 {
-	GDBusProxy *proxy;
+	GSList *l;
 
-	if (argc < 2) {
-		rl_printf("Missing transfer address argument\n");
-		return;
+	for (l = msgs; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
 	}
 
-	proxy = find_transfer(argv[1]);
-	if (!proxy) {
-		rl_printf("Transfer %s not available\n", argv[1]);
-		return;
-	}
+	return NULL;
+}
 
+static void transfer_info(GDBusProxy *proxy, int argc, char *argv[])
+{
 	rl_printf("Transfer %s\n", g_dbus_proxy_get_path(proxy));
 
 	print_property(proxy, "Session");
@@ -485,6 +486,52 @@ static void cmd_info(int argc, char *argv[])
 	print_property(proxy, "Size");
 	print_property(proxy, "Transferred");
 	print_property(proxy, "Filename");
+}
+
+static void message_info(GDBusProxy *proxy, int argc, char *argv[])
+{
+	rl_printf("Message %s\n", g_dbus_proxy_get_path(proxy));
+
+	print_property(proxy, "Folder");
+	print_property(proxy, "Subject");
+	print_property(proxy, "Timestamp");
+	print_property(proxy, "Sender");
+	print_property(proxy, "SenderAddress");
+	print_property(proxy, "ReplyTo");
+	print_property(proxy, "Recipient");
+	print_property(proxy, "RecipientAddress");
+	print_property(proxy, "Type");
+	print_property(proxy, "Size");
+	print_property(proxy, "Status");
+	print_property(proxy, "Priority");
+	print_property(proxy, "Read");
+	print_property(proxy, "Deleted");
+	print_property(proxy, "Sent");
+	print_property(proxy, "Protected");
+}
+
+static void cmd_info(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (argc < 2) {
+		rl_printf("Missing object path argument\n");
+		return;
+	}
+
+	proxy = find_transfer(argv[1]);
+	if (proxy) {
+		transfer_info(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_message(argv[1]);
+	if (proxy) {
+		message_info(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Object %s not available\n", argv[1]);
 }
 
 static void cancel_reply(DBusMessage *message, void *user_data)
@@ -1612,7 +1659,7 @@ static const struct {
 	{ "list",         NULL,       cmd_list, "List available sessions" },
 	{ "show",         "[session]", cmd_show, "Session information" },
 	{ "select",       "<session>", cmd_select, "Select default session" },
-	{ "info",         "<transfer>", cmd_info, "Transfer information" },
+	{ "info",         "<object>", cmd_info, "Object information" },
 	{ "cancel",       "<transfer>", cmd_cancel, "Cancel transfer" },
 	{ "send",         "<file>",   cmd_send, "Send file" },
 	{ "cd",           "<path>",   cmd_cd, "Change current folder" },
