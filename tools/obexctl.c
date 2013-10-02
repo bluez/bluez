@@ -51,12 +51,14 @@
 
 #define OBEX_SESSION_INTERFACE "org.bluez.obex.Session1"
 #define OBEX_TRANSFER_INTERFACE "org.bluez.obex.Transfer1"
+#define OBEX_CLIENT_INTERFACE "org.bluez.obex.Client1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
 static GDBusProxy *default_session;
 static GSList *sessions = NULL;
 static GSList *transfers = NULL;
+static GDBusProxy *client = NULL;
 
 static void connect_handler(DBusConnection *connection, void *user_data)
 {
@@ -324,6 +326,14 @@ static void print_proxy(GDBusProxy *proxy, const char *title,
 	g_free(str);
 }
 
+static void client_added(GDBusProxy *proxy)
+{
+	if (client == NULL)
+		client = proxy;
+
+	print_proxy(proxy, "Client", COLORED_NEW);
+}
+
 static void session_added(GDBusProxy *proxy)
 {
 	sessions = g_slist_append(sessions, proxy);
@@ -347,10 +357,20 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
+	if (!strcmp(interface, OBEX_CLIENT_INTERFACE))
+		client_added(proxy);
+	else if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_added(proxy);
 	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
 		transfer_added(proxy);
+}
+
+static void client_removed(GDBusProxy *proxy)
+{
+	print_proxy(proxy, "Client", COLORED_DEL);
+
+	if (client == proxy)
+		client = NULL;
 }
 
 static void session_removed(GDBusProxy *proxy)
@@ -376,7 +396,9 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 
 	interface = g_dbus_proxy_get_interface(proxy);
 
-	if (!strcmp(interface, OBEX_SESSION_INTERFACE))
+	if (!strcmp(interface, OBEX_CLIENT_INTERFACE))
+		client_removed(proxy);
+	else if (!strcmp(interface, OBEX_SESSION_INTERFACE))
 		session_removed(proxy);
 	else if (!strcmp(interface, OBEX_TRANSFER_INTERFACE))
 		transfer_removed(proxy);
