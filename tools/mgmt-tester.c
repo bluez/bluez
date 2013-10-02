@@ -1093,6 +1093,71 @@ static const struct generic_data set_adv_on_rejected_test_1 = {
 	.expect_status = MGMT_STATUS_REJECTED,
 };
 
+static const char set_bredr_off_param[] = { 0x00 };
+static const char set_bredr_on_param[] = { 0x01 };
+static const char set_bredr_invalid_param[] = { 0x02 };
+static const char set_bredr_settings_param_1[] = { 0x00, 0x02, 0x00, 0x00 };
+static const char set_bredr_settings_param_2[] = { 0x80, 0x02, 0x00, 0x00 };
+static const char set_bredr_settings_param_3[] = { 0x81, 0x02, 0x00, 0x00 };
+
+static const struct generic_data set_bredr_off_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_off_param,
+	.send_len = sizeof(set_bredr_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_bredr_settings_param_1,
+	.expect_len = sizeof(set_bredr_settings_param_1),
+	.expect_settings_unset = MGMT_SETTING_BREDR,
+};
+
+static const struct generic_data set_bredr_on_success_test_1 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_on_param,
+	.send_len = sizeof(set_bredr_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_bredr_settings_param_2,
+	.expect_len = sizeof(set_bredr_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_BREDR,
+};
+
+static const struct generic_data set_bredr_on_success_test_2 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_on_param,
+	.send_len = sizeof(set_bredr_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_bredr_settings_param_3,
+	.expect_len = sizeof(set_bredr_settings_param_3),
+	.expect_settings_set = MGMT_SETTING_BREDR,
+};
+
+static const struct generic_data set_bredr_off_notsupp_test = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_off_param,
+	.send_len = sizeof(set_bredr_off_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
+static const struct generic_data set_bredr_off_failure_test_1 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_off_param,
+	.send_len = sizeof(set_bredr_off_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const struct generic_data set_bredr_off_failure_test_2 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_off_param,
+	.send_len = sizeof(set_bredr_off_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
+static const struct generic_data set_bredr_off_failure_test_3 = {
+	.send_opcode = MGMT_OP_SET_BREDR,
+	.send_param = set_bredr_invalid_param,
+	.send_len = sizeof(set_bredr_invalid_param),
+	.expect_status = MGMT_STATUS_INVALID_PARAMS,
+};
+
 static const char set_local_name_param[260] = { 'T', 'e', 's', 't', ' ',
 						'n', 'a', 'm', 'e' };
 static const char write_local_name_hci[248] = { 'T', 'e', 's', 't', ' ',
@@ -1921,6 +1986,24 @@ static void setup_le_powered(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
+static void setup_le_nobr_powered(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char on[] = { 0x01 };
+	unsigned char off[] = { 0x00 };
+
+	tester_print("Powering on controller (with LE enabled)");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(on), on, NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
+				sizeof(off), off, NULL, NULL, NULL);
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+					sizeof(on), on,
+					setup_powered_callback, NULL, NULL);
+}
+
 static void setup_discovery_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2059,6 +2142,22 @@ static void setup_le(const void *test_data)
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, setup_le_callback,
+				NULL, NULL);
+}
+
+static void setup_le_nobr(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char on[] = { 0x01 };
+	unsigned char off[] = { 0x00 };
+
+	tester_print("Enabling Low Energy");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(on), on, NULL,
+				NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
+				sizeof(off), off, setup_le_callback,
 				NULL, NULL);
 }
 
@@ -2802,6 +2901,31 @@ int main(int argc, char *argv[])
 	test_bredrle("Set Advertising on - Rejected 1",
 				&set_adv_on_rejected_test_1,
 				setup_powered, test_command_generic);
+
+	test_bredrle("Set BR/EDR off - Success 1",
+				&set_bredr_off_success_test_1,
+				setup_le, test_command_generic);
+	test_bredrle("Set BR/EDR on - Success 1",
+				&set_bredr_on_success_test_1,
+				setup_le_nobr, test_command_generic);
+	test_bredrle("Set BR/EDR on - Success 2",
+				&set_bredr_on_success_test_2,
+				setup_le_nobr_powered, test_command_generic);
+	test_bredr("Set BR/EDR off - Not Supported 1",
+				&set_bredr_off_notsupp_test,
+				NULL, test_command_generic);
+	test_le("Set BR/EDR off - Not Supported 2",
+				&set_bredr_off_notsupp_test,
+				NULL, test_command_generic);
+	test_bredrle("Set BR/EDR off - Rejected 1",
+				&set_bredr_off_failure_test_1,
+				setup_le_powered, test_command_generic);
+	test_bredrle("Set BR/EDR off - Rejected 2",
+				&set_bredr_off_failure_test_2,
+				setup_powered, test_command_generic);
+	test_bredrle("Set BR/EDR off - Invalid Parameters 1",
+				&set_bredr_off_failure_test_3,
+				setup_le, test_command_generic);
 
 	test_bredr("Set Local Name - Success 1",
 				&set_local_name_test_1,
