@@ -971,6 +971,11 @@ static void cmd_advertising(struct mgmt *mgmt, uint16_t index, int argc,
 	cmd_setting(mgmt, index, MGMT_OP_SET_ADVERTISING, argc, argv);
 }
 
+static void cmd_bredr(struct mgmt *mgmt, uint16_t index, int argc, char **argv)
+{
+	cmd_setting(mgmt, index, MGMT_OP_SET_BREDR, argc, argv);
+}
+
 static void class_rsp(uint16_t op, uint16_t id, uint8_t status, uint16_t len,
 							const void *param)
 {
@@ -1788,6 +1793,7 @@ static struct {
 	{ "hs",		cmd_hs,		"Toggle HS Support"		},
 	{ "le",		cmd_le,		"Toggle LE Support"		},
 	{ "advertising",cmd_advertising,"Toggle LE advertising",	},
+	{ "bredr",      cmd_bredr,      "Toggle BR/EDR support",	},
 	{ "class",	cmd_class,	"Set device major/minor class"	},
 	{ "disconnect", cmd_disconnect, "Disconnect device"		},
 	{ "con",	cmd_con,	"List connections"		},
