@@ -1774,6 +1774,46 @@ done:
 	}
 }
 
+static void static_addr_rsp(uint8_t status, uint16_t len, const void *param,
+							void *user_data)
+{
+	if (status != 0)
+		fprintf(stderr, "Set static address failed "
+						"with status 0x%02x (%s)\n",
+						status, mgmt_errstr(status));
+	else
+		printf("Static address successfully set\n");
+
+	g_main_loop_quit(event_loop);
+}
+
+static void static_addr_usage(void)
+{
+	printf("Usage: btmgmt static-addr <address>\n");
+}
+
+static void cmd_static_addr(struct mgmt *mgmt, uint16_t index,
+							int argc, char **argv)
+{
+	struct mgmt_cp_set_static_address cp;
+
+	if (argc < 2) {
+		static_addr_usage();
+		exit(EXIT_FAILURE);
+	}
+
+	if (index == MGMT_INDEX_NONE)
+		index = 0;
+
+	str2ba(argv[1], &cp.bdaddr);
+
+	if (mgmt_send(mgmt, MGMT_OP_SET_STATIC_ADDRESS, index, sizeof(cp), &cp,
+					static_addr_rsp, NULL, NULL) == 0) {
+		fprintf(stderr, "Unable to send set_static_address cmd\n");
+		exit(EXIT_FAILURE);
+	}
+}
+
 static struct {
 	char *cmd;
 	void (*func)(struct mgmt *mgmt, uint16_t index, int argc, char **argv);
@@ -1809,6 +1849,7 @@ static struct {
 	{ "rm-uuid",	cmd_remove_uuid, "Remove UUID"			},
 	{ "clr-uuids",	cmd_clr_uuids,	"Clear UUIDs",			},
 	{ "did",	cmd_did,	"Set Device ID",		},
+	{ "static-addr",cmd_static_addr,"Set static address",		},
 	{ NULL, NULL, 0 }
 };
 
