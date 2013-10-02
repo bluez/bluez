@@ -1769,7 +1769,7 @@ done:
 
 	if (mgmt_send(mgmt, MGMT_OP_SET_DEVICE_ID, index, sizeof(cp), &cp,
 						did_rsp, NULL, NULL) == 0) {
-		fprintf(stderr, "Unable to send set_dev_class cmd\n");
+		fprintf(stderr, "Unable to send set_device_id cmd\n");
 		exit(EXIT_FAILURE);
 	}
 }
