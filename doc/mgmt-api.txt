@@ -1253,7 +1253,7 @@ Set Advertising Command
 
 
 Set BR/EDR Command
-=======================
+==================
 
 	Command Code:		0x002A
 	Controller Index:	<controller id>
