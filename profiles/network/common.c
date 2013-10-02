@@ -110,8 +110,13 @@ int bnep_init(void)
 
 	if (ctl < 0) {
 		int err = -errno;
-		error("Failed to open control socket: %s (%d)",
+
+		if (err == -EPROTONOSUPPORT)
+			warn("kernel lacks bnep-protocol support");
+		else
+			error("Failed to open control socket: %s (%d)",
 						strerror(-err), -err);
+
 		return err;
 	}
 

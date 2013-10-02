@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdbool.h>
 
 #include <bluetooth/bluetooth.h>
@@ -169,11 +170,15 @@ static struct btd_profile nap_profile = {
 
 static int network_init(void)
 {
+	int err;
+
 	read_config(CONFIGDIR "/network.conf");
 
-	if (bnep_init()) {
-		error("Can't init bnep module");
-		return -1;
+	err = bnep_init();
+	if (err) {
+		if (err == -EPROTONOSUPPORT)
+			err = -ENOSYS;
+		return err;
 	}
 
 	/*
