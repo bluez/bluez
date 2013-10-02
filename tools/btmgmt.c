@@ -94,8 +94,8 @@ static const char *settings_str[] = {
 				"ssp",
 				"br/edr",
 				"hs",
-				"le" ,
-				"advertising" ,
+				"le",
+				"advertising",
 };
 
 static void print_settings(uint32_t settings)
