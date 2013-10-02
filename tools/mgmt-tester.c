@@ -1234,7 +1234,7 @@ static const struct generic_data start_discovery_not_supported_test_1 = {
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_le_param,
 	.send_len = sizeof(start_discovery_le_param),
-	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+	.expect_status = MGMT_STATUS_REJECTED,
 };
 
 static const struct generic_data start_discovery_valid_param_test_1 = {
