@@ -56,6 +56,7 @@
 #define OBEX_FTP_INTERFACE "org.bluez.obex.FileTransfer1"
 #define OBEX_PBAP_INTERFACE "org.bluez.obex.PhonebookAccess1"
 #define OBEX_MAP_INTERFACE "org.bluez.obex.MessageAccess1"
+#define OBEX_MSG_INTERFACE "org.bluez.obex.Message1"
 
 static GMainLoop *main_loop;
 static DBusConnection *dbus_conn;
@@ -65,6 +66,7 @@ static GSList *opps = NULL;
 static GSList *ftps = NULL;
 static GSList *pbaps = NULL;
 static GSList *maps = NULL;
+static GSList *msgs = NULL;
 static GSList *transfers = NULL;
 static GDBusProxy *client = NULL;
 
@@ -1954,6 +1956,13 @@ static void map_added(GDBusProxy *proxy)
 	print_proxy(proxy, "MessageAccess", COLORED_NEW);
 }
 
+static void msg_added(GDBusProxy *proxy)
+{
+	msgs = g_slist_append(msgs, proxy);
+
+	print_proxy(proxy, "Message", COLORED_NEW);
+}
+
 static void proxy_added(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -1974,6 +1983,8 @@ static void proxy_added(GDBusProxy *proxy, void *user_data)
 		pbap_added(proxy);
 	else if (!strcmp(interface, OBEX_MAP_INTERFACE))
 		map_added(proxy);
+	else if (!strcmp(interface, OBEX_MSG_INTERFACE))
+		msg_added(proxy);
 }
 
 static void client_removed(GDBusProxy *proxy)
@@ -2029,6 +2040,13 @@ static void map_removed(GDBusProxy *proxy)
 	maps = g_slist_remove(maps, proxy);
 }
 
+static void msg_removed(GDBusProxy *proxy)
+{
+	print_proxy(proxy, "Message", COLORED_DEL);
+
+	msgs = g_slist_remove(msgs, proxy);
+}
+
 static void proxy_removed(GDBusProxy *proxy, void *user_data)
 {
 	const char *interface;
@@ -2049,6 +2067,8 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 		pbap_removed(proxy);
 	else if (!strcmp(interface, OBEX_MAP_INTERFACE))
 		map_removed(proxy);
+	else if (!strcmp(interface, OBEX_MSG_INTERFACE))
+		msg_removed(proxy);
 }
 
 static void session_property_changed(GDBusProxy *proxy, const char *name,
