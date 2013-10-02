@@ -81,12 +81,129 @@ static void cmd_quit(int argc, char *argv[])
 	g_main_loop_quit(main_loop);
 }
 
+static void connect_reply(DBusMessage *message, void *user_data)
+{
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to connect: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	rl_printf("Connection successful\n");
+}
+
+static void append_variant(DBusMessageIter *iter, int type, void *val)
+{
+	DBusMessageIter value;
+	char sig[2] = { type, '\0' };
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, sig, &value);
+
+	dbus_message_iter_append_basic(&value, type, val);
+
+	dbus_message_iter_close_container(iter, &value);
+}
+
+static void dict_append_entry(DBusMessageIter *dict, const char *key,
+							int type, void *val)
+{
+	DBusMessageIter entry;
+
+	if (type == DBUS_TYPE_STRING) {
+		const char *str = *((const char **) val);
+		if (str == NULL)
+			return;
+	}
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	append_variant(&entry, type, val);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+struct connect_args {
+	char *dev;
+	char *target;
+};
+
+static void connect_args_free(void *data)
+{
+	struct connect_args *args = data;
+
+	g_free(args->dev);
+	g_free(args->target);
+	g_free(args);
+}
+
+static void connect_setup(DBusMessageIter *iter, void *user_data)
+{
+	struct connect_args *args = user_data;
+	DBusMessageIter dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &args->dev);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	if (args->target == NULL)
+		goto done;
+
+	dict_append_entry(&dict, "Target", DBUS_TYPE_STRING, &args->target);
+
+done:
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void cmd_connect(int argc, char *argv[])
+{
+	struct connect_args *args;
+	const char *target = "opp";
+
+	if (argc < 2) {
+		rl_printf("Missing device address argument\n");
+		return;
+	}
+
+	if (!client) {
+		rl_printf("Client proxy not available\n");
+		return;
+	}
+
+	if (argc > 2)
+		target = argv[2];
+
+	args = g_new0(struct connect_args, 1);
+	args->dev = g_strdup(argv[1]);
+	args->target = g_strdup(target);
+
+	if (g_dbus_proxy_method_call(client, "CreateSession", connect_setup,
+			connect_reply, args, connect_args_free) == FALSE) {
+		rl_printf("Failed to connect\n");
+		return;
+	}
+
+	rl_printf("Attempting to connect to %s\n", argv[1]);
+}
+
 static const struct {
 	const char *cmd;
 	const char *arg;
 	void (*func) (int argc, char *argv[]);
 	const char *desc;
 } cmd_table[] = {
+	{ "connect",      "<dev> [uuid]", cmd_connect, "Connect session" },
 	{ "quit",         NULL,       cmd_quit, "Quit program" },
 	{ "exit",         NULL,       cmd_quit },
 	{ "help" },
