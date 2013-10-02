@@ -322,6 +322,8 @@ struct mgmt_cp_set_device_id {
 
 #define MGMT_OP_SET_ADVERTISING		0x0029
 
+#define MGMT_OP_SET_BREDR		0x002A
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -501,6 +503,7 @@ static const char *mgmt_op[] = {
 	"Unblock Device",
 	"Set Device ID",
 	"Set Advertising",
+	"Set BR/EDR",
 };
 
 static const char *mgmt_ev[] = {
