@@ -1282,6 +1282,33 @@ Set BR/EDR Command
 				Invalid Index
 
 
+Set Static Address
+==================
+
+	Command Code:		0x002B
+	Controller Index:	<controller id>
+	Command Parameters	Address (6 Octets)
+	Return Parameters:
+
+	This command allows for setting the static random address. It is
+	only supported on controllers with LE support. The static random
+	address is suppose to be valid for the lifetime of the
+	controller or at least until the next power cycle. To ensure
+	such behavior, setting of the address is limited to when the
+	controller is powered off.
+
+	The special BDADDR_ANY address (00:00:00:00:00:00) can be used
+	to disable the static address.
+
+	This command generates a Command Complete event on success or a
+	Command Status event on failure.
+
+	Possible errors:	Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
