@@ -324,6 +324,11 @@ struct mgmt_cp_set_device_id {
 
 #define MGMT_OP_SET_BREDR		0x002A
 
+#define MGMT_OP_SET_STATIC_ADDRESS	0x002B
+struct mgmt_cp_set_static_address {
+	bdaddr_t bdaddr;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -504,6 +509,7 @@ static const char *mgmt_op[] = {
 	"Set Device ID",
 	"Set Advertising",
 	"Set BR/EDR",
+	"Set Static Address",
 };
 
 static const char *mgmt_ev[] = {
