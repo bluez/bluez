@@ -1252,6 +1252,36 @@ Set Advertising Command
 				Invalid Index
 
 
+Set BR/EDR Command
+=======================
+
+	Command Code:		0x002A
+	Controller Index:	<controller id>
+	Command Parameters	BR/EDR (1 Octet)
+	Return Parameters:	Current_Settings (4 Octets)
+
+	This command is used to enable or disable BR/EDR support
+	on a dual-mode controller. The allowed values for the Advertising
+	command parameter are 0x00 and 0x01. All other values will
+	return Invalid Parameters.
+
+	A pre-requisite is that LE is already enabled, otherwise
+	this command will return a "rejected" response. Enabling BR/EDR
+	can be done both when powered on and powered off, however
+	disabling it can only be done when powered off (otherwise the
+	command will again return "rejected"). Disabling BR/EDR will
+	automatically disable all other BR/EDR related settings.
+
+	This command generates a Command Complete event on success or a
+	Command Status event on failure.
+
+	Possible errors:	Busy
+				Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
