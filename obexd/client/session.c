@@ -711,9 +711,9 @@ static gboolean session_process(gpointer data)
 {
 	struct obc_session *session = data;
 
-	session_process_queue(session);
-
 	session->process_id = 0;
+
+	session_process_queue(session);
 
 	return FALSE;
 }
