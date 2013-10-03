@@ -2009,6 +2009,30 @@ struct bt_l2cap_pdu_conn_param_rsp {
 	uint16_t result;
 } __attribute__ ((packed));
 
+#define BT_L2CAP_PDU_LE_CONN_REQ	0x14
+struct bt_l2cap_pdu_le_conn_req {
+	uint16_t psm;
+	uint16_t scid;
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_LE_CONN_RSP	0x15
+struct bt_l2cap_pdu_le_conn_rsp {
+	uint16_t dcid;
+	uint16_t mtu;
+	uint16_t mps;
+	uint16_t credits;
+	uint16_t result;
+} __attribute__ ((packed));
+
+#define BT_L2CAP_PDU_LE_FLOWCTL_CREDS	0x16
+struct bt_l2cap_pdu_le_flowctl_creds {
+	uint16_t cid;
+	uint16_t credits;
+} __attribute__ ((packed));
+
 struct bt_l2cap_hdr_connless {
 	uint16_t psm;
 } __attribute__ ((packed));

@@ -321,6 +321,12 @@ static void print_conn_result(uint16_t result)
 	case 0x0004:
 		str = "Connection refused - no resources available";
 		break;
+	case 0x0005:
+		str = "Insufficient Authentication";
+		break;
+	case 0x0006:
+		str = "Insufficient Authorization";
+		break;
 	default:
 		str = "Reserved";
 		break;
@@ -1002,6 +1008,40 @@ static void sig_conn_param_rsp(const struct l2cap_frame *frame)
 	print_conn_param_result(pdu->result);
 }
 
+static void sig_le_conn_req(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_le_conn_req *pdu = frame->data;
+
+	print_psm(pdu->psm);
+	print_cid("Source", pdu->scid);
+	print_field("MTU: %u", btohs(pdu->mtu));
+	print_field("MPS: %u", btohs(pdu->mps));
+	print_field("Credits: %u", btohs(pdu->credits));
+
+	assign_scid(frame, btohs(pdu->scid), btohs(pdu->psm), 0);
+}
+
+static void sig_le_conn_rsp(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_le_conn_rsp *pdu = frame->data;
+
+	print_cid("Destination", pdu->dcid);
+	print_field("MTU: %u", btohs(pdu->mtu));
+	print_field("MPS: %u", btohs(pdu->mps));
+	print_field("Credits: %u", btohs(pdu->credits));
+	print_conn_result(pdu->result);
+
+	/*assign_dcid(frame, btohs(pdu->dcid), btohs(pdu->scid));*/
+}
+
+static void sig_le_flowctl_creds(const struct l2cap_frame *frame)
+{
+	const struct bt_l2cap_pdu_le_flowctl_creds *pdu = frame->data;
+
+	print_cid("Source", pdu->cid);
+	print_field("Credits: %u", btohs(pdu->credits));
+}
+
 struct sig_opcode_data {
 	uint8_t opcode;
 	const char *str;
@@ -1051,10 +1091,20 @@ static const struct sig_opcode_data bredr_sig_opcode_table[] = {
 static const struct sig_opcode_data le_sig_opcode_table[] = {
 	{ 0x01, "Command Reject",
 			sig_cmd_reject, 2, false },
+	{ 0x06, "Disconnection Request",
+			sig_disconn_req, 4, true },
+	{ 0x07, "Disconnection Response",
+			sig_disconn_rsp, 4, true },
 	{ 0x12, "Connection Parameter Update Request",
 			sig_conn_param_req, 8, true },
 	{ 0x13, "Connection Parameter Update Response",
 			sig_conn_param_rsp, 2, true },
+	{ 0x14, "LE Connection Request",
+			sig_le_conn_req, 10, true },
+	{ 0x15, "LE Connection Response",
+			sig_le_conn_rsp, 10, true },
+	{ 0x16, "LE Flow Control Credit",
+			sig_le_flowctl_creds, 4, true },
 	{ },
 };
 
