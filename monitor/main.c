@@ -137,6 +137,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (argc - optind > 0) {
+		fprintf(stderr, "Invalid command line parameters\n");
+		return EXIT_FAILURE;
+	}
+
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
