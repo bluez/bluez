@@ -1282,8 +1282,8 @@ Set BR/EDR Command
 				Invalid Index
 
 
-Set Static Address
-==================
+Set Static Address Command
+==========================
 
 	Command Code:		0x002B
 	Controller Index:	<controller id>
