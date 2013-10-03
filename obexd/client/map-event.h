@@ -37,7 +37,7 @@ enum map_event_type {
 
 struct map_event {
 	enum map_event_type type;
-	char *handle;
+	uint64_t handle;
 	char *folder;
 	char *old_folder;
 	char *msg_type;

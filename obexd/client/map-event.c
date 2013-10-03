@@ -28,6 +28,7 @@
 #include <glib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <inttypes.h>
 
 #include "log.h"
 #include "map-event.h"

@@ -182,7 +182,7 @@ static void parse_event_report_type(struct map_event *event, const char *value)
 static void parse_event_report_handle(struct map_event *event,
 							const char *value)
 {
-	event->handle = g_strdup(value);
+	event->handle = strtoull(value, NULL, 10);
 }
 
 static void parse_event_report_folder(struct map_event *event,
@@ -262,7 +262,6 @@ static const GMarkupParser event_report_parser = {
 
 static void map_event_free(struct map_event *event)
 {
-	g_free(event->handle);
 	g_free(event->folder);
 	g_free(event->old_folder);
 	g_free(event->msg_type);

@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <glib.h>
 #include <gdbus/gdbus.h>
 #include <gobex/gobex-apparam.h>
@@ -115,7 +116,7 @@ struct pending_request {
 struct map_msg {
 	struct map_data *data;
 	char *path;
-	char *handle;
+	uint64_t handle;
 	char *subject;
 	char *timestamp;
 	char *sender;
@@ -411,7 +412,6 @@ static void map_msg_free(void *data)
 
 	g_free(msg->path);
 	g_free(msg->subject);
-	g_free(msg->handle);
 	g_free(msg->folder);
 	g_free(msg->timestamp);
 	g_free(msg->sender);
@@ -434,6 +434,7 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 	GError *err = NULL;
 	DBusMessage *reply;
 	GObexApparam *apparam;
+	char handle[21];
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &target_file,
@@ -442,8 +443,10 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
-	transfer = obc_transfer_get("x-bt/message", msg->handle, target_file,
-									&err);
+	if (snprintf(handle, sizeof(handle), "%u" PRIu64, msg->handle) < 0)
+		goto fail;
+
+	transfer = obc_transfer_get("x-bt/message", handle, target_file, &err);
 	if (transfer == NULL)
 		goto fail;
 
@@ -726,6 +729,7 @@ static void set_status(const GDBusPropertyTable *property,
 	GError *err = NULL;
 	GObexApparam *apparam;
 	char contents[2];
+	char handle[21];
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN) {
 		g_dbus_pending_property_error(id,
@@ -739,7 +743,10 @@ static void set_status(const GDBusPropertyTable *property,
 	contents[0] = FILLER_BYTE;
 	contents[1] = '\0';
 
-	transfer = obc_transfer_put("x-bt/messageStatus", msg->handle, NULL,
+	if (snprintf(handle, sizeof(handle), "%" PRIu64, msg->handle) < 0)
+		goto fail;
+
+	transfer = obc_transfer_put("x-bt/messageStatus", handle, NULL,
 					contents, sizeof(contents), &err);
 	if (transfer == NULL)
 		goto fail;
@@ -834,16 +841,17 @@ static void parse_type(struct map_msg *msg, const char *value)
 						MAP_MSG_INTERFACE, "Type");
 }
 
-static struct map_msg *map_msg_create(struct map_data *data, const char *handle,
+static struct map_msg *map_msg_create(struct map_data *data, uint64_t handle,
 					const char *folder, const char *type)
 {
 	struct map_msg *msg;
 
 	msg = g_new0(struct map_msg, 1);
 	msg->data = data;
-	msg->path = g_strdup_printf("%s/message%s",
+	msg->handle = handle;
+	msg->path = g_strdup_printf("%s/message%" PRIu64,
 					obc_session_get_path(data->session),
-					handle);
+					msg->handle);
 	msg->folder = g_strdup(folder);
 
 	if (!g_dbus_register_interface(conn, msg->path, MAP_MSG_INTERFACE,
@@ -854,8 +862,7 @@ static struct map_msg *map_msg_create(struct map_data *data, const char *handle,
 		return NULL;
 	}
 
-	msg->handle = g_strdup(handle);
-	g_hash_table_insert(data->messages, msg->handle, msg);
+	g_hash_table_insert(data->messages, &msg->handle, msg);
 
 	if (type)
 		parse_type(msg, type);
@@ -1093,6 +1100,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 	struct map_msg *msg;
 	const char *key;
 	int i;
+	uint64_t handle;
 
 	if (strcasecmp("msg", element) != 0)
 		return;
@@ -1102,9 +1110,11 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 			break;
 	}
 
-	msg = g_hash_table_lookup(data->messages, values[i]);
+	handle = strtoull(values[i], NULL, 10);
+
+	msg = g_hash_table_lookup(data->messages, &handle);
 	if (msg == NULL) {
-		msg = map_msg_create(data, values[i], parser->request->folder,
+		msg = map_msg_create(data, handle, parser->request->folder,
 									NULL);
 		if (msg == NULL)
 			return;
@@ -1829,11 +1839,12 @@ static void map_msg_remove(void *data)
 static void map_handle_new_message(struct map_data *map,
 							struct map_event *event)
 {
-	struct map_msg *msg = g_hash_table_lookup(map->messages, event->handle);
+	struct map_msg *msg;
 
+	msg = g_hash_table_lookup(map->messages, &event->handle);
 	/* New message event can be used if a new message replaces an old one */
 	if (msg)
-		g_hash_table_remove(map->messages, event->handle);
+		g_hash_table_remove(map->messages, &event->handle);
 
 	map_msg_create(map, event->handle, event->folder, event->msg_type);
 }
@@ -1842,8 +1853,9 @@ static void map_handle_status_changed(struct map_data *map,
 							struct map_event *event,
 							const char *status)
 {
-	struct map_msg *msg = g_hash_table_lookup(map->messages, event->handle);
+	struct map_msg *msg;
 
+	msg = g_hash_table_lookup(map->messages, &event->handle);
 	if (msg == NULL)
 		return;
 
@@ -1866,7 +1878,7 @@ static void map_handle_folder_changed(struct map_data *map,
 	if (!folder)
 		return;
 
-	msg = g_hash_table_lookup(map->messages, event->handle);
+	msg = g_hash_table_lookup(map->messages, &event->handle);
 	if (!msg)
 		return;
 
@@ -1886,9 +1898,9 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 
 	DBG("Event report for %s:%d", obc_session_get_destination(map->session),
 							map->mas_instance_id);
-	DBG("type=%x, handle=%s, folder=%s, old_folder=%s, msg_type=%s",
-				event->type, event->handle, event->folder,
-					event->old_folder, event->msg_type);
+	DBG("type=%x handle=%" PRIu64 " folder=%s old_folder=%s msg_type=%s",
+		event->type, event->handle, event->folder, event->old_folder,
+		event->msg_type);
 
 	switch (event->type) {
 	case MAP_ET_NEW_MESSAGE:
@@ -2002,7 +2014,7 @@ static int map_probe(struct obc_session *session)
 		return -ENOMEM;
 
 	map->session = obc_session_ref(session);
-	map->messages = g_hash_table_new_full(g_str_hash, g_str_equal, NULL,
+	map->messages = g_hash_table_new_full(g_int64_hash, g_int64_equal, NULL,
 								map_msg_remove);
 
 	parse_service_record(map);
