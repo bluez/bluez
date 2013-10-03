@@ -221,18 +221,21 @@ static int usb_switch_dell(int fd, enum mode mode)
 static int find_device(struct udev_device *udev_dev)
 {
 	char path[PATH_MAX];
-	const char *busnum, *devnum;
+	const char *busnum_str, *devnum_str;
+	int busnum, devnum;
 	int fd;
 
-	busnum = udev_device_get_sysattr_value(udev_dev, "busnum");
-	if (!busnum)
+	busnum_str = udev_device_get_sysattr_value(udev_dev, "busnum");
+	if (!busnum_str)
 		return -1;
+	busnum = strtol(busnum_str, NULL, 10);
 
-	devnum = udev_device_get_sysattr_value(udev_dev, "devnum");
-	if (!devnum)
+	devnum_str = udev_device_get_sysattr_value(udev_dev, "devnum");
+	if (!devnum_str)
 		return -1;
+	devnum = strtol(devnum_str, NULL, 10);
 
-	snprintf(path, sizeof(path), "/dev/bus/usb/%s/%s", busnum, devnum);
+	snprintf(path, sizeof(path), "/dev/bus/usb/%03d/%03d", busnum, devnum);
 
 	fd = open(path, O_RDWR, O_CLOEXEC);
 	if (fd < 0) {
