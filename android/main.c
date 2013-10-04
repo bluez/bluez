@@ -34,6 +34,8 @@
 
 #include <glib.h>
 
+#include "log.h"
+
 #define SHUTDOWN_GRACE_SECONDS 10
 
 static GMainLoop *event_loop;
@@ -98,9 +100,13 @@ int main(int argc, char *argv[])
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
+	DBG("Entering main loop");
+
 	g_main_loop_run(event_loop);
 
 	g_main_loop_unref(event_loop);
+
+	info("Exit");
 
 	return EXIT_SUCCESS;
 }

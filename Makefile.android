@@ -1,8 +1,8 @@
 if ANDROID
 noinst_PROGRAMS += android/bluetoothd
 
-android_bluetoothd_SOURCES = android/main.c
+android_bluetoothd_SOURCES = android/main.c src/log.c
 android_bluetoothd_LDADD = @GLIB_LIBS@
 endif
 
-EXTRA_DIST += android/Android.mk
+EXTRA_DIST += android/Android.mk android/log.c
