@@ -31,6 +31,7 @@
 #include <fcntl.h>
 #include <inttypes.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #include <gobex/gobex.h>
 #include <gobex/gobex-apparam.h>
