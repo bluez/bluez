@@ -341,11 +341,6 @@ static struct obex_mime_type_driver mime_event_report = {
 	.write = event_report_write,
 };
 
-static struct obex_mime_type_driver *mas_drivers[] = {
-	&mime_event_report,
-	NULL
-};
-
 static int mns_init(void)
 {
 	int err;
