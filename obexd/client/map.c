@@ -814,7 +814,7 @@ static const GDBusPropertyTable map_msg_properties[] = {
 	{ "Priority", "b", get_priority },
 	{ "Read", "b", get_read, set_read },
 	{ "Sent", "b", get_sent },
-	{ "Protected", "b", get_sent },
+	{ "Protected", "b", get_protected },
 	{ "Deleted", "b", NULL, set_deleted },
 	{ }
 };
