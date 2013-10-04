@@ -250,7 +250,6 @@ static gboolean get_target(const GDBusPropertyTable *property,
 static gboolean get_root(const GDBusPropertyTable *property,
 					DBusMessageIter *iter, void *data)
 {
-	struct obex_session *os = data;
 	const char *root;
 
 	root = obex_option_root_folder();
@@ -531,8 +530,6 @@ void manager_cleanup(void)
 
 void manager_emit_transfer_started(struct obex_transfer *transfer)
 {
-	static unsigned int id = 0;
-
 	transfer->status = TRANSFER_STATUS_ACTIVE;
 
 	g_dbus_emit_property_changed(connection, transfer->path,
@@ -680,8 +677,6 @@ int manager_request_authorization(struct obex_transfer *transfer, int32_t time,
 	struct obex_session *os = transfer->session;
 	DBusMessage *msg;
 	DBusPendingCall *call;
-	const char *filename = os->name ? os->name : "";
-	const char *type = os->type ? os->type : "";
 	unsigned int watch;
 	gboolean got_reply;
 
