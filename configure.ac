@@ -242,4 +242,9 @@ AC_DEFINE_UNQUOTED(CONFIGDIR, "${configdir}",
 			[Directory for the configuration files])
 AC_SUBST(CONFIGDIR, "${configdir}")
 
+AC_ARG_ENABLE(android, AC_HELP_STRING([--enable-android],
+			[enable BlueZ for Android]),
+					[enable_android=${enableval}])
+AM_CONDITIONAL(ANDROID, test "${enable_android}" = "yes")
+
 AC_OUTPUT(Makefile src/bluetoothd.8 lib/bluez.pc)

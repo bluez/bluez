@@ -12,4 +12,5 @@ fi
 		--sysconfdir=/etc \
 		--localstatedir=/var \
 		--enable-experimental \
+		--enable-android \
 		--disable-datafiles $*
