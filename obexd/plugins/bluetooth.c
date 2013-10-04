@@ -199,7 +199,6 @@ static void register_profile_reply(DBusPendingCall *call, void *user_data)
 	struct bluetooth_profile *profile = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	DBusError derr;
-	GError *err = NULL;
 
 	dbus_error_init(&derr);
 	if (!dbus_set_error_from_message(&derr, reply)) {
@@ -364,7 +363,6 @@ static void name_acquired(DBusConnection *conn, void *user_data)
 
 	for (l = profiles; l; l = l->next) {
 		struct bluetooth_profile *profile = l->data;
-		const char *uuid;
 
 		if (profile->path != NULL)
 			continue;
@@ -386,7 +384,6 @@ static void name_released(DBusConnection *conn, void *user_data)
 
 	for (l = profiles; l; l = l->next) {
 		struct bluetooth_profile *profile = l->data;
-		const char *uuid;
 
 		if (profile->path == NULL)
 			continue;
@@ -397,7 +394,6 @@ static void name_released(DBusConnection *conn, void *user_data)
 
 static void *bluetooth_start(struct obex_server *server, int *err)
 {
-	GSList *ios = NULL;
 	const GSList *l;
 
 	for (l = server->drivers; l; l = l->next) {
