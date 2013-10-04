@@ -44,6 +44,8 @@
 #include "map_ap.h"
 #include "map-event.h"
 
+#include "obexd/src/manager.h"
+
 struct mns_session {
 	GString *buffer;
 	GObexApparam *inparams;
