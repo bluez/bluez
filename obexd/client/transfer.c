@@ -272,6 +272,7 @@ static const char *status2str(uint8_t status)
 	case TRANSFER_STATUS_COMPLETE:
 		return "complete";
 	case TRANSFER_STATUS_ERROR:
+	default:
 		return "error";
 	}
 }
