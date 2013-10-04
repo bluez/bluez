@@ -97,8 +97,6 @@ static struct obex_service_driver *find_driver(uint16_t service)
 
 int obex_service_driver_register(struct obex_service_driver *driver)
 {
-	GSList *l;
-
 	if (!driver) {
 		error("Invalid driver");
 		return -EINVAL;
