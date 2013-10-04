@@ -85,10 +85,10 @@ obexd_src_obexd_LDADD = lib/libbluetooth-internal.la \
 
 obexd_src_obexd_LDFLAGS = -Wl,--export-dynamic
 
-obexd_src_obexd_CFLAGS = @GLIB_CFLAGS@ @DBUS_CFLAGS@ @ICAL_CFLAGS@ \
-					-DOBEX_PLUGIN_BUILTIN \
-					-DPLUGINDIR=\""$(obex_plugindir)"\" \
-					-fPIC -D_FILE_OFFSET_BITS=64
+obexd_src_obexd_CFLAGS = $(AM_CFLAGS) @GLIB_CFLAGS@ @DBUS_CFLAGS@ \
+				@ICAL_CFLAGS@ -DOBEX_PLUGIN_BUILTIN \
+				-DPLUGINDIR=\""$(obex_plugindir)"\" \
+				-fPIC -D_FILE_OFFSET_BITS=64
 
 obexd_src_obexd_CPPFLAGS = -I$(builddir)/lib -I$(builddir)/obexd/src  \
 				-I$(srcdir)/obexd/src -I$(srcdir)/btio \
