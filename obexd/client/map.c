@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <inttypes.h>
+#include <stdlib.h>
 #include <glib.h>
 #include <gdbus/gdbus.h>
 #include <gobex/gobex-apparam.h>
