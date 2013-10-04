@@ -239,7 +239,7 @@ static void append_variant(DBusMessageIter *iter, int type, void *val)
 }
 
 
-void dict_append_entry(DBusMessageIter *dict,
+static void dict_append_entry(DBusMessageIter *dict,
 			const char *key, int type, void *val)
 {
 	DBusMessageIter entry;
