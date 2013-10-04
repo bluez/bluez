@@ -443,7 +443,7 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
-	if (snprintf(handle, sizeof(handle), "%u" PRIu64, msg->handle) < 0)
+	if (snprintf(handle, sizeof(handle), "%" PRIu64, msg->handle) < 0)
 		goto fail;
 
 	transfer = obc_transfer_get("x-bt/message", handle, target_file, &err);
