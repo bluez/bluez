@@ -448,7 +448,8 @@ static void version_ind(const void *data, uint8_t size)
 {
 	const struct bt_ll_version_ind *pdu = data;
 
-	packet_print_version("Version", pdu->version, btohs(pdu->subversion));
+	packet_print_version("Version", pdu->version,
+				"Subversion", btohs(pdu->subversion));
 	packet_print_company("Company", btohs(pdu->company));
 }
 

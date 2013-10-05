@@ -1495,19 +1495,55 @@ static void print_channel_map(const uint8_t *map)
 	print_field("Channel map: 0x%s", str);
 }
 
-void packet_print_version(const char *label, uint8_t version, uint16_t revision)
+void packet_print_version(const char *label, uint8_t version,
+				const char *sublabel, uint16_t subversion)
 {
-	print_field("%s: %d - 0x%4.4x", label, version, revision);
+	const char *str;
+
+	switch (version) {
+	case 0x00:
+		str = "Bluetooth 1.0b";
+		break;
+	case 0x01:
+		str = "Bluetooth 1.1";
+		break;
+	case 0x02:
+		str = "Bluetooth 1.2";
+		break;
+	case 0x03:
+		str = "Bluetooth 2.0";
+		break;
+	case 0x04:
+		str = "Bluetooth 2.1";
+		break;
+	case 0x05:
+		str = "Bluetooth 3.0";
+		break;
+	case 0x06:
+		str = "Bluetooth 4.0";
+		break;
+	case 0x07:
+		str = "Bluetooth 4.1";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("%s: %s (0x%2.2x) - %s %d (0x%4.4x)", label, str, version,
+					sublabel, subversion, subversion);
 }
 
 static void print_hci_version(uint8_t hci_ver, uint16_t hci_rev)
 {
-	packet_print_version("HCI version", hci_ver, btohs(hci_rev));
+	packet_print_version("HCI version", hci_ver,
+				"Revision", btohs(hci_rev));
 }
 
 static void print_lmp_version(uint8_t lmp_ver, uint16_t lmp_subver)
 {
-	packet_print_version("LMP version", lmp_ver, btohs(lmp_subver));
+	packet_print_version("LMP version", lmp_ver,
+				"Subversion", btohs(lmp_subver));
 }
 
 void packet_print_company(const char *label, uint16_t company)

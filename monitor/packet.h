@@ -40,7 +40,8 @@ void packet_del_filter(unsigned long filter);
 void packet_select_index(uint16_t index);
 
 void packet_hexdump(const unsigned char *buf, uint16_t len);
-void packet_print_version(const char *label, uint8_t version, uint16_t revision);
+void packet_print_version(const char *label, uint8_t version,
+				const char *sublabel, uint16_t subversion);
 void packet_print_company(const char *label, uint16_t company);
 void packet_print_addr(const char *label, const void *data, bool random);
 void packet_print_ad(const void *data, uint8_t size);
