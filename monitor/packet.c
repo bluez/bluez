@@ -1174,14 +1174,14 @@ static void print_pin_code(const uint8_t *pin_code, uint8_t pin_len)
 	print_field("PIN code: %s", str);
 }
 
-static void print_hash(const uint8_t *hash)
+static void print_hash(const char *label, const uint8_t *hash)
 {
-	print_key("Hash C", hash);
+	print_key("Hash C from %s", hash);
 }
 
-static void print_randomizer(const uint8_t *randomizer)
+static void print_randomizer(const char *label, const uint8_t *randomizer)
 {
-	print_key("Randomizer R", randomizer);
+	print_key("Randomizer R with %s", randomizer);
 }
 
 static void print_passkey(uint32_t passkey)
@@ -2792,8 +2792,8 @@ static void remote_oob_data_request_reply_cmd(const void *data, uint8_t size)
 	const struct bt_hci_cmd_remote_oob_data_request_reply *cmd = data;
 
 	print_bdaddr(cmd->bdaddr);
-	print_hash(cmd->hash);
-	print_randomizer(cmd->randomizer);
+	print_hash("P-192", cmd->hash);
+	print_randomizer("P-192", cmd->randomizer);
 }
 
 static void remote_oob_data_request_neg_reply_cmd(const void *data, uint8_t size)
@@ -3571,8 +3571,8 @@ static void read_local_oob_data_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_local_oob_data *rsp = data;
 
 	print_status(rsp->status);
-	print_hash(rsp->hash);
-	print_randomizer(rsp->randomizer);
+	print_hash("P-192", rsp->hash);
+	print_randomizer("P-192", rsp->randomizer);
 }
 
 static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
