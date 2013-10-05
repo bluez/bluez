@@ -1057,6 +1057,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_setup_sync_conn *ssc;
 	const struct bt_hci_cmd_le_set_adv_enable *lsae;
 	const struct bt_hci_cmd_le_set_scan_enable *lsse;
+	const struct bt_hci_cmd_read_local_amp_assoc *rlaa_cmd;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
 	struct bt_hci_rsp_write_stored_link_key wslk;
@@ -1088,6 +1089,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_bd_addr rba;
 	struct bt_hci_rsp_read_data_block_size rdbs;
 	struct bt_hci_rsp_read_local_amp_info rlai;
+	struct bt_hci_rsp_read_local_amp_assoc rlaa_rsp;
 	struct bt_hci_rsp_le_read_buffer_size lrbs;
 	struct bt_hci_rsp_le_read_local_features lrlf;
 	struct bt_hci_rsp_le_read_adv_tx_power lratp;
@@ -1645,6 +1647,19 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		rlai.max_flush_to = cpu_to_le32(0xffffffff);
 		rlai.be_flush_to = cpu_to_le32(0xffffffff);
 		cmd_complete(btdev, opcode, &rlai, sizeof(rlai));
+		break;
+
+	case BT_HCI_CMD_READ_LOCAL_AMP_ASSOC:
+		if (btdev->type != BTDEV_TYPE_AMP)
+			goto unsupported;
+		rlaa_cmd = data;
+		rlaa_rsp.status = BT_HCI_ERR_SUCCESS;
+		rlaa_rsp.phy_handle = rlaa_cmd->phy_handle;
+		rlaa_rsp.remain_assoc_len = cpu_to_le16(1);
+		rlaa_rsp.assoc_fragement[0] = 0x42;
+		memset(rlaa_rsp.assoc_fragement + 1, 0,
+					sizeof(rlaa_rsp.assoc_fragement) - 1);
+		cmd_complete(btdev, opcode, &rlaa_rsp, sizeof(rlaa_rsp));
 		break;
 
 	case BT_HCI_CMD_SET_EVENT_MASK_PAGE2:
