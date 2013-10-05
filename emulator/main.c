@@ -51,6 +51,7 @@ static void usage(void)
 		"Usage:\n");
 	printf("\tbtvirt [options]\n");
 	printf("options:\n"
+		"\t-s                    Create local server sockets\n"
 		"\t-l [num]              Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-B                    Create BR/EDR only controller\n"
@@ -73,6 +74,7 @@ int main(int argc, char *argv[])
 	struct server *server3;
 	struct server *server4;
 	struct server *server5;
+	bool server_enabled = false;
 	int vhci_count = 0;
 	enum vhci_type vhci_type = VHCI_TYPE_BREDRLE;
 	sigset_t mask;
@@ -83,11 +85,14 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "l::LBAvh", main_options, NULL);
+		opt = getopt_long(argc, argv, "sl::LBAvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
 		switch (opt) {
+		case 's':
+			server_enabled = true;
+			break;
 		case 'l':
 			if (optarg)
 				vhci_count = atoi(optarg);
@@ -114,6 +119,11 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (vhci_count < 1 && !server_enabled) {
+		fprintf(stderr, "No emulator specified\n");
+		return EXIT_FAILURE;
+	}
+
 	sigemptyset(&mask);
 	sigaddset(&mask, SIGINT);
 	sigaddset(&mask, SIGTERM);
@@ -130,26 +140,32 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	server1 = server_open_unix(SERVER_TYPE_BREDRLE,
+	if (server_enabled) {
+		server1 = server_open_unix(SERVER_TYPE_BREDRLE,
 						"/tmp/bt-server-bredrle");
-	if (!server1)
-		fprintf(stderr, "Failed to open BR/EDR/LE server channel\n");
+		if (!server1)
+			fprintf(stderr, "Failed to open BR/EDR/LE server\n");
 
-	server2 = server_open_unix(SERVER_TYPE_BREDR, "/tmp/bt-server-bredr");
-	if (!server2)
-		fprintf(stderr, "Failed to open BR/EDR server channel\n");
+		server2 = server_open_unix(SERVER_TYPE_BREDR,
+						"/tmp/bt-server-bredr");
+		if (!server2)
+			fprintf(stderr, "Failed to open BR/EDR server\n");
 
-	server3 = server_open_unix(SERVER_TYPE_AMP, "/tmp/bt-server-amp");
-	if (!server3)
-		fprintf(stderr, "Failed to open AMP server channel\n");
+		server3 = server_open_unix(SERVER_TYPE_AMP,
+						"/tmp/bt-server-amp");
+		if (!server3)
+			fprintf(stderr, "Failed to open AMP server\n");
 
-	server4 = server_open_unix(SERVER_TYPE_LE, "/tmp/bt-server-le");
-	if (!server4)
-		fprintf(stderr, "Failed to open LE server channel\n");
+		server4 = server_open_unix(SERVER_TYPE_LE,
+						"/tmp/bt-server-le");
+		if (!server4)
+			fprintf(stderr, "Failed to open LE server\n");
 
-	server5 = server_open_unix(SERVER_TYPE_MONITOR, "/tmp/bt-server-mon");
-	if (!server5)
-		fprintf(stderr, "Failed to open monitor server channel\n");
+		server5 = server_open_unix(SERVER_TYPE_MONITOR,
+						"/tmp/bt-server-mon");
+		if (!server5)
+			fprintf(stderr, "Failed to open monitor server\n");
+	}
 
 	return mainloop_run();
 }
