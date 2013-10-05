@@ -588,6 +588,20 @@ static GDBusProxy *find_opp(const char *path)
 	return NULL;
 }
 
+static GDBusProxy *find_map(const char *path)
+{
+	GSList *l;
+
+	for (l = maps; l; l = g_slist_next(l)) {
+		GDBusProxy *proxy = l->data;
+
+		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
+			return proxy;
+	}
+
+	return NULL;
+}
+
 static void print_dict_iter(DBusMessageIter *iter)
 {
 	DBusMessageIter dict;
@@ -658,19 +672,8 @@ static void send_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
 }
 
-static void cmd_send(int argc, char *argv[])
+static void opp_send(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
-
-	if (!check_default_session())
-		return;
-
-	proxy = find_opp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
-		return;
-	}
-
 	if (argc < 2) {
 		rl_printf("Missing file argument\n");
 		return;
@@ -684,6 +687,83 @@ static void cmd_send(int argc, char *argv[])
 
 	rl_printf("Attempting to send %s to %s\n", argv[1],
 						g_dbus_proxy_get_path(proxy));
+}
+
+static void push_reply(DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	DBusError error;
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, message) == TRUE) {
+		rl_printf("Failed to PushMessage: %s\n", error.name);
+		dbus_error_free(&error);
+		return;
+	}
+
+	dbus_message_iter_init(message, &iter);
+
+	print_transfer_iter(&iter);
+}
+
+static void push_setup(DBusMessageIter *iter, void *user_data)
+{
+	const char *file = user_data;
+	const char *folder = "";
+	DBusMessageIter dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &folder);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_close_container(iter, &dict);
+}
+
+static void map_send(GDBusProxy *proxy, int argc, char *argv[])
+{
+	if (argc < 2) {
+		rl_printf("Missing file argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_method_call(proxy, "PushMessage", push_setup,
+					push_reply, g_strdup(argv[1]),
+					g_free) == FALSE) {
+		rl_printf("Failed to send\n");
+		return;
+	}
+
+	rl_printf("Attempting to send %s to %s\n", argv[1],
+						g_dbus_proxy_get_path(proxy));
+}
+
+static void cmd_send(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_opp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		opp_send(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_map(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		map_send(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
 }
 
 static void change_folder_reply(DBusMessage *message, void *user_data)
@@ -776,20 +856,6 @@ static GDBusProxy *find_pbap(const char *path)
 	GSList *l;
 
 	for (l = pbaps; l; l = g_slist_next(l)) {
-		GDBusProxy *proxy = l->data;
-
-		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
-			return proxy;
-	}
-
-	return NULL;
-}
-
-static GDBusProxy *find_map(const char *path)
-{
-	GSList *l;
-
-	for (l = maps; l; l = g_slist_next(l)) {
 		GDBusProxy *proxy = l->data;
 
 		if (strcmp(path, g_dbus_proxy_get_path(proxy)) == 0)
