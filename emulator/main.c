@@ -124,8 +124,10 @@ int main(int argc, char *argv[])
 
 	for (i = 0; i < vhci_count; i++) {
 		vhci = vhci_open(vhci_type);
-		if (!vhci)
+		if (!vhci) {
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
+			return EXIT_FAILURE;
+		}
 	}
 
 	server1 = server_open_unix(SERVER_TYPE_BREDRLE,
