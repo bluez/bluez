@@ -60,7 +60,11 @@ static void usage(void)
 }
 
 static const struct option main_options[] = {
-	{ "local",   optional_argument,	NULL, 'l' },
+	{ "server",  no_argument,       NULL, 's' },
+	{ "local",   optional_argument, NULL, 'l' },
+	{ "le",      no_argument,       NULL, 'L' },
+	{ "bredr",   no_argument,       NULL, 'B' },
+	{ "amp",     no_argument,       NULL, 'A' },
 	{ "version", no_argument,	NULL, 'v' },
 	{ "help",    no_argument,	NULL, 'h' },
 	{ }
