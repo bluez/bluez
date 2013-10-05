@@ -2029,18 +2029,24 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_NAME_COMPLETE		0x09
 #define BT_EIR_TX_POWER			0x0a
 #define BT_EIR_CLASS_OF_DEV		0x0d
-#define BT_EIR_SSP_HASH			0x0e
-#define BT_EIR_SSP_RANDOMIZER		0x0f
+#define BT_EIR_SSP_HASH_P192		0x0e
+#define BT_EIR_SSP_RANDOMIZER_P192	0x0f
 #define BT_EIR_DEVICE_ID		0x10
 #define BT_EIR_SMP_TK			0x10
 #define BT_EIR_SMP_OOB_FLAGS		0x11
-#define BT_EIR_SLAVE_CONN_INT		0x12
+#define BT_EIR_SLAVE_CONN_INTERVAL	0x12
 #define BT_EIR_SERVICE_UUID16		0x14
 #define BT_EIR_SERVICE_UUID128		0x15
 #define BT_EIR_SERVICE_DATA		0x16
 #define BT_EIR_PUBLIC_ADDRESS		0x17
 #define BT_EIR_RANDOM_ADDRESS		0x18
 #define BT_EIR_GAP_APPEARANCE		0x19
+#define BT_EIR_ADVERTISING_INTERVAL	0x1a
+#define BT_EIR_LE_DEVICE_ADDRESS	0x1b
+#define BT_EIR_LE_ROLE			0x1c
+#define BT_EIR_SSP_HASH_P256		0x1d
+#define BT_EIR_SSP_RANDOMIZER_P256	0x1e
+#define BT_EIR_3D_INFO_DATA		0x3d
 #define BT_EIR_MANUFACTURER_DATA	0xff
 
 static void print_uuid16_list(const char *label, const void *data,
@@ -2214,12 +2220,12 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_dev_class(data);
 			break;
 
-		case BT_EIR_SSP_HASH:
-			print_hex_field("SSP Hash", data, data_len);
+		case BT_EIR_SSP_HASH_P192:
+			print_hex_field("SSP Hash P-192", data, data_len);
 			break;
 
-		case BT_EIR_SSP_RANDOMIZER:
-			print_hex_field("SSP Rand", data, data_len);
+		case BT_EIR_SSP_RANDOMIZER_P192:
+			print_hex_field("SSP Randomizer P-192", data, data_len);
 			break;
 
 		case BT_EIR_DEVICE_ID:
@@ -2242,7 +2248,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			print_field("SMP OOB Flags: 0x%2.2x", *data);
 			break;
 
-		case BT_EIR_SLAVE_CONN_INT:
+		case BT_EIR_SLAVE_CONN_INTERVAL:
 			if (data_len < 4)
 				break;
 			print_field("Slave Conn. Interval: 0x%4.4x - 0x%4.4x",
@@ -2275,19 +2281,27 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_RANDOM_ADDRESS:
 			if (data_len < 6)
 				break;
-			print_addr("Address", data, 0x01);
+			print_addr("Random Address", data, 0x01);
 			break;
 
 		case BT_EIR_PUBLIC_ADDRESS:
 			if (data_len < 6)
 				break;
-			print_addr("Address", data, 0x00);
+			print_addr("Public Address", data, 0x00);
 			break;
 
 		case BT_EIR_GAP_APPEARANCE:
 			if (data_len < 2)
 				break;
 			print_field("Appearance: 0x%4.4x", bt_get_le16(data));
+			break;
+
+		case BT_EIR_SSP_HASH_P256:
+			print_hex_field("SSP Hash P-256", data, data_len);
+			break;
+
+		case BT_EIR_SSP_RANDOMIZER_P256:
+			print_hex_field("SSP Randomizer P-256", data, data_len);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
