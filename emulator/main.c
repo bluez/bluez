@@ -54,6 +54,7 @@ static void usage(void)
 		"\t-l [num]              Number of local controllers\n"
 		"\t-L                    Create LE only controller\n"
 		"\t-B                    Create BR/EDR only controller\n"
+		"\t-A                    Create AMP controller\n"
 		"\t-h, --help            Show help options\n");
 }
 
@@ -82,7 +83,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "l::LBvh", main_options, NULL);
+		opt = getopt_long(argc, argv, "l::LBAvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -98,6 +99,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'B':
 			vhci_type = VHCI_TYPE_BREDR;
+			break;
+		case 'A':
+			vhci_type = VHCI_TYPE_AMP;
 			break;
 		case 'v':
 			printf("%s\n", VERSION);
