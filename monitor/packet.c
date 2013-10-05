@@ -2221,11 +2221,11 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_SSP_HASH_P192:
-			print_hex_field("SSP Hash P-192", data, data_len);
+			print_hash("P-192", data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P192:
-			print_hex_field("SSP Randomizer P-192", data, data_len);
+			print_randomizer("P-192", data);
 			break;
 
 		case BT_EIR_DEVICE_ID:
@@ -2297,11 +2297,11 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_SSP_HASH_P256:
-			print_hex_field("SSP Hash P-256", data, data_len);
+			print_hash("P-256", data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P256:
-			print_hex_field("SSP Randomizer P-256", data, data_len);
+			print_randomizer("P-256", data);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
