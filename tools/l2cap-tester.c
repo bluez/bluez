@@ -198,6 +198,11 @@ static void test_post_teardown(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
+	if (data->io_id > 0) {
+		g_source_remove(data->io_id);
+		data->io_id = 0;
+	}
+
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
 }
@@ -205,9 +210,6 @@ static void test_post_teardown(const void *test_data)
 static void test_data_free(void *test_data)
 {
 	struct test_data *data = test_data;
-
-	if (data->io_id > 0)
-		g_source_remove(data->io_id);
 
 	free(data);
 }
