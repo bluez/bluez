@@ -1264,6 +1264,25 @@ static void print_authentication(uint8_t authentication)
 	print_field("Authentication: %s (0x%2.2x)", str, authentication);
 }
 
+static void print_flow_control_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Packet based";
+		break;
+	case 0x01:
+		str = "Data block based";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Flow control mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_flow_direction(uint8_t direction)
 {
 	const char *str;
@@ -3616,6 +3635,21 @@ static void set_event_mask_page2_cmd(const void *data, uint8_t size)
 	print_event_mask_page2(cmd->mask);
 }
 
+static void read_flow_control_mode_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_flow_control_mode *rsp = data;
+
+	print_status(rsp->status);
+	print_flow_control_mode(rsp->mode);
+}
+
+static void write_flow_control_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_flow_control_mode *cmd = data;
+
+	print_flow_control_mode(cmd->mode);
+}
+
 static void read_le_host_supported_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_le_host_supported *rsp = data;
@@ -4732,8 +4766,12 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x0c64, 179, "Read Location Data" },
 	{ 0x0c65, 180, "Write Location Data" },
-	{ 0x0c66, 184, "Read Flow Control Mode" },
-	{ 0x0c67, 185, "Write Flow Control Mode" },
+	{ 0x0c66, 184, "Read Flow Control Mode",
+				null_cmd, 0, true,
+				read_flow_control_mode_rsp, 2, true },
+	{ 0x0c67, 185, "Write Flow Control Mode",
+				write_flow_control_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c68, 192, "Read Enhanced Transmit Power Level" },
 	{ 0x0c69, 194, "Read Best Effort Flush Timeout" },
 	{ 0x0c6a, 195, "Write Best Effort Flush Timeout" },
