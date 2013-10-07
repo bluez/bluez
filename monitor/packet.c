@@ -1264,6 +1264,41 @@ static void print_authentication(uint8_t authentication)
 	print_field("Authentication: %s (0x%2.2x)", str, authentication);
 }
 
+static void print_location_domain_aware(uint8_t aware)
+{
+	const char *str;
+
+	switch (aware) {
+	case 0x00:
+		str = "Regulatory domain unknown";
+		break;
+	case 0x01:
+		str = "Regulatory domain known";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Domain aware: %s (0x%2.2x)", str, aware);
+}
+
+static void print_location_domain(const uint8_t *domain)
+{
+	print_field("Domain: %c%c (0x%2.2x%2.2x)",
+		(char) domain[0], (char) domain[1], domain[0], domain[1]);
+}
+
+static void print_location_domain_options(uint8_t options)
+{
+	print_field("Domain options: %c (0x%2.2x)", (char) options, options);
+}
+
+static void print_location_options(uint8_t options)
+{
+	print_field("Options: 0x%2.2x", options);
+}
+
 static void print_flow_control_mode(uint8_t mode)
 {
 	const char *str;
@@ -3635,6 +3670,27 @@ static void set_event_mask_page2_cmd(const void *data, uint8_t size)
 	print_event_mask_page2(cmd->mask);
 }
 
+static void read_location_data_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_location_data *rsp = data;
+
+	print_status(rsp->status);
+	print_location_domain_aware(rsp->domain_aware);
+	print_location_domain(rsp->domain);
+	print_location_domain_options(rsp->domain_options);
+	print_location_options(rsp->options);
+}
+
+static void write_location_data_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_location_data *cmd = data;
+
+	print_location_domain_aware(cmd->domain_aware);
+	print_location_domain(cmd->domain);
+	print_location_domain_options(cmd->domain_options);
+	print_location_options(cmd->options);
+}
+
 static void read_flow_control_mode_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_flow_control_mode *rsp = data;
@@ -4764,8 +4820,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c63, 178, "Set Event Mask Page 2",
 				set_event_mask_page2_cmd, 8, true,
 				status_rsp, 1, true },
-	{ 0x0c64, 179, "Read Location Data" },
-	{ 0x0c65, 180, "Write Location Data" },
+	{ 0x0c64, 179, "Read Location Data",
+				null_cmd, 0, true,
+				read_location_data_rsp, 6, true },
+	{ 0x0c65, 180, "Write Location Data",
+				write_location_data_cmd, 5, true,
+				status_rsp, 1, true },
 	{ 0x0c66, 184, "Read Flow Control Mode",
 				null_cmd, 0, true,
 				read_flow_control_mode_rsp, 2, true },
