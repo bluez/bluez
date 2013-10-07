@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <bluetooth/bluetooth.h>
 #include <glib.h>
@@ -157,19 +158,27 @@ static int autopair_init(void)
 {
 	/* Initialize the random seed from /dev/urandom */
 	unsigned int seed;
-	int fd;
+	int fd, err;
+	ssize_t n;
 
 	fd = open("/dev/urandom", O_RDONLY);
-	if (fd >= 0) {
-		ssize_t n;
+	if (fd < 0) {
+		err = -errno;
+		error("Failed to open /dev/urandom: %s (%d)", strerror(-err),
+									-err);
+		return err;
+	}
 
-		n = read(fd, &seed, sizeof(seed));
-		if (n < (ssize_t) sizeof(seed))
-			seed = time(NULL);
-
+	n = read(fd, &seed, sizeof(seed));
+	if (n < (ssize_t) sizeof(seed)) {
+		err = (n == -1) ? -errno : -EIO;
+		error("Failed to read %zu bytes from /dev/urandom",
+								sizeof(seed));
 		close(fd);
-	} else
-		seed = time(NULL);
+		return err;
+	}
+
+	close(fd);
 
 	srand(seed);
 
