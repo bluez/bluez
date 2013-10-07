@@ -1915,7 +1915,7 @@ static const struct {
 } events_page2_table[] = {
 	{  0, "Physical Link Complete"					},
 	{  1, "Channel Selected"					},
-	{  2, "Disconnection Physical Link"				},
+	{  2, "Disconnection Physical Link Complete"			},
 	{  3, "Physical Link Loss Early Warning"			},
 	{  4, "Physical Link Recovery"					},
 	{  5, "Logical Link Complete"					},
