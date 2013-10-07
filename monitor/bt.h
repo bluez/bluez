@@ -873,6 +873,17 @@ struct bt_hci_cmd_set_event_mask_page2 {
 	uint8_t  mask[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_FLOW_CONTROL_MODE	0x0c66
+struct bt_hci_rsp_read_flow_control_mode {
+	uint8_t  status;
+	uint8_t  mode;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_FLOW_CONROL_MODE	0x0c67
+struct bt_hci_cmd_write_flow_control_mode {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_LE_HOST_SUPPORTED	0x0c6c
 struct bt_hci_rsp_read_le_host_supported {
 	uint8_t  status;
