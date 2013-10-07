@@ -896,7 +896,7 @@ struct bt_hci_rsp_read_flow_control_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_WRITE_FLOW_CONROL_MODE	0x0c67
+#define BT_HCI_CMD_WRITE_FLOW_CONTROL_MODE	0x0c67
 struct bt_hci_cmd_write_flow_control_mode {
 	uint8_t  mode;
 } __attribute__ ((packed));
