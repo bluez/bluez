@@ -48,6 +48,9 @@
 
 #define NIBBLE_TO_ASCII(c)  ((c) < 0x0a ? (c) + 0x30 : (c) + 0x57)
 
+#define BREDR_DEFAULT_PSM	0x1011
+#define LE_DEFAULT_PSM		0x0080
+
 /* Test modes */
 enum {
 	SEND,
@@ -87,7 +90,7 @@ static long buffer_size = 2048;
 
 /* Default addr and psm and cid */
 static bdaddr_t bdaddr;
-static unsigned short psm = 0x1011;
+static unsigned short psm = 0;
 static unsigned short cid = 0;
 
 /* Default number of frames to send (-1 = infinite) */
@@ -1523,6 +1526,13 @@ int main(int argc, char *argv[])
 			usage();
 			exit(1);
 		}
+	}
+
+	if (!psm) {
+		if (bdaddr_type == BDADDR_BREDR)
+			psm = BREDR_DEFAULT_PSM;
+		else
+			psm = LE_DEFAULT_PSM;
 	}
 
 	if (need_addr && !(argc - optind)) {
