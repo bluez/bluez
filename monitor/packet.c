@@ -77,6 +77,7 @@ static time_t time_offset = ((time_t) -1);
 static unsigned long filter_mask = 0;
 static bool index_filter = false;
 static uint16_t index_number = 0;
+static uint16_t index_current = 0;
 
 #define MAX_CONN 16
 
@@ -1588,16 +1589,33 @@ void packet_print_version(const char *label, uint8_t version,
 					sublabel, subversion, subversion);
 }
 
-static void print_hci_version(uint8_t hci_ver, uint16_t hci_rev)
+static void print_hci_version(uint8_t version, uint16_t revision)
 {
-	packet_print_version("HCI version", hci_ver,
-				"Revision", btohs(hci_rev));
+	packet_print_version("HCI version", version,
+				"Revision", btohs(revision));
 }
 
-static void print_lmp_version(uint8_t lmp_ver, uint16_t lmp_subver)
+static void print_lmp_version(uint8_t version, uint16_t subversion)
 {
-	packet_print_version("LMP version", lmp_ver,
-				"Subversion", btohs(lmp_subver));
+	packet_print_version("LMP version", version,
+				"Subversion", btohs(subversion));
+}
+
+static void print_pal_version(uint8_t version, uint16_t subversion)
+{
+	const char *str;
+
+	switch (version) {
+	case 0x01:
+		str = "Bluetooth 3.0";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("PAL version: %s (0x%2.2x) - Subversion %d (0x%4.4x)",
+			str, version, btohs(subversion), btohs(subversion));
 }
 
 void packet_print_company(const char *label, uint16_t company)
@@ -2450,6 +2468,7 @@ struct monitor_new_index {
 #define MAX_INDEX 16
 
 struct index_data {
+	uint8_t  type;
 	bdaddr_t bdaddr;
 };
 
@@ -2464,6 +2483,8 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 	if (index_filter && index_number != index)
 		return;
 
+	index_current = index;
+
 	if (tv && time_offset == ((time_t) -1))
 		time_offset = tv->tv_sec;
 
@@ -2472,6 +2493,7 @@ void packet_monitor(struct timeval *tv, uint16_t index, uint16_t opcode,
 		ni = data;
 
 		if (index < MAX_INDEX) {
+			index_list[index].type = ni->type;
 			bacpy(&index_list[index].bdaddr, &ni->bdaddr);
 		}
 
@@ -3740,7 +3762,16 @@ static void read_local_version_rsp(const void *data, uint8_t size)
 
 	print_status(rsp->status);
 	print_hci_version(rsp->hci_ver, rsp->hci_rev);
-	print_lmp_version(rsp->lmp_ver, rsp->lmp_subver);
+
+	switch (index_list[index_current].type) {
+	case HCI_BREDR:
+		print_lmp_version(rsp->lmp_ver, rsp->lmp_subver);
+		break;
+	case HCI_AMP:
+		print_pal_version(rsp->lmp_ver, rsp->lmp_subver);
+		break;
+	}
+
 	print_manufacturer(rsp->manufacturer);
 }
 
