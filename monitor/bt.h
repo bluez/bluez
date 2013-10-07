@@ -873,6 +873,23 @@ struct bt_hci_cmd_set_event_mask_page2 {
 	uint8_t  mask[8];
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_LOCATION_DATA		0x0c64
+struct bt_hci_rsp_read_location_data {
+	uint8_t  status;
+	uint8_t  domain_aware;
+	uint8_t  domain[2];
+	uint8_t  domain_options;
+	uint8_t  options;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_LOCATION_DATA		0x0c65
+struct bt_hci_cmd_write_location_data {
+	uint8_t  domain_aware;
+	uint8_t  domain[2];
+	uint8_t  domain_options;
+	uint8_t  options;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_FLOW_CONTROL_MODE	0x0c66
 struct bt_hci_rsp_read_flow_control_mode {
 	uint8_t  status;
