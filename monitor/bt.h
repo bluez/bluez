@@ -1671,7 +1671,7 @@ struct bt_hci_evt_phy_link_complete {
 	uint8_t  phy_handle;
 } __attribute__ ((packed));
 
-#define BT_HCI_EVT_CHANNEL_SELECTED		0x412
+#define BT_HCI_EVT_CHANNEL_SELECTED		0x41
 struct bt_hci_evt_channel_selected {
 	uint8_t  phy_handle;
 } __attribute__ ((packed));
