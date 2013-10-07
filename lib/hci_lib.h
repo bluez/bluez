@@ -158,6 +158,8 @@ char *hci_vertostr(unsigned int ver);
 int hci_strtover(char *str, unsigned int *ver);
 char *lmp_vertostr(unsigned int ver);
 int lmp_strtover(char *str, unsigned int *ver);
+char *pal_vertostr(unsigned int ver);
+int pal_strtover(char *str, unsigned int *ver);
 
 char *lmp_featurestostr(uint8_t *features, char *pref, int width);
 
