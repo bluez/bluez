@@ -1656,9 +1656,9 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		rlaa_rsp.status = BT_HCI_ERR_SUCCESS;
 		rlaa_rsp.phy_handle = rlaa_cmd->phy_handle;
 		rlaa_rsp.remain_assoc_len = cpu_to_le16(1);
-		rlaa_rsp.assoc_fragement[0] = 0x42;
-		memset(rlaa_rsp.assoc_fragement + 1, 0,
-					sizeof(rlaa_rsp.assoc_fragement) - 1);
+		rlaa_rsp.assoc_fragment[0] = 0x42;
+		memset(rlaa_rsp.assoc_fragment + 1, 0,
+					sizeof(rlaa_rsp.assoc_fragment) - 1);
 		cmd_complete(btdev, opcode, &rlaa_rsp, sizeof(rlaa_rsp));
 		break;
 

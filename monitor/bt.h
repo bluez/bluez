@@ -1081,7 +1081,7 @@ struct bt_hci_rsp_read_local_amp_assoc {
 	uint8_t  status;
 	uint8_t  phy_handle;
 	uint16_t remain_assoc_len;
-	uint8_t  assoc_fragement[248];
+	uint8_t  assoc_fragment[248];
 } __attribute__ ((packed));
 
 #define BT_HCI_CMD_WRITE_REMOTE_AMP_ASSOC	0x140b
@@ -1089,7 +1089,7 @@ struct bt_hci_cmd_write_remote_amp_assoc {
 	uint8_t  phy_handle;
 	uint16_t len_so_far;
 	uint16_t remain_assoc_len;
-	uint8_t  assoc_fragement[248];
+	uint8_t  assoc_fragment[248];
 } __attribute__ ((packed));
 struct bt_hci_rsp_write_remote_amp_assoc {
 	uint8_t  status;
