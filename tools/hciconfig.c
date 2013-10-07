@@ -1868,18 +1868,22 @@ static void print_dev_info(int ctl, struct hci_dev_info *di)
 	printf("\tTX bytes:%d acl:%d sco:%d commands:%d errors:%d\n",
 		st->byte_tx, st->acl_tx, st->sco_tx, st->cmd_tx, st->err_tx);
 
-	if (all && !hci_test_bit(HCI_RAW, &di->flags) &&
-			(bacmp(&di->bdaddr, BDADDR_ANY) || (di->type & 0x30))) {
+	if (all && !hci_test_bit(HCI_RAW, &di->flags)) {
 		print_dev_features(di, 0);
-		print_pkt_type(di);
-		print_link_policy(di);
-		print_link_mode(di);
 
-		if (hci_test_bit(HCI_UP, &di->flags)) {
-			cmd_name(ctl, di->dev_id, NULL);
-			cmd_class(ctl, di->dev_id, NULL);
-			cmd_version(ctl, di->dev_id, NULL);
+		if (((di->type & 0x30) >> 4) == HCI_BREDR) {
+			print_pkt_type(di);
+			print_link_policy(di);
+			print_link_mode(di);
+
+			if (hci_test_bit(HCI_UP, &di->flags)) {
+				cmd_name(ctl, di->dev_id, NULL);
+				cmd_class(ctl, di->dev_id, NULL);
+			}
 		}
+
+		if (hci_test_bit(HCI_UP, &di->flags))
+			cmd_version(ctl, di->dev_id, NULL);
 	}
 
 	printf("\n");
