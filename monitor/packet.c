@@ -597,6 +597,42 @@ static const char *major_class_phone(uint8_t minor)
 static const struct {
 	uint8_t val;
 	const char *str;
+} major_class_av_table[] = {
+	{ 0x00, "Uncategorized, code for device not assigned"	},
+	{ 0x01, "earable Headset Device"			},
+	{ 0x02, "Hands-free Device"				},
+	{ 0x04, "Microphone"					},
+	{ 0x05, "Loudspeaker"					},
+	{ 0x06, "Headphones"					},
+	{ 0x07, "Portable Audio"				},
+	{ 0x08, "Car audio"					},
+	{ 0x09, "Set-top box"					},
+	{ 0x0a, "HiFi Audio Device"				},
+	{ 0x0b, "VCR"						},
+	{ 0x0c, "Video Camera"					},
+	{ 0x0d, "Camcorder"					},
+	{ 0x0e, "Video Monitor"					},
+	{ 0x0f, "Video Display and Loudspeaker"			},
+	{ 0x10, "Video Conferencing"				},
+	{ 0x12, "Gaming/Toy"					},
+	{ }
+};
+
+static const char *major_class_av(uint8_t minor)
+{
+	int i;
+
+	for (i = 0; major_class_av_table[i].str; i++) {
+		if (major_class_av_table[i].val == minor)
+			return major_class_av_table[i].str;
+	}
+
+	return NULL;
+}
+
+static const struct {
+	uint8_t val;
+	const char *str;
 } major_class_wearable_table[] = {
 	{ 0x01, "Wrist Watch"	},
 	{ 0x02, "Pager"		},
@@ -629,7 +665,8 @@ static const struct {
 	{ 0x02, "Phone (cellular, cordless, payphone, modem)",
 						major_class_phone	},
 	{ 0x03, "LAN /Network Access point"				},
-	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)"	},
+	{ 0x04, "Audio/Video (headset, speaker, stereo, video, vcr)",
+						major_class_av		},
 	{ 0x05, "Peripheral (mouse, joystick, keyboards)"		},
 	{ 0x06, "Imaging (printing, scanner, camera, display)"		},
 	{ 0x07, "Wearable",			major_class_wearable	},
