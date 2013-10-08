@@ -747,6 +747,10 @@ const char *bt_compidtostr(int compid)
 		return "Morse Project Inc.";
 	case 243:
 		return "Kent Displays Inc.";
+	case 244:
+		return "Nautilus Inc.";
+	case 245:
+		return "Smartifier Oy";
 	case 65535:
 		return "internal use";
 	default:
