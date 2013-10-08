@@ -560,6 +560,13 @@ typedef struct {
 #define CREATE_PHYSICAL_LINK_CP_SIZE 35
 
 #define OCF_ACCEPT_PHYSICAL_LINK		0x0036
+typedef struct {
+	uint8_t		handle;
+	uint8_t		key_length;
+	uint8_t		key_type;
+	uint8_t		key[32];
+} __attribute__ ((packed)) accept_physical_link_cp;
+#define ACCEPT_PHYSICAL_LINK_CP_SIZE 35
 
 #define OCF_DISCONNECT_PHYSICAL_LINK		0x0037
 typedef struct {
