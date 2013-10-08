@@ -2216,6 +2216,17 @@ static const struct {
 	{ }
 };
 
+static const struct {
+	uint8_t bit;
+	const char *str;
+} eir_3d_table[] = {
+	{ 0, "Association Notification"					},
+	{ 1, "Battery Level Reporting"					},
+	{ 2, "Send Battery Level Report on Start-up Synchronization"	},
+	{ 7, "Factory Test Mode"					},
+	{ }
+};
+
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
 	uint8_t len = 0;
@@ -2411,6 +2422,31 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 
 		case BT_EIR_SSP_RANDOMIZER_P256:
 			print_randomizer("P-256", data);
+			break;
+
+		case BT_EIR_3D_INFO_DATA:
+			print_hex_field("3D Information Data", data, data_len);
+			if (data_len < 2)
+				break;
+
+			flags = *data;
+			mask = flags;
+
+			print_field("  Features: 0x%2.2x", flags);
+
+			for (i = 0; eir_3d_table[i].str; i++) {
+				if (flags & (1 << eir_3d_table[i].bit)) {
+					print_field("    %s",
+							eir_3d_table[i].str);
+					mask &= ~(1 << eir_3d_table[i].bit);
+				}
+			}
+
+			if (mask)
+				print_text(COLOR_UNKNOWN_FEATURE_BIT,
+					"      Unknown features (0x%2.2x)", mask);
+
+			print_field("  Path Loss Threshold: %d", data[1]);
 			break;
 
 		case BT_EIR_MANUFACTURER_DATA:
