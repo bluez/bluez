@@ -650,9 +650,9 @@ typedef struct {
 } __attribute__ ((packed)) hci_qos;
 #define HCI_QOS_CP_SIZE 17
 typedef struct {
-	uint16_t 	handle;
-	uint8_t 	flags;			/* Reserved */
-	hci_qos 	qos;
+	uint16_t	handle;
+	uint8_t		flags;			/* Reserved */
+	hci_qos		qos;
 } __attribute__ ((packed)) qos_setup_cp;
 #define QOS_SETUP_CP_SIZE (3 + HCI_QOS_CP_SIZE)
 
@@ -681,7 +681,7 @@ typedef struct {
 } __attribute__ ((packed)) read_link_policy_cp;
 #define READ_LINK_POLICY_CP_SIZE 2
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
 	uint16_t	policy;
 } __attribute__ ((packed)) read_link_policy_rp;
@@ -694,7 +694,7 @@ typedef struct {
 } __attribute__ ((packed)) write_link_policy_cp;
 #define WRITE_LINK_POLICY_CP_SIZE 4
 typedef struct {
-	uint8_t 	status;
+	uint8_t		status;
 	uint16_t	handle;
 } __attribute__ ((packed)) write_link_policy_rp;
 #define WRITE_LINK_POLICY_RP_SIZE 3
@@ -1808,14 +1808,14 @@ typedef struct {
 } __attribute__ ((packed)) evt_qos_setup_complete;
 #define EVT_QOS_SETUP_COMPLETE_SIZE (4 + HCI_QOS_CP_SIZE)
 
-#define EVT_CMD_COMPLETE 		0x0E
+#define EVT_CMD_COMPLETE		0x0E
 typedef struct {
 	uint8_t		ncmd;
 	uint16_t	opcode;
 } __attribute__ ((packed)) evt_cmd_complete;
 #define EVT_CMD_COMPLETE_SIZE 3
 
-#define EVT_CMD_STATUS 			0x0F
+#define EVT_CMD_STATUS			0x0F
 typedef struct {
 	uint8_t		status;
 	uint8_t		ncmd;
@@ -2251,25 +2251,25 @@ typedef struct {
 	uint16_t	opcode;		/* OCF & OGF */
 	uint8_t		plen;
 } __attribute__ ((packed))	hci_command_hdr;
-#define HCI_COMMAND_HDR_SIZE 	3
+#define HCI_COMMAND_HDR_SIZE	3
 
 typedef struct {
 	uint8_t		evt;
 	uint8_t		plen;
 } __attribute__ ((packed))	hci_event_hdr;
-#define HCI_EVENT_HDR_SIZE 	2
+#define HCI_EVENT_HDR_SIZE	2
 
 typedef struct {
 	uint16_t	handle;		/* Handle & Flags(PB, BC) */
 	uint16_t	dlen;
 } __attribute__ ((packed))	hci_acl_hdr;
-#define HCI_ACL_HDR_SIZE 	4
+#define HCI_ACL_HDR_SIZE	4
 
 typedef struct {
 	uint16_t	handle;
 	uint8_t		dlen;
 } __attribute__ ((packed))	hci_sco_hdr;
-#define HCI_SCO_HDR_SIZE 	3
+#define HCI_SCO_HDR_SIZE	3
 
 typedef struct {
 	uint16_t	device;
