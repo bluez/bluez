@@ -96,6 +96,7 @@ struct media_player {
 	guint			watch;
 	guint			properties_watch;
 	guint			track_watch;
+	guint			seek_watch;
 	char			*status;
 	uint32_t		position;
 	uint32_t		duration;
@@ -949,6 +950,7 @@ static void media_player_free(gpointer data)
 	g_dbus_remove_watch(conn, mp->watch);
 	g_dbus_remove_watch(conn, mp->properties_watch);
 	g_dbus_remove_watch(conn, mp->track_watch);
+	g_dbus_remove_watch(conn, mp->seek_watch);
 
 	if (mp->track)
 		g_hash_table_unref(mp->track);
@@ -1681,6 +1683,21 @@ static gboolean properties_changed(DBusConnection *connection, DBusMessage *msg,
 	return TRUE;
 }
 
+static gboolean position_changed(DBusConnection *connection, DBusMessage *msg,
+							void *user_data)
+{
+	struct media_player *mp = user_data;
+	DBusMessageIter iter;
+
+	DBG("sender=%s path=%s", mp->sender, mp->path);
+
+	dbus_message_iter_init(msg, &iter);
+
+	set_position(mp, &iter);
+
+	return TRUE;
+}
+
 static struct media_player *media_player_create(struct media_adapter *adapter,
 						const char *sender,
 						const char *path,
@@ -1701,6 +1718,10 @@ static struct media_player *media_player_create(struct media_adapter *adapter,
 	mp->properties_watch = g_dbus_add_properties_watch(conn, sender,
 						path, MEDIA_PLAYER_INTERFACE,
 						properties_changed,
+						mp, NULL);
+	mp->seek_watch = g_dbus_add_signal_watch(conn, sender,
+						path, MEDIA_PLAYER_INTERFACE,
+						"Seeked", position_changed,
 						mp, NULL);
 	mp->player = avrcp_register_player(adapter->btd_adapter, &player_cb,
 							mp, media_player_free);
