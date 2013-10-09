@@ -185,7 +185,7 @@ static void parse_event_report_type(struct map_event *event, const char *value)
 static void parse_event_report_handle(struct map_event *event,
 							const char *value)
 {
-	event->handle = strtoull(value, NULL, 10);
+	event->handle = strtoull(value, NULL, 16);
 }
 
 static void parse_event_report_folder(struct map_event *event,

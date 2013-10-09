@@ -435,7 +435,7 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 	GError *err = NULL;
 	DBusMessage *reply;
 	GObexApparam *apparam;
-	char handle[21];
+	char handle[17];
 
 	if (dbus_message_get_args(message, NULL,
 				DBUS_TYPE_STRING, &target_file,
@@ -444,7 +444,7 @@ static DBusMessage *map_msg_get(DBusConnection *connection,
 		return g_dbus_create_error(message,
 				ERROR_INTERFACE ".InvalidArguments", NULL);
 
-	if (snprintf(handle, sizeof(handle), "%" PRIu64, msg->handle) < 0)
+	if (snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle) < 0)
 		goto fail;
 
 	transfer = obc_transfer_get("x-bt/message", handle, target_file, &err);
@@ -730,7 +730,7 @@ static void set_status(const GDBusPropertyTable *property,
 	GError *err = NULL;
 	GObexApparam *apparam;
 	char contents[1];
-	char handle[21];
+	char handle[17];
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN) {
 		g_dbus_pending_property_error(id,
@@ -743,7 +743,7 @@ static void set_status(const GDBusPropertyTable *property,
 
 	contents[0] = FILLER_BYTE;
 
-	if (snprintf(handle, sizeof(handle), "%" PRIu64, msg->handle) < 0)
+	if (snprintf(handle, sizeof(handle), "%" PRIx64, msg->handle) < 0)
 		goto fail;
 
 	transfer = obc_transfer_put("x-bt/messageStatus", handle, NULL,
@@ -1110,7 +1110,7 @@ static void msg_element(GMarkupParseContext *ctxt, const char *element,
 			break;
 	}
 
-	handle = strtoull(values[i], NULL, 10);
+	handle = strtoull(values[i], NULL, 16);
 
 	msg = g_hash_table_lookup(data->messages, &handle);
 	if (msg == NULL) {
@@ -1897,7 +1897,7 @@ static void map_handle_notification(struct map_event *event, void *user_data)
 
 	DBG("Event report for %s:%d", obc_session_get_destination(map->session),
 							map->mas_instance_id);
-	DBG("type=%x handle=%" PRIu64 " folder=%s old_folder=%s msg_type=%s",
+	DBG("type=%x handle=%" PRIx64 " folder=%s old_folder=%s msg_type=%s",
 		event->type, event->handle, event->folder, event->old_folder,
 		event->msg_type);
 
