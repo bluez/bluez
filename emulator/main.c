@@ -34,6 +34,7 @@
 #include "monitor/mainloop.h"
 #include "server.h"
 #include "vhci.h"
+#include "amp.h"
 
 static void signal_callback(int signum, void *user_data)
 {
@@ -65,6 +66,7 @@ static const struct option main_options[] = {
 	{ "le",      no_argument,       NULL, 'L' },
 	{ "bredr",   no_argument,       NULL, 'B' },
 	{ "amp",     no_argument,       NULL, 'A' },
+	{ "amptest", optional_argument, NULL, 'T' },
 	{ "version", no_argument,	NULL, 'v' },
 	{ "help",    no_argument,	NULL, 'h' },
 	{ }
@@ -72,13 +74,13 @@ static const struct option main_options[] = {
 
 int main(int argc, char *argv[])
 {
-	struct vhci *vhci;
 	struct server *server1;
 	struct server *server2;
 	struct server *server3;
 	struct server *server4;
 	struct server *server5;
 	bool server_enabled = false;
+	int amptest_count = 0;
 	int vhci_count = 0;
 	enum vhci_type vhci_type = VHCI_TYPE_BREDRLE;
 	sigset_t mask;
@@ -89,7 +91,7 @@ int main(int argc, char *argv[])
 	for (;;) {
 		int opt;
 
-		opt = getopt_long(argc, argv, "sl::LBAvh", main_options, NULL);
+		opt = getopt_long(argc, argv, "sl::LBATvh", main_options, NULL);
 		if (opt < 0)
 			break;
 
@@ -112,6 +114,12 @@ int main(int argc, char *argv[])
 		case 'A':
 			vhci_type = VHCI_TYPE_AMP;
 			break;
+		case 'T':
+			if (optarg)
+				amptest_count = atoi(optarg);
+			else
+				amptest_count = 1;
+			break;
 		case 'v':
 			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
@@ -123,7 +131,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (vhci_count < 1 && !server_enabled) {
+	if (amptest_count < 1 && vhci_count < 1 && !server_enabled) {
 		fprintf(stderr, "No emulator specified\n");
 		return EXIT_FAILURE;
 	}
@@ -136,7 +144,19 @@ int main(int argc, char *argv[])
 
 	printf("Bluetooth emulator ver %s\n", VERSION);
 
+	for (i = 0; i < amptest_count; i++) {
+		struct bt_amp *amp;
+
+		amp = bt_amp_new();
+		if (!amp) {
+			fprintf(stderr, "Failed to create AMP controller\n");
+			return EXIT_FAILURE;
+		}
+	}
+
 	for (i = 0; i < vhci_count; i++) {
+		struct vhci *vhci;
+
 		vhci = vhci_open(vhci_type);
 		if (!vhci) {
 			fprintf(stderr, "Failed to open Virtual HCI device\n");
