@@ -121,7 +121,7 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_AV_REMOTE_TARGET,         "AVRemTarget"  }, /* AVRCP */
 	{ SDP_UUID_ADVANCED_AUDIO,           "AdvAudio"     }, /* A2DP */
 	{ SDP_UUID_AV_REMOTE,                "AVRemote"     }, /* AVRCP */
-	{ SDP_UUID_VIDEO_CONFERENCING,       "VideoConf"    }, /* VCP */
+	{ SDP_UUID_AV_REMOTE_CONTROLLER,     "AVRemCt"      }, /* AVRCP */
 	{ SDP_UUID_INTERCOM,                 "Intercom"     },
 	{ SDP_UUID_FAX,                      "Fax"          },
 	{ SDP_UUID_HEADSET_AUDIO_GATEWAY,    "Headset AG"   },
@@ -145,7 +145,6 @@ static sdp_uuid_nam_lookup_table_t sdp_uuid_nam_lookup_table[] = {
 	{ SDP_UUID_HCR_PRINT,                "HCRPrint"     }, /* HCRP */
 	{ SDP_UUID_HCR_SCAN,                 "HCRScan"      }, /* HCRP */
 	{ SDP_UUID_COMMON_ISDN_ACCESS,       "CIP"          }, /* CIP */
-	{ SDP_UUID_VIDEO_CONFERENCING_GW,    "VideoConf GW" }, /* VCP */
 	{ SDP_UUID_UDI_MT,                   "UDI MT"       }, /* UDI */
 	{ SDP_UUID_UDI_TA,                   "UDI TA"       }, /* UDI */
 	{ SDP_UUID_AUDIO_VIDEO,              "AudioVideo"   }, /* VCP */

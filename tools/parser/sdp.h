@@ -66,7 +66,7 @@
 #define SDP_UUID_AV_REMOTE_TARGET                      0x110c /* AVRCP */
 #define SDP_UUID_ADVANCED_AUDIO                        0x110d /* A2DP */
 #define SDP_UUID_AV_REMOTE                             0x110e /* AVRCP */
-#define SDP_UUID_VIDEO_CONFERENCING                    0x110f /* VCP */
+#define SDP_UUID_AV_REMOTE_CONTROLLER                  0x110f /* AVRCP */
 #define SDP_UUID_INTERCOM                              0x1110
 #define SDP_UUID_FAX                                   0x1111
 #define SDP_UUID_HEADSET_AUDIO_GATEWAY                 0x1112
@@ -93,7 +93,6 @@
 #define SDP_UUID_HCR_PRINT                             0x1126 /* HCRP */
 #define SDP_UUID_HCR_SCAN                              0x1127 /* HCRP */
 #define SDP_UUID_COMMON_ISDN_ACCESS                    0x1128 /* CIP */
-#define SDP_UUID_VIDEO_CONFERENCING_GW                 0x1129 /* VCP */
 #define SDP_UUID_UDI_MT                                0x112a /* UDI */
 #define SDP_UUID_UDI_TA                                0x112b /* UDI */
 #define SDP_UUID_AUDIO_VIDEO                           0x112c /* VCP */
