@@ -1916,6 +1916,10 @@ struct bt_l2cap_pdu_conn_param_rsp {
 	uint16_t result;
 } __attribute__ ((packed));
 
+struct bt_l2cap_hdr_connless {
+	uint16_t psm;
+} __attribute__ ((packed));
+
 struct bt_l2cap_hdr_amp {
 	uint8_t  code;
 	uint8_t  ident;
