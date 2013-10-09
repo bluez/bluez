@@ -1698,21 +1698,10 @@ static void delete_setup(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &file);
 }
 
-static void cmd_rm(int argc, char *argv[])
+static void ftp_rm(GDBusProxy *proxy, int argc, char *argv[])
 {
-	GDBusProxy *proxy;
-
-	if (!check_default_session())
-		return;
-
 	if (argc < 2) {
 		rl_printf("Missing file argument\n");
-		return;
-	}
-
-	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
-	if (proxy == NULL) {
-		rl_printf("Command not supported\n");
 		return;
 	}
 
@@ -1724,6 +1713,62 @@ static void cmd_rm(int argc, char *argv[])
 	}
 
 	rl_printf("Attempting to Delete\n");
+}
+
+static void set_delete_reply(const DBusError *error, void *user_data)
+{
+	if (dbus_error_is_set(error))
+		rl_printf("Failed to set Deleted: %s\n", error->name);
+	else
+		rl_printf("Set Deleted successful\n");
+}
+
+static void map_rm(GDBusProxy *proxy, int argc, char *argv[])
+{
+	GDBusProxy *msg;
+	dbus_bool_t value = TRUE;
+
+	if (argc < 2) {
+		rl_printf("Missing message argument\n");
+		return;
+	}
+
+	msg = find_message(argv[1]);
+	if (msg == NULL) {
+		rl_printf("Invalid message argument\n");
+		return;
+	}
+
+	if (g_dbus_proxy_set_property_basic(msg, "Deleted", DBUS_TYPE_BOOLEAN,
+						&value, set_delete_reply,
+						NULL, NULL) == FALSE) {
+		rl_printf("Failed to set Deleted\n");
+		return;
+	}
+
+	rl_printf("Attempting to set Deleted\n");
+}
+
+static void cmd_rm(int argc, char *argv[])
+{
+	GDBusProxy *proxy;
+
+	if (!check_default_session())
+		return;
+
+	proxy = find_ftp(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		ftp_rm(proxy, argc, argv);
+		return;
+	}
+
+	proxy = find_map(g_dbus_proxy_get_path(default_session));
+	if (proxy) {
+		map_rm(proxy, argc, argv);
+		return;
+	}
+
+	rl_printf("Command not supported\n");
 }
 
 static void create_folder_reply(DBusMessage *message, void *user_data)
