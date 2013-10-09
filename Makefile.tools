@@ -169,8 +169,9 @@ EXTRA_DIST += tools/hid2hci.1
 endif
 
 if EXPERIMENTAL
-noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest tools/scotest \
-			tools/hcieventmask tools/hcisecfilter tools/hwdb \
+noinst_PROGRAMS += tools/bdaddr tools/avinfo tools/avtest \
+			tools/scotest tools/amptest tools/hwdb \
+			tools/hcieventmask tools/hcisecfilter \
 			tools/btmgmt tools/btinfo tools/btattach \
 			tools/btsnoop tools/btiotest tools/mpris-player
 
@@ -183,9 +184,11 @@ tools_avtest_LDADD = lib/libbluetooth-internal.la
 
 tools_scotest_LDADD = lib/libbluetooth-internal.la
 
-tools_hcieventmask_LDADD = lib/libbluetooth-internal.la
+tools_amptest_LDADD = lib/libbluetooth-internal.la
 
 tools_hwdb_LDADD = lib/libbluetooth-internal.la
+
+tools_hcieventmask_LDADD = lib/libbluetooth-internal.la
 
 tools_btmgmt_SOURCES = tools/btmgmt.c src/glib-helper.c src/eir.c \
 				src/shared/util.h src/shared/util.c \

@@ -54,6 +54,7 @@ tools/l2ping
 tools/l2test
 tools/rctest
 tools/scotest
+tools/amptest
 tools/sdptool
 tools/avtest
 tools/bdaddr
