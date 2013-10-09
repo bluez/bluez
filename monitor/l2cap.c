@@ -1223,6 +1223,36 @@ static void le_sig_packet(uint16_t index, bool in, uint16_t handle,
 	opcode_data->func(&frame);
 }
 
+static void connless_packet(uint16_t index, bool in, uint16_t handle,
+				uint16_t cid, const void *data, uint16_t size)
+{
+	struct l2cap_frame frame;
+	const struct bt_l2cap_hdr_connless *hdr = data;
+	uint16_t psm;
+
+	if (size < 2) {
+		print_text(COLOR_ERROR, "malformed connectionless packet");
+		packet_hexdump(data, size);
+		return;
+	}
+
+	psm = btohs(hdr->psm);
+
+	data += 2;
+	size -= 2;
+
+	print_indent(6, COLOR_CYAN, "L2CAP: Connectionless", "", COLOR_OFF,
+						" len %d [PSM %d]", size, psm);
+
+	switch (psm) {
+	default:
+		packet_hexdump(data, size);
+		break;
+	}
+
+	l2cap_frame_init(&frame, index, in, handle, cid, data, size);
+}
+
 static void print_controller_list(const uint8_t *data, uint16_t size)
 {
 	while (size > 2) {
@@ -2440,6 +2470,9 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 	switch (cid) {
 	case 0x0001:
 		bredr_sig_packet(index, in, handle, cid, data, size);
+		break;
+	case 0x0002:
+		connless_packet(index, in, handle, cid, data, size);
 		break;
 	case 0x0003:
 		amp_packet(index, in, handle, cid, data, size);
