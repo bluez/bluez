@@ -125,7 +125,7 @@ static struct tupla ServiceClass[] = {
 	{ AV_REMOTE_TARGET_SVCLASS_ID,		"AV Remote Target"		},
 	{ ADVANCED_AUDIO_SVCLASS_ID,		"Advanced Audio"		},
 	{ AV_REMOTE_SVCLASS_ID,			"AV Remote"			},
-	{ VIDEO_CONF_SVCLASS_ID,		"Video Conferencing"		},
+	{ AV_REMOTE_CONTROLLER_SVCLASS_ID,	"AV Remote Controller"		},
 	{ INTERCOM_SVCLASS_ID,			"Intercom"			},
 	{ FAX_SVCLASS_ID,			"Fax"				},
 	{ HEADSET_AGW_SVCLASS_ID,		"Headset Audio Gateway"		},

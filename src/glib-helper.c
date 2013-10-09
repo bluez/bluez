@@ -103,7 +103,6 @@ static struct {
 	const char	*name;
 	uint16_t	class;
 } bt_services[] = {
-	{ "vcp",	VIDEO_CONF_SVCLASS_ID		},
 	{ "pbap",	PBAP_SVCLASS_ID			},
 	{ "sap",	SAP_SVCLASS_ID			},
 	{ "ftp",	OBEX_FILETRANS_SVCLASS_ID	},
