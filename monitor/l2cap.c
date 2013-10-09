@@ -1626,6 +1626,8 @@ static void print_hex_field(const char *label, const uint8_t *data,
 	char str[len * 2 + 1];
 	uint8_t i;
 
+	str[0] = '\0';
+
 	for (i = 0; i < len; i++)
 		sprintf(str + (i * 2), "%2.2x", data[i]);
 
