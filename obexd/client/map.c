@@ -729,7 +729,7 @@ static void set_status(const GDBusPropertyTable *property,
 	gboolean value;
 	GError *err = NULL;
 	GObexApparam *apparam;
-	char contents[2];
+	char contents[1];
 	char handle[21];
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_BOOLEAN) {
@@ -742,7 +742,6 @@ static void set_status(const GDBusPropertyTable *property,
 	dbus_message_iter_get_basic(iter, &value);
 
 	contents[0] = FILLER_BYTE;
-	contents[1] = '\0';
 
 	if (snprintf(handle, sizeof(handle), "%" PRIu64, msg->handle) < 0)
 		goto fail;
@@ -1612,13 +1611,12 @@ static DBusMessage *map_update_inbox(DBusConnection *connection,
 {
 	struct map_data *map = user_data;
 	DBusMessage *reply;
-	char contents[2];
+	char contents[1];
 	struct obc_transfer *transfer;
 	GError *err = NULL;
 	struct pending_request *request;
 
 	contents[0] = FILLER_BYTE;
-	contents[1] = '\0';
 
 	transfer = obc_transfer_put("x-bt/MAP-messageUpdate", NULL, NULL,
 						contents, sizeof(contents),
@@ -1935,7 +1933,7 @@ static bool set_notification_registration(struct map_data *map, bool status)
 	struct obc_transfer *transfer;
 	GError *err = NULL;
 	GObexApparam *apparam;
-	char contents[2];
+	char contents[1];
 	const char *address;
 
 	address = obc_session_get_destination(map->session);
@@ -1951,7 +1949,6 @@ static bool set_notification_registration(struct map_data *map, bool status)
 	}
 
 	contents[0] = FILLER_BYTE;
-	contents[1] = '\0';
 
 	transfer = obc_transfer_put("x-bt/MAP-NotificationRegistration", NULL,
 					NULL, contents, sizeof(contents), &err);
