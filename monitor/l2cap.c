@@ -1680,8 +1680,8 @@ static void print_data_list(const char *label, uint8_t length,
 	print_field("%s: %u entr%s", label, count, count == 1 ? "y" : "ies");
 
 	while (size >= length) {
-		print_handle_range("  Handle", data);
-		print_uuid("        ", data + 4, length - 4);
+		print_field("Handle: 0x%4.4x", bt_get_le16(data));
+		print_hex_field("Value", data + 2, length - 2);
 
 		data += length;
 		size -= length;
