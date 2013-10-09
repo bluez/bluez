@@ -1978,9 +1978,10 @@ static struct default_settings {
 		.name		= "Message Notification",
 		.channel	= MNS_DEFAULT_CHANNEL,
 		.psm		= BTD_PROFILE_PSM_AUTO,
+		.mode		= BT_IO_MODE_ERTM,
 		.authorize	= true,
 		.get_record	= get_mns_record,
-		.version	= 0x0100
+		.version	= 0x0102
 	},
 };
 
