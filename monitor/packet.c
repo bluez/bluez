@@ -2331,6 +2331,8 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_TX_POWER:
+			if (data_len < 1)
+				break;
 			print_field("TX power: %d dBm", (int8_t) *data);
 			break;
 
@@ -2341,10 +2343,14 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_SSP_HASH_P192:
+			if (data_len < 16)
+				break;
 			print_hash("P-192", data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P192:
+			if (data_len < 16)
+				break;
 			print_randomizer("P-192", data);
 			break;
 
@@ -2417,10 +2423,14 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			break;
 
 		case BT_EIR_SSP_HASH_P256:
+			if (data_len < 16)
+				break;
 			print_hash("P-256", data);
 			break;
 
 		case BT_EIR_SSP_RANDOMIZER_P256:
+			if (data_len < 16)
+				break;
 			print_randomizer("P-256", data);
 			break;
 
