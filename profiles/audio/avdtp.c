@@ -439,7 +439,6 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 					uint8_t transaction, uint8_t signal_id,
 					void *buf, int size);
 static int process_queue(struct avdtp *session);
-static void connection_lost(struct avdtp *session, int err);
 static void avdtp_sep_set_state(struct avdtp *session,
 				struct avdtp_local_sep *sep,
 				avdtp_state_t state);
@@ -1137,6 +1136,32 @@ static void avdtp_free(void *data)
 	g_free(session);
 }
 
+static void connection_lost(struct avdtp *session, int err)
+{
+	struct avdtp_server *server = session->server;
+	char address[18];
+
+	ba2str(device_get_address(session->device), address);
+	DBG("Disconnected from %s", address);
+
+	if (err != EACCES)
+		avdtp_cancel_authorization(session);
+
+	g_slist_foreach(session->streams, (GFunc) release_stream, session);
+	session->streams = NULL;
+
+	finalize_discovery(session, err);
+
+	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
+
+	if (session->ref > 0)
+		return;
+
+	server->sessions = g_slist_remove(server->sessions, session);
+	btd_device_unref(session->device);
+	avdtp_free(session);
+}
+
 static gboolean disconnect_timeout(gpointer user_data)
 {
 	struct avdtp *session = user_data;
@@ -1178,32 +1203,6 @@ static void set_disconnect_timer(struct avdtp *session)
 	session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
 						disconnect_timeout,
 						session);
-}
-
-static void connection_lost(struct avdtp *session, int err)
-{
-	struct avdtp_server *server = session->server;
-	char address[18];
-
-	ba2str(device_get_address(session->device), address);
-	DBG("Disconnected from %s", address);
-
-	if (err != EACCES)
-		avdtp_cancel_authorization(session);
-
-	g_slist_foreach(session->streams, (GFunc) release_stream, session);
-	session->streams = NULL;
-
-	finalize_discovery(session, err);
-
-	avdtp_set_state(session, AVDTP_SESSION_STATE_DISCONNECTED);
-
-	if (session->ref > 0)
-		return;
-
-	server->sessions = g_slist_remove(server->sessions, session);
-	btd_device_unref(session->device);
-	avdtp_free(session);
 }
 
 void avdtp_unref(struct avdtp *session)
