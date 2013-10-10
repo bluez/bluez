@@ -424,6 +424,29 @@ static void cmd_show(int argc, char *argv[])
 	print_property(proxy, "Target");
 }
 
+static void set_default_session(GDBusProxy *proxy)
+{
+	char *desc;
+	DBusMessageIter iter;
+
+	default_session = proxy;
+
+	if (proxy == NULL) {
+		desc = g_strdup(PROMPT_ON);
+		goto done;
+	}
+
+	if (g_dbus_proxy_get_property(proxy, "Destination", &iter))
+		dbus_message_iter_get_basic(&iter, &desc);
+
+	desc = g_strdup_printf(COLOR_BLUE "[%s]" COLOR_OFF "# ", desc);
+
+done:
+	rl_set_prompt(desc);
+	rl_redisplay();
+	g_free(desc);
+}
+
 static void cmd_select(int argc, char *argv[])
 {
 	GDBusProxy *proxy;
@@ -442,7 +465,8 @@ static void cmd_select(int argc, char *argv[])
 	if (default_session == proxy)
 		return;
 
-	default_session = proxy,
+	set_default_session(proxy);
+
 	print_proxy(proxy, "Session", NULL);
 }
 
@@ -2069,7 +2093,7 @@ static void session_added(GDBusProxy *proxy)
 	sessions = g_slist_append(sessions, proxy);
 
 	if (default_session == NULL)
-		default_session = proxy;
+		set_default_session(proxy);
 
 	print_proxy(proxy, "Session", COLORED_NEW);
 }
@@ -2220,7 +2244,7 @@ static void session_removed(GDBusProxy *proxy)
 	print_proxy(proxy, "Session", COLORED_DEL);
 
 	if (default_session == proxy)
-		default_session = NULL;
+		set_default_session(NULL);
 
 	sessions = g_slist_remove(sessions, proxy);
 }
