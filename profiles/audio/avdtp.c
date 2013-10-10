@@ -3857,11 +3857,6 @@ gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
 }
 
-gboolean avdtp_stream_setup_active(struct avdtp *session)
-{
-	return session->stream_setup;
-}
-
 void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc)
 {
 	session->device_disconnect = dev_dc;
