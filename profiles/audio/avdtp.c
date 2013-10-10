@@ -3872,8 +3872,7 @@ unsigned int avdtp_add_state_cb(struct btd_device *dev,
 	state_cb->id = ++id;
 	state_cb->user_data = user_data;
 
-	state_callbacks = g_slist_append(state_callbacks,
-								state_cb);
+	state_callbacks = g_slist_append(state_callbacks, state_cb);
 
 	return state_cb->id;
 }
