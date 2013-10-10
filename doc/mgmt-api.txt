@@ -448,8 +448,14 @@ Set High Speed Command
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
 
-	In case the kernel subsystem does not support High Speed, the
-	command will fail regardless with Not Supported error.
+	To enable High Speed support, it is required that Secure Simple
+	Pairing support is enabled first. High Speed support is not
+	possible for connections without Secure Simple Pairing.
+
+	When switching Secure Simple Pairing off, the support for High
+	Speed will be switched off as well. Switching Secure Simple
+	Pairing back on, will not re-enable High Speed support. That
+	needs to be done manually.
 
 	This command generates a Command Complete event on success or
 	a Command Status event on failure.
