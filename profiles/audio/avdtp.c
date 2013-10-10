@@ -3164,25 +3164,6 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 	}
 }
 
-gboolean avdtp_is_connected(struct btd_device *device)
-{
-	struct avdtp_server *server;
-	struct avdtp *session;
-
-	server = find_server(servers, device_get_adapter(device));
-	if (!server)
-		return FALSE;
-
-	session = find_session(server->sessions, device);
-	if (!session)
-		return FALSE;
-
-	if (session->state != AVDTP_SESSION_STATE_DISCONNECTED)
-		return TRUE;
-
-	return FALSE;
-}
-
 struct avdtp_service_capability *avdtp_stream_get_codec(
 						struct avdtp_stream *stream)
 {

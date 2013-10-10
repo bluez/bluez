@@ -218,8 +218,6 @@ struct avdtp *avdtp_get(struct btd_device *device);
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
 
-gboolean avdtp_is_connected(struct btd_device *device);
-
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
 							void *data, int size);
 
