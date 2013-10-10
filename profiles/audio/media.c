@@ -1304,13 +1304,21 @@ static gboolean set_status(struct media_player *mp, DBusMessageIter *iter)
 static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 {
 	uint64_t value;
+	const char *status;
 
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INT64)
 			return FALSE;
 
 	dbus_message_iter_get_basic(iter, &value);
 
-	mp->position = value / 1000;
+	value /= 1000;
+
+	if (value > get_position(mp))
+		status = "forward-seek";
+	else
+		status = "reverse-seek";
+
+	mp->position = value;
 	g_timer_start(mp->timer);
 
 	DBG("Position=%u", mp->position);
@@ -1325,9 +1333,14 @@ static gboolean set_position(struct media_player *mp, DBusMessageIter *iter)
 	 * If position is the maximum value allowed or greater than track's
 	 * duration, we send a track-reached-end event.
 	 */
-	if (mp->position == UINT32_MAX || mp->position >= mp->duration)
+	if (mp->position == UINT32_MAX || mp->position >= mp->duration) {
 		avrcp_player_event(mp->player, AVRCP_EVENT_TRACK_REACHED_END,
 									NULL);
+		return TRUE;
+	}
+
+	/* Send a status change to force resync the position */
+	avrcp_player_event(mp->player, AVRCP_EVENT_STATUS_CHANGED, status);
 
 	return TRUE;
 }
