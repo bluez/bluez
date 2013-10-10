@@ -2231,7 +2231,7 @@ static const struct {
 
 static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 {
-	uint8_t len = 0;
+	uint16_t len = 0;
 
 	if (eir_len == 0)
 		return;
