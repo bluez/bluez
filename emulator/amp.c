@@ -169,7 +169,8 @@ static void reset_defaults(struct bt_amp *amp)
 
 static void send_packet(struct bt_amp *amp, const void *data, uint16_t len)
 {
-	write(amp->vhci_fd, data, len);
+	if (write(amp->vhci_fd, data, len) < 0)
+		fprintf(stderr, "Write to /dev/vhci failed\n");
 }
 
 static void send_event(struct bt_amp *amp, uint8_t event,
