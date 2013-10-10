@@ -564,7 +564,7 @@ const char *bt_compidtostr(int compid)
 	case 150:
 		return "ODM Technology, Inc.";
 	case 151:
-		return "Bluetrek Technologies Limited";
+		return "ConnecteDevice Ltd.";
 	case 152:
 		return "zer01.tv GmbH";
 	case 153:
@@ -751,6 +751,12 @@ const char *bt_compidtostr(int compid)
 		return "Nautilus Inc.";
 	case 245:
 		return "Smartifier Oy";
+	case 246:
+		return "Elcometer Limited";
+	case 247:
+		return "VSN Technologies Inc.";
+	case 248:
+		return "AceUni Corp., Ltd.";
 	case 65535:
 		return "internal use";
 	default:
