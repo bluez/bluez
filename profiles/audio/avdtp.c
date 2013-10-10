@@ -3807,7 +3807,7 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	case AVDTP_BAD_ROHC_FORMAT:
 		return "Bad Header Compression Format";
 	case AVDTP_BAD_CP_FORMAT:
-		return "Bad Content Protetion Format";
+		return "Bad Content Protection Format";
 	case AVDTP_BAD_MULTIPLEXING_FORMAT:
 		return "Bad Multiplexing Format";
 	case AVDTP_UNSUPPORTED_CONFIGURATION:
@@ -3815,7 +3815,7 @@ const char *avdtp_strerror(struct avdtp_error *err)
 	case AVDTP_BAD_STATE:
 		return "Bad State";
 	default:
-		return "Unknow error";
+		return "Unknown error";
 	}
 }
 
