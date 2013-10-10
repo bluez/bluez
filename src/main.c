@@ -550,6 +550,10 @@ int main(int argc, char *argv[])
 
 	start_sdp_server(sdp_mtu, sdp_flags);
 
+	if (main_opts.did_source > 0)
+		register_device_id(main_opts.did_source, main_opts.did_vendor,
+				main_opts.did_product, main_opts.did_version);
+
 	/* Loading plugins has to be done after D-Bus has been setup since
 	 * the plugins might wanna expose some paths on the bus. However the
 	 * best order of how to init various subsystems of the Bluetooth
