@@ -425,7 +425,7 @@ struct avdtp {
 
 static GSList *servers = NULL;
 
-static GSList *avdtp_callbacks = NULL;
+static GSList *state_callbacks = NULL;
 
 static int send_request(struct avdtp *session, gboolean priority,
 			struct avdtp_stream *stream, uint8_t signal_id,
@@ -710,7 +710,7 @@ static void avdtp_set_state(struct avdtp *session,
 
 	session->state = new_state;
 
-	for (l = avdtp_callbacks; l != NULL; l = l->next) {
+	for (l = state_callbacks; l != NULL; l = l->next) {
 		struct avdtp_state_callback *cb = l->data;
 
 		if (session->device != cb->dev)
@@ -3874,7 +3874,8 @@ unsigned int avdtp_add_state_cb(struct btd_device *dev,
 	state_cb->id = ++id;
 	state_cb->user_data = user_data;
 
-	avdtp_callbacks = g_slist_append(avdtp_callbacks, state_cb);
+	state_callbacks = g_slist_append(state_callbacks,
+								state_cb);
 
 	return state_cb->id;
 }
@@ -3883,10 +3884,10 @@ gboolean avdtp_remove_state_cb(unsigned int id)
 {
 	GSList *l;
 
-	for (l = avdtp_callbacks; l != NULL; l = l->next) {
+	for (l = state_callbacks; l != NULL; l = l->next) {
 		struct avdtp_state_callback *cb = l->data;
 		if (cb && cb->id == id) {
-			avdtp_callbacks = g_slist_remove(avdtp_callbacks, cb);
+			state_callbacks = g_slist_remove(state_callbacks, cb);
 			g_free(cb);
 			return TRUE;
 		}
