@@ -2160,6 +2160,67 @@ static void print_fec(uint8_t fec)
 #define BT_EIR_3D_INFO_DATA		0x3d
 #define BT_EIR_MANUFACTURER_DATA	0xff
 
+static void print_manufacturer_apple(const void *data, uint8_t data_len)
+{
+	uint8_t type = *((uint8_t *) data);
+	uint8_t len;
+	const uint8_t *uuid;
+	uint16_t minor, major;
+	int8_t tx_power;
+	char identifier[100];
+
+	if (data_len < 1)
+		return;
+
+	switch (type) {
+	case 0x01:
+		snprintf(identifier, sizeof(identifier) - 1, "%s",
+						(const char *) (data + 1));
+		print_field("  Identifier: %s", identifier);
+		break;
+	case 0x02:
+		len = *((uint8_t *) (data + 1));
+		if (len != 0x15) {
+			print_hex_field("  Data", data, data_len);
+			break;
+		}
+
+		uuid = data + 2;
+		print_field("  iBeacon: %8.8x-%4.4x-%4.4x-%4.4x-%8.8x%4.4x",
+				bt_get_le32(&uuid[12]), bt_get_le16(&uuid[10]),
+				bt_get_le16(&uuid[8]), bt_get_le16(&uuid[6]),
+				bt_get_le32(&uuid[2]), bt_get_le16(&uuid[0]));
+
+		major = bt_get_le16(data + 18);
+		minor = bt_get_le16(data + 20);
+		print_field("  Version: %u.%u", major, minor);
+
+		tx_power = *(int8_t *) (data + 22);
+		print_field("  TX power: %d dB", tx_power);
+		break;
+	default:
+		print_hex_field("  Data", data, data_len);
+		break;
+	}
+}
+
+static void print_manufacturer_data(const void *data, uint8_t data_len)
+{
+	uint16_t company = bt_get_le16(data);
+
+	packet_print_company("Company", company);
+
+	switch (company) {
+	case 76:
+	case 19456:
+		print_manufacturer_apple(data + 2, data_len - 2);
+		break;
+	default:
+		print_hex_field("  Data", data + 2, data_len - 2);
+		break;
+	}
+}
+
 static void print_uuid16_list(const char *label, const void *data,
 							uint8_t data_len)
 {
@@ -2464,8 +2525,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 		case BT_EIR_MANUFACTURER_DATA:
 			if (data_len < 2)
 				break;
-			packet_print_company("Company", bt_get_le16(data));
-			print_hex_field("  Data", data + 2, data_len - 2);
+			print_manufacturer_data(data, data_len);
 			break;
 
 		default:
