@@ -21,9 +21,12 @@
 #include <stdbool.h>
 
 #include <hardware/bluetooth.h>
+#include <hardware/bt_sock.h>
 
 #define LOG_TAG "BlueZ"
 #include <cutils/log.h>
+
+#include "hal.h"
 
 bt_callbacks_t *bt_hal_cbacks = NULL;
 
@@ -243,6 +246,9 @@ static const void *get_profile_interface(const char *profile_id)
 
 	if (!interface_ready())
 		return NULL;
+
+	if (!strcmp(profile_id, BT_PROFILE_SOCKETS_ID))
+		return bt_get_sock_interface();
 
 	return NULL;
 }
