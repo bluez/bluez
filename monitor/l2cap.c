@@ -2502,6 +2502,9 @@ static void l2cap_frame(uint16_t index, bool in, uint16_t handle,
 		case 0x0001:
 			sdp_packet(&frame, chan);
 			break;
+		case 0x001f:
+			att_packet(index, in, handle, cid, data, size);
+			break;
 		default:
 			packet_hexdump(data, size);
 			break;
