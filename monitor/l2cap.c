@@ -1928,6 +1928,17 @@ static void att_read_blob_rsp(const struct l2cap_frame *frame)
 	packet_hexdump(frame->data, frame->size);
 }
 
+static void att_read_multiple_req(const struct l2cap_frame *frame)
+{
+	int i, count;
+
+	count = frame->size / 2;
+
+	for (i = 0; i < count; i++)
+		print_field("Handle: 0x%4.4x",
+					bt_get_le16(frame->data + (i * 2)));
+}
+
 static void att_read_group_type_req(const struct l2cap_frame *frame)
 {
 	print_handle_range("Handle range", frame->data);
@@ -2014,7 +2025,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_read_blob_req, 4, true },
 	{ 0x0d, "Read Blob Response",
 			att_read_blob_rsp, 0, false },
-	{ 0x0e, "Read Multiple Request"		},
+	{ 0x0e, "Read Multiple Request",
+			att_read_multiple_req, 4, false },
 	{ 0x0f, "Read Multiple Response"	},
 	{ 0x10, "Read By Group Type Request",
 			att_read_group_type_req, 6, false },
