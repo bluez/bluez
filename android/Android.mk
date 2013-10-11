@@ -29,3 +29,22 @@ LOCAL_SHARED_LIBRARIES := \
 LOCAL_MODULE := bluetoothd
 
 include $(BUILD_EXECUTABLE)
+
+#
+# bluetooth.default.so HAL
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	hal_bluetooth.c \
+
+LOCAL_SHARED_LIBRARIES := \
+	libcutils \
+
+LOCAL_MODULE := bluetooth.default
+LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_CLASS := SHARED_LIBRARIES
+
+include $(BUILD_SHARED_LIBRARY)
