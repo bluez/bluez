@@ -1964,6 +1964,13 @@ static void att_write_rsp(const struct l2cap_frame *frame)
 {
 }
 
+static void att_prepare_write_req(const struct l2cap_frame *frame)
+{
+	print_field("Handle: 0x%4.4x", bt_get_le16(frame->data));
+	print_field("Offset: 0x%4.4x", bt_get_le16(frame->data + 2));
+	print_hex_field("  Data", frame->data + 4, frame->size - 4);
+}
+
 static void att_execute_write_req(const struct l2cap_frame *frame)
 {
 	uint8_t flags = *(uint8_t *) frame->data;
@@ -2056,7 +2063,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_write_req, 2, false	},
 	{ 0x13, "Write Response",
 			att_write_rsp, 0, true	},
-	{ 0x16, "Prepare Write Request"		},
+	{ 0x16, "Prepare Write Request",
+			att_prepare_write_req, 4, false },
 	{ 0x17, "Prepare Write Response"	},
 	{ 0x18, "Execute Write Request",
 			att_execute_write_req, 1, true },
