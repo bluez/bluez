@@ -1964,6 +1964,26 @@ static void att_write_rsp(const struct l2cap_frame *frame)
 {
 }
 
+static void att_execute_write_req(const struct l2cap_frame *frame)
+{
+	uint8_t flags = *(uint8_t *) frame->data;
+	const char *flags_str;
+
+	switch (flags) {
+	case 0x00:
+		flags_str = "Cancel all prepared writes";
+		break;
+	case 0x01:
+		flags_str = "Immediately write all pending values";
+		break;
+	default:
+		flags_str = "Unknown";
+		break;
+	}
+
+	print_field("Flags: %s (0x%02x)", flags_str, flags);
+}
+
 static void att_handle_value_notify(const struct l2cap_frame *frame)
 {
 	const struct bt_l2cap_att_handle_value_notify *pdu = frame->data;
@@ -2038,7 +2058,8 @@ static const struct att_opcode_data att_opcode_table[] = {
 			att_write_rsp, 0, true	},
 	{ 0x16, "Prepare Write Request"		},
 	{ 0x17, "Prepare Write Response"	},
-	{ 0x18, "Execute Write Request"		},
+	{ 0x18, "Execute Write Request",
+			att_execute_write_req, 1, true },
 	{ 0x19, "Execute Write Response"	},
 	{ 0x1b, "Handle Value Notification",
 			att_handle_value_notify, 2, false },
