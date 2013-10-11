@@ -948,7 +948,7 @@ static const struct generic_data set_ssp_on_invalid_index_test = {
 static const char set_hs_on_param[] = { 0x01 };
 static const char set_hs_invalid_param[] = { 0x02 };
 static const char set_hs_garbage_param[] = { 0x01, 0x00 };
-static const char set_hs_settings_param_1[] = { 0x80, 0x01, 0x00, 0x00 };
+static const char set_hs_settings_param_1[] = { 0xc0, 0x01, 0x00, 0x00 };
 static const char set_hs_settings_param_2[] = { 0x81, 0x01, 0x00, 0x00 };
 
 static const struct generic_data set_hs_on_success_test = {
@@ -2856,19 +2856,19 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set High Speed on - Success",
 				&set_hs_on_success_test,
-				NULL, test_command_generic);
+				setup_ssp, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 1",
 				&set_hs_on_invalid_param_test_1,
-				NULL, test_command_generic);
+				setup_ssp, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 2",
 				&set_hs_on_invalid_param_test_2,
-				NULL, test_command_generic);
+				setup_ssp, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 3",
 				&set_hs_on_invalid_param_test_3,
-				NULL, test_command_generic);
+				setup_ssp, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid index",
 				&set_hs_on_invalid_index_test,
-				NULL, test_command_generic);
+				setup_ssp, test_command_generic);
 
 	test_bredrle("Set Low Energy on - Success 1",
 				&set_le_on_success_test_1,
