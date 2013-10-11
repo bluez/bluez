@@ -949,7 +949,6 @@ static const char set_hs_on_param[] = { 0x01 };
 static const char set_hs_invalid_param[] = { 0x02 };
 static const char set_hs_garbage_param[] = { 0x01, 0x00 };
 static const char set_hs_settings_param_1[] = { 0xc0, 0x01, 0x00, 0x00 };
-static const char set_hs_settings_param_2[] = { 0x81, 0x01, 0x00, 0x00 };
 
 static const struct generic_data set_hs_on_success_test = {
 	.send_opcode = MGMT_OP_SET_HS,
