@@ -329,6 +329,12 @@ struct mgmt_cp_set_static_address {
 	bdaddr_t bdaddr;
 } __packed;
 
+#define MGMT_OP_SET_SCAN_PARAMS		0x002C
+struct mgmt_cp_set_scan_params {
+	uint16_t interval;
+	uint16_t window;
+} __packed;
+
 #define MGMT_EV_CMD_COMPLETE		0x0001
 struct mgmt_ev_cmd_complete {
 	uint16_t opcode;
@@ -510,6 +516,7 @@ static const char *mgmt_op[] = {
 	"Set Advertising",
 	"Set BR/EDR",
 	"Set Static Address",
+	"Set Scan Parameters",
 };
 
 static const char *mgmt_ev[] = {
