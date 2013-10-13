@@ -52,6 +52,7 @@ tools/hid2hci
 tools/rfcomm
 tools/l2ping
 tools/l2test
+tools/cltest
 tools/rctest
 tools/scotest
 tools/amptest
