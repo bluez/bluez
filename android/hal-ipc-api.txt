@@ -1,0 +1,1247 @@
+Android HAL protocol for Bluetooth
+==================================
+
+The Android HAL daemon for Bluetooth functionality implements the Unix socket
+server protocol around /run/bluetooth/daemon (tentative location) or Linux
+abstract sockets (tentative name).
+
+The daemon is single threaded and uses a mainloop for scheduling and general
+operation.
+
+The protocol is SOCK_SEQPACKET based and follows a strict PDU specification
+with a generic header and initial registration exchange. The communication
+is driven from the HAL with command/response exchanges. The daemon will use
+notification to signal events. The protocol is single PDU exchanged based,
+meaning every command requires a response. Notification does not require
+any confirmation. Not handling this PDU exchange leads to a disconnection of
+the socket.
+
+Command/response and notification use separate sockets. First connected socket
+is used for command/response, second for notification.  All services are
+multi-plexed over same pair of sockets. Separation is done to ease
+implementation of simple HAL library with dedicated thread for handling
+notification.
+
+This strict protocol requirement is done to match C based callbacks and
+callout functions that are running in a thread inside the HAL and might
+block.
+
+	.--Android--.                             .--Android--.
+	|  daemon   |                             |  HAL      |
+	|           |          Command            |           |
+	|           | <-------------------------- |           |
+	|           |                             |           |
+	|           | --------------------------> |           |
+	|           |          Response           |           |
+	|           |                             |           |
+	|           |                             |           |
+	|           |        Notification         |           |
+	|           | --------------------------> |           |
+	|           |                             |           |
+	'-----------'                             '-----------'
+
+Every packet will follow the basic header to support simple multi-plexing
+over the same socket. It will also support a basic control channel with service
+id 0.
+
+	0              8              16             24            31
+	+--------------+--------------+--------------+--------------+
+	| Service ID   | Opcode       | Data Length                 |
+	+--------------+--------------+-----------------------------+
+	|                                                           |
+
+The unique service ID is assigned by this specification for each HAL.
+
+As general rule of thumb, the opcode for command matches the opcode for a
+response. Or the opcode 0x00 for an error is returned.
+
+Notification opcodes start from 0x80.
+
+All command/response opcodes have the least significant bit not set. And all
+notifications have the least significant bit set.
+
+The HAL modules only have the job to map the callback and event functions
+to the protocol. They do not need to do anything else. Below is an example
+of a sample transaction for the Bluetooth Core HAL and enabling of an
+adapter.
+
+	HAL                                Daemon
+	----------------------------------------------------
+
+	call enable()                  --> command 0x01
+	return enable()                <-- response 0x01
+
+	call adapter_state_changed()   <-- notification 0x81
+	return adapter_state_changed()
+
+When the Android hardware framework calls into the Bluetooth Core HAL
+and executes the enable() callback, the HAL module sends the enable
+command with opcode 0x01 to the daemon. As soon as the daemon responds,
+the callback will return with the appropriate result.
+
+After the daemon switched on the adapter, it will send a notification
+with opcode 0x81 to the HAL module.
+
+The Bluetooth Core HAL and Bluetooth Socket HAL are guaranteed to be
+available from the daemon. All other HAL modules are optional.
+
+When the Bluetooth Core HAL init() function is called, it should open
+the socket and register both "bluetooth" and "socket" service modules. It is
+required to register "socket" service at the same time since the HAL module
+does not have its own init() function.
+
+When new profiles are initiated, the get_profile_interface() callback
+will load the profile and during init() of the profile, it should register the
+specific service.
+
+	Bluetooth main thread       Daemon
+	-------------------------------------------------------
+
+	init()                  --> open command socket
+	                        --> open notification socket
+	                        --> register module "bluetooth"
+	                        --> register module "socket"
+
+	get_profile_interface() --> return profile struct
+	                        --> continue on Handsfree thread
+
+
+	Handsfree thread            Daemon
+	--------------------------------------------------------
+
+	init()                  --> register module handsfree
+
+
+Core Service (ID 0)
+===================
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Error (1 octet)
+
+	Opcode 0x01 - Register module command/response
+
+		Command parameters: Service id (1 octet)
+		Response parameters: <none>
+
+		In case a command is sent for an undeclared service ID, it will
+		be rejected. Also there will be no notifications for undeclared
+		service ID.
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Unregister module command/response
+
+		Command parameters: Service id (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+
+Bluetooth Core HAL (ID 1)
+=========================
+
+Android HAL name: "bluetooth" (BT_HARDWARE_MODULE_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+	Opcode 0x01 - Enable command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Disable command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x03 - Get Adapter Properties command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x04 - Get Adapter Property command/response
+
+		Command parameters: Property type (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x05 - Set Adapter Property command/response
+
+		Command parameters: Property type (1 octet)
+		                    Property length (2 octets)
+		                    Property value (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x06 - Get Remote Device Properties command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x07 - Get Remote Device Property command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Property type (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x08 - Set Remote Device Property command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Property type (1 octet)
+		                    Property length (2 octets)
+		                    Property value (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x09 - Get Remote Service Record command/response
+
+		Command parameters: Remote address (6 octets)
+		                    UUID (16 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0a - Get Remote Services command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0b - Start Discovery command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0c - Cancel Discovery command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0d - Create Bond command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0e - Remove Bond command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0f - Cancel Bond command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x10 - PIN Reply command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Accept (1 octet)
+		                    PIN length (1 octet)
+		                    PIN code (16 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x11 - SSP Reply command/response
+
+		Command parameters: Remote address (6 octets)
+		                    SSP variant (1 octet)
+		                    Accept (1 octet)
+		                    Passkey (4 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x12 - DUT Mode Configure command/response
+
+		Command parameters: Enable (1 octet)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x13 - DUT Mode Send command/response
+
+		Command parameters: Opcode (2 octets)
+		                    Length (1 octet)
+		                    Data (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x14 - LE Test Mode command/response
+
+		Command parameters: Opcode (2 octets)
+		                    Length (1 octet)
+		                    Data (variable)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Adapter State Changed notification
+
+		Notifications parameters: State (1 octect)
+
+	Opcode 0x82 - Adapter Properties Changed notification
+
+		Notification parameters: Status (1 octect)
+		                         Num properties (1 octet)
+		                         Type[i] (1 octect)
+		                         Length[i] (2 octets)
+		                         Value[i] (variable)
+
+	Opcode 0x83 - Remote Device Properties notification
+
+		Notification parameters: Status (1 octect)
+		                         Remote address (6 octets)
+		                         Num properties (1 octet)
+		                         Type[i] (1 octect)
+		                         Length[i] (2 octets)
+		                         Value[i] (variable)
+
+	Opcode 0x84 - Device Found notification
+
+		Notification parameters: Num properties (1 octet)
+		                         Type[i] (1 octect)
+		                         Length[i] (2 octets)
+		                         Value[i] (variable)
+
+	Opcode 0x85 - Discovery State Changed notification
+
+		Notifications parameters: State (1 octect)
+
+	Opcode 0x86 - PIN Request notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Remote name (249 octets)
+		                         Class of device (3 octets)
+
+	Opcode 0x87 - SSP Request notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Remote name (249 octets)
+		                         Class of device (3 octets)
+		                         Pairing variant (1 octet)
+		                         Passkey (4 octets)
+
+	Opcode 0x88 - Bond State Changed notification
+
+		Notification parameters: Status (1 octect)
+		                         Remote address (6 octets)
+		                         Bond state (1 octet)
+
+	Opcode 0x89 - ACL State Changed notification
+
+		Notification parameters: Status (1 octect)
+		                         Remote address (6 octets)
+		                         ACL state (1 octet)
+
+	Opcode 0x8a - DUT Mode Receive notification
+
+		Notification parameters: Opcode (2 octects)
+		                         Length  (1 octet)
+		                         Data (variable)
+
+	Opcode 0x8b - LE Test Mode notification
+
+		Notification parameters: Status (1 octect)
+		                         Num packets (2 octets)
+
+
+Bluetooth Socket HAL (ID 2)
+===========================
+
+Android HAL name:: "socket" (BT_PROFILE_SOCKETS_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Listen command/response
+
+		Command parameters: Socket type (1 octet)
+		                    Service name (256 octets)
+		                    Service UUID (16 octets)
+		                    Channel (2 octets)
+		                    Socket flags (1 octet)
+		Response parameters: File descriptor (inline)
+
+		Valid socket types: 0x01 = RFCOMM
+		                    0x02 = SCO
+		                    0x03 = L2CAP
+
+		Valid socket flags: 0x01 = Encrypt
+		                    0x02 = Auth
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Connect command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Socket type (1 octet)
+		                    Service UUID (16 octets)
+		                    Channel (2 octets)
+		                    Socket flags (1 octet)
+		Response parameters: File descriptor (inline)
+
+		Valid socket types: 0x01 = RFCOMM
+		                    0x02 = SCO
+		                    0x03 = L2CAP
+
+		Valid socket flags: 0x01 = Encrypt
+		                    0x02 = Auth
+
+		In case of an error, the error response will be returned.
+
+
+Bluetooth HID Host HAL (ID 3)
+============================
+
+Android HAL name: "hidhost" (BT_PROFILE_HIDHOST_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Connect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Disconnect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x03 - Virtual Unplug command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x04 - Set Info command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Attribute mask (2 octets)
+		                    Subclass (1 octet)
+		                    Application ID (1 octet)
+		                    Vendor ID (2 octets)
+		                    Product ID (2 octets)
+		                    Version (2 octets)
+		                    Country code (1 octet)
+		                    Descriptor length (2 octet)
+		                    Descriptor value (884 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x05 - Get Protocol command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Protocol mode (1 octet)
+		Response parameters: <none>
+
+		Valid protocol modes: 0x00 = Report
+		                      0x01 = Boot
+		                      0xff = Unsupported
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x06 - Set Protocol command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Protocol mode (1 octet)
+		Response parameters: <none>
+
+		Valid protocol modes: 0x00 = Report
+		                      0x01 = Boot
+		                      0xff = Unsupported
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x07 - Get Report command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Report type (1 octet)
+		                    Report ID (1 octet)
+		                    Buffer size (2 octet)
+		Response parameters: <none>
+
+		Valid report types: 0x01 = Input
+		                    0x02 = Output
+		                    0x03 = Feature
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x08 - Set Report command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Report type (1 octet)
+		                    ...
+		Response parameters: <none>
+
+		Valid report types: 0x01 = Input
+		                    0x02 = Output
+		                    0x03 = Feature
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x09 - Send Data command/response
+
+		Command parameters: Remote address (6 octets)
+		                    ...
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Connection State notification
+
+		Notification parameters: Remote address (6 octets)
+
+		Valid connection states: 0x00 = Connected
+		                         0x01 = Connecting
+		                         0x02 = Disconnected
+		                         0x03 = Disconnecting
+		                         0x04 = Failed - Mouse from host
+		                         0x05 = Failed - Keyboard from host
+		                         0x06 = Failed - Too many devices
+		                         0x07 = Failed - No HID driver
+		                         0x08 = Failed - generic
+		                         0x09 = Unknown
+
+	Opcode 0x82 - HID Info notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Attribute mask (2 octets)
+		                         Subclass (1 octet)
+		                         Application ID (1 octet)
+		                         Vendor ID (2 octets)
+		                         Product ID (2 octets)
+		                         Version (2 octets)
+		                         Country code (1 octet)
+		                         Descriptor length (2 octet)
+		                         Descriptor value (884 octets)
+
+	Opcode 0x83 - Protocol Mode notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Status (1 octet)
+		                         Protocol mode (1 octet)
+
+		Valid protocol modes: 0x00 = Report
+		                      0x01 = Boot
+		                      0xff = Unsupported
+
+	Opcode 0x84 - Idle Time notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Status (1 octet)
+		                         Idle time (2 octets)
+
+	Opcode 0x85 - Get Report notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Status (1 octet)
+		                         Report length (2 octets)
+		                         Report data (variable)
+
+	Opcode 0x86 - Virtual Unplug notification
+
+		Notification parameters: Remote address (6 octets)
+		                         Status (1 octet)
+
+		Valid status values: 0x00 = Ok
+		                     0x01 = Handshake - Device not ready
+		                     0x02 = Handshake - Invalid report ID
+		                     0x03 = Handshake - Transaction not SPT
+		                     0x04 = Handshake - Invalid parameter
+		                     0x05 = Handshake - Generic error
+		                     0x06 = General error
+		                     0x07 = SDP error
+		                     0x08 = Set protocol error
+		                     0x09 = Device database full
+		                     0x0a = Device type not supported
+		                     0x0b = No resources
+		                     0x0c = Authentication failed
+		                     0x0d = HDL
+
+
+Bluetooth PAN HAL (ID 4)
+========================
+
+Android HAL name: "pan" (BT_PROFILE_PAN_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Enable command/response
+
+		Command parameters: Local role (1 octet)
+		Response parameters: <none>
+
+		Valid role values: 0x00 = None
+		                   0x01 = NAP
+		                   0x02 = PANU
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Get Local Role command/response
+
+		Command parameters: <none>
+		Response parameters: Local role (1 octet)
+
+		Valid role values: 0x00 = None
+		                   0x01 = NAP
+		                   0x02 = PANU
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x03 - Connect command/response
+
+		Command parameters: Remote address (6 octets)
+		                    Local role (1 octet)
+		                    Remote role (1 octet)
+		Response parameters: <none>
+
+		Valid role values: 0x01 = NAP
+		                   0x02 = PANU
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x04 - Disconnect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Control State notification
+
+		Notification parameters: Control state (1 octect)
+		                         Status (1 octet)
+		                         Local role (1 octet)
+		                         Interface name (17 octet)
+
+		Valid control states: 0x00 = Enabled
+		                      0x01 = Disabled
+
+		Valid role values: 0x00 = None
+		                   0x01 = NAP
+		                   0x02 = PANU
+
+	Opcode 0x82 - Connection State notification
+
+		Notification parameters: Connection state (1 octect)
+		                         Status (1 octet)
+		                         Remote address (6 octets)
+		                         Local role (1 octet)
+		                         Remote role (1 octet)
+
+		Valid connection states: 0x00 = Connected
+		                         0x01 = Connecting
+		                         0x02 = Disconnected
+		                         0x03 = Disconnecting
+
+		Valid role values: 0x01 = NAP
+		                   0x02 = PANU
+
+
+Bluetooth Handsfree HAL (ID 5)
+==============================
+
+Android HAL name: "handsfree" (BT_PROFILE_HANDSFREE_ID)
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Connect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Disconnect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x03 - Connect Audio command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x04 - Disconnect Audio command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x05 - Start Voice Recognition command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x06 - Stop Voice Recognition command/response
+
+		Command parameters: <none>
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x07 - Volume Control command/response
+
+		Command parameters: Volume type (1 octet)
+		                    Volume (1 octet)
+		Response parameters: <none>
+
+		Valid volume types: 0x00 = Speaker
+		                    0x01 = Microphone
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x08 - Device Status Notification command/response
+
+		Command parameters: Network state (1 octet)
+		                    Service type (1 octet)
+		                    Signal strength (1 octet)
+		                    Battery level (1 octet)
+		Response parameters: <none>
+
+		Valid network states: 0x00 = Not available
+		                      0x01 = Available
+
+		Valid service types: 0x00 = Home network
+		                     0x01 = Roaming network
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x09 - COPS Response command/response
+
+		Command parameters: COPS command response (string)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0a - CIND Response command/response
+
+		Command parameters: Service (1 octet)
+		                    Number of active calls (1 octet)
+		                    Number of held calls (1 octet)
+		                    Call setup state (1 octet)
+		                    Signal strength (1 octet)
+		                    Roaming indicator (1 octet)
+		                    Battery level (1 octet)
+		Response parameters: <none>
+
+		Valid call setup states: 0x00 = Active
+		                         0x01 = Held
+		                         0x02 = Dialing
+		                         0x03 = Alerting
+		                         0x04 = Incoming
+		                         0x05 = Waiting
+		                         0x06 = Idle
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0b - Formatted AT Response command/response
+
+		Command parameters: Pre-formatted AT response (string)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0c - AT Response command/response
+
+		Command parameters: Response code (1 octet)
+		                    Error code (1 octet)
+		Response parameters: <none>
+
+		Valid response codes: 0x00 = ERROR
+		                      0x01 = OK
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0d - CLCC Response command/response
+
+		Command parameters: Call index (1 octet)
+		                    Call direction (1 octet)
+		                    Call state (1 octet)
+		                    Call mode (1 octet)
+		                    Call multiparty type (1 octet)
+		                    Call number type (1 octet)
+		                    Call number (variable)
+		Response parameters: <none>
+
+		Valid call directions: 0x00 = Outgoing
+		                       0x01 = Incoming
+
+		Valid call states: 0x00 = Active
+		                   0x01 = Held
+		                   0x02 = Dialing
+		                   0x03 = Alerting
+		                   0x04 = Incoming
+		                   0x05 = Waiting
+		                   0x06 = Idle
+
+		Valid call modes: 0x00 = Voice
+		                  0x01 = Data
+		                  0x02 = Fax
+
+		Valid multiparty types: 0x00 = Single call
+		                        0x01 = Multiparty call
+
+		Valid number types: 0x81 = Unknown
+		                    0x91 = International
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x0e - Phone Status Change command/response
+
+		Command parameters: Number of active calls (1 octet)
+		                    Number of held calls (1 octet)
+		                    Call setup state (1 octet)
+		                    Call number type (1 octet)
+		                    Call number (variable)
+		Response parameters: <none>
+
+		Valid call setup states: 0x00 = Active
+		                         0x01 = Held
+		                         0x02 = Dialing
+		                         0x03 = Alerting
+		                         0x04 = Incoming
+		                         0x05 = Waiting
+		                         0x06 = Idle
+
+		Valid number types: 0x81 = Unknown
+		                    0x91 = International
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Connection State notification
+
+		Notification parameters: Connection state (1 octect)
+		                         Remote address (6 octets)
+
+		Valid connection states: 0x00 = Disconnected
+		                         0x01 = Connecting
+		                         0x02 = Connected
+		                         0x03 = SLC connected
+		                         0x04 = Disconnecting
+
+	Opcode 0x82 - Audio State notification
+
+		Notification parameters: Audio state (1 octect)
+		                         Remote address (6 octets)
+
+		Valid audio states: 0x00 = Disconnected
+		                    0x01 = Connecting
+		                    0x02 = Connected
+		                    0x03 = Disconnecting
+
+	Opcode 0x83 - Voice Recognition Command notification
+
+		Notification parameters: Voice recognition state (1 octet)
+
+		Valid voice recognition states: 0x00 = Stopped
+		                                0x01 = Started
+
+	Opcode 0x84 - Answer Call Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x85 - Hangup Call Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x86 - Volume Command notification
+
+		Notification parameters: Volume type (1 octet)
+
+		Valid volume types: 0x00 = Speaker
+		                    0x01 = Microphone
+
+	Opcode 0x87 - Dial Call Command notification
+
+		Notification parameters: Number (string)
+
+	Opcode 0x88 - DTMF Command notification
+
+		Notification parameters: Tone (1 octet)
+
+	Opcode 0x89 - NREC Command notification
+
+		Notification parameters: NREC types (1 octet)
+
+		Valid NREC types: 0x00 = Stop
+		                  0x01 = Start
+
+	Opcode 0x8a - CHLD Command notification
+
+		Notification parameters: NREC types (1 octet)
+
+		Valid CHLD types: 0x00 = Release and hold
+		                  0x01 = Release active and accept held
+		                  0x02 = Hold active and accept held
+		                  0x03 = Add held call to conference
+
+	Opcode 0x8b - CNUM Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x8c - CIND Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x8d - COPS Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x8e - CLCC Command notification
+
+		Notification parameters: <none>
+
+	Opcode 0x8f - Unknown AT Command notification
+
+		Notification parameters: AT command (string)
+
+	Opcode 0x90 - Key Pressed Command notification
+
+		Notification parameters: <none>
+
+
+Bluetooth Advanced Audio HAL (ID 6)
+===================================
+
+Android HAL name: "ad2p" (BT_PROFILE_ADVANCED_AUDIO_ID)
+
+Commands and responses:
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Connect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Disconnect command/response
+
+		Command parameters: Remote address (6 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Connection State notification
+
+		Notification parameters: Connection state (1 octect)
+		                         Remote address (6 octets)
+
+		Valid connection states: 0x00 = Disconnected
+		                         0x01 = Connecting
+		                         0x02 = Connected
+		                         0x03 = Disconnecting
+
+	Opcode 0x82 - Audio State notification
+
+		Notification parameters: Audio state (1 octect)
+		                         Remote address (6 octets)
+
+		Valid connection states: 0x00 = Remote suspend
+		                         0x01 = Stopped
+		                         0x02 = Started
+
+
+Bluetooth Health HAL (ID 7)
+===========================
+
+Android HAL name: "health" (BT_PROFILE_HEALTH_ID)
+
+	Opcode 0x00 - Error response
+
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01 = Fail
+		                     0x02 = Not ready
+		                     0x03 = No memory
+		                     0x04 = Busy
+		                     0x05 = Done (already completed)
+		                     0x06 = Unsupported
+		                     0x07 = Parameter invalid
+		                     0x08 = Unhandled
+		                     0x09 = Authentication failure
+		                     0x0a = Remote device down
+
+	Opcode 0x01 - Register Application command/response
+
+		Command parameters: Application name (string)
+		                    Provider name (string)
+		                    Service name (string)
+		                    Service description (string)
+		                    Number of MDEP (1 octet)
+		                    MDEP Role[i] (1 octet)
+		                    Data type[i] (1 octet)
+		                    Channel type[i] (1 octet)
+		                    MDEP description (string)
+		Response parameters: Application ID (2 octets)
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x02 - Unregister Application command/response
+
+		Command parameters: Application ID (2 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x03 - Connect Channel command/response
+
+		Command parameters: Application ID (2 octets)
+		                    Remote address (6 octets)
+		                    MDEP index (1 octet)
+		Response parameters: Channel ID (2 octets)
+
+		In case of an error, the error response will be returned.
+
+	Opcode 0x04 - Destroy Channel command/response
+
+		Command parameters: Channel ID (2 octets)
+		Response parameters: <none>
+
+		In case of an error, the error response will be returned.
+
+Notifications:
+
+	Opcode 0x81 - Application Registration State notification
+
+		Notification parameters: Application ID (2 octects)
+		                         Application state (1 octet)
+
+		Valid application states: 0x00 = Registration success
+		                          0x01 = Registration failed
+		                          0x02 = Deregistration success
+		                          0x03 = Deregistration failed
+
+	Opcode 0x82 - Channel State notification
+
+		Notification parameters: Application ID (2 octects)
+		                         Remote address (6 octets)
+		                         MDEP index (1 octet)
+		                         Channel ID (2 octets)
+		                         Channel state (1 octet)
+		                         File descriptor (inline)
+
+		Valid channel states: 0x00 = Connecting
+		                      0x01 = Connected
+		                      0x02 = Disconnecting
+		                      0x03 = Disconnected
+		                      0x04 = Destroyed
+
+
+Bluetooth Remote Control HAL (ID 8)
+===================================
+
+Android HAL name: "avrcp" (BT_PROFILE_AV_RC_ID)
+
+	Opcode 0x00 - Error response
+	Opcode 0x01 - Get Play Status command/response
+	Opcode 0x02 - List Player Application Attributes command/response
+	Opcode 0x03 - List Player Application Values command/response
+	Opcode 0x04 - Get Player Application Values command/response
+	Opcode 0x05 - Get Player Application Attributes Text command/response
+	Opcode 0x06 - Get Player Application Values Text command/response
+	Opcode 0x07 - Get Element Attributes Text command/response
+	Opcode 0x08 - Set Player Attributes Value command/response
+	Opcode 0x09 - Register Notification command/response
+
+	Opcode 0x81 - Get Play Status notification
+	Opcode 0x82 - List Player Application Attributes notification
+	...
+
+
+Bluetooth GATT HAL (ID 9)
+=========================
+
+Android HAL name: "gatt" (BT_PROFILE_GATT_ID)
+
+	Opcode 0x00 - Error response
+	Opcode 0x01 - Register Client command/response
+	Opcode 0x02 - Unregister Client command/response
+	Opcode 0x03 - Scan command/response
+	Opcode 0x04 - Connect Device command/response
+	Opcode 0x05 - Disconnect Device command/response
+	Opcode 0x06 - Refresh command/response
+	Opcode 0x07 - Search Service command/response
+	Opcode 0x08 - Get Included Service command/response
+	Opcode 0x09 - Get Characteristic command/response
+	Opcode 0x0a - Get Descriptor command/response
+	Opcode 0x0b - Read Characteristic command/response
+	Opcode 0x0c - Write Characteristic command/response
+	Opcode 0x0d - Read Descriptor command/response
+	Opcode 0x0e - Write Descriptor command/response
+	Opcode 0x0f - Execute Write command/response
+	Opcode 0x10 - Register For Notification command/response
+	Opcode 0x11 - Deregister For Notification command/response
+	Opcode 0x12 - Read Remote RSSI command/response
+	Opcode 0x13 - Get Device Type command/response
+	Opcode 0x14 - Test Command command/response
+	Opcode 0x15 - Register Server command/response
+	Opcode 0x16 - Unregister Server command/response
+	Opcode 0x17 - Connect Peripheral command/response
+	Opcode 0x18 - Disconnect Peripheral command/response
+	Opcode 0x19 - Add Service command/response
+	Opcode 0x1a - Add Included Service command/response
+	Opcode 0x1b - Add Characteristic command/response
+	Opcode 0x1c - Add Descriptor command/response
+	Opcode 0x1d - Start Service command/response
+	Opcode 0x1e - Stop Service command/response
+	Opcode 0x1f - Delete Service command/response
+	Opcode 0x20 - Send Indication command/response
+	Opcode 0x21 - Send Response command/response
+
+	Opcode 0x81 - Register Client notification
+	Opcode 0x82 - Scan Result notification
+	Opcode 0x83 - Connect Device notification
+	Opcode 0x84 - Disconnect Device notification
+	Opcode 0x85 - Search Complete notification
+	Opcode 0x86 - Search Result notification
+	Opcode 0x87 - Get Characteristic notification
+	Opcode 0x88 - Get Descriptor notification
+	Opcode 0x89 - Get Included Service notification
+	Opcode 0x8a - Register For Notification notification
+	Opcode 0x8b - Notify notification
+	Opcode 0x8c - Read Characteristic notification
+	Opcode 0x8d - Write Characteristic notification
+	Opcode 0x8e - Execute Write notification
+	Opcode 0x8f - Read Descriptor notification
+	Opcode 0x90 - Write Descriptor notification
+	Opcode 0x91 - Read Remote RSSI notification
+	Opcode 0x92 - Register Server notification
+	Opcode 0x93 - Connection notification
+	Opcode 0x94 - Service Added notification
+	Opcode 0x95 - Included Service Added notification
+	Opcode 0x96 - Characteristic Added notification
+	Opcode 0x97 - Descriptor Added notification
+	Opcode 0x98 - Service Started notification
+	Opcode 0x99 - Service Stopped notification
+	Opcode 0x9a - Service Deleted notification
+	Opcode 0x9b - Request Read notification
+	Opcode 0x9c - Request Write notification
+	Opcode 0x9d - Request Execute Write notification
+	Opcode 0x9e - Response Confirmation notification
