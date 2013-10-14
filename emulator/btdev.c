@@ -30,6 +30,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
+#include <alloca.h>
 
 #include "monitor/bt.h"
 #include "btdev.h"
@@ -1072,6 +1073,8 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	struct bt_hci_rsp_read_auth_enable rae;
 	struct bt_hci_rsp_read_class_of_dev rcod;
 	struct bt_hci_rsp_read_voice_setting rvs;
+	struct bt_hci_rsp_read_num_supported_iac rnsi;
+	struct bt_hci_rsp_read_current_iac_lap *rcil;
 	struct bt_hci_rsp_read_inquiry_mode rim;
 	struct bt_hci_rsp_read_afh_assessment_mode raam;
 	struct bt_hci_rsp_read_ext_inquiry_response reir;
@@ -1413,6 +1416,26 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	case BT_HCI_CMD_HOST_BUFFER_SIZE:
 		status = BT_HCI_ERR_SUCCESS;
 		cmd_complete(btdev, opcode, &status, sizeof(status));
+		break;
+
+	case BT_HCI_CMD_READ_NUM_SUPPORTED_IAC:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		rnsi.status = BT_HCI_ERR_SUCCESS;
+		rnsi.num_iac = 0x01;
+		cmd_complete(btdev, opcode, &rnsi, sizeof(rnsi));
+		break;
+
+	case BT_HCI_CMD_READ_CURRENT_IAC_LAP:
+		if (btdev->type == BTDEV_TYPE_LE)
+			goto unsupported;
+		rcil = alloca(sizeof(*rcil) + 3);
+		rcil->status = BT_HCI_ERR_SUCCESS;
+		rcil->num_iac = 0x01;
+		rcil->iac_lap[0] = 0x33;
+		rcil->iac_lap[1] = 0x8b;
+		rcil->iac_lap[2] = 0x9e;
+		cmd_complete(btdev, opcode, rcil, sizeof(*rcil) + 3);
 		break;
 
 	case BT_HCI_CMD_WRITE_CURRENT_IAC_LAP:
