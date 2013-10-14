@@ -412,6 +412,7 @@ struct avdtp {
 
 	char *buf;
 
+	guint discov_id;
 	avdtp_discover_cb_t discov_cb;
 	void *user_data;
 
@@ -1047,6 +1048,11 @@ static void finalize_discovery(struct avdtp *session, int err)
 
 	if (!session->discov_cb)
 		return;
+
+	if (session->discov_id > 0) {
+		g_source_remove(session->discov_id);
+		session->discov_id = 0;
+	}
 
 	session->discov_cb(session, session->seps,
 				err ? &avdtp_err : NULL,
@@ -3322,6 +3328,8 @@ static gboolean process_discover(gpointer data)
 {
 	struct avdtp *session = data;
 
+	session->discov_id = 0;
+
 	finalize_discovery(session, 0);
 
 	return FALSE;
@@ -3338,7 +3346,7 @@ int avdtp_discover(struct avdtp *session, avdtp_discover_cb_t cb,
 	if (session->seps) {
 		session->discov_cb = cb;
 		session->user_data = user_data;
-		g_idle_add(process_discover, session);
+		session->discov_id = g_idle_add(process_discover, session);
 		return 0;
 	}
 
