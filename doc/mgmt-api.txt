@@ -1238,7 +1238,7 @@ Set Advertising Command
 
 	Command Code:		0x0029
 	Controller Index:	<controller id>
-	Command Parameters	Advertising (1 Octet)
+	Command Parameters:	Advertising (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
 	This command is used to enable LE advertising on a controller
@@ -1264,7 +1264,7 @@ Set BR/EDR Command
 
 	Command Code:		0x002A
 	Controller Index:	<controller id>
-	Command Parameters	BR/EDR (1 Octet)
+	Command Parameters:	BR/EDR (1 Octet)
 	Return Parameters:	Current_Settings (4 Octets)
 
 	This command is used to enable or disable BR/EDR support
@@ -1294,7 +1294,7 @@ Set Static Address Command
 
 	Command Code:		0x002B
 	Controller Index:	<controller id>
-	Command Parameters	Address (6 Octets)
+	Command Parameters:	Address (6 Octets)
 	Return Parameters:
 
 	This command allows for setting the static random address. It is
@@ -1321,7 +1321,7 @@ Set Scan Parameters Command
 
 	Command Code:		0x002C
 	Controller Index:	<controller id>
-	Command Parameters	Interval (2 Octets)
+	Command Parameters:	Interval (2 Octets)
 				Window (2 Octets)
 	Return Parameters:
 
