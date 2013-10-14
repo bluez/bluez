@@ -296,6 +296,16 @@ done:
 	g_free(callback);
 }
 
+static void session_disconnected(GObex *obex, GError *err, gpointer user_data)
+{
+	struct obc_session *session = user_data;
+
+	if (err)
+		error("%s", err->message);
+
+	obc_session_shutdown(session);
+}
+
 static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct callback_data *callback = user_data;
@@ -344,6 +354,8 @@ static void transport_func(GIOChannel *io, GError *err, gpointer user_data)
 
 	session->obex = obex;
 	sessions = g_slist_prepend(sessions, session);
+
+	g_obex_set_disconnect_function(obex, session_disconnected, session);
 
 	return;
 done:
