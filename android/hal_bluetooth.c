@@ -23,16 +23,48 @@
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 
+#include <cutils/sockets.h>
+#include <cutils/properties.h>
+
 #define LOG_TAG "BlueZ"
 #include <cutils/log.h>
 
 #include "hal.h"
+
+#define SERVICE_NAME "bluetoothd"
 
 bt_callbacks_t *bt_hal_cbacks = NULL;
 
 static bool interface_ready(void)
 {
 	return bt_hal_cbacks != NULL;
+}
+
+static bool start_bt_daemon(void)
+{
+	int tries = 40; /* wait 4 seconds for completion */
+
+	ALOGD(__func__);
+
+	/* Start Android Bluetooth daemon service */
+	property_set("ctl.start", SERVICE_NAME);
+
+	while (tries-- > 0) {
+		char val[PROPERTY_VALUE_MAX];
+
+		if (property_get("init.svc." SERVICE_NAME, val, NULL)) {
+			if (!strcmp(val, "running")) {
+				ALOGI("Android BlueZ daemon started");
+				return true;
+			}
+		} else {
+			return false;
+		}
+
+		usleep(100000);
+	}
+
+	return false;
 }
 
 static int init(bt_callbacks_t *callbacks)
@@ -42,10 +74,13 @@ static int init(bt_callbacks_t *callbacks)
 	if (interface_ready())
 		return BT_STATUS_SUCCESS;
 
-	/* store reference to user callbacks */
-	bt_hal_cbacks = callbacks;
+	if (start_bt_daemon()) {
+		/* TODO: open channel */
 
-	/* TODO: Init here bluezd task */
+		bt_hal_cbacks = callbacks;
+
+		return BT_STATUS_SUCCESS;
+	}
 
 	return BT_STATUS_UNSUPPORTED;
 }
