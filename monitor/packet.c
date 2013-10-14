@@ -3651,6 +3651,29 @@ static void read_num_supported_iac_rsp(const void *data, uint8_t size)
 	print_field("Number of IAC: %d", rsp->num_iac);
 }
 
+static void read_current_iac_lap_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_current_iac_lap *rsp = data;
+	uint8_t i;
+
+	print_status(rsp->status);
+	print_field("Number of IAC: %d", rsp->num_iac);
+
+	for (i = 0; i < rsp->num_iac; i++)
+		print_iac(rsp->iac_lap + (i * 3));
+}
+
+static void write_current_iac_lap_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_current_iac_lap *cmd = data;
+	uint8_t i;
+
+	print_field("Number of IAC: %d", cmd->num_iac);
+
+	for (i = 0; i < cmd->num_iac; i++)
+		print_iac(cmd->iac_lap + (i * 3));
+}
+
 static void read_page_scan_period_mode_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_page_scan_period_mode *rsp = data;
@@ -4922,8 +4945,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c38,  90, "Read Number of Supported IAC",
 				null_cmd, 0, true,
 				read_num_supported_iac_rsp, 2, true },
-	{ 0x0c39,  91, "Read Current IAC LAP" },
-	{ 0x0c3a,  92, "Write Current IAC LAP" },
+	{ 0x0c39,  91, "Read Current IAC LAP",
+				null_cmd, 0, true,
+				read_current_iac_lap_rsp, 2, false },
+	{ 0x0c3a,  92, "Write Current IAC LAP",
+				write_current_iac_lap_cmd, 1, false,
+				status_rsp, 1, true },
 	{ 0x0c3b,  93, "Read Page Scan Period Mode",
 				null_cmd, 0, true,
 				read_page_scan_period_mode_rsp, 2, true },
