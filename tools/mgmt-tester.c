@@ -1880,6 +1880,23 @@ static const struct generic_data unblock_device_invalid_param_test_1 = {
 	.expect_len = sizeof(unblock_device_invalid_param_rsp_1),
 };
 
+static const char set_static_addr_valid_param[] = {
+			0x11, 0x22, 0x33, 0x44, 0x55, 0xc0 };
+
+static const struct generic_data set_static_addr_success_test = {
+	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.send_param = set_static_addr_valid_param,
+	.send_len = sizeof(set_static_addr_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
+static const struct generic_data set_static_addr_failure_test = {
+	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
+	.send_param = set_static_addr_valid_param,
+	.send_len = sizeof(set_static_addr_valid_param),
+	.expect_status = MGMT_STATUS_REJECTED,
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -3066,6 +3083,13 @@ int main(int argc, char *argv[])
 	test_bredrle("Unblock Device - Invalid Parameters 1",
 				&unblock_device_invalid_param_test_1,
 				NULL, test_command_generic);
+
+	test_bredrle("Set Static Address - Success",
+				&set_static_addr_success_test,
+				NULL, test_command_generic);
+	test_bredrle("Set Static Address - Failure",
+				&set_static_addr_failure_test,
+				setup_powered, test_command_generic);
 
 	return tester_run();
 }
