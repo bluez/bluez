@@ -1897,6 +1897,15 @@ static const struct generic_data set_static_addr_failure_test = {
 	.expect_status = MGMT_STATUS_REJECTED,
 };
 
+static const char set_scan_params_valid_param[] = { 0x60, 0x00, 0x30, 0x00 };
+
+static const struct generic_data set_scan_params_success_test = {
+	.send_opcode = MGMT_OP_SET_SCAN_PARAMS,
+	.send_param = set_scan_params_valid_param,
+	.send_len = sizeof(set_scan_params_valid_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+};
+
 static void powered_delay(void *user_data)
 {
 	tester_setup_complete();
@@ -3090,6 +3099,10 @@ int main(int argc, char *argv[])
 	test_bredrle("Set Static Address - Failure",
 				&set_static_addr_failure_test,
 				setup_powered, test_command_generic);
+
+	test_bredrle("Set Scan Parameters - Success",
+				&set_scan_params_success_test,
+				NULL, test_command_generic);
 
 	return tester_run();
 }
