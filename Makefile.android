@@ -6,3 +6,5 @@ android_bluetoothd_LDADD = @GLIB_LIBS@
 endif
 
 EXTRA_DIST += android/Android.mk android/log.c
+
+EXTRA_DIST += android/hal-ipc-api.txt
