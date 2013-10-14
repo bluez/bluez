@@ -1480,7 +1480,28 @@ static struct avctp_pending_req *pending_create(struct avctp_channel *chan,
 						GDestroyNotify destroy)
 {
 	struct avctp_pending_req *p;
+	GSList *l, *tmp;
 
+	if (!chan->processed)
+		goto done;
+
+	tmp = g_slist_copy(chan->processed);
+
+	/* Find first unused transaction id */
+	for (l = tmp; l; l = l->next) {
+		struct avctp_pending_req *req = l->data;
+
+		if (req->transaction == chan->transaction) {
+			chan->transaction++;
+			chan->transaction %= 16;
+			tmp = g_slist_delete_link(tmp, l);
+			l = tmp;
+		}
+	}
+
+	g_slist_free(tmp);
+
+done:
 	p = g_new0(struct avctp_pending_req, 1);
 	p->chan = chan;
 	p->transaction = chan->transaction;
