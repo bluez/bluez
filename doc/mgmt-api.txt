@@ -1316,6 +1316,28 @@ Set Static Address Command
 				Invalid Index
 
 
+Set Scan Parameters Command
+===========================
+
+	Command Code:		0x002C
+	Controller Index:	<controller id>
+	Command Parameters	Interval (2 Octets)
+				Window (2 Octets)
+	Return Parameters:
+
+	This command allows for setting the Low Energy scan parameters
+	used for connection establishment and passive scanning. It is
+	only supported on controllers with LE support.
+
+	This command generates a Command Complete event on success or a
+	Command Status event on failure.
+
+	Possible errors:	Rejected
+				Not Supported
+				Invalid Parameters
+				Invalid Index
+
+
 Command Complete Event
 ======================
 
