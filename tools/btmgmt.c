@@ -900,7 +900,7 @@ static void cmd_discov(struct mgmt *mgmt, uint16_t index, int argc,
 	struct mgmt_cp_set_discoverable cp;
 
 	if (argc < 2) {
-		printf("Usage: btmgmt %s <yes/no> [timeout]\n", argv[0]);
+		printf("Usage: btmgmt %s <yes/no/limited> [timeout]\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
@@ -910,6 +910,8 @@ static void cmd_discov(struct mgmt *mgmt, uint16_t index, int argc,
 		cp.val = 1;
 	else if (strcasecmp(argv[1], "off") == 0)
 		cp.val = 0;
+	else if (strcasecmp(argv[1], "limited") == 0)
+		cp.val = 2;
 	else
 		cp.val = atoi(argv[1]);
 
