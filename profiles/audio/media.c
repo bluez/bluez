@@ -95,7 +95,6 @@ struct media_player {
 	GHashTable		*track;		/* Player current track */
 	guint			watch;
 	guint			properties_watch;
-	guint			track_watch;
 	guint			seek_watch;
 	char			*status;
 	uint32_t		position;
@@ -949,7 +948,6 @@ static void media_player_free(gpointer data)
 
 	g_dbus_remove_watch(conn, mp->watch);
 	g_dbus_remove_watch(conn, mp->properties_watch);
-	g_dbus_remove_watch(conn, mp->track_watch);
 	g_dbus_remove_watch(conn, mp->seek_watch);
 
 	if (mp->track)
