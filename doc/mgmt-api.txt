@@ -285,9 +285,13 @@ Set Connectable Command
 	controller. The allowed Connectable command parameter values are
 	0x00 and 0x01. All other values will return Invalid Parameters.
 
-	This command is only available for BR/EDR capable controllers
-	(e.g. not for single-mode LE ones). It will return Not Supported
-	otherwise.
+	This command is available for BR/EDR, LE-only and also dual
+	mode controllers. For BR/EDR is changes the page scan setting
+	and for LE controllers it changes the advertising type. For
+	dual mode controllers it affects both settings.
+
+	For LE capable controllers the connectable setting only takes
+	affect when advertising is enabled.
 
 	This command can be used when the controller is not powered and
 	all settings will be programmed once powered.
