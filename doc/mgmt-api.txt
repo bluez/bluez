@@ -237,11 +237,17 @@ Set Discoverable Command
 
 	This command is used to set the discoverable property of a
 	controller. The allowed Discoverable command parameter values
-	are 0x00 and 0x01. All other values will return Invalid Parameters.
+	are 0x00, 0x01 and 0x02. All other values will return Invalid
+	Parameters.
 
 	Timeout is the time in seconds and is only meaningful when
-	Discoverable is set to 0x01. Providing a timeout with 0x00 will
-	return Invalid Parameters.
+	Discoverable is set to 0x01 or 0x02. Providing a timeout
+	with 0x00 return Invalid Parameters. For 0x02, the timeout
+	value is required.
+
+	The value 0x00 disables discoverable, the value 0x01 enables
+	general discoverable and the value 0x02 enables limited
+	discoverable.
 
 	This command is only available for BR/EDR capable controllers
 	(e.g. not for single-mode LE ones). It will return Not Supported
