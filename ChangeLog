@@ -1,3 +1,14 @@
+ver 5.10:
+	Fix issue with discoverable timeout handling.
+	Fix issue with MAP messages and record version.
+	Fix issue with MAP messages and status events.
+	Fix issue with MAP messages and relative folders.
+	Fix issue with MAP messages and type property signals.
+	Fix issue with transfer size for OBEX GET operations.
+	Fix issue with AVRCP service class identifier.
+	Fix issue with AVRCP tracking seeked signal.
+	Add support for OBEX command line client.
+
 ver 5.9:
 	Fix issue with network service and adapter removal.
 	Fix issue with misleading OBEX error messages.
