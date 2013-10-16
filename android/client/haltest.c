@@ -19,8 +19,40 @@
 #include <poll.h>
 #include <unistd.h>
 
+#include "terminal.h"
 #include "pollhandler.h"
 
+/*
+ * This function changes input parameter line_buffer so it has
+ * null termination after each token (due to strtok)
+ * Output argv is filled with pointers to arguments
+ * returns number of tokens parsed - argc
+ */
+static int command_line_to_argv(char *line_buffer,
+				char *argv[], int argv_size)
+{
+	static const char *token_breaks = "\r\n\t ";
+	char *token;
+	int argc = 0;
+
+	token = strtok(line_buffer, token_breaks);
+	while (token != NULL && argc < (int) argv_size) {
+		argv[argc++] = token;
+		token = strtok(NULL, token_breaks);
+	}
+
+	return argc;
+}
+
+static void process_line(char *line_buffer)
+{
+	char *argv[10];
+	int argc;
+
+	argc = command_line_to_argv(line_buffer, argv, 10);
+
+	/* TODO: process command line */
+}
 
 /* called when there is something on stdin */
 static void stdin_handler(struct pollfd *pollfd)
@@ -33,15 +65,16 @@ static void stdin_handler(struct pollfd *pollfd)
 		if (count > 0) {
 			int i;
 
-			for (i = 0; i < count; ++i) {
-				/* TODO: process input */
-			}
+			for (i = 0; i < count; ++i)
+				terminal_process_char(buf[i], process_line);
 		}
 	}
 }
 
 int main(int argc, char **argv)
 {
+	terminal_setup();
+
 	/* Register command line handler */
 	poll_register_fd(0, POLLIN, stdin_handler);
 
