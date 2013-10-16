@@ -280,6 +280,8 @@ static int do_connect(char *svr)
 	addr.l2_family = AF_BLUETOOTH;
 	bacpy(&addr.l2_bdaddr, &bdaddr);
 	addr.l2_bdaddr_type = bdaddr_type;
+	if (cid)
+		addr.l2_cid = htobs(cid);
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		syslog(LOG_ERR, "Can't bind socket: %s (%d)",
