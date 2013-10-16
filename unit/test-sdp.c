@@ -145,8 +145,7 @@ static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 	struct context *context = user_data;
 	sdp_pdu_hdr_t hdr;
 	void *buf;
-	size_t size;
-	ssize_t len;
+	ssize_t len, size;
 	int fd;
 
 	fd = g_io_channel_unix_get_fd(channel);
@@ -169,7 +168,7 @@ static gboolean server_handler(GIOChannel *channel, GIOCondition cond,
 		return TRUE;
 
 	len = recv(fd, buf, size, 0);
-	if (len <= 0) {
+	if (len != size) {
 		sdp_svcdb_collect_all(fd);
 		free(buf);
 		return FALSE;
