@@ -16,11 +16,53 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <unistd.h>
 #include <poll.h>
 #include <unistd.h>
 
+#include "if-main.h"
 #include "terminal.h"
 #include "pollhandler.h"
+#include "history.h"
+
+const struct interface *interfaces[] = {
+	&bluetooth_if,
+	NULL
+};
+
+int haltest_error(const char *format, ...)
+{
+	va_list args;
+	int ret;
+	va_start(args, format);
+	ret = terminal_vprint(format, args);
+	va_end(args);
+	return ret;
+}
+
+int haltest_info(const char *format, ...)
+{
+	va_list args;
+	int ret;
+	va_start(args, format);
+	ret = terminal_vprint(format, args);
+	va_end(args);
+	return ret;
+}
+
+int haltest_warn(const char *format, ...)
+{
+	va_list args;
+	int ret;
+	va_start(args, format);
+	ret = terminal_vprint(format, args);
+	va_end(args);
+	return ret;
+}
 
 /*
  * This function changes input parameter line_buffer so it has
@@ -48,10 +90,44 @@ static void process_line(char *line_buffer)
 {
 	char *argv[10];
 	int argc;
+	int i = 0;
+	int j;
 
 	argc = command_line_to_argv(line_buffer, argv, 10);
+	if (argc < 1)
+		return;
 
-	/* TODO: process command line */
+	while (interfaces[i] != NULL) {
+		if (strcmp(interfaces[i]->name, argv[0])) {
+			i++;
+			continue;
+		}
+		if (argc < 2 || strcmp(argv[1], "?") == 0) {
+			j = 0;
+			while (strcmp(interfaces[i]->methods[j].name, "")) {
+				haltest_info("%s %s\n", argv[0],
+						interfaces[i]->methods[j].name);
+				++j;
+			}
+			return;
+		}
+		j = 0;
+		while (strcmp(interfaces[i]->methods[j].name, "")) {
+			if (strcmp(interfaces[i]->methods[j].name, argv[1])) {
+				j++;
+				continue;
+			}
+			interfaces[i]->methods[j].func(argc,
+							(const char **)argv);
+			break;
+		}
+		if (strcmp(interfaces[i]->methods[j].name, "") == 0)
+			printf("No function %s found\n", argv[1]);
+		break;
+	}
+
+	if (interfaces[i] == NULL)
+		printf("No such interface %s\n", argv[0]);
 }
 
 /* called when there is something on stdin */
@@ -74,6 +150,7 @@ static void stdin_handler(struct pollfd *pollfd)
 int main(int argc, char **argv)
 {
 	terminal_setup();
+	history_restore(".haltest_history");
 
 	/* Register command line handler */
 	poll_register_fd(0, POLLIN, stdin_handler);

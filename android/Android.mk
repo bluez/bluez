@@ -62,6 +62,7 @@ LOCAL_SRC_FILES := \
 	client/terminal.c \
 	client/history.c \
 	client/textconv.c \
+	client/if-bt.c \
 
 LOCAL_SHARED_LIBRARIES := libhardware
 
