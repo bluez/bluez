@@ -36,6 +36,7 @@
 #include <glib.h>
 
 #include "log.h"
+#include "src/sdpd.h"
 
 #include "lib/bluetooth.h"
 #include "lib/mgmt.h"
@@ -265,10 +266,14 @@ int main(int argc, char *argv[])
 	if (!init_mgmt_interface())
 		return EXIT_FAILURE;
 
+	/* Use params: mtu = 0, flags = 0 */
+	start_sdp_server(0, 0);
+
 	DBG("Entering main loop");
 
 	g_main_loop_run(event_loop);
 
+	stop_sdp_server();
 	cleanup_mgmt_interface();
 	g_main_loop_unref(event_loop);
 

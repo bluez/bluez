@@ -17,6 +17,13 @@ LOCAL_SRC_FILES := \
 	log.c \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \
+	../src/sdpd-database.c \
+	../src/sdpd-service.c \
+	../src/sdpd-request.c \
+	../src/sdpd-server.c \
+	../lib/sdp.c \
+	../lib/bluetooth.c \
+	../lib/hci.c \
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, glib) \
@@ -25,6 +32,7 @@ LOCAL_C_INCLUDES := \
 LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../ \
 	$(LOCAL_PATH)/../src \
+	$(LOCAL_PATH)/../lib \
 
 LOCAL_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\"
 
