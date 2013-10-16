@@ -801,7 +801,7 @@ Properties	string Folder [readonly]
 
 		boolean Deleted [writeonly]
 
-			Message read flag
+			Message deleted flag
 
 		boolean Sent [readonly]
 
