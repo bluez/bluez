@@ -49,3 +49,20 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 
 include $(BUILD_SHARED_LIBRARY)
+
+#
+# haltest
+#
+
+include $(CLEAR_VARS)
+
+LOCAL_SRC_FILES := \
+	client/haltest.c \
+	client/pollhandler.c \
+
+LOCAL_SHARED_LIBRARIES := libhardware
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := haltest
+
+include $(BUILD_EXECUTABLE)
