@@ -1,7 +1,10 @@
 if ANDROID
 noinst_PROGRAMS += android/bluetoothd
 
-android_bluetoothd_SOURCES = android/main.c src/log.c
+android_bluetoothd_SOURCES =	android/main.c \
+				src/log.c \
+				android/hal-msg.h
+
 android_bluetoothd_LDADD = @GLIB_LIBS@
 endif
 
