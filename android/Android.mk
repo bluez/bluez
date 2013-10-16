@@ -60,6 +60,7 @@ LOCAL_SRC_FILES := \
 	client/haltest.c \
 	client/pollhandler.c \
 	client/terminal.c \
+	client/history.c \
 
 LOCAL_SHARED_LIBRARIES := libhardware
 

@@ -22,6 +22,7 @@
 #include <termios.h>
 
 #include "terminal.h"
+#include "history.h"
 
 /*
  * Character sequences recognized by code in this file
@@ -107,6 +108,9 @@ static int line_buf_ix = 0;
 /* current length of input line */
 static int line_len = 0;
 
+/* line index used for fetching lines from history */
+static int line_index = 0;
+
 /*
  * Moves cursor to right or left
  *
@@ -186,6 +190,87 @@ int terminal_vprint(const char *format, va_list args)
 	terminal_draw_command_line();
 
 	return ret;
+}
+
+/*
+ * Call this when text in line_buf was changed
+ * and line needs to be redrawn
+ */
+static void terminal_line_replaced(void)
+{
+	int len = strlen(line_buf);
+
+	/* line is shorter that previous */
+	if (len < line_len) {
+		/* if new line is shorter move cursor to end of new end */
+		while (line_buf_ix > len) {
+			putchar('\b');
+			line_buf_ix--;
+		}
+		/* If cursor was not at the end, move it to the end */
+		if (line_buf_ix < line_len)
+			printf("%.*s", line_len - line_buf_ix,
+					line_buf + line_buf_ix);
+		/* over write end of previous line */
+		while (line_len >= len++)
+			putchar(' ');
+	}
+	/* draw new line */
+	printf("\r>%s", line_buf);
+	/* set up indexes to new line */
+	line_len = strlen(line_buf);
+	line_buf_ix = line_len;
+}
+
+/*
+ * Function tries to replace current line with specified line in history
+ * new_line_index - new line to show, -1 to show oldest
+ */
+static void terminal_get_line_from_history(int new_line_index)
+{
+	new_line_index = history_get_line(new_line_index,
+						line_buf, LINE_BUF_MAX);
+
+	if (new_line_index >= 0) {
+		terminal_line_replaced();
+		line_index = new_line_index;
+	}
+}
+
+/*
+ * Function searches history back or forward for command line that starts
+ * with characters up to cursor position
+ *
+ * back - true - searches backward
+ * back - false - searches forward (more recent commands)
+ */
+static void terminal_match_hitory(bool back)
+{
+	char buf[line_buf_ix + 1];
+	int line;
+	int matching_line = -1;
+	int dir = back ? 1 : -1;
+
+	line = line_index + dir;
+	while (matching_line == -1 && line >= 0) {
+		int new_line_index;
+
+		new_line_index = history_get_line(line, buf, line_buf_ix + 1);
+		if (new_line_index < 0)
+			break;
+
+		if (0 == strncmp(line_buf, buf, line_buf_ix))
+			matching_line = line;
+		line += dir;
+	}
+
+	if (matching_line >= 0) {
+		int pos = line_buf_ix;
+		terminal_get_line_from_history(matching_line);
+		/* move back to cursor position to origianl place */
+		line_buf_ix = pos;
+		terminal_move_cursor(pos - line_len);
+	}
 }
 
 /*
@@ -335,13 +420,30 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 			printf("%.*s", (int) (line_buf_ix - old_pos),
 							line_buf + old_pos);
 		break;
+	case KEY_SUP:
+		terminal_get_line_from_history(-1);
+		break;
+	case KEY_SDOWN:
+		if (line_index > 0)
+			terminal_get_line_from_history(0);
+		break;
 	case KEY_UP:
+		terminal_get_line_from_history(line_index + 1);
+		break;
 	case KEY_DOWN:
+		if (line_index > 0)
+			terminal_get_line_from_history(line_index - 1);
 		break;
 	case '\n':
 	case '\r':
+		/*
+		 * On new line add line to history
+		 * forget history position
+		 */
+		history_add_line(line_buf);
 		line_len = 0;
 		line_buf_ix = 0;
+		line_index = -1;
 		/* print new line */
 		putchar(c);
 		process_line(line_buf);
@@ -383,7 +485,12 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 	case KEY_MDOWN:
 	case KEY_STAB:
 	case KEY_M_n:
+		/* Search history forward */
+		terminal_match_hitory(false);
+		break;
 	case KEY_M_p:
+		/* Search history backward */
+		terminal_match_hitory(true);
 		break;
 	default:
 		if (!isprint(c)) {
