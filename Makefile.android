@@ -3,7 +3,9 @@ noinst_PROGRAMS += android/bluetoothd
 
 android_bluetoothd_SOURCES =	android/main.c \
 				src/log.c \
-				android/hal-msg.h
+				android/hal-msg.h \
+				src/shared/util.h src/shared/util.c \
+				src/shared/mgmt.h src/shared/mgmt.c
 
 android_bluetoothd_LDADD = @GLIB_LIBS@
 endif
