@@ -31,6 +31,20 @@ android_libhal_internal_la_SOURCES = android/hal.h android/hal_bluetooth.c \
 					android/cutils/log.h \
 					android/cutils/properties.h
 android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android
+
+noinst_PROGRAMS += android/haltest
+
+android_haltest_SOURCES = android/client/haltest.c \
+				android/client/pollhandler.c \
+				android/client/terminal.c \
+				android/client/history.c \
+				android/client/textconv.c \
+				android/client/if-bt.c
+
+android_haltest_LDADD = android/libhal-internal.la
+
+android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
+
 endif
 
 EXTRA_DIST += android/Android.mk android/log.c
