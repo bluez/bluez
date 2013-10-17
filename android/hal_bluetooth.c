@@ -23,7 +23,6 @@
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 
-#include <cutils/sockets.h>
 #include <cutils/properties.h>
 
 #define LOG_TAG "BlueZ"
