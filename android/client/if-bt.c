@@ -566,19 +566,19 @@ static void get_profile_interface_p(int argc, const char **argv)
 	RETURN_IF_NULL(if_bluetooth);
 
 	if (strcmp(BT_PROFILE_HANDSFREE_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_hf is there */
+		pif = &dummy; /* TODO: change when if_hf is there */
 	else if (strcmp(BT_PROFILE_ADVANCED_AUDIO_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_av is there */
+		pif = &dummy; /* TODO: change when if_av is there */
 	else if (strcmp(BT_PROFILE_HEALTH_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_hl is there */
+		pif = &dummy; /* TODO: change when if_hl is there */
 	else if (strcmp(BT_PROFILE_SOCKETS_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_sock is there */
+		pif = &dummy; /* TODO: change when if_sock is there */
 	else if (strcmp(BT_PROFILE_HIDHOST_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_hh is there */
+		pif = &dummy; /* TODO: change when if_hh is there */
 	else if (strcmp(BT_PROFILE_PAN_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_pan is there */
+		pif = &dummy; /* TODO: change when if_pan is there */
 	else if (strcmp(BT_PROFILE_AV_RC_ID, id) == 0)
-		pif = &dummy; /* TODO: chenge when if_rc is there */
+		pif = &dummy; /* TODO: change when if_rc is there */
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",
 		     id);
