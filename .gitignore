@@ -103,3 +103,4 @@ unit/test-*.log
 unit/test-*.trs
 
 android/bluetoothd
+android/haltest
