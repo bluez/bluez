@@ -54,6 +54,7 @@ LOCAL_SRC_FILES := \
 	hal-bluetooth.c \
 	hal-sock.c \
 	hal-hidhost.c \
+	hal-pan.c \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \

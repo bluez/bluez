@@ -23,6 +23,7 @@
 #include <hardware/bluetooth.h>
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hh.h>
+#include <hardware/bt_pan.h>
 
 #include <cutils/properties.h>
 
@@ -287,6 +288,9 @@ static const void *get_profile_interface(const char *profile_id)
 
 	if (!strcmp(profile_id, BT_PROFILE_HIDHOST_ID))
 		return bt_get_hidhost_interface();
+
+	if (!strcmp(profile_id, BT_PROFILE_PAN_ID))
+		return bt_get_pan_interface();
 
 	return NULL;
 }
