@@ -43,7 +43,7 @@ static inline int property_get(const char *key, char *value,
 	if (!env)
 		env = default_value;
 
-	if (!value)
+	if (!value || !env)
 		return 0;
 
 	strncpy(value, env, PROPERTY_VALUE_MAX);
