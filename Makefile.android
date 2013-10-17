@@ -28,4 +28,5 @@ EXTRA_DIST += android/hardware/bluetooth.h \
 		android/hardware/bt_pan.h \
 		android/hardware/bt_rc.h \
 		android/hardware/bt_sock.h \
-		android/hardware/hardware.h
+		android/hardware/hardware.h \
+		android/cutils/log.h
