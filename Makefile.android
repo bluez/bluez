@@ -10,6 +10,27 @@ android_bluetoothd_SOURCES =	android/main.c \
 				src/shared/mgmt.h src/shared/mgmt.c
 
 android_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
+
+noinst_LTLIBRARIES += android/libhal-internal.la
+
+android_libhal_internal_la_SOURCES = android/hal.h android/hal_bluetooth.c \
+					android/hal_bt_sock.c \
+					android/hardware/bluetooth.h \
+					android/hardware/bt_av.h \
+					android/hardware/bt_gatt.h \
+					android/hardware/bt_gatt_client.h \
+					android/hardware/bt_gatt_server.h \
+					android/hardware/bt_gatt_types.h \
+					android/hardware/bt_hf.h \
+					android/hardware/bt_hh.h \
+					android/hardware/bt_hl.h \
+					android/hardware/bt_pan.h \
+					android/hardware/bt_rc.h \
+					android/hardware/bt_sock.h \
+					android/hardware/hardware.h \
+					android/cutils/log.h \
+					android/cutils/properties.h
+android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android
 endif
 
 EXTRA_DIST += android/Android.mk android/log.c
