@@ -23,6 +23,8 @@
 #define LOG_TAG "BlueZ"
 #include <cutils/log.h>
 
+#include "hal.h"
+
 static bt_status_t btsock_listen_rfcomm(const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
