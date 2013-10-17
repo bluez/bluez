@@ -3446,6 +3446,7 @@ static int device_browse_primary(struct btd_device *device, DBusMessage *msg)
 				attcb, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR,
 				adapter_get_address(adapter),
+				BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
 				BT_IO_OPT_CID, ATT_CID,
