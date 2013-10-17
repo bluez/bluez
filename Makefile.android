@@ -39,7 +39,8 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/terminal.c \
 				android/client/history.c \
 				android/client/textconv.c \
-				android/client/if-bt.c
+				android/client/if-bt.c \
+				android/client/hwmodule.c
 
 android_haltest_LDADD = android/libhal-internal.la
 
