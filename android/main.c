@@ -42,6 +42,8 @@
 #include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
 
+#include "adapter.h"
+
 #define SHUTDOWN_GRACE_SECONDS 10
 
 static GMainLoop *event_loop;
@@ -49,6 +51,8 @@ static struct mgmt *mgmt_if = NULL;
 
 static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
+
+struct bt_adapter *default_adapter = NULL;
 
 static gboolean quit_eventloop(gpointer user_data)
 {
@@ -77,22 +81,17 @@ static GOptionEntry options[] = {
 	{ NULL }
 };
 
-static void read_info_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	/* TODO: Store Controller information */
-
-	/* TODO: Register all event notification handlers */
-}
-
 static void mgmt_index_added_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	DBG("index %u", index);
 
-	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
-					read_info_complete, NULL, NULL) > 0)
+	if (default_adapter) {
+		DBG("skip event for index %u", index);
 		return;
+	}
+
+	default_adapter = bt_adapter_new(index, mgmt_if);
 
 	error("Failed to read adapter info for index %u", index);
 }
