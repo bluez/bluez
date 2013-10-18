@@ -31,6 +31,3 @@
 struct bt_adapter;
 
 struct bt_adapter *bt_adapter_new(uint16_t index, struct mgmt *mgmt_if);
-
-void bt_adapter_start(struct bt_adapter *adapter);
-void bt_adapter_stop(struct bt_adapter *adapter);

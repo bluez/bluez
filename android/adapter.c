@@ -40,19 +40,6 @@ struct bt_adapter {
 
 extern struct bt_adapter *default_adapter;
 
-void bt_adapter_start(struct bt_adapter *adapter)
-{
-	DBG("");
-
-	/* TODO: CB: report scan mode */
-	/* TODO: CB: report state on */
-}
-
-void bt_adapter_stop(struct bt_adapter *adapter)
-{
-	DBG("");
-}
-
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -114,9 +101,6 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	adapter->current_settings = btohs(rp->current_settings);
 
 	/* TODO: Register all event notification handlers */
-
-	if (adapter->current_settings & MGMT_SETTING_POWERED)
-		bt_adapter_start(adapter);
 
 	load_link_keys(adapter, NULL);
 
