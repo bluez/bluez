@@ -56,9 +56,12 @@ extern const struct interface bluetooth_if;
 /* Interfaces that will show up in tool (first part of command line) */
 extern const struct interface *interfaces[];
 
-#define METHOD(name, func) {name, func}
-#define STD_METHOD(m) {#m, m##_p}
-#define END_METHOD {"", NULL}
+#define METHOD(name, func, comp, help) {name, func, comp, help}
+#define STD_METHOD(m) {#m, m##_p, NULL, NULL}
+#define STD_METHODC(m) {#m, m##_p, m##_c, NULL}
+#define STD_METHODH(m, h) {#m, m##_p, NULL, h}
+#define STD_METHODCH(m, h) {#m, m##_p, m##_c, h}
+#define END_METHOD {"", NULL, NULL, NULL}
 
 /*
  * Function to parse argument for function, argv[0] and argv[1] are already
@@ -69,12 +72,31 @@ extern const struct interface *interfaces[];
 typedef void (*parse_and_call)(int argc, const char **argv);
 
 /*
+ * This is prototype of function that will return string for given number.
+ * Purpose is to enumerate string for auto completion.
+ * Function of this type will always be called in loop.
+ * First time function is called i = 0, then if function returns non-NULL
+ * it will be called again till for some value of i it will return NULL
+ */
+typedef const char *(*enum_func)(void *user, int i);
+
+/*
+ * This is prototype of function that when given argc, argv will
+ * fill penum_func with pointer to function that will enumerate
+ * parameters for argc argument, puser will be passed to penum_func.
+ */
+typedef void (*tab_complete)(int argc, const char **argv,
+					enum_func *penum_func, void **puser);
+
+/*
  * For each method there is name and two functions to parse command line
  * and call proper hal function on.
  */
 struct method {
 	const char *name;
 	parse_and_call func;
+	tab_complete complete;
+	const char *help;
 };
 
 int haltest_error(const char *format, ...);

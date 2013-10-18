@@ -453,7 +453,7 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 		break;
 	case '\t':
 		/* tab processing */
-		/* TODO Add completion here */
+		process_tab(line_buf, line_buf_ix);
 		break;
 	case KEY_BACKSPACE:
 		if (line_buf_ix <= 0)
