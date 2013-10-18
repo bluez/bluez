@@ -140,7 +140,7 @@ void terminal_draw_command_line(void)
 		putchar('>');
 
 	/* move cursor to it's place */
-	terminal_move_cursor(line_len - line_buf_ix);
+	terminal_move_cursor(line_buf_ix - line_len);
 }
 
 /* inserts string into command line at cursor position */
