@@ -32,6 +32,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <sys/signalfd.h>
 
 #include <glib.h>
 
@@ -54,23 +55,74 @@ static uint8_t mgmt_revision = 0;
 
 static uint16_t adapter_index = MGMT_INDEX_NONE;
 
-static gboolean quit_eventloop(gpointer user_data)
+static volatile sig_atomic_t __terminated = 0;
+
+static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
 {
-	g_main_loop_quit(event_loop);
+	struct signalfd_siginfo si;
+	ssize_t result;
+	int fd;
 
-	return FALSE;
-}
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+		return FALSE;
 
-static void sig_term(int sig)
-{
-	static bool __terminated = false;
+	fd = g_io_channel_unix_get_fd(channel);
 
-	if (!__terminated) {
-		g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
-						quit_eventloop, NULL);
+	result = read(fd, &si, sizeof(si));
+	if (result != sizeof(si))
+		return FALSE;
+
+	switch (si.ssi_signo) {
+	case SIGINT:
+	case SIGTERM:
+		if (__terminated == 0) {
+			info("Terminating");
+			g_main_loop_quit(event_loop);
+		}
+
+		__terminated = 1;
+		break;
 	}
 
-	__terminated = true;
+	return TRUE;
+}
+
+static guint setup_signalfd(void)
+{
+	GIOChannel *channel;
+	guint source;
+	sigset_t mask;
+	int fd;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+		perror("Failed to set signal mask");
+		return 0;
+	}
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0) {
+		perror("Failed to create signal descriptor");
+		return 0;
+	}
+
+	channel = g_io_channel_unix_new(fd);
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
 }
 
 static gboolean option_version = FALSE;
@@ -242,7 +294,7 @@ int main(int argc, char *argv[])
 {
 	GOptionContext *context;
 	GError *err = NULL;
-	struct sigaction sa;
+	guint signal;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -265,13 +317,11 @@ int main(int argc, char *argv[])
 	}
 
 	event_loop = g_main_loop_new(NULL, FALSE);
+	signal = setup_signalfd();
+	if (!signal)
+		return EXIT_FAILURE;
 
 	__btd_log_init("*", 0);
-
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_term;
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
 
 	if (!init_mgmt_interface())
 		return EXIT_FAILURE;
@@ -282,6 +332,8 @@ int main(int argc, char *argv[])
 	DBG("Entering main loop");
 
 	g_main_loop_run(event_loop);
+
+	g_source_remove(signal);
 
 	stop_sdp_server();
 	cleanup_mgmt_interface();
