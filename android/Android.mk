@@ -52,7 +52,7 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
 	hal-bluetooth.c \
-	hal_bt_sock.c \
+	hal-sock.c \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
