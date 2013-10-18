@@ -80,3 +80,11 @@ void btd_debug(const char *format, ...)
 
 	va_end(ap);
 }
+
+void __btd_log_init(const char *debug, int detach)
+{
+}
+
+void __btd_log_cleanup(void)
+{
+}

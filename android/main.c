@@ -257,6 +257,8 @@ int main(int argc, char *argv[])
 
 	event_loop = g_main_loop_new(NULL, FALSE);
 
+	__btd_log_init("*", 0);
+
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
