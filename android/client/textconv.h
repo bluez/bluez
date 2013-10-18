@@ -54,7 +54,11 @@ struct int2str {
 
 int int2str_findint(int v, const struct int2str m[]);
 int int2str_findstr(const char *str, const struct int2str m[]);
+const char *enum_defines(void *v, int i);
+const char *enum_strings(void *v, int i);
+const char *enum_one_string(void *v, int i);
 
+#define TYPE_ENUM(type) ((void *)&__##type##2str[0])
 #define DECINTMAP(type) \
 extern struct int2str __##type##2str[]; \
 const char *type##2##str(type v); \

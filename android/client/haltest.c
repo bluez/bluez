@@ -103,11 +103,12 @@ static void process_line(char *line_buffer)
 			continue;
 		}
 		if (argc < 2 || strcmp(argv[1], "?") == 0) {
-			j = 0;
-			while (strcmp(interfaces[i]->methods[j].name, "")) {
-				haltest_info("%s %s\n", argv[0],
-						interfaces[i]->methods[j].name);
-				++j;
+			struct method *m = &interfaces[i]->methods[0];
+			while (strcmp(m->name, "")) {
+				haltest_info("%s %s %s\n", argv[0],
+						m->name,
+						(m->help ? m->help : ""));
+				m++;
 			}
 			return;
 		}

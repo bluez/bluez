@@ -103,6 +103,12 @@ int haltest_error(const char *format, ...);
 int haltest_info(const char *format, ...);
 int haltest_warn(const char *format, ...);
 
+/*
+ * Enumerator for discovered devices, to be used as tab completion enum_func
+ */
+const char *enum_devices(void *v, int i);
+void add_remote_device(const bt_bdaddr_t *addr);
+
 /* Helper macro for executing function on interface and printing BT_STATUS */
 #define EXEC(f, ...) \
 	{ \
@@ -119,3 +125,13 @@ int haltest_warn(const char *format, ...);
 
 #define RETURN_IF_NULL(x) \
 	do { if (!x) { haltest_error("%s is NULL\n", #x); return; } } while (0)
+
+#define VERIFY_ADDR_ARG(n, adr) \
+	do { \
+		if (n < argc) \
+			str2bt_bdaddr_t(argv[n], adr); \
+		else { \
+			haltest_error("No address specified\n");\
+			return;\
+		} \
+	} while (0)

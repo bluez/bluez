@@ -203,3 +203,24 @@ void str2bt_uuid_t(const char *str, bt_uuid_t *uuid)
 		str += 2;
 	}
 }
+
+const char *enum_defines(void *v, int i)
+{
+	const struct int2str *m = v;
+
+	return m[i].str != NULL ? m[i].str : NULL;
+}
+
+const char *enum_strings(void *v, int i)
+{
+	const char **m = v;
+
+	return m[i] != NULL ? m[i] : NULL;
+}
+
+const char *enum_one_string(void *v, int i)
+{
+	const char *m = v;
+
+	return (i == 0) && (m[0] != 0) ? m : NULL;
+}
