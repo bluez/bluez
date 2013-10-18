@@ -52,7 +52,7 @@ static struct mgmt *mgmt_if = NULL;
 static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
 
-struct bt_adapter *default_adapter = NULL;
+static uint16_t adapter_index = MGMT_INDEX_NONE;
 
 static gboolean quit_eventloop(gpointer user_data)
 {
@@ -81,17 +81,28 @@ static GOptionEntry options[] = {
 	{ NULL }
 };
 
+static void adapter_ready(struct bt_adapter *adapter, int err)
+{
+	if (err) {
+		error("Adapter initialization failed: %s", strerror(err));
+		exit(EXIT_FAILURE);
+	}
+
+	info("Adapter initialized");
+}
+
 static void mgmt_index_added_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	DBG("index %u", index);
 
-	if (default_adapter) {
+	if (adapter_index != MGMT_INDEX_NONE) {
 		DBG("skip event for index %u", index);
 		return;
 	}
 
-	default_adapter = bt_adapter_new(index, mgmt_if);
+	adapter_index = index;
+        bt_adapter_init(index, mgmt_if, adapter_ready);
 
 	error("Failed to read adapter info for index %u", index);
 }

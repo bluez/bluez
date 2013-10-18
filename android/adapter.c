@@ -21,6 +21,8 @@
  *
  */
 
+#include <errno.h>
+
 #include "lib/bluetooth.h"
 #include "src/shared/mgmt.h"
 #include "lib/mgmt.h"
@@ -28,7 +30,11 @@
 #include "adapter.h"
 
 struct bt_adapter {
+	uint16_t index;
 	struct mgmt *mgmt;
+
+	bt_adapter_ready ready;
+
 	bdaddr_t bdaddr;
 	uint32_t dev_class;
 
@@ -38,12 +44,29 @@ struct bt_adapter {
 	uint32_t current_settings;
 };
 
-extern struct bt_adapter *default_adapter;
+static struct bt_adapter *default_adapter;
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
+	struct bt_adapter *adapter = user_data;
+	int err;
+
+	if (status) {
+		error("Failed to load link keys for index %u: %s (0x%02x)",
+			adapter->index, mgmt_errstr(status), status);
+		err = -EIO;
+		goto failed;
+	}
+
 	DBG("status %u", status);
+
+	default_adapter = adapter;
+	adapter->ready(adapter, 0);
+	return;
+
+failed:
+	adapter->ready(NULL, err);
 }
 
 static void load_link_keys(struct bt_adapter *adapter, GSList *keys)
@@ -72,22 +95,26 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 {
 	struct bt_adapter *adapter = user_data;
 	const struct mgmt_rp_read_info *rp = param;
+	int err;
 
 	DBG("");
 
 	if (status) {
 		error("Failed to read info for index %u: %s (0x%02x)",
-			0, mgmt_errstr(status), status);
+			adapter->index, mgmt_errstr(status), status);
+		err = -EIO;
 		goto failed;
 	}
 
 	if (length < sizeof(*rp)) {
 		error("Too small read info complete response");
+		err = -EIO;
 		goto failed;
 	}
 
 	if (!bacmp(&rp->bdaddr, BDADDR_ANY)) {
 		error("No Bluetooth address");
+		err = -ENODEV;
 		goto failed;
 	}
 
@@ -107,21 +134,24 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	return;
 
 failed:
-	default_adapter = NULL;
+	adapter->ready(NULL, err);
 }
 
-struct bt_adapter *bt_adapter_new(uint16_t index, struct mgmt *mgmt_if)
+bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
+						bt_adapter_ready ready)
 {
 	struct bt_adapter *adapter;
 
 	adapter = g_new0(struct bt_adapter, 1);
 
 	adapter->mgmt = mgmt_ref(mgmt_if);
+	adapter->index = index;
+	adapter->ready = ready;
 
 	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
 				read_info_complete, adapter, NULL) > 0) {
 		mgmt_unref(mgmt_if);
-		return NULL;
+		return false;
 	}
 
 	return adapter;

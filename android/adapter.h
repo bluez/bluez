@@ -30,4 +30,7 @@
 
 struct bt_adapter;
 
-struct bt_adapter *bt_adapter_new(uint16_t index, struct mgmt *mgmt_if);
+typedef void (*bt_adapter_ready)(struct bt_adapter *adapter, int err);
+
+bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
+						bt_adapter_ready func);
