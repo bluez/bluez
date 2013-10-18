@@ -59,14 +59,16 @@
  */
 
 static uint16_t wii_ids[][2] = {
-	{ 0x057e, 0x0306 },
-	{ 0x057e, 0x0330 },
+	{ 0x057e, 0x0306 },		/* 1st gen */
+	{ 0x054c, 0x0306 },		/* LEGO wiimote */
+	{ 0x057e, 0x0330 },		/* 2nd gen */
 };
 
 static const char *wii_names[] = {
-	"Nintendo RVL-CNT-01",
-	"Nintendo RVL-CNT-01-TR",
-	"Nintendo RVL-WBC-01",
+	"Nintendo RVL-CNT-01",		/* 1st gen */
+	"Nintendo RVL-CNT-01-TR",	/* 2nd gen */
+	"Nintendo RVL-CNT-01-UC",	/* Wii U Pro Controller */
+	"Nintendo RVL-WBC-01",		/* Balance Board */
 };
 
 static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
