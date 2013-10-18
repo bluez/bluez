@@ -31,8 +31,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <errno.h>
 #include <dirent.h>
 #include <time.h>
@@ -64,7 +62,6 @@
 #include "sdp-client.h"
 #include "attrib/gatt.h"
 #include "agent.h"
-#include "sdp-xml.h"
 #include "storage.h"
 #include "attrib-server.h"
 
