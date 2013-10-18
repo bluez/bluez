@@ -15,4 +15,8 @@
  *
  */
 
+#include <hardware/bt_sock.h>
+#include <hardware/bt_hh.h>
+
 btsock_interface_t *bt_get_sock_interface(void);
+bthh_interface_t *bt_get_hidhost_interface(void);
