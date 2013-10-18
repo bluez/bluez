@@ -103,8 +103,6 @@ static void mgmt_index_added_event(uint16_t index, uint16_t length,
 
 	adapter_index = index;
         bt_adapter_init(index, mgmt_if, adapter_ready);
-
-	error("Failed to read adapter info for index %u", index);
 }
 
 static void mgmt_index_removed_event(uint16_t index, uint16_t length,
