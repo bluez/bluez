@@ -51,7 +51,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
-	hal_bluetooth.c \
+	hal-bluetooth.c \
 	hal_bt_sock.c \
 
 LOCAL_SHARED_LIBRARIES := \
