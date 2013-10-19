@@ -924,6 +924,25 @@ static void print_simple_pairing_mode(uint8_t mode)
 	print_field("Mode: %s (0x%2.2x)", str, mode);
 }
 
+static void print_ssp_debug_mode(uint8_t mode)
+{
+	const char *str;
+
+	switch (mode) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Debug mode: %s (0x%2.2x)", str, mode);
+}
+
 static void print_pscan_rep_mode(uint8_t pscan_rep_mode)
 {
 	const char *str;
@@ -4226,6 +4245,13 @@ static void write_remote_amp_assoc_rsp(const void *data, uint8_t size)
 	print_phy_handle(rsp->phy_handle);
 }
 
+static void write_ssp_debug_mode_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_ssp_debug_mode *cmd = data;
+
+	print_ssp_debug_mode(cmd->mode);
+}
+
 static void le_set_event_mask_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_le_set_event_mask *cmd = data;
@@ -5126,7 +5152,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x1803, 130, "Enable Device Under Test Mode",
 				null_cmd, 0, true,
 				status_rsp, 1, true },
-	{ 0x1804, 157, "Write Simple Pairing Debug Mode" },
+	{ 0x1804, 157, "Write Simple Pairing Debug Mode",
+				write_ssp_debug_mode_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x1807, 189, "Enable AMP Receiver Reports" },
 	{ 0x1808, 190, "AMP Test End" },
 	{ 0x1809, 191, "AMP Test" },

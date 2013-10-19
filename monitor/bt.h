@@ -1107,6 +1107,11 @@ struct bt_hci_rsp_write_remote_amp_assoc {
 
 #define BT_HCI_CMD_ENABLE_DUT_MODE		0x1803
 
+#define BT_HCI_CMD_WRITE_SSP_DEBUG_MODE		0x1804
+struct bt_hci_cmd_write_ssp_debug_mode {
+	uint8_t  mode;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_LE_SET_EVENT_MASK		0x2001
 struct bt_hci_cmd_le_set_event_mask {
 	uint8_t  mask[8];
