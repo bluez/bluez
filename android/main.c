@@ -341,5 +341,7 @@ int main(int argc, char *argv[])
 
 	info("Exit");
 
+	__btd_log_cleanup();
+
 	return EXIT_SUCCESS;
 }
