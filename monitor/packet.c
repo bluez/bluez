@@ -740,6 +740,23 @@ static void print_dev_class(const uint8_t *dev_class)
 				"  Unknown service class (0x%2.2x)", mask);
 }
 
+static void print_hold_mode_activity(uint8_t activity)
+{
+	print_field("Activity: 0x%2.2x", activity);
+
+	if (activity == 0x00) {
+		print_field("  Maintain current Power State");
+		return;
+	}
+
+	if (activity & 0x01)
+		print_field("  Suspend Page Scan");
+	if (activity & 0x02)
+		print_field("  Suspend Inquiry Scan");
+	if (activity & 0x04)
+		print_field("  Suspend Periodic Inquiries");
+}
+
 static void print_sync_flow_control(uint8_t enable)
 {
 	const char *str;
@@ -3639,6 +3656,21 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void read_hold_mode_activity_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_hold_mode_activity *rsp = data;
+
+	print_status(rsp->status);
+	print_hold_mode_activity(rsp->activity);
+}
+
+static void write_hold_mode_activity_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_hold_mode_activity *cmd = data;
+
+	print_hold_mode_activity(cmd->activity);
+}
+
 static void read_sync_flow_control_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_sync_flow_control *rsp = data;
@@ -4986,8 +5018,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c28,  77, "Write Automatic Flush Timeout" },
 	{ 0x0c29,  78, "Read Num Broadcast Retransmissions" },
 	{ 0x0c2a,  79, "Write Num Broadcast Retransmissions" },
-	{ 0x0c2b,  80, "Read Hold Mode Activity" },
-	{ 0x0c2c,  81, "Write Hold Mode Activity" },
+	{ 0x0c2b,  80, "Read Hold Mode Activity",
+				null_cmd, 0, true,
+				read_hold_mode_activity_rsp, 2, true },
+	{ 0x0c2c,  81, "Write Hold Mode Activity",
+				write_hold_mode_activity_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c2d,  82, "Read Transmit Power Level" },
 	{ 0x0c2e,  83, "Read Sync Flow Control Enable",
 				null_cmd, 0, true,
