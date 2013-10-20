@@ -21,6 +21,8 @@
  *
  */
 
+static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
+
 struct hal_msg_hdr {
 	uint8_t service_id;
 	uint8_t opcode;
