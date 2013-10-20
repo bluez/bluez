@@ -67,3 +67,5 @@ void packet_hci_acldata(struct timeval *tv, uint16_t index, bool in,
 					const void *data, uint16_t size);
 void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 					const void *data, uint16_t size);
+
+void packet_todo(void);

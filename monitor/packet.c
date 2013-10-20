@@ -6574,3 +6574,36 @@ void packet_hci_scodata(struct timeval *tv, uint16_t index, bool in,
 	if (filter_mask & PACKET_FILTER_SHOW_SCO_DATA)
 		packet_hexdump(data, size);
 }
+
+void packet_todo(void)
+{
+	int i;
+
+	printf("HCI commands with missing decodings:\n");
+
+	for (i = 0; opcode_table[i].str; i++) {
+		if (opcode_table[i].bit < 0)
+			continue;
+
+		if (opcode_table[i].cmd_func)
+			continue;
+
+		printf("\t%s\n", opcode_table[i].str);
+	}
+
+	printf("HCI events with missing decodings:\n");
+
+	for (i = 0; event_table[i].str; i++) {
+		if (event_table[i].func)
+			continue;
+
+		printf("\t%s\n", event_table[i].str);
+	}
+
+	for (i = 0; subevent_table[i].str; i++) {
+		if (subevent_table[i].func)
+			continue;
+
+		printf("\t%s\n", subevent_table[i].str);
+	}
+}

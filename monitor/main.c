@@ -70,6 +70,7 @@ static const struct option main_options[] = {
 	{ "time",    no_argument,       NULL, 't' },
 	{ "date",    no_argument,       NULL, 'T' },
 	{ "sco",     no_argument,	NULL, 'S' },
+	{ "todo",    no_argument,       NULL, '#' },
 	{ "version", no_argument,       NULL, 'v' },
 	{ "help",    no_argument,       NULL, 'h' },
 	{ }
@@ -126,6 +127,9 @@ int main(int argc, char *argv[])
 		case 'S':
 			filter_mask |= PACKET_FILTER_SHOW_SCO_DATA;
 			break;
+		case '#':
+			packet_todo();
+			return EXIT_SUCCESS;
 		case 'v':
 			printf("%s\n", VERSION);
 			return EXIT_SUCCESS;
