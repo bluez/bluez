@@ -17,11 +17,13 @@
 #ifndef _CUTILS_LOG_H
 #define _CUTILS_LOG_H
 
-#define ALOGV(...)
-#define ALOGD(...)
-#define ALOGI(...)
-#define ALOGW(...)
-#define ALOGE(...)
+static inline void ALOG() {};
+
+#define ALOGV(...) ALOG("V", __VA_ARGS__)
+#define ALOGD(...) ALOG("D", __VA_ARGS__)
+#define ALOGI(...) ALOG("I", __VA_ARGS__)
+#define ALOGW(...) ALOG("W", __VA_ARGS__)
+#define ALOGE(...) ALOG("E", __VA_ARGS__)
 #define LOG_ALWAYS_FATAL(...)   do { ALOGE(__VA_ARGS__); exit(1); } while (0)
 
 #endif // _CUTILS_LOG_H
