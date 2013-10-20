@@ -59,7 +59,8 @@ EXTRA_DIST += android/Android.mk android/log.c android/device.c \
 EXTRA_DIST += android/hal-bluetooth.c \
 		android/hal-sock.c \
 		android/hal-hidhost.c \
-		android/hal-pan.c
+		android/hal-pan.c \
+		android/hal-log.h
 
 EXTRA_DIST += android/client/terminal.c \
 		android/client/haltest.c \
