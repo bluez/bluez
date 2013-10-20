@@ -706,6 +706,17 @@ struct bt_hci_cmd_write_voice_setting {
 	uint16_t setting;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_SYNC_FLOW_CONTROL	0x0c2e
+struct bt_hci_rsp_read_sync_flow_control {
+	uint8_t  status;
+	uint8_t  enable;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_SYNC_FLOW_CONTROL	0x0c2f
+struct bt_hci_cmd_write_sync_flow_control {
+	uint8_t  enable;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_HOST_BUFFER_SIZE		0x0c33
 struct bt_hci_cmd_host_buffer_size {
 	uint16_t acl_mtu;

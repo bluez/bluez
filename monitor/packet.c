@@ -740,6 +740,25 @@ static void print_dev_class(const uint8_t *dev_class)
 				"  Unknown service class (0x%2.2x)", mask);
 }
 
+static void print_sync_flow_control(uint8_t enable)
+{
+	const char *str;
+
+	switch (enable) {
+	case 0x00:
+		str = "Disabled";
+		break;
+	case 0x01:
+		str = "Enabled";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Flow control: %s (0x%2.2x)", str, enable);
+}
+
 static void print_voice_setting(uint16_t setting)
 {
 	print_field("Setting: 0x%4.4x", btohs(setting));
@@ -3620,6 +3639,21 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void read_sync_flow_control_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_sync_flow_control *rsp = data;
+
+	print_status(rsp->status);
+	print_sync_flow_control(rsp->enable);
+}
+
+static void write_sync_flow_control_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_sync_flow_control *cmd = data;
+
+	print_sync_flow_control(cmd->enable);
+}
+
 static void host_buffer_size_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_host_buffer_size *cmd = data;
@@ -4955,8 +4989,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c2b,  80, "Read Hold Mode Activity" },
 	{ 0x0c2c,  81, "Write Hold Mode Activity" },
 	{ 0x0c2d,  82, "Read Transmit Power Level" },
-	{ 0x0c2e,  83, "Read Sync Flow Control Enable" },
-	{ 0x0c2f,  84, "Write Sync Flow Control Enable" },
+	{ 0x0c2e,  83, "Read Sync Flow Control Enable",
+				null_cmd, 0, true,
+				read_sync_flow_control_rsp, 2, true },
+	{ 0x0c2f,  84, "Write Sync Flow Control Enable",
+				write_sync_flow_control_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c31,  85, "Set Host Controller To Host Flow" },
 	{ 0x0c33,  86, "Host Buffer Size",
 				host_buffer_size_cmd, 7, true,
