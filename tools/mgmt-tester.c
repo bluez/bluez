@@ -1057,6 +1057,8 @@ static const struct generic_data set_hs_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static uint16_t settings_le[] = { MGMT_OP_SET_LE, 0 };
+
 static const char set_le_on_param[] = { 0x01 };
 static const char set_le_invalid_param[] = { 0x02 };
 static const char set_le_garbage_param[] = { 0x01, 0x00 };
@@ -1089,6 +1091,7 @@ static const struct generic_data set_le_on_success_test_2 = {
 };
 
 static const struct generic_data set_le_on_success_test_3 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
@@ -1134,6 +1137,7 @@ static const char set_adv_settings_param_2[] = { 0x81, 0x06, 0x00, 0x00 };
 static const char set_adv_on_set_adv_enable_param[] = { 0x01 };
 
 static const struct generic_data set_adv_on_success_test_1 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_on_param,
 	.send_len = sizeof(set_adv_on_param),
@@ -1172,6 +1176,7 @@ static const char set_bredr_settings_param_2[] = { 0x80, 0x02, 0x00, 0x00 };
 static const char set_bredr_settings_param_3[] = { 0x81, 0x02, 0x00, 0x00 };
 
 static const struct generic_data set_bredr_off_success_test_1 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_off_param,
 	.send_len = sizeof(set_bredr_off_param),
@@ -1224,6 +1229,7 @@ static const struct generic_data set_bredr_off_failure_test_2 = {
 };
 
 static const struct generic_data set_bredr_off_failure_test_3 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_invalid_param,
 	.send_len = sizeof(set_bredr_invalid_param),
@@ -2164,18 +2170,6 @@ static void setup_le_callback(uint8_t status, uint16_t length,
 	tester_setup_complete();
 }
 
-static void setup_le(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Enabling Low Energy");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
-				sizeof(param), param, setup_le_callback,
-				NULL, NULL);
-}
-
 static void setup_le_nobr(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2846,7 +2840,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 3",
 				&set_le_on_success_test_3,
-				setup_le, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Invalid parameters 1",
 				&set_le_on_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -2862,7 +2856,7 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set Advertising on - Success 1",
 				&set_adv_on_success_test_1,
-				setup_le, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set Advertising on - Success 2",
 				&set_adv_on_success_test_2,
 				setup_le_powered, test_command_generic);
@@ -2872,7 +2866,7 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set BR/EDR off - Success 1",
 				&set_bredr_off_success_test_1,
-				setup_le, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 1",
 				&set_bredr_on_success_test_1,
 				setup_le_nobr, test_command_generic);
@@ -2893,7 +2887,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR off - Invalid Parameters 1",
 				&set_bredr_off_failure_test_3,
-				setup_le, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredr("Set Local Name - Success 1",
 				&set_local_name_test_1,
