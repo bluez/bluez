@@ -662,6 +662,14 @@ static const struct generic_data set_fast_conn_on_success_test_1 = {
 	.expect_settings_set = MGMT_SETTING_FAST_CONNECTABLE,
 };
 
+static const struct generic_data set_fast_conn_on_not_supported_test_1 = {
+	.setup_settings = settings_powered_connectable,
+	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
+	.send_param = set_fast_conn_on_param,
+	.send_len = sizeof(set_fast_conn_on_param),
+	.expect_status = MGMT_STATUS_NOT_SUPPORTED,
+};
+
 static const char set_pairable_on_param[] = { 0x01 };
 static const char set_pairable_invalid_param[] = { 0x02 };
 static const char set_pairable_garbage_param[] = { 0x01, 0x00 };
@@ -2640,6 +2648,9 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set fast connectable on - Success 1",
 				&set_fast_conn_on_success_test_1,
+				NULL, test_command_generic);
+	test_le("Set fast connectable on - Not Supported 1",
+				&set_fast_conn_on_not_supported_test_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Set pairable on - Success",
