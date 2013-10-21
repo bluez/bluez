@@ -1131,6 +1131,9 @@ static const struct generic_data set_le_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static uint16_t settings_powered_le[] = { MGMT_OP_SET_LE,
+					MGMT_OP_SET_POWERED, 0 };
+
 static const char set_adv_on_param[] = { 0x01 };
 static const char set_adv_settings_param_1[] = { 0x80, 0x06, 0x00, 0x00 };
 static const char set_adv_settings_param_2[] = { 0x81, 0x06, 0x00, 0x00 };
@@ -1148,6 +1151,7 @@ static const struct generic_data set_adv_on_success_test_1 = {
 };
 
 static const struct generic_data set_adv_on_success_test_2 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_on_param,
 	.send_len = sizeof(set_adv_on_param),
@@ -1214,6 +1218,7 @@ static const struct generic_data set_bredr_off_notsupp_test = {
 };
 
 static const struct generic_data set_bredr_off_failure_test_1 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_off_param,
 	.send_len = sizeof(set_bredr_off_param),
@@ -1319,6 +1324,7 @@ static const struct generic_data start_discovery_not_supported_test_1 = {
 };
 
 static const struct generic_data start_discovery_valid_param_test_1 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_bredrle_param,
 	.send_len = sizeof(start_discovery_bredrle_param),
@@ -1389,6 +1395,7 @@ static const struct generic_data stop_discovery_bredr_success_test_1 = {
 };
 
 static const struct generic_data stop_discovery_rejected_test_1 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_STOP_DISCOVERY,
 	.send_param = stop_discovery_bredrle_param,
 	.send_len = sizeof(stop_discovery_bredrle_param),
@@ -2029,21 +2036,6 @@ static void setup_ssp_powered(const void *test_data)
 	tester_print("Powering on controller (with SSP enabled)");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
-static void setup_le_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Powering on controller (with LE enabled)");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
@@ -2859,7 +2851,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Advertising on - Success 2",
 				&set_adv_on_success_test_2,
-				setup_le_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set Advertising on - Rejected 1",
 				&set_adv_on_rejected_test_1,
 				NULL, test_command_generic);
@@ -2881,7 +2873,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR off - Rejected 1",
 				&set_bredr_off_failure_test_1,
-				setup_le_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR off - Rejected 2",
 				&set_bredr_off_failure_test_2,
 				NULL, test_command_generic);
@@ -2910,7 +2902,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Start Discovery - Success 1",
 				&start_discovery_valid_param_test_1,
-				setup_le_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_le("Start Discovery - Success 2",
 				&start_discovery_valid_param_test_2,
 				NULL, test_command_generic);
@@ -2923,7 +2915,7 @@ int main(int argc, char *argv[])
 				setup_start_discovery, test_command_generic);
 	test_bredrle("Stop Discovery - Rejected 1",
 				&stop_discovery_rejected_test_1,
-				setup_le_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Stop Discovery - Invalid parameters 1",
 				&stop_discovery_invalid_param_test_1,
 				setup_start_discovery, test_command_generic);
