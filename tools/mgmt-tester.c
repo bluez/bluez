@@ -227,16 +227,6 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	}
 }
 
-static void test_setup(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-
-	if (data->test_setup)
-		data->test_setup(data);
-	else
-		tester_setup_complete();
-}
-
 static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -364,6 +354,7 @@ static void controller_setup(const void *test_data)
 }
 
 struct generic_data {
+	const uint16_t *setup_settings;
 	uint16_t setup_expect_hci_command;
 	const void *setup_expect_hci_param;
 	uint8_t setup_expect_hci_len;
@@ -2474,6 +2465,60 @@ static void setup_link_sec_powered(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
 					setup_powered_callback, NULL, NULL);
+}
+
+static void setup_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Initial settings completed");
+
+	if (data->test_setup)
+		data->test_setup(data);
+	else
+		tester_setup_complete();
+}
+
+static void test_setup(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const struct generic_data *test = data->test_data;
+	const uint16_t *cmd;
+
+	if (!test || !test->setup_settings) {
+		if (data->test_setup)
+			data->test_setup(data);
+		else
+			tester_setup_complete();
+		return;
+	}
+
+	for (cmd = test->setup_settings; *cmd; cmd++) {
+		unsigned char simple_param[] = { 0x01 };
+		unsigned char discov_param[] = { 0x01, 0x00, 0x00 };
+		unsigned char *param = simple_param;
+		size_t param_size = sizeof(simple_param);
+		mgmt_request_func_t func = NULL;
+
+		/* If this is the last command (next one is 0) request
+		 * for a callback. */
+		if (!cmd[1])
+			func = setup_complete;
+
+		if (*cmd == MGMT_OP_SET_DISCOVERABLE) {
+			param = discov_param;
+			param_size = sizeof(discov_param);
+		}
+
+		mgmt_send(data->mgmt, *cmd, data->mgmt_index,
+				param_size, param, func, data, NULL);
+	}
 }
 
 static void command_generic_new_settings(uint16_t index, uint16_t length,
