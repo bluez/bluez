@@ -39,6 +39,7 @@
 #include "src/shared/hciemu.h"
 
 struct test_data {
+	tester_data_func_t test_setup;
 	const void *test_data;
 	uint8_t expected_version;
 	uint16_t expected_manufacturer;
@@ -226,6 +227,16 @@ static void read_index_list_callback(uint8_t status, uint16_t length,
 	}
 }
 
+static void test_setup(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+
+	if (data->test_setup)
+		data->test_setup(data);
+	else
+		tester_setup_complete();
+}
+
 static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -297,6 +308,7 @@ static void test_condition_complete(struct test_data *data)
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDRLE; \
+		user->test_setup = setup; \
 		user->test_data = data; \
 		user->expected_version = 0x06; \
 		user->expected_manufacturer = 0x003f; \
@@ -304,7 +316,7 @@ static void test_condition_complete(struct test_data *data)
 		user->initial_settings = 0x00000080; \
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
-				test_pre_setup, setup, func, NULL, \
+				test_pre_setup, test_setup, func, NULL, \
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
@@ -315,6 +327,7 @@ static void test_condition_complete(struct test_data *data)
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_BREDR; \
+		user->test_setup = setup; \
 		user->test_data = data; \
 		user->expected_version = 0x05; \
 		user->expected_manufacturer = 0x003f; \
@@ -322,7 +335,7 @@ static void test_condition_complete(struct test_data *data)
 		user->initial_settings = 0x00000080; \
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
-				test_pre_setup, setup, func, NULL, \
+				test_pre_setup, test_setup, func, NULL, \
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
@@ -333,6 +346,7 @@ static void test_condition_complete(struct test_data *data)
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_LE; \
+		user->test_setup = setup; \
 		user->test_data = data; \
 		user->expected_version = 0x06; \
 		user->expected_manufacturer = 0x003f; \
@@ -340,7 +354,7 @@ static void test_condition_complete(struct test_data *data)
 		user->initial_settings = 0x00000200; \
 		user->unmet_conditions = 0; \
 		tester_add_full(name, data, \
-				test_pre_setup, setup, func, NULL, \
+				test_pre_setup, test_setup, func, NULL, \
 				test_post_teardown, 2, user, free); \
 	} while (0)
 
