@@ -46,6 +46,8 @@ struct hal_msg_hdr {
 
 /* Core Service */
 
+#define HAL_ERROR_FAILED		0x01
+
 #define HAL_MSG_OP_ERROR		0x00
 struct hal_msg_rsp_error {
 	uint8_t status;

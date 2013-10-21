@@ -70,7 +70,8 @@ static void service_register(void *buf, uint16_t len)
 	struct hal_msg_cmd_register_module *m = buf;
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id]) {
-		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, 0x01);
+		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
+							HAL_ERROR_FAILED);
 		return;
 	}
 
@@ -87,7 +88,8 @@ static void service_unregister(void *buf, uint16_t len)
 	struct hal_msg_cmd_unregister_module *m = buf;
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id]) {
-		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, 0x01);
+		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
+							HAL_ERROR_FAILED);
 		return;
 	}
 
@@ -109,7 +111,8 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 		service_unregister(buf, len);
 		break;
 	default:
-		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, 0x01);
+		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
+							HAL_ERROR_FAILED);
 		break;
 	}
 }
@@ -151,7 +154,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		handle_service_core(msg->opcode, buf + sizeof(*msg), msg->len);
 		break;
 	default:
-		ipc_send_error(hal_cmd_io, msg->service_id, 0x01);
+		ipc_send_error(hal_cmd_io, msg->service_id, HAL_ERROR_FAILED);
 		break;
 	}
 
