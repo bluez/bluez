@@ -2660,18 +2660,18 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 
 	test_bredrle("Set connectable off - Success 1",
-			&set_connectable_off_success_test_1,
-			NULL, test_command_generic);
+				&set_connectable_off_success_test_1,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable off - Success 2",
-			&set_connectable_off_success_test_2,
-			NULL, test_command_generic);
+				&set_connectable_off_success_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set connectable off - Success 3",
-			&set_connectable_off_success_test_3,
-			NULL, test_command_generic);
+				&set_connectable_off_success_test_3,
+				NULL, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
-			&set_fast_conn_on_success_test_1,
-			NULL, test_command_generic);
+				&set_fast_conn_on_success_test_1,
+				NULL, test_command_generic);
 
 	test_bredrle("Set pairable on - Success",
 				&set_pairable_on_success_test,
