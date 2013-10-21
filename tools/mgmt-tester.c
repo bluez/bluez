@@ -1368,6 +1368,7 @@ static const char stop_discovery_bredr_discovering[] = { 0x01, 0x00 };
 static const char stop_discovery_inq_param[] = { 0x33, 0x8b, 0x9e, 0x08, 0x00 };
 
 static const struct generic_data stop_discovery_success_test_1 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_STOP_DISCOVERY,
 	.send_param = stop_discovery_bredrle_param,
 	.send_len = sizeof(stop_discovery_bredrle_param),
@@ -1383,6 +1384,7 @@ static const struct generic_data stop_discovery_success_test_1 = {
 };
 
 static const struct generic_data stop_discovery_bredr_success_test_1 = {
+	.setup_settings = settings_powered_le,
 	.setup_expect_hci_command = BT_HCI_CMD_INQUIRY,
 	.setup_expect_hci_param = stop_discovery_inq_param,
 	.setup_expect_hci_len = sizeof(stop_discovery_inq_param),
@@ -1409,6 +1411,7 @@ static const struct generic_data stop_discovery_rejected_test_1 = {
 };
 
 static const struct generic_data stop_discovery_invalid_param_test_1 = {
+	.setup_settings = settings_powered_le,
 	.send_opcode = MGMT_OP_STOP_DISCOVERY,
 	.send_param = stop_discovery_bredrle_invalid_param,
 	.send_len = sizeof(stop_discovery_bredrle_invalid_param),
@@ -2095,18 +2098,10 @@ done:
 	return false;
 }
 
-static void setup_start_discovery_callback(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
+static void setup_start_discovery(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	const struct generic_data *test = data->test_data;
-
-	if (status != MGMT_STATUS_SUCCESS) {
-		tester_setup_failed();
-		return;
-	}
-
-	tester_print("Controller powered on");
 
 	if (test->setup_expect_hci_command) {
 		tester_print("Registering HCI command callback (setup)");
@@ -2124,21 +2119,6 @@ static void setup_start_discovery_callback(uint8_t status, uint16_t length,
 					sizeof(disc_param), disc_param,
 					setup_discovery_callback, NULL, NULL);
 	}
-}
-
-static void setup_start_discovery(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Powering on controller (with LE enabled)");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-				sizeof(param), param,
-				setup_start_discovery_callback, NULL, NULL);
 }
 
 static void setup_le_callback(uint8_t status, uint16_t length,
