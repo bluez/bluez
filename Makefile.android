@@ -8,7 +8,8 @@ android_bluetoothd_SOURCES =	android/main.c \
 				src/sdpd-service.c src/sdpd-request.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
-				android/adapter.h android/adapter.c
+				android/adapter.h android/adapter.c \
+				android/ipc.h android/ipc.c
 
 android_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
