@@ -117,7 +117,9 @@ Core Service (ID 0)
 
 	Opcode 0x00 - Error response
 
-		Response parameters: Error (1 octet)
+		Response parameters: Status (1 octet)
+
+		Valid status values: 0x01	Failed
 
 	Opcode 0x01 - Register module command/response
 
