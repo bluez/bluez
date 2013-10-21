@@ -611,6 +611,19 @@ static const struct generic_data set_connectable_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const struct generic_data set_connectable_off_success_test_3 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_settings_2,
+	.expect_len = sizeof(set_connectable_off_settings_2),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_connectable_off_scan_enable_param,
+	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
+};
+
 static const char set_fast_conn_on_param[] = { 0x01 };
 static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
 
@@ -2763,6 +2776,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Set connectable off - Success 2",
 			&set_connectable_off_success_test_2,
 			setup_connectable_powered, test_command_generic);
+	test_bredrle("Set connectable off - Success 3",
+			&set_connectable_off_success_test_3,
+			setup_powered_discoverable, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
 			&set_fast_conn_on_success_test_1,
