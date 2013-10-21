@@ -49,8 +49,6 @@
 #include "adapter.h"
 #include "hal-msg.h"
 
-#define SHUTDOWN_GRACE_SECONDS 10
-
 static GMainLoop *event_loop;
 static struct mgmt *mgmt_if = NULL;
 
