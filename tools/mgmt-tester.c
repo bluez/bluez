@@ -1194,6 +1194,7 @@ static const struct generic_data set_bredr_off_success_test_1 = {
 
 static const struct generic_data set_bredr_on_success_test_1 = {
 	.setup_settings = settings_le,
+	.setup_nobredr = true,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_on_param,
 	.send_len = sizeof(set_bredr_on_param),
@@ -1204,7 +1205,8 @@ static const struct generic_data set_bredr_on_success_test_1 = {
 };
 
 static const struct generic_data set_bredr_on_success_test_2 = {
-	.setup_settings = settings_le,
+	.setup_settings = settings_powered_le,
+	.setup_nobredr = true,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_on_param,
 	.send_len = sizeof(set_bredr_on_param),
@@ -2042,22 +2044,6 @@ static void setup_class(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_nobr_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char on[] = { 0x01 };
-	unsigned char off[] = { 0x00 };
-
-	tester_print("Powering on controller (with LE enabled)");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
-				sizeof(off), off, NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(on), on,
-					setup_powered_callback, NULL, NULL);
-}
-
 static void setup_discovery_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2121,31 +2107,6 @@ static void setup_start_discovery(const void *test_data)
 					sizeof(disc_param), disc_param,
 					setup_discovery_callback, NULL, NULL);
 	}
-}
-
-static void setup_nobr_callback(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS) {
-		tester_setup_failed();
-		return;
-	}
-
-	tester_print("BR/EDR disabled");
-
-	tester_setup_complete();
-}
-
-static void setup_nobr(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char off[] = { 0x00 };
-
-	tester_print("Disabling BR/EDR");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
-				sizeof(off), off, setup_nobr_callback,
-				NULL, NULL);
 }
 
 static void setup_multi_uuid32(const void *test_data)
@@ -2841,10 +2802,10 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 1",
 				&set_bredr_on_success_test_1,
-				setup_nobr, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 2",
 				&set_bredr_on_success_test_2,
-				setup_nobr_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredr("Set BR/EDR off - Not Supported 1",
 				&set_bredr_off_notsupp_test,
 				NULL, test_command_generic);
