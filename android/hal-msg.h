@@ -42,6 +42,8 @@ struct hal_msg_hdr {
 #define HAL_SERVICE_ID_AVRCP		8
 #define HAL_SERVICE_ID_GATT		9
 
+#define HAL_SERVICE_ID_MAX HAL_SERVICE_ID_GATT
+
 /* Core Service */
 
 #define HAL_MSG_OP_ERROR		0x00
