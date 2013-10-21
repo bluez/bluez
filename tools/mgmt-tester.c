@@ -595,6 +595,30 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const char set_connectable_le_settings_param_1[] = { 0x02, 0x02, 0x00, 0x00 };
+static const char set_connectable_le_settings_param_2[] = { 0x03, 0x02, 0x00, 0x00 };
+
+static const struct generic_data set_connectable_on_le_test_1 = {
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_on_param,
+	.send_len = sizeof(set_connectable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_le_settings_param_1,
+	.expect_len = sizeof(set_connectable_le_settings_param_1),
+	.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+};
+
+static const struct generic_data set_connectable_on_le_test_2 = {
+	.setup_settings = settings_powered,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_on_param,
+	.send_len = sizeof(set_connectable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_le_settings_param_2,
+	.expect_len = sizeof(set_connectable_le_settings_param_2),
+	.expect_settings_set = MGMT_SETTING_CONNECTABLE,
+};
+
 static const uint16_t settings_connectable[] = { MGMT_OP_SET_CONNECTABLE, 0 };
 static const uint16_t settings_powered_connectable[] = {
 						MGMT_OP_SET_CONNECTABLE,
@@ -2634,6 +2658,13 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Invalid index",
 				&set_connectable_on_invalid_index_test,
+				NULL, test_command_generic);
+
+	test_le("Set connectable on (LE-only) - Success 1",
+				&set_connectable_on_le_test_1,
+				NULL, test_command_generic);
+	test_le("Set connectable on (LE-only) - Success 2",
+				&set_connectable_on_le_test_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Set connectable off - Success 1",
