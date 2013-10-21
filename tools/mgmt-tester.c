@@ -593,6 +593,7 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const uint16_t settings_connectable[] = { MGMT_OP_SET_CONNECTABLE, 0 };
 static const uint16_t settings_powered_connectable[] = {
 						MGMT_OP_SET_CONNECTABLE,
 						MGMT_OP_SET_POWERED, 0 };
@@ -607,6 +608,7 @@ static const char set_connectable_off_settings_2[] = { 0x81, 0x00, 0x00, 0x00 };
 static const char set_connectable_off_scan_enable_param[] = { 0x00 };
 
 static const struct generic_data set_connectable_off_success_test_1 = {
+	.setup_settings = settings_connectable,
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_off_param,
 	.send_len = sizeof(set_connectable_off_param),
@@ -746,6 +748,14 @@ static const struct generic_data set_discoverable_on_not_powered_test_1 = {
 	.expect_status = MGMT_STATUS_NOT_POWERED,
 };
 
+static const struct generic_data set_discoverable_on_not_powered_test_2 = {
+	.setup_settings = settings_connectable,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_discoverable_timeout_param,
+	.send_len = sizeof(set_discoverable_timeout_param),
+	.expect_status = MGMT_STATUS_NOT_POWERED,
+};
+
 static const struct generic_data set_discoverable_on_rejected_test_1 = {
 	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
@@ -771,6 +781,7 @@ static const struct generic_data set_discoverable_on_rejected_test_3 = {
 };
 
 static const struct generic_data set_discoverable_on_success_test_1 = {
+	.setup_settings = settings_connectable,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_on_param,
 	.send_len = sizeof(set_discoverable_on_param),
@@ -795,6 +806,7 @@ static const struct generic_data set_discoverable_on_success_test_2 = {
 };
 
 static const struct generic_data set_discoverable_off_success_test_1 = {
+	.setup_settings = settings_connectable,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_off_param,
 	.send_len = sizeof(set_discoverable_off_param),
@@ -2372,31 +2384,6 @@ static void setup_uuid_mix(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_connectable_callback(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS) {
-		tester_setup_failed();
-		return;
-	}
-
-	tester_print("Controller connectable on");
-
-	tester_setup_complete();
-}
-
-static void setup_connectable(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Setting controller connectable");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
-					sizeof(param), param,
-					setup_connectable_callback, NULL, NULL);
-}
-
 static void setup_link_sec_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2764,7 +2751,7 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set connectable off - Success 1",
 			&set_connectable_off_success_test_1,
-			setup_connectable, test_command_generic);
+			NULL, test_command_generic);
 	test_bredrle("Set connectable off - Success 2",
 			&set_connectable_off_success_test_2,
 			NULL, test_command_generic);
@@ -2807,12 +2794,9 @@ int main(int argc, char *argv[])
 	test_bredrle("Set discoverable on - Not powered 1",
 				&set_discoverable_on_not_powered_test_1,
 				NULL, test_command_generic);
-	test_bredrle("Set discoverable on - Not powered 1",
-				&set_discoverable_on_not_powered_test_1,
-				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Not powered 2",
-				&set_discoverable_on_not_powered_test_1,
-				setup_connectable, test_command_generic);
+				&set_discoverable_on_not_powered_test_2,
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Rejected 1",
 				&set_discoverable_on_rejected_test_1,
 				NULL, test_command_generic);
@@ -2824,13 +2808,13 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Success 1",
 				&set_discoverable_on_success_test_1,
-				setup_connectable, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Success 2",
 				&set_discoverable_on_success_test_2,
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 1",
 				&set_discoverable_off_success_test_1,
-				setup_connectable, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 2",
 				&set_discoverable_off_success_test_2,
 				NULL, test_command_generic);
