@@ -77,3 +77,12 @@ void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
 		raise(SIGTERM);
 	}
 }
+
+void ipc_send_error(GIOChannel *io, uint8_t service_id, uint8_t status)
+{
+	struct hal_msg_rsp_error err;
+
+	err.status = status;
+
+	ipc_send(io, service_id, HAL_MSG_OP_ERROR, sizeof(err), &err, -1);
+}
