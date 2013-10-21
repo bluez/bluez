@@ -902,6 +902,10 @@ static const struct generic_data set_link_sec_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const uint16_t settings_powered_link_sec[] = {
+						MGMT_OP_SET_LINK_SECURITY,
+						MGMT_OP_SET_POWERED, 0 };
+
 static const char set_link_sec_off_param[] = { 0x00 };
 static const char set_link_sec_off_settings_1[] = { 0x80, 0x00, 0x00, 0x00 };
 static const char set_link_sec_off_settings_2[] = { 0x81, 0x00, 0x00, 0x00 };
@@ -919,6 +923,7 @@ static const struct generic_data set_link_sec_off_success_test_1 = {
 };
 
 static const struct generic_data set_link_sec_off_success_test_2 = {
+	.setup_settings = settings_powered_link_sec,
 	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
 	.send_param = set_link_sec_off_param,
 	.send_len = sizeof(set_link_sec_off_param),
@@ -2388,21 +2393,6 @@ static void setup_uuid_mix(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_link_sec_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Enabling link security and powering on");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_LINK_SECURITY, data->mgmt_index,
-			sizeof(param), param, NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
 static void setup_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2825,7 +2815,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set link security off - Success 2",
 				&set_link_sec_off_success_test_2,
-				setup_link_sec_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Set SSP on - Success 1",
 				&set_ssp_on_success_test_1,
