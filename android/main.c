@@ -48,6 +48,7 @@
 
 #include "adapter.h"
 #include "hal-msg.h"
+#include "ipc.h"
 
 static GMainLoop *event_loop;
 static struct mgmt *mgmt_if = NULL;
@@ -65,9 +66,45 @@ static volatile sig_atomic_t __terminated = 0;
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
-	info("HAL command socket closed, terminating");
-	g_main_loop_quit(event_loop);
+	int fd;
+	ssize_t ret;
+	char buf[BLUEZ_HAL_MTU];
+	struct hal_msg_hdr *msg = (void *) buf;
 
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		info("HAL command socket closed, terminating");
+		goto fail;
+	}
+
+	fd = g_io_channel_unix_get_fd(io);
+
+	ret = read(fd, buf, sizeof(buf));
+	if (ret < 0) {
+		error("HAL command read failed, terminating (%s)",
+							strerror(errno));
+		goto fail;
+	}
+
+	if (ret < (ssize_t) sizeof(*msg)) {
+		error("HAL command too small, terminating (%zd)", ret);
+		goto fail;
+	}
+
+	if (ret != (ssize_t) (sizeof(*msg) + msg->len)) {
+		error("Malformed HAL command (%zd bytes), terminating", ret);
+		goto fail;
+	}
+
+	switch (msg->service_id) {
+	default:
+		ipc_send_error(hal_cmd_io, msg->service_id, 0x01);
+		break;
+	}
+
+	return TRUE;
+
+fail:
+	g_main_loop_quit(event_loop);
 	return FALSE;
 }
 
@@ -151,7 +188,7 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 		return FALSE;
 	}
 
-	cond = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
 	g_io_add_watch(io, cond, cmd_watch_cb, NULL);
 
