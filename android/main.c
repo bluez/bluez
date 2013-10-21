@@ -62,10 +62,19 @@ static GIOChannel *hal_notif_io = NULL;
 
 static volatile sig_atomic_t __terminated = 0;
 
-static gboolean watch_cb(GIOChannel *io, GIOCondition cond,
+static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
-	info("HAL socket closed, terminating");
+	info("HAL command socket closed, terminating");
+	g_main_loop_quit(event_loop);
+
+	return FALSE;
+}
+
+static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
+							gpointer user_data)
+{
+	info("HAL notification socket closed, terminating");
 	g_main_loop_quit(event_loop);
 
 	return FALSE;
@@ -123,7 +132,7 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	cond = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	g_io_add_watch(io, cond, watch_cb, NULL);
+	g_io_add_watch(io, cond, notif_watch_cb, NULL);
 
 	info("Successfully connected to HAL");
 
@@ -144,7 +153,7 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	cond = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	g_io_add_watch(io, cond, watch_cb, NULL);
+	g_io_add_watch(io, cond, cmd_watch_cb, NULL);
 
 	hal_notif_io = connect_hal(notif_connect_cb);
 	if (!hal_notif_io) {
