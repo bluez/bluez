@@ -21,6 +21,8 @@
  *
  */
 
+#define BLUEZ_HAL_MTU 1024
+
 static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 
 struct hal_msg_hdr {
