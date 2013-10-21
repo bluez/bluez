@@ -483,11 +483,14 @@ static const struct generic_data set_powered_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const uint16_t settings_powered[] = { MGMT_OP_SET_POWERED, 0 };
+
 static const char set_powered_off_param[] = { 0x00 };
 static const char set_powered_off_settings_param[] = { 0x80, 0x00, 0x00, 0x00 };
 static const char set_powered_off_class_of_dev[] = { 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_powered_off_success_test = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_off_param,
 	.send_len = sizeof(set_powered_off_param),
@@ -511,11 +514,13 @@ static const struct generic_data set_powered_off_class_test = {
 };
 
 static const struct generic_data set_powered_off_invalid_param_test_1 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
 static const struct generic_data set_powered_off_invalid_param_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_invalid_param,
 	.send_len = sizeof(set_powered_invalid_param),
@@ -523,6 +528,7 @@ static const struct generic_data set_powered_off_invalid_param_test_2 = {
 };
 
 static const struct generic_data set_powered_off_invalid_param_test_3 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_garbage_param,
 	.send_len = sizeof(set_powered_garbage_param),
@@ -547,6 +553,7 @@ static const struct generic_data set_connectable_on_success_test_1 = {
 };
 
 static const struct generic_data set_connectable_on_success_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_on_param,
 	.send_len = sizeof(set_connectable_on_param),
@@ -729,6 +736,7 @@ static const struct generic_data set_discoverable_on_not_powered_test_1 = {
 };
 
 static const struct generic_data set_discoverable_on_rejected_test_1 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_on_param,
 	.send_len = sizeof(set_discoverable_on_param),
@@ -736,6 +744,7 @@ static const struct generic_data set_discoverable_on_rejected_test_1 = {
 };
 
 static const struct generic_data set_discoverable_on_rejected_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_on_param,
 	.send_len = sizeof(set_discoverable_on_param),
@@ -743,6 +752,7 @@ static const struct generic_data set_discoverable_on_rejected_test_2 = {
 };
 
 static const struct generic_data set_discoverable_on_rejected_test_3 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_timeout_param,
 	.send_len = sizeof(set_discoverable_timeout_param),
@@ -811,6 +821,7 @@ static const struct generic_data set_link_sec_on_success_test_1 = {
 };
 
 static const struct generic_data set_link_sec_on_success_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
 	.send_param = set_link_sec_on_param,
 	.send_len = sizeof(set_link_sec_on_param),
@@ -909,6 +920,7 @@ static const struct generic_data set_ssp_on_success_test_1 = {
 };
 
 static const struct generic_data set_ssp_on_success_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_SSP,
 	.send_param = set_ssp_on_param,
 	.send_len = sizeof(set_ssp_on_param),
@@ -1021,6 +1033,7 @@ static const struct generic_data set_le_on_success_test_1 = {
 };
 
 static const struct generic_data set_le_on_success_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_LE,
 	.send_param = set_le_on_param,
 	.send_len = sizeof(set_le_on_param),
@@ -1102,6 +1115,7 @@ static const struct generic_data set_adv_on_success_test_2 = {
 };
 
 static const struct generic_data set_adv_on_rejected_test_1 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_ADVERTISING,
 	.send_param = set_adv_on_param,
 	.send_len = sizeof(set_adv_on_param),
@@ -1160,6 +1174,7 @@ static const struct generic_data set_bredr_off_failure_test_1 = {
 };
 
 static const struct generic_data set_bredr_off_failure_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_off_param,
 	.send_len = sizeof(set_bredr_off_param),
@@ -1194,6 +1209,7 @@ static const struct generic_data set_local_name_test_1 = {
 };
 
 static const struct generic_data set_local_name_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_LOCAL_NAME,
 	.send_param = set_local_name_param,
 	.send_len = sizeof(set_local_name_param),
@@ -1239,6 +1255,7 @@ static const struct generic_data start_discovery_not_powered_test_1 = {
 };
 
 static const struct generic_data start_discovery_invalid_param_test_1 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_invalid_param,
 	.send_len = sizeof(start_discovery_invalid_param),
@@ -1246,6 +1263,7 @@ static const struct generic_data start_discovery_invalid_param_test_1 = {
 };
 
 static const struct generic_data start_discovery_not_supported_test_1 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_le_param,
 	.send_len = sizeof(start_discovery_le_param),
@@ -1268,6 +1286,7 @@ static const struct generic_data start_discovery_valid_param_test_1 = {
 };
 
 static const struct generic_data start_discovery_valid_param_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_START_DISCOVERY,
 	.send_param = start_discovery_le_param,
 	.send_len = sizeof(start_discovery_le_param),
@@ -1355,6 +1374,7 @@ static const struct generic_data set_dev_class_valid_param_test_1 = {
 };
 
 static const struct generic_data set_dev_class_valid_param_test_2 = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_DEV_CLASS,
 	.send_param = set_dev_class_valid_param,
 	.send_len = sizeof(set_dev_class_valid_param),
@@ -1907,6 +1927,7 @@ static const struct generic_data set_static_addr_success_test = {
 };
 
 static const struct generic_data set_static_addr_failure_test = {
+	.setup_settings = settings_powered,
 	.send_opcode = MGMT_OP_SET_STATIC_ADDRESS,
 	.send_param = set_static_addr_valid_param,
 	.send_len = sizeof(set_static_addr_valid_param),
@@ -2375,18 +2396,6 @@ static void setup_uuid_mix(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Powering on controller");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
 static void setup_connectable_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2759,26 +2768,26 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set powered off - Success",
 				&set_powered_off_success_test,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set powered off - Class of Device",
 				&set_powered_off_class_test,
 				setup_class, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 1",
 				&set_powered_off_invalid_param_test_1,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 2",
 				&set_powered_off_invalid_param_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set powered off - Invalid parameters 3",
 				&set_powered_off_invalid_param_test_3,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Set connectable on - Success 1",
 				&set_connectable_on_success_test_1,
 				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Success 2",
 				&set_connectable_on_success_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set connectable on - Invalid parameters 1",
 				&set_connectable_on_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -2845,13 +2854,13 @@ int main(int argc, char *argv[])
 				setup_connectable, test_command_generic);
 	test_bredrle("Set discoverable on - Rejected 1",
 				&set_discoverable_on_rejected_test_1,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Rejected 2",
 				&set_discoverable_on_rejected_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Rejected 3",
 				&set_discoverable_on_rejected_test_3,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Success 1",
 				&set_discoverable_on_success_test_1,
 				setup_connectable, test_command_generic);
@@ -2871,7 +2880,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set link security on - Success 2",
 				&set_link_sec_on_success_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Success 3",
 				&set_link_sec_on_success_test_3,
 				setup_link_sec, test_command_generic);
@@ -2900,7 +2909,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Success 2",
 				&set_ssp_on_success_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Success 3",
 				&set_ssp_on_success_test_3,
 				setup_ssp, test_command_generic);
@@ -2938,7 +2947,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 2",
 				&set_le_on_success_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set Low Energy on - Success 3",
 				&set_le_on_success_test_3,
 				setup_le, test_command_generic);
@@ -2963,7 +2972,7 @@ int main(int argc, char *argv[])
 				setup_le_powered, test_command_generic);
 	test_bredrle("Set Advertising on - Rejected 1",
 				&set_adv_on_rejected_test_1,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Set BR/EDR off - Success 1",
 				&set_bredr_off_success_test_1,
@@ -2985,7 +2994,7 @@ int main(int argc, char *argv[])
 				setup_le_powered, test_command_generic);
 	test_bredrle("Set BR/EDR off - Rejected 2",
 				&set_bredr_off_failure_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR off - Invalid Parameters 1",
 				&set_bredr_off_failure_test_3,
 				setup_le, test_command_generic);
@@ -2995,7 +3004,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredr("Set Local Name - Success 2",
 				&set_local_name_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredr("Set Local Name - Success 3",
 				&set_local_name_test_3,
 				setup_ssp_powered, test_command_generic);
@@ -3005,16 +3014,16 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Start Discovery - Invalid parameters 1",
 				&start_discovery_invalid_param_test_1,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Start Discovery - Not supported 1",
 				&start_discovery_not_supported_test_1,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Start Discovery - Success 1",
 				&start_discovery_valid_param_test_1,
 				setup_le_powered, test_command_generic);
 	test_le("Start Discovery - Success 2",
 				&start_discovery_valid_param_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Stop Discovery - Success 1",
 				&stop_discovery_success_test_1,
@@ -3034,7 +3043,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Device Class - Success 2",
 				&set_dev_class_valid_param_test_2,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set Device Class - Invalid parameters 1",
 				&set_dev_class_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -3136,7 +3145,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set Static Address - Failure",
 				&set_static_addr_failure_test,
-				setup_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Set Scan Parameters - Success",
 				&set_scan_params_success_test,
