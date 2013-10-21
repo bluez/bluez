@@ -1241,6 +1241,9 @@ static const struct generic_data set_bredr_off_failure_test_3 = {
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
+static uint16_t settings_powered_ssp[] = { MGMT_OP_SET_SSP,
+						MGMT_OP_SET_POWERED, 0 };
+
 static const char set_local_name_param[260] = { 'T', 'e', 's', 't', ' ',
 						'n', 'a', 'm', 'e' };
 static const char write_local_name_hci[248] = { 'T', 'e', 's', 't', ' ',
@@ -1278,6 +1281,7 @@ static const struct generic_data set_local_name_test_2 = {
 };
 
 static const struct generic_data set_local_name_test_3 = {
+	.setup_settings = settings_powered_ssp,
 	.send_opcode = MGMT_OP_SET_LOCAL_NAME,
 	.send_param = set_local_name_param,
 	.send_len = sizeof(set_local_name_param),
@@ -1616,6 +1620,7 @@ static const char write_eir_uuid_mix_hci[241] = { 0x00,
 			0x44, 0x33, 0x22, 0x11 };
 
 static const struct generic_data add_uuid16_test_1 = {
+	.setup_settings = settings_powered_ssp,
 	.send_opcode = MGMT_OP_ADD_UUID,
 	.send_param = add_spp_uuid_param,
 	.send_len = sizeof(add_spp_uuid_param),
@@ -1652,6 +1657,7 @@ static const struct generic_data add_multi_uuid16_test_2 = {
 };
 
 static const struct generic_data add_uuid32_test_1 = {
+	.setup_settings = settings_powered_ssp,
 	.send_opcode = MGMT_OP_ADD_UUID,
 	.send_param = add_uuid32_param_1,
 	.send_len = sizeof(add_uuid32_param_1),
@@ -1688,6 +1694,7 @@ static const struct generic_data add_uuid32_multi_test_2 = {
 };
 
 static const struct generic_data add_uuid128_test_1 = {
+	.setup_settings = settings_powered_ssp,
 	.send_opcode = MGMT_OP_ADD_UUID,
 	.send_param = add_uuid128_param_1,
 	.send_len = sizeof(add_uuid128_param_1),
@@ -2022,21 +2029,6 @@ static void setup_class(const void *test_data)
 	mgmt_send(data->mgmt, MGMT_OP_SET_DEV_CLASS, data->mgmt_index,
 				sizeof(class_param), class_param,
 				NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
-static void setup_ssp_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Powering on controller (with SSP enabled)");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, NULL, NULL, NULL);
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
 					sizeof(param), param,
@@ -2889,7 +2881,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredr("Set Local Name - Success 3",
 				&set_local_name_test_3,
-				setup_ssp_powered, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Start Discovery - Not powered 1",
 				&start_discovery_not_powered_test_1,
@@ -2932,7 +2924,7 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Add UUID - UUID-16 1",
 				&add_uuid16_test_1,
-				setup_ssp_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Add UUID - UUID-16 multiple 1",
 				&add_multi_uuid16_test_1,
 				setup_multi_uuid16, test_command_generic);
@@ -2941,7 +2933,7 @@ int main(int argc, char *argv[])
 				setup_multi_uuid16_2, test_command_generic);
 	test_bredrle("Add UUID - UUID-32 1",
 				&add_uuid32_test_1,
-				setup_ssp_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Add UUID - UUID-32 multiple 1",
 				&add_uuid32_multi_test_1,
 				setup_multi_uuid32, test_command_generic);
@@ -2950,7 +2942,7 @@ int main(int argc, char *argv[])
 				setup_multi_uuid32_2, test_command_generic);
 	test_bredrle("Add UUID - UUID-128 1",
 				&add_uuid128_test_1,
-				setup_ssp_powered, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Add UUID - UUID-128 multiple 1",
 				&add_uuid128_multi_test_1,
 				setup_multi_uuid128, test_command_generic);
