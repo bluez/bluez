@@ -828,6 +828,8 @@ static const struct generic_data set_discoverable_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_discoverable_off_scan_enable_param),
 };
 
+static uint16_t settings_link_sec[] = { MGMT_OP_SET_LINK_SECURITY, 0 };
+
 static const char set_link_sec_on_param[] = { 0x01 };
 static const char set_link_sec_invalid_param[] = { 0x02 };
 static const char set_link_sec_garbage_param[] = { 0x01, 0x00 };
@@ -860,6 +862,7 @@ static const struct generic_data set_link_sec_on_success_test_2 = {
 };
 
 static const struct generic_data set_link_sec_on_success_test_3 = {
+	.setup_settings = settings_link_sec,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
@@ -905,6 +908,7 @@ static const char set_link_sec_off_settings_2[] = { 0x81, 0x00, 0x00, 0x00 };
 static const char set_link_sec_off_auth_enable_param[] = { 0x00 };
 
 static const struct generic_data set_link_sec_off_success_test_1 = {
+	.setup_settings = settings_link_sec,
 	.send_opcode = MGMT_OP_SET_LINK_SECURITY,
 	.send_param = set_link_sec_off_param,
 	.send_len = sizeof(set_link_sec_off_param),
@@ -2384,31 +2388,6 @@ static void setup_uuid_mix(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_link_sec_callback(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS) {
-		tester_setup_failed();
-		return;
-	}
-
-	tester_print("Link security enabled");
-
-	tester_setup_complete();
-}
-
-static void setup_link_sec(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Enabling link security");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_LINK_SECURITY, data->mgmt_index,
-			sizeof(param), param, setup_link_sec_callback,
-			NULL, NULL);
-}
-
 static void setup_link_sec_powered(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2827,7 +2806,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set link security on - Success 3",
 				&set_link_sec_on_success_test_3,
-				setup_link_sec, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set link security on - Invalid parameters 1",
 				&set_link_sec_on_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -2843,7 +2822,7 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set link security off - Success 1",
 				&set_link_sec_off_success_test_1,
-				setup_link_sec, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set link security off - Success 2",
 				&set_link_sec_off_success_test_2,
 				setup_link_sec_powered, test_command_generic);
