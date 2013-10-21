@@ -33,7 +33,8 @@ android_libhal_internal_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hardware/bt_sock.h \
 					android/hardware/hardware.h \
 					android/cutils/properties.h \
-					android/hal-log.h
+					android/hal-log.h \
+					android/hal-ipc.h android/hal-ipc.c
 
 android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android
 

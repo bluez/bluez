@@ -51,6 +51,7 @@ include $(BUILD_EXECUTABLE)
 include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
+	hal-ipc.c \
 	hal-bluetooth.c \
 	hal-sock.c \
 	hal-hidhost.c \
