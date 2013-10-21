@@ -39,6 +39,9 @@ static bool interface_ready(void)
 
 static int init(bt_callbacks_t *callbacks)
 {
+	struct hal_msg_cmd_register_module cmd;
+	struct hal_msg_rsp_error rsp;
+
 	DBG("");
 
 	if (interface_ready())
@@ -49,7 +52,32 @@ static int init(bt_callbacks_t *callbacks)
 
 	bt_hal_cbacks = callbacks;
 
+	cmd.service_id = HAL_SERVICE_ID_BLUETOOTH;
+
+	if (hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
+						sizeof(cmd), &cmd,
+						sizeof(rsp), &rsp, NULL) < 0) {
+		error("Failed to register 'bluetooth' service");
+		goto fail;
+	}
+
+	cmd.service_id = HAL_SERVICE_ID_SOCK;
+
+	if (hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
+						sizeof(cmd), &cmd,
+						sizeof(rsp), &rsp, NULL) < 0) {
+		error("Failed to register 'socket' service");
+		goto fail;
+	}
+
 	return BT_STATUS_SUCCESS;
+
+fail:
+
+	hal_ipc_cleanup();
+	bt_hal_cbacks = NULL;
+	return BT_STATUS_FAIL;
+
 }
 
 static int enable(void)
