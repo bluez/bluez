@@ -593,6 +593,9 @@ static const struct generic_data set_connectable_on_invalid_index_test = {
 	.expect_status = MGMT_STATUS_INVALID_INDEX,
 };
 
+static const uint16_t settings_powered_connectable[] = {
+						MGMT_OP_SET_CONNECTABLE,
+						MGMT_OP_SET_POWERED, 0 };
 static const uint16_t settings_powered_discoverable[] = {
 						MGMT_OP_SET_CONNECTABLE,
 						MGMT_OP_SET_DISCOVERABLE,
@@ -614,6 +617,7 @@ static const struct generic_data set_connectable_off_success_test_1 = {
 };
 
 static const struct generic_data set_connectable_off_success_test_2 = {
+	.setup_settings = settings_powered_connectable,
 	.send_opcode = MGMT_OP_SET_CONNECTABLE,
 	.send_param = set_connectable_off_param,
 	.send_len = sizeof(set_connectable_off_param),
@@ -644,6 +648,7 @@ static const char set_fast_conn_on_param[] = { 0x01 };
 static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
 
 static const struct generic_data set_fast_conn_on_success_test_1 = {
+	.setup_settings = settings_powered_connectable,
 	.send_opcode = MGMT_OP_SET_FAST_CONNECTABLE,
 	.send_param = set_fast_conn_on_param,
 	.send_len = sizeof(set_fast_conn_on_param),
@@ -776,6 +781,7 @@ static const struct generic_data set_discoverable_on_success_test_1 = {
 };
 
 static const struct generic_data set_discoverable_on_success_test_2 = {
+	.setup_settings = settings_powered_connectable,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
 	.send_param = set_discoverable_on_param,
 	.send_len = sizeof(set_discoverable_on_param),
@@ -1963,22 +1969,6 @@ static void setup_powered_callback(uint8_t status, uint16_t length,
 	tester_setup_complete();
 }
 
-static void setup_powered_connectable(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Enabling connectable and powered");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
-					sizeof(param), param,
-					NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
 static void setup_class(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
@@ -2407,21 +2397,6 @@ static void setup_connectable(const void *test_data)
 					setup_connectable_callback, NULL, NULL);
 }
 
-static void setup_connectable_powered(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Setting controller powered and connectable");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_CONNECTABLE, data->mgmt_index,
-			sizeof(param), param, NULL, NULL, NULL);
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
-					sizeof(param), param,
-					setup_powered_callback, NULL, NULL);
-}
-
 static void setup_link_sec_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2792,14 +2767,14 @@ int main(int argc, char *argv[])
 			setup_connectable, test_command_generic);
 	test_bredrle("Set connectable off - Success 2",
 			&set_connectable_off_success_test_2,
-			setup_connectable_powered, test_command_generic);
+			NULL, test_command_generic);
 	test_bredrle("Set connectable off - Success 3",
 			&set_connectable_off_success_test_3,
 			NULL, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
 			&set_fast_conn_on_success_test_1,
-			setup_powered_connectable, test_command_generic);
+			NULL, test_command_generic);
 
 	test_bredrle("Set pairable on - Success",
 				&set_pairable_on_success_test,
@@ -2852,7 +2827,7 @@ int main(int argc, char *argv[])
 				setup_connectable, test_command_generic);
 	test_bredrle("Set discoverable on - Success 2",
 				&set_discoverable_on_success_test_2,
-				setup_powered_connectable, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 1",
 				&set_discoverable_off_success_test_1,
 				setup_connectable, test_command_generic);
