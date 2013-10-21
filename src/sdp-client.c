@@ -196,14 +196,15 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond,
 							gpointer user_data)
 {
 	struct search_context *ctxt = user_data;
-	int err = 0;
+	int err;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
-		err = EIO;
+		err = -EIO;
 		goto failed;
 	}
 
-	if (sdp_process(ctxt->session) < 0)
+	err = sdp_process(ctxt->session);
+	if (err < 0)
 		goto failed;
 
 	return TRUE;
