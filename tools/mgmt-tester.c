@@ -1191,6 +1191,7 @@ static const struct generic_data set_bredr_off_success_test_1 = {
 };
 
 static const struct generic_data set_bredr_on_success_test_1 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_on_param,
 	.send_len = sizeof(set_bredr_on_param),
@@ -2121,7 +2122,7 @@ static void setup_start_discovery(const void *test_data)
 	}
 }
 
-static void setup_le_callback(uint8_t status, uint16_t length,
+static void setup_nobr_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	if (status != MGMT_STATUS_SUCCESS) {
@@ -2129,24 +2130,20 @@ static void setup_le_callback(uint8_t status, uint16_t length,
 		return;
 	}
 
-	tester_print("Low Energy enabled");
+	tester_print("BR/EDR disabled");
 
 	tester_setup_complete();
 }
 
-static void setup_le_nobr(const void *test_data)
+static void setup_nobr(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	unsigned char on[] = { 0x01 };
 	unsigned char off[] = { 0x00 };
 
-	tester_print("Enabling Low Energy");
+	tester_print("Disabling BR/EDR");
 
-	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
-				sizeof(on), on, NULL,
-				NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
-				sizeof(off), off, setup_le_callback,
+				sizeof(off), off, setup_nobr_callback,
 				NULL, NULL);
 }
 
@@ -2833,7 +2830,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 1",
 				&set_bredr_on_success_test_1,
-				setup_le_nobr, test_command_generic);
+				setup_nobr, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 2",
 				&set_bredr_on_success_test_2,
 				setup_le_nobr_powered, test_command_generic);
