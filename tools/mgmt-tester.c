@@ -1202,6 +1202,7 @@ static const struct generic_data set_bredr_on_success_test_1 = {
 };
 
 static const struct generic_data set_bredr_on_success_test_2 = {
+	.setup_settings = settings_le,
 	.send_opcode = MGMT_OP_SET_BREDR,
 	.send_param = set_bredr_on_param,
 	.send_len = sizeof(set_bredr_on_param),
@@ -2039,7 +2040,7 @@ static void setup_class(const void *test_data)
 					setup_powered_callback, NULL, NULL);
 }
 
-static void setup_le_nobr_powered(const void *test_data)
+static void setup_nobr_powered(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 	unsigned char on[] = { 0x01 };
@@ -2047,8 +2048,6 @@ static void setup_le_nobr_powered(const void *test_data)
 
 	tester_print("Powering on controller (with LE enabled)");
 
-	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
-				sizeof(on), on, NULL, NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_BREDR, data->mgmt_index,
 				sizeof(off), off, NULL, NULL, NULL);
 
@@ -2833,7 +2832,7 @@ int main(int argc, char *argv[])
 				setup_nobr, test_command_generic);
 	test_bredrle("Set BR/EDR on - Success 2",
 				&set_bredr_on_success_test_2,
-				setup_le_nobr_powered, test_command_generic);
+				setup_nobr_powered, test_command_generic);
 	test_bredr("Set BR/EDR off - Not Supported 1",
 				&set_bredr_off_notsupp_test,
 				NULL, test_command_generic);
