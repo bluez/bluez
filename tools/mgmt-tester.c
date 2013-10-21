@@ -355,6 +355,8 @@ static void controller_setup(const void *test_data)
 
 struct generic_data {
 	const uint16_t *setup_settings;
+	bool setup_nobredr;
+	bool setup_limited_discov;
 	uint16_t setup_expect_hci_command;
 	const void *setup_expect_hci_param;
 	uint8_t setup_expect_hci_len;
@@ -2375,12 +2377,22 @@ static void test_setup(const void *test_data)
 			func = setup_complete;
 
 		if (*cmd == MGMT_OP_SET_DISCOVERABLE) {
-			param = discov_param;
+			if (test->setup_limited_discov) {
+				discov_param[0] = 0x02;
+				discov_param[1] = 0x01;
+			}
 			param_size = sizeof(discov_param);
 		}
 
 		mgmt_send(data->mgmt, *cmd, data->mgmt_index,
 				param_size, param, func, data, NULL);
+
+		if (*cmd == MGMT_OP_SET_LE && test->setup_nobredr) {
+			unsigned char off[] = { 0x00 };
+			mgmt_send(data->mgmt, MGMT_OP_SET_BREDR,
+					data->mgmt_index, sizeof(off), off,
+					func, data, NULL);
+		}
 	}
 }
 
