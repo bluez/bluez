@@ -55,6 +55,7 @@ LOCAL_SRC_FILES := \
 	hal-sock.c \
 	hal-hidhost.c \
 	hal-pan.c \
+	hal-av.c \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
