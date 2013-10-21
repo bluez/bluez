@@ -63,7 +63,7 @@ static GIOChannel *hal_notif_io = NULL;
 
 static volatile sig_atomic_t __terminated = 0;
 
-static bool services[HAL_SERVICE_ID_MAX + 1] = {false};
+static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 
 static void service_register(void *buf, uint16_t len)
 {
@@ -117,10 +117,10 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
-	int fd;
-	ssize_t ret;
 	char buf[BLUEZ_HAL_MTU];
 	struct hal_msg_hdr *msg = (void *) buf;
+	ssize_t ret;
+	int fd;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		info("HAL command socket closed, terminating");
