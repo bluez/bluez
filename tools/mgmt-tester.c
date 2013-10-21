@@ -936,6 +936,8 @@ static const struct generic_data set_link_sec_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_link_sec_off_auth_enable_param),
 };
 
+static uint16_t settings_ssp[] = { MGMT_OP_SET_SSP, 0 };
+
 static const char set_ssp_on_param[] = { 0x01 };
 static const char set_ssp_invalid_param[] = { 0x02 };
 static const char set_ssp_garbage_param[] = { 0x01, 0x00 };
@@ -968,6 +970,7 @@ static const struct generic_data set_ssp_on_success_test_2 = {
 };
 
 static const struct generic_data set_ssp_on_success_test_3 = {
+	.setup_settings = settings_ssp,
 	.send_opcode = MGMT_OP_SET_POWERED,
 	.send_param = set_powered_on_param,
 	.send_len = sizeof(set_powered_on_param),
@@ -1013,6 +1016,7 @@ static const char set_hs_garbage_param[] = { 0x01, 0x00 };
 static const char set_hs_settings_param_1[] = { 0xc0, 0x01, 0x00, 0x00 };
 
 static const struct generic_data set_hs_on_success_test = {
+	.setup_settings = settings_ssp,
 	.send_opcode = MGMT_OP_SET_HS,
 	.send_param = set_hs_on_param,
 	.send_len = sizeof(set_hs_on_param),
@@ -1023,11 +1027,13 @@ static const struct generic_data set_hs_on_success_test = {
 };
 
 static const struct generic_data set_hs_on_invalid_param_test_1 = {
+	.setup_settings = settings_ssp,
 	.send_opcode = MGMT_OP_SET_HS,
 	.expect_status = MGMT_STATUS_INVALID_PARAMS,
 };
 
 static const struct generic_data set_hs_on_invalid_param_test_2 = {
+	.setup_settings = settings_ssp,
 	.send_opcode = MGMT_OP_SET_HS,
 	.send_param = set_hs_invalid_param,
 	.send_len = sizeof(set_hs_invalid_param),
@@ -1035,6 +1041,7 @@ static const struct generic_data set_hs_on_invalid_param_test_2 = {
 };
 
 static const struct generic_data set_hs_on_invalid_param_test_3 = {
+	.setup_settings = settings_ssp,
 	.send_opcode = MGMT_OP_SET_HS,
 	.send_param = set_hs_garbage_param,
 	.send_len = sizeof(set_hs_garbage_param),
@@ -1042,6 +1049,7 @@ static const struct generic_data set_hs_on_invalid_param_test_3 = {
 };
 
 static const struct generic_data set_hs_on_invalid_index_test = {
+	.setup_settings = settings_ssp,
 	.send_index_none = true,
 	.send_opcode = MGMT_OP_SET_HS,
 	.send_param = set_hs_on_param,
@@ -2143,31 +2151,6 @@ static void setup_start_discovery(const void *test_data)
 				setup_start_discovery_callback, NULL, NULL);
 }
 
-static void setup_ssp_callback(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS) {
-		tester_setup_failed();
-		return;
-	}
-
-	tester_print("SSP enabled");
-
-	tester_setup_complete();
-}
-
-static void setup_ssp(const void *test_data)
-{
-	struct test_data *data = tester_get_data();
-	unsigned char param[] = { 0x01 };
-
-	tester_print("Enabling SSP");
-
-	mgmt_send(data->mgmt, MGMT_OP_SET_SSP, data->mgmt_index,
-				sizeof(param), param, setup_ssp_callback,
-				NULL, NULL);
-}
-
 static void setup_le_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -2825,7 +2808,7 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Success 3",
 				&set_ssp_on_success_test_3,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set SSP on - Invalid parameters 1",
 				&set_ssp_on_invalid_param_test_1,
 				NULL, test_command_generic);
@@ -2841,19 +2824,19 @@ int main(int argc, char *argv[])
 
 	test_bredrle("Set High Speed on - Success",
 				&set_hs_on_success_test,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 1",
 				&set_hs_on_invalid_param_test_1,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 2",
 				&set_hs_on_invalid_param_test_2,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid parameters 3",
 				&set_hs_on_invalid_param_test_3,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 	test_bredrle("Set High Speed on - Invalid index",
 				&set_hs_on_invalid_index_test,
-				setup_ssp, test_command_generic);
+				NULL, test_command_generic);
 
 	test_bredrle("Set Low Energy on - Success 1",
 				&set_le_on_success_test_1,
