@@ -107,7 +107,13 @@ int haltest_warn(const char *format, ...);
  * Enumerator for discovered devices, to be used as tab completion enum_func
  */
 const char *enum_devices(void *v, int i);
+const char *interface_name(void *v, int i);
+const char *command_name(void *v, int i);
 void add_remote_device(const bt_bdaddr_t *addr);
+
+const struct interface *get_interface(const char *name);
+struct method *get_method(struct method *methods, const char *name);
+struct method *get_command(const char *name);
 
 /* Helper macro for executing function on interface and printing BT_STATUS */
 #define EXEC(f, ...) \

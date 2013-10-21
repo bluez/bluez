@@ -29,33 +29,16 @@ typedef struct split_arg {
 	char ntcopy[1]; /* null terminated copy of argument */
 } split_arg_t;
 
-/* function returns interface of given name or NULL if not found */
-static const struct interface *get_interface(const char *name)
-{
-	int i;
-
-	for (i = 0; interfaces[i] != NULL; ++i) {
-		if (strcmp(interfaces[i]->name, name) == 0)
-			break;
-	}
-
-	return interfaces[i];
-}
-
 /* function returns method of given name or NULL if not found */
-static const struct method *get_method(const char *iname, const char *mname)
+static const struct method *get_interface_method(const char *iname,
+							const char *mname)
 {
-	int i;
 	const struct interface *iface = get_interface(iname);
 
 	if (iface == NULL)
 		return NULL;
 
-	for (i = 0; iface->methods[i].name[0]; ++i) {
-		if (0 == strcmp(iface->methods[i].name, mname))
-			return &iface->methods[i];
-	}
-	return NULL;
+	return get_method(iface->methods, mname);
 }
 
 /* prints matching elements */
@@ -113,12 +96,6 @@ static int split_command(const char *line_buffer, int size,
 	return argc;
 }
 
-/* Function to enumerate interface names */
-static const char *interface_name(void *v, int i)
-{
-	return interfaces[i] ? interfaces[i]->name : NULL;
-}
-
 /* Function to enumerate method names */
 static const char *methods_name(void *v, int i)
 {
@@ -142,7 +119,7 @@ struct command_completion_args {
 /*
  * complete command line
  */
-static void command_completion(struct command_completion_args *args)
+static void tab_completion(struct command_completion_args *args)
 {
 	const char *name = args->typed;
 	const int len = strlen(name);
@@ -211,15 +188,15 @@ static void command_completion(struct command_completion_args *args)
 }
 
 /* interface completion */
-static void interface_completion(split_arg_t *arg)
+static void command_completion(split_arg_t *arg)
 {
 	struct command_completion_args args = {
 		.arg = arg,
 		.typed = arg->ntcopy,
-		.func = interface_name
+		.func = command_name
 	};
 
-	command_completion(&args);
+	tab_completion(&args);
 }
 
 /* method completion */
@@ -235,17 +212,86 @@ static void method_completion(const struct interface *iface, split_arg_t *arg)
 	if (iface == NULL)
 		return;
 
-	command_completion(&args);
+	tab_completion(&args);
+}
+
+static const char *bold = "\x1b[1m";
+static const char *normal = "\x1b[0m";
+
+static bool find_nth_argument(const char *str, int n,
+						const char **s, const char **e)
+{
+	const char *p = str;
+	int argc = 0;
+	*e = NULL;
+
+	while (p != NULL && *p != 0) {
+
+		while (isspace(*p))
+			++p;
+
+		if (n == argc)
+			*s = p;
+
+		if (*p == '[') {
+			p = strchr(p, ']');
+			if (p != NULL)
+				*e = ++p;
+		} else if (*p == '<') {
+			p = strchr(p, '>');
+			if (p != NULL)
+				*e = ++p;
+		} else {
+			*e = strchr(p, ' ');
+			if (*e == NULL)
+				*e = p + strlen(p);
+			p = *e;
+		}
+
+		if (n == argc)
+			break;
+
+		argc++;
+		*e = NULL;
+	}
+	return *e != NULL;
 }
 
 /* prints short help on method for interface */
 static void method_help(struct command_completion_args *args)
 {
+	int argc;
+	const split_arg_t *arg = args->arg;
+	const char *sb = NULL;
+	const char *eb = NULL;
+	const char *arg1 = "";
+	int arg1_size = 0; /* size of method field (for methods > 0) */
+
 	if (args->user_help == NULL)
 		return;
 
-	haltest_info("%s %s %s\n", args->arg->ntcopy,
-		args->arg->next->ntcopy, args->user_help);
+	for (argc = 0; arg != NULL; argc++)
+		arg = arg->next;
+
+	/* Check if this is method from interface */
+	if (get_command(args->arg->ntcopy) == NULL) {
+		/* if so help is missing interface and method name */
+		arg1 = args->arg->next->ntcopy;
+		arg1_size = strlen(arg1) + 1;
+	}
+
+	find_nth_argument(args->user_help, argc - (arg1_size ? 3 : 2),
+								&sb, &eb);
+
+	if (eb != NULL)
+		haltest_info("%s %-*s%.*s%s%.*s%s%s\n", args->arg->ntcopy,
+				arg1_size, arg1,
+				sb - (const char *) args->user_help,
+				args->user_help,
+				bold, eb - sb, sb, normal, eb);
+	else
+		haltest_info("%s %-*s%s\n", args->arg->ntcopy,
+			arg1_size, arg1, args->user_help);
 }
 
 /* So we have empty enumeration */
@@ -254,10 +300,15 @@ static const char *return_null(void *user, int i)
 	return NULL;
 }
 
-/* parameter completion function */
-static void param_completion(int argc, const split_arg_t *arg)
+/*
+ * parameter completion function
+ * argc - number of elements in arg list
+ * arg - list of arguments
+ * megthod - method to get completion from (can be NULL)
+ */
+static void param_completion(int argc, const split_arg_t *arg,
+					const struct method *method, int hlpix)
 {
-	const struct method *method;
 	int i;
 	const char *argv[argc];
 	const split_arg_t *tmp = arg;
@@ -272,9 +323,6 @@ static void param_completion(int argc, const split_arg_t *arg)
 		tmp = tmp->next;
 	}
 
-	/* Find method for <interface, name> pair */
-	method = get_method(argv[0], argv[1]);
-
 	if (method != NULL && method->complete != NULL) {
 		/* ask method for completion function */
 		method->complete(argc, argv, &args.func, &args.user);
@@ -286,7 +334,7 @@ static void param_completion(int argc, const split_arg_t *arg)
 		args.help = method_help;
 		args.user_help = (void *) method->help;
 
-		command_completion(&args);
+		tab_completion(&args);
 	}
 }
 
@@ -300,14 +348,27 @@ void process_tab(const char *line, int len)
 {
 	int argc;
 	static split_arg_t buf[(LINE_BUF_MAX * 2) / sizeof(split_arg_t)];
+	const struct method *method;
 
 	argc = split_command(line, len, buf, sizeof(buf));
 	tab_hit_count++;
 
-	if (argc == 1)
-		interface_completion(buf);
-	else if (argc == 2)
+	if (argc == 0)
+		return;
+
+	if (argc == 1) {
+		command_completion(buf);
+		return;
+	}
+	method = get_command(buf[0].ntcopy);
+	if (method != NULL) {
+		param_completion(argc, buf, method, 1);
+	} else if (argc == 2) {
 		method_completion(get_interface(buf[0].ntcopy), buf);
-	else if (argc > 2)
-		param_completion(argc, buf);
+	} else {
+		/* Find method for <interface, name> pair */
+		method = get_interface_method(buf[0].ntcopy,
+							buf[0].next->ntcopy);
+		param_completion(argc, buf, method, 2);
+	}
 }

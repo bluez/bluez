@@ -34,6 +34,31 @@ const struct interface *interfaces[] = {
 	NULL
 };
 
+static struct method commands[];
+
+struct method *get_method(struct method *methods, const char *name)
+{
+	while (strcmp(methods->name, "") != 0) {
+		if (strcmp(methods->name, name) == 0)
+			return methods;
+		methods++;
+	}
+	return NULL;
+}
+
+/* function returns interface of given name or NULL if not found */
+const struct interface *get_interface(const char *name)
+{
+	int i;
+
+	for (i = 0; interfaces[i] != NULL; ++i) {
+		if (strcmp(interfaces[i]->name, name) == 0)
+			break;
+	}
+
+	return interfaces[i];
+}
+
 int haltest_error(const char *format, ...)
 {
 	va_list args;
@@ -64,6 +89,95 @@ int haltest_warn(const char *format, ...)
 	return ret;
 }
 
+static void help_print_interface(const struct interface *i)
+{
+	struct method *m;
+
+	for (m = i->methods; strcmp(m->name, "") != 0; m++)
+		haltest_info("%s %s %s\n", i->name, m->name,
+						(m->help ? m->help : ""));
+}
+
+/* Help completion */
+static void help_c(int argc, const char **argv,
+					enum_func *penum_func, void **puser)
+{
+	if (argc == 2)
+		*penum_func = interface_name;
+}
+
+/* Help execution */
+static void help_p(int argc, const char **argv)
+{
+	const struct method *m = commands;
+	const struct interface **ip = interfaces;
+	const struct interface *i;
+
+	if (argc == 1) {
+		terminal_print("haltest allows to call Android HAL methods.\n");
+		terminal_print("\nAvailable commands:\n");
+		while (0 != strcmp(m->name, "")) {
+			terminal_print("\t%s %s\n", m->name,
+						(m->help ? m->help : ""));
+			m++;
+		}
+		terminal_print("\nAvailable interfaces to use:\n");
+		while (NULL != *ip) {
+			terminal_print("\t%s\n", (*ip)->name);
+			ip++;
+		}
+		terminal_print("\nTo get help on methods for each interface type:\n");
+		terminal_print("\n\thelp <inerface>\n");
+		terminal_print("\nBasic scenario:\n\tadapter init\n");
+		terminal_print("\tadapter enable\n\tadapter start_discovery\n");
+		terminal_print("\tadapter get_profile_interface handsfree\n");
+		terminal_print("\thandsfree init\n\n");
+		return;
+	}
+	i = get_interface(argv[1]);
+	if (i == NULL) {
+		haltest_error("No such interface\n");
+		return;
+	}
+	help_print_interface(i);
+}
+
+/* quit/exit execution */
+static void quit_p(int argc, const char **argv)
+{
+	exit(0);
+}
+
+/* Commands available without interface */
+static struct method commands[] = {
+	STD_METHODCH(help, "[<interface>]"),
+	STD_METHOD(quit),
+	METHOD("exit", quit_p, NULL, NULL),
+	END_METHOD
+};
+
+/* Gets comman by name */
+struct method *get_command(const char *name)
+{
+	return get_method(commands, name);
+}
+
+/* Function to enumerate interface names */
+const char *interface_name(void *v, int i)
+{
+	return interfaces[i] ? interfaces[i]->name : NULL;
+}
+
+/* Function to enumerate command and interface names */
+const char *command_name(void *v, int i)
+{
+	int cmd_cnt = (int) (sizeof(commands)/sizeof(commands[0]) - 1);
+	if (i >= cmd_cnt)
+		return interface_name(v, i - cmd_cnt);
+	else
+		return commands[i].name;
+}
+
 /*
  * This function changes input parameter line_buffer so it has
  * null termination after each token (due to strtok)
@@ -91,7 +205,7 @@ static void process_line(char *line_buffer)
 	char *argv[10];
 	int argc;
 	int i = 0;
-	int j;
+	struct method *m;
 
 	argc = command_line_to_argv(line_buffer, argv, 10);
 	if (argc < 1)
@@ -103,32 +217,23 @@ static void process_line(char *line_buffer)
 			continue;
 		}
 		if (argc < 2 || strcmp(argv[1], "?") == 0) {
-			struct method *m = &interfaces[i]->methods[0];
-			while (strcmp(m->name, "")) {
-				haltest_info("%s %s %s\n", argv[0],
-						m->name,
-						(m->help ? m->help : ""));
-				m++;
-			}
+			help_print_interface(interfaces[i]);
 			return;
 		}
-		j = 0;
-		while (strcmp(interfaces[i]->methods[j].name, "")) {
-			if (strcmp(interfaces[i]->methods[j].name, argv[1])) {
-				j++;
-				continue;
-			}
-			interfaces[i]->methods[j].func(argc,
-							(const char **)argv);
-			break;
+		m = get_method(interfaces[i]->methods, argv[1]);
+		if (m != NULL) {
+			m->func(argc, (const char **) argv);
+			return;
 		}
-		if (strcmp(interfaces[i]->methods[j].name, "") == 0)
-			printf("No function %s found\n", argv[1]);
-		break;
+		haltest_error("No function %s found\n", argv[1]);
+		return;
 	}
-
-	if (interfaces[i] == NULL)
-		printf("No such interface %s\n", argv[0]);
+	/* No interface, try commands */
+	m = get_command(argv[0]);
+	if (m == NULL)
+		haltest_error("No such command %s\n", argv[0]);
+	else
+		m->func(argc, (const char **) argv);
 }
 
 /* called when there is something on stdin */
