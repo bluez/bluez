@@ -21,14 +21,14 @@
 #include "hal-log.h"
 #include "hal.h"
 
-static const btpan_callbacks_t *bt_pan_cbacks = NULL;
+static const btpan_callbacks_t *cbs = NULL;
 
 static bool interface_ready(void)
 {
-	return bt_pan_cbacks != NULL;
+	return cbs != NULL;
 }
 
-static bt_status_t bt_pan_enable(int local_role)
+static bt_status_t pan_enable(int local_role)
 {
 	DBG("");
 
@@ -38,7 +38,7 @@ static bt_status_t bt_pan_enable(int local_role)
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static int bt_pan_get_local_role(void)
+static int pan_get_local_role(void)
 {
 	DBG("");
 
@@ -48,7 +48,7 @@ static int bt_pan_get_local_role(void)
 	return BTPAN_ROLE_NONE;
 }
 
-static bt_status_t bt_pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
+static bt_status_t pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
 					int remote_role)
 {
 	DBG("");
@@ -62,7 +62,7 @@ static bt_status_t bt_pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_pan_disconnect(const bt_bdaddr_t *bd_addr)
+static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
 {
 	DBG("");
 
@@ -75,11 +75,11 @@ static bt_status_t bt_pan_disconnect(const bt_bdaddr_t *bd_addr)
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_pan_init(const btpan_callbacks_t *callbacks)
+static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 {
 	DBG("");
 
-	bt_pan_cbacks = callbacks;
+	cbs = callbacks;
 
 	/* TODO: start HID Host thread */
 
@@ -88,7 +88,7 @@ static bt_status_t bt_pan_init(const btpan_callbacks_t *callbacks)
 	return BT_STATUS_SUCCESS;
 }
 
-static void bt_pan_cleanup()
+static void pan_cleanup()
 {
 	DBG("");
 
@@ -99,20 +99,20 @@ static void bt_pan_cleanup()
 
 	/* TODO: stop PAN thread */
 
-	bt_pan_cbacks = NULL;
+	cbs = NULL;
 }
 
-static btpan_interface_t bt_pan_if = {
-	.size = sizeof(bt_pan_if),
-	.init = bt_pan_init,
-	.enable = bt_pan_enable,
-	.get_local_role = bt_pan_get_local_role,
-	.connect = bt_pan_connect,
-	.disconnect = bt_pan_disconnect,
-	.cleanup = bt_pan_cleanup
+static btpan_interface_t pan_if = {
+	.size = sizeof(pan_if),
+	.init = pan_init,
+	.enable = pan_enable,
+	.get_local_role = pan_get_local_role,
+	.connect = pan_connect,
+	.disconnect = pan_disconnect,
+	.cleanup = pan_cleanup
 };
 
 btpan_interface_t *bt_get_pan_interface()
 {
-	return &bt_pan_if;
+	return &pan_if;
 }
