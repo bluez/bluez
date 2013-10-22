@@ -34,3 +34,6 @@ typedef void (*bt_adapter_ready)(struct bt_adapter *adapter, int err);
 
 bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
 						bt_adapter_ready func);
+
+void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
+								uint16_t len);

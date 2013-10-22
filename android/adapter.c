@@ -23,10 +23,14 @@
 
 #include <errno.h>
 
+#include <glib.h>
+
 #include "lib/bluetooth.h"
 #include "src/shared/mgmt.h"
 #include "lib/mgmt.h"
 #include "log.h"
+#include "hal-msg.h"
+#include "ipc.h"
 #include "adapter.h"
 
 struct bt_adapter {
@@ -284,4 +288,14 @@ bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
 	}
 
 	return adapter;
+}
+
+void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
+								uint16_t len)
+{
+	switch (opcode) {
+	default:
+		ipc_send_error(io, HAL_SERVICE_ID_BLUETOOTH, HAL_ERROR_FAILED);
+		break;
+	}
 }
