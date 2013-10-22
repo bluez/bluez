@@ -86,6 +86,8 @@ LOCAL_SRC_FILES := \
 	client/if-bt.c \
 	client/if-hh.c \
 
+LOCAL_CFLAGS := -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+
 LOCAL_SHARED_LIBRARIES := libhardware
 
 LOCAL_MODULE_TAGS := optional

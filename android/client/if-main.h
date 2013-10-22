@@ -35,7 +35,10 @@
 #include <hardware/bt_sock.h>
 #include <hardware/bt_hf.h>
 #include <hardware/bt_hl.h>
+
+#if PLATFORM_SDK_VERSION > 17
 #include <hardware/bt_rc.h>
+#endif
 
 #include "textconv.h"
 
