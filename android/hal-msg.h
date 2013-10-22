@@ -32,6 +32,8 @@ struct hal_msg_hdr {
 	uint8_t payload[0];
 } __attribute__((packed));
 
+#define HAL_MSG_MINIMUM_EVENT		0x81
+
 #define HAL_SERVICE_ID_CORE		0
 #define HAL_SERVICE_ID_BLUETOOTH	1
 #define HAL_SERVICE_ID_SOCK		2
