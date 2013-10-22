@@ -27,6 +27,30 @@
 
 bt_callbacks_t *bt_hal_cbacks = NULL;
 
+static void handle_adapter_state_changed(void *buf)
+{
+	struct hal_msg_ev_bt_adapter_state_changed *ev = buf;
+
+	if (bt_hal_cbacks->adapter_state_changed_cb)
+		bt_hal_cbacks->adapter_state_changed_cb(ev->state);
+}
+
+/* will be called from notification thread context */
+void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
+{
+	if (!bt_hal_cbacks)
+		return;
+
+	switch (opcode) {
+	case HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED:
+		handle_adapter_state_changed(buf);
+		break;
+	default:
+		DBG("Unhandled callback opcode=0x%x", opcode);
+		break;
+	}
+}
+
 static bool interface_ready(void)
 {
 	return bt_hal_cbacks != NULL;

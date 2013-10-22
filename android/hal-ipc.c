@@ -27,6 +27,7 @@
 
 #include <cutils/properties.h>
 
+#include "hal.h"
 #include "hal-msg.h"
 #include "hal-log.h"
 #include "hal-ipc.h"
@@ -44,6 +45,9 @@ static pthread_t notif_th = 0;
 static void notification_dispatch(struct hal_msg_hdr *msg, int fd)
 {
 	switch (msg->service_id) {
+	case HAL_SERVICE_ID_BLUETOOTH:
+		bt_notify_adapter(msg->opcode, msg->payload, msg->len);
+		break;
 	default:
 		DBG("Unhandled notification service=%d opcode=0x%x",
 						msg->service_id, msg->opcode);
