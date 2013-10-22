@@ -153,6 +153,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 
 	if (!rsp || rsp_len == 0) {
 		memset(&err, 0, sizeof(err));
+		rsp_len = sizeof(err);
 		rsp = &err;
 	}
 
