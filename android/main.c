@@ -39,10 +39,6 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#if defined(ANDROID)
-#include <private/android_filesystem_config.h>
-#endif
-
 #include <glib.h>
 
 #include "log.h"
