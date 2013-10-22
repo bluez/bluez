@@ -805,6 +805,31 @@ static void print_sync_flow_control(uint8_t enable)
 	print_field("Flow control: %s (0x%2.2x)", str, enable);
 }
 
+static void print_host_flow_control(uint8_t enable)
+{
+	const char *str;
+
+	switch (enable) {
+	case 0x00:
+		str = "Off";
+		break;
+	case 0x01:
+		str = "ACL Data Packets";
+		break;
+	case 0x02:
+		str = "Synchronous Data Packets";
+		break;
+	case 0x03:
+		str = "ACL and Synchronous Data Packets";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Flow control: %s (0x%2.2x)", str, enable);
+}
+
 static void print_voice_setting(uint16_t setting)
 {
 	print_field("Setting: 0x%4.4x", btohs(setting));
@@ -3787,6 +3812,13 @@ static void write_sync_flow_control_cmd(const void *data, uint8_t size)
 	print_sync_flow_control(cmd->enable);
 }
 
+static void set_host_flow_control_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_host_flow_control *cmd = data;
+
+	print_host_flow_control(cmd->enable);
+}
+
 static void host_buffer_size_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_host_buffer_size *cmd = data;
@@ -5142,7 +5174,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c2f,  84, "Write Sync Flow Control Enable",
 				write_sync_flow_control_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c31,  85, "Set Host Controller To Host Flow" },
+	{ 0x0c31,  85, "Set Controller To Host Flow Control",
+				set_host_flow_control_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c33,  86, "Host Buffer Size",
 				host_buffer_size_cmd, 7, true,
 				status_rsp, 1, true },

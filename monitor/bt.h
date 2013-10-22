@@ -770,6 +770,11 @@ struct bt_hci_cmd_write_sync_flow_control {
 	uint8_t  enable;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SET_HOST_FLOW_CONTROL	0x0c31
+struct bt_hci_cmd_set_host_flow_control {
+	uint8_t  enable;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_HOST_BUFFER_SIZE		0x0c33
 struct bt_hci_cmd_host_buffer_size {
 	uint16_t acl_mtu;
