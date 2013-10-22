@@ -196,31 +196,23 @@ static gboolean search_process_cb(GIOChannel *chan, GIOCondition cond,
 							gpointer user_data)
 {
 	struct search_context *ctxt = user_data;
-	int err;
 
 	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
-		err = -EIO;
-		goto failed;
-	}
-
-	err = sdp_process(ctxt->session);
-	if (err < 0)
-		goto failed;
-
-	return TRUE;
-
-failed:
-	if (err) {
 		sdp_close(ctxt->session);
 		ctxt->session = NULL;
 
 		if (ctxt->cb)
-			ctxt->cb(NULL, err, ctxt->user_data);
+			ctxt->cb(NULL, -EIO, ctxt->user_data);
 
 		search_context_cleanup(ctxt);
+		return FALSE;
 	}
 
-	return FALSE;
+	/* If sdp_process fails it calls search_completed_cb */
+	if (sdp_process(ctxt->session) < 0)
+		return FALSE;
+
+	return TRUE;
 }
 
 static gboolean connect_watch(GIOChannel *chan, GIOCondition cond,
