@@ -104,8 +104,8 @@ static int enable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_BT_ENABLE, 0, NULL,
-								0, NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_MSG_OP_BT_ENABLE, 0,
+							NULL, 0, NULL, NULL);
 }
 
 static int disable(void)
@@ -115,8 +115,8 @@ static int disable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_BT_DISABLE, 0, NULL,
-								0, NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_MSG_OP_BT_DISABLE, 0,
+							NULL, 0, NULL, NULL);
 }
 
 static void cleanup(void)
