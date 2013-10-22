@@ -98,9 +98,19 @@ fail:
 
 static int enable(void)
 {
+	int ret;
+
 	DBG("");
 
-	return BT_STATUS_UNSUPPORTED;
+	if (!interface_ready())
+		return BT_STATUS_NOT_READY;
+
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_BT_ENABLE, 0, NULL,
+								0, NULL, NULL);
+	if (ret < 0)
+		return -ret;
+
+	return BT_STATUS_SUCCESS;
 }
 
 static int disable(void)
