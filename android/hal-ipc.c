@@ -260,8 +260,10 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	struct hal_msg_rsp_error err;
 
-	if (cmd_sk < 0)
-		return -EBADF;
+	if (cmd_sk < 0) {
+		error("Invalid cmd socket passed to hal_ipc_cmd, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	if (!rsp || rsp_len == 0) {
 		memset(&err, 0, sizeof(err));
