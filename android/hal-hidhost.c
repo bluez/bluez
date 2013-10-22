@@ -24,7 +24,7 @@
 #include "hal-msg.h"
 #include "hal-ipc.h"
 
-bthh_callbacks_t *bt_hh_cbacks;
+static const bthh_callbacks_t *bt_hh_cbacks;
 
 static bool interface_ready(void)
 {

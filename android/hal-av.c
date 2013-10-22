@@ -21,7 +21,7 @@
 #include "hal-log.h"
 #include "hal.h"
 
-const btav_callbacks_t *cbs = NULL;
+static const btav_callbacks_t *cbs = NULL;
 
 static bool interface_ready(void)
 {

@@ -25,7 +25,7 @@
 #include "hal-msg.h"
 #include "hal-ipc.h"
 
-bt_callbacks_t *bt_hal_cbacks = NULL;
+static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 static void handle_adapter_state_changed(void *buf)
 {

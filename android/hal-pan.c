@@ -21,7 +21,7 @@
 #include "hal-log.h"
 #include "hal.h"
 
-const btpan_callbacks_t *bt_pan_cbacks = NULL;
+static const btpan_callbacks_t *bt_pan_cbacks = NULL;
 
 static bool interface_ready(void)
 {
