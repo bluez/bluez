@@ -34,7 +34,7 @@ static bool interface_ready(void)
 	return bt_hh_cbacks != NULL;
 }
 
-static bt_status_t bt_hidhost_connect(bt_bdaddr_t *bd_addr)
+static bt_status_t hh_connect(bt_bdaddr_t *bd_addr)
 {
 	struct hal_msg_cmd_bt_hid_connect cmd;
 
@@ -57,7 +57,7 @@ static bt_status_t bt_hidhost_connect(bt_bdaddr_t *bd_addr)
 	return BT_STATUS_SUCCESS;
 }
 
-static bt_status_t bt_hidhost_disconnect(bt_bdaddr_t *bd_addr)
+static bt_status_t hh_disconnect(bt_bdaddr_t *bd_addr)
 {
 	struct hal_msg_cmd_bt_hid_disconnect cmd;
 
@@ -80,7 +80,7 @@ static bt_status_t bt_hidhost_disconnect(bt_bdaddr_t *bd_addr)
 	return BT_STATUS_SUCCESS;
 }
 
-static bt_status_t bt_hidhost_virtual_unplug(bt_bdaddr_t *bd_addr)
+static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 {
 	DBG("");
 
@@ -93,8 +93,7 @@ static bt_status_t bt_hidhost_virtual_unplug(bt_bdaddr_t *bd_addr)
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_set_info(bt_bdaddr_t *bd_addr,
-						bthh_hid_info_t hid_info)
+static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 {
 	DBG("");
 
@@ -107,7 +106,7 @@ static bt_status_t bt_hidhost_set_info(bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_get_protocol(bt_bdaddr_t *bd_addr,
+static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocolMode)
 {
 	DBG("");
@@ -121,7 +120,7 @@ static bt_status_t bt_hidhost_get_protocol(bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_set_protocol(bt_bdaddr_t *bd_addr,
+static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocolMode)
 {
 	DBG("");
@@ -135,7 +134,7 @@ static bt_status_t bt_hidhost_set_protocol(bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_get_report(bt_bdaddr_t *bd_addr,
+static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 						bthh_report_type_t reportType,
 						uint8_t reportId,
 						int bufferSize)
@@ -151,7 +150,7 @@ static bt_status_t bt_hidhost_get_report(bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_set_report(bt_bdaddr_t *bd_addr,
+static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 						bthh_report_type_t reportType,
 						char *report)
 {
@@ -166,7 +165,7 @@ static bt_status_t bt_hidhost_set_report(bt_bdaddr_t *bd_addr,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_send_data(bt_bdaddr_t *bd_addr, char *data)
+static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 {
 	DBG("");
 
@@ -179,7 +178,7 @@ static bt_status_t bt_hidhost_send_data(bt_bdaddr_t *bd_addr, char *data)
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t bt_hidhost_init(bthh_callbacks_t *callbacks)
+static bt_status_t hh_init(bthh_callbacks_t *callbacks)
 {
 	struct hal_msg_cmd_register_module cmd;
 	DBG("");
@@ -199,7 +198,7 @@ static bt_status_t bt_hidhost_init(bthh_callbacks_t *callbacks)
 	return BT_STATUS_SUCCESS;
 }
 
-static void bt_hidhost_cleanup(void)
+static void hh_cleanup(void)
 {
 	DBG("");
 
@@ -209,22 +208,22 @@ static void bt_hidhost_cleanup(void)
 	bt_hh_cbacks = NULL;
 }
 
-static bthh_interface_t bt_hidhost_if = {
-	.size = sizeof(bt_hidhost_if),
-	.init = bt_hidhost_init,
-	.connect = bt_hidhost_connect,
-	.disconnect = bt_hidhost_disconnect,
-	.virtual_unplug = bt_hidhost_virtual_unplug,
-	.set_info = bt_hidhost_set_info,
-	.get_protocol = bt_hidhost_get_protocol,
-	.set_protocol = bt_hidhost_set_protocol,
-	.get_report = bt_hidhost_get_report,
-	.set_report = bt_hidhost_set_report,
-	.send_data = bt_hidhost_send_data,
-	.cleanup = bt_hidhost_cleanup
+static bthh_interface_t hh_if = {
+	.size = sizeof(hh_if),
+	.init = hh_init,
+	.connect = hh_connect,
+	.disconnect = hh_disconnect,
+	.virtual_unplug = hh_virtual_unplug,
+	.set_info = hh_set_info,
+	.get_protocol = hh_get_protocol,
+	.set_protocol = hh_set_protocol,
+	.get_report = hh_get_report,
+	.set_report = hh_set_report,
+	.send_data = hh_send_data,
+	.cleanup = hh_cleanup
 };
 
 bthh_interface_t *bt_get_hidhost_interface(void)
 {
-	return &bt_hidhost_if;
+	return &hh_if;
 }
