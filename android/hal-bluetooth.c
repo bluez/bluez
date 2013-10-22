@@ -115,12 +115,19 @@ static int enable(void)
 
 static int disable(void)
 {
+	int ret;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_BT_DISABLE, 0, NULL,
+								0, NULL, NULL);
+	if (ret < 0)
+		return -ret;
+
+	return BT_STATUS_SUCCESS;
 }
 
 static void cleanup(void)
