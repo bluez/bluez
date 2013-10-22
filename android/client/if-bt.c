@@ -31,14 +31,14 @@ const bt_interface_t *if_bluetooth;
 
 static char *bdaddr2str(const bt_bdaddr_t *bd_addr)
 {
-	static char buf[18];
+	static char buf[MAX_ADDR_STR_LEN];
 
 	return bt_bdaddr_t2str(bd_addr, buf);
 }
 
 static char *btuuid2str(const bt_uuid_t *uuid)
 {
-	static char buf[39];
+	static char buf[MAX_UUID_STR_LEN];
 
 	return bt_uuid_t2str(uuid, buf);
 }
@@ -239,7 +239,7 @@ void add_remote_device(const bt_bdaddr_t *addr)
 
 const char *enum_devices(void *v, int i)
 {
-	static char buf[19];
+	static char buf[MAX_ADDR_STR_LEN];
 
 	if (i >= remote_devices_cnt)
 		return NULL;
@@ -310,7 +310,7 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
  * Buffer for remote addres that came from one of bind request.
  * It's stored for command completion.
  */
-static char last_remote_addr[18];
+static char last_remote_addr[MAX_ADDR_STR_LEN];
 static bt_ssp_variant_t last_ssp_variant = (bt_ssp_variant_t)-1;
 
 static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,

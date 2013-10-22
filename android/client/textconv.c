@@ -137,7 +137,7 @@ char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
 {
 	const char *p = (const char *) bd_addr;
 
-	snprintf(buf, 18, "%02x:%02x:%02x:%02x:%02x:%02x",
+	snprintf(buf, MAX_ADDR_STR_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
 					p[0], p[1], p[2], p[3], p[4], p[5]);
 
 	return buf;
