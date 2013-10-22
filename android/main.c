@@ -151,6 +151,9 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		goto fail;
 	}
 
+	DBG("service_id %u opcode %u len %u", msg->service_id, msg->opcode,
+								msg->len);
+
 	switch (msg->service_id) {
 	case HAL_SERVICE_ID_CORE:
 		handle_service_core(msg->opcode, buf + sizeof(*msg), msg->len);
