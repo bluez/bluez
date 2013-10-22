@@ -249,7 +249,6 @@ struct hal_msg_cmd_bt_hid_send_data {
 
 /* Notifications and confirmations */
 
-#define HAL_MSG_EV_BT_ERROR			0x80
 
 #define HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED	0x81
 struct hal_msg_ev_bt_adapter_state_changed {
