@@ -706,6 +706,17 @@ struct bt_hci_cmd_write_voice_setting {
 	uint16_t setting;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_NUM_BROADCAST_RETRANS	0x0c29
+struct bt_hci_rsp_read_num_broadcast_retrans {
+	uint8_t  status;
+	uint8_t  num_retrans;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_NUM_BROADCAST_RETRANS	0x0c2a
+struct bt_hci_cmd_write_num_broadcast_retrans {
+	uint8_t  num_retrans;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_HOLD_MODE_ACTIVITY	0x0c2b
 struct bt_hci_rsp_read_hold_mode_activity {
 	uint8_t  status;

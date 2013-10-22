@@ -740,6 +740,11 @@ static void print_dev_class(const uint8_t *dev_class)
 				"  Unknown service class (0x%2.2x)", mask);
 }
 
+static void print_num_broadcast_retrans(uint8_t num_retrans)
+{
+	print_field("Number of broadcast retransmissions: %u", num_retrans);
+}
+
 static void print_hold_mode_activity(uint8_t activity)
 {
 	print_field("Activity: 0x%2.2x", activity);
@@ -3656,6 +3661,21 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void read_num_broadcast_retrans_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_num_broadcast_retrans *rsp = data;
+
+	print_status(rsp->status);
+	print_num_broadcast_retrans(rsp->num_retrans);
+}
+
+static void write_num_broadcast_retrans_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_num_broadcast_retrans *cmd = data;
+
+	print_num_broadcast_retrans(cmd->num_retrans);
+}
+
 static void read_hold_mode_activity_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_hold_mode_activity *rsp = data;
@@ -5016,8 +5036,12 @@ static const struct opcode_data opcode_table[] = {
 				status_rsp, 1, true },
 	{ 0x0c27,  76, "Read Automatic Flush Timeout" },
 	{ 0x0c28,  77, "Write Automatic Flush Timeout" },
-	{ 0x0c29,  78, "Read Num Broadcast Retransmissions" },
-	{ 0x0c2a,  79, "Write Num Broadcast Retransmissions" },
+	{ 0x0c29,  78, "Read Num Broadcast Retransmissions",
+				null_cmd, 0, true,
+				read_num_broadcast_retrans_rsp, 2, true },
+	{ 0x0c2a,  79, "Write Num Broadcast Retransmissions",
+				write_num_broadcast_retrans_cmd, 1, true,
+				status_rsp, 1, true },
 	{ 0x0c2b,  80, "Read Hold Mode Activity",
 				null_cmd, 0, true,
 				read_hold_mode_activity_rsp, 2, true },
