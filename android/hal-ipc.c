@@ -251,7 +251,7 @@ void hal_ipc_cleanup(void)
 }
 
 int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
-					size_t rsp_len, void *rsp, int *fd)
+					size_t *rsp_len, void *rsp, int *fd)
 {
 	ssize_t ret;
 	struct msghdr msg;
@@ -259,15 +259,16 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	struct hal_msg_hdr hal_msg;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	struct hal_msg_rsp_error err;
+	size_t err_len = sizeof(err);
 
 	if (cmd_sk < 0) {
 		error("Invalid cmd socket passed to hal_ipc_cmd, aborting");
 		exit(EXIT_FAILURE);
 	}
 
-	if (!rsp || rsp_len == 0) {
+	if (!rsp || !rsp_len) {
 		memset(&err, 0, sizeof(err));
-		rsp_len = sizeof(err);
+		rsp_len = &err_len;
 		rsp = &err;
 	}
 
@@ -303,7 +304,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	iv[0].iov_len = sizeof(hal_msg);
 
 	iv[1].iov_base = rsp;
-	iv[1].iov_len = rsp_len;
+	iv[1].iov_len = *rsp_len;
 
 	msg.msg_iov = iv;
 	msg.msg_iovlen = 2;
@@ -342,7 +343,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 
 	if (hal_msg.opcode == HAL_MSG_OP_ERROR) {
 		struct hal_msg_rsp_error *err = rsp;
-		return -err->status;
+		return err->status;
 	}
 
 	/* Receive auxiliary data in msg */
@@ -361,5 +362,8 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 		}
 	}
 
-	return hal_msg.len;
+	if (rsp_len)
+		*rsp_len = hal_msg.len;
+
+	return BT_STATUS_SUCCESS;
 }
