@@ -146,9 +146,15 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	struct iovec iv[2];
 	struct hal_msg_hdr hal_msg;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
+	struct hal_msg_rsp_error err;
 
 	if (cmd_sk < 0)
 		return -EBADF;
+
+	if (!rsp || rsp_len == 0) {
+		memset(&err, 0, sizeof(err));
+		rsp = &err;
+	}
 
 	memset(&msg, 0, sizeof(msg));
 	memset(&hal_msg, 0, sizeof(hal_msg));
