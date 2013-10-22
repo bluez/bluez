@@ -33,9 +33,15 @@
 #include <stdbool.h>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
+
 #include <sys/signalfd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+#if defined(ANDROID)
+#include <private/android_filesystem_config.h>
+#endif
 
 #include <glib.h>
 
@@ -512,6 +518,39 @@ static void cleanup_hal_connection(void)
 	}
 }
 
+static bool set_capabilities(void)
+{
+#if defined(ANDROID)
+	struct __user_cap_header_struct header;
+	struct __user_cap_data_struct cap;
+
+	header.version = _LINUX_CAPABILITY_VERSION;
+	header.pid = 0;
+
+	cap.effective = cap.permitted =
+		CAP_TO_MASK(CAP_NET_ADMIN) |
+		CAP_TO_MASK(CAP_NET_BIND_SERVICE);
+	cap.inheritable = 0;
+
+	/* TODO: Move to cap_set_proc once bionic support it */
+	if (capset(&header, &cap) < 0) {
+		error("%s: capset(): %s", __func__, strerror(errno));
+		return false;
+	}
+
+	/* TODO: Move to cap_get_proc once bionic support it */
+	if (capget(&header, &cap) < 0) {
+		error("%s: capget(): %s", __func__, strerror(errno));
+		return false;
+	}
+
+	DBG("Caps: eff: 0x%x, perm: 0x%x, inh: 0x%x", cap.effective,
+					cap.permitted, cap.inheritable);
+
+#endif
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
@@ -544,6 +583,9 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 
 	__btd_log_init("*", 0);
+
+	if (!set_capabilities())
+		return EXIT_FAILURE;
 
 	if (!init_mgmt_interface())
 		return EXIT_FAILURE;
