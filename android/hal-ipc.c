@@ -88,8 +88,13 @@ static void *notification_handler(void *data)
 		}
 
 		/* socket was shutdown */
-		if (ret == 0)
-			break;
+		if (ret == 0) {
+			if (cmd_sk == -1)
+				break;
+
+			error("Notification socket closed, aborting");
+			exit(EXIT_FAILURE);
+		}
 
 		if (ret < (ssize_t) sizeof(*hal_msg)) {
 			error("Too small notification (%zd bytes), aborting",
