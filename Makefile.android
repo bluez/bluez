@@ -55,6 +55,8 @@ android_haltest_LDADD = android/libhal-internal.la
 
 android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android
 
+android_haltest_LDFLAGS = -pthread
+
 endif
 
 EXTRA_DIST += android/Android.mk android/log.c android/device.c \
