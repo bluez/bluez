@@ -1649,6 +1649,14 @@ static void print_channel_map(const uint8_t *map)
 	print_field("Channel map: 0x%s", str);
 }
 
+static void print_flush_timeout(uint16_t timeout)
+{
+	if (timeout)
+		print_timeout(timeout);
+	else
+		print_field("Timeout: No Automatic Flush");
+}
+
 void packet_print_version(const char *label, uint8_t version,
 				const char *sublabel, uint16_t subversion)
 {
@@ -3661,6 +3669,38 @@ static void write_voice_setting_cmd(const void *data, uint8_t size)
 	print_voice_setting(cmd->setting);
 }
 
+static void read_auto_flush_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_auto_flush_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+}
+
+static void read_auto_flush_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_auto_flush_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_flush_timeout(rsp->timeout);
+}
+
+static void write_auto_flush_timeout_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_write_auto_flush_timeout *cmd = data;
+
+	print_handle(cmd->handle);
+	print_flush_timeout(cmd->timeout);
+}
+
+static void write_auto_flush_timeout_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_write_auto_flush_timeout *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+}
+
 static void read_num_broadcast_retrans_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_num_broadcast_retrans *rsp = data;
@@ -5034,8 +5074,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c26,  75, "Write Voice Setting",
 				write_voice_setting_cmd, 2, true,
 				status_rsp, 1, true },
-	{ 0x0c27,  76, "Read Automatic Flush Timeout" },
-	{ 0x0c28,  77, "Write Automatic Flush Timeout" },
+	{ 0x0c27,  76, "Read Automatic Flush Timeout",
+				read_auto_flush_timeout_cmd, 2, true,
+				read_auto_flush_timeout_rsp, 5, true },
+	{ 0x0c28,  77, "Write Automatic Flush Timeout",
+				write_auto_flush_timeout_cmd, 4, true,
+				write_auto_flush_timeout_rsp, 3, true },
 	{ 0x0c29,  78, "Read Num Broadcast Retransmissions",
 				null_cmd, 0, true,
 				read_num_broadcast_retrans_rsp, 2, true },

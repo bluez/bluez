@@ -706,6 +706,26 @@ struct bt_hci_cmd_write_voice_setting {
 	uint16_t setting;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_AUTO_FLUSH_TIMEOUT	0x0c27
+struct bt_hci_cmd_read_auto_flush_timeout {
+	uint16_t handle;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_auto_flush_timeout {
+	uint8_t  status;
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_WRITE_AUTO_FLUSH_TIMEOUT	0x0c28
+struct bt_hci_cmd_write_auto_flush_timeout {
+	uint16_t handle;
+	uint16_t timeout;
+} __attribute__ ((packed));
+struct bt_hci_rsp_write_auto_flush_timeout {
+	uint8_t  status;
+	uint16_t handle;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_NUM_BROADCAST_RETRANS	0x0c29
 struct bt_hci_rsp_read_num_broadcast_retrans {
 	uint8_t  status;
