@@ -31,6 +31,7 @@
 
 const struct interface *interfaces[] = {
 	&bluetooth_if,
+	&hh_if,
 	NULL
 };
 

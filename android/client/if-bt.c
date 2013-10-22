@@ -805,7 +805,7 @@ static void get_profile_interface_p(int argc, const char **argv)
 	else if (strcmp(BT_PROFILE_SOCKETS_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_sock is there */
 	else if (strcmp(BT_PROFILE_HIDHOST_ID, id) == 0)
-		pif = &dummy; /* TODO: change when if_hh is there */
+		pif = (const void **)&if_hh;
 	else if (strcmp(BT_PROFILE_PAN_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_pan is there */
 	else if (strcmp(BT_PROFILE_AV_RC_ID, id) == 0)

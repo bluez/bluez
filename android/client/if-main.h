@@ -41,6 +41,7 @@
 
 /* Interfaces from hal that can be populated during application lifetime */
 extern const bt_interface_t *if_bluetooth;
+extern const bthh_interface_t *if_hh;
 
 /*
  * Structure defines top level interfaces that can be used in test tool
@@ -52,6 +53,7 @@ struct interface {
 };
 
 extern const struct interface bluetooth_if;
+extern const struct interface hh_if;
 
 /* Interfaces that will show up in tool (first part of command line) */
 extern const struct interface *interfaces[];
