@@ -29,6 +29,7 @@ struct hal_msg_hdr {
 	uint8_t service_id;
 	uint8_t opcode;
 	uint16_t len;
+	uint8_t payload[0];
 } __attribute__((packed));
 
 #define HAL_SERVICE_ID_CORE		0
