@@ -47,6 +47,15 @@ struct hal_msg_hdr {
 /* Core Service */
 
 #define HAL_ERROR_FAILED		0x01
+#define HAL_ERROR_NOT_READY		0x02
+#define HAL_ERROR_NOMEM			0x03
+#define HAL_ERROR_BUSY			0x04
+#define HAL_ERROR_DONE			0x05
+#define HAL_ERROR_UNSUPPORTED		0x06
+#define HAL_ERROR_INVALID		0x07
+#define HAL_ERROR_UNHANDLED		0x08
+#define HAL_ERROR_AUTH_FAILURE		0x09
+#define HAL_ERROR_REMOTE_DEVICE_DOWN	0x0a
 
 #define HAL_MSG_OP_ERROR		0x00
 struct hal_msg_rsp_error {
