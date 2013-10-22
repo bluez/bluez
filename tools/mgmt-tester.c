@@ -701,6 +701,54 @@ static const struct generic_data set_connectable_off_success_test_3 = {
 	.expect_hci_len = sizeof(set_connectable_off_scan_enable_param),
 };
 
+static const char set_connectable_off_le_settings_1[] = { 0x00, 0x02, 0x00, 0x00 };
+static const char set_connectable_off_le_settings_2[] = { 0x01, 0x06, 0x00, 0x00 };
+
+static uint16_t settings_le_connectable[] = { MGMT_OP_SET_LE,
+						MGMT_OP_SET_CONNECTABLE, 0 };
+
+static const struct generic_data set_connectable_off_le_test_1 = {
+	.setup_settings = settings_le_connectable,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_le_settings_1,
+	.expect_len = sizeof(set_connectable_off_le_settings_1),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+};
+
+static uint16_t settings_powered_le_connectable_advertising[] = {
+					MGMT_OP_SET_LE,
+					MGMT_OP_SET_CONNECTABLE,
+					MGMT_OP_SET_ADVERTISING,
+					MGMT_OP_SET_POWERED, 0 };
+
+static uint8_t set_connectable_off_adv_param[] = {
+		0x00, 0x08,				/* min_interval */
+		0x00, 0x08,				/* max_interval */
+		0x03,					/* type */
+		0x00,					/* own_addr_type */
+		0x00,					/* direct_addr_type */
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	/* direct_addr */
+		0x07,					/* channel_map */
+		0x00,					/* filter_policy */
+};
+
+static const struct generic_data set_connectable_off_le_test_2 = {
+	.setup_settings = settings_powered_le_connectable_advertising,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_le_settings_2,
+	.expect_len = sizeof(set_connectable_off_le_settings_2),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
+	.expect_hci_param = set_connectable_off_adv_param,
+	.expect_hci_len = sizeof(set_connectable_off_adv_param),
+};
+
 static const char set_fast_conn_on_param[] = { 0x01 };
 static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
 
@@ -2707,6 +2755,13 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set connectable off - Success 3",
 				&set_connectable_off_success_test_3,
+				NULL, test_command_generic);
+
+	test_le("Set connectable off (LE-only) - Success 1",
+				&set_connectable_off_le_test_1,
+				NULL, test_command_generic);
+	test_le("Set connectable off (LE-only) - Success 2",
+				&set_connectable_off_le_test_2,
 				NULL, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
