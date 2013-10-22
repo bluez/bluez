@@ -19,9 +19,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include <hardware/bluetooth.h>
-#include <hardware/bt_hh.h>
-
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"

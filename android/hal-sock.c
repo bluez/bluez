@@ -17,9 +17,6 @@
 
 #include <stdlib.h>
 
-#include <hardware/bluetooth.h>
-#include <hardware/bt_sock.h>
-
 #include "hal-log.h"
 #include "hal.h"
 

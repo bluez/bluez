@@ -20,11 +20,6 @@
 #include <stdbool.h>
 #include <string.h>
 
-#include <hardware/bluetooth.h>
-#include <hardware/bt_sock.h>
-#include <hardware/bt_hh.h>
-#include <hardware/bt_pan.h>
-
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"

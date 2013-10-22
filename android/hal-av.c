@@ -18,9 +18,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include <hardware/bluetooth.h>
-#include <hardware/bt_av.h>
-
 #include "hal-log.h"
 #include "hal.h"
 
