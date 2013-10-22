@@ -748,6 +748,17 @@ struct bt_hci_cmd_write_hold_mode_activity {
 	uint8_t  activity;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_READ_TX_POWER		0x0c2d
+struct bt_hci_cmd_read_tx_power {
+	uint16_t handle;
+	uint8_t  type;
+} __attribute__ ((packed));
+struct bt_hci_rsp_read_tx_power {
+	uint8_t  status;
+	uint16_t handle;
+	int8_t   level;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_SYNC_FLOW_CONTROL	0x0c2e
 struct bt_hci_rsp_read_sync_flow_control {
 	uint8_t  status;

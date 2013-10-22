@@ -762,6 +762,30 @@ static void print_hold_mode_activity(uint8_t activity)
 		print_field("  Suspend Periodic Inquiries");
 }
 
+static void print_power_type(uint8_t type)
+{
+	const char *str;
+
+	switch (type) {
+	case 0x00:
+		str = "Current Transmit Power Level";
+		break;
+	case 0x01:
+		str = "Maximum Transmit Power Level";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, type);
+}
+
+static void print_power_level(int8_t level)
+{
+	print_field("TX power: %d dBm", level);
+}
+
 static void print_sync_flow_control(uint8_t enable)
 {
 	const char *str;
@@ -3731,6 +3755,23 @@ static void write_hold_mode_activity_cmd(const void *data, uint8_t size)
 	print_hold_mode_activity(cmd->activity);
 }
 
+static void read_tx_power_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_read_tx_power *cmd = data;
+
+	print_handle(cmd->handle);
+	print_power_type(cmd->type);
+}
+
+static void read_tx_power_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_read_tx_power *rsp = data;
+
+	print_status(rsp->status);
+	print_handle(rsp->handle);
+	print_power_level(rsp->level);
+}
+
 static void read_sync_flow_control_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_sync_flow_control *rsp = data;
@@ -3969,14 +4010,14 @@ static void read_inquiry_resp_tx_power_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_read_inquiry_resp_tx_power *rsp = data;
 
 	print_status(rsp->status);
-	print_field("TX power: %d dBm", rsp->level);
+	print_power_level(rsp->level);
 }
 
 static void write_inquiry_tx_power_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_write_inquiry_tx_power *cmd = data;
 
-	print_field("TX power: %d dBm", cmd->level);
+	print_power_level(cmd->level);
 }
 
 static void enhanced_flush_cmd(const void *data, uint8_t size)
@@ -4499,7 +4540,7 @@ static void le_read_adv_tx_power_rsp(const void *data, uint8_t size)
 	const struct bt_hci_rsp_le_read_adv_tx_power *rsp = data;
 
 	print_status(rsp->status);
-	print_field("TX power: %d dBm", rsp->level);
+	print_power_level(rsp->level);
 }
 
 static void le_set_adv_data_cmd(const void *data, uint8_t size)
@@ -5092,7 +5133,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c2c,  81, "Write Hold Mode Activity",
 				write_hold_mode_activity_cmd, 1, true,
 				status_rsp, 1, true },
-	{ 0x0c2d,  82, "Read Transmit Power Level" },
+	{ 0x0c2d,  82, "Read Transmit Power Level",
+				read_tx_power_cmd, 3, true,
+				read_tx_power_rsp, 4, true },
 	{ 0x0c2e,  83, "Read Sync Flow Control Enable",
 				null_cmd, 0, true,
 				read_sync_flow_control_rsp, 2, true },
