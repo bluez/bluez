@@ -20,7 +20,7 @@
 #include "hal-log.h"
 #include "hal.h"
 
-static bt_status_t btsock_listen_rfcomm(const char *service_name,
+static bt_status_t sock_listen_rfcomm(const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
@@ -29,7 +29,7 @@ static bt_status_t btsock_listen_rfcomm(const char *service_name,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t listen(btsock_type_t type, const char *service_name,
+static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
@@ -44,8 +44,8 @@ static bt_status_t listen(btsock_type_t type, const char *service_name,
 
 	switch (type) {
 	case BTSOCK_RFCOMM:
-		return btsock_listen_rfcomm(service_name, uuid, chan,
-								sock, flags);
+		return sock_listen_rfcomm(service_name, uuid, chan, sock,
+									flags);
 	default:
 		error("%s: Socket type %d not supported", __func__, type);
 		break;
@@ -54,7 +54,7 @@ static bt_status_t listen(btsock_type_t type, const char *service_name,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static bt_status_t connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
+static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
@@ -69,13 +69,13 @@ static bt_status_t connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 	return BT_STATUS_UNSUPPORTED;
 }
 
-static btsock_interface_t btsock_if = {
-	sizeof(btsock_if),
-	listen,
-	connect
+static btsock_interface_t sock_if = {
+	sizeof(sock_if),
+	sock_listen,
+	sock_connect
 };
 
 btsock_interface_t *bt_get_sock_interface(void)
 {
-	return &btsock_if;
+	return &sock_if;
 }
