@@ -946,6 +946,16 @@ struct bt_hci_cmd_enhanced_flush {
 	uint8_t  type;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SEND_KEYPRESS_NOTIFY		0x0c60
+struct bt_hci_cmd_send_keypress_notify {
+	uint8_t  bdaddr[6];
+	uint8_t  type;
+} __attribute__ ((packed));
+struct bt_hci_rsp_send_keypress_notify {
+	uint8_t  status;
+	uint8_t  bdaddr[6];
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_SET_EVENT_MASK_PAGE2		0x0c63
 struct bt_hci_cmd_set_event_mask_page2 {
 	uint8_t  mask[8];

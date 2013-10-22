@@ -4071,6 +4071,45 @@ static void enhanced_flush_cmd(const void *data, uint8_t size)
 	print_field("Type: %s (0x%2.2x)", str, cmd->type);
 }
 
+static void send_keypress_notify_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_send_keypress_notify *cmd = data;
+	const char *str;
+
+	print_bdaddr(cmd->bdaddr);
+
+	switch (cmd->type) {
+	case 0x00:
+		str = "Passkey entry started";
+		break;
+	case 0x01:
+		str = "Passkey digit entered";
+		break;
+	case 0x02:
+		str = "Passkey digit erased";
+		break;
+	case 0x03:
+		str = "Passkey cleared";
+		break;
+	case 0x04:
+		str = "Passkey entry completed";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Type: %s (0x%2.2x)", str, cmd->type);
+}
+
+static void send_keypress_notify_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_send_keypress_notify *rsp = data;
+
+	print_status(rsp->status);
+	print_bdaddr(rsp->bdaddr);
+}
+
 static void set_event_mask_page2_cmd(const void *data, uint8_t size)
 {
 	const struct bt_hci_cmd_set_event_mask_page2 *cmd = data;
@@ -5262,7 +5301,9 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c5b, 147, "Write Default Erroneous Reporting" },
 	{ 0x0c5f, 158, "Enhanced Flush",
 				enhanced_flush_cmd, 3, true },
-	{ 0x0c60, 162, "Send Keypress Notification" },
+	{ 0x0c60, 162, "Send Keypress Notification",
+				send_keypress_notify_cmd, 7, true,
+				send_keypress_notify_rsp, 7, true },
 	{ 0x0c61, 176, "Read Logical Link Accept Timeout" },
 	{ 0x0c62, 177, "Write Logical Link Accept Timeout" },
 	{ 0x0c63, 178, "Set Event Mask Page 2",
