@@ -49,6 +49,7 @@
 #include "src/shared/mgmt.h"
 
 #include "adapter.h"
+#include "socket.h"
 #include "hid.h"
 #include "hal-msg.h"
 #include "ipc.h"
@@ -81,6 +82,12 @@ static void service_register(void *buf, uint16_t len)
 			goto error;
 
 		break;
+	case HAL_SERVICE_ID_SOCK:
+		if (!bt_socket_register(hal_notif_io,
+						bt_adapter_get_address()))
+			goto error;
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		goto error;
@@ -107,6 +114,9 @@ static void service_unregister(void *buf, uint16_t len)
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_adapter_unregister();
+		break;
+	case HAL_SERVICE_ID_SOCK:
+		bt_socket_unregister();
 		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be
