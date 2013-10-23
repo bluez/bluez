@@ -382,6 +382,12 @@ static void mgmt_index_removed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
 	DBG("index %u", index);
+
+	if (index != adapter_index)
+		return;
+
+	error("Adapter was removed. Exiting.");
+	g_main_loop_quit(event_loop);
 }
 
 static void read_index_list_complete(uint8_t status, uint16_t length,
