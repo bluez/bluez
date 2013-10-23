@@ -49,6 +49,7 @@
 #include "src/shared/mgmt.h"
 
 #include "adapter.h"
+#include "hid.h"
 #include "hal-msg.h"
 #include "ipc.h"
 
@@ -160,6 +161,10 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		break;
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_adapter_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
+								msg->len);
+		break;
+	case HAL_SERVICE_ID_HIDHOST:
+		bt_hid_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
 								msg->len);
 		break;
 	default:

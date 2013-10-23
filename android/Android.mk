@@ -16,6 +16,7 @@ LOCAL_SRC_FILES := \
 	main.c \
 	log.c \
 	adapter.c \
+	hid.c \
 	ipc.c ipc.h \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \
