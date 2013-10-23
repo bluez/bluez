@@ -74,6 +74,20 @@ static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 	/* TODO Update services if needed */
 }
 
+static void settings_changed_powered(struct bt_adapter *adapter)
+{
+	struct hal_msg_ev_bt_adapter_state_changed ev;
+
+	ev.state = (adapter->current_settings & MGMT_SETTING_POWERED) ?
+			HAL_BT_ADAPTER_STATE_ON : HAL_BT_ADAPTER_STATE_OFF;
+
+	DBG("%u", ev.state);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+					HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED,
+					sizeof(ev), &ev, -1);
+}
+
 static void settings_changed_connectable(struct bt_adapter *adapter)
 {
 	/* TODO */
@@ -94,16 +108,8 @@ static void settings_changed(struct bt_adapter *adapter, uint32_t settings)
 
 	DBG("0x%08x", changed_mask);
 
-	if (changed_mask & MGMT_SETTING_POWERED) {
-		info("Powered");
-
-		/*
-		if (adapter->current_settings & MGMT_SETTING_POWERED)
-			start_adapter()
-		else
-			stop_adapter()
-		*/
-	}
+	if (changed_mask & MGMT_SETTING_POWERED)
+		settings_changed_powered(adapter);
 
 	if (changed_mask & MGMT_SETTING_CONNECTABLE) {
 		DBG("Connectable");
