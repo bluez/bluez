@@ -45,13 +45,8 @@ static bt_status_t hh_connect(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	if (hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_CONNECT,
-			sizeof(cmd), &cmd, 0, NULL, NULL) < 0) {
-		error("Failed to connect hid device");
-		return BT_STATUS_FAIL;
-	}
-
-	return BT_STATUS_SUCCESS;
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_CONNECT,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_disconnect(bt_bdaddr_t *bd_addr)
