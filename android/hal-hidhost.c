@@ -231,6 +231,8 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 
 static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 {
+	struct hal_msg_cmd_bt_hid_send_data cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -239,7 +241,10 @@ static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 	if (!bd_addr || !data)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_SEND_DATA,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_init(bthh_callbacks_t *callbacks)
