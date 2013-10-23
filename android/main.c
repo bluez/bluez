@@ -72,6 +72,7 @@ static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 static void service_register(void *buf, uint16_t len)
 {
 	struct hal_msg_cmd_register_module *m = buf;
+	const bdaddr_t *adapter_bdaddr = bt_adapter_get_address();
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
 		goto error;
@@ -83,13 +84,12 @@ static void service_register(void *buf, uint16_t len)
 
 		break;
 	case HAL_SERVICE_ID_SOCK:
-		if (!bt_socket_register(hal_notif_io,
-						bt_adapter_get_address()))
+		if (!bt_socket_register(hal_notif_io, adapter_bdaddr))
 			goto error;
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(hal_notif_io, bt_adapter_get_address()))
+		if (!bt_hid_register(hal_notif_io, adapter_bdaddr))
 			goto error;
 
 		break;
