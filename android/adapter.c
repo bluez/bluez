@@ -364,6 +364,11 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	ipc_send_error(io, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
+const bdaddr_t *bt_adapter_get_address(void)
+{
+	return &default_adapter->bdaddr;
+}
+
 bool bt_adapter_register(GIOChannel *io)
 {
 	DBG("");
