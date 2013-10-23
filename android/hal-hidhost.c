@@ -263,6 +263,7 @@ static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 static bt_status_t hh_init(bthh_callbacks_t *callbacks)
 {
 	struct hal_msg_cmd_register_module cmd;
+
 	DBG("");
 
 	/* store reference to user callbacks */
@@ -270,14 +271,8 @@ static bt_status_t hh_init(bthh_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
 
-	if (hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
-					sizeof(cmd), &cmd, 0, NULL, NULL) < 0) {
-		error("Failed to register 'hidhost'' service");
-
-		return BT_STATUS_FAIL;
-	}
-
-	return BT_STATUS_SUCCESS;
+	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static void hh_cleanup(void)
