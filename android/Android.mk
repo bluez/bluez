@@ -100,6 +100,7 @@ LOCAL_SRC_FILES := \
 	client/history.c \
 	client/textconv.c \
 	client/tabcompletion.c \
+	client/if-av.c \
 	client/if-bt.c \
 	client/if-hh.c \
 	client/if-pan.c \
