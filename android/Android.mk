@@ -75,7 +75,7 @@ LOCAL_SRC_FILES := \
 	hal-av.c \
 
 LOCAL_C_INCLUDES += \
-	system/core/include \
+	$(call include-path-for, system-core) \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
