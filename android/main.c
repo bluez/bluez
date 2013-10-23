@@ -96,10 +96,15 @@ static void service_unregister(void *buf, uint16_t len)
 {
 	struct hal_msg_cmd_unregister_module *m = buf;
 
-	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id]) {
-		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
-							HAL_ERROR_FAILED);
-		return;
+	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id])
+		goto error;
+
+	switch (m->service_id) {
+	default:
+		/* This would indicate bug in HAL, as unregister should not be
+		 * called in init failed */
+		DBG("service %u not supported", m->service_id);
+		goto error;
 	}
 
 	services[m->service_id] = false;
@@ -108,6 +113,9 @@ static void service_unregister(void *buf, uint16_t len)
 								0, NULL, -1);
 
 	info("Service ID=%u unregistered", m->service_id);
+	return;
+error:
+	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_ERROR_FAILED);
 }
 
 static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
