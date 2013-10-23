@@ -106,7 +106,7 @@ static void receive_sock_connect_signal(struct pollfd *pollfd)
 
 	if (pollfd->revents & POLLHUP) {
 		haltest_error("Disconnected fd=%d revents=0x%X\n", pollfd->fd,
-				pollfd->revents);
+							pollfd->revents);
 		poll_unregister_fd(pollfd->fd, receive_sock_connect_signal);
 	}
 }
@@ -166,8 +166,8 @@ static void read_accepted(int fd)
 		break;
 	}
 	haltest_info("Incoming connection from %s channel %d status=%d fd=%d\n",
-			bt_bdaddr_t2str(&cs.bd_addr, addr_str), cs.channel,
-							cs.status, accepted_fd);
+					bt_bdaddr_t2str(&cs.bd_addr, addr_str),
+					cs.channel, cs.status, accepted_fd);
 	poll_register_fd(accepted_fd, POLLIN, receive_from_client);
 }
 
@@ -184,8 +184,8 @@ static void client_connected(struct pollfd *pollfd)
 
 /** listen */
 
-static void listen_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+static void listen_c(int argc, const char **argv, enum_func *penum_func,
+								void **puser)
 {
 	if (argc == 3) {
 		*puser = TYPE_ENUM(btsock_type_t);
@@ -323,8 +323,10 @@ static void connect_p(int argc, const char **argv)
 
 /* Methods available in btsock_interface_t */
 static struct method methods[] = {
-	STD_METHODCH(listen, "<sock_type> <srvc_name> <uuid> [<channle>] [<flags>]"),
-	STD_METHODCH(connect, "<addr> <sock_type> <uuid> <channle> [<flags>]"),
+	STD_METHODCH(listen,
+			"<sock_type> <srvc_name> <uuid> [<channle>] [<flags>]"),
+	STD_METHODCH(connect,
+			"<addr> <sock_type> <uuid> <channle> [<flags>]"),
 	END_METHOD
 };
 

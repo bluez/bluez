@@ -47,7 +47,7 @@ static void control_state_cb(btpan_control_state_t state, bt_status_t error,
 	haltest_info("%s: state=%s error=%s local_role=%s ifname=%s\n",
 		       __func__, btpan_control_state_t2str(state),
 		       bt_status_t2str(error), btpan_role_t2str(local_role),
-								       ifname);
+		       ifname);
 }
 
 static char last_used_addr[18];
@@ -79,8 +79,8 @@ static void init_p(int argc, const char **argv)
 
 /* enable */
 
-static void enable_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+static void enable_c(int argc, const const char **argv, enum_func *penum_func,
+								void **puser)
 {
 	if (argc == 3) {
 		*puser = TYPE_ENUM(btpan_role_t);
@@ -120,8 +120,8 @@ static void get_local_role_p(int argc, const char **argv)
 
 /* connect */
 
-static void connect_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+static void connect_c(int argc, const const char **argv, enum_func *penum_func,
+								void **puser)
 {
 	if (argc == 3) {
 		*puser = NULL;
