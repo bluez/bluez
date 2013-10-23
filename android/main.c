@@ -54,6 +54,12 @@
 #include "hal-msg.h"
 #include "ipc.h"
 
+/* TODO: Consider to remove PLATFORM_SDKVERSION check if requirement
+*  for minimal Android platform version increases. */
+#if defined(ANDROID) && PLATFORM_SDK_VERSION >= 18
+#include <sys/capability.h>
+#endif
+
 static GMainLoop *event_loop;
 static struct mgmt *mgmt_if = NULL;
 
