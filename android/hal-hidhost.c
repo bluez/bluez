@@ -101,6 +101,8 @@ static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocolMode)
 {
+	struct hal_msg_cmd_bt_hid_get_protocol cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -109,12 +111,30 @@ static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 	if (!bd_addr)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	switch (protocolMode) {
+	case BTHH_REPORT_MODE:
+		cmd.mode = HAL_MSG_BT_HID_REPORT_PROTOCOL;
+		break;
+	case BTHH_BOOT_MODE:
+		cmd.mode = HAL_MSG_BT_HID_BOOT_PROTOCOL;
+		break;
+	case BTHH_UNSUPPORTED_MODE:
+		cmd.mode = HAL_MSG_BT_HID_UNSUPPORTED_PROTOCOL;
+		break;
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
+				HAL_MSG_OP_BT_HID_GET_PROTOCOL,
+				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocolMode)
 {
+	struct hal_msg_cmd_bt_hid_set_protocol cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -123,7 +143,23 @@ static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 	if (!bd_addr)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	switch (protocolMode) {
+	case BTHH_REPORT_MODE:
+		cmd.mode = HAL_MSG_BT_HID_REPORT_PROTOCOL;
+		break;
+	case BTHH_BOOT_MODE:
+		cmd.mode = HAL_MSG_BT_HID_BOOT_PROTOCOL;
+		break;
+	case BTHH_UNSUPPORTED_MODE:
+		cmd.mode = HAL_MSG_BT_HID_UNSUPPORTED_PROTOCOL;
+		break;
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
+				HAL_MSG_OP_BT_HID_SET_PROTOCOL,
+				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
