@@ -50,29 +50,6 @@ struct bt_adapter {
 
 static struct bt_adapter *default_adapter;
 
-static void load_link_keys_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	struct bt_adapter *adapter = user_data;
-	int err;
-
-	if (status) {
-		error("Failed to load link keys for index %u: %s (0x%02x)",
-			adapter->index, mgmt_errstr(status), status);
-		err = -EIO;
-		goto failed;
-	}
-
-	DBG("status %u", status);
-
-	default_adapter = adapter;
-	adapter->ready(adapter, 0);
-	return;
-
-failed:
-	adapter->ready(NULL, err);
-}
-
 static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -199,6 +176,29 @@ static void register_mgmt_handlers(struct bt_adapter *adapter)
 	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
 			0, mgmt_local_name_changed_event,
 			adapter, NULL);
+}
+
+static void load_link_keys_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct bt_adapter *adapter = user_data;
+	int err;
+
+	if (status) {
+		error("Failed to load link keys for index %u: %s (0x%02x)",
+			adapter->index, mgmt_errstr(status), status);
+		err = -EIO;
+		goto failed;
+	}
+
+	DBG("status %u", status);
+
+	default_adapter = adapter;
+	adapter->ready(adapter, 0);
+	return;
+
+failed:
+	adapter->ready(NULL, err);
 }
 
 static void load_link_keys(struct bt_adapter *adapter, GSList *keys)
