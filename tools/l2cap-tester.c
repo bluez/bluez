@@ -290,7 +290,8 @@ static const struct l2cap_server_data l2cap_server_nval_pdu_test1 = {
 };
 
 static const uint8_t l2cap_nval_dc_req[] = { 0x12, 0x34, 0x56, 0x78 };
-static const uint8_t l2cap_nval_cid_rsp[] = { 0x02, 0x00 };
+static const uint8_t l2cap_nval_cid_rsp[] = { 0x02, 0x00,
+						0x12, 0x34, 0x56, 0x78 };
 
 static const struct l2cap_server_data l2cap_server_nval_cid_test1 = {
 	.send_req_code = BT_L2CAP_PDU_DISCONN_REQ,
@@ -302,7 +303,8 @@ static const struct l2cap_server_data l2cap_server_nval_cid_test1 = {
 };
 
 static const uint8_t l2cap_nval_cfg_req[] = { 0x12, 0x34, 0x00, 0x00 };
-static const uint8_t l2cap_nval_cfg_rsp[] = { 0x02, 0x00 };
+static const uint8_t l2cap_nval_cfg_rsp[] = { 0x02, 0x00,
+						0x12, 0x34, 0x00, 0x00 };
 
 static const struct l2cap_server_data l2cap_server_nval_cid_test2 = {
 	.send_req_code = BT_L2CAP_PDU_CONFIG_REQ,
