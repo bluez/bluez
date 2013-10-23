@@ -50,6 +50,7 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/tabcompletion.c \
 				android/client/if-bt.c \
 				android/client/if-hh.c \
+				android/client/if-pan.c \
 				android/client/if-sock.c \
 				android/client/hwmodule.c
 
@@ -79,6 +80,7 @@ EXTRA_DIST += android/client/terminal.c \
 		android/client/history.c \
 		android/client/if-bt.c \
 		android/client/if-hh.c \
+		android/client/if-pan.c \
 		android/client/if-sock.c \
 		android/client/textconv.c \
 		android/client/tabcompletion.c \
