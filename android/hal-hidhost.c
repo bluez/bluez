@@ -69,6 +69,8 @@ static bt_status_t hh_disconnect(bt_bdaddr_t *bd_addr)
 
 static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 {
+	struct hal_msg_cmd_bt_hid_vp cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -77,7 +79,10 @@ static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 	if (!bd_addr)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_VP,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
