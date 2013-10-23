@@ -22,3 +22,6 @@
  */
 
 void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len);
+
+bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr);
+void bt_hid_unregister(void);

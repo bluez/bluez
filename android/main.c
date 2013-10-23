@@ -88,6 +88,11 @@ static void service_register(void *buf, uint16_t len)
 			goto error;
 
 		break;
+	case HAL_SERVICE_ID_HIDHOST:
+		if (!bt_hid_register(hal_notif_io, bt_adapter_get_address()))
+			goto error;
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		goto error;
@@ -117,6 +122,9 @@ static void service_unregister(void *buf, uint16_t len)
 		break;
 	case HAL_SERVICE_ID_SOCK:
 		bt_socket_unregister();
+		break;
+	case HAL_SERVICE_ID_HIDHOST:
+		bt_hid_unregister();
 		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be

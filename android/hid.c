@@ -22,13 +22,17 @@
  */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <glib.h>
 
+#include "lib/bluetooth.h"
 #include "log.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "hid.h"
+
+static GIOChannel *notification_io = NULL;
 
 void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 {
@@ -45,4 +49,21 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 	}
 
 	ipc_send_error(io, HAL_SERVICE_ID_HIDHOST, status);
+}
+
+bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
+{
+	DBG("");
+
+	notification_io = g_io_channel_ref(io);
+
+	return true;
+}
+
+void bt_hid_unregister(void)
+{
+	DBG("");
+
+	g_io_channel_unref(notification_io);
+	notification_io = NULL;
 }
