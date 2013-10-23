@@ -73,6 +73,9 @@ LOCAL_SRC_FILES := \
 	hal-pan.c \
 	hal-av.c \
 
+LOCAL_C_INCLUDES += \
+	system/core/include \
+
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 
