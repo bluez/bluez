@@ -314,6 +314,9 @@ Notifications:
 
 		Notifications parameters: State (1 octect)
 
+		Valid state values: 0x00 = Off
+		                    0x01 = On
+
 	Opcode 0x82 - Adapter Properties Changed notification
 
 		Notification parameters: Status (1 octect)
