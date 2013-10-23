@@ -335,6 +335,12 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 		exit(EXIT_FAILURE);
 	}
 
+	if (hal_msg.service_id != service_id) {
+		error("Invalid service id (%u vs %u), aborting",
+					hal_msg.service_id, service_id);
+		exit(EXIT_FAILURE);
+	}
+
 	if (ret != (ssize_t) (sizeof(hal_msg) + hal_msg.len)) {
 		error("Malformed response received(%zd bytes), aborting", ret);
 		exit(EXIT_FAILURE);
