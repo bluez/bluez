@@ -72,10 +72,13 @@ static void service_register(void *buf, uint16_t len)
 {
 	struct hal_msg_cmd_register_module *m = buf;
 
-	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id]) {
-		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
-							HAL_ERROR_FAILED);
-		return;
+	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
+		goto error;
+
+	switch (m->service_id) {
+	default:
+		DBG("service %u not supported", m->service_id);
+		goto error;
 	}
 
 	services[m->service_id] = true;
@@ -84,6 +87,9 @@ static void service_register(void *buf, uint16_t len)
 								NULL, -1);
 
 	info("Service ID=%u registered", m->service_id);
+	return;
+error:
+	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_ERROR_FAILED);
 }
 
 static void service_unregister(void *buf, uint16_t len)
