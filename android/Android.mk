@@ -42,6 +42,18 @@ LOCAL_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\"
 LOCAL_SHARED_LIBRARIES := \
 	libglib \
 
+lib_headers := \
+	bluetooth.h \
+	hci.h \
+	hci_lib.h \
+	l2cap.h \
+	sdp_lib.h \
+	sdp.h \
+
+$(shell mkdir -p $(LOCAL_PATH)/../lib/bluetooth)
+
+$(foreach file,$(lib_headers), $(shell ln -sf ../$(file) $(LOCAL_PATH)/../lib/bluetooth/$(file)))
+
 LOCAL_MODULE := bluetoothd
 
 include $(BUILD_EXECUTABLE)
