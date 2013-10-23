@@ -204,7 +204,11 @@ bool hal_ipc_init(void)
 	}
 
 	/* Start Android Bluetooth daemon service */
-	property_set("ctl.start", SERVICE_NAME);
+	if (property_set("ctl.start", SERVICE_NAME) < 0) {
+		error("Failed to start service %s", SERVICE_NAME);
+		close(sk);
+		return false;
+	}
 
 	cmd_sk = accept_connection(sk);
 	if (cmd_sk < 0) {
