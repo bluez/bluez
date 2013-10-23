@@ -347,7 +347,8 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		}
 
 		if (set_mode(MGMT_OP_SET_POWERED, 0x01)) {
-			ipc_send(io, HAL_SERVICE_ID_CORE, opcode, 0, NULL, -1);
+			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
+									-1);
 			return;
 		}
 		break;
@@ -358,7 +359,8 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		}
 
 		if (set_mode(MGMT_OP_SET_POWERED, 0x00)) {
-			ipc_send(io, HAL_SERVICE_ID_CORE, opcode, 0, NULL, -1);
+			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
+									-1);
 			return;
 		}
 		break;
