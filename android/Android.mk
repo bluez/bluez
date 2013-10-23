@@ -97,6 +97,7 @@ LOCAL_SRC_FILES := \
 	client/tabcompletion.c \
 	client/if-bt.c \
 	client/if-hh.c \
+	client/if-sock.c \
 
 LOCAL_CFLAGS := -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
