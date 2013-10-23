@@ -118,7 +118,7 @@ static void *notification_handler(void *data)
 		fd = -1;
 
 		/* Receive auxiliary data in msg */
-		for (cmsg = CMSG_FIRSTHDR(&msg); !cmsg;
+		for (cmsg = CMSG_FIRSTHDR(&msg); cmsg;
 					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
 					&& cmsg->cmsg_type == SCM_RIGHTS) {
