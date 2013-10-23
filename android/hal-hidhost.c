@@ -167,6 +167,8 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 						uint8_t reportId,
 						int bufferSize)
 {
+	struct hal_msg_cmd_bt_hid_get_report cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -175,13 +177,31 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 	if (!bd_addr)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	cmd.id = reportId;
+
+	switch (reportType) {
+	case BTHH_INPUT_REPORT:
+		cmd.type = HAL_MSG_BT_HID_INPUT_REPORT;
+		break;
+	case BTHH_OUTPUT_REPORT:
+		cmd.type = HAL_MSG_BT_HID_OUTPUT_REPORT;
+		break;
+	case BTHH_FEATURE_REPORT:
+		cmd.type = HAL_MSG_BT_HID_FEATURE_REPORT;
+		break;
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_GET_REPORT,
+			sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 						bthh_report_type_t reportType,
 						char *report)
 {
+	struct hal_msg_cmd_bt_hid_set_report cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -190,7 +210,23 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 	if (!bd_addr || !report)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	switch (reportType) {
+	case BTHH_INPUT_REPORT:
+		cmd.type = HAL_MSG_BT_HID_INPUT_REPORT;
+		break;
+	case BTHH_OUTPUT_REPORT:
+		cmd.type = HAL_MSG_BT_HID_OUTPUT_REPORT;
+		break;
+	case BTHH_FEATURE_REPORT:
+		cmd.type = HAL_MSG_BT_HID_FEATURE_REPORT;
+		break;
+	}
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
+				HAL_MSG_OP_BT_HID_SET_REPORT,
+				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
