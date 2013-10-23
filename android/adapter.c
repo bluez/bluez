@@ -33,6 +33,8 @@
 #include "ipc.h"
 #include "adapter.h"
 
+static GIOChannel *notification_io = NULL;
+
 struct bt_adapter {
 	uint16_t index;
 	struct mgmt *mgmt;
@@ -360,4 +362,21 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	}
 
 	ipc_send_error(io, HAL_SERVICE_ID_BLUETOOTH, status);
+}
+
+bool bt_adapter_register(GIOChannel *io)
+{
+	DBG("");
+
+	notification_io = g_io_channel_ref(io);
+
+	return true;
+}
+
+void bt_adapter_unregister(void)
+{
+	DBG("");
+
+	g_io_channel_unref(notification_io);
+	notification_io = NULL;
 }

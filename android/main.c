@@ -76,6 +76,11 @@ static void service_register(void *buf, uint16_t len)
 		goto error;
 
 	switch (m->service_id) {
+	case HAL_SERVICE_ID_BLUETOOTH:
+		if (!bt_adapter_register(hal_notif_io))
+			goto error;
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		goto error;
@@ -100,6 +105,9 @@ static void service_unregister(void *buf, uint16_t len)
 		goto error;
 
 	switch (m->service_id) {
+	case HAL_SERVICE_ID_BLUETOOTH:
+		bt_adapter_unregister();
+		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be
 		 * called in init failed */

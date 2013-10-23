@@ -37,3 +37,6 @@ bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
 
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len);
+
+bool bt_adapter_register(GIOChannel *io);
+void bt_adapter_unregister(void);
