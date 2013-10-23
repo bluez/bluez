@@ -87,6 +87,8 @@ static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 
 static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 {
+	struct hal_msg_cmd_bt_hid_set_info cmd;
+
 	DBG("");
 
 	if (!interface_ready())
@@ -95,7 +97,18 @@ static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 	if (!bd_addr)
 		return BT_STATUS_PARM_INVALID;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	cmd.attr = hid_info.attr_mask;
+	cmd.subclass = hid_info.sub_class;
+	cmd.app_id = hid_info.app_id;
+	cmd.vendor = hid_info.vendor_id;
+	cmd.product = hid_info.product_id;
+	cmd.country = hid_info.ctry_code;
+	cmd.descr_len = hid_info.dl_len;
+	memcpy(cmd.descr, hid_info.dsc_list, cmd.descr_len);
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_MSG_OP_BT_HID_SET_INFO,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
