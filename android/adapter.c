@@ -76,16 +76,15 @@ static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 
 static void settings_changed_powered(struct bt_adapter *adapter)
 {
-	struct hal_msg_ev_bt_adapter_state_changed ev;
+	struct hal_ev_adapter_state_changed ev;
 
 	ev.state = (adapter->current_settings & MGMT_SETTING_POWERED) ?
-			HAL_BT_ADAPTER_STATE_ON : HAL_BT_ADAPTER_STATE_OFF;
+						HAL_POWER_ON : HAL_POWER_OFF;
 
 	DBG("%u", ev.state);
 
 	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
-					HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED,
-					sizeof(ev), &ev, -1);
+			HAL_EV_ADAPTER_STATE_CHANGED, sizeof(ev), &ev, -1);
 }
 
 static void settings_changed_connectable(struct bt_adapter *adapter)
@@ -340,7 +339,7 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	uint8_t status = HAL_ERROR_FAILED;
 
 	switch (opcode) {
-	case HAL_MSG_OP_BT_ENABLE:
+	case HAL_OP_ENABLE:
 		if (default_adapter->current_settings & MGMT_SETTING_POWERED) {
 			status = HAL_ERROR_DONE;
 			break;
@@ -352,7 +351,7 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 			return;
 		}
 		break;
-	case HAL_MSG_OP_BT_DISABLE:
+	case HAL_OP_DISABLE:
 		if (!(default_adapter->current_settings & MGMT_SETTING_POWERED)) {
 			status = HAL_ERROR_DONE;
 			break;

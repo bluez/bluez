@@ -29,7 +29,7 @@ static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 static void handle_adapter_state_changed(void *buf)
 {
-	struct hal_msg_ev_bt_adapter_state_changed *ev = buf;
+	struct hal_ev_adapter_state_changed *ev = buf;
 
 	if (bt_hal_cbacks->adapter_state_changed_cb)
 		bt_hal_cbacks->adapter_state_changed_cb(ev->state);
@@ -42,7 +42,7 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		return;
 
 	switch (opcode) {
-	case HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED:
+	case HAL_EV_ADAPTER_STATE_CHANGED:
 		handle_adapter_state_changed(buf);
 		break;
 	default:
@@ -58,7 +58,7 @@ static bool interface_ready(void)
 
 static int init(bt_callbacks_t *callbacks)
 {
-	struct hal_msg_cmd_register_module cmd;
+	struct hal_cmd_register_module cmd;
 	int status;
 
 	DBG("");
@@ -73,7 +73,7 @@ static int init(bt_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_BLUETOOTH;
 
-	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
+	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 	if (status != BT_STATUS_SUCCESS) {
 		error("Failed to register 'bluetooth' service");
@@ -82,7 +82,7 @@ static int init(bt_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_SOCK;
 
-	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE,
+	status = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 	if (status != BT_STATUS_SUCCESS) {
 		error("Failed to register 'socket' service");
@@ -104,8 +104,8 @@ static int enable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_MSG_OP_BT_ENABLE, 0,
-							NULL, 0, NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_ENABLE, 0, NULL, 0,
+								NULL, NULL);
 }
 
 static int disable(void)
@@ -115,8 +115,8 @@ static int disable(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_MSG_OP_BT_DISABLE, 0,
-							NULL, 0, NULL, NULL);
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DISABLE, 0, NULL, 0,
+								NULL, NULL);
 }
 
 static void cleanup(void)

@@ -77,7 +77,7 @@ static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 
 static void service_register(void *buf, uint16_t len)
 {
-	struct hal_msg_cmd_register_module *m = buf;
+	struct hal_cmd_register_module *m = buf;
 	const bdaddr_t *adapter_bdaddr = bt_adapter_get_address();
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
@@ -106,7 +106,7 @@ static void service_register(void *buf, uint16_t len)
 
 	services[m->service_id] = true;
 
-	ipc_send(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_MSG_OP_REGISTER_MODULE, 0,
+	ipc_send(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE, 0,
 								NULL, -1);
 
 	info("Service ID=%u registered", m->service_id);
@@ -117,7 +117,7 @@ error:
 
 static void service_unregister(void *buf, uint16_t len)
 {
-	struct hal_msg_cmd_unregister_module *m = buf;
+	struct hal_cmd_unregister_module *m = buf;
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id])
 		goto error;
@@ -141,7 +141,7 @@ static void service_unregister(void *buf, uint16_t len)
 
 	services[m->service_id] = false;
 
-	ipc_send(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_MSG_OP_UNREGISTER_MODULE,
+	ipc_send(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
 								0, NULL, -1);
 
 	info("Service ID=%u unregistered", m->service_id);
@@ -153,10 +153,10 @@ error:
 static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 {
 	switch (opcode) {
-	case HAL_MSG_OP_REGISTER_MODULE:
+	case HAL_OP_REGISTER_MODULE:
 		service_register(buf, len);
 		break;
-	case HAL_MSG_OP_UNREGISTER_MODULE:
+	case HAL_OP_UNREGISTER_MODULE:
 		service_unregister(buf, len);
 		break;
 	default:
@@ -170,7 +170,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	char buf[BLUEZ_HAL_MTU];
-	struct hal_msg_hdr *msg = (void *) buf;
+	struct hal_hdr *msg = (void *) buf;
 	ssize_t ret;
 	int fd;
 

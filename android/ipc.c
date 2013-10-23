@@ -39,19 +39,19 @@ void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
 {
 	struct msghdr msg;
 	struct iovec iv[2];
-	struct hal_msg_hdr hal_msg;
+	struct hal_hdr m;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	struct cmsghdr *cmsg;
 
 	memset(&msg, 0, sizeof(msg));
-	memset(&hal_msg, 0, sizeof(hal_msg));
+	memset(&m, 0, sizeof(m));
 
-	hal_msg.service_id = service_id;
-	hal_msg.opcode = opcode;
-	hal_msg.len = len;
+	m.service_id = service_id;
+	m.opcode = opcode;
+	m.len = len;
 
-	iv[0].iov_base = &hal_msg;
-	iv[0].iov_len = sizeof(hal_msg);
+	iv[0].iov_base = &m;
+	iv[0].iov_len = sizeof(m);
 
 	iv[1].iov_base = param;
 	iv[1].iov_len = len;
@@ -80,9 +80,9 @@ void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
 
 void ipc_send_error(GIOChannel *io, uint8_t service_id, uint8_t status)
 {
-	struct hal_msg_rsp_error err;
+	struct hal_error err;
 
 	err.status = status;
 
-	ipc_send(io, service_id, HAL_MSG_OP_ERROR, sizeof(err), &err, -1);
+	ipc_send(io, service_id, HAL_OP_ERROR, sizeof(err), &err, -1);
 }

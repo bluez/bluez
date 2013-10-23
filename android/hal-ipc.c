@@ -43,7 +43,7 @@ static pthread_mutex_t cmd_sk_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_t notif_th = 0;
 
-static void notification_dispatch(struct hal_msg_hdr *msg, int fd)
+static void notification_dispatch(struct hal_hdr *msg, int fd)
 {
 	switch (msg->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
@@ -63,7 +63,7 @@ static void *notification_handler(void *data)
 	struct cmsghdr *cmsg;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	char buf[BLUEZ_HAL_MTU];
-	struct hal_msg_hdr *hal_msg = (void *) buf;
+	struct hal_hdr *ev = (void *) buf;
 	ssize_t ret;
 	int fd;
 
@@ -72,7 +72,7 @@ static void *notification_handler(void *data)
 		memset(buf, 0, sizeof(buf));
 		memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
-		iv.iov_base = hal_msg;
+		iv.iov_base = ev;
 		iv.iov_len = sizeof(buf);
 
 		msg.msg_iov = &iv;
@@ -97,19 +97,19 @@ static void *notification_handler(void *data)
 			exit(EXIT_FAILURE);
 		}
 
-		if (ret < (ssize_t) sizeof(*hal_msg)) {
+		if (ret < (ssize_t) sizeof(*ev)) {
 			error("Too small notification (%zd bytes), aborting",
 									ret);
 			exit(EXIT_FAILURE);
 		}
 
-		if (hal_msg->opcode < HAL_MSG_MINIMUM_EVENT) {
+		if (ev->opcode < HAL_MINIMUM_EVENT) {
 			error("Invalid notification (0x%x), aborting",
-							hal_msg->opcode);
+							ev->opcode);
 			exit(EXIT_FAILURE);
 		}
 
-		if (ret != (ssize_t) (sizeof(*hal_msg) + hal_msg->len)) {
+		if (ret != (ssize_t) (sizeof(*ev) + ev->len)) {
 			error("Malformed notification(%zd bytes), aborting",
 									ret);
 			exit(EXIT_FAILURE);
@@ -127,7 +127,7 @@ static void *notification_handler(void *data)
 			}
 		}
 
-		notification_dispatch(hal_msg, fd);
+		notification_dispatch(ev, fd);
 	}
 
 	close(notif_sk);
@@ -261,9 +261,9 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	ssize_t ret;
 	struct msghdr msg;
 	struct iovec iv[2];
-	struct hal_msg_hdr hal_msg;
+	struct hal_hdr cmd;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	struct hal_msg_rsp_error err;
+	struct hal_error err;
 	size_t err_len = sizeof(err);
 
 	if (cmd_sk < 0) {
@@ -278,14 +278,14 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	memset(&msg, 0, sizeof(msg));
-	memset(&hal_msg, 0, sizeof(hal_msg));
+	memset(&cmd, 0, sizeof(cmd));
 
-	hal_msg.service_id = service_id;
-	hal_msg.opcode = opcode;
-	hal_msg.len = len;
+	cmd.service_id = service_id;
+	cmd.opcode = opcode;
+	cmd.len = len;
 
-	iv[0].iov_base = &hal_msg;
-	iv[0].iov_len = sizeof(hal_msg);
+	iv[0].iov_base = &cmd;
+	iv[0].iov_len = sizeof(cmd);
 
 	iv[1].iov_base = param;
 	iv[1].iov_len = len;
@@ -303,10 +303,10 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	memset(&msg, 0, sizeof(msg));
-	memset(&hal_msg, 0, sizeof(hal_msg));
+	memset(&cmd, 0, sizeof(cmd));
 
-	iv[0].iov_base = &hal_msg;
-	iv[0].iov_len = sizeof(hal_msg);
+	iv[0].iov_base = &cmd;
+	iv[0].iov_len = sizeof(cmd);
 
 	iv[1].iov_base = rsp;
 	iv[1].iov_len = *rsp_len;
@@ -330,30 +330,30 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 
 	pthread_mutex_unlock(&cmd_sk_mutex);
 
-	if (ret < (ssize_t) sizeof(hal_msg)) {
+	if (ret < (ssize_t) sizeof(cmd)) {
 		error("Too small response received(%zd bytes), aborting", ret);
 		exit(EXIT_FAILURE);
 	}
 
-	if (hal_msg.service_id != service_id) {
+	if (cmd.service_id != service_id) {
 		error("Invalid service id (%u vs %u), aborting",
-					hal_msg.service_id, service_id);
+						cmd.service_id, service_id);
 		exit(EXIT_FAILURE);
 	}
 
-	if (ret != (ssize_t) (sizeof(hal_msg) + hal_msg.len)) {
+	if (ret != (ssize_t) (sizeof(cmd) + cmd.len)) {
 		error("Malformed response received(%zd bytes), aborting", ret);
 		exit(EXIT_FAILURE);
 	}
 
-	if (hal_msg.opcode != opcode && hal_msg.opcode != HAL_MSG_OP_ERROR) {
+	if (cmd.opcode != opcode && cmd.opcode != HAL_OP_ERROR) {
 		error("Invalid opcode received (%u vs %u), aborting",
-						hal_msg.opcode, opcode);
+						cmd.opcode, opcode);
 		exit(EXIT_FAILURE);
 	}
 
-	if (hal_msg.opcode == HAL_MSG_OP_ERROR) {
-		struct hal_msg_rsp_error *err = rsp;
+	if (cmd.opcode == HAL_OP_ERROR) {
+		struct hal_error *err = rsp;
 		return err->status;
 	}
 
@@ -374,7 +374,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	if (rsp_len)
-		*rsp_len = hal_msg.len;
+		*rsp_len = cmd.len;
 
 	return BT_STATUS_SUCCESS;
 }

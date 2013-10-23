@@ -39,9 +39,9 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 	uint8_t status = HAL_ERROR_FAILED;
 
 	switch (opcode) {
-	case HAL_MSG_OP_BT_HID_CONNECT:
+	case HAL_OP_HID_CONNECT:
 		break;
-	case HAL_MSG_OP_BT_HID_DISCONNECT:
+	case HAL_OP_HID_DISCONNECT:
 		break;
 	default:
 		DBG("Unhandled command, opcode 0x%x", opcode);
