@@ -252,6 +252,9 @@ struct hal_msg_cmd_bt_hid_send_data {
 /* Notifications and confirmations */
 
 
+#define HAL_BT_ADAPTER_STATE_OFF	0x00
+#define HAL_BT_ADAPTER_STATE_ON		0x01
+
 #define HAL_MSG_EV_BT_ADAPTER_STATE_CHANGED	0x81
 struct hal_msg_ev_bt_adapter_state_changed {
 	uint8_t state;
