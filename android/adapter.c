@@ -170,14 +170,16 @@ static void mgmt_dev_class_changed_event(uint16_t index, uint16_t length,
 
 static void register_mgmt_handlers(void)
 {
-	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, 0,
+	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->index,
 					new_settings_callback, NULL, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_CLASS_OF_DEV_CHANGED,
-			0, mgmt_dev_class_changed_event, NULL, NULL);
+				adapter->index, mgmt_dev_class_changed_event,
+				NULL, NULL);
 
 	mgmt_register(adapter->mgmt, MGMT_EV_LOCAL_NAME_CHANGED,
-			0, mgmt_local_name_changed_event, NULL, NULL);
+				adapter->index, mgmt_local_name_changed_event,
+				NULL, NULL);
 }
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
@@ -216,7 +218,7 @@ static void load_link_keys(GSList *keys)
 	cp->debug_keys = 0;
 	cp->key_count = htobs(key_len);
 
-	mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LINK_KEYS, 0, len,
+	mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LINK_KEYS, adapter->index, len,
 				cp, load_link_keys_complete, NULL, NULL);
 
 	g_free(cp);
