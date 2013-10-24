@@ -310,6 +310,9 @@ static const void *get_profile_interface(const char *profile_id)
 	if (!strcmp(profile_id, BT_PROFILE_PAN_ID))
 		return bt_get_pan_interface();
 
+	if (!strcmp(profile_id, BT_PROFILE_ADVANCED_AUDIO_ID))
+		return bt_get_av_interface();
+
 	return NULL;
 }
 
