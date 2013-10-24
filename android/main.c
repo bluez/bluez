@@ -392,7 +392,7 @@ static GOptionEntry options[] = {
 	{ NULL }
 };
 
-static void adapter_ready(struct bt_adapter *adapter, int err)
+static void adapter_ready(int err)
 {
 	if (err) {
 		error("Adapter initialization failed: %s", strerror(err));

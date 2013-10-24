@@ -28,9 +28,7 @@
 
 #include "lib/bluetooth.h"
 
-struct bt_adapter;
-
-typedef void (*bt_adapter_ready)(struct bt_adapter *adapter, int err);
+typedef void (*bt_adapter_ready)(int err);
 
 void bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
 							bt_adapter_ready cb);

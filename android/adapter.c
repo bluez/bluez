@@ -201,11 +201,11 @@ static void load_link_keys_complete(uint8_t status, uint16_t length,
 	DBG("status %u", status);
 
 	default_adapter = adapter;
-	adapter->ready(adapter, 0);
+	adapter->ready(0);
 	return;
 
 failed:
-	adapter->ready(NULL, err);
+	adapter->ready(err);
 }
 
 static void load_link_keys(struct bt_adapter *adapter, GSList *keys)
@@ -274,7 +274,7 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	return;
 
 failed:
-	adapter->ready(NULL, err);
+	adapter->ready(err);
 }
 
 void bt_adapter_init(uint16_t index, struct mgmt *mgmt, bt_adapter_ready cb)
