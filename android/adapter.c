@@ -277,24 +277,22 @@ failed:
 	adapter->ready(NULL, err);
 }
 
-bool bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
-						bt_adapter_ready ready)
+void bt_adapter_init(uint16_t index, struct mgmt *mgmt, bt_adapter_ready cb)
 {
 	struct bt_adapter *adapter;
 
 	adapter = g_new0(struct bt_adapter, 1);
 
-	adapter->mgmt = mgmt_ref(mgmt_if);
+	adapter->mgmt = mgmt_ref(mgmt);
 	adapter->index = index;
-	adapter->ready = ready;
+	adapter->ready = cb;
 
-	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
-				read_info_complete, adapter, NULL) > 0) {
-		mgmt_unref(mgmt_if);
-		return false;
-	}
+	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
+				read_info_complete, adapter, NULL) > 0)
+		return;
 
-	return adapter;
+	mgmt_unref(mgmt);
+	adapter->ready(adapter, -EIO);
 }
 
 static void set_mode_complete(uint8_t status, uint16_t length,
