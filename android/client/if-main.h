@@ -93,11 +93,11 @@ typedef const char *(*enum_func)(void *user, int i);
 
 /*
  * This is prototype of function that when given argc, argv will
- * fill penum_func with pointer to function that will enumerate
- * parameters for argc argument, puser will be passed to penum_func.
+ * fill enum_func with pointer to function that will enumerate
+ * parameters for argc argument, user will be passed to enum_func.
  */
-typedef void (*tab_complete)(int argc, const char **argv,
-					enum_func *penum_func, void **puser);
+typedef void (*tab_complete)(int argc, const char **argv, enum_func *enum_func,
+								void **user);
 
 /*
  * For each method there is name and two functions to parse command line
@@ -145,9 +145,9 @@ struct method *get_command(const char *name);
 
 #define VERIFY_ADDR_ARG(n, adr) \
 	do { \
-		if (n < argc) \
+		if (n < argc) {\
 			str2bt_bdaddr_t(argv[n], adr); \
-		else { \
+		} else { \
 			haltest_error("No address specified\n");\
 			return;\
 		} \

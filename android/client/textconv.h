@@ -58,7 +58,7 @@ const char *enum_defines(void *v, int i);
 const char *enum_strings(void *v, int i);
 const char *enum_one_string(void *v, int i);
 
-#define TYPE_ENUM(type) ((void *)&__##type##2str[0])
+#define TYPE_ENUM(type) ((void *) &__##type##2str[0])
 #define DECINTMAP(type) \
 extern struct int2str __##type##2str[]; \
 const char *type##2##str(type v); \

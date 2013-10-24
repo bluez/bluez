@@ -45,12 +45,12 @@ static void control_state_cb(btpan_control_state_t state, bt_status_t error,
 					int local_role, const char *ifname)
 {
 	haltest_info("%s: state=%s error=%s local_role=%s ifname=%s\n",
-		       __func__, btpan_control_state_t2str(state),
-		       bt_status_t2str(error), btpan_role_t2str(local_role),
-		       ifname);
+			__func__, btpan_control_state_t2str(state),
+			bt_status_t2str(error), btpan_role_t2str(local_role),
+			ifname);
 }
 
-static char last_used_addr[18];
+static char last_used_addr[MAX_ADDR_STR_LEN];
 
 static void connection_state_cb(btpan_connection_state_t state,
 				bt_status_t error, const bt_bdaddr_t *bd_addr,
@@ -79,12 +79,12 @@ static void init_p(int argc, const char **argv)
 
 /* enable */
 
-static void enable_c(int argc, const const char **argv, enum_func *penum_func,
-								void **puser)
+static void enable_c(int argc, const const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = TYPE_ENUM(btpan_role_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(btpan_role_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -120,15 +120,15 @@ static void get_local_role_p(int argc, const char **argv)
 
 /* connect */
 
-static void connect_c(int argc, const const char **argv, enum_func *penum_func,
-								void **puser)
+static void connect_c(int argc, const const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = NULL;
-		*penum_func = enum_devices;
+		*user = NULL;
+		*enum_func = enum_devices;
 	} else if (argc == 4 || argc == 5) {
-		*puser = TYPE_ENUM(btpan_role_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(btpan_role_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -165,11 +165,11 @@ static void connect_p(int argc, const char **argv)
 /* disconnect */
 
 static void disconnect_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = last_used_addr;
-		*penum_func = enum_one_string;
+		*user = last_used_addr;
+		*enum_func = enum_one_string;
 	}
 }
 

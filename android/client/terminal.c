@@ -214,6 +214,7 @@ static void terminal_line_replaced(void)
 			putchar('\b');
 			line_buf_ix--;
 		}
+
 		/* If cursor was not at the end, move it to the end */
 		if (line_buf_ix < line_len)
 			printf("%.*s", line_len - line_buf_ix,
@@ -222,6 +223,7 @@ static void terminal_line_replaced(void)
 		while (line_len >= len++)
 			putchar(' ');
 	}
+
 	/* draw new line */
 	printf("\r%s%s", prompt, line_buf);
 	/* set up indexes to new line */
@@ -321,6 +323,7 @@ static int terminal_convert_sequence(int c)
 	       }
 	       return c;
 	}
+
 	/* Inside sequence */
 	current_sequence[current_sequence_len++] = c;
 	current_sequence[current_sequence_len] = '\0';
@@ -338,6 +341,7 @@ static int terminal_convert_sequence(int c)
 		/* partial match (not whole sequence yet) */
 		return KEY_SEQUNCE_NOT_FINISHED;
 	}
+
 	terminal_print("ansii char 0x%X %c\n", c);
 	/*
 	 * Sequence does not match
@@ -530,6 +534,7 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 			printf("char-0x%02x\n", c);
 			break;
 		}
+
 		if (line_buf_ix < LINE_BUF_MAX - 1) {
 			if (line_len == line_buf_ix) {
 				putchar(c);

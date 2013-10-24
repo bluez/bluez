@@ -79,7 +79,7 @@ static void connection_state_cb(bt_bdaddr_t *bd_addr,
 	char addr[MAX_ADDR_STR_LEN];
 
 	haltest_info("%s: bd_addr=%s connection_state=%s\n", __func__,
-			bt_bdaddr_t2str(bd_addr, addr),
+					bt_bdaddr_t2str(bd_addr, addr),
 					bthh_connection_state_t2str(state));
 	if (state == BTHH_CONN_STATE_CONNECTED)
 		strcpy(connected_device_addr, addr);
@@ -94,7 +94,7 @@ static void virtual_unplug_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status)
 	char addr[MAX_ADDR_STR_LEN];
 
 	haltest_info("%s: bd_addr=%s hh_status=%s\n", __func__,
-			bt_bdaddr_t2str(bd_addr, addr),
+						bt_bdaddr_t2str(bd_addr, addr),
 						bthh_status_t2str(hh_status));
 }
 
@@ -122,9 +122,9 @@ static void protocol_mode_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,
 	char addr[MAX_ADDR_STR_LEN];
 
 	haltest_info("%s: bd_addr=%s hh_status=%s mode=%s\n", __func__,
-			bt_bdaddr_t2str(bd_addr, addr),
-			bthh_status_t2str(hh_status),
-						bthh_protocol_mode_t2str(mode));
+					bt_bdaddr_t2str(bd_addr, addr),
+					bthh_status_t2str(hh_status),
+					bthh_protocol_mode_t2str(mode));
 }
 
 /*
@@ -136,8 +136,8 @@ static void idle_time_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,
 	char addr[MAX_ADDR_STR_LEN];
 
 	haltest_info("%s: bd_addr=%s hh_status=%s idle_rate=%d\n", __func__,
-			bt_bdaddr_t2str(bd_addr, addr),
-			bthh_status_t2str(hh_status), idle_rate);
+				bt_bdaddr_t2str(bd_addr, addr),
+				bthh_status_t2str(hh_status), idle_rate);
 }
 
 
@@ -152,8 +152,8 @@ static void get_report_cb(bt_bdaddr_t *bd_addr, bthh_status_t hh_status,
 
 	/* TODO: print actual report */
 	haltest_info("%s: bd_addr=%s hh_status=%s rpt_size=%d\n", __func__,
-			bt_bdaddr_t2str(bd_addr, addr),
-			bthh_status_t2str(hh_status), rpt_size);
+					bt_bdaddr_t2str(bd_addr, addr),
+					bthh_status_t2str(hh_status), rpt_size);
 }
 
 static bthh_callbacks_t bthh_callbacks = {
@@ -177,12 +177,12 @@ static void init_p(int argc, const char **argv)
 
 /* connect */
 
-static void connect_c(int argc, const const char **argv,
-				enum_func *penum_func, void **puser)
+static void connect_c(int argc, const const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = (void *) connected_device_addr;
-		*penum_func = enum_one_string;
+		*user = (void *) connected_device_addr;
+		*enum_func = enum_one_string;
 	}
 }
 
@@ -243,14 +243,14 @@ static void set_info_p(int argc, const char **argv)
 /* get_protocol */
 
 static void get_protocol_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = connected_device_addr;
-		*penum_func = enum_one_string;
+		*user = connected_device_addr;
+		*enum_func = enum_one_string;
 	} else if (argc == 4) {
-		*puser = TYPE_ENUM(bthh_protocol_mode_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(bthh_protocol_mode_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -296,14 +296,14 @@ static void set_protocol_p(int argc, const char **argv)
 /* get_report */
 
 static void get_report_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = connected_device_addr;
-		*penum_func = enum_one_string;
+		*user = connected_device_addr;
+		*enum_func = enum_one_string;
 	} else if (argc == 4) {
-		*puser = TYPE_ENUM(bthh_report_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(bthh_report_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -341,14 +341,14 @@ static void get_report_p(int argc, const char **argv)
 /* set_report */
 
 static void set_report_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = connected_device_addr;
-		*penum_func = enum_one_string;
+		*user = connected_device_addr;
+		*enum_func = enum_one_string;
 	} else if (argc == 4) {
-		*puser = TYPE_ENUM(bthh_report_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(bthh_report_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -376,12 +376,12 @@ static void set_report_p(int argc, const char **argv)
 
 /* send_data */
 
-static void send_data_c(int argc, const const char **argv,
-					enum_func *penum_func, void **puser)
+static void send_data_c(int argc, const const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = connected_device_addr;
-		*penum_func = enum_one_string;
+		*user = connected_device_addr;
+		*enum_func = enum_one_string;
 	}
 }
 

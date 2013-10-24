@@ -47,6 +47,7 @@ struct method *get_method(struct method *methods, const char *name)
 			return methods;
 		methods++;
 	}
+
 	return NULL;
 }
 
@@ -103,11 +104,11 @@ static void help_print_interface(const struct interface *i)
 }
 
 /* Help completion */
-static void help_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+static void help_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 2)
-		*penum_func = interface_name;
+		*enum_func = interface_name;
 }
 
 /* Help execution */
@@ -125,11 +126,13 @@ static void help_p(int argc, const char **argv)
 						(m->help ? m->help : ""));
 			m++;
 		}
+
 		terminal_print("\nAvailable interfaces to use:\n");
 		while (NULL != *ip) {
 			terminal_print("\t%s\n", (*ip)->name);
 			ip++;
 		}
+
 		terminal_print("\nTo get help on methods for each interface type:\n");
 		terminal_print("\n\thelp <inerface>\n");
 		terminal_print("\nBasic scenario:\n\tadapter init\n");
@@ -138,11 +141,13 @@ static void help_p(int argc, const char **argv)
 		terminal_print("\thandsfree init\n\n");
 		return;
 	}
+
 	i = get_interface(argv[1]);
 	if (i == NULL) {
 		haltest_error("No such interface\n");
 		return;
 	}
+
 	help_print_interface(i);
 }
 
@@ -176,6 +181,7 @@ const char *interface_name(void *v, int i)
 const char *command_name(void *v, int i)
 {
 	int cmd_cnt = (int) (sizeof(commands)/sizeof(commands[0]) - 1);
+
 	if (i >= cmd_cnt)
 		return interface_name(v, i - cmd_cnt);
 	else
@@ -188,8 +194,7 @@ const char *command_name(void *v, int i)
  * Output argv is filled with pointers to arguments
  * returns number of tokens parsed - argc
  */
-static int command_line_to_argv(char *line_buffer,
-				char *argv[], int argv_size)
+static int command_line_to_argv(char *line_buffer, char *argv[], int argv_size)
 {
 	static const char *token_breaks = "\r\n\t ";
 	char *token;
@@ -220,15 +225,18 @@ static void process_line(char *line_buffer)
 			i++;
 			continue;
 		}
+
 		if (argc < 2 || strcmp(argv[1], "?") == 0) {
 			help_print_interface(interfaces[i]);
 			return;
 		}
+
 		m = get_method(interfaces[i]->methods, argv[1]);
 		if (m != NULL) {
 			m->func(argc, (const char **) argv);
 			return;
 		}
+
 		haltest_error("No function %s found\n", argv[1]);
 		return;
 	}

@@ -52,7 +52,6 @@ static void receive_from_client(struct pollfd *pollfd)
 		haltest_error("Disconnected fd=%d\n", pollfd->fd);
 		poll_unregister_fd(pollfd->fd, receive_from_client);
 	} else if (pollfd->revents & POLLIN) {
-
 		haltest_info("receiving from client fd=%d\n", pollfd->fd);
 
 		do {
@@ -95,9 +94,10 @@ static void receive_sock_connect_signal(struct pollfd *pollfd)
 			haltest_info("Read on connect return %d\n", ret);
 			return;
 		}
+
 		haltest_info("Connection to %s channel %d status=%d\n",
 				bt_bdaddr_t2str(&cs.bd_addr, addr_str),
-							cs.channel, cs.status);
+				cs.channel, cs.status);
 
 		if (cs.status == 0)
 			poll_register_fd(pollfd->fd, POLLIN,
@@ -106,7 +106,7 @@ static void receive_sock_connect_signal(struct pollfd *pollfd)
 
 	if (pollfd->revents & POLLHUP) {
 		haltest_error("Disconnected fd=%d revents=0x%X\n", pollfd->fd,
-							pollfd->revents);
+				pollfd->revents);
 		poll_unregister_fd(pollfd->fd, receive_sock_connect_signal);
 	}
 }
@@ -165,6 +165,7 @@ static void read_accepted(int fd)
 		accepted_fd = descs[0];
 		break;
 	}
+
 	haltest_info("Incoming connection from %s channel %d status=%d fd=%d\n",
 					bt_bdaddr_t2str(&cs.bd_addr, addr_str),
 					cs.channel, cs.status, accepted_fd);
@@ -184,12 +185,12 @@ static void client_connected(struct pollfd *pollfd)
 
 /** listen */
 
-static void listen_c(int argc, const char **argv, enum_func *penum_func,
-								void **puser)
+static void listen_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = TYPE_ENUM(btsock_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(btsock_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -253,14 +254,14 @@ static void listen_p(int argc, const char **argv)
 
 /** connect */
 
-static void connect_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+static void connect_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*penum_func = enum_devices;
+		*enum_func = enum_devices;
 	} else if (argc == 4) {
-		*puser = TYPE_ENUM(btsock_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(btsock_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -313,6 +314,7 @@ static void connect_p(int argc, const char **argv)
 	if (sock_fd > 0) {
 		int channel = 0;
 		int ret = read(sock_fd, &channel, 4);
+
 		if (ret != 4)
 			haltest_info("Read channel failed\n");
 		haltest_info("Channel returned from first read %d\n", channel);

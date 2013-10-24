@@ -63,8 +63,8 @@ static void print_matches(enum_func f, void *user, const char *prefix, int len)
  * buf - output buffer to keep splited arguments list
  * buf_size_in_bytes - size of buf
  */
-static int split_command(const char *line_buffer, int size,
-					split_arg_t *buf, int buf_size_in_bytes)
+static int split_command(const char *line_buffer, int size, split_arg_t *buf,
+							int buf_size_in_bytes)
 {
 	split_arg_t *prev = NULL;
 	split_arg_t *arg = buf;
@@ -218,8 +218,8 @@ static void method_completion(const struct interface *iface, split_arg_t *arg)
 static const char *bold = "\x1b[1m";
 static const char *normal = "\x1b[0m";
 
-static bool find_nth_argument(const char *str, int n,
-						const char **s, const char **e)
+static bool find_nth_argument(const char *str, int n, const char **s,
+								const char **e)
 {
 	const char *p = str;
 	int argc = 0;

@@ -82,13 +82,14 @@ static char *btproperty2str(bt_property_t property)
 	char *p;
 
 	p = buf + sprintf(buf, "type=%s len=%d val=",
-			  bt_property_type_t2str(property.type), property.len);
+					bt_property_type_t2str(property.type),
+					property.len);
 
 	switch (property.type) {
 	case BT_PROPERTY_BDNAME:
 	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
 		sprintf(p, "%*s", property.len,
-			((bt_bdname_t *) property.val)->name);
+					((bt_bdname_t *) property.val)->name);
 		break;
 
 	case BT_PROPERTY_BDADDR:
@@ -160,7 +161,7 @@ static char *btproperty2str(bt_property_t property)
 			bt_service_record_t *rec = property.val;
 
 			sprintf(p, "{%s, %d, %s}", btuuid2str(&rec->uuid),
-				rec->channel, rec->name);
+						rec->channel, rec->name);
 		}
 		break;
 
@@ -206,12 +207,14 @@ void add_remote_device(const bt_bdaddr_t *addr)
 			remote_devices_capacity = 0;
 			return;
 		}
+
 		remote_devices_capacity = 4;
 	}
 
 	/* Array is sorted, search for right place */
 	for (i = 0; i < remote_devices_cnt; ++i) {
 		int res = memcmp(&remote_devices[i], addr, sizeof(*addr));
+
 		if (res == 0)
 			return; /* Already added */
 		else if (res > 0)
@@ -259,6 +262,7 @@ static void add_remote_device_from_props(int num_properties,
 		 * aligned buffer
 		 */
 		bt_property_t property;
+
 		memcpy(&property, properties + i, sizeof(property));
 		if (property.type == BT_PROPERTY_BDADDR)
 			add_remote_device((bt_bdaddr_t *) property.val);
@@ -270,21 +274,23 @@ static void adapter_state_changed_cb(bt_state_t state)
 	haltest_info("%s: state=%s\n", __func__, bt_state_t2str(state));
 }
 
-static void adapter_properties_cb(bt_status_t status,
-	int num_properties, bt_property_t *properties)
+static void adapter_properties_cb(bt_status_t status, int num_properties,
+						bt_property_t *properties)
 {
-	haltest_info("%s: status=%s num_properties=%d\n",
-	       __func__, bt_status_t2str(status), num_properties);
+	haltest_info("%s: status=%s num_properties=%d\n", __func__,
+				bt_status_t2str(status), num_properties);
 
 	dump_properties(num_properties, properties);
 }
 
 static void remote_device_properties_cb(bt_status_t status,
-	bt_bdaddr_t *bd_addr, int num_properties, bt_property_t *properties)
+					bt_bdaddr_t *bd_addr,
+					int num_properties,
+					bt_property_t *properties)
 {
-	haltest_info("%s: status=%s bd_addr=%s num_properties=%d\n",
-	       __func__, bt_status_t2str(status), bdaddr2str(bd_addr),
-	       num_properties);
+	haltest_info("%s: status=%s bd_addr=%s num_properties=%d\n", __func__,
+			bt_status_t2str(status), bdaddr2str(bd_addr),
+			num_properties);
 
 	add_remote_device(bd_addr);
 
@@ -303,7 +309,7 @@ static void device_found_cb(int num_properties, bt_property_t *properties)
 static void discovery_state_changed_cb(bt_discovery_state_t state)
 {
 	haltest_info("%s: state=%s\n", __func__,
-		bt_discovery_state_t2str(state));
+					bt_discovery_state_t2str(state));
 }
 
 /*
@@ -311,16 +317,16 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
  * It's stored for command completion.
  */
 static char last_remote_addr[MAX_ADDR_STR_LEN];
-static bt_ssp_variant_t last_ssp_variant = (bt_ssp_variant_t)-1;
+static bt_ssp_variant_t last_ssp_variant = (bt_ssp_variant_t) -1;
 
 static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
-	uint32_t cod)
+								uint32_t cod)
 {
 	/* Store for command completion */
 	bt_bdaddr_t2str(remote_bd_addr, last_remote_addr);
 
 	haltest_info("%s: remote_bd_addr=%s bd_name=%s cod=%06x\n", __func__,
-				       last_remote_addr, bd_name->name, cod);
+					last_remote_addr, bd_name->name, cod);
 }
 
 static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
@@ -332,26 +338,26 @@ static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
 	last_ssp_variant = pairing_variant;
 
 	haltest_info("%s: remote_bd_addr=%s bd_name=%s cod=%06x pairing_variant=%s pass_key=%d\n",
-		     __func__, last_remote_addr, bd_name->name, cod,
-		     bt_ssp_variant_t2str(pairing_variant), pass_key);
+			__func__, last_remote_addr, bd_name->name, cod,
+			bt_ssp_variant_t2str(pairing_variant), pass_key);
 }
 
 static void bond_state_changed_cb(bt_status_t status,
-					bt_bdaddr_t *remote_bd_addr,
-					bt_bond_state_t state)
+						bt_bdaddr_t *remote_bd_addr,
+						bt_bond_state_t state)
 {
 	haltest_info("%s: status=%s remote_bd_addr=%s state=%s\n", __func__,
-		       bt_status_t2str(status), bdaddr2str(remote_bd_addr),
-		       bt_bond_state_t2str(state));
+			bt_status_t2str(status), bdaddr2str(remote_bd_addr),
+			bt_bond_state_t2str(state));
 }
 
 static void acl_state_changed_cb(bt_status_t status,
-					bt_bdaddr_t *remote_bd_addr,
-					bt_acl_state_t state)
+						bt_bdaddr_t *remote_bd_addr,
+						bt_acl_state_t state)
 {
 	haltest_info("%s: status=%s remote_bd_addr=%s state=%s\n", __func__,
-		       bt_status_t2str(status), bdaddr2str(remote_bd_addr),
-		       bt_acl_state_t2str(state));
+			bt_status_t2str(status), bdaddr2str(remote_bd_addr),
+			bt_acl_state_t2str(state));
 }
 
 static void thread_evt_cb(bt_cb_thread_evt evt)
@@ -409,7 +415,7 @@ static void init_p(int argc, const char **argv)
 	}
 
 	if_bluetooth =
-	    ((bluetooth_device_t *) device)->get_bluetooth_interface();
+		    ((bluetooth_device_t *) device)->get_bluetooth_interface();
 	if (!if_bluetooth) {
 		haltest_error("get_bluetooth_interface returned NULL\n");
 		return;
@@ -449,11 +455,11 @@ static void get_adapter_properties_p(int argc, const char **argv)
 }
 
 static void get_adapter_property_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = TYPE_ENUM(bt_property_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(bt_property_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -468,21 +474,22 @@ static void get_adapter_property_p(int argc, const char **argv)
 }
 
 static const char * const names[] = {
-		"BT_PROPERTY_BDNAME",
-		"BT_PROPERTY_ADAPTER_SCAN_MODE",
-		"BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT", NULL
+	"BT_PROPERTY_BDNAME",
+	"BT_PROPERTY_ADAPTER_SCAN_MODE",
+	"BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT",
+	NULL
 };
 
 static void set_adapter_property_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	if (argc == 3) {
-		*puser = (void *) names;
-		*penum_func = enum_strings;
+		*user = (void *) names;
+		*enum_func = enum_strings;
 	} else if (argc == 4) {
 		if (0 == strcmp(argv[2], "BT_PROPERTY_ADAPTER_SCAN_MODE")) {
-			*puser = TYPE_ENUM(bt_scan_mode_t);
-			*penum_func = enum_defines;
+			*user = TYPE_ENUM(bt_scan_mode_t);
+			*enum_func = enum_defines;
 		}
 	}
 }
@@ -529,12 +536,12 @@ static void set_adapter_property_p(int argc, const char **argv)
 /*
  * This function is to be used for completion methods that need only address
  */
-static void complete_addr_c(int argc, const char **argv,
-					enum_func *penum_func, void **puser)
+static void complete_addr_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = NULL;
-		*penum_func = enum_devices;
+		*user = NULL;
+		*enum_func = enum_devices;
 	}
 }
 
@@ -552,15 +559,15 @@ static void get_remote_device_properties_p(int argc, const char **argv)
 }
 
 static void get_remote_device_property_c(int argc, const char **argv,
-						enum_func *penum_func,
-								void **puser)
+							enum_func *enum_func,
+							void **user)
 {
 	if (argc == 3) {
-		*puser = NULL;
-		*penum_func = enum_devices;
+		*user = NULL;
+		*enum_func = enum_devices;
 	} else if (argc == 4) {
-		*puser = TYPE_ENUM(bt_property_type_t);
-		*penum_func = enum_defines;
+		*user = TYPE_ENUM(bt_property_type_t);
+		*enum_func = enum_defines;
 	}
 }
 
@@ -596,7 +603,6 @@ static void set_remote_device_property_p(int argc, const char **argv)
 		property.len = strlen(argv[4]);
 		property.val = (char *) argv[4];
 		break;
-
 	default:
 		return;
 	}
@@ -621,6 +627,7 @@ static void get_remote_service_record_p(int argc, const char **argv)
 		haltest_error("No uuid specified\n");
 		return;
 	}
+
 	str2bt_uuid_t(argv[3], &uuid);
 
 	EXEC(if_bluetooth->get_remote_service_record, &addr, &uuid);
@@ -692,13 +699,14 @@ static void cancel_bond_p(int argc, const char **argv)
 	EXEC(if_bluetooth->cancel_bond, &addr);
 }
 
-static void pin_reply_c(int argc, const char **argv,
-		enum_func *penum_func, void **puser)
+static void pin_reply_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	static const char *const completions[] = { last_remote_addr, NULL };
+
 	if (argc == 3) {
-		*puser = (void *) completions;
-		*penum_func = enum_strings;
+		*user = (void *) completions;
+		*enum_func = enum_strings;
 	}
 }
 
@@ -721,22 +729,22 @@ static void pin_reply_p(int argc, const char **argv)
 	EXEC(if_bluetooth->pin_reply, &addr, accept, pin_len, &pin);
 }
 
-static void ssp_reply_c(int argc, const char **argv,
-		enum_func *penum_func, void **puser)
+static void ssp_reply_c(int argc, const char **argv, enum_func *enum_func,
+								void **user)
 {
 	if (argc == 3) {
-		*puser = last_remote_addr;
-		*penum_func = enum_one_string;
+		*user = last_remote_addr;
+		*enum_func = enum_one_string;
 	} else if (argc == 5) {
-		*puser = "1";
-		*penum_func = enum_one_string;
+		*user = "1";
+		*enum_func = enum_one_string;
 	} else if (argc == 4) {
 		if (-1 != (int) last_ssp_variant) {
-			*puser = (void *) bt_ssp_variant_t2str(last_ssp_variant);
-			*penum_func = enum_one_string;
+			*user = (void *) bt_ssp_variant_t2str(last_ssp_variant);
+			*enum_func = enum_one_string;
 		} else {
-			*puser = TYPE_ENUM(bt_ssp_variant_t);
-			*penum_func = enum_defines;
+			*user = TYPE_ENUM(bt_ssp_variant_t);
+			*enum_func = enum_defines;
 		}
 	}
 }
@@ -755,11 +763,13 @@ static void ssp_reply_p(int argc, const char **argv)
 		haltest_error("No ssp variant specified\n");
 		return;
 	}
+
 	var = str2btsspvariant(argv[3]);
 	if (argc < 5) {
 		haltest_error("No accept value specified\n");
 		return;
 	}
+
 	accept = atoi(argv[4]);
 	passkey = 0;
 
@@ -770,7 +780,7 @@ static void ssp_reply_p(int argc, const char **argv)
 }
 
 static void get_profile_interface_c(int argc, const char **argv,
-		enum_func *penum_func, void **puser)
+					enum_func *enum_func, void **user)
 {
 	static const char *const profile_ids[] = {
 		BT_PROFILE_HANDSFREE_ID,
@@ -787,8 +797,8 @@ static void get_profile_interface_c(int argc, const char **argv,
 	};
 
 	if (argc == 3) {
-		*puser = (void *) profile_ids;
-		*penum_func = enum_strings;
+		*user = (void *) profile_ids;
+		*enum_func = enum_strings;
 	}
 }
 
@@ -803,22 +813,22 @@ static void get_profile_interface_p(int argc, const char **argv)
 	if (strcmp(BT_PROFILE_HANDSFREE_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_hf is there */
 	else if (strcmp(BT_PROFILE_ADVANCED_AUDIO_ID, id) == 0)
-		pif = (const void **)&if_av;
+		pif = (const void **) &if_av;
 	else if (strcmp(BT_PROFILE_HEALTH_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_hl is there */
 	else if (strcmp(BT_PROFILE_SOCKETS_ID, id) == 0)
-		pif = (const void **)&if_sock;
+		pif = (const void **) &if_sock;
 	else if (strcmp(BT_PROFILE_HIDHOST_ID, id) == 0)
-		pif = (const void **)&if_hh;
+		pif = (const void **) &if_hh;
 	else if (strcmp(BT_PROFILE_PAN_ID, id) == 0)
-		pif = (const void **)&if_pan;
+		pif = (const void **) &if_pan;
 #if PLATFORM_SDK_VERSION > 17
 	else if (strcmp(BT_PROFILE_AV_RC_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_rc is there */
 #endif
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",
-		     id);
+									id);
 
 	if (pif != NULL) {
 		*pif = if_bluetooth->get_profile_interface(id);
@@ -836,6 +846,7 @@ static void dut_mode_configure_p(int argc, const char **argv)
 		haltest_error("No dut mode specified\n");
 		return;
 	}
+
 	mode = strtol(argv[2], NULL, 0);
 
 	EXEC(if_bluetooth->dut_mode_configure, mode);
@@ -851,7 +862,8 @@ static struct method methods[] = {
 	STD_METHODCH(set_adapter_property, "<prop_type> <prop_value>"),
 	STD_METHODCH(get_remote_device_properties, "<addr>"),
 	STD_METHODCH(get_remote_device_property, "<addr> <property_type>"),
-	STD_METHODCH(set_remote_device_property, "<addr> <property_type> <value>"),
+	STD_METHODCH(set_remote_device_property,
+					"<addr> <property_type> <value>"),
 	STD_METHODCH(get_remote_service_record, "<addr> <uuid>"),
 	STD_METHODCH(get_remote_services, "<addr>"),
 	STD_METHOD(start_discovery),
