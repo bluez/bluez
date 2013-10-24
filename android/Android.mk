@@ -14,11 +14,11 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
 	main.c \
-	log.c \
 	adapter.c \
 	hid.c \
 	socket.c \
 	ipc.c ipc.h \
+	../src/log.c \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \
 	../src/sdpd-database.c \
