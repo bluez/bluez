@@ -803,7 +803,7 @@ static void get_profile_interface_p(int argc, const char **argv)
 	if (strcmp(BT_PROFILE_HANDSFREE_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_hf is there */
 	else if (strcmp(BT_PROFILE_ADVANCED_AUDIO_ID, id) == 0)
-		pif = &dummy; /* TODO: change when if_av is there */
+		pif = (const void **)&if_av;
 	else if (strcmp(BT_PROFILE_HEALTH_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_hl is there */
 	else if (strcmp(BT_PROFILE_SOCKETS_ID, id) == 0)
