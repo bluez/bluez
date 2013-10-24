@@ -288,9 +288,11 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	g_io_add_watch(io, cond, notif_watch_cb, NULL);
 
-	info("Successfully connected to HAL");
+	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 
-	/* TODO start handling commands */
+	g_io_add_watch(hal_cmd_io, cond, cmd_watch_cb, NULL);
+
+	info("Successfully connected to HAL");
 
 	return FALSE;
 }
@@ -304,10 +306,6 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 		g_main_loop_quit(event_loop);
 		return FALSE;
 	}
-
-	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-
-	g_io_add_watch(io, cond, cmd_watch_cb, NULL);
 
 	hal_notif_io = connect_hal(notif_connect_cb);
 	if (!hal_notif_io) {
