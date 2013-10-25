@@ -73,6 +73,7 @@ LOCAL_SRC_FILES := \
 	hal-hidhost.c \
 	hal-pan.c \
 	hal-av.c \
+	client/textconv.c \
 
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \

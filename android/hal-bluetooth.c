@@ -25,6 +25,8 @@
 #include "hal-msg.h"
 #include "hal-ipc.h"
 
+#include "client/textconv.h"
+
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 static void handle_adapter_state_changed(void *buf)
@@ -192,7 +194,7 @@ static int get_adapter_property(bt_property_type_t type)
 {
 	struct hal_cmd_get_adapter_prop cmd;
 
-	DBG("");
+	DBG("prop: %s", bt_property_type_t2str(type));
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
@@ -224,7 +226,7 @@ static int set_adapter_property(const bt_property_t *property)
 	char buf[sizeof(struct hal_cmd_set_adapter_prop) + property->len];
 	struct hal_cmd_set_adapter_prop *cmd = (void *) buf;
 
-	DBG("");
+	DBG("prop: %s", bt_property_type_t2str(property->type));
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
