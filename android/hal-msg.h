@@ -370,3 +370,9 @@ struct hal_ev_av_connection_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
 } __attribute__((packed));
+
+#define HAL_EV_AV_AUDIO_STATE	0x82
+struct hal_ev_av_audio_state {
+	uint8_t state;
+	uint8_t bdaddr[6];
+} __attribute__((packed));

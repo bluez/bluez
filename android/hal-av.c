@@ -38,6 +38,14 @@ static void handle_connection_state(void *buf)
 						(bt_bdaddr_t *) (ev->bdaddr));
 }
 
+static void handle_audio_state(void *buf)
+{
+	struct hal_ev_av_audio_state *ev = buf;
+
+	if (cbs->audio_state_cb)
+		cbs->audio_state_cb(ev->state, (bt_bdaddr_t *)(ev->bdaddr));
+}
+
 /* will be called from notification thread context */
 void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -47,6 +55,9 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 	switch (opcode) {
 	case HAL_EV_AV_CONNECTION_STATE:
 		handle_connection_state(buf);
+		break;
+	case HAL_EV_AV_AUDIO_STATE:
+		handle_audio_state(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
