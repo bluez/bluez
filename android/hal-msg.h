@@ -49,6 +49,7 @@ struct hal_hdr {
 
 /* Core Service */
 
+#define HAL_ERROR_SUCCESS		0x00
 #define HAL_ERROR_FAILED		0x01
 #define HAL_ERROR_NOT_READY		0x02
 #define HAL_ERROR_NOMEM			0x03
