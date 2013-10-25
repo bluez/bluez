@@ -340,15 +340,21 @@ static int pin_reply(const bt_bdaddr_t *bd_addr, uint8_t accept,
 static int ssp_reply(const bt_bdaddr_t *bd_addr, bt_ssp_variant_t variant,
 					uint8_t accept, uint32_t passkey)
 {
+	struct hal_cmd_ssp_reply cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (!bd_addr)
-		return BT_STATUS_PARM_INVALID;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	/* type match IPC type */
+	cmd.ssp_variant = variant;
+	cmd.accept = accept;
+	cmd.passkey = passkey;
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SSP_REPLY,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static const void *get_profile_interface(const char *profile_id)
