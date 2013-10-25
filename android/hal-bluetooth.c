@@ -35,6 +35,37 @@ static void handle_adapter_state_changed(void *buf)
 		bt_hal_cbacks->adapter_state_changed_cb(ev->state);
 }
 
+static void handle_adapter_props_changed(void *buf, uint16_t len)
+{
+	struct hal_ev_adapter_props_changed *ev = buf;
+	bt_property_t props[ev->num_props];
+	struct hal_property *hal_prop;
+	void *p;
+	int i;
+
+	if (!bt_hal_cbacks->adapter_properties_cb)
+		return;
+
+	hal_prop = ev->props;
+	p = ev->props;
+
+	for (i = 0; i < ev->num_props; i++) {
+		if (p + sizeof(*hal_prop) + hal_prop->len > buf + len) {
+			error("invalid adapter properties event, aborting");
+			exit(EXIT_FAILURE);
+		}
+
+		props[i].type = hal_prop->type;
+		props[i].len = hal_prop->len;
+		props[i].val = hal_prop->val;
+
+		p += sizeof(*hal_prop) + hal_prop->len;
+		hal_prop = p;
+	}
+
+	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
+}
+
 /* will be called from notification thread context */
 void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -44,6 +75,9 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 	switch (opcode) {
 	case HAL_EV_ADAPTER_STATE_CHANGED:
 		handle_adapter_state_changed(buf);
+		break;
+	case HAL_EV_ADAPTER_PROPS_CHANGED:
+		handle_adapter_props_changed(buf, len);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
