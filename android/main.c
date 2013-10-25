@@ -239,12 +239,12 @@ static GIOChannel *connect_hal(GIOFunc connect_cb)
 	struct sockaddr_un addr;
 	GIOCondition cond;
 	GIOChannel *io;
-	int err, sk;
+	int sk;
 
 	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
 	if (sk < 0) {
-		err = errno;
-		error("Failed to create socket: %d (%s)", err, strerror(err));
+		error("Failed to create socket: %d (%s)", errno,
+							strerror(errno));
 		return NULL;
 	}
 
@@ -258,9 +258,7 @@ static GIOChannel *connect_hal(GIOFunc connect_cb)
 
 	memcpy(addr.sun_path, BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH));
 
-	err = connect(sk, (struct sockaddr *) &addr, sizeof(addr));
-	if (err < 0) {
-		err = -errno;
+	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		error("Failed to connect HAL socket: %d (%s)", errno,
 							strerror(errno));
 		g_io_channel_unref(io);
