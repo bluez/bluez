@@ -281,6 +281,11 @@ Commands and responses:
 		                    Passkey (4 octets)
 		Response parameters: <none>
 
+		Valid SSP variant values: 0x00 = Passkey Confirmation
+		                          0x01 = Passkey Entry
+		                          0x02 = Consent (for Just Works)
+		                          0x03 = Passkey Notification
+
 		In case of an error, the error response will be returned.
 
 	Opcode 0x12 - DUT Mode Configure command/response
