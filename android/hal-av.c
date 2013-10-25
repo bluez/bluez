@@ -20,12 +20,22 @@
 
 #include "hal-log.h"
 #include "hal.h"
+#include "hal-msg.h"
 
 static const btav_callbacks_t *cbs = NULL;
 
 static bool interface_ready(void)
 {
 	return cbs != NULL;
+}
+
+static void handle_connection_state(void *buf)
+{
+	struct hal_ev_av_connection_state *ev = buf;
+
+	if (cbs->connection_state_cb)
+		cbs->connection_state_cb(ev->state,
+						(bt_bdaddr_t *) (ev->bdaddr));
 }
 
 /* will be called from notification thread context */
@@ -35,6 +45,9 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 		return;
 
 	switch (opcode) {
+	case HAL_EV_AV_CONNECTION_STATE:
+		handle_connection_state(buf);
+		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
 		break;

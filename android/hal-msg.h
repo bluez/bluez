@@ -364,3 +364,9 @@ struct hal_ev_le_test_mode {
 	uint8_t  status;
 	uint16_t num_packets;
 } __attribute__((packed));
+
+#define HAL_EV_AV_CONNECTION_STATE	0x81
+struct hal_ev_av_connection_state {
+	uint8_t state;
+	uint8_t bdaddr[6];
+} __attribute__((packed));
