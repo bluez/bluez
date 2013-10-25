@@ -321,12 +321,20 @@ static int remove_bond(const bt_bdaddr_t *bd_addr)
 static int pin_reply(const bt_bdaddr_t *bd_addr, uint8_t accept,
 				uint8_t pin_len, bt_pin_code_t *pin_code)
 {
+	struct hal_cmd_pin_reply cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	cmd.accept = accept;
+	cmd.pin_len = pin_len;
+	memcpy(cmd.pin_code, pin_code, sizeof(cmd.pin_code));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_PIN_REPLY,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static int ssp_reply(const bt_bdaddr_t *bd_addr, bt_ssp_variant_t variant,
