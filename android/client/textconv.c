@@ -137,7 +137,7 @@ int int2str_findstr(const char *str, const struct int2str m[])
  */
 char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
 {
-	const char *p = (const char *) bd_addr;
+	const uint8_t *p = bd_addr->address;
 
 	snprintf(buf, MAX_ADDR_STR_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
 					p[0], p[1], p[2], p[3], p[4], p[5]);
@@ -148,10 +148,10 @@ char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
 /* converts string to bt_bdaddr_t */
 void str2bt_bdaddr_t(const char *str, bt_bdaddr_t *bd_addr)
 {
-	char *p = (char *) bd_addr;
+	uint8_t *p = bd_addr->address;
 
 	sscanf(str, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
-			       &p[0], &p[1], &p[2], &p[3], &p[4], &p[5]);
+				&p[0], &p[1], &p[2], &p[3], &p[4], &p[5]);
 }
 
 static const char BT_BASE_UUID[] = {
