@@ -138,7 +138,8 @@ static int get_adapter_properties(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_GET_ADAPTER_PROPS,
+						0, NULL, 0, NULL, NULL);
 }
 
 static int get_adapter_property(bt_property_type_t type)
