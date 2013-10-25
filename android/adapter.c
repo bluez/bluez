@@ -365,6 +365,20 @@ static bool get_property(void *buf, uint16_t len)
 	}
 }
 
+static uint8_t set_property(void *buf, uint16_t len)
+{
+	struct hal_cmd_set_adapter_prop *cmd = buf;
+
+	switch (cmd->type) {
+	case HAL_PROP_ADAPTER_NAME:
+	case HAL_PROP_ADAPTER_SCAN_MODE:
+	case HAL_PROP_ADAPTER_DISC_TIMEOUT:
+	default:
+		DBG("Unhandled property type 0x%x", cmd->type);
+		return HAL_STATUS_FAILED;
+	}
+}
+
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
@@ -393,6 +407,12 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	case HAL_OP_GET_ADAPTER_PROP:
 		if (!get_property(buf, len))
+			goto error;
+
+		break;
+	case HAL_OP_SET_ADAPTER_PROP:
+		status = set_property(buf, len);
+		if (status != HAL_STATUS_SUCCESS)
 			goto error;
 
 		break;
