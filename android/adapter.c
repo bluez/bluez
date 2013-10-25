@@ -86,19 +86,52 @@ static void settings_changed_powered(void)
 			HAL_EV_ADAPTER_STATE_CHANGED, sizeof(ev), &ev, -1);
 }
 
-static void settings_changed_connectable(void)
+static uint8_t settings2scan_mode(void)
 {
-	/* TODO */
+	bool connectable, discoverable;
+
+	connectable = adapter->current_settings & MGMT_SETTING_CONNECTABLE;
+	discoverable = adapter->current_settings & MGMT_SETTING_DISCOVERABLE;
+
+	if (connectable && discoverable)
+		return HAL_ADAPTER_SCAN_MODE_CONN_DISC;
+
+	if (connectable)
+		return HAL_ADAPTER_SCAN_MODE_CONN;
+
+	return HAL_ADAPTER_SCAN_MODE_NONE;
 }
 
-static void settings_changed_discoverable(void)
+static void scan_mode_changed(void)
 {
-	/* TODO */
+	struct hal_ev_adapter_props_changed *ev;
+	uint8_t *mode;
+	int len;
+	len = sizeof(*ev) + sizeof(struct hal_property) + 1;
+
+	ev = g_malloc(len);
+
+	ev->num_props = 1;
+	ev->status = HAL_STATUS_SUCCESS;
+
+	ev->props[0].type = HAL_PROP_ADAPTER_SCAN_MODE;
+	ev->props[0].len = 1;
+
+	mode = ev->props[0].val;
+	*mode = settings2scan_mode();
+
+	DBG("mode %u", *mode);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
+
+	g_free(ev);
 }
 
 static void settings_changed(uint32_t settings)
 {
 	uint32_t changed_mask;
+	uint32_t scan_mode_mask;
 
 	changed_mask = adapter->current_settings ^ settings;
 
@@ -109,17 +142,10 @@ static void settings_changed(uint32_t settings)
 	if (changed_mask & MGMT_SETTING_POWERED)
 		settings_changed_powered();
 
-	if (changed_mask & MGMT_SETTING_CONNECTABLE) {
-		DBG("Connectable");
+	scan_mode_mask = MGMT_SETTING_CONNECTABLE | MGMT_SETTING_DISCOVERABLE;
 
-		settings_changed_connectable();
-	}
-
-	if (changed_mask & MGMT_SETTING_DISCOVERABLE) {
-		DBG("Discoverable");
-
-		settings_changed_discoverable();
-	}
+	if (changed_mask & scan_mode_mask)
+		scan_mode_changed();
 }
 
 static void new_settings_callback(uint16_t index, uint16_t length,
