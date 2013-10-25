@@ -36,7 +36,7 @@ static GIOChannel *notification_io = NULL;
 
 void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 {
-	uint8_t status = HAL_ERROR_FAILED;
+	uint8_t status = HAL_STATUS_FAILED;
 
 	switch (opcode) {
 	case HAL_OP_HID_CONNECT:

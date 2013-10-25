@@ -49,21 +49,21 @@ struct hal_hdr {
 
 /* Core Service */
 
-#define HAL_ERROR_SUCCESS		0x00
-#define HAL_ERROR_FAILED		0x01
-#define HAL_ERROR_NOT_READY		0x02
-#define HAL_ERROR_NOMEM			0x03
-#define HAL_ERROR_BUSY			0x04
-#define HAL_ERROR_DONE			0x05
-#define HAL_ERROR_UNSUPPORTED		0x06
-#define HAL_ERROR_INVALID		0x07
-#define HAL_ERROR_UNHANDLED		0x08
-#define HAL_ERROR_AUTH_FAILURE		0x09
-#define HAL_ERROR_REMOTE_DEVICE_DOWN	0x0a
+#define HAL_STATUS_SUCCESS		0x00
+#define HAL_STATUS_FAILED		0x01
+#define HAL_STATUS_NOT_READY		0x02
+#define HAL_STATUS_NOMEM		0x03
+#define HAL_STATUS_BUSY			0x04
+#define HAL_STATUS_DONE			0x05
+#define HAL_STATUS_UNSUPPORTED		0x06
+#define HAL_STATUS_INVALID		0x07
+#define HAL_STATUS_UNHANDLED		0x08
+#define HAL_STATUS_AUTH_FAILURE		0x09
+#define HAL_STATUS_REMOTE_DEVICE_DOWN	0x0a
 
-#define HAL_OP_ERROR			0x00
-struct hal_error {
-	uint8_t status;
+#define HAL_OP_STATUS			0x00
+struct hal_status {
+	uint8_t code;
 } __attribute__((packed));
 
 #define HAL_OP_REGISTER_MODULE		0x01

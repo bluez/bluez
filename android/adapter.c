@@ -332,7 +332,7 @@ static void send_adapter_name(void)
 	ev = g_malloc(len);
 
 	ev->num_props = 1;
-	ev->status = HAL_ERROR_SUCCESS;
+	ev->status = HAL_STATUS_SUCCESS;
 
 	ev->props[0].type = HAL_PROP_ADAPTER_ADDR;
 	ev->props[0].len = sizeof(bdaddr_t);
@@ -368,12 +368,12 @@ static bool get_property(void *buf, uint16_t len)
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
-	uint8_t status = HAL_ERROR_FAILED;
+	uint8_t status = HAL_STATUS_FAILED;
 
 	switch (opcode) {
 	case HAL_OP_ENABLE:
 		if (adapter->current_settings & MGMT_SETTING_POWERED) {
-			status = HAL_ERROR_DONE;
+			status = HAL_STATUS_DONE;
 			break;
 		}
 
@@ -385,7 +385,7 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	case HAL_OP_DISABLE:
 		if (!(adapter->current_settings & MGMT_SETTING_POWERED)) {
-			status = HAL_ERROR_DONE;
+			status = HAL_STATUS_DONE;
 			break;
 		}
 

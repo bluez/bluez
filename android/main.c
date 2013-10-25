@@ -112,7 +112,7 @@ static void service_register(void *buf, uint16_t len)
 	info("Service ID=%u registered", m->service_id);
 	return;
 error:
-	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_ERROR_FAILED);
+	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
 }
 
 static void service_unregister(void *buf, uint16_t len)
@@ -147,7 +147,7 @@ static void service_unregister(void *buf, uint16_t len)
 	info("Service ID=%u unregistered", m->service_id);
 	return;
 error:
-	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_ERROR_FAILED);
+	ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
 }
 
 static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
@@ -161,7 +161,7 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 		break;
 	default:
 		ipc_send_error(hal_cmd_io, HAL_SERVICE_ID_CORE,
-							HAL_ERROR_FAILED);
+							HAL_STATUS_FAILED);
 		break;
 	}
 }
@@ -214,7 +214,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 								msg->len);
 		break;
 	default:
-		ipc_send_error(hal_cmd_io, msg->service_id, HAL_ERROR_FAILED);
+		ipc_send_error(hal_cmd_io, msg->service_id, HAL_STATUS_FAILED);
 		break;
 	}
 

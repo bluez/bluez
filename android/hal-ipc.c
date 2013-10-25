@@ -263,8 +263,8 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	struct iovec iv[2];
 	struct hal_hdr cmd;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
-	struct hal_error err;
-	size_t err_len = sizeof(err);
+	struct hal_status s;
+	size_t s_len = sizeof(s);
 
 	if (cmd_sk < 0) {
 		error("Invalid cmd socket passed to hal_ipc_cmd, aborting");
@@ -272,9 +272,9 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 	}
 
 	if (!rsp || !rsp_len) {
-		memset(&err, 0, sizeof(err));
-		rsp_len = &err_len;
-		rsp = &err;
+		memset(&s, 0, s_len);
+		rsp_len = &s_len;
+		rsp = &s;
 	}
 
 	memset(&msg, 0, sizeof(msg));
@@ -346,15 +346,15 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 		exit(EXIT_FAILURE);
 	}
 
-	if (cmd.opcode != opcode && cmd.opcode != HAL_OP_ERROR) {
+	if (cmd.opcode != opcode && cmd.opcode != HAL_OP_STATUS) {
 		error("Invalid opcode received (%u vs %u), aborting",
 						cmd.opcode, opcode);
 		exit(EXIT_FAILURE);
 	}
 
-	if (cmd.opcode == HAL_OP_ERROR) {
-		struct hal_error *err = rsp;
-		return err->status;
+	if (cmd.opcode == HAL_OP_STATUS) {
+		struct hal_status *s = rsp;
+		return s->code;
 	}
 
 	/* Receive auxiliary data in msg */
