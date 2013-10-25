@@ -176,6 +176,11 @@ struct hal_cmd_pin_reply {
 	uint8_t pin_code[16];
 } __attribute__((packed));
 
+#define HAL_SSP_VARIANT_CONFIRM		0x00
+#define HAL_SSP_VARIANT_ENTRY		0x01
+#define HAL_SSP_VARIANT_CONSENT		0x02
+#define HAL_SSP_VARIANT_NOTIF		0x03
+
 #define HAL_OP_SSP_REPLY		0x11
 struct hal_cmd_ssp_reply {
 	uint8_t  bdaddr[6];
