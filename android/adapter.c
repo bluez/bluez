@@ -224,6 +224,41 @@ static void load_link_keys(GSList *keys)
 	g_free(cp);
 }
 
+static void set_mode_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set mode: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	/*
+	 * The parameters are identical and also the task that is
+	 * required in both cases. So it is safe to just call the
+	 * event handling functions here.
+	 */
+	new_settings_callback(adapter->index, length, param, NULL);
+}
+
+static bool set_mode(uint16_t opcode, uint8_t mode)
+{
+	struct mgmt_mode cp;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = mode;
+
+	DBG("opcode=0x%x mode=0x%x", opcode, mode);
+
+	if (mgmt_send(adapter->mgmt, opcode, adapter->index, sizeof(cp), &cp,
+					set_mode_complete, NULL, NULL) > 0)
+		return true;
+
+	error("Failed to set mode");
+
+	return false;
+}
+
 static void read_info_complete(uint8_t status, uint16_t length, const void *param,
 							void *user_data)
 {
@@ -265,6 +300,8 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 
 	load_link_keys(NULL);
 
+	set_mode(MGMT_OP_SET_PAIRABLE, 0x01);
+
 	return;
 
 failed:
@@ -285,41 +322,6 @@ void bt_adapter_init(uint16_t index, struct mgmt *mgmt, bt_adapter_ready cb)
 
 	mgmt_unref(adapter->mgmt);
 	adapter->ready(-EIO);
-}
-
-static void set_mode_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS) {
-		error("Failed to set mode: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		return;
-	}
-
-	/*
-	 * The parameters are identical and also the task that is
-	 * required in both cases. So it is safe to just call the
-	 * event handling functions here.
-	 */
-	new_settings_callback(adapter->index, length, param, NULL);
-}
-
-static bool set_mode(uint16_t opcode, uint8_t mode)
-{
-	struct mgmt_mode cp;
-
-	memset(&cp, 0, sizeof(cp));
-	cp.val = mode;
-
-	DBG("opcode=0x%x mode=0x%x", opcode, mode);
-
-	if (mgmt_send(adapter->mgmt, opcode, adapter->index, sizeof(cp), &cp,
-					set_mode_complete, NULL, NULL) > 0)
-		return true;
-
-	error("Failed to set mode");
-
-	return false;
 }
 
 static bool set_discoverable(uint8_t mode, uint16_t timeout)
