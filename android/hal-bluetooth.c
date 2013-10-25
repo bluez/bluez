@@ -78,10 +78,15 @@ void bt_thread_disassociate(void)
 		bt_hal_cbacks->thread_evt_cb(DISASSOCIATE_JVM);
 }
 
+static bool interface_ready(void)
+{
+	return bt_hal_cbacks != NULL;
+}
+
 /* will be called from notification thread context */
 void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 {
-	if (!bt_hal_cbacks)
+	if (!interface_ready())
 		return;
 
 	switch (opcode) {
@@ -95,11 +100,6 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		DBG("Unhandled callback opcode=0x%x", opcode);
 		break;
 	}
-}
-
-static bool interface_ready(void)
-{
-	return bt_hal_cbacks != NULL;
 }
 
 static int init(bt_callbacks_t *callbacks)
