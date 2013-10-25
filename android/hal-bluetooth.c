@@ -66,6 +66,18 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
 }
 
+void bt_thread_associate(void)
+{
+	if (bt_hal_cbacks->thread_evt_cb)
+		bt_hal_cbacks->thread_evt_cb(ASSOCIATE_JVM);
+}
+
+void bt_thread_disassociate(void)
+{
+	if (bt_hal_cbacks->thread_evt_cb)
+		bt_hal_cbacks->thread_evt_cb(DISASSOCIATE_JVM);
+}
+
 /* will be called from notification thread context */
 void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 {

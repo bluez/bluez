@@ -67,6 +67,8 @@ static void *notification_handler(void *data)
 	ssize_t ret;
 	int fd;
 
+	bt_thread_associate();
+
 	while (true) {
 		memset(&msg, 0, sizeof(msg));
 		memset(buf, 0, sizeof(buf));
@@ -132,6 +134,8 @@ static void *notification_handler(void *data)
 
 	close(notif_sk);
 	notif_sk = -1;
+
+	bt_thread_disassociate();
 
 	DBG("exit");
 
