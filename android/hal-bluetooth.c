@@ -153,15 +153,30 @@ static int get_adapter_property(bt_property_type_t type)
 
 static int set_adapter_property(const bt_property_t *property)
 {
+	char buf[sizeof(struct hal_cmd_set_adapter_prop) + property->len];
+	struct hal_cmd_set_adapter_prop *cmd = (void *) buf;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (property == NULL)
+	switch (property->type) {
+	case BT_PROPERTY_BDNAME:
+	case BT_PROPERTY_ADAPTER_SCAN_MODE:
+	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
+		break;
+	default:
 		return BT_STATUS_PARM_INVALID;
+	}
 
-	return BT_STATUS_UNSUPPORTED;
+	/* type match IPC type */
+	cmd->type = property->type;
+	cmd->len = property->len;
+	memcpy(cmd->val, property->val, property->len);
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_SET_ADAPTER_PROP,
+					sizeof(buf), cmd, 0, NULL, NULL);
 }
 
 static int get_remote_device_properties(bt_bdaddr_t *remote_addr)
