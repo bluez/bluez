@@ -290,12 +290,17 @@ static int create_bond(const bt_bdaddr_t *bd_addr)
 
 static int cancel_bond(const bt_bdaddr_t *bd_addr)
 {
+	struct hal_cmd_cancel_bond cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_CANCEL_BOND,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static int remove_bond(const bt_bdaddr_t *bd_addr)
