@@ -322,6 +322,49 @@ static bool set_mode(uint16_t opcode, uint8_t mode)
 	return false;
 }
 
+static void send_adapter_name(void)
+{
+	struct hal_ev_adapter_props_changed *ev;
+	int len;
+
+	len = sizeof(*ev) + sizeof(struct hal_property) + sizeof(bdaddr_t);
+
+	ev = g_malloc(len);
+
+	ev->num_props = 1;
+	ev->status = HAL_ERROR_SUCCESS;
+
+	ev->props[0].type = HAL_PROP_ADAPTER_ADDR;
+	ev->props[0].len = sizeof(bdaddr_t);
+	baswap((bdaddr_t *) ev->props[0].val, &adapter->bdaddr);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
+
+	g_free(ev);
+}
+
+static bool get_property(void *buf, uint16_t len)
+{
+	struct hal_cmd_get_adapter_prop *cmd = buf;
+
+	switch (cmd->type) {
+	case HAL_PROP_ADAPTER_ADDR:
+		send_adapter_name();
+		return true;
+	case HAL_PROP_ADAPTER_NAME:
+	case HAL_PROP_ADAPTER_UUIDS:
+	case HAL_PROP_ADAPTER_CLASS:
+	case HAL_PROP_ADAPTER_TYPE:
+	case HAL_PROP_ADAPTER_SERVICE_REC:
+	case HAL_PROP_ADAPTER_SCAN_MODE:
+	case HAL_PROP_ADAPTER_BONDED_DEVICES:
+	case HAL_PROP_ADAPTER_DISC_TIMEOUT:
+	default:
+		return false;
+	}
+}
+
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
@@ -347,6 +390,13 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		}
 
 		if (set_mode(MGMT_OP_SET_POWERED, 0x00)) {
+			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
+									-1);
+			return;
+		}
+		break;
+	case HAL_OP_GET_ADAPTER_PROP:
+		if (get_property(buf, len)) {
 			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
 									-1);
 			return;
