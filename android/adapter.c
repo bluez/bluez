@@ -374,39 +374,37 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	case HAL_OP_ENABLE:
 		if (adapter->current_settings & MGMT_SETTING_POWERED) {
 			status = HAL_STATUS_DONE;
-			break;
+			goto error;
 		}
 
-		if (set_mode(MGMT_OP_SET_POWERED, 0x01)) {
-			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
-									-1);
-			return;
-		}
+		if (!set_mode(MGMT_OP_SET_POWERED, 0x01))
+			goto error;
+
 		break;
 	case HAL_OP_DISABLE:
 		if (!(adapter->current_settings & MGMT_SETTING_POWERED)) {
 			status = HAL_STATUS_DONE;
-			break;
+			goto error;
 		}
 
-		if (set_mode(MGMT_OP_SET_POWERED, 0x00)) {
-			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
-									-1);
-			return;
-		}
+		if (!set_mode(MGMT_OP_SET_POWERED, 0x00))
+			goto error;
+
 		break;
 	case HAL_OP_GET_ADAPTER_PROP:
-		if (get_property(buf, len)) {
-			ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL,
-									-1);
-			return;
-		}
+		if (!get_property(buf, len))
+			goto error;
+
 		break;
 	default:
 		DBG("Unhandled command, opcode 0x%x", opcode);
-		break;
+		goto error;
 	}
 
+	ipc_send(io, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL, -1);
+	return;
+
+error:
 	ipc_send_rsp(io, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
