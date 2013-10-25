@@ -17,10 +17,12 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "hal-log.h"
 #include "hal.h"
 #include "hal-msg.h"
+#include "hal-ipc.h"
 
 static const btav_callbacks_t *cbs = NULL;
 
@@ -67,15 +69,17 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 
 static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 {
+	struct hal_op_av_connect cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (!bd_addr)
-		return BT_STATUS_PARM_INVALID;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_AV_CONNECT,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)

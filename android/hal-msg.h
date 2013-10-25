@@ -280,6 +280,11 @@ struct hal_cmd_hid_send_data {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_AV_CONNECT	0x01
+struct hal_op_av_connect {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 
