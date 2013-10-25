@@ -1023,7 +1023,7 @@ Notifications:
 Bluetooth Advanced Audio HAL (ID 6)
 ===================================
 
-Android HAL name: "ad2p" (BT_PROFILE_ADVANCED_AUDIO_ID)
+Android HAL name: "a2dp" (BT_PROFILE_ADVANCED_AUDIO_ID)
 
 Commands and responses:
 
