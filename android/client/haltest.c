@@ -314,12 +314,17 @@ static void stdin_handler(struct pollfd *pollfd)
 
 int main(int argc, char **argv)
 {
+	struct stat rcstat;
+
 	terminal_setup();
 	history_restore(".haltest_history");
 
 	fd_stack[fd_stack_pointer++] = 0;
 	/* Register command line handler */
 	poll_register_fd(0, POLLIN, stdin_handler);
+
+	if (stat(".haltestrc", &rcstat) == 0 && (rcstat.st_mode & S_IFREG) != 0)
+		process_file(".haltestrc");
 
 	poll_dispatch_loop();
 
