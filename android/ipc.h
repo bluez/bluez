@@ -23,4 +23,4 @@
 
 void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd);
-void ipc_send_error(GIOChannel *io, uint8_t service_id, uint8_t status);
+void ipc_send_rsp(GIOChannel *io, uint8_t service_id, uint8_t status);

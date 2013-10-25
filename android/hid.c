@@ -48,7 +48,7 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_error(io, HAL_SERVICE_ID_HIDHOST, status);
+	ipc_send_rsp(io, HAL_SERVICE_ID_HIDHOST, status);
 }
 
 bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)

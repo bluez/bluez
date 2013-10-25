@@ -407,7 +407,7 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	}
 
-	ipc_send_error(io, HAL_SERVICE_ID_BLUETOOTH, status);
+	ipc_send_rsp(io, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
 const bdaddr_t *bt_adapter_get_address(void)
