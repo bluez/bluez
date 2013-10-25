@@ -28,6 +28,19 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
+/* will be called from notification thread context */
+void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
+{
+	if (!interface_ready())
+		return;
+
+	switch (opcode) {
+	default:
+		DBG("Unhandled callback opcode=0x%x", opcode);
+		break;
+	}
+}
+
 static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 {
 	DBG("");
