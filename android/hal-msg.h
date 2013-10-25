@@ -285,6 +285,11 @@ struct hal_op_av_connect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+#define HAL_OP_AV_DISCONNECT	0x02
+struct hal_op_av_disconnect {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 

@@ -84,15 +84,17 @@ static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 
 static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
 {
+	struct hal_op_av_disconnect cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (!bd_addr)
-		return BT_STATUS_PARM_INVALID;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_AV_DISCONNECT,
+					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t av_init(btav_callbacks_t *callbacks)
