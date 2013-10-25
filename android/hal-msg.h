@@ -113,6 +113,10 @@ struct hal_cmd_get_adapter_prop {
 #define HAL_PROP_DEVICE_VERSION_INFO		0x0c
 #define HAL_PROP_DEVICE_TIMESTAMP		0xFF
 
+#define HAL_ADAPTER_SCAN_MODE_NONE		0x00
+#define HAL_ADAPTER_SCAN_MODE_CONN		0x01
+#define HAL_ADAPTER_SCAN_MODE_CONN_DISC	0x02
+
 #define HAL_OP_SET_ADAPTER_PROP		0x05
 struct hal_cmd_set_adapter_prop {
 	uint8_t  type;
