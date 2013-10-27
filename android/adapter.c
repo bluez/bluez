@@ -73,7 +73,7 @@ static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 	/* TODO Update services if needed */
 }
 
-static void settings_changed_powered(void)
+static void powered_changed(void)
 {
 	struct hal_ev_adapter_state_changed ev;
 
@@ -140,7 +140,7 @@ static void settings_changed(uint32_t settings)
 	DBG("0x%08x", changed_mask);
 
 	if (changed_mask & MGMT_SETTING_POWERED)
-		settings_changed_powered();
+		powered_changed();
 
 	scan_mode_mask = MGMT_SETTING_CONNECTABLE | MGMT_SETTING_DISCOVERABLE;
 
