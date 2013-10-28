@@ -302,6 +302,13 @@ struct hal_rsp_pan_get_role {
 	uint8_t local_role;
 } __attribute__((packed));
 
+#define HAL_OP_PAN_CONNECT	0x03
+struct hal_cmd_pan_connect {
+	uint8_t bdaddr[6];
+	uint8_t local_role;
+	uint8_t remote_role;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 
