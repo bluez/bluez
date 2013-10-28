@@ -70,9 +70,6 @@ struct hal_status {
 struct hal_cmd_register_module {
 	uint8_t service_id;
 } __attribute__((packed));
-struct hal_rsp_register_module {
-	uint8_t service_id;
-} __attribute__((packed));
 
 #define HAL_OP_UNREGISTER_MODULE	0x02
 struct hal_cmd_unregister_module {
