@@ -114,10 +114,12 @@ static int init(bt_callbacks_t *callbacks)
 	if (interface_ready())
 		return BT_STATUS_SUCCESS;
 
-	if (!hal_ipc_init())
-		return BT_STATUS_FAIL;
-
 	bt_hal_cbacks = callbacks;
+
+	if (!hal_ipc_init()) {
+		bt_hal_cbacks = NULL;
+		return BT_STATUS_FAIL;
+	}
 
 	cmd.service_id = HAL_SERVICE_ID_BLUETOOTH;
 
