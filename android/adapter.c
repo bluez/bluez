@@ -31,6 +31,7 @@
 #include "log.h"
 #include "hal-msg.h"
 #include "ipc.h"
+#include "utils.h"
 #include "adapter.h"
 
 static GIOChannel *notification_io = NULL;
@@ -384,7 +385,7 @@ static void send_adapter_address(void)
 
 	ev->props[0].type = HAL_PROP_ADAPTER_ADDR;
 	ev->props[0].len = sizeof(bdaddr_t);
-	baswap((bdaddr_t *) ev->props[0].val, &adapter->bdaddr);
+	bdaddr2android(&adapter->bdaddr, ev->props[0].val);
 
 	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
 				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
