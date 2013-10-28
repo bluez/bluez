@@ -85,15 +85,17 @@ static bt_status_t pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
 
 static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
 {
+	struct hal_cmd_pan_disconnect cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (!bd_addr)
-		return BT_STATUS_PARM_INVALID;
+	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_DISCONNECT,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t pan_init(const btpan_callbacks_t *callbacks)

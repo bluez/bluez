@@ -309,6 +309,11 @@ struct hal_cmd_pan_connect {
 	uint8_t remote_role;
 } __attribute__((packed));
 
+#define HAL_OP_PAN_DISCONNECT	0x04
+struct hal_cmd_pan_disconnect {
+	uint8_t bdaddr[6];
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 
