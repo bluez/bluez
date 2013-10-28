@@ -47,12 +47,21 @@ static bt_status_t pan_enable(int local_role)
 
 static int pan_get_local_role(void)
 {
+	struct hal_rsp_pan_get_role rsp;
+	size_t len = sizeof(rsp);
+	bt_status_t status;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BTPAN_ROLE_NONE;
 
-	return BTPAN_ROLE_NONE;
+	status = hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_GET_ROLE, 0, NULL,
+							&len, &rsp, NULL);
+	if (status != BT_STATUS_SUCCESS)
+		return BTPAN_ROLE_NONE;
+
+	return rsp.local_role;
 }
 
 static bt_status_t pan_connect(const bt_bdaddr_t *bd_addr, int local_role,

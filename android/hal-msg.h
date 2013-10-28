@@ -297,6 +297,11 @@ struct hal_cmd_pan_enable {
 	uint8_t local_role;
 } __attribute__((packed));
 
+#define HAL_OP_PAN_GET_ROLE	0x02
+struct hal_rsp_pan_get_role {
+	uint8_t local_role;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 
