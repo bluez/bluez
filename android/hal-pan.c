@@ -32,12 +32,17 @@ static bool interface_ready(void)
 
 static bt_status_t pan_enable(int local_role)
 {
+	struct hal_cmd_pan_enable cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.local_role = local_role;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static int pan_get_local_role(void)

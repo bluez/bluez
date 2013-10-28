@@ -290,6 +290,13 @@ struct hal_cmd_av_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
+/* PAN HAL API */
+
+#define HAL_OP_PAN_ENABLE	0x01
+struct hal_cmd_pan_enable {
+	uint8_t local_role;
+} __attribute__((packed));
+
 /* Notifications and confirmations */
 
 
