@@ -32,6 +32,7 @@
 const struct interface *interfaces[] = {
 	&bluetooth_if,
 	&av_if,
+	&hf_if,
 	&hh_if,
 	&pan_if,
 	&sock_if,

@@ -104,6 +104,7 @@ LOCAL_SRC_FILES := \
 	client/tabcompletion.c \
 	client/if-av.c \
 	client/if-bt.c \
+	client/if-hf.c \
 	client/if-hh.c \
 	client/if-pan.c \
 	client/if-sock.c \

@@ -45,6 +45,7 @@
 /* Interfaces from hal that can be populated during application lifetime */
 extern const bt_interface_t *if_bluetooth;
 extern const btav_interface_t *if_av;
+extern const bthf_interface_t *if_hf;
 extern const bthh_interface_t *if_hh;
 extern const btpan_interface_t *if_pan;
 extern const btsock_interface_t *if_sock;
@@ -62,6 +63,7 @@ extern const struct interface bluetooth_if;
 extern const struct interface av_if;
 extern const struct interface pan_if;
 extern const struct interface sock_if;
+extern const struct interface hf_if;
 extern const struct interface hh_if;
 
 /* Interfaces that will show up in tool (first part of command line) */
