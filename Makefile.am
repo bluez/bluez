@@ -179,7 +179,7 @@ test_scripts =
 
 include Makefile.tools
 include Makefile.obexd
-include Makefile.android
+include android/Makefile.am
 
 if HID2HCI
 rulesdir = @UDEV_DIR@/rules.d
