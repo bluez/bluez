@@ -20,6 +20,8 @@
 
 #include "hal-log.h"
 #include "hal.h"
+#include "hal-msg.h"
+#include "hal-ipc.h"
 
 static const btpan_callbacks_t *cbs = NULL;
 
@@ -77,15 +79,16 @@ static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
 
 static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 {
+	struct hal_cmd_register_module cmd;
+
 	DBG("");
 
 	cbs = callbacks;
 
-	/* TODO: start HID Host thread */
+	cmd.service_id = HAL_SERVICE_ID_PAN;
 
-	/* TODO: enable service */
-
-	return BT_STATUS_SUCCESS;
+	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static void pan_cleanup()
