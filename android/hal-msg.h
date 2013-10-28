@@ -281,12 +281,12 @@ struct hal_cmd_hid_send_data {
 } __attribute__((packed));
 
 #define HAL_OP_AV_CONNECT	0x01
-struct hal_op_av_connect {
+struct hal_cmd_av_connect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
 #define HAL_OP_AV_DISCONNECT	0x02
-struct hal_op_av_disconnect {
+struct hal_cmd_av_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 

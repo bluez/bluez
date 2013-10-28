@@ -69,7 +69,7 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 
 static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_op_av_connect cmd;
+	struct hal_cmd_av_connect cmd;
 
 	DBG("");
 
@@ -84,7 +84,7 @@ static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 
 static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_op_av_disconnect cmd;
+	struct hal_cmd_av_disconnect cmd;
 
 	DBG("");
 
