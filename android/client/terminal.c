@@ -94,6 +94,7 @@ static const struct ansii_sequence ansii_sequnces[] = {
 #define KEY_SEQUNCE_NOT_FINISHED -1
 #define KEY_C_C 3
 #define KEY_C_D 4
+#define KEY_C_L 12
 
 #define isseqence(c) ((c) == 0x1B)
 
@@ -235,6 +236,15 @@ static void terminal_clear_line(void)
 {
 	line_buf[0] = '\0';
 	terminal_line_replaced();
+}
+
+static void terminal_clear_sceen(void)
+{
+	line_buf[0] = '\0';
+	line_buf_ix = 0;
+	line_len = 0;
+
+	printf("\x1b[2J\x1b[1;1H%s", prompt);
 }
 
 static void terminal_delete_char(void)
@@ -524,6 +534,9 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 			puts("");
 			exit(0);
 		}
+		break;
+	case KEY_C_L:
+		terminal_clear_sceen();
 		break;
 	default:
 		if (!isprint(c)) {
