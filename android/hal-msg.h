@@ -163,7 +163,7 @@ struct hal_cmd_create_bond {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_REMOVE_BOND		0x0d
+#define HAL_OP_REMOVE_BOND		0x0e
 struct hal_cmd_remove_bond {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
