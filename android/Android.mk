@@ -6,6 +6,9 @@ BLUEZ_VERSION := $(shell grep ^AC_INIT $(LOCAL_PATH)/../configure.ac | cpp -P -D
 # Specify pathmap for glib
 pathmap_INCL += glib:external/bluetooth/glib
 
+# Specify common compiler flags
+BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\"
+
 #
 # Android BlueZ daemon (bluetoothd)
 #
@@ -39,7 +42,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../src \
 	$(LOCAL_PATH)/../lib \
 
-LOCAL_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS) \
 	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
 LOCAL_SHARED_LIBRARIES := \
@@ -84,6 +87,8 @@ LOCAL_C_INCLUDES += \
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
 
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS) \
+
 LOCAL_MODULE := bluetooth.default
 LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
 LOCAL_MODULE_TAGS := optional
@@ -112,7 +117,7 @@ LOCAL_SRC_FILES := \
 	client/if-pan.c \
 	client/if-sock.c \
 
-LOCAL_CFLAGS := -DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_SHARED_LIBRARIES := libhardware
 
