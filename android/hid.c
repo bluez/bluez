@@ -278,6 +278,28 @@ static uint8_t bt_hid_connect(struct hal_cmd_hid_connect *cmd, uint16_t len)
 	return HAL_STATUS_SUCCESS;
 }
 
+static uint8_t bt_hid_disconnect(struct hal_cmd_hid_disconnect *cmd,
+								uint16_t len)
+{
+	GSList *l;
+	bdaddr_t dst;
+
+	DBG("");
+
+	if (len < sizeof(*cmd))
+		return HAL_STATUS_INVALID;
+
+	android2bdaddr(&cmd->bdaddr, &dst);
+
+	l = g_slist_find_custom(devices, &dst, device_cmp);
+	if (!l)
+		return HAL_STATUS_FAILED;
+
+	hid_device_free(l->data);
+
+	return HAL_STATUS_SUCCESS;
+}
+
 void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 {
 	uint8_t status = HAL_STATUS_FAILED;
@@ -287,6 +309,7 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 		status = bt_hid_connect(buf, len);
 		break;
 	case HAL_OP_HID_DISCONNECT:
+		status = bt_hid_disconnect(buf, len);
 		break;
 	default:
 		DBG("Unhandled command, opcode 0x%x", opcode);
