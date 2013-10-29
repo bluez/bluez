@@ -68,6 +68,16 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
 }
 
+static void handle_bond_state_change(void *buf)
+{
+	struct hal_ev_bond_state_changed *ev = buf;
+	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
+
+	if (bt_hal_cbacks->bond_state_changed_cb)
+		bt_hal_cbacks->bond_state_changed_cb(ev->status, addr,
+								ev->state);
+}
+
 void bt_thread_associate(void)
 {
 	if (bt_hal_cbacks->thread_evt_cb)
@@ -97,6 +107,9 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_ADAPTER_PROPS_CHANGED:
 		handle_adapter_props_changed(buf, len);
+		break;
+	case HAL_EV_BOND_STATE_CHANGED:
+		handle_bond_state_change(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
