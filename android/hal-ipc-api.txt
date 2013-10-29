@@ -354,13 +354,13 @@ Notifications:
 
 		Notification parameters: Remote address (6 octets)
 		                         Remote name (249 octets)
-		                         Class of device (3 octets)
+		                         Class of device (4 octets)
 
 	Opcode 0x87 - SSP Request notification
 
 		Notification parameters: Remote address (6 octets)
 		                         Remote name (249 octets)
-		                         Class of device (3 octets)
+		                         Class of device (4 octets)
 		                         Pairing variant (1 octet)
 		                         Passkey (4 octets)
 
