@@ -52,6 +52,8 @@ lib_headers := \
 	l2cap.h \
 	sdp_lib.h \
 	sdp.h \
+	rfcomm.h \
+	sco.h \
 
 $(shell mkdir -p $(LOCAL_PATH)/../lib/bluetooth)
 
