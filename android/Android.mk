@@ -28,6 +28,7 @@ LOCAL_SRC_FILES := \
 	../lib/sdp.c \
 	../lib/bluetooth.c \
 	../lib/hci.c \
+	../btio/btio.c
 
 LOCAL_C_INCLUDES := \
 	$(call include-path-for, glib) \
