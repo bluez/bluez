@@ -78,6 +78,17 @@ static void handle_bond_state_change(void *buf)
 								ev->state);
 }
 
+static void handle_pin_request(void *buf)
+{
+	struct hal_ev_pin_request *ev = buf;
+	/* Those are declared as packed, so it's safe to assign pointers */
+	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
+	bt_bdname_t *name = (bt_bdname_t *) ev->name;
+
+	if (bt_hal_cbacks->pin_request_cb)
+		bt_hal_cbacks->pin_request_cb(addr, name, ev->class_of_dev);
+}
+
 void bt_thread_associate(void)
 {
 	if (bt_hal_cbacks->thread_evt_cb)
@@ -110,6 +121,9 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_BOND_STATE_CHANGED:
 		handle_bond_state_change(buf);
+		break;
+	case HAL_EV_PIN_REQUEST:
+		handle_pin_request(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
