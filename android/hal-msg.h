@@ -356,15 +356,15 @@ struct hal_ev_discovery_state_changed {
 #define HAL_EV_PIN_REQUEST		0x86
 struct hal_ev_pin_request {
 	uint8_t bdaddr[6];
-	uint8_t name[249 - 1];
-	uint8_t class_of_dev[3];
+	uint8_t name[249];
+	uint32_t class_of_dev;
 } __attribute__((packed));
 
 #define HAL_EV_SSP_REQUEST		0x87
 struct hal_ev_ssp_request {
 	uint8_t  bdaddr[6];
-	uint8_t  name[249 - 1];
-	uint8_t  class_of_dev[3];
+	uint8_t  name[249];
+	uint32_t  class_of_dev;
 	uint8_t  pairing_variant;
 	uint32_t passkey;
 } __attribute__((packed));
