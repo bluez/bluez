@@ -3363,9 +3363,6 @@ static void target_init(struct avrcp *session)
 	if (service != NULL)
 		btd_service_connecting_complete(service, 0);
 
-	if (target->version < 0x0103)
-		return;
-
 	player = g_slist_nth_data(server->players, 0);
 	if (player != NULL) {
 		target->player = player;
