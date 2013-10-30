@@ -2452,6 +2452,7 @@ static void test_setup(const void *test_data)
 				discov_param[1] = 0x01;
 			}
 			param_size = sizeof(discov_param);
+			param = discov_param;
 		}
 
 		mgmt_send(data->mgmt, *cmd, data->mgmt_index,
