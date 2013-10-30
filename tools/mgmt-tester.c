@@ -2766,7 +2766,7 @@ int main(int argc, char *argv[])
 				NULL, NULL, controller_setup);
 	test_bredr("Controller setup (BR/EDR-only)",
 				NULL, NULL, controller_setup);
-	test_le("Controller setup (LE-only)",
+	test_le("Controller setup (LE)",
 				NULL, NULL, controller_setup);
 
 	test_bredrle("Invalid command",
@@ -2852,13 +2852,13 @@ int main(int argc, char *argv[])
 				&set_connectable_on_invalid_index_test,
 				NULL, test_command_generic);
 
-	test_le("Set connectable on (LE-only) - Success 1",
+	test_le("Set connectable on (LE) - Success 1",
 				&set_connectable_on_le_test_1,
 				NULL, test_command_generic);
-	test_le("Set connectable on (LE-only) - Success 2",
+	test_le("Set connectable on (LE) - Success 2",
 				&set_connectable_on_le_test_2,
 				NULL, test_command_generic);
-	test_le("Set connectable on (LE-only) - Success 3",
+	test_le("Set connectable on (LE) - Success 3",
 				&set_connectable_on_le_test_3,
 				NULL, test_command_generic);
 
@@ -2872,16 +2872,16 @@ int main(int argc, char *argv[])
 				&set_connectable_off_success_test_3,
 				NULL, test_command_generic);
 
-	test_le("Set connectable off (LE-only) - Success 1",
+	test_le("Set connectable off (LE) - Success 1",
 				&set_connectable_off_le_test_1,
 				NULL, test_command_generic);
-	test_le("Set connectable off (LE-only) - Success 2",
+	test_le("Set connectable off (LE) - Success 2",
 				&set_connectable_off_le_test_2,
 				NULL, test_command_generic);
-	test_le("Set connectable off (LE-only) - Success 3",
+	test_le("Set connectable off (LE) - Success 3",
 				&set_connectable_off_le_test_3,
 				NULL, test_command_generic);
-	test_le("Set connectable off (LE-only) - Success 4",
+	test_le("Set connectable off (LE) - Success 4",
 				&set_connectable_off_le_test_4,
 				NULL, test_command_generic);
 
@@ -2941,7 +2941,7 @@ int main(int argc, char *argv[])
 	test_bredrle("Set discoverable on - Success 2",
 				&set_discoverable_on_success_test_2,
 				NULL, test_command_generic);
-	test_le("Set discoverable on (LE-only) - Success 1",
+	test_le("Set discoverable on (LE) - Success 1",
 				&set_discov_on_le_success_1,
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 1",
@@ -2959,7 +2959,7 @@ int main(int argc, char *argv[])
 	test_bredrle("Set limited discoverable on - Success 3",
 				&set_limited_discov_on_success_3,
 				NULL, test_command_generic);
-	test_le("Set limited discoverable on (LE-only) - Success 1",
+	test_le("Set limited discoverable on (LE) - Success 1",
 				&set_limited_discov_on_le_success_1,
 				NULL, test_command_generic);
 
