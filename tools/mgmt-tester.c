@@ -916,6 +916,23 @@ static const struct generic_data set_discoverable_on_success_test_2 = {
 	.expect_hci_len = sizeof(set_discoverable_on_scan_enable_param),
 };
 
+static uint8_t set_discov_on_le_param[] = { 0x0b, 0x06, 0x00, 0x00 };
+static uint8_t set_discov_adv_data[32] = { 0x06, 0x02, 0x01, 0x06,
+								0x02, 0x0a, };
+
+static const struct generic_data set_discov_on_le_success_1 = {
+	.setup_settings = settings_powered_le_connectable_advertising,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_discoverable_on_param,
+	.send_len = sizeof(set_discoverable_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discov_on_le_param,
+	.expect_len = sizeof(set_discov_on_le_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_DATA,
+	.expect_hci_param = set_discov_adv_data,
+	.expect_hci_len = sizeof(set_discov_adv_data),
+};
+
 static const struct generic_data set_discoverable_off_success_test_1 = {
 	.setup_settings = settings_connectable,
 	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
@@ -984,7 +1001,6 @@ static const struct generic_data set_limited_discov_on_success_3 = {
 	.expect_hci_len = sizeof(write_cod_limited),
 };
 
-static uint8_t set_limited_discov_on_le_param[] = { 0x0b, 0x06, 0x00, 0x00 };
 static uint8_t set_limited_discov_adv_data[32] = { 0x06, 0x02, 0x01, 0x05,
 								0x02, 0x0a, };
 
@@ -994,8 +1010,8 @@ static const struct generic_data set_limited_discov_on_le_success_1 = {
 	.send_param = set_limited_discov_on_param,
 	.send_len = sizeof(set_limited_discov_on_param),
 	.expect_status = MGMT_STATUS_SUCCESS,
-	.expect_param = set_limited_discov_on_le_param,
-	.expect_len = sizeof(set_limited_discov_on_le_param),
+	.expect_param = set_discov_on_le_param,
+	.expect_len = sizeof(set_discov_on_le_param),
 	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_DATA,
 	.expect_hci_param = set_limited_discov_adv_data,
 	.expect_hci_len = sizeof(set_limited_discov_adv_data),
@@ -2882,6 +2898,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable on - Success 2",
 				&set_discoverable_on_success_test_2,
+				NULL, test_command_generic);
+	test_le("Set discoverable on (LE-only) - Success 1",
+				&set_discov_on_le_success_1,
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 1",
 				&set_discoverable_off_success_test_1,
