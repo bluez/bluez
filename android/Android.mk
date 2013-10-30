@@ -7,7 +7,8 @@ BLUEZ_VERSION := $(shell grep ^AC_INIT $(LOCAL_PATH)/../configure.ac | cpp -P -D
 pathmap_INCL += glib:external/bluetooth/glib
 
 # Specify common compiler flags
-BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\"
+BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
+	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
 # Disable warnings enabled by Android but not enabled in autotools build
 BLUEZ_COMMON_CFLAGS += -Wno-pointer-arith
@@ -45,8 +46,7 @@ LOCAL_C_INCLUDES += \
 	$(LOCAL_PATH)/../src \
 	$(LOCAL_PATH)/../lib \
 
-LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS) \
-	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
+LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_SHARED_LIBRARIES := \
 	libglib \
