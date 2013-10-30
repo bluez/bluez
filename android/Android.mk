@@ -86,6 +86,7 @@ LOCAL_SRC_FILES := \
 
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \
+	$(call include-path-for, libhardware) \
 
 LOCAL_SHARED_LIBRARIES := \
 	libcutils \
