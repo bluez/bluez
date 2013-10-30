@@ -119,6 +119,14 @@ static bool interface_ready(void)
 	return bt_hal_cbacks != NULL;
 }
 
+static void handle_discovery_state_changed(void *buf)
+{
+	struct hal_ev_discovery_state_changed *ev = buf;
+
+	if (bt_hal_cbacks->discovery_state_changed_cb)
+		bt_hal_cbacks->discovery_state_changed_cb(ev->state);
+}
+
 /* will be called from notification thread context */
 void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -131,6 +139,9 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_ADAPTER_PROPS_CHANGED:
 		handle_adapter_props_changed(buf, len);
+		break;
+	case HAL_EV_DISCOVERY_STATE_CHANGED:
+		handle_discovery_state_changed(buf);
 		break;
 	case HAL_EV_BOND_STATE_CHANGED:
 		handle_bond_state_change(buf);
