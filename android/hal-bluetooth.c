@@ -353,7 +353,9 @@ static int start_discovery(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
+				HAL_OP_START_DISCOVERY, 0, NULL, 0,
+				NULL, NULL);
 }
 
 static int cancel_discovery(void)
@@ -363,7 +365,9 @@ static int cancel_discovery(void)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
+				HAL_OP_CANCEL_DISCOVERY, 0, NULL, 0,
+				NULL, NULL);
 }
 
 static int create_bond(const bt_bdaddr_t *bd_addr)
