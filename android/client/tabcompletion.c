@@ -332,7 +332,7 @@ static void param_completion(int argc, const split_arg_t *arg,
 	if (args.func != NULL) {
 		args.typed = argv[argc - 1];
 		args.help = method_help;
-		args.user_help = (void *) method->help;
+		args.user_help = method ? (void *) method->help : NULL;
 
 		tab_completion(&args);
 	}
