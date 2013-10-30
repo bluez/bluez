@@ -348,6 +348,9 @@ struct hal_ev_device_found {
 	struct hal_property props[0];
 } __attribute__((packed));
 
+#define HAL_DISCOVERY_STATE_STOPPED	0x00
+#define HAL_DISCOVERY_STATE_STARTED	0x01
+
 #define HAL_EV_DISCOVERY_STATE_CHANGED	0x85
 struct hal_ev_discovery_state_changed {
 	uint8_t state;
