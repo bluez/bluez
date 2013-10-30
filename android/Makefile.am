@@ -96,7 +96,7 @@ EXTRA_DIST += android/client/terminal.c \
 		android/client/history.h \
 		android/client/terminal.h
 
-EXTRA_DIST += android/hal-ipc-api.txt
+EXTRA_DIST += android/hal-ipc-api.txt android/README
 
 EXTRA_DIST += android/hardware/bluetooth.h \
 		android/hardware/bt_av.h \
