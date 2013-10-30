@@ -984,6 +984,23 @@ static const struct generic_data set_limited_discov_on_success_3 = {
 	.expect_hci_len = sizeof(write_cod_limited),
 };
 
+static uint8_t set_limited_discov_on_le_param[] = { 0x0b, 0x06, 0x00, 0x00 };
+static uint8_t set_limited_discov_adv_data[32] = { 0x06, 0x02, 0x01, 0x05,
+								0x02, 0x0a, };
+
+static const struct generic_data set_limited_discov_on_le_success_1 = {
+	.setup_settings = settings_powered_le_connectable_advertising,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_limited_discov_on_param,
+	.send_len = sizeof(set_limited_discov_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_limited_discov_on_le_param,
+	.expect_len = sizeof(set_limited_discov_on_le_param),
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_DATA,
+	.expect_hci_param = set_limited_discov_adv_data,
+	.expect_hci_len = sizeof(set_limited_discov_adv_data),
+};
+
 static uint16_t settings_link_sec[] = { MGMT_OP_SET_LINK_SECURITY, 0 };
 
 static const char set_link_sec_on_param[] = { 0x01 };
@@ -2880,6 +2897,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set limited discoverable on - Success 3",
 				&set_limited_discov_on_success_3,
+				NULL, test_command_generic);
+	test_le("Set limited discoverable on (LE-only) - Success 1",
+				&set_limited_discov_on_le_success_1,
 				NULL, test_command_generic);
 
 	test_bredrle("Set link security on - Success 1",
