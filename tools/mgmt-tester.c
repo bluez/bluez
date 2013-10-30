@@ -2461,7 +2461,7 @@ static void test_setup(const void *test_data)
 			unsigned char off[] = { 0x00 };
 			mgmt_send(data->mgmt, MGMT_OP_SET_BREDR,
 					data->mgmt_index, sizeof(off), off,
-					func, data, NULL);
+					NULL, data, NULL);
 		}
 	}
 }
