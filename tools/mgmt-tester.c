@@ -749,6 +749,27 @@ static const struct generic_data set_connectable_off_le_test_2 = {
 	.expect_hci_len = sizeof(set_connectable_off_adv_param),
 };
 
+static uint16_t settings_powered_le_discoverable_advertising[] = {
+					MGMT_OP_SET_LE,
+					MGMT_OP_SET_CONNECTABLE,
+					MGMT_OP_SET_DISCOVERABLE,
+					MGMT_OP_SET_ADVERTISING,
+					MGMT_OP_SET_POWERED, 0 };
+
+static const struct generic_data set_connectable_off_le_test_3 = {
+	.setup_settings = settings_powered_le_discoverable_advertising,
+	.send_opcode = MGMT_OP_SET_CONNECTABLE,
+	.send_param = set_connectable_off_param,
+	.send_len = sizeof(set_connectable_off_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_connectable_off_le_settings_2,
+	.expect_len = sizeof(set_connectable_off_le_settings_2),
+	.expect_settings_unset = MGMT_SETTING_CONNECTABLE,
+	.expect_hci_command = BT_HCI_CMD_LE_SET_ADV_PARAMETERS,
+	.expect_hci_param = set_connectable_off_adv_param,
+	.expect_hci_len = sizeof(set_connectable_off_adv_param),
+};
+
 static const char set_fast_conn_on_param[] = { 0x01 };
 static const char set_fast_conn_on_settings_1[] = { 0x87, 0x00, 0x00, 0x00 };
 
@@ -2841,6 +2862,9 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_le("Set connectable off (LE-only) - Success 2",
 				&set_connectable_off_le_test_2,
+				NULL, test_command_generic);
+	test_le("Set connectable off (LE-only) - Success 3",
+				&set_connectable_off_le_test_3,
 				NULL, test_command_generic);
 
 	test_bredrle("Set fast connectable on - Success 1",
