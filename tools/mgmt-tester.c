@@ -939,6 +939,51 @@ static const struct generic_data set_discoverable_off_success_test_2 = {
 	.expect_hci_len = sizeof(set_discoverable_off_scan_enable_param),
 };
 
+static const uint8_t set_limited_discov_on_param[] = { 0x02, 0x01, 0x00 };
+
+static const struct generic_data set_limited_discov_on_success_1 = {
+	.setup_settings = settings_powered_connectable,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_limited_discov_on_param,
+	.send_len = sizeof(set_limited_discov_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discoverable_on_settings_param_2,
+	.expect_len = sizeof(set_discoverable_on_settings_param_2),
+	.expect_hci_command = BT_HCI_CMD_WRITE_SCAN_ENABLE,
+	.expect_hci_param = set_discoverable_on_scan_enable_param,
+	.expect_hci_len = sizeof(set_discoverable_on_scan_enable_param),
+};
+
+static uint8_t write_current_iac_lap_limited[] = { 0x01, 0x00, 0x8b, 0x9e };
+
+static const struct generic_data set_limited_discov_on_success_2 = {
+	.setup_settings = settings_powered_connectable,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_limited_discov_on_param,
+	.send_len = sizeof(set_limited_discov_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discoverable_on_settings_param_2,
+	.expect_len = sizeof(set_discoverable_on_settings_param_2),
+	.expect_hci_command = BT_HCI_CMD_WRITE_CURRENT_IAC_LAP,
+	.expect_hci_param = write_current_iac_lap_limited,
+	.expect_hci_len = sizeof(write_current_iac_lap_limited),
+};
+
+static uint8_t write_cod_limited[] = { 0x00, 0x20, 0x00 };
+
+static const struct generic_data set_limited_discov_on_success_3 = {
+	.setup_settings = settings_powered_connectable,
+	.send_opcode = MGMT_OP_SET_DISCOVERABLE,
+	.send_param = set_limited_discov_on_param,
+	.send_len = sizeof(set_limited_discov_on_param),
+	.expect_status = MGMT_STATUS_SUCCESS,
+	.expect_param = set_discoverable_on_settings_param_2,
+	.expect_len = sizeof(set_discoverable_on_settings_param_2),
+	.expect_hci_command = BT_HCI_CMD_WRITE_CLASS_OF_DEV,
+	.expect_hci_param = write_cod_limited,
+	.expect_hci_len = sizeof(write_cod_limited),
+};
+
 static uint16_t settings_link_sec[] = { MGMT_OP_SET_LINK_SECURITY, 0 };
 
 static const char set_link_sec_on_param[] = { 0x01 };
@@ -2826,6 +2871,15 @@ int main(int argc, char *argv[])
 				NULL, test_command_generic);
 	test_bredrle("Set discoverable off - Success 2",
 				&set_discoverable_off_success_test_2,
+				NULL, test_command_generic);
+	test_bredrle("Set limited discoverable on - Success 1",
+				&set_limited_discov_on_success_1,
+				NULL, test_command_generic);
+	test_bredrle("Set limited discoverable on - Success 2",
+				&set_limited_discov_on_success_2,
+				NULL, test_command_generic);
+	test_bredrle("Set limited discoverable on - Success 3",
+				&set_limited_discov_on_success_3,
 				NULL, test_command_generic);
 
 	test_bredrle("Set link security on - Success 1",
