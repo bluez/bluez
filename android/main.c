@@ -213,6 +213,10 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		bt_hid_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
 								msg->len);
 		break;
+	case HAL_SERVICE_ID_SOCK:
+		bt_sock_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
+								msg->len);
+		break;
 	default:
 		ipc_send_rsp(hal_cmd_io, msg->service_id, HAL_STATUS_FAILED);
 		break;

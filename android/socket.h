@@ -21,5 +21,8 @@
  *
  */
 
+void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
+						uint16_t len);
+
 bool bt_socket_register(GIOChannel *io, const bdaddr_t *addr);
 void bt_socket_unregister(void);

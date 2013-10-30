@@ -26,7 +26,49 @@
 
 #include "lib/bluetooth.h"
 #include "log.h"
+#include "hal-msg.h"
+#include "hal-ipc.h"
+#include "ipc.h"
 #include "socket.h"
+
+
+static int handle_listen(void *buf)
+{
+	return -1;
+}
+
+static int handle_connect(void *buf)
+{
+	return -1;
+}
+
+void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
+							uint16_t len)
+{
+	int fd;
+
+	switch (opcode) {
+	case HAL_OP_SOCK_LISTEN:
+		fd = handle_listen(buf);
+		if (fd < 0)
+			break;
+
+		ipc_send(io, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		return;
+	case HAL_OP_SOCK_CONNECT:
+		fd = handle_connect(buf);
+		if (fd < 0)
+			break;
+
+		ipc_send(io, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		return;
+	default:
+		DBG("Unhandled command, opcode 0x%x", opcode);
+		break;
+	}
+
+	ipc_send_rsp(io, HAL_SERVICE_ID_SOCK, HAL_STATUS_FAILED);
+}
 
 bool bt_socket_register(GIOChannel *io, const bdaddr_t *addr)
 {
