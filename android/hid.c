@@ -149,15 +149,10 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && hdev->intr_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
-	hdev->ctrl_watch = 0;
-
-	if (hdev->ctrl_io) {
-		g_io_channel_unref(hdev->ctrl_io);
-		hdev->ctrl_io = NULL;
-	}
-
 	if (hdev->intr_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(hdev->intr_io, TRUE, NULL);
+
+	hid_device_free(hdev);
 
 	return FALSE;
 }
@@ -230,8 +225,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
-	g_io_channel_unref(hdev->ctrl_io);
-	hdev->ctrl_io = NULL;
+	hid_device_free(hdev);
 }
 
 static uint8_t bt_hid_connect(struct hal_cmd_hid_connect *cmd, uint16_t len)
