@@ -29,6 +29,13 @@
 
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
+#define create_enum_prop(prop, hal_prop, type) do { \
+	type *pe = malloc(sizeof(type)); \
+	prop.val = pe; \
+	prop.len = sizeof(*pe); \
+	*pe = *((uint8_t *) (hal_prop->val)); \
+} while (0)
+
 static void handle_adapter_state_changed(void *buf)
 {
 	struct hal_ev_adapter_state_changed *ev = buf;
@@ -37,10 +44,9 @@ static void handle_adapter_state_changed(void *buf)
 		bt_hal_cbacks->adapter_state_changed_cb(ev->state);
 }
 
-static void repack_properties(bt_property_t *send_props,
+static void adapter_props_to_hal(bt_property_t *send_props,
 					struct hal_property *hal_prop,
-					uint8_t num_props,
-					void *buff_end)
+					uint8_t num_props, void *buff_end)
 {
 	void *p = hal_prop;
 	uint8_t i;
@@ -52,11 +58,87 @@ static void repack_properties(bt_property_t *send_props,
 		}
 
 		send_props[i].type = hal_prop->type;
-		send_props[i].len = hal_prop->len;
-		send_props[i].val = hal_prop->val;
+
+		switch (hal_prop->type) {
+		case HAL_PROP_ADAPTER_TYPE:
+			create_enum_prop(send_props[i], hal_prop,
+							bt_device_type_t);
+			break;
+		case HAL_PROP_ADAPTER_SCAN_MODE:
+			create_enum_prop(send_props[i], hal_prop,
+							bt_scan_mode_t);
+			break;
+		case HAL_PROP_ADAPTER_SERVICE_REC:
+		default:
+			send_props[i].len = hal_prop->len;
+			send_props[i].val = hal_prop->val;
+			break;
+		}
+	}
+}
+
+static void adapter_hal_props_cleanup(bt_property_t *props, uint8_t num)
+{
+	uint8_t i;
+
+	for (i = 0; i < num; i++) {
+		switch (props[i].type) {
+		case HAL_PROP_ADAPTER_TYPE:
+		case HAL_PROP_ADAPTER_SCAN_MODE:
+			free(props[i].val);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+static void device_props_to_hal(bt_property_t *send_props,
+					struct hal_property *hal_prop,
+					uint8_t num_props, void *buff_end)
+{
+	void *p = hal_prop;
+	uint8_t i;
+
+	for (i = 0; i < num_props; i++) {
+		if (p + sizeof(*hal_prop) + hal_prop->len > buff_end) {
+			error("invalid adapter properties event, aborting");
+			exit(EXIT_FAILURE);
+		}
+
+		send_props[i].type = hal_prop->type;
+
+		switch (hal_prop->type) {
+		case HAL_PROP_DEVICE_TYPE:
+			create_enum_prop(send_props[i], hal_prop,
+							bt_device_type_t);
+			break;
+		case HAL_PROP_DEVICE_SERVICE_REC:
+		case HAL_PROP_DEVICE_VERSION_INFO:
+		default:
+			send_props[i].len = hal_prop->len;
+			send_props[i].val = hal_prop->val;
+			break;
+		}
 
 		p += sizeof(*hal_prop) + hal_prop->len;
 		hal_prop = p;
+	}
+}
+
+
+static void device_hal_props_cleanup(bt_property_t *props, uint8_t num)
+{
+	uint8_t i;
+
+	for (i = 0; i < num; i++) {
+		switch (props[i].type) {
+		case HAL_PROP_DEVICE_TYPE:
+			free(props[i].val);
+			break;
+		default:
+			break;
+		}
 	}
 }
 
@@ -68,9 +150,11 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 	if (!bt_hal_cbacks->adapter_properties_cb)
 		return;
 
-	repack_properties(props, ev->props, ev->num_props, buf + len);
+	adapter_props_to_hal(props, ev->props, ev->num_props, buf + len);
 
 	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
+
+	adapter_hal_props_cleanup(props, ev->num_props);
 }
 
 static void handle_bond_state_change(void *buf)
@@ -140,9 +224,11 @@ static void handle_device_found(void *buf, uint16_t len)
 	if (!bt_hal_cbacks->device_found_cb)
 		return;
 
-	repack_properties(props, ev->props, ev->num_props, buf + len);
+	device_props_to_hal(props, ev->props, ev->num_props, buf + len);
 
 	bt_hal_cbacks->device_found_cb(ev->num_props, props);
+
+	device_hal_props_cleanup(props, ev->num_props);
 }
 
 static void handle_device_state_changed(void *buf, uint16_t len)
@@ -153,11 +239,13 @@ static void handle_device_state_changed(void *buf, uint16_t len)
 	if (!bt_hal_cbacks->remote_device_properties_cb)
 		return;
 
-	repack_properties(props, ev->props, ev->num_props, buf + len);
+	device_props_to_hal(props, ev->props, ev->num_props, buf + len);
 
 	bt_hal_cbacks->remote_device_properties_cb(ev->status,
 						(bt_bdaddr_t *)ev->bdaddr,
 						ev->num_props, props);
+
+	device_hal_props_cleanup(props, ev->num_props);
 }
 
 /* will be called from notification thread context */
