@@ -15,18 +15,33 @@
  *
  */
 
+#include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include "hal-ipc.h"
 #include "hal-log.h"
+#include "hal-msg.h"
 #include "hal.h"
 
 static bt_status_t sock_listen_rfcomm(const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
+	struct hal_op_sock_listen cmd;
+
 	DBG("");
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.flags = flags;
+	cmd.type = BTSOCK_RFCOMM;
+	cmd.channel = chan;
+	memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
+	memset(cmd.name, 0, sizeof(cmd.name));
+	memcpy(cmd.name, service_name, strlen(service_name));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN,
+				sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
 static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
@@ -58,6 +73,8 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
+	struct hal_op_sock_connect cmd;
+
 	if ((!uuid && chan <= 0) || !bdaddr || !sock) {
 		error("invalid params: bd_addr %p, uuid %p, chan %d, sock %p",
 					bdaddr, uuid, chan, sock);
@@ -66,7 +83,14 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 
 	DBG("uuid %p chan %d sock %p type %d", uuid, chan, sock, type);
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.flags = flags;
+	cmd.type = type;
+	cmd.channel = chan;
+	memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
+	memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_CONNECT,
+					sizeof(cmd), &cmd, NULL, NULL, sock);
 }
 
 static btsock_interface_t sock_if = {

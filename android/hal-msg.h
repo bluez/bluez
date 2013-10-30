@@ -210,6 +210,26 @@ struct hal_cmd_le_test_mode {
 	uint8_t  data[0];
 } __attribute__((packed));
 
+/* Bluetooth Socket HAL api */
+
+#define HAL_OP_SOCK_LISTEN		0x01
+struct hal_op_sock_listen {
+	uint8_t type;
+	uint8_t name[256];
+	uint8_t uuid[16];
+	uint16_t channel;
+	uint8_t flags;
+} __attribute__((packed));
+
+#define HAL_OP_SOCK_CONNECT		0x02
+struct hal_op_sock_connect {
+	uint8_t bdaddr[6];
+	uint8_t type;
+	uint8_t uuid[16];
+	uint16_t channel;
+	uint8_t flags;
+} __attribute__((packed));
+
 #define HAL_OP_HID_CONNECT		0x01
 struct hal_cmd_hid_connect {
 	uint8_t bdaddr[6];
