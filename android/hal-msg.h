@@ -392,6 +392,10 @@ struct hal_ev_ssp_request {
 	uint32_t passkey;
 } __attribute__((packed));
 
+#define HAL_BOND_STATE_NONE 0
+#define HAL_BOND_STATE_BONDING 1
+#define HAL_BOND_STATE_BONDED 2
+
 #define HAL_EV_BOND_STATE_CHANGED	0x88
 struct hal_ev_bond_state_changed {
 	uint8_t status;
