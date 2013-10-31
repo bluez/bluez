@@ -138,6 +138,27 @@ static void scan_mode_changed(void)
 	g_free(ev);
 }
 
+static void adapter_name_changed(const uint8_t *name)
+{
+	struct hal_ev_adapter_props_changed *ev;
+	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) +
+							HAL_MAX_NAME_LENGTH];
+
+	memset(buf, 0, sizeof(buf));
+	ev = (void *) buf;
+
+	ev->num_props = 1;
+	ev->status = HAL_STATUS_SUCCESS;
+	ev->props[0].type = HAL_PROP_ADAPTER_NAME;
+	ev->props[0].len = HAL_MAX_NAME_LENGTH;
+	memcpy(ev->props->val, name, HAL_MAX_NAME_LENGTH);
+
+	DBG("Adapter name changed to: %s", ev->props->val);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev, -1);
+}
+
 static void settings_changed(uint32_t settings)
 {
 	uint32_t changed_mask;
@@ -735,6 +756,37 @@ static void set_io_capability(void)
 		error("Failed to set IO capability");
 }
 
+static void set_adapter_name_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_cp_set_local_name *rp = param;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		error("Failed to set name: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		return;
+	}
+
+	adapter_name_changed(rp->name);
+}
+
+static bool set_adapter_name(uint8_t *name, uint16_t len)
+{
+	struct mgmt_cp_set_local_name cp;
+
+	memset(&cp, 0, sizeof(cp));
+	memcpy(cp.name, name, len);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_LOCAL_NAME, adapter->index,
+			sizeof(cp), &cp, set_adapter_name_complete, NULL,
+								NULL) > 0)
+		return true;
+
+	error("Failed to set name");
+
+	return false;
+}
+
 static void read_info_complete(uint8_t status, uint16_t length, const void *param,
 							void *user_data)
 {
@@ -978,6 +1030,7 @@ static uint8_t set_property(void *buf, uint16_t len)
 	case HAL_PROP_ADAPTER_SCAN_MODE:
 		return set_scan_mode(cmd->val, cmd->len);
 	case HAL_PROP_ADAPTER_NAME:
+		return set_adapter_name(cmd->val, cmd->len);
 	case HAL_PROP_ADAPTER_DISC_TIMEOUT:
 	default:
 		DBG("Unhandled property type 0x%x", cmd->type);
