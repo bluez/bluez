@@ -29,9 +29,11 @@
 #include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <string.h>
 #include <libgen.h>
 #include <sys/poll.h>
+#include <sys/wait.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -63,6 +65,8 @@ static void ctl_start(void)
 		exit(0);
 	}
 
+	printf("New process %d created\n", pid);
+
 	daemon_pid = pid;
 }
 
@@ -88,14 +92,48 @@ static void system_socket_callback(int fd, uint32_t events, void *user_data)
 	ctl_start();
 }
 
+static void signal_callback(int signum, void *user_data)
+{
+	switch (signum) {
+	case SIGINT:
+	case SIGTERM:
+		mainloop_quit();
+		break;
+	case SIGCHLD:
+		while (1) {
+			pid_t pid;
+			int status;
+
+			pid = waitpid(WAIT_ANY, &status, WNOHANG);
+			if (pid < 0 || pid == 0)
+				break;
+
+			printf("Process %d terminated with status=%d\n",
+								pid, status);
+
+			if (pid == daemon_pid)
+				daemon_pid = -1;
+		}
+		break;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	static const char SYSTEM_SOCKET_PATH[] = "\0android_system";
 
+	sigset_t mask;
 	struct sockaddr_un addr;
 	int fd;
 
 	mainloop_init();
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGCHLD);
+
+	mainloop_set_signal(&mask, signal_callback, NULL, NULL);
 
 	printf("Android system emulator ver %s\n", VERSION);
 
