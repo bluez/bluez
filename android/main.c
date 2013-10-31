@@ -168,6 +168,37 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 	}
 }
 
+static void shutdown_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS)
+		error("Clean controller shutdown failed");
+
+	g_main_loop_quit(event_loop);
+}
+
+static void shutdown_controller(void)
+{
+	static bool __shutdown = false;
+	struct mgmt_mode cp;
+
+	if (__shutdown)
+		return;
+
+	__shutdown = true;
+
+	info("Switching controller off");
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = 0x00;
+
+	if (mgmt_send(mgmt_if, MGMT_OP_SET_POWERED, adapter_index,
+			sizeof(cp), &cp, shutdown_complete, NULL, NULL) > 0)
+		return;
+
+	g_main_loop_quit(event_loop);
+}
+
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -227,7 +258,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 	return TRUE;
 
 fail:
-	g_main_loop_quit(event_loop);
+	shutdown_controller();
 	return FALSE;
 }
 
@@ -235,7 +266,7 @@ static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	info("HAL notification socket closed, terminating");
-	g_main_loop_quit(event_loop);
+	shutdown_controller();
 
 	return FALSE;
 }
@@ -318,31 +349,6 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	return FALSE;
-}
-
-static void shutdown_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS)
-		error("Clean controller shutdown failed");
-
-	g_main_loop_quit(event_loop);
-}
-
-static void shutdown_controller(void)
-{
-	struct mgmt_mode cp;
-
-	info("Switching controller off");
-
-	memset(&cp, 0, sizeof(cp));
-	cp.val = 0x00;
-
-	if (mgmt_send(mgmt_if, MGMT_OP_SET_POWERED, adapter_index,
-			sizeof(cp), &cp, shutdown_complete, NULL, NULL) > 0)
-		return;
-
-	g_main_loop_quit(event_loop);
 }
 
 static gboolean quit_eventloop(gpointer user_data)
