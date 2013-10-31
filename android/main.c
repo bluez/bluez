@@ -60,6 +60,9 @@
 #include <sys/capability.h>
 #endif
 
+#define STARTUP_GRACE_SECONDS 5
+#define SHUTDOWN_GRACE_SECONDS 10
+
 static GMainLoop *event_loop;
 static struct mgmt *mgmt_if = NULL;
 
@@ -317,6 +320,37 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
+static void shutdown_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS)
+		error("Clean controller shutdown failed");
+
+	g_main_loop_quit(event_loop);
+}
+
+static void shutdown_controller(void)
+{
+	struct mgmt_mode cp;
+
+	info("Switching controller off");
+
+	memset(&cp, 0, sizeof(cp));
+	cp.val = 0x00;
+
+	if (mgmt_send(mgmt_if, MGMT_OP_SET_POWERED, adapter_index,
+			sizeof(cp), &cp, shutdown_complete, NULL, NULL) > 0)
+		return;
+
+	g_main_loop_quit(event_loop);
+}
+
+static gboolean quit_eventloop(gpointer user_data)
+{
+	g_main_loop_quit(event_loop);
+	return FALSE;
+}
+
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -339,7 +373,12 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	case SIGTERM:
 		if (!__terminated) {
 			info("Terminating");
-			g_main_loop_quit(event_loop);
+			if (adapter_index != MGMT_INDEX_NONE) {
+				g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
+							quit_eventloop, NULL);
+				shutdown_controller();
+			} else
+				g_main_loop_quit(event_loop);
 		}
 
 		__terminated = true;
@@ -481,8 +520,8 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 		return;
 
 	if (num < 1) {
-		adapter_timeout = g_timeout_add_seconds(5,
-					adapter_timeout_handler, NULL);
+		adapter_timeout = g_timeout_add_seconds(STARTUP_GRACE_SECONDS,
+						adapter_timeout_handler, NULL);
 		if (adapter_timeout == 0) {
 			error("%s: Failed init timeout", __func__);
 			g_main_loop_quit(event_loop);
