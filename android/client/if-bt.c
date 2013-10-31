@@ -789,10 +789,10 @@ static void get_profile_interface_c(int argc, const char **argv,
 		BT_PROFILE_SOCKETS_ID,
 		BT_PROFILE_HIDHOST_ID,
 		BT_PROFILE_PAN_ID,
-#if PLATFORM_SDK_VERSION >= 18
+#if PLATFORM_SDK_VERSION > 17
 		BT_PROFILE_GATT_ID,
-#endif
 		BT_PROFILE_AV_RC_ID,
+#endif
 		NULL
 	};
 
