@@ -943,7 +943,7 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	case HAL_OP_SET_ADAPTER_PROP:
 		status = set_property(buf, len);
-		if (status != HAL_STATUS_SUCCESS)
+		if (status != HAL_STATUS_SUCCESS && status != HAL_STATUS_DONE)
 			goto error;
 
 		break;
