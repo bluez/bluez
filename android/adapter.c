@@ -390,6 +390,28 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 						sizeof(cp), &cp, -1);
 }
 
+static void confirm_name_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS)
+		error("Failed to confirm name: %s (0x%02x)",
+						mgmt_errstr(status), status);
+}
+
+static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type)
+{
+	struct mgmt_cp_confirm_name cp;
+
+	memset(&cp, 0, sizeof(cp));
+	bacpy(&cp.addr.bdaddr, addr);
+	cp.addr.type = addr_type;
+
+	if (mgmt_reply(adapter->mgmt, MGMT_OP_CONFIRM_NAME, adapter->index,
+					sizeof(cp), &cp, confirm_name_complete,
+					NULL, NULL) == 0)
+		error("Failed to send confirm name request");
+}
+
 static int bdaddr_cmp(gconstpointer a, gconstpointer b)
 {
 	const bdaddr_t *bda = a;
@@ -519,7 +541,13 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 		g_free(buf);
 	}
 
-	/* TODO: name confirmation */
+	if (confirm) {
+		char addr[18];
+
+		ba2str(bdaddr, addr);
+		info("Device %s needs name confirmation.", addr);
+		confirm_device_name(bdaddr, bdaddr_type);
+	}
 
 	eir_data_free(&eir);
 }
