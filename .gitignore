@@ -102,5 +102,6 @@ unit/test-gobex-transfer
 unit/test-*.log
 unit/test-*.trs
 
+android/system-emulator
 android/bluetoothd
 android/haltest

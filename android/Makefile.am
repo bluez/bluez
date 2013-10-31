@@ -1,7 +1,12 @@
 if ANDROID
+noinst_PROGRAMS += android/system-emulator
+
+android_system_emulator_SOURCES = android/system-emulator.c \
+					monitor/mainloop.h monitor/mainloop.c
+
 noinst_PROGRAMS += android/bluetoothd
 
-android_bluetoothd_SOURCES =	android/main.c \
+android_bluetoothd_SOURCES = android/main.c \
 				src/log.c \
 				android/hal-msg.h \
 				android/utils.h \

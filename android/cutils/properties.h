@@ -14,25 +14,42 @@
  * limitations under the License.
  */
 
-#ifndef __CUTILS_PROPERTIES_H
-#define __CUTILS_PROPERTIES_H
-
-#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include <sys/socket.h>
+#include <sys/un.h>
 
 /* property_set: returns 0 on success, < 0 on failure
 */
 static inline int property_set(const char *key, const char *value)
 {
-	return setenv(key, value, 0);
-}
+	static const char SYSTEM_SOCKET_PATH[] = "\0android_system";
 
-#ifdef __cplusplus
-}
-#endif
+	struct sockaddr_un addr;
+	char msg[256];
+	int fd, len;
 
-#endif
+	fd = socket(PF_LOCAL, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -1;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sun_family = AF_UNIX;
+	memcpy(addr.sun_path, SYSTEM_SOCKET_PATH, sizeof(SYSTEM_SOCKET_PATH));
+
+	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	len = snprintf(msg, sizeof(msg), "%s=%s", key, value);
+
+	if (send(fd, msg, len + 1, 0) < 0) {
+		close(fd);
+		return -1;
+	}
+
+	close(fd);
+
+	return 0;
+}
