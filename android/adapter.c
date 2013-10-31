@@ -751,6 +751,49 @@ static bool cancel_bond(void *buf, uint16_t len)
 				NULL) > 0;
 }
 
+static uint8_t pin_reply(void *buf, uint16_t len)
+{
+	struct hal_cmd_pin_reply *cmd = buf;
+	bdaddr_t bdaddr;
+	char addr[18];
+
+	android2bdaddr(cmd->bdaddr, &bdaddr);
+	ba2str(&bdaddr, addr);
+
+	DBG("%s accept %u pin_len %u", addr, cmd->accept, cmd->pin_len);
+
+	if (!cmd->accept && cmd->pin_len)
+		return HAL_STATUS_INVALID;
+
+	if (cmd->accept) {
+		struct mgmt_cp_pin_code_reply rp;
+
+		memset(&rp, 0, sizeof(rp));
+
+		bacpy(&rp.addr.bdaddr, &bdaddr);
+		rp.addr.type = BDADDR_BREDR;
+		rp.pin_len = cmd->pin_len;
+		memcpy(rp.pin_code, cmd->pin_code, rp.pin_len);
+
+		if (mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_REPLY,
+					adapter->index, sizeof(rp), &rp,
+					NULL, NULL, NULL) == 0)
+			return HAL_STATUS_FAILED;
+	} else {
+		struct mgmt_cp_pin_code_neg_reply rp;
+
+		bacpy(&rp.addr.bdaddr, &bdaddr);
+		rp.addr.type = BDADDR_BREDR;
+
+		if (mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_NEG_REPLY,
+					adapter->index, sizeof(rp), &rp,
+					NULL, NULL, NULL) == 0)
+			return HAL_STATUS_FAILED;
+	}
+
+	return HAL_STATUS_SUCCESS;
+}
+
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
@@ -795,6 +838,12 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	case HAL_OP_CANCEL_BOND:
 		if (!cancel_bond(buf, len))
+			goto error;
+
+		break;
+	case HAL_OP_PIN_REPLY:
+		status = pin_reply(buf, len);
+		if (status != HAL_STATUS_SUCCESS)
 			goto error;
 
 		break;
