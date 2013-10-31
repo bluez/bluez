@@ -72,8 +72,6 @@ static guint adapter_timeout = 0;
 static GIOChannel *hal_cmd_io = NULL;
 static GIOChannel *hal_notif_io = NULL;
 
-static volatile sig_atomic_t __terminated = 0;
-
 static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 
 static void service_register(void *buf, uint16_t len)
@@ -322,6 +320,7 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
+	static bool __terminated = false;
 	struct signalfd_siginfo si;
 	ssize_t result;
 	int fd;
@@ -338,12 +337,12 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	switch (si.ssi_signo) {
 	case SIGINT:
 	case SIGTERM:
-		if (__terminated == 0) {
+		if (!__terminated) {
 			info("Terminating");
 			g_main_loop_quit(event_loop);
 		}
 
-		__terminated = 1;
+		__terminated = true;
 		break;
 	}
 
