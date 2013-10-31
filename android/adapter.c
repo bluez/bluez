@@ -290,22 +290,37 @@ failed:
 static void load_link_keys(GSList *keys)
 {
 	struct mgmt_cp_load_link_keys *cp;
-	size_t key_len = g_slist_length(keys);
 	struct mgmt_link_key_info *key;
-	size_t len;
+	size_t key_count, cp_size;
+	unsigned int id;
 
-	DBG("");
+	key_count = g_slist_length(keys);
 
-	len = sizeof(*cp) + key_len * sizeof(*key);
-	cp = g_malloc0(len);
+	DBG("keys %zu ", key_count);
 
-	cp->debug_keys = 0;
-	cp->key_count = htobs(key_len);
+	cp_size = sizeof(*cp) + (key_count * sizeof(*key));
 
-	mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LINK_KEYS, adapter->index, len,
-				cp, load_link_keys_complete, NULL, NULL);
+	cp = g_malloc0(cp_size);
+
+	/*
+	 * Even if the list of stored keys is empty, it is important to
+	 * load an empty list into the kernel. That way it is ensured
+	 * that no old keys from a previous daemon are present.
+	 */
+	cp->key_count = htobs(key_count);
+
+	for (key = cp->keys; keys != NULL; keys = g_slist_next(keys), key++)
+		memcpy(key, keys->data, sizeof(*key));
+
+	id = mgmt_send(adapter->mgmt, MGMT_OP_LOAD_LINK_KEYS, adapter->index,
+			cp_size, cp, load_link_keys_complete, NULL, NULL);
 
 	g_free(cp);
+
+	if (id == 0) {
+		error("Failed to load link keys");
+		adapter->ready(-EIO);
+	}
 }
 
 static void set_mode_complete(uint8_t status, uint16_t length,
