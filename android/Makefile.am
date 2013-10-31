@@ -7,6 +7,8 @@ android_bluetoothd_SOURCES =	android/main.c \
 				android/utils.h \
 				src/sdpd-database.c src/sdpd-server.c \
 				src/sdpd-service.c src/sdpd-request.c \
+				src/glib-helper.h src/glib-helper.c \
+				src/eir.h src/eir.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
 				android/adapter.h android/adapter.c \

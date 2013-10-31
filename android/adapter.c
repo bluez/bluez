@@ -29,6 +29,8 @@
 #include "lib/sdp.h"
 #include "lib/mgmt.h"
 #include "src/shared/mgmt.h"
+#include "src/glib-helper.h"
+#include "src/eir.h"
 #include "log.h"
 #include "hal-msg.h"
 #include "ipc.h"
@@ -58,6 +60,7 @@ struct bt_adapter {
 };
 
 static struct bt_adapter *adapter;
+static GSList *found_devices = NULL;
 
 static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
@@ -373,12 +376,111 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 
 	DBG("new discovering state %u", ev->discovering);
 
-	cp.state = adapter->discovering ? HAL_DISCOVERY_STATE_STARTED :
-						HAL_DISCOVERY_STATE_STOPPED;
+	if (adapter->discovering) {
+		cp.state = HAL_DISCOVERY_STATE_STARTED;
+	} else {
+		g_slist_free_full(found_devices, g_free);
+		found_devices = NULL;
+
+		cp.state = HAL_DISCOVERY_STATE_STOPPED;
+	}
 
 	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
 						HAL_EV_DISCOVERY_STATE_CHANGED,
 						sizeof(cp), &cp, -1);
+}
+
+static int bdaddr_cmp(gconstpointer a, gconstpointer b)
+{
+	const bdaddr_t *bda = a;
+	const bdaddr_t *bdb = b;
+
+	return bacmp(bdb, bda);
+}
+
+static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
+					int8_t rssi, bool confirm,
+					const uint8_t *data, uint8_t data_len)
+{
+	bool is_new_dev = false;
+	struct eir_data eir;
+	GSList *l;
+	bdaddr_t *remote = NULL;
+	int err;
+
+	memset(&eir, 0, sizeof(eir));
+
+	err = eir_parse(&eir, data, data_len);
+	if (err < 0) {
+		error("Error parsing EIR data: %s (%d)", strerror(-err), -err);
+		return;
+	}
+
+	l = g_slist_find_custom(found_devices, bdaddr, bdaddr_cmp);
+	if (l)
+		remote = l->data;
+
+	if (!remote) {
+		char addr[18];
+
+		remote = g_new0(bdaddr_t, 1);
+		bacpy(remote, bdaddr);
+
+		found_devices = g_slist_prepend(found_devices, remote);
+		is_new_dev = true;
+
+		ba2str(remote, addr);
+		DBG("New device found: %s", addr);
+	}
+
+	if (is_new_dev) {
+		/* TODO: notify device found */
+	} else {
+		/* TODO: notify device state changed */
+	}
+
+	/* TODO: name confirmation */
+
+	eir_data_free(&eir);
+}
+
+static void mgmt_device_found_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_device_found *ev = param;
+	const uint8_t *eir;
+	uint16_t eir_len;
+	uint32_t flags;
+	bool confirm_name;
+	char addr[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too short device found event (%u bytes)", length);
+		return;
+	}
+
+	eir_len = btohs(ev->eir_len);
+	if (length != sizeof(*ev) + eir_len) {
+		error("Device found event size mismatch (%u != %zu)",
+					length, sizeof(*ev) + eir_len);
+		return;
+	}
+
+	if (eir_len == 0)
+		eir = NULL;
+	else
+		eir = ev->eir;
+
+	flags = btohl(ev->flags);
+
+	ba2str(&ev->addr.bdaddr, addr);
+	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u eir %u",
+				index, addr, ev->rssi, flags, eir_len, *eir);
+
+	confirm_name = flags & MGMT_DEV_FOUND_CONFIRM_NAME;
+
+	update_found_device(&ev->addr.bdaddr, ev->addr.type, ev->rssi,
+						confirm_name, eir, eir_len);
 }
 
 static void register_mgmt_handlers(void)
@@ -415,6 +517,9 @@ static void register_mgmt_handlers(void)
 							mgmt_discovering_event,
 							NULL, NULL);
 
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_FOUND,
+					adapter->index, mgmt_device_found_event,
+					NULL, NULL);
 }
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
