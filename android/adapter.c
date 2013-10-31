@@ -490,6 +490,7 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 							void *user_data)
 {
 	const struct mgmt_rp_read_info *rp = param;
+	uint32_t missing_settings;
 	int err;
 
 	DBG("");
@@ -528,6 +529,13 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	load_link_keys(NULL);
 
 	set_io_capability();
+
+	missing_settings = adapter->current_settings ^
+						adapter->supported_settings;
+
+	if (missing_settings & MGMT_SETTING_SSP)
+		set_mode(MGMT_OP_SET_SSP, 0x01);
+
 	set_mode(MGMT_OP_SET_PAIRABLE, 0x01);
 
 	return;
