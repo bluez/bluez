@@ -32,6 +32,11 @@
 const struct interface *interfaces[] = {
 	&bluetooth_if,
 	&av_if,
+#if PLATFORM_SDK_VERSION > 17
+	&gatt_if,
+	&gatt_client_if,
+	&gatt_server_if,
+#endif
 	&hf_if,
 	&hh_if,
 	&pan_if,

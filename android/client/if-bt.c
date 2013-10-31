@@ -830,6 +830,8 @@ static void get_profile_interface_p(int argc, const char **argv)
 #if PLATFORM_SDK_VERSION > 17
 	else if (strcmp(BT_PROFILE_AV_RC_ID, id) == 0)
 		pif = &dummy; /* TODO: change when if_rc is there */
+	else if (strcmp(BT_PROFILE_GATT_ID, id) == 0)
+		pif = (const void **) &if_gatt;
 #endif
 	else
 		haltest_error("%s is not correct for get_profile_interface\n",
