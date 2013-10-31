@@ -89,6 +89,8 @@ struct hal_cmd_get_adapter_prop {
 	uint8_t type;
 } __attribute__((packed));
 
+#define HAL_MAX_NAME_LENGTH		249
+
 #define HAL_PROP_ADAPTER_NAME			0x01
 #define HAL_PROP_ADAPTER_ADDR			0x02
 #define HAL_PROP_ADAPTER_UUIDS			0x03
