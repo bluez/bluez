@@ -370,6 +370,10 @@ Notifications:
 		                         Remote address (6 octets)
 		                         Bond state (1 octet)
 
+		Valid bond state values: 0x00 = None
+		                         0x01 = Bonding
+		                         0x02 = Bonded
+
 	Opcode 0x89 - ACL State Changed notification
 
 		Notification parameters: Status (1 octect)
