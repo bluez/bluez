@@ -626,6 +626,19 @@ static bool create_bond(void *buf, uint16_t len)
 	return true;
 }
 
+static bool cancel_bond(void *buf, uint16_t len)
+{
+	struct hal_cmd_cancel_bond *cmd = buf;
+	struct mgmt_addr_info cp;
+
+	cp.type = BDADDR_BREDR;
+	android2bdaddr(cmd->bdaddr, &cp.bdaddr);
+
+	return mgmt_reply(adapter->mgmt, MGMT_OP_CANCEL_PAIR_DEVICE,
+				adapter->index, sizeof(cp), &cp, NULL, NULL,
+				NULL) > 0;
+}
+
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
@@ -665,6 +678,11 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	case HAL_OP_CREATE_BOND:
 		if (!create_bond(buf, len))
+			goto error;
+
+		break;
+	case HAL_OP_CANCEL_BOND:
+		if (!cancel_bond(buf, len))
 			goto error;
 
 		break;
