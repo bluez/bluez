@@ -312,6 +312,23 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 								ev->value);
 }
 
+static void user_passkey_request_callback(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_ev_user_passkey_request *ev = param;
+	char dst[18];
+
+	if (length < sizeof(*ev)) {
+		error("Too small passkey request event");
+		return;
+	}
+
+	ba2str(&ev->addr.bdaddr, dst);
+	DBG("%s", dst);
+
+	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_ENTRY, 0);
+}
+
 static void register_mgmt_handlers(void)
 {
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->index,
@@ -333,6 +350,10 @@ static void register_mgmt_handlers(void)
 
 	mgmt_register(adapter->mgmt, MGMT_EV_USER_CONFIRM_REQUEST,
 				adapter->index, user_confirm_request_callback,
+				NULL, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_USER_PASSKEY_REQUEST,
+				adapter->index, user_passkey_request_callback,
 				NULL, NULL);
 }
 
