@@ -539,7 +539,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 	if (mgmt_version < 1) {
 		error("Version 1.0 or later of management interface required");
-		abort();
+		return;
 	}
 
 	mgmt_send(mgmt_if, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE, 0, NULL,
