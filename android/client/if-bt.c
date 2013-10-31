@@ -88,8 +88,7 @@ static char *btproperty2str(bt_property_t property)
 	switch (property.type) {
 	case BT_PROPERTY_BDNAME:
 	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
-		sprintf(p, "%*s", property.len,
-					((bt_bdname_t *) property.val)->name);
+		sprintf(p, "%s", ((bt_bdname_t *) property.val)->name);
 		break;
 
 	case BT_PROPERTY_BDADDR:
