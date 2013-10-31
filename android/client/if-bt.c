@@ -804,11 +804,17 @@ static void get_profile_interface_c(int argc, const char **argv,
 
 static void get_profile_interface_p(int argc, const char **argv)
 {
-	const char *id = argv[2];
+	const char *id;
 	const void **pif = NULL;
 	const void *dummy = NULL;
 
 	RETURN_IF_NULL(if_bluetooth);
+	if (argc <= 2) {
+		haltest_error("No interface specified\n");
+		return;
+	}
+
+	id = argv[2];
 
 	if (strcmp(BT_PROFILE_HANDSFREE_ID, id) == 0)
 		pif = (const void **) &if_hf;
