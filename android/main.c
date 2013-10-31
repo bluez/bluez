@@ -67,6 +67,7 @@ static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
 
 static uint16_t adapter_index = MGMT_INDEX_NONE;
+static guint adapter_timeout = 0;
 
 static GIOChannel *hal_cmd_io = NULL;
 static GIOChannel *hal_notif_io = NULL;
@@ -420,6 +421,11 @@ static void mgmt_index_added_event(uint16_t index, uint16_t length,
 		return;
 	}
 
+	if (adapter_timeout > 0) {
+		g_source_remove(adapter_timeout);
+		adapter_timeout = 0;
+	}
+
 	adapter_index = index;
 	bt_adapter_init(index, mgmt_if, adapter_ready);
 }
@@ -436,12 +442,19 @@ static void mgmt_index_removed_event(uint16_t index, uint16_t length,
 	g_main_loop_quit(event_loop);
 }
 
+static gboolean adapter_timeout_handler(gpointer user_data)
+{
+	adapter_timeout = 0;
+	g_main_loop_quit(event_loop);
+
+	return FALSE;
+}
+
 static void read_index_list_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_index_list *rp = param;
 	uint16_t num;
-	int i;
 
 	DBG("");
 
@@ -465,16 +478,21 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 		return;
 	}
 
-	for (i = 0; i < num; i++) {
-		uint16_t index;
+	if (adapter_index != MGMT_INDEX_NONE)
+		return;
 
-		index = btohs(rp->index[i]);
-
-		/**
-		 * Use index added event notification.
-		 */
-		mgmt_index_added_event(index, 0, NULL, NULL);
+	if (num < 1) {
+		adapter_timeout = g_timeout_add_seconds(5,
+					adapter_timeout_handler, NULL);
+		if (adapter_timeout == 0) {
+			error("%s: Failed init timeout", __func__);
+			g_main_loop_quit(event_loop);
+		}
+		return;
 	}
+
+	adapter_index = btohs(rp->index[0]);
+	bt_adapter_init(adapter_index, mgmt_if, adapter_ready);
 }
 
 static void read_commands_complete(uint8_t status, uint16_t length,
