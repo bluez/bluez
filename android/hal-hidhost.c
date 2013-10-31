@@ -301,12 +301,19 @@ static bt_status_t hh_init(bthh_callbacks_t *callbacks)
 
 static void hh_cleanup(void)
 {
+	struct hal_cmd_unregister_module cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return;
 
 	bt_hh_cbacks = NULL;
+
+	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
+
+	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bthh_interface_t hh_if = {
