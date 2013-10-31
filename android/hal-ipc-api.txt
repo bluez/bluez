@@ -574,6 +574,7 @@ Notifications:
 	Opcode 0x81 - Connection State notification
 
 		Notification parameters: Remote address (6 octets)
+		                         Connection State (1 octets)
 
 		Valid connection states: 0x00 = Connected
 		                         0x01 = Connecting

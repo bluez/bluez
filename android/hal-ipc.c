@@ -49,6 +49,9 @@ static void notification_dispatch(struct hal_hdr *msg, int fd)
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_notify_adapter(msg->opcode, msg->payload, msg->len);
 		break;
+	case HAL_SERVICE_ID_HIDHOST:
+		bt_notify_hh(msg->opcode, msg->payload, msg->len);
+		break;
 	case HAL_SERVICE_ID_A2DP:
 		bt_notify_av(msg->opcode, msg->payload, msg->len);
 		break;

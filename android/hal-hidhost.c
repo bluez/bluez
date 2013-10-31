@@ -31,6 +31,31 @@ static bool interface_ready(void)
 	return bt_hh_cbacks != NULL;
 }
 
+static void handle_conn_state(void *buf)
+{
+	struct hal_ev_hid_conn_state *ev = buf;
+
+	if (bt_hh_cbacks->connection_state_cb)
+		bt_hh_cbacks->connection_state_cb((bt_bdaddr_t *) ev->bdaddr,
+								ev->state);
+}
+
+/* will be called from notification thread context */
+void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
+{
+	if (!interface_ready())
+		return;
+
+	switch (opcode) {
+	case HAL_EV_HID_CONN_STATE:
+		handle_conn_state(buf);
+		break;
+	default:
+		DBG("Unhandled callback opcode=0x%x", opcode);
+		break;
+	}
+}
+
 static bt_status_t hh_connect(bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_hid_connect cmd;

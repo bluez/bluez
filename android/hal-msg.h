@@ -423,6 +423,20 @@ struct hal_ev_le_test_mode {
 	uint16_t num_packets;
 } __attribute__((packed));
 
+#define HAL_HID_STATE_CONNECTED		0x00
+#define HAL_HID_STATE_CONNECTING	0x01
+#define HAL_HID_STATE_DISCONNECTED	0x02
+#define HAL_HID_STATE_DISCONNECTING	0x03
+#define HAL_HID_STATE_NO_HID		0x07
+#define HAL_HID_STATE_FAILED		0x08
+#define HAL_HID_STATE_UNKNOWN		0x09
+
+#define HAL_EV_HID_CONN_STATE		0x81
+struct hal_ev_hid_conn_state {
+	uint8_t bdaddr[6];
+	uint8_t state;
+} __attribute__((packed));
+
 #define HAL_EV_AV_CONNECTION_STATE	0x81
 struct hal_ev_av_connection_state {
 	uint8_t state;
