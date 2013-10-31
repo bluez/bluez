@@ -629,21 +629,21 @@ static uint8_t set_scan_mode(void *buf, uint16_t len)
 	switch (*mode) {
 	case HAL_ADAPTER_SCAN_MODE_NONE:
 		if (!cur_conn && !cur_disc)
-			return HAL_STATUS_DONE;
+			goto done;
 
 		conn = false;
 		disc = false;
 		break;
 	case HAL_ADAPTER_SCAN_MODE_CONN:
 		if (cur_conn && !cur_disc)
-			return HAL_STATUS_DONE;
+			goto done;
 
 		conn = true;
 		disc = false;
 		break;
 	case HAL_ADAPTER_SCAN_MODE_CONN_DISC:
 		if (cur_conn && cur_disc)
-			return HAL_STATUS_DONE;
+			goto done;
 
 		conn = true;
 		disc = true;
@@ -663,6 +663,12 @@ static uint8_t set_scan_mode(void *buf, uint16_t len)
 	}
 
 	return HAL_STATUS_SUCCESS;
+
+done:
+	/* Android expects property changed callback */
+	scan_mode_changed();
+
+	return HAL_STATUS_DONE;
 }
 
 static uint8_t set_property(void *buf, uint16_t len)
