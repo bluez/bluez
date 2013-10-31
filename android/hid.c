@@ -445,9 +445,15 @@ void bt_hid_unregister(void)
 	g_io_channel_unref(notification_io);
 	notification_io = NULL;
 
-	g_io_channel_unref(ctrl_io);
-	ctrl_io = NULL;
+	if (ctrl_io) {
+		g_io_channel_shutdown(ctrl_io, TRUE, NULL);
+		g_io_channel_unref(ctrl_io);
+		ctrl_io = NULL;
+	}
 
-	g_io_channel_unref(intr_io);
-	intr_io = NULL;
+	if (intr_io) {
+		g_io_channel_shutdown(intr_io, TRUE, NULL);
+		g_io_channel_unref(intr_io);
+		intr_io = NULL;
+	}
 }
