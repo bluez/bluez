@@ -121,6 +121,10 @@ LOCAL_SRC_FILES := \
 	client/if-pan.c \
 	client/if-sock.c \
 
+LOCAL_C_INCLUDES += \
+	$(call include-path-for, system-core) \
+	$(call include-path-for, libhardware) \
+
 LOCAL_CFLAGS := $(BLUEZ_COMMON_CFLAGS)
 
 LOCAL_SHARED_LIBRARIES := libhardware
