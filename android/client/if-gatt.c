@@ -496,12 +496,20 @@ static const btgatt_callbacks_t gatt_cbacks = {
 
 static void init_p(int argc, const char **argv)
 {
+	RETURN_IF_NULL(if_gatt);
+
+	EXEC(if_gatt->init, &gatt_cbacks);
 }
 
 /* cleanup */
 
 static void cleanup_p(int argc, const char **argv)
 {
+	RETURN_IF_NULL(if_gatt);
+
+	EXECV(if_gatt->cleanup);
+
+	if_gatt = NULL;
 }
 
 static struct method methods[] = {
