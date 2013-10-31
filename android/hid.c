@@ -419,7 +419,7 @@ bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	if (!ctrl_io) {
-		error("Failed to listen on control channel");
+		error("Failed to listen on ctrl channel: %s", err->message);
 		g_error_free(err);
 		return false;
 	}
@@ -429,7 +429,7 @@ bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
 	if (!intr_io) {
-		error("Failed to listen on interrupt channel");
+		error("Failed to listen on intr channel: %s", err->message);
 		g_io_channel_unref(ctrl_io);
 		g_error_free(err);
 		return false;
