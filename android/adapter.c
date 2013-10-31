@@ -170,13 +170,19 @@ static void settings_changed(uint32_t settings)
 
 	DBG("0x%08x", changed_mask);
 
-	if (changed_mask & MGMT_SETTING_POWERED)
+	if (changed_mask & MGMT_SETTING_POWERED) {
 		powered_changed();
 
-	scan_mode_mask = MGMT_SETTING_CONNECTABLE | MGMT_SETTING_DISCOVERABLE;
+		/*
+		 * Only when powered, the connectable and discoverable
+		 * state changes should be communicated.
+		 */
+		scan_mode_mask = MGMT_SETTING_CONNECTABLE |
+						MGMT_SETTING_DISCOVERABLE;
 
-	if (changed_mask & scan_mode_mask)
-		scan_mode_changed();
+		if (changed_mask & scan_mode_mask)
+			scan_mode_changed();
+	}
 }
 
 static void new_settings_callback(uint16_t index, uint16_t length,
@@ -1275,6 +1281,17 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 
 	switch (opcode) {
 	case HAL_OP_ENABLE:
+		/*
+		 * In case the controller has connectable and discoverable
+		 * enabled, make sure to disable it first.
+		 *
+		 * It is enough to just clear the connectable setting since
+		 * at the same time it will automatically clear discoverable
+		 * setting.
+		 */
+		if (adapter->current_settings & MGMT_SETTING_CONNECTABLE)
+			set_mode(MGMT_OP_SET_CONNECTABLE, 0x00);
+
 		if (adapter->current_settings & MGMT_SETTING_POWERED) {
 			status = HAL_STATUS_DONE;
 			goto error;
