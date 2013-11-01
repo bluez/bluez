@@ -20,7 +20,8 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/hid.h android/hid.c \
 				android/ipc.h android/ipc.c \
 				android/socket.h android/socket.c \
-				btio/btio.h btio/btio.c
+				btio/btio.h btio/btio.c \
+				src/sdp-client.h src/sdp-client.c
 
 android_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
