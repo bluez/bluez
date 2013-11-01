@@ -248,6 +248,18 @@ static void handle_device_state_changed(void *buf, uint16_t len)
 	device_hal_props_cleanup(props, ev->num_props);
 }
 
+static void handle_acl_state_changed(void *buf)
+{
+	struct hal_ev_acl_state_changed *ev = buf;
+	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
+
+	DBG("state %u", ev->state);
+
+	if (bt_hal_cbacks->acl_state_changed_cb)
+		bt_hal_cbacks->acl_state_changed_cb(ev->status, addr,
+								ev->state);
+}
+
 /* will be called from notification thread context */
 void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -278,6 +290,9 @@ void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_SSP_REQUEST:
 		handle_ssp_request(buf);
+		break;
+	case HAL_EV_ACL_STATE_CHANGED:
+		handle_acl_state_changed(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
