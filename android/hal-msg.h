@@ -405,6 +405,9 @@ struct hal_ev_bond_state_changed {
 	uint8_t state;
 } __attribute__((packed));
 
+#define HAL_ACL_STATE_CONNECTED		0x00
+#define HAL_ACL_STATE_DISCONNECTED	0x01
+
 #define HAL_EV_ACL_STATE_CHANGED	0x89
 struct hal_ev_acl_state_changed {
 	uint8_t status;
