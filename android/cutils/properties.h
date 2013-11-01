@@ -39,7 +39,7 @@ static inline int property_set(const char *key, const char *value)
 
 	if (connect(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(fd);
-		return -1;
+		return 0;
 	}
 
 	len = snprintf(msg, sizeof(msg), "%s=%s", key, value);
