@@ -30,6 +30,13 @@ __BEGIN_DECLS
 typedef uint8_t btrc_uid_t[BTRC_UID_SIZE];
 
 typedef enum {
+    BTRC_FEAT_NONE = 0x00,    /* AVRCP 1.0 */
+    BTRC_FEAT_METADATA = 0x01,    /* AVRCP 1.3 */
+    BTRC_FEAT_ABSOLUTE_VOLUME = 0x02,    /* Supports TG role and volume sync */
+    BTRC_FEAT_BROWSE = 0x04,    /* AVRCP 1.4 and up, with Browsing support */
+} btrc_remote_features_t;
+
+typedef enum {
     BTRC_PLAYSTATE_STOPPED = 0x00,    /* Stopped */
     BTRC_PLAYSTATE_PLAYING = 0x01,    /* Playing */
     BTRC_PLAYSTATE_PAUSED = 0x02,    /* Paused  */
@@ -114,6 +121,10 @@ typedef struct {
     uint8_t text[BTRC_MAX_ATTR_STR_LEN];
 } btrc_element_attr_val_t;
 
+/** Callback for the controller's supported feautres */
+typedef void (* btrc_remote_features_callback)(bt_bdaddr_t *bd_addr,
+                                                      btrc_remote_features_t features);
+
 /** Callback for play status request */
 typedef void (* btrc_get_play_status_callback)();
 
@@ -151,10 +162,20 @@ typedef void (* btrc_get_element_attr_callback) (uint8_t num_attr, btrc_media_at
 */
 typedef void (* btrc_register_notification_callback) (btrc_event_id_t event_id, uint32_t param);
 
+/* AVRCP 1.4 Enhancements */
+/** Callback for volume change on CT
+**  volume: Current volume setting on the CT (0-127)
+*/
+typedef void (* btrc_volume_change_callback) (uint8_t volume, uint8_t ctype);
+
+/** Callback for passthrough commands */
+typedef void (* btrc_passthrough_cmd_callback) (int id, int key_state);
+
 /** BT-RC callback structure. */
 typedef struct {
     /** set to sizeof(BtRcCallbacks) */
     size_t      size;
+    btrc_remote_features_callback               remote_features_cb;
     btrc_get_play_status_callback               get_play_status_cb;
     btrc_list_player_app_attr_callback          list_player_app_attr_cb;
     btrc_list_player_app_values_callback        list_player_app_values_cb;
@@ -164,6 +185,8 @@ typedef struct {
     btrc_set_player_app_value_callback          set_player_app_value_cb;
     btrc_get_element_attr_callback              get_element_attr_cb;
     btrc_register_notification_callback         register_notification_cb;
+    btrc_volume_change_callback                 volume_change_cb;
+    btrc_passthrough_cmd_callback               passthrough_cmd_cb;
 } btrc_callbacks_t;
 
 /** Represents the standard BT-RC interface. */
@@ -224,6 +247,15 @@ typedef struct {
     bt_status_t (*register_notification_rsp)(btrc_event_id_t event_id,
                                              btrc_notification_type_t type,
                                              btrc_register_notification_t *p_param);
+
+    /* AVRCP 1.4 enhancements */
+
+    /**Send current volume setting to remote side. Support limited to SetAbsoluteVolume
+    ** This can be enhanced to support Relative Volume (AVRCP 1.0).
+    ** With RelateVolume, we will send VOLUME_UP/VOLUME_DOWN opposed to absolute volume level
+    ** volume: Should be in the range 0-127. bit7 is reseved and cannot be set
+    */
+    bt_status_t (*set_volume)(uint8_t volume);
 
     /** Closes the interface. */
     void  (*cleanup)( void );

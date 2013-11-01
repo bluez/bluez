@@ -29,17 +29,17 @@ __BEGIN_DECLS
 #define BTGATT_SERVICE_TYPE_PRIMARY 0
 #define BTGATT_SERVICE_TYPE_SECONDARY 1
 
-/** GATT Characteristic ID adding instance id tracking to the UUID */
+/** GATT ID adding instance id tracking to the UUID */
 typedef struct
 {
     bt_uuid_t           uuid;
     uint8_t             inst_id;
-} btgatt_char_id_t;
+} btgatt_gatt_id_t;
 
 /** GATT Service ID also identifies the service type (primary/secondary) */
 typedef struct
 {
-    btgatt_char_id_t    id;
+    btgatt_gatt_id_t    id;
     uint8_t             is_primary;
 } btgatt_srvc_id_t;
 
