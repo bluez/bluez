@@ -147,6 +147,8 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 	struct hal_ev_adapter_props_changed *ev = buf;
 	bt_property_t props[ev->num_props];
 
+	DBG("");
+
 	if (!bt_hal_cbacks->adapter_properties_cb)
 		return;
 
@@ -162,6 +164,8 @@ static void handle_bond_state_change(void *buf)
 	struct hal_ev_bond_state_changed *ev = buf;
 	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
 
+	DBG("state %u", ev->state);
+
 	if (bt_hal_cbacks->bond_state_changed_cb)
 		bt_hal_cbacks->bond_state_changed_cb(ev->status, addr,
 								ev->state);
@@ -174,6 +178,8 @@ static void handle_pin_request(void *buf)
 	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
 	bt_bdname_t *name = (bt_bdname_t *) ev->name;
 
+	DBG("");
+
 	if (bt_hal_cbacks->pin_request_cb)
 		bt_hal_cbacks->pin_request_cb(addr, name, ev->class_of_dev);
 }
@@ -184,6 +190,8 @@ static void handle_ssp_request(void *buf)
 	/* Those are declared as packed, so it's safe to assign pointers */
 	bt_bdaddr_t *addr = (bt_bdaddr_t *) ev->bdaddr;
 	bt_bdname_t *name = (bt_bdname_t *) ev->name;
+
+	DBG("");
 
 	if (bt_hal_cbacks->ssp_request_cb)
 		bt_hal_cbacks->ssp_request_cb(addr, name, ev->class_of_dev,
@@ -212,6 +220,8 @@ static void handle_discovery_state_changed(void *buf)
 {
 	struct hal_ev_discovery_state_changed *ev = buf;
 
+	DBG("");
+
 	if (bt_hal_cbacks->discovery_state_changed_cb)
 		bt_hal_cbacks->discovery_state_changed_cb(ev->state);
 }
@@ -220,6 +230,8 @@ static void handle_device_found(void *buf, uint16_t len)
 {
 	struct hal_ev_device_found *ev = buf;
 	bt_property_t props[ev->num_props];
+
+	DBG("");
 
 	if (!bt_hal_cbacks->device_found_cb)
 		return;
@@ -235,6 +247,8 @@ static void handle_device_state_changed(void *buf, uint16_t len)
 {
 	struct hal_ev_remote_device_props *ev = buf;
 	bt_property_t props[ev->num_props];
+
+	DBG("");
 
 	if (!bt_hal_cbacks->remote_device_properties_cb)
 		return;
