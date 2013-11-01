@@ -58,6 +58,7 @@ static GSList *devices = NULL;
 struct hid_device {
 	bdaddr_t	dst;
 	uint8_t		state;
+	uint8_t		subclass;
 	uint16_t	vendor;
 	uint16_t	product;
 	uint16_t	version;
@@ -260,6 +261,28 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 	return FALSE;
 }
 
+static void bt_hid_set_info(struct hid_device *dev)
+{
+	struct hal_ev_hid_info ev;
+
+	DBG("");
+
+	bdaddr2android(&dev->dst, ev.bdaddr);
+	ev.attr = 0; /* TODO: Check what is this field */
+	ev.subclass = dev->subclass;
+	ev.app_id = 0; /* TODO: Check what is this field */
+	ev.vendor = dev->vendor;
+	ev.product = dev->product;
+	ev.version = dev->version;
+	ev.country = dev->country;
+	ev.descr_len = dev->rd_size;
+	memset(ev.descr, 0, sizeof(ev.descr));
+	memcpy(ev.descr, dev->rd_data, ev.descr_len);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
+							sizeof(ev), &ev, -1);
+}
+
 static int uhid_create(struct hid_device *dev)
 {
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
@@ -294,6 +317,8 @@ static int uhid_create(struct hid_device *dev)
 	g_io_channel_set_encoding(io, NULL, NULL);
 	dev->uhid_watch_id = g_io_add_watch(io, cond, uhid_event_cb, dev);
 	g_io_channel_unref(io);
+
+	bt_hid_set_info(dev);
 
 	return 0;
 }
@@ -411,6 +436,10 @@ static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		data = sdp_data_get(rec, SDP_ATTR_HID_COUNTRY_CODE);
 		if (data)
 			dev->country = data->val.uint8;
+
+		data = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
+		if (data)
+			dev->subclass = data->val.uint8;
 
 		data = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
 		if (data) {
