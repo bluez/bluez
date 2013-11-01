@@ -278,7 +278,7 @@ static int uhid_create(struct hid_device *dev)
 	ev.u.create.bus = BUS_BLUETOOTH;
 	ev.u.create.vendor = dev->vendor;
 	ev.u.create.product = dev->product;
-	ev.u.create.version = dev->vendor;
+	ev.u.create.version = dev->version;
 	ev.u.create.country = dev->country;
 	ev.u.create.rd_size = dev->rd_size;
 	ev.u.create.rd_data = dev->rd_data;
