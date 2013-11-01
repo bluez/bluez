@@ -1572,6 +1572,8 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	return;
 
 error:
+	error("Error handling command 0x%02x status %u", opcode, status);
+
 	ipc_send_rsp(io, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
