@@ -456,19 +456,23 @@ static int fill_device_props(struct hal_property *prop, bdaddr_t *addr,
 {
 	uint8_t num_props = 0;
 
-	/* fill cod */
-	prop->type = HAL_PROP_DEVICE_CLASS;
-	prop->len = sizeof(cod);
-	memcpy(prop->val, &cod, prop->len);
-	prop = ((void *) prop) + sizeof(*prop) + sizeof(cod);
-	num_props++;
+	/* fill Class of Device */
+	if (cod) {
+		prop->type = HAL_PROP_DEVICE_CLASS;
+		prop->len = sizeof(cod);
+		memcpy(prop->val, &cod, prop->len);
+		prop = ((void *) prop) + sizeof(*prop) + sizeof(cod);
+		num_props++;
+	}
 
-	/* fill rssi */
-	prop->type = HAL_PROP_DEVICE_RSSI;
-	prop->len = sizeof(rssi);
-	memcpy(prop->val, &rssi, prop->len);
-	prop = ((void *) prop) + sizeof(*prop) + sizeof(rssi);
-	num_props++;
+	/* fill RSSI */
+	if (rssi) {
+		prop->type = HAL_PROP_DEVICE_RSSI;
+		prop->len = sizeof(rssi);
+		memcpy(prop->val, &rssi, prop->len);
+		prop = ((void *) prop) + sizeof(*prop) + sizeof(rssi);
+		num_props++;
+	}
 
 	/* fill name */
 	if (name) {
