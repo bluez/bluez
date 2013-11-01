@@ -74,7 +74,7 @@ static void dump_properties(int num_properties, bt_property_t *properties)
 		bt_property_t prop;
 		memcpy(&prop, properties + i, sizeof(prop));
 
-		haltest_info("prop: %s\n", btproperty2str(prop));
+		haltest_info("prop: %s\n", btproperty2str(&prop));
 	}
 }
 

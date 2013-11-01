@@ -107,7 +107,7 @@ void str2bt_bdaddr_t(const char *str, bt_bdaddr_t *bd_addr);
 char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf);
 void str2bt_uuid_t(const char *str, bt_uuid_t *uuid);
 
-char *btproperty2str(bt_property_t property);
+char *btproperty2str(const bt_property_t *property);
 char *bdaddr2str(const bt_bdaddr_t *bd_addr);
 
 DECINTMAP(bt_status_t);

@@ -241,52 +241,52 @@ static char *btuuid2str(const bt_uuid_t *uuid)
 	return bt_uuid_t2str(uuid, buf);
 }
 
-char *btproperty2str(bt_property_t property)
+char *btproperty2str(const bt_property_t *property)
 {
 	static char buf[4096];
 	char *p;
 
 	p = buf + sprintf(buf, "type=%s len=%d val=",
-					bt_property_type_t2str(property.type),
-					property.len);
+					bt_property_type_t2str(property->type),
+					property->len);
 
-	switch (property.type) {
+	switch (property->type) {
 	case BT_PROPERTY_BDNAME:
 	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
-		sprintf(p, "%*s", property.len,
-					((bt_bdname_t *) property.val)->name);
+		sprintf(p, "%*s", property->len,
+					((bt_bdname_t *) property->val)->name);
 		break;
 
 	case BT_PROPERTY_BDADDR:
-		sprintf(p, "%s", bdaddr2str((bt_bdaddr_t *) property.val));
+		sprintf(p, "%s", bdaddr2str((bt_bdaddr_t *) property->val));
 		break;
 
 	case BT_PROPERTY_CLASS_OF_DEVICE:
-		sprintf(p, "%06x", *((int *) property.val));
+		sprintf(p, "%06x", *((int *) property->val));
 		break;
 
 	case BT_PROPERTY_TYPE_OF_DEVICE:
 		sprintf(p, "%s", bt_device_type_t2str(
-					*((bt_device_type_t *) property.val)));
+				*((bt_device_type_t *) property->val)));
 		break;
 
 	case BT_PROPERTY_REMOTE_RSSI:
-		sprintf(p, "%d", *((char *) property.val));
+		sprintf(p, "%d", *((char *) property->val));
 		break;
 
 	case BT_PROPERTY_ADAPTER_SCAN_MODE:
 		sprintf(p, "%s",
-			bt_scan_mode_t2str(*((bt_scan_mode_t *) property.val)));
+			bt_scan_mode_t2str(*((bt_scan_mode_t *) property->val)));
 		break;
 
 	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
-		sprintf(p, "%d", *((int *) property.val));
+		sprintf(p, "%d", *((int *) property->val));
 		break;
 
 	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
 		{
-			int count = property.len / sizeof(bt_bdaddr_t);
-			char *ptr = property.val;
+			int count = property->len / sizeof(bt_bdaddr_t);
+			char *ptr = property->val;
 
 			strcat(p, "{");
 
@@ -304,8 +304,8 @@ char *btproperty2str(bt_property_t property)
 
 	case BT_PROPERTY_UUIDS:
 		{
-			int count = property.len / sizeof(bt_uuid_t);
-			char *ptr = property.val;
+			int count = property->len / sizeof(bt_uuid_t);
+			char *ptr = property->val;
 
 			strcat(p, "{");
 
@@ -323,7 +323,7 @@ char *btproperty2str(bt_property_t property)
 
 	case BT_PROPERTY_SERVICE_RECORD:
 		{
-			bt_service_record_t *rec = property.val;
+			bt_service_record_t *rec = property->val;
 
 			sprintf(p, "{%s, %d, %s}", btuuid2str(&rec->uuid),
 						rec->channel, rec->name);
@@ -331,7 +331,7 @@ char *btproperty2str(bt_property_t property)
 		break;
 
 	default:
-		sprintf(p, "%p", property.val);
+		sprintf(p, "%p", property->val);
 	}
 
 	return buf;
