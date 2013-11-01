@@ -40,6 +40,25 @@ static void handle_conn_state(void *buf)
 								ev->state);
 }
 
+static void handle_info(void *buf)
+{
+	struct hal_ev_hid_info *ev = buf;
+	bthh_hid_info_t info;
+
+	info.attr_mask = ev->attr;
+	info.sub_class = ev->subclass;
+	info.app_id = ev->app_id;
+	info.vendor_id = ev->vendor;
+	info.product_id = ev->product;
+	info.version = ev->version;
+	info.ctry_code = ev->country;
+	info.dl_len = ev->descr_len;
+	memcpy(info.dsc_list, ev->descr, info.dl_len);
+
+	if (bt_hh_cbacks->hid_info_cb)
+		bt_hh_cbacks->hid_info_cb((bt_bdaddr_t *) ev->bdaddr, info);
+}
+
 /* will be called from notification thread context */
 void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -49,6 +68,9 @@ void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 	switch (opcode) {
 	case HAL_EV_HID_CONN_STATE:
 		handle_conn_state(buf);
+		break;
+	case HAL_EV_HID_INFO:
+		handle_info(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
