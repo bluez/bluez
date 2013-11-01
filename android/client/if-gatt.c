@@ -80,9 +80,19 @@ const btgatt_interface_t *if_gatt = NULL;
 #define VERIFY_CHAR_ID(n, v) \
 	do { \
 		if (n < argc) \
-			str2btgatt_char_id_t(argv[n], v); \
+			str2btgatt_gatt_id_t(argv[n], v); \
 		else { \
 			haltest_error("No char_id specified\n"); \
+			return;\
+		} \
+	} while (0)
+
+#define VERIFY_DESCR_ID(n, v) \
+	do { \
+		if (n < argc) \
+			str2btgatt_gatt_id_t(argv[n], v); \
+		else { \
+			haltest_error("No descr_id specified\n"); \
 			return;\
 		} \
 	} while (0)
@@ -212,7 +222,7 @@ static void gatt_str2bt_uuid_t(const char *str, int len, bt_uuid_t *uuid)
 }
 
 /* char_id formating function */
-static char *btgatt_char_id_t2str(const btgatt_char_id_t *char_id, char *buf)
+static char *btgatt_gatt_id_t2str(const btgatt_gatt_id_t *char_id, char *buf)
 {
 	char uuid_buf[MAX_UUID_STR_LEN];
 
@@ -221,8 +231,8 @@ static char *btgatt_char_id_t2str(const btgatt_char_id_t *char_id, char *buf)
 	return buf;
 }
 
-/* Parse btgatt_char_id_t */
-static void str2btgatt_char_id_t(const char *buf, btgatt_char_id_t *char_id)
+/* Parse btgatt_gatt_id_t */
+static void str2btgatt_gatt_id_t(const char *buf, btgatt_gatt_id_t *char_id)
 {
 	const char *e;
 
@@ -325,7 +335,7 @@ static char *btgatt_notify_params_t2str(const btgatt_notify_params_t *data,
 	sprintf(buf, "{bda=%s, srvc_id=%s, char_id=%s, val=%s, is_notify=%u}",
 		bt_bdaddr_t2str(&data->bda, addr),
 		btgatt_srvc_id_t2str(&data->srvc_id, srvc_id),
-		btgatt_char_id_t2str(&data->char_id, char_id),
+		btgatt_gatt_id_t2str(&data->char_id, char_id),
 		array2str(data->value, data->len, value, sizeof(value)),
 							data->is_notify);
 	return buf;
@@ -347,8 +357,8 @@ static char *btgatt_read_params_t2str(const btgatt_read_params_t *data,
 
 	sprintf(buf, "{srvc_id=%s, char_id=%s, descr_id=%s, val=%s value_type=%d, status=%d}",
 		btgatt_srvc_id_t2str(&data->srvc_id, srvc_id),
-		btgatt_char_id_t2str(&data->char_id, char_id),
-		gatt_uuid_t2str(&data->descr_id, descr_id),
+		btgatt_gatt_id_t2str(&data->char_id, char_id),
+		btgatt_gatt_id_t2str(&data->descr_id, descr_id),
 		btgatt_unformatted_value_t2str(&data->value, value, 100),
 		data->value_type, data->status);
 	return buf;
@@ -425,7 +435,7 @@ static void gattc_search_result_cb(int conn_id, btgatt_srvc_id_t *srvc_id)
 /* GATT characteristic enumeration result callback */
 static void gattc_get_characteristic_cb(int conn_id, int status,
 					btgatt_srvc_id_t *srvc_id,
-					btgatt_char_id_t *char_id,
+					btgatt_gatt_id_t *char_id,
 					int char_prop)
 {
 	char srvc_id_buf[MAX_SRVC_ID_STR_LEN];
@@ -434,7 +444,7 @@ static void gattc_get_characteristic_cb(int conn_id, int status,
 	haltest_info("%s: conn_id=%d status=%d srvc_id=%s char_id=%s, char_prop=%x\n",
 			__func__, conn_id, status,
 			btgatt_srvc_id_t2str(srvc_id, srvc_id_buf),
-			btgatt_char_id_t2str(char_id, char_id_buf), char_prop);
+			btgatt_gatt_id_t2str(char_id, char_id_buf), char_prop);
 
 	/* enumerate next characteristic */
 	if (status == 0)
@@ -444,8 +454,8 @@ static void gattc_get_characteristic_cb(int conn_id, int status,
 
 /* GATT descriptor enumeration result callback */
 static void gattc_get_descriptor_cb(int conn_id, int status,
-		btgatt_srvc_id_t *srvc_id, btgatt_char_id_t *char_id,
-		bt_uuid_t *descr_id)
+		btgatt_srvc_id_t *srvc_id, btgatt_gatt_id_t *char_id,
+		btgatt_gatt_id_t *descr_id)
 {
 	char buf[MAX_UUID_STR_LEN];
 	char srvc_id_buf[MAX_SRVC_ID_STR_LEN];
@@ -454,8 +464,8 @@ static void gattc_get_descriptor_cb(int conn_id, int status,
 	haltest_info("%s: conn_id=%d status=%d srvc_id=%s char_id=%s, descr_id=%s\n",
 				__func__, conn_id, status,
 				btgatt_srvc_id_t2str(srvc_id, srvc_id_buf),
-				btgatt_char_id_t2str(char_id, char_id_buf),
-				gatt_uuid_t2str(descr_id, buf));
+				btgatt_gatt_id_t2str(char_id, char_id_buf),
+				btgatt_gatt_id_t2str(descr_id, buf));
 
 	if (status == 0)
 		EXEC(if_gatt->client->get_descriptor, conn_id, srvc_id, char_id,
@@ -484,7 +494,7 @@ static void gattc_get_included_service_cb(int conn_id, int status,
 static void gattc_register_for_notification_cb(int conn_id, int registered,
 						int status,
 						btgatt_srvc_id_t *srvc_id,
-						btgatt_char_id_t *char_id)
+						btgatt_gatt_id_t *char_id)
 {
 	char srvc_id_buf[MAX_SRVC_ID_STR_LEN];
 	char char_id_buf[MAX_CHAR_ID_STR_LEN];
@@ -492,7 +502,7 @@ static void gattc_register_for_notification_cb(int conn_id, int registered,
 	haltest_info("%s: conn_id=%d registered=%d status=%d srvc_id=%s char_id=%s\n",
 				__func__, conn_id, registered, status,
 				btgatt_srvc_id_t2str(srvc_id, srvc_id_buf),
-				btgatt_char_id_t2str(char_id, char_id_buf));
+				btgatt_gatt_id_t2str(char_id, char_id_buf));
 }
 
 /*
@@ -1006,7 +1016,7 @@ static void get_descriptor_p(int argc, const char **argv)
 {
 	int conn_id;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
+	btgatt_gatt_id_t char_id;
 
 	RETURN_IF_NULL(if_gatt);
 	VERIFY_CONN_ID(2, conn_id);
@@ -1026,7 +1036,7 @@ static void read_characteristic_p(int argc, const char **argv)
 {
 	int conn_id;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
+	btgatt_gatt_id_t char_id;
 	int auth_req = 0;
 
 	RETURN_IF_NULL(if_gatt);
@@ -1066,7 +1076,7 @@ static void write_characteristic_p(int argc, const char **argv)
 {
 	int conn_id;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
+	btgatt_gatt_id_t char_id;
 	int write_type;
 	int len;
 	int auth_req = 0;
@@ -1113,15 +1123,15 @@ static void read_descriptor_p(int argc, const char **argv)
 {
 	int conn_id;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
-	bt_uuid_t descr_id;
+	btgatt_gatt_id_t char_id;
+	btgatt_gatt_id_t descr_id;
 	int auth_req = 0;
 
 	RETURN_IF_NULL(if_gatt);
 	VERIFY_CONN_ID(2, conn_id);
 	VERIFY_SRVC_ID(3, &srvc_id);
 	VERIFY_CHAR_ID(4, &char_id);
-	VERIFY_UUID(5, &descr_id);
+	VERIFY_DESCR_ID(5, &descr_id);
 
 	/* auth_req */
 	if (argc > 6)
@@ -1155,8 +1165,8 @@ static void write_descriptor_p(int argc, const char **argv)
 {
 	int conn_id;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
-	bt_uuid_t descr_id;
+	btgatt_gatt_id_t char_id;
+	btgatt_gatt_id_t descr_id;
 	int write_type;
 	int len;
 	int auth_req = 0;
@@ -1166,7 +1176,7 @@ static void write_descriptor_p(int argc, const char **argv)
 	VERIFY_CONN_ID(2, conn_id);
 	VERIFY_SRVC_ID(3, &srvc_id);
 	VERIFY_CHAR_ID(4, &char_id);
-	VERIFY_UUID(5, &descr_id);
+	VERIFY_DESCR_ID(5, &descr_id);
 
 	/* write type */
 	if (argc <= 6) {
@@ -1237,7 +1247,7 @@ static void register_for_notification_p(int argc, const char **argv)
 	int client_if;
 	bt_bdaddr_t bd_addr;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
+	btgatt_gatt_id_t char_id;
 
 	RETURN_IF_NULL(if_gatt);
 	VERIFY_CLIENT_IF(2, client_if);
@@ -1259,7 +1269,7 @@ static void deregister_for_notification_p(int argc, const char **argv)
 	int client_if;
 	bt_bdaddr_t bd_addr;
 	btgatt_srvc_id_t srvc_id;
-	btgatt_char_id_t char_id;
+	btgatt_gatt_id_t char_id;
 
 	RETURN_IF_NULL(if_gatt);
 	VERIFY_CLIENT_IF(2, client_if);
