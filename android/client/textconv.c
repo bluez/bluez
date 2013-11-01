@@ -226,3 +226,113 @@ const char *enum_one_string(void *v, int i)
 
 	return (i == 0) && (m[0] != 0) ? m : NULL;
 }
+
+char *bdaddr2str(const bt_bdaddr_t *bd_addr)
+{
+	static char buf[MAX_ADDR_STR_LEN];
+
+	return bt_bdaddr_t2str(bd_addr, buf);
+}
+
+static char *btuuid2str(const bt_uuid_t *uuid)
+{
+	static char buf[MAX_UUID_STR_LEN];
+
+	return bt_uuid_t2str(uuid, buf);
+}
+
+char *btproperty2str(bt_property_t property)
+{
+	static char buf[4096];
+	char *p;
+
+	p = buf + sprintf(buf, "type=%s len=%d val=",
+					bt_property_type_t2str(property.type),
+					property.len);
+
+	switch (property.type) {
+	case BT_PROPERTY_BDNAME:
+	case BT_PROPERTY_REMOTE_FRIENDLY_NAME:
+		sprintf(p, "%*s", property.len,
+					((bt_bdname_t *) property.val)->name);
+		break;
+
+	case BT_PROPERTY_BDADDR:
+		sprintf(p, "%s", bdaddr2str((bt_bdaddr_t *) property.val));
+		break;
+
+	case BT_PROPERTY_CLASS_OF_DEVICE:
+		sprintf(p, "%06x", *((int *) property.val));
+		break;
+
+	case BT_PROPERTY_TYPE_OF_DEVICE:
+		sprintf(p, "%s", bt_device_type_t2str(
+					*((bt_device_type_t *) property.val)));
+		break;
+
+	case BT_PROPERTY_REMOTE_RSSI:
+		sprintf(p, "%d", *((char *) property.val));
+		break;
+
+	case BT_PROPERTY_ADAPTER_SCAN_MODE:
+		sprintf(p, "%s",
+			bt_scan_mode_t2str(*((bt_scan_mode_t *) property.val)));
+		break;
+
+	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
+		sprintf(p, "%d", *((int *) property.val));
+		break;
+
+	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
+		{
+			int count = property.len / sizeof(bt_bdaddr_t);
+			char *ptr = property.val;
+
+			strcat(p, "{");
+
+			while (count--) {
+				strcat(p, bdaddr2str((bt_bdaddr_t *) ptr));
+				if (count)
+					strcat(p, ", ");
+				ptr += sizeof(bt_bdaddr_t);
+			}
+
+			strcat(p, "}");
+
+		}
+		break;
+
+	case BT_PROPERTY_UUIDS:
+		{
+			int count = property.len / sizeof(bt_uuid_t);
+			char *ptr = property.val;
+
+			strcat(p, "{");
+
+			while (count--) {
+				strcat(p, btuuid2str((bt_uuid_t *) ptr));
+				if (count)
+					strcat(p, ", ");
+				ptr += sizeof(bt_uuid_t);
+			}
+
+			strcat(p, "}");
+
+		}
+		break;
+
+	case BT_PROPERTY_SERVICE_RECORD:
+		{
+			bt_service_record_t *rec = property.val;
+
+			sprintf(p, "{%s, %d, %s}", btuuid2str(&rec->uuid),
+						rec->channel, rec->name);
+		}
+		break;
+
+	default:
+		sprintf(p, "%p", property.val);
+	}
+
+	return buf;
+}
