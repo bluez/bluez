@@ -34,11 +34,15 @@
 
 static int handle_listen(void *buf)
 {
+	DBG("Not implemented");
+
 	return -1;
 }
 
 static int handle_connect(void *buf)
 {
+	DBG("Not implemented");
+
 	return -1;
 }
 
