@@ -649,6 +649,24 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 			HAL_EV_ACL_STATE_CHANGED, sizeof(hal_ev), &hal_ev, -1);
 }
 
+static void mgmt_connect_failed_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	DBG("");
+}
+
+static void mgmt_auth_failed_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	DBG("");
+}
+
+static void mgmt_device_unpaired_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	DBG("");
+}
+
 static void register_mgmt_handlers(void)
 {
 	mgmt_register(adapter->mgmt, MGMT_EV_NEW_SETTINGS, adapter->index,
@@ -689,6 +707,15 @@ static void register_mgmt_handlers(void)
 
 	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_CONNECTED, adapter->index,
 				mgmt_device_connected_event, NULL, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_CONNECT_FAILED, adapter->index,
+				mgmt_connect_failed_event, NULL, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_AUTH_FAILED, adapter->index,
+				mgmt_auth_failed_event, NULL, NULL);
+
+	mgmt_register(adapter->mgmt, MGMT_EV_DEVICE_UNPAIRED, adapter->index,
+				mgmt_device_unpaired_event, NULL, NULL);
 }
 
 static void load_link_keys_complete(uint8_t status, uint16_t length,
