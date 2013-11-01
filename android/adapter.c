@@ -766,6 +766,26 @@ static void set_io_capability(void)
 		error("Failed to set IO capability");
 }
 
+static void set_device_id(void)
+{
+	struct mgmt_cp_set_device_id cp;
+	uint8_t major, minor;
+
+	if (sscanf(VERSION, "%hhu.%hhu", &major, &minor) != 2)
+		return;
+
+	memset(&cp, 0, sizeof(cp));
+	cp.source = htobs(0x0002);		/* USB */
+	cp.vendor = htobs(0x1d6b);		/* Linux Foundation */
+	cp.product = htobs(0x0247);		/* BlueZ for Android */
+	cp.version = htobs(major << 8 | minor);
+
+	if (mgmt_send(adapter->mgmt, MGMT_OP_SET_DEVICE_ID,
+				adapter->index, sizeof(cp), &cp,
+				NULL, NULL, NULL) == 0)
+		error("Failed to set device id");
+}
+
 static void set_adapter_name_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -840,6 +860,7 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	load_link_keys(NULL);
 
 	set_io_capability();
+	set_device_id();
 
 	missing_settings = adapter->current_settings ^
 						adapter->supported_settings;
