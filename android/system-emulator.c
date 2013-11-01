@@ -98,6 +98,9 @@ static void system_socket_callback(int fd, uint32_t events, void *user_data)
 	if (strcmp(buf, "ctl.start=bluetoothd"))
 		return;
 
+	if (daemon_pid > 0)
+		return;
+
 	ctl_start();
 }
 
