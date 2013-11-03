@@ -2338,6 +2338,39 @@ static void print_manufacturer_data(const void *data, uint8_t data_len)
 	}
 }
 
+static void print_device_id(const void *data, uint8_t data_len)
+{
+	uint16_t source;
+	const char *str;
+
+	if (data_len < 8)
+		return;
+
+	source = bt_get_le16(data);
+
+	switch (source) {
+	case 0x0001:
+		str = "Bluetooth SIG assigned";
+		break;
+	case 0x0002:
+		str = "USB Implementer's Forum assigned";
+		break;
+	default:
+		str = "Reserved";
+		break;
+	}
+
+	print_field("Device ID: %s (0x%4.4x)", str, source);
+
+	if (source == 0x0001)
+		packet_print_company("  Vendor", bt_get_le16(data + 2));
+	else
+		print_field("  Vendor: 0x%4.4x", bt_get_le16(data + 2));
+
+	print_field("  Product: 0x%4.4x", bt_get_le16(data + 4));
+	print_field("  Version: 0x%4.4x", bt_get_le16(data + 6));
+}
+
 static void print_uuid16_list(const char *label, const void *data,
 							uint8_t data_len)
 {
@@ -2539,15 +2572,7 @@ static void print_eir(const uint8_t *eir, uint8_t eir_len, bool le)
 			if (le)
 				print_hex_field("SMP TK", data, data_len);
 			else if (data_len >= 8)
-				print_field("Device ID: "
-						"Source 0x%4.4x "
-						"Vendor 0x%4.4x "
-						"Product 0x%4.4x "
-						"Version 0x%4.4x",
-						bt_get_le16(&data[0]),
-						bt_get_le16(&data[2]),
-						bt_get_le16(&data[4]),
-						bt_get_le16(&data[6]));
+				print_device_id(data, data_len);
 			break;
 
 		case BT_EIR_SMP_OOB_FLAGS:
