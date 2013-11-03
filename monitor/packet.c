@@ -887,7 +887,23 @@ static void print_scan_enable(uint8_t scan_enable)
 
 static void print_link_policy(uint16_t link_policy)
 {
-	print_field("Link policy: 0x%4.4x", btohs(link_policy));
+	uint16_t policy = btohs(link_policy);
+
+	print_field("Link policy: 0x%4.4x", policy);
+
+	if (policy == 0x0000) {
+		print_field("  Disable All Modes");
+		return;
+	}
+
+	if (policy & 0x0001)
+		print_field("  Enable Role Switch");
+	if (policy & 0x0002)
+		print_field("  Enable Hold Mode");
+	if (policy & 0x0004)
+		print_field("  Enable Sniff Mode");
+	if (policy & 0x0008)
+		print_field("  Enabled Park State");
 }
 
 static void print_air_mode(uint8_t mode)
