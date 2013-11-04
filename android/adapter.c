@@ -1019,11 +1019,12 @@ static void send_adapter_address(void)
 
 static bool get_name(void)
 {
-	DBG("Not implemented");
+	if (!adapter->name)
+		return false;
 
-	/* TODO: Add implementation */
+	adapter_name_changed((uint8_t *) adapter->name);
 
-	return false;
+	return true;
 }
 
 static bool get_uuids(void)
