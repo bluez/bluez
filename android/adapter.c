@@ -1459,6 +1459,11 @@ static uint8_t ssp_reply(void *buf, uint16_t len)
 	return status;
 }
 
+static uint8_t get_remote_services(void *buf, uint16_t len)
+{
+	return HAL_STATUS_UNSUPPORTED;
+}
+
 void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 								uint16_t len)
 {
@@ -1562,6 +1567,11 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		if (!stop_discovery())
 			goto error;
 
+		break;
+	case HAL_OP_GET_REMOTE_SERVICES:
+		status = get_remote_services(buf, len);
+		if (status != HAL_STATUS_SUCCESS)
+			goto error;
 		break;
 	default:
 		DBG("Unhandled command, opcode 0x%x", opcode);
