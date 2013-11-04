@@ -68,11 +68,6 @@ void poll_dispatch_loop(void)
 			if (cur_fds_count != fds_count)
 				break;
 		}
-		/*
-		 * This seems to be needed for correct output handling
-		 * when all waiting is performed in poll
-		 */
-		fflush(stdout);
 	}
 }
 

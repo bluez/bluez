@@ -197,6 +197,8 @@ int terminal_vprint(const char *format, va_list args)
 
 	terminal_draw_command_line();
 
+	fflush(stdout);
+
 	return ret;
 }
 
@@ -570,6 +572,9 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 		printf("%s \b", line_buf + refresh_from);
 		terminal_move_cursor(line_buf_ix - line_len);
 	}
+
+	/* Flush output after all user input */
+	fflush(stdout);
 }
 
 static struct termios origianl_tios;
@@ -596,4 +601,5 @@ void terminal_setup(void)
 	atexit(terminal_cleanup);
 
 	printf("%s", prompt);
+	fflush(stdout);
 }
