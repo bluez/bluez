@@ -26,6 +26,7 @@ LOCAL_SRC_FILES := \
 	socket.c \
 	ipc.c ipc.h \
 	a2dp.c \
+	pan.c \
 	../src/log.c \
 	../src/shared/mgmt.c \
 	../src/shared/util.c \

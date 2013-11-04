@@ -21,6 +21,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/ipc.h android/ipc.c \
 				android/a2dp.h android/a2dp.c \
 				android/socket.h android/socket.c \
+				android/pan.h android/pan.c \
 				btio/btio.h btio/btio.c \
 				src/sdp-client.h src/sdp-client.c
 
