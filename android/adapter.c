@@ -1066,11 +1066,11 @@ static bool get_service(void)
 
 static bool get_scan_mode(void)
 {
-	DBG("Not implemented");
+	DBG("");
 
-	/* TODO: Add implementation */
+	scan_mode_changed();
 
-	return false;
+	return true;
 }
 
 static bool get_devices(void)
