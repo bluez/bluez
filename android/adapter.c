@@ -145,8 +145,8 @@ static void scan_mode_changed(void)
 static void adapter_name_changed(const uint8_t *name)
 {
 	struct hal_ev_adapter_props_changed *ev;
-	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) +
-							HAL_MAX_NAME_LENGTH];
+	size_t len = strlen((const char *) name);
+	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) + len];
 
 	memset(buf, 0, sizeof(buf));
 	ev = (void *) buf;
@@ -154,10 +154,11 @@ static void adapter_name_changed(const uint8_t *name)
 	ev->num_props = 1;
 	ev->status = HAL_STATUS_SUCCESS;
 	ev->props[0].type = HAL_PROP_ADAPTER_NAME;
-	ev->props[0].len = HAL_MAX_NAME_LENGTH;
-	memcpy(ev->props->val, name, HAL_MAX_NAME_LENGTH);
+	/* Android expects value without NULL terminator */
+	ev->props[0].len = len;
+	memcpy(ev->props->val, name, len);
 
-	DBG("Adapter name changed to: %s", ev->props->val);
+	DBG("Adapter name changed to: %s", name);
 
 	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev, -1);
