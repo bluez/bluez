@@ -605,7 +605,7 @@ static void pin_reply_p(int argc, const char **argv)
 	bt_bdaddr_t addr;
 	bt_pin_code_t pin;
 	int pin_len = 0;
-	int accept;
+	int accept = 0;
 
 	RETURN_IF_NULL(if_bluetooth);
 	VERIFY_ADDR_ARG(2, &addr);
