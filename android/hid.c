@@ -69,6 +69,7 @@ struct hid_device {
 	uint8_t		country;
 	int		rd_size;
 	void		*rd_data;
+	uint8_t		boot_dev;
 	GIOChannel	*ctrl_io;
 	GIOChannel	*intr_io;
 	guint		ctrl_watch;
@@ -445,6 +446,10 @@ static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		data = sdp_data_get(rec, SDP_ATTR_HID_DEVICE_SUBCLASS);
 		if (data)
 			dev->subclass = data->val.uint8;
+
+		data = sdp_data_get(rec, SDP_ATTR_HID_BOOT_DEVICE);
+		if (data)
+			dev->boot_dev = data->val.uint8;
 
 		data = sdp_data_get(rec, SDP_ATTR_HID_DESCRIPTOR_LIST);
 		if (data) {
