@@ -174,19 +174,20 @@ static void settings_changed(uint32_t settings)
 
 	DBG("0x%08x", changed_mask);
 
-	if (changed_mask & MGMT_SETTING_POWERED) {
+	if (changed_mask & MGMT_SETTING_POWERED)
 		powered_changed();
 
-		/*
-		 * Only when powered, the connectable and discoverable
-		 * state changes should be communicated.
-		 */
-		scan_mode_mask = MGMT_SETTING_CONNECTABLE |
-						MGMT_SETTING_DISCOVERABLE;
 
+	scan_mode_mask = MGMT_SETTING_CONNECTABLE |
+					MGMT_SETTING_DISCOVERABLE;
+
+	/*
+	 * Only when powered, the connectable and discoverable
+	 * state changes should be communicated.
+	 */
+	if (adapter->current_settings & MGMT_SETTING_POWERED)
 		if (changed_mask & scan_mode_mask)
 			scan_mode_changed();
-	}
 }
 
 static void new_settings_callback(uint16_t index, uint16_t length,
