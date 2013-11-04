@@ -995,7 +995,7 @@ static bool set_discoverable(uint8_t mode, uint16_t timeout)
 	return false;
 }
 
-static void send_adapter_address(void)
+static void get_address(void)
 {
 	struct hal_ev_adapter_props_changed *ev;
 	int len;
@@ -1096,7 +1096,7 @@ static bool get_property(void *buf, uint16_t len)
 
 	switch (cmd->type) {
 	case HAL_PROP_ADAPTER_ADDR:
-		send_adapter_address();
+		get_address();
 		return true;
 	case HAL_PROP_ADAPTER_NAME:
 		return get_name();
