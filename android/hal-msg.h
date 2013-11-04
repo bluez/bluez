@@ -148,8 +148,8 @@ struct hal_cmd_get_remote_service_rec {
 	uint8_t uuid[16];
 } __attribute__((packed));
 
-#define HAL_OP_GET_REMOTE_SERVICE	0x0a
-struct hal_cmd_get_remote_service {
+#define HAL_OP_GET_REMOTE_SERVICES	0x0a
+struct hal_cmd_get_remote_services {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
