@@ -35,8 +35,44 @@
 #include "lib/bluetooth.h"
 #include "log.h"
 #include "a2dp.h"
+#include "hal-msg.h"
+#include "ipc.h"
 
 static GIOChannel *notification_io = NULL;
+
+static uint8_t bt_a2dp_connect(struct hal_cmd_av_connect *cmd, uint16_t len)
+{
+	DBG("Not Implemented");
+
+	return HAL_STATUS_FAILED;
+}
+
+static uint8_t bt_a2dp_disconnect(struct hal_cmd_av_connect *cmd, uint16_t len)
+{
+	DBG("Not Implemented");
+
+	return HAL_STATUS_FAILED;
+}
+
+void bt_a2dp_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
+								uint16_t len)
+{
+	uint8_t status = HAL_STATUS_FAILED;
+
+	switch (opcode) {
+	case HAL_OP_AV_CONNECT:
+		status = bt_a2dp_connect(buf, len);
+		break;
+	case HAL_OP_AV_DISCONNECT:
+		status = bt_a2dp_disconnect(buf, len);
+		break;
+	default:
+		DBG("Unhandled command, opcode 0x%x", opcode);
+		break;
+	}
+
+	ipc_send_rsp(io, HAL_SERVICE_ID_A2DP, status);
+}
 
 bool bt_a2dp_register(GIOChannel *io, const bdaddr_t *addr)
 {
