@@ -1120,6 +1120,19 @@ static bool get_property(void *buf, uint16_t len)
 	}
 }
 
+static void get_properties(void)
+{
+	get_address();
+	get_name();
+	get_uuids();
+	get_class();
+	get_type();
+	get_service();
+	get_scan_mode();
+	get_devices();
+	get_disc_timeout();
+}
+
 static bool start_discovery(void)
 {
 	struct mgmt_cp_start_discovery cp;
@@ -1502,6 +1515,10 @@ void bt_adapter_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 
 		if (!set_mode(MGMT_OP_SET_POWERED, 0x00))
 			goto error;
+
+		break;
+	case HAL_OP_GET_ADAPTER_PROPS:
+		get_properties();
 
 		break;
 	case HAL_OP_GET_ADAPTER_PROP:
