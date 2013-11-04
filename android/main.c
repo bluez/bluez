@@ -53,6 +53,7 @@
 #include "hid.h"
 #include "hal-msg.h"
 #include "ipc.h"
+#include "a2dp.h"
 
 /* TODO: Consider to remove PLATFORM_SDKVERSION check if requirement
 *  for minimal Android platform version increases. */
@@ -101,6 +102,11 @@ static void service_register(void *buf, uint16_t len)
 			goto error;
 
 		break;
+	case HAL_SERVICE_ID_A2DP:
+		if (!bt_a2dp_register(hal_notif_io, adapter_bdaddr))
+			goto error;
+
+		break;
 	default:
 		DBG("service %u not supported", m->service_id);
 		goto error;
@@ -133,6 +139,9 @@ static void service_unregister(void *buf, uint16_t len)
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
 		bt_hid_unregister();
+		break;
+	case HAL_SERVICE_ID_A2DP:
+		bt_a2dp_unregister();
 		break;
 	default:
 		/* This would indicate bug in HAL, as unregister should not be
