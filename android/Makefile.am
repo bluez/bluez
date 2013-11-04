@@ -71,7 +71,7 @@ android_haltest_SOURCES = android/client/haltest.c \
 android_haltest_LDADD = android/libhal-internal.la
 
 android_haltest_CFLAGS = $(AM_CFLAGS) -I$(srcdir)/android \
-				-DPLATFORM_SDK_VERSION=18
+				-DPLATFORM_SDK_VERSION=19
 
 android_haltest_LDFLAGS = -pthread
 
