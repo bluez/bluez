@@ -777,6 +777,6 @@ static struct method methods[] = {
 };
 
 const struct interface bluetooth_if = {
-	.name = "adapter",
+	.name = "bluetooth",
 	.methods = methods
 };
