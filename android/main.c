@@ -608,8 +608,8 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	info("Bluetooth management interface %u.%u initialized",
 						mgmt_version, mgmt_revision);
 
-	if (mgmt_version < 1) {
-		error("Version 1.0 or later of management interface required");
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
+		error("Version 1.3 or later of management interface required");
 		return;
 	}
 
