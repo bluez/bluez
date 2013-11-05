@@ -66,6 +66,17 @@ struct bt_adapter {
 static struct bt_adapter *adapter;
 static GSList *found_devices = NULL;
 
+static void adapter_set_name(const uint8_t *name)
+{
+	if (!g_strcmp0(adapter->name, (const char *) name))
+		return;
+
+	DBG("Cnage name: %s -> %s", adapter->name, name);
+
+	g_free(adapter->name);
+	adapter->name = g_strdup((const char *) name);
+}
+
 static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -76,13 +87,7 @@ static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
 		return;
 	}
 
-	if (!g_strcmp0(adapter->name, (const char *) rp->name))
-		return;
-
-	DBG("name: %s", rp->name);
-
-	g_free(adapter->name);
-	adapter->name = g_strdup((const char *) rp->name);
+	adapter_set_name(rp->name);
 
 	/* TODO Update services if needed */
 }
@@ -878,6 +883,8 @@ static void set_adapter_name_complete(uint8_t status, uint16_t length,
 						mgmt_errstr(status), status);
 		return;
 	}
+
+	adapter_set_name(rp->name);
 
 	adapter_name_changed(rp->name);
 }
