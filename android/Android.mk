@@ -11,7 +11,7 @@ BLUEZ_COMMON_CFLAGS := -DVERSION=\"$(BLUEZ_VERSION)\" \
 	-DPLATFORM_SDK_VERSION=$(PLATFORM_SDK_VERSION)
 
 # Disable warnings enabled by Android but not enabled in autotools build
-BLUEZ_COMMON_CFLAGS += -Wno-pointer-arith
+BLUEZ_COMMON_CFLAGS += -Wno-pointer-arith -Wno-missing-field-initializers
 
 #
 # Android BlueZ daemon (bluetoothd)
