@@ -204,9 +204,8 @@ static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 	case BTHH_BOOT_MODE:
 		cmd.mode = HAL_HID_BOOT_PROTOCOL;
 		break;
-	case BTHH_UNSUPPORTED_MODE:
-		cmd.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
-		break;
+	default:
+		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
@@ -236,9 +235,8 @@ static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 	case BTHH_BOOT_MODE:
 		cmd.mode = HAL_HID_BOOT_PROTOCOL;
 		break;
-	case BTHH_UNSUPPORTED_MODE:
-		cmd.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
-		break;
+	default:
+		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
@@ -275,6 +273,8 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 	case BTHH_FEATURE_REPORT:
 		cmd.type = HAL_HID_FEATURE_REPORT;
 		break;
+	default:
+		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_GET_REPORT,
@@ -309,6 +309,8 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 	case BTHH_FEATURE_REPORT:
 		cmd.type = HAL_HID_FEATURE_REPORT;
 		break;
+	default:
+		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_SET_REPORT,
