@@ -240,6 +240,32 @@ static const struct smp_server_data smp_server_nval_req_2_test = {
 	.expect_rsp_len = sizeof(smp_nval_req_2_rsp),
 };
 
+static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
+						0x03,	/* NoInputNoOutput */
+						0x00,	/* OOB Flag */
+						0x00,	/* SMP auth none */
+						0x10,	/* Max key size */
+						0x00,	/* Init. key dist. */
+						0x01,	/* Rsp. key dist. */
+
+};
+static const uint8_t smp_basic_req_1_rsp[] = {	0x02,	/* Pairing Response */
+						0x03,	/* NoInputNoOutput */
+						0x00,	/* OOB Flag */
+						0x00,	/* SMP auth none */
+						0x10,	/* Max key size */
+						0x00,	/* Init. key dist. */
+						0x00,	/* Rsp. key dist. */
+
+};
+
+static const struct smp_server_data smp_server_basic_req_1_test = {
+	.send_req = smp_basic_req_1,
+	.send_req_len = sizeof(smp_basic_req_1),
+	.expect_rsp = smp_basic_req_1_rsp,
+	.expect_rsp_len = sizeof(smp_basic_req_1_rsp),
+};
+
 static void setup_powered_server_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -341,6 +367,9 @@ int main(int argc, char *argv[])
 {
 	tester_init(&argc, &argv);
 
+	test_smp("SMP Server - Basic Request 1",
+					&smp_server_basic_req_1_test,
+					setup_powered_server, test_server);
 	test_smp("SMP Server - Invalid Request 1",
 					&smp_server_nval_req_1_test,
 					setup_powered_server, test_server);
