@@ -60,11 +60,19 @@ struct cmd_queue {
 	struct cmd *tail;
 };
 
+struct cid_hook {
+	uint16_t cid;
+	bthost_cid_hook_func_t func;
+	void *user_data;
+	struct cid_hook *next;
+};
+
 struct btconn {
 	uint16_t handle;
 	uint8_t addr_type;
 	uint16_t next_cid;
 	struct l2conn *l2conns;
+	struct cid_hook *cid_hooks;
 	struct btconn *next;
 };
 
@@ -121,6 +129,13 @@ static void btconn_free(struct btconn *conn)
 
 		conn->l2conns = l2conn->next;
 		l2conn_free(l2conn);
+	}
+
+	while (conn->cid_hooks) {
+		struct cid_hook *hook = conn->cid_hooks;
+
+		conn->cid_hooks = hook->next;
+		free(hook);
 	}
 
 	free(conn);
@@ -309,6 +324,42 @@ static uint8_t l2cap_sig_send(struct bthost *bthost, struct btconn *conn,
 	free(pkt_data);
 
 	return ident;
+}
+
+void bthost_add_cid_hook(struct bthost *bthost, uint16_t handle, uint16_t cid,
+				bthost_cid_hook_func_t func, void *user_data)
+{
+	struct cid_hook *hook;
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	hook = malloc(sizeof(*hook));
+	if (!hook)
+		return;
+
+	memset(hook, 0, sizeof(*hook));
+
+	hook->cid = cid;
+	hook->func = func;
+	hook->user_data = user_data;
+
+	hook->next = conn->cid_hooks;
+	conn->cid_hooks = hook;
+}
+
+void bthost_send_cid(struct bthost *bthost, uint16_t handle, uint16_t cid,
+					const void *data, uint16_t len)
+{
+	struct btconn *conn;
+
+	conn = bthost_find_conn(bthost, handle);
+	if (!conn)
+		return;
+
+	send_acl(bthost, handle, cid, data, len);
 }
 
 bool bthost_l2cap_req(struct bthost *bthost, uint16_t handle, uint8_t code,
@@ -973,11 +1024,24 @@ reject:
 							&rej, sizeof(rej));
 }
 
+static struct cid_hook *find_cid_hook(struct btconn *conn, uint16_t cid)
+{
+	struct cid_hook *hook;
+
+	for (hook = conn->cid_hooks; hook != NULL; hook = hook->next) {
+		if (hook->cid == cid)
+			return hook;
+	}
+
+	return NULL;
+}
+
 static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 {
 	const struct bt_hci_acl_hdr *acl_hdr = data;
 	const struct bt_l2cap_hdr *l2_hdr = data + sizeof(*acl_hdr);
 	uint16_t handle, cid, acl_len, l2_len;
+	struct cid_hook *hook;
 	struct btconn *conn;
 	const void *l2_data;
 
@@ -1002,6 +1066,12 @@ static void process_acl(struct bthost *bthost, const void *data, uint16_t len)
 	l2_data = data + sizeof(*acl_hdr) + sizeof(*l2_hdr);
 
 	cid = le16_to_cpu(l2_hdr->cid);
+
+	hook = find_cid_hook(conn, cid);
+	if (hook) {
+		hook->func(l2_data, l2_len, hook->user_data);
+		return;
+	}
 
 	switch (cid) {
 	case 0x0001:
