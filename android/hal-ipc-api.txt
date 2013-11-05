@@ -552,7 +552,9 @@ Commands and responses:
 
 		Command parameters: Remote address (6 octets)
 		                    Report type (1 octet)
-		                    ...
+		                    Report length (2 octets)
+		                    Report data (670 octets)
+
 		Response parameters: <none>
 
 		Valid report types: 0x01 = Input
