@@ -141,9 +141,9 @@ static void help_p(int argc, const char **argv)
 
 		terminal_print("\nTo get help on methods for each interface type:\n");
 		terminal_print("\n\thelp <inerface>\n");
-		terminal_print("\nBasic scenario:\n\tadapter init\n");
-		terminal_print("\tadapter enable\n\tadapter start_discovery\n");
-		terminal_print("\tadapter get_profile_interface handsfree\n");
+		terminal_print("\nBasic scenario:\n\tbluetooth init\n");
+		terminal_print("\tbluetooth enable\n\tbluetooth start_discovery\n");
+		terminal_print("\tbluetooth get_profile_interface handsfree\n");
 		terminal_print("\thandsfree init\n\n");
 		return;
 	}

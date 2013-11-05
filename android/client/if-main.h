@@ -61,7 +61,7 @@ extern const btgatt_client_interface_t *if_gatt_client;
 
 /*
  * Structure defines top level interfaces that can be used in test tool
- * this will contain values as: adapter, av, gatt, sock, pan...
+ * this will contain values as: bluetooth, av, gatt, socket, pan...
  */
 struct interface {
 	const char *name; /* interface name */
