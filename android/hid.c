@@ -200,7 +200,7 @@ static gboolean intr_io_watch_cb(GIOChannel *chan, gpointer data)
 	}
 
 	/* Discard non-data packets */
-	if (bread == 0 || buf[0] != 0xA1)
+	if (bread == 0 || buf[0] != (HID_MSG_DATA | HID_DATA_TYPE_INPUT))
 		return TRUE;
 
 	/* send data to uHID device skipping HIDP header byte */
