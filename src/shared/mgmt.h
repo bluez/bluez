@@ -24,6 +24,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define MGMT_VERSION(v, r) (((v) << 16) + (r))
+
 typedef void (*mgmt_destroy_func_t)(void *user_data);
 
 struct mgmt;

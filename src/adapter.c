@@ -99,7 +99,6 @@ static GSList *adapters = NULL;
 
 static struct mgmt *mgmt_master = NULL;
 
-#define MGMT_VERSION(v, r) ((v << 16) + (r))
 static uint8_t mgmt_version = 0;
 static uint8_t mgmt_revision = 0;
 
