@@ -99,8 +99,8 @@ static const struct ansii_sequence ansii_sequnces[] = {
 #define isseqence(c) ((c) == 0x1B)
 
 /*
- * Number of characters that consist of ANSII sequence
- * Should not be less then longest string in ansii_sequnces
+ * Number of characters that consist of ANSI sequence
+ * Should not be less then longest string in ansi_sequences
  */
 #define MAX_ASCII_SEQUENCE 10
 
@@ -139,7 +139,7 @@ static void terminal_move_cursor(int n)
 void terminal_draw_command_line(void)
 {
 	/*
-	 * this needs to be checked here since line_buf is not cleard
+	 * this needs to be checked here since line_buf is not cleared
 	 * before parsing event though line_len and line_buf_ix are
 	 */
 	if (line_len > 0)
@@ -240,7 +240,7 @@ static void terminal_clear_line(void)
 	terminal_line_replaced();
 }
 
-static void terminal_clear_sceen(void)
+static void terminal_clear_screen(void)
 {
 	line_buf[0] = '\0';
 	line_buf_ix = 0;
@@ -312,7 +312,7 @@ static void terminal_match_hitory(bool back)
 	if (matching_line >= 0) {
 		int pos = line_buf_ix;
 		terminal_get_line_from_history(matching_line);
-		/* move back to cursor position to origianl place */
+		/* move back to cursor position to original place */
 		line_buf_ix = pos;
 		terminal_move_cursor(pos - line_len);
 	}
@@ -328,12 +328,13 @@ static int terminal_convert_sequence(int c)
 
 	/* Not in sequence yet? */
 	if (current_sequence_len == -1) {
-		/* Is ansii sequence detected by 0x1B ? */
+		/* Is ansi sequence detected by 0x1B ? */
 		if (isseqence(c)) {
 			current_sequence_len++;
 			return KEY_SEQUNCE_NOT_FINISHED;
-	       }
-	       return c;
+		}
+
+		return c;
 	}
 
 	/* Inside sequence */
@@ -350,11 +351,12 @@ static int terminal_convert_sequence(int c)
 			current_sequence_len = -1;
 			return ansii_sequnces[i].code;
 		}
+
 		/* partial match (not whole sequence yet) */
 		return KEY_SEQUNCE_NOT_FINISHED;
 	}
 
-	terminal_print("ansii char 0x%X %c\n", c);
+	terminal_print("ansi char 0x%X %c\n", c);
 	/*
 	 * Sequence does not match
 	 * mark that no in sequence any more, return char
@@ -421,7 +423,7 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 			line_buf_ix--;
 		/* skip all non spaces to the left */
 		while (line_buf_ix > 0 &&
-		       !isspace(line_buf[line_buf_ix - 1]))
+			!isspace(line_buf[line_buf_ix - 1]))
 			line_buf_ix--;
 		/* move cursor to new position */
 		terminal_move_cursor(line_buf_ix - old_pos);
@@ -538,7 +540,7 @@ void terminal_process_char(int c, void (*process_line)(char *line))
 		}
 		break;
 	case KEY_C_L:
-		terminal_clear_sceen();
+		terminal_clear_screen();
 		break;
 	default:
 		if (!isprint(c)) {
@@ -592,7 +594,7 @@ void terminal_setup(void)
 
 	/*
 	 * Turn off echo since all editing is done by hand,
-	 * Ctrl-c handled internaly
+	 * Ctrl-c handled internally
 	 */
 	tios.c_lflag &= ~(ICANON | ECHO | BRKINT | IGNBRK);
 	tcsetattr(0, TCSANOW, &tios);
