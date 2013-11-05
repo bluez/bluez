@@ -58,10 +58,10 @@ int num_columns(void)
 	if (__builtin_expect(!!(cached_num_columns < 0), 0)) {
 		struct winsize ws;
 
-		if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0)
-			return -1;
-
-		if (ws.ws_col > 0)
+		if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) < 0 ||
+								ws.ws_col == 0)
+			cached_num_columns = FALLBACK_TERMINAL_WIDTH;
+		else
 			cached_num_columns = ws.ws_col;
 	}
 

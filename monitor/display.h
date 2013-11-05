@@ -40,6 +40,8 @@ bool use_color(void);
 
 #define COLOR_ERROR	"\x1B[1;31m"
 
+#define FALLBACK_TERMINAL_WIDTH 80
+
 #define print_indent(indent, color1, prefix, title, color2, fmt, args...) \
 do { \
 	printf("%*c%s%s%s%s" fmt "%s\n", (indent), ' ', \
