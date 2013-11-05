@@ -59,6 +59,15 @@ static void handle_info(void *buf)
 		bt_hh_cbacks->hid_info_cb((bt_bdaddr_t *) ev->bdaddr, info);
 }
 
+static void handle_proto_mode(void *buf)
+{
+	struct hal_ev_hid_proto_mode *ev = buf;
+
+	if (bt_hh_cbacks->protocol_mode_cb)
+		bt_hh_cbacks->protocol_mode_cb((bt_bdaddr_t *) ev->bdaddr,
+							ev->status, ev->mode);
+}
+
 /* will be called from notification thread context */
 void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -71,6 +80,9 @@ void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_HID_INFO:
 		handle_info(buf);
+		break;
+	case HAL_EV_HID_PROTO_MODE:
+		handle_proto_mode(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
