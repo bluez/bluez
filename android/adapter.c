@@ -387,6 +387,8 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 
 	send_bond_state_change(&addr->bdaddr, HAL_STATUS_SUCCESS,
 							HAL_BOND_STATE_BONDED);
+
+	browse_remote_sdp(&addr->bdaddr);
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
