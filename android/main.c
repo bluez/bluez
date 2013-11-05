@@ -592,12 +592,12 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	if (status) {
 		error("Failed to read version information: %s (0x%02x)",
 						mgmt_errstr(status), status);
-		return;
+		goto error;
 	}
 
 	if (length < sizeof(*rp)) {
 		error("Wrong size response");
-		return;
+		goto error;
 	}
 
 	mgmt_version = rp->version;
@@ -608,7 +608,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
 		error("Version 1.3 or later of management interface required");
-		return;
+		goto error;
 	}
 
 	mgmt_send(mgmt_if, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE, 0, NULL,
@@ -624,6 +624,9 @@ static void read_version_complete(uint8_t status, uint16_t length,
 		return;
 
 	error("Failed to read controller index list");
+
+error:
+	g_main_loop_quit(event_loop);
 }
 
 static bool init_mgmt_interface(void)
