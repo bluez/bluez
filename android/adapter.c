@@ -66,15 +66,37 @@ struct bt_adapter {
 static struct bt_adapter *adapter;
 static GSList *found_devices = NULL;
 
+static void adapter_name_changed(const uint8_t *name)
+{
+	struct hal_ev_adapter_props_changed *ev;
+	size_t len = strlen((const char *) name);
+	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) + len];
+
+	memset(buf, 0, sizeof(buf));
+	ev = (void *) buf;
+
+	ev->num_props = 1;
+	ev->status = HAL_STATUS_SUCCESS;
+	ev->props[0].type = HAL_PROP_ADAPTER_NAME;
+	/* Android expects value without NULL terminator */
+	ev->props[0].len = len;
+	memcpy(ev->props->val, name, len);
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev, -1);
+}
+
 static void adapter_set_name(const uint8_t *name)
 {
 	if (!g_strcmp0(adapter->name, (const char *) name))
 		return;
 
-	DBG("Cnage name: %s -> %s", adapter->name, name);
+	DBG("%s", name);
 
 	g_free(adapter->name);
 	adapter->name = g_strdup((const char *) name);
+
+	adapter_name_changed(name);
 }
 
 static void mgmt_local_name_changed_event(uint16_t index, uint16_t length,
@@ -145,28 +167,6 @@ static void scan_mode_changed(void)
 				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
 
 	g_free(ev);
-}
-
-static void adapter_name_changed(const uint8_t *name)
-{
-	struct hal_ev_adapter_props_changed *ev;
-	size_t len = strlen((const char *) name);
-	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) + len];
-
-	memset(buf, 0, sizeof(buf));
-	ev = (void *) buf;
-
-	ev->num_props = 1;
-	ev->status = HAL_STATUS_SUCCESS;
-	ev->props[0].type = HAL_PROP_ADAPTER_NAME;
-	/* Android expects value without NULL terminator */
-	ev->props[0].len = len;
-	memcpy(ev->props->val, name, len);
-
-	DBG("Adapter name changed to: %s", name);
-
-	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
-			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev, -1);
 }
 
 static void settings_changed(uint32_t settings)
@@ -885,8 +885,6 @@ static void set_adapter_name_complete(uint8_t status, uint16_t length,
 	}
 
 	adapter_set_name(rp->name);
-
-	adapter_name_changed(rp->name);
 }
 
 static uint8_t set_adapter_name(uint8_t *name, uint16_t len)
