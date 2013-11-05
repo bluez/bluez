@@ -68,9 +68,6 @@
 static GMainLoop *event_loop;
 static struct mgmt *mgmt_if = NULL;
 
-static uint8_t mgmt_version = 0;
-static uint8_t mgmt_revision = 0;
-
 static uint16_t adapter_index = MGMT_INDEX_NONE;
 static guint adapter_timeout = 0;
 
@@ -588,6 +585,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_version *rp = param;
+	uint8_t mgmt_version, mgmt_revision;
 
 	DBG("");
 
