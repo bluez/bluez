@@ -149,6 +149,11 @@ static void hid_device_free(struct hid_device *dev)
 	g_free(dev);
 }
 
+static void handle_uhid_event(struct hid_device *dev, struct uhid_event *ev)
+{
+	DBG("UHID_OUTPUT UHID_FEATURE unsupported");
+}
+
 static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
@@ -172,7 +177,40 @@ static gboolean uhid_event_cb(GIOChannel *io, GIOCondition cond,
 	}
 
 	DBG("uHID event type %d received", ev.type);
-	/* TODO Handle events */
+
+	switch (ev.type) {
+	case UHID_START:
+	case UHID_STOP:
+		/* These are called to start and stop the underlying hardware.
+		 * We open the channels before creating the device so the
+		 * hardware is always ready. No need to handle these.
+		 * The kernel never destroys a device itself! Only an explicit
+		 * UHID_DESTROY request can remove a device. */
+
+		break;
+	case UHID_OPEN:
+	case UHID_CLOSE:
+		/* OPEN/CLOSE are sent whenever user-space opens any interface
+		 * provided by the kernel HID device. Whenever the open-count
+		 * is non-zero we must be ready for I/O. As long as it is zero,
+		 * we can decide to drop all I/O and put the device
+		 * asleep This is optional, though. */
+		break;
+	case UHID_OUTPUT:
+	case UHID_FEATURE:
+		handle_uhid_event(dev, &ev);
+		break;
+	case UHID_OUTPUT_EV:
+		/* This is only sent by kernels prior to linux-3.11. It
+		 * requires us to parse HID-descriptors in user-space to
+		 * properly handle it. This is redundant as the kernel
+		 * does it already. That's why newer kernels assemble
+		 * the output-reports and send it to us via UHID_OUTPUT. */
+		DBG("UHID_OUTPUT_EV unsupported");
+		break;
+	default:
+		warn("unexpected uHID event");
+	}
 
 	return TRUE;
 
