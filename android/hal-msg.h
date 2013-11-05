@@ -465,6 +465,14 @@ struct hal_ev_hid_proto_mode {
 	uint8_t mode;
 } __attribute__((packed));
 
+#define HAL_EV_HID_GET_REPORT		0x85
+struct hal_ev_hid_get_report {
+	uint8_t  bdaddr[6];
+	uint8_t  status;
+	uint16_t len;
+	uint8_t  data[0];
+} __attribute__((packed));
+
 #define HAL_EV_AV_CONNECTION_STATE	0x81
 struct hal_ev_av_connection_state {
 	uint8_t state;
