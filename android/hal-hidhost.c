@@ -284,6 +284,8 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 		return BT_STATUS_PARM_INVALID;
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	cmd.len = strlen(report);
+	memcpy(cmd.data, report, cmd.len);
 
 	switch (reportType) {
 	case BTHH_INPUT_REPORT:

@@ -290,8 +290,10 @@ struct hal_cmd_hid_get_report {
 
 #define HAL_OP_HID_SET_REPORT		0x08
 struct hal_cmd_hid_set_report {
-	uint8_t bdaddr[6];
-	uint8_t type;
+	uint8_t  bdaddr[6];
+	uint8_t  type;
+	uint16_t len;
+	uint8_t  data[670];
 } __attribute__((packed));
 
 #define HAL_OP_HID_SEND_DATA		0x09
