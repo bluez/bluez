@@ -749,7 +749,7 @@ bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
 	notification_io = g_io_channel_ref(io);
 
 	ctrl_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_CTRL,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
@@ -760,7 +760,7 @@ bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
 	}
 
 	intr_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR, &src,
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_PSM, L2CAP_PSM_HIDP_INTR,
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
 				BT_IO_OPT_INVALID);
