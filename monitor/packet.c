@@ -2313,7 +2313,7 @@ static void print_manufacturer_apple(const void *data, uint8_t data_len)
 		break;
 	case 0x02:
 		len = *((uint8_t *) (data + 1));
-		if (len != 0x15) {
+		if (len != 0x15 || len != data_len - 2) {
 			print_hex_field("  Data", data, data_len);
 			break;
 		}
