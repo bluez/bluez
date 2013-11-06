@@ -29,7 +29,7 @@ static bt_status_t sock_listen_rfcomm(const char *service_name,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
-	struct hal_op_sock_listen cmd;
+	struct hal_cmd_sock_listen cmd;
 
 	DBG("");
 
@@ -73,7 +73,7 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 					const uint8_t *uuid, int chan,
 					int *sock, int flags)
 {
-	struct hal_op_sock_connect cmd;
+	struct hal_cmd_sock_connect cmd;
 
 	if ((!uuid && chan <= 0) || !bdaddr || !sock) {
 		error("invalid params: bd_addr %p, uuid %p, chan %d, sock %p",
