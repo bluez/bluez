@@ -83,6 +83,11 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 
 	DBG("uuid %p chan %d sock %p type %d", uuid, chan, sock, type);
 
+	if (type != BTSOCK_RFCOMM) {
+		error("Socket type %u not supported", type);
+		return BT_STATUS_UNSUPPORTED;
+	}
+
 	cmd.flags = flags;
 	cmd.type = type;
 	cmd.channel = chan;
