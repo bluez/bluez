@@ -189,6 +189,28 @@ static void scan_mode_changed(void)
 	g_free(ev);
 }
 
+static void adapter_class_changed(void)
+{
+	struct hal_ev_adapter_props_changed *ev;
+	int len;
+
+	len = sizeof(*ev) + sizeof(struct hal_property) + sizeof(uint32_t);
+
+	ev = g_malloc(len);
+
+	ev->num_props = 1;
+	ev->status = HAL_STATUS_SUCCESS;
+
+	ev->props[0].type = HAL_PROP_ADAPTER_CLASS;
+	ev->props[0].len = sizeof(uint32_t);
+	memcpy(ev->props->val, &adapter->dev_class, sizeof(uint32_t));
+
+	ipc_send(notification_io, HAL_SERVICE_ID_BLUETOOTH,
+				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
+
+	g_free(ev);
+}
+
 static void settings_changed(uint32_t settings)
 {
 	uint32_t changed_mask;
@@ -257,7 +279,7 @@ static void mgmt_dev_class_changed_event(uint16_t index, uint16_t length,
 
 	adapter->dev_class = dev_class;
 
-	/* TODO: Inform prop change: Class */
+	adapter_class_changed();
 
 	/* TODO: Gatt attrib set*/
 }
@@ -1219,11 +1241,11 @@ static bool get_uuids(void)
 
 static bool get_class(void)
 {
-	DBG("Not implemented");
+	DBG("");
 
-	/* TODO: Add implementation */
+	adapter_class_changed();
 
-	return false;
+	return true;
 }
 
 static bool get_type(void)
