@@ -4639,6 +4639,7 @@ static void le_set_adv_parameters_cmd(const void *data, uint8_t size)
 	case 0x03:
 		str = "Allow Scan Request from White List Only, "
 			"Allow Connect Request from White List Only";
+		break;
 	default:
 		str = "Reserved";
 		break;
