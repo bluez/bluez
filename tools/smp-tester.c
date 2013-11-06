@@ -51,6 +51,7 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+	uint16_t handle;
 };
 
 struct smp_server_data {
@@ -58,6 +59,13 @@ struct smp_server_data {
 	uint16_t send_req_len;
 	const void *expect_rsp;
 	uint16_t expect_rsp_len;
+};
+
+struct smp_client_data {
+	const void *expect_req;
+	uint16_t expect_req_len;
+	const void *send_rsp;
+	uint16_t send_rsp_len;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -266,6 +274,151 @@ static const struct smp_server_data smp_server_basic_req_1_test = {
 	.expect_rsp_len = sizeof(smp_basic_req_1_rsp),
 };
 
+static const struct smp_client_data smp_client_basic_req_1_test = {
+	.expect_req = smp_basic_req_1,
+	.expect_req_len = sizeof(smp_basic_req_1),
+};
+
+static void client_connectable_complete(uint16_t opcode, uint8_t status,
+					const void *param, uint8_t len,
+					void *user_data)
+{
+	if (opcode != BT_HCI_CMD_LE_SET_ADV_ENABLE)
+		return;
+
+	tester_print("Client set connectable status 0x%02x", status);
+
+	if (status)
+		tester_setup_failed();
+	else
+		tester_setup_complete();
+}
+
+static void setup_powered_client_callback(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	struct test_data *data = tester_get_data();
+	struct bthost *bthost;
+
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_setup_failed();
+		return;
+	}
+
+	tester_print("Controller powered on");
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_cmd_complete_cb(bthost, client_connectable_complete, data);
+	bthost_set_adv_enable(bthost, 0x01);
+}
+
+static void setup_powered_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	unsigned char param[] = { 0x01 };
+
+	tester_print("Powering on controller");
+
+	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_SET_POWERED, data->mgmt_index,
+			sizeof(param), param, setup_powered_client_callback,
+			NULL, NULL);
+}
+
+static void pair_device_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	if (status != MGMT_STATUS_SUCCESS) {
+		tester_warn("Pairing failed: %s", mgmt_errstr(status));
+		tester_test_failed();
+		return;
+	}
+
+	tester_print("Pairing succeedded");
+	tester_test_passed();
+}
+
+static void smp_server(const void *data, uint16_t len, void *user_data)
+{
+	struct test_data *test_data = tester_get_data();
+	const struct smp_client_data *cli = test_data->test_data;
+
+	tester_print("Received SMP request");
+
+	if (!cli->expect_req) {
+		tester_test_passed();
+		return;
+	}
+
+	if (cli->expect_req_len != len) {
+		tester_warn("Unexpected SMP request length (%u != %u)",
+						len, cli->expect_req_len);
+		goto failed;
+	}
+
+	if (memcmp(cli->expect_req, data, len) != 0) {
+		tester_warn("Unexpected SMP request");
+		goto failed;
+	}
+
+	if (cli->send_rsp) {
+		struct bthost *bthost;
+
+		bthost = hciemu_client_get_host(test_data->hciemu);
+		bthost_send_cid(bthost, test_data->handle, SMP_CID,
+					cli->send_rsp, cli->send_rsp_len);
+		return;
+	}
+
+	tester_test_passed();
+	return;
+
+failed:
+	tester_test_failed();
+}
+
+static void new_conn(uint16_t handle, void *user_data)
+{
+	struct test_data *data = user_data;
+	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+
+	tester_print("New server connection with handle 0x%04x", handle);
+
+	data->handle = handle;
+
+	bthost_add_cid_hook(bthost, handle, SMP_CID, smp_server, NULL);
+}
+
+static void test_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	const uint8_t *client_bdaddr;
+	struct mgmt_cp_pair_device cp;
+	struct bthost *bthost;
+
+	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
+	if (!client_bdaddr) {
+		tester_warn("No client bdaddr");
+		tester_test_failed();
+		return;
+	}
+
+	bthost = hciemu_client_get_host(data->hciemu);
+	bthost_set_connect_cb(bthost, new_conn, data);
+
+	memcpy(&cp.addr.bdaddr, client_bdaddr, sizeof(bdaddr_t));
+	cp.addr.type = BDADDR_LE_PUBLIC;
+	cp.io_cap = 0x03; /* NoInputNoOutput */
+
+	mgmt_send(data->mgmt, MGMT_OP_PAIR_DEVICE, data->mgmt_index,
+			sizeof(cp), &cp, pair_device_complete, NULL, NULL);
+
+	tester_print("Pairing in progress");
+}
+
 static void setup_powered_server_callback(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
@@ -376,6 +529,10 @@ int main(int argc, char *argv[])
 	test_smp("SMP Server - Invalid Request 2",
 					&smp_server_nval_req_2_test,
 					setup_powered_server, test_server);
+
+	test_smp("SMP Client - Basic Request 1",
+					&smp_client_basic_req_1_test,
+					setup_powered_client, test_client);
 
 	return tester_run();
 }
