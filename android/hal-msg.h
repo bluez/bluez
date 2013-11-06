@@ -285,7 +285,7 @@ struct hal_cmd_hid_get_report {
 	uint8_t  bdaddr[6];
 	uint8_t  type;
 	uint8_t  id;
-	uint16_t buf;
+	uint16_t buf_size;
 } __attribute__((packed));
 
 #define HAL_OP_HID_SET_REPORT		0x08

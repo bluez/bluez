@@ -850,20 +850,20 @@ static uint8_t bt_hid_get_report(struct hal_cmd_hid_get_report *cmd,
 		return HAL_STATUS_FAILED;
 
 	dev = l->data;
-	req_size = (cmd->buf > 0) ? 4 : 2;
+	req_size = (cmd->buf_size > 0) ? 4 : 2;
 	req = g_try_malloc0(req_size);
 	if (!req)
 		return HAL_STATUS_NOMEM;
 
 	req[0] = HID_MSG_GET_REPORT | cmd->type;
 
-	if (cmd->buf > 0)
+	if (cmd->buf_size > 0)
 		req[0] = req[0] | HID_GET_REPORT_SIZE_FIELD;
 
 	req[1] = cmd->id;
 
-	if (cmd->buf > 0)
-		bt_put_le16(cmd->buf, (req + 2));
+	if (cmd->buf_size > 0)
+		bt_put_le16(cmd->buf_size, (req + 2));
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 

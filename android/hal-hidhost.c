@@ -261,7 +261,7 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 	cmd.id = report_id;
-	cmd.buf = buffer_size;
+	cmd.buf_size = buffer_size;
 
 	switch (report_type) {
 	case BTHH_INPUT_REPORT:
