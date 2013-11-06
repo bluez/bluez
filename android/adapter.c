@@ -1284,7 +1284,7 @@ static bool get_devices(void)
 	return false;
 }
 
-static bool get_disc_timeout(void)
+static bool get_discoverable_timeout(void)
 {
 	DBG("Not implemented");
 
@@ -1316,7 +1316,7 @@ static bool get_property(void *buf, uint16_t len)
 	case HAL_PROP_ADAPTER_BONDED_DEVICES:
 		return get_devices();
 	case HAL_PROP_ADAPTER_DISC_TIMEOUT:
-		return get_disc_timeout();
+		return get_discoverable_timeout();
 	default:
 		return false;
 	}
@@ -1332,7 +1332,7 @@ static void get_properties(void)
 	get_service();
 	get_scan_mode();
 	get_devices();
-	get_disc_timeout();
+	get_discoverable_timeout();
 }
 
 static bool start_discovery(void)
