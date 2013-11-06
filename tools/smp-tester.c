@@ -243,7 +243,7 @@ static const struct smp_server_data smp_server_nval_req_2_test = {
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
-						0x00,	/* SMP auth none */
+						0x01,	/* Bonding - no MITM */
 						0x10,	/* Max key size */
 						0x00,	/* Init. key dist. */
 						0x01,	/* Rsp. key dist. */
