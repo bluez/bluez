@@ -82,37 +82,37 @@ static void service_register(void *buf, uint16_t len)
 	const bdaddr_t *adapter_bdaddr = bt_adapter_get_address();
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
-		goto error;
+		goto failed;
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
 		if (!bt_adapter_register(hal_notif_io))
-			goto error;
+			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_SOCK:
 		if (!bt_socket_register(hal_notif_io, adapter_bdaddr))
-			goto error;
+			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
 		if (!bt_hid_register(hal_notif_io, adapter_bdaddr))
-			goto error;
+			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
 		if (!bt_a2dp_register(hal_notif_io, adapter_bdaddr))
-			goto error;
+			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_PAN:
 		if (!bt_a2dp_register(hal_notif_io, adapter_bdaddr))
-			goto error;
+			goto failed;
 
 		break;
 	default:
 		DBG("service %u not supported", m->service_id);
-		goto error;
+		goto failed;
 	}
 
 	services[m->service_id] = true;
@@ -122,7 +122,7 @@ static void service_register(void *buf, uint16_t len)
 
 	info("Service ID=%u registered", m->service_id);
 	return;
-error:
+failed:
 	ipc_send_rsp(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
 }
 
@@ -131,7 +131,7 @@ static void service_unregister(void *buf, uint16_t len)
 	struct hal_cmd_unregister_module *m = buf;
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || !services[m->service_id])
-		goto error;
+		goto failed;
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
@@ -153,7 +153,7 @@ static void service_unregister(void *buf, uint16_t len)
 		/* This would indicate bug in HAL, as unregister should not be
 		 * called in init failed */
 		DBG("service %u not supported", m->service_id);
-		goto error;
+		goto failed;
 	}
 
 	services[m->service_id] = false;
@@ -163,7 +163,7 @@ static void service_unregister(void *buf, uint16_t len)
 
 	info("Service ID=%u unregistered", m->service_id);
 	return;
-error:
+failed:
 	ipc_send_rsp(hal_cmd_io, HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
 }
 
@@ -540,12 +540,12 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	if (status) {
 		error("%s: Failed to read index list: %s (0x%02x)",
 					__func__, mgmt_errstr(status), status);
-		goto error;
+		goto failed;
 	}
 
 	if (length < sizeof(*rp)) {
 		error("%s: Wrong size of read index list response", __func__);
-		goto error;
+		goto failed;
 	}
 
 	num = btohs(rp->num_controllers);
@@ -554,7 +554,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
 		error("%s: Incorrect pkt size for index list rsp", __func__);
-		goto error;
+		goto failed;
 	}
 
 	if (adapter_index != MGMT_INDEX_NONE)
@@ -581,7 +581,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 
 	error("%s: Failed init timeout", __func__);
 
-error:
+failed:
 	g_main_loop_quit(event_loop);
 }
 
@@ -615,12 +615,12 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	if (status) {
 		error("Failed to read version information: %s (0x%02x)",
 						mgmt_errstr(status), status);
-		goto error;
+		goto failed;
 	}
 
 	if (length < sizeof(*rp)) {
 		error("Wrong size response");
-		goto error;
+		goto failed;
 	}
 
 	mgmt_version = rp->version;
@@ -631,7 +631,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
 		error("Version 1.3 or later of management interface required");
-		goto error;
+		goto failed;
 	}
 
 	mgmt_send(mgmt_if, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE, 0, NULL,
@@ -648,7 +648,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 
 	error("Failed to read controller index list");
 
-error:
+failed:
 	g_main_loop_quit(event_loop);
 }
 
