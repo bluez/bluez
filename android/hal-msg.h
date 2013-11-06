@@ -26,10 +26,10 @@
 static const char BLUEZ_HAL_SK_PATH[] = "\0bluez_hal_socket";
 
 struct hal_hdr {
-	uint8_t service_id;
-	uint8_t opcode;
+	uint8_t  service_id;
+	uint8_t  opcode;
 	uint16_t len;
-	uint8_t payload[0];
+	uint8_t  payload[0];
 } __attribute__((packed));
 
 #define HAL_MINIMUM_EVENT		0x81
@@ -216,20 +216,20 @@ struct hal_cmd_le_test_mode {
 
 #define HAL_OP_SOCK_LISTEN		0x01
 struct hal_op_sock_listen {
-	uint8_t type;
-	uint8_t name[256];
-	uint8_t uuid[16];
+	uint8_t  type;
+	uint8_t  name[256];
+	uint8_t  uuid[16];
 	uint16_t channel;
-	uint8_t flags;
+	uint8_t  flags;
 } __attribute__((packed));
 
 #define HAL_OP_SOCK_CONNECT		0x02
 struct hal_op_sock_connect {
-	uint8_t bdaddr[6];
-	uint8_t type;
-	uint8_t uuid[16];
+	uint8_t  bdaddr[6];
+	uint8_t  type;
+	uint8_t  uuid[16];
 	uint16_t channel;
-	uint8_t flags;
+	uint8_t  flags;
 } __attribute__((packed));
 
 #define HAL_OP_HID_CONNECT		0x01
@@ -249,15 +249,15 @@ struct hal_cmd_hid_vp {
 
 #define HAL_OP_HID_SET_INFO		0x04
 struct hal_cmd_hid_set_info {
-	uint8_t bdaddr[6];
-	uint8_t attr;
-	uint8_t subclass;
-	uint8_t app_id;
+	uint8_t  bdaddr[6];
+	uint8_t  attr;
+	uint8_t  subclass;
+	uint8_t  app_id;
 	uint16_t vendor;
 	uint16_t product;
 	uint16_t country;
 	uint16_t descr_len;
-	uint8_t descr[0];
+	uint8_t  descr[0];
 } __attribute__((packed));
 
 #define HAL_HID_REPORT_PROTOCOL		0x00
@@ -382,8 +382,8 @@ struct hal_ev_discovery_state_changed {
 
 #define HAL_EV_PIN_REQUEST		0x86
 struct hal_ev_pin_request {
-	uint8_t bdaddr[6];
-	uint8_t name[249];
+	uint8_t  bdaddr[6];
+	uint8_t  name[249];
 	uint32_t class_of_dev;
 } __attribute__((packed));
 
@@ -391,7 +391,7 @@ struct hal_ev_pin_request {
 struct hal_ev_ssp_request {
 	uint8_t  bdaddr[6];
 	uint8_t  name[249];
-	uint32_t  class_of_dev;
+	uint32_t class_of_dev;
 	uint8_t  pairing_variant;
 	uint32_t passkey;
 } __attribute__((packed));
