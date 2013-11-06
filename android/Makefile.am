@@ -79,8 +79,8 @@ android_haltest_LDFLAGS = -pthread
 
 endif
 
-EXTRA_DIST += android/Android.mk android/device.c android/adapter.c\
-		android/main.c android/hal-msg.h android/hal.h
+EXTRA_DIST += android/Android.mk android/adapter.c android/main.c \
+		android/hal-msg.h android/hal.h
 
 EXTRA_DIST += android/hal-bluetooth.c \
 		android/hal-sock.c \
