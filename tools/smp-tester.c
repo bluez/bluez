@@ -380,7 +380,7 @@ failed:
 	tester_test_failed();
 }
 
-static void new_conn(uint16_t handle, void *user_data)
+static void smp_server_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
@@ -407,7 +407,7 @@ static void test_client(const void *test_data)
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, new_conn, data);
+	bthost_set_connect_cb(bthost, smp_server_new_conn, data);
 
 	memcpy(&cp.addr.bdaddr, client_bdaddr, sizeof(bdaddr_t));
 	cp.addr.type = BDADDR_LE_PUBLIC;
@@ -448,12 +448,12 @@ static void setup_powered_server(const void *test_data)
 			NULL, NULL);
 }
 
-static void client_smp_rsp(const void *data, uint16_t len, void *user_data)
+static void smp_client(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *test_data = user_data;
 	const struct smp_server_data *srv = test_data->test_data;
 
-	tester_print("Client received response");
+	tester_print("SMP client received response");
 
 	if (!srv->expect_rsp) {
 		tester_test_passed();
@@ -478,15 +478,15 @@ failed:
 	tester_test_failed();
 }
 
-static void client_new_conn(uint16_t handle, void *user_data)
+static void smp_client_new_conn(uint16_t handle, void *user_data)
 {
 	struct test_data *data = user_data;
 	const struct smp_server_data *srv = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 
-	tester_print("New client connection with handle 0x%04x", handle);
+	tester_print("New SMP client connection with handle 0x%04x", handle);
 
-	bthost_add_cid_hook(bthost, handle, SMP_CID, client_smp_rsp, data);
+	bthost_add_cid_hook(bthost, handle, SMP_CID, smp_client, data);
 
 	if (!srv->send_req)
 		return;
@@ -511,7 +511,7 @@ static void test_server(const void *test_data)
 	}
 
 	bthost = hciemu_client_get_host(data->hciemu);
-	bthost_set_connect_cb(bthost, client_new_conn, data);
+	bthost_set_connect_cb(bthost, smp_client_new_conn, data);
 
 	bthost_hci_connect(bthost, master_bdaddr, BDADDR_LE_PUBLIC);
 }
