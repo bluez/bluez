@@ -856,14 +856,12 @@ static uint8_t bt_hid_get_report(struct hal_cmd_hid_get_report *cmd,
 		return HAL_STATUS_NOMEM;
 
 	req[0] = HID_MSG_GET_REPORT | cmd->type;
-
-	if (cmd->buf_size > 0)
-		req[0] = req[0] | HID_GET_REPORT_SIZE_FIELD;
-
 	req[1] = cmd->id;
 
-	if (cmd->buf_size > 0)
-		bt_put_le16(cmd->buf_size, (req + 2));
+	if (cmd->buf_size > 0) {
+		req[0] = req[0] | HID_GET_REPORT_SIZE_FIELD;
+		bt_put_le16(cmd->buf_size, &req[2]);
+	}
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
