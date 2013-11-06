@@ -183,7 +183,7 @@ static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 }
 
 static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
-					bthh_protocol_mode_t protocolMode)
+					bthh_protocol_mode_t protocol_mode)
 {
 	struct hal_cmd_hid_get_protocol cmd;
 
@@ -197,7 +197,7 @@ static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	switch (protocolMode) {
+	switch (protocol_mode) {
 	case BTHH_REPORT_MODE:
 		cmd.mode = HAL_HID_REPORT_PROTOCOL;
 		break;
@@ -214,7 +214,7 @@ static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 }
 
 static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
-					bthh_protocol_mode_t protocolMode)
+					bthh_protocol_mode_t protocol_mode)
 {
 	struct hal_cmd_hid_set_protocol cmd;
 
@@ -228,7 +228,7 @@ static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	switch (protocolMode) {
+	switch (protocol_mode) {
 	case BTHH_REPORT_MODE:
 		cmd.mode = HAL_HID_REPORT_PROTOCOL;
 		break;
@@ -245,9 +245,9 @@ static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 }
 
 static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
-						bthh_report_type_t reportType,
-						uint8_t reportId,
-						int bufferSize)
+						bthh_report_type_t report_type,
+						uint8_t report_id,
+						int buffer_size)
 {
 	struct hal_cmd_hid_get_report cmd;
 
@@ -260,10 +260,10 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 		return BT_STATUS_PARM_INVALID;
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
-	cmd.id = reportId;
-	cmd.buf = bufferSize;
+	cmd.id = report_id;
+	cmd.buf = buffer_size;
 
-	switch (reportType) {
+	switch (report_type) {
 	case BTHH_INPUT_REPORT:
 		cmd.type = HAL_HID_INPUT_REPORT;
 		break;
@@ -282,7 +282,7 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 }
 
 static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
-						bthh_report_type_t reportType,
+						bthh_report_type_t report_type,
 						char *report)
 {
 	struct hal_cmd_hid_set_report cmd;
@@ -299,7 +299,7 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 	cmd.len = strlen(report);
 	memcpy(cmd.data, report, cmd.len);
 
-	switch (reportType) {
+	switch (report_type) {
 	case BTHH_INPUT_REPORT:
 		cmd.type = HAL_HID_INPUT_REPORT;
 		break;
