@@ -172,12 +172,9 @@ static uint8_t settings2scan_mode(void)
 
 static void scan_mode_changed(void)
 {
-	struct hal_ev_adapter_props_changed *ev;
+	uint8_t buf[BASELEN_PROP_CHANGED + 1];
+	struct hal_ev_adapter_props_changed *ev = (void *) buf;
 	uint8_t *mode;
-	int len;
-	len = sizeof(*ev) + sizeof(struct hal_property) + 1;
-
-	ev = g_malloc(len);
 
 	ev->num_props = 1;
 	ev->status = HAL_STATUS_SUCCESS;
@@ -191,19 +188,13 @@ static void scan_mode_changed(void)
 	DBG("mode %u", *mode);
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
-				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
-
-	g_free(ev);
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), buf, -1);
 }
 
 static void adapter_class_changed(void)
 {
-	struct hal_ev_adapter_props_changed *ev;
-	int len;
-
-	len = sizeof(*ev) + sizeof(struct hal_property) + sizeof(uint32_t);
-
-	ev = g_malloc(len);
+	uint8_t buf[BASELEN_PROP_CHANGED + sizeof(uint32_t)];
+	struct hal_ev_adapter_props_changed *ev = (void *) buf;
 
 	ev->num_props = 1;
 	ev->status = HAL_STATUS_SUCCESS;
@@ -213,9 +204,7 @@ static void adapter_class_changed(void)
 	memcpy(ev->props->val, &adapter->dev_class, sizeof(uint32_t));
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
-				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
-
-	g_free(ev);
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), buf, -1);
 }
 
 static void settings_changed(uint32_t settings)
@@ -1208,12 +1197,8 @@ static bool set_discoverable(uint8_t mode, uint16_t timeout)
 
 static void get_address(void)
 {
-	struct hal_ev_adapter_props_changed *ev;
-	int len;
-
-	len = sizeof(*ev) + sizeof(struct hal_property) + sizeof(bdaddr_t);
-
-	ev = g_malloc(len);
+	uint8_t buf[BASELEN_PROP_CHANGED + sizeof(bdaddr_t)];
+	struct hal_ev_adapter_props_changed *ev = (void *) buf;
 
 	ev->num_props = 1;
 	ev->status = HAL_STATUS_SUCCESS;
@@ -1223,9 +1208,7 @@ static void get_address(void)
 	bdaddr2android(&adapter->bdaddr, ev->props[0].val);
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
-				HAL_EV_ADAPTER_PROPS_CHANGED, len, ev, -1);
-
-	g_free(ev);
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), buf, -1);
 }
 
 static bool get_name(void)
