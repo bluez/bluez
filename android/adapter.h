@@ -21,12 +21,6 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-
-#include "lib/bluetooth.h"
-
 typedef void (*bt_adapter_ready)(int err);
 
 void bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
