@@ -479,6 +479,12 @@ struct hal_ev_hidhost_get_report {
 	uint8_t  data[0];
 } __attribute__((packed));
 
+#define HAL_EV_HIDHOST_VIRTUAL_UNPLUG		0x86
+struct hal_ev_hidhost_virtual_unplug {
+	uint8_t  bdaddr[6];
+	uint8_t  status;
+} __attribute__((packed));
+
 #define HAL_EV_A2DP_CONNECTION_STATE	0x81
 struct hal_ev_a2dp_connection_state {
 	uint8_t state;
