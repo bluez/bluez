@@ -62,6 +62,9 @@ void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 	msg.msg_iovlen = 2;
 
 	if (fd >= 0) {
+		msg.msg_control = cmsgbuf;
+		msg.msg_controllen = sizeof(cmsgbuf);
+
 		cmsg = CMSG_FIRSTHDR(&msg);
 		cmsg->cmsg_level = SOL_SOCKET;
 		cmsg->cmsg_type = SCM_RIGHTS;
@@ -69,9 +72,6 @@ void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 
 		/* Initialize the payload */
 		memcpy(CMSG_DATA(cmsg), &fd, sizeof(int));
-
-		msg.msg_control = cmsgbuf;
-		msg.msg_controllen = sizeof(cmsgbuf);
 	}
 
 	if (sendmsg(sk, &msg, 0) < 0) {
