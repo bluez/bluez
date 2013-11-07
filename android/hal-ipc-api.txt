@@ -566,7 +566,9 @@ Commands and responses:
 	Opcode 0x09 - Send Data command/response
 
 		Command parameters: Remote address (6 octets)
-		                    ...
+		                    Data length (2 octets)
+		                    Data (Data length)
+
 		Response parameters: <none>
 
 		In case of an error, the error response will be returned.
