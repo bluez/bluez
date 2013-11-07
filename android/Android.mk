@@ -86,7 +86,7 @@ LOCAL_SRC_FILES := \
 	hal-sock.c \
 	hal-hidhost.c \
 	hal-pan.c \
-	hal-av.c \
+	hal-a2dp.c \
 	client/textconv.c \
 
 LOCAL_C_INCLUDES += \

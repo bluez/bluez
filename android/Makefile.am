@@ -33,7 +33,7 @@ android_libhal_internal_la_SOURCES = android/hal.h android/hal-bluetooth.c \
 					android/hal-sock.c \
 					android/hal-hidhost.c \
 					android/hal-pan.c \
-					android/hal-av.c \
+					android/hal-a2dp.c \
 					android/hardware/bluetooth.h \
 					android/hardware/bt_av.h \
 					android/hardware/bt_gatt.h \
@@ -86,7 +86,7 @@ EXTRA_DIST += android/hal-bluetooth.c \
 		android/hal-sock.c \
 		android/hal-hidhost.c \
 		android/hal-pan.c \
-		android/hal-av.c \
+		android/hal-a2dp.c \
 		android/hal-log.h
 
 EXTRA_DIST += android/client/terminal.c \
