@@ -232,23 +232,23 @@ struct hal_cmd_sock_connect {
 	uint8_t  flags;
 } __attribute__((packed));
 
-#define HAL_OP_HID_CONNECT		0x01
-struct hal_cmd_hid_connect {
+#define HAL_OP_HIDHOST_CONNECT		0x01
+struct hal_cmd_hidhost_connect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_HID_DISCONNECT		0x02
-struct hal_cmd_hid_disconnect {
+#define HAL_OP_HIDHOST_DISCONNECT		0x02
+struct hal_cmd_hidhost_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_HID_VP			0x03
-struct hal_cmd_hid_vp {
+#define HAL_OP_HIDHOST_VP			0x03
+struct hal_cmd_hidhost_vp {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_HID_SET_INFO		0x04
-struct hal_cmd_hid_set_info {
+#define HAL_OP_HIDHOST_SET_INFO		0x04
+struct hal_cmd_hidhost_set_info {
 	uint8_t  bdaddr[6];
 	uint8_t  attr;
 	uint8_t  subclass;
@@ -260,44 +260,44 @@ struct hal_cmd_hid_set_info {
 	uint8_t  descr[0];
 } __attribute__((packed));
 
-#define HAL_HID_REPORT_PROTOCOL		0x00
-#define HAL_HID_BOOT_PROTOCOL		0x01
-#define HAL_HID_UNSUPPORTED_PROTOCOL	0xff
+#define HAL_HIDHOST_REPORT_PROTOCOL		0x00
+#define HAL_HIDHOST_BOOT_PROTOCOL		0x01
+#define HAL_HIDHOST_UNSUPPORTED_PROTOCOL	0xff
 
-#define HAL_OP_HID_GET_PROTOCOL	0x05
-struct hal_cmd_hid_get_protocol {
+#define HAL_OP_HIDHOST_GET_PROTOCOL	0x05
+struct hal_cmd_hidhost_get_protocol {
 	uint8_t bdaddr[6];
 	uint8_t mode;
 } __attribute__((packed));
 
-#define HAL_OP_HID_SET_PROTOCOL	0x06
-struct hal_cmd_hid_set_protocol {
+#define HAL_OP_HIDHOST_SET_PROTOCOL	0x06
+struct hal_cmd_hidhost_set_protocol {
 	uint8_t bdaddr[6];
 	uint8_t mode;
 } __attribute__((packed));
 
-#define HAL_HID_INPUT_REPORT		0x01
-#define HAL_HID_OUTPUT_REPORT		0x02
-#define HAL_HID_FEATURE_REPORT		0x03
+#define HAL_HIDHOST_INPUT_REPORT		0x01
+#define HAL_HIDHOST_OUTPUT_REPORT		0x02
+#define HAL_HIDHOST_FEATURE_REPORT		0x03
 
-#define HAL_OP_HID_GET_REPORT		0x07
-struct hal_cmd_hid_get_report {
+#define HAL_OP_HIDHOST_GET_REPORT		0x07
+struct hal_cmd_hidhost_get_report {
 	uint8_t  bdaddr[6];
 	uint8_t  type;
 	uint8_t  id;
 	uint16_t buf_size;
 } __attribute__((packed));
 
-#define HAL_OP_HID_SET_REPORT		0x08
-struct hal_cmd_hid_set_report {
+#define HAL_OP_HIDHOST_SET_REPORT		0x08
+struct hal_cmd_hidhost_set_report {
 	uint8_t  bdaddr[6];
 	uint8_t  type;
 	uint16_t len;
 	uint8_t  data[670];
 } __attribute__((packed));
 
-#define HAL_OP_HID_SEND_DATA		0x09
-struct hal_cmd_hid_send_data {
+#define HAL_OP_HIDHOST_SEND_DATA		0x09
+struct hal_cmd_hidhost_send_data {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
@@ -432,24 +432,24 @@ struct hal_ev_le_test_mode {
 	uint16_t num_packets;
 } __attribute__((packed));
 
-#define HAL_HID_STATE_CONNECTED		0x00
-#define HAL_HID_STATE_CONNECTING	0x01
-#define HAL_HID_STATE_DISCONNECTED	0x02
-#define HAL_HID_STATE_DISCONNECTING	0x03
-#define HAL_HID_STATE_NO_HID		0x07
-#define HAL_HID_STATE_FAILED		0x08
-#define HAL_HID_STATE_UNKNOWN		0x09
+#define HAL_HIDHOST_STATE_CONNECTED		0x00
+#define HAL_HIDHOST_STATE_CONNECTING	0x01
+#define HAL_HIDHOST_STATE_DISCONNECTED	0x02
+#define HAL_HIDHOST_STATE_DISCONNECTING	0x03
+#define HAL_HIDHOST_STATE_NO_HID		0x07
+#define HAL_HIDHOST_STATE_FAILED		0x08
+#define HAL_HIDHOST_STATE_UNKNOWN		0x09
 
-#define HAL_EV_HID_CONN_STATE		0x81
-struct hal_ev_hid_conn_state {
+#define HAL_EV_HIDHOST_CONN_STATE		0x81
+struct hal_ev_hidhost_conn_state {
 	uint8_t bdaddr[6];
 	uint8_t state;
 } __attribute__((packed));
 
-#define HAL_HID_STATUS_OK		0x00
+#define HAL_HIDHOST_STATUS_OK		0x00
 
-#define HAL_EV_HID_INFO			0x82
-struct hal_ev_hid_info {
+#define HAL_EV_HIDHOST_INFO			0x82
+struct hal_ev_hidhost_info {
 	uint8_t  bdaddr[6];
 	uint8_t  attr;
 	uint8_t  subclass;
@@ -462,15 +462,15 @@ struct hal_ev_hid_info {
 	uint8_t  descr[884];
 } __attribute__((packed));
 
-#define HAL_EV_HID_PROTO_MODE		0x83
-struct hal_ev_hid_proto_mode {
+#define HAL_EV_HIDHOST_PROTO_MODE		0x83
+struct hal_ev_hidhost_proto_mode {
 	uint8_t bdaddr[6];
 	uint8_t status;
 	uint8_t mode;
 } __attribute__((packed));
 
-#define HAL_EV_HID_GET_REPORT		0x85
-struct hal_ev_hid_get_report {
+#define HAL_EV_HIDHOST_GET_REPORT		0x85
+struct hal_ev_hidhost_get_report {
 	uint8_t  bdaddr[6];
 	uint8_t  status;
 	uint16_t len;

@@ -33,7 +33,7 @@ static bool interface_ready(void)
 
 static void handle_conn_state(void *buf)
 {
-	struct hal_ev_hid_conn_state *ev = buf;
+	struct hal_ev_hidhost_conn_state *ev = buf;
 
 	if (bt_hh_cbacks->connection_state_cb)
 		bt_hh_cbacks->connection_state_cb((bt_bdaddr_t *) ev->bdaddr,
@@ -42,7 +42,7 @@ static void handle_conn_state(void *buf)
 
 static void handle_info(void *buf)
 {
-	struct hal_ev_hid_info *ev = buf;
+	struct hal_ev_hidhost_info *ev = buf;
 	bthh_hid_info_t info;
 
 	info.attr_mask = ev->attr;
@@ -61,7 +61,7 @@ static void handle_info(void *buf)
 
 static void handle_proto_mode(void *buf)
 {
-	struct hal_ev_hid_proto_mode *ev = buf;
+	struct hal_ev_hidhost_proto_mode *ev = buf;
 
 	if (bt_hh_cbacks->protocol_mode_cb)
 		bt_hh_cbacks->protocol_mode_cb((bt_bdaddr_t *) ev->bdaddr,
@@ -70,7 +70,7 @@ static void handle_proto_mode(void *buf)
 
 static void handle_get_report(void *buf)
 {
-	struct hal_ev_hid_get_report *ev = buf;
+	struct hal_ev_hidhost_get_report *ev = buf;
 
 	if (bt_hh_cbacks->get_report_cb)
 		bt_hh_cbacks->get_report_cb((bt_bdaddr_t *) ev->bdaddr,
@@ -84,16 +84,16 @@ void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 		return;
 
 	switch (opcode) {
-	case HAL_EV_HID_CONN_STATE:
+	case HAL_EV_HIDHOST_CONN_STATE:
 		handle_conn_state(buf);
 		break;
-	case HAL_EV_HID_INFO:
+	case HAL_EV_HIDHOST_INFO:
 		handle_info(buf);
 		break;
-	case HAL_EV_HID_PROTO_MODE:
+	case HAL_EV_HIDHOST_PROTO_MODE:
 		handle_proto_mode(buf);
 		break;
-	case HAL_EV_HID_GET_REPORT:
+	case HAL_EV_HIDHOST_GET_REPORT:
 		handle_get_report(buf);
 		break;
 	default:
@@ -104,7 +104,7 @@ void bt_notify_hh(uint16_t opcode, void *buf, uint16_t len)
 
 static bt_status_t hh_connect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_hid_connect cmd;
+	struct hal_cmd_hidhost_connect cmd;
 
 	DBG("");
 
@@ -116,13 +116,13 @@ static bt_status_t hh_connect(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_CONNECT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_CONNECT,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_disconnect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_hid_disconnect cmd;
+	struct hal_cmd_hidhost_disconnect cmd;
 
 	DBG("");
 
@@ -134,13 +134,13 @@ static bt_status_t hh_disconnect(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_DISCONNECT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_DISCONNECT,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_hid_vp cmd;
+	struct hal_cmd_hidhost_vp cmd;
 
 	DBG("");
 
@@ -152,13 +152,13 @@ static bt_status_t hh_virtual_unplug(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_VP,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_VP,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 {
-	struct hal_cmd_hid_set_info cmd;
+	struct hal_cmd_hidhost_set_info cmd;
 
 	DBG("");
 
@@ -178,14 +178,14 @@ static bt_status_t hh_set_info(bt_bdaddr_t *bd_addr, bthh_hid_info_t hid_info)
 	cmd.descr_len = hid_info.dl_len;
 	memcpy(cmd.descr, hid_info.dsc_list, cmd.descr_len);
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_SET_INFO,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_INFO,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocol_mode)
 {
-	struct hal_cmd_hid_get_protocol cmd;
+	struct hal_cmd_hidhost_get_protocol cmd;
 
 	DBG("");
 
@@ -199,24 +199,24 @@ static bt_status_t hh_get_protocol(bt_bdaddr_t *bd_addr,
 
 	switch (protocol_mode) {
 	case BTHH_REPORT_MODE:
-		cmd.mode = HAL_HID_REPORT_PROTOCOL;
+		cmd.mode = HAL_HIDHOST_REPORT_PROTOCOL;
 		break;
 	case BTHH_BOOT_MODE:
-		cmd.mode = HAL_HID_BOOT_PROTOCOL;
+		cmd.mode = HAL_HIDHOST_BOOT_PROTOCOL;
 		break;
 	default:
 		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
-				HAL_OP_HID_GET_PROTOCOL,
+				HAL_OP_HIDHOST_GET_PROTOCOL,
 				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 					bthh_protocol_mode_t protocol_mode)
 {
-	struct hal_cmd_hid_set_protocol cmd;
+	struct hal_cmd_hidhost_set_protocol cmd;
 
 	DBG("");
 
@@ -230,17 +230,17 @@ static bt_status_t hh_set_protocol(bt_bdaddr_t *bd_addr,
 
 	switch (protocol_mode) {
 	case BTHH_REPORT_MODE:
-		cmd.mode = HAL_HID_REPORT_PROTOCOL;
+		cmd.mode = HAL_HIDHOST_REPORT_PROTOCOL;
 		break;
 	case BTHH_BOOT_MODE:
-		cmd.mode = HAL_HID_BOOT_PROTOCOL;
+		cmd.mode = HAL_HIDHOST_BOOT_PROTOCOL;
 		break;
 	default:
 		return BT_STATUS_PARM_INVALID;
 	}
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
-				HAL_OP_HID_SET_PROTOCOL,
+				HAL_OP_HIDHOST_SET_PROTOCOL,
 				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
@@ -249,7 +249,7 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 						uint8_t report_id,
 						int buffer_size)
 {
-	struct hal_cmd_hid_get_report cmd;
+	struct hal_cmd_hidhost_get_report cmd;
 
 	DBG("");
 
@@ -265,19 +265,19 @@ static bt_status_t hh_get_report(bt_bdaddr_t *bd_addr,
 
 	switch (report_type) {
 	case BTHH_INPUT_REPORT:
-		cmd.type = HAL_HID_INPUT_REPORT;
+		cmd.type = HAL_HIDHOST_INPUT_REPORT;
 		break;
 	case BTHH_OUTPUT_REPORT:
-		cmd.type = HAL_HID_OUTPUT_REPORT;
+		cmd.type = HAL_HIDHOST_OUTPUT_REPORT;
 		break;
 	case BTHH_FEATURE_REPORT:
-		cmd.type = HAL_HID_FEATURE_REPORT;
+		cmd.type = HAL_HIDHOST_FEATURE_REPORT;
 		break;
 	default:
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_GET_REPORT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_GET_REPORT,
 			sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
@@ -285,7 +285,7 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 						bthh_report_type_t report_type,
 						char *report)
 {
-	struct hal_cmd_hid_set_report cmd;
+	struct hal_cmd_hidhost_set_report cmd;
 
 	DBG("");
 
@@ -301,25 +301,25 @@ static bt_status_t hh_set_report(bt_bdaddr_t *bd_addr,
 
 	switch (report_type) {
 	case BTHH_INPUT_REPORT:
-		cmd.type = HAL_HID_INPUT_REPORT;
+		cmd.type = HAL_HIDHOST_INPUT_REPORT;
 		break;
 	case BTHH_OUTPUT_REPORT:
-		cmd.type = HAL_HID_OUTPUT_REPORT;
+		cmd.type = HAL_HIDHOST_OUTPUT_REPORT;
 		break;
 	case BTHH_FEATURE_REPORT:
-		cmd.type = HAL_HID_FEATURE_REPORT;
+		cmd.type = HAL_HIDHOST_FEATURE_REPORT;
 		break;
 	default:
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_SET_REPORT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SET_REPORT,
 				sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 {
-	struct hal_cmd_hid_send_data cmd;
+	struct hal_cmd_hidhost_send_data cmd;
 
 	DBG("");
 
@@ -331,7 +331,7 @@ static bt_status_t hh_send_data(bt_bdaddr_t *bd_addr, char *data)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HID_SEND_DATA,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SEND_DATA,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 

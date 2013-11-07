@@ -255,7 +255,7 @@ static gboolean intr_io_watch_cb(GIOChannel *chan, gpointer data)
 
 static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 {
-	struct hal_ev_hid_conn_state ev;
+	struct hal_ev_hidhost_conn_state ev;
 	char address[18];
 
 	if (dev->state == state)
@@ -270,7 +270,7 @@ static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 	ev.state = state;
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-				HAL_EV_HID_CONN_STATE, sizeof(ev), &ev, -1);
+			HAL_EV_HIDHOST_CONN_STATE, sizeof(ev), &ev, -1);
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
@@ -304,7 +304,7 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
 static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 									int len)
 {
-	struct hal_ev_hid_proto_mode ev;
+	struct hal_ev_hidhost_proto_mode ev;
 	char address[18];
 
 	ba2str(&dev->dst, address);
@@ -314,34 +314,34 @@ static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 	bdaddr2android(&dev->dst, ev.bdaddr);
 
 	if (buf[0] == HID_MSG_DATA) {
-		ev.status = HAL_HID_STATUS_OK;
+		ev.status = HAL_HIDHOST_STATUS_OK;
 		if (buf[1] == HID_PROTO_REPORT)
-			ev.mode = HAL_HID_REPORT_PROTOCOL;
+			ev.mode = HAL_HIDHOST_REPORT_PROTOCOL;
 		else if (buf[1] == HID_PROTO_BOOT)
-			ev.mode = HAL_HID_BOOT_PROTOCOL;
+			ev.mode = HAL_HIDHOST_BOOT_PROTOCOL;
 		else
-			ev.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
+			ev.mode = HAL_HIDHOST_UNSUPPORTED_PROTOCOL;
 
 	} else {
 		ev.status = buf[0];
-		ev.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
+		ev.mode = HAL_HIDHOST_UNSUPPORTED_PROTOCOL;
 	}
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-				HAL_EV_HID_PROTO_MODE, sizeof(ev), &ev, -1);
+			HAL_EV_HIDHOST_PROTO_MODE, sizeof(ev), &ev, -1);
 }
 
 static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 									int len)
 {
-	struct hal_ev_hid_get_report *ev;
+	struct hal_ev_hidhost_get_report *ev;
 	int ev_len;
 	char address[18];
 
 	ba2str(&dev->dst, address);
 	DBG("device %s", address);
 
-	ev_len = sizeof(*ev) + sizeof(struct hal_ev_hid_get_report) + 1;
+	ev_len = sizeof(*ev) + sizeof(struct hal_ev_hidhost_get_report) + 1;
 
 	if (!((buf[0] == (HID_MSG_DATA | HID_DATA_TYPE_INPUT)) ||
 			(buf[0] == (HID_MSG_DATA | HID_DATA_TYPE_OUTPUT)) ||
@@ -356,7 +356,7 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	 * protocol mode id doesn't exist */
 	ev_len += (dev->boot_dev) ? (len - 1) : (len - 2);
 	ev = g_malloc0(ev_len);
-	ev->status = HAL_HID_STATUS_OK;
+	ev->status = HAL_HIDHOST_STATUS_OK;
 	bdaddr2android(&dev->dst, ev->bdaddr);
 
 	/* Report porotocol mode reply contains id after hdr, in boot
@@ -371,7 +371,7 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 
 send:
 	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-					HAL_EV_HID_GET_REPORT, ev_len, ev, -1);
+				HAL_EV_HIDHOST_GET_REPORT, ev_len, ev, -1);
 	g_free(ev);
 }
 
@@ -416,7 +416,7 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 		return ctrl_io_watch_cb(chan, data);
 
 	ba2str(&dev->dst, address);
-	bt_hid_notify_state(dev, HAL_HID_STATE_DISCONNECTED);
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 
 	/* Checking for intr_watch avoids a double g_io_channel_shutdown since
 	 * it's likely that intr_watch_cb has been queued for dispatching in
@@ -434,7 +434,7 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 
 static void bt_hid_set_info(struct hid_device *dev)
 {
-	struct hal_ev_hid_info ev;
+	struct hal_ev_hidhost_info ev;
 
 	DBG("");
 
@@ -450,7 +450,7 @@ static void bt_hid_set_info(struct hid_device *dev)
 	memset(ev.descr, 0, sizeof(ev.descr));
 	memcpy(ev.descr, dev->rd_data, ev.descr_len);
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_INFO,
 							sizeof(ev), &ev, -1);
 }
 
@@ -463,7 +463,7 @@ static int uhid_create(struct hid_device *dev)
 	dev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
 	if (dev->uhid_fd < 0) {
 		error("Failed to open uHID device: %s", strerror(errno));
-		bt_hid_notify_state(dev, HAL_HID_STATE_NO_HID);
+		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_NO_HID);
 		return -errno;
 	}
 
@@ -512,7 +512,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				intr_watch_cb, dev);
 
-	bt_hid_notify_state(dev, HAL_HID_STATE_CONNECTED);
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTED);
 
 	return;
 
@@ -542,7 +542,7 @@ static void control_connect_cb(GIOChannel *chan, GError *conn_err,
 	DBG("");
 
 	if (conn_err) {
-		bt_hid_notify_state(dev, HAL_HID_STATE_DISCONNECTED);
+		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 		error("%s", conn_err->message);
 		goto failed;
 	}
@@ -663,11 +663,12 @@ static void hid_sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 	return;
 
 fail:
-	bt_hid_notify_state(dev, HAL_HID_STATE_DISCONNECTED);
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 	hid_device_free(dev);
 }
 
-static uint8_t bt_hid_connect(struct hal_cmd_hid_connect *cmd, uint16_t len)
+static uint8_t bt_hid_connect(struct hal_cmd_hidhost_connect *cmd,
+								uint16_t len)
 {
 	struct hid_device *dev;
 	char addr[18];
@@ -703,12 +704,12 @@ static uint8_t bt_hid_connect(struct hal_cmd_hid_connect *cmd, uint16_t len)
 	}
 
 	devices = g_slist_append(devices, dev);
-	bt_hid_notify_state(dev, HAL_HID_STATE_CONNECTING);
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTING);
 
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_disconnect(struct hal_cmd_hid_disconnect *cmd,
+static uint8_t bt_hid_disconnect(struct hal_cmd_hidhost_disconnect *cmd,
 								uint16_t len)
 {
 	struct hid_device *dev;
@@ -735,26 +736,27 @@ static uint8_t bt_hid_disconnect(struct hal_cmd_hid_disconnect *cmd,
 	if (dev->ctrl_io)
 		g_io_channel_shutdown(dev->ctrl_io, TRUE, NULL);
 
-	bt_hid_notify_state(dev, HAL_HID_STATE_DISCONNECTING);
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTING);
 
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hid_vp *cmd, uint16_t len)
+static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hidhost_vp *cmd,
+								uint16_t len)
 {
 	DBG("Not Implemented");
 
 	return HAL_STATUS_FAILED;
 }
 
-static uint8_t bt_hid_info(struct hal_cmd_hid_set_info *cmd, uint16_t len)
+static uint8_t bt_hid_info(struct hal_cmd_hidhost_set_info *cmd, uint16_t len)
 {
 	DBG("Not Implemented");
 
 	return HAL_STATUS_FAILED;
 }
 
-static uint8_t bt_hid_get_protocol(struct hal_cmd_hid_get_protocol *cmd,
+static uint8_t bt_hid_get_protocol(struct hal_cmd_hidhost_get_protocol *cmd,
 								uint16_t len)
 {
 	struct hid_device *dev;
@@ -791,7 +793,7 @@ static uint8_t bt_hid_get_protocol(struct hal_cmd_hid_get_protocol *cmd,
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_set_protocol(struct hal_cmd_hid_set_protocol *cmd,
+static uint8_t bt_hid_set_protocol(struct hal_cmd_hidhost_set_protocol *cmd,
 								uint16_t len)
 {
 	struct hid_device *dev;
@@ -828,7 +830,7 @@ static uint8_t bt_hid_set_protocol(struct hal_cmd_hid_set_protocol *cmd,
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_get_report(struct hal_cmd_hid_get_report *cmd,
+static uint8_t bt_hid_get_report(struct hal_cmd_hidhost_get_report *cmd,
 								uint16_t len)
 {
 	struct hid_device *dev;
@@ -876,7 +878,7 @@ static uint8_t bt_hid_get_report(struct hal_cmd_hid_get_report *cmd,
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_set_report(struct hal_cmd_hid_set_report *cmd,
+static uint8_t bt_hid_set_report(struct hal_cmd_hidhost_set_report *cmd,
 								uint16_t len)
 {
 	struct hid_device *dev;
@@ -919,7 +921,7 @@ static uint8_t bt_hid_set_report(struct hal_cmd_hid_set_report *cmd,
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_send_data(struct hal_cmd_hid_send_data *cmd,
+static uint8_t bt_hid_send_data(struct hal_cmd_hidhost_send_data *cmd,
 								uint16_t len)
 {
 	DBG("Not Implemented");
@@ -932,31 +934,31 @@ void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 	uint8_t status = HAL_STATUS_FAILED;
 
 	switch (opcode) {
-	case HAL_OP_HID_CONNECT:
+	case HAL_OP_HIDHOST_CONNECT:
 		status = bt_hid_connect(buf, len);
 		break;
-	case HAL_OP_HID_DISCONNECT:
+	case HAL_OP_HIDHOST_DISCONNECT:
 		status = bt_hid_disconnect(buf, len);
 		break;
-	case HAL_OP_HID_VP:
+	case HAL_OP_HIDHOST_VP:
 		status = bt_hid_virtual_unplug(buf, len);
 		break;
-	case HAL_OP_HID_SET_INFO:
+	case HAL_OP_HIDHOST_SET_INFO:
 		status = bt_hid_info(buf, len);
 		break;
-	case HAL_OP_HID_GET_PROTOCOL:
+	case HAL_OP_HIDHOST_GET_PROTOCOL:
 		status = bt_hid_get_protocol(buf, len);
 		break;
-	case HAL_OP_HID_SET_PROTOCOL:
+	case HAL_OP_HIDHOST_SET_PROTOCOL:
 		status = bt_hid_set_protocol(buf, len);
 		break;
-	case HAL_OP_HID_GET_REPORT:
+	case HAL_OP_HIDHOST_GET_REPORT:
 		status = bt_hid_get_report(buf, len);
 		break;
-	case HAL_OP_HID_SET_REPORT:
+	case HAL_OP_HIDHOST_SET_REPORT:
 		status = bt_hid_set_report(buf, len);
 		break;
-	case HAL_OP_HID_SEND_DATA:
+	case HAL_OP_HIDHOST_SEND_DATA:
 		status = bt_hid_send_data(buf, len);
 		break;
 	default:
@@ -1020,7 +1022,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		dev->ctrl_watch = g_io_add_watch(dev->ctrl_io,
 					G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 					ctrl_watch_cb, dev);
-		bt_hid_notify_state(dev, HAL_HID_STATE_CONNECTING);
+		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTING);
 		break;
 
 	case L2CAP_PSM_HIDP_INTR:
@@ -1033,7 +1035,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		dev->intr_watch = g_io_add_watch(dev->intr_io,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 				intr_watch_cb, dev);
-		bt_hid_notify_state(dev, HAL_HID_STATE_CONNECTED);
+		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_CONNECTED);
 		break;
 	}
 }
