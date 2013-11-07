@@ -298,7 +298,9 @@ struct hal_cmd_hidhost_set_report {
 
 #define HAL_OP_HIDHOST_SEND_DATA		0x09
 struct hal_cmd_hidhost_send_data {
-	uint8_t bdaddr[6];
+	uint8_t  bdaddr[6];
+	uint16_t len;
+	uint8_t  data[0];
 } __attribute__((packed));
 
 /* a2dp HAL API */
