@@ -373,7 +373,7 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 
 		*fd = -1;
 
-		for (cmsg = CMSG_FIRSTHDR(&msg); !cmsg;
+		for (cmsg = CMSG_FIRSTHDR(&msg); cmsg;
 					cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 			if (cmsg->cmsg_level == SOL_SOCKET
 					&& cmsg->cmsg_type == SCM_RIGHTS) {
