@@ -741,7 +741,7 @@ static uint8_t bt_hid_disconnect(struct hal_cmd_hidhost_disconnect *cmd,
 	return HAL_STATUS_SUCCESS;
 }
 
-static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hidhost_vp *cmd,
+static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hidhost_virtual_unplug *cmd,
 								uint16_t len)
 {
 	DBG("Not Implemented");
@@ -940,7 +940,7 @@ void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 	case HAL_OP_HIDHOST_DISCONNECT:
 		status = bt_hid_disconnect(buf, len);
 		break;
-	case HAL_OP_HIDHOST_VP:
+	case HAL_OP_HIDHOST_VIRTUAL_UNPLUG:
 		status = bt_hid_virtual_unplug(buf, len);
 		break;
 	case HAL_OP_HIDHOST_SET_INFO:

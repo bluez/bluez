@@ -242,8 +242,8 @@ struct hal_cmd_hidhost_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_HIDHOST_VP			0x03
-struct hal_cmd_hidhost_vp {
+#define HAL_OP_HIDHOST_VIRTUAL_UNPLUG		0x03
+struct hal_cmd_hidhost_virtual_unplug {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 

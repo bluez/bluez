@@ -152,7 +152,7 @@ static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 
 static bt_status_t virtual_unplug(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_hidhost_vp cmd;
+	struct hal_cmd_hidhost_virtual_unplug cmd;
 
 	DBG("");
 
@@ -164,7 +164,8 @@ static bt_status_t virtual_unplug(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_VP,
+	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST,
+					HAL_OP_HIDHOST_VIRTUAL_UNPLUG,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
