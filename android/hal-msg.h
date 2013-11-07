@@ -301,13 +301,15 @@ struct hal_cmd_hid_send_data {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_AV_CONNECT	0x01
-struct hal_cmd_av_connect {
+/* a2dp HAL API */
+
+#define HAL_OP_A2DP_CONNECT	0x01
+struct hal_cmd_a2dp_connect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_OP_AV_DISCONNECT	0x02
-struct hal_cmd_av_disconnect {
+#define HAL_OP_A2DP_DISCONNECT	0x02
+struct hal_cmd_a2dp_disconnect {
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
@@ -475,14 +477,14 @@ struct hal_ev_hid_get_report {
 	uint8_t  data[0];
 } __attribute__((packed));
 
-#define HAL_EV_AV_CONNECTION_STATE	0x81
-struct hal_ev_av_connection_state {
+#define HAL_EV_A2DP_CONNECTION_STATE	0x81
+struct hal_ev_a2dp_connection_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_EV_AV_AUDIO_STATE	0x82
-struct hal_ev_av_audio_state {
+#define HAL_EV_A2DP_AUDIO_STATE	0x82
+struct hal_ev_a2dp_audio_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
 } __attribute__((packed));

@@ -40,14 +40,15 @@
 
 static int notification_sk = -1;
 
-static uint8_t bt_a2dp_connect(struct hal_cmd_av_connect *cmd, uint16_t len)
+static uint8_t bt_a2dp_connect(struct hal_cmd_a2dp_connect *cmd, uint16_t len)
 {
 	DBG("Not Implemented");
 
 	return HAL_STATUS_FAILED;
 }
 
-static uint8_t bt_a2dp_disconnect(struct hal_cmd_av_connect *cmd, uint16_t len)
+static uint8_t bt_a2dp_disconnect(struct hal_cmd_a2dp_connect *cmd,
+								uint16_t len)
 {
 	DBG("Not Implemented");
 
@@ -59,10 +60,10 @@ void bt_a2dp_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 	uint8_t status = HAL_STATUS_FAILED;
 
 	switch (opcode) {
-	case HAL_OP_AV_CONNECT:
+	case HAL_OP_A2DP_CONNECT:
 		status = bt_a2dp_connect(buf, len);
 		break;
-	case HAL_OP_AV_DISCONNECT:
+	case HAL_OP_A2DP_DISCONNECT:
 		status = bt_a2dp_disconnect(buf, len);
 		break;
 	default:

@@ -33,7 +33,7 @@ static bool interface_ready(void)
 
 static void handle_connection_state(void *buf)
 {
-	struct hal_ev_av_connection_state *ev = buf;
+	struct hal_ev_a2dp_connection_state *ev = buf;
 
 	if (cbs->connection_state_cb)
 		cbs->connection_state_cb(ev->state,
@@ -42,7 +42,7 @@ static void handle_connection_state(void *buf)
 
 static void handle_audio_state(void *buf)
 {
-	struct hal_ev_av_audio_state *ev = buf;
+	struct hal_ev_a2dp_audio_state *ev = buf;
 
 	if (cbs->audio_state_cb)
 		cbs->audio_state_cb(ev->state, (bt_bdaddr_t *)(ev->bdaddr));
@@ -55,10 +55,10 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 		return;
 
 	switch (opcode) {
-	case HAL_EV_AV_CONNECTION_STATE:
+	case HAL_EV_A2DP_CONNECTION_STATE:
 		handle_connection_state(buf);
 		break;
-	case HAL_EV_AV_AUDIO_STATE:
+	case HAL_EV_A2DP_AUDIO_STATE:
 		handle_audio_state(buf);
 		break;
 	default:
@@ -69,7 +69,7 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 
 static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_av_connect cmd;
+	struct hal_cmd_a2dp_connect cmd;
 
 	DBG("");
 
@@ -78,13 +78,13 @@ static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_AV_CONNECT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_CONNECT,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
 static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
 {
-	struct hal_cmd_av_disconnect cmd;
+	struct hal_cmd_a2dp_disconnect cmd;
 
 	DBG("");
 
@@ -93,7 +93,7 @@ static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_AV_DISCONNECT,
+	return hal_ipc_cmd(HAL_SERVICE_ID_A2DP, HAL_OP_A2DP_DISCONNECT,
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
