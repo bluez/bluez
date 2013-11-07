@@ -77,6 +77,15 @@ static void handle_get_report(void *buf)
 							ev->data, ev->len);
 }
 
+static void handle_virtual_unplug(void *buf)
+{
+	struct hal_ev_hidhost_virtual_unplug *ev = buf;
+
+	if (cbacks->virtual_unplug_cb)
+		cbacks->virtual_unplug_cb((bt_bdaddr_t *) ev->bdaddr,
+								ev->status);
+}
+
 /* will be called from notification thread context */
 void bt_notify_hidhost(uint16_t opcode, void *buf, uint16_t len)
 {
@@ -95,6 +104,9 @@ void bt_notify_hidhost(uint16_t opcode, void *buf, uint16_t len)
 		break;
 	case HAL_EV_HIDHOST_GET_REPORT:
 		handle_get_report(buf);
+		break;
+	case HAL_EV_HIDHOST_VIRTUAL_UNPLUG:
+		handle_virtual_unplug(buf);
 		break;
 	default:
 		DBG("Unhandled callback opcode=0x%x", opcode);
