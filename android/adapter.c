@@ -48,6 +48,8 @@
 
 /* Default to DisplayYesNo */
 #define DEFAULT_IO_CAPABILITY 0x01
+#define BASELEN_PROP_CHANGED sizeof(struct hal_ev_adapter_props_changed) \
+				+ (sizeof(struct hal_property))
 
 static int notification_sk = -1;
 /* This list contains addresses which are asked for records */
@@ -91,7 +93,7 @@ static void adapter_name_changed(const uint8_t *name)
 {
 	struct hal_ev_adapter_props_changed *ev;
 	size_t len = strlen((const char *) name);
-	uint8_t buf[sizeof(*ev) + sizeof(struct hal_property) + len];
+	uint8_t buf[BASELEN_PROP_CHANGED + len];
 
 	memset(buf, 0, sizeof(buf));
 	ev = (void *) buf;
