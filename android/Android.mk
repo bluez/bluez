@@ -22,7 +22,7 @@ include $(CLEAR_VARS)
 LOCAL_SRC_FILES := \
 	main.c \
 	adapter.c \
-	hid.c \
+	hidhost.c \
 	socket.c \
 	ipc.c ipc.h \
 	a2dp.c \

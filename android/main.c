@@ -50,7 +50,7 @@
 
 #include "adapter.h"
 #include "socket.h"
-#include "hid.h"
+#include "hidhost.h"
 #include "hal-msg.h"
 #include "ipc.h"
 #include "a2dp.h"

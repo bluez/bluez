@@ -46,7 +46,7 @@
 #include "log.h"
 #include "hal-msg.h"
 #include "ipc.h"
-#include "hid.h"
+#include "hidhost.h"
 #include "adapter.h"
 #include "utils.h"
 
