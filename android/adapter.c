@@ -48,6 +48,9 @@
 
 /* Default to DisplayYesNo */
 #define DEFAULT_IO_CAPABILITY 0x01
+/* Default discoverable timeout 120sec as in Android */
+#define DEFAULT_DISCOVERABLE_TIMEOUT 120
+
 #define BASELEN_PROP_CHANGED sizeof(struct hal_ev_adapter_props_changed) \
 				+ (sizeof(struct hal_property))
 
@@ -70,6 +73,7 @@ struct bt_adapter {
 	uint32_t current_settings;
 
 	bool discovering;
+	uint32_t discoverable_timeout;
 };
 
 struct browse_req {
@@ -1101,6 +1105,17 @@ static uint8_t set_adapter_name(uint8_t *name, uint16_t len)
 	return HAL_STATUS_FAILED;
 }
 
+static uint8_t set_discoverable_timeout(uint8_t *timeout)
+{
+	/* Android handles discoverable timeout in Settings app.
+	 * There is no need to use kernel feature for that.
+	 * Just need to store this value here */
+
+	/* TODO: This should be in some storage */
+	memcpy(&adapter->discoverable_timeout, timeout, sizeof(uint32_t));
+
+	return HAL_STATUS_SUCCESS;
+}
 static void read_info_complete(uint8_t status, uint16_t length, const void *param,
 							void *user_data)
 {
@@ -1169,6 +1184,8 @@ void bt_adapter_init(uint16_t index, struct mgmt *mgmt, bt_adapter_ready cb)
 	adapter->index = index;
 	adapter->discovering = false;
 	adapter->ready = cb;
+	/* TODO: Read it from some storage */
+	adapter->discoverable_timeout = DEFAULT_DISCOVERABLE_TIMEOUT;
 
 	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
 					read_info_complete, NULL, NULL) > 0)
@@ -1286,11 +1303,24 @@ static bool get_devices(void)
 
 static bool get_discoverable_timeout(void)
 {
-	DBG("Not implemented");
+	struct hal_ev_adapter_props_changed *ev;
+	uint8_t buf[BASELEN_PROP_CHANGED + sizeof(uint32_t)];
 
-	/* TODO: Add implementation */
+	memset(buf, 0, sizeof(buf));
+	ev = (void *) buf;
 
-	return false;
+	ev->num_props = 1;
+	ev->status = HAL_STATUS_SUCCESS;
+
+	ev->props[0].type = HAL_PROP_ADAPTER_DISC_TIMEOUT;
+	ev->props[0].len = sizeof(uint32_t);
+	memcpy(&ev->props[0].val, &adapter->discoverable_timeout,
+							sizeof(uint32_t));
+
+	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_ADAPTER_PROPS_CHANGED, sizeof(buf), ev, -1);
+
+	return true;
 }
 
 static bool get_property(void *buf, uint16_t len)
@@ -1441,6 +1471,7 @@ static uint8_t set_property(void *buf, uint16_t len)
 	case HAL_PROP_ADAPTER_NAME:
 		return set_adapter_name(cmd->val, cmd->len);
 	case HAL_PROP_ADAPTER_DISC_TIMEOUT:
+		return set_discoverable_timeout(cmd->val);
 	default:
 		DBG("Unhandled property type 0x%x", cmd->type);
 		return HAL_STATUS_FAILED;
