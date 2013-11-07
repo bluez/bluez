@@ -49,7 +49,7 @@ static void handle_audio_state(void *buf)
 }
 
 /* will be called from notification thread context */
-void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
+void bt_notify_a2dp(uint16_t opcode, void *buf, uint16_t len)
 {
 	if (!interface_ready())
 		return;
@@ -67,7 +67,7 @@ void bt_notify_av(uint16_t opcode, void *buf, uint16_t len)
 	}
 }
 
-static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
+static bt_status_t a2dp_connect(bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_a2dp_connect cmd;
 
@@ -82,7 +82,7 @@ static bt_status_t av_connect(bt_bdaddr_t *bd_addr)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
+static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 {
 	struct hal_cmd_a2dp_disconnect cmd;
 
@@ -97,7 +97,7 @@ static bt_status_t av_disconnect(bt_bdaddr_t *bd_addr)
 					sizeof(cmd), &cmd, NULL, NULL, NULL);
 }
 
-static bt_status_t av_init(btav_callbacks_t *callbacks)
+static bt_status_t init(btav_callbacks_t *callbacks)
 {
 	DBG("");
 
@@ -108,7 +108,7 @@ static bt_status_t av_init(btav_callbacks_t *callbacks)
 	return BT_STATUS_SUCCESS;
 }
 
-static void av_cleanup()
+static void cleanup()
 {
 	DBG("");
 
@@ -122,13 +122,13 @@ static void av_cleanup()
 
 static btav_interface_t iface = {
 	.size = sizeof(iface),
-	.init = av_init,
-	.connect = av_connect,
-	.disconnect = av_disconnect,
-	.cleanup = av_cleanup
+	.init = init,
+	.connect = a2dp_connect,
+	.disconnect = disconnect,
+	.cleanup = cleanup
 };
 
-btav_interface_t *bt_get_av_interface()
+btav_interface_t *bt_get_a2dp_interface()
 {
 	return &iface;
 }

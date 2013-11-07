@@ -654,7 +654,7 @@ static const void *get_profile_interface(const char *profile_id)
 		return bt_get_pan_interface();
 
 	if (!strcmp(profile_id, BT_PROFILE_ADVANCED_AUDIO_ID))
-		return bt_get_av_interface();
+		return bt_get_a2dp_interface();
 
 	return NULL;
 }

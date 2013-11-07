@@ -53,7 +53,7 @@ static void notification_dispatch(struct hal_hdr *msg, int fd)
 		bt_notify_hh(msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		bt_notify_av(msg->opcode, msg->payload, msg->len);
+		bt_notify_a2dp(msg->opcode, msg->payload, msg->len);
 		break;
 	default:
 		DBG("Unhandled notification service=%d opcode=0x%x",
