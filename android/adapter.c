@@ -678,9 +678,9 @@ static int fill_device_props(struct hal_property *prop, bdaddr_t *addr,
 	/* fill name */
 	if (name) {
 		prop->type = HAL_PROP_DEVICE_NAME;
-		prop->len = HAL_MAX_NAME_LENGTH;
-		strncpy((char *) prop->val, name, HAL_MAX_NAME_LENGTH - 1);
-		prop = ((void *) prop) + sizeof(*prop) + HAL_MAX_NAME_LENGTH;
+		prop->len = strlen(name);
+		memcpy(prop->val, name, prop->len);
+		prop = ((void *) prop) + sizeof(*prop) + prop->len;
 		num_props++;
 	}
 
@@ -729,7 +729,7 @@ static void update_found_device(const bdaddr_t *bdaddr, uint8_t bdaddr_type,
 	props_size += sizeof(struct hal_property) + sizeof(rssi);
 
 	if (eir.name)
-		props_size += sizeof(struct hal_property) + HAL_MAX_NAME_LENGTH;
+		props_size += sizeof(struct hal_property) + strlen(eir.name);
 
 	if (is_new_dev) {
 		struct hal_ev_device_found *ev = NULL;
