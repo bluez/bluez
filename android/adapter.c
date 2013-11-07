@@ -631,14 +631,6 @@ static void mgmt_discovering_event(uint16_t index, uint16_t length,
 			HAL_EV_DISCOVERY_STATE_CHANGED, sizeof(cp), &cp, -1);
 }
 
-static void confirm_name_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	if (status != MGMT_STATUS_SUCCESS)
-		error("Failed to confirm name: %s (0x%02x)",
-						mgmt_errstr(status), status);
-}
-
 static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type)
 {
 	struct mgmt_cp_confirm_name cp;
@@ -648,8 +640,7 @@ static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type)
 	cp.addr.type = addr_type;
 
 	if (mgmt_reply(adapter->mgmt, MGMT_OP_CONFIRM_NAME, adapter->index,
-					sizeof(cp), &cp, confirm_name_complete,
-					NULL, NULL) == 0)
+					sizeof(cp), &cp, NULL, NULL, NULL) == 0)
 		error("Failed to send confirm name request");
 }
 
