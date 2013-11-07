@@ -32,13 +32,11 @@
 #include <signal.h>
 #include <sys/socket.h>
 
-#include <glib.h>
-
 #include "hal-msg.h"
 #include "ipc.h"
 #include "log.h"
 
-void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
+void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd)
 {
 	struct msghdr msg;
@@ -76,17 +74,17 @@ void ipc_send(GIOChannel *io, uint8_t service_id, uint8_t opcode, uint16_t len,
 		msg.msg_controllen = sizeof(cmsgbuf);
 	}
 
-	if (sendmsg(g_io_channel_unix_get_fd(io), &msg, 0) < 0) {
+	if (sendmsg(sk, &msg, 0) < 0) {
 		error("IPC send failed, terminating :%s", strerror(errno));
 		raise(SIGTERM);
 	}
 }
 
-void ipc_send_rsp(GIOChannel *io, uint8_t service_id, uint8_t status)
+void ipc_send_rsp(int sk, uint8_t service_id, uint8_t status)
 {
 	struct hal_status s;
 
 	s.code = status;
 
-	ipc_send(io, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
+	ipc_send(sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
 }

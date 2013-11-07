@@ -88,7 +88,8 @@ void bt_pan_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	}
 
-	ipc_send_rsp(io, HAL_SERVICE_ID_A2DP, status);
+	ipc_send_rsp(g_io_channel_unix_get_fd(io), HAL_SERVICE_ID_A2DP,
+								status);
 }
 
 bool bt_pan_register(GIOChannel *io, const bdaddr_t *addr)

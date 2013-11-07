@@ -269,7 +269,8 @@ static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send(notification_io, HAL_SERVICE_ID_HIDHOST,
+	ipc_send(g_io_channel_unix_get_fd(notification_io),
+				HAL_SERVICE_ID_HIDHOST,
 				HAL_EV_HID_CONN_STATE, sizeof(ev), &ev, -1);
 }
 
@@ -327,7 +328,8 @@ static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 		ev.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
 	}
 
-	ipc_send(notification_io, HAL_SERVICE_ID_HIDHOST,
+	ipc_send(g_io_channel_unix_get_fd(notification_io),
+				HAL_SERVICE_ID_HIDHOST,
 				HAL_EV_HID_PROTO_MODE, sizeof(ev), &ev, -1);
 }
 
@@ -370,7 +372,8 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	}
 
 send:
-	ipc_send(notification_io, HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_GET_REPORT,
+	ipc_send(g_io_channel_unix_get_fd(notification_io),
+			HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_GET_REPORT,
 						ev_len, ev, -1);
 	g_free(ev);
 }
@@ -450,7 +453,8 @@ static void bt_hid_set_info(struct hid_device *dev)
 	memset(ev.descr, 0, sizeof(ev.descr));
 	memcpy(ev.descr, dev->rd_data, ev.descr_len);
 
-	ipc_send(notification_io, HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
+	ipc_send(g_io_channel_unix_get_fd(notification_io),
+			HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
 							sizeof(ev), &ev, -1);
 }
 
@@ -964,7 +968,8 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(io, HAL_SERVICE_ID_HIDHOST, status);
+	ipc_send_rsp(g_io_channel_unix_get_fd(io), HAL_SERVICE_ID_HIDHOST,
+								status);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)

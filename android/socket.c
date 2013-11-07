@@ -53,6 +53,7 @@ static int handle_connect(void *buf)
 void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 							uint16_t len)
 {
+	int sk = g_io_channel_unix_get_fd(io);
 	int fd;
 
 	switch (opcode) {
@@ -61,21 +62,21 @@ void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		if (fd < 0)
 			break;
 
-		ipc_send(io, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		ipc_send(sk, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
 		return;
 	case HAL_OP_SOCK_CONNECT:
 		fd = handle_connect(buf);
 		if (fd < 0)
 			break;
 
-		ipc_send(io, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		ipc_send(sk, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
 		return;
 	default:
 		DBG("Unhandled command, opcode 0x%x", opcode);
 		break;
 	}
 
-	ipc_send_rsp(io, HAL_SERVICE_ID_SOCK, HAL_STATUS_FAILED);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_SOCK, HAL_STATUS_FAILED);
 }
 
 bool bt_socket_register(GIOChannel *io, const bdaddr_t *addr)
