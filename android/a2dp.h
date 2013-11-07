@@ -21,8 +21,7 @@
  *
  */
 
-void bt_a2dp_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
-								uint16_t len);
+void bt_a2dp_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-bool bt_a2dp_register(GIOChannel *io, const bdaddr_t *addr);
+bool bt_a2dp_register(int sk, const bdaddr_t *addr);
 void bt_a2dp_unregister(void);

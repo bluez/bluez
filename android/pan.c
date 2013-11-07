@@ -35,7 +35,7 @@
 #include "hal-msg.h"
 #include "ipc.h"
 
-static GIOChannel *notification_io = NULL;
+static int notification_sk = -1;
 
 static uint8_t bt_pan_enable(struct hal_cmd_pan_enable *cmd, uint16_t len)
 {
@@ -65,8 +65,7 @@ static uint8_t bt_pan_disconnect(struct hal_cmd_pan_connect *cmd, uint16_t len)
 	return HAL_STATUS_FAILED;
 }
 
-void bt_pan_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
-								uint16_t len)
+void bt_pan_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 {
 	uint8_t status = HAL_STATUS_FAILED;
 
@@ -88,15 +87,14 @@ void bt_pan_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 		break;
 	}
 
-	ipc_send_rsp(g_io_channel_unix_get_fd(io), HAL_SERVICE_ID_A2DP,
-								status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_A2DP, status);
 }
 
-bool bt_pan_register(GIOChannel *io, const bdaddr_t *addr)
+bool bt_pan_register(int sk, const bdaddr_t *addr)
 {
 	DBG("");
 
-	notification_io = g_io_channel_ref(io);
+	notification_sk = sk;
 
 	return true;
 }
@@ -105,6 +103,5 @@ void bt_pan_unregister(void)
 {
 	DBG("");
 
-	g_io_channel_unref(notification_io);
-	notification_io = NULL;
+	notification_sk = -1;
 }

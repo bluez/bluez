@@ -50,10 +50,8 @@ static int handle_connect(void *buf)
 	return -1;
 }
 
-void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
-							uint16_t len)
+void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 {
-	int sk = g_io_channel_unix_get_fd(io);
 	int fd;
 
 	switch (opcode) {
@@ -79,7 +77,7 @@ void bt_sock_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf,
 	ipc_send_rsp(sk, HAL_SERVICE_ID_SOCK, HAL_STATUS_FAILED);
 }
 
-bool bt_socket_register(GIOChannel *io, const bdaddr_t *addr)
+bool bt_socket_register(int sk, const bdaddr_t *addr)
 {
 	DBG("");
 

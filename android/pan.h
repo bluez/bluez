@@ -21,7 +21,7 @@
  *
  */
 
-void bt_pan_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len);
+void bt_pan_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-bool bt_pan_register(GIOChannel *io, const bdaddr_t *addr);
+bool bt_pan_register(int sk, const bdaddr_t *addr);
 void bt_pan_unregister(void);

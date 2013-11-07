@@ -80,33 +80,34 @@ static void service_register(void *buf, uint16_t len)
 {
 	struct hal_cmd_register_module *m = buf;
 	const bdaddr_t *adapter_bdaddr = bt_adapter_get_address();
+	int sk = g_io_channel_unix_get_fd(hal_notif_io);
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
 		goto failed;
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		if (!bt_adapter_register(hal_notif_io))
+		if (!bt_adapter_register(sk))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_SOCK:
-		if (!bt_socket_register(hal_notif_io, adapter_bdaddr))
+		if (!bt_socket_register(sk, adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(hal_notif_io, adapter_bdaddr))
+		if (!bt_hid_register(sk, adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		if (!bt_a2dp_register(hal_notif_io, adapter_bdaddr))
+		if (!bt_a2dp_register(sk, adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_a2dp_register(hal_notif_io, adapter_bdaddr))
+		if (!bt_a2dp_register(sk, adapter_bdaddr))
 			goto failed;
 
 		break;
@@ -256,24 +257,19 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		handle_service_core(msg->opcode, buf + sizeof(*msg), msg->len);
 		break;
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_adapter_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
-								msg->len);
+		bt_adapter_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		bt_hid_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
-								msg->len);
+		bt_hid_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_SOCK:
-		bt_sock_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
-								msg->len);
+		bt_sock_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		bt_a2dp_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
-								msg->len);
+		bt_a2dp_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_PAN:
-		bt_pan_handle_cmd(hal_cmd_io, msg->opcode, msg->payload,
-								msg->len);
+		bt_pan_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	default:
 		ipc_send_rsp(fd, msg->service_id, HAL_STATUS_FAILED);

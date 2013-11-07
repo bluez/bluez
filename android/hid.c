@@ -73,7 +73,7 @@
 /* HID GET REPORT Size Field */
 #define HID_GET_REPORT_SIZE_FIELD	0x08
 
-static GIOChannel *notification_io = NULL;
+static int notification_sk = -1;
 static GIOChannel *ctrl_io = NULL;
 static GIOChannel *intr_io = NULL;
 static GSList *devices = NULL;
@@ -269,8 +269,7 @@ static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send(g_io_channel_unix_get_fd(notification_io),
-				HAL_SERVICE_ID_HIDHOST,
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
 				HAL_EV_HID_CONN_STATE, sizeof(ev), &ev, -1);
 }
 
@@ -328,8 +327,7 @@ static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 		ev.mode = HAL_HID_UNSUPPORTED_PROTOCOL;
 	}
 
-	ipc_send(g_io_channel_unix_get_fd(notification_io),
-				HAL_SERVICE_ID_HIDHOST,
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
 				HAL_EV_HID_PROTO_MODE, sizeof(ev), &ev, -1);
 }
 
@@ -372,9 +370,8 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	}
 
 send:
-	ipc_send(g_io_channel_unix_get_fd(notification_io),
-			HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_GET_REPORT,
-						ev_len, ev, -1);
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
+					HAL_EV_HID_GET_REPORT, ev_len, ev, -1);
 	g_free(ev);
 }
 
@@ -453,8 +450,7 @@ static void bt_hid_set_info(struct hid_device *dev)
 	memset(ev.descr, 0, sizeof(ev.descr));
 	memcpy(ev.descr, dev->rd_data, ev.descr_len);
 
-	ipc_send(g_io_channel_unix_get_fd(notification_io),
-			HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST, HAL_EV_HID_INFO,
 							sizeof(ev), &ev, -1);
 }
 
@@ -931,7 +927,7 @@ static uint8_t bt_hid_send_data(struct hal_cmd_hid_send_data *cmd,
 	return HAL_STATUS_FAILED;
 }
 
-void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
+void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 {
 	uint8_t status = HAL_STATUS_FAILED;
 
@@ -968,8 +964,7 @@ void bt_hid_handle_cmd(GIOChannel *io, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(g_io_channel_unix_get_fd(io), HAL_SERVICE_ID_HIDHOST,
-								status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_HIDHOST, status);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
@@ -1043,14 +1038,12 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 }
 
-bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
+bool bt_hid_register(int sk, const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	const bdaddr_t *src = bt_adapter_get_address();
 
 	DBG("");
-
-	notification_io = g_io_channel_ref(io);
 
 	ctrl_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR, src,
@@ -1075,6 +1068,8 @@ bool bt_hid_register(GIOChannel *io, const bdaddr_t *addr)
 		return false;
 	}
 
+	notification_sk = sk;
+
 	return true;
 }
 
@@ -1082,8 +1077,7 @@ void bt_hid_unregister(void)
 {
 	DBG("");
 
-	g_io_channel_unref(notification_io);
-	notification_io = NULL;
+	notification_sk = -1;
 
 	if (ctrl_io) {
 		g_io_channel_shutdown(ctrl_io, TRUE, NULL);
