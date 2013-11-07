@@ -254,7 +254,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 
 	switch (msg->service_id) {
 	case HAL_SERVICE_ID_CORE:
-		handle_service_core(msg->opcode, buf + sizeof(*msg), msg->len);
+		handle_service_core(msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_BLUETOOTH:
 		bt_adapter_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
