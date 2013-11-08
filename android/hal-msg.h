@@ -449,6 +449,7 @@ struct hal_ev_hidhost_conn_state {
 } __attribute__((packed));
 
 #define HAL_HIDHOST_STATUS_OK		0x00
+#define HAL_HIDHOST_GENERAL_ERROR	0x06
 
 #define HAL_EV_HIDHOST_INFO			0x82
 struct hal_ev_hidhost_info {

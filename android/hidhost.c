@@ -379,6 +379,31 @@ send:
 	g_free(ev);
 }
 
+static void bt_hid_notify_virtual_unplug(struct hid_device *dev,
+							uint8_t *buf, int len)
+{
+	struct hal_ev_hidhost_virtual_unplug ev;
+	char address[18];
+
+	ba2str(&dev->dst, address);
+	DBG("device %s", address);
+	bdaddr2android(&dev->dst, ev.bdaddr);
+
+	ev.status = HAL_HIDHOST_GENERAL_ERROR;
+
+	/* Wait either channels to HUP */
+	if (dev->intr_io && dev->ctrl_io) {
+		g_io_channel_shutdown(dev->intr_io, TRUE, NULL);
+		g_io_channel_shutdown(dev->ctrl_io, TRUE, NULL);
+		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTING);
+		ev.status = HAL_HIDHOST_STATUS_OK;
+	}
+
+	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
+			HAL_EV_HIDHOST_VIRTUAL_UNPLUG, sizeof(ev), &ev, -1);
+
+}
+
 static gboolean ctrl_io_watch_cb(GIOChannel *chan, gpointer data)
 {
 	struct hid_device *dev = data;
@@ -403,6 +428,9 @@ static gboolean ctrl_io_watch_cb(GIOChannel *chan, gpointer data)
 		bt_hid_notify_get_report(dev, buf, bread);
 		break;
 	}
+
+	if (buf[0] == (HID_MSG_CONTROL | HID_VIRTUAL_CABLE_UNPLUG))
+		bt_hid_notify_virtual_unplug(dev, buf, bread);
 
 	/* reset msg type request */
 	dev->last_hid_msg = 0;
