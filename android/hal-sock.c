@@ -23,6 +23,7 @@
 #include "hal-ipc.h"
 #include "hal-log.h"
 #include "hal-msg.h"
+#include "hal-utils.h"
 #include "hal.h"
 
 static bt_status_t sock_listen_rfcomm(const char *service_name,
@@ -49,13 +50,13 @@ static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
 					int *sock, int flags)
 {
 	if ((!uuid && chan <= 0) || !sock) {
-		error("%s: invalid params: uuid %p, chan %d, sock %p",
-						__func__, uuid, chan, sock);
+		error("Invalid params: uuid %s, chan %d, sock %p",
+						btuuid2str(uuid), chan, sock);
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	DBG("uuid %p chan %d sock %p type %d service_name %s",
-					uuid, chan, sock, type, service_name);
+	DBG("uuid %s chan %d sock %p type %d service_name %s",
+			btuuid2str(uuid), chan, sock, type, service_name);
 
 	switch (type) {
 	case BTSOCK_RFCOMM:
@@ -76,12 +77,13 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 	struct hal_cmd_sock_connect cmd;
 
 	if ((!uuid && chan <= 0) || !bdaddr || !sock) {
-		error("invalid params: bd_addr %p, uuid %p, chan %d, sock %p",
-					bdaddr, uuid, chan, sock);
+		error("Invalid params: bd_addr %p, uuid %s, chan %d, sock %p",
+					bdaddr, btuuid2str(uuid), chan, sock);
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	DBG("uuid %p chan %d sock %p type %d", uuid, chan, sock, type);
+	DBG("uuid %s chan %d sock %p type %d", btuuid2str(uuid), chan, sock,
+									type);
 
 	if (type != BTSOCK_RFCOMM) {
 		error("Socket type %u not supported", type);
