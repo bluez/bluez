@@ -931,9 +931,50 @@ static uint8_t bt_hid_set_report(struct hal_cmd_hidhost_set_report *cmd,
 static uint8_t bt_hid_send_data(struct hal_cmd_hidhost_send_data *cmd,
 								uint16_t len)
 {
-	DBG("Not Implemented");
+	struct hid_device *dev;
+	GSList *l;
+	bdaddr_t dst;
+	int i, fd;
+	uint8_t *req;
+	uint8_t req_size;
 
-	return HAL_STATUS_FAILED;
+	DBG("");
+
+	if (len < sizeof(*cmd))
+		return HAL_STATUS_INVALID;
+
+	android2bdaddr(&cmd->bdaddr, &dst);
+
+	l = g_slist_find_custom(devices, &dst, device_cmp);
+	if (!l)
+		return HAL_STATUS_FAILED;
+
+	dev = l->data;
+
+	if (!(dev->intr_io))
+		return HAL_STATUS_FAILED;
+
+	req_size = 1 + (cmd->len / 2);
+	req = g_try_malloc0(req_size);
+	if (!req)
+		return HAL_STATUS_NOMEM;
+
+	req[0] = HID_MSG_DATA | HID_DATA_TYPE_OUTPUT;
+	/* Report data coming to HAL is in ascii format, HAL sends
+	 * data in hex to daemon, so convert to binary. */
+	for (i = 0; i < (req_size - 1); i++)
+		sscanf((char *) &(cmd->data)[i * 2], "%hhx", &(req + 1)[i]);
+
+	fd = g_io_channel_unix_get_fd(dev->intr_io);
+
+	if (write(fd, req, req_size) < 0) {
+		error("error while sending data to device");
+		g_free(req);
+		return HAL_STATUS_FAILED;
+	}
+
+	g_free(req);
+	return HAL_STATUS_SUCCESS;
 }
 
 void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
