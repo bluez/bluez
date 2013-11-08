@@ -103,8 +103,6 @@ static struct int2str __##type##2str[] = {
 char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf);
 void str2bt_bdaddr_t(const char *str, bt_bdaddr_t *bd_addr);
 
-#define MAX_UUID_STR_LEN 37
-char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf);
 void str2bt_uuid_t(const char *str, bt_uuid_t *uuid);
 
 char *btproperty2str(const bt_property_t *property);

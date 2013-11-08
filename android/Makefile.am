@@ -68,7 +68,8 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/if-hh.c \
 				android/client/if-pan.c \
 				android/client/if-sock.c \
-				android/client/hwmodule.c
+				android/client/hwmodule.c \
+				android/hal-utils.h android/hal-utils.c
 
 android_haltest_LDADD = android/libhal-internal.la
 

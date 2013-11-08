@@ -88,6 +88,7 @@ LOCAL_SRC_FILES := \
 	hal-pan.c \
 	hal-a2dp.c \
 	client/textconv.c \
+	hal-utils.c \
 
 LOCAL_C_INCLUDES += \
 	$(call include-path-for, system-core) \
@@ -125,6 +126,7 @@ LOCAL_SRC_FILES := \
 	client/if-hh.c \
 	client/if-pan.c \
 	client/if-sock.c \
+	hal-utils.c \
 
 ANDROID_4_3_OR_ABOVE := $(shell echo 0 | awk -v v=$(PLATFORM_SDK_VERSION) 'END {print (v > 17) ? 1 : 0}')
 

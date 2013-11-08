@@ -17,6 +17,7 @@
 
 #include <hardware/bluetooth.h>
 
+#include "../hal-utils.h"
 #include "if-main.h"
 
 const btgatt_interface_t *if_gatt = NULL;

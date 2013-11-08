@@ -19,6 +19,8 @@
 #include <stdio.h>
 #include <hardware/bluetooth.h>
 
+#include "../hal-utils.h"
+
 #include "textconv.h"
 
 /*
@@ -154,39 +156,6 @@ void str2bt_bdaddr_t(const char *str, bt_bdaddr_t *bd_addr)
 				&p[0], &p[1], &p[2], &p[3], &p[4], &p[5]);
 }
 
-static const char BT_BASE_UUID[] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
-	0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb
-};
-
-/*
- * converts uuid to string
- * buf should be at least 39 bytes
- *
- * returns string representation of uuid
- */
-char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf)
-{
-	int shift = 0;
-	int i;
-	int is_bt;
-
-	is_bt = !memcmp(&uuid->uu[4], &BT_BASE_UUID[4], sizeof(bt_uuid_t) - 4);
-
-	for (i = 0; i < (int) sizeof(bt_uuid_t); i++) {
-		if (i == 4 && is_bt)
-			break;
-
-		if (i == 4 || i == 6 || i == 8 || i == 10) {
-			buf[i * 2 + shift] = '-';
-			shift++;
-		}
-		sprintf(buf + i * 2 + shift, "%02x", uuid->uu[i]);
-	}
-
-	return buf;
-}
-
 /* converts string to uuid */
 void str2bt_uuid_t(const char *str, bt_uuid_t *uuid)
 {
@@ -232,13 +201,6 @@ char *bdaddr2str(const bt_bdaddr_t *bd_addr)
 	static char buf[MAX_ADDR_STR_LEN];
 
 	return bt_bdaddr_t2str(bd_addr, buf);
-}
-
-static char *btuuid2str(const bt_uuid_t *uuid)
-{
-	static char buf[MAX_UUID_STR_LEN];
-
-	return bt_uuid_t2str(uuid, buf);
 }
 
 char *btproperty2str(const bt_property_t *property)
