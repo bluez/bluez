@@ -17,8 +17,7 @@
 
 #include <stdio.h>
 #include <string.h>
-
-#include <hardware/bluetooth.h>
+#include <stdint.h>
 
 #include "hal-utils.h"
 
@@ -28,15 +27,15 @@
  *
  * returns string representation of uuid
  */
-char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf)
+char *bt_uuid_t2str(const uint8_t *uuid, char *buf)
 {
 	int shift = 0;
-	int i;
+	unsigned int i;
 	int is_bt;
 
-	is_bt = !memcmp(&uuid->uu[4], &BT_BASE_UUID[4], sizeof(bt_uuid_t) - 4);
+	is_bt = !memcmp(&uuid[4], &BT_BASE_UUID[4], HAL_UUID_LEN - 4);
 
-	for (i = 0; i < (int) sizeof(bt_uuid_t); i++) {
+	for (i = 0; i < HAL_UUID_LEN; i++) {
 		if (i == 4 && is_bt)
 			break;
 
@@ -44,13 +43,13 @@ char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf)
 			buf[i * 2 + shift] = '-';
 			shift++;
 		}
-		sprintf(buf + i * 2 + shift, "%02x", uuid->uu[i]);
+		sprintf(buf + i * 2 + shift, "%02x", uuid[i]);
 	}
 
 	return buf;
 }
 
-char *btuuid2str(const bt_uuid_t *uuid)
+char *btuuid2str(const uint8_t *uuid)
 {
 	static char buf[MAX_UUID_STR_LEN];
 

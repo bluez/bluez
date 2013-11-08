@@ -15,12 +15,13 @@
  *
  */
 
-#define MAX_UUID_STR_LEN 37
+#define MAX_UUID_STR_LEN	37
+#define HAL_UUID_LEN		16
 
 static const char BT_BASE_UUID[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x00,
 	0x80, 0x00, 0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb
 };
 
-char *btuuid2str(const bt_uuid_t *uuid);
-char *bt_uuid_t2str(const bt_uuid_t *uuid, char *buf);
+char *bt_uuid_t2str(const uint8_t *uuid, char *buf);
+char *btuuid2str(const uint8_t *uuid);

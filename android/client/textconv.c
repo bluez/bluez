@@ -267,12 +267,12 @@ char *btproperty2str(const bt_property_t *property)
 	case BT_PROPERTY_UUIDS:
 		{
 			int count = property->len / sizeof(bt_uuid_t);
-			char *ptr = property->val;
+			uint8_t *ptr = property->val;
 
 			strcat(p, "{");
 
 			while (count--) {
-				strcat(p, btuuid2str((bt_uuid_t *) ptr));
+				strcat(p, btuuid2str(ptr));
 				if (count)
 					strcat(p, ", ");
 				ptr += sizeof(bt_uuid_t);
@@ -287,7 +287,7 @@ char *btproperty2str(const bt_property_t *property)
 		{
 			bt_service_record_t *rec = property->val;
 
-			sprintf(p, "{%s, %d, %s}", btuuid2str(&rec->uuid),
+			sprintf(p, "{%s, %d, %s}", btuuid2str(rec->uuid.uu),
 						rec->channel, rec->name);
 		}
 		break;
