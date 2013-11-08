@@ -252,7 +252,7 @@ static gboolean intr_io_watch_cb(GIOChannel *chan, gpointer data)
 	memcpy(ev.u.input.data, &buf[1], ev.u.input.size);
 
 	if (write(dev->uhid_fd, &ev, sizeof(ev)) < 0)
-		DBG("write: %s (%d)", strerror(errno), errno);
+		DBG("uhid write: %s (%d)", strerror(errno), errno);
 
 	return TRUE;
 }
@@ -775,7 +775,8 @@ static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hidhost_virtual_unplug *cmd,
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, &hdr, sizeof(hdr)) < 0) {
-		error("error while virtual unplug command");
+		error("error writing virtual unplug command: %s (%d)",
+						strerror(errno), errno);
 		return HAL_STATUS_FAILED;
 	}
 
@@ -827,7 +828,8 @@ static uint8_t bt_hid_get_protocol(struct hal_cmd_hidhost_get_protocol *cmd,
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, &hdr, sizeof(hdr)) < 0) {
-		error("error while querying device protocol");
+		error("error writing device_get_protocol: %s (%d)",
+						strerror(errno), errno);
 		return HAL_STATUS_FAILED;
 	}
 
@@ -864,7 +866,8 @@ static uint8_t bt_hid_set_protocol(struct hal_cmd_hidhost_set_protocol *cmd,
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, &hdr, sizeof(hdr)) < 0) {
-		error("error while setting device protocol");
+		error("error writing device_set_protocol: %s (%d)",
+						strerror(errno), errno);
 		return HAL_STATUS_FAILED;
 	}
 
@@ -910,7 +913,8 @@ static uint8_t bt_hid_get_report(struct hal_cmd_hidhost_get_report *cmd,
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, req, req_size) < 0) {
-		error("error while querying device protocol");
+		error("error writing hid_get_report: %s (%d)",
+						strerror(errno), errno);
 		g_free(req);
 		return HAL_STATUS_FAILED;
 	}
@@ -960,7 +964,8 @@ static uint8_t bt_hid_set_report(struct hal_cmd_hidhost_set_report *cmd,
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
 	if (write(fd, req, req_size) < 0) {
-		error("error while querying device protocol");
+		error("error writing hid_set_report: %s (%d)",
+						strerror(errno), errno);
 		g_free(req);
 		return HAL_STATUS_FAILED;
 	}
@@ -1010,7 +1015,8 @@ static uint8_t bt_hid_send_data(struct hal_cmd_hidhost_send_data *cmd,
 	fd = g_io_channel_unix_get_fd(dev->intr_io);
 
 	if (write(fd, req, req_size) < 0) {
-		error("error while sending data to device");
+		error("error writing data to HID device: %s (%d)",
+						strerror(errno), errno);
 		g_free(req);
 		return HAL_STATUS_FAILED;
 	}
