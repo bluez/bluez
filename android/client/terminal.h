@@ -57,5 +57,6 @@ int terminal_vprint(const char *format, va_list args);
 void terminal_process_char(int c, line_callback process_line);
 void terminal_insert_into_command_line(const char *p);
 void terminal_draw_command_line(void);
+void terminal_prompt_for(const char *s, line_callback process_line);
 
 void process_tab(const char *line, int len);

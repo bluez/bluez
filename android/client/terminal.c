@@ -684,6 +684,9 @@ TERMINAL_ACTION(terminal_action_default)
 		terminal_insert_into_command_line(str);
 }
 
+/* Callback to call when user hit enter during prompt for */
+static line_callback prompt_callback;
+
 static KeyAction normal_actions[] = {
 	{ 0, terminal_action_default },
 	{ KEY_LEFT, terminal_action_left },
@@ -709,6 +712,59 @@ static KeyAction normal_actions[] = {
 	{ 0, NULL },
 };
 
+TERMINAL_ACTION(terminal_action_answer)
+{
+	putchar(c);
+
+	terminal_set_actions(normal_actions);
+	/* Restore default prompt */
+	current_prompt = prompt_buf;
+
+	/* No prompt for prints */
+	prompt = noprompt;
+	line_buf_ix = 0;
+	line_len = 0;
+	/* Call user function with what was typed */
+	prompt_callback(line_buf);
+
+	line_buf[0] = 0;
+	/* promot_callback could change current_prompt */
+	prompt = current_prompt;
+
+	printf("%s", prompt);
+}
+
+TERMINAL_ACTION(terminal_action_prompt_ctrl_c)
+{
+	printf("^C\n");
+	line_buf_ix = 0;
+	line_len = 0;
+	line_buf[0] = 0;
+
+	current_prompt = prompt_buf;
+	prompt = current_prompt;
+	terminal_set_actions(normal_actions);
+
+	printf("%s", prompt);
+}
+
+static KeyAction prompt_actions[] = {
+	{ 0, terminal_action_default },
+	{ KEY_LEFT, terminal_action_left },
+	{ KEY_RIGHT, terminal_action_right },
+	{ KEY_HOME, terminal_action_home },
+	{ KEY_END, terminal_action_end },
+	{ KEY_DELETE, terminal_action_del },
+	{ KEY_CLEFT, terminal_action_word_left },
+	{ KEY_CRIGHT, terminal_action_word_right },
+	{ KEY_BACKSPACE, terminal_action_backspace },
+	{ KEY_C_C, terminal_action_prompt_ctrl_c },
+	{ KEY_C_D, terminal_action_ctrl_d },
+	{ '\r', terminal_action_answer },
+	{ '\n', terminal_action_answer },
+	{ 0, NULL },
+};
+
 void terminal_process_char(int c, line_callback process_line)
 {
 	KeyAction *a;
@@ -724,6 +780,17 @@ void terminal_process_char(int c, line_callback process_line)
 
 	a->func(c, process_line);
 	fflush(stdout);
+}
+
+void terminal_prompt_for(const char *s, line_callback process_line)
+{
+	current_prompt = s;
+	if (prompt != noprompt) {
+		prompt = s;
+		terminal_clear_line();
+	}
+	prompt_callback = process_line;
+	terminal_set_actions(prompt_actions);
 }
 
 static struct termios origianl_tios;
