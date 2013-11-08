@@ -107,7 +107,7 @@ static void service_register(void *buf, uint16_t len)
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_a2dp_register(sk, adapter_bdaddr))
+		if (!bt_pan_register(sk, adapter_bdaddr))
 			goto failed;
 
 		break;
