@@ -884,7 +884,7 @@ static uint8_t bt_hid_set_report(struct hal_cmd_hidhost_set_report *cmd,
 	struct hid_device *dev;
 	GSList *l;
 	bdaddr_t dst;
-	int fd;
+	int i, fd;
 	uint8_t *req;
 	uint8_t req_size;
 
@@ -900,13 +900,20 @@ static uint8_t bt_hid_set_report(struct hal_cmd_hidhost_set_report *cmd,
 		return HAL_STATUS_FAILED;
 
 	dev = l->data;
-	req_size = 1 + cmd->len;
+
+	if (!(dev->ctrl_io))
+		return HAL_STATUS_FAILED;
+
+	req_size = 1 + (cmd->len / 2);
 	req = g_try_malloc0(req_size);
 	if (!req)
 		return HAL_STATUS_NOMEM;
 
 	req[0] = HID_MSG_SET_REPORT | cmd->type;
-	memcpy(req + 1, cmd->data, req_size - 1);
+	/* Report data coming to HAL is in ascii format, HAL sends
+	 * data in hex to daemon, so convert to binary. */
+	for (i = 0; i < (req_size - 1); i++)
+		sscanf((char *) &(cmd->data)[i * 2], "%hhx", &(req + 1)[i]);
 
 	fd = g_io_channel_unix_get_fd(dev->ctrl_io);
 
