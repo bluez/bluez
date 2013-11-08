@@ -144,6 +144,8 @@ struct method *get_command(const char *name);
 const struct method *get_interface_method(const char *iname,
 							const char *mname);
 
+#define NELEM(x) ((int) (sizeof(x) / sizeof((x)[0])))
+
 /* Helper macro for executing function on interface and printing BT_STATUS */
 #define EXEC(f, ...) \
 	{ \
