@@ -137,7 +137,7 @@ int int2str_findstr(const char *str, const struct int2str m[])
  *
  * returns buf
  */
-char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
+const char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
 {
 	const uint8_t *p = bd_addr->address;
 
@@ -196,14 +196,14 @@ const char *enum_one_string(void *v, int i)
 	return (i == 0) && (m[0] != 0) ? m : NULL;
 }
 
-char *bdaddr2str(const bt_bdaddr_t *bd_addr)
+const char *bdaddr2str(const bt_bdaddr_t *bd_addr)
 {
 	static char buf[MAX_ADDR_STR_LEN];
 
 	return bt_bdaddr_t2str(bd_addr, buf);
 }
 
-char *btproperty2str(const bt_property_t *property)
+const char *btproperty2str(const bt_property_t *property)
 {
 	static char buf[4096];
 	char *p;

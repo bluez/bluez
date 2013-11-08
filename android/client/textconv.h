@@ -100,13 +100,13 @@ static struct int2str __##type##2str[] = {
 /* End of mapping section */
 
 #define MAX_ADDR_STR_LEN 18
-char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf);
+const char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf);
 void str2bt_bdaddr_t(const char *str, bt_bdaddr_t *bd_addr);
 
 void str2bt_uuid_t(const char *str, bt_uuid_t *uuid);
 
-char *btproperty2str(const bt_property_t *property);
-char *bdaddr2str(const bt_bdaddr_t *bd_addr);
+const char *btproperty2str(const bt_property_t *property);
+const char *bdaddr2str(const bt_bdaddr_t *bd_addr);
 
 DECINTMAP(bt_status_t);
 DECINTMAP(bt_state_t);
