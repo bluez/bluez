@@ -318,11 +318,47 @@ static void stdin_handler(struct pollfd *pollfd)
 	}
 }
 
+static void init(void)
+{
+	static const char * const inames[] = {
+		BT_PROFILE_HANDSFREE_ID,
+		BT_PROFILE_ADVANCED_AUDIO_ID,
+		BT_PROFILE_HEALTH_ID,
+		BT_PROFILE_HIDHOST_ID,
+		BT_PROFILE_PAN_ID,
+#if PLATFORM_SDK_VERSION > 17
+		BT_PROFILE_GATT_ID,
+#endif
+		BT_PROFILE_SOCKETS_ID
+	};
+	const struct method *m;
+	const char *argv[4];
+	char init_line[] = "bluetooth init";
+	uint32_t i;
+
+	process_line(init_line);
+	m = get_interface_method("bluetooth", "get_profile_interface");
+
+	for (i = 0; i < NELEM(inames); ++i) {
+		argv[2] = inames[i];
+		m->func(3, argv);
+	}
+
+	/* Init what is available to init */
+	for (i = 1; i < NELEM(interfaces) - 1; ++i) {
+		m = get_interface_method(interfaces[i]->name, "init");
+		if (m != NULL)
+			m->func(2, argv);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct stat rcstat;
 
 	terminal_setup();
+	init();
+
 	history_restore(".haltest_history");
 
 	fd_stack[fd_stack_pointer++] = 0;
