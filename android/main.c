@@ -465,8 +465,8 @@ static GOptionEntry options[] = {
 
 static void adapter_ready(int err)
 {
-	if (err) {
-		error("Adapter initialization failed: %s", strerror(err));
+	if (err < 0) {
+		error("Adapter initialization failed: %s", strerror(-err));
 		exit(EXIT_FAILURE);
 	}
 
