@@ -141,6 +141,8 @@ void add_remote_device(const bt_bdaddr_t *addr);
 const struct interface *get_interface(const char *name);
 struct method *get_method(struct method *methods, const char *name);
 struct method *get_command(const char *name);
+const struct method *get_interface_method(const char *iname,
+							const char *mname);
 
 /* Helper macro for executing function on interface and printing BT_STATUS */
 #define EXEC(f, ...) \

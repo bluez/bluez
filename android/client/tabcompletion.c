@@ -30,7 +30,7 @@ typedef struct split_arg {
 } split_arg_t;
 
 /* function returns method of given name or NULL if not found */
-static const struct method *get_interface_method(const char *iname,
+const struct method *get_interface_method(const char *iname,
 							const char *mname)
 {
 	const struct interface *iface = get_interface(iname);
