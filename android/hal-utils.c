@@ -27,7 +27,7 @@
  *
  * returns string representation of uuid
  */
-char *bt_uuid_t2str(const uint8_t *uuid, char *buf)
+const char *bt_uuid_t2str(const uint8_t *uuid, char *buf)
 {
 	int shift = 0;
 	unsigned int i;
@@ -49,7 +49,7 @@ char *bt_uuid_t2str(const uint8_t *uuid, char *buf)
 	return buf;
 }
 
-char *btuuid2str(const uint8_t *uuid)
+const char *btuuid2str(const uint8_t *uuid)
 {
 	static char buf[MAX_UUID_STR_LEN];
 
