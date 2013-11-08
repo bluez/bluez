@@ -16,6 +16,7 @@
  */
 
 #include "if-main.h"
+#include "terminal.h"
 
 const bt_interface_t *if_bluetooth;
 
@@ -209,14 +210,33 @@ static void discovery_state_changed_cb(bt_discovery_state_t state)
 static char last_remote_addr[MAX_ADDR_STR_LEN];
 static bt_ssp_variant_t last_ssp_variant = (bt_ssp_variant_t) -1;
 
+static bt_bdaddr_t pin_request_addr;
+static void pin_request_answer(char *reply)
+{
+	bt_pin_code_t pin;
+	int accept = 0;
+	int pin_len = strlen(reply);
+
+	if (pin_len > 0) {
+		accept = 1;
+		if (pin_len > 16)
+			pin_len = 16;
+		memcpy(&pin.pin, reply, pin_len);
+	}
+
+	EXEC(if_bluetooth->pin_reply, &pin_request_addr, accept, pin_len, &pin);
+}
+
 static void pin_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
 								uint32_t cod)
 {
 	/* Store for command completion */
 	bt_bdaddr_t2str(remote_bd_addr, last_remote_addr);
+	pin_request_addr = *remote_bd_addr;
 
 	haltest_info("%s: remote_bd_addr=%s bd_name=%s cod=%06x\n", __func__,
 					last_remote_addr, bd_name->name, cod);
+	terminal_prompt_for("Enter pin: ", pin_request_answer);
 }
 
 static void ssp_request_cb(bt_bdaddr_t *remote_bd_addr, bt_bdname_t *bd_name,
