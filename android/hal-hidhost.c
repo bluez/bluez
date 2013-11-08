@@ -334,7 +334,8 @@ static bt_status_t set_report(bt_bdaddr_t *bd_addr,
 
 static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
 {
-	struct hal_cmd_hidhost_send_data cmd;
+	uint8_t buf[BLUEZ_HAL_MTU];
+	struct hal_cmd_hidhost_send_data *cmd = (void *) buf;
 
 	DBG("");
 
@@ -344,10 +345,12 @@ static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
 	if (!bd_addr || !data)
 		return BT_STATUS_PARM_INVALID;
 
-	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
+	memcpy(cmd->bdaddr, bd_addr, sizeof(cmd->bdaddr));
+	cmd->len = strlen(data);
+	memcpy(cmd->data, data, cmd->len);
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_HIDHOST, HAL_OP_HIDHOST_SEND_DATA,
-					sizeof(cmd), &cmd, 0, NULL, NULL);
+				sizeof(*cmd) + cmd->len, buf, 0, NULL, NULL);
 }
 
 static bt_status_t init(bthh_callbacks_t *callbacks)
