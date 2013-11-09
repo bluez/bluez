@@ -1006,6 +1006,8 @@ static gboolean process_changes(gpointer user_data)
 	if (data->removed != NULL)
 		emit_interfaces_removed(data);
 
+	data->process_id = 0;
+
 	return FALSE;
 }
 
@@ -1019,6 +1021,7 @@ static void generic_unregister(DBusConnection *connection, void *user_data)
 
 	if (data->process_id > 0) {
 		g_source_remove(data->process_id);
+		data->process_id = 0;
 		process_changes(data);
 	}
 
