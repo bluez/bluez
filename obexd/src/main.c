@@ -50,8 +50,6 @@
 #include "obexd.h"
 #include "server.h"
 
-#define DEFAULT_ROOT_PATH "/tmp"
-
 #define DEFAULT_CAP_FILE CONFIGDIR "/capability.xml"
 
 static GMainLoop *main_loop = NULL;
@@ -167,7 +165,7 @@ static GOptionEntry options[] = {
 				"Specify root folder location. Both absolute "
 				"and relative can be used, but relative paths "
 				"are assumed to be relative to user $HOME "
-				"folder", "PATH" },
+				"folder. Default $XDG_CACHE_HOME", "PATH" },
 	{ "root-setup", 'S', 0, G_OPTION_ARG_STRING, &option_root_setup,
 				"Root folder setup script", "SCRIPT" },
 	{ "symlinks", 'l', 0, G_OPTION_ARG_NONE, &option_symlinks,
@@ -285,8 +283,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (option_root == NULL)
-		option_root = g_strdup(DEFAULT_ROOT_PATH);
+	if (option_root == NULL) {
+		option_root = g_build_filename(g_get_user_cache_dir(), "obexd",
+									NULL);
+		g_mkdir_with_parents(option_root, 0700);
+	}
 
 	if (option_root[0] != '/') {
 		char *old_root = option_root, *home = getenv("HOME");
