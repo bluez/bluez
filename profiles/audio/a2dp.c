@@ -1187,17 +1187,8 @@ static struct a2dp_server *find_server(GSList *list, struct btd_adapter *a)
 static struct a2dp_server *a2dp_server_register(struct btd_adapter *adapter)
 {
 	struct a2dp_server *server;
-	int av_err;
 
 	server = g_new0(struct a2dp_server, 1);
-
-	av_err = avdtp_init(adapter);
-	if (av_err < 0) {
-		DBG("AVDTP not registered");
-		g_free(server);
-		return NULL;
-	}
-
 	server->adapter = btd_adapter_ref(adapter);
 	servers = g_slist_append(servers, server);
 
@@ -1217,8 +1208,6 @@ static void a2dp_unregister_sep(struct a2dp_sep *sep)
 
 static void a2dp_server_unregister(struct a2dp_server *server)
 {
-	avdtp_exit(server->adapter);
-
 	servers = g_slist_remove(servers, server);
 	btd_adapter_unref(server->adapter);
 	g_free(server);
