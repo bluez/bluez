@@ -58,6 +58,8 @@
 #define BASELEN_PROP_CHANGED sizeof(struct hal_ev_adapter_props_changed) \
 				+ (sizeof(struct hal_property))
 
+static uint16_t option_index = MGMT_INDEX_NONE;
+
 static int notification_sk = -1;
 
 /* This list contains addresses which are asked for records */
@@ -1337,26 +1339,199 @@ failed:
 	adapter_ready(err);
 }
 
-void bt_adapter_init(uint16_t index, struct mgmt *mgmt, bt_adapter_ready cb)
+static void mgmt_index_added_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
 {
-	mgmt_if = mgmt_ref(mgmt);
+	DBG("index %u", index);
 
-	adapter.index = index;
+	if (adapter.index != MGMT_INDEX_NONE) {
+		DBG("skip event for index %u", index);
+		return;
+	}
+
+	if (option_index != MGMT_INDEX_NONE && option_index != index) {
+		DBG("skip event for index %u (option %u)", index, option_index);
+		return;
+	}
+
+	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
+				read_info_complete, NULL, NULL) == 0) {
+		adapter_ready(-EIO);
+		return;
+	}
+}
+
+static void mgmt_index_removed_event(uint16_t index, uint16_t length,
+					const void *param, void *user_data)
+{
+	DBG("index %u", index);
+
+	if (index != adapter.index)
+		return;
+
+	error("Adapter was removed. Exiting.");
+	raise(SIGTERM);
+}
+
+static void read_index_list_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_index_list *rp = param;
+	uint16_t num;
+	int i;
+
+	DBG("");
+
+	if (status) {
+		error("%s: Failed to read index list: %s (0x%02x)",
+					__func__, mgmt_errstr(status), status);
+		goto failed;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("%s: Wrong size of read index list response", __func__);
+		goto failed;
+	}
+
+	num = btohs(rp->num_controllers);
+
+	DBG("Number of controllers: %u", num);
+
+	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
+		error("%s: Incorrect pkt size for index list rsp", __func__);
+		goto failed;
+	}
+
+	if (adapter.index != MGMT_INDEX_NONE)
+		return;
+
+	for (i = 0; i < num; i++) {
+		uint16_t index = btohs(rp->index[i]);
+
+		if (option_index != MGMT_INDEX_NONE && option_index != index)
+			continue;
+
+		if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
+					read_info_complete, NULL, NULL) == 0)
+			goto failed;
+
+		adapter.index = index;
+		return;
+	}
+
+	return;
+
+failed:
+	adapter_ready(-EIO);
+}
+
+static void read_version_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	const struct mgmt_rp_read_version *rp = param;
+	uint8_t mgmt_version, mgmt_revision;
+
+	DBG("");
+
+	if (status) {
+		error("Failed to read version information: %s (0x%02x)",
+						mgmt_errstr(status), status);
+		goto failed;
+	}
+
+	if (length < sizeof(*rp)) {
+		error("Wrong size response");
+		goto failed;
+	}
+
+	mgmt_version = rp->version;
+	mgmt_revision = btohs(rp->revision);
+
+	info("Bluetooth management interface %u.%u initialized",
+						mgmt_version, mgmt_revision);
+
+	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
+		error("Version 1.3 or later of management interface required");
+		goto failed;
+	}
+
+	mgmt_register(mgmt_if, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
+					mgmt_index_added_event, NULL, NULL);
+	mgmt_register(mgmt_if, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
+					mgmt_index_removed_event, NULL, NULL);
+
+	if (mgmt_send(mgmt_if, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0,
+			NULL, read_index_list_complete, NULL, NULL) > 0)
+		return;
+
+	error("Failed to read controller index list");
+
+failed:
+	adapter_ready(-EIO);
+}
+
+bool bt_adapter_start(int index, bt_adapter_ready cb)
+{
+	DBG("index %d", index);
+
+	mgmt_if = mgmt_new_default();
+	if (!mgmt_if) {
+		error("Failed to access management interface");
+		return false;
+	}
+
+	if (mgmt_send(mgmt_if, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
+				read_version_complete, NULL, NULL) == 0) {
+		error("Error sending READ_VERSION mgmt command");
+
+		mgmt_unref(mgmt_if);
+		mgmt_if = NULL;
+
+		return false;
+	}
+
+	if (index >= 0)
+		option_index = index;
 
 	adapter_ready = cb;
 
-	/* TODO: Read discoverable timeout from some storage */
+	return true;
+}
 
-	if (mgmt_send(mgmt, MGMT_OP_READ_INFO, index, 0, NULL,
-					read_info_complete, NULL, NULL) > 0)
-		return;
+static void shutdown_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
+{
+	bt_adapter_stopped cb = user_data;
+
+	if (status != MGMT_STATUS_SUCCESS)
+		error("Clean controller shutdown failed");
+
+	cb();
+}
+
+bool bt_adapter_stop(bt_adapter_stopped cb)
+{
+	struct mgmt_mode cp;
+
+	if (adapter.index == MGMT_INDEX_NONE)
+		return false;
+
+	info("Switching controller off");
+
+	memset(&cp, 0, sizeof(cp));
+
+	return mgmt_send(mgmt_if, MGMT_OP_SET_POWERED, adapter.index,
+				sizeof(cp), &cp, shutdown_complete, (void *)cb,
+				NULL) > 0;
+}
+
+void bt_adapter_cleanup(void)
+{
+	g_free(adapter.name);
+	adapter.name = NULL;
 
 	mgmt_unref(mgmt_if);
 	mgmt_if = NULL;
-
-	adapter.index = MGMT_INDEX_NONE;
-
-	adapter_ready(-EIO);
 }
 
 static bool set_discoverable(uint8_t mode, uint16_t timeout)

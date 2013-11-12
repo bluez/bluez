@@ -45,8 +45,6 @@
 #include "src/sdpd.h"
 
 #include "lib/bluetooth.h"
-#include "lib/mgmt.h"
-#include "src/shared/mgmt.h"
 
 #include "adapter.h"
 #include "socket.h"
@@ -65,11 +63,9 @@
 #define STARTUP_GRACE_SECONDS 5
 #define SHUTDOWN_GRACE_SECONDS 10
 
-static GMainLoop *event_loop;
-static struct mgmt *mgmt_if = NULL;
+static guint bluetooth_start_timeout = 0;
 
-static uint16_t adapter_index = MGMT_INDEX_NONE;
-static guint adapter_timeout = 0;
+static GMainLoop *event_loop;
 
 static GIOChannel *hal_cmd_io = NULL;
 static GIOChannel *hal_notif_io = NULL;
@@ -186,35 +182,32 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 	}
 }
 
-static void shutdown_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
+static void bluetooth_stopped(void)
 {
-	if (status != MGMT_STATUS_SUCCESS)
-		error("Clean controller shutdown failed");
-
 	g_main_loop_quit(event_loop);
 }
 
-static void shutdown_controller(void)
+static gboolean quit_eventloop(gpointer user_data)
 {
-	static bool __shutdown = false;
-	struct mgmt_mode cp;
-
-	if (__shutdown)
-		return;
-
-	__shutdown = true;
-
-	info("Switching controller off");
-
-	memset(&cp, 0, sizeof(cp));
-	cp.val = 0x00;
-
-	if (mgmt_send(mgmt_if, MGMT_OP_SET_POWERED, adapter_index,
-			sizeof(cp), &cp, shutdown_complete, NULL, NULL) > 0)
-		return;
-
 	g_main_loop_quit(event_loop);
+	return FALSE;
+}
+
+static void stop_bluetooth(void)
+{
+	static bool __stop = false;
+
+	if (__stop)
+		return;
+
+	__stop = true;
+
+	if (!bt_adapter_stop(bluetooth_stopped)) {
+		g_main_loop_quit(event_loop);
+		return;
+	}
+
+	g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS, quit_eventloop, NULL);
 }
 
 static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
@@ -286,7 +279,7 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 	return TRUE;
 
 fail:
-	shutdown_controller();
+	stop_bluetooth();
 	return FALSE;
 }
 
@@ -294,7 +287,7 @@ static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
 							gpointer user_data)
 {
 	info("HAL notification socket closed, terminating");
-	shutdown_controller();
+	stop_bluetooth();
 
 	return FALSE;
 }
@@ -343,7 +336,7 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 	DBG("");
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(event_loop);
+		stop_bluetooth();
 		return FALSE;
 	}
 
@@ -366,23 +359,38 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 	DBG("");
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(event_loop);
+		stop_bluetooth();
 		return FALSE;
 	}
 
 	hal_notif_io = connect_hal(notif_connect_cb);
 	if (!hal_notif_io) {
 		error("Cannot connect to HAL, terminating");
-		g_main_loop_quit(event_loop);
+		stop_bluetooth();
 	}
 
 	return FALSE;
 }
 
-static gboolean quit_eventloop(gpointer user_data)
+static void adapter_ready(int err)
 {
-	g_main_loop_quit(event_loop);
-	return FALSE;
+	if (err < 0) {
+		error("Adapter initialization failed: %s", strerror(-err));
+		exit(EXIT_FAILURE);
+	}
+
+	if (bluetooth_start_timeout > 0) {
+		g_source_remove(bluetooth_start_timeout);
+		bluetooth_start_timeout = 0;
+	}
+
+	info("Adapter initialized");
+
+	hal_cmd_io = connect_hal(cmd_connect_cb);
+	if (!hal_cmd_io) {
+		error("Cannot connect to HAL, terminating");
+		stop_bluetooth();
+	}
 }
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
@@ -407,12 +415,7 @@ static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
 	case SIGTERM:
 		if (!__terminated) {
 			info("Terminating");
-			if (adapter_index != MGMT_INDEX_NONE) {
-				g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS,
-							quit_eventloop, NULL);
-				shutdown_controller();
-			} else
-				g_main_loop_quit(event_loop);
+			stop_bluetooth();
 		}
 
 		__terminated = true;
@@ -460,7 +463,7 @@ static guint setup_signalfd(void)
 }
 
 static gboolean option_version = FALSE;
-static gint option_index = MGMT_INDEX_NONE;
+static gint option_index = -1;
 
 static GOptionEntry options[] = {
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
@@ -469,216 +472,6 @@ static GOptionEntry options[] = {
 				"Use specified controller", "INDEX"},
 	{ NULL }
 };
-
-static void adapter_ready(int err)
-{
-	if (err < 0) {
-		error("Adapter initialization failed: %s", strerror(-err));
-		exit(EXIT_FAILURE);
-	}
-
-	info("Adapter initialized");
-
-	hal_cmd_io = connect_hal(cmd_connect_cb);
-	if (!hal_cmd_io) {
-		error("Cannot connect to HAL, terminating");
-		g_main_loop_quit(event_loop);
-	}
-}
-
-static void mgmt_index_added_event(uint16_t index, uint16_t length,
-					const void *param, void *user_data)
-{
-	uint16_t opt_index = option_index;
-
-	DBG("index %u", index);
-
-	if (adapter_index != MGMT_INDEX_NONE) {
-		DBG("skip event for index %u", index);
-		return;
-	}
-
-	if (opt_index != MGMT_INDEX_NONE && opt_index != index) {
-		DBG("skip event for index %u (option %u)", index, opt_index);
-		return;
-	}
-
-	if (adapter_timeout > 0) {
-		g_source_remove(adapter_timeout);
-		adapter_timeout = 0;
-	}
-
-	adapter_index = index;
-	bt_adapter_init(index, mgmt_if, adapter_ready);
-}
-
-static void mgmt_index_removed_event(uint16_t index, uint16_t length,
-					const void *param, void *user_data)
-{
-	DBG("index %u", index);
-
-	if (index != adapter_index)
-		return;
-
-	error("Adapter was removed. Exiting.");
-	g_main_loop_quit(event_loop);
-}
-
-static gboolean adapter_timeout_handler(gpointer user_data)
-{
-	adapter_timeout = 0;
-	g_main_loop_quit(event_loop);
-
-	return FALSE;
-}
-
-static void read_index_list_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	const struct mgmt_rp_read_index_list *rp = param;
-	uint16_t opt_index = option_index;
-	uint16_t num;
-	int i;
-
-	DBG("");
-
-	if (status) {
-		error("%s: Failed to read index list: %s (0x%02x)",
-					__func__, mgmt_errstr(status), status);
-		goto failed;
-	}
-
-	if (length < sizeof(*rp)) {
-		error("%s: Wrong size of read index list response", __func__);
-		goto failed;
-	}
-
-	num = btohs(rp->num_controllers);
-
-	DBG("Number of controllers: %u", num);
-
-	if (num * sizeof(uint16_t) + sizeof(*rp) != length) {
-		error("%s: Incorrect pkt size for index list rsp", __func__);
-		goto failed;
-	}
-
-	if (adapter_index != MGMT_INDEX_NONE)
-		return;
-
-	for (i = 0; i < num; i++) {
-		uint16_t index = btohs(rp->index[i]);
-
-		if (opt_index != MGMT_INDEX_NONE && opt_index != index)
-			continue;
-
-		adapter_index = index;
-		bt_adapter_init(adapter_index, mgmt_if, adapter_ready);
-		return;
-	}
-
-	if (adapter_index != MGMT_INDEX_NONE)
-		return;
-
-	adapter_timeout = g_timeout_add_seconds(STARTUP_GRACE_SECONDS,
-					adapter_timeout_handler, NULL);
-	if (adapter_timeout > 0)
-		return;
-
-	error("%s: Failed init timeout", __func__);
-
-failed:
-	g_main_loop_quit(event_loop);
-}
-
-static void read_commands_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	const struct mgmt_rp_read_commands *rp = param;
-
-	DBG("");
-
-	if (status) {
-		error("Failed to read supported commands: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		return;
-	}
-
-	if (length < sizeof(*rp)) {
-		error("Wrong size response");
-		return;
-	}
-}
-
-static void read_version_complete(uint8_t status, uint16_t length,
-					const void *param, void *user_data)
-{
-	const struct mgmt_rp_read_version *rp = param;
-	uint8_t mgmt_version, mgmt_revision;
-
-	DBG("");
-
-	if (status) {
-		error("Failed to read version information: %s (0x%02x)",
-						mgmt_errstr(status), status);
-		goto failed;
-	}
-
-	if (length < sizeof(*rp)) {
-		error("Wrong size response");
-		goto failed;
-	}
-
-	mgmt_version = rp->version;
-	mgmt_revision = btohs(rp->revision);
-
-	info("Bluetooth management interface %u.%u initialized",
-						mgmt_version, mgmt_revision);
-
-	if (MGMT_VERSION(mgmt_version, mgmt_revision) < MGMT_VERSION(1, 3)) {
-		error("Version 1.3 or later of management interface required");
-		goto failed;
-	}
-
-	mgmt_send(mgmt_if, MGMT_OP_READ_COMMANDS, MGMT_INDEX_NONE, 0, NULL,
-					read_commands_complete, NULL, NULL);
-
-	mgmt_register(mgmt_if, MGMT_EV_INDEX_ADDED, MGMT_INDEX_NONE,
-					mgmt_index_added_event, NULL, NULL);
-	mgmt_register(mgmt_if, MGMT_EV_INDEX_REMOVED, MGMT_INDEX_NONE,
-					mgmt_index_removed_event, NULL, NULL);
-
-	if (mgmt_send(mgmt_if, MGMT_OP_READ_INDEX_LIST, MGMT_INDEX_NONE, 0,
-			NULL, read_index_list_complete, NULL, NULL) > 0)
-		return;
-
-	error("Failed to read controller index list");
-
-failed:
-	g_main_loop_quit(event_loop);
-}
-
-static bool init_mgmt_interface(void)
-{
-	mgmt_if = mgmt_new_default();
-	if (!mgmt_if) {
-		error("Failed to access management interface");
-		return false;
-	}
-
-	if (mgmt_send(mgmt_if, MGMT_OP_READ_VERSION, MGMT_INDEX_NONE, 0, NULL,
-				read_version_complete, NULL, NULL) == 0) {
-		error("Error sending READ_VERSION mgmt command");
-		return false;
-	}
-
-	return true;
-}
-
-static void cleanup_mgmt_interface(void)
-{
-	mgmt_unref(mgmt_if);
-	mgmt_if = NULL;
-}
 
 static void cleanup_hal_connection(void)
 {
@@ -767,7 +560,14 @@ int main(int argc, char *argv[])
 	if (!set_capabilities())
 		return EXIT_FAILURE;
 
-	if (!init_mgmt_interface())
+	bluetooth_start_timeout = g_timeout_add_seconds(STARTUP_GRACE_SECONDS,
+							quit_eventloop, NULL);
+	if (bluetooth_start_timeout == 0) {
+		error("Failed to init startup timeout");
+		return EXIT_FAILURE;
+	}
+
+	if (!bt_adapter_start(option_index, adapter_ready))
 		return EXIT_FAILURE;
 
 	/* Use params: mtu = 0, flags = 0 */
@@ -781,7 +581,7 @@ int main(int argc, char *argv[])
 
 	cleanup_hal_connection();
 	stop_sdp_server();
-	cleanup_mgmt_interface();
+	bt_adapter_cleanup();
 	g_main_loop_unref(event_loop);
 
 	info("Exit");

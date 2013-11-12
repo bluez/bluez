@@ -22,9 +22,12 @@
  */
 
 typedef void (*bt_adapter_ready)(int err);
+bool bt_adapter_start(int index, bt_adapter_ready cb);
 
-void bt_adapter_init(uint16_t index, struct mgmt *mgmt_if,
-							bt_adapter_ready cb);
+typedef void (*bt_adapter_stopped)(void);
+bool bt_adapter_stop(bt_adapter_stopped cb);
+
+void bt_adapter_cleanup(void);
 
 void bt_adapter_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
