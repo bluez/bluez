@@ -282,8 +282,14 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
 {
 	struct hid_device *dev = data;
 
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+		goto error;
+
 	if (cond & G_IO_IN)
 		return intr_io_watch_cb(chan, data);
+
+error:
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 
 	/* Checking for ctrl_watch avoids a double g_io_channel_shutdown since
 	 * it's likely that ctrl_watch_cb has been queued for dispatching in
@@ -291,16 +297,11 @@ static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
 	if ((cond & (G_IO_HUP | G_IO_ERR)) && dev->ctrl_watch)
 		g_io_channel_shutdown(chan, TRUE, NULL);
 
-	dev->intr_watch = 0;
-
-	if (dev->intr_io) {
-		g_io_channel_unref(dev->intr_io);
-		dev->intr_io = NULL;
-	}
-
 	/* Close control channel */
 	if (dev->ctrl_io && !(cond & G_IO_NVAL))
 		g_io_channel_shutdown(dev->ctrl_io, TRUE, NULL);
+
+	hid_device_free(dev);
 
 	return FALSE;
 }
@@ -442,12 +443,14 @@ static gboolean ctrl_watch_cb(GIOChannel *chan, GIOCondition cond,
 								gpointer data)
 {
 	struct hid_device *dev = data;
-	char address[18];
+
+	if (cond & (G_IO_HUP | G_IO_ERR | G_IO_NVAL))
+		goto error;
 
 	if (cond & G_IO_IN)
 		return ctrl_io_watch_cb(chan, data);
 
-	ba2str(&dev->dst, address);
+error:
 	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
 
 	/* Checking for intr_watch avoids a double g_io_channel_shutdown since
