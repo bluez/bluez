@@ -145,7 +145,7 @@ typedef void (*attio_error_cb) (const GError *gerr, gpointer user_data);
 typedef void (*attio_success_cb) (gpointer user_data);
 
 struct att_callbacks {
-	attio_error_cb error;		/* Callback for error */
+	attio_error_cb err;		/* Callback for error */
 	attio_success_cb success;	/* Callback for success */
 	gpointer user_data;
 };
@@ -3240,8 +3240,8 @@ static void att_connect_cb(GIOChannel *io, GError *gerr, gpointer user_data)
 	if (gerr) {
 		DBG("%s", gerr->message);
 
-		if (attcb->error)
-			attcb->error(gerr, user_data);
+		if (attcb->err)
+			attcb->err(gerr, user_data);
 
 		err = -ECONNABORTED;
 		goto done;
@@ -3345,7 +3345,7 @@ int device_connect_le(struct btd_device *dev)
 	DBG("Connection attempt to: %s", addr);
 
 	attcb = g_new0(struct att_callbacks, 1);
-	attcb->error = att_error_cb;
+	attcb->err = att_error_cb;
 	attcb->success = att_success_cb;
 	attcb->user_data = dev;
 
@@ -3435,7 +3435,7 @@ static int device_browse_primary(struct btd_device *device, DBusMessage *msg)
 	}
 
 	attcb = g_new0(struct att_callbacks, 1);
-	attcb->error = att_browse_error_cb;
+	attcb->err = att_browse_error_cb;
 	attcb->success = att_browse_cb;
 	attcb->user_data = device;
 
