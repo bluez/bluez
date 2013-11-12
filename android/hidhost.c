@@ -839,9 +839,13 @@ static uint8_t bt_hid_virtual_unplug(struct hal_cmd_hidhost_virtual_unplug *cmd,
 
 static uint8_t bt_hid_info(struct hal_cmd_hidhost_set_info *cmd, uint16_t len)
 {
-	DBG("Not Implemented");
+	/* Data from hal_cmd_hidhost_set_info is usefull only when we create
+	 * UHID device. Once device is created all the transactions will be
+	 * done through the fd. There is no way to use this information
+	 * once device is created with HID internals. */
+	DBG("Not supported");
 
-	return HAL_STATUS_FAILED;
+	return HAL_STATUS_UNSUPPORTED;
 }
 
 static uint8_t bt_hid_get_protocol(struct hal_cmd_hidhost_get_protocol *cmd,
