@@ -825,9 +825,8 @@ static void mgmt_device_connected_event(uint16_t index, uint16_t length,
 		return;
 	}
 
-	/* TODO: Update device */
-
-	/* TODO: Check Set bonding state */
+	update_found_device(&ev->addr.bdaddr, ev->addr.type, 0, false,
+					&ev->eir[0], btohs(ev->eir_len));
 
 	hal_ev.status = HAL_STATUS_SUCCESS;
 	hal_ev.state = HAL_ACL_STATE_CONNECTED;
