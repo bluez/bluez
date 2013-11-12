@@ -32,3 +32,6 @@ const bdaddr_t *bt_adapter_get_address(void);
 
 bool bt_adapter_register(int sk);
 void bt_adapter_unregister(void);
+
+int bt_adapter_add_record(sdp_record_t *rec, uint8_t svc_hint);
+void bt_adapter_remove_record(uint32_t handle);
