@@ -1207,6 +1207,17 @@ static uint8_t set_discoverable_timeout(uint8_t *timeout)
 
 	return HAL_STATUS_SUCCESS;
 }
+
+static void clear_uuids(void)
+{
+	struct mgmt_cp_remove_uuid cp;
+
+	memset(&cp, 0, sizeof(cp));
+
+	mgmt_send(adapter->mgmt, MGMT_OP_REMOVE_UUID, adapter->index,
+					sizeof(cp), &cp, NULL, NULL, NULL);
+}
+
 static void read_info_complete(uint8_t status, uint16_t length, const void *param,
 							void *user_data)
 {
@@ -1246,6 +1257,8 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 
 	/* TODO: Register all event notification handlers */
 	register_mgmt_handlers();
+
+	clear_uuids();
 
 	load_link_keys(NULL);
 
