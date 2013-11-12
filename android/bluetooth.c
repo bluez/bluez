@@ -938,7 +938,7 @@ static void register_mgmt_handlers(void)
 static void load_link_keys_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
-	bt_adapter_ready cb = user_data;
+	bt_bluetooth_ready cb = user_data;
 	int err;
 
 	if (status) {
@@ -957,7 +957,7 @@ failed:
 	cb(err, NULL);
 }
 
-static void load_link_keys(GSList *keys, bt_adapter_ready cb)
+static void load_link_keys(GSList *keys, bt_bluetooth_ready cb)
 {
 	struct mgmt_cp_load_link_keys *cp;
 	struct mgmt_link_key_info *key;
@@ -1279,7 +1279,7 @@ static void read_info_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_info *rp = param;
-	bt_adapter_ready cb = user_data;
+	bt_bluetooth_ready cb = user_data;
 	uint32_t missing_settings, supported_settings;
 	int err;
 
@@ -1342,7 +1342,7 @@ failed:
 static void mgmt_index_added_event(uint16_t index, uint16_t length,
 					const void *param, void *user_data)
 {
-	bt_adapter_ready cb = user_data;
+	bt_bluetooth_ready cb = user_data;
 
 	DBG("index %u", index);
 
@@ -1379,7 +1379,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_index_list *rp = param;
-	bt_adapter_ready cb = user_data;
+	bt_bluetooth_ready cb = user_data;
 	uint16_t num;
 	int i;
 
@@ -1433,7 +1433,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 {
 	const struct mgmt_rp_read_version *rp = param;
 	uint8_t mgmt_version, mgmt_revision;
-	bt_adapter_ready cb = user_data;
+	bt_bluetooth_ready cb = user_data;
 
 	DBG("");
 
@@ -1474,7 +1474,7 @@ failed:
 	cb(-EIO, NULL);
 }
 
-bool bt_adapter_start(int index, bt_adapter_ready cb)
+bool bt_bluetooth_start(int index, bt_bluetooth_ready cb)
 {
 	DBG("index %d", index);
 
@@ -1503,7 +1503,7 @@ bool bt_adapter_start(int index, bt_adapter_ready cb)
 static void shutdown_complete(uint8_t status, uint16_t length,
 					const void *param, void *user_data)
 {
-	bt_adapter_stopped cb = user_data;
+	bt_bluetooth_stopped cb = user_data;
 
 	if (status != MGMT_STATUS_SUCCESS)
 		error("Clean controller shutdown failed");
@@ -1511,7 +1511,7 @@ static void shutdown_complete(uint8_t status, uint16_t length,
 	cb();
 }
 
-bool bt_adapter_stop(bt_adapter_stopped cb)
+bool bt_bluetooth_stop(bt_bluetooth_stopped cb)
 {
 	struct mgmt_mode cp;
 
@@ -1527,7 +1527,7 @@ bool bt_adapter_stop(bt_adapter_stopped cb)
 				NULL) > 0;
 }
 
-void bt_adapter_cleanup(void)
+void bt_bluetooth_cleanup(void)
 {
 	g_free(adapter.name);
 	adapter.name = NULL;
@@ -2041,7 +2041,7 @@ static uint8_t get_remote_services(void *buf, uint16_t len)
 	return browse_remote_sdp(&addr);
 }
 
-void bt_adapter_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
+void bt_bluetooth_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 {
 	uint8_t status = HAL_STATUS_FAILED;
 
@@ -2160,7 +2160,7 @@ error:
 	ipc_send_rsp(sk, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
-bool bt_adapter_register(int sk)
+bool bt_bluetooth_register(int sk)
 {
 	DBG("");
 
@@ -2169,7 +2169,7 @@ bool bt_adapter_register(int sk)
 	return true;
 }
 
-void bt_adapter_unregister(void)
+void bt_bluetooth_unregister(void)
 {
 	DBG("");
 

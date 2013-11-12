@@ -21,18 +21,18 @@
  *
  */
 
-typedef void (*bt_adapter_ready)(int err, const bdaddr_t *addr);
-bool bt_adapter_start(int index, bt_adapter_ready cb);
+typedef void (*bt_bluetooth_ready)(int err, const bdaddr_t *addr);
+bool bt_bluetooth_start(int index, bt_bluetooth_ready cb);
 
-typedef void (*bt_adapter_stopped)(void);
-bool bt_adapter_stop(bt_adapter_stopped cb);
+typedef void (*bt_bluetooth_stopped)(void);
+bool bt_bluetooth_stop(bt_bluetooth_stopped cb);
 
-void bt_adapter_cleanup(void);
+void bt_bluetooth_cleanup(void);
 
-void bt_adapter_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
+void bt_bluetooth_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-bool bt_adapter_register(int sk);
-void bt_adapter_unregister(void);
+bool bt_bluetooth_register(int sk);
+void bt_bluetooth_unregister(void);
 
 int bt_adapter_add_record(sdp_record_t *rec, uint8_t svc_hint);
 void bt_adapter_remove_record(uint32_t handle);

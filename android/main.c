@@ -84,7 +84,7 @@ static void service_register(void *buf, uint16_t len)
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		if (!bt_adapter_register(sk))
+		if (!bt_bluetooth_register(sk))
 			goto failed;
 
 		break;
@@ -134,7 +134,7 @@ static void service_unregister(void *buf, uint16_t len)
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_adapter_unregister();
+		bt_bluetooth_unregister();
 		break;
 	case HAL_SERVICE_ID_SOCK:
 		bt_socket_unregister();
@@ -203,7 +203,7 @@ static void stop_bluetooth(void)
 
 	__stop = true;
 
-	if (!bt_adapter_stop(bluetooth_stopped)) {
+	if (!bt_bluetooth_stop(bluetooth_stopped)) {
 		g_main_loop_quit(event_loop);
 		return;
 	}
@@ -258,7 +258,8 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		handle_service_core(msg->opcode, msg->payload, msg->len);
 		break;
 	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_adapter_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
+		bt_bluetooth_handle_cmd(fd, msg->opcode, msg->payload,
+								msg->len);
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
 		bt_hid_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
@@ -570,7 +571,7 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!bt_adapter_start(option_index, adapter_ready))
+	if (!bt_bluetooth_start(option_index, adapter_ready))
 		return EXIT_FAILURE;
 
 	/* Use params: mtu = 0, flags = 0 */
@@ -584,7 +585,7 @@ int main(int argc, char *argv[])
 
 	cleanup_hal_connection();
 	stop_sdp_server();
-	bt_adapter_cleanup();
+	bt_bluetooth_cleanup();
 	g_main_loop_unref(event_loop);
 
 	info("Exit");
