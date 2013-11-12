@@ -499,7 +499,7 @@ struct hal_ev_hidhost_proto_mode {
 	uint8_t mode;
 } __attribute__((packed));
 
-#define HAL_EV_HIDHOST_GET_REPORT		0x85
+#define HAL_EV_HIDHOST_GET_REPORT		0x84
 struct hal_ev_hidhost_get_report {
 	uint8_t  bdaddr[6];
 	uint8_t  status;
@@ -507,7 +507,7 @@ struct hal_ev_hidhost_get_report {
 	uint8_t  data[0];
 } __attribute__((packed));
 
-#define HAL_EV_HIDHOST_VIRTUAL_UNPLUG		0x86
+#define HAL_EV_HIDHOST_VIRTUAL_UNPLUG		0x85
 struct hal_ev_hidhost_virtual_unplug {
 	uint8_t  bdaddr[6];
 	uint8_t  status;

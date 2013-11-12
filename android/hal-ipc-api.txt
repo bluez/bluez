@@ -614,20 +614,14 @@ Notifications:
 		                      0x01 = Boot
 		                      0xff = Unsupported
 
-	Opcode 0x84 - Idle Time notification
-
-		Notification parameters: Remote address (6 octets)
-		                         Status (1 octet)
-		                         Idle time (2 octets)
-
-	Opcode 0x85 - Get Report notification
+	Opcode 0x84 - Get Report notification
 
 		Notification parameters: Remote address (6 octets)
 		                         Status (1 octet)
 		                         Report length (2 octets)
 		                         Report data (variable)
 
-	Opcode 0x86 - Virtual Unplug notification
+	Opcode 0x85 - Virtual Unplug notification
 
 		Notification parameters: Remote address (6 octets)
 		                         Status (1 octet)
