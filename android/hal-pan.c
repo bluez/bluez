@@ -114,16 +114,19 @@ static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 
 static void pan_cleanup()
 {
+	struct hal_cmd_register_module cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return;
 
-	/* TODO: disable service */
-
-	/* TODO: stop PAN thread */
-
 	cbs = NULL;
+
+	cmd.service_id = HAL_SERVICE_ID_PAN;
+
+	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static btpan_interface_t pan_if = {
