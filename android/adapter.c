@@ -38,7 +38,6 @@
 #include "src/eir.h"
 #include "lib/sdp.h"
 #include "lib/sdp_lib.h"
-#include "lib/uuid.h"
 #include "src/sdp-client.h"
 #include "src/sdpd.h"
 #include "log.h"
