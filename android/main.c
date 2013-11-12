@@ -65,6 +65,8 @@
 
 static guint bluetooth_start_timeout = 0;
 
+static bdaddr_t adapter_bdaddr;
+
 static GMainLoop *event_loop;
 
 static GIOChannel *hal_cmd_io = NULL;
@@ -75,7 +77,6 @@ static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 static void service_register(void *buf, uint16_t len)
 {
 	struct hal_cmd_register_module *m = buf;
-	const bdaddr_t *adapter_bdaddr = bt_adapter_get_address();
 	int sk = g_io_channel_unix_get_fd(hal_notif_io);
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
@@ -88,22 +89,22 @@ static void service_register(void *buf, uint16_t len)
 
 		break;
 	case HAL_SERVICE_ID_SOCK:
-		if (!bt_socket_register(sk, adapter_bdaddr))
+		if (!bt_socket_register(sk, &adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(sk, adapter_bdaddr))
+		if (!bt_hid_register(sk, &adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		if (!bt_a2dp_register(sk, adapter_bdaddr))
+		if (!bt_a2dp_register(sk, &adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_pan_register(sk, adapter_bdaddr))
+		if (!bt_pan_register(sk, &adapter_bdaddr))
 			goto failed;
 
 		break;
@@ -372,12 +373,14 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 	return FALSE;
 }
 
-static void adapter_ready(int err)
+static void adapter_ready(int err, const bdaddr_t *addr)
 {
 	if (err < 0) {
 		error("Adapter initialization failed: %s", strerror(-err));
 		exit(EXIT_FAILURE);
 	}
+
+	bacpy(&adapter_bdaddr, addr);
 
 	if (bluetooth_start_timeout > 0) {
 		g_source_remove(bluetooth_start_timeout);

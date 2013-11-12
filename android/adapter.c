@@ -950,11 +950,11 @@ static void load_link_keys_complete(uint8_t status, uint16_t length,
 
 	DBG("status %u", status);
 
-	cb(0);
+	cb(0, &adapter.bdaddr);
 	return;
 
 failed:
-	cb(err);
+	cb(err, NULL);
 }
 
 static void load_link_keys(GSList *keys, bt_adapter_ready cb)
@@ -989,7 +989,7 @@ static void load_link_keys(GSList *keys, bt_adapter_ready cb)
 
 	if (id == 0) {
 		error("Failed to load link keys");
-		cb(-EIO);
+		cb(-EIO, NULL);
 	}
 }
 
@@ -1336,7 +1336,7 @@ static void read_info_complete(uint8_t status, uint16_t length, const void *para
 	return;
 
 failed:
-	cb(err);
+	cb(err, NULL);
 }
 
 static void mgmt_index_added_event(uint16_t index, uint16_t length,
@@ -1358,7 +1358,7 @@ static void mgmt_index_added_event(uint16_t index, uint16_t length,
 
 	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
 				read_info_complete, cb, NULL) == 0) {
-		cb(-EIO);
+		cb(-EIO, NULL);
 		return;
 	}
 }
@@ -1425,7 +1425,7 @@ static void read_index_list_complete(uint8_t status, uint16_t length,
 	return;
 
 failed:
-	cb(-EIO);
+	cb(-EIO, NULL);
 }
 
 static void read_version_complete(uint8_t status, uint16_t length,
@@ -1471,7 +1471,7 @@ static void read_version_complete(uint8_t status, uint16_t length,
 	error("Failed to read controller index list");
 
 failed:
-	cb(-EIO);
+	cb(-EIO, NULL);
 }
 
 bool bt_adapter_start(int index, bt_adapter_ready cb)

@@ -21,7 +21,7 @@
  *
  */
 
-typedef void (*bt_adapter_ready)(int err);
+typedef void (*bt_adapter_ready)(int err, const bdaddr_t *addr);
 bool bt_adapter_start(int index, bt_adapter_ready cb);
 
 typedef void (*bt_adapter_stopped)(void);
