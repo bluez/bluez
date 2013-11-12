@@ -2160,11 +2160,6 @@ error:
 	ipc_send_rsp(sk, HAL_SERVICE_ID_BLUETOOTH, status);
 }
 
-const bdaddr_t *bt_adapter_get_address(void)
-{
-	return &adapter.bdaddr;
-}
-
 bool bt_adapter_register(int sk)
 {
 	DBG("");

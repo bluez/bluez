@@ -31,8 +31,6 @@ void bt_adapter_cleanup(void);
 
 void bt_adapter_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-const bdaddr_t *bt_adapter_get_address(void);
-
 bool bt_adapter_register(int sk);
 void bt_adapter_unregister(void);
 
