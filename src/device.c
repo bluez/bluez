@@ -1156,8 +1156,15 @@ static void device_profile_connected(struct btd_device *dev,
 	if (dev->pending == NULL)
 		return;
 
-	if (!dev->connected && err == -EHOSTDOWN)
-		goto done;
+	if (!dev->connected) {
+		switch (-err) {
+		case EHOSTDOWN: /* page timeout */
+		case EHOSTUNREACH: /* adapter not powered */
+		case ECONNABORTED: /* adapter powered down */
+			goto done;
+		}
+	}
+
 
 	pending = dev->pending->data;
 	l = find_service_with_profile(dev->pending, profile);
@@ -1296,6 +1303,9 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 
 	if (dev->pending || dev->connect || dev->browse)
 		return btd_error_in_progress(msg);
+
+	if (!btd_adapter_get_powered(dev->adapter))
+		return btd_error_not_ready(msg);
 
 	device_set_temporary(dev, FALSE);
 
