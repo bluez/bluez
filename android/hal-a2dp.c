@@ -49,7 +49,7 @@ static void handle_audio_state(void *buf)
 }
 
 /* will be called from notification thread context */
-void bt_notify_a2dp(uint16_t opcode, void *buf, uint16_t len)
+void bt_notify_a2dp(uint8_t opcode, void *buf, uint16_t len)
 {
 	if (!interface_ready())
 		return;

@@ -88,7 +88,7 @@ static void handle_virtual_unplug(void *buf)
 }
 
 /* will be called from notification thread context */
-void bt_notify_hidhost(uint16_t opcode, void *buf, uint16_t len)
+void bt_notify_hidhost(uint8_t opcode, void *buf, uint16_t len)
 {
 	if (!interface_ready())
 		return;

@@ -26,8 +26,8 @@ bthh_interface_t *bt_get_hidhost_interface(void);
 btpan_interface_t *bt_get_pan_interface(void);
 btav_interface_t *bt_get_a2dp_interface(void);
 
-void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len);
+void bt_notify_adapter(uint8_t opcode, void *buf, uint16_t len);
 void bt_thread_associate(void);
 void bt_thread_disassociate(void);
-void bt_notify_hidhost(uint16_t opcode, void *buf, uint16_t len);
-void bt_notify_a2dp(uint16_t opcode, void *buf, uint16_t len);
+void bt_notify_hidhost(uint8_t opcode, void *buf, uint16_t len);
+void bt_notify_a2dp(uint8_t opcode, void *buf, uint16_t len);

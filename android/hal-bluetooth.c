@@ -281,7 +281,7 @@ static void handle_acl_state_changed(void *buf)
 }
 
 /* will be called from notification thread context */
-void bt_notify_adapter(uint16_t opcode, void *buf, uint16_t len)
+void bt_notify_adapter(uint8_t opcode, void *buf, uint16_t len)
 {
 	if (!interface_ready())
 		return;
