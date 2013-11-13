@@ -31,6 +31,12 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
+void bt_notify_pan(uint8_t opcode, void *buf, uint16_t len)
+{
+	if (!interface_ready())
+		return;
+}
+
 static bt_status_t pan_enable(int local_role)
 {
 	struct hal_cmd_pan_enable cmd;
