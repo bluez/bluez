@@ -734,6 +734,9 @@ int main(int argc, char *argv[])
 	GError *err = NULL;
 	guint signal;
 
+	/* Core Service (ID=0) should always be considered registered */
+	services[0] = true;
+
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
 
