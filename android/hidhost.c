@@ -1129,12 +1129,12 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 		return;
 	}
 
-	bt_io_get(chan, &err,
+	bt_io_get(chan, &gerr,
 			BT_IO_OPT_SOURCE_BDADDR, &src,
 			BT_IO_OPT_DEST_BDADDR, &dst,
 			BT_IO_OPT_PSM, &psm,
 			BT_IO_OPT_INVALID);
-	if (err) {
+	if (gerr) {
 		error("%s", gerr->message);
 		g_io_channel_shutdown(chan, TRUE, NULL);
 		g_error_free(gerr);
