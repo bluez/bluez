@@ -31,10 +31,41 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
+static void handle_conn_state(void *buf)
+{
+	struct hal_ev_pan_conn_state *ev = buf;
+
+	if (cbs->connection_state_cb)
+		cbs->connection_state_cb(ev->state, ev->status,
+					(bt_bdaddr_t *) ev->bdaddr,
+					ev->local_role, ev->remote_role);
+}
+
+static void handle_ctrl_state(void *buf)
+{
+	struct hal_ev_pan_ctrl_state *ev = buf;
+
+	if (cbs->control_state_cb)
+		cbs->control_state_cb(ev->state, ev->status,
+					ev->local_role, (char *)ev->name);
+}
+
 void bt_notify_pan(uint8_t opcode, void *buf, uint16_t len)
 {
 	if (!interface_ready())
 		return;
+
+	switch (opcode) {
+	case HAL_EV_PAN_CONN_STATE:
+		handle_conn_state(buf);
+		break;
+	case HAL_EV_PAN_CTRL_STATE:
+		handle_ctrl_state(buf);
+		break;
+	default:
+		DBG("Unhandled callback opcode=0x%x", opcode);
+		break;
+	}
 }
 
 static bt_status_t pan_enable(int local_role)
