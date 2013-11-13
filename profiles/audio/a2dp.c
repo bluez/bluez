@@ -1861,9 +1861,21 @@ static void a2dp_sink_remove(struct btd_service *service)
 static int a2dp_source_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
+	struct btd_adapter *adapter = device_get_adapter(dev);
+	struct a2dp_server *server;
 	const char *path = device_get_path(dev);
 
 	DBG("path %s", path);
+
+	server = find_server(servers, adapter);
+	if (!server || !server->sink_enabled) {
+		DBG("Unexpected error: cannot find server");
+		return -EPROTONOSUPPORT;
+	}
+
+	/* Return protocol not available if no record/endpoint exists */
+	if (server->sink_record_id == 0)
+		return -ENOPROTOOPT;
 
 	return source_connect(service);
 }
@@ -1881,9 +1893,21 @@ static int a2dp_source_disconnect(struct btd_service *service)
 static int a2dp_sink_connect(struct btd_service *service)
 {
 	struct btd_device *dev = btd_service_get_device(service);
+	struct btd_adapter *adapter = device_get_adapter(dev);
+	struct a2dp_server *server;
 	const char *path = device_get_path(dev);
 
 	DBG("path %s", path);
+
+	server = find_server(servers, adapter);
+	if (!server || !server->source_enabled) {
+		DBG("Unexpected error: cannot find server");
+		return -EPROTONOSUPPORT;
+	}
+
+	/* Return protocol not available if no record/endpoint exists */
+	if (server->source_record_id == 0)
+		return -ENOPROTOOPT;
 
 	return sink_connect(service);
 }
