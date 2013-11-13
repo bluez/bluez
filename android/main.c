@@ -252,6 +252,13 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 	DBG("service_id %u opcode %u len %u", msg->service_id, msg->opcode,
 								msg->len);
 
+	if (msg->service_id > HAL_SERVICE_ID_MAX ||
+						!services[msg->service_id]) {
+		error("HAL command for unregistered service %u, terminating",
+							msg->service_id);
+		goto fail;
+	}
+
 	switch (msg->service_id) {
 	case HAL_SERVICE_ID_CORE:
 		handle_service_core(msg->opcode, msg->payload, msg->len);
