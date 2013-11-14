@@ -56,10 +56,14 @@ android_libhal_internal_la_CPPFLAGS = -I$(srcdir)/android
 noinst_PROGRAMS += android/haltest
 
 android_haltest_SOURCES = android/client/haltest.c \
+				android/client/pollhandler.h \
 				android/client/pollhandler.c \
+				android/client/terminal.h \
 				android/client/terminal.c \
+				android/client/history.h \
 				android/client/history.c \
 				android/client/tabcompletion.c \
+				android/client/if-main.h \
 				android/client/if-av.c \
 				android/client/if-bt.c \
 				android/client/if-gatt.c \
