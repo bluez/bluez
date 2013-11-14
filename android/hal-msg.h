@@ -530,13 +530,13 @@ struct hal_ev_pan_conn_state {
 	uint8_t  remote_role;
 } __attribute__((packed));
 
-#define HAL_EV_A2DP_CONNECTION_STATE	0x81
-struct hal_ev_a2dp_connection_state {
+#define HAL_EV_A2DP_CONN_STATE			0x81
+struct hal_ev_a2dp_conn_state {
 	uint8_t state;
 	uint8_t bdaddr[6];
 } __attribute__((packed));
 
-#define HAL_EV_A2DP_AUDIO_STATE	0x82
+#define HAL_EV_A2DP_AUDIO_STATE			0x82
 struct hal_ev_a2dp_audio_state {
 	uint8_t state;
 	uint8_t bdaddr[6];

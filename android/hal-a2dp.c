@@ -31,9 +31,9 @@ static bool interface_ready(void)
 	return cbs != NULL;
 }
 
-static void handle_connection_state(void *buf)
+static void handle_conn_state(void *buf)
 {
-	struct hal_ev_a2dp_connection_state *ev = buf;
+	struct hal_ev_a2dp_conn_state *ev = buf;
 
 	if (cbs->connection_state_cb)
 		cbs->connection_state_cb(ev->state,
@@ -55,8 +55,8 @@ void bt_notify_a2dp(uint8_t opcode, void *buf, uint16_t len)
 		return;
 
 	switch (opcode) {
-	case HAL_EV_A2DP_CONNECTION_STATE:
-		handle_connection_state(buf);
+	case HAL_EV_A2DP_CONN_STATE:
+		handle_conn_state(buf);
 		break;
 	case HAL_EV_A2DP_AUDIO_STATE:
 		handle_audio_state(buf);
