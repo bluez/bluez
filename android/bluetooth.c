@@ -44,7 +44,7 @@
 #include "hal-msg.h"
 #include "ipc.h"
 #include "utils.h"
-#include "adapter.h"
+#include "bluetooth.h"
 
 #define DEVICE_ID_SOURCE	0x0002	/* USB */
 #define DEVICE_ID_VENDOR	0x1d6b	/* Linux Foundation */
@@ -55,8 +55,8 @@
 /* Default discoverable timeout 120sec as in Android */
 #define DEFAULT_DISCOVERABLE_TIMEOUT 120
 
-#define BASELEN_PROP_CHANGED sizeof(struct hal_ev_adapter_props_changed) \
-				+ (sizeof(struct hal_property))
+#define BASELEN_PROP_CHANGED (sizeof(struct hal_ev_adapter_props_changed) \
+				+ (sizeof(struct hal_property)))
 
 static uint16_t option_index = MGMT_INDEX_NONE;
 
@@ -1275,8 +1275,8 @@ static void clear_uuids(void)
 					sizeof(cp), &cp, NULL, NULL, NULL);
 }
 
-static void read_info_complete(uint8_t status, uint16_t length, const void *param,
-							void *user_data)
+static void read_info_complete(uint8_t status, uint16_t length,
+					const void *param, void *user_data)
 {
 	const struct mgmt_rp_read_info *rp = param;
 	bt_adapter_ready cb = user_data;

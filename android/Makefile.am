@@ -16,7 +16,7 @@ android_bluetoothd_SOURCES = android/main.c \
 				src/eir.h src/eir.c \
 				src/shared/util.h src/shared/util.c \
 				src/shared/mgmt.h src/shared/mgmt.c \
-				android/adapter.h android/adapter.c \
+				android/bluetooth.h android/bluetooth.c \
 				android/hidhost.h android/hidhost.c \
 				android/ipc.h android/ipc.c \
 				android/a2dp.h android/a2dp.c \
@@ -79,7 +79,7 @@ android_haltest_LDFLAGS = -pthread
 
 endif
 
-EXTRA_DIST += android/Android.mk android/adapter.c android/main.c \
+EXTRA_DIST += android/Android.mk android/bluetooth.c android/main.c \
 		android/hal-msg.h android/hal.h
 
 EXTRA_DIST += android/hal-bluetooth.c \

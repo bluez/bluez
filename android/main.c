@@ -46,7 +46,7 @@
 
 #include "lib/bluetooth.h"
 
-#include "adapter.h"
+#include "bluetooth.h"
 #include "socket.h"
 #include "hidhost.h"
 #include "hal-msg.h"

@@ -21,7 +21,7 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
 	main.c \
-	adapter.c \
+	bluetooth.c \
 	hidhost.c \
 	socket.c \
 	ipc.c ipc.h \
