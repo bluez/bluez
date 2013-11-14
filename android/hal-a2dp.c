@@ -113,14 +113,19 @@ static bt_status_t init(btav_callbacks_t *callbacks)
 
 static void cleanup()
 {
+	struct hal_cmd_unregister_module cmd;
+
 	DBG("");
 
 	if (!interface_ready())
 		return;
 
-	/* TODO: disable service */
-
 	cbs = NULL;
+
+	cmd.service_id = HAL_SERVICE_ID_A2DP;
+
+	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static btav_interface_t iface = {
