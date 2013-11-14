@@ -178,9 +178,30 @@ static uint8_t bt_a2dp_connect(struct hal_cmd_a2dp_connect *cmd, uint16_t len)
 static uint8_t bt_a2dp_disconnect(struct hal_cmd_a2dp_connect *cmd,
 								uint16_t len)
 {
-	DBG("Not Implemented");
+	struct a2dp_device *dev;
+	GSList *l;
+	bdaddr_t dst;
 
-	return HAL_STATUS_FAILED;
+	DBG("");
+
+	if (len < sizeof(*cmd))
+		return HAL_STATUS_INVALID;
+
+	android2bdaddr(&cmd->bdaddr, &dst);
+
+	l = g_slist_find_custom(devices, &dst, device_cmp);
+	if (!l)
+		return HAL_STATUS_FAILED;
+
+	dev = l->data;
+
+	/* Wait signaling channel to HUP */
+	if (dev->io)
+		g_io_channel_shutdown(dev->io, TRUE, NULL);
+
+	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTING);
+
+	return HAL_STATUS_SUCCESS;
 }
 
 void bt_a2dp_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
