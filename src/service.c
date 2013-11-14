@@ -198,17 +198,15 @@ int btd_service_connect(struct btd_service *service)
 		return -EBUSY;
 	}
 
-	change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
-
 	err = profile->connect(service);
-	if (err == 0)
+	if (err == 0) {
+		change_state(service, BTD_SERVICE_STATE_CONNECTING, 0);
 		return 0;
+	}
 
 	ba2str(device_get_address(service->device), addr);
 	error("%s profile connect failed for %s: %s", profile->name, addr,
 								strerror(-err));
-
-	btd_service_connecting_complete(service, err);
 
 	return err;
 }
