@@ -83,47 +83,4 @@ android_haltest_LDFLAGS = -pthread
 
 endif
 
-EXTRA_DIST += android/Android.mk android/bluetooth.c android/main.c \
-		android/hal-msg.h android/hal.h
-
-EXTRA_DIST += android/hal-bluetooth.c \
-		android/hal-sock.c \
-		android/hal-hidhost.c \
-		android/hal-pan.c \
-		android/hal-a2dp.c \
-		android/hal-log.h
-
-EXTRA_DIST += android/client/terminal.c \
-		android/client/haltest.c \
-		android/client/hwmodule.c \
-		android/client/pollhandler.c \
-		android/client/history.c \
-		android/client/if-av.c \
-		android/client/if-bt.c \
-		android/client/if-gatt.c \
-		android/client/if-hf.c \
-		android/client/if-hh.c \
-		android/client/if-pan.c \
-		android/client/if-sock.c \
-		android/client/tabcompletion.c \
-		android/client/if-main.h \
-		android/client/pollhandler.h \
-		android/client/history.h \
-		android/client/terminal.h
-
-EXTRA_DIST += android/hal-ipc-api.txt android/README
-
-EXTRA_DIST += android/hardware/bluetooth.h \
-		android/hardware/bt_av.h \
-		android/hardware/bt_gatt.h \
-		android/hardware/bt_gatt_client.h \
-		android/hardware/bt_gatt_server.h \
-		android/hardware/bt_gatt_types.h \
-		android/hardware/bt_hf.h \
-		android/hardware/bt_hh.h \
-		android/hardware/bt_hl.h \
-		android/hardware/bt_pan.h \
-		android/hardware/bt_rc.h \
-		android/hardware/bt_sock.h \
-		android/hardware/hardware.h \
-		android/cutils/properties.h
+EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README
