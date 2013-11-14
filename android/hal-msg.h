@@ -530,6 +530,11 @@ struct hal_ev_pan_conn_state {
 	uint8_t  remote_role;
 } __attribute__((packed));
 
+#define HAL_A2DP_STATE_DISCONNECTED		0x00
+#define HAL_A2DP_STATE_CONNECTING		0x01
+#define HAL_A2DP_STATE_CONNECTED		0x02
+#define HAL_A2DP_STATE_DISCONNECTING		0x03
+
 #define HAL_EV_A2DP_CONN_STATE			0x81
 struct hal_ev_a2dp_conn_state {
 	uint8_t state;
