@@ -17,6 +17,7 @@
 
 #include "if-main.h"
 #include "terminal.h"
+#include "../hal-utils.h"
 
 const bt_interface_t *if_bluetooth;
 

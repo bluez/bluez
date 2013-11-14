@@ -16,6 +16,7 @@
  */
 
 #include "if-main.h"
+#include "../hal-utils.h"
 
 const btav_interface_t *if_av = NULL;
 

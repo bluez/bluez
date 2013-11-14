@@ -18,6 +18,7 @@
 #include <hardware/bluetooth.h>
 
 #include "if-main.h"
+#include "../hal-utils.h"
 
 const btpan_interface_t *if_pan = NULL;
 

@@ -44,8 +44,6 @@
 #include <hardware/bt_gatt_server.h>
 #endif
 
-#include "textconv.h"
-
 /* Interfaces from hal that can be populated during application lifetime */
 extern const bt_interface_t *if_bluetooth;
 extern const btav_interface_t *if_av;

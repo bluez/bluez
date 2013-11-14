@@ -16,6 +16,7 @@
  */
 
 #include "if-main.h"
+#include "../hal-utils.h"
 
 const bthf_interface_t *if_hf = NULL;
 

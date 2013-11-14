@@ -87,7 +87,6 @@ LOCAL_SRC_FILES := \
 	hal-hidhost.c \
 	hal-pan.c \
 	hal-a2dp.c \
-	client/textconv.c \
 	hal-utils.c \
 
 LOCAL_C_INCLUDES += \
@@ -118,7 +117,6 @@ LOCAL_SRC_FILES := \
 	client/pollhandler.c \
 	client/terminal.c \
 	client/history.c \
-	client/textconv.c \
 	client/tabcompletion.c \
 	client/if-av.c \
 	client/if-bt.c \

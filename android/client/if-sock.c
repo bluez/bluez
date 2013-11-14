@@ -21,6 +21,7 @@
 
 #include "if-main.h"
 #include "pollhandler.h"
+#include "../hal-utils.h"
 
 const btsock_interface_t *if_sock = NULL;
 

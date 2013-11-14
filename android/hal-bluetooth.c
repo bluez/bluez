@@ -24,8 +24,7 @@
 #include "hal.h"
 #include "hal-msg.h"
 #include "hal-ipc.h"
-
-#include "client/textconv.h"
+#include "hal-utils.h"
 
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 

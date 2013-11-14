@@ -59,7 +59,6 @@ android_haltest_SOURCES = android/client/haltest.c \
 				android/client/pollhandler.c \
 				android/client/terminal.c \
 				android/client/history.c \
-				android/client/textconv.c \
 				android/client/tabcompletion.c \
 				android/client/if-av.c \
 				android/client/if-bt.c \
@@ -102,9 +101,7 @@ EXTRA_DIST += android/client/terminal.c \
 		android/client/if-hh.c \
 		android/client/if-pan.c \
 		android/client/if-sock.c \
-		android/client/textconv.c \
 		android/client/tabcompletion.c \
-		android/client/textconv.h \
 		android/client/if-main.h \
 		android/client/pollhandler.h \
 		android/client/history.h \

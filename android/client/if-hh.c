@@ -23,6 +23,7 @@
 
 #include "if-main.h"
 #include "pollhandler.h"
+#include "../hal-utils.h"
 
 const bthh_interface_t *if_hh = NULL;
 
