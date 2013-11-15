@@ -1356,6 +1356,8 @@ static void mgmt_index_added_event(uint16_t index, uint16_t length,
 		return;
 	}
 
+	adapter.index = index;
+
 	if (mgmt_send(mgmt_if, MGMT_OP_READ_INFO, index, 0, NULL,
 				read_info_complete, cb, NULL) == 0) {
 		cb(-EIO, NULL);
