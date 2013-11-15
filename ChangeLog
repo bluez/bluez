@@ -1,3 +1,15 @@
+ver 5.11:
+	Fix issue with connection attempt when not powered.
+	Fix issue with assigning player to AVRCP target role.
+	Fix issue with OBEX default cache directory.
+	Fix issue with SDP search error handling.
+	Fix issue with processing of SDP records.
+	Fix issue with HID to HCI switching utility.
+	Fix issue with mgmt end-to-end testing tool.
+	Fix issue with L2CAP end-to-end testing tool.
+	Add support for SMP end-to-end testing tool.
+	Add support for more Wii controllers.
+
 ver 5.10:
 	Fix issue with discoverable timeout handling.
 	Fix issue with MAP messages and record version.
