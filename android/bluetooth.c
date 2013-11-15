@@ -62,6 +62,8 @@ static uint16_t option_index = MGMT_INDEX_NONE;
 
 static int notification_sk = -1;
 
+#define BASELEN_REMOTE_DEV_PROP (sizeof(struct hal_ev_remote_device_props) \
+					+ sizeof(struct hal_property))
 /* This list contains addresses which are asked for records */
 static GSList *browse_reqs;
 
@@ -91,6 +93,11 @@ static struct {
 	.uuids = NULL,
 };
 
+struct device {
+	bdaddr_t bdaddr;
+	int bond_state;
+};
+
 struct browse_req {
 	bdaddr_t bdaddr;
 	GSList *uuids;
@@ -106,6 +113,7 @@ static const uint16_t uuid_list[] = {
 };
 
 static GSList *found_devices = NULL;
+static GSList *devices = NULL;
 
 static void adapter_name_changed(const uint8_t *name)
 {
@@ -301,6 +309,14 @@ static void store_link_key(const bdaddr_t *dst, const uint8_t *key,
 
 }
 
+static int bdaddr_cmp(gconstpointer a, gconstpointer b)
+{
+	const bdaddr_t *bda = a;
+	const bdaddr_t *bdb = b;
+
+	return bacmp(bdb, bda);
+}
+
 static void send_bond_state_change(const bdaddr_t *addr, uint8_t status,
 								uint8_t state)
 {
@@ -312,6 +328,29 @@ static void send_bond_state_change(const bdaddr_t *addr, uint8_t status,
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
 			HAL_EV_BOND_STATE_CHANGED, sizeof(ev), &ev, -1);
+}
+
+static void set_device_bond_state(const bdaddr_t *addr, uint8_t status,
+								int state) {
+
+	struct device *dev = NULL;
+	GSList *l;
+
+	l = g_slist_find_custom(devices, addr, bdaddr_cmp);
+	if (l)
+		dev = l->data;
+
+	if (!dev) {
+		dev = g_new0(struct device, 1);
+		bacpy(&dev->bdaddr, addr);
+		dev->bond_state = HAL_BOND_STATE_NONE;
+		devices = g_slist_prepend(devices, dev);
+	}
+
+	if (dev->bond_state != state) {
+		dev->bond_state = state;
+		send_bond_state_change(&dev->bdaddr, status, state);
+	}
 }
 
 static void browse_req_free(struct browse_req *req)
@@ -497,10 +536,30 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 								key->pin_len);
 	}
 
-	send_bond_state_change(&addr->bdaddr, HAL_STATUS_SUCCESS,
+	set_device_bond_state(&addr->bdaddr, HAL_STATUS_SUCCESS,
 							HAL_BOND_STATE_BONDED);
 
 	browse_remote_sdp(&addr->bdaddr);
+}
+
+static void send_remote_device_name_prop(const bdaddr_t *bdaddr,
+							const char *name)
+{
+	struct hal_ev_remote_device_props *ev;
+	uint8_t buf[BASELEN_REMOTE_DEV_PROP + strlen(name)];
+
+	ev = (void *) buf;
+	memset(buf, 0, sizeof(buf));
+
+	ev->status = HAL_STATUS_SUCCESS;
+	bdaddr2android(bdaddr, ev->bdaddr);
+	ev->num_props = 1;
+	ev->props[0].type = HAL_PROP_DEVICE_NAME;
+	ev->props[0].len = strlen(name);
+	memcpy(&ev->props[0].val, name, strlen(name));
+
+	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
+			HAL_EV_REMOTE_DEVICE_PROPS, sizeof(buf), ev, -1);
 }
 
 static void pin_code_request_callback(uint16_t index, uint16_t length,
@@ -516,6 +575,13 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 	}
 
 	ba2str(&ev->addr.bdaddr, dst);
+
+	/* Workaround for Android Bluetooth.apk issue: send remote
+	 * device property. Lets use address as a name for now */
+	send_remote_device_name_prop(&ev->addr.bdaddr, dst);
+
+	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
+						HAL_BOND_STATE_BONDING);
 
 	DBG("%s type %u secure %u", dst, ev->addr.type, ev->secure);
 
@@ -556,6 +622,9 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, dst);
 	DBG("%s confirm_hint %u", dst, ev->confirm_hint);
 
+	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
+						HAL_BOND_STATE_BONDING);
+
 	if (ev->confirm_hint)
 		send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_CONSENT, 0);
 	else
@@ -577,6 +646,9 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, dst);
 	DBG("%s", dst);
 
+	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
+						HAL_BOND_STATE_BONDING);
+
 	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_ENTRY, 0);
 }
 
@@ -595,8 +667,13 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	DBG("%s entered %u", dst, ev->entered);
 
 	/* HAL seems to not support entered characters */
-	if (!ev->entered)
-		send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_NOTIF,
+	if (ev->entered)
+		return;
+
+	set_device_bond_state(&ev->addr.bdaddr, HAL_STATUS_SUCCESS,
+						HAL_BOND_STATE_BONDING);
+
+	send_ssp_request(&ev->addr.bdaddr, HAL_SSP_VARIANT_NOTIF,
 								ev->passkey);
 }
 
@@ -645,14 +722,6 @@ static void confirm_device_name(const bdaddr_t *addr, uint8_t addr_type)
 	if (mgmt_reply(mgmt_if, MGMT_OP_CONFIRM_NAME, adapter.index,
 				sizeof(cp), &cp, NULL, NULL, NULL) == 0)
 		error("Failed to send confirm name request");
-}
-
-static int bdaddr_cmp(gconstpointer a, gconstpointer b)
-{
-	const bdaddr_t *bda = a;
-	const bdaddr_t *bdb = b;
-
-	return bacmp(bdb, bda);
 }
 
 static int fill_device_props(struct hal_property *prop, bdaddr_t *addr,
@@ -1840,7 +1909,7 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	if (status == MGMT_STATUS_SUCCESS)
 		return;
 
-	send_bond_state_change(&rp->addr.bdaddr, status_mgmt2hal(status),
+	set_device_bond_state(&rp->addr.bdaddr, status_mgmt2hal(status),
 							HAL_BOND_STATE_NONE);
 }
 
@@ -1857,7 +1926,7 @@ static bool create_bond(void *buf, uint16_t len)
 				&cp, pair_device_complete, NULL, NULL) == 0)
 		return false;
 
-	send_bond_state_change(&cp.addr.bdaddr, HAL_STATUS_SUCCESS,
+	set_device_bond_state(&cp.addr.bdaddr, HAL_STATUS_SUCCESS,
 						HAL_BOND_STATE_BONDING);
 
 	return true;
@@ -1885,7 +1954,7 @@ static void unpair_device_complete(uint8_t status, uint16_t length,
 	if (status != MGMT_STATUS_SUCCESS)
 		return;
 
-	send_bond_state_change(&rp->addr.bdaddr, HAL_STATUS_SUCCESS,
+	set_device_bond_state(&rp->addr.bdaddr, HAL_STATUS_SUCCESS,
 							HAL_BOND_STATE_NONE);
 }
 
