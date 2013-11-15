@@ -757,6 +757,42 @@ const char *bt_compidtostr(int compid)
 		return "VSN Technologies Inc.";
 	case 248:
 		return "AceUni Corp., Ltd.";
+	case 249:
+		return "StickNFind";
+	case 250:
+		return "Crystal Code AB";
+	case 251:
+		return "KOUKAAM a.s.";
+	case 252:
+		return "Delphi Corporation";
+	case 253:
+		return "ValenceTech Limited";
+	case 254:
+		return "Reserved";
+	case 255:
+		return "Typo Products, LLC";
+	case 256:
+		return "TomTom International BV";
+	case 257:
+		return "Fugoo, Inc";
+	case 258:
+		return "Keiser Corporation";
+	case 259:
+		return "Bang & Olufsen A/S";
+	case 260:
+		return "PLUS Locations Systems Pty Ltd";
+	case 261:
+		return "Ubiquitous Computing Technology Corporation";
+	case 262:
+		return "Innovative Yachtter Solutions";
+	case 263:
+		return "William Demant Holding A/S";
+	case 264:
+		return "Chicony Electronics Co., Ltd.";
+	case 265:
+		return "Atus BV";
+	case 266:
+		return "Codegate Ltd.";
 	case 65535:
 		return "internal use";
 	default:
