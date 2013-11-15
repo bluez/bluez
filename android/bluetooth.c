@@ -645,7 +645,10 @@ static void send_ssp_request(const bdaddr_t *addr, uint8_t variant,
 {
 	struct hal_ev_ssp_request ev;
 
-	/* TODO name and CoD of remote devices should probably be cached */
+	/* It is ok to have empty name and CoD of remote devices here since
+	* those information has been already provided on device_connected event
+	* or during device scaning. Android will use that instead.
+	*/
 	memset(&ev, 0, sizeof(ev));
 	bdaddr2android(addr, ev.bdaddr);
 	ev.pairing_variant = variant;
