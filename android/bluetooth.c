@@ -589,8 +589,10 @@ static void send_remote_device_name_prop(const bdaddr_t *bdaddr)
 
 	/* Use cached name or bdaddr string */
 	name = get_device_name(bdaddr);
-	if (!name)
+	if (!name) {
+		ba2str(bdaddr, dst);
 		name = dst;
+	}
 
 	ev_len = BASELEN_REMOTE_DEV_PROP + strlen(name);
 	ev = g_malloc0(ev_len);
