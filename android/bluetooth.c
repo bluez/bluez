@@ -605,7 +605,7 @@ static void send_remote_device_name_prop(const bdaddr_t *bdaddr)
 	memcpy(&ev->props[0].val, name, strlen(name));
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_BLUETOOTH,
-			HAL_EV_REMOTE_DEVICE_PROPS, sizeof(ev), ev, -1);
+			HAL_EV_REMOTE_DEVICE_PROPS, ev_len, ev, -1);
 
 	g_free(ev);
 }
