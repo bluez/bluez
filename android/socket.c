@@ -35,6 +35,7 @@
 #include "ipc.h"
 #include "socket.h"
 
+static bdaddr_t adapter_addr;
 
 static int handle_listen(void *buf)
 {
@@ -80,6 +81,8 @@ void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 bool bt_socket_register(int sk, const bdaddr_t *addr)
 {
 	DBG("");
+
+	bacpy(&adapter_addr, addr);
 
 	return true;
 }
