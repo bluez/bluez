@@ -232,6 +232,8 @@ struct hal_cmd_sock_connect {
 	uint8_t  flags;
 } __attribute__((packed));
 
+/* Bluetooth HID Host HAL API */
+
 #define HAL_OP_HIDHOST_CONNECT		0x01
 struct hal_cmd_hidhost_connect {
 	uint8_t bdaddr[6];
