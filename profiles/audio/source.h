@@ -48,4 +48,4 @@ gboolean source_new_stream(struct btd_service *service, struct avdtp *session,
 				struct avdtp_stream *stream);
 gboolean source_setup_stream(struct btd_service *service,
 							struct avdtp *session);
-int source_disconnect(struct btd_service *service, gboolean shutdown);
+int source_disconnect(struct btd_service *service);

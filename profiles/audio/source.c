@@ -380,15 +380,12 @@ gboolean source_new_stream(struct btd_service *service, struct avdtp *session,
 	return TRUE;
 }
 
-int source_disconnect(struct btd_service *service, gboolean shutdown)
+int source_disconnect(struct btd_service *service)
 {
 	struct source *source = btd_service_get_user_data(service);
 
 	if (!source->session)
 		return -ENOTCONN;
-
-	if (shutdown)
-		avdtp_set_device_disconnect(source->session, TRUE);
 
 	/* cancel pending connect */
 	if (source->connect_id > 0) {
