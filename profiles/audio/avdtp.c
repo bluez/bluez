@@ -3183,8 +3183,8 @@ struct avdtp_service_capability *avdtp_stream_get_codec(
 	return NULL;
 }
 
-gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
-				struct avdtp_service_capability *cap)
+static gboolean avdtp_stream_has_capability(struct avdtp_stream *stream,
+					struct avdtp_service_capability *cap)
 {
 	GSList *l;
 	struct avdtp_service_capability *stream_cap;
@@ -3219,7 +3219,16 @@ gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream)
 {
-	return avdtp_get_remote_sep(stream->session, stream->rseid);
+	GSList *l;
+
+	for (l = stream->session->seps; l; l = l->next) {
+		struct avdtp_remote_sep *sep = l->data;
+
+		if (sep->seid == stream->rseid)
+			return sep;
+	}
+
+	return NULL;
 }
 
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
@@ -3266,21 +3275,6 @@ static int process_queue(struct avdtp *session)
 	*queue = g_slist_remove(*queue, req);
 
 	return send_req(session, FALSE, req);
-}
-
-struct avdtp_remote_sep *avdtp_get_remote_sep(struct avdtp *session,
-						uint8_t seid)
-{
-	GSList *l;
-
-	for (l = session->seps; l; l = l->next) {
-		struct avdtp_remote_sep *sep = l->data;
-
-		if (sep->seid == seid)
-			return sep;
-	}
-
-	return NULL;
 }
 
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
