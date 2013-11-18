@@ -122,7 +122,8 @@ static void service_register(void *buf, uint16_t len)
 	return;
 failed:
 	ipc_send_rsp(g_io_channel_unix_get_fd(hal_cmd_io),
-				HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
+				HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+				HAL_STATUS_FAILED);
 }
 
 static void service_unregister(void *buf, uint16_t len)
@@ -164,7 +165,8 @@ static void service_unregister(void *buf, uint16_t len)
 	return;
 failed:
 	ipc_send_rsp(g_io_channel_unix_get_fd(hal_cmd_io),
-				HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
+				HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+				HAL_STATUS_FAILED);
 }
 
 static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
@@ -178,7 +180,8 @@ static void handle_service_core(uint8_t opcode, void *buf, uint16_t len)
 		break;
 	default:
 		ipc_send_rsp(g_io_channel_unix_get_fd(hal_cmd_io),
-				HAL_SERVICE_ID_CORE, HAL_STATUS_FAILED);
+						HAL_SERVICE_ID_CORE, opcode,
+						HAL_STATUS_FAILED);
 		break;
 	}
 }
@@ -274,7 +277,8 @@ static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
 		bt_pan_handle_cmd(fd, msg->opcode, msg->payload, msg->len);
 		break;
 	default:
-		ipc_send_rsp(fd, msg->service_id, HAL_STATUS_FAILED);
+		ipc_send_rsp(fd, msg->service_id, msg->opcode,
+							HAL_STATUS_FAILED);
 		break;
 	}
 

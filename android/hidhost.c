@@ -1109,7 +1109,7 @@ void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(sk, HAL_SERVICE_ID_HIDHOST, status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_HIDHOST, opcode, status);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)

@@ -2268,7 +2268,7 @@ void bt_bluetooth_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 error:
 	error("Error handling command 0x%02x status %u", opcode, status);
 
-	ipc_send_rsp(sk, HAL_SERVICE_ID_BLUETOOTH, status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_BLUETOOTH, opcode, status);
 }
 
 bool bt_bluetooth_register(int sk)

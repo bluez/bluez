@@ -226,7 +226,7 @@ void bt_a2dp_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(sk, HAL_SERVICE_ID_A2DP, status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_A2DP, opcode, status);
 }
 
 static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)

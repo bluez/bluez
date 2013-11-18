@@ -87,7 +87,7 @@ void bt_pan_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		break;
 	}
 
-	ipc_send_rsp(sk, HAL_SERVICE_ID_PAN, status);
+	ipc_send_rsp(sk, HAL_SERVICE_ID_PAN, opcode, status);
 }
 
 bool bt_pan_register(int sk, const bdaddr_t *addr)
