@@ -394,9 +394,6 @@ struct avdtp {
 
 	avdtp_session_state_t state;
 
-	/* True if the entire device is being disconnected */
-	gboolean device_disconnect;
-
 	guint auth_id;
 
 	GIOChannel *io;
@@ -1199,11 +1196,6 @@ static void set_disconnect_timer(struct avdtp *session)
 {
 	if (session->dc_timer)
 		remove_disconnect_timer(session);
-
-	if (session->device_disconnect) {
-		session->dc_timer = g_idle_add(disconnect_timeout, session);
-		return;
-	}
 
 	session->dc_timer = g_timeout_add_seconds(DISCONNECT_TIMEOUT,
 						disconnect_timeout,
@@ -3839,11 +3831,6 @@ struct btd_device *avdtp_get_device(struct avdtp *session)
 gboolean avdtp_has_stream(struct avdtp *session, struct avdtp_stream *stream)
 {
 	return g_slist_find(session->streams, stream) ? TRUE : FALSE;
-}
-
-void avdtp_set_device_disconnect(struct avdtp *session, gboolean dev_dc)
-{
-	session->device_disconnect = dev_dc;
 }
 
 unsigned int avdtp_add_state_cb(struct btd_device *dev,
