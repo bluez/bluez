@@ -3283,29 +3283,9 @@ struct avdtp_remote_sep *avdtp_get_remote_sep(struct avdtp *session,
 	return NULL;
 }
 
-uint8_t avdtp_get_seid(struct avdtp_remote_sep *sep)
-{
-	return sep->seid;
-}
-
-uint8_t avdtp_get_type(struct avdtp_remote_sep *sep)
-{
-	return sep->type;
-}
-
 struct avdtp_service_capability *avdtp_get_codec(struct avdtp_remote_sep *sep)
 {
 	return sep->codec;
-}
-
-gboolean avdtp_get_delay_reporting(struct avdtp_remote_sep *sep)
-{
-	return sep->delay_reporting;
-}
-
-struct avdtp_stream *avdtp_get_stream(struct avdtp_remote_sep *sep)
-{
-	return sep->stream;
 }
 
 struct avdtp_service_capability *avdtp_service_cap_new(uint8_t category,
