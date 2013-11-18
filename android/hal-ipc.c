@@ -367,6 +367,17 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 
 	if (cmd.opcode == HAL_OP_STATUS) {
 		struct hal_status *s = rsp;
+
+		if (sizeof(*s) != cmd.len) {
+			error("Invalid status length, aborting");
+			exit(EXIT_FAILURE);
+		}
+
+		if (s->code == HAL_STATUS_SUCCESS) {
+			error("Invalid success status response, aborting");
+			exit(EXIT_FAILURE);
+		}
+
 		return s->code;
 	}
 
