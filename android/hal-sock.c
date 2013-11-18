@@ -55,8 +55,8 @@ static bt_status_t sock_listen(btsock_type_t type, const char *service_name,
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	DBG("uuid %s chan %d sock %p type %d service_name %s",
-			btuuid2str(uuid), chan, sock, type, service_name);
+	DBG("uuid %s chan %d sock %p type %d service_name %s flags 0x%02x",
+		btuuid2str(uuid), chan, sock, type, service_name, flags);
 
 	switch (type) {
 	case BTSOCK_RFCOMM:
@@ -82,8 +82,8 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 		return BT_STATUS_PARM_INVALID;
 	}
 
-	DBG("uuid %s chan %d sock %p type %d", btuuid2str(uuid), chan, sock,
-									type);
+	DBG("uuid %s chan %d sock %p type %d flags 0x%02x",
+		btuuid2str(uuid), chan, sock, type, flags);
 
 	if (type != BTSOCK_RFCOMM) {
 		error("Socket type %u not supported", type);
