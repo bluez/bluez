@@ -388,15 +388,12 @@ gboolean sink_new_stream(struct btd_service *service, struct avdtp *session,
 	return TRUE;
 }
 
-int sink_disconnect(struct btd_service *service, gboolean shutdown)
+int sink_disconnect(struct btd_service *service)
 {
 	struct sink *sink = btd_service_get_user_data(service);
 
 	if (!sink->session)
 		return -ENOTCONN;
-
-	if (shutdown)
-		avdtp_set_device_disconnect(sink->session, TRUE);
 
 	/* cancel pending connect */
 	if (sink->connect_id > 0) {

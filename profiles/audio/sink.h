@@ -47,4 +47,4 @@ int sink_connect(struct btd_service *service);
 gboolean sink_new_stream(struct btd_service *service, struct avdtp *session,
 				struct avdtp_stream *stream);
 gboolean sink_setup_stream(struct btd_service *service, struct avdtp *session);
-int sink_disconnect(struct btd_service *service, gboolean shutdown);
+int sink_disconnect(struct btd_service *service);
