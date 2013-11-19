@@ -54,12 +54,12 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_A2DP_CONN_STATE */
 		.handler = handle_conn_state,
 		.var_len = false,
-		.data_len = sizeof(struct hal_ev_pan_conn_state),
+		.data_len = sizeof(struct hal_ev_a2dp_conn_state),
 	},
 	{	/* HAL_EV_A2DP_AUDIO_STATE */
 		.handler = handle_audio_state,
 		.var_len = false,
-		.data_len = sizeof(struct hal_ev_pan_ctrl_state),
+		.data_len = sizeof(struct hal_ev_a2dp_audio_state),
 	},
 };
 
