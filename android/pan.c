@@ -58,7 +58,8 @@ static uint8_t bt_pan_connect(struct hal_cmd_pan_connect *cmd, uint16_t len)
 	return HAL_STATUS_FAILED;
 }
 
-static uint8_t bt_pan_disconnect(struct hal_cmd_pan_connect *cmd, uint16_t len)
+static uint8_t bt_pan_disconnect(struct hal_cmd_pan_disconnect *cmd,
+								uint16_t len)
 {
 	DBG("Not Implemented");
 
