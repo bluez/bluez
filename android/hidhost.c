@@ -1223,6 +1223,14 @@ bool bt_hid_register(int sk, const bdaddr_t *addr)
 	return true;
 }
 
+static void free_hid_devices(gpointer data, gpointer user_data)
+{
+	struct hid_device *dev = data;
+
+	bt_hid_notify_state(dev, HAL_HIDHOST_STATE_DISCONNECTED);
+	hid_device_free(dev);
+}
+
 void bt_hid_unregister(void)
 {
 	DBG("");
@@ -1230,6 +1238,8 @@ void bt_hid_unregister(void)
 	if (notification_sk < 0)
 		return;
 
+	g_slist_foreach(devices, free_hid_devices, NULL);
+	devices = NULL;
 	notification_sk = -1;
 
 	if (ctrl_io) {
