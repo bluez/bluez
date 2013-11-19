@@ -121,6 +121,14 @@ static ssize_t autopair_pincb(struct btd_adapter *adapter,
 		}
 
 		break;
+	case 0x06:		/* Imaging */
+		if (class & 0x80) {	/* Printer */
+			if (attempt > 1)
+				return 0;
+			memcpy(pinbuf, "0000", 4);
+			return 4;
+		}
+		break;
 	}
 
 	return 0;
