@@ -724,7 +724,7 @@ static int ssp_reply(const bt_bdaddr_t *bd_addr, bt_ssp_variant_t variant,
 
 static const void *get_profile_interface(const char *profile_id)
 {
-	DBG("%s: %s", __func__, profile_id);
+	DBG("%s", profile_id);
 
 	if (!interface_ready())
 		return NULL;
