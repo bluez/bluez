@@ -522,7 +522,6 @@ static int uhid_create(struct hid_device *dev)
 	dev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
 	if (dev->uhid_fd < 0) {
 		error("Failed to open uHID device: %s", strerror(errno));
-		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_NO_HID);
 		return -errno;
 	}
 
@@ -541,7 +540,6 @@ static int uhid_create(struct hid_device *dev)
 		error("Failed to create uHID device: %s", strerror(errno));
 		close(dev->uhid_fd);
 		dev->uhid_fd = -1;
-		bt_hid_notify_state(dev, HAL_HIDHOST_STATE_NO_HID);
 		return -errno;
 	}
 
@@ -559,16 +557,20 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 							gpointer user_data)
 {
 	struct hid_device *dev = user_data;
+	uint8_t state;
 
 	DBG("");
 
 	if (conn_err) {
 		error("%s", conn_err->message);
+		state = HAL_HIDHOST_STATE_FAILED;
 		goto failed;
 	}
 
-	if (uhid_create(dev) < 0)
+	if (uhid_create(dev) < 0) {
+		state = HAL_HIDHOST_STATE_NO_HID;
 		goto failed;
+	}
 
 	dev->intr_watch = g_io_add_watch(dev->intr_io,
 				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
@@ -579,6 +581,7 @@ static void interrupt_connect_cb(GIOChannel *chan, GError *conn_err,
 	return;
 
 failed:
+	bt_hid_notify_state(dev, state);
 	hid_device_free(dev);
 }
 
