@@ -352,7 +352,7 @@ static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_SSP_REQUEST */
 		.handler = handle_ssp_request,
 		.var_len = false,
-		.data_len = sizeof(handle_ssp_request),
+		.data_len = sizeof(struct hal_ev_ssp_request),
 	},
 	{	/* HAL_EV_BOND_STATE_CHANGED */
 		.handler = handle_bond_state_change,
