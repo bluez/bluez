@@ -508,15 +508,6 @@ static int set_adapter_property(const bt_property_t *property)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	switch (property->type) {
-	case BT_PROPERTY_BDNAME:
-	case BT_PROPERTY_ADAPTER_SCAN_MODE:
-	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
-		break;
-	default:
-		return BT_STATUS_PARM_INVALID;
-	}
-
 	/* type match IPC type */
 	cmd->type = property->type;
 	cmd->len = property->len;
