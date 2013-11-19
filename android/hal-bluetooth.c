@@ -558,13 +558,27 @@ static int get_remote_device_property(bt_bdaddr_t *remote_addr,
 static int set_remote_device_property(bt_bdaddr_t *remote_addr,
 						const bt_property_t *property)
 {
+	struct hal_cmd_set_remote_device_prop *cmd;
+	uint8_t buf[sizeof(*cmd) + property->len];
+
 	DBG("bdaddr: %s prop: %s", bdaddr2str(remote_addr),
-						btproperty2str(property));
+				bt_property_type_t2str(property->type));
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd = (void *) buf;
+
+	memcpy(cmd->bdaddr, remote_addr, sizeof(cmd->bdaddr));
+
+	/* type match IPC type */
+	cmd->type = property->type;
+	cmd->len = property->len;
+	memcpy(cmd->val, property->val, property->len);
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_SET_REMOTE_DEVICE_PROP,
+					sizeof(buf), cmd, 0, NULL, NULL);
 }
 
 static int get_remote_service_record(bt_bdaddr_t *remote_addr, bt_uuid_t *uuid)
