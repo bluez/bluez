@@ -312,8 +312,8 @@ static sdp_record_t *a2dp_record(void)
 
 	sdp_set_info_attr(record, "Audio Source", NULL, NULL);
 
-	free(psm);
-	free(version);
+	sdp_data_free(psm);
+	sdp_data_free(version);
 	sdp_list_free(proto[0], NULL);
 	sdp_list_free(proto[1], NULL);
 	sdp_list_free(apseq, NULL);
