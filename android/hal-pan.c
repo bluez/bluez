@@ -54,14 +54,14 @@ static void handle_ctrl_state(void *buf, uint16_t len)
  * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
 static const struct hal_ipc_handler ev_handlers[] = {
 	{	/* HAL_EV_PAN_CTRL_STATE */
-		.handler = handle_conn_state,
-		.var_len = false,
-		.data_len = sizeof(struct hal_ev_pan_conn_state),
-	},
-	{	/* HAL_EV_PAN_CONN_STATE */
 		.handler = handle_ctrl_state,
 		.var_len = false,
 		.data_len = sizeof(struct hal_ev_pan_ctrl_state),
+	},
+	{	/* HAL_EV_PAN_CONN_STATE */
+		.handler = handle_conn_state,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_pan_conn_state),
 	},
 };
 
