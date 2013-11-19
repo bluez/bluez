@@ -43,26 +43,86 @@ static pthread_mutex_t cmd_sk_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static pthread_t notif_th = 0;
 
-static void notification_dispatch(struct hal_hdr *msg, int fd)
+struct service_handler {
+	const struct hal_ipc_handler *handler;
+	uint8_t size;
+};
+
+static struct service_handler services[HAL_SERVICE_ID_MAX + 1];
+
+void hal_ipc_register(uint8_t service, const struct hal_ipc_handler *handlers,
+								uint8_t size)
 {
-	switch (msg->service_id) {
-	case HAL_SERVICE_ID_BLUETOOTH:
-		bt_notify_adapter(msg->opcode, msg->payload, msg->len);
-		break;
-	case HAL_SERVICE_ID_HIDHOST:
-		bt_notify_hidhost(msg->opcode, msg->payload, msg->len);
-		break;
-	case HAL_SERVICE_ID_A2DP:
-		bt_notify_a2dp(msg->opcode, msg->payload, msg->len);
-		break;
-	case HAL_SERVICE_ID_PAN:
-		bt_notify_pan(msg->opcode, msg->payload, msg->len);
-		break;
-	default:
-		DBG("Unhandled notification service=%d opcode=0x%x",
-						msg->service_id, msg->opcode);
-		break;
+	services[service].handler = handlers;
+	services[service].size = size;
+}
+
+void hal_ipc_unregister(uint8_t service)
+{
+	services[service].handler = NULL;
+	services[service].size = 0;
+}
+
+static void handle_msg(void *buf, ssize_t len)
+{
+	struct hal_hdr *msg = buf;
+	const struct hal_ipc_handler *handler;
+	uint8_t opcode;
+
+	if (len < (ssize_t) sizeof(*msg)) {
+		error("IPC: message too small (%zd bytes), aborting", len);
+		exit(EXIT_FAILURE);
 	}
+
+	if (len != (ssize_t) (sizeof(*msg) + msg->len)) {
+		error("IPC: message malformed (%zd bytes), aborting", len);
+		exit(EXIT_FAILURE);
+	}
+
+	/* if service is valid */
+	if (msg->service_id > HAL_SERVICE_ID_MAX) {
+		error("IPC: unknown service (0x%x), aborting",
+							msg->service_id);
+		exit(EXIT_FAILURE);
+	}
+
+	/* if service is registered */
+	if (!services[msg->service_id].handler) {
+		error("IPC: unregistered service (0x%x), aborting",
+							msg->service_id);
+		exit(EXIT_FAILURE);
+	}
+
+	/* if opcode fit valid range */
+	if (msg->opcode < HAL_MINIMUM_EVENT) {
+		error("IPC: invalid opcode for service 0x%x (0x%x), aborting",
+						msg->service_id, msg->opcode);
+		exit(EXIT_FAILURE);
+	}
+
+	/* opcode is used as table offset and must be adjusted as events start
+	 * with HAL_MINIMUM_EVENT offset */
+	opcode = msg->opcode - HAL_MINIMUM_EVENT;
+
+	/* if opcode is valid */
+	if (opcode >= services[msg->service_id].size) {
+		error("IPC: invalid opcode for service 0x%x (0x%x), aborting",
+						msg->service_id, msg->opcode);
+		exit(EXIT_FAILURE);
+	}
+
+	handler = &services[msg->service_id].handler[opcode];
+
+	/* if payload size is valid */
+	if ((handler->var_len && handler->data_len > msg->len) ||
+			(!handler->var_len && handler->data_len != msg->len)) {
+		error("IPC: message size invalid for service 0x%x opcode 0x%x "
+				"(%u bytes), aborting",
+				msg->service_id, msg->opcode, msg->len);
+		exit(EXIT_FAILURE);
+	}
+
+	handler->handler(msg->payload, msg->len);
 }
 
 static void *notification_handler(void *data)
@@ -72,7 +132,6 @@ static void *notification_handler(void *data)
 	struct cmsghdr *cmsg;
 	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 	char buf[BLUEZ_HAL_MTU];
-	struct hal_hdr *ev = (void *) buf;
 	ssize_t ret;
 	int fd;
 
@@ -83,7 +142,7 @@ static void *notification_handler(void *data)
 		memset(buf, 0, sizeof(buf));
 		memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
-		iv.iov_base = ev;
+		iv.iov_base = buf;
 		iv.iov_len = sizeof(buf);
 
 		msg.msg_iov = &iv;
@@ -108,24 +167,6 @@ static void *notification_handler(void *data)
 			exit(EXIT_FAILURE);
 		}
 
-		if (ret < (ssize_t) sizeof(*ev)) {
-			error("Too small notification (%zd bytes), aborting",
-									ret);
-			exit(EXIT_FAILURE);
-		}
-
-		if (ev->opcode < HAL_MINIMUM_EVENT) {
-			error("Invalid notification (0x%x), aborting",
-							ev->opcode);
-			exit(EXIT_FAILURE);
-		}
-
-		if (ret != (ssize_t) (sizeof(*ev) + ev->len)) {
-			error("Malformed notification(%zd bytes), aborting",
-									ret);
-			exit(EXIT_FAILURE);
-		}
-
 		fd = -1;
 
 		/* Receive auxiliary data in msg */
@@ -138,7 +179,7 @@ static void *notification_handler(void *data)
 			}
 		}
 
-		notification_dispatch(ev, fd);
+		handle_msg(buf, ret);
 	}
 
 	close(notif_sk);
