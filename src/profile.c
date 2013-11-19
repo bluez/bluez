@@ -417,6 +417,11 @@
 				</sequence>				\
 			</sequence>					\
 		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
 		<attribute id=\"0x0009\">				\
 			<sequence>					\
 				<sequence>				\
@@ -458,6 +463,11 @@
 				</sequence>				\
 			</sequence>					\
 		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
+			</sequence>					\
+		</attribute>						\
 		<attribute id=\"0x0009\">				\
 			<sequence>					\
 				<sequence>				\
@@ -494,6 +504,11 @@
 				<sequence>				\
 					<uuid value=\"0x0008\"/>	\
 				</sequence>				\
+			</sequence>					\
+		</attribute>						\
+		<attribute id=\"0x0005\">				\
+			<sequence>					\
+				<uuid value=\"0x1002\" />		\
 			</sequence>					\
 		</attribute>						\
 		<attribute id=\"0x0009\">				\
