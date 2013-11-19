@@ -74,6 +74,9 @@ static bt_status_t pan_enable(int local_role)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
+	if (!(local_role == BTPAN_ROLE_PANU || local_role == BTPAN_ROLE_PANNAP))
+		return BT_STATUS_UNSUPPORTED;
+
 	cmd.local_role = local_role;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE,
@@ -108,6 +111,20 @@ static bt_status_t pan_connect(const bt_bdaddr_t *bd_addr, int local_role,
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
+
+	switch (local_role) {
+	case BTPAN_ROLE_PANNAP:
+		if (remote_role != BTPAN_ROLE_PANU)
+			return BT_STATUS_UNSUPPORTED;
+		break;
+	case BTPAN_ROLE_PANU:
+		if (remote_role != BTPAN_ROLE_PANNAP &&
+						remote_role != BTPAN_ROLE_PANU)
+			return BT_STATUS_UNSUPPORTED;
+		break;
+	default:
+		return BT_STATUS_UNSUPPORTED;
+	}
 
 	memcpy(cmd.bdaddr, bd_addr, sizeof(cmd.bdaddr));
 	cmd.local_role = local_role;
