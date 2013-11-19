@@ -516,13 +516,15 @@ static void bt_hid_set_info(struct hid_device *dev)
 static int uhid_create(struct hid_device *dev)
 {
 	GIOCondition cond = G_IO_IN | G_IO_ERR | G_IO_NVAL;
-	GIOChannel *io;
 	struct uhid_event ev;
+	GIOChannel *io;
+	int err;
 
 	dev->uhid_fd = open(UHID_DEVICE_FILE, O_RDWR | O_CLOEXEC);
 	if (dev->uhid_fd < 0) {
+		err = -errno;
 		error("Failed to open uHID device: %s", strerror(errno));
-		return -errno;
+		return err;
 	}
 
 	memset(&ev, 0, sizeof(ev));
@@ -537,10 +539,11 @@ static int uhid_create(struct hid_device *dev)
 	ev.u.create.rd_data = dev->rd_data;
 
 	if (write(dev->uhid_fd, &ev, sizeof(ev)) < 0) {
+		err = -errno;
 		error("Failed to create uHID device: %s", strerror(errno));
 		close(dev->uhid_fd);
 		dev->uhid_fd = -1;
-		return -errno;
+		return err;
 	}
 
 	io = g_io_channel_unix_new(dev->uhid_fd);
