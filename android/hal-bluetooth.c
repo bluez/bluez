@@ -476,21 +476,6 @@ static int get_adapter_property(bt_property_type_t type)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	switch (type) {
-	case BT_PROPERTY_BDNAME:
-	case BT_PROPERTY_BDADDR:
-	case BT_PROPERTY_UUIDS:
-	case BT_PROPERTY_CLASS_OF_DEVICE:
-	case BT_PROPERTY_TYPE_OF_DEVICE:
-	case BT_PROPERTY_SERVICE_RECORD:
-	case BT_PROPERTY_ADAPTER_SCAN_MODE:
-	case BT_PROPERTY_ADAPTER_BONDED_DEVICES:
-	case BT_PROPERTY_ADAPTER_DISCOVERY_TIMEOUT:
-		break;
-	default:
-		return BT_STATUS_PARM_INVALID;
-	}
-
 	/* type match IPC type */
 	cmd.type = type;
 
