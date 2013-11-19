@@ -18,9 +18,10 @@ C.1: Mandatory if ('End Product' or 'Host Subsystem') and ('BR Host' or
 	'BR/HS Host') are Supported ('End Product' or 'Host Subsystem' with 'BR'
 	or 'BR/HS Host' CC), otherwise excluded. Optional for
 	'Component (Tested)' or 'Component (Non-Tested)'.
-C.2: Mandatory if ('End Product' or 'Host Subsystem') and ('LE Host') are Supported
-	(End Product or Host Subsystem with LE Host CC), otherwise excluded.
-	Optional for 'Component (Tested)' or 'Component (Non-Tested)'.
+C.2: Mandatory if ('End Product' or 'Host Subsystem') and ('LE Host') are
+	Supported (End Product or Host Subsystem with LE Host CC),
+	otherwise excluded.  Optional for 'Component (Tested)' or
+	'Component (Non-Tested)'.
 C.3: Mandatory if ('End Product' or 'Host Subsystem') and ('BR/LE Host' or
 	'BR/HS/LE Host') are Supported (End Product or Host Subsystem with
 	BR/LE or BR/HS/LE Host CC), otherwise excluded.
