@@ -746,12 +746,17 @@ static const void *get_profile_interface(const char *profile_id)
 
 static int dut_mode_configure(uint8_t enable)
 {
-	DBG("");
+	struct hal_cmd_dut_mode_conf cmd;
+
+	DBG("enable %u", enable);
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd.enable = enable;
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_CONF,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t len)
