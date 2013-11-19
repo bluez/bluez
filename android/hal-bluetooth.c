@@ -300,9 +300,17 @@ static void handle_acl_state_changed(void *buf, uint16_t len)
 
 static void handle_dut_mode_receive(void *buf, uint16_t len)
 {
+	struct hal_ev_dut_mode_receive *ev = buf;
+
 	DBG("");
 
-	/* TODO */
+	if (len != sizeof(*ev) + ev->len) {
+		error("invalid dut mode receive event (%u), aborting", len);
+		exit(EXIT_FAILURE);
+	}
+
+	if (bt_hal_cbacks->dut_mode_recv_cb)
+		bt_hal_cbacks->dut_mode_recv_cb(ev->opcode, ev->data, ev->len);
 }
 
 /* handlers will be called from notification thread context,
