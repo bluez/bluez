@@ -32,7 +32,7 @@ static bool interface_ready(void)
 	return cbacks != NULL;
 }
 
-static void handle_conn_state(void *buf)
+static void handle_conn_state(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_conn_state *ev = buf;
 
@@ -41,7 +41,7 @@ static void handle_conn_state(void *buf)
 								ev->state);
 }
 
-static void handle_info(void *buf)
+static void handle_info(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_info *ev = buf;
 	bthh_hid_info_t info;
@@ -60,7 +60,7 @@ static void handle_info(void *buf)
 		cbacks->hid_info_cb((bt_bdaddr_t *) ev->bdaddr, info);
 }
 
-static void handle_proto_mode(void *buf)
+static void handle_proto_mode(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_proto_mode *ev = buf;
 
@@ -69,16 +69,21 @@ static void handle_proto_mode(void *buf)
 							ev->status, ev->mode);
 }
 
-static void handle_get_report(void *buf)
+static void handle_get_report(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_get_report *ev = buf;
+
+	if (len != sizeof(*ev) + ev->len) {
+		error("invalid get report event, aborting");
+		exit(EXIT_FAILURE);
+	}
 
 	if (cbacks->get_report_cb)
 		cbacks->get_report_cb((bt_bdaddr_t *) ev->bdaddr, ev->status,
 							ev->data, ev->len);
 }
 
-static void handle_virtual_unplug(void *buf)
+static void handle_virtual_unplug(void *buf, uint16_t len)
 {
 	struct hal_ev_hidhost_virtual_unplug *ev = buf;
 
@@ -87,33 +92,35 @@ static void handle_virtual_unplug(void *buf)
 								ev->status);
 }
 
-/* will be called from notification thread context */
-void bt_notify_hidhost(uint8_t opcode, void *buf, uint16_t len)
-{
-	if (!interface_ready())
-		return;
-
-	switch (opcode) {
-	case HAL_EV_HIDHOST_CONN_STATE:
-		handle_conn_state(buf);
-		break;
-	case HAL_EV_HIDHOST_INFO:
-		handle_info(buf);
-		break;
-	case HAL_EV_HIDHOST_PROTO_MODE:
-		handle_proto_mode(buf);
-		break;
-	case HAL_EV_HIDHOST_GET_REPORT:
-		handle_get_report(buf);
-		break;
-	case HAL_EV_HIDHOST_VIRTUAL_UNPLUG:
-		handle_virtual_unplug(buf);
-		break;
-	default:
-		DBG("Unhandled callback opcode=0x%x", opcode);
-		break;
-	}
-}
+/* handlers will be called from notification thread context,
+ * index in table equals to 'opcode - HAL_MINIMUM_EVENT' */
+static const struct hal_ipc_handler ev_handlers[] = {
+	{	/* HAL_EV_HIDHOST_CONN_STATE */
+		.handler = handle_conn_state,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_hidhost_conn_state)
+	},
+	{	/* HAL_EV_HIDHOST_INFO */
+		.handler = handle_info,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_hidhost_info),
+	},
+	{	/* HAL_EV_HIDHOST_PROTO_MODE */
+		.handler = handle_proto_mode,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_hidhost_proto_mode),
+	},
+	{	/* HAL_EV_HIDHOST_GET_REPORT */
+		.handler = handle_get_report,
+		.var_len = true,
+		.data_len = sizeof(struct hal_ev_hidhost_get_report),
+	},
+	{	/* HAL_EV_HIDHOST_VIRTUAL_UNPLUG */
+		.handler = handle_virtual_unplug,
+		.var_len = false,
+		.data_len = sizeof(struct hal_ev_hidhost_virtual_unplug),
+	},
+};
 
 static bt_status_t hidhost_connect(bt_bdaddr_t *bd_addr)
 {
@@ -362,6 +369,9 @@ static bt_status_t init(bthh_callbacks_t *callbacks)
 	/* store reference to user callbacks */
 	cbacks = callbacks;
 
+	hal_ipc_register(HAL_SERVICE_ID_HIDHOST, ev_handlers,
+				sizeof(ev_handlers)/sizeof(ev_handlers[0]));
+
 	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
@@ -383,6 +393,8 @@ static void cleanup(void)
 
 	hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	hal_ipc_unregister(HAL_SERVICE_ID_HIDHOST);
 }
 
 static bthh_interface_t hidhost_if = {
