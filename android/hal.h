@@ -28,4 +28,3 @@ btav_interface_t *bt_get_a2dp_interface(void);
 
 void bt_thread_associate(void);
 void bt_thread_disassociate(void);
-void bt_notify_a2dp(uint8_t opcode, void *buf, uint16_t len);
