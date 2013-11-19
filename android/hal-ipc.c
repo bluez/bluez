@@ -356,6 +356,12 @@ int hal_ipc_cmd(uint8_t service_id, uint8_t opcode, uint16_t len, void *param,
 		exit(EXIT_FAILURE);
 	}
 
+	/* socket was shutdown */
+	if (ret == 0) {
+		error("Command socket closed, aborting");
+		exit(EXIT_FAILURE);
+	}
+
 	memset(&msg, 0, sizeof(msg));
 	memset(&cmd, 0, sizeof(cmd));
 
