@@ -310,7 +310,7 @@ static sdp_record_t *a2dp_record(void)
 	features = sdp_data_alloc(SDP_UINT16, &feat);
 	sdp_attr_add(record, SDP_ATTR_SUPPORTED_FEATURES, features);
 
-	sdp_set_info_attr(record, "Audio Source", 0, 0);
+	sdp_set_info_attr(record, "Audio Source", NULL, NULL);
 
 	free(psm);
 	free(version);
