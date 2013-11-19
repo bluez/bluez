@@ -1190,6 +1190,9 @@ bool bt_hid_register(int sk, const bdaddr_t *addr)
 
 	DBG("");
 
+	if (notification_sk >= 0)
+		return false;
+
 	bacpy(&adapter_addr, addr);
 
 	ctrl_io = bt_io_listen(connect_cb, NULL, NULL, NULL, &err,
@@ -1223,6 +1226,9 @@ bool bt_hid_register(int sk, const bdaddr_t *addr)
 void bt_hid_unregister(void)
 {
 	DBG("");
+
+	if (notification_sk < 0)
+		return;
 
 	notification_sk = -1;
 

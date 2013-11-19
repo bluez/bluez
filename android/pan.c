@@ -95,6 +95,9 @@ bool bt_pan_register(int sk, const bdaddr_t *addr)
 {
 	DBG("");
 
+	if (notification_sk >= 0)
+		return false;
+
 	notification_sk = sk;
 
 	return true;
@@ -103,6 +106,9 @@ bool bt_pan_register(int sk, const bdaddr_t *addr)
 void bt_pan_unregister(void)
 {
 	DBG("");
+
+	if (notification_sk < 0)
+		return;
 
 	notification_sk = -1;
 }

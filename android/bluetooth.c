@@ -2275,6 +2275,9 @@ bool bt_bluetooth_register(int sk)
 {
 	DBG("");
 
+	if (notification_sk >= 0)
+		return false;
+
 	notification_sk = sk;
 
 	return true;
@@ -2283,6 +2286,9 @@ bool bt_bluetooth_register(int sk)
 void bt_bluetooth_unregister(void)
 {
 	DBG("");
+
+	if (notification_sk < 0)
+		return;
 
 	notification_sk = -1;
 }
