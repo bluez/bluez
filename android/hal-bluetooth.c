@@ -520,12 +520,18 @@ static int set_adapter_property(const bt_property_t *property)
 
 static int get_remote_device_properties(bt_bdaddr_t *remote_addr)
 {
+	struct hal_cmd_get_remote_device_props cmd;
+
 	DBG("bdaddr: %s", bdaddr2str(remote_addr));
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	memcpy(cmd.bdaddr, remote_addr, sizeof(cmd.bdaddr));
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH,
+					HAL_OP_GET_REMOTE_DEVICE_PROPS,
+					sizeof(cmd), &cmd, 0, NULL, NULL);
 }
 
 static int get_remote_device_property(bt_bdaddr_t *remote_addr,
