@@ -761,12 +761,20 @@ static int dut_mode_configure(uint8_t enable)
 
 static int dut_mode_send(uint16_t opcode, uint8_t *buf, uint8_t len)
 {
-	DBG("");
+	uint8_t cmd_buf[sizeof(struct hal_cmd_dut_mode_send) + len];
+	struct hal_cmd_dut_mode_send *cmd = (void *) cmd_buf;
+
+	DBG("opcode %u len %u", opcode, len);
 
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	return BT_STATUS_UNSUPPORTED;
+	cmd->opcode = opcode;
+	cmd->len = len;
+	memcpy(cmd->data, buf, cmd->len);
+
+	return hal_ipc_cmd(HAL_SERVICE_ID_BLUETOOTH, HAL_OP_DUT_MODE_SEND,
+					sizeof(cmd_buf), cmd, 0, NULL, NULL);
 }
 
 static const bt_interface_t bluetooth_if = {
