@@ -538,6 +538,26 @@ static void cmd_devices(const char *arg)
 	}
 }
 
+static void cmd_paired_devices(const char *arg)
+{
+	GList *list;
+
+	for (list = g_list_first(dev_list); list; list = g_list_next(list)) {
+		GDBusProxy *proxy = list->data;
+		DBusMessageIter iter;
+		dbus_bool_t paired;
+
+		if (g_dbus_proxy_get_property(proxy, "Paired", &iter) == FALSE)
+			continue;
+
+		dbus_message_iter_get_basic(&iter, &paired);
+		if (!paired)
+			continue;
+
+		print_device(proxy, NULL);
+	}
+}
+
 static void generic_callback(const DBusError *error, void *user_data)
 {
 	char *str = user_data;
@@ -1047,6 +1067,8 @@ static const struct {
 	{ "select",       "<ctrl>",   cmd_select, "Select default controller",
 							ctrl_generator },
 	{ "devices",      NULL,       cmd_devices, "List available devices" },
+	{ "paired-devices", NULL,     cmd_paired_devices,
+					"List paired devices"},
 	{ "system-alias", "<name>",   cmd_system_alias },
 	{ "reset-alias",  NULL,       cmd_reset_alias },
 	{ "power",        "<on/off>", cmd_power, "Set controller power" },
