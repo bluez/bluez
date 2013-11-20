@@ -410,6 +410,12 @@ static int handle_listen(void *buf)
 	DBG("real_sock %d fd %d hal_fd %d", rfsock->real_sock, rfsock->fd,
 								hal_fd);
 
+	if (write(rfsock->fd, &chan, sizeof(chan)) != sizeof(chan)) {
+		error("Error sending RFCOMM channel");
+		cleanup_rfsock(rfsock);
+		return -1;
+	}
+
 	return hal_fd;
 }
 
