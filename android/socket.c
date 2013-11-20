@@ -201,7 +201,43 @@ fail:
 static gboolean sock_rfcomm_event_cb(GIOChannel *io, GIOCondition cond,
 								gpointer data)
 {
+	struct rfcomm_sock *rfsock = data;
+	unsigned char buf[1024];
+	int len, sent;
+
+	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
+		rfsock->fd, rfsock->real_sock, rfsock->channel,
+		g_io_channel_unix_get_fd(io));
+
+	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
+		error("Socket error: sock %d cond %d",
+					g_io_channel_unix_get_fd(io), cond);
+		goto fail;
+	}
+
+	len = read(rfsock->real_sock, buf, sizeof(buf));
+	if (len <= 0) {
+		error("read(): %s", strerror(errno));
+		/* Read again */
+		return TRUE;
+	}
+
+	DBG("read %d bytes, write to fd %d", len, rfsock->fd);
+
+	sent = try_write_all(rfsock->fd, buf, len);
+	if (sent < 0) {
+		error("write(): %s", strerror(errno));
+		goto fail;
+	}
+
+	DBG("Written %d bytes", sent);
+
 	return TRUE;
+fail:
+	connections = g_list_remove(connections, rfsock);
+	cleanup_rfsock(rfsock);
+
+	return FALSE;
 }
 
 static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
