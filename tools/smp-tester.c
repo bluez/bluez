@@ -55,18 +55,16 @@ struct test_data {
 	size_t counter;
 };
 
-struct smp_server_data {
-	const void *send_req;
-	uint16_t send_req_len;
-	const void *expect_rsp;
-	uint16_t expect_rsp_len;
-};
-
 struct smp_req_rsp {
 	const void *req;
 	uint16_t req_len;
 	const void *rsp;
 	uint16_t rsp_len;
+};
+
+struct smp_server_data {
+	const struct smp_req_rsp *req;
+	size_t req_count;
 };
 
 struct smp_client_data {
@@ -238,21 +236,27 @@ static void test_data_free(void *test_data)
 static const uint8_t smp_nval_req_1[] = { 0x0b, 0x00 };
 static const uint8_t smp_nval_req_1_rsp[] = { 0x05, 0x07 };
 
+static const struct smp_req_rsp nval_req_1[] = {
+	{ smp_nval_req_1, sizeof(smp_nval_req_1),
+			smp_nval_req_1_rsp, sizeof(smp_nval_req_1_rsp) },
+};
+
 static const struct smp_server_data smp_server_nval_req_1_test = {
-	.send_req = smp_nval_req_1,
-	.send_req_len = sizeof(smp_nval_req_1),
-	.expect_rsp = smp_nval_req_1_rsp,
-	.expect_rsp_len = sizeof(smp_nval_req_1_rsp),
+	.req = nval_req_1,
+	.req_count = G_N_ELEMENTS(nval_req_1),
 };
 
 static const uint8_t smp_nval_req_2[7] = { 0x01 };
 static const uint8_t smp_nval_req_2_rsp[] = { 0x05, 0x06 };
 
+static const struct smp_req_rsp srv_nval_req_1[] = {
+	{ smp_nval_req_2, sizeof(smp_nval_req_2),
+			smp_nval_req_2_rsp, sizeof(smp_nval_req_2_rsp) },
+};
+
 static const struct smp_server_data smp_server_nval_req_2_test = {
-	.send_req = smp_nval_req_2,
-	.send_req_len = sizeof(smp_nval_req_2),
-	.expect_rsp = smp_nval_req_2_rsp,
-	.expect_rsp_len = sizeof(smp_nval_req_2_rsp),
+	.req = srv_nval_req_1,
+	.req_count = G_N_ELEMENTS(srv_nval_req_1),
 };
 
 static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
@@ -272,21 +276,24 @@ static const uint8_t smp_basic_req_1_rsp[] = {	0x02,	/* Pairing Response */
 						0x01,	/* Rsp. key dist. */
 };
 
-static const struct smp_server_data smp_server_basic_req_1_test = {
-	.send_req = smp_basic_req_1,
-	.send_req_len = sizeof(smp_basic_req_1),
-	.expect_rsp = smp_basic_req_1_rsp,
-	.expect_rsp_len = sizeof(smp_basic_req_1_rsp),
+static const struct smp_req_rsp srv_basic_req_1[] = {
+	{ smp_basic_req_1, sizeof(smp_basic_req_1),
+			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
 };
 
-static const struct smp_req_rsp basic_req_1[] = {
+static const struct smp_server_data smp_server_basic_req_1_test = {
+	.req = srv_basic_req_1,
+	.req_count = G_N_ELEMENTS(srv_basic_req_1),
+};
+
+static const struct smp_req_rsp cli_basic_req_1[] = {
 	{ smp_basic_req_1, sizeof(smp_basic_req_1),
 			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
 };
 
 static const struct smp_client_data smp_client_basic_req_1_test = {
-	.req = basic_req_1,
-	.req_count = G_N_ELEMENTS(basic_req_1),
+	.req = cli_basic_req_1,
+	.req_count = G_N_ELEMENTS(cli_basic_req_1),
 };
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
@@ -468,27 +475,42 @@ static void setup_powered_server(const void *test_data)
 static void smp_client(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *test_data = user_data;
+	struct bthost *bthost = hciemu_client_get_host(test_data->hciemu);
 	const struct smp_server_data *srv = test_data->test_data;
+	const struct smp_req_rsp *req;
 
 	tester_print("SMP client received response");
 
-	if (!srv->expect_rsp) {
+	if (test_data->counter >= srv->req_count) {
 		tester_test_passed();
 		return;
 	}
 
-	if (srv->expect_rsp_len != len) {
+	req = &srv->req[test_data->counter++];
+	if (!req->rsp)
+		goto next;
+
+	if (req->rsp_len != len) {
 		tester_warn("Unexpected SMP response length (%u != %u)",
-						len, srv->expect_rsp_len);
+							len, req->rsp_len);
 		goto failed;
 	}
 
-	if (memcmp(srv->expect_rsp, data, len) != 0) {
+	if (memcmp(req->rsp, data, len) != 0) {
 		tester_warn("Unexpected SMP response");
 		goto failed;
 	}
 
-	tester_test_passed();
+next:
+	if (srv->req_count == test_data->counter) {
+		tester_test_passed();
+		return;
+	}
+
+	req = &srv->req[test_data->counter];
+	bthost_send_cid(bthost, test_data->handle, SMP_CID, req->req,
+								req->req_len);
+
 	return;
 
 failed:
@@ -500,18 +522,22 @@ static void smp_client_new_conn(uint16_t handle, void *user_data)
 	struct test_data *data = user_data;
 	const struct smp_server_data *srv = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+	const struct smp_req_rsp *req;
 
 	tester_print("New SMP client connection with handle 0x%04x", handle);
 
+	data->handle = handle;
+
 	bthost_add_cid_hook(bthost, handle, SMP_CID, smp_client, data);
 
-	if (!srv->send_req)
+	if (srv->req_count == data->counter)
 		return;
+
+	req = &srv->req[data->counter];
 
 	tester_print("Sending SMP Request from client");
 
-	bthost_send_cid(bthost, handle, SMP_CID, srv->send_req,
-							srv->send_req_len);
+	bthost_send_cid(bthost, handle, SMP_CID, req->req, req->req_len);
 }
 
 static void test_server(const void *test_data)
