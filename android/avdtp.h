@@ -22,12 +22,6 @@
  *
  */
 
-typedef enum {
-	AVDTP_SESSION_STATE_DISCONNECTED,
-	AVDTP_SESSION_STATE_CONNECTING,
-	AVDTP_SESSION_STATE_CONNECTED
-} avdtp_session_state_t;
-
 struct avdtp;
 struct avdtp_stream;
 struct avdtp_local_sep;
@@ -115,12 +109,6 @@ struct avdtp_media_codec_capability {
 #else
 #error "Unknown byte order"
 #endif
-
-typedef void (*avdtp_session_state_cb) (struct btd_device *dev,
-					struct avdtp *session,
-					avdtp_session_state_t old_state,
-					avdtp_session_state_t new_state,
-					void *user_data);
 
 typedef void (*avdtp_stream_state_cb) (struct avdtp_stream *stream,
 					avdtp_state_t old_state,
@@ -213,7 +201,7 @@ struct avdtp_sep_ind {
 typedef void (*avdtp_discover_cb_t) (struct avdtp *session, GSList *seps,
 					struct avdtp_error *err, void *user_data);
 
-struct avdtp *avdtp_get(struct btd_device *device);
+struct avdtp *avdtp_new(int fd, size_t imtu, size_t omtu, uint16_t version);
 
 void avdtp_unref(struct avdtp *session);
 struct avdtp *avdtp_ref(struct avdtp *session);
@@ -235,6 +223,8 @@ gboolean avdtp_stream_remove_cb(struct avdtp *session,
 				struct avdtp_stream *stream,
 				unsigned int id);
 
+gboolean avdtp_stream_set_transport(struct avdtp_stream *stream, int fd,
+						size_t imtu, size_t omtu);
 gboolean avdtp_stream_get_transport(struct avdtp_stream *stream, int *sock,
 					uint16_t *imtu, uint16_t *omtu,
 					GSList **caps);
@@ -244,11 +234,6 @@ gboolean avdtp_stream_has_capabilities(struct avdtp_stream *stream,
 					GSList *caps);
 struct avdtp_remote_sep *avdtp_stream_get_remote_sep(
 						struct avdtp_stream *stream);
-
-unsigned int avdtp_add_state_cb(struct btd_device *dev,
-				avdtp_session_state_cb cb, void *user_data);
-
-gboolean avdtp_remove_state_cb(unsigned int id);
 
 int avdtp_set_configuration(struct avdtp *session,
 				struct avdtp_remote_sep *rsep,
@@ -268,9 +253,7 @@ int avdtp_abort(struct avdtp *session, struct avdtp_stream *stream);
 int avdtp_delay_report(struct avdtp *session, struct avdtp_stream *stream,
 							uint16_t delay);
 
-struct avdtp_local_sep *avdtp_register_sep(struct btd_adapter *adapter,
-						uint8_t type,
-						uint8_t media_type,
+struct avdtp_local_sep *avdtp_register_sep(uint8_t type, uint8_t media_type,
 						uint8_t codec_type,
 						gboolean delay_reporting,
 						struct avdtp_sep_ind *ind,
@@ -290,6 +273,3 @@ const char *avdtp_strerror(struct avdtp_error *err);
 uint8_t avdtp_error_category(struct avdtp_error *err);
 int avdtp_error_error_code(struct avdtp_error *err);
 int avdtp_error_posix_errno(struct avdtp_error *err);
-
-struct btd_adapter *avdtp_get_adapter(struct avdtp *session);
-struct btd_device *avdtp_get_device(struct avdtp *session);

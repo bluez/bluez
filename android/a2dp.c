@@ -43,6 +43,7 @@
 #include "ipc.h"
 #include "utils.h"
 #include "bluetooth.h"
+#include "avdtp.h"
 
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
@@ -58,6 +59,7 @@ struct a2dp_device {
 	uint8_t		state;
 	GIOChannel	*io;
 	guint		watch;
+	struct avdtp	*session;
 };
 
 static int device_cmp(gconstpointer s, gconstpointer user_data)
@@ -70,6 +72,9 @@ static int device_cmp(gconstpointer s, gconstpointer user_data)
 
 static void a2dp_device_free(struct a2dp_device *dev)
 {
+	if (dev->session)
+		avdtp_unref(dev->session);
+
 	if (dev->watch > 0)
 		g_source_remove(dev->watch);
 
@@ -129,12 +134,30 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 							gpointer user_data)
 {
 	struct a2dp_device *dev = user_data;
+	uint16_t imtu, omtu;
+	GError *gerr = NULL;
+	int fd;
 
 	if (err) {
 		bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
 		error("%s", err->message);
 		return;
 	}
+
+	bt_io_get(chan, &gerr,
+			BT_IO_OPT_IMTU, &imtu,
+			BT_IO_OPT_OMTU, &omtu,
+			BT_IO_OPT_INVALID);
+	if (gerr) {
+		bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
+		error("%s", gerr->message);
+		g_error_free(gerr);
+		return;
+	}
+
+	/* FIXME: Add proper version */
+	fd = g_io_channel_unix_get_fd(chan);
+	dev->session = avdtp_new(fd, imtu, omtu, 0x0100);
 
 	dev->watch = g_io_add_watch(dev->io, G_IO_HUP | G_IO_ERR | G_IO_NVAL,
 								watch_cb, dev);

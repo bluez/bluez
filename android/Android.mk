@@ -25,6 +25,7 @@ LOCAL_SRC_FILES := \
 	hidhost.c \
 	socket.c \
 	ipc.c ipc.h \
+	avdtp.c \
 	a2dp.c \
 	pan.c \
 	../src/log.c \
