@@ -52,6 +52,7 @@ struct test_data {
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
 	uint16_t handle;
+	size_t counter;
 };
 
 struct smp_server_data {
@@ -61,11 +62,16 @@ struct smp_server_data {
 	uint16_t expect_rsp_len;
 };
 
+struct smp_req_rsp {
+	const void *req;
+	uint16_t req_len;
+	const void *rsp;
+	uint16_t rsp_len;
+};
+
 struct smp_client_data {
-	const void *expect_req;
-	uint16_t expect_req_len;
-	const void *send_rsp;
-	uint16_t send_rsp_len;
+	const struct smp_req_rsp *req;
+	size_t req_count;
 };
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -222,6 +228,7 @@ static void test_data_free(void *test_data)
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_LE; \
 		user->io_id = 0; \
+		user->counter = 0; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
@@ -272,9 +279,14 @@ static const struct smp_server_data smp_server_basic_req_1_test = {
 	.expect_rsp_len = sizeof(smp_basic_req_1_rsp),
 };
 
+static const struct smp_req_rsp basic_req_1[] = {
+	{ smp_basic_req_1, sizeof(smp_basic_req_1),
+			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
+};
+
 static const struct smp_client_data smp_client_basic_req_1_test = {
-	.expect_req = smp_basic_req_1,
-	.expect_req_len = sizeof(smp_basic_req_1),
+	.req = basic_req_1,
+	.req_count = G_N_ELEMENTS(basic_req_1),
 };
 
 static void client_connectable_complete(uint16_t opcode, uint8_t status,
@@ -343,32 +355,37 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *test_data = tester_get_data();
 	const struct smp_client_data *cli = test_data->test_data;
+	const struct smp_req_rsp *req;
 
 	tester_print("Received SMP request");
 
-	if (!cli->expect_req) {
+	if (test_data->counter >= cli->req_count) {
 		tester_test_passed();
 		return;
 	}
 
-	if (cli->expect_req_len != len) {
+	req = &cli->req[test_data->counter++];
+
+	if (req->req_len != len) {
 		tester_warn("Unexpected SMP request length (%u != %u)",
-						len, cli->expect_req_len);
+							len, req->req_len);
 		goto failed;
 	}
 
-	if (memcmp(cli->expect_req, data, len) != 0) {
+	if (memcmp(req->req, data, len) != 0) {
 		tester_warn("Unexpected SMP request");
 		goto failed;
 	}
 
-	if (cli->send_rsp) {
+	if (req->rsp) {
 		struct bthost *bthost;
 
 		bthost = hciemu_client_get_host(test_data->hciemu);
 		bthost_send_cid(bthost, test_data->handle, SMP_CID,
-					cli->send_rsp, cli->send_rsp_len);
-		return;
+						req->rsp, req->rsp_len);
+
+		if (cli->req_count > test_data->counter)
+			return;
 	}
 
 	tester_test_passed();
