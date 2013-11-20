@@ -249,6 +249,14 @@ unit_test_sdp_SOURCES = unit/test-sdp.c \
 				src/sdpd-service.c src/sdpd-request.c
 unit_test_sdp_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
+unit_tests += unit/test-avdtp
+
+unit_test_avdtp_SOURCES = unit/test-avdtp.c \
+				src/shared/util.h src/shared/util.c \
+				src/log.h src/log.c \
+				android/avdtp.c android/avdtp.h
+unit_test_avdtp_LDADD = @GLIB_LIBS@
+
 unit_tests += unit/test-gdbus-client
 
 unit_test_gdbus_client_SOURCES = unit/test-gdbus-client.c
