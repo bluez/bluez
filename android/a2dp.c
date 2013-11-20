@@ -109,6 +109,11 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 
 	ipc_send(notification_sk, HAL_SERVICE_ID_A2DP,
 			HAL_EV_A2DP_CONN_STATE, sizeof(ev), &ev, -1);
+
+	if (state != HAL_A2DP_STATE_DISCONNECTED)
+		return;
+
+	a2dp_device_free(dev);
 }
 
 static gboolean watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
@@ -116,8 +121,6 @@ static gboolean watch_cb(GIOChannel *chan, GIOCondition cond, gpointer data)
 	struct a2dp_device *dev = data;
 
 	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
-
-	a2dp_device_free(dev);
 
 	return FALSE;
 }
@@ -130,7 +133,6 @@ static void signaling_connect_cb(GIOChannel *chan, GError *err,
 	if (err) {
 		bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
 		error("%s", err->message);
-		a2dp_device_free(dev);
 		return;
 	}
 
@@ -364,12 +366,22 @@ bool bt_a2dp_register(int sk, const bdaddr_t *addr)
 	return true;
 }
 
+static void a2dp_device_disconnected(gpointer data, gpointer user_data)
+{
+	struct a2dp_device *dev = data;
+
+	bt_a2dp_notify_state(dev, HAL_A2DP_STATE_DISCONNECTED);
+}
+
 void bt_a2dp_unregister(void)
 {
 	DBG("");
 
 	if (notification_sk < 0)
 		return;
+
+	g_slist_foreach(devices, a2dp_device_disconnected, NULL);
+	devices = NULL;
 
 	notification_sk = -1;
 
