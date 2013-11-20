@@ -27,19 +27,71 @@
 
 #include <glib.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "lib/bluetooth.h"
+#include "btio/btio.h"
+#include "lib/sdp.h"
 #include "log.h"
 #include "hal-msg.h"
 #include "hal-ipc.h"
 #include "ipc.h"
 #include "socket.h"
 
+#define OPP_DEFAULT_CHANNEL	9
+#define PBAP_DEFAULT_CHANNEL	15
+
 static bdaddr_t adapter_addr;
+
+static struct profile_info {
+	uint8_t		uuid[16];
+	uint8_t		channel;
+	uint8_t		svc_hint;
+	BtIOSecLevel	sec_level;
+	sdp_record_t *	(*create_record)(uint8_t chan);
+} profiles[] = {
+	{
+		.uuid = {
+			0x00, 0x00, 0x11, 0x2F, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		},
+		.channel = PBAP_DEFAULT_CHANNEL
+	}, {
+		.uuid = {
+			0x00, 0x00, 0x11, 0x05, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		  },
+		.channel = OPP_DEFAULT_CHANNEL
+	}
+};
+
+static struct profile_info *get_profile_by_uuid(const uint8_t *uuid)
+{
+	unsigned int i;
+
+	for (i = 0; i < G_N_ELEMENTS(profiles); i++) {
+		if (!memcmp(profiles[i].uuid, uuid, 16))
+			return &profiles[i];
+	}
+
+	return NULL;
+}
 
 static int handle_listen(void *buf)
 {
-	DBG("Not implemented");
+	struct hal_cmd_sock_listen *cmd = buf;
+	struct profile_info *profile;
+	int chan;
+
+	DBG("");
+
+	profile = get_profile_by_uuid(cmd->uuid);
+	if (!profile)
+		return -1;
+
+	chan = profile->channel;
+
+	DBG("rfcomm channel %d", chan);
 
 	return -1;
 }
