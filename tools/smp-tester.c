@@ -255,16 +255,14 @@ static const uint8_t smp_basic_req_1[] = {	0x01,	/* Pairing Request */
 						0x10,	/* Max key size */
 						0x00,	/* Init. key dist. */
 						0x01,	/* Rsp. key dist. */
-
 };
 static const uint8_t smp_basic_req_1_rsp[] = {	0x02,	/* Pairing Response */
 						0x03,	/* NoInputNoOutput */
 						0x00,	/* OOB Flag */
-						0x00,	/* SMP auth none */
+						0x01,	/* Bonding - no MITM */
 						0x10,	/* Max key size */
 						0x00,	/* Init. key dist. */
-						0x00,	/* Rsp. key dist. */
-
+						0x01,	/* Rsp. key dist. */
 };
 
 static const struct smp_server_data smp_server_basic_req_1_test = {
@@ -440,6 +438,8 @@ static void setup_powered_server(const void *test_data)
 	tester_print("Powering on controller");
 
 	mgmt_send(data->mgmt, MGMT_OP_SET_LE, data->mgmt_index,
+				sizeof(param), param, NULL, NULL, NULL);
+	mgmt_send(data->mgmt, MGMT_OP_SET_PAIRABLE, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
 	mgmt_send(data->mgmt, MGMT_OP_SET_ADVERTISING, data->mgmt_index,
 				sizeof(param), param, NULL, NULL, NULL);
