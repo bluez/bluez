@@ -47,6 +47,7 @@ void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 
 	memset(&msg, 0, sizeof(msg));
 	memset(&m, 0, sizeof(m));
+	memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
 	m.service_id = service_id;
 	m.opcode = opcode;
