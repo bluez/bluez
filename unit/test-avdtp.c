@@ -195,19 +195,56 @@ static void execute_context(struct context *context)
 	g_free(context);
 }
 
+static gboolean sep_getcap_ind(struct avdtp *session,
+					struct avdtp_local_sep *sep,
+					gboolean get_all, GSList **caps,
+					uint8_t *err, void *user_data)
+{
+	struct avdtp_service_capability *media_transport, *media_codec;
+	struct avdtp_media_codec_capability *codec_caps;
+	uint8_t cap[4] = { 0xff, 0xff, 2, 64 };
+
+	*caps = NULL;
+
+	media_transport = avdtp_service_cap_new(AVDTP_MEDIA_TRANSPORT,
+						NULL, 0);
+
+	*caps = g_slist_append(*caps, media_transport);
+
+	codec_caps = g_malloc0(sizeof(*codec_caps) + sizeof(cap));
+	codec_caps->media_type = AVDTP_MEDIA_TYPE_AUDIO;
+	codec_caps->media_codec_type = 0x00;
+	memcpy(codec_caps->data, cap, sizeof(cap));
+
+	media_codec = avdtp_service_cap_new(AVDTP_MEDIA_CODEC, codec_caps,
+					sizeof(*codec_caps) + sizeof(cap));
+
+	*caps = g_slist_append(*caps, media_codec);
+	g_free(codec_caps);
+
+	return TRUE;
+}
+
+static struct avdtp_sep_ind sep_ind = {
+	.get_capability		= sep_getcap_ind,
+};
+
 static void test_server(gconstpointer data)
 {
 	const struct test_data *test = data;
 	struct context *context = create_context(0x0100);
+	struct avdtp_local_sep *sep;
 
 	context->pdu_list = test->pdu_list;
 
-	avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO, 0x00,
-							TRUE, NULL, NULL, NULL);
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO,
+					0x00, TRUE, &sep_ind, NULL, NULL);
 
 	g_idle_add(send_pdu, context);
 
 	execute_context(context);
+
+	avdtp_unregister_sep(sep);
 
 	g_free(test->pdu_list);
 }
@@ -215,6 +252,7 @@ static void test_server(gconstpointer data)
 static void discover_cb(struct avdtp *session, GSList *seps,
 				struct avdtp_error *err, void *user_data)
 {
+
 }
 
 static void test_discover(gconstpointer data)
@@ -267,6 +305,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x10, 0x01),
 			raw_pdu(0x12, 0x01, 0x04, 0x00),
 			raw_pdu(0x20, 0x02, 0x04));
+	define_test("/TP/SIG/SMG/BV-08-C", test_server,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x00),
+			raw_pdu(0x10, 0x02, 0x04),
+			raw_pdu(0x12, 0x02, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40));
 
 	return g_test_run();
 }
