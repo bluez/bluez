@@ -276,9 +276,15 @@ static const uint8_t smp_basic_req_1_rsp[] = {	0x02,	/* Pairing Response */
 						0x01,	/* Rsp. key dist. */
 };
 
+static const uint8_t smp_confirm_req_1[17] = { 0x03 };
+static const uint8_t smp_random_req_1[17] = { 0x04 };
+
 static const struct smp_req_rsp srv_basic_req_1[] = {
 	{ smp_basic_req_1, sizeof(smp_basic_req_1),
 			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
+	{ smp_random_req_1, sizeof(smp_random_req_1), NULL, 0 },
 };
 
 static const struct smp_server_data smp_server_basic_req_1_test = {
@@ -289,6 +295,8 @@ static const struct smp_server_data smp_server_basic_req_1_test = {
 static const struct smp_req_rsp cli_basic_req_1[] = {
 	{ smp_basic_req_1, sizeof(smp_basic_req_1),
 			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
+	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
+			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
 };
 
 static const struct smp_client_data smp_client_basic_req_1_test = {
@@ -358,11 +366,29 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 	tester_test_passed();
 }
 
+static const void *get_pdu(const uint8_t *data)
+{
+	uint8_t opcode = data[0];
+	static uint16_t buf[17];
+
+	switch (opcode) {
+	case 0x03: /* Pairing Confirm */
+		memcpy(buf, data, sizeof(buf));
+		return buf;
+	case 0x04: /* Pairing Random */
+		memcpy(buf, data, sizeof(buf));
+		return buf;
+	default:
+		return data;
+	}
+}
+
 static void smp_server(const void *data, uint16_t len, void *user_data)
 {
 	struct test_data *test_data = tester_get_data();
 	const struct smp_client_data *cli = test_data->test_data;
 	const struct smp_req_rsp *req;
+	uint8_t opcode;
 
 	tester_print("Received SMP request");
 
@@ -379,17 +405,29 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 		goto failed;
 	}
 
-	if (memcmp(req->req, data, len) != 0) {
-		tester_warn("Unexpected SMP request");
-		goto failed;
+	opcode = *((const uint8_t *) data);
+
+	switch (opcode) {
+	case 0x03: /* Pairing Confirm */
+		break;
+	case 0x04: /* Pairing Random */
+		break;
+	default:
+		if (memcmp(req->req, data, len) != 0) {
+			tester_warn("Unexpected SMP request");
+			goto failed;
+		}
+
+		break;
 	}
 
 	if (req->rsp) {
 		struct bthost *bthost;
+		const void *rsp = get_pdu(req->rsp);
 
 		bthost = hciemu_client_get_host(test_data->hciemu);
 		bthost_send_cid(bthost, test_data->handle, SMP_CID,
-						req->rsp, req->rsp_len);
+							rsp, req->rsp_len);
 
 		if (cli->req_count > test_data->counter)
 			return;
@@ -478,6 +516,8 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 	struct bthost *bthost = hciemu_client_get_host(test_data->hciemu);
 	const struct smp_server_data *srv = test_data->test_data;
 	const struct smp_req_rsp *req;
+	const void *pdu;
+	uint8_t opcode;
 
 	tester_print("SMP client received response");
 
@@ -496,9 +536,19 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 		goto failed;
 	}
 
-	if (memcmp(req->rsp, data, len) != 0) {
-		tester_warn("Unexpected SMP response");
-		goto failed;
+	opcode = *((const uint8_t *) data);
+
+	switch (opcode) {
+	case 0x03: /* Pairing Confirm */
+		break;
+	case 0x04: /* Pairing Random */
+		break;
+	default:
+		if (memcmp(req->rsp, data, len) != 0) {
+			tester_warn("Unexpected SMP response");
+			goto failed;
+		}
+		break;
 	}
 
 next:
@@ -508,8 +558,8 @@ next:
 	}
 
 	req = &srv->req[test_data->counter];
-	bthost_send_cid(bthost, test_data->handle, SMP_CID, req->req,
-								req->req_len);
+	pdu = get_pdu(req->req);
+	bthost_send_cid(bthost, test_data->handle, SMP_CID, pdu, req->req_len);
 
 	return;
 
@@ -523,6 +573,7 @@ static void smp_client_new_conn(uint16_t handle, void *user_data)
 	const struct smp_server_data *srv = data->test_data;
 	struct bthost *bthost = hciemu_client_get_host(data->hciemu);
 	const struct smp_req_rsp *req;
+	const void *pdu;
 
 	tester_print("New SMP client connection with handle 0x%04x", handle);
 
@@ -537,7 +588,8 @@ static void smp_client_new_conn(uint16_t handle, void *user_data)
 
 	tester_print("Sending SMP Request from client");
 
-	bthost_send_cid(bthost, handle, SMP_CID, req->req, req->req_len);
+	pdu = get_pdu(req->req);
+	bthost_send_cid(bthost, handle, SMP_CID, pdu, req->req_len);
 }
 
 static void test_server(const void *test_data)
