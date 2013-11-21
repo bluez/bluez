@@ -130,6 +130,7 @@ static void read_accepted(int fd)
 
 	memset(&msg, 0, sizeof(msg));
 	memset(&iv, 0, sizeof(iv));
+	memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
 	iv.iov_base = &cs;
 	iv.iov_len = sizeof(cs);
