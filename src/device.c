@@ -1100,7 +1100,8 @@ void device_request_disconnect(struct btd_device *device, DBusMessage *msg)
 	}
 
 	if (!device->connected) {
-		g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
+		if (msg)
+			g_dbus_send_reply(dbus_conn, msg, DBUS_TYPE_INVALID);
 		return;
 	}
 
