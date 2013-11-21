@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <sys/socket.h>
 
 #include <glib.h>
 
@@ -42,6 +43,40 @@
 #include "src/shared/mgmt.h"
 #include "src/shared/hciemu.h"
 
+#ifndef SOL_ALG
+#define SOL_ALG 279
+#endif
+
+#ifndef AF_ALG
+#define AF_ALG  38
+#define PF_ALG  AF_ALG
+
+#include <linux/types.h>
+
+struct sockaddr_alg {
+        __u16   salg_family;
+        __u8    salg_type[14];
+        __u32   salg_feat;
+        __u32   salg_mask;
+        __u8    salg_name[64];
+};
+
+struct af_alg_iv {
+        __u32   ivlen;
+        __u8    iv[0];
+};
+
+#define ALG_SET_KEY                     1
+#define ALG_SET_IV                      2
+#define ALG_SET_OP                      3
+
+#define ALG_OP_DECRYPT                  0
+#define ALG_OP_ENCRYPT                  1
+
+#else
+#include <linux/if_alg.h>
+#endif
+
 #define SMP_CID 0x0006
 
 struct test_data {
@@ -53,6 +88,7 @@ struct test_data {
 	unsigned int io_id;
 	uint16_t handle;
 	size_t counter;
+	int alg_sk;
 };
 
 struct smp_req_rsp {
@@ -71,6 +107,31 @@ struct smp_client_data {
 	const struct smp_req_rsp *req;
 	size_t req_count;
 };
+
+static int alg_setup(void)
+{
+	struct sockaddr_alg salg;
+	int sk;
+
+	sk = socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
+	if (sk < 0) {
+		fprintf(stderr, "socket(AF_ALG): %s\n", strerror(errno));
+		return -1;
+	}
+
+	memset(&salg, 0, sizeof(salg));
+	salg.salg_family = AF_ALG;
+	strcpy((char *) salg.salg_type, "skcipher");
+	strcpy((char *) salg.salg_name, "ecb(aes)");
+
+	if (bind(sk, (struct sockaddr *) &salg, sizeof(salg)) < 0) {
+		fprintf(stderr, "bind(AF_ALG): %s\n", strerror(errno));
+		close(sk);
+		return -1;
+	}
+
+	return sk;
+}
 
 static void mgmt_debug(const char *str, void *user_data)
 {
@@ -184,6 +245,13 @@ static void test_pre_setup(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
 
+	data->alg_sk = alg_setup();
+	if (data->alg_sk < 0) {
+		tester_warn("Failed to setup AF_ALG socket");
+		tester_pre_setup_failed();
+		return;
+	}
+
 	data->mgmt = mgmt_new_default();
 	if (!data->mgmt) {
 		tester_warn("Failed to setup management interface");
@@ -207,6 +275,11 @@ static void test_post_teardown(const void *test_data)
 		data->io_id = 0;
 	}
 
+	if (data->alg_sk >= 0) {
+		close(data->alg_sk);
+		data->alg_sk = -1;
+	}
+
 	hciemu_unref(data->hciemu);
 	data->hciemu = NULL;
 }
@@ -227,6 +300,7 @@ static void test_data_free(void *test_data)
 		user->hciemu_type = HCIEMU_TYPE_LE; \
 		user->io_id = 0; \
 		user->counter = 0; \
+		user->alg_sk = -1; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
 				test_pre_setup, setup, func, NULL, \
