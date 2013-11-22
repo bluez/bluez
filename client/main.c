@@ -1197,12 +1197,16 @@ done:
 static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
+	if (condition & G_IO_IN) {
+		rl_callback_read_char();
+		return TRUE;
+	}
+
 	if (condition & (G_IO_HUP | G_IO_ERR | G_IO_NVAL)) {
 		g_main_loop_quit(main_loop);
 		return FALSE;
 	}
 
-	rl_callback_read_char();
 	return TRUE;
 }
 
