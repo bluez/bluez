@@ -84,4 +84,5 @@ android_haltest_LDFLAGS = -pthread
 endif
 
 EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
-		android/pics-gap.txt android/pics-hid.txt
+		android/pics-gap.txt android/pics-hid.txt \
+		android/pics-pan.txt
