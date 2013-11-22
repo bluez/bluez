@@ -1,0 +1,31 @@
+DID PICS for the PTS tool.
+
+* - different than PTS defaults
+# - not yet implemented/supported
+
+M - mandatory
+O - optional
+
+		Version
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_DID_0_1	False		Device ID 1.2 (C.1)
+TSPC_DID_0_2	True		Device ID 1.3 (C.1)
+-------------------------------------------------------------------------------
+C.1: It is mandatory to support one of the profile versions.
+-------------------------------------------------------------------------------
+
+
+		SDP Requirements
+-------------------------------------------------------------------------------
+Parameter Name	Selected	Description
+-------------------------------------------------------------------------------
+TSPC_DID_1_1	True		Specification ID (M)
+TSPC_DID_1_2	True		Vendor ID (M)
+TSPC_DID_1_3	True		Product ID (M)
+TSPC_DID_1_4	True		Version (M)
+TSPC_DID_1_5	True		Primary Record (M)
+TSPC_DID_1_6	True		Vendor ID Source (M)
+TSPC_ALL	False		Turns on all the test cases
+-------------------------------------------------------------------------------
