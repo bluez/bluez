@@ -450,6 +450,7 @@ static void update_records(struct browse_req *req, sdp_list_t *recs)
 			memcpy(&uuid128, tmp, sizeof(uuid_t));
 			break;
 		default:
+			sdp_list_free(svcclass, free);
 			continue;
 		}
 
