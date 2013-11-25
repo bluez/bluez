@@ -5,6 +5,8 @@
 		info;
 		error;
 		debug;
+		baswap;
+		ba2str;
 	local:
 		*;
 };
