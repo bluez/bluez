@@ -765,7 +765,7 @@ static struct network_adapter *create_adapter(struct btd_adapter *adapter)
 	na->io = bt_io_listen(NULL, confirm_event, na,
 				NULL, &err,
 				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(adapter),
+				btd_adapter_get_address(adapter),
 				BT_IO_OPT_PSM, BNEP_PSM,
 				BT_IO_OPT_OMTU, BNEP_MTU,
 				BT_IO_OPT_IMTU, BNEP_MTU,
@@ -823,7 +823,7 @@ int server_register(struct btd_adapter *adapter, uint16_t id)
 									path);
 
 done:
-	bacpy(&ns->src, adapter_get_address(adapter));
+	bacpy(&ns->src, btd_adapter_get_address(adapter));
 	ns->id = id;
 	ns->na = na;
 	ns->record_id = 0;

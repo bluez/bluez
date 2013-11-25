@@ -3991,7 +3991,7 @@ const char *adapter_get_path(struct btd_adapter *adapter)
 	return adapter->path;
 }
 
-const bdaddr_t *adapter_get_address(struct btd_adapter *adapter)
+const bdaddr_t *btd_adapter_get_address(struct btd_adapter *adapter)
 {
 	return &adapter->bdaddr;
 }
@@ -5228,7 +5228,7 @@ static void store_link_key(struct btd_adapter *adapter,
 	char *str;
 	int i;
 
-	ba2str(adapter_get_address(adapter), adapter_addr);
+	ba2str(btd_adapter_get_address(adapter), adapter_addr);
 	ba2str(device_get_address(device), device_addr);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
@@ -5385,7 +5385,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 
 	if (ev->store_hint) {
 		const struct mgmt_ltk_info *key = &ev->key;
-		const bdaddr_t *bdaddr = adapter_get_address(adapter);
+		const bdaddr_t *bdaddr = btd_adapter_get_address(adapter);
 
 		store_longtermkey(bdaddr, &key->addr.bdaddr,
 					key->addr.type, key->val, key->master,

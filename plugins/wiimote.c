@@ -106,7 +106,7 @@ static ssize_t wii_pincb(struct btd_adapter *adapter, struct btd_device *device,
 
 found:
 	DBG("Forcing fixed pin on detected wiimote %s", addr);
-	memcpy(pinbuf, adapter_get_address(adapter), 6);
+	memcpy(pinbuf, btd_adapter_get_address(adapter), 6);
 	return 6;
 }
 

@@ -812,7 +812,7 @@ static struct input_device *input_device_new(struct btd_service *service)
 	char name[HCI_MAX_NAME_LENGTH + 1];
 
 	idev = g_new0(struct input_device, 1);
-	bacpy(&idev->src, adapter_get_address(adapter));
+	bacpy(&idev->src, btd_adapter_get_address(adapter));
 	bacpy(&idev->dst, device_get_address(device));
 	idev->service = btd_service_ref(service);
 	idev->device = btd_device_ref(device);

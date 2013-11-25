@@ -1307,7 +1307,7 @@ static void avctp_control_confirm(struct avctp *session, GIOChannel *chan,
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 	session->control = avctp_channel_create(session, chan, NULL);
 
-	src = adapter_get_address(device_get_adapter(dev));
+	src = btd_adapter_get_address(device_get_adapter(dev));
 	dst = device_get_address(dev);
 
 	session->auth_id = btd_request_authorization(src, dst,
@@ -1422,7 +1422,7 @@ static GIOChannel *avctp_server_socket(const bdaddr_t *src, gboolean master,
 int avctp_register(struct btd_adapter *adapter, gboolean master)
 {
 	struct avctp_server *server;
-	const bdaddr_t *src = adapter_get_address(adapter);
+	const bdaddr_t *src = btd_adapter_get_address(adapter);
 
 	server = g_new0(struct avctp_server, 1);
 
@@ -1937,6 +1937,7 @@ struct avctp *avctp_connect(struct btd_device *device)
 	struct avctp *session;
 	GError *err = NULL;
 	GIOChannel *io;
+	const bdaddr_t *src;
 
 	session = avctp_get_internal(device);
 	if (!session)
@@ -1947,9 +1948,10 @@ struct avctp *avctp_connect(struct btd_device *device)
 
 	avctp_set_state(session, AVCTP_STATE_CONNECTING);
 
+	src = btd_adapter_get_address(session->server->adapter);
+
 	io = bt_io_connect(avctp_connect_cb, session, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(session->server->adapter),
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR,
 				device_get_address(session->device),
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,
@@ -1971,6 +1973,7 @@ struct avctp *avctp_connect(struct btd_device *device)
 
 int avctp_connect_browsing(struct avctp *session)
 {
+	const bdaddr_t *src;
 	GError *err = NULL;
 	GIOChannel *io;
 
@@ -1982,9 +1985,10 @@ int avctp_connect_browsing(struct avctp *session)
 
 	avctp_set_state(session, AVCTP_STATE_BROWSING_CONNECTING);
 
+	src = btd_adapter_get_address(session->server->adapter);
+
 	io = bt_io_connect(avctp_connect_browsing_cb, session, NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(session->server->adapter),
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR,
 				device_get_address(session->device),
 				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_MEDIUM,

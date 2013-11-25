@@ -1322,6 +1322,7 @@ static void release_adapter_instance(struct hdp_adapter *hdp_adapter)
 static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 {
 	GError *err = NULL;
+	const bdaddr_t *src;
 
 	if (applications == NULL) {
 		release_adapter_instance(hdp_adapter);
@@ -1331,8 +1332,9 @@ static gboolean update_adapter(struct hdp_adapter *hdp_adapter)
 	if (hdp_adapter->mi != NULL)
 		goto update;
 
-	hdp_adapter->mi = mcap_create_instance(
-				adapter_get_address(hdp_adapter->btd_adapter),
+	src = btd_adapter_get_address(hdp_adapter->btd_adapter);
+
+	hdp_adapter->mi = mcap_create_instance(src,
 				BT_IO_SEC_MEDIUM, 0, 0,
 				mcl_connected, mcl_reconnected,
 				mcl_disconnected, mcl_uncached,

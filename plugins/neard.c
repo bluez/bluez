@@ -227,7 +227,7 @@ static DBusMessage *create_request_oob_reply(struct btd_adapter *adapter,
 	uint8_t *peir = eir;
 	int len;
 
-	len = eir_create_oob(adapter_get_address(adapter),
+	len = eir_create_oob(btd_adapter_get_address(adapter),
 				btd_adapter_get_name(adapter),
 				btd_adapter_get_class(adapter), hash,
 				randomizer, main_opts.did_vendor,

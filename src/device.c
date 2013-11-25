@@ -263,7 +263,7 @@ static gboolean store_device_info_cb(gpointer user_data)
 
 	device->store_id = 0;
 
-	ba2str(adapter_get_address(device->adapter), adapter_addr);
+	ba2str(btd_adapter_get_address(device->adapter), adapter_addr);
 	ba2str(&device->bdaddr, device_addr);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/info", adapter_addr,
 			device_addr);
@@ -409,7 +409,7 @@ void device_store_cached_name(struct btd_device *dev, const char *name)
 		return;
 	}
 
-	ba2str(adapter_get_address(dev->adapter), s_addr);
+	ba2str(btd_adapter_get_address(dev->adapter), s_addr);
 	ba2str(&dev->bdaddr, d_addr);
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", s_addr, d_addr);
 	filename[PATH_MAX] = '\0';
@@ -470,7 +470,7 @@ static void browse_request_cancel(struct browse_req *req)
 	struct btd_device *device = req->device;
 	struct btd_adapter *adapter = device->adapter;
 
-	bt_cancel_discovery(adapter_get_address(adapter), &device->bdaddr);
+	bt_cancel_discovery(btd_adapter_get_address(adapter), &device->bdaddr);
 
 	attio_cleanup(device);
 
@@ -2183,7 +2183,7 @@ struct btd_device *device_create_from_storage(struct btd_adapter *adapter,
 	if (device == NULL)
 		return NULL;
 
-	src = adapter_get_address(adapter);
+	src = btd_adapter_get_address(adapter);
 	ba2str(src, srcaddr);
 
 	load_info(device, srcaddr, address, key_file);
@@ -2208,7 +2208,7 @@ struct btd_device *device_create(struct btd_adapter *adapter,
 		return NULL;
 
 	device->bdaddr_type = bdaddr_type;
-	sba = adapter_get_address(adapter);
+	sba = btd_adapter_get_address(adapter);
 	ba2str(sba, src);
 
 	str = load_cached_name(device, src, dst);
@@ -2231,7 +2231,7 @@ char *btd_device_get_storage_path(struct btd_device *device,
 		return NULL;
 	}
 
-	ba2str(adapter_get_address(device->adapter), srcaddr);
+	ba2str(btd_adapter_get_address(device->adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
 	if (!filename)
@@ -2342,7 +2342,7 @@ static void delete_folder_tree(const char *dirname)
 
 static void device_remove_stored(struct btd_device *device)
 {
-	const bdaddr_t *src = adapter_get_address(device->adapter);
+	const bdaddr_t *src = btd_adapter_get_address(device->adapter);
 	uint8_t dst_type = device->bdaddr_type;
 	char adapter_addr[18];
 	char device_addr[18];
@@ -2717,7 +2717,7 @@ static void update_bredr_services(struct browse_req *req, sdp_list_t *recs)
 	char *data;
 	gsize length = 0;
 
-	ba2str(adapter_get_address(device->adapter), srcaddr);
+	ba2str(btd_adapter_get_address(device->adapter), srcaddr);
 	ba2str(&device->bdaddr, dstaddr);
 
 	if (!device->temporary) {
@@ -2961,7 +2961,7 @@ static void browse_cb(sdp_list_t *recs, int err, gpointer user_data)
 	/* Search for mandatory uuids */
 	if (uuid_list[req->search_uuid]) {
 		sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
-		bt_search_service(adapter_get_address(adapter),
+		bt_search_service(btd_adapter_get_address(adapter),
 						&device->bdaddr, &uuid,
 						browse_cb, user_data, NULL);
 		return;
@@ -2994,7 +2994,7 @@ static void store_services(struct btd_device *device)
 	if (prim_uuid == NULL)
 		return;
 
-	ba2str(adapter_get_address(adapter), src_addr);
+	ba2str(btd_adapter_get_address(adapter), src_addr);
 	ba2str(&device->bdaddr, dst_addr);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/%s/attributes", src_addr,
@@ -3370,7 +3370,8 @@ int device_connect_le(struct btd_device *dev)
 	 * pairing finishes
 	 */
 	io = bt_io_connect(att_connect_cb, attcb, NULL, &gerr,
-			BT_IO_OPT_SOURCE_BDADDR, adapter_get_address(adapter),
+			BT_IO_OPT_SOURCE_BDADDR,
+			btd_adapter_get_address(adapter),
 			BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
 			BT_IO_OPT_DEST_BDADDR, &dev->bdaddr,
 			BT_IO_OPT_DEST_TYPE, dev->bdaddr_type,
@@ -3453,7 +3454,7 @@ static int device_browse_primary(struct btd_device *device, DBusMessage *msg)
 	device->att_io = bt_io_connect(att_connect_cb,
 				attcb, NULL, NULL,
 				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(adapter),
+				btd_adapter_get_address(adapter),
 				BT_IO_OPT_SOURCE_TYPE, BDADDR_LE_PUBLIC,
 				BT_IO_OPT_DEST_BDADDR, &device->bdaddr,
 				BT_IO_OPT_DEST_TYPE, device->bdaddr_type,
@@ -3499,8 +3500,8 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	req->device = device;
 	sdp_uuid16_create(&uuid, uuid_list[req->search_uuid++]);
 
-	err = bt_search_service(adapter_get_address(adapter), &device->bdaddr,
-						&uuid, browse_cb, req, NULL);
+	err = bt_search_service(btd_adapter_get_address(adapter),
+				&device->bdaddr, &uuid, browse_cb, req, NULL);
 	if (err < 0) {
 		browse_request_free(req);
 		return err;
@@ -4280,7 +4281,7 @@ static sdp_list_t *read_device_records(struct btd_device *device)
 	sdp_list_t *recs = NULL;
 	sdp_record_t *rec;
 
-	ba2str(adapter_get_address(device->adapter), local);
+	ba2str(btd_adapter_get_address(device->adapter), local);
 	ba2str(&device->bdaddr, peer);
 
 	snprintf(filename, PATH_MAX, STORAGEDIR "/%s/cache/%s", local, peer);

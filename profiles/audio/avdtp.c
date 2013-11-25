@@ -2523,11 +2523,13 @@ static GIOChannel *l2cap_connect(struct avdtp *session)
 {
 	GError *err = NULL;
 	GIOChannel *io;
+	const bdaddr_t *src;
+
+	src = btd_adapter_get_address(session->server->adapter);
 
 	io = bt_io_connect(avdtp_connect_cb, session,
 				NULL, &err,
-				BT_IO_OPT_SOURCE_BDADDR,
-				adapter_get_address(session->server->adapter),
+				BT_IO_OPT_SOURCE_BDADDR, src,
 				BT_IO_OPT_DEST_BDADDR,
 				device_get_address(session->device),
 				BT_IO_OPT_PSM, AVDTP_PSM,
@@ -3675,7 +3677,8 @@ static struct avdtp_server *avdtp_server_init(struct btd_adapter *adapter)
 
 	server = g_new0(struct avdtp_server, 1);
 
-	server->io = avdtp_server_socket(adapter_get_address(adapter), TRUE);
+	server->io = avdtp_server_socket(btd_adapter_get_address(adapter),
+									TRUE);
 	if (!server->io) {
 		g_free(server);
 		return NULL;

@@ -452,7 +452,7 @@ int connection_connect(struct btd_service *service)
 	if (nc->state != DISCONNECTED)
 		return -EALREADY;
 
-	src = adapter_get_address(device_get_adapter(peer->device));
+	src = btd_adapter_get_address(device_get_adapter(peer->device));
 	dst = device_get_address(peer->device);
 
 	nc->io = bt_io_connect(connect_cb, nc,

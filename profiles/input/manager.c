@@ -46,13 +46,13 @@
 
 static int hid_server_probe(struct btd_profile *p, struct btd_adapter *adapter)
 {
-	return server_start(adapter_get_address(adapter));
+	return server_start(btd_adapter_get_address(adapter));
 }
 
 static void hid_server_remove(struct btd_profile *p,
 						struct btd_adapter *adapter)
 {
-	server_stop(adapter_get_address(adapter));
+	server_stop(btd_adapter_get_address(adapter));
 }
 
 static struct btd_profile input_profile = {

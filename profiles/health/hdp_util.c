@@ -853,7 +853,7 @@ gboolean hdp_get_mdep(struct hdp_device *device, struct hdp_application *app,
 	const bdaddr_t *dst;
 	uuid_t uuid;
 
-	src = adapter_get_address(device_get_adapter(device->dev));
+	src = btd_adapter_get_address(device_get_adapter(device->dev));
 	dst = device_get_address(device->dev);
 
 	mdep_data = g_new0(struct get_mdep_data, 1);
@@ -1080,7 +1080,7 @@ gboolean hdp_establish_mcl(struct hdp_device *device,
 	const bdaddr_t *dst;
 	uuid_t uuid;
 
-	src = adapter_get_address(device_get_adapter(device->dev));
+	src = btd_adapter_get_address(device_get_adapter(device->dev));
 	dst = device_get_address(device->dev);
 
 	conn_data = g_new0(struct conn_mcl_data, 1);
@@ -1151,7 +1151,7 @@ gboolean hdp_get_dcpsm(struct hdp_device *device, hdp_continue_dcpsm_f func,
 	const bdaddr_t *dst;
 	uuid_t uuid;
 
-	src = adapter_get_address(device_get_adapter(device->dev));
+	src = btd_adapter_get_address(device_get_adapter(device->dev));
 	dst = device_get_address(device->dev);
 
 	dcpsm_data = g_new0(struct get_dcpsm_data, 1);

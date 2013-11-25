@@ -156,7 +156,7 @@ static int adapter_cmp_addr(gconstpointer a, gconstpointer b)
 	const struct gatt_server *server = a;
 	const bdaddr_t *bdaddr = b;
 
-	return bacmp(adapter_get_address(server->adapter), bdaddr);
+	return bacmp(btd_adapter_get_address(server->adapter), bdaddr);
 }
 
 static int adapter_cmp(gconstpointer a, gconstpointer b)
@@ -1310,7 +1310,7 @@ int btd_adapter_gatt_server_start(struct btd_adapter *adapter)
 	server = g_new0(struct gatt_server, 1);
 	server->adapter = btd_adapter_ref(adapter);
 
-	addr = adapter_get_address(server->adapter);
+	addr = btd_adapter_get_address(server->adapter);
 
 	/* BR/EDR socket */
 	server->l2cap_io = bt_io_listen(connect_event, NULL, NULL, NULL, &gerr,
