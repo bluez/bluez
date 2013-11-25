@@ -1137,7 +1137,7 @@ guint attrib_channel_attach(GAttrib *attrib)
 
 	channel->server = server;
 
-	device = adapter_find_device(server->adapter, &channel->dst);
+	device = btd_adapter_find_device(server->adapter, &channel->dst);
 	if (device == NULL) {
 		error("Device object not found for attrib server");
 		g_free(channel);

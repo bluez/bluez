@@ -1047,7 +1047,7 @@ static struct ext_io *create_conn(struct ext_io *server, GIOChannel *io,
 	GIOCondition cond;
 	char addr[18];
 
-	device = adapter_find_device(server->adapter, dst);
+	device = btd_adapter_find_device(server->adapter, dst);
 	if (device == NULL) {
 		ba2str(dst, addr);
 		error("%s device %s not found", server->ext->name, addr);

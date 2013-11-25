@@ -690,7 +690,7 @@ int adapter_set_name(struct btd_adapter *adapter, const char *name)
 	return set_name(adapter, name);
 }
 
-struct btd_device *adapter_find_device(struct btd_adapter *adapter,
+struct btd_device *btd_adapter_find_device(struct btd_adapter *adapter,
 							const bdaddr_t *dst)
 {
 	struct btd_device *device;
@@ -1081,7 +1081,7 @@ struct btd_device *btd_adapter_get_device(struct btd_adapter *adapter,
 	if (!adapter)
 		return NULL;
 
-	device = adapter_find_device(adapter, addr);
+	device = btd_adapter_find_device(adapter, addr);
 	if (device)
 		return device;
 
@@ -4427,7 +4427,7 @@ static int adapter_authorize(struct btd_adapter *adapter, const bdaddr_t *dst,
 	struct btd_device *device;
 	static guint id = 0;
 
-	device = adapter_find_device(adapter, dst);
+	device = btd_adapter_find_device(adapter, dst);
 	if (!device)
 		return 0;
 
@@ -4633,7 +4633,7 @@ int btd_adapter_pincode_reply(struct btd_adapter *adapter,
 
 		/* Since a pincode was requested, update the starting time to
 		 * the point where the pincode is provided. */
-		device = adapter_find_device(adapter, bdaddr);
+		device = btd_adapter_find_device(adapter, bdaddr);
 		device_bonding_restart_timer(device);
 
 		id = mgmt_reply(adapter->mgmt, MGMT_OP_PIN_CODE_REPLY,
@@ -4967,7 +4967,7 @@ static void bonding_complete(struct btd_adapter *adapter,
 	if (status == 0)
 		device = btd_adapter_get_device(adapter, bdaddr, addr_type);
 	else
-		device = adapter_find_device(adapter, bdaddr);
+		device = btd_adapter_find_device(adapter, bdaddr);
 
 	if (device != NULL)
 		device_bonding_complete(device, status);
@@ -4994,7 +4994,7 @@ static void bonding_attempt_complete(struct btd_adapter *adapter,
 	if (status == 0)
 		device = btd_adapter_get_device(adapter, bdaddr, addr_type);
 	else
-		device = adapter_find_device(adapter, bdaddr);
+		device = btd_adapter_find_device(adapter, bdaddr);
 
 	if (status == MGMT_STATUS_AUTH_FAILED && adapter->pincode_requested) {
 		/* On faliure, issue a bonding_retry if possible. */
@@ -5153,7 +5153,7 @@ static void dev_disconnected(struct btd_adapter *adapter,
 
 	DBG("Device %s disconnected, reason %u", dst, reason);
 
-	device = adapter_find_device(adapter, &addr->bdaddr);
+	device = btd_adapter_find_device(adapter, &addr->bdaddr);
 	if (device)
 		adapter_remove_connection(adapter, device);
 
@@ -5768,7 +5768,7 @@ static void device_blocked_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s blocked", index, addr);
 
-	device = adapter_find_device(adapter, &ev->addr.bdaddr);
+	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device)
 		device_block(device, TRUE);
 }
@@ -5789,7 +5789,7 @@ static void device_unblocked_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s unblocked", index, addr);
 
-	device = adapter_find_device(adapter, &ev->addr.bdaddr);
+	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device)
 		device_unblock(device, FALSE, TRUE);
 }
@@ -5811,7 +5811,7 @@ static void connect_failed_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u %s status %u", index, addr, ev->status);
 
-	device = adapter_find_device(adapter, &ev->addr.bdaddr);
+	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (device) {
 		/* If the device is in a bonding process cancel any auth request
 		 * sent to the agent before proceeding, but keep the bonding
@@ -5857,7 +5857,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u addr %s", index, addr);
 
-	device = adapter_find_device(adapter, &ev->addr.bdaddr);
+	device = btd_adapter_find_device(adapter, &ev->addr.bdaddr);
 	if (!device) {
 		warn("No device object for unpaired device %s", addr);
 		return;
