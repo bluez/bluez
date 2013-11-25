@@ -397,7 +397,7 @@ static int bt_sock_send_fd(int sock_fd, const void *buf, int len, int send_fd)
 	struct msghdr msg;
 	struct cmsghdr *cmsg;
 	struct iovec iv;
-	char msgbuf[CMSG_SPACE(1)];
+	char cmsgbuf[CMSG_SPACE(sizeof(int))];
 
 	DBG("len %d sock_fd %d send_fd %d", len, sock_fd, send_fd);
 
@@ -405,13 +405,16 @@ static int bt_sock_send_fd(int sock_fd, const void *buf, int len, int send_fd)
 		return -1;
 
 	memset(&msg, 0, sizeof(msg));
+	memset(cmsgbuf, 0, sizeof(cmsgbuf));
 
-	msg.msg_control = msgbuf;
-	msg.msg_controllen = sizeof(msgbuf);
+	msg.msg_control = cmsgbuf;
+	msg.msg_controllen = sizeof(cmsgbuf);
+
 	cmsg = CMSG_FIRSTHDR(&msg);
 	cmsg->cmsg_level = SOL_SOCKET;
 	cmsg->cmsg_type = SCM_RIGHTS;
 	cmsg->cmsg_len = CMSG_LEN(sizeof(send_fd));
+
 	memcpy(CMSG_DATA(cmsg), &send_fd, sizeof(send_fd));
 
 	iv.iov_base = (unsigned char *) buf;
