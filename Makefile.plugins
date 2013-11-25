@@ -110,3 +110,11 @@ builtin_sources += profiles/heartrate/heartrate.c
 builtin_modules += cyclingspeed
 builtin_sources += profiles/cyclingspeed/cyclingspeed.c
 endif
+
+if SIXAXIS
+plugin_LTLIBRARIES += plugins/sixaxis.la
+plugins_sixaxis_la_SOURCES = plugins/sixaxis.c
+plugins_sixaxis_la_LDFLAGS = $(AM_LDFLAGS) -module -avoid-version \
+						-no-undefined @UDEV_LIBS@
+plugins_sixaxis_la_CFLAGS = $(AM_CFLAGS) -fvisibility=hidden @UDEV_CFLAGS@
+endif

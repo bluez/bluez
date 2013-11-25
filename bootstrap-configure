@@ -13,4 +13,5 @@ fi
 		--localstatedir=/var \
 		--enable-experimental \
 		--enable-android \
+		--enable-sixaxis \
 		--disable-datafiles $*

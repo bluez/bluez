@@ -216,6 +216,11 @@ AC_ARG_ENABLE(experimental, AC_HELP_STRING([--enable-experimental],
 					[enable_experimental=${enableval}])
 AM_CONDITIONAL(EXPERIMENTAL, test "${enable_experimental}" = "yes")
 
+AC_ARG_ENABLE(sixaxis, AC_HELP_STRING([--enable-sixaxis],
+		[enable sixaxis plugin]), [enable_sixaxis=${enableval}])
+AM_CONDITIONAL(SIXAXIS, test "${enable_sixaxis}" = "yes" &&
+					 test "${enable_udev}" != "no")
+
 if (test "${prefix}" = "NONE"); then
 	dnl no prefix and no localstatedir, so default to /var
 	if (test "$localstatedir" = '${prefix}/var'); then
