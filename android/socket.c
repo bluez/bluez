@@ -522,6 +522,11 @@ static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 		goto fail;
 	}
 
+	if (write(rfsock->fd, &chan, sizeof(chan)) != sizeof(chan)) {
+		error("Error sending RFCOMM channel");
+		goto fail;
+	}
+
 	rfsock->real_sock = g_io_channel_unix_get_fd(io);
 	rfsock->channel = chan;
 	connections = g_list_append(connections, rfsock);
