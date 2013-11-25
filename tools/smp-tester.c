@@ -89,6 +89,11 @@ struct test_data {
 	uint16_t handle;
 	size_t counter;
 	int alg_sk;
+	uint8_t smp_tk[16];
+	uint8_t smp_prnd[16];
+	uint8_t smp_rrnd[16];
+	uint8_t smp_preq[7];
+	uint8_t smp_prsp[7];
 };
 
 struct smp_req_rsp {
@@ -131,6 +136,141 @@ static int alg_setup(void)
 	}
 
 	return sk;
+}
+
+static int alg_new(int alg_sk, const uint8_t *key)
+{
+	int sk;
+
+	if (setsockopt(alg_sk, SOL_ALG, ALG_SET_KEY, key, 16) < 0) {
+		tester_warn("setsockopt(ALG_SET_KEY): %s", strerror(errno));
+		return -1;
+	}
+
+	sk = accept4(alg_sk, NULL, 0, SOCK_CLOEXEC);
+	if (sk < 0) {
+		tester_warn("accept4(AF_ALG): %s", strerror(errno));
+		return -1;
+	}
+
+	return sk;
+}
+
+static int alg_encrypt(int sk, uint8_t in[16], uint8_t out[16])
+{
+	__u32 alg_op = ALG_OP_ENCRYPT;
+	char cbuf[CMSG_SPACE(sizeof(alg_op))];
+	struct cmsghdr *cmsg;
+	struct msghdr msg;
+	struct iovec iov;
+	int ret;
+
+	memset(cbuf, 0, sizeof(cbuf));
+	memset(&msg, 0, sizeof(msg));
+
+	msg.msg_control = cbuf;
+	msg.msg_controllen = sizeof(cbuf);
+
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_level = SOL_ALG;
+	cmsg->cmsg_type = ALG_SET_OP;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(alg_op));
+	memcpy(CMSG_DATA(cmsg), &alg_op, sizeof(alg_op));
+
+	iov.iov_base = in;
+	iov.iov_len = 16;
+
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
+
+	ret = sendmsg(sk, &msg, 0);
+	if (ret < 0) {
+		tester_warn("sendmsg(AF_ALG): %s", strerror(errno));
+		return ret;
+	}
+
+	ret = read(sk, out, 16);
+	if (ret < 0)
+		tester_warn("read(AF_ALG): %s", strerror(errno));
+
+	return 0;
+
+}
+
+static int smp_e(uint8_t key[16], uint8_t in[16], uint8_t out[16])
+{
+	struct test_data *data = tester_get_data();
+	int sk, err;
+
+	sk = alg_new(data->alg_sk, key);
+	if (sk < 0)
+		return sk;
+
+	err = alg_encrypt(sk, in, out);
+
+	close(sk);
+
+	return err;
+}
+
+static inline void swap128(const uint8_t src[16], uint8_t dst[16])
+{
+        int i;
+        for (i = 0; i < 16; i++)
+                dst[15 - i] = src[i];
+}
+
+static inline void swap56(const uint8_t src[7], uint8_t dst[7])
+{
+        int i;
+        for (i = 0; i < 7; i++)
+                dst[6 - i] = src[i];
+}
+
+typedef struct {
+        uint64_t a, b;
+} u128;
+
+static inline void u128_xor(u128 *r, const u128 *p, const u128 *q)
+{
+        r->a = p->a ^ q->a;
+        r->b = p->b ^ q->b;
+}
+
+static int smp_c1(uint8_t k[16], uint8_t r[16], uint8_t preq[7],
+			uint8_t pres[7], uint8_t _iat, bdaddr_t *ia,
+			uint8_t _rat, bdaddr_t *ra, uint8_t res[16])
+{
+        uint8_t p1[16], p2[16];
+        int err;
+
+        memset(p1, 0, 16);
+
+        /* p1 = pres || preq || _rat || _iat */
+        swap56(pres, p1);
+        swap56(preq, p1 + 7);
+        p1[14] = _rat;
+        p1[15] = _iat;
+
+        memset(p2, 0, 16);
+
+        /* p2 = padding || ia || ra */
+        baswap((bdaddr_t *) (p2 + 4), ia);
+        baswap((bdaddr_t *) (p2 + 10), ra);
+
+        /* res = r XOR p1 */
+        u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
+
+        /* res = e(k, res) */
+        err = smp_e(k, res, res);
+        if (err)
+                return err;
+
+        /* res = res XOR p2 */
+        u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
+
+        /* res = e(k, res) */
+        return smp_e(k, res, res);
 }
 
 static void mgmt_debug(const char *str, void *user_data)
@@ -440,15 +580,23 @@ static void pair_device_complete(uint8_t status, uint16_t length,
 
 static const void *get_pdu(const uint8_t *data)
 {
+	struct test_data *test_data = tester_get_data();
 	uint8_t opcode = data[0];
-	static uint16_t buf[17];
+	static uint8_t buf[17];
+	static bdaddr_t bda;
 
 	switch (opcode) {
 	case 0x03: /* Pairing Confirm */
-		memcpy(buf, data, sizeof(buf));
+		buf[0] = data[0];
+		smp_c1(test_data->smp_tk, test_data->smp_prnd,
+			test_data->smp_preq, test_data->smp_prsp, 0, &bda,
+							0, &bda, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
-		memcpy(buf, data, sizeof(buf));
+		buf[0] = data[0];
+		smp_c1(test_data->smp_tk, test_data->smp_rrnd,
+			test_data->smp_preq, test_data->smp_prsp, 0, &bda,
+							0, &bda, &buf[1]);
 		return buf;
 	default:
 		return data;
