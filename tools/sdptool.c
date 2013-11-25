@@ -1174,18 +1174,15 @@ static int add_sp(sdp_session_t *session, svc_info_t *si)
 	sdp_uuid16_create(&root_uuid, PUBLIC_BROWSE_GROUP);
 	root = sdp_list_append(0, &root_uuid);
 	sdp_set_browse_groups(&record, root);
-	sdp_list_free(root, 0);
 
 	sdp_uuid16_create(&sp_uuid, SERIAL_PORT_SVCLASS_ID);
 	svclass_id = sdp_list_append(0, &sp_uuid);
 	sdp_set_service_classes(&record, svclass_id);
-	sdp_list_free(svclass_id, 0);
 
 	sdp_uuid16_create(&profile.uuid, SERIAL_PORT_PROFILE_ID);
 	profile.version = 0x0100;
 	profiles = sdp_list_append(0, &profile);
 	sdp_set_profile_descs(&record, profiles);
-	sdp_list_free(profiles, 0);
 
 	sdp_uuid16_create(&l2cap, L2CAP_UUID);
 	proto[0] = sdp_list_append(0, &l2cap);
@@ -1226,6 +1223,9 @@ end:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(apseq, 0);
 	sdp_list_free(aproto, 0);
+	sdp_list_free(root, 0);
+	sdp_list_free(svclass_id, 0);
+	sdp_list_free(profiles, 0);
 
 	return ret;
 }
