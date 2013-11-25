@@ -47,6 +47,7 @@
 
 #define OPP_DEFAULT_CHANNEL	9
 #define PBAP_DEFAULT_CHANNEL	15
+#define MAS_DEFAULT_CHANNEL	16
 
 #define SVC_HINT_OBEX 0x10
 
@@ -210,6 +211,12 @@ static struct profile_info {
 		.channel = OPP_DEFAULT_CHANNEL,
 		.svc_hint = SVC_HINT_OBEX,
 		.create_record = create_opp_record
+	}, {
+		.uuid = {
+			0x00, 0x00, 0x11, 0x32, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		},
+		.channel = MAS_DEFAULT_CHANNEL
 	}
 };
 
