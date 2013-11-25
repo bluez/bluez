@@ -809,7 +809,7 @@ static void set_trust(GDBusPendingPropertySet id, gboolean value, void *data)
 {
 	struct btd_device *device = data;
 
-	device_set_trusted(device, value);
+	btd_device_set_trusted(device, value);
 
 	g_dbus_pending_property_success(id);
 }
@@ -3565,7 +3565,7 @@ void btd_device_set_temporary(struct btd_device *device, gboolean temporary)
 	device->temporary = temporary;
 }
 
-void device_set_trusted(struct btd_device *device, gboolean trusted)
+void btd_device_set_trusted(struct btd_device *device, gboolean trusted)
 {
 	if (!device)
 		return;
