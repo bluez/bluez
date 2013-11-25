@@ -506,6 +506,7 @@ static bool set_capabilities(void)
 	header.pid = 0;
 
 	cap.effective = cap.permitted =
+		CAP_TO_MASK(CAP_NET_RAW) |
 		CAP_TO_MASK(CAP_NET_ADMIN) |
 		CAP_TO_MASK(CAP_NET_BIND_SERVICE);
 	cap.inheritable = 0;
