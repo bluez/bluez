@@ -33,6 +33,9 @@ const char *bt_uuid_t2str(const uint8_t *uuid, char *buf)
 	unsigned int i;
 	int is_bt;
 
+	if (!uuid)
+		return strcpy(buf, "NULL");
+
 	is_bt = !memcmp(&uuid[4], &BT_BASE_UUID[4], HAL_UUID_LEN - 4);
 
 	for (i = 0; i < HAL_UUID_LEN; i++) {
@@ -166,6 +169,9 @@ int int2str_findstr(const char *str, const struct int2str m[])
 const char *bt_bdaddr_t2str(const bt_bdaddr_t *bd_addr, char *buf)
 {
 	const uint8_t *p = bd_addr->address;
+
+	if (!bd_addr)
+		return strcpy(buf, "NULL");
 
 	snprintf(buf, MAX_ADDR_STR_LEN, "%02x:%02x:%02x:%02x:%02x:%02x",
 					p[0], p[1], p[2], p[3], p[4], p[5]);
