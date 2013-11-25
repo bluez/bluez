@@ -647,10 +647,13 @@ static int handle_listen(void *buf)
 	DBG("");
 
 	profile = get_profile_by_uuid(cmd->uuid);
-	if (!profile)
-		return -1;
-
-	chan = profile->channel;
+	if (!profile) {
+		if (!cmd->channel)
+			return -1;
+		else
+			chan = cmd->channel;
+	} else
+		chan = profile->channel;
 
 	DBG("rfcomm channel %d svc_name %s", chan, cmd->name);
 
