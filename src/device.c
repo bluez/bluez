@@ -3524,6 +3524,23 @@ static int device_browse_sdp(struct btd_device *device, DBusMessage *msg)
 	return err;
 }
 
+int device_discover_services(struct btd_device *device)
+{
+	int err;
+
+	if (device_is_bredr(device))
+		err = device_browse_sdp(device, NULL);
+	else
+		err = device_browse_primary(device, NULL);
+
+	if (err == 0 && device->discov_timer) {
+		g_source_remove(device->discov_timer);
+		device->discov_timer = 0;
+	}
+
+	return err;
+}
+
 struct btd_adapter *device_get_adapter(struct btd_device *device)
 {
 	if (!device)
