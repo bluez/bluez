@@ -424,6 +424,33 @@ static int handle_listen(void *buf)
 	return hal_fd;
 }
 
+static bool sock_send_connect(struct rfcomm_sock *rfsock, bdaddr_t *bdaddr)
+{
+	struct hal_sock_connect_signal cmd;
+	int len;
+
+	DBG("");
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.size = sizeof(cmd);
+	bdaddr2android(bdaddr, cmd.bdaddr);
+	cmd.channel = rfsock->channel;
+	cmd.status = 0;
+
+	len = write(rfsock->fd, &cmd, sizeof(cmd));
+	if (len < 0) {
+		error("%s", strerror(errno));
+		return false;
+	}
+
+	if (len != sizeof(cmd)) {
+		error("Error sending connect signal");
+		return false;
+	}
+
+	return true;
+}
+
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
 	struct rfcomm_sock *rfsock = user_data;
@@ -444,6 +471,9 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
 		rfsock->fd, rfsock->real_sock, rfsock->channel,
 		g_io_channel_unix_get_fd(io));
+
+	if (!sock_send_connect(rfsock, dst))
+		goto fail;
 
 	/* Handle events from Android */
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
