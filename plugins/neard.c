@@ -640,7 +640,7 @@ static void store_params(struct btd_adapter *adapter, struct btd_device *device,
 
 	if (params->name) {
 		device_store_cached_name(device, params->name);
-		device_set_name(device, params->name);
+		btd_device_device_set_name(device, params->name);
 	}
 
 	/* TODO handle UUIDs? */

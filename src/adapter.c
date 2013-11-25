@@ -4152,7 +4152,7 @@ static void update_found_devices(struct btd_adapter *adapter,
 	name_known = device_name_known(dev);
 
 	if (eir_data.name && (eir_data.name_complete || !name_known))
-		device_set_name(dev, eir_data.name);
+		btd_device_device_set_name(dev, eir_data.name);
 
 	if (eir_data.class != 0)
 		device_set_class(dev, eir_data.class);
@@ -5746,7 +5746,7 @@ static void connected_callback(uint16_t index, uint16_t length,
 
 	if (eir_data.name != NULL) {
 		device_store_cached_name(device, eir_data.name);
-		device_set_name(device, eir_data.name);
+		btd_device_device_set_name(device, eir_data.name);
 	}
 
 	eir_data_free(&eir_data);

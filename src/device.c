@@ -2241,7 +2241,7 @@ char *btd_device_get_storage_path(struct btd_device *device,
 							filename);
 }
 
-void device_set_name(struct btd_device *device, const char *name)
+void btd_device_device_set_name(struct btd_device *device, const char *name)
 {
 	if (strncmp(name, device->name, MAX_NAME_LENGTH) == 0)
 		return;
