@@ -426,6 +426,42 @@ static int handle_listen(void *buf)
 
 static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 {
+	struct rfcomm_sock *rfsock = user_data;
+	bdaddr_t *dst = &rfsock->dst;
+	GIOChannel *io_stack;
+	char address[18];
+	guint id;
+	GIOCondition cond;
+
+	if (err) {
+		error("%s", err->message);
+		goto fail;
+	}
+
+	ba2str(dst, address);
+	DBG("Connected to %s", address);
+
+	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
+		rfsock->fd, rfsock->real_sock, rfsock->channel,
+		g_io_channel_unix_get_fd(io));
+
+	/* Handle events from Android */
+	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
+	io_stack = g_io_channel_unix_new(rfsock->fd);
+	id = g_io_add_watch(io_stack, cond, sock_stack_event_cb, rfsock);
+	g_io_channel_unref(io_stack);
+
+	rfsock->stack_watch = id;
+
+	/* Handle rfcomm events */
+	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
+	id = g_io_add_watch(io, cond, sock_rfcomm_event_cb, rfsock);
+
+	rfsock->rfcomm_watch = id;
+
+	return;
+fail:
+	cleanup_rfsock(rfsock);
 }
 
 static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
