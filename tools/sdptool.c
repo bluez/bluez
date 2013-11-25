@@ -1813,7 +1813,10 @@ end:
 	sdp_list_free(proto[1], 0);
 	sdp_list_free(proto[2], 0);
 	sdp_list_free(apseq, 0);
+	sdp_list_free(pfseq, 0);
 	sdp_list_free(aproto, 0);
+	sdp_list_free(root, 0);
+	sdp_list_free(svclass_id, NULL);
 
 	return ret;
 }
