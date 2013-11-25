@@ -1205,8 +1205,8 @@ static void mcl_connected(struct mcap_mcl *mcl, gpointer data)
 		struct hdp_adapter *hdp_adapter = data;
 		struct btd_device *device;
 
-		device = adapter_get_device(hdp_adapter->btd_adapter, &addr,
-								BDADDR_BREDR);
+		device = btd_adapter_get_device(hdp_adapter->btd_adapter,
+							&addr, BDADDR_BREDR);
 		if (!device)
 			return;
 		hdp_device = create_health_device(device);

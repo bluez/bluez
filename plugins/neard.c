@@ -701,7 +701,8 @@ static DBusMessage *push_oob(DBusConnection *conn, DBusMessage *msg, void *data)
 		return error_reply(msg, EINVAL);
 	}
 
-	device = adapter_get_device(adapter, &remote.address, BDADDR_BREDR);
+	device = btd_adapter_get_device(adapter, &remote.address,
+								BDADDR_BREDR);
 
 	err = check_device(device);
 	if (err < 0) {
@@ -769,7 +770,8 @@ static DBusMessage *request_oob(DBusConnection *conn, DBusMessage *msg,
 	if (bacmp(&remote.address, BDADDR_ANY) == 0)
 		goto read_local;
 
-	device = adapter_get_device(adapter, &remote.address, BDADDR_BREDR);
+	device = btd_adapter_get_device(adapter, &remote.address,
+								BDADDR_BREDR);
 
 	err = check_device(device);
 	if (err < 0) {

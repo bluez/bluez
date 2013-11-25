@@ -1072,7 +1072,7 @@ static void adapter_remove_device(struct btd_adapter *adapter,
 	device_remove(dev, TRUE);
 }
 
-struct btd_device *adapter_get_device(struct btd_adapter *adapter,
+struct btd_device *btd_adapter_get_device(struct btd_adapter *adapter,
 					const bdaddr_t *addr,
 					uint8_t addr_type)
 {
@@ -2726,7 +2726,8 @@ static void get_connections_complete(uint8_t status, uint16_t length,
 		ba2str(&addr->bdaddr, address);
 		DBG("Adding existing connection to %s", address);
 
-		device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
+		device = btd_adapter_get_device(adapter, &addr->bdaddr,
+								addr->type);
 		if (device)
 			adapter_add_connection(adapter, device);
 	}
@@ -4690,7 +4691,8 @@ static void user_confirm_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s confirm_hint %u", adapter->dev_id, addr,
 							ev->confirm_hint);
-	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
+								ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4761,7 +4763,8 @@ static void user_passkey_request_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s", index, addr);
 
-	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
+								ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4793,7 +4796,8 @@ static void user_passkey_notify_callback(uint16_t index, uint16_t length,
 	ba2str(&ev->addr.bdaddr, addr);
 	DBG("hci%u %s", index, addr);
 
-	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
+								ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4875,7 +4879,8 @@ static void pin_code_request_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u %s", adapter->dev_id, addr);
 
-	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
+								ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
@@ -4960,7 +4965,7 @@ static void bonding_complete(struct btd_adapter *adapter,
 	struct btd_device *device;
 
 	if (status == 0)
-		device = adapter_get_device(adapter, bdaddr, addr_type);
+		device = btd_adapter_get_device(adapter, bdaddr, addr_type);
 	else
 		device = adapter_find_device(adapter, bdaddr);
 
@@ -4987,7 +4992,7 @@ static void bonding_attempt_complete(struct btd_adapter *adapter,
 							addr_type, status);
 
 	if (status == 0)
-		device = adapter_get_device(adapter, bdaddr, addr_type);
+		device = btd_adapter_get_device(adapter, bdaddr, addr_type);
 	else
 		device = adapter_find_device(adapter, bdaddr);
 
@@ -5277,7 +5282,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
+	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
 		error("Unable to get device object for %s", dst);
 		return;
@@ -5372,7 +5377,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 	DBG("hci%u new LTK for %s authenticated %u enc_size %u",
 		adapter->dev_id, dst, ev->key.authenticated, ev->key.enc_size);
 
-	device = adapter_get_device(adapter, &addr->bdaddr, addr->type);
+	device = btd_adapter_get_device(adapter, &addr->bdaddr, addr->type);
 	if (!device) {
 		error("Unable to get device object for %s", dst);
 		return;
@@ -5723,7 +5728,8 @@ static void connected_callback(uint16_t index, uint16_t length,
 
 	DBG("hci%u device %s connected eir_len %u", index, addr, eir_len);
 
-	device = adapter_get_device(adapter, &ev->addr.bdaddr, ev->addr.type);
+	device = btd_adapter_get_device(adapter, &ev->addr.bdaddr,
+								ev->addr.type);
 	if (!device) {
 		error("Unable to get device object for %s", addr);
 		return;
