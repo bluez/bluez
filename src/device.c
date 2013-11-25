@@ -2474,7 +2474,7 @@ static gboolean record_has_uuid(const sdp_record_t *rec,
 	return FALSE;
 }
 
-GSList *device_get_uuids(struct btd_device *device)
+GSList *btd_device_get_uuids(struct btd_device *device)
 {
 	return device->uuids;
 }

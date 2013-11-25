@@ -2537,7 +2537,7 @@ static void load_devices(struct btd_adapter *adapter)
 
 		/* TODO: register services from pre-loaded list of primaries */
 
-		list = device_get_uuids(device);
+		list = btd_device_get_uuids(device);
 		if (list)
 			device_probe_profiles(device, list);
 
