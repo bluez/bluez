@@ -1012,7 +1012,7 @@ static struct btd_device *adapter_create_device(struct btd_adapter *adapter,
 	if (!device)
 		return NULL;
 
-	device_set_temporary(device, TRUE);
+	btd_device_set_temporary(device, TRUE);
 
 	adapter->devices = g_slist_append(adapter->devices, device);
 
@@ -2156,7 +2156,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 
 	device = list->data;
 
-	device_set_temporary(device, TRUE);
+	btd_device_set_temporary(device, TRUE);
 
 	if (!device_is_connected(device)) {
 		adapter_remove_device(adapter, device);
@@ -2532,7 +2532,7 @@ static void load_devices(struct btd_adapter *adapter)
 		if (!device)
 			goto free;
 
-		device_set_temporary(device, FALSE);
+		btd_device_set_temporary(device, FALSE);
 		adapter->devices = g_slist_append(adapter->devices, device);
 
 		/* TODO: register services from pre-loaded list of primaries */
@@ -5297,7 +5297,7 @@ static void new_link_key_callback(uint16_t index, uint16_t length,
 		device_set_bonded(device, TRUE);
 
 		if (device_is_temporary(device))
-			device_set_temporary(device, FALSE);
+			btd_device_set_temporary(device, FALSE);
 	}
 
 	bonding_complete(adapter, &addr->bdaddr, addr->type, 0);
@@ -5395,7 +5395,7 @@ static void new_long_term_key_callback(uint16_t index, uint16_t length,
 		device_set_bonded(device, TRUE);
 
 		if (device_is_temporary(device))
-			device_set_temporary(device, FALSE);
+			btd_device_set_temporary(device, FALSE);
 	}
 
 	if (ev->key.master)
@@ -5863,7 +5863,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 		return;
 	}
 
-	device_set_temporary(device, TRUE);
+	btd_device_set_temporary(device, TRUE);
 
 	if (device_is_connected(device))
 		device_request_disconnect(device, NULL);

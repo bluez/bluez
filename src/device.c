@@ -997,7 +997,7 @@ int device_block(struct btd_device *device, gboolean update_only)
 
 	store_device_info(device);
 
-	device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, FALSE);
 
 	g_dbus_emit_property_changed(dbus_conn, device->path,
 						DEVICE_INTERFACE, "Blocked");
@@ -1152,7 +1152,7 @@ static void device_profile_connected(struct btd_device *dev,
 	DBG("%s %s (%d)", profile->name, strerror(-err), -err);
 
 	if (!err)
-		device_set_temporary(dev, FALSE);
+		btd_device_set_temporary(dev, FALSE);
 
 	if (dev->pending == NULL)
 		return;
@@ -1308,7 +1308,7 @@ static DBusMessage *connect_profiles(struct btd_device *dev, DBusMessage *msg,
 	if (!btd_adapter_get_powered(dev->adapter))
 		return btd_error_not_ready(msg);
 
-	device_set_temporary(dev, FALSE);
+	btd_device_set_temporary(dev, FALSE);
 
 	if (!dev->svc_resolved)
 		goto resolve_services;
@@ -1358,7 +1358,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 		if (device_is_connected(dev))
 			return dbus_message_new_method_return(msg);
 
-		device_set_temporary(dev, FALSE);
+		btd_device_set_temporary(dev, FALSE);
 
 		dev->disable_auto_connect = FALSE;
 
@@ -1609,7 +1609,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	uint8_t io_cap;
 	int err;
 
-	device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, FALSE);
 
 	if (!dbus_message_get_args(msg, NULL, DBUS_TYPE_INVALID))
 		return btd_error_invalid_args(msg);
@@ -3112,7 +3112,7 @@ static void register_all_services(struct browse_req *req, GSList *services)
 {
 	struct btd_device *device = req->device;
 
-	device_set_temporary(device, FALSE);
+	btd_device_set_temporary(device, FALSE);
 
 	update_gatt_services(req, device->primaries, services);
 	g_slist_free_full(device->primaries, g_free);
@@ -3549,7 +3549,7 @@ gboolean device_is_temporary(struct btd_device *device)
 	return device->temporary;
 }
 
-void device_set_temporary(struct btd_device *device, gboolean temporary)
+void btd_device_set_temporary(struct btd_device *device, gboolean temporary)
 {
 	if (!device)
 		return;
