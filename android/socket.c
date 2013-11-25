@@ -424,9 +424,77 @@ static int handle_listen(void *buf)
 	return hal_fd;
 }
 
+static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
+{
+}
+
 static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 {
+	struct rfcomm_sock *rfsock = data;
+	GError *gerr = NULL;
+	sdp_list_t *list;
+	GIOChannel *io;
+	int chan;
+
 	DBG("");
+
+	if (err < 0) {
+		error("Unable to get SDP record: %s", strerror(-err));
+		goto fail;
+	}
+
+	if (!recs || !recs->data) {
+		error("No SDP records found");
+		goto fail;
+	}
+
+	for (list = recs; list != NULL; list = list->next) {
+		sdp_record_t *rec = list->data;
+		sdp_list_t *protos;
+
+		if (sdp_get_access_protos(rec, &protos) < 0) {
+			error("Unable to get proto list");
+			goto fail;
+		}
+
+		chan = sdp_get_proto_port(protos, RFCOMM_UUID);
+
+		sdp_list_foreach(protos, (sdp_list_func_t) sdp_list_free,
+									NULL);
+		sdp_list_free(protos, NULL);
+
+		if (chan)
+			break;
+	}
+
+	if (chan <= 0) {
+		error("Could not get RFCOMM channel %d", chan);
+		goto fail;
+	}
+
+	DBG("Got RFCOMM channel %d", chan);
+
+	io = bt_io_connect(connect_cb, rfsock, NULL, &gerr,
+				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
+				BT_IO_OPT_DEST_BDADDR, &rfsock->dst,
+				BT_IO_OPT_CHANNEL, chan,
+				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_INVALID);
+	if (!io) {
+		error("Failed connect: %s", gerr->message);
+		g_error_free(gerr);
+		goto fail;
+	}
+
+	rfsock->real_sock = g_io_channel_unix_get_fd(io);
+	rfsock->channel = chan;
+	connections = g_list_append(connections, rfsock);
+
+	g_io_channel_unref(io);
+
+	return;
+fail:
+	cleanup_rfsock(rfsock);
 }
 
 static int handle_connect(void *buf)
