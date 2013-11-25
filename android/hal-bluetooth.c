@@ -29,10 +29,10 @@
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
 #define create_enum_prop(prop, hal_prop, type) do { \
-	type *pe = malloc(sizeof(type)); \
-	prop.val = pe; \
-	prop.len = sizeof(*pe); \
-	*pe = *((uint8_t *) (hal_prop->val)); \
+	static type e; \
+	prop.val = &e; \
+	prop.len = sizeof(e); \
+	e = *((uint8_t *) (hal_prop->val)); \
 } while (0)
 
 static void handle_adapter_state_changed(void *buf, uint16_t len)
@@ -45,13 +45,20 @@ static void handle_adapter_state_changed(void *buf, uint16_t len)
 		bt_hal_cbacks->adapter_state_changed_cb(ev->state);
 }
 
-static void adapter_props_to_hal(bt_property_t *send_props, void *buf,
-							uint8_t num_props)
+static void adapter_props_to_hal(bt_property_t *send_props,
+					struct hal_property *prop,
+					uint8_t num_props, uint16_t len)
 {
-	struct hal_property *prop = buf;
+	void *buf = prop;
 	uint8_t i;
 
 	for (i = 0; i < num_props; i++) {
+		if (sizeof(*prop) + prop->len > len) {
+			error("invalid adapter properties(%zu > %u), aborting",
+					sizeof(*prop) + prop->len, len);
+			exit(EXIT_FAILURE);
+		}
+
 		send_props[i].type = prop->type;
 
 		switch (prop->type) {
@@ -72,34 +79,32 @@ static void adapter_props_to_hal(bt_property_t *send_props, void *buf,
 
 		DBG("prop[%d]: %s", i, btproperty2str(&send_props[i]));
 
+		len -= sizeof(*prop) + prop->len;
 		buf += sizeof(*prop) + prop->len;
 		prop = buf;
 	}
+
+	if (!len)
+		return;
+
+	error("invalid adapter properties (%u bytes left), aborting", len);
+	exit(EXIT_FAILURE);
 }
 
-static void adapter_hal_props_cleanup(bt_property_t *props, uint8_t num)
+static void device_props_to_hal(bt_property_t *send_props,
+				struct hal_property *prop, uint8_t num_props,
+				uint16_t len)
 {
-	uint8_t i;
-
-	for (i = 0; i < num; i++) {
-		switch (props[i].type) {
-		case HAL_PROP_ADAPTER_TYPE:
-		case HAL_PROP_ADAPTER_SCAN_MODE:
-			free(props[i].val);
-			break;
-		default:
-			break;
-		}
-	}
-}
-
-static void device_props_to_hal(bt_property_t *send_props, void *buf,
-							uint8_t num_props)
-{
-	struct hal_property *prop = buf;
+	void *buf = prop;
 	uint8_t i;
 
 	for (i = 0; i < num_props; i++) {
+		if (sizeof(*prop) + prop->len > len) {
+			error("invalid device properties (%zu > %u), aborting",
+					sizeof(*prop) + prop->len, len);
+			exit(EXIT_FAILURE);
+		}
+
 		send_props[i].type = prop->type;
 
 		switch (prop->type) {
@@ -115,48 +120,17 @@ static void device_props_to_hal(bt_property_t *send_props, void *buf,
 			break;
 		}
 
+		len -= sizeof(*prop) + prop->len;
 		buf += sizeof(*prop) + prop->len;
 		prop = buf;
 
 		DBG("prop[%d]: %s", i, btproperty2str(&send_props[i]));
 	}
-}
-
-
-static void device_hal_props_cleanup(bt_property_t *props, uint8_t num)
-{
-	uint8_t i;
-
-	for (i = 0; i < num; i++) {
-		switch (props[i].type) {
-		case HAL_PROP_DEVICE_TYPE:
-			free(props[i].val);
-			break;
-		default:
-			break;
-		}
-	}
-}
-
-static void check_props(int num, const struct hal_property *prop, uint16_t len)
-{
-	int i;
-
-	for (i = 0; i < num; i++) {
-		if (sizeof(*prop) + prop->len > len) {
-			error("invalid properties (%zu > %u), aborting",
-					sizeof(*prop) + prop->len, len);
-			exit(EXIT_FAILURE);
-		}
-
-		len -= sizeof(*prop) + prop->len;
-		prop = ((void *) prop) + sizeof(*prop) + prop->len;
-	}
 
 	if (!len)
 		return;
 
-	error("invalid properties length (%u bytes left), aborting", len);
+	error("invalid device properties (%u bytes left), aborting", len);
 	exit(EXIT_FAILURE);
 }
 
@@ -167,16 +141,13 @@ static void handle_adapter_props_changed(void *buf, uint16_t len)
 
 	DBG("");
 
-	check_props(ev->num_props, ev->props, len - sizeof(*ev));
-
 	if (!bt_hal_cbacks->adapter_properties_cb)
 		return;
 
-	adapter_props_to_hal(props, ev->props, ev->num_props);
+	len -= sizeof(*ev);
+	adapter_props_to_hal(props, ev->props, ev->num_props, len);
 
 	bt_hal_cbacks->adapter_properties_cb(ev->status, ev->num_props, props);
-
-	adapter_hal_props_cleanup(props, ev->num_props);
 }
 
 static void handle_bond_state_change(void *buf, uint16_t len)
@@ -253,16 +224,13 @@ static void handle_device_found(void *buf, uint16_t len)
 
 	DBG("");
 
-	check_props(ev->num_props, ev->props, len - sizeof(*ev));
-
 	if (!bt_hal_cbacks->device_found_cb)
 		return;
 
-	device_props_to_hal(props, ev->props, ev->num_props);
+	len -= sizeof(*ev);
+	device_props_to_hal(props, ev->props, ev->num_props, len);
 
 	bt_hal_cbacks->device_found_cb(ev->num_props, props);
-
-	device_hal_props_cleanup(props, ev->num_props);
 }
 
 static void handle_device_state_changed(void *buf, uint16_t len)
@@ -272,18 +240,15 @@ static void handle_device_state_changed(void *buf, uint16_t len)
 
 	DBG("");
 
-	check_props(ev->num_props, ev->props, len - sizeof(*ev));
-
 	if (!bt_hal_cbacks->remote_device_properties_cb)
 		return;
 
-	device_props_to_hal(props, ev->props, ev->num_props);
+	len -= sizeof(*ev);
+	device_props_to_hal(props, ev->props, ev->num_props, len);
 
 	bt_hal_cbacks->remote_device_properties_cb(ev->status,
 						(bt_bdaddr_t *)ev->bdaddr,
 						ev->num_props, props);
-
-	device_hal_props_cleanup(props, ev->num_props);
 }
 
 static void handle_acl_state_changed(void *buf, uint16_t len)
