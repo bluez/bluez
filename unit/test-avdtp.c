@@ -195,6 +195,22 @@ static void execute_context(struct context *context)
 	g_free(context);
 }
 
+static void test_server(gconstpointer data)
+{
+	const struct test_data *test = data;
+	struct context *context = create_context();
+
+	context->pdu_list = test->pdu_list;
+	avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO, 0x00,
+				TRUE, NULL, NULL, NULL);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+
+	g_free(test->pdu_list);
+}
+
 static void discover_cb(struct avdtp *session, GSList *seps,
 				struct avdtp_error *err, void *user_data)
 {
@@ -229,6 +245,9 @@ int main(int argc, char *argv[])
 	 */
 	define_test("/TP/SIG/SMG/BV-05-C", test_discover,
 			raw_pdu(0x00, 0x01));
+	define_test("/TP/SIG/SMG/BV-06-C", test_server,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x00));
 
 	return g_test_run();
 }
