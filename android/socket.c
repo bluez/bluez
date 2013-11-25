@@ -45,6 +45,7 @@
 #include "utils.h"
 #include "socket.h"
 
+#define SPP_DEFAULT_CHANNEL	3
 #define OPP_DEFAULT_CHANNEL	9
 #define PBAP_DEFAULT_CHANNEL	15
 #define MAS_DEFAULT_CHANNEL	16
@@ -217,7 +218,13 @@ static struct profile_info {
 			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
 		},
 		.channel = MAS_DEFAULT_CHANNEL
-	}
+	}, {
+		.uuid = {
+			0x00, 0x00, 0x11, 0x01, 0x00, 0x00, 0x10, 0x00,
+			0x80, 0x00, 0x00, 0x80, 0x5F, 0x9B, 0x34, 0xFB
+		},
+		.channel = SPP_DEFAULT_CHANNEL
+	},
 };
 
 static uint32_t sdp_service_register(struct profile_info *profile,
