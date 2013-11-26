@@ -70,6 +70,8 @@ struct rfcomm_sock {
 
 	bdaddr_t dst;
 	uint32_t service_handle;
+
+	const struct profile_info *profile;
 };
 
 static struct rfcomm_sock *create_rfsock(int sock, int *hal_fd)
@@ -667,7 +669,7 @@ static int handle_listen(void *buf)
 			return -1;
 		else {
 			chan = cmd->channel;
-			sec_level = BT_IO_SEC_LOW;
+			sec_level = BT_IO_SEC_MEDIUM;
 		}
 	} else {
 		chan = profile->channel;
@@ -786,6 +788,7 @@ fail:
 static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 {
 	struct rfcomm_sock *rfsock = data;
+	BtIOSecLevel sec_level = BT_IO_SEC_MEDIUM;
 	GError *gerr = NULL;
 	sdp_list_t *list;
 	GIOChannel *io;
@@ -829,11 +832,14 @@ static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 
 	DBG("Got RFCOMM channel %d", chan);
 
+	if (rfsock->profile)
+		sec_level = rfsock->profile->sec_level;
+
 	io = bt_io_connect(connect_cb, rfsock, NULL, &gerr,
 				BT_IO_OPT_SOURCE_BDADDR, &adapter_addr,
 				BT_IO_OPT_DEST_BDADDR, &rfsock->dst,
 				BT_IO_OPT_CHANNEL, chan,
-				BT_IO_OPT_SEC_LEVEL, BT_IO_SEC_LOW,
+				BT_IO_OPT_SEC_LEVEL, sec_level,
 				BT_IO_OPT_INVALID);
 	if (!io) {
 		error("Failed connect: %s", gerr->message);
@@ -874,6 +880,8 @@ static int handle_connect(void *buf)
 	memset(&uuid, 0, sizeof(uuid));
 	uuid.type = SDP_UUID128;
 	memcpy(&uuid.value.uuid128, cmd->uuid, sizeof(uint128_t));
+
+	rfsock->profile = get_profile_by_uuid(cmd->uuid);
 
 	if (bt_search_service(&adapter_addr, &dst, &uuid, sdp_search_cb, rfsock,
 								NULL) < 0) {
