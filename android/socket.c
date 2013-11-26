@@ -620,6 +620,11 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	sock_acc = g_io_channel_unix_get_fd(io);
 	rfsock_acc = create_rfsock(sock_acc, &hal_fd);
+	if (!rfsock_acc) {
+		g_io_channel_shutdown(io, TRUE, NULL);
+		return;
+	}
+
 	connections = g_list_append(connections, rfsock_acc);
 
 	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
@@ -873,8 +878,11 @@ static int handle_connect(void *buf)
 
 	DBG("");
 
-	android2bdaddr(cmd->bdaddr, &dst);
 	rfsock = create_rfsock(-1, &hal_fd);
+	if (!rfsock)
+		return -1;
+
+	android2bdaddr(cmd->bdaddr, &dst);
 	bacpy(&rfsock->dst, &dst);
 
 	memset(&uuid, 0, sizeof(uuid));
