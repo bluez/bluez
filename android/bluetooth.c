@@ -1907,7 +1907,7 @@ static uint8_t set_scan_mode(void *buf, uint16_t len)
 			return HAL_STATUS_FAILED;
 	}
 
-	if (cur_disc != disc) {
+	if (cur_disc != disc && conn) {
 		if (!set_discoverable(disc ? 0x01 : 0x00, 0))
 			return HAL_STATUS_FAILED;
 	}
