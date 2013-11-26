@@ -154,13 +154,10 @@ dbus_bool_t agent_input(DBusConnection *conn, const char *input)
 	return TRUE;
 }
 
-static DBusMessage *release_agent(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static void agent_release(DBusConnection *conn)
 {
 	agent_registered = FALSE;
 	agent_capability = NULL;
-
-	rl_printf("Agent released\n");
 
 	if (pending_message) {
 		dbus_message_unref(pending_message);
@@ -170,6 +167,14 @@ static DBusMessage *release_agent(DBusConnection *conn,
 	agent_release_prompt();
 
 	g_dbus_unregister_interface(conn, AGENT_PATH, AGENT_INTERFACE);
+}
+
+static DBusMessage *release_agent(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	rl_printf("Agent released\n");
+
+	agent_release(conn);
 
 	return dbus_message_new_method_return(msg);
 }
@@ -418,13 +423,8 @@ static void unregister_agent_reply(DBusMessage *message, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, message) == FALSE) {
-		agent_registered = FALSE;
-		agent_capability = NULL;
 		rl_printf("Agent unregistered\n");
-
-		if (g_dbus_unregister_interface(conn, AGENT_PATH,
-						AGENT_INTERFACE) == FALSE)
-			rl_printf("Failed to unregister agent object\n");
+		agent_release(conn);
 	} else {
 		rl_printf("Failed to unregister agent: %s\n", error.name);
 		dbus_error_free(&error);
@@ -435,6 +435,12 @@ void agent_unregister(DBusConnection *conn, GDBusProxy *manager)
 {
 	if (agent_registered == FALSE) {
 		rl_printf("No agent is registered\n");
+		return;
+	}
+
+	if (!manager) {
+		rl_printf("Agent unregistered\n");
+		agent_release(conn);
 		return;
 	}
 

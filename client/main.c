@@ -336,8 +336,11 @@ static void proxy_removed(GDBusProxy *proxy, void *user_data)
 			dev_list = NULL;
 		}
 	} else if (!strcmp(interface, "org.bluez.AgentManager1")) {
-		if (agent_manager == proxy)
+		if (agent_manager == proxy) {
 			agent_manager = NULL;
+			if (auto_register_agent)
+				agent_unregister(dbus_conn, NULL);
+		}
 	}
 }
 
