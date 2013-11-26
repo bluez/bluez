@@ -328,9 +328,9 @@ static void connect_p(int argc, const char **argv)
 /* Methods available in btsock_interface_t */
 static struct method methods[] = {
 	STD_METHODCH(listen,
-			"<sock_type> <srvc_name> <uuid> [<channle>] [<flags>]"),
+			"<sock_type> <srvc_name> <uuid> [<channel>] [<flags>]"),
 	STD_METHODCH(connect,
-			"<addr> <sock_type> <uuid> <channle> [<flags>]"),
+			"<addr> <sock_type> <uuid> <channel> [<flags>]"),
 	END_METHOD
 };
 
