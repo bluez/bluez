@@ -35,6 +35,10 @@ ENDMAP
 static int listen_fd[MAX_LISTEN_FD];
 static int listen_fd_count;
 
+static const char * const uuids[] = {
+	"00001101", "00001105", "0000112f", NULL
+};
+
 /*
  * This function reads data from file descriptor and
  * prints it to the user
@@ -193,6 +197,9 @@ static void listen_c(int argc, const char **argv, enum_func *enum_func,
 	if (argc == 3) {
 		*user = TYPE_ENUM(btsock_type_t);
 		*enum_func = enum_defines;
+	} else if (argc == 5) {
+		*user = (void *) uuids;
+		*enum_func = enum_strings;
 	}
 }
 
@@ -264,6 +271,9 @@ static void connect_c(int argc, const char **argv, enum_func *enum_func,
 	} else if (argc == 4) {
 		*user = TYPE_ENUM(btsock_type_t);
 		*enum_func = enum_defines;
+	} else if (argc == 5) {
+		*user = (void *) uuids;
+		*enum_func = enum_strings;
 	}
 }
 
