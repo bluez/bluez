@@ -34,12 +34,17 @@ static bt_status_t sock_listen_rfcomm(const char *service_name,
 
 	DBG("");
 
+	memset(&cmd, 0, sizeof(cmd));
+
 	cmd.flags = flags;
 	cmd.type = BTSOCK_RFCOMM;
 	cmd.channel = chan;
-	memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
-	memset(cmd.name, 0, sizeof(cmd.name));
-	memcpy(cmd.name, service_name, strlen(service_name));
+
+	if (uuid)
+		memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
+
+	if (service_name)
+		memcpy(cmd.name, service_name, strlen(service_name));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_LISTEN,
 				sizeof(cmd), &cmd, NULL, NULL, sock);
@@ -90,10 +95,15 @@ static bt_status_t sock_connect(const bt_bdaddr_t *bdaddr, btsock_type_t type,
 		return BT_STATUS_UNSUPPORTED;
 	}
 
+	memset(&cmd, 0, sizeof(cmd));
+
 	cmd.flags = flags;
 	cmd.type = type;
 	cmd.channel = chan;
-	memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
+
+	if (uuid)
+		memcpy(cmd.uuid, uuid, sizeof(cmd.uuid));
+
 	memcpy(cmd.bdaddr, bdaddr, sizeof(cmd.bdaddr));
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_SOCK, HAL_OP_SOCK_CONNECT,
