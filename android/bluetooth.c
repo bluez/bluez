@@ -916,8 +916,8 @@ static void mgmt_device_found_event(uint16_t index, uint16_t length,
 	flags = btohl(ev->flags);
 
 	ba2str(&ev->addr.bdaddr, addr);
-	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u eir %u",
-				index, addr, ev->rssi, flags, eir_len, *eir);
+	DBG("hci%u addr %s, rssi %d flags 0x%04x eir_len %u",
+				index, addr, ev->rssi, flags, eir_len);
 
 	confirm_name = flags & MGMT_DEV_FOUND_CONFIRM_NAME;
 
