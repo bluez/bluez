@@ -68,7 +68,7 @@ struct test_data {
 		data.test_name = g_strdup(name);			\
 		data.pdu_list = g_malloc(sizeof(pdus));			\
 		memcpy(data.pdu_list, pdus, sizeof(pdus));		\
-		g_test_add_data_func_full(name, &data, function, test_free); \
+		g_test_add_data_func(name, &data, function);		\
 	} while (0)
 
 struct context {
@@ -91,9 +91,9 @@ static void test_debug(const char *str, void *user_data)
 	g_print("%s%s\n", prefix, str);
 }
 
-static void test_free(void *user_data)
+static void test_free(gconstpointer user_data)
 {
-	struct test_data *data = user_data;
+	const struct test_data *data = user_data;
 
 	g_free(data->test_name);
 	g_free(data->pdu_list);
@@ -223,6 +223,7 @@ static void execute_context(struct context *context)
 
 	g_main_loop_unref(context->main_loop);
 
+	test_free(context->data);
 	g_free(context);
 }
 
