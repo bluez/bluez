@@ -294,12 +294,10 @@ static void test_data_free(void *test_data)
 #define test_smp(name, data, setup, func) \
 	do { \
 		struct test_data *user; \
-		user = malloc(sizeof(struct test_data)); \
+		user = calloc(1, sizeof(struct test_data)); \
 		if (!user) \
 			break; \
 		user->hciemu_type = HCIEMU_TYPE_LE; \
-		user->io_id = 0; \
-		user->counter = 0; \
 		user->alg_sk = -1; \
 		user->test_data = data; \
 		tester_add_full(name, data, \
