@@ -872,7 +872,6 @@ static int handle_connect(void *buf)
 {
 	struct hal_cmd_sock_connect *cmd = buf;
 	struct rfcomm_sock *rfsock;
-	bdaddr_t dst;
 	uuid_t uuid;
 	int hal_fd = -1;
 
@@ -882,8 +881,7 @@ static int handle_connect(void *buf)
 	if (!rfsock)
 		return -1;
 
-	android2bdaddr(cmd->bdaddr, &dst);
-	bacpy(&rfsock->dst, &dst);
+	android2bdaddr(cmd->bdaddr, &rfsock->dst);
 
 	memset(&uuid, 0, sizeof(uuid));
 	uuid.type = SDP_UUID128;
@@ -891,8 +889,8 @@ static int handle_connect(void *buf)
 
 	rfsock->profile = get_profile_by_uuid(cmd->uuid);
 
-	if (bt_search_service(&adapter_addr, &dst, &uuid, sdp_search_cb, rfsock,
-								NULL) < 0) {
+	if (bt_search_service(&adapter_addr, &rfsock->dst, &uuid,
+					sdp_search_cb, rfsock, NULL) < 0) {
 		error("Failed to search SDP records");
 		cleanup_rfsock(rfsock);
 		return -1;
