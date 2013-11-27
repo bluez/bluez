@@ -367,7 +367,8 @@ static void discover_cb(struct avdtp *session, GSList *seps,
 	int ret;
 
 	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-05-C") ||
-		g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-07-C"))
+		g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-07-C") ||
+		g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-25-C"))
 		return;
 
 	g_assert(err == NULL);
@@ -406,6 +407,23 @@ static void test_client(gconstpointer data)
 
 	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, FALSE, NULL, &sep_cfm,
+					context);
+	context->sep = sep;
+
+	avdtp_discover(context->session, discover_cb, context);
+
+	execute_context(context);
+
+	avdtp_unregister_sep(sep);
+}
+
+static void test_client_1_3(gconstpointer data)
+{
+	struct context *context = create_context(0x0103, data);
+	struct avdtp_local_sep *sep;
+
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SINK, AVDTP_MEDIA_TYPE_AUDIO,
+					0x00, TRUE, NULL, &sep_cfm,
 					context);
 	context->sep = sep;
 
@@ -608,6 +626,10 @@ int main(int argc, char *argv[])
 			raw_pdu(0x22, 0x03),
 			raw_pdu(0x30, 0x0a, 0x04),
 			raw_pdu(0x32, 0x0a));
+	define_test("/TP/SIG/SMG/BV-25-C", test_client_1_3,
+			raw_pdu(0x30, 0x01),
+			raw_pdu(0x32, 0x01, 0x04, 0x00),
+			raw_pdu(0x40, 0x0c, 0x04));
 
 	return g_test_run();
 }
