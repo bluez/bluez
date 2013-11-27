@@ -345,6 +345,21 @@ static void test_server(gconstpointer data)
 	struct avdtp_local_sep *sep;
 
 	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO,
+					0x00, FALSE, &sep_ind, NULL, context);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+
+	avdtp_unregister_sep(sep);
+}
+
+static void test_server_1_3(gconstpointer data)
+{
+	struct context *context = create_context(0x0103, data);
+	struct avdtp_local_sep *sep;
+
+	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO,
 					0x00, TRUE, &sep_ind, NULL, context);
 
 	g_idle_add(send_pdu, context);
@@ -630,6 +645,12 @@ int main(int argc, char *argv[])
 			raw_pdu(0x30, 0x01),
 			raw_pdu(0x32, 0x01, 0x04, 0x00),
 			raw_pdu(0x40, 0x0c, 0x04));
+	define_test("/TP/SIG/SMG/BV-26-C", test_server_1_3,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x00),
+			raw_pdu(0x10, 0x0c, 0x04),
+			raw_pdu(0x12, 0x0c, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40));
 
 	return g_test_run();
 }
