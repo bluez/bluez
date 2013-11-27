@@ -140,7 +140,7 @@ static void sixaxis_browse_sdp(const bdaddr_t *src, const bdaddr_t *dst,
 	device_wait_for_svc_complete(device, sixaxis_sdp_cb, data);
 }
 
-static bool check_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
+static bool dev_is_sixaxis(const bdaddr_t *src, const bdaddr_t *dst)
 {
 	struct btd_device *device;
 
@@ -189,7 +189,7 @@ static void connect_event_cb(GIOChannel *chan, GError *err, gpointer data)
 	if (ret == 0)
 		return;
 
-	if (ret == -ENOENT && check_sixaxis(&src, &dst)) {
+	if (ret == -ENOENT && dev_is_sixaxis(&src, &dst)) {
 		sixaxis_browse_sdp(&src, &dst, chan, psm);
 		return;
 	}
@@ -228,7 +228,7 @@ static void auth_callback(DBusError *derr, void *user_data)
 		goto reject;
 	}
 
-	if (!input_device_exists(&src, &dst) && check_sixaxis(&src, &dst))
+	if (!input_device_exists(&src, &dst) && dev_is_sixaxis(&src, &dst))
 		return;
 
 	if (!bt_io_accept(server->confirm, connect_event_cb, server,
@@ -277,7 +277,7 @@ static void confirm_event_cb(GIOChannel *chan, gpointer user_data)
 		goto drop;
 	}
 
-	if (!input_device_exists(&src, &dst) && !check_sixaxis(&src, &dst)) {
+	if (!input_device_exists(&src, &dst) && !dev_is_sixaxis(&src, &dst)) {
 		error("Refusing connection from %s: unknown device", addr);
 		goto drop;
 	}
