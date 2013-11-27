@@ -631,6 +631,7 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 	case 0x03: /* Pairing Confirm */
 		break;
 	case 0x04: /* Pairing Random */
+		swap128(data + 1, test_data->smp_rrnd);
 		break;
 	default:
 		if (memcmp(req->req, data, len) != 0) {
