@@ -4350,9 +4350,12 @@ static void agent_auth_cb(struct agent *agent, DBusError *derr,
 							void *user_data)
 {
 	struct btd_adapter *adapter = user_data;
-	struct service_auth *auth = adapter->auths->head->data;
+	struct service_auth *auth = g_queue_pop_head(adapter->auths);
 
-	g_queue_pop_head(adapter->auths);
+	if (!auth) {
+		DBG("No pending authorization");
+		return;
+	}
 
 	auth->cb(derr, auth->user_data);
 
