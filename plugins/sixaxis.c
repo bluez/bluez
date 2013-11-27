@@ -38,11 +38,11 @@
 #include <libudev.h>
 
 #include "lib/bluetooth.h"
-#include "uuid.h"
-#include "adapter.h"
-#include "device.h"
-#include "plugin.h"
-#include "log.h"
+#include "lib/uuid.h"
+#include "src/adapter.h"
+#include "src/device.h"
+#include "src/plugin.h"
+#include "src/log.h"
 
 static const struct {
 	const char *name;
