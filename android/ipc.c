@@ -109,3 +109,12 @@ void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status)
 
 	ipc_send(cmd_sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
 }
+
+void ipc_send_notif(uint8_t service_id, uint8_t opcode,  uint16_t len,
+								void *param)
+{
+	if (notif_sk < 0)
+		return;
+
+	ipc_send(notif_sk, service_id, opcode, len, param, -1);
+}
