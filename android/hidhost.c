@@ -297,8 +297,8 @@ static void bt_hid_notify_state(struct hid_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-			HAL_EV_HIDHOST_CONN_STATE, sizeof(ev), &ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_CONN_STATE,
+							sizeof(ev), &ev);
 }
 
 static gboolean intr_watch_cb(GIOChannel *chan, GIOCondition cond,
@@ -356,8 +356,8 @@ static void bt_hid_notify_proto_mode(struct hid_device *dev, uint8_t *buf,
 		ev.mode = HAL_HIDHOST_UNSUPPORTED_PROTOCOL;
 	}
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-			HAL_EV_HIDHOST_PROTO_MODE, sizeof(ev), &ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_PROTO_MODE,
+							sizeof(ev), &ev);
 }
 
 static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
@@ -399,8 +399,8 @@ static void bt_hid_notify_get_report(struct hid_device *dev, uint8_t *buf,
 	}
 
 send:
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-				HAL_EV_HIDHOST_GET_REPORT, ev_len, ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_GET_REPORT,
+								ev_len, ev);
 	g_free(ev);
 }
 
@@ -424,8 +424,8 @@ static void bt_hid_notify_virtual_unplug(struct hid_device *dev,
 		ev.status = HAL_HIDHOST_STATUS_OK;
 	}
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST,
-			HAL_EV_HIDHOST_VIRTUAL_UNPLUG, sizeof(ev), &ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_VIRTUAL_UNPLUG,
+							sizeof(ev), &ev);
 
 }
 
@@ -509,8 +509,8 @@ static void bt_hid_set_info(struct hid_device *dev)
 	memset(ev.descr, 0, sizeof(ev.descr));
 	memcpy(ev.descr, dev->rd_data, ev.descr_len);
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_INFO,
-							sizeof(ev), &ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_HIDHOST, HAL_EV_HIDHOST_INFO, sizeof(ev),
+									&ev);
 }
 
 static int uhid_create(struct hid_device *dev)

@@ -112,8 +112,8 @@ static void bt_a2dp_notify_state(struct a2dp_device *dev, uint8_t state)
 	bdaddr2android(&dev->dst, ev.bdaddr);
 	ev.state = state;
 
-	ipc_send(notification_sk, HAL_SERVICE_ID_A2DP,
-			HAL_EV_A2DP_CONN_STATE, sizeof(ev), &ev, -1);
+	ipc_send_notif(HAL_SERVICE_ID_A2DP, HAL_EV_A2DP_CONN_STATE, sizeof(ev),
+									&ev);
 
 	if (state != HAL_A2DP_STATE_DISCONNECTED)
 		return;
