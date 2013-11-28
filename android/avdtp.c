@@ -2559,6 +2559,12 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 			return FALSE;
 		error("DISCOVER request rejected: %s (%d)",
 				avdtp_strerror(&err), err.err.error_code);
+		if (session->discover) {
+			session->discover->cb(session, session->seps, &err,
+						session->discover->user_data);
+			g_free(session->discover);
+			session->discover = NULL;
+		}
 		return TRUE;
 	case AVDTP_GET_CAPABILITIES:
 	case AVDTP_GET_ALL_CAPABILITIES:
