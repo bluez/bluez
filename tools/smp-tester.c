@@ -251,9 +251,7 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	uint8_t *k = data->smp_tk;
 	uint8_t *preq = data->smp_preq;
 	uint8_t *pres = data->smp_prsp;
-	uint8_t _iat = data->ia_type;
 	uint8_t *ia = data->ia;
-	uint8_t _rat = data->ra_type;
 	uint8_t *ra = data->ra;
 	int err;
 
@@ -262,8 +260,8 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	/* p1 = pres || preq || _rat || _iat */
 	swap56(pres, p1);
 	swap56(preq, p1 + 7);
-	p1[14] = _rat;
-	p1[15] = _iat;
+	p1[14] = data->ra_type;
+	p1[15] = data->ia_type;
 
 	memset(p2, 0, 16);
 
