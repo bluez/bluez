@@ -556,7 +556,6 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	event_loop = g_main_loop_new(NULL, FALSE);
 	signal = setup_signalfd();
 	if (!signal)
 		return EXIT_FAILURE;
@@ -580,6 +579,8 @@ int main(int argc, char *argv[])
 	start_sdp_server(0, 0);
 
 	DBG("Entering main loop");
+
+	event_loop = g_main_loop_new(NULL, FALSE);
 
 	g_main_loop_run(event_loop);
 
