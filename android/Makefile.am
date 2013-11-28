@@ -87,4 +87,4 @@ endif
 EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
 		android/pics-gap.txt android/pics-hid.txt \
 		android/pics-pan.txt android/pics-did.txt \
-		android/pics-opp.txt
+		android/pics-opp.txt android/pics-pbap.txt
