@@ -625,8 +625,6 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 		return;
 	}
 
-	connections = g_list_append(connections, rfsock_acc);
-
 	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
 		rfsock->fd, rfsock->real_sock, rfsock->channel,
 		sock_acc);
@@ -635,6 +633,8 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 		cleanup_rfsock(rfsock_acc);
 		return;
 	}
+
+	connections = g_list_append(connections, rfsock_acc);
 
 	/* Handle events from Android */
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
@@ -700,7 +700,6 @@ static int handle_listen(void *buf)
 	}
 
 	rfsock->real_sock = g_io_channel_unix_get_fd(io);
-	servers = g_list_append(servers, rfsock);
 
 	/* TODO: Add server watch */
 	g_io_channel_set_close_on_unref(io, TRUE);
@@ -716,6 +715,8 @@ static int handle_listen(void *buf)
 	}
 
 	rfsock->service_handle = sdp_service_register(profile, cmd->name);
+
+	servers = g_list_append(servers, rfsock);
 
 	return hal_fd;
 }
@@ -787,6 +788,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 
 	return;
 fail:
+	connections = g_list_remove(connections, rfsock);
 	cleanup_rfsock(rfsock);
 }
 
@@ -865,6 +867,7 @@ static void sdp_search_cb(sdp_list_t *recs, int err, gpointer data)
 
 	return;
 fail:
+	connections = g_list_remove(connections, rfsock);
 	cleanup_rfsock(rfsock);
 }
 
