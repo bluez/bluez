@@ -201,7 +201,6 @@ static int alg_encrypt(int sk, uint8_t in[16], uint8_t out[16])
 		tester_warn("read(AF_ALG): %s", strerror(errno));
 
 	return 0;
-
 }
 
 static int smp_e(uint8_t key[16], uint8_t in[16], uint8_t out[16])
