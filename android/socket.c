@@ -696,8 +696,6 @@ static int handle_listen(void *buf)
 
 	rfsock->real_sock = g_io_channel_unix_get_fd(io);
 
-	/* TODO: Add server watch */
-	g_io_channel_set_close_on_unref(io, TRUE);
 	g_io_channel_unref(io);
 
 	DBG("real_sock %d fd %d hal_fd %d", rfsock->real_sock, rfsock->fd,
