@@ -409,6 +409,13 @@ static void discover_cb(struct avdtp *session, GSList *seps,
 		return;
 	}
 
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-04-C")) {
+		g_assert(err != NULL);
+		g_assert_cmpint(avdtp_error_error_code(err), ==, 0x11);
+		context_quit(context);
+		return;
+	}
+
 	g_assert(err == NULL);
 	g_assert_cmpint(g_slist_length(seps), !=, 0);
 
@@ -706,6 +713,11 @@ int main(int argc, char *argv[])
 	define_test("/TP/SIG/SMG/BI-03-C", test_server_0_sep,
 			raw_pdu(0x00, 0x01),
 			raw_pdu(0x03, 0x01, 0x19));
+	define_test("/TP/SIG/SMG/BI-04-C", test_client,
+			raw_pdu(0xc0, 0x01),
+			raw_pdu(0xc2, 0x01, 0x04, 0x00),
+			raw_pdu(0xd0, 0x02, 0x04),
+			raw_pdu(0xd3, 0x02, 0x11));
 
 	return g_test_run();
 }
