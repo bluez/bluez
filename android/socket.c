@@ -641,6 +641,7 @@ static void accept_cb(GIOChannel *io, GError *err, gpointer user_data)
 	/* Handle rfcomm events */
 	cond = G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL;
 	id = g_io_add_watch(io, cond, sock_rfcomm_event_cb, rfsock_acc);
+	g_io_channel_set_close_on_unref(io, FALSE);
 
 	rfsock_acc->rfcomm_watch = id;
 
@@ -777,6 +778,7 @@ static void connect_cb(GIOChannel *io, GError *err, gpointer user_data)
 	/* Handle rfcomm events */
 	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	id = g_io_add_watch(io, cond, sock_rfcomm_event_cb, rfsock);
+	g_io_channel_set_close_on_unref(io, FALSE);
 
 	rfsock->rfcomm_watch = id;
 
