@@ -376,6 +376,15 @@ static void test_server_1_3(gconstpointer data)
 	avdtp_unregister_sep(sep);
 }
 
+static void test_server_0_sep(gconstpointer data)
+{
+	struct context *context = create_context(0x0100, data);
+
+	g_idle_add(send_pdu, context);
+
+	execute_context(context);
+}
+
 static void discover_cb(struct avdtp *session, GSList *seps,
 				struct avdtp_error *err, void *user_data)
 {
@@ -694,6 +703,9 @@ int main(int argc, char *argv[])
 			raw_pdu(0xb3, 0x01, 0x01));
 	define_test("/TP/SIG/SMG/BI-02-C", test_server,
 			raw_pdu(0x01, 0x01));
+	define_test("/TP/SIG/SMG/BI-03-C", test_server_0_sep,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x03, 0x01, 0x19));
 
 	return g_test_run();
 }
