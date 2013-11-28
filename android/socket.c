@@ -909,7 +909,7 @@ void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		if (fd < 0)
 			break;
 
-		ipc_send(sk, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
 
 		if (close(fd) < 0)
 			error("close() fd %d failed: %s", fd, strerror(errno));
@@ -920,7 +920,7 @@ void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		if (fd < 0)
 			break;
 
-		ipc_send(sk, HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
+		ipc_send_rsp_full(HAL_SERVICE_ID_SOCK, opcode, 0, NULL, fd);
 
 		if (close(fd) < 0)
 			error("close() fd %d failed: %s", fd, strerror(errno));
