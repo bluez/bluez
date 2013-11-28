@@ -99,9 +99,13 @@ static void test_free(gconstpointer user_data)
 	g_free(data->pdu_list);
 }
 
-static void context_quit(struct context *context)
+static gboolean context_quit(gpointer user_data)
 {
+	struct context *context = user_data;
+
 	g_main_loop_quit(context->main_loop);
+
+	return FALSE;
 }
 
 static gboolean send_pdu(gpointer user_data)
@@ -118,6 +122,9 @@ static gboolean send_pdu(gpointer user_data)
 		util_hexdump('<', pdu->data, len, test_debug, "AVDTP: ");
 
 	g_assert(len == (ssize_t) pdu->size);
+
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-02-C"))
+		g_timeout_add_seconds(1, context_quit, context);
 
 	return FALSE;
 }
@@ -685,6 +692,8 @@ int main(int argc, char *argv[])
 	define_test("/TP/SIG/SMG/BI-01-C", test_client,
 			raw_pdu(0xb0, 0x01),
 			raw_pdu(0xb3, 0x01, 0x01));
+	define_test("/TP/SIG/SMG/BI-02-C", test_server,
+			raw_pdu(0x01, 0x01));
 
 	return g_test_run();
 }
