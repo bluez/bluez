@@ -670,6 +670,12 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 	opcode = *((const uint8_t *) data);
 
 	switch (opcode) {
+	case 0x01: /* Pairing Request */
+		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		break;
+	case 0x02: /* Pairing Response */
+		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
+		break;
 	case 0x03: /* Pairing Confirm */
 		memcpy(test_data->smp_pcnf, data + 1, 16);
 		goto send_rsp;
@@ -678,12 +684,6 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 		if (!verify_random(data + 1))
 			goto failed;
 		goto send_rsp;
-	case 0x01: /* Pairing Request */
-		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
-		break;
-	case 0x02: /* Pairing Response */
-		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
-		break;
 	default:
 		break;
 	}
@@ -837,6 +837,12 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 	opcode = *((const uint8_t *) data);
 
 	switch (opcode) {
+	case 0x01: /* Pairing Request */
+		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		break;
+	case 0x02: /* Pairing Response */
+		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
+		break;
 	case 0x03: /* Pairing Confirm */
 		memcpy(test_data->smp_pcnf, data + 1, 16);
 		goto next;
@@ -844,12 +850,6 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 		if (!verify_random(data + 1))
 			goto failed;
 		goto next;
-	case 0x01: /* Pairing Request */
-		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
-		break;
-	case 0x02: /* Pairing Response */
-		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
-		break;
 	default:
 		break;
 	}
