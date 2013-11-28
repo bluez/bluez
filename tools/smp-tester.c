@@ -54,16 +54,16 @@
 #include <linux/types.h>
 
 struct sockaddr_alg {
-        __u16   salg_family;
-        __u8    salg_type[14];
-        __u32   salg_feat;
-        __u32   salg_mask;
-        __u8    salg_name[64];
+	__u16   salg_family;
+	__u8    salg_type[14];
+	__u32   salg_feat;
+	__u32   salg_mask;
+	__u8    salg_name[64];
 };
 
 struct af_alg_iv {
-        __u32   ivlen;
-        __u8    iv[0];
+	__u32   ivlen;
+	__u8    iv[0];
 };
 
 #define ALG_SET_KEY                     1
@@ -221,26 +221,26 @@ static int smp_e(uint8_t key[16], uint8_t in[16], uint8_t out[16])
 
 static inline void swap128(const uint8_t src[16], uint8_t dst[16])
 {
-        int i;
-        for (i = 0; i < 16; i++)
-                dst[15 - i] = src[i];
+	int i;
+	for (i = 0; i < 16; i++)
+		dst[15 - i] = src[i];
 }
 
 static inline void swap56(const uint8_t src[7], uint8_t dst[7])
 {
-        int i;
-        for (i = 0; i < 7; i++)
-                dst[6 - i] = src[i];
+	int i;
+	for (i = 0; i < 7; i++)
+		dst[6 - i] = src[i];
 }
 
 typedef struct {
-        uint64_t a, b;
+	uint64_t a, b;
 } u128;
 
 static inline void u128_xor(u128 *r, const u128 *p, const u128 *q)
 {
-        r->a = p->a ^ q->a;
-        r->b = p->b ^ q->b;
+	r->a = p->a ^ q->a;
+	r->b = p->b ^ q->b;
 }
 
 static int smp_c1(uint8_t r[16], uint8_t res[16])
@@ -256,33 +256,33 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	uint8_t *ra = data->ra;
 	int err;
 
-        memset(p1, 0, 16);
+	memset(p1, 0, 16);
 
-        /* p1 = pres || preq || _rat || _iat */
-        swap56(pres, p1);
-        swap56(preq, p1 + 7);
-        p1[14] = _rat;
-        p1[15] = _iat;
+	/* p1 = pres || preq || _rat || _iat */
+	swap56(pres, p1);
+	swap56(preq, p1 + 7);
+	p1[14] = _rat;
+	p1[15] = _iat;
 
-        memset(p2, 0, 16);
+	memset(p2, 0, 16);
 
-        /* p2 = padding || ia || ra */
-        baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) ia);
-        baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) ra);
+	/* p2 = padding || ia || ra */
+	baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) ia);
+	baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) ra);
 
-        /* res = r XOR p1 */
-        u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
+	/* res = r XOR p1 */
+	u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
 
-        /* res = e(k, res) */
-        err = smp_e(k, res, res);
-        if (err)
-                return err;
+	/* res = e(k, res) */
+	err = smp_e(k, res, res);
+	if (err)
+		return err;
 
-        /* res = res XOR p2 */
-        u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
+	/* res = res XOR p2 */
+	u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
 
-        /* res = e(k, res) */
-        return smp_e(k, res, res);
+	/* res = e(k, res) */
+	return smp_e(k, res, res);
 }
 
 static void mgmt_debug(const char *str, void *user_data)
