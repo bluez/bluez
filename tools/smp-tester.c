@@ -34,6 +34,7 @@
 #include <glib.h>
 
 #include "lib/bluetooth.h"
+#include "lib/hci.h"
 #include "lib/mgmt.h"
 
 #include "monitor/bt.h"
@@ -743,8 +744,8 @@ static void init_bdaddr(struct test_data *data)
 		return;
 	}
 
-	data->ia_type = BDADDR_LE_PUBLIC;
-	data->ra_type = BDADDR_LE_PUBLIC;
+	data->ia_type = LE_PUBLIC_ADDRESS;
+	data->ra_type = LE_PUBLIC_ADDRESS;
 
 	if (data->out) {
 		memcpy(data->ia, client_bdaddr, sizeof(data->ia));
@@ -768,7 +769,7 @@ static void test_client(const void *test_data)
 	bthost_set_connect_cb(bthost, smp_server_new_conn, data);
 
 	memcpy(&cp.addr.bdaddr, data->ra, sizeof(data->ra));
-	cp.addr.type = data->ra_type;
+	cp.addr.type = BDADDR_LE_PUBLIC;
 	cp.io_cap = 0x03; /* NoInputNoOutput */
 
 	mgmt_send(data->mgmt, MGMT_OP_PAIR_DEVICE, data->mgmt_index,
@@ -912,7 +913,7 @@ static void test_server(const void *test_data)
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_client_new_conn, data);
 
-	bthost_hci_connect(bthost, data->ra, data->ra_type);
+	bthost_hci_connect(bthost, data->ra, BDADDR_LE_PUBLIC);
 }
 
 int main(int argc, char *argv[])
