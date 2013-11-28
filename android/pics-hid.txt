@@ -283,3 +283,8 @@ TSPC_ALL	False		Enables all test cases when set to true.
 -------------------------------------------------------------------------------
 M.1: Mandatory IF (TSPC_HID_1_2) is supported.
 -------------------------------------------------------------------------------
+
+
+-------------------------------------------------------------------------------
+No special PIXIT settings required. All should be set according to Tester's
+test environment.
