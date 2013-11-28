@@ -51,7 +51,7 @@ void ipc_cleanup(void)
 	notif_sk = -1;
 }
 
-void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
+static void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd)
 {
 	struct msghdr msg;
