@@ -115,8 +115,8 @@ static void service_register(void *buf, uint16_t len)
 
 	services[m->service_id] = true;
 
-	ipc_send(g_io_channel_unix_get_fd(hal_cmd_io), HAL_SERVICE_ID_CORE,
-					HAL_OP_REGISTER_MODULE, 0, NULL, -1);
+	ipc_send_rsp(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+							HAL_STATUS_SUCCESS);
 
 	info("Service ID=%u registered", m->service_id);
 	return;
@@ -157,8 +157,8 @@ static void service_unregister(void *buf, uint16_t len)
 
 	services[m->service_id] = false;
 
-	ipc_send(g_io_channel_unix_get_fd(hal_cmd_io), HAL_SERVICE_ID_CORE,
-					HAL_OP_UNREGISTER_MODULE, 0, NULL, -1);
+	ipc_send_rsp(HAL_SERVICE_ID_CORE, HAL_OP_UNREGISTER_MODULE,
+							HAL_STATUS_SUCCESS);
 
 	info("Service ID=%u unregistered", m->service_id);
 	return;

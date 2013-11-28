@@ -2263,7 +2263,7 @@ void bt_bluetooth_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 		goto error;
 	}
 
-	ipc_send(sk, HAL_SERVICE_ID_BLUETOOTH, opcode, 0, NULL, -1);
+	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, opcode, HAL_STATUS_SUCCESS);
 	return;
 
 error:
