@@ -286,22 +286,20 @@ static void sep_setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 				struct avdtp_error *err, void *user_data)
 {
 	struct context *context = user_data;
-	const struct test_pdu *pdu;
 	int ret;
+
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-07-C")) {
+		g_assert(err != NULL);
+		g_assert_cmpint(avdtp_error_error_code(err), ==, 0x13);
+		context_quit(context);
+		return;
+	}
 
 	g_assert(err == NULL);
 
-	if (!context)
-		return;
-
-	pdu = &context->data->pdu_list[context->pdu_offset];
-
-	if (pdu->size < 2)
-		return;
-
 	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-11-C"))
 		ret = avdtp_get_configuration(session, stream);
-	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-23-C"))
+	else if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-23-C"))
 		ret = avdtp_abort(session, stream);
 	else
 		ret = avdtp_open(session, stream);
@@ -728,6 +726,15 @@ int main(int argc, char *argv[])
 			raw_pdu(0x02, 0x01, 0x04, 0x00),
 			raw_pdu(0x10, 0x02, 0x00),
 			raw_pdu(0x13, 0x02, 0x12));
+	define_test("/TP/SIG/SMG/BI-07-C", test_client,
+			raw_pdu(0xe0, 0x01),
+			raw_pdu(0xe2, 0x01, 0x04, 0x00),
+			raw_pdu(0xf0, 0x02, 0x04),
+			raw_pdu(0xf2, 0x02, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40),
+			raw_pdu(0x00, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
+				0x00, 0x00, 0x21, 0x02, 0x02, 0x20),
+			raw_pdu(0x03, 0x03, 0x00, 0x13));
 
 	return g_test_run();
 }
