@@ -488,11 +488,12 @@ static gboolean sock_stack_event_cb(GIOChannel *io, GIOCondition cond,
 	unsigned char buf[1024];
 	int len, sent;
 
-	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
-		rfsock->fd, rfsock->real_sock, rfsock->channel,
-		g_io_channel_unix_get_fd(io));
+	if (cond & G_IO_HUP) {
+		DBG("Socket %d hang up", g_io_channel_unix_get_fd(io));
+		goto fail;
+	}
 
-	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
+	if (cond & (G_IO_ERR | G_IO_NVAL)) {
 		error("Socket error: sock %d cond %d",
 					g_io_channel_unix_get_fd(io), cond);
 		goto fail;
@@ -505,15 +506,11 @@ static gboolean sock_stack_event_cb(GIOChannel *io, GIOCondition cond,
 		return TRUE;
 	}
 
-	DBG("read %d bytes write to %d", len, rfsock->real_sock);
-
 	sent = try_write_all(rfsock->real_sock, buf, len);
 	if (sent < 0) {
 		error("write(): %s", strerror(errno));
 		goto fail;
 	}
-
-	DBG("Written %d bytes", sent);
 
 	return TRUE;
 fail:
@@ -530,11 +527,12 @@ static gboolean sock_rfcomm_event_cb(GIOChannel *io, GIOCondition cond,
 	unsigned char buf[1024];
 	int len, sent;
 
-	DBG("rfsock: fd %d real_sock %d chan %u sock %d",
-		rfsock->fd, rfsock->real_sock, rfsock->channel,
-		g_io_channel_unix_get_fd(io));
+	if (cond & G_IO_HUP) {
+		DBG("Socket %d hang up", g_io_channel_unix_get_fd(io));
+		goto fail;
+	}
 
-	if (cond & (G_IO_ERR | G_IO_HUP | G_IO_NVAL)) {
+	if (cond & (G_IO_ERR | G_IO_NVAL)) {
 		error("Socket error: sock %d cond %d",
 					g_io_channel_unix_get_fd(io), cond);
 		goto fail;
@@ -547,15 +545,11 @@ static gboolean sock_rfcomm_event_cb(GIOChannel *io, GIOCondition cond,
 		return TRUE;
 	}
 
-	DBG("read %d bytes, write to fd %d", len, rfsock->fd);
-
 	sent = try_write_all(rfsock->fd, buf, len);
 	if (sent < 0) {
 		error("write(): %s", strerror(errno));
 		goto fail;
 	}
-
-	DBG("Written %d bytes", sent);
 
 	return TRUE;
 fail:
