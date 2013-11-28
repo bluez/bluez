@@ -86,12 +86,18 @@ struct test_data {
 	struct hciemu *hciemu;
 	enum hciemu_type hciemu_type;
 	unsigned int io_id;
+	uint8_t ia[6];
+	uint8_t ia_type;
+	uint8_t ra[6];
+	uint8_t ra_type;
+	bool out;
 	uint16_t handle;
 	size_t counter;
 	int alg_sk;
 	uint8_t smp_tk[16];
 	uint8_t smp_prnd[16];
 	uint8_t smp_rrnd[16];
+	uint8_t smp_pcnf[16];
 	uint8_t smp_preq[7];
 	uint8_t smp_prsp[7];
 };
@@ -238,8 +244,8 @@ static inline void u128_xor(u128 *r, const u128 *p, const u128 *q)
 }
 
 static int smp_c1(uint8_t k[16], uint8_t r[16], uint8_t preq[7],
-			uint8_t pres[7], uint8_t _iat, bdaddr_t *ia,
-			uint8_t _rat, bdaddr_t *ra, uint8_t res[16])
+			uint8_t pres[7], uint8_t _iat, uint8_t ia[6],
+			uint8_t _rat, uint8_t ra[6], uint8_t res[16])
 {
         uint8_t p1[16], p2[16];
         int err;
@@ -255,8 +261,8 @@ static int smp_c1(uint8_t k[16], uint8_t r[16], uint8_t preq[7],
         memset(p2, 0, 16);
 
         /* p2 = padding || ia || ra */
-        baswap((bdaddr_t *) (p2 + 4), ia);
-        baswap((bdaddr_t *) (p2 + 10), ra);
+        baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) ia);
+        baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) ra);
 
         /* res = r XOR p1 */
         u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
@@ -583,24 +589,53 @@ static const void *get_pdu(const uint8_t *data)
 	struct test_data *test_data = tester_get_data();
 	uint8_t opcode = data[0];
 	static uint8_t buf[17];
-	static bdaddr_t bda;
 
 	switch (opcode) {
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
 		smp_c1(test_data->smp_tk, test_data->smp_prnd,
-			test_data->smp_preq, test_data->smp_prsp, 0, &bda,
-							0, &bda, &buf[1]);
+			test_data->smp_preq, test_data->smp_prsp,
+			test_data->ia_type, test_data->ia,
+			test_data->ra_type, test_data->ra, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
-		smp_c1(test_data->smp_tk, test_data->smp_rrnd,
-			test_data->smp_preq, test_data->smp_prsp, 0, &bda,
-							0, &bda, &buf[1]);
+
+		if (test_data->out) {
+			swap128(test_data->smp_prnd, &buf[1]);
+		} else {
+			smp_c1(test_data->smp_tk, test_data->smp_rrnd,
+				test_data->smp_preq, test_data->smp_prsp,
+				test_data->ia_type, test_data->ia,
+				test_data->ra_type, test_data->ra, &buf[1]);
+		}
+
 		return buf;
 	default:
 		return data;
 	}
+}
+
+static bool verify_random(const uint8_t rnd[16])
+{
+	struct test_data *data = tester_get_data();
+	uint8_t confirm[16], res[16];
+	int err;
+
+	err = smp_c1(data->smp_tk, data->smp_rrnd, data->smp_preq,
+			data->smp_prsp, data->ia_type, data->ia,
+			data->ra_type, data->ra, res);
+	if (err < 0)
+		return false;
+
+	swap128(res, confirm);
+
+	if (memcmp(data->smp_pcnf, confirm, sizeof(data->smp_pcnf) != 0)) {
+		tester_warn("Confirmation values don't match");
+		return false;
+	}
+
+	return true;
 }
 
 static void smp_server(const void *data, uint16_t len, void *user_data)
@@ -629,19 +664,29 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 
 	switch (opcode) {
 	case 0x03: /* Pairing Confirm */
-		break;
+		memcpy(test_data->smp_pcnf, data + 1, 16);
+		goto send_rsp;
 	case 0x04: /* Pairing Random */
 		swap128(data + 1, test_data->smp_rrnd);
+		if (!verify_random(data + 1))
+			goto failed;
+		goto send_rsp;
+	case 0x01: /* Pairing Request */
+		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		break;
+	case 0x02: /* Pairing Response */
+		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
 		break;
 	default:
-		if (memcmp(req->req, data, len) != 0) {
-			tester_warn("Unexpected SMP request");
-			goto failed;
-		}
-
 		break;
 	}
 
+	if (memcmp(req->req, data, len) != 0) {
+		tester_warn("Unexpected SMP request");
+		goto failed;
+	}
+
+send_rsp:
 	if (req->rsp) {
 		struct bthost *bthost;
 		const void *rsp = get_pdu(req->rsp);
@@ -673,12 +718,16 @@ static void smp_server_new_conn(uint16_t handle, void *user_data)
 	bthost_add_cid_hook(bthost, handle, SMP_CID, smp_server, NULL);
 }
 
-static void test_client(const void *test_data)
+static void init_bdaddr(struct test_data *data)
 {
-	struct test_data *data = tester_get_data();
-	const uint8_t *client_bdaddr;
-	struct mgmt_cp_pair_device cp;
-	struct bthost *bthost;
+	const uint8_t *master_bdaddr, *client_bdaddr;
+
+	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
+	if (!master_bdaddr) {
+		tester_warn("No master bdaddr");
+		tester_test_failed();
+		return;
+	}
 
 	client_bdaddr = hciemu_get_client_bdaddr(data->hciemu);
 	if (!client_bdaddr) {
@@ -687,11 +736,32 @@ static void test_client(const void *test_data)
 		return;
 	}
 
+	data->ia_type = BDADDR_LE_PUBLIC;
+	data->ra_type = BDADDR_LE_PUBLIC;
+
+	if (data->out) {
+		memcpy(data->ia, client_bdaddr, sizeof(data->ia));
+		memcpy(data->ra, master_bdaddr, sizeof(data->ra));
+	} else {
+		memcpy(data->ia, master_bdaddr, sizeof(data->ia));
+		memcpy(data->ra, client_bdaddr, sizeof(data->ra));
+	}
+
+}
+
+static void test_client(const void *test_data)
+{
+	struct test_data *data = tester_get_data();
+	struct mgmt_cp_pair_device cp;
+	struct bthost *bthost;
+
+	init_bdaddr(data);
+
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_server_new_conn, data);
 
-	memcpy(&cp.addr.bdaddr, client_bdaddr, sizeof(bdaddr_t));
-	cp.addr.type = BDADDR_LE_PUBLIC;
+	memcpy(&cp.addr.bdaddr, data->ra, sizeof(data->ra));
+	cp.addr.type = data->ra_type;
 	cp.io_cap = 0x03; /* NoInputNoOutput */
 
 	mgmt_send(data->mgmt, MGMT_OP_PAIR_DEVICE, data->mgmt_index,
@@ -761,15 +831,25 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 
 	switch (opcode) {
 	case 0x03: /* Pairing Confirm */
-		break;
+		memcpy(test_data->smp_pcnf, data + 1, 16);
+		goto next;
 	case 0x04: /* Pairing Random */
+		if (!verify_random(data + 1))
+			goto failed;
+		goto next;
+	case 0x01: /* Pairing Request */
+		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		break;
+	case 0x02: /* Pairing Response */
+		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
 		break;
 	default:
-		if (memcmp(req->rsp, data, len) != 0) {
-			tester_warn("Unexpected SMP response");
-			goto failed;
-		}
 		break;
+	}
+
+	if (memcmp(req->rsp, data, len) != 0) {
+		tester_warn("Unexpected SMP response");
+		goto failed;
 	}
 
 next:
@@ -816,20 +896,16 @@ static void smp_client_new_conn(uint16_t handle, void *user_data)
 static void test_server(const void *test_data)
 {
 	struct test_data *data = tester_get_data();
-	const uint8_t *master_bdaddr;
 	struct bthost *bthost;
 
-	master_bdaddr = hciemu_get_master_bdaddr(data->hciemu);
-	if (!master_bdaddr) {
-		tester_warn("No master bdaddr");
-		tester_test_failed();
-		return;
-	}
+	data->out = true;
+
+	init_bdaddr(data);
 
 	bthost = hciemu_client_get_host(data->hciemu);
 	bthost_set_connect_cb(bthost, smp_client_new_conn, data);
 
-	bthost_hci_connect(bthost, master_bdaddr, BDADDR_LE_PUBLIC);
+	bthost_hci_connect(bthost, data->ra, data->ra_type);
 }
 
 int main(int argc, char *argv[])
