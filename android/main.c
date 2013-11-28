@@ -563,6 +563,7 @@ int main(int argc, char *argv[])
 	__btd_log_init("*", 0);
 
 	if (!set_capabilities()) {
+		__btd_log_cleanup();
 		g_source_remove(signal);
 		return EXIT_FAILURE;
 	}
@@ -571,11 +572,13 @@ int main(int argc, char *argv[])
 							quit_eventloop, NULL);
 	if (bluetooth_start_timeout == 0) {
 		error("Failed to init startup timeout");
+		__btd_log_cleanup();
 		g_source_remove(signal);
 		return EXIT_FAILURE;
 	}
 
 	if (!bt_bluetooth_start(option_index, adapter_ready)) {
+		__btd_log_cleanup();
 		g_source_remove(bluetooth_start_timeout);
 		g_source_remove(signal);
 		return EXIT_FAILURE;
