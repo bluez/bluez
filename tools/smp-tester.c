@@ -595,6 +595,7 @@ static const void *get_pdu(const uint8_t *data)
 	struct test_data *test_data = tester_get_data();
 	uint8_t opcode = data[0];
 	static uint8_t buf[17];
+	uint8_t res[16];
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
@@ -605,7 +606,8 @@ static const void *get_pdu(const uint8_t *data)
 		break;
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
-		smp_c1(test_data->smp_prnd, &buf[1]);
+		smp_c1(test_data->smp_prnd, res);
+		swap128(res, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
