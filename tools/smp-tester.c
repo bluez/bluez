@@ -248,7 +248,6 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 {
 	struct test_data *data = tester_get_data();
 	uint8_t p1[16], p2[16];
-	uint8_t *k = data->smp_tk;
 	uint8_t *preq = data->smp_preq;
 	uint8_t *pres = data->smp_prsp;
 	int err;
@@ -271,7 +270,7 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
 
 	/* res = e(k, res) */
-	err = smp_e(k, res, res);
+	err = smp_e(data->smp_tk, res, res);
 	if (err)
 		return err;
 
@@ -279,7 +278,7 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
 
 	/* res = e(k, res) */
-	return smp_e(k, res, res);
+	return smp_e(data->smp_tk, res, res);
 }
 
 static void mgmt_debug(const char *str, void *user_data)
