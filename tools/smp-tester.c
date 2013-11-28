@@ -243,12 +243,18 @@ static inline void u128_xor(u128 *r, const u128 *p, const u128 *q)
         r->b = p->b ^ q->b;
 }
 
-static int smp_c1(uint8_t k[16], uint8_t r[16], uint8_t preq[7],
-			uint8_t pres[7], uint8_t _iat, uint8_t ia[6],
-			uint8_t _rat, uint8_t ra[6], uint8_t res[16])
+static int smp_c1(uint8_t r[16], uint8_t res[16])
 {
-        uint8_t p1[16], p2[16];
-        int err;
+	struct test_data *data = tester_get_data();
+	uint8_t p1[16], p2[16];
+	uint8_t *k = data->smp_tk;
+	uint8_t *preq = data->smp_preq;
+	uint8_t *pres = data->smp_prsp;
+	uint8_t _iat = data->ia_type;
+	uint8_t *ia = data->ia;
+	uint8_t _rat = data->ra_type;
+	uint8_t *ra = data->ra;
+	int err;
 
         memset(p1, 0, 16);
 
@@ -593,22 +599,15 @@ static const void *get_pdu(const uint8_t *data)
 	switch (opcode) {
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
-		smp_c1(test_data->smp_tk, test_data->smp_prnd,
-			test_data->smp_preq, test_data->smp_prsp,
-			test_data->ia_type, test_data->ia,
-			test_data->ra_type, test_data->ra, &buf[1]);
+		smp_c1(test_data->smp_prnd, &buf[1]);
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
 
-		if (test_data->out) {
+		if (test_data->out)
 			swap128(test_data->smp_prnd, &buf[1]);
-		} else {
-			smp_c1(test_data->smp_tk, test_data->smp_rrnd,
-				test_data->smp_preq, test_data->smp_prsp,
-				test_data->ia_type, test_data->ia,
-				test_data->ra_type, test_data->ra, &buf[1]);
-		}
+		else
+			smp_c1(test_data->smp_rrnd, &buf[1]);
 
 		return buf;
 	default:
@@ -622,9 +621,7 @@ static bool verify_random(const uint8_t rnd[16])
 	uint8_t confirm[16], res[16];
 	int err;
 
-	err = smp_c1(data->smp_tk, data->smp_rrnd, data->smp_preq,
-			data->smp_prsp, data->ia_type, data->ia,
-			data->ra_type, data->ra, res);
+	err = smp_c1(data->smp_rrnd, res);
 	if (err < 0)
 		return false;
 
