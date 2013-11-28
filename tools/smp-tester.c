@@ -597,6 +597,12 @@ static const void *get_pdu(const uint8_t *data)
 	static uint8_t buf[17];
 
 	switch (opcode) {
+	case 0x01: /* Pairing Request */
+		memcpy(test_data->smp_preq, data, sizeof(test_data->smp_preq));
+		break;
+	case 0x02: /* Pairing Response */
+		memcpy(test_data->smp_prsp, data, sizeof(test_data->smp_prsp));
+		break;
 	case 0x03: /* Pairing Confirm */
 		buf[0] = data[0];
 		smp_c1(test_data->smp_prnd, &buf[1]);
@@ -611,8 +617,10 @@ static const void *get_pdu(const uint8_t *data)
 
 		return buf;
 	default:
-		return data;
+		break;
 	}
+
+	return data;
 }
 
 static bool verify_random(const uint8_t rnd[16])
