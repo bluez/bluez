@@ -251,8 +251,6 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	uint8_t *k = data->smp_tk;
 	uint8_t *preq = data->smp_preq;
 	uint8_t *pres = data->smp_prsp;
-	uint8_t *ia = data->ia;
-	uint8_t *ra = data->ra;
 	int err;
 
 	memset(p1, 0, 16);
@@ -266,8 +264,8 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	memset(p2, 0, 16);
 
 	/* p2 = padding || ia || ra */
-	baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) ia);
-	baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) ra);
+	baswap((bdaddr_t *) (p2 + 4), (bdaddr_t *) data->ia);
+	baswap((bdaddr_t *) (p2 + 10), (bdaddr_t *) data->ra);
 
 	/* res = r XOR p1 */
 	u128_xor((u128 *) res, (u128 *) r, (u128 *) p1);
