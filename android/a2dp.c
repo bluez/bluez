@@ -48,7 +48,6 @@
 #define L2CAP_PSM_AVDTP 0x19
 #define SVC_HINT_CAPTURING 0x08
 
-static int notification_sk = -1;
 static GIOChannel *server = NULL;
 static GSList *devices = NULL;
 static bdaddr_t adapter_addr;
@@ -350,15 +349,12 @@ static sdp_record_t *a2dp_record(void)
 	return record;
 }
 
-bool bt_a2dp_register(int sk, const bdaddr_t *addr)
+bool bt_a2dp_register(const bdaddr_t *addr)
 {
 	GError *err = NULL;
 	sdp_record_t *rec;
 
 	DBG("");
-
-	if (notification_sk >= 0)
-		return false;
 
 	bacpy(&adapter_addr, addr);
 
@@ -384,8 +380,6 @@ bool bt_a2dp_register(int sk, const bdaddr_t *addr)
 	}
 	record_id = rec->handle;
 
-	notification_sk = sk;
-
 	return true;
 }
 
@@ -400,13 +394,8 @@ void bt_a2dp_unregister(void)
 {
 	DBG("");
 
-	if (notification_sk < 0)
-		return;
-
 	g_slist_foreach(devices, a2dp_device_disconnected, NULL);
 	devices = NULL;
-
-	notification_sk = -1;
 
 	bt_adapter_remove_record(record_id);
 	record_id = 0;

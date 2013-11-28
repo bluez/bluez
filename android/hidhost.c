@@ -78,7 +78,6 @@
 
 static bdaddr_t adapter_addr;
 
-static int notification_sk = -1;
 static GIOChannel *ctrl_io = NULL;
 static GIOChannel *intr_io = NULL;
 static GSList *devices = NULL;
@@ -1190,14 +1189,11 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer user_data)
 	}
 }
 
-bool bt_hid_register(int sk, const bdaddr_t *addr)
+bool bt_hid_register(const bdaddr_t *addr)
 {
 	GError *err = NULL;
 
 	DBG("");
-
-	if (notification_sk >= 0)
-		return false;
 
 	bacpy(&adapter_addr, addr);
 
@@ -1224,8 +1220,6 @@ bool bt_hid_register(int sk, const bdaddr_t *addr)
 		return false;
 	}
 
-	notification_sk = sk;
-
 	return true;
 }
 
@@ -1241,12 +1235,8 @@ void bt_hid_unregister(void)
 {
 	DBG("");
 
-	if (notification_sk < 0)
-		return;
-
 	g_slist_foreach(devices, free_hid_devices, NULL);
 	devices = NULL;
-	notification_sk = -1;
 
 	if (ctrl_io) {
 		g_io_channel_shutdown(ctrl_io, TRUE, NULL);

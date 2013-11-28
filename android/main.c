@@ -77,34 +77,31 @@ static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 static void service_register(void *buf, uint16_t len)
 {
 	struct hal_cmd_register_module *m = buf;
-	int sk = g_io_channel_unix_get_fd(hal_notif_io);
 
 	if (m->service_id > HAL_SERVICE_ID_MAX || services[m->service_id])
 		goto failed;
 
 	switch (m->service_id) {
 	case HAL_SERVICE_ID_BLUETOOTH:
-		if (!bt_bluetooth_register(sk))
-			goto failed;
+		bt_bluetooth_register();
 
 		break;
 	case HAL_SERVICE_ID_SOCK:
-		if (!bt_socket_register(sk, &adapter_bdaddr))
-			goto failed;
+		bt_socket_register(&adapter_bdaddr);
 
 		break;
 	case HAL_SERVICE_ID_HIDHOST:
-		if (!bt_hid_register(sk, &adapter_bdaddr))
+		if (!bt_hid_register(&adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_A2DP:
-		if (!bt_a2dp_register(sk, &adapter_bdaddr))
+		if (!bt_a2dp_register(&adapter_bdaddr))
 			goto failed;
 
 		break;
 	case HAL_SERVICE_ID_PAN:
-		if (!bt_pan_register(sk, &adapter_bdaddr))
+		if (!bt_pan_register(&adapter_bdaddr))
 			goto failed;
 
 		break;

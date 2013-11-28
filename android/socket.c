@@ -934,13 +934,11 @@ void bt_sock_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 	ipc_send_rsp(HAL_SERVICE_ID_SOCK, opcode, HAL_STATUS_FAILED);
 }
 
-bool bt_socket_register(int sk, const bdaddr_t *addr)
+void bt_socket_register(const bdaddr_t *addr)
 {
 	DBG("");
 
 	bacpy(&adapter_addr, addr);
-
-	return true;
 }
 
 void bt_socket_unregister(void)

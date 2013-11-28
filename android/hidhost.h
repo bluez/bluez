@@ -23,5 +23,5 @@
 
 void bt_hid_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
 
-bool bt_hid_register(int sk, const bdaddr_t *addr);
+bool bt_hid_register(const bdaddr_t *addr);
 void bt_hid_unregister(void);

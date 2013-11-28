@@ -35,8 +35,6 @@
 #include "hal-msg.h"
 #include "ipc.h"
 
-static int notification_sk = -1;
-
 static uint8_t bt_pan_enable(struct hal_cmd_pan_enable *cmd, uint16_t len)
 {
 	DBG("Not Implemented");
@@ -91,14 +89,9 @@ void bt_pan_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len)
 	ipc_send_rsp(HAL_SERVICE_ID_PAN, opcode, status);
 }
 
-bool bt_pan_register(int sk, const bdaddr_t *addr)
+bool bt_pan_register(const bdaddr_t *addr)
 {
 	DBG("");
-
-	if (notification_sk >= 0)
-		return false;
-
-	notification_sk = sk;
 
 	return true;
 }
@@ -106,9 +99,4 @@ bool bt_pan_register(int sk, const bdaddr_t *addr)
 void bt_pan_unregister(void)
 {
 	DBG("");
-
-	if (notification_sk < 0)
-		return;
-
-	notification_sk = -1;
 }

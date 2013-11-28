@@ -60,8 +60,6 @@
 
 static uint16_t option_index = MGMT_INDEX_NONE;
 
-static int notification_sk = -1;
-
 #define BASELEN_REMOTE_DEV_PROP (sizeof(struct hal_ev_remote_device_props) \
 					+ sizeof(struct hal_property))
 /* This list contains addresses which are asked for records */
@@ -2267,24 +2265,12 @@ error:
 	ipc_send_rsp(HAL_SERVICE_ID_BLUETOOTH, opcode, status);
 }
 
-bool bt_bluetooth_register(int sk)
+void bt_bluetooth_register(void)
 {
 	DBG("");
-
-	if (notification_sk >= 0)
-		return false;
-
-	notification_sk = sk;
-
-	return true;
 }
 
 void bt_bluetooth_unregister(void)
 {
 	DBG("");
-
-	if (notification_sk < 0)
-		return;
-
-	notification_sk = -1;
 }
