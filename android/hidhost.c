@@ -1215,8 +1215,12 @@ bool bt_hid_register(const bdaddr_t *addr)
 				BT_IO_OPT_INVALID);
 	if (!intr_io) {
 		error("Failed to listen on intr channel: %s", err->message);
-		g_io_channel_unref(ctrl_io);
 		g_error_free(err);
+
+		g_io_channel_shutdown(ctrl_io, TRUE, NULL);
+		g_io_channel_unref(ctrl_io);
+		ctrl_io = NULL;
+
 		return false;
 	}
 
