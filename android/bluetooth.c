@@ -1185,9 +1185,7 @@ static void remove_uuid_complete(uint8_t status, uint16_t length,
 
 	mgmt_dev_class_changed_event(adapter.index, length, param, NULL);
 
-	/* send notification only if bluetooth service is registered */
-	if (notification_sk >= 0)
-		get_uuids();
+	get_uuids();
 }
 
 static void remove_uuid(uint16_t uuid)
@@ -1213,9 +1211,7 @@ static void add_uuid_complete(uint8_t status, uint16_t length,
 
 	mgmt_dev_class_changed_event(adapter.index, length, param, NULL);
 
-	/* send notification only if bluetooth service is registered */
-	if (notification_sk >= 0)
-		get_uuids();
+	get_uuids();
 }
 
 static void add_uuid(uint8_t svc_hint, uint16_t uuid)
