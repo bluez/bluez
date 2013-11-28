@@ -96,16 +96,16 @@ void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 	}
 }
 
-void ipc_send_rsp(int sk, uint8_t service_id, uint8_t opcode, uint8_t status)
+void ipc_send_rsp(uint8_t service_id, uint8_t opcode, uint8_t status)
 {
 	struct hal_status s;
 
 	if (status == HAL_STATUS_SUCCESS) {
-		ipc_send(sk, service_id, opcode, 0, NULL, -1);
+		ipc_send(cmd_sk, service_id, opcode, 0, NULL, -1);
 		return;
 	}
 
 	s.code = status;
 
-	ipc_send(sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
+	ipc_send(cmd_sk, service_id, HAL_OP_STATUS, sizeof(s), &s, -1);
 }
