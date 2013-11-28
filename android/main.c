@@ -572,8 +572,10 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (!bt_bluetooth_start(option_index, adapter_ready))
+	if (!bt_bluetooth_start(option_index, adapter_ready)) {
+		g_source_remove(bluetooth_start_timeout);
 		return EXIT_FAILURE;
+	}
 
 	/* Use params: mtu = 0, flags = 0 */
 	start_sdp_server(0, 0);
@@ -585,6 +587,9 @@ int main(int argc, char *argv[])
 	g_main_loop_run(event_loop);
 
 	g_source_remove(signal);
+
+	if (bluetooth_start_timeout > 0)
+		g_source_remove(bluetooth_start_timeout);
 
 	cleanup_hal_connection();
 	stop_sdp_server();
