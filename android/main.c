@@ -354,6 +354,9 @@ static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
 
 	g_io_add_watch(hal_cmd_io, cond, cmd_watch_cb, NULL);
 
+	ipc_init(g_io_channel_unix_get_fd(hal_cmd_io),
+				g_io_channel_unix_get_fd(hal_notif_io));
+
 	info("Successfully connected to HAL");
 
 	return FALSE;
@@ -494,6 +497,8 @@ static void cleanup_hal_connection(void)
 		g_io_channel_unref(hal_notif_io);
 		hal_notif_io = NULL;
 	}
+
+	ipc_cleanup();
 }
 
 static bool set_capabilities(void)

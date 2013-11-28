@@ -21,6 +21,9 @@
  *
  */
 
+void ipc_init(int command_sk, int notification_sk);
+void ipc_cleanup(void);
+
 void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd);
 void ipc_send_rsp(int sk, uint8_t service_id, uint8_t opcode, uint8_t status);

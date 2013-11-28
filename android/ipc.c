@@ -36,6 +36,21 @@
 #include "ipc.h"
 #include "log.h"
 
+static int cmd_sk = -1;
+static int notif_sk = -1;
+
+void ipc_init(int command_sk, int notification_sk)
+{
+	cmd_sk = command_sk;
+	notif_sk = notification_sk;
+}
+
+void ipc_cleanup(void)
+{
+	cmd_sk = -1;
+	notif_sk = -1;
+}
+
 void ipc_send(int sk, uint8_t service_id, uint8_t opcode, uint16_t len,
 							void *param, int fd)
 {
