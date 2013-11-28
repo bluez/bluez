@@ -607,12 +607,7 @@ static const void *get_pdu(const uint8_t *data)
 		return buf;
 	case 0x04: /* Pairing Random */
 		buf[0] = data[0];
-
-		if (test_data->out)
-			swap128(test_data->smp_prnd, &buf[1]);
-		else
-			smp_c1(test_data->smp_rrnd, &buf[1]);
-
+		swap128(test_data->smp_prnd, &buf[1]);
 		return buf;
 	default:
 		break;
