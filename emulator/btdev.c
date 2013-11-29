@@ -850,9 +850,9 @@ static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 							uint8_t reason)
 {
 	struct bt_hci_evt_disconnect_complete dc;
-	struct btdev *remote;
+	struct btdev *remote = btdev->conn;
 
-	if (!btdev) {
+	if (!remote) {
 		dc.status = BT_HCI_ERR_UNKNOWN_CONN_ID;
 		dc.handle = cpu_to_le16(handle);
 		dc.reason = 0x00;
@@ -865,8 +865,6 @@ static void disconnect_complete(struct btdev *btdev, uint16_t handle,
 	dc.status = BT_HCI_ERR_SUCCESS;
 	dc.handle = cpu_to_le16(handle);
 	dc.reason = reason;
-
-	remote = btdev->conn;
 
 	btdev->conn = NULL;
 	remote->conn = NULL;
