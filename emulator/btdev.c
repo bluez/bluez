@@ -108,6 +108,7 @@ struct btdev {
 	uint8_t  le_scan_enable;
 	uint8_t  le_filter_dup;
 	uint8_t  le_adv_enable;
+	uint8_t  le_ltk[16];
 
 	uint16_t sync_train_interval;
 	uint32_t sync_train_timeout;
@@ -1025,6 +1026,27 @@ static void le_set_scan_enable_complete(struct btdev *btdev)
 	}
 }
 
+static void le_start_encrypt_complete(struct btdev *btdev)
+{
+	char buf[1 + sizeof(struct bt_hci_evt_le_long_term_key_request)];
+	struct bt_hci_evt_le_long_term_key_request *ev = (void *) &buf[1];
+	struct btdev *remote = btdev->conn;
+
+	if (!remote) {
+		cmd_status(btdev, BT_HCI_ERR_UNKNOWN_CONN_ID,
+						BT_HCI_CMD_LE_START_ENCRYPT);
+		return;
+	}
+
+	cmd_status(btdev, BT_HCI_ERR_SUCCESS, BT_HCI_CMD_LE_START_ENCRYPT);
+
+	memset(buf, 0, sizeof(buf));
+	buf[0] = BT_HCI_EVT_LE_LONG_TERM_KEY_REQUEST;
+	ev->handle = cpu_to_le16(42);
+
+	send_event(remote, BT_HCI_EVT_LE_META_EVENT, buf, sizeof(buf));
+}
+
 static void default_cmd(struct btdev *btdev, uint16_t opcode,
 						const void *data, uint8_t len)
 {
@@ -1053,6 +1075,7 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 	const struct bt_hci_cmd_setup_sync_conn *ssc;
 	const struct bt_hci_cmd_le_set_adv_enable *lsae;
 	const struct bt_hci_cmd_le_set_scan_enable *lsse;
+	const struct bt_hci_cmd_le_start_encrypt *lse;
 	const struct bt_hci_cmd_read_local_amp_assoc *rlaa_cmd;
 	struct bt_hci_rsp_read_default_link_policy rdlp;
 	struct bt_hci_rsp_read_stored_link_key rslk;
@@ -1819,6 +1842,14 @@ static void default_cmd(struct btdev *btdev, uint16_t opcode,
 		lr.number[6] = rand();
 		lr.number[7] = rand();
 		cmd_complete(btdev, opcode, &lr, sizeof(lr));
+		break;
+
+	case BT_HCI_CMD_LE_START_ENCRYPT:
+		if (btdev->type == BTDEV_TYPE_BREDR)
+			goto unsupported;
+		lse = data;
+		memcpy(btdev->le_ltk, lse->ltk, 16);
+		le_start_encrypt_complete(btdev);
 		break;
 
 	case BT_HCI_CMD_SETUP_SYNC_CONN:
