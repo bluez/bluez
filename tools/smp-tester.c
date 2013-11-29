@@ -837,6 +837,7 @@ static void smp_client(const void *data, uint16_t len, void *user_data)
 		memcpy(test_data->smp_pcnf, data + 1, 16);
 		goto next;
 	case 0x04: /* Pairing Random */
+		swap128(data + 1, test_data->smp_rrnd);
 		if (!verify_random(data + 1))
 			goto failed;
 		goto next;
