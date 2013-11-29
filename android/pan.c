@@ -238,9 +238,35 @@ static uint8_t bt_pan_connect(struct hal_cmd_pan_connect *cmd, uint16_t len)
 static uint8_t bt_pan_disconnect(struct hal_cmd_pan_disconnect *cmd,
 								uint16_t len)
 {
-	DBG("Not Implemented");
+	struct pan_device *dev;
+	GSList *l;
+	bdaddr_t dst;
 
-	return HAL_STATUS_FAILED;
+	DBG("");
+
+	if (len < sizeof(*cmd))
+		return HAL_STATUS_INVALID;
+
+	android2bdaddr(&cmd->bdaddr, &dst);
+
+	l = g_slist_find_custom(devices, &dst, device_cmp);
+	if (!l)
+		return HAL_STATUS_FAILED;
+
+	dev = l->data;
+
+	if (dev->watch) {
+		g_source_remove(dev->watch);
+		dev->watch = 0;
+	}
+
+	bnep_if_down(dev->iface);
+	bnep_kill_connection(&dst);
+
+	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
+	pan_device_free(dev);
+
+	return HAL_STATUS_SUCCESS;
 }
 
 static uint8_t bt_pan_enable(struct hal_cmd_pan_enable *cmd, uint16_t len)
