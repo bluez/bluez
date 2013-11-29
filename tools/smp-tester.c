@@ -501,7 +501,8 @@ static const struct smp_req_rsp srv_basic_req_1[] = {
 			smp_basic_req_1_rsp, sizeof(smp_basic_req_1_rsp) },
 	{ smp_confirm_req_1, sizeof(smp_confirm_req_1),
 			smp_confirm_req_1, sizeof(smp_confirm_req_1) },
-	{ smp_random_req_1, sizeof(smp_random_req_1), NULL, 0 },
+	{ smp_random_req_1, sizeof(smp_random_req_1),
+			smp_random_req_1, sizeof(smp_random_req_1) },
 };
 
 static const struct smp_server_data smp_server_basic_req_1_test = {
