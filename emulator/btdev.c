@@ -833,20 +833,17 @@ static void conn_request(struct btdev *btdev, const uint8_t *bdaddr)
 {
 	struct btdev *remote = find_btdev_by_bdaddr(bdaddr);
 
-	if (remote) {
-		if (remote->scan_enable & 0x02) {
-			struct bt_hci_evt_conn_request cr;
+	if (remote && remote->scan_enable & 0x02) {
+		struct bt_hci_evt_conn_request cr;
 
-			memcpy(cr.bdaddr, btdev->bdaddr, 6);
-			memcpy(cr.dev_class, btdev->dev_class, 3);
-			cr.link_type = 0x01;
+		memcpy(cr.bdaddr, btdev->bdaddr, 6);
+		memcpy(cr.dev_class, btdev->dev_class, 3);
+		cr.link_type = 0x01;
 
-			send_event(remote, BT_HCI_EVT_CONN_REQUEST,
-							&cr, sizeof(cr));
-		} else
-			conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
-	} else
-		conn_complete(btdev, bdaddr, BT_HCI_ERR_UNKNOWN_CONN_ID);
+		send_event(remote, BT_HCI_EVT_CONN_REQUEST, &cr, sizeof(cr));
+	} else {
+		conn_complete(btdev, bdaddr, BT_HCI_ERR_PAGE_TIMEOUT);
+	}
 }
 
 static void disconnect_complete(struct btdev *btdev, uint16_t handle,
