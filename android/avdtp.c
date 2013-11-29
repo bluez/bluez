@@ -2589,6 +2589,15 @@ static gboolean avdtp_parse_rej(struct avdtp *session,
 			sep->cfm->set_configuration(session, sep, stream,
 							&err, sep->user_data);
 		return TRUE;
+	case AVDTP_GET_CONFIGURATION:
+		if (!seid_rej_to_err(buf, size, &err))
+			return FALSE;
+		error("GET_CONFIGURATION request rejected: %s (%d)",
+				avdtp_strerror(&err), err.err.error_code);
+		if (sep && sep->cfm && sep->cfm->get_configuration)
+			sep->cfm->get_configuration(session, sep, stream, &err,
+								sep->user_data);
+		return TRUE;
 	case AVDTP_RECONFIGURE:
 		if (!conf_rej_to_err(buf, size, &err))
 			return FALSE;
