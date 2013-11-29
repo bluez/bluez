@@ -115,6 +115,7 @@ static void bt_pan_notify_ctrl_state(struct pan_device *dev, uint8_t state)
 	ev.state = state;
 	ev.local_role = local_role;
 	ev.status = HAL_STATUS_SUCCESS;
+	memset(ev.name, 0, sizeof(ev.name));
 	memcpy(ev.name, dev->iface, sizeof(dev->iface));
 
 	ipc_send_notif(HAL_SERVICE_ID_PAN, HAL_EV_PAN_CTRL_STATE, sizeof(ev),
