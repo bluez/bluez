@@ -781,7 +781,6 @@ static void init_bdaddr(struct test_data *data)
 		memcpy(data->ia, master_bdaddr, sizeof(data->ia));
 		memcpy(data->ra, client_bdaddr, sizeof(data->ra));
 	}
-
 }
 
 static void test_client(const void *test_data)
