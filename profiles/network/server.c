@@ -269,9 +269,6 @@ static int server_connadd(struct network_server *ns,
 	char devname[16];
 	int err, nsk;
 
-	memset(devname, 0, sizeof(devname));
-	strcpy(devname, "bnep%d");
-
 	nsk = g_io_channel_unix_get_fd(session->io);
 	err = bnep_connadd(nsk, dst_role, devname);
 	if (err < 0)

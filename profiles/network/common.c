@@ -46,6 +46,9 @@
 #include "common.h"
 #include "lib/uuid.h"
 
+#define CON_SETUP_RETRIES      3
+#define CON_SETUP_TO           9
+
 static int ctl;
 
 static struct {
@@ -58,6 +61,35 @@ static struct {
 	{ "nap",	NAP_UUID,	BNEP_SVC_NAP	},
 	{ NULL }
 };
+
+struct __service_16 {
+	uint16_t dst;
+	uint16_t src;
+} __attribute__ ((packed));
+
+struct bnep_conn {
+	GIOChannel	*io;
+	uint16_t	src;
+	uint16_t	dst;
+	guint	attempts;
+	guint	setup_to;
+	void	*data;
+	bnep_connect_cb	conn_cb;
+};
+
+static void free_bnep_connect(struct bnep_conn *bc)
+{
+	if (!bc)
+		return;
+
+	if (bc->io) {
+		g_io_channel_unref(bc->io);
+		bc->io = NULL;
+	}
+
+	g_free(bc);
+	bc = NULL;
+}
 
 uint16_t bnep_service_id(const char *svc)
 {
@@ -149,9 +181,9 @@ int bnep_connadd(int sk, uint16_t role, char *dev)
 {
 	struct bnep_connadd_req req;
 
+	memset(dev, 0, 16);
 	memset(&req, 0, sizeof(req));
-	strncpy(req.device, dev, 16);
-	req.device[15] = '\0';
+	strcpy(req.device, "bnep%d");
 	req.sock = sk;
 	req.role = role;
 	if (ioctl(ctl, BNEPCONNADD, &req) < 0) {
@@ -212,6 +244,165 @@ int bnep_if_down(const char *devname)
 		return err;
 	}
 
+	return 0;
+}
+
+static gboolean bnep_setup_cb(GIOChannel *chan, GIOCondition cond,
+								gpointer data)
+{
+	struct bnep_conn *bc = data;
+	struct bnep_control_rsp *rsp;
+	struct timeval timeo;
+	char pkt[BNEP_MTU];
+	char iface[16];
+	ssize_t r;
+	int sk;
+
+	if (cond & G_IO_NVAL)
+		goto failed;
+
+	if (bc->setup_to > 0) {
+		g_source_remove(bc->setup_to);
+		bc->setup_to = 0;
+	}
+
+	if (cond & (G_IO_HUP | G_IO_ERR)) {
+		error("Hangup or error on l2cap server socket");
+		goto failed;
+	}
+
+	sk = g_io_channel_unix_get_fd(chan);
+	memset(pkt, 0, BNEP_MTU);
+	r = read(sk, pkt, sizeof(pkt) - 1);
+	if (r < 0) {
+		error("IO Channel read error");
+		goto failed;
+	}
+
+	if (r == 0) {
+		error("No packet received on l2cap socket");
+		goto failed;
+	}
+
+	errno = EPROTO;
+
+	if ((size_t) r < sizeof(*rsp)) {
+		error("Packet received is not bnep type");
+		goto failed;
+	}
+
+	rsp = (void *) pkt;
+	if (rsp->type != BNEP_CONTROL) {
+		error("Packet received is not bnep type");
+		goto failed;
+	}
+
+	if (rsp->ctrl != BNEP_SETUP_CONN_RSP)
+		return TRUE;
+
+	r = ntohs(rsp->resp);
+	if (r != BNEP_SUCCESS) {
+		error("bnep failed");
+		goto failed;
+	}
+
+	memset(&timeo, 0, sizeof(timeo));
+	timeo.tv_sec = 0;
+	setsockopt(sk, SOL_SOCKET, SO_RCVTIMEO, &timeo, sizeof(timeo));
+
+	sk = g_io_channel_unix_get_fd(bc->io);
+	if (bnep_connadd(sk, bc->src, iface)) {
+		error("bnep conn could not be added");
+		goto failed;
+	}
+
+	if (bnep_if_up(iface)) {
+		error("could not up %s", iface);
+		goto failed;
+	}
+
+	bc->conn_cb(chan, iface, 0, bc->data);
+	free_bnep_connect(bc);
+
+	return FALSE;
+
+failed:
+	bc->conn_cb(NULL, NULL, -EIO, bc->data);
+	free_bnep_connect(bc);
+
+	return FALSE;
+}
+
+static int bnep_setup_conn_req(struct bnep_conn *bc)
+{
+	struct bnep_setup_conn_req *req;
+	struct __service_16 *s;
+	unsigned char pkt[BNEP_MTU];
+	int fd;
+
+	/* Send request */
+	req = (void *) pkt;
+	req->type = BNEP_CONTROL;
+	req->ctrl = BNEP_SETUP_CONN_REQ;
+	req->uuid_size = 2;     /* 16bit UUID */
+	s = (void *) req->service;
+	s->src = htons(bc->src);
+	s->dst = htons(bc->dst);
+
+	fd = g_io_channel_unix_get_fd(bc->io);
+	if (write(fd, pkt, sizeof(*req) + sizeof(*s)) < 0) {
+		error("bnep connection req send failed: %s", strerror(errno));
+		return -errno;
+	}
+
+	bc->attempts++;
+
+	return 0;
+}
+
+static gboolean bnep_conn_req_to(gpointer user_data)
+{
+	struct bnep_conn *bc = user_data;
+
+	if (bc->attempts == CON_SETUP_RETRIES) {
+		error("Too many bnep connection attempts");
+	} else {
+		error("bnep connection setup TO, retrying...");
+		if (bnep_setup_conn_req(bc) == 0)
+			return TRUE;
+	}
+
+	bc->conn_cb(NULL, NULL, -ETIMEDOUT, bc->data);
+	free_bnep_connect(bc);
+
+	return FALSE;
+}
+
+int bnep_connect(int sk, uint16_t src, uint16_t dst, bnep_connect_cb conn_cb,
+								void *data)
+{
+	struct bnep_conn *bc;
+	int err;
+
+	if (!conn_cb)
+		return -EINVAL;
+
+	bc = g_new0(struct bnep_conn, 1);
+	bc->io = g_io_channel_unix_new(sk);
+	bc->attempts = 0;
+	bc->src = src;
+	bc->dst = dst;
+	bc->conn_cb = conn_cb;
+	bc->data = data;
+
+	err = bnep_setup_conn_req(bc);
+	if (err < 0)
+		return err;
+
+	bc->setup_to = g_timeout_add_seconds(CON_SETUP_TO,
+							bnep_conn_req_to, bc);
+	g_io_add_watch(bc->io, G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL,
+							bnep_setup_cb, bc);
 	return 0;
 }
 
