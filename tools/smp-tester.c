@@ -101,6 +101,7 @@ struct test_data {
 	uint8_t smp_pcnf[16];
 	uint8_t smp_preq[7];
 	uint8_t smp_prsp[7];
+	uint8_t smp_ltk[16];
 };
 
 struct smp_req_rsp {
@@ -275,6 +276,16 @@ static int smp_c1(uint8_t r[16], uint8_t res[16])
 	u128_xor((u128 *) res, (u128 *) res, (u128 *) p2);
 
 	/* res = e(k, res) */
+	return smp_e(data->smp_tk, res, res);
+}
+
+static int smp_s1(uint8_t r1[16], uint8_t r2[16], uint8_t res[16])
+{
+	struct test_data *data = tester_get_data();
+
+	memcpy(res, r1 + 8, 8);
+	memcpy(res + 8, r2 + 8, 8);
+
 	return smp_e(data->smp_tk, res, res);
 }
 
@@ -619,7 +630,7 @@ static const void *get_pdu(const uint8_t *data)
 static bool verify_random(const uint8_t rnd[16])
 {
 	struct test_data *data = tester_get_data();
-	uint8_t confirm[16], res[16];
+	uint8_t confirm[16], res[16], key[16];
 	int err;
 
 	err = smp_c1(data->smp_rrnd, res);
@@ -631,6 +642,16 @@ static bool verify_random(const uint8_t rnd[16])
 	if (memcmp(data->smp_pcnf, confirm, sizeof(data->smp_pcnf) != 0)) {
 		tester_warn("Confirmation values don't match");
 		return false;
+	}
+
+	if (data->out) {
+		struct bthost *bthost = hciemu_client_get_host(data->hciemu);
+		smp_s1(data->smp_rrnd, data->smp_prnd, key);
+		swap128(key, data->smp_ltk);
+		bthost_le_start_encrypt(bthost, data->handle, data->smp_ltk);
+	} else {
+		smp_s1(data->smp_prnd, data->smp_rrnd, key);
+		swap128(key, data->smp_ltk);
 	}
 
 	return true;
