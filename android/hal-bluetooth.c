@@ -28,7 +28,7 @@
 
 static const bt_callbacks_t *bt_hal_cbacks = NULL;
 
-#define create_enum_prop(prop, hal_prop, type) do { \
+#define enum_prop_to_hal(prop, hal_prop, type) do { \
 	static type e; \
 	prop.val = &e; \
 	prop.len = sizeof(e); \
@@ -63,11 +63,11 @@ static void adapter_props_to_hal(bt_property_t *send_props,
 
 		switch (prop->type) {
 		case HAL_PROP_ADAPTER_TYPE:
-			create_enum_prop(send_props[i], prop,
+			enum_prop_to_hal(send_props[i], prop,
 							bt_device_type_t);
 			break;
 		case HAL_PROP_ADAPTER_SCAN_MODE:
-			create_enum_prop(send_props[i], prop,
+			enum_prop_to_hal(send_props[i], prop,
 							bt_scan_mode_t);
 			break;
 		case HAL_PROP_ADAPTER_SERVICE_REC:
@@ -109,7 +109,7 @@ static void device_props_to_hal(bt_property_t *send_props,
 
 		switch (prop->type) {
 		case HAL_PROP_DEVICE_TYPE:
-			create_enum_prop(send_props[i], prop,
+			enum_prop_to_hal(send_props[i], prop,
 							bt_device_type_t);
 			break;
 		case HAL_PROP_DEVICE_SERVICE_REC:
