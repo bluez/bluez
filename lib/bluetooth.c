@@ -793,6 +793,18 @@ const char *bt_compidtostr(int compid)
 		return "Atus BV";
 	case 266:
 		return "Codegate Ltd.";
+	case 267:
+		return "ERi, Inc.";
+	case 268:
+		return "Transducers Direct, LLC";
+	case 269:
+		return "Fujitsu Ten Limited";
+	case 270:
+		return "Audi AG";
+	case 271:
+		return "HiSilicon Technologies Co., Ltd.";
+	case 272:
+		return "Nippon Seiki Co., Ltd.";
 	case 65535:
 		return "internal use";
 	default:
