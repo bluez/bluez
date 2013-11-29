@@ -1159,6 +1159,20 @@ void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable)
 	send_command(bthost, BT_HCI_CMD_LE_SET_ADV_ENABLE, &enable, 1);
 }
 
+void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
+							const uint8_t ltk[16])
+{
+	struct bt_hci_cmd_le_start_encrypt cmd;
+
+	printf("bthost_le_start_encrypt(handle %u)\n", handle);
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.handle = htobs(handle);
+	memcpy(cmd.ltk, ltk, 16);
+
+	send_command(bthost, BT_HCI_CMD_LE_START_ENCRYPT, &cmd, sizeof(cmd));
+}
+
 void bthost_set_server_psm(struct bthost *bthost, uint16_t psm)
 {
 	bthost->server_psm = psm;

@@ -72,6 +72,9 @@ void bthost_write_scan_enable(struct bthost *bthost, uint8_t scan);
 
 void bthost_set_adv_enable(struct bthost *bthost, uint8_t enable);
 
+void bthost_le_start_encrypt(struct bthost *bthost, uint16_t handle,
+							const uint8_t ltk[16]);
+
 void bthost_set_server_psm(struct bthost *bthost, uint16_t psm);
 
 void bthost_start(struct bthost *bthost);
