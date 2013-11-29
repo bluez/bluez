@@ -24,7 +24,8 @@ android_bluetoothd_SOURCES = android/main.c \
 				android/socket.h android/socket.c \
 				android/pan.h android/pan.c \
 				btio/btio.h btio/btio.c \
-				src/sdp-client.h src/sdp-client.c
+				src/sdp-client.h src/sdp-client.c \
+				profiles/network/bnep.h profiles/network/bnep.c
 
 android_bluetoothd_LDADD = lib/libbluetooth-internal.la @GLIB_LIBS@
 
