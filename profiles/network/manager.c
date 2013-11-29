@@ -43,7 +43,7 @@
 #include "device.h"
 #include "profile.h"
 #include "service.h"
-#include "common.h"
+#include "bnep.h"
 #include "connection.h"
 #include "server.h"
 

@@ -43,7 +43,7 @@
 #include <glib.h>
 
 #include "log.h"
-#include "common.h"
+#include "bnep.h"
 #include "lib/uuid.h"
 
 #define CON_SETUP_RETRIES      3

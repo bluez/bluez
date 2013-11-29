@@ -47,7 +47,7 @@ builtin_sources += profiles/audio/control.h profiles/audio/control.c \
 
 builtin_modules += network
 builtin_sources += profiles/network/manager.c \
-			profiles/network/common.h profiles/network/common.c \
+			profiles/network/bnep.h profiles/network/bnep.c \
 			profiles/network/server.h profiles/network/server.c \
 			profiles/network/connection.h \
 			profiles/network/connection.c

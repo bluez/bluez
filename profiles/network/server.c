@@ -48,7 +48,7 @@
 #include "error.h"
 #include "sdpd.h"
 
-#include "common.h"
+#include "bnep.h"
 #include "server.h"
 
 #define NETWORK_SERVER_INTERFACE "org.bluez.NetworkServer1"
