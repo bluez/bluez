@@ -315,7 +315,8 @@ static void sep_setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 	g_assert(err == NULL);
 
-	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-11-C"))
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-11-C") ||
+		g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-10-C"))
 		ret = avdtp_get_configuration(session, stream);
 	else if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BV-23-C"))
 		ret = avdtp_abort(session, stream);
@@ -323,6 +324,21 @@ static void sep_setconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 		ret = avdtp_open(session, stream);
 
 	g_assert_cmpint(ret, ==, 0);
+}
+
+static void sep_getconf_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+				struct avdtp_stream *stream,
+				struct avdtp_error *err, void *user_data)
+{
+	struct context *context = user_data;
+
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-10-C")) {
+		g_assert(err != NULL);
+		g_assert_cmpint(avdtp_error_error_code(err), ==, 0x12);
+	} else
+		g_assert(err == NULL);
+
+	context_quit(context);
 }
 
 static void sep_open_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
@@ -358,6 +374,7 @@ static void sep_start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 
 static struct avdtp_sep_cfm sep_cfm = {
 	.set_configuration	= sep_setconf_cfm,
+	.get_configuration	= sep_getconf_cfm,
 	.open			= sep_open_cfm,
 	.start			= sep_start_cfm,
 };
@@ -774,6 +791,17 @@ int main(int argc, char *argv[])
 			raw_pdu(0x20, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
 				0x00, 0x00, 0x21, 0x02, 0x02, 0x20),
 			raw_pdu(0x23, 0x03, 0x00, 0x29));
+	define_test("/TP/SIG/SMG/BI-10-C", test_client,
+			raw_pdu(0x10, 0x01),
+			raw_pdu(0x12, 0x01, 0x04, 0x00),
+			raw_pdu(0x20, 0x02, 0x04),
+			raw_pdu(0x22, 0x02, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40),
+			raw_pdu(0x30, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
+				0x00, 0x00, 0x21, 0x02, 0x02, 0x20),
+			raw_pdu(0x32, 0x03),
+			raw_pdu(0x40, 0x04, 0x04),
+			raw_pdu(0x43, 0x04, 0x12));
 
 	return g_test_run();
 }
