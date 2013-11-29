@@ -661,7 +661,14 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 	const void *pdu;
 	uint8_t opcode;
 
-	tester_print("Received SMP PDU");
+	if (len < 1) {
+		tester_warn("Received too small SMP PDU");
+		goto failed;
+	}
+
+	opcode = *((const uint8_t *) data);
+
+	tester_print("Received SMP opcode 0x%02x", opcode);
 
 	if (test_data->counter >= smp->req_count) {
 		tester_test_passed();
@@ -677,8 +684,6 @@ static void smp_server(const void *data, uint16_t len, void *user_data)
 							len, req->expect_len);
 		goto failed;
 	}
-
-	opcode = *((const uint8_t *) data);
 
 	switch (opcode) {
 	case 0x01: /* Pairing Request */
