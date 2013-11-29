@@ -493,6 +493,38 @@ static void cleanup_hal_connection(void)
 	ipc_cleanup();
 }
 
+static void cleanup_services(void)
+{
+	int i;
+
+	DBG("");
+
+	for (i = HAL_SERVICE_ID_BLUETOOTH; i < HAL_SERVICE_ID_MAX; i++) {
+		if (!services[i])
+			continue;
+
+		switch (i) {
+		case HAL_SERVICE_ID_BLUETOOTH:
+			bt_bluetooth_unregister();
+			break;
+		case HAL_SERVICE_ID_SOCK:
+			bt_socket_unregister();
+			break;
+		case HAL_SERVICE_ID_HIDHOST:
+			bt_hid_unregister();
+			break;
+		case HAL_SERVICE_ID_A2DP:
+			bt_a2dp_unregister();
+			break;
+		case HAL_SERVICE_ID_PAN:
+			bt_pan_unregister();
+			break;
+		}
+
+		services[i] = false;
+	}
+}
+
 static bool set_capabilities(void)
 {
 #if defined(ANDROID)
@@ -597,6 +629,8 @@ int main(int argc, char *argv[])
 
 	if (bluetooth_start_timeout > 0)
 		g_source_remove(bluetooth_start_timeout);
+
+	cleanup_services();
 
 	cleanup_hal_connection();
 	stop_sdp_server();
