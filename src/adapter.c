@@ -2158,7 +2158,7 @@ static DBusMessage *remove_device(DBusConnection *conn,
 
 	btd_device_set_temporary(device, TRUE);
 
-	if (!device_is_connected(device)) {
+	if (!btd_device_is_connected(device)) {
 		adapter_remove_device(adapter, device);
 		return dbus_message_new_method_return(msg);
 	}
@@ -4195,7 +4195,7 @@ connect_le:
 	 * connect_list stop passive scanning so that a connection
 	 * attempt to it can be made
 	 */
-	if (device_is_le(dev) && !device_is_connected(dev) &&
+	if (device_is_le(dev) && !btd_device_is_connected(dev) &&
 				g_slist_find(adapter->connect_list, dev)) {
 		adapter->connect_le = dev;
 		stop_passive_scanning(adapter);
@@ -5865,7 +5865,7 @@ static void unpaired_callback(uint16_t index, uint16_t length,
 
 	btd_device_set_temporary(device, TRUE);
 
-	if (device_is_connected(device))
+	if (btd_device_is_connected(device))
 		device_request_disconnect(device, NULL);
 	else
 		adapter_remove_device(adapter, device);

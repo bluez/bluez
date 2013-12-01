@@ -667,7 +667,7 @@ static gboolean input_device_auto_reconnect(gpointer user_data)
 	/* Stop the recurrent reconnection attempts if the device is reconnected
 	 * or is marked for removal. */
 	if (device_is_temporary(idev->device) ||
-					device_is_connected(idev->device))
+					btd_device_is_connected(idev->device))
 		return FALSE;
 
 	/* Only attempt an auto-reconnect for at most 3 minutes (6 * 30s). */
@@ -713,7 +713,7 @@ static void input_device_enter_reconnect_mode(struct input_device *idev)
 	/* If the device is temporary we are not required to reconnect with the
 	 * device. This is likely the case of a removing device. */
 	if (device_is_temporary(idev->device) ||
-					device_is_connected(idev->device))
+					btd_device_is_connected(idev->device))
 		return;
 
 	if (idev->reconnect_timer > 0)

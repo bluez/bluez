@@ -1355,7 +1355,7 @@ static DBusMessage *dev_connect(DBusConnection *conn, DBusMessage *msg,
 	if (device_is_le(dev)) {
 		int err;
 
-		if (device_is_connected(dev))
+		if (btd_device_is_connected(dev))
 			return dbus_message_new_method_return(msg);
 
 		btd_device_set_temporary(dev, FALSE);
@@ -1645,7 +1645,7 @@ static DBusMessage *pair_device(DBusConnection *conn, DBusMessage *msg,
 	 * channel first and only then start pairing (there's code for
 	 * this in the ATT connect callback)
 	 */
-	if (device_is_le(device) && !device_is_connected(device))
+	if (device_is_le(device) && !btd_device_is_connected(device))
 		err = device_connect_le(device);
 	else
 		err = adapter_create_bonding(adapter, &device->bdaddr,
@@ -1791,7 +1791,7 @@ static const GDBusPropertyTable device_properties[] = {
 	{ }
 };
 
-gboolean device_is_connected(struct btd_device *device)
+gboolean btd_device_is_connected(struct btd_device *device)
 {
 	return device->connected;
 }
