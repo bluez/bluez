@@ -194,6 +194,12 @@ static void setup_device(int fd, int index, struct btd_adapter *adapter)
 	if (get_master_bdaddr(fd, &master_bdaddr) < 0)
 		return;
 
+	/* This can happen if controller was plugged while already connected
+	 * eg. to charge up battery */
+	device = btd_adapter_find_device(adapter, &device_bdaddr);
+	if (device && btd_device_is_connected(device))
+		return;
+
 	adapter_bdaddr = btd_adapter_get_address(adapter);
 
 	if (bacmp(adapter_bdaddr, &master_bdaddr)) {
