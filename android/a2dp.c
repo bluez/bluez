@@ -377,7 +377,7 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 	record_id = rec->handle;
 
 	ipc_register(HAL_SERVICE_ID_A2DP, cmd_handlers,
-				sizeof(cmd_handlers)/sizeof(cmd_handlers[0]));
+						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
 }

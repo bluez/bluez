@@ -2418,7 +2418,7 @@ void bt_bluetooth_register(void)
 	DBG("");
 
 	ipc_register(HAL_SERVICE_ID_BLUETOOTH, cmd_handlers,
-				sizeof(cmd_handlers)/sizeof(cmd_handlers[0]));
+						G_N_ELEMENTS(cmd_handlers));
 }
 
 void bt_bluetooth_unregister(void)

@@ -430,7 +430,7 @@ int main(int argc, char *argv[])
 	start_sdp_server(0, 0);
 
 	ipc_register(HAL_SERVICE_ID_CORE, cmd_handlers,
-				sizeof(cmd_handlers)/sizeof(cmd_handlers[0]));
+						G_N_ELEMENTS(cmd_handlers));
 
 	DBG("Entering main loop");
 

@@ -1279,7 +1279,7 @@ bool bt_hid_register(const bdaddr_t *addr)
 	}
 
 	ipc_register(HAL_SERVICE_ID_HIDHOST, cmd_handlers,
-				sizeof(cmd_handlers)/sizeof(cmd_handlers[0]));
+						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
 }

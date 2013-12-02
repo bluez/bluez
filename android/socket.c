@@ -929,7 +929,7 @@ void bt_socket_register(const bdaddr_t *addr)
 
 	bacpy(&adapter_addr, addr);
 	ipc_register(HAL_SERVICE_ID_SOCK, cmd_handlers,
-				sizeof(cmd_handlers)/sizeof(cmd_handlers[0]));
+						G_N_ELEMENTS(cmd_handlers));
 }
 
 void bt_socket_unregister(void)
