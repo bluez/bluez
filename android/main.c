@@ -36,8 +36,6 @@
 #include <unistd.h>
 
 #include <sys/signalfd.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 
 #include <glib.h>
 
@@ -68,9 +66,6 @@ static guint bluetooth_start_timeout = 0;
 static bdaddr_t adapter_bdaddr;
 
 static GMainLoop *event_loop;
-
-static GIOChannel *hal_cmd_io = NULL;
-static GIOChannel *hal_notif_io = NULL;
 
 static bool services[HAL_SERVICE_ID_MAX + 1] = { false };
 
@@ -209,127 +204,6 @@ static void stop_bluetooth(void)
 	g_timeout_add_seconds(SHUTDOWN_GRACE_SECONDS, quit_eventloop, NULL);
 }
 
-static gboolean cmd_watch_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	char buf[BLUEZ_HAL_MTU];
-	ssize_t ret;
-	int fd;
-
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		info("HAL command socket closed, terminating");
-		goto fail;
-	}
-
-	fd = g_io_channel_unix_get_fd(io);
-
-	ret = read(fd, buf, sizeof(buf));
-	if (ret < 0) {
-		error("HAL command read failed, terminating (%s)",
-							strerror(errno));
-		goto fail;
-	}
-
-	ipc_handle_msg(buf, ret);
-	return TRUE;
-
-fail:
-	stop_bluetooth();
-	return FALSE;
-}
-
-static gboolean notif_watch_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	info("HAL notification socket closed, terminating");
-	stop_bluetooth();
-
-	return FALSE;
-}
-
-static GIOChannel *connect_hal(GIOFunc connect_cb)
-{
-	struct sockaddr_un addr;
-	GIOCondition cond;
-	GIOChannel *io;
-	int sk;
-
-	sk = socket(PF_LOCAL, SOCK_SEQPACKET, 0);
-	if (sk < 0) {
-		error("Failed to create socket: %d (%s)", errno,
-							strerror(errno));
-		return NULL;
-	}
-
-	io = g_io_channel_unix_new(sk);
-
-	g_io_channel_set_close_on_unref(io, TRUE);
-	g_io_channel_set_flags(io, G_IO_FLAG_NONBLOCK, NULL);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sun_family = AF_UNIX;
-
-	memcpy(addr.sun_path, BLUEZ_HAL_SK_PATH, sizeof(BLUEZ_HAL_SK_PATH));
-
-	if (connect(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		error("Failed to connect HAL socket: %d (%s)", errno,
-							strerror(errno));
-		g_io_channel_unref(io);
-		return NULL;
-	}
-
-	cond = G_IO_OUT | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-
-	g_io_add_watch(io, cond, connect_cb, NULL);
-
-	return io;
-}
-
-static gboolean notif_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	DBG("");
-
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		stop_bluetooth();
-		return FALSE;
-	}
-
-	cond = G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-
-	g_io_add_watch(io, cond, notif_watch_cb, NULL);
-
-	cond = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-
-	g_io_add_watch(hal_cmd_io, cond, cmd_watch_cb, NULL);
-
-	ipc_init(g_io_channel_unix_get_fd(hal_cmd_io),
-				g_io_channel_unix_get_fd(hal_notif_io));
-
-	info("Successfully connected to HAL");
-
-	return FALSE;
-}
-
-static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
-							gpointer user_data)
-{
-	DBG("");
-
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		stop_bluetooth();
-		return FALSE;
-	}
-
-	hal_notif_io = connect_hal(notif_connect_cb);
-	if (!hal_notif_io) {
-		error("Cannot connect to HAL, terminating");
-		stop_bluetooth();
-	}
-
-	return FALSE;
-}
-
 static void adapter_ready(int err, const bdaddr_t *addr)
 {
 	if (err < 0) {
@@ -346,11 +220,7 @@ static void adapter_ready(int err, const bdaddr_t *addr)
 
 	info("Adapter initialized");
 
-	hal_cmd_io = connect_hal(cmd_connect_cb);
-	if (!hal_cmd_io) {
-		error("Cannot connect to HAL, terminating");
-		stop_bluetooth();
-	}
+	ipc_init();
 }
 
 static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
@@ -432,23 +302,6 @@ static GOptionEntry options[] = {
 				"Use specified controller", "INDEX"},
 	{ NULL }
 };
-
-static void cleanup_hal_connection(void)
-{
-	if (hal_cmd_io) {
-		g_io_channel_shutdown(hal_cmd_io, TRUE, NULL);
-		g_io_channel_unref(hal_cmd_io);
-		hal_cmd_io = NULL;
-	}
-
-	if (hal_notif_io) {
-		g_io_channel_shutdown(hal_notif_io, TRUE, NULL);
-		g_io_channel_unref(hal_notif_io);
-		hal_notif_io = NULL;
-	}
-
-	ipc_cleanup();
-}
 
 static void cleanup_services(void)
 {
@@ -592,7 +445,7 @@ int main(int argc, char *argv[])
 
 	cleanup_services();
 
-	cleanup_hal_connection();
+	ipc_cleanup();
 	stop_sdp_server();
 	bt_bluetooth_cleanup();
 	g_main_loop_unref(event_loop);
