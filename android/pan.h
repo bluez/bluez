@@ -21,7 +21,5 @@
  *
  */
 
-void bt_pan_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
-
 bool bt_pan_register(const bdaddr_t *addr);
 void bt_pan_unregister(void);
