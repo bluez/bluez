@@ -21,7 +21,5 @@
  *
  */
 
-void bt_a2dp_handle_cmd(int sk, uint8_t opcode, void *buf, uint16_t len);
-
 bool bt_a2dp_register(const bdaddr_t *addr);
 void bt_a2dp_unregister(void);
