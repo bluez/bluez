@@ -170,8 +170,7 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 
 	if (err) {
 		error("%s", err->message);
-		bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
-		pan_device_free(dev);
+		goto fail;
 	}
 
 	src = (local_role == HAL_PAN_ROLE_NAP) ? BNEP_SVC_NAP : BNEP_SVC_PANU;
@@ -181,10 +180,14 @@ static void connect_cb(GIOChannel *chan, GError *err, gpointer data)
 	perr = bnep_connect(sk, src, dst, bnep_conn_cb, dev);
 	if (perr < 0) {
 		error("bnep connect req failed: %s", strerror(-perr));
-		bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
-		pan_device_free(dev);
-		return;
+		goto fail;
 	}
+
+	return;
+
+fail:
+	bt_pan_notify_conn_state(dev, HAL_PAN_STATE_DISCONNECTED);
+	pan_device_free(dev);
 }
 
 static void bt_pan_connect(const void *buf, uint16_t len)
