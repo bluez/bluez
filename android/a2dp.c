@@ -366,13 +366,15 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 	}
 
 	rec = a2dp_record();
+	if (!rec) {
+		error("Failed to allocate A2DP record");
+		goto fail;
+	}
+
 	if (bt_adapter_add_record(rec, SVC_HINT_CAPTURING) < 0) {
-		error("Failed to register on A2DP record");
+		error("Failed to register A2DP record");
 		sdp_record_free(rec);
-		g_io_channel_shutdown(server, TRUE, NULL);
-		g_io_channel_unref(server);
-		server = NULL;
-		return false;
+		goto fail;
 	}
 	record_id = rec->handle;
 
@@ -380,6 +382,12 @@ bool bt_a2dp_register(const bdaddr_t *addr)
 						G_N_ELEMENTS(cmd_handlers));
 
 	return true;
+
+fail:
+	g_io_channel_shutdown(server, TRUE, NULL);
+	g_io_channel_unref(server);
+	server = NULL;
+	return false;
 }
 
 static void a2dp_device_disconnected(gpointer data, gpointer user_data)
