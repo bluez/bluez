@@ -77,6 +77,13 @@ struct bt_security {
 #define BT_FLUSHABLE_OFF	0
 #define BT_FLUSHABLE_ON		1
 
+#define BT_POWER		9
+struct bt_power {
+	uint8_t force_active;
+};
+#define BT_POWER_FORCE_ACTIVE_OFF 0
+#define BT_POWER_FORCE_ACTIVE_ON  1
+
 #define BT_CHANNEL_POLICY	10
 
 /* BR/EDR only (default policy)
