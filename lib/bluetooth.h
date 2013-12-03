@@ -116,6 +116,9 @@ struct bt_voice {
 	uint16_t setting;
 };
 
+#define BT_SNDMTU		12
+#define BT_RCVMTU		13
+
 #define BT_VOICE_TRANSPARENT			0x0003
 #define BT_VOICE_CVSD_16BIT			0x0060
 
