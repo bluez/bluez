@@ -80,6 +80,7 @@ struct context {
 	int fd;
 	int mtu;
 	gboolean pending_open;
+	gboolean pending_suspend;
 	unsigned int pdu_offset;
 	const struct test_data *data;
 };
@@ -180,6 +181,14 @@ static gboolean test_handler(GIOChannel *channel, GIOCondition cond,
 	if (context->pending_open) {
 		context->pending_open = FALSE;
 		g_assert(transport_open(context->stream));
+	}
+
+	if (context->pending_suspend) {
+		int ret;
+
+		context->pending_suspend = FALSE;
+		ret = avdtp_suspend(context->session, context->stream);
+		g_assert_cmpint(ret, ==, 0);
 	}
 
 	context_process(context);
@@ -311,6 +320,9 @@ static gboolean sep_start_ind(struct avdtp *session,
 		return FALSE;
 	}
 
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-25-C"))
+		context->pending_suspend = TRUE;
+
 	return TRUE;
 }
 
@@ -419,11 +431,25 @@ static void sep_start_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
 	g_assert_cmpint(ret, ==, 0);
 }
 
+static void sep_suspend_cfm(struct avdtp *session, struct avdtp_local_sep *sep,
+			struct avdtp_stream *stream, struct avdtp_error *err,
+			void *user_data)
+{
+	struct context *context = user_data;
+
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-25-C")) {
+		g_assert(err != NULL);
+		g_assert_cmpint(avdtp_error_error_code(err), ==, 0x31);
+		context_quit(context);
+	}
+}
+
 static struct avdtp_sep_cfm sep_cfm = {
 	.set_configuration	= sep_setconf_cfm,
 	.get_configuration	= sep_getconf_cfm,
 	.open			= sep_open_cfm,
 	.start			= sep_start_cfm,
+	.suspend		= sep_suspend_cfm,
 };
 
 static void test_server(gconstpointer data)
@@ -432,7 +458,8 @@ static void test_server(gconstpointer data)
 	struct avdtp_local_sep *sep;
 
 	sep = avdtp_register_sep(AVDTP_SEP_TYPE_SOURCE, AVDTP_MEDIA_TYPE_AUDIO,
-					0x00, FALSE, &sep_ind, NULL, context);
+					0x00, FALSE, &sep_ind, &sep_cfm,
+					context);
 
 	g_idle_add(send_pdu, context);
 
@@ -955,6 +982,21 @@ int main(int argc, char *argv[])
 			raw_pdu(0x32, 0x06),
 			raw_pdu(0x40, 0x08, 0x04),
 			raw_pdu(0x43, 0x08, 0xc0));
+	define_test("/TP/SIG/SMG/BI-25-C", test_server,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x00),
+			raw_pdu(0x10, 0x02, 0x04),
+			raw_pdu(0x12, 0x02, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40),
+			raw_pdu(0x20, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
+				0x00, 0x00, 0x21, 0x02, 0x02, 0x20),
+			raw_pdu(0x22, 0x03),
+			raw_pdu(0x30, 0x06, 0x04),
+			raw_pdu(0x32, 0x06),
+			raw_pdu(0x40, 0x07, 0x04),
+			raw_pdu(0x42, 0x07),
+			raw_pdu(0xf0, 0x09, 0x04),
+			raw_pdu(0xf3, 0x09, 0x04, 0x31));
 
 	return g_test_run();
 }
