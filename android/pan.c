@@ -81,7 +81,6 @@ static void pan_device_free(struct pan_device *dev)
 
 	devices = g_slist_remove(devices, dev);
 	g_free(dev);
-	dev = NULL;
 }
 
 static void bt_pan_notify_conn_state(struct pan_device *dev, uint8_t state)
