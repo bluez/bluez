@@ -1488,7 +1488,7 @@ static struct avctp_pending_req *pending_create(struct avctp_channel *chan,
 	tmp = g_slist_copy(chan->processed);
 
 	/* Find first unused transaction id */
-	for (l = tmp; l; l = l->next) {
+	for (l = tmp; l; l = g_slist_next(l)) {
 		struct avctp_pending_req *req = l->data;
 
 		if (req->transaction == chan->transaction) {
