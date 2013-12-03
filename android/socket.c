@@ -93,8 +93,10 @@ static struct rfcomm_sock *create_rfsock(int sock, int *hal_fd)
 	return rfsock;
 }
 
-static void cleanup_rfsock(struct rfcomm_sock *rfsock)
+static void cleanup_rfsock(gpointer data)
 {
+	struct rfcomm_sock *rfsock = data;
+
 	DBG("rfsock: %p fd %d real_sock %d chan %u",
 		rfsock, rfsock->fd, rfsock->real_sock, rfsock->channel);
 
@@ -935,6 +937,9 @@ void bt_socket_register(const bdaddr_t *addr)
 void bt_socket_unregister(void)
 {
 	DBG("");
+
+	g_list_free_full(connections, cleanup_rfsock);
+	g_list_free_full(servers, cleanup_rfsock);
 
 	ipc_unregister(HAL_SERVICE_ID_SOCK);
 }
