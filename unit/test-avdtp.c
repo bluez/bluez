@@ -314,10 +314,27 @@ static gboolean sep_start_ind(struct avdtp *session,
 	return TRUE;
 }
 
+static gboolean sep_close_ind(struct avdtp *session,
+						struct avdtp_local_sep *sep,
+						struct avdtp_stream *stream,
+						uint8_t *err,
+						void *user_data)
+{
+	struct context *context = user_data;
+
+	if (g_str_equal(context->data->test_name, "/TP/SIG/SMG/BI-24-C")) {
+		*err = 0xc0;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static struct avdtp_sep_ind sep_ind = {
 	.get_capability		= sep_getcap_ind,
 	.set_configuration	= sep_setconf_ind,
 	.open			= sep_open_ind,
+	.close			= sep_close_ind,
 	.start			= sep_start_ind,
 };
 
@@ -925,6 +942,19 @@ int main(int argc, char *argv[])
 			raw_pdu(0x32, 0x06),
 			raw_pdu(0x40, 0x08, 0x00),
 			raw_pdu(0x43, 0x08, 0x12));
+	define_test("/TP/SIG/SMG/BI-24-C", test_server,
+			raw_pdu(0x00, 0x01),
+			raw_pdu(0x02, 0x01, 0x04, 0x00),
+			raw_pdu(0x10, 0x02, 0x04),
+			raw_pdu(0x12, 0x02, 0x01, 0x00, 0x07, 0x06, 0x00, 0x00,
+				0xff, 0xff, 0x02, 0x40),
+			raw_pdu(0x20, 0x03, 0x04, 0x04, 0x01, 0x00, 0x07, 0x06,
+				0x00, 0x00, 0x21, 0x02, 0x02, 0x20),
+			raw_pdu(0x22, 0x03),
+			raw_pdu(0x30, 0x06, 0x04),
+			raw_pdu(0x32, 0x06),
+			raw_pdu(0x40, 0x08, 0x04),
+			raw_pdu(0x43, 0x08, 0xc0));
 
 	return g_test_run();
 }
