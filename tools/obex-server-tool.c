@@ -427,7 +427,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (option_root && chdir(option_root) > 0) {
+	if (option_root && chdir(option_root) < 0) {
 		perror("chdir:");
 		exit(EXIT_FAILURE);
 	}
