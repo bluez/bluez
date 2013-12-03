@@ -229,6 +229,8 @@ static gboolean cmd_connect_cb(GIOChannel *io, GIOCondition cond,
 void ipc_init(void)
 {
 	cmd_io = connect_hal(cmd_connect_cb);
+	if (!cmd_io)
+		raise(SIGTERM);
 }
 
 void ipc_cleanup(void)
