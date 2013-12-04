@@ -85,6 +85,7 @@ Methods		void Connect()
 
 			Possible errors: org.bluez.Error.InvalidArguments
 					 org.bluez.Error.Failed
+					 org.bluez.Error.AlreadyExists
 					 org.bluez.Error.AuthenticationCanceled
 					 org.bluez.Error.AuthenticationFailed
 					 org.bluez.Error.AuthenticationRejected
