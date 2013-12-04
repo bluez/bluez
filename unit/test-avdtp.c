@@ -1042,6 +1042,9 @@ int main(int argc, char *argv[])
 			raw_pdu(0x42, 0x07),
 			raw_pdu(0x50, 0x09, 0x04),
 			raw_pdu(0x53, 0x09, 0x04, 0xc0));
+	define_test("/TP/SIG/SMG/BI-28-C", test_server,
+			raw_pdu(0x00, 0xff),
+			raw_pdu(0x01, 0x3f));
 
 	return g_test_run();
 }
