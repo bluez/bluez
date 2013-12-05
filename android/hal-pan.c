@@ -152,8 +152,12 @@ static bt_status_t pan_disconnect(const bt_bdaddr_t *bd_addr)
 static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
+	int ret;
 
 	DBG("");
+
+	if (interface_ready())
+		return BT_STATUS_DONE;
 
 	cbs = callbacks;
 
@@ -162,8 +166,15 @@ static bt_status_t pan_init(const btpan_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_PAN;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	if (ret != BT_STATUS_SUCCESS) {
+		cbs = NULL;
+		hal_ipc_unregister(HAL_SERVICE_ID_PAN);
+	}
+
+	return ret;
 }
 
 static void pan_cleanup()
