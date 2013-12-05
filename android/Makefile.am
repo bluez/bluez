@@ -101,6 +101,16 @@ android_android_tester_LDADD = lib/libbluetooth-internal.la \
 
 android_android_tester_LDFLAGS = -pthread
 
+noinst_LTLIBRARIES += android/libaudio-internal.la
+
+android_libaudio_internal_la_SOURCES = android/hal-audio.c \
+					android/hardware/audio.h \
+					android/hardware/audio_effect.h \
+					android/hardware/hardware.h \
+					android/system/audio.h
+
+android_libaudio_internal_la_CPPFLAGS = -I$(srcdir)/android
+
 endif
 
 EXTRA_DIST += android/Android.mk android/hal-ipc-api.txt android/README \
