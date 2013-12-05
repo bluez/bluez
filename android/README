@@ -82,9 +82,12 @@ Testing tool
 ============
 
 BT HAL test tools located in android/haltest is provided for HAL level testing
-of both Android daemon and HAL library. Start it and type 'adapter init' in
-prompt to initialize HAL library. On Android required bluetoothd service will
-be started automatically. On Linux it is required to start android/bluetoothd
-manually before init command timeout. To deinitialize HAL library and stop
-daemon type 'adapter cleanup'. Type 'help' for more information. Tab completion
-is also supported.
+of both Android daemon and HAL library. Start it with '-n' parameter and type
+'bluetooth init' in prompt to initialize HAL library. Running without parameter
+will make haltest try to initialize all services after start. On Android
+required bluetoothd service will be started automatically. On Linux it is
+required to start android/bluetoothd manually before init command timeout or
+use provided android/system-emulator, which takes care of launching daemon
+automatically on HAL library initialization. To deinitialize HAL library and
+stop daemon type 'bluetooth cleanup'. Type 'help' for more information. Tab
+completion is also supported.
