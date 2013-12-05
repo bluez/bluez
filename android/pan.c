@@ -202,6 +202,25 @@ static void bt_pan_connect(const void *buf, uint16_t len)
 
 	DBG("");
 
+	switch (cmd->local_role) {
+	case HAL_PAN_ROLE_NAP:
+		if (cmd->remote_role != HAL_PAN_ROLE_PANU) {
+			status = HAL_STATUS_UNSUPPORTED;
+			goto failed;
+		}
+		break;
+	case HAL_PAN_ROLE_PANU:
+		if (cmd->remote_role != HAL_PAN_ROLE_NAP &&
+					cmd->remote_role != HAL_PAN_ROLE_PANU) {
+			status = HAL_STATUS_UNSUPPORTED;
+			goto failed;
+		}
+		break;
+	default:
+		status = HAL_STATUS_UNSUPPORTED;
+		goto failed;
+	}
+
 	android2bdaddr(&cmd->bdaddr, &dst);
 
 	l = g_slist_find_custom(devices, &dst, device_cmp);
