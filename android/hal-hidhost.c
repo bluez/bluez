@@ -363,8 +363,12 @@ static bt_status_t send_data(bt_bdaddr_t *bd_addr, char *data)
 static bt_status_t init(bthh_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
+	int ret;
 
 	DBG("");
+
+	if (interface_ready())
+		return BT_STATUS_DONE;
 
 	/* store reference to user callbacks */
 	cbacks = callbacks;
@@ -374,8 +378,15 @@ static bt_status_t init(bthh_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_HIDHOST;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	if (ret != BT_STATUS_SUCCESS) {
+		cbacks = NULL;
+		hal_ipc_unregister(HAL_SERVICE_ID_HIDHOST);
+	}
+
+	return ret;
 }
 
 static void cleanup(void)
