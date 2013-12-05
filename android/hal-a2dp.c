@@ -96,8 +96,12 @@ static bt_status_t disconnect(bt_bdaddr_t *bd_addr)
 static bt_status_t init(btav_callbacks_t *callbacks)
 {
 	struct hal_cmd_register_module cmd;
+	int ret;
 
 	DBG("");
+
+	if (interface_ready())
+		return BT_STATUS_DONE;
 
 	cbs = callbacks;
 
@@ -106,8 +110,15 @@ static bt_status_t init(btav_callbacks_t *callbacks)
 
 	cmd.service_id = HAL_SERVICE_ID_A2DP;
 
-	return hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
+	ret = hal_ipc_cmd(HAL_SERVICE_ID_CORE, HAL_OP_REGISTER_MODULE,
 					sizeof(cmd), &cmd, 0, NULL, NULL);
+
+	if (ret != BT_STATUS_SUCCESS) {
+		cbs = NULL;
+		hal_ipc_unregister(HAL_SERVICE_ID_A2DP);
+	}
+
+	return ret;
 }
 
 static void cleanup()
