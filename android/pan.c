@@ -282,9 +282,21 @@ failed:
 
 static void bt_pan_enable(const void *buf, uint16_t len)
 {
-	DBG("Not Implemented");
+	const struct hal_cmd_pan_enable *cmd = buf;
+	uint8_t status;
 
-	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE, HAL_STATUS_FAILED);
+	switch (cmd->local_role) {
+	case HAL_PAN_ROLE_PANU:
+	case HAL_PAN_ROLE_NAP:
+		DBG("Not Implemented");
+		status  = HAL_STATUS_FAILED;
+		break;
+	default:
+		status = HAL_STATUS_UNSUPPORTED;
+		break;
+	}
+
+	ipc_send_rsp(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE, status);
 }
 
 static void bt_pan_get_role(const void *buf, uint16_t len)

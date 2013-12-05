@@ -74,9 +74,6 @@ static bt_status_t pan_enable(int local_role)
 	if (!interface_ready())
 		return BT_STATUS_NOT_READY;
 
-	if (!(local_role == BTPAN_ROLE_PANU || local_role == BTPAN_ROLE_PANNAP))
-		return BT_STATUS_UNSUPPORTED;
-
 	cmd.local_role = local_role;
 
 	return hal_ipc_cmd(HAL_SERVICE_ID_PAN, HAL_OP_PAN_ENABLE,
