@@ -373,7 +373,7 @@ static int init(bt_callbacks_t *callbacks)
 	DBG("");
 
 	if (interface_ready())
-		return BT_STATUS_SUCCESS;
+		return BT_STATUS_DONE;
 
 	bt_hal_cbacks = callbacks;
 
