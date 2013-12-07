@@ -455,6 +455,11 @@ static void print_addr_type(const char *label, uint8_t addr_type)
 	print_field("%s: %s (0x%2.2x)", label, str, addr_type);
 }
 
+static void print_lt_addr(uint8_t lt_addr)
+{
+	print_field("LT address: %d", lt_addr);
+}
+
 static void print_handle(uint16_t handle)
 {
 	print_field("Handle: %d", btohs(handle));
@@ -4273,6 +4278,36 @@ static void write_le_host_supported_cmd(const void *data, uint8_t size)
 	print_field("Simultaneous: 0x%2.2x", cmd->simultaneous);
 }
 
+static void set_reserved_lt_addr_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_set_reserved_lt_addr *cmd = data;
+
+	print_lt_addr(cmd->lt_addr);
+}
+
+static void set_reserved_lt_addr_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_set_reserved_lt_addr *rsp = data;
+
+	print_status(rsp->status);
+	print_lt_addr(rsp->lt_addr);
+}
+
+static void delete_reserved_lt_addr_cmd(const void *data, uint8_t size)
+{
+	const struct bt_hci_cmd_delete_reserved_lt_addr *cmd = data;
+
+	print_lt_addr(cmd->lt_addr);
+}
+
+static void delete_reserved_lt_addr_rsp(const void *data, uint8_t size)
+{
+	const struct bt_hci_rsp_delete_reserved_lt_addr *rsp = data;
+
+	print_status(rsp->status);
+	print_lt_addr(rsp->lt_addr);
+}
+
 static void read_sync_train_params_rsp(const void *data, uint8_t size)
 {
 	const struct bt_hci_rsp_read_sync_train_params *rsp = data;
@@ -5524,8 +5559,12 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x0c71, 241, "Set MWS Transport Layer" },
 	{ 0x0c72, 242, "Set MWS Scan Frequency Table" },
 	{ 0x0c73, 244, "Set MWS Pattern Configuration" },
-	{ 0x0c74, 252, "Set Reserved LT_ADDR" },
-	{ 0x0c75, 253, "Delete Reserved LT_ADDR" },
+	{ 0x0c74, 252, "Set Reserved LT_ADDR",
+				set_reserved_lt_addr_cmd, 1, true,
+				set_reserved_lt_addr_rsp, 2, true },
+	{ 0x0c75, 253, "Delete Reserved LT_ADDR",
+				delete_reserved_lt_addr_cmd, 1, true,
+				delete_reserved_lt_addr_rsp, 2, true },
 	{ 0x0c76, 254, "Set Connectionless Slave Broadcast Data" },
 	{ 0x0c77, 255, "Read Synchronization Train Parameters",
 				null_cmd, 0, true,

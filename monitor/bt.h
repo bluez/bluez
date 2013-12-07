@@ -1011,6 +1011,24 @@ struct bt_hci_cmd_write_le_host_supported {
 	uint8_t  simultaneous;
 } __attribute__ ((packed));
 
+#define BT_HCI_CMD_SET_RESERVED_LT_ADDR		0x0c74
+struct bt_hci_cmd_set_reserved_lt_addr {
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+struct bt_hci_rsp_set_reserved_lt_addr {
+	uint8_t  status;
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+
+#define BT_HCI_CMD_DELETE_RESERVED_LT_ADDR	0x0c75
+struct bt_hci_cmd_delete_reserved_lt_addr {
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+struct bt_hci_rsp_delete_reserved_lt_addr {
+	uint8_t  status;
+	uint8_t  lt_addr;
+} __attribute__ ((packed));
+
 #define BT_HCI_CMD_READ_SYNC_TRAIN_PARAMS	0x0c77
 struct bt_hci_rsp_read_sync_train_params {
 	uint8_t  status;
