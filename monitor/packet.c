@@ -4602,13 +4602,16 @@ static void le_set_adv_parameters_cmd(const void *data, uint8_t size)
 		str = "Connectable undirected - ADV_IND";
 		break;
 	case 0x01:
-		str = "Connectable directed - ADV_DIRECT_IND";
+		str = "Connectable directed - ADV_DIRECT_IND (high duty cycle)";
 		break;
 	case 0x02:
 		str = "Scannable undirected - ADV_SCAN_IND";
 		break;
 	case 0x03:
 		str = "Non connectable undirect - ADV_NONCONN_IND";
+		break;
+	case 0x04:
+		str = "Connectable directed - ADV_DIRECT_IND (low duty cycle)";
 		break;
 	default:
 		str = "Reserved";
