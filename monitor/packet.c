@@ -3107,9 +3107,9 @@ static void setup_sync_conn_cmd(const void *data, uint8_t size)
 	print_pkt_type(cmd->pkt_type);
 }
 
-static void accept_sync_conn_cmd(const void *data, uint8_t size)
+static void accept_sync_conn_request_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_accept_sync_conn *cmd = data;
+	const struct bt_hci_cmd_accept_sync_conn_request *cmd = data;
 
 	print_bdaddr(cmd->bdaddr);
 	print_field("Transmit bandwidth: %d", btohl(cmd->tx_bandwidth));
@@ -3120,9 +3120,9 @@ static void accept_sync_conn_cmd(const void *data, uint8_t size)
 	print_pkt_type(cmd->pkt_type);
 }
 
-static void reject_sync_conn_cmd(const void *data, uint8_t size)
+static void reject_sync_conn_request_cmd(const void *data, uint8_t size)
 {
-	const struct bt_hci_cmd_reject_sync_conn *cmd = data;
+	const struct bt_hci_cmd_reject_sync_conn_request *cmd = data;
 
 	print_bdaddr(cmd->bdaddr);
 	print_reason(cmd->reason);
@@ -5048,10 +5048,10 @@ static const struct opcode_data opcode_table[] = {
 				read_lmp_handle_rsp, 8, true },
 	{ 0x0428, 131, "Setup Synchronous Connection",
 				setup_sync_conn_cmd, 17, true },
-	{ 0x0429, 132, "Accept Synchronous Connection",
-				accept_sync_conn_cmd, 21, true },
-	{ 0x042a, 133, "Reject Synchronous Connection",
-				reject_sync_conn_cmd, 7, true },
+	{ 0x0429, 132, "Accept Synchronous Connection Request",
+				accept_sync_conn_request_cmd, 21, true },
+	{ 0x042a, 133, "Reject Synchronous Connection Request",
+				reject_sync_conn_request_cmd, 7, true },
 	{ 0x042b, 151, "IO Capability Request Reply",
 				io_capability_request_reply_cmd, 9, true,
 				status_bdaddr_rsp, 7, true },
@@ -5094,7 +5094,7 @@ static const struct opcode_data opcode_table[] = {
 	{ 0x043c, 175, "Flow Specifcation Modify",
 				flow_spec_modify_cmd, 34, true },
 	{ 0x043d, 235, "Enhanced Setup Synchronous Connection" },
-	{ 0x043e, 236, "Enhanced Accept Synchronous Connection" },
+	{ 0x043e, 236, "Enhanced Accept Synchronous Connection Request" },
 	{ 0x043f, 246, "Truncated Page" },
 	{ 0x0440, 247, "Truncated Page Cancel" },
 	{ 0x0441, 248, "Set Connectionless Slave Broadcast" },

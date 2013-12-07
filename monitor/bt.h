@@ -290,8 +290,8 @@ struct bt_hci_cmd_setup_sync_conn {
 	uint16_t pkt_type;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_ACCEPT_SYNC_CONN		0x0429
-struct bt_hci_cmd_accept_sync_conn {
+#define BT_HCI_CMD_ACCEPT_SYNC_CONN_REQUEST	0x0429
+struct bt_hci_cmd_accept_sync_conn_request {
 	uint8_t  bdaddr[6];
 	uint32_t tx_bandwidth;
 	uint32_t rx_bandwidth;
@@ -301,8 +301,8 @@ struct bt_hci_cmd_accept_sync_conn {
 	uint16_t pkt_type;
 } __attribute__ ((packed));
 
-#define BT_HCI_CMD_REJECT_SYNC_CONN		0x042a
-struct bt_hci_cmd_reject_sync_conn {
+#define BT_HCI_CMD_REJECT_SYNC_CONN_REQUEST	0x042a
+struct bt_hci_cmd_reject_sync_conn_request {
 	uint8_t  bdaddr[6];
 	uint8_t  reason;
 } __attribute__ ((packed));
