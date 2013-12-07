@@ -346,6 +346,8 @@ static const struct {
 	{ 0x3d, "Connection Terminated due to MIC Failure"		},
 	{ 0x3e, "Connection Failed to be Established"			},
 	{ 0x3f, "MAC Connection Failed"					},
+	{ 0x40, "Coarse Clock Adjustment Rejected "
+		"but Will Try to Adjust Using Clock Dragging"		},
 	{ }
 };
 
