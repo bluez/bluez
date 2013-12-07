@@ -6395,6 +6395,7 @@ static const struct subevent_data subevent_table[] = {
 				le_remote_features_complete_evt, 11, true },
 	{ 0x05, "LE Long Term Key Request",
 				le_long_term_key_request_evt, 12, true },
+	{ 0x06, "LE Remote Connection Parameter Request" },
 	{ }
 };
 
@@ -6591,6 +6592,16 @@ static const struct event_data event_table[] = {
 				short_range_mode_change_evt, 3, true },
 	{ 0x4d, "AMP Status Change",
 				amp_status_change_evt, 2, true },
+	{ 0x4e, "Triggered Clock Capture" },
+	{ 0x4f, "Synchronization Train Complete" },
+	{ 0x50, "Synchronization Train Received" },
+	{ 0x51, "Connectionless Slave Broadcast Receive" },
+	{ 0x52, "Connectionless Slave Broadcast Timeout" },
+	{ 0x53, "Truncated Page Complete" },
+	{ 0x54, "Slave Page Response Timeout" },
+	{ 0x55, "Connectionless Slave Broadcast Channel Map Change" },
+	{ 0x56, "Inquiry Response Notification" },
+	{ 0x57, "Authenticated Payload Timeout Expired" },
 	{ 0xfe, "Testing" },
 	{ 0xff, "Vendor", vendor_evt, 0, false },
 	{ }
