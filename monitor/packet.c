@@ -1913,6 +1913,7 @@ static const struct features_data features_page1[] = {
 	{  0, "Secure Simple Pairing (Host Support)"	},
 	{  1, "LE Supported (Host)"			},
 	{  2, "Simultaneous LE and BR/EDR (Host)"	},
+	{  3, "Secure Connections (Host Support)"	},
 	{ }
 };
 
@@ -1922,6 +1923,11 @@ static const struct features_data features_page2[] = {
 	{  2, "Synchronization Train"			},
 	{  3, "Synchronization Scan"			},
 	{  4, "Inquiry Response Notification Event"	},
+	{  5, "Generalized interlaced scan"		},
+	{  6, "Coarse Clock Adjustment"			},
+	{  8, "Secure Connections (Controller Support)"	},
+	{  9, "Ping"					},
+	{ 11, "Train nudging"				},
 	{ }
 };
 
@@ -2196,6 +2202,7 @@ static const struct {
 	{ 20, "Slave Page Response Timeout"				},
 	{ 21, "Connectionless Slave Broadcast Channel Map Change"	},
 	{ 22, "Inquiry Response Notification"				},
+	{ 23, "Authenticated Payload Timeout Expired"			},
 	{ }
 };
 
