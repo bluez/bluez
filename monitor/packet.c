@@ -1933,6 +1933,9 @@ static const struct features_data features_page2[] = {
 
 static const struct features_data features_le[] = {
 	{  0, "LE Encryption"				},
+	{  1, "Connection Parameter Request Procedure"	},
+	{  2, "Extended Reject Indication"		},
+	{  3, "Slave-initiated Features Exchange"	},
 	{  4, "LE Ping"					},
 	{ }
 };
@@ -2234,11 +2237,12 @@ static const struct {
 	uint8_t bit;
 	const char *str;
 } events_le_table[] = {
-	{  0, "LE Connection Complete"		},
-	{  1, "LE Advertising Report"		},
-	{  2, "LE Connection Update Complete"	},
-	{  3, "LE Read Remote Used Features"	},
-	{  4, "LE Long Term Key Request"	},
+	{  0, "LE Connection Complete"			},
+	{  1, "LE Advertising Report"			},
+	{  2, "LE Connection Update Complete"		},
+	{  3, "LE Read Remote Used Features"		},
+	{  4, "LE Long Term Key Request"		},
+	{  5, "LE Remote Connection Parameter Request"	},
 	{ }
 };
 
